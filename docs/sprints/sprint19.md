@@ -1,6 +1,6 @@
 # Sprint 19 - Auction system rework: multi-day bidding
 
-*Source: 2026-07-10 playtest session (`docs/playtest-notes-2026-07-10.md`, item #2) - the largest,
+*Source: 2026-07-10 playtest session (`docs/playtest-notes/playtest-notes-2026-07-10.md`, item #2) - the largest,
 most detailed single item in that note dump, and the one raised with the most urgency. Sequenced last
 of the five sprints from that session (Sprints 15/16 make reputation real and gate who can even reach
 which auction tier; this sprint reworks what happens once they're there) purely because of size and

@@ -1,6 +1,6 @@
 # Sprint 13 - Equipment & repair-vs-replace economy
 
-*Source: `docs/design/repair-replace-progression.md` (committed 2026-07-09), the "14b" equipment/
+*Source: `docs/design/archive/repair-replace-progression.md` (committed 2026-07-09), the "14b" equipment/
 repair economy built on top of Sprint 12's component-model migration ("14a"), per `TODO.md`'s
 10→11→12→13→14 sequencing. The maintainer called this **critical, not a nice-to-have** (2026-07-09).
 Status: **implemented, ready for review.** 336 tests (was 301).

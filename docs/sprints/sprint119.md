@@ -1,6 +1,6 @@
 # Sprint 119: The body model (workshop rework, phase 1b)
 
-**Source design:** `docs/design/workshop-rework.md` (FINAL, maintainer-approved 2026-07-23).
+**Source design:** `docs/design/systems/workshop-rework.md` (FINAL, maintainer-approved 2026-07-23).
 
 **STATUS: LEVERS SIGNED (maintainer rulings in session, 2026-07-23). Implementation
 authorised.** This is the sprint doc that carries phase 1's complete lever list per the

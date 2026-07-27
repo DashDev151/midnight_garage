@@ -1,6 +1,6 @@
 # Sprint 53 - Economy Rebuild 1 of 3: the diagnosis, the economy bible, and fitment-class parts pricing
 
-**Source:** playtest 2026-07-14 items 6 and 9 (`docs/playtest-notes-2026-07-14.md`) - the
+**Source:** playtest 2026-07-14 items 6 and 9 (`docs/playtest-notes/playtest-notes-2026-07-14.md`) - the
 maintainer-declared paramount focus. Opens the **Economy Rebuild arc (Sprints 53-55)**. The
 maintainer's directive is explicit: no more point patches; gut the system and build a better one
 from the ground up. The arc split: Sprint 53 fixes what repairs COST (proportionate to the car),

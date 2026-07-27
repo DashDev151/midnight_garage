@@ -1,6 +1,6 @@
 # Sprint 42 - The flip ledger: per-car money in, projected money out
 
-**Source:** `docs/playtest-notes-2026-07-13.md` item 7, maintainer decision 2 (no sale-price
+**Source:** `docs/playtest-notes/playtest-notes-2026-07-13.md` item 7, maintainer decision 2 (no sale-price
 control - the ledger IS the feedback mechanism). Goal: every owned car shows what you paid, what
 you have sunk into it, what it is worth now, and the projected profit - live, so the
 buy-repair-upgrade-sell loop is visible and visceral.

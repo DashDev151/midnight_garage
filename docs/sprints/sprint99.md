@@ -1,7 +1,7 @@
 # Sprint 99: The live room, as a throwaway demo (economy legibility, stage 2)
 
 **Date:** 2026-07-19 (planned)
-**Source:** `docs/design/economy-legibility.md` plank 3; the maintainer's 2026-07-12
+**Source:** `docs/design/systems/economy-legibility.md` plank 3; the maintainer's 2026-07-12
 live-bidding ruling (TODO.md): build a STRIPPED demo first, decide from the demo.
 
 **Goal:** one screen that lets the maintainer FEEL the live auction room before any of

@@ -1,6 +1,6 @@
 # Sprint 26: The banded parts model: 29 parts, five conditions, one truth
 
-*Source: maintainer playtest 2026-07-11 (`docs/playtest-notes-2026-07-11.md`, note 9) plus the
+*Source: maintainer playtest 2026-07-11 (`docs/playtest-notes/playtest-notes-2026-07-11.md`, note 9) plus the
 maintainer's schema decisions of the same day: the 29-part list below is locked; conditions are
 five named bands, not 0-100; **scrap is a terminal band** (never repairable, only replaceable,
 and a removed scrap part can only be sold for scrap value, never reinstalled anywhere); forced
@@ -143,7 +143,7 @@ banded parts), §6.5 inspection/hidden issues (paused, removed for now), §6.3 s
    `gradesClimbed * stepCostYen` regardless of how many slots it took, so a car's intrinsic
    repair cost, and therefore its value (decisions 4-5), never depends on which shop happens
    to own it, only on the work itself. When the staff/skill system lands (see
-   `docs/design/skill-progression.md`), mechanic skill may raise a mechanic's effective
+   `docs/design/parked/skill-progression.md`), mechanic skill may raise a mechanic's effective
    repair level, capped at 3: skill optimizes, never unlocks, exactly per that design.
 8. **Stats from parts** (content weights): power from engine parts (ignitionEcu, camsTiming,
    intake, exhaust, internals, and FI when fitted); handling from suspension and tyres;

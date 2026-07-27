@@ -1,6 +1,6 @@
 # Sprint 16 - Progression gating & the Upgrades tab
 
-*Source: 2026-07-10 playtest session (`docs/playtest-notes-2026-07-10.md`, items #6/#7/#8/#10) and the
+*Source: 2026-07-10 playtest session (`docs/playtest-notes/playtest-notes-2026-07-10.md`, items #6/#7/#8/#10) and the
 same-day design conversation. Depends on Sprint 15 (reputation system) for #7/#10 - this sprint spends
 the reputation tier Sprint 15 makes real. #8 (job-board equipment hinting) doesn't actually depend on
 Sprint 15 at all (it's equipment-only), and #6 (Upgrades tab) is pure UI - both ride along here because

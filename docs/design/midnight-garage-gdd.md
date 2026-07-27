@@ -6,7 +6,7 @@ Title amended to "Ran When Parked" by maintainer approval, 2026-07-18 (previousl
 
 *v0.6 (2026-07-12): sections 3.2, 6.1, 9.0, and 9.1 amended to match the shipped Progression
 Rework arc (Sprints 36-39) - see `docs/design/progression-bible.md` (now the canonical
-progression source) and `docs/design/gdd-amendment-progression.md` (the reviewed amendment this
+progression source) and `docs/design/archive/gdd-amendment-progression.md` (the reviewed amendment this
 revision applies).*
 
 **Genre:** Medium-weight management sim with light idle elements
@@ -87,7 +87,7 @@ The day advances **only when the player ends it.** One day = one turn. A week is
 4. **END DAY.** Work progresses, deliveries arrive, passive income resolves, events fire, autosave.
 
 ### 3.2 Labor Slots (the core resource)
-Each character (player + staff) provides labor slots per day (base 6, retuned from the original placeholder during balancing). Tool tier does not add MORE slots - it makes each slot cover MORE work: repairing a part costs `ceil(grades-to-climb / tool tier)` labor slots, so a tier-3 line clears the same repair in a third the slots a tier-1 line needs (§9.0). "More with skill" remains a planned but unbuilt staff/player-skill system (`docs/design/skill-progression.md`) that would compose on top of tool tier, never replace it. Jobs are defined in labor-slot costs, e.g.:
+Each character (player + staff) provides labor slots per day (base 6, retuned from the original placeholder during balancing). Tool tier does not add MORE slots - it makes each slot cover MORE work: repairing a part costs `ceil(grades-to-climb / tool tier)` labor slots, so a tier-3 line clears the same repair in a third the slots a tier-1 line needs (§9.0). "More with skill" remains a planned but unbuilt staff/player-skill system (`docs/design/parked/skill-progression.md`) that would compose on top of tool tier, never replace it. Jobs are defined in labor-slot costs, e.g.:
 
 - Inspect an auction car properly: 1 slot (else you bid on photos alone - risk!)
 - Swap coilovers: 1 slot
@@ -183,7 +183,7 @@ Individual gaskets, torque specs, fluid types, per-bolt disassembly. Labor slots
 
 ### 6.1 Money In
 1. **Flipping** - buy rough, restore/build, sell to the right buyer.
-2. **Commissions (service jobs)** - customers bring a car and a task list (repair to a target condition, or install a graded part) drawn from an authored per-discipline ladder (bolt-on → involved → fabrication-grade), gated by tool tier and, at the top, by earned specialty/technique (§9.0-9.1). Payout is fully DERIVED from the real task cost plus a margin roll - never an authored flat sum, and never a "brief" the player is scored against - so a job is either completed (paid, plus reputation and specialty) or not (failed: no pay, reputation and specialty penalty). **Story missions** (`docs/design/story-builds-spec.md` v2, Sprints 76-78) extend this line with a hand-authored campaign: a named recurring customer states an OUTCOME (a stat floor, a lap-time ceiling, a buyer's own taste, a budget), not a task list, and the build itself is the player's to choose - the same derived-payout/reputation/specialty reward shape, gated by reputation rather than tool tier.
+2. **Commissions (service jobs)** - customers bring a car and a task list (repair to a target condition, or install a graded part) drawn from an authored per-discipline ladder (bolt-on → involved → fabrication-grade), gated by tool tier and, at the top, by earned specialty/technique (§9.0-9.1). Payout is fully DERIVED from the real task cost plus a margin roll - never an authored flat sum, and never a "brief" the player is scored against - so a job is either completed (paid, plus reputation and specialty) or not (failed: no pay, reputation and specialty penalty). **Story missions** (`docs/design/systems/story-builds-spec.md` v2, Sprints 76-78) extend this line with a hand-authored campaign: a named recurring customer states an OUTCOME (a stat floor, a lap-time ceiling, a buyer's own taste, a budget), not a task list, and the build itself is the player's to choose - the same derived-payout/reputation/specialty reward shape, gated by reputation rather than tool tier.
 3. **Service Bay** - passive (see §3.4).
 4. **Event winnings** - touge/show purses (modest cash, big rep).
 

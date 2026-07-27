@@ -1,6 +1,6 @@
 # Sprint 59 - The earned yen: instant flips, job margins, and starting cash
 
-**Source:** playtest 2026-07-14 pass 2 (`docs/playtest_notes/playtest-notes-2026-07-14-pass2.md`),
+**Source:** playtest 2026-07-14 pass 2 (`docs/playtest-notes/playtest-notes-2026-07-14-pass2.md`),
 items 12, 16, 19. Item 19 is the anchor: buying a car at auction and selling it untouched
 netted ~¥156k (purchase ¥156,030 vs guide ¥312,060 - exactly half). The maintainer's law:
 an unimproved flip nets a few thousand yen profit to a few thousand yen loss at most. The

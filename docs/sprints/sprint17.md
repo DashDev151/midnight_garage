@@ -1,6 +1,6 @@
 # Sprint 17 - Drag-and-drop foundation & garage UI
 
-*Source: 2026-07-10 playtest session (`docs/playtest-notes-2026-07-10.md`, item #5) and the same-day
+*Source: 2026-07-10 playtest session (`docs/playtest-notes/playtest-notes-2026-07-10.md`, item #5) and the same-day
 design conversation. Explicitly sequenced before Sprint 18 (parts inventory/install rework): the
 maintainer's own instruction was to build one shared drag-and-drop primitive and use it for both car-
 moving here *and* part-installing there ("hard agree, design as such") - this sprint proves it on the

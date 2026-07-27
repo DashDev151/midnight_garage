@@ -397,7 +397,7 @@ describe('generation is mileage-driven: age -> mileage -> condition (Sprint 34)'
   /** `poor`/`scrap` share across every filled slot on `instance`, excluding
    * `panels`/`paint`/`underbody`: this whole describe block is about the
    * age -> mileage -> condition chain, and the body pipeline's zone
-   * severities (docs/design/workshop-rework.md's generation table) roll from
+   * severities (docs/design/systems/workshop-rework.md's generation table) roll from
    * TIER weights alone, independently of age or mileage - a deliberate,
    * separate generation axis from this wave, not a claim this helper's own
    * callers are testing. */

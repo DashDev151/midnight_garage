@@ -9,7 +9,7 @@ verified - CI wiring deliberately deferred by user decision (2026-07-08); see gr
 Make the economy playable end-to-end (buy at auction -> build -> sell) and prove it's *sane*, not
 just functional: a headless balance harness plays thousands of simulated careers and a Python
 report answers "what does day 40 look like for a flipper?" with real numbers, gating CI on the
-pacing invariants from `docs/economy-v0.md`.
+pacing invariants from `docs/design/archive/economy-v0.md`.
 
 This is the largest sprint yet - it has real cross-language plumbing (TypeScript sim -> Python
 analysis) and several places where the roadmap's one-line bullets hide design decisions the GDD
@@ -113,7 +113,7 @@ Sprints 01-02: never quietly fix or hide something without saying so.
 3. **Starting capital (economy-v0.md's Y1,200,000) left zero operating margin.** 100 days of
    `WEEKLY_RENT_YEN` alone is Y1,260,000 - more than the original starting cash. *Any* strategy,
    including a perfectly profitable one, would look insolvent purely from not having enough
-   capital to survive a slow start. Bumped to Y1,500,000 in `runCareer.ts`; `docs/economy-v0.md`
+   capital to survive a slow start. Bumped to Y1,500,000 in `runCareer.ts`; `docs/design/archive/economy-v0.md`
    updated to match. This is the harness doing exactly its intended job - the roadmap always
    expected Sprint 00's draft numbers to get corrected here, not to survive untouched.
 4. **Cautious Restorer's original tier target was unaffordable by its own rule.** It inspected
@@ -334,7 +334,7 @@ Sprints 01-02: never quietly fix or hide something without saying so.
 
 - [x] CLAUDE.md's current-state note and Commands section updated (`pnpm balance:run`, the two
   Python commands, and the CI-deferral note).
-- [x] `docs/economy-v0.md`'s invariant list updated to reflect decision 3's proxy invariants
+- [x] `docs/design/archive/economy-v0.md`'s invariant list updated to reflect decision 3's proxy invariants
   (done at design time) and the starting-cash correction (finding 3, done during implementation).
 - [x] Ten implementation-time findings flagged above, plus the two schema/API additions
   (`SimContext` as `advanceDay`'s 4th parameter, `packages/content/src/data.ts`) called out in

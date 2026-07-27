@@ -92,7 +92,7 @@ content and invariant code.
    by `resolveRemovePart` at uninstall, cleared by any install into that slot); the install path
    charges 0 on a baseline match, else `installSlotsByClass`. No new state on `PartInstance`.
 
-   This amends `docs/design/component-hierarchy-spec.md`'s "deep work is expensive because of the
+   This amends `docs/design/systems/component-hierarchy-spec.md`'s "deep work is expensive because of the
    teardown, not the part" law. Record the amendment in that spec with this date and rationale:
    deep work is now expensive in proportion to the value added on the bench, never the logistics.
 
@@ -190,8 +190,8 @@ content and invariant code.
    tipless missions.
 7. Implement decision 8: brake blockers plus the full plausibility sweep; list changes in Exit.
 8. Record the component-hierarchy-spec amendment (decision 1) in
-   `docs/design/component-hierarchy-spec.md`.
-9. Create `docs/playtest-notes-2026-07-16.md` seeded with the brake finding, marked actioned by
+   `docs/design/systems/component-hierarchy-spec.md`.
+9. Create `docs/playtest-notes/playtest-notes-2026-07-16.md` seeded with the brake finding, marked actioned by
    this sprint.
 10. Full gate (`pnpm typecheck`, `lint`, `format`, `test:coverage`, `build`, `balance:run`,
     `balance.cli check`, `balance.cli report`); goldens re-pinned if labour changes shift sim
@@ -299,7 +299,7 @@ content and invariant code.
    under the "Deep work is expensive because of the teardown, not the part" sentence, recording
    the new law (deep work is expensive in proportion to the value added on the bench, never the
    logistics) without rewriting the original historical text.
-9. **Playtest notes.** `docs/playtest_notes/playtest-notes-2026-07-16.md` created (see Deviations
+9. **Playtest notes.** `docs/playtest-notes/playtest-notes-2026-07-16.md` created (see Deviations
    for the path correction), seeded with the brake finding and marked actioned by this sprint.
 10. Full gate green (below); no golden hashes needed re-pinning; this Exit.
 
@@ -343,10 +343,10 @@ Confirmed by the full coverage run passing outright on the first try after every
    taxonomy fact the sprint doc's illustrative language did not account for. The shipped test
    proves the identical underlying claim (an improved slot - here, replaced rather than repaired -
    always costs the full class-based labour) via the only route a clutch actually has.
-3. **Playtest notes doc placed at the established path, not the literal one.** Task 9 says
-   `docs/playtest-notes-2026-07-16.md`; the repo's actual convention (all six prior playtest-notes
-   docs) is `docs/playtest_notes/playtest-notes-DATE.md`. Followed the real convention; the doc's
-   content and purpose match the task exactly.
+3. **Playtest notes doc placed at the established path, not the literal one.** Task 9 named the
+   `docs/` root; the repo's actual convention (all six prior playtest-notes docs) is one dated
+   file inside `docs/playtest-notes/`. Followed the real convention; the doc's content and
+   purpose match the task exactly.
 4. **`donorBreakEvenBillRatio` disclosed as a per-model table, not a single number.** Decision 3
    asks to "disclose the new donorBreakEvenBillRatio"; `computeDonorCoherence`'s own design (and
    `coherence.test.ts`'s pre-existing disclosure test) treats the crossover as inherently

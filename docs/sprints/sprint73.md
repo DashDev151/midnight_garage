@@ -1,6 +1,6 @@
 # Sprint 73 - Diagnosis I: symptoms, causes, and the fear-priced board
 
-**Source:** `docs/design/diagnosis-spec.md` v2 (the detective model; maintainer pricing law
+**Source:** `docs/design/systems/diagnosis-spec.md` v2 (the detective model; maintainer pricing law
 2026-07-15: the room prices the symptom, the player prices the cause). Depends on Sprints 70-72.
 This sprint puts symptomatic cars in the world and prices them; Sprint 74 adds the player's
 inspection verbs; Sprint 75 integrates and polishes.

@@ -205,4 +205,4 @@ The car spec arc's remaining phase is the one Sprint 124 displaced: **UI polish 
 promotion** (radar/detail surfacing of the new figures, a per-course lap board, a diegetic dyno, and
 promoting spec-book cars into the playable roster). That becomes Sprint 126. Open calibration items
 (the kei outliers, the ~2-3% fast-field residual, and validating courses other than Misaki) stay
-tracked in `docs/design/lap-calibration.md` and are independent of this sprint.
+tracked in `docs/design/car-performance/archive/lap-calibration.md` and are independent of this sprint.

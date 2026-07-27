@@ -1,7 +1,7 @@
 # Sprint 100: The room replaces the overnight sim (economy legibility, stage 3)
 
 **Date:** 2026-07-19 (planned; GATED on the Sprint 99 verdict)
-**Source:** `docs/design/economy-legibility.md` plank 3.
+**Source:** `docs/design/systems/economy-legibility.md` plank 3.
 
 **Goal:** the demo's room becomes the real auction flow; the invisible overnight bid
 machinery is deleted.

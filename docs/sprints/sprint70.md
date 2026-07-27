@@ -2,7 +2,7 @@
 
 **Source:** maintainer directive 2026-07-15 (recorded verbatim in `TODO.md`, "Next up"); scoping
 delegated to Claude 2026-07-15 ("you can do all of the scoping yourself"). Design context:
-`docs/design/component-hierarchy-spec.md` (which depends on this sprint).
+`docs/design/systems/component-hierarchy-spec.md` (which depends on this sprint).
 
 **For the implementing agent:** every symbol below was verified against the codebase on
 2026-07-15. If a cited symbol is missing or has moved, STOP and re-locate it before editing; do

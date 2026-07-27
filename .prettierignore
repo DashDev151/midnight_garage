@@ -6,4 +6,10 @@ pnpm-lock.yaml
 tools/
 
 # generated review artefact (scripts/generateFailureMap.cjs)
-docs/design/failure-map.html
+docs/design/systems/failure-map.html
+
+# the lap-model calibration harness and its outputs. The harness is a prototype that
+# carries its own eslint-disable and sits outside the packages formatting standard;
+# lapsim-data.json and the dashboard's embedded data blob are machine-written, so
+# reformatting them only churns against the next run.
+docs/design/car-performance/lapsim/

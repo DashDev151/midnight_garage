@@ -1,6 +1,6 @@
 # Sprint 56 - The auction card: grade stamps and the two-panel redesign
 
-**Source:** playtest 2026-07-14 items 2, 3, 4, 5, and 8 (`docs/playtest-notes-2026-07-14.md`),
+**Source:** playtest 2026-07-14 items 2, 3, 4, 5, and 8 (`docs/playtest-notes/playtest-notes-2026-07-14.md`),
 including the maintainer's rough layout mockup (described in the notes doc). Pure presentation:
 no sim or economics change (the numbers on the card keep coming from the same derived sources).
 

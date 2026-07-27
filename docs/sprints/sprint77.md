@@ -1,6 +1,6 @@
 # Sprint 77 - Story missions II: the lap model, the reference board, and the mission flows
 
-**Source:** `docs/design/story-builds-spec.md` v2 ("Grading transparency: the reference-lap
+**Source:** `docs/design/systems/story-builds-spec.md` v2 ("Grading transparency: the reference-lap
 board", the grip-delta anchor ruling, synthetic reference times with the cost disclosed).
 Depends on Sprint 76 (contract machine).
 

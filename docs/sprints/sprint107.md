@@ -164,7 +164,7 @@ mood bars, diegetic only (art-direction law).
 - [x] Tests: stubbed-rng pins per reaction; the cap-law guarantee suite (no goad -> never
       past the read; goad preconditions, once, bound; delays untouched by the tax; feud
       changes pacing only).
-- [ ] Docs: `docs/design/live-auction.md` gains the reactions section with the odds table.
+- [ ] Docs: `docs/design/systems/live-auction.md` gains the reactions section with the odds table.
 
 **User-only:**
 

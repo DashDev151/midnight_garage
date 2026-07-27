@@ -38,7 +38,7 @@ A placeholder car renders in 4 palette-swapped colors on a deployed URL, built a
 
 ### D. Economy spreadsheet v0 (Claude drafts, user reviews)
 
-- [x] `docs/economy-v0.md`: price curves by rarity tier, weekly rent/wage pressure, labor-slot costs, and act pacing targets phrased as Sprint 3 harness invariants. Draft numbers pending user review.
+- [x] `docs/design/archive/economy-v0.md`: price curves by rarity tier, weekly rent/wage pressure, labor-slot costs, and act pacing targets phrased as Sprint 3 harness invariants. Draft numbers pending user review.
 
 ### E. User-only tasks (air-gapped / purchases / accounts)
 

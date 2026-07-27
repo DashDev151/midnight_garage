@@ -1,6 +1,6 @@
 # Sprint 74 - Diagnosis II: the inspection visit, the tests, and knowing
 
-**Source:** `docs/design/diagnosis-spec.md` v2. Depends on Sprint 73 (symptomatic cars exist and
+**Source:** `docs/design/systems/diagnosis-spec.md` v2. Depends on Sprint 73 (symptomatic cars exist and
 are fear-priced; the player cannot yet act on them). This sprint ships the verbs: the yard visit
 with its hour, the owned-car workup, and uninstall-reveals-truth.
 

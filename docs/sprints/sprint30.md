@@ -1,6 +1,6 @@
 # Sprint 30: Living auctions: instance-honest values, daily bidder interest, staggered arrivals
 
-*Source: maintainer playtest 2026-07-11 (`docs/playtest-notes-2026-07-11.md`, notes 6, 14
+*Source: maintainer playtest 2026-07-11 (`docs/playtest-notes/playtest-notes-2026-07-11.md`, notes 6, 14
 (principled fix), 17-auctions-half). Status: **designed, ready to implement.** Depends on
 Sprints 26-27 (valuation runs on the banded model and the transparent deduction formula).
 Single Sonnet implementation agent; read `CLAUDE.md` first; no em dashes.*

@@ -35,7 +35,7 @@ These assert what this sprint's balance run actually demonstrated, not
 what the roadmap's original one-line invariants assumed - reputation-tier
 progression and the forced-loan/repossession mechanic (GDD 6.6) aren't
 built yet, so "reaches Act 2 by day 25" and "never enters the debt
-spiral" are checked as the measurable proxies docs/economy-v0.md records
+spiral" are checked as the measurable proxies docs/design/archive/economy-v0.md records
 (never quietly faking a mechanic to make a check pass): solvency and
 real market participation, not literal Act-tier or forced-loan state.
 

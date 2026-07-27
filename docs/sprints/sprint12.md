@@ -1,7 +1,7 @@
 # Sprint 12 - Component model refactor (zones+slots -> unified components)
 
 *Source: `TODO.md`'s agreed 10 -> 11 -> 12 -> 13 -> 14 sequencing, and
-`docs/design/repair-replace-progression.md`'s "Option B" model (committed 2026-07-09), which the doc
+`docs/design/archive/repair-replace-progression.md`'s "Option B" model (committed 2026-07-09), which the doc
 itself splits into "14a" (this sprint: the component-model consolidation alone) and "14b" (Sprint 13: the equipment/
 repair-vs-replace economy built on top). Status: **implemented, ready for review.** Two decisions were
 revised mid-flow at the maintainer's explicit direction before implementation began: no save migration

@@ -29,7 +29,7 @@ import { availableTestIdsFor, bestRouteMinutesToResolve } from '../src/diagnosis
 /**
  * Deliberately unresolvable (symptomId, causeId) pairs: recorded design
  * decisions where the yard cannot isolate this cause from its siblings even
- * with every available test run (docs/design/failure-map.md's "deliberate
+ * with every available test run (docs/design/systems/failure-map.md's "deliberate
  * residual ambiguity" lever, e.g. an ECU-versus-cams call that only a bench
  * strip can settle). The resolution-accounting probe below treats any
  * (symptomId, causeId) pair NOT listed here as an authoring gap and fails
@@ -434,7 +434,7 @@ describe('resolution accounting: every cause is isolatable by some route, or dec
         if (declared) continue
         expect(
           isIsolatable(symptom, cause.id),
-          `"${symptom.id}" cause "${cause.id}" is not isolatable by any route and is not declared ambiguous - author a route that narrows to it alone, or add {symptomId: "${symptom.id}", causeId: "${cause.id}"} to DECLARED_AMBIGUOUS with the design reason recorded in docs/design/failure-map.md`,
+          `"${symptom.id}" cause "${cause.id}" is not isolatable by any route and is not declared ambiguous - author a route that narrows to it alone, or add {symptomId: "${symptom.id}", causeId: "${cause.id}"} to DECLARED_AMBIGUOUS with the design reason recorded in docs/design/systems/failure-map.md`,
         ).toBe(true)
       }
     })

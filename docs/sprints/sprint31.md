@@ -1,6 +1,6 @@
 # Sprint 31: Selling rework: the walk-in offer stream
 
-*Source: maintainer playtest 2026-07-11 (`docs/playtest-notes-2026-07-11.md`, notes 15
+*Source: maintainer playtest 2026-07-11 (`docs/playtest-notes/playtest-notes-2026-07-11.md`, notes 15
 (remainder), 16). Status: **designed, ready to implement.** Depends on Sprints 26-27 and 30
 (valuation). Single Sonnet implementation agent; read `CLAUDE.md` first; no em dashes.*
 

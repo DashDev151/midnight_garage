@@ -181,15 +181,15 @@ Every sprint lists **Deliverable** and **Definition of Done (DoD)**. If a sprint
 
 ### PHASE 4 - Systems Complete
 
-- **Sprint 13 - SLACK + staff system** (hire, stats, traits, assignment; service-bay delegation arc). **Includes the skill/XP progression system** - learn-by-doing growth for staff *and* the player character, where skill *optimizes* (efficiency/quality) but never *unlocks* tiers (tools + rep still do that). Still fully unbuilt as of actual Sprint 39; see the 2026-07-12 update in the Numbering reconciliation note above and `docs/design/skill-progression.md`.
+- **Sprint 13 - SLACK + staff system** (hire, stats, traits, assignment; service-bay delegation arc). **Includes the skill/XP progression system** - learn-by-doing growth for staff *and* the player character, where skill *optimizes* (efficiency/quality) but never *unlocks* tiers (tools + rep still do that). Still fully unbuilt as of actual Sprint 39; see the 2026-07-12 update in the Numbering reconciliation note above and `docs/design/parked/skill-progression.md`.
 - **Sprint 14 - Commissions & rep tiers** (briefs, scoring, act gating, equipment purchases as unlocks). Superseded in practice - see the Numbering reconciliation note above: commissions shipped as derived-payout service jobs (Loop Rework arc), never a "briefs, scoring" system, and "equipment purchases as unlocks" was replaced entirely by the six-tool-tier model (Progression Rework arc).
-- **Diagnosis** (`docs/design/diagnosis-spec.md`, spec'd 2026-07-15, **LANDED Sprints 73-75**):
+- **Diagnosis** (`docs/design/systems/diagnosis-spec.md`, spec'd 2026-07-15, **LANDED Sprints 73-75**):
   restores the inspection / hidden-issue / sliding-scale-lemon system this plan's own GDD already
   specifies (§3.2, §4.1, §6.5, §7) and actual-Sprint 26 removed. Not new scope - a return to
   canonical scope, and the repeal of Sprint 27's pre-bid transparency law, which had contradicted
   the GDD since it landed. It is what makes the hunt a decision rather than arithmetic, and it
   restores the missing `diagnose` verb between hunt and build.
-- **Story builds** (`docs/design/story-builds-spec.md` v2, spec'd 2026-07-15, **LANDED Sprints
+- **Story builds** (`docs/design/systems/story-builds-spec.md` v2, spec'd 2026-07-15, **LANDED Sprints
   76-78**): outcome-based build commissions - a customer names an outcome, not a car. **Maintainer
   decision 2026-07-15: the first proper progression addition; the Hall of Legends (§9.2) is
   deferred behind it.** Extends the commissions line above. Depended on diagnosis, per the
@@ -223,7 +223,7 @@ Checklist: itch.io page (GIF-first), press kit, save-code FAQ, known-issues doc,
 2. **Django + Postgres thin API:** cloud-save claim codes (R2 forever-fix), then weekly seeded challenge auctions + async leaderboards (the seeded PRNG finally cashes in).
 3. **Steam evaluation:** only if itch reception earns it - wrap with Tauri (lighter than Electron), *flip the Naming Layer for the paid build*, wishlist campaign, Steam Next Fest demo.
 4. Content packs from `IDEAS.md` (kanjo pack, kei expansion, USDM export arc).
-5. **"Drive My Car" test-drive mode** (`docs/design/drive-mode-spec.md`, v2 spec'd 2026-07-12,
+5. **"Drive My Car" test-drive mode** (`docs/design/parked/drive-mode-spec.md`, v2 spec'd 2026-07-12,
    NOT scheduled): drive a finished build before flipping it. Post-launch by the maintainer's own
    standing 2026-07-08 sign-off - optional, zero gameplay weight, which is what keeps it inside
    the no-reflex-input rule rather than an exception to it. Slip-angle physics in

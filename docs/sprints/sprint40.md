@@ -1,6 +1,6 @@
 # Sprint 40 - Playtest triage: honest job offers, band choice, and a main menu
 
-**Source:** `docs/playtest-notes-2026-07-13.md` items 1, 2, 4, 5. Goal: kill the
+**Source:** `docs/playtest-notes/playtest-notes-2026-07-13.md` items 1, 2, 4, 5. Goal: kill the
 work-done-before-arrival bug at its root, give the player granular repair-band control the sim
 already supports, and add a temporary main menu that also closes the New Game data-loss footgun.
 

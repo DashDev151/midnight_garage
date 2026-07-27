@@ -18,7 +18,7 @@ import type { SimContext } from './context'
 import type { Rng } from './rng'
 
 /**
- * The body pipeline's own module (docs/design/workshop-rework.md): zone
+ * The body pipeline's own module (docs/design/systems/workshop-rework.md): zone
  * generation, the worst-governs derivation of the three body value-carrier
  * bands (`panels`/`paint`/`underbody`) from zone state, and the pure
  * per-stage effect a confirmed pipeline action applies to one zone. Pure
@@ -174,7 +174,7 @@ function rollSeverity(weights: readonly [number, number, number, number], rng: R
 }
 
 /**
- * Rolls a fresh car's six zones (docs/design/workshop-rework.md's generation
+ * Rolls a fresh car's six zones (docs/design/systems/workshop-rework.md's generation
  * table): metal and finish roll independently per zone from the tier's own
  * weight tables (the chassis zone rolls metal on the next-kinder tier's row),
  * surface derives from metal with a chance of one extra step. No zone starts

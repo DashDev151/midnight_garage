@@ -24,8 +24,8 @@ const path = require('path')
 
 const ROOT = path.join(__dirname, '..')
 const DATA_DIR = path.join(ROOT, 'packages/content/data')
-const MD_OUT_PATH = path.join(ROOT, 'docs/design/failure-map.generated.md')
-const HTML_OUT_PATH = path.join(ROOT, 'docs/design/failure-map.html')
+const MD_OUT_PATH = path.join(ROOT, 'docs/design/systems/failure-map.generated.md')
+const HTML_OUT_PATH = path.join(ROOT, 'docs/design/systems/failure-map.html')
 
 const failureModes = readJson('failureModes.json')
 const symptoms = readJson('symptoms.json')

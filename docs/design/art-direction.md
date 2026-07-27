@@ -231,7 +231,7 @@ Register cha-ching (sale), flip-clock flap (End Day), shutter, ratchet, air-wren
   the lift bay. A third angle class was rejected on cost (one drawing per roster model,
   forever). The auction-sheet card direction was confirmed the same day via a second reference
   render (AI, moodboard only): aged-paper sheet, red grade stamps, listing-photo frame,
-  physical action buttons - with the corrections recorded in `art-catalogue.md` O9 (no
+  physical action buttons - with the corrections recorded in `art/art-catalogue.md` O9 (no
   countdown timers on cards, one ledger, real vetted kanji only, the photo is the side master).
 - **Interim font pairing landed** (2026-07-22): DotGothic16 (the era Japanese 16-dot gothic) as
   the pixel display/default face; M PLUS Rounded 1c (maru gothic) as the reading face for

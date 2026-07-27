@@ -1,8 +1,8 @@
 # Sprint 115: Auction Guarantors
 
 **Date:** drafted 2026-07-23, implemented 2026-07-23. Source: the maintainer's own design
-(`docs/design/auction-guarantors.md`, filed 2026-07-19, now unblocked) plus the D4 pick in
-`docs/design/midgame-decision-brief.md` ("go ahead with guarantors, make sure it's well
+(`docs/design/systems/auction-guarantors.md`, filed 2026-07-19, now unblocked) plus the D4 pick in
+`docs/design/archive/midgame-decision-brief.md` ("go ahead with guarantors, make sure it's well
 integrated with the rest of the auction progression system"). The lever table (section 4)
 and the authored copy (section 5) carried the maintainer's sign-off into implementation.
 

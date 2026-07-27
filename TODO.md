@@ -12,7 +12,7 @@ foundational-economy arc - Sprints 20-24 - landed; see `git log` for every sprin
 
 ## Playtest status
 
-The playtest happened 2026-07-11 (raw notes: `docs/playtest-notes-2026-07-11.md`). Its triage
+The playtest happened 2026-07-11 (raw notes: `docs/playtest-notes/playtest-notes-2026-07-11.md`). Its triage
 produced the Loop Rework arc, Sprints 25-31 (`docs/sprints/sprint25.md` onward), which now
 carries every finding; per this file's policy those items live there, not here. Still open from
 the old checklist:
@@ -145,16 +145,21 @@ pass."
   mirror. Sprint 66 is the proof: the bots went Y106k negative and told us nothing the ten
   closed-form rows had not already said better.
 
-  **What a real rework should build instead: a DECISION REPORT** (unscoped - needs its own design
-  pass, not a sprint bolt-on). Not a simulated player, but an enumeration of the choices the game
-  actually puts in front of one, each scored closed-form: day 1, Y300k, here are the eight lots on
-  the board; here is the best play on each, what it returns, and how long it takes. The question
-  that matters then becomes directly measurable - **what is the spread between the best choice and
-  the worst?** A spread near zero means the decision is fake and the day is filler. If a shitbox
-  and a Supra both answer "just fix it up", the tier system is decoration. This is the same
-  instrument that has worked twice already (the coherence table), pointed at gameplay instead of
-  at prices; it has no bots in it so it cannot inherit their blindness, and it would have caught
-  the mint-kei problem on day one rather than fifteen sprints in.
+  **The "decision report" idea that used to sit here is DEAD. Do not re-propose it.** It was
+  designed out in full on 2026-07-26 (`docs/design/archive/decision-report.md`, kept only so the question
+  stays shut) and the maintainer killed it on sight: *"you do not understand the game well enough
+  to build this. this is the broken bot system all over again."* Correct, and the reason is this
+  file's own sentence: a bot is a test wearing a costume, and **a scoring function is the same
+  object**. Enumerating "the plays available on a lot" and ranking them by yen per labour-day
+  hard-codes three guesses (which plays exist, what a play is worth, and that spread means
+  interest) made by someone who has not played the game. The output would look authoritative and
+  would then be used to move economy levers. A wrong instrument is worse than none, because it is
+  trusted.
+
+  **The standing conclusion: do not replace the bot harness with another instrument.** Build
+  measurement only where there is a defined right answer (arithmetic coherence, physics against
+  measured telemetry). Whether the game's decisions are interesting is a judgement call, and it
+  comes from the maintainer playing it.
 
   **If bots survive at all**, they need to resemble a person's *decision rate and decision mix*,
   not just decision *legality*: a builder/tuner archetype that installs aftermarket (coherently AND
@@ -206,6 +211,21 @@ pass."
 
 ## Open engineering
 
+- [ ] **The validated car performance model is not in the game.** It exists only in the harness
+  (`docs/design/car-performance/`, LOCKED and validated to about 2% on blind predictions).
+  `packages/sim/src/performance.ts` still runs the older derived physics: grip from the
+  era-and-width formula, braking as a copy of lateral grip, acceleration from peak power through
+  fitted launch constants and a nine-entry engine-archetype delivery table, and no corner-grip
+  ceiling. `packages/content/data/courses.json` still ships the five invented Sprint 124 courses
+  (kirifuri, usui, wangan, tsurugi, misaki) against the harness's four calibrated ones.
+  **Physics, car data and courses must move together in one change**: the calibrated geometries
+  were searched under the new physics and would make the shipped model WORSE if dropped into the
+  old one, and the story-mission lap ceilings derive from whatever ships. Needs its own sprint,
+  with the schema work (a car carries measured pairs, not single figures) designed first. Two
+  things it does NOT cover and which need designing separately: what a part's condition band does
+  to grip, braking, power and mass, and what fitting an aftermarket part does to the same. The
+  model can say exactly what a car with a given grip and power does; nothing yet says what a build
+  does to grip and power.
 - [ ] **`chassis` sits in the `drivetrain` component group (pre-existing taxonomy), surfaced
   by Sprint 93's repair-ceiling caption.** A chassis repair now reads "The Transmission bench
   reaches mint", which is nonsensical (you weld/straighten a chassis, you do not press it on a
@@ -220,10 +240,15 @@ pass."
   decision 4).** The 29 part + 3 assembly service-diagram sprites in
   `packages/game/src/components/partSprites.ts` are development placeholders, explicitly
   commissioned as such by the maintainer (playtest item 12) and authored to
-  `docs/design/part-sprite-placeholders.md`. Under the art bible's no-AI-assets law they must NOT
+  `docs/design/art/part-sprite-placeholders.md`. Under the art bible's no-AI-assets law they must NOT
   appear in any public build, screenshot, devlog or marketing material; commissioned pixel art
   replaces them before launch. The template + rasteriser API (`PART_SPRITE_TEMPLATES`,
   `PART_SPRITE_GRID`, `partSpriteDataUrl`) stays; only the template pixel data is swapped.
+  The three 80x45 workshop view backdrops in
+  `packages/game/src/components/workshopViewSprites.ts` (body, engine bay, underside) are the
+  same class of asset on the same terms, behind the same API shape
+  (`WORKSHOP_VIEW_SPRITE_TEMPLATES`, `WORKSHOP_VIEW_SPRITE_GRID`, `workshopViewDataUrl`), and
+  are replaced in the same pass.
 - [ ] **Specialty (Sprint 38, the progression bible's horizontal axis) earns from service-job work
   only, never from sales.** A deliberate scope line, not an oversight: attributing a SALE'S
   reputation-quality delta to "the disciplines the player actually improved on that car" would
@@ -322,7 +347,7 @@ pass."
   pairing rollout below. The interim font pairing (DotGothic16 display + M PLUS Rounded 1c
   reading) already landed 2026-07-22. The full required-asset inventory, the animation
   doctrine (proposed, awaiting sign-off), and the eight blocking decisions live in
-  `docs/design/art-catalogue.md` (drafted 2026-07-22); its P1 column is this pass's scope.
+  `docs/design/art/art-catalogue.md` (drafted 2026-07-22); its P1 column is this pass's scope.
 - [ ] **Reading-face rollout: SPARING, by maintainer order (2026-07-22).** The pairing is
   approved but the pixel face is the game's voice: the reading face applies only where
   legibility genuinely demands it (long-form paragraphs below 16px: settings explainers,
@@ -363,7 +388,7 @@ pass."
   it; how do locked venues/buildings read before unlock. The Sprint 95 tutorial rebuild
   deliberately teaches "the tabs are the rest of town", which a map would later make literal.
 
-- [ ] **"Drive My Car" test-drive mode** (`docs/design/drive-mode-spec.md` v2, 2026-07-12).
+- [ ] **"Drive My Car" test-drive mode** (`docs/design/parked/drive-mode-spec.md` v2, 2026-07-12).
   Drive a finished build before flipping it. **Post-launch, by the maintainer's standing
   2026-07-08 sign-off** (optional, zero gameplay weight - which is what keeps it inside the
   no-reflex-input hard rule rather than an exception to it; do not flag it as a rules violation).
@@ -374,7 +399,7 @@ pass."
 - [ ] **Skill / XP progression** - learn-by-doing growth for staff *and* the player character; skill
   *optimizes* (efficiency/quality), never *unlocks* tiers (tools + rep do that). Staff skill lands
   with the staff system, still unscheduled; player-character skill is new v1.0 scope, slotted
-  against the service-jobs feature. Full design: `docs/design/skill-progression.md`.
+  against the service-jobs feature. Full design: `docs/design/parked/skill-progression.md`.
   **Update (Sprint 39, Progression Rework arc close-out, 2026-07-12):** the "tools + rep do that"
   half this item already deferred to is now BUILT (tool tiers, Sprint 36; reputation unchanged) -
   `skill-progression.md` has been reconciled against `docs/design/progression-bible.md` (the
@@ -430,6 +455,11 @@ pass."
 
 ## User-only tasks (air-gapped / purchases / accounts / legal)
 
+- [ ] **Capture more car fingerprints** (the stats-panel readings, no driving needed; protocol in
+  `docs/design/car-performance/forza-telemetry.md`). 59 of the 85 roster cars are fully measured, 4
+  are half measured and 22 are predicted by regression. Every fingerprint improves that car AND,
+  through the regression, every car that will never be measured. Highest value first: any car that
+  already has a driven lap but no fingerprint, because the expensive reading is already spent.
 - [ ] Buy Aseprite; (optional, whenever convenient) draw a real car sprite to replace the
   programmatic placeholder from the Sprint 00 art spike.
 - [ ] Trademark search on the final title ("Midnight Garage" vs. alternates in the GDD); register a

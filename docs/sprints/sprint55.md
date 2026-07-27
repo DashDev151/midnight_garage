@@ -1,6 +1,6 @@
 # Sprint 55 - Economy Rebuild 3 of 3: the global coherence system
 
-**Source:** playtest 2026-07-14 item 6 (`docs/playtest-notes-2026-07-14.md`) - "we need a better
+**Source:** playtest 2026-07-14 item 6 (`docs/playtest-notes/playtest-notes-2026-07-14.md`) - "we need a better
 economy balancing system that serves to balance the economy as a whole" - plus the open
 `TODO.md` auction fire-sale item, which interacts directly with the re-anchored values. Closes
 the Economy Rebuild arc: Sprints 53-54 fixed the laws; this sprint makes the whole ledger

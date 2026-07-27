@@ -1,7 +1,7 @@
 <!--
 Archived 2026-07-12 (Progression Rework arc, Sprint 39 close-out). This is the original
 2026-07-08 design note, preserved verbatim as the historical record. It has been superseded by
-the reconciled `docs/design/skill-progression.md` (which keeps this doc's still-valid staff/
+the reconciled `docs/design/parked/skill-progression.md` (which keeps this doc's still-valid staff/
 player skill design, but updates the "Tools, not levels" framing to the real Sprint 36 tool-tier
 mechanism and cites `docs/design/progression-bible.md` as canonical). Kept per the clean-codebase
 rule: archive, don't delete.

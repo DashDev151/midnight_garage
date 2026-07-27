@@ -112,7 +112,7 @@ minutes, trees, and the shared visit.
 - [x] Probes: grenade-route walker, resolution accounting + the declared-ambiguity list,
       sweep-wide integrity; tutorial satisfiability green.
 - [x] Copy sweep: every line authored by the orchestrator personally (see Exit).
-- [x] Docs: the routing laws live in `docs/design/failure-map.md` (the diagnosis bible).
+- [x] Docs: the routing laws live in `docs/design/systems/failure-map.md` (the diagnosis bible).
 
 **User-only:**
 

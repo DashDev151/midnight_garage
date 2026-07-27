@@ -142,7 +142,7 @@ describe('seed content validates against schemas', () => {
   })
 
   /**
-   * Each auction tier's venue-name pool (`docs/design/selling-rework.md`
+   * Each auction tier's venue-name pool (`docs/design/systems/selling-rework.md`
    * section 4) - authored copy, ten names per tier, checked explicitly per
    * tier rather than trusting the schema's own `.min(1)` alone.
    */

@@ -1,6 +1,6 @@
 # Sprint 43 - The tool wall: reputation-gated machinery and a readable tech tree
 
-**Source:** `docs/playtest-notes-2026-07-13.md` item 8, maintainer decision 1 (tiers 2 AND 3
+**Source:** `docs/playtest-notes/playtest-notes-2026-07-13.md` item 8, maintainer decision 1 (tiers 2 AND 3
 rep-gated - a deliberate amendment to the progression bible's "cash is the only gate on
 capability" law). Goal: machinery purchases respect reputation like facilities do, and the
 Upgrades screen becomes a per-line ladder that explains what every tier actually unlocks.

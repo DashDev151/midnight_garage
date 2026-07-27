@@ -1,7 +1,7 @@
 # Sprint 97: The office phone (playtest 2026-07-19, item 15)
 
 **Date:** 2026-07-19
-**Source:** `docs/playtest_notes/playtest-notes-2026-07-19.md` item 15. Maintainer ruling:
+**Source:** `docs/playtest-notes/playtest-notes-2026-07-19.md` item 15. Maintainer ruling:
 the "job board" fiction dies; customer work arrives through the shop's office phone.
 
 The mechanics already were the phone fiction: accept an offer and the car arrives the next

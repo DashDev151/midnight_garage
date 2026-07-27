@@ -1,6 +1,6 @@
 # Sprint 122: Real stock specs into the game data (car spec arc, phase 1)
 
-**Source design:** `docs/design/car-spec-arc.md` (the arc), plus the vetted figures reviewed
+**Source design:** `docs/design/car-performance/archive/car-spec-arc.md` (the arc), plus the vetted figures reviewed
 and signed off in the Car Spec Book artifact across this session. This sprint lands the
 researched, maintainer-approved real stock specs for the 26 in-game cars into the canonical
 game data (`packages/content/data/cars.json`) and extends the spec schema to carry the tuning

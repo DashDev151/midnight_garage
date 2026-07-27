@@ -99,12 +99,12 @@ corner-weighted for the touge"); integrity guard applies; no em dashes; parody b
 
 - `IDEAS.md`: add the build logbook / wall-of-builds entry (post-launch parking lot).
 - `TODO.md`: sweep retired equipment-gate items; keep the specialty-from-sales design question.
-- `docs/design/skill-progression.md`: reconcile against the bible; superseded content moved to an
+- `docs/design/parked/skill-progression.md`: reconcile against the bible; superseded content moved to an
   `archive/` subfolder (clean-codebase rule: archive, do not delete).
 - GDD amendment DRAFT (maintainer approval required before applying): S3.2 labor slots (base 6,
   tier-scaled efficiency), S9.0 The Climb (always-owned tool tiers + ceilings replace equipment
   purchases as unlocks), S9.1 (reputation + specialty split), S6.1 commissions (ladder +
-  techniques). Produce as a separate `docs/design/gdd-amendment-progression.md` for sign-off; do
+  techniques). Produce as a separate `docs/design/archive/gdd-amendment-progression.md` for sign-off; do
   NOT edit the GDD directly.
 
 ## Definition of Done
@@ -187,13 +187,13 @@ side effect of the earn-split math, no extra mechanic needed.
   (shipped in Sprint 35, the note predated it); kept the specialty-from-sales deferral (added
   Sprint 38) and extended the "Skill / XP progression" planned-system item with a reconciliation
   note against the now-built tool-tier mechanism.
-- `docs/design/skill-progression.md` reconciled: the original 2026-07-08 note is preserved
+- `docs/design/parked/skill-progression.md` reconciled: the original 2026-07-08 note is preserved
   verbatim at `docs/design/archive/skill-progression-2026-07-08.md` (clean-codebase rule: archive,
   don't delete); the live doc now cites `progression-bible.md` as canonical, updates the "Tools,
   not levels" framing from binary-ownership language to the real tool-tier mechanism, and adds an
   explicit relationship table distinguishing Skill (unbuilt, per-worker efficiency/quality) from
   Specialty (built, shop-level identity/access) so a future reader can't confuse the two.
-- `docs/design/gdd-amendment-progression.md` drafted (GDD itself NOT touched, confirmed by empty
+- `docs/design/archive/gdd-amendment-progression.md` drafted (GDD itself NOT touched, confirmed by empty
   diff): proposed text for S3.2 (labor base 2 -> 6, tool tier speeds not adds), S9.0 (six always-
   owned tiered lines replacing the binary-purchase ladder), S9.1 (Specialty appended as the
   horizontal complement), and S6.1 commissions - the last one flagged explicitly for a maintainer

@@ -1,6 +1,6 @@
 # Sprint 41 - The repair/replace economy: tier-scaled costs and true consumables
 
-**Source:** `docs/playtest-notes-2026-07-13.md` items 3 and 6, maintainer decisions 3 and 4.
+**Source:** `docs/playtest-notes/playtest-notes-2026-07-13.md` items 3 and 6, maintainer decisions 3 and 4.
 Goal: restoration costs that scale with the car's class (a kei car's wear is cheap to fix, a
 Supra's is not), replace-only consumables (tyres, brake pads, clutch), a value formula that stops
 collapsing every cheap worn car to its floor, and a readable condition panel.

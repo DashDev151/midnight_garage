@@ -6,7 +6,7 @@ Mira") and §2's note that these are "hand-played job cards (pick the work, assi
 margins)" that staff later absorb into the passive Service Bay (§3.4). economy-v0.md has the Act-1
 job values. This is elaborating frozen scope, not new scope. Builds on the Sprint 06 job/labor
 system and Sprint 07 persistence. Status: **implemented and locally verified - ready for review. Bays
-deferred to the Facilities sprint (`docs/design/facilities-bays.md`).***
+deferred to the Facilities sprint (`docs/design/systems/facilities-bays.md`).***
 
 ## Goal
 
@@ -76,7 +76,7 @@ onboarding teaches through these).
    departed car are dropped.
 6. **NO bay caps in Sprint 08 (maintainer, 2026-07-09).** Concurrency is thrown wide - labor is the
    only throttle. The **bays system is its own sprint, directly after this one**, fully specified in
-   `docs/design/facilities-bays.md`.
+   `docs/design/systems/facilities-bays.md`.
 7. **Job templates live in content JSON** (content law): `packages/content/data/serviceJobs.json`
    (brake/suspension/engine/body/interior repairs + coilover/brake/wheel installs), Zod-validated. A
    generator offers a few on the weekly cadence (reusing the day-7 boundary), each rolling a real
@@ -85,11 +85,11 @@ onboarding teaches through these).
    rep) plus an **"In the shop"** list of accepted jobs with their work state, each linking to the
    car's page where the actual work + the "Complete Job" button live.
 9. **No skill/XP here.** Service jobs are the *future* home of player-skill XP
-   (`docs/design/skill-progression.md`), Sprint 13 scope.
+   (`docs/design/parked/skill-progression.md`), Sprint 13 scope.
 
 **Labor ↔ bays ↔ staff (the loop to model, per the maintainer):** bays = how many cars you can work
 on at once; labor = how much wrenching per day; staff = more labor. Sprint 08 ships the labor half;
-the bays half is the Facilities sprint. Fully documented in `docs/design/facilities-bays.md`.
+the bays half is the Facilities sprint. Fully documented in `docs/design/systems/facilities-bays.md`.
 
 ## Task breakdown
 

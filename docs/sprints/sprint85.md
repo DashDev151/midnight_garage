@@ -1,6 +1,6 @@
 # Sprint 85 - Honesty fixes: the phantom part, unfailable story missions, the open machine shop
 
-First sprint of the 2026-07-18 playtest arc (see `docs/playtest_notes/playtest-notes-2026-07-18.md`
+First sprint of the 2026-07-18 playtest arc (see `docs/playtest-notes/playtest-notes-2026-07-18.md`
 for the full triage; this sprint covers items 6, 7, 14, 15, 16, 18, 20 and the v1 of 21).
 All sim-side. The UI face-lift (86), the assembly model (87), the diagram-as-page (88) and the
 Yuki tutorial (89) follow.

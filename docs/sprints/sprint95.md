@@ -19,7 +19,7 @@
 > cost attribution, not just triggers and anchors.
 
 **Date:** 2026-07-19
-**Source:** `docs/playtest_notes/playtest-notes-2026-07-19.md` (items 1, 2, 3, 4, 6, 7, 8, 9, 10, 11; item 13 is the method rule this sprint is executed under). Item 5 (overworld map) is deliberately out of scope: it goes to `TODO.md` for its own design pass. Item 12 (diagram condition visibility) is Sprint 96.
+**Source:** `docs/playtest-notes/playtest-notes-2026-07-19.md` (items 1, 2, 3, 4, 6, 7, 8, 9, 10, 11; item 13 is the method rule this sprint is executed under). Item 5 (overworld map) is deliberately out of scope: it goes to `TODO.md` for its own design pass. Item 12 (diagram condition visibility) is Sprint 96.
 
 **Maintainer verdict being fixed:** the Sprint 89 walkthrough half-guides. It names concepts without saying where to go or why, goes completely silent between placing the bid and owning the car, and reads like aphorisms rather than help. The bar: explicit, accurate, motivated guidance at every step of the first loop, personally traced by the orchestrator (no delegated sign-off).
 

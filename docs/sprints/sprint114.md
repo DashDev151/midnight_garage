@@ -1,6 +1,6 @@
 # Sprint 114: The selling rework I (channels and characters)
 
-**Date:** drafted 2026-07-22. Design approved same day (`docs/design/selling-rework.md`).
+**Date:** drafted 2026-07-22. Design approved same day (`docs/design/systems/selling-rework.md`).
 **LEVERS LOCKED (maintainer, 2026-07-22, per CLAUDE.md directive 22):** the maintainer set
 the final values in session: every ratio in the channel table raised uniformly by five
 points from the reviewed draft ("raise EVERY number in the Entire selling network by 5

@@ -1,6 +1,6 @@
 # Sprint 76 - Story missions I: the contract machine
 
-**Source:** `docs/design/story-builds-spec.md` v2 + maintainer rulings 2026-07-15 (hand-authored
+**Source:** `docs/design/systems/story-builds-spec.md` v2 + maintainer rulings 2026-07-15 (hand-authored
 campaign for v1.0; procedural commissions deferred to endgame; Hall of Legends deferred behind
 this). Depends on Sprints 70-75 (the Requirement module from 72; diagnosis makes acquisition a
 gamble). Scope path: story builds ride under GDD §12.2 commissions as an extension; the

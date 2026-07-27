@@ -48,7 +48,7 @@ export const StagedActionSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('remove-assembly'), assemblyId: AssemblyIdSchema }),
   z.object({ kind: z.literal('refit-assembly'), assemblyId: AssemblyIdSchema }),
   /**
-   * One body-pipeline stage on one zone (docs/design/workshop-rework.md's
+   * One body-pipeline stage on one zone (docs/design/systems/workshop-rework.md's
    * pipeline table) - strip/prep, beat, weld, fill-and-sand, prime, or
    * polish, the six stages with no extra player input beyond which zone.
    * Excludes `swapPanel` and `paint`, which need their own extra field below.

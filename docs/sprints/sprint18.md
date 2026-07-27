@@ -1,6 +1,6 @@
 # Sprint 18 - Parts inventory & staged install/repair workflow
 
-*Source: 2026-07-10 playtest session (`docs/playtest-notes-2026-07-10.md`, items #3/#4) and the
+*Source: 2026-07-10 playtest session (`docs/playtest-notes/playtest-notes-2026-07-10.md`, items #3/#4) and the
 same-day design conversation. Depends on Sprint 17 for the drag-and-drop primitive (the maintainer's
 explicit instruction: build it once, reuse it here). The maintainer clarified the workflow precisely:
 same two-step shape as the Sprint 14 parts cart - stage freely, nothing real happens until one

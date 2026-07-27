@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-22
 **Source:** the maintainer's first full-game playtest of the promoted systems
-(`docs/playtest-notes-2026-07-22.md`, 13 items) plus the code investigation that
+(`docs/playtest-notes/playtest-notes-2026-07-22.md`, 13 items) plus the code investigation that
 verified them. Implementation authorised same day.
 
 **One-line goal:** repairing a fault now cures its fear (the headline bug), and the ten

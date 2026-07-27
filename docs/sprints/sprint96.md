@@ -9,7 +9,7 @@
 > ReplaceDrawer link reverts to the plain market link it had before this sprint.
 
 **Date:** 2026-07-19
-**Source:** `docs/playtest_notes/playtest-notes-2026-07-19.md` items 12 (diagram condition
+**Source:** `docs/playtest-notes/playtest-notes-2026-07-19.md` items 12 (diagram condition
 unreadable at a glance) and 13 (tyre-change dead end, live rage). Lands together with
 Sprint 95 (whose walkthrough copy names this sprint's new control).
 

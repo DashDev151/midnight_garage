@@ -1,6 +1,6 @@
 # MIDNIGHT GARAGE - Car Roster
 ## Inspiration Pool & Scope Ladder - v1.3
-*Companion to GDD v0.4 §4. This is the full inspiration pool; curation happens per scope tier. Real specs per GDD §2.4 naming layer.*
+*Companion to GDD v0.6 §4. This is the full inspiration pool; curation happens per scope tier. Real specs per GDD §2.4 naming layer.*
 *v1.3 (maintainer-approved): added the Eunos Roadster (NA6CE), Skyline GT-R (BCNR33), and Impreza WRX STI (GDB bugeye), completing the Miata, GT-R, and Impreza-versus-Evo lineages. Their scope tiers below are provisional, pending curation.*
 
 ## Scope Ladder

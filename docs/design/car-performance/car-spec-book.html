@@ -1,0 +1,797 @@
+<title>Ran When Parked - Car Spec Book</title>
+<style>
+  :root{
+    --bg:#0a0d18; --bg2:#0f1424; --panel:#141a2e; --panel2:#1a2138;
+    --ink:#e8ecff; --muted:#8a93b8; --faint:#5b6488;
+    --cyan:#4fd6ff; --amber:#ffb454; --violet:#b98cff; --pink:#ff7ac6;
+    --fwd:#54c8a8; --rwd:#ff7a8a; --awd:#7aa8ff;
+    --line:#26304e; --grid:#1b2338;
+    --shadow:0 6px 24px rgba(0,0,0,.5);
+    --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:
+      radial-gradient(1200px 500px at 50% -10%,#17203c 0%,transparent 60%),
+      linear-gradient(180deg,#0a0d18,#080a12);
+    color:var(--ink);font-family:var(--sans);line-height:1.4;
+    -webkit-text-size-adjust:100%;}
+  .wrap{max-width:960px;margin:0 auto;padding:16px 14px 64px;}
+  header.top{padding:8px 2px 14px;border-bottom:1px solid var(--line);margin-bottom:12px;}
+  .kick{font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--cyan);}
+  h1{margin:.15em 0 .1em;font-size:clamp(22px,6vw,34px);letter-spacing:-.01em;font-weight:800;
+     background:linear-gradient(92deg,#fff 10%,var(--cyan) 60%,var(--violet));-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .sub{color:var(--muted);font-size:13px;max-width:60ch;}
+  .sub b{color:var(--amber);font-weight:600;}
+  .count{font-family:var(--mono);color:var(--faint);font-size:12px;margin-top:6px;}
+  .count .pop{color:var(--cyan);}
+
+  .controls{position:sticky;top:0;z-index:5;background:linear-gradient(180deg,#0b0f1cf5,#0b0f1cd0);
+    backdrop-filter:blur(8px);padding:10px 0 8px;margin:0 -2px 12px;border-bottom:1px solid var(--line);}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  input[type=search]{flex:1 1 160px;min-width:120px;background:var(--panel);border:1px solid var(--line);
+    color:var(--ink);border-radius:9px;padding:9px 11px;font-size:14px;font-family:var(--sans);}
+  input[type=search]::placeholder{color:var(--faint);}
+  select,.btn{background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:9px;
+    padding:9px 10px;font-size:13px;font-family:var(--sans);cursor:pointer;}
+  .btn:active{transform:translateY(1px);}
+  .dir{width:40px;text-align:center;color:var(--cyan);font-family:var(--mono);}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+  .chip{font-size:12px;padding:5px 10px;border-radius:999px;border:1px solid var(--line);
+    background:var(--panel);color:var(--muted);cursor:pointer;user-select:none;font-family:var(--mono);letter-spacing:.02em;}
+  .chip.on{color:#06121a;background:var(--cyan);border-color:var(--cyan);font-weight:700;}
+  .chip.dt-FWD.on{background:var(--fwd);border-color:var(--fwd);}
+  .chip.dt-RWD.on{background:var(--rwd);border-color:var(--rwd);}
+  .chip.dt-AWD.on{background:var(--awd);border-color:var(--awd);}
+
+  .list{display:grid;gap:10px;}
+  .card{background:linear-gradient(180deg,var(--panel),var(--bg2));border:1px solid var(--line);
+    border-radius:13px;overflow:hidden;box-shadow:var(--shadow);}
+  .card>.head{display:flex;gap:10px;align-items:center;padding:12px 13px;cursor:pointer;}
+  .rank{font-family:var(--mono);font-size:12px;color:var(--faint);min-width:26px;}
+  .nm{flex:1 1 auto;min-width:0;}
+  .nm .name{font-weight:700;font-size:15px;line-height:1.2;}
+  .nm .name .ig{color:var(--amber);font-size:10px;font-family:var(--mono);vertical-align:middle;margin-left:6px;
+    border:1px solid #6b551f;border-radius:4px;padding:1px 4px;letter-spacing:.05em;}
+  .nm .meta{font-size:11.5px;color:var(--muted);font-family:var(--mono);margin-top:2px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .keyfig{text-align:right;font-family:var(--mono);}
+  .keyfig .big{font-size:17px;font-weight:700;color:var(--cyan);font-variant-numeric:tabular-nums;}
+  .keyfig .lbl{font-size:10px;color:var(--faint);letter-spacing:.08em;}
+  .dt-badge{font-family:var(--mono);font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;color:#06121a;}
+  .dt-FWD{background:var(--fwd);} .dt-RWD{background:var(--rwd);} .dt-AWD{background:var(--awd);}
+
+  .spark{height:38px;width:100%;display:block;padding:0 13px 8px;}
+  .detail{border-top:1px solid var(--line);padding:0 13px;max-height:0;overflow:hidden;transition:max-height .28s ease,padding .28s ease;}
+  /* The cap only drives the open animation; it must stay clear of the tallest card at the
+     narrowest phone width or a provenance flag would be silently clipped. Tallest measured at
+     390 px is the Silvia's, ~3.9k px. */
+  .card.open .detail{max-height:7000px;padding:12px 13px 16px;}
+  .card.open .head{background:var(--panel2);}
+
+  .dyno{background:#080b14;border:1px solid var(--line);border-radius:10px;padding:8px 6px 4px;margin:2px 0 12px;}
+  .dyno .legend{display:flex;gap:14px;justify-content:center;font-family:var(--mono);font-size:11px;margin-bottom:2px;}
+  .dyno .legend .t{color:var(--amber);} .dyno .legend .p{color:var(--cyan);}
+  .dyno svg{width:100%;height:auto;display:block;}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:7px 10px;font-family:var(--mono);}
+  .cell{background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:7px 9px;}
+  .cell .k{font-size:10px;color:var(--faint);letter-spacing:.06em;text-transform:uppercase;}
+  .cell .v{font-size:14px;color:var(--ink);font-variant-numeric:tabular-nums;margin-top:1px;}
+  .cell .v small{color:var(--muted);font-size:11px;}
+  .cell.warn{border-color:#6b551f;background:#1c1707;}
+  .cell.warn .v{color:var(--amber);}
+  .note{font-size:11.5px;color:var(--muted);margin-top:10px;font-family:var(--sans);}
+  .note .est{color:var(--amber);}
+
+  .sect{margin:14px 0 7px;padding-top:10px;border-top:1px solid var(--grid);}
+  .sect:first-child{border-top:0;padding-top:0;margin-top:0;}
+  .sect .h{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--cyan);font-weight:700;}
+  .sect .h.ours{color:var(--violet);}
+  .sect .hint{font-size:11px;color:var(--faint);font-family:var(--sans);margin-top:3px;line-height:1.35;}
+  .sect .hint b{color:var(--muted);font-weight:600;}
+
+  .fzname{font-family:var(--mono);font-size:12.5px;color:var(--ink);margin-top:4px;word-break:break-word;}
+  .tags{display:flex;gap:5px;flex-wrap:wrap;margin:7px 0 8px;}
+  .tag{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:5px;
+       border:1px solid var(--line);color:var(--muted);background:var(--bg2);letter-spacing:.04em;}
+  .tag b{color:var(--ink);font-weight:700;}
+  .tag.pi{border-color:#2f4a6b;color:var(--cyan);}
+  .tag.rar{border-color:#4a3a6b;color:var(--violet);}
+  .tag.flag{border-color:#6b551f;color:var(--amber);}
+
+  .bars{display:grid;gap:6px;font-family:var(--mono);margin-top:2px;}
+  /* The label column must fit "Acceleration" outright: at 70px it overflowed its own cell. */
+  .bar{display:grid;grid-template-columns:82px 1fr 38px;align-items:center;gap:8px;font-size:10.5px;}
+  .bar .bk{color:var(--faint);text-transform:uppercase;letter-spacing:.05em;}
+  .bar .bt{height:9px;border-radius:5px;background:#0a0e1a;border:1px solid var(--line);overflow:hidden;}
+  .bar .bf{height:100%;border-radius:4px 2px 2px 4px;}
+  .bar .bv{text-align:right;color:var(--ink);font-variant-numeric:tabular-nums;}
+
+  .nofz{border:1px dashed #6b551f;border-radius:10px;padding:9px 11px;background:#15110a;
+        font-size:11.5px;color:var(--muted);line-height:1.45;}
+  .nofz .t{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+           color:var(--amber);font-weight:700;display:block;margin-bottom:4px;}
+  .nf{color:var(--faint);}
+  .cell .v{overflow-wrap:anywhere;}
+  .cf{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:5px;border:1px solid var(--line);}
+  .cf-HIGH{color:var(--fwd);border-color:#2c5546;} .cf-MED{color:var(--amber);border-color:#5c4a1e;}
+  .cf-LOW{color:var(--rwd);border-color:#5c2c33;}
+  footer{margin-top:22px;color:var(--faint);font-size:11.5px;text-align:center;font-family:var(--mono);line-height:1.6;}
+  .empty{color:var(--muted);text-align:center;padding:40px 0;font-family:var(--mono);}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="kick">Ran When Parked &middot; spec arc</div>
+    <h1>The Car Spec Book</h1>
+    <p class="sub">Real stock specs for the whole roster. For the <b>64 cars Forza Horizon 6 carries</b>, the entry <b>is</b> the Forza entry, name and year included; on <b>63 of those</b> the figures are Forza's too: power, torque, weight, distribution, top speed, acceleration, braking and lateral g, with grip, downforce and drag derived from them. (The 64th, the Eunos Cosmo, is in the game but has no published stats at all, so it takes Forza's identity and keeps our modelled numbers.) Where Forza models a different variant of a car we wanted, the Forza variant is the car in this book, named as Forza names it. The other 21 stay web-sourced and modelled. Tap a car for its <b>modelled dyno curve</b>, built from the peak points and shaped by engine character: turbo spool step, the sequential-twin valley of death, the VTEC cam crossover. Not a real dyno trace. Estimated fields are marked. Each card also carries the <b>whole published Forza panel</b> behind those figures: PI and class, price, rarity and unlock, both unit systems, all ten simulation results and the six performance bars. <b>Two cards carry override flags</b> and both are worth reading before quoting them, because on both Forza measured a <b>preset starter car</b> rather than the stock one: the 1989 Silvia K's (<b>gOvr</b>, six figures replaced from the Forza wiki's stock panel, with its 0-161 left labelled as still preset-tainted because no stock figure exists) and the 1994 Celica GT-Four ST205 (<b>gOvr</b>, thirteen figures replaced from the game's own stock panel, read first hand, so nothing on that card is tainted afterwards). This book is the data layer of the car performance model; the model itself is documented in <b>docs/design/car-performance/</b>.</p>
+    <div class="count"><span id="showing" class="pop"></span> shown &middot; <span id="total"></span> cars &middot; sort &amp; filter above</div>
+  </header>
+
+  <div class="controls">
+    <div class="row">
+      <input id="q" type="search" placeholder="Search name, engine, chassis..." autocomplete="off">
+      <select id="sort">
+        <option value="ptw">Power / tonne</option>
+        <option value="grip">Grip (lateral g)</option>
+        <option value="ps">Power (PS)</option>
+        <option value="kg">Weight (kg)</option>
+        <option value="cc">Displacement</option>
+        <option value="tq">Torque (Nm)</option>
+        <option value="top">Top speed</option>
+        <option value="z">Acceleration</option>
+        <option value="y">Year</option>
+        <option value="n">Name</option>
+      </select>
+      <button id="dir" class="btn dir" title="Sort direction">&darr;</button>
+    </div>
+    <div class="chips" id="dtchips">
+      <span class="chip dt-FWD" data-dt="FWD">FWD</span>
+      <span class="chip dt-RWD" data-dt="RWD">RWD</span>
+      <span class="chip dt-AWD" data-dt="AWD">AWD</span>
+      <span class="chip" data-asp="turbo">turbo</span>
+      <span class="chip" data-asp="NA">NA</span>
+      <span class="chip" data-ig="1">in game</span>
+    </div>
+  </div>
+
+  <div class="list" id="list"></div>
+  <div class="empty" id="empty" hidden>No cars match.</div>
+
+  <footer>
+    Curves are modelled from peak torque/power/redline, not factory dyno traces.<br>
+    64 of the 85 cars are Forza Horizon 6 cars outright, name and year included; 63 of those carry
+    its stats panel: power, torque, kerb, weight distribution, top speed, 0-97, braking and the
+    lateral-g pair, with grip, downforce and drag derived from those. Four of the 63 cannot reach
+    161 km/h, so their 161 km/h runs fail upstream and read "not reached" rather than as a gap. We
+    calibrate against Forza's measurements, so the car in the book is the car Forza measured. The
+    remaining 21 have no analogue in the game and stay modelled.<br>
+    Estimated fields are flagged individually on the card: centre-of-mass height on every car,
+    redline on 47, drag on 22, weight distribution on 19, and a few power, kerb and 0-100 figures
+    on the modelled entries. Staging data, not yet in the game.<br>
+    Acceleration is published to 60 mph and to 100 mph and no further. There is no 0-120 mph time
+    in the source and nothing here interpolates one: the 120 mph figure is lateral g, a cornering
+    reading, not an acceleration.<br>
+    Where a card argues from the lap harness's <b>Hakone</b> or <b>Wangan</b> driven laps, read
+    that evidence with the caveat the harness itself carries: both geometries are <b>behavioural
+    facsimiles</b>, roads searched to reproduce driven times rather than surveys. Their LEVEL
+    error therefore measures the search and not the model, and only the 14 driven laps on
+    <b>Misaki</b>, whose geometry was traced and never tuned, test the level at all. What the two
+    facsimiles still say honestly is ordering, field spread, pair gaps, and, because a geometry
+    charges every car through the same corners, the per-car scatter about the fitted level.
+  </footer>
+</div>
+
+<script>
+// keys: id our stable internal key (a JOIN KEY, never displayed), n name, y year, sec section,
+// dt drivetrain, ep enginePos, ec engineCode, cfg config, asp aspiration, cc displ, ps realPS,
+// psr powerRpm, q quotedPS, tq peakTorqueNm, tqr torqueRpm, rl redline, kg kerb, fr front%,
+// wb wheelbase, com CoM mm, cd drag, ty tyre, top km/h, z 0-100s (modelled cars only, see z97),
+// cf confidence, ig inGame, est [estimated keys]
+//
+// THE ALIGNMENT LAW (2026-07-26, extended to identity the same day). We calibrate the physics
+// model against Forza Horizon 6's own measurements, so where Forza carries a car, the Forza car
+// IS the entry: name, year and every specification, not merely the numbers. A car carrying our
+// power and our mass, validated against Forza's measured lap and acceleration, is a model of car A
+// tested against measurements of car B; keeping our NAME over Forza's numbers is the same error
+// wearing a label, and it was how "Ferrari Testarossa" came to display a 512 TR's figures. So the
+// Testarossa entry is now the 1992 Ferrari 512 TR and the S13 Silvia entry is the 1989 Silvia K's,
+// with the engine data (ec, cfg, asp, cc, psr, tqr, rl) rewritten to the unit Forza actually
+// models, checked against Forza's own displacement. `id` keeps the join to our roster stable.
+// There is ONE set of figures per car and it is Forza's: no superseded-original fields, no
+// hand-read deltas, and no exact-versus-variant distinction. A matched car is a Forza car.
+//
+// Source: docs/design/car-performance/data/forzalabs-fh6-full.json, the full 634-car scrape of
+// forza.labsgg.com, every field cross-checked against its own detail page. That file is the
+// authority; the earlier partial extract (data/forza-fh6-roster-data.csv) is used only for its
+// per-car identity mapping.
+// It disagreed with the authority on exactly two figures and now disagrees with it on none: the
+// S13's kerb (the JSON's 1121 kg, overridden to the wiki's stock 1140) and the Celica ST205's
+// power and kerb (the JSON's 276 PS / 1390 kg, overridden to the stock 259 PS / 1440 kg) are both
+// covered by recorded gOvr rulings. See the exceptions below.
+//
+// THE TWO EXCEPTIONS TO "THE SCRAPE IS THE AUTHORITY" (2026-07-27, maintainer rulings). Both hold
+// on the same ground and only on it: ForzaLabs measured a car the game does not sell. Forza
+// Horizon 6 hands the player THREE PRESET STARTER CARS, and ForzaLabs published the preset for
+// two of them that are in this roster: the 1989 Silvia K's and the 1994 Celica GT-Four ST205.
+// (The third is the GMC Jimmy, which is not a roster car.) Both entries are overridden to the
+// game's own stock panel and the whole argument is in each entry's gOvr.
+//
+// The check that found both was PI. Swept across all 62 roster cars that carry both a ForzaLabs
+// panel and a wiki row, PI agrees EXACTLY on 59, disagrees by 3 points on one (the Supra RZ, with
+// all six performance bars identical, so a rounding difference and nothing more) and disagrees
+// materially on exactly two: the Silvia at +45 (ForzaLabs 500 against 455) and the Celica at +21
+// (ForzaLabs 500 against 479). Both scraped panels read PI 500 class C, which is what the
+// documented presets are tuned to. Both suspicions have since been confirmed by direct reading:
+// the Silvia against the Forza wiki's stock panel, the Celica against the game's own stock panel,
+// which the maintainer read first hand on 2026-07-27 after the wiki turned out to publish only a
+// stub for that car. THE PREDICTION THE CELICA'S WARNING MADE WAS RIGHT ON EVERY COUNT it named,
+// and that is recorded because a labelled suspicion that survives its test is worth more than one
+// that is merely asserted: it said the preset would show as more power on less weight (275.8 PS /
+// 1389.8 kg against a stock 259 / 1440), as a top speed down while acceleration improved (248
+// against 266.8 km/h, with 0-97 5.369 against 5.870 s), and as a shortened final drive rather
+// than an engine change. All three landed. The one thing it got wrong was its counter-evidence:
+// it read the scraped braking and lateral g as stock-grade, and the stock panel shows the lateral
+// pair moved after all (0.90 / 0.93 scraped against a stock 0.86 / 0.86, which is a flat pair and
+// dfC 0). Braking barely moved from 97 km/h and moved materially from 161, which is what a preset
+// that added downforce and left the brakes alone looks like.
+//
+//   lg   mechanical lateral-g mu. NOT the raw 97 km/h panel reading: the panel quotes lateral g
+//        at 97 and 193 km/h, and the 97 figure already contains the downforce present at 97.
+//        Both points are fitted to g(v) = mu (1 + k v^2) and mu is the speed-independent half.
+//   g97 g193  those two raw panel readings, kept so the fit above can always be re-derived.
+//   gOvr  set ONLY where a measured field is NOT the ForzaLabs panel's, i.e. where a scraped
+//        reading was ruled bad and replaced. It names every field it covers, carries the
+//        replacement's source and the whole argument for it, and the car's `fz` block below
+//        keeps the scraped figures verbatim, so the two are always visible side by side. Two
+//        cars carry it, and both for the same reason: ForzaLabs measured Forza Horizon 6's
+//        PRESET STARTER CAR rather than the stock one. The 1989 Silvia K's overrides six fields
+//        (the lateral pair, the braking pair, top, the cd derived from top, the kerb, and z97)
+//        against the Forza wiki's stock panel; the 1994 Celica GT-Four ST205 overrides thirteen
+//        (power, torque, kerb, front weight, the lateral pair and the lg/dfC derived from it,
+//        the braking pair, both acceleration times, top, and the cd derived from top) against
+//        the game's own stock panel, read first hand by the maintainer. A figure may be
+//        overridden only on a recorded ruling, never on a quiet edit.
+//   srcWarn  the weaker sibling of gOvr, and the honest answer when a panel is suspect but
+//        nothing measured exists to replace it. It changes NO figure. It names the suspicion,
+//        the fields it touches and the evidence on both sides, and it renders beside gOvr on
+//        the card so a reader cannot take the panel at face value. NO car carries it today: its
+//        only holder, the Celica ST205, graduated to a gOvr on 2026-07-27 when the stock panel
+//        was finally read. The field stays because the situation will recur.
+//   dfC  downforce coefficient, k / 6.2e-5, where 6.2e-5 is statFormulas.aero.downforceK in
+//        packages/content/data/economy.json (calibrated off the Calsonic BNR32 Gr.A). dfC 0 means
+//        the two readings were equal or inverted, i.e. no measurable rise, not "unmeasured".
+//   cd   drag, backed out of the measured top speed by P_wheel = 0.5 rho CdA v^3 + froll m g v
+//        (rho 1.2, driveline 0.88, froll 0.012), then divided by the car's real frontal area
+//        (0.82 x width x height) so cd x area reproduces the measured CdA.
+//   z97  Forza's own 0-97 km/h (its panel's 0-60 mph). It is NOT the 0-100 km/h the field `z`
+//        carries: a 0-97 read as a 0-100 flatters the car by roughly two per cent. `z` survives
+//        only on the modelled cars, where it is still a published 0-100 for our own car; on a
+//        Forza car the web figure is simply gone and z97 is the acceleration datum.
+//   z161  Forza's own 0-161 km/h (its panel's 0-100 mph). Normally ABSENT, because the lap
+//        harness lifts it straight off the `fz` block's a100 and there is no point storing the
+//        same number twice. It is written explicitly only where a gOvr replaces the scraped
+//        figure, since the fz block stays verbatim by design and so cannot carry the correction.
+//        One car: the Celica ST205. Where it is present it WINS over fz.a100.
+//   b97 b161  braking distance in metres from 97 and from 161 km/h (the panel's 60-0 and 100-0
+//        mph). b161 is absent on the four cars that cannot reach 161 km/h at all.
+//   src  provenance. forza = the entry is a Forza car, in full. modelled = no usable Forza
+//        analogue, nothing measured. There is deliberately no third state: whether Forza models
+//        the exact car we first wanted or a cousin of it makes no difference once the entry has
+//        become the Forza car, so the distinction is gone from the data and from the display.
+//   gearLtd  the top-speed drag route was rejected: CdA(top speed) ran more than 1.25x CdA
+//        (geometry), which means the car runs out of gearing before it runs out of thrust, so its
+//        top speed understates it and the drag backed out of it is too high. cd stays the
+//        geometric estimate; the top-speed-implied figure is discarded, not written. Eight cars,
+//        and the whole ratio distribution sits high (median 1.11 across the 63), which says our
+//        geometric Cd estimates run about a tenth optimistic rather than that eight cars are odd.
+//        It was nine until 2026-07-27: the Celica ST205 held the roster's most extreme ratio at
+//        1.464x, and that ratio was the preset's shortened final drive rather than the car. On
+//        the stock panel it reads 1.089x, ordinary, so the flag is gone from that entry and its
+//        drag now comes from its top speed like any other measured car.
+//   aeroSus  the car's own top speed is below 193 km/h AND its lateral pair still rises, so the
+//        second readout is an extrapolation rather than a second measurement and the dfC derived
+//        from it inherits that. Six cars. (Three more sit below 193 with a flat or falling pair,
+//        so they take dfC 0 and there is nothing for the flag to warn about.) The values are left
+//        as derived, but READ THEM AS SUSPECT AS A GROUP, because the group is not distributed
+//        like the rest: median grip rise 5.8% against 2.2% over the 57 cars that genuinely exceed
+//        193 km/h, and four of these six sit in the roster's top six on that measure (the City E
+//        II 1st, the Vivio 3rd, the AZ-1 5th, the Beat 6th). That is the signature of an
+//        extrapolation artefact, not of six unusually aerodynamic runabouts, and it wants a
+//        ruling. The Honda City E II is the extreme case: a 12.8% rise, the largest in the
+//        roster, ahead of the winged Evo VI TME's 8.4%, landing dfC 1.004, level with the
+//        Calsonic Gr.A race car.
+//   q    the manufacturer's quoted PS, kept only where it genuinely differs from the real output:
+//        the JDM 280 PS gentleman's agreement.
+//   fz   the car's whole ForzaLabs record, verbatim from forzalabs-fh6-full.json, so the book
+//        shows the complete published panel and not only the slice the physics model consumes.
+//        Present on all 64 Forza cars (63 measured plus the Cosmo, which the site carries with
+//        no stats block at all, so it takes Forza's identity and keeps our modelled figures
+//        because there are none of Forza's to take). Identity: full fyr mfr mdl type rar unl how
+//        cr pi cls dt slug. Technical: hp ps lbft nm lbs kg l fr. The ten simulation results:
+//        a60 a100 (0-60 and 0-100 MPH, seconds), b60ft b60m b100ft b100m (60-0 and 100-0 mph
+//        braking), g60 g120 (lateral g AT 60 and AT 120 mph), mph kmh (top speed), aeroEff,
+//        mechBal, aeroBal. Six performance bars out of 10 in bar{sp hd ac la br off}. st is the
+//        source's specStatus: complete, below-test-speed (the car cannot reach the test speed,
+//        so the run fails and the figure is absent as data rather than as a gap), or no-specs.
+//
+//        THERE IS NO 0-120 MPH ACCELERATION FIGURE, here or upstream. ForzaLabs publishes
+//        acceleration to 60 and to 100 mph and nothing beyond it. The only 120 in the panel is
+//        lateral g AT 120 mph, a cornering-grip reading, not an acceleration time. The source's
+//        own unit note says it plainly: "Lateral g is quoted at 60 and 120 mph, while braking
+//        and acceleration are quoted at 60 and 100 mph." Nothing on this page interpolates one.
+const CARS = [
+{id:"honda-city-e-aa",n:"1984 Honda City E II",y:1984,sec:"Shitbox",ig:1,src:"forza",dt:"FWD",ep:"front",ec:"ER",cfg:"I4",asp:"NA",cc:1231,ps:63,psr:5000,q:63,tq:98,tqr:3000,rl:6300,kg:670,fr:60,wb:2220,com:550,ty:"145SR12",cd:0.4,lg:0.823,dfC:1.004,g97:0.86,g193:0.97,b97:48.9,z97:12.514,top:141,cf:"MED",gearLtd:1,aeroSus:1,est:["rl","com","cd"],fz:{full:"1984 Honda City E II",fyr:1984,mfr:"Honda",mdl:"City E II",type:"ELECTRIC DOMESTICS",rar:"EPIC",unl:"Autoshow",cr:7500,pi:203,cls:"D",dt:"FWD",hp:62,ps:62.9,lbft:72,nm:97.6,lbs:1477,kg:670,l:1.23,fr:60,a60:12.514,a100:null,b60ft:160.4,b60m:48.89,b100ft:null,b100m:null,g60:0.86,g120:0.97,mph:87.6,kmh:141,aeroEff:0.75,mechBal:0.46,aeroBal:0.45,bar:{sp:3,hd:4,ac:3.3,la:3.2,br:3.6,off:5.4},st:"below-test-speed",slug:"1984-honda-city-e-ii"}},
+{id:"suzuki-wagon-r-ct21s",n:"Suzuki Wagon R (CT21S)",y:1993,sec:"Kei",ig:1,src:"modelled",dt:"FWD",ep:"front",ec:"F6A",cfg:"I3",asp:"NA",cc:657,ps:55,psr:7500,q:55,tq:57,tqr:5500,rl:8000,kg:720,fr:63,wb:2335,com:600,ty:"145/80R12",cd:0.36,z:null,top:140,cf:"MED",est:["rl","fr","com","cd"]},
+{id:"suzuki-alto-works-ha21s",n:"Suzuki Alto Works (HA21S)",y:1994,sec:"Kei",ig:1,src:"modelled",dt:"FWD",ep:"front",ec:"K6A",cfg:"I3",asp:"turbo",cc:658,ps:64,psr:6500,q:64,tq:103,tqr:3500,rl:8500,kg:650,fr:64,wb:2335,com:480,ty:"155/65R13",cd:0.33,z:null,top:150,cf:"MED",est:["rl","fr","com","cd"]},
+{id:"honda-civic-sir2-eg6",n:"Honda Civic SiR-II (EG6)",y:1991,sec:"Fast FWD",ig:1,src:"modelled",dt:"FWD",ep:"front",ec:"B16A",cfg:"I4",asp:"NA",cc:1595,ps:170,psr:7800,q:170,tq:157,tqr:7300,rl:8000,kg:1050,fr:62,wb:2570,com:500,ty:"195/55R15",cd:0.32,z:7.5,top:215,cf:"MED",est:["fr","com"]},
+{id:"toyota-sprinter-trueno-ae86",n:"1985 Toyota Sprinter Trueno GT Apex",y:1985,sec:"FR / Drift",ig:1,src:"forza",dt:"RWD",ep:"front",ec:"4A-GE",cfg:"I4",asp:"NA",cc:1587,ps:130,psr:6600,q:130,tq:149,tqr:5200,rl:7600,kg:950,fr:53,wb:2400,com:450,ty:"185/70R13",cd:0.41,lg:0.84,dfC:0,g97:0.84,g193:0.84,b97:48.7,b161:121.2,z97:8.64,top:202,cf:"HIGH",est:["com"],fz:{full:"1985 Toyota Sprinter Trueno GT Apex",fyr:1985,mfr:"Toyota",mdl:"Sprinter Trueno GT Apex",type:"RETRO SPORTS CARS",rar:"EPIC",unl:"Autoshow",cr:30000,pi:376,cls:"D",dt:"RWD",hp:128,ps:129.8,lbft:110,nm:149.1,lbs:2094,kg:949.8,l:1.59,fr:53,a60:8.64,a100:25.743,b60ft:159.9,b60m:48.74,b100ft:397.7,b100m:121.22,g60:0.84,g120:0.84,mph:125.3,kmh:201.7,aeroEff:0.85,mechBal:0.48,aeroBal:0,bar:{sp:4.5,hd:4,ac:4,la:3.4,br:2.6,off:5.5},st:"complete",slug:"1985-toyota-sprinter-trueno-gt-apex"}},
+{id:"nissan-silvia-ks-s14",n:"1994 Nissan Silvia K's",y:1994,sec:"FR / Drift",ig:1,src:"forza",dt:"RWD",ep:"front",ec:"SR20DET",cfg:"I4",asp:"turbo",cc:1998,ps:220,psr:6000,q:220,tq:274,tqr:4800,rl:7500,kg:1265,fr:54,wb:2525,com:460,ty:"205/55R16",cd:0.331,lg:0.886,dfC:0.339,g97:0.9,g193:0.94,b97:45.8,b161:112.3,z97:6.229,top:256,cf:"MED",est:["com"],fz:{full:"1994 Nissan Silvia K's",fyr:1994,mfr:"Nissan",mdl:"Silvia K's",type:"RETRO SPORTS CARS",rar:"COMMON",unl:"Autoshow",cr:20000,pi:499,cls:"C",dt:"RWD",hp:217,ps:220,lbft:202,nm:273.9,lbs:2789,kg:1265.1,l:2,fr:54,a60:6.229,a100:17.209,b60ft:150.4,b60m:45.84,b100ft:368.6,b100m:112.35,g60:0.9,g120:0.94,mph:159.3,kmh:256.4,aeroEff:0.87,mechBal:0.47,aeroBal:0.44,bar:{sp:5.8,hd:4.9,ac:4.4,la:2.7,br:3.4,off:5.5},st:"complete",slug:"1994-nissan-silvia-ks"}},
+{id:"mazda-rx7-fd3s",n:"1992 Mazda RX-7 Type R",y:1992,sec:"Rotary",ig:1,src:"forza",dt:"RWD",ep:"front",ec:"13B-REW",cfg:"rotary-2",asp:"twin-turbo",cc:1308,ps:255,psr:6500,q:255,tq:294,tqr:5000,rl:8000,kg:1260,fr:50,wb:2425,com:440,ty:"225/50R16",cd:0.282,lg:0.91,dfC:0.248,g97:0.92,g193:0.95,b97:44.2,b161:109.3,z97:5.24,top:286,cf:"HIGH",est:["com"],fz:{full:"1992 Mazda RX-7 Type R",fyr:1992,mfr:"Mazda",mdl:"RX-7 Type R",type:"RETRO SPORTS CARS",rar:"RARE",unl:"Autoshow",cr:40000,pi:548,cls:"B",dt:"RWD",hp:252,ps:255.5,lbft:217,nm:294.2,lbs:2778,kg:1260.1,l:1.31,fr:50,a60:5.24,a100:13,b60ft:145,b60m:44.2,b100ft:358.7,b100m:109.33,g60:0.92,g120:0.95,mph:177.5,kmh:285.7,aeroEff:0.89,mechBal:0.51,aeroBal:0.38,bar:{sp:6.6,hd:4.8,ac:4.8,la:4.1,br:3.4,off:5.2},st:"complete",slug:"1992-mazda-rx-7-type-r"}},
+{id:"toyota-supra-rz-jza80",n:"1998 Toyota Supra RZ",y:1998,sec:"Flagship",ig:1,src:"forza",dt:"RWD",ep:"front",ec:"2JZ-GTE",cfg:"I6",asp:"twin-turbo",cc:2997,ps:324,psr:5600,q:280,tq:427,tqr:4000,rl:6800,kg:1510,fr:53,wb:2550,com:470,ty:"235/45R17",cd:0.354,lg:0.913,dfC:0.164,g97:0.92,g193:0.94,b97:42.8,b161:106.4,z97:5.252,top:283,cf:"MED",est:["com"],fz:{full:"1998 Toyota Supra RZ",fyr:1998,mfr:"Toyota",mdl:"Supra RZ",type:"RETRO SPORTS CARS",rar:"RARE",unl:"Autoshow",cr:60000,pi:529,cls:"B",dt:"RWD",hp:320,ps:324.4,lbft:315,nm:427.1,lbs:3329,kg:1510,l:3,fr:53,a60:5.252,a100:12.385,b60ft:140.3,b60m:42.76,b100ft:349.1,b100m:106.41,g60:0.92,g120:0.94,mph:175.8,kmh:282.9,aeroEff:0.88,mechBal:0.48,aeroBal:0.43,bar:{sp:6.4,hd:4.8,ac:4.6,la:3.1,br:3.5,off:5.2},st:"complete",slug:"1998-toyota-supra-rz"}},
+{id:"nissan-skyline-gtr-bnr32",n:"1992 Nissan Skyline GT-R",y:1992,sec:"AWD Turbo",ig:1,src:"forza",dt:"AWD",ep:"front",ec:"RB26DETT",cfg:"I6",asp:"twin-turbo",cc:2568,ps:280,psr:6800,q:280,tq:353,tqr:4400,rl:8000,kg:1480,fr:59,wb:2615,com:490,ty:"225/50R16",cd:0.351,lg:0.886,dfC:0.339,g97:0.9,g193:0.94,b97:42.2,b161:106.3,z97:4.923,top:268,cf:"HIGH",est:["com"],fz:{full:"1992 Nissan Skyline GT-R",fyr:1992,mfr:"Nissan",mdl:"Skyline GT-R",type:"RETRO SPORTS CARS",rar:"RARE",unl:"Autoshow",cr:72000,pi:541,cls:"B",dt:"AWD",hp:276,ps:279.8,lbft:260,nm:352.5,lbs:3263,kg:1480.1,l:2.57,fr:59,a60:4.923,a100:12.738,b60ft:138.5,b60m:42.21,b100ft:348.6,b100m:106.25,g60:0.9,g120:0.94,mph:166.5,kmh:268,aeroEff:0.84,mechBal:0.44,aeroBal:0.5,bar:{sp:6,hd:5.1,ac:5.8,la:3.3,br:3.6,off:5.8},st:"complete",slug:"1992-nissan-skyline-gt-r"}},
+{id:"porsche-911-turbo-930",n:"1982 Porsche 911 Turbo 3.3",y:1982,sec:"Gaisha",ig:0,src:"forza",dt:"RWD",ep:"rear",ec:"M30/69",cfg:"flat-6",asp:"turbo",cc:3299,ps:300,psr:5500,q:300,tq:412,tqr:4000,rl:6600,kg:1300,fr:40,wb:2272,com:450,ty:"225/50R16",cd:0.466,lg:0.903,dfC:0.166,g97:0.91,g193:0.93,b97:39.7,b161:100.2,z97:5.028,top:252,cf:"MED",est:["rl","com"],fz:{full:"1982 Porsche 911 Turbo 3.3",fyr:1982,mfr:"Porsche",mdl:"911 Turbo 3.3",type:"RETRO SUPER CARS",rar:"BARN FIND",unl:"Barn Find",cr:228000,pi:550,cls:"B",dt:"RWD",hp:296,ps:300.1,lbft:304,nm:412.2,lbs:2866,kg:1300,l:3.3,fr:40,a60:5.028,a100:12.002,b60ft:130.2,b60m:39.68,b100ft:328.7,b100m:100.19,g60:0.91,g120:0.93,mph:156.3,kmh:251.5,aeroEff:0.82,mechBal:0.6,aeroBal:0.3,bar:{sp:5.6,hd:4.7,ac:4.8,la:2,br:4.1,off:5.6},st:"complete",slug:"1982-porsche-911-turbo-33"}},
+{id:"honda-civic-type-r-ek9",n:"1997 Honda Civic Type R",y:1997,sec:"Fast FWD",ig:0,src:"forza",dt:"FWD",ep:"front",ec:"B16B",cfg:"I4",asp:"NA",cc:1595,ps:185,psr:8200,q:185,tq:160,tqr:7500,rl:8400,kg:1090,fr:62,wb:2620,com:470,ty:"195/55R15",cd:0.317,lg:0.863,dfC:0.174,g97:0.87,g193:0.89,b97:45.5,b161:114.9,z97:5.657,top:243,cf:"MED",est:["com"],fz:{full:"1997 Honda Civic Type R",fyr:1997,mfr:"Honda",mdl:"Civic Type R",type:"RETRO HOT HATCH",rar:"COMMON",unl:"Autoshow",cr:30000,pi:430,cls:"C",dt:"FWD",hp:182,ps:184.5,lbft:118,nm:160,lbs:2403,kg:1090,l:1.6,fr:62,a60:5.657,a100:17.28,b60ft:149.4,b60m:45.54,b100ft:377,b100m:114.91,g60:0.87,g120:0.89,mph:151.1,kmh:243.2,aeroEff:0.87,mechBal:0.59,aeroBal:0.52,bar:{sp:5.5,hd:4.3,ac:3.7,la:3,br:3,off:5.1},st:"complete",slug:"1997-honda-civic-type-r"}},
+{id:"honda-integra-type-r-dc2",n:"2001 Acura Integra Type-R",y:2001,sec:"Fast FWD",ig:0,src:"forza",dt:"FWD",ep:"front",ec:"B18C5",cfg:"I4",asp:"NA",cc:1797,ps:198,psr:8000,q:198,tq:176,tqr:7500,rl:8400,kg:1197,fr:62,wb:2620,com:450,ty:"195/55R15",cd:0.313,lg:0.897,dfC:0.084,g97:0.9,g193:0.91,b97:44,b161:111.7,z97:6.152,top:251,cf:"MED",est:["com"],fz:{full:"2001 Acura Integra Type-R",fyr:2001,mfr:"Acura",mdl:"Integra Type-R",type:"RETRO HOT HATCH",rar:"COMMON",unl:"Autoshow",cr:65000,pi:471,cls:"C",dt:"FWD",hp:195,ps:197.7,lbft:130,nm:176.3,lbs:2639,kg:1197,l:1.8,fr:62,a60:6.152,a100:14.506,b60ft:144.4,b60m:44.01,b100ft:366.4,b100m:111.68,g60:0.9,g120:0.91,mph:155.7,kmh:250.6,aeroEff:0.87,mechBal:0.59,aeroBal:0.47,bar:{sp:5.6,hd:4.6,ac:3.9,la:3.1,br:3.4,off:5.4},st:"complete",slug:"2001-acura-integra-type-r"}},
+{id:"honda-prelude-si-vtec-bb4",n:"1994 Honda Prelude Si",y:1994,sec:"Fast FWD",ig:1,src:"forza",dt:"FWD",ep:"front",ec:"H23A",cfg:"I4",asp:"NA",cc:2259,ps:162,psr:5800,q:162,tq:212,tqr:4500,rl:6500,kg:1302,fr:62,wb:2550,com:460,ty:"205/55R15",cd:0.366,lg:0.877,dfC:0.086,g97:0.88,g193:0.89,b97:44.3,b161:113.9,z97:7.168,top:221,cf:"MED",est:["rl","com"],fz:{full:"1994 Honda Prelude Si",fyr:1994,mfr:"Honda",mdl:"Prelude Si",type:"RETRO HOT HATCH",rar:"COMMON",unl:"Autoshow",cr:15000,pi:410,cls:"C",dt:"FWD",hp:160,ps:162.2,lbft:156,nm:211.5,lbs:2870,kg:1301.8,l:2.26,fr:62,a60:7.168,a100:20.461,b60ft:145.5,b60m:44.35,b100ft:373.8,b100m:113.93,g60:0.88,g120:0.89,mph:137.2,kmh:220.8,aeroEff:0.87,mechBal:0.53,aeroBal:0.52,bar:{sp:5,hd:4.4,ac:3.7,la:3.1,br:3.1,off:5.7},st:"complete",slug:"1994-honda-prelude-si"}},
+{id:"honda-crx-sir-ef8",n:"1991 Honda CRX SiR",y:1991,sec:"Fast FWD",ig:1,src:"forza",dt:"FWD",ep:"front",ec:"B16A",cfg:"I4",asp:"NA",cc:1595,ps:160,psr:7600,q:160,tq:152,tqr:7000,rl:8000,kg:980,fr:62,wb:2300,com:420,ty:"195/60R14",cd:0.271,lg:0.89,dfC:0,g97:0.89,g193:0.88,b97:45.3,b161:116.1,z97:7.162,top:250,cf:"MED",est:["rl","com"],fz:{full:"1991 Honda CRX SiR",fyr:1991,mfr:"Honda",mdl:"CRX SiR",type:"RETRO HOT HATCH",rar:"COMMON",unl:"History Series Reward",how:"Series 1 Reward",cr:237500,pi:465,cls:"C",dt:"FWD",hp:158,ps:160.2,lbft:112,nm:151.9,lbs:2161,kg:980.2,l:1.6,fr:62,a60:7.162,a100:20.441,b60ft:148.6,b60m:45.29,b100ft:380.8,b100m:116.07,g60:0.89,g120:0.88,mph:155.6,kmh:250.4,aeroEff:0.89,mechBal:0.46,aeroBal:0,bar:{sp:5.7,hd:4.6,ac:4,la:3.2,br:2.9,off:5.5},st:"complete",slug:"1991-honda-crx-sir"}},
+{id:"honda-city-turbo-ii-aa",n:"Honda City Turbo II (AA)",y:1983,sec:"Fast FWD",ig:1,src:"modelled",dt:"FWD",ep:"front",ec:"ER-T",cfg:"I4",asp:"turbo",cc:1231,ps:110,psr:5500,q:110,tq:160,tqr:3000,rl:6500,kg:735,fr:62,wb:2220,com:500,ty:"185/60R13",cd:0.38,z:8.3,top:180,cf:"LOW",est:["rl","fr","com","cd"]},
+{id:"toyota-starlet-glanza-v-ep91",n:"1996 Toyota Starlet Glanza V",y:1996,sec:"Fast FWD",ig:0,src:"forza",dt:"FWD",ep:"front",ec:"4E-FTE",cfg:"I4",asp:"turbo",cc:1331,ps:135,psr:6400,q:135,tq:156,tqr:4800,rl:7200,kg:950,fr:65,wb:2300,com:450,ty:"185/55R14",cd:0.3,lg:0.853,dfC:0.176,g97:0.86,g193:0.88,b97:45.8,b161:115.9,z97:7.86,top:223,cf:"MED",est:["rl","com"],fz:{full:"1996 Toyota Starlet Glanza V",fyr:1996,mfr:"Toyota",mdl:"Starlet Glanza V",type:"RETRO HOT HATCH",rar:"COMMON",unl:"History Series Reward",how:"Series 1 Reward",cr:237500,pi:435,cls:"C",dt:"FWD",hp:133,ps:134.8,lbft:115,nm:155.9,lbs:2094,kg:949.8,l:1.33,fr:65,a60:7.86,a100:21.688,b60ft:150.2,b60m:45.78,b100ft:380.1,b100m:115.85,g60:0.86,g120:0.88,mph:138.5,kmh:222.9,aeroEff:0.87,mechBal:0.42,aeroBal:0.53,bar:{sp:5,hd:3.9,ac:4,la:2.1,br:3,off:5.6},st:"complete",slug:"1996-toyota-starlet-glanza-v"}},
+{id:"nissan-180sx-rps13",n:"1993 Nissan 240SX",y:1993,sec:"FR / Drift",ig:1,src:"forza",dt:"RWD",ep:"front",ec:"KA24DE",cfg:"I4",asp:"NA",cc:2389,ps:157,psr:5600,q:157,tq:217,tqr:4400,rl:6500,kg:1322,fr:53,wb:2475,com:480,ty:"205/60R15",cd:0.364,lg:0.817,dfC:0.092,g97:0.82,g193:0.83,b97:48.9,b161:120.8,z97:8.332,top:222,cf:"MED",est:["com","rl"],fz:{full:"1993 Nissan 240SX",fyr:1993,mfr:"Nissan",mdl:"240SX",type:"RETRO SPORTS CARS",rar:"EPIC",unl:"Festival Playlist",how:"Wheelspin",cr:237500,pi:339,cls:"D",dt:"RWD",hp:155,ps:157.1,lbft:160,nm:216.9,lbs:2915,kg:1322.2,l:2.39,fr:53,a60:8.332,a100:24.706,b60ft:160.3,b60m:48.86,b100ft:396.2,b100m:120.76,g60:0.82,g120:0.83,mph:137.7,kmh:221.6,aeroEff:0.88,mechBal:0.48,aeroBal:0.43,bar:{sp:5.1,hd:4.2,ac:3.3,la:2.5,br:2.5,off:5.6},st:"complete",slug:"1993-nissan-240sx"}},
+{id:"toyota-chaser-tourer-v-jzx90",n:"1991 Toyota Chaser GT Twin Turbo",y:1991,sec:"FR / Drift",ig:1,src:"forza",dt:"RWD",ep:"front",ec:"1JZ-GTE",cfg:"I6",asp:"twin-turbo",cc:2491,ps:280,psr:6200,q:280,tq:362,tqr:4800,rl:7000,kg:1540,fr:52,wb:2730,com:530,ty:"205/60R15",cd:0.385,lg:0.857,dfC:0.088,g97:0.86,g193:0.87,b97:47.2,b161:116.7,z97:5.933,top:257,cf:"MED",est:["com"],fz:{full:"1991 Toyota Chaser GT Twin Turbo",fyr:1991,mfr:"Toyota",mdl:"Chaser GT Twin Turbo",type:"RETRO SUPER SALOONS",rar:"RARE",unl:"Autoshow",cr:20000,pi:484,cls:"C",dt:"RWD",hp:276,ps:279.8,lbft:267,nm:362,lbs:3395,kg:1539.9,l:2.49,fr:52,a60:5.933,a100:14.526,b60ft:154.9,b60m:47.21,b100ft:382.9,b100m:116.71,g60:0.86,g120:0.87,mph:159.6,kmh:256.9,aeroEff:0.85,mechBal:0.48,aeroBal:0.37,bar:{sp:5.8,hd:4.5,ac:4,la:1.8,br:3.1,off:5.6},st:"complete",slug:"1991-toyota-chaser-gt-twin-turbo"}},
+{id:"nissan-silvia-s13",n:"1989 Nissan Silvia K's",y:1989,sec:"FR / Drift",ig:1,src:"forza",dt:"RWD",ep:"front",ec:"CA18DET",cfg:"I4",asp:"turbo",cc:1809,ps:175,psr:6400,q:175,tq:225,tqr:4000,rl:7000,kg:1140,fr:53,wb:2475,com:480,ty:"205/60R15",cd:0.305,lg:0.85,dfC:0.265,g97:0.86,g193:0.89,gOvr:"OVERRIDDEN 2026-07-27, maintainer ruling, across SIX fields: the lateral pair g97 / g193, the braking pair b97 / b161, top, the cd backed out of top, the kerb kg, and z97. WHY: ForzaLabs did not measure the stock car. The Forza wiki records that in Forza Horizon 6 this Silvia is the player's STARTER CAR, and that the starter car ships with the Rocket Bunny widebody kit, Origin Labs street hood, Work Meister L1 rims, race suspension, sport brakes, sport roll cage, race front and rear anti-roll bars, sport weight reduction, sport transmission, sport driveline, rally diff, 275 mm front and 285 mm rear tyres, and 18 inch rims. Every scraped figure in the fz block is a measurement of that build, not of a 1989 Silvia. The same is demonstrably true of the FH6 GMC Jimmy, the only other preset the wiki documents in full (the maintainer has since confirmed first hand that there are THREE presets, the third being the Celica GT-Four ST205, whose entry carries a warning about exactly this): the Jimmy's ForzaLabs 0-97 of 4.736 s matches the wiki's starter-car block to the millisecond and not its stock block's 6.327 s, and both documented presets are tuned to exactly PI 500 class C, which is exactly what ForzaLabs publishes for both. The values used here are the wiki's own stock panel for the same car: g 0.86 / 0.89 (scrape 0.96 / 1.02); b97 48.4 m and b161 119.1 m, i.e. 158.9 and 390.8 ft (scrape 125.8 and 298.7 ft, 38.3 and 91.0 m); top 245.2 km/h, i.e. 152.4 mph (scrape 235.3); kerb 1140 kg (scrape 1121, and the 19 kg between them is the preset's sport weight reduction); z97 6.331 s (scrape 6.055, a 0.276 s flattery bought with the same weight reduction plus 275 mm rubber, a sport transmission, a sport driveline and a rally diff); and cd 0.305, re-derived from the corrected top speed at the corrected mass through the ordinary top-speed drag path (the 0.349 it replaces came from the scraped 235 at the scraped 1121). lg 0.850 and dfC 0.265 are the ordinary aeroFit split of the wiki lateral pair, against 0.940 and 0.479 from the scrape; the aero fit is mass-free, so those two do not move with the kerb. SIX INDEPENDENT CHECKS, all pointing the same way. (1) ForzaLabs contradicts itself on grip: its own handling bar gives this car 4.7 against the Supra RZ's 4.8 and the 1992 Skyline GT-R's 5.1, the exact reverse of the lateral ordering its g figures imply (0.96 against 0.92 and 0.90). (2) The stock tyre is the narrowest rubber and the smallest rim of those three, and the only H-rated touring tyre among them: this entry's ty reads 205/60R15 and Nissan's heritage spec for the K's is 195/60R15 86H, either of which sits below the BNR32's 225/50R16 and the Supra RZ's 235/45R17 as this book carries them. It should grip below both, not above. (3) 1.02 g at 193 km/h on a 1989 car with no aero implies a downforce coefficient no car of this kind carries. The scraped pair fits dfC 0.479, which would be the third highest of the 63 measured cars, behind only the Honda City E II (1.004, and that one is itself an aeroSus extrapolation rather than a measurement) and the winged Evo VI Tommi Makinen (0.651), and ahead of the LFA (0.446), the R35 (0.429) and the NSX-R (0.429). The corrected pair fits 0.265, which is ordinary. (4) The braking figures, re-scored by running the whole harness twice, once with the scrape restored. The scraped 38.3 m stop puts bmu / mu at 1.205, FOURTH of all 63 measured cars and second of the fourteen pre-1990 cars, behind only the 930 Turbo; the corrected 48.4 m lands it at 1.021, 55th of the 63 and ninth of those fourteen, in the pack with them (Countach 1.019, Honda City E II 1.025, BMW M3 1.031). The whole braking fit gains with it: the fallback regression's residual sd falls from 0.0647 to 0.0622 and its R2 rises from 0.746 to 0.760, and this car leaves the worst-six residual list, on which the scrape put it fifth. (5) The roster's own bar-to-measurement fits, taken over the 57 cars where ForzaLabs and the wiki agree bar for bar, clear the wiki figures and reject the scraped ones: the braking bar predicts 60-0 to a residual sd of 0.38 bar points and the wiki's stock bar of 2.9 sits 0.03 sd from 48.4 m against 3.64 sd from 38.3 m, while the speed bar predicts top speed to a residual sd of 0.073 bar points and the wiki's stock bar of 5.6 sits 0.82 sd from 245.2 km/h against 4.04 sd from 235.3. (6) On the eight Hakone driven laps the scraped figures made this the only ordering inversion of the eight, and a large one; with all six corrected the modelled order matches the driven order exactly, 0 inversions of 28 ordered pairs, on both readings of that course's geometry. Weigh that sixth check LIGHTLY and know why: the Hakone geometry in the lap harness is a behavioural facsimile searched against those same eight driven times, not a survey of the road, so its level error measures the search and not the model. What the ordering still says honestly is that the corrected car sits between the CRX SiR and the AZ-1 exactly as it was driven, which no geometry search was aiming at. WHAT REMAINS THE PRESET'S, named here so it can never be mistaken for stock. (a) z161, this car's 0-161 km/h, which the entry lifts from the fz panel's a100 of 17.195 s. No stock 0-161 exists to put in its place and inventing one would be worse than carrying a labelled bad figure, so the consequence is stated instead of buried: the acceleration solve for this car reads a stock 0-97 against a preset 0-161, which makes its 97-161 segment (10.864 s) a preset measurement and the pEff that segment pins, 94.2 kW or 0.831 of crank x 0.88, a preset-tainted number. aLaunch, 5.40 m/s^2, is pinned by the corrected 0-97 and is stock. (b) fr, the 53% front weight distribution, which is the panel's; a sport weight reduction could in principle have moved it and no stock figure is in hand. (c) the fz block below, which stays VERBATIM as the scrape by design, so the override is visible and never silent. Everything else on this card is untouched by the preset, which fits no engine parts at all: power, torque, displacement, redline, wheelbase and the 205/60R15 stock tyre are the same on both builds. Do not revert any of the six without a fresh ruling.",b97:48.4,b161:119.1,z97:6.331,top:245.2,cf:"MED",est:["com"],fz:{full:"1989 Nissan Silvia K's",fyr:1989,mfr:"Nissan",mdl:"Silvia K's",type:"RETRO SPORTS CARS",rar:"COMMON",unl:"Autoshow",cr:40000,pi:500,cls:"C",dt:"RWD",hp:173,ps:175.4,lbft:166,nm:225.1,lbs:2472,kg:1121.3,l:1.81,fr:53,a60:6.055,a100:17.195,b60ft:125.8,b60m:38.34,b100ft:298.7,b100m:91.04,g60:0.96,g120:1.02,mph:146.2,kmh:235.3,aeroEff:0.86,mechBal:0.48,aeroBal:0.62,bar:{sp:5.2,hd:4.7,ac:4.1,la:2.1,br:4.5,off:4.9},st:"complete",slug:"1989-nissan-silvia-ks"}},
+{id:"nissan-cefiro-a31",n:"Nissan Cefiro (A31)",y:1988,sec:"FR / Drift",ig:1,src:"modelled",dt:"RWD",ep:"front",ec:"RB20DET",cfg:"I6",asp:"turbo",cc:1998,ps:205,psr:6400,q:205,tq:265,tqr:3200,rl:7400,kg:1370,fr:55,wb:2670,com:535,ty:"205/60R15",cd:0.31,z:null,top:220,cf:"MED",est:["rl","fr","com","cd"]},
+{id:"nissan-laurel-c33",n:"Nissan Laurel (C33)",y:1989,sec:"FR / Drift",ig:0,src:"modelled",dt:"RWD",ep:"front",ec:"RB20DET",cfg:"I6",asp:"turbo",cc:1997,ps:205,psr:6400,q:205,tq:265,tqr:3200,rl:7400,kg:1350,fr:55,wb:2670,com:540,ty:"205/60R15",cd:0.33,z:null,top:215,cf:"MED",est:["rl","fr","com","cd"]},
+{id:"toyota-chaser-tourer-v-jzx100",n:"1997 Toyota Chaser 2.5 Tourer V",y:1997,sec:"FR / Drift",ig:0,src:"forza",dt:"RWD",ep:"front",ec:"1JZ-GTE VVT-i",cfg:"I6",asp:"turbo",cc:2491,ps:280,psr:6200,q:280,tq:377,tqr:2400,rl:7500,kg:1480,fr:57,wb:2730,com:535,ty:"205/55R16",cd:0.3,lg:0.887,dfC:0.085,g97:0.89,g193:0.9,b97:46.5,b161:115.4,z97:5.852,top:246,cf:"MED",gearLtd:1,est:["rl","com","cd"],fz:{full:"1997 Toyota Chaser 2.5 Tourer V",fyr:1997,mfr:"Toyota",mdl:"Chaser 2.5 Tourer V",type:"RETRO SUPER SALOONS",rar:"RARE",unl:"Autoshow",cr:15500,pi:504,cls:"B",dt:"RWD",hp:276,ps:279.8,lbft:278,nm:376.9,lbs:3263,kg:1480.1,l:2.49,fr:57,a60:5.852,a100:14.53,b60ft:152.5,b60m:46.48,b100ft:378.5,b100m:115.37,g60:0.89,g120:0.9,mph:152.9,kmh:246.1,aeroEff:0.84,mechBal:0.45,aeroBal:0.42,bar:{sp:5.6,hd:4.7,ac:4,la:2.6,br:3.3,off:5.6},st:"complete",slug:"1997-toyota-chaser-25-tourer-v"}},
+{id:"toyota-sera-exy10",n:"1991 Toyota Sera",y:1991,sec:"Bubble weird",ig:1,src:"forza",dt:"FWD",ep:"front",ec:"5E-FHE",cfg:"I4",asp:"NA",cc:1497,ps:109,psr:6400,q:109,tq:132,tqr:5200,rl:7000,kg:930,fr:62,wb:2300,com:460,ty:"175/65R14",cd:0.32,lg:0.863,dfC:0.174,g97:0.87,g193:0.89,b97:50.5,b161:121.2,z97:10.405,top:193,cf:"MED",gearLtd:1,aeroSus:1,est:["rl","com","cd"],fz:{full:"1991 Toyota Sera",fyr:1991,mfr:"Toyota",mdl:"Sera",type:"ELECTRIC DOMESTICS",rar:"RARE",unl:"Autoshow",cr:11000,pi:344,cls:"D",dt:"FWD",hp:108,ps:109.5,lbft:97,nm:131.5,lbs:2050,kg:929.9,l:1.5,fr:62,a60:10.405,a100:30.621,b60ft:165.7,b60m:50.51,b100ft:397.6,b100m:121.19,g60:0.87,g120:0.89,mph:119.8,kmh:192.8,aeroEff:0.87,mechBal:0.56,aeroBal:0.45,bar:{sp:4.3,hd:4.1,ac:2.7,la:1.7,br:3,off:5.6},st:"complete",slug:"1991-toyota-sera"}},
+{id:"nissan-s-cargo-fhk11",n:"1989 Nissan S-Cargo",y:1989,sec:"Bubble weird",ig:0,src:"forza",dt:"FWD",ep:"front",ec:"E15S",cfg:"I4",asp:"NA",cc:1487,ps:73,psr:5600,q:73,tq:115,tqr:3200,rl:6000,kg:950,fr:62,wb:2260,com:700,ty:"155SR13",cd:0.513,lg:0.823,dfC:0.182,g97:0.83,g193:0.85,b97:57.6,z97:17.374,top:139,cf:"MED",aeroSus:1,est:["rl","com"],fz:{full:"1989 Nissan S-Cargo",fyr:1989,mfr:"Nissan",mdl:"S-Cargo",type:"ELECTRIC DOMESTICS",rar:"RARE",unl:"Autoshow",cr:19000,pi:131,cls:"D",dt:"FWD",hp:72,ps:73,lbft:85,nm:115.2,lbs:2094,kg:949.8,l:1.49,fr:62,a60:17.374,a100:null,b60ft:189.1,b60m:57.64,b100ft:null,b100m:null,g60:0.83,g120:0.85,mph:86.3,kmh:138.9,aeroEff:0.8,mechBal:0.44,aeroBal:0.47,bar:{sp:3.1,hd:4.1,ac:2,la:1.2,br:2.8,off:6},st:"below-test-speed",slug:"1989-nissan-s-cargo"}},
+{id:"subaru-alcyone-svx-cxd",n:"1996 Subaru SVX",y:1996,sec:"Bubble weird",ig:0,src:"forza",dt:"AWD",ep:"front",ec:"EG33",cfg:"flat-6",asp:"NA",cc:3318,ps:233,psr:6000,q:233,tq:309,tqr:4400,rl:6600,kg:1624,fr:59,wb:2610,com:500,ty:"225/50R16",cd:0.35,lg:0.877,dfC:0.086,g97:0.88,g193:0.89,b97:41.6,b161:108.8,z97:7.209,top:252,cf:"MED",est:["rl","com"],fz:{full:"1996 Subaru SVX",fyr:1996,mfr:"Subaru",mdl:"SVX",type:"RETRO SPORTS CARS",rar:"COMMON",unl:"Autoshow",cr:13000,pi:466,cls:"C",dt:"AWD",hp:230,ps:233.2,lbft:228,nm:309.1,lbs:3580,kg:1623.9,l:3.32,fr:59,a60:7.209,a100:18.004,b60ft:136.6,b60m:41.64,b100ft:357.1,b100m:108.84,g60:0.88,g120:0.89,mph:156.8,kmh:252.3,aeroEff:0.88,mechBal:0.44,aeroBal:0.5,bar:{sp:5.8,hd:5,ac:3.5,la:2.4,br:3.2,off:5.6},st:"complete",slug:"1996-subaru-svx"}},
+{id:"mitsubishi-gto-twin-turbo-z16a",n:"1997 Mitsubishi GTO",y:1997,sec:"Flagship",ig:0,src:"forza",dt:"AWD",ep:"front",ec:"6G72TT",cfg:"V6",asp:"twin-turbo",cc:2972,ps:324,psr:6000,q:280,tq:427,tqr:2500,rl:7000,kg:1680,fr:61,wb:2470,com:480,ty:"235/45R17",cd:0.405,lg:0.883,dfC:0.17,g97:0.89,g193:0.91,b97:42.4,b161:107.1,z97:5.611,top:268,cf:"LOW",est:["rl","com"],fz:{full:"1997 Mitsubishi GTO",fyr:1997,mfr:"Mitsubishi",mdl:"GTO",type:"RETRO SPORTS CARS",rar:"COMMON",unl:"Autoshow",cr:20000,pi:495,cls:"C",dt:"AWD",hp:320,ps:324.4,lbft:315,nm:427.1,lbs:3704,kg:1680.1,l:2.97,fr:61,a60:5.611,a100:14.223,b60ft:139,b60m:42.37,b100ft:351.5,b100m:107.14,g60:0.89,g120:0.91,mph:166.7,kmh:268.3,aeroEff:0.87,mechBal:0.42,aeroBal:0.52,bar:{sp:6.1,hd:4.8,ac:4.5,la:3.6,br:3.4,off:5.8},st:"complete",slug:"1997-mitsubishi-gto"}},
+{id:"mitsubishi-starion-a187a",n:"Mitsubishi Starion (A187A)",y:1988,sec:"Flagship",ig:0,src:"modelled",dt:"RWD",ep:"front",ec:"G54B",cfg:"I4",asp:"turbo",cc:2555,ps:175,psr:5000,q:175,tq:314,tqr:3000,rl:6000,kg:1320,fr:55,wb:2435,com:470,ty:"205/55R16",cd:0.37,z:8.2,top:215,cf:"LOW",est:["rl","fr","com"]},
+{id:"toyota-soarer-jzz30",n:"1997 Toyota Soarer 2.5 GT-T",y:1997,sec:"Flagship",ig:0,src:"forza",dt:"RWD",ep:"front",ec:"1JZ-GTE",cfg:"I6",asp:"twin-turbo",cc:2491,ps:280,psr:6200,q:280,tq:378,tqr:4800,rl:7000,kg:1570,fr:53,wb:2690,com:480,ty:"225/55R16",cd:0.331,lg:0.88,dfC:0,g97:0.88,g193:0.88,b97:46.1,b161:115.1,z97:6.924,top:271,cf:"MED",est:["rl","com"],fz:{full:"1997 Toyota Soarer 2.5 GT-T",fyr:1997,mfr:"Toyota",mdl:"Soarer 2.5 GT-T",type:"RETRO SPORTS CARS",rar:"RARE",unl:"Autoshow",cr:18000,pi:491,cls:"C",dt:"RWD",hp:276,ps:279.8,lbft:279,nm:378.3,lbs:3461,kg:1569.9,l:2.49,fr:53,a60:6.924,a100:15.834,b60ft:151.4,b60m:46.15,b100ft:377.6,b100m:115.09,g60:0.88,g120:0.88,mph:168.7,kmh:271.5,aeroEff:0.88,mechBal:0.48,aeroBal:0.43,bar:{sp:6.2,hd:4.6,ac:4.1,la:2.9,br:3.1,off:5.9},st:"complete",slug:"1997-toyota-soarer-25-gt-t"}},
+{id:"nissan-fairlady-240zg-hs30",n:"Nissan Fairlady 240ZG (HS30)",y:1971,sec:"Kyusha",ig:0,src:"modelled",dt:"RWD",ep:"front",ec:"L24",cfg:"I6",asp:"NA",cc:2393,ps:150,psr:5600,q:150,tq:206,tqr:4800,rl:7000,kg:1010,fr:51,wb:2305,com:460,ty:"175HR14",cd:0.39,z:null,top:210,cf:"MED",est:["rl","fr","com"]},
+{id:"datsun-510-bluebird-pl510",n:"1970 Datsun 510",y:1970,sec:"Kyusha",ig:0,src:"forza",dt:"RWD",ep:"front",ec:"L16",cfg:"I4",asp:"NA",cc:1595,ps:97,psr:5600,q:97,tq:136,tqr:3600,rl:6500,kg:965,fr:54,wb:2420,com:520,ty:"5.60-13",cd:0.53,lg:0.73,dfC:0,g97:0.73,g193:0.73,b97:56.8,b161:137.4,z97:13.409,top:167,cf:"MED",est:["rl","com"],fz:{full:"1970 Datsun 510",fyr:1970,mfr:"Datsun",mdl:"510",type:"CLASSIC SPORTS CARS",rar:"COMMON",unl:"Autoshow",cr:86000,pi:143,cls:"D",dt:"RWD",hp:96,ps:97.3,lbft:100,nm:135.6,lbs:2127,kg:964.8,l:1.6,fr:54,a60:13.409,a100:41.283,b60ft:186.2,b60m:56.75,b100ft:450.8,b100m:137.4,g60:0.73,g120:0.73,mph:104,kmh:167.4,aeroEff:0.82,mechBal:0.49,aeroBal:0,bar:{sp:3.7,hd:3.4,ac:2.8,la:2.3,br:1.9,off:5.3},st:"complete",slug:"1970-datsun-510"}},
+{id:"nissan-skyline-2000gt-x-kenmeri-kgc110",n:"1973 Nissan Skyline H/T 2000GT-R",y:1973,sec:"Kyusha",ig:0,src:"forza",dt:"RWD",ep:"front",ec:"S20",cfg:"I6",asp:"NA",cc:1989,ps:160,psr:7000,q:160,tq:176,tqr:5600,rl:8000,kg:1145,fr:55,wb:2610,com:530,ty:"6.45S-14",cd:0.458,lg:0.81,dfC:0,g97:0.81,g193:0.81,b97:50.2,b161:122.5,z97:8.917,top:208,cf:"MED",est:["rl","com"],fz:{full:"1973 Nissan Skyline H/T 2000GT-R",fyr:1973,mfr:"Nissan",mdl:"Skyline H/T 2000GT-R",type:"CLASSIC SPORTS CARS",rar:"EPIC",unl:"Autoshow",cr:416000,pi:407,cls:"C",dt:"RWD",hp:158,ps:160.2,lbft:130,nm:176.3,lbs:2524,kg:1144.9,l:1.99,fr:55,a60:8.917,a100:22.802,b60ft:164.7,b60m:50.2,b100ft:401.9,b100m:122.5,g60:0.81,g120:0.81,mph:129.5,kmh:208.4,aeroEff:0.84,mechBal:0.49,aeroBal:0,bar:{sp:4.7,hd:4.2,ac:3.4,la:2.2,br:3,off:6},st:"complete",slug:"1973-nissan-skyline-ht-2000gt-r"}},
+{id:"mazda-cosmo-sport-110s-l10a",n:"1972 Mazda Cosmo 110S Series II",y:1972,sec:"Kyusha",ig:0,src:"modelled",dt:"RWD",ep:"front",ec:"10A",cfg:"rotary-2",asp:"NA",cc:982,ps:110,psr:7000,q:110,tq:130,tqr:3500,rl:7000,kg:940,fr:51,wb:2200,com:440,ty:"165SR14",cd:0.38,z:8.7,top:185,cf:"HIGH",est:["fr","com","cd"],fz:{full:"1972 Mazda Cosmo 110S Series II",fyr:1972,mfr:"Mazda",mdl:"Cosmo 110S Series II",type:null,rar:null,unl:"Festival Playlist",cr:null,pi:null,cls:null,dt:null,hp:null,ps:null,lbft:null,nm:null,lbs:null,kg:null,l:null,fr:null,a60:null,a100:null,b60ft:null,b60m:null,b100ft:null,b100m:null,g60:null,g120:null,mph:null,kmh:null,aeroEff:null,mechBal:null,aeroBal:null,st:"no-specs",slug:"1972-mazda-cosmo-110s-series-ii"}},
+{id:"mercedes-190e-2-5-16-evo-ii-w201",n:"1990 Mercedes-Benz 190E 2.5-16 Evolution II",y:1990,sec:"Gaisha",ig:0,src:"forza",dt:"RWD",ep:"front",ec:"M102",cfg:"I4",asp:"NA",cc:2463,ps:238,psr:7200,q:238,tq:245,tqr:5500,rl:7700,kg:1340,fr:53,wb:2665,com:500,ty:"245/40R17",cd:0.292,lg:0.88,dfC:0,g97:0.88,g193:0.88,b97:45.1,b161:112.8,z97:7.024,top:271,cf:"HIGH",est:["com"],fz:{full:"1990 Mercedes-Benz 190E 2.5-16 Evolution II",fyr:1990,mfr:"Mercedes-Benz",mdl:"190E 2.5-16 Evolution II",type:"RETRO SUPER SALOONS",rar:"EPIC",unl:"Autoshow",cr:200000,pi:460,cls:"C",dt:"RWD",hp:235,ps:238.3,lbft:181,nm:245.4,lbs:2954,kg:1339.9,l:2.46,fr:53,a60:7.024,a100:17.75,b60ft:148,b60m:45.11,b100ft:370.1,b100m:112.81,g60:0.88,g120:0.88,mph:168.2,kmh:270.7,aeroEff:0.89,mechBal:0.48,aeroBal:0.43,bar:{sp:6.2,hd:4.4,ac:4,la:3.6,br:2.9,off:4.8},st:"complete",slug:"1990-mercedes-benz-190e-25-16-evolution-ii"}},
+{id:"bmw-m3-e30",n:"1988 BMW M3",y:1988,sec:"Gaisha",ig:0,src:"forza",dt:"RWD",ep:"front",ec:"S14",cfg:"I4",asp:"NA",cc:2302,ps:195,psr:6750,q:195,tq:230,tqr:4750,rl:7250,kg:1253,fr:51,wb:2562,com:460,ty:"205/55R15",cd:0.304,lg:0.883,dfC:0.17,g97:0.89,g193:0.91,b97:46.5,b161:114.8,z97:6.784,top:250,cf:"HIGH",est:["com"],fz:{full:"1988 BMW M3",fyr:1988,mfr:"BMW",mdl:"M3",type:"RETRO SUPER SALOONS",rar:"RARE",unl:"Autoshow",cr:70000,pi:474,cls:"C",dt:"RWD",hp:192,ps:194.7,lbft:170,nm:230.5,lbs:2762,kg:1252.8,l:2.3,fr:51,a60:6.784,a100:19.323,b60ft:152.4,b60m:46.45,b100ft:376.7,b100m:114.82,g60:0.89,g120:0.91,mph:155.5,kmh:250.3,aeroEff:0.87,mechBal:0.51,aeroBal:0.41,bar:{sp:5.7,hd:4.5,ac:4.4,la:4.5,br:3.1,off:5.3},st:"complete",slug:"1988-bmw-m3"}},
+{id:"lancia-delta-hf-integrale-evo",n:"1992 Lancia Delta HF Integrale Evo",y:1992,sec:"Gaisha",ig:0,src:"forza",dt:"AWD",ep:"front",ec:"831",cfg:"I4",asp:"turbo",cc:1995,ps:213,psr:5750,q:213,tq:304,tqr:3500,rl:6500,kg:1300,fr:63,wb:2480,com:500,ty:"205/50R15",cd:0.478,lg:0.907,dfC:0.083,g97:0.91,g193:0.92,b97:42.4,b161:107,z97:5.926,top:219,cf:"MED",est:["rl","com"],fz:{full:"1992 Lancia Delta HF Integrale Evo",fyr:1992,mfr:"Lancia",mdl:"Delta HF Integrale Evo",type:"RETRO RALLY",rar:"COMMON",unl:"Autoshow",cr:110000,pi:489,cls:"C",dt:"AWD",hp:210,ps:212.9,lbft:224,nm:303.7,lbs:2866,kg:1300,l:2,fr:63,a60:5.926,a100:17.202,b60ft:139.1,b60m:42.4,b100ft:351,b100m:106.98,g60:0.91,g120:0.92,mph:136.3,kmh:219.4,aeroEff:0.8,mechBal:0.39,aeroBal:0.54,bar:{sp:4.9,hd:4.6,ac:4.5,la:2.3,br:3.6,off:6},st:"complete",slug:"1992-lancia-delta-hf-integrale-evo"}},
+{id:"alfa-romeo-75-3-0-v6",n:"Alfa Romeo 75 3.0 V6",y:1987,sec:"Gaisha",ig:0,src:"modelled",dt:"RWD",ep:"front",ec:"AR06",cfg:"V6",asp:"NA",cc:2959,ps:188,psr:5800,q:188,tq:245,tqr:4000,rl:6200,kg:1250,fr:55,wb:2510,com:520,ty:"195/60R14",cd:0.34,z:null,top:220,cf:"MED",est:["rl","com"]},
+{id:"ferrari-testarossa-f113",n:"1992 Ferrari 512 TR",y:1992,sec:"Gaisha",ig:0,src:"forza",dt:"RWD",ep:"mid",ec:"F113G",cfg:"flat-12",asp:"NA",cc:4943,ps:427,psr:6750,q:427,tq:488,tqr:5500,rl:7250,kg:1674,fr:42,wb:2550,com:480,ty:"255/50R16",cd:0.344,lg:1.056,dfC:0.284,g97:1.07,g193:1.11,b97:37.4,b161:92.7,z97:4.917,top:317,cf:"HIGH",est:["com","rl"],fz:{full:"1992 Ferrari 512 TR",fyr:1992,mfr:"Ferrari",mdl:"512 TR",type:"RETRO SUPER CARS",rar:"EPIC",unl:"Festival Playlist",how:"Wheelspin",cr:332500,pi:615,cls:"A",dt:"RWD",hp:421,ps:426.8,lbft:360,nm:488.1,lbs:3690,kg:1673.8,l:4.94,fr:42,a60:4.917,a100:10.519,b60ft:122.8,b60m:37.43,b100ft:304,b100m:92.66,g60:1.07,g120:1.11,mph:196.9,kmh:316.9,aeroEff:0.86,mechBal:0.55,aeroBal:0.32,bar:{sp:7.2,hd:5.5,ac:4.9,la:3.8,br:4.5,off:5.1},st:"complete",slug:"1992-ferrari-512-tr"}},
+{id:"lamborghini-countach-lp5000-qv",n:"1988 Lamborghini Countach LP5000 QV",y:1988,sec:"Gaisha",ig:0,src:"forza",dt:"RWD",ep:"mid",ec:"LP112D",cfg:"V12",asp:"NA",cc:5167,ps:461,psr:7000,q:461,tq:500,tqr:5200,rl:7300,kg:1490,fr:41,wb:2450,com:450,ty:"345/35R15",cd:0.465,lg:1.083,dfC:0.347,g97:1.1,g193:1.15,b97:39.3,b161:96.3,z97:4.839,top:300,cf:"MED",est:["rl","com"],fz:{full:"1988 Lamborghini Countach LP5000 QV",fyr:1988,mfr:"Lamborghini",mdl:"Countach LP5000 QV",type:"RETRO SUPER CARS",rar:"EPIC",unl:"Festival Playlist",cr:570000,pi:622,cls:"A",dt:"RWD",hp:455,ps:461.3,lbft:369,nm:500.3,lbs:3284,kg:1489.6,l:5.17,fr:41,a60:4.839,a100:11.699,b60ft:129,b60m:39.32,b100ft:315.9,b100m:96.29,g60:1.1,g120:1.15,mph:186.3,kmh:299.8,aeroEff:0.84,mechBal:0.57,aeroBal:0.36,bar:{sp:6.8,hd:5.6,ac:4.7,la:3.6,br:4.3,off:5.3},st:"complete",slug:"1988-lamborghini-countach-lp5000-qv"}},
+{id:"rover-mini-cooper-1-3i",n:"1965 MINI Cooper S",y:1965,sec:"Gaisha",ig:0,src:"forza",dt:"FWD",ep:"front",ec:"A-series",cfg:"I4",asp:"NA",cc:1275,ps:76,psr:5800,q:76,tq:108,tqr:3000,rl:6000,kg:671,fr:60,wb:2035,com:480,ty:"145/70R12",cd:0.543,lg:0.75,dfC:0,g97:0.75,g193:0.74,b97:52.4,z97:10.387,top:160,cf:"MED",est:["rl","com"],fz:{full:"1965 MINI Cooper S",fyr:1965,mfr:"MINI",mdl:"Cooper S",type:"CLASSIC RALLY",rar:"RARE",unl:"Autoshow",cr:39000,pi:158,cls:"D",dt:"FWD",hp:75,ps:76,lbft:80,nm:108.5,lbs:1480,kg:671.3,l:1.28,fr:60,a60:10.387,a100:null,b60ft:171.9,b60m:52.4,b100ft:null,b100m:null,g60:0.75,g120:0.74,mph:99.4,kmh:160,aeroEff:0.84,mechBal:0.59,aeroBal:0,bar:{sp:3.6,hd:3,ac:2.6,la:2.7,br:2,off:4.3},st:"below-test-speed",slug:"1965-mini-cooper-s"}},
+{id:"ferrari-f355-berlinetta-f129",n:"1994 Ferrari F355 Berlinetta",y:1994,sec:"Gaisha",ig:0,src:"forza",dt:"RWD",ep:"mid",ec:"F129B",cfg:"V8",asp:"NA",cc:3496,ps:380,psr:8250,q:380,tq:363,tqr:6000,rl:8500,kg:1450,fr:41,wb:2451,com:480,ty:"265/40R18",cd:0.365,lg:1.053,dfC:0.356,g97:1.07,g193:1.12,b97:38.4,b161:95.3,z97:4.747,top:300,cf:"MED",est:["rl","com"],fz:{full:"1994 Ferrari F355 Berlinetta",fyr:1994,mfr:"Ferrari",mdl:"F355 Berlinetta",type:"RETRO SUPER CARS",rar:"EPIC",unl:"Festival Playlist",how:"Wheelspin",cr:237500,pi:588,cls:"B",dt:"RWD",hp:375,ps:380.2,lbft:268,nm:363.4,lbs:3196,kg:1449.7,l:3.5,fr:41,a60:4.747,a100:10.939,b60ft:125.9,b60m:38.37,b100ft:312.8,b100m:95.34,g60:1.07,g120:1.12,mph:186.7,kmh:300.5,aeroEff:0.88,mechBal:0.58,aeroBal:0.31,bar:{sp:6.8,hd:5.5,ac:4.5,la:3.6,br:4.3,off:5.3},st:"complete",slug:"1994-ferrari-f355-berlinetta"}},
+{id:"bmw-m3-e36",n:"1997 BMW M3",y:1997,sec:"Gaisha",ig:0,src:"forza",dt:"RWD",ep:"front",ec:"S50B32",cfg:"I6",asp:"NA",cc:3201,ps:325,psr:7400,q:325,tq:350,tqr:3250,rl:7600,kg:1460,fr:50,wb:2700,com:510,ty:"235/40R17",cd:0.363,lg:0.917,dfC:0.082,g97:0.92,g193:0.93,b97:44,b161:108.7,z97:5.249,top:282,cf:"HIGH",est:["com"],fz:{full:"1997 BMW M3",fyr:1997,mfr:"BMW",mdl:"M3",type:"RETRO SUPER SALOONS",rar:"COMMON",unl:"Autoshow",cr:30000,pi:549,cls:"B",dt:"RWD",hp:321,ps:325.5,lbft:258,nm:349.8,lbs:3219,kg:1460.1,l:3.2,fr:50,a60:5.249,a100:12.056,b60ft:144.5,b60m:44.04,b100ft:356.7,b100m:108.72,g60:0.92,g120:0.93,mph:175.5,kmh:282.4,aeroEff:0.86,mechBal:0.53,aeroBal:0.4,bar:{sp:6.5,hd:4.5,ac:4.9,la:5.2,br:3.6,off:5.6},st:"complete",slug:"1997-bmw-m3"}},
+{id:"ford-escort-rs-cosworth",n:"1992 Ford Escort RS Cosworth",y:1992,sec:"Gaisha",ig:0,src:"forza",dt:"AWD",ep:"front",ec:"YBT",cfg:"I4",asp:"turbo",cc:1993,ps:227,psr:6250,q:227,tq:304,tqr:3500,rl:6800,kg:1275,fr:56,wb:2551,com:540,ty:"245/45R16",cd:0.437,lg:0.887,dfC:0.085,g97:0.89,g193:0.9,b97:43.2,b161:110.4,z97:6.111,top:230,cf:"MED",est:["rl","com"],fz:{full:"1992 Ford Escort RS Cosworth",fyr:1992,mfr:"Ford",mdl:"Escort RS Cosworth",type:"RETRO RALLY",rar:"RARE",unl:"Autoshow",cr:65000,pi:456,cls:"C",dt:"AWD",hp:224,ps:227.1,lbft:224,nm:303.7,lbs:2811,kg:1275,l:1.99,fr:56,a60:6.111,a100:17.214,b60ft:141.8,b60m:43.22,b100ft:362.1,b100m:110.37,g60:0.89,g120:0.9,mph:143.1,kmh:230.3,aeroEff:0.85,mechBal:0.48,aeroBal:0.47,bar:{sp:5.2,hd:4.3,ac:4.3,la:2.8,br:3.1,off:5.6},st:"complete",slug:"1992-ford-escort-rs-cosworth"}},
+{id:"vw-golf-gti-mk2-16v",n:"1992 Volkswagen Golf GTI 16V Mk2",y:1992,sec:"Gaisha",ig:0,src:"forza",dt:"FWD",ep:"front",ec:"KR",cfg:"I4",asp:"NA",cc:1781,ps:141,psr:6100,q:141,tq:163,tqr:4600,rl:7000,kg:1100,fr:63,wb:2475,com:530,ty:"185/60R14",cd:0.384,lg:0.81,dfC:0,g97:0.81,g193:0.8,b97:48.7,b161:124.1,z97:8.032,top:206,cf:"HIGH",est:["com"],fz:{full:"1992 Volkswagen Golf GTI 16V Mk2",fyr:1992,mfr:"Volkswagen",mdl:"Golf GTI 16V Mk2",type:"RETRO HOT HATCH",rar:"COMMON",unl:"Autoshow",cr:22000,pi:308,cls:"D",dt:"FWD",hp:139,ps:140.9,lbft:120,nm:162.7,lbs:2425,kg:1100,l:1.78,fr:63,a60:8.032,a100:23.48,b60ft:159.9,b60m:48.74,b100ft:407.1,b100m:124.08,g60:0.81,g120:0.8,mph:128.2,kmh:206.3,aeroEff:0.86,mechBal:0.58,aeroBal:0,bar:{sp:4.6,hd:4,ac:3.4,la:2.5,br:2.4,off:5.2},st:"complete",slug:"1992-volkswagen-golf-gti-16v-mk2"}},
+{id:"mazda-savanna-rx7-fc3s",n:"1990 Mazda Savanna RX-7",y:1990,sec:"Rotary",ig:1,src:"forza",dt:"RWD",ep:"front",ec:"13B-T",cfg:"rotary-2",asp:"turbo",cc:1308,ps:203,psr:6500,q:203,tq:266,tqr:3500,rl:7000,kg:1352,fr:51,wb:2420,com:480,ty:"205/60R15",cd:0.336,lg:0.863,dfC:0.174,g97:0.87,g193:0.89,b97:46.1,b161:113.8,z97:6.517,top:251,cf:"MED",est:["com"],fz:{full:"1990 Mazda Savanna RX-7",fyr:1990,mfr:"Mazda",mdl:"Savanna RX-7",type:"RETRO SPORTS CARS",rar:"EPIC",unl:"Autoshow",cr:23000,pi:451,cls:"C",dt:"RWD",hp:200,ps:202.8,lbft:196,nm:265.7,lbs:2981,kg:1352.2,l:1.31,fr:51,a60:6.517,a100:17.3,b60ft:151.2,b60m:46.09,b100ft:373.5,b100m:113.84,g60:0.87,g120:0.89,mph:156.2,kmh:251.4,aeroEff:0.89,mechBal:0.51,aeroBal:0.41,bar:{sp:5.7,hd:4.5,ac:4.3,la:3.3,br:3.1,off:5.4},st:"complete",slug:"1990-mazda-savanna-rx-7"}},
+{id:"eunos-cosmo-jc",n:"Eunos Cosmo (JC)",y:1990,sec:"Rotary",ig:0,src:"modelled",dt:"RWD",ep:"front",ec:"20B-REW",cfg:"rotary-3",asp:"twin-turbo",cc:1962,ps:300,psr:6500,q:280,tq:402,tqr:3000,rl:7000,kg:1620,fr:55,wb:2750,com:500,ty:"215/60R15",cd:0.28,z:null,top:250,cf:"MED",est:["ps","fr","com","cd"]},
+{id:"subaru-impreza-wrx-sti-gc8",n:"Subaru Impreza WRX STI (GC8)",y:1994,sec:"AWD Turbo",ig:1,src:"modelled",dt:"AWD",ep:"front",ec:"EJ20K",cfg:"flat-4",asp:"turbo",cc:1994,ps:250,psr:6500,q:250,tq:309,tqr:3500,rl:7900,kg:1230,fr:59,wb:2520,com:470,ty:"205/55R15",cd:0.36,z:6.4,top:230,cf:"HIGH",est:["fr","com","cd"]},
+{id:"toyota-celica-gt-four-st205",n:"1994 Toyota Celica GT-Four ST205",y:1994,sec:"AWD Turbo",ig:0,src:"forza",dt:"AWD",ep:"front",ec:"3S-GTE",cfg:"I4",asp:"turbo",cc:1998,ps:259,psr:6000,q:259,tq:304,tqr:4000,rl:7000,kg:1440,fr:60,wb:2535,com:470,ty:"215/50R16",cd:0.338,lg:0.86,dfC:0,g97:0.86,g193:0.86,gOvr:"OVERRIDDEN 2026-07-27, maintainer ruling, across THIRTEEN fields: power ps, torque tq, kerb kg, front weight fr, the lateral pair g97 / g193 and the lg and dfC derived from them, the braking pair b97 / b161, both acceleration times z97 and z161, top, and the cd backed out of top. Two flags go with them: gearLtd is removed and cd leaves the est list. WHY: ForzaLabs did not measure the stock car. The maintainer has confirmed first hand that Forza Horizon 6 ships THREE preset starter cars, not the two the Forza wiki documents, and that this Celica is the third; and has now READ THE GAME'S OWN STOCK PANEL for it directly, which is the source of every replacement below. That closes a question this entry used to carry as a srcWarn: the panel scraped from ForzaLabs is the preset's, the wiki's silence about this car was a gap in the wiki and not evidence of anything, and there is now a measured stock figure for every field the warning named. THE STOCK PANEL, as read: 259 PS, 304 Nm, 1440 kg, 60 per cent front, PI 479; braking 42.8 m from 97 km/h and 111.7 m from 161; lateral 0.86 g at 97 km/h AND 0.86 g at 193; 0-97 in 5.870 s and 0-161 in 16.824 s; top speed 266.8 km/h. THE SCRAPE IT REPLACES, kept verbatim in the fz block below: 275.8 PS, 324 Nm, 1389.8 kg, 59 per cent front, PI 500 class C; 42.61 and 107.29 m; 0.90 and 0.93 g; 5.369 and 15.659 s; 248 km/h. WHAT THE CONTAMINATION WAS WORTH, DERIVED QUANTITY BY DERIVED QUANTITY, because the point of an override is to record its size and not merely its direction. (1) GRIP, and this is the largest single result. The stock lateral pair is FLAT: 0.86 g at 97 km/h and 0.86 g at 193. aeroFit needs a rise to solve a downforce coefficient, so a flat pair returns k = 0 exactly, and dfC solves to ZERO. That is a real answer for a 1994 road car with no aero, and it contradicts the scraped 0.90 / 0.93 outright, which fitted mechanical mu 0.890 and dfC 0.253. So mu falls 0.890 to 0.860 and the downforce term on this car does not merely shrink, it vanishes. The preset had more grip AND more grip at speed; the stock car has neither. (2) DRAG. This entry used to carry gearLtd, because the scraped 248 km/h implied CdA 0.850 against the body's geometric 0.581, a ratio of 1.464x and the largest of the nine cars whose drag had to fall back to geometry. That ratio was the preset's shortened final drive, exactly as the superseded warning guessed. At the stock 266.8 km/h the same arithmetic gives CdA 0.633, a ratio of 1.089x, which is ordinary and well inside the 1.25x rejection bar. gearLtd is therefore gone, cd is no longer an estimate, and this car's drag is now measured from its own top speed like every other measured entry: cd 0.338 against the 0.31 geometric guess it replaces. (3) BRAKING, which barely moved and moved instructively. bmu from 97 km/h reads 1.005 against the scrape's 1.006, unchanged to a thousandth: the stop is 42.8 m against 42.61, the global brake dead distance shifts from 6.014 to 5.987 m as the fit re-runs, and the two cancel. bmu from 161 km/h reads 0.964 against 0.991, because the stock stop from 161 is 111.7 m against a scraped 107.29. That split is the signature of a preset that added downforce and left the brakes alone: at 97 km/h there is little aero to add, at 161 km/h there is. The RATIO bmu / mu moves from 1.130 to 1.169, twelfth highest of the 63 measured cars to fifth, and the move is entirely the denominator: the car's braking is what it always was, its cornering grip is lower. Note honestly that this correction does NOT improve the braking fallback the way the Silvia's did: the regression's residual sd goes 0.0622 to 0.0623 and its R2 0.760 to 0.759, i.e. neutral. (4) ACCELERATION, where the whole shape of the car changes. Solved from the stock pair, aLaunch is 6.90 m/s^2, which is 0.818 of the car's own lateral grip put down off the line, fifth of the 59 measured cars against a roster median of 0.61. Solved from the preset pair it was 8.75 m/s^2 and 1.002 of grip, SECOND of the 59 behind only the R35, which is a figure no 1994 road car should own. pEff is 115 kW against 116, but crank power fell with it, so pEff / (crank x 0.88) rises 0.648 to 0.687: fourth lowest of the 59 rather than second lowest. The share of the 0-97 spent below the launch crossover was 20 per cent, the lowest in the whole solved set, which put this car at the head of the weakly-identified list; on the stock times it leaves that list entirely. The solve round-trips: it reproduces 5.870 s and 16.824 s to the harness tolerance, with zero unphysical solves across all 59. (5) DOWNSTREAM. Modelled 0-100 goes 5.7 to 6.2 s, modelled top speed 248 to 267 km/h, and the car falls from 29th to 44th of 85 on overall pace, with Misaki 109.9 to 112.4 s and Hakone 117.5 to 119.6 s. THE SUPERSEDED WARNING'S PREDICTIONS, SCORED, because a labelled suspicion that survives its test is worth recording. It said the preset would read as more power on less weight: 275.8 PS on 1389.8 kg against a stock 259 on 1440, correct. It said top speed and acceleration would have moved in OPPOSITE directions, which no engine change produces and a shorter final drive produces exactly: top 7.0 per cent down, 0-97 8.5 per cent quicker, correct, and the maintainer's earlier cross-title reading of about 7 per cent and about 10 per cent was close on both. It said PI 500 class C was the preset's tune against a stock 479: correct, and the wiki's 479 is the number the game's own panel shows. The ONE thing it got wrong was its counter-evidence. It read the scraped braking and lateral g as stock-grade and suggested the preset might not have touched tyres or suspension. Braking indeed barely moved, but the lateral pair did move, and it moved in the way that matters most: 0.90 / 0.93 against a stock 0.86 / 0.86, which is a whole downforce coefficient of difference. WHAT REMAINS THE PRESET'S: only the fz block below, which stays VERBATIM as the scrape by design so the override is visible and never silent. Nothing else on this card is preset-tainted, and that is the difference from the Silvia K's, whose 0-161 has no stock counterpart and whose solved pEff therefore still is. Here both acceleration times are stock, so both halves of the solved curve are stock. UNTOUCHED, and untouched deliberately: the engine data (ec, cfg, cc, psr, tqr, rl), which no preset in this game changes; wb; com, which is an estimate on every car in the book; and ty, the 215/50R16 stock tyre, which is a published specification rather than a panel reading, and which is descriptive here in any case because grip comes from the corrected lateral pair and not from the tyre string. Do not revert any of the thirteen without a fresh ruling.",b97:42.8,b161:111.7,z97:5.87,z161:16.824,top:266.8,cf:"MED",est:["com"],fz:{full:"1994 Toyota Celica GT-Four ST205",fyr:1994,mfr:"Toyota",mdl:"Celica GT-Four ST205",type:"RETRO RALLY",rar:"COMMON",unl:"Autoshow",cr:27000,pi:500,cls:"C",dt:"AWD",hp:272,ps:275.8,lbft:239,nm:324,lbs:3064,kg:1389.8,l:2,fr:59,a60:5.369,a100:15.659,b60ft:139.8,b60m:42.61,b100ft:352,b100m:107.29,g60:0.9,g120:0.93,mph:154.1,kmh:248,aeroEff:0.83,mechBal:0.55,aeroBal:0.96,bar:{sp:5.6,hd:4.8,ac:5.6,la:3.4,br:3.4,off:6.5},st:"complete",slug:"1994-toyota-celica-gt-four-st205"}},
+{id:"nissan-pulsar-gti-r-rnn14",n:"1990 Nissan Pulsar GTI-R",y:1990,sec:"AWD Turbo",ig:0,src:"forza",dt:"AWD",ep:"front",ec:"SR20DET",cfg:"I4",asp:"turbo",cc:1998,ps:230,psr:6400,q:230,tq:283,tqr:4800,rl:7500,kg:1240,fr:62,wb:2430,com:460,ty:"195/55R14",cd:0.384,lg:0.86,dfC:0,g97:0.86,g193:0.86,b97:45,b161:116.3,z97:4.928,top:243,cf:"HIGH",est:["rl","com"],fz:{full:"1990 Nissan Pulsar GTI-R",fyr:1990,mfr:"Nissan",mdl:"Pulsar GTI-R",type:"RETRO RALLY",rar:"RARE",unl:"Autoshow",cr:28000,pi:486,cls:"C",dt:"AWD",hp:227,ps:230.1,lbft:209,nm:283.4,lbs:2734,kg:1240.1,l:2,fr:62,a60:4.928,a100:13.931,b60ft:147.8,b60m:45.05,b100ft:381.6,b100m:116.31,g60:0.86,g120:0.86,mph:151.1,kmh:243.2,aeroEff:0.84,mechBal:0.41,aeroBal:0.53,bar:{sp:5.4,hd:4.4,ac:5.5,la:3.4,br:2.9,off:5.4},st:"complete",slug:"1990-nissan-pulsar-gti-r"}},
+{id:"mazda-familia-gt-r-bg8z",n:"Mazda Familia GT-R (BG8Z)",y:1992,sec:"AWD Turbo",ig:0,src:"modelled",dt:"AWD",ep:"front",ec:"BPD",cfg:"I4",asp:"turbo",cc:1839,ps:210,psr:6000,q:210,tq:250,tqr:4500,rl:7000,kg:1210,fr:60,wb:2450,com:460,ty:"195/50R15",cd:0.32,z:6.2,top:230,cf:"MED",est:["rl","fr","com","cd"]},
+{id:"nissan-350z-z33",n:"2003 Nissan Fairlady Z",y:2003,sec:"2004+ wave",ig:0,src:"forza",dt:"RWD",ep:"front",ec:"VQ35DE",cfg:"V6",asp:"NA",cc:3498,ps:291,psr:6200,q:280,tq:370,tqr:4800,rl:7000,kg:1501,fr:53,wb:2650,com:510,ty:"235/50R17",cd:0.301,lg:0.923,dfC:0.163,g97:0.93,g193:0.95,b97:43.9,b161:109.2,z97:5.749,top:284,cf:"MED",est:["com"],fz:{full:"2003 Nissan Fairlady Z",fyr:2003,mfr:"Nissan",mdl:"Fairlady Z",type:"RETRO SPORTS CARS",rar:"COMMON",unl:"Autoshow",cr:18000,pi:534,cls:"B",dt:"RWD",hp:287,ps:291,lbft:273,nm:370.1,lbs:3310,kg:1501.4,l:3.5,fr:53,a60:5.749,a100:14.258,b60ft:144,b60m:43.89,b100ft:358.2,b100m:109.18,g60:0.93,g120:0.95,mph:176.2,kmh:283.6,aeroEff:0.88,mechBal:0.48,aeroBal:0.38,bar:{sp:6.5,hd:5,ac:4.6,la:4,br:3.5,off:5.2},st:"complete",slug:"2003-nissan-fairlady-z"}},
+{id:"mazda-rx-8-se3p",n:"2011 Mazda RX-8 R3",y:2011,sec:"2004+ wave",ig:0,src:"forza",dt:"RWD",ep:"front",ec:"13B-MSP",cfg:"rotary-2",asp:"NA",cc:1308,ps:235,psr:8200,q:235,tq:216,tqr:5500,rl:9000,kg:1390,fr:52,wb:2703,com:480,ty:"225/45R18",cd:0.354,lg:0.923,dfC:0.163,g97:0.93,g193:0.95,b97:44.5,b161:109.2,z97:5.884,top:251,cf:"MED",est:["com"],fz:{full:"2011 Mazda RX-8 R3",fyr:2011,mfr:"Mazda",mdl:"RX-8 R3",type:"MODERN SPORTS CARS",rar:"RARE",unl:"Autoshow",cr:33000,pi:508,cls:"B",dt:"RWD",hp:232,ps:235.2,lbft:159,nm:215.6,lbs:3065,kg:1390.3,l:1.31,fr:52,a60:5.884,a100:15.863,b60ft:146,b60m:44.5,b100ft:358.3,b100m:109.21,g60:0.93,g120:0.95,mph:155.8,kmh:250.7,aeroEff:0.86,mechBal:0.49,aeroBal:0.37,bar:{sp:5.8,hd:5,ac:4.6,la:3.8,br:3.7,off:5.5},st:"complete",slug:"2011-mazda-rx-8-r3"}},
+{id:"mitsubishi-lancer-evo-viii-mr-ct9a",n:"2004 Mitsubishi Lancer Evolution VIII MR",y:2004,sec:"2004+ wave",ig:0,src:"forza",dt:"AWD",ep:"front",ec:"4G63T",cfg:"I4",asp:"turbo",cc:1997,ps:309,psr:6500,q:280,tq:427,tqr:3500,rl:7000,kg:1410,fr:60,wb:2625,com:480,ty:"235/45R17",cd:0.343,lg:0.917,dfC:0.082,g97:0.92,g193:0.93,b97:40.9,b161:105,z97:4.728,top:272,cf:"LOW",est:["com"],fz:{full:"2004 Mitsubishi Lancer Evolution VIII MR",fyr:2004,mfr:"Mitsubishi",mdl:"Lancer Evolution VIII MR",type:"MODERN RALLY",rar:"RARE",unl:"Autoshow",cr:30000,pi:555,cls:"B",dt:"AWD",hp:305,ps:309.2,lbft:315,nm:427.1,lbs:3109,kg:1410.2,l:2,fr:60,a60:4.728,a100:12.436,b60ft:134.2,b60m:40.9,b100ft:344.5,b100m:105,g60:0.92,g120:0.93,mph:168.8,kmh:271.7,aeroEff:0.87,mechBal:0.41,aeroBal:0.51,bar:{sp:6.2,hd:5,ac:5.7,la:3.1,br:3.6,off:6},st:"complete",slug:"2004-mitsubishi-lancer-evolution-viii-mr"}},
+{id:"honda-integra-type-r-dc5",n:"2002 Acura RSX Type-S",y:2002,sec:"2004+ wave",ig:0,src:"forza",dt:"FWD",ep:"front",ec:"K20A2",cfg:"I4",asp:"NA",cc:1998,ps:203,psr:7400,q:203,tq:193,tqr:6000,rl:7900,kg:1279,fr:61,wb:2570,com:450,ty:"215/45R17",cd:0.351,lg:0.893,dfC:0.168,g97:0.9,g193:0.92,b97:43.3,b161:109.6,z97:6.666,top:239,cf:"MED",est:["com"],fz:{full:"2002 Acura RSX Type-S",fyr:2002,mfr:"Acura",mdl:"RSX Type-S",type:"RETRO HOT HATCH",rar:"COMMON",unl:"Autoshow",cr:18000,pi:462,cls:"C",dt:"FWD",hp:200,ps:202.8,lbft:142,nm:192.5,lbs:2820,kg:1279.1,l:2,fr:61,a60:6.666,a100:17.778,b60ft:141.9,b60m:43.25,b100ft:359.6,b100m:109.61,g60:0.9,g120:0.92,mph:148.2,kmh:238.5,aeroEff:0.87,mechBal:0.6,aeroBal:0.46,bar:{sp:5.6,hd:4.7,ac:3.9,la:3,br:3.5,off:5.6},st:"complete",slug:"2002-acura-rsx-type-s"}},
+{id:"daihatsu-copen-l880k",n:"Daihatsu Copen (L880K)",y:2002,sec:"Kei",ig:0,src:"modelled",dt:"FWD",ep:"front",ec:"JB-DET",cfg:"I4",asp:"turbo",cc:659,ps:64,psr:6000,q:64,tq:110,tqr:3200,rl:6500,kg:810,fr:60,wb:2230,com:450,ty:"165/50R15",cd:0.32,z:11.7,top:150,cf:"LOW",est:["rl","fr","com","cd"]},
+{id:"nissan-gt-r-r35",n:"2012 Nissan GT-R Black Edition (R35)",y:2012,sec:"Hyper wave",ig:0,src:"forza",dt:"AWD",ep:"front",ec:"VR38DETT",cfg:"V6",asp:"twin-turbo",cc:3799,ps:550,psr:6400,q:550,tq:632,tqr:4400,rl:7100,kg:1763,fr:55,wb:2780,com:470,ty:"285/35R20",cd:0.309,lg:1.05,dfC:0.429,g97:1.07,g193:1.13,b97:32.5,b161:81.7,z97:2.754,top:341,cf:"MED",est:["com"],fz:{full:"2012 Nissan GT-R Black Edition (R35)",fyr:2012,mfr:"Nissan",mdl:"GT-R Black Edition (R35)",type:"MODERN SUPER CARS",rar:"RARE",unl:"Autoshow",cr:80000,pi:703,cls:"S1",dt:"AWD",hp:542,ps:549.5,lbft:466,nm:631.8,lbs:3887,kg:1763.1,l:3.8,fr:55,a60:2.754,a100:6.864,b60ft:106.7,b60m:32.52,b100ft:268.2,b100m:81.75,g60:1.07,g120:1.13,mph:212.1,kmh:341.3,aeroEff:0.87,mechBal:0.46,aeroBal:0.46,bar:{sp:7.6,hd:6.1,ac:8.5,la:8.1,br:5.3,off:5.6},st:"complete",slug:"2012-nissan-gt-r-black-edition-r35"}},
+{id:"lexus-lfa",n:"2010 Lexus LFA",y:2010,sec:"Hyper wave",ig:0,src:"forza",dt:"RWD",ep:"front",ec:"1LR-GUE",cfg:"V10",asp:"NA",cc:4805,ps:560,psr:8700,q:560,tq:480,tqr:6800,rl:9000,kg:1480,fr:48,wb:2605,com:460,ty:"305/30R20",cd:0.31,lg:1.01,dfC:0.446,g97:1.03,g193:1.09,b97:30.9,b161:73.5,z97:3.66,top:327,cf:"HIGH",gearLtd:1,est:["com"],fz:{full:"2010 Lexus LFA",fyr:2010,mfr:"Lexus",mdl:"LFA",type:"MODERN SUPER CARS",rar:"EPIC",unl:"Autoshow",cr:875000,pi:699,cls:"A",dt:"RWD",hp:552,ps:559.7,lbft:354,nm:480,lbs:3263,kg:1480.1,l:4.81,fr:48,a60:3.66,a100:7.694,b60ft:101.4,b60m:30.91,b100ft:241,b100m:73.46,g60:1.03,g120:1.09,mph:203.3,kmh:327.2,aeroEff:0.84,mechBal:0.53,aeroBal:0.36,bar:{sp:7.4,hd:6,ac:5.8,la:6,br:7,off:5},st:"complete",slug:"2010-lexus-lfa"}},
+{id:"nissan-skyline-gt-r-v-spec-ii-bnr34",n:"2000 Nissan Skyline GT-R V-Spec II",y:2000,sec:"Legend",ig:0,src:"forza",dt:"AWD",ep:"front",ec:"RB26DETT",cfg:"I6",asp:"twin-turbo",cc:2568,ps:285,psr:6800,q:280,tq:392,tqr:4400,rl:8000,kg:1560,fr:55,wb:2665,com:470,ty:"245/40R18",cd:0.292,lg:0.906,dfC:0.331,g97:0.92,g193:0.96,b97:41.6,b161:103.8,z97:4.546,top:283,cf:"MED",est:["com"],fz:{full:"2000 Nissan Skyline GT-R V-Spec II",fyr:2000,mfr:"Nissan",mdl:"Skyline GT-R V-Spec II",type:"RETRO SPORTS CARS",rar:"RARE",unl:"Autoshow",cr:200000,pi:590,cls:"B",dt:"AWD",hp:281,ps:284.9,lbft:289,nm:391.8,lbs:3439,kg:1559.9,l:2.57,fr:55,a60:4.546,a100:10.571,b60ft:136.4,b60m:41.57,b100ft:340.5,b100m:103.78,g60:0.92,g120:0.96,mph:175.9,kmh:283.1,aeroEff:0.85,mechBal:0.46,aeroBal:0.5,bar:{sp:6.4,hd:5.2,ac:6.5,la:3.9,br:3.8,off:5.8},st:"complete",slug:"2000-nissan-skyline-gt-r-v-spec-ii"}},
+{id:"honda-nsx-r-na1",n:"1992 Honda NSX-R",y:1992,sec:"Legend",ig:0,src:"forza",dt:"RWD",ep:"mid",ec:"C30A",cfg:"V6",asp:"NA",cc:2977,ps:280,psr:7300,q:280,tq:294,tqr:5400,rl:8000,kg:1230,fr:42,wb:2530,com:450,ty:"225/50R16",cd:0.365,lg:1.05,dfC:0.429,g97:1.07,g193:1.13,b97:38.7,b161:95.6,z97:4.632,top:275,cf:"MED",est:["rl","com"],fz:{full:"1992 Honda NSX-R",fyr:1992,mfr:"Honda",mdl:"NSX-R",type:"RETRO SPORTS CARS",rar:"EPIC",unl:"Autoshow",cr:450000,pi:572,cls:"B",dt:"RWD",hp:276,ps:279.8,lbft:217,nm:294.2,lbs:2712,kg:1230.1,l:2.98,fr:42,a60:4.632,a100:11.46,b60ft:127.1,b60m:38.74,b100ft:313.5,b100m:95.55,g60:1.07,g120:1.13,mph:171.1,kmh:275.4,aeroEff:0.88,mechBal:0.59,aeroBal:0.32,bar:{sp:6.2,hd:5.4,ac:4.9,la:3.8,br:4.3,off:5.1},st:"complete",slug:"1992-honda-nsx-r"}},
+{id:"nissan-skyline-gt-r-hakosuka-kpgc10",n:"1971 Nissan Skyline 2000GT-R",y:1971,sec:"Legend",ig:0,src:"forza",dt:"RWD",ep:"front",ec:"S20",cfg:"I6",asp:"NA",cc:1989,ps:162,psr:7000,q:162,tq:180,tqr:5600,rl:8000,kg:1100,fr:54,wb:2570,com:500,ty:"6.45H14",cd:0.416,lg:0.79,dfC:0,g97:0.79,g193:0.79,b97:52.4,b161:129.4,z97:6.936,top:213,cf:"MED",est:["rl","com"],fz:{full:"1971 Nissan Skyline 2000GT-R",fyr:1971,mfr:"Nissan",mdl:"Skyline 2000GT-R",type:"CLASSIC SPORTS CARS",rar:"BARN FIND",unl:"Barn Find",cr:160550,pi:380,cls:"D",dt:"RWD",hp:160,ps:162.2,lbft:133,nm:180.3,lbs:2425,kg:1100,l:1.99,fr:54,a60:6.936,a100:19.706,b60ft:171.8,b60m:52.36,b100ft:424.7,b100m:129.45,g60:0.79,g120:0.79,mph:132.3,kmh:212.9,aeroEff:0.85,mechBal:0.49,aeroBal:0,bar:{sp:4.7,hd:4,ac:3.6,la:2.5,br:2.6,off:5.3},st:"complete",slug:"1971-nissan-skyline-2000gt-r"}},
+{id:"nissan-fairlady-z432-ps30",n:"1969 Nissan Fairlady Z 432",y:1969,sec:"Legend",ig:0,src:"forza",dt:"RWD",ep:"front",ec:"S20",cfg:"I6",asp:"NA",cc:1989,ps:162,psr:7000,q:162,tq:180,tqr:5600,rl:8000,kg:1047,fr:51,wb:2305,com:480,ty:"155HR14",cd:0.42,lg:0.81,dfC:0,g97:0.81,g193:0.8,b97:51.7,b161:127,z97:8.62,top:199,cf:"LOW",gearLtd:1,est:["rl","com","cd"],fz:{full:"1969 Nissan Fairlady Z 432",fyr:1969,mfr:"Nissan",mdl:"Fairlady Z 432",type:"CLASSIC SPORTS CARS",rar:"EPIC",unl:"Autoshow",cr:250000,pi:369,cls:"D",dt:"RWD",hp:160,ps:162.2,lbft:133,nm:180.3,lbs:2308,kg:1046.9,l:1.99,fr:51,a60:8.62,a100:26.714,b60ft:169.5,b60m:51.66,b100ft:416.6,b100m:126.98,g60:0.81,g120:0.8,mph:123.5,kmh:198.8,aeroEff:0.83,mechBal:0.5,aeroBal:0,bar:{sp:4.4,hd:4.4,ac:3.6,la:2.4,br:2.7,off:5.4},st:"complete",slug:"1969-nissan-fairlady-z-432"}},
+{id:"subaru-impreza-22b-sti",n:"1998 Subaru Impreza 22B-STi Version",y:1998,sec:"Legend",ig:0,src:"forza",dt:"AWD",ep:"front",ec:"EJ22",cfg:"flat-4",asp:"turbo",cc:2212,ps:280,psr:6000,q:280,tq:359,tqr:3200,rl:7000,kg:1270,fr:58,wb:2520,com:460,ty:"235/40R17",cd:0.364,lg:0.933,dfC:0.402,g97:0.95,g193:1,b97:39.8,b161:102,z97:4.534,top:262,cf:"MED",est:["com"],fz:{full:"1998 Subaru Impreza 22B-STi Version",fyr:1998,mfr:"Subaru",mdl:"Impreza 22B-STi Version",type:"RETRO RALLY",rar:"LEGENDARY",unl:"Autoshow",cr:86000,pi:600,cls:"B",dt:"AWD",hp:276,ps:279.8,lbft:265,nm:359.3,lbs:2800,kg:1270.1,l:2.21,fr:58,a60:4.534,a100:12.789,b60ft:130.5,b60m:39.78,b100ft:334.6,b100m:101.99,g60:0.95,g120:1,mph:163,kmh:262.3,aeroEff:0.84,mechBal:0.44,aeroBal:0.49,bar:{sp:5.9,hd:4.9,ac:7,la:4.7,br:4,off:5.7},st:"complete",slug:"1998-subaru-impreza-22b-sti-version"}},
+{id:"mitsubishi-lancer-evo-vi-tommi-makinen-cp9a",n:"2001 Mitsubishi Lancer Evolution VI GSR TM Edition",y:2001,sec:"Legend",ig:0,src:"forza",dt:"AWD",ep:"front",ec:"4G63T",cfg:"I4",asp:"turbo",cc:1997,ps:280,psr:6500,q:280,tq:373,tqr:2750,rl:7000,kg:1280,fr:58,wb:2510,com:470,ty:"225/45R17",cd:0.34,lg:0.923,dfC:0.651,g97:0.95,g193:1.03,b97:40.6,b161:101.6,z97:4.52,top:240,cf:"MED",gearLtd:1,est:["com","cd"],fz:{full:"2001 Mitsubishi Lancer Evolution VI GSR TM Edition",fyr:2001,mfr:"Mitsubishi",mdl:"Lancer Evolution VI GSR TM Edition",type:"RETRO RALLY",rar:"RARE",unl:"Autoshow",cr:70000,pi:574,cls:"B",dt:"AWD",hp:276,ps:279.8,lbft:275,nm:372.9,lbs:2822,kg:1280,l:2,fr:58,a60:4.52,a100:9.65,b60ft:133.3,b60m:40.63,b100ft:333.2,b100m:101.56,g60:0.95,g120:1.03,mph:149.2,kmh:240.1,aeroEff:0.77,mechBal:0.44,aeroBal:0.49,bar:{sp:5.3,hd:5.1,ac:6.4,la:4.3,br:4.2,off:5.7},st:"complete",slug:"2001-mitsubishi-lancer-evolution-vi-gsr-tm-edition"}},
+{id:"toyota-2000gt-mf10",n:"1969 Toyota 2000GT",y:1969,sec:"Legend",ig:0,src:"forza",dt:"RWD",ep:"front",ec:"3M",cfg:"I6",asp:"NA",cc:1988,ps:152,psr:6600,q:152,tq:176,tqr:5000,rl:7000,kg:1157,fr:51,wb:2330,com:470,ty:"165R15",cd:0.28,lg:0.79,dfC:0,g97:0.79,g193:0.79,b97:51.1,b161:127.9,z97:8.116,top:228,cf:"MED",gearLtd:1,est:["rl","com"],fz:{full:"1969 Toyota 2000GT",fyr:1969,mfr:"Toyota",mdl:"2000GT",type:"RARE CLASSICS",rar:"BARN FIND",unl:"Barn Find",cr:1000000,pi:377,cls:"D",dt:"RWD",hp:150,ps:152.1,lbft:130,nm:176.3,lbs:2550,kg:1156.7,l:1.99,fr:51,a60:8.116,a100:22.908,b60ft:167.8,b60m:51.15,b100ft:419.6,b100m:127.89,g60:0.79,g120:0.79,mph:141.7,kmh:228,aeroEff:0.88,mechBal:0.49,aeroBal:0,bar:{sp:5.1,hd:4,ac:3.7,la:2.7,br:2.6,off:5.3},st:"complete",slug:"1969-toyota-2000gt"}},
+{id:"mazda-autozam-az-1-pg6sa",n:"1993 Autozam AZ-1",y:1993,sec:"Legend",ig:0,src:"forza",dt:"RWD",ep:"mid",ec:"F6A",cfg:"I3",asp:"turbo",cc:657,ps:64,psr:6500,q:64,tq:85,tqr:4000,rl:7500,kg:720,fr:44,wb:2235,com:420,ty:"155/65R13",cd:0.32,lg:0.853,dfC:0.44,g97:0.87,g193:0.92,b97:47.2,b161:117,z97:10.329,top:189,cf:"MED",aeroSus:1,est:["rl","com"],fz:{full:"1993 Autozam AZ-1",fyr:1993,mfr:"Autozam",mdl:"AZ-1",type:"ELECTRIC DOMESTICS",rar:"RARE",unl:"Autoshow",cr:38000,pi:342,cls:"D",dt:"RWD",hp:63,ps:63.9,lbft:63,nm:85.4,lbs:1587,kg:719.9,l:0.66,fr:44,a60:10.329,a100:26.7,b60ft:154.7,b60m:47.15,b100ft:383.9,b100m:117.01,g60:0.87,g120:0.92,mph:117.5,kmh:189.1,aeroEff:0.9,mechBal:0.57,aeroBal:0.34,bar:{sp:4.2,hd:4.2,ac:3,la:4.4,br:3,off:5.2},st:"complete",slug:"1993-autozam-az-1"}},
+{id:"mazda-rx-7-spirit-r-fd3s",n:"Mazda RX-7 Spirit R (FD3S)",y:2002,sec:"Legend",ig:0,src:"modelled",dt:"RWD",ep:"front",ec:"13B-REW",cfg:"rotary-2",asp:"twin-turbo",cc:1308,ps:280,psr:6500,q:280,tq:314,tqr:5000,rl:8000,kg:1270,fr:50,wb:2425,com:460,ty:"235/45R17",cd:0.29,z:5.3,top:255,cf:"MED",est:["com"]},
+{id:"nissan-silvia-spec-r-s15",n:"2002 Nissan Silvia Spec-R",y:2002,sec:"Legend",ig:0,src:"forza",dt:"RWD",ep:"front",ec:"SR20DET",cfg:"I4",asp:"turbo",cc:1998,ps:253,psr:6400,q:253,tq:278,tqr:4800,rl:7600,kg:1240,fr:51,wb:2525,com:450,ty:"205/55R16",cd:0.301,lg:0.903,dfC:0.416,g97:0.92,g193:0.97,b97:44,b161:108.1,z97:5.45,top:280,cf:"MED",est:["com"],fz:{full:"2002 Nissan Silvia Spec-R",fyr:2002,mfr:"Nissan",mdl:"Silvia Spec-R",type:"RETRO SPORTS CARS",rar:"COMMON",unl:"Autoshow",cr:44000,pi:551,cls:"B",dt:"RWD",hp:250,ps:253.5,lbft:205,nm:277.9,lbs:2734,kg:1240.1,l:2,fr:51,a60:5.45,a100:13.957,b60ft:144.5,b60m:44.04,b100ft:354.6,b100m:108.08,g60:0.92,g120:0.97,mph:173.9,kmh:279.9,aeroEff:0.87,mechBal:0.5,aeroBal:0.39,bar:{sp:6.3,hd:5,ac:4.8,la:3,br:3.8,off:5.3},st:"complete",slug:"2002-nissan-silvia-spec-r"}},
+{id:"nissan-fairlady-z-z32",n:"1994 Nissan Fairlady Z Version S Twin Turbo",y:1994,sec:"Flagship",ig:1,src:"forza",dt:"RWD",ep:"front",ec:"VG30DETT",cfg:"V6",asp:"twin-turbo",cc:2960,ps:280,psr:6400,q:280,tq:384,tqr:3600,rl:7000,kg:1520,fr:54,wb:2450,com:480,ty:"225/50R16",cd:0.378,lg:0.897,dfC:0.084,g97:0.9,g193:0.91,b97:45.5,b161:113.2,z97:5.441,top:265,cf:"MED",est:["rl","com"],fz:{full:"1994 Nissan Fairlady Z Version S Twin Turbo",fyr:1994,mfr:"Nissan",mdl:"Fairlady Z Version S Twin Turbo",type:"RETRO SPORTS CARS",rar:"EPIC",unl:"Autoshow",cr:40000,pi:497,cls:"C",dt:"RWD",hp:276,ps:279.8,lbft:283,nm:383.7,lbs:3351,kg:1520,l:2.96,fr:54,a60:5.441,a100:14.448,b60ft:149.4,b60m:45.54,b100ft:371.4,b100m:113.2,g60:0.9,g120:0.91,mph:164.6,kmh:264.9,aeroEff:0.87,mechBal:0.48,aeroBal:0.44,bar:{sp:6,hd:4.8,ac:4.3,la:2.7,br:3.2,off:5.2},st:"complete",slug:"1994-nissan-fairlady-z-version-s-twin-turbo"}},
+{id:"toyota-aristo-30v-jzs147",n:"Toyota Aristo 3.0V (JZS147)",y:1991,sec:"Flagship",ig:1,src:"modelled",dt:"RWD",ep:"front",ec:"2JZ-GTE",cfg:"I6",asp:"twin-turbo",cc:2997,ps:324,psr:5600,q:280,tq:431,tqr:3600,rl:6600,kg:1680,fr:55,wb:2780,com:530,ty:"225/55R16",cd:0.31,z:6.1,top:250,cf:"MED",est:["ps","rl","fr","com","z"]},
+{id:"autech-stagea-260rs-wgnc34",n:"1997 Nissan Stagea RS Four V",y:1997,sec:"Flagship",ig:0,src:"forza",dt:"AWD",ep:"front",ec:"RB25DET",cfg:"I6",asp:"turbo",cc:2498,ps:235,psr:6000,q:235,tq:274,tqr:4800,rl:7000,kg:1620,fr:57,wb:2720,com:505,ty:"225/50R17",cd:0.374,lg:0.847,dfC:0.089,g97:0.85,g193:0.86,b97:46.5,b161:116.6,z97:8.1,top:237,cf:"MED",est:["com"],fz:{full:"1997 Nissan Stagea RS Four V",fyr:1997,mfr:"Nissan",mdl:"Stagea RS Four V",type:"RETRO SUPER SALOONS",rar:"EPIC",unl:"Autoshow",cr:20000,pi:439,cls:"C",dt:"AWD",hp:232,ps:235.2,lbft:202,nm:273.9,lbs:3571,kg:1619.8,l:2.5,fr:57,a60:8.1,a100:20.087,b60ft:152.7,b60m:46.54,b100ft:382.7,b100m:116.65,g60:0.85,g120:0.86,mph:147,kmh:236.6,aeroEff:0.84,mechBal:0.43,aeroBal:0.47,bar:{sp:5.4,hd:5,ac:3.4,la:1.7,br:3.1,off:6.3},st:"complete",slug:"1997-nissan-stagea-rs-four-v"}},
+{id:"toyota-altezza-rs200-z-edition-sxe10",n:"1999 Toyota Altezza RS200 Z Edition",y:1999,sec:"Flagship",ig:0,src:"forza",dt:"RWD",ep:"front",ec:"3S-GE BEAMS",cfg:"I4",asp:"NA",cc:1998,ps:211,psr:7600,q:211,tq:216,tqr:6400,rl:7800,kg:1360,fr:50,wb:2670,com:480,ty:"215/45R17",cd:0.305,lg:0.883,dfC:0.17,g97:0.89,g193:0.91,b97:45.4,b161:113.1,z97:6.828,top:252,cf:"MED",est:["rl","com"],fz:{full:"1999 Toyota Altezza RS200 Z Edition",fyr:1999,mfr:"Toyota",mdl:"Altezza RS200 Z Edition",type:"RETRO SUPER SALOONS",rar:"RARE",unl:"History Series Reward",how:"Series 1 Reward",cr:237500,pi:461,cls:"C",dt:"RWD",hp:208,ps:210.9,lbft:159,nm:215.6,lbs:2998,kg:1359.9,l:2,fr:50,a60:6.828,a100:17.656,b60ft:148.8,b60m:45.35,b100ft:370.9,b100m:113.05,g60:0.89,g120:0.91,mph:156.6,kmh:252,aeroEff:0.88,mechBal:0.51,aeroBal:0.35,bar:{sp:5.7,hd:4.9,ac:4.3,la:3.5,br:3.2,off:5.6},st:"complete",slug:"1999-toyota-altezza-rs200-z-edition"}},
+{id:"honda-s2000-ap1",n:"2003 Honda S2000",y:2003,sec:"Flagship",ig:0,src:"forza",dt:"RWD",ep:"front",ec:"F20C",cfg:"I4",asp:"NA",cc:1997,ps:250,psr:8300,q:250,tq:218,tqr:7500,rl:9000,kg:1250,fr:50,wb:2400,com:460,ty:"225/50R16",cd:0.345,lg:0.903,dfC:0.166,g97:0.91,g193:0.93,b97:45.2,b161:112.2,z97:6.124,top:264,cf:"MED",est:["com"],fz:{full:"2003 Honda S2000",fyr:2003,mfr:"Honda",mdl:"S2000",type:"MODERN SPORTS CARS",rar:"COMMON",unl:"Autoshow",cr:55000,pi:503,cls:"B",dt:"RWD",hp:247,ps:250.4,lbft:161,nm:218.3,lbs:2756,kg:1250.1,l:2,fr:50,a60:6.124,a100:15.331,b60ft:148.4,b60m:45.23,b100ft:368.1,b100m:112.2,g60:0.91,g120:0.93,mph:164.1,kmh:264.1,aeroEff:0.87,mechBal:0.49,aeroBal:0.35,bar:{sp:6,hd:4.9,ac:4.2,la:3.7,br:3.3,off:5.3},st:"complete",slug:"2003-honda-s2000"}},
+{id:"toyota-mr2-sw20",n:"1995 Toyota MR2 GT",y:1995,sec:"Flagship",ig:1,src:"forza",dt:"RWD",ep:"mid",ec:"3S-GTE",cfg:"I4",asp:"turbo",cc:1998,ps:244,psr:6000,q:244,tq:309,tqr:4000,rl:7000,kg:1205,fr:42,wb:2400,com:460,ty:"225/50R15",cd:0.348,lg:0.897,dfC:0.084,g97:0.9,g193:0.91,b97:44.9,b161:114.4,z97:5.429,top:267,cf:"MED",est:["rl","com"],fz:{full:"1995 Toyota MR2 GT",fyr:1995,mfr:"Toyota",mdl:"MR2 GT",type:"RETRO SPORTS CARS",rar:"RARE",unl:"Autoshow",cr:28000,pi:522,cls:"B",dt:"RWD",hp:241,ps:244.3,lbft:228,nm:309.1,lbs:2657,kg:1205.2,l:2,fr:42,a60:5.429,a100:13.953,b60ft:147.3,b60m:44.9,b100ft:375.4,b100m:114.42,g60:0.9,g120:0.91,mph:166,kmh:267.2,aeroEff:0.89,mechBal:0.6,aeroBal:0.32,bar:{sp:6.2,hd:4.7,ac:5.3,la:3.9,br:3.1,off:5.2},st:"complete",slug:"1995-toyota-mr2-gt"}},
+{id:"toyota-mr2-aw11",n:"1989 Toyota MR2 SC",y:1989,sec:"Flagship",ig:1,src:"forza",dt:"RWD",ep:"mid",ec:"4A-GZE",cfg:"I4",asp:"supercharged",cc:1587,ps:147,psr:6400,q:147,tq:190,tqr:4400,rl:7500,kg:1188,fr:43,wb:2320,com:450,ty:"185/60R14",cd:0.339,lg:0.83,dfC:0.271,g97:0.84,g193:0.87,b97:47.5,b161:118.8,z97:6.882,top:226,cf:"MED",est:["com"],fz:{full:"1989 Toyota MR2 SC",fyr:1989,mfr:"Toyota",mdl:"MR2 SC",type:"RETRO SPORTS CARS",rar:"EPIC",unl:"Festival Playlist",cr:237500,pi:397,cls:"D",dt:"RWD",hp:145,ps:147,lbft:140,nm:189.8,lbs:2620,kg:1188.4,l:1.59,fr:43,a60:6.882,a100:19.44,b60ft:156,b60m:47.55,b100ft:389.8,b100m:118.81,g60:0.84,g120:0.87,mph:140.3,kmh:225.8,aeroEff:0.88,mechBal:0.58,aeroBal:0.33,bar:{sp:5.1,hd:4.4,ac:3.8,la:3.3,br:2.8,off:5.6},st:"complete",slug:"1989-toyota-mr2-sc"}},
+{id:"daihatsu-mira-tr-xx-l70",n:"Daihatsu Mira TR-XX (L70)",y:1985,sec:"Kei",ig:0,src:"modelled",dt:"FWD",ep:"front",ec:"EB",cfg:"I3",asp:"turbo",cc:547,ps:52,psr:6500,q:52,tq:70,tqr:4000,rl:7000,kg:570,fr:62,wb:2250,com:520,ty:"145/70R12",cd:0.4,z:null,top:null,cf:"MED",est:["rl","fr","com","cd"]},
+{id:"toyota-carina-at150",n:"Toyota Carina (AT150)",y:1984,sec:"Shitbox",ig:1,src:"modelled",dt:"FWD",ep:"front",ec:"3A-U",cfg:"I4",asp:"NA",cc:1452,ps:83,psr:5600,q:83,tq:118,tqr:3600,rl:6500,kg:955,fr:60,wb:2500,com:500,ty:"165SR13",cd:0.38,z:null,top:160,cf:"MED",est:["rl","fr","com","cd"]},
+{id:"nissan-sunny-b12",n:"Nissan Sunny (B12)",y:1987,sec:"Shitbox",ig:1,src:"modelled",dt:"FWD",ep:"front",ec:"GA15S",cfg:"I4",asp:"NA",cc:1497,ps:85,psr:6000,q:85,tq:123,tqr:3600,rl:6500,kg:880,fr:60,wb:2430,com:500,ty:"165SR13",cd:0.37,z:null,top:null,cf:"LOW",est:["rl","fr","com","cd","kg"]},
+{id:"honda-today-jw1",n:"Honda Today (JW1)",y:1988,sec:"Kei",ig:0,src:"modelled",dt:"FWD",ep:"front",ec:"E05A",cfg:"I3",asp:"NA",cc:547,ps:38,psr:8000,q:38,tq:46,tqr:4500,rl:8500,kg:620,fr:60,wb:2330,com:530,ty:"145/70R12",cd:0.35,z:null,top:145,cf:"MED",est:["rl","fr","com","cd"]},
+{id:"subaru-vivio-rx-r-kk4",n:"1994 Subaru Vivio RX-R",y:1994,sec:"Kei",ig:0,src:"forza",dt:"AWD",ep:"front",ec:"EN07X",cfg:"I4",asp:"supercharged",cc:658,ps:64,psr:7200,q:64,tq:88,tqr:4000,rl:7800,kg:760,fr:58,wb:2310,com:500,ty:"155/65R13",cd:0.363,lg:0.833,dfC:0.451,g97:0.85,g193:0.9,b97:48.2,b161:121,z97:11.348,top:171,cf:"MED",aeroSus:1,est:["rl","com"],fz:{full:"1994 Subaru Vivio RX-R",fyr:1994,mfr:"Subaru",mdl:"Vivio RX-R",type:"ELECTRIC DOMESTICS",rar:"EPIC",unl:"Autoshow",cr:10000,pi:281,cls:"D",dt:"AWD",hp:63,ps:63.9,lbft:65,nm:88.1,lbs:1676,kg:760.2,l:0.66,fr:58,a60:11.348,a100:46.369,b60ft:158.2,b60m:48.22,b100ft:397,b100m:121.01,g60:0.85,g120:0.9,mph:106.1,kmh:170.8,aeroEff:0.88,mechBal:0.44,aeroBal:0.43,bar:{sp:3.8,hd:4.3,ac:2.6,la:4.2,br:2.8,off:5.9},st:"complete",slug:"1994-subaru-vivio-rx-r"}},
+{id:"daihatsu-mira-tr-xx-avanzato-r-l502s",n:"Daihatsu Mira TR-XX Avanzato R (L502S)",y:1995,sec:"Kei",ig:0,src:"modelled",dt:"FWD",ep:"front",ec:"JB-JL",cfg:"I4",asp:"turbo",cc:659,ps:64,psr:7500,q:64,tq:100,tqr:4000,rl:8000,kg:710,fr:60,wb:2300,com:510,ty:"155/65R13",cd:0.33,z:10.9,top:150,cf:"MED",est:["rl","fr","com","cd"]},
+{id:"honda-acty-ha4",n:"1994 Honda Acty",y:1994,sec:"Kei",ig:0,src:"forza",dt:"AWD",ep:"mid",ec:"E07A",cfg:"I3",asp:"NA",cc:656,ps:38,psr:5300,q:38,tq:54,tqr:4500,rl:6000,kg:770,fr:52,wb:1900,com:650,ty:"145R12",cd:0.45,lg:0.8,dfC:0,g97:0.8,g193:0.8,b97:49.6,z97:24.64,top:111,cf:"LOW",gearLtd:1,est:["rl","com","cd"],fz:{full:"1994 Honda Acty",fyr:1994,mfr:"Honda",mdl:"Acty",type:"ELECTRIC DOMESTICS",rar:"COMMON",unl:"Autoshow",cr:9000,pi:100,cls:"D",dt:"AWD",hp:37,ps:37.5,lbft:40,nm:54.2,lbs:1698,kg:770.2,l:0.66,fr:52,a60:24.64,a100:null,b60ft:162.6,b60m:49.56,b100ft:null,b100m:null,g60:0.8,g120:0.8,mph:69.2,kmh:111.4,aeroEff:0.74,mechBal:0.51,aeroBal:0.32,bar:{sp:2.4,hd:4.5,ac:1.6,la:3.7,br:2.8,off:5.7},st:"below-test-speed",slug:"1994-honda-acty"}},
+{id:"suzuki-cappuccino-ea11r",n:"Suzuki Cappuccino (EA11R)",y:1991,sec:"Kei",ig:0,src:"modelled",dt:"RWD",ep:"front",ec:"F6A",cfg:"I3",asp:"turbo",cc:657,ps:64,psr:6500,q:64,tq:85,tqr:4000,rl:8500,kg:725,fr:50,wb:2060,com:430,ty:"165/65R14",cd:0.33,z:10,top:150,cf:"MED",est:["com","cd","z"]},
+{id:"honda-beat-pp1",n:"1991 Honda Beat",y:1991,sec:"Kei",ig:1,src:"forza",dt:"RWD",ep:"mid",ec:"E07A MTREC",cfg:"I3",asp:"NA",cc:656,ps:64,psr:8100,q:64,tq:60,tqr:7000,rl:8500,kg:760,fr:43,wb:2280,com:420,ty:"165/60R14",cd:0.382,lg:0.853,dfC:0.44,g97:0.87,g193:0.92,b97:49.3,b161:119.1,z97:11.946,top:177,cf:"HIGH",aeroSus:1,est:["com"],fz:{full:"1991 Honda Beat",fyr:1991,mfr:"Honda",mdl:"Beat",type:"ELECTRIC DOMESTICS",rar:"RARE",unl:"Autoshow",cr:15000,pi:283,cls:"D",dt:"RWD",hp:63,ps:63.9,lbft:44,nm:59.7,lbs:1676,kg:760.2,l:0.66,fr:43,a60:11.946,a100:38.124,b60ft:161.7,b60m:49.29,b100ft:390.9,b100m:119.15,g60:0.87,g120:0.92,mph:110,kmh:177,aeroEff:0.9,mechBal:0.58,aeroBal:0.33,bar:{sp:3.8,hd:4.2,ac:2.2,la:2.7,br:3,off:5.3},st:"complete",slug:"1991-honda-beat"}},
+{id:"eunos-roadster-na6ce",n:"1994 Mazda MX-5 Miata",y:1994,sec:"FR / Drift",ig:0,src:"forza",dt:"RWD",ep:"front",ec:"BP-ZE",cfg:"I4",asp:"NA",cc:1839,ps:130,psr:6500,q:130,tq:149,tqr:5000,rl:7000,kg:1057,fr:51,wb:2265,com:460,ty:"185/60R14",cd:0.426,lg:0.84,dfC:0,g97:0.84,g193:0.84,b97:49.7,b161:123.2,z97:8.8,top:202,cf:"HIGH",est:["com"],fz:{full:"1994 Mazda MX-5 Miata",fyr:1994,mfr:"Mazda",mdl:"MX-5 Miata",type:"RETRO SPORTS CARS",rar:"COMMON",unl:"Autoshow",cr:15000,pi:329,cls:"D",dt:"RWD",hp:128,ps:129.8,lbft:110,nm:149.1,lbs:2330,kg:1056.9,l:1.84,fr:51,a60:8.8,a100:25.962,b60ft:163.1,b60m:49.71,b100ft:404.3,b100m:123.23,g60:0.84,g120:0.84,mph:125.7,kmh:202.3,aeroEff:0.86,mechBal:0.5,aeroBal:0.41,bar:{sp:4.5,hd:4.2,ac:3.4,la:2.3,br:2.5,off:5.2},st:"complete",slug:"1994-mazda-mx-5-miata"}},
+{id:"nissan-skyline-gt-r-bcnr33",n:"1997 Nissan Skyline GT-R V-Spec",y:1997,sec:"AWD Turbo",ig:0,src:"forza",dt:"AWD",ep:"front",ec:"RB26DETT",cfg:"I6",asp:"twin-turbo",cc:2568,ps:280,psr:6800,q:280,tq:367,tqr:4400,rl:8000,kg:1540,fr:55,wb:2720,com:510,ty:"245/45R17",cd:0.294,lg:0.903,dfC:0.166,g97:0.91,g193:0.93,b97:42.5,b161:106.1,z97:5.245,top:281,cf:"HIGH",est:["com"],fz:{full:"1997 Nissan Skyline GT-R V-Spec",fyr:1997,mfr:"Nissan",mdl:"Skyline GT-R V-Spec",type:"RETRO SPORTS CARS",rar:"RARE",unl:"Festival Playlist",cr:237500,pi:555,cls:"B",dt:"AWD",hp:276,ps:279.8,lbft:271,nm:367.4,lbs:3395,kg:1539.9,l:2.57,fr:55,a60:5.245,a100:12.729,b60ft:139.4,b60m:42.49,b100ft:348,b100m:106.07,g60:0.91,g120:0.93,mph:174.9,kmh:281.5,aeroEff:0.86,mechBal:0.46,aeroBal:0.49,bar:{sp:6.4,hd:4.9,ac:5.6,la:3.1,br:3.6,off:5.9},st:"complete",slug:"1997-nissan-skyline-gt-r-v-spec"}},
+{id:"subaru-impreza-wrx-sti-gdb",n:"2004 Subaru IMPREZA WRX STI",y:2004,sec:"AWD Turbo",ig:0,src:"forza",dt:"AWD",ep:"front",ec:"EJ207",cfg:"flat-4",asp:"turbo",cc:1994,ps:282,psr:6400,q:282,tq:393,tqr:4400,rl:8000,kg:1483,fr:58,wb:2525,com:530,ty:"225/45R17",cd:0.37,lg:0.907,dfC:0.083,g97:0.91,g193:0.92,b97:41.9,b161:105.4,z97:4.748,top:260,cf:"MED",est:["com"],fz:{full:"2004 Subaru IMPREZA WRX STI",fyr:2004,mfr:"Subaru",mdl:"IMPREZA WRX STI",type:"MODERN RALLY",rar:"COMMON",unl:"Autoshow",cr:30000,pi:552,cls:"B",dt:"AWD",hp:278,ps:281.9,lbft:290,nm:393.2,lbs:3270,kg:1483.2,l:1.99,fr:58,a60:4.748,a100:12.277,b60ft:137.4,b60m:41.88,b100ft:345.8,b100m:105.4,g60:0.91,g120:0.92,mph:161.7,kmh:260.2,aeroEff:0.84,mechBal:0.44,aeroBal:0.49,bar:{sp:5.9,hd:4.9,ac:6,la:3.6,br:3.6,off:5.9},st:"complete",slug:"2004-subaru-impreza-wrx-sti"}}
+];
+
+const K=7023.5; // Nm = K * PS / rpm
+function ptw(c){return c.ps/(c.kg/1000);}
+
+// Grip model (modelled lateral g). Compound mu dominates; load-sensitivity (wide-per-weight)
+// and weight-transfer (CoM / track) are the modifiers. Stock downforce = 0.
+const COMPOUND_MU={eco:0.80,touring:0.87,performance:0.94,sport:1.00,grand:1.06};
+const COMPOUND_LBL={eco:'hard / eco',touring:'touring',performance:'performance',sport:'sport',grand:'sticky / modern'};
+const SRCLBL={'forza':'Forza Horizon 6<br><small>the entry is the Forza car</small>','modelled':'modelled<br><small>no Forza analogue</small>'};
+function tyreW(c){const m=c.ty.match(/(\d{3})/);return m?+m[0]:160;}
+function trackOf(c){return c.sec==='Kei'?1210:(tyreW(c)>=245?1560:1470);}
+function compoundOf(c){
+  const w=tyreW(c),tiers=['eco','touring','performance','sport','grand'];
+  const ti=w<165?0:w<195?1:w<225?2:w<255?3:4;
+  const cap=c.y<1990?2:c.y<2000?3:4; // period tyre-compound ceiling
+  return tiers[Math.min(ti,cap)];
+}
+// Grip is compound-first: rubber chemistry sets mu, from the era technology
+// ceiling times the stock tyre's quality tier. Contact-patch width is a small
+// secondary adjustment, no longer the main driver.
+function eraRubber(y){return y<1968?0.72:y<1975?0.76:y<1982?0.80:y<1988?0.835:y<1993?0.875:y<1998?0.905:y<2008?0.93:0.98;}
+function tierDelta(t){return t==='eco'?-0.04:t==='touring'?-0.02:t==='performance'?0.0:t==='sport'?0.02:0.075;}
+function compoundMu(c){return eraRubber(c.y)+tierDelta(compoundOf(c));}
+function gripG(c){
+  const w=tyreW(c);
+  const cm=compoundMu(c);
+  const widthEff=Math.max(0.4,Math.min(1.0,(cm-0.70)/0.30)); // hard rubber cannot exploit a big contact patch
+  const widthAdj=Math.max(-0.03,Math.min(0.045,(w-200)/1100))*widthEff; // contact patch, secondary to compound
+  const mu=cm+widthAdj;
+  const comR=(c.com||460)/trackOf(c);
+  const transfer=Math.max(0.80,Math.min(1.0,1-0.75*(comR-0.27))); // CoM/track weight transfer
+  let layout=1.0;
+  const active=/RB26DETT|VR38DETT/.test(c.ec)||c.n.indexOf('Lancer')>=0; // ATTESA E-TS Pro / Super AYC
+  if(c.dt==='AWD')layout+=active?0.035:0.02;          // active torque-vectoring earns an edge
+  else if(c.ep==='mid')layout+=0.015;                 // low polar moment
+  return mu*transfer*layout;                           // skidpad lateral g is mass-independent to first order
+}
+// A measured mechanical mu beats the formula wherever we have one, exactly as the lap harness
+// does it (gripMu in docs/design/car-performance/lapsim/lapsim-report.cjs). gripG stays the fallback.
+function gripOf(c){return c.lg!=null?c.lg:gripG(c);}
+function balanceOf(c){
+  let b=(52-(c.fr!=null?c.fr:55))/8;
+  if(c.dt==='FWD')b-=1.0;else if(c.dt==='RWD')b+=0.7;
+  if(c.ep==='rear')b+=1.0;else if(c.ep==='mid')b+=0.35;
+  return Math.max(-3,Math.min(3,b));
+}
+function balanceLabel(b){return b<-1.2?'understeer':b<-0.4?'mild understeer':b<0.4?'neutral':b<1.2?'lively':'tail-happy';}
+
+function ss(a,b,x){x=(x-a)/(b-a);x=x<0?0:x>1?1:x;return x*x*(3-2*x);}
+function gs(x,m,s){const d=(x-m)/s;return Math.exp(-0.5*d*d);}
+
+// Engine-character archetype, from aspiration + config + engine family.
+function archOf(c){
+  const ec=c.ec,cfg=c.cfg,asp=c.asp,rot=cfg.indexOf('rotary')===0;
+  if(rot)return asp.indexOf('turbo')>=0?'seqTwinR':'rotaryNA';
+  if(asp==='twin-turbo')return /2JZ-GTE/.test(ec)?'seqTwin':'parallelTwin';
+  if(asp==='turbo')return 'singleTurbo';
+  if(asp==='supercharged')return 'superch';
+  if(/B16|B18C|H22|F20C|K20A|C30A/.test(ec))return 'vtecNA';
+  if(['V8','V10','V12','flat-12'].indexOf(cfg)>=0)return 'bigNA';
+  return 'plainNA';
+}
+const ARCHLBL={plainNA:'NA - broad',bigNA:'big-capacity NA',superch:'supercharged - no lag',vtecNA:'VTEC / cam step',rotaryNA:'rotary - high-rpm',singleTurbo:'single turbo - spool step',parallelTwin:'parallel twin-turbo',seqTwin:'sequential twin - smooth handover',seqTwinR:'rotary sequential - valley of death'};
+
+// Normalised torque shape s(x), x=0..1 across idle..redline. Encodes real character:
+// turbo lag+step, sequential-twin valley of death, the VTEC cam crossover, rotary top-end.
+function shapeAt(x,A){
+  x=x<0?0:x>1?1:x;
+  switch(A){
+    case 'plainNA':return 0.60+0.42*gs(x,0.50,0.24);
+    case 'bigNA':return 0.74+0.30*gs(x,0.48,0.30);
+    case 'superch':return 0.80+0.24*gs(x,0.40,0.30);
+    case 'rotaryNA':return 0.40+0.60*ss(0.10,0.72,x)-0.14*ss(0.86,1,x);
+    case 'vtecNA':{const base=0.72+0.26*gs(x,0.52,0.27);const lift=0.12*ss(0.56,0.72,x);const dip=0.035*gs(x,0.55,0.05);return base+lift-dip;}
+    case 'singleTurbo':{const r=ss(0.20,0.40,x);const tp=1-0.22*ss(0.76,1,x);return (0.14+0.92*r)*tp;}
+    case 'parallelTwin':{const r=ss(0.14,0.34,x);const tp=1-0.16*ss(0.80,1,x);return (0.26+0.78*r)*tp;}
+    case 'seqTwin':{const sp=ss(0.06,0.18,x);const lv=0.90+0.10*ss(0.46,0.62,x);const nt=0.07*gs(x,0.44,0.05);return Math.max(0.20,(sp*lv-nt)*(1-0.16*ss(0.86,1,x)));}
+    case 'seqTwinR':{const sp=ss(0.06,0.18,x);const lv=0.86+0.14*ss(0.48,0.64,x);const nt=0.13*gs(x,0.45,0.045);return Math.max(0.18,(sp*lv-nt)*(1-0.16*ss(0.86,1,x)));}
+  }
+  return 0.7;
+}
+// Curve scaled so the shape's own peak equals the sourced peak torque; power derives.
+function curve(c){
+  const A=archOf(c);
+  const idle=Math.max(700,Math.round(c.rl*0.14));
+  const span=c.rl-idle,N=72;
+  let mx=0;for(let i=0;i<=N;i++){const s=shapeAt(i/N,A);if(s>mx)mx=s;}
+  const scale=c.tq/mx;
+  const pts=[];
+  for(let i=0;i<=N;i++){const x=i/N;const rpm=idle+span*x;const t=shapeAt(x,A)*scale;pts.push({rpm,t,p:t*rpm/K});}
+  let cx=null;if(A==='vtecNA')cx=0.60;else if(A==='seqTwin'||A==='seqTwinR')cx=0.46;
+  return {pts,idle,A,cx};
+}
+
+function dynoSVG(c,w,h,mini){
+  const cur=curve(c);const {pts,idle}=cur;
+  const maxT=Math.max(...pts.map(p=>p.t))*1.08;
+  const maxP=Math.max(...pts.map(p=>p.p))*1.08;
+  const padL=mini?2:26,padR=mini?2:26,padT=mini?3:10,padB=mini?2:16;
+  const x=rpm=>padL+(rpm-idle)/(c.rl-idle)*(w-padL-padR);
+  const yT=t=>h-padB-(t/maxT)*(h-padT-padB);
+  const yP=p=>h-padB-(p/maxP)*(h-padT-padB);
+  const path=(f)=>pts.map((p,i)=>(i?'L':'M')+x(p.rpm).toFixed(1)+' '+f(p).toFixed(1)).join(' ');
+  let grid='';
+  if(!mini){
+    for(let g=2000;g<c.rl;g+=2000){grid+=`<line x1="${x(g)}" y1="${padT}" x2="${x(g)}" y2="${h-padB}" stroke="#141b30" stroke-width="1"/><text x="${x(g)}" y="${h-3}" fill="#4b5578" font-size="8" text-anchor="middle" font-family="monospace">${g/1000}k</text>`;}
+  }
+  const tp=pts.reduce((a,b)=>b.t>a.t?b:a);
+  const pp=pts.reduce((a,b)=>b.p>a.p?b:a);
+  let marks='';
+  if(!mini){
+    marks=`<circle cx="${x(tp.rpm)}" cy="${yT(tp.t)}" r="2.5" fill="#ffb454"/>`+
+          `<circle cx="${x(pp.rpm)}" cy="${yP(pp.p)}" r="2.5" fill="#4fd6ff"/>`;
+    if(cur.cx!=null){const ax=padL+cur.cx*(w-padL-padR);const lbl=(cur.A==='seqTwin'||cur.A==='seqTwinR')?'valley':'VTEC';
+      marks+=`<line x1="${ax}" y1="${padT}" x2="${ax}" y2="${h-padB}" stroke="#b98cff" stroke-width="1" stroke-dasharray="3 3" opacity="0.6"/><text x="${ax}" y="${padT+8}" fill="#b98cff" font-size="8" text-anchor="middle" font-family="monospace">${lbl}</text>`;}
+    marks+=`<text x="2" y="${(yT(tp.t)+3).toFixed(0)}" fill="#ffb454" font-size="8" font-family="monospace">${Math.round(tp.t)}</text>`+
+      `<text x="2" y="${(yT(tp.t/2)+3).toFixed(0)}" fill="#ffb45499" font-size="8" font-family="monospace">${Math.round(tp.t/2)}</text>`+
+      `<text x="2" y="${h-padB-2}" fill="#ffb45566" font-size="7" font-family="monospace">Nm</text>`+
+      `<text x="${w-2}" y="${(yP(pp.p)+3).toFixed(0)}" fill="#4fd6ff" font-size="8" text-anchor="end" font-family="monospace">${Math.round(pp.p)}</text>`+
+      `<text x="${w-2}" y="${(yP(pp.p/2)+3).toFixed(0)}" fill="#4fd6ff99" font-size="8" text-anchor="end" font-family="monospace">${Math.round(pp.p/2)}</text>`+
+      `<text x="${w-2}" y="${h-padB-2}" fill="#4fd6ff66" font-size="7" text-anchor="end" font-family="monospace">PS</text>`;
+  }
+  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">${grid}`+
+    `<path d="${path(p=>yT(p.t))}" fill="none" stroke="#ffb454" stroke-width="${mini?1.5:2}" stroke-linejoin="round"/>`+
+    `<path d="${path(p=>yP(p.p))}" fill="none" stroke="#4fd6ff" stroke-width="${mini?1.5:2}" stroke-linejoin="round"/>`+
+    marks+`</svg>`;
+}
+
+const fmt=(v,u='')=>v==null?'<small>n/p</small>':(v+u);
+const el=id=>document.getElementById(id);
+let dir=-1; // -1 desc, 1 asc
+const filt={dt:null,asp:null,ig:null};
+
+function sortVal(c,k){
+  if(k==='ptw')return ptw(c);
+  if(k==='grip')return gripOf(c);
+  if(k==='n')return c.n.toLowerCase();
+  if(k==='z'){const v=c.z97!=null?c.z97:c.z;return v==null?9999:v;}
+  if(k==='top')return c.top==null?-1:c.top;
+  return c[k]!=null?c[k]:-1;
+}
+
+function render(){
+  const q=el('q').value.trim().toLowerCase();
+  const sk=el('sort').value;
+  let rows=CARS.filter(c=>{
+    if(filt.dt&&c.dt!==filt.dt)return false;
+    if(filt.asp){const isturbo=c.asp.indexOf('turbo')>=0;if(filt.asp==='turbo'&&!isturbo)return false;if(filt.asp==='NA'&&isturbo)return false;}
+    if(filt.ig&&!c.ig)return false;
+    if(q){const s=(c.n+' '+c.ec+' '+c.cfg+' '+c.sec).toLowerCase();if(s.indexOf(q)<0)return false;}
+    return true;
+  });
+  rows.sort((a,b)=>{const va=sortVal(a,sk),vb=sortVal(b,sk);return (va<vb?-1:va>vb?1:0)*dir;});
+  el('showing').textContent=rows.length;
+  el('total').textContent=CARS.length;
+  el('empty').hidden=rows.length>0;
+  const L=el('list');L.innerHTML='';
+  rows.forEach((c,i)=>{
+    const card=document.createElement('div');card.className='card';
+    const igTag=c.ig?'<span class="ig">IN GAME</span>':'';
+    card.innerHTML=`
+      <div class="head">
+        <span class="rank">${String(i+1).padStart(2,'0')}</span>
+        <div class="nm">
+          <div class="name">${c.n}${igTag}</div>
+          <div class="meta">${c.y} &middot; ${c.ec} ${c.cfg} ${c.asp==='NA'?'NA':c.asp} &middot; ${c.sec}</div>
+        </div>
+        <div class="keyfig"><span class="dt-badge dt-${c.dt}">${c.dt}</span><div class="big">${Math.round(ptw(c))}</div><div class="lbl">PS/TONNE</div></div>
+      </div>
+      <div class="spark" data-spark></div>
+      <div class="detail" data-detail></div>`;
+    card.querySelector('[data-spark]').innerHTML=dynoSVG(c,300,38,true);
+    card.querySelector('.head').addEventListener('click',()=>{
+      const open=card.classList.toggle('open');
+      const d=card.querySelector('[data-detail]');
+      if(open&&!d.dataset.built){d.innerHTML=detailHTML(c);d.dataset.built='1';
+        d.querySelector('[data-big]').innerHTML=dynoSVG(c,340,150,false);}
+    });
+    L.appendChild(card);
+  });
+}
+
+// Every value in the Forza block resolves to one of three states, and a missing figure can never
+// be mistaken for a measured one: a number, "not reached" (the car cannot hit the test speed, so
+// the run fails upstream and the absence is itself data), or the whole-car "not in Forza" panel.
+const NR='<span class="nf">not reached<br><small>below the test speed</small></span>';
+const cellOf=(k,v,warn)=>`<div class="cell${warn?' warn':''}"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+const sectOf=(t,cls,hint)=>`<div class="sect"><div class="h${cls?' '+cls:''}">${t}</div>`+
+  (hint?`<div class="hint">${hint}</div>`:'')+`</div>`;
+const gridOf=cells=>`<div class="grid">${cells.join('')}</div>`;
+
+// The six panel bars, each out of 10, in the order the game lists them.
+const BARS=[['sp','Speed','var(--cyan)'],['hd','Handling','var(--fwd)'],['ac','Acceleration','var(--amber)'],
+            ['la','Launch','var(--violet)'],['br','Braking','var(--pink)'],['off','Offroad','var(--awd)']];
+function barsHTML(b){
+  const rows=BARS.map(x=>{
+    const v=b&&b[x[0]]!=null?b[x[0]]:null;
+    const w=v==null?0:Math.max(0,Math.min(100,v*10));
+    const shown=v==null?'<span class="nf">n/a</span>':v.toFixed(1);
+    return `<div class="bar"><span class="bk">${x[1]}</span>`+
+      `<span class="bt"><span class="bf" style="width:${w.toFixed(1)}%;background:${x[2]}"></span></span>`+
+      `<span class="bv">${shown}</span></div>`;
+  });
+  return `<div class="bars">${rows.join('')}</div>`;
+}
+
+// The whole published record for the car, not only the slice the physics model consumes.
+function forzaHTML(c){
+  const f=c.fz;
+  const slot=b=>sectOf('Forza Horizon 6 panel','','Nothing measured for this car. What is absent, and why.')+b;
+  if(!f)return slot(`<div class="nofz"><span class="t">Not in Forza Horizon 6</span>
+    No car in the game maps to this one, so there is nothing measured to show: no PI, price, class
+    or rarity, no Forza power, torque, kerb or weight distribution, none of the ten simulation
+    results and none of the six performance bars. Every figure above is web-sourced, and the grip,
+    downforce and drag are the model's own output rather than a reading off anything.</div>`);
+  if(f.st==='no-specs')return slot(`<div class="nofz"><span class="t">In Forza Horizon 6, no stats published</span>
+    The game carries this car as <b>${f.full}</b> (${f.mfr}, ${f.fyr}, unlocked through
+    ${f.unl}), but the source publishes no stats block for it at all: type, rarity, price, PI,
+    class, drivetrain, every specification, all ten simulation results and all six bars come back
+    empty on the index and on the car's own detail page alike. Nothing here is taken from it.</div>`);
+  const na='<span class="nf">not published</span>';
+  const txt=v=>v==null?na:v;
+  const two=(a,ua,b,ub)=>a==null?na:`<b>${a}</b> ${ua} <small>${b} ${ub}</small>`;
+  const one=(v,u,dp,miss)=>v==null?(miss||NR):`<b>${dp!=null?v.toFixed(dp):v}</b>${u?' '+u:''}`;
+  const dual=(a,ua,b,ub,miss)=>a==null?(miss||NR):`<b>${a}</b> ${ua} <small>${b} ${ub}</small>`;
+  const tags=[
+    `<span class="tag pi">PI <b>${txt(f.pi)}</b>${f.cls?' &middot; class '+f.cls:''}</span>`,
+    `<span class="tag">${txt(f.dt)}</span>`,
+    `<span class="tag rar">${txt(f.rar)}</span>`,
+    `<span class="tag">${txt(f.type)}</span>`,
+    `<span class="tag">${txt(f.unl)}${f.how?' &middot; '+f.how:''}</span>`,
+    `<span class="tag">${f.cr==null?na:f.cr.toLocaleString('en-GB')+' CR'}</span>`,
+    `<span class="tag${f.st==='complete'?'':' flag'}">${f.st}</span>`,
+  ].concat(c.srcWarn?['<span class="tag flag">panel provenance suspect &middot; see srcWarn above</span>']:[]).join('');
+  const ident=gridOf([
+    cellOf('Year',f.fyr),
+    cellOf('Manufacturer',f.mfr),
+    cellOf('Model',f.mdl),
+  ]);
+  const tech=gridOf([
+    cellOf('Power',two(f.ps,'PS',f.hp,'hp')),
+    cellOf('Torque',two(f.nm,'Nm',f.lbft,'lb-ft')),
+    cellOf('Weight',two(f.kg,'kg',f.lbs,'lbs')),
+    cellOf('Displacement',f.l==null?na:`<b>${f.l}</b> L <small>${Math.round(f.l*1000)} cc</small>`),
+    cellOf('Front weight',f.fr==null?na:`<b>${f.fr}</b>% front`),
+  ]);
+  // The metric restatement of the test rides along only where there is a figure: stacking it
+  // under a "not reached" would read as a caption for a measurement that was never taken.
+  const sub=(v,html,s)=>v==null?html:html+`<br><small>${s}</small>`;
+  const sim=gridOf([
+    cellOf('0-60 mph accel',sub(f.a60,one(f.a60,'s',3),'0-97 km/h')),
+    cellOf('0-100 mph accel',sub(f.a100,one(f.a100,'s',3),'0-161 km/h')),
+    cellOf('60-0 mph braking',sub(f.b60m,dual(f.b60m,'m',f.b60ft,'ft'),'97-0 km/h')),
+    cellOf('100-0 mph braking',sub(f.b100m,dual(f.b100m,'m',f.b100ft,'ft'),'161-0 km/h')),
+    cellOf('Lateral g at 60 mph',sub(f.g60,one(f.g60,'g'),'cornering at 97 km/h')),
+    cellOf('Lateral g at 120 mph',sub(f.g120,one(f.g120,'g'),'cornering at 193 km/h')),
+    cellOf('Top speed',dual(f.kmh,'km/h',f.mph,'mph',na)),
+    cellOf('Aero efficiency',one(f.aeroEff,'',2,na)),
+    cellOf('Mech balance',one(f.mechBal,'',2,na)),
+    cellOf('Aero balance',one(f.aeroBal,'',2,na)),
+  ]);
+  const status=f.st==='below-test-speed'
+    ? `This car tops out below one of the test speeds, so the game reports that run as failed and
+       the site prints no figure. Those cells read <b>not reached</b>: an absence with a reason,
+       not an unmeasured gap.`
+    : `All ten results present.`;
+  return sectOf('Forza Horizon 6 panel','',
+      `The complete published record, source page <b>${f.slug}</b>, every field cross-checked
+       against that page. Where the book runs Forza's figures these are the same numbers in the
+       source's own units; the rest is panel data the model does not consume. The site publishes
+       imperial, so the metric column is a conversion.`)+
+    `<div class="fzname">${f.full}</div><div class="tags">${tags}</div>`+ident+
+    sectOf('Technical specs','',`As the panel shows them, both units.`)+tech+
+    sectOf('Simulation results, all ten','',
+      `Acceleration is measured to <b>60 mph</b> and to <b>100 mph</b> only. There is no 0-120 mph
+       time in the source and none is estimated here: the 120 mph figure below is <b>lateral g</b>,
+       a cornering-grip reading, not an acceleration. In metric the three test speeds are 97, 161
+       and 193 km/h. ${status}`)+sim+
+    sectOf('Performance bars','',`Each out of 10, as the game's own stat bars.`)+barsHTML(f.bar);
+}
+
+// Ours: what the book computes off the specs and the panel. Published by nobody.
+function derivedHTML(c){
+  const cells=[];
+  if(c.lg!=null){
+    cells.push(cellOf('Mech grip <span class="nf">lg</span>',
+      `<b style="color:var(--fwd)">${c.lg.toFixed(3)}</b> g <small>downforce stripped out</small>`));
+    cells.push(cellOf('Panel readings',`<b>${c.g97}</b> g at 97 km/h <small>60 mph</small><br><b>${c.g193}</b> g at 193 km/h <small>120 mph</small>`+(c.gOvr?'<br><small style="color:var(--amber)">overridden, see below</small>':''),!!c.gOvr));
+  }else{
+    cells.push(cellOf('Mech grip <span class="nf">modelled</span>',
+      `<b style="color:var(--fwd)">${gripG(c).toFixed(3)}</b> g <small>${COMPOUND_LBL[compoundOf(c)]}</small>`));
+    cells.push(cellOf('Panel readings','<span class="nf">nothing measured</span>'));
+  }
+  cells.push(cellOf('Downforce <span class="nf">dfC</span>',
+    c.dfC!=null
+      ? `<b>${c.dfC.toFixed(3)}</b> coeff`+(c.dfC===0?' <small>none measurable</small>':'')
+      : '<span class="nf">taken as zero, nothing measured</span>',
+    !!c.aeroSus&&c.dfC>0));
+  cells.push(cellOf('Drag <span class="nf">cd</span>',c.cd+e0(c,'cd'),!!c.gearLtd));
+  cells.push(cellOf('Balance',balanceLabel(balanceOf(c))+(c.fr!=null?` <small>${c.fr}% fr</small>`:'')));
+  const flags=[];
+  if(c.gOvr)flags.push(`<span class="tag flag">gOvr</span> ${c.gOvr}`);
+  if(c.srcWarn)flags.push(`<span class="tag flag">srcWarn</span> ${c.srcWarn}`);
+  if(c.gearLtd)flags.push(`<span class="tag flag">gearLtd</span> the top-speed route to drag was rejected: the car
+    runs out of gearing before it runs out of thrust, so cd stays the geometric estimate.`);
+  if(c.aeroSus)flags.push(`<span class="tag flag">aeroSus</span> this car's top speed is under 193 km/h, so the
+    120 mph lateral reading is an extrapolation rather than a second measurement, and dfC inherits that. Read the
+    six cars carrying this flag as suspect together: their median grip rise is 5.8% against 2.2% across the 57 cars
+    that genuinely exceed 193 km/h, which reads as an artefact of the extrapolation rather than as real downforce.`);
+  if(!flags.length)flags.push(`<span class="nf">no flags set on this car.</span>`);
+  return sectOf('Derived physics, ours','ours',
+      `Computed by us from the figures above; no source publishes these. ${flags.join(' ')}`)+gridOf(cells);
+}
+function e0(c,k){return c.est&&c.est.indexOf(k)>=0?' <small>est</small>':'';}
+
+// Where the figures came from. One source per car, and nothing kept alongside it.
+function provenanceHTML(c){
+  const cells=[cellOf('Spec source',SRCLBL[c.src]||SRCLBL.modelled),
+               cellOf('Join key <span class="nf">id</span>',`<span class="nf">${c.id}</span>`)];
+  const hint=c.src==='forza'
+    ? `Everything above is Forza's, identity included: this card is that car, not ours wearing its
+       numbers. No pre-Forza figures are carried alongside, because a second set would only ever be
+       a second answer to a question that has one.`
+    : `Web-sourced and modelled throughout. Nothing here was measured off anything.`;
+  return sectOf('Provenance','',hint)+gridOf(cells);
+}
+
+function detailHTML(c){
+  const cell=cellOf;
+  const e=k=>e0(c,k);
+  const powerCell=c.q&&c.q!==c.ps
+    ? cell('Power','<b style="color:var(--cyan)">'+c.ps+'</b> PS <small>real</small><br><small>quoted '+c.q+' (gentleman&#39;s cap)</small>')
+    : cell('Power','<b style="color:var(--cyan)">'+c.ps+'</b> PS @ '+c.psr);
+  const grid=[
+    powerCell,
+    cell('Torque',c.tq+' Nm @ '+c.tqr),
+    cell('Redline',fmt(c.rl,' rpm')+e('rl')),
+    cell('Weight',c.kg+' kg'),
+    cell('Power/tonne','<b>'+Math.round(ptw(c))+'</b> PS/t'),
+    cell('Displacement',c.cc+' cc'),
+    cell('Drivetrain',c.dt+' &middot; '+c.ep),
+    cell('Weight dist',c.fr!=null?(c.fr+'% front'+e('fr')):'<small>n/p</small>'),
+    cell('Wheelbase',c.wb+' mm'),
+    cell('CoM height',c.com+' mm'+e('com')),
+    cell('Stock tyre',c.ty),
+    c.z97!=null
+      ? cell('0-97 km/h','<b>'+c.z97.toFixed(2)+'</b> s <small>Forza measured</small>'
+          // z161 is normally read off the fz block; it appears here only where a gOvr replaced
+          // the scraped figure, since fz stays verbatim and so cannot show the correction.
+          +(c.z161!=null?'<br><b>'+c.z161.toFixed(3)+'</b> s <small>to 161, overridden</small>':''))
+      : cell('0-100 km/h',fmt(c.z,' s')+e('z')),
+    cell('Braking',c.b97!=null?(c.b97+' m <small>from 97</small>'+(c.b161!=null?'<br>'+c.b161+' m <small>from 161</small>':'<br><small>cannot reach 161 km/h</small>')):'<small>n/p</small>'),
+    cell('Top speed',c.top!=null?(c.top+' km/h'):'<small>n/p</small>'),
+  ];
+  const gripNote=c.lg!=null
+    ? `This entry <b>is</b> the Forza car: its name, its year and its figures, specs and measurements together. Taking its measured grip while running our own power, mass and badge would test a model of one car against measurements of another. Grip and downforce come from ${c.gOvr?'a lateral pair at 97 and 193 km/h that is <b>not</b> the panel\'s':'the panel\'s lateral g at 97 and 193 km/h'} (${c.g97} and ${c.g193}), fitted to g(v) = mu (1 + k v<sup>2</sup>) so the mechanical and aero halves come apart.${c.gOvr?' See the gOvr flag above for why the panel pair was rejected and what replaced it.':''} Drag is backed out of the measured top speed against the real frontal area.`
+    : `<span class="est">Grip</span> is a modelled lateral-g (stock compound mu, adjusted for weight transfer and wide-per-weight) and downforce is taken as zero: no Forza analogue exists for this car. Compound tiers and the mu table are first-pass and tunable.`;
+  return `<div class="dyno"><div class="legend"><span class="t">&#9473; torque</span><span class="p">&#9473; power</span><span style="color:var(--violet)">${ARCHLBL[archOf(c)]}</span></div><div data-big></div></div>
+    ${sectOf('Spec book figures','',c.src!=='modelled'
+       ? 'What the model runs for this car, which is the Forza car entire: name, year and every figure, taken together with its measurements.'
+       : c.fz
+         ? 'The name and year are Forza&#39;s; the figures cannot be, because the game carries this car and publishes nothing at all for it. Everything below is web-sourced and modelled.'
+         : 'What the model runs for this car: web-sourced and modelled, with no Forza analogue behind it.')}
+    ${gridOf(grid)}
+    ${derivedHTML(c)}
+    ${forzaHTML(c)}
+    ${provenanceHTML(c)}
+    <div class="note">Confidence <span class="cf cf-${c.cf}">${c.cf}</span> &middot; <span class="est">est</span> fields are estimated from body type &amp; layout. Curve modelled from the sourced peak points, shaped by engine character. ${gripNote}</div>`;
+}
+
+el('q').addEventListener('input',render);
+el('sort').addEventListener('change',render);
+el('dir').addEventListener('click',()=>{dir*=-1;el('dir').innerHTML=dir<0?'&darr;':'&uarr;';render();});
+document.querySelectorAll('#dtchips .chip').forEach(ch=>{
+  ch.addEventListener('click',()=>{
+    const kind=ch.dataset.dt?'dt':ch.dataset.asp?'asp':'ig';
+    const val=ch.dataset.dt||ch.dataset.asp||'1';
+    if(filt[kind]===val){filt[kind]=null;ch.classList.remove('on');}
+    else{
+      if(kind!=='ig')document.querySelectorAll(`#dtchips .chip[data-${kind}]`).forEach(o=>o.classList.remove('on'));
+      filt[kind]=val;ch.classList.add('on');
+    }
+    render();
+  });
+});
+render();
+</script>

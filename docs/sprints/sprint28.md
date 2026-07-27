@@ -1,6 +1,6 @@
 # Sprint 28: Drill-down UI and the parts catalog remap
 
-*Source: maintainer playtest 2026-07-11 (`docs/playtest-notes-2026-07-11.md`, notes 9
+*Source: maintainer playtest 2026-07-11 (`docs/playtest-notes/playtest-notes-2026-07-11.md`, notes 9
 (remainder)), the rotary content hole found during triage, and the maintainer's 2026-07-11
 additions: NA forced-induction installs (turbo or supercharger) and underglow kits. Status:
 **designed, ready to implement.** Depends on Sprints 26-27. Single Sonnet implementation

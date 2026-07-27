@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-23. Source: the maintainer's D3 ruling ("build the mechanic where a player
 needs to pay to attend the nicer auctions, but set it to 0 by default",
-`docs/design/midgame-decision-brief.md`). The zeros ARE the maintainer-approved lever values
+`docs/design/archive/midgame-decision-brief.md`). The zeros ARE the maintainer-approved lever values
 (directive 22 satisfied by the ruling itself); tuning them upward is a playtest decision
 later. Queued behind Sprint 115's implementation (shared files).
 

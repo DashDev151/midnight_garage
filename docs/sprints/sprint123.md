@@ -1,7 +1,7 @@
 # Sprint 123: Grip drives handling, the two-figure model (car spec arc, integration phase 1)
 
-**Source design:** `docs/design/car-spec-integration-plan.md` and the signed-off grip model in
-`docs/design/car-spec-book.html`. Maintainer-confirmed 2026-07-24: the two-segment display curve,
+**Source design:** `docs/design/car-performance/archive/car-spec-integration-plan.md` and the signed-off grip model in
+`docs/design/car-performance/car-spec-book.html`. Maintainer-confirmed 2026-07-24: the two-segment display curve,
 the two grip figures, the aero-on-high-speed split, and the handling levers.
 
 This sprint lands the cornering half: `computeGrip` (uncapped mechanical lateral g) and `balanceOf`

@@ -108,7 +108,7 @@ const NOOP_PIPELINE_RESULT = (state: GameState): PipelineOpResult => ({
  * `BodyLineCapability`): `unlocked` is tier 2 owned or the line hired today
  * (gates weld and the better paint finish); `fullCapability` is tier 3 owned
  * or hired today (hiring always grants the WHOLE line, not just tier 2 - see
- * `docs/design/workshop-rework.md`'s tool-gates section) - gates the best
+ * `docs/design/systems/workshop-rework.md`'s tool-gates section) - gates the best
  * polish floor. */
 function bodyLineCapability(state: GameState): BodyLineCapability {
   return {

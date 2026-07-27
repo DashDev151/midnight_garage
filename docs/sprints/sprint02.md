@@ -24,7 +24,7 @@ state hash, every time.
    function in `packages/sim`, called on demand (by tests now, by the UI later), never written
    into `GameState`. One source of truth, no staleness risk.
 2. **First-pass formulas, explicitly tunable.** The stat formulas, service-bay income, and the
-   weekly rent constant are v1 numbers seeded from `docs/economy-v0.md` and the GDD, marked in
+   weekly rent constant are v1 numbers seeded from `docs/design/archive/economy-v0.md` and the GDD, marked in
    code comments as subject to the Sprint 3 balance harness. Getting the *shape* right (what
    inputs feed each stat) matters more than the exact coefficients this sprint.
 3. **`GameState` gains two fields:** `jobs: Job[]` (in-progress labor, GDD 4.1 "build sheet" /

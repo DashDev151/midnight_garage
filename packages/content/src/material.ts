@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 /**
- * The eight stages of the body pipeline (docs/design/workshop-rework.md's
+ * The eight stages of the body pipeline (docs/design/systems/workshop-rework.md's
  * pipeline table), in sequence: strip/prep bares a zone to raw finish;
  * metalwork straightens it by hand (`beat`), with the body line (`weld`), or
  * by fitting a real panel (`swapPanel`); `fillAndSand` and `prime` ready a

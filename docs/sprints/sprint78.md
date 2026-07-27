@@ -1,6 +1,6 @@
 # Sprint 78 - Story missions III: the campaign
 
-**Source:** `docs/design/story-builds-spec.md` v2 + maintainer ruling 2026-07-15 (v1.0 ships a
+**Source:** `docs/design/systems/story-builds-spec.md` v2 + maintainer ruling 2026-07-15 (v1.0 ships a
 hand-authored campaign with recurring named characters; procedural commissions deferred to
 endgame). Depends on Sprints 76-77. This sprint replaces the placeholders with the real
 campaign and closes the arc.

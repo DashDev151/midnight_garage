@@ -1,6 +1,6 @@
 # Sprint 25: Playtest triage: bugs, guardrails, and small UX fixes
 
-*Source: maintainer playtest 2026-07-11 (`docs/playtest-notes-2026-07-11.md`, notes 1, 2, 3, 5
+*Source: maintainer playtest 2026-07-11 (`docs/playtest-notes/playtest-notes-2026-07-11.md`, notes 1, 2, 3, 5
 (interim), 6 (partial), 9 (partial), 10, 11, 12, 13, 14 (interim)), plus same-day maintainer
 follow-up direction (no interim patch on inspection costs; never show book value). Status:
 **implemented; all checks green except one flagged balance-invariant shift (see Exit).** First

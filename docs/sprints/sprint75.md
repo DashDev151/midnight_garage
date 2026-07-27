@@ -1,7 +1,7 @@
 # Sprint 75 - Diagnosis III: integration, the organic teacher, and modified cars in the wild
 
-**Source:** `docs/design/diagnosis-spec.md` v2 ("the organic teacher", harness disclosure) +
-`docs/design/component-hierarchy-spec.md` ("synergies, recorded") + the standing `TODO.md` item
+**Source:** `docs/design/systems/diagnosis-spec.md` v2 ("the organic teacher", harness disclosure) +
+`docs/design/systems/component-hierarchy-spec.md` ("synergies, recorded") + the standing `TODO.md` item
 "generated cars should sometimes arrive with AFTERMARKET parts already installed" (maintainer
 note 2026-07-12), which rides in this sprint by design. Depends on Sprints 70-74.
 

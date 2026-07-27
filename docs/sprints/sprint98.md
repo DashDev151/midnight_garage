@@ -1,7 +1,7 @@
 # Sprint 98: The ledger and the two numbers (economy legibility, stage 1)
 
 **Date:** 2026-07-19
-**Source:** `docs/design/economy-legibility.md` (approved 2026-07-19), planks 1, 2 and 4.
+**Source:** `docs/design/systems/economy-legibility.md` (approved 2026-07-19), planks 1, 2 and 4.
 Playtest 2026-07-19 items 26-28 are the origin. Sprints 99-101 carry planks 3 and the
 mileage option.
 

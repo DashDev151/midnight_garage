@@ -48,7 +48,7 @@ the repair surface itself.
    Nothing is only-on-hover any more.
 4. **Placeholder pixel art (12), to the orchestrator's spec.** Each of the 29 parts and
    3 assemblies gets an indexed-template sprite authored to
-   `docs/design/part-sprite-placeholders.md` (orchestrator-authored, maintainer bar:
+   `docs/design/art/part-sprite-placeholders.md` (orchestrator-authored, maintainer bar:
    "make something nice"): fixed grids (24x16 / 32x22 at 4x nearest-neighbour), the
    five-colour token palette with amber as garnish only, silhouette-first with
    per-part identity notes, one light source, closed outlines, consistent projection.
@@ -113,7 +113,7 @@ and orchestrator-designed for the sprites). The record:
   panel below. Labour and yen are inline on every affordance; the confirm bar itemises
   per staged action.
 - **The sprites, to spec.** All 29 part + 3 assembly sprites authored to
-  `docs/design/part-sprite-placeholders.md` (orchestrator-authored), reviewed over three
+  `docs/design/art/part-sprite-placeholders.md` (orchestrator-authored), reviewed over three
   contact-sheet rounds and signed off. Rendered in the diagram blocks (ghosted via CSS
   for vacancies) AND, per decision 7, in the parts-shop catalogue card, both through the
   one `partSpriteDataUrl` module keyed on `carPartId`. Launch-blocking replacement TODO

@@ -1,6 +1,6 @@
 # Sprint 54 - Economy Rebuild 2 of 3: the value law (repair is always worth more than it costs)
 
-**Source:** playtest 2026-07-14 item 9 (`docs/playtest-notes-2026-07-14.md`); second sprint of
+**Source:** playtest 2026-07-14 item 9 (`docs/playtest-notes/playtest-notes-2026-07-14.md`); second sprint of
 the Economy Rebuild arc. Sprint 53 made repair costs proportionate to the car; this sprint makes
 repair VALUE exceed repair cost everywhere, kills the dead zone, and stops the auction from
 generating unrecoverable lots. Depends on Sprint 53 (class-scaled bills) - without it the value

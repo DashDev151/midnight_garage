@@ -1,7 +1,7 @@
 # Sprint 113: The core-loop law (every car earns its keep)
 
 **Date:** 2026-07-22
-**Source:** the long-run playtest blocker (`docs/playtest-notes-2026-07-22-long-run.md` item 7)
+**Source:** the long-run playtest blocker (`docs/playtest-notes/playtest-notes-2026-07-22-long-run.md` item 7)
 and the maintainer's ruling that settled it, quoted for the record: "The entire gameplay loop
 is Buying a car, FIXING IT, and then selling it. Without the FIXING IT part there IS NO
 GAMEPLAY LOOP. IT MUST ALWAYS BE PROFITABLE TO FIX." Scope confirmed same session, option (a):

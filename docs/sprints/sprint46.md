@@ -1,6 +1,6 @@
 # Sprint 46 - Honest auctions: the final-call fix and named outcomes
 
-**Source:** playtest 2026-07-13 pass 2 (`docs/playtest-notes-2026-07-13-pass2.md`), items 10, 11,
+**Source:** playtest 2026-07-13 pass 2 (`docs/playtest-notes/playtest-notes-2026-07-13-pass2.md`), items 10, 11,
 12. Opens the **Legibility & Trust arc (Sprints 46-52)**.
 
 ## Confirmed root causes (code discovery, 2026-07-13)

@@ -17,6 +17,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "balance:run": "pnpm --filter @midnight-garage/sim balance:run",
+    "docs:failure-map": "node scripts/generateFailureMap.cjs",
     "prepare": "husky"
   },
   "lint-staged": {

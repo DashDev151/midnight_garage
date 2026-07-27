@@ -90,7 +90,7 @@ const CarSymptomSchema = z.object({
 })
 
 /**
- * One zone's work-model state (docs/design/workshop-rework.md's model
+ * One zone's work-model state (docs/design/systems/workshop-rework.md's model
  * section): `metal` (0 straight to 3 rotten or bent), `surface` (0 ready to 2
  * raw), and `finish` (0 show to 3 flaking or bare - underseal on the chassis
  * zone rather than paint). `panelMissing` is true only while the zone's panel

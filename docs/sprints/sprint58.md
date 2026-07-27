@@ -1,6 +1,6 @@
 # Sprint 58 - Chrome cleanup: one menu title, one save surface, and a parts market that shows its cart
 
-**Source:** playtest 2026-07-14 items 1 and 10 (`docs/playtest-notes-2026-07-14.md`). Small,
+**Source:** playtest 2026-07-14 items 1 and 10 (`docs/playtest-notes/playtest-notes-2026-07-14.md`). Small,
 independent UI polish; batched last so the economy arc and the bigger UI sprints go first.
 
 ## Confirmed current state (code discovery, 2026-07-14)

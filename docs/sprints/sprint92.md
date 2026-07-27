@@ -1,6 +1,6 @@
 # Sprint 92 - Uniform tool access (rent or own, every group)
 
-The first of two tooling sprints implementing `docs/design/tooling-system.md` (read it
+The first of two tooling sprints implementing `docs/design/systems/tooling-system.md` (read it
 first; it is the source of truth). This sprint delivers Axis 1 (ACCESS) and makes rental
 legible. No band-model change; that is Sprint 93.
 

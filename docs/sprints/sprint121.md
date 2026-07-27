@@ -1,6 +1,6 @@
 # Sprint 121: The flourishes (workshop rework, phase 3)
 
-**Source design:** `docs/design/workshop-rework.md` (FINAL, maintainer-approved 2026-07-23).
+**Source design:** `docs/design/systems/workshop-rework.md` (FINAL, maintainer-approved 2026-07-23).
 Opens after Sprint 120 exits. Carries its own lever list (premium material prices, style
 weights, colour-taste factors) for directive-22 sign-off before any agent runs; the list is
 drafted when this sprint opens, against the tuned state of the Sprint 119 economy.

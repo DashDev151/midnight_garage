@@ -71,7 +71,7 @@ deliberately per sprint with movement disclosed, never silently forced green.
 - The GDD's equipment model (S3.2, S9.0, S9.1, S6.1) is amended by this arc; a draft diff is
   produced in Sprint 39 for maintainer sign-off. Note: GDD S9.0 already says "Tools, not levels",
   so the arc sharpens the GDD's stated intent.
-- `docs/design/skill-progression.md` (pre-arc) is reconciled against the bible at arc close:
+- `docs/design/parked/skill-progression.md` (pre-arc) is reconciled against the bible at arc close:
   superseded content archived, not deleted (clean-codebase rule).
 - The build logbook / wall-of-builds idea goes to `IDEAS.md` (post-launch).
 

@@ -436,7 +436,7 @@ maintainer or CI run can catch a coherence drift before a playtest does.
 - 2026-07-19: **`diagnosis.fearPremium` RETIRED, and the ledger/two-number presentation law
   added** (Sprint 98, economy legibility stage 1; maintainer approval 2026-07-19: "agreed...
   this looks like a very good foundation. go ahead", full design in
-  `docs/design/economy-legibility.md`). The sheet value is now exactly the cause-weighted
+  `docs/design/systems/economy-legibility.md`). The sheet value is now exactly the cause-weighted
   expectation (`sheetGuideValueYen === expectedTrueValueYen` before any narrowing) - the
   weighted odds ARE the fear, and the premium multiplier added a constant with no behaviour
   of its own. Consequence, asserted in `packages/sim/tests/valueLedger.test.ts`: the room's
@@ -454,7 +454,7 @@ maintainer or CI run can catch a coherence drift before a playtest does.
   Not a law change; audit table updated.
 - 2026-07-23: **The labour anchors retuned and renamed, machine hire recharged as a daily
   unlock, and the tutorial mission's payout trimmed to match** (Sprint 118, the workshop
-  rework phase 1a; labour and hire levers signed in `docs/design/workshop-rework.md`, the
+  rework phase 1a; labour and hire levers signed in `docs/design/systems/workshop-rework.md`, the
   payout cut and this doc alignment ordered by the maintainer in session: "keep the margin
   as it was, reduce Yuki's payment amount"). `energy.energyPerGradeByTier` renamed
   `energy.energyPerBandStepByToolTier` (10/6/4 -> 5/4/3); `energy.energyByClass` bolt-on

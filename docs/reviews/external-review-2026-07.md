@@ -56,7 +56,7 @@ The harness finding that full restoration doesn't complete profitable cycles in 
 just a harness note** - it may mean restoration is under-rewarded, which strikes at the game's core
 fantasy (hunt → *restore* → sell/enshrine). **Carry this explicitly into Fun Gate interviews:** do
 players *want* to restore, and does the payoff feel worth it? Documented as a design question in
-`docs/economy-v0.md` and to be added to the Sprint 08 (Fun Gate) interview script.
+`docs/design/archive/economy-v0.md` and to be added to the Sprint 08 (Fun Gate) interview script.
 
 ## 5a. `gameStore` god-store (Low)
 

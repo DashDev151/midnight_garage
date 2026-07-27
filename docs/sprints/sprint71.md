@@ -1,6 +1,6 @@
 # Sprint 71 - The teardown: uninstall, bench repair, reinstall, and the parts donor
 
-**Source:** `docs/design/component-hierarchy-spec.md` (maintainer scoping notes 2026-07-15,
+**Source:** `docs/design/systems/component-hierarchy-spec.md` (maintainer scoping notes 2026-07-15,
 expanded and approved the same day). Depends on Sprint 70 (provenance).
 
 **For the implementing agent:** verify every cited symbol before editing; STOP and re-locate if

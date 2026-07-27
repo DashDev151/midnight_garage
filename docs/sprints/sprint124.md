@@ -3,10 +3,10 @@
 **Status: IMPLEMENTED, ready for review. Lever table sections A and B signed by the maintainer
 2026-07-25 ("section A signed off", all five courses ship, integrate now, aero next sprint). See the
 Exit at the foot of this doc.** This is the second half of the car-spec arc
-(`docs/design/car-spec-integration-plan.md`): Sprint 123 made handling = grip + balance; this sprint
+(`docs/design/car-performance/archive/car-spec-integration-plan.md`): Sprint 123 made handling = grip + balance; this sprint
 replaces the placeholder lap formula with the calibrated grip+pace model. The physics is calibrated
-against the Forza gold standard (`docs/design/lap-calibration.md`, main field +/-3%); the prototype
-lives in `docs/design/lapsim/`.
+against the Forza gold standard (`docs/design/car-performance/archive/lap-calibration.md`, main field +/-3%); the prototype
+lives in `docs/design/car-performance/lapsim/`.
 
 ## Why this is not yet implemented
 
@@ -88,7 +88,7 @@ decision rather than fitted silently.
 
 The physics is Forza-calibrated; the four in-game course *shapes* are the prototype's invented
 archetypes (we have no Forza times for them, only for Legend Island). They are `[radius m, angle deg,
-straight m]` segment lists in `docs/design/lapsim/lapsim-report.cjs` (Touge / Mountain / Wangan /
+straight m]` segment lists in `docs/design/car-performance/lapsim/lapsim-report.cjs` (Touge / Mountain / Wangan /
 Circuit) plus the calibrated Legend Island. **Decisions for the maintainer:**
 
 1. Which courses ship in the game? (Recommend the four archetypes for variety; Legend Island stays a
@@ -174,7 +174,7 @@ aero deferred to the next sprint.
   torque-delivery ramp, and the agility term). It reuses the signed Sprint 123 `computeGrip`
   untouched. Every lever reads from content; only numerical-method details are local.
 - **Faithfulness proof.** `lapModelPace.test.ts` pins the port against the prototype
-  (`docs/design/lapsim/`) across six cars spanning every delivery archetype on four courses: all 24
+  (`docs/design/car-performance/lapsim/`) across six cars spanning every delivery archetype on four courses: all 24
   car-course pairs match to **0.000 s**.
 - **Consumers.** `lapTimeSecondsFor(car, model, context, courseId)` now resolves a real course
   (returns null for an unknown one, alongside the existing no-tyres/scrap contract). `courseId` is
@@ -200,5 +200,5 @@ numbers): null contracts, determinism, course-dependence, and monotonicity in po
 tyre grade, plus the sanity that power buys more on the bayshore than on a tight pass.
 
 **Known follow-ups (not regressions):** the kei outliers and the ~2-3% fast-field residual from the
-batch-1 calibration remain open in `docs/design/lap-calibration.md`; a later calibration pass would
+batch-1 calibration remain open in `docs/design/car-performance/archive/lap-calibration.md`; a later calibration pass would
 re-derive the two ceilings again, mechanically. Aero (`downforceCoeff`, speed-scaled) is Sprint 125.

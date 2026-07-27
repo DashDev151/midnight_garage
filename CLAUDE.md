@@ -51,19 +51,23 @@ roadmap to a free itch.io launch.
 
 **Current state:** Sprints 00-119 implemented and committed (Sprint 100 was superseded unbuilt
 by Sprint 110's live-room promotion; its doc records that). The workshop rework
-(`docs/design/workshop-rework.md`, FINAL) landed its phase 1 as Sprints 118-119; its views and
-flourishes (Sprints 120-121) are designed but not yet built. The car spec arc
-(`docs/design/car-spec-arc.md`) landed real stock specs (Sprint 122), grip-driven handling
-(123), and the grip-and-pace lap model over five real courses (124); the vetted spec book
-lives at `docs/design/car-spec-book.html`, the pace model's maths in
-`docs/design/pace-model-math.md`, and its calibration against the maintainer's Forza lap times
-in `docs/design/lap-calibration.md` (prototype harness: `docs/design/lapsim/`). Aero is next.
+(`docs/design/systems/workshop-rework.md`, FINAL) landed phase 1 as Sprints 118-119 and its views
+as Sprint 120; Sprint 121's flourishes are designed, not built.
+
+The **car performance model is LOCKED and validated** to about 2% on blind predictions against
+the maintainer's own driven laps. `docs/design/car-performance/` is the whole of it and its
+README is the design of record, including the list of what is still outstanding. **It lives only
+in its harness**: `packages/sim/src/performance.ts` still runs the older derived physics and
+`courses.json` still ships the superseded courses, so porting it is real, unscheduled work
+(`TODO.md`). Sprint 126 was overtaken before it was built and its lever table is dead.
 
 **Where the history lives, and why it is not here.** Each sprint's own
 `docs/sprints/sprintNN.md` Exit is its permanent record; `git log` has every hash. **This file
 never re-narrates them.** Before new work, read the current sprint's doc and the previous one (per
 the Sprint workflow above) plus `TODO.md` (open items with no sprint number attached, including
 the standing bot-harness rework and the parts-provenance rework scheduled after Sprint 69).
+`docs/README.md` explains the docs tree: which folders are law, which are live specs, and which
+are history that must never be read as current.
 
 ## Canonical design docs
 
@@ -84,8 +88,12 @@ roster for car scope). Bibles require explicit maintainer approval, recorded in 
   six laws, banned vocabulary.
 - `economy-bible.md` - car value, repair cost, parts pricing law (locked 2026-07-14): six laws,
   the anchor inventory, the centralised pricing formula.
-- `story-builds-spec.md` (landed Sprints 76-78) and `drive-mode-spec.md` (post-launch) - see
-  `TODO.md`.
+- `car-performance/README.md` - how a car physically behaves (LOCKED): the measured inputs, the
+  four courses, the accuracy, and what is outstanding. Amend on the same footing as a bible. It is
+  also the blueprint for `parked/drive-mode-spec.md`, which reads its per-car figures rather than
+  carrying a second set.
+- `systems/story-builds-spec.md` (landed Sprints 76-78) and `parked/drive-mode-spec.md`
+  (post-launch) - see `TODO.md`.
 
 ## Locked technical decisions (GDD §13, roadmap §5)
 

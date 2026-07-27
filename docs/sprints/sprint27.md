@@ -1,6 +1,6 @@
 # Sprint 27: Transparent value: cost-weighted pricing and pre-bid condition visibility
 
-*Source: maintainer playtest 2026-07-11 (`docs/playtest-notes-2026-07-11.md`, notes 6, 7, 8,
+*Source: maintainer playtest 2026-07-11 (`docs/playtest-notes/playtest-notes-2026-07-11.md`, notes 6, 7, 8,
 15) and the maintainer's 2026-07-11 follow-up decisions: the hidden-defect/inspection
 information game is paused (removed in Sprint 26; it may return only with a genuinely better
 design), and car value must weight by component cost. Status: **designed, ready to

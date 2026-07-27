@@ -1,6 +1,6 @@
 # Sprint 09 - Facilities & Bays (work capacity vs. storage)
 
-*Source: the committed requirements capture `docs/design/facilities-bays.md` (written 2026-07-09 at
+*Source: the committed requirements capture `docs/design/systems/facilities-bays.md` (written 2026-07-09 at
 the maintainer's request, agreed as the sprint directly after Sprint 08), elaborating GDD §258's
 "Tools, not levels" shop-equipment progression. This is planned scope, not new scope. Status:
 **implemented and locally verified - ready for review.***

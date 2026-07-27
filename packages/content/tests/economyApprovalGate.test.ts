@@ -14,7 +14,7 @@ import storyMissions from '../data/storyMissions.json'
  * Re-pinned for the labour and fitting retune (`energy.energyPerGradeByTier`
  * renamed to `energy.energyPerBandStepByToolTier`, 10/6/4 -> 5/4/3;
  * `energy.energyByClass["bolt-on"]` 10 -> 3; `energy.energyByClass.buried`
- * 20 -> 6) signed in `docs/design/workshop-rework.md`, Labour (signed
+ * 20 -> 6) signed in `docs/design/systems/workshop-rework.md`, Labour (signed
  * 2026-07-23).
  *
  * Re-pinned 2026-07-23 (maintainer order, in session): `four-wheels`
@@ -52,7 +52,7 @@ import storyMissions from '../data/storyMissions.json'
  * full-slick race build (mechanical mu ~1.51, per the Calsonic BNR32 Gr.A
  * telemetry) reads ~90 on the 0-100 handling stat instead of ~76. No current
  * (stock) car exceeds mu 1.10, so no displayed stat or payout moves; this only
- * sets the future modified-grip ceiling. Signed in docs/design/lap-calibration.md.
+ * sets the future modified-grip ceiling. Signed in docs/design/car-performance/archive/lap-calibration.md.
  *
  * Re-pinned for Sprint 124's grip-and-pace lap model (lever table sections A and
  * B, signed by the maintainer 2026-07-25 in docs/sprints/sprint124.md): the old
@@ -82,7 +82,7 @@ import storyMissions from '../data/storyMissions.json'
  * to 0.3"): `statFormulas.pace.agilityWeight` 0.5 -> 0.3. The agility term is the
  * model's stand-in for the direction-change time a point-mass sim cannot represent,
  * and at 0.5 it over-penalised every car. Measured against twelve driven Forza laps
- * (docs/design/lap-calibration.md): at 0.3 the nine originally-fitted cars land at
+ * (docs/design/car-performance/archive/lap-calibration.md): at 0.3 the nine originally-fitted cars land at
  * +0.01% mean error and the three blind-test cars improve from +4.6% to +1.5%.
  * The two lap ceilings re-derive mechanically (`the-column-clock` 252.2 -> 237.1,
  * `under-one-fifteen` 248 -> 230.1); payouts are untouched.

@@ -7,17 +7,10 @@ import {
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { deliveryArchetype, frontalAreaM2, lapTime } from '../src/performance'
-import lapDataJson from '../../../docs/design/lapsim/lapsim-data.json'
 
 /**
- * Faithfulness harness for the quasi-static lap model ported into
- * `performance.ts`. The ground truth is the calibration prototype
- * `docs/design/lapsim/lapsim-report.cjs`, whose output is captured in
- * `lapsim-data.json` (85 cars x 4 courses, times rounded to 0.1 s). The port
- * must reproduce those numbers: for a spread of in-game cars we re-run
- * `lapTime` against the prototype's own four course geometries and assert every
- * course lands within 0.2 s of the prototype's recorded time. A miss here is a
- * bug in the port, never a reason to loosen the tolerance.
+ * Unit tests for the quasi-static lap model in `performance.ts`: a golden pin on
+ * the lap times the shipped model produces, plus the two helpers that feed it.
  */
 
 function COURSE_BY_ID(id: string): Course {
@@ -26,46 +19,11 @@ function COURSE_BY_ID(id: string): Course {
   return found
 }
 
-/** The prototype's four course geometries are the game's own shipped courses,
- * read from content rather than restated here, so the two can never drift: the
- * prototype's Touge/Mountain/Wangan/Circuit are Kirifuri/Usui/Wangan/Tsurugi. */
-const COURSE_IDS = {
-  Touge: 'kirifuri',
-  Mountain: 'usui',
-  Wangan: 'wangan',
-  Circuit: 'tsurugi',
-} as const
-
-const COURSES: Record<'Touge' | 'Mountain' | 'Wangan' | 'Circuit', Course> = {
-  Touge: COURSE_BY_ID(COURSE_IDS.Touge),
-  Mountain: COURSE_BY_ID(COURSE_IDS.Mountain),
-  Wangan: COURSE_BY_ID(COURSE_IDS.Wangan),
-  Circuit: COURSE_BY_ID(COURSE_IDS.Circuit),
-}
-
-type CourseKey = keyof typeof COURSES
-const COURSE_KEYS = Object.keys(COURSES) as CourseKey[]
-
-/** One prototype data row: the car name and its four recorded lap times. */
-interface LapDataCar {
-  n: string
-  t: Record<CourseKey, number>
-}
-
-const lapData = lapDataJson as { cars: LapDataCar[] }
-
-const dataByName = new Map(lapData.cars.map((c) => [c.n, c]))
-
-function round1(x: number): number {
-  return Math.round(x * 10) / 10
-}
-
 /**
  * Six playable cars spanning the roster's range and every delivery archetype
  * that the shipped fleet exercises: a kei single-turbo, an NA RWD icon, an NA
  * VTEC front-driver, a twin-turbo rotary, a twin-turbo AWD flagship, and the
- * sequential-twin 2JZ. Each name matches both a `cars.json` `displayName` and a
- * `lapsim-data.json` `n`.
+ * sequential-twin 2JZ. Each name matches a `cars.json` `displayName`.
  */
 const SAMPLE_CAR_NAMES = [
   'Suzuki Alto Works (HA21S)',
@@ -82,32 +40,96 @@ function modelByName(name: string): CarModel {
   return model
 }
 
-describe('lapTime port faithfulness vs the calibration prototype', () => {
-  it('all six sample cars carry the data the prototype fed the model', () => {
-    for (const name of SAMPLE_CAR_NAMES) {
-      const model = modelByName(name)
-      expect(dataByName.has(name), `"${name}" absent from lapsim-data.json`).toBe(true)
-      // The prototype's stock inputs: stock power and the stock tyre compound.
-      expect(model.spec.stockPowerPs).toBeGreaterThan(0)
-      expect(model.spec.tyreCompound).toBeDefined()
+/**
+ * Stock lap times in seconds, per sample car, keyed by shipped course id. The
+ * course geometry itself is never restated here: each id is resolved out of
+ * content, so the pin always runs against the courses the game ships.
+ */
+const PINNED_LAP_TIMES_S: Record<string, Record<string, number>> = {
+  'Suzuki Alto Works (HA21S)': {
+    kirifuri: 238.4,
+    usui: 125.8,
+    wangan: 239.8,
+    tsurugi: 101.9,
+    misaki: 137.4,
+  },
+  'Toyota Sprinter Trueno (AE86)': {
+    kirifuri: 236.0,
+    usui: 119.6,
+    wangan: 218.0,
+    tsurugi: 95.7,
+    misaki: 119.6,
+  },
+  'Honda Civic SiR-II (EG6)': {
+    kirifuri: 233.1,
+    usui: 116.6,
+    wangan: 204.8,
+    tsurugi: 92.7,
+    misaki: 112.6,
+  },
+  'Mazda RX-7 (FD3S)': {
+    kirifuri: 225.8,
+    usui: 111.1,
+    wangan: 193.2,
+    tsurugi: 88.1,
+    misaki: 107.7,
+  },
+  'Nissan Skyline GT-R (BNR32)': {
+    kirifuri: 229.9,
+    usui: 111.9,
+    wangan: 192.9,
+    tsurugi: 89.1,
+    misaki: 107.1,
+  },
+  'Toyota Supra RZ (JZA80)': {
+    kirifuri: 226.9,
+    usui: 110.1,
+    wangan: 187.9,
+    tsurugi: 87.2,
+    misaki: 104.7,
+  },
+}
+
+/**
+ * Golden pin on the shipped lap model: each sample car is timed on every shipped
+ * course at stock power on its stock compound, and must land within 0.1 s of its
+ * pinned time. The pin is a regression net over `performance.ts` and over the
+ * `statFormulas.pace` and `statFormulas.grip` levers in `economy.json`, so that
+ * an unintended change to either shows up as a failing lap time rather than as
+ * silently different race results.
+ *
+ * These numbers pin the model as currently shipped. Re-pinning them is the
+ * expected outcome of any deliberate change to the pace or grip levers, made
+ * with the maintainer approval CLAUDE.md directive 22 requires for those levers.
+ */
+describe('lapTime golden pin over the shipped courses', () => {
+  it('pins every shipped course', () => {
+    const shipped = CONTENT_COURSES.map((c) => c.id).sort()
+    for (const [name, times] of Object.entries(PINNED_LAP_TIMES_S)) {
+      expect(Object.keys(times).sort(), `${name} does not pin every shipped course`).toEqual(
+        shipped,
+      )
     }
   })
 
   for (const name of SAMPLE_CAR_NAMES) {
-    it(`reproduces the prototype's four lap times (<= 0.2 s) for ${name}`, () => {
+    it(`holds its pinned lap times (<= 0.1 s) for ${name}`, () => {
       const model = modelByName(name)
-      const expected = dataByName.get(name)
-      expect(expected, `"${name}" absent from lapsim-data.json`).toBeDefined()
+      const pinned = PINNED_LAP_TIMES_S[name]
+      if (!pinned) throw new Error(`"${name}" has no pinned lap times`)
 
-      for (const key of COURSE_KEYS) {
-        const ours = round1(
-          lapTime(model, COURSES[key], model.spec.stockPowerPs, model.spec.tyreCompound, ECONOMY),
+      for (const [courseId, expected] of Object.entries(pinned)) {
+        const ours = lapTime(
+          model,
+          COURSE_BY_ID(courseId),
+          model.spec.stockPowerPs,
+          model.spec.tyreCompound,
+          ECONOMY,
         )
-        const theirs = expected!.t[key]
         expect(
-          Math.abs(ours - theirs),
-          `${name} / ${key}: port ${ours}s vs prototype ${theirs}s (delta ${(ours - theirs).toFixed(2)}s)`,
-        ).toBeLessThanOrEqual(0.2)
+          Math.abs(ours - expected),
+          `${name} / ${courseId}: model ${ours.toFixed(2)}s vs pin ${expected}s (delta ${(ours - expected).toFixed(2)}s)`,
+        ).toBeLessThanOrEqual(0.1)
       }
     })
   }

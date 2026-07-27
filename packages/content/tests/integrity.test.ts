@@ -36,7 +36,7 @@ describe('referential integrity', () => {
     }
   })
 
-  it('every car book value falls inside its tier range (docs/economy-v0.md)', () => {
+  it('every car book value falls inside its tier range (docs/design/archive/economy-v0.md)', () => {
     const parsedCars = CarModelsSchema.parse(cars)
     // A desirable kei (Beat, Alto Works) is Kei-tagged, so it takes the
     // shitbox fitment class regardless of its market value, and a cult MR kei

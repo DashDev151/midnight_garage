@@ -713,7 +713,7 @@ export function generateAuctionCarInstance(
     parts,
     symptoms: [],
     apparentBandByPartId: null,
-    // The work model's own roll (docs/design/workshop-rework.md) - independent
+    // The work model's own roll (docs/design/systems/workshop-rework.md) - independent
     // of the per-part jitter loop above, which still fills panels/paint/
     // underbody with a stock part (never missing or aftermarket, since those
     // SKUs are retired/migrated); the projection below immediately overwrites

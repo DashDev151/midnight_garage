@@ -1,7 +1,7 @@
 # Sprint 101: Mileage becomes a hint, not a tax (economy legibility, stage 4, optional)
 
 **Date:** 2026-07-19 (planned; maintainer option - confirm before opening)
-**Source:** `docs/design/economy-legibility.md` plank 4, mileage row; the maintainer's
+**Source:** `docs/design/systems/economy-legibility.md` plank 4, mileage row; the maintainer's
 2026-07-19 challenge that the mileage curve is flat and ungrounded.
 
 **Goal:** high-mileage cars ROLL worse condition at generation (mileage-correlated band

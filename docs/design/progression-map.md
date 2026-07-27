@@ -64,7 +64,7 @@ rent-a-tier valve for players who have not bought tier 2.
 4. **Gaisha (import) cars are unreachable by any channel:** excluded from auctions by
    design, and the stated alternative ("Import Broker") has zero implementation. Several
    live config curves (offer chances, buyer weights) reference tiers no car occupies.
-5. **Auction Guarantors:** fully designed (docs/design/auction-guarantors.md), deliberately
+5. **Auction Guarantors:** fully designed (docs/design/systems/auction-guarantors.md), deliberately
    deferred, zero implementation; the passive rep gate remains the live mechanism.
 6. **`AUCTION_TRAVEL_FEE_YEN`** is dead content (already in TODO), superseded by the
    diagnosis visit fees.

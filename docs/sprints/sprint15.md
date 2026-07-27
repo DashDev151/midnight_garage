@@ -2,7 +2,7 @@
 
 *Status: implemented, committed (`7e70f5a`). See Exit.*
 
-*Source: 2026-07-10 playtest session (`docs/playtest-notes-2026-07-10.md`, items #7/#10) plus the
+*Source: 2026-07-10 playtest session (`docs/playtest-notes/playtest-notes-2026-07-10.md`, items #7/#10) plus the
 same-day design conversation that followed. The maintainer wants equipment and facility purchases,
 and auction car access, gated by player progression - not cash alone. Both turned out to depend on
 one missing piece: `reputationTier` is never actually derived from anything in the sim (a gap

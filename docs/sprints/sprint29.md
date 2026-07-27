@@ -1,6 +1,6 @@
 # Sprint 29: Service-jobs framework v2: themed jobs, progression, derived payouts, daily cadence
 
-*Source: maintainer playtest 2026-07-11 (`docs/playtest-notes-2026-07-11.md`, notes 3, 4, 5,
+*Source: maintainer playtest 2026-07-11 (`docs/playtest-notes/playtest-notes-2026-07-11.md`, notes 3, 4, 5,
 17-jobs-half). Status: **designed, ready to implement.** Depends on Sprints 26-28. Single
 Sonnet implementation agent; read `CLAUDE.md` first; no em dashes.*
 

@@ -15,7 +15,7 @@ mode with **no gameplay weight**. Not designed yet, not scheduled into a sprint 
 expansion candidate, but a wanted one, not a likely-cut one.*
 
 *Update 2026-07-12: a full technical implementation spec (physics model, rendering approach, map
-pipeline, phased delivery) now exists at `docs/design/drive-mode-spec.md`, filed after a technical
+pipeline, phased delivery) now exists at `docs/design/parked/drive-mode-spec.md`, filed after a technical
 review found the architecture sound. Still not scheduled - this is groundwork for whenever it's
 picked up, not a signal that it's moving into a sprint. The one open design question the review
 flagged: the spec's real slip-angle physics genuinely reward driving skill in the moment, which
@@ -214,25 +214,26 @@ standing rule (frozen v1.0 GDD scope), not a near-term commitment.
 
 ---
 
-## Parts diagram: per-model art layouts and the zoomed per-zone view (tier 3)
+## Workshop views: per-model art layouts (tier 3)
 
-*Added 2026-07-17 at Sprint 84 close-out (the parts diagram v1). Status: recorded per Sprint 84
-decision 8 as tier-3, out of v1.0 by definition.*
+*Added 2026-07-17 at Sprint 84 close-out as tier-3, out of v1.0 by definition. Rescoped at Sprint
+120, which replaced the parts diagram with the three workshop views.*
 
-**The idea:** Sprint 84 ships one hand-authored, model-agnostic layout (`partsDiagramLayout.ts`)
-of plain rectangles, shared by every car. Two tier-3 extensions were deliberately deferred:
-(1) **per-model layout variants** - a mid-engine or FR car laid out to its own silhouette rather
-than the single shared side-on schematic; and (2) a **zoomed per-zone view** - clicking the engine
-bay opens a larger, better-spaced drawing of just that cluster, so the buried-slot stack reads
-without the whole-car scale fighting it. The maintainer's glyph-art pass (swapping each rectangle
-interior for a hand-drawn Aseprite part, in the SAME layout) is a separate, already-planned art
-task tracked in `docs/sprints/sprint84.md`, not here.
+**The idea:** the workshop views (`workshopViewLayout.ts`) carry one hand-authored region map,
+shared by every car in the roster. The tier-3 extension is **per-model layout variants**: a
+mid-engine or FR car laid out to its own silhouette rather than to the single shared schematic. The
+maintainer's glyph-art pass (hand-drawn Aseprite art inside the same regions) is a separate,
+already-planned art task, not this.
 
-**Why it's parked, not built:** v1's rectangle diagram already makes the teardown hierarchy legible
-(the occlusion is the mechanic), and the layout-coherence test guarantees it stays honest. Per-model
-variants multiply the hand-authored layout (and its coherence test) by the roster; the zoomed view
-is a whole second interaction surface. Neither is needed for the core "see what comes off first"
-payoff, and both want a real design pass first.
+**Half of the original entry is already answered.** It also asked for a zoomed per-zone view, so a
+buried-slot stack could read without the whole-car scale fighting it. The three views deliver that
+by construction: the engine bay and the underside are their own drawings at their own scale, not
+clusters inside one whole-car diagram.
+
+**Why it's parked, not built:** the shared region map already makes the teardown hierarchy legible
+(the occlusion is the mechanic), and the disjointness test guarantees it stays honest. Per-model
+variants multiply the hand-authored layout, and its test, by the whole roster, for a payoff the
+core "see what comes off first" loop does not need.
 
 **Status:** idea only, no reuse-analysis, no task breakdown, no sprint attached - parked here per the
 standing rule (frozen v1.0 GDD scope), not a near-term commitment.

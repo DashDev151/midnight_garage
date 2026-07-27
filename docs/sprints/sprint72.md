@@ -1,6 +1,6 @@
 # Sprint 72 - Outcome-based service jobs and the shared Requirement module
 
-**Source:** `docs/design/component-hierarchy-spec.md` §"Jobs become outcome-based" (maintainer
+**Source:** `docs/design/systems/component-hierarchy-spec.md` §"Jobs become outcome-based" (maintainer
 scoping notes 2026-07-15). Depends on Sprints 70 (provenance) and 71 (teardown). Story missions
 (Sprints 76-78) consume the module built here.
 

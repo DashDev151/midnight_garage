@@ -1,0 +1,1474 @@
+# RAN WHEN PARKED - lap-time model, all cars (external review, prototype)
+
+## The model
+Lap time = quasi-static point-mass sim over a course of corners + straights.
+ - corner apex speed = sqrt(mu * g * radius), mu from the signed-off grip model
+ - straights: accelerate on the car's OWN MEASURED acceleration curve, a(v) = min(aLaunch,
+   pEff / m v) - drag, whose two unknowns are SOLVED from that car's published 0-97
+   and 0-161 km/h; 59 of the 85 have both, 4 have one, the rest fall back to a
+   regression on the 59. Aero drag = Cd x frontal area (0.82 x width x height), speed
+   capped at the published top speed, then braking into the next corner on the car's
+   OWN measured braking coefficient bmu, which is not its lateral mu (see below)
+ - pEff governs the range it was MEASURED over and no more. Above 161 km/h the share of
+   the shortfall that the car's own arithmetic says was traction rather than engine is
+   handed back, completing at the car's top speed, which is where the model already
+   assumed full crank power. It fires on 3 of the 85 and is exactly zero on the rest;
+   nothing below 161 km/h moves, so every measured car still round-trips its own pair
+ - a DIRECTION-CHANGE CHARGE, kAgi / mu x (angle/90) x a tightness clamp, added in
+   SECONDS once per corner. THIS IS THE TERM THE PUBLISHED TABLE RUNS. Its weight is
+   fitted on ALL driven laps on ALL THREE courses at once, equal weight per course
+   (stderr section 2b)
+ - a CORNER-EXIT SPEED PENALTY, built and fitted beside it and SWITCHED OFF: kExit is
+   0 in the published run, which makes the term return exactly zero. It is the more
+   honest shape, and that is why it exists: a car would leave a direction change
+   carrying less speed than the apex formula gives it, and the following straight
+   would START from the reduced speed, so a real deficit would propagate down the road
+   instead of being a flat per-corner charge blind to what follows. It is off because
+   at its own best weight it costs level accuracy on all three lap courses: both
+   facsimile geometries were searched under the additive term and are held FIXED, so
+   the roads have already absorbed what the adder got wrong about them. The whole
+   comparison is kept and scored, because it is the evidence (stderr section 2c)
+ - KNOWN STRUCTURAL GAP, AND WHAT WAS DONE ABOUT IT, stated up front: on the SURVEYED
+   Hakone geometry the model is about 21% slow on every driven lap even with the
+   direction-change term switched off, and no direction-change term repairs it. The
+   missing physics is a racing-line model - a mapped radius is a centreline radius -
+   and it is not a gradient, which prices out at a fraction of the gap. The model has
+   NOT been given that term. Instead, on maintainer ruling (2026-07-27), the Hakone
+   course is now a BEHAVIOURAL FACSIMILE: a 2.7 km road searched to reproduce the
+   first eight driven times, not a survey of the real one. Read every Hakone number on
+   that footing. The surveyed map is kept in the file and every diagnostic scores it.
+ - AND ONE MORE CAVEAT ON THAT COMPARISON: both facsimile geometries were searched
+   with the additive term in place and are held FIXED while the exit term is fitted,
+   by instruction, so the two are scored on the same roads. That handicaps the exit
+   term, and the size of the handicap is in stderr 2c: the frozen Hakone road needs
+   about 14% of a lap from its direction-change term, which an exit-speed deficit
+   structurally cannot supply without saturating.
+ - the ranked table below runs at the constants THIS RUN FITS, printed above it, not at any
+   value frozen in the source. Frontal areas are REAL (0.82 x width x height) for
+   all 85 cars from published dimensions.
+ - the 64 cars Forza Horizon 6 carries ARE their Forza entries here, Forza's name and year
+   included; the other 21 are web-sourced and modelled.
+ - the standing kilometre is now a COURSE, Yatabe Straight, and it carries the only
+   calibration constant in the model that is not physics. Seven measured 1 km runs
+   exist and the raw model is slow on every one of them, by +1.3% to +6.4%, mean
+   +3.4%, in an order that neither power nor power-to-weight predicts. Five candidate
+   mechanisms were priced against those points and none survived, so on maintainer
+   ruling (2026-07-27) a FLAT PROTOCOL OFFSET is subtracted from computed 1 km times
+   and from nothing else. It is not physics: the model is fed Forza's canned panel
+   figures and the driven runs are hand-driven with the assists off, which are
+   plausibly not the same measurement. It reaches the drag strip ONLY - see the
+   DRAG_OFFSET comment for why touching the lap path would break three courses.
+
+## The 4 courses
+- Hakone: 2.7 km, 9 corners (5 medium, 4 hairpin), 80% straight, avg radius 63 m, longest straight 290 m
+- Wangan: 7.0 km, 11 corners (8 fast, 2 medium, 1 slow), 77% straight, avg radius 355 m, longest straight 838 m
+- Misaki: 4.7 km, 10 corners (6 fast, 2 medium, 1 slow, 1 hairpin), 68% straight, avg radius 285 m, longest straight 650 m
+- Yatabe: 1.0 km in a straight line from a standing start, no corners
+  Hakone = a 2.7 km mountain-road FACSIMILE, searched against the FIRST 8 driven laps
+           on it, NOT a survey: four 11 m switchbacks and five linking bends -> grip
+           and direction change. The surveyed road (eleven 11-19 m switchbacks) is in
+           the file as HAK_MAP; nothing gets the model closer than ~21% slow on it,
+           and that floor is the direction-change term switched OFF.
+  Wangan = a 7.0 km highway loop FACSIMILE, searched against the FIRST 5 driven laps:
+           eight fast sweepers of 295-645 m that are straights for a slow car, two
+           mediums, one 55 m junction ramp -> drag, power and grip ABOVE 161 km/h,
+           which is where the measured acceleration curve stops being measured.
+           The description it was authored from is in the file as WAN_DESC; on that
+           reading the model runs FAST and the search had to add corner demand.
+  Misaki = the calibrated Legend Island facsimile; 17 driven laps are on it, and it is
+           the only one of the three lap courses whose geometry was never tuned to a
+           lap time.
+  Yatabe = 1 km from rest in a straight line, no corners: the JARI proving ground
+           name for the standing-kilometre set that has been scored since 2026-07-27
+           and is a course from this run on. It measures acceleration and drag with
+           the cornering model taken out of the question entirely, and it is the only
+           course carrying a calibration offset (DRAG_OFFSET, drag strip only).
+  The corner-exit weight is fitted on the Misaki, Hakone and Wangan driven laps
+  TOGETHER, weighted equally by course; Yatabe is in NO fit of any lap constant.
+  EVERY course here carries driven times: the synthetic club Circuit was dropped on
+  maintainer ruling (2026-07-27) and the overall index is the mean over these four,
+  at equal weight per course. READ THE INDEX WITH THAT IN MIND: a quarter of it is now
+  a single straight-line measure, and the ranked table below prints what that moved.
+  THREE CARS ARE OUT OF SAMPLE FOR ALL OF IT. The 190E Evo II, the Civic Type R EK9 and
+  the Impreza 22B were predicted on all three courses before a lap of any of them was
+  driven, so neither searched geometry nor any fitted weight had ever seen them. Their
+  committed predictions are printed beside their driven times in every table below.
+
+## Braking grip is a separate measurement from lateral grip
+bmu is solved from each measured stopping distance with the aero-corrected integral
+  bmu = ln(1 + k V^2) / (2 g k (d - d0)),  k = dfC * 6.2e-5
+d0 is the dead distance every published stop carries in front of the retardation.
+The 97-0 solution is the stored value; the 161-0 solution is the check on it.
+
+### The dead distance d0
+  Solved per car (two equations, two unknowns) over the 59 cars with both figures:
+    min 3.10  p25 5.15  median 6.19  p75 7.12  max 10.87 m   (mean 6.18, sd 1.53)
+  GLOBAL CONSTANT: least squares on the two-point disagreement gives d0 = 5.987 m, i.e. 0.222 s of
+  brake application at 97 km/h. The median of the 59 is 6.192 m: the two differ by 0.21 m and their residual rms by 0.024 points.
+  Least squares is the one used, on two grounds: the per-car spread is near-symmetric (mean
+  and median agree to 0.01 m) so the median buys no robustness here, and least squares minimises the
+  disagreement the constant exists to remove rather than a proxy for it.
+
+  two-point disagreement, bmu161 against bmu97 (n=59):
+    d0 = 0 (before) min   4.98  p25   8.12  median   9.86  p75  10.85  max  14.01   mean   9.59  MAE 9.59  rms 9.79  positive 59/59
+    d0 = 5.99 m     min  -5.10  p25  -1.44  median   0.32  p75   1.83  max   6.52   mean   0.18  MAE 1.94  rms 2.43  positive 31/59
+  VERDICT: the gap was one-signed on all 59 cars and is now split 31/28, with the mean bias down from 9.59% to 0.18%.
+  It has collapsed, not vanished: 2.43% rms remains and it is unsigned. That is the size a per-car spread in brake-application
+  rate plus 0.005-g panel rounding on the lateral pair (which moves dfC, hence k) would leave.
+
+### Per-car braking coefficients at that d0
+car                                        yr  dt    mu    bmu97  bmu161   gap%   bmu/mu
+  1989 Nissan S-Cargo                      1989  FWD  0.823   0.714    n/a    n/a    0.868
+  1970 Datsun 510                          1970  RWD  0.730   0.728   0.776    6.5    0.998
+  1965 MINI Cooper S                       1965  FWD  0.750   0.797    n/a    n/a    1.063
+  1971 Nissan Skyline 2000GT-R             1971  RWD  0.790   0.797   0.826    3.6    1.009
+  1969 Nissan Fairlady Z 432               1969  RWD  0.810   0.809   0.842    4.1    0.999
+  1969 Toyota 2000GT                       1969  RWD  0.790   0.820   0.836    1.9    1.038
+  1991 Toyota Sera                         1991  FWD  0.863   0.828   0.875    5.7    0.960
+  1973 Nissan Skyline H/T 2000GT-R         1973  RWD  0.810   0.837   0.875    4.5    1.033
+  1984 Honda City E II                     1984  FWD  0.823   0.843    n/a    n/a    1.025
+  1991 Honda Beat                          1991  RWD  0.853   0.846   0.878    3.7    0.992
+  1994 Mazda MX-5 Miata                    1994  RWD  0.840   0.847   0.870    2.7    1.008
+  1994 Honda Acty                          1994  AWD  0.800   0.848    n/a    n/a    1.061
+  1993 Nissan 240SX                        1993  RWD  0.817   0.861   0.883    2.6    1.053
+  1985 Toyota Sprinter Trueno GT Apex      1985  RWD  0.840   0.866   0.885    2.1    1.031
+  1992 Volkswagen Golf GTI 16V Mk2         1992  FWD  0.810   0.866   0.863   -0.4    1.070
+  1989 Nissan Silvia K's                   1989  RWD  0.850   0.867   0.887    2.2    1.020
+  1994 Subaru Vivio RX-R                   1994  AWD  0.833   0.868   0.862   -0.6    1.042
+  1989 Toyota MR2 SC                       1989  RWD  0.830   0.886   0.889    0.3    1.067
+  1993 Autozam AZ-1                        1993  RWD  0.853   0.889   0.894    0.6    1.042
+  1991 Toyota Chaser GT Twin Turbo         1991  RWD  0.857   0.896   0.916    2.2    1.046
+  1988 BMW M3                              1988  RWD  0.883   0.910   0.927    1.9    1.030
+  1997 Nissan Stagea RS Four V             1997  AWD  0.847   0.912   0.917    0.5    1.076
+  1997 Toyota Chaser 2.5 Tourer V          1997  RWD  0.887   0.912   0.927    1.7    1.028
+  1990 Mazda Savanna RX-7                  1990  RWD  0.863   0.919   0.935    1.8    1.065
+  1994 Nissan Silvia K's                   1994  RWD  0.886   0.922   0.939    1.8    1.041
+  1997 Toyota Soarer 2.5 GT-T              1997  RWD  0.880   0.922   0.934    1.3    1.048
+  1996 Toyota Starlet Glanza V             1996  FWD  0.853   0.926   0.917   -0.9    1.085
+  1997 Honda Civic Type R                  1997  FWD  0.863   0.933   0.926   -0.7    1.081
+  1994 Nissan Fairlady Z Version S Twin Tu 1994  RWD  0.897   0.935   0.946    1.2    1.042
+  1999 Toyota Altezza RS200 Z Edition      1999  RWD  0.883   0.935   0.942    0.7    1.059
+  2003 Honda S2000                         2003  RWD  0.903   0.940   0.950    1.1    1.041
+  1991 Honda CRX SiR                       1991  FWD  0.890   0.941   0.926   -1.6    1.058
+  1990 Mercedes-Benz 190E 2.5-16 Evolution 1990  RWD  0.880   0.946   0.954    0.9    1.075
+  1990 Nissan Pulsar GTI-R                 1990  AWD  0.860   0.948   0.924   -2.6    1.103
+  1995 Toyota MR2 GT                       1995  RWD  0.897   0.949   0.935   -1.4    1.058
+  2011 Mazda RX-8 R3                       2011  RWD  0.923   0.957   0.978    2.1    1.037
+  1992 Mazda RX-7 Type R                   1992  RWD  0.910   0.963   0.972    0.9    1.058
+  1994 Honda Prelude Si                    1994  FWD  0.877   0.964   0.940   -2.5    1.099
+  2002 Nissan Silvia Spec-R                2002  RWD  0.903   0.964   0.973    0.9    1.068
+  2001 Acura Integra Type-R                2001  FWD  0.897   0.972   0.959   -1.3    1.083
+  1997 BMW M3                              1997  RWD  0.917   0.972   0.987    1.6    1.060
+  2003 Nissan Fairlady Z                   2003  RWD  0.923   0.972   0.978    0.6    1.054
+  2002 Acura RSX Type-S                    2002  FWD  0.893   0.988   0.974   -1.4    1.106
+  1992 Ford Escort RS Cosworth             1992  AWD  0.887   0.992   0.971   -2.1    1.119
+  1998 Toyota Supra RZ                     1998  RWD  0.913   1.001   1.005    0.4    1.097
+  1994 Toyota Celica GT-Four ST205         1994  AWD  0.860   1.005   0.964   -4.1    1.169
+  1997 Nissan Skyline GT-R V-Spec          1997  AWD  0.903   1.010   1.008   -0.2    1.118
+  1997 Mitsubishi GTO                      1997  AWD  0.883   1.012   0.998   -1.4    1.146
+  1992 Nissan Skyline GT-R                 1992  AWD  0.886   1.014   0.995   -1.8    1.145
+  1992 Lancia Delta HF Integrale Evo       1992  AWD  0.907   1.014   1.004   -1.0    1.118
+  2004 Subaru IMPREZA WRX STI              2004  AWD  0.907   1.028   1.020   -0.8    1.134
+  2000 Nissan Skyline GT-R V-Spec II       2000  AWD  0.906   1.031   1.021   -1.0    1.138
+  1996 Subaru SVX                          1996  AWD  0.877   1.037   0.986   -4.9    1.182
+  2001 Mitsubishi Lancer Evolution VI GSR  2001  AWD  0.923   1.054   1.025   -2.7    1.142
+  2004 Mitsubishi Lancer Evolution VIII MR 2004  AWD  0.917   1.058   1.024   -3.2    1.154
+  1998 Subaru Impreza 22B-STi Version      1998  AWD  0.933   1.085   1.036   -4.5    1.162
+  1982 Porsche 911 Turbo 3.3               1982  RWD  0.903   1.094   1.071   -2.1    1.211
+  1988 Lamborghini Countach LP5000 QV      1988  RWD  1.083   1.102   1.105    0.3    1.018
+  1992 Honda NSX-R                         1992  RWD  1.050   1.120   1.108   -1.1    1.067
+  1994 Ferrari F355 Berlinetta             1994  RWD  1.053   1.133   1.117   -1.4    1.076
+  1992 Ferrari 512 TR                      1992  RWD  1.056   1.170   1.155   -1.3    1.108
+  2012 Nissan GT-R Black Edition (R35)     2012  AWD  1.050   1.382   1.312   -5.1    1.317
+  2010 Lexus LFA                           2010  RWD  1.010   1.471   1.470   -0.1    1.456
+
+  bmu distribution over the 63 measured cars:
+  with d0 = 0         min 0.640  p25 0.760  median 0.817  p75 0.869  max 1.186   mean 0.826
+  at d0 = 5.99 m      min 0.714  p25 0.867  median 0.941  p75 1.012  max 1.471   mean 0.956
+  Every car gains and the short stoppers gain most, which is the whole point: 5.99 m is 19% of the shortest stop in the set (30.9 m) and 10% of the longest (57.6 m).
+
+### Fallback for the 22 unmeasured cars
+  bmu = mu * (1.0542 + 0.0297 * (year-1990)/10 + 0.0610 * [AWD])
+  residuals over the 63 measured cars: sd 0.0623, MAE 0.0343, max |e| 0.3460, R2 0.759
+  for scale: predicting bmu from year and drivetrain WITHOUT the mu scale gives sd 0.1007 (rejected),
+  and "bmu = mu" gives sd 0.1061 (the assumption this change removes).
+  worst 6 residuals (model minus measured):
+    2010 Lexus LFA                           2010  meas 1.471  pred 1.125  e -0.346
+    1982 Porsche 911 Turbo 3.3               1982  meas 1.094  pred 0.930  e -0.163
+    1989 Nissan S-Cargo                      1989  meas 0.714  pred 0.865  e 0.151
+    2012 Nissan GT-R Black Edition (R35)     2012  meas 1.382  pred 1.239  e -0.143
+    1991 Toyota Sera                         1991  meas 0.828  pred 0.912  e 0.084
+    2011 Mazda RX-8 R3                       2011  meas 0.957  pred 1.030  e 0.073
+  the 22 cars this is actually applied to:
+    Suzuki Wagon R (CT21S)                   1993  FWD  mu 0.705  ratio 1.063  bmu 0.749
+    Suzuki Alto Works (HA21S)                1994  FWD  mu 0.768  ratio 1.066  bmu 0.819
+    Honda Civic SiR-II (EG6)                 1991  FWD  mu 0.826  ratio 1.057  bmu 0.874
+    Honda City Turbo II (AA)                 1983  FWD  mu 0.767  ratio 1.033  bmu 0.793
+    Nissan Cefiro (A31)                      1988  RWD  mu 0.816  ratio 1.048  bmu 0.855
+    Nissan Laurel (C33)                      1989  RWD  mu 0.814  ratio 1.051  bmu 0.855
+    Mitsubishi Starion (A187A)               1988  RWD  mu 0.845  ratio 1.048  bmu 0.886
+    Nissan Fairlady 240ZG (HS30)             1971  RWD  mu 0.707  ratio 0.998  bmu 0.706
+    1972 Mazda Cosmo 110S Series II          1972  RWD  mu 0.712  ratio 1.001  bmu 0.713
+    Alfa Romeo 75 3.0 V6                     1987  RWD  mu 0.781  ratio 1.045  bmu 0.816
+    Eunos Cosmo (JC)                         1990  RWD  mu 0.837  ratio 1.054  bmu 0.882
+    Subaru Impreza WRX STI (GC8)             1994  AWD  mu 0.892  ratio 1.127  bmu 1.005
+    Mazda Familia GT-R (BG8Z)                1992  AWD  mu 0.861  ratio 1.121  bmu 0.965
+    Daihatsu Copen (L880K)                   2002  FWD  mu 0.821  ratio 1.090  bmu 0.895
+    Mazda RX-7 Spirit R (FD3S)               2002  RWD  mu 0.945  ratio 1.090  bmu 1.030
+    Toyota Aristo 3.0V (JZS147)              1991  RWD  mu 0.848  ratio 1.057  bmu 0.896
+    Daihatsu Mira TR-XX (L70)                1985  FWD  mu 0.689  ratio 1.039  bmu 0.716
+    Toyota Carina (AT150)                    1984  FWD  mu 0.761  ratio 1.036  bmu 0.788
+    Nissan Sunny (B12)                       1987  FWD  mu 0.761  ratio 1.045  bmu 0.795
+    Honda Today (JW1)                        1988  FWD  mu 0.718  ratio 1.048  bmu 0.753
+    Daihatsu Mira TR-XX Avanzato R (L502S)   1995  FWD  mu 0.752  ratio 1.069  bmu 0.804
+    Suzuki Cappuccino (EA11R)                1991  RWD  mu 0.786  ratio 1.057  bmu 0.831
+
+## CONSTANTS THIS TABLE RUNS AT
+   kAgi 0.8170 (additive direction-change term)  kExit 0 [the corner-exit penalty is scored at 94.5833 tau p 1.0 q 1.0 a 1.5 t 1.5 hi 2.5 lo 0 and NOT applied]  brake d0 5.987 m  corner-grip ceiling 1.220 at 20 m, exponent 0.0612   (acceleration: measured on 59 cars, 4 one-point, 22 regressed)
+   Acceleration is no longer a constant. phi, awdK, aCapK and the delivery archetype table
+   are gone from the published model: each car's launch acceleration and effective wheel
+   power are SOLVED from its own published 0-97 and 0-161, and the cars Forza does not
+   measure fall back to a regression on the 59 that it does. d0 is least squares on the 59
+   two-point braking measurements. kAgi is fitted on ALL 38 driven laps, 17 on Misaki, 12 on
+   Hakone and 9 on Wangan, weighted equally BY COURSE rather than by lap. The corner-exit
+   penalty is fitted on the same 38 and scored beside it; the two sweeps are stderr 2b and 2c.
+   THE DIRECTION-CHANGE TERM THIS TABLE RUNS IS THE TIME ADDER, and it is worth being plain
+   about that. The model charges kAgi / mu x (angle/90) x a tightness clamp in SECONDS, once
+   per corner. Its weakness is structural rather than a matter of tuning: a car it penalises
+   leaves the corner at exactly the speed it would have had anyway, so the charge cannot
+   propagate down the following straight, which is how a real direction-change deficit costs
+   time.
+   A CORNER-EXIT SPEED PENALTY IS BUILT FOR THAT AND IS NOT APPLIED. It reduces corner-EXIT
+   SPEED instead of adding seconds: the car would leave a direction change carrying less speed
+   than the apex formula gives it and pay for that until the road opens out. It compounds on
+   hairpins onto short connectors and is worth almost nothing on a motorway sweeper, so the
+   tight-versus-fast axis would come out of the arithmetic rather than a fitted constant. kExit
+   is 0 in this run and the term returns exactly zero, so every figure quoted for it below is a
+   score and not a setting.
+   READ BOTH FITTED WEIGHTS WITH THE FACSIMILE CAVEAT. TWO of the three courses have
+   searched geometries: Hakone against its first eight laps and Wangan against its first five
+   (maintainer rulings, 2026-07-27), so both were chosen to suit the model - and both were
+   searched with the ADDITIVE term in place and are held FIXED here, which handicaps the exit
+   term and is the reason it stays off.
+   On the SURVEYED Hakone map the model is about 22% slow whatever term is used. The
+   Misaki third of the fit is untouched by any of this: its geometry is not a free parameter
+   and never has been.
+   AND THAT HANDICAP IS THE WHOLE ARGUMENT, BECAUSE IT IS NOT SMALL PRINT. The frozen
+   Hakone road wants about 14% of a lap from whatever direction-change term the model carries,
+   and an exit-speed deficit structurally cannot supply that: to get close it has to saturate.
+   At its own fitted weight the exit deficit is against its own floor on a large share of the
+   corners in the driven sets, which is exactly where the term stops separating cars. Read the
+   course-character swing section below for what that costs and what the smaller, non-saturating
+   weight would have bought.
+
+## THE TRACTION RELEASE ABOVE 161 KM/H
+   pEff is solved from a 0-97 and a 0-161 and was then applied at EVERY speed. On a car whose
+   tyres run out before its engine does, that window measures the contact patch rather than the
+   engine, and holding its answer flat makes the model assert two incompatible things at once:
+   a top speed only full crank power reaches, and six tenths of that power on the way there.
+   THE DETECTION IS ARITHMETIC ON WHAT IS ALREADY SOLVED. vFull = Pw / (m aLaunch) is the speed
+   below which full crank power asks the tyres for more thrust than the solved launch plateau
+   can give; fTr is the share of the 97-161 window sitting below it. Above 161 km/h that share
+   of the shortfall is handed back, completing at the car's own top speed. Below 161 nothing
+   changes at all, which is why every measured car still round-trips its own 0-97 and 0-161.
+   IT FIRES ON 3 OF THE 85 CARS IN THE TABLE. For the other 82, vFull is below 97 km/h, fTr is exactly zero,
+   and the acceleration curve is bit-for-bit the one the previous run published.
+car                                    vFull   fTr   pEff/Pw   pEff kW   at 200   at 250   at the cap
+  1988 Lamborghini Countach LP5000 QV     110  0.208    0.597       178      192      199       203 of 298
+  2010 Lexus LFA                          110  0.199    0.747       271      280      285       289 of 362
+  1992 Ferrari 512 TR                      99  0.032    0.819       226      227      228       228 of 276
+   COURSE-TIME MOVEMENT over all 85 cars x 4 courses (Yatabe included, and it is the course the term has the most room on): 0 car(s) move by more than 0.5% on any course, 2 by more than 0.05%.
+   Biggest movers: 1988 Lamborghini Countach LP50 0.46%, 2010 Lexus LFA 0.44%, 1992 Ferrari 512 TR 0.03%, 1984 Honda City E II 0.00%.
+   Every movement is a car getting FASTER, because the term only ever hands power back.
+
+## THE 17 DRIVEN MISAKI LAPS at the published constants
+THIS IS THE THIRD OF THE FIT THAT CAN BE WRONG, and since 2026-07-27 it is the only
+third. Misaki's geometry is traced from the course and has never been tuned to a lap
+time, so its residual is model error and nothing else. Hakone's geometry is tuned and
+Wangan's is tuned, so read this table first and those two after it.
+The `pred` column is the figure committed BEFORE the car was driven, where there is one.
+car                                    driven  modelled   delta    err%    pred
+  2010 Lexus LFA                          92.6      95.3     2.7     2.9       -
+  1994 Ferrari F355 Berlinetta           101.3      97.8    -3.5    -3.5       -
+  1992 Honda NSX-R                       102.9      98.5    -4.4    -4.3       -
+  2001 Mitsubishi Lancer Evolution VI    103.2     103.0    -0.2    -0.2       -
+  1988 BMW M3                            112.1     111.5    -0.6    -0.5       -
+  1999 Toyota Altezza RS200 Z Edition    113.1     110.7    -2.4    -2.1       -
+  1969 Toyota 2000GT                     123.4     119.3    -4.1    -3.4       -
+  1991 Honda Beat                        129.8     124.9    -4.9    -3.8       -   [standing kei outlier]
+  1994 Honda Acty                        171.9     173.7     1.8     1.0       -   [standing kei outlier]
+  Skyline GT-R (BNR32, 1992)             105.4     107.1     1.7     1.6       -
+  RX-7 Type R (FD3S, 1992)               105.3     106.2     0.9     0.8       -
+  Integra Type R (DC2, 2001)             108.8     109.1     0.3     0.3       -
+  Mitsubishi GTO (1997)                  109.5     108.8    -0.7    -0.7       -
+  Countach LP5000 QV (1988)               97.7      97.3    -0.4    -0.4       -
+  1990 Mercedes-Benz 190E 2.5-16 Evolu   112.6     111.2    -1.4    -1.2   111.4   [R4 blind]
+  1997 Honda Civic Type R                112.5     112.2    -0.3    -0.2   112.4   [R4 blind]
+  1998 Subaru Impreza 22B-STi Version    101.5     105.0     3.5     3.4   105.1   [R4 blind]
+  GROUP: mean -0.60%   MAE 1.78%   worst 4.26%   rms 2.26%
+  without the two standing kei outliers (n=15): mean -0.50%   MAE 1.70%
+  SPREAD: driven 1.856x   modelled 1.824x   (the model spreads the field 0.98x as far as the driver did)
+  ORDERING: 8 inversion(s) out of 136 ordered pairs: 1998 Subaru Impreza 22B-ST over 1992 Honda NSX-R; 1998 Subaru Impreza 22B-ST over 2001 Mitsubishi Lancer Evo; Integra Type R (DC2, 2001) over Mitsubishi GTO (1997); 1988 BMW M3 over 1990 Mercedes-Benz 190E 2.; 1988 BMW M3 over 1999 Toyota Altezza RS200 ; 1997 Honda Civic Type R over 1990 Mercedes-Benz 190E 2.; 1997 Honda Civic Type R over 1999 Toyota Altezza RS200 ; 1990 Mercedes-Benz 190E 2. over 1999 Toyota Altezza RS200 
+
+### the standing start, MEASURED (3 cars, Misaki, hotlap vs from rest)
+    car                          hotlap   standing   measured   modelled   at adder    diff
+    190E Evo II                 112.6      116.4       3.80       8.71       8.71    4.91
+    Civic Type R EK9            112.5      117.4       4.90       7.31       7.31    2.41
+    Impreza 22B-STi             101.5      105.7       4.20       6.77       6.77    2.57
+    measured mean 4.30 s (range 3.8 to 4.9, spread 1.1 s).  Modelled mean 7.60 s at the corner-exit term, 7.60 s at the published additive term.
+    The two model columns agree because neither direction-change term reaches this quantity:
+    the adder never touched the straight march at all, and the exit penalty is worth a quarter
+    of a metre per second on a 700 m opening bend. The offset is a property of the measured
+    acceleration curve and nothing else.
+    THE MODEL OVERSTATES IT, on both terms and by a lot: 77% at the published term and 77% at the adder. The measurement
+    says a standing lap costs about 4.3 s and the model says 7.6. The likeliest reason is the protocol: the model launches from a
+    true standstill and the driver rolls up from a grid place or two back, which is what the
+    maintainer describes. NOTHING IS APPLIED: every fit in this file is on the flying lap and
+    stays there. But Hakone and Wangan ARE driven from rest, so their searched geometries have
+    absorbed an offset of about this size, and it is now a measured quantity with a measured
+    spread rather than an estimate.
+
+## THE 12 DRIVEN HAKONE LAPS at the published constants
+READ THE COURSE BEFORE THE TABLE. This 2.7 km of road is a BEHAVIOURAL FACSIMILE: a
+geometry searched, on maintainer ruling, to reproduce the FIRST EIGHT of these driven
+times as closely as possible, with the direction-change weight refitted at every
+candidate. It is NOT a survey of Hakone Nanamagari and no radius in it is a measured
+value. The surveyed road is kept in the file and scored beside every diagnostic; on it
+the model is about 21% slow with the direction-change term switched off, which is the
+floor of what it can produce there. The missing physics is a racing-line model, not a
+hill (stderr prices both). SO THE MEAN ERROR BELOW IS NOT A MEASUREMENT OF THE MODEL on
+the eight it was searched against: it is a measurement of the search. What the table
+says honestly is the ORDERING, the SPREAD, the PAIR GAPS, and the three R4 rows, which
+this geometry had never seen when they were predicted.
+
+### the course as published, against the surveyed map it stands in for
+  2.70 km, 9 corners (5 medium, 4 hairpin), 80% straight, avg radius 63 m
+  connectors, sorted (m): 161 161 161 230 290 290 290 290 290   median 290 m, longest 290 m
+                                    PUBLISHED         the surveyed map
+    length                             2.70 km                 2.70 km
+    corners                                  9                      14
+    corners tighter than 30 m                4                      11
+    tightest / widest radius        11 / 138 m               11 / 55 m
+    average radius                        63 m                    21 m
+    longest connector                    290 m                   290 m
+    straight fraction                      80%                     76%
+    sum of tight (direction-change demand)        18.8                    56.2
+  WHAT THE SEARCH MOVED. It kept the switchback itself: 11-11 m corners, the same kind of corner
+  as the surveyed 11-19 m ones. What it moved is HOW MANY of them there are - 11 down to 4 -
+  and what stands in for the rest: linking bends of 91 to 138 m turning 40 to 61 degrees.
+  That is why the average radius is 63 m against the map's 21 m without a single switchback being
+  opened out, and why the direction-change demand is 3.0x lighter.
+  THE SEARCH WAS CONSTRAINED, AND THE CONSTRAINTS ARE THE MAP'S OWN NUMBERS: length held at
+  2.7 km, no switchback tighter than the map's tightest (11 m), no connector longer than its
+  longest run (290 m), linking bends between 40 and 160 m. Inside that box the joint objective
+  is nearly flat in the switchback count: the best 3-switchback layout scores 1.410, the best
+  4 (published) 1.400 and the best 5 1.427, so THIS GEOMETRY IS NOT IDENTIFIED by the data -
+  it is one plausible road among many that fit. Six switchbacks is where it breaks: 2.016,
+  because six saturated hairpins cost more direction change than the driven times allow.
+  WHAT THE FACSIMILE IS STANDING IN FOR IS A RACING LINE, NOT A HILL. A mapped radius is a
+  centreline radius, a driver on a road with width does not drive the centreline, and apex
+  speed goes as the square root of the radius. stderr prices a descent instead and even a 12%
+  grade closes a small fraction, because a grade cannot touch a corner arc. The model has no
+  line term, so on the surveyed geometry the gap appears as a uniform positive bias on all
+  the driven laps and stays there at any direction-change weight.
+  For scale against the other driven course: avg radius 63 m against Misaki's 285 m, longest
+  run 290 m against 650 m. Time is the better measure of tightness, and it is this:
+  where the lap time goes (mean over these 12 cars)
+    course    corner arcs   corner-exit cost   straights + braking
+    Hakone          22.3%              0.0%                63.0%
+    Misaki          30.9%              0.0%                62.5%
+
+### driven against modelled, at the published constants
+car                                    driven  modelled   delta    err%   ex.cost  no-exit   err%    pred
+  2012 Nissan GT-R Black Edition (R35)    99.2      98.9    -0.3    -0.3      0.0     98.9   -0.3       -
+  2010 Lexus LFA                         101.7     100.9    -0.8    -0.8      0.0    100.9   -0.8       -
+  1988 Lamborghini Countach LP5000 QV    105.7     104.5    -1.2    -1.1      0.0    104.5   -1.1       -
+  1998 Subaru Impreza 22B-STi Version    106.6     111.4     4.8     4.5      0.0    111.4    4.5   111.8   [R4 blind]
+  1992 Mazda RX-7 Type R                 112.8     113.6     0.8     0.7      0.0    113.6    0.7   113.6   [acceptance, blind]
+  1998 Toyota Supra RZ                   113.8     112.9    -0.9    -0.8      0.0    112.9   -0.8       -
+  1997 Mitsubishi GTO                    114.4     115.7     1.3     1.2      0.0    115.7    1.2       -
+  1991 Honda CRX SiR                     114.9     120.1     5.2     4.5      0.0    120.1    4.5       -
+  1997 Honda Civic Type R                116.7     119.3     2.6     2.2      0.0    119.3    2.2   119.7   [R4 blind]
+  1990 Mercedes-Benz 190E 2.5-16 Evolu   119.3     119.3    -0.0    -0.0      0.0    119.3   -0.0   119.7   [R4 blind]
+  1989 Nissan Silvia K's                 120.0     120.2     0.2     0.2      0.0    120.2    0.2       -
+  1993 Autozam AZ-1                      126.6     125.7    -0.9    -0.7      0.0    125.7   -0.7       -
+  GROUP: mean 0.79%   MAE 1.42%   worst 4.54%   rms 2.06%
+  with the standing start added: mean 4.14%   MAE 4.14%   rms 4.57%
+  THE THREE R4 ROWS ALONE (out of sample for this geometry): mean 2.25%   MAE 2.25%   against 1.15% for the 9 the road was searched against.
+  WITH THE CORNER-EXIT PENALTY OFF: mean 0.79%   MAE 1.42%   rms 2.06%   (it is 0.0% of the modelled lap here,
+  against 0.0% on Misaki: 4 tight corners instead of one, and each of them onto a short connector.)
+  SPREAD: driven 1.276x (99.2 to 126.6 s)   modelled 1.271x (98.9 to 125.7 s)
+  the model spreads the field 0.996x as far as the driver did, i.e. within 1% - but on a course searched to make it so.
+
+### ordering
+  driven order:   Nissan GT-R Black E > Lexus LFA > Lamborghini Countac > Subaru Impreza 22B- > Mazda RX-7 Type R > Toyota Supra RZ > Mitsubishi GTO > Honda CRX SiR > Honda Civic Type R > Mercedes-Benz 190E > Nissan Silvia K's > Autozam AZ-1
+  modelled order: Nissan GT-R Black E > Lexus LFA > Lamborghini Countac > Subaru Impreza 22B- > Toyota Supra RZ > Mazda RX-7 Type R > Mitsubishi GTO > Honda Civic Type R > Mercedes-Benz 190E > Honda CRX SiR > Nissan Silvia K's > Autozam AZ-1
+  3 inversion(s) out of 66 ordered pairs:
+    1992 Mazda RX-7 Type R              beat 1998 Toyota Supra RZ                by 1.0 s driven, loses by 0.8 s modelled
+    1991 Honda CRX SiR                  beat 1997 Honda Civic Type R             by 1.8 s driven, loses by 0.8 s modelled
+    1991 Honda CRX SiR                  beat 1990 Mercedes-Benz 190E 2.5-16 Evo  by 4.4 s driven, loses by 0.8 s modelled
+  ROBUSTNESS: on the 1.5x-radius reading of the same course the count is 4, not 3, so the inversion COUNT is geometry-sensitive and cannot be quoted on its own:
+    Mazda RX-7 Type R under Toyota Supra RZ, Honda CRX SiR under Honda Civic Type, Honda CRX SiR under Mercedes-Benz 190, Honda Civic Type under Mercedes-Benz 190
+  What survives both geometries is 3 of them: Mazda RX-7 Type R under Toyota Supra RZ, Honda CRX SiR under Honda Civic Type R, Honda CRX SiR under Mercedes-Benz 190E.
+  THE CAR THIS SECTION IS ABOUT is the Honda CRX SiR, modelled 4.5% against a table mean of 0.8%,
+  i.e. 3.7 points off the level the rest of the field sits at. It is not an ordering finding about
+  the pair; it is that single car being the lap the model reproduces worst, and the inversion
+  is what that looks like from the ranking. A light FWD hot hatch on a road of switchbacks is
+  exactly where a point-mass model with no line term and no lift-off rotation should fail.
+
+### does the residual key on anything?
+  Pearson r against each candidate, on all three readings of the residual. The published
+  column is contaminated by the direction-change term itself, which is a function of the same
+  car properties and would therefore manufacture a correlation on its own; the no-exit column
+  is the clean read of what a transition term should key on. n = 12, so |r| below 0.60 is noise.
+    candidate                  published   +start      no exit
+    kerb mass (kg)               -0.307   -0.543       -0.307
+    power to weight (PS/t)       -0.298   -0.514       -0.298
+    grip mu                      -0.329   -0.480       -0.329
+    braking bmu                  -0.255   -0.450       -0.255
+    driven lap time (s)           0.026    0.288        0.026
+    NOTHING CLEARS THE BAR. The largest is grip mu at r = -0.33 on the no-exit residual.
+    On these 12 cars the leftover error is scatter, not a missing term keyed on mass,
+    power-to-weight or grip. The cross-course decomposition below is the sharper instrument:
+    it can separate what is the car from what is the course, and one course cannot.
+
+### the level offset, and the one real offset that runs the other way
+  1. THE LEVEL, AND WHERE IT WENT. On the surveyed map the model is slow here by an amount no
+     term it owns can move. The published geometry ABSORBS that, by ruling, and the absorption
+     IS the geometry: nothing else in the model changed to achieve it. So the mean error on
+     this table is near zero by construction and is not evidence about the model. The two
+     candidate terms are priced in stderr and their verdicts are unchanged: a gradient closes a
+     small fraction of the gap on the map, because a grade cannot touch a corner arc; a racing
+     line nulls it at about 3x effective radius, and that is the term the model is missing.
+     Neither is applied, because neither can be measured and fitting one to eight laps is what
+     a tuned geometry already is. The split that IS readable is bias against scatter:
+     published, standing start included: bias 4.14%   scatter rms 1.93%, range -2.21% to 4.16%
+     corner-exit term off:               bias 0.79%   scatter rms 1.90%, range -1.90% to 3.75%
+     The scatter is the only part of this that is about the CARS, and it is 1.9% rms with the
+     term off, 1.9% with it on. That is the number to compare against the Misaki MAE, not the mean.
+  2. STANDING START. lap() is a FLYING lap: it enters corner 0 at that corner's apex speed
+     and never sees a standstill. These laps are from rest. Placing the start line at the
+     exit of corner 0, the course's first bend, makes the offset exactly the extra
+     time that first straight costs from rest:
+     car                                   penalty s   % of driven lap
+       2012 Nissan GT-R Black Edition (R3     2.26           2.28%
+       2010 Lexus LFA                         2.96           2.91%
+       1988 Lamborghini Countach LP5000 Q     3.71           3.51%
+       1998 Subaru Impreza 22B-STi Versio     3.08           2.89%
+       1992 Mazda RX-7 Type R                 3.61           3.20%
+       1998 Toyota Supra RZ                   3.70           3.25%
+       1997 Mitsubishi GTO                    3.76           3.29%
+       1991 Honda CRX SiR                     4.37           3.81%
+       1997 Honda Civic Type R                3.36           2.88%
+       1990 Mercedes-Benz 190E 2.5-16 Evo     4.54           3.80%
+       1989 Nissan Silvia K's                 3.96           3.30%
+       1993 Autozam AZ-1                      6.44           5.08%
+     mean 3.81 s (3.35% of lap), range 2.26 to 6.44 s.
+     It pushes the model FAST, by 3.3% of the lap, and it is the only offset here that runs that way.
+     It is real, it is small, and it is nowhere near the size of the level error above: adding
+     it makes the model worse, not better (bias 0.8% to 4.1%). It is reported because a
+     correction that is real and inconvenient still has to be on the page.
+
+### how sensitive is all of this to the geometry it was fitted to?  (DIAGNOSTIC ONLY)
+  Every radius scaled by a common factor, the arc taken back out of the connectors, so the
+  course stays 2.7 km and only its TIGHTNESS moves. 1.00x is the published facsimile
+  itself. Corner speed is quoted for the R35, the fastest car here.
+    radius   switchbacks m   connectors m   corner km/h   mean err%   MAE%   spread
+     0.75x          8 to 8     171 to 308      33 to 33         4.5     4.5    1.290
+     1.00x        11 to 11     161 to 290      38 to 38         0.8     1.4    1.271
+     1.25x        14 to 14     151 to 272      43 to 43        -2.3     2.7    1.256
+     1.50x        17 to 17     141 to 254      47 to 47        -5.0     5.0    1.244
+     2.00x        22 to 22     121 to 218      54 to 54        -9.4     9.4    1.222
+     2.50x        28 to 28     101 to 182      61 to 61       -12.7    12.7    1.209
+     3.00x        33 to 33      81 to 146      66 to 66       -15.5    15.5    1.202
+  The R35 lap of 99.2 s over 2.7 km is an average of 98 km/h, and the slowest car here
+  averages 77 km/h. THAT is the pace this geometry was searched to reproduce, and it does:
+  an average of 98 km/h for the R35 against the 98 driven. On the SURVEYED map the same car
+  averages 59 km/h, because a flat-road point-mass car cannot corner 11
+  switchbacks of 11 to 19 m at that rate, and neither can a descending one. What buys the pace is
+  radius, which is the racing line, and this table is the price list for it.
+  READ THE LAST TWO COLUMNS TOGETHER, because they are the trade the search had to make. The
+  tighter the course, the better it spreads the field and the worse it hits the level; the more
+  open, the closer the level and the flatter the field. At the published geometry the spread is 1.271
+  against a driven 1.276 (0% short) with the level 0.8% out, which is as close to both
+  as the search could get inside a road-shaped box. NOTHING in this family gets both exactly,
+  and that is the honest shape of the remaining error. What the geometry change bought is that
+  the level error is no longer sitting on top of every car reading; what it cost is that this
+  course is no longer a measurement of anything.
+
+### the two flagged cases, re-run against the corner-exit term
+  A. GTO (1680 kg, mu 0.88) against CRX SiR (980 kg, mu 0.89)
+     driven:   GTO 114.4  CRX 114.9   GTO ahead by 0.5 s
+     modelled: GTO 115.7  CRX 120.1   GTO ahead by 4.3 s   (gap error 3.8 s)
+     on the 1.5x-radius reading of the course: GTO ahead by 3.6 s
+     at other mass exponents in the exit term (kExit refitted on all three courses at each p):
+       p = 0.0  GTO ahead by 6.7 s   p = 0.5  6.7 s   p = 1.0  6.4 s   p = 2.0  5.9 s
+     VERDICT: gap error 3.8 s at the published exponent. Driven, 700 kg and 164 PS
+     cancel to within half a second; the model gives the heavy car 8.7x the margin it earned.
+     Charging mass in the EXIT term is the thing that closes this pair, and the p row above is
+     the price list. What it costs elsewhere is in stderr 2c, and case B below is where it bites.
+     The gap is also strongly geometry-dependent, which is why it is quoted on two readings
+     above: it is 4.3 s on the published course and 3.6 s once the radii are opened by half again. Much of what looks
+     like a mass error is the connectors: with running room between corners the GTO's 193 PS/t
+     beats the CRX's 163, and shortening them shrinks the gap without touching a constant.
+     1/mu cannot separate this pair at all.
+  B. AZ-1 (64 PS, 720 kg) against the R35 (550 PS, 1763 kg)
+     driven:   27.4 s apart over 2.7 km
+     modelled: 26.8 s apart   (gap error -0.6 s, i.e. 2% too narrow)
+     on the 1.5x-radius reading of the course: 23.0 s apart (gap error -4.4 s)
+     at other mass exponents in the exit term (kExit refitted at each p): p = 0.0  35.5 s   p = 0.5  34.8 s   p = 1.0  34.3 s   p = 2.0  32.6 s
+     VERDICT: TOO NARROW, and this is the case that fought the mass exponent. The model puts
+     26.8 s between a 550 PS AWD flagship and a 64 PS kei roadster where the driver put 27.4 s,
+     and charging mass makes it worse in the same direction, because the fast car here is also
+     the heaviest and the slow one the lightest. Case A wants mass charged, case B wants it not
+     charged, and case B is the bigger miss in seconds. That tension has not gone away; what
+     changed is that the exit term spends mass through the FOLLOWING STRAIGHT, where the R35 has
+     the power to recover it and the CRX does not, so the two cases no longer pull exactly
+     against each other. The p row above prices how far that goes, and it is not all the way.
+     For the record, on the additive term this was the whole argument and
+     it landed on p = 0 rather than on a compromise.
+
+### what these 12 laps establish, and what they do not (summary)
+  ESTABLISHED. (1) THE MODEL CANNOT LAP THE REAL ROAD, and that has not changed. On the surveyed
+  geometry it is 22% slow with any direction-change term switched off, which is the floor
+  of what the model can produce there. The missing quantity is a RACING-LINE model, not a
+  gradient and not a corner charge. (2) THE PUBLISHED COURSE IS A FACSIMILE THAT ABSORBS THAT
+  GAP, by ruling, so the level error on the eight it was searched against (0.31% mean) is a
+  measurement of the search and NOT of the model. The three R4 rows are not: 2.25% mean, 2.25% MAE.
+  (3) The corner-exit penalty is worth 0% of the modelled lap here against 0% on Misaki, and it gets there
+  through the geometry rather than through a course-specific constant. (4) Even on a course
+  fitted to them, the model does not quite spread the field (1.271x against a driven 1.276x).
+  (5) The residual after the direction-change term is removed is 1.9% rms scatter with no correlation
+  to mass, power-to-weight or grip on this course alone.
+  NOT ESTABLISHED. WHICH missing physics owns the level. The racing line is the best candidate
+  and it nulls the bias on the surveyed map at about 3x effective radius, but a uniform 3x takes
+  the field spread the WRONG way, so a scalar is not the answer and eight laps cannot resolve a
+  per-corner one. NOR IS THE GEOMETRY ITSELF ESTABLISHED: 3, 4 and 5 switchbacks score 1.410,
+  1.400 and 1.427 on the joint objective, so the published radii are one fit among many and
+  carry no physical claim. The level also carries a 3.3% standing-start offset the other way, which the
+  flying-lap fit has quietly absorbed into the geometry too. Laps on one course can speak about
+  ordering, spread and pair gaps. They cannot resolve the level.
+
+## THE 9 DRIVEN WANGAN LAPS at the published constants
+READ THE COURSE BEFORE THE TABLE, on exactly the footing Hakone is read. This 7.0 km
+of highway loop is a BEHAVIOURAL FACSIMILE: a geometry searched to reproduce the FIRST
+FIVE of these driven times, with the direction-change weight refitted at every
+candidate. It is not a survey and no radius in it is a measured value. What IS given is
+the maintainer's description of the road, authored in the file as WAN_DESC and scored
+beside every number here. SO THE MEAN ERROR ON THOSE FIVE IS A MEASUREMENT OF THE
+SEARCH. What it is NOT is the whole story, and that is the difference from Hakone: a
+geometry charges every car through the same corners, so a search can move the level
+and cannot move the spread about it. The spread is the model. The three R4 rows sit
+outside the search entirely: this road had never seen them when they were predicted.
+
+### the course as published, against the description it was authored from
+  7.00 km, 11 corners (8 fast, 2 medium, 1 slow), 77% straight, avg radius 355 m
+  connectors, sorted (m): 320 320 320 400 400 490 510 530 590 660 838   longest 838 m
+                                    PUBLISHED         as described
+    length                             7.00 km                 7.00 km
+    corners                                 11                      11
+    fast / medium / slow             8 / 2 / 1               8 / 2 / 1
+    tightest / widest radius        55 / 645 m              70 / 650 m
+    average radius                       355 m                   370 m
+    longest connector                    838 m                   729 m
+    straight fraction                      77%                     64%
+    total heading change               443 deg                 495 deg
+    sum of tight (direction-change demand)         4.1                     3.2
+  WHAT THE SEARCH MOVED, AND IN WHICH DIRECTION. WAN_DESC keeps this course's connector
+  profile and moves only the corners back to the description, so the comparison isolates what
+  the search did to the corners. On WAN_DESC the model is 4.1% FAST on average, range 0.9% / -5.5% / -1.4% / -8.2% / -4.2% / -2.9% / -4.7% / -6.4% / -4.6%,
+  MAE 4.3% against the published 1.8%.
+  So the search had to ADD corner demand rather than remove it. What it did was
+  to shallow the sweepers and tighten the three corners that are not sweepers: the
+  mediums go 150/190 m to 100/125 m and the one slow corner 70 m to 55 m,
+  which is a junction ramp of about the tightness of the real C1's own, and the maintainer
+  describes this loop as a little wider and faster than C1. The corner CHARACTER was held to
+  the description throughout the search (eight fast sweepers, two mediums, one slow) and the
+  length to 7.0 km. Inside that box the count is barely identified: the best seven-sweeper
+  layout scored 1.98% on the five laps then in the fit against the published eight at 1.83%
+  and the best nine at 2.45%, so this geometry is one plausible road among many that
+  fit. Those three figures are the SEARCH as it was run, at the term that has since been
+  replaced, and they are quoted as history rather than as current scores.
+
+### driven against modelled, at the published constants
+car                                    driven  modelled   delta    err%   +start   err%    book rec.      pred
+  2010 Lexus LFA                         114.1     120.2     6.1     5.3    128.3   12.4     119.5   (4.8%)         -
+  1988 Lamborghini Countach LP5000 QV    123.7     123.6    -0.1    -0.1    134.5    8.7     123.6  (-0.1%)         -
+  1998 Subaru Impreza 22B-STi Version    128.2     133.3     5.1     4.0    143.7   12.1     133.3   (4.0%)     133.4   [R4 blind]
+  1992 Honda NSX-R                       129.6     125.5    -4.1    -3.1    136.0    4.9     125.5  (-3.1%)         -
+  2001 Mitsubishi Lancer Evolution VI    131.9     131.9     0.0     0.0    139.8    6.0     131.9   (0.0%)         -
+  1992 Mazda RX-7 Type R                 132.2     134.8     2.6     2.0    145.2    9.8     134.8   (1.9%)     134.8   [acceptance, blind]
+  1990 Mercedes-Benz 190E 2.5-16 Evolu   141.3     142.0     0.7     0.5    154.1    9.1     142.0   (0.5%)     142.1   [R4 blind]
+  1997 Honda Civic Type R                144.7     142.9    -1.8    -1.2    154.3    6.6     142.9  (-1.2%)     143.0   [R4 blind]
+  1991 Honda Beat                        166.6     166.8     0.2     0.1    180.2    8.2     166.8   (0.1%)         -
+  GROUP: mean 0.83%   MAE 1.82%   worst 5.32%   rms 2.57%
+  without the LFA (n=8): mean 0.27%   MAE 1.38%   worst 3.98%
+  4 of the 9 laps land inside half a per cent; the 5 that do not are Lexus LFA +5.3% and Subaru Impreza 22B-STi Version +4.0% and Honda NSX-R -3.1% and Mazda RX-7 Type R +2.0% and Honda Civic Type R -1.2%.
+  READ THE SCATTER, NOT THE LEVEL. A geometry charges every car through the same corners, so
+  a search moves the level and cannot move the spread about it. The scatter about this mean is
+  2.44% rms, worst Lexus LFA +4.5 and Honda NSX-R -4.0. THAT is the model; the level is the search
+  plus whatever replacing the direction-change term did to it.
+  THE THREE R4 ROWS ALONE (out of sample for this geometry): mean 1.07%   MAE 1.89%   against 1.78% for the 6 the road was searched against.
+  SPREAD: driven 1.460x   modelled 1.388x   (the model spreads the field 0.95x as far as the driver did)
+  ORDERING: 2 inversion(s) out of 36 ordered pairs: 1998 Subaru Impreza 22B-ST over 1992 Honda NSX-R; 1998 Subaru Impreza 22B-ST over 2001 Mitsubishi Lancer Evo
+  where the lap time goes (mean over these 9 cars): corner arcs 24.8%, corner-exit cost 0.0%, straights + braking 72.6%.
+  THAT SHARE IS THE POINT OF THE NEW TERM. On Hakone the same penalty is worth 0.0% of the lap; here
+  it is worth a fraction of that, and nothing in the model was told which course was which.
+  This course's evidence remains drag, power and grip.
+
+### does a car's Misaki residual survive on a fast road?
+  Misaki is 4.7 km and 68% straight; Wangan is 7.0 km and 77%, and every car here takes 8 of its 11 corners above 161 km/h,
+  which is the speed above which the measured acceleration curve stops being measured and
+  starts being extrapolated. Both courses run the SAME record for each car, so the shift is
+  not a bookkeeping difference. A residual that survives is not about cornering.
+    car                                    Misaki    Wangan     shift
+    2010 Lexus LFA                           2.86%     5.32%     2.46%
+    1988 Lamborghini Countach LP5000 QV     -0.41%    -0.07%     0.34%
+    1998 Subaru Impreza 22B-STi Version      3.40%     3.98%     0.57%
+    1992 Honda NSX-R                        -4.26%    -3.13%     1.13%
+    2001 Mitsubishi Lancer Evolution VI     -0.22%     0.03%     0.24%
+    1992 Mazda RX-7 Type R                   0.84%     1.98%     1.14%
+    1990 Mercedes-Benz 190E 2.5-16 Evolu    -1.23%     0.47%     1.70%
+    1997 Honda Civic Type R                 -0.23%    -1.23%    -0.99%
+    1991 Honda Beat                         -3.81%     0.14%     3.95%
+  READ THE GAPS, NOT THE SHIFTS. Every car in the column above shifted by about the same amount
+  (1.2 points on the mean, spread 1.3% rms about it), because the two courses now sit at different
+  levels. What survives that is the difference between two cars, and it is this: the LFA runs 2.9%
+  on Misaki and 5.3% here, the NSX-R -4.3% and -3.1%. The GAP between them, which no level can touch, goes from 7.1 points
+  to 8.5 points: it WIDENS with speed exposure, and it holds its SIGN. That pair is the
+  finding of this course and it has survived a change of direction-change term, which is a
+  harder test than it has previously faced. The Beat goes -3.8% to 0.1%, i.e. it moves with the level
+  rather than against it: on a road where it spends the whole lap at or near its 177 km/h top
+  speed the model has no particular quarrel with it. See the kei note below.
+
+### which single input would reconcile them, and do the two courses agree on it?
+  Each input is solved, alone, for the multiplier that reaches the driven time - once on
+  Misaki, once on Wangan. The courses are independent evidence, so a real cause has to ask for
+  the same number twice. DIAGNOSTIC: nothing below is applied to anything.
+    car          input              Misaki wants   Wangan wants   agreement
+    LFA          mechanical mu             1.073x         1.146x        7% apart
+    LFA          downforce dfC             2.071x         2.393x       16% apart
+    LFA          drag CdA             no solution    no solution        -
+    LFA          effective power           1.536x         1.589x        3% apart   -> 0-161 becomes 6.20 s against a MEASURED 7.69 s
+    NSX-R        mechanical mu             0.899x         0.910x        1% apart
+    NSX-R        downforce dfC        no solution    no solution        -
+    NSX-R        drag CdA                  1.884x         1.370x       27% apart
+    NSX-R        effective power      no solution         0.530x        -   -> 0-161 becomes 17.51 s against a MEASURED 11.46 s
+  READ THIS AS AN ELIMINATION, WHICH IS WHAT IT IS. DRAG cannot be the LFA's problem: there is
+  no drag figure at all, down to and including zero, that reaches its driven time on either
+  course, and on the NSX-R the two courses disagree by about a quarter on the drag they want.
+  POWER survives the two-course agreement test and fails a harder one: the multiplier the LFA
+  needs rewrites its own 0-161, and that time is an INPUT to the solve, not an output of it.
+  The last column above prices exactly that, and it is a full second and a half of a measured
+  figure. On the NSX-R power cannot even reach the driven time on Misaki inside the bracket.
+  What both courses agree on WITHOUT rewriting a measurement is MECHANICAL GRIP: the NSX-R asks
+  both courses for the same figure to within about a per cent, the LFA to within seven. The model
+  wants the LFA to corner roughly a tenth harder than its panel says and the NSX-R roughly a
+  tenth softer - which would put the 2010 supercar on 305-section rubber ABOVE the 1992 NSX-R
+  on 225s, where Forza's own lateral-g panel puts it below (1.03 g against 1.07 at 97 km/h).
+  THAT IS THE FINDING OF THIS COURSE, and it is an indictment of the panel's lateral g as a
+  mechanical-grip proxy on exactly the two cars where the ordering is least believable. It is
+  NOT a proposal: two cars are two cars, and nothing here is applied.
+
+### the standing start, and why this course cannot pin it
+  These laps are from rest and lap() is a FLYING lap, so the model owes a standing-start offset
+  exactly as it does on Hakone. But lap() is CYCLIC: rotating the course array does not change
+  the lap time by so much as a bit, and it moves the notional start line to a different corner
+  exit. On a 7.0 km loop with connectors from 320 to 838 m that is worth several seconds, so the offset
+  is NOT IDENTIFIED and the published column above is one reading of it, not the answer.
+    car                                  published   min over the 11 rotations   max
+    2010 Lexus LFA                           8.08                    2.54     8.08   (2.2% to 7.1% of the driven lap)
+    1988 Lamborghini Countach LP5000 Q      10.89                    3.18    10.89   (2.6% to 8.8% of the driven lap)
+    1998 Subaru Impreza 22B-STi Versio      10.39                    2.47    10.39   (1.9% to 8.1% of the driven lap)
+    1992 Honda NSX-R                        10.43                    2.96    10.43   (2.3% to 8.0% of the driven lap)
+    2001 Mitsubishi Lancer Evolution V       7.82                    2.97     7.82   (2.3% to 5.9% of the driven lap)
+    1992 Mazda RX-7 Type R                  10.39                    3.07    10.39   (2.3% to 7.9% of the driven lap)
+    1990 Mercedes-Benz 190E 2.5-16 Evo      12.15                    3.95    12.15   (2.8% to 8.6% of the driven lap)
+    1997 Honda Civic Type R                 11.35                    2.70    11.35   (1.9% to 7.8% of the driven lap)
+    1991 Honda Beat                         13.41                    6.35    13.41   (3.8% to 8.0% of the driven lap)
+  The published array puts the start line at the head of the longest run, which is where a start
+  line on a highway loop would sit, and that is the WORST case of the eleven. The fit is on the
+  flying lap for all three courses, as it always has been, so this offset is absorbed into the
+  searched geometry along with everything else it absorbs. It is reported, not applied.
+
+### how sensitive is this to the geometry it was fitted to?  (DIAGNOSTIC ONLY)
+  Every radius scaled by a common factor, the arc taken back out of the connectors, so the
+  course stays 7.0 km and only its TIGHTNESS moves. 1.00x is the published facsimile.
+    radius   tightest m   corner km/h (LFA)   mean err%   MAE%   spread   LFA err%
+     0.60x           33                  65        15.7   15.7    1.298       21.1
+     0.80x           44                  75         7.2    7.2    1.334       12.4
+     1.00x           55                  84         0.8    1.8    1.388        5.3   <== published
+     1.25x           69                  94        -4.5    4.5    1.455       -1.9
+     1.50x           83                 103        -7.9    7.9    1.496       -6.6
+     2.00x          110                 119       -12.1   12.1    1.532      -12.1
+  THE LFA COLUMN IS THE POINT OF THIS TABLE. Its residual holds its size and its sign across
+  every reading of the geometry, which is what makes it a statement about the car rather than
+  an artefact of the road the search happened to land on.
+
+### BLIND PREDICTION: the 1998 Toyota Supra RZ on Wangan
+  PREDICTED FLYING LAP: 134.6 s.  324 PS, 1510 kg, mu 0.91, dfC 0.164, CdA 0.670, top 283 km/h,
+  mean apex 197 km/h, arc 25% / corner-exit 0% / straights 72%, standing offset 10.1 s if the start line is where
+  the published array puts it. That is an average of 187 km/h, between the driven Evo VI TME (191) and the NSX-R (194).
+  UNCERTAINTY, from the residual spread of the courses that ARE fitted: the 9 Wangan laps
+  sit at 2.6% rms (2.0% without the LFA) and the 17 Misaki laps at 2.3% rms. Call it +/- 3%,
+  i.e. 130.6 to 138.7 s, with the single number 134.6 s.
+  WHAT WOULD MAKE IT WRONG, stated in advance. The model puts the Supra BEHIND the Evo VI TME
+  (131.9 s modelled, 131.9 driven) despite 44 more PS and a 43 km/h higher top speed, because the Evo's
+  measured downforce coefficient (0.651, the roster's highest) buys it far more corner speed through eight
+  fast sweepers than the Supra's 0.164 does. If the Supra comes in AHEAD of the Evo,
+  the downforce term is over-credited at speed and this is where it shows. For reference the
+  same car's Hakone lap is 112.9 s against 113.8 s driven (-0.8%), on a course fitted with that lap in it.
+
+
+## YATABE STRAIGHT: THE 7 MEASURED 1 km RUNS
+Standing start, traction and stability control off, each the average of three
+consistent runs. Every `pred` below was committed BEFORE the car was driven.
+NO LAP CONSTANT IS FITTED TO THIS SET. It votes on nothing in the cornering model,
+and the mechanism probes at the end of the section are why, not an oversight.
+WHAT IT DOES CARRY is one flat calibration constant of its own, applied to computed
+kilometres ONLY: see the DRAG_OFFSET block for the fit and for why letting it reach
+the lap path would break three courses that currently work.
+WHY A STRAIGHT LINE. A lap cannot separate the acceleration model from the cornering
+model. It is also the only measurement that exists above 161 km/h, which is where
+the two published acceleration figures stop and the model starts extrapolating.
+
+### the scored set, raw and at the flat offset
+THE OFFSET IS FITTED ON THESE SEVEN RUNS, so the corrected columns are a residual spread and
+not a forecast. Read the raw columns as the model and the corrected ones as the
+model plus one admitted constant. `acc` is the provenance of the car's own
+acceleration curve: meas = both times published, 1pt = one published and one
+regressed, which is a materially weaker input on a straight line than on a lap.
+car                            pred   driven   raw    err%    cal    err%   err s   acc  terminal  below 161
+  Lotus Elise S1 (AWD swap)    23.03   22.737  23.03   1.28   22.27  -2.04  -0.464  meas   204 km/h       26% of the run
+  Lexus LFA                    20.90   20.630  20.90   1.33   20.22  -1.99  -0.411  meas   260 km/h       20% of the run
+  Nissan GT-R Black Edition    20.27   19.777  20.27   2.50   19.61  -0.87  -0.171  meas   256 km/h       19% of the run
+  Honda Beat                   34.16   33.061  34.16   3.31   33.03  -0.08  -0.027  meas   157 km/h      100% of the run
+  BMW 850CSi (V8-TT swap)      22.69   21.856  22.69   3.80   21.94   0.39   0.086  meas   261 km/h       26% of the run
+  Mazda RX-7 Type R            25.11   23.943  25.11   4.89   24.29   1.45   0.347  meas   211 km/h       36% of the run
+  Countach LP5000 QV           24.30   22.835  24.30   6.44   23.51   2.94   0.672  meas   218 km/h       32% of the run
+  RAW: mean 3.37%   MAE 3.37%   worst 6.44%   rms 3.79%   mean deficit 0.804 s
+  AT THE OFFSET (-3.28%): mean -0.03%   MAE 1.40%   worst 2.94%   rms 1.68%   mean deficit 0.004 s
+  offset refitted here: 3.2830% against 3.2830% where it is defined; they must agree, and they agree to 0.000000 points.
+  ORDERING: 0 inversion(s) out of 21 ordered pairs - the model reproduces the driven order exactly.
+  SPREAD: driven 1.672x   modelled 1.685x   (the offset is a multiplier, so it moves neither of these)
+  EVERY CAR IS SLOW AND NOT ONE IS FAST in the raw column, and that column still
+  reproduces the committed prediction on all seven, so nothing has drifted since
+  they were driven. THE OFFSET IS A CONSTANT, NOT A MODEL: it takes the mean out
+  and leaves the ordering and the spread exactly where they were, which is the
+  honest thing for a calibration to do and the reason it is labelled protocol.
+
+### where each run sits against the two measurements that pinned its curve
+The solve reproduces 0-97 and 0-161 exactly. What it does NOT pin is the DISTANCE
+covered inside that window, or anything at all above 161 km/h. All 7
+cars here carry both published times, so every curve in this table is solved and
+none of them is regressed.
+car                            0-97   0-161   t@97  t@161   x@97  x@161  1km/0-161  term/vTop  at cap
+  Lotus Elise S1 (AWD swap)      3.35    8.88   3.34   8.87     49    255       2.60       0.90      0%
+  Lexus LFA                      3.66    7.69   3.65   7.68     50    198       2.72       0.79      0%
+  Nissan GT-R Black Edition      2.75    6.86   2.75   6.86     42    193       2.96       0.75      0%
+  Honda Beat                    11.95   38.12  11.91      -    173      -      never       0.89      0%
+  BMW 850CSi (V8-TT swap)        5.21   10.28   5.20  10.26     71    257       2.21       0.72      0%
+  Mazda RX-7 Type R              5.24   13.00   5.22  12.98     77    363       1.93       0.74      0%
+  Countach LP5000 QV             4.84   11.70   4.82  11.68     70    323       2.08       0.73      0%
+  TWO STRUCTURAL FACTS COME STRAIGHT OFF THIS TABLE.
+  1. The Beat never reaches 161 km/h in a kilometre. Its whole run is INSIDE the
+     window the two measurements pin, so no mechanism that acts above 161 km/h can
+     move it by a single millisecond, whatever that mechanism is or how hard it is
+     pushed. That one fact disposes of a whole family before it is fitted.
+  2. No car spends any time at its speed cap and every one finishes between 0.72 and 0.90 of it, so the top-speed
+     clamp is not what is costing the time either.
+
+### what the RAW error keys on   (n = 7, so |r| below about 0.75 is not evidence)
+  This is the table that decides the SHAPE of the correction, so it runs on the raw
+  error: a flat offset is only the honest form if nothing about the car orders the
+  deficit, and taking the mean out first would guarantee that answer.
+  predictor                      r(err %)   r(err s)
+  pEff / crank x eta              -0.428     -0.198
+  aLaunch / (mu g)                -0.377     -0.572
+  power to weight (PS/t)          -0.279     -0.529
+  mass (kg)                        0.263      0.051
+  drivetrain (AWD = 1)            -0.536     -0.603
+  CdA                             -0.054     -0.192
+  terminal / top speed            -0.605     -0.390
+  share of TIME below 161          0.221      0.498
+  share of DISTANCE below 161      0.157      0.441
+  traction share fTr               0.169      0.062
+  grip mu                         -0.310     -0.453
+  pEff / mass                     -0.544     -0.766
+  NOTHING CLEARS THE BAR. The strongest on per-cent error is terminal / top speed at -0.61, and power-to-weight - the one a scaling law would need - is at -0.28.
+  THAT IS THE WHOLE CASE FOR A FLAT CONSTANT. If the deficit scaled with anything
+  about the car it would show here at n = 7; the 560 PS LFA is the
+  best-fitting car in the set and the 255 PS RX-7 nearly the worst, which is the
+  ordering a scaling law cannot produce. A flat offset is not the elegant answer,
+  it is the only shape the seven points do not immediately refute.
+
+  The three lap columns are the MAE over the 17 driven Misaki, 12 Hakone and 9 Wangan laps
+  at the published constants. 1 of those 38 laps runs a car with no measured
+  pair, so it keeps the published curve and dilutes the columns very slightly.
+  EVERY DRAG COLUMN IN THIS SUBSECTION IS RAW, with no calibration offset applied.
+  These probes exist to ask whether a MECHANISM explains the deficit, and scoring
+  them against an already-corrected target would be scoring them against the answer.
+  `worst |rt|` is the largest round-trip residual, in seconds, over every car the
+  row re-solved: it is the guard that a candidate has not simply thrown a
+  measurement away to buy the drags.
+
+### mechanism 1: launch contamination, handed back above 161 km/h
+  THE HYPOTHESIS DOES NOT SURVIVE ITS OWN ARITHMETIC, and the reason is in the
+  solve. pEff is fixed by the 97-161 km/h SEGMENT, not by the 0-97: a wheelspun
+  launch is in the 0-97 and therefore in aLaunch, and it can only reach pEff on a
+  car still traction-bound above 97 km/h, which is exactly what fTr measures
+  already. The ladder prices the family anyway, out to its physical ceiling.
+  family                Lotus    LFA    R35   Beat    BMW   RX-7  Ctach     mean    MAE   misMAE hakMAE wanMAE  worst |rt|
+  published                1.28   1.33   2.50   3.31   3.80   4.89   6.44     3.37   3.37    1.782  1.424  1.817     1.6e-10
+  release OFF              1.28   1.78   2.50   3.31   6.38   4.89   6.93     3.87   3.87    1.783  1.424  1.844     1.6e-10
+  shared kappa 0.5         0.48   0.67   2.04   3.31   4.93   4.54   5.74     3.10   3.10    1.837  1.426  1.739     1.6e-10
+  shared kappa 1          -0.35  -0.41   1.59   3.31   3.54   4.19   4.54     2.34   2.56    1.905  1.427  1.740     1.6e-10
+  full crank > 161        -1.62  -2.25   0.66   3.31   0.63   2.98   1.59     0.76   1.86    1.951  1.447  1.798     1.6e-10
+  1.5x crank > 161        -5.82  -7.82  -5.20   3.31  -2.86  -0.61  -2.72    -3.10   4.05    2.332  1.493  1.968     1.6e-10
+  kappa 1 hands back the ENTIRE gap between solved pEff and crank power; the row
+  below it does the same instantly at 161 km/h instead of ramping to top speed and
+  is the absolute ceiling of the idea. The last row is past physics, for scale.
+  The Beat does not move by one hundredth on any of them. By the ceiling row other
+  cars have overshot and Misaki has lost MAE, both visible in the columns above,
+  and the Beat still has not moved. What the ladder DOES establish, and it is the
+  first out-of-sample evidence
+  the published release has ever had: switching it off makes the LFA, the BMW and
+  the Countach worse and no car better, and it never overshoots. It is right in
+  sign and far too small to be the answer.
+  And the release cannot be promoted to a shared weight either, because the value
+  each car demands ON ITS OWN does not agree with any other. That table is next.
+  car                          kappa needed   released power at 200 km/h
+  Lotus Elise S1 (AWD swap)         0.790       131 kW of a 142 kW crank figure
+  Lexus LFA                         0.806       310 kW of a 362 kW crank figure
+  Nissan GT-R Black Edition         2.800       375 kW of a 356 kW crank figure
+  Honda Beat                    unreachable at any kappa
+  BMW 850CSi (V8-TT swap)           2.395       488 kW of a 454 kW crank figure
+  Mazda RX-7 Type R                 6.982       266 kW of a 165 kW crank figure
+  Countach LP5000 QV                3.028       379 kW of a 298 kW crank figure
+  kappa: reached on 6 of 7, min 0.79, max 6.98, spread 8.8x. Anything above 1 is a claim
+  that the car makes more than its published PS, and 4 of the 6 are above 2.
+
+### mechanism 2: the launch plateau is flat and a real launch is front-loaded
+  The solve pins the TIME to 97 km/h and says nothing about the DISTANCE covered
+  getting there. A flat plateau is the wrong shape for a car whose first gear
+  out-thrusts its third, and the wrong shape covers the wrong distance. This is
+  the only family here that CAN move the Beat, because it acts below 161 km/h.
+  family                Lotus    LFA    R35   Beat    BMW   RX-7  Ctach     mean    MAE   misMAE hakMAE wanMAE  worst |rt|
+  falling launch 0         1.28   1.33   2.50   3.31   3.80   4.89   6.44     3.37   3.37    1.782  1.424  1.817     1.6e-10
+  falling launch 0.5       1.11   0.21   2.48   2.99   3.14   4.81   5.07     2.83   2.83    1.793  1.399  1.803     1.6e-10
+  falling launch 1         0.51  -0.88   2.46   2.55   2.18   4.49   4.29     2.23   2.48    1.807  1.391  1.747      2.9e-1
+  falling launch 1.2       0.28  -1.21   2.36   2.48   3.61   4.35   4.21     2.30   2.64    1.798  1.383  1.745      6.1e-1
+  falling launch 1.5      -0.06  -4.25   2.20   2.51   5.58   4.14   4.10     2.03   3.26    1.738  1.409  1.594      1.1e+0
+  It moves the Beat and it moves the Countach further than the release does, and it
+  still fails on three counts, all of them readable in the columns above. The R35
+  barely responds at all; the Countach never comes near zero; and the LFA is dragged
+  straight past zero on the way. Then two harder ones.
+  ONE. From b 1.0 the published pair stops being reproducible at all on the
+  BMW 850CSi (V8-TT swap): the plateau this family forces on it is low enough to
+  cap the 97-161 km/h segment at ANY power, so its 0-161 comes back 0.289 s out.
+  That is the mechanism failing to hold the measurement it exists to preserve.
+  TWO. At b 1.0 the implied standstill acceleration exceeds the traction ceiling
+  mu g on 5 of the 59 measured cars, worst 1.40 times it. That is not a launch, it is a fault.
+  The three lap columns are the one genuinely interesting result in this section:
+  a falling launch is the only family here that improves BOTH Hakone and Wangan at
+  once, at a small cost on Misaki. Worth remembering if a course-level defect is
+  ever chased on its own terms rather than through the drags, which is not what
+  this section is for.
+
+### mechanism 3: effective power rises with road speed
+  family                Lotus    LFA    R35   Beat    BMW   RX-7  Ctach     mean    MAE   misMAE hakMAE wanMAE  worst |rt|
+  power tilt 0.1           0.80   1.19   1.82   3.38   5.95   4.54   6.55     3.46   3.46    1.738  1.546  1.853     1.1e-10
+  power tilt 0.2           0.26   0.57   1.09   3.20   5.50   4.14   6.12     2.98   2.98    1.698  1.770  1.826      3.0e-1
+  power tilt 0.3          -0.34  -0.10   0.65   2.88   5.02   3.66   5.63     2.49   2.61    1.660  2.014  1.780      6.9e-1
+  This family replaces the release rather than keeping it, so its baseline is the
+  release OFF row above, not the published one. It pays for the drags out of the
+  tight course, and the reason is mechanical: the solve compensates for a rising
+  power curve by taking thrust OUT of the 30 to 60 km/h band, which is precisely
+  where a hairpin exit lives. Over the tilt range above, Hakone loses several tenths
+  of a point of MAE against a much smaller Misaki gain on a course the model is
+  already slow on, and the drag MAE only improves at a tilt whose 0-161 round trip
+  is most of a second out. The only value that holds both measurements is 0.1, and
+  at 0.1 the drag MAE is WORSE than the published one. Every figure in that sentence
+  is in the table immediately above; none of them is quoted here, so none can go
+  stale when a run is added to the set.
+
+### mechanisms 4 and 5: is it simply drag, or rolling resistance
+  Both are re-solved, so the two measurements stay exact and only the SHAPE of the
+  curve between and beyond them moves. Neither has leverage worth the name, and the
+  drag row moves the Beat the WRONG WAY, which is what a real mechanism does not do.
+  family                Lotus    LFA    R35   Beat    BMW   RX-7  Ctach     mean    MAE   worst |rt|
+  published                1.28   1.33   2.50   3.31   3.80   4.89   6.44     3.37   3.37     1.6e-10
+  drag x 0.8               0.21   0.86   2.02   3.41   3.37   4.59   6.02     2.92   2.92     3.9e-11
+  drag x 1.2               2.27   1.81   2.97   3.06   4.17   5.19   6.83     3.76   3.76     5.8e-10
+  rolling x 0 (none)       1.14   1.07   2.30   3.31   3.38   4.74   6.21     3.16   3.16     1.1e-10
+  rolling x 2              1.42   1.59   2.70   3.27   4.19   5.04   6.65     3.55   3.55     2.3e-10
+
+### the one reading that fits the sign, and why the harness may not use it
+  Solve each car against its published pair scaled by (1 - d) and run the kilometre
+  on the result with no offset added back. d is how optimistic Forza's own 0-97 and
+  0-161 would have to be for the model to land the driven time. It BREAKS both
+  round trips by construction and is a diagnosis, not a candidate.
+  IT NEEDS BOTH PUBLISHED TIMES. Every car in this set has both, so none is missing
+  here; one that did not would be excluded, because scaling a regressed 0-161 would
+  be scaling this model's own guess and calling it evidence.
+  car                             d %   implied 0-97   implied 0-161      published
+  Lotus Elise S1 (AWD swap)      4.33          3.203           8.499       3.348 / 8.883
+  Lexus LFA                      4.16          3.508           7.374       3.660 / 7.694
+  Nissan GT-R Black Edition      7.15          2.557           6.374       2.754 / 6.864
+  Honda Beat                     9.81         10.774          34.385     11.946 / 38.124
+  BMW 850CSi (V8-TT swap)       11.95          4.592           9.053      5.215 / 10.281
+  Mazda RX-7 Type R             13.29          4.544          11.273      5.240 / 13.000
+  Countach LP5000 QV            18.30          3.953           9.558      4.839 / 11.699
+  d: mean 9.85%   min 4.16%   max 18.30%   spread 4.4x
+  IT IS NOT CONSTANT EITHER, and that is the finding rather than a disappointment.
+  Read as a protocol gap it is entirely plausible: Forza's panel figures are
+  canned, the maintainer drives manually with the assists off, and the ordering is
+  the one that story predicts. But a protocol gap is not physics, and fitting it in
+  the acceleration model would pull 59 cars off the only
+  figures that pin them, and would move every lap on every course with them. That
+  is the trade refused, and it is exactly why the offset the model DOES carry lives
+  on the drag strip alone.
+
+### VERDICT: no mechanism, one flat offset
+  Every currency the deficit has been expressed in spreads by several times across these 7 cars:
+  1.3% to 6.4% as a percentage, 0.27 s to 1.47 s as a time, and 4% to 18% as an error in the
+  published pair. A shared PARAMETER is a mechanism only when the cars agree on its
+  value, and on this evidence they never do: every candidate above buys a mean and
+  sells the Countach and the Beat, which are the two cars that test whether it is
+  real. THE MODEL IS THEREFORE STILL UNCHANGED. What HAS changed, on maintainer
+  ruling, is that the residual is now admitted as a calibration instead of being
+  carried as a known error: a flat -3.28% on
+  computed kilometres, fitted on these runs, applied to no lap on any course, and
+  labelled a PROTOCOL OFFSET because that is what the evidence supports. It is not
+  a term. Nothing about a car changes it, and it explains nothing.
+  WHAT WOULD SETTLE IT: more standing kilometres, and at least one on a car whose
+  panel 0-97 the maintainer has re-driven by hand, which is the one measurement
+  that separates a protocol gap from a model defect. If that measurement ever comes
+  in, the offset is the first thing that should be deleted.
+  ON THE HIGH-SPEED RELEASE, which these runs were also asked to judge: it stays,
+  unchanged and per-car. It is not superseded, because nothing replaced it; it is
+  supported, because switching it off makes three of the set worse and none better;
+  and it is not promoted to a shared weight, because of the kappa table above.
+
+
+## THE GEOMETRIC CORNER-GRIP CEILING (new 2026-07-27)
+usable mu through a corner of radius r = min(mu, 1.220 x (r/20)^0.0612), applied BOTH to
+the grip the corner arc may use and to the grip the direction-change term may divide by.
+Both parameters are fitted on all 51 scored points at once, equal weight per course.
+
+### the ceiling by radius, against the grip levels that measured it
+  radius m   ceiling    Elise 1.226    Calsonic 1.512    787B 1.699    roster max 1.083
+        11    1.1761          -2.1%            -11.8%        -16.8%                   -
+        18    1.2122          -0.6%            -10.5%        -15.5%                   -
+        20    1.2200          -0.2%            -10.2%        -15.3%                   -
+        45    1.2821              -             -7.9%        -13.1%                   -
+        55    1.2980              -             -7.3%        -12.6%                   -
+        91    1.3386              -             -5.9%        -11.2%                   -
+       125    1.3649              -             -5.0%        -10.4%                   -
+       200    1.4048              -             -3.6%         -9.1%                   -
+       350    1.4538              -             -1.9%         -7.5%                   -
+       515    1.4886              -             -0.8%         -6.4%                   -
+       700    1.5168              -                 -         -5.5%                   -
+  The columns are the cut in mechanical apex speed. The ceiling at the tightest radius on any
+  course is 1.1761, above the grip of every car on the roster, so the term is EXACTLY inert
+  for all 85 of them and for all 45 existing driven laps. The next table proves it rather than
+  asserting it. Downforce is untouched: the ceiling caps MECHANICAL grip and the aero term
+  is then solved on top of it, so a car doing 315 km/h round a 350 m sweeper is not charged
+  for steering geometry it is not using.
+
+### THE SIX DRIVEN HIGH-GRIP POINTS
+  All six were driven after the figure in `pred` was committed except the Calsonic Misaki,
+  which is the long-standing 81.06 s anchor.
+  car                     course     mu     pred   before    after   driven    before%    after%
+  Lotus Elise S1 (AWD)    Hakone    1.226     94.7    94.66    95.46    94.90      -0.26      0.59
+  Calsonic BNR32 Gr.A     Hakone    1.512     81.8    81.13    87.11    90.10      -9.96     -3.32
+  Mazda 787B (modified)   Hakone    1.699     71.8    71.75    80.70    80.70     -11.09     -0.00
+  Calsonic BNR32 Gr.A     Misaki    1.512     76.5    76.18    79.07    81.06      -6.02     -2.45   [anchor, not blind]
+  Calsonic BNR32 Gr.A     Wangan    1.512     99.4    99.14   101.20   100.70      -1.55      0.50
+  Calsonic BNR32 Gr.A     Yatabe    1.512     18.1    18.11    18.11    17.65       2.57      2.57
+  MAE over the six: 5.24% before, 1.57% after.  Worst 11.09% before, 3.32% after.
+
+### THE RESIDUAL GRIP CURVE: one road, three grip levels
+  Hakone, the only course driven at more than one grip level above the roster range.
+  car                        mu     before%     after%     driven s
+  Lotus Elise S1 (AWD)      1.226      -0.26       0.59        94.90
+  Calsonic BNR32 Gr.A       1.512      -9.96      -3.32        90.10
+  Mazda 787B (modified)     1.699     -11.09      -0.00        80.70
+  Before, the error was nothing at 1.23, most of its size by 1.51 and saturated by 1.70,
+  which is two cars hitting the same limit while only the model kept crediting them.
+  After, it no longer RISES with grip: the two ends land inside 0.6% and the middle
+  point does not, which is the shape of one car's constant rather than of a curve.
+
+### WHAT IT COST THE 45 EXISTING DRIVEN LAPS: nothing, to the last bit
+  course    n    MAE before    MAE after    mean before    mean after    inversions
+  Hakone    12       1.4244       1.4244         0.7919        0.7919    3/66 -> 3/66
+  Wangan     9       1.8167       1.8167         0.8322        0.8322    2/36 -> 2/36
+  Misaki    17       1.7823       1.7823        -0.6018       -0.6018  8/136 -> 8/136
+  Yatabe     7       1.3954       1.3954        -0.0283       -0.0283          - -> -
+  Over the whole 85-car roster and all four courses: 0 cars move by more than 0.5%, and the
+  largest move by any car on any course is 0.0e+0%. The ceiling sits above the roster.
+  Yatabe cannot move at all: the ceiling lives in the corner arithmetic and dragTime never
+  calls it, so the drag offset stays drag-only and stays fitted on the seven kilometres.
+
+### IS THE SECOND PARAMETER EARNED?
+  variant                              objective   Calsonic Hak   Calsonic Wan   Calsonic Mis
+  no ceiling                              1.9696          -9.96          -1.55          -6.02
+  one parameter, exponent forced to 0     1.6492          -3.85           3.02           0.25
+  two parameters, both fitted             1.6118          -3.32           0.50          -2.45
+  A flat grip cap fixes Hakone and then pushes the Calsonic's Wangan lap 3.0% SLOW, because a
+  highway loop has no tight corners to charge and a flat cap charges its sweepers anyway. The
+  radius exponent is what stops that, and that is the whole case for the second parameter.
+  It is worth 0.037 of objective. The basin is shallow and the surface is in stderr 7.
+
+### WHAT IS LEFT, SAID PLAINLY
+  The Calsonic Gr.A is the car that sits exactly at the game's own race-build ceiling and
+  it is still the worst of the six. Its four residuals no longer track corner content, which
+  is the defect this term was built for, but they do not collapse to nothing either. What is
+  left is one car's constant, of the same size and kind as the car constants the cross-course
+  decomposition already finds on the LFA, the NSX-R and the 22B, and one more high-grip car
+  on two more roads would say whether it is a car or a term. Its braking coefficient is the
+  one input on it that no measurement pins: it is a race car with no published stopping
+  distance, so bmu comes from the regression, and a standing kilometre cannot check it.
+
+
+## THE COURSE-CHARACTER SWING (Hakone against Wangan): the acceptance test
+swing = (A - B on Wangan) - (A - B on Hakone). Per-car and per-course level errors
+both cancel, so this is the pure course-character content of the model. Five cars
+carry driven laps on both roads, which is ten pairs. Each car is scored on its own
+course record, i.e. exactly the rows the two tables above print.
+  pair                                            driven Hak   driven Wan   swing driven   swing model   share
+  Lexus LFA v Honda Civic Type R                      -15.0 s      -30.6 s       -15.55 s       -4.34 s     28%
+  Lamborghini Countach  v Honda Civic Type R          -11.0 s      -21.0 s       -10.00 s       -4.57 s     46%
+  Lexus LFA v Mercedes-Benz 190E 2.                   -17.6 s      -27.2 s        -9.56 s       -3.38 s     35%
+  Lexus LFA v Subaru Impreza 22B-ST                    -4.9 s      -14.1 s        -9.16 s       -2.55 s     28%
+  Mazda RX-7 Type R v Honda Civic Type R               -3.9 s      -12.5 s        -8.60 s       -2.45 s     28%
+  Lexus LFA v Mazda RX-7 Type R                       -11.1 s      -18.1 s        -6.95 s       -1.90 s     27%
+  Subaru Impreza 22B-ST v Honda Civic Type R          -10.1 s      -16.5 s        -6.40 s       -1.79 s     28%
+  Honda Civic Type R v Mercedes-Benz 190E 2.           -2.6 s        3.4 s         6.00 s        0.97 s     16%
+  Lexus LFA v Lamborghini Countach                     -4.0 s       -9.6 s        -5.56 s        0.23 s     -4%
+  Lamborghini Countach  v Mercedes-Benz 190E 2.       -13.6 s      -17.6 s        -4.00 s       -3.60 s     90%
+  Lamborghini Countach  v Subaru Impreza 22B-ST        -0.9 s       -4.5 s        -3.60 s       -2.78 s     77%
+  Mazda RX-7 Type R v Mercedes-Benz 190E 2.            -6.5 s       -9.1 s        -2.60 s       -1.48 s     57%
+  Subaru Impreza 22B-ST v Mazda RX-7 Type R            -6.2 s       -4.0 s         2.20 s        0.66 s     30%
+  Lamborghini Countach  v Mazda RX-7 Type R            -7.1 s       -8.5 s        -1.40 s       -2.12 s    152%
+  Subaru Impreza 22B-ST v Mercedes-Benz 190E 2.       -12.7 s      -13.1 s        -0.40 s       -0.82 s    206%
+  OVERALL: mean |driven swing| 6.13 s, mean |modelled swing| 3.30 s = 54% of it.
+  pair-by-pair MAE 4.00 s, correlation r 0.64, sign agreement 13/15.
+
+### the same statistic at four models, which is where the result actually is
+  model                                       mean |swing|   share   pair MAE      r   signs
+  driven                                        6.13 s
+  no direction-change term at all               3.51 s     57%       3.71 s   0.69     14/15
+  ADDITIVE agility, kAgi 0.82 (PUBLISHED)       2.24 s     37%       4.07 s   0.79     14/15
+  CORNER-EXIT, raw joint fit (not applied)      3.30 s     54%       4.00 s   0.64     13/15
+  CORNER-EXIT, level-free fit (not applied)     3.99 s     65%       3.08 s   0.81     14/15
+  THE HEADLINE PAIR: Honda Civic Type R against Mercedes-Benz 190E 2.  Driven swing 6.0 s.
+  Additive term: 1.0 s (16%).  Corner-exit term: 1.0 s (16%).
+  READ THE FOUR ROWS TOGETHER, BECAUSE THE FIRST ONE IS THE ONE PEOPLE WILL SKIP. A model with
+  NO direction-change term at all already produces 57% of the driven swing, purely out of
+  drag, power and braking. The ADDITIVE term cut that to 37%: it was actively SWING-NEGATIVE, because
+  it charges seconds in proportion to corner count and Hakone has more corners, which flattens
+  the tight course towards the fast one. That is a second, independent statement of the same
+  diagnosis the exit term was built for. The corner-exit term at its own fitted weight gets to 54%
+  and cuts the pair-by-pair error from 4.07 s to 4.00 s. At the level-free weight, which is 14x smaller than
+  the raw joint fit and does not saturate, it reaches 65% and 3.08 s - but that weight leaves Misaki several
+  per cent fast and is not publishable. THE SWING IS WHAT THE PUBLISHED WEIGHT IS SPENDING TO
+  BUY A LEVEL IT CANNOT REACH: the frozen Hakone geometry wants about 14% of a lap from its
+  direction-change term, an exit-speed deficit cannot supply that, and the fit therefore drives
+  the weight until the term saturates against its own floor on most real corners, which is
+  where it stops being able to tell two cars apart. Re-searching the two geometries under this
+  term is the obvious next step and is deliberately not done here.
+
+
+## CROSS-COURSE RESIDUAL DECOMPOSITION (10 cars, 2+ courses each)
+THE TABLES BELOW RUN THE PUBLISHED ADDITIVE AGILITY TERM at its fitted weight,
+kAgi 0.82, which is what the ranked table runs. The same decomposition at the
+corner-exit term, which is scored and not applied, is at the end of the section, so what
+that term would do to it is visible rather than asserted.
+
+  residual(car, course) = CAR CONSTANT (its own mean) + REMAINDER (deviation from it).
+  A car constant is a candidate for a wrong INPUT; a remainder for a missing TERM.
+
+### the decomposition, ranked by the size of the uniform component
+  car                              n   Misaki  Hakone  Wangan | car const |  rem mis  rem hak  rem wan   rem rms
+  Subaru Impreza 22B-STi Version   3   3.40   4.54   3.98       3.98     -0.57   0.57   0.00      0.47   <== uniform > 2%
+  Honda NSX-R                      2  -4.26      -  -3.13      -3.69     -0.56      -   0.56      0.56   <== uniform > 2%
+  Lexus LFA                        3   2.86  -0.78   5.32       2.47      0.39  -3.25   2.85      2.51   <== uniform > 2%
+  Honda Beat                       2  -3.81      -   0.14      -1.84     -1.98      -   1.98      1.98
+  Mazda RX-7 Type R                3   0.84   0.74   1.98       1.19     -0.35  -0.44   0.79      0.56
+  Lamborghini Countach LP5000 QV   3  -0.41  -1.09  -0.07      -0.53      0.11  -0.56   0.45      0.42
+  Mercedes-Benz 190E 2.5-16 Evol   3  -1.23  -0.01   0.47      -0.25     -0.97   0.25   0.73      0.72
+  Honda Civic Type R               3  -0.23   2.21  -1.23       0.25     -0.48   1.96  -1.48      1.44
+  Mitsubishi GTO                   2  -0.68   1.17      -       0.25     -0.93   0.93      -      0.93
+  Mitsubishi Lancer Evolution VI   2  -0.22      -   0.03      -0.09     -0.12      -   0.12      0.12
+  UNIFORM COMPONENT ABOVE 2%, EITHER DIRECTION: Subaru Impreza 22B-STi Version +4.0%, Lexus LFA +2.5%, Honda NSX-R -3.7%.
+  A POSITIVE constant means the MODEL IS SLOW for that car everywhere it has been driven.
+
+### the same cars ranked by the size of the COURSE-VARYING part
+  car                              rem rms   worst course   and by how much
+  Lexus LFA                          2.51%   Hakone         -3.25%
+  Honda Beat                         1.98%   Wangan         +1.98%
+  Honda Civic Type R                 1.44%   Hakone         +1.96%
+  Mitsubishi GTO                     0.93%   Misaki         -0.93%
+  Mercedes-Benz 190E 2.5-16 Evol     0.72%   Misaki         -0.97%
+  Mazda RX-7 Type R                  0.56%   Wangan         +0.79%
+  Honda NSX-R                        0.56%   Wangan         +0.56%
+  Subaru Impreza 22B-STi Version     0.47%   Misaki         -0.57%
+  Lamborghini Countach LP5000 QV     0.42%   Hakone         -0.56%
+  Mitsubishi Lancer Evolution VI     0.12%   Wangan         +0.12%
+
+### how the total residual splits
+  26 residuals over 10 cars.  total rms 2.36%   car-level rms 2.01%   course-varying rms 1.22%
+  CAR-LEVEL OWNS 73% OF THE SQUARED RESIDUAL and the course-varying part 27%.
+  car constants: min -3.69%, max 3.98%, mean 0.17%, rms 2.02%.
+  remainders:    min -3.25%, max 2.85%, rms 1.22%.
+
+### bookkeeping check: does the car constant survive one record per car?
+  Cars whose Hakone row runs a different record from their Misaki and Wangan rows.
+  car                            const (published)   const (unified)   move
+  Largest move over the 10 cars: 0.008 percentage points. Nothing here changes a conclusion; the two conventions
+  happen to agree because every multi-course car resolves to the same record either way.
+    Mitsubishi GTO                           0.24              0.25    0.01
+    Lamborghini Countach LP5000 QV          -0.53             -0.53    0.01
+    Mazda RX-7 Type R                        1.18              1.19    0.00
+  Everything else in this section uses the UNIFIED record. The published tables use each
+  course's own, which is why a car can read differently there. The gap is bookkeeping.
+
+### what does the CAR CONSTANT key on?   (n = 10)
+  Pearson r of each candidate input against the 10 car constants. WITH NINE
+  CARS THE 5% TWO-TAILED CRITICAL VALUE IS |r| = 0.67. Anything below that is not evidence, and
+  a table of nineteen candidates will throw up one or two above it by chance alone. Read the
+  whole column rather than its maximum.
+    candidate                          r      n    range over these cars
+    bmu / mu                         0.569    10    0.99 to 1.46
+    year                             0.548    10    1988.00 to 2010.00
+    aLaunch (m/s2)                   0.537    10    2.63 to 8.58
+    AWD (0/1)                        0.392    10    0.00 to 1.00
+    RWD (0/1)                       -0.374    10    0.00 to 1.00
+    power (PS)                       0.359    10    64.00 to 560.00
+    power to weight (PS/t)           0.356    10    84.21 to 378.38
+    braking bmu                      0.355    10    0.85 to 1.48
+    top speed (km/h)                 0.349    10    176.96 to 327.10
+    pEff (kW)                        0.342    10    42.13 to 276.53
+    drag CdA (m2)                    0.327    10    0.51 to 0.82
+    kerb mass (kg)                   0.306    10    760.00 to 1710.00
+    pEff / Pw                       -0.263    10    0.60 to 1.08
+    tyre width (mm)                  0.254    10    165.00 to 345.00
+    mechanical grip mu              -0.147    10    0.85 to 1.08
+    drag Cd                         -0.053    10    0.29 to 0.47
+    downforce dfC                   -0.036    10    0.00 to 0.65
+    FWD (0/1)                        0.013    10    0.00 to 1.00
+    acceleration MEASURED (0/1)      const    10    1.00 to 1.00   [no variance over these cars]
+  0 of 19 candidates clear the bar.
+  Expected above the bar by chance alone at 5% on 19 correlated candidates: about one.
+    by drivetrain:        AWD 1.38% (n=3),  FWD 0.25% (n=1),  RWD -0.44% (n=6)
+    by engine archetype:  turbo 1.94% (n=2),  rotary-t 1.19% (n=1),  big-NA 0.97% (n=2),  twin-t 0.25% (n=1),  NA -1.05% (n=2),  VTEC -1.72% (n=2)
+    by acceleration src:  measured 0.17% (n=10)
+
+### THE HYPOTHESIS ON THE TABLE: is the Hakone residual a missing AWD traction term?
+  The three round-4 cars came in on Hakone at AWD +4.9%, FWD +2.6%, RWD +0.3% at the
+  constants they were predicted at, which reads as a missing corner-exit traction model.
+  Tested here against every driven car on every course, at the additive term.
+    course    drivetrain    n    mean residual   cars
+    Misaki    AWD           3            0.84%   Mitsubishi Lance -0.2, Mitsubishi GTO -0.7, Subaru Impreza 2 3.4
+    Misaki    FWD           1           -0.23%   Honda Civic Type -0.2
+    Misaki    RWD           6           -1.00%   Lexus LFA 2.9, Honda NSX-R -4.3, Honda Beat -3.8, Mazda RX-7 Type  0.8, Lamborghini Coun -0.4, Mercedes-Benz 19 -1.2
+    Hakone    AWD           2            2.86%   Mitsubishi GTO 1.2, Subaru Impreza 2 4.5
+    Hakone    FWD           1            2.21%   Honda Civic Type 2.2
+    Hakone    RWD           4           -0.28%   Lexus LFA -0.8, Mazda RX-7 Type  0.7, Lamborghini Coun -1.1, Mercedes-Benz 19 -0.0
+    Wangan    AWD           2            2.00%   Mitsubishi Lance 0.0, Subaru Impreza 2 4.0
+    Wangan    FWD           1           -1.23%   Honda Civic Type -1.2
+    Wangan    RWD           6            0.78%   Lexus LFA 5.3, Honda NSX-R -3.1, Honda Beat 0.1, Mazda RX-7 Type  2.0, Lamborghini Coun -0.1, Mercedes-Benz 19 0.5
+  the same split over the FULL driven set on each course, not just the multi-course cars
+    course    AWD              FWD              RWD
+    Misaki    1.03% (n=5)      0.03% (n=2)      -1.54% (n=10)    
+    Hakone    1.79% (n=3)      3.36% (n=2)      -0.37% (n=7)     
+    Wangan    2.00% (n=2)      -1.23% (n=1)     0.78% (n=6)      
+  THE COUNTER-EXAMPLE, STATED FIRST: the R35 is AWD, it is the fastest car on Hakone, and at
+  the additive term it fits at -0.3%. The AWD cars on Hakone run Nissan GT-R Blac -0.3%, Subaru Impreza 2 4.5%, Mitsubishi GTO 1.2%,
+  which is not a group with a common offset. It is one car carrying a residual and the rest
+  fitting.
+  AND THE DECOMPOSITION SETTLES IT. The 22B is the AWD car carrying the Hakone residual, and
+  its residual is 3.4% on Misaki, 4.5% on Hakone and 4.0% on Wangan: a car constant of 4.0% with a
+  course-varying part of only 0.5% rms. It is uniformly slow, not slow in corners. A
+  corner-exit traction term cannot explain a residual that is the same size on a 77%-straight
+  motorway loop, where the car takes eight of eleven corners above 161 km/h and traction out of
+  a hairpin never arises.
+  THE FWD ROW IS A DIFFERENT ANIMAL AND IT IS REAL. The EK9 has a car constant of 0.3%, so it is
+  not uniformly anything, but its remainders are 2.0% on Hakone and -1.5% on Wangan: the model is too
+  slow for it on the tight road and too fast on the motorway by comparable amounts. THAT is a
+  missing term, and it is a course-character term rather than a drivetrain one.
+  VERDICT ON THE HYPOTHESIS: IT DOES NOT HOLD. The AWD/FWD/RWD ordering on Hakone is three cars
+  deep and survives contact with neither the other driven AWD cars on that course nor the same
+  three cars on the other two. What looked like a drivetrain effect is one car with a uniform
+  residual sitting next to one car with a genuine course-character residual, and those are two
+  different findings that happened to point the same way once.
+
+### the same decomposition at the corner-exit term (scored, not applied), for comparison
+  car                              n   Misaki  Hakone  Wangan | car const |  rem rms   vs adder
+  Subaru Impreza 22B-STi Version   3   2.43  -0.46   6.29       2.75      2.76%       2.30
+  Honda NSX-R                      2  -4.57      -  -0.48      -2.53      2.05%       1.48
+  Lexus LFA                        3   4.13  -5.99   7.57       1.90      5.75%       3.25
+  Mitsubishi GTO                   2  -0.00  -2.92      -      -1.46      1.46%       0.53
+  Honda Civic Type R               3  -1.96  -2.47   1.27      -1.06      1.66%       0.21
+  Mitsubishi Lancer Evolution VI   2  -0.01      -   2.01       1.00      1.01%       0.89
+  Mazda RX-7 Type R                3   0.75  -3.44   4.50       0.60      3.24%       2.68
+  Honda Beat                       2  -5.16      -   4.64      -0.26      4.90%       2.92
+  Mercedes-Benz 190E 2.5-16 Evol   3  -0.85  -2.11   3.67       0.24      2.48%       1.77
+  Lamborghini Countach LP5000 QV   3   0.08  -2.82   3.01       0.09      2.38%       1.96
+  COURSE-VARYING rms 1.22% -> 3.16%.  CAR-LEVEL rms 2.02% -> 1.49%.
+  The first is what the new term is FOR. The second it has no business touching, and a large
+  move there would be a warning rather than a result.
+
+## Ranked by overall pace across all 4 courses
+THE INDEX IS THE MEAN OF THE 4 NORMALISED TIMES, EQUAL WEIGHT PER COURSE, and
+since 2026-07-27 one of the 4 is a straight line. The block below the table prices what that did
+to the ranking. The Yatabe column carries the drag calibration offset; the three lap
+columns carry no offset of any kind.
+rank ovr   PS   kg  PS/t mu   grip dt  engine    acc  0-100 top hakon wanga misak yatab   best   car
+  1 1.000  550 1763  312 1.05  50 AWD twin-t   meas   2.9  341  98.9 118.4  93.6  19.6   Hakon   2012 Nissan GT-R Black Edition (R35)
+  2 1.016  560 1480  378 1.01  46 RWD big-NA   meas   3.8  327 100.9 119.5  95.0  20.2   Wanga   2010 Lexus LFA
+  3 1.050  427 1674  255 1.06  51 RWD big-NA   meas   5.1  317 104.3 123.2  97.1  22.7   Misak   1992 Ferrari 512 TR
+  4 1.054  461 1490  309 1.08  53 RWD big-NA   meas   5.1  300 104.5 123.6  97.3  23.5   Misak   1988 Lamborghini Countach LP5000 QV
+  5 1.057  380 1450  262 1.05  50 RWD big-NA   meas   4.9  300 104.8 124.0  97.8  23.0   Misak   1994 Ferrari F355 Berlinetta
+  6 1.065  280 1230  228 1.05  50 RWD VTEC     meas   4.9  275 105.3 125.5  98.5  23.4   Misak   1992 Honda NSX-R
+  7 1.103  280 1280  219 0.92  37 AWD turbo    meas   4.7  240 108.5 131.9 103.0  22.2   Hakon   2001 Mitsubishi Lancer Evolution VI GSR TM Edition
+  8 1.117  285 1560  183 0.91  35 AWD twin-t   meas   4.7  283 110.9 131.4 104.2  22.7   Wanga   2000 Nissan Skyline GT-R V-Spec II
+  9 1.129  280 1270  220 0.93  38 AWD turbo    meas   4.8  262 111.4 133.3 105.0  24.1   Misak   1998 Subaru Impreza 22B-STi Version
+ 10 1.137  280 1270  220 0.95  39 RWD rotary-t  est   5.3  255 111.6 134.9 106.1  24.0   Hakon   Mazda RX-7 Spirit R (FD3S)
+ 11 1.141  324 1510  215 0.91  36 RWD seq-twin meas   5.5  283 112.9 134.6 106.0  24.0   Misak * 1998 Toyota Supra RZ
+ 12 1.141  325 1460  223 0.92  36 RWD NA       meas   5.5  282 112.7 135.0 106.2  23.8   Misak   1997 BMW M3
+ 13 1.145  309 1410  219 0.92  36 AWD turbo    meas   5.0  272 112.4 136.1 106.8  23.9   Hakon   2004 Mitsubishi Lancer Evolution VIII MR
+ 14 1.145  255 1260  202 0.91  36 RWD rotary-t meas   5.5  286 113.6 134.8 106.1  24.3   Misak * 1992 Mazda RX-7 Type R
+ 15 1.146  300 1300  231 0.90  35 RWD turbo    meas   5.2  252 112.3 136.1 107.2  23.9   Hakon   1982 Porsche 911 Turbo 3.3
+ 16 1.148  280 1540  182 0.90  35 AWD twin-t   meas   5.5  281 113.6 135.3 106.6  24.1   Misak   1997 Nissan Skyline GT-R V-Spec
+ 17 1.150  253 1240  204 0.90  35 RWD turbo    meas   5.7  280 114.5 134.5 106.3  24.8   Misak   2002 Nissan Silvia Spec-R
+ 18 1.150  282 1483  190 0.91  35 AWD turbo    meas   5.0  260 112.9 136.7 107.4  23.9   Hakon   2004 Subaru IMPREZA WRX STI
+ 19 1.152  280 1480  189 0.89  33 AWD twin-t   meas   5.2  268 114.0 135.6 107.1  24.1   Misak * 1992 Nissan Skyline GT-R
+ 20 1.153  291 1501  194 0.92  37 RWD NA       meas   6.0  284 114.2 135.7 106.6  25.1   Misak   2003 Nissan Fairlady Z
+ 21 1.170  244 1205  202 0.90  34 RWD turbo    meas   5.7  267 115.2 138.5 108.7  24.9   Misak * 1995 Toyota MR2 GT
+ 22 1.170  235 1390  169 0.92  37 RWD rotary   meas   6.2  251 115.3 138.0 108.3  25.8   Misak   2011 Mazda RX-8 R3
+ 23 1.172  324 1680  193 0.88  33 AWD twin-t   meas   5.9  268 115.7 138.3 108.8  25.0   Misak   1997 Mitsubishi GTO
+ 24 1.172  250 1230  203 0.89  34 AWD turbo     est   5.1  230 114.0 141.0 109.7  24.1   Hakon * Subaru Impreza WRX STI (GC8)
+ 25 1.174  250 1250  200 0.90  35 RWD VTEC     meas   6.4  264 116.1 138.0 108.7  25.7   Misak   2003 Honda S2000
+ 26 1.174  280 1520  184 0.90  34 RWD twin-t   meas   5.7  265 115.7 138.9 109.1  25.1   Misak * 1994 Nissan Fairlady Z Version S Twin Turbo
+ 27 1.174  198 1197  165 0.90  34 FWD VTEC     meas   6.4  251 115.8 138.5 109.0  25.4   Misak   2001 Acura Integra Type-R
+ 28 1.182  280 1480  189 0.89  33 RWD turbo    meas   6.1  246 116.6 139.6 109.8  25.2   Misak   1997 Toyota Chaser 2.5 Tourer V
+ 29 1.188  220 1265  174 0.89  33 RWD turbo    meas   6.6  256 117.9 139.1 109.6  26.4   Misak * 1994 Nissan Silvia K's
+ 30 1.194  280 1570  178 0.88  33 RWD twin-t   meas   7.2  271 118.4 140.4 110.4  26.2   Misak   1997 Toyota Soarer 2.5 GT-T
+ 31 1.196  280 1540  182 0.86  30 RWD twin-t   meas   6.2  257 118.1 141.2 111.1  25.3   Misak * 1991 Toyota Chaser GT Twin Turbo
+ 32 1.196  230 1240  185 0.86  30 AWD turbo    meas   5.2  243 116.9 142.5 112.0  24.7   Hakon   1990 Nissan Pulsar GTI-R
+ 33 1.197  203 1279  159 0.89  34 FWD VTEC     meas   7.0  239 117.9 141.5 110.6  26.8   Misak   2002 Acura RSX Type-S
+ 34 1.199  211 1360  155 0.88  33 RWD NA       meas   7.2  252 118.8 140.7 110.7  26.8   Misak   1999 Toyota Altezza RS200 Z Edition
+ 35 1.200  324 1680  193 0.85  29 RWD seq-twin  est   6.2  250 118.5 141.5 111.8  25.0   Misak * Toyota Aristo 3.0V (JZS147)
+ 36 1.200  210 1210  174 0.86  31 AWD turbo     est   5.8  230 117.3 143.4 112.0  25.1   Hakon   Mazda Familia GT-R (BG8Z)
+ 37 1.201  213 1300  164 0.91  35 AWD turbo    meas   6.2  219 116.3 145.2 111.5  26.4   Hakon   1992 Lancia Delta HF Integrale Evo
+ 38 1.202  227 1275  178 0.89  33 AWD turbo    meas   6.4  230 117.5 143.7 111.5  26.5   Hakon   1992 Ford Escort RS Cosworth
+ 39 1.205  233 1624  143 0.88  32 AWD NA       meas   7.5  252 119.1 141.3 111.2  27.1   Misak   1996 Subaru SVX
+ 40 1.206  238 1340  178 0.88  33 RWD NA       meas   7.4  271 119.3 142.0 111.2  26.9   Misak   1990 Mercedes-Benz 190E 2.5-16 Evolution II
+ 41 1.208  203 1352  150 0.86  31 RWD rotary-t meas   6.9  251 119.5 141.8 111.8  26.5   Misak * 1990 Mazda Savanna RX-7
+ 42 1.208  300 1620  185 0.84  28 RWD rotary-t  est   6.4  250 119.6 142.2 112.4  25.2   Wanga   Eunos Cosmo (JC)
+ 43 1.209  259 1440  180 0.86  30 AWD turbo    meas   6.2  267 119.1 143.2 112.2  26.1   Misak   1994 Toyota Celica GT-Four ST205
+ 44 1.210  195 1253  156 0.88  33 RWD NA       meas   7.2  250 119.7 141.9 111.5  27.3   Misak   1988 BMW M3
+ 45 1.210  185 1090  170 0.86  31 FWD VTEC     meas   6.0  243 119.3 142.9 112.2  26.1   Misak   1997 Honda Civic Type R
+ 46 1.213  175 1140  154 0.85  29 RWD turbo    meas   6.7  245 120.2 142.5 112.3  26.4   Misak * 1989 Nissan Silvia K's
+ 47 1.217  160  980  163 0.89  34 FWD VTEC     meas   7.6  250 120.1 143.2 112.3  27.7   Misak * 1991 Honda CRX SiR
+ 48 1.231  162 1302  124 0.88  32 FWD NA       meas   7.6  221 120.4 147.1 113.6  27.8   Misak * 1994 Honda Prelude Si
+ 49 1.239  235 1620  145 0.85  29 AWD turbo    meas   8.5  237 122.7 145.2 114.2  28.2   Misak   1997 Nissan Stagea RS Four V
+ 50 1.241  147 1188  124 0.83  27 RWD s/c      meas   7.3  226 122.5 147.1 114.6  27.4   Misak * 1989 Toyota MR2 SC
+ 51 1.244  135  950  142 0.85  30 FWD turbo    meas   8.2  223 122.4 147.7 114.4  28.5   Misak   1996 Toyota Starlet Glanza V
+ 52 1.251  170 1050  162 0.83  27 FWD VTEC      est   7.0  215 122.2 150.0 116.3  26.9   Hakon * Honda Civic SiR-II (EG6)
+ 53 1.255  205 1370  150 0.82  26 RWD turbo     est   7.6  220 123.5 149.0 116.4  27.2   Misak * Nissan Cefiro (A31)
+ 54 1.258  175 1320  133 0.84  29 RWD turbo     est   8.2  215 123.1 150.1 116.2  28.3   Misak   Mitsubishi Starion (A187A)
+ 55 1.260  205 1350  152 0.81  26 RWD turbo     est   7.6  215 123.6 150.2 116.9  27.2   Misak   Nissan Laurel (C33)
+ 56 1.279  188 1250  150 0.78  22 RWD NA        est   7.8  220 126.2 151.2 118.7  27.5   Misak   Alfa Romeo 75 3.0 V6
+ 57 1.280  157 1322  119 0.82  26 RWD NA       meas   8.8  222 126.3 151.3 117.7  29.3   Misak * 1993 Nissan 240SX
+ 58 1.282  162 1100  147 0.79  23 RWD NA       meas   7.3  213 125.4 153.3 119.0  27.5   Hakon   1971 Nissan Skyline 2000GT-R
+ 59 1.289  130  950  137 0.84  28 RWD NA       meas   9.1  202 125.0 155.2 119.0  29.7   Hakon * 1985 Toyota Sprinter Trueno GT Apex
+ 60 1.291  141 1100  128 0.81  25 FWD NA       meas   8.4  206 125.9 155.0 119.4  28.9   Hakon   1992 Volkswagen Golf GTI 16V Mk2
+ 61 1.292  130 1057  123 0.84  28 RWD NA       meas   9.2  202 125.5 155.4 119.1  29.8   Hakon   1994 Mazda MX-5 Miata
+ 62 1.292  152 1157  131 0.79  23 RWD NA       meas   8.6  228 127.9 151.8 119.3  28.8   Misak   1969 Toyota 2000GT
+ 63 1.292  160 1145  140 0.81  25 RWD NA       meas   9.3  208 126.7 153.9 119.2  29.3   Misak   1973 Nissan Skyline H/T 2000GT-R
+ 64 1.305   64  720   89 0.85  30 RWD turbo    meas  10.8  189 125.7 158.7 120.3  30.8   Hakon   1993 Autozam AZ-1
+ 65 1.309  109  930  117 0.86  31 FWD NA       meas  10.9  193 126.4 158.4 120.3  31.4   Hakon * 1991 Toyota Sera
+ 66 1.311  162 1047  155 0.81  25 RWD NA       meas   9.1  199 127.4 158.0 121.1  29.8   Hakon   1969 Nissan Fairlady Z 432
+ 67 1.348  150 1010  149 0.71  15 RWD NA        est   8.6  210 133.2 158.8 125.2  28.6   Misak   Nissan Fairlady 240ZG (HS30)
+ 68 1.350  110  735  150 0.77  21 FWD turbo     est   8.0  180 128.4 166.5 126.5  29.0   Hakon * Honda City Turbo II (AA)
+ 69 1.355   64  760   84 0.85  30 RWD NA       meas  12.5  177 128.6 166.8 124.9  33.0   Hakon * 1991 Honda Beat
+ 70 1.377   64  760   84 0.83  28 AWD s/c      meas  12.0  171 129.3 171.4 127.7  32.9   Hakon   1994 Subaru Vivio RX-R
+ 71 1.391  110  940  117 0.71  15 RWD rotary    est  10.3  185 135.8 167.0 128.9  30.6   Hakon   1972 Mazda Cosmo 110S Series II
+ 72 1.396   85  880   97 0.76  20 FWD NA        est  11.2  178 133.8 170.4 129.3  32.3   Hakon * Nissan Sunny (B12)
+ 73 1.448   83  955   87 0.76  20 FWD NA        est  12.3  160 135.2 181.4 135.4  33.2   Hakon * Toyota Carina (AT150)
+ 74 1.449   76  671  113 0.75  19 FWD NA        1pt  11.0  160 134.8 182.4 135.6  33.0   Hakon   1965 MINI Cooper S
+ 75 1.451   97  965  101 0.73  17 RWD NA       meas  13.9  167 139.0 176.5 134.4  33.8   Hakon   1970 Datsun 510
+ 76 1.458   64  810   79 0.82  26 FWD turbo     est  12.9  150 131.6 187.1 138.3  33.6   Hakon   Daihatsu Copen (L880K)
+ 77 1.466   64  650   98 0.77  21 FWD turbo     est  11.2  150 133.2 187.9 139.3  32.3   Hakon * Suzuki Alto Works (HA21S)
+ 78 1.468   64  725   88 0.79  23 RWD turbo     est  12.8  150 133.6 187.3 139.0  33.3   Hakon   Suzuki Cappuccino (EA11R)
+ 79 1.482   64  710   90 0.75  19 FWD turbo     est  12.1  150 135.5 188.9 140.2  33.1   Hakon   Daihatsu Mira TR-XX Avanzato R (L502S)
+ 80 1.500   63  670   94 0.82  27 FWD NA        1pt  13.4  141 131.7 195.9 143.7  34.9   Hakon * 1984 Honda City E II
+ 81 1.514   52  570   91 0.69  13 FWD turbo     est  13.2  155 142.1 189.0 141.3  34.6   Hakon   Daihatsu Mira TR-XX (L70)
+ 82 1.559   73  950   77 0.82  27 FWD NA        1pt  18.9  139 138.2 201.9 147.5  38.7   Hakon   1989 Nissan S-Cargo
+ 83 1.572   55  720   76 0.70  15 FWD NA        est  15.1  140 142.8 201.0 148.8  36.0   Hakon * Suzuki Wagon R (CT21S)
+ 84 1.575   38  620   61 0.72  16 FWD NA        est  19.1  145 145.7 197.6 146.7  38.8   Hakon   Honda Today (JW1)
+ 85 1.764   38  770   49 0.80  24 AWD NA        1pt  27.2  111 144.1 237.7 174.3  42.5   Hakon   1994 Honda Acty
+
+cars: 85   * = in playable game (26)   best = the course this car is relatively strongest on
+
+## What the fourth course did to the overall index
+Top 20 before (lap courses only) and after (with Yatabe at equal weight):
+  rank   without Yatabe                        with Yatabe
+     1   Nissan GT-R Black Edition (R  1.000     Nissan GT-R Black Edition (R  1.000
+     2   Lexus LFA                     1.016     Lexus LFA                     1.016
+     3   Ferrari 512 TR                1.044     Ferrari 512 TR                1.050
+     4   Lamborghini Countach LP5000   1.047     Lamborghini Countach LP5000   1.054
+     5   Ferrari F355 Berlinetta       1.051     Ferrari F355 Berlinetta       1.057
+     6   Honda NSX-R                   1.059     Honda NSX-R                   1.065
+     7   Mitsubishi Lancer Evolution   1.102     Mitsubishi Lancer Evolution   1.103
+     8   Nissan Skyline GT-R V-Spec I  1.115     Nissan Skyline GT-R V-Spec I  1.117
+     9   Subaru Impreza 22B-STi Versi  1.124     Subaru Impreza 22B-STi Versi  1.129
+    10   Mazda RX-7 Spirit R (FD3S)    1.133     Mazda RX-7 Spirit R (FD3S)    1.137
+    11   Toyota Supra RZ               1.137     Toyota Supra RZ               1.141
+    12   BMW M3                        1.137     BMW M3                        1.141
+    13   Mazda RX-7 Type R             1.140     Mitsubishi Lancer Evolution   1.145
+    14   Mitsubishi Lancer Evolution   1.141     Mazda RX-7 Type R             1.145
+    15   Porsche 911 Turbo 3.3         1.142     Porsche 911 Turbo 3.3         1.146
+    16   Nissan Skyline GT-R V-Spec    1.143     Nissan Skyline GT-R V-Spec    1.148
+    17   Nissan Silvia Spec-R          1.144     Nissan Silvia Spec-R          1.150
+    18   Nissan Fairlady Z             1.146     Subaru IMPREZA WRX STI        1.150
+    19   Subaru IMPREZA WRX STI        1.147     Nissan Skyline GT-R           1.152
+    20   Nissan Skyline GT-R           1.148     Nissan Fairlady Z             1.153
+  Largest rank moves: Subaru Impreza WRX STI (GC 27->24 (+3), Toyota Aristo 3.0V (JZS147 38->35 (+3), Mazda Familia GT-R (BG8Z) 39->36 (+3), Eunos Cosmo (JC) 45->42 (+3), BMW M3 41->44 (-3).
+  0 of 85 cars move by 5 places or more, 0 by 10 or more; the top 12 places are unchanged.
+  FIELD SPREAD PER COURSE (slowest / fastest): Hakone 1.47x, Wangan 2.01x, Misaki 1.86x, Yatabe 2.17x.
+  SD OF THE NORMALISED TIME PER COURSE: Hakone 0.099, Wangan 0.182, Misaki 0.148, Yatabe 0.214.
+  READ THAT LAST LINE BEFORE DEFENDING THE WEIGHT. Equal weight is equal weight on the NUMBER, not on the influence:
+  the course whose normalised times are most spread out contributes the most
+  variance to a mean of them, and a standing kilometre spreads a field of 85 cars
+  wider than any lap does, because a lap gives a slow car its corners back and a
+  straight line gives it nothing. A quarter of the index therefore buys more than a
+  quarter of the ordering, and every bit of what it buys is power, mass and drag.
+  THE INDEX IS NOT CHANGED HERE. This block is the evidence for the ruling, not the
+  ruling: equal weight ships until the maintainer says otherwise.
+READ `best` WITH CARE: 45 Misaki, 37 Hakone, 3 Wangan. It is an argmin over normalised times, so it
+picks whichever course compresses the field hardest, and that is Hakone 1.47x, Wangan 2.01x, Misaki 1.86x, Yatabe 2.17x.
+IT IS BACK TO NEARLY DEGENERATE: 45 of 85 cars pick Misaki, and 0 pick Yatabe,
+which is what an argmin over normalised times does with the widest-spread course in the set: it makes almost every car look relatively WORSE there. Dropping the synthetic Circuit
+in 2026-07-27 took it out of an 83-of-85 state and it split 45/37/3; the corner-exit term has
+pushed it back, because that term compresses the Hakone field and a compressed course stops
+being anyone's specialty. That is a property of the column, not of the cars.
+But the pick is thin. The median margin over the runner-up is 0.006 of normalised time and 32 of 85
+cars sit inside 0.005 of it, which is a coin flip. Read the column as a weak lean rather than
+a car property; it still wants a per-car normalisation. Not fixed in this run.
+
+## Ordering audit: who does the tight course flatter, and who does it punish?
+Rank on Hakone against rank on Misaki, over all 85 cars. A large positive
+number means the hairpin course promotes the car; a large negative one means it demotes it.
+This is where a tight-course model betrays itself, so it is printed rather than
+inferred from the eight driven laps.
+  MOST FLATTERED BY THE HAIRPIN COURSE
+    Hakone  30  Misaki  41   + 11    230 PS 1240 kg  mu 0.86 AWD  1990 Nissan Pulsar GTI-R
+    Hakone  31  Misaki  42   + 11    210 PS 1210 kg  mu 0.86 AWD  Mazda Familia GT-R (BG8Z)
+    Hakone  28  Misaki  38   + 10    213 PS 1300 kg  mu 0.91 AWD  1992 Lancia Delta HF Integrale Evo
+    Hakone  71  Misaki  81   + 10     63 PS  670 kg  mu 0.82 FWD  1984 Honda City E II
+    Hakone  19  Misaki  28   +  9    250 PS 1230 kg  mu 0.89 AWD  Subaru Impreza WRX STI (GC8)
+    Hakone  11  Misaki  19   +  8    300 PS 1300 kg  mu 0.90 RWD  1982 Porsche 911 Turbo 3.3
+    Hakone  14  Misaki  20   +  6    282 PS 1483 kg  mu 0.91 AWD  2004 Subaru IMPREZA WRX STI
+    Hakone  70  Misaki  76   +  6     64 PS  810 kg  mu 0.82 FWD  Daihatsu Copen (L880K)
+  MOST PUNISHED BY IT
+    Hakone  38  Misaki  32    -6    211 PS 1360 kg  mu 0.88 RWD  1999 Toyota Altezza RS200 Z Edition
+    Hakone  62  Misaki  56    -6    157 PS 1322 kg  mu 0.82 RWD  1993 Nissan 240SX
+    Hakone  21  Misaki  14    -7    253 PS 1240 kg  mu 0.90 RWD  2002 Nissan Silvia Spec-R
+    Hakone  34  Misaki  27    -7    220 PS 1265 kg  mu 0.89 RWD  1994 Nissan Silvia K's
+    Hakone  42  Misaki  35    -7    238 PS 1340 kg  mu 0.88 RWD  1990 Mercedes-Benz 190E 2.5-16 Evolution II
+    Hakone  45  Misaki  37    -8    195 PS 1253 kg  mu 0.88 RWD  1988 BMW M3
+    Hakone  79  Misaki  71    -8    110 PS  940 kg  mu 0.71 RWD  1972 Mazda Cosmo 110S Series II
+    Hakone  81  Misaki  73    -8     97 PS  965 kg  mu 0.73 RWD  1970 Datsun 510
+  READING. The promoted list is five AWD turbos and two low-powered runabouts; the punished
+  list is eight RWD cars, six of them low-grip and old. That is the right direction for a
+  hairpin course, but be clear about the CHANNEL: the model has no traction-out-of-a-hairpin
+  term, so AWD is being promoted purely through the grip bonus in the mu model, and low-grip
+  cars are being punished twice over, once through apex speed and again through the 1/mu in
+  the corner-exit term. The direction is defensible; the mechanism is coarser than it looks,
+  and the cross-course decomposition above is the sharper reading of it.
+  READ THIS COLUMN AS A PROPERTY OF THE MODEL, NOT OF HAKONE. The Hakone rank comes off a
+  facsimile geometry (4 switchbacks, 9 corners); the surveyed road has 11, charges 3.0x the
+  direction change, and would push every low-grip car further down than this table shows.
+
+  THE SAME SCREEN AGAINST THE FAST COURSE (Wangan rank against Misaki rank)
+  MOST FLATTERED BY THE HIGHWAY LOOP
+    Wangan  39  Misaki  47   +  8    300 PS 1620 kg  top 250  dfC 0.00  RWD  Eunos Cosmo (JC)
+    Wangan  40  Misaki  45   +  5    175 PS 1140 kg  top 245  dfC 0.27  RWD  1989 Nissan Silvia K's
+    Wangan  10  Misaki  14   +  4    253 PS 1240 kg  top 280  dfC 0.42  RWD  2002 Nissan Silvia Spec-R
+    Wangan  35  Misaki  39   +  4    324 PS 1680 kg  top 250  dfC 0.00  RWD  Toyota Aristo 3.0V (JZS147)
+    Wangan  36  Misaki  40   +  4    203 PS 1352 kg  top 251  dfC 0.17  RWD  1990 Mazda Savanna RX-7
+    Wangan  58  Misaki  62   +  4    152 PS 1157 kg  top 228  dfC 0.00  RWD  1969 Toyota 2000GT
+  MOST PUNISHED BY IT
+    Wangan  45  Misaki  42    -3    210 PS 1210 kg  top 230  dfC 0.00  AWD  Mazda Familia GT-R (BG8Z)
+    Wangan  38  Misaki  35    -3    238 PS 1340 kg  top 271  dfC 0.00  RWD  1990 Mercedes-Benz 190E 2.5-16 Evolution II
+    Wangan  63  Misaki  60    -3    130 PS 1057 kg  top 202  dfC 0.00  RWD  1994 Mazda MX-5 Miata
+    Wangan  62  Misaki  58    -4    130 PS  950 kg  top 202  dfC 0.00  RWD  1985 Toyota Sprinter Trueno GT Apex
+    Wangan  47  Misaki  38    -9    213 PS 1300 kg  top 219  dfC 0.08  AWD  1992 Lancia Delta HF Integrale Evo
+    Wangan  46  Misaki  36   -10    227 PS 1275 kg  top 230  dfC 0.09  AWD  1992 Ford Escort RS Cosworth
+  READING. The promoted cars are the ones with top speed and low drag; the punished ones are
+  short-geared or aero-heavy cars that run out of road. Nothing in either list is implausible
+  as a direction, and the largest single move is 10 places out of 85, against 11 between Hakone and Misaki.
+  THE S13 K's (175 PS, 1140 kg, mu 0.85) now sits 47th on Hakone and 45th on Misaki. SIX of its fields are
+  overridden as of 2026-07-27: ForzaLabs measured the game's PRESET STARTER CAR rather than
+  the stock one, so its lateral pair, its braking pair, its top speed, the drag derived from
+  that top speed, its kerb (1121 -> 1140 kg, the preset's weight reduction) and its 0-97
+  (6.055 -> 6.331 s) all describe a modified car. See gOvr in the spec book for the whole
+  argument, including what is STILL the preset's: the 0-161 has no stock counterpart to
+  replace it, so this car's solved pEff is preset-tainted while its aLaunch is not.
+  That is what moved it, and the Hakone driven laps now come out in the driven order exactly:
+  the inversion the scraped figures used to produce is gone. Weigh that lightly - this course
+  is a facsimile searched against those same eight times, so it can confirm an ordering but
+  it cannot be evidence of accuracy. Misaki is the course that tests the model.
+
+
+## THE BLIND-VALIDATION RECORD
+  `committed` is the figure written down before the car was driven, where one was recorded;
+  `modelled` is the same car at THIS run's constants, which are not always the constants the
+  figure was committed at. err% is modelled against driven.
+
+  car                            PS     kg   dt       mu     dfC      cd     CdA     bmu   accel
+  BMW 850CSi (V8-TT swap)       701   1901   RWD   0.930   0.000   0.343   0.699   1.182   measured
+  Lotus Elise S1 (AWD swap)     220    645   AWD   1.226   1.164   0.540   0.905   1.386   measured
+  Mazda RX-7 Type R (FD3S)      255   1260   RWD   0.910   0.248   0.282   0.506   0.963   measured
+  Mazda 787B (modified)         774    881   AWD   1.699   4.331   0.510   0.836   2.618   measured
+  Calsonic BNR32 Gr.A           650   1261   AWD   1.512   0.993   0.487   0.940   2.067   measured
+  Ferrari F355 (supercharged)   680   1296   RWD   1.246   0.422   0.362   0.660   1.796   measured
+
+  car                         course     committed   modelled      driven    err%   status
+  BMW 850CSi (V8-TT swap)     Hakone             -     109.47     109.000    0.43   blind
+  BMW 850CSi (V8-TT swap)     Wangan             -     128.93     120.200    7.26   blind
+  BMW 850CSi (V8-TT swap)     Misaki             -     102.72     101.300    1.41   blind
+  BMW 850CSi (V8-TT swap)     Yatabe         22.69      21.94      21.856    0.39   blind; at the drag offset
+  Lotus Elise S1 (AWD swap)   Hakone         94.70      95.46      94.900    0.59   blind at commit; now a ceiling-fit point
+  Lotus Elise S1 (AWD swap)   Wangan             -     128.89           -       -   not driven
+  Lotus Elise S1 (AWD swap)   Misaki             -      95.41           -       -   not driven
+  Lotus Elise S1 (AWD swap)   Yatabe         23.03      22.27      22.737   -2.04   blind; at the drag offset
+  Mazda RX-7 Type R (FD3S)    Hakone        113.60     113.62     112.800    0.73   blind
+  Mazda RX-7 Type R (FD3S)    Wangan        134.80     134.76     132.200    1.94   blind
+  Mazda RX-7 Type R (FD3S)    Misaki        106.20     106.15     106.500   -0.33   second drive; its first lap is in the fit
+  Mazda RX-7 Type R (FD3S)    Yatabe         25.11      24.29      23.943    1.45   blind; at the drag offset
+  Mazda 787B (modified)       Hakone         71.80      80.70      80.700   -0.00   blind at commit; now a ceiling-fit point
+  Mazda 787B (modified)       Wangan             -      93.08           -       -   not driven
+  Mazda 787B (modified)       Misaki             -      73.19           -       -   not driven
+  Mazda 787B (modified)       Yatabe             -      17.38           -       -   not driven
+  Calsonic BNR32 Gr.A         Hakone         81.80      87.11      90.100   -3.32   blind at commit; now a ceiling-fit point
+  Calsonic BNR32 Gr.A         Wangan         99.40     101.20     100.700    0.50   blind at commit; now a ceiling-fit point
+  Calsonic BNR32 Gr.A         Misaki         76.50      79.07      81.060   -2.45   anchor, not blind
+  Calsonic BNR32 Gr.A         Yatabe         18.10      18.11      17.654    2.57   blind; at the drag offset, whose fit this car is not in
+  Ferrari F355 (supercharged) Hakone         92.40      92.42      94.400   -2.10   blind
+  Ferrari F355 (supercharged) Wangan        107.20     107.17     105.400    1.68   blind
+  Ferrari F355 (supercharged) Misaki         85.30      85.28      86.300   -1.18   blind
+  Ferrari F355 (supercharged) Yatabe         19.00      19.00      19.071   -0.37   blind; at the drag offset, whose fit this car is not in
+
+  MAE over all 19 rows with a driven time: 1.62%.
+  The 14 lap rows alone: 1.71%. The kilometres are quoted apart because Yatabe carries the
+  flat drag offset, and a corrected number does not belong in a set of uncorrected forecasts.
+  On the committed column, over the 16 rows that recorded one: MAE 3.01%.
+  THE ACCEPTANCE TEST, its three genuinely blind figures as committed: MAE 2.52%, worst 4.87%.
+  The two blind LAP predictions landed at 0.71% and 1.97%, on two roads this car had never been driven
+  on and neither of which was searched with it in the set. The kilometre is the outlier at 4.87%,
+  and it is the run the flat drag offset now corrects.

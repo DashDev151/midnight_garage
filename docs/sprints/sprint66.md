@@ -1,6 +1,6 @@
 # Sprint 66 - The honest car: the wage law, coherent generation, and real churn
 
-**Source:** playtest 2026-07-15 (`docs/playtest_notes/playtest-notes-2026-07-15.md`), items 19, 6a,
+**Source:** playtest 2026-07-15 (`docs/playtest-notes/playtest-notes-2026-07-15.md`), items 19, 6a,
 15. The two real system problems in this pass, plus the one content tune that belongs with them.
 
 ## Confirmed current state (code discovery, 2026-07-15)

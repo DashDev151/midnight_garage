@@ -1,9 +1,9 @@
 # Sprint 118: The honest bench (workshop rework, phase 1a)
 
-**Source design:** `docs/design/workshop-rework.md` (FINAL, maintainer-approved 2026-07-23).
+**Source design:** `docs/design/systems/workshop-rework.md` (FINAL, maintainer-approved 2026-07-23).
 This sprint lands the half of phase 1 whose levers are ALREADY SIGNED in that document: the
 labour retune and config rename, machine hire as a daily unlock and running cost, and the
-honest per-car ledger. Playtest items 3 and 5 (`docs/playtest_notes/playtest-notes-2026-07-23.md`)
+honest per-car ledger. Playtest items 3 and 5 (`docs/playtest-notes/playtest-notes-2026-07-23.md`)
 close here. The unsigned levers (zones, materials, SKU dispositions) belong to Sprint 119 and
 nothing in this sprint touches them.
 
@@ -215,7 +215,7 @@ Notes recorded at completion:
 - Bot-career probes for service-grinder and competent-policy now assert zero successes:
   bots have no hire behaviour, so a signature task wedges their bay. Known harness
   limitation (see `TODO.md`, bot-harness rework); handled per the file's existing precedent.
-- `docs/design/tooling-system.md` carries a superseded-in-part note for its per-operation
+- `docs/design/systems/tooling-system.md` carries a superseded-in-part note for its per-operation
   charge model. `docs/design/economy-bible.md` amended with maintainer approval (in
   session, "adjust this doc to align to reality"): the `energy.*` audit row carries the
   renamed key, and the amendment log records the retune, the daily-hire recharge, and the

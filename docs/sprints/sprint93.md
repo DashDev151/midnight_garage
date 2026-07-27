@@ -1,6 +1,6 @@
 # Sprint 93 - The band ceiling (tools cap the finish)
 
-The second tooling sprint implementing `docs/design/tooling-system.md` (read it first).
+The second tooling sprint implementing `docs/design/systems/tooling-system.md` (read it first).
 Delivers Axis 2 (BAND CEILING). Maintainer ruling 2026-07-18 corrected the model: the band
 ceiling is a HARD cap on REPAIRING, not a soft rental. It is probe-gated.
 

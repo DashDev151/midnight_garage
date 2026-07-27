@@ -1,6 +1,6 @@
 # Sprint 57 - Jobs close where they open: completion on the jobs screen, and an honest post-job report
 
-**Source:** playtest 2026-07-14 item 7 (`docs/playtest-notes-2026-07-14.md`): accept and
+**Source:** playtest 2026-07-14 item 7 (`docs/playtest-notes/playtest-notes-2026-07-14.md`): accept and
 complete jobs from the same place, and give each finished job a real report - what was done,
 what it cost the player, what it paid, what reputation was gained, and the net profit.
 

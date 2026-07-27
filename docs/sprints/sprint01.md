@@ -81,7 +81,7 @@ than speed.
 - [x] **10 PoC cars**: City AA, Wagon R, EG6, AE86, 180SX (RPS13), Chaser (JZX90), Silvia K's
   (S14), Savanna RX-7 (FC3S), RX-7 (FD3S), Supra RZ (JZA80) - real chassis/engine codes, curb
   weights, stock PS; tiers matched to GDD 4.3's explicit examples where given. Book values fall
-  inside the `docs/economy-v0.md` tier ranges (enforced by an integrity test).
+  inside the `docs/design/archive/economy-v0.md` tier ranges (enforced by an integrity test).
 - [x] **20 parts** across all 7 slots and all 4 grades (stock/street/sport/race all represented -
   final tally: 1 stock, 6 street, 8 sport, 5 race). Engine and Forced Induction parts gated to
   `Piston`-tagged platforms (rotary cars have no compatible catalog parts yet - accurate scarcity
@@ -97,7 +97,7 @@ than speed.
 ### D. User tasks
 
 - [x] Review parody names for the 10 cars and the parody parts brands. **Approved as-is** (2026-07-08).
-- [x] Review `docs/economy-v0.md` book values. **Approved as-is** (2026-07-08) - the draft ranges
+- [x] Review `docs/design/archive/economy-v0.md` book values. **Approved as-is** (2026-07-08) - the draft ranges
   and Sprint 01 seed data now stand as accepted, not just drafted.
 
 ## Testing

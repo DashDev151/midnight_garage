@@ -24,7 +24,7 @@ the document can never drift from the game.
   generation): the registry carries exactly these fields; symptoms keep their own
   weights (odds are contextual: the same failure is likelier under some symptoms).
 - The route probes: keep running unchanged over the resolved (registry-joined) shape.
-- `docs/design/live-auction.md` precedent: a design-of-record document owned by the
+- `docs/design/systems/live-auction.md` precedent: a design-of-record document owned by the
   maintainer's review flow.
 
 **Genuinely new:**
@@ -35,9 +35,9 @@ the document can never drift from the game.
 2. The migration of all 17 symptoms' inline causes into registry references (pure
    restructure; identical resolved values; duplicate-id collisions merged or renamed
    deliberately and reported).
-3. `docs/design/failure-map.md`: the diagnosis bible (ontology, laws, the full map).
+3. `docs/design/systems/failure-map.md`: the diagnosis bible (ontology, laws, the full map).
 4. `scripts/generateFailureMap.cjs`: reads the shipped content JSON, emits the mermaid
-   map to `docs/design/failure-map.generated.md`. Run when content changes; the design
+   map to `docs/design/systems/failure-map.generated.md`. Run when content changes; the design
    doc links it.
 
 ## Design
@@ -85,8 +85,8 @@ registry exists; needs an economy read before it is switched on.
 - [ ] Registry schema + `failureModes.json` + symptom schema referencing it; content
       loader/sim resolution; migration of all 17 symptoms (collisions reported, resolved
       values proven identical by the passing suite).
-- [ ] `scripts/generateFailureMap.cjs` -> `docs/design/failure-map.generated.md`.
-- [ ] `docs/design/failure-map.md`: ontology + laws (orchestrator-authored) + the full
+- [ ] `scripts/generateFailureMap.cjs` -> `docs/design/systems/failure-map.generated.md`.
+- [ ] `docs/design/systems/failure-map.md`: ontology + laws (orchestrator-authored) + the full
       seventeen-symptom map: the three routed trees as built, and the fourteen unrouted
       boards DESIGNED for maintainer review (orchestrator-personal design work; the
       Sprint 108 sweep implements only what survives that review).
