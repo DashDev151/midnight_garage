@@ -7,11 +7,13 @@ import type {
   PartInstance,
   SellingChannelId,
   StagedAction,
+  ZoneId,
 } from '@midnight-garage/content'
 import {
   ALL_CAR_PART_IDS,
   ASSEMBLIES,
   ComponentIdSchema,
+  PAINT_COLOURS,
   PARTS_TAXONOMY,
   fitmentClassForTier,
   titleCaseFromSlug,
@@ -20,11 +22,11 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import BandChip from '../components/BandChip.vue'
 import HelpHint from '../components/HelpHint.vue'
-import PartsDiagram from '../components/PartsDiagram.vue'
 import { partSpriteDataUrl } from '../components/partSprites'
 import ReplaceDrawer from '../components/ReplaceDrawer.vue'
 import ServiceTaskList from '../components/ServiceTaskList.vue'
 import StatRadar from '../components/StatRadar.vue'
+import WorkshopViews, { type WorkshopSelection } from '../components/WorkshopViews.vue'
 import {
   clearDragSession,
   useDragSession,
@@ -48,6 +50,7 @@ import {
   sellingChannelCadenceLabel,
   sellingChannelFeeLabel,
 } from '../utils/sellingChannelLabels'
+import { zoneSeverityText } from '../utils/zoneSeverity'
 
 const game = useGameStore()
 const route = useRoute()
@@ -160,21 +163,30 @@ function rowsFor(componentId: ComponentId) {
   return detail.value ? game.partsInGroup(detail.value.car.id, componentId) : []
 }
 
-// --- The diagram is the page. The docked info/action panel replaces
-// the old components list; a diagram block or a bench-strip member is its
+// --- The workshop views are the page. The docked info/action panel replaces
+// the old components list; a view region or a bench-strip member is its
 // target. -----------------------------------------------------------------
 
+/**
+ * What the docked panel is currently showing. A part and a zone are told apart
+ * by `kind` rather than by their id, because `chassis` is a legal value of both
+ * (the underbody zone and the drivetrain part are different things at the same
+ * name) - the views emit the same discriminated shape for exactly that reason.
+ */
 type PanelTarget =
-  { kind: 'part'; partId: CarPartId } | { kind: 'bench'; containerId: string; carPartId: CarPartId }
+  | { kind: 'part'; partId: CarPartId }
+  | { kind: 'zone'; zoneId: ZoneId }
+  | { kind: 'bench'; containerId: string; carPartId: CarPartId }
 
 const panelTarget = ref<PanelTarget | null>(null)
 watch(carId, () => {
   panelTarget.value = null
 })
 
-/** The diagram emits the selected part id (or null when it navigates). */
-function onDiagramSelect(partId: CarPartId | null): void {
-  panelTarget.value = partId ? { kind: 'part', partId } : null
+/** A click on a view region docks the panel on whatever was pointed at - the
+ * selection payload is already the panel's own target shape. */
+function onWorkshopSelect(selection: WorkshopSelection): void {
+  panelTarget.value = selection
 }
 
 function selectBenchMember(containerId: string, carPartId: CarPartId): void {
@@ -634,7 +646,13 @@ function stagedActionLabel(action: StagedAction): string {
   if (isPipelineStagedAction(action)) {
     const zoneName = titleCaseFromSlug(action.zoneId)
     if (action.kind === 'pipeline-swap-panel') return `Swap panel: ${zoneName}`
-    if (action.kind === 'pipeline-paint') return `Paint (${action.colour}): ${zoneName}`
+    if (action.kind === 'pipeline-paint') {
+      // The chassis takes underseal rather than a chosen colour, so naming a
+      // tin there would be a fiction.
+      return action.zoneId === 'chassis'
+        ? `Underseal: ${zoneName}`
+        : `Paint (${paintColourName(action.colour)}): ${zoneName}`
+    }
     return `${PIPELINE_STAGE_LABELS[action.stage] ?? action.stage}: ${zoneName}`
   }
   if (!hasWorkAddress(action)) {
@@ -672,15 +690,29 @@ function onUnstageSummary(action: StagedAction): void {
   else game.unstageAssemblyAction(d.car.id, action.kind, action.assemblyId)
 }
 
-// --- Body zones (minimal, docs/design/workshop-rework.md phase 1 - the
-// representative-schematic views land in phase 2; this is a plain list). ---
+// --- Body zones: the panel's zone mode (docs/design/systems/workshop-rework.md) ---
 
-const ZONE_IDS = ['bonnet', 'boot', 'left', 'right', 'roof', 'chassis'] as const
-type ZoneId = (typeof ZONE_IDS)[number]
-const PANEL_ZONE_IDS = ['bonnet', 'boot', 'left', 'right', 'roof'] as const
 const GENERIC_STAGES = ['stripPrep', 'beat', 'weld', 'fillAndSand', 'prime', 'polish'] as const
 
 const zoneState = computed(() => detail.value?.car.zoneState ?? null)
+
+/**
+ * The zone the panel is docked on, with everything its mode needs: the live
+ * zone state, its display name, and whether it carries a swappable panel.
+ * `chassis` does not - there is no panel to unbolt from the underbody, and its
+ * finish coat is underseal rather than a chosen colour.
+ */
+const selectedZone = computed(() => {
+  const target = panelTarget.value
+  const zones = zoneState.value
+  if (target?.kind !== 'zone' || !zones) return null
+  return {
+    zoneId: target.zoneId,
+    zone: zones[target.zoneId],
+    name: titleCaseFromSlug(target.zoneId),
+    isPanelZone: target.zoneId !== 'chassis',
+  }
+})
 
 /** One generic stage's live preview for one zone - `null` when its
  * prerequisite isn't met yet (the button shows disabled with no total),
@@ -701,25 +733,49 @@ function onStageGeneric(zoneId: ZoneId, stage: (typeof GENERIC_STAGES)[number]):
   game.stageAction(d.car.id, { kind: 'pipeline-stage', stage, zoneId })
 }
 
+/** The swatch armed for each zone, by paint-colour id - the paint stage's own
+ * player input, kept per zone so moving between zones never loses a pick. */
 const paintColourByZone = ref<Record<string, string>>({})
+
+/**
+ * The chassis zone's finish coat is underseal, not paint: the sim charges the
+ * underseal material for it (`planPaintStage`) and nothing ever reads the
+ * shade back, since the paint band derives from the five panel zones alone. So
+ * the colour is fixed here rather than offered as a swatch.
+ */
+const UNDERSEAL_COLOUR = 'underseal'
+
+/** The colour the finish stage would lay on this zone: the armed swatch on a
+ * panel zone, underseal on the chassis, `null` while no tin is picked. */
+function paintColourFor(zoneId: ZoneId): string | null {
+  if (zoneId === 'chassis') return UNDERSEAL_COLOUR
+  return paintColourByZone.value[zoneId] ?? null
+}
+
+/** A stored colour id as the name on the tin, falling back to the raw value so
+ * an unknown id still reads as something rather than vanishing. */
+function paintColourName(colourId: string): string {
+  return PAINT_COLOURS.find((c) => c.id === colourId)?.name ?? colourId
+}
 
 function paintPreview(zoneId: ZoneId): { costYen: number; laborSlots: number } | null {
   const d = detail.value
-  const colour = paintColourByZone.value[zoneId]
+  const colour = paintColourFor(zoneId)
   if (!d || !colour) return null
   return game.pipelineActionPlan(d.car, { kind: 'pipeline-paint', zoneId, colour })
 }
 
 function onStagePaint(zoneId: ZoneId): void {
   const d = detail.value
-  const colour = paintColourByZone.value[zoneId]
+  const colour = paintColourFor(zoneId)
   if (!d || !colour) return
   game.stageAction(d.car.id, { kind: 'pipeline-paint', zoneId, colour })
 }
 
 /** Zone panels sitting in inventory that fit THIS car's own fitment class,
- * for one panel zone - the swap-panel control's own picker. */
-function matchingPanelsFor(zoneId: (typeof PANEL_ZONE_IDS)[number]): PartInstance[] {
+ * for one panel zone - the swap-panel control's own picker. The chassis has no
+ * panel to fit, and no catalog entry is addressed to it, so it finds none. */
+function matchingPanelsFor(zoneId: ZoneId): PartInstance[] {
   const d = detail.value
   if (!d) return []
   const model = game.context.modelsById[d.car.modelId]
@@ -731,10 +787,64 @@ function matchingPanelsFor(zoneId: (typeof PANEL_ZONE_IDS)[number]): PartInstanc
   })
 }
 
-function onStageSwapPanel(zoneId: (typeof PANEL_ZONE_IDS)[number], partInstanceId: string): void {
+/** One candidate panel's own cost and labour, from the same plan Confirm
+ * resolves with - `null` when the pick no longer fits. */
+function swapPanelPreview(
+  zoneId: ZoneId,
+  partInstanceId: string,
+): { costYen: number; laborSlots: number } | null {
   const d = detail.value
-  if (!d || !partInstanceId) return
+  if (!d || zoneId === 'chassis') return null
+  return game.pipelineActionPlan(d.car, { kind: 'pipeline-swap-panel', zoneId, partInstanceId })
+}
+
+function onStageSwapPanel(zoneId: ZoneId, partInstanceId: string): void {
+  const d = detail.value
+  if (!d || !partInstanceId || zoneId === 'chassis') return
   game.stageAction(d.car.id, { kind: 'pipeline-swap-panel', zoneId, partInstanceId })
+}
+
+/** The six generic stages for the docked zone, each with the live plan its
+ * control reads - one evaluation per stage, not one per binding. */
+const zoneStageViews = computed(() => {
+  const zone = selectedZone.value
+  if (!zone) return []
+  return GENERIC_STAGES.map((stage) => ({
+    stage,
+    label: PIPELINE_STAGE_LABELS[stage] ?? stage,
+    plan: genericStagePreview(zone.zoneId, stage),
+  }))
+})
+
+/** The panels on hand for the docked zone, as the swap control's own buttons. */
+const zonePanelOptions = computed(() => {
+  const zone = selectedZone.value
+  if (!zone || !zone.isPanelZone) return []
+  return matchingPanelsFor(zone.zoneId).map((instance) => ({
+    id: instance.id,
+    label: `${game.partName(instance.partId)} (${instance.band})`,
+    plan: swapPanelPreview(zone.zoneId, instance.id),
+  }))
+})
+
+/** The docked zone's finish-stage plan, and the tin it would use. */
+const zonePaintPlan = computed(() =>
+  selectedZone.value ? paintPreview(selectedZone.value.zoneId) : null,
+)
+
+const armedColourName = computed(() => {
+  const zone = selectedZone.value
+  if (!zone || !zone.isPanelZone) return null
+  const colourId = paintColourByZone.value[zone.zoneId]
+  return colourId ? paintColourName(colourId) : null
+})
+
+/** A pipeline control's own price and labour, inline - the same
+ * `¥x · n labour` shape the repair button and the planned rows already carry.
+ * Empty while the stage has no plan: the control is disabled there, and there
+ * is no honest total to state. */
+function pipelineCostText(plan: { costYen: number; laborSlots: number } | null): string {
+  return plan ? ` · ${formatYen(plan.costYen)} · ${plan.laborSlots} labour` : ''
 }
 
 const draggedPartName = computed(() => {
@@ -887,13 +997,9 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         </div>
       </section>
 
-      <!-- The diagram is the page. Full-width diagram, then the bench strip
-           (if any), then the docked info/action panel. -->
-      <PartsDiagram
-        :car-id="detail.car.id"
-        :selected-part-id="selectedPartId"
-        @select="onDiagramSelect"
-      />
+      <!-- The workshop is the page. Full-width views, then the bench strip
+           (if any), then the docked info/action panel every region feeds. -->
+      <WorkshopViews :car-id="detail.car.id" @select="onWorkshopSelect" />
 
       <section
         v-if="game.benchContainersFor(detail.car.id).length > 0"
@@ -934,8 +1040,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
       </section>
 
       <section class="action-panel" data-test="part-action-panel">
-        <p v-if="!panelHead" class="panel-empty" data-test="panel-empty">
-          Pick a part in the diagram to work on it.
+        <p v-if="!panelHead && !selectedZone" class="panel-empty" data-test="panel-empty">
+          Pick anything in the views above and what you can do to it turns up here.
         </p>
 
         <template v-if="panelHead">
@@ -1209,96 +1315,95 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             >
           </div>
         </template>
-      </section>
 
-      <section v-if="zoneState" class="body-zones-panel" data-test="body-zones-panel">
-        <h4>
-          Body zones
-          <HelpHint label="Body zones">
-            Panels, paint, and underbody all read from the six zones below - work a zone's own
-            pipeline to move it. Metal is beaten or welded free of charge (it costs labour, never
-            yen); surface and finish need real materials.
-          </HelpHint>
-        </h4>
-        <ul class="body-zone-list">
-          <li
-            v-for="zid in ZONE_IDS"
-            :key="zid"
-            class="body-zone-row"
-            :data-test="'body-zone-row-' + zid"
-          >
-            <div class="body-zone-head">
-              <span class="body-zone-name">{{ titleCaseFromSlug(zid) }}</span>
-              <span class="body-zone-severity" :data-test="'body-zone-severity-' + zid"
-                >metal {{ zoneState![zid].metal }} · surface {{ zoneState![zid].surface }} · finish
-                {{ zoneState![zid].finish
-                }}{{ zoneState![zid].panelMissing ? ' · panel missing' : '' }}</span
-              >
-            </div>
-            <div class="body-zone-stages">
+        <!-- The same docked panel, in its zone mode: a body zone's own
+             pipeline, its panel swap, and its finish coat. -->
+        <template v-else-if="selectedZone">
+          <div class="panel-head">
+            <span class="panel-name" data-test="panel-name">{{ selectedZone.name }}</span>
+            <span class="zone-severity" :data-test="'zone-severity-' + selectedZone.zoneId">{{
+              zoneSeverityText(selectedZone.zone)
+            }}</span>
+            <span
+              v-if="selectedZone.zone.panelMissing"
+              class="missing-tag"
+              data-test="zone-panel-off"
+              >PANEL OFF</span
+            >
+            <HelpHint label="Body zones">
+              Panels, paint and underbody all read from the six zones - work a zone's own pipeline
+              to move it. Metal is beaten or welded free of charge (it costs labour, never yen);
+              surface and finish need real materials.
+            </HelpHint>
+          </div>
+
+          <div class="panel-actions">
+            <button
+              v-for="stageView in zoneStageViews"
+              :key="stageView.stage"
+              type="button"
+              class="step-up loud"
+              :disabled="!stageView.plan"
+              :data-test="'pipeline-' + stageView.stage + '-' + selectedZone.zoneId"
+              @click="onStageGeneric(selectedZone.zoneId, stageView.stage)"
+            >
+              {{ stageView.label + pipelineCostText(stageView.plan) }}
+            </button>
+          </div>
+
+          <div v-if="selectedZone.isPanelZone" class="panel-actions">
+            <span class="zone-sub">Swap panel</span>
+            <button
+              v-for="option in zonePanelOptions"
+              :key="option.id"
+              type="button"
+              :data-test="'pipeline-swap-panel-' + selectedZone.zoneId + '-' + option.id"
+              @click="onStageSwapPanel(selectedZone.zoneId, option.id)"
+            >
+              {{ option.label + pipelineCostText(option.plan) }}
+            </button>
+            <span
+              v-if="zonePanelOptions.length === 0"
+              class="slot-empty"
+              :data-test="'no-panels-' + selectedZone.zoneId"
+              >No panel for this zone on hand - the parts shop sells them.</span
+            >
+          </div>
+
+          <div class="panel-actions">
+            <!-- Colour is a small fixed set of tins, so it is a swatch pick.
+                 The chassis gets none: its finish coat is underseal. -->
+            <template v-if="selectedZone.isPanelZone">
+              <span class="zone-sub">Colour</span>
               <button
-                v-for="stage in GENERIC_STAGES"
-                :key="stage"
+                v-for="colour in PAINT_COLOURS"
+                :key="colour.id"
                 type="button"
-                :disabled="!genericStagePreview(zid, stage)"
-                :data-test="'pipeline-' + stage + '-' + zid"
-                :title="
-                  genericStagePreview(zid, stage)
-                    ? formatYen(genericStagePreview(zid, stage)!.costYen) +
-                      ' · ' +
-                      genericStagePreview(zid, stage)!.laborSlots +
-                      ' labour'
-                    : 'Not ready yet'
-                "
-                @click="onStageGeneric(zid, stage)"
-              >
-                {{ PIPELINE_STAGE_LABELS[stage] }}
-              </button>
-              <template v-if="(PANEL_ZONE_IDS as readonly string[]).includes(zid)">
-                <select
-                  :data-test="'pipeline-swap-panel-select-' + zid"
-                  @change="
-                    onStageSwapPanel(
-                      zid as (typeof PANEL_ZONE_IDS)[number],
-                      ($event.target as HTMLSelectElement).value,
-                    )
-                  "
-                >
-                  <option value="">Swap panel…</option>
-                  <option
-                    v-for="pi in matchingPanelsFor(zid as (typeof PANEL_ZONE_IDS)[number])"
-                    :key="pi.id"
-                    :value="pi.id"
-                  >
-                    {{ game.partName(pi.partId) }} ({{ pi.band }})
-                  </option>
-                </select>
-              </template>
-              <input
-                v-model="paintColourByZone[zid]"
-                type="text"
-                placeholder="colour"
-                :data-test="'pipeline-paint-colour-' + zid"
-              />
-              <button
-                type="button"
-                :disabled="!paintPreview(zid)"
-                :data-test="'pipeline-paint-' + zid"
-                :title="
-                  paintPreview(zid)
-                    ? formatYen(paintPreview(zid)!.costYen) +
-                      ' · ' +
-                      paintPreview(zid)!.laborSlots +
-                      ' labour'
-                    : 'Not ready yet'
-                "
-                @click="onStagePaint(zid)"
-              >
-                Paint
-              </button>
-            </div>
-          </li>
-        </ul>
+                class="paint-swatch"
+                :class="{ armed: paintColourByZone[selectedZone.zoneId] === colour.id }"
+                :style="{ backgroundColor: colour.hex }"
+                :aria-pressed="paintColourByZone[selectedZone.zoneId] === colour.id"
+                :aria-label="colour.name"
+                :data-test="'paint-swatch-' + selectedZone.zoneId + '-' + colour.id"
+                @click="paintColourByZone[selectedZone.zoneId] = colour.id"
+              ></button>
+              <span class="zone-sub" data-test="paint-colour-name">{{
+                armedColourName ?? 'no tin picked yet'
+              }}</span>
+            </template>
+            <button
+              type="button"
+              class="step-up loud"
+              :disabled="!zonePaintPlan"
+              :data-test="'pipeline-paint-' + selectedZone.zoneId"
+              @click="onStagePaint(selectedZone.zoneId)"
+            >
+              {{
+                (selectedZone.isPanelZone ? 'Paint' : 'Underseal') + pipelineCostText(zonePaintPlan)
+              }}
+            </button>
+          </div>
+        </template>
       </section>
 
       <ReplaceDrawer
@@ -1356,7 +1461,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         <h4>
           Planned work ({{ detail.stagedActions.length }})
           <HelpHint label="Planned work">
-            Everything you stage from the diagram lands here, free to add and remove, until you
+            Everything you line up in the workshop lands here, free to add and remove, until you
             Confirm. Each line shows its own price and labour; the bar totals them.
           </HelpHint>
         </h4>
@@ -1672,8 +1777,8 @@ h4 {
 }
 
 /* The hero header - title/info on the left, the radar
-   pinned top-right at a smaller size. The diagram, panel, and the rest of the
-   page stack full-width below (the old two-column .cols grid is dissolved). */
+   pinned top-right at a smaller size. The workshop views, panel, and the rest
+   of the page stack full-width below, in one column. */
 .detail-hero {
   display: flex;
   align-items: flex-start;
@@ -1846,7 +1951,7 @@ h4 {
   color: var(--mg-neon-pink);
 }
 
-/* The bench strip under the diagram - benched assembly members as
+/* The bench strip under the workshop views - benched assembly members as
    the same sprite block components, each selecting the docked panel. */
 .bench-strip {
   margin: var(--mg-space-2) 0 0;
@@ -1903,9 +2008,8 @@ h4 {
   pointer-events: none;
 }
 
-/* The docked info/action panel - the diagram's single
-   companion, showing the selected block's identity and every action the old
-   list row offered. */
+/* The docked info/action panel - the views' single companion, showing the
+   selected part's or zone's identity and every action available on it. */
 .action-panel {
   margin: var(--mg-space-2) 0 0;
   border: var(--mg-border);
@@ -2001,6 +2105,42 @@ h4 {
   line-height: 1;
   color: var(--mg-neon-pink);
   border-color: var(--mg-panel-edge);
+}
+
+/* The docked zone's three layer severities, read out beside its name. */
+.zone-severity {
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+}
+
+/* The quiet label in front of a zone control row, and the armed tin's name. */
+.zone-sub {
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+}
+
+/* A paint chip. The tin's own colour is the button's face, so this fill is the
+   one legitimate literal colour on the screen - it is content data, not
+   palette, and it arrives inline from `PAINT_COLOURS`. Square, and it stays
+   down once armed. */
+.paint-swatch {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--mg-panel-edge);
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.paint-swatch.armed {
+  border-color: var(--mg-neon-cyan);
+  box-shadow: inset 0 0 0 2px var(--mg-night-deep);
+  transform: translateY(1px);
+}
+
+.paint-swatch:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--mg-neon-cyan);
 }
 
 .finances {

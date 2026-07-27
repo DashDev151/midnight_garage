@@ -299,14 +299,6 @@ export interface CarDetail extends DetailedCar {
    */
   groupBands: Record<ComponentId, ConditionBand>
   /**
-   * Each of the 6 real groups' completeness: true when any member slot is a
-   * real defect empty slot (`groupIncompleteForCar`), never the
-   * legitimately-empty NA `forcedInduction` case. The service diagram
-   * consults this alongside `groupBands` so a stripped group never reads
-   * healthy just because its remaining present parts band well.
-   */
-  groupIncomplete: Record<ComponentId, boolean>
-  /**
    * Each of the 6
    * groups' own scaled restoration bill (`groupCostToMintYen`, the car's
    * real tier factor applied) - the condition panel's per-group bill line.
@@ -1199,9 +1191,7 @@ export const useGameStore = defineStore('game', () => {
    * (now always-transparent) auction lot-detail screens show. A group with
    * no present parts (a fully torn-down group mid-service) reports `'mint'`
    * here by construction - this function only ever looks at parts that ARE
-   * present, so it says nothing about whether the group is complete. Pair it
-   * with `groupIncompleteForCar` before rendering a group's status; a
-   * consumer that reads this alone will show a stripped group as healthy.
+   * present, so it says nothing about whether the group is complete.
    */
   function groupBandsForCar(car: CarInstance): Record<ComponentId, ConditionBand> {
     const result = {} as Record<ComponentId, ConditionBand>
@@ -1214,26 +1204,6 @@ export const useGameStore = defineStore('game', () => {
         if (bandIndex(band) < bandIndex(worst)) worst = band
       }
       result[groupId] = worst
-    }
-    return result
-  }
-
-  /**
-   * Whether each of the 6 real groups carries a real defect empty slot
-   * (`isPartMissing`) - a part pulled for service, not the legitimately-empty
-   * `forcedInduction` case on a naturally-aspirated car. The service diagram
-   * reads this alongside `groupBandsForCar` so a group missing any of its
-   * parts renders a distinct open/incomplete state instead of whatever band
-   * its remaining present parts happen to carry (a fully stripped group's
-   * band defaults to `'mint'`, since a band computed over zero parts finds
-   * nothing wrong with any of them).
-   */
-  function groupIncompleteForCar(car: CarInstance, model: CarModel): Record<ComponentId, boolean> {
-    const result = {} as Record<ComponentId, boolean>
-    for (const groupId of REAL_COMPONENT_GROUPS) {
-      result[groupId] = context.value.partIdsByGroup[groupId].some((partId) =>
-        isPartMissing(car, model, partId),
-      )
     }
     return result
   }
@@ -1832,7 +1802,6 @@ export const useGameStore = defineStore('game', () => {
       inServiceBay: gameState.value.serviceBayCarIds.includes(carId),
       stagedActions: gameState.value.stagedCarWork[carId] ?? [],
       groupBands: groupBandsForCar(car),
-      groupIncomplete: groupIncompleteForCar(car, model),
       groupBillYen: groupBillsForCar(car, model),
       ledger: carLedgerFor(gameState.value, carId),
       guideValueYen,
@@ -4475,7 +4444,6 @@ export const useGameStore = defineStore('game', () => {
     buyerName,
     carDetail,
     groupBandsForCar,
-    groupIncompleteForCar,
     groupRepairFloorBand,
     nextRepairStep,
     nextPartStepRange,

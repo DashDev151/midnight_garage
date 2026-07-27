@@ -115,7 +115,12 @@
     "lines": [
       {
         "speaker": "instruction",
-        "text": "Open her from the bay. The big picture of the car is the service diagram: point at the wheels and click, and the panel underneath shows what you can do there."
+        "text": "Open her from the bay. She comes up in three views: the Body, the Engine bay, and the Underside, which is her up on the lift. Click anything and the panel below shows what you can do to it. Wheels live underneath, so switch to Underside and click hers.",
+        "anchorTestId": [
+          "remove-assembly-wheelAssembly",
+          "workshop-region-part-tyres",
+          "workshop-view-tab-underside"
+        ]
       },
       {
         "speaker": "instruction",
@@ -165,7 +170,7 @@
     "lines": [
       {
         "speaker": "instruction",
-        "text": "Now for that tick, and this one is proper surgery. It lives in the {part}, deep in the engine, and the engine will not come out with the Intake, the Exhaust and the Cooling bolted on around it. Click each of those three on the diagram and press Take it off; taking parts off costs nothing, and they wait safely in your inventory.",
+        "text": "Now for that tick, and this one is proper surgery. It lives in the {part}, deep in the engine, and the engine will not come out with the Intake, the Exhaust and the Cooling bolted on around it. Click each of those three in the Engine bay view and press Take it off; taking parts off costs nothing, and they wait safely in your inventory.",
         "hideWhen": { "kind": "assemblyOnBench", "assemblyId": "engineAssembly" }
       },
       {
@@ -198,7 +203,7 @@
     "lines": [
       {
         "speaker": "instruction",
-        "text": "Nearly home; the Intake, the Exhaust and the Cooling are still on your shelf. Click each empty slot on the diagram, press Replace and pick the part you took off, then press Confirm. Putting back exactly what came off costs nothing, and she is not roadworthy until she is whole."
+        "text": "Nearly home; the Intake, the Exhaust and the Cooling are still on your shelf. Click each empty slot in the Engine bay, press Replace and pick the part you took off, then press Confirm. Putting back exactly what came off costs nothing, and she is not roadworthy until she is whole."
       }
     ],
     "completion": { "kind": "scriptedCarWhole" },

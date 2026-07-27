@@ -1,13 +1,14 @@
 import type { CarPartId, AssemblyId, ComponentId } from '@midnight-garage/content'
+import { rasterise, templateGrid, type PixelPalette, type PixelTemplate } from './pixelRaster'
 
 /**
- * Placeholder part sprites for the service diagram.
+ * Placeholder part sprites for the workshop surfaces.
  *
  * Development placeholders only: they never appear in a public build,
  * screenshot, devlog or marketing material, and commissioned art replaces them
- * before launch (docs/design/part-sprite-placeholders.md, TODO.md). Each entry
- * is an indexed character grid rasterised to a PNG data URL for the DOM
- * diagram, so this module stays free of Pixi and of the sim boundary.
+ * before launch (docs/design/art/part-sprite-placeholders.md, TODO.md). Each entry
+ * is an indexed character grid rasterised to a PNG data URL for the DOM by the
+ * shared `pixelRaster` module.
  *
  * Palette tokens: '.' transparent, '0' outline, '1' dark, '2' mid, '3' light,
  * 'a' amber garnish. Standard parts are 24x16 authored pixels; large units
@@ -16,7 +17,7 @@ import type { CarPartId, AssemblyId, ComponentId } from '@midnight-garage/conten
  */
 export type PartSpriteId = CarPartId | AssemblyId
 
-export const PART_SPRITE_PALETTE: Readonly<Record<string, string>> = {
+export const PART_SPRITE_PALETTE: PixelPalette = {
   '0': '#101113',
   '1': '#26272b',
   '2': '#3d3f45',
@@ -24,7 +25,7 @@ export const PART_SPRITE_PALETTE: Readonly<Record<string, string>> = {
   a: '#d29a5a',
 }
 
-const TEMPLATES: Record<PartSpriteId, readonly string[]> = {
+const TEMPLATES: Record<PartSpriteId, PixelTemplate> = {
   block: [
     '................................',
     '................................',
@@ -663,25 +664,22 @@ const TEMPLATES: Record<PartSpriteId, readonly string[]> = {
   ],
 }
 
-export const PART_SPRITE_TEMPLATES: Readonly<Record<PartSpriteId, readonly string[]>> = TEMPLATES
+export const PART_SPRITE_TEMPLATES: Readonly<Record<PartSpriteId, PixelTemplate>> = TEMPLATES
 
 /**
  * Each sprite's authored dimensions, derived from its template so the two can
- * never disagree. PartsDiagram sizes its sprite slots from this.
+ * never disagree. Two authored sizes only, which `partSprites.test.ts` pins.
  */
 export const PART_SPRITE_GRID: Readonly<Record<PartSpriteId, { w: number; h: number }>> =
   Object.fromEntries(
-    (Object.keys(TEMPLATES) as PartSpriteId[]).map((id) => {
-      const rows = TEMPLATES[id]
-      return [id, { w: rows[0]?.length ?? 0, h: rows.length }]
-    }),
+    (Object.keys(TEMPLATES) as PartSpriteId[]).map((id) => [id, templateGrid(TEMPLATES[id])]),
   ) as Record<PartSpriteId, { w: number; h: number }>
 
 /**
  * The sprite that stands for a whole component group on a group-level surface
- * (the diagram's level-1 tiles, the parts market's department hero cards): the
- * group's large assembly composite where one exists, else its most iconic
- * member part. One mapping, shared by both surfaces (directive 16).
+ * (the parts market's department hero cards): the group's large assembly
+ * composite where one exists, else its most iconic member part. One mapping,
+ * wherever a group needs a face (directive 16).
  */
 const GROUP_SPRITE_ID: Readonly<Record<ComponentId, PartSpriteId>> = {
   engine: 'engineAssembly',
@@ -696,36 +694,12 @@ export function groupSpriteId(componentId: ComponentId): PartSpriteId {
   return GROUP_SPRITE_ID[componentId]
 }
 
-const dataUrlCache = new Map<string, string>()
-
 /**
- * Rasterise a template to a PNG data URL through an offscreen canvas
- * (nearest-neighbour), for the DOM diagram. Returns '' when no template exists.
- * Memoised per (id, scale).
+ * Rasterise a part sprite to a PNG data URL for the DOM. Returns '' when no
+ * template exists. Memoised per (id, scale).
  */
 export function partSpriteDataUrl(id: PartSpriteId, scale = 4): string {
-  const template = TEMPLATES[id] as readonly string[] | undefined
-  if (!template || template.length === 0) return ''
-  const key = `${id}:${scale}`
-  const cached = dataUrlCache.get(key)
-  if (cached !== undefined) return cached
-  const width = template[0]?.length ?? 0
-  const canvas = document.createElement('canvas')
-  canvas.width = width * scale
-  canvas.height = template.length * scale
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return ''
-  ctx.imageSmoothingEnabled = false
-  for (let y = 0; y < template.length; y++) {
-    const row = template[y] ?? ''
-    for (let x = 0; x < row.length; x++) {
-      const colour = PART_SPRITE_PALETTE[row[x] ?? '.']
-      if (!colour) continue
-      ctx.fillStyle = colour
-      ctx.fillRect(x * scale, y * scale, scale, scale)
-    }
-  }
-  const url = canvas.toDataURL('image/png')
-  dataUrlCache.set(key, url)
-  return url
+  const template = TEMPLATES[id] as PixelTemplate | undefined
+  if (!template) return ''
+  return rasterise(template, PART_SPRITE_PALETTE, scale, `${id}:${scale}`)
 }

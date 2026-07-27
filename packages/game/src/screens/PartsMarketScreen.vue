@@ -716,9 +716,9 @@ h3 {
   min-width: 0;
 }
 
-/* The part's slot sprite: a decorative thumbnail reusing the diagram's crisp
-   nearest-neighbour treatment (.pd-sprite). Placeholder art only, per the
-   sprite module's provenance note. */
+/* The part's slot sprite: a decorative thumbnail of a `partSprites` raster,
+   kept crisp by the same nearest-neighbour treatment every sprite surface
+   uses. Placeholder art only, per the sprite module's provenance note. */
 .part-sprite {
   flex: 0 0 auto;
   width: 44px;

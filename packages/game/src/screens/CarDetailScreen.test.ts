@@ -2,29 +2,37 @@ import {
   ALL_CAR_PART_IDS,
   CARS,
   ECONOMY,
+  PAINT_COLOURS,
   PARTS,
   PARTS_TAXONOMY,
   TOOL_LINES,
   type CarPartId,
   type ComponentId,
+  type ZoneId,
+  type ZoneState,
 } from '@midnight-garage/content'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { h } from 'vue'
 import { createMemoryHistory, createRouter, type Router } from 'vue-router'
+import {
+  WORKSHOP_VIEWS,
+  type WorkshopRegion,
+  type WorkshopViewId,
+} from '../components/workshopViewLayout'
 import { clearDragSession } from '../composables/useDragAndDrop'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
 import CarDetailScreen from './CarDetailScreen.vue'
 
 /**
- * The Components list, its drill-down and
- * its condition filter are gone - the diagram plus the docked info/action panel
- * is the single repair surface. Every test that drove the old list was
- * re-targeted here under directive 17 case (a) (the surface was intentionally
- * replaced), preserving the behavioural assertions: repair staging, the replace
- * flow, remove gating, and the confirm totals.
+ * The Components list, its drill-down and its condition filter are gone - the
+ * workshop views plus the docked info/action panel are the single repair
+ * surface, for parts and body zones alike. Every test that drove an earlier
+ * surface was re-targeted here under directive 17 case (a) (the surface was
+ * intentionally replaced), preserving the behavioural assertions: repair
+ * staging, the replace flow, remove gating, and the confirm totals.
  */
 
 // A minimal router so useRoute/useRouter resolve; garage/parts are stub
@@ -62,24 +70,50 @@ async function mountAt(carId: string) {
 }
 
 /**
- * The one interaction that reaches a part's actions now - open the
- * part's group tile (level 2), then click its diagram block, which docks the
- * info/action panel on that part. Handles already being inside another group's
- * level-2 view by backing out first.
+ * Which of the three views carries a region, read from the live layout - a
+ * hardcoded mapping would let a layout change silently pass a test that claims
+ * to drive the real surface.
+ */
+function viewIdCarrying(
+  what: string,
+  matches: (region: WorkshopRegion) => boolean,
+): WorkshopViewId {
+  for (const view of Object.values(WORKSHOP_VIEWS)) {
+    if (view.regions.some(matches)) return view.id
+  }
+  throw new Error(`no workshop view carries ${what}`)
+}
+
+/** A region's click target. A region owns a SET of rects, each its own button:
+ * a single-rect region owns the stem, a multi-rect one suffixes the index. */
+function regionSelector(base: string): string {
+  return `[data-test="${base}"], [data-test="${base}-0"]`
+}
+
+/**
+ * The one interaction that reaches a part's actions now - open the view its
+ * region lives on, then click the region, which docks the info/action panel on
+ * that part.
  */
 async function selectPart(
   wrapper: Awaited<ReturnType<typeof mountAt>>['wrapper'],
-  componentId: ComponentId,
   partId: CarPartId,
 ): Promise<void> {
-  const tile = wrapper.find(`[data-test="diagram-tile-${componentId}"]`)
-  if (tile.exists()) {
-    await tile.trigger('click')
-  } else {
-    await wrapper.get('[data-test="diagram-back"]').trigger('click')
-    await wrapper.get(`[data-test="diagram-tile-${componentId}"]`).trigger('click')
-  }
-  await wrapper.get(`[data-test="diagram-slot-${partId}"]`).trigger('click')
+  const viewId = viewIdCarrying(partId, (r) => r.kind === 'part' && r.partId === partId)
+  await wrapper.get(`[data-test="workshop-view-tab-${viewId}"]`).trigger('click')
+  await wrapper.get(regionSelector(`workshop-region-part-${partId}`)).trigger('click')
+  await flushPromises()
+}
+
+/** The same route to a body zone's actions - the views select, the one docked
+ * panel acts, whichever kind of region was pointed at. */
+async function selectZone(
+  wrapper: Awaited<ReturnType<typeof mountAt>>['wrapper'],
+  zoneId: ZoneId,
+): Promise<void> {
+  const viewId = viewIdCarrying(zoneId, (r) => r.kind === 'zone' && r.zoneId === zoneId)
+  await wrapper.get(`[data-test="workshop-view-tab-${viewId}"]`).trigger('click')
+  await wrapper.get(regionSelector(`workshop-region-zone-${zoneId}`)).trigger('click')
   await flushPromises()
 }
 
@@ -174,7 +208,7 @@ describe('CarDetailScreen', () => {
     for (const wrapper of mountedWrappers.splice(0)) wrapper.unmount()
   })
 
-  it('renders a granted car: name, radar, the six diagram tiles, and an empty action panel', async () => {
+  it('renders a granted car: name, radar, the three workshop views, and an empty action panel', async () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
     const id = game.gameState.ownedCars[0]!.id
@@ -182,17 +216,11 @@ describe('CarDetailScreen', () => {
     const { wrapper } = await mountAt(id)
     expect(wrapper.find('svg.radar').exists()).toBe(true)
     expect(wrapper.text()).toContain(game.carsDetailed[0]!.displayName)
-    const componentIds: ComponentId[] = [
-      'engine',
-      'drivetrain',
-      'suspension',
-      'wheels',
-      'body',
-      'interior',
-    ]
-    for (const componentId of componentIds) {
-      expect(wrapper.find(`[data-test="diagram-tile-${componentId}"]`).exists()).toBe(true)
+    for (const viewId of Object.keys(WORKSHOP_VIEWS) as WorkshopViewId[]) {
+      expect(wrapper.find(`[data-test="workshop-view-tab-${viewId}"]`).exists()).toBe(true)
     }
+    // The body schematic opens first, with its own regions on the stage.
+    expect(wrapper.find('[data-test="workshop-region-zone-bonnet"]').exists()).toBe(true)
     // Nothing selected yet - the docked panel shows its empty prompt.
     expect(wrapper.find('[data-test="panel-empty"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="panel-name"]').exists()).toBe(false)
@@ -207,12 +235,12 @@ describe('CarDetailScreen', () => {
     game.removePart(id, 'dampers')
 
     const { wrapper } = await mountAt(id)
-    await selectPart(wrapper, 'suspension', 'dampers')
+    await selectPart(wrapper, 'dampers')
     await wrapper.find('[data-test="replace-part-dampers"]').trigger('click')
     await wrapper.find('.part-card').trigger('click')
     if (needsRepair(game, id, 'body')) {
       const row = bodyRepairRow(game, id)
-      await selectPart(wrapper, 'body', row.partId)
+      await selectPart(wrapper, row.partId)
       await wrapper.find(`[data-test="stage-repair-part-${row.partId}"]`).trigger('click')
     }
 
@@ -246,7 +274,7 @@ describe('CarDetailScreen', () => {
 
     // Install/replace affordance of a signature slot: gate reason present at
     // tier 1, neither owned nor hired.
-    await selectPart(wrapper, 'suspension', 'dampers')
+    await selectPart(wrapper, 'dampers')
     const installCap = wrapper.find('[data-test="assist-fee-dampers"]')
     expect(installCap.exists()).toBe(true)
     expect(installCap.text()).toContain(suspensionMachine)
@@ -254,7 +282,7 @@ describe('CarDetailScreen', () => {
     // On-car per-part repair of a signature slot: gate reason present; the SAME
     // installed slot's removal shows nothing (removal is never gated for
     // these groups).
-    await selectPart(wrapper, 'interior', 'seats')
+    await selectPart(wrapper, 'seats')
     const repairCap = wrapper.find('[data-test="assist-fee-repair-seats"]')
     expect(repairCap.exists()).toBe(true)
     expect(repairCap.text()).toContain(interiorMachine)
@@ -264,9 +292,9 @@ describe('CarDetailScreen', () => {
     game.devSetToolTier('suspension', 2)
     game.devSetToolTier('interior', 2)
     const owned = await mountAt(id)
-    await selectPart(owned.wrapper, 'suspension', 'dampers')
+    await selectPart(owned.wrapper, 'dampers')
     expect(owned.wrapper.find('[data-test="assist-fee-dampers"]').exists()).toBe(false)
-    await selectPart(owned.wrapper, 'interior', 'seats')
+    await selectPart(owned.wrapper, 'seats')
     expect(owned.wrapper.find('[data-test="assist-fee-repair-seats"]').exists()).toBe(false)
   })
 
@@ -283,9 +311,9 @@ describe('CarDetailScreen', () => {
     }
 
     const { wrapper } = await mountAt(id)
-    await selectPart(wrapper, 'suspension', 'dampers')
+    await selectPart(wrapper, 'dampers')
     expect(wrapper.find('[data-test="assist-fee-dampers"]').exists()).toBe(false)
-    await selectPart(wrapper, 'interior', 'seats')
+    await selectPart(wrapper, 'seats')
     expect(wrapper.find('[data-test="assist-fee-repair-seats"]').exists()).toBe(false)
   })
 
@@ -308,7 +336,7 @@ describe('CarDetailScreen', () => {
     const interiorMachine = TOOL_LINES.interior.tiers[1]!.displayName
 
     const { wrapper } = await mountAt(id)
-    await selectPart(wrapper, 'interior', 'seats')
+    await selectPart(wrapper, 'seats')
     const cap = wrapper.find('[data-test="repair-ceiling-seats"]')
     expect(cap.exists()).toBe(true)
     expect(cap.text()).toBe(`Your tools finish at fine. The ${interiorMachine} reaches mint.`)
@@ -316,23 +344,23 @@ describe('CarDetailScreen', () => {
     // Owning the tier-2 machine lifts the ceiling to mint - the caption drops.
     game.devSetToolTier('interior', 2)
     const owned = await mountAt(id)
-    await selectPart(owned.wrapper, 'interior', 'seats')
+    await selectPart(owned.wrapper, 'seats')
     expect(owned.wrapper.find('[data-test="repair-ceiling-seats"]').exists()).toBe(false)
   })
 
-  it('a tile click only navigates; a block click docks that part in the action panel (Sprint 88 decision 1)', async () => {
+  it('a view tab only navigates; a region click docks that part in the action panel (Sprint 88 decision 1)', async () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
     const id = game.gameState.ownedCars[0]!.id
 
     const { wrapper } = await mountAt(id)
-    // Level 1 -> level 2: the panel stays empty - navigation is not selection.
-    await wrapper.get('[data-test="diagram-tile-engine"]').trigger('click')
+    // Switching views is navigation, not selection - the panel stays empty.
+    await wrapper.get('[data-test="workshop-view-tab-engineBay"]').trigger('click')
     expect(wrapper.find('[data-test="panel-empty"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="panel-name"]').exists()).toBe(false)
 
-    // A block click selects the part into the panel.
-    await wrapper.get('[data-test="diagram-slot-block"]').trigger('click')
+    // A region click selects the part into the panel.
+    await wrapper.get('[data-test="workshop-region-part-block"]').trigger('click')
     await flushPromises()
     expect(wrapper.find('[data-test="panel-empty"]').exists()).toBe(false)
     expect(wrapper.get('[data-test="panel-name"]').text()).toBe(game.carPartLabel('block'))
@@ -344,7 +372,7 @@ describe('CarDetailScreen', () => {
     const id = game.gameState.ownedCars[0]!.id
 
     const { wrapper } = await mountAt(id)
-    await selectPart(wrapper, 'suspension', 'brakePadsDiscs')
+    await selectPart(wrapper, 'brakePadsDiscs')
     const line = wrapper.get('[data-test="panel-sits-under"]')
     expect(line.text()).toBe(`Sits under: ${game.carPartLabel('rims')}`)
   })
@@ -361,7 +389,7 @@ describe('CarDetailScreen', () => {
     expect(wrapper.find('[data-test="confirm-work"]').attributes('disabled')).toBeDefined()
 
     const step = game.nextRepairStep(id, 'body', row.partId)!
-    await selectPart(wrapper, 'body', row.partId)
+    await selectPart(wrapper, row.partId)
     await wrapper.find(`[data-test="stage-repair-part-${row.partId}"]`).trigger('click')
     expect(wrapper.text()).toContain('Planned work (1)')
     expect(wrapper.text()).toContain(`Repair ${row.displayName} to ${step.targetBand}`)
@@ -396,7 +424,7 @@ describe('CarDetailScreen', () => {
     const row = bodyRepairRow(game, id)
     const { wrapper } = await mountAt(id)
 
-    await selectPart(wrapper, 'body', row.partId)
+    await selectPart(wrapper, row.partId)
     await wrapper.find(`[data-test="stage-repair-part-${row.partId}"]`).trigger('click')
     expect(wrapper.text()).toContain('Planned work (1)')
     await wrapper.find(`[data-test="unstage-repair-part-${row.partId}"]`).trigger('click')
@@ -409,7 +437,7 @@ describe('CarDetailScreen', () => {
     const id = grantCarNeedingRepair(game, 'body')
     const row = bodyRepairRow(game, id)
     const { wrapper } = await mountAt(id)
-    await selectPart(wrapper, 'body', row.partId)
+    await selectPart(wrapper, row.partId)
 
     const button = wrapper.find(`[data-test="stage-repair-part-${row.partId}"]`)
     expect(button.exists()).toBe(true)
@@ -424,7 +452,7 @@ describe('CarDetailScreen', () => {
       const id = grantCarNeedingRepair(game, 'body')
       const row = bodyRepairRow(game, id)
       const { wrapper } = await mountAt(id)
-      await selectPart(wrapper, 'body', row.partId)
+      await selectPart(wrapper, row.partId)
 
       const firstStep = game.nextRepairStep(id, 'body', row.partId)!
       await wrapper.find(`[data-test="stage-repair-part-${row.partId}"]`).trigger('click')
@@ -459,7 +487,7 @@ describe('CarDetailScreen', () => {
       const id = grantCarNeedingRepair(game, 'body')
       const row = bodyRepairRow(game, id)
       const { wrapper } = await mountAt(id)
-      await selectPart(wrapper, 'body', row.partId)
+      await selectPart(wrapper, row.partId)
 
       const step = game.nextRepairStep(id, 'body', row.partId)!
       const button = wrapper.get(`[data-test="stage-repair-part-${row.partId}"]`)
@@ -473,7 +501,7 @@ describe('CarDetailScreen', () => {
       const id = grantCarNeedingRepair(game, 'body')
       const row = bodyRepairRow(game, id)
       const { wrapper } = await mountAt(id)
-      await selectPart(wrapper, 'body', row.partId)
+      await selectPart(wrapper, row.partId)
 
       const attrSelector = `[data-test="staged-attr-body:${row.partId}"]`
       await wrapper.find(`[data-test="stage-repair-part-${row.partId}"]`).trigger('click')
@@ -496,7 +524,7 @@ describe('CarDetailScreen', () => {
       const id = grantCarNeedingRepair(game, 'body')
       const row = bodyRepairRow(game, id)
       const { wrapper } = await mountAt(id)
-      await selectPart(wrapper, 'body', row.partId)
+      await selectPart(wrapper, row.partId)
 
       expect(wrapper.find('[data-test="panel-plan-preview"]').exists()).toBe(false)
       await wrapper.find(`[data-test="stage-repair-part-${row.partId}"]`).trigger('click')
@@ -515,7 +543,7 @@ describe('CarDetailScreen', () => {
       const rows = repairableSurfaceRows(game, id, 'body')
       const { wrapper } = await mountAt(id)
 
-      await selectPart(wrapper, 'body', rows[0]!.partId)
+      await selectPart(wrapper, rows[0]!.partId)
       await wrapper.find(`[data-test="stage-repair-part-${rows[0]!.partId}"]`).trigger('click')
       const afterOne = game.carDetail(id)!.plannedEstimate!.plannedLaborSlots
       expect(afterOne).toBeGreaterThan(0)
@@ -525,16 +553,14 @@ describe('CarDetailScreen', () => {
       // group, whichever this roll actually produced.
       const secondBody = rows[1]
       const other = (['drivetrain', 'interior'] as const)
-        .map((g) => ({ g, rows: repairableSurfaceRows(game, id, g) }))
-        .find(({ rows: r }) => r.length > 0)
+        .map((group) => repairableSurfaceRows(game, id, group))
+        .find((groupRows) => groupRows.length > 0)
       if (secondBody) {
-        await selectPart(wrapper, 'body', secondBody.partId)
+        await selectPart(wrapper, secondBody.partId)
         await wrapper.find(`[data-test="stage-repair-part-${secondBody.partId}"]`).trigger('click')
       } else if (other) {
-        await selectPart(wrapper, other.g, other.rows[0]!.partId)
-        await wrapper
-          .find(`[data-test="stage-repair-part-${other.rows[0]!.partId}"]`)
-          .trigger('click')
+        await selectPart(wrapper, other[0]!.partId)
+        await wrapper.find(`[data-test="stage-repair-part-${other[0]!.partId}"]`).trigger('click')
       }
       if (secondBody || other) {
         const afterTwo = game.carDetail(id)!.plannedEstimate!.plannedLaborSlots
@@ -555,7 +581,7 @@ describe('CarDetailScreen', () => {
       expect(game.laborSlotsRemainingToday).toBe(0)
 
       const { wrapper } = await mountAt(id)
-      await selectPart(wrapper, 'body', row.partId)
+      await selectPart(wrapper, row.partId)
       await wrapper.find(`[data-test="stage-repair-part-${row.partId}"]`).trigger('click')
 
       const caption = wrapper.find('[data-test="confirm-labour-caption"]')
@@ -657,7 +683,7 @@ describe('CarDetailScreen', () => {
       const before = game.carDetail(id)!
       const { wrapper } = await mountAt(id)
       await wrapper.find('[data-test="toggle-bay"]').trigger('click')
-      await selectPart(wrapper, 'body', row.partId)
+      await selectPart(wrapper, row.partId)
       await wrapper.find(`[data-test="stage-repair-part-${row.partId}"]`).trigger('click')
       await wrapper.find('[data-test="confirm-work"]').trigger('click')
       await flushPromises()
@@ -936,9 +962,9 @@ describe('CarDetailScreen', () => {
       const { wrapper } = await mountAt(id)
       const step0 = game.nextRepairStep(id, 'body', rows[0]!.partId)!
       const step1 = game.nextRepairStep(id, 'body', rows[1]!.partId)!
-      await selectPart(wrapper, 'body', rows[0]!.partId)
+      await selectPart(wrapper, rows[0]!.partId)
       await wrapper.find(`[data-test="stage-repair-part-${rows[0]!.partId}"]`).trigger('click')
-      await selectPart(wrapper, 'body', rows[1]!.partId)
+      await selectPart(wrapper, rows[1]!.partId)
       await wrapper.find(`[data-test="stage-repair-part-${rows[1]!.partId}"]`).trigger('click')
 
       expect(wrapper.text()).toContain('Planned work (2)')
@@ -988,7 +1014,7 @@ describe('CarDetailScreen', () => {
       }
 
       const { wrapper } = await mountAt(id)
-      await selectPart(wrapper, 'suspension', 'dampers')
+      await selectPart(wrapper, 'dampers')
       expect(wrapper.find('[data-test="stage-repair-part-dampers"]').exists()).toBe(false)
       expect(wrapper.find('[data-test="replace-part-dampers"]').exists()).toBe(false)
       expect(wrapper.find('[data-test="remove-part-dampers"]').exists()).toBe(true)
@@ -1010,7 +1036,7 @@ describe('CarDetailScreen', () => {
       const partInstanceId = game.gameState.partInventory.at(-1)!.id
 
       const { wrapper } = await mountAt(id)
-      await selectPart(wrapper, 'engine', 'forcedInduction')
+      await selectPart(wrapper, 'forcedInduction')
       expect(wrapper.find('[data-test="stage-repair-part-forcedInduction"]').exists()).toBe(false)
       expect(wrapper.get('[data-test="part-action-panel"]').text()).toContain('no turbo (NA)')
 
@@ -1035,7 +1061,7 @@ describe('CarDetailScreen', () => {
       const partInstanceId = game.gameState.partInventory.at(-1)!.id
 
       const { wrapper } = await mountAt(id)
-      await selectPart(wrapper, 'engine', 'forcedInduction')
+      await selectPart(wrapper, 'forcedInduction')
       await wrapper.find('[data-test="replace-part-forcedInduction"]').trigger('click')
 
       expect(wrapper.text()).toContain('Needs Machine-shop tooling')
@@ -1055,7 +1081,7 @@ describe('CarDetailScreen', () => {
       expect(originalStockPartId).toBeDefined()
 
       const { wrapper } = await mountAt(id)
-      await selectPart(wrapper, 'suspension', 'dampers')
+      await selectPart(wrapper, 'dampers')
       expect(wrapper.find('[data-test="replace-part-dampers"]').exists()).toBe(false)
       expect(wrapper.find('[data-test="remove-part-dampers"]').exists()).toBe(true)
 
@@ -1078,7 +1104,7 @@ describe('CarDetailScreen', () => {
       const id = game.gameState.ownedCars[0]!.id
 
       const { wrapper } = await mountAt(id)
-      await selectPart(wrapper, 'wheels', 'rims')
+      await selectPart(wrapper, 'rims')
       expect(wrapper.find('[data-test="panel-assembly-note"]').exists()).toBe(true)
       expect(wrapper.find('[data-test="stage-repair-part-rims"]').exists()).toBe(false)
       expect(wrapper.find('[data-test="remove-part-rims"]').exists()).toBe(false)
@@ -1091,7 +1117,7 @@ describe('CarDetailScreen', () => {
       const id = game.gameState.ownedCars[0]!.id
 
       const { wrapper } = await mountAt(id)
-      await selectPart(wrapper, 'wheels', 'rims')
+      await selectPart(wrapper, 'rims')
       await wrapper.find('[data-test="remove-assembly-wheelAssembly"]').trigger('click')
       await flushPromises()
       expect(game.gameState.assemblyInventory).toHaveLength(1)
@@ -1121,7 +1147,7 @@ describe('CarDetailScreen', () => {
       const car = game.gameState.ownedCars[0]!
       car.parts.tyres = { installed: { ...car.parts.tyres.installed!, band: 'scrap' } }
       const { wrapper, router } = await mountAt(id)
-      await selectPart(wrapper, 'wheels', 'rims')
+      await selectPart(wrapper, 'rims')
       await wrapper.find('[data-test="remove-assembly-wheelAssembly"]').trigger('click')
       await flushPromises()
       await wrapper.find('[data-test="bench-member-tyres"]').trigger('click')
@@ -1229,7 +1255,7 @@ describe('CarDetailScreen', () => {
       car.parts.rims = { installed: { ...car.parts.rims.installed!, band: 'worn' } }
 
       const { wrapper } = await mountAt(id)
-      await selectPart(wrapper, 'wheels', 'rims')
+      await selectPart(wrapper, 'rims')
       await wrapper.find('[data-test="remove-assembly-wheelAssembly"]').trigger('click')
       await flushPromises()
       await wrapper.find('[data-test="bench-member-rims"]').trigger('click')
@@ -1250,7 +1276,7 @@ describe('CarDetailScreen', () => {
       game.removePart(id, 'dampers')
 
       const { wrapper } = await mountAt(id)
-      await selectPart(wrapper, 'suspension', 'dampers')
+      await selectPart(wrapper, 'dampers')
       expect(wrapper.find('[data-test="replace-drawer"]').exists()).toBe(false)
       expect(wrapper.find('[data-test^="pick-part-"]').exists()).toBe(false)
 
@@ -1273,7 +1299,7 @@ describe('CarDetailScreen', () => {
       const cashBefore = game.cashYen
 
       const { wrapper } = await mountAt(id)
-      await selectPart(wrapper, 'suspension', 'dampers')
+      await selectPart(wrapper, 'dampers')
       await wrapper.find('[data-test="replace-part-dampers"]').trigger('click')
       await wrapper.find('.part-card').trigger('click')
 
@@ -1292,7 +1318,7 @@ describe('CarDetailScreen', () => {
       game.removePart(id, 'dampers')
 
       const { wrapper } = await mountAt(id)
-      await selectPart(wrapper, 'suspension', 'dampers')
+      await selectPart(wrapper, 'dampers')
       await wrapper.find('[data-test="replace-part-dampers"]').trigger('click')
       await dragPast(wrapper, `[data-test^="pick-part-"]`)
       await dropOn(wrapper, '[data-test="replace-part-dampers"]')
@@ -1324,7 +1350,7 @@ describe('CarDetailScreen', () => {
       }
 
       const { wrapper } = await mountAt(id)
-      await selectPart(wrapper, 'suspension', 'dampers')
+      await selectPart(wrapper, 'dampers')
       await wrapper.find('[data-test="replace-part-dampers"]').trigger('click')
       expect(wrapper.find(`[data-test="pick-part-${goodInstanceId}"]`).exists()).toBe(true)
       expect(wrapper.find('[data-test="pick-part-scrap-instance"]').exists()).toBe(false)
@@ -1386,7 +1412,7 @@ describe('CarDetailScreen', () => {
       ).toBe(false)
 
       const { wrapper } = await mountAt(carB!.id)
-      await selectPart(wrapper, 'suspension', 'dampers')
+      await selectPart(wrapper, 'dampers')
       await wrapper.find('[data-test="replace-part-dampers"]').trigger('click')
       expect(wrapper.find(`[data-test="pick-part-${partInstanceId}"]`).exists()).toBe(false)
     })
@@ -1401,7 +1427,7 @@ describe('CarDetailScreen', () => {
       const partInstanceId = game.gameState.partInventory.at(-1)!.id
 
       const { wrapper } = await mountAt(id)
-      await selectPart(wrapper, 'suspension', 'dampers')
+      await selectPart(wrapper, 'dampers')
       await wrapper.find('[data-test="replace-part-dampers"]').trigger('click')
       await wrapper.find(`[data-test="pick-part-${partInstanceId}"]`).trigger('click')
       await wrapper.find('[data-test="replace-part-dampers"]').trigger('click')
@@ -1422,13 +1448,13 @@ describe('CarDetailScreen', () => {
       )!.id
 
       const { wrapper } = await mountAt(id)
-      await selectPart(wrapper, 'engine', 'forcedInduction')
+      await selectPart(wrapper, 'forcedInduction')
       await wrapper.find('[data-test="replace-part-forcedInduction"]').trigger('click')
       await wrapper.find(`[data-test="pick-part-${partInstanceId}"]`).trigger('click')
 
       await wrapper.find('[data-test="close-drawer"]').trigger('click')
       expect(wrapper.find('[data-test="replace-drawer"]').exists()).toBe(false)
-      await selectPart(wrapper, 'suspension', 'dampers')
+      await selectPart(wrapper, 'dampers')
       await wrapper.find('[data-test="replace-part-dampers"]').trigger('click')
       expect(wrapper.find('[data-test="replace-drawer"]').exists()).toBe(true)
     })
@@ -1443,7 +1469,7 @@ describe('CarDetailScreen', () => {
       const partInstanceId = game.gameState.partInventory.at(-1)!.id
 
       const { wrapper } = await mountAt(id)
-      await selectPart(wrapper, 'suspension', 'dampers')
+      await selectPart(wrapper, 'dampers')
       await wrapper.find('[data-test="replace-part-dampers"]').trigger('click')
       expect(wrapper.find('[data-test="pick-chip"]').exists()).toBe(false)
 
@@ -1595,7 +1621,7 @@ describe('CarDetailScreen', () => {
       injectSymptom(game, id)
 
       const { wrapper } = await mountAt(id)
-      await selectPart(wrapper, 'engine', 'headValvetrain')
+      await selectPart(wrapper, 'headValvetrain')
       expect(wrapper.find('[data-test="panel-uncertain"]').exists()).toBe(true)
 
       await wrapper.find('[data-test="car-workup"]').trigger('click')
@@ -1613,7 +1639,7 @@ describe('CarDetailScreen', () => {
       injectSymptom(game, id)
 
       const { wrapper } = await mountAt(id)
-      await selectPart(wrapper, 'engine', 'headValvetrain')
+      await selectPart(wrapper, 'headValvetrain')
       expect(wrapper.find('[data-test="stage-repair-part-headValvetrain"]').exists()).toBe(false)
       expect(wrapper.find('[data-test="panel-assembly-note"]').exists()).toBe(true)
     })
@@ -1656,6 +1682,192 @@ describe('CarDetailScreen', () => {
       // The checklist still shows - only the workup button hides.
       expect(wrapper.find('[data-test="car-symptoms"]').exists()).toBe(true)
       expect(wrapper.find('[data-test="car-workup"]').exists()).toBe(false)
+    })
+  })
+
+  describe("the panel's zone mode (the views select, the one panel acts)", () => {
+    /** A zone pinned to a known state. A granted car's zones are rolled, and
+     * every stage in the pipeline is gated on the one before it, so a test
+     * that wants a specific control live has to say what the metal looks
+     * like. */
+    function setZone(
+      game: ReturnType<typeof useGameStore>,
+      carId: string,
+      zoneId: ZoneId,
+      zone: ZoneState,
+    ): void {
+      const car = game.gameState.ownedCars.find((c) => c.id === carId)!
+      car.zoneState = { ...car.zoneState!, [zoneId]: zone }
+    }
+
+    const ROUGH: ZoneState = {
+      metal: 1,
+      surface: 1,
+      finish: 2,
+      panelMissing: false,
+      primed: false,
+    }
+    /** Ready for its colour coat: straight metal, sound surface, primed. */
+    const PRIMED: ZoneState = {
+      metal: 0,
+      surface: 0,
+      finish: 2,
+      panelMissing: false,
+      primed: true,
+    }
+
+    async function grantAndDock(zoneId: ZoneId, zone: ZoneState) {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      setZone(game, id, zoneId, zone)
+      const { wrapper } = await mountAt(id)
+      await selectZone(wrapper, zoneId)
+      return { game, id, wrapper }
+    }
+
+    it('docks the action panel on a zone region, with its readout and its six stage controls', async () => {
+      const { wrapper } = await grantAndDock('bonnet', ROUGH)
+
+      expect(wrapper.find('[data-test="panel-empty"]').exists()).toBe(false)
+      expect(wrapper.get('[data-test="panel-name"]').text()).toBe('Bonnet')
+      expect(wrapper.get('[data-test="zone-severity-bonnet"]').text()).toBe(
+        'metal 1 of 3, surface 1 of 2, finish 2 of 3',
+      )
+      for (const stage of ['stripPrep', 'beat', 'weld', 'fillAndSand', 'prime', 'polish']) {
+        expect(
+          wrapper.find(`[data-test="pipeline-${stage}-bonnet"]`).exists(),
+          `${stage} control`,
+        ).toBe(true)
+      }
+    })
+
+    it('stages a zone stage from the panel, priced inline, and it lands in Planned work', async () => {
+      const { game, id, wrapper } = await grantAndDock('bonnet', ROUGH)
+
+      const plan = game.pipelineActionPlan(game.gameState.ownedCars[0]!, {
+        kind: 'pipeline-stage',
+        stage: 'stripPrep',
+        zoneId: 'bonnet',
+      })!
+      const button = wrapper.get('[data-test="pipeline-stripPrep-bonnet"]')
+      // The price is on the control, never on hover.
+      expect(button.attributes('disabled')).toBeUndefined()
+      expect(button.text()).toBe(
+        `Strip & prep · ${formatYen(plan.costYen)} · ${plan.laborSlots} labour`,
+      )
+
+      await button.trigger('click')
+      expect(game.stagedActionsFor(id)).toEqual([
+        { kind: 'pipeline-stage', stage: 'stripPrep', zoneId: 'bonnet' },
+      ])
+      expect(wrapper.text()).toContain('Planned work (1)')
+      expect(
+        wrapper.get('[data-test="staged-row-pipeline-stage:bonnet:stripPrep"]').text(),
+      ).toContain('Strip & prep: Bonnet')
+    })
+
+    it('a stage whose prerequisite is not met stays disabled and states no total', async () => {
+      // Straight, sound metal: there is nothing to beat out.
+      const { wrapper } = await grantAndDock('bonnet', PRIMED)
+
+      const beat = wrapper.get('[data-test="pipeline-beat-bonnet"]')
+      expect(beat.attributes('disabled')).toBeDefined()
+      expect(beat.text()).toBe('Beat')
+    })
+
+    it('arms a colour from the swatches and paints the zone with it', async () => {
+      const { game, id, wrapper } = await grantAndDock('bonnet', PRIMED)
+      const colour = PAINT_COLOURS[0]!
+
+      // Every tin is a real button with the colour's name as its accessible
+      // name - the swatch fill alone is never the only reading.
+      const swatch = wrapper.get(`[data-test="paint-swatch-bonnet-${colour.id}"]`)
+      expect(swatch.element.tagName).toBe('BUTTON')
+      expect(swatch.attributes('aria-label')).toBe(colour.name)
+      expect(swatch.attributes('aria-pressed')).toBe('false')
+      expect(wrapper.get('[data-test="paint-colour-name"]').text()).toBe('no tin picked yet')
+      // No tin picked yet, so there is nothing to plan.
+      expect(
+        wrapper.get('[data-test="pipeline-paint-bonnet"]').attributes('disabled'),
+      ).toBeDefined()
+
+      await swatch.trigger('click')
+      expect(
+        wrapper.get(`[data-test="paint-swatch-bonnet-${colour.id}"]`).attributes('aria-pressed'),
+      ).toBe('true')
+      expect(wrapper.get('[data-test="paint-colour-name"]').text()).toBe(colour.name)
+
+      const paint = wrapper.get('[data-test="pipeline-paint-bonnet"]')
+      expect(paint.attributes('disabled')).toBeUndefined()
+      expect(paint.text()).toContain('Paint · ')
+      await paint.trigger('click')
+
+      expect(game.stagedActionsFor(id)).toEqual([
+        { kind: 'pipeline-paint', zoneId: 'bonnet', colour: colour.id },
+      ])
+      expect(wrapper.text()).toContain(`Paint (${colour.name}): Bonnet`)
+    })
+
+    it('offers the chassis no swatches at all - its finish coat is underseal, not a colour', async () => {
+      const { game, id, wrapper } = await grantAndDock('chassis', PRIMED)
+
+      expect(wrapper.get('[data-test="panel-name"]').text()).toBe('Chassis')
+      expect(wrapper.findAll('[data-test^="paint-swatch-"]')).toHaveLength(0)
+      expect(wrapper.find('[data-test="paint-colour-name"]').exists()).toBe(false)
+      // No panel to unbolt from the underbody either.
+      expect(wrapper.find('[data-test^="pipeline-swap-panel-chassis"]').exists()).toBe(false)
+
+      // The coat still goes on, with no tin to pick.
+      const underseal = wrapper.get('[data-test="pipeline-paint-chassis"]')
+      expect(underseal.text()).toContain('Underseal · ')
+      await underseal.trigger('click')
+      expect(game.stagedActionsFor(id)).toEqual([
+        { kind: 'pipeline-paint', zoneId: 'chassis', colour: 'underseal' },
+      ])
+      expect(wrapper.text()).toContain('Underseal: Chassis')
+    })
+
+    it('lists the panels on hand as real buttons and stages the swap from one', async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      setZone(game, id, 'bonnet', { ...ROUGH, panelMissing: true })
+      const panelPart = PARTS.find((p) => p.zoneId === 'bonnet' && p.fitmentClass === 'shitbox')!
+      game.devGrantPart(panelPart.id)
+      const partInstanceId = game.gameState.partInventory.at(-1)!.id
+
+      const { wrapper } = await mountAt(id)
+      await selectZone(wrapper, 'bonnet')
+
+      expect(wrapper.find('[data-test="no-panels-bonnet"]').exists()).toBe(false)
+      const option = wrapper.get(`[data-test="pipeline-swap-panel-bonnet-${partInstanceId}"]`)
+      expect(option.element.tagName).toBe('BUTTON')
+      expect(option.text()).toContain(game.partName(panelPart.id))
+
+      await option.trigger('click')
+      expect(game.stagedActionsFor(id)).toEqual([
+        { kind: 'pipeline-swap-panel', zoneId: 'bonnet', partInstanceId },
+      ])
+      expect(wrapper.text()).toContain('Swap panel: Bonnet')
+    })
+
+    it('says where the panels are when none is on hand, rather than showing an empty control', async () => {
+      const { wrapper } = await grantAndDock('bonnet', ROUGH)
+      const empty = wrapper.get('[data-test="no-panels-bonnet"]')
+      expect(empty.text()).toContain('No panel for this zone on hand')
+      expect(empty.text()).toContain('parts shop')
+    })
+
+    it('carries none of the three retired controls: no dropdown, no free-text colour, no hover-only cost', async () => {
+      const { wrapper } = await grantAndDock('bonnet', PRIMED)
+
+      const panel = wrapper.get('[data-test="part-action-panel"]')
+      expect(panel.findAll('select')).toHaveLength(0)
+      expect(panel.findAll('input')).toHaveLength(0)
+      for (const testId of ['pipeline-stripPrep-bonnet', 'pipeline-paint-bonnet']) {
+        expect(wrapper.get(`[data-test="${testId}"]`).attributes('title'), testId).toBeUndefined()
+      }
     })
   })
 

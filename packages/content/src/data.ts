@@ -10,6 +10,7 @@ import facilitiesJson from '../data/facilities.json'
 import failureModesJson from '../data/failureModes.json'
 import lapReferencesJson from '../data/lapReferences.json'
 import materialsJson from '../data/materials.json'
+import paintColoursJson from '../data/paintColours.json'
 import partPricingJson from '../data/partPricing.json'
 import partsJson from '../data/parts.json'
 import partsTaxonomyJson from '../data/parts-taxonomy.json'
@@ -44,6 +45,7 @@ import { FacilitiesSchema } from './facilities'
 import { FailureModesSchema, type FailureMode } from './failureMode'
 import { LapReferencesSchema } from './lapReference'
 import { MaterialsSchema } from './material'
+import { PaintColoursSchema } from './paintColour'
 import { PartCatalogEntriesSchema, PartsSchema, resolvePartsCatalog } from './part'
 import { PartPricingSheetSchema } from './partPricing'
 import type { PartFitmentClass } from './partFitment'
@@ -144,6 +146,12 @@ export const ECONOMY = EconomyConfigSchema.parse(economyJson)
  * line, never pre-stocked.
  */
 export const MATERIALS = MaterialsSchema.parse(materialsJson)
+
+/**
+ * The finishes the `paint` stage can lay - the swatch vocabulary the workshop
+ * offers, carrying no price and no stat effect of its own.
+ */
+export const PAINT_COLOURS = PaintColoursSchema.parse(paintColoursJson)
 export const COMPONENT_DISPLAY_NAMES = ComponentDisplayNamesSchema.parse(componentDisplayNamesJson)
 export const SPECIALTY_COPY = SpecialtyCopySchema.parse(specialtyCopyJson)
 export const TECHNIQUES = TechniquesSchema.parse(techniquesJson)

@@ -1,0 +1,14 @@
+[
+  { "id": "pearl-white", "name": "Pearl White", "hex": "#e8e6e0" },
+  { "id": "silver-mist", "name": "Silver Mist", "hex": "#b8bcc0" },
+  { "id": "gunmetal", "name": "Gunmetal", "hex": "#5a5f66" },
+  { "id": "graphite-black", "name": "Graphite Black", "hex": "#1e1f22" },
+  { "id": "midnight-blue", "name": "Midnight Blue", "hex": "#1f2b4d" },
+  { "id": "harbour-blue", "name": "Harbour Blue", "hex": "#2f6fb0" },
+  { "id": "bottle-green", "name": "Bottle Green", "hex": "#1f4a35" },
+  { "id": "signal-red", "name": "Signal Red", "hex": "#a8232a" },
+  { "id": "wine-red", "name": "Wine Red", "hex": "#5c1f2b" },
+  { "id": "sunburst-yellow", "name": "Sunburst Yellow", "hex": "#e0b52c" },
+  { "id": "burnt-orange", "name": "Burnt Orange", "hex": "#c25a1e" },
+  { "id": "champagne", "name": "Champagne", "hex": "#c9b48a" }
+]
