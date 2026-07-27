@@ -56,10 +56,12 @@ as Sprint 120; Sprint 121's flourishes are designed, not built.
 
 The **car performance model is LOCKED and validated** to about 2% on blind predictions against
 the maintainer's own driven laps. `docs/design/car-performance/` is the whole of it and its
-README is the design of record, including the list of what is still outstanding. **It lives only
-in its harness**: `packages/sim/src/performance.ts` still runs the older derived physics and
-`courses.json` still ships the superseded courses, so porting it is real, unscheduled work
-(`TODO.md`). Sprint 126 was overtaken before it was built and its lever table is dead.
+README is the design of record, including the list of what is still outstanding. **It is now the
+game's physics**: `packages/sim/src/performance.ts` runs it and `courses.json` ships its four
+calibrated courses, with `packages/sim/tests/harnessAcceptance.test.ts` holding every shipped car
+on every shipped course to a tenth of a second of the harness. What a part's CONDITION does to
+performance, and what an AFTERMARKET part does to it, are still undesigned. Sprint 126 was
+overtaken before it was built and its lever table is dead.
 
 **Where the history lives, and why it is not here.** Each sprint's own
 `docs/sprints/sprintNN.md` Exit is its permanent record; `git log` has every hash. **This file

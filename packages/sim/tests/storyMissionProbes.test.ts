@@ -367,7 +367,7 @@ describe('story mission satisfiability probes (Sprint 78 decision 1)', () => {
       'mint',
       aftermarket,
     )
-    const timeSeconds = lapTimeSecondsFor(afterCar, model, CONTEXT, 'kirifuri')!
+    const timeSeconds = lapTimeSecondsFor(afterCar, model, CONTEXT, 'hakone')!
     expect(timeSeconds).not.toBeNull()
     expect(lapTimeCeilingMaxSeconds(mission('the-column-clock'))).toBe(
       ceil1AtTwoPercentSlower(timeSeconds),
@@ -469,7 +469,14 @@ describe('story mission satisfiability probes (Sprint 78 decision 1)', () => {
       CONTEXT.economy,
     )
     const target = mission('street-power-street-manners')
-    expect(statThresholdMin(target, 'power')).toBe(floor90(stats.power))
+    // The power floor is a hand-set PROVISIONAL lever, not a `floor90(measured)`
+    // pin like the rest of this file: it was scaled off the reference car's own
+    // measured power so the mission keeps the difficulty it was designed at, and
+    // it wants retuning once the aftermarket path decides what a build is worth.
+    // So it is asserted the way the guarantor floors below are - pinned against
+    // drift, and proven to be clearable by the probe build with room to spare.
+    expect(statThresholdMin(target, 'power')).toBe(180)
+    expect(stats.power).toBeGreaterThan(statThresholdMin(target, 'power'))
     expect(statThresholdMin(target, 'reliability')).toBe(floor90(stats.reliability))
     expect(tasteMatchMultiplier(target, 'tuner')).toBe(round2At97Percent(valuated / value))
     assertPassesAndPriceLocked('street-power-street-manners', afterCar, probeCostYen)
@@ -481,7 +488,7 @@ describe('story mission satisfiability probes (Sprint 78 decision 1)', () => {
       ['tyres', 'intake', 'exhaust', 'ignitionEcu'] as CarPartId[]
     ).map((carPartId) => ({ carPartId, part: aftermarketPart(carPartId, 'sport', fitmentClass) }))
     const { model, afterCar, probeCostYen } = buildProbe('mazda-rx7-fd3s', 'mint', aftermarket)
-    const timeSeconds = lapTimeSecondsFor(afterCar, model, CONTEXT, 'kirifuri')!
+    const timeSeconds = lapTimeSecondsFor(afterCar, model, CONTEXT, 'hakone')!
     expect(timeSeconds).not.toBeNull()
     expect(lapTimeCeilingMaxSeconds(mission('under-one-fifteen'))).toBe(
       ceil1AtTwoPercentSlower(timeSeconds),

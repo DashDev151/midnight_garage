@@ -8,7 +8,13 @@ import {
   type StatBlock,
 } from '@midnight-garage/content'
 import { bandFactor, isPartMissing, isPartPresent } from './bands'
-import { balanceOf, computeGrip, effectiveCompound, gripToDisplay } from './performance'
+import {
+  balanceOf,
+  effectiveCompound,
+  effectiveDownforce,
+  effectiveGrip,
+  gripToDisplay,
+} from './performance'
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value))
@@ -65,9 +71,12 @@ function weightedBandFactorForStat(
  * reliability's cap) live in `economy.json.statFormulas`; handling's whole
  * model lives in `statFormulas.grip` and is applied through `performance.ts`.
  *
- * Handling's mint base is the grip readout (`gripToDisplay(computeGrip(...))`)
- * at the fitted tyre's effective compound, less a balance penalty; condition
- * and part modifiers then scale and adjust it exactly like every other stat.
+ * Handling's mint base is the grip readout (`gripToDisplay`) at the fitted
+ * tyre's effective compound and the downforce the car is actually running, less
+ * a balance penalty; condition and part modifiers then scale and adjust it
+ * exactly like every other stat. The grip it reads is `effectiveGrip`, the same
+ * quantity the lap model corners on, so a car whose grip was measured cannot
+ * show a handling number its own lap time disagrees with.
  *
  * Every condition input is `weightedBandFactorForStat` above, self-derived
  * from the taxonomy's own `statWeights` rather than a fixed per-stat
@@ -85,7 +94,7 @@ export function computeDerivedStats(
   partsTaxonomy: readonly CarPartTaxonomyEntry[],
   economy: EconomyConfig,
 ): StatBlock {
-  const { powerConditionFloor, styleCap, reliabilityCap, grip } = economy.statFormulas
+  const { powerConditionFloor, styleCap, reliabilityCap, grip, aero } = economy.statFormulas
 
   const powerFraction = weightedBandFactorForStat(instance, model, 'power', partsTaxonomy, economy)
   const powerConditionScale = powerConditionFloor + (1 - powerConditionFloor) * powerFraction
@@ -99,8 +108,14 @@ export function computeDerivedStats(
     economy,
   )
   const compound = effectiveCompound(instance, model, partsById, grip)
+  const downforce = effectiveDownforce(instance, model, partsById, aero)
   const mintHandling =
-    gripToDisplay(computeGrip(model, compound, grip), grip) -
+    gripToDisplay(
+      effectiveGrip(model, compound, grip, aero),
+      downforce.downforceCoeff,
+      grip,
+      aero,
+    ) -
     grip.balance.weight * Math.abs(balanceOf(model, grip))
   let handling = mintHandling * handlingFraction
 

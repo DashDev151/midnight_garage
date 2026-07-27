@@ -6,11 +6,12 @@ import {
   type Course,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
-import { deliveryArchetype, frontalAreaM2, lapTime } from '../src/performance'
+import { frontalAreaM2, lapTime } from '../src/performance'
 
 /**
  * Unit tests for the quasi-static lap model in `performance.ts`: a golden pin on
- * the lap times the shipped model produces, plus the two helpers that feed it.
+ * the lap times the shipped model produces, plus the frontal-area helper that
+ * feeds it.
  */
 
 function COURSE_BY_ID(id: string): Course {
@@ -20,10 +21,11 @@ function COURSE_BY_ID(id: string): Course {
 }
 
 /**
- * Six playable cars spanning the roster's range and every delivery archetype
- * that the shipped fleet exercises: a kei single-turbo, an NA RWD icon, an NA
- * VTEC front-driver, a twin-turbo rotary, a twin-turbo AWD flagship, and the
- * sequential-twin 2JZ. Each name matches a `cars.json` `displayName`.
+ * Six playable cars spanning the roster's range and both halves of the model's
+ * input: a kei car and an NA VTEC front-driver with no measured figures at all
+ * (their behaviour comes from the fallback regressions), and an NA RWD icon, a
+ * twin-turbo rotary, a twin-turbo AWD flagship and the 2JZ, each carrying a full
+ * measured fingerprint. Each name matches a `cars.json` `displayName`.
  */
 const SAMPLE_CAR_NAMES = [
   'Suzuki Alto Works (HA21S)',
@@ -47,46 +49,40 @@ function modelByName(name: string): CarModel {
  */
 const PINNED_LAP_TIMES_S: Record<string, Record<string, number>> = {
   'Suzuki Alto Works (HA21S)': {
-    kirifuri: 238.4,
-    usui: 125.8,
-    wangan: 239.8,
-    tsurugi: 101.9,
-    misaki: 137.4,
+    hakone: 133.3,
+    wangan: 188.0,
+    misaki: 139.3,
+    yatabe: 32.3,
   },
   'Toyota Sprinter Trueno (AE86)': {
-    kirifuri: 236.0,
-    usui: 119.6,
-    wangan: 218.0,
-    tsurugi: 95.7,
-    misaki: 119.6,
+    hakone: 125.1,
+    wangan: 155.3,
+    misaki: 119.0,
+    yatabe: 29.7,
   },
   'Honda Civic SiR-II (EG6)': {
-    kirifuri: 233.1,
-    usui: 116.6,
-    wangan: 204.8,
-    tsurugi: 92.7,
-    misaki: 112.6,
+    hakone: 122.2,
+    wangan: 150.0,
+    misaki: 116.3,
+    yatabe: 26.9,
   },
   'Mazda RX-7 (FD3S)': {
-    kirifuri: 225.8,
-    usui: 111.1,
-    wangan: 193.2,
-    tsurugi: 88.1,
-    misaki: 107.7,
+    hakone: 113.7,
+    wangan: 134.8,
+    misaki: 106.2,
+    yatabe: 24.3,
   },
   'Nissan Skyline GT-R (BNR32)': {
-    kirifuri: 229.9,
-    usui: 111.9,
-    wangan: 192.9,
-    tsurugi: 89.1,
+    hakone: 114.1,
+    wangan: 135.6,
     misaki: 107.1,
+    yatabe: 24.1,
   },
   'Toyota Supra RZ (JZA80)': {
-    kirifuri: 226.9,
-    usui: 110.1,
-    wangan: 187.9,
-    tsurugi: 87.2,
-    misaki: 104.7,
+    hakone: 112.9,
+    wangan: 134.6,
+    misaki: 106.0,
+    yatabe: 24.0,
   },
 }
 
@@ -94,14 +90,16 @@ const PINNED_LAP_TIMES_S: Record<string, Record<string, number>> = {
  * Golden pin on the shipped lap model: each sample car is timed on every shipped
  * course at stock power on its stock compound, and must land within 0.1 s of its
  * pinned time. The pin is a regression net over `performance.ts` and over the
- * `statFormulas.pace` and `statFormulas.grip` levers in `economy.json`, so that
- * an unintended change to either shows up as a failing lap time rather than as
- * silently different race results.
+ * `statFormulas.pace`, `statFormulas.grip` and `statFormulas.aero` levers in
+ * `economy.json`, so that an unintended change to any of them shows up as a
+ * failing lap time rather than as silently different race results.
  *
- * These numbers pin the model as currently shipped. Re-pinning them is the
- * expected outcome of a deliberate change to the pace or grip levers, and those
- * levers are approval-gated (CLAUDE.md directive 22), so a re-pin belongs in the
- * same change as the approval it was made under.
+ * These numbers pin the model as currently shipped; they are NOT the accuracy
+ * check. Whether the model is RIGHT is `harnessAcceptance.test.ts`, which
+ * measures the same laps against the calibration harness's own answers.
+ * Re-pinning here is the expected outcome of a deliberate change to the pace,
+ * grip or aero levers, and those levers are approval-gated (CLAUDE.md directive
+ * 22), so a re-pin belongs in the same change as the approval it was made under.
  */
 describe('lapTime golden pin over the shipped courses', () => {
   it('pins every shipped course', () => {
@@ -132,22 +130,6 @@ describe('lapTime golden pin over the shipped courses', () => {
           `${name} / ${courseId}: model ${ours.toFixed(2)}s vs pin ${expected}s (delta ${(ours - expected).toFixed(2)}s)`,
         ).toBeLessThanOrEqual(0.1)
       }
-    })
-  }
-})
-
-describe('deliveryArchetype maps the shipped fleet the way the prototype does', () => {
-  const cases: Array<[string, string]> = [
-    ['Suzuki Alto Works (HA21S)', 'singleTurbo'],
-    ['Toyota Sprinter Trueno (AE86)', 'plainNA'],
-    ['Honda Civic SiR-II (EG6)', 'vtecNA'],
-    ['Mazda RX-7 (FD3S)', 'seqTwinRotary'],
-    ['Nissan Skyline GT-R (BNR32)', 'parallelTwin'],
-    ['Toyota Supra RZ (JZA80)', 'seqTwin'],
-  ]
-  for (const [name, archetype] of cases) {
-    it(`${name} -> ${archetype}`, () => {
-      expect(deliveryArchetype(modelByName(name))).toBe(archetype)
     })
   }
 })

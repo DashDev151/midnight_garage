@@ -8756,6 +8756,19 @@ const data = {
     // The overall index is a WEIGHTED mean of normalised times, not a plain average. Shipped so
     // the dashboard can state the weights rather than describe the index wrongly.
     courseWeight: COURSE_WEIGHT,
+    // The two fallback regressions, exported as coefficients so a consumer with fewer cars than
+    // this file has can PIN them rather than refit. Both are fitted here across the whole research
+    // set; refitting them on a smaller roster would give different numbers and quietly stop that
+    // roster reproducing this one. Both predict a dimensionless RATIO, so the car's own grip and
+    // own crank power carry the scale.
+    //   brakeFallback:  bmu / mu        on [1, (year-1990)/10, isAWD]
+    //   accelLaunch:    aLaunch / (mu g) on [1, isAWD, isFWD, ln(PS per tonne)]
+    //   accelPower:     pEff / (ps PS eta) on the same four
+    brakeFallback: BRAKE_FIT.beta.map((b) => +b.toFixed(6)),
+    accelLaunch: ACCEL_FIT.bA.map((b) => +b.toFixed(6)),
+    accelPower: ACCEL_FIT.bP.map((b) => +b.toFixed(6)),
+    accelFallbackFitN: ACCEL_SOLVED.length,
+    brakeFallbackFitN: BRAKE_FIT.set.length,
     // The geometric corner-grip ceiling: usable mu = min(mu, geoMu (r/geoR)^geoT). Shipped so the
     // dashboard states the term from the run instead of from prose.
     geoMu: +GEO_MU.toFixed(3),

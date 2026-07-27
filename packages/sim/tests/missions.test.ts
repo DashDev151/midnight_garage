@@ -39,12 +39,12 @@ const MINT_CIVIC_POWER = computeDerivedStats(
 ).power
 
 /** Same measured-not-guessed precedent, for the lap-tip tests: the mint
- * civic's real lap on Kirifuri under the shipped grip-and-pace model. */
+ * civic's real lap on Hakone under the shipped grip-and-pace model. */
 const MINT_CIVIC_LAP_SECONDS = lapTimeSecondsFor(
   buildCarInstance({ modelId: CIVIC.id }),
   CIVIC,
   MEASURING_CONTEXT,
-  'kirifuri',
+  'hakone',
 )!
 
 /** A minimal, fully-specified test mission - every field a real
@@ -458,7 +458,7 @@ describe('story missions (Sprint 76)', () => {
         requirements: [
           {
             kind: 'lapTimeCeiling',
-            courseId: 'kirifuri',
+            courseId: 'hakone',
             maxSeconds: MINT_CIVIC_LAP_SECONDS * 1.5,
           },
         ],
@@ -485,7 +485,7 @@ describe('story missions (Sprint 76)', () => {
         requirements: [
           // Exactly at the measured mint civic time: clears the base ceiling
           // (equality passes) but never its own lapTipTriggerFraction margin.
-          { kind: 'lapTimeCeiling', courseId: 'kirifuri', maxSeconds: MINT_CIVIC_LAP_SECONDS },
+          { kind: 'lapTimeCeiling', courseId: 'hakone', maxSeconds: MINT_CIVIC_LAP_SECONDS },
         ],
       })
       const context = contextWithMissions([tightLapMission])
@@ -510,7 +510,7 @@ describe('story missions (Sprint 76)', () => {
           // base ceiling but not its own trigger fraction, so the mixed
           // mission must withhold the tip even though the stat side clears
           // comfortably.
-          { kind: 'lapTimeCeiling', courseId: 'kirifuri', maxSeconds: MINT_CIVIC_LAP_SECONDS },
+          { kind: 'lapTimeCeiling', courseId: 'hakone', maxSeconds: MINT_CIVIC_LAP_SECONDS },
         ],
       })
       const context = contextWithMissions([mixedMission])

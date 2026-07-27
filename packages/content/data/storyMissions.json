@@ -127,8 +127,8 @@
     "requirements": [
       {
         "kind": "lapTimeCeiling",
-        "courseId": "kirifuri",
-        "maxSeconds": 237.1
+        "courseId": "hakone",
+        "maxSeconds": 125.1
       }
     ],
     "budgetCapYen": 1557000,
@@ -207,7 +207,7 @@
       {
         "kind": "statThreshold",
         "stat": "power",
-        "min": 235
+        "min": 180
       },
       {
         "kind": "statThreshold",
@@ -217,7 +217,7 @@
       {
         "kind": "tasteMatch",
         "buyerId": "tuner",
-        "minMultiplier": 0.99
+        "minMultiplier": 0.97
       }
     ],
     "budgetCapYen": 1623000,
@@ -234,13 +234,13 @@
     "id": "under-one-fifteen",
     "personaId": "kaori",
     "title": "Under one-fifteen",
-    "requestCopy": "Last one. The big column. Under one-fifteen at Kirifuri, whatever it takes, and your garage is the name this town remembers.",
+    "requestCopy": "Last one. The big column. Under one-fifteen at Hakone, whatever it takes, and your garage is the name this town remembers.",
     "gateReputationPoints": 800,
     "requirements": [
       {
         "kind": "lapTimeCeiling",
-        "courseId": "kirifuri",
-        "maxSeconds": 230.1
+        "courseId": "hakone",
+        "maxSeconds": 115
       }
     ],
     "budgetCapYen": 3681000,

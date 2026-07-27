@@ -164,8 +164,9 @@
         "stockLowDisplay": 10,
         "stockHighG": 1.1,
         "stockHighDisplay": 55,
-        "modifiedHighG": 1.62,
-        "modifiedHighDisplay": 100
+        "modifiedHighG": 1.6,
+        "modifiedHighDisplay": 100,
+        "displayReferenceSpeedKmh": 200
       },
       "balance": {
         "frontReference": 52,
@@ -182,12 +183,12 @@
     },
     "aero": {
       "downforceK": 0.000062,
-      "maxGripMultiplier": 1.6,
+      "maxGripMultiplier": 2.5,
       "byGrade": {
         "stock": { "downforceCoeff": 0, "dragCdDelta": 0 },
         "street": { "downforceCoeff": 0.1, "dragCdDelta": 0.01 },
         "sport": { "downforceCoeff": 0.4, "dragCdDelta": 0.04 },
-        "race": { "downforceCoeff": 0.85, "dragCdDelta": 0.09 }
+        "race": { "downforceCoeff": 1.2, "dragCdDelta": 0.09 }
       }
     },
     "pace": {
@@ -197,11 +198,8 @@
       "rollingResistance": 0.012,
       "psWatts": 735.5,
       "driverMassKg": 75,
-      "awdLaunchFactor": 0.66,
-      "launchCapCoeff": 0.7,
-      "agilityWeight": 0.3,
+      "agilityWeight": 0.82,
       "cruiseThreshold": 0.12,
-      "deliverySaturationSpeed": 33,
       "integrationStep": 0.5,
       "frontalAreaCoeff": 0.82,
       "frontalAreaFallbackM2": 1.85,
@@ -210,16 +208,15 @@
       "agilityRadiusReferenceM": 80,
       "agilityTightnessMin": 0.4,
       "agilityTightnessMax": 2.5,
-      "delivery": {
-        "plainNA": 1.0,
-        "bigNA": 1.0,
-        "supercharged": 0.98,
-        "seqTwin": 0.9,
-        "parallelTwin": 0.85,
-        "seqTwinRotary": 0.85,
-        "vtecNA": 0.88,
-        "rotaryNA": 0.82,
-        "singleTurbo": 0.78
+      "brakeDeadDistanceM": 5.987,
+      "geoMu": 1.22,
+      "geoR": 20,
+      "geoT": 0.0612,
+      "dragOffsetPct": 3.28,
+      "fallback": {
+        "brake": [1.054171, 0.029665, 0.060993],
+        "accelLaunch": [-1.210155, 0.13001, 0.058427, 0.346372],
+        "accelPower": [1.710061, 0.057124, -0.024687, -0.175188]
       }
     }
   },

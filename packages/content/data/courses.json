@@ -1,84 +1,45 @@
 [
   {
-    "id": "kirifuri",
-    "name": "Kirifuri Pass",
+    "id": "hakone",
+    "name": "Hakone Pass",
+    "kind": "lap",
+    "geometryNote": "BEHAVIOURAL FACSIMILE, NOT A SURVEY. No radius, angle or connector below is a measured fact about the real road. Every number was searched to reproduce driven times, because the model carries no racing-line term and the surveyed road is unlappable without one. Never cite a figure from this array as a fact about Hakone.",
     "segments": [
-      [15, 180, 60],
-      [40, 90, 80],
-      [18, 160, 50],
-      [60, 70, 120],
-      [25, 140, 70],
-      [90, 55, 150],
-      [16, 175, 55],
-      [50, 80, 100],
-      [22, 150, 60],
-      [70, 65, 130],
-      [14, 180, 50],
-      [45, 85, 90],
-      [30, 120, 75],
-      [110, 50, 180],
-      [20, 165, 60],
-      [55, 75, 110],
-      [17, 170, 55],
-      [80, 60, 140],
-      [19, 170, 55],
-      [65, 70, 120],
-      [24, 145, 65],
-      [95, 55, 160],
-      [15, 180, 50],
-      [48, 80, 95],
-      [28, 130, 70],
-      [120, 45, 190]
-    ]
-  },
-  {
-    "id": "usui",
-    "name": "Usui Pass",
-    "segments": [
-      [60, 80, 200],
-      [140, 60, 280],
-      [22, 150, 150],
-      [50, 90, 180],
-      [120, 70, 250],
-      [300, 40, 400],
-      [55, 85, 160],
-      [150, 55, 300],
-      [20, 140, 120],
-      [130, 60, 220]
+      [97, 53, 290],
+      [11, 152, 161],
+      [93, 61, 290],
+      [138, 40, 161],
+      [11, 150, 290],
+      [105, 40, 290],
+      [11, 150, 290],
+      [91, 40, 161],
+      [11, 150, 230]
     ]
   },
   {
     "id": "wangan",
     "name": "Wangan Bayshore",
+    "kind": "lap",
+    "geometryNote": "BEHAVIOURAL FACSIMILE, NOT A SURVEY, on exactly the footing Hakone is. The corner character (eight fast sweepers, two mediums, one slow junction ramp) and the 7.0 km length come from a description of the road; the radii, angles and connectors were searched to reproduce driven times. Never cite a figure from this array as a fact about the road.",
     "segments": [
-      [400, 30, 1800],
-      [150, 55, 700],
-      [90, 70, 500],
-      [350, 35, 1500],
-      [30, 120, 350],
-      [120, 60, 600],
-      [250, 40, 1200],
-      [45, 100, 400],
-      [180, 45, 900]
-    ]
-  },
-  {
-    "id": "tsurugi",
-    "name": "Tsurugi Circuit",
-    "segments": [
-      [55, 90, 200],
-      [130, 70, 250],
-      [20, 150, 140],
-      [300, 40, 380],
-      [50, 85, 180],
-      [140, 60, 240],
-      [280, 45, 320],
-      [60, 80, 160]
+      [515, 21, 838],
+      [375, 18, 530],
+      [295, 24, 400],
+      [100, 83, 660],
+      [645, 15, 320],
+      [55, 133, 490],
+      [425, 18, 320],
+      [555, 16, 590],
+      [335, 26, 400],
+      [125, 70, 320],
+      [475, 19, 510]
     ]
   },
   {
     "id": "misaki",
     "name": "Misaki International Raceway",
+    "kind": "lap",
+    "geometryNote": "Traced from the circuit's own top view, independent of any fit: fast west-coast run, S-point hairpin, centre lollipop, fast right sweepers, long main straight. It is the only geometry here whose error level measures the model rather than a search.",
     "segments": [
       [700, 20, 300],
       [350, 30, 300],
@@ -91,5 +52,13 @@
       [280, 35, 400],
       [450, 20, 650]
     ]
+  },
+  {
+    "id": "yatabe",
+    "name": "Yatabe Straight",
+    "kind": "standing-km",
+    "lengthM": 1000,
+    "geometryNote": "A kilometre from a standstill, no corners. Its segment array is empty deliberately: a zero-angle segment would still enter its straight at an apex speed, making the run a flying kilometre. It is also the one course carrying a calibration offset, applied inside the standing-start evaluator and reaching nothing else.",
+    "segments": []
   }
 ]

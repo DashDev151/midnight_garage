@@ -39,6 +39,37 @@ describe('seed content validates against schemas', () => {
     expect(result.data.length).toBeGreaterThan(0)
   })
 
+  it('a measured performance figure is refused when its slower half is missing', () => {
+    // Two readings at two speeds are what separate two unknowns: mechanical
+    // grip from downforce, launch traction from power. The FASTER reading alone
+    // is not partial data, it is unusable data that reads as complete, so the
+    // schema refuses it rather than trusting the JSON.
+    //
+    // The slower reading alone is a different case, and only for braking and
+    // acceleration: a car too slow to reach the higher test speed publishes one
+    // figure honestly, and the model has a one-measurement path that spends it.
+    // The lateral pair has no such path and stays indivisible.
+    const measured = CarModelsSchema.parse(cars).find(
+      (model) =>
+        model.spec.lateralG193 !== undefined &&
+        model.spec.braking161To0M !== undefined &&
+        model.spec.zeroTo161S !== undefined,
+    )
+    expect(measured).toBeDefined()
+    expect(CarModelsSchema.safeParse([measured]).success).toBe(true)
+
+    const without = (field: string) => ({
+      ...measured!,
+      spec: { ...measured!.spec, [field]: undefined },
+    })
+    for (const half of ['lateralG97', 'lateralG193', 'braking97To0M', 'zeroTo97S'] as const) {
+      expect(CarModelsSchema.safeParse([without(half)]).success, `${half} dropped`).toBe(false)
+    }
+    for (const half of ['braking161To0M', 'zeroTo161S'] as const) {
+      expect(CarModelsSchema.safeParse([without(half)]).success, `${half} dropped`).toBe(true)
+    }
+  })
+
   /** The raw catalog is identity-only, no `priceYen` - that's resolved at
    * content-load time (data.ts) from `partPricing.json`. */
   it('parts.json', () => {

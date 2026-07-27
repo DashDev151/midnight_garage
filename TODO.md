@@ -211,21 +211,24 @@ pass."
 
 ## Open engineering
 
-- [ ] **The validated car performance model is not in the game.** It exists only in the harness
-  (`docs/design/car-performance/`, LOCKED and validated to about 2% on blind predictions).
-  `packages/sim/src/performance.ts` still runs the older derived physics: grip from the
-  era-and-width formula, braking as a copy of lateral grip, acceleration from peak power through
-  fitted launch constants and a nine-entry engine-archetype delivery table, and no corner-grip
-  ceiling. `packages/content/data/courses.json` still ships the five invented Sprint 124 courses
-  (kirifuri, usui, wangan, tsurugi, misaki) against the harness's four calibrated ones.
-  **Physics, car data and courses must move together in one change**: the calibrated geometries
-  were searched under the new physics and would make the shipped model WORSE if dropped into the
-  old one, and the story-mission lap ceilings derive from whatever ships. Needs its own sprint,
-  with the schema work (a car carries measured pairs, not single figures) designed first. Two
-  things it does NOT cover and which need designing separately: what a part's condition band does
-  to grip, braking, power and mass, and what fitting an aftermarket part does to the same. The
-  model can say exactly what a car with a given grip and power does; nothing yet says what a build
-  does to grip and power.
+- [ ] **The high-speed traction release is deferred, with its number rather than a shrug.** The
+  harness hands a traction-limited car back its power shortfall above 161 km/h (`tractionShare` /
+  `paccAt` in `lapsim-report.cjs`, documented in `formulas.md` section 9); the shipped port
+  deliberately leaves it out. It fires on 3 of the 85 research cars, on NONE of the 26 shipped
+  ones, and moves no lap on any course by half a per cent. Build it when something needs it: a car
+  with a great deal of torque against very little grip, which is what an aftermarket-power sprint
+  can create out of a car that had neither.
+- [ ] **`pace.agilityReferenceMassKg` is now read by nothing.** The direction-change term lost its
+  mass factor in the physics port, so the constant that normalised it has no consumer. It was NOT
+  deleted with the other superseded pace levers because it was not on the approved lever list, and
+  no lever moves unlisted. It wants signing off in whichever pass next touches the pace block.
+- [ ] **Two dead fields on `spec`, both surfaced by the Sprint 127 import, neither swept in
+  silently.** `zeroToHundredS` has no consumer anywhere in `packages/`: nothing reads it, and the
+  measured `zeroTo97S` now supersedes it as a calibration figure. Delete it or give it a display,
+  but do not leave it as data nobody reads. `estimatedFields` is now stale on several cars: it
+  still lists `fr` or `cd` as estimated where the value that landed is a panel reading, and the
+  spec book's own `est` list disagrees with ours on seven cars. Copy it from the book in whatever
+  pass decides the first one.
 - [ ] **`chassis` sits in the `drivetrain` component group (pre-existing taxonomy), surfaced
   by Sprint 93's repair-ceiling caption.** A chassis repair now reads "The Transmission bench
   reaches mint", which is nonsensical (you weld/straighten a chassis, you do not press it on a
@@ -288,6 +291,15 @@ pass."
 
 ## Open balance/economy questions
 
+- [ ] **`street-power-street-manners`'s power floor is a PROVISIONAL 180, and wants retuning once
+  the aftermarket path lands (Sprint 130).** It was 235, authored against a 180SX believed to make
+  205 PS stock; the measured figure is 157 PS, which made the mission unsatisfiable outright (the
+  same sport intake/exhaust/ECU/turbo build reaches 192). 180 is 235 scaled by the same 0.766 the
+  reference car's own power moved by, so it preserves the difficulty the mission was designed at
+  and sits under the build's ceiling, but it is a scaling rather than a design decision. It is the
+  one mission threshold in the campaign that is NOT a `floor90(measured)` pin, and
+  `storyMissionProbes` asserts it as a hand-set floor accordingly. Revisit it when the aftermarket
+  pass decides what a build is actually worth in power.
 - [ ] **Invariant #6 (first-timer resale speed)** - "first-timer buyers keep sub-¥500k Commons
   sellable within 7 days at book value or better" has no bot modeling first-timer-specific selling
   behavior; `competentPolicyStrategy` (Sprint 23) sells via the generic clean/concours faucet, not

@@ -9,6 +9,21 @@ function countMatching(tags: readonly Tag[], set: readonly string[]): number {
   return tags.filter((t) => (set as readonly string[]).includes(t)).length
 }
 
+/** True when both halves of a measured pair are present, or neither is. */
+function isCompletePair(first: number | undefined, second: number | undefined): boolean {
+  return (first === undefined) === (second === undefined)
+}
+
+/**
+ * True unless the faster half of a measured pair stands alone. A car too slow
+ * to reach the higher test speed legitimately publishes only the lower reading,
+ * and the model has a one-measurement path for exactly that; the reverse is
+ * always a gap in the data rather than a fact about the car.
+ */
+function hasSlowerHalf(slower: number | undefined, faster: number | undefined): boolean {
+  return faster === undefined || slower !== undefined
+}
+
 /**
  * Naming Layer (GDD 2.4, roadmap risk R5): `spec` holds real, immutable
  * data - unprotectable fact. `displayName`/`brand` (real) and
@@ -75,7 +90,44 @@ export const CarModelSchema = z
        * a passive one. Absent on every car without it. */
       activeYaw: z.enum(['attesa', 'ayc']).optional(),
       zeroToHundredS: z.number().positive().optional(),
-      topSpeedKmh: z.number().int().positive().optional(),
+      /** Top speed in km/h. Not whole-number constrained: a measured figure
+       * converted from mph rarely lands on one, and rounding it would break the
+       * drag coefficient that was back-solved from it. */
+      topSpeedKmh: z.number().positive().optional(),
+      /**
+       * Measured performance, copied from the vetted spec book. Every entry
+       * belongs to a PAIR read at two speeds, and the pair is the whole method:
+       * a single figure cannot separate mechanical grip from aerodynamic
+       * downforce, or launch traction from engine power.
+       *
+       * The lateral pair is indivisible, and the refinements below reject a
+       * half of it. Braking and acceleration are not: a car too slow to reach
+       * 161 km/h publishes only the 97 km/h figure, and the model has a
+       * one-measurement path that spends it rather than discarding it. What is
+       * always rejected is the FASTER half alone, which is a gap in the data
+       * rather than a fact about the car.
+       *
+       * MIND THE SPEEDS, they differ by pair. Lateral grip is read at 97 and
+       * 193 km/h (g); braking distance at 97 and 161 km/h (metres); and
+       * acceleration to 97 and to 161 km/h (seconds). Downforce rises with the
+       * square of speed, so reading `lateralG193` as a 161 km/h figure corrupts
+       * every quantity fitted from it.
+       */
+      lateralG97: z.number().positive().optional(),
+      lateralG193: z.number().positive().optional(),
+      braking97To0M: z.number().positive().optional(),
+      braking161To0M: z.number().positive().optional(),
+      zeroTo97S: z.number().positive().optional(),
+      zeroTo161S: z.number().positive().optional(),
+      /**
+       * Where the measured figures come from. `forza-panel` is a panel reading
+       * carried as published. `forza-panel-override` is a car whose panel
+       * measures a preset build rather than the stock one, so the figures here
+       * are the corrected stock values and the spec book carries the ruling
+       * that replaced them. `modelled` is a car with no measurement at all,
+       * whose behaviour comes from the fallback regressions.
+       */
+      measuredFrom: z.enum(['forza-panel', 'forza-panel-override', 'modelled']).optional(),
       dataConfidence: z.enum(['HIGH', 'MED', 'LOW']).optional(),
       estimatedFields: z.array(z.string()).optional(),
     }),
@@ -94,6 +146,18 @@ export const CarModelSchema = z
   .refine((m) => countMatching(m.tags, ENGINE_FAMILY_TAGS) === 1, {
     message: 'tags must include exactly one engine-family tag (Piston/Rotary)',
     path: ['tags'],
+  })
+  .refine((m) => isCompletePair(m.spec.lateralG97, m.spec.lateralG193), {
+    message: 'lateralG97 (97 km/h) and lateralG193 (193 km/h) are a pair: carry both or neither',
+    path: ['spec', 'lateralG193'],
+  })
+  .refine((m) => hasSlowerHalf(m.spec.braking97To0M, m.spec.braking161To0M), {
+    message: 'braking161To0M needs braking97To0M beside it: the 97 km/h stop may stand alone',
+    path: ['spec', 'braking97To0M'],
+  })
+  .refine((m) => hasSlowerHalf(m.spec.zeroTo97S, m.spec.zeroTo161S), {
+    message: 'zeroTo161S needs zeroTo97S beside it: the 0-97 may stand alone',
+    path: ['spec', 'zeroTo97S'],
   })
 
 export const CarModelsSchema = z.array(CarModelSchema).min(1)

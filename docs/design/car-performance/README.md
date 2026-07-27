@@ -165,16 +165,19 @@ top of the grip range. **The route there is the wing, not the tyres.**
 
 This is the honest list. Everything here is outstanding work, not a caveat.
 
-**a. The model is not in the game.** `packages/sim/src/performance.ts` still runs the older derived
-physics: grip from the era-and-width formula, braking as a copy of lateral grip, acceleration from
-peak power with fitted launch constants and a nine-entry engine-archetype delivery table, and no
-grip ceiling. `packages/content/data/courses.json` still ships the five invented courses. **The
-validated model described in this document currently exists only in the harness.** Closing that is a
-sprint of its own, and it must move the physics, the car data and the courses together: the
-calibrated geometries were searched under the new physics and would make the shipped model worse, not
-better, if dropped in alone.
+**a. The model IS in the game; what a build does to it is not.** `packages/sim/src/performance.ts`
+runs this document's physics, `packages/content/data/courses.json` ships these four geometries, and
+`packages/sim/tests/harnessAcceptance.test.ts` is the standing proof: it times every shipped car on
+every shipped course against the harness's own answers and holds them to a tenth of a second. The
+handling readout, the reference-lap board and the story missions' lap ceilings all run on it. One
+deliberate omission from the port is recorded in `TODO.md` with its number rather than a shrug: the
+high-speed traction release, which fires on no shipped car and moves no lap by half a per cent.
 
-**What that port does NOT do, and must never start doing: it does not move prices.** Performance and
+What is still outstanding is the half of the picture the model was never asked to supply: **it
+knows what a car with a given grip and power does, and nothing yet says what a BUILD does to that
+grip and power.** That is (b) and (c) below, and it is the whole of the remaining work.
+
+**What the port did NOT do, and what must never start doing: it does not move prices.** Performance and
 value are independent by maintainer law. A car is never worth more BECAUSE it is faster.
 `marketValueYen` enforces this structurally: it takes no derived stat as an argument at all, and
 value comes from condition, mileage, rarity, market heat and the credited aftermarket-parts premium.
@@ -185,13 +188,15 @@ decides which buyer pays at which end of a band rather than what the car is wort
 this model should treat "the handling number moved, so the price should move" as a bug, not a
 feature.**
 
-**b. Condition does not touch performance.** A worn engine, tired dampers and dead tyres change the
-game's abstract stats today, but nothing in this model. What a part's condition band does to grip,
-braking, power and mass is undesigned.
+**b. Condition does not touch performance (Sprint 129).** A worn engine, tired dampers and dead
+tyres change the game's abstract stats today, but nothing in this model. What a part's condition
+band does to grip, braking, power and mass is undesigned.
 
-**c. Aftermarket parts do not touch performance either.** The same gap from the other end: the model
-can say exactly what a car with a given grip and power does, and nothing yet says what fitting a
-given part does to that grip and power.
+**c. Aftermarket parts do not touch performance either (Sprint 130).** The same gap from the other
+end: the model can say exactly what a car with a given grip and power does, and nothing yet says
+what fitting a given part does to that grip and power. The bridge the port carries is ready for it:
+the solved constants are dimensionless ratios scaled by the car's own current grip and power, so a
+part that moves either one moves the lap without anything being re-solved.
 
 **d. Only 63 of 85 cars carry any measurement.** The other 22 are predicted by regression, and a
 prediction is not a measurement however good the fit. Every fingerprint captured improves both that
@@ -202,42 +207,26 @@ one is missing.
 **e. Two kei outliers are open.** The Beat and the Acty do not sit where the model puts them, and
 the standing-kilometre kei case is the worst of them.
 
-**f. The handling READOUT is calibrated to mechanical grip alone, and is therefore both blind and
-short.** Two separate faults, and neither is in the physics.
+**f. The handling READOUT answers the right question now; one grade is still missing.** The stat
+reads EFFECTIVE grip (mechanical plus whatever downforce the car makes) at a 200 km/h reference,
+across a band topping out at 1.60, so a wing moves the number and a maxed road build occupies the
+top of the range rather than two thirds of it. A car with no downforce reads exactly what it always
+did. What the port did not settle is what the readout should do above a road build: the band top was
+chosen for the range a player can reach, so genuine race machinery will peg it, which is only a
+problem once such a car exists.
 
-*Blind.* `gripToDisplay` reads mechanical grip only. Downforce is exactly what carries a build past
-1.5 effective, and the readout cannot see it: fit an aggressive wing and the handling number does not
-move, while the car corners half again as hard at speed. The one upgrade that reaches the top of the
-grip range is the one upgrade the stat ignores.
+**g. The headroom for serious aero exists; the PART that would use it does not.** The two levers
+that denied it have moved: `aero.maxGripMultiplier` is 2.5 (downforce up to 1.5 times the car's
+weight, which clears a GT3-class package at road speeds instead of clipping it from about 194 km/h),
+and `aero.byGrade.race.downforceCoeff` is 1.20, just above the 1.164 measured on a maxed road build,
+so the strongest wing a player can fit is no longer weaker than one that has actually been built.
 
-*Short.* The curve runs 0.66 to 1.10 mechanical across the stock band and 1.10 to 1.62 across the
-modified band. A fully maxed road car sits at about 1.25 mechanical, so it reads about **68 out of
-100**, and the top third of the readout belongs to race machinery a player cannot build. The
-displayed range does not describe the range a player can occupy.
-
-Both want the same fix and it is a design question, not a tuning one: **decide what the handling
-stat is a readout OF.** If it is meant to answer "how hard does this thing corner", it has to include
-downforce at some reference speed and its band has to be redrawn around what a build can actually
-reach.
-
-**g. There is NOT currently headroom for serious aero, and the game must have it** (maintainer
-requirement, 2026-07-27: room for GT3-style wings, splitters and diffusers, whether or not those
-parts exist yet). Two separate levers block it, and both are content values rather than physics:
-
-- **`aero.maxGripMultiplier` is 1.6**, which means downforce can never exceed **0.6 times the car's
-  weight**, at any speed, on any car. A GT3 car makes roughly its own weight in downforce at
-  250 km/h, so it would be clipped from about 194 km/h upward. This is not hypothetical: the
-  modified 787B already in the validated set is clipped from **170 km/h**, and the only reason that
-  did not show up in its error is that its one driven lap is on the slowest course in the set. The
-  cap wants to roughly double before any aggressive aero part is authored.
-- **`aero.byGrade.race.downforceCoeff` is 0.85**, the strongest wing a player can currently fit.
-  That is below the 1.164 measured on a maxed road build and roughly a quarter of what a GT3 wing
-  would need. The grade table wants a tier above its current top.
-
-Both are directive-22 levers and neither has been moved. They belong on the lever list of whichever
-sprint first touches aero, with the target stated as a behaviour rather than a number: **an
-aggressively winged build should reach an effective grip of 1.5 or a little more, and a GT3-class
-aero package should not run into a ceiling at road speeds.**
+What remains is content, not physics: **there is still no aero grade above `race`.** GT3-class
+bodywork is a part nobody has authored, and it belongs to the aftermarket pass (c). The ceiling was
+raised first, deliberately, so that authoring it later needs no further move of the physics. The
+behavioural target it was signed against stands as the acceptance for that part: **an aggressively
+winged build should reach an effective grip of 1.5 or a little more, and a GT3-class aero package
+should not run into a ceiling at road speeds.**
 
 ## 8. It is also the blueprint for the driving mode
 

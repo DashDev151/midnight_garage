@@ -14,6 +14,7 @@ import {
 import {
   buildSimContext,
   gradeAtLeast,
+  isBodyDerivedPart,
   isServiceTaskDone,
   SERVICE_JOB_ARRIVAL_DELAY_DAYS,
 } from '@midnight-garage/sim'
@@ -49,17 +50,20 @@ function findUnfinishedOffer(game: ReturnType<typeof useGameStore>): ServiceJob 
 }
 
 /**
- * A still-genuinely-unfinished repair-touching offer (same caveat as
- * `findUnfinishedOffer`, narrowed to a band-only task specifically - the task
- * shape is now `requirement`-based, so "repair-shaped" means "no `minGrade`").
- * Also narrowed to a SURFACE-depth part; the work loop only knows the simple
- * on-car group `repair()` verb, which bench-only rules refuse for a bolt-on or
- * buried slot (that needs the separate remove/recondition/reinstall flow
- * instead, out of scope for this completion-flow test). Before generation
- * changes (an extra symptom-count roll per car, shifting every subsequent random
- * draw) the RNG stream never handed this test a buried-part template; narrowing
- * the search directly is more robust than depending on which offer a seed
- * produces.
+ * A still-genuinely-unfinished offer whose repair the work loop below can
+ * actually perform (same "already satisfied by chance" caveat as
+ * `findUnfinishedOffer`), narrowed to a band-only task - the task shape is
+ * `requirement`-based, so "repair-shaped" means "no `minGrade`".
+ *
+ * The loop only knows the simple on-car group `repair()` verb, so the slot has
+ * to be one that verb accepts, and two rules exclude a slot from it. A
+ * bolt-on or buried part is bench-only (it needs the separate
+ * remove/recondition/reinstall flow), which the surface-depth filter covers. A
+ * body value carrier (`panels`/`paint`/`underbody`) has its band DERIVED from
+ * the car's zone state, so direct repair refuses it however shallow it sits;
+ * that work goes through the zone pipeline's own staged stages. Both flows are
+ * real and tested elsewhere - they are simply not what this completion-and-
+ * payout test drives.
  */
 function findUnfinishedRepairOffer(game: ReturnType<typeof useGameStore>): ServiceJob | undefined {
   return game.serviceJobOffers.find(
@@ -67,7 +71,8 @@ function findUnfinishedRepairOffer(game: ReturnType<typeof useGameStore>): Servi
       o.tasks.some(
         (t) =>
           !t.requirement.minGrade &&
-          context.partsTaxonomyById[t.requirement.carPartId]?.depthClass === 'surface',
+          context.partsTaxonomyById[t.requirement.carPartId]?.depthClass === 'surface' &&
+          !(o.car.zoneState && isBodyDerivedPart(t.requirement.carPartId)),
       ) && o.tasks.some((t) => !isServiceTaskDone(o.car, t, context)),
   )
 }

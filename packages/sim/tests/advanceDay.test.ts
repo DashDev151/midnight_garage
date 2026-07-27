@@ -189,19 +189,13 @@ describe('advanceDay golden master', () => {
   it('a scripted 30-day career reproduces an exact state hash', () => {
     const finalState = runCareer(30)
     expect(finalState.day).toBe(31)
-    // Re-pinned for the body model switchover (case (a), an intentional
-    // change): every generated car now carries real zone state, and
-    // `panels`/`paint`/`underbody` bands are DERIVED from it rather than
-    // rolled/stored directly - shifting every generated lot's condition,
-    // value, and repair bill from day 1 onward. The scripted day-1 "body
-    // repair" action no longer touches `panels`/`underbody` at all (their
-    // bands are derived now; direct repair on them refuses) - only `aero`
-    // still climbs, changing that action's real labour/cash and every later
-    // day's state built on top of it. Re-pinned again for the SKU
-    // dispositions (the retired paint finishes and the six kits migrated
-    // into the widened `aero` slot), which reshape the catalog every
-    // aftermarket roll and repair quote draws from.
-    expect(hashState(finalState)).toBe('d0e2394e')
+    // One hash over the whole scripted career, so it moves when anything
+    // feeding it moves: every generated lot's condition and value, the
+    // catalog each aftermarket roll and repair quote draws from, every
+    // labour and cash figure, and every derived stat. A deliberate change to
+    // any of those is re-derived from a real run of this script; the script
+    // itself is never bent to preserve the number.
+    expect(hashState(finalState)).toBe('0b19bab5')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -323,13 +317,11 @@ describe('advanceDay golden master - acquisition and sale path', () => {
   })
 
   it('reproduces an exact state hash (deterministic acquisition->sale)', () => {
-    // Re-pinned for the body model switchover (case (a), an intentional
-    // change) - see the golden-master describe block above for the reason:
-    // every generated lot's zone state now shapes its condition and value
-    // from the moment it rolls. Re-pinned again now handling derives from
-    // mechanical grip rather than weight: the sold car's taste-adjusted price
-    // shifts with its new handling stat, moving the final career-state hash.
-    expect(hashState(acquisitionCareer().sold)).toBe('509aa1f1')
+    // The acquisition-to-sale hash, on the same terms as the golden master
+    // above: the lot's rolled condition, the car's derived stats and the
+    // buyer's taste-adjusted price all feed it, so it is re-derived from a
+    // real run whenever one of them deliberately changes.
+    expect(hashState(acquisitionCareer().sold)).toBe('870d2e11')
   })
 })
 

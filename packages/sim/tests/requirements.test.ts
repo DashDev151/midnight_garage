@@ -468,9 +468,9 @@ describe('evaluateRequirement', () => {
           },
         },
       }
-      const realTime = lapTimeSecondsFor(carWithTyres, MODEL, CONTEXT, 'kirifuri')!
+      const realTime = lapTimeSecondsFor(carWithTyres, MODEL, CONTEXT, 'hakone')!
       const result = evaluateRequirement(
-        { kind: 'lapTimeCeiling', courseId: 'kirifuri', maxSeconds: realTime },
+        { kind: 'lapTimeCeiling', courseId: 'hakone', maxSeconds: realTime },
         carWithTyres,
         EMPTY_LEDGER,
         1,
@@ -497,9 +497,9 @@ describe('evaluateRequirement', () => {
           },
         },
       })
-      const realTime = lapTimeSecondsFor(car, MODEL, CONTEXT, 'kirifuri')!
+      const realTime = lapTimeSecondsFor(car, MODEL, CONTEXT, 'hakone')!
       const result = evaluateRequirement(
-        { kind: 'lapTimeCeiling', courseId: 'kirifuri', maxSeconds: realTime - 0.1 },
+        { kind: 'lapTimeCeiling', courseId: 'hakone', maxSeconds: realTime - 0.1 },
         car,
         EMPTY_LEDGER,
         1,
@@ -515,7 +515,7 @@ describe('evaluateRequirement', () => {
         parts: { ...uniformCarParts('mint'), tyres: { installed: null } },
       })
       const result = evaluateRequirement(
-        { kind: 'lapTimeCeiling', courseId: 'kirifuri', maxSeconds: 999 },
+        { kind: 'lapTimeCeiling', courseId: 'hakone', maxSeconds: 999 },
         car,
         EMPTY_LEDGER,
         1,
@@ -529,7 +529,7 @@ describe('evaluateRequirement', () => {
     it('fails closed when no model is resolvable', () => {
       const car = buildCarInstance({ modelId: MODEL.id, parts: uniformCarParts('mint') })
       const result = evaluateRequirement(
-        { kind: 'lapTimeCeiling', courseId: 'kirifuri', maxSeconds: 999 },
+        { kind: 'lapTimeCeiling', courseId: 'hakone', maxSeconds: 999 },
         car,
         EMPTY_LEDGER,
         1,

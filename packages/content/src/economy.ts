@@ -737,9 +737,13 @@ export const EconomyConfigSchema = z.object({
       }),
       /** Centre-of-mass height fallback for a model without a stated one. */
       comHeightFallbackMm: z.number().positive(),
-      /** Two-segment display curve mapping mechanical g to the 0-100 readout:
-       * a steep stock segment (`stockLow` to `stockHigh`) and a gentle
-       * modified segment (`stockHigh` to `modifiedHigh`). */
+      /** Two-segment display curve mapping EFFECTIVE lateral g to the 0-100
+       * readout: a steep stock segment (`stockLow` to `stockHigh`) and a gentle
+       * modified segment (`stockHigh` to `modifiedHigh`). The g it reads is
+       * mechanical grip plus the downforce the car makes at
+       * `displayReferenceSpeedKmh`, so a wing moves the number and the readout
+       * answers "how hard does this corner" rather than "how sticky are the
+       * tyres". */
       displayCurve: z.object({
         stockLowG: z.number(),
         stockLowDisplay: z.number(),
@@ -747,6 +751,7 @@ export const EconomyConfigSchema = z.object({
         stockHighDisplay: z.number(),
         modifiedHighG: z.number(),
         modifiedHighDisplay: z.number(),
+        displayReferenceSpeedKmh: z.number().positive(),
       }),
       /** Balance term: front-weight bias plus drivetrain and engine-position
        * offsets, clamped, then scaled by `weight` where it deducts from
@@ -783,9 +788,10 @@ export const EconomyConfigSchema = z.object({
       }),
     }),
     /** The pace/lap model (`performance.ts` lapTime): every physics constant of
-     * the quasi-static point-mass sim, the launch and agility terms, and the
-     * torque-curve delivery factors by engine archetype. Calibrated against the
-     * Forza gold standard; signed in docs/sprints/sprint124.md section A. */
+     * the quasi-static point-mass sim, the direction-change term, the geometric
+     * corner-grip ceiling, and the fallback regressions that answer for a car
+     * carrying no measurement. Calibrated against real driven laps; signed in
+     * docs/sprints/sprint128.md section 6. */
     pace: z.object({
       gravity: z.number().positive(),
       airDensity: z.number().positive(),
@@ -793,34 +799,55 @@ export const EconomyConfigSchema = z.object({
       rollingResistance: z.number().nonnegative(),
       psWatts: z.number().positive(),
       driverMassKg: z.number().nonnegative(),
-      awdLaunchFactor: z.number().positive(),
-      launchCapCoeff: z.number().positive(),
       agilityWeight: z.number().nonnegative(),
       cruiseThreshold: z.number().positive(),
-      deliverySaturationSpeed: z.number().positive(),
       integrationStep: z.number().positive(),
       frontalAreaCoeff: z.number().positive(),
       frontalAreaFallbackM2: z.number().positive(),
-      /** The transition/agility term (a point-mass sim omits yaw): a heavy,
-       * low-grip car loses most time changing direction in tight corners.
-       * `agilityWeight` scales it; these normalise mass and corner geometry. */
+      /** The transition/agility term (a point-mass sim omits yaw): a low-grip
+       * car loses most time changing direction in tight corners.
+       * `agilityWeight` scales it; these normalise corner geometry. */
       agilityReferenceMassKg: z.number().positive(),
       agilityAngleReferenceDeg: z.number().positive(),
       agilityRadiusReferenceM: z.number().positive(),
       agilityTightnessMin: z.number().positive(),
       agilityTightnessMax: z.number().positive(),
-      /** Corner-exit torque delivery by engine archetype (1 = instant, lower =
-       * laggier); shapes usable force below `deliverySaturationSpeed`. */
-      delivery: z.object({
-        plainNA: z.number().positive(),
-        bigNA: z.number().positive(),
-        supercharged: z.number().positive(),
-        seqTwin: z.number().positive(),
-        parallelTwin: z.number().positive(),
-        seqTwinRotary: z.number().positive(),
-        vtecNA: z.number().positive(),
-        rotaryNA: z.number().positive(),
-        singleTurbo: z.number().positive(),
+      /** Metres covered between a braking measurement tripping and full
+       * retardation arriving. A property of the measurement protocol, not of
+       * the car, so one global value serves every car. */
+      brakeDeadDistanceM: z.number().nonnegative(),
+      /** The geometric corner-grip ceiling: through a tight corner a car is
+       * bounded by steering lock, wheelbase and width rather than by the
+       * contact patch, so usable grip is capped at
+       * `geoMu * (radius / geoR) ^ geoT`. It rises with radius, so it bites
+       * hardest in a hairpin and releases on an open sweeper, and it caps
+       * MECHANICAL grip only: downforce is solved on top of the capped value. */
+      geoMu: z.number().positive(),
+      geoR: z.number().positive(),
+      geoT: z.number().nonnegative(),
+      /** Protocol offset on the standing-kilometre course, per cent. It applies
+       * to a standing-kilometre run and to nothing else: the lap courses are
+       * accurate with the straight-line pessimism in place, because it cancels
+       * against a direction-change weight fitted with that pessimism present. */
+      dragOffsetPct: z.number(),
+      /** Regression coefficients answering for a car that carries no
+       * measurement. Each predicts a DIMENSIONLESS RATIO, so the car's own grip
+       * and own power carry the scale and only the fraction of each that
+       * reaches the road is regressed.
+       *
+       * `brake` predicts `bmu / mu` on `[1, (year - 1990) / 10, isAWD]`.
+       * `accelLaunch` predicts `aLaunch / (mu * g)` and `accelPower` predicts
+       * `pEff / crankWheelPower`, both on
+       * `[1, isAWD, isFWD, ln(stockPowerPs * 1000 / curbWeightKg)]`.
+       *
+       * THEY ARE PINNED AND ARE NEVER REFITTED IN-GAME. They were fitted across
+       * all 85 cars of the research roster; the shipped roster is 26, and
+       * refitting on it would give different coefficients and stop those cars
+       * reproducing the reference harness. */
+      fallback: z.object({
+        brake: z.tuple([z.number(), z.number(), z.number()]),
+        accelLaunch: z.tuple([z.number(), z.number(), z.number(), z.number()]),
+        accelPower: z.tuple([z.number(), z.number(), z.number(), z.number()]),
       }),
     }),
   }),

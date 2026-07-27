@@ -86,6 +86,27 @@ import storyMissions from '../data/storyMissions.json'
  * +0.01% mean error and the three blind-test cars improve from +4.6% to +1.5%.
  * The two lap ceilings re-derive mechanically (`the-column-clock` 252.2 -> 237.1,
  * `under-one-fifteen` 248 -> 230.1); payouts are untouched.
+ *
+ * Re-pinned for the physics port's lever table (Sprint 128 section 6, signed by
+ * the maintainer 2026-07-27 in docs/sprints/sprint128.md, including option C for
+ * the display curve). Section A deletes `statFormulas.pace.awdLaunchFactor`,
+ * `launchCapCoeff`, `delivery` and `deliverySaturationSpeed`; section B changes
+ * `agilityWeight` 0.3 -> 0.82 (the term's formula changed, so the numbers are not
+ * comparable); section C adds `brakeDeadDistanceM` 5.987, `geoMu` 1.220, `geoR`
+ * 20, `geoT` 0.0612 and `dragOffsetPct` 3.28; section D raises
+ * `statFormulas.aero.maxGripMultiplier` 1.6 -> 2.5 and
+ * `aero.byGrade.race.downforceCoeff` 0.85 -> 1.20; section E adds
+ * `statFormulas.grip.displayCurve.displayReferenceSpeedKmh` 200 and moves
+ * `modifiedHighG` to 1.60, so the handling readout is effective grip at a
+ * reference speed rather than a mechanical skidpad figure. Mission payouts and
+ * budget caps are untouched: they derive from build cost, not from lap time. The
+ * two lap missions move from the retired Kirifuri to Hakone and their ceilings
+ * re-derive mechanically through `storyMissionProbes`'s own
+ * `ceil1AtTwoPercentSlower` rule (`the-column-clock` 237.1 -> 125.1,
+ * `under-one-fifteen` 230.1 -> 115), as does `street-power-street-manners`'s
+ * tuner taste match (0.99 -> 0.97, which follows its 180SX's handling stat). That
+ * mission's power floor 235 -> 180 is a PROVISIONAL hand-set value, recorded as
+ * such in the sprint doc.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -95,7 +116,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('ba5b54ede9ce83585ebc84e9408dc32783ae3219a387615167cc57cfe0a87208')
+    ).toBe('1241657e4fe04c2a6121d013fa6e5be176288fc78348f19902c377fd8d6c11fb')
   })
 
   it('mission payouts and budget caps match their approved values exactly', () => {

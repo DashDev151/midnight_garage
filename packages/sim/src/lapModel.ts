@@ -19,8 +19,14 @@ function round1(value: number): number {
  * chassis of their own), so they are timed on a single neutral chassis: a
  * mid-90s RWD NA coupe. Only the entry's weight, power, and tyre grade vary,
  * which is exactly what the board asks the player to read.
+ *
+ * The chassis carries the entry's own power as its STOCK power, not a
+ * placeholder. The chassis has no measured acceleration, so its behaviour comes
+ * from the fallback regression, whose predictor is power-to-weight: a
+ * placeholder figure would predict the launch and power of a car with no engine
+ * and then run the lap at the real one.
  */
-function referenceCarModel(weightKg: number): CarModel {
+function referenceCarModel(weightKg: number, powerPs: number): CarModel {
   return {
     id: 'lap-reference-chassis',
     displayName: 'Reference chassis',
@@ -35,7 +41,7 @@ function referenceCarModel(weightKg: number): CarModel {
       engineCode: 'REF',
       yearFrom: 1995,
       curbWeightKg: weightKg,
-      stockPowerPs: 1,
+      stockPowerPs: powerPs,
       engineConfig: 'I4',
       aspiration: 'NA',
       weightDistributionFront: 53,
@@ -52,12 +58,13 @@ function referenceCarModel(weightKg: number): CarModel {
 }
 
 /**
- * A car's lap on one course: the grip-and-pace model (`performance.ts`'s
- * `lapTime`) over that course's corner and straight segments, at the car's
- * CURRENT derived power (condition and parts matter - that is the build game)
- * and the compound its fitted tyres actually provide. Returns `null` (no time
- * can be set) when the tyres slot is empty or scrap-band - there is nothing to
- * grip the road with - or when the course id is unknown.
+ * A car's time on one course: the measured-behaviour model (`performance.ts`'s
+ * `lapTime`) at the car's CURRENT derived power (condition and parts matter -
+ * that is the build game) and the compound its fitted tyres actually provide.
+ * A segmented course is walked corner by corner; a standing-kilometre course
+ * routes to its own standing-start evaluator. Returns `null` (no time can be
+ * set) when the tyres slot is empty or scrap-band - there is nothing to grip the
+ * road with - or when the course id is unknown.
  */
 export function lapTimeSecondsFor(
   car: CarInstance,
@@ -143,7 +150,7 @@ export function referenceLapTimeSeconds(
 ): number {
   const compound: TyreCompound | undefined =
     economy.statFormulas.grip.gradeToCompound[tyreGrade] ?? undefined
-  return round1(lapTime(referenceCarModel(weightKg), course, powerPs, compound, economy))
+  return round1(lapTime(referenceCarModel(weightKg, powerPs), course, powerPs, compound, economy))
 }
 
 function referenceTime(

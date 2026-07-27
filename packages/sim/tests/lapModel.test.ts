@@ -14,7 +14,7 @@ import { buildCarInstance, mintCarParts } from './testFixtures'
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 
-const KIRIFURI = COURSES.find((c) => c.id === 'kirifuri')!
+const HAKONE = COURSES.find((c) => c.id === 'hakone')!
 const WANGAN = COURSES.find((c) => c.id === 'wangan')!
 
 /** A real, fully-specified model: the lap model reads the whole spec sheet
@@ -48,7 +48,7 @@ function carOn(model: (typeof CARS)[number], tyres?: ReturnType<typeof tyreInsta
 describe('lapTimeSecondsFor (grip-and-pace model, Sprint 124)', () => {
   it('returns a real time for a car with tyres on a known course', () => {
     const car = carOn(CIVIC)
-    const result = lapTimeSecondsFor(car, CIVIC, CONTEXT, 'kirifuri')
+    const result = lapTimeSecondsFor(car, CIVIC, CONTEXT, 'hakone')
     expect(result).not.toBeNull()
     expect(result!).toBeGreaterThan(0)
     // One decimal place, like every surfaced time.
@@ -58,12 +58,12 @@ describe('lapTimeSecondsFor (grip-and-pace model, Sprint 124)', () => {
   it('returns null when the tyres slot is empty - nothing to grip the road with', () => {
     const car = carOn(CIVIC)
     car.parts.tyres.installed = null
-    expect(lapTimeSecondsFor(car, CIVIC, CONTEXT, 'kirifuri')).toBeNull()
+    expect(lapTimeSecondsFor(car, CIVIC, CONTEXT, 'hakone')).toBeNull()
   })
 
   it('returns null on a scrap-band tyre set', () => {
     const car = carOn(CIVIC, tyreInstance(STREET_TYRES, 'scrap'))
-    expect(lapTimeSecondsFor(car, CIVIC, CONTEXT, 'kirifuri')).toBeNull()
+    expect(lapTimeSecondsFor(car, CIVIC, CONTEXT, 'hakone')).toBeNull()
   })
 
   it('returns null for an unknown course', () => {
@@ -73,14 +73,14 @@ describe('lapTimeSecondsFor (grip-and-pace model, Sprint 124)', () => {
 
   it('is deterministic - the same car and course always time the same', () => {
     const car = carOn(CIVIC)
-    const first = lapTimeSecondsFor(car, CIVIC, CONTEXT, 'kirifuri')
-    const second = lapTimeSecondsFor(car, CIVIC, CONTEXT, 'kirifuri')
+    const first = lapTimeSecondsFor(car, CIVIC, CONTEXT, 'hakone')
+    const second = lapTimeSecondsFor(car, CIVIC, CONTEXT, 'hakone')
     expect(first).toBe(second)
   })
 
   it('is course-dependent - a tight pass and a bayshore run are different laps', () => {
     const car = carOn(CIVIC)
-    const touge = lapTimeSecondsFor(car, CIVIC, CONTEXT, 'kirifuri')!
+    const touge = lapTimeSecondsFor(car, CIVIC, CONTEXT, 'hakone')!
     const bayshore = lapTimeSecondsFor(car, CIVIC, CONTEXT, 'wangan')!
     expect(touge).not.toBe(bayshore)
   })
@@ -99,40 +99,40 @@ describe('lapTimeSecondsFor (grip-and-pace model, Sprint 124)', () => {
       carOn(CIVIC, tyreInstance(STREET_TYRES)),
       CIVIC,
       CONTEXT,
-      'kirifuri',
+      'hakone',
     )!
     const race = lapTimeSecondsFor(
       carOn(CIVIC, tyreInstance(RACE_TYRES)),
       CIVIC,
       CONTEXT,
-      'kirifuri',
+      'hakone',
     )!
     expect(race).toBeLessThanOrEqual(street)
   })
 
   it('the quicker car is quicker: a Civic SiR beats an AE86 on the same course', () => {
-    const civic = lapTimeSecondsFor(carOn(CIVIC), CIVIC, CONTEXT, 'kirifuri')!
-    const ae86 = lapTimeSecondsFor(carOn(AE86), AE86, CONTEXT, 'kirifuri')!
+    const civic = lapTimeSecondsFor(carOn(CIVIC), CIVIC, CONTEXT, 'hakone')!
+    const ae86 = lapTimeSecondsFor(carOn(AE86), AE86, CONTEXT, 'hakone')!
     expect(civic).toBeLessThan(ae86)
   })
 })
 
 describe('referenceLapTimeSeconds (the board primitive)', () => {
   it('is monotonic in power: more power is never slower', () => {
-    const slow = referenceLapTimeSeconds(120, 1000, 'street', KIRIFURI, ECONOMY)
-    const fast = referenceLapTimeSeconds(200, 1000, 'street', KIRIFURI, ECONOMY)
+    const slow = referenceLapTimeSeconds(120, 1000, 'street', HAKONE, ECONOMY)
+    const fast = referenceLapTimeSeconds(200, 1000, 'street', HAKONE, ECONOMY)
     expect(fast).toBeLessThan(slow)
   })
 
   it('is monotonic in weight: lighter is never slower', () => {
-    const heavy = referenceLapTimeSeconds(150, 1200, 'street', KIRIFURI, ECONOMY)
-    const light = referenceLapTimeSeconds(150, 950, 'street', KIRIFURI, ECONOMY)
+    const heavy = referenceLapTimeSeconds(150, 1200, 'street', HAKONE, ECONOMY)
+    const light = referenceLapTimeSeconds(150, 950, 'street', HAKONE, ECONOMY)
     expect(light).toBeLessThan(heavy)
   })
 
   it('is monotonic in tyre grade: a better grade is never slower', () => {
     const grades = ['stock', 'street', 'sport', 'race'] as const
-    const times = grades.map((g) => referenceLapTimeSeconds(150, 1000, g, KIRIFURI, ECONOMY))
+    const times = grades.map((g) => referenceLapTimeSeconds(150, 1000, g, HAKONE, ECONOMY))
     for (let i = 1; i < times.length; i++) {
       const previous = times[i - 1]!
       expect(times[i]!, `${grades[i]} vs ${grades[i - 1]}`).toBeLessThanOrEqual(previous)
@@ -143,7 +143,7 @@ describe('referenceLapTimeSeconds (the board primitive)', () => {
     const gain = (course: Course) =>
       referenceLapTimeSeconds(120, 1000, 'street', course, ECONOMY) -
       referenceLapTimeSeconds(220, 1000, 'street', course, ECONOMY)
-    expect(gain(WANGAN)).toBeGreaterThan(gain(KIRIFURI))
+    expect(gain(WANGAN)).toBeGreaterThan(gain(HAKONE))
   })
 })
 
@@ -182,10 +182,10 @@ describe('selectBoardRows (Sprint 77 decision 4)', () => {
     powerPs: number,
     weightKg: number,
     grade: 'stock' | 'street' | 'sport' | 'race',
-  ) => referenceLapTimeSeconds(powerPs, weightKg, grade, KIRIFURI, ECONOMY)
+  ) => referenceLapTimeSeconds(powerPs, weightKg, grade, HAKONE, ECONOMY)
 
   it('always appends exactly the 4 anchor rows, one per tyre grade', () => {
-    const rows = selectBoardRows(pool, anchor, null, 90, ECONOMY, KIRIFURI)
+    const rows = selectBoardRows(pool, anchor, null, 90, ECONOMY, HAKONE)
     const anchorRows = rows.filter((r) => r.isAnchor)
     expect(anchorRows).toHaveLength(4)
     expect(new Set(anchorRows.map((r) => r.tyreGrade))).toEqual(
@@ -204,7 +204,7 @@ describe('selectBoardRows (Sprint 77 decision 4)', () => {
       { timeSeconds: candidateTime, tyreGrade: 'street' },
       90,
       ECONOMY,
-      KIRIFURI,
+      HAKONE,
     )
     const poolRows = rows.filter((r) => !r.isAnchor)
     expect(poolRows.length).toBeGreaterThan(0)
@@ -224,14 +224,14 @@ describe('selectBoardRows (Sprint 77 decision 4)', () => {
       { timeSeconds: fastest - 5, tyreGrade: 'street' },
       90,
       ECONOMY,
-      KIRIFURI,
+      HAKONE,
     )
     expect(rows.filter((r) => !r.isAnchor).length).toBeGreaterThan(0)
   })
 
   it('with no candidate: takes the 4 pool entries nearest the mission ceiling, fastest-first', () => {
     const target = timeOf(150, 1000, 'street')
-    const rows = selectBoardRows(pool, anchor, null, target, ECONOMY, KIRIFURI)
+    const rows = selectBoardRows(pool, anchor, null, target, ECONOMY, HAKONE)
     const poolRows = rows.filter((r) => !r.isAnchor)
     expect(poolRows).toHaveLength(4)
     const times = poolRows.map((r) => r.timeSeconds)
@@ -246,7 +246,7 @@ describe('selectBoardRows (Sprint 77 decision 4)', () => {
       { timeSeconds: candidateTime, tyreGrade: 'street' },
       90,
       ECONOMY,
-      KIRIFURI,
+      HAKONE,
     )
     const ids = new Set(rows.map((r) => r.id))
     for (const row of rows) {
@@ -256,13 +256,13 @@ describe('selectBoardRows (Sprint 77 decision 4)', () => {
   })
 
   it('is deterministic', () => {
-    const first = selectBoardRows(pool, anchor, null, 90, ECONOMY, KIRIFURI)
-    const second = selectBoardRows(pool, anchor, null, 90, ECONOMY, KIRIFURI)
+    const first = selectBoardRows(pool, anchor, null, 90, ECONOMY, HAKONE)
+    const second = selectBoardRows(pool, anchor, null, 90, ECONOMY, HAKONE)
     expect(first).toEqual(second)
   })
 
   it('retimes the whole board when the course changes', () => {
-    const pass = selectBoardRows(pool, anchor, null, 90, ECONOMY, KIRIFURI)
+    const pass = selectBoardRows(pool, anchor, null, 90, ECONOMY, HAKONE)
     const bayshore = selectBoardRows(pool, anchor, null, 90, ECONOMY, WANGAN)
     expect(pass.map((r) => r.timeSeconds)).not.toEqual(bayshore.map((r) => r.timeSeconds))
   })
