@@ -1357,6 +1357,9 @@
       "reliability": -1,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "mass": 0.9931
+    },
     "fitmentClass": "common"
   },
   {
@@ -1372,6 +1375,9 @@
       "style": 0,
       "reliability": -1,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "mass": 0.9931
     },
     "fitmentClass": "shitbox"
   },
@@ -1389,6 +1395,9 @@
       "reliability": -1,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "mass": 0.9931
+    },
     "fitmentClass": "uncommon"
   },
   {
@@ -1404,6 +1413,9 @@
       "style": 0,
       "reliability": -1,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "mass": 0.9931
     },
     "fitmentClass": "rare"
   },
@@ -1421,6 +1433,9 @@
       "reliability": -2,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "mass": 0.98623
+    },
     "fitmentClass": "common"
   },
   {
@@ -1436,6 +1451,9 @@
       "style": 0,
       "reliability": -2,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "mass": 0.98623
     },
     "fitmentClass": "shitbox"
   },
@@ -1453,6 +1471,9 @@
       "reliability": -2,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "mass": 0.98623
+    },
     "fitmentClass": "uncommon"
   },
   {
@@ -1468,6 +1489,9 @@
       "style": 0,
       "reliability": -2,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "mass": 0.98623
     },
     "fitmentClass": "rare"
   },
@@ -1485,6 +1509,9 @@
       "reliability": -4,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "mass": 0.97915
+    },
     "fitmentClass": "common"
   },
   {
@@ -1500,6 +1527,9 @@
       "style": 0,
       "reliability": -4,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "mass": 0.97915
     },
     "fitmentClass": "shitbox"
   },
@@ -1517,6 +1547,9 @@
       "reliability": -4,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "mass": 0.97915
+    },
     "fitmentClass": "uncommon"
   },
   {
@@ -1532,6 +1565,9 @@
       "style": 0,
       "reliability": -4,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "mass": 0.97915
     },
     "fitmentClass": "rare"
   },
@@ -2893,6 +2929,9 @@
       "reliability": 5,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "mass": 0.9931
+    },
     "fitmentClass": "common"
   },
   {
@@ -2908,6 +2947,9 @@
       "style": 0,
       "reliability": 5,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "mass": 0.9931
     },
     "fitmentClass": "shitbox"
   },
@@ -2925,6 +2967,9 @@
       "reliability": 5,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "mass": 0.9931
+    },
     "fitmentClass": "uncommon"
   },
   {
@@ -2940,6 +2985,9 @@
       "style": 0,
       "reliability": 5,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "mass": 0.9931
     },
     "fitmentClass": "rare"
   },
@@ -2957,6 +3005,9 @@
       "reliability": 0,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "mass": 0.98623
+    },
     "fitmentClass": "common"
   },
   {
@@ -2972,6 +3023,9 @@
       "style": 0,
       "reliability": 0,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "mass": 0.98623
     },
     "fitmentClass": "shitbox"
   },
@@ -2989,6 +3043,9 @@
       "reliability": 0,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "mass": 0.98623
+    },
     "fitmentClass": "uncommon"
   },
   {
@@ -3004,6 +3061,9 @@
       "style": 0,
       "reliability": 0,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "mass": 0.98623
     },
     "fitmentClass": "rare"
   },
@@ -3021,6 +3081,9 @@
       "reliability": -5,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "mass": 0.97915
+    },
     "fitmentClass": "common"
   },
   {
@@ -3036,6 +3099,9 @@
       "style": 0,
       "reliability": -5,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "mass": 0.97915
     },
     "fitmentClass": "shitbox"
   },
@@ -3053,6 +3119,9 @@
       "reliability": -5,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "mass": 0.97915
+    },
     "fitmentClass": "uncommon"
   },
   {
@@ -3068,6 +3137,9 @@
       "style": 0,
       "reliability": -5,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "mass": 0.97915
     },
     "fitmentClass": "rare"
   },
@@ -3405,6 +3477,9 @@
       "reliability": 7,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "mass": 0.9931
+    },
     "fitmentClass": "common"
   },
   {
@@ -3420,6 +3495,9 @@
       "style": 0,
       "reliability": 7,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "mass": 0.9931
     },
     "fitmentClass": "shitbox"
   },
@@ -3437,6 +3515,9 @@
       "reliability": 7,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "mass": 0.9931
+    },
     "fitmentClass": "uncommon"
   },
   {
@@ -3452,6 +3533,9 @@
       "style": 0,
       "reliability": 7,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "mass": 0.9931
     },
     "fitmentClass": "rare"
   },
@@ -3469,6 +3553,9 @@
       "reliability": 10,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "mass": 0.98623
+    },
     "fitmentClass": "common"
   },
   {
@@ -3484,6 +3571,9 @@
       "style": 0,
       "reliability": 10,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "mass": 0.98623
     },
     "fitmentClass": "shitbox"
   },
@@ -3501,6 +3591,9 @@
       "reliability": 10,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "mass": 0.98623
+    },
     "fitmentClass": "uncommon"
   },
   {
@@ -3516,6 +3609,9 @@
       "style": 0,
       "reliability": 10,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "mass": 0.98623
     },
     "fitmentClass": "rare"
   },
@@ -3533,6 +3629,9 @@
       "reliability": 14,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "mass": 0.97915
+    },
     "fitmentClass": "common"
   },
   {
@@ -3548,6 +3647,9 @@
       "style": 0,
       "reliability": 14,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "mass": 0.97915
     },
     "fitmentClass": "shitbox"
   },
@@ -3565,6 +3667,9 @@
       "reliability": 14,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "mass": 0.97915
+    },
     "fitmentClass": "uncommon"
   },
   {
@@ -3580,6 +3685,9 @@
       "style": 0,
       "reliability": 14,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "mass": 0.97915
     },
     "fitmentClass": "rare"
   },
@@ -3661,6 +3769,9 @@
       "reliability": 12,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "grip": 1.016
+    },
     "fitmentClass": "common"
   },
   {
@@ -3676,6 +3787,9 @@
       "style": 0,
       "reliability": 12,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "grip": 1.016
     },
     "fitmentClass": "shitbox"
   },
@@ -3693,6 +3807,9 @@
       "reliability": 12,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "grip": 1.016
+    },
     "fitmentClass": "uncommon"
   },
   {
@@ -3708,6 +3825,9 @@
       "style": 0,
       "reliability": 12,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "grip": 1.016
     },
     "fitmentClass": "rare"
   },
@@ -3725,6 +3845,9 @@
       "reliability": 17,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "grip": 1.033
+    },
     "fitmentClass": "common"
   },
   {
@@ -3740,6 +3863,9 @@
       "style": 0,
       "reliability": 17,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "grip": 1.033
     },
     "fitmentClass": "shitbox"
   },
@@ -3757,6 +3883,9 @@
       "reliability": 17,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "grip": 1.033
+    },
     "fitmentClass": "uncommon"
   },
   {
@@ -3772,6 +3901,9 @@
       "style": 0,
       "reliability": 17,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "grip": 1.033
     },
     "fitmentClass": "rare"
   },
@@ -3789,6 +3921,9 @@
       "reliability": 22,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "grip": 1.05
+    },
     "fitmentClass": "common"
   },
   {
@@ -3804,6 +3939,9 @@
       "style": 0,
       "reliability": 22,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "grip": 1.05
     },
     "fitmentClass": "shitbox"
   },
@@ -3821,6 +3959,9 @@
       "reliability": 22,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "grip": 1.05
+    },
     "fitmentClass": "uncommon"
   },
   {
@@ -3836,6 +3977,9 @@
       "style": 0,
       "reliability": 22,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "grip": 1.05
     },
     "fitmentClass": "rare"
   },
@@ -3917,6 +4061,9 @@
       "reliability": 0,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "grip": 1.01
+    },
     "fitmentClass": "common"
   },
   {
@@ -3932,6 +4079,9 @@
       "style": 3,
       "reliability": 0,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "grip": 1.01
     },
     "fitmentClass": "shitbox"
   },
@@ -3949,6 +4099,9 @@
       "reliability": 0,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "grip": 1.01
+    },
     "fitmentClass": "uncommon"
   },
   {
@@ -3964,6 +4117,9 @@
       "style": 3,
       "reliability": 0,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "grip": 1.01
     },
     "fitmentClass": "rare"
   },
@@ -3981,6 +4137,9 @@
       "reliability": -3,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "grip": 1.02
+    },
     "fitmentClass": "common"
   },
   {
@@ -3996,6 +4155,9 @@
       "style": 0,
       "reliability": -3,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "grip": 1.02
     },
     "fitmentClass": "shitbox"
   },
@@ -4013,6 +4175,9 @@
       "reliability": -3,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "grip": 1.02
+    },
     "fitmentClass": "uncommon"
   },
   {
@@ -4028,6 +4193,9 @@
       "style": 0,
       "reliability": -3,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "grip": 1.02
     },
     "fitmentClass": "rare"
   },
@@ -4045,6 +4213,9 @@
       "reliability": -6,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "grip": 1.029
+    },
     "fitmentClass": "common"
   },
   {
@@ -4060,6 +4231,9 @@
       "style": 0,
       "reliability": -6,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "grip": 1.029
     },
     "fitmentClass": "shitbox"
   },
@@ -4077,6 +4251,9 @@
       "reliability": -6,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "grip": 1.029
+    },
     "fitmentClass": "uncommon"
   },
   {
@@ -4092,6 +4269,9 @@
       "style": 0,
       "reliability": -6,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "grip": 1.029
     },
     "fitmentClass": "rare"
   },
@@ -4173,6 +4353,9 @@
       "reliability": -1,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "grip": 1.01
+    },
     "fitmentClass": "common"
   },
   {
@@ -4188,6 +4371,9 @@
       "style": 0,
       "reliability": -1,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "grip": 1.01
     },
     "fitmentClass": "shitbox"
   },
@@ -4205,6 +4391,9 @@
       "reliability": -1,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "grip": 1.01
+    },
     "fitmentClass": "uncommon"
   },
   {
@@ -4220,6 +4409,9 @@
       "style": 0,
       "reliability": -1,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "grip": 1.01
     },
     "fitmentClass": "rare"
   },
@@ -4237,6 +4429,9 @@
       "reliability": -2,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "grip": 1.02
+    },
     "fitmentClass": "common"
   },
   {
@@ -4252,6 +4447,9 @@
       "style": 0,
       "reliability": -2,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "grip": 1.02
     },
     "fitmentClass": "shitbox"
   },
@@ -4269,6 +4467,9 @@
       "reliability": -2,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "grip": 1.02
+    },
     "fitmentClass": "uncommon"
   },
   {
@@ -4284,6 +4485,9 @@
       "style": 0,
       "reliability": -2,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "grip": 1.02
     },
     "fitmentClass": "rare"
   },
@@ -4301,6 +4505,9 @@
       "reliability": -3,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "grip": 1.029
+    },
     "fitmentClass": "common"
   },
   {
@@ -4316,6 +4523,9 @@
       "style": 0,
       "reliability": -3,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "grip": 1.029
     },
     "fitmentClass": "shitbox"
   },
@@ -4333,6 +4543,9 @@
       "reliability": -3,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "grip": 1.029
+    },
     "fitmentClass": "uncommon"
   },
   {
@@ -4348,6 +4561,9 @@
       "style": 0,
       "reliability": -3,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "grip": 1.029
     },
     "fitmentClass": "rare"
   },
@@ -4429,6 +4645,9 @@
       "reliability": 0,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "grip": 1.01
+    },
     "fitmentClass": "common"
   },
   {
@@ -4444,6 +4663,9 @@
       "style": 0,
       "reliability": 0,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "grip": 1.01
     },
     "fitmentClass": "shitbox"
   },
@@ -4461,6 +4683,9 @@
       "reliability": 0,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "grip": 1.01
+    },
     "fitmentClass": "uncommon"
   },
   {
@@ -4476,6 +4701,9 @@
       "style": 0,
       "reliability": 0,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "grip": 1.01
     },
     "fitmentClass": "rare"
   },
@@ -4493,6 +4721,9 @@
       "reliability": -1,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "grip": 1.02
+    },
     "fitmentClass": "common"
   },
   {
@@ -4508,6 +4739,9 @@
       "style": 0,
       "reliability": -1,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "grip": 1.02
     },
     "fitmentClass": "shitbox"
   },
@@ -4525,6 +4759,9 @@
       "reliability": -1,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "grip": 1.02
+    },
     "fitmentClass": "uncommon"
   },
   {
@@ -4540,6 +4777,9 @@
       "style": 0,
       "reliability": -1,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "grip": 1.02
     },
     "fitmentClass": "rare"
   },
@@ -4557,6 +4797,9 @@
       "reliability": -2,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "grip": 1.029
+    },
     "fitmentClass": "common"
   },
   {
@@ -4572,6 +4815,9 @@
       "style": 0,
       "reliability": -2,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "grip": 1.029
     },
     "fitmentClass": "shitbox"
   },
@@ -4589,6 +4835,9 @@
       "reliability": -2,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "grip": 1.029
+    },
     "fitmentClass": "uncommon"
   },
   {
@@ -4604,6 +4853,9 @@
       "style": 0,
       "reliability": -2,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "grip": 1.029
     },
     "fitmentClass": "rare"
   },
@@ -4941,6 +5193,9 @@
       "reliability": 0,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "braking": 1.0237
+    },
     "fitmentClass": "common"
   },
   {
@@ -4956,6 +5211,9 @@
       "style": 0,
       "reliability": 0,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "braking": 1.0237
     },
     "fitmentClass": "shitbox"
   },
@@ -4973,6 +5231,9 @@
       "reliability": 0,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "braking": 1.0237
+    },
     "fitmentClass": "uncommon"
   },
   {
@@ -4988,6 +5249,9 @@
       "style": 0,
       "reliability": 0,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "braking": 1.0237
     },
     "fitmentClass": "rare"
   },
@@ -5005,6 +5269,9 @@
       "reliability": -1,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "braking": 1.0479
+    },
     "fitmentClass": "common"
   },
   {
@@ -5020,6 +5287,9 @@
       "style": 0,
       "reliability": -1,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "braking": 1.0479
     },
     "fitmentClass": "shitbox"
   },
@@ -5037,6 +5307,9 @@
       "reliability": -1,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "braking": 1.0479
+    },
     "fitmentClass": "uncommon"
   },
   {
@@ -5052,6 +5325,9 @@
       "style": 0,
       "reliability": -1,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "braking": 1.0479
     },
     "fitmentClass": "rare"
   },
@@ -5069,6 +5345,9 @@
       "reliability": -2,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "braking": 1.0724
+    },
     "fitmentClass": "common"
   },
   {
@@ -5084,6 +5363,9 @@
       "style": 0,
       "reliability": -2,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "braking": 1.0724
     },
     "fitmentClass": "shitbox"
   },
@@ -5101,6 +5383,9 @@
       "reliability": -2,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "braking": 1.0724
+    },
     "fitmentClass": "uncommon"
   },
   {
@@ -5116,6 +5401,9 @@
       "style": 0,
       "reliability": -2,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "braking": 1.0724
     },
     "fitmentClass": "rare"
   },
@@ -5197,6 +5485,9 @@
       "reliability": 0,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "braking": 1.0237
+    },
     "fitmentClass": "common"
   },
   {
@@ -5212,6 +5503,9 @@
       "style": 0,
       "reliability": 0,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "braking": 1.0237
     },
     "fitmentClass": "shitbox"
   },
@@ -5229,6 +5523,9 @@
       "reliability": 0,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "braking": 1.0237
+    },
     "fitmentClass": "uncommon"
   },
   {
@@ -5244,6 +5541,9 @@
       "style": 0,
       "reliability": 0,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "braking": 1.0237
     },
     "fitmentClass": "rare"
   },
@@ -5261,6 +5561,9 @@
       "reliability": 0,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "braking": 1.0479
+    },
     "fitmentClass": "common"
   },
   {
@@ -5276,6 +5579,9 @@
       "style": 0,
       "reliability": 0,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "braking": 1.0479
     },
     "fitmentClass": "shitbox"
   },
@@ -5293,6 +5599,9 @@
       "reliability": 0,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "braking": 1.0479
+    },
     "fitmentClass": "uncommon"
   },
   {
@@ -5308,6 +5617,9 @@
       "style": 0,
       "reliability": 0,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "braking": 1.0479
     },
     "fitmentClass": "rare"
   },
@@ -5325,6 +5637,9 @@
       "reliability": -3,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "braking": 1.0724
+    },
     "fitmentClass": "common"
   },
   {
@@ -5340,6 +5655,9 @@
       "style": 0,
       "reliability": -3,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "braking": 1.0724
     },
     "fitmentClass": "shitbox"
   },
@@ -5357,6 +5675,9 @@
       "reliability": -3,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "braking": 1.0724
+    },
     "fitmentClass": "uncommon"
   },
   {
@@ -5372,6 +5693,9 @@
       "style": 0,
       "reliability": -3,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "braking": 1.0724
     },
     "fitmentClass": "rare"
   },
@@ -5453,6 +5777,9 @@
       "reliability": 0,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "mass": 0.9931
+    },
     "fitmentClass": "common"
   },
   {
@@ -5468,6 +5795,9 @@
       "style": 9,
       "reliability": 0,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "mass": 0.9931
     },
     "fitmentClass": "shitbox"
   },
@@ -5485,6 +5815,9 @@
       "reliability": 0,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "mass": 0.9931
+    },
     "fitmentClass": "uncommon"
   },
   {
@@ -5500,6 +5833,9 @@
       "style": 9,
       "reliability": 0,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "mass": 0.9931
     },
     "fitmentClass": "rare"
   },
@@ -5517,6 +5853,9 @@
       "reliability": 0,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "mass": 0.98623
+    },
     "fitmentClass": "common"
   },
   {
@@ -5532,6 +5871,9 @@
       "style": 15,
       "reliability": 0,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "mass": 0.98623
     },
     "fitmentClass": "shitbox"
   },
@@ -5549,6 +5891,9 @@
       "reliability": 0,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "mass": 0.98623
+    },
     "fitmentClass": "uncommon"
   },
   {
@@ -5564,6 +5909,9 @@
       "style": 15,
       "reliability": 0,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "mass": 0.98623
     },
     "fitmentClass": "rare"
   },
@@ -5581,6 +5929,9 @@
       "reliability": 0,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "mass": 0.97915
+    },
     "fitmentClass": "common"
   },
   {
@@ -5596,6 +5947,9 @@
       "style": 20,
       "reliability": 0,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "mass": 0.97915
     },
     "fitmentClass": "shitbox"
   },
@@ -5613,6 +5967,9 @@
       "reliability": 0,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "mass": 0.97915
+    },
     "fitmentClass": "uncommon"
   },
   {
@@ -5628,6 +5985,9 @@
       "style": 20,
       "reliability": 0,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "mass": 0.97915
     },
     "fitmentClass": "rare"
   },
@@ -7193,6 +7553,9 @@
       "reliability": -1,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "mass": 0.9931
+    },
     "fitmentClass": "common"
   },
   {
@@ -7208,6 +7571,9 @@
       "style": 9,
       "reliability": -1,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "mass": 0.9931
     },
     "fitmentClass": "shitbox"
   },
@@ -7225,6 +7591,9 @@
       "reliability": -1,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "mass": 0.9931
+    },
     "fitmentClass": "uncommon"
   },
   {
@@ -7240,6 +7609,9 @@
       "style": 9,
       "reliability": -1,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "mass": 0.9931
     },
     "fitmentClass": "rare"
   },
@@ -7257,6 +7629,9 @@
       "reliability": 0,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "mass": 0.98623
+    },
     "fitmentClass": "common"
   },
   {
@@ -7272,6 +7647,9 @@
       "style": 13,
       "reliability": 0,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "mass": 0.98623
     },
     "fitmentClass": "shitbox"
   },
@@ -7289,6 +7667,9 @@
       "reliability": 0,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "mass": 0.98623
+    },
     "fitmentClass": "uncommon"
   },
   {
@@ -7304,6 +7685,9 @@
       "style": 13,
       "reliability": 0,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "mass": 0.98623
     },
     "fitmentClass": "rare"
   },
@@ -7321,6 +7705,9 @@
       "reliability": 0,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "mass": 0.97915
+    },
     "fitmentClass": "common"
   },
   {
@@ -7336,6 +7723,9 @@
       "style": 18,
       "reliability": 0,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "mass": 0.97915
     },
     "fitmentClass": "shitbox"
   },
@@ -7353,6 +7743,9 @@
       "reliability": 0,
       "authenticity": 0
     },
+    "physicalModifiers": {
+      "mass": 0.97915
+    },
     "fitmentClass": "uncommon"
   },
   {
@@ -7368,6 +7761,9 @@
       "style": 18,
       "reliability": 0,
       "authenticity": 0
+    },
+    "physicalModifiers": {
+      "mass": 0.97915
     },
     "fitmentClass": "rare"
   },

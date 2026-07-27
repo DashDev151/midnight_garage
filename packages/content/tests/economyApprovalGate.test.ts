@@ -108,6 +108,15 @@ import storyMissions from '../data/storyMissions.json'
  * mission's power floor 235 -> 180 is a PROVISIONAL hand-set value, recorded as
  * such in the sprint doc.
  *
+ * Not a re-pin, recorded here because this file is the ledger of what moved and
+ * why: the aftermarket physical ladder approved in docs/sprints/sprint130.md
+ * ("The ladder") puts a weight delta on the race exhaust line, so the two lap
+ * missions' probe builds are fractionally lighter and their ceilings re-derive
+ * mechanically through `storyMissionProbes`'s own `ceil1AtTwoPercentSlower` rule
+ * (`the-column-clock` 125.1 -> 125.0, `under-one-fifteen` 115 -> 114.9). Nothing
+ * this gate asserts changes: economy.json is untouched and every payout and
+ * budget cap holds, because those derive from build cost, not from lap time.
+ *
  * Re-pinned for the condition-to-physics curves approved in docs/sprints/sprint129.md
  * ("The curves"): adds `statFormulas.condition.bandFactor`, one five-band curve per
  * physical dial - `grip` 1.000/0.975/0.935/0.875/0.800, `braking`

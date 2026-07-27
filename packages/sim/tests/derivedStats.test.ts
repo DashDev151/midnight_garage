@@ -38,6 +38,7 @@ const coilovers: Part = {
   grade: 'street',
   requiredTags: [],
   statModifiers: { power: 0, handling: 8, style: 3, reliability: 0, authenticity: 0 },
+  physicalModifiers: { grip: 1, braking: 1, mass: 1 },
   priceYen: 70_000,
 }
 

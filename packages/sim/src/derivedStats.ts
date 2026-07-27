@@ -17,6 +17,8 @@ import {
   effectiveDownforce,
   effectiveGrip,
   gripToDisplay,
+  STOCK_BUILD_FACTORS,
+  type BuildFactors,
   type ConditionFactors,
 } from './performance'
 
@@ -118,6 +120,36 @@ export function physicalConditionFactors(
 }
 
 /**
+ * What the grades a car is BUILT from deliver on each physical dial: the
+ * product of every installed SKU's own `physicalModifiers`. The counterpart of
+ * `physicalConditionFactors` above, and the second half of the same idea - one
+ * traversal of the car's slots per concern, each dial assembled exactly once.
+ *
+ * The product is what makes a group figure the group's, not each member's: three
+ * suspension SKUs at 1.029 apiece reach 1.090 fitted together and a car with one
+ * of them fitted gets only that one's share.
+ *
+ * A slot the catalog cannot resolve contributes nothing rather than defaulting
+ * to something, so an unknown part id can never silently move the physics.
+ */
+export function buildFactors(
+  car: CarInstance,
+  partsById: Readonly<Record<string, Part>>,
+): BuildFactors {
+  const factors = { ...STOCK_BUILD_FACTORS }
+  for (const partId of ALL_CAR_PART_IDS) {
+    const installed = car.parts[partId].installed
+    if (!installed) continue
+    const modifiers = partsById[installed.partId]?.physicalModifiers
+    if (!modifiers) continue
+    factors.grip *= modifiers.grip
+    factors.braking *= modifiers.braking
+    factors.mass *= modifiers.mass
+  }
+  return factors
+}
+
+/**
  * Transparent linear formula (GDD 4.2: "no hidden math the player can't
  * reason about"). `partsById` resolves each installed PartInstance's
  * statModifiers from the parts catalog - sim has no data loader of its
@@ -131,10 +163,9 @@ export function physicalConditionFactors(
  * tyre's effective compound and the downforce the car is actually running, less
  * a balance penalty; condition and part modifiers then scale and adjust it
  * exactly like every other stat. The grip it reads is `effectiveGrip`, the same
- * quantity the lap model corners on, and it is read through the same physical
- * grip and aero condition factors the lap runs on, so a car whose grip was
- * measured cannot show a handling number its own lap time disagrees with,
- * worn or not.
+ * quantity the lap model corners on, through the same condition AND build
+ * factors the lap runs on, so a car whose grip was measured cannot show a
+ * handling number its own lap time disagrees with, worn or built.
  *
  * Every condition input is `weightedBandFactorForStat` above, self-derived
  * from the taxonomy's own `statWeights` rather than a fixed per-stat
@@ -168,9 +199,10 @@ export function computeDerivedStats(
   const compound = effectiveCompound(instance, model, partsById, grip)
   const downforce = effectiveDownforce(instance, model, partsById, aero)
   const physical = physicalConditionFactors(instance, model, partsTaxonomy, economy)
+  const build = buildFactors(instance, partsById)
   const mintHandling =
     gripToDisplay(
-      effectiveGrip(model, compound, grip, aero, physical.grip),
+      effectiveGrip(model, compound, grip, aero, physical.grip * build.grip),
       downforce.downforceCoeff * physical.aero,
       grip,
       aero,

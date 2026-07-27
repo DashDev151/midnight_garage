@@ -29,6 +29,30 @@ export const MINT_CONDITION_FACTORS: ConditionFactors = {
   aero: 1,
 }
 
+/**
+ * What the parts a car is BUILT from do to the same physics, as multipliers of
+ * its stock figure. The counterpart of `ConditionFactors`: that says how much
+ * of a dial the car's parts still deliver, this says how much the fitted grade
+ * delivers in the first place, and the two multiply.
+ *
+ * `derivedStats.ts` assembles these from each installed SKU's
+ * `physicalModifiers`; this file only spends them. Power and downforce are
+ * absent for the same reason they are absent from the content schema: each
+ * already reaches the model by exactly one other path.
+ */
+export interface BuildFactors {
+  /** Mechanical grip, before the compound the tyres supply. */
+  grip: number
+  /** The braking coefficient, on top of the rubber. */
+  braking: number
+  /** The fraction of kerb weight the build carries. */
+  mass: number
+}
+
+/** A car built entirely from stock parts - the neutral element, and what a
+ * caller with no build to state gets. */
+export const STOCK_BUILD_FACTORS: BuildFactors = { grip: 1, braking: 1, mass: 1 }
+
 /** The handling model's content block - every grip, balance, and display-curve
  * constant. */
 type GripConfig = EconomyConfig['statFormulas']['grip']
@@ -755,19 +779,21 @@ interface CarBlock {
 }
 
 /**
- * Assembles a car's run constants at its CURRENT power, fitted compound and
- * parts condition. The stock solve supplies the ratios; the car's own figures
- * supply the scale, so a turbo raises effective power and a stickier tyre
- * raises grip, braking and launch together in the proportion the grip formula
- * predicts.
+ * Assembles a car's run constants at its CURRENT power, fitted compound, fitted
+ * part grades and parts condition. The stock solve supplies the ratios; the
+ * car's own figures supply the scale, so a turbo raises effective power and a
+ * stickier tyre raises grip, braking and launch together in the proportion the
+ * grip formula predicts.
  *
- * Each condition dial lands on exactly one quantity here. The grip dial is
- * already inside `mu` (so it reaches braking and launch the same way a change
- * of tyre does), the braking dial is what worn brakes cost ON TOP of the rubber,
- * the driveline dial is the fraction of crank power that still reaches the road,
- * and the aero dial is how much downforce damaged bodywork still makes. No
- * dial for power: `powerPs` is the car's CURRENT power and already carries
- * engine condition.
+ * Each dial lands on exactly one quantity here, and the condition factor and
+ * the build factor land on the same one, which is what keeps a dial assembled
+ * in a single place. Grip is already inside `mu` (so it reaches braking and
+ * launch the same way a change of tyre does), braking is what the brake
+ * HARDWARE is worth on top of the rubber, mass scales the kerb weight the
+ * driver is added to, the driveline dial is the fraction of crank power that
+ * still reaches the road, and the aero dial is how much downforce the bodywork
+ * still makes. No dial for power on either side: `powerPs` is the car's CURRENT
+ * power and already carries both the engine's condition and its parts.
  */
 function carBlock(
   model: CarModel,
@@ -778,21 +804,22 @@ function carBlock(
   aero: AeroConfig,
   aeroEffect: AeroEffect,
   condition: ConditionFactors,
+  build: BuildFactors,
 ): CarBlock {
   const formulaStockMu = computeGrip(model, model.spec.tyreCompound, grip)
   const stock = stockBehaviourOf(model, formulaStockMu, pace, aero)
-  const mu = effectiveGrip(model, compound, grip, aero, condition.grip)
+  const mu = effectiveGrip(model, compound, grip, aero, condition.grip * build.grip)
 
   const crankPowerW = powerPs * pace.psWatts * pace.drivelineEfficiency * condition.driveline
   const cdA =
     ((model.spec.dragCd ?? DRAG_CD_FALLBACK) + aeroEffect.dragCdDelta) * frontalAreaM2(model, pace)
 
   return {
-    m: model.spec.curbWeightKg + pace.driverMassKg,
+    m: model.spec.curbWeightKg * build.mass + pace.driverMassKg,
     crankPowerW,
     effectivePowerW: stock.powerRatio * crankPowerW,
     mu,
-    brakeMu: stock.brakeRatio * mu * condition.braking,
+    brakeMu: stock.brakeRatio * mu * condition.braking * build.braking,
     launchAccel: stock.launchRatio * mu * pace.gravity,
     cdA,
     downforceCoeff: aeroEffect.downforceCoeff * condition.aero,
@@ -1025,9 +1052,9 @@ function dragRun(block: CarBlock, lengthM: number, vCap: number, pace: PaceConfi
 
 /**
  * Time (raw seconds, unrounded) for `model` over `course` at `powerPs` on
- * `compound` tyres. `aeroEffect` defaults to the car's own factory bodywork and
- * `condition` to a car in good order, which is the state the measured figures
- * describe.
+ * `compound` tyres. `aeroEffect` defaults to the car's own factory bodywork,
+ * `condition` to a car in good order and `build` to a car of stock parts, which
+ * together are the state the measured figures describe.
  *
  * A `lap` course is walked corner by corner; a `standing-km` course is run flat
  * out from rest by its own evaluator, because a road with no corners cannot be
@@ -1041,13 +1068,14 @@ export function lapTime(
   economy: EconomyConfig,
   aeroEffect?: AeroEffect,
   condition: ConditionFactors = MINT_CONDITION_FACTORS,
+  build: BuildFactors = STOCK_BUILD_FACTORS,
 ): number {
   const pace = economy.statFormulas.pace
   const grip = economy.statFormulas.grip
   const aero = economy.statFormulas.aero
 
   const effect = aeroEffect ?? factoryAeroOf(model, aero)
-  const block = carBlock(model, powerPs, compound, pace, grip, aero, effect, condition)
+  const block = carBlock(model, powerPs, compound, pace, grip, aero, effect, condition, build)
   const vTop = vTopOf(block, model, pace)
 
   if (course.kind === 'standing-km') {

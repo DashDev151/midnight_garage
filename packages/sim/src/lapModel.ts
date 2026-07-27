@@ -6,7 +6,7 @@ import type {
   Grade,
   TyreCompound,
 } from '@midnight-garage/content'
-import { computeDerivedStats, physicalConditionFactors } from './derivedStats'
+import { buildFactors, computeDerivedStats, physicalConditionFactors } from './derivedStats'
 import { effectiveCompound, effectiveDownforce, lapTime } from './performance'
 import type { SimContext } from './context'
 
@@ -60,8 +60,9 @@ function referenceCarModel(weightKg: number, powerPs: number): CarModel {
 /**
  * A car's time on one course: the measured-behaviour model (`performance.ts`'s
  * `lapTime`) at the car's CURRENT derived power (condition and parts matter -
- * that is the build game), the compound its fitted tyres actually provide, and
- * the state its grip, brake, driveline and aero parts are actually in. A
+ * that is the build game), the compound its fitted tyres actually provide, what
+ * the grades it is built from are worth on grip, braking and mass, and the
+ * state its grip, brake, driveline and aero parts are actually in. A
  * segmented course is walked corner by corner; a standing-kilometre course
  * routes to its own standing-start evaluator. Returns `null` (no time can be
  * set) when the tyres slot is empty or scrap-band - there is nothing to grip the
@@ -101,8 +102,9 @@ export function lapTimeSecondsFor(
     context.economy.statFormulas.aero,
   )
   const condition = physicalConditionFactors(car, model, context.partsTaxonomy, context.economy)
+  const build = buildFactors(car, context.partsById)
   return round1(
-    lapTime(model, course, stats.power, compound, context.economy, aeroEffect, condition),
+    lapTime(model, course, stats.power, compound, context.economy, aeroEffect, condition, build),
   )
 }
 

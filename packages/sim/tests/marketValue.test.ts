@@ -291,6 +291,7 @@ describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
       grade: 'street',
       requiredTags: [],
       statModifiers: { power: 0, handling: 8, style: 3, reliability: 0, authenticity: 0 },
+      physicalModifiers: { grip: 1, braking: 1, mass: 1 },
       priceYen: 100_000,
     }
     // Repair cost derives from the installed part's own catalog price, so a
@@ -381,6 +382,7 @@ describe('installedPartsValueYen', () => {
     grade: 'street',
     requiredTags: [],
     statModifiers: { power: 0, handling: 8, style: 3, reliability: 0, authenticity: 0 },
+    physicalModifiers: { grip: 1, braking: 1, mass: 1 },
     priceYen: 100_000,
   }
   const partsById = { [suspensionKit.id]: suspensionKit }
@@ -545,6 +547,7 @@ describe('marketValueYen scales the aftermarket premium by foundationFactor (Spr
     grade: 'race',
     requiredTags: [],
     statModifiers: { power: 20, handling: 0, style: 4, reliability: -4, authenticity: 0 },
+    physicalModifiers: { grip: 1, braking: 1, mass: 1 },
     priceYen: 260_000,
   }
   const partsById = { ...PARTS_BY_ID, [raceIntake.id]: raceIntake }

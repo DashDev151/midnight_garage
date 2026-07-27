@@ -136,6 +136,10 @@ maxed road build it crosses 1.5 by about 190 km/h. The corner-grip ceiling caps 
 only and leaves aero alone, deliberately, so nothing in the model stands between a player and the
 top of the grip range. **The route there is the wing, not the tyres.**
 
+Those two figures are also the acceptance the aftermarket ladder in section 7c is scored against, and
+it clears them: a maximal legal build on the roster's quicker cars lands at a mechanical 1.21 to 1.26,
+so the region two driven cars occupy is a region the game can now actually be built into.
+
 ## 6. The known limits, stated rather than buried
 
 1. **At high grip on corner-heavy courses the model is still about 2 to 3 per cent fast.** The
@@ -173,9 +177,11 @@ handling readout, the reference-lap board and the story missions' lap ceilings a
 deliberate omission from the port is recorded in `TODO.md` with its number rather than a shrug: the
 high-speed traction release, which fires on no shipped car and moves no lap by half a per cent.
 
-What is still outstanding is the half of the picture the model was never asked to supply: **it
-knows what a car with a given grip and power does, and nothing yet says what a BUILD does to that
-grip and power.** That is (b) and (c) below, and it is the whole of the remaining work.
+The half of the picture the model was never asked to supply is now supplied too: what a car's
+CONDITION does to its physics is (b) below, and what an AFTERMARKET part does to it is (c). Both
+run on the ratio bridge this port carries, so neither needed the physics re-solved. **What is
+outstanding in both is measurement, not mechanism: every curve and every ladder value in them is a
+provisional default chosen to land on a driven end point, not a figure read off a car.**
 
 **What the port did NOT do, and what must never start doing: it does not move prices.** Performance and
 value are independent by maintainer law. A car is never worth more BECAUSE it is faster.
@@ -188,15 +194,48 @@ decides which buyer pays at which end of a band rather than what the car is wort
 this model should treat "the handling number moved, so the price should move" as a bug, not a
 feature.**
 
-**b. Condition does not touch performance (Sprint 129).** A worn engine, tired dampers and dead
-tyres change the game's abstract stats today, but nothing in this model. What a part's condition
-band does to grip, braking, power and mass is undesigned.
+**b. Condition reaches the physics, on curves nobody has measured.** A part's condition band now
+moves four physical dials: **grip, braking, driveline and aero**. Each has its own five-band curve in
+`statFormulas.condition.bandFactor`, deliberately separate from the existing `bands.bandFactors`,
+because that curve runs from 1.0 at mint down to 0.15 at scrap and a figure right for a stat
+contribution is catastrophic as a multiplier on physics. Which parts pull on which dial lives on the
+taxonomy as `physicalWeights`, and the traversal is the existing `weightedBandFactor` generalised
+rather than a second walker. Two structural rules hold it together. There is **deliberately no power
+dial**: engine condition already reaches the model through the ratio bridge scaling the car's current
+power, and a second factor would charge it twice. And the **grip and braking weights are disjoint**,
+enforced by a test, because braking derives from grip through that same bridge and a part sitting on
+both dials would be one input counted twice. At mint every factor is exactly 1.000, proved by strict
+equality rather than a tolerance, so the calibration is untouched at the top of the band and
+`harnessAcceptance.test.ts` passes unchanged.
 
-**c. Aftermarket parts do not touch performance either (Sprint 130).** The same gap from the other
-end: the model can say exactly what a car with a given grip and power does, and nothing yet says
-what fitting a given part does to that grip and power. The bridge the port carries is ready for it:
-the solved constants are dimensionless ratios scaled by the car's own current grip and power, so a
-part that moves either one moves the lap without anything being re-solved.
+**Every one of those curve values is a PROVISIONAL default, not a measurement**, and that is the most
+important sentence in this section: no driven data exists for a worn car, so the curves were chosen
+to make a plausible whole-car loss and nothing more. What that whole-car loss currently is: a fully
+scrap car gives up roughly 12 to 13 per cent on the touge and 4 to 7 per cent on the standing
+kilometre.
+
+**c. Aftermarket parts reach the physics too, on a ladder nobody has measured either.** A catalogue
+SKU carries `physicalModifiers`, three multipliers of the car's stock figure: **grip**, **braking**
+and **mass**. They are assembled per car by `buildFactors` and spent at exactly the points the
+condition factors are spent, so each dial is assembled in one place and applied in one place. The
+same disjointness rules govern them: no tyre SKU carries a grip modifier, because the compound tier
+already gives a tyre upgrade its whole effect through the grip formula's own stock-to-fitted ratio;
+no SKU carries both grip and braking; and there is no power modifier and no downforce modifier,
+because power moves through `statModifiers.power` and the car's current derived power figure, and
+downforce through an aero-functional SKU's grade in `statFormulas.aero.byGrade`.
+
+The ladder is scored against the driven end point rather than chosen freely: a maximal legal build
+reaches **x1.40 of stock mechanical grip** (x1.36 to x1.47 across the roster, the spread being the
+tyre half's own era and width terms), which puts the quickest roster cars at a mechanical **1.21 to
+1.26** against the 1.23 and 1.25 measured on two independently maxed road cars. Braking gains x1.15
+and kerb weight falls 10 per cent, both at the top of the ladder. **Every per-SKU figure in it is a
+provisional default**, stepped geometrically between stock and maxed rather than fitted to anything.
+
+What (c) did NOT do, and it is the open question rather than an oversight: **the power ladder is
+untouched.** `statModifiers.power` is additive and class-invariant, so a maximal build adds a flat
++200 PS to any car it is fitted to, which is x1.6 to x2.0 on the performance roster and as much as
+x4.6 on a kei car. A ratio target cannot be expressed on an additive path, and making it
+proportional is a design change rather than a retune.
 
 **d. Only 63 of 85 cars carry any measurement.** The other 22 are predicted by regression, and a
 prediction is not a measurement however good the fit. Every fingerprint captured improves both that
@@ -221,12 +260,13 @@ weight, which clears a GT3-class package at road speeds instead of clipping it f
 and `aero.byGrade.race.downforceCoeff` is 1.20, just above the 1.164 measured on a maxed road build,
 so the strongest wing a player can fit is no longer weaker than one that has actually been built.
 
-What remains is content, not physics: **there is still no aero grade above `race`.** GT3-class
-bodywork is a part nobody has authored, and it belongs to the aftermarket pass (c). The ceiling was
-raised first, deliberately, so that authoring it later needs no further move of the physics. The
-behavioural target it was signed against stands as the acceptance for that part: **an aggressively
-winged build should reach an effective grip of 1.5 or a little more, and a GT3-class aero package
-should not run into a ceiling at road speeds.**
+What remains is content, not physics: **there is still no aero grade above `race`.** The aftermarket
+pass (c) went by without authoring one, deliberately: what was asked for was the headroom, not the
+part. So GT3-class bodywork is still a part nobody has written, and the ceiling is still sitting
+there waiting for it, which is the state it was raised into. The behavioural target it was signed
+against stands as the acceptance for that part whenever it is authored: **an aggressively winged
+build should reach an effective grip of 1.5 or a little more, and a GT3-class aero package should
+not run into a ceiling at road speeds.**
 
 ## 8. It is also the blueprint for the driving mode
 

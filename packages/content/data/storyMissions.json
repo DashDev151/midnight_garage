@@ -128,7 +128,7 @@
       {
         "kind": "lapTimeCeiling",
         "courseId": "hakone",
-        "maxSeconds": 125.1
+        "maxSeconds": 125
       }
     ],
     "budgetCapYen": 1557000,
@@ -240,7 +240,7 @@
       {
         "kind": "lapTimeCeiling",
         "courseId": "hakone",
-        "maxSeconds": 115
+        "maxSeconds": 114.9
       }
     ],
     "budgetCapYen": 3681000,

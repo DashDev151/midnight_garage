@@ -291,15 +291,26 @@ pass."
 
 ## Open balance/economy questions
 
-- [ ] **`street-power-street-manners`'s power floor is a PROVISIONAL 180, and wants retuning once
-  the aftermarket path lands (Sprint 130).** It was 235, authored against a 180SX believed to make
-  205 PS stock; the measured figure is 157 PS, which made the mission unsatisfiable outright (the
-  same sport intake/exhaust/ECU/turbo build reaches 192). 180 is 235 scaled by the same 0.766 the
-  reference car's own power moved by, so it preserves the difficulty the mission was designed at
-  and sits under the build's ceiling, but it is a scaling rather than a design decision. It is the
-  one mission threshold in the campaign that is NOT a `floor90(measured)` pin, and
-  `storyMissionProbes` asserts it as a hand-set floor accordingly. Revisit it when the aftermarket
-  pass decides what a build is actually worth in power.
+- [ ] **The aftermarket power ladder is ADDITIVE and class-invariant, so it cannot express a ratio
+  target at all. Nothing was changed; the decision is open.** Sprint 130 measured it through the real
+  sim rather than by summing the catalogue: a maximal LEGAL build adds a flat **+200 PS** to any car,
+  because every engine slot's `statModifiers.power` is identical across all four fitment classes.
+  Against a signed target of x1.80 that lands at x1.62 (Supra, Aristo), x1.71 (GT-R, Fairlady Z,
+  Chaser), x1.80 (Impreza), x2.27 (180SX), x3.41 (Carina) and **x4.64 (Wagon R)**. Scaling the
+  figures down would miss 1.80 on every car except the one it was scaled against; hitting it needs
+  `statModifiers.power` to scale with the car's own stock power, which is a new mechanism rather than
+  a retune, and Sprint 130 was explicitly told to use the existing path. The full table is in that
+  sprint's Exit. **Maintainer call: is a flat +200 the intended shape, or does power want a
+  proportional path?**
+
+  Riding on the same decision: **`street-power-street-manners`'s power floor is a PROVISIONAL 180.**
+  It was 235, authored against a 180SX believed to make 205 PS stock; the measured figure is 157, and
+  180 is 235 scaled by the same 0.766 that car's own power moved by, so it preserves the designed
+  difficulty but is a scaling rather than a design decision. Sprint 130 did NOT re-base it, because
+  the ladder it is measured against did not move: the mission's own probe build (sport
+  intake/exhaust/ECU/turbo) reaches 214 PS, +34 over the bar, exactly as it did before. It is the one
+  mission threshold in the campaign that is NOT a `floor90(measured)` pin, and `storyMissionProbes`
+  asserts it as a hand-set floor accordingly.
 - [ ] **Invariant #6 (first-timer resale speed)** - "first-timer buyers keep sub-¥500k Commons
   sellable within 7 days at book value or better" has no bot modeling first-timer-specific selling
   behavior; `competentPolicyStrategy` (Sprint 23) sells via the generic clean/concours faucet, not

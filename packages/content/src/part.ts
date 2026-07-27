@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { CarPartIdSchema, ConditionBandSchema, GradeSchema, TagSchema } from './tags'
 import { PartFitmentClassSchema } from './partFitment'
-import { StatModifierSchema } from './stats'
+import { PhysicalModifierSchema, StatModifierSchema } from './stats'
 import { resolvePartPriceYen, type PartPricingSheet } from './partPricing'
 import { PanelZoneIdSchema } from './zone'
 
@@ -25,6 +25,13 @@ export const PartCatalogEntrySchema = z.object({
   grade: GradeSchema,
   requiredTags: z.array(TagSchema).default([]),
   statModifiers: StatModifierSchema,
+  /**
+   * What fitting this SKU does to the physical dials of the performance model,
+   * as multipliers of the car's stock figure - see `PhysicalModifierSchema`.
+   * Absent on every SKU that moves no dial, including all of the stock grade,
+   * which resolves to 1 everywhere and leaves the car on its measurements.
+   */
+  physicalModifiers: PhysicalModifierSchema.default({ grip: 1, braking: 1, mass: 1 }),
   /**
    * Which pricing-sheet basis this SKU prices from - defaults to `carPartId`
    * when absent, so every pre-existing entry resolves exactly as before.
