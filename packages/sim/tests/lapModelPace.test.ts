@@ -99,8 +99,9 @@ const PINNED_LAP_TIMES_S: Record<string, Record<string, number>> = {
  * silently different race results.
  *
  * These numbers pin the model as currently shipped. Re-pinning them is the
- * expected outcome of any deliberate change to the pace or grip levers, made
- * with the maintainer approval CLAUDE.md directive 22 requires for those levers.
+ * expected outcome of a deliberate change to the pace or grip levers, and those
+ * levers are approval-gated (CLAUDE.md directive 22), so a re-pin belongs in the
+ * same change as the approval it was made under.
  */
 describe('lapTime golden pin over the shipped courses', () => {
   it('pins every shipped course', () => {
