@@ -24,6 +24,16 @@
   .sub{color:var(--muted);font-size:13px;max-width:60ch;}
   .sub b{color:var(--amber);font-weight:600;}
   .count{font-family:var(--mono);color:var(--faint);font-size:12px;margin-top:6px;}
+  details.about{margin-top:10px;border:1px solid var(--line);border-radius:9px;background:var(--panel);}
+  details.about>summary{cursor:pointer;padding:8px 11px;font-family:var(--mono);font-size:10.5px;
+    letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);font-weight:700;list-style:none;}
+  details.about>summary::-webkit-details-marker{display:none;}
+  details.about>summary::after{content:"+";float:right;font-size:13px;}
+  details.about[open]>summary::after{content:"-";}
+  details.about .ab{padding:0 11px 10px;color:var(--muted);font-size:12.5px;line-height:1.55;}
+  details.about .ab p{margin:0 0 8px;}
+  details.about .ab p:last-child{margin-bottom:0;}
+  details.about .ab b{color:var(--amber);font-weight:600;}
   .count .pop{color:var(--cyan);}
 
   .controls{position:sticky;top:0;z-index:5;background:linear-gradient(180deg,#0b0f1cf5,#0b0f1cd0);
@@ -125,7 +135,13 @@
   <header class="top">
     <div class="kick">Ran When Parked &middot; spec arc</div>
     <h1>The Car Spec Book</h1>
-    <p class="sub">Real stock specs for the whole roster. For the <b>64 cars Forza Horizon 6 carries</b>, the entry <b>is</b> the Forza entry, name and year included; on <b>63 of those</b> the figures are Forza's too: power, torque, weight, distribution, top speed, acceleration, braking and lateral g, with grip, downforce and drag derived from them. (The 64th, the Eunos Cosmo, is in the game but has no published stats at all, so it takes Forza's identity and keeps our modelled numbers.) Where Forza models a different variant of a car we wanted, the Forza variant is the car in this book, named as Forza names it. The other 21 stay web-sourced and modelled. Tap a car for its <b>modelled dyno curve</b>, built from the peak points and shaped by engine character: turbo spool step, the sequential-twin valley of death, the VTEC cam crossover. Not a real dyno trace. Estimated fields are marked. Each card also carries the <b>whole published Forza panel</b> behind those figures: PI and class, price, rarity and unlock, both unit systems, all ten simulation results and the six performance bars. <b>Two cards carry override flags</b> and both are worth reading before quoting them, because on both Forza measured a <b>preset starter car</b> rather than the stock one: the 1989 Silvia K's (<b>gOvr</b>, six figures replaced from the Forza wiki's stock panel, with its 0-161 left labelled as still preset-tainted because no stock figure exists) and the 1994 Celica GT-Four ST205 (<b>gOvr</b>, thirteen figures replaced from the game's own stock panel, read first hand, so nothing on that card is tainted afterwards). This book is the data layer of the car performance model; the model itself is documented in <b>docs/design/car-performance/</b>.</p>
+    <p class="sub">Real stock specs for the whole roster, and the data layer under the car performance model. <b>64 cars are in Forza Horizon 6</b> and are shown as Forza's own entries, name and year included; <b>63 of those run Forza's own measured figures</b>. Tap any car for its detail, its modelled dyno curve and the whole published panel behind it.</p>
+    <details class="about"><summary>how to read this book</summary><div class="ab">
+      <p><b>One set of figures per car, and where Forza has the car those figures are Forza's:</b> power, torque, weight, distribution, top speed, acceleration, braking and lateral g, with grip, downforce and drag derived from them. Where Forza models a different variant of a car we wanted, the Forza variant <i>is</i> the car in this book, named as Forza names it. The 64th Forza car, the Eunos Cosmo, is in the game with no published stats at all, so it takes Forza's identity and keeps modelled numbers. The other 21 have no analogue in the game and stay web-sourced and modelled.</p>
+      <p><b>The dyno curve is modelled, not measured.</b> It is built from the peak points and shaped by engine character: turbo spool step, the sequential-twin valley of death, the VTEC cam crossover. It is not a real dyno trace. Estimated fields are marked as such.</p>
+      <p><b>Two cards carry an override flag and neither should be quoted without it</b>, because on both the scrape measured one of the game's <b>preset starter cars</b> rather than the stock one. The <b>1989 Silvia K's</b> has six figures replaced from the Forza wiki's stock panel; its 0-161 has no stock counterpart anywhere, so that one figure stays labelled as preset-tainted. The <b>1994 Celica GT-Four ST205</b> has thirteen replaced from the game's own stock panel, read first hand, so nothing on that card is tainted afterwards.</p>
+      <p><b>Mind the three test speeds.</b> Acceleration and braking are quoted at 97 and 161 km/h; lateral g at 97 and <b>193</b>. They are not the same pair, and reading the second lateral figure as 161 would corrupt the downforce fit, which goes as speed squared.</p>
+    </div></details>
     <div class="count"><span id="showing" class="pop"></span> shown &middot; <span id="total"></span> cars &middot; sort &amp; filter above</div>
   </header>
 

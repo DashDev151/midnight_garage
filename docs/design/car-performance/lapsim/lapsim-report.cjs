@@ -8753,6 +8753,9 @@ const data = {
     exitShape: 'not applied; the published model uses the additive direction-change term',
     kAgi: +KAGI_FIT.toFixed(2),
     brakeD0: +BRAKE_D0.toFixed(3),
+    // The overall index is a WEIGHTED mean of normalised times, not a plain average. Shipped so
+    // the dashboard can state the weights rather than describe the index wrongly.
+    courseWeight: COURSE_WEIGHT,
     // The geometric corner-grip ceiling: usable mu = min(mu, geoMu (r/geoR)^geoT). Shipped so the
     // dashboard states the term from the run instead of from prose.
     geoMu: +GEO_MU.toFixed(3),
@@ -9266,6 +9269,27 @@ console.log('\n\n## THE BLIND-VALIDATION RECORD')
   const drivenRows = tab.filter((r) => r.d != null)
   const lapRows = drivenRows.filter((r) => r.k !== 'Yatabe')
   const committedRows = drivenRows.filter((r) => r.p != null)
+  // The record joins the exported data so the dashboard can show it rather than restate it.
+  // This section runs after the JSON is first written, so the file is rewritten here; the
+  // alternative is a hand-copied headline number on a page, which is how a figure goes stale.
+  data.validation.blind = {
+    n: drivenRows.length,
+    nLaps: lapRows.length,
+    nCommitted: committedRows.length,
+    maeAll: +maeOf(drivenRows.map((r) => pct(r.t, r.d))).toFixed(2),
+    maeLaps: +maeOf(lapRows.map((r) => pct(r.t, r.d))).toFixed(2),
+    maeCommitted: +maeOf(committedRows.map((r) => pct(r.p, r.d))).toFixed(2),
+    rows: tab.map((r) => ({
+      car: r.lbl,
+      course: r.k,
+      committed: r.p == null ? null : +r.p.toFixed(2),
+      modelled: +r.t.toFixed(2),
+      driven: r.d == null ? null : +r.d.toFixed(3),
+      err: r.d == null ? null : +pct(r.t, r.d).toFixed(2),
+      status: r.s,
+    })),
+  }
+  fs.writeFileSync(path.join(__dirname, 'lapsim-data.json'), JSON.stringify(data))
   console.log(
     '\n  MAE over all ' + drivenRows.length + ' rows with a driven time: ' +
       maeOf(drivenRows.map((r) => pct(r.t, r.d))).toFixed(2) + '%.',
