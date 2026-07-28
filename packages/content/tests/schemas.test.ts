@@ -228,7 +228,7 @@ describe('seed content validates against schemas', () => {
     // The daily fine for leaving a car in the grace/"double parking"
     // overflow slot.
     expect(result.data.DOUBLE_PARKING_FINE_YEN).toBe(8_000)
-    expect(result.data.AUCTION_BUYOUT_PREMIUM).toBe(1.05)
+    expect(result.data.AUCTION_BUYOUT_PREMIUM).toBe(1.0)
     // Derived from real roster medians, not asserted - see
     // STARTING_CASH_YEN's own schema doc comment.
     expect(result.data.STARTING_CASH_YEN).toBe(300_000)

@@ -360,35 +360,6 @@ pass."
 
 ## Open balance/economy questions
 
-- [ ] **`four-wheels` no longer covers its own taught build: one lever, one number, ten seconds.**
-  Measured fresh through `tutorialProbe` after the 2026-07-28 teardown retune: the taught build
-  spends **134,912** against Yuki's **135,000**, leaving **88 yen** of designed profit, and the one
-  sanctioned player mistake (sport rubber instead of stock, +3,100) puts it at **138,012**, over the
-  cap by 3,012. `tutorialProbe` is consequently RED and was left red rather than moving a lever
-  nobody signed. The cause is not a cost blow-out: cheaper parts made the scripted lot's
-  restoration bill smaller, which made the car itself dearer, and the reserve rose from about
-  104,000 to **112,832** while every part on the build got cheaper. This mission sits deliberately
-  off the generic formula, so the fix is a hand-set number under the standing rule for this lever
-  ("keep the margin as it was"). **142,000 would restore both properties**: the mistake absorbed
-  with 3,988 to spare and a designed profit of 7,088, inside the (0, 15,000] band the probe
-  asserts. **Maintainer call: bump `four-wheels` payout/budget 135,000 -> 142,000, or a different
-  figure?**
-
-- [ ] **The instant-buyout premium is now larger than any restoration can repay, on 24 of 26 cars.**
-  `AUCTION_BUYOUT_PREMIUM` is 1.25, so buying a lot outright costs about 24% over its anchor value.
-  Once the parts basket became a sensible fraction of book (2026-07-28), the value a full mint
-  restoration can add fell with it, and on the Supra the median generated lot carries a
-  276,520-yen bill whose restoration adds about 359,000 of value against a 574,000-yen premium.
-  Measured across the roster as median (restored value - buyout price - bill) as a share of book:
-  positive only on the City E (+3.0%) and the Sunny (+3.2%), and negative everywhere else, worst at
-  the BNR32 (-15.1%) and the Supra (-14.1%). `valueModelProbes`'s full-flip probe is consequently
-  RED and was left red: it asserts that this exact route profits most of the time, and it no longer
-  does. Nothing is broken for a player who BIDS - the four-play ranking buys at the reserve and
-  every model pays handsomely - so the honest reading is that the buy-it-now button is now a
-  strictly losing acquisition rather than an impatience tax with a way back. **Maintainer call: is
-  a buyout that no amount of work repays the intended shape, or does `AUCTION_BUYOUT_PREMIUM` want
-  to come down?**
-
 - [ ] **The aftermarket power ladder is ADDITIVE and class-invariant, so it cannot express a ratio
   target at all. Nothing was changed; the decision is open.** Sprint 130 measured it through the real
   sim rather than by summing the catalogue: a maximal LEGAL build adds a flat **+200 PS** to any car,

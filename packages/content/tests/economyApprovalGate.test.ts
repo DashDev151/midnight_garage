@@ -310,34 +310,40 @@ import storyMissions from '../data/storyMissions.json'
  * 7088, inside the (0, 15000] band that probe asserts.
  *
  * Re-pinned 2026-07-28 (maintainer approval, in session):
- * `AUCTION_BUYOUT_PREMIUM` 1.25 -> 1.05. Buying a lot outright rather than
- * bidding for it is meant to be an impatience tax with a way back, and at 1.25
- * the premium exceeded what a restoration can add on most of the roster.
+ * `AUCTION_BUYOUT_PREMIUM` 1.25 -> 1.05 -> 1.00. Buying a lot outright rather
+ * than bidding for it is meant to be an impatience tax with a way back, and at
+ * 1.25 the premium exceeded what a restoration can add on most of the roster.
+ * The maintainer then set it to exactly 1.00, full guide value with nothing
+ * added on top: an INTERIM value, to be tuned again after playtesting.
  *
  * Read this premium against 0.81, not against 1.0, or the lever gets set wrong
  * again. It multiplies GUIDE value, but a contested win in the live room lands
  * at that room's clearing fraction, whose expectation is 0.8081 over the
- * shipped `auctionRoom` turnout bands and bargain chance. A premium of 1.00
- * therefore already costs 1.24x a room win, and every further point comes
- * straight out of a restoration margin worth only about 13.7% of book. 1.05
- * puts buying outright at 1.30x a room win, which is a tax large enough to feel
- * while leaving buy-it-now a route rather than a trap; 1.10 sits past that
- * cliff, handing back essentially the whole margin.
+ * shipped `auctionRoom` turnout bands and bargain chance. So 1.00 is not a
+ * premium of nothing: it still costs 1.24x an average room win, and about 5%
+ * more than the luckiest win a room can produce (a packed room clears at most
+ * at 0.95 of guide). The premium sits on top of that implicit tax, which is
+ * why 1.25 left the expectation play below water on 25 of the 26 models.
  *
  * The value is recorded with the measurement that judges it rather than with a
  * claim that it clears. Against each model's rough probe car
  * (`buildRoughProbeCar`, every slot at poor), restored value minus buyout price
- * minus restoration bill is positive at 1.05 on 20 of 26 models on the
- * repair-to-expectation play the economy actually asks for, and on 20 of 26 on
- * a full mint restoration; at 1.25 it was 1 and 5. The six that do not clear on
- * the expectation play miss by between 0.6% and 2.7% of book:
- * suzuki-wagon-r-ct21s, suzuki-alto-works-ha21s, honda-beat-pp1,
- * honda-city-turbo-ii-aa, nissan-cefiro-a31 and nissan-skyline-gtr-bnr32, whose
- * own break-even premiums run 1.010 to 1.039. Clearing all 26 needs about 1.01,
- * a tax nobody would feel. Winning those same cars in the room instead is
- * positive on 26 of 26 and pays a median 13.7% of book against the buyout's
- * 1.9%, so the tax stays visible on every model whether or not it clears. The
- * lever stands at 1.05 as signed, with the six disclosed rather than tuned away.
+ * minus restoration bill is positive at 1.00 on 26 of 26 models on the
+ * repair-to-expectation play the economy actually asks for, and on 21 of 26 on
+ * a full mint restoration; at 1.05 it was 21 and 20, and at 1.25 it was 1 and
+ * 5. The five that miss on the mint play are honda-city-e-aa,
+ * suzuki-wagon-r-ct21s, suzuki-alto-works-ha21s, honda-city-turbo-ii-aa and
+ * honda-beat-pp1, whose break-even premiums run 0.781 to 0.971, every one of
+ * them BELOW 1.00: a full mint restore on those five cannot repay even a buy at
+ * flat guide, so the miss is Law 1's expectation band (mint-restoring a cheap
+ * car burns the margin) rather than the premium's doing. Four of the five still
+ * clear when the same car is won in the room at 0.8081; honda-city-e-aa, at
+ * 0.781, clears on neither route.
+ *
+ * The tax that remains is visible on every model. On the expectation play the
+ * buyout pays a median 4.4% of book where a room win on the same car pays 13.9%
+ * of book, so buying outright still hands back roughly two thirds of the
+ * restoration margin.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -347,7 +353,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('a5d898ed0e891d3038841d8dc97c7c459a6725e16660faffa372c878c3d82faa')
+    ).toBe('138109cc5f69548d7752a198fb84f72ad20fec9d38a650c1fba5a3260e6a1db0')
   })
 
   it('mission payouts and budget caps match their approved values exactly', () => {
