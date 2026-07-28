@@ -193,20 +193,21 @@ function heatBandFor(heatPercent: number, economy: EconomyConfig): 'cold' | 'nor
 
 /**
  * Today's chance a for-sale car draws an offer at all: base x this
- * model's rarity-tier desirability x today's heat-band multiplier,
- * clamped to [0, 1]. Independent of `saleCandidates` (whether ANY buyer
- * archetype is even a plausible fit for this tier) - that gate still runs
- * inside `sellViaWalkIn` itself, so a tier nobody wants never produces a
- * live offer even when this chance rolls true.
+ * model's RARITY desirability x today's heat-band multiplier, clamped to
+ * [0, 1]. How scarce a car is decides how much foot traffic it draws;
+ * whether anyone in that traffic actually buys this LEAGUE of car is the
+ * separate `saleCandidates` tier gate, which still runs inside
+ * `sellViaWalkIn` itself - so a tier nobody wants never produces a live
+ * offer even when this chance rolls true.
  */
 export function offerChanceFor(
   model: CarModel,
   heatPercent: number,
   economy: EconomyConfig,
 ): number {
-  const { offerChanceBase, offerChanceByTier, offerChanceByHeatBand } = economy.selling
+  const { offerChanceBase, offerChanceByRarity, offerChanceByHeatBand } = economy.selling
   const band = heatBandFor(heatPercent, economy)
-  const chance = offerChanceBase * offerChanceByTier[model.tier] * offerChanceByHeatBand[band]
+  const chance = offerChanceBase * offerChanceByRarity[model.rarity] * offerChanceByHeatBand[band]
   return Math.max(0, Math.min(1, chance))
 }
 
@@ -491,7 +492,7 @@ function drawOfferForChannel(
       }
     }
     case 'freeAdsPaper': {
-      const factor = channel.offerChanceFactorByTierClass![model.tier]
+      const factor = channel.offerChanceFactorByRarity![model.rarity]
       if (rng.next() >= clampedChance(baseChance * factor)) return {}
       return {
         offer: drawClampedChannelOffer(

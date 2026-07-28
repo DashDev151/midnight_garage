@@ -279,7 +279,7 @@ describe('TutorialOverlay', () => {
 
     // A pending standard-delivery order addressed to tyres reveals the
     // "press End Day" waiting line.
-    const tyrePart = PARTS.find((p) => p.carPartId === 'tyres' && p.fitmentClass === 'shitbox')!
+    const tyrePart = PARTS.find((p) => p.carPartId === 'tyres' && p.fitmentClass === 'entry')!
     game.gameState = {
       ...game.gameState,
       pendingPartOrders: [
@@ -426,7 +426,7 @@ describe('TutorialOverlay', () => {
 
     // A pending tyre order reveals the "press End Day" line, whose anchor
     // (being the last visible anchored line) takes the spotlight over.
-    const tyrePart = PARTS.find((p) => p.carPartId === 'tyres' && p.fitmentClass === 'shitbox')!
+    const tyrePart = PARTS.find((p) => p.carPartId === 'tyres' && p.fitmentClass === 'entry')!
     game.gameState = {
       ...game.gameState,
       pendingPartOrders: [

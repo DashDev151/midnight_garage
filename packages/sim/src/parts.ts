@@ -12,7 +12,7 @@ import {
   type PartInstance,
   type PendingPartOrder,
 } from '@midnight-garage/content'
-import { bandFactor, scrapValueYen } from './bands'
+import { scrapValueYen, usedPartSaleValueYen } from './bands'
 import { PARTS_EXPRESS_SURCHARGE_FRACTION, PARTS_STANDARD_DELIVERY_DAYS } from './constants'
 import type { SimContext } from './context'
 import { isCustomerOriginPart, makeMarketOrigin } from './provenance'
@@ -267,10 +267,10 @@ export interface SellPartResult {
 
 /**
  * The teardown game's donor economy: sell a used, non-scrap loose
- * `PartInstance` for its catalog price (`Part.priceYen`), scaled by its
- * own condition band and the used-part haircut
- * (`economy.teardown.usedPartSaleFraction`). Instant, no labour - the
- * counterpart to `resolveScrapPart` for a part still worth more than scrap.
+ * `PartInstance` at `usedPartSaleValueYen` (bands.ts) - its catalogue price
+ * scaled by the resale condition curve and the used-part haircut. Instant,
+ * no labour - the counterpart to `resolveScrapPart` for a part still worth
+ * more than scrap.
  *
  * Refused (silent no-op) for a `scrap`-band instance (that's
  * `resolveScrapPart`'s route) and for a customer-owned tagged part while
@@ -290,11 +290,7 @@ export function resolveSellPart(
   const part = context.partsById[instance.partId]
   if (!part) return { state, log: [] }
 
-  const priceYen = Math.round(
-    part.priceYen *
-      bandFactor(instance.band, context.economy) *
-      context.economy.teardown.usedPartSaleFraction,
-  )
+  const priceYen = usedPartSaleValueYen(part.priceYen, instance.band, context.economy)
   return {
     state: {
       ...state,

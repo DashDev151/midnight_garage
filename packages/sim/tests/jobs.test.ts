@@ -68,7 +68,7 @@ const car: CarInstance = buildCarInstance({
  * file's own `planGroupRepair` calls predict the exact same charge. */
 const REPAIR_STEP_FRACTION = CONTEXT.economy.restoration.repairStepFraction
 
-// `car` is 'shitbox' tier: fitting catalog parts here must be shitbox-class
+// `car` is 'entry' tier: fitting catalog parts here must be entry-class
 // SKUs or the fitment-class check refuses them first.
 const sparePart: PartInstance = {
   id: 'pi-0001',
@@ -633,11 +633,11 @@ describe('findOrCreateJob (Sprint 11)', () => {
         // than tripping the blockedBy rule instead.
         parts: { ...car.parts, forcedInduction: { installed: null }, intake: { installed: null } },
       }
-      // The turbo kit must be the shitbox-class SKU or the fitment check
+      // The turbo kit must be the entry-class SKU or the fitment check
       // refuses it first.
       const turboKit = PARTS.find(
         (p) =>
-          p.carPartId === 'forcedInduction' && p.grade !== 'stock' && p.fitmentClass === 'shitbox',
+          p.carPartId === 'forcedInduction' && p.grade !== 'stock' && p.fitmentClass === 'entry',
       )!
       const turboInstance: PartInstance = {
         id: 'pi-turbo',
@@ -842,7 +842,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
       }
       const turboKit = PARTS.find(
         (p) =>
-          p.carPartId === 'forcedInduction' && p.grade !== 'stock' && p.fitmentClass === 'shitbox',
+          p.carPartId === 'forcedInduction' && p.grade !== 'stock' && p.fitmentClass === 'entry',
       )!
       const turboInstance: PartInstance = {
         id: 'pi-turbo-blocked',
@@ -1200,7 +1200,7 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
       genuinePeriod: false,
       origin: makeMarketOrigin(3),
     }
-    const stockDampers = CONTEXT.stockPartByCarPartId.shitbox!.dampers!
+    const stockDampers = CONTEXT.stockPartByCarPartId.entry!.dampers!
     const newStockInstance: PartInstance = {
       id: 'pi-new-stock-dampers',
       partId: stockDampers.id,
@@ -1471,7 +1471,7 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
   })
 
   it('installing a buried ENGINE-group part is blocked without the engine line owned or hired today, and completes with no assist fee once it is (either way)', () => {
-    const stockCams = CONTEXT.stockPartByCarPartId.shitbox!.camsTiming!
+    const stockCams = CONTEXT.stockPartByCarPartId.entry!.camsTiming!
     const newCams: PartInstance = {
       id: 'pi-new-cams',
       partId: stockCams.id,
@@ -1632,10 +1632,10 @@ function vacateSlot(state: GameState, carInstanceId: string, carPartId: CarPartI
 }
 
 describe('the equivalence-priced labour model (Sprint 79 decision 1, maintainer directive 2026-07-16)', () => {
-  // honda-city-e-aa is 'shitbox' tier: rims/tyres must be real shitbox-class
+  // honda-city-e-aa is 'entry' tier: rims/tyres must be real entry-class
   // stock instances to pass `partFitsCar`'s fitment-class match.
-  const stockRims = CONTEXT.stockPartByCarPartId.shitbox!.rims!
-  const stockTyres = CONTEXT.stockPartByCarPartId.shitbox!.tyres!
+  const stockRims = CONTEXT.stockPartByCarPartId.entry!.rims!
+  const stockTyres = CONTEXT.stockPartByCarPartId.entry!.tyres!
   const originalRims: PartInstance = {
     id: 'pi-original-rims',
     partId: stockRims.id,
@@ -1656,10 +1656,10 @@ describe('the equivalence-priced labour model (Sprint 79 decision 1, maintainer 
     parts: mintCarParts({ rims: originalRims, tyres: originalTyres }),
   })
   const fittingTyre = PARTS.find(
-    (p) => p.carPartId === 'tyres' && p.fitmentClass === 'shitbox' && p.grade === 'street',
+    (p) => p.carPartId === 'tyres' && p.fitmentClass === 'entry' && p.grade === 'street',
   )!
   const fittingRims = PARTS.find(
-    (p) => p.carPartId === 'rims' && p.fitmentClass === 'shitbox' && p.grade === 'street',
+    (p) => p.carPartId === 'rims' && p.fitmentClass === 'entry' && p.grade === 'street',
   )!
 
   it('contract case 1: pull rims, pull tyres, refit both as they were - 0 labour total', () => {
@@ -1883,7 +1883,7 @@ describe('the equivalence-priced labour model (Sprint 79 decision 1, maintainer 
     )
 
     const fittingClutch = PARTS.find(
-      (p) => p.carPartId === 'clutch' && p.fitmentClass === 'shitbox' && p.grade === 'stock',
+      (p) => p.carPartId === 'clutch' && p.fitmentClass === 'entry' && p.grade === 'stock',
     )!
     const newClutch: PartInstance = {
       id: 'pi-new-clutch',

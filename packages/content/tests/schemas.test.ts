@@ -228,7 +228,7 @@ describe('seed content validates against schemas', () => {
     // The daily fine for leaving a car in the grace/"double parking"
     // overflow slot.
     expect(result.data.DOUBLE_PARKING_FINE_YEN).toBe(8_000)
-    expect(result.data.AUCTION_BUYOUT_PREMIUM).toBe(1.25)
+    expect(result.data.AUCTION_BUYOUT_PREMIUM).toBe(1.05)
     // Derived from real roster medians, not asserted - see
     // STARTING_CASH_YEN's own schema doc comment.
     expect(result.data.STARTING_CASH_YEN).toBe(300_000)
@@ -277,10 +277,10 @@ describe('seed content validates against schemas', () => {
     // The core-loop law's floor: every generated car must carry at least
     // this much below-expectation work, strictly under the ceiling above.
     expect(result.data.partsGeneration.minWorkBillFractionByTier).toEqual({
-      shitbox: 0.1,
-      common: 0.06,
-      uncommon: 0.05,
-      rare: 0.04,
+      entry: 0.1,
+      everyday: 0.06,
+      enthusiast: 0.05,
+      flagship: 0.04,
     })
     for (const [tier, floorFraction] of Object.entries(
       result.data.partsGeneration.minWorkBillFractionByTier,
@@ -297,22 +297,22 @@ describe('seed content validates against schemas', () => {
     // tables, the chassis zone's metal table shifted one row kinder per tier,
     // and the surface-bump chance.
     expect(result.data.partsGeneration.zoneStates.metalWeightsByTier).toEqual({
-      shitbox: [20, 35, 30, 15],
-      common: [40, 35, 20, 5],
-      uncommon: [55, 30, 12, 3],
-      rare: [65, 25, 8, 2],
+      entry: [20, 35, 30, 15],
+      everyday: [40, 35, 20, 5],
+      enthusiast: [55, 30, 12, 3],
+      flagship: [65, 25, 8, 2],
     })
     expect(result.data.partsGeneration.zoneStates.finishWeightsByTier).toEqual({
-      shitbox: [5, 25, 40, 30],
-      common: [15, 40, 30, 15],
-      uncommon: [30, 40, 22, 8],
-      rare: [40, 38, 17, 5],
+      entry: [5, 25, 40, 30],
+      everyday: [15, 40, 30, 15],
+      enthusiast: [30, 40, 22, 8],
+      flagship: [40, 38, 17, 5],
     })
     expect(result.data.partsGeneration.zoneStates.chassisMetalWeightsByTier).toEqual({
-      shitbox: [40, 35, 20, 5],
-      common: [55, 30, 12, 3],
-      uncommon: [65, 25, 8, 2],
-      rare: [75, 20, 4, 1],
+      entry: [40, 35, 20, 5],
+      everyday: [55, 30, 12, 3],
+      enthusiast: [65, 25, 8, 2],
+      flagship: [75, 20, 4, 1],
     })
     expect(result.data.partsGeneration.zoneStates.surfaceExtraChance).toBe(0.2)
     expect(result.data.restoration.repairStepFraction).toBe(0.1)
@@ -345,8 +345,8 @@ describe('seed content validates against schemas', () => {
     expect(result.data.bands.migrationThresholds.poor).toBe(15)
     expect(result.data.bands.scrapValueFraction).toBe(0.05)
     expect(result.data.selling.offerChanceBase).toBe(0.65)
-    expect(result.data.selling.offerChanceByTier.shitbox).toBeGreaterThan(
-      result.data.selling.offerChanceByTier.legend,
+    expect(result.data.selling.offerChanceByRarity.common).toBeGreaterThan(
+      result.data.selling.offerChanceByRarity.legend,
     )
     expect(result.data.selling.offerChanceByHeatBand.hot).toBeGreaterThan(
       result.data.selling.offerChanceByHeatBand.cold,
@@ -370,12 +370,10 @@ describe('seed content validates against schemas', () => {
     })
     expect(result.data.sellingChannels.freeAdsPaper).toEqual({
       feeYen: 1500,
-      offerChanceFactorByTierClass: {
-        shitbox: 1.5,
+      offerChanceFactorByRarity: {
         common: 1.5,
         uncommon: 0.5,
         rare: 0.5,
-        gaisha: 0.5,
         legend: 0.5,
       },
       tasteCeiling: 1.05,
@@ -402,7 +400,16 @@ describe('seed content validates against schemas', () => {
     expect(result.data.coherence.maxConsumablesShareOfBookValue).toBe(0.15)
     // Per-depth-class labour, replacing the old flat INSTALL_LABOR_SLOTS
     // constant everywhere.
-    expect(result.data.teardown.usedPartSaleFraction).toBe(0.55)
+    expect(result.data.teardown.usedPartSaleFraction).toBe(0.3)
+    // The resale condition curve, deliberately steeper at the bottom than
+    // `bands.bandFactors` - that gap is what pays for reconditioning a poor
+    // part before it goes on the counter, and what stops it paying past worn.
+    expect(result.data.teardown.resaleBandFactors).toEqual({
+      mint: 1,
+      fine: 0.75,
+      worn: 0.55,
+      poor: 0.1,
+    })
     expect(result.data.teardown.donorBreakEvenBillRatio).toBe(0.45)
   })
 
@@ -658,7 +665,7 @@ describe('seed content ids are unique', () => {
         ...economy.partsGeneration,
         minWorkBillFractionByTier: {
           ...economy.partsGeneration.minWorkBillFractionByTier,
-          shitbox: economy.partsGeneration.maxBillFraction,
+          entry: economy.partsGeneration.maxBillFraction,
         },
       },
     }

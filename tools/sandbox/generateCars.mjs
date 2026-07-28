@@ -48,20 +48,20 @@ const OUT = path.join(REPO, 'packages/game/src/screens/dev/sandboxCars.ts')
  */
 const TIER_BY_SECTION = {
   // Derived from the in-game 26.
-  Shitbox: { tier: 'shitbox', source: 'derived' }, // 3 of 3
-  Kei: { tier: 'shitbox', source: 'derived' }, // 3 of 3
-  'Bubble weird': { tier: 'shitbox', source: 'derived' }, // 1 of 1
-  'Fast FWD': { tier: 'common', source: 'derived' }, // 3 of 4
-  'FR / Drift': { tier: 'uncommon', source: 'derived' }, // 6 of 6
-  Rotary: { tier: 'uncommon', source: 'derived' }, // 1 uncommon, 1 rare; the lower
-  'AWD Turbo': { tier: 'uncommon', source: 'derived' }, // 1 uncommon, 1 rare; the lower
-  Flagship: { tier: 'rare', source: 'derived' }, // 3 of 5
+  Shitbox: { tier: 'everyday', source: 'derived' }, // 2 of 3
+  Kei: { tier: 'entry', source: 'derived' }, // 3 of 3
+  'Bubble weird': { tier: 'everyday', source: 'derived' }, // 1 of 1
+  'Fast FWD': { tier: 'enthusiast', source: 'derived' }, // 3 of 4
+  'FR / Drift': { tier: 'enthusiast', source: 'derived' }, // 5 of 6
+  Rotary: { tier: 'enthusiast', source: 'derived' }, // 1 enthusiast, 1 flagship; the lower
+  'AWD Turbo': { tier: 'flagship', source: 'derived' }, // 2 of 2
+  Flagship: { tier: 'enthusiast', source: 'derived' }, // 3 of 5
   // Assigned by judgement: no in-game car occupies these sections.
-  '2004+ wave': { tier: 'uncommon', source: 'assigned' },
-  Gaisha: { tier: 'rare', source: 'assigned' }, // expensive imports
-  Kyusha: { tier: 'rare', source: 'assigned' }, // genuinely valuable classics
-  'Hyper wave': { tier: 'rare', source: 'assigned' }, // R35, LFA, BNR34
-  Legend: { tier: 'rare', source: 'assigned' },
+  '2004+ wave': { tier: 'enthusiast', source: 'assigned' },
+  Gaisha: { tier: 'flagship', source: 'assigned' }, // expensive imports
+  Kyusha: { tier: 'flagship', source: 'assigned' }, // genuinely valuable classics
+  'Hyper wave': { tier: 'flagship', source: 'assigned' }, // R35, LFA, BNR34
+  Legend: { tier: 'flagship', source: 'assigned' },
 }
 
 /**
@@ -221,13 +221,15 @@ function measuredFromFor(row) {
  * from the book's own drivetrain, engine position and aspiration.
  *
  * Derived: `tier` (see `TIER_BY_SECTION`), `tyreCompound` (see `compoundFor`),
- * `brand` (the first token of the display name, which reads `Alfa` rather than
- * `Alfa Romeo` on the one two-word marque; no physics reads it).
+ * `origin` (the book's own Gaisha section is exactly the import set), `brand`
+ * (the first token of the display name, which reads `Alfa` rather than `Alfa
+ * Romeo` on the one two-word marque; no physics reads it).
  *
- * Placeholders, read by nothing: `chassisCode`, `bookValueYen`, and the two
- * parody-name fields, which the sandbox never renders. `bookValueYen` in
- * particular is why the screen shows these cars no price at all: pricing a car
- * the game does not sell would be inventing an economy number.
+ * Placeholders, read by nothing: `chassisCode`, `bookValueYen`, `rarity`, and
+ * the two parody-name fields, which the sandbox never renders. `bookValueYen`
+ * in particular is why the screen shows these cars no price at all: pricing a
+ * car the game does not sell would be inventing an economy number, and
+ * `rarity` reaches only auction placement, which no research entry ever enters.
  */
 function synthesiseModel(row) {
   const displayName = displayNameFor(row)
@@ -245,6 +247,8 @@ function synthesiseModel(row) {
     parodyName: 'Research entry',
     parodyBrand: 'Research',
     tier: section.tier,
+    rarity: 'common',
+    origin: row.sec === 'Gaisha' ? 'gaisha' : 'jdm',
     tags,
     bookValueYen: 1,
     spec: {

@@ -69,7 +69,7 @@ export function pickWeightedCauseId(symptom: Symptom, rng: Rng): string {
 
 /**
  * Builds the demo car: TUTORIAL_LOT's own fixed model/year/mileage/colour/
- * provenance (the already-scripted cheap shitbox this codebase keeps for a
+ * provenance (the already-scripted cheap runabout this codebase keeps for a
  * deterministic dev car), every part slot stock at the recipe's own base
  * band, carrying ONLY the chosen symptom with every cause still open
  * (`remainingCauseIds` is the full cause list, `runTestIds: []`).

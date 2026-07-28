@@ -140,15 +140,15 @@ describe('bestFitBuyer', () => {
 })
 
 describe('sell-side buyer gate (Sprint 11, round-2 playtest #4)', () => {
-  const shitboxModel = CARS.find((c) => c.id === 'honda-city-e-aa')
-  if (!shitboxModel) throw new Error('fixture car missing from seed content')
-  const shitboxCar: CarInstance = { ...car, modelId: shitboxModel.id }
+  const entryModel = CARS.find((c) => c.id === 'honda-city-e-aa')
+  if (!entryModel) throw new Error('fixture car missing from seed content')
+  const entryCar: CarInstance = { ...car, modelId: entryModel.id }
 
-  it('a collector never appears as the walk-in buyer for a shitbox-tier car', () => {
-    // Per buyers.json, collector's tierPreferences list legend/gaisha/rare/
-    // uncommon only - no shitbox entry at all.
+  it('a collector never appears as the walk-in buyer for an entry-tier car', () => {
+    // Per buyers.json, collector's tierPreferences list flagship and
+    // enthusiast only, never entry.
     for (let seed = 0; seed < 50; seed++) {
-      const offer = walkIn(shitboxCar, shitboxModel, BUYERS, 100, createRng(seed))
+      const offer = walkIn(entryCar, entryModel, BUYERS, 100, createRng(seed))
       expect(offer.buyerId).not.toBe('collector')
     }
   })
@@ -528,30 +528,30 @@ describe('drawDailyOffers (Sprint 31 decision 2; channels, Sprint 114)', () => {
   })
 
   describe('the mismatch mechanism (tunerMagazine, matchedOnly)', () => {
-    // A worn, honest shitbox's only genuine buyer pool is first-timer
-    // (buyers.json's only shitbox tierPreference); depressed condition
+    // A worn, honest entry-tier car's only genuine buyer pool is first-timer
+    // (buyers.json's only entry tierPreference); depressed condition
     // drags first-timer's reliability-weighted taste for it under 1.0.
     // Seed 0 is the first seed low enough to clear both channels' own
     // chance rolls (verified: shopFront draws, magazine does not, on this
     // exact seed).
-    const shitboxModel = CARS.find((c) => c.id === 'honda-city-e-aa')
-    if (!shitboxModel) throw new Error('fixture car missing from seed content')
-    const shitboxCar: CarInstance = buildCarInstance({
-      modelId: shitboxModel.id,
+    const entryModel = CARS.find((c) => c.id === 'honda-city-e-aa')
+    if (!entryModel) throw new Error('fixture car missing from seed content')
+    const entryCar: CarInstance = buildCarInstance({
+      modelId: entryModel.id,
       year: 1990,
       mileageKm: 120_000,
       authenticityPercent: 70,
       parts: uniformCarParts('worn'),
     })
 
-    it('a stock shitbox listed in the magazine draws no offer on a seeded day the same car on shopFront does', () => {
+    it('a stock entry-tier car listed in the magazine draws no offer on a seeded day the same car on shopFront does', () => {
       const shopFrontState: GameState = {
-        ...stateWithCar(shitboxCar),
-        carsForSale: listedOn('shopFront', { carInstanceId: shitboxCar.id }),
+        ...stateWithCar(entryCar),
+        carsForSale: listedOn('shopFront', { carInstanceId: entryCar.id }),
       }
       const magazineState: GameState = {
         ...shopFrontState,
-        carsForSale: listedOn('tunerMagazine', { carInstanceId: shitboxCar.id }),
+        carsForSale: listedOn('tunerMagazine', { carInstanceId: entryCar.id }),
       }
       const shopFrontResult = drawDailyOffers(shopFrontState, CONTEXT, createRng(0))
       const magazineResult = drawDailyOffers(magazineState, CONTEXT, createRng(0))
@@ -701,7 +701,7 @@ describe('resolveSellViaWalkIn (Sprint 31: resolves today’s pre-rolled offer)'
       archetype: 'collector' as const,
       displayName: 'Authenticity Only',
       statWeights: { power: 0, handling: 0, style: 0, reliability: 0, authenticity: 1 },
-      tierPreferences: [{ tier: 'common' as const, weight: 1 }],
+      tierPreferences: [{ tier: 'everyday' as const, weight: 1 }],
       priceSensitivity: 0.5,
       wantLine: 'synthetic fixture buyer - no authored copy needed',
     }

@@ -36,9 +36,9 @@ describe('ReplaceDrawer', () => {
     // instead.
     game.devGrantCar(CARS[0]!.id)
     const carId = game.gameState.ownedCars[0]!.id
-    // CARS[0] (honda-city-e-aa) is 'shitbox' tier.
+    // CARS[0] (honda-city-e-aa) is 'entry' tier.
     const fitting = PARTS.find(
-      (p) => p.carPartId === 'dampers' && p.grade !== 'stock' && p.fitmentClass === 'shitbox',
+      (p) => p.carPartId === 'dampers' && p.grade !== 'stock' && p.fitmentClass === 'entry',
     )!
     // A totally different address - must never appear in this drawer at all.
     const wrongAddress = PARTS.find((p) => p.carPartId === 'ignitionEcu')!
@@ -61,9 +61,9 @@ describe('ReplaceDrawer', () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
     const carId = game.gameState.ownedCars[0]!.id
-    // CARS[0] (honda-city-e-aa) is 'shitbox' tier.
+    // CARS[0] (honda-city-e-aa) is 'entry' tier.
     const fitting = PARTS.find(
-      (p) => p.carPartId === 'dampers' && p.grade !== 'stock' && p.fitmentClass === 'shitbox',
+      (p) => p.carPartId === 'dampers' && p.grade !== 'stock' && p.fitmentClass === 'entry',
     )!
     game.devGrantPart(fitting.id)
     const partInstanceId = game.gameState.partInventory[0]!.id
@@ -94,7 +94,7 @@ describe('ReplaceDrawer', () => {
     // dampers is already stock-filled by default - nothing addressed to it
     // can actually land there without removing the incumbent first.
     const nonFitting = PARTS.find(
-      (p) => p.carPartId === 'dampers' && p.grade !== 'stock' && p.fitmentClass === 'shitbox',
+      (p) => p.carPartId === 'dampers' && p.grade !== 'stock' && p.fitmentClass === 'entry',
     )!
     game.devGrantPart(nonFitting.id)
 
@@ -113,9 +113,9 @@ describe('ReplaceDrawer', () => {
     game.devGrantCar(CARS[0]!.id)
     const carId = game.gameState.ownedCars[0]!.id
     game.removePart(carId, 'dampers')
-    // CARS[0] (honda-city-e-aa) is 'shitbox' tier.
+    // CARS[0] (honda-city-e-aa) is 'entry' tier.
     const fitting = PARTS.find(
-      (p) => p.carPartId === 'dampers' && p.grade !== 'stock' && p.fitmentClass === 'shitbox',
+      (p) => p.carPartId === 'dampers' && p.grade !== 'stock' && p.fitmentClass === 'entry',
     )!
     game.devGrantPart(fitting.id)
     const instance = game.gameState.partInventory.at(-1)!

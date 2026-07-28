@@ -83,7 +83,7 @@ export const PARTS = PartsSchema.parse(
   resolvePartsCatalog(PART_CATALOG_ENTRIES, PART_PRICING_SHEET),
 )
 
-const FITMENT_CLASSES: readonly PartFitmentClass[] = ['shitbox', 'common', 'uncommon', 'rare']
+const FITMENT_CLASSES: readonly PartFitmentClass[] = ['entry', 'everyday', 'enthusiast', 'flagship']
 
 /**
  * A taxonomy entry's per-class stock-replacement price is simply that class's
@@ -230,7 +230,7 @@ export const COURSES = CoursesSchema.parse(coursesJson)
 /**
  * The guided-tutorial script and the one scripted auction lot recipe.
  * `TUTORIAL_STEPS` is the ordered coach beats the overlay renders (all copy
- * orchestrator-swept); `TUTORIAL_LOT` is the fixed shitbox-runabout recipe
+ * orchestrator-swept); `TUTORIAL_LOT` is the fixed entry-tier runabout recipe
  * the sim builds deterministically while the tutorial is live - the
  * satisfiability probe (`packages/sim/tests/tutorialProbe.test.ts`) pins its
  * economics.

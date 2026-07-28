@@ -34,7 +34,9 @@ function referenceCarModel(weightKg: number, powerPs: number): CarModel {
     brand: 'Reference',
     parodyName: 'Reference chassis',
     parodyBrand: 'Reference',
-    tier: 'common',
+    tier: 'everyday',
+    rarity: 'common',
+    origin: 'jdm',
     tags: ['FR', 'NA', 'Piston'],
     bookValueYen: 1,
     spec: {

@@ -1,13 +1,12 @@
 import { z } from 'zod'
-import type { RarityTier } from './tags'
+import type { CarTier } from './tags'
 
 /**
- * Fitment classes ARE the four roster tiers a car already carries - zero
- * mapping cost, and a car's declared class is never ambiguous. `gaisha`/
- * `legend` fold into `rare` via `fitmentClassForTier` below until the roster
- * grows and earns a real mapping of its own.
+ * Fitment classes ARE the four roster tiers a car carries - zero mapping cost,
+ * and a car's declared class is never ambiguous. The catalogue ships exactly
+ * four classes; a fifth would mean re-authoring every SKU.
  */
-export const PartFitmentClassSchema = z.enum(['shitbox', 'common', 'uncommon', 'rare'])
+export const PartFitmentClassSchema = z.enum(['entry', 'everyday', 'enthusiast', 'flagship'])
 
 export type PartFitmentClass = z.infer<typeof PartFitmentClassSchema>
 
@@ -18,10 +17,10 @@ export type PartFitmentClass = z.infer<typeof PartFitmentClassSchema>
  * content rewrite.
  */
 export const PART_FITMENT_CLASS_DISPLAY_NAMES: Record<PartFitmentClass, string> = {
-  shitbox: 'Kei & Compact',
-  common: 'Family',
-  uncommon: 'Sports',
-  rare: 'Grand Touring',
+  entry: 'Kei & Compact',
+  everyday: 'Family',
+  enthusiast: 'Sports',
+  flagship: 'Grand Touring',
 }
 
 export function partFitmentClassLabel(fitmentClass: PartFitmentClass): string {
@@ -31,12 +30,10 @@ export function partFitmentClassLabel(fitmentClass: PartFitmentClass): string {
 /**
  * A car's parts-fitment class, derived from its roster `tier` - the one
  * mapping every sim/game call site threads a `CarModel` through rather than
- * re-deriving locally. `gaisha`/`legend` fold into `rare` (see this file's
- * top doc comment); every other tier maps to the identically-named class.
+ * reading `tier` as a class directly. The two value sets are identical today,
+ * so this is a relabel; it stays the single seam for the day the roster grows
+ * enough that a tier and a parts basket stop being the same question.
  */
-export function fitmentClassForTier(tier: RarityTier): PartFitmentClass {
-  if (tier === 'shitbox' || tier === 'common' || tier === 'uncommon' || tier === 'rare') {
-    return tier
-  }
-  return 'rare'
+export function fitmentClassForTier(tier: CarTier): PartFitmentClass {
+  return tier
 }

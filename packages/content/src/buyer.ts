@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { RarityTierSchema } from './tags'
+import { CarTierSchema } from './tags'
 import { StatBlockSchema } from './stats'
 
 export const BuyerArchetypeSchema = z.enum([
@@ -10,8 +10,11 @@ export const BuyerArchetypeSchema = z.enum([
   'first-timer',
 ])
 
+/** Taste by market position: which league of car this archetype turns up for.
+ * No entry for a tier means the archetype never bids on it - there is no
+ * default fallback (`interestedBuyers`, sim/bidding.ts). */
 const TierPreferenceSchema = z.object({
-  tier: RarityTierSchema,
+  tier: CarTierSchema,
   weight: z.number().min(0),
 })
 

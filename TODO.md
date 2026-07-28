@@ -211,49 +211,51 @@ pass."
 
 ## Open engineering
 
-- [ ] **A fifth `legend` parts-fitment class, deferred (maintainer decision 2026-07-28, reversed
-  from "implement" the same day).** `partFitment.ts` has always intended this: its own doc comment
-  says `gaisha`/`legend` fold into `rare` "until the roster grows and earns a real mapping of its
-  own", and the roster's `RarityTier` enum already carries both. The period parts research is the
-  case for un-folding it: `rare` at 2.5x checks out for JDM legends (rare/stock internals lands on
-  the real Y200,000 S20 conrod set) but undercooks the exotics, where parts money was another
-  animal entirely. Sprint 132 deleted the inert `classFactors.legend: 4.0` key rather than leave a
-  dead lever reading as a live one; the design survives here.
+- [ ] **A fifth parts-fitment class for the exotics, deferred (maintainer decision 2026-07-28,
+  reversed from "implement" the same day).** The period parts research is the case for it: the
+  dearest class at 2.5x checks out for JDM flagships (its stock internals lands on the real
+  Y200,000 S20 conrod set) but undercooks the exotics, where parts money was another animal
+  entirely. Sprint 132 deleted the inert `classFactors.legend: 4.0` key rather than leave a dead
+  lever reading as a live one; the design survives here.
 
-  Three things ride with it whenever it is picked up, and none is optional:
-  1. **`gaisha` needs a call too.** Once `legend` maps to itself, `gaisha` is the only tier still
-     folded into `rare`, and the roster's gaisha ARE the exotics (Countach, 512 TR, F355, 930, the
-     Delta, both M3s). Recommendation: fold `gaisha` into `legend` rather than add a sixth class.
-  2. **Three new economy levers, unapproved.** `expectationForCar` reads
+  Sprint 133 changed what this item is asking for, and the change matters. Tier, rarity and origin
+  are now three separate fields, so the exotics are no longer identified by a tier value at all:
+  they are `origin: 'gaisha'` cars, and rarity says nothing about what their parts cost. A fifth
+  class would therefore be a fifth TIER, keyed off market position like the other four, not a
+  special case bolted onto scarcity or sourcing.
+
+  Two things ride with it whenever it is picked up, and neither is optional:
+  1. **Three new economy levers, unapproved.** `expectationForCar` reads
      `economy.valuation.expectationByTier[fitmentClass]` and **throws** on a missing class, so a
-     `legend` block carrying `band`, `beyondDiscount` and `aftermarketReturn` is mandatory, not
-     optional. Directive 22 sign-off needed on the specific values.
-  3. **The class count is load-bearing.** The catalogue is 118 SKUs per class; adding a fifth means
+     fifth block carrying `band`, `beyondDiscount` and `aftermarketReturn` is mandatory, not
+     optional. `partPricing.classFactors`, `minWorkBillFractionByTier`, `symptomChanceByTier` and
+     the three `zoneStates` weight tables each need a fifth row too. Directive 22 sign-off needed
+     on every specific value. Note the classFactors item above: that ladder wants re-signing
+     against the current four before a fifth is added to it.
+  2. **The class count is load-bearing.** The catalogue is 118 SKUs per class; adding a fifth means
      `resolvePartsCatalog` must generate them rather than needing them hand-authored, and
      `stockReplacementPricesByClass` must resolve for every part in the new class. Verify before
-     committing to it. Note this pulls the opposite way from the re-tier item below, which must
-     keep exactly four tiers.
+     committing to it.
 
-  Natural home: alongside the re-tier, since both change what a tier means.
+- [ ] **`partPricing.classFactors` is now mis-calibrated against the tiers it prices, and that is
+  the single lever behind both open coherence failures (measured Sprint 133).** The ladder
+  (0.25 / 1.0 / 1.6 / 2.5) was set when the cheapest class spanned Y130,000 to Y580,000 and meant
+  "cheap car". After the re-tier the cheapest class means "kei-sized components" and holds five
+  cars, while the 1.0x class inherited the Y150,000-Y620,000 saloons that used to be charged 0.25x.
+  Eight of the 26 cars therefore got a dearer parts basket against an unchanged book value (Sunny,
+  Carina and Sera at 4.00x; CR-X, Prelude, MR2 AW11 and Civic EG6 at 1.60x; Impreza at 1.56x), two
+  got a cheaper one (Aristo 0.64x, Cefiro 0.63x), and sixteen did not move. That is why the donor
+  law went from 11 failing models to 14 and Law 3's consumables share from 6 to 9, against a sprint
+  expectation that both would shrink. The re-tier is not the defect; it made the real one legible.
+  Directive 22 lever, needs specific values signed.
 
-- [ ] **Re-tier the roster on CHARACTER rather than rarity (maintainer decision 2026-07-28).** The
-  current four tiers are value words (`shitbox`, `common`, `uncommon`, `rare`) and they encode a
-  claim the maintainer rejects: that a GT is inherently more premium than a sports car. It is not.
-  **GT and sport pool together, and the pool then splits by level rather than by character:**
-
-  1. shitbox and kei
-  2. family saloons and ordinary cars
-  3. entry sport and GT
-  4. premium sport and GT
-
-  Still four tiers, which matters: `fitmentClassForTier` maps tier to parts class one to one and
-  the catalogue has exactly four classes of 118 SKUs, so the count must not change without
-  re-authoring 472 parts. The identifiers themselves want renaming, because keeping rarity words
-  for character tiers would be a lie that survives in code forever. Every tier key is read by
-  `economy.json`'s `expectationByTier`, `fitmentClassForTier`, `cleanSaleMinBand`, the coherence
-  probes and the auction generator, so this is a mechanical sweep with a wide blast radius and no
-  value changes of its own. Lands with the book-value work, since re-tiering and re-pricing answer
-  the same question.
+- [ ] **The gaisha-never-at-auction rule (GDD 4.5) currently has no implementation.** It used to
+  live in `auctionTierForRarity`, which returned `null` for the `gaisha` tier value. Sprint 133
+  moved sourcing onto `CarModel.origin`, and nothing reads that field yet, so the guarantee now
+  rests entirely on every shipped car being `jdm` (asserted in `auctions.test.ts`). The Import
+  Broker owns the real exclusion when it lands; until then, adding a gaisha car to `cars.json`
+  would put it straight into a regular auction catalogue. (The rarity half of that old function
+  now lives in `canAppearAtAuctionTier`, which still carries no origin rule.)
 
 - [ ] **Switch the roster back to JDM variants (maintainer decision 2026-07-28).** During the
   calibration arc the roster was forced onto Forza's exact variants, names and years, because the
@@ -358,6 +360,35 @@ pass."
 
 ## Open balance/economy questions
 
+- [ ] **`four-wheels` no longer covers its own taught build: one lever, one number, ten seconds.**
+  Measured fresh through `tutorialProbe` after the 2026-07-28 teardown retune: the taught build
+  spends **134,912** against Yuki's **135,000**, leaving **88 yen** of designed profit, and the one
+  sanctioned player mistake (sport rubber instead of stock, +3,100) puts it at **138,012**, over the
+  cap by 3,012. `tutorialProbe` is consequently RED and was left red rather than moving a lever
+  nobody signed. The cause is not a cost blow-out: cheaper parts made the scripted lot's
+  restoration bill smaller, which made the car itself dearer, and the reserve rose from about
+  104,000 to **112,832** while every part on the build got cheaper. This mission sits deliberately
+  off the generic formula, so the fix is a hand-set number under the standing rule for this lever
+  ("keep the margin as it was"). **142,000 would restore both properties**: the mistake absorbed
+  with 3,988 to spare and a designed profit of 7,088, inside the (0, 15,000] band the probe
+  asserts. **Maintainer call: bump `four-wheels` payout/budget 135,000 -> 142,000, or a different
+  figure?**
+
+- [ ] **The instant-buyout premium is now larger than any restoration can repay, on 24 of 26 cars.**
+  `AUCTION_BUYOUT_PREMIUM` is 1.25, so buying a lot outright costs about 24% over its anchor value.
+  Once the parts basket became a sensible fraction of book (2026-07-28), the value a full mint
+  restoration can add fell with it, and on the Supra the median generated lot carries a
+  276,520-yen bill whose restoration adds about 359,000 of value against a 574,000-yen premium.
+  Measured across the roster as median (restored value - buyout price - bill) as a share of book:
+  positive only on the City E (+3.0%) and the Sunny (+3.2%), and negative everywhere else, worst at
+  the BNR32 (-15.1%) and the Supra (-14.1%). `valueModelProbes`'s full-flip probe is consequently
+  RED and was left red: it asserts that this exact route profits most of the time, and it no longer
+  does. Nothing is broken for a player who BIDS - the four-play ranking buys at the reserve and
+  every model pays handsomely - so the honest reading is that the buy-it-now button is now a
+  strictly losing acquisition rather than an impatience tax with a way back. **Maintainer call: is
+  a buyout that no amount of work repays the intended shape, or does `AUCTION_BUYOUT_PREMIUM` want
+  to come down?**
+
 - [ ] **The aftermarket power ladder is ADDITIVE and class-invariant, so it cannot express a ratio
   target at all. Nothing was changed; the decision is open.** Sprint 130 measured it through the real
   sim rather than by summing the catalogue: a maximal LEGAL build adds a flat **+200 PS** to any car,
@@ -422,8 +453,48 @@ pass."
   is NOT touched. Maintainer call needed: is a three-model donor loop the intended shape for v1.0,
   or does `usedPartSaleFraction`/the donor mechanic want a deliberate design pass now that it is
   reachable (rather than remaining a theoretical, never-quite-triggering mechanic).
+  **Re-measured Sprint 133 (the re-tier): 14 of 26 models now favour parting, up from 11.** The
+  re-tier was expected to shrink this and did the opposite, for the reason the classFactors item
+  above sets out: eight cars got a dearer parts basket against an unchanged book value, and the
+  parted yield scales with part prices while the whole-car value does not. `usedPartSaleFraction`
+  is still untouched. The lever to decide first is the class ladder, not this fraction.
 
 ## Planned systems (designed, not yet scheduled)
+
+- [ ] **The scrapyard (解体屋), maintainer-proposed 2026-07-28. Captured in full at
+  `docs/design/systems/scrapyard.md`; read that before scoping.** A new venue selling used
+  parts and half-stripped wrecks, buying scrap and poor parts for weight money, and taking
+  the shell so `scrapShell` becomes a transaction with a counterparty rather than an
+  abstract payout. Its point is an outlet where luck and digging beat paying full retail.
+
+  Three reasons it earns its place, from the doc: it gives the parts economy a **supply
+  side** (today the only way to obtain a part is to buy it new); it gives the teardown loop
+  the **subject it lacks** (a car nobody would repair, bought for the four good parts on
+  it); and it gives `poor` and `scrap` parts an honest exit instead of silting up the
+  warehouse at 3 per cent of new.
+
+  **The design risk is the whole design:** a yard that reliably sells the part you want at
+  half price destroys the parts economy settled on 2026-07-28. It has to be unreliable in a
+  way the player can work with. The maintainer's floated puzzle mechanic fits exactly, and
+  is **not a new system**: the inspection game is already a routing problem under a time
+  budget, and a yard visit is the same mechanic asking "which of these is worth taking
+  home" instead of "what is wrong with this car". `apparentBandByPartId` already exists to
+  express looks-versus-truth. Five open questions are listed at the doc's end; none is
+  answered.
+
+- [ ] **Selling parts has no friction: it is instant, free and unlimited (maintainer ruling
+  2026-07-28: LOW priority, and a middle ground rather than heavy friction).** `resolveSellPart`
+  costs 0 action points and converts any non-scrap part to cash immediately. Once the prices
+  were fixed this stopped being urgent, because part-out is now loss-making on every car in
+  the game and the arbitrage it was propping up is gone.
+
+  What selling parts should serve, in the maintainer's words: emergency cash when the player
+  needs quick turnover and has the inventory; clearing the warehouse of parts they do not
+  need; recouping something on bad parts they never intend to fix; and letting a player who
+  wants to roleplay a parts shop do so. **Heavy friction would defeat all four.** So the
+  question is what a middle ground looks like, not how to punish it. Revisit alongside the
+  scrapyard, since the yard is the natural home for the "clear the warehouse" and "bad parts"
+  cases and may absorb most of the need on its own.
 
 - [ ] **The cohesion pass: the game must look like the game before outside playtesting
   (maintainer amendment to the art bible, 2026-07-22).** A cohesive, if unpolished, art pass

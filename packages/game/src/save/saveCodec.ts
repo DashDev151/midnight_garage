@@ -8,7 +8,7 @@ import {
   type ComponentId,
   type GameState,
   type PartFitmentClass,
-  type RarityTier,
+  type CarTier,
 } from '@midnight-garage/content'
 import { bandForMigratedCondition } from '@midnight-garage/sim'
 
@@ -390,7 +390,7 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  *   catalog data, not save data). NOT the pure-additive case, though: a
  *   pre-v28 save's installed/inventory parts are all implicitly `common`-
  *   class regardless of their host car's real tier, which would leave an
- *   already-owned shitbox showing family-priced (4x too expensive) repair
+ *   already-owned entry-tier car showing family-priced (4x too expensive) repair
  *   bills forever. `migrateV27ToV28` remaps every real `PartInstance`
  *   reference (`ownedCars`, `activeAuctionLots[].car`, `activeServiceJobs[].car`,
  *   `serviceJobOffers[].car`, plus customer-tagged loose `partInventory`
@@ -567,8 +567,17 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * "not yet on the zone model" - exactly correct, since nothing yet reads the
  * field. The version bump alone is still required (Save law) so an old
  * client rejects a v47 save rather than silently dropping the field.
+ * v47 -> v48 (tier, rarity and origin split apart): `CarModel.tier` was
+ * re-cut onto market position (`entry`/`everyday`/`enthusiast`/`flagship`)
+ * and the scarcity and sourcing questions it used to answer moved to new
+ * `rarity`/`origin` fields. Save data carries no tier itself - it references
+ * models and part SKU ids, both of which resolve through content - but a
+ * pre-v48 save's part references were chosen against the old fitment classes,
+ * so its cars would read the wrong parts basket. Per directive 19, a plain
+ * SAVE_VERSION bump with NO migration: a pre-v48 save is wiped and a new game
+ * started, which is the correct outcome pre-launch.
  */
-export const SAVE_VERSION = 47
+export const SAVE_VERSION = 48
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'
@@ -1033,14 +1042,14 @@ function migrateV19ToV20(gameState: unknown): unknown {
  * `CarPartId`, the fallback a slot with nothing explicitly `installed`
  * migrates to (see `migratePartSlotToStock` below). A historical mapping
  * needed only for this migration - the live game reads `SimContext`'s own
- * `stockPartByCarPartId` instead (sim/context.ts). Pinned to the
- * `common` fitment class - every save this migration ever runs against
- * predates the fitment-class system, and `common` is the original catalog
- * unchanged, so this is exactly the part these saves would have seen.
+ * `stockPartByCarPartId` instead (sim/context.ts). Pinned to the `everyday`
+ * fitment class - every save this migration ever runs against predates the
+ * fitment-class system, and that class is the original catalog unchanged, so
+ * this is exactly the part these saves would have seen.
  */
 const STOCK_PART_ID_BY_CAR_PART_ID: Record<string, string> = Object.fromEntries(
   PARTS.filter(
-    (part) => part.grade === 'stock' && part.fitmentClass === 'common' && part.zoneId == null,
+    (part) => part.grade === 'stock' && part.fitmentClass === 'everyday' && part.zoneId == null,
   ).map((part) => [part.carPartId, part.id]),
 )
 
@@ -1190,7 +1199,7 @@ function migrateV22ToV23(gameState: unknown): unknown {
 
 /** Model id -> roster tier, for v27 -> v28's class remap (which fitment
  * class a car's parts should carry). */
-const MODEL_TIER_BY_ID: Record<string, RarityTier> = Object.fromEntries(
+const MODEL_TIER_BY_ID: Record<string, CarTier> = Object.fromEntries(
   CARS.map((model) => [model.id, model.tier]),
 )
 
@@ -1226,7 +1235,7 @@ function remappedPartId(oldPartId: string, targetClass: PartFitmentClass): strin
  * `CarInstance` to its own model's fitment class - a pre-v28 owned/lot/
  * service-job car's parts are all implicitly `common`-class regardless of
  * its real tier, which would otherwise leave (for example) an already-owned
- * shitbox showing family-priced repair bills forever. Defensive against a
+ * entry-tier car showing family-priced repair bills forever. Defensive against a
  * malformed/hand-edited save or an unresolvable model, same shape as every
  * other migration in this file.
  */
@@ -1301,7 +1310,7 @@ function migrateV27ToV28(gameState: unknown): unknown {
       })
     : state.serviceJobOffers
 
-  const activeJobCarTierById = new Map<string, RarityTier>()
+  const activeJobCarTierById = new Map<string, CarTier>()
   if (Array.isArray(state.activeServiceJobs)) {
     for (const sj of state.activeServiceJobs) {
       if (typeof sj !== 'object' || sj === null) continue

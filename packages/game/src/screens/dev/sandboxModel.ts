@@ -1,5 +1,6 @@
 import {
   ALL_CAR_PART_IDS,
+  CarTierSchema,
   GradeSchema,
   fitmentClassForTier,
   type CarInstance,
@@ -7,7 +8,7 @@ import {
   type CarPartId,
   type ConditionBand,
   type Grade,
-  type RarityTier,
+  type CarTier,
   type StatBlock,
 } from '@midnight-garage/content'
 import {
@@ -73,14 +74,7 @@ export const CONDITION_BANDS = ['scrap', 'poor', 'worn', 'fine', 'mint'] as cons
 export const SLOT_STATES = ['missing', ...CONDITION_BANDS] as const
 export type SlotState = (typeof SLOT_STATES)[number]
 export const GRADES = GradeSchema.options
-export const TIERS = [
-  'shitbox',
-  'common',
-  'uncommon',
-  'rare',
-  'gaisha',
-  'legend',
-] as const satisfies readonly RarityTier[]
+export const TIERS = CarTierSchema.options
 
 /** One slot of a sandbox build: a fitted part at a condition band and a grade,
  * or an empty slot. */
@@ -125,7 +119,7 @@ export interface SandboxCar {
   /** False for the 59 research entries that are not in the game. */
   inGame: boolean
   /** The tier the car starts at, before any override. */
-  defaultTier: RarityTier
+  defaultTier: CarTier
   /** Where `defaultTier` came from: the car's real `cars.json` value, a mapping
    * derived from the in-game 26, or a judgement call. */
   tierSource: SandboxTierSource
@@ -198,7 +192,7 @@ export function sandboxCars(context: SimContext): SandboxCar[] {
  * its own: it selects which of the four shared fitment classes of parts the car
  * can be offered. Returns a copy, so `cars.json`'s own 26 are never mutated.
  */
-export function modelAtTier(car: SandboxCar, tier: RarityTier): CarModel {
+export function modelAtTier(car: SandboxCar, tier: CarTier): CarModel {
   return tier === car.model.tier ? car.model : { ...car.model, tier }
 }
 
@@ -466,11 +460,11 @@ const CODE_VERSION = 'v1'
 
 export interface DecodedBuildCode {
   carId: string
-  tier: RarityTier
+  tier: CarTier
   build: SandboxBuild
 }
 
-export function encodeBuildCode(carId: string, tier: RarityTier, build: SandboxBuild): string {
+export function encodeBuildCode(carId: string, tier: CarTier, build: SandboxBuild): string {
   let slots = ''
   for (const partId of ALL_CAR_PART_IDS) {
     const slot = build[partId]
@@ -514,5 +508,5 @@ export function decodeBuildCode(
     if (!band || !grade) return null
     build[partId] = { band, grade }
   }
-  return { carId, tier: tier as RarityTier, build }
+  return { carId, tier: tier as CarTier, build }
 }

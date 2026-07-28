@@ -117,7 +117,7 @@ describe('birth site: stockInstanceFor (auctions.ts) stamps the passed origin', 
       'dampers',
       'mint',
       'test',
-      'common',
+      'everyday',
       CONTEXT.stockPartByCarPartId,
       origin,
     )
@@ -209,7 +209,7 @@ describe('close-out parity (Sprint 68 post-fix baseline, reimplemented over orig
     const bought = resolveBuyPart(
       baseState({ activeServiceJobs: [job], day: 2, cashYen: 10_000_000 }),
       PARTS.find(
-        (p) => p.carPartId === 'dampers' && p.fitmentClass === 'shitbox' && p.grade !== 'stock',
+        (p) => p.carPartId === 'dampers' && p.fitmentClass === 'entry' && p.grade !== 'stock',
       )!.id,
       CONTEXT,
       'express',

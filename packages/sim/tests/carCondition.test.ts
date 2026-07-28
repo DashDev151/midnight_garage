@@ -34,7 +34,9 @@ const model: CarModel = {
     curbWeightKg: 1200,
     stockPowerPs: 150,
   },
-  tier: 'common',
+  tier: 'everyday',
+  rarity: 'common',
+  origin: 'jdm',
   tags: ['FR', 'Turbo', 'Piston', '90s', 'JDM'],
   bookValueYen: 1_000_000,
 }

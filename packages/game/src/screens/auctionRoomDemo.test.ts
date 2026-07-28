@@ -19,7 +19,7 @@ function buildLobby(): DemoLobbyEntry[] {
 describe('auctionRoomDemo lobby', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
-  it('selects the highest-ratio lot (thin) and the single genuine trap (packed) from the fixed catalogue', () => {
+  it('selects the highest-ratio lot (thin) and the deepest genuine trap (packed) from the fixed catalogue', () => {
     // Directive 17 case (a): the seeded catalogue search picks whichever real
     // car scores best/worst by true-value-to-read ratio, so a
     // `valuation.marketRepairDiscount` or generation-floor move can pick
@@ -28,22 +28,22 @@ describe('auctionRoomDemo lobby', () => {
     const [thin, packed] = buildLobby()
 
     expect(thin!.key).toBe('thin')
-    expect(thin!.displayName).toBe('Honda Prelude Si VTEC (BB4)')
-    expect(thin!.roomReadYen).toBe(286_463)
-    expect(thin!.trueValueYen).toBe(335_937)
+    expect(thin!.displayName).toBe('Nissan Sunny (B12)')
+    expect(thin!.roomReadYen).toBe(77_120)
+    expect(thin!.trueValueYen).toBe(84_868)
     expect(thin!.incrementYen).toBe(5_000)
     expect(thin!.dealerCount).toBe(2)
     expect(thin!.verdict).toBe('better')
-    expect(thin!.trueValueYen / thin!.roomReadYen).toBeCloseTo(1.1727, 4)
+    expect(thin!.trueValueYen / thin!.roomReadYen).toBeCloseTo(1.10047, 4)
 
     expect(packed!.key).toBe('packed')
-    expect(packed!.displayName).toBe('Toyota MR2 (AW11)')
-    expect(packed!.roomReadYen).toBe(353_993)
-    expect(packed!.trueValueYen).toBe(184_064)
+    expect(packed!.displayName).toBe('Honda City E (AA)')
+    expect(packed!.roomReadYen).toBe(89_306)
+    expect(packed!.trueValueYen).toBe(64_307)
     expect(packed!.incrementYen).toBe(5_000)
     expect(packed!.dealerCount).toBe(6)
     expect(packed!.verdict).toBe('worse')
-    expect(packed!.trueValueYen / packed!.roomReadYen).toBeCloseTo(0.51996, 4)
+    expect(packed!.trueValueYen / packed!.roomReadYen).toBeCloseTo(0.72007, 4)
 
     // The thin lot beats the read (a clear steal); the trap sits below the trap
     // band of the read.

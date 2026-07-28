@@ -127,10 +127,6 @@ const COHERENCE_COLUMNS = [
   { name: 'consumablesShare', type: 'float64' },
   { name: 'repairCostYen', type: 'int64' },
   { name: 'repairLaborSlots', type: 'int64' },
-  { name: 'repairGainYen', type: 'int64' },
-  { name: 'rentDuringRepairYen', type: 'int64' },
-  { name: 'wageMarginYen', type: 'int64' },
-  { name: 'wageRatio', type: 'float64' },
 ] as const
 
 /** The teardown game's donor economy: one row per roster model,
@@ -284,10 +280,6 @@ function main(): void {
       row.consumablesShare.toFixed(6),
       row.repairCostYen,
       row.repairLaborSlots,
-      row.repairGainYen,
-      row.rentDuringRepairYen,
-      row.wageMarginYen,
-      row.wageRatio.toFixed(6),
     ].join(','),
   )
   writeCsv('coherence.csv', COHERENCE_COLUMNS, coherenceRows)

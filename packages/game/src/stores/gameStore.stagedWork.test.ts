@@ -21,12 +21,12 @@ function benchedBody(id: string, body: number, trait: StaffMember['trait']): Sta
 /**
  * An aftermarket (non-stock) catalog part for this slot. Every part fits any
  * car of the right CLASS now, so this just needs to avoid the stock grade
- * (already occupying every slot by default). Pinned to `shitbox` - every car
+ * (already occupying every slot by default). Pinned to `entry` - every car
  * this file grants (honda-city-e-aa and suzuki-wagon-r-ct21s) is that tier.
  */
 function untaggedPartFor(carPartId: string) {
   return PARTS.find(
-    (p) => p.carPartId === carPartId && p.grade !== 'stock' && p.fitmentClass === 'shitbox',
+    (p) => p.carPartId === carPartId && p.grade !== 'stock' && p.fitmentClass === 'entry',
   )!
 }
 

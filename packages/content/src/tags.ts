@@ -131,14 +131,37 @@ export const TyreCompoundSchema = z.enum([
   'slick',
 ])
 
-export const RarityTierSchema = z.enum([
-  'shitbox',
-  'common',
-  'uncommon',
-  'rare',
-  'gaisha',
-  'legend',
-])
+/**
+ * What league a car plays in - its market position, and nothing else. Drives
+ * the parts fitment class it is charged for, the condition the market expects
+ * of it (`valuation.expectationByTier`), and its repair economics.
+ *
+ * Deliberately says nothing about how hard the car is to find (`CarRarity`) or
+ * where it came from (`CarOrigin`). None of the four labels names a body type,
+ * so a car that is neither kei nor compact sits in `entry` without the label
+ * lying, and none collides with a part `grade` (`stock`/`street`/`sport`/
+ * `race`).
+ */
+export const CarTierSchema = z.enum(['entry', 'everyday', 'enthusiast', 'flagship'])
+
+/**
+ * How often you see one. Drives how often a car is drawn out of its own price
+ * band into an auction catalogue (`economy.auction.rarityDrawMultiplier`),
+ * flash-sale duration, and walk-in desirability - never price band, which is
+ * `CarTier`. Which ROOM a car turns up in is the room's own appetite for its
+ * price band, not its scarcity; the single exception is `legend`, which GDD
+ * 9.2 confines to the Collector Network (`canAppearAtAuctionTier`).
+ *
+ * `legend` currently has no car in it: the rung exists so the rep-gated
+ * Collector Network has somewhere to draw from once one is authored.
+ */
+export const CarRaritySchema = z.enum(['common', 'uncommon', 'rare', 'legend'])
+
+/**
+ * Where the car came from. Read by the Import Broker channel when that is
+ * built; inert everywhere else. Every shipped car is `jdm`.
+ */
+export const CarOriginSchema = z.enum(['jdm', 'gaisha'])
 
 export const ReputationTierSchema = z.enum(['unknown', 'local', 'known', 'respected', 'legend'])
 
@@ -149,5 +172,7 @@ export type ConditionBand = z.infer<typeof ConditionBandSchema>
 export type PhysicalDial = z.infer<typeof PhysicalDialSchema>
 export type Grade = z.infer<typeof GradeSchema>
 export type TyreCompound = z.infer<typeof TyreCompoundSchema>
-export type RarityTier = z.infer<typeof RarityTierSchema>
+export type CarTier = z.infer<typeof CarTierSchema>
+export type CarRarity = z.infer<typeof CarRaritySchema>
+export type CarOrigin = z.infer<typeof CarOriginSchema>
 export type ReputationTier = z.infer<typeof ReputationTierSchema>

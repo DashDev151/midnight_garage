@@ -6,15 +6,15 @@ import {
   fitmentClassForTier,
   PARTS,
   PARTS_TAXONOMY,
-  type AuctionTier,
+  type AuctionLot,
   type CarInstance,
   type CarModel,
   type GameState,
-  type RarityTier,
+  type CarTier,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import {
-  auctionTierForRarity,
+  canAppearAtAuctionTier,
   generateAuctionCarInstance,
   generateAuctionCatalog,
   minWorkTopUpCeilingBinds,
@@ -70,113 +70,211 @@ function stateWithLots(
   }
 }
 
-/** A synthetic Gaisha model - PoC-10 has none, so this proves the exclusion holds even when one exists in the pool. */
-const GAISHA_MODEL: CarModel = {
-  id: 'bmw-m3-e30',
-  displayName: 'BMW M3 (E30)',
-  brand: 'BMW',
-  parodyName: 'BMV M3 (E30)',
-  parodyBrand: 'BMV',
-  spec: {
-    chassisCode: 'E30',
-    engineCode: 'S14',
-    yearFrom: 1986,
-    curbWeightKg: 1200,
-    stockPowerPs: 200,
-  },
-  tier: 'gaisha',
-  tags: ['FR', 'NA', 'Piston', '80s', 'Gaisha'],
-  bookValueYen: 5_000_000,
-}
+const AUCTION_TIERS = ['local-yard', 'regional', 'premium', 'collector-network'] as const
 
-describe('auctionTierForRarity', () => {
-  it('maps every real tier and excludes gaisha', () => {
-    expect(auctionTierForRarity('shitbox')).toBe('local-yard')
-    expect(auctionTierForRarity('common')).toBe('local-yard')
-    expect(auctionTierForRarity('uncommon')).toBe('regional')
-    expect(auctionTierForRarity('rare')).toBe('premium')
-    expect(auctionTierForRarity('legend')).toBe('collector-network')
-    expect(auctionTierForRarity('gaisha')).toBeNull()
-  })
-})
-
-describe('generateAuctionCatalog never includes Gaisha', () => {
-  const modelsWithGaisha = [...CARS, GAISHA_MODEL]
-  const tiers = ['local-yard', 'regional', 'premium', 'collector-network'] as const
-
-  it('across many seeds and all four tiers', () => {
-    for (let seed = 0; seed < 50; seed++) {
-      for (const tier of tiers) {
-        const lots = generateAuctionCatalog(modelsWithGaisha, tier, 7, 5, createRng(seed), CONTEXT)
-        for (const lot of lots) {
-          expect(lot.modelId).not.toBe(GAISHA_MODEL.id)
-        }
-      }
+describe('canAppearAtAuctionTier', () => {
+  it('gives every car several rooms, and every room a real pool', () => {
+    // The whole point of the change: placement is a probability, not a rule.
+    // Regional and Premium weight all four price bands above zero, so the
+    // whole roster is eligible at both; the two ends of the ladder are the
+    // rooms that turn cars away.
+    for (const model of CARS) {
+      const rooms = AUCTION_TIERS.filter((tier) => canAppearAtAuctionTier(model, tier, ECONOMY))
+      expect(rooms.length, `${model.id} reaches too few auction rooms`).toBeGreaterThan(2)
     }
+    for (const tier of AUCTION_TIERS) {
+      expect(CARS.filter((m) => canAppearAtAuctionTier(m, tier, ECONOMY)).length).toBeGreaterThan(0)
+    }
+    expect(
+      CARS.filter((m) => canAppearAtAuctionTier(m, 'local-yard', ECONOMY)).length,
+    ).toBeLessThan(CARS.length)
+    expect(
+      CARS.filter((m) => canAppearAtAuctionTier(m, 'collector-network', ECONOMY)).length,
+    ).toBeLessThan(CARS.length)
+  })
+
+  it('a zero tier weight keeps that price band out of the room entirely', () => {
+    // Local Yard weights flagship at 0, Collector Network weights entry at 0:
+    // the two ends of the ladder never meet the wrong room.
+    const bnr32 = CARS.find((m) => m.id === 'nissan-skyline-gtr-bnr32')!
+    const cityE = CARS.find((m) => m.id === 'honda-city-e-aa')!
+    expect(bnr32.tier).toBe('flagship')
+    expect(cityE.tier).toBe('entry')
+    expect(canAppearAtAuctionTier(bnr32, 'local-yard', ECONOMY)).toBe(false)
+    expect(canAppearAtAuctionTier(cityE, 'collector-network', ECONOMY)).toBe(false)
+    const localYard = generateAuctionCatalog(CARS, 'local-yard', 7, 300, createRng(3), CONTEXT)
+    expect(localYard.filter((l) => CONTEXT.modelsById[l.modelId]!.tier === 'flagship')).toEqual([])
+  })
+
+  it('reads the price band, never the scarcity', () => {
+    // The Beat and the FD are two price bands apart and both uncommon. Their
+    // rooms follow their price bands alone.
+    const beat = CARS.find((m) => m.id === 'honda-beat-pp1')!
+    const fd = CARS.find((m) => m.id === 'mazda-rx7-fd3s')!
+    expect(beat.rarity).toBe(fd.rarity)
+    expect(beat.tier).not.toBe(fd.tier)
+    expect(canAppearAtAuctionTier(beat, 'local-yard', ECONOMY)).toBe(true)
+    expect(canAppearAtAuctionTier(fd, 'local-yard', ECONOMY)).toBe(false)
+    expect(canAppearAtAuctionTier(fd, 'collector-network', ECONOMY)).toBe(true)
+    expect(canAppearAtAuctionTier(beat, 'collector-network', ECONOMY)).toBe(false)
+  })
+
+  it('confines a legend to the Collector Network whatever its price band (GDD 9.2)', () => {
+    // No shipped car is legend, so this rule is currently inert - it is
+    // implemented rather than assumed, and this is what proves it.
+    expect(CARS.filter((m) => m.rarity === 'legend')).toEqual([])
+    const enthusiast = CARS.find((m) => m.tier === 'enthusiast')!
+    const legend: CarModel = { ...enthusiast, id: 'legend-test-model', rarity: 'legend' }
+    expect(canAppearAtAuctionTier(legend, 'local-yard', ECONOMY)).toBe(false)
+    expect(canAppearAtAuctionTier(legend, 'regional', ECONOMY)).toBe(false)
+    expect(canAppearAtAuctionTier(legend, 'premium', ECONOMY)).toBe(false)
+    expect(canAppearAtAuctionTier(legend, 'collector-network', ECONOMY)).toBe(true)
+    expect(generateAuctionCatalog([legend], 'premium', 7, 5, createRng(1), CONTEXT)).toHaveLength(0)
   })
 })
 
-describe('generateAuctionCatalog reputation-weighted rarity pick (Sprint 85 decision 5)', () => {
-  const localYardModels = CARS.filter((m) => auctionTierForRarity(m.tier) === 'local-yard')
-  const shitboxIds = new Set(localYardModels.filter((m) => m.tier === 'shitbox').map((m) => m.id))
-  const commonIds = new Set(localYardModels.filter((m) => m.tier === 'common').map((m) => m.id))
-
-  it('sanity: the Local Yard pool holds both shitbox and common models', () => {
-    expect(shitboxIds.size).toBeGreaterThan(0)
-    expect(commonIds.size).toBeGreaterThan(0)
+describe('no gaisha import reaches a regular auction catalogue', () => {
+  /**
+   * GDD 4.5: a gaisha is sourced only through the (unbuilt) Import Broker.
+   * Origin is now its own axis and nothing reads it yet, so the guarantee
+   * currently rests on the roster carrying no gaisha at all - which is what
+   * this asserts. The Import Broker owns the real exclusion when it lands
+   * (TODO.md); a gaisha added to `cars.json` before then fails here, which is
+   * the point.
+   */
+  it('because every shipped car is jdm', () => {
+    expect(CARS.filter((m) => m.origin !== 'jdm')).toEqual([])
   })
+})
 
-  it('at unknown reputation, draws shitbox models ~3:1 per model over common (content weight)', () => {
-    let shitboxLots = 0
-    let commonLots = 0
-    let totalLots = 0
-    // Aggregate several seeds to average out any single stream's luck; the
-    // draw is fully deterministic per seed regardless.
-    for (const seed of [101, 202, 303]) {
-      const lots = generateAuctionCatalog(
-        CARS,
-        'local-yard',
-        7,
-        1000,
-        createRng(seed),
-        CONTEXT,
-        Infinity,
-        'unknown',
+/**
+ * What a room actually stocks. The draw is two-stage - the room rolls a price
+ * band from its own signed row, then picks a car within that band by scarcity
+ * - and the whole reason it is two-stage is that the signed row then means
+ * literally what it says. These pin exactly that: a band's realised share is
+ * its row entry and nothing else, however many models sit in the band, and
+ * scarcity separates cars only within a band.
+ */
+describe('the catalogue mix each room draws', () => {
+  const CAR_TIERS: readonly CarTier[] = ['entry', 'everyday', 'enthusiast', 'flagship']
+  /** A lot is a whole generated car, so sample size is a real cost - hence the
+   * longer timeout on the sweep. The seeds are fixed, so these are
+   * deterministic checks rather than flaky ones.
+   *
+   * The sweep pools several independent seeds rather than drawing one long
+   * run, and that matters: generation consumes a variable number of rng draws
+   * per car (the condition guards roll per slot), so successive lots off ONE
+   * stream are correlated and the realised spread runs well wider than the
+   * binomial standard error would suggest. Independent seeds are genuinely
+   * independent samples, so pooling them buys real precision instead of
+   * widening the bound. */
+  const MIX_SAMPLE_LOTS = 1200
+  const ROOM_SWEEP_LOTS = 400
+  const ROOM_SWEEP_SEEDS = [4242, 909, 17, 55_555] as const
+  const SHARE_TOLERANCE = 0.05
+
+  function tierShareOf(lots: readonly AuctionLot[], carTier: CarTier): number {
+    return (
+      lots.filter((lot) => CONTEXT.modelsById[lot.modelId]!.tier === carTier).length / lots.length
+    )
+  }
+
+  function expectShareNear(observed: number, expected: number, label: string): void {
+    expect(
+      Math.abs(observed - expected),
+      `${label}: drew ${(observed * 100).toFixed(1)}% against an expected ${(expected * 100).toFixed(1)}%`,
+    ).toBeLessThan(SHARE_TOLERANCE)
+  }
+
+  it('draws each price band at exactly its signed share of the room', () => {
+    for (const tier of AUCTION_TIERS) {
+      const row = ECONOMY.auction.carTierWeightsByAuctionTier[tier]
+      const rowTotal = CAR_TIERS.reduce((sum, carTier) => sum + row[carTier], 0)
+      const lots = ROOM_SWEEP_SEEDS.flatMap((seed) =>
+        generateAuctionCatalog(CARS, tier, 7, ROOM_SWEEP_LOTS, createRng(seed), CONTEXT),
       )
-      totalLots += lots.length
-      for (const lot of lots) {
-        if (shitboxIds.has(lot.modelId)) shitboxLots += 1
-        else if (commonIds.has(lot.modelId)) commonLots += 1
+      expect(lots).toHaveLength(ROOM_SWEEP_LOTS * ROOM_SWEEP_SEEDS.length)
+      for (const carTier of CAR_TIERS) {
+        expectShareNear(tierShareOf(lots, carTier), row[carTier] / rowTotal, `${tier} ${carTier}`)
       }
     }
-    // Local Yard is shitbox + common only - every lot classified.
-    expect(shitboxLots + commonLots).toBe(totalLots)
-    const ratioPerModel = shitboxLots / shitboxIds.size / (commonLots / commonIds.size)
-    expect(ratioPerModel).toBeGreaterThan(2.7)
-    expect(ratioPerModel).toBeLessThan(3.3)
-    // A large sample by design (three 1000-lot draws, each rolling per-zone
-    // body state), so it needs headroom over the 5s default under coverage.
-  }, 30_000)
+  }, 20_000)
 
-  it('at local reputation (and the default legend), the model draw is the old uniform pick - identical to today', () => {
-    // No rarity weights exist for local or the default legend tier, so both
-    // draw uniformly, and from the same seed produce the identical sequence -
-    // proving the reputation param never disturbs the local+ auction stream.
-    const atLocal = generateAuctionCatalog(
+  it('holds that share however many models the band contains', () => {
+    // The reason the draw is two-stage rather than one weighted pool. The
+    // enthusiast band holds 12 of the 26 models and the flagship band 5; under
+    // a single pool that population alone would have swamped the signed row.
+    expect(CARS.filter((m) => m.tier === 'enthusiast').length).toBeGreaterThan(
+      2 * CARS.filter((m) => m.tier === 'flagship').length,
+    )
+    const row = ECONOMY.auction.carTierWeightsByAuctionTier['collector-network']
+    const rowTotal = CAR_TIERS.reduce((sum, carTier) => sum + row[carTier], 0)
+    const lots = generateAuctionCatalog(
+      CARS,
+      'collector-network',
+      7,
+      MIX_SAMPLE_LOTS,
+      createRng(31337),
+      CONTEXT,
+    )
+    expectShareNear(
+      tierShareOf(lots, 'flagship'),
+      row.flagship / rowTotal,
+      'collector-network flagship',
+    )
+    expect(tierShareOf(lots, 'flagship')).toBeGreaterThan(tierShareOf(lots, 'enthusiast'))
+  })
+
+  it('separates cars by scarcity within a band, in proportion to the multiplier', () => {
+    // The entry band holds three common cars and two uncommon, so at a
+    // multiplier of 0.5 the band's weight totals 4: a quarter of its lots to
+    // the uncommon pair, and a quarter to each common car.
+    const lots = generateAuctionCatalog(
       CARS,
       'local-yard',
       7,
-      200,
-      createRng(999),
+      MIX_SAMPLE_LOTS,
+      createRng(4242),
       CONTEXT,
-      Infinity,
-      'local',
+    ).filter((lot) => CONTEXT.modelsById[lot.modelId]!.tier === 'entry')
+    expect(lots.length).toBeGreaterThan(600)
+    const uncommon = CARS.filter((m) => m.tier === 'entry' && m.rarity === 'uncommon')
+    const common = CARS.filter((m) => m.tier === 'entry' && m.rarity === 'common')
+    expect(uncommon).toHaveLength(2)
+    expect(common).toHaveLength(3)
+    const shareOf = (ids: readonly string[]) =>
+      lots.filter((lot) => ids.includes(lot.modelId)).length / lots.length
+    expectShareNear(
+      shareOf(uncommon.map((m) => m.id)),
+      0.25,
+      'the entry band uncommon pair at local-yard',
     )
-    const atDefault = generateAuctionCatalog(CARS, 'local-yard', 7, 200, createRng(999), CONTEXT)
-    expect(atLocal.map((l) => l.modelId)).toEqual(atDefault.map((l) => l.modelId))
-    // The uniform draw genuinely surfaces common models too, unlike the
-    // shitbox-biased unknown-rep board above.
-    expect(atLocal.some((l) => commonIds.has(l.modelId))).toBe(true)
+    for (const model of common) {
+      expectShareNear(shareOf([model.id]), 0.25, `${model.id} within the entry band`)
+    }
+  })
+
+  it('a room draws several price bands and several rarities at once', () => {
+    // The Local Yard used to be one rarity by construction, and therefore the
+    // same fifteen models forever. It is now a mix, which is the point.
+    const lots = generateAuctionCatalog(CARS, 'local-yard', 7, 200, createRng(999), CONTEXT)
+    const drawn = lots.map((lot) => CONTEXT.modelsById[lot.modelId]!)
+    expect(new Set(drawn.map((m) => m.tier)).size).toBeGreaterThan(1)
+    expect(new Set(drawn.map((m) => m.rarity)).size).toBeGreaterThan(1)
+    expect(new Set(drawn.map((m) => m.id)).size).toBeGreaterThan(8)
+  })
+
+  it('drops an unstocked band from the roll rather than re-rolling it', () => {
+    // The documented edge case, unreachable on the shipped roster: a room whose
+    // entry band has no eligible model must still fill its catalogue, with the
+    // remaining bands taking the vacated share in their own proportions.
+    const withoutEntry = CARS.filter((m) => m.tier !== 'entry')
+    const lots = generateAuctionCatalog(withoutEntry, 'local-yard', 7, 600, createRng(77), CONTEXT)
+    expect(lots).toHaveLength(600)
+    expect(tierShareOf(lots, 'entry')).toBe(0)
+    // Local Yard's surviving bands are everyday 28 and enthusiast 2, so
+    // everyday takes 28/30 of the room.
+    expectShareNear(tierShareOf(lots, 'everyday'), 28 / 30, 'local-yard everyday without entry')
   })
 })
 
@@ -494,7 +592,7 @@ describe('generation is mileage-driven: age -> mileage -> condition (Sprint 34)'
     // sits high. The core-loop floor now layers a SEPARATE, deliberate
     // below-expectation top-up on top of that baseline (regardless of age -
     // every generated car carries some floor-level fixable work), and for a
-    // shitbox model that top-up can only ever land on `poor` (its own
+    // entry-tier model that top-up can only ever land on `poor` (its own
     // 'worn' expectation band means anything milder does not count as
     // below-expectation work), never a spread of gentler bands. The honest
     // post-floor fraction therefore sits well above the old wear-model-only
@@ -560,14 +658,10 @@ describe('lot transparency (Sprint 26 decision 10 - no reveal machinery)', () =>
  * a real failure, not tolerance.
  */
 describe('the core-loop floor: every generated lot carries fixable work', () => {
-  // Local Yard mixes shitbox and common models, so both are exercised there
-  // under their own rarity tier, each with its own floor fraction.
-  const TIERS: readonly [RarityTier, AuctionTier][] = [
-    ['shitbox', 'local-yard'],
-    ['common', 'local-yard'],
-    ['uncommon', 'regional'],
-    ['rare', 'premium'],
-  ]
+  // The floor fraction is keyed by fitment class, so every car TIER needs its
+  // own sample. Which room a tier's cars are drawn from is a separate question
+  // (a room weights price bands), so each tier draws from every room it reaches.
+  const TIERS: readonly CarTier[] = ['entry', 'everyday', 'enthusiast', 'flagship']
   const SEEDS = [11, 22, 33, 44, 55]
   const LOTS_PER_SEED = 50 // 5 seeds x 50 = 250 lots per tier, clearing the 200-lot floor
 
@@ -625,7 +719,7 @@ describe('the core-loop floor: every generated lot carries fixable work', () => 
   function expectMeetsFloorOrExhausted(
     lot: ReturnType<typeof generateAuctionCatalog>[number],
     lotModel: CarModel,
-    rarityTier: RarityTier,
+    carTier: CarTier,
   ): void {
     const billBelow = billBelowExpectationYen(lot.car, lotModel)
     const floor = floorYenFor(lotModel)
@@ -642,24 +736,29 @@ describe('the core-loop floor: every generated lot carries fixable work', () => 
       everyPartAtWorstReachableBand(lot.car) || minWorkTopUpCeilingBinds(lot.car, lotModel, CONTEXT)
     expect(
       metFloor || exhausted,
-      `${lot.id} (${lotModel.id}): below-expectation bill ${billBelow} under its ${rarityTier} floor ${floor}, not every part exhausted, and the Law 2 ceiling isn't binding either - a real shortfall`,
+      `${lot.id} (${lotModel.id}): below-expectation bill ${billBelow} under its ${carTier} floor ${floor}, not every part exhausted, and the Law 2 ceiling isn't binding either - a real shortfall`,
     ).toBe(true)
   }
 
-  for (const [rarityTier, auctionTier] of TIERS) {
-    it(`every ${rarityTier} lot's true car meets its floor (or is fully exhausted trying), over >= 200 lots across several seeds`, () => {
-      const models = CARS.filter((m) => m.tier === rarityTier)
-      expect(models.length, `fixture roster has no ${rarityTier} models`).toBeGreaterThan(0)
+  for (const carTier of TIERS) {
+    it(`every ${carTier} lot's true car meets its floor (or is fully exhausted trying), over >= 200 lots across several seeds`, () => {
+      const models = CARS.filter((m) => m.tier === carTier)
+      expect(models.length, `fixture roster has no ${carTier} models`).toBeGreaterThan(0)
 
-      const lots = SEEDS.flatMap((seed) =>
-        generateAuctionCatalog(models, auctionTier, 7, LOTS_PER_SEED, createRng(seed), CONTEXT),
+      const rooms = AUCTION_TIERS.filter((room) =>
+        models.some((m) => canAppearAtAuctionTier(m, room, ECONOMY)),
+      )
+      const lots = rooms.flatMap((room) =>
+        SEEDS.flatMap((seed) =>
+          generateAuctionCatalog(models, room, 7, LOTS_PER_SEED, createRng(seed), CONTEXT),
+        ),
       )
       expect(lots.length).toBeGreaterThanOrEqual(200)
 
       for (const lot of lots) {
         const lotModel = CONTEXT.modelsById[lot.modelId]
         if (!lotModel) throw new Error(`generated lot references unknown model "${lot.modelId}"`)
-        expectMeetsFloorOrExhausted(lot, lotModel, rarityTier)
+        expectMeetsFloorOrExhausted(lot, lotModel, carTier)
       }
 
       const cherishedLots = lots.filter((lot) =>
@@ -667,11 +766,11 @@ describe('the core-loop floor: every generated lot carries fixable work', () => 
       )
       expect(
         cherishedLots.length,
-        `expected at least one cherished-provenance ${rarityTier} lot in the sample`,
+        `expected at least one cherished-provenance ${carTier} lot in the sample`,
       ).toBeGreaterThan(0)
       for (const lot of cherishedLots) {
         const lotModel = CONTEXT.modelsById[lot.modelId]!
-        expectMeetsFloorOrExhausted(lot, lotModel, rarityTier)
+        expectMeetsFloorOrExhausted(lot, lotModel, carTier)
       }
     })
   }

@@ -190,6 +190,154 @@ import storyMissions from '../data/storyMissions.json'
  * margin as it was"): measured fresh through `tutorialProbe`, the taught build
  * spends 128070, the one sanctioned mistake adds 5500 for 133570 against the 135000
  * cap, and designed profit is 6930, inside the (0, 15000] band that probe asserts.
+ *
+ * Re-pinned for the tier/rarity/origin split approved in docs/sprints/sprint133.md
+ * (sections 4 and 8). NO VALUE MOVES: the six tier-keyed blocks
+ * (`valuation.expectationByTier`, `partsGeneration.minWorkBillFractionByTier`, the
+ * three `partsGeneration.zoneStates` weight tables, and `diagnosis.symptomChanceByTier`)
+ * carry their numbers verbatim under the renamed keys shitbox -> entry, common ->
+ * everyday, uncommon -> enthusiast, rare -> flagship. `reputation.cleanSaleMinBand`
+ * was never tier-keyed and is untouched. What DOES move is the key SET of the three
+ * tables the old enum keyed by scarcity rather than price band, because `shitbox` and
+ * `gaisha` are no longer rarities: `selling.offerChanceByTier` becomes
+ * `selling.offerChanceByRarity` and drops shitbox 1.1 and gaisha 0.6 (common 1.05,
+ * uncommon 0.9, rare 0.75, legend 0.45 all unchanged);
+ * `sellingChannels.freeAdsPaper.offerChanceFactorByTierClass` becomes
+ * `offerChanceFactorByRarity` and drops shitbox 1.5 and gaisha 0.5 (common 1.5,
+ * uncommon 0.5, rare 0.5, legend 0.5 all unchanged); and
+ * `auction.rarityWeightsByReputation` loses its only entry, `{unknown: {shitbox: 3}}`,
+ * leaving `{}`. That last one is section 8's flagged decision and is NOT yet signed:
+ * keyed to rarity the table is inert by construction, because `auctionTierForRarity`
+ * partitions rooms by the same field, so every candidate in a room draws the identical
+ * weight. The day-1 Local Yard is therefore uniform over 15 models spanning 130000 to
+ * 1850000 yen, where it previously favoured cheap cars 3:1 over 12 models spanning
+ * 130000 to 650000. Mission payouts and budget caps are deliberately untouched here
+ * and four of them are consequently off-formula; see that sprint doc's Exit.
+ *
+ * Re-pinned 2026-07-28 (maintainer approval, in session, values signed with the
+ * design): auction catalogues are drawn per ROOM rather than per rarity.
+ * `auction.rarityWeightsByReputation` (an empty map, and inert by construction)
+ * is removed, and two new tables replace it. `auction.carTierWeightsByAuctionTier`
+ * gives each room its own appetite per car price band - local-yard 70/28/2/0,
+ * regional 25/45/27/3, premium 3/17/55/25, collector-network 0/3/27/70, over
+ * entry/everyday/enthusiast/flagship. `auction.rarityDrawMultiplier` is common 1.0,
+ * uncommon 0.5, rare 0.2, legend 0.05. The draw is two-stage on the maintainer's
+ * own correction: the room rolls a price band from its row, THEN picks a car within
+ * that band by scarcity, so a row entry is literally the band's share of the room
+ * and cannot drift as models are added to the roster. `auctionTierForRarity` is
+ * gone, replaced by `canAppearAtAuctionTier`; a zero row entry keeps a band out of
+ * a room entirely, and GDD 9.2's legend rule is now an explicit gate rather than a
+ * consequence of the old 1:1 mapping. No other lever moves. What follows from it is
+ * that every generated board changes, so both `advanceDay` golden hashes and the
+ * auction-room demo bench are re-derived from real runs.
+ *
+ * Re-pinned in the same change for the four formula-derived mission payouts that
+ * Sprint 133 left off-formula, per the maintainer's standing ruling of 2026-07-28
+ * that formula-derived payouts follow the formula: `first-proper-car` 519000 ->
+ * 425000, `make-it-pull` 949000 -> 1113000, `the-fleet-spare` 237000 -> 266000,
+ * `the-showroom-standard` 926000 -> 800000. Each budget cap moves with its own
+ * payout, holding the one-price contract. Every figure is what `storyMissionProbes`'s
+ * own `payoutYenFor` rule yields against a fresh measurement, never hand-picked.
+ * `four-wheels` stays at 135000: it sits deliberately off the generic formula.
+ *
+ * Re-pinned 2026-07-28 (maintainer approval, in session) for the teardown and
+ * repair retune, whose whole purpose is that a car's four plays rank correctly:
+ * fix to the expected condition, fix past it, strip and recondition, strip as
+ * found. Four levers, each approved by name:
+ *
+ * 1. `teardown.usedPartSaleFraction` 0.55 -> 0.3.
+ * 2. `teardown.resaleBandFactors` is NEW - mint 1.0, fine 0.75, worn 0.55, poor
+ *    0.1, with no `scrap` entry because a scrap part is unsellable. It is the
+ *    condition curve used for RESALE only; `bands.bandFactors` (1.0/0.85/0.65/
+ *    0.4/0.15) still drives repair cost and car value and is untouched. The
+ *    resale curve is deliberately steeper at the bottom, so reconditioning a
+ *    poor part to worn before selling it costs 10% of the part's price and
+ *    returns 13.5%, while every rung above worn costs more than it returns.
+ * 3. `partPricing.json`'s `classFactors` 0.25/1.0/1.6/2.5 -> 0.14/0.16/0.4/0.9.
+ *    economy.json does not carry them, so this is recorded here rather than
+ *    hashed here. Derived, not chosen: a tier's whole stock-parts basket now
+ *    lands at 0.56/0.66/0.68/0.62 of what a typical car in that tier is worth
+ *    (it ran 0.93/4.05/2.73/3.47 before), and the binding constraint is the
+ *    cheapest car in each tier, which must not be strippable for profit. The
+ *    entry-to-everyday step collapses because the re-tier made those two tiers
+ *    the same price band; the old 4x step was calibrated when `shitbox` meant
+ *    "cheap car" rather than "kei-sized components".
+ * 4. `energy.actionPoints.removeAssembly` stays 0 and pulling an assembly stops
+ *    being free anyway: `resolveRemoveAssembly` now charges that figure PLUS
+ *    one `removePart` per member actually installed, the same shape
+ *    `resolveRefitAssembly` already used for refit labour. An engine therefore
+ *    costs 8 points to pull rather than 0, and re-prices itself if the assembly
+ *    ever gains or loses a member. `refitAssembly`, `refitUnchangedMember`,
+ *    `benchFitMember` and `benchRemoveMember` all stay at 0.
+ *
+ * Deleted in the same change, on the maintainer's instruction: economy-bible
+ * law 6, the wage check. It charged a share of the weekly rent against one
+ * car's repair, which directive 22 forbids outright. `wageMarginYen`,
+ * `wageRatio`, `repairGainYen` and `rentDuringRepairYen` are gone from the
+ * coherence row, the CSV export and the Python invariants, with no softened
+ * replacement. What a repair is worth against the alternatives is measured by
+ * the four-play ranking (`packages/sim/src/plays.ts`) instead, which charges no
+ * overhead to any play.
+ *
+ * Every formula-derived mission payout moves with the parts prices, per the
+ * maintainer's standing ruling of 2026-07-28 that formula-derived payouts
+ * follow the formula: `wont-strand-her` 165000 -> 156000, `the-fleet-spare`
+ * 266000 -> 388000, `first-proper-car` 425000 -> 614000, `make-it-pull` 1113000
+ * -> 785000, `the-column-clock` 1048000 -> 1000000, `the-showroom-standard`
+ * 800000 -> 704000, `low-and-loud` 1265000 -> 1162000,
+ * `street-power-street-manners` 1343000 -> 952000, `under-one-fifteen` 1876000
+ * -> 1701000. Each budget cap moves with its own payout, holding the one-price
+ * contract. The directions differ because a cheaper parts basket cuts repair
+ * cost but RAISES what a rough car is worth to buy. Every figure is what
+ * `storyMissionProbes`'s own `payoutYenFor` rule yields against a fresh
+ * measurement, never hand-picked. `four-wheels` is unchanged at 135000 and is
+ * the one open question: it sits deliberately off the formula, and the taught
+ * build now costs 138012 against its 135000 cap, so `tutorialProbe` is left RED
+ * rather than moving a lever nobody signed.
+ *
+ * Re-pinned 2026-07-28 (maintainer approval, in session): `four-wheels`
+ * payout/budget 135000 -> 142000, which answers the open question the
+ * paragraph above left standing. This mission sits deliberately off the
+ * generic formula (it is the tutorial), so this is a hand-set value, not a
+ * formula re-derivation. The re-derived class factors made the scripted lot's
+ * repair bill smaller, so the car itself got dearer while every part got
+ * cheaper. Measured fresh through `tutorialProbe`, the taught build spends
+ * 134912: the reserve 112832, one stock tyre 3100, the head/valvetrain rung
+ * 980, the wheels line hire 3000, the engine line hire 15000. Against the old
+ * 135000 that left 88 yen, well short of the 3100 the one sanctioned mistake
+ * costs (sport rubber instead of the stock tyres the copy points at). At
+ * 142000 the mistake is absorbed with 3988 to spare and designed profit is
+ * 7088, inside the (0, 15000] band that probe asserts.
+ *
+ * Re-pinned 2026-07-28 (maintainer approval, in session):
+ * `AUCTION_BUYOUT_PREMIUM` 1.25 -> 1.05. Buying a lot outright rather than
+ * bidding for it is meant to be an impatience tax with a way back, and at 1.25
+ * the premium exceeded what a restoration can add on most of the roster.
+ *
+ * Read this premium against 0.81, not against 1.0, or the lever gets set wrong
+ * again. It multiplies GUIDE value, but a contested win in the live room lands
+ * at that room's clearing fraction, whose expectation is 0.8081 over the
+ * shipped `auctionRoom` turnout bands and bargain chance. A premium of 1.00
+ * therefore already costs 1.24x a room win, and every further point comes
+ * straight out of a restoration margin worth only about 13.7% of book. 1.05
+ * puts buying outright at 1.30x a room win, which is a tax large enough to feel
+ * while leaving buy-it-now a route rather than a trap; 1.10 sits past that
+ * cliff, handing back essentially the whole margin.
+ *
+ * The value is recorded with the measurement that judges it rather than with a
+ * claim that it clears. Against each model's rough probe car
+ * (`buildRoughProbeCar`, every slot at poor), restored value minus buyout price
+ * minus restoration bill is positive at 1.05 on 20 of 26 models on the
+ * repair-to-expectation play the economy actually asks for, and on 20 of 26 on
+ * a full mint restoration; at 1.25 it was 1 and 5. The six that do not clear on
+ * the expectation play miss by between 0.6% and 2.7% of book:
+ * suzuki-wagon-r-ct21s, suzuki-alto-works-ha21s, honda-beat-pp1,
+ * honda-city-turbo-ii-aa, nissan-cefiro-a31 and nissan-skyline-gtr-bnr32, whose
+ * own break-even premiums run 1.010 to 1.039. Clearing all 26 needs about 1.01,
+ * a tax nobody would feel. Winning those same cars in the room instead is
+ * positive on 26 of 26 and pays a median 13.7% of book against the buyout's
+ * 1.9%, so the tax stays visible on every model whether or not it clears. The
+ * lever stands at 1.05 as signed, with the six disclosed rather than tuned away.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -199,7 +347,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('d294ac5b58aed18db40dc1b8bdd1098c98b34c2f0ae677f3b34f1001fe6e29a2')
+    ).toBe('a5d898ed0e891d3038841d8dc97c7c459a6725e16660faffa372c878c3d82faa')
   })
 
   it('mission payouts and budget caps match their approved values exactly', () => {
@@ -214,16 +362,16 @@ describe('the economy approval gate', () => {
       'A mission payout or budget cap changed. These are approval-gated ' +
         '(CLAUDE.md directive 22): re-pin only alongside the recorded approval.',
     ).toEqual({
-      'four-wheels': { payoutYen: 135000, budgetCapYen: 135000 },
-      'wont-strand-her': { payoutYen: 165000, budgetCapYen: 165000 },
-      'first-proper-car': { payoutYen: 519000, budgetCapYen: 519000 },
-      'make-it-pull': { payoutYen: 949000, budgetCapYen: 949000 },
-      'the-column-clock': { payoutYen: 1048000, budgetCapYen: 1048000 },
-      'low-and-loud': { payoutYen: 1265000, budgetCapYen: 1265000 },
-      'street-power-street-manners': { payoutYen: 1343000, budgetCapYen: 1343000 },
-      'under-one-fifteen': { payoutYen: 1876000, budgetCapYen: 1876000 },
-      'the-fleet-spare': { payoutYen: 237000, budgetCapYen: 237000 },
-      'the-showroom-standard': { payoutYen: 926000, budgetCapYen: 926000 },
+      'four-wheels': { payoutYen: 142000, budgetCapYen: 142000 },
+      'wont-strand-her': { payoutYen: 156000, budgetCapYen: 156000 },
+      'first-proper-car': { payoutYen: 614000, budgetCapYen: 614000 },
+      'make-it-pull': { payoutYen: 785000, budgetCapYen: 785000 },
+      'the-column-clock': { payoutYen: 1000000, budgetCapYen: 1000000 },
+      'low-and-loud': { payoutYen: 1162000, budgetCapYen: 1162000 },
+      'street-power-street-manners': { payoutYen: 952000, budgetCapYen: 952000 },
+      'under-one-fifteen': { payoutYen: 1701000, budgetCapYen: 1701000 },
+      'the-fleet-spare': { payoutYen: 388000, budgetCapYen: 388000 },
+      'the-showroom-standard': { payoutYen: 704000, budgetCapYen: 704000 },
     })
   })
 })

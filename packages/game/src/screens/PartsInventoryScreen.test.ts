@@ -42,9 +42,9 @@ describe('PartsInventoryScreen', () => {
   it('omits a part currently staged on a car - the same set CarDetailScreen uses (decision 3)', () => {
     const game = useGameStore()
     // devGrantCar() with no id defaults to the first roster model
-    // (honda-city-e-aa, 'shitbox' tier) - the staged part must match.
-    const shitboxPart = PARTS.find((p) => p.fitmentClass === 'shitbox')!
-    game.devGrantPart(shitboxPart.id)
+    // (honda-city-e-aa, 'entry' tier) - the staged part must match.
+    const entryPart = PARTS.find((p) => p.fitmentClass === 'entry')!
+    game.devGrantPart(entryPart.id)
     const partInstanceId = game.gameState.partInventory[0]!.id
     game.devGrantCar()
     const carId = game.gameState.ownedCars[0]!.id
@@ -53,14 +53,14 @@ describe('PartsInventoryScreen', () => {
     // second, still-unstaged part into inventory) so the staged install
     // actually has somewhere to land.
     const car = game.gameState.ownedCars[0]!
-    const carPartId = shitboxPart.carPartId
+    const carPartId = entryPart.carPartId
     game.gameState = {
       ...game.gameState,
       ownedCars: [{ ...car, parts: { ...car.parts, [carPartId]: { installed: null } } }],
     }
     game.stageAction(carId, {
       kind: 'install',
-      componentId: game.groupForCarPart(shitboxPart.carPartId)!,
+      componentId: game.groupForCarPart(entryPart.carPartId)!,
       partInstanceId,
     })
 

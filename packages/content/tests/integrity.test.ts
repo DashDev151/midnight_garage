@@ -20,8 +20,8 @@ import {
   PARTS,
   PARTS_TAXONOMY,
   ServiceJobTypesSchema,
+  type CarTier,
   type PartCatalogEntry,
-  type RarityTier,
 } from '../src'
 
 const TAXONOMY_CONTENT = CarPartTaxonomyContentSchema.parse(partsTaxonomy)
@@ -38,25 +38,21 @@ describe('referential integrity', () => {
 
   it('every car book value falls inside its tier range (docs/design/reference/period-scans/roster-price-list-v2.md)', () => {
     const parsedCars = CarModelsSchema.parse(cars)
-    // A sanity band per rarity tier, not a pricing rule: the canonical roster
-    // price list sets each car's book value from period market evidence at the
-    // game year the player reaches it, and rarity is desirability and spawn
-    // frequency, not price. The two only correlate loosely - a cult kei (Beat)
-    // outsells plenty of `common` coupes, and a 1990s executive saloon
-    // (Aristo) is `rare` on the road while costing less than a clean AE86. So
-    // the bands overlap heavily by design and exist only to catch a car whose
-    // book value has landed an order of magnitude away from its tier.
-    const ranges: Record<RarityTier, [number, number]> = {
-      shitbox: [80_000, 600_000],
-      common: [300_000, 1_200_000],
-      uncommon: [400_000, 2_500_000],
-      rare: [700_000, 6_000_000],
-      gaisha: [3_000_000, 15_000_000],
-      legend: [5_000_000, 100_000_000],
+    // A sanity band per tier, not a pricing rule: the canonical roster price
+    // list sets each car's book value from period market evidence at the game
+    // year the player reaches it, and this catches a car that has landed in a
+    // bucket its price cannot justify. Tier IS market position now, so the
+    // bands are tight; what overlap remains is deliberate, because a kei sits
+    // in `entry` regardless of price (the Beat clears four `everyday` cars)
+    // and its parts basket is kei-sized either way.
+    const ranges: Record<CarTier, [number, number]> = {
+      entry: [100_000, 700_000],
+      everyday: [120_000, 800_000],
+      enthusiast: [400_000, 1_400_000],
+      flagship: [1_200_000, 6_000_000],
     }
     for (const car of parsedCars) {
-      const range = ranges[car.tier]
-      const [min, max] = range
+      const [min, max] = ranges[car.tier]
       expect(
         car.bookValueYen,
         `${car.id} (${car.tier}) book value ${car.bookValueYen} out of range`,
@@ -289,7 +285,7 @@ describe('referential integrity', () => {
    * `underbody` and `aero` carry their own, separately-shaped counts below.
    */
   it('every ordinary real car part has exactly 16 catalog SKUs - 4 fitment classes x 4 grades', () => {
-    const FITMENT_CLASSES = ['shitbox', 'common', 'uncommon', 'rare'] as const
+    const FITMENT_CLASSES = ['entry', 'everyday', 'enthusiast', 'flagship'] as const
     const nonZonePanelParts = PARTS.filter((p) => p.zoneId === undefined)
     for (const carPartId of CarPartIdSchema.options) {
       if (
@@ -321,7 +317,7 @@ describe('referential integrity', () => {
    * derives.
    */
   it('the three derived body value carriers carry a stock SKU only, one per fitment class, no aftermarket grades', () => {
-    const FITMENT_CLASSES = ['shitbox', 'common', 'uncommon', 'rare'] as const
+    const FITMENT_CLASSES = ['entry', 'everyday', 'enthusiast', 'flagship'] as const
     const nonZonePanelParts = PARTS.filter((p) => p.zoneId === undefined)
     for (const carPartId of DERIVED_BODY_PART_IDS) {
       for (const fitmentClass of FITMENT_CLASSES) {
@@ -344,7 +340,7 @@ describe('referential integrity', () => {
    * 1.
    */
   it('the widened aero slot carries 3 SKUs per non-stock grade (the original plus two migrated kits), 1 stock', () => {
-    const FITMENT_CLASSES = ['shitbox', 'common', 'uncommon', 'rare'] as const
+    const FITMENT_CLASSES = ['entry', 'everyday', 'enthusiast', 'flagship'] as const
     const nonZonePanelParts = PARTS.filter((p) => p.zoneId === undefined)
     for (const fitmentClass of FITMENT_CLASSES) {
       const stockCandidates = nonZonePanelParts.filter(
@@ -369,7 +365,7 @@ describe('referential integrity', () => {
    * the 5 x 4 = 20 zone panels = 472.
    */
   it('the catalog carries exactly 20 zone-panel SKUs - 5 zones x 4 fitment classes - and 472 entries total', () => {
-    const FITMENT_CLASSES = ['shitbox', 'common', 'uncommon', 'rare'] as const
+    const FITMENT_CLASSES = ['entry', 'everyday', 'enthusiast', 'flagship'] as const
     const zonePanelParts = PARTS.filter((p) => p.zoneId !== undefined)
     expect(zonePanelParts.length).toBe(20)
     expect(PARTS.length).toBe(472)
@@ -397,7 +393,7 @@ describe('referential integrity', () => {
    * at the player (mirrors the component-display-name law's own guard).
    */
   it('every fitment class has a real display name, never the raw identifier', () => {
-    for (const fitmentClass of ['shitbox', 'common', 'uncommon', 'rare'] as const) {
+    for (const fitmentClass of ['entry', 'everyday', 'enthusiast', 'flagship'] as const) {
       const label = PART_FITMENT_CLASS_DISPLAY_NAMES[fitmentClass]
       expect(label, `${fitmentClass} has no display name`).toBeTruthy()
       expect(label).not.toBe(fitmentClass)

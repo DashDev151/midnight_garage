@@ -32,18 +32,17 @@
     "zonePanel": 6000
   },
   "classFactors": {
-    "shitbox": 0.25,
-    "common": 1.0,
-    "uncommon": 1.6,
-    "rare": 2.5,
-    "legend": 4.0
+    "entry": 0.14,
+    "everyday": 0.16,
+    "enthusiast": 0.4,
+    "flagship": 0.9
   },
   "gradeFactors": {
-    "stock": 1.0,
+    "stock": 1,
     "street": 1.3,
-    "sport": 2.0,
-    "race": 3.0
+    "sport": 2,
+    "race": 3
   },
-  "globalFactor": 1.0,
+  "globalFactor": 1,
   "overrides": {}
 }

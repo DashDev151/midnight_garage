@@ -8,7 +8,6 @@ import {
   type ServiceJob,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
-import { bandFactor } from '../src/bands'
 import { buildSimContext } from '../src/context'
 import { PARTS_EXPRESS_SURCHARGE_FRACTION, PARTS_STANDARD_DELIVERY_DAYS } from '../src/constants'
 import {
@@ -293,12 +292,12 @@ describe('resolveSellPart (Sprint 71 decision 6: the teardown game donor economy
     origin: makeMarketOrigin(1),
   }
 
-  it('sells a used, non-scrap part at the catalog price scaled by its band factor and the used-part haircut', () => {
+  it('sells a used, non-scrap part at the catalog price scaled by the resale condition curve and the used-part haircut', () => {
     const state = baseState({ partInventory: [usedInstance] })
     const result = resolveSellPart(state, usedInstance.id, CONTEXT)
     const expectedPriceYen = Math.round(
       CHEAPEST.priceYen *
-        bandFactor('fine', CONTEXT.economy) *
+        CONTEXT.economy.teardown.resaleBandFactors.fine *
         CONTEXT.economy.teardown.usedPartSaleFraction,
     )
     expect(result.state.partInventory).toHaveLength(0)

@@ -13,7 +13,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-stock-block",
@@ -29,7 +29,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-stock-block",
@@ -45,7 +45,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-stock-block",
@@ -61,7 +61,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "hagane-stroker-kit",
@@ -77,7 +77,7 @@
       "reliability": -4,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-hagane-stroker-kit",
@@ -93,7 +93,7 @@
       "reliability": -4,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-hagane-stroker-kit",
@@ -109,7 +109,7 @@
       "reliability": -4,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-hagane-stroker-kit",
@@ -125,7 +125,7 @@
       "reliability": -4,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "hagane-sport-block",
@@ -141,7 +141,7 @@
       "reliability": -9,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-hagane-sport-block",
@@ -157,7 +157,7 @@
       "reliability": -9,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-hagane-sport-block",
@@ -173,7 +173,7 @@
       "reliability": -9,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-hagane-sport-block",
@@ -189,7 +189,7 @@
       "reliability": -9,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "hagane-race-block",
@@ -205,7 +205,7 @@
       "reliability": -14,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-hagane-race-block",
@@ -221,7 +221,7 @@
       "reliability": -14,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-hagane-race-block",
@@ -237,7 +237,7 @@
       "reliability": -14,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-hagane-race-block",
@@ -253,7 +253,7 @@
       "reliability": -14,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "stock-internals",
@@ -269,7 +269,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-stock-internals",
@@ -285,7 +285,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-stock-internals",
@@ -301,7 +301,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-stock-internals",
@@ -317,7 +317,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "oni-forged-piston-kit",
@@ -333,7 +333,7 @@
       "reliability": -4,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-oni-forged-piston-kit",
@@ -349,7 +349,7 @@
       "reliability": -4,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-oni-forged-piston-kit",
@@ -365,7 +365,7 @@
       "reliability": -4,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-oni-forged-piston-kit",
@@ -381,7 +381,7 @@
       "reliability": -4,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "khs-sport-internals",
@@ -397,7 +397,7 @@
       "reliability": -7,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-khs-sport-internals",
@@ -413,7 +413,7 @@
       "reliability": -7,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-khs-sport-internals",
@@ -429,7 +429,7 @@
       "reliability": -7,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-khs-sport-internals",
@@ -445,7 +445,7 @@
       "reliability": -7,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "oni-race-piston-kit",
@@ -461,7 +461,7 @@
       "reliability": -12,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-oni-race-piston-kit",
@@ -477,7 +477,7 @@
       "reliability": -12,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-oni-race-piston-kit",
@@ -493,7 +493,7 @@
       "reliability": -12,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-oni-race-piston-kit",
@@ -509,7 +509,7 @@
       "reliability": -12,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "stock-head-valvetrain",
@@ -525,7 +525,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-stock-head-valvetrain",
@@ -541,7 +541,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-stock-head-valvetrain",
@@ -557,7 +557,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-stock-head-valvetrain",
@@ -573,7 +573,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "genbu-ported-head-kit",
@@ -589,7 +589,7 @@
       "reliability": -3,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-genbu-ported-head-kit",
@@ -605,7 +605,7 @@
       "reliability": -3,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-genbu-ported-head-kit",
@@ -621,7 +621,7 @@
       "reliability": -3,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-genbu-ported-head-kit",
@@ -637,7 +637,7 @@
       "reliability": -3,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "genbu-sport-head-kit",
@@ -653,7 +653,7 @@
       "reliability": -6,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-genbu-sport-head-kit",
@@ -669,7 +669,7 @@
       "reliability": -6,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-genbu-sport-head-kit",
@@ -685,7 +685,7 @@
       "reliability": -6,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-genbu-sport-head-kit",
@@ -701,7 +701,7 @@
       "reliability": -6,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "genbu-race-head-kit",
@@ -717,7 +717,7 @@
       "reliability": -10,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-genbu-race-head-kit",
@@ -733,7 +733,7 @@
       "reliability": -10,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-genbu-race-head-kit",
@@ -749,7 +749,7 @@
       "reliability": -10,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-genbu-race-head-kit",
@@ -765,7 +765,7 @@
       "reliability": -10,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "stock-cams-timing",
@@ -781,7 +781,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-stock-cams-timing",
@@ -797,7 +797,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-stock-cams-timing",
@@ -813,7 +813,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-stock-cams-timing",
@@ -829,7 +829,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "raiden-street-cams",
@@ -845,7 +845,7 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-raiden-street-cams",
@@ -861,7 +861,7 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-raiden-street-cams",
@@ -877,7 +877,7 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-raiden-street-cams",
@@ -893,7 +893,7 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "raiden-sport-cams",
@@ -909,7 +909,7 @@
       "reliability": -5,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-raiden-sport-cams",
@@ -925,7 +925,7 @@
       "reliability": -5,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-raiden-sport-cams",
@@ -941,7 +941,7 @@
       "reliability": -5,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-raiden-sport-cams",
@@ -957,7 +957,7 @@
       "reliability": -5,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "raiden-race-cams",
@@ -973,7 +973,7 @@
       "reliability": -8,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-raiden-race-cams",
@@ -989,7 +989,7 @@
       "reliability": -8,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-raiden-race-cams",
@@ -1005,7 +1005,7 @@
       "reliability": -8,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-raiden-race-cams",
@@ -1021,7 +1021,7 @@
       "reliability": -8,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "stock-intake",
@@ -1037,7 +1037,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-stock-intake",
@@ -1053,7 +1053,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-stock-intake",
@@ -1069,7 +1069,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-stock-intake",
@@ -1085,7 +1085,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "fubuki-cold-air-kit",
@@ -1101,7 +1101,7 @@
       "reliability": -1,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-fubuki-cold-air-kit",
@@ -1117,7 +1117,7 @@
       "reliability": -1,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-fubuki-cold-air-kit",
@@ -1133,7 +1133,7 @@
       "reliability": -1,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-fubuki-cold-air-kit",
@@ -1149,7 +1149,7 @@
       "reliability": -1,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "fubuki-sport-intake-kit",
@@ -1165,7 +1165,7 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-fubuki-sport-intake-kit",
@@ -1181,7 +1181,7 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-fubuki-sport-intake-kit",
@@ -1197,7 +1197,7 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-fubuki-sport-intake-kit",
@@ -1213,7 +1213,7 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "fubuki-velocity-stack-kit",
@@ -1229,7 +1229,7 @@
       "reliability": -4,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-fubuki-velocity-stack-kit",
@@ -1245,7 +1245,7 @@
       "reliability": -4,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-fubuki-velocity-stack-kit",
@@ -1261,7 +1261,7 @@
       "reliability": -4,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-fubuki-velocity-stack-kit",
@@ -1277,7 +1277,7 @@
       "reliability": -4,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "stock-exhaust",
@@ -1293,7 +1293,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-stock-exhaust",
@@ -1309,7 +1309,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-stock-exhaust",
@@ -1325,7 +1325,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-stock-exhaust",
@@ -1341,7 +1341,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "suzaku-street-catback",
@@ -1360,7 +1360,7 @@
     "physicalModifiers": {
       "mass": 0.9931
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-suzaku-street-catback",
@@ -1379,7 +1379,7 @@
     "physicalModifiers": {
       "mass": 0.9931
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-suzaku-street-catback",
@@ -1398,7 +1398,7 @@
     "physicalModifiers": {
       "mass": 0.9931
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-suzaku-street-catback",
@@ -1417,7 +1417,7 @@
     "physicalModifiers": {
       "mass": 0.9931
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "suzaku-sport-catback",
@@ -1436,7 +1436,7 @@
     "physicalModifiers": {
       "mass": 0.98623
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-suzaku-sport-catback",
@@ -1455,7 +1455,7 @@
     "physicalModifiers": {
       "mass": 0.98623
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-suzaku-sport-catback",
@@ -1474,7 +1474,7 @@
     "physicalModifiers": {
       "mass": 0.98623
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-suzaku-sport-catback",
@@ -1493,7 +1493,7 @@
     "physicalModifiers": {
       "mass": 0.98623
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "suzaku-race-header-kit",
@@ -1512,7 +1512,7 @@
     "physicalModifiers": {
       "mass": 0.97915
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-suzaku-race-header-kit",
@@ -1531,7 +1531,7 @@
     "physicalModifiers": {
       "mass": 0.97915
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-suzaku-race-header-kit",
@@ -1550,7 +1550,7 @@
     "physicalModifiers": {
       "mass": 0.97915
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-suzaku-race-header-kit",
@@ -1569,7 +1569,7 @@
     "physicalModifiers": {
       "mass": 0.97915
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "stock-fuel-system",
@@ -1585,7 +1585,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-stock-fuel-system",
@@ -1601,7 +1601,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-stock-fuel-system",
@@ -1617,7 +1617,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-stock-fuel-system",
@@ -1633,7 +1633,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "koi-street-injector-kit",
@@ -1649,7 +1649,7 @@
       "reliability": -1,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-koi-street-injector-kit",
@@ -1665,7 +1665,7 @@
       "reliability": -1,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-koi-street-injector-kit",
@@ -1681,7 +1681,7 @@
       "reliability": -1,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-koi-street-injector-kit",
@@ -1697,7 +1697,7 @@
       "reliability": -1,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "koi-sport-fuel-system",
@@ -1713,7 +1713,7 @@
       "reliability": -3,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-koi-sport-fuel-system",
@@ -1729,7 +1729,7 @@
       "reliability": -3,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-koi-sport-fuel-system",
@@ -1745,7 +1745,7 @@
       "reliability": -3,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-koi-sport-fuel-system",
@@ -1761,7 +1761,7 @@
       "reliability": -3,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "koi-race-fuel-system",
@@ -1777,7 +1777,7 @@
       "reliability": -5,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-koi-race-fuel-system",
@@ -1793,7 +1793,7 @@
       "reliability": -5,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-koi-race-fuel-system",
@@ -1809,7 +1809,7 @@
       "reliability": -5,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-koi-race-fuel-system",
@@ -1825,7 +1825,7 @@
       "reliability": -5,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "stock-ignition-ecu",
@@ -1841,7 +1841,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-stock-ignition-ecu",
@@ -1857,7 +1857,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-stock-ignition-ecu",
@@ -1873,7 +1873,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-stock-ignition-ecu",
@@ -1889,7 +1889,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "khs-street-ecu",
@@ -1905,7 +1905,7 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-khs-street-ecu",
@@ -1921,7 +1921,7 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-khs-street-ecu",
@@ -1937,7 +1937,7 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-khs-street-ecu",
@@ -1953,7 +1953,7 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "khs-sport-ecu",
@@ -1969,7 +1969,7 @@
       "reliability": -4,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-khs-sport-ecu",
@@ -1985,7 +1985,7 @@
       "reliability": -4,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-khs-sport-ecu",
@@ -2001,7 +2001,7 @@
       "reliability": -4,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-khs-sport-ecu",
@@ -2017,7 +2017,7 @@
       "reliability": -4,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "khs-race-ecu",
@@ -2033,7 +2033,7 @@
       "reliability": -6,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-khs-race-ecu",
@@ -2049,7 +2049,7 @@
       "reliability": -6,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-khs-race-ecu",
@@ -2065,7 +2065,7 @@
       "reliability": -6,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-khs-race-ecu",
@@ -2081,7 +2081,7 @@
       "reliability": -6,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "stock-cooling",
@@ -2097,7 +2097,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-stock-cooling",
@@ -2113,7 +2113,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-stock-cooling",
@@ -2129,7 +2129,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-stock-cooling",
@@ -2145,7 +2145,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "suiko-street-radiator",
@@ -2161,7 +2161,7 @@
       "reliability": 8,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-suiko-street-radiator",
@@ -2177,7 +2177,7 @@
       "reliability": 8,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-suiko-street-radiator",
@@ -2193,7 +2193,7 @@
       "reliability": 8,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-suiko-street-radiator",
@@ -2209,7 +2209,7 @@
       "reliability": 8,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "suiko-track-radiator-kit",
@@ -2225,7 +2225,7 @@
       "reliability": 12,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-suiko-track-radiator-kit",
@@ -2241,7 +2241,7 @@
       "reliability": 12,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-suiko-track-radiator-kit",
@@ -2257,7 +2257,7 @@
       "reliability": 12,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-suiko-track-radiator-kit",
@@ -2273,7 +2273,7 @@
       "reliability": 12,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "suiko-race-cooling-kit",
@@ -2289,7 +2289,7 @@
       "reliability": 16,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-suiko-race-cooling-kit",
@@ -2305,7 +2305,7 @@
       "reliability": 16,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-suiko-race-cooling-kit",
@@ -2321,7 +2321,7 @@
       "reliability": 16,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-suiko-race-cooling-kit",
@@ -2337,7 +2337,7 @@
       "reliability": 16,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "stock-forced-induction",
@@ -2353,7 +2353,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-stock-forced-induction",
@@ -2369,7 +2369,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-stock-forced-induction",
@@ -2385,7 +2385,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-stock-forced-induction",
@@ -2401,7 +2401,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "kaze-bolton-turbo",
@@ -2417,7 +2417,7 @@
       "reliability": -5,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-kaze-bolton-turbo",
@@ -2433,7 +2433,7 @@
       "reliability": -5,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-kaze-bolton-turbo",
@@ -2449,7 +2449,7 @@
       "reliability": -5,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-kaze-bolton-turbo",
@@ -2465,7 +2465,7 @@
       "reliability": -5,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "khs-tr-350",
@@ -2481,7 +2481,7 @@
       "reliability": -8,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-khs-tr-350",
@@ -2497,7 +2497,7 @@
       "reliability": -8,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-khs-tr-350",
@@ -2513,7 +2513,7 @@
       "reliability": -8,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-khs-tr-350",
@@ -2529,7 +2529,7 @@
       "reliability": -8,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "khs-tr-500",
@@ -2545,7 +2545,7 @@
       "reliability": -15,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-khs-tr-500",
@@ -2561,7 +2561,7 @@
       "reliability": -15,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-khs-tr-500",
@@ -2577,7 +2577,7 @@
       "reliability": -15,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-khs-tr-500",
@@ -2593,7 +2593,7 @@
       "reliability": -15,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "stock-gearbox",
@@ -2609,7 +2609,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-stock-gearbox",
@@ -2625,7 +2625,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-stock-gearbox",
@@ -2641,7 +2641,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-stock-gearbox",
@@ -2657,7 +2657,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "ittou-close-ratio-kit",
@@ -2673,7 +2673,7 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-ittou-close-ratio-kit",
@@ -2689,7 +2689,7 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-ittou-close-ratio-kit",
@@ -2705,7 +2705,7 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-ittou-close-ratio-kit",
@@ -2721,7 +2721,7 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "ittou-sport-gearset",
@@ -2737,7 +2737,7 @@
       "reliability": -5,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-ittou-sport-gearset",
@@ -2753,7 +2753,7 @@
       "reliability": -5,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-ittou-sport-gearset",
@@ -2769,7 +2769,7 @@
       "reliability": -5,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-ittou-sport-gearset",
@@ -2785,7 +2785,7 @@
       "reliability": -5,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "ittou-sequential-dogbox",
@@ -2801,7 +2801,7 @@
       "reliability": -9,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-ittou-sequential-dogbox",
@@ -2817,7 +2817,7 @@
       "reliability": -9,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-ittou-sequential-dogbox",
@@ -2833,7 +2833,7 @@
       "reliability": -9,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-ittou-sequential-dogbox",
@@ -2849,7 +2849,7 @@
       "reliability": -9,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "stock-clutch",
@@ -2865,7 +2865,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-stock-clutch",
@@ -2881,7 +2881,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-stock-clutch",
@@ -2897,7 +2897,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-stock-clutch",
@@ -2913,7 +2913,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "katana-street-clutch",
@@ -2932,7 +2932,7 @@
     "physicalModifiers": {
       "mass": 0.9931
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-katana-street-clutch",
@@ -2951,7 +2951,7 @@
     "physicalModifiers": {
       "mass": 0.9931
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-katana-street-clutch",
@@ -2970,7 +2970,7 @@
     "physicalModifiers": {
       "mass": 0.9931
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-katana-street-clutch",
@@ -2989,7 +2989,7 @@
     "physicalModifiers": {
       "mass": 0.9931
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "katana-sport-clutch",
@@ -3008,7 +3008,7 @@
     "physicalModifiers": {
       "mass": 0.98623
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-katana-sport-clutch",
@@ -3027,7 +3027,7 @@
     "physicalModifiers": {
       "mass": 0.98623
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-katana-sport-clutch",
@@ -3046,7 +3046,7 @@
     "physicalModifiers": {
       "mass": 0.98623
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-katana-sport-clutch",
@@ -3065,7 +3065,7 @@
     "physicalModifiers": {
       "mass": 0.98623
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "katana-race-clutch",
@@ -3084,7 +3084,7 @@
     "physicalModifiers": {
       "mass": 0.97915
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-katana-race-clutch",
@@ -3103,7 +3103,7 @@
     "physicalModifiers": {
       "mass": 0.97915
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-katana-race-clutch",
@@ -3122,7 +3122,7 @@
     "physicalModifiers": {
       "mass": 0.97915
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-katana-race-clutch",
@@ -3141,7 +3141,7 @@
     "physicalModifiers": {
       "mass": 0.97915
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "stock-differential",
@@ -3157,7 +3157,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-stock-differential",
@@ -3173,7 +3173,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-stock-differential",
@@ -3189,7 +3189,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-stock-differential",
@@ -3205,7 +3205,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "tsuru-street-lsd",
@@ -3221,7 +3221,7 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-tsuru-street-lsd",
@@ -3237,7 +3237,7 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-tsuru-street-lsd",
@@ -3253,7 +3253,7 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-tsuru-street-lsd",
@@ -3269,7 +3269,7 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "tsuru-2way-lsd",
@@ -3285,7 +3285,7 @@
       "reliability": -3,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-tsuru-2way-lsd",
@@ -3301,7 +3301,7 @@
       "reliability": -3,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-tsuru-2way-lsd",
@@ -3317,7 +3317,7 @@
       "reliability": -3,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-tsuru-2way-lsd",
@@ -3333,7 +3333,7 @@
       "reliability": -3,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "tsuru-race-diff",
@@ -3349,7 +3349,7 @@
       "reliability": -8,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-tsuru-race-diff",
@@ -3365,7 +3365,7 @@
       "reliability": -8,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-tsuru-race-diff",
@@ -3381,7 +3381,7 @@
       "reliability": -8,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-tsuru-race-diff",
@@ -3397,7 +3397,7 @@
       "reliability": -8,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "stock-driveline",
@@ -3413,7 +3413,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-stock-driveline",
@@ -3429,7 +3429,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-stock-driveline",
@@ -3445,7 +3445,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-stock-driveline",
@@ -3461,7 +3461,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "namazu-reinforced-driveshaft",
@@ -3480,7 +3480,7 @@
     "physicalModifiers": {
       "mass": 0.9931
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-namazu-reinforced-driveshaft",
@@ -3499,7 +3499,7 @@
     "physicalModifiers": {
       "mass": 0.9931
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-namazu-reinforced-driveshaft",
@@ -3518,7 +3518,7 @@
     "physicalModifiers": {
       "mass": 0.9931
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-namazu-reinforced-driveshaft",
@@ -3537,7 +3537,7 @@
     "physicalModifiers": {
       "mass": 0.9931
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "namazu-sport-driveshaft",
@@ -3556,7 +3556,7 @@
     "physicalModifiers": {
       "mass": 0.98623
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-namazu-sport-driveshaft",
@@ -3575,7 +3575,7 @@
     "physicalModifiers": {
       "mass": 0.98623
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-namazu-sport-driveshaft",
@@ -3594,7 +3594,7 @@
     "physicalModifiers": {
       "mass": 0.98623
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-namazu-sport-driveshaft",
@@ -3613,7 +3613,7 @@
     "physicalModifiers": {
       "mass": 0.98623
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "namazu-race-driveshaft",
@@ -3632,7 +3632,7 @@
     "physicalModifiers": {
       "mass": 0.97915
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-namazu-race-driveshaft",
@@ -3651,7 +3651,7 @@
     "physicalModifiers": {
       "mass": 0.97915
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-namazu-race-driveshaft",
@@ -3670,7 +3670,7 @@
     "physicalModifiers": {
       "mass": 0.97915
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-namazu-race-driveshaft",
@@ -3689,7 +3689,7 @@
     "physicalModifiers": {
       "mass": 0.97915
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "stock-chassis",
@@ -3705,7 +3705,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-stock-chassis",
@@ -3721,7 +3721,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-stock-chassis",
@@ -3737,7 +3737,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-stock-chassis",
@@ -3753,7 +3753,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "namazu-seam-weld-kit",
@@ -3772,7 +3772,7 @@
     "physicalModifiers": {
       "grip": 1.016
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-namazu-seam-weld-kit",
@@ -3791,7 +3791,7 @@
     "physicalModifiers": {
       "grip": 1.016
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-namazu-seam-weld-kit",
@@ -3810,7 +3810,7 @@
     "physicalModifiers": {
       "grip": 1.016
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-namazu-seam-weld-kit",
@@ -3829,7 +3829,7 @@
     "physicalModifiers": {
       "grip": 1.016
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "namazu-sport-chassis-kit",
@@ -3848,7 +3848,7 @@
     "physicalModifiers": {
       "grip": 1.033
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-namazu-sport-chassis-kit",
@@ -3867,7 +3867,7 @@
     "physicalModifiers": {
       "grip": 1.033
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-namazu-sport-chassis-kit",
@@ -3886,7 +3886,7 @@
     "physicalModifiers": {
       "grip": 1.033
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-namazu-sport-chassis-kit",
@@ -3905,7 +3905,7 @@
     "physicalModifiers": {
       "grip": 1.033
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "namazu-tube-chassis-kit",
@@ -3924,7 +3924,7 @@
     "physicalModifiers": {
       "grip": 1.05
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-namazu-tube-chassis-kit",
@@ -3943,7 +3943,7 @@
     "physicalModifiers": {
       "grip": 1.05
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-namazu-tube-chassis-kit",
@@ -3962,7 +3962,7 @@
     "physicalModifiers": {
       "grip": 1.05
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-namazu-tube-chassis-kit",
@@ -3981,7 +3981,7 @@
     "physicalModifiers": {
       "grip": 1.05
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "stock-dampers",
@@ -3997,7 +3997,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-stock-dampers",
@@ -4013,7 +4013,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-stock-dampers",
@@ -4029,7 +4029,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-stock-dampers",
@@ -4045,7 +4045,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "tanuki-street-coilovers",
@@ -4064,7 +4064,7 @@
     "physicalModifiers": {
       "grip": 1.01
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-tanuki-street-coilovers",
@@ -4083,7 +4083,7 @@
     "physicalModifiers": {
       "grip": 1.01
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-tanuki-street-coilovers",
@@ -4102,7 +4102,7 @@
     "physicalModifiers": {
       "grip": 1.01
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-tanuki-street-coilovers",
@@ -4121,7 +4121,7 @@
     "physicalModifiers": {
       "grip": 1.01
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "tanuki-circuit-coilovers",
@@ -4140,7 +4140,7 @@
     "physicalModifiers": {
       "grip": 1.02
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-tanuki-circuit-coilovers",
@@ -4159,7 +4159,7 @@
     "physicalModifiers": {
       "grip": 1.02
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-tanuki-circuit-coilovers",
@@ -4178,7 +4178,7 @@
     "physicalModifiers": {
       "grip": 1.02
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-tanuki-circuit-coilovers",
@@ -4197,7 +4197,7 @@
     "physicalModifiers": {
       "grip": 1.02
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "tanuki-n1-coilovers",
@@ -4216,7 +4216,7 @@
     "physicalModifiers": {
       "grip": 1.029
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-tanuki-n1-coilovers",
@@ -4235,7 +4235,7 @@
     "physicalModifiers": {
       "grip": 1.029
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-tanuki-n1-coilovers",
@@ -4254,7 +4254,7 @@
     "physicalModifiers": {
       "grip": 1.029
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-tanuki-n1-coilovers",
@@ -4273,7 +4273,7 @@
     "physicalModifiers": {
       "grip": 1.029
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "stock-springs",
@@ -4289,7 +4289,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-stock-springs",
@@ -4305,7 +4305,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-stock-springs",
@@ -4321,7 +4321,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-stock-springs",
@@ -4337,7 +4337,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "enzan-lowering-springs",
@@ -4356,7 +4356,7 @@
     "physicalModifiers": {
       "grip": 1.01
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-enzan-lowering-springs",
@@ -4375,7 +4375,7 @@
     "physicalModifiers": {
       "grip": 1.01
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-enzan-lowering-springs",
@@ -4394,7 +4394,7 @@
     "physicalModifiers": {
       "grip": 1.01
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-enzan-lowering-springs",
@@ -4413,7 +4413,7 @@
     "physicalModifiers": {
       "grip": 1.01
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "enzan-sport-springs",
@@ -4432,7 +4432,7 @@
     "physicalModifiers": {
       "grip": 1.02
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-enzan-sport-springs",
@@ -4451,7 +4451,7 @@
     "physicalModifiers": {
       "grip": 1.02
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-enzan-sport-springs",
@@ -4470,7 +4470,7 @@
     "physicalModifiers": {
       "grip": 1.02
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-enzan-sport-springs",
@@ -4489,7 +4489,7 @@
     "physicalModifiers": {
       "grip": 1.02
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "enzan-race-springs",
@@ -4508,7 +4508,7 @@
     "physicalModifiers": {
       "grip": 1.029
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-enzan-race-springs",
@@ -4527,7 +4527,7 @@
     "physicalModifiers": {
       "grip": 1.029
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-enzan-race-springs",
@@ -4546,7 +4546,7 @@
     "physicalModifiers": {
       "grip": 1.029
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-enzan-race-springs",
@@ -4565,7 +4565,7 @@
     "physicalModifiers": {
       "grip": 1.029
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "stock-anti-roll-bars",
@@ -4581,7 +4581,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-stock-anti-roll-bars",
@@ -4597,7 +4597,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-stock-anti-roll-bars",
@@ -4613,7 +4613,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-stock-anti-roll-bars",
@@ -4629,7 +4629,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "kumo-adjustable-swaybars",
@@ -4648,7 +4648,7 @@
     "physicalModifiers": {
       "grip": 1.01
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-kumo-adjustable-swaybars",
@@ -4667,7 +4667,7 @@
     "physicalModifiers": {
       "grip": 1.01
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-kumo-adjustable-swaybars",
@@ -4686,7 +4686,7 @@
     "physicalModifiers": {
       "grip": 1.01
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-kumo-adjustable-swaybars",
@@ -4705,7 +4705,7 @@
     "physicalModifiers": {
       "grip": 1.01
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "kumo-sport-swaybars",
@@ -4724,7 +4724,7 @@
     "physicalModifiers": {
       "grip": 1.02
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-kumo-sport-swaybars",
@@ -4743,7 +4743,7 @@
     "physicalModifiers": {
       "grip": 1.02
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-kumo-sport-swaybars",
@@ -4762,7 +4762,7 @@
     "physicalModifiers": {
       "grip": 1.02
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-kumo-sport-swaybars",
@@ -4781,7 +4781,7 @@
     "physicalModifiers": {
       "grip": 1.02
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "kumo-race-swaybars",
@@ -4800,7 +4800,7 @@
     "physicalModifiers": {
       "grip": 1.029
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-kumo-race-swaybars",
@@ -4819,7 +4819,7 @@
     "physicalModifiers": {
       "grip": 1.029
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-kumo-race-swaybars",
@@ -4838,7 +4838,7 @@
     "physicalModifiers": {
       "grip": 1.029
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-kumo-race-swaybars",
@@ -4857,7 +4857,7 @@
     "physicalModifiers": {
       "grip": 1.029
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "stock-steering",
@@ -4873,7 +4873,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-stock-steering",
@@ -4889,7 +4889,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-stock-steering",
@@ -4905,7 +4905,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-stock-steering",
@@ -4921,7 +4921,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "kitsune-quick-rack",
@@ -4937,7 +4937,7 @@
       "reliability": -1,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-kitsune-quick-rack",
@@ -4953,7 +4953,7 @@
       "reliability": -1,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-kitsune-quick-rack",
@@ -4969,7 +4969,7 @@
       "reliability": -1,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-kitsune-quick-rack",
@@ -4985,7 +4985,7 @@
       "reliability": -1,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "kitsune-sport-rack",
@@ -5001,7 +5001,7 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-kitsune-sport-rack",
@@ -5017,7 +5017,7 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-kitsune-sport-rack",
@@ -5033,7 +5033,7 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-kitsune-sport-rack",
@@ -5049,7 +5049,7 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "kitsune-race-rack",
@@ -5065,7 +5065,7 @@
       "reliability": -4,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-kitsune-race-rack",
@@ -5081,7 +5081,7 @@
       "reliability": -4,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-kitsune-race-rack",
@@ -5097,7 +5097,7 @@
       "reliability": -4,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-kitsune-race-rack",
@@ -5113,7 +5113,7 @@
       "reliability": -4,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "stock-brake-pads-discs",
@@ -5129,7 +5129,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-stock-brake-pads-discs",
@@ -5145,7 +5145,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-stock-brake-pads-discs",
@@ -5161,7 +5161,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-stock-brake-pads-discs",
@@ -5177,7 +5177,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "shuriken-street-pads",
@@ -5196,7 +5196,7 @@
     "physicalModifiers": {
       "braking": 1.0237
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-shuriken-street-pads",
@@ -5215,7 +5215,7 @@
     "physicalModifiers": {
       "braking": 1.0237
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-shuriken-street-pads",
@@ -5234,7 +5234,7 @@
     "physicalModifiers": {
       "braking": 1.0237
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-shuriken-street-pads",
@@ -5253,7 +5253,7 @@
     "physicalModifiers": {
       "braking": 1.0237
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "shuriken-sport-pads",
@@ -5272,7 +5272,7 @@
     "physicalModifiers": {
       "braking": 1.0479
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-shuriken-sport-pads",
@@ -5291,7 +5291,7 @@
     "physicalModifiers": {
       "braking": 1.0479
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-shuriken-sport-pads",
@@ -5310,7 +5310,7 @@
     "physicalModifiers": {
       "braking": 1.0479
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-shuriken-sport-pads",
@@ -5329,7 +5329,7 @@
     "physicalModifiers": {
       "braking": 1.0479
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "shuriken-race-pads",
@@ -5348,7 +5348,7 @@
     "physicalModifiers": {
       "braking": 1.0724
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-shuriken-race-pads",
@@ -5367,7 +5367,7 @@
     "physicalModifiers": {
       "braking": 1.0724
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-shuriken-race-pads",
@@ -5386,7 +5386,7 @@
     "physicalModifiers": {
       "braking": 1.0724
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-shuriken-race-pads",
@@ -5405,7 +5405,7 @@
     "physicalModifiers": {
       "braking": 1.0724
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "stock-brake-calipers-lines",
@@ -5421,7 +5421,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-stock-brake-calipers-lines",
@@ -5437,7 +5437,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-stock-brake-calipers-lines",
@@ -5453,7 +5453,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-stock-brake-calipers-lines",
@@ -5469,7 +5469,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "shuriken-street-calipers",
@@ -5488,7 +5488,7 @@
     "physicalModifiers": {
       "braking": 1.0237
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-shuriken-street-calipers",
@@ -5507,7 +5507,7 @@
     "physicalModifiers": {
       "braking": 1.0237
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-shuriken-street-calipers",
@@ -5526,7 +5526,7 @@
     "physicalModifiers": {
       "braking": 1.0237
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-shuriken-street-calipers",
@@ -5545,7 +5545,7 @@
     "physicalModifiers": {
       "braking": 1.0237
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "katana-4pot-kit",
@@ -5564,7 +5564,7 @@
     "physicalModifiers": {
       "braking": 1.0479
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-katana-4pot-kit",
@@ -5583,7 +5583,7 @@
     "physicalModifiers": {
       "braking": 1.0479
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-katana-4pot-kit",
@@ -5602,7 +5602,7 @@
     "physicalModifiers": {
       "braking": 1.0479
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-katana-4pot-kit",
@@ -5621,7 +5621,7 @@
     "physicalModifiers": {
       "braking": 1.0479
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "shuriken-race-calipers",
@@ -5640,7 +5640,7 @@
     "physicalModifiers": {
       "braking": 1.0724
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-shuriken-race-calipers",
@@ -5659,7 +5659,7 @@
     "physicalModifiers": {
       "braking": 1.0724
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-shuriken-race-calipers",
@@ -5678,7 +5678,7 @@
     "physicalModifiers": {
       "braking": 1.0724
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-shuriken-race-calipers",
@@ -5697,7 +5697,7 @@
     "physicalModifiers": {
       "braking": 1.0724
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "stock-rims",
@@ -5713,7 +5713,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-stock-rims",
@@ -5729,7 +5729,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-stock-rims",
@@ -5745,7 +5745,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-stock-rims",
@@ -5761,7 +5761,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "ronin-street-alloys",
@@ -5780,7 +5780,7 @@
     "physicalModifiers": {
       "mass": 0.9931
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-ronin-street-alloys",
@@ -5799,7 +5799,7 @@
     "physicalModifiers": {
       "mass": 0.9931
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-ronin-street-alloys",
@@ -5818,7 +5818,7 @@
     "physicalModifiers": {
       "mass": 0.9931
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-ronin-street-alloys",
@@ -5837,7 +5837,7 @@
     "physicalModifiers": {
       "mass": 0.9931
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "vulk-ve37",
@@ -5856,7 +5856,7 @@
     "physicalModifiers": {
       "mass": 0.98623
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-vulk-ve37",
@@ -5875,7 +5875,7 @@
     "physicalModifiers": {
       "mass": 0.98623
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-vulk-ve37",
@@ -5894,7 +5894,7 @@
     "physicalModifiers": {
       "mass": 0.98623
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-vulk-ve37",
@@ -5913,7 +5913,7 @@
     "physicalModifiers": {
       "mass": 0.98623
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "ronin-race-forged",
@@ -5932,7 +5932,7 @@
     "physicalModifiers": {
       "mass": 0.97915
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-ronin-race-forged",
@@ -5951,7 +5951,7 @@
     "physicalModifiers": {
       "mass": 0.97915
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-ronin-race-forged",
@@ -5970,7 +5970,7 @@
     "physicalModifiers": {
       "mass": 0.97915
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-ronin-race-forged",
@@ -5989,7 +5989,7 @@
     "physicalModifiers": {
       "mass": 0.97915
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "stock-tyres",
@@ -6005,7 +6005,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-stock-tyres",
@@ -6021,7 +6021,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-stock-tyres",
@@ -6037,7 +6037,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-stock-tyres",
@@ -6053,7 +6053,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "tsume-street-tyres",
@@ -6069,7 +6069,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-tsume-street-tyres",
@@ -6085,7 +6085,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-tsume-street-tyres",
@@ -6101,7 +6101,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-tsume-street-tyres",
@@ -6117,7 +6117,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "tsume-sport-tyres",
@@ -6133,7 +6133,7 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-tsume-sport-tyres",
@@ -6149,7 +6149,7 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-tsume-sport-tyres",
@@ -6165,7 +6165,7 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-tsume-sport-tyres",
@@ -6181,7 +6181,7 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "tsume-race-slicks",
@@ -6197,7 +6197,7 @@
       "reliability": -5,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-tsume-race-slicks",
@@ -6213,7 +6213,7 @@
       "reliability": -5,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-tsume-race-slicks",
@@ -6229,7 +6229,7 @@
       "reliability": -5,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-tsume-race-slicks",
@@ -6245,7 +6245,7 @@
       "reliability": -5,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "stock-panels",
@@ -6261,7 +6261,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-stock-panels",
@@ -6277,7 +6277,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-stock-panels",
@@ -6293,7 +6293,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-stock-panels",
@@ -6309,7 +6309,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "zone-panel-bonnet",
@@ -6327,7 +6327,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-zone-panel-bonnet",
@@ -6345,7 +6345,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-zone-panel-bonnet",
@@ -6363,7 +6363,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-zone-panel-bonnet",
@@ -6381,7 +6381,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "zone-panel-boot",
@@ -6399,7 +6399,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-zone-panel-boot",
@@ -6417,7 +6417,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-zone-panel-boot",
@@ -6435,7 +6435,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-zone-panel-boot",
@@ -6453,7 +6453,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "zone-panel-roof",
@@ -6471,7 +6471,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-zone-panel-roof",
@@ -6489,7 +6489,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-zone-panel-roof",
@@ -6507,7 +6507,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-zone-panel-roof",
@@ -6525,7 +6525,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "zone-panel-left",
@@ -6543,7 +6543,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-zone-panel-left",
@@ -6561,7 +6561,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-zone-panel-left",
@@ -6579,7 +6579,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-zone-panel-left",
@@ -6597,7 +6597,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "zone-panel-right",
@@ -6615,7 +6615,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-zone-panel-right",
@@ -6633,7 +6633,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-zone-panel-right",
@@ -6651,7 +6651,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-zone-panel-right",
@@ -6669,7 +6669,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "frp-lightweight-panels",
@@ -6686,7 +6686,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-frp-lightweight-panels",
@@ -6703,7 +6703,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-frp-lightweight-panels",
@@ -6720,7 +6720,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-frp-lightweight-panels",
@@ -6737,7 +6737,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "frp-sport-panel-kit",
@@ -6754,7 +6754,7 @@
       "reliability": -1,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-frp-sport-panel-kit",
@@ -6771,7 +6771,7 @@
       "reliability": -1,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-frp-sport-panel-kit",
@@ -6788,7 +6788,7 @@
       "reliability": -1,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-frp-sport-panel-kit",
@@ -6805,7 +6805,7 @@
       "reliability": -1,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "frp-carbon-panel-kit",
@@ -6822,7 +6822,7 @@
       "reliability": -3,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-frp-carbon-panel-kit",
@@ -6839,7 +6839,7 @@
       "reliability": -3,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-frp-carbon-panel-kit",
@@ -6856,7 +6856,7 @@
       "reliability": -3,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-frp-carbon-panel-kit",
@@ -6873,7 +6873,7 @@
       "reliability": -3,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "stock-paint",
@@ -6889,7 +6889,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-stock-paint",
@@ -6905,7 +6905,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-stock-paint",
@@ -6921,7 +6921,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-stock-paint",
@@ -6937,7 +6937,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "stock-underbody",
@@ -6953,7 +6953,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-stock-underbody",
@@ -6969,7 +6969,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-stock-underbody",
@@ -6985,7 +6985,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-stock-underbody",
@@ -7001,7 +7001,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "neon-doraku-underglow-kit",
@@ -7018,7 +7018,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-neon-doraku-underglow-kit",
@@ -7035,7 +7035,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-neon-doraku-underglow-kit",
@@ -7052,7 +7052,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-neon-doraku-underglow-kit",
@@ -7069,7 +7069,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "namazu-sport-underbody-kit",
@@ -7086,7 +7086,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-namazu-sport-underbody-kit",
@@ -7103,7 +7103,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-namazu-sport-underbody-kit",
@@ -7120,7 +7120,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-namazu-sport-underbody-kit",
@@ -7137,7 +7137,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "namazu-flatfloor-kit",
@@ -7154,7 +7154,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-namazu-flatfloor-kit",
@@ -7171,7 +7171,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-namazu-flatfloor-kit",
@@ -7188,7 +7188,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-namazu-flatfloor-kit",
@@ -7205,7 +7205,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "stock-aero",
@@ -7221,7 +7221,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-stock-aero",
@@ -7237,7 +7237,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-stock-aero",
@@ -7253,7 +7253,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-stock-aero",
@@ -7269,7 +7269,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "mikoshi-lip-kit",
@@ -7285,7 +7285,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common",
+    "fitmentClass": "everyday",
     "aeroFunctional": true
   },
   {
@@ -7302,7 +7302,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox",
+    "fitmentClass": "entry",
     "aeroFunctional": true
   },
   {
@@ -7319,7 +7319,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon",
+    "fitmentClass": "enthusiast",
     "aeroFunctional": true
   },
   {
@@ -7336,7 +7336,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare",
+    "fitmentClass": "flagship",
     "aeroFunctional": true
   },
   {
@@ -7353,7 +7353,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common",
+    "fitmentClass": "everyday",
     "aeroFunctional": true
   },
   {
@@ -7370,7 +7370,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox",
+    "fitmentClass": "entry",
     "aeroFunctional": true
   },
   {
@@ -7387,7 +7387,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon",
+    "fitmentClass": "enthusiast",
     "aeroFunctional": true
   },
   {
@@ -7404,7 +7404,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare",
+    "fitmentClass": "flagship",
     "aeroFunctional": true
   },
   {
@@ -7421,7 +7421,7 @@
       "reliability": -5,
       "authenticity": 0
     },
-    "fitmentClass": "common",
+    "fitmentClass": "everyday",
     "aeroFunctional": true
   },
   {
@@ -7438,7 +7438,7 @@
       "reliability": -5,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox",
+    "fitmentClass": "entry",
     "aeroFunctional": true
   },
   {
@@ -7455,7 +7455,7 @@
       "reliability": -5,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon",
+    "fitmentClass": "enthusiast",
     "aeroFunctional": true
   },
   {
@@ -7472,7 +7472,7 @@
       "reliability": -5,
       "authenticity": 0
     },
-    "fitmentClass": "rare",
+    "fitmentClass": "flagship",
     "aeroFunctional": true
   },
   {
@@ -7489,7 +7489,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-stock-seats",
@@ -7505,7 +7505,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-stock-seats",
@@ -7521,7 +7521,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-stock-seats",
@@ -7537,7 +7537,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "zashiki-street-seats",
@@ -7556,7 +7556,7 @@
     "physicalModifiers": {
       "mass": 0.9931
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-zashiki-street-seats",
@@ -7575,7 +7575,7 @@
     "physicalModifiers": {
       "mass": 0.9931
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-zashiki-street-seats",
@@ -7594,7 +7594,7 @@
     "physicalModifiers": {
       "mass": 0.9931
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-zashiki-street-seats",
@@ -7613,7 +7613,7 @@
     "physicalModifiers": {
       "mass": 0.9931
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "zashiki-bucket-seat",
@@ -7632,7 +7632,7 @@
     "physicalModifiers": {
       "mass": 0.98623
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-zashiki-bucket-seat",
@@ -7651,7 +7651,7 @@
     "physicalModifiers": {
       "mass": 0.98623
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-zashiki-bucket-seat",
@@ -7670,7 +7670,7 @@
     "physicalModifiers": {
       "mass": 0.98623
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-zashiki-bucket-seat",
@@ -7689,7 +7689,7 @@
     "physicalModifiers": {
       "mass": 0.98623
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "zashiki-race-buckets",
@@ -7708,7 +7708,7 @@
     "physicalModifiers": {
       "mass": 0.97915
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-zashiki-race-buckets",
@@ -7727,7 +7727,7 @@
     "physicalModifiers": {
       "mass": 0.97915
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-zashiki-race-buckets",
@@ -7746,7 +7746,7 @@
     "physicalModifiers": {
       "mass": 0.97915
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-zashiki-race-buckets",
@@ -7765,7 +7765,7 @@
     "physicalModifiers": {
       "mass": 0.97915
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "stock-dash-gauges",
@@ -7781,7 +7781,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-stock-dash-gauges",
@@ -7797,7 +7797,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-stock-dash-gauges",
@@ -7813,7 +7813,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-stock-dash-gauges",
@@ -7829,7 +7829,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "sokudo-boost-gauge-pod",
@@ -7845,7 +7845,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-sokudo-boost-gauge-pod",
@@ -7861,7 +7861,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-sokudo-boost-gauge-pod",
@@ -7877,7 +7877,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-sokudo-boost-gauge-pod",
@@ -7893,7 +7893,7 @@
       "reliability": 0,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "sokudo-sport-gauge-cluster",
@@ -7909,7 +7909,7 @@
       "reliability": -1,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-sokudo-sport-gauge-cluster",
@@ -7925,7 +7925,7 @@
       "reliability": -1,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-sokudo-sport-gauge-cluster",
@@ -7941,7 +7941,7 @@
       "reliability": -1,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-sokudo-sport-gauge-cluster",
@@ -7957,7 +7957,7 @@
       "reliability": -1,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   },
   {
     "id": "sokudo-digital-race-dash",
@@ -7973,7 +7973,7 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "fitmentClass": "common"
+    "fitmentClass": "everyday"
   },
   {
     "id": "shitbox-sokudo-digital-race-dash",
@@ -7989,7 +7989,7 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "fitmentClass": "shitbox"
+    "fitmentClass": "entry"
   },
   {
     "id": "uncommon-sokudo-digital-race-dash",
@@ -8005,7 +8005,7 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "fitmentClass": "uncommon"
+    "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-sokudo-digital-race-dash",
@@ -8021,6 +8021,6 @@
       "reliability": -2,
       "authenticity": 0
     },
-    "fitmentClass": "rare"
+    "fitmentClass": "flagship"
   }
 ]

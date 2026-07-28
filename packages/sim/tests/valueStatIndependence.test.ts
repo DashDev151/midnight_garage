@@ -25,9 +25,9 @@ const TAXONOMY_BY_ID = Object.fromEntries(
   PARTS_TAXONOMY.map((entry) => [entry.id, entry]),
 ) as Record<(typeof PARTS_TAXONOMY)[number]['id'], (typeof PARTS_TAXONOMY)[number]>
 
-/** A shipped `common`-tier model, so the fixture's `common`-class stock parts
- * are the ones that fit it. */
-const BASE_MODEL: CarModel = CARS.find((model) => model.tier === 'common')!
+/** A shipped `everyday`-tier model, so the fixture's `everyday`-class stock
+ * parts are the ones that fit it. */
+const BASE_MODEL: CarModel = CARS.find((model) => model.tier === 'everyday')!
 
 /** The same car with more engine and more grip, and NOTHING else touched. */
 const FASTER_MODEL: CarModel = {

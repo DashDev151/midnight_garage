@@ -18,7 +18,7 @@ import {
 import { describe, expect, it } from 'vitest'
 import { anchorValueYen, computeBuyoutPriceYen, resolveBuyoutInstant } from '../src/bidding'
 import {
-  auctionTierForRarity,
+  canAppearAtAuctionTier,
   generateAuctionCarInstance,
   generateAuctionCatalog,
 } from '../src/auctions'
@@ -56,6 +56,7 @@ import {
  */
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
+const AUCTION_TIERS = ['local-yard', 'regional', 'premium', 'collector-network'] as const
 const PARTS_TAXONOMY_BY_ID = Object.fromEntries(
   PARTS_TAXONOMY.map((entry) => [entry.id, entry]),
 ) as Record<CarPartId, CarPartTaxonomyEntry>
@@ -303,8 +304,8 @@ describe('sane-flip / salvage-flip probes (Sprint 47 decision 6)', () => {
   const COMMON_MODEL = CARS.find((c) => c.id === 'honda-civic-sir2-eg6')
   if (!COMMON_MODEL) throw new Error('fixture common-tier car missing from seed content')
 
-  const SHITBOX_MODEL = CARS.find((c) => c.id === 'honda-city-e-aa')
-  if (!SHITBOX_MODEL) throw new Error('fixture shitbox-tier car missing from seed content')
+  const ENTRY_MODEL = CARS.find((c) => c.id === 'honda-city-e-aa')
+  if (!ENTRY_MODEL) throw new Error('fixture entry-tier car missing from seed content')
 
   /** Total yen to bring every repairable part in `car` from its current
    * band to `targetBand`, across all six real groups - the same pipeline a
@@ -370,13 +371,13 @@ describe('sane-flip / salvage-flip probes (Sprint 47 decision 6)', () => {
    */
   it('a salvage flip (two neglected wrecks, one dismantled to fix the other) - margin measured and disclosed', () => {
     const wreckCar = buildCarInstance({
-      modelId: SHITBOX_MODEL.id,
+      modelId: ENTRY_MODEL.id,
       year: 1984,
       mileageKm: 150_000,
       parts: uniformCarParts('scrap'),
     })
     const wreckPriceYen = Math.round(
-      marketValueYen(SHITBOX_MODEL, wreckCar, 100, PARTS_BY_ID, PARTS_TAXONOMY_BY_ID, ECONOMY) *
+      marketValueYen(ENTRY_MODEL, wreckCar, 100, PARTS_BY_ID, PARTS_TAXONOMY_BY_ID, ECONOMY) *
         ECONOMY.AUCTION_RESERVE_PRICE_FRACTION,
     )
     // Two wrecks bought at the same cheap reserve; the second is fully
@@ -385,7 +386,7 @@ describe('sane-flip / salvage-flip probes (Sprint 47 decision 6)', () => {
 
     const partedOutCar: CarInstance = { ...wreckCar, parts: uniformCarParts('mint') }
     const sellPriceYen = marketValueYen(
-      SHITBOX_MODEL,
+      ENTRY_MODEL,
       partedOutCar,
       100,
       PARTS_BY_ID,
@@ -408,7 +409,7 @@ describe('sane-flip / salvage-flip probes (Sprint 47 decision 6)', () => {
 
 /**
  * Acceptance probes for economy-bible.md laws 1-2. Every probe below would
- * have caught the exact bug: buy a cheap shitbox, triage-repair it, guide
+ * have caught the exact bug: buy a cheap entry-tier car, triage-repair it, guide
  * value doesn't move.
  */
 
@@ -417,10 +418,10 @@ if (!CITY_MODEL) throw new Error('fixture car missing from seed content')
 
 /**
  * A uniform-band car with every slot filled at the MODEL's own fitment
- * class (`testFixtures.ts`'s shared `uniformCarParts` is pinned to `common`
- * regardless of the model passed in - fine for a `rare`-tier fixture like
- * this file's other probes, but wrong here: honda-city-e-aa is `shitbox`
- * tier, and a `common`-class bill is ~4x too expensive for it, which would
+ * class (`testFixtures.ts`'s shared `uniformCarParts` is pinned to `everyday`
+ * regardless of the model passed in - fine for a `flagship`-tier fixture like
+ * this file's other probes, but wrong here: honda-city-e-aa is `entry`
+ * tier, and an `everyday`-class bill is ~4x too expensive for it, which would
  * silently pin this probe's own guide value to the scrap-value floor before
  * it ever exercises the repair-margin math this probe exists to prove).
  */
@@ -503,7 +504,7 @@ function replaceConsumable(
 }
 
 describe('the Honda City probe (Sprint 54 decision 5 - the exact playtest regression)', () => {
-  it('buying a worst-case (all-poor) shitbox at reserve then triage-repairing it (consumables + a couple cheap groups) raises projected profit at every step, never a loss', () => {
+  it('buying a worst-case (all-poor) entry-tier car at reserve then triage-repairing it (consumables + a couple cheap groups) raises projected profit at every step, never a loss', () => {
     let car = buildCarInstance({
       modelId: CITY_MODEL.id,
       year: 1983,
@@ -569,11 +570,11 @@ describe('the Honda City probe (Sprint 54 decision 5 - the exact playtest regres
  * repaired to its own tier's expectation band and no further
  * (`sensibleRepairTargetBand`): the market discounts every yen spent past that
  * band by `valuation.expectationByTier[tier].beyondDiscount`, so a mint
- * restoration of a shitbox kei is passion spend, not a play the economy owes a
+ * restoration of an entry-tier kei is passion spend, not a play the economy owes a
  * profit to. Law 2 is about traps in the play the economy DOES ask for.
  */
 describe('sensible-restore probe per tier (Sprint 54 decision 5 - law 2, no value traps)', () => {
-  it.each(['shitbox', 'common', 'uncommon', 'rare'] as const)(
+  it.each(['entry', 'everyday', 'enthusiast', 'flagship'] as const)(
     'the worst generatable roll for a %s-tier car, repaired to its expectation band and sold at guide, clears a positive flip margin',
     (tier) => {
       const models = CARS.filter((c) => c.tier === tier)
@@ -780,15 +781,21 @@ describe('the scrap-value floor never binds on a generated lot (Sprint 54 decisi
  * literal "buy and flip immediately" play.
  */
 describe('unimproved-flip probe (the instant-flip guard)', () => {
-  it.each(['shitbox', 'common', 'uncommon', 'rare'] as const)(
+  it.each(['entry', 'everyday', 'enthusiast', 'flagship'] as const)(
     'the median unimproved flip on a %s-tier car reliably loses money through the instant buyout',
     (tier) => {
       const models = CARS.filter((c) => c.tier === tier)
       expect(models.length, `no ${tier}-tier car in the roster to probe`).toBeGreaterThan(0)
 
       const marginFractions: number[] = []
+      const resaleRatios: number[] = []
       for (const model of models) {
-        const auctionTier = auctionTierForRarity(model.tier)
+        // A car reaches several rooms now, so the probe rolls it in the lowest
+        // one that takes its price band - the room a player meets it in first.
+        // The room decides which crowd bids, never how the car itself rolls.
+        const auctionTier = AUCTION_TIERS.find((room) =>
+          canAppearAtAuctionTier(model, room, CONTEXT.economy),
+        )
         if (!auctionTier) continue
         for (let seed = 0; seed < 60; seed++) {
           const [initial] = generateAuctionCatalog(
@@ -824,18 +831,32 @@ describe('unimproved-flip probe (the instant-flip guard)', () => {
             sellRng,
           )
           marginFractions.push((offer.priceYen - wonPriceYen) / wonPriceYen)
+          resaleRatios.push(offer.priceYen / anchor)
         }
       }
 
       expect(marginFractions.length).toBeGreaterThan(10)
       const marginMedian = median(marginFractions)
+      const resaleMedian = median(resaleRatios)
+      const [spreadMin, spreadMax] = ECONOMY.selling.offerSpread
       // The instant buyout is a flat premium over the value anchor
-      // (AUCTION_BUYOUT_PREMIUM), never a contested price - buying outright
-      // and reselling untouched the same day is not free money: the margin
-      // sits reliably negative, on the order of the premium itself, not
-      // within a tight band of zero.
-      expect(marginMedian).toBeLessThan(-0.1)
-      expect(marginMedian).toBeGreaterThan(-0.35)
+      // (AUCTION_BUYOUT_PREMIUM), never a contested price, and the walk-in
+      // sells back through `selling.offerSpread`. The whole play is therefore
+      // resale-ratio / premium - 1, so both bounds below derive from those two
+      // levers rather than from magnitudes that only hold at one premium.
+      //
+      // The sale side sits inside its own spread band: a walk-in returns close
+      // to guide value, so any loss here is the premium's doing rather than a
+      // resale collapse.
+      expect(resaleMedian).toBeGreaterThanOrEqual(spreadMin)
+      expect(resaleMedian).toBeLessThanOrEqual(spreadMax)
+      // And a weighted-random buyer's taste fit never pays above the taste-free
+      // market read, so the loss is at least the premium's own arithmetic
+      // against a mid-spread offer: buying outright and reselling untouched the
+      // same day is never free money.
+      expect(marginMedian).toBeLessThan(
+        (spreadMin + spreadMax) / 2 / ECONOMY.AUCTION_BUYOUT_PREMIUM - 1,
+      )
     },
   )
 })
@@ -851,10 +872,10 @@ describe('unimproved-flip probe (the instant-flip guard)', () => {
  * carry no premium for the factor to scale.
  */
 describe('the foundation law kills the incoherent-build profit (Sprint 60, law 5, item 18)', () => {
-  const SHITBOX_MODEL = CARS.find((c) => c.id === 'honda-city-e-aa')
-  if (!SHITBOX_MODEL) throw new Error('fixture shitbox-tier car missing from seed content')
+  const ENTRY_MODEL = CARS.find((c) => c.id === 'honda-city-e-aa')
+  if (!ENTRY_MODEL) throw new Error('fixture entry-tier car missing from seed content')
 
-  // The build, in real shitbox-class catalog SKUs: a race engine (block +
+  // The build, in real entry-class catalog SKUs: a race engine (block +
   // internals), a race turbo, and an expensive cosmetic (race aero) - each
   // bought at full catalog price at the parts market. The old second
   // cosmetic (a livery paint finish) is gone: `paint` is a derived body
@@ -898,12 +919,12 @@ describe('the foundation law kills the incoherent-build profit (Sprint 60, law 5
     // race parts yet. Bought at auction at the reserve (a real acquisition
     // discount, the most generous case for the flipper).
     const wreckCar = buildCarInstance({
-      modelId: SHITBOX_MODEL.id,
+      modelId: ENTRY_MODEL.id,
       mileageKm: 116_226,
       parts: mintCarParts(neglectedFoundations),
     })
     const wreckGuideYen = marketValueYen(
-      SHITBOX_MODEL,
+      ENTRY_MODEL,
       wreckCar,
       100,
       PARTS_BY_ID,
@@ -920,7 +941,7 @@ describe('the foundation law kills the incoherent-build profit (Sprint 60, law 5
     // sale is a discount on top). If it loses money even here, it loses money
     // for real.
     const sellYen = marketValueYen(
-      SHITBOX_MODEL,
+      ENTRY_MODEL,
       builtCar,
       100,
       PARTS_BY_ID,
@@ -943,12 +964,12 @@ describe('the foundation law kills the incoherent-build profit (Sprint 60, law 5
       underbody: 'worn' as const,
     }
     const soundWreck = buildCarInstance({
-      modelId: SHITBOX_MODEL.id,
+      modelId: ENTRY_MODEL.id,
       mileageKm: 116_226,
       parts: mintCarParts(soundFoundations),
     })
     const scrapWreck = buildCarInstance({
-      modelId: SHITBOX_MODEL.id,
+      modelId: ENTRY_MODEL.id,
       mileageKm: 116_226,
       parts: mintCarParts({
         brakePadsDiscs: 'scrap',
@@ -959,7 +980,7 @@ describe('the foundation law kills the incoherent-build profit (Sprint 60, law 5
     const soundBuilt: CarInstance = { ...soundWreck, parts: installRaceParts(soundWreck.parts) }
     const scrapBuilt: CarInstance = { ...scrapWreck, parts: installRaceParts(scrapWreck.parts) }
     const soundSell = marketValueYen(
-      SHITBOX_MODEL,
+      ENTRY_MODEL,
       soundBuilt,
       100,
       PARTS_BY_ID,
@@ -967,7 +988,7 @@ describe('the foundation law kills the incoherent-build profit (Sprint 60, law 5
       ECONOMY,
     )
     const scrapSell = marketValueYen(
-      SHITBOX_MODEL,
+      ENTRY_MODEL,
       scrapBuilt,
       100,
       PARTS_BY_ID,
@@ -1010,84 +1031,23 @@ describe('the foundation law kills the incoherent-build profit (Sprint 60, law 5
   })
 })
 
-describe('the wage probe (Sprint 66, economy-bible law 6 - item 19)', () => {
-  /**
-   * The law: "It should ALWAYS be more profitable to make sensible repairs
-   * to a car and then sell than just selling the piece of shit."
-   *
-   * Repairing is the same product twice over: a repair's cash cost and the
-   * bill reduction it buys are IDENTICAL by construction (both are
-   * `repairStepFraction x partPriceYen`), and guide value moves by
-   * `marketRepairDiscount x` the bill reduction. So the profit delta between
-   * repair-then-sell and sell-as-is is exactly `(D - 1) x repairCost`, and
-   * `marketRepairDiscount` IS the entire wage.
-   */
-  it('repairing and selling beats selling as-is for common/uncommon/rare tiers', () => {
-    // Honestly pricing a bolt-on/buried repair's full teardown chain
-    // (deduped once per shared blocker across the whole restoration, not
-    // once per part behind it) surfaces a REAL shitbox-tier gap, disclosed
-    // in its own test below rather than gated here. Common/uncommon/rare
-    // clear a large positive margin regardless.
-    for (const row of computeRosterCoherence(CARS, CONTEXT)) {
-      if (row.fitmentClass === 'shitbox') continue
-      if (row.repairLaborSlots === 0) continue // no tier-1 bench work at all - see below
-      expect(
-        row.wageMarginYen,
-        `${row.modelId}: repairing nets ${row.wageMarginYen} yen over selling as-is - the bench must never be a losing use of a day`,
-      ).toBeGreaterThan(0)
-    }
-  })
-
+describe('the sensible-play probes (Sprint 66, economy-bible law 1 as amended)', () => {
   it('discloses which models offer a fresh shop no bench work at all', () => {
-    // Two separate claims live in the gate above, and only one of them is
-    // about wages: "bench work pays" is gated there, "there IS bench work"
-    // is pinned here. A model lands in this list when the Law 2 ceiling
-    // (`maxBillFraction x clean value`) is tight enough against its own
-    // fitment class's parts prices that the roughest deliverable car comes
-    // back at `fine` on every slot - which is exactly a fresh shop's tier-1
-    // repair ceiling, so there is nothing left for it to repair. Its mint
-    // expectation is still reachable by buying mint parts, and the flip
-    // still pays through the acquisition discount; it is the BENCH that has
-    // no work. Pinned by name so the set cannot grow silently: it grows when
-    // a model's book value drops far enough below what its rarity tier's
-    // parts basket is priced for.
+    // A model lands in this list when the Law 2 ceiling (`maxBillFraction x
+    // clean value`) is tight enough against its own fitment class's parts
+    // prices that the roughest deliverable car comes back at `fine` on every
+    // slot - which is exactly a fresh shop's tier-1 repair ceiling, so there
+    // is nothing left for it to repair. Its mint expectation is still
+    // reachable by buying mint parts, and the flip still pays through the
+    // acquisition discount; it is the BENCH that has no work. Pinned by name
+    // so the set cannot grow silently: it grows when a model's book value
+    // drops far enough below what its fitment class's parts basket is priced
+    // for.
     const modelsWithNoBenchWork = computeRosterCoherence(CARS, CONTEXT)
       .filter((row) => row.repairLaborSlots === 0)
       .map((row) => row.modelId)
       .sort()
-    expect(modelsWithNoBenchWork).toEqual(['mazda-rx7-fd3s', 'toyota-aristo-30v-jzs147'])
-  })
-
-  it('discloses the shitbox-tier wage gap (Sprint 72): honest teardown pricing shows a real loss, not a thin margin', () => {
-    // A shitbox's cheap parts return too little repair gain
-    // (`repairGainYen` scales with part price) to outearn the rent burned by
-    // the labour needed to reach the tier's expectation band (labour is
-    // value-blind - see "discloses the tier spread" below). Honestly
-    // priced, it is negative. Disclosed, not gated - a future
-    // economy-tuning pass (TODO.md) can decide whether to soften the
-    // teardown premium, raise `marketRepairDiscount`, or accept that not
-    // every shitbox repair is worth a player's day.
-    const shitbox = computeRosterCoherence(CARS, CONTEXT).filter(
-      (r) => r.fitmentClass === 'shitbox',
-    )
-    expect(shitbox.length, 'expected shitbox-class models on the roster').toBeGreaterThan(0)
-    for (const row of shitbox) {
-      expect(
-        row.wageMarginYen,
-        `${row.modelId}: wageMarginYen is ${row.wageMarginYen} - pinned as a known Sprint 72 gap, re-flip to toBeGreaterThan(0) if a future economy-tuning pass fixes it`,
-      ).toBeLessThan(0)
-    }
-  })
-
-  it('the margin is the discount rate above 1, applied to the plan the player actually pays', () => {
-    // Not a re-derivation: this asserts the identity the law RESTS on, so a
-    // future change that decouples repair cost from bill reduction fails here
-    // rather than silently making the wage a fiction.
-    for (const row of computeRosterCoherence(CARS, CONTEXT)) {
-      expect(row.repairGainYen).toBe(
-        Math.round((ECONOMY.valuation.marketRepairDiscount - 1) * row.repairCostYen),
-      )
-    }
+    expect(modelsWithNoBenchWork).toEqual([])
   })
 
   it('the sensible play clears a real margin on EVERY roster model (Sprint 66 decision 7)', () => {
@@ -1103,53 +1063,5 @@ describe('the wage probe (Sprint 66, economy-bible law 6 - item 19)', () => {
         `${row.modelId}: buying rough, repairing to ${row.fitmentClass}'s expectation band and selling nets ${row.sensibleFlipMarginYen} yen (${(row.sensibleFlipMarginFraction * 100).toFixed(1)}% of clean) - the core loop must pay on every car in the game`,
       ).toBeGreaterThan(0.05)
     }
-  })
-
-  it('a mint restore is a WORSE play than the sensible one on a shitbox, and a BETTER one on a rare car (Sprint 72: both directions now gated)', () => {
-    // Diminishing returns are real and tier-keyed: chasing mint destroys
-    // margin on a cheap car.
-    const rows = computeRosterCoherence(CARS, CONTEXT)
-    const shitbox = rows.filter((r) => r.fitmentClass === 'shitbox')
-    expect(shitbox.length, 'expected shitbox-class models on the roster').toBeGreaterThan(0)
-    for (const row of shitbox) {
-      expect(
-        row.flipMarginYen,
-        `${row.modelId}: a mint restore should be the WORSE play on a shitbox`,
-      ).toBeLessThan(row.sensibleFlipMarginYen)
-    }
-
-    // The rare-car half (mint beats sensible - "that is what makes it a
-    // project"): the bench-only rule (bands.ts) narrows `planGroupRepair` to
-    // surface slots, so `sensibleFlipMarginYen`'s cost side (coherence.ts)
-    // would otherwise undercount any car whose expectation band lifts a
-    // bolt-on/buried part. Pricing the full teardown chain (deduped per
-    // shared blocker across the whole restoration) into the wage probe
-    // restores the intended direction here.
-    const rare = rows.filter((r) => r.fitmentClass === 'rare')
-    expect(rare.length, 'expected rare-class models on the roster').toBeGreaterThan(0)
-    for (const row of rare) {
-      expect(
-        row.sensibleFlipMarginYen,
-        `${row.modelId}: a mint restore should be the BETTER play on a rare car (that is what makes it a project)`,
-      ).toBeLessThan(row.flipMarginYen)
-    }
-  })
-
-  it('discloses the tier spread: bench work pays a shitbox far worse than a rare car - Sprint 72 shows it as a net loss, not just thin', () => {
-    // Repair LABOUR is value-blind (a shitbox takes similar teardown/refit
-    // slots to reach its expectation band as a rare car) while the gain
-    // scales with part price, so `wageRatio` falls hard down the roster - a
-    // genuine loss on a shitbox (ratio below 1), gated in its own
-    // disclosure test above. This test only pins the RELATIVE shape (rare
-    // clears a comfortable positive wage, shitbox does not).
-    const rows = computeRosterCoherence(CARS, CONTEXT)
-    const shitbox = rows.filter((r) => r.fitmentClass === 'shitbox')
-    const rare = rows.filter((r) => r.fitmentClass === 'rare')
-    expect(shitbox.length, 'expected shitbox-class models on the roster').toBeGreaterThan(0)
-    expect(rare.length, 'expected rare-class models on the roster').toBeGreaterThan(0)
-    const worstShitbox = Math.min(...shitbox.map((r) => r.wageRatio))
-    const bestRare = Math.max(...rare.map((r) => r.wageRatio))
-    expect(worstShitbox).toBeLessThan(1)
-    expect(bestRare).toBeGreaterThan(1)
   })
 })

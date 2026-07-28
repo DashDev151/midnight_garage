@@ -102,6 +102,28 @@ export function costToBandYen(
   return Math.round(gradesBetween(band, targetBand) * repairStepFraction * partPriceYen)
 }
 
+/**
+ * What a used part fetches over the counter: its own catalogue price, scaled
+ * by the resale condition curve (`teardown.resaleBandFactors`) and the
+ * used-part haircut (`teardown.usedPartSaleFraction`). Zero for a scrap
+ * part, which has no counter value at all - `scrapValueYen` is its only
+ * route. The one formula every sale price, preview and probe reads, so the
+ * button's price tag and the coherence table can never disagree.
+ *
+ * The resale curve is deliberately steeper than `bands.bandFactors`, which
+ * prices repair and car value: that gap is what makes reconditioning a poor
+ * part to worn worth doing before selling it, and repairing past worn not.
+ */
+export function usedPartSaleValueYen(
+  partPriceYen: number,
+  band: ConditionBand,
+  economy: EconomyConfig,
+): number {
+  if (band === 'scrap') return 0
+  const { resaleBandFactors, usedPartSaleFraction } = economy.teardown
+  return Math.round(partPriceYen * resaleBandFactors[band] * usedPartSaleFraction)
+}
+
 /** A scrap PartInstance's sale payout: "pennies on the yen" against its
  * stock-equivalent replacement cost, at the scrapped instance's own class. */
 export function scrapValueYen(

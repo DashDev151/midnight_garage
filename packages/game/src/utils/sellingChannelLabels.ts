@@ -50,6 +50,6 @@ export function sellingChannelCadenceLabel(channel: SellingChannelConfig): strin
     return `${channel.priceBand.min}x-${channel.priceBand.max}x of value, guaranteed`
   }
   if (channel.matchedOnly) return 'Daily chance, matched buyers only'
-  if (channel.offerChanceFactorByTierClass) return 'Daily chance, by car tier'
+  if (channel.offerChanceFactorByRarity) return 'Daily chance, by car rarity'
   return 'Daily chance'
 }

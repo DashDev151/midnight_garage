@@ -46,7 +46,8 @@ that sprint doc is the historical record).
 ## The laws
 
 The Economy Rebuild arc (Sprints 53-55) locked four laws; Sprint 60 added a fifth (the
-foundation law) and Sprint 66 a sixth (the wage law), both by explicit maintainer approval.
+foundation law) and Sprint 66 a sixth (the wage law, replaced by the four-play law on
+2026-07-28), both by explicit maintainer approval.
 Sprint 66 also amended Laws 1 and 5. See the Amendment log for all of it.
 
 1. **Repair margin (Law 1).** *Amended Sprint 66 - see the Amendment log. The clause below is the
@@ -123,21 +124,26 @@ Sprint 66 also amended Laws 1 and 5. See the Amendment log for all of it.
    turned a real profit. Under Law 5 it loses money end to end - the parts were bought at full
    catalog price but credited at ~8% of it while the foundations stay neglected.
 
-6. **The wage law (Law 6).** A day at the bench must out-earn a day of standing still. Stated
-   checkably: for every roster model, `profit(buy -> repair -> sell) - profit(buy -> sell as-is)`
-   exceeds the rent accrued over the labour days that repair takes - measured at the car's own
-   **expectation band** (Law 1), never at mint, because mint is not the repair a sane player
-   performs on a kei. Both plays start from the same purchase price, so the bidding discount is
-   common to both and cancels; repair's advantage is exactly `(marketRepairDiscount - 1) x
-   repairCost` on top of it. That product IS the wage: a repair's cash cost and the bill reduction
-   it buys are identical by construction (both are `repairStepFraction x partPriceYen`), so the
-   discount rate above 1 is the entire return. *Litmus: is a day at the bench worth more than a
-   day doing nothing?* Hard-gated per model in `computeRosterCoherence`. (Sprint 66.)
+6. **The four-play law (Law 6).** Fixing must beat breaking, and fixing to what the market
+   expects must beat fixing past it. Stated checkably: on the same car, bought at the same
+   price, the four things a player can do with it rank most profitable to least as (1) repair
+   to the tier's expectation band and sell, (2) repair past it and sell, (3) strip it,
+   recondition the parts and sell them, (4) strip it and sell the parts as found. *Litmus: is
+   the car worth more mended than in pieces?* Gated per model in `computeRosterPlayRanking`
+   (`packages/sim/src/plays.ts`). (2026-07-28.)
 
-   This is the law the 2026-07-15 playtest was actually asking for, and the one Law 1 (slope >= 1)
-   was too weak to deliver: at the pre-Sprint-66 1.2, ten yen of work bought two yen of margin,
-   which is what the maintainer felt as "I have done a lot of work and the projected profit barely
-   moved". Law 1 held the whole time. It was simply never a promise worth anything.
+   Two properties ride with it. Reconditioning a part before selling it must pay while
+   reconditioning it past worn must not, which is why `teardown.resaleBandFactors` is a
+   separate, steeper curve from `bands.bandFactors`. And the cheapest car in every tier must
+   lose money stripped, or the teardown game is a printing press.
+
+   **What this law replaced, and why.** Until 2026-07-28 Law 6 was the wage law: a repair had
+   to out-earn the rent accrued over the labour days it took. It was deleted outright on the
+   maintainer's instruction, not softened, because charging a fixed overhead against a single
+   car's profitability is exactly what CLAUDE.md directive 22 forbids ("never charge fixed
+   overheads (rent) against a single play's profitability"). The question the wage law was
+   reaching for - is a day at the bench worth getting out of bed for - is answered better by
+   ranking the bench against the alternatives than by ranking it against the calendar.
 
 ## Fitment classes (Sprint 53)
 
@@ -226,7 +232,7 @@ fails that test outright, rather than silently drifting).
 | `selling.*` including `offerSpread` | `economy.json` | Walk-in sale offers |
 | `toolCeilings.*`, `specialty.*`, `machineListings.*` | `economy.json` | Progression-bible mechanics (out of this bible's scope, listed for completeness) |
 | `coherence.maxConsumablesShareOfBookValue` (Law 3) | `economy.json` | The roster-coherence consumables-share check |
-| `teardown.removeSlotsByClass`/`installSlotsByClass`/`usedPartSaleFraction`/`donorBreakEvenBillRatio` | `economy.json` | The teardown game's uninstall/install labour, used-part sale haircut, and the donor break-even measurement (`coherence.ts`'s `computeDonorCoherence`) |
+| `teardown.usedPartSaleFraction`/`resaleBandFactors`/`donorBreakEvenBillRatio` | `economy.json` | The used-part counter: the haircut off catalogue price, the resale-only condition curve it runs through (`usedPartSaleValueYen`, sim/bands.ts), and the donor break-even measurement (`coherence.ts`'s `computeDonorCoherence`) |
 | `diagnosis.symptomChanceByTier`/`secondSymptomChance`/`maxSymptomsPerCar`/`visitMinutes`/`travelFeeYenByTier`/`saleRevealCopy` | `economy.json` | The odds-priced auction sheet (`diagnosis.ts`'s `sheetGuideValueYen`, the room-vs-player pricing law; `fearPremium` retired 2026-07-19, see the Amendment log), symptom generation (`auctions.ts`), and the sale-side reveal line (Sprint 75 decision 2, `selling.ts`'s `saleRevealLineFor`) |
 | `lapModel.C`/`ratioExp`/`gripMult`/`courseId`/`courseName` | `economy.json` | The reference-lap requirement's pure time formula (`lapModel.ts`'s `lapTimeSecondsFor`) and the reference board's own model-computed rows |
 | `auctionRoom.*` | `economy.json` | The live auction room: fuse clock, reserve/clearing draws, turnout bands, bid rungs, and the reaction chances (rows added 2026-07-22 for blocks landed with their sprints' recorded mandates; `staff.*` and `machineShopAssist`-family keys remain the known table gap awaiting the standing ruling) |
@@ -501,7 +507,9 @@ maintainer or CI run can catch a coherence drift before a playtest does.
   walkthrough's three free-teardown claims now point the player at the labour figure on the
   button instead, and the remaining "costs nothing" lines are the assembly and
   put-it-back-as-found ops, which really are still free (`removeAssembly`,
-  `refitAssembly`, `refitUnchangedMember` all stay 0). `four-wheels` payout/budget
+  `refitAssembly`, `refitUnchangedMember` all stay 0). (Assembly REMOVAL stopped
+  being free on 2026-07-28; the walkthrough line was corrected in the same
+  change.) `four-wheels` payout/budget
   130,000 -> 135,000: a hand-set value, not a formula re-derivation, because the tutorial
   sits deliberately off the generic mission formula. The Wagon R's canonical book value of
   230,000 had left the taught build able to absorb its designed profit but not one player
@@ -524,3 +532,23 @@ maintainer or CI run can catch a coherence drift before a playtest does.
   worst car in each tier. Measured: all 26 roster models clear a positive margin, worst per
   tier being the City E at +26,562 (was -5,176 to mint), the Prelude at +101,520, the Cefiro
   at +106,907 and the Aristo at +184,319.
+- 2026-07-28: **Law 6 replaced: the wage law is deleted, the four-play law takes its number**
+  (maintainer instruction in session, and the lever list signed with it). The wage law charged
+  a share of the weekly rent against one car's repair, which directive 22 forbids outright; it
+  is deleted rather than softened, and `wageMarginYen`, `wageRatio`, `repairGainYen` and
+  `rentDuringRepairYen` are gone from the coherence row, the CSV export and the Python
+  invariants. In its place, the four plays are priced against the same car and the same
+  purchase price and must rank fixing above breaking. Four levers move with it, each signed by
+  name: `teardown.usedPartSaleFraction` 0.55 -> 0.30; a NEW `teardown.resaleBandFactors`
+  (mint 1.0, fine 0.75, worn 0.55, poor 0.10, no scrap entry) used for resale only, with
+  `bands.bandFactors` untouched and still driving repair cost and car value;
+  `partPricing.classFactors` 0.25/1.0/1.6/2.5 -> 0.14/0.16/0.40/0.90, derived so a tier's whole
+  stock-parts basket lands at 0.56/0.66/0.68/0.62 of what a typical car in that tier is worth
+  (it ran 0.93/4.05/2.73/3.47, which is why a Sunny's parts cost more than the Sunny); and
+  assembly removal, which stops being free by charging one `removePart` per installed member on
+  top of the (still zero) `removeAssembly` overhead, so an engine costs 8 points to pull.
+  Measured after: the required ordering holds by profit on all nine entry and everyday cars and
+  by yen-per-labour-point on all 26, with both strip plays last everywhere. The one inversion
+  is plays 1 and 2 swapping on enthusiast and flagship, which is `expectationByTier`'s own
+  `beyondDiscount` of 1.2 and 1.3 saying a full restoration is worth doing on those tiers -
+  a deliberate decision, disclosed and pinned rather than overridden.

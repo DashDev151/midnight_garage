@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { CarPartId, Grade, RarityTier } from '@midnight-garage/content'
+import type { CarPartId, Grade, CarTier } from '@midnight-garage/content'
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useGameStore } from '../stores/gameStore'
@@ -58,7 +58,7 @@ const groups = (() => {
 })()
 
 const selectedId = ref((cars.find((entry) => entry.inGame) ?? cars[0])?.id ?? '')
-const tierOverrides = ref<Record<string, RarityTier>>({})
+const tierOverrides = ref<Record<string, CarTier>>({})
 const search = ref('')
 const pickerOpen = ref(false)
 const codeInput = ref('')
@@ -70,9 +70,7 @@ const car = computed<SandboxCar>(() => {
   return found
 })
 
-const tier = computed<RarityTier>(
-  () => tierOverrides.value[selectedId.value] ?? car.value.defaultTier,
-)
+const tier = computed<CarTier>(() => tierOverrides.value[selectedId.value] ?? car.value.defaultTier)
 const model = computed(() => modelAtTier(car.value, tier.value))
 const fittable = computed(() => fittableGrades(model.value, game.context))
 
@@ -163,7 +161,7 @@ function selectCar(id: string): void {
 /** Changing tier only changes which fitment class of parts is on offer. A grade
  * the new class cannot supply falls back to stock rather than staying fitted as
  * something that does not exist. */
-function selectTier(next: RarityTier): void {
+function selectTier(next: CarTier): void {
   tierOverrides.value = { ...tierOverrides.value, [selectedId.value]: next }
   for (const entry of taxonomy) {
     const slot = build.value[entry.id]

@@ -493,7 +493,7 @@ export function forceTasksOutstanding(
   day: number = 0,
 ): CarInstance {
   const model = context.modelsById[car.modelId]
-  const fitmentClass = model ? fitmentClassForTier(model.tier) : 'common'
+  const fitmentClass = model ? fitmentClassForTier(model.tier) : 'everyday'
   const carOrigin = makeCarOrigin(
     car.id,
     model ? carOriginLabel(model, car.year) : car.modelId,

@@ -52,7 +52,7 @@ export function testSpecialty(
  */
 const STOCK_PART_ID_BY_CAR_PART_ID: Record<string, string> = Object.fromEntries(
   PARTS.filter(
-    (part) => part.grade === 'stock' && part.fitmentClass === 'common' && part.zoneId == null,
+    (part) => part.grade === 'stock' && part.fitmentClass === 'everyday' && part.zoneId == null,
   ).map((part) => [part.carPartId, part.id]),
 )
 

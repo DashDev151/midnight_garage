@@ -71,7 +71,9 @@ const TEST_MODEL: CarModel = {
     curbWeightKg: 1200,
     stockPowerPs: 150,
   },
-  tier: 'common',
+  tier: 'everyday',
+  rarity: 'common',
+  origin: 'jdm',
   tags: ['FR', 'Turbo', 'Piston', '90s', 'JDM'],
   bookValueYen: 1_000_000,
 }
@@ -180,60 +182,62 @@ describe("costToMintYen (Sprint 26 decision 5; Sprint 44 decision 1: derived fro
   const PART_PRICE_YEN = 100_000
 
   it('is gradesToMint times repairStepFraction times the part price for a repairable band, rounded', () => {
-    expect(costToMintYen('fine', dampers, PART_PRICE_YEN, 0.15, 'common')).toBe(
+    expect(costToMintYen('fine', dampers, PART_PRICE_YEN, 0.15, 'everyday')).toBe(
       Math.round(1 * 0.15 * PART_PRICE_YEN),
     )
-    expect(costToMintYen('worn', dampers, PART_PRICE_YEN, 0.15, 'common')).toBe(
+    expect(costToMintYen('worn', dampers, PART_PRICE_YEN, 0.15, 'everyday')).toBe(
       Math.round(2 * 0.15 * PART_PRICE_YEN),
     )
-    expect(costToMintYen('poor', dampers, PART_PRICE_YEN, 0.15, 'common')).toBe(
+    expect(costToMintYen('poor', dampers, PART_PRICE_YEN, 0.15, 'everyday')).toBe(
       Math.round(3 * 0.15 * PART_PRICE_YEN),
     )
-    expect(costToMintYen('poor', dampers, PART_PRICE_YEN, 0.35, 'common')).toBe(
+    expect(costToMintYen('poor', dampers, PART_PRICE_YEN, 0.35, 'everyday')).toBe(
       Math.round(3 * 0.35 * PART_PRICE_YEN),
     )
   })
 
   it('is zero for a repairable part already at mint, regardless of price or fraction', () => {
-    expect(costToMintYen('mint', dampers, PART_PRICE_YEN, 0.15, 'common')).toBe(0)
-    expect(costToMintYen('mint', dampers, PART_PRICE_YEN, 1, 'common')).toBe(0)
+    expect(costToMintYen('mint', dampers, PART_PRICE_YEN, 0.15, 'everyday')).toBe(0)
+    expect(costToMintYen('mint', dampers, PART_PRICE_YEN, 1, 'everyday')).toBe(0)
   })
 
   it("is the class's stock-replacement price for scrap, FLAT - unscaled by the installed instance's price or fraction, since there is no repair path to price", () => {
-    expect(costToMintYen('scrap', dampers, PART_PRICE_YEN, 0.15, 'common')).toBe(
-      dampers.stockReplacementPriceYenByClass.common,
+    expect(costToMintYen('scrap', dampers, PART_PRICE_YEN, 0.15, 'everyday')).toBe(
+      dampers.stockReplacementPriceYenByClass.everyday,
     )
-    expect(costToMintYen('scrap', dampers, PART_PRICE_YEN, 1, 'common')).toBe(
-      dampers.stockReplacementPriceYenByClass.common,
+    expect(costToMintYen('scrap', dampers, PART_PRICE_YEN, 1, 'everyday')).toBe(
+      dampers.stockReplacementPriceYenByClass.everyday,
     )
-    expect(costToMintYen('scrap', dampers, PART_PRICE_YEN, 0.15, 'common')).not.toBe(
+    expect(costToMintYen('scrap', dampers, PART_PRICE_YEN, 0.15, 'everyday')).not.toBe(
       Math.round(4 * 0.15 * PART_PRICE_YEN),
     )
   })
 
   it('a non-repairable consumable below fine prices FLAT at the class stock-replacement price, unscaled by price or fraction', () => {
-    expect(costToMintYen('poor', tyres, PART_PRICE_YEN, 0.15, 'common')).toBe(
-      tyres.stockReplacementPriceYenByClass.common,
+    expect(costToMintYen('poor', tyres, PART_PRICE_YEN, 0.15, 'everyday')).toBe(
+      tyres.stockReplacementPriceYenByClass.everyday,
     )
-    expect(costToMintYen('worn', tyres, PART_PRICE_YEN, 0.15, 'common')).toBe(
-      tyres.stockReplacementPriceYenByClass.common,
+    expect(costToMintYen('worn', tyres, PART_PRICE_YEN, 0.15, 'everyday')).toBe(
+      tyres.stockReplacementPriceYenByClass.everyday,
     )
-    expect(costToMintYen('worn', tyres, PART_PRICE_YEN, 1, 'common')).toBe(
-      tyres.stockReplacementPriceYenByClass.common,
+    expect(costToMintYen('worn', tyres, PART_PRICE_YEN, 1, 'everyday')).toBe(
+      tyres.stockReplacementPriceYenByClass.everyday,
     )
   })
 
   it('a non-repairable consumable at fine or mint prices at zero - a nearly-new consumable does not discount value', () => {
-    expect(costToMintYen('fine', tyres, PART_PRICE_YEN, 0.15, 'common')).toBe(0)
-    expect(costToMintYen('mint', tyres, PART_PRICE_YEN, 0.15, 'common')).toBe(0)
+    expect(costToMintYen('fine', tyres, PART_PRICE_YEN, 0.15, 'everyday')).toBe(0)
+    expect(costToMintYen('mint', tyres, PART_PRICE_YEN, 0.15, 'everyday')).toBe(0)
   })
 })
 
 describe('scrapValueYen (Sprint 26 decision 6: pennies on the yen)', () => {
   it('is the class stock-replacement price times scrapValueFraction, rounded', () => {
     const dampers = TAXONOMY_BY_ID.dampers
-    expect(scrapValueYen(dampers, ECONOMY, 'common')).toBe(
-      Math.round(dampers.stockReplacementPriceYenByClass.common * ECONOMY.bands.scrapValueFraction),
+    expect(scrapValueYen(dampers, ECONOMY, 'everyday')).toBe(
+      Math.round(
+        dampers.stockReplacementPriceYenByClass.everyday * ECONOMY.bands.scrapValueFraction,
+      ),
     )
   })
 
@@ -242,11 +246,11 @@ describe('scrapValueYen (Sprint 26 decision 6: pennies on the yen)', () => {
       ...TAXONOMY_BY_ID.dampers,
       stockReplacementPriceYenByClass: {
         ...TAXONOMY_BY_ID.dampers.stockReplacementPriceYenByClass,
-        common: 33333,
+        everyday: 33333,
       },
     }
     // 33333 * 0.05 = 1666.65 -> rounds to 1667.
-    expect(scrapValueYen(oddPricedEntry, ECONOMY, 'common')).toBe(1667)
+    expect(scrapValueYen(oddPricedEntry, ECONOMY, 'everyday')).toBe(1667)
   })
 })
 
@@ -676,16 +680,16 @@ describe('worstRepairableBandInGroup (Sprint 41 coordinator fix: the group BandP
 })
 
 describe('costWeightedBandFactor (Sprint 26 decision 4 shim)', () => {
-  // TEST_MODEL is tier 'common' throughout this describe block.
+  // TEST_MODEL is tier 'everyday' throughout this describe block.
   const TOTAL_STOCK_WEIGHT_YEN = PARTS_TAXONOMY.reduce(
-    (sum, entry) => sum + entry.stockReplacementPriceYenByClass.common,
+    (sum, entry) => sum + entry.stockReplacementPriceYenByClass.everyday,
     0,
   )
 
   /** Independently-derived expected score for "every part mint except one
    * scrap part": mint minus that part's weight share of (mint - scrap). */
   function expectedFactorWithOneScrapPart(partId: CarPartId): number {
-    const weight = TAXONOMY_BY_ID[partId].stockReplacementPriceYenByClass.common
+    const weight = TAXONOMY_BY_ID[partId].stockReplacementPriceYenByClass.everyday
     const { mint, scrap } = ECONOMY.bands.bandFactors
     return mint - (weight / TOTAL_STOCK_WEIGHT_YEN) * (mint - scrap)
   }
@@ -859,7 +863,7 @@ describe("carCostToMintYen and groupCostToMintYen (sum across present parts; Spr
     const expectedCost =
       otherEngineParts.reduce((sum, id) => sum + 2 * installedPriceYen(car, id), 0) +
       2 * installedPriceYen(car, 'forcedInduction') +
-      TAXONOMY_BY_ID.exhaust.stockReplacementPriceYenByClass.common
+      TAXONOMY_BY_ID.exhaust.stockReplacementPriceYenByClass.everyday
     expect(groupCost).toBe(expectedCost)
   })
 

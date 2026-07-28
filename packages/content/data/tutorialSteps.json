@@ -124,7 +124,7 @@
       },
       {
         "speaker": "instruction",
-        "text": "Start at the ground. Her tyres are scrap, and scrap tyres fail a roadworthy all on their own. Tyres come off with the wheels: press Remove assembly (a whole assembly comes off for no labour at all), and the wheels land on the bench below.",
+        "text": "Start at the ground. Her tyres are scrap, and scrap tyres fail a roadworthy all on their own. Tyres come off with the wheels: press Remove assembly (an assembly costs the same labour as pulling its parts one at a time, and the figure is on the button), and the wheels land on the bench below.",
         "hideWhen": { "kind": "assemblyOnBench", "assemblyId": "wheelAssembly" }
       },
       {

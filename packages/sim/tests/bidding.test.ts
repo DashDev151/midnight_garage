@@ -167,7 +167,7 @@ describe('privateValuationYen', () => {
     const mean = ratios.reduce((a, b) => a + b, 0) / ratios.length
     expect(mean).toBeGreaterThan(ECONOMY.AUCTION_WHOLESALE_FRACTION * 0.9)
     expect(mean).toBeLessThan(ECONOMY.AUCTION_WHOLESALE_FRACTION * 1.1)
-    expect(model.tier).toBe('rare') // sanity: this fixture is still JZA80
+    expect(model.tier).toBe('flagship') // sanity: this fixture is still JZA80
   })
 })
 

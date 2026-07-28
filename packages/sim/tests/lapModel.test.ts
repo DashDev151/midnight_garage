@@ -23,10 +23,10 @@ const CIVIC = CARS.find((c) => c.id === 'honda-civic-sir2-eg6')!
 const AE86 = CARS.find((c) => c.id === 'toyota-sprinter-trueno-ae86')!
 
 const STREET_TYRES = PARTS.find(
-  (p) => p.carPartId === 'tyres' && p.grade === 'street' && p.fitmentClass === 'common',
+  (p) => p.carPartId === 'tyres' && p.grade === 'street' && p.fitmentClass === 'everyday',
 )!
 const RACE_TYRES = PARTS.find(
-  (p) => p.carPartId === 'tyres' && p.grade === 'race' && p.fitmentClass === 'common',
+  (p) => p.carPartId === 'tyres' && p.grade === 'race' && p.fitmentClass === 'everyday',
 )!
 
 function tyreInstance(part: (typeof PARTS)[number], band: 'mint' | 'scrap' = 'mint') {

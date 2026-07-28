@@ -12,10 +12,10 @@ const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 const MODEL = CARS[0]!
 const EMPTY_LEDGER: CarLedger = { purchaseYen: null, repairYen: 0, partsYen: 0 }
 // `buildCarInstance`/`uniformCarParts` (testFixtures.ts) always build
-// 'common'-fitment-class stock parts regardless of the fixture model's real
+// 'everyday'-fitment-class stock parts regardless of the fixture model's real
 // tier, so the tyre override below matches that same class.
 const STREET_TYRES = PARTS.find(
-  (p) => p.carPartId === 'tyres' && p.grade === 'street' && p.fitmentClass === 'common',
+  (p) => p.carPartId === 'tyres' && p.grade === 'street' && p.fitmentClass === 'everyday',
 )!
 
 /** What a `lapTimeCeiling` requirement reports for a car - a time, or the

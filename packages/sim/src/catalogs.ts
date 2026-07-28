@@ -81,7 +81,6 @@ function generateForEligibleTiers(
       rng,
       context,
       year,
-      state.reputationTier,
       excludedModelIds,
     )
     if (lots.length === 0) continue
@@ -139,7 +138,6 @@ export function stockNewlyUnlockedTier(
     rng,
     context,
     year,
-    state.reputationTier,
     excludedModelIds,
   )
 }

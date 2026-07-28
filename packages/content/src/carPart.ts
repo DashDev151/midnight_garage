@@ -106,10 +106,10 @@ export const CarPartTaxonomyContentSchema = z.array(CarPartTaxonomyEntryContentS
 export type CarPartTaxonomyEntryContent = z.infer<typeof CarPartTaxonomyEntryContentSchema>
 
 const StockReplacementPriceByClassSchema = z.object({
-  shitbox: z.number().int().positive(),
-  common: z.number().int().positive(),
-  uncommon: z.number().int().positive(),
-  rare: z.number().int().positive(),
+  entry: z.number().int().positive(),
+  everyday: z.number().int().positive(),
+  enthusiast: z.number().int().positive(),
+  flagship: z.number().int().positive(),
 })
 
 /**

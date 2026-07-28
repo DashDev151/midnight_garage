@@ -138,9 +138,14 @@ function scoreDemoLots(n: number, state: GameState, context: SimContext): Scored
  * catalogue: over the lots carrying exactly one unresolved doubt, the steal is
  * the one whose true worth most beats the room read (highest ratio), and the
  * trap the lowest-ratio lot whose true worth falls below the trap band of the
- * read (TRAP_VALUE_FRACTION), so the room genuinely overpays. The catalogue
- * widens until such a trap exists; one with none throws rather than ship a fake
- * trap. Ties break on lot id, ascending, so the pick is reproducible.
+ * read (TRAP_VALUE_FRACTION), so the room genuinely overpays.
+ *
+ * The catalogue widens until BOTH sides are genuine: a real trap, and a steal
+ * the verdict reads as `better` rather than merely above the read by a hair.
+ * The demo exists to show a symptom cutting both ways, and a lobby whose
+ * "steal" card reads `fair` teaches nothing. A catalogue with neither throws
+ * rather than ship a fake one. Ties break on lot id, ascending, so the pick is
+ * reproducible.
  */
 function selectDemoLots(
   state: GameState,
@@ -155,6 +160,7 @@ function selectDemoLots(
     const steal = scored.reduce((best, cur) =>
       cur.ratio > best.ratio || (cur.ratio === best.ratio && cur.lot.id < best.lot.id) ? cur : best,
     )
+    if (verdictFor(steal.roomReadYen, steal.trueValueYen) !== 'better') continue
     const trap = traps.reduce((worst, cur) =>
       cur.ratio < worst.ratio || (cur.ratio === worst.ratio && cur.lot.id < worst.lot.id)
         ? cur
@@ -164,7 +170,7 @@ function selectDemoLots(
   }
   const widest = DEMO_CATALOG_N_STEPS[DEMO_CATALOG_N_STEPS.length - 1]
   throw new Error(
-    `auction room demo found no trap (a symptomatic lot worth under ${TRAP_VALUE_FRACTION} of the room read) in catalogues up to ${widest} lots`,
+    `auction room demo found no lobby (a symptomatic lot worth under ${TRAP_VALUE_FRACTION} of the room read, alongside one the verdict reads as better) in catalogues up to ${widest} lots`,
   )
 }
 

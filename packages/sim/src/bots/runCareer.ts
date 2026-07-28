@@ -2,7 +2,7 @@ import type {
   AuctionTier,
   ComponentId,
   GameState,
-  RarityTier,
+  CarTier,
   ReputationTier,
 } from '@midnight-garage/content'
 import type { DayActions } from '../actions'
@@ -61,7 +61,7 @@ export interface AcquisitionSample {
 export interface OfferSample {
   carEpisodeId: number
   day: number
-  tier: RarityTier
+  tier: CarTier
   offerYen: number
   valueYen: number
   accepted: boolean

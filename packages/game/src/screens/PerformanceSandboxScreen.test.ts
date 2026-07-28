@@ -185,10 +185,10 @@ describe('PerformanceSandboxScreen', () => {
     await click(wrapper, 'slot-grade-intake-race')
     await click(wrapper, 'slot-grade-cooling-race')
     await click(wrapper, 'slot-grade-aero-race')
-    await click(wrapper, 'tier-uncommon')
+    await click(wrapper, 'tier-enthusiast')
 
     const code = text(wrapper, 'build-code')
-    expect(code.split('|')).toEqual(['v1', IN_GAME_CAR, 'uncommon', expect.any(String)])
+    expect(code.split('|')).toEqual(['v1', IN_GAME_CAR, 'enthusiast', expect.any(String)])
     expect(code.split('|')[3]).toHaveLength(29)
 
     const before = renderedBuild(wrapper)

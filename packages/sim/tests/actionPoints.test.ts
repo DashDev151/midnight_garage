@@ -88,10 +88,10 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
   }
 }
 
-// shitbox class - honda-city-e-aa (every `ownedCar` fixture below) is
-// 'shitbox' tier, and a bench-fitted part must match the car's own class.
-const stockTyresId = CONTEXT.stockPartByCarPartId.shitbox!.tyres!.id
-const stockRimsId = CONTEXT.stockPartByCarPartId.shitbox!.rims!.id
+// entry class - honda-city-e-aa (every `ownedCar` fixture below) is
+// 'entry' tier, and a bench-fitted part must match the car's own class.
+const stockTyresId = CONTEXT.stockPartByCarPartId.entry!.tyres!.id
+const stockRimsId = CONTEXT.stockPartByCarPartId.entry!.rims!.id
 
 function binPart(id: string, partId: string, band: PartInstance['band'] = 'mint'): PartInstance {
   return { id, partId, band, genuinePeriod: false, origin: makeMarketOrigin(1) }
@@ -138,19 +138,35 @@ describe('every action gates on the labour bar and spends its own figure when ra
     expect(refused.state).toBe(state)
   })
 
-  it('removeAssembly: pulling an assembly to the bench charges the figure, refuses short of it', () => {
+  it('removeAssembly: the operation figure PLUS one removePart per installed member, refuses short of it', () => {
     const car = ownedCar('car-ra')
     const state = baseState({ ownedCars: [car] })
     const ctx = ctxWith('removeAssembly')
 
-    const done = resolveRemoveAssembly(state, car.id, 'wheelAssembly', ctx, COST)
-    expect(done.ok).toBe(true)
-    expect(done.laborSlotsUsed).toBe(COST)
-    expect(done.state.energySpentToday).toBe(state.energySpentToday + COST)
+    // An assembly is a batch over the per-slot machinery, never a discount on
+    // it: the wheel assembly's two members each pay the same `removePart`
+    // charge a loose slot pays, on top of the operation's own figure.
+    const members = ctx.assembliesById.wheelAssembly!.members.length
+    const expected = COST + members * ctx.economy.energy.actionPoints.removePart
+    expect(members).toBe(2)
 
-    const refused = resolveRemoveAssembly(state, car.id, 'wheelAssembly', ctx, COST - 1)
+    const done = resolveRemoveAssembly(state, car.id, 'wheelAssembly', ctx, expected)
+    expect(done.ok).toBe(true)
+    expect(done.laborSlotsUsed).toBe(expected)
+    expect(done.state.energySpentToday).toBe(state.energySpentToday + expected)
+
+    const refused = resolveRemoveAssembly(state, car.id, 'wheelAssembly', ctx, expected - 1)
     expect(refused.ok).toBe(false)
     expect(refused.state).toBe(state)
+  })
+
+  it('removeAssembly: an already-empty member slot is not charged - the figure follows what actually comes off', () => {
+    const car = ownedCar('car-ra-partial', mintCarParts({ tyres: null }))
+    const state = baseState({ ownedCars: [car] })
+    const expected = CONTEXT.economy.energy.actionPoints.removePart // rims only
+    const done = resolveRemoveAssembly(state, car.id, 'wheelAssembly', CONTEXT, expected)
+    expect(done.ok).toBe(true)
+    expect(done.laborSlotsUsed).toBe(expected)
   })
 
   it('refitAssembly: the refit operation itself charges the figure once, refuses short of it', () => {

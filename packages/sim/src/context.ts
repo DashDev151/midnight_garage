@@ -165,7 +165,7 @@ function groupPartIdsByGroup(
   return result as Record<ComponentId, readonly CarPartId[]>
 }
 
-const FITMENT_CLASSES: readonly PartFitmentClass[] = ['shitbox', 'common', 'uncommon', 'rare']
+const FITMENT_CLASSES: readonly PartFitmentClass[] = ['entry', 'everyday', 'enthusiast', 'flagship']
 
 /** One `grade: 'stock'` catalog part per `CarPartId`, per fitment class -
  * the resolved catalog guarantees exactly one exists per component per

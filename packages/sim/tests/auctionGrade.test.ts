@@ -12,17 +12,17 @@ import { buildCarInstance, mintCarParts, uniformCarParts } from './testFixtures'
 
 const CONTEXT = buildSimContext(CARS, PARTS, [], PARTS_TAXONOMY)
 
-// honda-city-e-aa: the roster's cheapest model (shitbox tier, book
-// Y180,000), naturally aspirated so its forcedInduction slot is
+// honda-city-e-aa: the roster's cheapest model (entry tier, book
+// Y130,000), naturally aspirated so its forcedInduction slot is
 // legitimately absent rather than a genuine defect (isPartMissing,
 // sim/bands.ts).
 const MODEL = CONTEXT.modelsById['honda-city-e-aa']!
-// honda-civic-sir2-eg6: a mid-priced roster model (common tier, book
+// honda-civic-sir2-eg6: a mid-priced roster model (enthusiast tier, book
 // Y650,000) - big enough that one cheap wheel replacement stays a small
 // slice of its book value, unlike on the roster's cheapest car.
 const MID_MODEL = CONTEXT.modelsById['honda-civic-sir2-eg6']!
-// toyota-supra-rz-jza80: a high-value roster model (rare tier, book
-// Y4,200,000) - the expensive end of the imbalance probe below.
+// toyota-supra-rz-jza80: a high-value roster model (flagship tier, book
+// Y2,890,000) - the expensive end of the imbalance probe below.
 const EXPENSIVE_MODEL = CONTEXT.modelsById['toyota-supra-rz-jza80']!
 
 function grade(car: CarInstance, model: CarModel = MODEL) {
@@ -44,10 +44,11 @@ describe('computeAuctionGrade', () => {
     // index (4 mint * 4 + 0 scrap + 1 mint * 4) / 6 = 3.33, rounds to B,
     // then steps down one letter for the scrap part to C.
     expect(result.exterior).toBe('C')
-    // A Y30,000 wheel against a Y650,000 book value is a 4.6% bill -
-    // comfortably inside the S/6/5 band, nowhere near what a
-    // worst-single-part rule would have produced.
-    expect(result.overall).toBe('5')
+    // A Y5,400 wheel against a Y650,000 book value is a 0.8% bill - inside
+    // the top step, nowhere near what a worst-single-part rule would have
+    // produced. The overall carries the COST of the project; the exterior
+    // letter above is what carries the wreckage.
+    expect(result.overall).toBe('S')
   })
 
   it('a scrap mechanical part forces R and its own letter reflects the wreckage', () => {
@@ -79,7 +80,9 @@ describe('computeAuctionGrade', () => {
     expect(OVERALL_RANK.indexOf(cheapGrade.overall)).toBeGreaterThan(
       OVERALL_RANK.indexOf(expensiveGrade.overall),
     )
-    expect(cheapGrade.overall).toBe('5')
+    // The same Y1,500 of interior repair is 1.2% of the City's book and 0.05%
+    // of the Supra's, which is one grade step apart on `overallRatioSteps`.
+    expect(cheapGrade.overall).toBe('6')
     expect(expensiveGrade.overall).toBe('S')
   })
 
@@ -116,7 +119,9 @@ describe('computeAuctionGrade', () => {
     const car = buildCarInstance({ modelId: MODEL.id, parts: mintCarParts({ seats: null }) })
     const result = grade(car)
     expect(result.overall).not.toBe('R')
-    expect(result.overall).toBe('5')
+    // A whole replacement seat at the City's own entry class is Y4,900, a 3.8%
+    // bill against its Y130,000 book.
+    expect(result.overall).toBe('6')
     expect(result.mechanical).toBe('A')
     expect(result.exterior).toBe('A')
     // Two interior parts, one genuinely missing: average (0 + 4) / 2 = 2,

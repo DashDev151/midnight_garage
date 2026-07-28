@@ -36,7 +36,9 @@
       "dataConfidence": "MED",
       "estimatedFields": ["rl", "fr", "com", "cd"]
     },
-    "tier": "shitbox",
+    "tier": "entry",
+    "rarity": "common",
+    "origin": "jdm",
     "tags": ["FF", "NA", "Piston", "80s", "JDM"],
     "bookValueYen": 130000
   },
@@ -72,7 +74,9 @@
       "dataConfidence": "MED",
       "estimatedFields": ["rl", "fr", "com", "cd"]
     },
-    "tier": "shitbox",
+    "tier": "entry",
+    "rarity": "common",
+    "origin": "jdm",
     "tags": ["FF", "NA", "Piston", "Kei", "90s", "JDM"],
     "bookValueYen": 230000
   },
@@ -109,7 +113,9 @@
       "dataConfidence": "MED",
       "estimatedFields": ["fr", "com"]
     },
-    "tier": "common",
+    "tier": "enthusiast",
+    "rarity": "common",
+    "origin": "jdm",
     "tags": ["FF", "NA", "Piston", "90s", "JDM"],
     "bookValueYen": 650000
   },
@@ -152,7 +158,9 @@
       "dataConfidence": "HIGH",
       "estimatedFields": ["com"]
     },
-    "tier": "uncommon",
+    "tier": "enthusiast",
+    "rarity": "uncommon",
+    "origin": "jdm",
     "tags": ["FR", "NA", "Piston", "80s", "JDM"],
     "bookValueYen": 890000
   },
@@ -195,7 +203,9 @@
       "dataConfidence": "MED",
       "estimatedFields": ["fr", "com", "cd"]
     },
-    "tier": "uncommon",
+    "tier": "enthusiast",
+    "rarity": "common",
+    "origin": "jdm",
     "tags": ["FR", "Turbo", "Piston", "90s", "JDM"],
     "bookValueYen": 750000
   },
@@ -237,7 +247,9 @@
       "dataConfidence": "MED",
       "estimatedFields": ["fr", "com", "cd"]
     },
-    "tier": "uncommon",
+    "tier": "enthusiast",
+    "rarity": "common",
+    "origin": "jdm",
     "tags": ["FR", "Turbo", "Piston", "90s", "JDM"],
     "bookValueYen": 870000
   },
@@ -280,7 +292,9 @@
       "dataConfidence": "MED",
       "estimatedFields": ["fr", "com", "cd"]
     },
-    "tier": "uncommon",
+    "tier": "enthusiast",
+    "rarity": "common",
+    "origin": "jdm",
     "tags": ["FR", "Turbo", "Piston", "90s", "JDM"],
     "bookValueYen": 1020000
   },
@@ -323,7 +337,9 @@
       "dataConfidence": "MED",
       "estimatedFields": ["fr", "com", "cd"]
     },
-    "tier": "uncommon",
+    "tier": "enthusiast",
+    "rarity": "uncommon",
+    "origin": "jdm",
     "tags": ["FR", "Turbo", "Rotary", "80s", "JDM"],
     "bookValueYen": 850000
   },
@@ -366,7 +382,9 @@
       "dataConfidence": "HIGH",
       "estimatedFields": ["com"]
     },
-    "tier": "rare",
+    "tier": "flagship",
+    "rarity": "uncommon",
+    "origin": "jdm",
     "tags": ["FR", "Turbo", "Rotary", "90s", "JDM"],
     "bookValueYen": 1450000
   },
@@ -410,7 +428,9 @@
       "dataConfidence": "MED",
       "estimatedFields": ["com"]
     },
-    "tier": "rare",
+    "tier": "flagship",
+    "rarity": "rare",
+    "origin": "jdm",
     "tags": ["FR", "Turbo", "Piston", "90s", "JDM"],
     "bookValueYen": 2890000
   },
@@ -446,7 +466,9 @@
       "dataConfidence": "MED",
       "estimatedFields": ["rl", "fr", "com", "cd"]
     },
-    "tier": "shitbox",
+    "tier": "everyday",
+    "rarity": "common",
+    "origin": "jdm",
     "tags": ["FF", "NA", "Piston", "80s", "JDM"],
     "bookValueYen": 250000
   },
@@ -481,7 +503,9 @@
       "dataConfidence": "LOW",
       "estimatedFields": ["rl", "fr", "com", "cd", "kg"]
     },
-    "tier": "shitbox",
+    "tier": "everyday",
+    "rarity": "common",
+    "origin": "jdm",
     "tags": ["FF", "NA", "Piston", "80s", "JDM"],
     "bookValueYen": 150000
   },
@@ -517,7 +541,9 @@
       "dataConfidence": "MED",
       "estimatedFields": ["rl", "fr", "com", "cd"]
     },
-    "tier": "shitbox",
+    "tier": "entry",
+    "rarity": "common",
+    "origin": "jdm",
     "tags": ["FF", "Turbo", "Piston", "Kei", "90s", "JDM"],
     "bookValueYen": 400000
   },
@@ -560,7 +586,9 @@
       "dataConfidence": "HIGH",
       "estimatedFields": ["com", "cd"]
     },
-    "tier": "shitbox",
+    "tier": "entry",
+    "rarity": "uncommon",
+    "origin": "jdm",
     "tags": ["MR", "NA", "Piston", "Kei", "90s", "JDM"],
     "bookValueYen": 580000
   },
@@ -603,7 +631,9 @@
       "dataConfidence": "MED",
       "estimatedFields": ["rl", "fr", "com"]
     },
-    "tier": "common",
+    "tier": "enthusiast",
+    "rarity": "uncommon",
+    "origin": "jdm",
     "tags": ["FF", "NA", "Piston", "80s", "JDM"],
     "bookValueYen": 480000
   },
@@ -640,7 +670,9 @@
       "dataConfidence": "LOW",
       "estimatedFields": ["rl", "fr", "com", "cd"]
     },
-    "tier": "shitbox",
+    "tier": "entry",
+    "rarity": "uncommon",
+    "origin": "jdm",
     "tags": ["FF", "Turbo", "Piston", "80s", "JDM"],
     "bookValueYen": 320000
   },
@@ -682,7 +714,9 @@
       "dataConfidence": "MED",
       "estimatedFields": ["rl", "fr", "com", "cd"]
     },
-    "tier": "shitbox",
+    "tier": "everyday",
+    "rarity": "uncommon",
+    "origin": "jdm",
     "tags": ["FF", "NA", "Piston", "90s", "JDM"],
     "bookValueYen": 340000
   },
@@ -725,7 +759,9 @@
       "dataConfidence": "MED",
       "estimatedFields": ["rl", "com", "cd"]
     },
-    "tier": "common",
+    "tier": "enthusiast",
+    "rarity": "common",
+    "origin": "jdm",
     "tags": ["FF", "NA", "Piston", "90s", "JDM"],
     "bookValueYen": 490000
   },
@@ -767,7 +803,9 @@
       "dataConfidence": "MED",
       "estimatedFields": ["fr", "com", "cd"]
     },
-    "tier": "uncommon",
+    "tier": "enthusiast",
+    "rarity": "common",
+    "origin": "jdm",
     "tags": ["FR", "Turbo", "Piston", "80s", "JDM"],
     "bookValueYen": 500000
   },
@@ -810,7 +848,9 @@
       "dataConfidence": "MED",
       "estimatedFields": ["rl", "fr", "com"]
     },
-    "tier": "uncommon",
+    "tier": "enthusiast",
+    "rarity": "common",
+    "origin": "jdm",
     "tags": ["MR", "Turbo", "Piston", "80s", "JDM"],
     "bookValueYen": 1180000
   },
@@ -846,7 +886,9 @@
       "dataConfidence": "MED",
       "estimatedFields": ["rl", "fr", "com", "cd"]
     },
-    "tier": "uncommon",
+    "tier": "everyday",
+    "rarity": "common",
+    "origin": "jdm",
     "tags": ["FR", "Turbo", "Piston", "80s", "JDM"],
     "bookValueYen": 620000
   },
@@ -883,7 +925,9 @@
       "dataConfidence": "HIGH",
       "estimatedFields": ["fr", "com", "cd"]
     },
-    "tier": "uncommon",
+    "tier": "flagship",
+    "rarity": "uncommon",
+    "origin": "jdm",
     "tags": ["AWD", "Turbo", "Piston", "90s", "JDM"],
     "bookValueYen": 1800000
   },
@@ -928,7 +972,9 @@
       "dataConfidence": "HIGH",
       "estimatedFields": ["com"]
     },
-    "tier": "rare",
+    "tier": "flagship",
+    "rarity": "rare",
+    "origin": "jdm",
     "tags": ["AWD", "Turbo", "Piston", "80s", "JDM"],
     "bookValueYen": 3500000
   },
@@ -972,7 +1018,9 @@
       "dataConfidence": "MED",
       "estimatedFields": ["rl", "fr", "com"]
     },
-    "tier": "rare",
+    "tier": "flagship",
+    "rarity": "common",
+    "origin": "jdm",
     "tags": ["FR", "Turbo", "Piston", "80s", "JDM"],
     "bookValueYen": 1850000
   },
@@ -1010,7 +1058,9 @@
       "dataConfidence": "MED",
       "estimatedFields": ["ps", "rl", "fr", "com", "z"]
     },
-    "tier": "rare",
+    "tier": "enthusiast",
+    "rarity": "common",
+    "origin": "jdm",
     "tags": ["FR", "Turbo", "Piston", "90s", "JDM"],
     "bookValueYen": 770000
   },
@@ -1053,7 +1103,9 @@
       "dataConfidence": "MED",
       "estimatedFields": ["com"]
     },
-    "tier": "common",
+    "tier": "enthusiast",
+    "rarity": "uncommon",
+    "origin": "jdm",
     "tags": ["MR", "Supercharged", "Piston", "80s", "JDM"],
     "bookValueYen": 510000
   }

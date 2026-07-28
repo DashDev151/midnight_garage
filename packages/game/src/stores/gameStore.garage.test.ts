@@ -179,9 +179,9 @@ describe('garage: instant part install', () => {
 
   it('installablePartsFor is empty while every slot in the group is occupied, and offers a fitting part once one opens up', () => {
     const game = useGameStore()
-    // CARS[0] (honda-city-e-aa) is 'shitbox' tier - the part must match.
+    // CARS[0] (honda-city-e-aa) is 'entry' tier - the part must match.
     const part = PARTS.find(
-      (p) => p.carPartId === 'seats' && p.grade !== 'stock' && p.fitmentClass === 'shitbox',
+      (p) => p.carPartId === 'seats' && p.grade !== 'stock' && p.fitmentClass === 'entry',
     )!
     game.devGrantCar(CARS[0]!.id)
     const car = game.gameState.ownedCars[0]!
@@ -209,9 +209,9 @@ describe('garage: instant part install', () => {
 
   it("installablePartsFor excludes a customer-owned tagged part on any car but the owning job's own (the close-out escape TODO.md flagged)", () => {
     const game = useGameStore()
-    // CARS[0] (honda-city-e-aa) is 'shitbox' tier - the part must match.
+    // CARS[0] (honda-city-e-aa) is 'entry' tier - the part must match.
     const part = PARTS.find(
-      (p) => p.carPartId === 'seats' && p.grade !== 'stock' && p.fitmentClass === 'shitbox',
+      (p) => p.carPartId === 'seats' && p.grade !== 'stock' && p.fitmentClass === 'entry',
     )!
     game.devGrantCar(CARS[0]!.id)
     const ownCar = game.gameState.ownedCars[0]!

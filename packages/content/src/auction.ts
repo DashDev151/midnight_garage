@@ -4,7 +4,7 @@ import { CarInstanceSchema } from './carInstance'
 /**
  * GDD 6.5 tiers, rep-gated from Local Yard up to Collector Network.
  * Gaisha never appears here - GDD 4.5 sources it only via the (unbuilt)
- * Import Broker, "no auction luck" - see auctionTierForRarity in sim.
+ * Import Broker, "no auction luck" - see canAppearAtAuctionTier in sim.
  */
 export const AuctionTierSchema = z.enum(['local-yard', 'regional', 'premium', 'collector-network'])
 

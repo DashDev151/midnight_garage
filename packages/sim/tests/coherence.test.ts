@@ -85,10 +85,19 @@ describe('donor coherence invariants (Sprint 71 decision 8: the teardown game)',
     expect(failures).toEqual([])
   })
 
-  it('discloses, per model, where the worst-case car crosses from "repair it" to "part it out" against economy.teardown.donorBreakEvenBillRatio', () => {
-    // Not a gate: the crossover is measured here, not force-asserted at
-    // an exact ratio - this pins the CURRENT shape so a future economy
-    // retune can't silently drift it unnoticed.
+  it('parting out the worst generatable car never beats repairing it, at any bill ratio the generator can reach', () => {
+    // This used to be a disclosure that BOTH outcomes occurred somewhere on
+    // the roster. They no longer do, and that is the point: once the parts
+    // basket became a sensible fraction of what a car is worth and the used-
+    // part counter took its haircut, stripping stopped being the better
+    // answer anywhere. The four-play ranking (`plays.ts`) gates the same fact
+    // from the other end, on the car a player would actually strip.
+    //
+    // `donorBreakEvenBillRatio` stays a DISCLOSED measurement threshold
+    // rather than a gate: the roster's worst rolls genuinely reach both sides
+    // of it, and repair still wins on both sides, because the real yield
+    // depends on the whole model (book value, parts mix, expectation band)
+    // and never on `billToCleanRatio` alone.
     const donorBreakEvenBillRatio = CONTEXT.economy.teardown.donorBreakEvenBillRatio
     const byModel = new Map(modelRows.map((r) => [r.modelId, r]))
     const crossings = donorRows.map((r) => {
@@ -96,28 +105,20 @@ describe('donor coherence invariants (Sprint 71 decision 8: the teardown game)',
       return {
         modelId: r.modelId,
         billToCleanRatio: modelRow.billToCleanRatio,
-        partingWins: r.partedYieldOfWorstCaseYen > modelRow.sensibleFlipMarginYen,
+        partedYieldYen: r.partedYieldOfWorstCaseYen,
+        sensibleFlipMarginYen: modelRow.sensibleFlipMarginYen,
       }
     })
-    // The roster's worst-case bill-to-clean ratio never exceeds Law 2's
-    // `maxBillFraction` ceiling (already gated above) - measured here
-    // against `donorBreakEvenBillRatio` specifically to disclose whether
-    // the shipped roster's worst rolls ever actually reach the point where
-    // parting out would win.
-    // Disclosure only: the roster's worst-case rolls genuinely
-    // reach both sides of `donorBreakEvenBillRatio`, and both outcomes
-    // (parting out wins, the sensible repair wins) occur somewhere on the
-    // roster - the mechanism is real and exercised, not a threshold that
-    // never actually triggers on the shipped content. It is NOT a clean
-    // single-variable crossover at the ratio itself - several models sit
-    // above the ratio yet still favour repair, because the real yield
-    // depends on the whole model (book value, parts mix, expectation band),
-    // not `billToCleanRatio` alone. That is exactly why this is measured and
-    // disclosed here rather than force-gated to the ratio.
     expect(crossings).toHaveLength(CARS.length)
     expect(crossings.some((c) => c.billToCleanRatio > donorBreakEvenBillRatio)).toBe(true)
-    expect(crossings.some((c) => c.partingWins)).toBe(true)
-    expect(crossings.some((c) => !c.partingWins)).toBe(true)
+    expect(crossings.some((c) => c.billToCleanRatio <= donorBreakEvenBillRatio)).toBe(true)
+    const partingWins = crossings
+      .filter((c) => c.partedYieldYen > c.sensibleFlipMarginYen)
+      .map(
+        (c) =>
+          `${c.modelId}: parted ${c.partedYieldYen} > sensible repair ${c.sensibleFlipMarginYen} at bill ratio ${c.billToCleanRatio.toFixed(2)}`,
+      )
+    expect(partingWins).toEqual([])
   })
 })
 
@@ -128,7 +129,7 @@ describe('symptom coherence invariants (Sprint 73 decision 6: the blind-buy guar
     expect(rows).toHaveLength(CONTEXT.symptoms.length * 4)
     for (const symptom of CONTEXT.symptoms) {
       const tiers = rows.filter((r) => r.symptomId === symptom.id).map((r) => r.fitmentClass)
-      expect(new Set(tiers)).toEqual(new Set(['shitbox', 'common', 'uncommon', 'rare']))
+      expect(new Set(tiers)).toEqual(new Set(['entry', 'everyday', 'enthusiast', 'flagship']))
     }
   })
 

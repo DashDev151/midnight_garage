@@ -17,6 +17,7 @@ import {
   findWorkableCar,
   hasMachineLineFor,
   refitLaborSlotsFor,
+  removeLaborSlotsFor,
   removeMachineGateGroup,
   type MachineGateGroup,
 } from './jobs'
@@ -197,10 +198,32 @@ function anyMemberBusy(
 }
 
 /**
+ * Labour to pull `def` off a car as a unit: the operation's own
+ * `energy.actionPoints.removeAssembly` overhead plus every member actually
+ * installed, each charged the same `removeLaborSlotsFor` a loose slot pays.
+ * An assembly is a batch over the per-slot machinery, never a discount on it,
+ * so pulling an engine costs exactly what pulling its four parts would; an
+ * assembly that gains or loses a member re-prices itself with no lever to
+ * move. Exported so the UI can quote the real figure before the player
+ * commits.
+ */
+export function removeAssemblyLaborSlotsFor(
+  car: CarInstance,
+  def: AssemblyDef,
+  context: SimContext,
+): number {
+  return def.members.reduce(
+    (total, member) =>
+      car.parts[member].installed ? total + removeLaborSlotsFor(member, context) : total,
+    context.economy.energy.actionPoints.removeAssembly,
+  )
+}
+
+/**
  * Remove an assembly as a unit (car-level). Legal when every external
  * blocker is vacant and no member has an open job; labour is
- * `energy.actionPoints.removeAssembly` (0 in shipped content), gated on
- * `laborAvailable` when raised; the machine gate (`assemblyMachineGateGroup`)
+ * `removeAssemblyLaborSlotsFor` above, gated on
+ * `laborAvailable`; the machine gate (`assemblyMachineGateGroup`)
  * needs that group's line owned or hired for the day - a running cost, never
  * posted to the car's own ledger. Each installed member moves into
  * one container in `assemblyInventory`, and each vacated member slot stamps its
@@ -229,7 +252,7 @@ export function resolveRemoveAssembly(
   if (anyMemberBusy(state, carInstanceId, def, context)) return fail
   if (occupiedExternalBlockers(car, def, context).length > 0) return fail
 
-  const laborSlotsUsed = context.economy.energy.actionPoints.removeAssembly
+  const laborSlotsUsed = removeAssemblyLaborSlotsFor(car, def, context)
   if (laborSlotsUsed > laborAvailable) return fail
 
   const gateGroup = assemblyMachineGateGroup(def, context)

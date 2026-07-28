@@ -66,7 +66,7 @@ function initialState(): GameState {
     partInventory: [
       {
         id: 'pi-0001',
-        // honda-city-e-aa (car-0001) is 'shitbox' tier - the
+        // honda-city-e-aa (car-0001) is 'entry' tier - the
         // fitment-class gate refuses a mismatched-class spare part.
         partId: 'shitbox-tanuki-street-coilovers',
         band: 'mint',
@@ -195,7 +195,7 @@ describe('advanceDay golden master', () => {
     // labour and cash figure, and every derived stat. A deliberate change to
     // any of those is re-derived from a real run of this script; the script
     // itself is never bent to preserve the number.
-    expect(hashState(finalState)).toBe('3dbd65f6')
+    expect(hashState(finalState)).toBe('a70f24af')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -321,7 +321,7 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // above: the lot's rolled condition, the car's derived stats and the
     // buyer's taste-adjusted price all feed it, so it is re-derived from a
     // real run whenever one of them deliberately changes.
-    expect(hashState(acquisitionCareer().sold)).toBe('eb3c62f6')
+    expect(hashState(acquisitionCareer().sold)).toBe('06f90641')
   })
 })
 

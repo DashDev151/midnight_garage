@@ -158,7 +158,7 @@ const TutorialSymptomSchema = z.object({
 })
 
 /**
- * The scripted auction lot recipe. A fixed shitbox-class runabout,
+ * The scripted auction lot recipe. A fixed entry-class runabout,
  * deterministic under any career seed (no RNG draws) - the satisfiability
  * probe (`packages/sim/tests/tutorialProbe.test.ts`) derives the recipe's
  * economics and asserts purchase-at-reserve + parts + fees + assist ops

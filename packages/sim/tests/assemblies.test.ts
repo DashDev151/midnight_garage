@@ -106,8 +106,8 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
 }
 
 // --- shared wheels fixture (mirrors jobs.test.ts's own fixture) -------------
-const stockRims = CONTEXT.stockPartByCarPartId.shitbox!.rims!
-const stockTyres = CONTEXT.stockPartByCarPartId.shitbox!.tyres!
+const stockRims = CONTEXT.stockPartByCarPartId.entry!.rims!
+const stockTyres = CONTEXT.stockPartByCarPartId.entry!.tyres!
 const originalRims: PartInstance = {
   id: 'pi-original-rims',
   partId: stockRims.id,
@@ -130,7 +130,7 @@ function wheelsWornCar(): CarInstance {
   })
 }
 const fittingTyre = PARTS.find(
-  (p) => p.carPartId === 'tyres' && p.fitmentClass === 'shitbox' && p.grade === 'street',
+  (p) => p.carPartId === 'tyres' && p.fitmentClass === 'entry' && p.grade === 'street',
 )!
 function newTyre(id: string): PartInstance {
   return {
@@ -143,9 +143,9 @@ function newTyre(id: string): PartInstance {
 }
 
 // A same-slot, wrong-class tyre - addresses 'tyres' exactly as `fittingTyre`
-// does, but its fitmentClass is 'common' where honda-city-e-aa is 'shitbox'.
+// does, but its fitmentClass is 'everyday' where honda-city-e-aa is 'entry'.
 const wrongClassTyrePart = PARTS.find(
-  (p) => p.carPartId === 'tyres' && p.fitmentClass === 'common' && p.grade === 'street',
+  (p) => p.carPartId === 'tyres' && p.fitmentClass === 'everyday' && p.grade === 'street',
 )!
 function wrongClassTyre(id: string): PartInstance {
   return {
@@ -192,12 +192,13 @@ describe('assembly definitions and derived gates', () => {
 })
 
 describe('the Sprint 79 contract cases, re-expressed at assembly level (Sprint 87 decision 3)', () => {
-  it('contract case 1: pull the wheel assembly and refit it as it was - 0 labour total', () => {
+  it('contract case 1: pull the wheel assembly and refit it as it was - removal only, the refit free', () => {
     const car = wheelsWornCar()
     const state = baseState({ ownedCars: [car], serviceBayCarIds: [car.id] })
     const off = resolveRemoveAssembly(state, car.id, 'wheelAssembly', CONTEXT)
     expect(off.ok).toBe(true)
-    expect(off.laborSlotsUsed).toBe(0)
+    // Pulling an assembly costs what pulling its members costs, one by one.
+    expect(off.laborSlotsUsed).toBe(2 * CONTEXT.economy.energy.actionPoints.removePart)
     const container = off.state.assemblyInventory![0]!
     expect(container.members.rims!.id).toBe(originalRims.id)
     expect(container.members.tyres!.id).toBe(originalTyres.id)
@@ -211,7 +212,7 @@ describe('the Sprint 79 contract cases, re-expressed at assembly level (Sprint 8
     expect(on.state.ownedCars[0]!.parts.tyres.installed!.id).toBe(originalTyres.id)
   })
 
-  it('contract case 2: fit a NEW tyre on the bench, refit - new-tyre install only (1 labour total)', () => {
+  it('contract case 2: fit a NEW tyre on the bench, refit - two removals plus the new tyre install', () => {
     const car = wheelsWornCar()
     const tyre = newTyre('pi-new-tyres')
     const state = baseState({ ownedCars: [car], partInventory: [tyre], serviceBayCarIds: [car.id] })
@@ -224,7 +225,8 @@ describe('the Sprint 79 contract cases, re-expressed at assembly level (Sprint 8
     // rims free (equivalence), new tyre charged the bolt-on install energy.
     expect(on.laborSlotsUsed).toBe(CONTEXT.economy.energy.energyByClass['bolt-on'])
     expect(off.laborSlotsUsed + on.laborSlotsUsed).toBe(
-      CONTEXT.economy.energy.energyByClass['bolt-on'],
+      2 * CONTEXT.economy.energy.actionPoints.removePart +
+        CONTEXT.economy.energy.energyByClass['bolt-on'],
     )
     expect(on.state.ownedCars[0]!.parts.tyres.installed!.id).toBe(tyre.id)
   })
@@ -250,20 +252,20 @@ describe('the Sprint 79 contract cases, re-expressed at assembly level (Sprint 8
     expect(on.state.ownedCars[0]!.parts.tyres.installed!.id).toBe(tyre.id)
   })
 
-  it('the clutch chain at gearbox-assembly level: blockers off free, a repaired member charged the buried rate', () => {
+  it('the clutch chain at gearbox-assembly level: both members charged off the car, a repaired member charged the buried rate back on', () => {
     // gearboxAssembly members are gearbox + clutch; clutch is non-repairable, so
     // the "improved member costs the buried rate" claim is tested via gearbox,
     // repaired on the bench, then refit charged 2 (buried), clutch free (equivalence).
     const gearbox = {
       id: 'pi-gbx',
-      partId: CONTEXT.stockPartByCarPartId.common!.gearbox!.id,
+      partId: CONTEXT.stockPartByCarPartId.everyday!.gearbox!.id,
       band: 'worn' as const,
       genuinePeriod: false,
       origin: makeCarOrigin('car-gbx', 'Test Car', 0),
     }
     const clutch = {
       id: 'pi-clu',
-      partId: CONTEXT.stockPartByCarPartId.common!.clutch!.id,
+      partId: CONTEXT.stockPartByCarPartId.everyday!.clutch!.id,
       band: 'worn' as const,
       genuinePeriod: false,
       origin: makeCarOrigin('car-gbx', 'Test Car', 0),
@@ -282,7 +284,7 @@ describe('the Sprint 79 contract cases, re-expressed at assembly level (Sprint 8
     })
     const off = resolveRemoveAssembly(state, car.id, 'gearboxAssembly', CONTEXT)
     expect(off.ok).toBe(true)
-    expect(off.laborSlotsUsed).toBe(0)
+    expect(off.laborSlotsUsed).toBe(2 * CONTEXT.economy.energy.actionPoints.removePart)
     const container = off.state.assemblyInventory![0]!
     const repair = resolveReconditionLabor(off.state, gearbox.id, 'mint', Infinity, CONTEXT)
     expect(repair.laborSlotsUsed).toBeGreaterThan(0)
@@ -294,7 +296,7 @@ describe('the Sprint 79 contract cases, re-expressed at assembly level (Sprint 8
 })
 
 describe('worked example: the tyre change (binding total)', () => {
-  it('total 1 labour slot end to end; no cash moves here, whether owning or hiring the tyre machine', () => {
+  it('two removals plus the new tyre install, end to end; no cash moves here, whether owning or hiring the tyre machine', () => {
     for (const wheelsTier of [1, 2] as const) {
       const car = wheelsWornCar()
       const tyre = newTyre('pi-tyre-work')
@@ -312,7 +314,10 @@ describe('worked example: the tyre change (binding total)', () => {
       expect(swap.ok).toBe(true)
       expect(on.ok).toBe(true)
       const totalLabour = off.laborSlotsUsed + on.laborSlotsUsed
-      expect(totalLabour).toBe(CONTEXT.economy.energy.energyByClass['bolt-on'])
+      expect(totalLabour).toBe(
+        2 * CONTEXT.economy.energy.actionPoints.removePart +
+          CONTEXT.economy.energy.energyByClass['bolt-on'],
+      )
       // The fee is gone - fitting a tyre never spends cash directly, whether
       // the wheels machine is owned or the line was hired for the day.
       expect(on.state.cashYen).toBe(state.cashYen)
@@ -349,18 +354,18 @@ describe('worked example: the tyre change (binding total)', () => {
 })
 
 describe('worked example: worn internals (binding total)', () => {
-  it('remove 0 + refit 2 = 2 assembly labour; no fee posts to the car ledger, whether renting or owning', () => {
+  it('remove charges every member, refit charges only the improved one; no fee posts to the car ledger, whether renting or owning', () => {
     for (const engineTier of [1, 2] as const) {
       const internals: PartInstance = {
         id: 'pi-internals',
-        partId: CONTEXT.stockPartByCarPartId.common!.internals!.id,
+        partId: CONTEXT.stockPartByCarPartId.everyday!.internals!.id,
         band: 'worn',
         genuinePeriod: false,
         origin: makeCarOrigin('car-engine', 'Test Car', 0),
       }
       // Start with the external blockers (intake/exhaust/cooling) already stripped
-      // - each comes off per-part at 0 labour (they are not assembly members), so
-      // the closed-form probe pins the engine-assembly economics directly.
+      // - each comes off per-part (they are not assembly members), so the
+      // closed-form probe pins the engine-assembly economics directly.
       const car = buildCarInstance({
         id: 'car-engine',
         modelId: 'honda-city-e-aa',
@@ -374,7 +379,8 @@ describe('worked example: worn internals (binding total)', () => {
 
       const off = resolveRemoveAssembly(state, car.id, 'engineAssembly', CONTEXT)
       expect(off.ok).toBe(true)
-      expect(off.laborSlotsUsed).toBe(0)
+      // Four members on the stand, each charged its own removal.
+      expect(off.laborSlotsUsed).toBe(4 * CONTEXT.economy.energy.actionPoints.removePart)
       const container = off.state.assemblyInventory![0]!
       // Repair the internals member on the stand (normal cash + labour).
       const repair = resolveReconditionLabor(off.state, internals.id, 'mint', Infinity, CONTEXT)
@@ -395,7 +401,7 @@ describe('worked example: worn internals (binding total)', () => {
   it('refuses remove and refit alike without the engine line owned or hired today, and proceeds once hired', () => {
     const internals: PartInstance = {
       id: 'pi-internals-gate',
-      partId: CONTEXT.stockPartByCarPartId.common!.internals!.id,
+      partId: CONTEXT.stockPartByCarPartId.everyday!.internals!.id,
       band: 'worn',
       genuinePeriod: false,
       origin: makeCarOrigin('car-engine-gate', 'Test Car', 0),
@@ -600,11 +606,11 @@ describe('a standard tyre/brake service job payout always covers its task cost',
     'brake-system-overhaul',
   ]
 
-  it('worst-margin payout clears the task cost, for every shitbox and common roster model', () => {
+  it('worst-margin payout clears the task cost, for every entry and everyday roster model', () => {
     const marginMin = CONTEXT.economy.serviceJobs.marginMin
-    const shitboxCommonModels = CARS.filter((m) => {
+    const entryEverydayModels = CARS.filter((m) => {
       const fitmentClass = fitmentClassForTier(m.tier)
-      return fitmentClass === 'shitbox' || fitmentClass === 'common'
+      return fitmentClass === 'entry' || fitmentClass === 'everyday'
     })
     const failures: string[] = []
     for (const id of TEMPLATE_IDS) {
@@ -615,7 +621,7 @@ describe('a standard tyre/brake service job payout always covers its task cost',
       for (const task of template.tasks) {
         if (!task.requirement.minGrade) overrides[task.requirement.carPartId] = 'poor'
       }
-      for (const model of shitboxCommonModels) {
+      for (const model of entryEverydayModels) {
         const car = buildCarInstance({ modelId: model.id, parts: mintCarParts(overrides) })
         const payout = deriveServiceJobPayoutYen(template.tasks, car, model, CONTEXT, marginMin)
         const cost = serviceJobCostBreakdown(template.tasks, car, model, CONTEXT).taskCostYen

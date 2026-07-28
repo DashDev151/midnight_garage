@@ -1,5 +1,6 @@
 import {
   ALL_CAR_PART_IDS,
+  CarTierSchema,
   fitmentClassForTier,
   resolveCarDisplayName,
   type AgeBand,
@@ -8,6 +9,8 @@ import {
   type CarInstance,
   type CarModel,
   type CarPartId,
+  type CarRarity,
+  type CarTier,
   type Cause,
   type ConditionBand,
   type EconomyConfig,
@@ -15,8 +18,6 @@ import {
   type PartFitmentClass,
   type PartInstance,
   type PartOrigin,
-  type RarityTier,
-  type ReputationTier,
   type Symptom,
   type TurnoutBand,
   type UpkeepTier,
@@ -412,32 +413,34 @@ export function enforceMinWorkBill(
 }
 
 /**
- * GDD 4.5: Gaisha is sourced only via the (unbuilt) Import Broker, "no
- * auction luck" - it never appears in a regular auction catalog. Legend
- * appears only at the rep-gated Collector Network (GDD 9.2: rare, mostly
- * story leads, occasionally an auction).
+ * Whether `model` can turn up at `tier` at all. Every car is eligible in every
+ * room by default, so which room a car appears in is a probability rather than
+ * a rule; two things still rule a car out outright:
+ *
+ * - the room deals in price bands, and a band the room weights at zero
+ *   (`economy.auction.carTierWeightsByAuctionTier`) never appears there - no
+ *   flagship at a local yard, no entry car at a collector network; and
+ * - GDD 9.2 confines a `legend` to the rep-gated Collector Network.
+ *
+ * GDD 4.5's separate rule that a gaisha import never reaches a regular auction
+ * catalogue is an ORIGIN rule, and belongs to the Import Broker channel that
+ * will read `CarModel.origin` (see TODO.md); every shipped car is `jdm`, so no
+ * catalogue can currently breach it.
  */
-export function auctionTierForRarity(tier: RarityTier): AuctionTier | null {
-  switch (tier) {
-    case 'shitbox':
-    case 'common':
-      return 'local-yard'
-    case 'uncommon':
-      return 'regional'
-    case 'rare':
-      return 'premium'
-    case 'legend':
-      return 'collector-network'
-    case 'gaisha':
-      return null
-  }
+export function canAppearAtAuctionTier(
+  model: CarModel,
+  tier: AuctionTier,
+  economy: EconomyConfig,
+): boolean {
+  if (model.rarity === 'legend' && tier !== 'collector-network') return false
+  return economy.auction.carTierWeightsByAuctionTier[tier][model.tier] > 0
 }
 
-/** Duration by rarity: a rare flash-sale roll applies to any tier first;
- * otherwise legend cars always get a long sale, uncommon/rare occasionally
- * do, and everything else gets the standard band. */
+/** Duration by rarity: a flash-sale roll applies to any car first; otherwise
+ * legend cars always get a long sale, uncommon/rare occasionally do, and
+ * everything else gets the standard band. */
 export function rollAuctionDurationDays(
-  rarity: RarityTier,
+  rarity: CarRarity,
   rng: Rng,
   economy: EconomyConfig,
 ): number {
@@ -539,8 +542,8 @@ export function wearExposure(mileageKm: number, economy: EconomyConfig): number 
  * - `null` only if the catalog genuinely has no stock entry for this
  * `CarPartId` (a defensive fallback, never expected for real content).
  * `fitmentClass` selects which class's stock SKU fills the slot - always
- * the host car's own class, so a shitbox never rolls a family-priced stock
- * part (economy-bible.md law 3).
+ * the host car's own class, so an entry-tier car never rolls a family-priced
+ * stock part (economy-bible.md law 3).
  */
 export function stockInstanceFor(
   partId: CarPartId,
@@ -882,18 +885,51 @@ export function enforceMaxBillFraction(
   return working
 }
 
-/** A reputation-conditioned weighted model pick. Each candidate model's
- * weight is `economy.auction.rarityWeightsByReputation[reputationTier]?.
- * [model.tier] ?? 1`, so any tier or rarity absent from the content map
- * draws at the implicit 1 (uniform). */
-function pickWeightedModel(
+/**
+ * Stage one of the catalogue draw: which price band this lot is, rolled
+ * straight from the room's own signed distribution
+ * (`economy.auction.carTierWeightsByAuctionTier`). Local Yard's row of
+ * 70/28/2/0 therefore means exactly that - 70 lots in 100 are entry cars -
+ * regardless of how many models sit in each band.
+ *
+ * `stocked` carries only the bands that have an eligible model to offer today.
+ * A band with none is dropped from the roll rather than re-rolled: the two
+ * give the identical distribution (dropping renormalises exactly as an
+ * unbounded re-roll converges to), but dropping costs one draw and cannot fail
+ * to terminate. It cannot arise on the shipped roster, where every band the
+ * table weights above zero has cars.
+ */
+function rollCarTier(
+  stocked: readonly CarTier[],
+  tier: AuctionTier,
+  economy: EconomyConfig,
+  rng: Rng,
+): CarTier {
+  const row = economy.auction.carTierWeightsByAuctionTier[tier]
+  const total = stocked.reduce((sum, carTier) => sum + row[carTier], 0)
+  const roll = rng.next() * total
+  let cumulative = 0
+  for (const carTier of stocked) {
+    cumulative += row[carTier]
+    if (roll < cumulative) return carTier
+  }
+  return stocked[stocked.length - 1]!
+}
+
+/**
+ * Stage two: which car, given the band. Weighted by scarcity alone
+ * (`economy.auction.rarityDrawMultiplier`), so a rare car is rare among its
+ * own price peers rather than shunted into a different room. The band is
+ * already decided by the time this runs, so this can never move the room's
+ * band mix.
+ */
+function pickModelByRarity(
   models: readonly CarModel[],
-  reputationTier: ReputationTier,
   economy: EconomyConfig,
   rng: Rng,
 ): CarModel {
-  const weightsByRarity = economy.auction.rarityWeightsByReputation[reputationTier]
-  const weights = models.map((model) => weightsByRarity?.[model.tier] ?? 1)
+  const { rarityDrawMultiplier } = economy.auction
+  const weights = models.map((model) => rarityDrawMultiplier[model.rarity])
   const total = weights.reduce((sum, w) => sum + w, 0)
   const roll = rng.next() * total
   let cumulative = 0
@@ -905,15 +941,14 @@ function pickWeightedModel(
 }
 
 /**
- * Weekly catalog for one tier: one lot per eligible model that's in stock
- * this week, up to `count`. `currentYear` (default Infinity = unrestricted)
- * also excludes any model whose `yearFrom` postdates the in-game calendar,
- * so a still-unreleased model can't appear at auction (GDD 2.2). Each lot's
- * own duration is rolled independently off its model's rarity.
- *
- * `reputationTier` (default `'legend'` = no weighting) conditions the model
- * draw via `pickWeightedModel`, biasing toward the rarities
- * `economy.auction.rarityWeightsByReputation` names for that tier.
+ * Weekly catalog for one tier: `count` lots, each drawn in two stages - the
+ * room rolls a price band from its own signed distribution, then picks a car
+ * within that band by scarcity (`rollCarTier`, `pickModelByRarity`). A model
+ * the room never offers (`canAppearAtAuctionTier`) is out of the pool
+ * entirely. `currentYear` (default Infinity = unrestricted) also excludes any
+ * model whose `yearFrom` postdates the in-game calendar, so a still-unreleased
+ * model can't appear at auction (GDD 2.2). Each lot's own duration is rolled
+ * independently off its model's rarity.
  *
  * `excludedModelIds` (default none) drops the named models from the
  * eligible pool before any draw - its one current use keeps the scripted
@@ -927,21 +962,30 @@ export function generateAuctionCatalog(
   rng: Rng,
   context: SimContext,
   currentYear: number = Infinity,
-  reputationTier: ReputationTier = 'legend',
   excludedModelIds: readonly string[] = [],
 ): AuctionLot[] {
   const { economy } = context
   const eligible = models.filter(
     (model) =>
-      auctionTierForRarity(model.tier) === tier &&
+      canAppearAtAuctionTier(model, tier, economy) &&
       model.spec.yearFrom <= currentYear &&
       !excludedModelIds.includes(model.id),
   )
   if (eligible.length === 0) return []
 
+  // Grouped once, in the enum's own fixed order, so the roll below is
+  // deterministic for a given seed whatever order `models` arrived in.
+  const poolByCarTier = new Map<CarTier, CarModel[]>()
+  for (const carTier of CarTierSchema.options) {
+    const pool = eligible.filter((model) => model.tier === carTier)
+    if (pool.length > 0) poolByCarTier.set(carTier, pool)
+  }
+  const stocked = [...poolByCarTier.keys()]
+
   const lots: AuctionLot[] = []
   for (let i = 0; i < count; i++) {
-    const model = pickWeightedModel(eligible, reputationTier, economy, rng)
+    const carTier = rollCarTier(stocked, tier, economy, rng)
+    const model = pickModelByRarity(poolByCarTier.get(carTier)!, economy, rng)
     const lotId = `lot-${day}-${tier}-${i}`
     const car = generateAuctionCarInstance(
       model,
@@ -958,7 +1002,7 @@ export function generateAuctionCatalog(
       modelId: model.id,
       car,
       bookValueYen: model.bookValueYen,
-      expiresOnDay: day + rollAuctionDurationDays(model.tier, rng, economy),
+      expiresOnDay: day + rollAuctionDurationDays(model.rarity, rng, economy),
       turnout: rollTurnoutBand(rng, economy),
     })
   }

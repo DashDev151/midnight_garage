@@ -18,8 +18,8 @@ earn one.
 ## The loop
 
 Earn rep -> a potential guarantor approaches with a build request (story mission) ->
-deliver it -> they stand guarantor at the next house -> tier unlocks, with the rarity
-band it carries (`auctionTierForRarity`).
+deliver it -> they stand guarantor at the next house -> tier unlocks, with the price
+bands it deals in (`economy.auction.carTierWeightsByAuctionTier`).
 
 ## Rules (locked decisions)
 
@@ -36,7 +36,7 @@ band it carries (`auctionTierForRarity`).
    local dealer -> Premium; grey-market euro export agent -> Collector Network).
 4. **Sourceable one tier down.** Each guarantor build must be completable with
    cars/parts from already-unlocked tiers. Check every mission's implied platform
-   against `auctionTierForRarity` at content-writing time.
+   against `canAppearAtAuctionTier` at content-writing time.
 
 ## Content additions
 

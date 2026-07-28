@@ -69,7 +69,7 @@ function planFor(groupId: 'body' | 'engine' | 'suspension' | 'interior') {
   )
 }
 
-// `car` (honda-city-e-aa) is 'shitbox' tier - the fitment-class gate
+// `car` (honda-city-e-aa) is 'entry' tier - the fitment-class gate
 // refuses a mismatched-class spare part.
 const sparePart: PartInstance = {
   id: 'pi-0001',
@@ -231,9 +231,9 @@ describe('confirmStagedWork: pipeline-swap-panel', () => {
       roof: cleanZone,
       chassis: cleanZone,
     }
-    // honda-city-e-aa is 'shitbox' tier, so the fitting zone-panel catalogue
-    // SKU is the one `zonePanelPart` resolves for (bonnet, shitbox).
-    const bonnetPanelPart = zonePanelPart(CONTEXT.partsById, 'bonnet', 'shitbox')!
+    // honda-city-e-aa is 'entry' tier, so the fitting zone-panel catalogue
+    // SKU is the one `zonePanelPart` resolves for (bonnet, entry).
+    const bonnetPanelPart = zonePanelPart(CONTEXT.partsById, 'bonnet', 'entry')!
     const zoneCar: CarInstance = buildCarInstance({
       id: 'car-0002',
       modelId: 'honda-city-e-aa',

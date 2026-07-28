@@ -46,15 +46,20 @@ const model: CarModel = {
     curbWeightKg: 1590,
     stockPowerPs: 280,
   },
-  tier: 'rare',
+  tier: 'flagship',
+  rarity: 'rare',
+  origin: 'jdm',
   tags: ['FR', 'Turbo', 'Piston', '90s', 'JDM'],
   bookValueYen: 4_200_000,
 }
 
-/** A cheap-book fixture (shitbox-range) - the only way to actually trip the
+/** A cheap-book fixture (entry-range) - the only way to actually trip the
  * floor clamp: the Supra's book value is high enough that even an all-scrap
- * restoration bill doesn't out-discount it (see the floor test below). */
-const cheapModel: CarModel = { ...model, id: 'test-shitbox', bookValueYen: 300_000 }
+ * restoration bill doesn't out-discount it (see the floor test below). The
+ * figure has to sit low against the everyday-class basket these fixtures
+ * carry, since the clamp only binds once `marketRepairDiscount x bill`
+ * outruns all but the scrap fraction of clean value. */
+const cheapModel: CarModel = { ...model, id: 'test-entry', bookValueYen: 150_000 }
 
 /** An NA-tagged variant of `model` - for the tests that specifically
  * exercise a legitimately-empty `forcedInduction` slot rather than a real
@@ -151,11 +156,11 @@ describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
       ECONOMY,
     )
     // A genuinely missing slot prices at the CAR's own fitment class
-    // (`model.tier` is 'rare' in this fixture) - see `carCostToMintYen`'s
+    // (`model.tier` is 'flagship' in this fixture) - see `carCostToMintYen`'s
     // missing-slot branch.
     const expectedDiffYen = Math.round(
       ECONOMY.valuation.marketRepairDiscount *
-        PARTS_TAXONOMY_BY_ID.brakePadsDiscs.stockReplacementPriceYenByClass.rare,
+        PARTS_TAXONOMY_BY_ID.brakePadsDiscs.stockReplacementPriceYenByClass.flagship,
     )
     expect(stockValue - missingValue).toBe(expectedDiffYen)
     expect(missingValue).toBeLessThan(stockValue)
@@ -201,10 +206,10 @@ describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
 
     // A scrap INSTALLED part prices at ITS OWN catalog class - the fixture
     // helper (`mintCarParts`'s string-shorthand override) always builds a
-    // `common`-class stock instance regardless of the host model's own tier.
-    const fiPriceYen = PARTS_TAXONOMY_BY_ID.forcedInduction.stockReplacementPriceYenByClass.common
+    // `everyday`-class stock instance regardless of the host model's own tier.
+    const fiPriceYen = PARTS_TAXONOMY_BY_ID.forcedInduction.stockReplacementPriceYenByClass.everyday
     const brakesPriceYen =
-      PARTS_TAXONOMY_BY_ID.brakePadsDiscs.stockReplacementPriceYenByClass.common
+      PARTS_TAXONOMY_BY_ID.brakePadsDiscs.stockReplacementPriceYenByClass.everyday
     expect(fiPriceYen).toBeGreaterThan(brakesPriceYen)
 
     const turboValue = marketValueYen(
@@ -287,7 +292,7 @@ describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
       brand: 'Tanuki',
       name: 'Street Coilovers',
       carPartId: 'dampers',
-      fitmentClass: 'rare',
+      fitmentClass: 'flagship',
       grade: 'street',
       requiredTags: [],
       statModifiers: { power: 0, handling: 8, style: 3, reliability: 0, authenticity: 0 },
@@ -378,7 +383,7 @@ describe('installedPartsValueYen', () => {
     brand: 'Tanuki',
     name: 'Street Coilovers',
     carPartId: 'dampers',
-    fitmentClass: 'rare',
+    fitmentClass: 'flagship',
     grade: 'street',
     requiredTags: [],
     statModifiers: { power: 0, handling: 8, style: 3, reliability: 0, authenticity: 0 },
@@ -543,7 +548,7 @@ describe('marketValueYen scales the aftermarket premium by foundationFactor (Spr
     brand: 'Fubuki',
     name: 'Velocity Stack Kit',
     carPartId: 'intake',
-    fitmentClass: 'rare',
+    fitmentClass: 'flagship',
     grade: 'race',
     requiredTags: [],
     statModifiers: { power: 20, handling: 0, style: 4, reliability: -4, authenticity: 0 },

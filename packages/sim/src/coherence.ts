@@ -20,13 +20,13 @@ import {
   stockInstanceFor,
 } from './auctions'
 import {
-  bandFactor,
   bandIndex,
   canRepair,
   carCostToMintYen,
   hasForcedInduction,
   planGroupRepair,
   planPartRepair,
+  usedPartSaleValueYen,
 } from './bands'
 import { deriveStaffWageYen, introductionFeeYen, staffSkillSum } from './staff'
 import type { SimContext } from './context'
@@ -84,7 +84,7 @@ export interface ModelCoherenceRow {
   flipMarginFraction: number
   /**
    * The SENSIBLE play, and the number to read first: buy a rough but
-   * fixable car (`buildWageProbeCar` - every real slot at `poor`) at
+   * fixable car (`buildRoughProbeCar` - every real slot at `poor`) at
    * reserve off its own damaged guide value, repair it up to its tier's
    * expectation band (not a yen past), sell at the resulting guide value.
    *
@@ -93,7 +93,7 @@ export interface ModelCoherenceRow {
    * expectation-band amendment made "fully restore" the wrong default: the
    * market barely discounts a worn kei (`beyondDiscount` 0.4), so you pay
    * near clean value for one and a mint restore burns the margin -
-   * `flipMarginYen` collapses on the shitbox tier for exactly that reason,
+   * `flipMarginYen` collapses on the entry tier for exactly that reason,
    * correctly. The money on a cheap car is in buying BELOW the expectation
    * band and bringing it up to the band, discounted at the full
    * `marketRepairDiscount`.
@@ -107,46 +107,20 @@ export interface ModelCoherenceRow {
   consumablesCostYen: number
   consumablesShare: number
   /**
-   * Law 6 (the wage law) - does a day at the bench out-earn a day of
-   * standing still? Measured closed-form on the repairable portion of the
-   * worst generatable car, at a fresh shop's tier-1 tools, planned to the
-   * car's own EXPECTATION BAND, never to mint - and clamped to the tier-1
-   * repair ceiling (`fine`), so a rare car's mint expectation is measured
-   * as a repair to fine, the most a fresh shop's tools can finish (its
-   * mint is reached by owning tier-2, or by buying mint parts - a
-   * replacement, excluded from this bench-wage figure):
+   * The cost and time of the repair `sensibleFlipMarginYen` above prices:
+   * the repairable portion of the rough probe car, at a fresh shop's tier-1
+   * tools, planned to the car's own EXPECTATION BAND and clamped to the
+   * tier-1 repair ceiling (`fine`) - so a flagship's mint expectation is
+   * measured as a repair to fine, the most a fresh shop's tools can finish.
    *
-   * - `repairCostYen` / `repairLaborSlots` come from the SAME real
-   *   `planGroupRepair(... expectationBand)` calls, summed over the six
-   *   groups, so the money and the time are always the same plan's own
-   *   figures. Scrap and missing slots are excluded from BOTH sides on
-   *   purpose - those are replacements (buying a part at the market), a
-   *   different economic act from bench labour.
-   * - `repairGainYen` = `(marketRepairDiscount - 1) x repairCostYen`. That is
-   *   the whole return on repair work: a repair's cash cost and its bill
-   *   reduction are identical by construction, so the discount rate above 1
-   *   IS the margin. Work below the expectation band is all priced at
-   *   `marketRepairDiscount`, which is why this row can use it flat.
-   * - `rentDuringRepairYen` = the rent accrued over the days that labour takes
-   *   at a solo shop's daily energy budget (`energy.basePoolPoints`)/day.
-   *
-   * `wageMarginYen` is the difference. Law 6 requires it positive for every
-   * roster model: repairing a car to the standard its market expects, then
-   * selling it, must beat selling it as-is by more than the rent the work
-   * costs.
+   * Both figures come from the SAME real `planGroupRepair(...
+   * expectationBand)` calls, summed over the six groups, so the money and
+   * the time always describe the same plan. Scrap and missing slots are
+   * excluded from BOTH sides on purpose: those are replacements (buying a
+   * part at the market), a different economic act from bench labour.
    */
   repairCostYen: number
   repairLaborSlots: number
-  repairGainYen: number
-  rentDuringRepairYen: number
-  wageMarginYen: number
-  /**
-   * `repairGainYen / rentDuringRepairYen` - how many times over the bench
-   * work pays for the time it takes. The gate is `wageMarginYen > 0`; this
-   * ratio is reported alongside it because a positive margin is not the
-   * same as one worth getting out of bed for.
-   */
-  wageRatio: number
 }
 
 /**
@@ -207,39 +181,40 @@ export function buildWorstCaseRawCar(model: CarModel, context: SimContext): CarI
   }
 }
 
-/** The fixed seed the wage probe threads through `enforceMinWorkBill`'s
+/** The fixed seed the rough probe threads through `enforceMinWorkBill`'s
  * candidate picks - the floor top-up is the one generation guard that draws,
  * and pinning the draw keeps the coherence table reproducible. */
-const WAGE_PROBE_SEED = 0
+const ROUGH_PROBE_SEED = 0
 
 /**
- * Law 6's probe subject: the roughest car GENERATION CAN ACTUALLY DELIVER for
- * this model. Every real slot starts at `poor` at the roster's worst reachable
- * mileage, and then the two generation guards run in the order
+ * The roughest car GENERATION CAN ACTUALLY DELIVER for this model, and the
+ * shared subject of every "what should a player do with this car" probe.
+ * Every real slot starts at `poor` at the roster's worst reachable mileage,
+ * and then the two generation guards run in the order
  * `generateAuctionCarInstance` runs them - `enforceMaxBillFraction` softens
  * whatever the Law 2 ceiling forbids, and `enforceMinWorkBill` puts the
  * core-loop floor's fixable work back in.
  *
- * Both guards are essential to the question Law 6 asks. A raw all-`poor` car
- * sits far above the Law 2 ceiling for most of the roster - its bill to mint
- * runs to several times what the guard permits - so bench wages measured on
- * one are wages on a lot the game can never produce: the market prices such a
- * car at a few percent of clean, and the restoration it "needs" is a bill no
- * player would ever be offered. The floor top-up is the other half: it is what
- * puts real, below-expectation work back on the softened car.
+ * Both guards are essential. A raw all-`poor` car sits far above the Law 2
+ * ceiling for most of the roster - its bill to mint runs to several times
+ * what the guard permits - so anything measured on one is measured on a lot
+ * the game can never produce: the market prices such a car at a few percent
+ * of clean, and the restoration it "needs" is a bill no player would ever be
+ * offered. The floor top-up is the other half: it is what puts real,
+ * below-expectation work back on the softened car.
  *
  * Deliberately NOT `buildWorstCaseRawCar`. That car is all-`scrap`, and scrap
  * is unrepairable by definition (`costToBandYen`'s own first branch): it is
- * replaced, not worked on. Measuring bench wages on it reports zero repairable
- * work for any model whose softened worst case stays at scrap - which is a
- * true fact about a write-off, and a useless one for the question Law 6 asks.
- * The worst-case car belongs to Law 2 (can generation produce a trap?); Law 6
- * needs the car the fantasy is actually about - the wreck you can make good.
+ * replaced, not worked on, so it reports zero repairable work for any model
+ * whose softened worst case stays at scrap - a true fact about a write-off,
+ * and a useless one here. The worst-case car belongs to Law 2 (can generation
+ * produce a trap?); this one is the car the fantasy is actually about - the
+ * wreck you can make good.
  */
-function buildWageProbeCar(model: CarModel, context: SimContext): CarInstance {
+export function buildRoughProbeCar(model: CarModel, context: SimContext): CarInstance {
   const fitmentClass = fitmentClassForTier(model.tier)
   const carHasForcedInduction = hasForcedInduction(model)
-  const carId = `wage-${model.id}`
+  const carId = `rough-${model.id}`
   const origin = makeCarOrigin(carId, carOriginLabel(model, model.spec.yearFrom), 0)
   const parts = Object.fromEntries(
     ALL_CAR_PART_IDS.map((partId) => {
@@ -249,7 +224,7 @@ function buildWageProbeCar(model: CarModel, context: SimContext): CarInstance {
       const installed = stockInstanceFor(
         partId,
         'poor',
-        `wage-${model.id}`,
+        carId,
         fitmentClass,
         context.stockPartByCarPartId,
         origin,
@@ -263,18 +238,18 @@ function buildWageProbeCar(model: CarModel, context: SimContext): CarInstance {
     year: model.spec.yearFrom,
     mileageKm: worstCaseMileageKm(context),
     color: 'White',
-    provenanceNote: 'wage probe',
+    provenanceNote: 'rough probe',
     authenticityPercent: 70,
     parts,
     symptoms: [],
     apparentBandByPartId: null,
   }
   const softened = enforceMaxBillFraction(raw, model, context, origin)
-  return enforceMinWorkBill(softened, model, context, origin, createRng(WAGE_PROBE_SEED))
+  return enforceMinWorkBill(softened, model, context, origin, createRng(ROUGH_PROBE_SEED))
 }
 
 /**
- * The wage probe car AFTER its repair plan has run: every REPAIRABLE slot
+ * The rough probe car AFTER its repair plan has run: every REPAIRABLE slot
  * sitting below `band` lifted to it, and nothing else touched.
  *
  * Two exclusions, each mirroring one the cost side already makes, so the money
@@ -282,7 +257,7 @@ function buildWageProbeCar(model: CarModel, context: SimContext): CarInstance {
  * (tyres, pads, clutch) has no repair path, so the plan never paid to move it,
  * and a slot already at or above `band` is not part of the plan either.
  */
-function repairWageProbeCar(
+function repairRoughProbeCar(
   car: CarInstance,
   context: SimContext,
   band: ConditionBand,
@@ -340,25 +315,23 @@ export function computeModelCoherence(model: CarModel, context: SimContext): Mod
     ) + MATERIALS_COST_YEN
   const consumablesShare = model.bookValueYen > 0 ? consumablesCostYen / model.bookValueYen : 0
 
-  // Law 6 (the wage law): the repairable portion of this car, planned to the
-  // car's own EXPECTATION BAND through the real repair planner at a fresh
-  // shop's tools - money and time from the same plan. Planning to mint (as
-  // this did when first written) measures a restoration no sane player would
-  // perform on a kei, and then reports that it barely pays; the expectation
-  // band is the repair the economy actually asks for.
-  // The wage probe measures a fresh shop's bench, and a fresh shop's tools are
-  // tier-1, which caps a repair at fine. A rare car's mint expectation is not
-  // reachable by repair here - the sensible tier-1 play repairs the rough car
-  // up to the ceiling (fine) and sells at that band. Reaching the mint
-  // expectation needs the tier-2 machine owned (repair fine->mint cheaply) or
-  // buying mint parts. Owning tier-2 widens this margin, which is the incentive
-  // to buy it. Every tier whose expectation already sits at or below fine is
-  // untouched - the clamp is a no-op there.
+  // The sensible play's own repair: the repairable portion of this car,
+  // planned to the car's own EXPECTATION BAND through the real repair planner
+  // at a fresh shop's tools - money and time from the same plan. Planning to
+  // mint measures a restoration no sane player would perform on a kei; the
+  // expectation band is the repair the economy actually asks for.
+  // A fresh shop's tools are tier-1, which caps a repair at fine. A flagship's
+  // mint expectation is not reachable by repair here - the sensible tier-1
+  // play repairs the rough car up to the ceiling (fine) and sells at that
+  // band. Reaching the mint expectation needs the tier-2 machine owned (repair
+  // fine->mint cheaply) or buying mint parts. Owning tier-2 widens this
+  // margin, which is the incentive to buy it. Every tier whose expectation
+  // already sits at or below fine is untouched - the clamp is a no-op there.
   const effectiveExpectationBand = sensibleRepairTargetBand(model, context.economy)
-  const wageCar = buildWageProbeCar(model, context)
+  const roughCar = buildRoughProbeCar(model, context)
   // `planGroupRepair` (bands.ts) covers surface-slot candidates only:
   // bolt-on/buried repair moved to the bench, off the on-car plan this sum
-  // reads. `repairWageProbeCar`'s value-side lift is gated on `repairable`,
+  // reads. `repairRoughProbeCar`'s value-side lift is gated on `repairable`,
   // not `depthClass`, so it still credits the full car - so the loop below
   // separately prices every non-surface repairable part's own bench-repair
   // cost.
@@ -366,7 +339,7 @@ export function computeModelCoherence(model: CarModel, context: SimContext): Mod
   let repairLaborSlots = 0
   for (const groupId of ComponentIdSchema.options) {
     const plan = planGroupRepair(
-      wageCar,
+      roughCar,
       groupId,
       effectiveExpectationBand,
       freshToolTiers(),
@@ -386,7 +359,7 @@ export function computeModelCoherence(model: CarModel, context: SimContext): Mod
   for (const partId of ALL_CAR_PART_IDS) {
     const entry = context.partsTaxonomyById[partId]
     if (!entry || entry.depthClass === 'surface') continue
-    const installed = wageCar.parts[partId].installed
+    const installed = roughCar.parts[partId].installed
     if (!installed || !canRepair(installed.band, entry)) continue
     const catalogPart = context.partsById[installed.partId]
     if (!catalogPart) continue
@@ -406,34 +379,29 @@ export function computeModelCoherence(model: CarModel, context: SimContext): Mod
     repairCostYen += plan.costYen
     repairLaborSlots += plan.laborSlotsRequired + installLaborSlotsFor(partId, context)
   }
-  const repairGainYen = (context.economy.valuation.marketRepairDiscount - 1) * repairCostYen
-  // `repairLaborSlots` is labour energy, and a solo shop's daily budget is
-  // `energy.basePoolPoints` - both rescaled by the same `pointsPerLabour`, so
-  // days-of-work (and thus the rent this bench time accrues) is invariant.
-  const repairDays = repairLaborSlots / context.economy.energy.basePoolPoints
-  const rentDuringRepairYen = repairDays * (context.economy.WEEKLY_RENT_YEN / 7)
-
   // The sensible play, end to end through the real value function: buy the
   // rough car at reserve, do exactly the repair above, sell at the resulting
   // guide value.
-  const wageCarGuideYen = marketValueYen(
+  const roughCarGuideYen = marketValueYen(
     model,
-    wageCar,
+    roughCar,
     100,
     context.partsById,
     context.partsTaxonomyById,
     context.economy,
   )
-  const wageCarBuyYen = Math.round(wageCarGuideYen * context.economy.AUCTION_RESERVE_PRICE_FRACTION)
+  const roughCarBuyYen = Math.round(
+    roughCarGuideYen * context.economy.AUCTION_RESERVE_PRICE_FRACTION,
+  )
   const repairedGuideYen = marketValueYen(
     model,
-    repairWageProbeCar(wageCar, context, effectiveExpectationBand),
+    repairRoughProbeCar(roughCar, context, effectiveExpectationBand),
     100,
     context.partsById,
     context.partsTaxonomyById,
     context.economy,
   )
-  const sensibleFlipMarginYen = Math.round(repairedGuideYen - wageCarBuyYen - repairCostYen)
+  const sensibleFlipMarginYen = Math.round(repairedGuideYen - roughCarBuyYen - repairCostYen)
 
   return {
     modelId: model.id,
@@ -449,10 +417,6 @@ export function computeModelCoherence(model: CarModel, context: SimContext): Mod
     consumablesShare,
     repairCostYen: Math.round(repairCostYen),
     repairLaborSlots,
-    repairGainYen: Math.round(repairGainYen),
-    rentDuringRepairYen: Math.round(rentDuringRepairYen),
-    wageMarginYen: Math.round(repairGainYen - rentDuringRepairYen),
-    wageRatio: rentDuringRepairYen > 0 ? repairGainYen / rentDuringRepairYen : Infinity,
   }
 }
 
@@ -469,12 +433,11 @@ export interface ModelDonorCoherenceRow {
    * valued whole through the real `marketValueYen` - the "just sell it"
    * baseline the parted-out route below is measured against. */
   wholeSaleYen: number
-  /** Selling every REMOVABLE part off that same clean car at the used-part
-   * haircut - the same formula `resolveSellPart` applies (`part.priceYen x
-   * bandFactor('mint') x economy.teardown.usedPartSaleFraction`), called
-   * directly rather than through a throwaway `GameState` since it is a plain
-   * one-line arithmetic reuse, not a re-derivation - plus scrapping the
-   * stripped shell (`model.bookValueYen x economy.bands.scrapValueFraction`).
+  /** Selling every REMOVABLE part off that same clean car through the one
+   * shared used-part price atom `resolveSellPart` uses
+   * (`usedPartSaleValueYen`, bands.ts), called directly rather than through a
+   * throwaway `GameState` - plus scrapping the stripped shell
+   * (`model.bookValueYen x economy.bands.scrapValueFraction`).
    * The "whole beats parted" gate compares this against `wholeSaleYen`
    * above, on every roster model. */
   partedYieldYen: number
@@ -579,11 +542,7 @@ export function computeDonorCoherence(
     if (!installed || !taxonomyEntry?.removable) continue
     const part = context.partsById[installed.partId]
     if (!part) continue
-    partedYieldYen += Math.round(
-      part.priceYen *
-        bandFactor('mint', context.economy) *
-        context.economy.teardown.usedPartSaleFraction,
-    )
+    partedYieldYen += usedPartSaleValueYen(part.priceYen, 'mint', context.economy)
     stripLaborSlots += removeLaborSlotsFor(partId, context)
   }
 
@@ -599,10 +558,10 @@ export function computeDonorCoherence(
     if (bandIndex(installed.band) <= bandIndex('poor')) continue // not worth pulling over replacing
     const part = context.partsById[installed.partId]
     if (!part) continue
-    partedYieldOfWorstCaseYen += Math.round(
-      part.priceYen *
-        bandFactor(installed.band, context.economy) *
-        context.economy.teardown.usedPartSaleFraction,
+    partedYieldOfWorstCaseYen += usedPartSaleValueYen(
+      part.priceYen,
+      installed.band,
+      context.economy,
     )
   }
 
@@ -646,10 +605,10 @@ export interface SymptomCoherenceRow {
 }
 
 const SYMPTOM_PROBE_FITMENT_CLASSES: readonly PartFitmentClass[] = [
-  'shitbox',
-  'common',
-  'uncommon',
-  'rare',
+  'entry',
+  'everyday',
+  'enthusiast',
+  'flagship',
 ]
 
 /**

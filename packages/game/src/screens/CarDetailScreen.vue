@@ -1305,7 +1305,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               :data-test="'remove-assembly-' + panelAssemblyRow.assemblyId"
               @click="game.removeAssembly(detail.car.id, panelAssemblyRow.assemblyId)"
             >
-              Remove assembly{{ labourSuffix(game.actionPoints.removeAssembly) }}
+              Remove assembly{{ labourSuffix(panelAssemblyRow.removeLabourPoints) }}
             </button>
             <span
               v-if="panelAssemblyRow.blockedReason"

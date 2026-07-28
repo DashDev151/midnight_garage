@@ -65,8 +65,8 @@ function withWornPanels(state: GameState): GameState {
           panels: {
             installed: {
               id: 'test-panels',
-              // honda-city-e-aa (this file's fixture model) is shitbox tier.
-              partId: CONTEXT.stockPartByCarPartId.shitbox.panels!.id,
+              // honda-city-e-aa (this file's fixture model) is entry tier.
+              partId: CONTEXT.stockPartByCarPartId.entry.panels!.id,
               band: 'worn',
               genuinePeriod: false,
               origin: { kind: 'market', day: 1 },
@@ -190,8 +190,13 @@ describe('acquisitions require a free parking space at delivery, never at biddin
       serviceBayCount: 0,
       graceParkingCarId: 'someone-elses-car',
     }
-    // Force a weekly offer refresh to get a real offer on the board.
-    const withOffers = advanceDay({ ...full, day: 7 }, noActions, 1, CONTEXT).state
+    // Offers arrive on a daily bell-curve draw off the shared rng stream, so
+    // any given day can legitimately roll none - run days until the board has
+    // one rather than pinning a day that happens to be lucky today.
+    let withOffers: GameState = { ...full, day: 1 }
+    for (let i = 0; i < 20 && withOffers.serviceJobOffers.length === 0; i++) {
+      withOffers = advanceDay(withOffers, noActions, 1, CONTEXT).state
+    }
     expect(withOffers.serviceJobOffers.length).toBeGreaterThan(0)
     const offer = withOffers.serviceJobOffers[0]!
     const actions = DayActionsSchema.parse({ acceptServiceJobs: [{ offerId: offer.id }] })

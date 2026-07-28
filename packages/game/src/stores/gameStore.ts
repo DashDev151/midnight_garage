@@ -61,7 +61,6 @@ import {
   availableTestIdsFor,
   energyMax,
   advanceDay,
-  bandFactor,
   bandIndex,
   benchedMemberWithTrait,
   benchSwapGateGroup,
@@ -115,6 +114,7 @@ import {
   moveCarToSlot as moveCarToSlotCore,
   naToTurboConversionBlocked,
   ownsMachineForGroup,
+  removeAssemblyLaborSlotsFor,
   removeBlockReason,
   resolveHireMachineLine,
   signatureGroupFor,
@@ -172,6 +172,7 @@ import {
   unlockedAuctionTiers as unlockedAuctionTiersCore,
   unlockedTechniques,
   upgradeHintFor,
+  usedPartSaleValueYen,
   valuateCarForBuyer,
   valueLedgerFor,
   worstRemainingBandFor,
@@ -483,6 +484,10 @@ export interface AssemblyRowView {
   onBench: boolean
   canRemove: boolean
   canRefit: boolean
+  /** Labour the remove would actually cost right now - the operation's own
+   * overhead plus every member still installed, so the button quotes the
+   * real figure rather than a flat one (`removeAssemblyLaborSlotsFor`). */
+  removeLabourPoints: number
   blockedReason: string | null
 }
 
@@ -1651,7 +1656,7 @@ export const useGameStore = defineStore('game', () => {
   /**
    * Display label for a part's fitment class - the diegetic
    * name ("Kei & Compact", "Family", ...), never the raw code identifier
-   * (`shitbox`/`common`/...). Every template renders a SKU's class through
+   * (`entry`/`everyday`/...). Every template renders a SKU's class through
    * this instead of interpolating `fitmentClass` directly.
    */
   function fitmentClassLabel(fitmentClass: PartFitmentClass): string {
@@ -3381,10 +3386,12 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Remove a whole assembly to the bench - 0 labour, gated on the
+   * Remove a whole assembly to the bench - labour is every installed member's
+   * own removal charge (`removeAssemblyLaborSlotsFor`), gated on the
    * engine/gearbox assembly's own line owned or hired for the day. Mirrors
    * `removePart`'s apply pattern; a no-op (returns false) on any refusal
-   * (`resolveRemoveAssembly.ok === false`), including the machine gate.
+   * (`resolveRemoveAssembly.ok === false`), including the machine gate and
+   * insufficient labour left today.
    */
   function removeAssembly(carId: string, assemblyId: AssemblyId): boolean {
     const result = resolveRemoveAssembly(
@@ -3501,6 +3508,7 @@ export const useGameStore = defineStore('game', () => {
           def.members.some((m) => car.parts[m].installed !== null) &&
           !structurallyBlocked &&
           !blockingGateGroup,
+        removeLabourPoints: removeAssemblyLaborSlotsFor(car, def, context.value),
         blockedReason: structurallyBlocked
           ? `Take off ${occupiedBlockers.map((b) => carPartLabel(b)).join(', ')} first`
           : blockingGateGroup
@@ -3621,11 +3629,7 @@ export const useGameStore = defineStore('game', () => {
     if (!instance || instance.band === 'scrap') return 0
     const part = context.value.partsById[instance.partId]
     if (!part) return 0
-    return Math.round(
-      part.priceYen *
-        bandFactor(instance.band, context.value.economy) *
-        context.value.economy.teardown.usedPartSaleFraction,
-    )
+    return usedPartSaleValueYen(part.priceYen, instance.band, context.value.economy)
   }
 
   /**

@@ -9,13 +9,15 @@ describe('resolvePartPriceYen priceBasisPartId defaulting', () => {
     const entry = {
       id: 'stock-panels',
       carPartId: 'panels' as const,
-      fitmentClass: 'common' as const,
+      fitmentClass: 'everyday' as const,
       grade: 'stock' as const,
     }
     const withoutBasis = resolvePartPriceYen(entry, SHEET)
     const withBasis = resolvePartPriceYen({ ...entry, priceBasisPartId: 'panels' }, SHEET)
     expect(withoutBasis).toBe(withBasis)
-    expect(withoutBasis).toBe(28_000)
+    // The panels reference base (28,000) x the everyday class factor, rounded
+    // to the nearest Y100 by `resolvePartPriceYen`.
+    expect(withoutBasis).toBe(Math.round((28_000 * SHEET.classFactors.everyday) / 100) * 100)
   })
 
   it('a zonePanel-basis entry prices from the new basis, independent of its own carPartId base', () => {
@@ -23,14 +25,21 @@ describe('resolvePartPriceYen priceBasisPartId defaulting', () => {
       {
         id: 'zone-panel-bonnet',
         carPartId: 'panels' as const,
-        fitmentClass: 'common' as const,
+        fitmentClass: 'everyday' as const,
         grade: 'stock' as const,
         priceBasisPartId: 'zonePanel',
       },
       SHEET,
     )
-    // zonePanel base (6,000) x common class (1.0) x stock grade (1.0) x
-    // global (1.0) - distinct from the panels carPartId base (28,000).
-    expect(price).toBe(6_000)
+    // The zonePanel reference base (6,000) x everyday class x stock grade x
+    // global - distinct from the panels carPartId base (28,000), which is what
+    // this entry would otherwise have priced from.
+    expect(price).toBe(Math.round((6_000 * SHEET.classFactors.everyday) / 100) * 100)
+    expect(price).toBeLessThan(
+      resolvePartPriceYen(
+        { id: 'stock-panels', carPartId: 'panels', fitmentClass: 'everyday', grade: 'stock' },
+        SHEET,
+      ),
+    )
   })
 })

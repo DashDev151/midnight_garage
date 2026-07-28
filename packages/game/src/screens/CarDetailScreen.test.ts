@@ -136,12 +136,12 @@ async function dropOn(
 }
 
 /**
- * An aftermarket (non-stock) catalog part for this slot, pinned to `shitbox` -
+ * An aftermarket (non-stock) catalog part for this slot, pinned to `entry` -
  * every car this file grants (`CARS[0]`/`CARS[1]`) is that tier.
  */
 function untaggedPartFor(carPartId: string) {
   return PARTS.find(
-    (p) => p.carPartId === carPartId && p.grade !== 'stock' && p.fitmentClass === 'shitbox',
+    (p) => p.carPartId === carPartId && p.grade !== 'stock' && p.fitmentClass === 'entry',
   )!
 }
 
@@ -256,7 +256,7 @@ describe('CarDetailScreen', () => {
    */
   it('previews the machine-line gate reason on repair/install of a signature slot at tier 1, never on removal, and hides it once owned or hired', async () => {
     const game = useGameStore()
-    game.devGrantCar(CARS[0]!.id) // honda-city-e-aa, a shitbox at tier-1 tools
+    game.devGrantCar(CARS[0]!.id) // honda-city-e-aa, an entry-tier car at tier-1 tools
     const id = game.gameState.ownedCars[0]!.id
     const car = game.gameState.ownedCars.find((c) => c.id === id)!
     // seats: an installed interior signature slot below mint (on-car per-part
@@ -325,7 +325,7 @@ describe('CarDetailScreen', () => {
    */
   it('shows the tier-1 repair-ceiling caption naming the group tier-2 machine, and drops it once the machine is owned', async () => {
     const game = useGameStore()
-    game.devGrantCar(CARS[0]!.id) // honda-city-e-aa, a shitbox at tier-1 tools
+    game.devGrantCar(CARS[0]!.id) // honda-city-e-aa, an entry-tier car at tier-1 tools
     const id = game.gameState.ownedCars[0]!.id
     const car = game.gameState.ownedCars.find((c) => c.id === id)!
     // seats: an installed, repairable interior SURFACE slot below mint - the
@@ -771,8 +771,8 @@ describe('CarDetailScreen', () => {
 
     it('stays silent on a car where work above the band still pays (Sprint 66)', async () => {
       const game = useGameStore()
-      const uncommon = CARS.find((c) => c.tier === 'uncommon')!
-      game.devGrantCar(uncommon.id)
+      const enthusiast = CARS.find((c) => c.tier === 'enthusiast')!
+      game.devGrantCar(enthusiast.id)
       const id = game.gameState.ownedCars[0]!.id
       const car = game.gameState.ownedCars.find((c) => c.id === id)!
       for (const partId of ALL_CAR_PART_IDS) {
@@ -1030,7 +1030,7 @@ describe('CarDetailScreen', () => {
       game.removePart(id, 'intake')
       const turboKit = PARTS.find(
         (p) =>
-          p.carPartId === 'forcedInduction' && p.grade !== 'stock' && p.fitmentClass === 'shitbox',
+          p.carPartId === 'forcedInduction' && p.grade !== 'stock' && p.fitmentClass === 'entry',
       )!
       game.devGrantPart(turboKit.id)
       const partInstanceId = game.gameState.partInventory.at(-1)!.id
@@ -1055,7 +1055,7 @@ describe('CarDetailScreen', () => {
       const id = game.gameState.ownedCars[0]!.id
       const turboKit = PARTS.find(
         (p) =>
-          p.carPartId === 'forcedInduction' && p.grade !== 'stock' && p.fitmentClass === 'shitbox',
+          p.carPartId === 'forcedInduction' && p.grade !== 'stock' && p.fitmentClass === 'entry',
       )!
       game.devGrantPart(turboKit.id)
       const partInstanceId = game.gameState.partInventory.at(-1)!.id
@@ -1175,7 +1175,7 @@ describe('CarDetailScreen', () => {
 
     it('picking a part is inert while the wheels line is neither owned nor hired today', async () => {
       const game = useGameStore()
-      const tyresPart = PARTS.find((p) => p.carPartId === 'tyres' && p.fitmentClass === 'shitbox')!
+      const tyresPart = PARTS.find((p) => p.carPartId === 'tyres' && p.fitmentClass === 'entry')!
       game.devGrantPart(tyresPart.id)
       const { wrapper } = await benchTyres(game)
       const stuckMemberId = game.gameState.assemblyInventory![0]!.members.tyres!.id
@@ -1193,7 +1193,7 @@ describe('CarDetailScreen', () => {
 
     it('Replace opens the inventory drawer scoped to the slot; picking a part fits it into the member once the wheels line is hired', async () => {
       const game = useGameStore()
-      const tyresPart = PARTS.find((p) => p.carPartId === 'tyres' && p.fitmentClass === 'shitbox')!
+      const tyresPart = PARTS.find((p) => p.carPartId === 'tyres' && p.fitmentClass === 'entry')!
       game.devGrantPart(tyresPart.id)
       const { wrapper } = await benchTyres(game)
 
@@ -1231,7 +1231,7 @@ describe('CarDetailScreen', () => {
 
     it('a freshly fitted member shows no empty-state, and Take it off returns', async () => {
       const game = useGameStore()
-      const tyresPart = PARTS.find((p) => p.carPartId === 'tyres' && p.fitmentClass === 'shitbox')!
+      const tyresPart = PARTS.find((p) => p.carPartId === 'tyres' && p.fitmentClass === 'entry')!
       game.devGrantPart(tyresPart.id)
       const { wrapper } = await benchTyres(game)
 
@@ -1833,7 +1833,7 @@ describe('CarDetailScreen', () => {
       game.devGrantCar(CARS[0]!.id)
       const id = game.gameState.ownedCars[0]!.id
       setZone(game, id, 'bonnet', { ...ROUGH, panelMissing: true })
-      const panelPart = PARTS.find((p) => p.zoneId === 'bonnet' && p.fitmentClass === 'shitbox')!
+      const panelPart = PARTS.find((p) => p.zoneId === 'bonnet' && p.fitmentClass === 'entry')!
       game.devGrantPart(panelPart.id)
       const partInstanceId = game.gameState.partInventory.at(-1)!.id
 

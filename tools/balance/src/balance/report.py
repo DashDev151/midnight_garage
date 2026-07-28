@@ -220,21 +220,11 @@ def render_coherence_section(coherence: pl.DataFrame) -> list[str]:
         "(every slot `poor`) at reserve, repair up to the tier's expectation "
         "band and not a yen past, sell at the resulting guide. **Mint flip** "
         "stays gated as Law 2's literal claim (full restoration must always be "
-        "*capable* of profit), but on the shitbox tier it correctly collapses.",
-        "",
-        "**Wage** (Law 6) is the value a repair returns over its own cost, less "
-        "the rent accrued over the labour it takes, on a rough-but-fixable car "
-        "at a fresh shop's tier-1 tools. It must stay positive on common/uncommon/"
-        "rare models (gated); on the shitbox tier it is honestly negative once "
-        "the full teardown chain is priced (Sprint 72), a disclosed gap, not a "
-        "gate. The **xRent** "
-        "ratio is the tuning dial: it is invariant to the target band (cost and "
-        "labour both scale with grade count), and falls down the roster because "
-        "repair labour is value-blind while the margin scales with part price.",
+        "*capable* of profit), but on the entry tier it correctly collapses.",
         "",
         "| Model | Class | Clean value | Worst bill | Ratio | Sensible margin | Mint flip "
-        "| Wage | xRent | Consumables share |",
-        "|---|---|---|---|---|---|---|---|---|---|",
+        "| Consumables share |",
+        "|---|---|---|---|---|---|---|---|",
     ]
     for row in coherence.sort("modelId").iter_rows(named=True):
         lines.append(
@@ -244,7 +234,6 @@ def render_coherence_section(coherence: pl.DataFrame) -> list[str]:
             f"| Y{row['sensibleFlipMarginYen']:,.0f} "
             f"({row['sensibleFlipMarginFraction']:.1%}) "
             f"| Y{row['flipMarginYen']:,.0f} "
-            f"| Y{row['wageMarginYen']:,.0f} | {row['wageRatio']:.2f}x "
             f"| {row['consumablesShare']:.1%} |"
         )
     lines.append("")
@@ -423,14 +412,12 @@ def render_symptom_coherence_section(
 INVARIANTS_ENFORCED_SECTION = [
     "## Invariants enforced (Sprint 23 decision 7, Sprint 55 decision 2, Sprint 79 demotion)",
     "",
-    "`balance.cli check` hard-gates 6 checks against this data, all roster-coherence "
-    "checks (economy-bible.md law 4, Sprints 55, 66, and 72) that read `coherence.csv` - "
+    "`balance.cli check` hard-gates 5 checks against this data, all roster-coherence "
+    "checks (economy-bible.md law 4, Sprints 55 and 66) that read `coherence.csv` - "
     "closed-form model arithmetic with no bot in the loop: every model's worst-case "
     "bill-to-clean ratio <= `maxBillFraction` (law 2), every model's flip margin at the "
     "worst roll is positive (law 1), every model's SENSIBLE-play margin is positive "
-    "(law 1 as amended, Sprint 66), every COMMON/UNCOMMON/RARE model's repair wage beats "
-    "the rent over the labour it takes (law 6, Sprint 66; the shitbox tier is measured "
-    "separately below, Sprint 72), every model's full consumable-replacement share of "
+    "(law 1 as amended, Sprint 66), every model's full consumable-replacement share of "
     "book value <= the content cap (law 3), and the service-job payout margin floor "
     "clears the profitability invariant's required coverage (law 4 - the full "
     "per-template/per-model proof is `serviceJobPayout.test.ts`, already gated in the "
@@ -450,12 +437,7 @@ INVARIANTS_ENFORCED_SECTION = [
     "car. The closed-form coherence table above is bot-free and proves the same cars "
     "clear a healthy margin on the play the economy actually asks for. The bots needing "
     "a rework to play the real game is a known, recorded defect (`TODO.md`), not an "
-    "economy failure - see `docs/sprints/sprint66.md`'s Exit. The Law 6 shitbox figure "
-    "(Sprint 72): honestly pricing a non-surface repair's own refit labour surfaces a "
-    "genuine shitbox-tier loss (cheap parts return too little repair gain to outearn "
-    "the rent the labour burns) - narrowed but not closed by Sprint 79's free removal, "
-    "measured and disclosed, not silently loosened, pending a maintainer economy-tuning "
-    "decision (`TODO.md`).",
+    "economy failure - see `docs/sprints/sprint66.md`'s Exit.",
     "",
 ]
 

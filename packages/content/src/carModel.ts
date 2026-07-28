@@ -1,5 +1,12 @@
 import { z } from 'zod'
-import { RarityTierSchema, TagSchema, TyreCompoundSchema, type Tag } from './tags'
+import {
+  CarOriginSchema,
+  CarRaritySchema,
+  CarTierSchema,
+  TagSchema,
+  TyreCompoundSchema,
+  type Tag,
+} from './tags'
 
 const LAYOUT_TAGS = ['FR', 'FF', 'AWD', 'MR', 'RR'] as const
 const INDUCTION_TAGS = ['NA', 'Turbo', 'Supercharged'] as const
@@ -131,7 +138,13 @@ export const CarModelSchema = z
       dataConfidence: z.enum(['HIGH', 'MED', 'LOW']).optional(),
       estimatedFields: z.array(z.string()).optional(),
     }),
-    tier: RarityTierSchema,
+    /** Market position: what the car is worth and what basket of parts it is
+     * charged for. Independent of `rarity` and `origin`. */
+    tier: CarTierSchema,
+    /** Scarcity: how often one turns up, and where. */
+    rarity: CarRaritySchema,
+    /** Sourcing channel. Inert until the Import Broker exists. */
+    origin: CarOriginSchema,
     tags: z.array(TagSchema).min(1),
     bookValueYen: z.number().int().positive(),
   })

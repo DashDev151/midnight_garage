@@ -4,7 +4,6 @@ import {
   CarPartIdSchema,
   ComponentIdSchema,
   ConditionBandSchema,
-  RarityTierSchema,
   ReputationTierSchema,
   TyreCompoundSchema,
 } from './tags'
@@ -59,10 +58,10 @@ const ZoneSeverityWeightsSchema = z.tuple([
 
 /** One `ZoneSeverityWeightsSchema` row per `PartFitmentClass`. */
 const ByPartFitmentClassZoneWeightsSchema = z.object({
-  shitbox: ZoneSeverityWeightsSchema,
-  common: ZoneSeverityWeightsSchema,
-  uncommon: ZoneSeverityWeightsSchema,
-  rare: ZoneSeverityWeightsSchema,
+  entry: ZoneSeverityWeightsSchema,
+  everyday: ZoneSeverityWeightsSchema,
+  enthusiast: ZoneSeverityWeightsSchema,
+  flagship: ZoneSeverityWeightsSchema,
 })
 
 /** One yen/count value per auction tier - the same shape `AUCTION_LOTS_PER_TIER`
@@ -75,6 +74,26 @@ const ByAuctionTierSchema = z.object({
   regional: z.number().int().nonnegative(),
   premium: z.number().int().nonnegative(),
   'collector-network': z.number().int().nonnegative(),
+})
+
+/** One non-negative draw weight per `CarTier`, keyed explicitly so a missing
+ * band fails validation rather than silently reading as zero. Zero is a real,
+ * meaningful value here: a band weighted 0 in a room never appears there. */
+const ByCarTierWeightSchema = z.object({
+  entry: z.number().nonnegative(),
+  everyday: z.number().nonnegative(),
+  enthusiast: z.number().nonnegative(),
+  flagship: z.number().nonnegative(),
+})
+
+/** One car-tier weight row per auction tier - the catalogue mix of every
+ * auction room in one table (`auction.carTierWeightsByAuctionTier`). Weights
+ * are relative within a row and need not sum to any particular total. */
+const CarTierWeightsByAuctionTierSchema = z.object({
+  'local-yard': ByCarTierWeightSchema,
+  regional: ByCarTierWeightSchema,
+  premium: ByCarTierWeightSchema,
+  'collector-network': ByCarTierWeightSchema,
 })
 
 /** An inclusive [min, max] day range, min <= max. */
@@ -209,14 +228,12 @@ const ByAuctionTierRateSchema = z.object({
   'collector-network': z.number().nonnegative(),
 })
 
-/** One non-negative multiplier per `RarityTier` - the offer-chance
- * desirability weight per car tier (`selling.offerChanceByTier`). */
-const ByRarityTierMultiplierSchema = z.object({
-  shitbox: z.number().nonnegative(),
+/** One non-negative multiplier per `CarRarity` - the offer-chance
+ * desirability weight per car rarity (`selling.offerChanceByRarity`). */
+const ByCarRarityMultiplierSchema = z.object({
   common: z.number().nonnegative(),
   uncommon: z.number().nonnegative(),
   rare: z.number().nonnegative(),
-  gaisha: z.number().nonnegative(),
   legend: z.number().nonnegative(),
 })
 
@@ -239,10 +256,11 @@ export type SellingChannelId = z.infer<typeof SellingChannelIdSchema>
  * cost, at what speed, and how much of the +/-12% taste band the arriving
  * pool can express. Every field but `feeYen` is optional; each channel uses
  * exactly one of three cadence shapes (enforced below): `offerChanceFactor`
- * multiplies `selling.offerChanceBase` uniformly across every rarity tier;
- * `offerChanceFactorByTierClass` does the same per `RarityTier`, for a
- * channel whose pool splits sharply by tier; `oneDrawNextEndDay` replaces
- * both with one guaranteed strong draw resolved on the next End Day only.
+ * multiplies `selling.offerChanceBase` uniformly across every rarity;
+ * `offerChanceFactorByRarity` does the same per `CarRarity`, for a channel
+ * whose pool splits sharply by how scarce the car is; `oneDrawNextEndDay`
+ * replaces both with one guaranteed strong draw resolved on the next End Day
+ * only.
  * `tasteCeiling` caps the top of the taste roll a buyer through this channel
  * can express (`.min(1)` allows a ceiling of exactly 1.00, never above
  * value); `priceBand` replaces the taste roll with a fixed fraction-of-value
@@ -253,7 +271,7 @@ const SellingChannelSchema = z
   .object({
     feeYen: z.number().int().nonnegative(),
     offerChanceFactor: z.number().positive().optional(),
-    offerChanceFactorByTierClass: ByRarityTierMultiplierSchema.optional(),
+    offerChanceFactorByRarity: ByCarRarityMultiplierSchema.optional(),
     oneDrawNextEndDay: z.boolean().optional(),
     tasteCeiling: z.number().min(1).optional(),
     priceBand: z
@@ -268,14 +286,14 @@ const SellingChannelSchema = z
     (c) => {
       const shapes = [
         c.offerChanceFactor !== undefined,
-        c.offerChanceFactorByTierClass !== undefined,
+        c.offerChanceFactorByRarity !== undefined,
         c.oneDrawNextEndDay === true,
       ]
       return shapes.filter(Boolean).length === 1
     },
     {
       message:
-        'sellingChannels: each channel needs exactly one cadence shape (offerChanceFactor, offerChanceFactorByTierClass, or oneDrawNextEndDay)',
+        'sellingChannels: each channel needs exactly one cadence shape (offerChanceFactor, offerChanceFactorByRarity, or oneDrawNextEndDay)',
     },
   )
 
@@ -329,8 +347,8 @@ const PhysicalConditionCurveSchema = z.object({
  */
 export const EconomyConfigSchema = z.object({
   /**
-   * Day-1 starting cash. Derived, not asserted: pooling the shitbox and
-   * common roster tiers across many generated lots, the median guide value is
+   * Day-1 starting cash. Derived, not asserted: pooling the two cheapest
+   * roster tiers across many generated lots, the median guide value is
    * ~Y133,795 and the median full-restore bill ~Y80,800; buying at the 0.6
    * reserve (~Y80,277) plus that restoration (~Y161,077 total) plus four
    * weeks' rent (Y80,000) plus an early parts float (~Y30,000) gives a
@@ -418,20 +436,33 @@ export const EconomyConfigSchema = z.object({
    */
   AUCTION_MIN_AGE_YEARS: z.number().int().nonnegative(),
   /**
-   * Reputation-conditioned rarity weighting for auction model selection
-   * (`auctions.ts`'s `generateAuctionCatalog`). Each eligible model's draw
-   * weight is `rarityWeightsByReputation[reputationTier]?.[model.tier] ?? 1`,
-   * so any tier or rarity absent from the map draws at the implicit 1
-   * (uniform). Content ships one entry - `{unknown: {shitbox: 3}}` - so a
-   * fresh (unknown-rep) career's Local Yard board favours cheap shitboxes 3:1
-   * per model, and from `local` onward selection is uniform. Partial by
-   * design: each map names only the entries that deviate from weight 1.
+   * How an auction room's catalogue is drawn (`auctions.ts`'s
+   * `generateAuctionCatalog`). Every car is eligible at every room; which room
+   * a car turns up in is a probability, not a rule. The draw runs in two
+   * stages, so each of the two tables below owns exactly one question and
+   * neither can disturb the other's answer.
    */
   auction: z.object({
-    rarityWeightsByReputation: z.partialRecord(
-      ReputationTierSchema,
-      z.partialRecord(RarityTierSchema, z.number().positive()),
-    ),
+    /**
+     * Stage one: which price band the lot is. Each room's own appetite per
+     * band, and what separates a local yard from a collector network. Read as
+     * literal shares of the room's catalogue - a row of 70/28/2/0 puts 70 lots
+     * in 100 in `entry` - since the band is rolled from this row directly,
+     * before any car is chosen. How many models sit in a band therefore has no
+     * bearing on the band's share, and adding a car to the roster cannot move
+     * these numbers' meaning. A zero means that band never appears in that
+     * room.
+     */
+    carTierWeightsByAuctionTier: CarTierWeightsByAuctionTierSchema,
+    /**
+     * Stage two: which car, given the band. Scarcity decides how often a car
+     * appears among its own price peers rather than which room it appears in,
+     * so a rare car is rare everywhere it can turn up at all. The one
+     * placement rule scarcity still owns is GDD 9.2's, enforced by
+     * `canAppearAtAuctionTier` rather than here: a `legend` reaches no room
+     * but the Collector Network.
+     */
+    rarityDrawMultiplier: ByCarRarityMultiplierSchema,
     /**
      * Weights (need not be pre-normalised to exactly 1, but should sum to ~1
      * - same convention as `serviceJobs.dailyOfferCountWeights` below) over
@@ -560,8 +591,8 @@ export const EconomyConfigSchema = z.object({
        * Below the band, `marketRepairDiscount` applies and Law 1's >= 1
        * guarantee is absolute: making a car roadworthy always pays, every
        * tier, every damage state. Above it, `beyondDiscount` applies and MAY
-       * be below 1 deliberately - restoring a shitbox kei to mint is passion
-       * spend, not an investment. At mint both bills are zero, so a fully
+       * be below 1 deliberately - restoring an entry-tier kei to mint is
+       * passion spend, not an investment. At mint both bills are zero, so a fully
        * restored car is worth exactly clean value and the no-inflation
        * ceiling is untouched. The result is the real-world shape: a tidy
        * running Wagon R (`beyondDiscount` 0.4) prices near a mint one, while a
@@ -608,8 +639,8 @@ export const EconomyConfigSchema = z.object({
    * via those, `carCostToMintYen`/`groupCostToMintYen`/`planGroupRepair`/
    * `serviceJobCostBreakdown`) reads this. Structurally closes the donor-car
    * repair arbitrage a tier-scaled model would allow (laundering an
-   * expensive car's worn parts through a kept shitbox at a fraction of the
-   * price): a part's repair price is intrinsic to the part, identical on-car
+   * expensive car's worn parts through a kept entry-tier car at a fraction of
+   * the price): a part's repair price is intrinsic to the part, identical on-car
    * or on the bench, wherever it sits and whoever owns the car. Replacement
    * pricing (scrap, a missing slot, a non-repairable consumable) stays flat
    * at `stockReplacementPriceYen` - a gearbox costs what a gearbox costs at
@@ -1070,8 +1101,8 @@ export const EconomyConfigSchema = z.object({
       /**
        * The core-loop law's floor: the minimum below-expectation restoration
        * bill a generated car must carry, as a fraction of `bookValueYen`, keyed
-       * by `PartFitmentClass` (`fitmentClassForTier` - `legend`/`gaisha` fold
-       * into `rare`, same as every other fitment-keyed config). After symptoms
+       * by `PartFitmentClass` (`fitmentClassForTier`, same as every other
+       * fitment-keyed config). After symptoms
        * land, `auctions.ts`'s `enforceMinWorkBill` degrades installed parts
        * (seeded, honest visible wear, never forced to `scrap`) until the true
        * car's bill to its own tier's expectation band
@@ -1267,13 +1298,13 @@ export const EconomyConfigSchema = z.object({
       /** Base daily chance a for-sale car draws an offer at all, before the
        * tier/heat-band multipliers below. */
       offerChanceBase: z.number().min(0).max(1),
-      /** Per-`RarityTier` desirability multiplier on `offerChanceBase` - how
-       * much natural foot traffic a car's own rarity draws, independent of
-       * whether any buyer archetype is even a plausible fit for it at all
-       * (that's the separate `saleCandidates` gate `sellViaWalkIn` already
-       * applies). A common shitbox gets looked at far more often than a
-       * gaisha or a legend. */
-      offerChanceByTier: ByRarityTierMultiplierSchema,
+      /** Per-`CarRarity` desirability multiplier on `offerChanceBase` - how
+       * much natural foot traffic a car's own scarcity draws, independent of
+       * whether any buyer archetype is even a plausible fit for its tier at
+       * all (that's the separate `saleCandidates` gate `sellViaWalkIn` already
+       * applies). A car you see every day gets looked at far more often than
+       * one nobody has laid eyes on in years. */
+      offerChanceByRarity: ByCarRarityMultiplierSchema,
       /** Below this market-heat percent, today counts as a "cold" heat band;
        * at or above `heatBandHotAtOrAbovePercent`, "hot"; otherwise "normal" -
        * three flat bands (mirrors the auction turnout-band style), not a
@@ -1416,13 +1447,28 @@ export const EconomyConfigSchema = z.object({
     maxConsumablesShareOfBookValue: z.number().positive().max(1),
   }),
   /**
-   * Labour cost by slot depth for the symmetric uninstall/install verbs
-   * (`resolveRemovePart`/`installFitGate`, jobs.ts). `usedPartSaleFraction`
-   * is `resolveSellPart`'s haircut off a part's own resolved price
-   * (parts.ts); `donorBreakEvenBillRatio` is the bill-to-clean ratio above
-   * which parting out a car's worst-case rolled condition can beat the
-   * sensible-repair route - a disclosed measurement threshold for the
-   * balance report, not a hard-gated invariant.
+   * The used-part counter. `usedPartSaleFraction` is `resolveSellPart`'s
+   * haircut off a part's own resolved catalogue price (`usedPartSaleValueYen`,
+   * sim/bands.ts), and `resaleBandFactors` is the condition curve that same
+   * price runs through.
+   *
+   * `resaleBandFactors` is deliberately NOT `bands.bandFactors`. That curve
+   * prices REPAIR and car value, where a band step costs
+   * `restoration.repairStepFraction` of the part's price; this one prices
+   * what a stranger pays for the part on the counter, and it falls away far
+   * faster at the bottom. The gap between the two is what makes
+   * reconditioning worth doing before selling: a poor part costs one
+   * repair step to lift to worn and gains
+   * `(worn - poor) x usedPartSaleFraction` of its price by doing so. The
+   * steps above worn deliberately do NOT pay - repairing past worn is for a
+   * part you intend to fit, not one you intend to sell. `scrap` has no entry
+   * because a scrap part is unsellable at any price (`resolveScrapPart` is
+   * its only route).
+   *
+   * `donorBreakEvenBillRatio` is the bill-to-clean ratio above which parting
+   * out a car's worst-case rolled condition can beat the sensible-repair
+   * route - a disclosed measurement threshold for the balance report, not a
+   * hard-gated invariant.
    *
    * Removal labour is priced by `energy.actionPoints.removePart` (one flat
    * figure, not per depth class); like-for-like reassembly prices through
@@ -1431,6 +1477,12 @@ export const EconomyConfigSchema = z.object({
    */
   teardown: z.object({
     usedPartSaleFraction: z.number().positive().max(1),
+    resaleBandFactors: z.object({
+      mint: z.number().positive().max(1),
+      fine: z.number().positive().max(1),
+      worn: z.number().positive().max(1),
+      poor: z.number().positive().max(1),
+    }),
     donorBreakEvenBillRatio: z.number().positive().max(1),
   }),
   /**
@@ -1575,10 +1627,10 @@ export const EconomyConfigSchema = z.object({
    */
   diagnosis: z.object({
     symptomChanceByTier: z.object({
-      shitbox: z.number().min(0).max(1),
-      common: z.number().min(0).max(1),
-      uncommon: z.number().min(0).max(1),
-      rare: z.number().min(0).max(1),
+      entry: z.number().min(0).max(1),
+      everyday: z.number().min(0).max(1),
+      enthusiast: z.number().min(0).max(1),
+      flagship: z.number().min(0).max(1),
     }),
     secondSymptomChance: z.number().min(0).max(1),
     maxSymptomsPerCar: z.number().int().positive(),

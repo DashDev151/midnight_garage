@@ -17,7 +17,7 @@ import { createRng } from '../src/rng'
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 const GAME_YEAR = 1995
-const SHITBOX_MODEL = CARS.find((c) => c.tier === 'shitbox')!
+const ENTRY_MODEL = CARS.find((c) => c.tier === 'entry')!
 
 /**
  * `generateAuctionCarInstance` rolls symptoms after its existing
@@ -36,10 +36,10 @@ function economyWithGuaranteedSymptom(overrides: Partial<EconomyConfig['diagnosi
     diagnosis: {
       ...ECONOMY.diagnosis,
       symptomChanceByTier: {
-        shitbox: 1,
-        common: 1,
-        uncommon: 1,
-        rare: 1,
+        entry: 1,
+        everyday: 1,
+        enthusiast: 1,
+        flagship: 1,
       },
       secondSymptomChance: 0,
       ...overrides,
@@ -51,7 +51,7 @@ describe('symptom generation (Sprint 73 decision 2)', () => {
   it('an honest car (allowSymptoms: false) always has an empty symptom list and a null apparent record', () => {
     for (let seed = 0; seed < 20; seed++) {
       const car = generateAuctionCarInstance(
-        SHITBOX_MODEL,
+        ENTRY_MODEL,
         `honest-${seed}`,
         createRng(seed),
         CONTEXT,
@@ -69,7 +69,7 @@ describe('symptom generation (Sprint 73 decision 2)', () => {
     let sawZeroSymptoms = false
     for (let seed = 0; seed < 200; seed++) {
       const car = generateAuctionCarInstance(
-        SHITBOX_MODEL,
+        ENTRY_MODEL,
         `sweep-${seed}`,
         createRng(seed),
         CONTEXT,
@@ -98,7 +98,7 @@ describe('symptom generation (Sprint 73 decision 2)', () => {
     let sawSymptom = false
     for (let seed = 0; seed < 40; seed++) {
       const car = generateAuctionCarInstance(
-        SHITBOX_MODEL,
+        ENTRY_MODEL,
         `worse-${seed}`,
         createRng(seed),
         guaranteedContext,
@@ -128,7 +128,7 @@ describe('symptom generation (Sprint 73 decision 2)', () => {
         // rule this test targets - zeroed here so it never tops up a part
         // away from mint and confounds the "every part reverts" assertion
         // below.
-        minWorkBillFractionByTier: { shitbox: 0, common: 0, uncommon: 0, rare: 0 },
+        minWorkBillFractionByTier: { entry: 0, everyday: 0, enthusiast: 0, flagship: 0 },
       },
       diagnosis: economyWithGuaranteedSymptom().diagnosis,
     }
@@ -145,7 +145,7 @@ describe('symptom generation (Sprint 73 decision 2)', () => {
     )
     for (let seed = 0; seed < 20; seed++) {
       const car = generateAuctionCarInstance(
-        SHITBOX_MODEL,
+        ENTRY_MODEL,
         `dropped-${seed}`,
         createRng(seed),
         guardedContext,
@@ -209,14 +209,14 @@ describe('symptom generation (Sprint 73 decision 2)', () => {
     )
     for (const seed of [1, 7, 42]) {
       const first = generateAuctionCarInstance(
-        SHITBOX_MODEL,
+        ENTRY_MODEL,
         `det-${seed}`,
         createRng(seed),
         guaranteedContext,
         GAME_YEAR,
       )
       const second = generateAuctionCarInstance(
-        SHITBOX_MODEL,
+        ENTRY_MODEL,
         `det-${seed}`,
         createRng(seed),
         guaranteedContext,

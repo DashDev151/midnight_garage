@@ -3,10 +3,17 @@ import type { CarPartId, Grade } from './tags'
 import type { PartFitmentClass } from './partFitment'
 
 /**
- * One yen value per `CarPartId` - the stock-grade, `common`-class baseline
- * every SKU's price scales from. Explicit per-part keys (not a generic
- * `z.record`), matching this codebase's established preference for a missing
- * key to fail validation rather than silently price a part at 0.
+ * One yen value per `CarPartId` - the period-anchored REFERENCE price of a
+ * brand-new, stock-grade example of that component, taken from 1994-2004
+ * catalogue data. It is a ladder, not a shelf price: no class's
+ * `classFactors` entry is 1.0, because nobody keeping a 1988 saloon alive
+ * pays new-OEM list for a block. `classFactors` carries what a part for that
+ * kind of car actually trades at, sized so a tier's whole basket stays a
+ * sensible fraction of what its cars are worth.
+ *
+ * Explicit per-part keys (not a generic `z.record`), matching this
+ * codebase's established preference for a missing key to fail validation
+ * rather than silently price a part at 0.
  */
 const ByCarPartIdPriceSchema = z.object({
   block: z.number().int().positive(),
@@ -47,16 +54,16 @@ const ByCarPartIdPriceSchema = z.object({
  * is optional: only ships once a catalog entry actually prices from it.
  */
 const ByPriceBasisIdPriceSchema = ByCarPartIdPriceSchema.extend({
-  /** The stock, common-class base a zone-panel SKU prices from, independent
+  /** The stock, everyday-class base a zone-panel SKU prices from, independent
    * of the derived `panels` carPartId's own base. */
   zonePanel: z.number().int().positive().optional(),
 })
 
 const ByFitmentClassFactorSchema = z.object({
-  shitbox: z.number().positive(),
-  common: z.number().positive(),
-  uncommon: z.number().positive(),
-  rare: z.number().positive(),
+  entry: z.number().positive(),
+  everyday: z.number().positive(),
+  enthusiast: z.number().positive(),
+  flagship: z.number().positive(),
 })
 
 const ByGradeFactorSchema = z.object({
@@ -84,8 +91,9 @@ export type PartPricingSheet = z.infer<typeof PartPricingSheetSchema>
 
 /**
  * The one formula every SKU's price runs through: an override wins outright;
- * otherwise `round100(base x class x grade x global)`. Rounds to the nearest
- * Y100 - fine-grained enough that the class/grade ladder still reads
+ * otherwise `round100(base x class x grade x global)`, where `base` is the
+ * period reference price and `class` scales it to that tier's real market.
+ * Rounds to the nearest Y100 - fine-grained enough that the class/grade ladder still reads
  * distinctly, coarse enough that a shop's price tags never carry single-yen
  * noise. `base` comes from `entry.priceBasisPartId` when the entry carries
  * one, otherwise from its own `carPartId` - so an entry that never sets the
