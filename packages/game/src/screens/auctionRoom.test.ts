@@ -117,8 +117,8 @@ describe('auctionRoom machine', () => {
     const [thin, packed] = buildLobby()
 
     const thinRoom = seat(thin!)
-    expect(thinRoom.reserveYen).toBe(115_096)
-    expect(thinRoom.clearingYen).toBe(161_303)
+    expect(thinRoom.reserveYen).toBe(157_555)
+    expect(thinRoom.clearingYen).toBe(220_807)
     // The clearing price is one seeded fraction of the read; recompute it off a
     // fresh stream at the same seed to pin the draw exactly.
     const thinFraction = clearingFractionFor(
@@ -134,8 +134,8 @@ describe('auctionRoom machine', () => {
     expect(thinRatio).toBeLessThanOrEqual(config().turnout.thin.clearMax)
 
     const packedRoom = seat(packed!)
-    expect(packedRoom.reserveYen).toBe(216_637)
-    expect(packedRoom.clearingYen).toBe(351_864)
+    expect(packedRoom.reserveYen).toBe(194_696)
+    expect(packedRoom.clearingYen).toBe(316_227)
     const packedFraction = clearingFractionFor(
       createRng(hashStringToSeed(demoRoomSeed('packed', 0))),
       'packed',
@@ -168,20 +168,20 @@ describe('auctionRoom machine', () => {
       { name: 'Endo', active: true },
       { name: 'Mrs. Sakaki', active: true },
     ])
-    expect(room.reserveYen).toBe(115_096)
-    expect(room.boardYen).toBe(115_096)
-    expect(room.clearingYen).toBe(161_303)
+    expect(room.reserveYen).toBe(157_555)
+    expect(room.boardYen).toBe(157_555)
+    expect(room.clearingYen).toBe(220_807)
     expect(room.leader).toBeNull()
     expect(room.leaderName).toBeNull()
     expect(room.status).toBe('open')
     expect(room.clockEndsAtMs).toBe(config().clockMs)
-    expect(room.log).toEqual(['The clerk looks over the room. Reserve is ¥115,096.'])
+    expect(room.log).toEqual(['The clerk looks over the room. Reserve is ¥157,555.'])
     expect(room.pendingRoomBid).toEqual({ atMs: 2265 })
-    expect(nextRungYen(room)).toBe(115_096)
+    expect(nextRungYen(room)).toBe(157_555)
 
-    expect(room.roomReadYen).toBe(209_266)
-    expect(room.trueValueYen).toBe(230_354)
-    expect(room.playerNumberYen).toBe(230_354)
+    expect(room.roomReadYen).toBe(286_463)
+    expect(room.trueValueYen).toBe(335_937)
+    expect(room.playerNumberYen).toBe(335_937)
     expect(room.verdict).toBe('better')
     expect(room.epilogue).toBeNull()
   })
@@ -197,11 +197,11 @@ describe('auctionRoom machine', () => {
       'a quiet man in a good coat',
     ])
     expect(room.dealers.every((dealer) => dealer.active)).toBe(true)
-    expect(room.reserveYen).toBe(216_637)
-    expect(room.boardYen).toBe(216_637)
-    expect(room.clearingYen).toBe(351_864)
+    expect(room.reserveYen).toBe(194_696)
+    expect(room.boardYen).toBe(194_696)
+    expect(room.clearingYen).toBe(316_227)
     expect(room.pendingRoomBid).toEqual({ atMs: 2645 })
-    expect(room.playerNumberYen).toBe(252_396)
+    expect(room.playerNumberYen).toBe(184_064)
   })
 
   it('lands the opener at its scheduled instant and resets the fuse from it', () => {
@@ -210,15 +210,15 @@ describe('auctionRoom machine', () => {
 
     expect(room.leader).toBe('room')
     expect(room.leaderName).toBe('Endo')
-    expect(room.boardYen).toBe(115_096)
+    expect(room.boardYen).toBe(157_555)
     expect(room.lastBid).toEqual({ by: 'Endo', atMs: 2265 })
-    expect(room.log).toContain('Endo opens: ¥115,096.')
+    expect(room.log).toContain('Endo opens: ¥157,555.')
     expect(room.clockEndsAtMs).toBe(2265 + config().clockMs)
     // The wide gap on the thin room draws feud eligibility before the delay
     // draw on this scheduled raise; it fails at this seed, so the delay draw
     // lands on the ordinary band.
     expect(room.pendingRoomBid).toEqual({ atMs: 5665 })
-    expect(nextRungYen(room)).toBe(120_096)
+    expect(nextRungYen(room)).toBe(162_555)
   })
 
   it('climbs the thin room dealer against dealer to the clearing price and hammers there', () => {
@@ -226,12 +226,12 @@ describe('auctionRoom machine', () => {
     tick(room, 3_600_000)
 
     expect(room.status).toBe('lost')
-    expect(room.boardYen).toBe(160_096)
+    expect(room.boardYen).toBe(217_555)
     // The board settles on the last rung at or under the clearing price.
     expect(room.boardYen).toBeLessThanOrEqual(room.clearingYen)
     expect(room.boardYen + room.incrementYen).toBeGreaterThan(room.clearingYen)
-    expect(room.leaderName).toBe('Mrs. Sakaki')
-    expect(room.log.at(-1)).toBe('Hammer. Mrs. Sakaki takes it at ¥160,096.')
+    expect(room.leaderName).toBe('Endo')
+    expect(room.log.at(-1)).toBe('Hammer. Endo takes it at ¥217,555.')
     expect(dealersInRoom(room)).toBe(1)
     expect(room.epilogue).toBe('You let it go. Someone got a bargain there.')
   })
@@ -241,19 +241,18 @@ describe('auctionRoom machine', () => {
     tick(room, 3_600_000)
 
     expect(room.status).toBe('lost')
-    expect(room.boardYen).toBe(351_637)
+    expect(room.boardYen).toBe(314_696)
     expect(room.boardYen).toBeLessThanOrEqual(room.clearingYen)
     expect(room.boardYen + room.incrementYen).toBeGreaterThan(room.clearingYen)
     // The wide board-to-clearing gap on the packed room's own unprompted climb
     // draws feud eligibility on every scheduled raise, no player bid needed;
-    // this seeded run ignites two between Endo and Mrs. Sakaki (the pair stays
-    // eligible again once the first burst ends), and Endo is the final leader
-    // at the hammer.
+    // this seeded run ignites one between Endo and Mrs. Sakaki, and Mrs. Sakaki
+    // is the final leader at the hammer.
     expect(room.log).toContain(
       'Endo and Mrs. Sakaki have history. The rest of the room settles in to watch.',
     )
-    expect(room.leaderName).toBe('Endo')
-    expect(room.log.at(-1)).toBe('Hammer. Endo takes it at ¥351,637.')
+    expect(room.leaderName).toBe('Mrs. Sakaki')
+    expect(room.log.at(-1)).toBe('Hammer. Mrs. Sakaki takes it at ¥314,696.')
     expect(dealersInRoom(room)).toBe(1)
     expect(room.epilogue).toBe('You let it go. The room can overpay for that one.')
 
@@ -262,8 +261,8 @@ describe('auctionRoom machine', () => {
       'a quiet man in a good coat closes the folder.',
       'Ubukata sets the paddle down.',
       'Toyoshima steps out for a smoke.',
-      'Mrs. Sakaki checks the time and is done.',
-      'Ogata closes the folder.',
+      'Ogata checks the time and is done.',
+      'Endo closes the folder.',
     ]
     let lastIndex = -1
     for (const drop of drops) {
@@ -396,9 +395,9 @@ describe('auctionRoom machine', () => {
     playerBid(room, 100)
     expect(room.leader).toBe('player')
     expect(room.leaderName).toBeNull()
-    expect(room.boardYen).toBe(115_096)
+    expect(room.boardYen).toBe(157_555)
     expect(room.lastBid).toEqual({ by: 'player', atMs: 100 })
-    expect(room.log).toContain('You open: ¥115,096.')
+    expect(room.log).toContain('You open: ¥157,555.')
     expect(room.clockEndsAtMs).toBe(100 + config().clockMs)
     // The next rung is still under the clearing price, so the room counters:
     // the pending raise is rescheduled off the player's bid, not cleared. The
@@ -413,7 +412,7 @@ describe('auctionRoom machine', () => {
     const logLength = room.log.length
 
     playerBid(room, 200)
-    expect(room.boardYen).toBe(115_096)
+    expect(room.boardYen).toBe(157_555)
     expect(room.lastBid).toEqual({ by: 'player', atMs: 100 })
     expect(room.log).toHaveLength(logLength)
   })
@@ -424,7 +423,7 @@ describe('auctionRoom machine', () => {
     expect(room.leaderName).toBe('Endo')
     letGo(room)
     expect(room.status).toBe('lost')
-    expect(room.log.at(-1)).toBe('You let it go. Endo takes it at ¥115,096.')
+    expect(room.log.at(-1)).toBe('You let it go. Endo takes it at ¥157,555.')
     expect(room.epilogue).toBe('You let it go. Someone got a bargain there.')
   })
 
@@ -433,7 +432,7 @@ describe('auctionRoom machine', () => {
     const run0 = seat(thin, 0)
     const run1 = seat(thin, 1)
 
-    expect(run1.clearingYen).toBe(150_922)
+    expect(run1.clearingYen).toBe(206_596)
     expect(run1.clearingYen).not.toBe(run0.clearingYen)
   })
 
@@ -989,11 +988,11 @@ describe('auctionRoom machine', () => {
     tick(room, 3_600_000)
 
     expect(room.status).toBe('lost')
-    expect(room.boardYen).toBe(160_096)
+    expect(room.boardYen).toBe(217_555)
     expect(room.boardYen).toBeLessThanOrEqual(room.clearingYen)
     expect(room.boardYen + room.incrementYen).toBeGreaterThan(room.clearingYen)
-    expect(room.leaderName).toBe('Mrs. Sakaki')
-    expect(room.log.at(-1)).toBe('Hammer. Mrs. Sakaki takes it at ¥160,096.')
+    expect(room.leaderName).toBe('Endo')
+    expect(room.log.at(-1)).toBe('Hammer. Endo takes it at ¥217,555.')
     expect(dealersInRoom(room)).toBe(1)
     expect(room.epilogue).toBe('You let it go. Someone got a bargain there.')
     expect(room.armedReaction).toBeNull()

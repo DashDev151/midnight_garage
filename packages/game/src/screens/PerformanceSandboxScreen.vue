@@ -5,8 +5,10 @@ import { RouterLink } from 'vue-router'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen, formatYenDelta } from '../utils/formatYen'
 import {
+  DEFAULT_HEAT_PERCENT,
   GRADES,
-  HEAT_PERCENT,
+  HEAT_PERCENT_RANGE,
+  MILEAGE_RANGE_KM,
   SLOT_STATES,
   TIERS,
   decodeBuildCode,
@@ -26,8 +28,9 @@ import {
  * THE PERFORMANCE SANDBOX.
  *
  * A development tool on a dev route, not a player feature. Pick any of the 85
- * vetted cars, set every component's condition and fitted tier, and watch the
- * four lap times, the retail value and the physical figures move.
+ * vetted cars, set every component's condition and fitted tier, set the mileage
+ * and the market heat the car is priced at, and watch the four lap times, the
+ * retail value and the physical figures move.
  *
  * It runs the live sim through `dev/sandboxModel.ts`: there is no snapshot and
  * nothing here can go stale, because every figure is computed by the same
@@ -74,12 +77,28 @@ const model = computed(() => modelAtTier(car.value, tier.value))
 const fittable = computed(() => fittableGrades(model.value, game.context))
 
 const build = ref<SandboxBuild>(defaultBuild(model.value))
+const mileageKm = ref(car.value.defaultMileageKm)
+const heatPercent = ref(DEFAULT_HEAT_PERCENT)
 
 const stockResult = computed(() =>
-  evaluateBuild(model.value, defaultBuild(model.value), car.value.inGame, game.context),
+  evaluateBuild(
+    model.value,
+    defaultBuild(model.value),
+    car.value.inGame,
+    mileageKm.value,
+    heatPercent.value,
+    game.context,
+  ),
 )
 const result = computed(() =>
-  evaluateBuild(model.value, build.value, car.value.inGame, game.context),
+  evaluateBuild(
+    model.value,
+    build.value,
+    car.value.inGame,
+    mileageKm.value,
+    heatPercent.value,
+    game.context,
+  ),
 )
 const blockedPartIds = computed(() => result.value.blockers.map((blocker) => blocker.partId))
 
@@ -136,6 +155,7 @@ function applyGrade(groupId: string | null, grade: Grade): void {
 function selectCar(id: string): void {
   selectedId.value = id
   build.value = defaultBuild(model.value)
+  resetMileage()
   pickerOpen.value = false
   codeNote.value = ''
 }
@@ -185,8 +205,35 @@ function loadCode(): void {
   selectedId.value = decoded.carId
   tierOverrides.value = { ...tierOverrides.value, [decoded.carId]: decoded.tier }
   build.value = decoded.build
+  resetMileage()
   codeInput.value = ''
   codeNote.value = 'Build loaded.'
+}
+
+/* ---- the instance and the market it is priced in ---- */
+
+/** Both controls clamp to their own range, so a figure typed into the number
+ * box can never take the value engine somewhere the slider cannot reach. */
+function clampedInput(event: Event, [min, max]: readonly [number, number]): number | null {
+  const figure = Number((event.target as HTMLInputElement).value)
+  if (!Number.isFinite(figure)) return null
+  return Math.round(Math.min(max, Math.max(min, figure)))
+}
+
+function setMileage(event: Event): void {
+  const km = clampedInput(event, MILEAGE_RANGE_KM)
+  if (km !== null) mileageKm.value = km
+}
+
+function setHeat(event: Event): void {
+  const percent = clampedInput(event, HEAT_PERCENT_RANGE)
+  if (percent !== null) heatPercent.value = percent
+}
+
+/** Back to the generator's own midpoint for this car's age. Picking a car
+ * lands here too: mileage belongs to the instance, not to the build. */
+function resetMileage(): void {
+  mileageKm.value = car.value.defaultMileageKm
 }
 
 /* ---- formatting ---- */
@@ -249,23 +296,58 @@ interface MetricRow {
   change: Change
 }
 
+/** The three caps the stat formulas are written against, read from the economy
+ * content so a label can never quote a number the formula no longer uses. */
+const { powerNormalizationCeiling, styleCap, reliabilityCap } = game.context.economy.statFormulas
+
 const statRows = computed<MetricRow[]>(() => {
   const stock = stockResult.value.stats
   const now = result.value.stats
-  const rows: { key: keyof typeof now; label: string; unit: string }[] = [
-    { key: 'power', label: 'Power', unit: 'PS' },
-    { key: 'handling', label: 'Handling', unit: '' },
-    { key: 'style', label: 'Style', unit: '' },
-    { key: 'reliability', label: 'Reliability', unit: '' },
-    { key: 'authenticity', label: 'Authenticity', unit: '' },
+  const rows = [
+    { key: 'power', label: 'Power', unit: 'PS', stock: stock.power, current: now.power },
+    {
+      key: 'powerScore',
+      label: 'Power, normalised',
+      unit: `0 to 100, against the ${powerNormalizationCeiling}PS ceiling`,
+      stock: stockResult.value.powerScore,
+      current: result.value.powerScore,
+    },
+    {
+      key: 'handling',
+      label: 'Handling',
+      unit: '0 to 100',
+      stock: stock.handling,
+      current: now.handling,
+    },
+    {
+      key: 'style',
+      label: 'Style',
+      unit: `0 to 100, condition alone reaches ${styleCap}`,
+      stock: stock.style,
+      current: now.style,
+    },
+    {
+      key: 'reliability',
+      label: 'Reliability',
+      unit: `0 to 100, condition alone reaches ${reliabilityCap}`,
+      stock: stock.reliability,
+      current: now.reliability,
+    },
+    {
+      key: 'authenticity',
+      label: 'Authenticity',
+      unit: '0 to 100',
+      stock: stock.authenticity,
+      current: now.authenticity,
+    },
   ]
   return rows.map((row) => ({
     key: row.key,
     label: row.label,
     unit: row.unit,
-    stock: trimmed(stock[row.key], 1),
-    current: trimmed(now[row.key], 1),
-    change: change(now[row.key], stock[row.key], 1, { trim: true }),
+    stock: trimmed(row.stock, 1),
+    current: trimmed(row.current, 1),
+    change: change(row.current, row.stock, 1, { trim: true }),
   }))
 })
 
@@ -382,9 +464,7 @@ const carFacts = computed(() => [
   { key: 'drivetrain', label: 'Drivetrain', value: car.value.drivetrain },
   { key: 'engine', label: 'Engine', value: car.value.enginePosition },
   { key: 'aspiration', label: 'Aspiration', value: car.value.aspiration ?? 'not stated' },
-  { key: 'mileage', label: 'Mileage', value: `${car.value.mileageKm.toLocaleString('en-US')}km` },
   { key: 'ingame', label: 'In the game', value: car.value.inGame ? 'yes' : 'no, research entry' },
-  { key: 'heat', label: 'Market heat', value: `${HEAT_PERCENT}, neutral` },
 ])
 
 /** Where the tier in force came from, and what it does. A number whose
@@ -775,6 +855,72 @@ function slotTone(partId: CarPartId): string {
       </div>
     </section>
 
+    <!-- the instance, and the market it is priced in -->
+    <section class="card">
+      <h2>Mileage and market heat</h2>
+      <p class="hint">
+        Neither is a property of the car: mileage belongs to this one instance of it, heat to the
+        week the market is having. Both reach the retail figure and nothing else, so no lap time and
+        no physical figure moves when either of them does.
+      </p>
+      <div class="control">
+        <label class="ctl-key" for="sandbox-mileage">Mileage</label>
+        <input
+          id="sandbox-mileage"
+          class="ctl-slider"
+          type="range"
+          :min="MILEAGE_RANGE_KM[0]"
+          :max="MILEAGE_RANGE_KM[1]"
+          step="1000"
+          :value="mileageKm"
+          data-test="mileage-slider"
+          @input="setMileage"
+        />
+        <input
+          class="ctl-number"
+          type="number"
+          :min="MILEAGE_RANGE_KM[0]"
+          :max="MILEAGE_RANGE_KM[1]"
+          step="1000"
+          :value="mileageKm"
+          data-test="mileage-number"
+          @input="setMileage"
+        />
+        <span class="ctl-unit">km</span>
+      </div>
+      <div class="buttons">
+        <button type="button" class="btn" data-test="mileage-default" @click="resetMileage">
+          Back to {{ car.defaultMileageKm.toLocaleString('en-US') }}km, the generator's own midpoint
+          for a car of this age
+        </button>
+      </div>
+      <div class="control">
+        <label class="ctl-key" for="sandbox-heat">Market heat</label>
+        <input
+          id="sandbox-heat"
+          class="ctl-slider"
+          type="range"
+          :min="HEAT_PERCENT_RANGE[0]"
+          :max="HEAT_PERCENT_RANGE[1]"
+          step="1"
+          :value="heatPercent"
+          data-test="heat-slider"
+          @input="setHeat"
+        />
+        <input
+          class="ctl-number"
+          type="number"
+          :min="HEAT_PERCENT_RANGE[0]"
+          :max="HEAT_PERCENT_RANGE[1]"
+          step="1"
+          :value="heatPercent"
+          data-test="heat-number"
+          @input="setHeat"
+        />
+        <span class="ctl-unit">per cent, {{ DEFAULT_HEAT_PERCENT }} is a neutral market</span>
+      </div>
+    </section>
+
     <section class="card">
       <h2>Value</h2>
       <p v-if="result.value.currentYen === null" class="not-priced" data-test="value-not-priced">
@@ -786,21 +932,25 @@ function slotTone(partId: CarPartId): string {
         <div class="facts" data-test="value-figures">
           <div class="cell">
             <span class="cell-key">Stock and mint retail</span>
-            <span class="cell-value big">{{ formatYen(result.value.stockMintYen ?? 0) }}</span>
+            <span class="cell-value big" data-test="value-stock">{{
+              formatYen(result.value.stockMintYen ?? 0)
+            }}</span>
           </div>
           <div class="cell">
             <span class="cell-key">This build, retail</span>
-            <span class="cell-value big current">{{ formatYen(result.value.currentYen) }}</span>
+            <span class="cell-value big current" data-test="value-current">{{
+              formatYen(result.value.currentYen)
+            }}</span>
           </div>
           <div class="cell">
             <span class="cell-key">What the build is worth</span>
             <span class="cell-value big" :class="valueChange.tone">{{ valueChange.text }}</span>
           </div>
         </div>
-        <p class="note">
+        <p class="note" data-test="value-note">
           Full retail for the car, not a buyer's taste-adjusted offer, at market heat
-          {{ HEAT_PERCENT }} and {{ car.mileageKm.toLocaleString('en-US') }}km on the clock.
-          Condition and fitted parts move this figure; how fast the car is does not.
+          {{ heatPercent }} and {{ mileageKm.toLocaleString('en-US') }}km on the clock. Condition
+          and fitted parts move this figure; how fast the car is does not.
         </p>
       </template>
     </section>
@@ -808,7 +958,7 @@ function slotTone(partId: CarPartId): string {
     <section class="card">
       <h2>Roll-up stats</h2>
       <div class="scroller">
-        <table class="metrics">
+        <table class="metrics" data-test="stats-table">
           <thead>
             <tr>
               <th>Figure</th>
@@ -1364,6 +1514,46 @@ function slotTone(partId: CarPartId): string {
 .buttons .search {
   flex: 1 1 160px;
   width: auto;
+}
+
+/* mileage and heat: a slider and the figure it is showing */
+.control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mg-space-2);
+  margin-bottom: var(--mg-space-2);
+}
+
+.ctl-key {
+  flex: 0 0 90px;
+  font-size: 0.55rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--mg-text-dim);
+}
+
+.ctl-slider {
+  flex: 1 1 180px;
+  min-width: 120px;
+  accent-color: var(--mg-neon-cyan);
+}
+
+.ctl-number {
+  width: 9ch;
+  background: var(--mg-night-deep);
+  border: var(--mg-border);
+  border-radius: 4px;
+  color: var(--mg-text);
+  font-family: inherit;
+  font-size: var(--mg-fs-sm);
+  text-align: right;
+  padding: var(--mg-space-1);
+}
+
+.ctl-unit {
+  font-size: var(--mg-fs-sm);
+  color: var(--mg-text-dim);
 }
 
 /* component groups */

@@ -1,3 +1,4 @@
+import { normalizedPowerScore } from '@midnight-garage/sim'
 import { mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -9,9 +10,10 @@ import { SLOT_STATES } from './dev/sandboxModel'
  * The sandbox screen drives the live sim, so these assert against what it
  * rendered, never against the model layer directly: a car shows four real lap
  * times, a function-or-fail part at scrap replaces them with the reason and the
- * part responsible, set-all reaches every control, a build code round-trips, and
- * a research entry is told plainly it has no price instead of being shown a
- * zero.
+ * part responsible, set-all reaches every control, a build code round-trips, the
+ * two value inputs move the value and nothing else, power reads on both its
+ * scales, and a research entry is told plainly it has no price instead of being
+ * shown a zero.
  */
 
 const mountedWrappers: VueWrapper[] = []
@@ -37,6 +39,27 @@ async function click(wrapper: VueWrapper, testId: string): Promise<void> {
 
 function text(wrapper: VueWrapper, testId: string): string {
   return wrapper.find(`[data-test="${testId}"]`).text()
+}
+
+/** A rendered yen figure as a number, so two of them can be compared. */
+function yen(wrapper: VueWrapper, testId: string): number {
+  const rendered = text(wrapper, testId)
+  const digits = rendered.replace(/[^0-9]/g, '')
+  expect(digits.length, `no yen figure in "${rendered}"`).toBeGreaterThan(0)
+  return Number(digits)
+}
+
+/** Everything a value input must leave exactly where it found it: the four lap
+ * times, all six stat readings and the physical figures the lap runs on. */
+function physicsReadings(wrapper: VueWrapper): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const cell of wrapper.findAll('[data-test^="lap-"], [data-test^="stat-"]')) {
+    out[cell.attributes('data-test')!] = cell.text()
+  }
+  for (const cell of wrapper.findAll('[data-test^="physical-"]')) {
+    out[cell.attributes('data-test')!] = cell.text()
+  }
+  return out
 }
 
 /** The condition and tier every one of the 29 controls is showing, read out of
@@ -189,6 +212,64 @@ describe('PerformanceSandboxScreen', () => {
     await click(wrapper, 'load-code')
     expect(text(wrapper, 'code-note')).toBe('That is not a build code this screen wrote.')
     expect(renderedBuild(wrapper)).toEqual(before)
+  })
+
+  it('mileage and market heat move the value, and move nothing else at all', async () => {
+    const wrapper = mountScreen()
+
+    await click(wrapper, `car-pick-${IN_GAME_CAR}`)
+    const physics = physicsReadings(wrapper)
+    const atDefault = yen(wrapper, 'value-current')
+    expect(Object.keys(physics).length).toBeGreaterThan(10)
+
+    // A car with a life behind it is worth less, and the stock-and-mint figure
+    // it is compared against moves with it, because that is the same car.
+    const stockAtDefault = yen(wrapper, 'value-stock')
+    await wrapper.find('[data-test="mileage-slider"]').setValue('250000')
+    expect(yen(wrapper, 'value-current')).toBeLessThan(atDefault)
+    expect(yen(wrapper, 'value-stock')).toBeLessThan(stockAtDefault)
+    expect(text(wrapper, 'value-note')).toContain('250,000km')
+    expect(physicsReadings(wrapper)).toEqual(physics)
+
+    // The number box says the same thing as the slider, and clamps.
+    await wrapper.find('[data-test="mileage-number"]').setValue('900000')
+    expect(text(wrapper, 'value-note')).toContain('250,000km')
+
+    await click(wrapper, 'mileage-default')
+    expect(yen(wrapper, 'value-current')).toBe(atDefault)
+
+    // Heat is the market, not the car: 100 is neutral, and either side of it
+    // reprices the same car without touching what the car is.
+    await wrapper.find('[data-test="heat-slider"]').setValue('150')
+    expect(yen(wrapper, 'value-current')).toBeGreaterThan(atDefault)
+    expect(text(wrapper, 'value-note')).toContain('market heat 150')
+    expect(physicsReadings(wrapper)).toEqual(physics)
+
+    await wrapper.find('[data-test="heat-number"]').setValue('50')
+    expect(yen(wrapper, 'value-current')).toBeLessThan(atDefault)
+    expect(physicsReadings(wrapper)).toEqual(physics)
+  })
+
+  it('power reads in PS and on the same 0 to 100 scale as the other stats', async () => {
+    const wrapper = mountScreen()
+    const game = useGameStore()
+
+    await click(wrapper, `car-pick-${IN_GAME_CAR}`)
+    const ps = Number(text(wrapper, 'stat-power'))
+    expect(ps).toBeGreaterThan(0)
+
+    // The sim's own normalisation, as a percentage: the screen never invents a
+    // second one.
+    expect(Number(text(wrapper, 'stat-powerScore'))).toBeCloseTo(
+      normalizedPowerScore(ps, game.context.economy) * 100,
+      1,
+    )
+
+    // Both readings are on screen, and the PS figure is the one the physics
+    // consumes rather than being replaced by the normalised one.
+    const stats = text(wrapper, 'stats-table')
+    expect(stats).toContain('PS')
+    expect(stats).toContain('0 to 100')
   })
 
   it('a research entry is told it has no price rather than shown a zero', async () => {

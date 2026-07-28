@@ -5,10 +5,16 @@ import {
   type CarModel,
   type CarPartId,
   type CarPartTaxonomyEntry,
+  type ConditionBand,
   type EconomyConfig,
   type Part,
 } from '@midnight-garage/content'
-import { carCostToBandYen, carCostToMintYen } from './bands'
+import {
+  carCostToBandYen,
+  carCostToMintYen,
+  clampRepairTarget,
+  repairCeilingForLevel,
+} from './bands'
 
 /**
  * The taste-free "what is this car worth" answer, shared by every price in
@@ -135,6 +141,22 @@ export function expectationForCar(model: CarModel, economy: EconomyConfig) {
     throw new Error(`valuation.expectationByTier is missing fitment class "${fitmentClass}"`)
   }
   return expectation
+}
+
+/**
+ * How far it is worth repairing `model`: the band the market expects of its
+ * tier (`expectationForCar`), clamped down to what a fresh shop's tier-1 tools
+ * can actually finish (`repairCeilingForLevel`). Every yen spent past the
+ * expectation returns only `beyondDiscount` on the yen, so this band is where
+ * repair stops paying for itself and passion spend begins; the clamp is a
+ * no-op for any tier whose expectation already sits at or below the tier-1
+ * ceiling. The one target both "the sensible play" probes plan to.
+ */
+export function sensibleRepairTargetBand(model: CarModel, economy: EconomyConfig): ConditionBand {
+  return clampRepairTarget(
+    expectationForCar(model, economy).band,
+    repairCeilingForLevel(1, economy),
+  )
 }
 
 /**

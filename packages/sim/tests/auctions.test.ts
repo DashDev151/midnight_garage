@@ -17,11 +17,12 @@ import {
   auctionTierForRarity,
   generateAuctionCarInstance,
   generateAuctionCatalog,
+  minWorkTopUpCeilingBinds,
 } from '../src/auctions'
-import { bandIndex, carCostToBandYen, carCostToMintYen } from '../src/bands'
+import { bandIndex, carCostToBandYen } from '../src/bands'
 import { isBodyDerivedPart, PANEL_ZONE_IDS } from '../src/bodyPipeline'
 import { buildSimContext } from '../src/context'
-import { expectationForCar, mileageFactor } from '../src/marketValue'
+import { expectationForCar } from '../src/marketValue'
 import { createRng } from '../src/rng'
 import { testSpecialty, testToolTiers } from './testFixtures'
 
@@ -416,6 +417,30 @@ describe('generation is mileage-driven: age -> mileage -> condition (Sprint 34)'
     return total > 0 ? poorOrWorse / total : 0
   }
 
+  /** Mean band index across the same slots - the whole condition spread in one
+   * number rather than only its `poor`/`scrap` tail. The two comparisons below
+   * read this instead of `poorOrWorseFraction` because that tail holds under 1%
+   * of slots on most of the roster, and on the cheapest cars it is dominated by
+   * the two absolute-yen generation guards (the Law 2 ceiling softens a
+   * high-mileage car's damage away; the core-loop floor tops a low-mileage one
+   * back up to the same yen figure), which is a real levelling effect on the
+   * tail and no evidence at all about the age -> mileage -> condition chain the
+   * whole spread still shows clearly. */
+  function meanBandIndex(instances: readonly CarInstance[]): number {
+    let sum = 0
+    let total = 0
+    for (const instance of instances) {
+      for (const partId of ALL_CAR_PART_IDS) {
+        if (isBodyDerivedPart(partId)) continue
+        const installed = instance.parts[partId].installed
+        if (!installed) continue
+        total += 1
+        sum += bandIndex(installed.band)
+      }
+    }
+    return total > 0 ? sum / total : 0
+  }
+
   function meanMileageKm(instances: readonly CarInstance[]): number {
     return instances.reduce((sum, c) => sum + c.mileageKm, 0) / instances.length
   }
@@ -461,7 +486,7 @@ describe('generation is mileage-driven: age -> mileage -> condition (Sprint 34)'
     const half = Math.floor(sorted.length / 2)
     const lowMileage = sorted.slice(0, half)
     const highMileage = sorted.slice(half)
-    expect(poorOrWorseFraction(lowMileage)).toBeLessThan(poorOrWorseFraction(highMileage))
+    expect(meanBandIndex(lowMileage)).toBeGreaterThan(meanBandIndex(highMileage))
   })
 
   it('a brand-new (age-0) car does not roll nearly every part poor', () => {
@@ -478,23 +503,19 @@ describe('generation is mileage-driven: age -> mileage -> condition (Sprint 34)'
     expect(poorOrWorseFraction(generateAtAge(0, 100, 'young'))).toBeLessThan(0.4)
   })
 
-  it('an old (age ~25) car is not meaningfully BETTER than an age-0 car on the non-body parts, even once the core-loop floor levels both toward the same bar', () => {
-    // This test's original claim (old strictly worse, on `poorOrWorseFraction`
-    // alone) no longer holds reliably: the core-loop floor top-up
-    // (`enforceMinWorkBill`) tops EVERY car up to the SAME absolute floor
-    // regardless of age, and a clean age-0 car needs more of that top-up to
-    // reach it than an already-worn age-25 car does - a real levelling effect
-    // that was already present before this wave, but this wave's floor fix
-    // (degrade eligibility now reads real zone headroom, not just the
-    // coarser band index - see `degradeCandidates`) makes the top-up reach
-    // its floor more reliably, which sharpens the levelling on the measured
-    // 26-part remainder. The underlying age -> mileage -> condition claim is
-    // still gated robustly by the two probes above (mileage rises with age;
-    // the low-mileage half of a mixed sample beats the high-mileage half) -
-    // this probe now only guards against a reversal, not a specific margin.
-    const oldFrac = poorOrWorseFraction(generateAtAge(25, 600, 'old'))
-    const youngFrac = poorOrWorseFraction(generateAtAge(0, 600, 'young'))
-    expect(oldFrac).toBeGreaterThan(youngFrac * 0.9)
+  it('an old (age ~25) car is never in better condition than an age-0 car on the non-body parts, even once the core-loop floor levels both toward the same bar', () => {
+    // The core-loop floor top-up (`enforceMinWorkBill`) tops EVERY car up to
+    // the SAME absolute floor regardless of age, and a clean age-0 car needs
+    // more of that top-up to reach it than an already-worn age-25 car does - a
+    // real levelling effect, and one that lands hardest on the `poor`/`scrap`
+    // tail this probe used to read, where it can invert the comparison
+    // outright. Across the whole band spread the chain is unambiguous, so that
+    // is what is asserted: an old car is never the better car. A margin is
+    // deliberately not pinned - the guards decide how much of the gap survives
+    // on any given model, and only the direction is a design claim.
+    const oldMean = meanBandIndex(generateAtAge(25, 600, 'old'))
+    const youngMean = meanBandIndex(generateAtAge(0, 600, 'young'))
+    expect(oldMean).toBeLessThanOrEqual(youngMean)
   })
 
   it('with no calendar context (currentYear omitted), condition still rolls a real, bounded spread', () => {
@@ -601,28 +622,6 @@ describe('the core-loop floor: every generated lot carries fixable work', () => 
     )
   }
 
-  /** True once the car's whole bill is already hugging the Law 2 ceiling
-   * (`maxBillFraction * cleanValue`, within a tiny rounding epsilon) - the
-   * top-up's OTHER legitimate stopping condition (`enforceMinWorkBill`'s own
-   * doc comment): a candidate that would breach the ceiling is dropped for
-   * another, and the loop stops once every remaining candidate would. On the
-   * body pipeline's flat, era-true materials prices this binds occasionally
-   * on the cheapest (shitbox) tier, where a single stage's yen cost is a
-   * comparatively large step against a small book value - a real, disclosed
-   * interaction between two independently-tuned guards, not a bug. */
-  function ceilingAlreadyBinds(car: CarInstance, model: CarModel): boolean {
-    const cleanValueYen = model.bookValueYen * mileageFactor(car.mileageKm, ECONOMY)
-    const maxBillYen = ECONOMY.partsGeneration.maxBillFraction * cleanValueYen
-    const billYen = carCostToMintYen(
-      car,
-      model,
-      CONTEXT.partsById,
-      CONTEXT.partsTaxonomyById,
-      ECONOMY,
-    )
-    return billYen >= maxBillYen - 1 // rounding slack only
-  }
-
   function expectMeetsFloorOrExhausted(
     lot: ReturnType<typeof generateAuctionCatalog>[number],
     lotModel: CarModel,
@@ -631,8 +630,16 @@ describe('the core-loop floor: every generated lot carries fixable work', () => 
     const billBelow = billBelowExpectationYen(lot.car, lotModel)
     const floor = floorYenFor(lotModel)
     const metFloor = billBelow >= floor
+    // The top-up's OTHER legitimate stopping condition, asked of the real
+    // generation code rather than approximated here: every remaining candidate
+    // would breach the Law 2 ceiling. The bill does not have to be hugging
+    // that ceiling for this to bind - on the body pipeline's flat, era-true
+    // materials prices a single remaining stage can cost far more than the
+    // headroom left, which happens on the cheapest tiers where one stage is a
+    // large step against a small book value. A real, disclosed interaction
+    // between two independently-tuned guards, not a bug.
     const exhausted =
-      everyPartAtWorstReachableBand(lot.car) || ceilingAlreadyBinds(lot.car, lotModel)
+      everyPartAtWorstReachableBand(lot.car) || minWorkTopUpCeilingBinds(lot.car, lotModel, CONTEXT)
     expect(
       metFloor || exhausted,
       `${lot.id} (${lotModel.id}): below-expectation bill ${billBelow} under its ${rarityTier} floor ${floor}, not every part exhausted, and the Law 2 ceiling isn't binding either - a real shortfall`,

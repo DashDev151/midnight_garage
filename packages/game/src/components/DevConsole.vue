@@ -123,6 +123,12 @@ function warp(): void {
     </div>
 
     <div class="row">
+      <button data-test="dev-open-sandbox" @click="router.push({ name: 'performance-sandbox' })">
+        core mechanics sandbox
+      </button>
+    </div>
+
+    <div class="row">
       <button @click="router.push({ name: 'auction-room-demo' })">auction room demo</button>
     </div>
 
@@ -133,9 +139,13 @@ function warp(): void {
 </template>
 
 <style scoped>
+/* Bottom LEFT, deliberately: the whole right edge is taken. DayCashBox holds
+   top-right, FloatingHud (end-day and labour) holds bottom-right at z-index
+   110 against this panel's 100, and both side drawers are full-height on the
+   right. Sharing that corner meant the HUD rendered over these controls. */
 .dev {
   position: fixed;
-  right: var(--mg-space-3);
+  left: var(--mg-space-3);
   bottom: var(--mg-space-3);
   width: 260px;
   background: var(--mg-night);

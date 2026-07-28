@@ -12,6 +12,7 @@ import {
   type CarModel,
   type CarPartId,
   type CarPartTaxonomyEntry,
+  type ConditionBand,
   type GameState,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
@@ -21,10 +22,21 @@ import {
   generateAuctionCarInstance,
   generateAuctionCatalog,
 } from '../src/auctions'
-import { carCostToMintYen, hasForcedInduction, planGroupRepair } from '../src/bands'
+import {
+  bandIndex,
+  carCostToBandYen,
+  carCostToMintYen,
+  hasForcedInduction,
+  planGroupRepair,
+} from '../src/bands'
 import { computeRosterCoherence } from '../src/coherence'
 import { buildSimContext } from '../src/context'
-import { installedPartsValueYen, marketValueYen, mileageFactor } from '../src/marketValue'
+import {
+  installedPartsValueYen,
+  marketValueYen,
+  mileageFactor,
+  sensibleRepairTargetBand,
+} from '../src/marketValue'
 import { createRng, hashStringToSeed } from '../src/rng'
 import { bestFitBuyer, sellViaWalkIn } from '../src/selling'
 import { valuateCarForBuyer } from '../src/valuation'
@@ -120,22 +132,24 @@ function independentLots(count: number, startSeed: number): AuctionLot[] {
 }
 
 /**
- * Every real part driven to mint - a full restoration: an already-filled
- * slot keeps its own installed part, just bumped to mint band; a genuinely
- * missing slot (the stripped-car roll) is filled with a fresh mint stock
- * part, since "restored" means every real defect - including a missing
- * component - is gone. The one legitimate exception is
- * `forcedInduction` on an NA model, which restoration never adds
- * (`hasForcedInduction`, bands.ts) - it stays permanently, legitimately
- * absent either way.
+ * Every real part brought up to `band` - the value-side mirror of
+ * `carCostToBandYen`: a slot already at or above it keeps what it has, a slot
+ * below it is lifted to it, and a genuinely missing slot (the stripped-car
+ * roll) is filled with a fresh stock part at that band, since a missing
+ * component is a real defect the bill pays to put right. The one legitimate
+ * exception is `forcedInduction` on an NA model, which restoration never adds
+ * (`hasForcedInduction`, bands.ts) - it stays permanently, legitimately absent
+ * either way.
  */
-function fullyRestored(car: CarInstance, model: CarModel): CarInstance {
+function restoredToBand(car: CarInstance, model: CarModel, band: ConditionBand): CarInstance {
   const fitmentClass = fitmentClassForTier(model.tier)
   const parts = { ...car.parts }
   for (const partId of ALL_CAR_PART_IDS) {
     const installed = parts[partId].installed
     if (installed) {
-      parts[partId] = { installed: { ...installed, band: 'mint' } }
+      if (bandIndex(installed.band) < bandIndex(band)) {
+        parts[partId] = { installed: { ...installed, band } }
+      }
       continue
     }
     if (partId === 'forcedInduction' && !hasForcedInduction(model)) continue // legitimately absent
@@ -145,7 +159,7 @@ function fullyRestored(car: CarInstance, model: CarModel): CarInstance {
         ? {
             id: `${car.id}-restored-${partId}`,
             partId: stockPart.id,
-            band: 'mint',
+            band,
             genuinePeriod: false,
             origin: { kind: 'market', day: 1 },
           }
@@ -153,6 +167,12 @@ function fullyRestored(car: CarInstance, model: CarModel): CarInstance {
     }
   }
   return { ...car, parts }
+}
+
+/** Every real part driven to mint - a full restoration, `restoredToBand` at
+ * the top of the band ladder. */
+function fullyRestored(car: CarInstance, model: CarModel): CarInstance {
+  return restoredToBand(car, model, 'mint')
 }
 
 function median(values: number[]): number {
@@ -544,15 +564,27 @@ describe('the Honda City probe (Sprint 54 decision 5 - the exact playtest regres
   })
 })
 
-describe('full-restore probe per tier (Sprint 54 decision 5 - law 2, no value traps)', () => {
+/**
+ * The sensible play on the worst thing the generator can produce. The car is
+ * repaired to its own tier's expectation band and no further
+ * (`sensibleRepairTargetBand`): the market discounts every yen spent past that
+ * band by `valuation.expectationByTier[tier].beyondDiscount`, so a mint
+ * restoration of a shitbox kei is passion spend, not a play the economy owes a
+ * profit to. Law 2 is about traps in the play the economy DOES ask for.
+ */
+describe('sensible-restore probe per tier (Sprint 54 decision 5 - law 2, no value traps)', () => {
   it.each(['shitbox', 'common', 'uncommon', 'rare'] as const)(
-    'the worst generatable roll for a %s-tier car, fully restored and sold at guide, clears a positive flip margin',
+    'the worst generatable roll for a %s-tier car, repaired to its expectation band and sold at guide, clears a positive flip margin',
     (tier) => {
       const models = CARS.filter((c) => c.tier === tier)
       expect(models.length, `no ${tier}-tier car in the roster to probe`).toBeGreaterThan(0)
 
-      let worst: { car: CarInstance; model: CarModel; guideYen: number } | null = null
+      const failures: string[] = []
       for (const model of models) {
+        // This model's roughest offering: the lowest guide value over the seed
+        // sweep, which is the nastiest car generation will put in front of a
+        // player.
+        let worst: { car: CarInstance; guideYen: number } | null = null
         for (let seed = 0; seed < 40; seed++) {
           const car = generateAuctionCarInstance(
             model,
@@ -568,30 +600,37 @@ describe('full-restore probe per tier (Sprint 54 decision 5 - law 2, no value tr
             PARTS_TAXONOMY_BY_ID,
             ECONOMY,
           )
-          if (!worst || guideYen < worst.guideYen) worst = { car, model, guideYen }
+          if (!worst || guideYen < worst.guideYen) worst = { car, guideYen }
+        }
+        if (!worst) throw new Error('unreachable: the seed sweep always rolls a car')
+
+        const buyPriceYen = Math.round(worst.guideYen * ECONOMY.AUCTION_RESERVE_PRICE_FRACTION)
+        const targetBand = sensibleRepairTargetBand(model, ECONOMY)
+        const repairCostYen = carCostToBandYen(
+          worst.car,
+          model,
+          PARTS_BY_ID,
+          PARTS_TAXONOMY_BY_ID,
+          ECONOMY,
+          targetBand,
+        )
+        const restoredCar = restoredToBand(worst.car, model, targetBand)
+        const sellPriceYen = marketValueYen(
+          model,
+          restoredCar,
+          100,
+          PARTS_BY_ID,
+          PARTS_TAXONOMY_BY_ID,
+          ECONOMY,
+        )
+        const marginYen = sellPriceYen - buyPriceYen - repairCostYen
+        if (marginYen <= 0) {
+          failures.push(
+            `${model.id}: bought ${buyPriceYen}, repaired to ${targetBand} for ${repairCostYen}, sells ${sellPriceYen}, margin ${marginYen}`,
+          )
         }
       }
-      if (!worst) throw new Error('unreachable: models.length already asserted > 0')
-
-      const buyPriceYen = Math.round(worst.guideYen * ECONOMY.AUCTION_RESERVE_PRICE_FRACTION)
-      const repairCostYen = carCostToMintYen(
-        worst.car,
-        worst.model,
-        PARTS_BY_ID,
-        PARTS_TAXONOMY_BY_ID,
-        ECONOMY,
-      )
-      const restoredCar = fullyRestored(worst.car, worst.model)
-      const sellPriceYen = marketValueYen(
-        worst.model,
-        restoredCar,
-        100,
-        PARTS_BY_ID,
-        PARTS_TAXONOMY_BY_ID,
-        ECONOMY,
-      )
-      const marginYen = sellPriceYen - buyPriceYen - repairCostYen
-      expect(marginYen).toBeGreaterThan(0)
+      expect(failures).toEqual([])
     },
   )
 })
@@ -991,11 +1030,32 @@ describe('the wage probe (Sprint 66, economy-bible law 6 - item 19)', () => {
     // clear a large positive margin regardless.
     for (const row of computeRosterCoherence(CARS, CONTEXT)) {
       if (row.fitmentClass === 'shitbox') continue
+      if (row.repairLaborSlots === 0) continue // no tier-1 bench work at all - see below
       expect(
         row.wageMarginYen,
         `${row.modelId}: repairing nets ${row.wageMarginYen} yen over selling as-is - the bench must never be a losing use of a day`,
       ).toBeGreaterThan(0)
     }
+  })
+
+  it('discloses which models offer a fresh shop no bench work at all', () => {
+    // Two separate claims live in the gate above, and only one of them is
+    // about wages: "bench work pays" is gated there, "there IS bench work"
+    // is pinned here. A model lands in this list when the Law 2 ceiling
+    // (`maxBillFraction x clean value`) is tight enough against its own
+    // fitment class's parts prices that the roughest deliverable car comes
+    // back at `fine` on every slot - which is exactly a fresh shop's tier-1
+    // repair ceiling, so there is nothing left for it to repair. Its mint
+    // expectation is still reachable by buying mint parts, and the flip
+    // still pays through the acquisition discount; it is the BENCH that has
+    // no work. Pinned by name so the set cannot grow silently: it grows when
+    // a model's book value drops far enough below what its rarity tier's
+    // parts basket is priced for.
+    const modelsWithNoBenchWork = computeRosterCoherence(CARS, CONTEXT)
+      .filter((row) => row.repairLaborSlots === 0)
+      .map((row) => row.modelId)
+      .sort()
+    expect(modelsWithNoBenchWork).toEqual(['mazda-rx7-fd3s', 'toyota-aristo-30v-jzs147'])
   })
 
   it('discloses the shitbox-tier wage gap (Sprint 72): honest teardown pricing shows a real loss, not a thin margin', () => {

@@ -499,7 +499,7 @@
       "buried": 6
     },
     "actionPoints": {
-      "removePart": 0,
+      "removePart": 2,
       "removeAssembly": 0,
       "refitAssembly": 0,
       "refitUnchangedMember": 0,

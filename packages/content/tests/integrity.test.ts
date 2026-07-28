@@ -36,18 +36,21 @@ describe('referential integrity', () => {
     }
   })
 
-  it('every car book value falls inside its tier range (docs/design/archive/economy-v0.md)', () => {
+  it('every car book value falls inside its tier range (docs/design/reference/period-scans/roster-price-list-v2.md)', () => {
     const parsedCars = CarModelsSchema.parse(cars)
-    // A desirable kei (Beat, Alto Works) is Kei-tagged, so it takes the
-    // shitbox fitment class regardless of its market value, and a cult MR kei
-    // roadster clears the old 400k economy-v0.md sanity cap. The ceiling is
-    // widened to 500_000 to hold those cars while still catching a genuinely
-    // mispriced shitbox.
+    // A sanity band per rarity tier, not a pricing rule: the canonical roster
+    // price list sets each car's book value from period market evidence at the
+    // game year the player reaches it, and rarity is desirability and spawn
+    // frequency, not price. The two only correlate loosely - a cult kei (Beat)
+    // outsells plenty of `common` coupes, and a 1990s executive saloon
+    // (Aristo) is `rare` on the road while costing less than a clean AE86. So
+    // the bands overlap heavily by design and exist only to catch a car whose
+    // book value has landed an order of magnitude away from its tier.
     const ranges: Record<RarityTier, [number, number]> = {
-      shitbox: [80_000, 500_000],
+      shitbox: [80_000, 600_000],
       common: [300_000, 1_200_000],
-      uncommon: [800_000, 2_500_000],
-      rare: [2_000_000, 6_000_000],
+      uncommon: [400_000, 2_500_000],
+      rare: [700_000, 6_000_000],
       gaisha: [3_000_000, 15_000_000],
       legend: [5_000_000, 100_000_000],
     }

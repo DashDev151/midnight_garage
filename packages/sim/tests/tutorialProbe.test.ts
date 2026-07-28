@@ -128,7 +128,7 @@ describe('tutorial satisfiability probe', () => {
   })
 
   it('the taught build stays completable after one mistake, and clears a small deliberate profit', () => {
-    // Her budget and her pay are one figure (¥130,000); the mission is not
+    // Her budget and her pay are one figure (¥135,000); the mission is not
     // "spend under a cap higher than she pays" - it is "build within her
     // money and keep what is left". So the guarantee is that a single
     // wrong-band purchase still completes (spend + mistake within her

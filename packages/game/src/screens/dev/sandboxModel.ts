@@ -26,6 +26,7 @@ import {
   makeCarOrigin,
   marketValueYen,
   mileageRangeForAge,
+  normalizedPowerScore,
   partFitsCar,
   physicalConditionFactors,
   stockInstanceFor,
@@ -50,13 +51,22 @@ import { SANDBOX_ROSTER, type SandboxTierSource } from './sandboxCars'
  * `tools/sandbox/generateCars.mjs`; the sim never sees a difference between
  * them, because both are plain `CarModel`s passed in explicitly.
  *
- * Stateless by design: the screen owns the build, the tier overrides and the
- * caching (Vue computeds already memoise on their dependencies).
+ * Stateless by design: the screen owns the build, the tier overrides, the
+ * mileage and heat in force, and the caching (Vue computeds already memoise on
+ * their dependencies).
  */
 
-/** Market heat every value figure is computed at. A retail value is a
- * neutral-market figure, so this is fixed rather than a control. */
-export const HEAT_PERCENT = 100
+/** Neutral market heat: at 100 a retail figure is the car's own worth and
+ * nothing the market is doing that week. Where the heat control starts. */
+export const DEFAULT_HEAT_PERCENT = 100
+
+/** The heat control's bounds, in per cent, either side of neutral. */
+export const HEAT_PERCENT_RANGE = [50, 150] as const
+
+/** The mileage control's bounds, in km: past both ends of
+ * `valuation.mileageFactorCurve`, so the whole curve and both of its flat
+ * tails are reachable. */
+export const MILEAGE_RANGE_KM = [0, 250_000] as const
 
 export const CONDITION_BANDS = ['scrap', 'poor', 'worn', 'fine', 'mint'] as const
 /** The condition control's six positions: the five bands, plus an empty slot. */
@@ -122,20 +132,20 @@ export interface SandboxCar {
   drivetrain: Drivetrain
   enginePosition: EnginePosition
   aspiration: string | null
-  /** The mileage this car is evaluated and valued at. */
-  mileageKm: number
+  /** The mileage the control starts this car at, before any change. */
+  defaultMileageKm: number
   measured: MeasuredFigures
   /** The model at its default tier. Use `modelAtTier` to move it. */
   model: CarModel
 }
 
 /**
- * The mileage every car is valued and evaluated at: the midpoint of the range
- * the auction generator would roll for a car of this age (`mileageRangeForAge`,
- * off `economy.json`'s own curves), with age taken against the campaign's
- * opening year. A car newer than that reads as age zero and gets the curve's
- * lowest mileage. Fixed rather than adjustable, and surfaced on the car so a
- * value figure is never unexplainable.
+ * The mileage a car's control starts at: the midpoint of the range the auction
+ * generator would roll for a car of this age (`mileageRangeForAge`, off
+ * `economy.json`'s own curves), with age taken against the campaign's opening
+ * year. A car newer than that reads as age zero and gets the curve's lowest
+ * mileage. Mileage is a property of one car instance rather than of the model,
+ * so the screen owns the figure in force and this is only where it begins.
  */
 export function defaultMileageKm(model: CarModel, context: SimContext): number {
   const ageYears = Math.max(0, currentGameYear('unknown') - model.spec.yearFrom)
@@ -162,7 +172,7 @@ export function sandboxCars(context: SimContext): SandboxCar[] {
       drivetrain: drivetrainOf(model),
       enginePosition: enginePositionOf(model),
       aspiration: spec.aspiration ?? null,
-      mileageKm: defaultMileageKm(model, context),
+      defaultMileageKm: defaultMileageKm(model, context),
       measured: {
         lateralG97: spec.lateralG97 ?? null,
         lateralG193: spec.lateralG193 ?? null,
@@ -339,8 +349,8 @@ export interface Blocker {
  * missing value is an honest answer and a fabricated one is not.
  */
 export interface CarValue {
-  /** The same car with every slot mint and stock, at the same mileage and
-   * neutral heat. */
+  /** The same car with every slot mint and stock, at the same mileage and the
+   * same market heat. */
   stockMintYen: number | null
   /** This build. */
   currentYen: number | null
@@ -348,6 +358,10 @@ export interface CarValue {
 
 export interface Evaluation {
   stats: StatBlock
+  /** `stats.power` on the 0 to 100 scale the other four stats already read on:
+   * the sim's own `normalizedPowerScore`, as a percentage. Uncapped, so a car
+   * past the normalisation ceiling reads past 100. */
+  powerScore: number
   physical: PhysicalFigures
   conditionFactors: ConditionFactors
   /** Seconds per course, or null on a course this build cannot run. */
@@ -367,19 +381,25 @@ function blockerReason(partId: CarPartId, build: SandboxBuild): string {
 
 /**
  * Everything the screen shows for one build, from the same functions the game
- * calls: `computeDerivedStats` for the five stats, `carBlock` for the physical
- * quantities the lap runs on, `physicalConditionFactors` for the four dials,
+ * calls: `computeDerivedStats` for the five stats, `normalizedPowerScore` for
+ * power on the other four's scale, `carBlock` for the physical quantities the
+ * lap runs on, `physicalConditionFactors` for the four dials,
  * `lapTimeSecondsFor` per course, `lapBlockers` for why a car cannot run, and
  * `marketValueYen` for what it is worth.
+ *
+ * `mileageKm` and `heatPercent` are the instance and the market the car is
+ * PRICED at: both reach `marketValueYen` and nothing else, so neither can move
+ * a stat, a physical figure or a lap time.
  */
 export function evaluateBuild(
   model: CarModel,
   build: SandboxBuild,
   priceable: boolean,
+  mileageKm: number,
+  heatPercent: number,
   context: SimContext,
 ): Evaluation {
   const { economy, partsById, partsTaxonomy, partsTaxonomyById } = context
-  const mileageKm = defaultMileageKm(model, context)
   const car = buildCarInstance(model, build, mileageKm, context)
 
   const stats = computeDerivedStats(model, car, partsById, partsTaxonomy, economy)
@@ -410,11 +430,12 @@ export function evaluateBuild(
   const stockMint = buildCarInstance(model, defaultBuild(model), mileageKm, context)
   const valueOf = (instance: CarInstance): number | null =>
     priceable
-      ? marketValueYen(model, instance, HEAT_PERCENT, partsById, partsTaxonomyById, economy)
+      ? marketValueYen(model, instance, heatPercent, partsById, partsTaxonomyById, economy)
       : null
 
   return {
     stats,
+    powerScore: normalizedPowerScore(stats.power, economy) * 100,
     physical: {
       mechanicalGrip: block.mu,
       downforceCoeff: block.downforceCoeff,

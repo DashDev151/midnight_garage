@@ -38,7 +38,7 @@
     },
     "tier": "shitbox",
     "tags": ["FF", "NA", "Piston", "80s", "JDM"],
-    "bookValueYen": 180000
+    "bookValueYen": 130000
   },
   {
     "id": "suzuki-wagon-r-ct21s",
@@ -74,7 +74,7 @@
     },
     "tier": "shitbox",
     "tags": ["FF", "NA", "Piston", "Kei", "90s", "JDM"],
-    "bookValueYen": 220000
+    "bookValueYen": 230000
   },
   {
     "id": "honda-civic-sir2-eg6",
@@ -154,7 +154,7 @@
     },
     "tier": "uncommon",
     "tags": ["FR", "NA", "Piston", "80s", "JDM"],
-    "bookValueYen": 1400000
+    "bookValueYen": 890000
   },
   {
     "id": "nissan-180sx-rps13",
@@ -197,7 +197,7 @@
     },
     "tier": "uncommon",
     "tags": ["FR", "Turbo", "Piston", "90s", "JDM"],
-    "bookValueYen": 1100000
+    "bookValueYen": 750000
   },
   {
     "id": "toyota-chaser-tourer-v-jzx90",
@@ -239,7 +239,7 @@
     },
     "tier": "uncommon",
     "tags": ["FR", "Turbo", "Piston", "90s", "JDM"],
-    "bookValueYen": 1600000
+    "bookValueYen": 870000
   },
   {
     "id": "nissan-silvia-ks-s14",
@@ -282,7 +282,7 @@
     },
     "tier": "uncommon",
     "tags": ["FR", "Turbo", "Piston", "90s", "JDM"],
-    "bookValueYen": 1500000
+    "bookValueYen": 1020000
   },
   {
     "id": "mazda-savanna-rx7-fc3s",
@@ -325,7 +325,7 @@
     },
     "tier": "uncommon",
     "tags": ["FR", "Turbo", "Rotary", "80s", "JDM"],
-    "bookValueYen": 1800000
+    "bookValueYen": 850000
   },
   {
     "id": "mazda-rx7-fd3s",
@@ -368,7 +368,7 @@
     },
     "tier": "rare",
     "tags": ["FR", "Turbo", "Rotary", "90s", "JDM"],
-    "bookValueYen": 3200000
+    "bookValueYen": 1450000
   },
   {
     "id": "toyota-supra-rz-jza80",
@@ -412,7 +412,7 @@
     },
     "tier": "rare",
     "tags": ["FR", "Turbo", "Piston", "90s", "JDM"],
-    "bookValueYen": 4200000
+    "bookValueYen": 2890000
   },
   {
     "id": "toyota-carina-at150",
@@ -448,7 +448,7 @@
     },
     "tier": "shitbox",
     "tags": ["FF", "NA", "Piston", "80s", "JDM"],
-    "bookValueYen": 200000
+    "bookValueYen": 250000
   },
   {
     "id": "nissan-sunny-b12",
@@ -483,7 +483,7 @@
     },
     "tier": "shitbox",
     "tags": ["FF", "NA", "Piston", "80s", "JDM"],
-    "bookValueYen": 180000
+    "bookValueYen": 150000
   },
   {
     "id": "suzuki-alto-works-ha21s",
@@ -519,7 +519,7 @@
     },
     "tier": "shitbox",
     "tags": ["FF", "Turbo", "Piston", "Kei", "90s", "JDM"],
-    "bookValueYen": 340000
+    "bookValueYen": 400000
   },
   {
     "id": "honda-beat-pp1",
@@ -562,7 +562,7 @@
     },
     "tier": "shitbox",
     "tags": ["MR", "NA", "Piston", "Kei", "90s", "JDM"],
-    "bookValueYen": 480000
+    "bookValueYen": 580000
   },
   {
     "id": "honda-crx-sir-ef8",
@@ -605,7 +605,7 @@
     },
     "tier": "common",
     "tags": ["FF", "NA", "Piston", "80s", "JDM"],
-    "bookValueYen": 560000
+    "bookValueYen": 480000
   },
   {
     "id": "honda-city-turbo-ii-aa",
@@ -642,7 +642,7 @@
     },
     "tier": "shitbox",
     "tags": ["FF", "Turbo", "Piston", "80s", "JDM"],
-    "bookValueYen": 420000
+    "bookValueYen": 320000
   },
   {
     "id": "toyota-sera-exy10",
@@ -684,7 +684,7 @@
     },
     "tier": "shitbox",
     "tags": ["FF", "NA", "Piston", "90s", "JDM"],
-    "bookValueYen": 450000
+    "bookValueYen": 340000
   },
   {
     "id": "honda-prelude-si-vtec-bb4",
@@ -727,7 +727,7 @@
     },
     "tier": "common",
     "tags": ["FF", "NA", "Piston", "90s", "JDM"],
-    "bookValueYen": 800000
+    "bookValueYen": 490000
   },
   {
     "id": "nissan-silvia-s13",
@@ -769,7 +769,7 @@
     },
     "tier": "uncommon",
     "tags": ["FR", "Turbo", "Piston", "80s", "JDM"],
-    "bookValueYen": 1100000
+    "bookValueYen": 500000
   },
   {
     "id": "toyota-mr2-sw20",
@@ -812,7 +812,7 @@
     },
     "tier": "uncommon",
     "tags": ["MR", "Turbo", "Piston", "80s", "JDM"],
-    "bookValueYen": 1400000
+    "bookValueYen": 1180000
   },
   {
     "id": "nissan-cefiro-a31",
@@ -848,7 +848,7 @@
     },
     "tier": "uncommon",
     "tags": ["FR", "Turbo", "Piston", "80s", "JDM"],
-    "bookValueYen": 1100000
+    "bookValueYen": 620000
   },
   {
     "id": "subaru-impreza-wrx-sti-gc8",
@@ -930,7 +930,7 @@
     },
     "tier": "rare",
     "tags": ["AWD", "Turbo", "Piston", "80s", "JDM"],
-    "bookValueYen": 3600000
+    "bookValueYen": 3500000
   },
   {
     "id": "nissan-fairlady-z-z32",
@@ -974,7 +974,7 @@
     },
     "tier": "rare",
     "tags": ["FR", "Turbo", "Piston", "80s", "JDM"],
-    "bookValueYen": 2900000
+    "bookValueYen": 1850000
   },
   {
     "id": "toyota-aristo-30v-jzs147",
@@ -1012,7 +1012,7 @@
     },
     "tier": "rare",
     "tags": ["FR", "Turbo", "Piston", "90s", "JDM"],
-    "bookValueYen": 2800000
+    "bookValueYen": 770000
   },
   {
     "id": "toyota-mr2-aw11",
@@ -1055,6 +1055,6 @@
     },
     "tier": "common",
     "tags": ["MR", "Supercharged", "Piston", "80s", "JDM"],
-    "bookValueYen": 820000
+    "bookValueYen": 510000
   }
 ]

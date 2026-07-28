@@ -103,9 +103,9 @@ function ownedCar(id: string, parts = mintCarParts()) {
 }
 
 describe('shipped defaults', () => {
-  it('workup and inspectionVisit cost 10; every other action is free', () => {
+  it('workup and inspectionVisit cost 10, removePart 2; every other action is free', () => {
     expect(CONTEXT.economy.energy.actionPoints).toEqual({
-      removePart: 0,
+      removePart: 2,
       removeAssembly: 0,
       refitAssembly: 0,
       refitUnchangedMember: 0,

@@ -33,9 +33,10 @@ import { updateServiceJobLedger } from './serviceJobLedger'
 
 /**
  * Labour (energy points) to pull one slot's part off a car: one flat figure,
- * `energy.actionPoints.removePart`, whatever the slot's depth class - free at
- * the shipped default of 0. The `carPartId` parameter stays for signature
- * stability with `installLaborSlotsFor` below.
+ * `energy.actionPoints.removePart`, whatever the slot's depth class - 2 points
+ * at the shipped default, so stripping a whole car costs just under a solo
+ * shop's daily pool. The `carPartId` parameter stays for signature stability
+ * with `installLaborSlotsFor` below.
  */
 export function removeLaborSlotsFor(carPartId: CarPartId, context: SimContext): number {
   return context.economy.energy.actionPoints.removePart
@@ -542,10 +543,10 @@ export function resolveHireMachineLine(
  * hired for the day (`hasMachineLineFor`) - a removal that needs a line
  * neither owned nor hired today refuses rather than charging a fee.
  *
- * Removal labour reads `energy.actionPoints.removePart` (0 in shipped
- * content, so removal is free today); a figure above zero gates on
- * `laborAvailable` and spends into `energySpentToday`. Access is gated
- * separately (the machine/blocker checks above). The removed instance's own
+ * Removal labour reads `energy.actionPoints.removePart` (2 in shipped
+ * content), gating on `laborAvailable` and spending into `energySpentToday`.
+ * Access is gated separately (the machine/blocker checks above), so a removal
+ * can refuse for want of labour or for want of a line. The removed instance's own
  * `{partId, band, genuinePeriod}` is stamped onto the resulting slot as
  * `vacatedBaseline` - what a later refit is compared against
  * (`refitLaborSlotsFor`) to decide whether putting the car back together is

@@ -427,9 +427,11 @@ describe('seed content validates against schemas', () => {
     })
     // Every physical action's labour figure lives in this one map; zero means
     // the action is free, a raised figure gates and spends. The two knowledge
-    // actions carry the old one-labour cost (10) on their own keys.
+    // actions carry the old one-labour cost (10) on their own keys. Pulling a
+    // part costs 2 points, so stripping a whole car is just under a solo day's
+    // pool (60) and price is no longer the only brake on a teardown.
     expect(result.data.energy.actionPoints).toEqual({
-      removePart: 0,
+      removePart: 2,
       removeAssembly: 0,
       refitAssembly: 0,
       refitUnchangedMember: 0,

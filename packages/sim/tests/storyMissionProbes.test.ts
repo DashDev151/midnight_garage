@@ -510,7 +510,7 @@ describe('story mission satisfiability probes (Sprint 78 decision 1)', () => {
  * that helper doesn't support (a uniform target band across the whole car).
  */
 describe('guarantor mission probes (auction-tier unlock rewards)', () => {
-  it('the-fleet-spare: a crx-sir-ef8 with every reliability-weighted part at fine (cosmetics left worn) clears reliability >= 58; formula-derived payout 350,000 yen', () => {
+  it('the-fleet-spare: a crx-sir-ef8 with every reliability-weighted part at fine (cosmetics left worn) clears reliability >= 58; formula-derived payout 237,000 yen', () => {
     const modelId = 'honda-crx-sir-ef8'
     const model = CARS.find((c) => c.id === modelId)!
     const fitmentClass = fitmentClassForTier(model.tier)
@@ -574,7 +574,7 @@ describe('guarantor mission probes (auction-tier unlock rewards)', () => {
     )
   })
 
-  it('the-showroom-standard: a cefiro-a31 with every part fine-or-better, race aero/rims/seats, and 4 mechanicals minted clears style >= 50; formula-derived payout 1,231,000 yen', () => {
+  it('the-showroom-standard: a cefiro-a31 with every part fine-or-better, race aero/rims/seats, and 4 mechanicals minted clears style >= 50; formula-derived payout 926,000 yen', () => {
     const modelId = 'nissan-cefiro-a31'
     const model = CARS.find((c) => c.id === modelId)!
     const fitmentClass = fitmentClassForTier(model.tier)

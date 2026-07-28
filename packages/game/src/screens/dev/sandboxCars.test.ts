@@ -13,7 +13,13 @@ import { buildSimContext } from '@midnight-garage/sim'
 import { describe, expect, it } from 'vitest'
 import LAPSIM_DATA from '../../../../../docs/design/car-performance/lapsim/lapsim-data.json'
 import { SANDBOX_ROSTER } from './sandboxCars'
-import { defaultBuild, evaluateBuild, modelAtTier, sandboxCars } from './sandboxModel'
+import {
+  DEFAULT_HEAT_PERCENT,
+  defaultBuild,
+  evaluateBuild,
+  modelAtTier,
+  sandboxCars,
+} from './sandboxModel'
 
 /**
  * THE ACCEPTANCE CHECK FOR THE GENERATED SANDBOX ROSTER.
@@ -108,7 +114,14 @@ describe('the generated sandbox roster', () => {
       expect(reference, `${car.id} has no entry in lapsim-data.json`).toBeDefined()
 
       const model = modelAtTier(car, car.defaultTier)
-      const result = evaluateBuild(model, defaultBuild(model), car.inGame, context)
+      const result = evaluateBuild(
+        model,
+        defaultBuild(model),
+        car.inGame,
+        car.defaultMileageKm,
+        DEFAULT_HEAT_PERCENT,
+        context,
+      )
       expect(result.blockers).toEqual([])
 
       const allowed = KNOWN_PORT_GAP[car.id] ?? TOLERANCE_SECONDS

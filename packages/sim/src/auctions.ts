@@ -319,7 +319,54 @@ function degradeOnePart(
   }
 }
 
-function enforceMinWorkBill(
+/** The top-up's candidate pool for one step: parts already at or above the
+ * expectation band first, falling back to below-expectation parts only once
+ * none remain. */
+function minWorkTopUpPool(car: CarInstance, expectationBand: ConditionBand): CarPartId[] {
+  const preferred = degradeCandidates(car, expectationBand, true)
+  return preferred.length > 0 ? preferred : degradeCandidates(car, expectationBand, false)
+}
+
+/** One candidate's degrade step, taken only if the result still clears the
+ * SAME Law 2 ceiling every other generation step obeys - the softened car if
+ * it does, `null` if the ceiling would push a band straight back. */
+function degradeUnderCeiling(
+  working: CarInstance,
+  model: CarModel,
+  context: SimContext,
+  carOrigin: PartOrigin,
+  partId: CarPartId,
+): CarInstance | null {
+  const candidate = degradeOnePart(working, model, context, partId)
+  const softened = enforceMaxBillFraction(candidate, model, context, carOrigin)
+  return bandsMatch(softened, candidate) ? softened : null
+}
+
+/**
+ * True when the Law 2 ceiling is what stops `enforceMinWorkBill` on this car:
+ * there are candidates left to degrade, and every one of them would breach the
+ * ceiling. That is the function's own `!applied` exit asked as a question, so
+ * a caller can tell a legitimate ceiling-bound shortfall from a real one -
+ * the bill does not have to be hugging the ceiling for this to be true, since
+ * a single remaining step can cost far more than the headroom left.
+ *
+ * The `PartOrigin` `enforceMaxBillFraction` wants only labels parts it
+ * backfills into missing slots, and the comparison here reads bands alone, so
+ * this builds its own rather than making every caller carry one.
+ */
+export function minWorkTopUpCeilingBinds(
+  car: CarInstance,
+  model: CarModel,
+  context: SimContext,
+): boolean {
+  const expectationBand = expectationForCar(model, context.economy).band
+  const pool = minWorkTopUpPool(car, expectationBand)
+  if (pool.length === 0) return false // nothing left to degrade at all - exhaustion, not the ceiling
+  const origin = makeCarOrigin(car.id, carOriginLabel(model, car.year), 0)
+  return pool.every((partId) => degradeUnderCeiling(car, model, context, origin, partId) === null)
+}
+
+export function enforceMinWorkBill(
   car: CarInstance,
   model: CarModel,
   context: SimContext,
@@ -340,23 +387,20 @@ function enforceMinWorkBill(
   const maxSteps =
     ordinaryPartCount * MAX_DEGRADE_STEPS_PER_PART + (car.zoneState ? MAX_ZONE_STATE_STEPS : 0)
   for (let step = 0; step < maxSteps && billBelowExpectation(working) < floorYen; step++) {
-    const preferred = degradeCandidates(working, expectationBand, true)
-    let pool = preferred.length > 0 ? preferred : degradeCandidates(working, expectationBand, false)
+    let pool = minWorkTopUpPool(working, expectationBand)
     if (pool.length === 0) break // nothing left to degrade anywhere - best effort
 
-    // Try candidates from the pool until one clears the SAME Law 2 ceiling
-    // every other generation step obeys, dropping any that would breach it
-    // and trying the next rather than giving up the whole step outright -
-    // a single unlucky pick (e.g. the one candidate already hugging the
-    // ceiling) must never stop the floor short when another candidate could
-    // still have carried it forward.
+    // Try candidates from the pool until one clears the Law 2 ceiling,
+    // dropping any that would breach it and trying the next rather than
+    // giving up the whole step outright - a single unlucky pick (e.g. the one
+    // candidate already hugging the ceiling) must never stop the floor short
+    // when another candidate could still have carried it forward.
     let applied = false
     while (pool.length > 0 && !applied) {
       const partId = rng.pick(pool)
-      const candidate = degradeOnePart(working, model, context, partId)
-      const softened = enforceMaxBillFraction(candidate, model, context, carOrigin)
-      if (bandsMatch(softened, candidate)) {
-        working = softened
+      const stepped = degradeUnderCeiling(working, model, context, carOrigin, partId)
+      if (stepped) {
+        working = stepped
         applied = true
       } else {
         pool = pool.filter((id) => id !== partId)

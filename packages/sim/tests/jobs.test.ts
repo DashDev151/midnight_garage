@@ -1538,15 +1538,15 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
   })
 
   /**
-   * Removal labour is the flat `energy.actionPoints.removePart` figure (zero
-   * at shipped tuning) regardless of depth class; only improving a slot is
-   * charged, per depth class.
+   * Removal labour is the flat `energy.actionPoints.removePart` figure (2
+   * points at shipped tuning) regardless of depth class; improving a slot is
+   * charged separately, per depth class.
    */
-  it('removal costs the flat removePart figure (0 at shipped tuning) at every depth; install stays per-depth-class energy', () => {
+  it('removal costs the flat removePart figure (2 at shipped tuning) at every depth; install stays per-depth-class energy', () => {
     const byClass = CONTEXT.economy.energy.energyByClass
-    expect(removeLaborSlotsFor('panels', CONTEXT)).toBe(0)
-    expect(removeLaborSlotsFor('exhaust', CONTEXT)).toBe(0)
-    expect(removeLaborSlotsFor('camsTiming', CONTEXT)).toBe(0)
+    expect(removeLaborSlotsFor('panels', CONTEXT)).toBe(2)
+    expect(removeLaborSlotsFor('exhaust', CONTEXT)).toBe(2)
+    expect(removeLaborSlotsFor('camsTiming', CONTEXT)).toBe(2)
     expect(installLaborSlotsFor('panels', CONTEXT)).toBe(byClass.surface) // 0
     expect(installLaborSlotsFor('exhaust', CONTEXT)).toBe(byClass['bolt-on']) // 3
     expect(installLaborSlotsFor('camsTiming', CONTEXT)).toBe(byClass.buried) // 6
@@ -1588,13 +1588,20 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     expect(hasMachineLineFor('engine', owned)).toBe(true)
   })
 
-  it('a removal succeeds even when zero labour is offered today, since removal now costs nothing', () => {
+  it('a removal gates on the shipped removePart figure: refused with nothing left today, charged when the labour is there', () => {
     const state = baseState()
+    const cost = CONTEXT.economy.energy.actionPoints.removePart
     // exhaust is a loose bolt-on: assembly members come off only via the assembly.
-    const funded = resolveRemovePart(state, car.id, 'exhaust', CONTEXT, 0)
-    expect(funded.laborSlotsUsed).toBe(0)
+    const starved = resolveRemovePart(state, car.id, 'exhaust', CONTEXT, cost - 1)
+    expect(starved.laborSlotsUsed).toBe(0)
+    expect(starved.log).toEqual([])
+    expect(starved.state).toBe(state)
+
+    const funded = resolveRemovePart(state, car.id, 'exhaust', CONTEXT, cost)
+    expect(funded.laborSlotsUsed).toBe(cost)
     expect(funded.log).toHaveLength(1)
     expect(funded.state.ownedCars[0]?.parts.exhaust.installed).toBeNull()
+    expect(funded.state.energySpentToday).toBe(state.energySpentToday + cost)
   })
 })
 
@@ -1860,12 +1867,13 @@ describe('the equivalence-priced labour model (Sprint 79 decision 1, maintainer 
     expect(slots).toBe(CONTEXT.economy.energy.energyByClass['bolt-on'])
   })
 
-  it('the clutch chain: gearbox blockers off free, clutch off free, a NEW clutch refit charged at the buried rate (2 slots)', () => {
+  it('the clutch chain: gearbox blockers off at the flat removal figure, a NEW clutch refit charged at the buried rate', () => {
+    const removeCost = CONTEXT.economy.energy.actionPoints.removePart
     const drivetrainState = baseState({ toolTiers: testToolTiers({ drivetrain: 2 }) })
     const exhaustOff = resolveRemovePart(drivetrainState, car.id, 'exhaust', CONTEXT)
-    expect(exhaustOff.laborSlotsUsed).toBe(0)
+    expect(exhaustOff.laborSlotsUsed).toBe(removeCost)
     const drivelineOff = resolveRemovePart(exhaustOff.state, car.id, 'driveline', CONTEXT)
-    expect(drivelineOff.laborSlotsUsed).toBe(0)
+    expect(drivelineOff.laborSlotsUsed).toBe(removeCost)
     // gearbox and clutch are gearboxAssembly members: vacated via vacateSlot,
     // not per-part removal.
     const clutchVacated = vacateSlot(

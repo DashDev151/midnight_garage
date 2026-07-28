@@ -13,6 +13,17 @@ import { marketValueYen } from './marketValue'
 const STAT_WEIGHT_KEYS = ['power', 'handling', 'style', 'reliability', 'authenticity'] as const
 
 /**
+ * A car's power on the [0, 1] scale the other four derived stats reach by
+ * dividing by 100: PS against `statFormulas.powerNormalizationCeiling`. The one
+ * expression of that normalisation, for everything that needs power on the same
+ * footing as a stat. Uncapped, so a car past the ceiling scores past 1 rather
+ * than being flattened onto it.
+ */
+export function normalizedPowerScore(powerPs: number, economy: EconomyConfig): number {
+  return powerPs / economy.statFormulas.powerNormalizationCeiling
+}
+
+/**
  * How well a buyer archetype's stat weights fit this car's derived stats,
  * normalized to [0, 1] (0 = the archetype's weighted stats read as worthless,
  * 1 = a perfect fit). The shared input every taste band below maps onto its
@@ -29,10 +40,9 @@ function normalizedTasteScore(
 ): number {
   const stats = computeDerivedStats(model, instance, partsById, partsTaxonomy, economy)
   const weights = buyer.statWeights
-  const powerCeiling = economy.statFormulas.powerNormalizationCeiling
 
   const weightedScore =
-    (stats.power / powerCeiling) * weights.power +
+    normalizedPowerScore(stats.power, economy) * weights.power +
     (stats.handling / 100) * weights.handling +
     (stats.style / 100) * weights.style +
     (stats.reliability / 100) * weights.reliability +

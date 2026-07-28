@@ -490,3 +490,37 @@ maintainer or CI run can catch a coherence drift before a playtest does.
   knob rather than a structural fact; tuning any removal-family key above zero requires
   a tutorial-copy re-sweep in the same sitting (the walkthrough currently states that
   taking things apart is free). Not a law change; audit table updated.
+- 2026-07-28: **stripping a car costs labour, and the tutorial payout moves back up to keep
+  its margin** (two levers, both approved by the maintainer in session 2026-07-28; pinned in
+  `packages/content/tests/economyApprovalGate.test.ts`). `energy.actionPoints.removePart`
+  0 -> 2: removal cost no labour at all, which left price as the only brake on stripping a
+  car for parts, and at 2 points against the 60-point `basePoolPoints` a full 29-slot strip
+  costs 58 points, just under one day of a solo shop's labour. That ratio is the intent of
+  the value, so the two anchors move together if either is ever retuned. The tutorial-copy
+  re-sweep the 2026-07-20 entry above demanded was carried out in the same change: the
+  walkthrough's three free-teardown claims now point the player at the labour figure on the
+  button instead, and the remaining "costs nothing" lines are the assembly and
+  put-it-back-as-found ops, which really are still free (`removeAssembly`,
+  `refitAssembly`, `refitUnchangedMember` all stay 0). `four-wheels` payout/budget
+  130,000 -> 135,000: a hand-set value, not a formula re-derivation, because the tutorial
+  sits deliberately off the generic mission formula. The Wagon R's canonical book value of
+  230,000 had left the taught build able to absorb its designed profit but not one player
+  mistake, missing by 3,570 yen; 135,000 restores the standing rule for this lever ("keep
+  the margin as it was"). Measured fresh through `tutorialProbe`: taught build 128,070, one
+  sanctioned mistake +5,500 for 133,570 against the cap, designed profit 6,930. Consequence
+  worth reading, disclosed not gated: the donor coherence row's `stripLaborSlots` was zero
+  for every model by construction and is now 48 points on a naturally aspirated model and 50
+  on a forced-induction one. Not a law change; no other lever moves.
+- 2026-07-28: **the full-restore-per-tier probe becomes the sensible-restore-per-tier probe**
+  (maintainer ruling in session: "Fix the probe. Only repair to expected range for the car no
+  further."). No lever moves; this corrects a machine check that was asking the wrong
+  question. The probe bought the worst generatable roll, repaired every part to MINT, and
+  asserted a profit - but `valuation.expectationByTier.shitbox` is `worn` with a
+  `beyondDiscount` of 0.4, so a mint restoration of a kei is passion spend the economy
+  deliberately declines to reward, exactly as law 1's own rationale states. The probe now
+  repairs to `sensibleRepairTargetBand` (the tier's expectation band, clamped to the tier-1
+  repair ceiling), the same target the law 6 wage probe plans to, and both now read that one
+  helper rather than each spelling it out. It also asserts per model rather than on the single
+  worst car in each tier. Measured: all 26 roster models clear a positive margin, worst per
+  tier being the City E at +26,562 (was -5,176 to mint), the Prelude at +101,520, the Cefiro
+  at +106,907 and the Aristo at +184,319.

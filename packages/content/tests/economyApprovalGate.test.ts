@@ -136,6 +136,60 @@ import storyMissions from '../data/storyMissions.json'
  * events, not a single measured stop, and worn hardware fades across that. No other
  * lever moves. Still PROVISIONAL, and mint is still exactly 1.000 on all four, so the
  * harness acceptance times, every mission ceiling and every payout are untouched.
+ *
+ * Re-pinned for the period parts recalibration signed in docs/sprints/sprint132.md
+ * section 4a (the ten live levers: nine `partPricing.json` base costs plus
+ * `gradeFactors.race` 2.8 -> 3.0, each anchored to 1994-2004 catalogue data).
+ * economy.json itself is untouched, so its hash holds. What moves is every
+ * formula-derived mission payout, because the probe build cost those prices feed moved
+ * with them, per the maintainer's ruling of 2026-07-28 that mission payouts follow the
+ * formula: `wont-strand-her` 218000 -> 220000, `the-fleet-spare` 350000 -> 326000,
+ * `first-proper-car` 534000 -> 519000, `make-it-pull` 892000 -> 949000,
+ * `the-column-clock` 1557000 -> 1611000, `the-showroom-standard` 1231000 -> 1298000,
+ * `low-and-loud` 1763000 -> 1795000, `street-power-street-manners` 1623000 -> 1708000,
+ * and `under-one-fifteen` 3681000 -> 3810000. Each budget cap moves with its own payout,
+ * holding the one-price contract. The directions differ because the reshuffled prices
+ * changed which SKU a probe build selects; every figure is what `storyMissionProbes`'s
+ * own `payoutYenFor` rule yields against a fresh measurement, never hand-picked.
+ * `four-wheels` alone is unchanged: it sits deliberately off the generic formula.
+ *
+ * Re-pinned for the canonical roster price list
+ * (docs/design/reference/period-scans/roster-price-list-v2.md section 2), applied to
+ * every `cars.json` `bookValueYen` on the maintainer's ruling of 2026-07-28 that the
+ * price list is canon. economy.json is untouched, so its hash holds. What moves is
+ * every formula-derived mission payout whose probe car's book value moved, because
+ * repair cost and market value both scale with it: `wont-strand-her` 220000 ->
+ * 165000, `the-fleet-spare` 326000 -> 237000, `the-showroom-standard` 1298000 ->
+ * 926000, `the-column-clock` 1611000 -> 1048000, `low-and-loud` 1795000 -> 1265000,
+ * `street-power-street-manners` 1708000 -> 1343000, and `under-one-fifteen` 3810000
+ * -> 1876000. Each budget cap moves with its own payout, holding the one-price
+ * contract. `first-proper-car` and `make-it-pull` are unchanged because their probe
+ * car (the EG6 Civic) is one of the two roster cars the price list left alone;
+ * `four-wheels` is unchanged because it sits deliberately off the generic formula.
+ * Every figure is what `storyMissionProbes`'s own `payoutYenFor` rule yields against
+ * a fresh measurement, never hand-picked.
+ *
+ * Re-pinned 2026-07-28 (maintainer approval, in session):
+ * `energy.actionPoints.removePart` 0 -> 2. Removing a part cost no labour at all,
+ * which left price as the only brake on stripping a car for parts. At 2 points
+ * against the 60-point `basePoolPoints`, stripping all 29 slots costs 58 points, so
+ * a full strip is just under one day of a solo shop's labour; that ratio is the
+ * intent of the value. No payout or budget cap follows from it (they derive from
+ * build cost, not from labour), and no other lever moves. What does move is the
+ * donor coherence row's disclosed `stripLaborSlots`, previously zero for every model
+ * by construction and now 48 points on a naturally aspirated model and 50 on a
+ * forced-induction one; the donor law's own yen comparison is untouched, since strip
+ * labour is disclosed alongside it rather than gated by it.
+ *
+ * Re-pinned 2026-07-28 (maintainer approval, in session): `four-wheels`
+ * payout/budget 130000 -> 135000. This mission sits deliberately off the generic
+ * formula (it is the tutorial), so this is a hand-set value, not a formula
+ * re-derivation. The Wagon R's canonical book value of 230000 left the taught build
+ * able to absorb its designed profit but not one player mistake, missing by 3570
+ * yen. 135000 restores the maintainer's standing rule for this lever ("keep the
+ * margin as it was"): measured fresh through `tutorialProbe`, the taught build
+ * spends 128070, the one sanctioned mistake adds 5500 for 133570 against the 135000
+ * cap, and designed profit is 6930, inside the (0, 15000] band that probe asserts.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -145,7 +199,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('fdcf144be57d11d3bc40859dd97b252834b87d08a7e255d2ac39a2a0cd39a9a0')
+    ).toBe('d294ac5b58aed18db40dc1b8bdd1098c98b34c2f0ae677f3b34f1001fe6e29a2')
   })
 
   it('mission payouts and budget caps match their approved values exactly', () => {
@@ -160,16 +214,16 @@ describe('the economy approval gate', () => {
       'A mission payout or budget cap changed. These are approval-gated ' +
         '(CLAUDE.md directive 22): re-pin only alongside the recorded approval.',
     ).toEqual({
-      'four-wheels': { payoutYen: 130000, budgetCapYen: 130000 },
-      'wont-strand-her': { payoutYen: 218000, budgetCapYen: 218000 },
-      'first-proper-car': { payoutYen: 534000, budgetCapYen: 534000 },
-      'make-it-pull': { payoutYen: 892000, budgetCapYen: 892000 },
-      'the-column-clock': { payoutYen: 1557000, budgetCapYen: 1557000 },
-      'low-and-loud': { payoutYen: 1763000, budgetCapYen: 1763000 },
-      'street-power-street-manners': { payoutYen: 1623000, budgetCapYen: 1623000 },
-      'under-one-fifteen': { payoutYen: 3681000, budgetCapYen: 3681000 },
-      'the-fleet-spare': { payoutYen: 350000, budgetCapYen: 350000 },
-      'the-showroom-standard': { payoutYen: 1231000, budgetCapYen: 1231000 },
+      'four-wheels': { payoutYen: 135000, budgetCapYen: 135000 },
+      'wont-strand-her': { payoutYen: 165000, budgetCapYen: 165000 },
+      'first-proper-car': { payoutYen: 519000, budgetCapYen: 519000 },
+      'make-it-pull': { payoutYen: 949000, budgetCapYen: 949000 },
+      'the-column-clock': { payoutYen: 1048000, budgetCapYen: 1048000 },
+      'low-and-loud': { payoutYen: 1265000, budgetCapYen: 1265000 },
+      'street-power-street-manners': { payoutYen: 1343000, budgetCapYen: 1343000 },
+      'under-one-fifteen': { payoutYen: 1876000, budgetCapYen: 1876000 },
+      'the-fleet-spare': { payoutYen: 237000, budgetCapYen: 237000 },
+      'the-showroom-standard': { payoutYen: 926000, budgetCapYen: 926000 },
     })
   })
 })

@@ -124,7 +124,7 @@
       },
       {
         "speaker": "instruction",
-        "text": "Start at the ground. Her tyres are scrap, and scrap tyres fail a roadworthy all on their own. Tyres come off with the wheels: press Remove assembly (taking things apart is free), and the wheels land on the bench below.",
+        "text": "Start at the ground. Her tyres are scrap, and scrap tyres fail a roadworthy all on their own. Tyres come off with the wheels: press Remove assembly (a whole assembly comes off for no labour at all), and the wheels land on the bench below.",
         "hideWhen": { "kind": "assemblyOnBench", "assemblyId": "wheelAssembly" }
       },
       {
@@ -170,7 +170,7 @@
     "lines": [
       {
         "speaker": "instruction",
-        "text": "Now for that tick, and this one is proper surgery. It lives in the {part}, deep in the engine, and the engine will not come out with the Intake, the Exhaust and the Cooling bolted on around it. Click each of those three in the Engine bay view and press Take it off; taking parts off costs nothing, and they wait safely in your inventory.",
+        "text": "Now for that tick, and this one is proper surgery. It lives in the {part}, deep in the engine, and the engine will not come out with the Intake, the Exhaust and the Cooling bolted on around it. Click each of those three in the Engine bay view and press Take it off; the button tells you what each one takes off the labour bar, and they wait safely in your inventory.",
         "hideWhen": { "kind": "assemblyOnBench", "assemblyId": "engineAssembly" }
       },
       {
@@ -190,7 +190,7 @@
       },
       {
         "speaker": "instruction",
-        "text": "The repair and the refit are where the labour goes; taking things off never costs any. If the bar runs dry, press End Day for a fresh one tomorrow; just remember the crane hire only lasts the day, so finishing while it is paid for is the tidy way."
+        "text": "The repair and the refit are where most of the labour goes, though every part you unbolt takes its own small bite; strip a car to the shell and you have spent the best part of a day on spanners alone. If the bar runs dry, press End Day for a fresh one tomorrow; just remember the crane hire only lasts the day, so finishing while it is paid for is the tidy way."
       }
     ],
     "completion": { "kind": "partBandAtLeast", "carPartId": "headValvetrain", "band": "worn" },
