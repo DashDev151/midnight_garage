@@ -183,17 +183,149 @@ describe('worn parts cost real lap time', () => {
    * catches either failure mode: a dial that stopped reaching the physics (the
    * loss collapses towards zero) or one applied twice (it roughly doubles). The
    * band is the measured spread across the shipped roster and all four courses.
+   *
+   * Measured through `lapTime` rather than the game-facing entry point on
+   * purpose: a fully scrap car sets no time at all, since every part that stops
+   * a car outright is ruined, so the only way to read what the dials are worth
+   * at the bottom of the range is to spend them directly. That makes this a
+   * probe of the curves rather than of a state a car can reach.
    */
-  it('a fully scrap car loses between 3 and 15 per cent of its pace', () => {
+  it('a fully scrap car loses between 10 and 50 per cent of its pace', () => {
     for (const model of CARS) {
       const scrap = factorsFor(model, carAt(model, uniformCarParts('scrap')))
       for (const course of COURSES) {
         const mint = stockLap(model, course, MINT_CONDITION_FACTORS)
         const lost = (stockLap(model, course, scrap) - mint) / mint
         const detail = `${model.id} / ${course.id} lost ${(lost * 100).toFixed(2)}%`
-        expect(lost, detail).toBeGreaterThan(0.03)
-        expect(lost, detail).toBeLessThan(0.15)
+        expect(lost, detail).toBeGreaterThan(0.1)
+        expect(lost, detail).toBeLessThan(0.5)
       }
+    }
+  })
+})
+
+/**
+ * Wear is gradual until it is not. Most parts only cost pace when they are
+ * ruined, and the dials above say how much; the parts marked `scrapDisablesCar`
+ * are function-or-fail, and at scrap they stop the car being driven at all
+ * rather than slow it down. The set is read from the taxonomy rather than
+ * restated here, so a part added to the game cannot escape the rule, and the
+ * flag itself is pinned so the rule cannot be half-removed by editing content.
+ *
+ * The pair of cases is the point: the same component is BOTH. A worn ignition
+ * misfires under load, which is a real power loss the stat curves carry, and a
+ * scrap one does not start.
+ */
+describe('a part that fails outright, rather than fading, means no lap time', () => {
+  const DISABLING_IDS = PARTS_TAXONOMY.filter((entry) => entry.scrapDisablesCar).map(
+    (entry) => entry.id,
+  )
+
+  it('exactly the parts a car cannot run, drive or be controlled without carry the flag', () => {
+    expect([...DISABLING_IDS].sort()).toEqual([
+      'block',
+      'brakeCalipersLines',
+      'brakePadsDiscs',
+      'camsTiming',
+      'clutch',
+      'cooling',
+      'differential',
+      'driveline',
+      'fuelSystem',
+      'gearbox',
+      'headValvetrain',
+      'ignitionEcu',
+      'internals',
+      'steering',
+      'tyres',
+    ])
+  })
+
+  it.each(DISABLING_IDS)('a scrap %s sets no time on any course', (partId) => {
+    const car = carAt(CIVIC, mintCarParts({ [partId]: 'scrap' }))
+    for (const course of COURSES) {
+      expect(
+        lapTimeSecondsFor(car, CIVIC, CONTEXT, course.id),
+        `${partId} / ${course.id}`,
+      ).toBeNull()
+    }
+  })
+
+  it.each(DISABLING_IDS)('a missing %s sets no time either', (partId) => {
+    const car = carAt(CIVIC, mintCarParts({ [partId]: null }))
+    expect(lapTimeSecondsFor(car, CIVIC, CONTEXT, 'hakone')).toBeNull()
+  })
+
+  it('a car one band above the floor everywhere still sets a time, and a slow one', () => {
+    const overrides = Object.fromEntries(DISABLING_IDS.map((partId) => [partId, 'poor' as const]))
+    const car = carAt(CIVIC, mintCarParts(overrides))
+    const time = lapTimeSecondsFor(car, CIVIC, CONTEXT, 'hakone')
+    expect(time).not.toBeNull()
+    const mint = lapTimeSecondsFor(carAt(CIVIC, mintCarParts()), CIVIC, CONTEXT, 'hakone')!
+    expect(time!).toBeGreaterThan(mint)
+  })
+
+  /**
+   * Which dials can ever see a scrap contribution at all. Both carriers of
+   * `braking` and all four of `driveline` stop the car outright at scrap, so
+   * those two scrap entries are unreachable by construction and there is nothing
+   * in them to tune; `grip` and `aero` each keep carriers that only fade, so
+   * their scrap entries are live. Pinned because it is invisible in the curves
+   * themselves and a reader would otherwise spend time on a dead number.
+   */
+  it('the braking and driveline scrap entries are unreachable, grip and aero are not', () => {
+    const carriersAllGate = (dial: 'grip' | 'braking' | 'driveline' | 'aero'): boolean => {
+      const carriers = PARTS_TAXONOMY.filter((entry) => entry.physicalWeights[dial] > 0)
+      expect(carriers.length, dial).toBeGreaterThan(0)
+      return carriers.every((entry) => entry.scrapDisablesCar)
+    }
+    expect(carriersAllGate('braking')).toBe(true)
+    expect(carriersAllGate('driveline')).toBe(true)
+    expect(carriersAllGate('grip')).toBe(false)
+    expect(carriersAllGate('aero')).toBe(false)
+  })
+
+  /**
+   * `powerConditionFloor` is 0.5, so a car with every power-weighted part at
+   * scrap still computes 57.5% of stock power - a cracked block and destroyed
+   * internals making over half the horsepower. Reaching that number requires
+   * `internals`, `camsTiming` and `ignitionEcu` all at scrap, and all three stop
+   * the car outright, so no car that can be driven ever runs on it. The floor
+   * now only binds at `worn` and `poor`, where 82.5% and 70% of stock power are
+   * what a tired engine should make.
+   */
+  it('the power-condition floor is unreachable by any car that can be driven', () => {
+    const deadEngine = carAt(CIVIC, groupCarParts({ engine: 'scrap' }))
+    const stats = computeDerivedStats(CIVIC, deadEngine, CONTEXT.partsById, PARTS_TAXONOMY, ECONOMY)
+    const floorPower =
+      CIVIC.spec.stockPowerPs *
+      (ECONOMY.statFormulas.powerConditionFloor +
+        (1 - ECONOMY.statFormulas.powerConditionFloor) * ECONOMY.bands.bandFactors.scrap)
+    expect(stats.power).toBe(Math.round(floorPower))
+    for (const course of COURSES) {
+      expect(lapTimeSecondsFor(deadEngine, CIVIC, CONTEXT, course.id), course.id).toBeNull()
+    }
+  })
+
+  /**
+   * The other half of the distinction, and the reason it is drawn on physics
+   * rather than on importance. Blown dampers make a car unpleasant and unsafe at
+   * speed; it still drives, and the grip dial already charges it about 8% of
+   * mechanical grip. A destroyed turbo still runs, badly, on the atmospheric
+   * side of its own plumbing.
+   */
+  it('a scrap damper or a destroyed turbo is a slow car, not a dead one', () => {
+    for (const partId of ['dampers', 'forcedInduction'] as const) {
+      const time = lapTimeSecondsFor(
+        carAt(CIVIC, mintCarParts({ [partId]: 'scrap' })),
+        CIVIC,
+        CONTEXT,
+        'hakone',
+      )
+      expect(time, partId).not.toBeNull()
+      expect(time!, partId).toBeGreaterThan(
+        lapTimeSecondsFor(carAt(CIVIC, mintCarParts()), CIVIC, CONTEXT, 'hakone')!,
+      )
     }
   })
 })

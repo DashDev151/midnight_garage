@@ -7,7 +7,8 @@
     "blockedBy": ["intake", "exhaust", "cooling"],
     "statWeights": {
       "reliability": 2
-    }
+    },
+    "scrapDisablesCar": true
   },
   {
     "id": "internals",
@@ -18,7 +19,8 @@
     "statWeights": {
       "power": 2,
       "reliability": 2
-    }
+    },
+    "scrapDisablesCar": true
   },
   {
     "id": "headValvetrain",
@@ -28,7 +30,8 @@
     "blockedBy": ["camsTiming", "intake"],
     "statWeights": {
       "reliability": 2
-    }
+    },
+    "scrapDisablesCar": true
   },
   {
     "id": "camsTiming",
@@ -39,7 +42,8 @@
     "statWeights": {
       "power": 2,
       "reliability": 1
-    }
+    },
+    "scrapDisablesCar": true
   },
   {
     "id": "intake",
@@ -65,7 +69,8 @@
     "displayName": "Fuel System",
     "statWeights": {
       "reliability": 1
-    }
+    },
+    "scrapDisablesCar": true
   },
   {
     "id": "ignitionEcu",
@@ -74,7 +79,8 @@
     "statWeights": {
       "power": 2,
       "reliability": 1
-    }
+    },
+    "scrapDisablesCar": true
   },
   {
     "id": "cooling",
@@ -82,7 +88,8 @@
     "displayName": "Cooling",
     "statWeights": {
       "reliability": 3
-    }
+    },
+    "scrapDisablesCar": true
   },
   {
     "id": "forcedInduction",
@@ -105,7 +112,8 @@
     },
     "physicalWeights": {
       "driveline": 1
-    }
+    },
+    "scrapDisablesCar": true
   },
   {
     "id": "clutch",
@@ -119,7 +127,8 @@
     },
     "physicalWeights": {
       "driveline": 2
-    }
+    },
+    "scrapDisablesCar": true
   },
   {
     "id": "differential",
@@ -131,7 +140,8 @@
     },
     "physicalWeights": {
       "driveline": 1
-    }
+    },
+    "scrapDisablesCar": true
   },
   {
     "id": "driveline",
@@ -142,7 +152,8 @@
     },
     "physicalWeights": {
       "driveline": 2
-    }
+    },
+    "scrapDisablesCar": true
   },
   {
     "id": "chassis",
@@ -196,7 +207,8 @@
     },
     "physicalWeights": {
       "grip": 1
-    }
+    },
+    "scrapDisablesCar": true
   },
   {
     "id": "brakePadsDiscs",
@@ -209,7 +221,8 @@
     },
     "physicalWeights": {
       "braking": 3
-    }
+    },
+    "scrapDisablesCar": true
   },
   {
     "id": "brakeCalipersLines",
@@ -221,7 +234,8 @@
     },
     "physicalWeights": {
       "braking": 2
-    }
+    },
+    "scrapDisablesCar": true
   },
   {
     "id": "rims",
@@ -245,7 +259,8 @@
     },
     "physicalWeights": {
       "grip": 3
-    }
+    },
+    "scrapDisablesCar": true
   },
   {
     "id": "panels",

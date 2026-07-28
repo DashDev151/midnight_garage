@@ -208,11 +208,24 @@ both dials would be one input counted twice. At mint every factor is exactly 1.0
 equality rather than a tolerance, so the calibration is untouched at the top of the band and
 `harnessAcceptance.test.ts` passes unchanged.
 
+**Wear is gradual until it is not.** Most parts only cost pace as they degrade, and the four dials say
+how much. Some are function-or-fail: a cracked block, a snapped timing belt, a dead fuel pump, a
+gearbox with nothing left in it, no steering, no brakes or no rubber is not a slower car, it is a car
+that will not move or cannot be driven. Fifteen taxonomy entries carry `scrapDisablesCar`, and
+`lapTimeSecondsFor` returns no time at all when any of them is scrap, missing or unresolvable. The
+same predicate is exported as `lapBlockers`, so the refusal always carries its reason and the
+requirement checklist can name the parts responsible rather than reporting a bare "no time set". The
+same component is both things at once: worn plugs misfire under load, which the stat curves carry,
+and scrap ignition does not start, which the flag carries.
+
 **Every one of those curve values is a PROVISIONAL default, not a measurement**, and that is the most
 important sentence in this section: no driven data exists for a worn car, so the curves were chosen
-to make a plausible whole-car loss and nothing more. What that whole-car loss currently is: a fully
-scrap car gives up roughly 12 to 13 per cent on the touge and 4 to 7 per cent on the standing
-kilometre.
+to make a plausible whole-car loss and nothing more. What that whole-car loss currently is, over the
+four dials alone: a uniformly `fine` car gives up about 1 to 2 per cent, a uniformly `worn` one 2 to
+8 per cent, a uniformly `poor` one 5 to 19 per cent, and a uniformly `scrap` one sets no time at all.
+Two of the scrap entries (`braking`, `driveline`) are unreachable by construction, because every part
+carrying those dials also carries `scrapDisablesCar`; they are kept so the curves are complete, not
+because there is anything in them to tune.
 
 **c. Aftermarket parts reach the physics too, on a ladder nobody has measured either.** A catalogue
 SKU carries `physicalModifiers`, three multipliers of the car's stock figure: **grip**, **braking**

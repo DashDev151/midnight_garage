@@ -102,18 +102,66 @@ engine twice and stop the model reproducing its own measurements.
 
 ## The curves (ALL PROVISIONAL)
 
-`statFormulas.condition.bandFactor`:
+**Corrected by the maintainer 2026-07-28.** The first pass below was far too mild for what the bands
+actually mean. The bands are condition percentages (mint 90+, fine 70-90, worn 40-70, poor 15-40,
+scrap under 15), and the curves are now scaled to that: a `worn` part is HALF WORN OUT and should
+read as a car that needs parts, `poor` is genuinely degraded and past any legal limit, and `scrap` is
+junk. `statFormulas.condition.bandFactor`:
 
 | Dial | mint | fine | worn | poor | scrap | Grounding |
 |---|---|---|---|---|---|---|
-| `grip` | 1.000 | 0.975 | 0.935 | 0.875 | **0.800** | A bald or perished tyre loses roughly a fifth of its dry grip. The steepest curve here, because tyres carry the most weight and degrade the most honestly. |
-| `braking` | 1.000 | 0.980 | 0.950 | 0.900 | **0.840** | A single stop from 97 km/h is mostly tyre-limited; worn pads and discs cost less on one stop than intuition suggests. Fade over repeated stops is not modelled at all. |
-| `driveline` | 1.000 | 0.995 | 0.980 | 0.960 | **0.930** | A slipping clutch and a tired diff cost mostly drivability, not steady-state thrust. The gentlest curve on purpose. |
-| `aero` | 1.000 | 0.990 | 0.960 | 0.900 | **0.800** | A cracked splitter or a damaged wing loses real downforce, and body damage is visible, so it should read. |
+| `grip` | 1.000 | 0.960 | 0.880 | 0.740 | **0.550** | Rubber is what a lap is made of and it degrades the most honestly. A `worn` tyre is half worn out; a `scrap` one is perished, cracked or bald. |
+| `braking` | 1.000 | 0.950 | 0.860 | 0.700 | **0.500** | Brake HARDWARE only: the rubber's share of stopping already arrives through `mu`. See below - this curve falls faster than grip at every band, deliberately. |
+| `driveline` | 1.000 | 0.985 | 0.950 | 0.890 | **0.800** | The gentlest curve, on purpose. A slipping clutch and a tired diff cost mostly drivability, not steady-state thrust. |
+| `aero` | 1.000 | 0.980 | 0.930 | 0.840 | **0.680** | A cracked splitter or a damaged wing loses real downforce, and body damage is visible, so it should read. |
 
-Every one is a first-pass judgement, not a measurement. The honest ceiling on all of them: **at mint
-every factor is exactly 1.000**, so a car in good order reproduces its measured figures to the last
-bit and this sprint cannot disturb the calibration.
+**The braking curve, corrected a second time in the same change, and why it now falls faster than
+grip.** The first justification was that a single stop is mostly tyre-limited and brake hardware
+mainly buys repeatability the model does not simulate. That does not survive contact with what the
+model is used for. **The braking coefficient here is a LAP-AVERAGE, not a first-stop figure.** A lap
+of these courses is nine to eleven braking events in a few minutes; worn pads, tired fluid and
+heat-cycled discs fade across that, and fade arrives early and easily on exactly the hardware a
+`worn` or `poor` car is carrying. A lap-average coefficient therefore degrades considerably harder
+than a single measured stop would suggest. That is the correct reading of the quantity the model
+consumes, not a thumb on the scale.
+
+**Two of the scrap entries are unreachable by construction**, and are kept only so the curves are
+complete rather than because there is anything in them to tune: `braking`'s, because both its
+carriers (`brakePadsDiscs`, `brakeCalipersLines`) are in the `scrapDisablesCar` set below, and
+`driveline`'s, because all four of its carriers are. Any car that would contribute either is already
+gated as undrivable. `grip`'s scrap entry IS reached, through dampers, springs, anti-roll bars and
+rims, none of which gate; `aero`'s is reached throughout. A test pins all four findings.
+
+Every one is STILL a first-pass judgement, not a measurement, and nothing here is calibrated against
+a driven worn car. The honest ceiling on all of them: **at mint every factor is exactly 1.000**, so a
+car in good order reproduces its measured figures to the last bit and this sprint cannot disturb the
+calibration. That is what makes the rest of it safe to tune.
+
+## Wear is gradual until it is not (added by the same correction)
+
+The curves above assume every component fades. Many do not. **Some are binary: they work or they do
+not.** A dead ignition system does not leave a car down on power, it leaves it not starting. A
+cracked block is not 57% power, it is a dead engine. So the rule is **gradual until scrap, then
+binary for the components that are genuinely function-or-fail**, and both halves are true of the same
+part: worn plugs misfire under load, which is a real and gradual power loss the stat curves already
+carry, and scrap ignition does not start.
+
+The taxonomy gains `scrapDisablesCar`, set on fifteen entries, and `lapTimeSecondsFor` returns no
+time when any of them is scrap-band, missing or unresolvable (an absent part being strictly worse
+than a ruined one). The flag is read from the content, never from a list in code, so a part cannot be
+added to the game and silently escape the rule.
+
+| Group | Parts | Physical reason |
+|---|---|---|
+| Engine, will not run | `block`, `internals`, `headValvetrain`, `camsTiming`, `fuelSystem`, `ignitionEcu`, `cooling` | Cracked and losing oil and coolant; a spun bearing or a holed piston; a dropped valve; a snapped belt, terminal on an interference engine; a dead pump and no fuel; no spark; seizes within minutes. |
+| Drivetrain, no drive reaches the road | `gearbox`, `clutch`, `differential`, `driveline` | Nothing left inside to transmit anything. |
+| Cannot be controlled or stopped | `steering`, `brakePadsDiscs`, `brakeCalipersLines`, `tyres` | Nothing to point it with, nothing to stop it with, nothing to grip the road with. |
+
+**What is deliberately NOT gated**, and why the line is drawn on physics rather than on importance:
+`dampers` and `springs` (a car on blown dampers genuinely drives, unpleasantly and unsafely at speed,
+and the steepened grip curve already charges scrap dampers about 8% of mechanical grip), `intake`,
+`exhaust`, `forcedInduction` (a destroyed turbo still runs, badly), `chassis`, `antiRollBars`,
+`rims`, and every body and interior part.
 
 ## Scope line
 
@@ -150,8 +198,9 @@ like a car on fresh ones, and a car in good order still reproduces its measured 
 | `packages/content/data/economy.json` | The four curves, exactly as the curves table above. |
 | `packages/sim/src/derivedStats.ts` | `weightedBandFactorForStat`'s traversal generalised to `weightedBandFactor(car, model, taxonomy, weightOf, factorOf)`; the stat version is now a two-line caller of it and the new `physicalConditionFactors` is the other. No second walker. |
 | `packages/sim/src/performance.ts` | `ConditionFactors` + `MINT_CONDITION_FACTORS`; `effectiveGrip` gains a condition factor; `carBlock` spends all four; `lapTime` takes them, defaulting to mint. |
-| `packages/sim/src/lapModel.ts` | `lapTimeSecondsFor` computes the car's factors and passes them, so the game-facing lap sees real condition. |
-| `packages/sim/tests/conditionPhysics.test.ts` | New: 12 tests covering the mint identity, the single power path, grip/braking disjointness, monotonicity, magnitude, and the game-facing entry point. |
+| `packages/sim/src/lapModel.ts` | `lapTimeSecondsFor` computes the car's factors and passes them, so the game-facing lap sees real condition. The tyres-only refusal becomes `lapBlockers(car, context)`, driven off `scrapDisablesCar`, and the lap refuses on exactly that predicate so a refusal and its reason can never disagree. |
+| `packages/sim/src/requirements.ts` | `evaluateLapTimeCeiling` reports the parts responsible instead of a bare "no time set": the verdict comes from the worst-affected group and the parts are named, or counted past three. |
+| `packages/sim/tests/conditionPhysics.test.ts` | 47 tests: the mint identity, the single power path, grip/braking disjointness, monotonicity, magnitude, the game-facing entry point, one gate test per disabling slot in both the scrap and the missing case, the two non-gating counter-cases, which dials can see a scrap contribution at all, and the power-floor reachability proof. |
 
 ### The correction the audit found
 
@@ -165,8 +214,8 @@ braking where the honest figure is about 5.5%. `tyres` now belongs to `grip` alo
 brake hardware only, and three tests pin it, including the structural one (no taxonomy part may
 carry weight on both dials) so it cannot come back by hand-editing content.
 
-Not one figure in the scrap-versus-mint table below moved: the fully scrap braking factor is 0.840
-either way, because a weighted mean of a constant is that constant.
+Not one figure in a uniformly-banded car's table moved: at any uniform band the braking factor is
+that band's own value either way, because a weighted mean of a constant is that constant.
 
 ### The audit: one dial, one path
 
@@ -204,83 +253,167 @@ A Civic with its whole engine group at `worn` and everything else mint:
 
 So engine condition is charged once, through `Pw_now`, and never again.
 
-### What a fully scrap car loses, versus mint
+### What a worn car loses, versus mint (ALL PROVISIONAL)
 
-Every part at `scrap`, at stock power and stock compound, so only the four dials vary
-(factors: grip 0.800, braking 0.840, driveline 0.930, aero 0.800). Representative rows, and the
-range across the whole 26-car roster:
+The whole car through the game-facing `lapTimeSecondsFor`, every part at the same band, so this is
+what a player's car actually does: the four dials plus the power the engine's own condition costs it.
+Three cars spanning the roster, seconds and per cent slower than the same car at mint.
 
-| Car | Hakone | Wangan | Misaki | Yatabe (standing km) |
+| Car | Band | Hakone | Wangan | Misaki | Yatabe (standing km) |
+|---|---|---|---|---|---|
+| Honda City E | mint | 131.8 | 196.0 | 143.7 | 34.9 |
+| | fine | 135.8 (+3.0%) | 197.9 (+1.0%) | 145.4 (+1.2%) | 36.0 (+3.2%) |
+| | worn | 143.7 (+9.0%) | 201.8 (+3.0%) | 148.6 (+3.4%) | 37.9 (+8.6%) |
+| | poor | 160.1 (+21.5%) | 218.6 (+11.5%) | 162.0 (+12.7%) | 41.2 (+18.1%) |
+| | scrap | **no time** | **no time** | **no time** | **no time** |
+| Silvia K's S14 | mint | 118.0 | 139.1 | 109.6 | 26.4 |
+| | fine | 121.4 (+2.9%) | 142.8 (+2.7%) | 112.5 (+2.6%) | 27.2 (+3.0%) |
+| | worn | 128.6 (+9.0%) | 150.5 (+8.2%) | 118.7 (+8.3%) | 28.6 (+8.3%) |
+| | poor | 143.5 (+21.6%) | 166.0 (+19.3%) | 131.3 (+19.8%) | 31.1 (+17.8%) |
+| | scrap | **no time** | **no time** | **no time** | **no time** |
+| Skyline GT-R BNR32 | mint | 114.1 | 135.6 | 107.1 | 24.1 |
+| | fine | 117.5 (+3.0%) | 139.3 (+2.7%) | 110.0 (+2.7%) | 24.8 (+2.9%) |
+| | worn | 124.5 (+9.1%) | 146.8 (+8.3%) | 116.1 (+8.4%) | 26.1 (+8.3%) |
+| | poor | 139.0 (+21.8%) | 162.0 (+19.5%) | 128.4 (+19.9%) | 28.3 (+17.4%) |
+| | scrap | **no time** | **no time** | **no time** | **no time** |
+
+**Uniform `scrap` is no time on every car and every course**, which is the gate doing exactly what it
+is meant to: fifteen parts are ruined, seven of which mean the engine will not run at all. That is
+the intended answer, not a hole in the table.
+
+The four dials ALONE, holding power at stock so only the curves vary, across the whole 26-car roster
+(the same measurement the old table made, so the correction is directly comparable):
+
+| Band | Hakone | Wangan | Misaki | Yatabe |
 |---|---|---|---|---|
-| Honda City E | 131.81 -> 147.49 (+11.9%) | 195.95 -> 202.74 (+3.5%) | 143.74 -> 150.44 (+4.7%) | 34.90 -> 36.47 (+4.5%) |
-| Civic SiR-II | 122.24 -> 137.58 (+12.6%) | 150.04 -> 162.15 (+8.1%) | 116.32 -> 128.52 (+10.5%) | 26.89 -> 28.15 (+4.7%) |
-| Silvia K's S14 | 117.96 -> 132.40 (+12.2%) | 139.07 -> 154.87 (+11.4%) | 109.58 -> 122.32 (+11.6%) | 26.40 -> 27.51 (+4.2%) |
-| RX-7 FD3S | 113.69 -> 128.10 (+12.7%) | 134.78 -> 149.84 (+11.2%) | 106.18 -> 118.79 (+11.9%) | 24.29 -> 25.40 (+4.6%) |
-| Skyline GT-R BNR32 | 114.06 -> 128.29 (+12.5%) | 135.60 -> 150.53 (+11.0%) | 107.10 -> 119.48 (+11.6%) | 24.11 -> 25.12 (+4.2%) |
-| **Roster range** | **+11.9% to +13.2%** | **+3.5% to +11.4%** | **+4.7% to +11.9%** | **+4.2% to +6.6%** |
+| fine | +2.1% to +2.3% | +0.6% to +2.0% | +0.8% to +2.1% | +0.8% to +1.1% |
+| worn | +6.8% to +7.5% | +2.0% to +6.4% | +2.5% to +6.7% | +2.6% to +3.8% |
+| poor | +17.3% to +19.3% | +5.0% to +16.9% | +6.9% to +17.0% | +6.4% to +9.6% |
+| scrap (dials only, unreachable in play) | +40.1% to +45.2% | +11.7% to +37.5% | +18.1% to +38.6% | +14.0% to +22.7% |
 
-Reading it: Hakone is tight and grip-limited, so it is where a ruined car is punished hardest, and
-uniformly so. Wangan splits the roster honestly, from +3.5% for a kei car that is power-limited on
-the straights whatever its tyres are doing, to +11.4% for a fast car living in the sweepers. Yatabe
-is a standing kilometre, so only launch traction and driveline can touch it.
+Reading it: Hakone is tight and grip-limited, so it is where a worn car is punished hardest, and
+uniformly so. Wangan splits the roster honestly, from the low end for a kei car that is power-limited
+on the straights whatever its tyres are doing, to the high end for a fast car living in the sweepers.
+Yatabe is a standing kilometre, so only launch traction and driveline can touch the dials there; the
+larger whole-car figure on that course is mostly the engine's own power loss.
 
-**Whether ~12.5% on a touge is right for a car with bald tyres, dead dampers, worn steering, worn
-brakes and a slipping clutch is the judgement to review.** It is defensible and it errs gentle: a
-real car in that state would struggle to be within 12% of its own best. The guard test pins the
-whole-roster spread at 3% to 15%, which catches a dial that stops reaching the physics (the loss
-collapses) or one applied twice (it roughly doubles).
+### Grip versus braking, on the course where it shows
 
-The braking chain, stated plainly, because it is the one that had to be corrected. Tyre condition
-reaches braking ONLY through `mu`; brake hardware condition reaches it only through the braking
-dial; the two part sets are disjoint and a test pins that. A fully scrap car therefore ends at
-grip 0.800 x braking 0.840 = 0.672 of stock braking, which is the model's own shape (braking derives
-from mechanical grip, exactly as it does for a change of tyre) plus one condition path for the
-hardware. It lands close to reality, where bald tyres cost far more stopping distance than tired
-pads do.
+Hakone is the corner-heavy one, so it is where the balance between the two dials is judged. Each
+column is that dial degraded ALONE with the other three at mint, so the split is visible rather than
+buried in one number:
+
+| Car | Band | Both plus the rest | Grip alone | Braking alone |
+|---|---|---|---|---|
+| Honda City E | fine | +2.1% | +1.7% | +0.2% |
+| | worn | +6.8% | +5.6% | +0.5% |
+| | poor | +17.3% | +14.5% | +1.3% |
+| Silvia K's S14 | fine | +2.2% | +1.8% | +0.2% |
+| | worn | +7.1% | +5.8% | +0.7% |
+| | poor | +18.1% | +14.7% | +1.7% |
+| Skyline GT-R BNR32 | fine | +2.2% | +1.8% | +0.2% |
+| | worn | +7.2% | +5.9% | +0.7% |
+| | poor | +18.5% | +15.0% | +1.9% |
+
+**The two do not sum to the whole, and that is the model's shape, not an error.** Braking derives
+FROM mechanical grip (`bmu = brakeRatio x mu x braking`), so the grip column already carries a
+proportional share of the car's stopping, and the braking column is only what the HARDWARE fade adds
+on top of the rubber. That is also why the braking dial reads small even at these steeper values: a
+`poor` car has already lost 26% of its grip, which costs it stopping distance as well as apex speed,
+and the hardware's own 30% fade is charged after that. A uniformly `poor` car ends at
+grip 0.740 x braking 0.700 = 0.518 of stock braking.
+
+The guard test pins the dials-only whole-roster scrap spread at 10% to 50%, which still catches a
+dial that stops reaching the physics (the loss collapses) or one applied twice (it roughly doubles).
+It measures through `lapTime` directly rather than the game-facing entry point, because a fully scrap
+car sets no time at all now and the dials cannot otherwise be read at the bottom of the range, which
+makes it a probe of the curves rather than of a reachable state.
+
+### A refusal that carries its reason
+
+Fifteen parts can now stop a car being driven, so "no time set" on its own would leave a player with
+no way to tell whether the rubber is shot, the ignition is dead or the gearbox is finished. The
+`lapTimeCeiling` requirement names the culprits instead, off the same `lapBlockers` the lap model
+itself refuses on, so the refusal and its reason can never disagree:
+
+| Car | What the checklist says |
+|---|---|
+| No tyres fitted | `Won't steer or stop: Tyres` |
+| Scrap ignition | `Won't run: Ignition & ECU` |
+| Scrap gearbox and clutch | `Won't turn a wheel: Gearbox, Clutch` |
+| Every part scrap | `Won't run: 15 parts finished` |
+
+The verdict comes from the worst-affected group (an engine that will not start settles the question,
+so the brakes are not the headline), and past three dead parts the list becomes a count: a player
+reading "15 parts finished" already knows what the car needs.
+
+### The lever question this resolved rather than raised
+
+`powerConditionFloor` is 0.5, which meant a car with every power-weighted part at scrap still
+computed 57.5% of stock power: a cracked block and destroyed internals making over half the
+horsepower. **That case is now unreachable for any car that can be driven, and it is proved rather
+than assumed.** Reaching the floor requires `internals`, `camsTiming` and `ignitionEcu` all at scrap,
+and all three carry `scrapDisablesCar`, so such a car sets no time on any course; a test asserts both
+halves together (the power stat lands exactly on the floor, and the lap is null on all four courses).
+The floor now only ever binds at `worn` and `poor`, where 82.5% and 70% of stock power are what a
+tired engine should make. **`powerConditionFloor` is not moved.**
+
+One honest limit on that claim: the gate governs LAP TIMES, not the power stat. A wreck sitting in
+the workshop still displays 98 PS on a 170 PS Civic. That is the workshop telling the player what
+they have got, and nothing in this sprint touched it.
 
 ### The knock-on that is not a lap time
 
 Handling is the grip readout, and the grip it reads is now the degraded one, so a worn car reads
 lower than it did. A uniformly-banded Civic, 0-100 handling stat:
 
-| Band | Before | After |
-|---|---|---|
-| mint | 25 | 25 |
-| fine | 20.8 | 19 |
-| worn | 16.6 | 13 |
-| poor | 10.2 | 6 |
-| scrap | 3.5 | 1 |
+| Band | Before this sprint | First pass | Corrected |
+|---|---|---|---|
+| mint | 25 | 25 | 25 |
+| fine | 20.8 | 19 | 18 |
+| worn | 16.6 | 13 | 10 |
+| poor | 10.2 | 6 | 1 |
+| scrap | 3.5 | 1 | 0 |
 
 Buyer taste reads that stat, so a worn car's taste-adjusted offer moves with it. No pricing lever,
 formula or part price changed; this is the intended consequence of the readout telling the truth
 about grip, and it is disclosed here rather than buried.
 
-### Directive 17 calls (both case (a): the test asserted a value the change deliberately moves)
+### Directive 17 calls (all case (a): the test asserted a value the change deliberately moves)
 
 1. `packages/sim/tests/advanceDay.test.ts`'s acquisition-to-sale state hash `870d2e11` ->
-   `cab6fe88`. That pin's own comment states the rule: it is re-derived from a real run whenever the
-   rolled condition, the derived stats or the taste-adjusted price deliberately change. The
-   generated car's parts are not mint, so its handling stat and therefore its sale price moved. Not
-   a regression: the golden master itself (`advanceDay` day-by-day) and all 1,476 other sim tests
+   `cab6fe88` -> `094f84e8`. That pin's own comment states the rule: it is re-derived from a real run
+   whenever the rolled condition, the derived stats or the taste-adjusted price deliberately change.
+   The generated car's parts are not mint, so its handling stat and therefore its sale price moved.
+   Not a regression: the golden master itself (`advanceDay` day-by-day) and every other sim test
    passed untouched.
 2. `packages/content/tests/economyApprovalGate.test.ts`'s economy hash, re-pinned in the same change
    as this doc's recorded approval of `statFormulas.condition.bandFactor`, per directive 22. The
-   re-pin comment names the specific lever and every value.
+   re-pin comment names the specific lever and every value, first pass and correction both.
+3. `packages/sim/tests/conditionPhysics.test.ts`'s magnitude guard, 3-15% -> 10-50%. The band is the
+   measured spread and the change deliberately moved it; loosening was not the fix, re-measuring was.
+4. `packages/sim/tests/requirements.test.ts`'s "fails with actual 'no time set' when the tyres slot is
+   empty". The refusal now carries its reason, so the assertion is the reason string. Rewritten as
+   four cases (one per verdict group, plus the count form) rather than re-pointed at one value.
+
+**No other test anywhere expected a lap time from a car that can no longer set one.** The full suite
+was searched by running it: the four above are every assertion the change moved.
 
 ### Still provisional
 
-Every number in "The curves" is a first-pass judgement, not a measurement, and the code says so in
-the schema comment as well as here. Nothing here is calibrated against a driven worn car, because no
-such measurement exists. The mint end is exact and cannot drift; everything below it is a tuning
-knob waiting for a reason to move.
+Every number in "The curves" is a first-pass judgement, corrected once by eye and still not
+calibrated against a driven worn car, because no such measurement exists. The code says so in the
+schema comment as well as here. The mint end is exact and cannot drift; everything below it is a
+tuning knob waiting for a reason to move. `scrapDisablesCar` is not in that category: it is a
+statement about what a broken component physically does, not a number to tune.
 
 ### Checks
 
-`pnpm test`: **141 files, 2,376 tests, all passing.** `pnpm typecheck` clean across content, sim and
-game; ESLint and Prettier clean on every touched file.
+`pnpm test`: **142 files, 2,427 tests, all passing.** `pnpm typecheck` clean across content, sim and
+game.
 
 ```text
- Test Files  141 passed (141)
-      Tests  2376 passed (2376)
-   Duration  55.39s
+ Test Files  142 passed (142)
+      Tests  2427 passed (2427)
+   Duration  55.95s
 ```

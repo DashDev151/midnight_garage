@@ -878,12 +878,32 @@ export const EconomyConfigSchema = z.object({
      * on every dial, so a car in good order reproduces its measured figures to
      * the last bit.
      *
-     * PROVISIONAL. These are first-pass values reasoned from real degradation
-     * (a perished tyre loses roughly a fifth of its dry grip; a single stop is
-     * mostly tyre-limited; a tired clutch and diff cost drivability rather than
-     * steady-state thrust; a cracked splitter loses real downforce), not
-     * measurements. No driven data exists for a worn car, and every one of them
-     * is expected to be tuned.
+     * The bands are condition percentages (mint 90+, fine 70-90, worn 40-70,
+     * poor 15-40, scrap under 15), and the curves are scaled to what those
+     * actually mean: a `worn` part is half worn out and reads as a car that
+     * needs parts, `poor` is past any legal limit, and `scrap` is junk. The
+     * driveline is gentlest, since a tired clutch and diff cost drivability
+     * rather than steady-state thrust.
+     *
+     * `braking` degrades faster than `grip` at every band, deliberately. The
+     * coefficient this curve scales is a LAP-AVERAGE, not a first-stop figure: a
+     * lap of these courses is nine to eleven braking events in a few minutes,
+     * and worn pads, tired fluid and heat-cycled discs fade across that. Fade
+     * arrives early and easily on exactly the hardware a `worn` or `poor` car is
+     * carrying, so the average a lap consumes falls considerably further than a
+     * single measured stop would.
+     *
+     * Two scrap entries are unreachable by construction and are kept only so the
+     * curves are complete: `braking`'s, because both its carriers
+     * (`brakePadsDiscs`, `brakeCalipersLines`) are `scrapDisablesCar`, and
+     * `driveline`'s, because all four of its carriers are. A car that would
+     * contribute either is already undrivable. There is nothing to tune in
+     * those two numbers. `grip`'s scrap entry IS reached, through dampers,
+     * springs, anti-roll bars and rims, none of which gate; `aero`'s is reached
+     * throughout.
+     *
+     * PROVISIONAL. These are first-pass judgements, not measurements: no driven
+     * data exists for a worn car, and every one of them is expected to be tuned.
      */
     condition: z.object({
       bandFactor: z.object({

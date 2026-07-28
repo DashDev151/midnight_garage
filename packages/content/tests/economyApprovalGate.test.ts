@@ -125,6 +125,17 @@ import storyMissions from '../data/storyMissions.json'
  * as such in that doc and in the schema. Mint is exactly 1.000 on all four, so no
  * shipped lap time, handling stat, mission ceiling or payout moves: the harness
  * acceptance times are untouched.
+ *
+ * Re-pinned for the maintainer's correction to those same four curves, recorded in
+ * docs/sprints/sprint129.md ("The curves"): the first pass was far too mild for what
+ * the bands mean, so every sub-mint value steepens - `grip`
+ * 1.000/0.960/0.880/0.740/0.550, `braking` 1.000/0.950/0.860/0.700/0.500, `driveline`
+ * 1.000/0.985/0.950/0.890/0.800, `aero` 1.000/0.980/0.930/0.840/0.680. The braking
+ * curve was corrected a second time in the same change, to fall faster than grip at
+ * every band: the coefficient it scales is a lap-average over nine to eleven braking
+ * events, not a single measured stop, and worn hardware fades across that. No other
+ * lever moves. Still PROVISIONAL, and mint is still exactly 1.000 on all four, so the
+ * harness acceptance times, every mission ceiling and every payout are untouched.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -134,7 +145,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('f3837ef64ff23f70dbdfdebb06f1de6e8831d7541296123a629ccf42260767bb')
+    ).toBe('fdcf144be57d11d3bc40859dd97b252834b87d08a7e255d2ac39a2a0cd39a9a0')
   })
 
   it('mission payouts and budget caps match their approved values exactly', () => {

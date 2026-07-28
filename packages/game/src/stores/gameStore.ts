@@ -3940,9 +3940,11 @@ export const useGameStore = defineStore('game', () => {
   /**
    * The reference-lap board for the active mission's `lapTimeCeiling` requirement
    * (empty when it has none). Null carInstanceId or a car with no measurable time
-   * (no tyres/scrap) falls back to the "no candidate" selection (nearest to the
-   * requirement's own target, no grade filtering); the player's own predicted time
-   * is never part of the returned rows either way.
+   * (one that cannot be driven at all - see `lapBlockers`) falls back to the "no
+   * candidate" selection (nearest to the requirement's own target, no grade
+   * filtering); the player's own predicted time is never part of the returned rows
+   * either way. Every row's time is a reference entry's, always a real number, so
+   * the board never renders a blank.
    */
   function lapBoardRowsFor(carInstanceId: string | null): LapBoardRow[] {
     const record = activeMissionRecord()

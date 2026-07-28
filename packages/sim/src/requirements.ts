@@ -4,11 +4,13 @@ import {
   type CarInstance,
   type CarLedger,
   type CarModel,
+  type CarPartId,
+  type ComponentId,
   type RequirementSpec,
 } from '@midnight-garage/content'
 import { bandIndex, isPartMissing } from './bands'
 import { computeDerivedStats } from './derivedStats'
-import { lapTimeSecondsFor } from './lapModel'
+import { lapBlockers, lapTimeSecondsFor } from './lapModel'
 import { marketValueYen } from './marketValue'
 import { gradeAtLeast } from './parts'
 import { valuateCarForBuyer } from './valuation'
@@ -275,12 +277,47 @@ function evaluateAllPartsBandAtLeast(
   return { pass: failingCount === 0, label, actual, required }
 }
 
+/**
+ * The verdict on a car that cannot be driven, by where the failure is. Ordered
+ * worst first: an engine that will not start settles the question, so what the
+ * brakes are doing is not the headline. Every part carrying `scrapDisablesCar`
+ * belongs to one of these groups.
+ */
+const NO_LAP_VERDICTS: readonly { groups: readonly ComponentId[]; verdict: string }[] = [
+  { groups: ['engine'], verdict: "Won't run" },
+  { groups: ['drivetrain'], verdict: "Won't turn a wheel" },
+  { groups: ['suspension', 'wheels'], verdict: "Won't steer or stop" },
+]
+
+/** How many blocking parts get named before the list becomes a count. */
+const NAMED_BLOCKER_LIMIT = 3
+
+/**
+ * Why this car sets no time, in the shop's own words: the verdict from the
+ * worst-affected group, then the parts responsible by name. A long list of dead
+ * parts is a count instead, since a player reading "six parts finished" already
+ * knows what the car needs and a fifteen-item list tells them nothing more.
+ */
+function noLapTimeReason(blockers: readonly CarPartId[], context: SimContext): string {
+  if (blockers.length === 0) return 'no time set'
+  const groups = new Set(blockers.map((partId) => context.partsTaxonomyById[partId]?.group))
+  const verdict =
+    NO_LAP_VERDICTS.find((entry) => entry.groups.some((group) => groups.has(group)))?.verdict ??
+    "Won't run"
+  if (blockers.length > NAMED_BLOCKER_LIMIT) return `${verdict}: ${blockers.length} parts finished`
+  const names = blockers.map(
+    (partId) => context.partsTaxonomyById[partId]?.displayName ?? String(partId),
+  )
+  return `${verdict}: ${names.join(', ')}`
+}
+
 /** A reference-lap time ceiling on one named course - passes when
- * `lapTimeSecondsFor` returns a real time at or under `maxSeconds`. Fails
- * with `actual: "no time set"` when the model returns `null` (no tyres
- * fitted, or a scrap-band set - nothing to grip the road with). `model`
- * missing here (a legacy call site) fails closed the same way, for the
- * same reason `evaluateStatBound`/`evaluateTasteMatch` do. */
+ * `lapTimeSecondsFor` returns a real time at or under `maxSeconds`. A car that
+ * cannot be driven fails with the parts responsible named in `actual`, off the
+ * same `lapBlockers` the lap model itself refuses on, so the refusal always
+ * carries its reason. `model` missing here (a legacy call site) fails closed
+ * with a bare "no time set", for the same reason
+ * `evaluateStatBound`/`evaluateTasteMatch` fail closed. */
 function evaluateLapTimeCeiling(
   spec: Extract<RequirementSpec, { kind: 'lapTimeCeiling' }>,
   car: CarInstance,
@@ -289,7 +326,10 @@ function evaluateLapTimeCeiling(
 ): RequirementResult {
   const { label, required } = requirementLabel(spec, context)
   const timeSeconds = model ? lapTimeSecondsFor(car, model, context, spec.courseId) : null
-  if (timeSeconds === null) return { pass: false, label, actual: 'no time set', required }
+  if (timeSeconds === null) {
+    const actual = model ? noLapTimeReason(lapBlockers(car, context), context) : 'no time set'
+    return { pass: false, label, actual, required }
+  }
   return { pass: timeSeconds <= spec.maxSeconds, label, actual: `${timeSeconds}s`, required }
 }
 

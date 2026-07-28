@@ -82,6 +82,23 @@ export const CarPartTaxonomyEntryContentSchema = z.object({
    * `PhysicalWeightsSchema`. Omitted on the parts that move no dial, which
    * resolves to zero weight everywhere. */
   physicalWeights: PhysicalWeightsSchema.default({ grip: 0, braking: 0, driveline: 0, aero: 0 }),
+  /**
+   * Whether this part at `scrap` stops the car being driven at all. Most parts
+   * degrade gradually and a ruined one only makes the car slow, which the
+   * condition curves already say. Some are function-or-fail: a cracked block, a
+   * snapped timing belt, a dead fuel pump, a gearbox with nothing left inside
+   * it, no steering, no brakes or no rubber is not a slower car, it is a car
+   * that does not move or cannot be driven. `lapModel.ts`'s `lapTimeSecondsFor`
+   * returns no time when any slot carrying this flag is scrap-band, empty or
+   * unresolvable, an absent part being strictly worse than a ruined one.
+   *
+   * Gradual and binary are both true of the same part: worn plugs misfire under
+   * load, which is a real power loss the stat curves carry, and scrap ignition
+   * does not start at all, which is this flag. The rule lives in the data rather
+   * than in a list in code so a new part cannot silently escape it. Defaults
+   * false.
+   */
+  scrapDisablesCar: z.boolean().default(false),
 })
 
 export const CarPartTaxonomyContentSchema = z.array(CarPartTaxonomyEntryContentSchema).min(1)

@@ -221,10 +221,10 @@
     },
     "condition": {
       "bandFactor": {
-        "grip": { "mint": 1.0, "fine": 0.975, "worn": 0.935, "poor": 0.875, "scrap": 0.8 },
-        "braking": { "mint": 1.0, "fine": 0.98, "worn": 0.95, "poor": 0.9, "scrap": 0.84 },
-        "driveline": { "mint": 1.0, "fine": 0.995, "worn": 0.98, "poor": 0.96, "scrap": 0.93 },
-        "aero": { "mint": 1.0, "fine": 0.99, "worn": 0.96, "poor": 0.9, "scrap": 0.8 }
+        "grip": { "mint": 1.0, "fine": 0.96, "worn": 0.88, "poor": 0.74, "scrap": 0.55 },
+        "braking": { "mint": 1.0, "fine": 0.95, "worn": 0.86, "poor": 0.7, "scrap": 0.5 },
+        "driveline": { "mint": 1.0, "fine": 0.985, "worn": 0.95, "poor": 0.89, "scrap": 0.8 },
+        "aero": { "mint": 1.0, "fine": 0.98, "worn": 0.93, "poor": 0.84, "scrap": 0.68 }
       }
     }
   },

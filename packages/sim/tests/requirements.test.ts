@@ -6,7 +6,7 @@ import { lapTimeSecondsFor } from '../src/lapModel'
 import { marketValueYen } from '../src/marketValue'
 import { evaluateRequirement } from '../src/requirements'
 import { valuateCarForBuyer } from '../src/valuation'
-import { buildCarInstance, uniformCarParts } from './testFixtures'
+import { buildCarInstance, mintCarParts, uniformCarParts } from './testFixtures'
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 const MODEL = CARS[0]!
@@ -17,6 +17,19 @@ const EMPTY_LEDGER: CarLedger = { purchaseYen: null, repairYen: 0, partsYen: 0 }
 const STREET_TYRES = PARTS.find(
   (p) => p.carPartId === 'tyres' && p.grade === 'street' && p.fitmentClass === 'common',
 )!
+
+/** What a `lapTimeCeiling` requirement reports for a car - a time, or the
+ * reason there isn't one. */
+function lapCeilingActual(car: ReturnType<typeof buildCarInstance>): string {
+  return evaluateRequirement(
+    { kind: 'lapTimeCeiling', courseId: 'hakone', maxSeconds: 999 },
+    car,
+    EMPTY_LEDGER,
+    1,
+    CONTEXT,
+    MODEL,
+  ).actual
+}
 
 describe('evaluateRequirement', () => {
   describe('slotCondition (Sprint 72, unchanged)', () => {
@@ -509,21 +522,39 @@ describe('evaluateRequirement', () => {
       expect(result.pass).toBe(false)
     })
 
-    it('fails with actual "no time set" when the tyres slot is empty', () => {
-      const car = buildCarInstance({
+    /**
+     * A refusal has to carry its reason. Fifteen parts can stop a car being
+     * driven, so "no time set" on its own leaves the player with no idea whether
+     * the rubber is shot, the ignition is dead or the gearbox is finished.
+     */
+    it('names the parts responsible when the car cannot be driven', () => {
+      const withoutTyres = buildCarInstance({
         modelId: MODEL.id,
-        parts: { ...uniformCarParts('mint'), tyres: { installed: null } },
+        parts: mintCarParts({ tyres: null }),
       })
-      const result = evaluateRequirement(
-        { kind: 'lapTimeCeiling', courseId: 'hakone', maxSeconds: 999 },
-        car,
-        EMPTY_LEDGER,
-        1,
-        CONTEXT,
-        MODEL,
-      )
-      expect(result.pass).toBe(false)
-      expect(result.actual).toBe('no time set')
+      expect(lapCeilingActual(withoutTyres)).toBe("Won't steer or stop: Tyres")
+
+      const deadIgnition = buildCarInstance({
+        modelId: MODEL.id,
+        parts: mintCarParts({ ignitionEcu: 'scrap' }),
+      })
+      expect(lapCeilingActual(deadIgnition)).toBe("Won't run: Ignition & ECU")
+
+      const noDrive = buildCarInstance({
+        modelId: MODEL.id,
+        parts: mintCarParts({ gearbox: 'scrap', clutch: 'scrap' }),
+      })
+      expect(lapCeilingActual(noDrive)).toBe("Won't turn a wheel: Gearbox, Clutch")
+    })
+
+    it('counts the dead parts rather than listing all of them when a car is finished', () => {
+      const wreck = buildCarInstance({ modelId: MODEL.id, parts: uniformCarParts('scrap') })
+      expect(lapCeilingActual(wreck)).toBe("Won't run: 15 parts finished")
+    })
+
+    it('reports a real time, not a reason, for a car that can be driven', () => {
+      const car = buildCarInstance({ modelId: MODEL.id, parts: uniformCarParts('poor') })
+      expect(lapCeilingActual(car)).toMatch(/^\d+(\.\d+)?s$/)
     })
 
     it('fails closed when no model is resolvable', () => {

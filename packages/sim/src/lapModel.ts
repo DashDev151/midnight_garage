@@ -1,6 +1,7 @@
 import type {
   CarInstance,
   CarModel,
+  CarPartId,
   Course,
   EconomyConfig,
   Grade,
@@ -58,6 +59,37 @@ function referenceCarModel(weightKg: number, powerPs: number): CarModel {
 }
 
 /**
+ * Every part currently stopping the car being driven at all, in taxonomy order,
+ * empty for a car that can run. Most parts degrade gradually and a ruined one
+ * only costs pace, which the condition dials carry; the parts marked
+ * `scrapDisablesCar` in the taxonomy are function-or-fail, and at scrap they
+ * stop the car rather than slow it - an engine that will not run, a driveline
+ * that puts nothing on the road, or no steering, brakes or rubber. An empty or
+ * unresolvable slot is strictly worse than a ruined one and counts the same.
+ *
+ * The set is read from the content rather than listed here, so a part cannot be
+ * added to the game and silently escape the rule. This is also the ONE
+ * predicate `lapTimeSecondsFor` refuses on, so a refusal and its reason can
+ * never disagree: a caller that shows the player why gets exactly the parts the
+ * model is refusing over.
+ *
+ * The car's model is not needed: no part carrying the flag is ever legitimately
+ * absent (`forcedInduction` on an NA car is the only slot that can be, and a
+ * dead turbo still runs badly rather than not at all).
+ */
+export function lapBlockers(car: CarInstance, context: SimContext): CarPartId[] {
+  const blockers: CarPartId[] = []
+  for (const entry of context.partsTaxonomy) {
+    if (!entry.scrapDisablesCar) continue
+    const installed = car.parts[entry.id].installed
+    if (!installed || installed.band === 'scrap' || !context.partsById[installed.partId]) {
+      blockers.push(entry.id)
+    }
+  }
+  return blockers
+}
+
+/**
  * A car's time on one course: the measured-behaviour model (`performance.ts`'s
  * `lapTime`) at the car's CURRENT derived power (condition and parts matter -
  * that is the build game), the compound its fitted tyres actually provide, what
@@ -65,8 +97,8 @@ function referenceCarModel(weightKg: number, powerPs: number): CarModel {
  * state its grip, brake, driveline and aero parts are actually in. A
  * segmented course is walked corner by corner; a standing-kilometre course
  * routes to its own standing-start evaluator. Returns `null` (no time can be
- * set) when the tyres slot is empty or scrap-band - there is nothing to grip the
- * road with - or when the course id is unknown.
+ * set) for a car with any `lapBlockers` (above) or when the course id is
+ * unknown.
  */
 export function lapTimeSecondsFor(
   car: CarInstance,
@@ -74,10 +106,7 @@ export function lapTimeSecondsFor(
   context: SimContext,
   courseId: string,
 ): number | null {
-  const installed = car.parts.tyres.installed
-  if (!installed || installed.band === 'scrap') return null
-  const tyrePart = context.partsById[installed.partId]
-  if (!tyrePart) return null
+  if (lapBlockers(car, context).length > 0) return null
 
   const course = context.coursesById[courseId]
   if (!course) return null

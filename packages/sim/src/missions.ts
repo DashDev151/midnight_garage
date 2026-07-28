@@ -140,8 +140,8 @@ function isLapTimeCeiling(
  * condition. A mission authoring neither kind has nothing to overdeliver
  * against, so it never earns a tip (never vacuously true; `four-wheels`, a
  * `roadworthy`-only mission, stays tipless by design). A `lapTimeCeiling`
- * mission whose car cannot even set a time (`lapTimeSeconds === null` - no
- * tyres fitted, or scrap-band) never tips either.
+ * mission whose car cannot even set a time (`lapTimeSeconds === null` - a car
+ * that cannot be driven, see `lapModel.ts`'s `lapBlockers`) never tips either.
  */
 function earnsTip(
   mission: StoryMission,
