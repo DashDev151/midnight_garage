@@ -25,7 +25,7 @@ import {
 /**
  * THE PERFORMANCE SANDBOX.
  *
- * A maintainer tool on a dev route, not a player feature. Pick any of the 85
+ * A development tool on a dev route, not a player feature. Pick any of the 85
  * vetted cars, set every component's condition and fitted tier, and watch the
  * four lap times, the retail value and the physical figures move.
  *

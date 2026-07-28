@@ -152,8 +152,8 @@ describe('PerformanceSandboxScreen', () => {
   it('a build code round-trips the car, the tier and all 29 slots', async () => {
     const wrapper = mountScreen()
 
-    // The flow the maintainer described: everything fine, then brakes worn, then
-    // street internals, race intake and cooling, and a race wing.
+    // A representative build flow: everything fine, then brakes worn, then street
+    // internals, race intake and cooling, and a race wing.
     await click(wrapper, `car-pick-${IN_GAME_CAR}`)
     await click(wrapper, 'set-all-state-fine')
     await click(wrapper, 'slot-state-brakePadsDiscs-worn')
