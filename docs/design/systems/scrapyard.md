@@ -1,139 +1,272 @@
 # The scrapyard (解体屋)
 
-**Status: IDEA, captured 2026-07-28 from the maintainer. Not designed, not scheduled.**
-Written down so the thinking survives; every mechanic below is a proposal, and the
-economic numbers are all unapproved.
+**Status: DESIGNED, not scheduled. Drafted 2026-07-28.**
 
-## The maintainer's ask, in their words
+Supersedes the idea capture of the same date. Every number is a proposal and
+unapproved; every mechanic below is designed against machinery that already ships.
 
-A new shop where the player can find used parts and "really fuckedup cars, like half
-the parts are missing and the other half is poor or worn". Players can also sell
-scrap and poor parts here "for a small profit, like steel scrap value small". This
-is also where "scrap the chassis" goes, so the shell is actually sold to somebody
-rather than evaporating. The point is an outlet where, with luck and some digging,
-the player finds usable parts cheap instead of paying full retail for new ones.
-Possibly with a puzzle mechanic in the spirit of the inspection game.
+---
 
-## 1. Why it is worth building, beyond flavour
+## 1. The problem this solves
 
-**It gives the parts economy a supply side.** Today there is exactly one way to
-obtain a part you do not already own: buy it new at full retail. That makes repair
-a pure cost and it makes the parts catalogue a vending machine. A yard introduces
-the choice every real mechanic makes twenty times a week: new and certain, or used
-and cheap and a gamble.
+Three gaps, and it closes all of them with one venue.
 
-**It gives the teardown loop a source.** The four-play ordering settled in Sprint
-133's follow-up makes stripping a car deliberately unprofitable, which is correct
-for a car worth buying whole. But it leaves the loop the maintainer actually wants
-(buy a part car, strip it, recondition, use the parts) without a good subject. A
-yard that sells half-stripped wrecks is that subject: a car nobody would repair,
-bought for the four good parts on it.
+**Parts have no supply side.** There is exactly one way to obtain a part today: buy
+it new at full retail. That makes the catalogue a vending machine and repair a pure
+cost. Every real mechanic makes the same choice twenty times a week, and the game
+never offers it: new and certain, or used and cheap and a gamble.
 
-**It gives `poor` and `scrap` parts an honest exit.** At the settled resale curve a
-poor part fetches about 3 per cent of new, which is correctly near-worthless but
-means the player's warehouse silts up with things not worth the click. Steel money
-at the yard is a clean-out, not a business.
+**The teardown loop has no subject.** The four-play ordering settled on 2026-07-28
+makes stripping a car deliberately loss-making, which is right for a car worth
+buying whole. But the maintainer's stated intent for the parts system is "buy a
+part car, strip it, repair the parts, use them in other builds", and no such car
+exists in the game. Every lot at every auction house is a car you could repair.
 
-## 2. What the player does there
+**`poor` and `scrap` parts have no exit.** At the settled resale curve a poor part
+fetches about 3 per cent of new. Correctly near-worthless, but it means the
+warehouse silts up with things not worth the click.
 
-Four transactions, in rough order of importance:
+---
 
-1. **Buy used parts.** The core of it. Cheaper than new, with the catch in
-   section 3.
-2. **Buy wrecks.** Cars generated with slots genuinely missing and the remainder
-   `poor` or `worn`. Bought for harvest, not repair.
-3. **Sell scrap and poor parts.** Weight money. Small, certain, instant.
-4. **Sell a shell.** `scrapShell` stops being an abstract payout and becomes a
-   transaction with a counterparty.
+## 2. The core mechanic: wrecks are readable, not random
 
-## 3. The catch, which is the whole design
+This is the whole design and everything else serves it.
 
-A yard that reliably sells the part you need at half price destroys the parts
-economy that was just calibrated. It has to be **unreliable in a way the player can
-work with**, not merely expensive. Three constraints, any two of which are probably
-enough:
+The maintainer's own image is the specification: *"new Wreck in the yard, head on
+collision, engine bay is gone, but the back body panels and coilovers look
+clean."*
 
-- **Stock is what it is.** A rotating, limited inventory. The yard has what it has;
-  it does not have your part because you want it. This alone does most of the work,
-  because it makes the shop the thing you fall back on when the yard fails you.
-- **Condition is uncertain until you look.** The game already has the primitive:
-  `CarInstance.apparentBandByPartId` and the whole diagnosis mechanic exist to
-  express "what it looks like" versus "what it is". A yard part shows an apparent
-  band; the true one is revealed by inspecting, or by fitting it and finding out.
-  **Reuse that, do not build a second uncertainty system.**
-- **Digging costs time.** Surfacing more of the yard's stock costs labour points,
-  the same currency as everything else. That makes "spend the morning at the yard"
-  a real decision against "spend the morning at the bench".
+**Damage is localised, and the pattern tells a story.** A wreck is not a car with
+randomly bad parts. It is a car that had one specific thing happen to it, and what
+survived follows from what that was. A player who learns to read damage learns to
+find value, and that learning is the game rather than a dice roll.
 
-The puzzle the maintainer floated fits precisely here. The inspection game is a
-routing problem under a time budget: which tests, in what order, before the clock
-runs out. A yard visit is the same shape with a different question, which is not
-"what is wrong with this car" but **"which of these is worth taking home"**. Same
-mechanic, different verb. That is the strongest argument for it: it is not a new
-system, it is the existing one pointed at a new object.
+### Damage archetypes
 
-## 4. Economic implications, unresolved
+Each wreck is generated from one archetype, which decides which zones are destroyed
+and therefore which parts are plausibly intact.
 
-Every number here is unapproved and several are load-bearing.
+| Archetype | Destroys | Survives well | The read |
+| --- | --- | --- | --- |
+| **Head-on** | bonnet, front chassis, engine bay contents, cooling, front suspension | boot, roof, rear panels, gearbox, differential, rear suspension, interior | Everything behind the bulkhead |
+| **Rear-end** | boot, rear chassis, exhaust rear, rear panels | **the entire engine and front suspension**, bonnet, front panels | The drivetrain is untouched. The best engine donor in the yard |
+| **Side impact** | one of left or right, that side's suspension and glass | the opposite side, the whole drivetrain, roof, both ends | Half a car's panels, and everything mechanical |
+| **Rollover** | roof, glass, both sides' upper panels, interior | **drivetrain, suspension, brakes, wheels** entirely untouched | Mechanically perfect, cosmetically dead |
+| **Engine fire** | engine bay entire, bonnet, wiring, cooling | gearbox onward, all body except the bonnet, interior if caught early | A rolling shell with a good back half |
+| **Flood** | electrics, interior, ignition, ECU, gauges, seats | **body panels are straight**, engine may be salvageable, brakes and suspension fine | Looks perfect, is electrically dead. The trap |
+| **Stripped** | whatever the previous owner or a thief wanted (wheels, seats, ECU, turbo) | everything unfashionable | Someone got here first, and their taste tells you what is left |
+| **Tired** | nothing acutely; everything is simply worn out | nothing is good, nothing is destroyed | No prizes. The yard's filler, and the honest majority |
 
-**Used part price.** Presumably a fraction of new, and it must sit above what the
-player gets for selling one (currently 0.30 of new at mint) or the yard becomes a
-laundering machine: buy at the yard, sell at the shop, repeat. The spread between
-buy and sell price at the yard IS the yard's margin and it must be positive.
+**Flood is the trap and it deserves to exist.** A flood car is the one that looks
+best in the yard and is worth least. That single archetype teaches the player that
+looking is not knowing, which is the lesson the whole venue rests on.
 
-**The repair economy shifts underneath.** Cheap used parts make repair cheaper,
-which makes repairing-and-selling more profitable, which strengthens the ordering
-the maintainer asked for rather than threatening it. But it also moves the value of
-every generated car's restoration bill, so `partsGeneration.maxBillFraction` and the
-coherence probes all need re-measuring after, not before.
+### It maps onto machinery that already ships
 
-**Scrap prices.** "Steel scrap value small" is the brief. Real breakers pay by
-weight, which the sim does not model. The nearest honest analogue is a small
-fraction of the part's own price, floored, so a heavy cheap part and a light dear
-one do not read identically.
+`CarInstance.zoneState` already carries six zones (`bonnet`, `boot`, `left`,
+`right`, `roof`, `chassis`), each with `metal` 0-3, `surface` 0-2, `finish` 0-3 and
+`panelMissing`. **A damage archetype is a zone-state pattern plus a set of part
+band overrides.** Nothing new is needed to express one.
 
-**The wreck's purchase price.** A car with half its slots empty currently prices
-through `marketValueYen` like any other, and the value floor makes several of them
-collapse to `bookValueYen x 0.05`. That needs checking before wrecks are priced, or
-every wreck in the yard costs the same nothing.
+The three workshop views (body, engine bay, underside) already render exactly the
+three places a player would look at a wreck.
 
-## 5. Style
+---
 
-Period-authentic and already well referenced. `docs/design/reference/period-scans/`
-carries a first-hand account of what these places looked like, gathered from period
-magazine scans: corrugated iron on exposed trusses, unpainted walls, bare concrete,
-no ceiling lighting worth the name, work done on the ground with a trolley jack
-rather than on a lift. Stacked shells, parts on pallets under tarpaulins, a shed
-office reached by telephone rather than a website.
+## 3. The second layer: what survived is not necessarily good
 
-This is the least polished place in the game world and should look it. The art
-bible's diegetic law applies: the yard's stock list should read as a hand-written
-board or a grubby ledger, not a shop UI.
+Reading the archetype tells you what the *crash* did. It tells you nothing about
+what the car's life did before it.
 
-## 6. Open questions before this becomes a sprint
+A rear-ended Cefiro's engine is untouched by the impact. It might also have 240,000
+km on it. **So every wreck asks two questions, and only the first is free:**
 
-1. Is the yard a **venue** like an auction house (unlocked, visited) or a **screen**
-   like the parts market (always available)? The unlock question decides whether it
-   is early-game relief or a mid-game reward.
-2. Does yard stock **rotate on a clock** or regenerate per visit? A clock makes
-   visiting a decision; per-visit makes it a slot machine.
-3. Does the digging puzzle earn its build cost, or is limited rotating stock enough
-   friction on its own? Build the simple version first and find out.
-4. How does it interact with **part provenance**, which `TODO.md` already records as
-   needing a rework? A yard part has no history, which is either a feature (cheap,
-   anonymous) or a problem (the game tracks where parts came from).
-5. Does the yard **buy cars** as well as shells? If so it is a floor under every car
-   price in the game, which is a large economic commitment.
+1. **What survived?** Visible. Readable from the damage, at a glance, at no cost.
+2. **Is what survived any good?** Hidden. Costs time to find out, or you gamble.
 
-## 7. Relationship to what already exists
+`CarInstance.apparentBandByPartId` already exists for precisely this looks-versus-truth
+seam, built for the diagnosis mechanic. A yard part shows its apparent band; the
+true one is revealed by inspecting it, or by fitting it and discovering.
 
-Do NOT build any of the following again; the yard should read them:
+**Do not build a second uncertainty system.** This one is already load-bearing
+elsewhere and the player already knows how to read it.
 
-| Concern | What already exists |
+---
+
+## 4. The visit is a routing problem, and that is the puzzle
+
+The maintainer asked whether an inspection-style puzzle could work here. It can,
+and it needs no new mechanic: **the inspection visit is already a routing problem
+under a time budget**, and a yard visit is the same shape asking a different
+question.
+
+| | Inspection visit | Yard visit |
+| --- | --- | --- |
+| Budget | minutes | minutes |
+| The question | what is wrong with this car | which of these is worth taking home |
+| The choice | which tests, in what order | which wrecks to read, which parts to check |
+| The failure | you buy a car with a hidden fault | you buy a shell, or you leave the good engine behind |
+
+A visit gives the player a fixed budget and a yard containing several wrecks and a
+shelf of loose parts. Actions cost from that budget:
+
+- **Walk past a wreck** (free): its archetype and its obvious damage.
+- **Look it over** (cheap): which specific slots are present versus missing, and
+  every part's *apparent* band.
+- **Check a part** (moderate): that part's true band.
+- **Rummage the shelves** (moderate): surfaces more of the loose stock than is on
+  display.
+
+So the decision is real and it is the same decision every time in a different
+shape: three careful checks on the one wreck that looks promising, or a quick read
+of everything to find the one nobody else spotted.
+
+**Build the simple version first.** Rolling stock plus visible archetypes plus
+apparent bands may be enough friction on its own. The timed routing layer is the
+enhancement, not the foundation, and it should only be built if the simple version
+proves too easy.
+
+---
+
+## 5. What is for sale
+
+**Wrecks.** Bought whole, cheap, for harvest. Priced as what they are: a car whose
+value is its surviving parts minus the labour to extract them.
+
+**Loose parts.** Pulled from previous wrecks, on shelves. This is where the player
+who just needs *a gearbox* goes. Cheaper than new, uncertain condition, and
+crucially **the yard has what it has**. It does not stock what you need because you
+need it.
+
+**Nothing the player can order.** No search, no filter by part, no "notify me". The
+absence of a catalogue is the mechanic.
+
+### And what the yard buys
+
+- **Scrap and poor parts**, at weight money. Small, certain, instant. This is the
+  warehouse clean-out the maintainer asked for.
+- **Shells.** `resolveScrapShell` stops being an abstract payout and becomes a
+  transaction with a counterparty, which is where it always belonged.
+
+---
+
+## 6. Rolling stock
+
+Yard inventory rotates on the day clock, not per visit. Per-visit regeneration
+turns the venue into a slot machine the player rerolls by leaving and returning;
+a clock makes visiting a decision with a cost.
+
+**A new wreck arriving is an event worth surfacing in the day log**, in the same
+voice as an auction lot appearing. "A rear-ended Cefiro came in" is a reason to go,
+and it is the single best hook the venue has.
+
+Proposal, all unapproved: the yard holds four to six wrecks and eight to twelve
+loose parts; roughly one wreck is replaced every two to three days; a wreck that
+has been picked over is eventually crushed and leaves. That last part matters,
+because **a wreck the player passed on should be able to disappear.** Deciding not
+to buy has to be able to cost something or it is not a decision.
+
+---
+
+## 7. Economics, and the risk this venue carries
+
+**The design risk is the whole design, and the keyword is `reliably`.** A yard that
+reliably sells the part you want at a fraction of retail destroys the parts economy
+settled on 2026-07-28. The defence is not price, it is availability: the yard
+cannot be relied upon, so the parts shop remains what you use when you actually
+need something.
+
+Four constraints, and the venue needs all of them:
+
+1. **Limited, rotating stock.** It does not have your part.
+2. **Uncertain condition.** What it has may be worse than it looks.
+3. **A visit costs time**, so shopping there is not free even when it works.
+4. **The buy-sell spread at the yard is positive**, or the player buys at the yard
+   and sells at the shop in a loop. This is the one hard arithmetic constraint and
+   it must be asserted by a test.
+
+### Numbers to be derived, not guessed
+
+Every one of these is an unapproved economy lever and each needs measuring against
+the settled model before it is proposed:
+
+- **Used part price**, as a fraction of new. Must sit above what a player receives
+  for selling one (0.30 of new at mint) with a real margin between.
+- **Scrap payment for poor and scrap parts.** "Steel scrap value small" is the
+  brief. The sim has no mass model, so the nearest honest analogue is a small
+  fraction of the part's own price, floored so a heavy cheap part and a light dear
+  one do not read identically.
+- **Wreck purchase price.** Careful here: a car with half its slots empty currently
+  prices through `marketValueYen` and the scrap-value backstop floor, which several
+  cars already collapse to. Priced naively, every wreck in the yard costs the same
+  nothing. **A wreck probably needs its own pricing path**, valuing it as the sum of
+  its surviving parts at yard rates rather than as a car.
+
+### What it does to the rest of the economy
+
+Cheap used parts make repair cheaper, which makes repair-and-sell more profitable,
+which **strengthens** the four-play ordering rather than threatening it. But it also
+moves every generated car's restoration bill, so `partsGeneration.maxBillFraction`,
+the donor law and the consumables-share check all need re-measuring after the venue
+lands, not before.
+
+---
+
+## 8. Reuse analysis (directive 16)
+
+**Genuinely new:** the venue itself, its stock model and rotation, the damage
+archetypes as content, and a wreck-specific pricing path. That is all.
+
+| Concern | What already exists and must be reused |
 | --- | --- |
-| Uncertain condition | `apparentBandByPartId`, the diagnosis and workup mechanics |
-| A routed decision under a time budget | the inspection-visit minute budget |
-| Buying a part into inventory | `resolveBuyPart`, with its standard and express delivery split |
-| Selling a loose part | `resolveSellPart` and `resolveScrapPart` |
-| Scrapping a shell | `resolveScrapShell`, which this feature relocates rather than replaces |
-| Generating a rough car | the auction generator's own guards, which already know how to make a bad car without making an impossible one |
+| Localised body damage | `zoneState`, six zones with metal/surface/finish/panelMissing |
+| Looks versus truth | `apparentBandByPartId` and `diagnosis.ts`'s `apparentViewOf` |
+| A routed decision under a time budget | the inspection visit's minute budget |
+| Buying a part into inventory | `resolveBuyPart`, with its standard/express split |
+| Selling and scrapping a loose part | `resolveSellPart`, `resolveScrapPart` |
+| Scrapping a shell | `resolveScrapShell`, relocated rather than replaced |
+| Generating a rough car without making an impossible one | the auction generator's own guards |
+| Viewing damage in three places | the body, engine bay and underside workshop views |
+| A venue that unlocks | the auction houses' guarantor unlocks |
+
+**What must NOT be built:** a second uncertainty mechanic, a second part-condition
+model, a parts search or filter, or a second way to price a part.
+
+---
+
+## 9. Build order
+
+**Phase 1, the venue.** A screen, rotating stock of loose parts at yard prices with
+apparent bands, and buying scrap and poor parts and shells. No wrecks yet. This
+alone closes the supply-side gap and the warehouse-clutter gap, and it is small.
+
+**Phase 2, wrecks.** Damage archetypes as content, wreck generation, the
+wreck-specific pricing path, and the three views showing damage. This is the
+feature.
+
+**Phase 3, the routing puzzle.** The timed visit, inspect-a-part, rummage. Only if
+phase 2 proves too easy.
+
+Phases 1 and 2 are separately shippable and phase 1 is worth having on its own.
+
+---
+
+## 10. Open questions for the maintainer
+
+1. **Venue or screen?** Unlocked and visited like an auction house, or always
+   available like the parts market? The unlock decides whether this is early-game
+   relief or a mid-game reward. **My read: always available from the start.** The
+   yard is where a poor player shops, and gating it hurts exactly the player it
+   helps most.
+2. **Does the yard buy cars?** If it takes any car for scrap money, it becomes a
+   price floor under the entire market. That is a large economic commitment and I
+   would say no: shells only.
+3. **How does a yard part interact with provenance?** `TODO.md` already records the
+   provenance rework as owed. A yard part has no history, which is either a feature
+   (cheap, anonymous, no story) or a problem (the game tracks where parts came
+   from). Worth settling in the same pass.
+4. **Can the player sell a wreck back?** If they buy one and misjudge it, is the
+   shell all they have left? I think yes, and that the mistake should sting.
+5. **Does reputation reach the yard?** Every other venue is gated or coloured by it.
+   The yard could plausibly be the one place that does not care who you are, which
+   would say something true about it.
