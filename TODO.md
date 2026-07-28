@@ -211,6 +211,48 @@ pass."
 
 ## Open engineering
 
+- [ ] **Re-tier the roster on CHARACTER rather than rarity (maintainer decision 2026-07-28).** The
+  current four tiers are value words (`shitbox`, `common`, `uncommon`, `rare`) and they encode a
+  claim the maintainer rejects: that a GT is inherently more premium than a sports car. It is not.
+  **GT and sport pool together, and the pool then splits by level rather than by character:**
+
+  1. shitbox and kei
+  2. family saloons and ordinary cars
+  3. entry sport and GT
+  4. premium sport and GT
+
+  Still four tiers, which matters: `fitmentClassForTier` maps tier to parts class one to one and
+  the catalogue has exactly four classes of 118 SKUs, so the count must not change without
+  re-authoring 472 parts. The identifiers themselves want renaming, because keeping rarity words
+  for character tiers would be a lie that survives in code forever. Every tier key is read by
+  `economy.json`'s `expectationByTier`, `fitmentClassForTier`, `cleanSaleMinBand`, the coherence
+  probes and the auction generator, so this is a mechanical sweep with a wide blast radius and no
+  value changes of its own. Lands with the book-value work, since re-tiering and re-pricing answer
+  the same question.
+
+- [ ] **Switch the roster back to JDM variants (maintainer decision 2026-07-28).** During the
+  calibration arc the roster was forced onto Forza's exact variants, names and years, because the
+  measured figures had to describe the car Forza actually simulates. That constraint has served its
+  purpose and the maintainer wants the original JDM roster back.
+
+  **This is only safe because of the ratio bridge, and that is the whole point.** The model does not
+  carry absolute acceleration or absolute power; it carries `rLaunch` as a fraction of the car's own
+  grip and `rPower` as a fraction of its own crank figure, and `mu` is a coefficient that is
+  mass-independent to first order. So a variant swap changes power, weight, year and name, and the
+  measured COEFFICIENTS travel across unchanged and rescale themselves. Before Sprint 128 this
+  swap would have invalidated every figure.
+
+  One real decision per car, and it must be taken deliberately rather than defaulted: **`dragCd` is
+  currently back-solved FROM measured top speed.** On a variant swap the body is the same but the
+  power is not, so the honest move is to invert it, keep `cd` as the body property and let top speed
+  follow from the JDM power. That changes which of the two is input and which is derived, for those
+  cars only. Also per car: whether the JDM variant runs the same tyres and aero as the Forza one,
+  since `mu` and `dfC` do not travel if it does not.
+
+  Scale: of the 26 shipped cars, 16 have a year that differs from our JDM intent and 9 a power
+  figure. The guard test pinning `cars.json` to the spec book has to move with it or it will fight
+  the change.
+
 - [ ] **The high-speed traction release is deferred, with its number rather than a shrug.** The
   harness hands a traction-limited car back its power shortfall above 161 km/h (`tractionShare` /
   `paccAt` in `lapsim-report.cjs`, documented in `formulas.md` section 9); the shipped port

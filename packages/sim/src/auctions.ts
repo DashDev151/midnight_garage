@@ -457,7 +457,7 @@ function interpolateCurve(breakpoints: readonly (readonly [number, number])[], x
 /** The [min, max] mileage range (km) for a car of this age, sampled from
  * `economy.json`'s mileage curves. Age reaches nothing downstream except
  * this range - mileage is the single coherent wear driver from here on. */
-function mileageRangeForAge(ageYears: number, economy: EconomyConfig): [number, number] {
+export function mileageRangeForAge(ageYears: number, economy: EconomyConfig): [number, number] {
   const { mileageRangeMinByAgeYears, mileageRangeMaxByAgeYears } = economy.partsGeneration
   const min = Math.round(interpolateCurve(mileageRangeMinByAgeYears, ageYears))
   const max = Math.round(interpolateCurve(mileageRangeMaxByAgeYears, ageYears))

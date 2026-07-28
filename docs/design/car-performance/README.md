@@ -298,9 +298,31 @@ a number, and it guarantees the two halves of the game never disagree about whic
 
 ## 9. Running it
 
+**The calibration harness**, which is where the model is fitted and where its accuracy is measured:
+
 ```sh
 node docs/design/car-performance/lapsim/lapsim-report.cjs
 ```
 
 Takes a little over a minute. `lapsim/README.md` covers what it prints, how the fits are performed,
 and how to refresh the dashboard.
+
+**The performance sandbox**, which is where the model is inspected. A dev-only screen at
+`/performance-sandbox` in the running game (`pnpm dev`): pick any of the 85 cars, set every
+component's condition and fitted tier, and watch the measured figures, the roll-up stats, the four
+lap times and the retail value move.
+
+It imports `packages/sim` directly, so it always runs whatever the repo currently says and cannot go
+stale. The route is gated on `import.meta.env.DEV` and is absent from a production build.
+
+```sh
+pnpm sandbox:cars
+```
+
+regenerates the 59 synthesised research models from `car-spec-book.html` and re-runs their
+acceptance against the harness. Only needed when the spec book changes; the 26 in-game cars come
+from content directly and need nothing.
+
+**The two are not redundant.** The harness is the oracle: it fits the constants and it is what the
+sandbox's own acceptance test measures against. The sandbox cannot fit anything and is not evidence
+of accuracy; it is for asking what a given build does.

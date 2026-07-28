@@ -759,7 +759,7 @@ function stockBehaviourOf(
 
 /** The pre-computed per-car constants a run reads once. SI throughout: mass kg,
  * power W, accelerations m/s^2, area m^2. */
-interface CarBlock {
+export interface CarBlock {
   /** Kerb mass plus the driver, kg. */
   m: number
   /** Crank wheel power after driveline losses, W. Top speed runs on this. */
@@ -794,8 +794,13 @@ interface CarBlock {
  * still reaches the road, and the aero dial is how much downforce the bodywork
  * still makes. No dial for power on either side: `powerPs` is the car's CURRENT
  * power and already carries both the engine's condition and its parts.
+ *
+ * Exported so a caller can read the derived quantities a lap actually runs on
+ * (grip, braking, launch, effective power, drag area, mass) rather than
+ * re-deriving them from the measurements: there is one assembly of them and
+ * this is it.
  */
-function carBlock(
+export function carBlock(
   model: CarModel,
   powerPs: number,
   compound: TyreCompound | undefined,

@@ -20,6 +20,11 @@ const devRoutes: RouteRecordRaw[] = import.meta.env.DEV
         name: 'inspection-demo',
         component: () => import('../screens/InspectionDemoScreen.vue'),
       },
+      {
+        path: '/performance-sandbox',
+        name: 'performance-sandbox',
+        component: () => import('../screens/PerformanceSandboxScreen.vue'),
+      },
     ]
   : []
 
