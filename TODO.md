@@ -211,6 +211,31 @@ pass."
 
 ## Open engineering
 
+- [ ] **A fifth `legend` parts-fitment class, deferred (maintainer decision 2026-07-28, reversed
+  from "implement" the same day).** `partFitment.ts` has always intended this: its own doc comment
+  says `gaisha`/`legend` fold into `rare` "until the roster grows and earns a real mapping of its
+  own", and the roster's `RarityTier` enum already carries both. The period parts research is the
+  case for un-folding it: `rare` at 2.5x checks out for JDM legends (rare/stock internals lands on
+  the real Y200,000 S20 conrod set) but undercooks the exotics, where parts money was another
+  animal entirely. Sprint 132 deleted the inert `classFactors.legend: 4.0` key rather than leave a
+  dead lever reading as a live one; the design survives here.
+
+  Three things ride with it whenever it is picked up, and none is optional:
+  1. **`gaisha` needs a call too.** Once `legend` maps to itself, `gaisha` is the only tier still
+     folded into `rare`, and the roster's gaisha ARE the exotics (Countach, 512 TR, F355, 930, the
+     Delta, both M3s). Recommendation: fold `gaisha` into `legend` rather than add a sixth class.
+  2. **Three new economy levers, unapproved.** `expectationForCar` reads
+     `economy.valuation.expectationByTier[fitmentClass]` and **throws** on a missing class, so a
+     `legend` block carrying `band`, `beyondDiscount` and `aftermarketReturn` is mandatory, not
+     optional. Directive 22 sign-off needed on the specific values.
+  3. **The class count is load-bearing.** The catalogue is 118 SKUs per class; adding a fifth means
+     `resolvePartsCatalog` must generate them rather than needing them hand-authored, and
+     `stockReplacementPricesByClass` must resolve for every part in the new class. Verify before
+     committing to it. Note this pulls the opposite way from the re-tier item below, which must
+     keep exactly four tiers.
+
+  Natural home: alongside the re-tier, since both change what a tier means.
+
 - [ ] **Re-tier the roster on CHARACTER rather than rarity (maintainer decision 2026-07-28).** The
   current four tiers are value words (`shitbox`, `common`, `uncommon`, `rare`) and they encode a
   claim the maintainer rejects: that a GT is inherently more premium than a sports car. It is not.
