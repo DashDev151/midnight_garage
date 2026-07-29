@@ -1,0 +1,1060 @@
+uid,rosterNo,displayName,column,value,sourceUrl,confidence,notes,applied
+MG-001,1,Honda Today (JW1),aspiration,NA,https://en.wikipedia.org/wiki/Honda_Today,MED,Carburettor; no forced induction,yes
+MG-001,1,Honda Today (JW1),chassisCode,JW1,https://en.wikipedia.org/wiki/Honda_Today,MED,,yes
+MG-001,1,Honda Today (JW1),curbWeightKg,550,https://en.wikipedia.org/wiki/Honda_Today,LOW,Source gives a 550-560kg range for JW1; used the lower bound,yes
+MG-001,1,Honda Today (JW1),displacementCc,545,https://en.wikipedia.org/wiki/Honda_E_engine,MED,,yes
+MG-001,1,Honda Today (JW1),drivetrain,FF,https://en.wikipedia.org/wiki/Honda_Today,HIGH,File mixes FF/FWD and FR/RWD tokens inconsistently; used FF to match the majority of populated rows,yes
+MG-001,1,Honda Today (JW1),engineCode,EH,https://en.wikipedia.org/wiki/Honda_E_engine,MED,First JW1 engine 1985-1988; replaced by E05A in 1988 with different figures,yes
+MG-001,1,Honda Today (JW1),engineConfig,I2,https://en.wikipedia.org/wiki/Honda_E_engine,MED,EH is a two-cylinder engine. I2 is outside the file's engineConfig vocabulary (I3/I4/I6/V6/flat-4/rotary-2) - flagging as a new value,yes
+MG-001,1,Honda Today (JW1),heightMm,1315,https://en.wikipedia.org/wiki/Honda_Today,HIGH,,yes
+MG-001,1,Honda Today (JW1),peakTorqueNm,43,https://en.wikipedia.org/wiki/Honda_E_engine,MED,,yes
+MG-001,1,Honda Today (JW1),powerRpm,5500,https://en.wikipedia.org/wiki/Honda_E_engine,MED,,yes
+MG-001,1,Honda Today (JW1),quotedPowerPs,31,https://en.wikipedia.org/wiki/Honda_E_engine,MED,Same figure as stockPowerPs; source does not separate brochure vs measured; car this small was never near the 280PS ceiling,yes
+MG-001,1,Honda Today (JW1),stockPowerPs,31,https://en.wikipedia.org/wiki/Honda_E_engine,MED,Source states 30.9 PS; rounded to match the file's integer convention,yes
+MG-001,1,Honda Today (JW1),styleBase,7,,SUGGESTION,Honest rounded 80s kei box; competent but unremarkable styling,yes
+MG-001,1,Honda Today (JW1),torqueRpm,4000,https://en.wikipedia.org/wiki/Honda_E_engine,MED,,yes
+MG-001,1,Honda Today (JW1),wheelbaseMm,2330,https://en.wikipedia.org/wiki/Honda_Today,HIGH,,yes
+MG-001,1,Honda Today (JW1),widthMm,1395,https://en.wikipedia.org/wiki/Honda_Today,HIGH,,yes
+MG-002,2,Honda City E (AA),quotedPowerPs,63,https://www.automobile-catalog.com/car/1981/1092110/honda_city_e_hondamatic.html,MED,Matches existing stockPowerPs/powerRpm exactly; predates the era when any advertising ceiling applied,yes
+MG-003,3,Nissan Sunny (B12),quotedPowerPs,85,https://en.wikipedia.org/wiki/Nissan_GA_engine,HIGH,GA15S catalog figure exactly matches existing stockPowerPs/powerRpm/peakTorqueNm/torqueRpm already in the row,yes
+MG-004,4,Honda Acty (HA4 Truck),aspiration,NA,https://en.wikipedia.org/wiki/Honda_Acty,HIGH,Carburetted version; a fuel-injected 44PS variant of the same E07A also existed,yes
+MG-004,4,Honda Acty (HA4 Truck),chassisCode,HA4,https://en.wikipedia.org/wiki/Honda_Acty,HIGH,,yes
+MG-004,4,Honda Acty (HA4 Truck),engineCode,E07A,https://en.wikipedia.org/wiki/Honda_Acty,HIGH,Carburetted E07A matches existing stockPowerPs=38 and peakTorqueNm=54 exactly,yes
+MG-004,4,Honda Acty (HA4 Truck),engineConfig,I3,https://en.wikipedia.org/wiki/Honda_Acty,HIGH,,yes
+MG-004,4,Honda Acty (HA4 Truck),heightMm,1700,https://en.wikipedia.org/wiki/Honda_Acty,LOW,Source gives a 1700-1750mm range for truck bodies; used the lower bound,yes
+MG-004,4,Honda Acty (HA4 Truck),powerRpm,5300,https://en.wikipedia.org/wiki/Honda_Acty,HIGH,,yes
+MG-004,4,Honda Acty (HA4 Truck),quotedPowerPs,38,https://en.wikipedia.org/wiki/Honda_Acty,HIGH,Same source and figure as stockPowerPs,yes
+MG-004,4,Honda Acty (HA4 Truck),styleBase,4,,SUGGESTION,Cab-over kei flatbed truck; purely utilitarian with no styling intent,yes
+MG-004,4,Honda Acty (HA4 Truck),torqueRpm,4500,https://en.wikipedia.org/wiki/Honda_Acty,HIGH,,yes
+MG-004,4,Honda Acty (HA4 Truck),wheelbaseMm,1900,https://en.wikipedia.org/wiki/Honda_Acty,MED,,yes
+MG-004,4,Honda Acty (HA4 Truck),widthMm,1395,https://en.wikipedia.org/wiki/Honda_Acty,MED,,yes
+MG-005,5,Nissan March (K10) 1.0,aspiration,NA,https://en.wikipedia.org/wiki/Nissan_March,HIGH,,yes
+MG-005,5,Nissan March (K10) 1.0,chassisCode,K10,https://en.wikipedia.org/wiki/Nissan_March,HIGH,,yes
+MG-005,5,Nissan March (K10) 1.0,curbWeightKg,700,https://www.auto-data.net/en/nissan-march-k10-1.0-50hp-588,MED,Wikipedia separately gives 635kg for a European trim; used the JDM-named listing's figure,yes
+MG-005,5,Nissan March (K10) 1.0,displacementCc,987,https://en.wikipedia.org/wiki/Nissan_March,MED,A separate source (auto-data.net) gives 998cc for the same MA10S engine; used Wikipedia's figure,yes
+MG-005,5,Nissan March (K10) 1.0,dragCd,0.39,https://japanesenostalgiccar.com/masahiro-kondo-nissan-march-k10-restoration/,MED,,yes
+MG-005,5,Nissan March (K10) 1.0,drivetrain,FF,https://en.wikipedia.org/wiki/Nissan_March,HIGH,File mixes FF/FWD and FR/RWD tokens inconsistently,yes
+MG-005,5,Nissan March (K10) 1.0,engineCode,MA10S,https://en.wikipedia.org/wiki/Nissan_March,MED,,yes
+MG-005,5,Nissan March (K10) 1.0,engineConfig,I4,https://en.wikipedia.org/wiki/Nissan_March,HIGH,,yes
+MG-005,5,Nissan March (K10) 1.0,heightMm,1395,https://en.wikipedia.org/wiki/Nissan_March,HIGH,,yes
+MG-005,5,Nissan March (K10) 1.0,peakTorqueNm,75,https://en.wikipedia.org/wiki/Nissan_March,MED,,yes
+MG-005,5,Nissan March (K10) 1.0,powerRpm,6000,https://www.auto-data.net/en/nissan-march-k10-1.0-50hp-588,MED,,yes
+MG-005,5,Nissan March (K10) 1.0,quotedPowerPs,52,https://www.auto-data.net/en/nissan-march-k10-1.0-50hp-588,MED,Same figure as stockPowerPs,yes
+MG-005,5,Nissan March (K10) 1.0,stockPowerPs,52,https://www.auto-data.net/en/nissan-march-k10-1.0-50hp-588,MED,JDM-named listing; Wikipedia cites 55PS for a European high-compression version of the same MA10S,yes
+MG-005,5,Nissan March (K10) 1.0,styleBase,10,,SUGGESTION,Pininfarina-styled; a genuinely charming jellybean shape still fondly remembered for its class and era,yes
+MG-005,5,Nissan March (K10) 1.0,torqueRpm,3600,https://en.wikipedia.org/wiki/Nissan_March,MED,,yes
+MG-005,5,Nissan March (K10) 1.0,wheelbaseMm,2300,https://en.wikipedia.org/wiki/Nissan_March,HIGH,,yes
+MG-005,5,Nissan March (K10) 1.0,widthMm,1560,https://en.wikipedia.org/wiki/Nissan_March,HIGH,,yes
+MG-005,5,Nissan March (K10) 1.0,yearFrom,1982,https://en.wikipedia.org/wiki/Nissan_March,HIGH,Launched October 1982,yes
+MG-006,6,Toyota Corolla 1.5 SE Saloon (AE91),aspiration,NA,https://www.carfolio.com/toyota-corolla-1500-se-320100,HIGH,,yes
+MG-006,6,Toyota Corolla 1.5 SE Saloon (AE91),chassisCode,AE91,https://www.carfolio.com/toyota-corolla-1500-se-320100,HIGH,Model code shown as E-AE91-AEMEU,yes
+MG-006,6,Toyota Corolla 1.5 SE Saloon (AE91),curbWeightKg,950,https://www.carfolio.com/toyota-corolla-1500-se-320100,HIGH,,yes
+MG-006,6,Toyota Corolla 1.5 SE Saloon (AE91),displacementCc,1498,https://www.carfolio.com/toyota-corolla-1500-se-320100,HIGH,,yes
+MG-006,6,Toyota Corolla 1.5 SE Saloon (AE91),drivetrain,FF,https://www.carfolio.com/toyota-corolla-1500-se-320100,HIGH,File mixes FF/FWD and FR/RWD tokens inconsistently,yes
+MG-006,6,Toyota Corolla 1.5 SE Saloon (AE91),engineCode,5A-F,https://www.carfolio.com/toyota-corolla-1500-se-320100,HIGH,,yes
+MG-006,6,Toyota Corolla 1.5 SE Saloon (AE91),engineConfig,I4,https://www.carfolio.com/toyota-corolla-1500-se-320100,HIGH,,yes
+MG-006,6,Toyota Corolla 1.5 SE Saloon (AE91),heightMm,1365,https://www.carfolio.com/toyota-corolla-1500-se-320100,HIGH,,yes
+MG-006,6,Toyota Corolla 1.5 SE Saloon (AE91),peakTorqueNm,123,https://www.carfolio.com/toyota-corolla-1500-se-320100,HIGH,,yes
+MG-006,6,Toyota Corolla 1.5 SE Saloon (AE91),powerRpm,6000,https://www.carfolio.com/toyota-corolla-1500-se-320100,HIGH,,yes
+MG-006,6,Toyota Corolla 1.5 SE Saloon (AE91),quotedPowerPs,85,https://www.carfolio.com/toyota-corolla-1500-se-320100,HIGH,Same catalog figure; no separate brochure figure found,yes
+MG-006,6,Toyota Corolla 1.5 SE Saloon (AE91),stockPowerPs,85,https://www.carfolio.com/toyota-corolla-1500-se-320100,HIGH,,yes
+MG-006,6,Toyota Corolla 1.5 SE Saloon (AE91),stockTyre,155SR13,https://www.carfolio.com/toyota-corolla-1500-se-320100,HIGH,Source shows '155 SR 13'; reformatted without spaces to match the file's existing tyre-size notation,yes
+MG-006,6,Toyota Corolla 1.5 SE Saloon (AE91),styleBase,5,,SUGGESTION,Generic late-80s three-box saloon; honest but visually unremarkable,yes
+MG-006,6,Toyota Corolla 1.5 SE Saloon (AE91),torqueRpm,3600,https://www.carfolio.com/toyota-corolla-1500-se-320100,HIGH,,yes
+MG-006,6,Toyota Corolla 1.5 SE Saloon (AE91),wheelbaseMm,2430,https://www.carfolio.com/toyota-corolla-1500-se-320100,HIGH,,yes
+MG-006,6,Toyota Corolla 1.5 SE Saloon (AE91),widthMm,1655,https://www.carfolio.com/toyota-corolla-1500-se-320100,HIGH,,yes
+MG-006,6,Toyota Corolla 1.5 SE Saloon (AE91),yearFrom,1987,https://www.carfolio.com/toyota-corolla-1500-se-320100,HIGH,,yes
+MG-007,7,Mazda Familia 1.5 (BG),aspiration,NA,https://mymotorlist.com/engines/mazda/b5/,MED,,yes
+MG-007,7,Mazda Familia 1.5 (BG),displacementCc,1498,https://mymotorlist.com/engines/mazda/b5/,MED,,yes
+MG-007,7,Mazda Familia 1.5 (BG),engineCode,B5,https://mymotorlist.com/engines/mazda/b5/,LOW,A separate search result cites 90hp for the JDM 1.5 16v BG5P grade against this source's 94PS; the exact body style (sedan/hatch/wagon) of this roster entry is also unconfirmed,yes
+MG-007,7,Mazda Familia 1.5 (BG),engineConfig,I4,https://mymotorlist.com/engines/mazda/b5/,MED,,yes
+MG-007,7,Mazda Familia 1.5 (BG),peakTorqueNm,123,https://mymotorlist.com/engines/mazda/b5/,LOW,Source gives 122.6Nm; rounded,yes
+MG-007,7,Mazda Familia 1.5 (BG),powerRpm,6500,https://mymotorlist.com/engines/mazda/b5/,LOW,,yes
+MG-007,7,Mazda Familia 1.5 (BG),quotedPowerPs,94,https://mymotorlist.com/engines/mazda/b5/,LOW,Same figure and caveat as stockPowerPs,yes
+MG-007,7,Mazda Familia 1.5 (BG),stockPowerPs,94,https://mymotorlist.com/engines/mazda/b5/,LOW,Conflicts with a 90hp figure seen for the JDM BG5P grade elsewhere; flagging rather than resolving - recommend the maintainer verify against a period JDM catalogue,yes
+MG-007,7,Mazda Familia 1.5 (BG),styleBase,9,,SUGGESTION,Crisp aerodynamic late-80s Mazda design language; well regarded for its era without being flamboyant,yes
+MG-007,7,Mazda Familia 1.5 (BG),torqueRpm,4000,https://mymotorlist.com/engines/mazda/b5/,LOW,,yes
+MG-007,7,Mazda Familia 1.5 (BG),yearFrom,1989,https://cars.japanesecartrade.com/detail/mazda/familia/clair/166155,MED,BG generation launched February 1989,yes
+MG-010,10,Toyota Carina (AT150),quotedPowerPs,83,https://www.toyota-global.com/company/history_of_toyota/75years/vehicle_lineage/car/id60002570/index.html,HIGH,Toyota's own official heritage spec sheet for the 1500 DX grade (3A-U); matches existing stockPowerPs/powerRpm exactly,yes
+MG-011,11,Daihatsu Mira TR-XX (L70),aspiration,turbo,https://en.wikipedia.org/wiki/Daihatsu_Mira,HIGH,Turbocharged and intercooled,yes
+MG-011,11,Daihatsu Mira TR-XX (L70),chassisCode,L70,https://en.wikipedia.org/wiki/Daihatsu_Mira,MED,Wikipedia labels this Daihatsu's 'L200 series' generation; L70/L80 is the specific chassis suffix used by period JDM catalogues and matches the roster's own naming,yes
+MG-011,11,Daihatsu Mira TR-XX (L70),curbWeightKg,640,https://en.wikipedia.org/wiki/Daihatsu_Mira,MED,FF-variant weight; 4WD versions weighed 670-690kg,"no: research covers the 1990 L200-generation Mira, row is the 1985-90 L70"
+MG-011,11,Daihatsu Mira TR-XX (L70),displacementCc,659,https://www.automobile-catalog.com/car/1991/565130/daihatsu_mira_tr-xx_efi_limited.html,LOW,Source page returned a paywall on direct fetch; figure comes from a search-engine synthesis of its content,"no: research covers the 1990 L200-generation Mira, row is the 1985-90 L70"
+MG-011,11,Daihatsu Mira TR-XX (L70),drivetrain,FF,https://en.wikipedia.org/wiki/Daihatsu_Mira,MED,TR-XX was sold as FF or 4WD; used the lighter FF spec that matches the curbWeightKg reported here. File mixes FF/FWD and FR/RWD tokens inconsistently,yes
+MG-011,11,Daihatsu Mira TR-XX (L70),engineCode,EF-JL,https://en.wikipedia.org/wiki/Daihatsu_Mira,MED,,"no: research covers the 1990 L200-generation Mira, row is the 1985-90 L70"
+MG-011,11,Daihatsu Mira TR-XX (L70),engineConfig,I3,https://en.wikipedia.org/wiki/Daihatsu_Mira,MED,,yes
+MG-011,11,Daihatsu Mira TR-XX (L70),heightMm,1415,https://en.wikipedia.org/wiki/Daihatsu_Mira,MED,,"no: research covers the 1990 L200-generation Mira, row is the 1985-90 L70"
+MG-011,11,Daihatsu Mira TR-XX (L70),peakTorqueNm,92,https://www.automobile-catalog.com/car/1991/565130/daihatsu_mira_tr-xx_efi_limited.html,LOW,Source page returned a paywall on direct fetch; figure comes from a search-engine synthesis of its content,"no: research covers the 1990 L200-generation Mira, row is the 1985-90 L70"
+MG-011,11,Daihatsu Mira TR-XX (L70),powerRpm,7500,https://www.automobile-catalog.com/car/1991/565130/daihatsu_mira_tr-xx_efi_limited.html,LOW,Source page returned a paywall on direct fetch; power figure itself (64PS) is corroborated by Wikipedia but rpm is not,"no: research covers the 1990 L200-generation Mira, row is the 1985-90 L70"
+MG-011,11,Daihatsu Mira TR-XX (L70),quotedPowerPs,64,https://en.wikipedia.org/wiki/Daihatsu_Mira,HIGH,Source states 64PS was the maximum power allowed for kei cars under the gentlemen's agreement; matches existing stockPowerPs exactly,"no: research covers the 1990 L200-generation Mira, row is the 1985-90 L70"
+MG-011,11,Daihatsu Mira TR-XX (L70),stockTyre,155/60R13,https://www.automobile-catalog.com/car/1991/565130/daihatsu_mira_tr-xx_efi_limited.html,LOW,Source page returned a paywall on direct fetch; figure comes from a search-engine synthesis of its content,"no: research covers the 1990 L200-generation Mira, row is the 1985-90 L70"
+MG-011,11,Daihatsu Mira TR-XX (L70),styleBase,10,,SUGGESTION,Hot-hatch kei turbo with a body kit and spoiler; distinctly sportier than the plain Mira,yes
+MG-011,11,Daihatsu Mira TR-XX (L70),torqueRpm,4000,https://www.automobile-catalog.com/car/1991/565130/daihatsu_mira_tr-xx_efi_limited.html,LOW,Source page returned a paywall on direct fetch; figure comes from a search-engine synthesis of its content,"no: research covers the 1990 L200-generation Mira, row is the 1985-90 L70"
+MG-011,11,Daihatsu Mira TR-XX (L70),wheelbaseMm,2280,https://en.wikipedia.org/wiki/Daihatsu_Mira,HIGH,,"no: research covers the 1990 L200-generation Mira, row is the 1985-90 L70"
+MG-011,11,Daihatsu Mira TR-XX (L70),widthMm,1395,https://en.wikipedia.org/wiki/Daihatsu_Mira,HIGH,,yes
+MG-011,11,Daihatsu Mira TR-XX (L70),yearFrom,1990,https://en.wikipedia.org/wiki/Daihatsu_Mira,MED,Third-generation Mira/TR-XX launched March 1990,"no: research covers the 1990 L200-generation Mira, row is the 1985-90 L70"
+MG-012,12,Honda City Turbo II (AA),quotedPowerPs,110,https://www.carfolio.com/honda-city-turbo-ii-223806,HIGH,Matches existing stockPowerPs/powerRpm exactly; widely corroborated across independent specialist databases,yes
+MG-014,14,Toyota Sera (EXY10),quotedPowerPs,110,https://www.carfolio.com/toyota-sera-15730,HIGH,Source gives 110PS at 6400rpm against existing stockPowerPs=109 - a one-PS gap consistent with a rounded brochure figure vs a measured crank figure,yes
+MG-015,15,Subaru Vivio RX-R (KK4),aspiration,supercharged,https://en.wikipedia.org/wiki/Subaru_Vivio,HIGH,,yes
+MG-015,15,Subaru Vivio RX-R (KK4),chassisCode,KK4,https://en.wikipedia.org/wiki/Subaru_Vivio,MED,,yes
+MG-015,15,Subaru Vivio RX-R (KK4),engineCode,EN07X,https://en.wikipedia.org/wiki/Subaru_Vivio,MED,,yes
+MG-015,15,Subaru Vivio RX-R (KK4),engineConfig,I4,https://en.wikipedia.org/wiki/Subaru_Vivio,MED,Subaru's EN07 kei engine is an inline-4; unlike most rivals' inline-3 kei units,yes
+MG-015,15,Subaru Vivio RX-R (KK4),heightMm,1385,https://en.wikipedia.org/wiki/Subaru_Vivio,MED,,yes
+MG-015,15,Subaru Vivio RX-R (KK4),quotedPowerPs,64,https://en.wikipedia.org/wiki/Subaru_Vivio,HIGH,Kei self-regulation cap; matches existing stockPowerPs exactly,yes
+MG-015,15,Subaru Vivio RX-R (KK4),styleBase,11,,SUGGESTION,Sporty kei with characteristic RX-R spoiler and wheel treatment; distinctive but not flamboyant,yes
+MG-015,15,Subaru Vivio RX-R (KK4),widthMm,1395,https://en.wikipedia.org/wiki/Subaru_Vivio,MED,,yes
+MG-016,16,Suzuki Jimny (JA11),aspiration,turbo,https://en.wikipedia.org/wiki/Suzuki_Jimny,HIGH,Intercooled turbo; the JA11 generation was turbo-only,yes
+MG-016,16,Suzuki Jimny (JA11),chassisCode,JA11,https://en.wikipedia.org/wiki/Suzuki_Jimny,HIGH,,yes
+MG-016,16,Suzuki Jimny (JA11),curbWeightKg,860,https://cars.japanesecartrade.com/detail/suzuki/jimny/wild-wind-limited/117399,LOW,Figure is for the Wild Wind Limited special-edition trim specifically; not confirmed for the base grade this roster row appears to represent,yes
+MG-016,16,Suzuki Jimny (JA11),displacementCc,657,https://en.wikipedia.org/wiki/Suzuki_Jimny,HIGH,,yes
+MG-016,16,Suzuki Jimny (JA11),drivetrain,AWD,https://en.wikipedia.org/wiki/Suzuki_Jimny,HIGH,Jimny is a permanent 4x4; used AWD to match the file's existing token for other 4WD kei vehicles (Acty; Vivio),yes
+MG-016,16,Suzuki Jimny (JA11),engineCode,F6A,https://en.wikipedia.org/wiki/Suzuki_Jimny,HIGH,,yes
+MG-016,16,Suzuki Jimny (JA11),engineConfig,I3,https://en.wikipedia.org/wiki/Suzuki_Jimny,HIGH,,yes
+MG-016,16,Suzuki Jimny (JA11),quotedPowerPs,55,https://en.wikipedia.org/wiki/Suzuki_Jimny,MED,Same figure as stockPowerPs; no separate brochure figure found,yes
+MG-016,16,Suzuki Jimny (JA11),stockPowerPs,55,https://en.wikipedia.org/wiki/Suzuki_Jimny,HIGH,Launch-spec 1990 figure; power rose to 58PS in June 1991 and 64PS in February 1995 on the same JA11 chassis,yes
+MG-016,16,Suzuki Jimny (JA11),styleBase,12,,SUGGESTION,Boxy classic go-anywhere off-roader silhouette; still instantly recognisable decades later,yes
+MG-016,16,Suzuki Jimny (JA11),topSpeedKmh,120,https://en.wikipedia.org/wiki/Suzuki_Jimny,HIGH,,yes
+MG-016,16,Suzuki Jimny (JA11),wheelbaseMm,2030,https://cars.japanesecartrade.com/detail/suzuki/jimny/wild-wind-limited/117399,MED,Figure is from the Wild Wind Limited special-edition trim listing; wheelbase is a fixed generation-wide dimension so should apply to the base grade too,yes
+MG-016,16,Suzuki Jimny (JA11),widthMm,1395,https://cars.japanesecartrade.com/detail/suzuki/jimny/wild-wind-limited/117399,MED,Figure is from the Wild Wind Limited special-edition trim listing; width is a fixed generation-wide dimension so should apply to the base grade too,yes
+MG-016,16,Suzuki Jimny (JA11),yearFrom,1990,https://en.wikipedia.org/wiki/Suzuki_Jimny,HIGH,,yes
+MG-017,17,Suzuki Alto Works (HA21S),quotedPowerPs,64,https://www.automobile-catalog.com/car/1994/3356120/suzuki_alto_works_rsz.html,HIGH,"JIS net catalog figure for the RS/Z variant (658cc/103Nm), matching this row's existing stockPowerPs; kei-class 64PS self-regulation cap, not the 280PS ceiling",yes
+MG-018,18,Daihatsu Mira TR-XX Avanzato R (L502S),aspiration,turbo,https://cars.japanesecartrade.com/detail/daihatsu/mira-tr-xx/tr-xx-avanzato-r/126511,MED,"Inferred from the TR-XX/Avanzato R turbo trim naming and 100Nm from only 659cc, consistent with the kei turbo class",yes
+MG-018,18,Daihatsu Mira TR-XX Avanzato R (L502S),chassisCode,L502S,https://www.goo-net-exchange.com/catalog/DAIHATSU__MIRA_TRXX/5001561/,MED,"Matches displayName; accessed via search aggregation, not a direct page fetch",yes
+MG-018,18,Daihatsu Mira TR-XX Avanzato R (L502S),curbWeightKg,700,https://www.goo-net-exchange.com/catalog/DAIHATSU__MIRA_TRXX/5001561/,MED,"FF 5MT grade; AT grade 710kg, 4WD Avanzato R4 grade 750kg per the same source family",yes
+MG-018,18,Daihatsu Mira TR-XX Avanzato R (L502S),displacementCc,659,https://cars.japanesecartrade.com/detail/daihatsu/mira-tr-xx/tr-xx-avanzato-r/126511,MED,,yes
+MG-018,18,Daihatsu Mira TR-XX Avanzato R (L502S),drivetrain,FF,https://www.goo-net-exchange.com/catalog/DAIHATSU__MIRA_TRXX/5001561/,MED,Avanzato R (without a 4) denotes Daihatsu's FF grade; Avanzato R4 is the separate 4WD trim,yes
+MG-018,18,Daihatsu Mira TR-XX Avanzato R (L502S),engineConfig,I3,https://en.wikipedia.org/wiki/Daihatsu_J-series_engine,LOW,Standard architecture for all Daihatsu 660cc JB-family kei engines of this era; the specific engine code itself could not be confidently sourced this session (one listing garbled it as 'JB-JL'),"no: implausible, the Daihatsu JB 659cc DOHC 16v is an inline-4"
+MG-018,18,Daihatsu Mira TR-XX Avanzato R (L502S),heightMm,1430,https://www.goo-net-exchange.com/catalog/DAIHATSU__MIRA_TRXX/5001561/,MED,"Accessed via search aggregation, not a direct page fetch",yes
+MG-018,18,Daihatsu Mira TR-XX Avanzato R (L502S),peakTorqueNm,100,https://cars.japanesecartrade.com/detail/daihatsu/mira-tr-xx/tr-xx-avanzato-r/126511,MED,10.2kgm,yes
+MG-018,18,Daihatsu Mira TR-XX Avanzato R (L502S),powerRpm,7500,https://cars.japanesecartrade.com/detail/daihatsu/mira-tr-xx/tr-xx-avanzato-r/126511,MED,,yes
+MG-018,18,Daihatsu Mira TR-XX Avanzato R (L502S),quotedPowerPs,64,https://www.automobile-catalog.com/car/1995/568790/daihatsu_mira_tr-xx_avanzato_r.html,MED,Same as stockPowerPs; kei-class 64PS self-regulation cap,yes
+MG-018,18,Daihatsu Mira TR-XX Avanzato R (L502S),stockPowerPs,64,https://www.automobile-catalog.com/car/1995/568790/daihatsu_mira_tr-xx_avanzato_r.html,MED,Kei-class 64PS self-regulation cap,yes
+MG-018,18,Daihatsu Mira TR-XX Avanzato R (L502S),stockTyre,155/60R13,https://cars.japanesecartrade.com/detail/daihatsu/mira-tr-xx/tr-xx-avanzato-r/126511,MED,,yes
+MG-018,18,Daihatsu Mira TR-XX Avanzato R (L502S),styleBase,8,,SUGGESTION,"Aggressive turbo kei hot hatch with bonnet scoop and bodykit, similar tier to the Alto Works (9) but slightly less distinctive detailing",yes
+MG-018,18,Daihatsu Mira TR-XX Avanzato R (L502S),torqueRpm,4000,https://cars.japanesecartrade.com/detail/daihatsu/mira-tr-xx/tr-xx-avanzato-r/126511,MED,,yes
+MG-018,18,Daihatsu Mira TR-XX Avanzato R (L502S),tyreCompound,eco,https://cars.japanesecartrade.com/detail/daihatsu/mira-tr-xx/tr-xx-avanzato-r/126511,LOW,"Classification judgement from the economy-class 155/60R13 tyre size, matching the convention used for other kei cars in the file (Alto Works, Wagon R)",yes
+MG-018,18,Daihatsu Mira TR-XX Avanzato R (L502S),wheelbaseMm,2300,https://www.goo-net-exchange.com/catalog/DAIHATSU__MIRA_TRXX/5001561/,MED,"Accessed via search aggregation, not a direct page fetch",yes
+MG-018,18,Daihatsu Mira TR-XX Avanzato R (L502S),widthMm,1395,https://www.goo-net-exchange.com/catalog/DAIHATSU__MIRA_TRXX/5001561/,MED,"Accessed via search aggregation, not a direct page fetch",yes
+MG-018,18,Daihatsu Mira TR-XX Avanzato R (L502S),yearFrom,1995,https://cars.japanesecartrade.com/detail/daihatsu/mira-tr-xx/tr-xx-avanzato-r/126511,MED,Avanzato R trim released October 1995; the base L502S Mira chassis dates from 1994,yes
+MG-019,19,Eunos Roadster (NA6CE),aspiration,NA,https://www.automobile-catalog.com/car/1989/1640960/eunos_roadster.html,HIGH,,yes
+MG-019,19,Eunos Roadster (NA6CE),chassisCode,NA6CE,https://en.wikipedia.org/wiki/Mazda_MX-5_(NA),MED,"Standard JDM 1.6L Eunos Roadster chassis designation, matching this row's own displayName",yes
+MG-019,19,Eunos Roadster (NA6CE),dragCd,0.38,https://en.wikipedia.org/wiki/List_of_automobile_drag_coefficients,MED,"Cited for the 1989 Mazda Miata and corroborated on the separate MX-5 (NA) Wikipedia article; export-market figure, JDM Eunos Roadster shares the same body",yes
+MG-019,19,Eunos Roadster (NA6CE),engineCode,B6-ZE,https://www.automobile-catalog.com/car/1989/1640960/eunos_roadster.html,MED,,yes
+MG-019,19,Eunos Roadster (NA6CE),engineConfig,I4,https://www.automobile-catalog.com/car/1989/1640960/eunos_roadster.html,HIGH,,yes
+MG-019,19,Eunos Roadster (NA6CE),heightMm,1230,https://en.wikipedia.org/wiki/Mazda_MX-5_(NA),MED,Export-market NA Miata figure; JDM Eunos Roadster shares the same platform/body,yes
+MG-019,19,Eunos Roadster (NA6CE),powerRpm,6500,https://www.automobile-catalog.com/car/1989/1640960/eunos_roadster.html,MED,,yes
+MG-019,19,Eunos Roadster (NA6CE),quotedPowerPs,120,https://www.automobile-catalog.com/car/1989/1640960/eunos_roadster.html,MED,"Real JDM 1.6L B6-ZE spec (120PS/6500rpm, matching this row's own powerRpm); this row's existing stockPowerPs (130), displacementCc (1840) and curbWeightKg (1057) appear to be Forza's larger 1.84L NA8C reference car instead, per this row's own existing note about the Forza comparison. Flagging for maintainer review",yes
+MG-019,19,Eunos Roadster (NA6CE),stockTyre,185/60R14,https://en.wikipedia.org/wiki/Mazda_MX-5_(NA),LOW,Export-market Miata figure; JDM base grade may differ,yes
+MG-019,19,Eunos Roadster (NA6CE),styleBase,12,,SUGGESTION,"Iconic, clean roadster silhouette with pop-up headlights; handsome but not dramatically staged like a gullwing or kei sports car",yes
+MG-019,19,Eunos Roadster (NA6CE),torqueRpm,5500,https://www.automobile-catalog.com/car/1989/1640960/eunos_roadster.html,MED,,yes
+MG-019,19,Eunos Roadster (NA6CE),tyreCompound,touring,https://en.wikipedia.org/wiki/Mazda_MX-5_(NA),LOW,"Classification judgement; accessible sports-roadster class, consistent with the MR2 AW11's touring rating elsewhere in the file",yes
+MG-019,19,Eunos Roadster (NA6CE),wheelbaseMm,2265,https://en.wikipedia.org/wiki/Mazda_MX-5_(NA),MED,Export-market figure; see dragCd note,yes
+MG-019,19,Eunos Roadster (NA6CE),widthMm,1675,https://en.wikipedia.org/wiki/Mazda_MX-5_(NA),MED,Export-market figure; see dragCd note,yes
+MG-020,20,Honda CR-X SiR (EF8),quotedPowerPs,160,https://www.automobile-catalog.com/car/1991/1100630/honda_cr-x_sir.html,HIGH,Matches this row's existing stockPowerPs; below the 280PS ceiling so the advertised figure equals real output,yes
+MG-021,21,Honda Prelude Si VTEC (BB4),quotedPowerPs,200,https://www.automobile-catalog.com/car/1992/1108685/honda_prelude_si_vtec.html,HIGH,"Real JDM H22A Si VTEC spec is 200PS/6800rpm (matches this row's own powerRpm of 6800 and engineCode H22A); this row's existing stockPowerPs (162) and curbWeightKg (1302) appear to be Forza's different US-spec H23 reference car instead, per this row's own existing note. Flagging for maintainer review",yes
+MG-022,22,Nissan Silvia (S13),quotedPowerPs,205,https://www.auto-data.net/en/nissan-silvia-s13-2.0t-205hp-320,HIGH,"Real SR20DET spec is 205PS/6000rpm (matches this row's own engineCode SR20DET, powerRpm, torque and redline); this row's existing stockPowerPs (175) matches Forza's earlier CA18DET-powered reference car instead, per this row's own existing note. Flagging for maintainer review",yes
+MG-023,23,Toyota MR2 (AW11),quotedPowerPs,145,https://www.carfolio.com/toyota-mr2-supercharged-1600g-limited-17402,HIGH,"Real 4A-GZE JDM spec is 145PS/6400rpm (matches this row's own powerRpm), and this row's own existing note already calls 145PS 'ours'; the existing stockPowerPs cell (147) is Forza's close but slightly different figure. Minor discrepancy, flagging for awareness",yes
+MG-024,24,Mitsubishi Delica Star Wagon (P35W),aspiration,turbo,https://carused.jp/engine/mitsubishi-delica-starwagon,MED,Non-intercooled turbo-diesel,yes
+MG-024,24,Mitsubishi Delica Star Wagon (P35W),chassisCode,P35W,https://www.amayama.com/en/genuine-catalogs/epc/mitsubishi-japan/delica_star_wagon/p35w/hsnxt/engine/130,HIGH,Confirmed via genuine OEM parts catalogue; matches displayName,yes
+MG-024,24,Mitsubishi Delica Star Wagon (P35W),curbWeightKg,1890,https://carfromjapan.com/specifications/mitsubishi/delica-starwagon,LOW,"Y-P35W grade; other grades range 1750-1960kg by trim. Accessed via search aggregation, not a direct page fetch (carfromjapan blocks automated fetches)",yes
+MG-024,24,Mitsubishi Delica Star Wagon (P35W),displacementCc,2476,https://carused.jp/engine/mitsubishi-delica-starwagon,MED,,yes
+MG-024,24,Mitsubishi Delica Star Wagon (P35W),drivetrain,4WD,https://www.treadmagazine.com/features/dueling-mitsubishi-delicas/,MED,"Star Wagon predominantly sold as 4WD in JDM. Reported as '4WD' rather than the file's existing 'AWD' value because this is a selectable part-time 4x4 system, mechanically distinct from the full-time AWD kei cars (Acty, Vivio) already in the file; flagging the new vocabulary value",yes
+MG-024,24,Mitsubishi Delica Star Wagon (P35W),engineCode,4D56,https://carused.jp/engine/mitsubishi-delica-starwagon,MED,"Most common JDM Star Wagon powerplant, 2.5L turbo-diesel; a less common 4G64 2.4L petrol was also offered",yes
+MG-024,24,Mitsubishi Delica Star Wagon (P35W),heightMm,2090,https://carfromjapan.com/specifications/mitsubishi/delica-starwagon,LOW,"Accessed via search aggregation, not a direct page fetch; high-roof grades are taller",yes
+MG-024,24,Mitsubishi Delica Star Wagon (P35W),peakTorqueNm,196,https://carused.jp/engine/mitsubishi-delica-starwagon,LOW,20.0kgm,yes
+MG-024,24,Mitsubishi Delica Star Wagon (P35W),quotedPowerPs,85,https://carused.jp/engine/mitsubishi-delica-starwagon,LOW,"Same as stockPowerPs; light commercial diesel, not subject to the JDM performance-car advertising ceiling",yes
+MG-024,24,Mitsubishi Delica Star Wagon (P35W),stockPowerPs,85,https://carused.jp/engine/mitsubishi-delica-starwagon,LOW,"At 4200rpm per the source; aggregated spec listing, not independently corroborated this session",yes
+MG-024,24,Mitsubishi Delica Star Wagon (P35W),stockTyre,215SR15,https://carfromjapan.com/specifications/mitsubishi/delica-starwagon,LOW,Only the front tyre was given in the source,yes
+MG-024,24,Mitsubishi Delica Star Wagon (P35W),styleBase,7,,SUGGESTION,Charming boxy 4WD van face with round headlights and an available pop-top; utilitarian rather than striking,yes
+MG-024,24,Mitsubishi Delica Star Wagon (P35W),torqueRpm,2000,https://carused.jp/engine/mitsubishi-delica-starwagon,LOW,,yes
+MG-024,24,Mitsubishi Delica Star Wagon (P35W),tyreCompound,touring,,LOW,Classification judgement from the SR-rated OE tyre on a family 4WD MPV,yes
+MG-024,24,Mitsubishi Delica Star Wagon (P35W),wheelbaseMm,2240,https://carfromjapan.com/specifications/mitsubishi/delica-starwagon,LOW,"Accessed via search aggregation, not a direct page fetch",yes
+MG-024,24,Mitsubishi Delica Star Wagon (P35W),widthMm,1695,https://carfromjapan.com/specifications/mitsubishi/delica-starwagon,LOW,"Accessed via search aggregation, not a direct page fetch",yes
+MG-024,24,Mitsubishi Delica Star Wagon (P35W),yearFrom,1986,https://en.wikipedia.org/wiki/Mitsubishi_Delica,MED,P-series Star Wagon generation introduced 1986,yes
+MG-025,25,Mazda Familia GT-R (BG8Z),aspiration,turbo,https://www.goo-net-exchange.com/catalog/MAZDA__FAMILIA/2501268/,MED,"Accessed via search aggregation, not a direct page fetch (automobile-catalog and goo-net both blocked direct fetch this session)",yes
+MG-025,25,Mazda Familia GT-R (BG8Z),chassisCode,BG8Z,https://www.goo-net-exchange.com/catalog/MAZDA__FAMILIA/2501268/,MED,Matches displayName; accessed via search aggregation,yes
+MG-025,25,Mazda Familia GT-R (BG8Z),curbWeightKg,1210,https://www.goo-net-exchange.com/catalog/MAZDA__FAMILIA/2501268/,MED,Accessed via search aggregation,yes
+MG-025,25,Mazda Familia GT-R (BG8Z),displacementCc,1839,https://www.goo-net-exchange.com/catalog/MAZDA__FAMILIA/2501268/,MED,Accessed via search aggregation,yes
+MG-025,25,Mazda Familia GT-R (BG8Z),drivetrain,AWD,https://www.goo-net-exchange.com/catalog/MAZDA__FAMILIA/2501268/,MED,"Full-time AWD, WRC Group A homologation special",yes
+MG-025,25,Mazda Familia GT-R (BG8Z),engineCode,BPD,http://www.fordlaser.com/forum/viewtopic.php?t=44821,LOW,"1.8L DOHC turbo; the related GT-X model used the similarly-named BPT code and sources sometimes conflate the two, so treat with caution",yes
+MG-025,25,Mazda Familia GT-R (BG8Z),engineConfig,I4,https://www.goo-net-exchange.com/catalog/MAZDA__FAMILIA/2501268/,MED,Accessed via search aggregation,yes
+MG-025,25,Mazda Familia GT-R (BG8Z),heightMm,1390,https://www.goo-net-exchange.com/catalog/MAZDA__FAMILIA/2501268/,MED,Accessed via search aggregation,yes
+MG-025,25,Mazda Familia GT-R (BG8Z),peakTorqueNm,250,https://www.goo-net-exchange.com/catalog/MAZDA__FAMILIA/2501268/,MED,25.5kgm; accessed via search aggregation,yes
+MG-025,25,Mazda Familia GT-R (BG8Z),powerRpm,6000,https://www.automobile-catalog.com/car/1993/1644485/mazda_familia_gt-r.html,MED,Accessed via search aggregation,yes
+MG-025,25,Mazda Familia GT-R (BG8Z),quotedPowerPs,210,https://www.automobile-catalog.com/car/1993/1644485/mazda_familia_gt-r.html,MED,Same as stockPowerPs; below the 280PS ceiling,yes
+MG-025,25,Mazda Familia GT-R (BG8Z),stockPowerPs,210,https://www.automobile-catalog.com/car/1993/1644485/mazda_familia_gt-r.html,MED,Accessed via search aggregation; the earlier 1992 first-run GT-R was reportedly a lower-output ~185PS before this 210PS revision,yes
+MG-025,25,Mazda Familia GT-R (BG8Z),stockTyre,195/50R15,https://www.goo-net-exchange.com/catalog/MAZDA__FAMILIA/2501268/,MED,Accessed via search aggregation,yes
+MG-025,25,Mazda Familia GT-R (BG8Z),styleBase,12,,SUGGESTION,Aggressive flared arches and rally-bred stance befitting a Group A homologation special,yes
+MG-025,25,Mazda Familia GT-R (BG8Z),torqueRpm,4500,https://www.goo-net-exchange.com/catalog/MAZDA__FAMILIA/2501268/,MED,Accessed via search aggregation,yes
+MG-025,25,Mazda Familia GT-R (BG8Z),tyreCompound,performance,,LOW,Classification judgement; low-profile 50-series tyre on a rally-homologation road car,yes
+MG-025,25,Mazda Familia GT-R (BG8Z),wheelbaseMm,2450,https://www.goo-net-exchange.com/catalog/MAZDA__FAMILIA/2501268/,MED,Accessed via search aggregation,yes
+MG-025,25,Mazda Familia GT-R (BG8Z),widthMm,1690,https://www.goo-net-exchange.com/catalog/MAZDA__FAMILIA/2501268/,MED,Accessed via search aggregation,yes
+MG-025,25,Mazda Familia GT-R (BG8Z),yearFrom,1992,https://www.classic.com/veh/1992-mazda-familia-gt-r-bg8z301982-Z47jAOp/,MED,"GT-R introduced 1992, revised to the 210PS spec through 1993/94",yes
+MG-026,26,Honda Beat (PP1),quotedPowerPs,64,https://www.automobile-catalog.com/car/1991/1107140/honda_beat.html,HIGH,Matches this row's existing stockPowerPs; kei-class 64PS self-regulation cap,yes
+MG-027,27,Nissan Cefiro (A31),quotedPowerPs,205,https://www.carfolio.com/nissan-cefiro-2.0-24v-turbo-198968,HIGH,Matches this row's existing stockPowerPs; below the 280PS ceiling,yes
+MG-028,28,Suzuki Cappuccino (EA11R),aspiration,turbo,https://www.carfolio.com/suzuki-cappuccino-17743,HIGH,,yes
+MG-028,28,Suzuki Cappuccino (EA11R),chassisCode,EA11R,https://www.carfolio.com/suzuki-cappuccino-17743,HIGH,Matches displayName,yes
+MG-028,28,Suzuki Cappuccino (EA11R),curbWeightKg,679,https://www.carfolio.com/suzuki-cappuccino-17743,MED,A lightweight aluminium-panelled special edition is cited elsewhere at approximately 725kg,yes
+MG-028,28,Suzuki Cappuccino (EA11R),displacementCc,657,https://www.carfolio.com/suzuki-cappuccino-17743,HIGH,,yes
+MG-028,28,Suzuki Cappuccino (EA11R),drivetrain,FR,https://www.carfolio.com/suzuki-cappuccino-17743,MED,Drivetrain vocabulary is inconsistent in this file (both FR and RWD appear); chose FR to match nearby sports-car rows,yes
+MG-028,28,Suzuki Cappuccino (EA11R),engineCode,F6A,https://www.carfolio.com/suzuki-cappuccino-17743,HIGH,,yes
+MG-028,28,Suzuki Cappuccino (EA11R),engineConfig,I3,https://www.carfolio.com/suzuki-cappuccino-17743,HIGH,,yes
+MG-028,28,Suzuki Cappuccino (EA11R),heightMm,1185,https://www.carfolio.com/suzuki-cappuccino-17743,HIGH,,yes
+MG-028,28,Suzuki Cappuccino (EA11R),peakTorqueNm,85,https://www.carfolio.com/suzuki-cappuccino-17743,HIGH,8.7kgm,yes
+MG-028,28,Suzuki Cappuccino (EA11R),powerRpm,6500,https://www.carfolio.com/suzuki-cappuccino-17743,HIGH,,yes
+MG-028,28,Suzuki Cappuccino (EA11R),quotedPowerPs,64,https://www.carfolio.com/suzuki-cappuccino-17743,HIGH,Same as stockPowerPs; kei-class 64PS self-regulation cap,yes
+MG-028,28,Suzuki Cappuccino (EA11R),redlineRpm,8500,https://www.suzuki-cappuccino.com/phpbb3/,LOW,"Owner/forum-reported marked redline; a manufacturer figure was not found this session, and the actual limiter cut-in is reported higher still",yes
+MG-028,28,Suzuki Cappuccino (EA11R),stockPowerPs,64,https://www.carfolio.com/suzuki-cappuccino-17743,HIGH,Kei-class 64PS self-regulation cap,yes
+MG-028,28,Suzuki Cappuccino (EA11R),stockTyre,165/65R14,https://www.carfolio.com/suzuki-cappuccino-17743,HIGH,,yes
+MG-028,28,Suzuki Cappuccino (EA11R),styleBase,13,,SUGGESTION,"Clean targa-top kei sports car proportions, similar tier to the Beat",yes
+MG-028,28,Suzuki Cappuccino (EA11R),topSpeedKmh,150,https://www.carfolio.com/suzuki-cappuccino-17743,LOW,"Single source, not independently corroborated this session",yes
+MG-028,28,Suzuki Cappuccino (EA11R),torqueRpm,4000,https://www.carfolio.com/suzuki-cappuccino-17743,HIGH,,yes
+MG-028,28,Suzuki Cappuccino (EA11R),tyreCompound,touring,,LOW,"Classification judgement, matching the Honda Beat's touring rating for the same kei-roadster class elsewhere in the file",yes
+MG-028,28,Suzuki Cappuccino (EA11R),weightDistributionFront,50,https://www.carfolio.com/suzuki-cappuccino-17743,MED,,yes
+MG-028,28,Suzuki Cappuccino (EA11R),wheelbaseMm,2060,https://www.carfolio.com/suzuki-cappuccino-17743,HIGH,,yes
+MG-028,28,Suzuki Cappuccino (EA11R),widthMm,1395,https://www.carfolio.com/suzuki-cappuccino-17743,HIGH,,yes
+MG-028,28,Suzuki Cappuccino (EA11R),yearFrom,1991,https://www.jdmbuysell.com/learn/suzuki/cappuccino/ea11r/,HIGH,October/November 1991 launch,yes
+MG-029,29,Honda Civic SiR-II (EG6),quotedPowerPs,170,https://www.automobile-catalog.com/car/1992/1107290/honda_civic_sir_ii.html,HIGH,Matches this row's existing stockPowerPs; below the 280PS ceiling,yes
+MG-030,30,Nissan Safari (Y60),aspiration,NA,https://en.wikipedia.org/wiki/Nissan_TD_engine,HIGH,"Naturally aspirated TD42, distinct from the later turbo TD42T",yes
+MG-030,30,Nissan Safari (Y60),chassisCode,Y60,https://www.jdmbuysell.com/learn/nissan/safari/,MED,Matches displayName,yes
+MG-030,30,Nissan Safari (Y60),displacementCc,4169,https://en.wikipedia.org/wiki/Nissan_TD_engine,HIGH,,yes
+MG-030,30,Nissan Safari (Y60),drivetrain,4WD,https://www.jdmbuysell.com/learn/nissan/safari/,HIGH,"Reported as '4WD' rather than the file's existing 'AWD' value because this is a selectable part-time 4x4 system, mechanically distinct from the full-time AWD kei cars already in the file; flagging the new vocabulary value",yes
+MG-030,30,Nissan Safari (Y60),engineCode,TD42,https://en.wikipedia.org/wiki/Nissan_TD_engine,HIGH,"Naturally aspirated 4.2L inline-six diesel, the mainstay JDM engine across the model run",yes
+MG-030,30,Nissan Safari (Y60),engineConfig,I6,https://en.wikipedia.org/wiki/Nissan_TD_engine,HIGH,,yes
+MG-030,30,Nissan Safari (Y60),heightMm,1805,https://www.auto-data.net/en/nissan-safari-y60-facelift-1995-4.2-td-145hp-851,MED,Facelift-model figure; body dimensions are unlikely to differ materially across the Y60 run,yes
+MG-030,30,Nissan Safari (Y60),peakTorqueNm,260,https://carbuzz.com/nissan-inline-six-diesel-can-take-on-toyotas-toughest/,LOW,Early 'Silvertop' NA TD42 figure; rpm not stated in source,yes
+MG-030,30,Nissan Safari (Y60),stockPowerPs,114,https://carbuzz.com/nissan-inline-six-diesel-can-take-on-toyotas-toughest/,LOW,"Early 'Silvertop' NA TD42 figure; Wikipedia cites a wider 115-135PS range depending on market/year/measuring method, so this sits at the low end of that range rather than being an average",yes
+MG-030,30,Nissan Safari (Y60),stockTyre,215/80R16,https://autostw.com.au/blogs/news/nissan-safari-tyre-size-wheel-specs-guide,MED,Diesel-grade OE size; other grades ran 265/70R16 or 31x10.50R15 depending on trim/year,yes
+MG-030,30,Nissan Safari (Y60),styleBase,6,,SUGGESTION,"Boxy heavy-duty off-roader, utilitarian rather than styled for visual flair",yes
+MG-030,30,Nissan Safari (Y60),wheelbaseMm,2970,https://www.auto-data.net/en/nissan-safari-y60-facelift-1995-4.2-td-145hp-851,MED,,yes
+MG-030,30,Nissan Safari (Y60),widthMm,1930,https://www.auto-data.net/en/nissan-safari-y60-facelift-1995-4.2-td-145hp-851,MED,Facelift-model figure; see heightMm note,yes
+MG-030,30,Nissan Safari (Y60),yearFrom,1987,https://en.wikipedia.org/wiki/Nissan_TD_engine,MED,JDM Y60 Safari launched 1987 with the TD42,yes
+MG-031,31,Toyota Starlet Glanza V (EP91),aspiration,turbo,https://www.carfolio.com/toyota-starlet-glanza-v-185900,HIGH,Turbocharged with intercooler,yes
+MG-031,31,Toyota Starlet Glanza V (EP91),chassisCode,EP91,https://www.carfolio.com/toyota-starlet-glanza-v-185900,HIGH,Matches displayName,yes
+MG-031,31,Toyota Starlet Glanza V (EP91),engineCode,4E-FTE,https://www.carfolio.com/toyota-starlet-glanza-v-185900,HIGH,,yes
+MG-031,31,Toyota Starlet Glanza V (EP91),engineConfig,I4,https://www.carfolio.com/toyota-starlet-glanza-v-185900,HIGH,,yes
+MG-031,31,Toyota Starlet Glanza V (EP91),heightMm,1400,https://www.carfolio.com/toyota-starlet-glanza-v-185900,HIGH,,yes
+MG-031,31,Toyota Starlet Glanza V (EP91),powerRpm,6400,https://www.carfolio.com/toyota-starlet-glanza-v-185900,HIGH,,yes
+MG-031,31,Toyota Starlet Glanza V (EP91),quotedPowerPs,135,https://www.carfolio.com/toyota-starlet-glanza-v-185900,HIGH,Matches this row's existing stockPowerPs; below the 280PS ceiling,yes
+MG-031,31,Toyota Starlet Glanza V (EP91),stockTyre,185/55R14,https://www.carfolio.com/toyota-starlet-glanza-v-185900,HIGH,,yes
+MG-031,31,Toyota Starlet Glanza V (EP91),styleBase,9,,SUGGESTION,"Competent but fairly generic 90s Toyota hatchback shape, less distinctive than the CR-X or Civic SiR-II",yes
+MG-031,31,Toyota Starlet Glanza V (EP91),torqueRpm,4800,https://www.carfolio.com/toyota-starlet-glanza-v-185900,HIGH,,yes
+MG-031,31,Toyota Starlet Glanza V (EP91),tyreCompound,performance,,LOW,Classification judgement; turbo hot hatch on a low-profile 55-series tyre,yes
+MG-031,31,Toyota Starlet Glanza V (EP91),wheelbaseMm,2300,https://www.carfolio.com/toyota-starlet-glanza-v-185900,HIGH,,yes
+MG-031,31,Toyota Starlet Glanza V (EP91),widthMm,1625,https://www.carfolio.com/toyota-starlet-glanza-v-185900,HIGH,,yes
+MG-032,32,Datsun 510 Bluebird 1600 SSS,aspiration,NA,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/datsun_bluebird_1600sss_coupe.html,HIGH,,yes
+MG-032,32,Datsun 510 Bluebird 1600 SSS,chassisCode,KP510,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/datsun_bluebird_1600sss_coupe.html,MED,"Nissan Heritage's SSS Coupe page; the roster name doesn't specify body style. A four-door sedan variant (chassis P510) also existed, and Nissan's own Heritage page for that one gives a very different 130PS/6800rpm figure that reads as a rally/competition spec rather than the standard road car. Flagging the body-style choice for maintainer confirmation",yes
+MG-032,32,Datsun 510 Bluebird 1600 SSS,curbWeightKg,935,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/datsun_bluebird_1600sss_coupe.html,HIGH,,yes
+MG-032,32,Datsun 510 Bluebird 1600 SSS,displacementCc,1595,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/datsun_bluebird_1600sss_coupe.html,HIGH,,yes
+MG-032,32,Datsun 510 Bluebird 1600 SSS,drivetrain,FR,https://en.wikipedia.org/wiki/Datsun_510,HIGH,"Classic front-engine, rear-wheel-drive saloon/coupe layout",yes
+MG-032,32,Datsun 510 Bluebird 1600 SSS,engineCode,L16,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/datsun_bluebird_1600sss_coupe.html,HIGH,,yes
+MG-032,32,Datsun 510 Bluebird 1600 SSS,heightMm,1395,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/datsun_bluebird_1600sss_coupe.html,HIGH,,yes
+MG-032,32,Datsun 510 Bluebird 1600 SSS,peakTorqueNm,132,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/datsun_bluebird_1600sss_coupe.html,MED,13.5kgm,yes
+MG-032,32,Datsun 510 Bluebird 1600 SSS,powerRpm,6000,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/datsun_bluebird_1600sss_coupe.html,MED,,yes
+MG-032,32,Datsun 510 Bluebird 1600 SSS,quotedPowerPs,100,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/datsun_bluebird_1600sss_coupe.html,MED,Same gross rating as advertised; predates the JDM voluntary power-advertising ceiling by two decades,yes
+MG-032,32,Datsun 510 Bluebird 1600 SSS,stockPowerPs,100,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/datsun_bluebird_1600sss_coupe.html,MED,JIS gross rating (pre-net-standard era); other sources cite 92-115PS depending on market and carburettor spec,yes
+MG-032,32,Datsun 510 Bluebird 1600 SSS,stockTyre,5.60-13-4PR,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/datsun_bluebird_1600sss_coupe.html,HIGH,"Period bias-ply sizing, not a modern radial code; tyreCompound vocabulary (eco/touring/performance/sport) does not cleanly fit a bias-ply tyre so it is left blank",yes
+MG-032,32,Datsun 510 Bluebird 1600 SSS,styleBase,9,,SUGGESTION,"Handsome, historically significant three-box 60s saloon/coupe shape; simple rather than dramatic",yes
+MG-032,32,Datsun 510 Bluebird 1600 SSS,torqueRpm,4000,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/datsun_bluebird_1600sss_coupe.html,MED,,yes
+MG-032,32,Datsun 510 Bluebird 1600 SSS,wheelbaseMm,2420,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/datsun_bluebird_1600sss_coupe.html,HIGH,,yes
+MG-032,32,Datsun 510 Bluebird 1600 SSS,widthMm,1560,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/datsun_bluebird_1600sss_coupe.html,HIGH,,yes
+MG-032,32,Datsun 510 Bluebird 1600 SSS,yearFrom,1968,https://en.wikipedia.org/wiki/Datsun_510,MED,SSS trim introduced for the 1968 model year,yes
+MG-033,33,Toyota Land Cruiser 70 (LJ71),aspiration,turbo,https://www.carfolio.com/toyota-land-cruiser-ii-2.4-tubodiesel-sw-lj70-35156,MED,"2L-T turbo diesel; LJ71-specific figure not separately published, LJ70 sibling-chassis spec used as proxy, see other notes",yes
+MG-033,33,Toyota Land Cruiser 70 (LJ71),chassisCode,LJ71,https://www.roughtrax4x4.com/blog/land-cruiser-lj70-lj71-vehicle-specifications/,HIGH,Model designation itself,yes
+MG-033,33,Toyota Land Cruiser 70 (LJ71),curbWeightKg,1800,https://www.carfolio.com/toyota-land-cruiser-ii-2.4-tubodiesel-sw-lj70-35156,MED,"LJ70 SW proxy figure; LJ71-specific weight not found separately, could not confirm identity is a precise match",yes
+MG-033,33,Toyota Land Cruiser 70 (LJ71),displacementCc,2446,https://www.carfolio.com/toyota-land-cruiser-ii-2.4-tubodiesel-sw-lj70-35156,MED,LJ70 proxy (2L-T),yes
+MG-033,33,Toyota Land Cruiser 70 (LJ71),drivetrain,4WD,https://www.carfolio.com/toyota-land-cruiser-ii-2.4-tubodiesel-sw-lj70-35156,MED,"Existing file uses FF/FWD and FR/RWD; part-time 4WD fits neither, flagging as a third case",yes
+MG-033,33,Toyota Land Cruiser 70 (LJ71),engineCode,2L-T,https://www.roughtrax4x4.com/blog/land-cruiser-lj70-lj71-vehicle-specifications/,HIGH,2.4 turbo diesel per RoughTrax LJ70/LJ71 spec sheet,yes
+MG-033,33,Toyota Land Cruiser 70 (LJ71),engineConfig,I4,https://www.carfolio.com/toyota-land-cruiser-ii-2.4-tubodiesel-sw-lj70-35156,MED,LJ70 proxy,yes
+MG-033,33,Toyota Land Cruiser 70 (LJ71),heightMm,1880,https://www.carfolio.com/toyota-land-cruiser-ii-2.4-tubodiesel-sw-lj70-35156,MED,LJ70 proxy,yes
+MG-033,33,Toyota Land Cruiser 70 (LJ71),peakTorqueNm,215,https://www.carfolio.com/toyota-land-cruiser-ii-2.4-tubodiesel-sw-lj70-35156,MED,"At 2400rpm, LJ70 proxy; a Toyota J70/J73 spec table (automoli.com) gives a lower 188Nm for other production years of the same 2L-T engine",yes
+MG-033,33,Toyota Land Cruiser 70 (LJ71),powerRpm,3500,https://www.carfolio.com/toyota-land-cruiser-ii-2.4-tubodiesel-sw-lj70-35156,MED,LJ70 proxy,yes
+MG-033,33,Toyota Land Cruiser 70 (LJ71),quotedPowerPs,91,https://www.carfolio.com/toyota-land-cruiser-ii-2.4-tubodiesel-sw-lj70-35156,MED,"Diesel, not subject to the JDM petrol 280PS voluntary ceiling; quoted matches stock. LJ70 proxy",yes
+MG-033,33,Toyota Land Cruiser 70 (LJ71),stockPowerPs,91,https://www.carfolio.com/toyota-land-cruiser-ii-2.4-tubodiesel-sw-lj70-35156,MED,"LJ70 SW 2L-T turbo diesel spec used as proxy for LJ71, could not find an LJ71-specific figure",yes
+MG-033,33,Toyota Land Cruiser 70 (LJ71),styleBase,8,,SUGGESTION,"Boxy, purely functional off-roader; rugged but not visually striking",yes
+MG-033,33,Toyota Land Cruiser 70 (LJ71),topSpeedKmh,135,https://www.carfolio.com/toyota-land-cruiser-ii-2.4-tubodiesel-sw-lj70-35156,MED,LJ70 proxy,yes
+MG-033,33,Toyota Land Cruiser 70 (LJ71),torqueRpm,2400,https://www.carfolio.com/toyota-land-cruiser-ii-2.4-tubodiesel-sw-lj70-35156,MED,LJ70 proxy,yes
+MG-033,33,Toyota Land Cruiser 70 (LJ71),tyreCompound,touring,,LOW,"Classification judgement for a utility off-roader, not itself a cited figure",yes
+MG-033,33,Toyota Land Cruiser 70 (LJ71),wheelbaseMm,2310,https://www.carfolio.com/toyota-land-cruiser-ii-2.4-tubodiesel-sw-lj70-35156,MED,LJ70 proxy; corroborated by automoli.com's J70/J73 spec table for this generation,yes
+MG-033,33,Toyota Land Cruiser 70 (LJ71),widthMm,1690,https://www.carfolio.com/toyota-land-cruiser-ii-2.4-tubodiesel-sw-lj70-35156,MED,LJ70 proxy,yes
+MG-033,33,Toyota Land Cruiser 70 (LJ71),yearFrom,1988,https://www.roughtrax4x4.com/blog/land-cruiser-lj70-lj71-vehicle-specifications/,MED,"RoughTrax dates the combined LJ70/LJ71 import range 1988-1993, taken from a search-result summary; direct page fetch was blocked by the site (403)",yes
+MG-034,34,Autozam AZ-1 (PG6SA),aspiration,turbo,https://www.carfolio.com/mazda-az-1-10109,HIGH,,yes
+MG-034,34,Autozam AZ-1 (PG6SA),chassisCode,PG6SA,https://en.wikipedia.org/wiki/Autozam_AZ-1,HIGH,Already implied by displayName; confirmed independently,yes
+MG-034,34,Autozam AZ-1 (PG6SA),curbWeightKg,720,https://www.carfolio.com/mazda-az-1-10109,HIGH,Corroborated by Wikipedia,yes
+MG-034,34,Autozam AZ-1 (PG6SA),displacementCc,657,https://www.carfolio.com/mazda-az-1-10109,HIGH,,yes
+MG-034,34,Autozam AZ-1 (PG6SA),drivetrain,RR,https://en.wikipedia.org/wiki/Autozam_AZ-1,HIGH,"Rear mid-engine, RWD; existing file's FF/FR vocabulary does not cover mid/rear-engined cars, flagging as a third case rather than forcing it into FR",yes
+MG-034,34,Autozam AZ-1 (PG6SA),engineCode,F6A,https://www.carfolio.com/mazda-az-1-10109,HIGH,,yes
+MG-034,34,Autozam AZ-1 (PG6SA),engineConfig,I3,https://www.carfolio.com/mazda-az-1-10109,HIGH,DOHC 12-valve turbo I3,yes
+MG-034,34,Autozam AZ-1 (PG6SA),heightMm,1150,https://www.carfolio.com/mazda-az-1-10109,HIGH,Corroborated by Wikipedia,yes
+MG-034,34,Autozam AZ-1 (PG6SA),peakTorqueNm,85,https://www.carfolio.com/mazda-az-1-10109,HIGH,At 4000rpm,yes
+MG-034,34,Autozam AZ-1 (PG6SA),powerRpm,6500,https://www.carfolio.com/mazda-az-1-10109,HIGH,,yes
+MG-034,34,Autozam AZ-1 (PG6SA),quotedPowerPs,64,https://en.wikipedia.org/wiki/Autozam_AZ-1,HIGH,Kei-class 64PS self-regulation cap; quoted equals stock,yes
+MG-034,34,Autozam AZ-1 (PG6SA),stockPowerPs,64,https://www.carfolio.com/mazda-az-1-10109,HIGH,,yes
+MG-034,34,Autozam AZ-1 (PG6SA),stockTyre,155/65R13,https://www.carfolio.com/mazda-az-1-10109,HIGH,,yes
+MG-034,34,Autozam AZ-1 (PG6SA),styleBase,17,,SUGGESTION,"Gull-wing doors on a kei car, a genuinely unique mid-engine sports-car silhouette; matches the roster's Legend scope",yes
+MG-034,34,Autozam AZ-1 (PG6SA),topSpeedKmh,140,https://en.wikipedia.org/wiki/Autozam_AZ-1,HIGH,Electronically governed under the kei jidosha voluntary top-speed agreement; an ungoverned theoretical figure of approximately 177km/h is also cited but is too imprecise to report as the value,yes
+MG-034,34,Autozam AZ-1 (PG6SA),torqueRpm,4000,https://www.carfolio.com/mazda-az-1-10109,HIGH,,yes
+MG-034,34,Autozam AZ-1 (PG6SA),tyreCompound,performance,,LOW,"Classification judgement for a mid-engine kei sports car, not itself a cited figure",yes
+MG-034,34,Autozam AZ-1 (PG6SA),weightDistributionFront,44,https://www.carfolio.com/mazda-az-1-10109,MED,,yes
+MG-034,34,Autozam AZ-1 (PG6SA),wheelbaseMm,2235,https://www.carfolio.com/mazda-az-1-10109,HIGH,,yes
+MG-034,34,Autozam AZ-1 (PG6SA),widthMm,1395,https://www.carfolio.com/mazda-az-1-10109,HIGH,,yes
+MG-034,34,Autozam AZ-1 (PG6SA),yearFrom,1992,https://www.automobile-catalog.com/car/1992/1641695/autozam_az-1.html,MED,Launched October 1992 per search-result summary,yes
+MG-035,35,Nissan Laurel Club S (C33),drivetrain,FR,https://www.auto-data.net/en/nissan-laurel-e-hc33-2.5-24v-club-s-190hp-392,MED,"All C33-generation Laurel grades were RWD regardless of engine choice, safe to report despite trim ambiguity (see final summary)",yes
+MG-036,36,Nissan 180SX (RPS13),quotedPowerPs,205,https://cars.japanesecartrade.com/detail/nissan/180sx/type-ii/158528,MED,"JDM Type II SR20DET brochure figure at 6000rpm, corroborated by carfromjapan.com. NOTE: the existing stockPowerPs cell (157) and curbWeightKg (1322) in this row are already flagged by the row's own notes as Forza's US-market 240SX/KA24DE data, not the JDM 180SX; this quotedPowerPs value is the genuine JDM SR20DET brochure figure and is HIGHER than the existing (wrong) stockPowerPs cell, an internal inconsistency left for the maintainer to resolve, not touched here",yes
+MG-038,38,VW Golf GTI 16V (Mk2),aspiration,NA,https://en.wikipedia.org/wiki/Volkswagen_Golf_Mk2,HIGH,,yes
+MG-038,38,VW Golf GTI 16V (Mk2),chassisCode,19E,https://en.wikipedia.org/wiki/Volkswagen_Golf_Mk2,MED,"Officially Typ 19E until 1991, then Typ 1G",yes
+MG-038,38,VW Golf GTI 16V (Mk2),curbWeightKg,960,https://www.encycarpedia.com/us/volkswagen/86-golf-gti-16v-usa-hatch,MED,DIN kerb weight; EU running-order weight cited up to 1035-1130kg elsewhere depending on source,yes
+MG-038,38,VW Golf GTI 16V (Mk2),displacementCc,1781,https://en.wikipedia.org/wiki/Volkswagen_Golf_Mk2,HIGH,,yes
+MG-038,38,VW Golf GTI 16V (Mk2),dragCd,0.34,https://www.classicandsportscar.com/features/buyers-guide-volkswagen-golf-gti-mk2,HIGH,Mk2 improvement over the Mk1's 0.42,yes
+MG-038,38,VW Golf GTI 16V (Mk2),drivetrain,FWD,https://en.wikipedia.org/wiki/Volkswagen_Golf_Mk2,HIGH,Existing file's FF/FWD vocabulary; using FWD,yes
+MG-038,38,VW Golf GTI 16V (Mk2),engineCode,KR,https://en.wikipedia.org/wiki/Volkswagen_Golf_Mk2,HIGH,EA827 family 1.8 16V,yes
+MG-038,38,VW Golf GTI 16V (Mk2),engineConfig,I4,https://en.wikipedia.org/wiki/Volkswagen_Golf_Mk2,HIGH,,yes
+MG-038,38,VW Golf GTI 16V (Mk2),heightMm,1390,https://www.ultimatespecs.com/car-specs/Volkswagen/125870/Volkswagen-Golf-2-GTI-16v-139HP.html,MED,,yes
+MG-038,38,VW Golf GTI 16V (Mk2),peakTorqueNm,168,https://en.wikipedia.org/wiki/Volkswagen_Golf_Mk2,HIGH,At 4600rpm,yes
+MG-038,38,VW Golf GTI 16V (Mk2),powerRpm,6100,https://en.wikipedia.org/wiki/Volkswagen_Golf_Mk2,HIGH,,yes
+MG-038,38,VW Golf GTI 16V (Mk2),quotedPowerPs,139,https://en.wikipedia.org/wiki/Volkswagen_Golf_Mk2,HIGH,"European car, not subject to the JDM 280PS ceiling; quoted equals stock. Export-market figure per field notes (JDM-import Golf spec not separately found)",yes
+MG-038,38,VW Golf GTI 16V (Mk2),stockPowerPs,139,https://en.wikipedia.org/wiki/Volkswagen_Golf_Mk2,HIGH,Export-market figure; see quotedPowerPs note,yes
+MG-038,38,VW Golf GTI 16V (Mk2),stockTyre,185/60R14,https://www.ultimatespecs.com/car-specs/Volkswagen/125870/Volkswagen-Golf-2-GTI-16v-139HP.html,HIGH,,yes
+MG-038,38,VW Golf GTI 16V (Mk2),styleBase,11,,SUGGESTION,"Clean classic 80s hot-hatch design, moderately distinctive but understated",yes
+MG-038,38,VW Golf GTI 16V (Mk2),topSpeedKmh,216,https://www.classicandsportscar.com/features/buyers-guide-volkswagen-golf-gti-mk2,MED,134mph period claim from a classic-car buyer's guide; dedicated spec-aggregator databases (ultimatespecs and similar) instead cite a slightly lower 206-208km/h,yes
+MG-038,38,VW Golf GTI 16V (Mk2),torqueRpm,4600,https://en.wikipedia.org/wiki/Volkswagen_Golf_Mk2,HIGH,,yes
+MG-038,38,VW Golf GTI 16V (Mk2),tyreCompound,sport,,LOW,"Classification judgement for a hot hatch, not itself a cited figure",yes
+MG-038,38,VW Golf GTI 16V (Mk2),wheelbaseMm,2470,https://en.wikipedia.org/wiki/Volkswagen_Golf_Mk2,HIGH,Corroborated by ultimatespecs (247cm),yes
+MG-038,38,VW Golf GTI 16V (Mk2),widthMm,1680,https://www.ultimatespecs.com/car-specs/Volkswagen/125870/Volkswagen-Golf-2-GTI-16v-139HP.html,MED,Wikipedia gives a wider 1665-1700mm range depending on bumper/mirror spec,yes
+MG-038,38,VW Golf GTI 16V (Mk2),yearFrom,1986,https://en.wikipedia.org/wiki/Volkswagen_Golf_Mk2,HIGH,"European launch (1987 for North America); export-market car, JDM import timing not separately confirmed",yes
+MG-039,39,Daihatsu Copen (L880K),aspiration,turbo,https://www.carfolio.com/daihatsu-copen-93269,HIGH,,yes
+MG-039,39,Daihatsu Copen (L880K),chassisCode,L880K,https://www.carfolio.com/daihatsu-copen-93269,MED,Already implied by displayName; confirmed as the model code used throughout Japanese spec databases,yes
+MG-039,39,Daihatsu Copen (L880K),curbWeightKg,800,https://www.carfolio.com/daihatsu-copen-93269,MED,Early 2002 spec; later years/trims cited around 830-870kg elsewhere,yes
+MG-039,39,Daihatsu Copen (L880K),displacementCc,659,https://www.carfolio.com/daihatsu-copen-93269,HIGH,,yes
+MG-039,39,Daihatsu Copen (L880K),drivetrain,FWD,https://www.carfolio.com/daihatsu-copen-93269,HIGH,Existing file's FF/FWD vocabulary; using FWD,yes
+MG-039,39,Daihatsu Copen (L880K),engineCode,JB-DET,https://www.carfolio.com/daihatsu-copen-93269,HIGH,,yes
+MG-039,39,Daihatsu Copen (L880K),engineConfig,I3,https://www.carfolio.com/daihatsu-copen-93269,MED,JB-series kei engine family is inline-3,"no: implausible, the Daihatsu JB 659cc DOHC 16v is an inline-4"
+MG-039,39,Daihatsu Copen (L880K),heightMm,1260,https://www.carfolio.com/daihatsu-copen-93269,MED,Other sources cite 1245mm; minor variance across model years/roof position,yes
+MG-039,39,Daihatsu Copen (L880K),peakTorqueNm,108,https://www.carfolio.com/daihatsu-copen-93269,HIGH,At 2800rpm,yes
+MG-039,39,Daihatsu Copen (L880K),powerRpm,6800,https://www.carfolio.com/daihatsu-copen-93269,MED,,yes
+MG-039,39,Daihatsu Copen (L880K),quotedPowerPs,64,https://www.carfolio.com/daihatsu-copen-93269,HIGH,Kei-class 64PS cap; quoted equals stock,yes
+MG-039,39,Daihatsu Copen (L880K),stockPowerPs,64,https://www.carfolio.com/daihatsu-copen-93269,HIGH,,yes
+MG-039,39,Daihatsu Copen (L880K),styleBase,13,,SUGGESTION,Cute characterful kei roadster with a distinctive retractable hardtop,yes
+MG-039,39,Daihatsu Copen (L880K),torqueRpm,2800,https://www.carfolio.com/daihatsu-copen-93269,HIGH,,yes
+MG-039,39,Daihatsu Copen (L880K),tyreCompound,touring,,LOW,"Classification judgement for a small roadster, not itself a cited figure",yes
+MG-039,39,Daihatsu Copen (L880K),wheelbaseMm,2230,https://www.carfolio.com/daihatsu-copen-93269,HIGH,,yes
+MG-039,39,Daihatsu Copen (L880K),widthMm,1475,https://www.carfolio.com/daihatsu-copen-93269,HIGH,,yes
+MG-039,39,Daihatsu Copen (L880K),yearFrom,2002,https://www.carfolio.com/daihatsu-copen-93269,HIGH,L880K launched June 2002 in Japan,yes
+MG-040,40,Mazda Savanna RX-7 (FC3S),quotedPowerPs,185,https://www.jdmbuysell.com/learn/mazda/rx-7/fc3s/,MED,"JDM GT-X 13B-T brochure figure, used before the 1989 twin-scroll update raised output to 205PS. NOTE: the existing stockPowerPs cell (203) and curbWeightKg (1352) in this row are already flagged by the row's own notes as Forza's later Turbo II spec rather than this car's true 185PS/1230kg JDM figure; reported here for the maintainer's attention, stockPowerPs itself not touched",yes
+MG-041,41,Toyota Chaser Tourer V (JZX90),quotedPowerPs,280,https://carfromjapan.com/specifications/toyota/chaser/581791c72afaa2c4b28754ab,MED,"Official brochure figure at the JDM 280PS voluntary ceiling, matching the existing stockPowerPs cell and this row's existing powerRpm/torqueRpm/peakTorqueNm (280PS/6200rpm, 362.8Nm/4800rpm). Real dyno output is widely reported by enthusiasts to exceed this, but no firm published figure was found",yes
+MG-043,43,Eunos Cosmo 20B Type S (JC),aspiration,twin-turbo,https://www.theautopian.com/the-cosmo-was-so-advanced-it-was-the-only-mazda-ever-to-get-a-triple-rotor-engine-holy-grails/,HIGH,,yes
+MG-043,43,Eunos Cosmo 20B Type S (JC),chassisCode,JC,https://www.nextage.jp/carcatalog/eunos/eunos_cosmo/e-jcese/3000251/,MED,Catalogue listing uses the E-JCESE chassis prefix,yes
+MG-043,43,Eunos Cosmo 20B Type S (JC),curbWeightKg,1600,https://www.carfolio.com/mazda-eunos-cosmo-9900,MED,20B Type S figure; Wikipedia cites a broader 1490-1640kg range across all Cosmo grades,yes
+MG-043,43,Eunos Cosmo 20B Type S (JC),displacementCc,1962,https://www.automobile-catalog.com/car/1991/1653665/eunos_cosmo_20b_type_s.html,MED,"Nominal 3x654cc rotary swept volume per JDM convention, matching this roster's existing rotary-2 RX-7 FC3S entry's convention. A separate database (carfolio) lists a doubled 3924cc using an alternate rotary-equivalence convention; not used here for internal consistency",yes
+MG-043,43,Eunos Cosmo 20B Type S (JC),drivetrain,FR,https://www.carfolio.com/mazda-eunos-cosmo-9900,HIGH,,yes
+MG-043,43,Eunos Cosmo 20B Type S (JC),engineCode,20B-REW,https://www.carfolio.com/mazda-eunos-cosmo-9900,MED,Full designation for the twin-turbo three-rotor; some sources abbreviate to just 20B,yes
+MG-043,43,Eunos Cosmo 20B Type S (JC),engineConfig,rotary-3,,MED,Three-rotor engine; the roster's existing vocabulary only defines rotary-2 (for 2-rotor engines like the FC3S 13B). A new rotary-3 value is needed for this car and flagged per the field notes,yes
+MG-043,43,Eunos Cosmo 20B Type S (JC),heightMm,1305,https://www.carfolio.com/mazda-eunos-cosmo-9900,HIGH,Corroborated by Wikipedia,yes
+MG-043,43,Eunos Cosmo 20B Type S (JC),peakTorqueNm,403,https://en.wikipedia.org/wiki/Eunos_Cosmo,MED,Official JIS figure per Wikipedia; carfolio's close 392Nm figure is not identical,yes
+MG-043,43,Eunos Cosmo 20B Type S (JC),quotedPowerPs,280,https://www.theautopian.com/the-cosmo-was-so-advanced-it-was-the-only-mazda-ever-to-get-a-triple-rotor-engine-holy-grails/,MED,Official/advertised figure under the JDM voluntary ceiling,yes
+MG-043,43,Eunos Cosmo 20B Type S (JC),stockPowerPs,300,https://www.carfolio.com/mazda-eunos-cosmo-9900,MED,"Carfolio's own spec-sheet figure, differing from the 280PS advertised ceiling; theautopian.com separately corroborates a real/estimated output of around 300PS versus the 280PS official figure",yes
+MG-043,43,Eunos Cosmo 20B Type S (JC),stockTyre,215/60R15,https://www.carfolio.com/mazda-eunos-cosmo-9900,HIGH,,yes
+MG-043,43,Eunos Cosmo 20B Type S (JC),styleBase,16,,SUGGESTION,"Large, low, dramatically styled flagship GT coupe, one of the most striking Japanese cars of its era",yes
+MG-043,43,Eunos Cosmo 20B Type S (JC),topSpeedKmh,250,https://www.carfolio.com/mazda-eunos-cosmo-9900,MED,Wikipedia separately cites 255km/h unrestricted and notes the JDM production car was electronically speed-limited to 180km/h,yes
+MG-043,43,Eunos Cosmo 20B Type S (JC),tyreCompound,sport,,LOW,"Classification judgement for a high-power luxury GT flagship, not itself a cited figure",yes
+MG-043,43,Eunos Cosmo 20B Type S (JC),wheelbaseMm,2750,https://www.carfolio.com/mazda-eunos-cosmo-9900,HIGH,Corroborated by Wikipedia,yes
+MG-043,43,Eunos Cosmo 20B Type S (JC),widthMm,1795,https://www.carfolio.com/mazda-eunos-cosmo-9900,HIGH,Corroborated by Wikipedia,yes
+MG-043,43,Eunos Cosmo 20B Type S (JC),yearFrom,1990,https://www.automobile-catalog.com/car/1991/1653665/eunos_cosmo_20b_type_s.html,MED,20B Type S introduced March 1990 per search-result summary,yes
+MG-044,44,Nissan Pulsar GTI-R (RNN14),aspiration,turbo,https://www.canadagtir.com/forum/misc-tech/nissan-pulsar-gti-r-specs-specifications,HIGH,,yes
+MG-044,44,Nissan Pulsar GTI-R (RNN14),chassisCode,RNN14,https://www.canadagtir.com/forum/misc-tech/nissan-pulsar-gti-r-specs-specifications,MED,Already implied by displayName; confirmed independently,yes
+MG-044,44,Nissan Pulsar GTI-R (RNN14),dragCd,0.39,https://www.canadagtir.com/forum/misc-tech/nissan-pulsar-gti-r-specs-specifications,MED,,yes
+MG-044,44,Nissan Pulsar GTI-R (RNN14),engineCode,SR20DET,https://www.canadagtir.com/forum/misc-tech/nissan-pulsar-gti-r-specs-specifications,HIGH,,yes
+MG-044,44,Nissan Pulsar GTI-R (RNN14),engineConfig,I4,https://www.canadagtir.com/forum/misc-tech/nissan-pulsar-gti-r-specs-specifications,HIGH,,yes
+MG-044,44,Nissan Pulsar GTI-R (RNN14),heightMm,1410,https://www.canadagtir.com/forum/misc-tech/nissan-pulsar-gti-r-specs-specifications,MED,auto-data.net gives a close 1400mm,yes
+MG-044,44,Nissan Pulsar GTI-R (RNN14),powerRpm,6000,https://www.auto-data.net/en/nissan-pulsar-n14-2.0-i-16v-gti-r-3-dr-230hp-689,MED,A separate spec sheet (canadagtir.com) gives 6400rpm alongside a slightly different 227PS figure,yes
+MG-044,44,Nissan Pulsar GTI-R (RNN14),quotedPowerPs,230,https://www.auto-data.net/en/nissan-pulsar-n14-2.0-i-16v-gti-r-3-dr-230hp-689,MED,"Matches existing stockPowerPs cell; below the JDM 280PS ceiling, so quoted equals real output",yes
+MG-044,44,Nissan Pulsar GTI-R (RNN14),stockTyre,195/55R14,https://www.canadagtir.com/forum/misc-tech/nissan-pulsar-gti-r-specs-specifications,MED,,yes
+MG-044,44,Nissan Pulsar GTI-R (RNN14),styleBase,10,,SUGGESTION,"Boxy homologation-special hatchback with a subtle body kit, purposeful but not visually dramatic",yes
+MG-044,44,Nissan Pulsar GTI-R (RNN14),torqueRpm,3600,https://www.auto-data.net/en/nissan-pulsar-n14-2.0-i-16v-gti-r-3-dr-230hp-689,MED,A separate spec sheet (canadagtir.com) gives 4800rpm alongside a slightly different torque figure,yes
+MG-044,44,Nissan Pulsar GTI-R (RNN14),tyreCompound,performance,,LOW,"Classification judgement for a rally homologation special, not itself a cited figure",yes
+MG-044,44,Nissan Pulsar GTI-R (RNN14),wheelbaseMm,2430,https://www.canadagtir.com/forum/misc-tech/nissan-pulsar-gti-r-specs-specifications,HIGH,Corroborated by auto-data.net,yes
+MG-044,44,Nissan Pulsar GTI-R (RNN14),widthMm,1690,https://www.canadagtir.com/forum/misc-tech/nissan-pulsar-gti-r-specs-specifications,HIGH,Corroborated by auto-data.net,yes
+MG-045,45,Subaru Alcyone SVX Version L (CXD),aspiration,NA,https://www.carfolio.com/subaru-alcyone-svx-version-l-197747,HIGH,,yes
+MG-045,45,Subaru Alcyone SVX Version L (CXD),curbWeightKg,1620,https://www.carfolio.com/subaru-alcyone-svx-version-l-197747,HIGH,,yes
+MG-045,45,Subaru Alcyone SVX Version L (CXD),displacementCc,3319,https://www.carfolio.com/subaru-alcyone-svx-version-l-197747,HIGH,,yes
+MG-045,45,Subaru Alcyone SVX Version L (CXD),dragCd,0.29,https://www.carfolio.com/subaru-alcyone-svx-version-l-197747,HIGH,,yes
+MG-045,45,Subaru Alcyone SVX Version L (CXD),drivetrain,AWD,https://en.wikipedia.org/wiki/Subaru_Alcyone_SVX,HIGH,VTD AWD with a mechanical 36/64 nominal split,yes
+MG-045,45,Subaru Alcyone SVX Version L (CXD),engineCode,EG33,https://www.carfolio.com/subaru-alcyone-svx-version-l-197747,HIGH,,yes
+MG-045,45,Subaru Alcyone SVX Version L (CXD),engineConfig,flat-6,https://www.carfolio.com/subaru-alcyone-svx-version-l-197747,HIGH,Matches existing vocabulary,yes
+MG-045,45,Subaru Alcyone SVX Version L (CXD),heightMm,1300,https://www.carfolio.com/subaru-alcyone-svx-version-l-197747,HIGH,,yes
+MG-045,45,Subaru Alcyone SVX Version L (CXD),peakTorqueNm,309,https://www.carfolio.com/subaru-alcyone-svx-version-l-197747,HIGH,At 4800rpm,yes
+MG-045,45,Subaru Alcyone SVX Version L (CXD),powerRpm,6000,https://www.carfolio.com/subaru-alcyone-svx-version-l-197747,HIGH,,yes
+MG-045,45,Subaru Alcyone SVX Version L (CXD),quotedPowerPs,240,https://www.carfolio.com/subaru-alcyone-svx-version-l-197747,HIGH,Matches stock; not subject to the JDM 280PS ceiling,yes
+MG-045,45,Subaru Alcyone SVX Version L (CXD),stockPowerPs,240,https://www.carfolio.com/subaru-alcyone-svx-version-l-197747,HIGH,,yes
+MG-045,45,Subaru Alcyone SVX Version L (CXD),stockTyre,225/50R16,https://www.carfolio.com/subaru-alcyone-svx-version-l-197747,HIGH,,yes
+MG-045,45,Subaru Alcyone SVX Version L (CXD),styleBase,17,,SUGGESTION,"Distinctive glass-canopy window-in-window design, one of the most unique silhouettes of its era",yes
+MG-045,45,Subaru Alcyone SVX Version L (CXD),topSpeedKmh,248,https://en.wikipedia.org/wiki/Subaru_Alcyone_SVX,MED,1992-93 pre-governor figure; a 1994+ electronic speed governor dropped later cars to 230km/h,yes
+MG-045,45,Subaru Alcyone SVX Version L (CXD),torqueRpm,4800,https://www.carfolio.com/subaru-alcyone-svx-version-l-197747,HIGH,,yes
+MG-045,45,Subaru Alcyone SVX Version L (CXD),tyreCompound,touring,,LOW,"Classification judgement for a luxury grand tourer, not itself a cited figure",yes
+MG-045,45,Subaru Alcyone SVX Version L (CXD),wheelbaseMm,2610,https://www.carfolio.com/subaru-alcyone-svx-version-l-197747,HIGH,,yes
+MG-045,45,Subaru Alcyone SVX Version L (CXD),widthMm,1770,https://www.carfolio.com/subaru-alcyone-svx-version-l-197747,HIGH,,yes
+MG-045,45,Subaru Alcyone SVX Version L (CXD),yearFrom,1991,https://www.automobile-catalog.com/car/1991/3237575/subaru_alcyone_svx_version_e.html,MED,"Version E launched September 1991; Version L presumed same generation launch, not separately confirmed",yes
+MG-046,46,Mitsubishi Starion GSR-VR (A187A),aspiration,turbo,https://www.tc-v.com/specifications/mitsubishi/starion/gsr-vr_at_2.6/15764/,HIGH,,yes
+MG-046,46,Mitsubishi Starion GSR-VR (A187A),chassisCode,A187A,https://www.tc-v.com/specifications/mitsubishi/starion/gsr-vr_at_2.6/15764/,HIGH,Confirmed as E-A187A,yes
+MG-046,46,Mitsubishi Starion GSR-VR (A187A),curbWeightKg,1340,https://www.tc-v.com/specifications/mitsubishi/starion/gsr-vr_at_2.6/15764/,HIGH,Corroborated by Wikipedia's widebody figure,yes
+MG-046,46,Mitsubishi Starion GSR-VR (A187A),displacementCc,2555,https://www.tc-v.com/specifications/mitsubishi/starion/gsr-vr_at_2.6/15764/,HIGH,,yes
+MG-046,46,Mitsubishi Starion GSR-VR (A187A),dragCd,0.32,https://en.wikipedia.org/wiki/Mitsubishi_Starion,LOW,"General Starion figure from Wikipedia, not confirmed specific to the GSR-VR widebody variant; no better source found",yes
+MG-046,46,Mitsubishi Starion GSR-VR (A187A),drivetrain,FR,https://www.tc-v.com/specifications/mitsubishi/starion/gsr-vr_at_2.6/15764/,HIGH,,yes
+MG-046,46,Mitsubishi Starion GSR-VR (A187A),engineCode,G54B,https://www.tc-v.com/specifications/mitsubishi/starion/gsr-vr_at_2.6/15764/,HIGH,Corroborated by auto-data.net,yes
+MG-046,46,Mitsubishi Starion GSR-VR (A187A),engineConfig,I4,https://www.tc-v.com/specifications/mitsubishi/starion/gsr-vr_at_2.6/15764/,HIGH,,yes
+MG-046,46,Mitsubishi Starion GSR-VR (A187A),heightMm,1320,https://www.tc-v.com/specifications/mitsubishi/starion/gsr-vr_at_2.6/15764/,MED,Wikipedia cites a close 1275-1315mm depending on model year,yes
+MG-046,46,Mitsubishi Starion GSR-VR (A187A),peakTorqueNm,314,https://www.tc-v.com/specifications/mitsubishi/starion/gsr-vr_at_2.6/15764/,HIGH,32.0kgm at 3000rpm,yes
+MG-046,46,Mitsubishi Starion GSR-VR (A187A),powerRpm,5000,https://www.tc-v.com/specifications/mitsubishi/starion/gsr-vr_at_2.6/15764/,HIGH,,yes
+MG-046,46,Mitsubishi Starion GSR-VR (A187A),quotedPowerPs,175,https://www.tc-v.com/specifications/mitsubishi/starion/gsr-vr_at_2.6/15764/,HIGH,"Corroborated by japanesecartrade.com and Wikipedia; matches stock, below the JDM 280PS ceiling. One auto-data.net listing for this same chassis gives an outlying 155PS that is not corroborated elsewhere and was not used",yes
+MG-046,46,Mitsubishi Starion GSR-VR (A187A),stockPowerPs,175,https://www.tc-v.com/specifications/mitsubishi/starion/gsr-vr_at_2.6/15764/,HIGH,,yes
+MG-046,46,Mitsubishi Starion GSR-VR (A187A),styleBase,14,,SUGGESTION,"Aggressive flared wide-body wedge styling, striking for its era",yes
+MG-046,46,Mitsubishi Starion GSR-VR (A187A),torqueRpm,3000,https://www.tc-v.com/specifications/mitsubishi/starion/gsr-vr_at_2.6/15764/,HIGH,,yes
+MG-046,46,Mitsubishi Starion GSR-VR (A187A),tyreCompound,performance,,LOW,"Classification judgement for a turbo sports coupe, not itself a cited figure",yes
+MG-046,46,Mitsubishi Starion GSR-VR (A187A),wheelbaseMm,2435,https://www.tc-v.com/specifications/mitsubishi/starion/gsr-vr_at_2.6/15764/,HIGH,Corroborated by Wikipedia,yes
+MG-046,46,Mitsubishi Starion GSR-VR (A187A),widthMm,1745,https://www.tc-v.com/specifications/mitsubishi/starion/gsr-vr_at_2.6/15764/,HIGH,Corroborated by Wikipedia's widebody figure,yes
+MG-046,46,Mitsubishi Starion GSR-VR (A187A),yearFrom,1987,https://en.wikipedia.org/wiki/Mitsubishi_Starion,MED,GSR-VR widebody produced 1987-1989 per Wikipedia; the detailed spec sheet used for most other values above is dated to a 1988 example,yes
+MG-047,47,1965 Mini Cooper S (Mk1),aspiration,NA,https://www.automobile-catalog.com/car/1965/256205/austin_cooper_s.html,MED,From search-result summary; direct page fetch was blocked by the site (402),yes
+MG-047,47,1965 Mini Cooper S (Mk1),curbWeightKg,650,https://www.automobile-catalog.com/car/1965/256205/austin_cooper_s.html,MED,From search-result summary; direct page fetch was blocked by the site (402),yes
+MG-047,47,1965 Mini Cooper S (Mk1),displacementCc,1275,https://www.automobile-catalog.com/car/1965/256205/austin_cooper_s.html,MED,From search-result summary,yes
+MG-047,47,1965 Mini Cooper S (Mk1),drivetrain,FWD,https://en.wikipedia.org/wiki/Mini,HIGH,Existing file's FF/FWD vocabulary; using FWD,yes
+MG-047,47,1965 Mini Cooper S (Mk1),engineConfig,I4,https://www.automobile-catalog.com/car/1965/256205/austin_cooper_s.html,MED,"A-Series inline-4, from search-result summary",yes
+MG-047,47,1965 Mini Cooper S (Mk1),heightMm,1346,https://en.wikipedia.org/wiki/Mini,MED,"General Mk1 saloon figure, not confirmed Cooper S specific",yes
+MG-047,47,1965 Mini Cooper S (Mk1),peakTorqueNm,107,https://www.automobile-catalog.com/car/1965/256205/austin_cooper_s.html,MED,From search-result summary; rpm not stated,yes
+MG-047,47,1965 Mini Cooper S (Mk1),quotedPowerPs,76,https://www.automobile-catalog.com/car/1965/256205/austin_cooper_s.html,MED,"Contemporary British gross bhp figure; not subject to the JDM 280PS ceiling concept, matches stock",yes
+MG-047,47,1965 Mini Cooper S (Mk1),stockPowerPs,76,https://www.automobile-catalog.com/car/1965/256205/austin_cooper_s.html,MED,From search-result summary; rpm not stated,yes
+MG-047,47,1965 Mini Cooper S (Mk1),styleBase,13,,SUGGESTION,"Small and cute rather than aggressive, but one of the most iconic and beloved silhouettes in motoring",yes
+MG-047,47,1965 Mini Cooper S (Mk1),topSpeedKmh,154,https://www.automobile-catalog.com/car/1965/256205/austin_cooper_s.html,MED,From search-result summary,yes
+MG-047,47,1965 Mini Cooper S (Mk1),tyreCompound,sport,,LOW,"Classification judgement reflecting the car's rally/race pedigree despite period-appropriate skinny tyres, not itself a cited figure",yes
+MG-047,47,1965 Mini Cooper S (Mk1),wheelbaseMm,2036,https://en.wikipedia.org/wiki/Mini,HIGH,"Saloon-wide figure, applies to all Mk1 Minis including Cooper S",yes
+MG-047,47,1965 Mini Cooper S (Mk1),widthMm,1410,https://en.wikipedia.org/wiki/Mini,MED,Base width; up to 1530mm with the optional wide-arch sportspack,yes
+MG-047,47,1965 Mini Cooper S (Mk1),yearFrom,1964,https://www.automobile-catalog.com/car/1964/256205/austin_cooper_s.html,MED,1275S variant introduced April 1964 per search-result summary,yes
+MG-048,48,Nissan Silvia K's (S14),quotedPowerPs,220,https://carfromjapan.com/specifications/nissan/silvia/581388e02afaa2c4b2869339,MED,"Matches this row's existing stockPowerPs, powerRpm and torqueRpm cells exactly (220PS/6000rpm, 274.6Nm/4800rpm); below the JDM 280PS ceiling, so quoted equals real output",yes
+MG-049,49,Alfa Romeo 75 3.0 V6,aspiration,NA,https://www.carfolio.com/alfa-romeo-75-3.0-v6-28204,HIGH,Naturally aspirated Busso V6,yes
+MG-049,49,Alfa Romeo 75 3.0 V6,chassisCode,162B,https://www.auto-data.net/en/alfa-romeo-75-162-b-america-3.0-v6-188hp-1561,HIGH,Corroborated by carfolio and Classic Driver listings,yes
+MG-049,49,Alfa Romeo 75 3.0 V6,curbWeightKg,1210,https://www.carfolio.com/alfa-romeo-75-3.0-v6-28204,HIGH,,yes
+MG-049,49,Alfa Romeo 75 3.0 V6,displacementCc,2959,https://www.carfolio.com/alfa-romeo-75-3.0-v6-28204,HIGH,,yes
+MG-049,49,Alfa Romeo 75 3.0 V6,dragCd,0.34,https://www.carfolio.com/alfa-romeo-75-3.0-v6-28204,MED,,yes
+MG-049,49,Alfa Romeo 75 3.0 V6,drivetrain,RWD,https://www.carfolio.com/alfa-romeo-75-3.0-v6-28204,HIGH,File mixes FR/RWD vocabulary already; used RWD to match this batch's prevailing style,yes
+MG-049,49,Alfa Romeo 75 3.0 V6,engineCode,AR 119.11,https://www.carfolio.com/alfa-romeo-75-3.0-v6-28204,LOW,Single uncorroborated source for the internal Alfa engine type code,yes
+MG-049,49,Alfa Romeo 75 3.0 V6,engineConfig,V6,https://www.carfolio.com/alfa-romeo-75-3.0-v6-28204,HIGH,"Busso 60-degree V6, SOHC 2v/cyl",yes
+MG-049,49,Alfa Romeo 75 3.0 V6,heightMm,1349,https://www.carfolio.com/alfa-romeo-75-3.0-v6-28204,HIGH,,yes
+MG-049,49,Alfa Romeo 75 3.0 V6,peakTorqueNm,245,https://www.carfolio.com/alfa-romeo-75-3.0-v6-28204,HIGH,,yes
+MG-049,49,Alfa Romeo 75 3.0 V6,powerRpm,5800,https://www.carfolio.com/alfa-romeo-75-3.0-v6-28204,HIGH,,yes
+MG-049,49,Alfa Romeo 75 3.0 V6,quotedPowerPs,190,https://www.carfolio.com/alfa-romeo-75-3.0-v6-28204,HIGH,"Non-JDM car, never subject to the 280 PS ceiling; same as stockPowerPs",yes
+MG-049,49,Alfa Romeo 75 3.0 V6,stockPowerPs,190,https://www.carfolio.com/alfa-romeo-75-3.0-v6-28204,HIGH,"A closely-related ""3.0 V6 America"" source gives 188 PS; treated as rounding variance",yes
+MG-049,49,Alfa Romeo 75 3.0 V6,stockTyre,195/60R14,https://www.carfolio.com/alfa-romeo-75-3.0-v6-28204,HIGH,,yes
+MG-049,49,Alfa Romeo 75 3.0 V6,styleBase,12,,SUGGESTION,Distinctive 80s Alfa wedge saloon with a Kamm tail; striking for a sedan but not exotic,yes
+MG-049,49,Alfa Romeo 75 3.0 V6,topSpeedKmh,220,https://www.carfolio.com/alfa-romeo-75-3.0-v6-28204,HIGH,,yes
+MG-049,49,Alfa Romeo 75 3.0 V6,torqueRpm,4000,https://www.carfolio.com/alfa-romeo-75-3.0-v6-28204,HIGH,,yes
+MG-049,49,Alfa Romeo 75 3.0 V6,tyreCompound,touring,,LOW,"Judgement call: 1980s Italian executive saloon on 14in tyres, not a grippy sport fitment",yes
+MG-049,49,Alfa Romeo 75 3.0 V6,weightDistributionFront,55,https://www.carfolio.com/alfa-romeo-75-3.0-v6-28204,MED,"Source states 55.4%, rounded to match this file's integer convention",yes
+MG-049,49,Alfa Romeo 75 3.0 V6,wheelbaseMm,2510,https://www.carfolio.com/alfa-romeo-75-3.0-v6-28204,HIGH,,yes
+MG-049,49,Alfa Romeo 75 3.0 V6,widthMm,1631,https://www.carfolio.com/alfa-romeo-75-3.0-v6-28204,HIGH,,yes
+MG-049,49,Alfa Romeo 75 3.0 V6,yearFrom,1987,https://www.carfolio.com/alfa-romeo-75-3.0-v6-28204,HIGH,3.0 V6 variant introduced 1987 on the existing 75 (162B) saloon,yes
+MG-050,50,Toyota MR2 (SW20),quotedPowerPs,245,https://gazoo.com/catalog/maker/TOYOTA/MR2/198910/,HIGH,Toyota's own catalogue rounds to 245 PS; this row's existing 244 PS stockPowerPs is a very close alternate-source figure,yes
+MG-051,51,Toyota Celica GT-Four (ST205),aspiration,turbo,https://carfromjapan.com/specifications/toyota/celica/581791b92afaa2c4b287549f,MED,,yes
+MG-051,51,Toyota Celica GT-Four (ST205),chassisCode,ST205,https://carfromjapan.com/specifications/toyota/celica/581791b92afaa2c4b287549f,HIGH,,yes
+MG-051,51,Toyota Celica GT-Four (ST205),dragCd,0.32,https://carfromjapan.com/specifications/toyota/celica/581791b92afaa2c4b287549f,MED,,yes
+MG-051,51,Toyota Celica GT-Four (ST205),engineCode,3S-GTE,https://carfromjapan.com/specifications/toyota/celica/581791b92afaa2c4b287549f,HIGH,,yes
+MG-051,51,Toyota Celica GT-Four (ST205),engineConfig,I4,https://carfromjapan.com/specifications/toyota/celica/581791b92afaa2c4b287549f,HIGH,,yes
+MG-051,51,Toyota Celica GT-Four (ST205),heightMm,1305,https://carfromjapan.com/specifications/toyota/celica/581791b92afaa2c4b287549f,MED,,yes
+MG-051,51,Toyota Celica GT-Four (ST205),powerRpm,6000,https://carfromjapan.com/specifications/toyota/celica/581791b92afaa2c4b287549f,MED,"Sourced alongside a 255 PS reading; this row's existing stockPowerPs is 259 PS from a different (Forza) source, but rpm should still apply to the same 3S-GTE tune",yes
+MG-051,51,Toyota Celica GT-Four (ST205),quotedPowerPs,255,https://carfromjapan.com/specifications/toyota/celica/581791b92afaa2c4b287549f,MED,"JDM catalogue figure, below the 280 PS ceiling so not underrated; differs slightly from this row's existing 259 PS stockPowerPs (different source)",yes
+MG-051,51,Toyota Celica GT-Four (ST205),stockTyre,215/50R16,https://carfromjapan.com/specifications/toyota/celica/581791b92afaa2c4b287549f,MED,,yes
+MG-051,51,Toyota Celica GT-Four (ST205),styleBase,15,,SUGGESTION,Widebody WRC homologation special with bonnet scoop and large rear wing; aggressive rally-bred look,yes
+MG-051,51,Toyota Celica GT-Four (ST205),torqueRpm,4000,https://carfromjapan.com/specifications/toyota/celica/581791b92afaa2c4b287549f,MED,Same source-pairing caveat as powerRpm,yes
+MG-051,51,Toyota Celica GT-Four (ST205),tyreCompound,performance,,LOW,,yes
+MG-051,51,Toyota Celica GT-Four (ST205),wheelbaseMm,2535,https://carfromjapan.com/specifications/toyota/celica/581791b92afaa2c4b287549f,MED,,yes
+MG-051,51,Toyota Celica GT-Four (ST205),widthMm,1750,https://carfromjapan.com/specifications/toyota/celica/581791b92afaa2c4b287549f,MED,,yes
+MG-052,52,Mazda RX-7 (FD3S),quotedPowerPs,255,https://www.nextage.jp/carcatalog/mazda/efini_rx-7/e-fd3s/,HIGH,Manufacturer catalogue figure for the early Type R; matches this row's existing stockPowerPs exactly,yes
+MG-053,53,Honda Civic Type R (EK9),aspiration,NA,https://www.carfolio.com/honda-civic-type-r-84249,HIGH,,yes
+MG-053,53,Honda Civic Type R (EK9),chassisCode,EK9,https://www.carfolio.com/honda-civic-type-r-84249,HIGH,,yes
+MG-053,53,Honda Civic Type R (EK9),dragCd,0.32,https://ecomodder.com/wiki/Vehicle_Coefficient_of_Drag_List,MED,,yes
+MG-053,53,Honda Civic Type R (EK9),engineCode,B16B,https://www.carfolio.com/honda-civic-type-r-84249,HIGH,,yes
+MG-053,53,Honda Civic Type R (EK9),engineConfig,I4,https://www.carfolio.com/honda-civic-type-r-84249,HIGH,,yes
+MG-053,53,Honda Civic Type R (EK9),heightMm,1360,https://www.carfolio.com/honda-civic-type-r-84249,HIGH,,yes
+MG-053,53,Honda Civic Type R (EK9),powerRpm,8200,https://www.carfolio.com/honda-civic-type-r-84249,HIGH,,yes
+MG-053,53,Honda Civic Type R (EK9),quotedPowerPs,185,https://www.carfolio.com/honda-civic-type-r-84249,HIGH,Matches stockPowerPs; B16B was well under the 280 PS ceiling so never underrated,yes
+MG-053,53,Honda Civic Type R (EK9),redlineRpm,8400,https://www.carfolio.com/honda-civic-type-r-84249,HIGH,,yes
+MG-053,53,Honda Civic Type R (EK9),stockTyre,195/55R15,https://www.carfolio.com/honda-civic-type-r-84249,HIGH,,yes
+MG-053,53,Honda Civic Type R (EK9),styleBase,13,,SUGGESTION,Iconic Championship White EK9 hatch with aggressive OEM aero on a compact econobox-based shape,yes
+MG-053,53,Honda Civic Type R (EK9),torqueRpm,7500,https://www.carfolio.com/honda-civic-type-r-84249,HIGH,,yes
+MG-053,53,Honda Civic Type R (EK9),tyreCompound,performance,,LOW,,yes
+MG-053,53,Honda Civic Type R (EK9),wheelbaseMm,2620,https://www.carfolio.com/honda-civic-type-r-84249,HIGH,,yes
+MG-053,53,Honda Civic Type R (EK9),widthMm,1695,https://www.carfolio.com/honda-civic-type-r-84249,HIGH,,yes
+MG-054,54,Toyota Altezza RS200 Z Edition (SXE10),aspiration,NA,https://www.carfolio.com/toyota-altezza-rs200-78738,HIGH,,yes
+MG-054,54,Toyota Altezza RS200 Z Edition (SXE10),chassisCode,SXE10,https://www.carfolio.com/toyota-altezza-rs200-78738,HIGH,,yes
+MG-054,54,Toyota Altezza RS200 Z Edition (SXE10),engineCode,3S-GE,https://www.carfolio.com/toyota-altezza-rs200-78738,HIGH,"BEAMS ""black top"" variant",yes
+MG-054,54,Toyota Altezza RS200 Z Edition (SXE10),engineConfig,I4,https://www.carfolio.com/toyota-altezza-rs200-78738,HIGH,,yes
+MG-054,54,Toyota Altezza RS200 Z Edition (SXE10),heightMm,1410,https://www.carfolio.com/toyota-altezza-rs200-78738,HIGH,,yes
+MG-054,54,Toyota Altezza RS200 Z Edition (SXE10),powerRpm,7600,https://www.carfolio.com/toyota-altezza-rs200-78738,HIGH,6-speed manual grade figure,yes
+MG-054,54,Toyota Altezza RS200 Z Edition (SXE10),quotedPowerPs,210,https://www.carfolio.com/toyota-altezza-rs200-78738,HIGH,6MT catalogue figure; matches this row's existing 211 PS stockPowerPs closely,yes
+MG-054,54,Toyota Altezza RS200 Z Edition (SXE10),stockTyre,215/45ZR17,https://cars.japanesecartrade.com/detail/toyota/altezza/rs200/128508,MED,Z Edition trim; base RS200 without the Z Edition pack used a smaller 205/55R16 fitment per a separate source,yes
+MG-054,54,Toyota Altezza RS200 Z Edition (SXE10),styleBase,10,,SUGGESTION,Crisp late-90s Toyota sport sedan with distinctive round tail lights; tidy but not dramatic,yes
+MG-054,54,Toyota Altezza RS200 Z Edition (SXE10),torqueRpm,6400,https://www.carfolio.com/toyota-altezza-rs200-78738,HIGH,Matches this row's existing 216 Nm peakTorqueNm exactly,yes
+MG-054,54,Toyota Altezza RS200 Z Edition (SXE10),tyreCompound,performance,,LOW,,yes
+MG-054,54,Toyota Altezza RS200 Z Edition (SXE10),wheelbaseMm,2670,https://www.carfolio.com/toyota-altezza-rs200-78738,HIGH,,yes
+MG-054,54,Toyota Altezza RS200 Z Edition (SXE10),widthMm,1720,https://www.carfolio.com/toyota-altezza-rs200-78738,MED,One other source gives 1725mm,yes
+MG-055,55,"Honda Integra Type R (DC2, '99)",aspiration,NA,http://autoinfo.jp/sport/honda/sport_honda_integra_95y_exp.html,HIGH,,yes
+MG-055,55,"Honda Integra Type R (DC2, '99)",chassisCode,DC2,http://autoinfo.jp/sport/honda/sport_honda_integra_95y_exp.html,HIGH,,yes
+MG-055,55,"Honda Integra Type R (DC2, '99)",dragCd,0.32,https://honda-tech.com/forums/acura-integra-6/drag-coefficient-246276/,MED,"Generic Type R Integra figure, not year-specific",yes
+MG-055,55,"Honda Integra Type R (DC2, '99)",engineCode,B18C5,http://autoinfo.jp/sport/honda/sport_honda_integra_95y_exp.html,MED,"This row's existing stockPowerPs/peakTorqueNm (198 PS/176 Nm) match the US-market Acura Integra Type R (B18C5), not the JDM Honda B18C (200 PS/186 Nm at 8000/6200rpm), per the row's own existing MAINTAINER-FLAGGED TRAP note",yes
+MG-055,55,"Honda Integra Type R (DC2, '99)",engineConfig,I4,http://autoinfo.jp/sport/honda/sport_honda_integra_95y_exp.html,HIGH,,yes
+MG-055,55,"Honda Integra Type R (DC2, '99)",heightMm,1330,http://autoinfo.jp/sport/honda/sport_honda_integra_95y_exp.html,MED,DC2 body shell shared across JDM/US market variants,yes
+MG-055,55,"Honda Integra Type R (DC2, '99)",powerRpm,8000,https://www.autoevolution.com/news/the-dc2-acura-integra-type-r-honda-s-fwd-magnum-opus-196881.html,HIGH,"US Acura Integra Type R (B18C5) catalogue rpm, paired to match this row's existing 198 PS US-spec stockPowerPs",yes
+MG-055,55,"Honda Integra Type R (DC2, '99)",quotedPowerPs,198,https://www.autoevolution.com/news/the-dc2-acura-integra-type-r-honda-s-fwd-magnum-opus-196881.html,HIGH,US Acura catalogue rating (195 bhp); same as stockPowerPs since the US market was not subject to Japan's self-regulation. Genuine JDM DC2 catalogue figure was 200 PS,yes
+MG-055,55,"Honda Integra Type R (DC2, '99)",stockTyre,215/45ZR16,http://autoinfo.jp/sport/honda/sport_honda_integra_95y_exp.html,MED,JDM DC2 figure; US-spec size may differ slightly,yes
+MG-055,55,"Honda Integra Type R (DC2, '99)",styleBase,12,,SUGGESTION,Clean mid-90s Honda coupe with subtle Type R aero; understated but purposeful,yes
+MG-055,55,"Honda Integra Type R (DC2, '99)",torqueRpm,7500,https://www.autoevolution.com/news/the-dc2-acura-integra-type-r-honda-s-fwd-magnum-opus-196881.html,HIGH,"US Acura B18C5 catalogue rpm, paired with this row's existing 176 Nm figure",yes
+MG-055,55,"Honda Integra Type R (DC2, '99)",tyreCompound,performance,,LOW,,yes
+MG-055,55,"Honda Integra Type R (DC2, '99)",wheelbaseMm,2570,http://autoinfo.jp/sport/honda/sport_honda_integra_95y_exp.html,MED,,yes
+MG-055,55,"Honda Integra Type R (DC2, '99)",widthMm,1695,http://autoinfo.jp/sport/honda/sport_honda_integra_95y_exp.html,MED,,yes
+MG-056,56,Toyota Chaser Tourer V (JZX100),aspiration,turbo,https://www.carfolio.com/toyota-chaser-2.5-tourer-v-185427,HIGH,,yes
+MG-056,56,Toyota Chaser Tourer V (JZX100),chassisCode,JZX100,https://www.carfolio.com/toyota-chaser-2.5-tourer-v-185427,HIGH,,yes
+MG-056,56,Toyota Chaser Tourer V (JZX100),engineCode,1JZ-GTE,https://www.carfolio.com/toyota-chaser-2.5-tourer-v-185427,HIGH,VVT-i variant,yes
+MG-056,56,Toyota Chaser Tourer V (JZX100),engineConfig,I6,https://www.carfolio.com/toyota-chaser-2.5-tourer-v-185427,HIGH,,yes
+MG-056,56,Toyota Chaser Tourer V (JZX100),heightMm,1400,https://www.carfolio.com/toyota-chaser-2.5-tourer-v-185427,HIGH,,yes
+MG-056,56,Toyota Chaser Tourer V (JZX100),powerRpm,6200,https://www.carfolio.com/toyota-chaser-2.5-tourer-v-185427,HIGH,,yes
+MG-056,56,Toyota Chaser Tourer V (JZX100),quotedPowerPs,280,https://www.carfolio.com/toyota-chaser-2.5-tourer-v-185427,HIGH,Self-regulation ceiling figure; matches this row's existing stockPowerPs exactly,yes
+MG-056,56,Toyota Chaser Tourer V (JZX100),stockTyre,205/55R16,https://www.carfolio.com/toyota-chaser-2.5-tourer-v-185427,MED,"Staggered fitment: front 205/55R16, rear 225/50R16; front size reported here",yes
+MG-056,56,Toyota Chaser Tourer V (JZX100),styleBase,9,,SUGGESTION,Conservative 90s Toyota 4-door bodyshell; a drift-scene icon more for its chassis than its looks,yes
+MG-056,56,Toyota Chaser Tourer V (JZX100),torqueRpm,2400,https://www.carfolio.com/toyota-chaser-2.5-tourer-v-185427,MED,"Sourced alongside a 378 Nm torque figure; this row's existing peakTorqueNm is 362 Nm from a different source, but rpm should still apply to the same VVT-i tune",yes
+MG-056,56,Toyota Chaser Tourer V (JZX100),tyreCompound,performance,,LOW,,yes
+MG-056,56,Toyota Chaser Tourer V (JZX100),wheelbaseMm,2730,https://www.carfolio.com/toyota-chaser-2.5-tourer-v-185427,HIGH,,yes
+MG-056,56,Toyota Chaser Tourer V (JZX100),widthMm,1755,https://www.carfolio.com/toyota-chaser-2.5-tourer-v-185427,HIGH,,yes
+MG-057,57,Subaru Impreza WRX STI (GC8),quotedPowerPs,250,https://www.autoevolution.com/news/these-jdm-classics-all-make-276-hp-on-paper-due-to-a-gentleman-s-agreement-221147.html,MED,"Matches stockPowerPs; this was the initial 1994 GC8 STI output, before later revisions climbed toward the 276-280 PS self-regulation ceiling",yes
+MG-059,59,Honda Integra Type R (DC5),chassisCode,DC5,https://www.integradc5.com/dc5-honda-integra-type-r-specs/,HIGH,,yes
+MG-059,59,Honda Integra Type R (DC5),engineCode,K20A,https://www.integradc5.com/dc5-honda-integra-type-r-specs/,HIGH,"IMPORTANT: this row's existing stockPowerPs (198 PS), peakTorqueNm (176 Nm) and displacementCc (1800cc) exactly duplicate row MG-055's DC2 data and do not match any real DC5 spec. The real JDM DC5 Integra Type R made 220 PS at 8000rpm / 206 Nm at 7000rpm from a 1998cc K20A. Deliberately NOT reporting quotedPowerPs/powerRpm/torqueRpm/redlineRpm/dragCd here since they would misrepresent the row further while the underlying stockPowerPs/peakTorqueNm/displacementCc conflict is unresolved; flagging for maintainer reconciliation",yes
+MG-059,59,Honda Integra Type R (DC5),heightMm,1385,https://www.integradc5.com/dc5-honda-integra-type-r-specs/,MED,,yes
+MG-059,59,Honda Integra Type R (DC5),stockTyre,215/45ZR17,https://www.integradc5.com/dc5-honda-integra-type-r-specs/,MED,"Source lists '214/45ZR17', treated as a likely typo for the standard 215/45ZR17 size",yes
+MG-059,59,Honda Integra Type R (DC5),styleBase,12,,SUGGESTION,"Sharper-nosed successor to the DC2, still a subtle sports coupe silhouette",yes
+MG-059,59,Honda Integra Type R (DC5),tyreCompound,performance,,LOW,,yes
+MG-059,59,Honda Integra Type R (DC5),wheelbaseMm,2570,https://www.integradc5.com/dc5-honda-integra-type-r-specs/,MED,,yes
+MG-059,59,Honda Integra Type R (DC5),widthMm,1725,https://www.integradc5.com/dc5-honda-integra-type-r-specs/,MED,,yes
+MG-060,60,Mitsubishi GTO Twin Turbo (Z16A),aspiration,twin-turbo,https://www.carfolio.com/mitsubishi-gto-186186,HIGH,,yes
+MG-060,60,Mitsubishi GTO Twin Turbo (Z16A),chassisCode,Z16A,https://www.carfolio.com/mitsubishi-gto-186186,HIGH,,yes
+MG-060,60,Mitsubishi GTO Twin Turbo (Z16A),dragCd,0.33,https://ja.wikipedia.org/wiki/三菱・GTO,MED,Generic GTO figure (Japanese Wikipedia); corroborated by a Western source giving 0.33 for the 3000GT twin with headlights retracted,yes
+MG-060,60,Mitsubishi GTO Twin Turbo (Z16A),engineCode,6G72,https://www.carfolio.com/mitsubishi-gto-186186,HIGH,Twin-turbo variant,yes
+MG-060,60,Mitsubishi GTO Twin Turbo (Z16A),engineConfig,V6,https://www.carfolio.com/mitsubishi-gto-186186,HIGH,,yes
+MG-060,60,Mitsubishi GTO Twin Turbo (Z16A),heightMm,1285,https://www.carfolio.com/mitsubishi-gto-186186,HIGH,,yes
+MG-060,60,Mitsubishi GTO Twin Turbo (Z16A),powerRpm,6000,https://www.automobile-catalog.com/car/1992/1966925/mitsubishi_gto_twin-turbo.html,MED,This is the rpm for the CATALOGUE quoted 280 PS figure; no source found for the rpm of this row's existing 324 PS stockPowerPs dyno figure,yes
+MG-060,60,Mitsubishi GTO Twin Turbo (Z16A),quotedPowerPs,280,https://www.automobile-catalog.com/car/1992/1966925/mitsubishi_gto_twin-turbo.html,HIGH,"Self-regulation ceiling figure, matching this row's own existing notes reference to a 280 PS quoted figure",yes
+MG-060,60,Mitsubishi GTO Twin Turbo (Z16A),stockTyre,235/45ZR17,https://www.carfolio.com/mitsubishi-gto-186186,HIGH,,yes
+MG-060,60,Mitsubishi GTO Twin Turbo (Z16A),styleBase,14,,SUGGESTION,Dramatic pop-up headlight 90s GT wedge; one of the most visually aggressive shapes of its era,yes
+MG-060,60,Mitsubishi GTO Twin Turbo (Z16A),torqueRpm,2500,https://www.carfolio.com/mitsubishi-gto-186186,HIGH,Matches this row's existing 427 Nm peakTorqueNm exactly,yes
+MG-060,60,Mitsubishi GTO Twin Turbo (Z16A),tyreCompound,performance,,LOW,,yes
+MG-060,60,Mitsubishi GTO Twin Turbo (Z16A),wheelbaseMm,2470,https://www.carfolio.com/mitsubishi-gto-186186,HIGH,,yes
+MG-060,60,Mitsubishi GTO Twin Turbo (Z16A),widthMm,1840,https://www.carfolio.com/mitsubishi-gto-186186,HIGH,,yes
+MG-061,61,Toyota Soarer 2.5 GT-T (JZZ30),aspiration,turbo,https://cars.japanesecartrade.com/detail/toyota/soarer/2.5gt-t/139391,HIGH,,yes
+MG-061,61,Toyota Soarer 2.5 GT-T (JZZ30),chassisCode,JZZ30,https://projectjdm.org/blog/soarer-specs,HIGH,,yes
+MG-061,61,Toyota Soarer 2.5 GT-T (JZZ30),curbWeightKg,1560,https://www.carfolio.com/toyota-soarer-2.5-gt-t-188155,MED,Sources give a 1550-1610kg range across GT-T model years/packages; 1560kg is the most consistently cited figure,yes
+MG-061,61,Toyota Soarer 2.5 GT-T (JZZ30),displacementCc,2491,https://www.carfolio.com/toyota-soarer-2.5-gt-t-188155,HIGH,,yes
+MG-061,61,Toyota Soarer 2.5 GT-T (JZZ30),drivetrain,RWD,https://www.carfolio.com/toyota-soarer-2.5-gt-t-188155,HIGH,"Front-engine, rear-wheel-drive coupe; file mixes FR/RWD vocabulary already",yes
+MG-061,61,Toyota Soarer 2.5 GT-T (JZZ30),engineCode,1JZ-GTE,https://cars.japanesecartrade.com/detail/toyota/soarer/2.5gt-t/139391,HIGH,,yes
+MG-061,61,Toyota Soarer 2.5 GT-T (JZZ30),engineConfig,I6,https://cars.japanesecartrade.com/detail/toyota/soarer/2.5gt-t/139391,HIGH,,yes
+MG-061,61,Toyota Soarer 2.5 GT-T (JZZ30),heightMm,1350,https://www.carfolio.com/toyota-soarer-2.5-gt-t-188155,HIGH,,yes
+MG-061,61,Toyota Soarer 2.5 GT-T (JZZ30),peakTorqueNm,378,https://cars.japanesecartrade.com/detail/toyota/soarer/2.5gt-t/139391,HIGH,Rounded from 377.6 Nm (38.5 kgm),yes
+MG-061,61,Toyota Soarer 2.5 GT-T (JZZ30),powerRpm,6200,https://www.carfolio.com/toyota-soarer-2.5-gt-t-188155,HIGH,,yes
+MG-061,61,Toyota Soarer 2.5 GT-T (JZZ30),quotedPowerPs,280,https://projectjdm.org/blog/soarer-specs,HIGH,Self-regulation ceiling figure that Toyota's catalogue quoted for the 1JZ-GTE Soarer,yes
+MG-061,61,Toyota Soarer 2.5 GT-T (JZZ30),stockPowerPs,280,https://projectjdm.org/blog/soarer-specs,MED,"A secondary source claims real dyno output closer to 300 PS but gives no precise, citable figure, so the catalogue value is reported pending better sourcing",yes
+MG-061,61,Toyota Soarer 2.5 GT-T (JZZ30),stockTyre,225/55R16,https://www.carfolio.com/toyota-soarer-2.5-gt-t-188155,HIGH,,yes
+MG-061,61,Toyota Soarer 2.5 GT-T (JZZ30),styleBase,11,,SUGGESTION,"Big, smooth 90s Toyota personal luxury coupe; an understated Wangan cruiser rather than a visually loud car",yes
+MG-061,61,Toyota Soarer 2.5 GT-T (JZZ30),torqueRpm,2400,https://cars.japanesecartrade.com/detail/toyota/soarer/2.5gt-t/139391,HIGH,,yes
+MG-061,61,Toyota Soarer 2.5 GT-T (JZZ30),tyreCompound,touring,,LOW,"Judgement call: a heavy personal-luxury GT coupe, not a grip-focused sport fitment",yes
+MG-061,61,Toyota Soarer 2.5 GT-T (JZZ30),wheelbaseMm,2690,https://www.carfolio.com/toyota-soarer-2.5-gt-t-188155,HIGH,,yes
+MG-061,61,Toyota Soarer 2.5 GT-T (JZZ30),widthMm,1805,https://www.carfolio.com/toyota-soarer-2.5-gt-t-188155,HIGH,,yes
+MG-061,61,Toyota Soarer 2.5 GT-T (JZZ30),yearFrom,1991,https://projectjdm.org/blog/soarer-specs,MED,JZZ30 generation debuted October 1991; the 2.5 GT-T grade with 1JZ-GTE was part of the initial lineup,yes
+MG-062,62,"Nissan Silvia Spec-R (S15, '02)",aspiration,turbo,https://www.carfolio.com/nissan-silvia-spec-r-27291,HIGH,,yes
+MG-062,62,"Nissan Silvia Spec-R (S15, '02)",chassisCode,S15,https://www.carfolio.com/nissan-silvia-spec-r-27291,HIGH,,yes
+MG-062,62,"Nissan Silvia Spec-R (S15, '02)",engineCode,SR20DET,https://www.carfolio.com/nissan-silvia-spec-r-27291,HIGH,,yes
+MG-062,62,"Nissan Silvia Spec-R (S15, '02)",engineConfig,I4,https://www.carfolio.com/nissan-silvia-spec-r-27291,HIGH,,yes
+MG-062,62,"Nissan Silvia Spec-R (S15, '02)",heightMm,1285,https://www.carfolio.com/nissan-silvia-spec-r-27291,MED,,yes
+MG-062,62,"Nissan Silvia Spec-R (S15, '02)",powerRpm,6400,https://www.carfolio.com/nissan-silvia-spec-r-27291,HIGH,,yes
+MG-062,62,"Nissan Silvia Spec-R (S15, '02)",quotedPowerPs,250,https://www.carfolio.com/nissan-silvia-spec-r-27291,HIGH,Catalogue figure; close to this row's existing 253 PS stockPowerPs,yes
+MG-062,62,"Nissan Silvia Spec-R (S15, '02)",redlineRpm,7500,https://dsportmag.com/the-tech/test-tune-2001-nissan-silvia-s15-uncorking-the-silvias-sr20det-engine/3/,MED,Cited for the S15-generation 'black top' SR20DET; treat as approximate,yes
+MG-062,62,"Nissan Silvia Spec-R (S15, '02)",stockTyre,205/55R16,https://www.carfolio.com/nissan-silvia-spec-r-27291,HIGH,,yes
+MG-062,62,"Nissan Silvia Spec-R (S15, '02)",styleBase,13,,SUGGESTION,Clean late-90s Nissan coupe silhouette that became one of the most recognisable JDM drift shapes,yes
+MG-062,62,"Nissan Silvia Spec-R (S15, '02)",torqueRpm,4800,https://www.carfolio.com/nissan-silvia-spec-r-27291,MED,"Close to this row's existing 278 Nm peakTorqueNm, which is from a slightly different source (this source gives 275 Nm)",yes
+MG-062,62,"Nissan Silvia Spec-R (S15, '02)",tyreCompound,performance,,LOW,,yes
+MG-062,62,"Nissan Silvia Spec-R (S15, '02)",wheelbaseMm,2525,https://www.carfolio.com/nissan-silvia-spec-r-27291,MED,,yes
+MG-062,62,"Nissan Silvia Spec-R (S15, '02)",widthMm,1695,https://www.carfolio.com/nissan-silvia-spec-r-27291,MED,,yes
+MG-063,63,Mazda RX-8 Type RS (SE3P),aspiration,NA,https://www.carsensor.net/catalog/mazda/rx-8/F001/M005G004/,HIGH,,yes
+MG-063,63,Mazda RX-8 Type RS (SE3P),chassisCode,SE3P,https://www.carsensor.net/catalog/mazda/rx-8/F001/M005G004/,HIGH,,yes
+MG-063,63,Mazda RX-8 Type RS (SE3P),curbWeightKg,1350,https://www.carsensor.net/catalog/mazda/rx-8/F001/M005G004/,HIGH,,yes
+MG-063,63,Mazda RX-8 Type RS (SE3P),displacementCc,1308,https://www.carsensor.net/catalog/mazda/rx-8/F001/M005G004/,HIGH,,yes
+MG-063,63,Mazda RX-8 Type RS (SE3P),dragCd,0.3,https://www.carfolio.com/mazda-rx-8-type-rs-174482,MED,Corroborated by autoevolution/CarsGuide reporting Cd 0.30 for the RX-8 generally,yes
+MG-063,63,Mazda RX-8 Type RS (SE3P),drivetrain,FR,https://www.carsensor.net/catalog/mazda/rx-8/F001/M005G004/,HIGH,,yes
+MG-063,63,Mazda RX-8 Type RS (SE3P),engineCode,13B-MSP,https://www.carsensor.net/catalog/mazda/rx-8/F001/M005G004/,HIGH,RENESIS,yes
+MG-063,63,Mazda RX-8 Type RS (SE3P),engineConfig,rotary-2,https://www.carsensor.net/catalog/mazda/rx-8/F001/M005G004/,HIGH,,yes
+MG-063,63,Mazda RX-8 Type RS (SE3P),heightMm,1340,https://www.carsensor.net/catalog/mazda/rx-8/F001/M005G004/,HIGH,,yes
+MG-063,63,Mazda RX-8 Type RS (SE3P),peakTorqueNm,216,https://www.carsensor.net/catalog/mazda/rx-8/F001/M005G004/,HIGH,,yes
+MG-063,63,Mazda RX-8 Type RS (SE3P),powerRpm,8250,https://www.carsensor.net/catalog/mazda/rx-8/F001/M005G004/,HIGH,,yes
+MG-063,63,Mazda RX-8 Type RS (SE3P),quotedPowerPs,235,https://www.carsensor.net/catalog/mazda/rx-8/F001/M005G004/,HIGH,"Same as stockPowerPs; NA rotary, never subject to the self-regulation ceiling",yes
+MG-063,63,Mazda RX-8 Type RS (SE3P),redlineRpm,9000,https://www.autoevolution.com/cars/mazda-rx-8-2003.html,LOW,Documented for the RX-8's 250 PS 'High Power' tune (fuel cut 9500); the 235 PS Type RS retune (Mar 2008+) likely shares the same mechanical rev limit but this was not independently confirmed,yes
+MG-063,63,Mazda RX-8 Type RS (SE3P),stockPowerPs,235,https://www.carsensor.net/catalog/mazda/rx-8/F001/M005G004/,HIGH,,yes
+MG-063,63,Mazda RX-8 Type RS (SE3P),stockTyre,225/40R19,https://www.carsensor.net/catalog/mazda/rx-8/F001/M005G004/,HIGH,,yes
+MG-063,63,Mazda RX-8 Type RS (SE3P),styleBase,16,,SUGGESTION,Freestyle rear-hinged doors and a unique four-seat rotary coupe silhouette; one of the most distinctive shapes of its era,yes
+MG-063,63,Mazda RX-8 Type RS (SE3P),torqueRpm,5500,https://www.carsensor.net/catalog/mazda/rx-8/F001/M005G004/,HIGH,,yes
+MG-063,63,Mazda RX-8 Type RS (SE3P),tyreCompound,sport,,LOW,,yes
+MG-063,63,Mazda RX-8 Type RS (SE3P),wheelbaseMm,2700,https://www.carsensor.net/catalog/mazda/rx-8/F001/M005G004/,HIGH,,yes
+MG-063,63,Mazda RX-8 Type RS (SE3P),widthMm,1770,https://www.carsensor.net/catalog/mazda/rx-8/F001/M005G004/,HIGH,,yes
+MG-063,63,Mazda RX-8 Type RS (SE3P),yearFrom,2008,https://www.carsensor.net/catalog/mazda/rx-8/F001/M005G004/,HIGH,"'Type RS' specifically denotes the March 2008 facelift grade; the original 2003 launch's 250 PS 6MT grade was called 'Type S', not 'Type RS'",yes
+MG-064,64,"BMW M3 (E36, '97)",aspiration,NA,https://en.wikipedia.org/wiki/BMW_S14,HIGH,,yes
+MG-064,64,"BMW M3 (E36, '97)",chassisCode,E30,https://en.wikipedia.org/wiki/BMW_3_Series_(E30),HIGH,"displayName says 'E36, 97' but this row's existing yearFrom (1988) and stockPowerPs/peakTorqueNm/curbWeightKg (195 PS/230 Nm/1253 kg) match the E30-generation M3's original S14B23 engine, not any E36 M3 variant (E36 M3 used the S50/S52 six-cylinder, never made 195 PS). Flagging identity mismatch for maintainer review; this row's existing notes already say 'Same E30 M3'","no: value is for the E30 M3, row is the E36"
+MG-064,64,"BMW M3 (E36, '97)",dragCd,0.33,https://en.wikipedia.org/wiki/BMW_3_Series_(E30),HIGH,Specifically attributed to the E30 M3 in the source,"no: value is for the E30 M3, row is the E36"
+MG-064,64,"BMW M3 (E36, '97)",engineCode,S14,https://en.wikipedia.org/wiki/BMW_S14,HIGH,Base S14B23 tune matching this row's existing 195 PS stockPowerPs,"no: value is for the E30 M3, row is the E36"
+MG-064,64,"BMW M3 (E36, '97)",engineConfig,I4,https://en.wikipedia.org/wiki/BMW_S14,HIGH,,"no: value is for the E30 M3, row is the E36"
+MG-064,64,"BMW M3 (E36, '97)",powerRpm,6750,https://en.wikipedia.org/wiki/BMW_S14,HIGH,,"no: value is for the E30 M3, row is the E36"
+MG-064,64,"BMW M3 (E36, '97)",quotedPowerPs,195,https://en.wikipedia.org/wiki/BMW_S14,HIGH,"Same as stockPowerPs; European market car, never subject to Japan's self-regulation","no: value is for the E30 M3, row is the E36"
+MG-064,64,"BMW M3 (E36, '97)",styleBase,11,,SUGGESTION,Boxy but purposeful homologation shape with flared box-arches; distinctive without being flamboyant,yes
+MG-064,64,"BMW M3 (E36, '97)",torqueRpm,4750,https://en.wikipedia.org/wiki/BMW_S14,HIGH,,"no: value is for the E30 M3, row is the E36"
+MG-064,64,"BMW M3 (E36, '97)",wheelbaseMm,2570,https://en.wikipedia.org/wiki/BMW_3_Series_(E30),MED,"General E30 platform figure, likely shared by the M3","no: value is for the E30 M3, row is the E36"
+MG-065,65,Mitsubishi Pajero Evolution (V55W),aspiration,NA,https://www.carfolio.com/mitsubishi-pajero-evolution-152372,MED,naturally aspirated 6G74 MIVEC V6,yes
+MG-065,65,Mitsubishi Pajero Evolution (V55W),chassisCode,V55W,https://www.carfolio.com/mitsubishi-pajero-evolution-152372,MED,"source gives full code E-V55W GNXH, normalised to match displayName",yes
+MG-065,65,Mitsubishi Pajero Evolution (V55W),curbWeightKg,1970,https://www.carfolio.com/mitsubishi-pajero-evolution-152372,MED,,yes
+MG-065,65,Mitsubishi Pajero Evolution (V55W),displacementCc,3497,https://www.carfolio.com/mitsubishi-pajero-evolution-152372,MED,,yes
+MG-065,65,Mitsubishi Pajero Evolution (V55W),drivetrain,AWD,https://www.carfolio.com/mitsubishi-pajero-evolution-152372,MED,"full-time 4WD with front/rear Torsen diffs; CSV mixes AWD/4WD and FF/FR vocabularies across rows, flagging per instructions",yes
+MG-065,65,Mitsubishi Pajero Evolution (V55W),engineCode,6G74,https://www.carfolio.com/mitsubishi-pajero-evolution-152372,MED,,yes
+MG-065,65,Mitsubishi Pajero Evolution (V55W),engineConfig,V6,https://www.carfolio.com/mitsubishi-pajero-evolution-152372,MED,new engineConfig value for this slice; existing vocab already includes V6,yes
+MG-065,65,Mitsubishi Pajero Evolution (V55W),heightMm,1915,https://www.carfolio.com/mitsubishi-pajero-evolution-152372,MED,,yes
+MG-065,65,Mitsubishi Pajero Evolution (V55W),peakTorqueNm,348,https://www.carfolio.com/mitsubishi-pajero-evolution-152372,MED,corroborated by carfromjapan.com and ultimatespecs.com (348.1 Nm / 35.5 kgm),yes
+MG-065,65,Mitsubishi Pajero Evolution (V55W),powerRpm,6500,https://www.carfolio.com/mitsubishi-pajero-evolution-152372,MED,,yes
+MG-065,65,Mitsubishi Pajero Evolution (V55W),quotedPowerPs,280,https://www.carfolio.com/mitsubishi-pajero-evolution-152372,MED,no evidence found of a lower advertised figure; 280 PS sits at the JDM ceiling and multiple sources agree it is also the real output,yes
+MG-065,65,Mitsubishi Pajero Evolution (V55W),stockPowerPs,280,https://www.carfolio.com/mitsubishi-pajero-evolution-152372,MED,,yes
+MG-065,65,Mitsubishi Pajero Evolution (V55W),stockTyre,265/70R16,https://www.carfolio.com/mitsubishi-pajero-evolution-152372,MED,,yes
+MG-065,65,Mitsubishi Pajero Evolution (V55W),styleBase,10,,SUGGESTION,"boxy Dakar-bred SUV with flared arches, bonnet scoop and roof-mounted spare; purposeful rather than sleek",yes
+MG-065,65,Mitsubishi Pajero Evolution (V55W),torqueRpm,3000,https://www.carfolio.com/mitsubishi-pajero-evolution-152372,MED,,yes
+MG-065,65,Mitsubishi Pajero Evolution (V55W),wheelbaseMm,2420,https://www.carfolio.com/mitsubishi-pajero-evolution-152372,MED,,yes
+MG-065,65,Mitsubishi Pajero Evolution (V55W),widthMm,1875,https://www.carfolio.com/mitsubishi-pajero-evolution-152372,MED,,yes
+MG-065,65,Mitsubishi Pajero Evolution (V55W),yearFrom,1997,https://carfromjapan.com/specifications/mitsubishi/pajero/5812f8602afaa2c4b2866a40,MED,production began October 1997,yes
+MG-066,66,Lancia Delta HF Integrale Evo,aspiration,turbo,https://www.auto-data.net/en/lancia-delta-i-831-facelift-1991-hf-integrale-evo-2.0-16v-215hp-4wd-5072,MED,single Garrett turbo with intercooler,yes
+MG-066,66,Lancia Delta HF Integrale Evo,chassisCode,831,https://www.auto-data.net/en/lancia-delta-i-831-facelift-1991-hf-integrale-evo-2.0-16v-215hp-4wd-5072,MED,Fiat/Lancia Delta I platform type code,yes
+MG-066,66,Lancia Delta HF Integrale Evo,engineCode,831E5046,https://www.auto-data.net/en/lancia-delta-i-831-facelift-1991-hf-integrale-evo-2.0-16v-215hp-4wd-5072,MED,Fiat-group engine type code,yes
+MG-066,66,Lancia Delta HF Integrale Evo,engineConfig,I4,https://www.auto-data.net/en/lancia-delta-i-831-facelift-1991-hf-integrale-evo-2.0-16v-215hp-4wd-5072,MED,,yes
+MG-066,66,Lancia Delta HF Integrale Evo,heightMm,1365,https://www.auto-data.net/en/lancia-delta-i-831-facelift-1991-hf-integrale-evo-2.0-16v-215hp-4wd-5072,MED,,yes
+MG-066,66,Lancia Delta HF Integrale Evo,powerRpm,5750,https://www.auto-data.net/en/lancia-delta-i-831-facelift-1991-hf-integrale-evo-2.0-16v-215hp-4wd-5072,MED,"source states 215 PS at this rpm; existing stockPowerPs of 213 is close but not identical, rpm reported independently",yes
+MG-066,66,Lancia Delta HF Integrale Evo,stockTyre,205/45R16,https://www.auto-data.net/en/lancia-delta-i-831-facelift-1991-hf-integrale-evo-2.0-16v-215hp-4wd-5072,MED,another aggregator gives 205/50ZR15; using the directly-fetched figure,yes
+MG-066,66,Lancia Delta HF Integrale Evo,styleBase,13,,SUGGESTION,boxy flared-arch Group A homologation hatch with roof spoiler; iconic and distinctive without being flashy,yes
+MG-066,66,Lancia Delta HF Integrale Evo,torqueRpm,2500,https://www.auto-data.net/en/lancia-delta-i-831-facelift-1991-hf-integrale-evo-2.0-16v-215hp-4wd-5072,MED,"source states 308 Nm at this rpm; existing peakTorqueNm of 304 is close but not identical, rpm reported independently",yes
+MG-066,66,Lancia Delta HF Integrale Evo,tyreCompound,performance,https://www.auto-data.net/en/lancia-delta-i-831-facelift-1991-hf-integrale-evo-2.0-16v-215hp-4wd-5072,MED,,yes
+MG-066,66,Lancia Delta HF Integrale Evo,wheelbaseMm,2479,https://www.auto-data.net/en/lancia-delta-i-831-facelift-1991-hf-integrale-evo-2.0-16v-215hp-4wd-5072,MED,,yes
+MG-066,66,Lancia Delta HF Integrale Evo,widthMm,1767,https://www.auto-data.net/en/lancia-delta-i-831-facelift-1991-hf-integrale-evo-2.0-16v-215hp-4wd-5072,MED,,yes
+MG-067,67,Lancer Evo VI Tommi Makinen (CP9A),aspiration,turbo,https://www.carfolio.com/mitsubishi-lancer-evolution-vi-gsr-tommi-makinen-75416,MED,titanium-turbine turbo with intercooler,yes
+MG-067,67,Lancer Evo VI Tommi Makinen (CP9A),chassisCode,CP9A,https://www.carfolio.com/mitsubishi-lancer-evolution-vi-gsr-tommi-makinen-75416,MED,,yes
+MG-067,67,Lancer Evo VI Tommi Makinen (CP9A),curbWeightKg,1360,https://www.carfolio.com/mitsubishi-lancer-evolution-vi-gsr-tommi-makinen-75416,MED,,yes
+MG-067,67,Lancer Evo VI Tommi Makinen (CP9A),displacementCc,1997,https://www.carfolio.com/mitsubishi-lancer-evolution-vi-gsr-tommi-makinen-75416,MED,,yes
+MG-067,67,Lancer Evo VI Tommi Makinen (CP9A),drivetrain,AWD,https://www.carfolio.com/mitsubishi-lancer-evolution-vi-gsr-tommi-makinen-75416,MED,,yes
+MG-067,67,Lancer Evo VI Tommi Makinen (CP9A),engineCode,4G63T,https://www.carfolio.com/mitsubishi-lancer-evolution-vi-gsr-tommi-makinen-75416,MED,,yes
+MG-067,67,Lancer Evo VI Tommi Makinen (CP9A),engineConfig,I4,https://www.carfolio.com/mitsubishi-lancer-evolution-vi-gsr-tommi-makinen-75416,MED,,yes
+MG-067,67,Lancer Evo VI Tommi Makinen (CP9A),heightMm,1405,https://www.carfolio.com/mitsubishi-lancer-evolution-vi-gsr-tommi-makinen-75416,MED,,yes
+MG-067,67,Lancer Evo VI Tommi Makinen (CP9A),peakTorqueNm,373,https://www.carfolio.com/mitsubishi-lancer-evolution-vi-gsr-tommi-makinen-75416,MED,,yes
+MG-067,67,Lancer Evo VI Tommi Makinen (CP9A),powerRpm,6500,https://www.carfolio.com/mitsubishi-lancer-evolution-vi-gsr-tommi-makinen-75416,MED,,yes
+MG-067,67,Lancer Evo VI Tommi Makinen (CP9A),quotedPowerPs,280,https://www.carfolio.com/mitsubishi-lancer-evolution-vi-gsr-tommi-makinen-75416,MED,at the JDM gentlemen's-agreement ceiling; widely reported as also the real output,yes
+MG-067,67,Lancer Evo VI Tommi Makinen (CP9A),stockPowerPs,280,https://www.carfolio.com/mitsubishi-lancer-evolution-vi-gsr-tommi-makinen-75416,MED,,yes
+MG-067,67,Lancer Evo VI Tommi Makinen (CP9A),stockTyre,225/45ZR17,https://www.carfolio.com/mitsubishi-lancer-evolution-vi-gsr-tommi-makinen-75416,MED,,yes
+MG-067,67,Lancer Evo VI Tommi Makinen (CP9A),styleBase,14,,SUGGESTION,"aggressive rally sedan with round foglamps, big wing and bonnet vents; a JDM icon",yes
+MG-067,67,Lancer Evo VI Tommi Makinen (CP9A),topSpeedKmh,241.4,https://www.autosnout.com/Top-Speed/Mitsubishi-Lancer-Evo-VI-Tommi-Makinen-2000/411,LOW,"single aggregator source, not a primary road test",yes
+MG-067,67,Lancer Evo VI Tommi Makinen (CP9A),torqueRpm,2750,https://www.carfolio.com/mitsubishi-lancer-evolution-vi-gsr-tommi-makinen-75416,MED,,yes
+MG-067,67,Lancer Evo VI Tommi Makinen (CP9A),tyreCompound,sport,https://www.carfolio.com/mitsubishi-lancer-evolution-vi-gsr-tommi-makinen-75416,MED,,yes
+MG-067,67,Lancer Evo VI Tommi Makinen (CP9A),wheelbaseMm,2510,https://www.carfolio.com/mitsubishi-lancer-evolution-vi-gsr-tommi-makinen-75416,MED,,yes
+MG-067,67,Lancer Evo VI Tommi Makinen (CP9A),widthMm,1770,https://www.carfolio.com/mitsubishi-lancer-evolution-vi-gsr-tommi-makinen-75416,MED,,yes
+MG-067,67,Lancer Evo VI Tommi Makinen (CP9A),yearFrom,1999,https://www.carfolio.com/mitsubishi-lancer-evolution-vi-gsr-tommi-makinen-75416,MED,Tommi Makinen Edition released late 1999,yes
+MG-068,68,BMW M3 (E30),aspiration,NA,https://www.carfolio.com/bmw-m3-110583,MED,,yes
+MG-068,68,BMW M3 (E30),chassisCode,E30,https://www.carfolio.com/bmw-m3-110583,MED,,yes
+MG-068,68,BMW M3 (E30),dragCd,0.33,https://www.vintauto.com/en/what-was-the-drag-coefficient-cx-of-the-bmw-m3-e30/,MED,dedicated article on this exact question; standard E30 3-series was 0.38,yes
+MG-068,68,BMW M3 (E30),engineCode,S14,https://www.carfolio.com/bmw-m3-110583,MED,,yes
+MG-068,68,BMW M3 (E30),engineConfig,I4,https://www.carfolio.com/bmw-m3-110583,MED,,yes
+MG-068,68,BMW M3 (E30),heightMm,1369,https://www.carfolio.com/bmw-m3-110583,MED,,yes
+MG-068,68,BMW M3 (E30),powerRpm,6750,https://www.carfolio.com/bmw-m3-110583,MED,,yes
+MG-068,68,BMW M3 (E30),stockTyre,205/55VR15,https://www.carfolio.com/bmw-m3-110583,MED,a separate search also found 205/50VR16 quoted elsewhere (16in wheel option existed); using the directly-fetched figure,yes
+MG-068,68,BMW M3 (E30),styleBase,12,,SUGGESTION,"purposeful boxy widebody over the standard E30, flared arches and boot spoiler, but visually understated next to later JDM icons",yes
+MG-068,68,BMW M3 (E30),torqueRpm,4750,https://www.carfolio.com/bmw-m3-110583,MED,,yes
+MG-068,68,BMW M3 (E30),tyreCompound,performance,https://www.carfolio.com/bmw-m3-110583,MED,,yes
+MG-068,68,BMW M3 (E30),wheelbaseMm,2563,https://www.carfolio.com/bmw-m3-110583,MED,,yes
+MG-068,68,BMW M3 (E30),widthMm,1679,https://www.carfolio.com/bmw-m3-110583,MED,,yes
+MG-069,69,Lancer Evo VIII MR (CT9A),aspiration,turbo,https://www.carfolio.com/mitsubishi-lancer-evolution-viii-105072,MED,physical spec shared across markets even though carfolio's power figure is US-tune,yes
+MG-069,69,Lancer Evo VIII MR (CT9A),chassisCode,CT9A,https://www.carfolio.com/mitsubishi-lancer-evolution-viii-105072,MED,,yes
+MG-069,69,Lancer Evo VIII MR (CT9A),displacementCc,1997,https://www.carfolio.com/mitsubishi-lancer-evolution-viii-105072,MED,,yes
+MG-069,69,Lancer Evo VIII MR (CT9A),drivetrain,AWD,https://www.carfolio.com/mitsubishi-lancer-evolution-viii-105072,MED,,yes
+MG-069,69,Lancer Evo VIII MR (CT9A),engineCode,4G63T,https://www.carfolio.com/mitsubishi-lancer-evolution-viii-105072,MED,,yes
+MG-069,69,Lancer Evo VIII MR (CT9A),engineConfig,I4,https://www.carfolio.com/mitsubishi-lancer-evolution-viii-105072,MED,,yes
+MG-069,69,Lancer Evo VIII MR (CT9A),heightMm,1450,https://www.carfolio.com/mitsubishi-lancer-evolution-viii-105072,MED,,yes
+MG-069,69,Lancer Evo VIII MR (CT9A),quotedPowerPs,280,https://www.automobile-catalog.com/car/2004/1997480/mitsubishi_lancer_gsr_evolution_viii_mr.html,MED,"JDM MR spec page title states 206 kW / 280 PS; could not fetch page directly (paywalled), corroborated by multiple independent aggregators",yes
+MG-069,69,Lancer Evo VIII MR (CT9A),stockPowerPs,280,https://www.automobile-catalog.com/car/2004/1997480/mitsubishi_lancer_gsr_evolution_viii_mr.html,MED,see quotedPowerPs note,yes
+MG-069,69,Lancer Evo VIII MR (CT9A),stockTyre,235/45ZR17,https://www.carfolio.com/mitsubishi-lancer-evolution-viii-105072,MED,,yes
+MG-069,69,Lancer Evo VIII MR (CT9A),styleBase,14,,SUGGESTION,"sharper, more aggressive angular update of the Evo look with larger wing and bumper vents",yes
+MG-069,69,Lancer Evo VIII MR (CT9A),topSpeedKmh,245,https://www.ultimatespecs.com/car-specs/Mitsubishi/6977/Mitsubishi-Lancer-VIII-Evolution-VIII.html,LOW,single aggregator source,yes
+MG-069,69,Lancer Evo VIII MR (CT9A),tyreCompound,sport,https://www.carfolio.com/mitsubishi-lancer-evolution-viii-105072,MED,,yes
+MG-069,69,Lancer Evo VIII MR (CT9A),wheelbaseMm,2625,https://www.carfolio.com/mitsubishi-lancer-evolution-viii-105072,MED,,yes
+MG-069,69,Lancer Evo VIII MR (CT9A),widthMm,1770,https://www.carfolio.com/mitsubishi-lancer-evolution-viii-105072,MED,,yes
+MG-069,69,Lancer Evo VIII MR (CT9A),yearFrom,2004,https://www.automobile-catalog.com/car/2004/1997480/mitsubishi_lancer_gsr_evolution_viii_mr.html,LOW,JDM MR launched February 2004 per page title; not independently fetched,yes
+MG-070,70,Nissan Fairlady 240ZG (HS30),aspiration,NA,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/340_fairlady_240zg.html,HIGH,,yes
+MG-070,70,Nissan Fairlady 240ZG (HS30),chassisCode,HS30-H,https://supercarnostalgia.com/blog/nissan-fairlady-240zg,MED,factory code for the long-nose G-variant; displayName in this CSV uses the shorter HS30,yes
+MG-070,70,Nissan Fairlady 240ZG (HS30),curbWeightKg,1010,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/340_fairlady_240zg.html,HIGH,,yes
+MG-070,70,Nissan Fairlady 240ZG (HS30),displacementCc,2393,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/340_fairlady_240zg.html,HIGH,,yes
+MG-070,70,Nissan Fairlady 240ZG (HS30),drivetrain,RWD,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/340_fairlady_240zg.html,HIGH,,yes
+MG-070,70,Nissan Fairlady 240ZG (HS30),engineCode,L24,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/340_fairlady_240zg.html,HIGH,,yes
+MG-070,70,Nissan Fairlady 240ZG (HS30),engineConfig,I6,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/340_fairlady_240zg.html,HIGH,,yes
+MG-070,70,Nissan Fairlady 240ZG (HS30),heightMm,1285,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/340_fairlady_240zg.html,HIGH,,yes
+MG-070,70,Nissan Fairlady 240ZG (HS30),peakTorqueNm,206,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/340_fairlady_240zg.html,HIGH,21.0 kgm,yes
+MG-070,70,Nissan Fairlady 240ZG (HS30),powerRpm,5600,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/340_fairlady_240zg.html,HIGH,,yes
+MG-070,70,Nissan Fairlady 240ZG (HS30),quotedPowerPs,150,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/340_fairlady_240zg.html,HIGH,era predates the JDM power-advertising ceiling; same as stock output,yes
+MG-070,70,Nissan Fairlady 240ZG (HS30),stockPowerPs,150,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/340_fairlady_240zg.html,HIGH,,yes
+MG-070,70,Nissan Fairlady 240ZG (HS30),stockTyre,175HR14,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/340_fairlady_240zg.html,HIGH,,yes
+MG-070,70,Nissan Fairlady 240ZG (HS30),styleBase,15,,SUGGESTION,"long 'aero-dyna' G-nose, riveted flares, trunk spoiler; one of the most striking classic Z shapes",yes
+MG-070,70,Nissan Fairlady 240ZG (HS30),topSpeedKmh,210,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/340_fairlady_240zg.html,HIGH,,yes
+MG-070,70,Nissan Fairlady 240ZG (HS30),torqueRpm,4800,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/340_fairlady_240zg.html,HIGH,,yes
+MG-070,70,Nissan Fairlady 240ZG (HS30),tyreCompound,touring,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/340_fairlady_240zg.html,MED,"period bias-belted road tyre, closest fit to current vocabulary",yes
+MG-070,70,Nissan Fairlady 240ZG (HS30),wheelbaseMm,2305,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/340_fairlady_240zg.html,HIGH,,yes
+MG-070,70,Nissan Fairlady 240ZG (HS30),widthMm,1690,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/340_fairlady_240zg.html,HIGH,,yes
+MG-070,70,Nissan Fairlady 240ZG (HS30),yearFrom,1972,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/340_fairlady_240zg.html,HIGH,Nissan's own heritage page dates it 1972; a secondary source says production began October 1971,yes
+MG-071,71,Autech Stagea 260RS (WGNC34),aspiration,twin-turbo,https://www.carfolio.com/nissan-stagea-autech-260rs-793793,MED,,yes
+MG-071,71,Autech Stagea 260RS (WGNC34),chassisCode,WGNC34,https://www.carfolio.com/nissan-stagea-autech-260rs-793793,MED,,yes
+MG-071,71,Autech Stagea 260RS (WGNC34),engineCode,RB26DETT,https://www.carfolio.com/nissan-stagea-autech-260rs-793793,MED,"every source found gives 280 PS / 206 kW and 368 Nm for this engine, well above the CSV's existing stockPowerPs of 235 and peakTorqueNm of 274; flagging for maintainer review, not amended here per the additive-only rule",yes
+MG-071,71,Autech Stagea 260RS (WGNC34),engineConfig,I6,https://www.carfolio.com/nissan-stagea-autech-260rs-793793,MED,,yes
+MG-071,71,Autech Stagea 260RS (WGNC34),heightMm,1510,https://www.carfolio.com/nissan-stagea-autech-260rs-793793,MED,,yes
+MG-071,71,Autech Stagea 260RS (WGNC34),stockTyre,225/50R17,https://www.carfolio.com/nissan-stagea-autech-260rs-793793,MED,Bridgestone RE010,yes
+MG-071,71,Autech Stagea 260RS (WGNC34),styleBase,10,,SUGGESTION,understated wagon body with a GT-R nose and quad tail-lights; a sleeper rather than a showpiece,yes
+MG-071,71,Autech Stagea 260RS (WGNC34),tyreCompound,performance,https://www.carfolio.com/nissan-stagea-autech-260rs-793793,MED,,yes
+MG-071,71,Autech Stagea 260RS (WGNC34),wheelbaseMm,2720,https://www.carfolio.com/nissan-stagea-autech-260rs-793793,MED,,yes
+MG-071,71,Autech Stagea 260RS (WGNC34),widthMm,1755,https://www.carfolio.com/nissan-stagea-autech-260rs-793793,MED,,yes
+MG-072,72,"Subaru Impreza WRX STI (GDB, '04)",aspiration,turbo,https://www.jdmbuysell.com/learn/subaru/impreza/gdb/,MED,,yes
+MG-072,72,"Subaru Impreza WRX STI (GDB, '04)",chassisCode,GDB,https://www.jdmbuysell.com/learn/subaru/impreza/gdb/,MED,,yes
+MG-072,72,"Subaru Impreza WRX STI (GDB, '04)",displacementCc,1994,https://www.automobile-catalog.com/car/2004/3254765/subaru_impreza_wrx_sti.html,LOW,JDM spec page title figure; page itself could not be fetched directly (paywalled),yes
+MG-072,72,"Subaru Impreza WRX STI (GDB, '04)",dragCd,0.33,https://www.automobile-catalog.com/car/2004/3256745/subaru_impreza_wrx_sti_sedan.html,LOW,"figure found attached to the North American 2.5L Spec C sedan; drag coefficient is a body-shape property so likely shared with the JDM 2.0L GDB body, but not confirmed for this exact market",yes
+MG-072,72,"Subaru Impreza WRX STI (GDB, '04)",drivetrain,AWD,https://www.jdmbuysell.com/learn/subaru/impreza/gdb/,MED,,yes
+MG-072,72,"Subaru Impreza WRX STI (GDB, '04)",engineCode,EJ207,https://www.jdmbuysell.com/learn/subaru/impreza/gdb/,MED,EJ207 stayed JDM-exclusive for the STI grade,yes
+MG-072,72,"Subaru Impreza WRX STI (GDB, '04)",engineConfig,flat-4,https://www.jdmbuysell.com/learn/subaru/impreza/gdb/,MED,,yes
+MG-072,72,"Subaru Impreza WRX STI (GDB, '04)",heightMm,1431,https://www.carinf.com/en/9910413684.html,LOW,not independently fetched,yes
+MG-072,72,"Subaru Impreza WRX STI (GDB, '04)",peakTorqueNm,373,https://igotasti.com/vBforum/threads/42-*STICKY*-Differences-between-each-year-of-STi,LOW,"cited as 38.0 kgm; enthusiast reference forum, not a primary source",yes
+MG-072,72,"Subaru Impreza WRX STI (GDB, '04)",powerRpm,6400,https://igotasti.com/vBforum/threads/42-*STICKY*-Differences-between-each-year-of-STi,LOW,,yes
+MG-072,72,"Subaru Impreza WRX STI (GDB, '04)",quotedPowerPs,280,https://igotasti.com/vBforum/threads/42-*STICKY*-Differences-between-each-year-of-STi,MED,at the JDM gentlemen's-agreement ceiling; corroborated by automobile-catalog's JDM page title,yes
+MG-072,72,"Subaru Impreza WRX STI (GDB, '04)",stockPowerPs,280,https://igotasti.com/vBforum/threads/42-*STICKY*-Differences-between-each-year-of-STi,MED,,yes
+MG-072,72,"Subaru Impreza WRX STI (GDB, '04)",stockTyre,225/45R17,https://www.carfolio.com/subaru-impreza-wrx-sti-135047,MED,directly fetched but for the US-spec 2.5L STI; noting per field-notes guidance as the wheel/tyre package is believed shared with the JDM body,yes
+MG-072,72,"Subaru Impreza WRX STI (GDB, '04)",styleBase,12,,SUGGESTION,bug-eye headlamp era Impreza with big rear wing and gold wheels; distinctive rally look but shares its shell with the mundane Impreza,yes
+MG-072,72,"Subaru Impreza WRX STI (GDB, '04)",topSpeedKmh,244,https://www.ultimatespecs.com/car-specs/Subaru/5741/Subaru-Impreza-(GD)-20-WRX-STi-AWD.html,LOW,single aggregator figure; other sources found range from 225 to 280 km/h depending on market confusion between the 2.0L JDM and 2.5L US engines,yes
+MG-072,72,"Subaru Impreza WRX STI (GDB, '04)",tyreCompound,sport,https://www.carfolio.com/subaru-impreza-wrx-sti-135047,MED,,yes
+MG-072,72,"Subaru Impreza WRX STI (GDB, '04)",wheelbaseMm,2541,https://www.carinf.com/en/9910413684.html,LOW,a separate source specifically labelled 'for the GDB chassis' gives 2525mm instead; not independently fetched,yes
+MG-072,72,"Subaru Impreza WRX STI (GDB, '04)",widthMm,1739,https://www.carinf.com/en/9910413684.html,LOW,not independently fetched,yes
+MG-072,72,"Subaru Impreza WRX STI (GDB, '04)",yearFrom,2004,https://www.automobile-catalog.com/car/2004/3254765/subaru_impreza_wrx_sti.html,LOW,JDM page title states since June 2004 for Japan; page itself could not be fetched directly,yes
+MG-073,73,Ford Escort RS Cosworth,aspiration,turbo,https://www.carfolio.com/ford-escort-rs-cosworth-33572,HIGH,Garrett T3/T04B turbo with intercooler,yes
+MG-073,73,Ford Escort RS Cosworth,dragCd,0.38,https://www.carfolio.com/ford-escort-rs-cosworth-33572,MED,,yes
+MG-073,73,Ford Escort RS Cosworth,engineCode,YBT,https://www.carfolio.com/ford-escort-rs-cosworth-33572,MED,Cosworth YBT turbo inline-4,yes
+MG-073,73,Ford Escort RS Cosworth,engineConfig,I4,https://www.carfolio.com/ford-escort-rs-cosworth-33572,HIGH,,yes
+MG-073,73,Ford Escort RS Cosworth,heightMm,1405,https://www.carfolio.com/ford-escort-rs-cosworth-33572,HIGH,,yes
+MG-073,73,Ford Escort RS Cosworth,powerRpm,6250,https://www.carfolio.com/ford-escort-rs-cosworth-33572,HIGH,,yes
+MG-073,73,Ford Escort RS Cosworth,quotedPowerPs,227,https://www.carfolio.com/ford-escort-rs-cosworth-33572,MED,"not a JDM car, no advertising ceiling applied; figure matches the existing stockPowerPs of 227 exactly",yes
+MG-073,73,Ford Escort RS Cosworth,stockTyre,245/45ZR16,https://www.carfolio.com/ford-escort-rs-cosworth-33572,HIGH,,yes
+MG-073,73,Ford Escort RS Cosworth,styleBase,13,,SUGGESTION,boxy homologation hatch famous for its towering 'whale tail' rear wing; deliberately aggressive,yes
+MG-073,73,Ford Escort RS Cosworth,torqueRpm,3500,https://www.carfolio.com/ford-escort-rs-cosworth-33572,HIGH,,yes
+MG-073,73,Ford Escort RS Cosworth,tyreCompound,sport,https://www.carfolio.com/ford-escort-rs-cosworth-33572,MED,,yes
+MG-073,73,Ford Escort RS Cosworth,wheelbaseMm,2551,https://www.carfolio.com/ford-escort-rs-cosworth-33572,HIGH,,yes
+MG-073,73,Ford Escort RS Cosworth,widthMm,1734,https://www.carfolio.com/ford-escort-rs-cosworth-33572,HIGH,,yes
+MG-074,74,"Nissan Fairlady Z (Z33, '02)",aspiration,NA,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/284_fairlady_z_version_st.html,HIGH,,yes
+MG-074,74,"Nissan Fairlady Z (Z33, '02)",chassisCode,Z33,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/284_fairlady_z_version_st.html,HIGH,,yes
+MG-074,74,"Nissan Fairlady Z (Z33, '02)",dragCd,0.30,https://auto.howstuffworks.com/nissan-350z-design1.htm,LOW,"quoted for the export 350Z; body shape shared with the JDM Fairlady Z Version ST, but not confirmed for this exact trim. Existing displacementCc of 2960 does not match VQ35DE's known 3498cc; flagging for maintainer review, not amended here",yes
+MG-074,74,"Nissan Fairlady Z (Z33, '02)",engineCode,VQ35DE,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/284_fairlady_z_version_st.html,HIGH,,yes
+MG-074,74,"Nissan Fairlady Z (Z33, '02)",engineConfig,V6,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/284_fairlady_z_version_st.html,HIGH,,yes
+MG-074,74,"Nissan Fairlady Z (Z33, '02)",heightMm,1315,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/284_fairlady_z_version_st.html,HIGH,,yes
+MG-074,74,"Nissan Fairlady Z (Z33, '02)",powerRpm,6200,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/284_fairlady_z_version_st.html,HIGH,,yes
+MG-074,74,"Nissan Fairlady Z (Z33, '02)",quotedPowerPs,280,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/284_fairlady_z_version_st.html,HIGH,matches existing stockPowerPs of 280 exactly,yes
+MG-074,74,"Nissan Fairlady Z (Z33, '02)",stockTyre,225/45R18 (f) / 245/45R18 (r),https://www.nissan-global.com/EN/HERITAGE_COLLECTION/284_fairlady_z_version_st.html,HIGH,staggered fitment; CSV convention elsewhere only shows single non-staggered sizes,yes
+MG-074,74,"Nissan Fairlady Z (Z33, '02)",styleBase,14,,SUGGESTION,"bold, muscular modern GT shape with a long bonnet and boomerang tail-lights",yes
+MG-074,74,"Nissan Fairlady Z (Z33, '02)",torqueRpm,4800,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/284_fairlady_z_version_st.html,HIGH,"source gives 363 Nm at this rpm point; existing peakTorqueNm cell already holds 384, so this rpm is reported independently of that mismatch",yes
+MG-074,74,"Nissan Fairlady Z (Z33, '02)",tyreCompound,sport,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/284_fairlady_z_version_st.html,HIGH,,yes
+MG-074,74,"Nissan Fairlady Z (Z33, '02)",wheelbaseMm,2650,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/284_fairlady_z_version_st.html,HIGH,,yes
+MG-074,74,"Nissan Fairlady Z (Z33, '02)",widthMm,1815,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/284_fairlady_z_version_st.html,HIGH,,yes
+MG-076,76,"Honda S2000 (AP1, '03)",aspiration,NA,https://www.encycarpedia.com/us/honda/99-s2000-jdm-ap1-roadster,MED,,yes
+MG-076,76,"Honda S2000 (AP1, '03)",chassisCode,AP1,https://www.encycarpedia.com/us/honda/99-s2000-jdm-ap1-roadster,MED,,yes
+MG-076,76,"Honda S2000 (AP1, '03)",engineCode,F20C,https://www.encycarpedia.com/us/honda/99-s2000-jdm-ap1-roadster,MED,,yes
+MG-076,76,"Honda S2000 (AP1, '03)",engineConfig,I4,https://www.encycarpedia.com/us/honda/99-s2000-jdm-ap1-roadster,MED,,yes
+MG-076,76,"Honda S2000 (AP1, '03)",heightMm,1285,https://www.encycarpedia.com/us/honda/99-s2000-jdm-ap1-roadster,LOW,not independently fetched (site returned 403 on direct access),yes
+MG-076,76,"Honda S2000 (AP1, '03)",stockTyre,205/55R16 (f) / 225/50R16 (r),https://www.wheel-size.com/size/honda/s2000/ap-1999-2003/,LOW,"staggered fitment, Bridgestone SO2 original equipment",yes
+MG-076,76,"Honda S2000 (AP1, '03)",styleBase,13,,SUGGESTION,"clean, taut roadster proportions with a long bonnet; elegant rather than aggressive",yes
+MG-076,76,"Honda S2000 (AP1, '03)",tyreCompound,sport,https://www.wheel-size.com/size/honda/s2000/ap-1999-2003/,LOW,,yes
+MG-076,76,"Honda S2000 (AP1, '03)",wheelbaseMm,2400,https://www.encycarpedia.com/us/honda/99-s2000-jdm-ap1-roadster,LOW,not independently fetched (site returned 403 on direct access),yes
+MG-076,76,"Honda S2000 (AP1, '03)",widthMm,1750,https://www.encycarpedia.com/us/honda/99-s2000-jdm-ap1-roadster,LOW,not independently fetched (site returned 403 on direct access),yes
+MG-078,78,Nissan Skyline GT-R V-Spec (BCNR33),aspiration,twin-turbo,https://www.carfolio.com/nissan-skyline-gt-r-spec-v-100551,MED,,yes
+MG-078,78,Nissan Skyline GT-R V-Spec (BCNR33),chassisCode,BCNR33,https://www.carfolio.com/nissan-skyline-gt-r-spec-v-100551,MED,source lists this as BNCR33 (letters transposed); standard designation BCNR33 used to match displayName,yes
+MG-078,78,Nissan Skyline GT-R V-Spec (BCNR33),curbWeightKg,1540,https://www.carfolio.com/nissan-skyline-gt-r-spec-v-100551,MED,V-Spec is reported as roughly 10kg heavier than the base BCNR33,yes
+MG-078,78,Nissan Skyline GT-R V-Spec (BCNR33),displacementCc,2568,https://www.carfolio.com/nissan-skyline-gt-r-spec-v-100551,MED,,yes
+MG-078,78,Nissan Skyline GT-R V-Spec (BCNR33),dragCd,0.35,http://www.r33gt-r.com/2013/04/r33-gt-r-aerodynamics-part-2.html,LOW,specialist aero-focused article; could not be independently verified as the page failed to load directly this session,yes
+MG-078,78,Nissan Skyline GT-R V-Spec (BCNR33),drivetrain,AWD,https://www.carfolio.com/nissan-skyline-gt-r-spec-v-100551,MED,ATTESA E-TS Pro with Active LSD,yes
+MG-078,78,Nissan Skyline GT-R V-Spec (BCNR33),engineCode,RB26DETT,https://www.carfolio.com/nissan-skyline-gt-r-spec-v-100551,MED,,yes
+MG-078,78,Nissan Skyline GT-R V-Spec (BCNR33),engineConfig,I6,https://www.carfolio.com/nissan-skyline-gt-r-spec-v-100551,MED,,yes
+MG-078,78,Nissan Skyline GT-R V-Spec (BCNR33),heightMm,1360,https://www.carfolio.com/nissan-skyline-gt-r-spec-v-100551,MED,,yes
+MG-078,78,Nissan Skyline GT-R V-Spec (BCNR33),peakTorqueNm,368,https://www.carfolio.com/nissan-skyline-gt-r-spec-v-100551,MED,37.5 kgm,yes
+MG-078,78,Nissan Skyline GT-R V-Spec (BCNR33),powerRpm,6800,https://www.carfolio.com/nissan-skyline-gt-r-spec-v-100551,MED,,yes
+MG-078,78,Nissan Skyline GT-R V-Spec (BCNR33),quotedPowerPs,280,https://www.carfolio.com/nissan-skyline-gt-r-spec-v-100551,MED,at the JDM gentlemen's-agreement ceiling; real output was widely reported as significantly higher once the boost restrictor is removed,yes
+MG-078,78,Nissan Skyline GT-R V-Spec (BCNR33),stockPowerPs,280,https://www.carfolio.com/nissan-skyline-gt-r-spec-v-100551,MED,factory-rated figure; unrestricted output commonly cited around 320-330PS,yes
+MG-078,78,Nissan Skyline GT-R V-Spec (BCNR33),stockTyre,245/45R17,https://www.carfolio.com/nissan-skyline-gt-r-spec-v-100551,MED,,yes
+MG-078,78,Nissan Skyline GT-R V-Spec (BCNR33),styleBase,15,,SUGGESTION,"smoother evolution of the R32 GT-R face, still a wide, purposeful four-door with a signature round tail-light cluster",yes
+MG-078,78,Nissan Skyline GT-R V-Spec (BCNR33),torqueRpm,4400,https://www.carfolio.com/nissan-skyline-gt-r-spec-v-100551,MED,,yes
+MG-078,78,Nissan Skyline GT-R V-Spec (BCNR33),tyreCompound,performance,https://www.carfolio.com/nissan-skyline-gt-r-spec-v-100551,MED,,yes
+MG-078,78,Nissan Skyline GT-R V-Spec (BCNR33),weightDistributionFront,55,https://www.hotcars.com/r33-gt-r-underappreciated-jdm-of-nissan-skyline-family/,LOW,"general enthusiast article, not a primary source",yes
+MG-078,78,Nissan Skyline GT-R V-Spec (BCNR33),wheelbaseMm,2720,https://www.carfolio.com/nissan-skyline-gt-r-spec-v-100551,MED,,yes
+MG-078,78,Nissan Skyline GT-R V-Spec (BCNR33),widthMm,1780,https://www.carfolio.com/nissan-skyline-gt-r-spec-v-100551,MED,,yes
+MG-079,79,Mazda RX-7 Spirit R Type A (FD3S),aspiration,twin-turbo,https://www.carfolio.com/mazda-rx-7-spirit-r-type-a-591899,MED,sequential twin-turbo,yes
+MG-079,79,Mazda RX-7 Spirit R Type A (FD3S),chassisCode,FD3S,https://www.carfolio.com/mazda-rx-7-spirit-r-type-a-591899,MED,,yes
+MG-079,79,Mazda RX-7 Spirit R Type A (FD3S),curbWeightKg,1270,https://www.carfolio.com/mazda-rx-7-spirit-r-type-a-591899,MED,,yes
+MG-079,79,Mazda RX-7 Spirit R Type A (FD3S),displacementCc,1308,https://www.carfolio.com/mazda-rx-7-spirit-r-type-a-591899,MED,actual rotor-chamber displacement; some sources instead quote a 2616cc 'rotary equivalent' figure,yes
+MG-079,79,Mazda RX-7 Spirit R Type A (FD3S),dragCd,0.31,https://en.wikipedia.org/wiki/List_of_automobile_drag_coefficients,MED,"figure listed for the 1993 FD R1/R2 grade, not the 2002 Spirit R Type A specifically, but the FD3S body shell is shared across the generation",yes
+MG-079,79,Mazda RX-7 Spirit R Type A (FD3S),drivetrain,RWD,https://www.carfolio.com/mazda-rx-7-spirit-r-type-a-591899,MED,,yes
+MG-079,79,Mazda RX-7 Spirit R Type A (FD3S),engineCode,13B-REW,https://www.carfolio.com/mazda-rx-7-spirit-r-type-a-591899,MED,,yes
+MG-079,79,Mazda RX-7 Spirit R Type A (FD3S),engineConfig,rotary-2,https://www.carfolio.com/mazda-rx-7-spirit-r-type-a-591899,MED,new engineConfig value for this slice per field notes guidance for engines outside the standard vocab,yes
+MG-079,79,Mazda RX-7 Spirit R Type A (FD3S),heightMm,1230,https://www.carfolio.com/mazda-rx-7-spirit-r-type-a-591899,MED,,yes
+MG-079,79,Mazda RX-7 Spirit R Type A (FD3S),peakTorqueNm,314,https://www.carfolio.com/mazda-rx-7-spirit-r-type-a-591899,MED,32.0 kgm,yes
+MG-079,79,Mazda RX-7 Spirit R Type A (FD3S),powerRpm,6500,https://www.carfolio.com/mazda-rx-7-spirit-r-type-a-591899,MED,,yes
+MG-079,79,Mazda RX-7 Spirit R Type A (FD3S),quotedPowerPs,280,https://www.carfolio.com/mazda-rx-7-spirit-r-type-a-591899,MED,at the JDM gentlemen's-agreement ceiling; widely reported as also the real output for this final RX-7 run,yes
+MG-079,79,Mazda RX-7 Spirit R Type A (FD3S),stockPowerPs,280,https://www.carfolio.com/mazda-rx-7-spirit-r-type-a-591899,MED,,yes
+MG-079,79,Mazda RX-7 Spirit R Type A (FD3S),stockTyre,235/45ZR17,https://www.carfolio.com/mazda-rx-7-spirit-r-type-a-591899,MED,Bridgestone Potenza S-07,yes
+MG-079,79,Mazda RX-7 Spirit R Type A (FD3S),styleBase,18,,SUGGESTION,widely regarded as one of the most beautiful production car shapes of the 1990s; flowing organic curves with no wasted lines,yes
+MG-079,79,Mazda RX-7 Spirit R Type A (FD3S),topSpeedKmh,256,https://www.jdmbuysell.com/learn/mazda/rx-7/fd3s/,LOW,figures found ranged from roughly 250 to 268 km/h across sources; using the most frequently repeated figure,yes
+MG-079,79,Mazda RX-7 Spirit R Type A (FD3S),torqueRpm,5000,https://www.carfolio.com/mazda-rx-7-spirit-r-type-a-591899,MED,,yes
+MG-079,79,Mazda RX-7 Spirit R Type A (FD3S),tyreCompound,sport,https://www.carfolio.com/mazda-rx-7-spirit-r-type-a-591899,MED,,yes
+MG-079,79,Mazda RX-7 Spirit R Type A (FD3S),weightDistributionFront,50,https://projectjdm.org/blog/rx7-fd-specs,LOW,"quoted as an even 50/50 split; source attributes this specifically to the Type RZ grade, which shares its structure with the Type A",yes
+MG-079,79,Mazda RX-7 Spirit R Type A (FD3S),wheelbaseMm,2425,https://www.carfolio.com/mazda-rx-7-spirit-r-type-a-591899,MED,,yes
+MG-079,79,Mazda RX-7 Spirit R Type A (FD3S),widthMm,1760,https://www.carfolio.com/mazda-rx-7-spirit-r-type-a-591899,MED,,yes
+MG-079,79,Mazda RX-7 Spirit R Type A (FD3S),yearFrom,2002,https://www.carfolio.com/mazda-rx-7-spirit-r-type-a-591899,MED,Spirit R limited run built April-August 2002,yes
+MG-080,80,Nissan Fairlady Z432 (PS30),aspiration,NA,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/fairlady_z_432.html,HIGH,,yes
+MG-080,80,Nissan Fairlady Z432 (PS30),chassisCode,PS30,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/fairlady_z_432.html,HIGH,,yes
+MG-080,80,Nissan Fairlady Z432 (PS30),engineCode,S20,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/fairlady_z_432.html,HIGH,same S20 engine family as the contemporary Skyline GT-R (PGC10),yes
+MG-080,80,Nissan Fairlady Z432 (PS30),engineConfig,I6,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/fairlady_z_432.html,HIGH,,yes
+MG-080,80,Nissan Fairlady Z432 (PS30),heightMm,1290,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/fairlady_z_432.html,HIGH,,yes
+MG-080,80,Nissan Fairlady Z432 (PS30),powerRpm,7000,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/fairlady_z_432.html,HIGH,,yes
+MG-080,80,Nissan Fairlady Z432 (PS30),stockTyre,6.95-H14-4PR,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/fairlady_z_432.html,HIGH,"period bias-ply tyre designation, not a modern metric size",yes
+MG-080,80,Nissan Fairlady Z432 (PS30),styleBase,15,,SUGGESTION,"classic, elegant long-nose S30 Z coupe silhouette; timeless rather than aggressive",yes
+MG-080,80,Nissan Fairlady Z432 (PS30),torqueRpm,5600,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/fairlady_z_432.html,HIGH,,yes
+MG-080,80,Nissan Fairlady Z432 (PS30),tyreCompound,touring,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/fairlady_z_432.html,MED,"period road tyre, closest fit to current vocabulary",yes
+MG-080,80,Nissan Fairlady Z432 (PS30),wheelbaseMm,2305,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/fairlady_z_432.html,HIGH,,yes
+MG-080,80,Nissan Fairlady Z432 (PS30),widthMm,1630,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/fairlady_z_432.html,HIGH,,yes
+MG-081,81,Subaru Impreza 22B-STi,aspiration,turbo,https://www.sti.jp/en/roadcars/1998/impreza-22b.html,HIGH,IHI RHF5HB turbocharger,yes
+MG-081,81,Subaru Impreza 22B-STi,chassisCode,GC8,https://www.sti.jp/en/roadcars/1998/impreza-22b.html,HIGH,Official STI page gives VIN code GC8E2SD; GC8 matches this roster's convention for the Impreza generation,yes
+MG-081,81,Subaru Impreza 22B-STi,engineCode,EJ22G,https://www.sti.jp/en/roadcars/1998/impreza-22b.html,HIGH,,yes
+MG-081,81,Subaru Impreza 22B-STi,engineConfig,flat-4,https://www.sti.jp/en/roadcars/1998/impreza-22b.html,HIGH,,yes
+MG-081,81,Subaru Impreza 22B-STi,heightMm,1390,https://www.sti.jp/en/roadcars/1998/impreza-22b.html,HIGH,,yes
+MG-081,81,Subaru Impreza 22B-STi,powerRpm,6000,https://www.sti.jp/en/roadcars/1998/impreza-22b.html,HIGH,,yes
+MG-081,81,Subaru Impreza 22B-STi,quotedPowerPs,280,https://www.sti.jp/en/roadcars/1998/impreza-22b.html,HIGH,No JDM gentlemen's-agreement gap found; quoted matches the already-settled stockPowerPs,yes
+MG-081,81,Subaru Impreza 22B-STi,redlineRpm,7900,https://www.sti.jp/en/roadcars/1998/impreza-22b.html,HIGH,,yes
+MG-081,81,Subaru Impreza 22B-STi,stockTyre,235/40R17,https://www.sti.jp/en/roadcars/1998/impreza-22b.html,HIGH,Corroborated by carfolio.com,yes
+MG-081,81,Subaru Impreza 22B-STi,styleBase,18,,SUGGESTION,"Wide-body over-fendered Group A homologation icon, gold BBS wheels, one of the most instantly recognisable JDM shapes",yes
+MG-081,81,Subaru Impreza 22B-STi,torqueRpm,3200,https://www.sti.jp/en/roadcars/1998/impreza-22b.html,HIGH,"Official page pairs this rpm with 363Nm; settled peakTorqueNm cell already holds 359Nm from another source, but the rpm figure is consistent (3200) across every source found",yes
+MG-081,81,Subaru Impreza 22B-STi,tyreCompound,sport,https://www.sti.jp/en/roadcars/1998/impreza-22b.html,LOW,"Judgement call, not an independently documented compound category; Group A rally homologation special warrants the top grade",yes
+MG-081,81,Subaru Impreza 22B-STi,widthMm,1770,https://www.sti.jp/en/roadcars/1998/impreza-22b.html,HIGH,,yes
+MG-082,82,Porsche 911 Turbo 3.3 (930),aspiration,turbo,https://en.wikipedia.org/wiki/Porsche_911_(930),HIGH,,yes
+MG-082,82,Porsche 911 Turbo 3.3 (930),chassisCode,930,https://en.wikipedia.org/wiki/Porsche_911_(930),HIGH,,yes
+MG-082,82,Porsche 911 Turbo 3.3 (930),displacementCc,3299,https://en.wikipedia.org/wiki/Porsche_911_(930),HIGH,,yes
+MG-082,82,Porsche 911 Turbo 3.3 (930),drivetrain,RWD,https://en.wikipedia.org/wiki/Porsche_911_(930),HIGH,"Rear-engine, rear-wheel drive; file mixes FR/RWD vocab, using RWD to match this roster's flagship-tier convention",yes
+MG-082,82,Porsche 911 Turbo 3.3 (930),engineCode,930/60,https://en.wikipedia.org/wiki/Porsche_911_(930),HIGH,,yes
+MG-082,82,Porsche 911 Turbo 3.3 (930),engineConfig,flat-6,https://en.wikipedia.org/wiki/Porsche_911_(930),HIGH,"Not in the existing vocabulary (I3/I4/I6/V6/flat-4/rotary-2); air-cooled flat-6 is a genuinely new engineConfig value, per field notes",yes
+MG-082,82,Porsche 911 Turbo 3.3 (930),heightMm,1311,https://en.wikipedia.org/wiki/Porsche_911_(930),HIGH,Corroborated by uniquecarsandparts.com (51.97in = 1320mm),yes
+MG-082,82,Porsche 911 Turbo 3.3 (930),peakTorqueNm,412,https://en.wikipedia.org/wiki/Porsche_911_(930),HIGH,"Euro-spec figure for the 1978 3.3-litre intercooled launch version; grey-import to Japan, no JDM-specific figure found",yes
+MG-082,82,Porsche 911 Turbo 3.3 (930),powerRpm,5500,https://en.wikipedia.org/wiki/Porsche_911_(930),HIGH,,yes
+MG-082,82,Porsche 911 Turbo 3.3 (930),quotedPowerPs,300,https://en.wikipedia.org/wiki/Porsche_911_(930),HIGH,No advertising cap applies to a non-JDM manufacturer; quoted equals stock,yes
+MG-082,82,Porsche 911 Turbo 3.3 (930),stockPowerPs,300,https://en.wikipedia.org/wiki/Porsche_911_(930),HIGH,Euro-spec figure; grey-import to Japan,yes
+MG-082,82,Porsche 911 Turbo 3.3 (930),stockTyre,205/55VR16,https://www.uniquecarsandparts.com/car_info_porsche_930.htm,MED,"Front size; rear is 225/50VR16 per this source, though another source (carsguide-linked search result) gave 245/50R16 for the rear on later cars",yes
+MG-082,82,Porsche 911 Turbo 3.3 (930),styleBase,13,,SUGGESTION,"Iconic whale-tail silhouette but restrained, classic 911 lines rather than showy; subtler than the roster's modern supercars",yes
+MG-082,82,Porsche 911 Turbo 3.3 (930),topSpeedKmh,260.9,https://en.wikipedia.org/wiki/Porsche_911_(930),HIGH,,yes
+MG-082,82,Porsche 911 Turbo 3.3 (930),torqueRpm,4000,https://en.wikipedia.org/wiki/Porsche_911_(930),HIGH,,yes
+MG-082,82,Porsche 911 Turbo 3.3 (930),tyreCompound,sport,https://www.uniquecarsandparts.com/car_info_porsche_930.htm,LOW,"Judgement call based on the sourced tyre spec, not an independently documented compound category",yes
+MG-082,82,Porsche 911 Turbo 3.3 (930),weightDistributionFront,38,https://fastestlaps.com/models/porsche-911-turbo-3-3-930,LOW,Figure found was specifically for a 1981 example (38.4% front); chassis unchanged across the 3.3 turbo run so treated as representative,yes
+MG-082,82,Porsche 911 Turbo 3.3 (930),wheelbaseMm,2272,https://en.wikipedia.org/wiki/Porsche_911_(930),HIGH,Corroborated by uniquecarsandparts.com,yes
+MG-082,82,Porsche 911 Turbo 3.3 (930),widthMm,1775,https://en.wikipedia.org/wiki/Porsche_911_(930),HIGH,Corroborated by uniquecarsandparts.com,yes
+MG-082,82,Porsche 911 Turbo 3.3 (930),yearFrom,1978,https://en.wikipedia.org/wiki/Porsche_911_(930),HIGH,First year of the intercooled 3.3-litre engine,yes
+MG-083,83,Nissan Skyline GT-R V-Spec II (BNR34),aspiration,twin-turbo,https://www.carfolio.com/nissan-skyline-gt-r-v%C2%B7spec-ii-721237,HIGH,,yes
+MG-083,83,Nissan Skyline GT-R V-Spec II (BNR34),chassisCode,BNR34,https://www.carfolio.com/nissan-skyline-gt-r-v%C2%B7spec-ii-721237,HIGH,,yes
+MG-083,83,Nissan Skyline GT-R V-Spec II (BNR34),dragCd,0.34,https://en.wikipedia.org/wiki/List_of_automobile_drag_coefficients,MED,"Wing-angle dependent; 0.34 is the baseline figure cited for R34 GT-R, corroborated by enthusiast-forum measurement discussion",yes
+MG-083,83,Nissan Skyline GT-R V-Spec II (BNR34),engineCode,RB26DETT,https://www.carfolio.com/nissan-skyline-gt-r-v%C2%B7spec-ii-721237,HIGH,,yes
+MG-083,83,Nissan Skyline GT-R V-Spec II (BNR34),engineConfig,I6,https://www.carfolio.com/nissan-skyline-gt-r-v%C2%B7spec-ii-721237,HIGH,,yes
+MG-083,83,Nissan Skyline GT-R V-Spec II (BNR34),heightMm,1360,https://www.carfolio.com/nissan-skyline-gt-r-v%C2%B7spec-ii-721237,HIGH,Corroborated by Wikipedia,yes
+MG-083,83,Nissan Skyline GT-R V-Spec II (BNR34),powerRpm,6800,https://www.carfolio.com/nissan-skyline-gt-r-v%C2%B7spec-ii-721237,HIGH,,yes
+MG-083,83,Nissan Skyline GT-R V-Spec II (BNR34),quotedPowerPs,280,https://www.carfolio.com/nissan-skyline-gt-r-v%C2%B7spec-ii-721237,HIGH,JDM gentlemen's-agreement advertised figure; settled stockPowerPs (285) reflects the higher real output,yes
+MG-083,83,Nissan Skyline GT-R V-Spec II (BNR34),stockTyre,245/40R18,https://www.carfolio.com/nissan-skyline-gt-r-v%C2%B7spec-ii-721237,HIGH,Same size front and rear,yes
+MG-083,83,Nissan Skyline GT-R V-Spec II (BNR34),styleBase,18,,SUGGESTION,"Circular tail lights, aggressive front bumper and GT wing; among the most beloved GT-R designs, on par with or above the already-scored BNR32 (17)",yes
+MG-083,83,Nissan Skyline GT-R V-Spec II (BNR34),torqueRpm,4400,https://www.carfolio.com/nissan-skyline-gt-r-v%C2%B7spec-ii-721237,HIGH,Matches the already-settled peakTorqueNm of 392 exactly,yes
+MG-083,83,Nissan Skyline GT-R V-Spec II (BNR34),tyreCompound,sport,https://www.carfolio.com/nissan-skyline-gt-r-v%C2%B7spec-ii-721237,LOW,"Judgement call based on the sourced tyre spec, not an independently documented compound category",yes
+MG-083,83,Nissan Skyline GT-R V-Spec II (BNR34),wheelbaseMm,2665,https://www.carfolio.com/nissan-skyline-gt-r-v%C2%B7spec-ii-721237,HIGH,Corroborated by Wikipedia,yes
+MG-083,83,Nissan Skyline GT-R V-Spec II (BNR34),widthMm,1785,https://www.carfolio.com/nissan-skyline-gt-r-v%C2%B7spec-ii-721237,HIGH,Corroborated by Wikipedia,yes
+MG-084,84,Skyline 2000GT-R Hakosuka (KPGC10),aspiration,NA,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/skyline_hardtop_2000gt-r.html,HIGH,Triple Mikuni-Solex carburettors,yes
+MG-084,84,Skyline 2000GT-R Hakosuka (KPGC10),chassisCode,KPGC10,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/skyline_hardtop_2000gt-r.html,HIGH,,yes
+MG-084,84,Skyline 2000GT-R Hakosuka (KPGC10),curbWeightKg,1100,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/skyline_hardtop_2000gt-r.html,HIGH,Official Nissan Heritage Collection figure,yes
+MG-084,84,Skyline 2000GT-R Hakosuka (KPGC10),displacementCc,1989,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/skyline_hardtop_2000gt-r.html,HIGH,,yes
+MG-084,84,Skyline 2000GT-R Hakosuka (KPGC10),drivetrain,RWD,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/skyline_hardtop_2000gt-r.html,HIGH,"Front-engine RWD (""FR"" layout); file mixes FR/RWD vocab, using RWD to match this roster's flagship-tier convention",yes
+MG-084,84,Skyline 2000GT-R Hakosuka (KPGC10),engineCode,S20,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/skyline_hardtop_2000gt-r.html,HIGH,,yes
+MG-084,84,Skyline 2000GT-R Hakosuka (KPGC10),engineConfig,I6,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/skyline_hardtop_2000gt-r.html,HIGH,DOHC 4-valve,yes
+MG-084,84,Skyline 2000GT-R Hakosuka (KPGC10),heightMm,1370,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/skyline_hardtop_2000gt-r.html,HIGH,,yes
+MG-084,84,Skyline 2000GT-R Hakosuka (KPGC10),peakTorqueNm,176,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/skyline_hardtop_2000gt-r.html,HIGH,,yes
+MG-084,84,Skyline 2000GT-R Hakosuka (KPGC10),powerRpm,7000,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/skyline_hardtop_2000gt-r.html,HIGH,,yes
+MG-084,84,Skyline 2000GT-R Hakosuka (KPGC10),quotedPowerPs,160,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/skyline_hardtop_2000gt-r.html,HIGH,Pre-dates the JDM gentlemen's agreement by two decades; quoted equals real output,yes
+MG-084,84,Skyline 2000GT-R Hakosuka (KPGC10),redlineRpm,7000,https://en.wikipedia.org/wiki/Nissan_S20_engine,MED,S20 wiki treats 7000rpm as the standard-tune redline (power peak coincides with it),yes
+MG-084,84,Skyline 2000GT-R Hakosuka (KPGC10),stockPowerPs,160,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/skyline_hardtop_2000gt-r.html,HIGH,,yes
+MG-084,84,Skyline 2000GT-R Hakosuka (KPGC10),stockTyre,6.45H14,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/skyline_hardtop_2000gt-r.html,HIGH,Period bias-ply sizing (6.45H-14-4PR); corroborated by carfolio.com,yes
+MG-084,84,Skyline 2000GT-R Hakosuka (KPGC10),styleBase,12,,SUGGESTION,Boxy 1970-71 coupe with subtle over-fenders; handsome and hugely significant to JDM culture but visually modest next to the roster's modern exotics,yes
+MG-084,84,Skyline 2000GT-R Hakosuka (KPGC10),topSpeedKmh,200,https://www.carfolio.com/nissan-skyline-2000-gt-r-hardtop-35992,MED,Single-source figure for the 1970 model year,yes
+MG-084,84,Skyline 2000GT-R Hakosuka (KPGC10),torqueRpm,5600,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/skyline_hardtop_2000gt-r.html,HIGH,,yes
+MG-084,84,Skyline 2000GT-R Hakosuka (KPGC10),tyreCompound,performance,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/skyline_hardtop_2000gt-r.html,LOW,"Judgement call; period bias-ply tyre technology means true ""sport"" grip is anachronistic despite the car's racing pedigree",yes
+MG-084,84,Skyline 2000GT-R Hakosuka (KPGC10),weightDistributionFront,55,https://www.carfolio.com/nissan-skyline-2000-gt-r-hardtop-35992,MED,Single-source figure,yes
+MG-084,84,Skyline 2000GT-R Hakosuka (KPGC10),wheelbaseMm,2570,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/skyline_hardtop_2000gt-r.html,HIGH,,yes
+MG-084,84,Skyline 2000GT-R Hakosuka (KPGC10),widthMm,1665,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/skyline_hardtop_2000gt-r.html,HIGH,,yes
+MG-084,84,Skyline 2000GT-R Hakosuka (KPGC10),yearFrom,1970,https://www.nissan-global.com/EN/HERITAGE_COLLECTION/skyline_hardtop_2000gt-r.html,HIGH,First year of the KPGC10 hardtop coupe (the 1969 PGC10 was a four-door sedan),yes
+MG-085,85,Mazda Cosmo Sport 110S (Series II),aspiration,NA,https://www.carfolio.com/mazda-110s-cosmo-sport-94600,HIGH,,yes
+MG-085,85,Mazda Cosmo Sport 110S (Series II),chassisCode,L10B,https://www.automobile-catalog.com/car/1972/1579160/mazda_cosmo_sport_110_s_l10b.html,HIGH,"Automobile-catalog lists L10B across 1968-1972, matching this row's settled yearFrom of 1972",yes
+MG-085,85,Mazda Cosmo Sport 110S (Series II),engineCode,0813,,MED,"Series II Cosmo's rotary engine designation (bored-out successor to the Series I 0810 unit), from aggregated enthusiast-history sources",yes
+MG-085,85,Mazda Cosmo Sport 110S (Series II),engineConfig,rotary-2,https://www.carfolio.com/mazda-110s-cosmo-sport-94600,HIGH,Two-rotor Wankel,yes
+MG-085,85,Mazda Cosmo Sport 110S (Series II),heightMm,1165,https://www.carfolio.com/mazda-110s-cosmo-sport-94600,HIGH,,yes
+MG-085,85,Mazda Cosmo Sport 110S (Series II),powerRpm,7000,https://www.carfolio.com/mazda-110s-cosmo-sport-94600,HIGH,,yes
+MG-085,85,Mazda Cosmo Sport 110S (Series II),quotedPowerPs,130,https://www.carfolio.com/mazda-110s-cosmo-sport-94600,HIGH,Pre-dates the JDM gentlemen's agreement; matches settled stockPowerPs exactly,yes
+MG-085,85,Mazda Cosmo Sport 110S (Series II),redlineRpm,7000,https://www.carfolio.com/mazda-110s-cosmo-sport-94600,HIGH,,yes
+MG-085,85,Mazda Cosmo Sport 110S (Series II),stockTyre,155HR15,https://www.carfolio.com/mazda-110s-cosmo-sport-94600,HIGH,,yes
+MG-085,85,Mazda Cosmo Sport 110S (Series II),styleBase,17,,SUGGESTION,"Long pointed nose, rotary-inspired futuristic 1967 shape; widely regarded as one of the most beautiful Japanese cars ever made",yes
+MG-085,85,Mazda Cosmo Sport 110S (Series II),topSpeedKmh,185,https://www.conceptcarz.com/s27974/mazda-cosmo-sport-series-ii-l10b.aspx,LOW,"Figure specific to the Series II L10B (via search result synthesis, direct fetch failed); a separate carfolio entry gives 200km/h but appears to conflate Series I and II data",yes
+MG-085,85,Mazda Cosmo Sport 110S (Series II),torqueRpm,5000,https://www.carfolio.com/mazda-110s-cosmo-sport-94600,HIGH,Matches the settled peakTorqueNm of 140 closely (source states 139Nm),yes
+MG-085,85,Mazda Cosmo Sport 110S (Series II),tyreCompound,performance,https://www.carfolio.com/mazda-110s-cosmo-sport-94600,LOW,"Judgement call; flagship GT car of its era but period bias-belted tyres, not a modern ""sport"" grade",yes
+MG-085,85,Mazda Cosmo Sport 110S (Series II),wheelbaseMm,2350,https://www.carfolio.com/mazda-110s-cosmo-sport-94600,HIGH,Corroborated: Series II added 150mm over Series I's 2200mm wheelbase per independent search corroboration,yes
+MG-085,85,Mazda Cosmo Sport 110S (Series II),widthMm,1595,https://www.carfolio.com/mazda-110s-cosmo-sport-94600,HIGH,,yes
+MG-086,86,Mercedes 190E 2.5-16 Evolution II,aspiration,NA,https://www.carfolio.com/mercedes-benz-190e-2.5-16-evolution-ii-64933,HIGH,,yes
+MG-086,86,Mercedes 190E 2.5-16 Evolution II,chassisCode,W201,https://www.carfolio.com/mercedes-benz-190e-2.5-16-evolution-ii-64933,HIGH,Full works designation W201 E25/2/201.036,yes
+MG-086,86,Mercedes 190E 2.5-16 Evolution II,curbWeightKg,1340,https://www.carfolio.com/mercedes-benz-190e-2.5-16-evolution-ii-64933,HIGH,,yes
+MG-086,86,Mercedes 190E 2.5-16 Evolution II,displacementCc,2463,https://www.carfolio.com/mercedes-benz-190e-2.5-16-evolution-ii-64933,HIGH,,yes
+MG-086,86,Mercedes 190E 2.5-16 Evolution II,dragCd,0.308,https://www.carfolio.com/mercedes-benz-190e-2.5-16-evolution-ii-64933,HIGH,"Famous engineering result: the Evolution II aero package (flush panels, adjustable rear wing) reduced drag versus the standard 190E despite its wilder looks",yes
+MG-086,86,Mercedes 190E 2.5-16 Evolution II,drivetrain,RWD,https://www.carfolio.com/mercedes-benz-190e-2.5-16-evolution-ii-64933,HIGH,"File mixes FR/RWD vocab, using RWD to match this roster's flagship-tier convention",yes
+MG-086,86,Mercedes 190E 2.5-16 Evolution II,engineCode,M102E25,https://www.carfolio.com/mercedes-benz-190e-2.5-16-evolution-ii-64933,HIGH,Full works designation M102 E25/2/102.992,yes
+MG-086,86,Mercedes 190E 2.5-16 Evolution II,engineConfig,I4,https://www.carfolio.com/mercedes-benz-190e-2.5-16-evolution-ii-64933,HIGH,Cosworth-developed 16-valve head,yes
+MG-086,86,Mercedes 190E 2.5-16 Evolution II,heightMm,1342,https://www.carfolio.com/mercedes-benz-190e-2.5-16-evolution-ii-64933,HIGH,,yes
+MG-086,86,Mercedes 190E 2.5-16 Evolution II,peakTorqueNm,245,https://www.carfolio.com/mercedes-benz-190e-2.5-16-evolution-ii-64933,HIGH,,yes
+MG-086,86,Mercedes 190E 2.5-16 Evolution II,powerRpm,7200,https://www.carfolio.com/mercedes-benz-190e-2.5-16-evolution-ii-64933,HIGH,,yes
+MG-086,86,Mercedes 190E 2.5-16 Evolution II,quotedPowerPs,235,https://www.carfolio.com/mercedes-benz-190e-2.5-16-evolution-ii-64933,HIGH,No JDM cap applies; grey import to Japan,yes
+MG-086,86,Mercedes 190E 2.5-16 Evolution II,redlineRpm,7700,https://www.carfolio.com/mercedes-benz-190e-2.5-16-evolution-ii-64933,HIGH,,yes
+MG-086,86,Mercedes 190E 2.5-16 Evolution II,stockPowerPs,235,https://www.carfolio.com/mercedes-benz-190e-2.5-16-evolution-ii-64933,HIGH,Grey import to Japan; Euro-spec figure,yes
+MG-086,86,Mercedes 190E 2.5-16 Evolution II,stockTyre,245/40R17,https://www.carfolio.com/mercedes-benz-190e-2.5-16-evolution-ii-64933,HIGH,Same size front and rear,yes
+MG-086,86,Mercedes 190E 2.5-16 Evolution II,styleBase,16,,SUGGESTION,Deliberately outrageous Group A aero kit and huge adjustable rear wing on a 3-box saloon; one of the most visually shocking homologation cars ever sold,yes
+MG-086,86,Mercedes 190E 2.5-16 Evolution II,topSpeedKmh,250,https://www.carfolio.com/mercedes-benz-190e-2.5-16-evolution-ii-64933,HIGH,,yes
+MG-086,86,Mercedes 190E 2.5-16 Evolution II,torqueRpm,5000,https://www.carfolio.com/mercedes-benz-190e-2.5-16-evolution-ii-64933,HIGH,Peak torque is a plateau from 5000-6000rpm; lower bound reported,yes
+MG-086,86,Mercedes 190E 2.5-16 Evolution II,tyreCompound,sport,https://www.carfolio.com/mercedes-benz-190e-2.5-16-evolution-ii-64933,LOW,Judgement call; genuine Group A homologation aero package,yes
+MG-086,86,Mercedes 190E 2.5-16 Evolution II,wheelbaseMm,2665,https://www.carfolio.com/mercedes-benz-190e-2.5-16-evolution-ii-64933,HIGH,,yes
+MG-086,86,Mercedes 190E 2.5-16 Evolution II,widthMm,1720,https://www.carfolio.com/mercedes-benz-190e-2.5-16-evolution-ii-64933,HIGH,,yes
+MG-086,86,Mercedes 190E 2.5-16 Evolution II,yearFrom,1990,https://www.carfolio.com/mercedes-benz-190e-2.5-16-evolution-ii-64933,HIGH,,yes
+MG-087,87,Skyline 2000GT-R Kenmeri (KPGC110),aspiration,NA,https://supercarnostalgia.com/blog/nissan-kpgc-110-skyline-gt-r,HIGH,Same S20 engine and carburettors as the KPGC10,yes
+MG-087,87,Skyline 2000GT-R Kenmeri (KPGC110),chassisCode,KPGC110,https://supercarnostalgia.com/blog/nissan-kpgc-110-skyline-gt-r,HIGH,,yes
+MG-087,87,Skyline 2000GT-R Kenmeri (KPGC110),curbWeightKg,1145,https://supercarnostalgia.com/blog/nissan-kpgc-110-skyline-gt-r,MED,"An alternate source (period road-test summary) implies ~1125kg (""25kg heavier than the KPGC10's 1100kg""); reported the directly-stated figure",yes
+MG-087,87,Skyline 2000GT-R Kenmeri (KPGC110),displacementCc,1989,https://supercarnostalgia.com/blog/nissan-kpgc-110-skyline-gt-r,HIGH,,yes
+MG-087,87,Skyline 2000GT-R Kenmeri (KPGC110),drivetrain,RWD,https://supercarnostalgia.com/blog/nissan-kpgc-110-skyline-gt-r,HIGH,"File mixes FR/RWD vocab, using RWD to match this roster's flagship-tier convention",yes
+MG-087,87,Skyline 2000GT-R Kenmeri (KPGC110),engineCode,S20,https://supercarnostalgia.com/blog/nissan-kpgc-110-skyline-gt-r,HIGH,Unchanged from the KPGC10,yes
+MG-087,87,Skyline 2000GT-R Kenmeri (KPGC110),engineConfig,I6,https://supercarnostalgia.com/blog/nissan-kpgc-110-skyline-gt-r,HIGH,,yes
+MG-087,87,Skyline 2000GT-R Kenmeri (KPGC110),heightMm,1380,https://www.whichcar.com.au/features/1973-nissan-kpgc110-skyline-gt-r-kenmeri-history,MED,"Derived: KPGC10's official 1370mm height + this source's stated ""10mm taller than KPGC10""; corroborated by this same source's independently-stated 54.3in (1379mm)",yes
+MG-087,87,Skyline 2000GT-R Kenmeri (KPGC110),peakTorqueNm,176,https://supercarnostalgia.com/blog/nissan-kpgc-110-skyline-gt-r,HIGH,"""No change"" from the KPGC10's torque figure per multiple sources",yes
+MG-087,87,Skyline 2000GT-R Kenmeri (KPGC110),powerRpm,7000,https://supercarnostalgia.com/blog/nissan-kpgc-110-skyline-gt-r,HIGH,,yes
+MG-087,87,Skyline 2000GT-R Kenmeri (KPGC110),quotedPowerPs,160,https://supercarnostalgia.com/blog/nissan-kpgc-110-skyline-gt-r,HIGH,Pre-dates the JDM gentlemen's agreement; quoted equals real output,yes
+MG-087,87,Skyline 2000GT-R Kenmeri (KPGC110),redlineRpm,7000,https://en.wikipedia.org/wiki/Nissan_S20_engine,MED,Same S20 engine as the KPGC10,yes
+MG-087,87,Skyline 2000GT-R Kenmeri (KPGC110),stockPowerPs,160,https://supercarnostalgia.com/blog/nissan-kpgc-110-skyline-gt-r,HIGH,,yes
+MG-087,87,Skyline 2000GT-R Kenmeri (KPGC110),styleBase,10,,SUGGESTION,"Softer, more conservative rounded 1973 lines than the Hakosuka it replaced; least visually striking of the classic GT-Rs",yes
+MG-087,87,Skyline 2000GT-R Kenmeri (KPGC110),topSpeedKmh,191.5,https://supercarnostalgia.com/blog/nissan-kpgc-110-skyline-gt-r,MED,Source states 119mph; converted to km/h,yes
+MG-087,87,Skyline 2000GT-R Kenmeri (KPGC110),torqueRpm,5600,https://supercarnostalgia.com/blog/nissan-kpgc-110-skyline-gt-r,HIGH,,yes
+MG-087,87,Skyline 2000GT-R Kenmeri (KPGC110),wheelbaseMm,2610,https://supercarnostalgia.com/blog/nissan-kpgc-110-skyline-gt-r,HIGH,Corroborated by an RM Sotheby's auction listing (102.7in = 2609mm),yes
+MG-087,87,Skyline 2000GT-R Kenmeri (KPGC110),widthMm,1695,https://www.whichcar.com.au/features/1973-nissan-kpgc110-skyline-gt-r-kenmeri-history,MED,"Derived: KPGC10's official 1665mm width + this source's stated ""30mm wider than KPGC10""; corroborated by this same source's independently-stated 66.7in (1694mm)",yes
+MG-087,87,Skyline 2000GT-R Kenmeri (KPGC110),yearFrom,1973,https://supercarnostalgia.com/blog/nissan-kpgc-110-skyline-gt-r,HIGH,Sales began January 1973,yes
+MG-088,88,Honda NSX-R (NA1),chassisCode,NA1,https://global.honda/en/tech/engine/car/C30A_NSX_vtec_DOHC/,HIGH,Already in the roster displayName,yes
+MG-088,88,Honda NSX-R (NA1),dragCd,0.32,https://en.wikipedia.org/wiki/List_of_automobile_drag_coefficients,MED,"Wikipedia's list gives 0.32 for the 1990 NSX; NSX-R shares an identical body, no NSX-R-specific figure found",yes
+MG-088,88,Honda NSX-R (NA1),engineCode,C30A,https://global.honda/en/tech/engine/car/C30A_NSX_vtec_DOHC/,HIGH,,yes
+MG-088,88,Honda NSX-R (NA1),engineConfig,V6,https://global.honda/en/tech/engine/car/C30A_NSX_vtec_DOHC/,HIGH,VTEC DOHC,yes
+MG-088,88,Honda NSX-R (NA1),heightMm,1170,,MED,Converted from 46.1in via search-result synthesis; not independently verified in mm,yes
+MG-088,88,Honda NSX-R (NA1),powerRpm,7300,https://global.honda/en/tech/engine/car/C30A_NSX_vtec_DOHC/,HIGH,5-speed manual figure (280PS); the 4AT variant made 265PS at 6800rpm,yes
+MG-088,88,Honda NSX-R (NA1),quotedPowerPs,280,https://global.honda/en/tech/engine/car/C30A_NSX_vtec_DOHC/,HIGH,Matches settled stockPowerPs; no discrepancy found for this car,yes
+MG-088,88,Honda NSX-R (NA1),redlineRpm,8000,https://global.honda/en/tech/engine/car/C30A_NSX_vtec_DOHC/,HIGH,5MT figure; fuel cut at 8300rpm per a corroborating source (jdmmeikan.com),yes
+MG-088,88,Honda NSX-R (NA1),styleBase,16,,SUGGESTION,Clean Pininfarina-rivalling Senna-honed supercar silhouette; understated but widely regarded as a design icon,yes
+MG-088,88,Honda NSX-R (NA1),torqueRpm,5400,https://global.honda/en/tech/engine/car/C30A_NSX_vtec_DOHC/,HIGH,Matches the settled peakTorqueNm of 294 almost exactly (source states 30.0kgm = 294.2Nm),yes
+MG-088,88,Honda NSX-R (NA1),wheelbaseMm,2530,,MED,From search-result synthesis of encycarpedia-style aggregator data; not independently re-verified by direct fetch,yes
+MG-088,88,Honda NSX-R (NA1),widthMm,1810,,MED,Converted from 71.3in via search-result synthesis; not independently verified in mm,yes
+MG-089,89,Nissan GT-R Black Edition (R35),aspiration,twin-turbo,https://global.nissannews.com/en/releases/071024-01-e,HIGH,,yes
+MG-089,89,Nissan GT-R Black Edition (R35),chassisCode,R35,https://en.wikipedia.org/wiki/Nissan_GT-R,HIGH,,yes
+MG-089,89,Nissan GT-R Black Edition (R35),curbWeightKg,1730,https://en.wikipedia.org/wiki/Nissan_GT-R,MED,Wikipedia states 1730kg specifically for the Black Edition trim (2010-2013 era); other trims/years are cited at 1740kg,yes
+MG-089,89,Nissan GT-R Black Edition (R35),displacementCc,3799,https://global.nissannews.com/en/releases/071024-01-e,HIGH,,yes
+MG-089,89,Nissan GT-R Black Edition (R35),dragCd,0.27,https://en.wikipedia.org/wiki/Nissan_GT-R,HIGH,Corroborated by an independent aggregator search result,yes
+MG-089,89,Nissan GT-R Black Edition (R35),drivetrain,AWD,https://global.nissannews.com/en/releases/071024-01-e,HIGH,ATTESA E-TS,yes
+MG-089,89,Nissan GT-R Black Edition (R35),engineCode,VR38DETT,https://global.nissannews.com/en/releases/071024-01-e,HIGH,,yes
+MG-089,89,Nissan GT-R Black Edition (R35),engineConfig,V6,https://global.nissannews.com/en/releases/071024-01-e,HIGH,,yes
+MG-089,89,Nissan GT-R Black Edition (R35),heightMm,1370,https://en.wikipedia.org/wiki/Nissan_GT-R,HIGH,,yes
+MG-089,89,Nissan GT-R Black Edition (R35),peakTorqueNm,588,https://global.nissannews.com/en/releases/071024-01-e,HIGH,Official Japan press release: 60.0kgm (588Nm); Wikipedia's English-language figure of 583Nm is a slightly different rounding/conversion,yes
+MG-089,89,Nissan GT-R Black Edition (R35),powerRpm,6400,https://global.nissannews.com/en/releases/071024-01-e,HIGH,,yes
+MG-089,89,Nissan GT-R Black Edition (R35),quotedPowerPs,480,https://global.nissannews.com/en/releases/071024-01-e,HIGH,Matches stock; the JDM gentlemen's-agreement cap had lapsed by this car's 2007/08 launch,yes
+MG-089,89,Nissan GT-R Black Edition (R35),stockPowerPs,480,https://global.nissannews.com/en/releases/071024-01-e,HIGH,Official Japan-market press release figure,yes
+MG-089,89,Nissan GT-R Black Edition (R35),stockTyre,255/40R20,,MED,"Front size, from search-result synthesis of an aggregator (carfromjapan.com); rear is 285/35R20",yes
+MG-089,89,Nissan GT-R Black Edition (R35),styleBase,14,,SUGGESTION,"Bold, aggressive ""Godzilla"" modern design, but more blocky/utilitarian than the roster's Italian exotics",yes
+MG-089,89,Nissan GT-R Black Edition (R35),torqueRpm,3200,https://global.nissannews.com/en/releases/071024-01-e,HIGH,Peak torque is a plateau from 3200-5200rpm; lower bound reported,yes
+MG-089,89,Nissan GT-R Black Edition (R35),tyreCompound,sport,,LOW,"Judgement call based on the sourced tyre spec, not an independently documented compound category",yes
+MG-089,89,Nissan GT-R Black Edition (R35),wheelbaseMm,2780,https://en.wikipedia.org/wiki/Nissan_GT-R,HIGH,,yes
+MG-089,89,Nissan GT-R Black Edition (R35),widthMm,1895,https://en.wikipedia.org/wiki/Nissan_GT-R,HIGH,,yes
+MG-090,90,Ferrari F355 Berlinetta (6MT),chassisCode,F129,https://en.wikipedia.org/wiki/Ferrari_F355,HIGH,Ferrari's internal Tipo F129 project code,yes
+MG-090,90,Ferrari F355 Berlinetta (6MT),dragCd,0.32,https://www.ultimatespecs.com/car-specs/Ferrari/1971/Ferrari-F355-Berlinetta.html,MED,Widely cited figure from multiple aggregators; not confirmed via a Ferrari-primary source,yes
+MG-090,90,Ferrari F355 Berlinetta (6MT),engineCode,F129B,https://www.carfolio.com/ferrari-f355-berlinetta-71786,HIGH,Berlinetta-specific engine variant code,yes
+MG-090,90,Ferrari F355 Berlinetta (6MT),engineConfig,V8,https://www.carfolio.com/ferrari-f355-berlinetta-71786,HIGH,"90-degree V8, not in the existing vocabulary (I3/I4/I6/V6/flat-4/rotary-2); a genuinely new engineConfig value, per field notes",yes
+MG-090,90,Ferrari F355 Berlinetta (6MT),heightMm,1171,https://www.carfolio.com/ferrari-f355-berlinetta-71786,HIGH,Corroborated by Wikipedia,yes
+MG-090,90,Ferrari F355 Berlinetta (6MT),powerRpm,8250,https://www.carfolio.com/ferrari-f355-berlinetta-71786,HIGH,,yes
+MG-090,90,Ferrari F355 Berlinetta (6MT),quotedPowerPs,380,https://www.carfolio.com/ferrari-f355-berlinetta-71786,HIGH,Matches settled stockPowerPs; no JDM cap applies to an Italian manufacturer,yes
+MG-090,90,Ferrari F355 Berlinetta (6MT),redlineRpm,8500,https://www.ferrarichat.com/forum/threads/355-9000-rpm.334016/,MED,Owner-community consensus places the true rev limiter above the 8250rpm power peak; some aggregators conflate the two,yes
+MG-090,90,Ferrari F355 Berlinetta (6MT),stockTyre,225/40R18,https://www.carfolio.com/ferrari-f355-berlinetta-71786,HIGH,Front size; rear is 265/40R18,yes
+MG-090,90,Ferrari F355 Berlinetta (6MT),styleBase,18,,SUGGESTION,Gorgeous Pininfarina curves; widely regarded as one of the most beautiful Ferraris ever made,yes
+MG-090,90,Ferrari F355 Berlinetta (6MT),torqueRpm,6000,https://www.carfolio.com/ferrari-f355-berlinetta-71786,HIGH,Matches the settled peakTorqueNm of 363 exactly,yes
+MG-090,90,Ferrari F355 Berlinetta (6MT),tyreCompound,sport,https://www.carfolio.com/ferrari-f355-berlinetta-71786,LOW,"Judgement call based on the sourced tyre spec, not an independently documented compound category",yes
+MG-090,90,Ferrari F355 Berlinetta (6MT),wheelbaseMm,2451,https://www.carfolio.com/ferrari-f355-berlinetta-71786,HIGH,Corroborated by Wikipedia,yes
+MG-090,90,Ferrari F355 Berlinetta (6MT),widthMm,1900,https://www.carfolio.com/ferrari-f355-berlinetta-71786,HIGH,Corroborated by Wikipedia,yes
+MG-091,91,Ferrari 512 TR,aspiration,NA,https://www.carfolio.com/ferrari-512tr-31834,HIGH,,yes
+MG-091,91,Ferrari 512 TR,chassisCode,F110,https://www.carfolio.com/ferrari-512tr-31834,MED,Ferrari does not cleanly separate a chassis code from the engine code for this model; F110 is the shared project number (engine variant coded F110HB),yes
+MG-091,91,Ferrari 512 TR,curbWeightKg,1471,https://www.carfolio.com/ferrari-512tr-31834,HIGH,,yes
+MG-091,91,Ferrari 512 TR,displacementCc,4942,https://www.carfolio.com/ferrari-512tr-31834,HIGH,,yes
+MG-091,91,Ferrari 512 TR,dragCd,0.33,https://www.carfolio.com/ferrari-512tr-31834,HIGH,,yes
+MG-091,91,Ferrari 512 TR,drivetrain,RWD,https://www.carfolio.com/ferrari-512tr-31834,HIGH,"Mid-engine, rear-wheel drive; matches this roster's existing convention for flagship mid-engine exotics (F355, Countach, NSX-R all coded RWD not MR)",yes
+MG-091,91,Ferrari 512 TR,engineCode,F110HB,https://www.carfolio.com/ferrari-512tr-31834,HIGH,,yes
+MG-091,91,Ferrari 512 TR,engineConfig,flat-12,https://www.carfolio.com/ferrari-512tr-31834,HIGH,"Testarossa-family 180-degree flat-12, not in the existing vocabulary (I3/I4/I6/V6/flat-4/rotary-2); a genuinely new engineConfig value, per field notes",yes
+MG-091,91,Ferrari 512 TR,heightMm,1135,https://www.carfolio.com/ferrari-512tr-31834,HIGH,,yes
+MG-091,91,Ferrari 512 TR,peakTorqueNm,491,https://www.carfolio.com/ferrari-512tr-31834,HIGH,,yes
+MG-091,91,Ferrari 512 TR,powerRpm,6750,https://www.carfolio.com/ferrari-512tr-31834,HIGH,,yes
+MG-091,91,Ferrari 512 TR,quotedPowerPs,431,https://www.carfolio.com/ferrari-512tr-31834,HIGH,No JDM cap applies to an Italian manufacturer; matches stock. Some sources cite 428PS instead (measurement/rounding variance),yes
+MG-091,91,Ferrari 512 TR,stockPowerPs,431,https://www.carfolio.com/ferrari-512tr-31834,HIGH,Some sources cite 428PS instead (measurement/rounding variance),yes
+MG-091,91,Ferrari 512 TR,stockTyre,235/40R18,https://www.carfolio.com/ferrari-512tr-31834,HIGH,Front size; rear is 295/35R18,yes
+MG-091,91,Ferrari 512 TR,styleBase,16,,SUGGESTION,Dramatic side strakes and flat wide nose inherited from the Testarossa; very recognisable early-90s exotic silhouette,yes
+MG-091,91,Ferrari 512 TR,topSpeedKmh,314,https://www.carfolio.com/ferrari-512tr-31834,HIGH,,yes
+MG-091,91,Ferrari 512 TR,torqueRpm,5500,https://www.carfolio.com/ferrari-512tr-31834,HIGH,,yes
+MG-091,91,Ferrari 512 TR,tyreCompound,sport,https://www.carfolio.com/ferrari-512tr-31834,LOW,"Judgement call based on the sourced tyre spec, not an independently documented compound category",yes
+MG-091,91,Ferrari 512 TR,weightDistributionFront,41,https://www.carfolio.com/ferrari-512tr-31834,MED,Source states this as an implied split from the stated 59% rear,yes
+MG-091,91,Ferrari 512 TR,wheelbaseMm,2550,https://www.carfolio.com/ferrari-512tr-31834,HIGH,,yes
+MG-091,91,Ferrari 512 TR,widthMm,1941,https://www.carfolio.com/ferrari-512tr-31834,HIGH,,yes
+MG-091,91,Ferrari 512 TR,yearFrom,1992,https://www.carfolio.com/ferrari-512tr-31834,MED,Ferrari.com's own model page dates unveiling to 1991; sales/production commonly dated to 1992,yes
+MG-092,92,Lamborghini Countach LP5000 QV,aspiration,NA,https://www.carfolio.com/lamborghini-countach-lp5000s-qv-23540,HIGH,,yes
+MG-092,92,Lamborghini Countach LP5000 QV,engineCode,LP112D,https://www.carfolio.com/lamborghini-countach-lp5000s-qv-23540,MED,,yes
+MG-092,92,Lamborghini Countach LP5000 QV,engineConfig,V12,https://www.carfolio.com/lamborghini-countach-lp5000s-qv-23540,HIGH,"60-degree V12, not in the existing vocabulary (I3/I4/I6/V6/flat-4/rotary-2); a genuinely new engineConfig value, per field notes",yes
+MG-092,92,Lamborghini Countach LP5000 QV,heightMm,1070,https://www.carfolio.com/lamborghini-countach-lp5000s-qv-23540,HIGH,,yes
+MG-092,92,Lamborghini Countach LP5000 QV,powerRpm,7000,https://www.carfolio.com/lamborghini-countach-lp5000s-qv-23540,HIGH,Matches the settled stockPowerPs's power peak rpm (source's own PS figure of 455 differs slightly from the settled 461),yes
+MG-092,92,Lamborghini Countach LP5000 QV,stockTyre,225/50R15,https://www.carfolio.com/lamborghini-countach-lp5000s-qv-23540,HIGH,Front size (Pirelli P7); rear is a much wider 345/35R15,yes
+MG-092,92,Lamborghini Countach LP5000 QV,styleBase,20,,SUGGESTION,"The definitive wedge supercar: scissor doors, extreme flares and optional wing; the most flamboyant design in the whole roster. Exceeds this roster's previously observed styleBase ceiling of 18, flagged for maintainer review",yes
+MG-092,92,Lamborghini Countach LP5000 QV,torqueRpm,5200,https://www.carfolio.com/lamborghini-countach-lp5000s-qv-23540,HIGH,Matches the settled peakTorqueNm of 500 exactly,yes
+MG-092,92,Lamborghini Countach LP5000 QV,tyreCompound,sport,https://www.carfolio.com/lamborghini-countach-lp5000s-qv-23540,LOW,"Judgement call based on the sourced tyre spec, not an independently documented compound category",yes
+MG-092,92,Lamborghini Countach LP5000 QV,wheelbaseMm,2500,https://www.carfolio.com/lamborghini-countach-lp5000s-qv-23540,HIGH,An earlier aggregated search result gave 2450mm; this direct single-page fetch (2500mm) is preferred,yes
+MG-092,92,Lamborghini Countach LP5000 QV,widthMm,2000,https://www.carfolio.com/lamborghini-countach-lp5000s-qv-23540,HIGH,,yes
+MG-093,93,Toyota 2000GT (MF10),chassisCode,MF10,https://en.wikipedia.org/wiki/Toyota_2000GT,HIGH,Already in the roster displayName,yes
+MG-093,93,Toyota 2000GT (MF10),dragCd,0.28,,LOW,"Single enthusiast-blog-level source (not a primary/period wind-tunnel citation); Wikipedia's drag-coefficient list gives only a drag AREA (0.535m2) for this car, not a Cd",yes
+MG-093,93,Toyota 2000GT (MF10),engineCode,3M,https://en.wikipedia.org/wiki/Toyota_2000GT,HIGH,Yamaha-developed DOHC head on a Crown-derived block,yes
+MG-093,93,Toyota 2000GT (MF10),engineConfig,I6,https://en.wikipedia.org/wiki/Toyota_2000GT,HIGH,,yes
+MG-093,93,Toyota 2000GT (MF10),heightMm,1160,,MED,"Multiple heights are documented by trim: 1104mm (roadster), 1160mm, 1170mm (1969-70 models); 1160mm reported as the representative coupe figure",yes
+MG-093,93,Toyota 2000GT (MF10),powerRpm,6600,,HIGH,Consistent across carfolio and other aggregators,yes
+MG-093,93,Toyota 2000GT (MF10),stockTyre,165R15,,MED,Corroborated across multiple aggregator sources,yes
+MG-093,93,Toyota 2000GT (MF10),styleBase,15,,SUGGESTION,"Elegant, low, long-nose GT; refined rather than aggressive, celebrated as one of Japan's most beautiful classic cars",yes
+MG-093,93,Toyota 2000GT (MF10),torqueRpm,5000,,HIGH,Matches the settled peakTorqueNm of 176 closely (sources state 175-176Nm at this rpm),yes
+MG-093,93,Toyota 2000GT (MF10),tyreCompound,performance,,LOW,"Judgement call; period tyres, not a modern ""sport"" grade despite the car's racing pedigree",yes
+MG-093,93,Toyota 2000GT (MF10),wheelbaseMm,2330,https://www.carfolio.com/toyota-2000-gt-34859,HIGH,Corroborated across multiple sources,yes
+MG-093,93,Toyota 2000GT (MF10),widthMm,1600,https://www.carfolio.com/toyota-2000-gt-34859,HIGH,Corroborated across multiple sources,yes
+MG-094,94,Lexus LFA,aspiration,NA,https://media.lexus.co.uk/lexus-lfa/,HIGH,,yes
+MG-094,94,Lexus LFA,chassisCode,LFA10,https://en.wikipedia.org/wiki/Lexus_LFA,MED,Wikipedia infobox model code,yes
+MG-094,94,Lexus LFA,dragCd,0.31,https://media.lexus.co.uk/lexus-lfa/,HIGH,With the active rear wing retracted,yes
+MG-094,94,Lexus LFA,engineCode,1LR-GUE,https://en.wikipedia.org/wiki/Lexus_LFA,HIGH,,yes
+MG-094,94,Lexus LFA,engineConfig,V10,https://en.wikipedia.org/wiki/Lexus_LFA,HIGH,"72-degree V10, not in the existing vocabulary (I3/I4/I6/V6/flat-4/rotary-2); a genuinely new engineConfig value, per field notes",yes
+MG-094,94,Lexus LFA,heightMm,1220,https://en.wikipedia.org/wiki/Lexus_LFA,HIGH,,yes
+MG-094,94,Lexus LFA,powerRpm,8700,https://en.wikipedia.org/wiki/Lexus_LFA,HIGH,,yes
+MG-094,94,Lexus LFA,quotedPowerPs,560,https://en.wikipedia.org/wiki/Lexus_LFA,HIGH,"Source states 552bhp (=~560PS), which rounds to match the settled stockPowerPs exactly",yes
+MG-094,94,Lexus LFA,redlineRpm,9000,https://www.drifted.com/1lr-gue/,MED,Electronic fuel cut is stated at 9500rpm by the same source,yes
+MG-094,94,Lexus LFA,stockTyre,265/35R20,https://en.wikipedia.org/wiki/Lexus_LFA,HIGH,Front size; rear is 305/30R20,yes
+MG-094,94,Lexus LFA,styleBase,18,,SUGGESTION,Sharp modern creases and aggressive vents; one of the most striking Japanese supercar designs of its era,yes
+MG-094,94,Lexus LFA,torqueRpm,6800,https://en.wikipedia.org/wiki/Lexus_LFA,HIGH,Matches the settled peakTorqueNm of 480 exactly (source states 354lb-ft = 480Nm),yes
+MG-094,94,Lexus LFA,tyreCompound,sport,https://en.wikipedia.org/wiki/Lexus_LFA,LOW,"Judgement call; bespoke track-oriented tyres, could arguably rate higher than other LOW-confidence assignments in this batch",yes
+MG-094,94,Lexus LFA,wheelbaseMm,2605,https://en.wikipedia.org/wiki/Lexus_LFA,HIGH,,yes
+MG-094,94,Lexus LFA,widthMm,1895,https://en.wikipedia.org/wiki/Lexus_LFA,HIGH,,yes
