@@ -4,10 +4,28 @@ Title amended to "Ran When Parked" by maintainer approval, 2026-07-18 (previousl
 
 ## Game Design Document - v0.6
 
-*v0.6 (2026-07-12): sections 3.2, 6.1, 9.0, and 9.1 amended to match the shipped Progression
-Rework arc (Sprints 36-39) - see `docs/design/progression-bible.md` (now the canonical
-progression source) and `docs/design/archive/gdd-amendment-progression.md` (the reviewed amendment this
-revision applies).*
+> **READ THIS FIRST. Maintainer ruling, 2026-07-29: this document is severely outdated.**
+>
+> **What still holds:** the general shape of the game, the feature set, and the deliverables
+> it describes. When this document says a mechanic exists in v1.0 scope, that is still the
+> intent, and "not in the GDD" remains a real objection to inventing scope.
+>
+> **What is DEAD and must be discarded wherever it appears here:** every timeline, every
+> sprint number, every roadmap reference, and every claim about what has or has not been
+> built. Sprint numbering in particular has diverged completely: work described here as
+> "Sprint 17" was built as something else entirely, and the project is past Sprint 133.
+> **Never cite a sprint number from this document, and never infer from it that something is
+> unbuilt.** Check the code.
+>
+> Where this document and a bible disagree on mechanics, the bible wins (they are amended
+> under review; this is not). Where it and the shipped code disagree on what exists, the code
+> wins. Where it and a system spec under `docs/design/systems/` disagree on how something
+> works, the spec wins.
+>
+> *v0.6 (2026-07-12): sections 3.2, 6.1, 9.0, and 9.1 amended to match the shipped Progression
+> Rework arc - see `docs/design/progression-bible.md` (now the canonical progression source)
+> and `docs/design/archive/gdd-amendment-progression.md` (the reviewed amendment this revision
+> applies).*
 
 **Genre:** Medium-weight management sim with light idle elements
 **Platform:** Browser (desktop-first, playable on mobile)
