@@ -1,11 +1,12 @@
 # The tuning system, from the ground up
 
-**Status: DESIGNED to implementation depth, not scheduled. v4, 2026-07-29.**
+**Status: DESIGNED to implementation depth, not scheduled. v5, 2026-07-29.**
 
-v4 answers the maintainer's second review. It replaces the split treatment of value
-and reliability with a single system (section 5), deletes the Law 5 workaround, and
-records the three upgrade avenues and the workshop progression that gates them
-(section 2a). Every number is a proposal and unapproved.
+v5 answers an external review. It purges the killed wear-rate design from every
+section that still carried it, repairs the cross-references that pointed at deleted
+text, replaces the aggregate support ratio with per-subsystem ratios under a
+weakest-link rule, and corrects a sequencing error that would have shipped a new
+dominant strategy. Every number is a proposal and unapproved.
 
 **Deferred out of this system, by maintainer ruling 2026-07-29:**
 
@@ -282,14 +283,34 @@ build          ->  support ratio  ->  reliability  ->  WHO BIDS      ->  price
 One derived number. Two consequences. Both landing at the sale, which is where the
 player's loop actually ends.
 
-### 5.1 Support ratio: the one number
+### 5.1 Support ratio: per subsystem, headline is the weakest link
 
 **How well the enablers on the car match the demands of the gains on it.** A small
 turbo on stock internals is well supported. A large turbo on stock internals is not.
 A large turbo with forged internals, upgraded fuel and better cooling is.
 
-That is the whole of the new state. It drives everything below, and because it is
-one number the player can be shown it, warned by it, and reason about it.
+**It is NOT one aggregate ratio.** An earlier draft proposed a single
+`total support / total demand`, and external review correctly killed it on two
+counts: a scalar cannot name the part that would fix it, and it is gameable, because
+massively over-supplying fuel would arithmetically mask stock internals under a big
+turbo. That is physically nonsense; fuel does not hold a piston together.
+
+**So: one ratio per subsystem, and the headline number is the minimum of them.**
+
+| subsystem | asked by | answered by |
+| --- | --- | --- |
+| cylinder pressure | boost, compression | internals, block |
+| fuelling | airflow | fuelSystem |
+| heat | sustained output | cooling |
+| revs | cams, ported head | headValvetrain, internals |
+| torque transmission | total output | clutch, driveline |
+
+A build is only as supported as its worst subsystem, which is both physically true
+and exactly what a mechanic would say. **The weakest-link rule gives the legibility
+requirement (6d) for free**: the game does not have to work out what to warn about,
+because the minimum already names the subsystem, and the subsystem names the part.
+
+That is the whole of the new state.
 
 ### 5.2 The value half: it is buyer selection, not a multiplier
 
@@ -446,61 +467,79 @@ from the support ratio (5.1). See section 8.
 
 ---
 
-## 6. How the support ratio is computed
+## 6. How the support ratios are computed
 
 Section 5 says what cohesion does. This says how it is derived, because it is the
-one genuinely new piece of state and it must be simple enough for a player to
-reason about.
+one genuinely new piece of state and it must be simple enough for a player to reason
+about.
 
-### 6a. Demand and support
+### 6a. Demand and support, per subsystem
 
-**Every gain part places a demand** on the engine, proportional to the output it is
-asking for. A large turbo demands a great deal; a panel filter demands almost
-nothing.
+**Every gain part places demand on specific subsystems**, not on the engine
+generally. A large turbo demands cylinder pressure, fuelling and heat capacity. Race
+cams demand revs. Neither demands torque transmission directly; the resulting power
+does.
 
-**Every enabler part provides support**, and the stock item provides the baseline
-the factory designed for.
+**Every enabler answers specific subsystems**, and the factory part answers exactly
+the demand the factory designed for. So a stock, unmodified car sits at exactly 1.0
+on every subsystem by construction, which is the property that makes the whole thing
+readable.
 
-`supportRatio = total support / total demand`, with a stock, unmodified car sitting
-at exactly 1.0 by construction. Above 1.0 the build is over-engineered, which is
-safe and mildly wasteful. Below 1.0 it is asking for more than it can take.
+`ratio[subsystem] = support[subsystem] / demand[subsystem]`, and the car's
+`supportRatio` is `min(ratio)` across all of them.
 
-### 6b. Which parts support what
+### 6b. Why the minimum rather than the mean
 
-| enabler | supports |
-| --- | --- |
-| internals, block | cylinder pressure, so boost above all |
-| fuelSystem | the fuel to burn what the air allows |
-| cooling | sustained output rather than peak |
-| headValvetrain | revs |
-| clutch, driveline | torque reaching the road without slipping or breaking |
+Because an engine fails at its weakest point, not its average one. Two builds:
 
-Each is a genuine physical dependency, which matters: a player who knows engines
-should be able to predict what the game is about to tell them.
+| build | fuel | internals | mean | **min** |
+| --- | ---: | ---: | ---: | ---: |
+| big turbo, huge fuel system, stock bottom end | 2.4 | 0.4 | 1.4 | **0.4** |
+| big turbo, matched fuel, forged bottom end | 1.1 | 1.1 | 1.1 | **1.1** |
+
+A mean says the first build is *better supported* than the second. It is not; it is
+a hand grenade with an excellent fuel pump. The minimum says so, and it also says
+which part to buy next.
 
 ### 6c. The worked example, which is the maintainer's own
 
-**1.5 bar on a stock kei engine.** The turbo's demand is enormous; internals, fuel
-and cooling are all stock and provide baseline support only. The support ratio
-collapses well below 1.0.
+**1.5 bar on a stock kei engine.** Cylinder pressure demand is enormous; internals
+and block are stock and answer the factory's demand only. That subsystem's ratio
+collapses, and it is the minimum, so it is the headline.
 
 Consequences, all through section 5's single chain: the car makes real power, the
-dyno reports it and reports the danger, the buyers who understand engines will not
-touch it, the ones who remain pay poorly, and if it is sold anyway the reputation
-cost lands.
+dyno reports it and reports the shortfall **by name**, the buyers who understand
+engines will not touch it, the ones who remain pay poorly, and if it is sold anyway
+the reputation cost lands.
 
 **What does not happen: the engine does not explode.** It is a car that is worth
 less and costs standing, not a car that detonates on a timer. See 5A.
 
-### 6d. Two properties this must have
+### 6d. Two properties this must have, and now gets for free
 
-**Legible.** A player must be able to look at a build and see the shortfall, and the
-shortfall must name the part that would fix it. "This is asking more of the bottom
-end than it can give" is a sentence the game should be able to say.
+**Legible.** The minimum names its own subsystem, and the subsystem names the part.
+"This is asking more of the bottom end than it can give" is a sentence the game can
+now generate rather than approximate.
 
-**Not a cliff.** The ratio degrades smoothly so a build can be slightly optimistic
+**Not a cliff.** Each ratio degrades smoothly, so a build can be slightly optimistic
 without being ruined. The threshold in 5.3 is where reputation starts to bite, not
 where the number starts to move.
+
+### 6e. The rotary carve-out
+
+Raised by external review. **Specific output per nominal cc is meaningless for a
+rotary.** A 13B is 1308 cc by convention and behaves like roughly 2.6 litres, so the
+4b derivation would read every rotary as extraordinarily high-strung and hand them
+almost no headroom. An RX-8 would come out at 191 PS per nominal litre.
+
+**Use the standard equivalency factor: multiply rotary displacement by 1.8 before
+deriving specific output.** That is the figure motorsport bodies have long used for
+exactly this comparison, so it is principled rather than a fudge, and it puts the
+RX-8 at about 106 PS per equivalent litre, which reads correctly as a healthy NA
+with modest headroom.
+
+`engineConfig` already carries `rotary-2` and `rotary-3`, so the carve-out has
+something to key off and needs no new content.
 
 ---
 
@@ -518,9 +557,11 @@ stock part is under-stressed and tolerates a decade of neglect. That produces th
 property the game currently lacks: **a race damper at `poor` is worse than a street
 damper at `mint`.**
 
-It also closes the loop with section 5: a low-reliability build wears its parts
-fast, and those parts lose their advantage faster than stock ones would. The
-over-boosted car gets slower as it destroys itself, which is correct and legible.
+**No wear rate is implied by any of this.** Condition still only moves when the
+player repairs a part or when generation hands them a car in a given state. A race
+part is not more fragile over time, because nothing in this game degrades over time
+(5A). It is more *sensitive*: at a given band it has lost more of its advantage than
+a stock part at the same band would have. That is a curve shape, not a process.
 
 The four dials and their curves stay as the mechanism. Their values are already
 flagged PROVISIONAL in `car-performance/README.md` 7b, which calls that "the most
@@ -626,8 +667,8 @@ Foundational work exists in `docs/design/car-performance/car-spec-book.html`.
 ## 12. Reuse analysis (directive 16)
 
 **Genuinely new:** proportional power; the `tuningResponse` derivation; part roles
-and enabler gating; per-category return curves; the support ratio; reliability as a
-wear rate; per-car aero ceiling; the dyno screen.
+and enabler gating; per-category return curves; the per-subsystem support ratios;
+reliability as a sale-time consequence; per-car aero ceiling; the dyno screen.
 
 | Concern | Reuse this |
 | --- | --- |
@@ -637,7 +678,7 @@ wear rate; per-car aero ceiling; the dyno screen.
 | Rescaling when power moves | `powerRatio`, the ratio bridge |
 | Grip, braking, mass from a build | `buildFactors`, after the band fix |
 | Aero from a fitted part | `aeroFunctional` plus `statFormulas.aero.byGrade` |
-| A part degrading with use | the condition band system, whole |
+| A part's condition affecting it | the condition band system, whole. **Nothing degrades with use; see 5A** |
 | A car that cannot run | `scrapDisablesCar`, `lapBlockers` |
 | Withholding premium on a bad car | `foundationFactor`, Law 5 |
 | Whether an engine is forced | `hasForcedInduction` |
@@ -653,43 +694,108 @@ inventing scope), a second condition model, or a second job system for the dyno.
 `car-performance/README.md` 7a: **"it does not move prices... treat 'the handling
 number moved, so the price should move' as a bug, not a feature."**
 
-Performance and value stay independent. Section 6 does not breach this: cohesion
-changes what an **installed part** retains, which is a parts-value path and already
-exists. It never makes a car worth more because it is faster.
+Performance and value stay independent, and section 5 does not breach it.
+
+**Note this carefully, because an earlier draft got it wrong here.** Cohesion does
+NOT change what an installed part retains; that was the deleted retention workaround
+(5.2). Cohesion changes **which buyers are interested**, and a buyer paying more for
+a car they can see is well built is a taste judgement, not a performance-to-price
+coupling. A faster car is not worth more for being faster. A *better built* car is
+worth more to the person who can tell, which is a different claim and a true one.
 
 ---
 
 ## 14. Build order
 
-1. **Fix the condition bug** (1d). Small, isolated, unblocks reasoning.
-2. **Proportional power** (4a). Closes the x4.64 case. Independently shippable.
-3. **Engine response** (4b, 4c). Where the realism arrives.
-4. **Roles, enabler gating, support ratio** (3, 6a). The structure.
-5. **Reliability as a wear rate** (5). The consequence, and the biggest new mechanic.
-6. **Stat simplification** (8) and per-car aero ceiling (9b).
-7. **The dyno** (11), which makes 4b and 5 legible to the player.
-8. **Re-derive the provisional condition curves** with everything in place.
+**Two sequencing constraints are load-bearing. Violate either and the sprint ships a
+worse version of the defect it exists to fix.**
 
-Steps 1 and 2 are worth doing alone. Step 5 is the one that needs the most care and
-the most playtesting.
+**Constraint A: the forced-induction curve must NOT ship before the support ratios.**
+External review caught an error in an earlier draft, which called increasing returns
+on forced induction "the single best anti-dominance mechanism". That is backwards.
+Increasing returns on its own creates a **new** dominant strategy for any player rich
+enough to commit: buy the biggest turbo, ignore everything else. The anti-dominance
+comes from the support-ratio cost rising alongside it. Ship the curve first and you
+have built a stronger version of defect 1c.
+
+**Constraint B: verify the buyer-selection spread before building on it.** The whole
+value half of section 5 rests on one unverified assumption, that routing cohesion
+through buyer selection produces a price spread large enough to feel. If it does not,
+the cohesion payoff evaporates and the pressure to reach for a forbidden multiplier
+comes straight back. **This is a measurement, and it is step 0 of the value work, not
+a footnote.**
+
+| # | step | notes |
+| --- | --- | --- |
+| 1 | **Fix the condition bug** (1d) | Small, isolated. Nothing about condition is reasonable-about until it lands |
+| 2 | **Proportional power** (4a) | Closes the x4.64 case. Independently shippable |
+| 3 | **Engine response** (4b, 4c, 6e) | Where the realism arrives. Includes the rotary carve-out |
+| 4 | **Per-subsystem support ratios** (5.1, 6) | Must land before step 5 |
+| 5 | **Return curves incl. forced induction** (4d) | **Blocked by step 4**, per constraint A |
+| 6 | **Measure the buyer-selection spread** | **Constraint B.** A measurement, not a build. If it fails, stop and report |
+| 7 | **Cohesion into buyer selection** (5.2) | Gated on step 6 |
+| 8 | **Stat simplification** (8), per-car aero ceiling (9b), **style car-level base** | The style base was flagged in 8 and previously missing here; `styleCap` 20 makes every stock car identical |
+| 9 | **The dyno** (11) | Makes 4b and 5 legible. GDD 5.4 |
+| 10 | **Re-derive the provisional condition curves** | With everything in place |
+
+**Reputation (5.3) is NOT in this list, deliberately.** See 15.2.
+
+Steps 1 and 2 are worth doing alone and in that order.
 
 ---
 
 ## 15. Still open for the maintainer
 
-1. **Section 6b: penalty framing, or amend Law 5?** Recommendation is the penalty
-   framing, on the grounds that it is correct rather than merely permitted. The
-   alternative is an honest amendment, not a workaround.
-2. **Section 5c: does a bad build come back after the sale?** The market
-   consequence in 5a is the core and stands alone. A returning car plus a
-   reputation hit is a better story and a new mechanic; recommend deferring it until
-   5a has been played.
-3. **Section 2a: is machining its own feature?** It is genuinely good, genuinely
-   JDM, and it is the only honest answer to "the block adds capacity if you bore".
-   It also has a real authenticity payoff nothing else in the game currently
-   delivers. But it is a feature, not a footnote, and it wants its own scoping.
-4. **Does the dyno cost money as well as a labour slot?** GDD 5.4 says one labour
-   slot and is silent on cash.
-5. **What does an incoherent build do to the buyer POOL versus the price?** 5a
-   proposes both narrow. Whether a dangerous car should be effectively unsellable,
-   or merely cheap, is a feel question worth deciding deliberately.
+### 15.1 The value half is unverified
+
+Step 6 above. If buyer selection cannot produce a felt spread, the design needs
+another answer and the honest options are the two in 5.2's predecessor: withhold
+premium from incoherent builds within Law 5, or amend Law 5 openly. **Do not
+reach for a third lever.**
+
+### 15.2 Reputation should be descoped from this sprint
+
+External review is right that this is a sequencing risk. 5.3's reputation half is
+gated by 5.5's ratchet problem, which is explicitly out of scope, and the document
+concedes the mechanic "will be weak until this is resolved". Shipping it anyway means
+shipping a knowingly inert consequence, which is worse than not shipping it.
+
+**Two honest options, and this is the maintainer's call:**
+
+- **Descope 5.3 from the tuning sprint entirely.** Build the value half, leave
+  reputation for the pass that fixes the ratchet.
+- **Pull the flow-of-opportunity redesign (5.5 option B) into the critical path**,
+  and build reputation on top of it.
+
+**Recommendation: descope.** 5.5 is a genuine design pass touching how the whole
+game hands out opportunity, and bolting it onto a tuning sprint would rush it.
+
+### 15.3 Does generation produce incoherent builds?
+
+Raised by external review, and it is a good question the design does not answer.
+Generation does produce modified cars. Once support ratios exist, an auction lot
+could arrive incoherent, and since 11 hides the ratio until a dyno session, **the
+game could sell the player a grenade they had no way to detect.**
+
+That is arguably excellent: a car that looks like a bargain and is not is exactly
+what this game is about. But it must be a **deliberate decision** rather than an
+emergent surprise, and if it is taken, the pre-purchase inspection routes need to
+offer some way to smell it.
+
+### 15.4 Is machining deterministic?
+
+Raised by external review. Machining consumes the player's part (2c). **Recommend
+deterministic: you pay, you wait, you get the part.** Real machining risk is the
+first thing a future session will try to invent, and it would add a random
+catastrophic loss to a game with no other random catastrophic losses. Recorded so
+the answer is on the record rather than re-litigated.
+
+### 15.5 Smaller ones
+
+- **Does the dyno cost money as well as a labour slot?** GDD 5.4 says one labour slot
+  and is silent on cash.
+- **Does an incoherent build narrow the buyer pool, the price, or both?** 5.2
+  proposes both. Whether a dangerous car should be nearly unsellable or merely cheap
+  is a feel question worth deciding deliberately.
+- **Is machining its own feature?** Yes, and it wants its own scoping (2a scope
+  note). It is the only honest answer to "the block adds capacity if you bore".
