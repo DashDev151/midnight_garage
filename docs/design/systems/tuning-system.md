@@ -83,6 +83,62 @@ to.**
 (`formulas.md` section 2: "Display data; the physics does not read them"). Any
 design reaching for a torque curve is inventing data.
 
+### 2a. And a third thing it cannot express: work done to a part
+
+The maintainer's question, prompted by "the block adds capacity **if you bore**":
+what are we actually doing to a part when we repair it, and what can an aftermarket
+part do that a repair cannot?
+
+There are **three** ways a part gets better in reality, and the model has two.
+
+| | what it is | ceiling | authenticity |
+| --- | --- | --- | --- |
+| **Repair** | restoring a part toward the condition it left the factory in | **never exceeds stock capability**. A perfectly repaired block is a good stock block | preserved. It is still the original part |
+| **Replacement** | fitting a differently-specified part in its place | whatever the new part is | **destroyed**. The original is gone |
+| **Machining** | modifying the part you already own so it exceeds its original spec | above stock, without replacement | **preserved**, and this is the whole point |
+
+**Machining is the missing one, and real tuning is full of it**: boring and
+stroking for capacity, porting and polishing the head for flow, skimming for
+compression, balancing and blueprinting for revs and durability, lightening a
+flywheel for response. None of those is a part you buy. All of them are work done to
+the part you have, by a machine shop, and in Japan that culture (加工) is central
+rather than peripheral.
+
+**This is why the block question has no good answer today.** The model offers only
+"buy a race block", which is a different casting and a different object. It cannot
+express "have your own block bored", which is what almost everybody actually did.
+
+**The resolution, and it is cheap: machining is an acquisition path, not a new
+axis.** A bored block is still one SKU sitting in one slot. What differs is how the
+player got it there:
+
+| | buying | machining |
+| --- | --- | --- |
+| cost shape | purchase price, delivery | machine shop fee plus labour plus days |
+| needs | money | **your existing part, consumed** |
+| availability | the catalogue | requires the machine, or hiring it |
+| authenticity | destroyed | **preserved** |
+
+So no third property on a part, no second condition model, and no new job system.
+`machineShopAssist` already exists with per-group hire fees (engine 15,000,
+drivetrain 18,000, body 14,000, and so on), which is exactly the shape this needs
+and was built for the assembly work already.
+
+**And the authenticity consequence is the reason to build it at all.** A bored
+original block is still *your* block; the car is still numbers-matching. A
+replacement aftermarket block is not, and the car never will be again. That gives
+the player a real, permanent, legible choice with money and originality on opposite
+sides of it, and it is the same tension the GDD names for engine swaps ("restore the
+numbers-matching engine, or drop in the big turbo lump") arriving one level further
+down, on a single component.
+
+**Scope note.** This is a genuine feature and not a footnote to the tuning system.
+It should be scoped and scheduled on its own merits; the tuning system does not
+depend on it and should not wait for it. But **the tuning design must not
+accidentally foreclose it**, which means: do not express capacity increases as
+aftermarket SKUs that pretend to be replacements, and do not assume every upgrade
+path destroys authenticity.
+
 ---
 
 ## 3. Part roles
@@ -187,56 +243,76 @@ commit to it and genuinely ruins you if you commit halfway.
 
 ## 5. Reliability: what it actually does
 
-**This was the largest undesigned thing and it is the crux of the whole system.**
-The maintainer's question: what should happen if you boost 1.5 bar on a stock kei
-engine?
+**v1 of this document got this wrong and the maintainer caught it.** It proposed
+reliability as a wear rate: an unsupported build would degrade over days of use
+until something failed. That design is dead, for two reasons that are both fatal.
 
-### 5a. The answer: reliability is a rate, not a dice roll
+**The player never lives with the car.** The loop is buy, fix, sell. There is no
+period of ownership during which a build accumulates use, so a mechanic denominated
+in days of driving has no time in which to operate. **The buyer lives with the car,
+not the player.**
 
-**Low reliability means the car destroys itself, fast, visibly, and predictably.**
+**And the condition system has no motion to accelerate.** v1 claimed it did; that
+was false. `degradeBand` exists only inside `auctions.ts`, applied at generation
+time to make a car worse before the player ever sees it. Nothing decays during play.
+Condition is static and the only thing that moves it is the player repairing it.
 
-Reliability becomes a derived number expressing **how well the build supports its
-own output**, and it drives **the rate at which installed parts lose condition with
-use**:
+### 5a. The consequence has to land inside the loop the game actually has
 
-| reliability | what happens |
-| --- | --- |
-| high | parts wear at the normal rate. A sane build lasts |
-| moderate | the stressed parts (block, internals, head, clutch) wear noticeably faster |
-| low | those parts wear fast enough to watch. Mint to worn in days of use |
-| **critical** | **a stressed part fails outright to `scrap`** |
+The player's loop ends at a sale, so that is where reliability has to bite. It is
+also, on reflection, where it honestly belongs.
 
-The kei at 1.5 bar: reliability collapses, the block, internals and head burn down
-through the bands over a handful of days, and then one of them goes to `scrap`.
-`scrapDisablesCar` already covers all three, so **the car simply stops.** The engine
-ate itself, which is exactly what happens in reality.
+**Reliability is not a hidden time bomb. It is a visible quality of the work, and
+its consequence is who will buy it and for how much.**
 
-### 5b. Why this shape and not a dice roll
+An over-boosted stock-internals car is not a car that will explode on some future
+Tuesday. It is a car that **a knowledgeable buyer will not touch**. That is exactly
+what happens in life: the person who knows what they are looking at sees a big turbo
+on a stock bottom end and walks away, and the person who does not know pays less
+because they are being warned by everyone around them.
 
-- **It is realistic.** An over-boosted stock engine does not usually explode at
-  random; it wears out fast and then lets go.
-- **It respects the no-reflex rule and the no-random-punish instinct.** The player
-  is warned, sees it coming, and can act. Nothing is taken from them by a hidden
-  roll.
-- **It needs no new mechanic.** It accelerates the condition system that already
-  exists and already drives value, performance and repair.
-- **It creates maintenance as a real decision**, which the game does not currently
-  have: the fast car needs looking after and the sensible one does not.
-- **It makes the coherent build genuinely better** rather than merely differently
-  numbered. It lasts.
+So:
 
-### 5c. The player must be told, and that is what the dyno is for
+| build | who bids | what they pay |
+| --- | --- | --- |
+| coherent, well supported | the buyers who know, and the ones who do not | full money, competitive interest |
+| powerful but unsupported | only buyers who cannot read it | less, from a thinner pool |
+| dangerous | almost nobody | a lot less, if it moves at all |
 
-A build with unsupported power must announce itself before it destroys anything: on
-the dyno, on the car's own readout, and in the day log as it starts to happen. **A
-consequence the player could not have foreseen is a punish; one they were shown is a
-choice.**
+**This is immediate, legible and needs almost no new machinery.** Buyer taste
+already weights stats per buyer and `buyers.json` already keys preferences. What is
+new is that reliability starts meaning something to that weighting, and that the
+pool itself narrows rather than only the price moving.
+
+### 5b. Why this is better than the alternative it replaces
+
+- **It exists inside the loop.** No timescale is invented.
+- **It is immediate.** The player learns at the point of sale, not three in-game
+  weeks later when they have forgotten what they built.
+- **It cannot punish by surprise**, because the dyno tells you before you sell
+  (section 11) and the market tells you when you list.
+- **It makes cohesion pay in the one currency the game runs on**, which is what the
+  car sells for.
+- **It is what actually happens.** A grenade is not punished by exploding. It is
+  punished by nobody serious wanting it.
+
+### 5c. The optional second half, and it is genuinely good
+
+**It comes back.** A car sold with a known-bad build can return: the buyer is
+unhappy, word gets around, and the player's reputation takes the hit. That is a
+garage-sim consequence rather than a racing-game one, it is period-authentic, and
+reputation is a currency the game already has.
+
+**But it is a new mechanic** (post-sale events do not exist) and a delayed punish,
+which needs care to not feel arbitrary. **Recommend building 5a first and treating
+5c as a later enhancement**, once it is clear whether the market consequence alone
+carries enough weight.
 
 ### 5d. Reliability stops being an additive stat
 
 A part does not "add reliability". The build either supports its own output or it
 does not. So `statModifiers.reliability` goes away and reliability becomes derived
-from build coherence (section 6). See section 8.
+from build cohesion (section 6). See section 8.
 
 ---
 
@@ -256,32 +332,40 @@ That one number drives **reliability** (section 5) and **value** (below), which 
 why a coherent build is both safer and worth more. One concept, two consequences,
 no second system.
 
-### 6b. Three ways to express the value part, and they are not equal
+### 6b. How the value part is expressed, cleanly
 
-The economy bible's Law 5 says the premium multipliers "are capped at 1, so the
-premium term can only ever be withheld, never inflated". A genuine bonus above the
-sum of parts **breaks that law** and needs an amendment.
+**v1 proposed varying `partsRetention` by cohesion, on the grounds that Law 5 caps
+`foundationFactor` and `aftermarketReturn` but not retention. The maintainer named
+that correctly: it is a workaround to circumvent our own law.** It is dead. Finding
+a lever the law does not happen to mention, in order to achieve the thing the law
+forbids, is rules-lawyering rather than design, and it would leave the codebase with
+a law that says one thing and an economy that does another.
 
-| option | how | breaks Law 5? |
-| --- | --- | --- |
-| **A. Penalty framing** | an incoherent build has its premium withheld; a coherent one gets it in full | No |
-| **B. Bonus framing** | a coherent build's premium exceeds the sum of its parts | **Yes**, needs an amendment |
-| **C. Coherence-varied retention** | `partsRetention` (how much of a part's price survives into car value) depends on cohesion | No. Law 5 caps `foundationFactor` and `aftermarketReturn`, not retention |
+There are exactly two honest options.
 
-**A and B produce the same ordering**; they differ only in where the baseline sits.
-**C gets a genuine super-additive result without touching the capped multipliers**,
-because a well-integrated part really does retain more of its cost than the same
-part bolted onto a mismatched car.
+**A. The penalty framing.** An incoherent build has its aftermarket premium
+withheld; a coherent one receives it in full. This works entirely within Law 5,
+which exists to say the premium can be withheld and never inflated, and it is
+precisely what `foundationFactor` already does for a different reason (bad
+foundations withhold what a buyer would pay for the extras).
 
-**Recommendation: C, and it needs a maintainer ruling** because retention is an
-economy lever and because whether it is within Law 5's spirit is a judgement call.
-The law's intent is "mods return cents on the yen, they don't multiply the chassis
-price"; varying how many cents by how well the work was done still honours that.
+**B. Amend Law 5.** If a coherent build genuinely should be worth more than the sum
+of its parts, then the law that forbids it is wrong and should be changed openly,
+under the bible's own amendment process, with the reasoning recorded.
 
-**And the underlying claim is true, which is why it is worth doing:** a well-sorted
-car is worth more than its receipts, because coherence signals competence and
-because the thing actually works. A bag of mismatched parts is worth less than its
-receipts. Both directions are real.
+**Recommendation: A.** Not as a compromise, but because it is the correct answer.
+"The sum of the parts" is not a natural baseline; it is an arbitrary reference
+point. What the design actually needs is an **ordering** (a coherent build is worth
+more than an incoherent one carrying the same parts) and the penalty framing
+delivers that ordering exactly. Choosing to measure it from the coherent end rather
+than the incoherent end changes no decision the player ever makes.
+
+It is also the framing that matches the fiction. A buyer does not pay a bonus for
+competence; they **withhold** money when they see something that worries them. That
+is what inspecting a car is.
+
+If the maintainer wants the bonus regardless, option B is the honest route and the
+amendment should say why.
 
 ---
 
@@ -458,12 +542,19 @@ the most playtesting.
 
 ## 15. Still open for the maintainer
 
-1. **Section 6b: which cohesion framing?** A (penalty), B (bonus, needs a Law 5
-   amendment), or C (coherence-varied retention, recommended). This is an economy
-   lever and a law question.
-2. **How fast should a critical build destroy itself?** Days of use is the shape;
-   the number is a feel question that wants playtesting rather than deriving.
-3. **Can a player disable or ignore the warning** and blow the engine deliberately?
-   I would say yes: it is their car, and a known risk taken knowingly is a decision.
+1. **Section 6b: penalty framing, or amend Law 5?** Recommendation is the penalty
+   framing, on the grounds that it is correct rather than merely permitted. The
+   alternative is an honest amendment, not a workaround.
+2. **Section 5c: does a bad build come back after the sale?** The market
+   consequence in 5a is the core and stands alone. A returning car plus a
+   reputation hit is a better story and a new mechanic; recommend deferring it until
+   5a has been played.
+3. **Section 2a: is machining its own feature?** It is genuinely good, genuinely
+   JDM, and it is the only honest answer to "the block adds capacity if you bore".
+   It also has a real authenticity payoff nothing else in the game currently
+   delivers. But it is a feature, not a footnote, and it wants its own scoping.
 4. **Does the dyno cost money as well as a labour slot?** GDD 5.4 says one labour
    slot and is silent on cash.
+5. **What does an incoherent build do to the buyer POOL versus the price?** 5a
+   proposes both narrow. Whether a dangerous car should be effectively unsellable,
+   or merely cheap, is a feel question worth deciding deliberately.
