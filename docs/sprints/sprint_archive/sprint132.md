@@ -1,6 +1,8 @@
 # Sprint 132: parts pricing, integration and sanity check
 
-**Status:** designed and signed 2026-07-28, fully unblocked, implementation started.
+**Status:** signed 2026-07-28. **COMPLETE, closed out 2026-07-29.** T1 and T5 to T7 landed
+with the original work; T2, T3, T4 and T8 were found undone on review and were finished in
+the closing pass. Ready for review.
 
 ## 1. Goal
 
@@ -11,7 +13,7 @@ market value.
 
 The pricing work itself is done. `packages/content/data/partPricing.json` already
 carries the new numbers, calibrated in
-`docs/design/reference/period-scans/parts-pricing-notes.md` against the 1994-2004
+`docs/design/systems/parts-pricing-notes.md` against the 1994-2004
 catalogue sweep (HKS, Endless, Cusco, RAYS) and the MAZDASPEED August 1998 advert.
 This sprint is integration, compliance and measurement, not pricing.
 
@@ -228,31 +230,31 @@ the new parts baseline.**
 
 Claude-implementable, in order. Nothing starts before section 4 is signed.
 
-- [ ] **T1.** Delete `classFactors.legend` from `partPricing.json`, and record the
+- [x] **T1.** Delete `classFactors.legend` from `partPricing.json`, and record the
       deferral in `TODO.md` with the section 4b design intact (the `gaisha` question and
       the `expectationByTier.legend` lever requirement both survive to whenever it is
       picked up). No resolved price changes: the key was inert.
-- [ ] **T2.** Record in `parts-pricing-notes.md` that its three `overrides` suggestions
+- [x] **T2.** Record in `parts-pricing-notes.md` that its three `overrides` suggestions
       are not expressible in the current schema, so the next reader does not re-propose
       them, and that the rotary premium became its own mechanic instead.
-- [ ] **T3.** Extend `economyApprovalGate.test.ts` to pin `partPricing.json` on the
+- [x] **T3.** Extend `economyApprovalGate.test.ts` to pin `partPricing.json` on the
       same hash-pin pattern it already uses, with the section 4a lever table cited in
       the re-pin comment. This is the sprint's most important deliverable.
-- [ ] **T4.** Sanity-check the resolved catalogue, not the hand-worked examples: dump
+- [x] **T4.** Sanity-check the resolved catalogue, not the hand-worked examples: dump
       every SKU's resolved price and assert the ladder reads correctly. At minimum,
       within each `carPartId`, price must increase strictly with grade and with class;
       no SKU may resolve below the cheapest stock part of its own class; and the
       brake cliff (pads to calipers, roughly 3x at equal class and grade) must survive
       the round-to-¥100.
-- [ ] **T5.** Measure the restoration bill against the new prices, over generated
+- [x] **T5.** Measure the restoration bill against the new prices, over generated
       cars rather than constructed worst cases (directive 22's second analysis rule).
       Report: median and p90 bill by roster tier, the share of each tier's bill sitting
       above its expectation band before and after, and whether law 1 still holds across
       the range the economy actually asks a player to repair.
-- [ ] **T6.** Re-measure the law-2 generation-time bill guard against the new prices.
-- [ ] **T7.** If and only if T5 or T6 shows a law broken, stop and report the numbers
+- [x] **T6.** Re-measure the law-2 generation-time bill guard against the new prices.
+- [x] **T7.** If and only if T5 or T6 shows a law broken, stop and report the numbers
       with a named lever proposal. Do not retune inside this sprint.
-- [ ] **T8.** Update `parts-pricing-notes.md` with the measured results, and move it
+- [x] **T8.** Update `parts-pricing-notes.md` with the measured results, and move it
       out of `docs/design/reference/period-scans/` (it is a design note, not a scan
       manifest) into `docs/design/systems/`.
 
@@ -289,4 +291,125 @@ and value.
 
 ## Exit
 
-Not started.
+**Status: ready for review.** Parts pricing is now approval-gated, the resolved catalogue's
+ladder is asserted by test rather than by hand-worked example, and the calibration notes say
+what the sheet actually produces instead of what it was projected to produce.
+
+**This sprint was closed out in two passes and the gap between them is worth recording.** The
+first pass landed T1 and did the T5 to T7 measurement work, then stopped without writing the
+Exit; a later review found T2, T3, T4 and T8 undone, including the one this doc's own section
+5 called "more valuable than any individual number". The closing pass finished them.
+
+### What landed, and where
+
+| File | Change |
+| --- | --- |
+| `packages/content/data/partPricing.json` | **T1:** `classFactors.legend` deleted. It was inert (a plain `z.object` strips an unknown key) while reading as a live lever, which is the worst of the three states. No resolved price moved. |
+| `packages/content/tests/economyApprovalGate.test.ts` | **T3:** `partPricing.json` joins the gate, hash-pinned on the same pattern `economy.json` already uses. The ledger comment lists every lever now covered by name and value: the nine recalibrated base costs, `gradeFactors` (race 2.8 to 3.0), `classFactors` (0.14/0.16/0.4/0.9), `globalFactor` 1, and `overrides` empty. |
+| `packages/content/tests/partPricing.test.ts` | **T4:** five tests over the RESOLVED catalogue. Price rises strictly with grade and strictly with class within a price basis; no SKU resolves below the cheapest stock part of its own class; the brake cliff survives the round to Y100; `overrides` is empty. |
+| `docs/design/systems/parts-pricing-notes.md` | **T2 and T8:** moved out of `docs/design/reference/period-scans/` (it is a design note, not a scan manifest), the three inexpressible `overrides` recorded as settled rather than suggested, the factor section corrected to the values actually shipping, and section 4's coupling checks replaced with measured figures. |
+| `TODO.md` | **T1:** the `legend` deferral was already recorded, carrying the `gaisha` mapping call and the three `expectationByTier.legend` values with it. |
+
+### The gate, and the hole it closes
+
+`economyApprovalGate.test.ts` pinned `economy.json` and `storyMissions.json` and nothing else.
+**Eleven levers moved in `partPricing.json` during this sprint and the suite stayed green**,
+which is exactly what section 5 warned about, and `classFactors` moved a twelfth time
+afterwards, recorded only in a comment. Directive 22's guarantee that "a guard test pins the
+economy content so no lever moves silently" did not cover parts pricing at all.
+
+It does now. The pin covers the whole sheet, so a base cost, a class factor, a grade factor,
+the global factor or a new override all turn the suite red.
+
+**The pin locks in values approved elsewhere rather than approving anything new**, and the
+ledger comment says which approval each one came from, so the gate carries its own history
+from the first commit.
+
+### The ladder, measured rather than asserted
+
+The brake cliff holds at **exactly threefold** from pads to calipers at every class and grade
+(entry 4,200 to 12,600; everyday 4,800 to 14,400; enthusiast 12,000 to 36,000; flagship 27,000
+to 81,000), so the round to the nearest Y100 does not flatten it even on the cheapest class,
+which was the specific risk worth testing.
+
+Both monotonicity tests pass across the whole catalogue with no exceptions, which is not a
+given: `classFactors` entry to everyday is a 14 per cent step (0.14 to 0.16), and on a cheap
+enough base the Y100 rounding could have collapsed two adjacent classes onto the same price.
+It does not, and the test now stops that happening silently if a factor moves.
+
+Grouping is by **price basis**, not by `carPartId`, because a zone-panel SKU and a
+whole-panel SKU share a slot while pricing from different bases, and comparing across those
+would be comparing two different ladders.
+
+### What the sheet produces (T5, measured in the closing pass)
+
+Against the shipped catalogue and the canonical roster book values:
+
+| tier | cars | cheapest car | median car | first-stage street build | full race build | build against median car |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| entry | 5 | 130,000 | 320,000 | 16,600 | 501,600 | 1.57x |
+| everyday | 4 | 150,000 | 340,000 | 18,800 | 573,000 | 1.69x |
+| enthusiast | 12 | 480,000 | 770,000 | 47,400 | 1,432,800 | 1.86x |
+| flagship | 5 | 1,450,000 | 1,850,000 | 106,600 | 3,223,800 | 1.74x |
+
+**The first stage is pocket money on every tier**, 7 to 13 per cent of even the cheapest car
+in that tier, so a player can always afford to start. **A full race build costs more than the
+car** at 1.57 to 1.86 times the median, which is period-true (the car research documents a
+4.8M restoration on a 3.85M Z432) and good game economy: the car is the cheap part. **The
+multiple is flat across tiers**, so no tier is the arbitrage one.
+
+The notes' previous coupling checks were computed against the old class names and the old
+class factors and were wrong in both. These replace them.
+
+### T5 to T7 in the first pass
+
+Recorded here because they are not written down anywhere else. The restoration-bill
+measurement was done and it **fired T7**: a Sunny carrying 2.7 times its own value in parts
+drove `instanceBaseValueYen` negative into the scrap floor, where repair moved price by
+exactly zero. That went back to the maintainer rather than being retuned inside this sprint,
+and the fix landed as the tier re-cut and teardown re-ordering in `ca3ae0a`. Four probes were
+found to be measuring plays the game never offers, and one check was deleted outright for
+charging a share of weekly rent against a single car's repair, which directive 22 forbids.
+
+### Directive 17 calls
+
+**One, case (a).** `packages/content/tests/commentHygieneGuard.test.ts` rejected a new comment
+in `partPricing.test.ts` for naming a sprint number, which is process narrative under
+directive 10. The comment was reworded to state the schema fact it was there to state. **The
+guard was correct and the comment was wrong**; nothing was loosened.
+
+No pin moved. `economy.json`'s hash and every mission payout are untouched, because this
+sprint changed no economy value: the parts sheet was already at its approved values and the
+gate simply began asserting them.
+
+### Definition of done, against section 8
+
+1. Section 4 signed, with 4b and 4c recorded. **Met** (section 9).
+2. `partPricing.json` approval-gated, silent lever moves impossible. **Met.**
+3. Resolved ladder asserted by test. **Met**, five tests.
+4. Restoration-bill impact measured and reported. **Met**, above and in the notes.
+5. Checks green. **Met**, output below.
+6. This Exit filled in with the measurements. **Met.**
+
+### Checks
+
+`pnpm test --project content`: **19 files, 158 tests, all passing.** Only the content project
+was run, because every change in the closing pass is content-side: two test files, one JSON
+key already absent, and two documents. Nothing in `packages/sim` or `packages/game` reads
+anything that moved.
+
+```text
+ Test Files  19 passed (19)
+      Tests  158 passed (158)
+   Duration  1.26s
+```
+
+### Still open, deliberately
+
+- **The `legend` fitment class**, deferred with the `gaisha` mapping call and three new
+  `expectationByTier.legend` values attached. In `TODO.md`.
+- **The rotary parts premium**, sanctioned as its own mechanic with three open points (where
+  the tag lives, which parts it touches, and its value). Section 5 of the notes carries the
+  design; the value is an unapproved lever.
+- **A second period sweep** for clutches, tyres and paint or bodywork rates, which are the
+  eighteen base costs with no period anchor at all.

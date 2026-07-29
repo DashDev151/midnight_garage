@@ -211,6 +211,69 @@ pass."
 
 ## Open engineering
 
+- [ ] **Apply the roster's tier assignments to `cars.json`: 13 of the 26 shipped cars are on the
+  wrong tier.** `docs/design/midnight-garage-roster.md` v2.3 (2026-07-29) is now the single source
+  of truth for the full 94-car roster and section 5 lists every disagreement with content. The
+  defect it fixes: `entry` and `everyday` did not form two price bands, they **alternated** down
+  one ladder (City E 130k entry, Sunny 150k everyday, Wagon R 230k entry, Carina 250k everyday,
+  and so on), and the Beat sat in `entry` at 580,000 above four `enthusiast` cars.
+
+  **This is not a cosmetic relabel.** `tier` keys `valuation.expectationByTier`,
+  `partPricing.classFactors`, `partsGeneration.minWorkBillFractionByTier`, the three
+  `partsGeneration.zoneStates` severity tables and `diagnosis.symptomChanceByTier`, so all six
+  move for every car listed. Expect wide movement in valuation and mission-payout pins, every one
+  re-derived from a real run (directive 17 case (a)).
+
+  Two things ride with it:
+  1. **Only two flagship cars would remain authored** (Supra RZ, GT-R BNR32) against an auction
+     draw that gives collector-network rooms a 70 per cent flagship appetite and premium rooms 25
+     per cent. **The fix is authoring more flagship cars, not re-tiering cheaper ones upward.**
+  2. **The Sunny is scope `Eventually` and is already built.** Either promote its scope or accept
+     that scope and shipped state have drifted for one car.
+
+- [ ] **Price research for the nine STAND-IN car prices** (roster v2.3 section 4). Nissan March
+  (K10) 180,000; Toyota Corolla 1.5 SE (AE91) 200,000; Mazda Familia 1.5 (BG) 220,000; Honda
+  Civic 1.5 (EF3) 240,000; Suzuki Jimny (JA11) 390,000; Mitsubishi Delica Star Wagon (P35W)
+  520,000; Nissan Safari (Y60) 660,000; Toyota Land Cruiser 70 (LJ71) 700,000; Mitsubishi Pajero
+  Evolution (V55W) 2,500,000.
+
+  **These nine are not evidence and must not be treated as such.** Every other figure in the
+  roster carries a dated period observation, a bracketed interpolation between two, or a
+  recorded override. These were chosen to read correctly against their neighbours and nothing
+  more. They are marked **(TBC)** in both roster tables and must keep that mark until sourced.
+  **Do not author any of them into `cars.json` first.**
+
+  The same archived-dealer method that priced the other 85 applies unchanged. The 1998 Kyushu
+  calibration page is the obvious start for the four ordinary cars, since it prices exactly that
+  class at exactly that money. The five cross-country vehicles need their own sweep, and the
+  Pajero Evolution is the one most likely to move: a limited-run homologation special does not
+  depreciate like a Land Cruiser, and 2,500,000 is a guess at half its 1997 list rather than an
+  observation.
+
+- [ ] **The `everyday` tier is named for ordinary cars and is mostly performance variants**
+  (maintainer, 2026-07-29). Of its 16 cars, the CR-X SiR, Prelude Si VTEC, S13 K's, MR2 SC,
+  Familia GT-R, Beat, Cefiro, Cappuccino, Civic SiR-II, Glanza V, 510 SSS, AZ-1, Laurel Club S
+  and Copen are all sporting grades; the plain metal all sits in `entry`. So the tier reads as
+  "the cheap end of fun" rather than "everyday", and the label and the contents disagree.
+  Three ways out, none of them urgent: rename the tier; move the ordinary cars up into it and
+  let `entry` be keis and near-scrap only; or accept the name as a price band and stop reading
+  it as a description. **Renaming is a content field change across `cars.json`, six economy
+  tables and every tier-keyed copy string, so it is not a cheap fix.**
+
+- [ ] **The roster is still thin at the bottom** (maintainer, 2026-07-29). After v2.1 it is
+  entry 17, everyday 16, enthusiast 26, flagship 30, so the two tiers a player spends the early
+  and middle game in hold 33 cars against 56 above them. The four new entry cars closed part of
+  the gap and did not close it. **More ordinary cheap cars and more mid-money cars, not more
+  halo metal.**
+
+- [ ] **The Legend system is designed in outline and is not built.** GDD 9.2 and roster section 7
+  name the ten cars, the Hall of Legends art direction and the Zero Legend, but nothing exists in
+  code: no enshrinement, no Hall, no acquisition route, no Collector's Quarter lead. **The AZ-1 is
+  the first Legend the player acquires (maintainer, 2026-07-29)**, which is the one fixed point in
+  the order and the thing that makes the rest scopeable: it sets what "reaching your first Legend"
+  costs, since the AZ-1 is an `everyday`-tier kei at ¥720,000 rather than halo money. Scope it
+  before any Legend car is authored, or the cars arrive with nowhere to go.
+
 - [ ] **A fifth parts-fitment class for the exotics, deferred (maintainer decision 2026-07-28,
   reversed from "implement" the same day).** The period parts research is the case for it: the
   dearest class at 2.5x checks out for JDM flagships (its stock internals lands on the real

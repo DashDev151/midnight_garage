@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 import economy from '../data/economy.json'
+import partPricing from '../data/partPricing.json'
 import storyMissions from '../data/storyMissions.json'
 
 /**
@@ -344,6 +345,40 @@ import storyMissions from '../data/storyMissions.json'
  * buyout pays a median 4.4% of book where a room win on the same car pays 13.9%
  * of book, so buying outright still hands back roughly two thirds of the
  * restoration margin.
+ *
+ * PINNED FOR THE FIRST TIME 2026-07-29 (maintainer approval, in session: "T3
+ * approved"): `partPricing.json` joins this gate. It was the one economy surface
+ * directive 22 did not actually protect - Sprint 132 identified the gap in its own
+ * section 5, called closing it "more valuable than any individual number", and then
+ * never closed it. Eleven levers moved through the hole during that sprint and the
+ * suite stayed green, and `classFactors` moved a twelfth time afterwards.
+ *
+ * The pin therefore locks in values already approved elsewhere, listed here by name
+ * and value so the gate carries its own ledger from the start:
+ *
+ * - `baseCostYen`, the nine period-recalibrated entries signed in
+ *   docs/sprints/sprint132.md section 4a: exhaust 40000, springs 18000, dampers
+ *   40000, brakePadsDiscs 15000, brakeCalipersLines 45000, intake 18000,
+ *   ignitionEcu 28000, rims 34000, aero 26000. The other 21 are unchanged from the
+ *   original sheet. These are NOT catalogue shelf prices: period bills carried 20 to
+ *   35 per cent of mandatory accessories (ECU wiring harnesses, caliper mounting
+ *   stays, metal catalysts to make an exhaust road-legal) and the review baked that
+ *   into the base rather than modelling it separately.
+ * - `gradeFactors` stock 1 / street 1.3 / sport 2 / race 3, the `race` rung 2.8 -> 3.0
+ *   signed in the same section 4a table.
+ * - `classFactors` entry 0.14 / everyday 0.16 / enthusiast 0.4 / flagship 0.9, signed
+ *   with the teardown and repair retune recorded above (item 3 of that four-lever
+ *   approval). Derived rather than chosen, and the entry-to-everyday step is small on
+ *   purpose because the re-tier put those two tiers in the same price band.
+ * - `globalFactor` 1, and `overrides` EMPTY, which is the state its own schema comment
+ *   intends. Sprint 132 section 4c settled that the three suggested overrides (rotary,
+ *   exotic and kei multipliers) cannot be expressed by this schema at all: it is keyed
+ *   by SKU id and valued in absolute yen, with no multipliers and no car-level keys.
+ *   The rotary premium became its own mechanic instead and is not in this sheet.
+ * - `classFactors.legend` was deleted in Sprint 132 T1. It was inert (a plain z.object
+ *   strips it) while reading as a live lever, which is the worst of the three states.
+ *   The `legend` fitment class is deferred, and carries the `gaisha` mapping call and
+ *   three new `expectationByTier.legend` values with it whenever it is picked up.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -354,6 +389,18 @@ describe('the economy approval gate', () => {
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
     ).toBe('138109cc5f69548d7752a198fb84f72ad20fec9d38a650c1fba5a3260e6a1db0')
+  })
+
+  it('partPricing.json matches its approved content exactly', () => {
+    const hash = createHash('sha256').update(JSON.stringify(partPricing)).digest('hex')
+    expect(
+      hash,
+      'partPricing.json changed. Every SKU in the catalog resolves its price from ' +
+        'these five knobs, so one edit here re-prices the whole market: base costs, ' +
+        'class factors, grade factors, the global factor and the overrides map are all ' +
+        'approval-gated (CLAUDE.md directive 22). Re-pin this hash ONLY in the same ' +
+        'change as the recorded approval of the specific lever and value.',
+    ).toBe('6c0e3cf239f48a373dc2c0389a8e6cf788786f917deee97cfc2fbf918ac4b0eb')
   })
 
   it('mission payouts and budget caps match their approved values exactly', () => {

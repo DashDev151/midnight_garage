@@ -1,5 +1,32 @@
 # Roster Price List v2 - sliding progression clock (1995 → 2005)
 
+> **PRICE PROVENANCE ONLY. NOT THE ROSTER.**
+>
+> **`docs/design/midnight-garage-roster.md` is the single source of truth** for which cars
+> exist, what tier each one is, and when it ships. Read that first; come here only for *why* a
+> price is what it is.
+>
+> **What is still live in this document:** every yen figure, its anchor, its confidence tag
+> ([P], [P~], [I], [L], [O]), the identity rulings, the override log, and the confidence audit.
+> That research is signed and it is the reason the roster's prices can be trusted.
+>
+> **What is DEAD and must never be cited:**
+>
+> - **The tier names Starter, Club, Semi-pro, Pro/Legend and Expansion.** They predate the tier
+>   rework. The only tier names are **`entry`, `everyday`, `enthusiast`, `flagship`**, and the
+>   assignment lives in the roster document, not here.
+> - **The word "shitbox"** wherever it appears as a tier. It was renamed to `entry`, and it no
+>   longer means "cheap car" in any case: it meant kei-sized components.
+> - **Every ordinal ("row 68", "#34", "climbs from #13 to #18")**, because the roster is now
+>   ordered by the roster document. The ranks here are frozen at the moment this research
+>   closed.
+> - **The scope and progression claims** ("the player naturally reaches it", "endgame", "met
+>   late-game"). Scope is the roster document's Scope column.
+>
+> The pricing *method* below is still worth reading, because it is why a 1995 Sunny and a 2005
+> GT-R can sit in one list at all: each car is priced at the game year a player plausibly meets
+> it, not at one frozen date.
+
 Supersedes v1. Same research base (`msrp-consolidated.md`), new pricing basis: the game clock
 advances with the player, so **each car is priced at the game year the player naturally reaches
 it**, not at a single frozen 2005 moment. All 85 cars re-ranked; every v1→v2 change logged in

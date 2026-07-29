@@ -86,8 +86,12 @@ roster for car scope). Bibles require explicit maintainer approval, recorded in 
   `IDEAS.md` (the post-launch parking lot - anything there is out of v1.0 by definition), never
   into the GDD.
 - `midnight-garage-roadmap.md` - sprint-by-sprint plan (P0-P7), risk register, content pipeline.
-- `midnight-garage-roster.md` - car roster + scope tiers. **Contains a secret easter egg ("The
-  Zero Legend") - never surface it in public-facing text, devlogs, or marketing.**
+- `midnight-garage-roster.md` (v2.3) - **the single source of truth for the full 94-car
+  roster**: every car's price, its tier (`entry`/`everyday`/`enthusiast`/`flagship`), its
+  culture and its scope, in one table. Nothing else may carry a second copy of it.
+  `reference/period-scans/roster-price-list-v2.md` is price PROVENANCE only and its own tier
+  names are dead. **Contains a secret easter egg ("The Zero Legend") - never surface it in
+  public-facing text, devlogs, or marketing.**
 - `art-direction.md` - the art bible (locked 2026-07-13): palette, pixel discipline, the
   diegetic/visceral-UI law (binding on all UI work), audio direction. **No AI-generated assets
   ship or appear in public materials, ever.**
