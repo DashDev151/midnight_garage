@@ -52,13 +52,12 @@ function testButton(card: DOMWrapper<Element>, testId: string): DOMWrapper<Eleme
   return card.find(`[data-test$="-${testId}"]`)
 }
 
-/** Runs the trap lot's diagnostic chain to its end: the coolant check narrows
- * the overheating onto the two combustion-breach causes, then the compression
- * test settles it on the dear one (a cracked block), so the player number is
- * the car's real worth (¥64,307) rather than the room's read. */
+/** Runs the trap lot's diagnostic chain to its end: the hand-crank test
+ * isolates a seized engine in one go (the partition puts it alone on one
+ * side), so the single click settles it on the dear cause and the player
+ * number is the car's real worth (¥62,285) rather than the room's read. */
 async function resolveTrap(wrapper: VueWrapper): Promise<void> {
-  await testButton(packedCard(wrapper), 'coolant-check').trigger('click')
-  await testButton(packedCard(wrapper), 'compression-test').trigger('click')
+  await testButton(packedCard(wrapper), 'hand-crank').trigger('click')
 }
 
 describe('AuctionRoomDemoScreen', () => {
@@ -84,7 +83,7 @@ describe('AuctionRoomDemoScreen', () => {
     // own estimate line (starting at the room read, unmoved). The badge follows
     // the room the demo assigns: the steal lot sits in a thin room.
     const thin = thinCard(wrapper)
-    expect(thin.text()).toContain('the room says ¥77,120')
+    expect(thin.text()).toContain('the room says ¥93,753')
     const thinBadge = thin.find('.turnout-badge')
     expect(thinBadge.text()).toBe('Thin turnout')
     expect(thinBadge.classes()).toContain('turnout-thin')
@@ -92,16 +91,16 @@ describe('AuctionRoomDemoScreen', () => {
     expect(thin.find('[data-test^="symptom-"]').exists()).toBe(true)
     const estThin = wrapper.find('[data-test="est-value-thin"]')
     expect(estThin.text()).toContain('Estimated market value:')
-    expect(estThin.text()).toContain('¥77,120')
+    expect(estThin.text()).toContain('¥93,753')
     expect(estThin.find('.was').exists()).toBe(false)
     expect(wrapper.find('[data-test="take-seat-thin"]').text()).toBe('Take a seat')
 
     const packed = packedCard(wrapper)
-    expect(packed.text()).toContain('the room says ¥89,306')
+    expect(packed.text()).toContain('the room says ¥91,041')
     const packedBadge = packed.find('.turnout-badge')
     expect(packedBadge.text()).toBe('Packed turnout')
     expect(packedBadge.classes()).toContain('turnout-packed')
-    expect(wrapper.find('[data-test="est-value-packed"]').text()).toContain('¥89,306')
+    expect(wrapper.find('[data-test="est-value-packed"]').text()).toContain('¥91,041')
     expect(wrapper.find('[data-test="take-seat-packed"]').text()).toBe('Take a seat')
 
     // The shared inspect control names the real labour and travel-fee cost; no
@@ -148,38 +147,40 @@ describe('AuctionRoomDemoScreen', () => {
     await inspect(wrapper)
     expect(wrapper.find('[data-test="est-value-thin"]').find('.was').exists()).toBe(false)
 
-    await testButton(thinCard(wrapper), 'gearbox-oil-check').trigger('click')
+    await testButton(thinCard(wrapper), 'coolant-check').trigger('click')
 
-    // Low, thin, dark oil narrows the crunch onto the pair that holds the dear
-    // cause (a chewed gearset), so the estimate steps off the room read
+    // Bubbles in the header tank narrow the overheat onto the combustion-breach
+    // pair (an early head gasket or a cracked block) and off the cheap pair
+    // (fan switch, tired radiator), so the estimate steps off the room read
     // downward, in red.
     const afterFirst = wrapper.find('[data-test="est-value-thin"]')
-    expect(afterFirst.find('.was').text()).toBe('¥77,120')
-    expect(afterFirst.find('.down').text()).toBe('¥68,778')
+    expect(afterFirst.find('.was').text()).toBe('¥93,753')
+    expect(afterFirst.find('.down').text()).toBe('¥91,291')
     // The doubt narrowed: the run test's own result line now shows in the trail.
     expect(wrapper.find('[data-test^="breadcrumb-"]').exists()).toBe(true)
     // The shared clock ran down by the test's minutes.
+    expect(wrapper.find('[data-test="visit-panel"]').text()).toContain('50m left')
+
+    await testButton(thinCard(wrapper), 'rad-flow-feel').trigger('click')
+
+    // Feeling the radiator core only rules out a tired radiator, which the
+    // coolant check has already ruled out, so it narrows nothing further and
+    // the money stands still while the clock runs down. The estimate tracks
+    // the doubt, not the effort.
+    const afterSecond = wrapper.find('[data-test="est-value-thin"]')
+    expect(afterSecond.find('.down').text()).toBe('¥91,291')
     expect(wrapper.find('[data-test="visit-panel"]').text()).toContain('45m left')
 
-    await testButton(thinCard(wrapper), 'clutch-drag-check').trigger('click')
+    await testButton(thinCard(wrapper), 'compression-test').trigger('click')
 
-    // The clutch check only rules out a dragging clutch, which the oil check
-    // has already ruled out, so it narrows nothing further and the money stands
-    // still while the clock runs down. The estimate tracks the doubt, not the
-    // effort.
-    const afterSecond = wrapper.find('[data-test="est-value-thin"]')
-    expect(afterSecond.find('.down').text()).toBe('¥68,778')
-    expect(wrapper.find('[data-test="visit-panel"]').text()).toContain('35m left')
-
-    await testButton(thinCard(wrapper), 'magnet-check').trigger('click')
-
-    // The magnet is the branch that settles it: it comes out clean, so nothing
-    // is chewing itself in there and the crunch is only starved oil, the cheap
-    // cause. The estimate lands on the true worth, green above the room read.
+    // Compression is the branch that settles it: it reads even and healthy, so
+    // the block never let go and the overheat is only an early head-gasket
+    // weep, the cheap cause. The estimate lands on the true worth, green above
+    // the room read.
     const est = wrapper.find('[data-test="est-value-thin"]')
-    expect(est.find('.was').text()).toBe('¥77,120')
-    expect(est.find('.up').text()).toBe('¥84,868')
-    expect(wrapper.find('[data-test="visit-panel"]').text()).toContain('25m left')
+    expect(est.find('.was').text()).toBe('¥93,753')
+    expect(est.find('.up').text()).toBe('¥104,036')
+    expect(wrapper.find('[data-test="visit-panel"]').text()).toContain('20m left')
   })
 
   it('resolving the trap redraws its estimate downward, the new figure in red', async () => {
@@ -190,8 +191,8 @@ describe('AuctionRoomDemoScreen', () => {
     await resolveTrap(wrapper)
 
     const est = wrapper.find('[data-test="est-value-packed"]')
-    expect(est.find('.was').text()).toBe('¥89,306')
-    expect(est.find('.down').text()).toBe('¥64,307')
+    expect(est.find('.was').text()).toBe('¥91,041')
+    expect(est.find('.down').text()).toBe('¥62,285')
     expect(est.find('.up').exists()).toBe(false)
   })
 
@@ -204,7 +205,7 @@ describe('AuctionRoomDemoScreen', () => {
     expect(wrapper.find('[data-test="seat-1"]').text()).toContain('Mrs. Sakaki')
     expect(wrapper.find('[data-test="seat-2"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="log"]').text()).toContain(
-      'The clerk looks over the room. Reserve is ¥42,416.',
+      'The clerk looks over the room. Reserve is ¥51,564.',
     )
     expect(wrapper.find('[data-test="bid"]').text()).toBe('Bid the reserve')
     // The room never carries the lobby's inspect control, visit panel, HUD, or
@@ -224,16 +225,17 @@ describe('AuctionRoomDemoScreen', () => {
     await advance(2700)
     expect(wrapper.find('[data-test="seat-0"]').text()).toContain('Endo')
 
-    expect(wrapper.find('[data-test="bid"]').text()).toBe('Raise to ¥47,416')
-    expect(wrapper.find('[data-test="bid-jump-4"]').text()).toBe('Raise to ¥62,416')
-    expect(wrapper.find('[data-test="bid-jump-8"]').text()).toBe('Raise to ¥82,416')
-    // The player's number is ¥77,120, the room read, since no test has
-    // narrowed the doubt. The two smaller options land under it and read safe;
-    // the eight-rung jump lands over it and reads danger, which is the flag
-    // doing its job per option rather than as one shared switch.
+    expect(wrapper.find('[data-test="bid"]').text()).toBe('Raise to ¥56,564')
+    expect(wrapper.find('[data-test="bid-jump-4"]').text()).toBe('Raise to ¥71,564')
+    expect(wrapper.find('[data-test="bid-jump-8"]').text()).toBe('Raise to ¥91,564')
+    // The player's number is ¥93,753, the room read, since no test has
+    // narrowed the doubt. Even the eight-rung jump lands under it, so all
+    // three options read safe here - the danger flag per option is proven
+    // independently by the packed-room case below, where the climb does
+    // carry every option past the number.
     expect(wrapper.find('[data-test="bid"]').classes()).not.toContain('danger')
     expect(wrapper.find('[data-test="bid-jump-4"]').classes()).not.toContain('danger')
-    expect(wrapper.find('[data-test="bid-jump-8"]').classes()).toContain('danger')
+    expect(wrapper.find('[data-test="bid-jump-8"]').classes()).not.toContain('danger')
   })
 
   it('renders the dev force-reaction strip in the room phase', async () => {
@@ -279,7 +281,7 @@ describe('AuctionRoomDemoScreen', () => {
   it('marks danger independently on each raise option against its own landing price, not as one shared flag', async () => {
     const wrapper = mountScreen()
     await inspect(wrapper)
-    // Resolve the trap to its true worth (¥64,307); by the time the room has
+    // Resolve the trap to its true worth (¥62,285); by the time the room has
     // climbed for 18s, every rung on offer already lands past the player's
     // number, so all three read danger at once - each computed off its own
     // landing price, not one shared switch, which the identical `.classes()`
@@ -289,11 +291,11 @@ describe('AuctionRoomDemoScreen', () => {
     await advance(18_000)
     expect(wrapper.find('[data-test="seat-0"]').text()).toContain('Endo')
 
-    expect(wrapper.find('[data-test="bid"]').text()).toBe('Raise to ¥79,118')
+    expect(wrapper.find('[data-test="bid"]').text()).toBe('Raise to ¥80,073')
     expect(wrapper.find('[data-test="bid"]').classes()).toContain('danger')
-    expect(wrapper.find('[data-test="bid-jump-4"]').text()).toBe('Raise to ¥94,118')
+    expect(wrapper.find('[data-test="bid-jump-4"]').text()).toBe('Raise to ¥95,073')
     expect(wrapper.find('[data-test="bid-jump-4"]').classes()).toContain('danger')
-    expect(wrapper.find('[data-test="bid-jump-8"]').text()).toBe('Raise to ¥114,118')
+    expect(wrapper.find('[data-test="bid-jump-8"]').text()).toBe('Raise to ¥115,073')
     expect(wrapper.find('[data-test="bid-jump-8"]').classes()).toContain('danger')
   })
 
@@ -314,9 +316,9 @@ describe('AuctionRoomDemoScreen', () => {
   it('marks the bid control past the player number once the room climbs past it', async () => {
     const wrapper = mountScreen()
     await inspect(wrapper)
-    // The chain settles the trap at ¥64,307. That sits just above the packed
-    // room's own reserve (¥49,118) but well below its clearing price
-    // (¥79,778), so the room's unprompted climb carries the board past the
+    // The chain settles the trap at ¥62,285. That sits just above the packed
+    // room's own reserve (¥50,073) but well below its clearing price
+    // (¥81,328), so the room's unprompted climb carries the board past the
     // player's number partway through, and the marker and the danger class
     // light up there rather than at the opening ask.
     await resolveTrap(wrapper)
@@ -340,9 +342,9 @@ describe('AuctionRoomDemoScreen', () => {
   it('keeps the shared visit and its narrowing across a room visit', async () => {
     const wrapper = mountScreen()
     await inspect(wrapper)
-    await testButton(thinCard(wrapper), 'gearbox-oil-check').trigger('click')
-    await testButton(thinCard(wrapper), 'magnet-check').trigger('click')
-    expect(wrapper.find('[data-test="est-value-thin"]').find('.up').text()).toBe('¥84,868')
+    await testButton(thinCard(wrapper), 'coolant-check').trigger('click')
+    await testButton(thinCard(wrapper), 'compression-test').trigger('click')
+    expect(wrapper.find('[data-test="est-value-thin"]').find('.up').text()).toBe('¥104,036')
 
     // Seat the thin lot, let it roll back, and return to the lobby.
     await wrapper.find('[data-test="take-seat-thin"]').trigger('click')
@@ -351,8 +353,8 @@ describe('AuctionRoomDemoScreen', () => {
 
     // The shared visit clock and the narrowed estimate are both still there:
     // only leaving the screen forgets them.
-    expect(wrapper.find('[data-test="visit-panel"]').text()).toContain('35m left')
-    expect(wrapper.find('[data-test="est-value-thin"]').find('.up').text()).toBe('¥84,868')
+    expect(wrapper.find('[data-test="visit-panel"]').text()).toContain('25m left')
+    expect(wrapper.find('[data-test="est-value-thin"]').find('.up').text()).toBe('¥104,036')
   })
 
   it('closes a watched steal with the outcome strip and the bargain-missed epilogue, then runs it back', async () => {
@@ -369,7 +371,7 @@ describe('AuctionRoomDemoScreen', () => {
     await wrapper.find('[data-test="run-back"]').trigger('click')
     expect(wrapper.find('[data-test="outcome"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="log"]').text()).toBe(
-      'The clerk looks over the room. Reserve is ¥42,416.',
+      'The clerk looks over the room. Reserve is ¥51,564.',
     )
     expect(wrapper.find('[data-test="bid"]').text()).toBe('Bid the reserve')
   })

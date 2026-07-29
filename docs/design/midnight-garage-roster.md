@@ -4,18 +4,27 @@
 
 *Companion to GDD v0.6 section 4. Real specs per GDD section 2.4 naming layer.*
 
-**This document is canonical for: which cars exist, what each one is worth, which tier it
-belongs to, what scene it comes from, and when it ships.** Nothing else may carry a second copy
-of that table.
+**The data lives in `midnight-garage-roster.csv`, beside this file. All 94 cars, all 56 per-car
+values, one row each.** Edit it in a spreadsheet. **Nothing else may carry a second copy of any
+value in it**, and the markdown tables that used to sit in section 3 were deleted so that nothing
+can.
 
-Two documents feed it and neither is canonical on its own:
+**This document is the legend for that file**: what the tiers mean, what the culture classes are,
+what the three per-car game constants do, the Legends, the easter eggs, the identity rulings, and
+the open questions. **A number about one car goes in the CSV. A rule about all cars goes here.**
+
+Two documents feed the CSV and neither is canonical on its own:
 
 - **`reference/period-scans/roster-price-list-v2.md`** is the **price provenance only**. Every
-  yen figure below came from it, and its per-car anchors, tags and override log are the
+  `priceYen` in the CSV came from it, and its per-car anchors, tags and override log are the
   justification. **Its own tier names (Starter, Club, Semi-pro, Pro/Legend) are DEAD.**
-- **`packages/content/data/cars.json`** is the shipped subset: 26 of the 94, carrying
-  `bookValueYen` and `tier` as live game data. Where it disagrees, this document is right and
-  `cars.json` is the thing to change. Section 5 lists every disagreement.
+- **`packages/content/data/cars.json`** is the shipped subset: 26 of the 94. The CSV carries its
+  `bookValueYen` in its own column beside `priceYen`, **so any disagreement between design and
+  content is visible in one glance rather than needing an audit**. They currently agree on all 26.
+  Where they diverge, the CSV is right and `cars.json` is the thing to change; section 5 lists the
+  tier disagreements that remain.
+- **`car-performance/data/forza-fh6-roster-data.csv`** supplied the measured figures for the
+  cars not yet in content. The `specSource` column says which of the three fed each row.
 
 ## NINE PRICES ARE STAND-INS, MARKED (TBC)
 
@@ -146,278 +155,109 @@ either. Ordinary cheap cars are `Honest transport`.
 
 ---
 
-## 3. The roster, ascending by price
+## 3. The roster lives in `midnight-garage-roster.csv`
 
-**Scope key:** **P** = PoC-10 - **L** = Go-Live - **E** = Eventually - pack name = post-launch.
-**Built** names the `cars.json` id where the car ships today; blank means not authored yet.
-**NEW** marks the nine cars added in v2.1 to v2.3, whose prices are interpolated and **not
-yet researched** (section 4).
+**All 94 cars, all 56 per-car values, one file: `docs/design/midnight-garage-roster.csv`.**
+Open it in a spreadsheet and edit it there. **There is no second copy of any car value anywhere**,
+and the two markdown tables that used to sit in this section are gone precisely so that there
+cannot be.
 
-| # | Car | Price (¥) | Tier | Culture | Scope | Built |
-| ---: | --- | ---: | --- | --- | --- | --- |
-| 1 | Honda Today (JW1) | 100,000 | entry | Kei | Kei Pack |  |
-| 2 | Honda City E (AA) | 130,000 | entry | Honest transport | P | `honda-city-e-aa` |
-| 3 | Nissan Sunny (B12) | 150,000 | entry | Honest transport | E | `nissan-sunny-b12` |
-| 4 | Honda Acty (HA4 Truck) | 160,000 | entry | Kei | L |  |
-| 5 | **Nissan March (K10) 1.0** | 180,000 **(TBC)** | entry | Honest transport | L | **NEW** |
-| 6 | **Toyota Corolla 1.5 SE Saloon (AE91)** | 200,000 **(TBC)** | entry | Honest transport | L | **NEW** |
-| 7 | **Mazda Familia 1.5 (BG)** | 220,000 **(TBC)** | entry | Honest transport | L | **NEW** |
-| 8 | Suzuki Wagon R (CT21S) | 230,000 | entry | Kei | P | `suzuki-wagon-r-ct21s` |
-| 9 | **Honda Civic 1.5 (EF3)** | 240,000 **(TBC)** | entry | Honest transport | L | **NEW** |
-| 10 | Toyota Carina (AT150) | 250,000 | entry | Honest transport | L | `toyota-carina-at150` |
-| 11 | Daihatsu Mira TR-XX (L70) | 280,000 | entry | Kei | L |  |
-| 12 | Honda City Turbo II (AA) | 320,000 | entry | Front-drive tuner | L | `honda-city-turbo-ii-aa` |
-| 13 | Nissan S-Cargo | 330,000 | entry | Oddball | L |  |
-| 14 | Toyota Sera (EXY10) | 340,000 | entry | Oddball | L | `toyota-sera-exy10` |
-| 15 | Subaru Vivio RX-R (KK4) | 380,000 | entry | Kei | L |  |
-| 16 | **Suzuki Jimny (JA11)** | 390,000 **(TBC)** | entry | Kurokan | L | **NEW** |
-| 17 | Suzuki Alto Works RS/Z (HA21S) | 400,000 | entry | Kei | L | `suzuki-alto-works-ha21s` |
-| 18 | Daihatsu Mira TR-XX Avanzato R (L502S) | 420,000 | entry | Kei | L |  |
-| 19 | Eunos Roadster (NA6CE) | 440,000 | everyday | Touge | L |  |
-| 20 | Honda CR-X SiR (EF8) | 480,000 | everyday | Touge | L | `honda-crx-sir-ef8` |
-| 21 | Honda Prelude Si VTEC (BB4) | 490,000 | everyday | Front-drive tuner | L | `honda-prelude-si-vtec-bb4` |
-| 22 | Nissan Silvia K's (S13) | 500,000 | everyday | Drift | Drift Pack | `nissan-silvia-s13` |
-| 23 | Toyota MR2 SC (AW11) | 510,000 | everyday | Touge | E | `toyota-mr2-aw11` |
-| 24 | **Mitsubishi Delica Star Wagon (P35W)** | 520,000 **(TBC)** | everyday | Kurokan | L | **NEW** |
-| 25 | Mazda Familia GT-R (BG8Z) | 560,000 | everyday | Rally-bred | L |  |
-| 26 | Honda Beat (PP1) | 580,000 | everyday | Kei | Kei Pack | `honda-beat-pp1` |
-| 27 | Nissan Cefiro (A31) | 620,000 | everyday | Drift | Drift Pack | `nissan-cefiro-a31` |
-| 28 | Suzuki Cappuccino (EA11R) | 630,000 | everyday | Kei | Kei Pack |  |
-| 29 | Honda Civic SiR-II (EG6) | 650,000 | everyday | Touge | P | `honda-civic-sir2-eg6` |
-| 30 | **Nissan Safari (Y60)** | 660,000 **(TBC)** | everyday | Kurokan | L | **NEW** |
-| 31 | Toyota Starlet Glanza V (EP91) | 680,000 | everyday | Front-drive tuner | L |  |
-| 32 | Datsun 510 Bluebird 1600 SSS | 690,000 | everyday | Kyusha | Kyusha Pack |  |
-| 33 | **Toyota Land Cruiser 70 (LJ71)** | 700,000 **(TBC)** | everyday | Kurokan | L | **NEW** |
-| 34 | Autozam AZ-1 (PG6SA) | 720,000 | everyday | Kei | Legend |  |
-| 35 | Nissan Laurel Club S (C33) | 730,000 | everyday | Drift | Drift Pack |  |
-| 36 | **Nissan 180SX ('93 Type II)** | 750,000 | enthusiast | Drift | P | `nissan-180sx-rps13` |
-| 37 | Toyota Aristo 3.0V (JZS147) | 770,000 | everyday | Wangan | L | `toyota-aristo-30v-jzs147` |
-| 38 | VW Golf GTI 16V (Mk2) | 790,000 | enthusiast | Front-drive tuner | Gaisha II |  |
-| 39 | Daihatsu Copen (L880K) | 820,000 | everyday | Kei | 2004+ Wave |  |
-| 40 | Mazda Savanna RX-7 GT-X (FC3S) | 850,000 | enthusiast | Rotary | P | `mazda-savanna-rx7-fc3s` |
-| 41 | Toyota Chaser Tourer V (JZX90) | 870,000 | enthusiast | Drift | P | `toyota-chaser-tourer-v-jzx90` |
-| 42 | Toyota Sprinter Trueno GT-APEX (AE86) | 890,000 | enthusiast | Touge | P | `toyota-sprinter-trueno-ae86` |
-| 43 | Eunos Cosmo 20B Type S (JC) | 910,000 | enthusiast | Rotary | L |  |
-| 44 | Nissan Pulsar GTI-R (RNN14) | 930,000 | enthusiast | Rally-bred | L |  |
-| 45 | Subaru Alcyone SVX Version L (CXD) | 950,000 | enthusiast | Oddball | E |  |
-| 46 | Mitsubishi Starion GSR-VR (A187A) | 970,000 | enthusiast | Wangan | E |  |
-| 47 | 1965 Mini Cooper S (Mk1) | 1,000,000 | enthusiast | Oddball | Gaisha |  |
-| 48 | Nissan Silvia K's (S14, '94) | 1,020,000 | enthusiast | Drift | P | `nissan-silvia-ks-s14` |
-| 49 | Alfa Romeo 75 3.0 V6 | 1,100,000 | enthusiast | Oddball | Gaisha |  |
-| 50 | Toyota MR2 GT (SW20, '95) | 1,180,000 | enthusiast | Touge | L | `toyota-mr2-sw20` |
-| 51 | Toyota Celica GT-Four (ST205) | 1,350,000 | enthusiast | Rally-bred | L |  |
-| 52 | Mazda RX-7 Type R (FD3S, '92) | 1,450,000 | enthusiast | Rotary | P | `mazda-rx7-fd3s` |
-| 53 | Honda Civic Type R (EK9) | 1,480,000 | enthusiast | Front-drive tuner | L |  |
-| 54 | Toyota Altezza RS200 Z Edition (SXE10) | 1,620,000 | enthusiast | Drift | L |  |
-| 55 | Honda Integra Type R (DC2, '99) | 1,680,000 | enthusiast | Front-drive tuner | L |  |
-| 56 | Toyota Chaser Tourer V (JZX100) | 1,750,000 | enthusiast | Drift | Drift Pack |  |
-| 57 | Subaru Impreza WRX STi Version (GC8) | 1,800,000 | enthusiast | Rally-bred | L | `subaru-impreza-wrx-sti-gc8` |
-| 58 | Nissan Fairlady Z Version S TT (Z32) | 1,850,000 | enthusiast | Wangan | L | `nissan-fairlady-z-z32` |
-| 59 | Honda Integra Type R (DC5) | 2,080,000 | enthusiast | Front-drive tuner | 2004+ Wave |  |
-| 60 | Mitsubishi GTO Twin Turbo (Z16A) | 2,150,000 | enthusiast | Wangan | E |  |
-| 61 | Toyota Soarer 2.5 GT-T (JZZ30) | 2,200,000 | enthusiast | Wangan | VIP Pack |  |
-| 62 | Nissan Silvia Spec-R (S15, '02) | 2,280,000 | enthusiast | Drift | Legend candidate |  |
-| 63 | Mazda RX-8 Type RS (SE3P) | 2,380,000 | enthusiast | Rotary | 2004+ Wave |  |
-| 64 | BMW M3 (E36, '97) | 2,450,000 | flagship | Touring car | Gaisha II |  |
-| 65 | **Mitsubishi Pajero Evolution (V55W)** | 2,500,000 **(TBC)** | flagship | Kurokan | L | **NEW** |
-| 66 | Lancia Delta HF Integrale Evo | 2,550,000 | flagship | Rally-bred | Gaisha |  |
-| 67 | Lancer Evo VI Tommi Mäkinen (CP9A) | 2,580,000 | flagship | Rally-bred | Legend |  |
-| 68 | BMW M3 (E30) | 2,650,000 | flagship | Touring car | Gaisha |  |
-| 69 | Lancer Evo VIII MR (CT9A) | 2,680,000 | flagship | Rally-bred | 2004+ Wave |  |
-| 70 | Nissan Fairlady 240ZG (HS30) | 2,720,000 | flagship | Kyusha | L |  |
-| 71 | Autech Stagea 260RS (WGNC34) | 2,750,000 | flagship | Touring car | L |  |
-| 72 | Subaru Impreza WRX STI (GDB, '04) | 2,780,000 | flagship | Rally-bred | L |  |
-| 73 | Ford Escort RS Cosworth | 2,850,000 | flagship | Rally-bred | Gaisha II |  |
-| 74 | Nissan Fairlady Z (Z33, '02) | 2,880,000 | flagship | Wangan | 2004+ Wave |  |
-| 75 | Toyota Supra RZ (JZA80, '98) | 2,890,000 | flagship | Wangan | P | `toyota-supra-rz-jza80` |
-| 76 | Honda S2000 (AP1, '03) | 3,380,000 | flagship | Touge | L |  |
-| 77 | Nissan Skyline GT-R (BNR32) | 3,500,000 | flagship | Touring car | L | `nissan-skyline-gtr-bnr32` |
-| 78 | Nissan Skyline GT-R V-Spec (BCNR33) | 3,750,000 | flagship | Touring car | L |  |
-| 79 | Mazda RX-7 Spirit R Type A (FD3S) | 3,880,000 | flagship | Rotary | Legend |  |
-| 80 | Nissan Fairlady Z432 (PS30) | 4,380,000 | flagship | Kyusha | Legend |  |
-| 81 | Subaru Impreza 22B-STi | 4,480,000 | flagship | Rally-bred | Legend |  |
-| 82 | Porsche 911 Turbo 3.3 (930) | 5,500,000 | flagship | Exotic | Gaisha |  |
-| 83 | Nissan Skyline GT-R V-Spec II (BNR34) | 5,680,000 | flagship | Touring car | Legend |  |
-| 84 | Skyline 2000GT-R Hakosuka (KPGC10) | 6,500,000 | flagship | Kyusha | Legend |  |
-| 85 | Mazda Cosmo Sport 110S (Series II) | 6,800,000 | flagship | Kyusha | Kyusha Pack |  |
-| 86 | Mercedes 190E 2.5-16 Evolution II | 6,850,000 | flagship | Touring car | Gaisha |  |
-| 87 | Skyline 2000GT-R Kenmeri (KPGC110) | 8,800,000 | flagship | Kyusha | Kyusha Pack |  |
-| 88 | Honda NSX-R (NA1) | 8,980,000 | flagship | Exotic | Legend |  |
-| 89 | Nissan GT-R Black Edition (R35) | 9,471,000 | flagship | Wangan | Hyper Wave |  |
-| 90 | Ferrari F355 Berlinetta (6MT) | 9,480,000 | flagship | Exotic | Gaisha II |  |
-| 91 | Ferrari 512 TR | 10,800,000 | flagship | Exotic | Gaisha |  |
-| 92 | Lamborghini Countach LP5000 QV | 14,800,000 | flagship | Exotic | Gaisha |  |
-| 93 | Toyota 2000GT (MF10) | 23,000,000 | flagship | Kyusha | Legend |  |
-| 94 | Lexus LFA | 37,500,000 | flagship | Exotic | Hyper Wave |  |
+**What is in the CSV and what is in this document.** The CSV holds every value that varies per
+car. This document holds the things that explain those values and cannot be a spreadsheet cell:
+what the four tiers mean (section 1), what the culture classes are and why (section 2), the
+Legends (section 7), the easter eggs, the identity rulings, and the open questions. **A number
+about one car goes in the CSV. A rule about all cars goes here.**
 
-### 3a. The same roster, grouped by culture
+**Directive 24 binds this file.** A per-car value is authored for all 94 rows when it is
+introduced, not just for the cars currently in `cars.json`. Deciding a value only for the shipped
+subset is exactly how the tier drift happened.
 
-The review view. Same 94 cars, same numbers, sorted by price inside each class. **Derived from
-the table above and kept in the same file on purpose**, so the two cannot drift apart.
+### 3a. The columns
 
-**(TBC) marks a STAND-IN price with no evidence behind it.** Nine of them, all listed in
-section 4.
+**`uid` is the key. It is the only column that may never change.**
 
-#### Kei (11)
+`MG-001` to `MG-094`, assigned once when a row is created, **never reused and never renumbered**.
+A new car takes the next free uid whatever its price. **`rosterNo` cannot do this job**: the
+roster is ordered by price, so inserting one car renumbers every row below it, and anything that
+pointed at row 40 would silently now point at a different car. That is the whole failure this
+column exists to prevent, and it is the column to key off if the roster is ever normalised into a
+database or generated into content.
 
-| # | Car | Price (¥) | Tier | Built |
-| ---: | --- | ---: | --- | --- |
-| 1 | Honda Today (JW1) | 100,000 | entry |  |
-| 4 | Honda Acty (HA4 Truck) | 160,000 | entry |  |
-| 8 | Suzuki Wagon R (CT21S) | 230,000 | entry | `suzuki-wagon-r-ct21s` |
-| 11 | Daihatsu Mira TR-XX (L70) | 280,000 | entry |  |
-| 15 | Subaru Vivio RX-R (KK4) | 380,000 | entry |  |
-| 17 | Suzuki Alto Works RS/Z (HA21S) | 400,000 | entry | `suzuki-alto-works-ha21s` |
-| 18 | Daihatsu Mira TR-XX Avanzato R (L502S) | 420,000 | entry |  |
-| 26 | Honda Beat (PP1) | 580,000 | everyday | `honda-beat-pp1` |
-| 28 | Suzuki Cappuccino (EA11R) | 630,000 | everyday |  |
-| 34 | Autozam AZ-1 (PG6SA) | 720,000 | everyday |  |
-| 39 | Daihatsu Copen (L880K) | 820,000 | everyday |  |
+`rosterNo` stays as the display ordinal: what position a car holds on the price ladder today.
+**Useful for reading, never for referring.**
 
-#### Rally-bred (10)
+**Identity** - `uid`, `rosterNo`, `id` (the `cars.json` id, blank until authored),
+`displayName` (the player-facing string, identical to `cars.json` where the car is built),
+`variantLabel` (the precise variant, which is what tells two FD3S rows apart), `brand`,
+`parodyName`, `parodyBrand` (the Naming Layer, engineering law 3), `chassisCode`, `engineCode`,
+`yearFrom`.
 
-| # | Car | Price (¥) | Tier | Built |
-| ---: | --- | ---: | --- | --- |
-| 25 | Mazda Familia GT-R (BG8Z) | 560,000 | everyday |  |
-| 44 | Nissan Pulsar GTI-R (RNN14) | 930,000 | enthusiast |  |
-| 51 | Toyota Celica GT-Four (ST205) | 1,350,000 | enthusiast |  |
-| 57 | Subaru Impreza WRX STi Version (GC8) | 1,800,000 | enthusiast | `subaru-impreza-wrx-sti-gc8` |
-| 66 | Lancia Delta HF Integrale Evo | 2,550,000 | flagship |  |
-| 67 | Lancer Evo VI Tommi Mäkinen (CP9A) | 2,580,000 | flagship |  |
-| 69 | Lancer Evo VIII MR (CT9A) | 2,680,000 | flagship |  |
-| 72 | Subaru Impreza WRX STI (GDB, '04) | 2,780,000 | flagship |  |
-| 73 | Ford Escort RS Cosworth | 2,850,000 | flagship |  |
-| 81 | Subaru Impreza 22B-STi | 4,480,000 | flagship |  |
+**Market** - `priceYen`, `priceStatus` (`researched` or `STAND-IN`), `bookValueYen` (what
+`cars.json` actually ships, so any disagreement with `priceYen` is visible), `tier`, `rarity`,
+`origin`, `culture`, `scope`, `builtInContent`.
 
-#### Drift (9)
+**Game constants** - `reliabilityBase`, `styleBase`, `aeroCeiling`. What the car IS, never a
+difficulty knob. See section 3b.
 
-| # | Car | Price (¥) | Tier | Built |
-| ---: | --- | ---: | --- | --- |
-| 22 | Nissan Silvia K's (S13) | 500,000 | everyday | `nissan-silvia-s13` |
-| 27 | Nissan Cefiro (A31) | 620,000 | everyday | `nissan-cefiro-a31` |
-| 35 | Nissan Laurel Club S (C33) | 730,000 | everyday |  |
-| 36 | Nissan 180SX ('93 Type II) | 750,000 | enthusiast | `nissan-180sx-rps13` |
-| 41 | Toyota Chaser Tourer V (JZX90) | 870,000 | enthusiast | `toyota-chaser-tourer-v-jzx90` |
-| 48 | Nissan Silvia K's (S14, '94) | 1,020,000 | enthusiast | `nissan-silvia-ks-s14` |
-| 54 | Toyota Altezza RS200 Z Edition (SXE10) | 1,620,000 | enthusiast |  |
-| 56 | Toyota Chaser Tourer V (JZX100) | 1,750,000 | enthusiast |  |
-| 62 | Nissan Silvia Spec-R (S15, '02) | 2,280,000 | enthusiast |  |
+**Engine** - `stockPowerPs`, `quotedPowerPs` (the advertised figure where it differs, the 280 PS
+agreement), `powerRpm`, `peakTorqueNm`, `torqueRpm`, `redlineRpm`, `displacementCc`,
+`engineConfig`, `aspiration`.
 
-#### Wangan (8)
+**Chassis** - `curbWeightKg`, `weightDistributionFront`, `drivetrain`, `wheelbaseMm`, `widthMm`,
+`heightMm`, `comHeightMm`, `dragCd`.
 
-| # | Car | Price (¥) | Tier | Built |
-| ---: | --- | ---: | --- | --- |
-| 37 | Toyota Aristo 3.0V (JZS147) | 770,000 | everyday | `toyota-aristo-30v-jzs147` |
-| 46 | Mitsubishi Starion GSR-VR (A187A) | 970,000 | enthusiast |  |
-| 58 | Nissan Fairlady Z Version S TT (Z32) | 1,850,000 | enthusiast | `nissan-fairlady-z-z32` |
-| 60 | Mitsubishi GTO Twin Turbo (Z16A) | 2,150,000 | enthusiast |  |
-| 61 | Toyota Soarer 2.5 GT-T (JZZ30) | 2,200,000 | enthusiast |  |
-| 74 | Nissan Fairlady Z (Z33, '02) | 2,880,000 | flagship |  |
-| 75 | Toyota Supra RZ (JZA80, '98) | 2,890,000 | flagship | `toyota-supra-rz-jza80` |
-| 89 | Nissan GT-R Black Edition (R35) | 9,471,000 | flagship |  |
+**Tyres** - `stockTyre`, `tyreCompound`.
 
-#### Front-drive tuner (7)
+**Measured** - `topSpeedKmh`, `lateralG97`, `lateralG193`, `braking97To0M`, `braking161To0M`,
+`zeroTo97S`, `zeroTo161S`. These are the figures the performance model is calibrated against
+(`car-performance/README.md`), not decoration.
 
-| # | Car | Price (¥) | Tier | Built |
-| ---: | --- | ---: | --- | --- |
-| 12 | Honda City Turbo II (AA) | 320,000 | entry | `honda-city-turbo-ii-aa` |
-| 21 | Honda Prelude Si VTEC (BB4) | 490,000 | everyday | `honda-prelude-si-vtec-bb4` |
-| 31 | Toyota Starlet Glanza V (EP91) | 680,000 | everyday |  |
-| 38 | VW Golf GTI 16V (Mk2) | 790,000 | enthusiast |  |
-| 53 | Honda Civic Type R (EK9) | 1,480,000 | enthusiast |  |
-| 55 | Honda Integra Type R (DC2, '99) | 1,680,000 | enthusiast |  |
-| 59 | Honda Integra Type R (DC5) | 2,080,000 | enthusiast |  |
+**Provenance** - `measuredFrom`, `dataConfidence`, `estimatedFields`, `tags`, `specSource`
+(`cars.json`, `forza-fh6-roster-data.csv`, or `NONE`).
 
-#### Honest transport (7)
+**Prose** - `notes` (why a figure is what it is, and where it is doubted), `flavour`.
 
-| # | Car | Price (¥) | Tier | Built |
-| ---: | --- | ---: | --- | --- |
-| 2 | Honda City E (AA) | 130,000 | entry | `honda-city-e-aa` |
-| 3 | Nissan Sunny (B12) | 150,000 | entry | `nissan-sunny-b12` |
-| 5 | Nissan March (K10) 1.0 | 180,000 **(TBC)** | entry |  |
-| 6 | Toyota Corolla 1.5 SE Saloon (AE91) | 200,000 **(TBC)** | entry |  |
-| 7 | Mazda Familia 1.5 (BG) | 220,000 **(TBC)** | entry |  |
-| 9 | Honda Civic 1.5 (EF3) | 240,000 **(TBC)** | entry |  |
-| 10 | Toyota Carina (AT150) | 250,000 | entry | `toyota-carina-at150` |
+### 3b. The three per-car game constants
 
-#### Kyusha (7)
+**`reliabilityBase`** is what the car reads when everything about it is right. A mint, stock,
+coherently built example scores exactly this and nothing ever scores higher; condition and build
+coherence only take it down (`sprint136.md`).
 
-| # | Car | Price (¥) | Tier | Built |
-| ---: | --- | ---: | --- | --- |
-| 32 | Datsun 510 Bluebird 1600 SSS | 690,000 | everyday |  |
-| 70 | Nissan Fairlady 240ZG (HS30) | 2,720,000 | flagship |  |
-| 80 | Nissan Fairlady Z432 (PS30) | 4,380,000 | flagship |  |
-| 84 | Skyline 2000GT-R Hakosuka (KPGC10) | 6,500,000 | flagship |  |
-| 85 | Mazda Cosmo Sport 110S (Series II) | 6,800,000 | flagship |  |
-| 87 | Skyline 2000GT-R Kenmeri (KPGC110) | 8,800,000 | flagship |  |
-| 93 | Toyota 2000GT (MF10) | 23,000,000 | flagship |  |
+**The scale is 65 to 100 and the axis is age and engineering culture, not price.** An NSX is a
+supercar you can drive to work and a Countach is not, so they sit thirty points apart inside the
+same culture class. **The floor is 65 rather than lower because the base multiplies everything
+else**: a car with very little to lose is a car where condition and coherence stop mattering, and
+those are the two systems the tuning arc exists to make matter.
 
-#### Touge (7)
+| band | what sits there |
+| ---: | --- |
+| 96-100 | ordinary 1990s Japanese, and the Land Cruiser |
+| 90-95 | the rest of modern Japan, including most turbocharged cars |
+| 84-89 | known-issue Japanese, the best of Europe, the homologation specials |
+| 78-83 | rotaries, and Japanese classics from the 1970s |
+| 72-77 | the 1960s Japanese classics, and the triple-rotor Cosmo |
+| 65-71 | Italy, and a 1965 Mini |
 
-| # | Car | Price (¥) | Tier | Built |
-| ---: | --- | ---: | --- | --- |
-| 19 | Eunos Roadster (NA6CE) | 440,000 | everyday |  |
-| 20 | Honda CR-X SiR (EF8) | 480,000 | everyday | `honda-crx-sir-ef8` |
-| 23 | Toyota MR2 SC (AW11) | 510,000 | everyday | `toyota-mr2-aw11` |
-| 29 | Honda Civic SiR-II (EG6) | 650,000 | everyday | `honda-civic-sir2-eg6` |
-| 42 | Toyota Sprinter Trueno GT-APEX (AE86) | 890,000 | enthusiast | `toyota-sprinter-trueno-ae86` |
-| 50 | Toyota MR2 GT (SW20, '95) | 1,180,000 | enthusiast | `toyota-mr2-sw20` |
-| 76 | Honda S2000 (AP1, '03) | 3,380,000 | flagship |  |
+**`styleBase`** (0 to 20) and **`aeroCeiling`** (0 to 1) are proposed in `sprint140.md` and are
+**authored for the 26 shipped cars only**. Under directive 24 that is now wrong and both want
+completing to 94 before that sprint runs.
 
-#### Touring car (7)
+### 3c. What the CSV is still missing, stated rather than discovered
 
-| # | Car | Price (¥) | Tier | Built |
-| ---: | --- | ---: | --- | --- |
-| 64 | BMW M3 (E36, '97) | 2,450,000 | flagship |  |
-| 68 | BMW M3 (E30) | 2,650,000 | flagship |  |
-| 71 | Autech Stagea 260RS (WGNC34) | 2,750,000 | flagship |  |
-| 77 | Nissan Skyline GT-R (BNR32) | 3,500,000 | flagship | `nissan-skyline-gtr-bnr32` |
-| 78 | Nissan Skyline GT-R V-Spec (BCNR33) | 3,750,000 | flagship |  |
-| 83 | Nissan Skyline GT-R V-Spec II (BNR34) | 5,680,000 | flagship |  |
-| 86 | Mercedes 190E 2.5-16 Evolution II | 6,850,000 | flagship |  |
+Counts are out of 94.
 
-#### Exotic (6)
+| gap | filled | what it means |
+| --- | ---: | --- |
+| `flavour` | **0** | Deliberate. Ninety-four flavour lines written in one pass would be filler, and the copy bar (`CLAUDE.md`, the game-tone law) does not allow filler. Written per car, by hand, against the "lived in Japan in 1995" test. |
+| `rarity` | 26 | A spawn-rate lever, so it is directive 22 territory as well as directive 24. Needs the full 94 signed. |
+| `styleBase`, `aeroCeiling` | 26 | Section 3b. |
+| `stockPowerPs` and the rest of the engine block | 56 | 26 from `cars.json`, 30 from the research sweep. |
+| geometry (`wheelbaseMm`, `dragCd`, `comHeightMm`, tyres) | 26 | Only the shipped cars have been through the spec book. |
+| measured lateral G and braking | 43-46 | The research sweep did not reach every car. |
+| any spec data at all | 65 | **29 cars have none**: the nine stand-in-price cars, plus twenty the Forza sweep never covered. |
 
-| # | Car | Price (¥) | Tier | Built |
-| ---: | --- | ---: | --- | --- |
-| 82 | Porsche 911 Turbo 3.3 (930) | 5,500,000 | flagship |  |
-| 88 | Honda NSX-R (NA1) | 8,980,000 | flagship |  |
-| 90 | Ferrari F355 Berlinetta (6MT) | 9,480,000 | flagship |  |
-| 91 | Ferrari 512 TR | 10,800,000 | flagship |  |
-| 92 | Lamborghini Countach LP5000 QV | 14,800,000 | flagship |  |
-| 94 | Lexus LFA | 37,500,000 | flagship |  |
-
-#### Kurokan (5)
-
-| # | Car | Price (¥) | Tier | Built |
-| ---: | --- | ---: | --- | --- |
-| 16 | Suzuki Jimny (JA11) | 390,000 **(TBC)** | entry |  |
-| 24 | Mitsubishi Delica Star Wagon (P35W) | 520,000 **(TBC)** | everyday |  |
-| 30 | Nissan Safari (Y60) | 660,000 **(TBC)** | everyday |  |
-| 33 | Toyota Land Cruiser 70 (LJ71) | 700,000 **(TBC)** | everyday |  |
-| 65 | Mitsubishi Pajero Evolution (V55W) | 2,500,000 **(TBC)** | flagship |  |
-
-#### Oddball (5)
-
-| # | Car | Price (¥) | Tier | Built |
-| ---: | --- | ---: | --- | --- |
-| 13 | Nissan S-Cargo | 330,000 | entry |  |
-| 14 | Toyota Sera (EXY10) | 340,000 | entry | `toyota-sera-exy10` |
-| 45 | Subaru Alcyone SVX Version L (CXD) | 950,000 | enthusiast |  |
-| 47 | 1965 Mini Cooper S (Mk1) | 1,000,000 | enthusiast |  |
-| 49 | Alfa Romeo 75 3.0 V6 | 1,100,000 | enthusiast |  |
-
-#### Rotary (5)
-
-| # | Car | Price (¥) | Tier | Built |
-| ---: | --- | ---: | --- | --- |
-| 40 | Mazda Savanna RX-7 GT-X (FC3S) | 850,000 | enthusiast | `mazda-savanna-rx7-fc3s` |
-| 43 | Eunos Cosmo 20B Type S (JC) | 910,000 | enthusiast |  |
-| 52 | Mazda RX-7 Type R (FD3S, '92) | 1,450,000 | enthusiast | `mazda-rx7-fd3s` |
-| 63 | Mazda RX-8 Type RS (SE3P) | 2,380,000 | enthusiast |  |
-| 79 | Mazda RX-7 Spirit R Type A (FD3S) | 3,880,000 | flagship |  |
-
----
+**None of these blocks the tuning arc.** They block authoring those cars into `cars.json`, which
+is what `scope` already governs.
 
 ## 4. The nine new cars, and what they still need
 

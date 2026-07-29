@@ -1,13 +1,46 @@
-# Sprint 135: power becomes proportional and engine-specific
+# Sprint 135: power becomes proportional and engine-specific, and the price ladder follows it
 
-**Status: AWAITING SIGN-OFF, then ready to implement.** Every value in "The levers" is proposed
-and unapproved (directive 22). **Once the tables are signed, no decision is left to the
-implementer.**
-
-Opens after Sprint 134. Second of nine in the tuning overhaul arc.
+**Status: SIGNED OFF 2026-07-29. Ready to implement.** Opens after Sprint 134. Second of nine in
+the tuning overhaul arc.
 
 Design reference: `docs/design/systems/tuning-system.md` sections 5a, 5b, 5c, 5d, and the bar
 set in 1b.
+
+## Sign-off record (directive 22)
+
+**Maintainer, 2026-07-29: Levers 1 to 4 approved exactly as written below.** Nothing in this doc
+is left open and no decision is left to the implementer.
+
+| lever | what | signed as |
+| --- | --- | --- |
+| 1 | `statFormulas.engineCharacter.naHighStrungThreshold` | **80.0** PS per effective litre |
+| 2 | race-grade power fractions, per character | the table as written, all 30 values |
+| 3 | `fuelSystem` and `clutch` power fractions | **0.000** at every grade and every character |
+| 4 | the grade shape, per category | the table as written, `forcedInduction` linear |
+| 5 | `partPricing.gradeFactors` becomes per-slot; the `ignitionEcu` ladder | schema change, plus **1.30 / 4.77 / 8.67** |
+
+**Lever 5 was added on 2026-07-29, after the rest**, and it belongs in this sprint rather than a
+later one for a specific reason: Lever 4 gives the ECU a threshold-shaped power curve while the
+price ladder is a single global 1.3 / 2 / 3 applied to every part in the game. Those two together
+make a street ECU **2.89 times worse value per horsepower than a race one**, so the top rung is
+the best buy and nobody sensible touches the lower two. **Ship Lever 4 without Lever 5 and the
+sprint ships that distortion.** The maintainer's rule: *"value and effect should be roughly
+proportional. The final race turbo can be a larger jump but that does not mean it should be a
+better buy, that is how you get monotony."*
+
+**Three consequences accepted at sign-off rather than discovered later:**
+
+1. **The maximal multiples are x1.43, x1.57 and x1.95**, so a fully built 2JZ reaches 632 PS.
+   That is low against a real fully built 2JZ, and the flat forced multiplier undershoots
+   exactly two engines, the RB26 and the 2JZ, for reasons recorded in `TODO.md`. **Accepted as
+   the parts-only ceiling.** The headroom above it belongs to machining, and raising the forced
+   fraction to close the gap is explicitly the wrong lever: it would correct those two cars and
+   inflate five others past their real bands.
+2. **The Prelude Si VTEC derives as `lazy-na`.** See Lever 1.
+3. **A race ECU gets dearer, substantially.** On a flagship car it goes from ¥75,600 to
+   ¥218,400. That is the correction, not a side effect: a standalone engine management system
+   was never three times a piggyback in period, and the whole reason the street rung was
+   unbuyable is that the top rung was underpriced for what it does.
 
 **This sprint was two.** An earlier plan converted the absolute ladder to fractions in one
 sprint and then re-authored every one of those fractions per engine character in the next,
@@ -115,11 +148,11 @@ maths GDD 4.2 forbids.
 
 **Resolve the character once per car, before the part loop.** Not once per part.
 
-## The levers (ALL UNAPPROVED, directive 22)
+## The levers (ALL APPROVED 2026-07-29, directive 22)
 
 ### Lever 1: `naHighStrungThreshold`
 
-**Proposed: 80.0 PS per effective litre.** Lives in `packages/content/data/economy.json` under
+**Signed: 80.0 PS per effective litre.** Lives in `packages/content/data/economy.json` under
 `statFormulas.engineCharacter`.
 
 The ten naturally aspirated shipped cars split:
@@ -140,12 +173,13 @@ The ten naturally aspirated shipped cars split:
 Both stated sanity targets are met, and the split reads correctly: the enthusiast engines
 (4A-GE, the kei triples, B16A) are high-strung and the economy engines are lazy.
 
-**One wrinkle worth the maintainer's eye.** The Prelude Si VTEC reads lazy at 75.1, because the
-shipped car is authored at 162 PS from 2157 cc, which is the mild spec rather than the 200 PS
-H22A. A car with VTEC in its name reading "lazy" will look wrong to someone who knows. Two
-honest answers: sign the threshold at **74.0** instead, which moves the Prelude and leaves every
-other car where it is; or treat it as a roster content question and correct the car's authored
-power separately. **This sprint does not choose.**
+**One wrinkle, now settled.** The Prelude Si VTEC reads lazy at 75.1, because the shipped car is
+authored at 162 PS from 2157 cc, which is the mild spec rather than the 200 PS H22A. A car with
+VTEC in its name reading "lazy" will look wrong to someone who knows. **The threshold is signed
+at 80.0 and the Prelude reads lazy**, because the defect is the authored power figure rather
+than the threshold, and moving the threshold to hide it would leave the wrong number in
+`cars.json` and drag a second car with it. The roster correction is logged in `TODO.md` against
+the JDM-variants entry, where the same defect already sits for sixteen other cars.
 
 The other sixteen shipped cars carry an induction tag and read `forced` regardless.
 
@@ -241,6 +275,51 @@ lands here, once.
 Authored values are Lever 2 times Lever 4, to three decimal places. **`stock`-grade SKUs carry
 0.000.**
 
+### Lever 5: the price ladder becomes per-slot, and the ECU gets its own
+
+`partPricing.gradeFactors` is currently **one global ladder applied to every part in the game**:
+`stock 1 / street 1.3 / sport 2 / race 3`. Lever 4 just gave each category **its own power
+curve**. Value per yen is therefore a residue of the mismatch between eight power shapes and one
+price shape, rather than a designed quantity.
+
+Measured across the catalogue, indexed so race = 1.00. **Lower is better value:**
+
+| slot | power shape | street | sport | race |
+| --- | --- | ---: | ---: | ---: |
+| block, internals, camsTiming | 0.33 / 0.67 / 1.00 | 1.31 | 0.99 | 1.00 |
+| headValvetrain | 0.45 / 0.75 / 1.00 | 0.96 | 0.89 | 1.00 |
+| exhaust | 0.50 / 0.80 / 1.00 | 0.87 | 0.83 | 1.00 |
+| intake | 0.60 / 0.85 / 1.00 | 0.72 | 0.78 | 1.00 |
+| **ignitionEcu** | 0.15 / 0.55 / 1.00 | **2.89** | **1.21** | 1.00 |
+| forcedInduction, while linear | 0.33 / 0.67 / 1.00 | 1.31 | 0.99 | 1.00 |
+
+The diminishing categories are correct as they stand: the cheap rung being the better buy is
+what diminishing returns *means*. The linear ones are near flat. **Only the ECU puts the best
+value at the top**, and it does so by a factor of nearly three.
+
+**The change:**
+
+1. `gradeFactors` becomes a per-slot map with the current `1 / 1.3 / 2 / 3` as the **default**.
+   Six of the eight power slots keep it, along with every non-power slot.
+2. `ignitionEcu` gets its own ladder, derived so price tracks power exactly:
+
+| slot | stock | street | sport | race |
+| --- | ---: | ---: | ---: | ---: |
+| **ignitionEcu** | 1.00 | **1.30** | **4.77** | **8.67** |
+
+Value per yen is then flat across the three rungs (`1.30/0.15 = 4.77/0.55 = 8.67/1.00 = 8.667`).
+
+**The street rung is pinned rather than cut, deliberately.** Cutting it to flatten the ladder
+downward would put the street ECU below the stock part and break the two Sprint 132 catalogue
+invariants (price rises strictly with grade; no SKU below the cheapest stock part of its class).
+Raising the top is also the period-correct direction.
+
+**`forcedInduction` keeps the default ladder in this sprint**, because its power curve is still
+linear here and the default is already near flat against a linear curve. Its own ladder lands in
+Sprint 137, in the same sprint that makes its curve increasing. **The rule both sprints follow:
+a slot's price ladder moves in the same sprint as its power curve, so no distortion ever ships
+between them.**
+
 ## Task breakdown
 
 ### Task 1: the character vocabulary and derivation
@@ -319,13 +398,29 @@ keys at zero.
 The ladder does not vary by fitment class, so the mapping is slot plus grade plus character to
 one number. Apply it mechanically, then spot-check.
 
-### Task 6: retire the absolute field
+### Task 6: the per-slot price ladder (Lever 5)
+
+`packages/content/src/partPricing.ts` (or wherever `PartPricingSchema` lives):
+
+1. `gradeFactors` becomes `Record<CarPartId, Record<Grade, number>>` **with a `default` entry**,
+   rather than a bare `Record<Grade, number>`. Resolution is slot ladder if present, otherwise
+   the default. Zod-validated, and the schema comment states the rule this exists to enforce:
+   **a slot's price ladder tracks its power curve, so climbing a ladder never improves value per
+   yen.**
+2. `packages/content/data/partPricing.json`: the default ladder unchanged at `1 / 1.3 / 2 / 3`,
+   plus the `ignitionEcu` entry at `1 / 1.30 / 4.77 / 8.67`.
+3. `resolvePartPriceYen` reads the slot's ladder. **The override map keeps winning outright**;
+   nothing about that path changes.
+
+**Do not add a `forcedInduction` entry here.** It arrives in Sprint 137 with its curve.
+
+### Task 7: retire the absolute field
 
 Remove `statModifiers.power` from the schema, from `computeDerivedStats`, and from all 472 SKUs.
 **Do this last, in this sprint**, once Task 5 has authored every replacement: a missed SKU then
 fails schema validation rather than silently becoming a 0.08 PS part.
 
-### Task 7: tests
+### Task 8: tests
 
 New file `packages/sim/tests/proportionalPower.test.ts`:
 
@@ -357,8 +452,16 @@ In `packages/content/tests/`:
 12. **Catalogue completeness.** Every engine-slot SKU carries all three character keys;
     `fuelSystem` and `clutch` carry zero on all three at every grade; no SKU anywhere still
     carries a `power` field.
+13. **The value-per-yen rule, asserted as a rule.** For every power slot, every fitment class
+    and every character, **climbing the grade ladder never improves yen per PS gained**. This is
+    the test that would have caught the ECU defect before it shipped, and it is the one to write
+    first. Report the measured table so the residues are visible rather than merely passing.
+14. **The default ladder still applies to everything that has no entry.** Every slot except
+    `ignitionEcu` resolves `1 / 1.3 / 2 / 3`, read from content. Plus the two Sprint 132
+    invariants re-asserted against the new resolution: price rises strictly with grade within a
+    basis and class, and no SKU falls below the cheapest stock part of its class.
 
-### Task 8: checks
+### Task 9: checks
 
 ```text
 pnpm test --project content
@@ -368,12 +471,18 @@ pnpm test --project sim
 `harnessAcceptance.test.ts` is evaluated on **stock** cars, which carry no power SKUs, so it must
 pass untouched. If it moves, a stock SKU has been given a non-zero fraction.
 
-### Task 9: re-derive whatever moved
+### Task 10: re-derive whatever moved
 
 Directive 17 case (a) throughout. Every car whose build carries engine parts changes its power,
 so lap times and taste-adjusted prices move. `economyApprovalGate.test.ts` moves because
 `statFormulas.engineCharacter` is new; re-pin it in the same change as the recorded sign-off,
 naming the lever and value.
+
+**`partPricing.json` also moves, and it carries its own hash guard.** Sprint 132 added a
+sha256 pin on that file in `economyApprovalGate.test.ts`, with a ledger comment recording every
+lever by name and value. Both the hash and the ledger are updated in the same change as the
+sign-off, and the ledger gains the per-slot ladder. The guard exists precisely so this cannot
+happen quietly; do not re-pin it before the sign-off is recorded.
 
 ## Hard constraints
 
@@ -387,7 +496,7 @@ naming the lever and value.
 
 ## Definition of done
 
-- [ ] Levers 1 to 4 signed and recorded in this doc.
+- [ ] Levers 1 to 5 signed and recorded in this doc.
 - [ ] `EngineCharacter` vocabulary; `engineCharacterOf` and `specificOutputOf` exported from sim.
 - [ ] All 26 cars' characters pinned in a test.
 - [ ] `powerFraction` is a per-character object and `statModifiers.power` no longer exists.
@@ -397,8 +506,12 @@ naming the lever and value.
 - [ ] A race ECU is worth about ten times as much on a turbo as on a high-strung NA car.
 - [ ] `forcedInduction` is linear, pinned, and provably not yet increasing.
 - [ ] No sim source file reads `spec.aspiration`, proved structurally.
+- [ ] `gradeFactors` is per-slot with a default; only `ignitionEcu` carries its own entry.
+- [ ] Climbing a grade ladder provably never improves yen per PS, on every power slot, class and
+      character, with the measured table reported.
+- [ ] The two Sprint 132 catalogue invariants still hold against the new resolution.
 - [ ] `harnessAcceptance.test.ts` passes untouched.
-- [ ] Economy gate re-pinned in the same change as the sign-off.
+- [ ] Economy gate and the `partPricing.json` guard both re-pinned with the sign-off.
 - [ ] Checks run once each, output shown.
 
 ## Exit

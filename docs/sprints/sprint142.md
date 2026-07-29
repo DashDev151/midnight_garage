@@ -74,8 +74,18 @@ good outcome and must be reported as a finding rather than as a sprint that fail
 ### Lever 1: `statFormulas.condition.gradeBandFactor`
 
 Replaces the single `bandFactor` inside `buildFactors` only. **`bandFactor` itself is
-untouched** and keeps doing its existing jobs everywhere else, including `statModifiers` in
-`computeDerivedStats`.
+untouched** and keeps doing its existing jobs everywhere else: `weightedBandFactorForStat` for
+all four condition-derived stats, the `style` part modifier in `computeDerivedStats`, and the
+band-scaled demand side of `supportRatios` (Sprint 136).
+
+**Three condition paths now exist and this sprint touches exactly one of them.** They are
+deliberately separate and must not be conflated:
+
+| path | curve | what it governs |
+| --- | --- | --- |
+| `statFormulas.condition.bandFactor` | four physical dials | grip, braking, driveline, downforce |
+| `statFormulas.condition.reliabilityCeiling` (Sprint 136) | a severity cap, not a curve | one write-off dominating the reliability mean |
+| **`gradeBandFactor` (this sprint)** | **per grade** | **what an installed SKU's own `physicalModifiers` still deliver** |
 
 | grade | mint | fine | worn | poor | scrap |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -124,8 +134,13 @@ Not a code change. Measure and report:
 1. What a `worn`, `poor` and `scrap` car now does end to end, across the roster and all four
    courses, with the whole system in place. Sprint 129's Exit has the comparable tables from
    before the arc; put the new figures beside them.
-2. Whether anything in those numbers argues for moving `statFormulas.condition.bandFactor`.
-3. A recommendation, with reasoning.
+2. **What a worn car is now worth**, which is a new question this review inherits. Sprint 136
+   changed reliability's ceiling from 70 to 100 and put a severity cap under it, so condition
+   reaches price through a wider band than it did when the four dial curves were authored.
+   Report the price of a `worn` and a `poor` car as a share of book value, beside the same
+   figures from before the arc.
+3. Whether anything in those numbers argues for moving `statFormulas.condition.bandFactor`.
+4. A recommendation, with reasoning.
 
 **Do not move the four curves in this sprint.** If the review finds a case, it goes to the
 maintainer as its own lever request. Leaving them exactly as they are is an acceptable and
@@ -175,7 +190,9 @@ moves; re-pin in the same change as the recorded sign-off.
 ## Definition of done
 
 - [ ] Sprint 134 shipped. Which other sprints have landed is recorded here, because the
-      condition review in Task 3 is only worth as much as the system it looks at.
+      condition review in Task 3 is only worth as much as the system it looks at. **Task 3's
+      value question needs Sprint 136 landed**; if it has not, run the grade-sensitivity half
+      and record that the review is deferred rather than doing it against half a system.
 - [ ] Lever 1 signed and recorded.
 - [ ] `gradeBandFactor` in content, with the stock row identical to `bandFactor`.
 - [ ] `buildFactors` reads it; an unresolvable grade falls back to the stock row.
@@ -184,8 +201,8 @@ moves; re-pin in the same change as the recorded sign-off.
 - [ ] Monotonicity holds across bands and across grades.
 - [ ] The mass direction proved for all four curves.
 - [ ] `harnessAcceptance.test.ts` passes untouched.
-- [ ] The four dial curves reviewed, the figures reported beside Sprint 129's, and a
-      recommendation given. No curve moved in this sprint.
+- [ ] The four dial curves reviewed, the lap figures reported beside Sprint 129's, the worn and
+      poor price shares reported, and a recommendation given. No curve moved in this sprint.
 - [ ] Checks run once each, output shown.
 
 ## Exit

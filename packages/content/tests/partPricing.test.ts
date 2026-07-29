@@ -87,11 +87,14 @@ describe('the resolved parts catalog ladder', () => {
       const byGrade = new Map(group.map((part) => [part.grade, part.priceYen]))
       const present = GRADES.filter((grade) => byGrade.has(grade))
       for (let i = 1; i < present.length; i += 1) {
-        const lower = byGrade.get(present[i - 1]) as number
-        const higher = byGrade.get(present[i]) as number
+        const lowerGrade = present[i - 1]
+        const higherGrade = present[i]
+        if (!lowerGrade || !higherGrade) continue
+        const lower = byGrade.get(lowerGrade) as number
+        const higher = byGrade.get(higherGrade) as number
         if (higher <= lower) {
           failures.push(
-            `${key}: ${present[i]} (Y${higher}) does not exceed ${present[i - 1]} (Y${lower})`,
+            `${key}: ${higherGrade} (Y${higher}) does not exceed ${lowerGrade} (Y${lower})`,
           )
         }
       }
@@ -113,11 +116,14 @@ describe('the resolved parts catalog ladder', () => {
       const byClass = new Map(group.map((part) => [part.fitmentClass, part.priceYen]))
       const present = CLASSES.filter((fitmentClass) => byClass.has(fitmentClass))
       for (let i = 1; i < present.length; i += 1) {
-        const lower = byClass.get(present[i - 1]) as number
-        const higher = byClass.get(present[i]) as number
+        const lowerClass = present[i - 1]
+        const higherClass = present[i]
+        if (!lowerClass || !higherClass) continue
+        const lower = byClass.get(lowerClass) as number
+        const higher = byClass.get(higherClass) as number
         if (higher <= lower) {
           failures.push(
-            `${key}: ${present[i]} (Y${higher}) does not exceed ${present[i - 1]} (Y${lower})`,
+            `${key}: ${higherClass} (Y${higher}) does not exceed ${lowerClass} (Y${lower})`,
           )
         }
       }

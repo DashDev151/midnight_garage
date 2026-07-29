@@ -20,7 +20,6 @@ import {
   PARTS,
   PARTS_TAXONOMY,
   ServiceJobTypesSchema,
-  type CarTier,
   type PartCatalogEntry,
 } from '../src'
 
@@ -36,30 +35,11 @@ describe('referential integrity', () => {
     }
   })
 
-  it('every car book value falls inside its tier range (docs/design/reference/period-scans/roster-price-list-v2.md)', () => {
-    const parsedCars = CarModelsSchema.parse(cars)
-    // A sanity band per tier, not a pricing rule: the canonical roster price
-    // list sets each car's book value from period market evidence at the game
-    // year the player reaches it, and this catches a car that has landed in a
-    // bucket its price cannot justify. Tier IS market position now, so the
-    // bands are tight; what overlap remains is deliberate, because a kei sits
-    // in `entry` regardless of price (the Beat clears four `everyday` cars)
-    // and its parts basket is kei-sized either way.
-    const ranges: Record<CarTier, [number, number]> = {
-      entry: [100_000, 700_000],
-      everyday: [120_000, 800_000],
-      enthusiast: [400_000, 1_400_000],
-      flagship: [1_200_000, 6_000_000],
-    }
-    for (const car of parsedCars) {
-      const [min, max] = ranges[car.tier]
-      expect(
-        car.bookValueYen,
-        `${car.id} (${car.tier}) book value ${car.bookValueYen} out of range`,
-      ).toBeGreaterThanOrEqual(min)
-      expect(car.bookValueYen).toBeLessThanOrEqual(max)
-    }
-  })
+  // The tier price bands moved to `rosterCsvGuard.test.ts`, which checks them
+  // against `midnight-garage-roster.csv` and also asserts that every car's tier
+  // matches the roster's. The bands that used to sit here were a hand-copied
+  // second set, taken from a document whose tier system is dead, and they were
+  // wide enough to admit the inversion the roster rebuild removed.
 
   /**
    * The old `wheelsInterior` slot's 3 parts were hand-reclassified by name

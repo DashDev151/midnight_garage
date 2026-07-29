@@ -379,6 +379,15 @@ import storyMissions from '../data/storyMissions.json'
  *   strips it) while reading as a live lever, which is the worst of the three states.
  *   The `legend` fitment class is deferred, and carries the `gaisha` mapping call and
  *   three new `expectationByTier.legend` values with it whenever it is picked up.
+ *
+ * Re-pinned 2026-07-29 (maintainer approval, in session): four formula-derived mission
+ * payouts move because the 13-car re-tier changed the fitment class (and so the probe
+ * cost) of the cars those missions build. economy.json and partPricing.json are
+ * untouched, so their hashes hold. `first-proper-car` 614000 -> 687000, `make-it-pull`
+ * 785000 -> 756000, `under-one-fifteen` 1701000 -> 1653000, `the-fleet-spare` 388000
+ * -> 484000. Each budget cap moves with its own payout, holding the one-price contract.
+ * Every figure is what `storyMissionProbes`'s own `payoutYenFor` rule yields against a
+ * fresh measurement, never hand-picked.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -417,13 +426,13 @@ describe('the economy approval gate', () => {
     ).toEqual({
       'four-wheels': { payoutYen: 142000, budgetCapYen: 142000 },
       'wont-strand-her': { payoutYen: 156000, budgetCapYen: 156000 },
-      'first-proper-car': { payoutYen: 614000, budgetCapYen: 614000 },
-      'make-it-pull': { payoutYen: 785000, budgetCapYen: 785000 },
+      'first-proper-car': { payoutYen: 687000, budgetCapYen: 687000 },
+      'make-it-pull': { payoutYen: 756000, budgetCapYen: 756000 },
       'the-column-clock': { payoutYen: 1000000, budgetCapYen: 1000000 },
       'low-and-loud': { payoutYen: 1162000, budgetCapYen: 1162000 },
       'street-power-street-manners': { payoutYen: 952000, budgetCapYen: 952000 },
-      'under-one-fifteen': { payoutYen: 1701000, budgetCapYen: 1701000 },
-      'the-fleet-spare': { payoutYen: 388000, budgetCapYen: 388000 },
+      'under-one-fifteen': { payoutYen: 1653000, budgetCapYen: 1653000 },
+      'the-fleet-spare': { payoutYen: 484000, budgetCapYen: 484000 },
       'the-showroom-standard': { payoutYen: 704000, budgetCapYen: 704000 },
     })
   })

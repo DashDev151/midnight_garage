@@ -35,8 +35,14 @@ const DEMO_CATALOG_SEED = 1995
 const DEMO_CATALOG_DAY = 1
 /** Catalogue sizes tried in turn: the search widens until a genuine trap (a lot
  * worth less than the read by the trap band) turns up among the symptomatic
- * lots. A trap is rare at the fair-odds read, so the widest step runs deep. */
-const DEMO_CATALOG_N_STEPS: readonly number[] = [400, 800, 1200, 1600]
+ * lots AND the best-ratio steal clears the 'better' verdict band. A doubling
+ * step, not a fixed increment: the roster's tier mix decides how deep the
+ * search needs to run (widened from a 1600 ceiling to 3200 when the 13-car
+ * re-tier of docs/design/midnight-garage-roster.csv thinned the pool of
+ * genuinely favourable-doubt symptoms at the fixed demo seed), and a fresh
+ * re-tier is exactly the kind of content change that can move the goalposts
+ * again without any bug on this module's part. */
+const DEMO_CATALOG_N_STEPS: readonly number[] = [400, 800, 1600, 3200]
 
 /** A lot whose true worth falls below this fraction of the read reads as a trap
  * the packed room can overpay for; it selects the demo trap lot. */

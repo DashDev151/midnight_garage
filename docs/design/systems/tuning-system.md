@@ -24,6 +24,65 @@ lever.
 
 ---
 
+## Amendments since this document was written
+
+**Read this before section 7a, 9, 11 or 14.** The arc that implements this design is
+`docs/sprints/tuning-arc.md`, sprints 134 to 142, and building it surfaced decisions the design
+did not anticipate. **Each sprint doc is authoritative over this document where they disagree**,
+and this list says where that is.
+
+**1. Coherence reaches value through reliability, not through a separate path (maintainer,
+2026-07-29). Amends section 7a; `sprint136.md` is authoritative.** Section 7a proposes that a
+coherent build reaches a different *set of buyers*. The maintainer's ruling goes one level deeper:
+*"WHY is there less demand for a stupid build? BECAUSE it is going to blow up. Reliability IS the
+final figure that gets moved by coherence."* So reliability becomes
+`reliabilityCap * (conditionFactor + coherenceFactor - 1)`, and buyer selection then **falls out
+of the existing valuation path**, because reliability is already 57 per cent of a first-timer's
+taste, 37 per cent of a racer's and zero per cent of a stancer's. Section 7a's outcome is
+delivered; its proposed mechanism is not built. Whether a *premium* exists on top is Sprint 139
+and may be closed unbuilt.
+
+**2. Section 9 is sharpened, not contradicted.** "A part does not add reliability; the build
+supports its own output or it does not" is exactly what is built: the additive part modifier is
+deleted and the derivation becomes condition plus coherence. **No wear rate, no service interval,
+nothing denominated in days.** That prohibition stands unchanged and is restated in every sprint
+doc that touches condition.
+
+**3. Reliability's condition half gained a severity ceiling.** The weighted mean was letting a
+write-off average away: a seized block read 92 out of 100 because the other fourteen weighted
+parts were mint, while the inspection system's own copy law requires a grenade to read
+"unmistakably terminal". One reliability-bearing part at `scrap` now caps the car regardless of
+the rest. `failure-map.md` is the document this reconciles with.
+
+**3b. Reliability's ceiling became per car (maintainer, 2026-07-29).** `statFormulas.reliabilityCap`
+was a flat 70 on every car, so a mint FD and a mint Carina read the same number. It is retired and
+replaced by `spec.reliabilityBase`, the sibling of section 11's `styleBase`: *"an old Alfa is just
+not as reliable as a relatively modern sensible Honda or Toyota. It does not have to be that severe
+but there needs to be some variability."* **Authored for all 94 roster cars at once**, in
+`midnight-garage-roster.md` section 3, on a **65 to 100** scale whose axis is age and engineering
+culture rather than price: Carina 100, RX-7 FD3S 80, Countach and Cosmo Sport 65, NSX 95. The floor
+is 65 rather than lower because the base multiplies condition and coherence, so a car with nothing
+to lose is a car where neither system does any work. Across the full range it moves a nervous
+buyer's offer by under five per cent.
+
+**4. The part price ladder became per-slot.** Section 5e gives each power category its own return
+curve while `partPricing.gradeFactors` applied one ladder to the whole catalogue, which left the
+top rung the best value per yen on the ECU and on the turbo. **The rule now: climbing a ladder
+never improves value per yen, and a slot's price ladder moves in the same sprint as its power
+curve.** Sprints 135 and 137.
+
+**5. Section 14's dyno conflict half-resolved.** GDD 5.4's "Boost versus Reliability" axis is real
+again now that reliability responds to the build; what is still missing is a continuous boost
+*input*. The tyre-wear axis remains impossible under section 9 and always will be. `sprint141.md`
+carries the three options.
+
+**6. Machining now owns the top of the power ladder.** The signed fractions cap a parts-only build
+at x1.43, x1.57 and x1.95, which is correct for most of the roster and low for the RB26 and the
+2JZ specifically. Section 4 is where that headroom belongs, and `TODO.md` records why raising the
+forced fraction instead would be wrong.
+
+---
+
 ## 1. The four defects
 
 **The system is solved: there is one correct build order and it never varies.**

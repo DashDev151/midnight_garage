@@ -16,9 +16,14 @@ that vagueness with numbers.
 | | before the dyno | after a dyno session |
 | --- | --- | --- |
 | That something does not add up | **always visible** (Sprint 136) | unchanged |
+| What it already cost you in reliability | **already applied** (Sprint 136) | unchanged |
 | Engine response character | hidden | **shown** |
 | Actual power as built | claimed | **measured** |
 | Support ratios, by subsystem | hidden | **shown, with the shortfall named** |
+
+**The dyno never changes the car**, and after Sprint 136 that is worth stating twice: the
+reliability cost of an incoherent build is applied whether or not the player ever pays for a
+session. The dyno buys knowledge, not outcomes.
 
 You do not know how an engine responds to tuning until you put it on the rollers. That is
 true in life and it is what makes the screen worth a labour slot.
@@ -26,14 +31,20 @@ true in life and it is what makes the screen worth a labour slot.
 ## The GDD conflict, which the maintainer must settle before this sprint opens
 
 **GDD 5.4 specifies the dyno as a tuning screen with "2-3 sliders, e.g. Boost versus
-Reliability, Camber: Grip versus Tyre wear/Style". Two of those three axes no longer exist.**
+Reliability, Camber: Grip versus Tyre wear/Style". One of those axes now exists, one never
+will, and the difference is what the maintainer is settling.**
 
-- **Reliability is not a stat a slider can trade against.** Design section 9 removed it as an
-  additive quantity: a build supports its own output or it does not. Sprint 140 deletes the
-  part modifier. There is nothing on the other end of a Boost-versus-Reliability slider.
-- **Tyre wear does not exist and cannot.** Design section 9: nothing in the game degrades
-  with use, because the player never lives with the car. A Grip-versus-Tyre-wear slider has
-  no time in which to operate.
+- **Boost versus reliability is now a REAL trade** (changed 2026-07-29). An earlier draft of
+  this doc said reliability was not a stat a slider could trade against. **That was true then
+  and is false now.** Sprint 136 makes reliability the output of the build's coherence: more
+  boost raises cylinder-pressure demand, the support ratio falls, reliability falls with it, and
+  every buyer weights reliability. **The GDD's own example axis is the one the model actually
+  carries.** What is still missing is not the axis but the *input*: power comes from discrete
+  SKUs and there is no continuous boost variable to slide. A slider therefore still needs a new
+  mechanic, but it is now a mechanic with something real on both ends.
+- **Tyre wear does not exist and cannot.** Design section 9: nothing in the game degrades with
+  use, because the player never lives with the car. A Grip-versus-Tyre-wear slider has no time
+  in which to operate. **This half of the conflict is not resolvable and never will be.**
 
 Design section 14 specifies the dyno as a **measurement** screen and says nothing about
 sliders. **The GDD is canonical for mechanics**, so this is a genuine conflict between two
@@ -42,11 +53,16 @@ canonical documents and CLAUDE.md's rule is to flag it rather than pick a side.
 **Three honest options, for the maintainer:**
 
 1. **Measurement only.** Ship section 14's screen. The dyno tells you what you have built.
-   Amend GDD 5.4 to match, recording the amendment in the GDD as bible changes require.
-2. **Measurement plus one real slider.** The only trade the current model can actually
-   express is **boost against the support ratio**: turn it up, make more power, watch cylinder
-   pressure go red. That is one slider, it is honest, and it is a genuinely good one.
-3. **Defer the sliders** to whenever a second tradeable axis exists, and ship measurement now.
+   Amend GDD 5.4 to drop the tyre-wear axis outright and to record that the boost axis is
+   deferred rather than dead, recording the amendment in the GDD as bible changes require.
+2. **Measurement plus one real slider.** Boost against reliability, exactly as GDD 5.4 named
+   it: turn it up, make more power, watch cylinder pressure go red and the car become something
+   only a stancer will buy. **It is honest, it is a genuinely good slider, and it needs a
+   continuous boost input the model does not have**, so it is a real scope addition rather than
+   a screen.
+3. **Defer the slider** to whenever a continuous boost input exists (the natural home is the
+   engine-swaps arc, where aspiration becomes a thing rather than a tag), and ship measurement
+   now.
 
 **This doc is written for option 1**, because it is the only one that needs no new mechanic,
 and the tasks below change if another is chosen. **Do not implement until this is settled.**
@@ -117,6 +133,10 @@ Shows, for the car as built:
    with an RX-7 will think the number is wrong.
 2. **Actual power as built**, against the car's stock figure.
 3. **All five support ratios**, by subsystem, with the minimum marked and the shortfall named.
+4. **The reliability the build is carrying**, and how much of it the coherence shortfall
+   accounts for as against condition. **This is the screen's most useful single line**: it is
+   the one place a player can see that the number they are being offered less money for is the
+   build rather than the wear.
 
 The art bible's diegetic-UI law binds: this is a rolling road in a workshop, not a dashboard.
 Every control is an in-world object with a real pressed or active state. **If the art does
@@ -132,7 +152,11 @@ invent a modern-UI panel.
 3. **The dyno costs one labour slot** and cannot be run without one.
 4. **The always-on warning from Sprint 136 is unchanged** by whether a dyno has been run. The
    dyno adds precision; it must not be the thing that makes the problem appear.
-5. **A rotary's displayed specific output is the equivalent-litre figure**, labelled as such.
+5. **The car's reliability, and therefore its price, is identical before and after a dyno
+   session.** Strict equality, on a car with a collapsed build. The dyno sells knowledge and
+   must never sell an outcome.
+6. **The condition and coherence split shown adds back to the reliability the sim reports.**
+7. **A rotary's displayed specific output is the equivalent-litre figure**, labelled as such.
 
 ### Task 4: checks
 
@@ -156,9 +180,11 @@ pnpm test --project game
       amended if option 1 or 3 was chosen.
 - [ ] Levers 1 and 2 signed and recorded.
 - [ ] A dyno session runs through the existing job system, costing one labour slot.
-- [ ] The screen shows character, specific output, actual power and all five ratios.
+- [ ] The screen shows character, specific output, actual power, all five ratios, and the
+      reliability split between condition and coherence.
 - [ ] Displayed numbers provably identical to the sim's.
-- [ ] The Sprint 136 warning is unaffected by whether a dyno has been run.
+- [ ] The Sprint 136 warning, the car's reliability and its price are all unaffected by whether
+      a dyno has been run.
 - [ ] Checks run once each, output shown.
 
 ## Exit

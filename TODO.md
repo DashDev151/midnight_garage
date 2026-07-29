@@ -211,9 +211,36 @@ pass."
 
 ## Open engineering
 
+- [ ] **Nothing enforces that `cars.json` agrees with the roster CSV.** The CSV
+  (`docs/design/midnight-garage-roster.csv`, 2026-07-29) is the single source of truth for all 94
+  cars and it carries `bookValueYen` beside `priceYen` so a divergence is visible, **but visible
+  is not enforced**. They agree on price today, on all 26. A guard test that reads the CSV and
+  asserts every built car's `bookValueYen`, `tier`, `rarity`, `origin` and (once authored)
+  `reliabilityBase`, `styleBase` and `aeroCeiling` match their row would make the CSV
+  authoritative in fact rather than by convention. **Cheap, and it is the thing that stops this
+  drifting the way the tier labels did.** Do it in whichever sprint next writes one of those
+  fields into `cars.json`, which is Sprint 136.
+
+- [ ] **Two roster CSV columns are owed under directive 24, and neither blocks the tuning arc.**
+  `rarity` holds 26 of 94: it is a spawn-rate lever, so the missing 68 need signing under
+  directive 22 as well as authoring. `flavour` holds **0 of 94**, deliberately: ninety-four
+  flavour lines written in one pass would be filler, and the copy bar does not allow filler, so
+  they are written per car by hand against the "lived in Japan in 1995" test. Both block authoring
+  a car into `cars.json`, which `scope` already governs, and nothing else.
+  (`aeroCeiling` and `styleBase` are the same shape but they DO have a home: `sprint140.md` Task 0.)
+
 - [ ] **Apply the roster's tier assignments to `cars.json`: 13 of the 26 shipped cars are on the
-  wrong tier.** `docs/design/midnight-garage-roster.md` v2.3 (2026-07-29) is now the single source
-  of truth for the full 94-car roster and section 5 lists every disagreement with content. The
+  wrong tier.** The roster CSV is the single source of truth and `midnight-garage-roster.md`
+  section 5 lists every disagreement with content.
+  **`rosterCsvGuard.test.ts` now pins those 13 as an exact set**, so a fourteenth fails and so does
+  fixing one without recording it. The list and the constant go together when this lands.
+
+  **Sequencing worth deciding before Sprint 135 runs, because it is nearly free then and expensive
+  later:** Sprint 135 already re-derives every price and valuation pin in the repo. The tier change
+  moves six more tier-keyed tables and re-derives the same pins. **Landing them in one pass costs
+  one re-derivation; landing them apart costs two.** The catch is that the tier change wants the
+  `classFactors` recalibration below decided first, so it is not free either. Worth ten seconds of
+  maintainer thought before 135 opens; **not worth blocking the arc on indefinitely.** The
   defect it fixes: `entry` and `everyday` did not form two price bands, they **alternated** down
   one ladder (City E 130k entry, Sunny 150k everyday, Wagon R 230k entry, Carina 250k everyday,
   and so on), and the Beat sat in `entry` at 580,000 above four `enthusiast` cars.
@@ -342,6 +369,20 @@ pass."
   Scale: of the 26 shipped cars, 16 have a year that differs from our JDM intent and 9 a power
   figure. The guard test pinning `cars.json` to the spec book has to move with it or it will fight
   the change.
+
+  **Three specific power figures to settle in that pass, all surfaced by the Sprint 135 sign-off
+  (2026-07-29).** The Supra RZ and the Aristo 3.0V are both authored at **324 PS**, which is the
+  export 2JZ-GTE figure; the JDM cars advertised **280** under the manufacturers' agreement,
+  exactly as the BNR32 and the Z32 in `cars.json` already do. **The roster is running two
+  conventions at once for the same era and has to pick one:** advertised throughout, which is the
+  era-authentic reading and what a 1995 brochure actually said, or measured throughout, which
+  would move the RB26 and the Z32 up to roughly 320. The **Prelude Si VTEC** is the same defect
+  from the other direction: 162 PS from 2157 cc is the mild spec rather than the 200 PS H22A the
+  Si VTEC badge implies, and it is the sole reason that car derives as `lazy-na` under Sprint
+  135's signed threshold of 80.0. **All of these feed `powerRatio` and therefore the calibrated
+  lap harness**, so changing one is a car-performance re-validation rather than a content typo
+  fix. The advertised-versus-measured choice also decides how much of the machining headroom
+  above is needed, since a multiplier on 280 and a multiplier on 320 are two different ceilings.
 
 - [ ] **The high-speed traction release is deferred, with its number rather than a shrug.** The
   harness hands a traction-limited car back its power shortfall above 161 km/h (`tractionShare` /
@@ -479,7 +520,6 @@ pass."
   Needs its own design pass. The tuning system's reputation effect will be weak until it lands,
   and that should be stated in the sprint rather than compensated for by inflating numbers.
 
-
 - [ ] **The aftermarket power ladder is ADDITIVE and class-invariant, so it cannot express a ratio
   target at all. Nothing was changed; the decision is open.** Sprint 130 measured it through the real
   sim rather than by summing the catalogue: a maximal LEGAL build adds a flat **+200 PS** to any car,
@@ -564,15 +604,26 @@ pass."
   varies, and the same +16 PS ECU applies to a naturally aspirated Beat and a twin-turbo
   Supra.
 
+  **Status of the sign-offs (2026-07-29): sprints 135 and 137 are SIGNED and clear to start,
+  along with 134 which needs nothing.** The one large sign-off still outstanding is sprint 136's
+  levers 1 to 5, the support ladder, the demand and support weights, the thresholds and the
+  readout copy. Its levers 6 to 8 (the coherence exponent, `reliabilityCap` 70 to 100, and the
+  scrap/poor severity ceilings) are signed.
+
   Blocking decisions, all recorded in the doc. Constraint A (section 17): the
   forced-induction return curve must not ship before the support ratios, because increasing
-  returns on its own is a new dominant strategy. Constraint B (sections 7a and 17 step 6):
-  the buyer-selection price spread is an assumption, not a measurement, and it must be
-  measured before anything is built on it; if it fails, stop and report. And section 7b's
+  returns on its own is a new dominant strategy. **Constraint B is resolved and the resolution
+  changed the arc's shape (maintainer, 2026-07-29): cohesion reaches value through
+  RELIABILITY**, not through a separate buyer-selection path. Reliability becomes the build's
+  coherence times its condition, and because reliability is already 57 per cent of a
+  first-timer's taste and zero per cent of a stancer's, buyer selection falls out of the
+  existing valuation code with nothing built for it. Sprint 138 now measures a running system
+  rather than a hypothesis, and sprint 139 shrank to the question of whether building well also
+  deserves a premium, which may be answered "no" and closed unbuilt. And section 7b's
   reputation half is descoped outright because reputation is a ratchet, which is the entry
   under "Open balance/economy questions" above: until that lands, the tuning system's
   reputation effect is knowingly inert and the sprint should say so rather than inflate
-  numbers to compensate. Every number in the doc is a proposal and unapproved, directive 22.
+  numbers to compensate. Every unsigned number in the doc remains a proposal, directive 22.
 
 - [ ] **Machining, the third upgrade avenue, is DESIGNED and deliberately OUT OF SCOPE of
   the system that designed it: `docs/design/systems/tuning-system.md` section 4.** Modifying
@@ -596,6 +647,30 @@ pass."
   authenticity is always destroyed. Blocking decision: **where machining physically happens**,
   which is the workshop-topology entry below and wants at least an outline answer before the
   systems arc finishes.
+
+  **Machining also owns the top of the power ladder, and that is now a signed constraint rather
+  than an aspiration (maintainer, 2026-07-29, at the Sprint 135 sign-off).** The approved power
+  fractions cap a parts-only build at **x1.43** high-strung NA, **x1.57** lazy NA and **x1.95**
+  forced. Measured against the real world that is correct for most of the roster (SR20DET 341,
+  13B-REW 497, EJ20 488, 1JZ 546, VG30DETT 546, all inside their real built bands) and **low for
+  exactly two engines**: the **RB26 at 546 PS** against a real 600 to 800, and the **2JZ at 632**
+  against 700 to 900. Both reasons are real and neither is a bug in Sprint 135. The 280 PS those
+  cars advertise is the manufacturers' agreement rather than a measurement, so the multiplier is
+  applied to a political number (the JDM-variants entry above owns that half); and the RB26 and
+  the 2JZ are the two deliberately over-engineered iron sixes, which is exactly why tuners chose
+  them, and one forced multiplier cannot say so.
+
+  **So machining is where the ceiling is meant to rise, and it has to rise SELECTIVELY.** A flat
+  machining multiplier is the wrong shape: at x2.4 the Supra reads a correct 778 PS and the GT-R
+  672, but the 13B lands at 612, the 3S-GTE at 586 and the EJ20 at 600, all well past what those
+  engines really did. **Raising `powerFraction.forced` to close the gap is therefore explicitly
+  the wrong lever and must not be proposed as the fix**, since it corrects two cars and inflates
+  five. What machining needs is **per-engine headroom**: a block that can be bored, decked and
+  filled has more of it than one that cannot, and that is a property of the engine rather than of
+  the part bolted to it. It is also the mechanism that finally makes the legendary blocks
+  legendary in the game the way they were in life. Decide the shape of that headroom when
+  machining is scoped, and push it high enough that a fully machined 2JZ reads credibly (800 plus)
+  without widening a fraction that applies to everything.
 
 - [ ] **Course-character build variety is deferred out of the tuning system, and it is job
   and copy design rather than physics** (`docs/design/systems/tuning-system.md`, the deferral
@@ -637,6 +712,17 @@ pass."
   per-engine response character it needs. Four open questions remain: donor car or engines
   bought outright, whether the original lump can be kept and refitted, how many engines get
   authored for v1.0, and whether a swapped engine arrives with a condition of its own.
+
+  **Per-engine PART PRICING rides on the same step 1, and is deferred to this arc (maintainer,
+  2026-07-29).** A race turbo system on a 2JZ and one on a 13B-REW are different objects,
+  installed differently, and should not cost the same. Today they can only differ by the car's
+  tier: `resolvePartPriceYen` reads `partPricing.classFactors[fitmentClass]`, and
+  `partPricing.overrides` is keyed per SKU while SKUs vary only by fitment class, so **there is
+  nowhere to hang a per-engine price at all.** The FD and the Supra already differ 2.25x by tier
+  (enthusiast 0.4 against flagship 0.9), which covers the gap crudely and is why this is not
+  urgent. It becomes cheap the moment an engine is a content object with an id, because the
+  override map can then be keyed by it. **Do not build a per-car price multiplier as a
+  workaround**: that is a parallel mechanism for something step 1 gives away for free.
 
 - [ ] **The scrapyard (解体屋) is DESIGNED IN FULL and NOT IMPLEMENTED. The design of
   record is `docs/design/systems/scrapyard.md`; read it before scoping and do not
@@ -698,6 +784,29 @@ pass."
   `tuning-system.md` 4c hangs tool tier 3 on it, and whether parts have a location, because
   that is new state and adding it later means a schema change everywhere that touches
   inventory.
+
+- [ ] **A proper calendar (maintainer request, 2026-07-29). Not designed; the shape below is
+  specified and the rest is open.** The structure asked for: **7 days a week, 4 weeks a month, 4
+  months (seasons) a year, and every year rolls the calendar over.** Explicitly tunable later if
+  it turns out too slow. **What it buys is seasonal and timed events**, which is the reason to do
+  it at all rather than an incidental benefit.
+
+  **Half of it already exists implicitly and that half must be reused, not rebuilt** (directive
+  16). The sim runs on a day counter and already treats every 7 days as a week: weekly rent and
+  staff wages in `finances.ts`, the weekly job-ad refresh at `advanceDay.ts` step 7d, and the
+  weekly market-heat update in `marketHeat.ts`. **So the week is real and only the month, the
+  season and the year are missing**, along with a displayed date anywhere in the UI. A calendar
+  that introduces a second notion of "week" alongside the existing one is the failure mode to
+  avoid.
+
+  Open, and none of it decided: whether the year is a real year (the game sits in a period band
+  of 1995 to 2005, so a rolling year could carry the setting forward, which is a large tonal
+  decision rather than a clock one); whether seasons change anything mechanically (auction
+  catalogues, buyer appetite, which cars sell) or are pure flavour to begin with; whether a
+  16-day season is long enough for an event to be felt; and what a date looks like on screen
+  under the art bible's diegetic law, which for 1990s Japan probably means a wall calendar rather
+  than a status bar. **Nothing in the tuning arc depends on it and nothing in it depends on the
+  tuning arc**, so it can be scoped whenever.
 
 - [ ] **Selling parts has no friction: it is instant, free and unlimited (maintainer ruling
   2026-07-28: LOW priority, and a middle ground rather than heavy friction).** `resolveSellPart`

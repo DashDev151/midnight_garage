@@ -31,6 +31,8 @@ Priority order: **Safety > Correctness > Clarity > Efficiency.**
 
 23. **Best overall solution (maintainer directive 2026-07-23):** when designing or proposing, optimise for the best, clearest, most easily maintainable product OVERALL. Never design around the current value of an adjacent tunable: every tunable is tunable, and a knob's today-value is not a constraint (the failure this bans: rejecting a better labour design "so staff contribution keeps its meaning" when staff contribution is itself one content number). Never prefer an inferior design because it needs less tuning, fewer file touches, or fewer approvals. Directive 22 still gates the VALUES: propose the full coherent design with its complete lever list and get the numbers signed; the sign-off process is never a reason to shrink the design.
 
+24. **Every car is authored as if it ships (maintainer directive 2026-07-29):** when a per-car value is introduced (`reliabilityBase`, `styleBase`, `aeroCeiling`, tier, culture, price), author it for **the whole 94-car roster in `midnight-garage-roster.md`, not just the cars currently in `cars.json`**. The roster doc is the single source of truth and a car enters it complete. Deciding a value only for the shipped subset is exactly how the tier drift happened: three documents each held a piece and none agreed. Content authoring still follows scope, but the VALUE is decided once, up front, for every car.
+
 ## Sprint workflow (mandatory)
 
 All development happens in sprints, driven by the roadmap. Sprint docs live in `docs/sprints/sprintXX.md`. For every sprint:
@@ -86,9 +88,13 @@ roster for car scope). Bibles require explicit maintainer approval, recorded in 
   `IDEAS.md` (the post-launch parking lot - anything there is out of v1.0 by definition), never
   into the GDD.
 - `midnight-garage-roadmap.md` - sprint-by-sprint plan (P0-P7), risk register, content pipeline.
-- `midnight-garage-roster.md` (v2.3) - **the single source of truth for the full 94-car
-  roster**: every car's price, its tier (`entry`/`everyday`/`enthusiast`/`flagship`), its
-  culture and its scope, in one table. Nothing else may carry a second copy of it.
+- `midnight-garage-roster.csv` - **the single source of truth for the full 94-car roster**: one
+  row per car, 56 columns keyed on a permanent `uid`, every per-car value the game has (identity, price, tier, rarity,
+  origin, culture, scope, `reliabilityBase`/`styleBase`/`aeroCeiling`, the full engine and chassis
+  spec, the measured performance figures, provenance, notes). Edit it in a spreadsheet. Nothing
+  else may carry a second copy of any value in it. `midnight-garage-roster.md` (v2.3) is its
+  **legend**: tier and culture definitions, the Legends, the easter eggs, identity rulings, open
+  questions. A number about one car goes in the CSV; a rule about all cars goes in the md.
   `reference/period-scans/roster-price-list-v2.md` is price PROVENANCE only and its own tier
   names are dead. **Contains a secret easter egg ("The Zero Legend") - never surface it in
   public-facing text, devlogs, or marketing.**

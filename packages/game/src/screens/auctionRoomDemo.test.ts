@@ -28,22 +28,22 @@ describe('auctionRoomDemo lobby', () => {
     const [thin, packed] = buildLobby()
 
     expect(thin!.key).toBe('thin')
-    expect(thin!.displayName).toBe('Nissan Sunny (B12)')
-    expect(thin!.roomReadYen).toBe(77_120)
-    expect(thin!.trueValueYen).toBe(84_868)
+    expect(thin!.displayName).toBe('Suzuki Wagon R (CT21S)')
+    expect(thin!.roomReadYen).toBe(93_753)
+    expect(thin!.trueValueYen).toBe(104_036)
     expect(thin!.incrementYen).toBe(5_000)
     expect(thin!.dealerCount).toBe(2)
     expect(thin!.verdict).toBe('better')
-    expect(thin!.trueValueYen / thin!.roomReadYen).toBeCloseTo(1.10047, 4)
+    expect(thin!.trueValueYen / thin!.roomReadYen).toBeCloseTo(1.1097, 4)
 
     expect(packed!.key).toBe('packed')
     expect(packed!.displayName).toBe('Honda City E (AA)')
-    expect(packed!.roomReadYen).toBe(89_306)
-    expect(packed!.trueValueYen).toBe(64_307)
+    expect(packed!.roomReadYen).toBe(91_041)
+    expect(packed!.trueValueYen).toBe(62_285)
     expect(packed!.incrementYen).toBe(5_000)
     expect(packed!.dealerCount).toBe(6)
     expect(packed!.verdict).toBe('worse')
-    expect(packed!.trueValueYen / packed!.roomReadYen).toBeCloseTo(0.72007, 4)
+    expect(packed!.trueValueYen / packed!.roomReadYen).toBeCloseTo(0.6841, 4)
 
     // The thin lot beats the read (a clear steal); the trap sits below the trap
     // band of the read.

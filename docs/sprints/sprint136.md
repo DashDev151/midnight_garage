@@ -1,72 +1,215 @@
-# Sprint 136: support ratios and the always-on readout
+# Sprint 136: support ratios, and reliability as what they move
 
-**Status: AWAITING SIGN-OFF, then ready to implement.** Every value in "The levers" below is
-proposed and unapproved (directive 22).
+**Status: FULLY SIGNED 2026-07-29. Ready to implement. Nothing in this sprint needs asking about.**
+Levers 6, 7 and 8 are signed outright; levers 1 to 5 are signed preliminarily. Maintainer: *"cannot
+know until playtest, as long as we have sane defaults to start with."*
 
-Opens after Sprint 135. Third of nine, and **the keystone of the arc**: Sprint 137 is
-blocked on it by a hard gate, and Sprints 140 and 142 both read what it builds.
+**What "preliminary" means here, precisely, because it is not the same as unapproved.** Levers 1
+to 5 are approved to implement and to ship: an implementer does not stop, and directive 22 is
+satisfied for every value listed below. What is reserved is their **final** calibration, which
+comes from the maintainer playing the game rather than from any further arithmetic. So:
 
-Design reference: `docs/design/systems/tuning-system.md` sections 6 and 7c.
+- **Implement them exactly as written.** Do not adjust one because a test is awkward.
+- **Every number stays in `economy.json`**, per the content law, so a playtest retune is a
+  content edit rather than a code change.
+- **Pin the tables in tests, and expect those pins to move once.** When they do it is directive
+  17 case (a), a deliberate retune, and never evidence that the implementation was wrong.
+
+Levers 6, 7 and 8 are signed outright. Every reliability figure in this doc is computed from
+levers 1 to 4 as written.
+
+Opens after Sprint 135. Third of nine, and **the keystone of the arc**: Sprint 137 is blocked on
+it by a hard gate, Sprints 138, 139 and 141 all read what it builds, and Sprint 142's condition
+review is only meaningful once it has landed.
+
+Design reference: `docs/design/systems/tuning-system.md` sections 6, 7c and 9.
+
+**This sprint absorbed work from two others (maintainer, 2026-07-29).** An earlier plan shipped
+the coherence quantity here as a text readout with no mechanical effect, deleted
+`statModifiers.reliability` in Sprint 140, and decided in Sprint 139 whether coherence should
+reach reliability at all. The maintainer's ruling collapses all three: *"Reliability IS the
+final figure that gets moved by coherence... You are building a separate system for something
+that should not be a separate system again."* That is Sprint 138's route 2, chosen before the
+measurement rather than after, and the reasoning is given below.
 
 ## The gap, stated plainly
 
-Every part in the catalogue is a gain, so the cheapest gain always wins and there is exactly
-one correct build order. Nothing in the game can express **a build that makes power it
-cannot hold together**: 1.5 bar on stock internals is currently just a fast car.
+**Three defects. The first is the one the arc was written for; the other two are what the
+maintainer's ruling exposed.**
 
-This sprint makes a build's coherence a first-class derived quantity, and makes it visible.
+### 1. Nothing can express a build that makes power it cannot hold together
+
+Every part in the catalogue is a gain, so the cheapest gain always wins and there is exactly
+one correct build order. 1.5 bar on stock internals is currently just a fast car.
+
+### 2. Reliability is a weighted mean, so a write-off averages away
+
+`reliability` is `reliabilityCap * weightedBandFactorForStat(..., 'reliability', ...)`, an
+arithmetic mean of `bandFactor(band)` over the fifteen taxonomy parts carrying a
+`statWeights.reliability`, total weight 22. One part at `scrap` and the rest mint, on a
+100-point scale:
+
+| what died | reads today |
+| --- | ---: |
+| seized block | **92** |
+| scrapped rings (internals) | **92** |
+| scrapped gearset (gearbox) | **92** |
+| rusted-through seam (chassis) | **92** |
+| cored radiator (cooling, the heaviest single weight) | **88** |
+| any weight-1 part | **96** |
+
+**Those are the inspection system's own grenades**: `seized-engine (block scrap 12)` under
+non-starter, `rings 13 (scrap)` under smokes-on-startup, `gearset 18 (scrap)` under
+crunch-into-second, `seam 18 (scrap)` under damp-passenger-footwell
+(`docs/design/systems/failure-map.md`). That document budgets worst-case minutes to decide each
+write-off in or out and makes it a copy law that a grenade line reads "unmistakably terminal".
+Then the stat moves by eight points. **Maintainer, 2026-07-29: "a car with a seized engine, but
+with perfect suspension and bodywork, should still be near 0 on reliability."**
+
+The mean is right for uniform wear and wrong for a single catastrophic fault. That is the same
+weakest-link argument this sprint already makes for the support ratios, applied one level down.
+
+**What is NOT the defect:** tired springs, dampers, brakes, tyres, rims, paint, panels,
+underbody, aero, seats and gauges all carry a reliability weight of **zero** already. Only
+parts that stop the car carry one, and that part of the taxonomy is correct as authored.
+
+### 3. The reliability ceiling is a flat 70 and it is the same on every car
+
+`reliabilityCap` is **70**, introduced in Sprint 21 as part of a bulk lift of magic numbers out
+of code into `economy.json`, with no recorded design rationale. Two things are wrong with it.
+
+**It is about to become dead space.** Its only structural job is leaving headroom for
+`statModifiers.reliability` to add into, and that field is deleted in this sprint. After the
+deletion, 70 is an unreachable ceiling with 30 points of nothing above it.
+
+**And it is flat, so every car in the game is equally trustworthy.** Maintainer, 2026-07-29:
+*"not every car should be at 100 in stock mint condition. Some are just inherently less
+reliable. An old Alfa is just not as reliable as a relatively modern sensible Honda or Toyota.
+It does not have to be that severe but there needs to be some variability."* A mint stock FD and
+a mint stock Carina currently read the same number, which is the one claim about those two cars
+that nobody who owned either would accept.
+
+**This is the same defect, and takes the same fix, as `styleCap`.** Sprint 140 replaces a flat
+`statFormulas.styleCap` of 20 with a per-car `spec.styleBase`, for exactly the reason above:
+a stat that describes a car cannot be a constant. `spec.reliabilityBase` is its sibling and is
+authored the same way.
+
+## Why reliability is the right home for coherence, and not a third lever
+
+Sprint 138 was written to measure the buyer-selection price spread and offered two routes.
+**Route 2 is now chosen, on the maintainer's reasoning rather than on a measurement:** *"what is
+moved by coherence? Buyer base? Sure... but WHY is there less demand for a stupid build?
+BECAUSE it is going to blow up."*
+
+Design section 9 already says a part does not add reliability, the build supports its own output
+or it does not. `StatBlock.reliability` exists, and **every buyer already weights it**:
+
+| buyer | reliability weight | share of their taste |
+| --- | ---: | ---: |
+| first-timer | 0.8 of 1.4 | **57%** |
+| racer | 1.0 of 2.7 | **37%** |
+| collector | 0.3 of 1.9 | 16% |
+| tuner | 0.3 of 2.2 | 14% |
+| stancer | 0.0 of 1.5 | **0%** |
+
+**Buyer selection therefore falls out of the existing valuation path with nothing built for
+it.** A collapsed build loses most of its appeal to the first-timer and the racer, a little to
+the tuner and the collector, and **nothing at all to the stancer**, who genuinely does not care
+whether it grenades. The person who ends up buying a stupid build is exactly the person who
+should. That is design 7a's mechanism, already soldered in.
 
 ## Reuse analysis (directive 16)
 
 ### Genuinely new
 
 - **Five per-subsystem ratios and their minimum**, and the content that weights them.
-- **A qualitative always-on readout** on the car.
+- **One curve** turning the headline ratio into a reliability factor.
+- **One severity ceiling** on the condition side.
+- **One per-car number**, `spec.reliabilityBase`, replacing a flat constant. The same shape as
+  Sprint 140's `spec.styleBase`, deliberately, and authored the same way.
+- **A qualitative always-on readout** naming the weakest subsystem.
 
 ### Existing mechanisms reused, unchanged
 
-- **`statModifiers.powerFraction[character]`** from Sprints 135 and 136 is the *entire*
-  demand side. Demand is not separately authored; it falls out of what the build gains.
+- **`statModifiers.powerFraction[character]`** from Sprint 135 is the *entire* demand side.
+  Demand is not separately authored; it falls out of what the build gains.
 - **`engineCharacterOf`** from Sprint 135, so demand is character-correct without a second
   derivation.
-- **The four grades** (`stock`, `street`, `sport`, `race`) as the support-specification
-  ladder. **No fifth grade** (`IDEAS.md` records that as rejected).
-- **`ALL_CAR_PART_IDS` and the car's `parts` record**, the same traversal
-  `buildFactors` and `computeDerivedStats` already use.
-- **The car detail screen and the sale listing flow**, which get one new element each rather
-  than a new screen.
+- **`StatBlock.reliability` and `valuateCarForBuyer`.** The stat exists, the buyers weight it,
+  the price path runs today. **This sprint changes what feeds the stat, and adds no path.**
+- **`weightedBandFactorForStat`** and the taxonomy's `statWeights.reliability`. The condition
+  half of the derivation stays exactly as it is; a ceiling is applied to its result.
+- **The four grades** as the support-specification ladder. **No fifth grade** (`IDEAS.md`
+  records that as rejected).
+- **`ALL_CAR_PART_IDS` and the car's `parts` record**, the same traversal `buildFactors` and
+  `computeDerivedStats` already use.
+- **The car detail screen and the sale listing flow**, one new element each.
 
 ### Must NOT be built
 
-- **One aggregate ratio.** Section 6a: it cannot name the part that would fix it, and it is
-  gameable, because over-supplying fuel would arithmetically mask stock internals. Fuel does
-  not hold a piston together.
-- **A dyno.** That is Sprint 141. This sprint ships the *existence* of the problem, not its
+- **One aggregate support ratio.** Section 6a: it cannot name the part that would fix it, and
+  it is gameable, because over-supplying fuel would arithmetically mask stock internals. Fuel
+  does not hold a piston together.
+- **A dyno.** That is Sprint 141. This sprint ships the existence of the problem, not its
   precision.
-- **Any engine-explodes event.** Section 6d: the consequence is that the car is worth less
-  and costs standing, never that it detonates.
+- **A sixth subsystem.** Braking, grip and aerodynamic stability are all real shortfalls a big
+  build can create, and all three **already have a full representation in the physics**:
+  `physicalModifiers.braking`, `physicalModifiers.grip` and `downforceCoeff` feed the lap model,
+  so a 600 PS car on stock brakes already laps badly. Giving them a support ratio as well would
+  charge one shortfall twice. **The rule that decides membership: a subsystem earns a ratio only
+  if the game has no other way to express the shortfall.** The five qualify; braking, grip and
+  aero do not.
+- **A lubrication or charging subsystem.** Neither has a part slot, so both would mean inventing
+  a part first. If either is ever wanted, it starts as a catalogue question, not a ratio.
+- **Any engine-explodes event.** Section 6d: the consequence is that the car is worth less and
+  harder to sell, never that it detonates.
+- **A wear rate.** Section 9. Nothing degrades with use.
 - **A reputation consequence.** Design 7b is descoped for the whole arc, blocked on the
   reputation ratchet (design 8). It would ship inert.
+- **A premium for a good build.** `coherenceFactor` is capped at 1.0. A properly supported
+  build is exactly as reliable as a stock one and no more. Whether a premium exists at all is
+  Sprints 138 and 139.
 
 ## The mechanism
+
+### Part A: the five support ratios
 
 For each of five subsystems, `ratio = support / demand`, and the headline `supportRatio` is
 **`min(ratio)` across all five**.
 
 ```text
-demand[s]  = 1 + demandWeight[s]  * (the gain that drives s)
+demand[s]  = 1 + demandWeight[s]  * (the band-scaled gain that drives s)
 support[s] = 1 + sum over supporting slots of supportWeight[s][slot] * spec(slot)
 ```
 
-where `spec(slot)` is the installed SKU's grade on the support ladder, and the gain figures
-are `statModifiers.powerFraction[character]` for the installed SKUs.
+**A stock car sits at exactly 1.0 on every subsystem, by construction**, because every gain is 0
+and every spec is 0, so both sides are exactly 1. That property makes the whole thing readable
+and it is the single best regression test in the sprint: assert it for all 26 shipped cars with
+strict equality.
 
-**A stock car sits at exactly 1.0 on every subsystem, by construction**, because every gain
-is 0 and every spec is 0, so both sides are exactly 1. This is the property that makes the
-whole thing readable, and it is the single best regression test in the sprint: assert it for
-all 26 shipped cars with strict equality.
+#### Demand reads BAND, support reads GRADE, and neither is charged twice
 
-### The dual-role convention, which must be implemented exactly
+**This is a correction to an earlier draft of this doc and it must be implemented as stated.**
+
+```text
+gain(slot)  = statModifiers.powerFraction[character] * bandFactor(installed.band, economy)
+spec(slot)  = supportLadder[installed.grade]              // no band term
+```
+
+Demand is band-scaled because **demand comes from output**, and output is band-scaled in
+`computeDerivedStats` already: a blown turbo is not making boost, so it must not go on
+demanding a bottom end to contain boost it is not making. Without this it would be charged
+twice, once through condition and once through a support ratio it is no longer stressing.
+
+Support is **not** band-scaled because **support comes from specification**, and specification
+does not decay: *a worn forged conrod is still stronger than a stock cast one.* Condition's
+effect on a supporting part reaches reliability through the condition half of the derivation,
+which is the one path it gets.
+
+**Every worked figure in this doc is at mint, where `bandFactor` is 1.0, so this correction
+changes none of the pinned tables.**
+
+#### The dual-role convention, which must be implemented exactly
 
 Section 6c: **demand comes from output, support comes from specification, and within any one
 subsystem a part is a demander or a supporter, never both.**
@@ -77,40 +220,67 @@ subsystem a part is a demander or a supporter, never both.**
 | fuelling | total gain across all slots | `fuelSystem` |
 | heat | total gain across all slots | `cooling` |
 | revs | `camsTiming` gain only | `headValvetrain`, `internals` |
-| torque transmission | total gain across all slots | `clutch`, `driveline` |
+| torque transmission | total gain across all slots | `clutch`, `gearbox`, `driveline`, `differential` |
 
-Read that table against the dual-role parts and it holds:
+Read against the dual-role parts and it holds:
 
-- **A bored block** adds output, so it raises demand on fuelling, heat and torque
-  transmission. It does **not** raise cylinder-pressure demand, which is the subsystem it
-  supports.
-- **A ported head** supports revs, and as a gain raises fuelling and heat demand. It does
-  not raise revs demand; only cams do.
-- **`fuelSystem` and `clutch` carry zero gain** (Sprint 135, Lever 3), which is what keeps
-  them from partly paying for themselves.
+- **A bored block** adds output, so it raises demand on fuelling, heat and torque transmission.
+  It does **not** raise cylinder-pressure demand, which is the subsystem it supports.
+- **A ported head** supports revs, and as a gain raises fuelling and heat demand. It does not
+  raise revs demand; only cams do.
+- **`fuelSystem` and `clutch` carry zero gain** (Sprint 135, Lever 3), which is what keeps them
+  from partly paying for themselves.
 
-### The acceptance criterion the arc doc got slightly wrong
+### Part B: reliability, rebuilt
 
-The arc doc says "adding any single gain part must never raise that car's headline ratio".
-**That is too strong and would fail correctly-implemented code.** Fitting race internals to
-a big-turbo car raises cylinder-pressure support by far more than it raises fuelling demand,
-so the headline rises, and it *should*: buying the bottom end is exactly what fixes that
-build.
+```text
+conditionFactor  = min( weightedBandFactorForStat(..., 'reliability', ...) ,
+                        severityCeiling(worst band among reliability-bearing parts) )
 
-The correct pair of assertions:
+coherenceFactor  = min( 1 , supportRatio / adequateThreshold ) ^ coherenceExponent
 
-1. **Structural.** For every subsystem, the set of slots contributing to its demand and the
-   set contributing to its support are **disjoint**. This is the convention itself, and it
-   is what makes self-cancelling impossible.
-2. **Behavioural.** Adding a **pure gain** part (one that supports no subsystem at all:
-   `camsTiming`, `intake`, `exhaust`, `ignitionEcu`, `forcedInduction`) never raises the
-   headline ratio.
+reliability      = spec.reliabilityBase * clamp( conditionFactor + coherenceFactor - 1 , 0 , 1 )
+```
 
-## The levers (ALL UNAPPROVED, directive 22)
+**`spec.reliabilityBase` is what the car is when everything is right**, and it is per car rather
+than a constant. A mint stock example of that model reads exactly its base, and nothing in the
+game ever exceeds it. **`statFormulas.reliabilityCap` is retired, not moved**: authoring it at
+100 here and replacing it with a per-car value later is precisely the author-then-overwrite waste
+the arc restructure removed, and it would leave this sprint pinning a table that the next sprint
+breaks.
+
+**Three things about the combining line, all deliberate.**
+
+1. **It is the sum of the two shortfalls, not the product of the two factors.** Written the
+   other way round it reads `1 - conditionShortfall - coherenceShortfall`, which is what it
+   means: **two independent reasons the car will not get you home add up.** A seized engine plus
+   a build that over-boosts is not "25 per cent of 43 per cent reliable"; it is a car with two
+   terminal problems and it reads zero.
+2. **When either factor is 1.0 it reduces to the other exactly**, so a coherent car scores
+   purely on condition and a mint car scores purely on coherence. That is what keeps the
+   approved anchors (100, 85, 65, 40, 25 on the condition axis; 69 and 43 on the coherence axis)
+   intact.
+3. **It reaches 0.** The maintainer's requirement: *"an incoherent unsupported build with poor
+   and worn parts where it counts, can be like, 0. lets use the full spectrum. That's the most
+   unreliable car you can build so 0 is fine."* A product cannot do this while preserving the
+   anchors; a bounded sum of shortfalls does both.
+
+**The severity ceiling is why "improving other components does not move the needle".** One
+reliability-bearing part at `scrap` caps `conditionFactor` at 0.25 no matter how perfect the
+other fourteen are. "Any" is the right test rather than a crude one, because **the fifteen parts
+that carry a reliability weight are exactly the ones that stop the car**; springs and paint
+carry zero precisely because they do not.
+
+## The levers
+
+### Levers 1 to 5: SIGNED PRELIMINARILY 2026-07-29 (directive 22)
+
+**Approved to implement and to ship as written.** Do not stop, do not adjust one because a test
+is awkward. Only their final calibration is reserved, and that comes from playtest.
 
 All live in `packages/content/data/economy.json` under `statFormulas.support` (content law).
 
-### Lever 1: the support-specification ladder
+#### Lever 1: the support-specification ladder
 
 What a grade is worth as *specification*, on every supporting slot.
 
@@ -121,7 +291,7 @@ What a grade is worth as *specification*, on every supporting slot.
 | sport | 0.60 |
 | race | 1.00 |
 
-### Lever 2: demand weights
+#### Lever 2: demand weights
 
 | subsystem | driven by | weight |
 | --- | --- | ---: |
@@ -131,7 +301,7 @@ What a grade is worth as *specification*, on every supporting slot.
 | revs | `camsTiming` gain | 3.50 |
 | torqueTransmission | total gain | 0.90 |
 
-### Lever 3: support weights
+#### Lever 3: support weights
 
 | subsystem | slot | weight |
 | --- | --- | ---: |
@@ -141,10 +311,27 @@ What a grade is worth as *specification*, on every supporting slot.
 | heat | cooling | 0.70 |
 | revs | headValvetrain | 0.25 |
 | revs | internals | 0.15 |
-| torqueTransmission | clutch | 0.50 |
-| torqueTransmission | driveline | 0.35 |
+| torqueTransmission | clutch | **0.30** |
+| torqueTransmission | gearbox | **0.25** |
+| torqueTransmission | driveline | **0.15** |
+| torqueTransmission | differential | **0.15** |
 
-### Lever 4: thresholds
+**Torque transmission gained two supporters on 2026-07-29 and the total did not move.** An
+earlier draft supported it with `clutch` 0.50 and `driveline` 0.35 only, which left out the two
+things that actually break when torque goes up: **the `gearbox` carries a reliability weight of 2
+in the taxonomy, twice the clutch's, and is not a supporter of anything**, and the
+`differential` carries 1 and likewise supports nothing. A stock gearbox behind 632 PS is the
+classic failure, not the clutch.
+
+The four weights **sum to 0.85, exactly as the old two did**, so this is a redistribution rather
+than an inflation: every worked figure below is unchanged and the calibration holds. What it
+changes is that **no single purchase fixes a strained drivetrain**, which is correct, and it
+makes the drivetrain the expensive subsystem to put right, which is also correct.
+
+Both new supporters carry **zero power gain** (they are not engine slots, Sprint 135 Lever 2), so
+the dual-role convention holds without an exception.
+
+#### Lever 4: thresholds
 
 | band | headline ratio |
 | --- | --- |
@@ -152,45 +339,11 @@ What a grade is worth as *specification*, on every supporting slot.
 | strained | 0.75 to 0.90 |
 | dangerous | < 0.75 |
 
-### What these levers produce
+**`adequate`'s 0.90 is now load-bearing twice**: it is the readout's silence threshold and it is
+the knee of the coherence curve. One number, two uses, deliberately, so `adequate` means exactly
+one thing on both surfaces: **this costs you nothing.**
 
-Calibrated so that **a fully committed race build lands at 1.0 and a half-committed one
-collapses**, which is the whole point of section 5e's hard gate.
-
-**A maximal forced-induction build, race grade throughout:**
-
-| subsystem | demand | support | ratio |
-| --- | ---: | ---: | ---: |
-| cylinder pressure | 1.700 | 1.700 | 1.000 |
-| fuelling | 1.760 | 1.750 | 0.994 |
-| heat | 1.665 | 1.700 | 1.021 |
-| revs | 1.175 | 1.400 | 1.191 |
-| torque transmission | 1.855 | 1.850 | 0.997 |
-| **headline** | | | **0.994, adequate** |
-
-**A race turbo and nothing else**, which is design 6d's worked example:
-
-| subsystem | demand | support | ratio |
-| --- | ---: | ---: | ---: |
-| **cylinder pressure** | 1.700 | 1.000 | **0.588** |
-| fuelling | 1.280 | 1.000 | 0.781 |
-| heat | 1.245 | 1.000 | 0.803 |
-| revs | 1.000 | 1.000 | 1.000 |
-| torque transmission | 1.315 | 1.000 | 0.760 |
-| **headline** | | | **0.588, dangerous, cylinder pressure named** |
-
-**A race turbo with a race fuel system and race cooling, stock bottom end** still reads
-0.588 and still names cylinder pressure. That is section 6a's argument made arithmetic: **an
-excellent fuel pump does not hold a piston together.**
-
-**A maximal high-strung NA build** lands at 1.037, bound by revs, which is the correct
-binding constraint for an NA engine. **A maximal lazy NA build** lands at 0.962, also on
-revs: slightly optimistic, comfortably adequate, not a warning.
-
-**A street exhaust on a turbo car** lands at 0.959. Mild bolt-ons must not trigger warnings,
-and they do not.
-
-### Lever 5: the readout copy
+#### Lever 5: the readout copy
 
 Shown only at `strained` and `dangerous`; **`adequate` shows nothing at all**, because
 competence is the baseline rather than an achievement (design 7b).
@@ -208,26 +361,205 @@ competence is the baseline rather than an achievement (design 7b).
 | strained | `It will do, but it is {shortfall}.` |
 | dangerous | `This is {shortfall}.` |
 
-Copy lives in content, not in code. It goes through the maintainer's own copy sweep before
-it ships; the strings above are a proposal like every other lever here.
+Copy lives in content, not in code. It goes through the maintainer's own copy sweep before it
+ships; the strings above are a proposal like every other lever here.
+
+### Levers 6 and 8: SIGNED 2026-07-29
+
+| lever | what | signed as |
+| --- | --- | --- |
+| 6 | `statFormulas.support.coherenceExponent` | **2.0** (new) |
+| 8 | `statFormulas.condition.reliabilityCeiling` | `scrap` **0.25**, `poor` **0.55** |
+
+The maintainer's rule these serve: **the base is the ceiling, a stock car sits on it, and a
+properly supported build sits on it too.** Nothing in this arc pays a bonus for competence.
+
+### Lever 7: `spec.reliabilityBase`, per car (SIGNED 2026-07-29)
+
+**Replaces `statFormulas.reliabilityCap` outright.** A required field on `CarModel.spec`, 0 to
+100, on the same footing as Sprint 140's `spec.styleBase` and `spec.aeroCeiling`: **required, not
+defaulted**, so a car added later cannot silently inherit a value nobody chose.
+
+**Authored for all 94 roster cars at once, not just the 26 in content** (maintainer, 2026-07-29:
+*"we MUST do it for the rest of the roster. From now on treat EVERY car as if it is go live from
+the start. That is how the previous drift happened."*). **The full table lives in
+`docs/design/midnight-garage-roster.csv`, column `reliabilityBase`**, which is the single source
+of truth for the roster; the 26 below are the subset this sprint authors into `cars.json` and they
+are copied from there rather than decided here. **If the two ever disagree, the CSV is right.**
+
+**The scale is 65 to 100, and the axis is age and engineering culture, not price.** An NSX is a
+supercar you can drive to work and a Countach is not, so they sit thirty points apart inside the
+same culture class. **The floor is 65 rather than lower because the base multiplies everything
+else**: a car with very little to lose is a car where condition and coherence stop mattering, and
+those are the two systems this arc exists to make matter.
+
+| band | what sits there |
+| ---: | --- |
+| 96-100 | ordinary 1990s Japanese, and the Land Cruiser |
+| 90-95 | the rest of modern Japan, including most turbocharged cars |
+| 84-89 | known-issue Japanese, the best of Europe, the homologation specials |
+| 78-83 | rotaries, and Japanese classics from the 1970s |
+| 72-77 | the 1960s Japanese classics, and the triple-rotor Cosmo |
+| 65-71 | Italy, and a 1965 Mini |
+
+**The 26 to author into `cars.json`:**
+
+| car | base | | car | base |
+| --- | ---: | --- | --- | ---: |
+| toyota-carina-at150 | **100** | | nissan-cefiro-a31 | 93 |
+| honda-city-e-aa | 99 | | toyota-mr2-aw11 | 93 |
+| nissan-sunny-b12 | 98 | | nissan-silvia-s13 | 92 |
+| suzuki-wagon-r-ct21s | 98 | | nissan-180sx-rps13 | 92 |
+| honda-civic-sir2-eg6 | 97 | | nissan-silvia-ks-s14 | 92 |
+| honda-crx-sir-ef8 | 96 | | suzuki-alto-works-ha21s | 91 |
+| toyota-sera-exy10 | 95 | | honda-beat-pp1 | 91 |
+| honda-prelude-si-vtec-bb4 | 95 | | toyota-mr2-sw20 | 90 |
+| toyota-aristo-30v-jzs147 | 95 | | nissan-skyline-gtr-bnr32 | 90 |
+| toyota-supra-rz-jza80 | 94 | | honda-city-turbo-ii-aa | 88 |
+| toyota-chaser-tourer-v-jzx90 | 94 | | subaru-impreza-wrx-sti-gc8 | 86 |
+| toyota-sprinter-trueno-ae86 | 94 | | nissan-fairlady-z-z32 | 84 |
+| | | | mazda-savanna-rx7-fc3s | 82 |
+| | | | **mazda-rx7-fd3s** | **80** |
+
+**Two of those are worth saying out loud.** The FD is the least dependable car in shipped content
+and every enthusiast will nod at that; it is 80 rather than lower because a well-kept FD is a
+usable car, not a bad one. And **the two RX-7s in the full roster differ**: the 1992 Type R reads
+80 and the final Spirit R reads 82, because the last cars were the best developed.
+
+**What it costs in money, so the scale is judged honestly.** Reliability is 57 per cent of a
+first-timer's taste and the whole taste band is 24 per cent of value, so **the 20-point shipped
+spread moves a first-timer's offer by about 2.7 per cent** and the full 35-point roster spread by
+about 4.8 per cent. A racer feels roughly two thirds of that and a stancer feels none of it. That
+is "some variability", not a second pricing axis.
+
+## What these levers produce
+
+**Support ratios first.** Calibrated so a fully committed race build lands at 1.0 and a
+half-committed one collapses, which is the whole point of section 5e's hard gate.
+
+**A maximal forced-induction build, race grade throughout:**
+
+| subsystem | demand | support | ratio |
+| --- | ---: | ---: | ---: |
+| cylinder pressure | 1.700 | 1.700 | 1.000 |
+| fuelling | 1.760 | 1.750 | 0.994 |
+| heat | 1.665 | 1.700 | 1.021 |
+| revs | 1.175 | 1.400 | 1.191 |
+| torque transmission | 1.855 | 1.850 | 0.997 |
+| **headline** | | | **0.994, adequate** |
+
+**A race turbo and nothing else**, design 6d's worked example:
+
+| subsystem | demand | support | ratio |
+| --- | ---: | ---: | ---: |
+| **cylinder pressure** | 1.700 | 1.000 | **0.588** |
+| fuelling | 1.280 | 1.000 | 0.781 |
+| heat | 1.245 | 1.000 | 0.803 |
+| revs | 1.000 | 1.000 | 1.000 |
+| torque transmission | 1.315 | 1.000 | 0.760 |
+| **headline** | | | **0.588, dangerous, cylinder pressure named** |
+
+**A race turbo with a race fuel system and race cooling, stock bottom end** still reads 0.588
+and still names cylinder pressure. That is section 6a's argument made arithmetic: **an excellent
+fuel pump does not hold a piston together.**
+
+**A maximal high-strung NA build** lands at 1.037, bound by revs, the correct binding constraint
+for an NA engine. **A maximal lazy NA build** lands at 0.962, also on revs. **A street exhaust on
+a turbo car** lands at 0.959: mild bolt-ons must not trigger warnings, and they do not.
+
+### And the reliability those produce
+
+`coherenceFactor` at each headline, with the knee at 0.90 and exponent 2.0:
+
+| headline | 1.000 | 0.994 | 0.959 | 0.900 | 0.850 | 0.750 | 0.588 | 0.539 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| factor | 1.000 | 1.000 | 1.000 | 1.000 | 0.892 | 0.694 | 0.427 | 0.359 |
+
+`conditionFactor` for the cases worth naming:
+
+| condition of the reliability-bearing parts | factor |
+| --- | ---: |
+| all mint | 1.00 |
+| all fine | 0.85 |
+| all worn | 0.65 |
+| all poor (mean 0.40, under the 0.55 ceiling) | 0.40 |
+| **one part scrap, all others mint (a grenade)** | **0.25** |
+| one part poor, all others mint | 0.55 |
+| all scrap | 0.15 |
+
+**The table this sprint is judged on**, as a percentage of the car's own `reliabilityBase`:
+
+| build | headline | all mint | all fine | all worn | all poor | **one grenade** |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| stock car | 1.000 | **100%** | 85% | 65% | 40% | **25%** |
+| fully committed race build | 0.994 | **100%** | 85% | 65% | 40% | **25%** |
+| street exhaust on a turbo car | 0.959 | 100% | 85% | 65% | 40% | 25% |
+| at the `dangerous` line | 0.750 | 69% | 54% | 34% | 9% | **0** |
+| **race turbo, stock bottom end** | 0.588 | **43%** | 28% | 8% | **0** | **0** |
+| maximal build, no support at all | 0.539 | 36% | 21% | 1% | 0 | 0 |
+
+**The same table in points, on the two cars at the ends of Lever 7**, which is how a player meets
+it:
+
+| build and condition | Carina (base 100) | RX-7 FD3S (base 80) |
+| --- | ---: | ---: |
+| stock, mint | **100** | **80** |
+| fully supported race build, mint | **100** | **80** |
+| stock, all worn | 65 | 52 |
+| race turbo on a stock bottom end, mint | 43 | 34 |
+| stock, one grenade | 25 | 20 |
+| race turbo on a stock bottom end, all worn | 8 | 6 |
+| anything incoherent with a grenade in it | **0** | **0** |
+
+The FD is the lowest base in shipped content. **On the full roster the Countach sits at 65**, and
+the same columns for it read 65 / 65 / 42 / 28 / 16 / 5 / 0.
+
+**Five properties to read off it, all of them the point:**
+
+1. **A properly built car is exactly as reliable as a stock one.** Row 2 equals row 1 everywhere,
+   on every car.
+2. **A stupid build on a mint car scores 43 per cent. An honest tired car scores 65 per cent.**
+   The mint one photographs better and is worth less to anyone who can tell.
+3. **A grenade beats everything on the condition axis**, capping a coherent car at a quarter of
+   its base where today it reads 92 out of 100, and taking any incoherent build to 0.
+4. **A well-kept FD never reads as well as a well-kept Carina**, and that is the car, not the
+   owner. It is also worth about 4 per cent less to a nervous buyer and exactly the same to a
+   stancer, which is the correct pair of consequences.
+5. **The scale reaches both ends.** The worst car buildable in the game reads 0, and it takes a
+   genuinely absurd car to get there.
 
 ## Task breakdown
 
 ### Task 1: content schema and data
 
-`packages/content/src/economy.ts`: `statFormulas.support`, carrying the four numeric levers
-and the threshold pair. Zod-validated, with the stock-car-equals-1.0 property stated in the
-schema comment.
+`packages/content/src/economy.ts`:
+
+1. `statFormulas.support`, carrying levers 1 to 4 and lever 6. Zod-validated, with the
+   stock-car-equals-1.0 property stated in the schema comment.
+2. `statFormulas.condition.reliabilityCeiling` (lever 8), documented as a **ceiling on the
+   condition mean, not a replacement for it**, with the "any reliability-bearing part" rule and
+   the reason it is the right test written where the table is defined.
+3. **Retire `statFormulas.reliabilityCap`.** Remove it rather than leaving it unread, so no
+   future reader treats a dead lever as live. This is the same retirement Sprint 140 performs on
+   `statFormulas.styleCap` for the same reason.
+
+`packages/content/src/carModel.ts`: add `reliabilityBase: z.number().min(0).max(100)` to the spec
+schema (lever 7). **Required, not defaulted.** Document beside it that it is what the car is when
+everything is right, that nothing ever exceeds it, that the scale runs 65 to 100, and that the
+floor is 65 rather than lower because the base multiplies condition and coherence and a car with
+nothing to lose is a car where neither matters.
+
+`packages/content/data/cars.json`: the 26 signed values.
+
+`packages/content/src/tags.ts`: `SubsystemSchema` as a five-value enum (`cylinderPressure`,
+`fuelling`, `heat`, `revs`, `torqueTransmission`).
 
 `packages/content/data/economy.json`: the signed values.
 
-`packages/content/src/tags.ts`: `SubsystemSchema` as a five-value enum
-(`cylinderPressure`, `fuelling`, `heat`, `revs`, `torqueTransmission`).
+**The demand and support maps are content, not code.** A future part must not be able to join a
+subsystem by editing a list in a source file.
 
-**The demand and support maps are content, not code.** A future part must not be able to
-join a subsystem by editing a list in a source file.
-
-### Task 2: the derivation
+### Task 2: the support derivation
 
 New file `packages/sim/src/support.ts`, exported through `packages/sim/src/index.ts`:
 
@@ -240,19 +572,54 @@ where `SupportVerdict` is `{ headline: number, band: 'adequate' | 'strained' | '
 subsystem: Subsystem }` and `subsystem` names the minimum.
 
 1. Resolve the character once via `engineCharacterOf`.
-2. Walk the car's slots once, accumulating each slot's gain and each slot's spec.
+2. Walk the car's slots once, accumulating each slot's **band-scaled** gain and each slot's
+   **grade-only** spec.
 3. Compute the five ratios, then the minimum.
 4. **Ties break in the order the subsystem enum declares**, so the named subsystem is
-   deterministic. State that in the doc comment; a non-deterministic name would make the
-   readout flicker.
+   deterministic. State that in the doc comment; a non-deterministic name would make the readout
+   flicker.
 
-A slot the catalogue cannot resolve contributes nothing on either side, matching
-`buildFactors`'s existing rule that an unknown part id can never silently move anything.
+A slot the catalogue cannot resolve contributes nothing on either side, matching `buildFactors`'s
+existing rule that an unknown part id can never silently move anything.
 
-### Task 3: the always-on readout
+### Task 3: delete `statModifiers.reliability`
 
-Design 7c requires the warning at two points in this sprint (the third, the dyno, is Sprint
-142):
+**Moved here from Sprint 140, because this is the sprint that rebuilds what replaces it.**
+
+1. `packages/content/src/stats.ts`: remove `reliability` from `StatModifierSchema`.
+2. `packages/sim/src/derivedStats.ts`: remove the
+   `reliability += part.statModifiers.reliability * wear` line.
+3. `packages/content/data/parts.json`: remove the field from all 472 SKUs.
+4. **`statWeights` on the taxonomy reuses `StatModifierSchema`'s shape for a different meaning.**
+   Sprint 135 already faced this for `power` and either kept the shared schema or split it into
+   `StatModifierSchema` and `StatWeightsSchema`. **Follow whichever Sprint 135 did**, and if it
+   kept them shared, check again here and split if this deletion breaks taxonomy authoring.
+   `weightedBandFactorForStat(..., 'reliability', ...)` must keep its weights or reliability
+   stops responding to condition entirely, which is a regression rather than the intent.
+
+**`StatBlock.reliability` stays. The taxonomy's reliability weights stay. Buyers keep weighting
+it.** Only the ability of a purchased part to add a flat number goes.
+
+### Task 4: the reliability derivation
+
+`packages/sim/src/derivedStats.ts`, `computeDerivedStats`:
+
+1. Apply the severity ceiling to the condition mean. The worst band is taken across **only the
+   parts carrying a non-zero `statWeights.reliability`**, read from the taxonomy rather than a
+   hand-written list (content law).
+2. A **missing** part counts as `scrap` for the ceiling, matching `weightedBandFactor`'s existing
+   treatment of a missing part as a 0 band factor. A legitimately absent slot (an NA car's
+   forced induction) is not a missing part and must not trip the ceiling.
+3. Compute `coherenceFactor` from `supportVerdict`.
+4. Combine as the bounded sum of shortfalls, clamp to `[0, 1]`, multiply by
+   `model.spec.reliabilityBase`.
+
+**`computeDerivedStats` now needs the support ratio.** Compute it inside rather than taking it as
+a parameter, so no caller can pass a stale verdict, and so the two can never disagree.
+
+### Task 5: the always-on readout
+
+Design 7c requires the warning at two points in this sprint (the third, the dyno, is Sprint 141):
 
 1. **The car's own readout, always.** `packages/game/src/screens/CarDetailScreen.vue`.
 2. **Listing it for sale, restated and unmissable.** The set-for-sale flow.
@@ -260,34 +627,66 @@ Design 7c requires the warning at two points in this sprint (the third, the dyno
 The element is qualitative: the band and the named shortfall, no numbers. **Numbers are the
 dyno's product and must not appear here**, or Sprint 141 has nothing to sell.
 
-The art bible's diegetic-UI law binds: it is an in-world object with a real pressed or
-active state, not a coloured banner. If that cannot be satisfied without new art, **ship the
-plainest in-world treatment that obeys the law and record the art dependency in the Exit**;
-do not invent a modern-UI alert.
+**The readout is not the feature.** It explains a number that has already moved, and it exists
+because naming the subsystem is what tells the player which part fixes it. A build that reads
+`dangerous` has already lost reliability whether or not the player reads the line.
 
-### Task 4: tests
+The art bible's diegetic-UI law binds: an in-world object with a real pressed or active state,
+not a coloured banner. If that cannot be satisfied without new art, **ship the plainest in-world
+treatment that obeys the law and record the art dependency in the Exit**; do not invent a
+modern-UI alert.
+
+### Task 6: tests
 
 New file `packages/sim/tests/supportRatios.test.ts`:
 
-1. **The stock identity.** All 26 shipped cars, every subsystem exactly 1.0, strict equality.
-   The headline is exactly 1.0 and the band is `adequate`.
+1. **The stock identity.** All 26 shipped cars, every subsystem exactly 1.0, strict equality;
+   headline exactly 1.0; band `adequate`.
 2. **The structural disjointness test.** For each subsystem, its demand slots and its support
-   slots share no member. Read from content, so hand-editing the data cannot break the
-   convention silently.
-3. **Pure gains never raise the headline.** For each of `camsTiming`, `intake`, `exhaust`,
-   `ignitionEcu`, `forcedInduction`, at each grade, on a representative car of each
-   character: fitting it leaves the headline the same or lower.
-4. **The two worked tables above**, pinned exactly.
-5. **Fuel does not hold a piston together.** A race turbo with race fuelling and race cooling
-   but a stock bottom end still reads `dangerous` and still names `cylinderPressure`.
-6. **Mild bolt-ons do not warn.** A street exhaust alone reads `adequate` on all 26 cars.
-7. **Determinism of the named subsystem** when two ratios tie.
-8. **Every character's maximal build**, headline and named subsystem pinned.
+   slots share no member, read from content so hand-editing the data cannot break the convention
+   silently.
+3. **Demand is band-scaled, support is not.** A `worn` race turbo demands strictly less than a
+   mint one; a `worn` race fuel system supports exactly as much as a mint one. **This is the
+   pair that proves nothing is charged twice**, and it is the test an implementer is most likely
+   to get backwards.
+4. **Pure gains never raise the headline.** For each of `camsTiming`, `intake`, `exhaust`,
+   `ignitionEcu`, `forcedInduction`, at each grade, on a representative car of each character.
+5. **The two worked support tables above**, pinned exactly.
+6. **Fuel does not hold a piston together.** A race turbo with race fuelling and race cooling but
+   a stock bottom end still reads `dangerous` and still names `cylinderPressure`.
+7. **Mild bolt-ons do not warn.** A street exhaust alone reads `adequate` on all 26 cars.
+8. **Determinism of the named subsystem** when two ratios tie.
 
-Component tests for the readout: present at `strained` and `dangerous`, **absent at
-`adequate`**, and carrying no numeric figure in any state.
+New file `packages/sim/tests/reliabilityModel.test.ts`:
 
-### Task 5: checks
+9. **The full table above, pinned**, every cell.
+10. **A stock mint car reads exactly its own `spec.reliabilityBase`**, all 26 cars, and the
+    26 authored values match Lever 7 exactly. **Nothing anywhere exceeds its base.**
+11. **A fully supported race build reads exactly the same as stock**, all 26 cars. The
+    no-premium rule, asserted rather than assumed.
+12. **The grenade rule.** One reliability-bearing part at `scrap` with all others mint caps the
+    car at 25 per cent of its base, **for each of the fifteen weighted parts in turn**, and
+    repairing any of the other fourteen does not move it. That second half is the maintainer's
+    requirement stated as a test.
+13. **A part carrying zero reliability weight cannot trip the ceiling.** Scrap springs, scrap
+    paint, scrap tyres: reliability unmoved. Assert with strict equality.
+14. **A missing part trips the ceiling; a legitimately absent NA forced-induction slot does
+    not.** All 26 cars for the second half.
+15. **The floor is reached and does not go below it.** The worst buildable car reads exactly 0,
+    and no input produces a negative or a value above the car's own base.
+16. **Monotonicity in both axes.** Reliability never rises when a band worsens, and never rises
+    when the headline support ratio falls.
+17. **The base is the only thing that varies between two identically-built cars.** Two cars given
+    the same build and the same condition read reliability in exactly the ratio of their bases.
+    This is the test that keeps Lever 7 a per-car character and stops it becoming a second
+    difficulty axis.
+18. **`statFormulas.reliabilityCap` is gone**, structurally: nothing in `packages/` reads it and
+    it is absent from `economy.json`.
+
+In `packages/game/tests/`: the readout is present at `strained` and `dangerous`, **absent at
+`adequate`**, and carries no numeric figure in any state.
+
+### Task 7: checks
 
 ```text
 pnpm test --project content
@@ -295,41 +694,101 @@ pnpm test --project sim
 pnpm test --project game
 ```
 
-`harnessAcceptance.test.ts` must pass untouched: this sprint adds a derived quantity and
-changes no physics.
+`harnessAcceptance.test.ts` must pass untouched: this sprint changes no physics. Reliability is
+not read by the lap model.
 
-### Task 6: re-derive whatever moved
+### Task 8: re-derive whatever moved, and STOP at the story missions
 
-Nothing in this sprint feeds price or lap time, so very little should move.
-`economyApprovalGate.test.ts` moves because `statFormulas.support` is new; re-pin it in the
-same change as the recorded sign-off, naming every lever and value.
+Directive 17 case (a) throughout. **This sprint moves prices, deliberately**, which is a reversal
+of the earlier draft's constraint and is the whole point of the maintainer's ruling.
 
-**If a valuation or lap pin moves, stop.** It means support has leaked into a path it must
-not touch yet; wiring cohesion to value is Sprint 139 and is gated on Sprint 138's
-measurement.
+Expected fallout, in order of size:
+
+1. **Every valuation pin for a mint car**, because the reliability ceiling moves from a flat 70
+   to a per-car base and reliability is a weighted term in `valuateCarForBuyer`. Re-derive from
+   real runs.
+2. **`economyApprovalGate.test.ts`**, because `statFormulas.support` and
+   `statFormulas.condition.reliabilityCeiling` are new and `statFormulas.reliabilityCap` is
+   gone. Re-pin in the same change as the recorded sign-off, naming every lever and value.
+3. **The `cars.json` spec-book guard**, because `spec.reliabilityBase` is a new required field
+   on all 26 cars.
+4. **Four story missions gate on a reliability `statThreshold`**, each pinned against the old
+   flat cap of 70: `wont-strand-her` (54), `the-fleet-spare` (58), `first-proper-car` (54),
+   `street-power-street-manners` (48).
+
+### Item 4: re-derive, do NOT stop (maintainer ruling, 2026-07-29)
+
+**This is an explicit exception to the usual directive-22 halt, and it is narrow.** The
+maintainer's ruling: *"if we change systems deliberately then downstream should change too.
+Better story missions are queued anyway."* So the four thresholds are re-derived inside this
+sprint rather than handed back. **The exception covers these four values and nothing else.**
+
+**How to re-derive each one, and it is not the same method for all four.**
+
+- **`wont-strand-her`, `the-fleet-spare`, `first-proper-car`** preserve their share of the
+  ceiling. Each was `n / 70`; the new value is that share of the base of the cheapest car that
+  can plausibly satisfy the mission, floored to a round number. **Report the arithmetic**, do not
+  eyeball it.
+- **`street-power-street-manners` is re-derived from a real run**, because its bar is the one
+  hand-set floor in the campaign rather than a `floor90(measured)` pin. Its own probe build
+  (sport intake, exhaust, ECU and turbo, no supporting parts) computes to a headline near
+  **0.712, `dangerous`, bound by torque transmission**. **Build the supported version of that
+  same shape, measure what it actually reaches, and set the floor under it.** The mission is
+  named "street power, street manners" and now genuinely asks for power without a grenade, which
+  is the mission finally working; it must not become impossible in the process.
+
+**One interaction that must not be "fixed".** A reliability `statThreshold` is an absolute number
+and cars now have different bases, so **any bar above a car's base excludes that car outright, in
+any condition, however well built.** On the likely re-derived figures `the-fleet-spare` lands near
+83, which puts both rotaries out of reach. That is correct and it is the point: somebody who needs
+a dependable fleet spare should not be handed an RX-7. **Do not convert these thresholds to a
+fraction of the car's base to make every car eligible**; record which cars each mission now
+excludes and report it as a finding. **If a mission ends up excluding so much of the roster that
+it is unplayable, that is a report, not a licence to lower the bar.**
 
 ## Hard constraints
 
-- **No unlisted lever.** Execution ENDS if implementation appears to need one.
-- **Support must not reach price or reputation in this sprint.** Assert it: a car's sale
-  price is identical with and without a collapsed support ratio.
+- **No unlisted lever**, with exactly one recorded exception: the four story-mission reliability
+  thresholds, re-derived in this sprint under the 2026-07-29 ruling. Anything else, execution
+  ENDS.
+- **`spec.reliabilityBase` is a car's character, not a difficulty knob.** It never varies by
+  build, by condition, by tier or by anything else. Two identically-built cars differ only in the
+  ratio of their bases.
+- **Support reaches price only through reliability.** No second path, no premium multiplier, no
+  change to `foundationFactor` or `aftermarketReturn`. Assert the last two directly.
+- **`coherenceFactor` is capped at 1.0.** No build is ever more reliable than stock.
+- **Demand reads band; support reads grade.** Neither is charged twice.
 - **No numbers in the readout.**
-- **No engine-failure event, no wear rate, no reliability stat.**
+- **No engine-failure event, no wear rate, no service interval, nothing denominated in days.**
+- **Do not delete `StatBlock.reliability`** or the taxonomy's reliability weights.
 - No em dashes, no emoji, British spelling, no process-narrative comments.
 
 ## Definition of done
 
-- [ ] Levers 1 to 5 signed and recorded in this doc.
-- [ ] Five subsystem ratios and a `min` headline, derived in `packages/sim/src/support.ts`.
+- [x] All eight levers signed and recorded in this doc (2026-07-29). Nothing to ask about.
+- [ ] Five subsystem ratios and a `min` headline in `packages/sim/src/support.ts`.
 - [ ] All 26 stock cars sit at exactly 1.0 on every subsystem, strict equality.
-- [ ] Demand and support slot sets are disjoint per subsystem, proved structurally from
-      content.
+- [ ] Demand and support slot sets provably disjoint per subsystem, read from content.
+- [ ] Demand band-scaled, support grade-only, both pinned.
 - [ ] Pure gain parts never raise the headline.
-- [ ] Both worked examples pinned; the fuel-does-not-hold-a-piston case pinned.
+- [ ] Both worked support tables pinned; the fuel-does-not-hold-a-piston case pinned.
 - [ ] Mild bolt-ons read `adequate` on every car.
-- [ ] The warning is visible on the car always and restated at listing, with no numbers.
-- [ ] Sale price provably unchanged by support ratio.
-- [ ] Economy gate re-pinned in the same change as the sign-off.
+- [ ] `statModifiers.reliability` gone from schema, sim and all 472 SKUs; `StatBlock.reliability`
+      intact and still weighted by every buyer.
+- [ ] `spec.reliabilityBase` required and authored for all 26 cars, matching Lever 7 exactly;
+      `statFormulas.reliabilityCap` retired, not orphaned.
+- [ ] A stock mint car and a fully supported race build both read exactly the car's own base, all
+      26 cars, and nothing anywhere exceeds it.
+- [ ] Two identically-built cars differ only in the ratio of their bases.
+- [ ] The severity ceiling implemented over the taxonomy's own weights; the grenade rule pinned
+      for all fifteen weighted parts, including that repairing the others does not move it.
+- [ ] Zero-weight parts provably cannot trip the ceiling.
+- [ ] The full reliability table pinned, every cell; the floor reaches exactly 0.
+- [ ] The warning visible on the car always and restated at listing, with no numbers.
+- [ ] `harnessAcceptance.test.ts` passes untouched.
+- [ ] Valuation pins re-derived from real runs; economy gate re-pinned with the sign-off.
+- [ ] The four story-mission reliability thresholds re-derived by the methods above, the
+      arithmetic shown, and the cars each mission now excludes reported.
 - [ ] Checks run once each, output shown.
 
 ## Exit

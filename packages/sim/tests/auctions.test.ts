@@ -107,16 +107,19 @@ describe('canAppearAtAuctionTier', () => {
   })
 
   it('reads the price band, never the scarcity', () => {
-    // The Beat and the FD are two price bands apart and both uncommon. Their
-    // rooms follow their price bands alone.
-    const beat = CARS.find((m) => m.id === 'honda-beat-pp1')!
+    // The Sera and the FD are two price bands apart (entry vs enthusiast) and
+    // share the same rarity (uncommon). Local Yard weights both price bands
+    // above zero, so it admits both regardless of rarity; Collector Network's
+    // zero weight on entry turns the Sera away while the FD, exactly as
+    // scarce, gets through on its price band alone.
+    const sera = CARS.find((m) => m.id === 'toyota-sera-exy10')!
     const fd = CARS.find((m) => m.id === 'mazda-rx7-fd3s')!
-    expect(beat.rarity).toBe(fd.rarity)
-    expect(beat.tier).not.toBe(fd.tier)
-    expect(canAppearAtAuctionTier(beat, 'local-yard', ECONOMY)).toBe(true)
-    expect(canAppearAtAuctionTier(fd, 'local-yard', ECONOMY)).toBe(false)
+    expect(sera.rarity).toBe(fd.rarity)
+    expect(sera.tier).not.toBe(fd.tier)
+    expect(canAppearAtAuctionTier(sera, 'local-yard', ECONOMY)).toBe(true)
+    expect(canAppearAtAuctionTier(fd, 'local-yard', ECONOMY)).toBe(true)
     expect(canAppearAtAuctionTier(fd, 'collector-network', ECONOMY)).toBe(true)
-    expect(canAppearAtAuctionTier(beat, 'collector-network', ECONOMY)).toBe(false)
+    expect(canAppearAtAuctionTier(sera, 'collector-network', ECONOMY)).toBe(false)
   })
 
   it('confines a legend to the Collector Network whatever its price band (GDD 9.2)', () => {
@@ -226,9 +229,9 @@ describe('the catalogue mix each room draws', () => {
   })
 
   it('separates cars by scarcity within a band, in proportion to the multiplier', () => {
-    // The entry band holds three common cars and two uncommon, so at a
-    // multiplier of 0.5 the band's weight totals 4: a quarter of its lots to
-    // the uncommon pair, and a quarter to each common car.
+    // The entry band holds five common cars and two uncommon, so at a
+    // multiplier of 0.5 the band's weight totals 6: a sixth of its lots to
+    // the uncommon pair, and a sixth to each common car.
     const lots = generateAuctionCatalog(
       CARS,
       'local-yard',
@@ -241,16 +244,16 @@ describe('the catalogue mix each room draws', () => {
     const uncommon = CARS.filter((m) => m.tier === 'entry' && m.rarity === 'uncommon')
     const common = CARS.filter((m) => m.tier === 'entry' && m.rarity === 'common')
     expect(uncommon).toHaveLength(2)
-    expect(common).toHaveLength(3)
+    expect(common).toHaveLength(5)
     const shareOf = (ids: readonly string[]) =>
       lots.filter((lot) => ids.includes(lot.modelId)).length / lots.length
     expectShareNear(
       shareOf(uncommon.map((m) => m.id)),
-      0.25,
+      1 / 6,
       'the entry band uncommon pair at local-yard',
     )
     for (const model of common) {
-      expectShareNear(shareOf([model.id]), 0.25, `${model.id} within the entry band`)
+      expectShareNear(shareOf([model.id]), 1 / 6, `${model.id} within the entry band`)
     }
   })
 
