@@ -360,6 +360,38 @@ pass."
 
 ## Open balance/economy questions
 
+- [ ] **Reputation is a ratchet, so losing it costs almost nothing (maintainer, 2026-07-29).**
+  Gaining reputation unlocks content: auction houses, workshop tool tiers, mission access.
+  **Those unlocks never close again**, so once a player has opened everything, tanking their
+  standing is close to free. Reputation stops mattering the moment the last thing is unlocked.
+
+  This blocks a playstyle the maintainer explicitly wants to allow: *"I actually do want to
+  give the player the freedom to sell shitty builds, gain a bunch of cash, and tank their rep.
+  Dodgy back alley mechanic simulator style... it should be a legitimate though inefficient
+  and weird way to play the game, but I want to allow it."* The trade that makes that work is
+  **cash now against access later**, and the ratchet means the second half does not exist, so
+  the dodgy path is not inefficient, it is simply free.
+
+  Two routes, and the second is recommended (full reasoning in
+  `docs/design/systems/tuning-system.md` section 5.5):
+  1. **Unlocks can be lost.** Coherent, but confiscating a tool the player paid for reads as
+     arbitrary.
+  2. **Reputation gates the FLOW of opportunity rather than the door.** A well-regarded garage
+     gets better cars consigned, better jobs offered, better buyers walking in, and gets them
+     more often; a disreputable one gets fewer and worse. Nothing is taken away, and the
+     back-alley playstyle becomes **self-consistent rather than punished**: you sell rubbish,
+     rubbish comes to you, and you make thin money fast. That is an identity for a shop, not a
+     penalty box.
+
+  **Design principle this rests on, worth applying more widely:** the reason there must not be
+  one correct build order is the reason there must not be one correct way to run a garage.
+  Anti-dominance applies to business models too, and a playstyle that is merely inefficient
+  should stay available rather than being tuned out of existence.
+
+  Needs its own design pass. The tuning system's reputation effect will be weak until it lands,
+  and that should be stated in the sprint rather than compensated for by inflating numbers.
+
+
 - [ ] **The aftermarket power ladder is ADDITIVE and class-invariant, so it cannot express a ratio
   target at all. Nothing was changed; the decision is open.** Sprint 130 measured it through the real
   sim rather than by summing the catalogue: a maximal LEGAL build adds a flat **+200 PS** to any car,

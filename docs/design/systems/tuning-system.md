@@ -338,17 +338,74 @@ one-sided and starts at a threshold:
 | below adequate | a penalty, scaling with how far below |
 | dangerous | a large penalty, and it should sting |
 
-**At what magnitude.** The governing rule: **the reputation cost of a bad build must
-exceed the money it made**, or selling grenades becomes a strategy. It should be
-possible once, as a mistake or a desperate move, and visibly stupid as a habit. The
-exact numbers are economy levers and want deriving against real sale margins rather
-than guessing, then playtesting.
+**At what magnitude, and this is where an earlier draft was wrong.** v4 proposed
+that the reputation cost must always exceed the money the bad build made, so selling
+grenades could never be a strategy. **The maintainer rejected that, and correctly:
+it forecloses a playstyle they want to allow.**
 
-**The delayed version is now the design, not an enhancement.** v3 recorded "it comes
-back" as optional; the maintainer has approved it. A car sold with a known-bad build
-can return, and word gets round. That is the reputation half arriving with a face on
-it rather than as a silent number, and it is a garage-sim consequence rather than a
-racing-game one.
+> *"I actually do want to give the player the freedom to sell shitty builds, gain a
+> bunch of cash, and tank their rep. Dodgy back alley mechanic simulator style... it
+> should be a legitimate though inefficient and weird way to play the game, but I
+> want to allow it."*
+
+**So the dodgy path must be viable, not punished out of existence.** The governing
+rule is therefore not "it costs more than it makes". It is:
+
+**Selling bad builds makes more cash, faster. It costs you access.**
+
+That is a real trade rather than a trap: quick money now against better opportunities
+later. A player who wants to run a back-alley shop can, and the game should let them
+without pretending they have made a mistake. It is inefficient and strange, which is
+exactly the brief.
+
+**This is the same principle as the rest of this document.** The reason there must
+not be one correct build order is the reason there must not be one correct way to
+run a garage. Anti-dominance applies to business models too.
+
+**The delayed version is part of the design, not an enhancement.** A car sold with a
+known-bad build can come back, and word gets round. That is the reputation half
+arriving with a face on it rather than as a silent number, and it is a garage-sim
+consequence rather than a racing-game one.
+
+**But see section 5.5: reputation currently cannot express this trade at all.**
+
+### 5.5 Reputation is a ratchet, and that blocks the trade above
+
+**Raised by the maintainer, 2026-07-29, and it is a bigger problem than this
+system.** Recorded here because it gates 5.3, but it needs its own design pass.
+
+**Reputation today is essentially an unlock gate.** Gaining it opens content:
+auction houses, workshop tool tiers, mission access. **Losing it once those are open
+does very little**, because the unlocks do not close again.
+
+So the trade proposed in 5.3 (cash now against access later) **cannot currently be
+expressed.** A player who unlocks everything and then tanks their reputation keeps
+everything they unlocked and pays almost nothing. The dodgy path is not inefficient,
+it is simply free, which is worse than forbidding it.
+
+Two ways to give reputation a continuous cost, and the second is much better:
+
+**A. Unlocks can be lost.** Drop below a threshold and the auction house stops
+letting you in. Coherent, and harsh in a way that may feel arbitrary: losing a tool
+you paid for reads as confiscation.
+
+**B. Reputation gates the FLOW of opportunity, not just the door.** A well-regarded
+garage gets better cars consigned to it, better jobs offered, better buyers walking
+in, and gets them more often. A disreputable one gets fewer and worse. Nothing is
+taken away; the quality of what arrives simply reflects what you are known for.
+
+**Recommendation: B.** It makes the trade real without confiscating anything, it
+gives reputation a job on every single day rather than at a handful of thresholds,
+and it makes the back-alley playstyle **self-consistent rather than punished**: you
+sell rubbish, so rubbish is what comes to you, and you make thin money quickly. That
+is a coherent identity for a shop rather than a penalty box.
+
+It also fixes something the ratchet hides: at present, high reputation stops mattering
+the moment the last thing is unlocked.
+
+**Not in scope for the tuning system.** Section 5.3's reputation effect should be
+built to the shape described there, and it will be weak until this is resolved. Say
+so in the sprint rather than inflating the numbers to compensate.
 
 ### 5.4 The player must be able to see it coming
 
