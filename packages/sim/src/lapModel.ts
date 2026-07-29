@@ -133,7 +133,7 @@ export function lapTimeSecondsFor(
     context.economy.statFormulas.aero,
   )
   const condition = physicalConditionFactors(car, model, context.partsTaxonomy, context.economy)
-  const build = buildFactors(car, context.partsById)
+  const build = buildFactors(car, context.partsById, context.economy)
   return round1(
     lapTime(model, course, stats.power, compound, context.economy, aeroEffect, condition, build),
   )

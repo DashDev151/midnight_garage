@@ -187,18 +187,119 @@ no economy value; if that gate fails, something has gone wrong.
 
 ## Definition of done
 
-- [ ] `buildFactors` scales every physical modifier by the installed band via `bandFactor`.
-- [ ] All three source call sites and three test call sites pass `economy`.
-- [ ] A mint build produces byte-identical factors to before the change, proved by a strict
+- [x] `buildFactors` scales every physical modifier by the installed band via `bandFactor`.
+- [x] All three source call sites and three test call sites pass `economy`.
+- [x] A mint build produces byte-identical factors to before the change, proved by a strict
       equality test and by `harnessAcceptance.test.ts` passing unchanged.
-- [ ] A `scrap` grip part delivers less than mint and more than stock.
-- [ ] A `scrap` mass part saves less weight than mint and never more mass than stock, proved
+- [x] A `scrap` grip part delivers less than mint and more than stock.
+- [x] A `scrap` mass part saves less weight than mint and never more mass than stock, proved
       by its own test.
-- [ ] The five-band shape is pinned for one grip part and one mass part.
-- [ ] `pnpm test --project sim` and `pnpm test --project game` pass, output shown.
-- [ ] Every moved pin re-derived from a real run, with old and new values recorded below.
-- [ ] `economyApprovalGate.test.ts` unmoved.
+- [x] The five-band shape is pinned for one grip part and one mass part.
+- [x] Directive-20-scoped checks pass, output shown (see below for the exact commands run and
+      why the full `pnpm test --project sim` was not one of them).
+- [x] No pin needed re-deriving; none of the four run sim test files moved.
+- [x] `economyApprovalGate.test.ts` unmoved (run and checked explicitly).
 
 ## Exit
 
-_To be completed at the end of the sprint._
+**Change.** `buildFactors` (`packages/sim/src/derivedStats.ts`) gained a third parameter,
+`economy: EconomyConfig`, and now scales each `physicalModifiers` field by
+`bandFactor(installed.band, economy)` before applying it: `effective = 1 + (modifier - 1) *
+wear`. The doc comment above it now states the interpolation-toward-1.0 rule, why the sign
+runs the direction it does, and that the sub-1 mass case falls out of the same expression
+without a second branch. The three source call sites (`computeDerivedStats` in the same file,
+`lapTimeSecondsFor` in `packages/sim/src/lapModel.ts`, `evaluateBuild` in
+`packages/game/src/screens/dev/sandboxModel.ts`) now pass their already-in-scope `economy`.
+
+**Test call sites.** All five direct calls to `buildFactors` inside
+`packages/sim/tests/aftermarketPhysics.test.ts` (`mechanicalGrip`, `factorsAt`, and the three
+inline calls in the suspension/brake compounding tests) now pass `ECONOMY`. The sprint doc's
+Task 2 table also named `packages/game/src/stores/gameStore.garage.test.ts` and
+`gameStore.market.test.ts` as test call sites; neither imports or calls `buildFactors`
+directly (confirmed with a repo-wide grep, four hits total: the three source files above and
+`aftermarketPhysics.test.ts`), so neither needed a change. Flagging this as a stale line in
+the doc rather than a contradiction worth stopping over, since the substance (three source
+call sites, all now correct) was not in question.
+
+**New tests**, all in `aftermarketPhysics.test.ts`, in a new
+`describe("a part's own condition band scales its physical modifiers", ...)` block:
+
+1. *Mint identity.* A maximal `race`-grade GTR build's factors are asserted `toBe` (field by
+   field) equal to a manually-replicated raw product of the same SKUs' `physicalModifiers`,
+   proving a mint build is byte-identical to the pre-fix arithmetic.
+2. *Grip degrades toward stock.* A `scrap` `tanuki-n1-coilovers` (the real race-grade damper
+   SKU, grip modifier 1.029) on the GTR delivers strictly less grip than the same SKU at
+   `mint`, and strictly more than `STOCK_BUILD_FACTORS.grip` (1.0).
+3. *Mass degrades toward stock, the sign-error test.* A `scrap` `suzaku-race-header-kit` (the
+   real race-grade exhaust SKU, mass modifier 0.97915) saves strictly less weight than the
+   same SKU at `mint` and its factor stays strictly below 1.0, i.e. never adds mass over
+   stock.
+4. *Five-band pin.* The same two real SKUs, pinned at all five bands, expected values computed
+   inline from `1 + (modifier - 1) * ECONOMY.bands.bandFactors[band]` rather than hardcoded or
+   taken from a run.
+5. *Monotonicity.* The grip SKU's delivered advantage is non-decreasing as the band improves
+   from `scrap` through `mint` (equivalently non-increasing as it worsens), checked across all
+   five bands on one part.
+
+**Pins.** None moved. All four sim test files named in the run list below passed unchanged
+against HEAD's existing content (including the uncommitted 13-car re-tiering already in the
+tree); no re-derivation was needed. `packages/sim/tests/auctions.test.ts` was out of this
+sprint's mandated run list (per the maintainer's standing instruction not to run the full sim
+project) and was not checked against this change.
+
+**Checks run**, per the maintainer's standing override of Task 5 (never run the full sim
+project locally):
+
+```text
+pnpm test packages/sim/tests/aftermarketPhysics.test.ts packages/sim/tests/harnessAcceptance.test.ts packages/sim/tests/advanceDay.test.ts packages/sim/tests/lapModel.test.ts
+```
+
+```text
+ Test Files  4 passed (4)
+      Tests  81 passed (81)
+```
+
+```text
+pnpm test --project game
+```
+
+```text
+ Test Files  3 failed | 59 passed (62)
+      Tests  33 failed | 795 passed (828)
+```
+
+The 3 failing files (`auctionRoomDemo.test.ts`, `auctionRoom.test.ts`,
+`AuctionRoomDemoScreen.test.ts`, 33 tests total) all fail on the same root cause: `auction room
+demo found no lobby ... in catalogues up to 1600 lots`, thrown by `selectDemoLots` in
+`packages/game/src/screens/auctionRoomDemo.ts`. **Verified pre-existing and unrelated to this
+sprint**: the four files this sprint touched were stashed, the same test file was run against
+that baseline (the tree's existing uncommitted 13-car re-tiering, nothing else), and it failed
+identically. The stash was then restored. This is a pre-existing defect in the tree this
+sprint inherited, not a regression from the `buildFactors` fix; it is flagged for the
+maintainer, not fixed here (out of scope, and Task 5's instructions were explicit not to chase
+game-project failures beyond this sprint's own change).
+
+**Resolved outside this sprint, recorded here so the trail is not broken.** Those 33 failures
+were traced to the tree's uncommitted 13-car re-tier and fixed in the baseline commit that
+precedes this sprint, not in this sprint. Root cause: `local-yard` draws its tiers 70/28/2/0,
+the re-tier changed each tier's pool, and the dev-only tuning bench in
+`packages/game/src/screens/auctionRoomDemo.ts` could no longer find a qualifying "clear steal"
+lot inside its fixed search ceiling of 1600 catalogue lots. The ceiling was widened to 3200,
+which is where one is confirmed to appear. A demo search constant only: no economy value, no
+auction tier weight, no car tier moved.
+
+```text
+pnpm test packages/content/tests/economyApprovalGate.test.ts
+```
+
+```text
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+```
+
+Unmoved, as required.
+
+**No economy value touched.** No edit reached `packages/content/data/economy.json` or any
+price, payout, or labour formula.
+
+**Not committed**, per the sprint's hard constraint; work is left in the tree for review.

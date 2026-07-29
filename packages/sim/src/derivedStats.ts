@@ -121,9 +121,22 @@ export function physicalConditionFactors(
 
 /**
  * What the grades a car is BUILT from deliver on each physical dial: the
- * product of every installed SKU's own `physicalModifiers`. The counterpart of
+ * product of every installed SKU's own `physicalModifiers`, each first scaled
+ * by that part's own installed band. The counterpart of
  * `physicalConditionFactors` above, and the second half of the same idea - one
  * traversal of the car's slots per concern, each dial assembled exactly once.
+ *
+ * A `physicalModifier` is a multiplier around unity (1.029 is "2.9 per cent
+ * better than stock"), so a worn part must deliver less of its advantage, not
+ * less than stock: `effective = 1 + (modifier - 1) * bandFactor(band,
+ * economy)`. At `mint`, `bandFactor` is 1.0 and `effective` equals the
+ * modifier exactly, so a mint build is unchanged from the raw product. At
+ * `scrap` the modifier is pulled most of the way back to 1.0 but never past
+ * it, so a knackered part is a bad part, never an absent one (an absent part
+ * is `scrapDisablesCar`/`isPartMissing`'s concern, not this one). The same
+ * expression handles a sub-1 mass modifier without a second case: `modifier -
+ * 1` is negative for a weight-saving part, so wear pulls it back toward 1.0
+ * from below and a worn lightweight part never adds mass over stock.
  *
  * The product is what makes a group figure the group's, not each member's: three
  * suspension SKUs at 1.029 apiece reach 1.090 fitted together and a car with one
@@ -135,6 +148,7 @@ export function physicalConditionFactors(
 export function buildFactors(
   car: CarInstance,
   partsById: Readonly<Record<string, Part>>,
+  economy: EconomyConfig,
 ): BuildFactors {
   const factors = { ...STOCK_BUILD_FACTORS }
   for (const partId of ALL_CAR_PART_IDS) {
@@ -142,9 +156,10 @@ export function buildFactors(
     if (!installed) continue
     const modifiers = partsById[installed.partId]?.physicalModifiers
     if (!modifiers) continue
-    factors.grip *= modifiers.grip
-    factors.braking *= modifiers.braking
-    factors.mass *= modifiers.mass
+    const wear = bandFactor(installed.band, economy)
+    factors.grip *= 1 + (modifiers.grip - 1) * wear
+    factors.braking *= 1 + (modifiers.braking - 1) * wear
+    factors.mass *= 1 + (modifiers.mass - 1) * wear
   }
   return factors
 }
@@ -199,7 +214,7 @@ export function computeDerivedStats(
   const compound = effectiveCompound(instance, model, partsById, grip)
   const downforce = effectiveDownforce(instance, model, partsById, aero)
   const physical = physicalConditionFactors(instance, model, partsTaxonomy, economy)
-  const build = buildFactors(instance, partsById)
+  const build = buildFactors(instance, partsById, economy)
   const mintHandling =
     gripToDisplay(
       effectiveGrip(model, compound, grip, aero, physical.grip * build.grip),

@@ -407,7 +407,7 @@ export function evaluateBuild(
     economy.statFormulas.aero,
     effectiveDownforce(car, model, partsById, economy.statFormulas.aero),
     condition,
-    buildFactors(car, partsById),
+    buildFactors(car, partsById, economy),
   )
 
   const laps: Record<string, number | null> = {}

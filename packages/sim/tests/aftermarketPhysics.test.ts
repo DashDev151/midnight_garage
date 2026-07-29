@@ -11,6 +11,7 @@ import {
   type CarModel,
   type CarPartId,
   type CarPartState,
+  type ConditionBand,
   type Grade,
   type Part,
 } from '@midnight-garage/content'
@@ -94,7 +95,7 @@ function buildAt(
 function mechanicalGrip(model: CarModel, car: CarInstance): number {
   const compound = effectiveCompound(car, model, CONTEXT.partsById, ECONOMY.statFormulas.grip)
   const condition = physicalConditionFactors(car, model, PARTS_TAXONOMY, ECONOMY)
-  const build = buildFactors(car, CONTEXT.partsById)
+  const build = buildFactors(car, CONTEXT.partsById, ECONOMY)
   return effectiveGrip(
     model,
     compound,
@@ -105,7 +106,7 @@ function mechanicalGrip(model: CarModel, car: CarInstance): number {
 }
 
 function factorsAt(model: CarModel, grade: Grade): BuildFactors {
-  return buildFactors(buildAt(model, grade), CONTEXT.partsById)
+  return buildFactors(buildAt(model, grade), CONTEXT.partsById, ECONOMY)
 }
 
 const CIVIC = CARS.find((c) => c.id === 'honda-civic-sir2-eg6')!
@@ -204,15 +205,24 @@ describe('the grade ladder reaches the driven targets', () => {
     const suspensionOnly = buildFactors(
       buildAt(GTR, 'stock', { dampers: 'race', springs: 'race', antiRollBars: 'race' }),
       CONTEXT.partsById,
+      ECONOMY,
     )
     expect(suspensionOnly.grip).toBeCloseTo(1.09, 2)
-    const oneDamper = buildFactors(buildAt(GTR, 'stock', { dampers: 'race' }), CONTEXT.partsById)
+    const oneDamper = buildFactors(
+      buildAt(GTR, 'stock', { dampers: 'race' }),
+      CONTEXT.partsById,
+      ECONOMY,
+    )
     expect(oneDamper.grip).toBeCloseTo(1.029, 4)
     expect(factorsAt(GTR, 'race').grip).toBeCloseTo(1.144, 3)
   })
 
   it('the two brake SKUs compound to x1.15 together, not each', () => {
-    const pads = buildFactors(buildAt(GTR, 'stock', { brakePadsDiscs: 'race' }), CONTEXT.partsById)
+    const pads = buildFactors(
+      buildAt(GTR, 'stock', { brakePadsDiscs: 'race' }),
+      CONTEXT.partsById,
+      ECONOMY,
+    )
     expect(pads.braking).toBeCloseTo(1.0724, 4)
     expect(factorsAt(GTR, 'race').braking).toBeCloseTo(1.15, 3)
   })
@@ -232,6 +242,106 @@ describe('the grade ladder reaches the driven targets', () => {
         expect(ladder[i]!.braking, step).toBeGreaterThan(ladder[i - 1]!.braking)
         expect(ladder[i]!.mass, step).toBeLessThan(ladder[i - 1]!.mass)
       }
+    }
+  })
+})
+
+describe("a part's own condition band scales its physical modifiers", () => {
+  /** Same override pattern as `buildAt`, but pins one slot to an explicit
+   * band rather than always `mint`, so these tests can exercise the
+   * interpolation `buildFactors` now performs. */
+  function buildAtBand(
+    model: CarModel,
+    partId: CarPartId,
+    grade: Grade,
+    band: ConditionBand,
+  ): CarInstance {
+    const car = buildAt(model, 'stock', { [partId]: grade } as Partial<Record<CarPartId, Grade>>)
+    const installed = car.parts[partId].installed!
+    return { ...car, parts: { ...car.parts, [partId]: { installed: { ...installed, band } } } }
+  }
+
+  it("a mint build returns factors strictly equal to the raw product of the SKUs' physicalModifiers", () => {
+    const car = buildAt(GTR, 'race')
+    const rawProduct = { ...STOCK_BUILD_FACTORS }
+    for (const partId of ALL_CAR_PART_IDS) {
+      const installed = car.parts[partId].installed
+      if (!installed) continue
+      const modifiers = CONTEXT.partsById[installed.partId]?.physicalModifiers
+      if (!modifiers) continue
+      rawProduct.grip *= modifiers.grip
+      rawProduct.braking *= modifiers.braking
+      rawProduct.mass *= modifiers.mass
+    }
+    const built = buildFactors(car, CONTEXT.partsById, ECONOMY)
+    expect(built.grip).toBe(rawProduct.grip)
+    expect(built.braking).toBe(rawProduct.braking)
+    expect(built.mass).toBe(rawProduct.mass)
+  })
+
+  it('a scrap race coilover delivers less grip than the same part at mint, and more than stock', () => {
+    const mint = buildFactors(
+      buildAtBand(GTR, 'dampers', 'race', 'mint'),
+      CONTEXT.partsById,
+      ECONOMY,
+    )
+    const scrap = buildFactors(
+      buildAtBand(GTR, 'dampers', 'race', 'scrap'),
+      CONTEXT.partsById,
+      ECONOMY,
+    )
+    expect(scrap.grip).toBeLessThan(mint.grip)
+    expect(scrap.grip).toBeGreaterThan(STOCK_BUILD_FACTORS.grip)
+  })
+
+  it('a scrap lightweight exhaust saves less mass than the same part at mint, and never adds mass over stock (the sign-error test)', () => {
+    const mint = buildFactors(
+      buildAtBand(GTR, 'exhaust', 'race', 'mint'),
+      CONTEXT.partsById,
+      ECONOMY,
+    )
+    const scrap = buildFactors(
+      buildAtBand(GTR, 'exhaust', 'race', 'scrap'),
+      CONTEXT.partsById,
+      ECONOMY,
+    )
+    expect(scrap.mass).toBeLessThan(STOCK_BUILD_FACTORS.mass)
+    expect(scrap.mass).toBeGreaterThan(mint.mass)
+  })
+
+  it('the five-band shape is pinned for one grip part and one mass part', () => {
+    const BANDS: ConditionBand[] = ['mint', 'fine', 'worn', 'poor', 'scrap']
+    const gripInstalled = buildAtBand(GTR, 'dampers', 'race', 'mint').parts.dampers.installed!
+    const massInstalled = buildAtBand(GTR, 'exhaust', 'race', 'mint').parts.exhaust.installed!
+    const gripModifier = CONTEXT.partsById[gripInstalled.partId]!.physicalModifiers.grip
+    const massModifier = CONTEXT.partsById[massInstalled.partId]!.physicalModifiers.mass
+    for (const band of BANDS) {
+      const wear = ECONOMY.bands.bandFactors[band]
+      const expectedGrip = 1 + (gripModifier - 1) * wear
+      const expectedMass = 1 + (massModifier - 1) * wear
+      const grip = buildFactors(
+        buildAtBand(GTR, 'dampers', 'race', band),
+        CONTEXT.partsById,
+        ECONOMY,
+      ).grip
+      const mass = buildFactors(
+        buildAtBand(GTR, 'exhaust', 'race', band),
+        CONTEXT.partsById,
+        ECONOMY,
+      ).mass
+      expect(grip, band).toBeCloseTo(expectedGrip, 9)
+      expect(mass, band).toBeCloseTo(expectedMass, 9)
+    }
+  })
+
+  it('the delivered grip advantage is non-increasing as the band worsens, across all five bands', () => {
+    const bandsBestToWorst: ConditionBand[] = ['mint', 'fine', 'worn', 'poor', 'scrap']
+    const grips = bandsBestToWorst.map(
+      (band) =>
+        buildFactors(buildAtBand(GTR, 'dampers', 'race', band), CONTEXT.partsById, ECONOMY).grip,
+    )
+    for (let i = 1; i < grips.length; i++) {
+      expect(grips[i], bandsBestToWorst[i]).toBeLessThanOrEqual(grips[i - 1]!)
     }
   })
 })
