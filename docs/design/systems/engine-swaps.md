@@ -1,6 +1,7 @@
 # Engine swaps
 
-**Status: DESIGNED, not scheduled. Drafted 2026-07-28.**
+**Status: DESIGNED, NOT IMPLEMENTED, not scheduled. Nothing in this document exists
+in the game.** Drafted 2026-07-28.
 
 **This is frozen v1.0 scope, not a post-launch idea.** GDD 5.3 calls engine swaps
 "the marquee deep mechanic". The roadmap slotted them into Sprint 17 alongside a
@@ -155,7 +156,7 @@ makes the canonical swaps naturally the cheap ones, because they are canonical
 
 ## 6. 公認: the JDM friction nothing else has
 
-A swapped car in Japan needs **公認 (kōnin)** — official re-approval and
+A swapped car in Japan needs **公認 (kōnin)**: official re-approval and
 re-registration of the modification. Our own period research is full of it:
 `L28公認`, `3000cc公認`, `エンジン乗せ換え公認車検` appear throughout the archived
 classic-dealer listings in `docs/design/reference/period-scans/`.

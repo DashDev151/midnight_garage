@@ -298,6 +298,31 @@ pass."
   still lists `fr` or `cd` as estimated where the value that landed is a panel reading, and the
   spec book's own `est` list disagrees with ours on seven cars. Copy it from the book in whatever
   pass decides the first one.
+- [ ] **The style stat has no car-level input, so every stock car in the game scores
+  identically on style** (`docs/design/systems/tuning-system.md` section 11). `styleCap` is 20,
+  which means roughly 80 per cent of the scale exists only for bolt-on parts and the car itself
+  contributes nothing to how it looks: a Countach and a Wagon R start level. Style is the one
+  stat that design deliberately keeps as a purely additive taste judgement rather than physics,
+  so a car-level base is the natural fix and it is the only thing that makes the upper reaches
+  of the scale mean anything. Section 11 flags it alongside the schema simplification
+  (`StatModifierSchema` dropping to `style` and `authenticity` only); step 8 of that doc's build
+  order is where it is meant to land.
+- [ ] **There is still no aero grade above `race`, and the headroom for it was opened
+  deliberately** (`docs/design/systems/tuning-system.md` section 12, which records the gap;
+  the acceptance target for the missing rung is in `docs/design/car-performance/README.md` 7g).
+  The model has room above the top shipped grade and the part was simply never authored, so the
+  top of the downforce ladder is unreachable with shipped content. It matters because
+  mechanical grip tops out around 1.25 and the rest of the range is reached through aero: the
+  missing rung is the missing top end of the whole grip scale.
+- [ ] **The per-car aero ceiling does not exist, so any car can take any aero grade**
+  (`docs/design/systems/tuning-system.md` section 12). Aero stays ONE package slot rather than
+  splitting into wing, splitter and diffuser, because the physics carries a single
+  `downforceCoeff` and cannot model front-against-rear balance, so that half is settled. The
+  ceiling is the open half: an FD, a Supra or a Countach has real aerodynamic potential and a
+  genuine aftermarket behind it, a Wagon R does not, and bolting a GT wing to one should look
+  silly and do very little. One number per car expresses it, and it is what stops every car in
+  the game eventually becoming a GT3 car. It is step 8 of that doc's build order, so check
+  whether the tuning sprints already cover it before scoping it separately.
 - [ ] **`chassis` sits in the `drivetrain` component group (pre-existing taxonomy), surfaced
   by Sprint 93's repair-ceiling caption.** A chassis repair now reads "The Transmission bench
   reaches mint", which is nonsensical (you weld/straighten a chassis, you do not press it on a
@@ -373,7 +398,7 @@ pass."
   the dodgy path is not inefficient, it is simply free.
 
   Two routes, and the second is recommended (full reasoning in
-  `docs/design/systems/tuning-system.md` section 5.5):
+  `docs/design/systems/tuning-system.md` section 8):
   1. **Unlocks can be lost.** Coherent, but confiscating a tool the player paid for reads as
      arbitrary.
   2. **Reputation gates the FLOW of opportunity rather than the door.** A well-regarded garage
@@ -464,11 +489,98 @@ pass."
 
 ## Planned systems (designed, not yet scheduled)
 
-- [ ] **The scrapyard (解体屋), maintainer-proposed 2026-07-28. Captured in full at
-  `docs/design/systems/scrapyard.md`; read that before scoping.** A new venue selling used
-  parts and half-stripped wrecks, buying scrap and poor parts for weight money, and taking
-  the shell so `scrapShell` becomes a transaction with a counterparty rather than an
-  abstract payout. Its point is an outlet where luck and digging beat paying full retail.
+- [ ] **The tuning system is DESIGNED, REVIEWED and NOT IMPLEMENTED, and it is the ACTIVE
+  ARC: sprints are being written for it separately, so it is not a parked idea. The design
+  of record is `docs/design/systems/tuning-system.md`.** It is the whole design for what an
+  aftermarket part does, how a build holds together and what that is worth: proportional
+  power in place of the flat additive ladder, an engine-response character derived from
+  induction and specific output, part roles (gain, enabler, trade-off) so the cheapest gain
+  stops always winning, per-subsystem support ratios whose weakest link is the headline, and
+  cohesion reaching value by changing WHO BIDS rather than by a multiplier. It matters
+  because the system it replaces is solved: there is one correct build order, it never
+  varies, and the same +16 PS ECU applies to a naturally aspirated Beat and a twin-turbo
+  Supra.
+
+  Blocking decisions, all recorded in the doc. Constraint A (section 17): the
+  forced-induction return curve must not ship before the support ratios, because increasing
+  returns on its own is a new dominant strategy. Constraint B (sections 7a and 17 step 6):
+  the buyer-selection price spread is an assumption, not a measurement, and it must be
+  measured before anything is built on it; if it fails, stop and report. And section 7b's
+  reputation half is descoped outright because reputation is a ratchet, which is the entry
+  under "Open balance/economy questions" above: until that lands, the tuning system's
+  reputation effect is knowingly inert and the sprint should say so rather than inflate
+  numbers to compensate. Every number in the doc is a proposal and unapproved, directive 22.
+
+- [ ] **Machining, the third upgrade avenue, is DESIGNED and deliberately OUT OF SCOPE of
+  the system that designed it: `docs/design/systems/tuning-system.md` section 4.** Modifying
+  a part you already own so it exceeds its own original spec, which is what real tuning
+  largely is: boring and stroking for capacity, porting and polishing for flow, skimming for
+  compression, balancing and blueprinting, lightening a flywheel. None of those is a part you
+  buy. It matters because repair can never beat stock and fitting aftermarket destroys
+  authenticity, so machining is the only route that makes a car better while keeping it
+  original, which finally gives the numbers-matching build a performance path rather than a
+  sentimental one. It is also the purpose tool tier 3 lacks: `repairBandCeilingByTier` is
+  `{1: fine, 2: mint, 3: mint}`, so tier 3 today buys nothing at all over tier 2.
+
+  It is an acquisition path, not a new axis (section 4b): one SKU in one slot, no third
+  property on a part, no second condition model, no new job system, and deterministic by
+  design (you pay, you wait, you get the part; machining risk is the first thing a future
+  reader will try to invent and the game has no random catastrophic loss anywhere). It is the
+  player's own facility, unlocked in the late-middle game, and explicitly NOT
+  `machineShopAssist`, which is basic tool hire and priced as such. The constraint on the
+  tuning sprints is negative: they must not foreclose it, so capacity increases must not be
+  expressed as aftermarket SKUs pretending to be replacements, and no upgrade path may assume
+  authenticity is always destroyed. Blocking decision: **where machining physically happens**,
+  which is the workshop-topology entry below and wants at least an outline answer before the
+  systems arc finishes.
+
+- [ ] **Course-character build variety is deferred out of the tuning system, and it is job
+  and copy design rather than physics** (`docs/design/systems/tuning-system.md`, the deferral
+  list at the head of the doc and section 13). Clients who want a Wangan car, a touge beast, a
+  track toy or a reliable runabout, so a build is aimed at a job instead of maximised in the
+  abstract. It is what gives the trade-off parts of section 3a their point: a client wanting a
+  reliable runabout does not want race cams in it.
+
+  **Not merely flavour.** Section 13 records that suspension's value is course-dependent and
+  that until this work exists suspension will read as the boring purchase no matter what its
+  numbers are, "and no amount of retuning its numbers fixes that. That is a reason to schedule
+  the job work, not to inflate suspension." So this is what makes an entire upgrade line feel
+  worth buying, and it is the honest alternative to retuning that line.
+
+- [ ] **Engine swaps are FROZEN v1.0 SCOPE, not a post-launch idea, and NOTHING OF THEM
+  EXISTS IN CODE. GDD 5.3 calls them "the marquee deep mechanic" and GDD 5.4 pairs them
+  with a dyno session; `dyno` appears exactly once in `packages/`, as a word inside a
+  mission string. Designed but not implemented; the design of record is
+  `docs/design/systems/engine-swaps.md`.** Any engine into any platform if you source a
+  mounting kit, tanking authenticity and unlocking a power ceiling, with the GDD's own
+  tension as the point: restore the numbers-matching engine, or drop in the big turbo lump.
+  Its value beyond that is the 公認 (kōnin) re-approval step, which is friction that is not
+  money and cannot be reskinned to any other setting, so it is a direct answer to the
+  standing "the game would play identically with a European roster" concern further down
+  this file. Being frozen v1.0 scope rather than a nice-to-have changes its priority
+  relative to everything else in this section.
+
+  The blocker is a schema question before it is a design question: **an engine is not an
+  object in this codebase.** It is a handful of optional scalars on the immutable
+  `CarModel.spec` plus a tag, the physics reads only `stockPowerPs`, and there is nowhere to
+  record a swap at all, since engine identity lives on shared content while `CarInstance`
+  carries only parts and condition. Two cars of the same model cannot currently have
+  different engines. Riding with it: aspiration is stored twice and the two are unguarded
+  (`hasForcedInduction` reads the `Turbo`/`Supercharged` tags, never `spec.aspiration`), and
+  a swap changes aspiration, so that duplicate has to be collapsed rather than worked
+  around. Step 1 of the doc's build order (author the engines as content, point
+  `spec.engineCode` at them) is zero behaviour change, independently shippable, and worth
+  doing whether or not swaps are ever built, because it also gives the tuning system the
+  per-engine response character it needs. Four open questions remain: donor car or engines
+  bought outright, whether the original lump can be kept and refitted, how many engines get
+  authored for v1.0, and whether a swapped engine arrives with a condition of its own.
+
+- [ ] **The scrapyard (解体屋) is DESIGNED IN FULL and NOT IMPLEMENTED. The design of
+  record is `docs/design/systems/scrapyard.md`; read it before scoping and do not
+  re-design from scratch.** A new venue selling used parts and half-stripped wrecks,
+  buying scrap and poor parts for weight money, and taking the shell so `scrapShell`
+  becomes a transaction with a counterparty rather than an abstract payout. Its point is
+  an outlet where luck and digging beat paying full retail.
 
   Three reasons it earns its place, from the doc: it gives the parts economy a **supply
   side** (today the only way to obtain a part is to buy it new); it gives the teardown loop
@@ -482,8 +594,47 @@ pass."
   is **not a new system**: the inspection game is already a routing problem under a time
   budget, and a yard visit is the same mechanic asking "which of these is worth taking
   home" instead of "what is wrong with this car". `apparentBandByPartId` already exists to
-  express looks-versus-truth. Five open questions are listed at the doc's end; none is
-  answered.
+  express looks-versus-truth.
+
+  The doc's section 9 carries a three-phase build order and phases 1 and 2 are separately
+  shippable: phase 1 is the venue with rotating loose parts and the scrap/shell buy-back
+  (small, and it closes the supply-side and warehouse-clutter gaps on its own), phase 2 is
+  wrecks and the damage archetypes, phase 3 is the timed routing puzzle and only if phase 2
+  proves too easy. Blocking decisions, all five open at the doc's end and none answered:
+  whether the yard is a gated venue or always available (the doc's read is always
+  available, since it is where a poor player shops); whether the yard buys whole cars,
+  which would put a price floor under the entire market; how a yard part interacts with the
+  provenance rework already owed above; whether a misjudged wreck can be sold back; and
+  whether reputation reaches the yard at all. Every number in it is an unapproved economy
+  lever, directive 22, and the one hard arithmetic constraint is that the yard's buy-sell
+  spread stays positive or the player loops parts between yard and shop for free.
+
+- [ ] **Workshop topology and the physical UI is a PROBLEM STATEMENT, not a design, and
+  nothing in it is decided: `docs/design/systems/workshop-topology.md`.** The game has views
+  of a car but no model of a place. The maintainer's questions, raised 2026-07-29: what
+  should it look like to remove an engine, what should it feel like to bore a block, where
+  does repairing actually happen, what are the physical steps of taking a part to a
+  workstation and reconditioning it, and where is the workstation. The shipped workshop views
+  answer "what is wrong with this vehicle", which is a different question from "where am I
+  standing and what can I do here".
+
+  **Urgent rather than cosmetic, because four separately designed features all need the same
+  missing thing.** Machining, the dyno, engine swaps and the scrapyard each invent a physical
+  act with nowhere to perform it. Building any of them without a shared topology means each
+  grows its own screen for physically similar work, which is exactly the failure directive 16
+  exists to prevent and the one that caused the Sprint 08 service-jobs rework.
+
+  It also carries **the maintainer's verdict that the current car diagram is bad and needs
+  redesigning.** The document deliberately does not diagnose it, on the grounds that the
+  person who has looked at it is the one who should say what is wrong with it.
+
+  **Sequencing: this arc runs AFTER the systems arc, by the maintainer's steer**, since the
+  systems decide which acts exist and designing screens for mechanics that then change shape
+  is waste. **But two things want deciding before the systems arc finishes, because they are
+  cheap now and expensive later:** where machining physically happens, since
+  `tuning-system.md` 4c hangs tool tier 3 on it, and whether parts have a location, because
+  that is new state and adding it later means a schema change everywhere that touches
+  inventory.
 
 - [ ] **Selling parts has no friction: it is instant, free and unlimited (maintainer ruling
   2026-07-28: LOW priority, and a middle ground rather than heavy friction).** `resolveSellPart`
@@ -552,13 +703,35 @@ pass."
   it; how do locked venues/buildings read before unlock. The Sprint 95 tutorial rebuild
   deliberately teaches "the tabs are the rest of town", which a map would later make literal.
 
-- [ ] **"Drive My Car" test-drive mode** (`docs/design/parked/drive-mode-spec.md` v2, 2026-07-12).
-  Drive a finished build before flipping it. **Post-launch, by the maintainer's standing
-  2026-07-08 sign-off** (optional, zero gameplay weight - which is what keeps it inside the
-  no-reflex-input hard rule rather than an exception to it; do not flag it as a rules violation).
-  Slip-angle physics in `packages/sim`, Mode 7 chase cam in Pixi; a technical review found the
-  architecture sound. Binding constraint before it ever enters a sprint, from the spec itself:
-  **stat-linked, not twitch-linked.** Roadmap: Phase 7, post-launch.
+- [ ] **"Drive My Car" test-drive mode is DESIGNED and NOT IMPLEMENTED. The current design
+  of record is `docs/design/systems/drive-mode-plan.md`; the older parked spec it builds on
+  is `docs/design/parked/drive-mode-spec.md` v2, whose blocked items the plan supersedes.**
+  Drive a finished build before flipping it: slip-angle physics with a friction circle in
+  `packages/sim`, a Mode 7 chase cam in Pixi, reading `CarBlock` rather than carrying a
+  second set of car parameters. It matters more cheaply than it used to, because the
+  expensive half was paid for by other work: the performance model landed LOCKED in Sprints
+  127 to 131, so a clean lap landing within a few per cent of the lap time the economy sim
+  already shows the player is a real definition of done rather than an unfalsifiable "does
+  it feel right". **Post-launch, by the maintainer's standing 2026-07-08 sign-off**
+  (optional, zero gameplay weight - which is what keeps it inside the no-reflex-input hard
+  rule rather than an exception to it; do not flag it as a rules violation), and the plan
+  hardens that into a rule: the moment a lap time affects money, reputation or progression
+  it becomes a violation, so a lap time may be displayed and remembered but never spent.
+  Binding constraint before it ever enters a sprint, from the spec itself: **stat-linked,
+  not twitch-linked**, which the plan answers with assists that scale with the build rather
+  than with weaker physics. Roadmap: Phase 7, post-launch, against a maintainer ask of
+  2026-07-28 to start properly working on the driving aspect now; that timing is unresolved.
+
+  **The largest unresolved cost is a rear-view car sprite, and it is an art decision that
+  must be settled before a sprint opens rather than during.** The art bible locks two sprite
+  angle classes per car and no more (a 96x48 side master and a front-facing oblique scene
+  sprite) and records that a third angle class was considered and rejected on cost. A chase
+  camera needs a third. The plan's section 5 lists the options without choosing: author a
+  third class for a small subset of cars only, use a generic silhouette, or place the camera
+  somewhere that reuses an existing angle. The no-AI-assets law is absolute, so this is
+  hand-made pixel art or nothing. Smaller open questions in the plan's section 7: which
+  course ships first (its instinct is Misaki, where the acceptance test is sharpest), and
+  whether a personal best is stored, which edges toward the mode meaning something.
 
 - [ ] **Skill / XP progression** - learn-by-doing growth for staff *and* the player character; skill
   *optimizes* (efficiency/quality), never *unlocks* tiers (tools + rep do that). Staff skill lands

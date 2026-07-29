@@ -1,6 +1,7 @@
 # The scrapyard (解体屋)
 
-**Status: DESIGNED, not scheduled. Drafted 2026-07-28.**
+**Status: DESIGNED, NOT IMPLEMENTED, not scheduled. Nothing in this document exists
+in the game.** Drafted 2026-07-28.
 
 Supersedes the idea capture of the same date. Every number is a proposal and
 unapproved; every mechanic below is designed against machinery that already ships.

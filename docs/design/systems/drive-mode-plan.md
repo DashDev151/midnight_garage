@@ -1,6 +1,7 @@
 # Drive mode: the plan to build it
 
-**Status: PLAN, not scheduled. Drafted 2026-07-28.**
+**Status: DESIGNED, NOT IMPLEMENTED, not scheduled. Nothing in this document exists
+in the game.** Drafted 2026-07-28.
 
 **This does not replace `docs/design/parked/drive-mode-spec.md`.** That spec is
 sound, technically reviewed, and its physics and rendering design stand. This

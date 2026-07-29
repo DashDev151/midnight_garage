@@ -1,10 +1,24 @@
-# Midnight Garage - "Drive My Car" - Full Implementation Spec (v2)
+# Ran When Parked - "Drive My Car" - Full Implementation Spec (v2)
 
-**Feature:** an ancillary test-drive mode for *Midnight Garage* (90s-Japan car-workshop economy sim). After upgrading a car in the garage, the player drives it to *feel* their build before flipping it. Fun reward loop, not a standalone racer.
+**Status: DESIGNED, NOT IMPLEMENTED, not scheduled. Nothing in this document exists in the game.** **FOUR SECTIONS OF THIS DOCUMENT ARE SUPERSEDED AND WILL MISLEAD YOU. Read
+`docs/design/systems/drive-mode-plan.md` first; it resolves all four.**
+
+- **Section 4's `CarSpec`** is a second car-parameter contract, which section 4.1 of
+  this same document forbids. The shipped contract is `carBlock()` returning
+  `CarBlock`. Drive mode consumes that and invents only the four yaw and steering
+  parameters 4.1 lists.
+- **Section 10's anti-aliasing stack** (mipmaps, trilinear, distance blur) is directly
+  against the art bible's 640x360, integer-only, nearest-neighbour lock. The plan
+  resolves it by rendering as a period console did, where the shimmer is the aesthetic.
+- **Section 7 and phase P2's torque curves, gears and RPM** have no data behind them.
+  `formulas.md` section 2: those fields are "Display data; the physics does not read
+  them". The first build has none of it.
+- **Section 4.1's own instruction** to add the lap-time acceptance test to section 12
+  was never carried out. That test is the definition of done for the physics. Parked against the driving-minigame entry in `IDEAS.md` per the maintainer's standing 2026-07-08 sign-off (post-launch, optional, zero gameplay weight). Filed 2026-07-12 after a technical review found the architecture sound; see that review's notes on the "stat-linked, not twitch-linked" constraint before this ever enters a sprint.
+
+**Feature:** an ancillary test-drive mode (90s-Japan car-workshop economy sim). After upgrading a car in the garage, the player drives it to *feel* their build before flipping it. Fun reward loop, not a standalone racer.
 
 **This version (v2)** folds in everything decided during design: the concrete tech stack (verified against the repo), the pseudo-3D rendering path (Mode 7), the anti-aliasing plan, and the map authoring pipeline. It supersedes v1.
-
-Status: **not scheduled, not implemented.** Parked against the driving-minigame entry in `IDEAS.md` per the maintainer's standing 2026-07-08 sign-off (post-launch, optional, zero gameplay weight). Filed 2026-07-12 after a technical review found the architecture sound; see that review's notes on the "stat-linked, not twitch-linked" constraint before this ever enters a sprint.
 
 ---
 

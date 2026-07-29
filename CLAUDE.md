@@ -49,10 +49,12 @@ All development happens in sprints, driven by the roadmap. Sprint docs live in `
 (synthwave pixel art, JDM car culture, hunt-build-sell loop). Solo-dev passion project, ~13-month
 roadmap to a free itch.io launch.
 
-**Current state:** Sprints 00-119 implemented and committed (Sprint 100 was superseded unbuilt
-by Sprint 110's live-room promotion; its doc records that). The workshop rework
-(`docs/design/systems/workshop-rework.md`, FINAL) landed phase 1 as Sprints 118-119 and its views
-as Sprint 120; Sprint 121's flourishes are designed, not built.
+**Current state:** Sprints 00-133 implemented and committed (Sprint 100 was superseded unbuilt
+by Sprint 110's live-room promotion; its doc records that). Sprints 132-133 rebuilt the economy on
+period-researched prices: canonical car and parts values, `tier`/`rarity`/`origin` split into three
+axes, auction houses drawing a tier mix rather than one rarity each, and the teardown economics
+re-ordered so repair beats stripping on every car. The tuning overhaul is DESIGNED and NOT BUILT
+(`docs/design/systems/tuning-system.md`, sprints planned in `docs/sprints/tuning-arc.md`).
 
 The **car performance model is LOCKED and validated** to about 2% on blind predictions against
 the maintainer's own driven laps. `docs/design/car-performance/` is the whole of it and its
