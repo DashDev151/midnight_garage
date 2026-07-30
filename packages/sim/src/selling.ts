@@ -37,6 +37,11 @@ import { channelBuyerTaste, valuateCarForBuyer, valuateCarForBuyerViaChannel } f
  */
 const TRADE_NETWORK_BUYER_ID = 'trade-network'
 
+/** One listing channel's own content shape - the same indexed-type idiom
+ * `sellingChannelLabels.ts` (game) already uses, since `SellingChannelSchema`
+ * itself is not exported. */
+type SellingChannelConfig = EconomyConfig['sellingChannels'][SellingChannelId]
+
 export interface SaleOffer {
   buyerId: string
   priceYen: number
@@ -328,18 +333,25 @@ function clampedChance(chance: number): number {
 }
 
 /**
- * shopFront/freeAdsPaper: the same weighted persona pick `sellViaWalkIn`
- * uses, priced through the channel's own taste band (`channelBuyerTaste` -
- * clamped at `tasteCeiling` for these two channels, never a mismatch gate).
- * The wrong crowd for a channel simply never pays above its ceiling; there is
- * no separate no-show roll.
+ * A persona-priced channel draw: the same weighted persona pick
+ * `sellViaWalkIn` uses, priced through the channel's own taste band
+ * (`channelBuyerTaste` - clamped at `tasteCeiling`). When `matchedOnly` is
+ * set, the picked persona's channel taste must additionally clear `>= 1.0`
+ * (the car meets that buyer's visible want) before anything is priced - a
+ * mismatch draws no offer at all, the ad (or the meet) simply drew nobody
+ * today, never a hidden penalty. Without it, the wrong crowd for a channel
+ * simply never pays above its ceiling; there is no separate no-show roll.
+ * Covers shopFront/freeAdsPaper (`matchedOnly` unset) and
+ * tunerMagazine/weekendMeet (`matchedOnly` true) with one function, driven
+ * entirely by the channel's own content flags.
  */
-function drawClampedChannelOffer(
+function drawPersonaChannelOffer(
   car: CarInstance,
   model: CarModel,
   context: SimContext,
   heatPercent: number,
   tasteCeiling: number,
+  matchedOnly: boolean,
   rng: Rng,
 ): SaleOffer | undefined {
   const picked = pickWeightedCandidate(
@@ -354,59 +366,18 @@ function drawClampedChannelOffer(
     rng,
   )
   if (!picked) return undefined
-  const value = valuateCarForBuyerViaChannel(
-    picked.buyer,
-    model,
-    car,
-    context.partsById,
-    context.partsTaxonomy,
-    context.partsTaxonomyById,
-    heatPercent,
-    context.economy,
-    tasteCeiling,
-  )
-  const [min, max] = context.economy.selling.offerSpread
-  const priceYen = Math.round(value * (min + rng.next() * (max - min)))
-  return { buyerId: picked.buyer.id, priceYen }
-}
-
-/**
- * tunerMagazine/weekendMeet: draw the persona first (the same weighted
- * pick), then check MATCHED - the picked persona's channel taste (extended
- * up to `tasteCeiling`) is `>= 1.0`, i.e. the car meets that buyer's visible
- * want - before pricing anything. A mismatch draws no offer at all: the ad
- * (or the meet) simply drew nobody today, never a hidden penalty.
- */
-function drawMatchedChannelOffer(
-  car: CarInstance,
-  model: CarModel,
-  context: SimContext,
-  heatPercent: number,
-  tasteCeiling: number,
-  rng: Rng,
-): SaleOffer | undefined {
-  const picked = pickWeightedCandidate(
-    car,
-    model,
-    context.buyers,
-    context.partsById,
-    context.partsTaxonomy,
-    context.partsTaxonomyById,
-    heatPercent,
-    context.economy,
-    rng,
-  )
-  if (!picked) return undefined
-  const taste = channelBuyerTaste(
-    picked.buyer,
-    model,
-    car,
-    context.partsById,
-    context.partsTaxonomy,
-    context.economy,
-    tasteCeiling,
-  )
-  if (taste < 1) return undefined
+  if (matchedOnly) {
+    const taste = channelBuyerTaste(
+      picked.buyer,
+      model,
+      car,
+      context.partsById,
+      context.partsTaxonomy,
+      context.economy,
+      tasteCeiling,
+    )
+    if (taste < 1) return undefined
+  }
 
   const value = valuateCarForBuyerViaChannel(
     picked.buyer,
@@ -427,7 +398,10 @@ function drawMatchedChannelOffer(
 /**
  * tradeNetwork: no persona, no taste roll - the offer is priceBand-uniform
  * around plain `marketValueYen`, the buyer presented as the trade network
- * itself (`TRADE_NETWORK_BUYER_ID`).
+ * itself (`TRADE_NETWORK_BUYER_ID`). Driven by the channel carrying a
+ * `priceBand` rather than a `tasteCeiling` - the one genuinely id-specific
+ * behaviour left in the pricing shape, expressed as a flag rather than a
+ * special case.
  */
 function drawTradeNetworkOffer(
   car: CarInstance,
@@ -459,12 +433,63 @@ interface ChannelDraw {
 }
 
 /**
- * One listed car's channel-aware offer draw for today - dispatches on the
- * listing's own `channelId` (the five listing channels). Each channel's own
- * cadence/taste/pricing lives in its own small function above; this is only
- * the switch between them, plus each channel's own offer-chance roll
- * (`weekendMeet` has none - it is a guaranteed single draw instead, gated on
- * `weekendMeetPending`).
+ * A single channel's own draw: dispatches on its content flags rather than
+ * its id, so a NEW channel needs only a `sellingChannels` entry with the
+ * right combination of existing flags - never a code change here. `priceBand`
+ * selects the trade-network-shaped, no-persona pricing; anything else prices
+ * through the weighted-persona path, additionally gated on `matchedOnly`
+ * when that flag is set. `SellingChannelSchema`'s own refine guarantees a
+ * `tasteCeiling` accompanies every non-`priceBand` channel.
+ */
+function drawFlaggedChannelOffer(
+  car: CarInstance,
+  model: CarModel,
+  context: SimContext,
+  heatPercent: number,
+  channel: SellingChannelConfig,
+  rng: Rng,
+): SaleOffer | undefined {
+  if (channel.priceBand) {
+    return drawTradeNetworkOffer(car, model, context, heatPercent, channel.priceBand, rng)
+  }
+  return drawPersonaChannelOffer(
+    car,
+    model,
+    context,
+    heatPercent,
+    channel.tasteCeiling!,
+    channel.matchedOnly === true,
+    rng,
+  )
+}
+
+/**
+ * Today's cadence roll for a channel priced against `baseChance`, driven by
+ * whichever cadence shape the channel carries (`SellingChannelSchema`'s own
+ * refine guarantees exactly one): `offerChanceFactor` scales uniformly,
+ * `offerChanceFactorByRarity` scales per this model's `CarRarity`.
+ * `oneDrawNextEndDay` channels never reach this function - they are the
+ * guaranteed single draw handled directly in `drawOfferForChannel`.
+ */
+function cadenceChanceFor(
+  channel: SellingChannelConfig,
+  model: CarModel,
+  baseChance: number,
+): number {
+  if (channel.offerChanceFactorByRarity) {
+    return clampedChance(baseChance * channel.offerChanceFactorByRarity[model.rarity])
+  }
+  return clampedChance(baseChance * channel.offerChanceFactor!)
+}
+
+/**
+ * One listed car's channel-aware offer draw for today - reads the listing's
+ * own `channelId` only to look up its content (`context.economy.
+ * sellingChannels`), never to branch on it. `oneDrawNextEndDay` channels
+ * (`weekendMeet`) get their guaranteed single draw, gated on
+ * `weekendMeetPending`, in place of a daily cadence roll; every other
+ * channel rolls today's chance (`cadenceChanceFor`) and, on a hit, prices
+ * through `drawFlaggedChannelOffer`.
  */
 function drawOfferForChannel(
   car: CarInstance,
@@ -475,72 +500,18 @@ function drawOfferForChannel(
   rng: Rng,
 ): ChannelDraw {
   const channel = context.economy.sellingChannels[entry.channelId]
-  const baseChance = offerChanceFor(model, heatPercent, context.economy)
 
-  switch (entry.channelId) {
-    case 'shopFront': {
-      if (rng.next() >= clampedChance(baseChance * channel.offerChanceFactor!)) return {}
-      return {
-        offer: drawClampedChannelOffer(
-          car,
-          model,
-          context,
-          heatPercent,
-          channel.tasteCeiling!,
-          rng,
-        ),
-      }
+  if (channel.oneDrawNextEndDay) {
+    if (!entry.weekendMeetPending) return {}
+    return {
+      offer: drawFlaggedChannelOffer(car, model, context, heatPercent, channel, rng),
+      weekendMeetPending: false,
     }
-    case 'freeAdsPaper': {
-      const factor = channel.offerChanceFactorByRarity![model.rarity]
-      if (rng.next() >= clampedChance(baseChance * factor)) return {}
-      return {
-        offer: drawClampedChannelOffer(
-          car,
-          model,
-          context,
-          heatPercent,
-          channel.tasteCeiling!,
-          rng,
-        ),
-      }
-    }
-    case 'tunerMagazine': {
-      if (rng.next() >= clampedChance(baseChance * channel.offerChanceFactor!)) return {}
-      return {
-        offer: drawMatchedChannelOffer(
-          car,
-          model,
-          context,
-          heatPercent,
-          channel.tasteCeiling!,
-          rng,
-        ),
-      }
-    }
-    case 'tradeNetwork': {
-      if (rng.next() >= clampedChance(baseChance * channel.offerChanceFactor!)) return {}
-      return {
-        offer: drawTradeNetworkOffer(car, model, context, heatPercent, channel.priceBand!, rng),
-      }
-    }
-    case 'weekendMeet': {
-      if (!entry.weekendMeetPending) return {}
-      return {
-        offer: drawMatchedChannelOffer(
-          car,
-          model,
-          context,
-          heatPercent,
-          channel.tasteCeiling!,
-          rng,
-        ),
-        weekendMeetPending: false,
-      }
-    }
-    default:
-      return {}
   }
+
+  const baseChance = offerChanceFor(model, heatPercent, context.economy)
+  if (rng.next() >= cadenceChanceFor(channel, model, baseChance)) return {}
+  return { offer: drawFlaggedChannelOffer(car, model, context, heatPercent, channel, rng) }
 }
 
 /**

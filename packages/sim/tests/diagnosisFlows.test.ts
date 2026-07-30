@@ -136,7 +136,7 @@ function sellAllInventory(state: GameState): GameState {
  * A ROUGH (uniformly `worn`) 180SX carrying `non-starter` - a realistic
  * "used, not immaculate, but ordinary" used car, not a showroom-mint one
  * (donor-vs-repair economics collapse to a single, always-true "never strip
- * a mostly-mint car" answer otherwise, per `computeDonorCoherence`'s own
+ * a mostly-mint car" answer otherwise, per `computeDonorBalanceProbe`'s own
  * established law - proven directly against this exact fixture shape while
  * building this test). For `seized-engine`, the block is additionally pushed
  * to `scrap` - a worst-case realisation of THIS specific instance's own
@@ -365,7 +365,7 @@ describe('sleeper flow: yard-tested to resolution, bought at sheet, fixed, flipp
 
   /**
    * "Realised margin ≈ the coherence table's predicted edge for that
-   * cause": the closed-form edge (`coherence.ts`'s
+   * cause": the closed-form edge (`balanceProbes.ts`'s
    * `SymptomCauseEdgeRow.edgeYen`) is `causeValueYen - sheetValueYen` on the
    * car's UNREPAIRED state - the mispricing the sheet's own fear premium
    * bakes in before any money is spent fixing anything. The simulated

@@ -29,7 +29,7 @@ import {
   hasForcedInduction,
   planGroupRepair,
 } from '../src/bands'
-import { computeRosterCoherence } from '../src/coherence'
+import { computeRosterBalanceProbe } from '../src/balanceProbes'
 import { buildSimContext } from '../src/context'
 import {
   installedPartsValueYen,
@@ -1001,7 +1001,7 @@ describe('the foundation law kills the incoherent-build profit (Sprint 60, law 5
   })
 
   it('is inert on the coherence probe car (all-scrap STOCK, zero premium) - the coherence table is arithmetically unchanged (probe e)', () => {
-    // computeRosterCoherence builds an all-scrap car of STOCK parts (no
+    // computeRosterBalanceProbe builds an all-scrap car of STOCK parts (no
     // aftermarket premium). foundationFactor multiplies a zero premium to
     // zero either way, so Law 5 cannot move any coherence figure - asserted
     // directly here so a future factor edit can never silently shift the
@@ -1043,7 +1043,7 @@ describe('the sensible-play probes (Sprint 66, economy-bible law 1 as amended)',
     // so the set cannot grow silently: it grows when a model's book value
     // drops far enough below what its fitment class's parts basket is priced
     // for.
-    const modelsWithNoBenchWork = computeRosterCoherence(CARS, CONTEXT)
+    const modelsWithNoBenchWork = computeRosterBalanceProbe(CARS, CONTEXT)
       .filter((row) => row.repairLaborSlots === 0)
       .map((row) => row.modelId)
       .sort()
@@ -1057,7 +1057,7 @@ describe('the sensible-play probes (Sprint 66, economy-bible law 1 as amended)',
     // City nets Y3,202, because the market barely discounts a worn kei so you
     // pay near clean value for one. The same car on the sensible play nets
     // Y34,309. The economy is sound; measuring a mint kei was the mistake.
-    for (const row of computeRosterCoherence(CARS, CONTEXT)) {
+    for (const row of computeRosterBalanceProbe(CARS, CONTEXT)) {
       expect(
         row.sensibleFlipMarginFraction,
         `${row.modelId}: buying rough, repairing to ${row.fitmentClass}'s expectation band and selling nets ${row.sensibleFlipMarginYen} yen (${(row.sensibleFlipMarginFraction * 100).toFixed(1)}% of clean) - the core loop must pay on every car in the game`,

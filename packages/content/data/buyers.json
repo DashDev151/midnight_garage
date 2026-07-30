@@ -20,7 +20,6 @@
         "weight": 0.3
       }
     ],
-    "priceSensitivity": 0.2,
     "wantLine": "Asks who owned it before you, and who before that. Originality is the price of entry; everything else is small talk."
   },
   {
@@ -48,7 +47,6 @@
         "weight": 0.4
       }
     ],
-    "priceSensitivity": 0.4,
     "wantLine": "Wants the numbers, not the story. Power pays; provenance is for other people."
   },
   {
@@ -76,7 +74,6 @@
         "weight": 0.3
       }
     ],
-    "priceSensitivity": 0.5,
     "wantLine": "Crouches at the arches before saying hello. If it sits right, the rest is detail."
   },
   {
@@ -104,7 +101,6 @@
         "weight": 0.3
       }
     ],
-    "priceSensitivity": 0.4,
     "wantLine": "Checks where the weight sits and how it turns in. Paint does not lap."
   },
   {
@@ -128,7 +124,6 @@
         "weight": 0.6
       }
     ],
-    "priceSensitivity": 0.9,
     "wantLine": "Needs it to start every cold morning without eating the budget. A service history beats a spoiler."
   }
 ]

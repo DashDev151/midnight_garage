@@ -15,7 +15,7 @@ import {
   scrapValueYen,
   usedPartSaleValueYen,
 } from './bands'
-import { buildRoughProbeCar } from './coherence'
+import { buildRoughProbeCar } from './balanceProbes'
 import type { SimContext } from './context'
 import { installLaborSlotsFor, removeLaborSlotsFor } from './jobs'
 import { marketValueYen, sensibleRepairTargetBand } from './marketValue'

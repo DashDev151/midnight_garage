@@ -2,7 +2,7 @@ import { BUYERS, CARS, PARTS, PARTS_TAXONOMY, type CarInstance } from '@midnight
 import { describe, expect, it } from 'vitest'
 import { carOriginLabel, enforceMaxBillFraction, generateAuctionCarInstance } from '../src/auctions'
 import { carGuideValueYen } from '../src/bidding'
-import { buildWorstCaseRawCar } from '../src/coherence'
+import { buildWorstCaseRawCar } from '../src/balanceProbes'
 import { buildSimContext } from '../src/context'
 import { expectedTrueValueYen, playerEstimateYen, sheetGuideValueYen } from '../src/diagnosis'
 import { marketValueYen } from '../src/marketValue'

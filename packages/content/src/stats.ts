@@ -16,12 +16,20 @@ export const StatBlockSchema = z.object({
  * went proportional; split out once `StatModifierSchema.power` became a
  * per-character object, since a condition weight is still one plain number
  * per stat.
+ *
+ * `power` and `reliability` are REQUIRED, not defaulted: both are the
+ * proportional-power/support-ratio era's own condition inputs (the same
+ * missing-entry-fails-loudly rule `PowerFractionSchema` already applies to
+ * SKUs), so a taxonomy entry that forgets one now fails schema validation
+ * instead of silently reading as zero. `handling`/`style`/`authenticity`
+ * keep their default: nothing in this sprint calls their coverage into
+ * question.
  */
 export const StatWeightsSchema = z.object({
-  power: z.number().default(0),
+  power: z.number(),
   handling: z.number().default(0),
   style: z.number().default(0),
-  reliability: z.number().default(0),
+  reliability: z.number(),
   authenticity: z.number().default(0),
 })
 

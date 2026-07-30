@@ -123,7 +123,7 @@ The soft cap changes MARGINS wherever mint work happens without owning tier-2; i
 nothing impossible. The probes that assume tier-1 reaches mint for free must fold in the
 rental fee:
 
-- **The wage / coherence probe (economy-bible law 6).** `computeModelCoherence` plans rare
+- **The wage / coherence probe (economy-bible law 6).** `computeModelBalanceProbe` plans rare
   cars to mint at fresh (tier-1) tools; the wage probe asserts a fresh shop profitably
   restores a rare car to mint. Re-derive to include the mint-work rental fee: the margin
   shrinks but must stay positive (owning the machines is the upgrade that widens it).

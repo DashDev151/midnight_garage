@@ -198,7 +198,7 @@ not.
 **The feature is an offered event, not a threshold crossed silently.** A qualifying magazine
 listing draws an offer to shoot the car: hold it a week, and it gains the provenance multiplier
 plus a small heat blip on its own model. **Players can pump their own market, and that is
-allowed** — it is a real thing a famous shop could do.
+allowed**, it is a real thing a famous shop could do.
 
 ### Who saw it? The cars resurface
 
@@ -210,7 +210,7 @@ streets over, or in the yard you buy from, and word travels with it.
 
     presence(b) = basePresence(b) * reputationFlowFactor(reputation, b) * seasonFactor(b, week)
 
-**Unlocks stay ratcheted** — confiscating a tool the player bought feels arbitrary. What
+**Unlocks stay ratcheted**, confiscating a tool the player bought feels arbitrary. What
 standing buys is **flow**: how many buyers appear, how good they are, and what the yard holds
 for you. That applies at every level forever, so standing never stops mattering.
 `TODO.md`'s ratchet entry closes against this section.
@@ -255,7 +255,7 @@ run and reach the better price, or take the fixer's worse one today.
 of last resort is an infinite sink; a capped one makes favour scarce and him a person rather
 than a vending machine.
 
-**Calling in a favour costs slots and labour on HIS schedule** — a bay for a week, your
+**Calling in a favour costs slots and labour on HIS schedule**, a bay for a week, your
 mechanic tomorrow. Always refusable, visibly brewing, never a fail state.
 
 **Export never loses the car.** Delay, a bounded arrival haircut, or a fee-released hold, all
@@ -301,7 +301,7 @@ accepted offer quality. Assumptions: **3 labour slots per day**, a repair or ins
 
 ---
 
-## 9. Worked examples — GENERATED, DO NOT HAND-EDIT
+## 9. Worked examples, GENERATED, DO NOT HAND-EDIT
 
 Output of `node tools/sale-value/model.mjs`. S13 clean value 462,500; FD3S clean value
 1,711,250. Offer quality is simulated over 4,000 seeded listings per path, with the player
@@ -321,8 +321,8 @@ accepting any offer at or above the current expected quality.
 **What the table says.**
 
 **The repair loop keeps its dignity.** Path 0 returns 60,147 on 360,000 committed, in under
-eight days, at an expected quality of 0.976. Three systems now nibble at it — offer quality,
-staleness, slot cost — and it remains comfortably profitable. **That invariant is
+eight days, at an expected quality of 0.976. Three systems now nibble at it, offer quality,
+staleness, slot cost, and it remains comfortably profitable. **That invariant is
 load-bearing: a well-bought, well-repaired, promptly-sold ordinary car must always pay.**
 Everything else here is a deviation from that baseline, and deviations only feel like choices
 if the baseline feels safe.
@@ -428,7 +428,7 @@ cap of 20 prices a 2000GT and a delivery van identically, which is harmless toda
 pricing defect the instant any archetype targets looks. **Author per-car style baselines, or
 formally redefine the stat as custom style only, before buyer targets are authored.** And
 absolute power targets would lock entry cars out of premium channels: the answer is a
-**kei-specialist archetype** — the Cappuccino, Beat and AZ-1 scene was real — not tier-relative
+**kei-specialist archetype**, the Cappuccino, Beat and AZ-1 scene was real, not tier-relative
 targets, which would make a Wagon R and a Supra equally impressive.
 
 **3. Reputation architecture.** Public standing is a continuous throughput dial; underworld

@@ -233,7 +233,7 @@ fails that test outright, rather than silently drifting).
 | `selling.*` including `offerSpread` | `economy.json` | Walk-in sale offers |
 | `toolCeilings.*`, `specialty.*`, `machineListings.*` | `economy.json` | Progression-bible mechanics (out of this bible's scope, listed for completeness) |
 | `coherence.maxConsumablesShareOfBookValue` (Law 3) | `economy.json` | The roster-coherence consumables-share check |
-| `teardown.usedPartSaleFraction`/`resaleBandFactors`/`donorBreakEvenBillRatio` | `economy.json` | The used-part counter: the haircut off catalogue price, the resale-only condition curve it runs through (`usedPartSaleValueYen`, sim/bands.ts), and the donor break-even measurement (`coherence.ts`'s `computeDonorCoherence`) |
+| `teardown.usedPartSaleFraction`/`resaleBandFactors`/`donorBreakEvenBillRatio` | `economy.json` | The used-part counter: the haircut off catalogue price, the resale-only condition curve it runs through (`usedPartSaleValueYen`, sim/bands.ts), and the donor break-even measurement (`balanceProbes.ts`'s `computeDonorBalanceProbe`) |
 | `diagnosis.symptomChanceByTier`/`secondSymptomChance`/`maxSymptomsPerCar`/`visitMinutes`/`travelFeeYenByTier`/`saleRevealCopy` | `economy.json` | The odds-priced auction sheet (`diagnosis.ts`'s `sheetGuideValueYen`, the room-vs-player pricing law; `fearPremium` retired 2026-07-19, see the Amendment log), symptom generation (`auctions.ts`), and the sale-side reveal line (Sprint 75 decision 2, `selling.ts`'s `saleRevealLineFor`) |
 | `lapModel.C`/`ratioExp`/`gripMult`/`courseId`/`courseName` | `economy.json` | The reference-lap requirement's pure time formula (`lapModel.ts`'s `lapTimeSecondsFor`) and the reference board's own model-computed rows |
 | `auctionRoom.*` | `economy.json` | The live auction room: fuse clock, reserve/clearing draws, turnout bands, bid rungs, and the reaction chances (rows added 2026-07-22 for blocks landed with their sprints' recorded mandates; `staff.*` and `machineShopAssist`-family keys remain the known table gap awaiting the standing ruling) |
@@ -252,7 +252,7 @@ fails that test outright, rather than silently drifting).
 - Auction reserve, buyout premium, service-job payouts - all fractions or margins over guide value
   or task cost, never independently authored.
 - The roster-coherence table below (Sprint 55) - every column is a live call into the real sim
-  functions (`coherence.ts`), never a hand-computed number.
+  functions (`balanceProbes.ts`), never a hand-computed number.
 
 **Per-SKU price overrides** (`partPricing.json`'s `overrides` map): ships EMPTY. Any future entry
 is a deliberate, individually-justified maintainer decision; the balance report's roster-coherence
@@ -261,7 +261,7 @@ Sprint 55, so there is nothing yet to flag - the machinery is proactive, not rea
 
 ## The roster-coherence machine check (Sprint 55, Law 4 fully in force)
 
-`packages/sim/src/coherence.ts`'s `computeRosterCoherence` derives, per roster model, by calling
+`packages/sim/src/balanceProbes.ts`'s `computeRosterBalanceProbe` derives, per roster model, by calling
 the real sim functions directly (never re-deriving their math):
 
 - **Clean value** and the **worst plausible restoration bill** a car of this model could carry
@@ -330,8 +330,8 @@ maintainer or CI run can catch a coherence drift before a playtest does.
   ceiling probe proving a fully restored car is worth exactly clean value, never more.
 - 2026-07-14: Law 4 implemented (Sprint 55), closing the Economy Rebuild arc. The anchor
   inventory above is now a complete audit table, machine-checked against `economy.json`'s real
-  top-level key set (`packages/content/tests/schemas.test.ts`). `computeRosterCoherence`
-  (`packages/sim/src/coherence.ts`) derives four closed-form facts per roster model by calling
+  top-level key set (`packages/content/tests/schemas.test.ts`). `computeRosterBalanceProbe`
+  (`packages/sim/src/balanceProbes.ts`) derives four closed-form facts per roster model by calling
   the real Law 1/Law 2 sim functions directly - bill-to-clean ratio, flip margin, and
   consumables share all render as a per-model table in `tools/balance/report.md` and hard-gate
   `python -m balance.cli check`; a fifth check confirms the service-job payout margin floor
@@ -421,7 +421,7 @@ maintainer or CI run can catch a coherence drift before a playtest does.
   maintainer pre-approved the whole component-hierarchy arc the same day). Not a new law - the
   four per-depth-class labour figures, the used-part sale haircut, and the donor break-even
   measurement threshold are all ordinary content anchors, added to the audit table above. The
-  donor coherence probes (`coherence.ts`'s `computeDonorCoherence`) measure and disclose the
+  donor coherence probes (`balanceProbes.ts`'s `computeDonorBalanceProbe`) measure and disclose the
   whole-vs-parted crossover per roster model rather than hard-gating an exact number. Full detail
   in `docs/sprints/sprint71.md`'s Exit.
 - 2026-07-16: **`diagnosis.*` added as a new anchor group** (Sprint 73, diagnosis I; maintainer
@@ -432,7 +432,7 @@ maintainer or CI run can catch a coherence drift before a playtest does.
   (`bidding.ts`), not a change to Law 1-6's own text. `fearPremium`/`symptomChanceByTier`/
   `secondSymptomChance`/`maxSymptomsPerCar`/`visitMinutes`/`travelFeeYenByTier` are ordinary
   content anchors, added to the audit table above. The blind-buy guardrail
-  (`coherence.ts`'s `computeSymptomCoherence`) measures and discloses the per-symptom expected-
+  (`balanceProbes.ts`'s `computeSymptomBalanceProbe`) measures and discloses the per-symptom expected-
   value spread per tier rather than hard-gating an exact number, same treatment as the donor
   coherence probes above. Full detail in `docs/sprints/sprint73.md`'s Exit.
 - 2026-07-16: **`lapModel.*` added as a new anchor group** (Sprint 77, story missions II; maintainer

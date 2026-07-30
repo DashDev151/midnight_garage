@@ -141,7 +141,7 @@ cheapest route to a needed part is a whole donor car rather than the parts marke
 - **Teardown labour enters the repair cost model.** The coherence table's repair labour and
   sensible-flip columns must include removal and reinstall slots; economy Law 1's margins are
   recalibrated against the new totals. Slot labour is time, not yen, so the cash effect arrives
-  through rent-during-repair and wage-law margins, both already modelled in `coherence.ts`.
+  through rent-during-repair and wage-law margins, both already modelled in `balanceProbes.ts`.
 - **Service-job payouts price the teardown.** `deriveServiceJobPayoutYen` and the Law 6 wage
   probes must count the full chain (blockers off, part off, bench work, reinstalls), or deep jobs
   silently violate the wage law.
@@ -175,7 +175,7 @@ cheapest route to a needed part is a whole donor car rather than the parts marke
 - The band-lift repair economy and tool-tier gates: unchanged, relocated to inventory parts.
 - The parts inventory and `PartCard` UI: bench repair is a new action on an existing surface (the
   full inventory UX pass stays a separate item, per the scoping notes).
-- `coherence.ts` and the wage/flip probes: extended columns, same instrument.
+- `balanceProbes.ts` and the wage/flip probes: extended columns, same instrument.
 - The provenance system (Sprint 70): consulted, not duplicated.
 
 **Genuinely new:**

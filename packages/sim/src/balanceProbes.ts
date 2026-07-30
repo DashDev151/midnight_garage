@@ -32,7 +32,11 @@ import { deriveStaffWageYen, introductionFeeYen, staffSkillSum } from './staff'
 import type { SimContext } from './context'
 import { expectedTrueValueYen, sheetGuideValueYen } from './diagnosis'
 import { installLaborSlotsFor, removeLaborSlotsFor } from './jobs'
-import { marketValueYen, mileageFactor, sensibleRepairTargetBand } from './marketValue'
+import {
+  cleanValueYen as computeCleanValueYen,
+  marketValueYen,
+  sensibleRepairTargetBand,
+} from './marketValue'
 import { createInitialGameState } from './newGame'
 import { makeCarOrigin } from './provenance'
 import { createRng } from './rng'
@@ -58,7 +62,7 @@ const CONSUMABLE_PART_IDS: readonly CarPartId[] = ['tyres', 'brakePadsDiscs', 'c
  * like tyres/brakePadsDiscs/clutch. */
 const MATERIALS_COST_YEN = MATERIALS.reduce((sum, material) => sum + material.priceYen, 0)
 
-export interface ModelCoherenceRow {
+export interface ModelBalanceProbeRow {
   modelId: string
   fitmentClass: PartFitmentClass
   /** Clean (mint, all-stock) value at the roster's worst reachable mileage. */
@@ -159,9 +163,8 @@ function worstCaseMileageKm(context: SimContext): number {
  * per-part repair formula (`costToBandYen`, bands.ts) - a different pricing
  * model for those three parts, not a different value on the same one.
  * Synthesising a matching `zoneState` here would move every probe figure
- * that touches them; that is a real finding for the maintainer to weigh
- * (see the accompanying report), not something a refactor may decide by
- * itself.
+ * that touches them; that is a real design question this file's own numbers
+ * must surface, not something a refactor may decide by itself.
  */
 function buildUniformBandCar(
   model: CarModel,
@@ -301,7 +304,10 @@ function repairRoughProbeCar(
 }
 
 /** The four Law 2/Law 3 closed-form facts for one roster model. */
-export function computeModelCoherence(model: CarModel, context: SimContext): ModelCoherenceRow {
+export function computeModelBalanceProbe(
+  model: CarModel,
+  context: SimContext,
+): ModelBalanceProbeRow {
   const fitmentClass = fitmentClassForTier(model.tier)
   const rawCar = buildWorstCaseRawCar(model, context)
   const softened = enforceMaxBillFraction(
@@ -311,7 +317,15 @@ export function computeModelCoherence(model: CarModel, context: SimContext): Mod
     makeCarOrigin(rawCar.id, carOriginLabel(model, rawCar.year), 0),
   )
 
-  const cleanValueYen = model.bookValueYen * mileageFactor(softened.mileageKm, context.economy)
+  // Fixed at heat-neutral 100, matching `guideValueYen` below and every
+  // other roster-wide probe in this file - a closed-form invariant cannot
+  // depend on live market heat.
+  const cleanValueYen = computeCleanValueYen(
+    model.bookValueYen,
+    softened.mileageKm,
+    100,
+    context.economy,
+  )
   const worstBillYen = carCostToMintYen(
     softened,
     model,
@@ -446,14 +460,14 @@ export function computeModelCoherence(model: CarModel, context: SimContext): Mod
   }
 }
 
-export function computeRosterCoherence(
+export function computeRosterBalanceProbe(
   models: readonly CarModel[],
   context: SimContext,
-): ModelCoherenceRow[] {
-  return models.map((model) => computeModelCoherence(model, context))
+): ModelBalanceProbeRow[] {
+  return models.map((model) => computeModelBalanceProbe(model, context))
 }
 
-export interface ModelDonorCoherenceRow {
+export interface ModelDonorBalanceProbeRow {
   modelId: string
   /** A clean, all-mint example of this model (0 km, authenticity 100),
    * valued whole through the real `marketValueYen` - the "just sell it"
@@ -473,14 +487,14 @@ export interface ModelDonorCoherenceRow {
    * time" at a glance. */
   stripLaborSlots: number
   /**
-   * On the SAME worst-case generatable car `computeModelCoherence` builds
+   * On the SAME worst-case generatable car `computeModelBalanceProbe` builds
    * (`buildWorstCaseRawCar` softened by `enforceMaxBillFraction` - reused
    * here exactly, not rebuilt differently), the yield of parting out only
    * the parts strictly better than `poor` (the ones actually worth pulling
    * rather than replacing outright) plus scrapping the shell. The crossover
-   * against that same model's `sensibleFlipMarginYen` (`ModelCoherenceRow`)
+   * against that same model's `sensibleFlipMarginYen` (`ModelBalanceProbeRow`)
    * - the bill-to-clean ratio above which parting out beats the sensible
-   * repair - is measured and DISCLOSED per model in `coherence.test.ts`.
+   * repair - is measured and DISCLOSED per model in `balanceProbes.test.ts`.
    */
   partedYieldOfWorstCaseYen: number
 }
@@ -488,8 +502,8 @@ export interface ModelDonorCoherenceRow {
 /**
  * A clean (0 km, all-mint stock, authenticity 100), honest example of
  * `model` - the "what a healthy example of this tier looks like" probe,
- * shared by `computeDonorCoherence` (the whole-vs-parted question) and
- * `computeSymptomCoherence` (the blind-buy guardrail - a symptom's damage
+ * shared by `computeDonorBalanceProbe` (the whole-vs-parted question) and
+ * `computeSymptomBalanceProbe` (the blind-buy guardrail - a symptom's damage
  * is applied ON TOP of this same clean baseline, never a worst-case one,
  * since the whole point of a symptom is a surprise on a car that otherwise
  * looks fine).
@@ -517,10 +531,10 @@ function buildCleanProbeCar(
  * reason `usedPartSaleFraction`/`scrapValueFraction` are haircuts, not
  * parity prices.
  */
-export function computeDonorCoherence(
+export function computeDonorBalanceProbe(
   model: CarModel,
   context: SimContext,
-): ModelDonorCoherenceRow {
+): ModelDonorBalanceProbeRow {
   const cleanCar = buildCleanProbeCar(model, context, 'donor', 'donor probe')
 
   const wholeSaleYen = Math.round(
@@ -576,11 +590,11 @@ export function computeDonorCoherence(
   }
 }
 
-export function computeRosterDonorCoherence(
+export function computeRosterDonorBalanceProbe(
   models: readonly CarModel[],
   context: SimContext,
-): ModelDonorCoherenceRow[] {
-  return models.map((model) => computeDonorCoherence(model, context))
+): ModelDonorBalanceProbeRow[] {
+  return models.map((model) => computeDonorBalanceProbe(model, context))
 }
 
 /** One cause's edge: `marketValueYen` if this cause turns out true, minus
@@ -592,7 +606,7 @@ export interface SymptomCauseEdgeRow {
   edgeYen: number
 }
 
-export interface SymptomCoherenceRow {
+export interface SymptomBalanceProbeRow {
   symptomId: string
   fitmentClass: PartFitmentClass
   apparentValueYen: number
@@ -616,7 +630,7 @@ const SYMPTOM_PROBE_FITMENT_CLASSES: readonly PartFitmentClass[] = [
 /**
  * The diagnosis system's blind-buy guardrail - for every symptom, on a
  * representative clean car per tier (`buildCleanProbeCar`, shared with
- * `computeDonorCoherence` above - a symptom is a surprise on an
+ * `computeDonorBalanceProbe` above - a symptom is a surprise on an
  * otherwise-healthy car, not a worst-case wreck), how good a bet is buying
  * without running a single test?
  *
@@ -630,12 +644,12 @@ const SYMPTOM_PROBE_FITMENT_CLASSES: readonly PartFitmentClass[] = [
  * than the sheet price, some better - or the symptom's own weight spread
  * isn't creating real uncertainty. Not bot-derived: every number is a direct
  * call into the real sim functions (`diagnosis.ts`), the same "closed-form,
- * cheap enough for every balance run" standing as `computeRosterCoherence`
+ * cheap enough for every balance run" standing as `computeRosterBalanceProbe`
  * above.
  */
-export function computeSymptomCoherence(context: SimContext): SymptomCoherenceRow[] {
+export function computeSymptomBalanceProbe(context: SimContext): SymptomBalanceProbeRow[] {
   const neutralState = createInitialGameState(context, 0)
-  const rows: SymptomCoherenceRow[] = []
+  const rows: SymptomBalanceProbeRow[] = []
 
   for (const symptom of context.symptoms) {
     for (const fitmentClass of SYMPTOM_PROBE_FITMENT_CLASSES) {
@@ -764,7 +778,7 @@ export interface HireBoundACandidate {
   ratio: number
 }
 
-export interface HireCoherenceRow {
+export interface HireBalanceProbeRow {
   tier: ReputationTier
   /** Bound A's lowest-ratio candidate in the tier (nearest the 1.05 floor). */
   boundALow: HireBoundACandidate
@@ -807,12 +821,12 @@ function weeklyContractYen(stats: StaffMember['stats'], economy: EconomyConfig):
   return 7 * (contractBaseYenPerDay + contractPerSkillPointYenPerDay * staffSkillSum(stats))
 }
 
-export function computeHireCoherence(context: SimContext): HireCoherenceRow[] {
+export function computeHireBalanceProbe(context: SimContext): HireBalanceProbeRow[] {
   const economy = context.economy
   const { statBudgetByTier } = economy.staff
   const entryTier = ReputationTierSchema.options[0]!
   const capC = Math.round(HIRE_BOUND_C_STARTING_CASH_FRACTION * economy.STARTING_CASH_YEN)
-  const rows: HireCoherenceRow[] = []
+  const rows: HireBalanceProbeRow[] = []
 
   for (const tier of ReputationTierSchema.options) {
     const budget = statBudgetByTier[tier]!

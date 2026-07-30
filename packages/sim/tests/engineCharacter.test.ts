@@ -1,6 +1,4 @@
 import { CARS, ECONOMY, PARTS, type EngineCharacter } from '@midnight-garage/content'
-import { readdirSync, readFileSync, statSync } from 'node:fs'
-import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { hasForcedInduction } from '../src/bands'
 import { engineCharacterOf, specificOutputOf } from '../src/derivedStats'
@@ -254,27 +252,6 @@ describe('the grade shapes from Lever 4, pinned per slot', () => {
   })
 })
 
-describe('hasForcedInduction is the only induction source read by sim', () => {
-  /** Structural guard for the sprint's hard constraint: `spec.aspiration` is
-   * a duplicate representation of induction and nothing guards that it
-   * agrees with `tags` - reading it would be a second, ungoverned source of
-   * truth. Walks every `.ts` file under `packages/sim/src` (not `tests/`,
-   * which is allowed to reference the field when constructing fixtures). */
-  function tsFilesUnder(dir: string): string[] {
-    const files: string[] = []
-    for (const entry of readdirSync(dir)) {
-      const full = join(dir, entry)
-      if (statSync(full).isDirectory()) files.push(...tsFilesUnder(full))
-      else if (entry.endsWith('.ts')) files.push(full)
-    }
-    return files
-  }
-
-  it('no file under packages/sim/src reads spec.aspiration', () => {
-    const srcDir = join(__dirname, '..', 'src')
-    const offenders = tsFilesUnder(srcDir)
-      .filter((file) => readFileSync(file, 'utf8').includes('.aspiration'))
-      .map((file) => file.slice(srcDir.length + 1))
-    expect(offenders).toEqual([])
-  })
-})
+// The "no file under packages/sim/src reads spec.aspiration" guard lives in
+// packages/content/tests/retiredIdentifiers.test.ts, the general ledger of
+// every retired identifier, rather than as a one-off copy here.

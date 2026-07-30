@@ -39,10 +39,10 @@ import { randomStrategy } from '../bots/randomStrategy'
 import { serviceGrinderStrategy } from '../bots/serviceGrinder'
 import { runCareer, type BotStrategy } from '../bots/runCareer'
 import {
-  computeRosterCoherence,
-  computeRosterDonorCoherence,
-  computeSymptomCoherence,
-} from '../coherence'
+  computeRosterBalanceProbe,
+  computeRosterDonorBalanceProbe,
+  computeSymptomBalanceProbe,
+} from '../balanceProbes'
 import { buildSimContext } from '../context'
 
 const CAREERS_PER_STRATEGY = 1000
@@ -110,7 +110,7 @@ const OFFERS_COLUMNS = [
 ] as const
 
 /** Economy-bible law 4: one row per roster model, the closed-form
- * coherence facts `computeRosterCoherence` derives by calling the real
+ * coherence facts `computeRosterBalanceProbe` derives by calling the real
  * Law 1/Law 2 sim functions directly - no seeded careers needed, so this
  * exports once, not per-seed. */
 const COHERENCE_COLUMNS = [
@@ -130,7 +130,7 @@ const COHERENCE_COLUMNS = [
 ] as const
 
 /** The teardown game's donor economy: one row per roster model,
- * `computeRosterDonorCoherence`'s closed-form whole-vs-parted facts - same
+ * `computeRosterDonorBalanceProbe`'s closed-form whole-vs-parted facts - same
  * one-shot-per-model shape as `COHERENCE_COLUMNS` above, no seeded
  * careers needed. */
 const DONOR_COHERENCE_COLUMNS = [
@@ -142,7 +142,7 @@ const DONOR_COHERENCE_COLUMNS = [
 ] as const
 
 /** The blind-buy guardrail: one row per symptom x fitment tier x cause -
- * `computeSymptomCoherence`'s closed-form edge table, long format (a
+ * `computeSymptomBalanceProbe`'s closed-form edge table, long format (a
  * cause's own edge doesn't fit a fixed-width column set, so the shared
  * per-symptom/tier figures repeat per cause row rather than embedding a
  * JSON cell polars can't type-check). Same one-shot shape as
@@ -265,7 +265,7 @@ function main(): void {
     columns: OFFERS_COLUMNS,
   })
 
-  const coherenceRows = computeRosterCoherence(CARS, context).map((row) =>
+  const coherenceRows = computeRosterBalanceProbe(CARS, context).map((row) =>
     [
       row.modelId,
       row.fitmentClass,
@@ -296,7 +296,7 @@ function main(): void {
     payoutRequiredCoverage: 1.15,
   })
 
-  const donorCoherenceRows = computeRosterDonorCoherence(CARS, context).map((row) =>
+  const donorCoherenceRows = computeRosterDonorBalanceProbe(CARS, context).map((row) =>
     [
       row.modelId,
       row.wholeSaleYen,
@@ -313,7 +313,7 @@ function main(): void {
     donorBreakEvenBillRatio: ECONOMY.teardown.donorBreakEvenBillRatio,
   })
 
-  const symptomCoherenceRows = computeSymptomCoherence(context).flatMap((row) =>
+  const symptomCoherenceRows = computeSymptomBalanceProbe(context).flatMap((row) =>
     row.edgePerCauseYen.map((edge) =>
       [
         row.symptomId,

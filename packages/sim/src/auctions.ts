@@ -45,7 +45,7 @@ import {
 } from './bodyPipeline'
 import { DEFAULT_CONDITION_AGE_YEARS_WHEN_UNBOUNDED } from './constants'
 import type { SimContext } from './context'
-import { expectationForCar, mileageFactor } from './marketValue'
+import { cleanValueYen, expectationForCar } from './marketValue'
 import { makeCarOrigin } from './provenance'
 import type { Rng } from './rng'
 
@@ -783,9 +783,14 @@ export function generateAuctionCarInstance(
 /**
  * Economy-bible.md law 2 (no value traps): softens a freshly-rolled car
  * until `carCostToMintYen(car) <= maxBillFraction x cleanValue` - every
- * generatable lot is therefore profitably restorable. Two bounded,
- * always-convergent passes, since band damage is the common case and
- * missing slots are comparatively rare:
+ * generatable lot is therefore profitably restorable. `cleanValue` is
+ * `cleanValueYen` at a fixed, heat-neutral 100 - car generation has no live
+ * market heat to read (`SimContext` carries static content only, not the
+ * evolving per-model heat in `GameState`), and Law 2's guarantee is meant to
+ * hold as a closed-form invariant independent of whatever heat a car later
+ * experiences on the market, not just at the moment it happens to be rolled.
+ * Two bounded, always-convergent passes, since band damage is the common
+ * case and missing slots are comparatively rare:
  *
  * 1. Up to 4 passes lifting every part at the car's single worst band by
  *    one step, re-checking the bill after each pass.
@@ -795,9 +800,9 @@ export function generateAuctionCarInstance(
  *    guard, since the bill is then exactly zero.
  *
  * Both passes are pure functions of the already-rolled `car` (no additional
- * RNG draws), so determinism for a given seed is unaffected. The coherence
- * harness (`coherence.ts`) calls this SAME function to prove Law 2 holds
- * for every roster model.
+ * RNG draws), so determinism for a given seed is unaffected. The
+ * balance-probe harness (`balanceProbes.ts`) calls this SAME function to
+ * prove Law 2 holds for every roster model.
  */
 export function enforceMaxBillFraction(
   car: CarInstance,
@@ -807,7 +812,7 @@ export function enforceMaxBillFraction(
 ): CarInstance {
   const { economy, partsById, partsTaxonomyById, stockPartByCarPartId } = context
   const fitmentClass = fitmentClassForTier(model.tier)
-  const cleanValue = model.bookValueYen * mileageFactor(car.mileageKm, economy)
+  const cleanValue = cleanValueYen(model.bookValueYen, car.mileageKm, 100, economy)
   const maxBillYen = economy.partsGeneration.maxBillFraction * cleanValue
   const billFor = (c: CarInstance) =>
     carCostToMintYen(c, model, partsById, partsTaxonomyById, economy)

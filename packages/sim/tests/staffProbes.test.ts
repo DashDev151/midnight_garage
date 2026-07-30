@@ -9,13 +9,13 @@ import {
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import {
-  computeHireCoherence,
+  computeHireBalanceProbe,
   HIRE_BOUND_A_MAX_RATIO,
   HIRE_BOUND_A_MIN_RATIO,
   HIRE_BOUND_B_BILLABLE_FRACTION,
   HIRE_BOUND_C_STARTING_CASH_FRACTION,
   HIRE_BOUND_D_SAVEABLE_MULTIPLE,
-} from '../src/coherence'
+} from '../src/balanceProbes'
 import { buildSimContext } from '../src/context'
 import { createRng } from '../src/rng'
 import { deriveStaffWageYen, rollStaffCandidate, staffSkillSum } from '../src/staff'
@@ -92,7 +92,7 @@ describe('staff wage formula (crew model R4, content law)', () => {
  * counts.
  */
 describe('hire coherence probe (crew model R5)', () => {
-  const rows = computeHireCoherence(CONTEXT)
+  const rows = computeHireBalanceProbe(CONTEXT)
   const laborRate = ECONOMY.serviceJobs.laborRateYen
 
   it('covers every reputation tier exactly once', () => {

@@ -50,7 +50,7 @@ nothing.** Five values, zero readers. Either wire it into Stage E or F, or retir
 not be carried into the new buyer schema unexamined.
 
 **D3. Two unrelated systems are called "coherence" in the same package.**
-`packages/sim/src/coherence.ts` is the economy-bible balance-probe module. The design's
+`packages/sim/src/balanceProbes.ts` is the economy-bible balance-probe module. The design's
 `coherenceFactor` is the build-support ratio in `derivedStats.ts`. Neither reads the other, so
 it is not a bug today, but somebody will grep and edit the wrong file. One of them gets renamed
 before Stage C lands.
@@ -63,7 +63,7 @@ rather than 472 SKUs.
 error, its old key is silently stripped at parse. Any content schema this rework touches gets
 `.strict()`.
 
-**D6. `coherence.ts` hand-builds three probe cars as literals, and they can go stale.**
+**D6. `balanceProbes.ts` hand-builds three probe cars as literals, and they can go stale.**
 `buildWorstCaseRawCar`, `buildRoughProbeCar` and `buildCleanProbeCar` each construct a full
 `CarInstance` by hand. Every new per-car field must be added to all three or they fail to
 typecheck, and worse, a field that merely *changes meaning* leaves them silently wrong while
@@ -121,7 +121,7 @@ sale-value problem, so it can be fixed immediately and does not need to wait for
 
 ## 4. The two blocking rulings, both now settled
 
-### R1. The campaign runs on elapsed time, through a content curve — SETTLED 2026-07-30
+### R1. The campaign runs on elapsed time, through a content curve, SETTLED 2026-07-30
 
 `currentGameYear(reputationTier) = 1995 + 2 × reputationTierIndex` derived the in-game year from
 reputation, so a player who stalled never left 1995 and **the dodgy player, who has low standing
@@ -141,7 +141,7 @@ is a few hundred days and the decade would never arrive. Instead:
 `currentGameYear` is rewritten to read elapsed days through the curve, and its reputation
 argument is deleted rather than left ignored (guard G1).
 
-### R2. A directive 20 carve-out for typecheck — SETTLED 2026-07-30, CLAUDE.md amended
+### R2. A directive 20 carve-out for typecheck, SETTLED 2026-07-30, CLAUDE.md amended
 
 The `PartsMarketScreen` failure was **cadence, not a missing guard**: `pnpm typecheck` is
 whole-program, compiles every `.vue` template, and caught the bug instantly the one time it ran.
@@ -151,7 +151,7 @@ Nine commits landed on narrow test runs before anyone pushed.
 `pnpm typecheck` before it reports.** Narrowest possible carve-out, cheapest stage of the gate,
 and it licenses nothing else.
 
-### Parking is a capital cost, with the recurring pressure on capacity — SETTLED 2026-07-30
+### Parking is a capital cost, with the recurring pressure on capacity, SETTLED 2026-07-30
 
 Bays stay a **once-off purchase**, and **each bay permanently raises weekly rent**. A
 per-car-per-week holding fee would double-charge, because a held car already costs the player
@@ -200,21 +200,21 @@ rather than as a late screen nobody has time for.
 Thirteen sprints. That is the honest number, and it is larger than the whole tuning arc. The
 sequencing is driven by what unblocks what, and by putting the cheap high-value work first.
 
-**Phase 0 — safety, no behaviour change**
+**Phase 0, safety, no behaviour change**
 
 - **S1. Guards and defects.** G2, G3, G5. Fix D1 (flag-driven dispatch), D3 (rename a
   coherence), D4. Rule on D2. Nothing a player can see changes. **Everything after this is
   safer for it.**
 
-**Phase 1 — the value stack**
+**Phase 1, the value stack**
 
 - **S2. Stage C and Stage D.** Export `coherenceFactorFor`, add the discount, replace flat
   retention with the curve, delete `partsRetention`. Extend the value ledger with both lines.
-  Re-run the `coherence.ts` probes, which call `marketValueYen` directly and will move.
+  Re-run the `balanceProbes.ts` probes, which call `marketValueYen` directly and will move.
   **Highest value-to-effort ratio in the plan: it delivers "building well pays" on its own, and
   it reprices auctions for free.**
 
-**Phase 2 — stats, then taste**
+**Phase 2, stats, then taste**
 
 - **S3. Per-car style baselines and the kei archetype.** This is Sprint 140's Task 0 pulled
   forward, because **style targets cannot be authored while every stock car scores 20.** Also
@@ -223,7 +223,7 @@ sequencing is driven by what unblocks what, and by putting the cheap high-value 
 - **S4. Taste as match.** Replace one private function's body; re-author five archetypes to
   target / upper / importance. Ledger gains best-fit and poor-fit lines.
 
-**Phase 3 — time and space**
+**Phase 3, time and space**
 
 - **S5. The listing clock.** `offersSeen`, staleness, the offer-quality distribution,
   `relistRecovery`. Retire `sinceDay` and its bot reader together.
@@ -232,20 +232,20 @@ sequencing is driven by what unblocks what, and by putting the cheap high-value 
 - **S7. Rhythm.** The monthly cadence primitive and day-of-week semantics, then auction day,
   the meet, and wages on Friday.
 
-**Phase 4 — standing**
+**Phase 4, standing**
 
 - **S8. The flow model.** Probabilistic lemon leg, `presence` / `basePresence` /
   `reputationFlowFactor` / `seasonFactor`, magazine feature and provenance, cars resurface.
   Ledger gains the lemon-risk line, which completes the appraisal.
 
-**Phase 5 — venues**
+**Phase 5, venues**
 
 - **S9. The exits.** Trade network requires a runner; the fixer with favour and a monthly
   appetite; the export container with batching and deferred payment. **Depends on S1's D1 fix**
   or all three will silently draw nothing.
 - **S10. The scrapyard.** The venue, favour gating, and scored harvesting.
 
-**Phase 6 — period depth**
+**Phase 6, period depth**
 
 - **S11. Shaken.** Value and liquidity modifier, compliance bill, and the buying-side arbitrage.
 - **S12. The decade.** Whatever R1 rules, then keyframes, era events and seasonal presence.
@@ -277,10 +277,10 @@ after or alongside.
 **Numbering.** The tuning arc occupies 134 to 142. **This arc is sprints 143 to 155**, and it is
 the larger of the two: the tuning arc rebuilt what a part DOES, and this one rebuilds what that
 is WORTH, how long it takes to sell and what it says about the shop. It does not replace the
-tuning arc, it consumes its output — Stage C and D read the `coherenceFactor` that Sprint 136
+tuning arc, it consumes its output, Stage C and D read the `coherenceFactor` that Sprint 136
 built, and none of this would work without it.
 
-**One task jumps the queue.** D6, making `coherence.ts`'s probe cars read live data, is a
+**One task jumps the queue.** D6, making `balanceProbes.ts`'s probe cars read live data, is a
 standing hazard rather than a sale-value problem and should be fixed immediately, ahead of S1.
 
 ---

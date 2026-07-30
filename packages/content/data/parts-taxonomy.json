@@ -6,6 +6,7 @@
     "depthClass": "buried",
     "blockedBy": ["intake", "exhaust", "cooling"],
     "statWeights": {
+      "power": 0,
       "reliability": 2
     },
     "scrapDisablesCar": true
@@ -29,6 +30,7 @@
     "depthClass": "buried",
     "blockedBy": ["camsTiming", "intake"],
     "statWeights": {
+      "power": 0,
       "reliability": 2
     },
     "scrapDisablesCar": true
@@ -68,6 +70,7 @@
     "group": "engine",
     "displayName": "Fuel System",
     "statWeights": {
+      "power": 0,
       "reliability": 1
     },
     "scrapDisablesCar": true
@@ -87,6 +90,7 @@
     "group": "engine",
     "displayName": "Cooling",
     "statWeights": {
+      "power": 0,
       "reliability": 3
     },
     "scrapDisablesCar": true
@@ -108,6 +112,7 @@
     "depthClass": "buried",
     "blockedBy": ["driveline", "exhaust"],
     "statWeights": {
+      "power": 0,
       "reliability": 2
     },
     "physicalWeights": {
@@ -123,6 +128,7 @@
     "depthClass": "buried",
     "blockedBy": ["gearbox"],
     "statWeights": {
+      "power": 0,
       "reliability": 1
     },
     "physicalWeights": {
@@ -136,6 +142,7 @@
     "displayName": "Differential",
     "blockedBy": ["driveline"],
     "statWeights": {
+      "power": 0,
       "reliability": 1
     },
     "physicalWeights": {
@@ -148,6 +155,7 @@
     "group": "drivetrain",
     "displayName": "Driveline",
     "statWeights": {
+      "power": 0,
       "reliability": 1
     },
     "physicalWeights": {
@@ -162,6 +170,7 @@
     "depthClass": "surface",
     "removable": false,
     "statWeights": {
+      "power": 0,
       "reliability": 2
     }
   },
@@ -170,7 +179,9 @@
     "group": "suspension",
     "displayName": "Dampers",
     "statWeights": {
-      "handling": 2
+      "power": 0,
+      "handling": 2,
+      "reliability": 0
     },
     "physicalWeights": {
       "grip": 2
@@ -181,6 +192,7 @@
     "group": "suspension",
     "displayName": "Springs",
     "statWeights": {
+      "power": 0,
       "handling": 2,
       "reliability": 1
     },
@@ -193,7 +205,9 @@
     "group": "suspension",
     "displayName": "Anti-Roll Bars",
     "statWeights": {
-      "handling": 2
+      "power": 0,
+      "handling": 2,
+      "reliability": 0
     },
     "physicalWeights": {
       "grip": 2
@@ -204,6 +218,7 @@
     "group": "suspension",
     "displayName": "Steering",
     "statWeights": {
+      "power": 0,
       "handling": 2,
       "reliability": 2
     },
@@ -219,6 +234,7 @@
     "repairable": false,
     "blockedBy": ["rims"],
     "statWeights": {
+      "power": 0,
       "handling": 1,
       "reliability": 1
     },
@@ -233,6 +249,7 @@
     "displayName": "Brake Calipers & Lines",
     "blockedBy": ["rims"],
     "statWeights": {
+      "power": 0,
       "handling": 1,
       "reliability": 2
     },
@@ -246,7 +263,9 @@
     "group": "wheels",
     "displayName": "Rims",
     "statWeights": {
-      "style": 3
+      "power": 0,
+      "style": 3,
+      "reliability": 0
     },
     "physicalWeights": {
       "grip": 1
@@ -259,6 +278,7 @@
     "repairable": false,
     "blockedBy": ["rims"],
     "statWeights": {
+      "power": 0,
       "handling": 3,
       "reliability": 2
     },
@@ -274,7 +294,9 @@
     "depthClass": "surface",
     "removable": false,
     "statWeights": {
-      "style": 2
+      "power": 0,
+      "style": 2,
+      "reliability": 0
     },
     "physicalWeights": {
       "aero": 1
@@ -287,7 +309,9 @@
     "depthClass": "surface",
     "removable": false,
     "statWeights": {
-      "style": 2
+      "power": 0,
+      "style": 2,
+      "reliability": 0
     }
   },
   {
@@ -297,6 +321,7 @@
     "depthClass": "surface",
     "removable": false,
     "statWeights": {
+      "power": 0,
       "style": 2,
       "reliability": 1
     },
@@ -310,8 +335,10 @@
     "displayName": "Aero",
     "depthClass": "surface",
     "statWeights": {
+      "power": 0,
       "style": 2,
-      "handling": 1
+      "handling": 1,
+      "reliability": 0
     },
     "physicalWeights": {
       "aero": 3
@@ -323,7 +350,9 @@
     "displayName": "Seats",
     "depthClass": "surface",
     "statWeights": {
-      "style": 2
+      "power": 0,
+      "style": 2,
+      "reliability": 0
     }
   },
   {
@@ -332,7 +361,9 @@
     "displayName": "Dash & Gauges",
     "depthClass": "surface",
     "statWeights": {
-      "style": 1
+      "power": 0,
+      "style": 1,
+      "reliability": 0
     }
   }
 ]

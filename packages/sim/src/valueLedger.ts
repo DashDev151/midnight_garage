@@ -11,10 +11,10 @@ import { carCostToBandYen, carCostToMintYen } from './bands'
 import type { SimContext } from './context'
 import { apparentViewOf, sheetGuideValueYen } from './diagnosis'
 import {
+  cleanValueYen,
   expectationForCar,
   foundationFactor,
   installedPartsValueYen,
-  mileageFactor,
 } from './marketValue'
 
 /**
@@ -38,7 +38,7 @@ export interface ValueLedger {
 
 /**
  * Decomposes `marketValueYen` into its ledger lines, built from the same
- * atoms the value formula itself consumes (`mileageFactor`,
+ * atoms the value formula itself consumes (`cleanValueYen`,
  * `carCostToBandYen`/`carCostToMintYen`, `expectationForCar`,
  * `installedPartsValueYen`, `foundationFactor`) - never a second value
  * computation. The base-term lines are rounded as telescoping differences of
@@ -67,8 +67,11 @@ export function valueLedgerFor(
   const expectation = expectationForCar(model, economy)
 
   const bookYen = model.bookValueYen
-  const mileageAdjusted = bookYen * mileageFactor(car.mileageKm, economy)
-  const cleanValue = mileageAdjusted * (heatPercent / 100)
+  // 'mileage' is the heat-neutral checkpoint (`cleanValueYen` at heatPercent
+  // 100), so the 'heat' line below can telescope from it to the real,
+  // heat-adjusted clean value.
+  const mileageAdjusted = cleanValueYen(bookYen, car.mileageKm, 100, economy)
+  const cleanValue = cleanValueYen(bookYen, car.mileageKm, heatPercent, economy)
   const billToMintYen = carCostToMintYen(car, model, partsById, partsTaxonomyById, economy)
   const billBelowYen = carCostToBandYen(
     car,

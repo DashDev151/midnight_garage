@@ -282,6 +282,7 @@ const SellingChannelSchema = z
       .optional(),
     matchedOnly: z.boolean().optional(),
   })
+  .strict()
   .refine(
     (c) => {
       const shapes = [
@@ -617,6 +618,7 @@ export const EconomyConfigSchema = z.object({
         }),
       ),
     })
+    .strict()
     .refine(
       (v) =>
         Object.values(v.expectationByTier).every(
@@ -721,10 +723,11 @@ export const EconomyConfigSchema = z.object({
     /**
      * The support-ratio model (`packages/sim/src/support.ts`, design section
      * 6): whether a build's own gains are backed by the specification that
-     * holds them together. `reliabilityCap` (a flat 70 with no per-car
-     * meaning) is RETIRED by this block rather than moved - it is replaced by
-     * `CarModel.spec.reliabilityBase`, a per-car value, so authoring a flat
-     * ceiling here first and overwriting it later would be pure waste.
+     * holds them together. The old flat reliability ceiling (70, with no
+     * per-car meaning) is RETIRED by this block rather than moved - it is
+     * replaced by `CarModel.spec.reliabilityBase`, a per-car value, so
+     * authoring a flat ceiling here first and overwriting it later would be
+     * pure waste.
      *
      * By construction a stock car sits at exactly 1.0 on every subsystem:
      * every gain is 0 and every spec is 0, so `demand = support = 1`
@@ -1420,65 +1423,67 @@ export const EconomyConfigSchema = z.object({
    * thresholds (`LEMON_MAX_AVERAGE_CONDITION` etc.) live in
    * `sim/constants.ts`.
    */
-  reputation: z.object({
-    /**
-     * The reputation ladder. CALIBRATED AGAINST REAL PLAY, NOT THE BOT - a
-     * real session reaches `local` at roughly 5 rep/day; the harness's
-     * `competent-policy` probe earns about 1 rep/day and takes until p50 day
-     * 16. A ladder scaled to the bot collapses under real play.
-     *
-     * INTERLOCK: `local` drives the hard-gated days-to-`local` invariant
-     * (`tools/balance/invariants.py`), which measures the ~1 rep/day BOT, so
-     * raising `local` moves that gate's p50 almost 1:1 and the band must move
-     * with it. That invariant measures bot patience rather than game pacing;
-     * see `TODO.md`'s harness-rework entry.
-     *
-     * Must be monotonic and start at 0 - a ladder that goes down, or that a
-     * fresh shop does not start at the bottom of, is a bug, not a tuning
-     * choice.
-     */
-    tierThresholds: z
-      .object({
-        unknown: z.literal(0),
-        local: z.number().int().positive(),
-        known: z.number().int().positive(),
-        respected: z.number().int().positive(),
-        legend: z.number().int().positive(),
-      })
-      .refine((t) => t.local < t.known && t.known < t.respected && t.respected < t.legend, {
-        message:
-          'reputation.tierThresholds must be strictly ascending (each rung genuinely harder than the last)',
-      }),
-    /** Every part's band must be at or above this to count as a clean sale -
-     * a floor per part ("seven great parts can't hide one neglected one"),
-     * reachable by effort alone, unlike the authenticity roll below. */
-    cleanSaleMinBand: z.enum(['scrap', 'poor', 'worn', 'fine', 'mint']),
-    cleanSaleBonus: z.number().int().nonnegative(),
-    /** Concours also requires the car's (unmodifiable) authenticityPercent to
-     * clear this bar - on top of, not instead of, the clean band bar. */
-    concoursSaleMinAuthenticityPercent: z.number().int().min(0).max(100),
-    /** Concours bonus; replaces (does not stack with) cleanSaleBonus. */
-    concoursSaleBonus: z.number().int().nonnegative(),
-    /** Word-of-mouth term for a MATCHED sale (the car fits the buyer's
-     * visible want) - stacks on top of any clean/concours bonus rather than
-     * replacing it, since it rewards a different thing (reading the buyer,
-     * not the car's own condition). Revealed only in sale-close copy, never
-     * as an ambient number (progression bible law 4). */
-    matchedSaleRepBonus: z.number().int().nonnegative(),
-    /** Reputation docked for selling a lemon - a mechanically unsound car,
-     * caught either by a single present part at `scrap`/missing or by the
-     * car's cost-weighted band factor sitting at or below
-     * `lemonMaxAverageBandFactor` below. A positive number; the delta applied
-     * is its negation, so selling a lemon is a real setback worth several
-     * clean sales. */
-    lemonSalePenalty: z.number().positive(),
-    /** The cost-weighted band-factor bar (a 0-1 fraction) at or below which a
-     * sale counts as a lemon regardless of any single part - set above
-     * `bands.bandFactors.poor` so "every part poor" reliably reads as a lemon,
-     * yet below `worn` so an otherwise-sound car with one worn part stays
-     * neutral. */
-    lemonMaxAverageBandFactor: z.number().min(0).max(1),
-  }),
+  reputation: z
+    .object({
+      /**
+       * The reputation ladder. CALIBRATED AGAINST REAL PLAY, NOT THE BOT - a
+       * real session reaches `local` at roughly 5 rep/day; the harness's
+       * `competent-policy` probe earns about 1 rep/day and takes until p50 day
+       * 16. A ladder scaled to the bot collapses under real play.
+       *
+       * INTERLOCK: `local` drives the hard-gated days-to-`local` invariant
+       * (`tools/balance/invariants.py`), which measures the ~1 rep/day BOT, so
+       * raising `local` moves that gate's p50 almost 1:1 and the band must move
+       * with it. That invariant measures bot patience rather than game pacing;
+       * see `TODO.md`'s harness-rework entry.
+       *
+       * Must be monotonic and start at 0 - a ladder that goes down, or that a
+       * fresh shop does not start at the bottom of, is a bug, not a tuning
+       * choice.
+       */
+      tierThresholds: z
+        .object({
+          unknown: z.literal(0),
+          local: z.number().int().positive(),
+          known: z.number().int().positive(),
+          respected: z.number().int().positive(),
+          legend: z.number().int().positive(),
+        })
+        .refine((t) => t.local < t.known && t.known < t.respected && t.respected < t.legend, {
+          message:
+            'reputation.tierThresholds must be strictly ascending (each rung genuinely harder than the last)',
+        }),
+      /** Every part's band must be at or above this to count as a clean sale -
+       * a floor per part ("seven great parts can't hide one neglected one"),
+       * reachable by effort alone, unlike the authenticity roll below. */
+      cleanSaleMinBand: z.enum(['scrap', 'poor', 'worn', 'fine', 'mint']),
+      cleanSaleBonus: z.number().int().nonnegative(),
+      /** Concours also requires the car's (unmodifiable) authenticityPercent to
+       * clear this bar - on top of, not instead of, the clean band bar. */
+      concoursSaleMinAuthenticityPercent: z.number().int().min(0).max(100),
+      /** Concours bonus; replaces (does not stack with) cleanSaleBonus. */
+      concoursSaleBonus: z.number().int().nonnegative(),
+      /** Word-of-mouth term for a MATCHED sale (the car fits the buyer's
+       * visible want) - stacks on top of any clean/concours bonus rather than
+       * replacing it, since it rewards a different thing (reading the buyer,
+       * not the car's own condition). Revealed only in sale-close copy, never
+       * as an ambient number (progression bible law 4). */
+      matchedSaleRepBonus: z.number().int().nonnegative(),
+      /** Reputation docked for selling a lemon - a mechanically unsound car,
+       * caught either by a single present part at `scrap`/missing or by the
+       * car's cost-weighted band factor sitting at or below
+       * `lemonMaxAverageBandFactor` below. A positive number; the delta applied
+       * is its negation, so selling a lemon is a real setback worth several
+       * clean sales. */
+      lemonSalePenalty: z.number().positive(),
+      /** The cost-weighted band-factor bar (a 0-1 fraction) at or below which a
+       * sale counts as a lemon regardless of any single part - set above
+       * `bands.bandFactors.poor` so "every part poor" reliably reads as a lemon,
+       * yet below `worn` so an otherwise-sound car with one worn part stays
+       * neutral. */
+      lemonMaxAverageBandFactor: z.number().min(0).max(1),
+    })
+    .strict(),
   /**
    * The service-job framework's own tunables: derived-payout inputs and the
    * daily offer-arrival cadence.
@@ -1562,7 +1567,7 @@ export const EconomyConfigSchema = z.object({
        * enough that, compounded with `valuation.tasteSpread`'s own worst
        * case, a fully-restored car's worst-case walk-in sale cannot erase the
        * worst-case flip margin the Law 2 generation guard still permits
-       * (`coherence.ts`). CONSTRAINT: the mean must not exceed 1.0 - the
+       * (`balanceProbes.ts`). CONSTRAINT: the mean must not exceed 1.0 - the
        * no-free-lunch invariant that an unmodified car's expected walk-in
        * sale never nets a profit over its own guide value
        * (`valueModelProbes.test.ts`). The current range keeps the mean at
@@ -1676,7 +1681,7 @@ export const EconomyConfigSchema = z.object({
     }),
   /**
    * economy-bible.md law 4 (one derived ledger, machine-checked): the one
-   * number the roster-wide coherence check (`coherence.ts`,
+   * number the roster-wide coherence check (`balanceProbes.ts`,
    * `tools/balance/src/balance/invariants.py`) gates the "brake pads vs car
    * price" guard against - the full tyres+brakePadsDiscs+clutch consumable
    * set, class-priced, must never exceed this fraction of a model's own book

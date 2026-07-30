@@ -41,9 +41,10 @@ export type DepthClass = z.infer<typeof DepthClassSchema>
  * `statWeights` is `StatWeightsSchema`: not a delta a part applies when
  * installed (`Part.statModifiers`), but how much this part's condition band
  * contributes to each derived stat. The two schemas shared one shape until
- * `statModifiers.power` went proportional and became a per-character
- * object - a condition weight is still one plain number per stat, so they
- * split rather than forcing power's new shape onto this meaning too.
+ * the installed-part power delta went proportional (`statModifiers.
+ * powerFraction`, per-character) - a condition weight is still one plain
+ * number per stat, so they split rather than forcing power's new shape onto
+ * this meaning too.
  *
  * `forcedInduction` is the one part whose presence on a given car is
  * conditional - every other part is always present on every car.

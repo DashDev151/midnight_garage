@@ -10,10 +10,10 @@ import {
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '../src/context'
 import {
-  computeRosterCoherence,
-  computeRosterDonorCoherence,
-  computeSymptomCoherence,
-} from '../src/coherence'
+  computeRosterBalanceProbe,
+  computeRosterDonorBalanceProbe,
+  computeSymptomBalanceProbe,
+} from '../src/balanceProbes'
 
 const CONTEXT = buildSimContext(
   CARS,
@@ -30,11 +30,11 @@ const CONTEXT = buildSimContext(
  * a fast, CI-gated unit test against the real shipped roster - the same
  * numbers `tools/balance/data/coherence.csv` exports for the
  * human-readable per-model report, computed by the exact same function
- * (`computeRosterCoherence`), so a failure here and a failure in
+ * (`computeRosterBalanceProbe`), so a failure here and a failure in
  * `balance.cli check` can never disagree.
  */
 describe('roster coherence invariants (economy-bible.md law 4)', () => {
-  const rows = computeRosterCoherence(CARS, CONTEXT)
+  const rows = computeRosterBalanceProbe(CARS, CONTEXT)
 
   it('covers every roster model exactly once', () => {
     expect(rows.map((r) => r.modelId).sort()).toEqual(CARS.map((c) => c.id).sort())
@@ -68,8 +68,8 @@ describe('roster coherence invariants (economy-bible.md law 4)', () => {
 })
 
 describe('donor coherence invariants (Sprint 71 decision 8: the teardown game)', () => {
-  const modelRows = computeRosterCoherence(CARS, CONTEXT)
-  const donorRows = computeRosterDonorCoherence(CARS, CONTEXT)
+  const modelRows = computeRosterBalanceProbe(CARS, CONTEXT)
+  const donorRows = computeRosterDonorBalanceProbe(CARS, CONTEXT)
 
   it('covers every roster model exactly once', () => {
     expect(donorRows.map((r) => r.modelId).sort()).toEqual(CARS.map((c) => c.id).sort())
@@ -123,7 +123,7 @@ describe('donor coherence invariants (Sprint 71 decision 8: the teardown game)',
 })
 
 describe('symptom coherence invariants (Sprint 73 decision 6: the blind-buy guardrail)', () => {
-  const rows = computeSymptomCoherence(CONTEXT)
+  const rows = computeSymptomBalanceProbe(CONTEXT)
 
   it('covers every symptom x every fitment tier exactly once', () => {
     expect(rows).toHaveLength(CONTEXT.symptoms.length * 4)

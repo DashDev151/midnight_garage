@@ -122,7 +122,7 @@ pass."
   - **Bot-derived (unreliable):** every days-to-tier figure, every per-strategy cash curve, the
     auction win-price tails, the buyout share. Treat these as bot statistics, not design
     statistics.
-  - **Closed-form and sound (bot-free):** `computeRosterCoherence`'s Law 1/2/3/4 checks call the
+  - **Closed-form and sound (bot-free):** `computeRosterBalanceProbe`'s Law 1/2/3/4 checks call the
     real sim functions against deliberately-constructed worst-case cars - no bots, no RNG, no
     careers. Same for the `valueModelProbes` acceptance families and the golden-master
     determinism hashes. These are the checks that actually caught things, and they should be
@@ -215,7 +215,7 @@ pass."
   parts (found 2026-07-30, while making the probes read live data).** Real generation
   (`generateAuctionCarInstance`) unconditionally rolls a `zoneState`, and that is what prices
   `panels`, `paint` and `underbody`, through `bodyPartRepairBillYen`'s flat materials cost. The
-  probe cars in `packages/sim/src/coherence.ts` carry no `zoneState`, so those same three parts
+  probe cars in `packages/sim/src/balanceProbes.ts` carry no `zoneState`, so those same three parts
   price through the generic per-part formula (`costToBandYen`, scaled by catalogue part price)
   instead.
 
@@ -225,11 +225,32 @@ pass."
   validating a car the game does not generate.
 
   Verified before stopping: synthesising a `zoneState` on the probes WOULD move `worstBillYen`,
-  `repairCostYen` and `sensibleFlipMarginYen`, and `computeModelCoherence`'s `planGroupRepair`
+  `repairCostYen` and `sensibleFlipMarginYen`, and `computeModelBalanceProbe`'s `planGroupRepair`
   loop would need zone-pipeline-aware repair-cost logic it does not have today, because
   `planGroupRepair` deliberately skips zone-backed parts. So closing this is a real change to
   the probes' arithmetic, not a field addition, and every Law figure would need re-deriving.
-  A doc comment in `coherence.ts` flags it at the site.
+  A doc comment in `balanceProbes.ts` flags it at the site.
+
+- [ ] **The duplicate-formula ban (Sprint 143's G3 guard,
+  `packages/content/tests/duplicateFormulaBan.test.ts`) found three pre-existing hand copies of
+  the clean-value formula (`bookValueYen * mileageFactor(...)`) outside `marketValue.ts`, not
+  one.** The guard as written exempts only `marketValue.ts`; left red on purpose rather than
+  quietly exempted, per the sprint's own instruction to report a guard's real findings rather than
+  paper over them.
+  - `packages/sim/src/auctions.ts:810` (`enforceMaxBillFraction`'s `cleanValue`, the Law 2
+    generation-guard ceiling) and `packages/sim/src/balanceProbes.ts:317`
+    (`computeModelBalanceProbe`'s `cleanValueYen`) are genuine re-derivations with no parity
+    test tying them to `marketValueYen` - the exact drift risk directive 16 exists to prevent,
+    and the one `balanceProbes.ts`'s own file doc comment claims never happens ("never a
+    re-derivation of their formulas").
+  - `packages/sim/src/valueLedger.ts:69-70` (`valueLedgerFor`'s `mileageAdjusted`) is a weaker
+    case: its own doc comment states it is "built from the same atoms the value formula itself
+    consumes... never a second value computation," and `valueLedger.test.ts` pins its total to
+    `marketValueYen` to the yen on every roster model, so drift cannot land silently the way it
+    can in the other two.
+  Needs a maintainer call: extend the guard's exemption list (at least for `valueLedger.ts`,
+  given its parity test), or extract a shared exported `cleanValueYen` helper from
+  `marketValue.ts` that all three call instead of each computing it by hand.
 
 - [ ] **Two roster CSV columns are owed under directive 24, and neither blocks the tuning arc.**
   `rarity` holds 26 of 94: it is a spawn-rate lever, so the missing 68 need signing under
@@ -668,9 +689,9 @@ pass."
   sit here moved into Sprint 28's catalog work.)
 - [ ] **Law 6 (the wage law) genuinely fails on the shitbox tier once the full teardown chain is
   honestly priced (found Sprint 72, decision 6; re-measured Sprint 79).** Before Sprint 72,
-  `computeModelCoherence`'s wage probe undercounted a bolt-on/buried repair's teardown labour
+  `computeModelBalanceProbe`'s wage probe undercounted a bolt-on/buried repair's teardown labour
   (Sprint 71's disclosed gap); pricing it honestly (deduped once per shared blocker across the
-  whole restoration, not once per part behind it - see `coherence.ts`) dropped
+  whole restoration, not once per part behind it - see `balanceProbes.ts`) dropped
   `honda-city-e-aa`/`suzuki-wagon-r-ct21s` to a real `wageMarginYen` of -Y20,725 (0.39x rent), while
   common/uncommon/rare all clear a large positive margin. Root cause, not a bug: a shitbox's cheap
   parts return too little repair gain (`repairGainYen` scales with part price) to outearn the rent
@@ -690,7 +711,7 @@ pass."
   largely-`worn` parts at 45% off cost more than the single catastrophic repair saved, once teardown
   labour was honestly priced (the same shape as the Law 6 shitbox finding above, the other side of
   the teardown economy). **Sprint 79 (the equivalence-priced labour model) removes that labour cost
-  entirely** - `computeDonorCoherence`'s `stripLaborSlots` is now 0 for every roster model, since
+  entirely** - `computeDonorBalanceProbe`'s `stripLaborSlots` is now 0 for every roster model, since
   removal is free. Re-measured on the worst-case rolled car per model (`ModelDonorCoherenceRow.
   partedYieldOfWorstCaseYen` against that model's own `sensibleFlipMarginYen`): parting now WINS on
   three roster models' worst-case corpse - `honda-city-e-aa` (49.5% bill/clean), `honda-civic-

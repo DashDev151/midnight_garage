@@ -55,6 +55,26 @@ export function mileageFactor(mileageKm: number, economy: EconomyConfig): number
 }
 
 /**
+ * Stage A of `marketValueYen`: a car's clean value before any restoration
+ * bill is deducted - `bookValueYen` scaled by the mileage curve and by
+ * current market heat (`heatPercent`, 100 = neutral). This is the single
+ * definition of a car's clean value in the codebase;
+ * `duplicateFormulaBan.test.ts` bans every other file under
+ * `packages/sim/src` from re-deriving it by combining `bookValueYen` with
+ * `mileageFactor(` directly - callers that need it at a fixed, heat-neutral
+ * baseline (a generation-time guard, a closed-form roster probe) pass
+ * `heatPercent: 100` rather than reimplementing the formula.
+ */
+export function cleanValueYen(
+  bookValueYen: number,
+  mileageKm: number,
+  heatPercent: number,
+  economy: EconomyConfig,
+): number {
+  return bookValueYen * mileageFactor(mileageKm, economy) * (heatPercent / 100)
+}
+
+/**
  * The restoration-bill deduction (economy-bible.md law 1).
  *
  * The bill is the SAME mint-referenced `carCostToMintYen` the player sees on
@@ -87,8 +107,8 @@ export function mileageFactor(mileageKm: number, economy: EconomyConfig): number
  * generation-time bill guard (Law 2, auctions.ts) guarantees no generated
  * car's bill is ever large enough to actually reach it.
  *
- * `cleanValue = bookValueYen * mileageFactor * (heatPercent / 100)` - heat
- * applies exactly once, and car age plays no part in it at all.
+ * `cleanValue = cleanValueYen(bookValueYen, mileageKm, heatPercent, economy)` -
+ * heat applies exactly once, and car age plays no part in it at all.
  */
 function instanceBaseValueYen(
   model: CarModel,
@@ -99,8 +119,7 @@ function instanceBaseValueYen(
   economy: EconomyConfig,
 ): number {
   const { marketRepairDiscount } = economy.valuation
-  const cleanValue =
-    model.bookValueYen * mileageFactor(car.mileageKm, economy) * (heatPercent / 100)
+  const cleanValue = cleanValueYen(model.bookValueYen, car.mileageKm, heatPercent, economy)
 
   const expectation = expectationForCar(model, economy)
   const billToMintYen = carCostToMintYen(car, model, partsById, partsTaxonomyById, economy)

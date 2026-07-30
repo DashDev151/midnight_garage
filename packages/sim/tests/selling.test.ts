@@ -566,6 +566,46 @@ describe('drawDailyOffers (Sprint 31 decision 2; channels, Sprint 114)', () => {
       expect(magazineResult.state.pendingOffers).toEqual([])
     })
   })
+
+  describe('flag-driven dispatch (D1): a channel needs no code change to work', () => {
+    // A channel defined only by existing content flags (offerChanceFactor,
+    // tasteCeiling), added here in-test rather than to economy.json, and
+    // never named in selling.ts. If dispatch still branches on channel id
+    // anywhere, this channel falls through to no offer, ever - the exact
+    // failure `matchedOnly` shipped with (declared and authored, ignored by
+    // the code that reads channel id instead of channel flags).
+    const FICTIONAL_CHANNEL_ID = 'fictionalChannel' as unknown as SellingChannelId
+    const economyWithFictionalChannel = {
+      ...CONTEXT.economy,
+      sellingChannels: {
+        ...CONTEXT.economy.sellingChannels,
+        fictionalChannel: {
+          feeYen: 0,
+          offerChanceFactor: 1000,
+          tasteCeiling: CONTEXT.economy.sellingChannels.shopFront.tasteCeiling,
+        },
+      },
+    } as unknown as typeof CONTEXT.economy
+    const fictionalContext: typeof CONTEXT = {
+      ...CONTEXT,
+      economy: economyWithFictionalChannel,
+    }
+
+    it('draws a real, logged offer through a channel selling.ts has never heard of', () => {
+      const state = { ...stateWithCar(car), carsForSale: listedOn(FICTIONAL_CHANNEL_ID) }
+      let found = false
+      for (let seed = 0; seed < 10 && !found; seed++) {
+        const result = drawDailyOffers(state, fictionalContext, createRng(seed))
+        if (result.state.pendingOffers.length > 0) {
+          found = true
+          expect(result.log).toContainEqual(
+            expect.objectContaining({ type: 'offer-received', carInstanceId: car.id }),
+          )
+        }
+      }
+      expect(found).toBe(true)
+    })
+  })
 })
 
 describe('resolveSellViaWalkIn (Sprint 31: resolves today’s pre-rolled offer)', () => {
@@ -709,7 +749,6 @@ describe('resolveSellViaWalkIn (Sprint 31: resolves today’s pre-rolled offer)'
       displayName: 'Authenticity Only',
       statWeights: { power: 0, handling: 0, style: 0, reliability: 0, authenticity: 1 },
       tierPreferences: [{ tier: 'everyday' as const, weight: 1 }],
-      priceSensitivity: 0.5,
       wantLine: 'synthetic fixture buyer - no authored copy needed',
     }
     const matchedCar: CarInstance = buildCarInstance({
@@ -780,7 +819,6 @@ describe('ceiling clamps (Sprint 114): honest, per the lever table', () => {
     displayName: 'Authenticity Only',
     statWeights: { power: 0, handling: 0, style: 0, reliability: 0, authenticity: 1 },
     tierPreferences: [],
-    priceSensitivity: 0.5,
     wantLine: 'synthetic fixture buyer - no authored copy needed',
   }
   const perfectFitCar: CarInstance = buildCarInstance({
