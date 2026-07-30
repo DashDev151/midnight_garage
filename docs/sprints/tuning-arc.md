@@ -19,8 +19,8 @@ says so and stops rather than inviting the implementer to make it.
 | **135** | Proportional power, and the ECU price ladder | 134 | **SIGNED 2026-07-29** |
 | **136** | Support ratios, and reliability as what they move | 135 | **SIGNED 2026-07-29** |
 | **137** | The forced-induction curve and its price ladder | **136, hard** | **SIGNED 2026-07-29** |
-| **138** | Measure what coherence did to the money | 136 | **none needed** |
-| **139** | The premium for building well, if there is one | **138 accepted, hard** | set by 138; **may be cancelled** |
+| **138** | Measure what coherence did to the money | 136 | **CLOSED UNBUILT 2026-07-30, superseded** |
+| **139** | The premium for building well, if there is one | **138 accepted, hard** | **CLOSED UNBUILT 2026-07-30, superseded** |
 | **140** | Stat simplification, aero ceiling, style base | 135 | aero ceiling, style base, **and 68 of each still unauthored** |
 | **141** | The dyno screen | 136 | fee, hire-or-facility, plus a GDD ruling |
 | **142** | Grade sensitivity and the condition review | 134 | grade band curves |
@@ -32,6 +32,35 @@ without stopping to ask.
 **What is still unsigned is all downstream of 138**: 140's aero and style tables (and 68 of each
 still unauthored), 141's dyno fee plus the GDD ruling, and 142's grade band curves. 139's shape
 is set by 138's report.
+
+---
+
+## 138 and 139 closed unbuilt, 2026-07-30
+
+**Both are superseded by `docs/design/systems/sale-value-system.md`, and its implementation
+plan, `docs/design/systems/sale-value-implementation-plan.md`.** Full reasoning lives in each
+sprint doc's own closure section, added at its end without touching the doc's original body;
+this is the index's summary.
+
+- **138** measured whether the coherence penalty was felt. It found the taste band cannot
+  express a single-stat signal at all: the score is a weighted mean of five deliberately
+  anti-correlated stats, so it sits near the middle by construction. That is a finding about the
+  instrument, not the size of the penalty, and it is answered structurally by the new
+  taste-as-match design rather than by tuning the old one.
+- **139** asked whether building well deserves a premium on top of the penalty. It does: Stage D
+  of the new design scales parts retention with coherence, `retentionFloor` 0.30 to
+  `retentionCeiling` 1.10, delivering the premium from the value side instead of as a separate
+  bonus on taste.
+
+**The tuning arc therefore completes as 140, 141, 142.** The sale value work is a new arc,
+sprints 143 to 155, and it consumes this arc's output rather than replacing it: Stage C and
+Stage D read the `coherenceFactor` that Sprint 136 built.
+
+**Sprint 140 splits.** Its per-car style baseline task becomes a prerequisite for the new arc,
+pulled forward as that arc's own early sprint, because buyer targets on style cannot be
+authored while every stock car scores at most 20 out of 100 (`styleCap`, flat across the
+roster). The rest of Sprint 140, deleting `statModifiers.handling`, the aero ceiling and the
+parts-market power readout, is independent of the split and stays here unchanged.
 
 ---
 

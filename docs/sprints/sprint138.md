@@ -185,3 +185,22 @@ Nothing else can have moved, because nothing was changed.
 ## Exit
 
 _To be completed at the end of the sprint._
+
+---
+
+## Closure
+
+**Status: CLOSED UNBUILT, 2026-07-30. Superseded by the sale value system design.**
+
+This was a measurement sprint asking whether the coherence penalty landed by Sprint 136 was
+felt, and whether it changed who bought the car. That question was overtaken: measurement found
+the taste band was barely exercised at all, because the score is a weighted mean of five
+deliberately anti-correlated stats, so it sits near the middle by construction. The answer was
+not "the penalty is too small", it was "the instrument cannot express it".
+
+What replaced it: `docs/design/systems/sale-value-system.md`, which reworks taste into a
+per-buyer match, moves reliability out of taste into a value discount (Stage C), and adds
+liquidity and standing as the two axes a sale was missing.
+
+The sprint's measurement instinct was right and produced the finding that closed it. It is this
+sprint's scope that is superseded, not its purpose.

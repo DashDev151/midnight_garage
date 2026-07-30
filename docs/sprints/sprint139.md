@@ -228,3 +228,23 @@ change as the recorded sign-off.
 ## Exit
 
 _To be completed at the end of the sprint._
+
+---
+
+## Closure
+
+**Status: CLOSED UNBUILT, 2026-07-30. Superseded.**
+
+This sprint asked whether building well deserves a premium on top of Sprint 136's penalty, and
+its own doc recorded that closing unbuilt was a legitimate outcome. It is closed because the
+answer turned out to be yes, and it is delivered elsewhere.
+
+Stage D of `docs/design/systems/sale-value-system.md` scales parts retention with coherence,
+from `retentionFloor` 0.30 at the floor to `retentionCeiling` 1.10 at the ceiling, so a
+well-sorted car is worth more than the sum of its parts. That is the premium this sprint was
+asking about, arrived at from the value side rather than as a separate bonus bolted onto taste.
+
+This sprint's doc also anticipated needing to amend arc rule 6 ("the base is the ceiling") if
+Shape 2 were chosen. That amendment has since happened, but for a different reason: the
+build-intensity term (`stressCoefficient`) landed in Sprint 136's third amendment, not through
+this sprint or Shape 2.
