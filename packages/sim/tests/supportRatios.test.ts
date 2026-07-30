@@ -67,12 +67,12 @@ describe('supportRatios: the structural disjointness test', () => {
         Object.values(part.statModifiers.powerFraction).some((v) => v !== 0),
       ).map((part) => part.carPartId),
     )
-    const demandSlotsBySubsystem: Record<Subsystem, ReadonlySet<CarPartId>> = Object.fromEntries(
-      SubsystemSchema.options.map((subsystem) => {
-        const driver = demandDrivers[subsystem]
-        return [subsystem, driver.kind === 'total' ? gainBearingSlots : new Set([driver.slot])]
-      }),
-    ) as Record<Subsystem, ReadonlySet<CarPartId>>
+    const demandSlotsBySubsystem = {} as Record<Subsystem, ReadonlySet<CarPartId>>
+    for (const subsystem of SubsystemSchema.options) {
+      const driver = demandDrivers[subsystem]
+      demandSlotsBySubsystem[subsystem] =
+        driver.kind === 'total' ? gainBearingSlots : new Set([driver.slot])
+    }
     for (const subsystem of SubsystemSchema.options) {
       const supportSlots = new Set(Object.keys(supportWeights[subsystem]) as CarPartId[])
       for (const slot of demandSlotsBySubsystem[subsystem]) {

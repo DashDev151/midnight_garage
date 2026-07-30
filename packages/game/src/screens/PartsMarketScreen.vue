@@ -190,15 +190,17 @@ function fitsAnyOwnedCar(part: Part): boolean {
 }
 
 /**
- * Power is absent from this badge deliberately: it is not a flat PS delta a
- * part carries on its own, but a fraction of the fitted CAR's own stock
- * power that depends on that car's engine character (`powerFraction`). This
- * generic catalog listing has no car in view, so there is no honest single
- * number to show here - a vehicle-aware power readout is a follow-up, not a
- * regression, of this list.
+ * Power and reliability are both absent from this badge deliberately.
+ * Power is not a flat PS delta a part carries on its own, but a fraction of
+ * the fitted CAR's own stock power that depends on that car's engine
+ * character (`powerFraction`) - this generic catalog listing has no car in
+ * view, so there is no honest single number to show here. Reliability is
+ * not a per-part delta at all any more: a part does not add reliability,
+ * the build supports its own output or it does not
+ * (`packages/sim/src/support.ts`).
  */
 function statSummary(part: Part): string {
-  return (['handling', 'style', 'reliability', 'authenticity'] as const)
+  return (['handling', 'style', 'authenticity'] as const)
     .map((k) => ({ k, v: part.statModifiers[k] }))
     .filter((s) => s.v !== 0)
     .map((s) => `${s.k[0]!.toUpperCase()}${s.v > 0 ? '+' : ''}${s.v}`)

@@ -528,12 +528,19 @@ describe('drawDailyOffers (Sprint 31 decision 2; channels, Sprint 114)', () => {
   })
 
   describe('the mismatch mechanism (tunerMagazine, matchedOnly)', () => {
-    // A worn, honest entry-tier car's only genuine buyer pool is first-timer
-    // (buyers.json's only entry tierPreference); depressed condition
-    // drags first-timer's reliability-weighted taste for it under 1.0.
-    // Seed 0 is the first seed low enough to clear both channels' own
-    // chance rolls (verified: shopFront draws, magazine does not, on this
-    // exact seed).
+    // An entry-tier car's only genuine buyer pool is first-timer (buyers.json's
+    // only entry tierPreference), whose statWeights lean hard on reliability
+    // (0.8 of 1.4). Since Sprint 136 authored a per-car `spec.reliabilityBase`
+    // (honda-city-e-aa: 99 - cheap cars are genuinely dependable now), a merely
+    // `worn` example no longer drags the taste score under 1.0: the condition
+    // has to be `poor` before first-timer's want goes unmet. A neglected
+    // entry-tier beater at `poor` across the board is exactly the car this
+    // channel should reject while the shop front still takes it - a stock
+    // stat block of reliability 40 / power 44 / handling 5 / style 8 /
+    // authenticity 70 (this fixture's actual computeDerivedStats output)
+    // scores under the magazine's matched threshold. Seed 0 is the first seed
+    // low enough to clear both channels' own chance rolls (verified: shopFront
+    // draws a first-timer offer, magazine draws nothing, on this exact seed).
     const entryModel = CARS.find((c) => c.id === 'honda-city-e-aa')
     if (!entryModel) throw new Error('fixture car missing from seed content')
     const entryCar: CarInstance = buildCarInstance({
@@ -541,7 +548,7 @@ describe('drawDailyOffers (Sprint 31 decision 2; channels, Sprint 114)', () => {
       year: 1990,
       mileageKm: 120_000,
       authenticityPercent: 70,
-      parts: uniformCarParts('worn'),
+      parts: uniformCarParts('poor'),
     })
 
     it('a stock entry-tier car listed in the magazine draws no offer on a seeded day the same car on shopFront does', () => {

@@ -195,7 +195,7 @@ describe('advanceDay golden master', () => {
     // labour and cash figure, and every derived stat. A deliberate change to
     // any of those is re-derived from a real run of this script; the script
     // itself is never bent to preserve the number.
-    expect(hashState(finalState)).toBe('4ee079da')
+    expect(hashState(finalState)).toBe('c5694053')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -321,7 +321,7 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // above: the lot's rolled condition, the car's derived stats and the
     // buyer's taste-adjusted price all feed it, so it is re-derived from a
     // real run whenever one of them deliberately changes.
-    expect(hashState(acquisitionCareer().sold)).toBe('84e5068a')
+    expect(hashState(acquisitionCareer().sold)).toBe('8bef0bed')
   })
 })
 
