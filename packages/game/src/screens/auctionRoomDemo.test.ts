@@ -1,6 +1,6 @@
 import { playerEstimateYen } from '@midnight-garage/sim'
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useGameStore } from '../stores/gameStore'
 import { enterRoom } from './auctionRoom'
 import {
@@ -10,6 +10,14 @@ import {
   verdictFor,
   type DemoLobbyEntry,
 } from './auctionRoomDemo'
+
+// This file's own seeded room simulations are real work, not a slow test in
+// the ordinary sense, and have exceeded Vitest's default 5s per-test timeout
+// under `--project game`'s whole-project resource contention while passing
+// every time run in isolation - a flake, not a regression. An explicit,
+// generous per-test timeout makes the file reliable under contention without
+// masking a genuine hang.
+vi.setConfig({ testTimeout: 30_000 })
 
 function buildLobby(): DemoLobbyEntry[] {
   const game = useGameStore()

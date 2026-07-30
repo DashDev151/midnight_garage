@@ -548,6 +548,43 @@ import storyMissions from '../data/storyMissions.json'
  * move lives in `packages/sim/tests/reliabilityModel.test.ts` and
  * `supportRatios.test.ts`, both re-derived from real runs. `harnessAcceptance.test.ts`
  * passes untouched: reliability is not read by the lap model.
+ *
+ * Re-pinned 2026-07-30 (maintainer approval, in session, single lever signed by name
+ * and value) for `docs/sprints/sprint136.md`'s second same-day amendment:
+ * `statFormulas.support.stockSupportMargin` 0.55 -> 0.27. The 0.55 value signed
+ * earlier the same day was itself wrong: it put a mathematical floor of `margin +
+ * (1 - margin) / demand` under every headline, which never fell below roughly 0.793
+ * for any demand the shipped catalogue's own gain parts can produce - so `dangerous`
+ * was unreachable through a pure demand/support imbalance anywhere on the 26-car
+ * roster, and only a broken part (the severity ceiling) could ever produce it. 0.27
+ * is the most robust point in the maintainer's signed valid window [0.22, 0.30].
+ * Re-derived from real runs: a bare race turbo on `nissan-180sx-rps13` now reads
+ * headline 0.699 (`dangerous`, was 0.815 `strained`) and reliability 56 (was 75); a
+ * sport-grade turbo with matched sport fuelSystem/cooling on the same car reads
+ * reliability 67 (was 83); the equivalent pair on `toyota-sprinter-trueno-ae86`
+ * (whose analogous unsupported subsystem is `revs`, driven by `camsTiming` rather
+ * than `forcedInduction`) reads 76 and 86, both `strained`. Every stock-mint and
+ * fully-supported race build still reads exactly its own `spec.reliabilityBase` on
+ * all 26 cars (unaffected by construction: a stock car's demand is always exactly 1
+ * regardless of the margin). All four story-mission reliability thresholds were
+ * checked against a fresh `storyMissionProbes.test.ts` run and none moved: none of
+ * their probes is an imbalanced build the margin bites on. Full pin table and
+ * arithmetic in `docs/sprints/sprint136.md`'s second amendment.
+ *
+ * Re-pinned 2026-07-30 (adversarial-verification defect fix, no value approval
+ * needed - directive 22 gates VALUES, and this changes none): `sprint136.md`'s own
+ * Task 1 required "the demand and support maps are content, not code", but only the
+ * support half moved there - WHICH slot drives each subsystem's demand
+ * (`cylinderPressure`/`forcedInduction`, `revs`/`camsTiming`, the other three/total
+ * gain) was still hard-coded in `packages/sim/src/support.ts` and hand-mirrored in
+ * `packages/sim/tests/supportRatios.test.ts`. Added `statFormulas.support.
+ * demandDrivers` (NEW, five entries, each `{ kind: 'slot', slot }` or `{ kind:
+ * 'total' }`) carrying exactly the same mapping the code already implemented;
+ * `support.ts` now reads it instead of hard-coding it, and the test's own hardcoded
+ * mirror is deleted in favour of reading the same content. The hash moves because
+ * the file gained a field; no demand weight, support weight, threshold or any other
+ * value changed, confirmed by `supportRatios.test.ts` and `reliabilityModel.test.ts`
+ * both passing unchanged.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -557,7 +594,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('45a3e42d1abf7d4e8286016b84cc6b7dedb1c90dce847f96e59b022f9fb1010f')
+    ).toBe('aa1d7bf6476169e82684ba37951370d62241273d4c67be2430dc6c3b9899aeac')
   })
 
   it('partPricing.json matches its approved content exactly', () => {

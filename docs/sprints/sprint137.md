@@ -188,6 +188,13 @@ pnpm test --project sim
 
 `harnessAcceptance.test.ts` passes untouched: stock cars carry no power SKUs.
 
+**Auction-demo warning (2026-07-30, standing rule across this arc):** if this sprint moves any part
+price or bill threshold, `enforceMinWorkBill` (`packages/sim/src/auctions.ts` ~370-413) draws a
+different number of PRNG steps and reshuffles every later lot in a seeded catalogue -
+`packages/game/src/screens/auctionRoom.test.ts`, `auctionRoomDemo.test.ts` and
+`AuctionRoomDemoScreen.test.ts` must be re-derived from a fresh seeded run, and
+`pnpm test --project game` must be run before this sprint is called done.
+
 ### Task 5: re-derive whatever moved
 
 Directive 17 case (a). Three things move and all three are expected:

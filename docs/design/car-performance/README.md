@@ -234,7 +234,8 @@ condition factors are spent, so each dial is assembled in one place and applied 
 same disjointness rules govern them: no tyre SKU carries a grip modifier, because the compound tier
 already gives a tyre upgrade its whole effect through the grip formula's own stock-to-fitted ratio;
 no SKU carries both grip and braking; and there is no power modifier and no downforce modifier,
-because power moves through `statModifiers.power` and the car's current derived power figure, and
+because power moves through `statModifiers.powerFraction` (Sprint 135: a fraction of the car's own
+stock power, authored per engine character) and the car's current derived power figure, and
 downforce through an aero-functional SKU's grade in `statFormulas.aero.byGrade`.
 
 The ladder is scored against the driven end point rather than chosen freely: a maximal legal build
@@ -244,8 +245,19 @@ tyre half's own era and width terms), which puts the quickest roster cars at a m
 and kerb weight falls 10 per cent, both at the top of the ladder. **Every per-SKU figure in it is a
 provisional default**, stepped geometrically between stock and maxed rather than fitted to anything.
 
-What (c) did NOT do, and it is the open question rather than an oversight: **the power ladder is
-untouched.** `statModifiers.power` is additive and class-invariant, so a maximal build adds a flat
+**Correction, 2026-07-30: the paragraph below described an open question that Sprint 135 has since
+closed, and is kept only as the record of what was open at the time.** Sprint 135 replaced the flat,
+additive `statModifiers.power` with `statModifiers.powerFraction` - a per-engine-character FRACTION
+of the car's own stock power, authored on the eight power-bearing engine slots
+(`block`/`internals`/`headValvetrain`/`camsTiming`/`intake`/`exhaust`/`ignitionEcu`/`forcedInduction`).
+A maximal build now reaches the same multiple of stock power on every car within its engine
+character - x1.57 `lazy-na`, x1.43 `high-strung-na`, x1.95 `forced`, exactly - never a flat PS
+delta, which is the ratio target the paragraph below said an additive path could not express.
+`forcedInduction`'s own curve is deliberately left linear rather than increasing, gated behind the
+support-ratio mechanism (Sprint 136) rather than remaining an open question here.
+
+What (c) did NOT do, as things stood before Sprint 135: **the power ladder is untouched.**
+`statModifiers.power` is additive and class-invariant, so a maximal build adds a flat
 +200 PS to any car it is fitted to, which is x1.6 to x2.0 on the performance roster and as much as
 x4.6 on a kei car. A ratio target cannot be expressed on an additive path, and making it
 proportional is a design change rather than a retune.

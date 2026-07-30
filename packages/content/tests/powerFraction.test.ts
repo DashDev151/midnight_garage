@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import rawParts from '../data/parts.json'
-import { CarPartIdSchema, PARTS } from '../src'
+import { CarPartIdSchema, PARTS, PartCatalogEntrySchema } from '../src'
 
 /**
  * Catalogue completeness for the proportional power mechanism.
@@ -138,5 +138,73 @@ describe('powerFraction catalogue completeness (Sprint 135)', () => {
     for (const id of ENGINE_SLOT_IDS) {
       expect(CarPartIdSchema.options).toContain(id)
     }
+  })
+
+  /**
+   * The catalogue-wide count, pinned exactly: 472 SKUs total, every one
+   * carrying `powerFraction`; 96 of them (12 per power-bearing slot, 8
+   * slots) carry a real nonzero fraction on at least one character. Guards
+   * against silent catalogue drift - a SKU added or removed changes these
+   * numbers, which is exactly the signal this pin exists to raise.
+   */
+  it('472 SKUs carry powerFraction; exactly 96 carry a nonzero fraction, 12 per power-bearing slot across 8 slots', () => {
+    expect(PARTS.length).toBe(472)
+    expect(PARTS.every((part) => part.statModifiers.powerFraction !== undefined)).toBe(true)
+
+    const isNonzero = (part: (typeof PARTS)[number]) =>
+      part.statModifiers.powerFraction['high-strung-na'] !== 0 ||
+      part.statModifiers.powerFraction['lazy-na'] !== 0 ||
+      part.statModifiers.powerFraction.forced !== 0
+
+    const nonzeroParts = PARTS.filter(isNonzero)
+    expect(nonzeroParts.length).toBe(96)
+
+    const countBySlot: Record<string, number> = {}
+    for (const part of nonzeroParts) {
+      countBySlot[part.carPartId] = (countBySlot[part.carPartId] ?? 0) + 1
+    }
+    expect(Object.keys(countBySlot).sort()).toEqual([...POWER_BEARING_SLOT_IDS].sort())
+    for (const slotId of POWER_BEARING_SLOT_IDS) {
+      expect(countBySlot[slotId], slotId).toBe(12)
+    }
+  })
+
+  /**
+   * The defect this schema now closes (formerly `.default(...)` on
+   * `PowerFractionSchema` and on `StatModifierSchema.powerFraction`): Zod is
+   * non-strict, so an object missing the field - or missing one of its three
+   * character keys - used to validate silently as zero power rather than
+   * failing. `sprint135.md` claimed a missed SKU "fails loudly"; it did not,
+   * until this test's own schema change made it true.
+   */
+  it('a SKU missing powerFraction entirely fails schema validation rather than silently reading as zero power', () => {
+    const withoutPowerFraction = {
+      id: 'test-missing-power-fraction',
+      brand: 'Test',
+      name: 'Test Part',
+      carPartId: 'intake',
+      fitmentClass: 'everyday',
+      grade: 'race',
+      statModifiers: { handling: 0, style: 0, authenticity: 0 },
+    }
+    expect(() => PartCatalogEntrySchema.parse(withoutPowerFraction)).toThrow()
+  })
+
+  it('a SKU with an incomplete powerFraction (missing one character) fails schema validation', () => {
+    const withPartialPowerFraction = {
+      id: 'test-partial-power-fraction',
+      brand: 'Test',
+      name: 'Test Part',
+      carPartId: 'intake',
+      fitmentClass: 'everyday',
+      grade: 'race',
+      statModifiers: {
+        handling: 0,
+        style: 0,
+        authenticity: 0,
+        powerFraction: { 'high-strung-na': 0.5, 'lazy-na': 0.3 },
+      },
+    }
+    expect(() => PartCatalogEntrySchema.parse(withPartialPowerFraction)).toThrow()
   })
 })

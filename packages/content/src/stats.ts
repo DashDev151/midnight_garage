@@ -34,12 +34,15 @@ export const StatWeightsSchema = z.object({
  * `computeDerivedStats`: it scales off STOCK power, never current power, so
  * contributions never compound and install order cannot matter (GDD 4.2's
  * no-hidden-maths rule). Zero on every SKU outside the eight power-bearing
- * engine slots, and zero at `stock` grade everywhere.
+ * engine slots, and zero at `stock` grade everywhere - authored explicitly as
+ * zero, never left absent: all three keys are REQUIRED, with no `.default(0)`,
+ * so a SKU missing one silently reading as zero power is a schema failure, not
+ * a quiet no-op.
  */
 export const PowerFractionSchema = z.object({
-  'high-strung-na': z.number().default(0),
-  'lazy-na': z.number().default(0),
-  forced: z.number().default(0),
+  'high-strung-na': z.number(),
+  'lazy-na': z.number(),
+  forced: z.number(),
 })
 
 /** A part's effect on the four stats - deltas, so any sign, no change by
@@ -55,11 +58,11 @@ export const StatModifierSchema = z.object({
   handling: z.number().default(0),
   style: z.number().default(0),
   authenticity: z.number().default(0),
-  powerFraction: PowerFractionSchema.default({
-    'high-strung-na': 0,
-    'lazy-na': 0,
-    forced: 0,
-  }),
+  // REQUIRED, not defaulted (Zod is non-strict, so an absent object here
+  // would otherwise validate silently and every character's fraction would
+  // read as 0 - a missing SKU must fail the schema, not fail loudly only in
+  // a doc that claims it does). All 472 shipped SKUs author it explicitly.
+  powerFraction: PowerFractionSchema,
 })
 
 /**
@@ -82,12 +85,23 @@ export const StatModifierSchema = z.object({
 export const PhysicalModifierSchema = z.object({
   /** Mechanical lateral grip, before compound: what the suspension and the
    * shell contribute. The tyre is not here - its compound tier already carries
-   * it through the grip formula's own ratio. */
-  grip: z.number().positive().default(1),
-  /** The braking coefficient, on top of whatever the rubber supplies. */
-  braking: z.number().positive().default(1),
-  /** The fraction of the car's kerb weight the build still carries. */
-  mass: z.number().positive().default(1),
+   * it through the grip formula's own ratio. `.min(1)`: `buildFactors`
+   * (sim/derivedStats.ts) interpolates a worn part's effective modifier as
+   * `1 + (modifier - 1) * bandFactor(band)`, which pulls the modifier BACK
+   * TOWARD 1 as the part wears. A modifier below 1 would therefore get
+   * BETTER as it wears out - a worn penalty part reading as an improvement
+   * over mint. Every physicalModifier on this schema is an upgrade or a
+   * no-op, never a stock-grade regression, so 1 is the floor. */
+  grip: z.number().min(1).default(1),
+  /** The braking coefficient, on top of whatever the rubber supplies.
+   * `.min(1)` for the same reason as `grip` above. */
+  braking: z.number().min(1).default(1),
+  /** The fraction of the car's kerb weight the build still carries. `.max(1)`:
+   * every aftermarket mass modifier in this catalogue is weight-SAVING or
+   * neutral, never weight-adding, so 1 is the ceiling - the same
+   * wear-interpolation reasoning as `grip`/`braking` above, mirrored: a
+   * modifier above 1 would get LIGHTER as it wears toward 1.0. */
+  mass: z.number().positive().max(1).default(1),
 })
 
 export type StatBlock = z.infer<typeof StatBlockSchema>

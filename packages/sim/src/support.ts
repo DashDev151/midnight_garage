@@ -102,14 +102,20 @@ export function supportRatios(
     totalGain += contribution.gain
   }
 
-  const { demandWeights, supportWeights, stockSupportMargin } = economy.statFormulas.support
+  const { demandWeights, demandDrivers, supportWeights, stockSupportMargin } =
+    economy.statFormulas.support
 
-  const demand: Record<Subsystem, number> = {
-    cylinderPressure: 1 + demandWeights.cylinderPressure * contributions.forcedInduction.gain,
-    fuelling: 1 + demandWeights.fuelling * totalGain,
-    heat: 1 + demandWeights.heat * totalGain,
-    revs: 1 + demandWeights.revs * contributions.camsTiming.gain,
-    torqueTransmission: 1 + demandWeights.torqueTransmission * totalGain,
+  // WHICH slot(s) drive a subsystem's demand is content (`demandDrivers`),
+  // not a hard-coded fact of this function - a future part joins a
+  // subsystem's demand side by editing `economy.json`, never this file.
+  const driverGain = (subsystem: Subsystem): number => {
+    const driver = demandDrivers[subsystem]
+    return driver.kind === 'total' ? totalGain : contributions[driver.slot].gain
+  }
+
+  const demand = {} as Record<Subsystem, number>
+  for (const subsystem of SubsystemSchema.options) {
+    demand[subsystem] = 1 + demandWeights[subsystem] * driverGain(subsystem)
   }
 
   // The factory-headroom baseline: proportional to each subsystem's OWN

@@ -1184,3 +1184,113 @@ rather than silently deleted, so nobody restores it.
   tests, passed.
 - No `pnpm typecheck`, `pnpm lint`, `pnpm format`, `pnpm test:coverage` or `pnpm build` run
   locally, matching this sprint's own speed directive.
+
+---
+
+## Amendment 2 (2026-07-30): `stockSupportMargin` 0.55 -> 0.27, `dangerous` made reachable again
+
+**This section is an addition, not a rewrite.** The amendment above shipped
+`stockSupportMargin` newly introduced at 0.55, and flagged its own consequence rather
+than quietly absorbing it: the margin's mathematical floor, `margin + (1 - margin) /
+demand`, never drops below roughly 0.793 for any demand the shipped catalogue's own
+gain parts can produce, which sits above the `strained`/`dangerous` line (0.75)
+everywhere measured on the 26-car roster. **The `dangerous` verdict was therefore
+unreachable through a pure demand/support imbalance by any build on the roster** -
+only the severity ceiling (a genuinely broken part) could ever produce it, which is
+not what the support model exists to catch. The maintainer signed **0.27** the same
+day: the most robust point in the signed valid window [0.22, 0.30].
+
+### Re-derived pins (second amendment)
+
+**`economyApprovalGate.test.ts`**: `economy.json` hash `45a3e42d...` -> `c795b74e...`
+(the one changed lever). Mission payouts and budget caps unchanged.
+
+**Story-mission reliability thresholds - all four checked, none moved.** None of the
+four probes is a demand/support-imbalanced build in the first place, so none of them
+sits anywhere near the margin's own bite: `wont-strand-her` and `first-proper-car` are
+all-stock, uniform-band builds (demand is exactly 1 regardless of the margin);
+`the-fleet-spare` ages only cosmetic parts, fitting no aftermarket gain;
+`street-power-street-manners`'s probe is fully sport-supported and already read
+`adequate` before this change, so a lower margin (which only ever lowers a headline,
+never raises one) cannot push a build that was never bound by the margin below its
+own gate. Confirmed by a fresh `storyMissionProbes.test.ts` run: 19 tests, unchanged.
+
+**`packages/sim/tests/supportRatios.test.ts`** (re-pinned; `nissan-180sx-rps13`):
+
+| build | old headline/band | new headline/band |
+| --- | --- | --- |
+| race turbo alone | 0.815, strained | 0.699, dangerous |
+| race turbo + race fuel + race cooling, stock bottom end | 0.815, strained | 0.699, dangerous |
+| maximal forced-induction build, race grade throughout | 1.226, adequate | 1.111, adequate |
+
+**`packages/sim/tests/reliabilityModel.test.ts`** (re-pinned; `nissan-180sx-rps13`,
+base 92, unless noted):
+
+| build | old | new |
+| --- | ---: | ---: |
+| race turbo alone, mint | 75 | 56 |
+| race turbo alone, one grenade (cooling scrap) | 20 | 0 |
+| maximal build, no support, mint | 71 | 50 |
+| maximal build, no support, one grenade | 16 | 0 |
+| race turbo alone aged: mint/fine/worn/poor/scrap | 75/62/43/20/0 | 56/42/23/0/0 |
+| maximal-gain, zero-support, all-scrap, per car (26 cars) | 21 at 0, 5 round up to 1 | all 26 at exactly 0 |
+
+**Two verification builds named by the maintainer, re-derived from a real run
+(`packages/sim/tests/derivedStats.test.ts`'s own `computeDerivedStats`, not hand
+estimated):**
+
+- `nissan-180sx-rps13`, a sport-grade turbo with matched sport `fuelSystem` and
+  `cooling` (all three `sport`, mint): headline 0.767 (cylinder pressure), reliability
+  **67** (was 83 at margin 0.55).
+- `toyota-sprinter-trueno-ae86` (base 94, `high-strung-na` - 130 PS from 1587cc is
+  81.9 PS/L, above the 80.0 threshold). This car carries no factory forced induction,
+  so its analogous unsupported subsystem is **revs**, driven by `camsTiming` rather
+  than `forcedInduction` (revs carries the highest demand weight in the table, 3.5,
+  exactly as cylinder pressure's forced-induction path is 180SX's). Bare race
+  `camsTiming` alone: headline 0.811 (revs), reliability **76**, `strained`. The
+  matched sport-grade version (`camsTiming`/`fuelSystem`/`cooling` all `sport`):
+  headline 0.861 (revs), reliability **86**, `strained`. Neither crosses into
+  `dangerous` on this car - the AE86's smaller total-gain profile keeps its `revs`
+  ratio clear of the 0.75 line that the 180SX's bare turbo now crosses on
+  `cylinderPressure`, which is a genuine per-car difference in how hard a "bare gain
+  part" build actually bites, not an inconsistency.
+
+**Every stock-mint and fully-supported race build still reads exactly its own
+`spec.reliabilityBase` on all 26 shipped cars, unaffected by construction**: a stock
+car's demand is exactly 1 on every subsystem regardless of the margin's value (the
+margin term is always `margin * 0 = 0` there), so the stock-car identity and the
+no-premium rule both hold untouched - re-confirmed by
+`reliabilityModel.test.ts`'s own "the base is the ceiling" suite, unchanged and
+passing.
+
+### Checks run for this second amendment
+
+- `pnpm vitest run packages/sim/tests/supportRatios.test.ts
+  packages/sim/tests/reliabilityModel.test.ts` - 101 tests, passed.
+- `pnpm vitest run packages/sim/tests/storyMissionProbes.test.ts` - 19 tests, passed,
+  unchanged (confirms no mission threshold moved).
+- `pnpm vitest run packages/sim/tests/derivedStats.test.ts
+  packages/sim/tests/marketValue.test.ts packages/sim/tests/valuation.test.ts
+  packages/sim/tests/bands.test.ts packages/sim/tests/carCondition.test.ts
+  packages/sim/tests/valueModelProbes.test.ts packages/sim/tests/harnessAcceptance.test.ts`
+  - 165 tests, passed, unchanged (the hard lap-time constraint: reliability is not
+  read by the lap model).
+- `pnpm vitest run packages/content/tests/economyApprovalGate.test.ts` - 3 tests,
+  passed, with the re-pinned hash.
+- `pnpm vitest run --project content` (whole project, once): **21 files, 478 tests, all
+  passed** (run once at the end of the whole change, alongside the adversarial-
+  verification defect fixes bundled into the same session, including
+  `partPricing.test.ts`'s asymmetric value-per-yen bound).
+- `pnpm vitest run --project game` (whole project, once): **62 files, 831 tests, all
+  passed.** One real fallout fixed in the same change:
+  `CarDetailScreen.test.ts`'s "race turbo on a stock bottom end" fixture moved from
+  `strained` to `dangerous` (headline 0.699), matching the whole point of the
+  0.55 -> 0.27 retune - re-pinned and its framing-copy assertion updated
+  (`It will do, but it is` -> `This is`). The three auction-room files
+  (`auctionRoom.test.ts`, `auctionRoomDemo.test.ts`, `AuctionRoomDemoScreen.test.ts`)
+  timed out under the whole-project run's resource contention (a pre-existing flake,
+  not a value regression - confirmed by re-running all three together in isolation,
+  61/61 passed); each was given an explicit 30s `vi.setConfig({ testTimeout })` so the
+  whole-project run is reliable rather than merely re-run until it happens to pass.
+- No `pnpm typecheck`, `pnpm lint`, `pnpm format`, `pnpm test:coverage` or `pnpm build`
+  run locally, matching this sprint's own speed directive.

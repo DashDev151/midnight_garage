@@ -210,7 +210,7 @@ kit and its derived difficulty; the 公認 state and its flow; swap-specific lab
 | Authenticity as a stat, and buyers who weigh it | `authenticityPercent`, `buyers.json` |
 | A job that costs labour and days | the existing job and labour system. **Reuse it. Directive 16 exists because a parallel job system was built once already** |
 | A part that has to be sourced and delivered | `resolveBuyPart`, standard and express |
-| Reliability as a stat | `statModifiers.reliability` |
+| Reliability as a stat | `computeDerivedStats`'s condition-plus-coherence combine (`packages/sim/src/derivedStats.ts`, `support.ts`), scaled by the car's own `spec.reliabilityBase` - `statModifiers.reliability` was retired in Sprint 136 |
 
 **Must NOT be built:** a second job system for swaps, a torque-curve simulation, or
 a second engine representation alongside `spec`'s scalars. Collapse those scalars

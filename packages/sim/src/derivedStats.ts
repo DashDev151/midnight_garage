@@ -93,10 +93,19 @@ function weightedBandFactorForStat(
 /**
  * The same traversal over the taxonomy's `physicalWeights`, on each dial's own
  * far gentler curve: how much grip, braking, driveline and downforce the car
- * still delivers. This is the ONLY route condition takes into the performance
- * model, and each dial has exactly one path into it, so nothing is charged
- * twice. Engine condition is absent by design - it reaches the model through
- * the car's current power instead.
+ * still delivers from CONDITION ALONE - the flat, part-agnostic weighted mean
+ * every car runs on regardless of what grade is fitted anywhere.
+ *
+ * This is not condition's only route into the performance model. `buildFactors`
+ * below is the other one: an installed SKU's own `physicalModifiers`, scaled by
+ * that SAME part's own band. Both apply, deliberately: a worn aftermarket
+ * suspension or brake part loses both its share of this weighted-mean
+ * baseline AND its own fitted advantage, each in proportion to how worn it
+ * is. That is one condition value doing two different jobs on the same part
+ * - the car's baseline physical state, and how much of THIS part's own
+ * upgrade survives its own wear - not the same job charged twice. Engine
+ * condition is absent by design - it reaches the model through the car's
+ * current power instead.
  *
  * Every dial is exactly 1.0 for a car whose relevant parts are all mint, so a
  * car in good order runs on its measured figures untouched.

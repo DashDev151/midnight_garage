@@ -11,6 +11,7 @@ import { describe, expect, it } from 'vitest'
 import { hasForcedInduction } from '../src/bands'
 import { buildSimContext } from '../src/context'
 import { computeDerivedStats } from '../src/derivedStats'
+import { supportVerdict } from '../src/support'
 import { carWithGrades } from './testFixtures'
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
@@ -126,9 +127,11 @@ describe('reliability model: the full table, pinned', () => {
   })
 
   // Character-specific rows, pinned on a real 'forced' car (nissan-180sx-rps13,
-  // base 92), for the two lower headlines. The proportional support margin
-  // (`stockSupportMargin`) lifts both headlines well off a flat baseline's
-  // figures: a bare race turbo alone reads `strained` rather than `dangerous`.
+  // base 92), for the two lower headlines. At a higher `stockSupportMargin`
+  // the margin's own floor would sit above the `dangerous` line for every
+  // demand the shipped catalogue can produce, so a bare race turbo alone
+  // would read `strained` and never `dangerous`; at the current value it
+  // reads `dangerous`, and both mint figures reflect that.
   const HEADLINE_BUILDS: Record<
     'raceTurboAlone' | 'maximalNoSupport',
     Partial<Record<CarPartId, 'race'>>
@@ -137,12 +140,12 @@ describe('reliability model: the full table, pinned', () => {
     maximalNoSupport: RACE_GAIN_ONLY,
   }
   const MINT_EXPECTED: Record<'raceTurboAlone' | 'maximalNoSupport', number> = {
-    raceTurboAlone: 75,
-    maximalNoSupport: 71,
+    raceTurboAlone: 56,
+    maximalNoSupport: 50,
   }
   const GRENADE_EXPECTED: Record<'raceTurboAlone' | 'maximalNoSupport', number> = {
-    raceTurboAlone: 20,
-    maximalNoSupport: 16,
+    raceTurboAlone: 0,
+    maximalNoSupport: 0,
   }
 
   for (const key of ['raceTurboAlone', 'maximalNoSupport'] as const) {
@@ -151,7 +154,7 @@ describe('reliability model: the full table, pinned', () => {
       expect(stats(car).reliability).toBe(MINT_EXPECTED[key])
     })
 
-    it(`${key}, one grenade: reads ${GRENADE_EXPECTED[key]} - the softened cooling ceiling (0.40) still bites through the raised headroom`, () => {
+    it(`${key}, one grenade: reads ${GRENADE_EXPECTED[key]} - the severity ceiling (0.40) and the lower margin's own coherence shortfall now clamp the car to the floor`, () => {
       const car = withPartBand(
         carWithGrades(FORCED_CAR, CONTEXT, HEADLINE_BUILDS[key], 'mint'),
         'cooling',
@@ -171,7 +174,7 @@ describe('reliability model: the full table, pinned', () => {
    */
   it('a race turbo alone, aged uniformly: the headline never moves, only condition does', () => {
     const bands = ['mint', 'fine', 'worn', 'poor', 'scrap'] as const
-    const expected = { mint: 75, fine: 62, worn: 43, poor: 20, scrap: 0 }
+    const expected = { mint: 56, fine: 42, worn: 23, poor: 0, scrap: 0 }
     for (const band of bands) {
       const car = carWithGrades(FORCED_CAR, CONTEXT, HEADLINE_BUILDS.raceTurboAlone, band)
       expect(stats(car).reliability, band).toBe(expected[band])
@@ -382,21 +385,47 @@ describe('reliability model: the floor', () => {
   })
 
   /**
+   * Proves the floor is doing real work rather than never being tested at
+   * all: `computeDerivedStats` clamps the combined shortfall to `[0, 1]`
+   * before scaling by the car's own base, so a bare
+   * `toBeGreaterThanOrEqual(0)` on the CLAMPED output can never fail
+   * regardless of what the formula underneath actually computes - the
+   * defect this test exists to avoid. This instead recomputes the PRE-CLAMP
+   * quantity independently: `conditionFactor` is trivially the uniform
+   * `scrap` band factor here (every reliability-weighted part on this build
+   * shares one band, so the weighted mean equals that band's factor
+   * regardless of how weight is distributed); `coherenceFactor` comes from
+   * the real, exported `supportVerdict`. Asserting their sum is strictly
+   * below 1 proves the pre-clamp value is genuinely negative, so the floor
+   * clamp is load-bearing here, not idle.
+   */
+  it('the worst buildable car would read a genuinely negative combined shortfall before the floor clamps it to 0', () => {
+    const car = carWithGrades(FORCED_CAR, CONTEXT, PURE_GAIN_SLOTS_RACE, 'scrap')
+    const conditionFactor = ECONOMY.bands.bandFactors.scrap
+    const { adequateAtOrAbove } = ECONOMY.statFormulas.support.thresholds
+    const { coherenceExponent } = ECONOMY.statFormulas.support
+    const headline = supportVerdict(car, FORCED_CAR, CONTEXT.partsById, ECONOMY).headline
+    const coherenceFactor = Math.min(1, headline / adequateAtOrAbove) ** coherenceExponent
+    expect(conditionFactor + coherenceFactor).toBeLessThan(1)
+  })
+
+  /**
    * `computeDerivedStats` already clamps `reliability` to `[0, 100]` before
    * returning it, so a bare `toBeGreaterThanOrEqual(0)` here can never fail
    * regardless of the formula underneath. This pins the actual, falsifiable
-   * measurement across all 26 cars instead. The support margin keeps this
-   * build's headline just above the `dangerous` line on most cars (min
-   * headline 0.793, `strained`), so most read 0 but five - the roster's
-   * smallest total gain fraction - round up to 1 rather than 0.
+   * measurement across all 26 cars instead. At the current
+   * `stockSupportMargin`, every one of the 26 floors at exactly 0; at a
+   * higher margin the build's headline sits just above the `dangerous` line
+   * on most cars, so five - the roster's smallest total gain fraction -
+   * would round up to 1 rather than 0.
    */
   it('a maximal-gain, zero-support, all-scrap build is pinned per car, all 26', () => {
     const EXPECTED: Record<string, number> = {
-      'honda-beat-pp1': 1,
+      'honda-beat-pp1': 0,
       'honda-city-e-aa': 0,
       'honda-city-turbo-ii-aa': 0,
-      'honda-civic-sir2-eg6': 1,
-      'honda-crx-sir-ef8': 1,
+      'honda-civic-sir2-eg6': 0,
+      'honda-crx-sir-ef8': 0,
       'honda-prelude-si-vtec-bb4': 0,
       'mazda-rx7-fd3s': 0,
       'mazda-savanna-rx7-fc3s': 0,
@@ -409,14 +438,14 @@ describe('reliability model: the floor', () => {
       'nissan-sunny-b12': 0,
       'subaru-impreza-wrx-sti-gc8': 0,
       'suzuki-alto-works-ha21s': 0,
-      'suzuki-wagon-r-ct21s': 1,
+      'suzuki-wagon-r-ct21s': 0,
       'toyota-aristo-30v-jzs147': 0,
       'toyota-carina-at150': 0,
       'toyota-chaser-tourer-v-jzx90': 0,
       'toyota-mr2-aw11': 0,
       'toyota-mr2-sw20': 0,
       'toyota-sera-exy10': 0,
-      'toyota-sprinter-trueno-ae86': 1,
+      'toyota-sprinter-trueno-ae86': 0,
       'toyota-supra-rz-jza80': 0,
     }
     expect(Object.keys(EXPECTED).sort()).toEqual(CARS.map((c) => c.id).sort())

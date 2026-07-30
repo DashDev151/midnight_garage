@@ -237,20 +237,30 @@ describe('the per-slot grade ladder', () => {
 /**
  * The test that would have caught the standalone ECU's old defect before it
  * shipped: `gradeFactors` moving in the same change as a slot's power curve
- * exists so a rung never becomes a dramatically better OR worse buy than its
+ * exists so a rung never becomes a dramatically worse buy than its
  * neighbours purely because the price ladder and the power curve have
  * different shapes - the ECU's street rung used to cost 2.89x race's
  * yen-per-PS for barely a fraction of the power.
  *
- * The bound is not perfect step-by-step monotonicity: a diminishing power
- * curve laid over the four-point 1/1.3/2/3 ladder genuinely makes a cheaper
- * rung a slightly BETTER buy than the top on several slots (diminishing
- * returns means the cheap rung IS the better buy, by design), by as much as
- * ~1.4x on `intake`. The bound below is chosen to comfortably contain every
- * one of those signed, accepted cases while decisively catching anything
- * resembling the old 2.89x distortion - the measured table is reported via
- * each case's own test name, passing or failing, so the residues stay
- * visible rather than merely passing.
+ * The bound is ASYMMETRIC, because the two directions are not the same
+ * defect. BELOW parity (`normalized < 1`, a cheaper rung costing LESS per
+ * unit of power than race) is diminishing returns behaving exactly as
+ * designed - a cheap rung genuinely being the better buy is the intended
+ * shape of a diminishing power curve laid over a linear price ladder, not a
+ * problem to bound tightly. That side keeps only a sanity floor, wide enough
+ * to contain every signed case (measured minimum ~0.717x) while still
+ * catching something going absurdly, near-free wrong.
+ *
+ * ABOVE parity (`normalized > 1`, a cheaper rung costing MORE per unit of
+ * power than race) is exactly the arc's rule-5 defect: a worse rung being a
+ * worse buy AND overpriced relative to its own power. That side is bounded
+ * tight, just above the measured maximum, so nothing resembling the old
+ * 2.89x ECU distortion can land again. The measured maximum across the whole
+ * catalogue is 1.335x (`internals/entry/high-strung-na/street`), and 52 of
+ * the 288 generated cases sit above parity at all - the ceiling tracks that
+ * measured residue directly, not a wide symmetric margin around it. The
+ * measured table is reported via each case's own test name, passing or
+ * failing, so the residues stay visible rather than merely passing.
  */
 describe('the value-per-yen rule: climbing a grade ladder never becomes a dramatically different buy', () => {
   const POWER_BEARING_SLOTS = [
@@ -266,9 +276,12 @@ describe('the value-per-yen rule: climbing a grade ladder never becomes a dramat
   const CHARACTERS: readonly EngineCharacter[] = ['high-strung-na', 'lazy-na', 'forced']
   const NON_STOCK_GRADES: readonly Grade[] = ['street', 'sport', 'race']
 
-  // Comfortably above the largest currently-signed spread (~1.39x on
-  // `intake`) and decisively below the pre-Lever-5 ECU defect (2.89x).
-  const MAX_ACCEPTABLE_SPREAD = 2.0
+  // ABOVE parity (rule-5 direction, must stay tight): just above the measured
+  // maximum of 1.335x, never a wide margin.
+  const MAX_ACCEPTABLE_SPREAD_ABOVE = 1.35
+  // BELOW parity (diminishing returns behaving correctly): a sanity floor
+  // only, wide enough to contain every signed case.
+  const MIN_ACCEPTABLE_SPREAD_BELOW = 1 / 2.0
 
   for (const carPartId of POWER_BEARING_SLOTS) {
     for (const fitmentClass of CLASSES) {
@@ -290,11 +303,38 @@ describe('the value-per-yen rule: climbing a grade ladder never becomes a dramat
         for (const row of byGrade) {
           const normalized = row.yenPerFraction / raceRow.yenPerFraction
           it(`${carPartId}/${fitmentClass}/${character}/${row.grade}: ${normalized.toFixed(3)}x race's yen-per-PS`, () => {
-            expect(normalized).toBeLessThanOrEqual(MAX_ACCEPTABLE_SPREAD)
-            expect(normalized).toBeGreaterThanOrEqual(1 / MAX_ACCEPTABLE_SPREAD)
+            expect(normalized).toBeLessThanOrEqual(MAX_ACCEPTABLE_SPREAD_ABOVE)
+            expect(normalized).toBeGreaterThanOrEqual(MIN_ACCEPTABLE_SPREAD_BELOW)
           })
         }
       }
     }
   }
+
+  it('the measured maximum is 1.335x, and 52 of the 288 cases sit above parity', () => {
+    const normalizedValues: number[] = []
+    for (const carPartId of POWER_BEARING_SLOTS) {
+      for (const fitmentClass of CLASSES) {
+        for (const character of CHARACTERS) {
+          const byGrade = NON_STOCK_GRADES.map((grade) => {
+            const part = PARTS.find(
+              (p) =>
+                p.carPartId === carPartId && p.grade === grade && p.fitmentClass === fitmentClass,
+            )!
+            const fraction = part.statModifiers.powerFraction[character]
+            return { grade, yenPerFraction: fraction > 0 ? part.priceYen / fraction : null }
+          }).filter(
+            (row): row is { grade: Grade; yenPerFraction: number } => row.yenPerFraction !== null,
+          )
+          if (byGrade.length === 0) continue
+          const raceRow = byGrade.find((row) => row.grade === 'race')!
+          for (const row of byGrade)
+            normalizedValues.push(row.yenPerFraction / raceRow.yenPerFraction)
+        }
+      }
+    }
+    expect(normalizedValues.length).toBe(288)
+    expect(Math.max(...normalizedValues)).toBeCloseTo(1.334961, 5)
+    expect(normalizedValues.filter((v) => v > 1).length).toBe(52)
+  })
 })

@@ -420,6 +420,20 @@ Remove `statModifiers.power` from the schema, from `computeDerivedStats`, and fr
 **Do this last, in this sprint**, once Task 5 has authored every replacement: a missed SKU then
 fails schema validation rather than silently becoming a 0.08 PS part.
 
+**Correction, 2026-07-30: this claim was false as shipped, and it was false from the design
+itself, not just the implementation.** Task 2 above (line 361) literally specifies
+`powerFraction` with `.default({ 'high-strung-na': 0, 'lazy-na': 0, forced: 0 })`, and Zod is
+non-strict - so a SKU missing the field entirely, or missing one of its three character keys,
+validated silently with zero power on every character, exactly the "0.08 PS part" failure mode
+this task claims is impossible. `statModifiers: {}` validated. All 472 shipped SKUs happened to
+author the field regardless, so no shipped part was actually affected, but the claim itself did
+not hold and nothing enforced it. Fixed in the same change as `sprint136.md`'s second amendment:
+`PowerFractionSchema`'s three keys and `StatModifierSchema.powerFraction` are now REQUIRED, with
+no defaults, so a missing SKU is a real schema failure - see
+`packages/content/tests/powerFraction.test.ts`'s two schema-rejection tests and its count pin (472
+SKUs carry `powerFraction`, 96 carry a nonzero fraction, 12 per power-bearing slot across 8
+slots).
+
 ### Task 8: tests
 
 New file `packages/sim/tests/proportionalPower.test.ts`:

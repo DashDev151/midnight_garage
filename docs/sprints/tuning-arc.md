@@ -238,3 +238,12 @@ within-ladder half is also a catalogue-wide rule in Sprint 135.
 9. **No wear rate, ever.** Design section 9. Nothing in the game degrades with use, because the
    player never lives with the car.
 10. **British spelling, no em dashes, no emoji, no process-narrative comments.**
+11. **Auction-demo fixtures are fragile to any price or bill-threshold move (2026-07-30).**
+    `enforceMinWorkBill` (`packages/sim/src/auctions.ts` ~370-413) loops while the restoration bill
+    sits under a yen floor, drawing from the PRNG on every step - so moving a part price or a bill
+    threshold changes the draw count and reshuffles every later lot in a seeded catalogue. **If a
+    sprint in this arc moves any part price or bill threshold**,
+    `packages/game/src/screens/auctionRoom.test.ts`, `auctionRoomDemo.test.ts` and
+    `AuctionRoomDemoScreen.test.ts` must be re-derived from a fresh seeded run, and
+    `pnpm test --project game` must be run before the sprint is called done. This is what silently
+    broke all three files in Sprint 135 and cost hours of archaeology.

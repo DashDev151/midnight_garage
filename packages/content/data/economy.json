@@ -133,7 +133,7 @@
     },
     "styleCap": 20,
     "support": {
-      "stockSupportMargin": 0.55,
+      "stockSupportMargin": 0.27,
       "specByGrade": {
         "stock": 0,
         "street": 0.25,
@@ -146,6 +146,13 @@
         "heat": 0.7,
         "revs": 3.5,
         "torqueTransmission": 0.9
+      },
+      "demandDrivers": {
+        "cylinderPressure": { "kind": "slot", "slot": "forcedInduction" },
+        "fuelling": { "kind": "total" },
+        "heat": { "kind": "total" },
+        "revs": { "kind": "slot", "slot": "camsTiming" },
+        "torqueTransmission": { "kind": "total" }
       },
       "supportWeights": {
         "cylinderPressure": {

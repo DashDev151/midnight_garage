@@ -57,19 +57,22 @@ describe('supportRatios: the stock-car identity', () => {
 
 describe('supportRatios: the structural disjointness test', () => {
   it('demand and support slot sets never overlap within one subsystem, read from content', () => {
-    const supportWeights = ECONOMY.statFormulas.support.supportWeights
+    const { supportWeights, demandDrivers } = ECONOMY.statFormulas.support
+    // Which slot(s) drive a subsystem's demand is read from
+    // `demandDrivers` (content), never a hand-mirrored list in this file -
+    // a future part joins a subsystem's demand side by editing
+    // `economy.json`, and this test would still catch a real collision.
     const gainBearingSlots = new Set<CarPartId>(
       PARTS.filter((part) =>
         Object.values(part.statModifiers.powerFraction).some((v) => v !== 0),
       ).map((part) => part.carPartId),
     )
-    const demandSlotsBySubsystem: Record<Subsystem, ReadonlySet<CarPartId>> = {
-      cylinderPressure: new Set(['forcedInduction']),
-      fuelling: gainBearingSlots,
-      heat: gainBearingSlots,
-      revs: new Set(['camsTiming']),
-      torqueTransmission: gainBearingSlots,
-    }
+    const demandSlotsBySubsystem: Record<Subsystem, ReadonlySet<CarPartId>> = Object.fromEntries(
+      SubsystemSchema.options.map((subsystem) => {
+        const driver = demandDrivers[subsystem]
+        return [subsystem, driver.kind === 'total' ? gainBearingSlots : new Set([driver.slot])]
+      }),
+    ) as Record<Subsystem, ReadonlySet<CarPartId>>
     for (const subsystem of SubsystemSchema.options) {
       const supportSlots = new Set(Object.keys(supportWeights[subsystem]) as CarPartId[])
       for (const slot of demandSlotsBySubsystem[subsystem]) {
@@ -155,44 +158,46 @@ describe('supportRatios: the two worked support tables, pinned exactly', () => {
     differential: 'race',
   }
 
-  it('a maximal forced-induction build, race grade throughout: headline 1.226, adequate', () => {
+  it('a maximal forced-induction build, race grade throughout: headline 1.111, adequate', () => {
     const car = carWithGrades(FORCED_CAR, CONTEXT, ALL_RACE)
     const ratios = supportRatios(car, FORCED_CAR, CONTEXT.partsById, ECONOMY)
-    expect(ratios.cylinderPressure).toBeCloseTo(1.226, 3)
-    expect(ratios.fuelling).toBeCloseTo(1.232, 3)
-    expect(ratios.heat).toBeCloseTo(1.241, 3)
-    expect(ratios.revs).toBeCloseTo(1.273, 3)
-    expect(ratios.torqueTransmission).toBeCloseTo(1.251, 3)
+    expect(ratios.cylinderPressure).toBeCloseTo(1.111, 3)
+    expect(ratios.fuelling).toBeCloseTo(1.111, 3)
+    expect(ratios.heat).toBeCloseTo(1.129, 3)
+    expect(ratios.revs).toBeCloseTo(1.232, 3)
+    expect(ratios.torqueTransmission).toBeCloseTo(1.122, 3)
     const verdict = supportVerdict(car, FORCED_CAR, CONTEXT.partsById, ECONOMY)
-    expect(verdict.headline).toBeCloseTo(1.226, 3)
+    expect(verdict.headline).toBeCloseTo(1.111, 3)
     expect(verdict.band).toBe('adequate')
   })
 
   /**
-   * The proportional support margin (`stockSupportMargin`) lifts this
-   * build off a flat headroom's figure of 0.588 (`dangerous`) to 0.815
-   * (`strained`) - a bare race turbo on a stock bottom end no longer reads
-   * as an emergency, only as unsupported. See the reliability rebalance
-   * design notes for the full account of why a flat headroom punished this
-   * build too hard.
+   * `stockSupportMargin`'s own mathematical floor is `margin + (1 - margin)
+   * / demand`. At a higher margin this floor sits above the
+   * `strained`/`dangerous` line for every demand the shipped catalogue's own
+   * gain parts can produce, so `dangerous` becomes unreachable through a
+   * pure demand/support imbalance anywhere on the roster - it would take a
+   * broken part (the severity ceiling) to ever read `dangerous`. At the
+   * current value a bare race turbo on a stock bottom end reads `dangerous`,
+   * which is the verdict this build is supposed to earn.
    */
-  it('a race turbo and nothing else: headline 0.815, strained, cylinder pressure named', () => {
+  it('a race turbo and nothing else: headline 0.699, dangerous, cylinder pressure named', () => {
     const car = carWithGrades(FORCED_CAR, CONTEXT, { forcedInduction: 'race' })
     const ratios = supportRatios(car, FORCED_CAR, CONTEXT.partsById, ECONOMY)
-    expect(ratios.cylinderPressure).toBeCloseTo(0.815, 3)
-    expect(ratios.fuelling).toBeCloseTo(0.902, 3)
-    expect(ratios.heat).toBeCloseTo(0.911, 3)
+    expect(ratios.cylinderPressure).toBeCloseTo(0.699, 3)
+    expect(ratios.fuelling).toBeCloseTo(0.84, 3)
+    expect(ratios.heat).toBeCloseTo(0.856, 3)
     expect(ratios.revs).toBeCloseTo(1.0, 3)
-    expect(ratios.torqueTransmission).toBeCloseTo(0.892, 3)
+    expect(ratios.torqueTransmission).toBeCloseTo(0.825, 3)
     const verdict = supportVerdict(car, FORCED_CAR, CONTEXT.partsById, ECONOMY)
-    expect(verdict.headline).toBeCloseTo(0.815, 3)
-    expect(verdict.band).toBe('strained')
+    expect(verdict.headline).toBeCloseTo(0.699, 3)
+    expect(verdict.band).toBe('dangerous')
     expect(verdict.subsystem).toBe('cylinderPressure')
   })
 })
 
 describe('supportRatios: fuel does not hold a piston together', () => {
-  it('a race turbo with race fuelling and race cooling but a stock bottom end still reads strained, cylinder pressure', () => {
+  it('a race turbo with race fuelling and race cooling but a stock bottom end still reads dangerous, cylinder pressure', () => {
     const car = carWithGrades(FORCED_CAR, CONTEXT, {
       forcedInduction: 'race',
       fuelSystem: 'race',
@@ -203,8 +208,8 @@ describe('supportRatios: fuel does not hold a piston together', () => {
     // adequate here); cylinder pressure has no supporting slot at all, so
     // it stays the named shortfall regardless - the headline is identical
     // to the turbo-alone case above.
-    expect(verdict.headline).toBeCloseTo(0.815, 3)
-    expect(verdict.band).toBe('strained')
+    expect(verdict.headline).toBeCloseTo(0.699, 3)
+    expect(verdict.band).toBe('dangerous')
     expect(verdict.subsystem).toBe('cylinderPressure')
   })
 })

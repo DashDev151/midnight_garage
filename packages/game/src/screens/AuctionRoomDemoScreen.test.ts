@@ -7,6 +7,14 @@ import { formatYen } from '../utils/formatYen'
 import { DEMO_BANKROLL_YEN } from './auctionRoomDemo'
 import AuctionRoomDemoScreen from './AuctionRoomDemoScreen.vue'
 
+// This file's own suite runs 23-26s standalone (a real seeded bid-war
+// simulation, not a slow test) and has exceeded Vitest's default 5s
+// per-test timeout under `--project game`'s whole-project resource
+// contention while passing every time run in isolation - a flake, not a
+// regression. An explicit, generous per-test timeout makes the file
+// reliable under contention without masking a genuine hang.
+vi.setConfig({ testTimeout: 30_000 })
+
 // Track every mounted wrapper and unmount it after each test, so a component
 // left mounted from a prior test cannot leak its store's pinia into the next.
 const mountedWrappers: VueWrapper[] = []

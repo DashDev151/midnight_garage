@@ -758,10 +758,8 @@ export const EconomyConfigSchema = z.object({
       }),
       /**
        * Lever 2: how strongly each subsystem's demand responds to the
-       * band-scaled gain that drives it - `cylinderPressure`/`revs` read a
-       * single named slot's own gain (`forcedInduction`/`camsTiming`
-       * respectively); `fuelling`/`heat`/`torqueTransmission` read the total
-       * gain summed across every slot on the car.
+       * gain that drives it - see `demandDrivers` immediately below for
+       * WHICH slot(s) that is, per subsystem.
        */
       demandWeights: z.object({
         cylinderPressure: z.number().nonnegative(),
@@ -769,6 +767,41 @@ export const EconomyConfigSchema = z.object({
         heat: z.number().nonnegative(),
         revs: z.number().nonnegative(),
         torqueTransmission: z.number().nonnegative(),
+      }),
+      /**
+       * WHICH slot(s) drive each subsystem's demand (content, not code - a
+       * future part must not be able to join a subsystem's demand side by
+       * editing a list in a source file, matching `supportWeights`'s own
+       * content-driven membership on the support side). Two shapes:
+       * `{ kind: 'slot', slot }` reads a single named slot's own gain
+       * (`cylinderPressure`/`forcedInduction`, `revs`/`camsTiming`);
+       * `{ kind: 'total' }` reads the gain summed across every slot on the
+       * car (`fuelling`, `heat`, `torqueTransmission` - a bigger build asks
+       * more of fuel, cooling and the drivetrain no matter which slot made
+       * the power). `packages/sim/src/support.ts` reads this map rather than
+       * hard-coding which slot demands which subsystem.
+       */
+      demandDrivers: z.object({
+        cylinderPressure: z.discriminatedUnion('kind', [
+          z.object({ kind: z.literal('slot'), slot: CarPartIdSchema }),
+          z.object({ kind: z.literal('total') }),
+        ]),
+        fuelling: z.discriminatedUnion('kind', [
+          z.object({ kind: z.literal('slot'), slot: CarPartIdSchema }),
+          z.object({ kind: z.literal('total') }),
+        ]),
+        heat: z.discriminatedUnion('kind', [
+          z.object({ kind: z.literal('slot'), slot: CarPartIdSchema }),
+          z.object({ kind: z.literal('total') }),
+        ]),
+        revs: z.discriminatedUnion('kind', [
+          z.object({ kind: z.literal('slot'), slot: CarPartIdSchema }),
+          z.object({ kind: z.literal('total') }),
+        ]),
+        torqueTransmission: z.discriminatedUnion('kind', [
+          z.object({ kind: z.literal('slot'), slot: CarPartIdSchema }),
+          z.object({ kind: z.literal('total') }),
+        ]),
       }),
       /**
        * Lever 3: which slots support each subsystem, and how strongly - the
