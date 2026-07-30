@@ -649,6 +649,48 @@ import storyMissions from '../data/storyMissions.json'
  * probe's sport-grade turbo costs more under the new ladder). `tasteMatch(tuner).
  * minMultiplier` is unchanged at 1. No other mission's probe touches `forcedInduction`
  * at a non-stock grade.
+ *
+ * Re-pinned 2026-07-30 (maintainer approval, in session, both levers signed by name
+ * and value) for `docs/sprints/sprint137.md`'s amendment, the `camsTiming` price
+ * correction that fixed the acceptance-2b defect this sprint's own Exit had left
+ * open. `economy.json` is untouched (only `partPricing.json` moves), so its hash
+ * holds. Two levers, approved as a pair:
+ *
+ * 1. `baseCostYen.camsTiming` 30000 -> 50000.
+ * 2. `gradeFactors.camsTiming` (NEW own-ladder entry) - stock 1, street 1.3, sport
+ *    2.75, race 4.5, replacing the shared default (1 / 1.3 / 2 / 3). Sprint 137's own
+ *    acceptance test found `camsTiming` won power-per-yen at every rung for both NA
+ *    characters, by up to 192 per cent, because its base cost undercut an exhaust
+ *    while delivering like a major engine part; period parts research judged the
+ *    power figures grounded, so the price sheet was the defect.
+ *
+ * Measured against a fresh `packages/content/tests/partPricing.test.ts` run: the
+ * catalogue-wide residue (cases above parity, 288 total) fell 51 -> 39, its maximum
+ * held at 1.334961x (`internals/entry/high-strung-na/street`, untouched by this
+ * lever), and the worst cross-slot power-per-yen margin anywhere in the catalogue is
+ * now 18.023 per cent (`forcedInduction`/everyday/`forced`/sport, `exhaust` over
+ * `intake`) - `forced` is otherwise unmoved, since neither `camsTiming` lever touches
+ * it. Everyday class: high-strung NA now reads street `intake` +2.211%, sport
+ * `camsTiming` +3.904%, race `camsTiming` +16.667%; lazy NA reads street `intake`
+ * +17.662%, sport `intake` +13.357%, race `camsTiming` +3.519%. Player prices,
+ * everyday class: street 6200 -> 10400, sport 9600 -> 22000, race 14400 -> 36000;
+ * flagship race 81000 -> 202500.
+ *
+ * What moves as a MECHANICAL CONSEQUENCE, not an independent decision: raising
+ * `baseCostYen.camsTiming` raises the STOCK-grade price too (its grade factor is
+ * unchanged at 1), so every mission whose probe reads a stock `camsTiming` part's
+ * catalog price re-derives, re-measured from a fresh `storyMissionProbes.test.ts`
+ * run: `first-proper-car` 687000 -> 686000, `the-column-clock` 1000000 -> 999000,
+ * `low-and-loud` 1162000 -> 1161000, `the-fleet-spare` 484000 -> 483000,
+ * `the-showroom-standard` 704000 -> 703000 (all small, mixed-direction moves from the
+ * repair-cost and purchase-price formulas both reading the dearer stock part).
+ * `make-it-pull` moves the most, 772000 -> 787000, because its probe fits a
+ * sport-grade `camsTiming` directly (`honda-civic-sir2-eg6`, everyday class): the
+ * SKU's own price rose 9600 -> 22000 under both levers together. `four-wheels`,
+ * `wont-strand-her`, `street-power-street-manners` and `under-one-fifteen` are
+ * unaffected (re-confirmed passing, unchanged, in the same run): none of their
+ * probes' repair or purchase math is sensitive to this SKU's price at the cars and
+ * bands they build.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -670,7 +712,7 @@ describe('the economy approval gate', () => {
         'class factors, grade factors, the global factor and the overrides map are all ' +
         'approval-gated (CLAUDE.md directive 22). Re-pin this hash ONLY in the same ' +
         'change as the recorded approval of the specific lever and value.',
-    ).toBe('2be78426f50529cc934a637d3a06e08dacc4f82f8fc2d98e77ce27eb80588294')
+    ).toBe('1fa0f99b4fe2c86143cdd0f57ce00a28e6f82057a1fde97635e8e114ecb8fd7f')
   })
 
   it('mission payouts and budget caps match their approved values exactly', () => {
@@ -687,14 +729,14 @@ describe('the economy approval gate', () => {
     ).toEqual({
       'four-wheels': { payoutYen: 142000, budgetCapYen: 142000 },
       'wont-strand-her': { payoutYen: 156000, budgetCapYen: 156000 },
-      'first-proper-car': { payoutYen: 687000, budgetCapYen: 687000 },
-      'make-it-pull': { payoutYen: 772000, budgetCapYen: 772000 },
-      'the-column-clock': { payoutYen: 1000000, budgetCapYen: 1000000 },
-      'low-and-loud': { payoutYen: 1162000, budgetCapYen: 1162000 },
+      'first-proper-car': { payoutYen: 686000, budgetCapYen: 686000 },
+      'make-it-pull': { payoutYen: 787000, budgetCapYen: 787000 },
+      'the-column-clock': { payoutYen: 999000, budgetCapYen: 999000 },
+      'low-and-loud': { payoutYen: 1161000, budgetCapYen: 1161000 },
       'street-power-street-manners': { payoutYen: 1497000, budgetCapYen: 1497000 },
       'under-one-fifteen': { payoutYen: 1693000, budgetCapYen: 1693000 },
-      'the-fleet-spare': { payoutYen: 484000, budgetCapYen: 484000 },
-      'the-showroom-standard': { payoutYen: 704000, budgetCapYen: 704000 },
+      'the-fleet-spare': { payoutYen: 483000, budgetCapYen: 483000 },
+      'the-showroom-standard': { payoutYen: 703000, budgetCapYen: 703000 },
     })
   })
 })

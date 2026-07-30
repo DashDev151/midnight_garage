@@ -3,7 +3,7 @@
     "block": 160000,
     "internals": 90000,
     "headValvetrain": 70000,
-    "camsTiming": 30000,
+    "camsTiming": 50000,
     "intake": 18000,
     "exhaust": 40000,
     "fuelSystem": 18000,
@@ -55,6 +55,12 @@
       "street": 1.3,
       "sport": 2.93,
       "race": 6.5
+    },
+    "camsTiming": {
+      "stock": 1,
+      "street": 1.3,
+      "sport": 2.75,
+      "race": 4.5
     }
   },
   "globalFactor": 1,

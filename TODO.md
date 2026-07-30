@@ -511,7 +511,7 @@ pass."
 
 ## Open balance/economy questions
 
-- [x] **ACCEPTED, not open: three slots still climb into better value per yen, worst 1.335x
+- [x] **ACCEPTED, not open: two slots still climb into better value per yen, worst 1.335x
   (maintainer decision 2026-07-30).** Measured across all 288 cases in
   `partPricing.test.ts` at the end of Sprint 135: 52 exceed parity, on `internals/street`,
   `camsTiming/street`, `block/street` and a boundary `block/sport`. On those the race rung is a
@@ -519,38 +519,45 @@ pass."
   which is what arc rule 5 forbids. It is the same defect the ECU carried at 2.89x before Sprint
   135's lever 5, at less than half the magnitude.
 
-  **The maintainer has accepted it rather than pursue three more price ladders.** The reasoning
+  **The maintainer has accepted it rather than pursue further price ladders.** The reasoning
   on the record: the residue is a large improvement on what shipped before, and a street rung is
   still cheaper in absolute yen, so a player short of cash still buys one. The fix, if it is ever
-  wanted, is the treatment `ignitionEcu` received: give `block`, `internals` and `camsTiming`
-  their own `partPricing.gradeFactors` entry rather than the default ladder. That is three
-  directive-22 lever tables and needs specific values signed.
+  wanted, is the treatment `ignitionEcu` received: give the remaining slot its own
+  `partPricing.gradeFactors` entry rather than the default ladder.
 
   `forcedInduction/street` was in the same measured set and was NOT part of this acceptance.
   **Resolved by Sprint 137**: `forcedInduction` now carries its own `partPricing.gradeFactors`
   ladder (1 / 1.30 / 2.93 / 6.50), derived to track its own increasing power curve exactly, so its
-  24 cases sit at or within rounding noise of parity. The catalogue-wide residue count fell from
-  52 to 51 of 288 cases as a result; the three ACCEPTED slots above (`internals`, `camsTiming`,
-  `block`) are unaffected and still carry the residue this entry accepts.
+  24 cases sit at or within rounding noise of parity.
 
-- [ ] **OPEN: a single slot is the best power-per-yen buy at every rung, on every fitment class
-  and character - the cross-category half of the value-per-yen rule, first measured in Sprint 137
-  and never previously tested.** `camsTiming` wins every rung (street/sport/race) for both NA
-  characters, and `exhaust` wins every rung for `forced`, on all four fitment classes - a real,
-  reproducible property of the Sprint 135 catalogue, entirely independent of Sprint 137's own two
-  levers (neither `camsTiming` nor `exhaust` moved). Measured via
-  `packages/content/tests/partPricing.test.ts`'s "Sprint 137 acceptance 2b" describe block, which
-  is left FAILING on purpose (directive 17: a failing test is a diagnosis, not something to tune
-  toward a pass) so the defect stays visible rather than silently dropped.
+  **`camsTiming/street` resolved by Sprint 137's amendment (2026-07-30, the same pass that fixed
+  the cross-category defect below).** `camsTiming` now carries its own ladder too (stock 1, street
+  1.3, sport 2.75, race 4.5), signed alongside a `baseCostYen` rise (30000 -> 50000) to correct the
+  cross-category defect; the new ladder also clears its street rung of the within-ladder residue
+  (its 12 `street` cases dropped out entirely rather than merely shrinking). The catalogue-wide
+  residue count fell 51 -> 39 of 288 cases as a result. `internals` and `block` are unaffected and
+  are now the only two slots still carrying the residue this entry accepts.
 
-  This is the within-ladder rule's cross-category twin (`tuning-arc.md`'s third correction): a
-  category can individually satisfy "climbing its own ladder never improves value per yen" while
-  still being the objectively best buy at every grade, which reintroduces a single correct
-  first-purchase the arc exists to remove (buy `camsTiming` or `exhaust` first, always, regardless
-  of the rest of the build). The fix is a price or curve move on `camsTiming` and/or `exhaust`,
-  which is a directive-22 lever neither Sprint 137 nor any prior sprint has signed - execution
-  stopped rather than guessing at a table. Needs the measured table (in the test's own failure
-  output) put in front of the maintainer and a specific lever named before any fix lands.
+- [x] **RESOLVED (Sprint 137 amendment, maintainer 2026-07-30): the cross-category dominance defect
+  is fixed for `camsTiming`, and the test it was measured with is now a margin ceiling rather than a
+  no-repeat-winner rule.** First measured in Sprint 137: `camsTiming` won every rung (street/sport/
+  race) for both NA characters, and `exhaust` won every rung for `forced`, on all four fitment
+  classes.
+
+  **The maintainer ruled the original assertion (the winning slot must differ across rungs) wrong
+  outright**: "Something needs to be the best value. Something needs to be on top. Fact. The point
+  is that one part does not dominate the rest." A single winner per rung is inevitable arithmetic,
+  not a defect on its own; what matters is the MARGIN by which it wins. `packages/content/tests/
+  partPricing.test.ts`'s "Sprint 137 acceptance 2b" describe block now asserts the leading slot's
+  power-per-yen lead over the next-best slot stays at or under 25 per cent, per rung, per engine
+  character, per fitment class, and passes.
+
+  **`camsTiming`'s dominance is fixed by the same price correction that resolved the row above**
+  (`baseCostYen` 30000 -> 50000, plus its own new grade ladder): it no longer wins every rung for
+  either NA character. **`exhaust` still wins every rung for `forced`** (unaffected: this
+  amendment's levers never touch `exhaust` or `forced`), but its lead over the next-best slot
+  (`intake`) tops out at 18.0 per cent (`everyday`/sport) - inside the new 25 per cent ceiling, so
+  it is not the dominance defect the maintainer's ruling names, and is left as-is.
 
 - [ ] **INVESTIGATE: should support parts scale the MAGNITUDE of a power part's gain, and not
   only its reliability? Deferred, not decided (maintainer, 2026-07-30).**

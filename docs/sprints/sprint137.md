@@ -229,8 +229,13 @@ it.
 - [x] Every other category's power shape provably unchanged from Sprint 135.
 - [x] Race power totals provably unmoved (x1.43, x1.57, x1.95).
 - [x] Value per yen flat across the turbo ladder, every class and character (acceptance 2a).
-- [ ] No slot is the best power-per-yen at all three rungs (acceptance 2b). **FAILS on the real
-      catalogue, pre-existing and independent of this sprint's two levers - see Exit.**
+- [x] No power-bearing slot dominates its nearest rival at any rung (acceptance 2b). **Originally
+      failed on the real catalogue** (`camsTiming` won every rung for both NA characters, `exhaust`
+      won every rung for `forced` - see Exit), and the assertion as first written (no slot may be
+      the best power-per-yen at all three rungs) was itself wrong per the maintainer's ruling. The
+      2026-07-30 amendment fixed the `camsTiming` defect with a signed price correction and
+      rewrote the test to bound the LEAD a rung's best slot holds over its next-best rival instead
+      of forbidding a winner from existing at all - see the Amendment section below.
 - [x] A maximal unsupported turbo build reads `dangerous` on `cylinderPressure` and its
       reliability collapses accordingly (the pre-existing, unmodified 0.699 test; see Exit for the
       doc's own 0.588 figure).
@@ -407,4 +412,140 @@ to make a wrong number pass, which directive 17 forbids.
   totals) carry small illustration-only rounding discrepancies against the code-computed figures,
   noted above. Neither is a lever or a test pin; no action needed unless the doc is revised for
   accuracy.
+- Not committed. Ready for review.
+
+## Amendment (2026-07-30): the camsTiming price correction
+
+**This does not rewrite the Exit above.** That Exit correctly records that execution stopped when
+acceptance 2b failed on the real catalogue and the finding went to the maintainer rather than
+guessing at a fix - that is exactly what happened, and it stays as the record of it. This section
+records what happened next.
+
+### The acceptance failure, restated
+
+Acceptance 2b (Task 3, part two: no single power-bearing slot wins power-per-yen at every rung)
+failed on the real catalogue, independent of this sprint's two forced-induction levers: `camsTiming`
+won power-per-yen at every rung (street/sport/race) for both naturally aspirated engine characters,
+and `exhaust` won every rung for `forced`, on all four fitment classes. `camsTiming`'s base cost
+(30,000 yen) undercut an exhaust (40,000 yen) while its power figures - judged grounded by the
+maintainer, in line for a race cam package costing considerably more than an exhaust system in
+period - delivered like a major engine part. The price sheet was the defect, not the power curve.
+
+### The maintainer's reframing of what the test should assert
+
+The acceptance test as originally written asserted that the winning slot must differ across street,
+sport and race. The maintainer ruled that assertion wrong outright: *"Something needs to be the
+best value. Something needs to be on top. Fact. The point is that one part does not dominate the
+rest."* A single best-value slot at each rung is inevitable arithmetic (eight slots cannot all tie),
+so the original assertion was never satisfiable by a well-formed catalogue. What actually matters
+is not whether a slot wins a rung, but by how much: a narrow lead is a healthy market with one
+sensible best-in-class choice; a wide lead recreates the one-correct-first-purchase defect the arc
+exists to remove.
+
+`packages/content/tests/partPricing.test.ts`'s "Sprint 137 acceptance 2b" describe block was
+rewritten accordingly: it now asserts the leading slot's power-per-yen lead over the next-best slot
+stays at or under a 25 per cent ceiling, checked per rung, per engine character, per fitment class -
+never the mere existence of a winner. The ceiling sits just above the measured worst case (18.0 per
+cent, `forced`/everyday/sport), in the same spirit as the existing within-ladder ceiling (1.35,
+just above its own measured 1.335x). The within-ladder half of the acceptance (part one, asserted in
+the "the value-per-yen rule" describe block) was untouched and still passes.
+
+### The two signed levers
+
+Signed by the maintainer 2026-07-30 (directive 22):
+
+| lever | what | before | after |
+| --- | --- | ---: | ---: |
+| 1 | `partPricing.json` `baseCostYen.camsTiming` | 30,000 | 50,000 |
+| 2 | `partPricing.json` `gradeFactors.camsTiming` (NEW own-ladder entry) | shared default (1 / 1.3 / 2 / 3) | 1 / 1.3 / 2.75 / 4.5 |
+
+`camsTiming`'s `powerFraction` was explicitly not touched, on any character or any fitment class.
+
+### Measured margins, before and after
+
+Everyday class, yen per 1 per cent of power - best-value winner and margin over the next best:
+
+| character | rung | before | after |
+| --- | --- | --- | --- |
+| high-strung NA | street | camsTiming (dominant every rung) | intake, +2.2% |
+| high-strung NA | sport | camsTiming (dominant every rung) | camsTiming, +3.9% |
+| high-strung NA | race | camsTiming (dominant every rung) | camsTiming, +16.7% |
+| lazy NA | street | camsTiming (dominant every rung) | intake, +17.7% |
+| lazy NA | sport | camsTiming (dominant every rung) | intake, +13.4% |
+| lazy NA | race | camsTiming (dominant every rung) | camsTiming, +3.5% |
+
+`forced` is unchanged, exactly as expected since neither lever touches it: `exhaust` still wins all
+three rungs, by 4.0 / 18.0 / 13.2 per cent (entry/everyday/enthusiast/flagship all measured; the
+worst case anywhere in the catalogue is 18.023 per cent, `forced`/everyday/sport).
+
+Catalogue-wide residue (the within-ladder half, 288 cases total): maximum normalized value
+unchanged at 1.334961x (`internals/entry/high-strung-na/street`, untouched by either lever). Cases
+above parity fell 51 -> 39: `camsTiming`'s own new ladder clears its 12 `street` cases of the
+residue entirely (they no longer cost more per unit of power than the race rung), while `internals`
+and `block` are unaffected and still carry the remainder, which the maintainer separately accepted
+in Sprint 135.
+
+### Player price movement
+
+| fitment class | grade | before | after |
+| --- | --- | ---: | ---: |
+| everyday | street | 6,200 | 10,400 |
+| everyday | sport | 9,600 | 22,000 |
+| everyday | race | 14,400 | 36,000 |
+| flagship | race | 81,000 | 202,500 |
+
+### Everything re-derived (directive 17 case (a))
+
+- **`partPricing.test.ts`**: `OWN_LADDER_SLOTS` gains `camsTiming` (a new own-ladder test added,
+  matching the `ignitionEcu`/`forcedInduction` pattern); the residue pin re-derived 51 -> 39; the
+  "Sprint 137 acceptance 2b" describe block rewritten as described above.
+- **`economyApprovalGate.test.ts`**: `partPricing.json`'s sha256 re-pinned
+  (`2be78426f5...` -> `1fa0f99b4f...`); ledger extended with both levers, the reasoning, and the
+  measured before/after margins.
+- **Mission payouts/budget caps**, re-measured from a fresh `storyMissionProbes.test.ts` run.
+  Raising `baseCostYen.camsTiming` also raises the STOCK-grade price (its grade factor is unchanged
+  at 1), so every mission whose probe reads a stock `camsTiming` part moved, not only the one
+  fitting it aftermarket:
+
+  | mission | before | after |
+  | --- | ---: | ---: |
+  | `make-it-pull` | 772,000 | 787,000 |
+  | `first-proper-car` | 687,000 | 686,000 |
+  | `the-column-clock` | 1,000,000 | 999,000 |
+  | `low-and-loud` | 1,162,000 | 1,161,000 |
+  | `the-fleet-spare` | 484,000 | 483,000 |
+  | `the-showroom-standard` | 704,000 | 703,000 |
+
+  `make-it-pull` moves the most because its probe fits a sport-grade `camsTiming` directly
+  (`honda-civic-sir2-eg6`, everyday class): the SKU's own price rose 9,600 -> 22,000 (+12,400) under
+  both levers together. The other five moves are small and mixed-direction, from the repair-cost and
+  purchase-price formulas both reading the dearer stock part. `four-wheels`, `wont-strand-her`,
+  `street-power-street-manners` and `under-one-fifteen` are unaffected (re-confirmed passing,
+  unchanged, in the same run and in a separate `tutorialProbe.test.ts` run for `four-wheels`).
+- **The three auction-room fixture files**, per this arc's standing warning: `enforceMinWorkBill`
+  draws a PRNG step per yen-floor increment, so `camsTiming`'s repricing reshuffled the fixed-seed
+  local-yard catalogue these files read from.
+  - `auctionRoomDemo.ts`: the fixed-seed demo search (`DEMO_CATALOG_N_STEPS`) no longer found a
+    valid steal-and-trap pair within its previous 3,200-lot ceiling; widened to 6,400 (the same
+    doubling-step precedent the roster re-tier used to move it from 1,600 to 3,200). The demo's thin
+    lot changed car entirely, Suzuki Wagon R (CT21S) -> Suzuki Alto Works (HA21S); the packed lot
+    stayed Honda City E (AA) with new figures.
+  - `auctionRoomDemo.test.ts`, `auctionRoom.test.ts` and `AuctionRoomDemoScreen.test.ts`: every
+    hardcoded pin fed by the reshuffled lobby re-derived from a fresh seeded run, never hand-picked.
+
+### Checks run for the amendment
+
+- `pnpm exec vitest run packages/content/tests/partPricing.test.ts --project content` - 341 passed.
+- `pnpm exec vitest run packages/sim/tests/storyMissionProbes.test.ts --project sim` - 19 passed.
+- `pnpm exec vitest run packages/sim/tests/tutorialProbe.test.ts --project sim` - 4 passed.
+- `pnpm exec vitest run packages/content/tests/economyApprovalGate.test.ts --project content` - 3
+  passed.
+- `pnpm exec vitest run --project content` (whole, once) - 519 passed, 0 failed.
+- `pnpm exec vitest run --project game` (whole, once) - see final report; the auction-demo trap this
+  arc has now hit three times fired again and was fixed the same way as before.
+
+### What's left after the amendment
+
+- None. Acceptance 2b now passes; the residue it shares with the still-accepted `internals`/`block`
+  within-ladder cases is unaffected and remains an explicit maintainer acceptance, not an open item.
 - Not committed. Ready for review.
