@@ -11,7 +11,7 @@ import {
   type PhysicalDial,
   type StatBlock,
 } from '@midnight-garage/content'
-import { bandFactor, bandIndex, hasForcedInduction, isPartMissing, isPartPresent } from './bands'
+import { bandFactor, hasForcedInduction, isPartMissing, isPartPresent } from './bands'
 import {
   balanceOf,
   effectiveCompound,
@@ -211,43 +211,57 @@ export function engineCharacterOf(model: CarModel, economy: EconomyConfig): Engi
 }
 
 /**
- * The worst band among the taxonomy's reliability-bearing parts - the ones
- * that carry a non-zero `statWeights.reliability`, read from content rather
- * than a hand-written list, because those are exactly the parts that stop
- * the car (`economy.json`'s `statFormulas.condition.reliabilityCeiling` doc
- * comment). A MISSING part counts as `scrap`, matching `weightedBandFactor`'s
- * existing treatment of a missing part as a 0 band factor; a legitimately
- * absent slot (an NA car's empty `forcedInduction`) is not missing and is
- * skipped rather than counted. Defaults to `mint` when nothing on the car
- * carries the weight, so an all-absent case never reads worse than perfect.
+ * One reliability-bearing part's own base ceiling, keyed to its band. Only
+ * `scrap` and `poor` carry a real ceiling; every better band reads 1
+ * (unconstrained), since the condition mean is already at or below 1 there
+ * and a ceiling would do nothing.
  */
-function worstReliabilityBand(
-  car: CarInstance,
-  model: CarModel,
-  partsTaxonomy: readonly CarPartTaxonomyEntry[],
-): ConditionBand {
-  let worst: ConditionBand = 'mint'
-  for (const entry of partsTaxonomy) {
-    if (!entry.statWeights.reliability) continue
-    const missing = isPartMissing(car, model, entry.id)
-    if (!isPartPresent(car, entry.id) && !missing) continue // legitimately absent
-    const band = missing ? 'scrap' : car.parts[entry.id].installed!.band
-    if (bandIndex(band) < bandIndex(worst)) worst = band
-  }
-  return worst
-}
-
-/**
- * The severity ceiling (lever 8): a cap on reliability's condition mean,
- * keyed to the worst reliability-bearing part's own band. Only `scrap` and
- * `poor` carry a real ceiling; every better band is unconstrained, since the
- * mean is already at or below 1 there and a ceiling would do nothing.
- */
-function reliabilitySeverityCeiling(band: ConditionBand, economy: EconomyConfig): number {
+function reliabilityCeilingBaseFor(band: ConditionBand, economy: EconomyConfig): number {
   const { reliabilityCeiling } = economy.statFormulas.condition
   if (band === 'scrap') return reliabilityCeiling.scrap
   if (band === 'poor') return reliabilityCeiling.poor
   return 1
+}
+
+/**
+ * The severity ceiling (lever 8, rebalanced): a cap on reliability's
+ * condition mean, taken as the MINIMUM across every reliability-bearing
+ * part on the car of that part's own band ceiling, softened by how much
+ * reliability relevance the part actually carries: `cap = 1 - (1 -
+ * reliabilityCeilingBaseFor(band)) * min(1, statWeights.reliability /
+ * reliabilityCeilingWeightReference)`. A flat lookup on the worst band
+ * alone throws away the magnitude - it used to cap a weight-1 propshaft
+ * exactly as hard as weight-3 cooling; this keeps a light part's failure
+ * from costing the car as much headroom as a heavy one's.
+ *
+ * A part carrying the taxonomy's own maximum reliability weight
+ * (`reliabilityCeilingWeightReference`, cooling's 3) takes the ceiling's
+ * full, unscaled bite. A MISSING part counts as `scrap`, matching
+ * `weightedBandFactor`'s existing treatment of a missing part as a 0 band
+ * factor; a legitimately absent slot (an NA car's empty `forcedInduction`)
+ * is not missing and is skipped rather than counted. Reads 1 (unconstrained)
+ * when nothing on the car carries the weight.
+ */
+function reliabilitySeverityCeiling(
+  car: CarInstance,
+  model: CarModel,
+  partsTaxonomy: readonly CarPartTaxonomyEntry[],
+  economy: EconomyConfig,
+): number {
+  const { reliabilityCeilingWeightReference } = economy.statFormulas.condition
+  let cap = 1
+  for (const entry of partsTaxonomy) {
+    const weight = entry.statWeights.reliability
+    if (!weight) continue
+    const missing = isPartMissing(car, model, entry.id)
+    if (!isPartPresent(car, entry.id) && !missing) continue // legitimately absent
+    const band = missing ? 'scrap' : car.parts[entry.id].installed!.band
+    const base = reliabilityCeilingBaseFor(band, economy)
+    const relevance = Math.min(1, weight / reliabilityCeilingWeightReference)
+    const partCap = 1 - (1 - base) * relevance
+    if (partCap < cap) cap = partCap
+  }
+  return cap
 }
 
 /**
@@ -358,7 +372,7 @@ export function computeDerivedStats(
   )
   const conditionFactor = Math.min(
     reliabilityConditionMean,
-    reliabilitySeverityCeiling(worstReliabilityBand(instance, model, partsTaxonomy), economy),
+    reliabilitySeverityCeiling(instance, model, partsTaxonomy, economy),
   )
   const coherenceFactor = coherenceFactorFor(
     supportVerdict(instance, model, partsById, economy).headline,

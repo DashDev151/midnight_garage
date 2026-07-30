@@ -881,7 +881,11 @@ describe('CarDetailScreen', () => {
       resetToStockMint(game, id)
       fit(game, id, 'intake', 'sport')
       fit(game, id, 'exhaust', 'sport')
-      fit(game, id, 'ignitionEcu', 'sport')
+      // The race-grade ECU (rather than sport) is what keeps this build
+      // under the `adequate` line: the proportional support margin gives a
+      // sport-only version of this build (headline 0.906) just enough
+      // headroom to read as adequate instead.
+      fit(game, id, 'ignitionEcu', 'race')
 
       const readout = game.carDetail(id)!.supportReadout
       expect(readout).not.toBeNull()
@@ -898,7 +902,14 @@ describe('CarDetailScreen', () => {
       expect(listing.text()).toBe(el.text())
     })
 
-    it('names cylinder pressure at dangerous for a race turbo on a stock bottom end, with no numeric figure', async () => {
+    // The proportional support-headroom margin means a bare race turbo on a
+    // stock bottom end now reads `strained` (headline 0.815), not
+    // `dangerous`: the mathematical floor the margin puts under every
+    // headline (`margin + (1 - margin) / demand`) sits above the
+    // `dangerous` line for every demand the shipped catalog's own gain
+    // parts can produce, so `dangerous` is not reachable through a pure
+    // demand/support imbalance on the current roster.
+    it('names cylinder pressure at strained for a race turbo on a stock bottom end, with no numeric figure', async () => {
       const game = useGameStore()
       game.devGrantCar('nissan-180sx-rps13')
       const id = game.gameState.ownedCars[0]!.id
@@ -907,13 +918,13 @@ describe('CarDetailScreen', () => {
 
       const readout = game.carDetail(id)!.supportReadout
       expect(readout).not.toBeNull()
-      expect(readout!.band).toBe('dangerous')
+      expect(readout!.band).toBe('strained')
       expect(readout!.copy.toLowerCase()).toContain('bottom end')
 
       const { wrapper } = await mountAt(id)
       const el = wrapper.find('[data-test="support-readout"]')
       expect(el.exists()).toBe(true)
-      expect(el.text()).toContain('This is')
+      expect(el.text()).toContain('It will do, but it is')
       expect(el.text()).not.toMatch(/\d/)
     })
   })

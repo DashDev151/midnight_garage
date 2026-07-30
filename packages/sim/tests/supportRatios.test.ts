@@ -82,8 +82,17 @@ describe('supportRatios: the structural disjointness test', () => {
   })
 })
 
-describe('supportRatios: demand reads band, support reads grade', () => {
-  it('a worn race turbo demands strictly less than a mint one (cylinder pressure ratio rises)', () => {
+/**
+ * Demand reads GRADE, not band, matching support (which always has). An
+ * earlier rule had this backwards - "demand reads band, support reads
+ * grade" - and band-scaling demand let a rotting gain part demand LESS of
+ * the bottom end its own hardware was rated for, which raised the coherence
+ * factor (and so reliability) as the part aged. See
+ * `docs/sprints/tuning-arc.md`'s rewritten second correction for the fuller
+ * account.
+ */
+describe('supportRatios: demand reads grade, not band', () => {
+  it('a worn race turbo demands EXACTLY as much as a mint one (cylinder pressure ratio unchanged)', () => {
     const mintTurbo = carWithGrades(FORCED_CAR, CONTEXT, { forcedInduction: 'race' }, 'mint')
     const wornTurbo = carWithGrades(FORCED_CAR, CONTEXT, { forcedInduction: 'race' }, 'worn')
     const mintRatio = supportRatios(
@@ -98,8 +107,7 @@ describe('supportRatios: demand reads band, support reads grade', () => {
       CONTEXT.partsById,
       ECONOMY,
     ).cylinderPressure
-    // Less demand (a blown turbo makes less boost) means a HIGHER ratio.
-    expect(wornRatio).toBeGreaterThan(mintRatio)
+    expect(wornRatio).toBe(mintRatio)
   })
 
   it('a worn race fuel system supports exactly as much as a mint one (fuelling ratio unchanged)', () => {
@@ -147,44 +155,56 @@ describe('supportRatios: the two worked support tables, pinned exactly', () => {
     differential: 'race',
   }
 
-  it('a maximal forced-induction build, race grade throughout: headline 0.994, adequate', () => {
+  it('a maximal forced-induction build, race grade throughout: headline 1.226, adequate', () => {
     const car = carWithGrades(FORCED_CAR, CONTEXT, ALL_RACE)
     const ratios = supportRatios(car, FORCED_CAR, CONTEXT.partsById, ECONOMY)
-    expect(ratios.cylinderPressure).toBeCloseTo(1.0, 3)
-    expect(ratios.fuelling).toBeCloseTo(0.994, 3)
-    expect(ratios.heat).toBeCloseTo(1.021, 3)
-    expect(ratios.revs).toBeCloseTo(1.191, 3)
-    expect(ratios.torqueTransmission).toBeCloseTo(0.997, 3)
+    expect(ratios.cylinderPressure).toBeCloseTo(1.226, 3)
+    expect(ratios.fuelling).toBeCloseTo(1.232, 3)
+    expect(ratios.heat).toBeCloseTo(1.241, 3)
+    expect(ratios.revs).toBeCloseTo(1.273, 3)
+    expect(ratios.torqueTransmission).toBeCloseTo(1.251, 3)
     const verdict = supportVerdict(car, FORCED_CAR, CONTEXT.partsById, ECONOMY)
-    expect(verdict.headline).toBeCloseTo(0.994, 3)
+    expect(verdict.headline).toBeCloseTo(1.226, 3)
     expect(verdict.band).toBe('adequate')
   })
 
-  it('a race turbo and nothing else: headline 0.588, dangerous, cylinder pressure named', () => {
+  /**
+   * The proportional support margin (`stockSupportMargin`) lifts this
+   * build off a flat headroom's figure of 0.588 (`dangerous`) to 0.815
+   * (`strained`) - a bare race turbo on a stock bottom end no longer reads
+   * as an emergency, only as unsupported. See the reliability rebalance
+   * design notes for the full account of why a flat headroom punished this
+   * build too hard.
+   */
+  it('a race turbo and nothing else: headline 0.815, strained, cylinder pressure named', () => {
     const car = carWithGrades(FORCED_CAR, CONTEXT, { forcedInduction: 'race' })
     const ratios = supportRatios(car, FORCED_CAR, CONTEXT.partsById, ECONOMY)
-    expect(ratios.cylinderPressure).toBeCloseTo(0.588, 3)
-    expect(ratios.fuelling).toBeCloseTo(0.781, 3)
-    expect(ratios.heat).toBeCloseTo(0.803, 3)
+    expect(ratios.cylinderPressure).toBeCloseTo(0.815, 3)
+    expect(ratios.fuelling).toBeCloseTo(0.902, 3)
+    expect(ratios.heat).toBeCloseTo(0.911, 3)
     expect(ratios.revs).toBeCloseTo(1.0, 3)
-    expect(ratios.torqueTransmission).toBeCloseTo(0.76, 3)
+    expect(ratios.torqueTransmission).toBeCloseTo(0.892, 3)
     const verdict = supportVerdict(car, FORCED_CAR, CONTEXT.partsById, ECONOMY)
-    expect(verdict.headline).toBeCloseTo(0.588, 3)
-    expect(verdict.band).toBe('dangerous')
+    expect(verdict.headline).toBeCloseTo(0.815, 3)
+    expect(verdict.band).toBe('strained')
     expect(verdict.subsystem).toBe('cylinderPressure')
   })
 })
 
 describe('supportRatios: fuel does not hold a piston together', () => {
-  it('a race turbo with race fuelling and race cooling but a stock bottom end still reads dangerous, cylinder pressure', () => {
+  it('a race turbo with race fuelling and race cooling but a stock bottom end still reads strained, cylinder pressure', () => {
     const car = carWithGrades(FORCED_CAR, CONTEXT, {
       forcedInduction: 'race',
       fuelSystem: 'race',
       cooling: 'race',
     })
     const verdict = supportVerdict(car, FORCED_CAR, CONTEXT.partsById, ECONOMY)
-    expect(verdict.headline).toBeCloseTo(0.588, 3)
-    expect(verdict.band).toBe('dangerous')
+    // Fuelling and cooling support only their OWN subsystems (well past
+    // adequate here); cylinder pressure has no supporting slot at all, so
+    // it stays the named shortfall regardless - the headline is identical
+    // to the turbo-alone case above.
+    expect(verdict.headline).toBeCloseTo(0.815, 3)
+    expect(verdict.band).toBe('strained')
     expect(verdict.subsystem).toBe('cylinderPressure')
   })
 })

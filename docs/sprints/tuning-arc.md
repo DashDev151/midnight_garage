@@ -183,12 +183,25 @@ should: buying the bottom end is exactly what fixes that build. `sprint136.md` c
 pair: a structural assertion (demand and support slot sets are disjoint per subsystem) and a
 behavioural one (a **pure gain** part, supporting nothing, never raises the headline).
 
-**2. Demand reads band, support reads grade.** An earlier draft of `sprint136.md` did not say
-whether condition applied to the demand side. It must, because demand comes from *output* and
-output is band-scaled already, so a blown turbo must stop demanding a bottom end to contain boost
-it is not making. Support must **not** be band-scaled, because support comes from *specification*
-and specification does not decay: a worn forged conrod is still stronger than a stock cast one.
-Getting this backwards charges condition twice.
+**2. Demand reads GRADE, not band - rewritten 2026-07-30, corrected the other way round.** The
+original text here said "demand reads band, support reads grade" and reasoned that reading grade
+for demand would charge condition twice. Both halves were wrong, and shipping the band-scaled
+version cost a working invariant: 172 measured cases where ageing a fitted gain part RAISED
+reliability, because shrinking the part's own band-scaled demand outran the condition mean's own
+fall. A worn turbo that reads as MORE reliable than a mint one is exactly the defect this arc
+exists to remove. `sprint136.md`'s own worked example is the smoking gun: its line 511 publishes a
+worn-FD figure of 6, which is what the formula gives WITHOUT band-scaling; the shipped,
+band-scaled code gave 19 on the same build.
+
+The correct rule: demand and support both read the fitted GRADE only, never the band. A blown
+turbo does not stop demanding the bottom end its own hardware was built to stress; only its
+OUTPUT falls, and that already has its own, single route into the model - the power stat itself
+falls with condition, the same as it always has. Charging it a second time by shrinking demand as
+well is the double-charge, not reading grade. Support was never band-scaled in the first place
+(specification does not decay: a worn forged conrod is still stronger than a stock cast one), so
+demand reading grade too is not a new idea here, it is the SAME idea applied consistently to both
+sides of the ratio. Nobody should restore band-scaled demand: it is not a stricter reading of the
+model, it is the bug.
 
 **3. The value-per-yen test was cross-category only.** Sprint 137's acceptance test asserted that
 no single category is the best power-per-yen at every rung, which would pass happily while a

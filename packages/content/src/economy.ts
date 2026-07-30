@@ -732,6 +732,19 @@ export const EconomyConfigSchema = z.object({
      */
     support: z.object({
       /**
+       * The stock car's own factory headroom, PROPORTIONAL to what the
+       * build actually demands: `support[s] = 1 + stockSupportMargin *
+       * (demand[s] - 1) + supportWeights term`. A flat headroom would cover
+       * proportionally far more of a small naturally-aspirated gain than a
+       * large forced-induction one; scaling it to the build's own demand
+       * overshoot avoids that while a genuinely unsupported build (fresh
+       * demand, no fitted specification) still falls exactly as far short
+       * as before. Demand is exactly 1 on a stock car, so this term is
+       * always 0 there and the stock-car-equals-1.0 identity is untouched
+       * regardless of the margin's value.
+       */
+      stockSupportMargin: z.number().min(0).max(1),
+      /**
        * Lever 1: what a fitted grade is worth as SPECIFICATION on a
        * supporting slot - flat per grade, the same on every slot and every
        * car. Never band-scaled: specification does not decay, a worn forged
@@ -1047,18 +1060,26 @@ export const EconomyConfigSchema = z.object({
         aero: PhysicalConditionCurveSchema,
       }),
       /**
-       * Lever 8 (signed): a CEILING on reliability's condition mean, not a
-       * replacement for it - `min(weightedBandFactorForStat(..., 'reliability',
-       * ...), reliabilityCeiling[worstBand])`. The mean alone lets a single
-       * catastrophic fault average away against fourteen good parts (a seized
-       * block used to read 92/100); this caps that mean at what the WORST
-       * single reliability-bearing part allows, so a grenade caps the car no
-       * matter how perfect everything else is.
+       * Lever 8 (rebalanced): a CEILING on reliability's condition mean, not
+       * a replacement for it. The mean alone lets a single catastrophic
+       * fault average away against fourteen good parts (a seized block used
+       * to read 92/100); this caps that mean at what the reliability-bearing
+       * parts allow, so a grenade caps the car no matter how perfect
+       * everything else is.
+       *
+       * The cap reads each offending part's own RELEVANCE, not just its
+       * band: `cap = 1 - (1 - reliabilityCeiling[band]) * min(1,
+       * statWeights.reliability / reliabilityCeilingWeightReference)`, taken
+       * as the MINIMUM across every reliability-bearing part on the car. A
+       * flat lookup on the worst band alone caps a weight-1 propshaft
+       * exactly as hard as weight-3 cooling; scaling by relevance keeps a
+       * light part's failure from throwing away the same amount of headroom
+       * as a heavy one's.
        *
        * "Any" is the right test rather than a crude one, because the parts
        * that carry a `statWeights.reliability` weight in the taxonomy are
-       * exactly the parts that stop the car - springs and paint carry zero
-       * precisely because they do not. The worst band is read from the
+       * exactly the parts that stop the car - paint and dashGauges carry
+       * zero precisely because they do not. The band is read from the
        * taxonomy's own weighted parts, never a hand-written list, and a
        * MISSING reliability-bearing part counts as `scrap` for this ceiling
        * (matching `weightedBandFactor`'s existing treatment of a missing part
@@ -1073,6 +1094,11 @@ export const EconomyConfigSchema = z.object({
         poor: z.number().min(0).max(1),
         scrap: z.number().min(0).max(1),
       }),
+      /** Lever 8's own relevance reference: the taxonomy's highest
+       * `statWeights.reliability` (cooling, 3). A part carrying this much
+       * weight takes the ceiling's FULL bite; anything lighter softens it
+       * proportionally. */
+      reliabilityCeilingWeightReference: z.number().positive(),
     }),
   }),
   /**

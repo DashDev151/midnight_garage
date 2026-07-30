@@ -181,7 +181,8 @@
     "group": "suspension",
     "displayName": "Springs",
     "statWeights": {
-      "handling": 2
+      "handling": 2,
+      "reliability": 1
     },
     "physicalWeights": {
       "grip": 2
@@ -203,7 +204,8 @@
     "group": "suspension",
     "displayName": "Steering",
     "statWeights": {
-      "handling": 2
+      "handling": 2,
+      "reliability": 2
     },
     "physicalWeights": {
       "grip": 1
@@ -217,7 +219,8 @@
     "repairable": false,
     "blockedBy": ["rims"],
     "statWeights": {
-      "handling": 1
+      "handling": 1,
+      "reliability": 1
     },
     "physicalWeights": {
       "braking": 3
@@ -230,7 +233,8 @@
     "displayName": "Brake Calipers & Lines",
     "blockedBy": ["rims"],
     "statWeights": {
-      "handling": 1
+      "handling": 1,
+      "reliability": 2
     },
     "physicalWeights": {
       "braking": 2
@@ -255,7 +259,8 @@
     "repairable": false,
     "blockedBy": ["rims"],
     "statWeights": {
-      "handling": 3
+      "handling": 3,
+      "reliability": 2
     },
     "physicalWeights": {
       "grip": 3
@@ -292,7 +297,8 @@
     "depthClass": "surface",
     "removable": false,
     "statWeights": {
-      "style": 2
+      "style": 2,
+      "reliability": 1
     },
     "physicalWeights": {
       "aero": 1

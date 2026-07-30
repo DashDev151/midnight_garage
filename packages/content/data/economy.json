@@ -133,6 +133,7 @@
     },
     "styleCap": 20,
     "support": {
+      "stockSupportMargin": 0.55,
       "specByGrade": {
         "stock": 0,
         "street": 0.25,
@@ -355,9 +356,10 @@
         }
       },
       "reliabilityCeiling": {
-        "poor": 0.55,
-        "scrap": 0.25
-      }
+        "poor": 0.7,
+        "scrap": 0.4
+      },
+      "reliabilityCeilingWeightReference": 3
     }
   },
   "supportReadout": {

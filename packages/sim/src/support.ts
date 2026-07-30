@@ -8,7 +8,6 @@ import {
   type Part,
   type Subsystem,
 } from '@midnight-garage/content'
-import { bandFactor } from './bands'
 import { engineCharacterOf } from './derivedStats'
 
 /**
@@ -24,10 +23,15 @@ export interface SupportVerdict {
 }
 
 interface SlotContribution {
-  /** The band-scaled gain this slot drives demand with - `powerFraction`
-   * times `bandFactor`, never multiplied by stock power (this is a fraction
-   * of output, not a PS figure). Demand comes from OUTPUT, so a blown part
-   * making less of it demands less. */
+  /** The GRADE-only output fraction this slot drives demand with -
+   * `powerFraction[engineCharacter]`, never band-scaled and never
+   * multiplied by stock power (a fraction of output, not a PS figure).
+   * Reads grade, matching `spec` below: band-scaling demand let a worn gain
+   * part demand LESS of the bottom end its own hardware is rated for, which
+   * raised the coherence factor - and so reliability - as the part aged.
+   * The fitted grade is what sets what the build asks of the car; wear
+   * already has its own route into reliability, through the condition
+   * mean. */
   gain: number
   /** The grade-only specification this slot supports with. Never
    * band-scaled: specification does not decay, a worn forged conrod is
@@ -38,12 +42,12 @@ interface SlotContribution {
 const ZERO_CONTRIBUTION: SlotContribution = { gain: 0, spec: 0 }
 
 /**
- * One slot's demand and support inputs (design section 6b's correction,
- * carried into this sprint verbatim: demand reads BAND, support reads
- * GRADE, and neither is charged twice). A slot the catalogue cannot
- * resolve - empty, or an installed part id the catalogue no longer knows -
- * contributes nothing on either side, matching `buildFactors`'s existing
- * rule that an unknown part id can never silently move anything.
+ * One slot's demand and support inputs. Both read the fitted GRADE only,
+ * never the band - see `SlotContribution.gain`'s own doc comment for why
+ * demand no longer band-scales. A slot the catalogue cannot resolve -
+ * empty, or an installed part id the catalogue no longer knows - contributes
+ * nothing on either side, matching `buildFactors`'s existing rule that an
+ * unknown part id can never silently move anything.
  */
 function slotContribution(
   car: CarInstance,
@@ -56,8 +60,7 @@ function slotContribution(
   if (!installed) return ZERO_CONTRIBUTION
   const part = partsById[installed.partId]
   if (!part) return ZERO_CONTRIBUTION
-  const gain =
-    part.statModifiers.powerFraction[engineCharacter] * bandFactor(installed.band, economy)
+  const gain = part.statModifiers.powerFraction[engineCharacter]
   const spec = economy.statFormulas.support.specByGrade[part.grade]
   return { gain, spec }
 }
@@ -66,9 +69,16 @@ function slotContribution(
  * The five per-subsystem support ratios, `ratio = support / demand`
  * (design section 6). Demand is what the build's own gains ask of a
  * subsystem; support is what the fitted specification on that subsystem's
- * named slots provides. A stock car sits at exactly 1.0 on every subsystem
- * by construction: every gain is 0 and every spec is 0, so `demand =
- * support = 1` everywhere.
+ * named slots provides, ON TOP OF the car's own factory headroom.
+ *
+ * The factory headroom is `stockSupportMargin * (demand[s] - 1)`,
+ * proportional to what the build actually demands rather than a flat
+ * constant - a flat headroom would cover proportionally far more of a
+ * small naturally-aspirated gain than a large forced-induction one. A
+ * stock car sits at exactly 1.0 on every subsystem by construction: every
+ * gain is 0, so `demand = 1` everywhere, the margin term is `margin * 0 =
+ * 0` regardless of the margin's value, and every spec is 0, so `support =
+ * demand = 1` everywhere.
  *
  * The dual-role convention (design section 6c) is structural here, not
  * merely documented: within one subsystem a slot is a demander or a
@@ -92,7 +102,7 @@ export function supportRatios(
     totalGain += contribution.gain
   }
 
-  const { demandWeights, supportWeights } = economy.statFormulas.support
+  const { demandWeights, supportWeights, stockSupportMargin } = economy.statFormulas.support
 
   const demand: Record<Subsystem, number> = {
     cylinderPressure: 1 + demandWeights.cylinderPressure * contributions.forcedInduction.gain,
@@ -102,19 +112,25 @@ export function supportRatios(
     torqueTransmission: 1 + demandWeights.torqueTransmission * totalGain,
   }
 
+  // The factory-headroom baseline: proportional to each subsystem's OWN
+  // demand, computed after `demand` above so it can read it.
+  const stockSupport = (subsystem: Subsystem): number =>
+    1 + stockSupportMargin * (demand[subsystem] - 1)
+
   const support: Record<Subsystem, number> = {
     cylinderPressure:
-      1 +
+      stockSupport('cylinderPressure') +
       supportWeights.cylinderPressure.internals * contributions.internals.spec +
       supportWeights.cylinderPressure.block * contributions.block.spec,
-    fuelling: 1 + supportWeights.fuelling.fuelSystem * contributions.fuelSystem.spec,
-    heat: 1 + supportWeights.heat.cooling * contributions.cooling.spec,
+    fuelling:
+      stockSupport('fuelling') + supportWeights.fuelling.fuelSystem * contributions.fuelSystem.spec,
+    heat: stockSupport('heat') + supportWeights.heat.cooling * contributions.cooling.spec,
     revs:
-      1 +
+      stockSupport('revs') +
       supportWeights.revs.headValvetrain * contributions.headValvetrain.spec +
       supportWeights.revs.internals * contributions.internals.spec,
     torqueTransmission:
-      1 +
+      stockSupport('torqueTransmission') +
       supportWeights.torqueTransmission.clutch * contributions.clutch.spec +
       supportWeights.torqueTransmission.gearbox * contributions.gearbox.spec +
       supportWeights.torqueTransmission.driveline * contributions.driveline.spec +

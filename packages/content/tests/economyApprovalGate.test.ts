@@ -510,6 +510,44 @@ import storyMissions from '../data/storyMissions.json'
  * cent of a tuner's. Each is recorded with its own arithmetic in
  * `docs/sprints/sprint136.md`'s Exit, including which shipped cars each threshold now
  * excludes.
+ *
+ * Re-pinned 2026-07-30 (maintainer approval, in session, all nine levers signed by
+ * name and value in the same session) for the Sprint 136 reliability rebalance
+ * (`docs/sprints/sprint136.md`'s amendment section), measured after the sprint
+ * shipped and fixing three defects it left behind:
+ *
+ * 1. `parts-taxonomy.json` `statWeights.reliability` (NEW, additive, six parts) -
+ *    tyres +2, brakeCalipersLines +2, steering +2, brakePadsDiscs +1, springs +1,
+ *    underbody +1. Existing handling/style weights on all six are untouched.
+ *    Total reliability weight rises 22 -> 31 across 15 -> 21 parts.
+ * 2. `statFormulas.support.stockSupportMargin` (NEW) - 0.55. The stock car's own
+ *    factory headroom, proportional to what the build demands rather than flat:
+ *    `support[s] = 1 + stockSupportMargin * (demand[s] - 1) + supportWeights term`.
+ * 3. `statFormulas.condition.reliabilityCeiling.poor` 0.55 -> 0.70.
+ * 4. `statFormulas.condition.reliabilityCeiling.scrap` 0.25 -> 0.40.
+ * 5. `statFormulas.condition.reliabilityCeilingWeightReference` (NEW) - 3 (the
+ *    taxonomy's own highest reliability weight, cooling). The ceiling now reads
+ *    `cap = 1 - (1 - reliabilityCeiling[band]) * min(1, weight / reference)`, the
+ *    minimum across every reliability-bearing part, instead of a flat lookup on the
+ *    worst band alone.
+ * 6. Demand in `packages/sim/src/support.ts` now reads GRADE, not band (dropped the
+ *    `* bandFactor(installed.band, economy)` term from the demand gain calculation).
+ *    Not an economy.json value - a formula fix, recorded here because it moves
+ *    reliability figures alongside the five content levers above. Band-scaled
+ *    demand let a rotting gain part demand less of the bottom end it was rated for,
+ *    which raised the coherence factor as the part aged (172 measured cases; the
+ *    worn-FD figure sprint136.md line 511 published as 6 only reproduces without
+ *    band-scaling - the shipped code gave 19).
+ *
+ * No mission payout, budget cap, or reliability threshold moves: `wont-strand-her`,
+ * `first-proper-car` and `street-power-street-manners`'s probes are all-stock
+ * uniform-band or already-adequate mint builds, mathematically unaffected by every
+ * one of the six changes above (re-verified against a fresh
+ * `storyMissionProbes.test.ts` run); `the-fleet-spare`'s fresh measurement (81, was
+ * 82) still clears its hand-set 79 floor with margin. Every reliability pin that DID
+ * move lives in `packages/sim/tests/reliabilityModel.test.ts` and
+ * `supportRatios.test.ts`, both re-derived from real runs. `harnessAcceptance.test.ts`
+ * passes untouched: reliability is not read by the lap model.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -519,7 +557,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('ba3df414b2989ca9788111bf75162990a8b47dae5268dabb60c43e190392a39f')
+    ).toBe('45a3e42d1abf7d4e8286016b84cc6b7dedb1c90dce847f96e59b022f9fb1010f')
   })
 
   it('partPricing.json matches its approved content exactly', () => {

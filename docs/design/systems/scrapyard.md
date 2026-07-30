@@ -92,6 +92,37 @@ true one is revealed by inspecting it, or by fitting it and discovering.
 **Do not build a second uncertainty system.** This one is already load-bearing
 elsewhere and the player already knows how to read it.
 
+### A failure mode worth designing for: a part that takes the engine with it
+
+**Maintainer note, 2026-07-30, from the tuning arc's reliability discussion.** Not every
+worn part merely underperforms. Some fail in a way that destroys something else, and a
+turbocharger is the clearest example on the roster.
+
+A tired turbo has three separate paths to killing an engine, and none of them is "down
+on power":
+
+- **Worn centre bearing and shaft play** lets the oil seals go, so the turbo passes oil
+  into the intake charge. Oil in the combustion chamber lowers the effective octane and
+  provokes detonation, which is what breaks pistons and ring lands.
+- **Compressor or turbine wheel contact** produces debris. Compressor shrapnel travels
+  downstream into the engine, and ingesting a blade means a new engine, not a rebuild.
+- **Boost control failing the other way** overboosts, which detonates and holes a piston.
+  The turbo working too well is its own hazard.
+
+**Why this belongs to the scrapyard specifically.** The yard is the one venue that sells
+parts of genuinely unknown condition, and the looks-versus-truth seam above is exactly
+the mechanism that would make this land: a yard turbo that looks fine, is not, and takes
+the bottom end with it some days after fitting. That is a consequence with real teeth
+and it is not a random punishment, because inspecting the part was always available.
+
+**Deliberately NOT scoped here, and it must not be smuggled in.** The game has no
+random catastrophic loss anywhere, by design, and adding one is a maintainer decision
+rather than a detail of this venue. Two things would have to be settled first: whether
+a fitted part can damage a different part at all (nothing in the sim does this today),
+and how a player could have avoided it, since a mechanic that destroys an engine with no
+readable warning is a punishment rather than a decision. Both are open questions for
+section 10, not assumptions for the build order.
+
 ---
 
 ## 4. The visit is a routing problem, and that is the puzzle

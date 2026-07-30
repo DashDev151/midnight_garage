@@ -22,10 +22,24 @@ const FD = CARS.find((c) => c.id === 'mazda-rx7-fd3s')!
 
 /** Every CarPartId that carries a non-zero `statWeights.reliability` in the
  * taxonomy - read from content, never a hand-written list, matching the
- * severity ceiling's own rule. 15 parts, total weight 22 (design doc). */
+ * severity ceiling's own rule. 21 parts, total weight 31: six chassis/wheels
+ * parts carry reliability weight ADDITIVE to their existing handling/style
+ * weight - tyres, brakeCalipersLines and steering at 2, brakePadsDiscs and
+ * springs and underbody at 1 - because a car cannot stop or steer reliably
+ * on cords and a weeping brake line either. */
 const RELIABILITY_WEIGHTED_PARTS: CarPartId[] = PARTS_TAXONOMY.filter(
   (entry) => (entry.statWeights.reliability ?? 0) > 0,
 ).map((entry) => entry.id)
+
+/** The severity ceiling's own per-part cap fraction at `scrap`/`poor`,
+ * derived from content rather than hand-computed, so a lever retune can
+ * never silently desync this file's expectations from the formula. */
+function ceilingCapFraction(weight: number, band: 'poor' | 'scrap'): number {
+  const { reliabilityCeiling, reliabilityCeilingWeightReference } = ECONOMY.statFormulas.condition
+  return (
+    1 - (1 - reliabilityCeiling[band]) * Math.min(1, weight / reliabilityCeilingWeightReference)
+  )
+}
 
 /** The maximal forced-induction build, race grade throughout (Task 6 item 5's
  * first worked table) - every demand and support slot at race. */
@@ -98,7 +112,7 @@ describe('reliability model: the full table, pinned', () => {
     expect(carinaWorn * FD.spec.reliabilityBase).toBe(fdWorn * CARINA.spec.reliabilityBase)
   })
 
-  it('stock, one grenade reads 25 / 20 - the severity ceiling at 0.25 of each base', () => {
+  it('stock, one grenade reads 40 / 32 - the severity ceiling at 0.40 of each base (cooling, weight 3, takes the ceiling full strength)', () => {
     const carinaGrenade = stats(
       withPartBand(carWithGrades(CARINA, CONTEXT, {}, 'mint'), 'cooling', 'scrap'),
       CARINA,
@@ -107,12 +121,14 @@ describe('reliability model: the full table, pinned', () => {
       withPartBand(carWithGrades(FD, CONTEXT, {}, 'mint'), 'cooling', 'scrap'),
       FD,
     ).reliability
-    expect(carinaGrenade).toBe(25)
-    expect(fdGrenade).toBe(20)
+    expect(carinaGrenade).toBe(40)
+    expect(fdGrenade).toBe(32)
   })
 
   // Character-specific rows, pinned on a real 'forced' car (nissan-180sx-rps13,
-  // base 92), for the two lower headlines this sprint is judged on.
+  // base 92), for the two lower headlines. The proportional support margin
+  // (`stockSupportMargin`) lifts both headlines well off a flat baseline's
+  // figures: a bare race turbo alone reads `strained` rather than `dangerous`.
   const HEADLINE_BUILDS: Record<
     'raceTurboAlone' | 'maximalNoSupport',
     Partial<Record<CarPartId, 'race'>>
@@ -121,8 +137,12 @@ describe('reliability model: the full table, pinned', () => {
     maximalNoSupport: RACE_GAIN_ONLY,
   }
   const MINT_EXPECTED: Record<'raceTurboAlone' | 'maximalNoSupport', number> = {
-    raceTurboAlone: 39,
-    maximalNoSupport: 33,
+    raceTurboAlone: 75,
+    maximalNoSupport: 71,
+  }
+  const GRENADE_EXPECTED: Record<'raceTurboAlone' | 'maximalNoSupport', number> = {
+    raceTurboAlone: 20,
+    maximalNoSupport: 16,
   }
 
   for (const key of ['raceTurboAlone', 'maximalNoSupport'] as const) {
@@ -131,34 +151,33 @@ describe('reliability model: the full table, pinned', () => {
       expect(stats(car).reliability).toBe(MINT_EXPECTED[key])
     })
 
-    it(`${key}, one grenade: reads 0 (below the dangerous line, condition adds nothing back)`, () => {
+    it(`${key}, one grenade: reads ${GRENADE_EXPECTED[key]} - the softened cooling ceiling (0.40) still bites through the raised headroom`, () => {
       const car = withPartBand(
         carWithGrades(FORCED_CAR, CONTEXT, HEADLINE_BUILDS[key], 'mint'),
         'cooling',
         'scrap',
       )
-      expect(stats(car).reliability).toBe(0)
+      expect(stats(car).reliability).toBe(GRENADE_EXPECTED[key])
     })
   }
 
   /**
-   * The doc's own illustrative condition sweep at a FIXED low headline
-   * (0.588/0.539 at fine/worn/poor) is not reachable by uniformly ageing a
-   * single real car: demand is band-scaled (correctly, by design - "a blown
-   * turbo must stop demanding a bottom end"), and the turbo/gain parts that
-   * set a low headline ARE ALSO reliability-weighted parts, so ageing them
-   * uniformly SHRINKS demand and lifts the headline at the same time it
-   * lowers conditionFactor. Measured directly: a uniformly-`fine` race-turbo
-   * -alone build reads 31, not the doc's illustrative 25, because the worn
-   * turbo is simultaneously demanding less boost. That is the model working
-   * as specified, not a defect - flagged here rather than silently pinning a
-   * number the formula cannot actually produce from one real build.
-   *
-   * What IS honestly buildable and pinned instead: hold the build's own
-   * gain-bearing slot at mint (the headline stays locked at 0.588) while
-   * every other reliability-weighted part ages uniformly - a maintained
-   * engine on a tired chassis/drivetrain.
+   * Change 4 (demand reads grade, not band) makes the doc's own illustrative
+   * condition sweep directly reachable by uniformly ageing one real car -
+   * the coupling that used to shrink demand as the same part aged, and so
+   * lift the headline back up while the sweep was trying to lower it, is
+   * gone. The headline now holds at exactly 0.815 (strained, cylinder
+   * pressure) at every band; only `conditionFactor` moves.
    */
+  it('a race turbo alone, aged uniformly: the headline never moves, only condition does', () => {
+    const bands = ['mint', 'fine', 'worn', 'poor', 'scrap'] as const
+    const expected = { mint: 75, fine: 62, worn: 43, poor: 20, scrap: 0 }
+    for (const band of bands) {
+      const car = carWithGrades(FORCED_CAR, CONTEXT, HEADLINE_BUILDS.raceTurboAlone, band)
+      expect(stats(car).reliability, band).toBe(expected[band])
+    }
+  })
+
   it('a race turbo kept mint on a car ageing everywhere else: the incoherent build still loses more than the coherent baseline', () => {
     const fineEverywhereElse = withPartBand(
       carWithGrades(FORCED_CAR, CONTEXT, HEADLINE_BUILDS.raceTurboAlone, 'fine'),
@@ -171,6 +190,13 @@ describe('reliability model: the full table, pinned', () => {
 })
 
 describe('reliability model: the base is the ceiling', () => {
+  /**
+   * Also the `stockSupportMargin` regression guard: the margin only ever
+   * multiplies `demand[s] - 1`, which is exactly 0 on a stock car regardless
+   * of the margin's own value, so this identity survives untouched.
+   * `supportRatios.test.ts`'s own stock-identity test asserts the same
+   * property one layer down, on the raw ratios.
+   */
   it('a stock mint car reads exactly its own spec.reliabilityBase, all 26 shipped cars', () => {
     for (const model of CARS) {
       const car = carWithGrades(model, CONTEXT, {}, 'mint')
@@ -236,13 +262,15 @@ describe('reliability model: the base is the ceiling', () => {
 
 describe('reliability model: the grenade rule', () => {
   for (const partId of RELIABILITY_WEIGHTED_PARTS) {
-    it(`one ${partId} at scrap, all others mint, caps the car at 25% of its base`, () => {
+    const weight = PARTS_TAXONOMY.find((entry) => entry.id === partId)!.statWeights.reliability!
+    const capFraction = ceilingCapFraction(weight, 'scrap')
+    it(`one ${partId} (weight ${weight}) at scrap, all others mint, caps the car at ${Math.round(capFraction * 100)}% of its base`, () => {
       const car = withPartBand(carWithGrades(FORCED_CAR, CONTEXT, {}, 'mint'), partId, 'scrap')
-      expect(stats(car).reliability).toBe(Math.round(FORCED_CAR.spec.reliabilityBase * 0.25))
+      expect(stats(car).reliability).toBe(Math.round(FORCED_CAR.spec.reliabilityBase * capFraction))
     })
   }
 
-  it('repairing any of the other fourteen weighted parts does not move the grenade cap', () => {
+  it('repairing any of the other twenty weighted parts does not move the grenade cap', () => {
     const grenadePart: CarPartId = 'cooling'
     const othersFine = withPartBand(
       carWithGrades(FORCED_CAR, CONTEXT, {}, 'fine'),
@@ -255,34 +283,75 @@ describe('reliability model: the grenade rule', () => {
       'scrap',
     )
     expect(stats(othersFine).reliability).toBe(stats(othersMint).reliability)
-    expect(stats(othersMint).reliability).toBe(Math.round(FORCED_CAR.spec.reliabilityBase * 0.25))
+    expect(stats(othersMint).reliability).toBe(
+      Math.round(FORCED_CAR.spec.reliabilityBase * ceilingCapFraction(3, 'scrap')),
+    )
+  })
+
+  /**
+   * The ceiling reads each part's own relevance rather than throwing the
+   * magnitude away: a weight-1 part at `poor` must leave the car strictly
+   * more reliable than a weight-3 part at `poor` on the same car, same
+   * build - a flat lookup on the worst band alone would cap both exactly
+   * alike.
+   */
+  it('a weight-1 part at poor leaves the car strictly more reliable than a weight-3 part at poor', () => {
+    const lightPoor = stats(
+      withPartBand(carWithGrades(FORCED_CAR, CONTEXT, {}, 'mint'), 'underbody', 'poor'),
+    ).reliability
+    const heavyPoor = stats(
+      withPartBand(carWithGrades(FORCED_CAR, CONTEXT, {}, 'mint'), 'cooling', 'poor'),
+    ).reliability
+    expect(lightPoor).toBeGreaterThan(heavyPoor)
   })
 })
 
 describe('reliability model: zero-weight parts cannot trip the ceiling', () => {
-  const ZERO_WEIGHT_PARTS: CarPartId[] = ['springs', 'paint', 'tyres']
+  // dampers, paint and rims carry no statWeights.reliability - unlike
+  // springs and tyres, which now do (see the dedicated tyres test below).
+  const ZERO_WEIGHT_PARTS: CarPartId[] = ['dampers', 'paint', 'rims']
 
-  it('scrap springs, paint or tyres leave reliability exactly unmoved', () => {
+  it('scrap dampers, paint or rims leave reliability exactly unmoved', () => {
     const baseline = stats(carWithGrades(FORCED_CAR, CONTEXT, {}, 'mint')).reliability
     for (const partId of ZERO_WEIGHT_PARTS) {
       const car = withPartBand(carWithGrades(FORCED_CAR, CONTEXT, {}, 'mint'), partId, 'scrap')
       expect(stats(car).reliability, partId).toBe(baseline)
     }
   })
+
+  /**
+   * Tyres carry reliability weight 2: a car cannot stop or steer reliably
+   * on cords, so its tyres' condition must be able to move this stat, not
+   * only the handling one.
+   */
+  it('a car on poor tyres is strictly less reliable than the same car on mint tyres', () => {
+    const mint = stats(carWithGrades(FORCED_CAR, CONTEXT, {}, 'mint')).reliability
+    const poorTyres = stats(
+      withPartBand(carWithGrades(FORCED_CAR, CONTEXT, {}, 'mint'), 'tyres', 'poor'),
+    ).reliability
+    expect(poorTyres).toBeLessThan(mint)
+  })
 })
 
 describe('reliability model: a missing part vs a legitimately absent one', () => {
   it('a missing (non-FI) reliability-bearing part trips the ceiling exactly like scrap', () => {
     const car = withPartMissing(carWithGrades(FORCED_CAR, CONTEXT, {}, 'mint'), 'internals')
-    expect(stats(car).reliability).toBe(Math.round(FORCED_CAR.spec.reliabilityBase * 0.25))
+    const weight = PARTS_TAXONOMY.find((entry) => entry.id === 'internals')!.statWeights
+      .reliability!
+    expect(stats(car).reliability).toBe(
+      Math.round(FORCED_CAR.spec.reliabilityBase * ceilingCapFraction(weight, 'scrap')),
+    )
   })
 
   it('a legitimately absent forced-induction slot never trips the ceiling; a missing one on a turbo car does, all 26 cars', () => {
+    const fiWeight = PARTS_TAXONOMY.find((entry) => entry.id === 'forcedInduction')!.statWeights
+      .reliability!
+    const capFraction = ceilingCapFraction(fiWeight, 'scrap')
     for (const model of CARS) {
       const car = withPartMissing(carWithGrades(model, CONTEXT, {}, 'mint'), 'forcedInduction')
       const result = stats(car, model).reliability
       if (hasForcedInduction(model)) {
-        expect(result, model.id).toBe(Math.round(model.spec.reliabilityBase * 0.25))
+        expect(result, model.id).toBe(Math.round(model.spec.reliabilityBase * capFraction))
       } else {
         expect(result, model.id).toBe(model.spec.reliabilityBase)
       }
@@ -292,12 +361,13 @@ describe('reliability model: a missing part vs a legitimately absent one', () =>
 
 describe('reliability model: the floor', () => {
   /** The five gain-only slots (no support role in any subsystem) - the
-   * demand-worst, condition-best construction the "worst buildable car"
-   * needs: at MINT band they demand their full amount (a worn gain part
-   * would demand LESS and only raise the headline back up), while every
-   * other reliability-weighted part sits at scrap, capping conditionFactor
-   * through the severity ceiling. Support stays at 0 throughout, since
-   * nothing above stock grade is fitted anywhere. */
+   * demand-worst, condition-worst construction the "worst buildable car"
+   * needs: fitted race-grade so demand is maximal, and (since Change 4 made
+   * demand read grade rather than band) scrapping them costs nothing on the
+   * demand side any more, so every reliability-bearing part - the five gain
+   * slots included - can sit at `scrap` at once without softening the
+   * headline. Support stays at 0 throughout, since nothing above stock
+   * grade is fitted anywhere. */
   const PURE_GAIN_SLOTS_RACE: Partial<Record<CarPartId, 'race'>> = {
     camsTiming: 'race',
     intake: 'race',
@@ -307,17 +377,52 @@ describe('reliability model: the floor', () => {
   }
 
   it('the worst buildable car reads exactly 0', () => {
-    let car = carWithGrades(FORCED_CAR, CONTEXT, PURE_GAIN_SLOTS_RACE, 'scrap')
-    for (const partId of Object.keys(PURE_GAIN_SLOTS_RACE) as CarPartId[]) {
-      car = withPartBand(car, partId, 'mint')
-    }
+    const car = carWithGrades(FORCED_CAR, CONTEXT, PURE_GAIN_SLOTS_RACE, 'scrap')
     expect(stats(car).reliability).toBe(0)
   })
 
-  it('no input produces a negative reliability figure', () => {
+  /**
+   * `computeDerivedStats` already clamps `reliability` to `[0, 100]` before
+   * returning it, so a bare `toBeGreaterThanOrEqual(0)` here can never fail
+   * regardless of the formula underneath. This pins the actual, falsifiable
+   * measurement across all 26 cars instead. The support margin keeps this
+   * build's headline just above the `dangerous` line on most cars (min
+   * headline 0.793, `strained`), so most read 0 but five - the roster's
+   * smallest total gain fraction - round up to 1 rather than 0.
+   */
+  it('a maximal-gain, zero-support, all-scrap build is pinned per car, all 26', () => {
+    const EXPECTED: Record<string, number> = {
+      'honda-beat-pp1': 1,
+      'honda-city-e-aa': 0,
+      'honda-city-turbo-ii-aa': 0,
+      'honda-civic-sir2-eg6': 1,
+      'honda-crx-sir-ef8': 1,
+      'honda-prelude-si-vtec-bb4': 0,
+      'mazda-rx7-fd3s': 0,
+      'mazda-savanna-rx7-fc3s': 0,
+      'nissan-180sx-rps13': 0,
+      'nissan-cefiro-a31': 0,
+      'nissan-fairlady-z-z32': 0,
+      'nissan-silvia-ks-s14': 0,
+      'nissan-silvia-s13': 0,
+      'nissan-skyline-gtr-bnr32': 0,
+      'nissan-sunny-b12': 0,
+      'subaru-impreza-wrx-sti-gc8': 0,
+      'suzuki-alto-works-ha21s': 0,
+      'suzuki-wagon-r-ct21s': 1,
+      'toyota-aristo-30v-jzs147': 0,
+      'toyota-carina-at150': 0,
+      'toyota-chaser-tourer-v-jzx90': 0,
+      'toyota-mr2-aw11': 0,
+      'toyota-mr2-sw20': 0,
+      'toyota-sera-exy10': 0,
+      'toyota-sprinter-trueno-ae86': 1,
+      'toyota-supra-rz-jza80': 0,
+    }
+    expect(Object.keys(EXPECTED).sort()).toEqual(CARS.map((c) => c.id).sort())
     for (const model of CARS) {
       const car = carWithGrades(model, CONTEXT, RACE_GAIN_ONLY, 'scrap')
-      expect(stats(car, model).reliability).toBeGreaterThanOrEqual(0)
+      expect(stats(car, model).reliability, model.id).toBe(EXPECTED[model.id])
     }
   })
 })
@@ -330,6 +435,44 @@ describe('reliability model: monotonicity', () => {
       const value = stats(carWithGrades(FORCED_CAR, CONTEXT, {}, band)).reliability
       expect(value).toBeLessThanOrEqual(previous)
       previous = value
+    }
+  })
+
+  /**
+   * "Monotonicity in both axes" was true on a STOCK build even under
+   * band-scaled demand, because a stock car has no gain part fitted at all
+   * - band-scaling demand never had anything to shrink there. The defect
+   * this sweep guards against only ever showed on a build with a fitted
+   * GAIN part: ageing that part shrank its own band-scaled demand at the
+   * same time condition fell, so the coherence factor rose and could
+   * outrun the condition drop (band-scaled demand read 33, 34, 36 - RISING
+   * - before cratering to 0 at poor, on this exact build). Demand reading
+   * grade removes the coupling; this sweeps the fitted gain build's OWN
+   * forced-induction band, on a representative car of each of the three
+   * engine characters plus two more, and asserts the defect stays gone.
+   */
+  it("reliability never rises when a single fitted gain part's band worsens (RACE_GAIN_ONLY, several cars, all three engine characters)", () => {
+    const reps = [
+      'nissan-180sx-rps13', // forced
+      'mazda-rx7-fd3s', // forced
+      'toyota-sprinter-trueno-ae86', // high-strung-na
+      'honda-beat-pp1', // high-strung-na
+      'toyota-carina-at150', // lazy-na
+    ] as const
+    const bands = ['mint', 'fine', 'worn', 'poor', 'scrap'] as const
+    for (const carId of reps) {
+      const model = CARS.find((c) => c.id === carId)!
+      let previous = Infinity
+      for (const band of bands) {
+        const car = withPartBand(
+          carWithGrades(model, CONTEXT, RACE_GAIN_ONLY, 'mint'),
+          'forcedInduction',
+          band,
+        )
+        const value = stats(car, model).reliability
+        expect(value, `${carId} at ${band}`).toBeLessThanOrEqual(previous)
+        previous = value
+      }
     }
   })
 
