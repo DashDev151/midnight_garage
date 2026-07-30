@@ -198,12 +198,13 @@ describe('the resolved parts catalog ladder', () => {
 
 /**
  * `gradeFactors` is a per-slot map with a mandatory `default`, so a slot's
- * price ladder can track its own power curve. `ignitionEcu` is the one slot
- * that earns its own entry; everything else (every other power slot
- * included) still resolves the same flat 1 / 1.3 / 2 / 3 ladder it always
- * has.
+ * price ladder can track its own power curve. `ignitionEcu` and
+ * `forcedInduction` are the two slots that earn their own entry; everything
+ * else still resolves the same flat 1 / 1.3 / 2 / 3 ladder it always has.
  */
 describe('the per-slot grade ladder', () => {
+  const OWN_LADDER_SLOTS = ['ignitionEcu', 'forcedInduction'] as const
+
   it('the default ladder is unchanged: stock 1, street 1.3, sport 2, race 3', () => {
     expect(SHEET.gradeFactors.default).toEqual({ stock: 1, street: 1.3, sport: 2, race: 3 })
   })
@@ -217,20 +218,31 @@ describe('the per-slot grade ladder', () => {
     })
   })
 
-  it('every CarPartId except ignitionEcu resolves the default ladder, read from content', () => {
+  it('forcedInduction carries its own ladder: stock 1, street 1.30, sport 2.93, race 6.50', () => {
+    expect(SHEET.gradeFactors.forcedInduction).toEqual({
+      stock: 1,
+      street: 1.3,
+      sport: 2.93,
+      race: 6.5,
+    })
+  })
+
+  it('every CarPartId except ignitionEcu and forcedInduction resolves the default ladder, read from content', () => {
     for (const carPartId of CarPartIdSchema.options) {
       const resolved = gradeFactorsFor(carPartId, SHEET.gradeFactors)
-      if (carPartId === 'ignitionEcu') {
-        expect(resolved, carPartId).toEqual(SHEET.gradeFactors.ignitionEcu)
+      if ((OWN_LADDER_SLOTS as readonly string[]).includes(carPartId)) {
+        expect(resolved, carPartId).toEqual(
+          SHEET.gradeFactors[carPartId as (typeof OWN_LADDER_SLOTS)[number]],
+        )
       } else {
         expect(resolved, carPartId).toEqual(SHEET.gradeFactors.default)
       }
     }
   })
 
-  it('no CarPartId other than ignitionEcu carries its own entry in the sheet', () => {
+  it('no CarPartId other than ignitionEcu and forcedInduction carries its own entry in the sheet', () => {
     const ownLadderKeys = Object.keys(SHEET.gradeFactors).filter((k) => k !== 'default')
-    expect(ownLadderKeys).toEqual(['ignitionEcu'])
+    expect(ownLadderKeys.sort()).toEqual([...OWN_LADDER_SLOTS].sort())
   })
 })
 
@@ -256,11 +268,15 @@ describe('the per-slot grade ladder', () => {
  * worse buy AND overpriced relative to its own power. That side is bounded
  * tight, just above the measured maximum, so nothing resembling the old
  * 2.89x ECU distortion can land again. The measured maximum across the whole
- * catalogue is 1.335x (`internals/entry/high-strung-na/street`), and 52 of
+ * catalogue is 1.335x (`internals/entry/high-strung-na/street`), and 51 of
  * the 288 generated cases sit above parity at all - the ceiling tracks that
- * measured residue directly, not a wide symmetric margin around it. The
- * measured table is reported via each case's own test name, passing or
- * failing, so the residues stay visible rather than merely passing.
+ * measured residue directly, not a wide symmetric margin around it.
+ * `forcedInduction` carries its own derived-to-track-power ladder (Lever 2),
+ * so its 24 cases now sit at or within rounding noise of parity rather than
+ * contributing to the residue the way the old flat ladder over an increasing
+ * curve would have. The measured table is reported via each case's own test
+ * name, passing or failing, so the residues stay visible rather than merely
+ * passing.
  */
 describe('the value-per-yen rule: climbing a grade ladder never becomes a dramatically different buy', () => {
   const POWER_BEARING_SLOTS = [
@@ -311,7 +327,7 @@ describe('the value-per-yen rule: climbing a grade ladder never becomes a dramat
     }
   }
 
-  it('the measured maximum is 1.335x, and 52 of the 288 cases sit above parity', () => {
+  it('the measured maximum is 1.335x, and 51 of the 288 cases sit above parity', () => {
     const normalizedValues: number[] = []
     for (const carPartId of POWER_BEARING_SLOTS) {
       for (const fitmentClass of CLASSES) {
@@ -335,6 +351,126 @@ describe('the value-per-yen rule: climbing a grade ladder never becomes a dramat
     }
     expect(normalizedValues.length).toBe(288)
     expect(Math.max(...normalizedValues)).toBeCloseTo(1.334961, 5)
-    expect(normalizedValues.filter((v) => v > 1).length).toBe(52)
+    expect(normalizedValues.filter((v) => v > 1).length).toBe(51)
+  })
+})
+
+/**
+ * The property this sprint's signed levers exist to satisfy: value and
+ * effect stay proportional, so a bigger part is a bigger purchase but never
+ * a better-value one. Lever 2 was derived so `forcedInduction`'s price
+ * tracks its power exactly (1.30/0.20 =
+ * 2.93/0.45 = 6.50/1.00 = 6.50), so this asserts the flat result directly
+ * rather than folding it into the catalogue-wide asymmetric bound above.
+ */
+describe('Sprint 137 acceptance 2a: climbing the forcedInduction ladder never improves value per yen', () => {
+  const CHARACTERS: readonly EngineCharacter[] = ['high-strung-na', 'lazy-na', 'forced']
+  const NON_STOCK_GRADES: readonly Grade[] = ['street', 'sport', 'race']
+
+  // The only spread left once Lever 2 is applied is the round-to-the-nearest-
+  // Y100 `resolvePartPriceYen` performs on top of an exact-tracking ladder -
+  // measured maximum 0.317 per cent (entry/high-strung-na), well inside a
+  // half-percent bound.
+  const MAX_ROUNDING_SPREAD = 0.005
+
+  it('priceYen / powerFraction is flat across street, sport and race, on every fitment class and character', () => {
+    const rows: string[] = []
+    let maxSpread = 0
+    for (const fitmentClass of CLASSES) {
+      for (const character of CHARACTERS) {
+        const yenPerFraction = NON_STOCK_GRADES.map((grade) => {
+          const part = PARTS.find(
+            (p) =>
+              p.carPartId === 'forcedInduction' &&
+              p.grade === grade &&
+              p.fitmentClass === fitmentClass,
+          )!
+          return part.priceYen / part.statModifiers.powerFraction[character]
+        })
+        const max = Math.max(...yenPerFraction)
+        const min = Math.min(...yenPerFraction)
+        const spread = (max - min) / min
+        maxSpread = Math.max(maxSpread, spread)
+        rows.push(
+          `${fitmentClass}/${character}: street ${yenPerFraction[0]!.toFixed(0)}, sport ` +
+            `${yenPerFraction[1]!.toFixed(0)}, race ${yenPerFraction[2]!.toFixed(0)} ` +
+            `(spread ${(spread * 100).toFixed(3)}%)`,
+        )
+      }
+    }
+    expect(maxSpread, `measured table:\n${rows.join('\n')}`).toBeLessThan(MAX_ROUNDING_SPREAD)
+  })
+
+  it('the measured maximum rounding spread is 0.317 per cent (entry class)', () => {
+    let maxSpread = 0
+    for (const fitmentClass of CLASSES) {
+      for (const character of CHARACTERS) {
+        const yenPerFraction = NON_STOCK_GRADES.map((grade) => {
+          const part = PARTS.find(
+            (p) =>
+              p.carPartId === 'forcedInduction' &&
+              p.grade === grade &&
+              p.fitmentClass === fitmentClass,
+          )!
+          return part.priceYen / part.statModifiers.powerFraction[character]
+        })
+        const spread =
+          (Math.max(...yenPerFraction) - Math.min(...yenPerFraction)) / Math.min(...yenPerFraction)
+        maxSpread = Math.max(maxSpread, spread)
+      }
+    }
+    expect(maxSpread).toBeCloseTo(0.0031746, 6)
+  })
+})
+
+/**
+ * The cross-category half (tuning-arc.md's third correction): part one above
+ * is within-ladder; a category could still be the best power-per-yen buy at
+ * every rung while individually satisfying it. Built from real catalogue
+ * prices, never hand-picked.
+ */
+describe('Sprint 137 acceptance 2b: no single power-bearing slot wins power-per-yen at every rung', () => {
+  const POWER_BEARING_SLOTS = [
+    'block',
+    'internals',
+    'headValvetrain',
+    'camsTiming',
+    'intake',
+    'exhaust',
+    'ignitionEcu',
+    'forcedInduction',
+  ] as const
+  const CHARACTERS: readonly EngineCharacter[] = ['high-strung-na', 'lazy-na', 'forced']
+  const NON_STOCK_GRADES: readonly Grade[] = ['street', 'sport', 'race']
+
+  function bestSlotAt(fitmentClass: PartFitmentClass, character: EngineCharacter, grade: Grade) {
+    let best: { slot: string; valuePerYen: number } | null = null
+    for (const slot of POWER_BEARING_SLOTS) {
+      const part = PARTS.find(
+        (p) => p.carPartId === slot && p.grade === grade && p.fitmentClass === fitmentClass,
+      )!
+      const fraction = part.statModifiers.powerFraction[character]
+      if (fraction <= 0) continue // fuelSystem/clutch never reach here; defensive only
+      const valuePerYen = fraction / part.priceYen
+      if (!best || valuePerYen > best.valuePerYen) best = { slot, valuePerYen }
+    }
+    return best!.slot
+  }
+
+  it('the winning slot is not the same at street, sport and race, on every fitment class and character', () => {
+    const rows: string[] = []
+    const offenders: string[] = []
+    for (const fitmentClass of CLASSES) {
+      for (const character of CHARACTERS) {
+        const winners = NON_STOCK_GRADES.map((grade) => bestSlotAt(fitmentClass, character, grade))
+        rows.push(
+          `${fitmentClass}/${character}: street=${winners[0]}, sport=${winners[1]}, race=${winners[2]}`,
+        )
+        if (winners[0] === winners[1] && winners[1] === winners[2]) {
+          offenders.push(`${fitmentClass}/${character}: ${winners[0]} wins every rung`)
+        }
+      }
+    }
+    expect(offenders, `measured table:\n${rows.join('\n')}`).toEqual([])
   })
 })

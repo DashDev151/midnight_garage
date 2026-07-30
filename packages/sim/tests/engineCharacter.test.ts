@@ -181,8 +181,8 @@ describe('the grade shapes from Lever 4, pinned per slot', () => {
       race: { 'high-strung-na': 0.03, 'lazy-na': 0.05, forced: 0.25 },
     },
     forcedInduction: {
-      street: { 'high-strung-na': 0.066, 'lazy-na': 0.092, forced: 0.116 },
-      sport: { 'high-strung-na': 0.134, 'lazy-na': 0.188, forced: 0.235 },
+      street: { 'high-strung-na': 0.04, 'lazy-na': 0.056, forced: 0.07 },
+      sport: { 'high-strung-na': 0.09, 'lazy-na': 0.126, forced: 0.158 },
       race: { 'high-strung-na': 0.2, 'lazy-na': 0.28, forced: 0.35 },
     },
   }
@@ -200,18 +200,50 @@ describe('the grade shapes from Lever 4, pinned per slot', () => {
     }
   }
 
-  it('forcedInduction is LINEAR (equal street->sport and sport->race steps), not yet increasing', () => {
-    const street = fractionOf('forcedInduction', 'street', 'forced')
-    const sport = fractionOf('forcedInduction', 'sport', 'forced')
-    const race = fractionOf('forcedInduction', 'race', 'forced')
-    const firstStep = sport - street
-    const secondStep = race - sport
-    // Linear means the two steps are (near) equal, within the 3dp rounding
-    // noise; INCREASING would mean the second step is clearly LARGER than
-    // the first - not the case here, by design (an increasing curve needs
-    // the support-ratio mechanism to stay safe, and that lands separately).
-    expect(secondStep).toBeCloseTo(firstStep, 2)
-    expect(secondStep).toBeLessThanOrEqual(firstStep + 0.002)
+  /**
+   * forcedInduction is the one increasing power curve in the game - each
+   * step up the ladder delivers strictly more than the step below it.
+   * Asserted as the property, not the three numbers.
+   */
+  it('forcedInduction is INCREASING: each step up the ladder strictly exceeds the step below it, on every character', () => {
+    for (const character of CHARACTERS) {
+      const street = fractionOf('forcedInduction', 'street', character)
+      const sport = fractionOf('forcedInduction', 'sport', character)
+      const race = fractionOf('forcedInduction', 'race', character)
+      const firstStep = street // street - stock, stock is always 0
+      const secondStep = sport - street
+      const thirdStep = race - sport
+      expect(secondStep, character).toBeGreaterThan(firstStep)
+      expect(thirdStep, character).toBeGreaterThan(secondStep)
+    }
+  })
+
+  /**
+   * The comparative half: forcedInduction's late growth (the race-to-sport
+   * step against the sport-to-street step) is not merely increasing, it is
+   * the STEEPEST late growth of any power-bearing slot - strictly ahead of
+   * every neighbouring slot's own ratio, on every character. This is what
+   * would catch an accidental edit landing on a neighbouring row instead of
+   * forcedInduction: a slot's own street/sport/race pins already fail on any
+   * value change, and this test additionally fails if a neighbour's shape
+   * were pushed toward forcedInduction's steepness rather than its own.
+   */
+  it('forcedInduction has the steepest late growth of any power-bearing slot, on every character', () => {
+    for (const character of CHARACTERS) {
+      const ratios = Object.entries(EXPECTED).map(([slot, byGrade]) => {
+        const secondStep = byGrade.sport[character] - byGrade.street[character]
+        const thirdStep = byGrade.race[character] - byGrade.sport[character]
+        return { slot, ratio: thirdStep / secondStep }
+      })
+      const forcedInductionRatio = ratios.find((r) => r.slot === 'forcedInduction')!.ratio
+      const others = ratios.filter((r) => r.slot !== 'forcedInduction')
+      for (const other of others) {
+        expect(
+          forcedInductionRatio,
+          `${character}: forcedInduction vs ${other.slot}`,
+        ).toBeGreaterThan(other.ratio)
+      }
+    }
   })
 
   it("intake is diminishing (a strictly SMALLER second step than first), unlike forcedInduction's linear shape", () => {

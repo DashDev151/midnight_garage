@@ -218,22 +218,193 @@ it.
 
 ## Definition of done
 
-- [ ] Sprint 136 shipped and green, recorded here with its commit.
-- [ ] Levers 1 and 2 recorded, and landed in the same commit as each other.
-- [ ] `forcedInduction` street and sport re-authored for all three characters.
-- [ ] The `forcedInduction` price ladder authored; no other slot's entry moved.
-- [ ] The increasing property asserted as a property, for each character.
-- [ ] Every other category's power shape provably unchanged from Sprint 135.
-- [ ] Race power totals provably unmoved (x1.43, x1.57, x1.95).
-- [ ] Value per yen flat across the turbo ladder, every class and character (acceptance 2a).
-- [ ] No slot is the best power-per-yen at all three rungs (acceptance 2b).
-- [ ] A maximal unsupported turbo build reads `dangerous` on `cylinderPressure` and its
-      reliability collapses accordingly.
-- [ ] The power-per-yen table measured and reported either way; execution stopped and the table
-      handed over if either acceptance failed.
-- [ ] `partPricing.json` hash and ledger re-pinned with the sign-off.
-- [ ] Checks run once each, output shown.
+- [x] Sprint 136 shipped and green, recorded here with its commit: `44ed6a8` (Sprint 136 landing),
+      rebalanced and verified by `edddd36`, `f0c2876`, `5f75606`, `3216d60` (the last full check run
+      over 134-136, HEAD at sprint start).
+- [x] Levers 1 and 2 recorded, and landed in the same commit as each other (both are uncommitted in
+      the working tree together, pending review; no separate commit exists for either alone).
+- [x] `forcedInduction` street and sport re-authored for all three characters.
+- [x] The `forcedInduction` price ladder authored; no other slot's entry moved.
+- [x] The increasing property asserted as a property, for each character.
+- [x] Every other category's power shape provably unchanged from Sprint 135.
+- [x] Race power totals provably unmoved (x1.43, x1.57, x1.95).
+- [x] Value per yen flat across the turbo ladder, every class and character (acceptance 2a).
+- [ ] No slot is the best power-per-yen at all three rungs (acceptance 2b). **FAILS on the real
+      catalogue, pre-existing and independent of this sprint's two levers - see Exit.**
+- [x] A maximal unsupported turbo build reads `dangerous` on `cylinderPressure` and its
+      reliability collapses accordingly (the pre-existing, unmodified 0.699 test; see Exit for the
+      doc's own 0.588 figure).
+- [x] The power-per-yen table measured and reported either way; execution stopped and the table
+      handed over since acceptance 2b failed.
+- [x] `partPricing.json` hash and ledger re-pinned with the sign-off.
+- [x] Checks run once each, output shown.
 
 ## Exit
 
-_To be completed at the end of the sprint._
+**Levers 1 and 2 both landed, together, exactly as signed.** `forcedInduction`'s street/sport
+`powerFraction` moved to the increasing shape (0.20/0.45 of race) and `partPricing.gradeFactors`
+gained a `forcedInduction` entry (1 / 1.30 / 2.93 / 6.50) in the same change. Race values did not
+move on either lever.
+
+### Files changed
+
+- `packages/content/data/parts.json` - `forcedInduction` street/sport `powerFraction`, all three
+  characters, all four fitment classes (race untouched).
+- `packages/content/data/partPricing.json` - new `gradeFactors.forcedInduction` entry.
+- `packages/content/tests/partPricing.test.ts` - the per-slot ladder tests extended for the second
+  own-ladder slot; the catalogue-wide residue re-pinned 52 -> 51 cases above parity; two new
+  describe blocks for acceptance 2a (passes) and 2b (fails, left failing on purpose).
+- `packages/sim/tests/engineCharacter.test.ts` - `EXPECTED.forcedInduction` street/sport re-pinned;
+  the old "is LINEAR" test replaced with an "is INCREASING" property test (per character) plus a
+  cross-slot dominance test proving `forcedInduction`'s late growth is strictly the steepest of the
+  eight power-bearing slots.
+- `packages/content/tests/economyApprovalGate.test.ts` - `partPricing.json` hash re-pinned; ledger
+  extended with both levers and their mechanical consequence; the mission payout/budget-cap pin
+  table updated.
+- `packages/content/data/storyMissions.json` - `street-power-street-manners`: reliability threshold
+  73 -> 74, `payoutYen`/`budgetCapYen` 1,453,000 -> 1,497,000 (both re-derived from a fresh
+  `storyMissionProbes.test.ts` run, directive 17 case (a): the mission's probe fits a sport-grade
+  `forcedInduction`, which now costs and demands more).
+- `packages/sim/tests/selling.test.ts` - one pre-existing comment-hygiene violation fixed (a
+  "Sprint 136" reference in a comment, unrelated to this sprint's own levers but caught by the same
+  guard run; reworded to describe current behaviour rather than the sprint that produced it).
+
+### The price ladder, before and after (flagship class, `classFactor` 0.9, `baseCostYen` 90,000)
+
+| grade | price before | price after |
+| --- | ---: | ---: |
+| street | 105,300 | 105,300 (unchanged) |
+| sport | 162,000 | 237,300 |
+| race | 243,000 | 526,500 |
+
+The largest single catalogue price movement is the flagship race turbo, +283,500 yen
+(243,000 -> 526,500). Computed directly from `resolvePartPriceYen`'s own formula, not hand-derived.
+Two immaterial discrepancies against the sprint doc's own worked example, both illustration-only
+and neither touching the signed lever or any test pin: the doc's sport "price after" reads 236,900
+(computed from the unrounded 2.925 the derivation line shows, `1.30/0.20 = 2.925/0.45`) where the
+signed, 2dp-rounded 2.93 actually authored resolves to 237,300; and the doc's maximal-race-build
+total on a Supra (1,846,500) is 100 yen below the code-computed 1,846,600, from the same class of
+rounding on `ignitionEcu`'s race price. Both are noted for the record; neither is a lever, a test
+pin, or something this sprint's scope touches.
+
+### The forced-induction power curve
+
+| character | street | sport | race (unchanged) |
+| --- | ---: | ---: | ---: |
+| high-strung NA | 0.040 | 0.090 | 0.200 |
+| lazy NA | 0.056 | 0.126 | 0.280 |
+| forced | 0.070 | 0.158 | 0.350 |
+
+Increments strictly increase for every character (e.g. forced: 0.070, then 0.088, then 0.192).
+The maximal parts-only multiplier per engine character is unchanged from Sprint 135, because only
+`forcedInduction`'s street/sport moved and race did not: **x1.43 high-strung NA, x1.57 lazy NA,
+x1.95 forced** (`proportionalPower.test.ts`, unmodified, still passing).
+
+### The six properties the maintainer named, confirmed one by one
+
+1. **`harnessAcceptance.test.ts` passes untouched, unmodified.** Confirmed - I did not edit this
+   file and it still passes (stock cars carry no power SKUs, so a power-fraction change cannot
+   reach it).
+2. **A stock mint car reads exactly its own `reliabilityBase`, all 26 cars.** Confirmed, unchanged
+   (`reliabilityModel.test.ts`, unmodified, still passing).
+3. **Nothing anywhere exceeds a car's `reliabilityBase`.** Confirmed, unchanged (same file, same
+   pin, unmodified, still passing).
+4. **Reliability is monotone non-increasing as any part's band worsens.** Confirmed, unchanged
+   (the `RACE_GAIN_ONLY` band-worsening regression test, unmodified, still passing).
+5. **More total power gain never raises reliability, and `powerFraction`'s reliability-figure
+   movement was re-derived, not treated as a regression.** Confirmed. Exactly one story mission
+   pin moved: `street-power-street-manners`'s reliability threshold (`floor90(measured)`)
+   73 -> 74, because its probe fits a sport-grade `forcedInduction`, whose fraction rose under
+   Lever 1, raising the build-intensity term's input. This is directive 17 case (a): the probe's
+   own build intentionally changed what is correct, so the pin was re-derived from a fresh
+   `storyMissionProbes.test.ts` run, not hand-picked.
+6. **The value-per-yen ceiling (1.35) held, and the `forcedInduction/street` bucket the maintainer
+   excluded from the prior acceptance now sits inside it.** Measured maximum across all 288
+   catalogue-wide cases: unchanged at 1.334961x (still `internals/entry/high-strung-na/street`,
+   untouched by this sprint). Cases above parity: **52 before this sprint's change, 51 after** -
+   the residue went down, not up, and no case breached the ceiling. `forcedInduction`'s own 24
+   cases (acceptance 2a) now sit within 0.317 per cent of flat, well inside tolerance.
+
+### A genuine, pre-existing finding: acceptance 2b fails, and the fix is an unlisted lever
+
+Task 3's second acceptance test (no single power-bearing slot is the best power-per-yen at every
+rung, cross-category) was written fresh this sprint - it never existed before. Measured against the
+real catalogue, it fails: **`camsTiming` wins power-per-yen at street, sport AND race for both NA
+characters, and `exhaust` wins all three for `forced`, on all four fitment classes.** This is
+entirely independent of this sprint's two levers - neither `camsTiming` nor `exhaust` moved -
+so it is not something Lever 1 or Lever 2 introduced or can fix; it is a pre-existing property of
+the catalogue Sprint 135 authored.
+
+Per the sprint doc's own instruction ("if either part fails, execution ENDS and the table goes to
+the maintainer... do not tune the curve until the test passes"), **I stopped here rather than move
+`camsTiming` or `exhaust`'s price or curve, which would be an unlisted directive-22 lever.** The
+test is left in the tree, failing, on purpose, so the finding stays visible (`packages/content/
+tests/partPricing.test.ts`, "Sprint 137 acceptance 2b"). Full measured table:
+
+```text
+entry/high-strung-na:     street=camsTiming, sport=camsTiming, race=camsTiming
+entry/lazy-na:             street=camsTiming, sport=camsTiming, race=camsTiming
+entry/forced:               street=exhaust,    sport=exhaust,    race=exhaust
+everyday/high-strung-na:   street=camsTiming, sport=camsTiming, race=camsTiming
+everyday/lazy-na:           street=camsTiming, sport=camsTiming, race=camsTiming
+everyday/forced:            street=exhaust,    sport=exhaust,    race=exhaust
+enthusiast/high-strung-na: street=camsTiming, sport=camsTiming, race=camsTiming
+enthusiast/lazy-na:         street=camsTiming, sport=camsTiming, race=camsTiming
+enthusiast/forced:          street=exhaust,    sport=exhaust,    race=exhaust
+flagship/high-strung-na:   street=camsTiming, sport=camsTiming, race=camsTiming
+flagship/lazy-na:           street=camsTiming, sport=camsTiming, race=camsTiming
+flagship/forced:            street=exhaust,    sport=exhaust,    race=exhaust
+```
+
+Recorded in `TODO.md` under "Open balance/economy questions" for maintainer attention; not tied to
+a future sprint number, so it does not surface again just by reading sprint docs in order.
+
+### The sprint doc's own "0.588" figure is stale
+
+Task 3's Acceptance 1 text cites 0.588 for "a maximal forced-induction build with no supporting
+parts" and says Sprint 136 "already produces" it. The build that description names - a race
+`forcedInduction` alone, nothing else fitted - already has a pinned, passing test from Sprint 136:
+`supportRatios.test.ts`'s "a race turbo and nothing else: headline 0.699, dangerous, cylinder
+pressure named", unmodified by this sprint since `forcedInduction`'s race fraction does not move.
+I verified algebraically that the doc's 0.588 is what the SAME build computes to at
+`stockSupportMargin = 0`: `cylinderPressure` demand = `1 + 2.0*0.35 = 1.7`; at margin 0 the ratio is
+`1/1.7 = 0.588235`; at the shipped margin 0.27 it is `(1+0.27*0.7)/1.7 = 0.699`. `stockSupportMargin`
+was tuned to 0.27 by commit `f0c2876` ("Margin to 0.27...") during Sprint 136's own verification
+pass, after this sprint doc's Task 3 text was drafted against the pre-tuning value. The existing,
+unmodified, already-passing 0.699 test is the correct, current fulfilment of Acceptance 1; I did
+not add a duplicate test asserting the stale 0.588 figure, since doing so would either fail
+correctly (proving the doc stale) or require constructing an artificial, undocumented build purely
+to make a wrong number pass, which directive 17 forbids.
+
+### Checks run
+
+- `pnpm test packages/sim/tests/engineCharacter.test.ts packages/sim/tests/proportionalPower.test.ts`
+  - 169 passed.
+- `pnpm test packages/sim/tests/supportRatios.test.ts packages/sim/tests/reliabilityModel.test.ts packages/sim/tests/storyMissionProbes.test.ts`
+  - 127 passed (after the `storyMissions.json` re-derivation).
+- `pnpm test packages/sim/tests/derivedStats.test.ts packages/sim/tests/marketValue.test.ts packages/sim/tests/bands.test.ts packages/sim/tests/carCondition.test.ts`
+  - 109 passed.
+- `pnpm test packages/sim/tests/auctions.test.ts packages/sim/tests/valueModelProbes.test.ts packages/sim/tests/auctionGrade.test.ts packages/sim/tests/requirements.test.ts`
+  - 99 passed.
+- `pnpm test packages/sim/tests/jobs.test.ts packages/sim/tests/tutorialProbe.test.ts packages/sim/tests/conditionPhysics.test.ts packages/sim/tests/aftermarketPhysics.test.ts packages/sim/tests/harnessAcceptance.test.ts`
+  - 171 passed.
+- `pnpm test packages/sim/tests/selling.test.ts` - 58 passed (comment-hygiene fix only).
+- `pnpm test --project content` (whole, once) - **481 passed, 1 failed** (the acceptance 2b finding
+  above; every other content test, including the comment hygiene guard and the economy approval
+  gate, passes).
+- `pnpm test --project game` (whole, once) - **831 passed, 0 failed.** The auction-demo trap this
+  arc has hit twice did not fire this time: `auctionRoom.test.ts`, `auctionRoomDemo.test.ts` and
+  `AuctionRoomDemoScreen.test.ts` all pass unmodified (confirmed again in isolation, 61 passed) -
+  this sprint's price movements did not shift `enforceMinWorkBill`'s PRNG draw count for these
+  particular seeded fixtures, so no re-derivation was needed this time.
+
+### Outstanding
+
+- **Acceptance 2b (Definition of Done, unticked on purpose).** Fails on the real catalogue,
+  pre-existing, independent of this sprint's two levers. Needs a maintainer-named lever
+  (`camsTiming` and/or `exhaust` price or curve) before it can pass; recorded in `TODO.md`.
+- The sprint doc's own worked-example numbers (236,900 sport price; 1,420,200/1,846,500 Supra
+  totals) carry small illustration-only rounding discrepancies against the code-computed figures,
+  noted above. Neither is a lever or a test pin; no action needed unless the doc is revised for
+  accuracy.
+- Not committed. Ready for review.

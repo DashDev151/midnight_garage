@@ -49,6 +49,12 @@
       "street": 1.3,
       "sport": 4.77,
       "race": 8.67
+    },
+    "forcedInduction": {
+      "stock": 1,
+      "street": 1.3,
+      "sport": 2.93,
+      "race": 6.5
     }
   },
   "globalFactor": 1,

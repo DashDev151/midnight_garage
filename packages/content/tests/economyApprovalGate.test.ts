@@ -625,6 +625,30 @@ import storyMissions from '../data/storyMissions.json'
  * or cosmetics-only builds with zero total gain, so the new factor is exactly 1 there.
  * This is not the movement of an unlisted lever: `stressCoefficient` is the one value
  * signed, and this threshold is its arithmetic consequence, not a second decision.
+ *
+ * Re-pinned 2026-07-29 (maintainer approval, in session, both levers signed as a pair)
+ * for `docs/sprints/sprint137.md`, the forced-induction return curve. `economy.json`
+ * is untouched (only `parts.json` and `partPricing.json` move), so its hash holds. Two
+ * levers:
+ *
+ * 1. `forcedInduction`'s `statModifiers.powerFraction` grade shape, street and sport
+ *    only (race is unchanged) - increasing, 0.20 / 0.45 of the race value per
+ *    character: high-strung NA street 0.040, sport 0.090; lazy NA street 0.056, sport
+ *    0.126; forced street 0.070, sport 0.158. Authored in `parts.json`, pinned by
+ *    `packages/sim/tests/engineCharacter.test.ts`.
+ * 2. `partPricing.json`'s `gradeFactors` gains a `forcedInduction` entry, 1 / 1.30 /
+ *    2.93 / 6.50 - derived so price tracks power exactly (1.30/0.20 = 2.93/0.45 =
+ *    6.50/1.00 = 6.50), so climbing the turbo ladder never improves value per yen.
+ *
+ * What moves as a MECHANICAL CONSEQUENCE, not an independent decision:
+ * `street-power-street-manners` is the one story mission whose probe fits a sport-grade
+ * `forcedInduction`, so its formula-derived figures re-derive from a fresh
+ * `storyMissionProbes.test.ts` run: `statThreshold(reliability).min` `floor90(measured)`
+ * 73 -> 74 (the build-intensity term reads the new, larger sport-grade gain fraction);
+ * `payoutYen`/`budgetCapYen` `payoutYenFor(probeCostYen)` 1453000 -> 1497000 (the
+ * probe's sport-grade turbo costs more under the new ladder). `tasteMatch(tuner).
+ * minMultiplier` is unchanged at 1. No other mission's probe touches `forcedInduction`
+ * at a non-stock grade.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -646,7 +670,7 @@ describe('the economy approval gate', () => {
         'class factors, grade factors, the global factor and the overrides map are all ' +
         'approval-gated (CLAUDE.md directive 22). Re-pin this hash ONLY in the same ' +
         'change as the recorded approval of the specific lever and value.',
-    ).toBe('24955b9abaac94a1bacaa16bf554655de3a14d3b2cf14e8de8110300a30bb630')
+    ).toBe('2be78426f50529cc934a637d3a06e08dacc4f82f8fc2d98e77ce27eb80588294')
   })
 
   it('mission payouts and budget caps match their approved values exactly', () => {
@@ -667,7 +691,7 @@ describe('the economy approval gate', () => {
       'make-it-pull': { payoutYen: 772000, budgetCapYen: 772000 },
       'the-column-clock': { payoutYen: 1000000, budgetCapYen: 1000000 },
       'low-and-loud': { payoutYen: 1162000, budgetCapYen: 1162000 },
-      'street-power-street-manners': { payoutYen: 1453000, budgetCapYen: 1453000 },
+      'street-power-street-manners': { payoutYen: 1497000, budgetCapYen: 1497000 },
       'under-one-fifteen': { payoutYen: 1693000, budgetCapYen: 1693000 },
       'the-fleet-spare': { payoutYen: 484000, budgetCapYen: 484000 },
       'the-showroom-standard': { payoutYen: 704000, budgetCapYen: 704000 },

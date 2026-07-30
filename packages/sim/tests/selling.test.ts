@@ -530,10 +530,10 @@ describe('drawDailyOffers (Sprint 31 decision 2; channels, Sprint 114)', () => {
   describe('the mismatch mechanism (tunerMagazine, matchedOnly)', () => {
     // An entry-tier car's only genuine buyer pool is first-timer (buyers.json's
     // only entry tierPreference), whose statWeights lean hard on reliability
-    // (0.8 of 1.4). Since Sprint 136 authored a per-car `spec.reliabilityBase`
-    // (honda-city-e-aa: 99 - cheap cars are genuinely dependable now), a merely
-    // `worn` example no longer drags the taste score under 1.0: the condition
-    // has to be `poor` before first-timer's want goes unmet. A neglected
+    // (0.8 of 1.4). Per-car `spec.reliabilityBase` puts honda-city-e-aa at 99
+    // (cheap cars are genuinely dependable), so a merely `worn` example no
+    // longer drags the taste score under 1.0: the condition has to be `poor`
+    // before first-timer's want goes unmet. A neglected
     // entry-tier beater at `poor` across the board is exactly the car this
     // channel should reject while the shop front still takes it - a stock
     // stat block of reliability 40 / power 44 / handling 5 / style 8 /

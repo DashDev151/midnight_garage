@@ -526,9 +526,31 @@ pass."
   their own `partPricing.gradeFactors` entry rather than the default ladder. That is three
   directive-22 lever tables and needs specific values signed.
 
-  `forcedInduction/street` was in the same measured set and is NOT part of this acceptance: it
-  gets its own ladder in Sprint 137, alongside its own power curve, per the arc's rule that the
-  two move together.
+  `forcedInduction/street` was in the same measured set and was NOT part of this acceptance.
+  **Resolved by Sprint 137**: `forcedInduction` now carries its own `partPricing.gradeFactors`
+  ladder (1 / 1.30 / 2.93 / 6.50), derived to track its own increasing power curve exactly, so its
+  24 cases sit at or within rounding noise of parity. The catalogue-wide residue count fell from
+  52 to 51 of 288 cases as a result; the three ACCEPTED slots above (`internals`, `camsTiming`,
+  `block`) are unaffected and still carry the residue this entry accepts.
+
+- [ ] **OPEN: a single slot is the best power-per-yen buy at every rung, on every fitment class
+  and character - the cross-category half of the value-per-yen rule, first measured in Sprint 137
+  and never previously tested.** `camsTiming` wins every rung (street/sport/race) for both NA
+  characters, and `exhaust` wins every rung for `forced`, on all four fitment classes - a real,
+  reproducible property of the Sprint 135 catalogue, entirely independent of Sprint 137's own two
+  levers (neither `camsTiming` nor `exhaust` moved). Measured via
+  `packages/content/tests/partPricing.test.ts`'s "Sprint 137 acceptance 2b" describe block, which
+  is left FAILING on purpose (directive 17: a failing test is a diagnosis, not something to tune
+  toward a pass) so the defect stays visible rather than silently dropped.
+
+  This is the within-ladder rule's cross-category twin (`tuning-arc.md`'s third correction): a
+  category can individually satisfy "climbing its own ladder never improves value per yen" while
+  still being the objectively best buy at every grade, which reintroduces a single correct
+  first-purchase the arc exists to remove (buy `camsTiming` or `exhaust` first, always, regardless
+  of the rest of the build). The fix is a price or curve move on `camsTiming` and/or `exhaust`,
+  which is a directive-22 lever neither Sprint 137 nor any prior sprint has signed - execution
+  stopped rather than guessing at a table. Needs the measured table (in the test's own failure
+  output) put in front of the maintainer and a specific lever named before any fix lands.
 
 - [ ] **INVESTIGATE: should support parts scale the MAGNITUDE of a power part's gain, and not
   only its reliability? Deferred, not decided (maintainer, 2026-07-30).**
@@ -682,8 +704,11 @@ pass."
   136 landed the per-subsystem support ratios, the coherence curve, and reliability rebuilt as
   condition plus coherence off a per-car `spec.reliabilityBase` (`reliabilityCap` retired
   outright, not moved) - see `docs/sprints/sprint135.md` and `docs/sprints/sprint136.md`'s own
-  Exits for what landed and what each moved. **Sprint 137 is SIGNED and clear to start**, along
-  with 134 which needed nothing.
+  Exits for what landed and what each moved. **Sprint 137 (the forced-induction return curve) is
+  implemented and ready for review, not yet committed**: see `docs/sprints/sprint137.md`'s own
+  Exit for what landed and the one genuine open finding (a pre-existing cross-category value-per-
+  yen defect, unrelated to this sprint's own two levers, recorded separately above under "Open
+  balance/economy questions"). 134 needed nothing.
 
   Blocking decisions, all recorded in the doc. Constraint A (section 17): the
   forced-induction return curve must not ship before the support ratios, because increasing

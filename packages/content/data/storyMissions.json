@@ -212,7 +212,7 @@
       {
         "kind": "statThreshold",
         "stat": "reliability",
-        "min": 73
+        "min": 74
       },
       {
         "kind": "tasteMatch",
@@ -220,8 +220,8 @@
         "minMultiplier": 1
       }
     ],
-    "budgetCapYen": 1453000,
-    "payoutYen": 1453000,
+    "budgetCapYen": 1497000,
+    "payoutYen": 1497000,
     "tipFraction": 0.1,
     "tipTriggerFraction": 0.15,
     "lapTipTriggerFraction": 0.03,

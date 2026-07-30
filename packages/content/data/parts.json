@@ -2856,9 +2856,9 @@
     "requiredTags": [],
     "statModifiers": {
       "powerFraction": {
-        "high-strung-na": 0.066,
-        "lazy-na": 0.092,
-        "forced": 0.116
+        "high-strung-na": 0.04,
+        "lazy-na": 0.056,
+        "forced": 0.07
       },
       "handling": 0,
       "style": 0,
@@ -2875,9 +2875,9 @@
     "requiredTags": [],
     "statModifiers": {
       "powerFraction": {
-        "high-strung-na": 0.066,
-        "lazy-na": 0.092,
-        "forced": 0.116
+        "high-strung-na": 0.04,
+        "lazy-na": 0.056,
+        "forced": 0.07
       },
       "handling": 0,
       "style": 0,
@@ -2894,9 +2894,9 @@
     "requiredTags": [],
     "statModifiers": {
       "powerFraction": {
-        "high-strung-na": 0.066,
-        "lazy-na": 0.092,
-        "forced": 0.116
+        "high-strung-na": 0.04,
+        "lazy-na": 0.056,
+        "forced": 0.07
       },
       "handling": 0,
       "style": 0,
@@ -2913,9 +2913,9 @@
     "requiredTags": [],
     "statModifiers": {
       "powerFraction": {
-        "high-strung-na": 0.066,
-        "lazy-na": 0.092,
-        "forced": 0.116
+        "high-strung-na": 0.04,
+        "lazy-na": 0.056,
+        "forced": 0.07
       },
       "handling": 0,
       "style": 0,
@@ -2932,9 +2932,9 @@
     "requiredTags": [],
     "statModifiers": {
       "powerFraction": {
-        "high-strung-na": 0.134,
-        "lazy-na": 0.188,
-        "forced": 0.235
+        "high-strung-na": 0.09,
+        "lazy-na": 0.126,
+        "forced": 0.158
       },
       "handling": 0,
       "style": 0,
@@ -2951,9 +2951,9 @@
     "requiredTags": [],
     "statModifiers": {
       "powerFraction": {
-        "high-strung-na": 0.134,
-        "lazy-na": 0.188,
-        "forced": 0.235
+        "high-strung-na": 0.09,
+        "lazy-na": 0.126,
+        "forced": 0.158
       },
       "handling": 0,
       "style": 0,
@@ -2970,9 +2970,9 @@
     "requiredTags": [],
     "statModifiers": {
       "powerFraction": {
-        "high-strung-na": 0.134,
-        "lazy-na": 0.188,
-        "forced": 0.235
+        "high-strung-na": 0.09,
+        "lazy-na": 0.126,
+        "forced": 0.158
       },
       "handling": 0,
       "style": 0,
@@ -2989,9 +2989,9 @@
     "requiredTags": [],
     "statModifiers": {
       "powerFraction": {
-        "high-strung-na": 0.134,
-        "lazy-na": 0.188,
-        "forced": 0.235
+        "high-strung-na": 0.09,
+        "lazy-na": 0.126,
+        "forced": 0.158
       },
       "handling": 0,
       "style": 0,
