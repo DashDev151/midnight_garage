@@ -212,12 +212,12 @@
       {
         "kind": "statThreshold",
         "stat": "reliability",
-        "min": 82
+        "min": 73
       },
       {
         "kind": "tasteMatch",
         "buyerId": "tuner",
-        "minMultiplier": 1.01
+        "minMultiplier": 1
       }
     ],
     "budgetCapYen": 1453000,

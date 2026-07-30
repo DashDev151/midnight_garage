@@ -173,7 +173,7 @@ Measured against shipped content on 2026-07-29, not assumed:
 
 ---
 
-## Three corrections carried into the sprint docs
+## Four corrections carried into the sprint docs
 
 **1. The support-ratio acceptance criterion.** An earlier draft said "adding any single gain part
 must never raise that car's headline ratio". **That is too strong and would fail
@@ -208,6 +208,23 @@ no single category is the best power-per-yen at every rung, which would pass hap
 single category's own ladder put the best value at the top. Both halves are now asserted, and the
 within-ladder half is also a catalogue-wide rule in Sprint 135.
 
+**4. "The base is the ceiling" rule 6 said a supported build sits on the base; it does not.**
+Playing the shipped model exposed the gap the rule's own wording created: it read "a stock mint car
+sits exactly on its own `reliabilityBase`, a properly supported build sits on it too", collapsing
+two different claims into one sentence. The first half is right and stays right. The second half
+is wrong on its own terms: even a full race build, properly supported and built perfectly, moves
+more energy through every part of the car than stock, so its reliability has to drop relative to
+stock, just far less than an unsupported build's does. A build being supported answers only whether
+it holds together; it was never a reason the power itself should be free. `statFormulas.support.
+stressCoefficient` (signed 0.20) fixes this with an outer multiplier on the existing
+condition-plus-coherence budget, `1 - stressCoefficient * totalGainFraction` (clamped to `[0, 1]`),
+kept deliberately apart from `coherenceFactor`'s own additive shortfall - folding it in there was
+measured and rejected, because it would subtract an identical flat amount from a supported and an
+unsupported build alike and collapse the unsupported case toward an uninteresting floor.
+`totalGainFraction` is exactly 0 on a stock car, so the multiplier is exactly 1 there and the
+stock-car-reads-exactly-its-base identity is untouched. Full arithmetic in `sprint136.md`'s third
+amendment.
+
 ---
 
 ## Rules that bind every sprint in this arc
@@ -227,9 +244,16 @@ within-ladder half is also a catalogue-wide rule in Sprint 135.
 5. **Climbing a ladder never improves value per yen.** A top rung may be a bigger purchase; it
    must not be a better one, or the lower rungs are pointless. A slot's price ladder moves in the
    same sprint as its power curve.
-6. **The base is the ceiling.** A stock mint car sits exactly on its own `reliabilityBase`, a
-   properly supported build sits on it too, and nothing ever exceeds it. Nothing in this arc pays
-   a bonus for competence.
+6. **The base is a ceiling, not a plateau (amended - see the fourth correction below).** A stock
+   mint car sits exactly on its own `reliabilityBase`, and nothing ever exceeds it: that half is
+   unchanged. What changed: a build that makes more power now sits below the base in proportion to
+   how much more, whether or not it is supported. Only a build with zero total power gain sits
+   exactly on the base; a properly supported build no longer does merely by being supported.
+   Support still fully answers whether the build holds together (`coherenceFactor`, capped at 1);
+   it no longer also erases the cost of the power itself, which is a second, independent question
+   the original wording conflated. Nothing in this arc pays a bonus for competence, and that half
+   is also unchanged: the new term only ever subtracts, and a well-supported build still always
+   beats a poorly-supported one making the same power.
 7. **A per-car spec value is character, never difficulty.** `reliabilityBase`, `styleBase` and
    `aeroCeiling` each say what the car IS. None of them varies by build, condition or tier, and
    none of them is a knob for tuning how hard the game is.

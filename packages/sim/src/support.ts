@@ -66,6 +66,50 @@ function slotContribution(
 }
 
 /**
+ * Every slot's demand/support inputs, walked once, plus the sum of every
+ * fitted part's own `gain` across the whole car (`totalGain`). This is the
+ * ONE accumulation both `supportRatios` (below) and `totalGainFractionOf`
+ * read - never duplicated, so a future change to the walk (a new slot, a
+ * changed contribution rule) cannot desync the two callers.
+ */
+function computeContributions(
+  car: CarInstance,
+  model: CarModel,
+  partsById: Readonly<Record<string, Part>>,
+  economy: EconomyConfig,
+): { contributions: Record<CarPartId, SlotContribution>; totalGain: number } {
+  const engineCharacter = engineCharacterOf(model, economy)
+  const contributions = {} as Record<CarPartId, SlotContribution>
+  let totalGain = 0
+  for (const partId of ALL_CAR_PART_IDS) {
+    const contribution = slotContribution(car, partId, partsById, economy, engineCharacter)
+    contributions[partId] = contribution
+    totalGain += contribution.gain
+  }
+  return { contributions, totalGain }
+}
+
+/**
+ * The sum of every fitted part's own `powerFraction[engineCharacter]`
+ * across every car part slot - how much total power gain a build asks of
+ * the car, independent of what supports it. `supportRatios` needs exactly
+ * this figure as the driver behind three of its five demand terms
+ * (`fuelling`, `heat`, `torqueTransmission`); this is the SAME
+ * `computeContributions` walk, exposed so the reliability derivation's
+ * build-intensity term (`derivedStats.ts`) reads one implementation rather
+ * than recomputing the sum a second time. Exactly 0 on a stock car (no
+ * aftermarket part fitted anywhere).
+ */
+export function totalGainFractionOf(
+  car: CarInstance,
+  model: CarModel,
+  partsById: Readonly<Record<string, Part>>,
+  economy: EconomyConfig,
+): number {
+  return computeContributions(car, model, partsById, economy).totalGain
+}
+
+/**
  * The five per-subsystem support ratios, `ratio = support / demand`
  * (design section 6). Demand is what the build's own gains ask of a
  * subsystem; support is what the fitted specification on that subsystem's
@@ -93,14 +137,7 @@ export function supportRatios(
   partsById: Readonly<Record<string, Part>>,
   economy: EconomyConfig,
 ): Record<Subsystem, number> {
-  const engineCharacter = engineCharacterOf(model, economy)
-  const contributions = {} as Record<CarPartId, SlotContribution>
-  let totalGain = 0
-  for (const partId of ALL_CAR_PART_IDS) {
-    const contribution = slotContribution(car, partId, partsById, economy, engineCharacter)
-    contributions[partId] = contribution
-    totalGain += contribution.gain
-  }
+  const { contributions, totalGain } = computeContributions(car, model, partsById, economy)
 
   const { demandWeights, demandDrivers, supportWeights, stockSupportMargin } =
     economy.statFormulas.support

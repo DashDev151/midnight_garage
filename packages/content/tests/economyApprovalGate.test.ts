@@ -585,6 +585,46 @@ import storyMissions from '../data/storyMissions.json'
  * the file gained a field; no demand weight, support weight, threshold or any other
  * value changed, confirmed by `supportRatios.test.ts` and `reliabilityModel.test.ts`
  * both passing unchanged.
+ *
+ * Re-pinned 2026-07-30 (maintainer approval, in session, single lever signed by name
+ * and value: `stressCoefficient` = 0.20) for the reliability build-intensity term
+ * (`docs/sprints/sprint136.md`'s third amendment): `statFormulas.support.
+ * stressCoefficient` (NEW) - 0.20. A fully supported race build no longer reads
+ * exactly its own `spec.reliabilityBase`: reliability gains an OUTER multiplier,
+ * `1 - stressCoefficient * totalGainFraction` (clamped to `[0, 1]`), where
+ * `totalGainFraction` is the same `totalGain` accumulator `supportRatios` already
+ * computes, exported as `totalGainFractionOf` (`packages/sim/src/support.ts`) so
+ * there is exactly one implementation of the sum. Structurally independent of
+ * `coherenceFactor`, not folded into its additive budget (that alternative was
+ * measured and rejected: it subtracts an identical flat amount from a supported
+ * and an unsupported build alike). Exactly 1 at zero total gain, so a stock car is
+ * unaffected by construction and every stock-mint pin in this suite holds
+ * unchanged. **This supersedes the "a supported race build reads exactly its own
+ * base" claim recorded in the `stockSupportMargin` re-pin above (2026-07-30,
+ * "Every stock-mint and fully-supported race build still reads exactly its own
+ * `spec.reliabilityBase`..."): that claim was true when written and is left in
+ * place as the historical record of what that change did; from this lever onward
+ * it is a supported build with ZERO total gain that reads exactly base, not every
+ * supported build.** Full arithmetic and every re-derived pin in
+ * `docs/sprints/sprint136.md`'s third amendment and `packages/sim/tests/
+ * reliabilityModel.test.ts`.
+ *
+ * Re-derived in the same change, as a MECHANICAL CONSEQUENCE of the `stressCoefficient`
+ * lever above rather than an independent decision: `street-power-street-manners` is the
+ * one story mission whose probe fits aftermarket gain parts (Sprint 136's own signed
+ * exception covering this mission's reliability threshold as a `floor90(measured)` pin,
+ * not a chosen design number). Its probe's measured reliability moves 92 -> 82 under the
+ * new outer factor, so `storyMissions.json`'s `statThreshold(reliability).min` re-derives
+ * `floor90(82)` = 82 -> **73**, and its `tasteMatch(tuner).minMultiplier` re-derives
+ * `round2At97Percent` of the freshly measured taste ratio, 1.01 -> **1**. Neither
+ * `payoutYen` nor `budgetCapYen` moves (both stay 1453000): the probe's cost is
+ * unaffected by reliability, so `payoutYenFor`/`budgetCapYenFor` of that unchanged cost
+ * are unchanged, confirmed by a fresh `storyMissionProbes.test.ts` run rather than
+ * assumed. The other three reliability-gated missions (`wont-strand-her`,
+ * `the-fleet-spare`, `first-proper-car`) are unaffected: all three probes are all-stock
+ * or cosmetics-only builds with zero total gain, so the new factor is exactly 1 there.
+ * This is not the movement of an unlisted lever: `stressCoefficient` is the one value
+ * signed, and this threshold is its arithmetic consequence, not a second decision.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -594,7 +634,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('aa1d7bf6476169e82684ba37951370d62241273d4c67be2430dc6c3b9899aeac')
+    ).toBe('65ae96c4757226d845b8c0bcafe625bd95687039026fbad440fecbf647e907d9')
   })
 
   it('partPricing.json matches its approved content exactly', () => {

@@ -745,6 +745,33 @@ export const EconomyConfigSchema = z.object({
        */
       stockSupportMargin: z.number().min(0).max(1),
       /**
+       * How much a build's own total power gain costs reliability, on top of
+       * (never folded into) the condition-plus-coherence budget:
+       * `reliability = base * clamp(conditionFactor + coherenceFactor - 1, 0,
+       * 1) * (1 - stressCoefficient * totalGainFraction)`. `totalGainFraction`
+       * is the same sum `supportRatios` already accumulates as `totalGain`
+       * (`packages/sim/src/support.ts`'s `totalGainFractionOf`) - every fitted
+       * part's own `powerFraction[engineCharacter]`, summed across the whole
+       * car.
+       *
+       * This is an OUTER multiplier, deliberately structured apart from
+       * `coherenceFactor`'s own additive shortfall: folding it into that
+       * budget instead was measured and rejected, because it would subtract
+       * an identical flat amount from a supported and an unsupported build
+       * alike and collapse the unsupported case toward an uninteresting
+       * floor. Even a fully and properly supported build moves more energy
+       * through every part of the car than stock does, and pays for that
+       * here in proportion to how much more power it makes - never in
+       * proportion to how well it is supported, which stays
+       * `coherenceFactor`'s job alone.
+       *
+       * `totalGainFraction` is exactly 0 on a stock car (no aftermarket part
+       * fitted anywhere), so this term is always 1 there regardless of the
+       * coefficient's value - the stock-car-reads-exactly-its-base identity
+       * holds by the same construction `stockSupportMargin` above relies on.
+       */
+      stressCoefficient: z.number().min(0).max(1),
+      /**
        * Lever 1: what a fitted grade is worth as SPECIFICATION on a
        * supporting slot - flat per grade, the same on every slot and every
        * car. Never band-scaled: specification does not decay, a worn forged

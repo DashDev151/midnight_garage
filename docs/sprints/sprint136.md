@@ -1294,3 +1294,177 @@ passing.
   whole-project run is reliable rather than merely re-run until it happens to pass.
 - No `pnpm typecheck`, `pnpm lint`, `pnpm format`, `pnpm test:coverage` or `pnpm build`
   run locally, matching this sprint's own speed directive.
+
+---
+
+## Amendment 3: `stressCoefficient`, a build-intensity term outside coherence
+
+**This section is an addition, not a rewrite.** Both amendments above shipped as recorded. A third
+gap was found by playing the shipped model: a fully supported race build read EXACTLY the car's
+`reliabilityBase`, identical to bone stock. The maintainer's ruling: *"Even IF a full race build is
+properly supported and built perfectly, it's still way more energy going through every part of the
+system, so reliability needs to drop relative to stock, but NOT nearly as much as reliability
+should drop when you build something stupid."* It also delivers a visible street-to-sport-to-race
+progression the coherence threshold alone could not, since `coherenceFactor` caps at 1 the moment a
+build clears `adequate` and stays there for every rung above it.
+
+### The mechanism
+
+`statFormulas.support.stressCoefficient` (NEW, `packages/content/data/economy.json`, sibling of
+`stockSupportMargin`, Zod entry in `packages/content/src/economy.ts` mirroring its shape) is an
+OUTER multiplier on the existing condition-plus-coherence budget:
+
+```text
+reliability = base * clamp(conditionFactor + coherenceFactor - 1, 0, 1)
+              * clamp(1 - stressCoefficient * totalGainFraction, 0, 1)
+```
+
+`totalGainFraction` is the sum of every fitted part's own `powerFraction[engineCharacter]` across
+the whole car - exactly the `totalGain` accumulator `supportRatios` already computed internally.
+`packages/sim/src/support.ts` gained `totalGainFractionOf`, reading the SAME `computeContributions`
+walk `supportRatios` reads (extracted from the loop that used to sit inline in `supportRatios`
+itself) rather than a second copy of the sum. `packages/sim/src/derivedStats.ts` gained
+`reliabilityIntensityFactor(totalGainFraction, economy)`, defensively clamped to `[0, 1]` so a
+future content change can never push it negative or above 1.
+
+**Deliberately NOT folded into `coherenceFactor`'s own additive shortfall.** That alternative was
+measured and rejected: it would subtract an identical flat amount from a supported and an
+unsupported build alike, collapsing the unsupported case toward an uninteresting floor. The two
+terms stay structurally independent: `coherenceFactor` answers whether the build holds together;
+the new outer factor answers how much more energy it is moving, regardless of whether it holds
+together.
+
+`totalGainFraction` is exactly 0 on a stock car (no aftermarket part fitted anywhere), so the outer
+factor is exactly 1 there and the stock-car-reads-exactly-its-base identity is untouched by
+construction - verified directly (not inferred) on all 26 shipped cars.
+
+### The lever
+
+**Signed by the maintainer: `stressCoefficient` = 0.20.**
+
+### What it produces
+
+At mint, `stressCoefficient` 0.20, verified against a real run and matching the signed proposal
+exactly:
+
+| build | car (base) | reliability |
+| --- | --- | ---: |
+| maximal fully supported race build | nissan-180sx-rps13 (92) | **75** |
+| maximal fully supported race build | toyota-sprinter-trueno-ae86 (94) | **82** |
+| maximal fully supported race build | toyota-supra-rz-jza80 (94) | **76** |
+| maximal unsupported build | nissan-180sx-rps13 (92) | **41** |
+| maximal unsupported build | toyota-sprinter-trueno-ae86 (94) | **55** |
+| maximal unsupported build | toyota-supra-rz-jza80 (94) | **41** |
+
+`toyota-sprinter-trueno-ae86`'s `camsTiming` ladder alone (unsupported): street **93**, sport
+**85**, race **75**. All three verified against a real run and matching the signed proposal
+exactly.
+
+**The same ladder's "supported" row, settled.** Read street 92, sport 90, race 88 in the signed
+proposal; several plausible "supported" constructions were tried against the real code and none
+reproduced it (closest, headValvetrain matched to `camsTiming`'s own grade alone, read 93/92/90).
+The exact construction: `camsTiming` at the ladder grade, plus every dual-role and pure-support
+slot across all five subsystems at the SAME grade - `headValvetrain`/`internals` (revs), `block`
+(cylinder pressure), `fuelSystem` (fuelling), `cooling` (heat), `clutch`/`gearbox`/`driveline`/
+`differential` (torque transmission), everything else stock, run against the real code, reads
+**92/90/88 exactly**. The scratchpad model and the shipped code agree on every figure in the signed
+proposal; the earlier mismatch was an under-specified construction, not a divergence between the
+model the coefficient was derived from and the code that implements it. Pinned exactly in
+`reliabilityModel.test.ts`'s own dedicated test for this ladder.
+
+### Re-derived pins
+
+**`economyApprovalGate.test.ts`**: `economy.json` hash `aa1d7bf6...` -> `65ae96c4...` (one new
+lever, `stressCoefficient`). Mission payouts and budget caps table unchanged. A forward note added
+to the doc comment (not a rewrite): the `stockSupportMargin` re-pin's claim that "every stock-mint
+and fully-supported race build still reads exactly its own `spec.reliabilityBase`" was true when
+written and is left in place as the historical record of that change; from this lever onward it is
+a supported build with ZERO total gain that reads exactly base, not every supported build.
+
+**`packages/sim/tests/reliabilityModel.test.ts`** (re-pinned; `nissan-180sx-rps13`, base 92, unless
+noted):
+
+| pin | old | new |
+| --- | ---: | ---: |
+| `toyota-carina-at150` fully supported race build, mint | 100 (= base) | **83** |
+| `mazda-rx7-fd3s` fully supported race build, mint | 80 (= base) | **65** |
+| raceTurboAlone (bare race turbo), mint | 56 | **52** |
+| maximalNoSupport (`RACE_GAIN_ONLY`), mint | 50 | **41** |
+| raceTurboAlone aged mint/fine/worn/poor/scrap | 56/42/23/0/0 | **52/39/22/0/0** |
+| "a fully supported race build reads exactly the same as stock, all 26 cars" | equality test | **replaced**: strictly below stock on every car, `totalGainFraction` asserted strictly positive first |
+
+Six new tests added (the build-intensity factor's own describe block): the factor is exactly 1 at
+zero total gain, asserted directly rather than inferred; a stock car has exactly zero total gain on
+all 26 cars; the factor is monotone non-increasing in total gain and never leaves `[0, 1]` including
+against inputs no real content can produce (defensive-clamp regression guard); reliability itself
+never rises when total gain rises on a real build, condition and coherence held fixed; the
+street/sport/race creep is monotone non-increasing, one representative car per engine character,
+both an unsupported (power slot alone) and a supported construction; and a dedicated exact pin for
+the AE86's own `camsTiming` ladder (street/sport/race, alone 93/85/75 and fully supported 92/90/88 -
+see "the same ladder's supported row, settled" above for the construction).
+
+**"Nothing anywhere exceeds the car's own base"** (`toBeLessThanOrEqual`) passes unchanged: the new
+outer factor only ever multiplies the existing bounded value by something in `[0, 1]`, so it can
+only pull a figure down, never past the ceiling.
+
+**No `packages/game` fixture pin moved.** `pnpm vitest run --project game` (whole project, once):
+62 files, 831 tests, all passed with no changes required - reliability feeds buyer taste and
+therefore prices, so this was checked rather than assumed.
+
+### What did NOT move, and what is blocked rather than moved
+
+**Every other sim file checked passes unchanged**: `supportRatios.test.ts` (54 tests - `supportRatios`
+and `supportVerdict`'s own external behaviour is untouched by the `totalGainFractionOf` extraction),
+`derivedStats.test.ts`, `marketValue.test.ts`, `valuation.test.ts`, `bands.test.ts`,
+`carCondition.test.ts`, `valueModelProbes.test.ts`, `harnessAcceptance.test.ts` - none of their
+fixtures fit an aftermarket gain part, so `totalGainFraction` is 0 throughout and the new factor is
+always exactly 1 there.
+
+**`street-power-street-manners`'s reliability threshold and tuner taste-match floor, re-derived.**
+Its probe (a 180sx built to mint with sport power AND sport support throughout) is the one probe in
+the suite that fits aftermarket gain parts, and its measured reliability moves from 92 (= base) to
+**82** under the new factor. This threshold is one of the four story-mission reliability thresholds
+Sprint 136 itself signed as `floor90(measured)` pins rather than chosen design numbers (Task 8, "Item
+4: re-derive, do NOT stop"), so its movement is a mechanical consequence of the signed
+`stressCoefficient`, not an independent lever: `statThreshold(reliability).min` re-derives
+`floor90(82)` = 82 -> **73**, and `tasteMatch(tuner).minMultiplier` re-derives `round2At97Percent` of
+the freshly measured taste ratio (reliability is 37 per cent of a tuner's taste), 1.01 -> **1**.
+Neither `payoutYen` nor `budgetCapYen` moves (both stay 1453000 yen): the probe's purchase, repair
+and parts cost is unaffected by reliability, so the formula-derived payout and budget cap of that
+unchanged cost are unchanged, confirmed by a fresh run rather than assumed. This does not make the
+mission markedly easier or harder relative to its own probe: the threshold tracks what the SAME
+probe build now measures, it does not change what the probe has to build. The other three
+reliability-gated missions (`wont-strand-her`, `the-fleet-spare`, `first-proper-car`) are unaffected:
+all three probes are all-stock or cosmetics-only builds with zero total gain.
+`storyMissionProbes.test.ts` (19 tests) and `economyApprovalGate.test.ts` (3 tests, with a new
+ledger entry naming this re-derivation as the signed lever's consequence) both pass.
+
+**One pre-existing, unrelated failure surfaced while running the wider suite, not caused by this
+change.** `packages/sim/tests/selling.test.ts`'s "a stock entry-tier car listed in the magazine
+draws no offer on a seeded day the same car on shopFront does" fails on a clean run of that file
+alone. The fixture car is entirely stock parts (`uniformCarParts('worn')`), so its total gain is 0
+under both the old and the new formula; verified directly against both formulas on the exact car
+construction (`honda-city-e-aa`, all-stock, uniformly worn) that its reliability is bit-for-bit
+identical (64) either way. This failure predates this change and is out of this lever's scope;
+not investigated further here.
+
+### Checks run for this amendment
+
+- `pnpm vitest run packages/sim/tests/reliabilityModel.test.ts` - 54 tests, passed (the AE86 ladder's
+  exact "supported" construction settled and pinned in the same file).
+- `pnpm vitest run packages/sim/tests/supportRatios.test.ts` - 54 tests, passed, unchanged.
+- `pnpm vitest run packages/sim/tests/derivedStats.test.ts packages/sim/tests/marketValue.test.ts
+  packages/sim/tests/valuation.test.ts packages/sim/tests/bands.test.ts
+  packages/sim/tests/carCondition.test.ts packages/sim/tests/valueModelProbes.test.ts
+  packages/sim/tests/harnessAcceptance.test.ts packages/sim/tests/selling.test.ts` - 222 of 223
+  passed; the one failure (`selling.test.ts`) is the pre-existing, unrelated one described above.
+- `pnpm vitest run packages/sim/tests/storyMissionProbes.test.ts` - 19 tests, passed (the
+  `street-power-street-manners` threshold and taste-match floor re-derived above).
+- `pnpm vitest run packages/content/tests/economyApprovalGate.test.ts` - 3 tests, passed, with the
+  re-pinned hash and the mission-threshold ledger note.
+- `pnpm vitest run --project content` (whole project, once): **21 files, 478 tests, all passed.**
+- `pnpm vitest run --project game` (whole project, once): **62 files, 831 tests, all passed** (run
+  before the mission-threshold re-derivation; that change touches no `packages/game` file and no
+  file there references this mission by id, so it was not re-run).
+- No `pnpm typecheck`, `pnpm lint`, `pnpm format`, `pnpm test:coverage` or `pnpm build` run locally,
+  matching this sprint's own speed directive.

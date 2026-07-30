@@ -22,7 +22,7 @@ import {
   type BuildFactors,
   type ConditionFactors,
 } from './performance'
-import { supportVerdict } from './support'
+import { supportVerdict, totalGainFractionOf } from './support'
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value))
@@ -287,6 +287,33 @@ function coherenceFactorFor(headline: number, economy: EconomyConfig): number {
 }
 
 /**
+ * The build-intensity factor: an OUTER multiplier on the
+ * condition-plus-coherence budget, structurally independent of
+ * `coherenceFactor` above - even a fully and properly supported build moves
+ * more energy through every part of the car than stock does, and pays for
+ * that in proportion to how much more power it makes, never in proportion
+ * to how well it is supported (that stays `coherenceFactor`'s job alone).
+ * Folding this into the additive shortfall `coherenceFactor` shares with
+ * `conditionFactor` was measured and rejected: it would subtract an
+ * identical flat amount from a supported and an unsupported build alike,
+ * collapsing the unsupported case toward an uninteresting floor.
+ *
+ * Exactly 1 at zero total gain, so a stock car (and a build whose fitted
+ * parts carry no `powerFraction` at all) pays nothing here - the
+ * stock-car-reads-exactly-its-base identity holds by construction.
+ * Defensively clamped to `[0, 1]` so a future content change to
+ * `stressCoefficient` or the power ladder can never push this negative (more
+ * reliable than the unmultiplied budget) or leave reliability negative.
+ */
+export function reliabilityIntensityFactor(
+  totalGainFraction: number,
+  economy: EconomyConfig,
+): number {
+  const { stressCoefficient } = economy.statFormulas.support
+  return clamp(1 - stressCoefficient * totalGainFraction, 0, 1)
+}
+
+/**
  * Transparent linear formula (GDD 4.2: "no hidden math the player can't
  * reason about"). `partsById` resolves each installed PartInstance's
  * statModifiers from the parts catalog - sim has no data loader of its
@@ -295,8 +322,9 @@ function coherenceFactorFor(headline: number, economy: EconomyConfig): number {
  * The magic numbers below (power's condition floor, style's cap) live in
  * `economy.json.statFormulas`; handling's whole model lives in
  * `statFormulas.grip` and is applied through `performance.ts`. Reliability's
- * own two-factor derivation (condition plus coherence, scaled by the car's
- * own `spec.reliabilityBase`) is described where it is computed below.
+ * own three-factor derivation (condition, coherence, and an outer build-
+ * intensity term, scaled by the car's own `spec.reliabilityBase`) is
+ * described where it is computed below.
  *
  * Handling's mint base is the grip readout (`gripToDisplay`) at the fitted
  * tyre's effective compound and the downforce the car is actually running, less
@@ -367,11 +395,20 @@ export function computeDerivedStats(
   // catastrophic part (a seized block, a scrapped gearset) cannot average
   // away against fourteen good ones. `coherenceFactor` reads the build's own
   // support verdict; it is 1.0 for a stock or fully-supported build, so
-  // either factor alone reduces the formula to the other exactly. The sum
-  // clamps to [0, 1] and scales the car's own base - nothing the game does
-  // ever lifts a car above its own `reliabilityBase`, and a car with two
-  // independent terminal problems correctly reads 0 rather than a fraction
-  // of a fraction.
+  // either factor alone reduces the formula to the other exactly. That sum
+  // clamps to [0, 1] and scales the car's own base.
+  //
+  // An OUTER build-intensity factor then scales the result again: even a
+  // properly supported build moves more energy through every part of the
+  // car than stock, so it pays for that in proportion to how much more
+  // power it makes - `reliabilityIntensityFactor` above, structurally
+  // independent of `coherenceFactor` so a supported build is never charged
+  // twice for the same shortfall. `spec.reliabilityBase` therefore stays an
+  // absolute ceiling nothing exceeds, but is no longer a plateau every
+  // gain-making build sits on regardless of how much power it adds - a
+  // stock mint car still sits exactly on it (both extra factors are 1
+  // there), and a car with independent terminal problems still correctly
+  // reads 0.
   const reliabilityConditionMean = weightedBandFactorForStat(
     instance,
     model,
@@ -387,8 +424,12 @@ export function computeDerivedStats(
     supportVerdict(instance, model, partsById, economy).headline,
     economy,
   )
+  const totalGainFraction = totalGainFractionOf(instance, model, partsById, economy)
+  const intensityFactor = reliabilityIntensityFactor(totalGainFraction, economy)
   const reliability =
-    model.spec.reliabilityBase * clamp(conditionFactor + coherenceFactor - 1, 0, 1)
+    model.spec.reliabilityBase *
+    clamp(conditionFactor + coherenceFactor - 1, 0, 1) *
+    intensityFactor
 
   let authenticity = instance.authenticityPercent
 

@@ -134,6 +134,7 @@
     "styleCap": 20,
     "support": {
       "stockSupportMargin": 0.27,
+      "stressCoefficient": 0.2,
       "specByGrade": {
         "stock": 0,
         "street": 0.25,

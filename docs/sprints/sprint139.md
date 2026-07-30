@@ -27,13 +27,28 @@ this sprint is closed unbuilt and its Exit records why.** That is a good result,
 it means the arc got there with one mechanism instead of two. The precedent is Sprint 100, which
 was superseded unbuilt and whose doc records that.
 
+**Framing note (`stressCoefficient`, signed 2026-07-30 as a Sprint 136 amendment): the premise
+below has partly changed and this sprint is not yet updated to it.** Sprint 136 gained a third
+lever after this sprint was written: an outer build-intensity factor that reads a build's total
+power gain regardless of how well it is supported. A coherent modified car and a stock car no
+longer read identically on reliability whenever the modified car makes more power than stock - the
+modified car now reads strictly lower, in proportion to the gain, whether or not it is supported.
+What is UNCHANGED is the actual question this sprint asks: whether a well-SUPPORTED build should be
+rewarded relative to a poorly-supported build making the same power, which `coherenceFactor`'s own
+cap at 1.0 still answers "no" to. Shape 2 below (letting `coherenceFactor` exceed 1.0) is read
+against that same cap and is unaffected in its own terms; it would now also have to reckon with the
+outer factor pulling any gain-making build down first, which was not a consideration when Shape 2
+was drafted. This note flags the drift rather than resolving it: rewriting this sprint's task
+breakdown is deferred to whenever Sprint 138 reports and this sprint actually opens.
+
 ## The question, and why it is genuinely open
 
 **The case for a premium.** Design 7a says a coherent build reaches a different set of buyers who
-pay more because they can see what they are looking at. Under Sprint 136 as built, they do not:
-a coherent modified car and a stock car read identically on reliability, so nothing distinguishes
-the player who did it properly from the player who did nothing. **A game about building things
-should notice when you build something well.**
+pay more because they can see what they are looking at. Under Sprint 136 as built, a coherent
+build and a stock build making the SAME power still read identically on reliability (the case the
+framing note above leaves untouched), so nothing distinguishes the player who supported their build
+properly from the player who did not, for the same amount of power made. **A game about building
+things should notice when you build something well.**
 
 **The case against.** Design 7b's stance, carried into Sprint 136's readout: competence is the
 baseline rather than an achievement. The player already gets paid for a good build through the
