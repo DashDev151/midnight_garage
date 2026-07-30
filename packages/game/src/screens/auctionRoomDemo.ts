@@ -1,23 +1,53 @@
-import type { AuctionLot, CarInstance, GameState } from '@midnight-garage/content'
-import { resolveCarDisplayName } from '@midnight-garage/content'
+import type {
+  AuctionLot,
+  CarInstance,
+  CarModel,
+  CarPartId,
+  ConditionBand,
+  GameState,
+} from '@midnight-garage/content'
 import {
-  createRng,
-  generateAuctionCatalog,
+  ALL_CAR_PART_IDS,
+  fitmentClassForTier,
+  resolveCarDisplayName,
+} from '@midnight-garage/content'
+import {
+  carOriginLabel,
+  hasForcedInduction,
+  makeCarOrigin,
   playerEstimateYen,
   sheetGuideValueYen,
+  stockInstanceFor,
   type SimContext,
 } from '@midnight-garage/sim'
 import { incrementYenFor, type Learned, type RoomVerdict, type TurnoutKey } from './auctionRoom'
 
 /**
  * The dev-only tuning bench for the live auction room (AuctionRoomDemoScreen.vue):
- * picks two fixed demo lots off the real generated catalogue (a thin-room
- * steal and a packed-room trap) and dresses them as lobby cards, then seats
- * the shared room machine (`./auctionRoom.ts`) from the demo's own tuning
- * config and seed convention. Nothing here reads or writes saves, the
- * auction board, or any live sim state; the two lots are rolled once per
- * screen mount off a fixed catalogue seed, so a given game state always
- * produces the same pair.
+ * dresses two hand-picked demo lots (a thin-room steal and a packed-room
+ * trap) as lobby cards, then seats the shared room machine (`./auctionRoom.ts`)
+ * from the demo's own tuning config and seed convention. Nothing here reads
+ * or writes saves, the auction board, or any live sim state.
+ *
+ * The two lots are NAMED, not discovered: a fixed car, symptom and true
+ * cause each (`buildStealLot`/`buildTrapLot` below), built by the same real
+ * generation primitives a rolled auction car uses (`stockInstanceFor`,
+ * `carOriginLabel`/`makeCarOrigin`) off the live content catalogue. Earlier
+ * versions of this module instead SEARCHED a fixed-seed generated catalogue
+ * of thousands of lots for a pair clearing a "clear steal"/"genuine trap"
+ * bar - car generation consumes the seeded PRNG a variable number of times
+ * per lot (`enforceMinWorkBill`, sim/auctions.ts, loops while the repair
+ * bill climbs to a yen floor), so ANY part-price change anywhere reshuffled
+ * the whole catalogue and a different car won the search. That search broke
+ * this module's own tests three sprints running (140, 141, 142) - twice on a
+ * pinned yen figure moving, once on the selected car's SYMPTOMS changing
+ * under it, failing every diagnostic-button test that clicked a symptom the
+ * new car didn't have. Naming the two lots outright removes the search
+ * entirely: which car, which symptom and which true cause are fixed in code
+ * below; every yen for them is still computed by the real valuation code
+ * (`sheetGuideValueYen`, `playerEstimateYen`) off the live content catalogue,
+ * so a repricing moves this module's numbers exactly as it would move a real
+ * lot's, without ever picking a different car or a different symptom.
  *
  * The room read is the fair-odds value the live auction sheet prints
  * (`sheetGuideValueYen`); the true worth is the estimator with every symptom
@@ -30,25 +60,15 @@ import { incrementYenFor, type Learned, type RoomVerdict, type TurnoutKey } from
 export type DemoVerdict = RoomVerdict
 export type DemoLearned = Learned
 
-/** Fixed catalogue seed and day so the two demo lots are identical every run. */
-const DEMO_CATALOG_SEED = 1995
-const DEMO_CATALOG_DAY = 1
-/** Catalogue sizes tried in turn: the search widens until a genuine trap (a lot
- * worth less than the read by the trap band) turns up among the symptomatic
- * lots AND the best-ratio steal clears the 'better' verdict band. A doubling
- * step, not a fixed increment: the roster's tier mix decides how deep the
- * search needs to run (widened from a 1600 ceiling to 3200 when the 13-car
- * re-tier of docs/design/midnight-garage-roster.csv thinned the pool of
- * genuinely favourable-doubt symptoms at the fixed demo seed), and a fresh
- * re-tier is exactly the kind of content change that can move the goalposts
- * again without any bug on this module's part. */
-const DEMO_CATALOG_N_STEPS: readonly number[] = [400, 800, 1600, 3200]
-
-/** A lot whose true worth falls below this fraction of the read reads as a trap
- * the packed room can overpay for; it selects the demo trap lot. */
-const TRAP_VALUE_FRACTION = 0.9
+/** A lot whose true worth falls below this fraction of the read reads as a
+ * genuine trap the packed room can overpay for - the bar the demo trap lot's
+ * own fixture test (`auctionRoomDemo.test.ts`) checks it clears, rather than
+ * hardcoding a second copy of this number. */
+export const TRAP_VALUE_FRACTION = 0.9
 /** How far the truth must part from the read, either way, to read as better or
- * worse than the room reckons. */
+ * worse than the room reckons. Also the production auction room's own
+ * threshold (`AuctionRoomScreen.vue` imports `verdictFor` straight from this
+ * module) - never a demo-only number. */
 const VERDICT_BAND_FRACTION = 0.08
 
 /** Demo-local cash the yard visit is paid from; the real fee, labour, and
@@ -72,13 +92,6 @@ export interface DemoLobbyEntry {
   incrementYen: number
   dealerCount: number
   lot: AuctionLot
-}
-
-interface ScoredLot {
-  lot: AuctionLot
-  roomReadYen: number
-  trueValueYen: number
-  ratio: number
 }
 
 /** The room read: the fair-odds value the live auction sheet prints. The whole
@@ -111,73 +124,163 @@ export function verdictFor(roomReadYen: number, trueValueYen: number): DemoVerdi
   return 'fair'
 }
 
+/** One part's apparent (room-visible) condition, keyed by `CarPartId` - every
+ * part left unnamed reads `'fine'`, an ordinary, tidy used car. */
+type ApparentBandOverrides = Partial<Record<CarPartId, ConditionBand>>
+
 /**
- * Scores every symptomatic local-yard lot in a fixed-seed catalogue of `n` by
- * the ratio of its true worth to the room read. Lots carrying anything other
- * than a single unresolved doubt are skipped, as is any the estimator prices at
- * nothing: that collapses the read to zero and leaves an unplayable room (no
- * reserve, no coherent clearing price).
+ * Builds one demo lot's `CarInstance` by hand, off real content: a named
+ * model, a named symptom and a named true cause (`symptoms.json`/
+ * `failureModes.json`), with every part fitted from the model's own real
+ * stock catalogue (`stockInstanceFor`, the SAME builder real auction
+ * generation calls) at its apparent condition - `'fine'` by default,
+ * `apparentOverrides` where the room's own paperwork should read worse. The
+ * symptom starts fresh: every one of its causes still a live candidate
+ * (`remainingCauseIds`), nothing yet tested - exactly the shape a
+ * newly-rolled lot carries. No RNG runs at any point, so which car, which
+ * symptom and which true cause never drift: only the yen a repricing moves.
  */
-function scoreDemoLots(n: number, state: GameState, context: SimContext): ScoredLot[] {
-  const lots = generateAuctionCatalog(
-    context.models,
-    'local-yard',
-    DEMO_CATALOG_DAY,
-    n,
-    createRng(DEMO_CATALOG_SEED),
-    context,
-  )
-  return lots
-    .filter(
-      (lot) => lot.car.symptoms.length === 1 && lot.car.symptoms[0]!.remainingCauseIds.length > 1,
-    )
-    .map((lot) => {
-      const roomReadYen = roomReadYenFor(lot, state, context)
-      const trueValueYen = trueValueYenFor(lot, state, context)
-      return { lot, roomReadYen, trueValueYen, ratio: trueValueYen / roomReadYen }
-    })
-    .filter((scored) => scored.roomReadYen > 0)
+function buildDemoCarInstance(
+  model: CarModel,
+  context: SimContext,
+  symptomId: string,
+  trueCauseId: string,
+  id: string,
+  apparentOverrides: ApparentBandOverrides = {},
+): CarInstance {
+  const symptom = context.symptomsById[symptomId]
+  if (!symptom) throw new Error(`auction room demo: content has no symptom "${symptomId}"`)
+  const trueCause = symptom.causes.find((cause) => cause.id === trueCauseId)
+  if (!trueCause) {
+    throw new Error(`auction room demo: symptom "${symptomId}" has no cause "${trueCauseId}"`)
+  }
+  const fitmentClass = fitmentClassForTier(model.tier)
+  const year = model.spec.yearFrom + 3
+  const origin = makeCarOrigin(id, carOriginLabel(model, year), 1)
+  const apparentBandByPartId: Partial<Record<CarPartId, ConditionBand>> = {}
+  apparentBandByPartId[trueCause.carPartId] = apparentOverrides[trueCause.carPartId] ?? 'fine'
+  const parts = Object.fromEntries(
+    ALL_CAR_PART_IDS.map((partId) => {
+      // A naturally-aspirated model's empty forced-induction slot is
+      // legitimate, permanent absence, never a defect - `hasForcedInduction`
+      // is the one platform check every generator and grade reader shares.
+      if (partId === 'forcedInduction' && !hasForcedInduction(model)) {
+        return [partId, { installed: null }]
+      }
+      const apparentBand = apparentOverrides[partId] ?? 'fine'
+      const band = partId === trueCause.carPartId ? trueCause.setBand : apparentBand
+      return [
+        partId,
+        {
+          installed: stockInstanceFor(
+            partId,
+            band,
+            `${id}-part`,
+            fitmentClass,
+            context.stockPartByCarPartId,
+            origin,
+          ),
+        },
+      ]
+    }),
+  ) as CarInstance['parts']
+  return {
+    id,
+    modelId: model.id,
+    year,
+    mileageKm: 60_000,
+    color: 'White',
+    provenanceNote: '',
+    authenticityPercent: 80,
+    parts,
+    symptoms: [
+      {
+        symptomId,
+        trueCauseId,
+        remainingCauseIds: symptom.causes.map((cause) => cause.id),
+        runTestIds: [],
+      },
+    ],
+    apparentBandByPartId,
+  }
 }
 
 /**
- * Picks the two demo lots deterministically from a fixed-seed local-yard
- * catalogue: over the lots carrying exactly one unresolved doubt, the steal is
- * the one whose true worth most beats the room read (highest ratio), and the
- * trap the lowest-ratio lot whose true worth falls below the trap band of the
- * read (TRAP_VALUE_FRACTION), so the room genuinely overpays.
- *
- * The catalogue widens until BOTH sides are genuine: a real trap, and a steal
- * the verdict reads as `better` rather than merely above the read by a hair.
- * The demo exists to show a symptom cutting both ways, and a lobby whose
- * "steal" card reads `fair` teaches nothing. A catalogue with neither throws
- * rather than ship a fake one. Ties break on lot id, ascending, so the pick is
- * reproducible.
+ * The steal: a Honda City E (AA) with a damp passenger footwell. Five causes
+ * share that one symptom (`damp-passenger-footwell`), from a cheap perished
+ * grommet up to a rotten bulkhead seam - so the room, pricing the odds
+ * across all five, reads it cautiously. The chassis slot's apparent
+ * condition is pinned to `'scrap'`: the room's own paperwork flags this car
+ * a likely write-off (the auction grade's own 'R' mark), same as an
+ * independently rotten chassis would read on any car, symptom or not. The
+ * true cause is pinned to `perished-grommet`, the cheapest of the five and
+ * nowhere near that fear - so once the visit narrows the doubt all the way
+ * down, the chassis turns out merely `'poor'`, not scrap, and the estimate
+ * jumps well clear of the room's number. Verified against the live content
+ * (2026-07-30): true value clears the room's read by roughly 17% (ratio
+ * 1.166), more than double `VERDICT_BAND_FRACTION`'s 8% bar, so an ordinary
+ * repricing cannot flip the verdict.
  */
-function selectDemoLots(
-  state: GameState,
-  context: SimContext,
-): { steal: ScoredLot; trap: ScoredLot } {
-  for (const n of DEMO_CATALOG_N_STEPS) {
-    const scored = scoreDemoLots(n, state, context)
-    const traps = scored.filter(
-      (candidate) => candidate.trueValueYen < candidate.roomReadYen * TRAP_VALUE_FRACTION,
-    )
-    if (traps.length === 0) continue
-    const steal = scored.reduce((best, cur) =>
-      cur.ratio > best.ratio || (cur.ratio === best.ratio && cur.lot.id < best.lot.id) ? cur : best,
-    )
-    if (verdictFor(steal.roomReadYen, steal.trueValueYen) !== 'better') continue
-    const trap = traps.reduce((worst, cur) =>
-      cur.ratio < worst.ratio || (cur.ratio === worst.ratio && cur.lot.id < worst.lot.id)
-        ? cur
-        : worst,
-    )
-    return { steal, trap }
-  }
-  const widest = DEMO_CATALOG_N_STEPS[DEMO_CATALOG_N_STEPS.length - 1]
-  throw new Error(
-    `auction room demo found no lobby (a symptomatic lot worth under ${TRAP_VALUE_FRACTION} of the room read, alongside one the verdict reads as better) in catalogues up to ${widest} lots`,
+const STEAL_MODEL_ID = 'honda-city-e-aa'
+const STEAL_SYMPTOM_ID = 'damp-passenger-footwell'
+const STEAL_TRUE_CAUSE_ID = 'perished-grommet'
+
+function buildStealLot(context: SimContext): AuctionLot {
+  const model = context.modelsById[STEAL_MODEL_ID]
+  if (!model) throw new Error(`auction room demo: content has no car "${STEAL_MODEL_ID}"`)
+  const id = 'demo-steal-lot'
+  const car = buildDemoCarInstance(
+    model,
+    context,
+    STEAL_SYMPTOM_ID,
+    STEAL_TRUE_CAUSE_ID,
+    `${id}-car`,
+    { chassis: 'scrap' },
   )
+  return {
+    id,
+    tier: 'local-yard',
+    modelId: model.id,
+    car,
+    bookValueYen: model.bookValueYen,
+    expiresOnDay: 9_999,
+    turnout: 'thin',
+  }
+}
+
+/**
+ * The trap: a Nissan Sunny (B12) that runs hot in traffic
+ * (`overheats-in-traffic`). Its cheapest three causes (a lazy fan switch, a
+ * tired radiator, an early head-gasket weep) carry most of the symptom's
+ * weight, so the room's odds-priced read comes in comfortably high; the true
+ * cause is pinned to `cracked-block`, the one cause in ten the room still has
+ * to price in, and by far the dearest - a full block, not a service item.
+ * Every part apart from the block reads at its ordinary, undamaged
+ * condition, so the room never suspects anything before the visit; only
+ * once the doubt narrows all the way down does the estimate crash to the
+ * true, dear cause. Verified against the live content (2026-07-30): true
+ * value undercuts the room's read by roughly 18% (ratio 0.822), comfortably
+ * past both `TRAP_VALUE_FRACTION`'s 90% floor and `VERDICT_BAND_FRACTION`'s
+ * 8% bar.
+ */
+const TRAP_MODEL_ID = 'nissan-sunny-b12'
+const TRAP_SYMPTOM_ID = 'overheats-in-traffic'
+const TRAP_TRUE_CAUSE_ID = 'cracked-block'
+
+function buildTrapLot(context: SimContext): AuctionLot {
+  const model = context.modelsById[TRAP_MODEL_ID]
+  if (!model) throw new Error(`auction room demo: content has no car "${TRAP_MODEL_ID}"`)
+  const id = 'demo-trap-lot'
+  const car = buildDemoCarInstance(model, context, TRAP_SYMPTOM_ID, TRAP_TRUE_CAUSE_ID, `${id}-car`)
+  return {
+    id,
+    tier: 'local-yard',
+    modelId: model.id,
+    car,
+    bookValueYen: model.bookValueYen,
+    expiresOnDay: 9_999,
+    turnout: 'packed',
+  }
 }
 
 /**
@@ -188,21 +291,25 @@ function selectDemoLots(
  * the same two cards.
  */
 export function buildDemoLobby(state: GameState, context: SimContext): DemoLobbyEntry[] {
-  const { steal, trap } = selectDemoLots(state, context)
-  const scoredByKey: Record<'thin' | 'packed', ScoredLot> = { thin: steal, packed: trap }
+  const lotByKey: Record<'thin' | 'packed', AuctionLot> = {
+    thin: buildStealLot(context),
+    packed: buildTrapLot(context),
+  }
   const roomConfig = context.economy.auctionRoom
   return ROOM_ORDER.map((key) => {
-    const scored = scoredByKey[key]
-    const model = context.modelsById[scored.lot.modelId]
+    const lot = lotByKey[key]
+    const model = context.modelsById[lot.modelId]
+    const roomReadYen = roomReadYenFor(lot, state, context)
+    const trueValueYen = trueValueYenFor(lot, state, context)
     return {
       key,
-      displayName: model ? resolveCarDisplayName(model) : scored.lot.modelId,
-      roomReadYen: scored.roomReadYen,
-      trueValueYen: scored.trueValueYen,
-      verdict: verdictFor(scored.roomReadYen, scored.trueValueYen),
-      incrementYen: incrementYenFor(scored.roomReadYen, roomConfig),
+      displayName: model ? resolveCarDisplayName(model) : lot.modelId,
+      roomReadYen,
+      trueValueYen,
+      verdict: verdictFor(roomReadYen, trueValueYen),
+      incrementYen: incrementYenFor(roomReadYen, roomConfig),
       dealerCount: roomConfig.turnout[key].dealers,
-      lot: scored.lot,
+      lot,
     }
   })
 }

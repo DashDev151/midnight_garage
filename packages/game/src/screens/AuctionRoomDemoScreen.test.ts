@@ -1,10 +1,19 @@
+import type { GameState } from '@midnight-garage/content'
+import { playerEstimateYen, runDiagnosticTest } from '@midnight-garage/sim'
 import { mount, RouterLinkStub, type DOMWrapper, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
-import { DEMO_BANKROLL_YEN } from './auctionRoomDemo'
+import { enterRoom, nextRungYen, tick, type Learned, type Room } from './auctionRoom'
+import {
+  buildDemoLobby,
+  DEMO_BANKROLL_YEN,
+  demoRoomSeed,
+  verdictFor,
+  type DemoLobbyEntry,
+} from './auctionRoomDemo'
 import AuctionRoomDemoScreen from './AuctionRoomDemoScreen.vue'
 
 // This file's own suite runs 23-26s standalone (a real seeded bid-war
@@ -27,6 +36,69 @@ function mountScreen() {
   return wrapper
 }
 
+/** The same two named lots the screen itself builds (`buildDemoLobby`),
+ * fetched independently here so every yen assertion below can be re-derived
+ * from live content rather than pinned by hand - a repricing moves this
+ * file's expectations right along with the screen's own numbers. */
+function buildLobby(): DemoLobbyEntry[] {
+  const game = useGameStore()
+  return buildDemoLobby(game.gameState, game.context)
+}
+
+function roomConfig() {
+  return useGameStore().context.economy.auctionRoom
+}
+
+/** The reserve `enterRoom` opens a lot's room on - the same formula it uses
+ * internally, re-derived rather than pinned. */
+function reserveYenFor(roomReadYen: number): number {
+  return Math.round(roomReadYen * roomConfig().reserveFraction)
+}
+
+/**
+ * The player's own estimate after running exactly `testIds`, in order,
+ * against a fresh copy of `entry`'s lot - runs the REAL `runDiagnosticTest`
+ * against a throwaway `GameState` (mirrors `AuctionRoomDemoScreen.vue`'s own
+ * `demoState`), then prices the result with the REAL `playerEstimateYen`,
+ * exactly the two functions the screen itself calls. No partition logic is
+ * re-implemented here: this is the same narrowing a click produces, just
+ * computed ahead of time so the test has something to assert against beyond
+ * "some number changed".
+ */
+function estimateAfterTests(entry: DemoLobbyEntry, testIds: readonly string[]): number {
+  const game = useGameStore()
+  let state: GameState = {
+    ...game.gameState,
+    activeAuctionLots: [entry.lot],
+    inspectionVisit: { tier: 'local-yard', minutesLeft: 10_000 },
+  }
+  for (const testId of testIds) {
+    const result = runDiagnosticTest(state, entry.lot.id, 0, testId, game.context)
+    state = result.state
+  }
+  const lot = state.activeAuctionLots.find((l) => l.id === entry.lot.id)!
+  const model = game.context.modelsById[lot.modelId]!
+  return Math.round(playerEstimateYen(lot.car, model, state, game.context))
+}
+
+/** Minutes `testIds` cost off the real diagnostic-test catalogue, summed -
+ * what the shared visit clock should read down by after running them all. */
+function minutesFor(testIds: readonly string[]): number {
+  const game = useGameStore()
+  return testIds.reduce((sum, id) => sum + game.context.diagnosticTestsById[id]!.minutes, 0)
+}
+
+/** A shadow room, seated and ticked forward exactly like the screen's own
+ * room, for assertions (a mid-climb board value) that need real seeded state
+ * rather than a closed-form yen figure. `tick` fast-forwards a whole climb in
+ * one call (see auctionRoom.ts's own doc comment), so a single big jump here
+ * lands in the same state as the screen's many small clock ticks would. */
+function roomAfter(entry: DemoLobbyEntry, learned: Learned, atMs: number): Room {
+  const room = enterRoom(entry, demoRoomSeed(entry.key, 0), 0, learned, roomConfig())
+  tick(room, atMs)
+  return room
+}
+
 /** Runs the fake clock forward and lets the DOM catch up. */
 async function advance(ms: number): Promise<void> {
   vi.advanceTimersByTime(ms)
@@ -36,6 +108,10 @@ async function advance(ms: number): Promise<void> {
 /** The shared paid yard visit, rendered once above both cards. */
 async function inspect(wrapper: VueWrapper): Promise<void> {
   await wrapper.find('[data-test="inspect-here"]').trigger('click')
+}
+
+function visitPanelText(wrapper: VueWrapper): string {
+  return wrapper.find('[data-test="visit-panel"]').text()
 }
 
 function thinCard(wrapper: VueWrapper): DOMWrapper<Element> {
@@ -60,12 +136,18 @@ function testButton(card: DOMWrapper<Element>, testId: string): DOMWrapper<Eleme
   return card.find(`[data-test$="-${testId}"]`)
 }
 
-/** Runs the trap lot's diagnostic chain to its end: the hand-crank test
- * isolates a seized engine in one go (the partition puts it alone on one
- * side), so the single click settles it on the dear cause and the player
- * number is the car's real worth (¥62,285) rather than the room's read. */
+/** The trap lot's own diagnostic chain, start to finish: `coolant-check`
+ * narrows the overheat onto the combustion-breach pair (an early head gasket
+ * or a cracked block), then `compression-test` isolates the cracked block
+ * alone - the trap's pinned true cause (`auctionRoomDemo.ts`'s own
+ * `TRAP_TRUE_CAUSE_ID`) - so the two clicks fully resolve it and the player
+ * number becomes the car's real, dear worth rather than the room's read. */
+const TRAP_TEST_CHAIN = ['coolant-check', 'compression-test'] as const
+
 async function resolveTrap(wrapper: VueWrapper): Promise<void> {
-  await testButton(packedCard(wrapper), 'hand-crank').trigger('click')
+  for (const testId of TRAP_TEST_CHAIN) {
+    await testButton(packedCard(wrapper), testId).trigger('click')
+  }
 }
 
 describe('AuctionRoomDemoScreen', () => {
@@ -81,6 +163,7 @@ describe('AuctionRoomDemoScreen', () => {
   it('mounts into the lobby with both lots as production cards, the shared inspect control, and tests locked until a visit', () => {
     const wrapper = mountScreen()
     const game = useGameStore()
+    const [thin, packed] = buildLobby()
 
     expect(wrapper.find('[data-test="demo-banner"]').text()).toBe(
       'Dev demo: nothing here is saved.',
@@ -90,25 +173,27 @@ describe('AuctionRoomDemoScreen', () => {
     // turnout badge, grade stamps, the public symptom checklist, and each lot's
     // own estimate line (starting at the room read, unmoved). The badge follows
     // the room the demo assigns: the steal lot sits in a thin room.
-    const thin = thinCard(wrapper)
-    expect(thin.text()).toContain('the room says ¥93,753')
-    const thinBadge = thin.find('.turnout-badge')
+    const thinEl = thinCard(wrapper)
+    expect(thinEl.text()).toContain(`the room says ${formatYen(thin!.roomReadYen)}`)
+    const thinBadge = thinEl.find('.turnout-badge')
     expect(thinBadge.text()).toBe('Thin turnout')
     expect(thinBadge.classes()).toContain('turnout-thin')
-    expect(thin.find('[data-test^="grade-stamp-overall-"]').exists()).toBe(true)
-    expect(thin.find('[data-test^="symptom-"]').exists()).toBe(true)
+    expect(thinEl.find('[data-test^="grade-stamp-overall-"]').exists()).toBe(true)
+    expect(thinEl.find('[data-test^="symptom-"]').exists()).toBe(true)
     const estThin = wrapper.find('[data-test="est-value-thin"]')
     expect(estThin.text()).toContain('Estimated market value:')
-    expect(estThin.text()).toContain('¥93,753')
+    expect(estThin.text()).toContain(formatYen(thin!.roomReadYen))
     expect(estThin.find('.was').exists()).toBe(false)
     expect(wrapper.find('[data-test="take-seat-thin"]').text()).toBe('Take a seat')
 
-    const packed = packedCard(wrapper)
-    expect(packed.text()).toContain('the room says ¥86,623')
-    const packedBadge = packed.find('.turnout-badge')
+    const packedEl = packedCard(wrapper)
+    expect(packedEl.text()).toContain(`the room says ${formatYen(packed!.roomReadYen)}`)
+    const packedBadge = packedEl.find('.turnout-badge')
     expect(packedBadge.text()).toBe('Packed turnout')
     expect(packedBadge.classes()).toContain('turnout-packed')
-    expect(wrapper.find('[data-test="est-value-packed"]').text()).toContain('¥86,623')
+    expect(wrapper.find('[data-test="est-value-packed"]').text()).toContain(
+      formatYen(packed!.roomReadYen),
+    )
     expect(wrapper.find('[data-test="take-seat-packed"]').text()).toBe('Take a seat')
 
     // The shared inspect control names the real labour and travel-fee cost; no
@@ -124,7 +209,7 @@ describe('AuctionRoomDemoScreen', () => {
     expect(hud.text()).toContain('Labour used 0')
 
     // Before any visit, a test button is locked with the visit-first reason.
-    const test0 = runTestButtons(thin)[0]!
+    const test0 = runTestButtons(thinEl)[0]!
     expect((test0.element as HTMLButtonElement).disabled).toBe(true)
     expect(test0.attributes('title')).toBe('Inspect the yard to run a test')
   })
@@ -152,60 +237,84 @@ describe('AuctionRoomDemoScreen', () => {
 
   it('running a real test narrows the doubt, moves the estimate off the room read, and spends the shared clock', async () => {
     const wrapper = mountScreen()
+    const game = useGameStore()
+    const [thin] = buildLobby()
+    const visitMinutes = game.context.economy.diagnosis.visitMinutes
+    // The steal's own diagnostic chain, in click order (auctionRoomDemo.ts's
+    // `STEAL_SYMPTOM_ID`'s own test tree): each slice below is "everything
+    // clicked so far".
+    const chain = ['trace-the-wet', 'carpet-lift', 'coolant-check', 'hose-the-roof']
+    const minutesLeftAfter = (steps: number) => visitMinutes - minutesFor(chain.slice(0, steps))
     await inspect(wrapper)
     expect(wrapper.find('[data-test="est-value-thin"]').find('.was').exists()).toBe(false)
 
-    await testButton(thinCard(wrapper), 'coolant-check').trigger('click')
+    await testButton(thinCard(wrapper), chain[0]!).trigger('click')
 
-    // Bubbles in the header tank narrow the overheat onto the combustion-breach
-    // pair (an early head gasket or a cracked block) and off the cheap pair
-    // (fan switch, tired radiator), so the estimate steps off the room read
-    // downward, in red.
+    // The damp tracks in from up top (the dash or a pillar), narrowing off the
+    // two below-the-floor causes and onto the three up-top ones (which
+    // includes the true cause, `perished-grommet`), so the estimate steps off
+    // the room read - up or down depends only on live content, so this reads
+    // whichever class the real narrowed estimate actually lands in.
+    const afterFirstYen = estimateAfterTests(thin!, chain.slice(0, 1))
     const afterFirst = wrapper.find('[data-test="est-value-thin"]')
-    expect(afterFirst.find('.was').text()).toBe('¥93,753')
-    expect(afterFirst.find('.down').text()).toBe('¥91,291')
+    expect(afterFirst.find('.was').text()).toBe(formatYen(thin!.roomReadYen))
+    const afterFirstDirection = afterFirstYen >= thin!.roomReadYen ? 'up' : 'down'
+    expect(afterFirst.find(`.${afterFirstDirection}`).text()).toBe(formatYen(afterFirstYen))
     // The doubt narrowed: the run test's own result line now shows in the trail.
     expect(wrapper.find('[data-test^="breadcrumb-"]').exists()).toBe(true)
-    // The shared clock ran down by the test's minutes.
-    expect(wrapper.find('[data-test="visit-panel"]').text()).toContain('50m left')
+    // The shared clock ran down by the test's own real minutes.
+    expect(visitPanelText(wrapper)).toContain(`${minutesLeftAfter(1)}m left`)
 
-    await testButton(thinCard(wrapper), 'rad-flow-feel').trigger('click')
+    await testButton(thinCard(wrapper), chain[1]!).trigger('click')
 
-    // Feeling the radiator core only rules out a tired radiator, which the
-    // coolant check has already ruled out, so it narrows nothing further and
-    // the money stands still while the clock runs down. The estimate tracks
-    // the doubt, not the effort.
+    // Lifting the carpet draws the same up-top/below-the-floor line the trace
+    // already drew, so it narrows nothing further and the money stands still
+    // while the clock runs down. The estimate tracks the doubt, not the effort.
     const afterSecond = wrapper.find('[data-test="est-value-thin"]')
-    expect(afterSecond.find('.down').text()).toBe('¥91,291')
-    expect(wrapper.find('[data-test="visit-panel"]').text()).toContain('45m left')
+    expect(afterSecond.find(`.${afterFirstDirection}`).text()).toBe(formatYen(afterFirstYen))
+    expect(visitPanelText(wrapper)).toContain(`${minutesLeftAfter(2)}m left`)
 
-    await testButton(thinCard(wrapper), 'compression-test').trigger('click')
+    await testButton(thinCard(wrapper), chain[2]!).trigger('click')
 
-    // Compression is the branch that settles it: it reads even and healthy, so
-    // the block never let go and the overheat is only an early head-gasket
-    // weep, the cheap cause. The estimate lands on the true worth, green above
-    // the room read.
+    // Plain water, no smell: the heater matrix is innocent, narrowing the
+    // up-top group further and moving the estimate again.
+    const afterThirdYen = estimateAfterTests(thin!, chain.slice(0, 3))
+    const afterThird = wrapper.find('[data-test="est-value-thin"]')
+    const afterThirdDirection = afterThirdYen >= thin!.roomReadYen ? 'up' : 'down'
+    expect(afterThird.find(`.${afterThirdDirection}`).text()).toBe(formatYen(afterThirdYen))
+    expect(visitPanelText(wrapper)).toContain(`${minutesLeftAfter(3)}m left`)
+
+    await testButton(thinCard(wrapper), chain[3]!).trigger('click')
+
+    // The roof drains swallow everything poured at them: dry pillars rule out
+    // the sunroof drain, so the last cause standing is the pinned true one,
+    // `perished-grommet`, the cheapest of the five - the estimate lands on
+    // the true worth, comfortably clear of the room read (see
+    // auctionRoomDemo.ts's own steal fixture doc comment).
     const est = wrapper.find('[data-test="est-value-thin"]')
-    expect(est.find('.was').text()).toBe('¥93,753')
-    expect(est.find('.up').text()).toBe('¥104,036')
-    expect(wrapper.find('[data-test="visit-panel"]').text()).toContain('20m left')
+    expect(est.find('.was').text()).toBe(formatYen(thin!.roomReadYen))
+    expect(est.find('.up').text()).toBe(formatYen(thin!.trueValueYen))
+    expect(visitPanelText(wrapper)).toContain(`${minutesLeftAfter(4)}m left`)
   })
 
   it('resolving the trap redraws its estimate downward, the new figure in red', async () => {
     const wrapper = mountScreen()
+    const [, packed] = buildLobby()
     await inspect(wrapper)
-    // The trap's overheating settles on its true cause, and it marks the
-    // estimate down: the room read was the optimistic one.
+    // The trap's overheating settles on its true, dear cause, and it marks
+    // the estimate down: the room read was the optimistic one.
     await resolveTrap(wrapper)
 
     const est = wrapper.find('[data-test="est-value-packed"]')
-    expect(est.find('.was').text()).toBe('¥86,623')
-    expect(est.find('.down').text()).toBe('¥61,362')
+    expect(est.find('.was').text()).toBe(formatYen(packed!.roomReadYen))
+    expect(est.find('.down').text()).toBe(formatYen(packed!.trueValueYen))
     expect(est.find('.up').exists()).toBe(false)
   })
 
   it('take a seat carries the current lot into the timed room, with no lobby inspect UI there', async () => {
     const wrapper = mountScreen()
+    const [thin] = buildLobby()
+    const reserveYen = reserveYenFor(thin!.roomReadYen)
     await wrapper.find('[data-test="take-seat-thin"]').trigger('click')
 
     expect(wrapper.find('[data-test="seat-you"]').text()).toContain('You')
@@ -213,7 +322,7 @@ describe('AuctionRoomDemoScreen', () => {
     expect(wrapper.find('[data-test="seat-1"]').text()).toContain('Mrs. Sakaki')
     expect(wrapper.find('[data-test="seat-2"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="log"]').text()).toContain(
-      'The clerk looks over the room. Reserve is ¥51,564.',
+      `The clerk looks over the room. Reserve is ${formatYen(reserveYen)}.`,
     )
     expect(wrapper.find('[data-test="bid"]').text()).toBe('Bid the reserve')
     // The room never carries the lobby's inspect control, visit panel, HUD, or
@@ -226,6 +335,9 @@ describe('AuctionRoomDemoScreen', () => {
 
   it('renders the three raise options with their landing-price labels once the room has a leader', async () => {
     const wrapper = mountScreen()
+    const [thin] = buildLobby()
+    const reserveYen = reserveYenFor(thin!.roomReadYen)
+    const increment = thin!.incrementYen
     await wrapper.find('[data-test="take-seat-thin"]').trigger('click')
     // Lets the room's own opening bid land (Endo opens on the reserve): a
     // leader is now on the board, so the raise-option list replaces the
@@ -233,12 +345,18 @@ describe('AuctionRoomDemoScreen', () => {
     await advance(2700)
     expect(wrapper.find('[data-test="seat-0"]').text()).toContain('Endo')
 
-    expect(wrapper.find('[data-test="bid"]').text()).toBe('Raise to ¥56,564')
-    expect(wrapper.find('[data-test="bid-jump-4"]').text()).toBe('Raise to ¥71,564')
-    expect(wrapper.find('[data-test="bid-jump-8"]').text()).toBe('Raise to ¥91,564')
-    // The player's number is ¥93,753, the room read, since no test has
-    // narrowed the doubt. Even the eight-rung jump lands under it, so all
-    // three options read safe here - the danger flag per option is proven
+    expect(wrapper.find('[data-test="bid"]').text()).toBe(
+      `Raise to ${formatYen(reserveYen + increment)}`,
+    )
+    expect(wrapper.find('[data-test="bid-jump-4"]').text()).toBe(
+      `Raise to ${formatYen(reserveYen + 4 * increment)}`,
+    )
+    expect(wrapper.find('[data-test="bid-jump-8"]').text()).toBe(
+      `Raise to ${formatYen(reserveYen + 8 * increment)}`,
+    )
+    // The player's number is the room read, since no test has narrowed the
+    // doubt yet. Even the eight-rung jump lands under it, so all three
+    // options read safe here - the danger flag per option is proven
     // independently by the packed-room case below, where the climb does
     // carry every option past the number.
     expect(wrapper.find('[data-test="bid"]').classes()).not.toContain('danger')
@@ -288,22 +406,38 @@ describe('AuctionRoomDemoScreen', () => {
 
   it('marks danger independently on each raise option against its own landing price, not as one shared flag', async () => {
     const wrapper = mountScreen()
+    const [, packed] = buildLobby()
     await inspect(wrapper)
-    // Resolve the trap to its true worth (¥61,362); by the time the room has
+    // Resolve the trap to its true, dear worth; by the time the room has
     // climbed for 18s, every rung on offer already lands past the player's
     // number, so all three read danger at once - each computed off its own
     // landing price, not one shared switch, which the identical `.classes()`
-    // calls below still prove independently even though they agree here.
+    // calls below still prove independently even though they agree here. A
+    // shadow room, seated and ticked the same way the screen's own room is,
+    // supplies the exact mid-climb board value to check the labels against.
     await resolveTrap(wrapper)
+    const trueValueYen = estimateAfterTests(packed!, [...TRAP_TEST_CHAIN])
+    const learned: Learned = {
+      playerNumberYen: trueValueYen,
+      verdict: verdictFor(packed!.roomReadYen, trueValueYen),
+      trueValueYen: packed!.trueValueYen,
+      inspected: true,
+    }
+    const shadow = roomAfter(packed!, learned, 18_000)
+
     await wrapper.find('[data-test="take-seat-packed"]').trigger('click')
     await advance(18_000)
     expect(wrapper.find('[data-test="seat-0"]').text()).toContain('Endo')
 
-    expect(wrapper.find('[data-test="bid"]').text()).toBe('Raise to ¥67,643')
+    const rung1 = nextRungYen(shadow)
+    const rung4 = shadow.boardYen + 4 * shadow.incrementYen
+    const rung8 = shadow.boardYen + 8 * shadow.incrementYen
+    expect(rung1).toBeGreaterThan(trueValueYen) // the scenario this test exists to prove
+    expect(wrapper.find('[data-test="bid"]').text()).toBe(`Raise to ${formatYen(rung1)}`)
     expect(wrapper.find('[data-test="bid"]').classes()).toContain('danger')
-    expect(wrapper.find('[data-test="bid-jump-4"]').text()).toBe('Raise to ¥82,643')
+    expect(wrapper.find('[data-test="bid-jump-4"]').text()).toBe(`Raise to ${formatYen(rung4)}`)
     expect(wrapper.find('[data-test="bid-jump-4"]').classes()).toContain('danger')
-    expect(wrapper.find('[data-test="bid-jump-8"]').text()).toBe('Raise to ¥102,643')
+    expect(wrapper.find('[data-test="bid-jump-8"]').text()).toBe(`Raise to ${formatYen(rung8)}`)
     expect(wrapper.find('[data-test="bid-jump-8"]').classes()).toContain('danger')
   })
 
@@ -324,11 +458,12 @@ describe('AuctionRoomDemoScreen', () => {
   it('marks the bid control past the player number once the room climbs past it', async () => {
     const wrapper = mountScreen()
     await inspect(wrapper)
-    // The chain settles the trap at ¥62,285. That sits just above the packed
-    // room's own reserve (¥50,073) but well below its clearing price
-    // (¥81,328), so the room's unprompted climb carries the board past the
-    // player's number partway through, and the marker and the danger class
-    // light up there rather than at the opening ask.
+    // The chain settles the trap at its true, dear worth - well above the
+    // packed room's own reserve but well below its clearing price (see
+    // auctionRoomDemo.ts's own trap fixture doc comment for the margins), so
+    // the room's unprompted climb carries the board past the player's number
+    // partway through, and the marker and the danger class light up there
+    // rather than at the opening ask.
     await resolveTrap(wrapper)
     await wrapper.find('[data-test="take-seat-packed"]').trigger('click')
 
@@ -349,10 +484,14 @@ describe('AuctionRoomDemoScreen', () => {
 
   it('keeps the shared visit and its narrowing across a room visit', async () => {
     const wrapper = mountScreen()
+    const [thin] = buildLobby()
     await inspect(wrapper)
-    await testButton(thinCard(wrapper), 'coolant-check').trigger('click')
-    await testButton(thinCard(wrapper), 'compression-test').trigger('click')
-    expect(wrapper.find('[data-test="est-value-thin"]').find('.up').text()).toBe('¥104,036')
+    await testButton(thinCard(wrapper), 'trace-the-wet').trigger('click')
+    const afterFirstYen = estimateAfterTests(thin!, ['trace-the-wet'])
+    const direction = afterFirstYen >= thin!.roomReadYen ? 'up' : 'down'
+    expect(wrapper.find('[data-test="est-value-thin"]').find(`.${direction}`).text()).toBe(
+      formatYen(afterFirstYen),
+    )
 
     // Seat the thin lot, let it roll back, and return to the lobby.
     await wrapper.find('[data-test="take-seat-thin"]').trigger('click')
@@ -361,12 +500,18 @@ describe('AuctionRoomDemoScreen', () => {
 
     // The shared visit clock and the narrowed estimate are both still there:
     // only leaving the screen forgets them.
-    expect(wrapper.find('[data-test="visit-panel"]').text()).toContain('25m left')
-    expect(wrapper.find('[data-test="est-value-thin"]').find('.up').text()).toBe('¥104,036')
+    const visitMinutes = useGameStore().context.economy.diagnosis.visitMinutes
+    const minutesLeft = visitMinutes - minutesFor(['trace-the-wet'])
+    expect(visitPanelText(wrapper)).toContain(`${minutesLeft}m left`)
+    expect(wrapper.find('[data-test="est-value-thin"]').find(`.${direction}`).text()).toBe(
+      formatYen(afterFirstYen),
+    )
   })
 
   it('closes a watched steal with the outcome strip and the bargain-missed epilogue, then runs it back', async () => {
     const wrapper = mountScreen()
+    const [thin] = buildLobby()
+    const reserveYen = reserveYenFor(thin!.roomReadYen)
     await wrapper.find('[data-test="take-seat-thin"]').trigger('click')
 
     await advance(300_000)
@@ -379,7 +524,7 @@ describe('AuctionRoomDemoScreen', () => {
     await wrapper.find('[data-test="run-back"]').trigger('click')
     expect(wrapper.find('[data-test="outcome"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="log"]').text()).toBe(
-      'The clerk looks over the room. Reserve is ¥51,564.',
+      `The clerk looks over the room. Reserve is ${formatYen(reserveYen)}.`,
     )
     expect(wrapper.find('[data-test="bid"]').text()).toBe('Bid the reserve')
   })

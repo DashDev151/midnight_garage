@@ -2,11 +2,12 @@ import { playerEstimateYen } from '@midnight-garage/sim'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useGameStore } from '../stores/gameStore'
-import { enterRoom } from './auctionRoom'
+import { enterRoom, incrementYenFor } from './auctionRoom'
 import {
   buildDemoLobby,
   demoRoomSeed,
   fullyLookedLearned,
+  TRAP_VALUE_FRACTION,
   verdictFor,
   type DemoLobbyEntry,
 } from './auctionRoomDemo'
@@ -27,36 +28,70 @@ function buildLobby(): DemoLobbyEntry[] {
 describe('auctionRoomDemo lobby', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
-  it('selects the highest-ratio lot (thin) and the deepest genuine trap (packed) from the fixed catalogue', () => {
-    // Directive 17 case (a): the seeded catalogue search picks whichever real
-    // car scores best/worst by true-value-to-read ratio, so a
-    // `valuation.marketRepairDiscount` or generation-floor move can pick
-    // different real cars entirely (not just move a price) - every field
-    // below is re-derived off a fresh run, not adjusted by hand.
-    const [thin, packed] = buildLobby()
+  it('names the thin lot a Honda City E steal, its symptom fresh and its true cause the cheap one, reading comfortably better than the room fears', () => {
+    // The car, the symptom and the true cause are pinned identity
+    // (auctionRoomDemo.ts's own `STEAL_MODEL_ID`/`STEAL_SYMPTOM_ID`/
+    // `STEAL_TRUE_CAUSE_ID`) - never rediscovered by a catalogue search, so a
+    // repricing can only move the yen figures below, never swap in a
+    // different car or a different symptom.
+    const game = useGameStore()
+    const roomConfig = game.context.economy.auctionRoom
+    const [thin] = buildLobby()
 
     expect(thin!.key).toBe('thin')
-    expect(thin!.displayName).toBe('Suzuki Wagon R (CT21S)')
-    expect(thin!.roomReadYen).toBe(93_753)
-    expect(thin!.trueValueYen).toBe(104_036)
-    expect(thin!.incrementYen).toBe(5_000)
-    expect(thin!.dealerCount).toBe(2)
+    expect(thin!.displayName).toBe('Honda City E (AA)')
+    expect(thin!.lot.modelId).toBe('honda-city-e-aa')
+    expect(thin!.lot.car.symptoms).toHaveLength(1)
+    const symptom = thin!.lot.car.symptoms[0]!
+    expect(symptom.symptomId).toBe('damp-passenger-footwell')
+    expect(symptom.trueCauseId).toBe('perished-grommet')
+    // Fresh and unresolved: every one of the symptom's own causes is still a
+    // live candidate, nothing yet tested - a diagnostic still has real doubt
+    // to narrow.
+    expect(symptom.remainingCauseIds.length).toBeGreaterThan(1)
+
+    expect(thin!.incrementYen).toBe(incrementYenFor(thin!.roomReadYen, roomConfig))
+    expect(thin!.dealerCount).toBe(roomConfig.turnout.thin.dealers)
+
+    // The steal's whole point is not the exact yen the room happens to read
+    // today; it's that the truth clears the room's read comfortably, not
+    // marginally - well past the real `verdictFor` 'better' bar the
+    // production auction room shares (`AuctionRoomScreen.vue` imports
+    // `verdictFor` straight from this module), so an ordinary repricing
+    // cannot flip it.
+    expect(thin!.trueValueYen).toBeGreaterThan(thin!.roomReadYen * 1.1)
     expect(thin!.verdict).toBe('better')
-    expect(thin!.trueValueYen / thin!.roomReadYen).toBeCloseTo(1.1097, 4)
+    expect(verdictFor(thin!.roomReadYen, thin!.trueValueYen)).toBe('better')
+  })
+
+  it('names the packed lot a Nissan Sunny trap, its symptom fresh and its true cause the dear one, reading comfortably worse than the room read', () => {
+    const game = useGameStore()
+    const roomConfig = game.context.economy.auctionRoom
+    const [, packed] = buildLobby()
 
     expect(packed!.key).toBe('packed')
-    expect(packed!.displayName).toBe('Honda City E (AA)')
-    expect(packed!.roomReadYen).toBe(86_623)
-    expect(packed!.trueValueYen).toBe(61_362)
-    expect(packed!.incrementYen).toBe(5_000)
-    expect(packed!.dealerCount).toBe(6)
-    expect(packed!.verdict).toBe('worse')
-    expect(packed!.trueValueYen / packed!.roomReadYen).toBeCloseTo(0.7084, 4)
+    expect(packed!.displayName).toBe('Nissan Sunny (B12)')
+    expect(packed!.lot.modelId).toBe('nissan-sunny-b12')
+    expect(packed!.lot.car.symptoms).toHaveLength(1)
+    const symptom = packed!.lot.car.symptoms[0]!
+    expect(symptom.symptomId).toBe('overheats-in-traffic')
+    expect(symptom.trueCauseId).toBe('cracked-block')
+    expect(symptom.remainingCauseIds.length).toBeGreaterThan(1)
 
-    // The thin lot beats the read (a clear steal); the trap sits below the trap
-    // band of the read.
-    expect(thin!.trueValueYen).toBeGreaterThan(thin!.roomReadYen)
-    expect(packed!.trueValueYen).toBeLessThan(packed!.roomReadYen * 0.9)
+    expect(packed!.incrementYen).toBe(incrementYenFor(packed!.roomReadYen, roomConfig))
+    expect(packed!.dealerCount).toBe(roomConfig.turnout.packed.dealers)
+
+    // The trap's whole point: the truth undercuts the read comfortably,
+    // clearing both the trap-selection floor (`TRAP_VALUE_FRACTION`) and the
+    // real 'worse' verdict bar with margin to spare, not by a hair.
+    expect(packed!.trueValueYen).toBeLessThan(packed!.roomReadYen * 0.85)
+    expect(packed!.trueValueYen).toBeLessThan(packed!.roomReadYen * TRAP_VALUE_FRACTION)
+    expect(packed!.verdict).toBe('worse')
+    expect(verdictFor(packed!.roomReadYen, packed!.trueValueYen)).toBe('worse')
+  })
+
+  it('never reuses a lot id between the steal and the trap', () => {
+    const [thin, packed] = buildLobby()
     expect(thin!.lot.id).not.toBe(packed!.lot.id)
   })
 

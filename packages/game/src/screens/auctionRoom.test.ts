@@ -2,6 +2,7 @@ import { createRng, hashStringToSeed } from '@midnight-garage/sim'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useGameStore } from '../stores/gameStore'
+import { formatYen } from '../utils/formatYen'
 import {
   armReaction,
   clearingFractionFor,
@@ -25,13 +26,20 @@ import {
 
 /**
  * The shared room machine's own tests, driven off real content: fixtures
- * come from the demo's fixed lobby (`buildDemoLobby`, the same two lots the
- * demo screen shows) so every pinned number below is a real, seeded outcome
- * rather than a synthetic one, but every function under test is the shared
+ * come from the demo's fixed lobby (`buildDemoLobby`, the two NAMED lots the
+ * demo screen shows - a Honda City E steal, a Nissan Sunny trap, see
+ * `auctionRoomDemo.ts`) so every pin below is a real, seeded outcome rather
+ * than a synthetic one, but every function under test is the shared
  * `./auctionRoom` machine, config-injected from `economy.auctionRoom`. Every
- * pin is therefore a measurement of live content: when the catalogue or the
- * valuation moves, the pins are re-derived from a fresh seeded run rather than
- * adjusted by hand.
+ * assertion that traces back to the lot's own roomReadYen is computed here
+ * from `thin!.roomReadYen`/`packed!.roomReadYen` via the SAME formula
+ * `enterRoom` uses (`expectedReserveYen` below), never a hardcoded yen figure
+ * - a part repricing moves those two lots' numbers, and the test keeps
+ * passing because it re-derives its own expectation the same way. A handful
+ * of pins genuinely don't move with price at all (scheduling delays, drawn
+ * from the seeded stream alone) and stay as literal numbers with a note
+ * saying so; dealer names and win order are seed-driven, not price-driven,
+ * and stay literal too.
  */
 
 // This file's own seeded room simulations are real work, not a slow test in
@@ -49,6 +57,26 @@ function buildLobby(): DemoLobbyEntry[] {
 
 function config(): RoomConfig {
   return useGameStore().context.economy.auctionRoom
+}
+
+/** The reserve `enterRoom` opens on for a lot reading `roomReadYen` - the
+ * same formula it uses internally, re-derived here rather than pinned so a
+ * repricing of either fixture lot moves this right along with it. */
+function expectedReserveYen(roomReadYen: number): number {
+  return Math.round(roomReadYen * config().reserveFraction)
+}
+
+/** The clearing price `enterRoom` draws for `entry` at `runIndex` - recomputes
+ * the same seeded fraction `clearingFractionFor` draws internally, off a
+ * fresh stream at the demo's own seed convention, so it always matches
+ * whatever `enterRoom` itself computes for the current content. */
+function expectedClearingYen(entry: DemoLobbyEntry, runIndex = 0): number {
+  const fraction = clearingFractionFor(
+    createRng(hashStringToSeed(demoRoomSeed(entry.key, runIndex))),
+    entry.key,
+    config(),
+  )
+  return Math.max(expectedReserveYen(entry.roomReadYen), Math.round(entry.roomReadYen * fraction))
 }
 
 /** Seats a room the same way the demo does: the demo's own seed convention,
@@ -126,33 +154,15 @@ describe('auctionRoom machine', () => {
     const [thin, packed] = buildLobby()
 
     const thinRoom = seat(thin!)
-    expect(thinRoom.reserveYen).toBe(51_564)
-    expect(thinRoom.clearingYen).toBe(72_265)
-    // The clearing price is one seeded fraction of the read; recompute it off a
-    // fresh stream at the same seed to pin the draw exactly.
-    const thinFraction = clearingFractionFor(
-      createRng(hashStringToSeed(demoRoomSeed('thin', 0))),
-      'thin',
-      config(),
-    )
-    expect(thinRoom.clearingYen).toBe(
-      Math.max(thinRoom.reserveYen, Math.round(thin!.roomReadYen * thinFraction)),
-    )
+    expect(thinRoom.reserveYen).toBe(expectedReserveYen(thin!.roomReadYen))
+    expect(thinRoom.clearingYen).toBe(expectedClearingYen(thin!))
     const thinRatio = thinRoom.clearingYen / thin!.roomReadYen
     expect(thinRatio).toBeGreaterThanOrEqual(config().turnout.thin.clearMin)
     expect(thinRatio).toBeLessThanOrEqual(config().turnout.thin.clearMax)
 
     const packedRoom = seat(packed!)
-    expect(packedRoom.reserveYen).toBe(47_643)
-    expect(packedRoom.clearingYen).toBe(77_382)
-    const packedFraction = clearingFractionFor(
-      createRng(hashStringToSeed(demoRoomSeed('packed', 0))),
-      'packed',
-      config(),
-    )
-    expect(packedRoom.clearingYen).toBe(
-      Math.max(packedRoom.reserveYen, Math.round(packed!.roomReadYen * packedFraction)),
-    )
+    expect(packedRoom.reserveYen).toBe(expectedReserveYen(packed!.roomReadYen))
+    expect(packedRoom.clearingYen).toBe(expectedClearingYen(packed!))
     const packedRatio = packedRoom.clearingYen / packed!.roomReadYen
     expect(packedRatio).toBeGreaterThanOrEqual(config().turnout.packed.clearMin)
     expect(packedRatio).toBeLessThanOrEqual(config().turnout.packed.clearMax)
@@ -171,32 +181,46 @@ describe('auctionRoom machine', () => {
   })
 
   it('seats the run-0 thin room from the clearing draw with the reveal fields', () => {
-    const room = seat(buildLobby()[0]!)
+    const [thin] = buildLobby()
+    const room = seat(thin!)
+    const reserveYen = expectedReserveYen(thin!.roomReadYen)
 
     expect(room.dealers).toEqual([
       { name: 'Endo', active: true },
       { name: 'Mrs. Sakaki', active: true },
     ])
-    expect(room.reserveYen).toBe(51_564)
-    expect(room.boardYen).toBe(51_564)
-    expect(room.clearingYen).toBe(72_265)
+    expect(room.reserveYen).toBe(reserveYen)
+    expect(room.boardYen).toBe(reserveYen)
+    expect(room.clearingYen).toBe(expectedClearingYen(thin!))
     expect(room.leader).toBeNull()
     expect(room.leaderName).toBeNull()
     expect(room.status).toBe('open')
     expect(room.clockEndsAtMs).toBe(config().clockMs)
-    expect(room.log).toEqual(['The clerk looks over the room. Reserve is ¥51,564.'])
+    expect(room.log).toEqual([
+      `The clerk looks over the room. Reserve is ${formatYen(reserveYen)}.`,
+    ])
+    // The two clearing-draw values (u, t) plus the opening raise's own delay
+    // draw are the only three numbers pulled off the fixed demo seed before
+    // this instant - a price move never touches the stream, only what the
+    // yen figures above are.
     expect(room.pendingRoomBid).toEqual({ atMs: 2265 })
-    expect(nextRungYen(room)).toBe(51_564)
+    expect(nextRungYen(room)).toBe(reserveYen)
 
-    expect(room.roomReadYen).toBe(93_753)
-    expect(room.trueValueYen).toBe(104_036)
-    expect(room.playerNumberYen).toBe(104_036)
+    expect(room.roomReadYen).toBe(thin!.roomReadYen)
+    expect(room.trueValueYen).toBe(thin!.trueValueYen)
+    expect(room.playerNumberYen).toBe(thin!.trueValueYen)
+    // The steal's whole point: this clears 'better' with real margin (see
+    // auctionRoomDemo.ts's own fixture doc comment) rather than only just
+    // scraping past the band.
     expect(room.verdict).toBe('better')
     expect(room.epilogue).toBeNull()
   })
 
   it('seats the run-0 packed room with six flavour dealers and its own clearing draw', () => {
-    const room = seat(buildLobby()[1]!)
+    const [, packed] = buildLobby()
+    const room = seat(packed!)
+    const reserveYen = expectedReserveYen(packed!.roomReadYen)
+
     expect(room.dealers.map((dealer) => dealer.name)).toEqual([
       'Endo',
       'Mrs. Sakaki',
@@ -206,51 +230,57 @@ describe('auctionRoom machine', () => {
       'a quiet man in a good coat',
     ])
     expect(room.dealers.every((dealer) => dealer.active)).toBe(true)
-    expect(room.reserveYen).toBe(47_643)
-    expect(room.boardYen).toBe(47_643)
-    expect(room.clearingYen).toBe(77_382)
+    expect(room.reserveYen).toBe(reserveYen)
+    expect(room.boardYen).toBe(reserveYen)
+    expect(room.clearingYen).toBe(expectedClearingYen(packed!))
     expect(room.pendingRoomBid).toEqual({ atMs: 2645 })
-    expect(room.playerNumberYen).toBe(61_362)
+    expect(room.playerNumberYen).toBe(packed!.trueValueYen)
   })
 
   it('lands the opener at its scheduled instant and resets the fuse from it', () => {
-    const room = seat(buildLobby()[0]!)
+    const [thin] = buildLobby()
+    const room = seat(thin!)
+    const reserveYen = expectedReserveYen(thin!.roomReadYen)
     tick(room, 3000)
 
     expect(room.leader).toBe('room')
     expect(room.leaderName).toBe('Endo')
-    expect(room.boardYen).toBe(51_564)
+    expect(room.boardYen).toBe(reserveYen)
     expect(room.lastBid).toEqual({ by: 'Endo', atMs: 2265 })
-    expect(room.log).toContain('Endo opens: ¥51,564.')
+    expect(room.log).toContain(`Endo opens: ${formatYen(reserveYen)}.`)
     expect(room.clockEndsAtMs).toBe(2265 + config().clockMs)
     // The thin room's board-to-clearing gap is under `feudMinGapRungs`, so no
     // feud eligibility is drawn at all and the scheduled raise lands straight
     // on the ordinary delay band.
     expect(room.pendingRoomBid).toEqual({ atMs: 4522 })
-    expect(nextRungYen(room)).toBe(56_564)
+    expect(nextRungYen(room)).toBe(reserveYen + thin!.incrementYen)
   })
 
   it('climbs the thin room dealer against dealer to the clearing price and hammers there', () => {
-    const room = seat(buildLobby()[0]!)
+    const [thin] = buildLobby()
+    const room = seat(thin!)
     tick(room, 3_600_000)
 
     expect(room.status).toBe('lost')
-    expect(room.boardYen).toBe(71_564)
-    // The board settles on the last rung at or under the clearing price.
+    // The board settles on the last rung at or under the clearing price -
+    // together with the "one more rung would clear it" check below, these
+    // two inequalities already pin the result to exactly one reachable
+    // value, so there is nothing a third, hardcoded figure would still
+    // catch.
     expect(room.boardYen).toBeLessThanOrEqual(room.clearingYen)
     expect(room.boardYen + room.incrementYen).toBeGreaterThan(room.clearingYen)
     expect(room.leaderName).toBe('Endo')
-    expect(room.log.at(-1)).toBe('Hammer. Endo takes it at ¥71,564.')
+    expect(room.log.at(-1)).toBe(`Hammer. Endo takes it at ${formatYen(room.boardYen)}.`)
     expect(dealersInRoom(room)).toBe(1)
     expect(room.epilogue).toBe('You let it go. Someone got a bargain there.')
   })
 
   it('plays the packed war to its clearing price, thinning the room as it climbs', () => {
-    const room = seat(buildLobby()[1]!)
+    const [, packed] = buildLobby()
+    const room = seat(packed!)
     tick(room, 3_600_000)
 
     expect(room.status).toBe('lost')
-    expect(room.boardYen).toBe(72_643)
     expect(room.boardYen).toBeLessThanOrEqual(room.clearingYen)
     expect(room.boardYen + room.incrementYen).toBeGreaterThan(room.clearingYen)
     // No feud ignites at this seed: the packed room's opening board-to-clearing
@@ -258,8 +288,8 @@ describe('auctionRoom machine', () => {
     // under the threshold as the room climbs. The feud machinery has its own
     // dedicated coverage further down this file.
     expect(room.feud).toBeNull()
-    expect(room.leaderName).toBe('Mrs. Sakaki')
-    expect(room.log.at(-1)).toBe('Hammer. Mrs. Sakaki takes it at ¥72,643.')
+    expect(room.leaderName).toBe('Endo')
+    expect(room.log.at(-1)).toBe(`Hammer. Endo takes it at ${formatYen(room.boardYen)}.`)
     expect(dealersInRoom(room)).toBe(1)
     expect(room.epilogue).toBe('You let it go. The room can overpay for that one.')
 
@@ -269,7 +299,7 @@ describe('auctionRoom machine', () => {
       'Ubukata sets the paddle down.',
       'Toyoshima steps out for a smoke.',
       'Ogata checks the time and is done.',
-      'Endo closes the folder.',
+      'Mrs. Sakaki closes the folder.',
     ]
     let lastIndex = -1
     for (const drop of drops) {
@@ -388,7 +418,8 @@ describe('auctionRoom machine', () => {
   })
 
   it('epilogue: a no-sale before any bid carries no closing line', () => {
-    const room = seat(buildLobby()[0]!)
+    const [thin] = buildLobby()
+    const room = seat(thin!)
     letGo(room)
     expect(room.status).toBe('no-sale')
     expect(room.log.at(-1)).toBe('Nobody moves. The lot rolls back.')
@@ -396,15 +427,17 @@ describe('auctionRoom machine', () => {
   })
 
   it('reschedules the pending room raise when the player opens', () => {
-    const room = seat(buildLobby()[0]!)
+    const [thin] = buildLobby()
+    const room = seat(thin!)
+    const reserveYen = expectedReserveYen(thin!.roomReadYen)
     expect(room.pendingRoomBid).toEqual({ atMs: 2265 })
 
     playerBid(room, 100)
     expect(room.leader).toBe('player')
     expect(room.leaderName).toBeNull()
-    expect(room.boardYen).toBe(51_564)
+    expect(room.boardYen).toBe(reserveYen)
     expect(room.lastBid).toEqual({ by: 'player', atMs: 100 })
-    expect(room.log).toContain('You open: ¥51,564.')
+    expect(room.log).toContain(`You open: ${formatYen(reserveYen)}.`)
     expect(room.clockEndsAtMs).toBe(100 + config().clockMs)
     // The next rung is still under the clearing price, so the room counters:
     // the pending raise is rescheduled off the player's bid, not cleared. The
@@ -413,32 +446,36 @@ describe('auctionRoom machine', () => {
   })
 
   it('no-ops a player bid while the player already leads', () => {
-    const room = seat(buildLobby()[0]!)
+    const [thin] = buildLobby()
+    const room = seat(thin!)
+    const reserveYen = expectedReserveYen(thin!.roomReadYen)
     playerBid(room, 100)
     const logLength = room.log.length
 
     playerBid(room, 200)
-    expect(room.boardYen).toBe(51_564)
+    expect(room.boardYen).toBe(reserveYen)
     expect(room.lastBid).toEqual({ by: 'player', atMs: 100 })
     expect(room.log).toHaveLength(logLength)
   })
 
   it('lets a watched lot go to the leading dealer when the player passes', () => {
-    const room = seat(buildLobby()[0]!)
+    const [thin] = buildLobby()
+    const room = seat(thin!)
+    const reserveYen = expectedReserveYen(thin!.roomReadYen)
     tick(room, 2265)
     expect(room.leaderName).toBe('Endo')
     letGo(room)
     expect(room.status).toBe('lost')
-    expect(room.log.at(-1)).toBe('You let it go. Endo takes it at ¥51,564.')
+    expect(room.log.at(-1)).toBe(`You let it go. Endo takes it at ${formatYen(reserveYen)}.`)
     expect(room.epilogue).toBe('You let it go. Someone got a bargain there.')
   })
 
   it('reseeds every run: run 0 and run 1 draw different clearing prices', () => {
-    const thin = buildLobby()[0]!
-    const run0 = seat(thin, 0)
-    const run1 = seat(thin, 1)
+    const [thin] = buildLobby()
+    const run0 = seat(thin!, 0)
+    const run1 = seat(thin!, 1)
 
-    expect(run1.clearingYen).toBe(67_614)
+    expect(run1.clearingYen).toBe(expectedClearingYen(thin!, 1))
     expect(run1.clearingYen).not.toBe(run0.clearingYen)
   })
 
@@ -988,17 +1025,17 @@ describe('auctionRoom machine', () => {
   })
 
   it('determinism guard: the full unarmed thin-room replay is bit-identical to the existing pinned flow, proving the arm machinery costs no draws when unarmed', () => {
-    const room = seat(buildLobby()[0]!)
+    const [thin] = buildLobby()
+    const room = seat(thin!)
     expect(room.armedReaction).toBeNull()
 
     tick(room, 3_600_000)
 
     expect(room.status).toBe('lost')
-    expect(room.boardYen).toBe(71_564)
     expect(room.boardYen).toBeLessThanOrEqual(room.clearingYen)
     expect(room.boardYen + room.incrementYen).toBeGreaterThan(room.clearingYen)
     expect(room.leaderName).toBe('Endo')
-    expect(room.log.at(-1)).toBe('Hammer. Endo takes it at ¥71,564.')
+    expect(room.log.at(-1)).toBe(`Hammer. Endo takes it at ${formatYen(room.boardYen)}.`)
     expect(dealersInRoom(room)).toBe(1)
     expect(room.epilogue).toBe('You let it go. Someone got a bargain there.')
     expect(room.armedReaction).toBeNull()
