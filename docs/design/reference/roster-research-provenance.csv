@@ -1058,3 +1058,90 @@ MG-094,94,Lexus LFA,torqueRpm,6800,https://en.wikipedia.org/wiki/Lexus_LFA,HIGH,
 MG-094,94,Lexus LFA,tyreCompound,sport,https://en.wikipedia.org/wiki/Lexus_LFA,LOW,"Judgement call; bespoke track-oriented tyres, could arguably rate higher than other LOW-confidence assignments in this batch",yes
 MG-094,94,Lexus LFA,wheelbaseMm,2605,https://en.wikipedia.org/wiki/Lexus_LFA,HIGH,,yes
 MG-094,94,Lexus LFA,widthMm,1895,https://en.wikipedia.org/wiki/Lexus_LFA,HIGH,,yes
+MG-009,9,Honda Civic 1.5 (EF2),displayName,Honda Civic 1.5 (EF2),https://cars.japanesecartrade.com/detail/honda/civic/25x-s-limited/160515,MED,"EF3 is the 1.6 ZC-engined Si; the 1.5 D15B car is the EF2, so the name is corrected",yes
+MG-009,9,Honda Civic 1.5 (EF2),variantLabel,Honda Civic 1.5 (EF2),https://cars.japanesecartrade.com/detail/honda/civic/25x-s-limited/160515,MED,Follows displayName,yes
+MG-009,9,Honda Civic 1.5 (EF2),chassisCode,EF2,https://cars.japanesecartrade.com/detail/honda/civic/25x-s-limited/160515,MED,Source lists the 1.5 25X hatch as type E-EF2 with the D15B,yes
+MG-009,9,Honda Civic 1.5 (EF2),engineCode,D15B,https://cars.japanesecartrade.com/detail/honda/civic/25x-s-limited/160515,HIGH,,yes
+MG-009,9,Honda Civic 1.5 (EF2),yearFrom,1987,https://www.carfolio.com/honda-civic-25x-603900,HIGH,Fourth-generation Civic launched September 1987,yes
+MG-009,9,Honda Civic 1.5 (EF2),stockPowerPs,105,https://www.carfolio.com/honda-civic-25x-603900,MED,"1987 JDM 25X three-door; later 1988-91 grades ran 91 PS (35M/35U saloon) and 100 PS",yes
+MG-009,9,Honda Civic 1.5 (EF2),quotedPowerPs,105,https://www.carfolio.com/honda-civic-25x-603900,MED,,yes
+MG-009,9,Honda Civic 1.5 (EF2),powerRpm,6500,https://www.carfolio.com/honda-civic-25x-603900,MED,,yes
+MG-009,9,Honda Civic 1.5 (EF2),peakTorqueNm,129,https://www.carfolio.com/honda-civic-25x-603900,MED,13.2 kgm,yes
+MG-009,9,Honda Civic 1.5 (EF2),torqueRpm,4500,https://www.carfolio.com/honda-civic-25x-603900,MED,,yes
+MG-009,9,Honda Civic 1.5 (EF2),displacementCc,1493,https://www.carfolio.com/honda-civic-25x-603900,HIGH,,yes
+MG-009,9,Honda Civic 1.5 (EF2),engineConfig,I4,https://www.carfolio.com/honda-civic-25x-603900,HIGH,,yes
+MG-009,9,Honda Civic 1.5 (EF2),aspiration,NA,https://www.carfolio.com/honda-civic-25x-603900,HIGH,,yes
+MG-009,9,Honda Civic 1.5 (EF2),curbWeightKg,850,https://www.carfolio.com/honda-civic-25x-603900,MED,japanesecartrade reads 900 kg for the later 25X S-Limited,yes
+MG-009,9,Honda Civic 1.5 (EF2),drivetrain,FF,https://www.carfolio.com/honda-civic-25x-603900,HIGH,FF to match the other entry-band front-drivers in the roster,yes
+MG-009,9,Honda Civic 1.5 (EF2),wheelbaseMm,2500,https://www.carfolio.com/honda-civic-25x-603900,HIGH,,yes
+MG-009,9,Honda Civic 1.5 (EF2),widthMm,1680,https://www.carfolio.com/honda-civic-25x-603900,HIGH,,yes
+MG-009,9,Honda Civic 1.5 (EF2),heightMm,1335,https://www.carfolio.com/honda-civic-25x-603900,HIGH,,yes
+MG-009,9,Honda Civic 1.5 (EF2),stockTyre,175/70R13,https://www.carfolio.com/honda-civic-25x-603900,HIGH,,yes
+MG-009,9,Honda Civic 1.5 (EF2),tyreCompound,touring,https://www.carfolio.com/honda-civic-25x-603900,LOW,Judgement call from the 175/70R13 fitment,yes
+MG-016,16,Suzuki Jimny (JA11),drivetrain,4WD,,MAINTAINER-RULING,Part-time four-wheel drive through a transfer case rather than a full-time AWD system,yes
+MG-034,34,Autozam AZ-1 (PG6SA),drivetrain,MR,https://en.wikipedia.org/wiki/Autozam_AZ-1,HIGH,"F6A mounted transversely behind the cabin, the same layout the roster records as MR for the Beat",yes
+MG-035,35,Nissan Laurel Club S (C33),chassisCode,C33,https://www.carfolio.com/nissan-laurel-2.0-twincam-turbo-medalist-825385,HIGH,,yes
+MG-035,35,Nissan Laurel Club S (C33),engineCode,RB20DET,https://www.carfolio.com/nissan-laurel-2.0-twincam-turbo-medalist-825385,HIGH,Turbocharged Medalist Club S per the maintainer's ruling,yes
+MG-035,35,Nissan Laurel Club S (C33),yearFrom,1989,https://en.wikipedia.org/wiki/Nissan_Laurel,MED,C33 ran 1989 to 1993; carfolio dates its own entry 1988,yes
+MG-035,35,Nissan Laurel Club S (C33),stockPowerPs,205,https://www.carfolio.com/nissan-laurel-2.0-twincam-turbo-medalist-825385,HIGH,Matches the Cefiro A31's RB20DET exactly,yes
+MG-035,35,Nissan Laurel Club S (C33),quotedPowerPs,205,https://www.carfolio.com/nissan-laurel-2.0-twincam-turbo-medalist-825385,HIGH,,yes
+MG-035,35,Nissan Laurel Club S (C33),powerRpm,6400,https://www.carfolio.com/nissan-laurel-2.0-twincam-turbo-medalist-825385,HIGH,,yes
+MG-035,35,Nissan Laurel Club S (C33),peakTorqueNm,265,https://www.carfolio.com/nissan-laurel-2.0-twincam-turbo-medalist-825385,HIGH,,yes
+MG-035,35,Nissan Laurel Club S (C33),torqueRpm,3200,https://www.carfolio.com/nissan-laurel-2.0-twincam-turbo-medalist-825385,HIGH,,yes
+MG-035,35,Nissan Laurel Club S (C33),displacementCc,1998,https://en.wikipedia.org/wiki/Nissan_RB_engine,MED,carfolio reads 1997 cc; 1998 is the RB20's own figure and matches the Cefiro A31,yes
+MG-035,35,Nissan Laurel Club S (C33),engineConfig,I6,https://www.carfolio.com/nissan-laurel-2.0-twincam-turbo-medalist-825385,HIGH,,yes
+MG-035,35,Nissan Laurel Club S (C33),aspiration,turbo,https://www.carfolio.com/nissan-laurel-2.0-twincam-turbo-medalist-825385,HIGH,,yes
+MG-035,35,Nissan Laurel Club S (C33),curbWeightKg,1350,https://www.carfolio.com/nissan-laurel-2.0-twincam-turbo-medalist-825385,HIGH,,yes
+MG-035,35,Nissan Laurel Club S (C33),wheelbaseMm,2670,https://www.carfolio.com/nissan-laurel-2.0-twincam-turbo-medalist-825385,HIGH,,yes
+MG-035,35,Nissan Laurel Club S (C33),widthMm,1695,https://www.carfolio.com/nissan-laurel-2.0-twincam-turbo-medalist-825385,HIGH,,yes
+MG-035,35,Nissan Laurel Club S (C33),heightMm,1365,https://www.carfolio.com/nissan-laurel-2.0-twincam-turbo-medalist-825385,HIGH,,yes
+MG-035,35,Nissan Laurel Club S (C33),stockTyre,205/60R15,https://www.carfolio.com/nissan-laurel-2.0-twincam-turbo-medalist-825385,HIGH,,yes
+MG-035,35,Nissan Laurel Club S (C33),tyreCompound,performance,https://www.carfolio.com/nissan-laurel-2.0-twincam-turbo-medalist-825385,LOW,Judgement call; the Cefiro A31 runs the same size and compound,yes
+MG-055,55,"Honda Integra Type R (DC2, '99)",engineCode,B18C,https://en.wikipedia.org/wiki/Honda_Integra,HIGH,B18C5 is the United States engine code; this row is origin jdm and the Japanese Type R engine is the B18C,yes
+MG-059,59,Honda Integra Type R (DC5),stockPowerPs,220,https://www.carfolio.com/honda-integra-type-r-84238,HIGH,JDM LA-DC5 Type R; the export DC5 is the 200 PS car and the US RSX Type-S 203 PS,yes
+MG-059,59,Honda Integra Type R (DC5),quotedPowerPs,220,https://www.carfolio.com/honda-integra-type-r-84238,HIGH,,yes
+MG-059,59,Honda Integra Type R (DC5),powerRpm,8000,https://www.carfolio.com/honda-integra-type-r-84238,HIGH,,yes
+MG-059,59,Honda Integra Type R (DC5),peakTorqueNm,206,https://www.carfolio.com/honda-integra-type-r-84238,HIGH,21.0 kgm,yes
+MG-059,59,Honda Integra Type R (DC5),torqueRpm,7000,https://www.carfolio.com/honda-integra-type-r-84238,HIGH,,yes
+MG-059,59,Honda Integra Type R (DC5),redlineRpm,8400,https://supercarnostalgia.com/blog/honda-integra-dc5-type-r,MED,,yes
+MG-059,59,Honda Integra Type R (DC5),displacementCc,1998,https://www.carfolio.com/honda-integra-type-r-84238,HIGH,K20A; the row previously held the DC2's 1800,yes
+MG-059,59,Honda Integra Type R (DC5),engineConfig,I4,https://www.carfolio.com/honda-integra-type-r-84238,HIGH,,yes
+MG-059,59,Honda Integra Type R (DC5),aspiration,NA,https://www.carfolio.com/honda-integra-type-r-84238,HIGH,,yes
+MG-059,59,Honda Integra Type R (DC5),curbWeightKg,1170,https://www.carfolio.com/honda-integra-type-r-84238,MED,integradc5.com reads 1180 kg,yes
+MG-059,59,Honda Integra Type R (DC5),topSpeedKmh,,,LOW,"Cleared: held MG-055's DC2 figure. Forza's only DC5 is the US RSX Type-S at 203 PS / 1279 kg, a different variant, so nothing is imported",yes
+MG-059,59,Honda Integra Type R (DC5),lateralG97,,,LOW,Cleared with the rest of the DC2 measured block,yes
+MG-059,59,Honda Integra Type R (DC5),lateralG193,,,LOW,Cleared with the rest of the DC2 measured block,yes
+MG-059,59,Honda Integra Type R (DC5),braking97To0M,,,LOW,Cleared with the rest of the DC2 measured block,yes
+MG-059,59,Honda Integra Type R (DC5),braking161To0M,,,LOW,Cleared with the rest of the DC2 measured block,yes
+MG-059,59,Honda Integra Type R (DC5),zeroTo97S,,,LOW,Cleared with the rest of the DC2 measured block,yes
+MG-059,59,Honda Integra Type R (DC5),zeroTo161S,,,LOW,Cleared with the rest of the DC2 measured block,yes
+MG-061,61,Toyota Soarer 2.5 GT-T (JZZ30),yearFrom,1996,https://ateupwithmotor.com/model-histories/toyota-soarer-z10-z20-z30/4/,HIGH,"The 2.5GT-T name dates from August 1996, when the twin turbos became a single turbo with VVT-i and torque moved to 378 Nm at 2400 rpm; carfolio's 1998 2.5 GT-T confirms every other figure in the row",yes
+MG-064,64,"BMW M3 (E36, '97)",chassisCode,E36,https://www.auto-data.net/en/bmw-m3-coupe-e36-3.2-321hp-9880,HIGH,,yes
+MG-064,64,"BMW M3 (E36, '97)",engineCode,S50B32,https://www.auto-data.net/en/bmw-m3-coupe-e36-3.2-321hp-9880,HIGH,,yes
+MG-064,64,"BMW M3 (E36, '97)",yearFrom,1997,https://www.auto-data.net/en/bmw-m3-coupe-e36-3.2-321hp-9880,MED,3.2 Evolution built 1995 to 1999; the row names the 1997 car,yes
+MG-064,64,"BMW M3 (E36, '97)",stockPowerPs,321,https://www.auto-data.net/en/bmw-m3-coupe-e36-3.2-321hp-9880,HIGH,"European DIN figure, 236 kW; the North American E36 M3 is the 240 hp 3.0 and this row is origin gaisha",yes
+MG-064,64,"BMW M3 (E36, '97)",quotedPowerPs,321,https://www.auto-data.net/en/bmw-m3-coupe-e36-3.2-321hp-9880,HIGH,No Japanese gentleman's agreement applies to a European car,yes
+MG-064,64,"BMW M3 (E36, '97)",powerRpm,7400,https://www.auto-data.net/en/bmw-m3-coupe-e36-3.2-321hp-9880,HIGH,,yes
+MG-064,64,"BMW M3 (E36, '97)",peakTorqueNm,350,https://www.auto-data.net/en/bmw-m3-coupe-e36-3.2-321hp-9880,HIGH,,yes
+MG-064,64,"BMW M3 (E36, '97)",torqueRpm,3250,https://www.auto-data.net/en/bmw-m3-coupe-e36-3.2-321hp-9880,HIGH,,yes
+MG-064,64,"BMW M3 (E36, '97)",redlineRpm,7600,https://www.bmwblog.com/2025/08/09/bmw-s50-engine-reliability-specs-and-tuning-guide-for-the-iconic-m3-straight-six/,MED,,yes
+MG-064,64,"BMW M3 (E36, '97)",displacementCc,3201,https://www.auto-data.net/en/bmw-m3-coupe-e36-3.2-321hp-9880,HIGH,The row previously held the E30's 2300,yes
+MG-064,64,"BMW M3 (E36, '97)",engineConfig,I6,https://www.auto-data.net/en/bmw-m3-coupe-e36-3.2-321hp-9880,HIGH,,yes
+MG-064,64,"BMW M3 (E36, '97)",curbWeightKg,1460,https://www.auto-data.net/en/bmw-m3-coupe-e36-3.2-321hp-9880,MED,"Wikipedia reads 1515 kg for the European coupe and carfolio 1535 kg for the Evolution saloon; 1460 kg is the coupe figure and matches the Forza panel",yes
+MG-064,64,"BMW M3 (E36, '97)",weightDistributionFront,50,docs/design/car-performance/data/forza-fh6-roster-data.csv,MED,Forza's 1997 M3 row,yes
+MG-064,64,"BMW M3 (E36, '97)",wheelbaseMm,2700,https://www.auto-data.net/en/bmw-m3-coupe-e36-3.2-321hp-9880,HIGH,,yes
+MG-064,64,"BMW M3 (E36, '97)",widthMm,1710,https://www.auto-data.net/en/bmw-m3-coupe-e36-3.2-321hp-9880,HIGH,,yes
+MG-064,64,"BMW M3 (E36, '97)",heightMm,1335,https://www.auto-data.net/en/bmw-m3-coupe-e36-3.2-321hp-9880,HIGH,,yes
+MG-064,64,"BMW M3 (E36, '97)",dragCd,0.32,https://www.auto-data.net/en/bmw-m3-coupe-e36-3.2-321hp-9880,MED,,yes
+MG-064,64,"BMW M3 (E36, '97)",stockTyre,225/45ZR17 (f) / 245/40ZR17 (r),https://www.auto-data.net/en/bmw-m3-coupe-e36-3.2-321hp-9880,HIGH,,yes
+MG-064,64,"BMW M3 (E36, '97)",tyreCompound,sport,https://www.auto-data.net/en/bmw-m3-coupe-e36-3.2-321hp-9880,LOW,Judgement call from the 17-inch ZR fitment,yes
+MG-064,64,"BMW M3 (E36, '97)",topSpeedKmh,282.4,docs/design/car-performance/data/forza-fh6-roster-data.csv,MED,"Forza's 1997 M3 is the same 3.2 Evo, reading 325 PS on the same 1460 kg; the row previously held the E30's 250.3",yes
+MG-064,64,"BMW M3 (E36, '97)",lateralG97,0.92,docs/design/car-performance/data/forza-fh6-roster-data.csv,MED,Forza's 1997 M3 row,yes
+MG-064,64,"BMW M3 (E36, '97)",lateralG193,0.93,docs/design/car-performance/data/forza-fh6-roster-data.csv,MED,Forza's 1997 M3 row,yes
+MG-064,64,"BMW M3 (E36, '97)",braking97To0M,44,docs/design/car-performance/data/forza-fh6-roster-data.csv,MED,Forza's 1997 M3 row,yes
+MG-064,64,"BMW M3 (E36, '97)",braking161To0M,108.7,docs/design/car-performance/data/forza-fh6-roster-data.csv,MED,Forza's 1997 M3 row,yes
+MG-064,64,"BMW M3 (E36, '97)",zeroTo97S,5.249,docs/design/car-performance/data/forza-fh6-roster-data.csv,MED,Forza's 1997 M3 row,yes
+MG-064,64,"BMW M3 (E36, '97)",zeroTo161S,12.056,docs/design/car-performance/data/forza-fh6-roster-data.csv,MED,Forza's 1997 M3 row,yes
+MG-084,84,Skyline 2000GT-R Hakosuka (KPGC10),redlineRpm,7500,https://www.supercars.net/blog/all-brands/nissan/nissan-gt-r/,MED,"Was set equal to powerRpm, which truncated the power band; the S20 makes 160 PS at 7000 rpm and redlines at 7500",yes
+MG-085,85,Mazda Cosmo Sport 110S (Series II),redlineRpm,7000,https://classicmotorsports.com/articles/revolution-mazda-cosmo-sport-110s/,MED,"Verified rather than changed: the 10A's revs were deliberately capped at 7000 for durability, so redline genuinely equals powerRpm here",yes
+MG-087,87,Skyline 2000GT-R Kenmeri (KPGC110),redlineRpm,7500,https://www.supercars.net/blog/all-brands/nissan/nissan-gt-r/,MED,Same S20 as the Hakosuka,yes

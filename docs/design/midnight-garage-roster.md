@@ -466,6 +466,14 @@ open questions.
 | Mini (47) | 1965 Cooper S, ¥1,000,000 | 1990s Rover Mini 1.3i, ¥1,750,000 |
 | Cosmo Sport (85) | Series II (L10B), ¥6,800,000 | L10A, same price |
 | Roadster (19) | NA6CE 1.6, ¥440,000 | NA8C, about ¥700,000 |
+| Laurel Club S (35) | Turbocharged RB20DET Medalist Club S, ¥730,000 | RB25DE Club S, not priced |
+| Datsun 510 SSS (32) | KP510 coupe, ¥690,000, already encoded as such | Four-door SSS saloon, not priced |
+| Civic (9) | EF2, the 1.5 D15B car, ¥240,000 | EF3 1.6 Si (ZC), not priced |
+
+**Two cars, not one.** The DC2 (55) and the DC5 (59) are two separate Integra Type Rs in the
+roster, not one car mislabelled, and the E30 (68) and the E36 (64) are likewise two separate M3s.
+Each pair briefly shared a single spec block; both have been split back apart. The Civic row above
+is the opposite error and was a plain misnaming: EF3 is the 1.6 Si, so the cheap 1.5 is the EF2.
 
 ---
 

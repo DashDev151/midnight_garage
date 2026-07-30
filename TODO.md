@@ -384,6 +384,29 @@ pass."
   fix. The advertised-versus-measured choice also decides how much of the machining headroom
   above is needed, since a multiplier on 280 and a multiplier on 320 are two different ceilings.
 
+  **Five rows carry export or Forza-panel data under a JDM name, itemised here for that pass
+  (identified 2026-07-29).** None of them is a figure to overwrite in place. The measured block on
+  each row was measured on the variant the row currently names, and that calibration is permanent,
+  so the JDM car lands as its own **sibling row** with its own measurements rather than by editing
+  these. Current populated figure first, correct JDM figure second.
+
+  - **MG-021 Honda Prelude Si VTEC (BB4)** (built): 162 PS populated, the JDM H22A is 200 PS. The
+    row's own `engineCode` already reads H22A, so it contradicts itself today.
+  - **MG-022 Nissan Silvia (S13)** (built): 175 PS populated, which is the CA18DET; the row says
+    SR20DET, which is 205 PS.
+  - **MG-036 Nissan 180SX (RPS13)** (built): 157 PS populated, which is the United States KA24DE
+    240SX; the JDM car is 205 PS.
+  - **MG-019 Eunos Roadster (NA6CE)** (not built): the populated 1840 cc / 130 PS / 1057 kg block
+    is the NA8C, not the 1.6 NA6CE the row names, which is 120 PS.
+  - **MG-056 Toyota Chaser Tourer V (JZX100)** (not built): `yearFrom` 1991 populated, but the
+    JZX100 is a 1996 car, and its 362 Nm is the earlier JZX90 non-VVT-i figure.
+
+  These are blocked only on sequencing, not on any open question: every figure above is settled,
+  and the pass waited purely so it would not collide with Sprint 135 running against the current
+  numbers. Each of the five still needs the per-car `dragCd` decision this entry already describes,
+  because a sibling on the same body with different power cannot inherit a `cd` that was
+  back-solved from the other variant's top speed.
+
 - [ ] **The high-speed traction release is deferred, with its number rather than a shrug.** The
   harness hands a traction-limited car back its power shortfall above 161 km/h (`tractionShare` /
   `paccAt` in `lapsim-report.cjs`, documented in `formulas.md` section 9); the shipped port
@@ -520,26 +543,14 @@ pass."
   Needs its own design pass. The tuning system's reputation effect will be weak until it lands,
   and that should be stated in the sprint rather than compensated for by inflating numbers.
 
-- [ ] **The aftermarket power ladder is ADDITIVE and class-invariant, so it cannot express a ratio
-  target at all. Nothing was changed; the decision is open.** Sprint 130 measured it through the real
-  sim rather than by summing the catalogue: a maximal LEGAL build adds a flat **+200 PS** to any car,
-  because every engine slot's `statModifiers.power` is identical across all four fitment classes.
-  Against a signed target of x1.80 that lands at x1.62 (Supra, Aristo), x1.71 (GT-R, Fairlady Z,
-  Chaser), x1.80 (Impreza), x2.27 (180SX), x3.41 (Carina) and **x4.64 (Wagon R)**. Scaling the
-  figures down would miss 1.80 on every car except the one it was scaled against; hitting it needs
-  `statModifiers.power` to scale with the car's own stock power, which is a new mechanism rather than
-  a retune, and Sprint 130 was explicitly told to use the existing path. The full table is in that
-  sprint's Exit. **Maintainer call: is a flat +200 the intended shape, or does power want a
-  proportional path?**
-
-  Riding on the same decision: **`street-power-street-manners`'s power floor is a PROVISIONAL 180.**
-  It was 235, authored against a 180SX believed to make 205 PS stock; the measured figure is 157, and
-  180 is 235 scaled by the same 0.766 that car's own power moved by, so it preserves the designed
-  difficulty but is a scaling rather than a design decision. Sprint 130 did NOT re-base it, because
-  the ladder it is measured against did not move: the mission's own probe build (sport
-  intake/exhaust/ECU/turbo) reaches 214 PS, +34 over the bar, exactly as it did before. It is the one
-  mission threshold in the campaign that is NOT a `floor90(measured)` pin, and `storyMissionProbes`
-  asserts it as a hand-set floor accordingly.
+- [ ] **`street-power-street-manners`'s power floor is still a hand-set PROVISIONAL 180**, not a
+  `floor90(measured)` pin like every other mission threshold. It no longer rides on the power-ladder
+  shape decision - proportional power shipped, replacing the old flat additive ladder
+  (`docs/design/systems/tuning-system.md`) - but that sprint's approved lever list did not include
+  re-basing this floor, so it stayed untouched on purpose. The mission's own probe build (sport
+  intake/exhaust/ignitionEcu/forcedInduction on a 180SX) clears it with real margin under the new
+  formula too; whether 180 is still the right number for the mission's designed difficulty is worth
+  a maintainer look whenever mission thresholds are next revisited.
 - [ ] **Invariant #6 (first-timer resale speed)** - "first-timer buyers keep sub-¥500k Commons
   sellable within 7 days at book value or better" has no bot modeling first-timer-specific selling
   behavior; `competentPolicyStrategy` (Sprint 23) sells via the generic clean/concours faucet, not
@@ -592,23 +603,27 @@ pass."
 
 ## Planned systems (designed, not yet scheduled)
 
-- [ ] **The tuning system is DESIGNED, REVIEWED and NOT IMPLEMENTED, and it is the ACTIVE
-  ARC: sprints are being written for it separately, so it is not a parked idea. The design
-  of record is `docs/design/systems/tuning-system.md`.** It is the whole design for what an
-  aftermarket part does, how a build holds together and what that is worth: proportional
-  power in place of the flat additive ladder, an engine-response character derived from
-  induction and specific output, part roles (gain, enabler, trade-off) so the cheapest gain
-  stops always winning, per-subsystem support ratios whose weakest link is the headline, and
-  cohesion reaching value by changing WHO BIDS rather than by a multiplier. It matters
-  because the system it replaces is solved: there is one correct build order, it never
-  varies, and the same +16 PS ECU applies to a naturally aspirated Beat and a twin-turbo
-  Supra.
+- [ ] **The tuning system is DESIGNED, REVIEWED and PARTIALLY IMPLEMENTED (sprint 135 landed),
+  and it is the ACTIVE ARC: sprints are being written for it separately, so it is not a parked
+  idea. The design of record is `docs/design/systems/tuning-system.md`.** It is the whole
+  design for what an aftermarket part does, how a build holds together and what that is worth:
+  proportional power in place of the flat additive ladder (BUILT, sprint 135), an
+  engine-response character derived from induction and specific output (BUILT, sprint 135),
+  part roles (gain, enabler, trade-off) so the cheapest gain stops always winning, per-subsystem
+  support ratios whose weakest link is the headline, and cohesion reaching value by changing WHO
+  BIDS rather than by a multiplier - all still unbuilt. It matters because the system it
+  replaces was solved in the wrong way: there was one correct build order, it never varied, and
+  the same +16 PS ECU applied to a naturally aspirated Beat and a twin-turbo Supra alike (fixed
+  by sprint 135; the remaining unbuilt half is what stops the cheapest gain always winning and
+  what makes a build's cohesion, not just its parts list, worth something).
 
-  **Status of the sign-offs (2026-07-29): sprints 135 and 137 are SIGNED and clear to start,
-  along with 134 which needs nothing.** The one large sign-off still outstanding is sprint 136's
-  levers 1 to 5, the support ladder, the demand and support weights, the thresholds and the
-  readout copy. Its levers 6 to 8 (the coherence exponent, `reliabilityCap` 70 to 100, and the
-  scrap/poor severity ceilings) are signed.
+  **Status: sprint 135 is SIGNED AND BUILT** (proportional power replacing the flat additive
+  ladder, an engine-response character per car, the per-slot price ladder) - see
+  `docs/sprints/sprint135.md`'s Exit for what landed and what it moved. **Sprint 137 is SIGNED
+  and clear to start**, along with 134 which needed nothing. The one large sign-off still
+  outstanding is sprint 136's levers 1 to 5, the support ladder, the demand and support weights,
+  the thresholds and the readout copy. Its levers 6 to 8 (the coherence exponent,
+  `reliabilityCap` 70 to 100, and the scrap/poor severity ceilings) are signed.
 
   Blocking decisions, all recorded in the doc. Constraint A (section 17): the
   forced-induction return curve must not ship before the support ratios, because increasing
