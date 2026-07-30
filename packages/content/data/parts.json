@@ -7,7 +7,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -23,7 +27,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -39,7 +47,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -55,7 +67,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -71,7 +87,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 14,
+      "powerFraction": {
+        "high-strung-na": 0.04,
+        "lazy-na": 0.05,
+        "forced": 0.007
+      },
       "handling": 0,
       "style": 0,
       "reliability": -4,
@@ -87,7 +107,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 14,
+      "powerFraction": {
+        "high-strung-na": 0.04,
+        "lazy-na": 0.05,
+        "forced": 0.007
+      },
       "handling": 0,
       "style": 0,
       "reliability": -4,
@@ -103,7 +127,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 14,
+      "powerFraction": {
+        "high-strung-na": 0.04,
+        "lazy-na": 0.05,
+        "forced": 0.007
+      },
       "handling": 0,
       "style": 0,
       "reliability": -4,
@@ -119,7 +147,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 14,
+      "powerFraction": {
+        "high-strung-na": 0.04,
+        "lazy-na": 0.05,
+        "forced": 0.007
+      },
       "handling": 0,
       "style": 0,
       "reliability": -4,
@@ -135,7 +167,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 22,
+      "powerFraction": {
+        "high-strung-na": 0.08,
+        "lazy-na": 0.101,
+        "forced": 0.013
+      },
       "handling": 0,
       "style": 0,
       "reliability": -9,
@@ -151,7 +187,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 22,
+      "powerFraction": {
+        "high-strung-na": 0.08,
+        "lazy-na": 0.101,
+        "forced": 0.013
+      },
       "handling": 0,
       "style": 0,
       "reliability": -9,
@@ -167,7 +207,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 22,
+      "powerFraction": {
+        "high-strung-na": 0.08,
+        "lazy-na": 0.101,
+        "forced": 0.013
+      },
       "handling": 0,
       "style": 0,
       "reliability": -9,
@@ -183,7 +227,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 22,
+      "powerFraction": {
+        "high-strung-na": 0.08,
+        "lazy-na": 0.101,
+        "forced": 0.013
+      },
       "handling": 0,
       "style": 0,
       "reliability": -9,
@@ -199,7 +247,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 32,
+      "powerFraction": {
+        "high-strung-na": 0.12,
+        "lazy-na": 0.15,
+        "forced": 0.02
+      },
       "handling": 0,
       "style": 0,
       "reliability": -14,
@@ -215,7 +267,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 32,
+      "powerFraction": {
+        "high-strung-na": 0.12,
+        "lazy-na": 0.15,
+        "forced": 0.02
+      },
       "handling": 0,
       "style": 0,
       "reliability": -14,
@@ -231,7 +287,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 32,
+      "powerFraction": {
+        "high-strung-na": 0.12,
+        "lazy-na": 0.15,
+        "forced": 0.02
+      },
       "handling": 0,
       "style": 0,
       "reliability": -14,
@@ -247,7 +307,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 32,
+      "powerFraction": {
+        "high-strung-na": 0.12,
+        "lazy-na": 0.15,
+        "forced": 0.02
+      },
       "handling": 0,
       "style": 0,
       "reliability": -14,
@@ -263,7 +327,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -279,7 +347,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -295,7 +367,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -311,7 +387,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -327,7 +407,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 10,
+      "powerFraction": {
+        "high-strung-na": 0.013,
+        "lazy-na": 0.017,
+        "forced": 0.01
+      },
       "handling": 0,
       "style": 0,
       "reliability": -4,
@@ -343,7 +427,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 10,
+      "powerFraction": {
+        "high-strung-na": 0.013,
+        "lazy-na": 0.017,
+        "forced": 0.01
+      },
       "handling": 0,
       "style": 0,
       "reliability": -4,
@@ -359,7 +447,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 10,
+      "powerFraction": {
+        "high-strung-na": 0.013,
+        "lazy-na": 0.017,
+        "forced": 0.01
+      },
       "handling": 0,
       "style": 0,
       "reliability": -4,
@@ -375,7 +467,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 10,
+      "powerFraction": {
+        "high-strung-na": 0.013,
+        "lazy-na": 0.017,
+        "forced": 0.01
+      },
       "handling": 0,
       "style": 0,
       "reliability": -4,
@@ -391,7 +487,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 18,
+      "powerFraction": {
+        "high-strung-na": 0.027,
+        "lazy-na": 0.034,
+        "forced": 0.02
+      },
       "handling": 0,
       "style": 0,
       "reliability": -7,
@@ -407,7 +507,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 18,
+      "powerFraction": {
+        "high-strung-na": 0.027,
+        "lazy-na": 0.034,
+        "forced": 0.02
+      },
       "handling": 0,
       "style": 0,
       "reliability": -7,
@@ -423,7 +527,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 18,
+      "powerFraction": {
+        "high-strung-na": 0.027,
+        "lazy-na": 0.034,
+        "forced": 0.02
+      },
       "handling": 0,
       "style": 0,
       "reliability": -7,
@@ -439,7 +547,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 18,
+      "powerFraction": {
+        "high-strung-na": 0.027,
+        "lazy-na": 0.034,
+        "forced": 0.02
+      },
       "handling": 0,
       "style": 0,
       "reliability": -7,
@@ -455,7 +567,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 26,
+      "powerFraction": {
+        "high-strung-na": 0.04,
+        "lazy-na": 0.05,
+        "forced": 0.03
+      },
       "handling": 0,
       "style": 0,
       "reliability": -12,
@@ -471,7 +587,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 26,
+      "powerFraction": {
+        "high-strung-na": 0.04,
+        "lazy-na": 0.05,
+        "forced": 0.03
+      },
       "handling": 0,
       "style": 0,
       "reliability": -12,
@@ -487,7 +607,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 26,
+      "powerFraction": {
+        "high-strung-na": 0.04,
+        "lazy-na": 0.05,
+        "forced": 0.03
+      },
       "handling": 0,
       "style": 0,
       "reliability": -12,
@@ -503,7 +627,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 26,
+      "powerFraction": {
+        "high-strung-na": 0.04,
+        "lazy-na": 0.05,
+        "forced": 0.03
+      },
       "handling": 0,
       "style": 0,
       "reliability": -12,
@@ -519,7 +647,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -535,7 +667,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -551,7 +687,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -567,7 +707,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -583,7 +727,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 8,
+      "powerFraction": {
+        "high-strung-na": 0.036,
+        "lazy-na": 0.045,
+        "forced": 0.027
+      },
       "handling": 0,
       "style": 0,
       "reliability": -3,
@@ -599,7 +747,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 8,
+      "powerFraction": {
+        "high-strung-na": 0.036,
+        "lazy-na": 0.045,
+        "forced": 0.027
+      },
       "handling": 0,
       "style": 0,
       "reliability": -3,
@@ -615,7 +767,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 8,
+      "powerFraction": {
+        "high-strung-na": 0.036,
+        "lazy-na": 0.045,
+        "forced": 0.027
+      },
       "handling": 0,
       "style": 0,
       "reliability": -3,
@@ -631,7 +787,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 8,
+      "powerFraction": {
+        "high-strung-na": 0.036,
+        "lazy-na": 0.045,
+        "forced": 0.027
+      },
       "handling": 0,
       "style": 0,
       "reliability": -3,
@@ -647,7 +807,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 14,
+      "powerFraction": {
+        "high-strung-na": 0.06,
+        "lazy-na": 0.075,
+        "forced": 0.045
+      },
       "handling": 0,
       "style": 0,
       "reliability": -6,
@@ -663,7 +827,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 14,
+      "powerFraction": {
+        "high-strung-na": 0.06,
+        "lazy-na": 0.075,
+        "forced": 0.045
+      },
       "handling": 0,
       "style": 0,
       "reliability": -6,
@@ -679,7 +847,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 14,
+      "powerFraction": {
+        "high-strung-na": 0.06,
+        "lazy-na": 0.075,
+        "forced": 0.045
+      },
       "handling": 0,
       "style": 0,
       "reliability": -6,
@@ -695,7 +867,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 14,
+      "powerFraction": {
+        "high-strung-na": 0.06,
+        "lazy-na": 0.075,
+        "forced": 0.045
+      },
       "handling": 0,
       "style": 0,
       "reliability": -6,
@@ -711,7 +887,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 20,
+      "powerFraction": {
+        "high-strung-na": 0.08,
+        "lazy-na": 0.1,
+        "forced": 0.06
+      },
       "handling": 0,
       "style": 0,
       "reliability": -10,
@@ -727,7 +907,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 20,
+      "powerFraction": {
+        "high-strung-na": 0.08,
+        "lazy-na": 0.1,
+        "forced": 0.06
+      },
       "handling": 0,
       "style": 0,
       "reliability": -10,
@@ -743,7 +927,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 20,
+      "powerFraction": {
+        "high-strung-na": 0.08,
+        "lazy-na": 0.1,
+        "forced": 0.06
+      },
       "handling": 0,
       "style": 0,
       "reliability": -10,
@@ -759,7 +947,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 20,
+      "powerFraction": {
+        "high-strung-na": 0.08,
+        "lazy-na": 0.1,
+        "forced": 0.06
+      },
       "handling": 0,
       "style": 0,
       "reliability": -10,
@@ -775,7 +967,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -791,7 +987,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -807,7 +1007,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -823,7 +1027,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -839,7 +1047,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 9,
+      "powerFraction": {
+        "high-strung-na": 0.033,
+        "lazy-na": 0.043,
+        "forced": 0.017
+      },
       "handling": 0,
       "style": 0,
       "reliability": -2,
@@ -855,7 +1067,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 9,
+      "powerFraction": {
+        "high-strung-na": 0.033,
+        "lazy-na": 0.043,
+        "forced": 0.017
+      },
       "handling": 0,
       "style": 0,
       "reliability": -2,
@@ -871,7 +1087,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 9,
+      "powerFraction": {
+        "high-strung-na": 0.033,
+        "lazy-na": 0.043,
+        "forced": 0.017
+      },
       "handling": 0,
       "style": 0,
       "reliability": -2,
@@ -887,7 +1107,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 9,
+      "powerFraction": {
+        "high-strung-na": 0.033,
+        "lazy-na": 0.043,
+        "forced": 0.017
+      },
       "handling": 0,
       "style": 0,
       "reliability": -2,
@@ -903,7 +1127,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 16,
+      "powerFraction": {
+        "high-strung-na": 0.067,
+        "lazy-na": 0.087,
+        "forced": 0.034
+      },
       "handling": 0,
       "style": 0,
       "reliability": -5,
@@ -919,7 +1147,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 16,
+      "powerFraction": {
+        "high-strung-na": 0.067,
+        "lazy-na": 0.087,
+        "forced": 0.034
+      },
       "handling": 0,
       "style": 0,
       "reliability": -5,
@@ -935,7 +1167,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 16,
+      "powerFraction": {
+        "high-strung-na": 0.067,
+        "lazy-na": 0.087,
+        "forced": 0.034
+      },
       "handling": 0,
       "style": 0,
       "reliability": -5,
@@ -951,7 +1187,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 16,
+      "powerFraction": {
+        "high-strung-na": 0.067,
+        "lazy-na": 0.087,
+        "forced": 0.034
+      },
       "handling": 0,
       "style": 0,
       "reliability": -5,
@@ -967,7 +1207,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 22,
+      "powerFraction": {
+        "high-strung-na": 0.1,
+        "lazy-na": 0.13,
+        "forced": 0.05
+      },
       "handling": 0,
       "style": 0,
       "reliability": -8,
@@ -983,7 +1227,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 22,
+      "powerFraction": {
+        "high-strung-na": 0.1,
+        "lazy-na": 0.13,
+        "forced": 0.05
+      },
       "handling": 0,
       "style": 0,
       "reliability": -8,
@@ -999,7 +1247,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 22,
+      "powerFraction": {
+        "high-strung-na": 0.1,
+        "lazy-na": 0.13,
+        "forced": 0.05
+      },
       "handling": 0,
       "style": 0,
       "reliability": -8,
@@ -1015,7 +1267,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 22,
+      "powerFraction": {
+        "high-strung-na": 0.1,
+        "lazy-na": 0.13,
+        "forced": 0.05
+      },
       "handling": 0,
       "style": 0,
       "reliability": -8,
@@ -1031,7 +1287,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -1047,7 +1307,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -1063,7 +1327,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -1079,7 +1347,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -1095,7 +1367,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 5,
+      "powerFraction": {
+        "high-strung-na": 0.012,
+        "lazy-na": 0.018,
+        "forced": 0.03
+      },
       "handling": 0,
       "style": 0,
       "reliability": -1,
@@ -1111,7 +1387,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 5,
+      "powerFraction": {
+        "high-strung-na": 0.012,
+        "lazy-na": 0.018,
+        "forced": 0.03
+      },
       "handling": 0,
       "style": 0,
       "reliability": -1,
@@ -1127,7 +1407,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 5,
+      "powerFraction": {
+        "high-strung-na": 0.012,
+        "lazy-na": 0.018,
+        "forced": 0.03
+      },
       "handling": 0,
       "style": 0,
       "reliability": -1,
@@ -1143,7 +1427,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 5,
+      "powerFraction": {
+        "high-strung-na": 0.012,
+        "lazy-na": 0.018,
+        "forced": 0.03
+      },
       "handling": 0,
       "style": 0,
       "reliability": -1,
@@ -1159,7 +1447,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 8,
+      "powerFraction": {
+        "high-strung-na": 0.017,
+        "lazy-na": 0.026,
+        "forced": 0.043
+      },
       "handling": 0,
       "style": 0,
       "reliability": -2,
@@ -1175,7 +1467,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 8,
+      "powerFraction": {
+        "high-strung-na": 0.017,
+        "lazy-na": 0.026,
+        "forced": 0.043
+      },
       "handling": 0,
       "style": 0,
       "reliability": -2,
@@ -1191,7 +1487,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 8,
+      "powerFraction": {
+        "high-strung-na": 0.017,
+        "lazy-na": 0.026,
+        "forced": 0.043
+      },
       "handling": 0,
       "style": 0,
       "reliability": -2,
@@ -1207,7 +1507,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 8,
+      "powerFraction": {
+        "high-strung-na": 0.017,
+        "lazy-na": 0.026,
+        "forced": 0.043
+      },
       "handling": 0,
       "style": 0,
       "reliability": -2,
@@ -1223,7 +1527,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 12,
+      "powerFraction": {
+        "high-strung-na": 0.02,
+        "lazy-na": 0.03,
+        "forced": 0.05
+      },
       "handling": 0,
       "style": 0,
       "reliability": -4,
@@ -1239,7 +1547,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 12,
+      "powerFraction": {
+        "high-strung-na": 0.02,
+        "lazy-na": 0.03,
+        "forced": 0.05
+      },
       "handling": 0,
       "style": 0,
       "reliability": -4,
@@ -1255,7 +1567,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 12,
+      "powerFraction": {
+        "high-strung-na": 0.02,
+        "lazy-na": 0.03,
+        "forced": 0.05
+      },
       "handling": 0,
       "style": 0,
       "reliability": -4,
@@ -1271,7 +1587,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 12,
+      "powerFraction": {
+        "high-strung-na": 0.02,
+        "lazy-na": 0.03,
+        "forced": 0.05
+      },
       "handling": 0,
       "style": 0,
       "reliability": -4,
@@ -1287,7 +1607,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -1303,7 +1627,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -1319,7 +1647,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -1335,7 +1667,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -1351,7 +1687,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 5,
+      "powerFraction": {
+        "high-strung-na": 0.02,
+        "lazy-na": 0.03,
+        "forced": 0.07
+      },
       "handling": 0,
       "style": 0,
       "reliability": -1,
@@ -1370,7 +1710,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 5,
+      "powerFraction": {
+        "high-strung-na": 0.02,
+        "lazy-na": 0.03,
+        "forced": 0.07
+      },
       "handling": 0,
       "style": 0,
       "reliability": -1,
@@ -1389,7 +1733,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 5,
+      "powerFraction": {
+        "high-strung-na": 0.02,
+        "lazy-na": 0.03,
+        "forced": 0.07
+      },
       "handling": 0,
       "style": 0,
       "reliability": -1,
@@ -1408,7 +1756,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 5,
+      "powerFraction": {
+        "high-strung-na": 0.02,
+        "lazy-na": 0.03,
+        "forced": 0.07
+      },
       "handling": 0,
       "style": 0,
       "reliability": -1,
@@ -1427,7 +1779,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 9,
+      "powerFraction": {
+        "high-strung-na": 0.032,
+        "lazy-na": 0.048,
+        "forced": 0.112
+      },
       "handling": 0,
       "style": 0,
       "reliability": -2,
@@ -1446,7 +1802,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 9,
+      "powerFraction": {
+        "high-strung-na": 0.032,
+        "lazy-na": 0.048,
+        "forced": 0.112
+      },
       "handling": 0,
       "style": 0,
       "reliability": -2,
@@ -1465,7 +1825,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 9,
+      "powerFraction": {
+        "high-strung-na": 0.032,
+        "lazy-na": 0.048,
+        "forced": 0.112
+      },
       "handling": 0,
       "style": 0,
       "reliability": -2,
@@ -1484,7 +1848,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 9,
+      "powerFraction": {
+        "high-strung-na": 0.032,
+        "lazy-na": 0.048,
+        "forced": 0.112
+      },
       "handling": 0,
       "style": 0,
       "reliability": -2,
@@ -1503,7 +1871,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 13,
+      "powerFraction": {
+        "high-strung-na": 0.04,
+        "lazy-na": 0.06,
+        "forced": 0.14
+      },
       "handling": 0,
       "style": 0,
       "reliability": -4,
@@ -1522,7 +1894,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 13,
+      "powerFraction": {
+        "high-strung-na": 0.04,
+        "lazy-na": 0.06,
+        "forced": 0.14
+      },
       "handling": 0,
       "style": 0,
       "reliability": -4,
@@ -1541,7 +1917,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 13,
+      "powerFraction": {
+        "high-strung-na": 0.04,
+        "lazy-na": 0.06,
+        "forced": 0.14
+      },
       "handling": 0,
       "style": 0,
       "reliability": -4,
@@ -1560,7 +1940,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 13,
+      "powerFraction": {
+        "high-strung-na": 0.04,
+        "lazy-na": 0.06,
+        "forced": 0.14
+      },
       "handling": 0,
       "style": 0,
       "reliability": -4,
@@ -1579,7 +1963,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -1595,7 +1983,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -1611,7 +2003,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -1627,7 +2023,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -1643,7 +2043,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 4,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": -1,
@@ -1659,7 +2063,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 4,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": -1,
@@ -1675,7 +2083,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 4,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": -1,
@@ -1691,7 +2103,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 4,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": -1,
@@ -1707,7 +2123,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 7,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": -3,
@@ -1723,7 +2143,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 7,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": -3,
@@ -1739,7 +2163,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 7,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": -3,
@@ -1755,7 +2183,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 7,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": -3,
@@ -1771,7 +2203,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 11,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": -5,
@@ -1787,7 +2223,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 11,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": -5,
@@ -1803,7 +2243,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 11,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": -5,
@@ -1819,7 +2263,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 11,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": -5,
@@ -1835,7 +2283,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -1851,7 +2303,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -1867,7 +2323,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -1883,7 +2343,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -1899,7 +2363,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 5,
+      "powerFraction": {
+        "high-strung-na": 0.005,
+        "lazy-na": 0.008,
+        "forced": 0.038
+      },
       "handling": 0,
       "style": 0,
       "reliability": -2,
@@ -1915,7 +2383,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 5,
+      "powerFraction": {
+        "high-strung-na": 0.005,
+        "lazy-na": 0.008,
+        "forced": 0.038
+      },
       "handling": 0,
       "style": 0,
       "reliability": -2,
@@ -1931,7 +2403,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 5,
+      "powerFraction": {
+        "high-strung-na": 0.005,
+        "lazy-na": 0.008,
+        "forced": 0.038
+      },
       "handling": 0,
       "style": 0,
       "reliability": -2,
@@ -1947,7 +2423,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 5,
+      "powerFraction": {
+        "high-strung-na": 0.005,
+        "lazy-na": 0.008,
+        "forced": 0.038
+      },
       "handling": 0,
       "style": 0,
       "reliability": -2,
@@ -1963,7 +2443,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 10,
+      "powerFraction": {
+        "high-strung-na": 0.017,
+        "lazy-na": 0.028,
+        "forced": 0.138
+      },
       "handling": 0,
       "style": 0,
       "reliability": -4,
@@ -1979,7 +2463,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 10,
+      "powerFraction": {
+        "high-strung-na": 0.017,
+        "lazy-na": 0.028,
+        "forced": 0.138
+      },
       "handling": 0,
       "style": 0,
       "reliability": -4,
@@ -1995,7 +2483,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 10,
+      "powerFraction": {
+        "high-strung-na": 0.017,
+        "lazy-na": 0.028,
+        "forced": 0.138
+      },
       "handling": 0,
       "style": 0,
       "reliability": -4,
@@ -2011,7 +2503,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 10,
+      "powerFraction": {
+        "high-strung-na": 0.017,
+        "lazy-na": 0.028,
+        "forced": 0.138
+      },
       "handling": 0,
       "style": 0,
       "reliability": -4,
@@ -2027,7 +2523,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 16,
+      "powerFraction": {
+        "high-strung-na": 0.03,
+        "lazy-na": 0.05,
+        "forced": 0.25
+      },
       "handling": 0,
       "style": 0,
       "reliability": -6,
@@ -2043,7 +2543,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 16,
+      "powerFraction": {
+        "high-strung-na": 0.03,
+        "lazy-na": 0.05,
+        "forced": 0.25
+      },
       "handling": 0,
       "style": 0,
       "reliability": -6,
@@ -2059,7 +2563,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 16,
+      "powerFraction": {
+        "high-strung-na": 0.03,
+        "lazy-na": 0.05,
+        "forced": 0.25
+      },
       "handling": 0,
       "style": 0,
       "reliability": -6,
@@ -2075,7 +2583,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 16,
+      "powerFraction": {
+        "high-strung-na": 0.03,
+        "lazy-na": 0.05,
+        "forced": 0.25
+      },
       "handling": 0,
       "style": 0,
       "reliability": -6,
@@ -2091,7 +2603,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -2107,7 +2623,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -2123,7 +2643,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -2139,7 +2663,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -2155,7 +2683,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 8,
@@ -2171,7 +2703,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 8,
@@ -2187,7 +2723,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 8,
@@ -2203,7 +2743,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 8,
@@ -2219,7 +2763,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 12,
@@ -2235,7 +2783,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 12,
@@ -2251,7 +2803,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 12,
@@ -2267,7 +2823,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 12,
@@ -2283,7 +2843,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 16,
@@ -2299,7 +2863,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 16,
@@ -2315,7 +2883,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 16,
@@ -2331,7 +2903,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 16,
@@ -2347,7 +2923,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -2363,7 +2943,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -2379,7 +2963,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -2395,7 +2983,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -2411,7 +3003,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 20,
+      "powerFraction": {
+        "high-strung-na": 0.066,
+        "lazy-na": 0.092,
+        "forced": 0.116
+      },
       "handling": 0,
       "style": 0,
       "reliability": -5,
@@ -2427,7 +3023,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 20,
+      "powerFraction": {
+        "high-strung-na": 0.066,
+        "lazy-na": 0.092,
+        "forced": 0.116
+      },
       "handling": 0,
       "style": 0,
       "reliability": -5,
@@ -2443,7 +3043,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 20,
+      "powerFraction": {
+        "high-strung-na": 0.066,
+        "lazy-na": 0.092,
+        "forced": 0.116
+      },
       "handling": 0,
       "style": 0,
       "reliability": -5,
@@ -2459,7 +3063,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 20,
+      "powerFraction": {
+        "high-strung-na": 0.066,
+        "lazy-na": 0.092,
+        "forced": 0.116
+      },
       "handling": 0,
       "style": 0,
       "reliability": -5,
@@ -2475,7 +3083,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 30,
+      "powerFraction": {
+        "high-strung-na": 0.134,
+        "lazy-na": 0.188,
+        "forced": 0.235
+      },
       "handling": 0,
       "style": 0,
       "reliability": -8,
@@ -2491,7 +3103,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 30,
+      "powerFraction": {
+        "high-strung-na": 0.134,
+        "lazy-na": 0.188,
+        "forced": 0.235
+      },
       "handling": 0,
       "style": 0,
       "reliability": -8,
@@ -2507,7 +3123,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 30,
+      "powerFraction": {
+        "high-strung-na": 0.134,
+        "lazy-na": 0.188,
+        "forced": 0.235
+      },
       "handling": 0,
       "style": 0,
       "reliability": -8,
@@ -2523,7 +3143,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 30,
+      "powerFraction": {
+        "high-strung-na": 0.134,
+        "lazy-na": 0.188,
+        "forced": 0.235
+      },
       "handling": 0,
       "style": 0,
       "reliability": -8,
@@ -2539,7 +3163,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 45,
+      "powerFraction": {
+        "high-strung-na": 0.2,
+        "lazy-na": 0.28,
+        "forced": 0.35
+      },
       "handling": 0,
       "style": 0,
       "reliability": -15,
@@ -2555,7 +3183,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 45,
+      "powerFraction": {
+        "high-strung-na": 0.2,
+        "lazy-na": 0.28,
+        "forced": 0.35
+      },
       "handling": 0,
       "style": 0,
       "reliability": -15,
@@ -2571,7 +3203,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 45,
+      "powerFraction": {
+        "high-strung-na": 0.2,
+        "lazy-na": 0.28,
+        "forced": 0.35
+      },
       "handling": 0,
       "style": 0,
       "reliability": -15,
@@ -2587,7 +3223,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 45,
+      "powerFraction": {
+        "high-strung-na": 0.2,
+        "lazy-na": 0.28,
+        "forced": 0.35
+      },
       "handling": 0,
       "style": 0,
       "reliability": -15,
@@ -2603,7 +3243,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -2619,7 +3263,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -2635,7 +3283,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -2651,7 +3303,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -2667,7 +3323,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 6,
       "style": 0,
       "reliability": -2,
@@ -2683,7 +3343,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 6,
       "style": 0,
       "reliability": -2,
@@ -2699,7 +3363,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 6,
       "style": 0,
       "reliability": -2,
@@ -2715,7 +3383,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 6,
       "style": 0,
       "reliability": -2,
@@ -2731,7 +3403,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 10,
       "style": 0,
       "reliability": -5,
@@ -2747,7 +3423,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 10,
       "style": 0,
       "reliability": -5,
@@ -2763,7 +3443,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 10,
       "style": 0,
       "reliability": -5,
@@ -2779,7 +3463,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 10,
       "style": 0,
       "reliability": -5,
@@ -2795,7 +3483,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 14,
       "style": 0,
       "reliability": -9,
@@ -2811,7 +3503,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 14,
       "style": 0,
       "reliability": -9,
@@ -2827,7 +3523,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 14,
       "style": 0,
       "reliability": -9,
@@ -2843,7 +3543,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 14,
       "style": 0,
       "reliability": -9,
@@ -2859,7 +3563,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -2875,7 +3583,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -2891,7 +3603,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -2907,7 +3623,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -2923,7 +3643,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 5,
@@ -2942,7 +3666,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 5,
@@ -2961,7 +3689,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 5,
@@ -2980,7 +3712,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 5,
@@ -2999,7 +3735,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 2,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -3018,7 +3758,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 2,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -3037,7 +3781,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 2,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -3056,7 +3804,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 2,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -3075,7 +3827,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 3,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": -5,
@@ -3094,7 +3850,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 3,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": -5,
@@ -3113,7 +3873,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 3,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": -5,
@@ -3132,7 +3896,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 3,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": -5,
@@ -3151,7 +3919,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -3167,7 +3939,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -3183,7 +3959,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -3199,7 +3979,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -3215,7 +3999,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 6,
       "style": 0,
       "reliability": -2,
@@ -3231,7 +4019,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 6,
       "style": 0,
       "reliability": -2,
@@ -3247,7 +4039,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 6,
       "style": 0,
       "reliability": -2,
@@ -3263,7 +4059,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 6,
       "style": 0,
       "reliability": -2,
@@ -3279,7 +4079,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 12,
       "style": 0,
       "reliability": -3,
@@ -3295,7 +4099,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 12,
       "style": 0,
       "reliability": -3,
@@ -3311,7 +4119,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 12,
       "style": 0,
       "reliability": -3,
@@ -3327,7 +4139,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 12,
       "style": 0,
       "reliability": -3,
@@ -3343,7 +4159,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 16,
       "style": 0,
       "reliability": -8,
@@ -3359,7 +4179,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 16,
       "style": 0,
       "reliability": -8,
@@ -3375,7 +4199,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 16,
       "style": 0,
       "reliability": -8,
@@ -3391,7 +4219,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 16,
       "style": 0,
       "reliability": -8,
@@ -3407,7 +4239,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -3423,7 +4259,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -3439,7 +4279,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -3455,7 +4299,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -3471,7 +4319,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 7,
@@ -3490,7 +4342,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 7,
@@ -3509,7 +4365,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 7,
@@ -3528,7 +4388,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 7,
@@ -3547,7 +4411,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 10,
@@ -3566,7 +4434,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 10,
@@ -3585,7 +4457,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 10,
@@ -3604,7 +4480,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 10,
@@ -3623,7 +4503,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 14,
@@ -3642,7 +4526,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 14,
@@ -3661,7 +4549,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 14,
@@ -3680,7 +4572,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 14,
@@ -3699,7 +4595,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -3715,7 +4615,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -3731,7 +4635,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -3747,7 +4655,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -3763,7 +4675,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 3,
       "style": 0,
       "reliability": 12,
@@ -3782,7 +4698,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 3,
       "style": 0,
       "reliability": 12,
@@ -3801,7 +4721,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 3,
       "style": 0,
       "reliability": 12,
@@ -3820,7 +4744,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 3,
       "style": 0,
       "reliability": 12,
@@ -3839,7 +4767,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 5,
       "style": 0,
       "reliability": 17,
@@ -3858,7 +4790,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 5,
       "style": 0,
       "reliability": 17,
@@ -3877,7 +4813,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 5,
       "style": 0,
       "reliability": 17,
@@ -3896,7 +4836,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 5,
       "style": 0,
       "reliability": 17,
@@ -3915,7 +4859,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 8,
       "style": 0,
       "reliability": 22,
@@ -3934,7 +4882,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 8,
       "style": 0,
       "reliability": 22,
@@ -3953,7 +4905,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 8,
       "style": 0,
       "reliability": 22,
@@ -3972,7 +4928,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 8,
       "style": 0,
       "reliability": 22,
@@ -3991,7 +4951,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -4007,7 +4971,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -4023,7 +4991,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -4039,7 +5011,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -4055,7 +5031,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 8,
       "style": 3,
       "reliability": 0,
@@ -4074,7 +5054,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 8,
       "style": 3,
       "reliability": 0,
@@ -4093,7 +5077,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 8,
       "style": 3,
       "reliability": 0,
@@ -4112,7 +5100,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 8,
       "style": 3,
       "reliability": 0,
@@ -4131,7 +5123,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 18,
       "style": 0,
       "reliability": -3,
@@ -4150,7 +5146,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 18,
       "style": 0,
       "reliability": -3,
@@ -4169,7 +5169,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 18,
       "style": 0,
       "reliability": -3,
@@ -4188,7 +5192,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 18,
       "style": 0,
       "reliability": -3,
@@ -4207,7 +5215,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 28,
       "style": 0,
       "reliability": -6,
@@ -4226,7 +5238,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 28,
       "style": 0,
       "reliability": -6,
@@ -4245,7 +5261,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 28,
       "style": 0,
       "reliability": -6,
@@ -4264,7 +5284,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 28,
       "style": 0,
       "reliability": -6,
@@ -4283,7 +5307,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -4299,7 +5327,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -4315,7 +5347,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -4331,7 +5367,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -4347,7 +5387,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 7,
       "style": 0,
       "reliability": -1,
@@ -4366,7 +5410,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 7,
       "style": 0,
       "reliability": -1,
@@ -4385,7 +5433,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 7,
       "style": 0,
       "reliability": -1,
@@ -4404,7 +5456,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 7,
       "style": 0,
       "reliability": -1,
@@ -4423,7 +5479,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 12,
       "style": 0,
       "reliability": -2,
@@ -4442,7 +5502,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 12,
       "style": 0,
       "reliability": -2,
@@ -4461,7 +5525,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 12,
       "style": 0,
       "reliability": -2,
@@ -4480,7 +5548,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 12,
       "style": 0,
       "reliability": -2,
@@ -4499,7 +5571,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 18,
       "style": 0,
       "reliability": -3,
@@ -4518,7 +5594,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 18,
       "style": 0,
       "reliability": -3,
@@ -4537,7 +5617,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 18,
       "style": 0,
       "reliability": -3,
@@ -4556,7 +5640,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 18,
       "style": 0,
       "reliability": -3,
@@ -4575,7 +5663,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -4591,7 +5683,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -4607,7 +5703,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -4623,7 +5723,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -4639,7 +5743,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 7,
       "style": 0,
       "reliability": 0,
@@ -4658,7 +5766,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 7,
       "style": 0,
       "reliability": 0,
@@ -4677,7 +5789,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 7,
       "style": 0,
       "reliability": 0,
@@ -4696,7 +5812,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 7,
       "style": 0,
       "reliability": 0,
@@ -4715,7 +5835,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 12,
       "style": 0,
       "reliability": -1,
@@ -4734,7 +5858,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 12,
       "style": 0,
       "reliability": -1,
@@ -4753,7 +5881,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 12,
       "style": 0,
       "reliability": -1,
@@ -4772,7 +5904,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 12,
       "style": 0,
       "reliability": -1,
@@ -4791,7 +5927,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 17,
       "style": 0,
       "reliability": -2,
@@ -4810,7 +5950,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 17,
       "style": 0,
       "reliability": -2,
@@ -4829,7 +5973,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 17,
       "style": 0,
       "reliability": -2,
@@ -4848,7 +5996,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 17,
       "style": 0,
       "reliability": -2,
@@ -4867,7 +6019,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -4883,7 +6039,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -4899,7 +6059,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -4915,7 +6079,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -4931,7 +6099,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 8,
       "style": 0,
       "reliability": -1,
@@ -4947,7 +6119,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 8,
       "style": 0,
       "reliability": -1,
@@ -4963,7 +6139,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 8,
       "style": 0,
       "reliability": -1,
@@ -4979,7 +6159,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 8,
       "style": 0,
       "reliability": -1,
@@ -4995,7 +6179,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 13,
       "style": 0,
       "reliability": -2,
@@ -5011,7 +6199,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 13,
       "style": 0,
       "reliability": -2,
@@ -5027,7 +6219,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 13,
       "style": 0,
       "reliability": -2,
@@ -5043,7 +6239,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 13,
       "style": 0,
       "reliability": -2,
@@ -5059,7 +6259,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 19,
       "style": 0,
       "reliability": -4,
@@ -5075,7 +6279,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 19,
       "style": 0,
       "reliability": -4,
@@ -5091,7 +6299,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 19,
       "style": 0,
       "reliability": -4,
@@ -5107,7 +6319,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 19,
       "style": 0,
       "reliability": -4,
@@ -5123,7 +6339,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -5139,7 +6359,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -5155,7 +6379,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -5171,7 +6399,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -5187,7 +6419,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 4,
       "style": 0,
       "reliability": 0,
@@ -5206,7 +6442,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 4,
       "style": 0,
       "reliability": 0,
@@ -5225,7 +6465,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 4,
       "style": 0,
       "reliability": 0,
@@ -5244,7 +6488,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 4,
       "style": 0,
       "reliability": 0,
@@ -5263,7 +6511,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 7,
       "style": 0,
       "reliability": -1,
@@ -5282,7 +6534,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 7,
       "style": 0,
       "reliability": -1,
@@ -5301,7 +6557,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 7,
       "style": 0,
       "reliability": -1,
@@ -5320,7 +6580,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 7,
       "style": 0,
       "reliability": -1,
@@ -5339,7 +6603,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 10,
       "style": 0,
       "reliability": -2,
@@ -5358,7 +6626,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 10,
       "style": 0,
       "reliability": -2,
@@ -5377,7 +6649,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 10,
       "style": 0,
       "reliability": -2,
@@ -5396,7 +6672,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 10,
       "style": 0,
       "reliability": -2,
@@ -5415,7 +6695,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -5431,7 +6715,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -5447,7 +6735,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -5463,7 +6755,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -5479,7 +6775,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 5,
       "style": 0,
       "reliability": 0,
@@ -5498,7 +6798,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 5,
       "style": 0,
       "reliability": 0,
@@ -5517,7 +6821,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 5,
       "style": 0,
       "reliability": 0,
@@ -5536,7 +6844,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 5,
       "style": 0,
       "reliability": 0,
@@ -5555,7 +6867,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 12,
       "style": 0,
       "reliability": 0,
@@ -5574,7 +6890,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 12,
       "style": 0,
       "reliability": 0,
@@ -5593,7 +6913,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 12,
       "style": 0,
       "reliability": 0,
@@ -5612,7 +6936,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 12,
       "style": 0,
       "reliability": 0,
@@ -5631,7 +6959,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 12,
       "style": 0,
       "reliability": -3,
@@ -5650,7 +6982,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 12,
       "style": 0,
       "reliability": -3,
@@ -5669,7 +7005,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 12,
       "style": 0,
       "reliability": -3,
@@ -5688,7 +7028,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 12,
       "style": 0,
       "reliability": -3,
@@ -5707,7 +7051,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -5723,7 +7071,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -5739,7 +7091,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -5755,7 +7111,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -5771,7 +7131,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 9,
       "reliability": 0,
@@ -5790,7 +7154,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 9,
       "reliability": 0,
@@ -5809,7 +7177,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 9,
       "reliability": 0,
@@ -5828,7 +7200,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 9,
       "reliability": 0,
@@ -5847,7 +7223,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 4,
       "style": 15,
       "reliability": 0,
@@ -5866,7 +7246,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 4,
       "style": 15,
       "reliability": 0,
@@ -5885,7 +7269,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 4,
       "style": 15,
       "reliability": 0,
@@ -5904,7 +7292,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 4,
       "style": 15,
       "reliability": 0,
@@ -5923,7 +7315,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 4,
       "style": 20,
       "reliability": 0,
@@ -5942,7 +7338,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 4,
       "style": 20,
       "reliability": 0,
@@ -5961,7 +7361,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 4,
       "style": 20,
       "reliability": 0,
@@ -5980,7 +7384,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 4,
       "style": 20,
       "reliability": 0,
@@ -5999,7 +7407,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -6015,7 +7427,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -6031,7 +7447,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -6047,7 +7467,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -6063,7 +7487,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -6079,7 +7507,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -6095,7 +7527,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -6111,7 +7547,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -6127,7 +7567,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": -2,
@@ -6143,7 +7587,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": -2,
@@ -6159,7 +7607,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": -2,
@@ -6175,7 +7627,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": -2,
@@ -6191,7 +7647,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": -5,
@@ -6207,7 +7667,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": -5,
@@ -6223,7 +7687,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": -5,
@@ -6239,7 +7707,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": -5,
@@ -6255,7 +7727,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -6271,7 +7747,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -6287,7 +7767,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -6303,7 +7787,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -6321,7 +7809,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -6339,7 +7831,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -6357,7 +7853,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -6375,7 +7875,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -6393,7 +7897,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -6411,7 +7919,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -6429,7 +7941,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -6447,7 +7963,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -6465,7 +7985,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -6483,7 +8007,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -6501,7 +8029,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -6519,7 +8051,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -6537,7 +8073,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -6555,7 +8095,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -6573,7 +8117,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -6591,7 +8139,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -6609,7 +8161,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -6627,7 +8183,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -6645,7 +8205,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -6663,7 +8227,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -6680,7 +8248,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 2,
       "style": 7,
       "reliability": 0,
@@ -6697,7 +8269,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 2,
       "style": 7,
       "reliability": 0,
@@ -6714,7 +8290,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 2,
       "style": 7,
       "reliability": 0,
@@ -6731,7 +8311,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 2,
       "style": 7,
       "reliability": 0,
@@ -6748,7 +8332,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 3,
       "style": 11,
       "reliability": -1,
@@ -6765,7 +8353,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 3,
       "style": 11,
       "reliability": -1,
@@ -6782,7 +8374,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 3,
       "style": 11,
       "reliability": -1,
@@ -6799,7 +8395,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 3,
       "style": 11,
       "reliability": -1,
@@ -6816,7 +8416,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 5,
       "style": 16,
       "reliability": -3,
@@ -6833,7 +8437,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 5,
       "style": 16,
       "reliability": -3,
@@ -6850,7 +8458,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 5,
       "style": 16,
       "reliability": -3,
@@ -6867,7 +8479,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 5,
       "style": 16,
       "reliability": -3,
@@ -6883,7 +8499,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -6899,7 +8519,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -6915,7 +8539,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -6931,7 +8559,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -6947,7 +8579,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -6963,7 +8599,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -6979,7 +8619,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -6995,7 +8639,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -7012,7 +8660,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 11,
       "reliability": 0,
@@ -7029,7 +8681,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 11,
       "reliability": 0,
@@ -7046,7 +8702,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 11,
       "reliability": 0,
@@ -7063,7 +8723,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 11,
       "reliability": 0,
@@ -7080,7 +8744,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 4,
       "style": 10,
       "reliability": 0,
@@ -7097,7 +8765,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 4,
       "style": 10,
       "reliability": 0,
@@ -7114,7 +8786,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 4,
       "style": 10,
       "reliability": 0,
@@ -7131,7 +8807,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 4,
       "style": 10,
       "reliability": 0,
@@ -7148,7 +8828,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 9,
       "style": 8,
       "reliability": 0,
@@ -7165,7 +8849,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 9,
       "style": 8,
       "reliability": 0,
@@ -7182,7 +8870,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 9,
       "style": 8,
       "reliability": 0,
@@ -7199,7 +8891,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 9,
       "style": 8,
       "reliability": 0,
@@ -7215,7 +8911,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -7231,7 +8931,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -7247,7 +8951,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -7263,7 +8971,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -7279,7 +8991,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 10,
       "reliability": 0,
@@ -7296,7 +9012,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 10,
       "reliability": 0,
@@ -7313,7 +9033,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 10,
       "reliability": 0,
@@ -7330,7 +9054,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 10,
       "reliability": 0,
@@ -7347,7 +9075,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 5,
       "style": 18,
       "reliability": 0,
@@ -7364,7 +9096,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 5,
       "style": 18,
       "reliability": 0,
@@ -7381,7 +9117,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 5,
       "style": 18,
       "reliability": 0,
@@ -7398,7 +9138,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 5,
       "style": 18,
       "reliability": 0,
@@ -7415,7 +9159,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 15,
       "style": 30,
       "reliability": -5,
@@ -7432,7 +9180,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 15,
       "style": 30,
       "reliability": -5,
@@ -7449,7 +9201,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 15,
       "style": 30,
       "reliability": -5,
@@ -7466,7 +9222,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 15,
       "style": 30,
       "reliability": -5,
@@ -7483,7 +9243,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -7499,7 +9263,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -7515,7 +9283,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -7531,7 +9303,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -7547,7 +9323,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 9,
       "reliability": -1,
@@ -7566,7 +9346,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 9,
       "reliability": -1,
@@ -7585,7 +9369,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 9,
       "reliability": -1,
@@ -7604,7 +9392,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 9,
       "reliability": -1,
@@ -7623,7 +9415,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 13,
       "reliability": 0,
@@ -7642,7 +9438,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 13,
       "reliability": 0,
@@ -7661,7 +9461,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 13,
       "reliability": 0,
@@ -7680,7 +9484,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 13,
       "reliability": 0,
@@ -7699,7 +9507,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 4,
       "style": 18,
       "reliability": 0,
@@ -7718,7 +9530,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 4,
       "style": 18,
       "reliability": 0,
@@ -7737,7 +9553,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 4,
       "style": 18,
       "reliability": 0,
@@ -7756,7 +9576,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 4,
       "style": 18,
       "reliability": 0,
@@ -7775,7 +9599,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -7791,7 +9619,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -7807,7 +9639,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -7823,7 +9659,11 @@
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 0,
       "reliability": 0,
@@ -7839,7 +9679,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 5,
       "reliability": 0,
@@ -7855,7 +9699,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 5,
       "reliability": 0,
@@ -7871,7 +9719,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 5,
       "reliability": 0,
@@ -7887,7 +9739,11 @@
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 5,
       "reliability": 0,
@@ -7903,7 +9759,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 8,
       "reliability": -1,
@@ -7919,7 +9779,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 8,
       "reliability": -1,
@@ -7935,7 +9799,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 8,
       "reliability": -1,
@@ -7951,7 +9819,11 @@
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 8,
       "reliability": -1,
@@ -7967,7 +9839,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 11,
       "reliability": -2,
@@ -7983,7 +9859,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 11,
       "reliability": -2,
@@ -7999,7 +9879,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 11,
       "reliability": -2,
@@ -8015,7 +9899,11 @@
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
-      "power": 0,
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
       "handling": 0,
       "style": 11,
       "reliability": -2,

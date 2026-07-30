@@ -496,24 +496,279 @@ happen quietly; do not re-pin it before the sign-off is recorded.
 
 ## Definition of done
 
-- [ ] Levers 1 to 5 signed and recorded in this doc.
-- [ ] `EngineCharacter` vocabulary; `engineCharacterOf` and `specificOutputOf` exported from sim.
-- [ ] All 26 cars' characters pinned in a test.
-- [ ] `powerFraction` is a per-character object and `statModifiers.power` no longer exists.
-- [ ] All 472 SKUs authored; `fuelSystem` and `clutch` zero everywhere.
-- [ ] Every car reaches its character's multiple of its own stock power; the per-car table pinned.
-- [ ] Power is order-independent, proved with strict equality.
-- [ ] A race ECU is worth about ten times as much on a turbo as on a high-strung NA car.
-- [ ] `forcedInduction` is linear, pinned, and provably not yet increasing.
-- [ ] No sim source file reads `spec.aspiration`, proved structurally.
-- [ ] `gradeFactors` is per-slot with a default; only `ignitionEcu` carries its own entry.
+- [x] Levers 1 to 5 signed and recorded in this doc.
+- [x] `EngineCharacter` vocabulary; `engineCharacterOf` and `specificOutputOf` exported from sim.
+- [x] All 26 cars' characters pinned in a test.
+- [x] `powerFraction` is a per-character object and `statModifiers.power` no longer exists.
+- [x] All 472 SKUs authored; `fuelSystem` and `clutch` zero everywhere.
+- [x] Every car reaches its character's multiple of its own stock power; the per-car table pinned.
+- [x] Power is order-independent, proved with strict equality.
+- [x] A race ECU is worth about ten times as much on a turbo as on a high-strung NA car.
+- [x] `forcedInduction` is linear, pinned, and provably not yet increasing.
+- [x] No sim source file reads `spec.aspiration`, proved structurally.
+- [x] `gradeFactors` is per-slot with a default; only `ignitionEcu` carries its own entry.
 - [ ] Climbing a grade ladder provably never improves yen per PS, on every power slot, class and
-      character, with the measured table reported.
-- [ ] The two Sprint 132 catalogue invariants still hold against the new resolution.
-- [ ] `harnessAcceptance.test.ts` passes untouched.
-- [ ] Economy gate and the `partPricing.json` guard both re-pinned with the sign-off.
-- [ ] Checks run once each, output shown.
+      character, with the measured table reported. **NOT SATISFIED as a data property**: 52 of
+      288 measured cases exceed the rule-5 ceiling (max 1.335x, all on the four linear-curve
+      slots' street rung plus one `block/sport` boundary case). The measured table is reported
+      (Exit); the test itself still passes on a looser bound that predates this finding. Open
+      finding for the maintainer, not resolved this sprint - see Exit.
+- [x] The two Sprint 132 catalogue invariants still hold against the new resolution.
+- [x] `harnessAcceptance.test.ts` passes untouched.
+- [x] Economy gate and the `partPricing.json` guard both re-pinned with the sign-off.
+- [x] Checks run once each, output shown. (Narrowed per standing maintainer directive - see Exit.)
 
 ## Exit
 
-_To be completed at the end of the sprint._
+**Status: implemented and verified, with one open finding for the maintainer. Ready for review.**
+Everything is built, tested, and pinned as designed, EXCEPT: measurement found rule 5 ("climbing
+a ladder never improves value per yen") genuinely violated on 52 of 288 real cases - see
+"Assumptions and interpretation calls" below for the full numbers. Nothing was changed to hide or
+work around it; it is reported, not fixed, pending a maintainer decision on whether it needs its
+own lever (most likely candidate: the four linear-curve slots earning their own price ladder, the
+same treatment `ignitionEcu` already got).
+
+### What changed, file by file
+
+- `packages/content/src/tags.ts` - `EngineCharacterSchema` (`high-strung-na` / `lazy-na` /
+  `forced`) and its inferred type, with the derivation and rotary-factor rule documented at the
+  vocabulary.
+- `packages/content/src/stats.ts` - split the old dual-purpose `StatModifierSchema` in two:
+  `StatWeightsSchema` (taxonomy condition weights, unchanged five-number shape) and
+  `StatModifierSchema` (a part's own deltas: `handling`/`style`/`reliability`/`authenticity` plus
+  the new `powerFraction` object, `power` removed). Added `PowerFractionSchema` and exported
+  `StatWeights`/`PowerFraction` types.
+- `packages/content/src/carPart.ts` - `CarPartTaxonomyEntryContentSchema.statWeights` repointed
+  at `StatWeightsSchema`.
+- `packages/content/src/economy.ts` - `statFormulas.engineCharacter.naHighStrungThreshold` added
+  to `EconomyConfigSchema`.
+- `packages/content/data/economy.json` - the threshold value, `80.0`.
+- `packages/content/src/partPricing.ts` - `gradeFactors` changed from a bare four-key object to
+  `GradeFactorsSchema` (`ByCarPartIdGradeFactorsSchema` extended with a mandatory `default`);
+  added `gradeFactorsFor(carPartId, gradeFactors)` (exported, used by both `resolvePartPriceYen`
+  and the test suite) resolving a slot's own ladder or falling back to `default`.
+- `packages/content/data/partPricing.json` - `gradeFactors.default` carries the unchanged
+  `1 / 1.3 / 2 / 3`; `gradeFactors.ignitionEcu` is new at `1 / 1.30 / 4.77 / 8.67`.
+- `packages/sim/src/derivedStats.ts` - added `specificOutputOf(model)` and
+  `engineCharacterOf(model, economy)` (exported); `computeDerivedStats` resolves the character
+  once before the part loop and the part-loop power line became
+  `power += model.spec.stockPowerPs * part.statModifiers.powerFraction[engineCharacter] * wear`.
+  Added `hasForcedInduction` to the existing `./bands` import (the sprint doc's claim that it was
+  already imported was stale - it was not, and the first test run caught it immediately).
+- `packages/content/data/parts.json` - all 472 SKUs: `statModifiers.power` removed,
+  `statModifiers.powerFraction` added (a scripted, mechanical rewrite - see "Pins re-derived"
+  below for how the values were computed and verified).
+- `packages/content/data/storyMissions.json` - four mission requirement thresholds and three
+  mission payout/budget pairs moved as measured consequences of the power and price changes (full
+  list under "Pins re-derived").
+- `packages/content/tests/economyApprovalGate.test.ts` - both content hashes re-pinned, the
+  mission-payouts pin updated, and a new ledger paragraph recording all five levers by name and
+  value plus every downstream mission movement.
+- `packages/content/tests/partPricing.test.ts` - added the per-slot ladder resolution tests and
+  the value-per-yen rule test (Task 8 items 13-14).
+- `packages/content/tests/powerFraction.test.ts` - new file, catalogue completeness (Task 8 item
+  12).
+- `packages/sim/tests/engineCharacter.test.ts` - new file, the character derivation, both
+  rotaries, the flagship ECU case, and the Lever 4 grade shapes (Task 8 items 6-11).
+- `packages/sim/tests/proportionalPower.test.ts` - new file, the ratio property, the exact
+  per-character cap, the per-car pinned table, order independence, and band scaling (Task 8 items
+  1-5).
+- `packages/sim/tests/derivedStats.test.ts`, `packages/sim/tests/marketValue.test.ts`,
+  `packages/game/src/stores/gameStore.garage.test.ts`,
+  `packages/game/src/stores/gameStore.market.test.ts` - existing fixtures/filters updated for the
+  schema change (hand-written `Part` literals need a `powerFraction` object now; the two
+  "find a real power part" filters switched from `part.statModifiers.power <= 0` to a
+  powerFraction-based check).
+- `packages/game/src/screens/PartsMarketScreen.vue` - `statSummary`'s power column removed. Power
+  is no longer a flat per-part number; this generic, car-agnostic catalogue listing has no car in
+  view to resolve a `powerFraction` against, so showing nothing is more honest than showing a
+  fraction. Flagged under "Outstanding" below.
+- `TODO.md` - removed the resolved "aftermarket power ladder is additive" entry, replaced the
+  `street-power-street-manners` power-floor note (no longer blocked on the ladder-shape decision),
+  and updated the tuning-arc status line to record sprint 135 as built.
+
+### Engine character per car, and the resulting maximal parts-only power multiplier
+
+All 26 shipped cars, character and stock-to-maximal PS (race grade throughout, `forcedInduction`
+included only when the car already has it from the factory - see `proportionalPower.test.ts`):
+
+| car | character | stock PS | maximal PS | multiple |
+| --- | --- | ---: | ---: | ---: |
+| Honda City E (AA) | lazy-na | 63 | 99 | x1.57 |
+| Nissan Sunny (B12) | lazy-na | 85 | 133 | x1.57 |
+| Toyota Carina (AT150) | lazy-na | 83 | 130 | x1.57 |
+| Toyota Sera (EXY10) | lazy-na | 109 | 171 | x1.57 |
+| Honda Prelude Si VTEC (BB4) | lazy-na | 162 | 254 | x1.57 |
+| Suzuki Wagon R (CT21S) | high-strung-na | 55 | 79 | x1.43 |
+| Toyota Sprinter Trueno (AE86) | high-strung-na | 130 | 186 | x1.43 |
+| Honda Beat (PP1) | high-strung-na | 64 | 92 | x1.43 |
+| Honda CR-X SiR (EF8) | high-strung-na | 160 | 229 | x1.43 |
+| Honda Civic SiR-II (EG6) | high-strung-na | 170 | 243 | x1.43 |
+| Nissan 180SX (RPS13) | forced | 157 | 306 | x1.95 |
+| Toyota Chaser Tourer V (JZX90) | forced | 280 | 546 | x1.95 |
+| Nissan Silvia K's (S14) | forced | 220 | 429 | x1.95 |
+| Mazda Savanna RX-7 (FC3S) | forced | 203 | 396 | x1.95 |
+| Mazda RX-7 (FD3S) | forced | 255 | 497 | x1.95 |
+| Toyota Supra RZ (JZA80) | forced | 324 | 632 | x1.95 |
+| Suzuki Alto Works (HA21S) | forced | 64 | 125 | x1.95 |
+| Honda City Turbo II (AA) | forced | 110 | 215 | x1.95 |
+| Nissan Silvia (S13) | forced | 175 | 341 | x1.95 |
+| Toyota MR2 (SW20) | forced | 244 | 476 | x1.95 |
+| Nissan Cefiro (A31) | forced | 205 | 400 | x1.95 |
+| Subaru Impreza WRX STI (GC8) | forced | 250 | 488 | x1.95 |
+| Nissan Skyline GT-R (BNR32) | forced | 280 | 546 | x1.95 |
+| Nissan Fairlady Z (Z32) | forced | 280 | 546 | x1.95 |
+| Toyota Aristo 3.0V (JZS147) | forced | 324 | 632 | x1.95 |
+| Toyota MR2 (AW11) | forced | 147 | 287 | x1.95 |
+
+10 NA cars (5 lazy, 5 high-strung), 16 forced - matches the roster survey exactly. Both sanity
+targets hold (Beat 97.6 PS/L high-strung, Carina 57.2 PS/L lazy), and the Prelude Si VTEC reads
+`lazy-na` at 75.1 PS/L as signed. Every maximal-build figure above is pinned by
+`proportionalPower.test.ts`, computed via the real `computeDerivedStats`, not hand-derived.
+
+### The ECU price ladder, before and after, and the largest single movement
+
+The default ladder (`stock 1 / street 1.3 / sport 2 / race 3`) is unchanged and still applies to
+every slot except `ignitionEcu`. `ignitionEcu`'s own new ladder:
+
+| grade | old factor | new factor |
+| --- | ---: | ---: |
+| stock | 1 | 1 (unchanged) |
+| street | 1.3 | 1.30 (unchanged) |
+| sport | 2 | 4.77 |
+| race | 3 | 8.67 |
+
+Resolved catalogue prices (computed from the real `baseCostYen.ignitionEcu` (28,000) x
+`classFactors` x the grade factor above, rounded to the nearest Y100 exactly as
+`resolvePartPriceYen` does):
+
+| class | grade | old price | new price | delta |
+| --- | --- | ---: | ---: | ---: |
+| flagship | race | Y75,600 | **Y218,500** | **+Y142,900** |
+| flagship | sport | Y50,400 | Y120,200 | +Y69,800 |
+| enthusiast | race | Y33,600 | Y97,100 | +Y63,500 |
+| enthusiast | sport | Y22,400 | Y53,400 | +Y31,000 |
+| everyday | race | Y13,400 | Y38,800 | +Y25,400 |
+| entry | race | Y11,800 | Y34,000 | +Y22,200 |
+| everyday | sport | Y9,000 | Y21,400 | +Y12,400 |
+| entry | sport | Y7,800 | Y18,700 | +Y10,900 |
+| every class | stock/street | unchanged | unchanged | 0 |
+
+**The largest single price movement in the catalogue is the flagship race ECU: Y75,600 to
+Y218,500, +Y142,900 (+189%).** One number differs from the sprint doc's own illustrative text,
+which states Y218,400 for this same SKU: the real formula (`28,000 x 0.9 x 8.67`, rounded to the
+nearest Y100) resolves to Y218,500, a Y100 rounding difference from the doc's prose. Not a defect
+in the shipped ladder - the doc's number was illustrative, the signed LEVER is the factor table
+(`1.30 / 4.77 / 8.67`), and that is what is pinned in content and in
+`partPricing.test.ts`/`economyApprovalGate.test.ts`.
+
+### Pins re-derived (directive 17 case (a) throughout - every one a mechanical consequence of an approved lever, none a new decision)
+
+| file | field | old | new | reason |
+| --- | --- | --- | --- | --- |
+| `economy.json` | approval-gate sha256 | `138109cc...` | `d5fd4a87...` | `statFormulas.engineCharacter` is new content |
+| `partPricing.json` | approval-gate sha256 | `6c0e3cf2...` | `24955b9a...` | `gradeFactors` restructured (per-slot + `ignitionEcu` ladder) |
+| `storyMissions.json` | `make-it-pull` power floor | 191 | 173 | `floor90` of the freshly measured probe build's power under the new formula |
+| `storyMissions.json` | `the-column-clock` lap ceiling | 125 | 125.7 | `ceil1AtTwoPercentSlower` of the fresh lap time (intake/exhaust power moved) |
+| `storyMissions.json` | `under-one-fifteen` lap ceiling | 114.9 | 113.5 | `ceil1AtTwoPercentSlower` of the fresh lap time |
+| `storyMissions.json` | `street-power-street-manners` tuner taste-match floor | 0.97 | 0.98 | `round2At97Percent` of the fresh taste ratio |
+| `storyMissions.json` | `make-it-pull` payout/budget | 756,000 | 772,000 | probe build's sport-grade `ignitionEcu` costs more under Lever 5; `payoutYenFor`/`budgetCapYenFor` recomputed |
+| `storyMissions.json` | `street-power-street-manners` payout/budget | 952,000 | 992,000 | same reason (sport-grade `ignitionEcu`) |
+| `storyMissions.json` | `under-one-fifteen` payout/budget | 1,653,000 | 1,693,000 | same reason (sport-grade `ignitionEcu`) |
+
+Every one of these was read off a real, fresh `storyMissionProbes.test.ts` run (never hand-picked,
+never iterated toward a pass) and is recorded in `economyApprovalGate.test.ts`'s ledger comment.
+`the-column-clock`'s probe never touches `ignitionEcu`, so its payout held unchanged; its lap
+ceiling still moved because its probe fits sport intake/exhaust, which are power slots whose
+fraction values changed under the new formula.
+
+Not re-pinned, deliberately: `street-power-street-manners`'s hand-set PROVISIONAL power floor
+(180) - it is not a `floor90(measured)` pin, is not on this sprint's approved lever list, and the
+probe build clears it with real margin either way. Flagged in `TODO.md`.
+
+### Checks run, exact final lines
+
+Per the maintainer's standing speed directive (overriding Task 9's literal
+`pnpm test --project sim` / `pnpm test --project content` instruction): ran every touched or
+plausibly-affected file individually, plus the full content project once (cheap, and the sprint
+touches enough content files to warrant it). Never ran the full sim project or bare `pnpm test`.
+
+- `pnpm test packages/sim/tests/proportionalPower.test.ts packages/sim/tests/engineCharacter.test.ts` -> `Test Files 2 passed (2)  Tests 168 passed (168)`
+- `pnpm test packages/sim/tests/derivedStats.test.ts packages/sim/tests/marketValue.test.ts` -> `Test Files 2 passed (2)  Tests 37 passed (37)`
+- `pnpm test packages/sim/tests/harnessAcceptance.test.ts` -> `Test Files 1 passed (1)  Tests 27 passed (27)` (untouched, as required)
+- `pnpm test packages/game/src/stores/gameStore.garage.test.ts packages/game/src/stores/gameStore.market.test.ts` -> `Test Files 2 passed (2)  Tests 25 passed (25)`
+- `pnpm test packages/content/tests/partPricing.test.ts packages/content/tests/powerFraction.test.ts` -> `Test Files 2 passed (2)  Tests 308 passed (308)`
+- `pnpm test --project content` (first run, before the comment-hygiene and hash fixes) -> `Test Files 2 failed | 19 passed (21)  Tests 3 failed | 470 passed (473)`
+- `pnpm test packages/content/tests/commentHygieneGuard.test.ts` (after stripping "Sprint 135"
+  mentions from new comments - the guard bans sprint numbers in comments everywhere except its own
+  two exempt files, and eleven new comments had tripped it) -> `Test Files 1 passed (1)  Tests 1 passed (1)`
+- `pnpm test packages/sim/tests/storyMissionProbes.test.ts` (first run, diagnosing the four
+  moved thresholds) -> `Test Files 1 failed (1)  Tests 4 failed | 15 passed (19)`
+- `pnpm test packages/sim/tests/storyMissionProbes.test.ts` (after re-pinning thresholds,
+  diagnosing the three moved payouts) -> `Test Files 1 failed (1)  Tests 3 failed | 16 passed (19)`
+- `pnpm test packages/sim/tests/storyMissionProbes.test.ts` (after re-pinning payouts) ->
+  `Test Files 1 passed (1)  Tests 19 passed (19)`
+- `pnpm test packages/content/tests/economyApprovalGate.test.ts` (after re-pinning both hashes
+  and the mission-payouts object) -> `Test Files 1 passed (1)  Tests 3 passed (3)`
+- `pnpm test --project content` (final) -> `Test Files 21 passed (21)  Tests 473 passed (473)`
+
+### Assumptions and interpretation calls
+
+- **Task 8 item 13, corrected: rule 5 (`docs/sprints/tuning-arc.md`, "climbing a ladder never
+  improves value per yen") is VIOLATED on real, shipped content, and this is a disclosed open
+  finding, not a resolved test.** The original version of this test used a symmetric bound
+  (0.5x-2.0x of the race rung's yen-per-PS) on the reasoning that a diminishing power curve
+  legitimately makes a cheaper rung BETTER value than race (true, and fine - that is rule 5
+  working correctly, since climbing does not IMPROVE value there, it costs more for proportionally
+  less). That reasoning does not cover the other direction. Read strictly, rule 5 says
+  normalized-yen-per-PS (indexed to race = 1.00) must never exceed 1.00 anywhere: any grade
+  costing MORE per PS than race means climbing UP to race is a better buy than the cheaper
+  grade, which is the same defect the old `ignitionEcu` had, just smaller.
+
+  Measured directly against the real resolved catalogue (288 cases: 8 power slots x 4 classes x
+  3 characters x up to 3 non-stock grades): **maximum normalized value is 1.335**
+  (`internals/entry/high-strung-na/street`), minimum is 0.717 (`intake/everyday/lazy-na/street`,
+  legitimate diminishing-returns territory), and **52 of 288 cases exceed 1.00**. Every one of
+  the 52 is the STREET rung (plus four `block/sport` cases at 1.026, a rounding-boundary
+  overshoot) of the four LINEAR-power-curve slots that still resolve the DEFAULT price ladder:
+  `internals/street` (12 cases, 1.273-1.335), `forcedInduction/street` (12, 1.306-1.321),
+  `camsTiming/street` (12, 1.266-1.323), `block/street` (12, 1.237-1.301), `block/sport` (4,
+  1.026, `forced` character only). Every other slot/grade combination (`headValvetrain`,
+  `exhaust`, `intake`, `ignitionEcu` at every grade; the four linear slots at sport/race other
+  than the one boundary case) never exceeds 1.00.
+
+  **Nothing was changed in response to this finding.** Per standing instruction, a value or lever
+  is never adjusted to make a test pass, and the test's bound was not loosened or tightened either
+  - `partPricing.test.ts` still runs the original 0.5x/2.0x symmetric check (passing, since 1.335
+  is inside 2.0x), which is now known to be the wrong shape for rule 5 and does not itself enforce
+  the strict `<= 1.00` ceiling. This is flagged to the maintainer as a real, signed-content finding:
+  the four linear-curve slots' street rung is priced as a mediocre buy relative to race, by design
+  intent unclear - whether the fix is those four slots getting their own price ladder (the Lever 5
+  treatment `ignitionEcu` already got) is exactly the kind of specific, named lever this sprint's
+  process exists to route to the maintainer rather than deciding unilaterally.
+- **`specificOutputOf` returns `NaN` when `displacementCc` is absent**, rather than a defined
+  fallback number - the sprint doc only specifies `engineCharacterOf`'s own fallback (`lazy-na`),
+  and `specificOutputOf` has exactly one caller in this codebase, which guards the absence itself.
+  Unreachable on all 26 shipped cars (pinned).
+- **`PartsMarketScreen.vue`'s per-part badge no longer shows a power figure at all.** Not in the
+  task list, but the field it read (`statModifiers.power`) no longer exists, and there is no
+  honest single number to substitute in a car-agnostic catalogue listing. A vehicle-aware power
+  readout (resolving `powerFraction` against whichever car the market's own vehicle filter has
+  selected) is a natural follow-up, not scoped here.
+- **The `String`-keyed `PARTS.find` lookups in the new test files assume the catalogue carries
+  exactly one SKU per (carPartId, grade, fitmentClass, zoneId undefined)** - true today (Sprint
+  132's own invariant), and the tests would throw loudly (not silently mis-measure) if that ever
+  stopped holding.
+
+### Outstanding / deferred (unchanged from the sprint doc's own accepted list)
+
+- The three consequences accepted at sign-off (the x1.43/x1.57/x1.95 ceiling being low on the
+  RB26 and 2JZ specifically, the Prelude reading lazy, and the ECU getting substantially dearer)
+  all measured exactly as signed - see the tables above.
+- `forcedInduction`'s power curve stays linear; making it increasing is Sprint 137's job, hard-
+  gated behind the support-ratio mechanism, and nothing in this sprint moves it.
+- `forcedInduction` keeps the DEFAULT price ladder this sprint, per the doc's own rule that a
+  slot's price ladder moves in the same sprint as its power curve - it lands with Sprint 137.
+- The `street-power-street-manners` power-floor question (still hand-set at 180) is now
+  decoupled from the ladder-shape decision but not itself re-examined - noted in `TODO.md` for
+  whoever next revisits mission thresholds.

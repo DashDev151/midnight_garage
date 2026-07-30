@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { CarPartIdSchema, ComponentIdSchema } from './tags'
-import { StatModifierSchema } from './stats'
+import { StatWeightsSchema } from './stats'
 
 /**
  * How much this part's condition band degrades each physical dial of the
@@ -38,11 +38,12 @@ export type DepthClass = z.infer<typeof DepthClassSchema>
  * One entry in the 29-part taxonomy - the fixed structural mapping from a
  * real car part to its group, display name, and repair economics.
  *
- * `statWeights` reuses `StatModifierSchema`'s shape but means something
- * different here than it does on `Part`: not a delta a part applies when
- * installed, but how much this part's condition band contributes to each
- * derived stat - the same five-key shape fits either meaning, so this is
- * deliberate reuse rather than a parallel schema.
+ * `statWeights` is `StatWeightsSchema`: not a delta a part applies when
+ * installed (`Part.statModifiers`), but how much this part's condition band
+ * contributes to each derived stat. The two schemas shared one shape until
+ * `statModifiers.power` went proportional and became a per-character
+ * object - a condition weight is still one plain number per stat, so they
+ * split rather than forcing power's new shape onto this meaning too.
  *
  * `forcedInduction` is the one part whose presence on a given car is
  * conditional - every other part is always present on every car.
@@ -77,7 +78,7 @@ export const CarPartTaxonomyEntryContentSchema = z.object({
    * `gearbox`, so the gearbox must come off first. Defaults to none: most
    * slots block nothing. */
   blockedBy: z.array(CarPartIdSchema).default([]),
-  statWeights: StatModifierSchema,
+  statWeights: StatWeightsSchema,
   /** This part's pull on each physical dial of the performance model - see
    * `PhysicalWeightsSchema`. Omitted on the parts that move no dial, which
    * resolves to zero weight everywhere. */

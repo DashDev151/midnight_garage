@@ -74,6 +74,71 @@ const ByGradeFactorSchema = z.object({
 })
 
 /**
+ * The grade ladder, per `CarPartId`, with a mandatory `default` every slot
+ * without its own entry falls back to. Explicit optional per-part keys (not a
+ * bare `z.record`) so a typo'd id fails validation rather than silently
+ * creating an orphaned ladder nothing resolves to.
+ *
+ * A slot earns its own entry only when its price ladder must track a power
+ * curve that is not the default's near-linear 1 / 1.3 / 2 / 3 shape - the
+ * rule this schema exists to enforce: **a slot's price ladder moves in the
+ * same change as its power curve, so climbing a ladder never improves value
+ * per yen.** `ignitionEcu` is the one slot that needs it today (a threshold
+ * power curve against the flat default ladder made the street rung nearly
+ * three times worse value than the race one); every other power slot's
+ * curve is close enough to the default shape that it stays on it.
+ */
+const ByCarPartIdGradeFactorsSchema = z.object({
+  block: ByGradeFactorSchema.optional(),
+  internals: ByGradeFactorSchema.optional(),
+  headValvetrain: ByGradeFactorSchema.optional(),
+  camsTiming: ByGradeFactorSchema.optional(),
+  intake: ByGradeFactorSchema.optional(),
+  exhaust: ByGradeFactorSchema.optional(),
+  fuelSystem: ByGradeFactorSchema.optional(),
+  ignitionEcu: ByGradeFactorSchema.optional(),
+  cooling: ByGradeFactorSchema.optional(),
+  forcedInduction: ByGradeFactorSchema.optional(),
+  gearbox: ByGradeFactorSchema.optional(),
+  clutch: ByGradeFactorSchema.optional(),
+  differential: ByGradeFactorSchema.optional(),
+  driveline: ByGradeFactorSchema.optional(),
+  chassis: ByGradeFactorSchema.optional(),
+  dampers: ByGradeFactorSchema.optional(),
+  springs: ByGradeFactorSchema.optional(),
+  antiRollBars: ByGradeFactorSchema.optional(),
+  steering: ByGradeFactorSchema.optional(),
+  brakePadsDiscs: ByGradeFactorSchema.optional(),
+  brakeCalipersLines: ByGradeFactorSchema.optional(),
+  rims: ByGradeFactorSchema.optional(),
+  tyres: ByGradeFactorSchema.optional(),
+  panels: ByGradeFactorSchema.optional(),
+  paint: ByGradeFactorSchema.optional(),
+  underbody: ByGradeFactorSchema.optional(),
+  aero: ByGradeFactorSchema.optional(),
+  seats: ByGradeFactorSchema.optional(),
+  dashGauges: ByGradeFactorSchema.optional(),
+})
+
+export const GradeFactorsSchema = ByCarPartIdGradeFactorsSchema.extend({
+  default: ByGradeFactorSchema,
+})
+
+export type GradeFactors = z.infer<typeof GradeFactorsSchema>
+type GradeFactorLadder = z.infer<typeof ByGradeFactorSchema>
+
+/** `carPartId`'s own ladder if the sheet carries one, otherwise the sheet's
+ * `default` ladder - the one place this resolution happens. Keyed on the
+ * SKU's SLOT (`carPartId`), never its price basis: a zone-panel SKU prices
+ * off a different yen base but still climbs its own slot's grade ladder. */
+export function gradeFactorsFor(
+  carPartId: CarPartId,
+  gradeFactors: GradeFactors,
+): GradeFactorLadder {
+  return gradeFactors[carPartId] ?? gradeFactors.default
+}
+
+/**
  * Every catalog SKU's price resolves from these five knobs, not from a
  * hand-authored `priceYen` field - a whole-market rebalance is a handful of
  * multiplications, never a mass content edit. `overrides` ships EMPTY; every
@@ -82,7 +147,7 @@ const ByGradeFactorSchema = z.object({
 export const PartPricingSheetSchema = z.object({
   baseCostYen: ByPriceBasisIdPriceSchema,
   classFactors: ByFitmentClassFactorSchema,
-  gradeFactors: ByGradeFactorSchema,
+  gradeFactors: GradeFactorsSchema,
   globalFactor: z.number().positive(),
   overrides: z.record(z.string(), z.number().int().nonnegative()).default({}),
 })
@@ -116,10 +181,8 @@ export function resolvePartPriceYen(
   if (baseCostYen === undefined) {
     throw new Error(`resolvePartPriceYen: no price basis "${basisId}" in the pricing sheet`)
   }
+  const gradeFactor = gradeFactorsFor(entry.carPartId, sheet.gradeFactors)[entry.grade]
   const raw =
-    baseCostYen *
-    sheet.classFactors[entry.fitmentClass] *
-    sheet.gradeFactors[entry.grade] *
-    sheet.globalFactor
+    baseCostYen * sheet.classFactors[entry.fitmentClass] * gradeFactor * sheet.globalFactor
   return Math.round(raw / 100) * 100
 }

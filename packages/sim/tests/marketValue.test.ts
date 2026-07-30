@@ -295,7 +295,13 @@ describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
       fitmentClass: 'flagship',
       grade: 'street',
       requiredTags: [],
-      statModifiers: { power: 0, handling: 8, style: 3, reliability: 0, authenticity: 0 },
+      statModifiers: {
+        powerFraction: { 'high-strung-na': 0, 'lazy-na': 0, forced: 0 },
+        handling: 8,
+        style: 3,
+        reliability: 0,
+        authenticity: 0,
+      },
       physicalModifiers: { grip: 1, braking: 1, mass: 1 },
       priceYen: 100_000,
     }
@@ -386,7 +392,13 @@ describe('installedPartsValueYen', () => {
     fitmentClass: 'flagship',
     grade: 'street',
     requiredTags: [],
-    statModifiers: { power: 0, handling: 8, style: 3, reliability: 0, authenticity: 0 },
+    statModifiers: {
+      powerFraction: { 'high-strung-na': 0, 'lazy-na': 0, forced: 0 },
+      handling: 8,
+      style: 3,
+      reliability: 0,
+      authenticity: 0,
+    },
     physicalModifiers: { grip: 1, braking: 1, mass: 1 },
     priceYen: 100_000,
   }
@@ -551,7 +563,13 @@ describe('marketValueYen scales the aftermarket premium by foundationFactor (Spr
     fitmentClass: 'flagship',
     grade: 'race',
     requiredTags: [],
-    statModifiers: { power: 20, handling: 0, style: 4, reliability: -4, authenticity: 0 },
+    statModifiers: {
+      powerFraction: { 'high-strung-na': 0.02, 'lazy-na': 0.03, forced: 0.05 },
+      handling: 0,
+      style: 4,
+      reliability: -4,
+      authenticity: 0,
+    },
     physicalModifiers: { grip: 1, braking: 1, mass: 1 },
     priceYen: 260_000,
   }

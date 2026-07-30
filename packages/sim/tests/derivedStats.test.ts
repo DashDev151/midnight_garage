@@ -39,7 +39,13 @@ const coilovers: Part = {
   fitmentClass: 'entry',
   grade: 'street',
   requiredTags: [],
-  statModifiers: { power: 0, handling: 8, style: 3, reliability: 0, authenticity: 0 },
+  statModifiers: {
+    powerFraction: { 'high-strung-na': 0, 'lazy-na': 0, forced: 0 },
+    handling: 8,
+    style: 3,
+    reliability: 0,
+    authenticity: 0,
+  },
   physicalModifiers: { grip: 1, braking: 1, mass: 1 },
   priceYen: 70_000,
 }
@@ -116,11 +122,20 @@ describe('computeDerivedStats', () => {
   })
 
   it('power never goes negative even with a large negative part modifier', () => {
+    // `model` has no `displacementCc`, so it derives `lazy-na` (Task 1's
+    // documented fallback) - the fraction below is authored against that
+    // character, deliberately many multiples of stock power to prove the floor.
     const brokenPart: Part = {
       ...coilovers,
       id: 'broken-engine-part',
       carPartId: 'block',
-      statModifiers: { power: -500, handling: 0, style: 0, reliability: 0, authenticity: 0 },
+      statModifiers: {
+        powerFraction: { 'high-strung-na': 0, 'lazy-na': -10, forced: 0 },
+        handling: 0,
+        style: 0,
+        reliability: 0,
+        authenticity: 0,
+      },
     }
     const instance: CarInstance = {
       ...baseInstance,
@@ -145,7 +160,13 @@ describe('computeDerivedStats', () => {
     const modifiedPart: Part = {
       ...coilovers,
       id: 'race-coilovers',
-      statModifiers: { power: 0, handling: 20, style: 0, reliability: 0, authenticity: -15 },
+      statModifiers: {
+        powerFraction: { 'high-strung-na': 0, 'lazy-na': 0, forced: 0 },
+        handling: 20,
+        style: 0,
+        reliability: 0,
+        authenticity: -15,
+      },
     }
     const instance: CarInstance = {
       ...baseInstance,

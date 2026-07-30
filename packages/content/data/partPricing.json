@@ -38,10 +38,18 @@
     "flagship": 0.9
   },
   "gradeFactors": {
-    "stock": 1,
-    "street": 1.3,
-    "sport": 2,
-    "race": 3
+    "default": {
+      "stock": 1,
+      "street": 1.3,
+      "sport": 2,
+      "race": 3
+    },
+    "ignitionEcu": {
+      "stock": 1,
+      "street": 1.3,
+      "sport": 4.77,
+      "race": 8.67
+    }
   },
   "globalFactor": 1,
   "overrides": {}

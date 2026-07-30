@@ -118,6 +118,25 @@ export const PhysicalDialSchema = z.enum(['grip', 'braking', 'driveline', 'aero'
 export const GradeSchema = z.enum(['stock', 'street', 'sport', 'race'])
 
 /**
+ * A car's engine response, derived from its own spec rather than authored
+ * (`engineCharacterOf`, `packages/sim/src/derivedStats.ts`) - what an
+ * aftermarket power part's fraction resolves against
+ * (`StatModifierSchema.powerFraction`). `forced` wins outright from
+ * `hasForcedInduction`; otherwise the car's specific output (stock PS per
+ * effective litre) is compared against
+ * `economy.statFormulas.engineCharacter.naHighStrungThreshold` to split the
+ * naturally aspirated field into `high-strung-na` and `lazy-na`.
+ *
+ * Effective displacement applies a 1.8x equivalency factor to a rotary's
+ * literal cc figure before the specific-output comparison - a 13B is 1308cc
+ * by convention but breathes like roughly 2.6 litres, so without the factor
+ * every rotary reads as implausibly high-strung. The factor is moot on every
+ * shipped rotary today (both are factory turbo, so `forced` wins first), but
+ * it is what keeps the comparison honest for a naturally aspirated rotary.
+ */
+export const EngineCharacterSchema = z.enum(['high-strung-na', 'lazy-na', 'forced'])
+
+/**
  * The tyre compound tier a car's grip is computed from - the stock fitment's
  * chemistry tier, plus the higher tiers a fitted aftermarket tyre reaches.
  * `slick` is reached only by a fitted race tyre, never a stock fitment.
@@ -171,6 +190,7 @@ export type CarPartId = z.infer<typeof CarPartIdSchema>
 export type ConditionBand = z.infer<typeof ConditionBandSchema>
 export type PhysicalDial = z.infer<typeof PhysicalDialSchema>
 export type Grade = z.infer<typeof GradeSchema>
+export type EngineCharacter = z.infer<typeof EngineCharacterSchema>
 export type TyreCompound = z.infer<typeof TyreCompoundSchema>
 export type CarTier = z.infer<typeof CarTierSchema>
 export type CarRarity = z.infer<typeof CarRaritySchema>

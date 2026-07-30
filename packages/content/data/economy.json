@@ -128,6 +128,9 @@
   },
   "statFormulas": {
     "powerConditionFloor": 0.5,
+    "engineCharacter": {
+      "naHighStrungThreshold": 80.0
+    },
     "styleCap": 20,
     "reliabilityCap": 70,
     "powerNormalizationCeiling": 300,

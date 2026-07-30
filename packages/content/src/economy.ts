@@ -702,6 +702,20 @@ export const EconomyConfigSchema = z.object({
     /** Power at 0 engine condition, as a fraction of stock power (floor);
      * scales linearly up to 1.0 (full stock power) at 100 condition. */
     powerConditionFloor: z.number().min(0).max(1),
+    /**
+     * What splits the naturally aspirated field into the two NA engine
+     * characters (`engineCharacterOf`, sim/derivedStats.ts). A car with
+     * forced induction reads `forced` outright, before this threshold is
+     * ever consulted; otherwise its specific output (stock PS per effective
+     * litre, rotary displacement scaled 1.8x) is compared against this
+     * value - at or above it the engine is `high-strung-na`, below it
+     * `lazy-na`. At 80.0: the Honda Beat (97.6 PS/L) reads high-strung and
+     * the Toyota Carina (57.2 PS/L) reads lazy, the two required sanity
+     * targets.
+     */
+    engineCharacter: z.object({
+      naHighStrungThreshold: z.number().positive(),
+    }),
     /** Style's cap at 100 body condition. */
     styleCap: z.number().positive(),
     /** Reliability's cap at 100 average engine+drivetrain condition. */

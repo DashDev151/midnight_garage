@@ -119,7 +119,10 @@ describe('garage: instant part install', () => {
       | { partId: string; componentId: ComponentId; carPartId: CarPartId; modelId: string }
       | undefined
     for (const part of PARTS) {
-      if (part.statModifiers.power <= 0) continue
+      // Any nonzero powerFraction (for any engine character) marks a real
+      // power part - the fraction is authored per character, but every
+      // power slot's non-stock SKU carries a positive value on all three.
+      if (Object.values(part.statModifiers.powerFraction).every((v) => v === 0)) continue
       // An assembly member (block/internals, rims/tyres, gearbox/clutch) never
       // comes off the car per-part, so `removePart` can no longer open its slot
       // for this generic install mechanic. Pick a per-part-removable

@@ -6,11 +6,12 @@ import {
   type CarPartTaxonomyEntry,
   type ConditionBand,
   type EconomyConfig,
+  type EngineCharacter,
   type Part,
   type PhysicalDial,
   type StatBlock,
 } from '@midnight-garage/content'
-import { bandFactor, isPartMissing, isPartPresent } from './bands'
+import { bandFactor, hasForcedInduction, isPartMissing, isPartPresent } from './bands'
 import {
   balanceOf,
   effectiveCompound,
@@ -165,6 +166,50 @@ export function buildFactors(
 }
 
 /**
+ * PS per litre of EFFECTIVE displacement - stock power divided by
+ * displacement, a rotary's literal cc scaled 1.8x first (the equivalency
+ * factor motorsport bodies use for exactly this comparison: a 13B is 1308cc
+ * by convention but breathes like roughly 2.6 litres, and without the factor
+ * every rotary reads as implausibly high-strung). Exported because the dyno
+ * screen displays this figure directly and must not recompute it.
+ *
+ * `displacementCc` is optional on `spec`; this returns `NaN` when it is
+ * absent; `engineCharacterOf` below is the one caller in this codebase and
+ * guards the absence itself rather than trusting this return value.
+ */
+export function specificOutputOf(model: CarModel): number {
+  const { stockPowerPs, displacementCc, engineConfig } = model.spec
+  if (displacementCc === undefined) return NaN
+  const isRotary = engineConfig?.startsWith('rotary') ?? false
+  const effectiveDisplacementCc = displacementCc * (isRotary ? 1.8 : 1.0)
+  return stockPowerPs / (effectiveDisplacementCc / 1000)
+}
+
+/**
+ * A car's engine response character, resolved once per car (never once per
+ * part) and consumed by every installed SKU's `powerFraction` in the part
+ * loop below. `hasForcedInduction` decides outright - a car with forced
+ * induction is `forced` regardless of specific output. Otherwise the split
+ * is `specificOutputOf` against
+ * `economy.statFormulas.engineCharacter.naHighStrungThreshold`.
+ *
+ * Two content gaps are handled as absence, not thrown: `engineConfig`
+ * missing reads as non-rotary (only relevant while forced induction is
+ * false, since `hasForcedInduction` never reads it), and `displacementCc`
+ * missing returns `lazy-na` outright, before a specific output is even
+ * computed. Every shipped car carries `displacementCc`, so this fallback is
+ * unreachable in shipped content - a test pins that rather than assuming it.
+ */
+export function engineCharacterOf(model: CarModel, economy: EconomyConfig): EngineCharacter {
+  if (hasForcedInduction(model)) return 'forced'
+  if (model.spec.displacementCc === undefined) return 'lazy-na'
+  const specificOutput = specificOutputOf(model)
+  return specificOutput >= economy.statFormulas.engineCharacter.naHighStrungThreshold
+    ? 'high-strung-na'
+    : 'lazy-na'
+}
+
+/**
  * Transparent linear formula (GDD 4.2: "no hidden math the player can't
  * reason about"). `partsById` resolves each installed PartInstance's
  * statModifiers from the parts catalog - sim has no data loader of its
@@ -200,9 +245,17 @@ export function computeDerivedStats(
 ): StatBlock {
   const { powerConditionFloor, styleCap, reliabilityCap, grip, aero } = economy.statFormulas
 
-  const powerFraction = weightedBandFactorForStat(instance, model, 'power', partsTaxonomy, economy)
-  const powerConditionScale = powerConditionFloor + (1 - powerConditionFloor) * powerFraction
+  const powerConditionFraction = weightedBandFactorForStat(
+    instance,
+    model,
+    'power',
+    partsTaxonomy,
+    economy,
+  )
+  const powerConditionScale =
+    powerConditionFloor + (1 - powerConditionFloor) * powerConditionFraction
   let power = model.spec.stockPowerPs * powerConditionScale
+  const engineCharacter = engineCharacterOf(model, economy)
 
   const handlingFraction = weightedBandFactorForStat(
     instance,
@@ -246,7 +299,7 @@ export function computeDerivedStats(
     if (!part) continue
 
     const wear = bandFactor(installed.band, economy)
-    power += part.statModifiers.power * wear
+    power += model.spec.stockPowerPs * part.statModifiers.powerFraction[engineCharacter] * wear
     handling += part.statModifiers.handling * wear
     style += part.statModifiers.style * wear
     reliability += part.statModifiers.reliability * wear

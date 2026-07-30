@@ -344,7 +344,9 @@ describe('market: buying parts', () => {
       | { partId: string; componentId: ComponentId; carPartId: CarPartId; modelId: string }
       | undefined
     for (const part of PARTS) {
-      if (part.statModifiers.power <= 0) continue
+      // Any nonzero powerFraction (for any engine character) marks a real
+      // power part - see the identical filter in gameStore.garage.test.ts.
+      if (Object.values(part.statModifiers.powerFraction).every((v) => v === 0)) continue
       const model = CARS.find(
         (c) =>
           fitmentClassForTier(c.tier) === part.fitmentClass &&

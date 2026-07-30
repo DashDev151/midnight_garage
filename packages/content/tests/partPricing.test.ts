@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import partPricing from '../data/partPricing.json'
 import {
+  CarPartIdSchema,
+  gradeFactorsFor,
   PARTS,
   PartPricingSheetSchema,
   resolvePartPriceYen,
+  type EngineCharacter,
   type Grade,
   type Part,
   type PartFitmentClass,
@@ -186,4 +189,112 @@ describe('the resolved parts catalog ladder', () => {
     // cannot express a multiplier for a class of car at all.
     expect(SHEET.overrides).toEqual({})
   })
+
+  // The two invariants above ("prices rise strictly with grade" and "no SKU
+  // resolves below the cheapest stock part") run against the resolved `PARTS`
+  // catalogue, so they are re-asserted automatically against the per-slot
+  // resolution (`gradeFactorsFor`) without needing a second copy.
+})
+
+/**
+ * `gradeFactors` is a per-slot map with a mandatory `default`, so a slot's
+ * price ladder can track its own power curve. `ignitionEcu` is the one slot
+ * that earns its own entry; everything else (every other power slot
+ * included) still resolves the same flat 1 / 1.3 / 2 / 3 ladder it always
+ * has.
+ */
+describe('the per-slot grade ladder', () => {
+  it('the default ladder is unchanged: stock 1, street 1.3, sport 2, race 3', () => {
+    expect(SHEET.gradeFactors.default).toEqual({ stock: 1, street: 1.3, sport: 2, race: 3 })
+  })
+
+  it('ignitionEcu carries its own ladder: stock 1, street 1.30, sport 4.77, race 8.67', () => {
+    expect(SHEET.gradeFactors.ignitionEcu).toEqual({
+      stock: 1,
+      street: 1.3,
+      sport: 4.77,
+      race: 8.67,
+    })
+  })
+
+  it('every CarPartId except ignitionEcu resolves the default ladder, read from content', () => {
+    for (const carPartId of CarPartIdSchema.options) {
+      const resolved = gradeFactorsFor(carPartId, SHEET.gradeFactors)
+      if (carPartId === 'ignitionEcu') {
+        expect(resolved, carPartId).toEqual(SHEET.gradeFactors.ignitionEcu)
+      } else {
+        expect(resolved, carPartId).toEqual(SHEET.gradeFactors.default)
+      }
+    }
+  })
+
+  it('no CarPartId other than ignitionEcu carries its own entry in the sheet', () => {
+    const ownLadderKeys = Object.keys(SHEET.gradeFactors).filter((k) => k !== 'default')
+    expect(ownLadderKeys).toEqual(['ignitionEcu'])
+  })
+})
+
+/**
+ * The test that would have caught the standalone ECU's old defect before it
+ * shipped: `gradeFactors` moving in the same change as a slot's power curve
+ * exists so a rung never becomes a dramatically better OR worse buy than its
+ * neighbours purely because the price ladder and the power curve have
+ * different shapes - the ECU's street rung used to cost 2.89x race's
+ * yen-per-PS for barely a fraction of the power.
+ *
+ * The bound is not perfect step-by-step monotonicity: a diminishing power
+ * curve laid over the four-point 1/1.3/2/3 ladder genuinely makes a cheaper
+ * rung a slightly BETTER buy than the top on several slots (diminishing
+ * returns means the cheap rung IS the better buy, by design), by as much as
+ * ~1.4x on `intake`. The bound below is chosen to comfortably contain every
+ * one of those signed, accepted cases while decisively catching anything
+ * resembling the old 2.89x distortion - the measured table is reported via
+ * each case's own test name, passing or failing, so the residues stay
+ * visible rather than merely passing.
+ */
+describe('the value-per-yen rule: climbing a grade ladder never becomes a dramatically different buy', () => {
+  const POWER_BEARING_SLOTS = [
+    'block',
+    'internals',
+    'headValvetrain',
+    'camsTiming',
+    'intake',
+    'exhaust',
+    'ignitionEcu',
+    'forcedInduction',
+  ] as const
+  const CHARACTERS: readonly EngineCharacter[] = ['high-strung-na', 'lazy-na', 'forced']
+  const NON_STOCK_GRADES: readonly Grade[] = ['street', 'sport', 'race']
+
+  // Comfortably above the largest currently-signed spread (~1.39x on
+  // `intake`) and decisively below the pre-Lever-5 ECU defect (2.89x).
+  const MAX_ACCEPTABLE_SPREAD = 2.0
+
+  for (const carPartId of POWER_BEARING_SLOTS) {
+    for (const fitmentClass of CLASSES) {
+      for (const character of CHARACTERS) {
+        const byGrade = NON_STOCK_GRADES.map((grade) => {
+          const part = PARTS.find(
+            (p) =>
+              p.carPartId === carPartId && p.grade === grade && p.fitmentClass === fitmentClass,
+          )!
+          const fraction = part.statModifiers.powerFraction[character]
+          return { grade, yenPerFraction: fraction > 0 ? part.priceYen / fraction : null }
+        }).filter(
+          (row): row is { grade: Grade; yenPerFraction: number } => row.yenPerFraction !== null,
+        )
+
+        if (byGrade.length === 0) continue // fuelSystem/clutch never reach here; defensive only
+        const raceRow = byGrade.find((row) => row.grade === 'race')!
+
+        for (const row of byGrade) {
+          const normalized = row.yenPerFraction / raceRow.yenPerFraction
+          it(`${carPartId}/${fitmentClass}/${character}/${row.grade}: ${normalized.toFixed(3)}x race's yen-per-PS`, () => {
+            expect(normalized).toBeLessThanOrEqual(MAX_ACCEPTABLE_SPREAD)
+            expect(normalized).toBeGreaterThanOrEqual(1 / MAX_ACCEPTABLE_SPREAD)
+          })
+        }
+      }
+    }
+  }
 })

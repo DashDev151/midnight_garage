@@ -388,6 +388,62 @@ import storyMissions from '../data/storyMissions.json'
  * -> 484000. Each budget cap moves with its own payout, holding the one-price contract.
  * Every figure is what `storyMissionProbes`'s own `payoutYenFor` rule yields against a
  * fresh measurement, never hand-picked.
+ *
+ * Re-pinned 2026-07-29 (maintainer approval, in session: "Levers 1 to 4 approved
+ * exactly as written", lever 5 added the same day) for `docs/sprints/sprint135.md`,
+ * proportional power replacing the flat additive ladder. Five levers, each approved by
+ * name and value:
+ *
+ * 1. `statFormulas.engineCharacter.naHighStrungThreshold` - NEW, 80.0 PS per effective
+ *    litre. Splits a naturally aspirated car into `high-strung-na` or `lazy-na`;
+ *    forced-induction cars read `forced` outright regardless of this value.
+ * 2. Race-grade `statModifiers.powerFraction`, per engine character, on the eight
+ *    power-bearing engine slots (block, internals, headValvetrain, camsTiming, intake,
+ *    exhaust, ignitionEcu, forcedInduction) - the full 8x3 table is authored directly
+ *    in `parts.json` and pinned by `packages/sim/tests/proportionalPower.test.ts` and
+ *    `packages/sim/tests/engineCharacter.test.ts`. No `powerReferencePs` and nothing
+ *    converted from the old ladder.
+ * 3. `fuelSystem` and `clutch` carry `powerFraction` 0.000 at every grade and every
+ *    character - the two pure enablers never partly pay for the gain their own slot
+ *    demands.
+ * 4. The grade shape per category (street/sport as a fraction of race): block,
+ *    internals, camsTiming and forcedInduction linear (0.33 / 0.67 / 1.00);
+ *    headValvetrain mildly diminishing (0.45 / 0.75); exhaust diminishing (0.50 / 0.80);
+ *    intake strongly diminishing (0.60 / 0.85); ignitionEcu threshold-shaped
+ *    (0.15 / 0.55). `forcedInduction` is deliberately linear for now; an increasing
+ *    curve is hard-gated behind the support-ratio mechanism and lands separately.
+ * 5. `partPricing.json`'s `gradeFactors` becomes a per-slot map with a `default` entry
+ *    (the unchanged 1 / 1.3 / 2 / 3), plus a dedicated `ignitionEcu` ladder of
+ *    1 / 1.30 / 4.77 / 8.67 - lever 4 gave the ECU a threshold-shaped power curve, and
+ *    without its own price ladder the street rung was 2.89x worse value per horsepower
+ *    than the race rung, making the top rung the only sensible buy. Every other power
+ *    slot's curve stays close enough to the default shape that it is not given its own
+ *    entry this sprint.
+ *
+ * `statModifiers.power` (the old flat PS delta) is removed from the schema and from all
+ * 472 SKUs in the same change, per the sprint's own rule that a missing SKU then fails
+ * schema validation rather than silently becoming a near-zero part.
+ *
+ * What moves as a MECHANICAL CONSEQUENCE of lever 5, not as an independent decision:
+ * every mission whose probe build fits a non-stock `ignitionEcu` gets a dearer probe
+ * (the ECU's sport and race rungs cost substantially more under the new ladder), so its
+ * formula-derived payout/budget cap moves with it, exactly as every other formula-
+ * derived payout in this ledger always has. Re-derived from a fresh
+ * `storyMissionProbes.test.ts` run, never hand-picked: `make-it-pull` 756000 -> 772000,
+ * `street-power-street-manners` 952000 -> 992000, `under-one-fifteen` 1653000 ->
+ * 1693000. `the-column-clock`'s probe never touches `ignitionEcu`, so its payout is
+ * unchanged.
+ *
+ * The proportional power change itself also moves four formula-derived STAT
+ * THRESHOLDS in `storyMissions.json` (not gated by this hash, but recorded here as the
+ * same class of mechanical re-derivation): `make-it-pull`'s power floor 191 -> 173 PS
+ * (`floor90` of the freshly measured probe build), `the-column-clock`'s lap ceiling
+ * 125 -> 125.7s and `under-one-fifteen`'s 114.9 -> 113.5s (both `ceil1AtTwoPercentSlower`
+ * of the fresh lap time), and `street-power-street-manners`'s tuner taste-match floor
+ * 0.97 -> 0.98 (`round2At97Percent` of the fresh taste ratio). Each is exactly what
+ * `storyMissionProbes.test.ts`'s own fixed formula yields against the new power
+ * figures, never hand-picked; `street-power-street-manners`'s hand-set power floor
+ * (180, PROVISIONAL) is untouched, since it was never a `floor90(measured)` pin.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -397,7 +453,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('138109cc5f69548d7752a198fb84f72ad20fec9d38a650c1fba5a3260e6a1db0')
+    ).toBe('d5fd4a8718e3bcd3ed5724d55995339c1c1186b5137eea81a6c5e028ef8826ae')
   })
 
   it('partPricing.json matches its approved content exactly', () => {
@@ -409,7 +465,7 @@ describe('the economy approval gate', () => {
         'class factors, grade factors, the global factor and the overrides map are all ' +
         'approval-gated (CLAUDE.md directive 22). Re-pin this hash ONLY in the same ' +
         'change as the recorded approval of the specific lever and value.',
-    ).toBe('6c0e3cf239f48a373dc2c0389a8e6cf788786f917deee97cfc2fbf918ac4b0eb')
+    ).toBe('24955b9abaac94a1bacaa16bf554655de3a14d3b2cf14e8de8110300a30bb630')
   })
 
   it('mission payouts and budget caps match their approved values exactly', () => {
@@ -427,11 +483,11 @@ describe('the economy approval gate', () => {
       'four-wheels': { payoutYen: 142000, budgetCapYen: 142000 },
       'wont-strand-her': { payoutYen: 156000, budgetCapYen: 156000 },
       'first-proper-car': { payoutYen: 687000, budgetCapYen: 687000 },
-      'make-it-pull': { payoutYen: 756000, budgetCapYen: 756000 },
+      'make-it-pull': { payoutYen: 772000, budgetCapYen: 772000 },
       'the-column-clock': { payoutYen: 1000000, budgetCapYen: 1000000 },
       'low-and-loud': { payoutYen: 1162000, budgetCapYen: 1162000 },
-      'street-power-street-manners': { payoutYen: 952000, budgetCapYen: 952000 },
-      'under-one-fifteen': { payoutYen: 1653000, budgetCapYen: 1653000 },
+      'street-power-street-manners': { payoutYen: 992000, budgetCapYen: 992000 },
+      'under-one-fifteen': { payoutYen: 1693000, budgetCapYen: 1693000 },
       'the-fleet-spare': { payoutYen: 484000, budgetCapYen: 484000 },
       'the-showroom-standard': { payoutYen: 704000, budgetCapYen: 704000 },
     })
