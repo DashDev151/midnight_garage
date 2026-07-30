@@ -63,6 +63,18 @@ rather than 472 SKUs.
 error, its old key is silently stripped at parse. Any content schema this rework touches gets
 `.strict()`.
 
+**D6. `coherence.ts` hand-builds three probe cars as literals, and they can go stale.**
+`buildWorstCaseRawCar`, `buildRoughProbeCar` and `buildCleanProbeCar` each construct a full
+`CarInstance` by hand. Every new per-car field must be added to all three or they fail to
+typecheck, and worse, a field that merely *changes meaning* leaves them silently wrong while
+still compiling. These probes are the economy-bible's Law 1 to Law 4 guards, so a stale probe
+means the balance checks are measuring a car the game no longer generates.
+
+**Maintainer instruction, 2026-07-30, explicit and unconditional: make the probe cars read from
+live data so they cannot go stale.** They should be derived from real content and the real
+generation path, not authored as literals beside it. This is a standing hazard rather than a
+sale-value problem, so it can be fixed immediately and does not need to wait for S1.
+
 ---
 
 ## 3. Gap register
@@ -107,22 +119,45 @@ error, its old key is silently stripped at parse. Any content schema this rework
 
 ---
 
-## 4. Two rulings needed before any code
+## 4. The two blocking rulings, both now settled
 
-**R1. What is the campaign's time axis?** `currentGameYear(reputationTier) = 1995 + 2 ×
-reputationTierIndex`. **The in-game year advances with reputation, not with days.** A player who
-stalls never leaves 1995.
+### R1. The campaign runs on elapsed time, through a content curve — SETTLED 2026-07-30
 
-This blocks value keyframes, era events and seasonal presence, all three. It also interacts
-badly with this design specifically: **the dodgy player has low standing by construction and
-would be frozen in 1995 permanently.** Options are elapsed days, reputation tier, or a new
-independent clock. Nothing dated can be authored until this is settled.
+`currentGameYear(reputationTier) = 1995 + 2 × reputationTierIndex` derived the in-game year from
+reputation, so a player who stalled never left 1995 and **the dodgy player, who has low standing
+by construction, would have been frozen there permanently.**
 
-**R2. A directive 20 carve-out for typecheck.** The `PartsMarketScreen` failure was **cadence,
-not a missing guard**: `pnpm typecheck` is whole-program, compiles every `.vue` template, and
-caught the bug instantly the one time it ran. Nine commits landed on narrow test runs before
-anyone pushed. Proposed rule: **any task that retires, renames or reshapes a schema field runs
-`pnpm typecheck` before it reports.** Narrowest possible carve-out, cheapest stage of the gate.
+**The ruling: pure elapsed time.** But not a fixed 365 days to the year, because a real career
+is a few hundred days and the decade would never arrive. Instead:
+
+- **A `campaignYearCurve` in content**, mapping elapsed days to an in-game year, exactly the
+  shape of `mileageFactorCurve`. `interpolateCurve` in `marketValue.ts` already reads curves of
+  that form, so this is a reuse rather than a new primitive.
+- **Era events pin to a YEAR**, and the curve decides when that arrives in days. Campaign
+  length becomes one signed lever instead of a code change.
+- **Seasons run on their own fixed cycle**, independent of the compressed year. Tying them to
+  it would make winter twelve days long, and "stancers thin in winter" would mean nothing.
+
+`currentGameYear` is rewritten to read elapsed days through the curve, and its reputation
+argument is deleted rather than left ignored (guard G1).
+
+### R2. A directive 20 carve-out for typecheck — SETTLED 2026-07-30, CLAUDE.md amended
+
+The `PartsMarketScreen` failure was **cadence, not a missing guard**: `pnpm typecheck` is
+whole-program, compiles every `.vue` template, and caught the bug instantly the one time it ran.
+Nine commits landed on narrow test runs before anyone pushed.
+
+**Any task that retires, renames or reshapes a schema field or an exported symbol runs
+`pnpm typecheck` before it reports.** Narrowest possible carve-out, cheapest stage of the gate,
+and it licenses nothing else.
+
+### Parking is a capital cost, with the recurring pressure on capacity — SETTLED 2026-07-30
+
+Bays stay a **once-off purchase**, and **each bay permanently raises weekly rent**. A
+per-car-per-week holding fee would double-charge, because a held car already costs the player
+the bay it occupies. This way unused capacity bleeds every week, a held car costs the thing you
+would otherwise put there, and the fiction is honest: you rent the premises, and a bigger yard
+costs more.
 
 ---
 
@@ -238,6 +273,15 @@ here and nothing here depends on them.
 
 **So the tuning arc completes as 140, 141, 142**, with 138 and 139 closed, and this plan runs
 after or alongside.
+
+**Numbering.** The tuning arc occupies 134 to 142. **This arc is sprints 143 to 155**, and it is
+the larger of the two: the tuning arc rebuilt what a part DOES, and this one rebuilds what that
+is WORTH, how long it takes to sell and what it says about the shop. It does not replace the
+tuning arc, it consumes its output — Stage C and D read the `coherenceFactor` that Sprint 136
+built, and none of this would work without it.
+
+**One task jumps the queue.** D6, making `coherence.ts`'s probe cars read live data, is a
+standing hazard rather than a sale-value problem and should be fixed immediately, ahead of S1.
 
 ---
 
