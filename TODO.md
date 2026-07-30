@@ -743,6 +743,20 @@ pass."
   sentimental one. It is also the purpose tool tier 3 lacks: `repairBandCeilingByTier` is
   `{1: fine, 2: mint, 3: mint}`, so tier 3 today buys nothing at all over tier 2.
 
+  **A lever is already sitting in `economy.json` waiting for this, and it must NOT be deleted as
+  dead code (maintainer, 2026-07-30).** `valuation.expectationByTier.flagship.beyondDiscount` is
+  1.3, the return on work done BEYOND a car's expected condition band. A flagship's expected band
+  is `mint`, and `billAboveYen` is computed as `billToMintYen - billToExpectedBandYen`, so for a
+  flagship that subtraction is always zero and the 1.3 multiplies nothing. It reads like a live
+  knob and currently does nothing at all.
+
+  **It is a placeholder, not a mistake.** `mint` is the top REPAIR band, so nothing can sit above
+  it today, but machining is precisely a route to a part that exceeds its own original
+  specification, which is an above-mint state. When machining lands, that lever becomes live and
+  flagships gain the one thing their expectation currently forbids: somewhere to spend past
+  perfect. Whoever picks machining up owns making `billAboveYen` reachable for a flagship; until
+  then the value stays where it is, recorded here so nobody prunes it.
+
   It is an acquisition path, not a new axis (section 4b): one SKU in one slot, no third
   property on a part, no second condition model, no new job system, and deterministic by
   design (you pay, you wait, you get the part; machining risk is the first thing a future
