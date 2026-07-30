@@ -11,7 +11,7 @@ import {
   type PhysicalDial,
   type StatBlock,
 } from '@midnight-garage/content'
-import { bandFactor, hasForcedInduction, isPartMissing, isPartPresent } from './bands'
+import { bandFactor, bandIndex, hasForcedInduction, isPartMissing, isPartPresent } from './bands'
 import {
   balanceOf,
   effectiveCompound,
@@ -22,6 +22,7 @@ import {
   type BuildFactors,
   type ConditionFactors,
 } from './performance'
+import { supportVerdict } from './support'
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value))
@@ -210,14 +211,69 @@ export function engineCharacterOf(model: CarModel, economy: EconomyConfig): Engi
 }
 
 /**
+ * The worst band among the taxonomy's reliability-bearing parts - the ones
+ * that carry a non-zero `statWeights.reliability`, read from content rather
+ * than a hand-written list, because those are exactly the parts that stop
+ * the car (`economy.json`'s `statFormulas.condition.reliabilityCeiling` doc
+ * comment). A MISSING part counts as `scrap`, matching `weightedBandFactor`'s
+ * existing treatment of a missing part as a 0 band factor; a legitimately
+ * absent slot (an NA car's empty `forcedInduction`) is not missing and is
+ * skipped rather than counted. Defaults to `mint` when nothing on the car
+ * carries the weight, so an all-absent case never reads worse than perfect.
+ */
+function worstReliabilityBand(
+  car: CarInstance,
+  model: CarModel,
+  partsTaxonomy: readonly CarPartTaxonomyEntry[],
+): ConditionBand {
+  let worst: ConditionBand = 'mint'
+  for (const entry of partsTaxonomy) {
+    if (!entry.statWeights.reliability) continue
+    const missing = isPartMissing(car, model, entry.id)
+    if (!isPartPresent(car, entry.id) && !missing) continue // legitimately absent
+    const band = missing ? 'scrap' : car.parts[entry.id].installed!.band
+    if (bandIndex(band) < bandIndex(worst)) worst = band
+  }
+  return worst
+}
+
+/**
+ * The severity ceiling (lever 8): a cap on reliability's condition mean,
+ * keyed to the worst reliability-bearing part's own band. Only `scrap` and
+ * `poor` carry a real ceiling; every better band is unconstrained, since the
+ * mean is already at or below 1 there and a ceiling would do nothing.
+ */
+function reliabilitySeverityCeiling(band: ConditionBand, economy: EconomyConfig): number {
+  const { reliabilityCeiling } = economy.statFormulas.condition
+  if (band === 'scrap') return reliabilityCeiling.scrap
+  if (band === 'poor') return reliabilityCeiling.poor
+  return 1
+}
+
+/**
+ * The coherence factor (design section 9, lever 6): how far the build's own
+ * headline support ratio falls short of `adequate`, curved by
+ * `coherenceExponent` and capped at 1 so no build is ever MORE reliable than
+ * stock. At or above the `adequate` knee this is exactly 1 - competence is
+ * the baseline, not a bonus.
+ */
+function coherenceFactorFor(headline: number, economy: EconomyConfig): number {
+  const { adequateAtOrAbove } = economy.statFormulas.support.thresholds
+  const { coherenceExponent } = economy.statFormulas.support
+  return Math.min(1, headline / adequateAtOrAbove) ** coherenceExponent
+}
+
+/**
  * Transparent linear formula (GDD 4.2: "no hidden math the player can't
  * reason about"). `partsById` resolves each installed PartInstance's
  * statModifiers from the parts catalog - sim has no data loader of its
  * own, so the caller supplies it.
  *
- * The magic numbers below (power's condition floor, style's cap,
- * reliability's cap) live in `economy.json.statFormulas`; handling's whole
- * model lives in `statFormulas.grip` and is applied through `performance.ts`.
+ * The magic numbers below (power's condition floor, style's cap) live in
+ * `economy.json.statFormulas`; handling's whole model lives in
+ * `statFormulas.grip` and is applied through `performance.ts`. Reliability's
+ * own two-factor derivation (condition plus coherence, scaled by the car's
+ * own `spec.reliabilityBase`) is described where it is computed below.
  *
  * Handling's mint base is the grip readout (`gripToDisplay`) at the fitted
  * tyre's effective compound and the downforce the car is actually running, less
@@ -243,7 +299,7 @@ export function computeDerivedStats(
   partsTaxonomy: readonly CarPartTaxonomyEntry[],
   economy: EconomyConfig,
 ): StatBlock {
-  const { powerConditionFloor, styleCap, reliabilityCap, grip, aero } = economy.statFormulas
+  const { powerConditionFloor, styleCap, grip, aero } = economy.statFormulas
 
   const powerConditionFraction = weightedBandFactorForStat(
     instance,
@@ -281,14 +337,35 @@ export function computeDerivedStats(
   const styleFraction = weightedBandFactorForStat(instance, model, 'style', partsTaxonomy, economy)
   let style = styleFraction * styleCap
 
-  const reliabilityFraction = weightedBandFactorForStat(
+  // Reliability is the bounded sum of two independent shortfalls (design
+  // section 9): condition (parts wearing out) and coherence (a build
+  // outrunning what it is supported by). `conditionFactor` is the
+  // taxonomy's own weighted mean, capped by the severity ceiling so one
+  // catastrophic part (a seized block, a scrapped gearset) cannot average
+  // away against fourteen good ones. `coherenceFactor` reads the build's own
+  // support verdict; it is 1.0 for a stock or fully-supported build, so
+  // either factor alone reduces the formula to the other exactly. The sum
+  // clamps to [0, 1] and scales the car's own base - nothing the game does
+  // ever lifts a car above its own `reliabilityBase`, and a car with two
+  // independent terminal problems correctly reads 0 rather than a fraction
+  // of a fraction.
+  const reliabilityConditionMean = weightedBandFactorForStat(
     instance,
     model,
     'reliability',
     partsTaxonomy,
     economy,
   )
-  let reliability = reliabilityCap * reliabilityFraction
+  const conditionFactor = Math.min(
+    reliabilityConditionMean,
+    reliabilitySeverityCeiling(worstReliabilityBand(instance, model, partsTaxonomy), economy),
+  )
+  const coherenceFactor = coherenceFactorFor(
+    supportVerdict(instance, model, partsById, economy).headline,
+    economy,
+  )
+  const reliability =
+    model.spec.reliabilityBase * clamp(conditionFactor + coherenceFactor - 1, 0, 1)
 
   let authenticity = instance.authenticityPercent
 
@@ -302,7 +379,6 @@ export function computeDerivedStats(
     power += model.spec.stockPowerPs * part.statModifiers.powerFraction[engineCharacter] * wear
     handling += part.statModifiers.handling * wear
     style += part.statModifiers.style * wear
-    reliability += part.statModifiers.reliability * wear
     // GDD 5.3: genuine period parts add authenticity; reproductions never
     // add it, though a non-genuine part's *penalty* (a negative modifier)
     // still applies - modification away from stock hurts either way.

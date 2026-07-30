@@ -211,16 +211,6 @@ pass."
 
 ## Open engineering
 
-- [ ] **Nothing enforces that `cars.json` agrees with the roster CSV.** The CSV
-  (`docs/design/midnight-garage-roster.csv`, 2026-07-29) is the single source of truth for all 94
-  cars and it carries `bookValueYen` beside `priceYen` so a divergence is visible, **but visible
-  is not enforced**. They agree on price today, on all 26. A guard test that reads the CSV and
-  asserts every built car's `bookValueYen`, `tier`, `rarity`, `origin` and (once authored)
-  `reliabilityBase`, `styleBase` and `aeroCeiling` match their row would make the CSV
-  authoritative in fact rather than by convention. **Cheap, and it is the thing that stops this
-  drifting the way the tier labels did.** Do it in whichever sprint next writes one of those
-  fields into `cars.json`, which is Sprint 136.
-
 - [ ] **Two roster CSV columns are owed under directive 24, and neither blocks the tuning arc.**
   `rarity` holds 26 of 94: it is a spawn-rate lever, so the missing 68 need signing under
   directive 22 as well as authoring. `flavour` holds **0 of 94**, deliberately: ninety-four
@@ -351,6 +341,15 @@ pass."
   calibration arc the roster was forced onto Forza's exact variants, names and years, because the
   measured figures had to describe the car Forza actually simulates. That constraint has served its
   purpose and the maintainer wants the original JDM roster back.
+
+  **A `specMarket` column lands with this pass (maintainer, 2026-07-30):** `jdm`, `us` or `euro`,
+  saying which market's figures a row's spec block describes. It exists because the siblings put
+  two rows for one car side by side and nothing else distinguishes them at a glance. **It is not
+  `origin`, and the two must not be merged.** `origin` is a game mechanic (it carries the
+  gaisha-never-at-auction rule, GDD 4.5) and holds only `jdm` and `gaisha`; putting `us` in it
+  would either leak a car into the wrong auction pool or throw. The maintainer's own framing of
+  why they are different axes: a car being Japanese does not make it JDM, and a US-spec Silvia is
+  Japanese and not JDM. `rosterCsvGuard.test.ts`'s column expectations move with the new column.
 
   **This is only safe because of the ratio bridge, and that is the whole point.** The model does not
   carry absolute acceleration or absolute power; it carries `rLaunch` as a fraction of the car's own
@@ -512,6 +511,66 @@ pass."
 
 ## Open balance/economy questions
 
+- [x] **ACCEPTED, not open: three slots still climb into better value per yen, worst 1.335x
+  (maintainer decision 2026-07-30).** Measured across all 288 cases in
+  `partPricing.test.ts` at the end of Sprint 135: 52 exceed parity, on `internals/street`,
+  `camsTiming/street`, `block/street` and a boundary `block/sport`. On those the race rung is a
+  better buy per horsepower than the street rung, so climbing the ladder improves value per yen,
+  which is what arc rule 5 forbids. It is the same defect the ECU carried at 2.89x before Sprint
+  135's lever 5, at less than half the magnitude.
+
+  **The maintainer has accepted it rather than pursue three more price ladders.** The reasoning
+  on the record: the residue is a large improvement on what shipped before, and a street rung is
+  still cheaper in absolute yen, so a player short of cash still buys one. The fix, if it is ever
+  wanted, is the treatment `ignitionEcu` received: give `block`, `internals` and `camsTiming`
+  their own `partPricing.gradeFactors` entry rather than the default ladder. That is three
+  directive-22 lever tables and needs specific values signed.
+
+  `forcedInduction/street` was in the same measured set and is NOT part of this acceptance: it
+  gets its own ladder in Sprint 137, alongside its own power curve, per the arc's rule that the
+  two move together.
+
+- [ ] **INVESTIGATE: should support parts scale the MAGNITUDE of a power part's gain, and not
+  only its reliability? Deferred, not decided (maintainer, 2026-07-30).**
+
+  What ships after Sprint 136: support ratios feed reliability and nothing else. Fuelling and
+  cooling are pure enablers carrying zero power gain, so a race turbo on a stock fuel system
+  delivers its full percentage and the car simply becomes a grenade.
+
+  **Reality does it the other way round, and the maintainer noticed.** An under-fuelled big turbo
+  has two real outcomes: the tuner dials the boost back and the car makes less power, or it runs
+  lean and holes a piston. The game models only the second.
+
+  **The reason it was built that way is arc rule 8's ban on a second power path, and that is a
+  simplicity argument rather than a design one.** Recorded as such on the maintainer's own
+  objection, so nobody later reads the ban as evidence the question was settled on merit.
+
+  Four things to weigh whenever this is picked up, and the third is the one that could kill it:
+  1. It would make enabler parts feel necessary rather than merely prudent, which is the strongest
+     case for it. Today an enabler buys only insurance.
+  2. Delivered power would then have two determinants, so every power question needs both
+     answered, and the readout in `sprint140.md` task 4 stops being a single honest percentage.
+  3. **It MIGHT restore the one-correct-build-order defect this whole arc exists to remove, and
+     the maintainer's counter is that it might not (2026-07-30).** The worry: if support gates
+     power, fuelling becomes the correct first purchase on every car every time, which is exactly
+     the solved-puzzle shape the tuning system was written to break. The counter, and it is the
+     stronger argument: **that only follows if the player is maximising.** Against a target, say a
+     mission wanting a specific extra output, the cheapest route to the number may well be a
+     bigger unsupported turbo rather than a smaller supported one, so the choice stays live and
+     situational. Which of the two holds is a question about the actual price and power rankings
+     across the slots, so **measure it before arguing it**: build the cheapest route to a handful
+     of power targets under both models and see whether the order is fixed or not. Note this
+     interacts with the deferred course-character job work, which is what puts targets in front of
+     the player at all rather than leaving them to maximise in the abstract.
+  4. It removes the back-alley playstyle's best toy. Today you can build a grenade and sell it to
+     a stancer, who weights reliability at zero. If power is capped instead, there is no grenade,
+     only a slow car, and a playstyle the maintainer explicitly wants becomes strictly worse
+     rather than differently good.
+
+  **Do not open this without first deciding which real-world outcome to model**, boost dialled
+  back or engine let go, because the two produce opposite mechanics and the current design is a
+  coherent expression of the second.
+
 - [ ] **Reputation is a ratchet, so losing it costs almost nothing (maintainer, 2026-07-29).**
   Gaining reputation unlocks content: auction houses, workshop tool tiers, mission access.
   **Those unlocks never close again**, so once a player has opened everything, tanking their
@@ -603,27 +662,28 @@ pass."
 
 ## Planned systems (designed, not yet scheduled)
 
-- [ ] **The tuning system is DESIGNED, REVIEWED and PARTIALLY IMPLEMENTED (sprint 135 landed),
-  and it is the ACTIVE ARC: sprints are being written for it separately, so it is not a parked
-  idea. The design of record is `docs/design/systems/tuning-system.md`.** It is the whole
+- [ ] **The tuning system is DESIGNED, REVIEWED and PARTIALLY IMPLEMENTED (sprints 135 and 136
+  landed), and it is the ACTIVE ARC: sprints are being written for it separately, so it is not a
+  parked idea. The design of record is `docs/design/systems/tuning-system.md`.** It is the whole
   design for what an aftermarket part does, how a build holds together and what that is worth:
   proportional power in place of the flat additive ladder (BUILT, sprint 135), an
   engine-response character derived from induction and specific output (BUILT, sprint 135),
-  part roles (gain, enabler, trade-off) so the cheapest gain stops always winning, per-subsystem
-  support ratios whose weakest link is the headline, and cohesion reaching value by changing WHO
-  BIDS rather than by a multiplier - all still unbuilt. It matters because the system it
-  replaces was solved in the wrong way: there was one correct build order, it never varied, and
-  the same +16 PS ECU applied to a naturally aspirated Beat and a twin-turbo Supra alike (fixed
-  by sprint 135; the remaining unbuilt half is what stops the cheapest gain always winning and
-  what makes a build's cohesion, not just its parts list, worth something).
+  per-subsystem support ratios whose weakest link is the headline, feeding reliability as
+  condition plus coherence off a per-car `spec.reliabilityBase` (BUILT, sprint 136) - cohesion
+  reaches value through reliability rather than a separate buyer-selection path or a multiplier,
+  which is what makes a build's cohesion, not just its parts list, worth something. It matters
+  because the system it replaces was solved in the wrong way: there was one correct build order,
+  it never varied, and the same +16 PS ECU applied to a naturally aspirated Beat and a
+  twin-turbo Supra alike (fixed by sprint 135); a build could also make power it could not hold
+  together for free (fixed by sprint 136).
 
-  **Status: sprint 135 is SIGNED AND BUILT** (proportional power replacing the flat additive
-  ladder, an engine-response character per car, the per-slot price ladder) - see
-  `docs/sprints/sprint135.md`'s Exit for what landed and what it moved. **Sprint 137 is SIGNED
-  and clear to start**, along with 134 which needed nothing. The one large sign-off still
-  outstanding is sprint 136's levers 1 to 5, the support ladder, the demand and support weights,
-  the thresholds and the readout copy. Its levers 6 to 8 (the coherence exponent,
-  `reliabilityCap` 70 to 100, and the scrap/poor severity ceilings) are signed.
+  **Status: sprints 135 and 136 are SIGNED AND BUILT.** 135 landed proportional power replacing
+  the flat additive ladder, an engine-response character per car, and the per-slot price ladder;
+  136 landed the per-subsystem support ratios, the coherence curve, and reliability rebuilt as
+  condition plus coherence off a per-car `spec.reliabilityBase` (`reliabilityCap` retired
+  outright, not moved) - see `docs/sprints/sprint135.md` and `docs/sprints/sprint136.md`'s own
+  Exits for what landed and what each moved. **Sprint 137 is SIGNED and clear to start**, along
+  with 134 which needed nothing.
 
   Blocking decisions, all recorded in the doc. Constraint A (section 17): the
   forced-induction return curve must not ship before the support ratios, because increasing

@@ -132,7 +132,48 @@
       "naHighStrungThreshold": 80.0
     },
     "styleCap": 20,
-    "reliabilityCap": 70,
+    "support": {
+      "specByGrade": {
+        "stock": 0,
+        "street": 0.25,
+        "sport": 0.6,
+        "race": 1.0
+      },
+      "demandWeights": {
+        "cylinderPressure": 2.0,
+        "fuelling": 0.8,
+        "heat": 0.7,
+        "revs": 3.5,
+        "torqueTransmission": 0.9
+      },
+      "supportWeights": {
+        "cylinderPressure": {
+          "internals": 0.45,
+          "block": 0.25
+        },
+        "fuelling": {
+          "fuelSystem": 0.75
+        },
+        "heat": {
+          "cooling": 0.7
+        },
+        "revs": {
+          "headValvetrain": 0.25,
+          "internals": 0.15
+        },
+        "torqueTransmission": {
+          "clutch": 0.3,
+          "gearbox": 0.25,
+          "driveline": 0.15,
+          "differential": 0.15
+        }
+      },
+      "thresholds": {
+        "adequateAtOrAbove": 0.9,
+        "strainedAtOrAbove": 0.75
+      },
+      "coherenceExponent": 2.0
+    },
     "powerNormalizationCeiling": 300,
     "grip": {
       "eraRubberBands": [
@@ -312,7 +353,24 @@
           "poor": 0.84,
           "scrap": 0.68
         }
+      },
+      "reliabilityCeiling": {
+        "poor": 0.55,
+        "scrap": 0.25
       }
+    }
+  },
+  "supportReadout": {
+    "shortfallCopy": {
+      "cylinderPressure": "asking more of the bottom end than it can give",
+      "fuelling": "making more air than the fuel system can feed",
+      "heat": "making more heat than it can shed",
+      "revs": "asking for more revs than the head will hold",
+      "torqueTransmission": "making more torque than the drivetrain will take"
+    },
+    "framingByBand": {
+      "strained": "It will do, but it is {shortfall}.",
+      "dangerous": "This is {shortfall}."
     }
   },
   "bands": {

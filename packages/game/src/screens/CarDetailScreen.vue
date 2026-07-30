@@ -903,6 +903,15 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
       <StatRadar v-if="!inTransit" class="hero-radar" :stats="detail.stats" :size="RADAR_SIZE" />
     </div>
 
+    <p
+      v-if="!inTransit && detail.supportReadout"
+      class="support-readout"
+      :class="detail.supportReadout.band"
+      data-test="support-readout"
+    >
+      {{ detail.supportReadout.copy }}
+    </p>
+
     <section v-if="inTransit" class="arriving-banner" data-test="arriving-banner">
       <h3>Customer job - {{ detail.serviceJob?.customerName }}</h3>
       <p class="svc-desc">"{{ detail.serviceJob?.description }}"</p>
@@ -1634,6 +1643,15 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
           {{ formatYen(detail.saleRangeYen.highYen) }}, depending who bites.
         </p>
 
+        <p
+          v-if="detail.supportReadout"
+          class="support-readout listing"
+          :class="detail.supportReadout.band"
+          data-test="support-readout-listing"
+        >
+          {{ detail.supportReadout.copy }}
+        </p>
+
         <div v-if="offer" class="offer-card" data-test="pending-offer">
           <div class="offer-info">
             <p class="offer-copy">{{ offer.copy }}</p>
@@ -2209,6 +2227,32 @@ h4 {
   border-radius: var(--mg-radius);
   color: var(--mg-danger);
   font-size: var(--mg-fs-sm);
+}
+
+/* The support-ratio readout (design 7c): silent at `adequate` (the store
+ * never sends a non-null value), a dashed dim-toned advisory at `strained`
+ * (mirrors `.passion-notice`'s milder treatment) and the same danger
+ * treatment as `.foundation-warning` at `dangerous` - no separate colour
+ * invented for it, per the art bible's saturated-accent discipline. */
+.support-readout {
+  margin: var(--mg-space-2) 0 0;
+  padding: var(--mg-space-2);
+  border-radius: var(--mg-radius);
+  font-size: var(--mg-fs-sm);
+}
+
+.support-readout.strained {
+  border: 1px dashed var(--mg-panel-edge);
+  color: var(--mg-text-dim);
+}
+
+.support-readout.dangerous {
+  border: 1px solid var(--mg-danger);
+  color: var(--mg-danger);
+}
+
+.support-readout.listing {
+  margin-top: 0;
 }
 
 .passion-notice {

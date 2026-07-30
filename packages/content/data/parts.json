@@ -14,7 +14,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -34,7 +33,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -54,7 +52,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -74,7 +71,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -94,7 +90,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -4,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -114,7 +109,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -4,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -134,7 +128,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -4,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -154,7 +147,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -4,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -174,7 +166,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -9,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -194,7 +185,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -9,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -214,7 +204,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -9,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -234,7 +223,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -9,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -254,7 +242,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -14,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -274,7 +261,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -14,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -294,7 +280,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -14,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -314,7 +299,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -14,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -334,7 +318,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -354,7 +337,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -374,7 +356,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -394,7 +375,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -414,7 +394,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -4,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -434,7 +413,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -4,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -454,7 +432,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -4,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -474,7 +451,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -4,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -494,7 +470,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -7,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -514,7 +489,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -7,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -534,7 +508,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -7,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -554,7 +527,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -7,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -574,7 +546,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -12,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -594,7 +565,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -12,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -614,7 +584,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -12,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -634,7 +603,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -12,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -654,7 +622,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -674,7 +641,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -694,7 +660,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -714,7 +679,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -734,7 +698,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -3,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -754,7 +717,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -3,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -774,7 +736,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -3,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -794,7 +755,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -3,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -814,7 +774,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -6,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -834,7 +793,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -6,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -854,7 +812,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -6,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -874,7 +831,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -6,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -894,7 +850,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -10,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -914,7 +869,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -10,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -934,7 +888,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -10,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -954,7 +907,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -10,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -974,7 +926,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -994,7 +945,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -1014,7 +964,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -1034,7 +983,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -1054,7 +1002,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -1074,7 +1021,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -1094,7 +1040,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -1114,7 +1059,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -1134,7 +1078,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -5,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -1154,7 +1097,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -5,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -1174,7 +1116,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -5,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -1194,7 +1135,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -5,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -1214,7 +1154,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -8,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -1234,7 +1173,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -8,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -1254,7 +1192,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -8,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -1274,7 +1211,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -8,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -1294,7 +1230,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -1314,7 +1249,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -1334,7 +1268,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -1354,7 +1287,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -1374,7 +1306,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -1,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -1394,7 +1325,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -1,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -1414,7 +1344,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -1,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -1434,7 +1363,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -1,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -1454,7 +1382,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -1474,7 +1401,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -1494,7 +1420,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -1514,7 +1439,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -1534,7 +1458,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -4,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -1554,7 +1477,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -4,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -1574,7 +1496,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -4,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -1594,7 +1515,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -4,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -1614,7 +1534,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -1634,7 +1553,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -1654,7 +1572,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -1674,7 +1591,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -1694,7 +1610,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -1,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -1717,7 +1632,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -1,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -1740,7 +1654,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -1,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -1763,7 +1676,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -1,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -1786,7 +1698,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -1809,7 +1720,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -1832,7 +1742,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -1855,7 +1764,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -1878,7 +1786,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -4,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -1901,7 +1808,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -4,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -1924,7 +1830,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -4,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -1947,7 +1852,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -4,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -1970,7 +1874,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -1990,7 +1893,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -2010,7 +1912,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -2030,7 +1931,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -2050,7 +1950,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -1,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -2070,7 +1969,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -1,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -2090,7 +1988,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -1,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -2110,7 +2007,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -1,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -2130,7 +2026,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -3,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -2150,7 +2045,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -3,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -2170,7 +2064,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -3,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -2190,7 +2083,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -3,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -2210,7 +2102,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -5,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -2230,7 +2121,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -5,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -2250,7 +2140,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -5,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -2270,7 +2159,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -5,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -2290,7 +2178,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -2310,7 +2197,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -2330,7 +2216,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -2350,7 +2235,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -2370,7 +2254,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -2390,7 +2273,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -2410,7 +2292,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -2430,7 +2311,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -2450,7 +2330,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -4,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -2470,7 +2349,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -4,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -2490,7 +2368,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -4,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -2510,7 +2387,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -4,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -2530,7 +2406,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -6,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -2550,7 +2425,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -6,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -2570,7 +2444,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -6,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -2590,7 +2463,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -6,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -2610,7 +2482,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -2630,7 +2501,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -2650,7 +2520,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -2670,7 +2539,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -2690,7 +2558,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 8,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -2710,7 +2577,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 8,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -2730,7 +2596,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 8,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -2750,7 +2615,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 8,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -2770,7 +2634,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 12,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -2790,7 +2653,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 12,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -2810,7 +2672,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 12,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -2830,7 +2691,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 12,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -2850,7 +2710,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 16,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -2870,7 +2729,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 16,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -2890,7 +2748,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 16,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -2910,7 +2767,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 16,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -2930,7 +2786,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -2950,7 +2805,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -2970,7 +2824,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -2990,7 +2843,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -3010,7 +2862,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -5,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -3030,7 +2881,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -5,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -3050,7 +2900,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -5,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -3070,7 +2919,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -5,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -3090,7 +2938,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -8,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -3110,7 +2957,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -8,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -3130,7 +2976,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -8,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -3150,7 +2995,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -8,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -3170,7 +3014,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -15,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -3190,7 +3033,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -15,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -3210,7 +3052,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -15,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -3230,7 +3071,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -15,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -3250,7 +3090,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -3270,7 +3109,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -3290,7 +3128,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -3310,7 +3147,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -3330,7 +3166,6 @@
       },
       "handling": 6,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -3350,7 +3185,6 @@
       },
       "handling": 6,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -3370,7 +3204,6 @@
       },
       "handling": 6,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -3390,7 +3223,6 @@
       },
       "handling": 6,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -3410,7 +3242,6 @@
       },
       "handling": 10,
       "style": 0,
-      "reliability": -5,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -3430,7 +3261,6 @@
       },
       "handling": 10,
       "style": 0,
-      "reliability": -5,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -3450,7 +3280,6 @@
       },
       "handling": 10,
       "style": 0,
-      "reliability": -5,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -3470,7 +3299,6 @@
       },
       "handling": 10,
       "style": 0,
-      "reliability": -5,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -3490,7 +3318,6 @@
       },
       "handling": 14,
       "style": 0,
-      "reliability": -9,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -3510,7 +3337,6 @@
       },
       "handling": 14,
       "style": 0,
-      "reliability": -9,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -3530,7 +3356,6 @@
       },
       "handling": 14,
       "style": 0,
-      "reliability": -9,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -3550,7 +3375,6 @@
       },
       "handling": 14,
       "style": 0,
-      "reliability": -9,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -3570,7 +3394,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -3590,7 +3413,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -3610,7 +3432,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -3630,7 +3451,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -3650,7 +3470,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 5,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -3673,7 +3492,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 5,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -3696,7 +3514,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 5,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -3719,7 +3536,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 5,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -3742,7 +3558,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -3765,7 +3580,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -3788,7 +3602,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -3811,7 +3624,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -3834,7 +3646,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -5,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -3857,7 +3668,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -5,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -3880,7 +3690,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -5,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -3903,7 +3712,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -5,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -3926,7 +3734,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -3946,7 +3753,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -3966,7 +3772,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -3986,7 +3791,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -4006,7 +3810,6 @@
       },
       "handling": 6,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -4026,7 +3829,6 @@
       },
       "handling": 6,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -4046,7 +3848,6 @@
       },
       "handling": 6,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -4066,7 +3867,6 @@
       },
       "handling": 6,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -4086,7 +3886,6 @@
       },
       "handling": 12,
       "style": 0,
-      "reliability": -3,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -4106,7 +3905,6 @@
       },
       "handling": 12,
       "style": 0,
-      "reliability": -3,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -4126,7 +3924,6 @@
       },
       "handling": 12,
       "style": 0,
-      "reliability": -3,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -4146,7 +3943,6 @@
       },
       "handling": 12,
       "style": 0,
-      "reliability": -3,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -4166,7 +3962,6 @@
       },
       "handling": 16,
       "style": 0,
-      "reliability": -8,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -4186,7 +3981,6 @@
       },
       "handling": 16,
       "style": 0,
-      "reliability": -8,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -4206,7 +4000,6 @@
       },
       "handling": 16,
       "style": 0,
-      "reliability": -8,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -4226,7 +4019,6 @@
       },
       "handling": 16,
       "style": 0,
-      "reliability": -8,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -4246,7 +4038,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -4266,7 +4057,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -4286,7 +4076,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -4306,7 +4095,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -4326,7 +4114,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 7,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -4349,7 +4136,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 7,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -4372,7 +4158,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 7,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -4395,7 +4180,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 7,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -4418,7 +4202,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 10,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -4441,7 +4224,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 10,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -4464,7 +4246,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 10,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -4487,7 +4268,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 10,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -4510,7 +4290,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 14,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -4533,7 +4312,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 14,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -4556,7 +4334,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 14,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -4579,7 +4356,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 14,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -4602,7 +4378,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -4622,7 +4397,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -4642,7 +4416,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -4662,7 +4435,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -4682,7 +4454,6 @@
       },
       "handling": 3,
       "style": 0,
-      "reliability": 12,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -4705,7 +4476,6 @@
       },
       "handling": 3,
       "style": 0,
-      "reliability": 12,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -4728,7 +4498,6 @@
       },
       "handling": 3,
       "style": 0,
-      "reliability": 12,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -4751,7 +4520,6 @@
       },
       "handling": 3,
       "style": 0,
-      "reliability": 12,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -4774,7 +4542,6 @@
       },
       "handling": 5,
       "style": 0,
-      "reliability": 17,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -4797,7 +4564,6 @@
       },
       "handling": 5,
       "style": 0,
-      "reliability": 17,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -4820,7 +4586,6 @@
       },
       "handling": 5,
       "style": 0,
-      "reliability": 17,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -4843,7 +4608,6 @@
       },
       "handling": 5,
       "style": 0,
-      "reliability": 17,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -4866,7 +4630,6 @@
       },
       "handling": 8,
       "style": 0,
-      "reliability": 22,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -4889,7 +4652,6 @@
       },
       "handling": 8,
       "style": 0,
-      "reliability": 22,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -4912,7 +4674,6 @@
       },
       "handling": 8,
       "style": 0,
-      "reliability": 22,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -4935,7 +4696,6 @@
       },
       "handling": 8,
       "style": 0,
-      "reliability": 22,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -4958,7 +4718,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -4978,7 +4737,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -4998,7 +4756,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -5018,7 +4775,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -5038,7 +4794,6 @@
       },
       "handling": 8,
       "style": 3,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -5061,7 +4816,6 @@
       },
       "handling": 8,
       "style": 3,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -5084,7 +4838,6 @@
       },
       "handling": 8,
       "style": 3,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -5107,7 +4860,6 @@
       },
       "handling": 8,
       "style": 3,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -5130,7 +4882,6 @@
       },
       "handling": 18,
       "style": 0,
-      "reliability": -3,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -5153,7 +4904,6 @@
       },
       "handling": 18,
       "style": 0,
-      "reliability": -3,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -5176,7 +4926,6 @@
       },
       "handling": 18,
       "style": 0,
-      "reliability": -3,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -5199,7 +4948,6 @@
       },
       "handling": 18,
       "style": 0,
-      "reliability": -3,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -5222,7 +4970,6 @@
       },
       "handling": 28,
       "style": 0,
-      "reliability": -6,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -5245,7 +4992,6 @@
       },
       "handling": 28,
       "style": 0,
-      "reliability": -6,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -5268,7 +5014,6 @@
       },
       "handling": 28,
       "style": 0,
-      "reliability": -6,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -5291,7 +5036,6 @@
       },
       "handling": 28,
       "style": 0,
-      "reliability": -6,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -5314,7 +5058,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -5334,7 +5077,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -5354,7 +5096,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -5374,7 +5115,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -5394,7 +5134,6 @@
       },
       "handling": 7,
       "style": 0,
-      "reliability": -1,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -5417,7 +5156,6 @@
       },
       "handling": 7,
       "style": 0,
-      "reliability": -1,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -5440,7 +5178,6 @@
       },
       "handling": 7,
       "style": 0,
-      "reliability": -1,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -5463,7 +5200,6 @@
       },
       "handling": 7,
       "style": 0,
-      "reliability": -1,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -5486,7 +5222,6 @@
       },
       "handling": 12,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -5509,7 +5244,6 @@
       },
       "handling": 12,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -5532,7 +5266,6 @@
       },
       "handling": 12,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -5555,7 +5288,6 @@
       },
       "handling": 12,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -5578,7 +5310,6 @@
       },
       "handling": 18,
       "style": 0,
-      "reliability": -3,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -5601,7 +5332,6 @@
       },
       "handling": 18,
       "style": 0,
-      "reliability": -3,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -5624,7 +5354,6 @@
       },
       "handling": 18,
       "style": 0,
-      "reliability": -3,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -5647,7 +5376,6 @@
       },
       "handling": 18,
       "style": 0,
-      "reliability": -3,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -5670,7 +5398,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -5690,7 +5417,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -5710,7 +5436,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -5730,7 +5455,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -5750,7 +5474,6 @@
       },
       "handling": 7,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -5773,7 +5496,6 @@
       },
       "handling": 7,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -5796,7 +5518,6 @@
       },
       "handling": 7,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -5819,7 +5540,6 @@
       },
       "handling": 7,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -5842,7 +5562,6 @@
       },
       "handling": 12,
       "style": 0,
-      "reliability": -1,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -5865,7 +5584,6 @@
       },
       "handling": 12,
       "style": 0,
-      "reliability": -1,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -5888,7 +5606,6 @@
       },
       "handling": 12,
       "style": 0,
-      "reliability": -1,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -5911,7 +5628,6 @@
       },
       "handling": 12,
       "style": 0,
-      "reliability": -1,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -5934,7 +5650,6 @@
       },
       "handling": 17,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -5957,7 +5672,6 @@
       },
       "handling": 17,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -5980,7 +5694,6 @@
       },
       "handling": 17,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -6003,7 +5716,6 @@
       },
       "handling": 17,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -6026,7 +5738,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -6046,7 +5757,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -6066,7 +5776,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -6086,7 +5795,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -6106,7 +5814,6 @@
       },
       "handling": 8,
       "style": 0,
-      "reliability": -1,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -6126,7 +5833,6 @@
       },
       "handling": 8,
       "style": 0,
-      "reliability": -1,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -6146,7 +5852,6 @@
       },
       "handling": 8,
       "style": 0,
-      "reliability": -1,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -6166,7 +5871,6 @@
       },
       "handling": 8,
       "style": 0,
-      "reliability": -1,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -6186,7 +5890,6 @@
       },
       "handling": 13,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -6206,7 +5909,6 @@
       },
       "handling": 13,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -6226,7 +5928,6 @@
       },
       "handling": 13,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -6246,7 +5947,6 @@
       },
       "handling": 13,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -6266,7 +5966,6 @@
       },
       "handling": 19,
       "style": 0,
-      "reliability": -4,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -6286,7 +5985,6 @@
       },
       "handling": 19,
       "style": 0,
-      "reliability": -4,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -6306,7 +6004,6 @@
       },
       "handling": 19,
       "style": 0,
-      "reliability": -4,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -6326,7 +6023,6 @@
       },
       "handling": 19,
       "style": 0,
-      "reliability": -4,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -6346,7 +6042,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -6366,7 +6061,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -6386,7 +6080,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -6406,7 +6099,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -6426,7 +6118,6 @@
       },
       "handling": 4,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -6449,7 +6140,6 @@
       },
       "handling": 4,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -6472,7 +6162,6 @@
       },
       "handling": 4,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -6495,7 +6184,6 @@
       },
       "handling": 4,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -6518,7 +6206,6 @@
       },
       "handling": 7,
       "style": 0,
-      "reliability": -1,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -6541,7 +6228,6 @@
       },
       "handling": 7,
       "style": 0,
-      "reliability": -1,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -6564,7 +6250,6 @@
       },
       "handling": 7,
       "style": 0,
-      "reliability": -1,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -6587,7 +6272,6 @@
       },
       "handling": 7,
       "style": 0,
-      "reliability": -1,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -6610,7 +6294,6 @@
       },
       "handling": 10,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -6633,7 +6316,6 @@
       },
       "handling": 10,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -6656,7 +6338,6 @@
       },
       "handling": 10,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -6679,7 +6360,6 @@
       },
       "handling": 10,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -6702,7 +6382,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -6722,7 +6401,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -6742,7 +6420,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -6762,7 +6439,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -6782,7 +6458,6 @@
       },
       "handling": 5,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -6805,7 +6480,6 @@
       },
       "handling": 5,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -6828,7 +6502,6 @@
       },
       "handling": 5,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -6851,7 +6524,6 @@
       },
       "handling": 5,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -6874,7 +6546,6 @@
       },
       "handling": 12,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -6897,7 +6568,6 @@
       },
       "handling": 12,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -6920,7 +6590,6 @@
       },
       "handling": 12,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -6943,7 +6612,6 @@
       },
       "handling": 12,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -6966,7 +6634,6 @@
       },
       "handling": 12,
       "style": 0,
-      "reliability": -3,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -6989,7 +6656,6 @@
       },
       "handling": 12,
       "style": 0,
-      "reliability": -3,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -7012,7 +6678,6 @@
       },
       "handling": 12,
       "style": 0,
-      "reliability": -3,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -7035,7 +6700,6 @@
       },
       "handling": 12,
       "style": 0,
-      "reliability": -3,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -7058,7 +6722,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -7078,7 +6741,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -7098,7 +6760,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -7118,7 +6779,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -7138,7 +6798,6 @@
       },
       "handling": 0,
       "style": 9,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -7161,7 +6820,6 @@
       },
       "handling": 0,
       "style": 9,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -7184,7 +6842,6 @@
       },
       "handling": 0,
       "style": 9,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -7207,7 +6864,6 @@
       },
       "handling": 0,
       "style": 9,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -7230,7 +6886,6 @@
       },
       "handling": 4,
       "style": 15,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -7253,7 +6908,6 @@
       },
       "handling": 4,
       "style": 15,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -7276,7 +6930,6 @@
       },
       "handling": 4,
       "style": 15,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -7299,7 +6952,6 @@
       },
       "handling": 4,
       "style": 15,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -7322,7 +6974,6 @@
       },
       "handling": 4,
       "style": 20,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -7345,7 +6996,6 @@
       },
       "handling": 4,
       "style": 20,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -7368,7 +7018,6 @@
       },
       "handling": 4,
       "style": 20,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -7391,7 +7040,6 @@
       },
       "handling": 4,
       "style": 20,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -7414,7 +7062,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -7434,7 +7081,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -7454,7 +7100,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -7474,7 +7119,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -7494,7 +7138,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -7514,7 +7157,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -7534,7 +7176,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -7554,7 +7195,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -7574,7 +7214,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -7594,7 +7233,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -7614,7 +7252,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -7634,7 +7271,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -2,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -7654,7 +7290,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -5,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -7674,7 +7309,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -5,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -7694,7 +7328,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -5,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -7714,7 +7347,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": -5,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -7734,7 +7366,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -7754,7 +7385,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -7774,7 +7404,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -7794,7 +7423,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -7816,7 +7444,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -7838,7 +7465,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -7860,7 +7486,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -7882,7 +7507,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -7904,7 +7528,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -7926,7 +7549,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -7948,7 +7570,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -7970,7 +7591,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -7992,7 +7612,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -8014,7 +7633,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -8036,7 +7654,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -8058,7 +7675,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -8080,7 +7696,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -8102,7 +7717,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -8124,7 +7738,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -8146,7 +7759,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -8168,7 +7780,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -8190,7 +7801,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -8212,7 +7822,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -8234,7 +7843,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -8255,7 +7863,6 @@
       },
       "handling": 2,
       "style": 7,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -8276,7 +7883,6 @@
       },
       "handling": 2,
       "style": 7,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -8297,7 +7903,6 @@
       },
       "handling": 2,
       "style": 7,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -8318,7 +7923,6 @@
       },
       "handling": 2,
       "style": 7,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -8339,7 +7943,6 @@
       },
       "handling": 3,
       "style": 11,
-      "reliability": -1,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -8360,7 +7963,6 @@
       },
       "handling": 3,
       "style": 11,
-      "reliability": -1,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -8381,7 +7983,6 @@
       },
       "handling": 3,
       "style": 11,
-      "reliability": -1,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -8402,7 +8003,6 @@
       },
       "handling": 3,
       "style": 11,
-      "reliability": -1,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -8423,7 +8023,6 @@
       },
       "handling": 5,
       "style": 16,
-      "reliability": -3,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -8444,7 +8043,6 @@
       },
       "handling": 5,
       "style": 16,
-      "reliability": -3,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -8465,7 +8063,6 @@
       },
       "handling": 5,
       "style": 16,
-      "reliability": -3,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -8486,7 +8083,6 @@
       },
       "handling": 5,
       "style": 16,
-      "reliability": -3,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -8506,7 +8102,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -8526,7 +8121,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -8546,7 +8140,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -8566,7 +8159,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -8586,7 +8178,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -8606,7 +8197,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -8626,7 +8216,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -8646,7 +8235,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -8667,7 +8255,6 @@
       },
       "handling": 0,
       "style": 11,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -8688,7 +8275,6 @@
       },
       "handling": 0,
       "style": 11,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -8709,7 +8295,6 @@
       },
       "handling": 0,
       "style": 11,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -8730,7 +8315,6 @@
       },
       "handling": 0,
       "style": 11,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -8751,7 +8335,6 @@
       },
       "handling": 4,
       "style": 10,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -8772,7 +8355,6 @@
       },
       "handling": 4,
       "style": 10,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -8793,7 +8375,6 @@
       },
       "handling": 4,
       "style": 10,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -8814,7 +8395,6 @@
       },
       "handling": 4,
       "style": 10,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -8835,7 +8415,6 @@
       },
       "handling": 9,
       "style": 8,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -8856,7 +8435,6 @@
       },
       "handling": 9,
       "style": 8,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -8877,7 +8455,6 @@
       },
       "handling": 9,
       "style": 8,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -8898,7 +8475,6 @@
       },
       "handling": 9,
       "style": 8,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -8918,7 +8494,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -8938,7 +8513,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -8958,7 +8532,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -8978,7 +8551,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -8998,7 +8570,6 @@
       },
       "handling": 0,
       "style": 10,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "everyday",
@@ -9019,7 +8590,6 @@
       },
       "handling": 0,
       "style": 10,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "entry",
@@ -9040,7 +8610,6 @@
       },
       "handling": 0,
       "style": 10,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast",
@@ -9061,7 +8630,6 @@
       },
       "handling": 0,
       "style": 10,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "flagship",
@@ -9082,7 +8650,6 @@
       },
       "handling": 5,
       "style": 18,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "everyday",
@@ -9103,7 +8670,6 @@
       },
       "handling": 5,
       "style": 18,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "entry",
@@ -9124,7 +8690,6 @@
       },
       "handling": 5,
       "style": 18,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast",
@@ -9145,7 +8710,6 @@
       },
       "handling": 5,
       "style": 18,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "flagship",
@@ -9166,7 +8730,6 @@
       },
       "handling": 15,
       "style": 30,
-      "reliability": -5,
       "authenticity": 0
     },
     "fitmentClass": "everyday",
@@ -9187,7 +8750,6 @@
       },
       "handling": 15,
       "style": 30,
-      "reliability": -5,
       "authenticity": 0
     },
     "fitmentClass": "entry",
@@ -9208,7 +8770,6 @@
       },
       "handling": 15,
       "style": 30,
-      "reliability": -5,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast",
@@ -9229,7 +8790,6 @@
       },
       "handling": 15,
       "style": 30,
-      "reliability": -5,
       "authenticity": 0
     },
     "fitmentClass": "flagship",
@@ -9250,7 +8810,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -9270,7 +8829,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -9290,7 +8848,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -9310,7 +8867,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -9330,7 +8886,6 @@
       },
       "handling": 0,
       "style": 9,
-      "reliability": -1,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -9353,7 +8908,6 @@
       },
       "handling": 0,
       "style": 9,
-      "reliability": -1,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -9376,7 +8930,6 @@
       },
       "handling": 0,
       "style": 9,
-      "reliability": -1,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -9399,7 +8952,6 @@
       },
       "handling": 0,
       "style": 9,
-      "reliability": -1,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -9422,7 +8974,6 @@
       },
       "handling": 0,
       "style": 13,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -9445,7 +8996,6 @@
       },
       "handling": 0,
       "style": 13,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -9468,7 +9018,6 @@
       },
       "handling": 0,
       "style": 13,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -9491,7 +9040,6 @@
       },
       "handling": 0,
       "style": 13,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -9514,7 +9062,6 @@
       },
       "handling": 4,
       "style": 18,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -9537,7 +9084,6 @@
       },
       "handling": 4,
       "style": 18,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -9560,7 +9106,6 @@
       },
       "handling": 4,
       "style": 18,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -9583,7 +9128,6 @@
       },
       "handling": 4,
       "style": 18,
-      "reliability": 0,
       "authenticity": 0
     },
     "physicalModifiers": {
@@ -9606,7 +9150,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -9626,7 +9169,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -9646,7 +9188,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -9666,7 +9207,6 @@
       },
       "handling": 0,
       "style": 0,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -9686,7 +9226,6 @@
       },
       "handling": 0,
       "style": 5,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -9706,7 +9245,6 @@
       },
       "handling": 0,
       "style": 5,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -9726,7 +9264,6 @@
       },
       "handling": 0,
       "style": 5,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -9746,7 +9283,6 @@
       },
       "handling": 0,
       "style": 5,
-      "reliability": 0,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -9766,7 +9302,6 @@
       },
       "handling": 0,
       "style": 8,
-      "reliability": -1,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -9786,7 +9321,6 @@
       },
       "handling": 0,
       "style": 8,
-      "reliability": -1,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -9806,7 +9340,6 @@
       },
       "handling": 0,
       "style": 8,
-      "reliability": -1,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -9826,7 +9359,6 @@
       },
       "handling": 0,
       "style": 8,
-      "reliability": -1,
       "authenticity": 0
     },
     "fitmentClass": "flagship"
@@ -9846,7 +9378,6 @@
       },
       "handling": 0,
       "style": 11,
-      "reliability": -2,
       "authenticity": 0
     },
     "fitmentClass": "everyday"
@@ -9866,7 +9397,6 @@
       },
       "handling": 0,
       "style": 11,
-      "reliability": -2,
       "authenticity": 0
     },
     "fitmentClass": "entry"
@@ -9886,7 +9416,6 @@
       },
       "handling": 0,
       "style": 11,
-      "reliability": -2,
       "authenticity": 0
     },
     "fitmentClass": "enthusiast"
@@ -9906,7 +9435,6 @@
       },
       "handling": 0,
       "style": 11,
-      "reliability": -2,
       "authenticity": 0
     },
     "fitmentClass": "flagship"

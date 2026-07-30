@@ -429,13 +429,32 @@ describe('story mission satisfiability probes (Sprint 78 decision 1)', () => {
    * already reads true for this model, short-circuiting the gate to false
    * regardless of the shop's own tool tier.
    */
-  it('street-power-street-manners: a 180sx built to mint with sport intake/exhaust/ignitionEcu/forcedInduction clears power, reliability, and the tuner taste match; the forced-induction fit is never gated as a fresh NA-to-turbo conversion', () => {
+  it('street-power-street-manners: a 180sx built to mint with sport power AND sport support throughout clears power, reliability, and the tuner taste match; the forced-induction fit is never gated as a fresh NA-to-turbo conversion', () => {
     const model = CARS.find((c) => c.id === 'nissan-180sx-rps13')!
     expect(model.tags).toContain('Turbo')
 
     const fitmentClass = fitmentClassForTier(model.tier)
+    // The power shape (intake/exhaust/ignitionEcu/forcedInduction) alone reads a
+    // dangerous 0.678 headline, torque-transmission bound - a real car that makes
+    // more power than its drivetrain, fuelling, cooling and bottom end can take.
+    // The mission is named for building power WITH manners, so the probe also
+    // supports every relevant slot at the SAME sport grade as the power parts,
+    // reaching an adequate 0.966 headline (cylinder-pressure bound).
     const aftermarket: AftermarketFit[] = (
-      ['intake', 'exhaust', 'ignitionEcu', 'forcedInduction'] as CarPartId[]
+      [
+        'intake',
+        'exhaust',
+        'ignitionEcu',
+        'forcedInduction',
+        'internals',
+        'block',
+        'fuelSystem',
+        'cooling',
+        'clutch',
+        'gearbox',
+        'driveline',
+        'differential',
+      ] as CarPartId[]
     ).map((carPartId) => ({ carPartId, part: aftermarketPart(carPartId, 'sport', fitmentClass) }))
     const { afterCar, probeCostYen } = buildProbe('nissan-180sx-rps13', 'mint', aftermarket)
 

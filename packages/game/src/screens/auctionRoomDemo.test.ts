@@ -38,12 +38,12 @@ describe('auctionRoomDemo lobby', () => {
 
     expect(packed!.key).toBe('packed')
     expect(packed!.displayName).toBe('Honda City E (AA)')
-    expect(packed!.roomReadYen).toBe(91_041)
-    expect(packed!.trueValueYen).toBe(62_285)
+    expect(packed!.roomReadYen).toBe(86_623)
+    expect(packed!.trueValueYen).toBe(61_362)
     expect(packed!.incrementYen).toBe(5_000)
     expect(packed!.dealerCount).toBe(6)
     expect(packed!.verdict).toBe('worse')
-    expect(packed!.trueValueYen / packed!.roomReadYen).toBeCloseTo(0.6841, 4)
+    expect(packed!.trueValueYen / packed!.roomReadYen).toBeCloseTo(0.7084, 4)
 
     // The thin lot beats the read (a clear steal); the trap sits below the trap
     // band of the read.

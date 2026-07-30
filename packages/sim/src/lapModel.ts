@@ -45,6 +45,11 @@ function referenceCarModel(weightKg: number, powerPs: number): CarModel {
       yearFrom: 1995,
       curbWeightKg: weightKg,
       stockPowerPs: powerPs,
+      // Read by nothing: this reference chassis never reaches
+      // `computeDerivedStats` (only `lapTime` directly), so no reliability
+      // figure is ever displayed for it. A flat placeholder, same footing as
+      // the other REF spec fields around it.
+      reliabilityBase: 90,
       engineConfig: 'I4',
       aspiration: 'NA',
       weightDistributionFront: 53,

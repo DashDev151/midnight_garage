@@ -30,7 +30,7 @@
       {
         "kind": "statThreshold",
         "stat": "reliability",
-        "min": 54
+        "min": 75
       }
     ],
     "budgetCapYen": 156000,
@@ -53,7 +53,7 @@
       {
         "kind": "statThreshold",
         "stat": "reliability",
-        "min": 58
+        "min": 79
       }
     ],
     "budgetCapYen": 484000,
@@ -77,12 +77,12 @@
       {
         "kind": "tasteMatch",
         "buyerId": "first-timer",
-        "minMultiplier": 0.97
+        "minMultiplier": 1
       },
       {
         "kind": "statThreshold",
         "stat": "reliability",
-        "min": 54
+        "min": 73
       }
     ],
     "budgetCapYen": 687000,
@@ -212,16 +212,16 @@
       {
         "kind": "statThreshold",
         "stat": "reliability",
-        "min": 48
+        "min": 82
       },
       {
         "kind": "tasteMatch",
         "buyerId": "tuner",
-        "minMultiplier": 0.98
+        "minMultiplier": 1.01
       }
     ],
-    "budgetCapYen": 992000,
-    "payoutYen": 992000,
+    "budgetCapYen": 1453000,
+    "payoutYen": 1453000,
     "tipFraction": 0.1,
     "tipTriggerFraction": 0.15,
     "lapTipTriggerFraction": 0.03,

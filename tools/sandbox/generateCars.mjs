@@ -225,12 +225,18 @@ function measuredFromFor(row) {
  * (the first token of the display name, which reads `Alfa` rather than `Alfa
  * Romeo` on the one two-word marque; no physics reads it).
  *
- * Placeholders, read by nothing: `chassisCode`, `bookValueYen`, `rarity`, and
- * the two parody-name fields, which the sandbox never renders. `bookValueYen`
- * in particular is why the screen shows these cars no price at all: pricing a
- * car the game does not sell would be inventing an economy number, and
- * `rarity` reaches only auction placement, which no research entry ever enters.
+ * Placeholders, read by nothing: `chassisCode`, `bookValueYen`, `rarity`,
+ * `reliabilityBase`, and the two parody-name fields, which the sandbox never
+ * renders. `bookValueYen` in particular is why the screen shows these cars no
+ * price at all: pricing a car the game does not sell would be inventing an
+ * economy number, and `rarity` reaches only auction placement, which no
+ * research entry ever enters. `reliabilityBase` is required by the schema
+ * (Sprint 136) but reaches only `computeDerivedStats`'s reliability
+ * derivation, which this lap-focused sandbox never calls - a flat value
+ * satisfies the type without inventing a per-car figure the roster CSV does
+ * not carry for a non-shipped research entry.
  */
+const RESEARCH_RELIABILITY_BASE_PLACEHOLDER = 85
 function synthesiseModel(row) {
   const displayName = displayNameFor(row)
   const section = TIER_BY_SECTION[row.sec]
@@ -257,6 +263,7 @@ function synthesiseModel(row) {
       yearFrom: row.y,
       curbWeightKg: row.kg,
       stockPowerPs: row.ps,
+      reliabilityBase: RESEARCH_RELIABILITY_BASE_PLACEHOLDER,
       quotedPowerPs: omitNull(row.q),
       powerRpm: omitNull(row.psr),
       peakTorqueNm: omitNull(row.tq),
@@ -324,8 +331,9 @@ const header = `/**
  * section, \`tyreCompound\` from the stock tyre and the build year, and the
  * layout/induction/engine tags from the book's own drivetrain, engine position
  * and aspiration - all of which the physics reads. \`chassisCode\`,
- * \`bookValueYen\` and the parody names are placeholders that nothing reads, which
- * is why the sandbox shows a research entry no price rather than a made-up one.
+ * \`bookValueYen\`, \`reliabilityBase\` and the parody names are placeholders that
+ * nothing reads, which is why the sandbox shows a research entry no price
+ * rather than a made-up one.
  *
  * Dev-only data. It is imported by the sandbox screen alone, which is reachable
  * only through the \`import.meta.env.DEV\` gate in \`router/index.ts\`, so a

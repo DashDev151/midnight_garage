@@ -167,6 +167,7 @@ import {
   settleAuctionHammer as settleAuctionHammerCore,
   settleAuctionLotLost as settleAuctionLotLostCore,
   shopTitle,
+  supportVerdict,
   swapCars as swapCarsCore,
   toolDeficitSummary,
   unlockedAuctionTiers as unlockedAuctionTiersCore,
@@ -375,6 +376,15 @@ export interface CarDetail extends DetailedCar {
    * right now, `null` when it isn't (`ownedWorkupGateReason`).
    */
   workupGateReason: OwnedWorkupGateReason | null
+  /**
+   * The build's own support-ratio warning (design 7c) - null at `adequate`,
+   * since competence is the baseline and earns no readout at all. Non-null
+   * names the shortfall in the game's own voice, never a number (the dyno is
+   * where numbers belong); it explains a reliability figure that has ALREADY
+   * moved, so the number is right whether or not the player reads this line.
+   * See `supportReadoutFor`.
+   */
+  supportReadout: { band: 'strained' | 'dangerous'; copy: string } | null
 }
 
 /** The Finances panel's pre-Confirm preview - null (via
@@ -1781,6 +1791,28 @@ export const useGameStore = defineStore('game', () => {
     return { band: expectation.band, returnRate: expectation.beyondDiscount }
   }
 
+  /**
+   * The support-ratio warning for one car (design 7c) - null at `adequate`,
+   * since the readout is silent whenever the build costs the player nothing.
+   * Reads the same `supportVerdict` the reliability derivation itself scores
+   * against, so what the panel names and what the stat did can never
+   * disagree; the copy substitutes the named subsystem's shortfall into the
+   * band's framing template (`economy.supportReadout`), never a number.
+   */
+  function supportReadoutFor(
+    car: CarInstance,
+    model: CarModel,
+  ): { band: 'strained' | 'dangerous'; copy: string } | null {
+    const verdict = supportVerdict(car, model, context.value.partsById, context.value.economy)
+    if (verdict.band === 'adequate') return null
+    const { shortfallCopy, framingByBand } = context.value.economy.supportReadout
+    const copy = framingByBand[verdict.band].replace(
+      '{shortfall}',
+      shortfallCopy[verdict.subsystem],
+    )
+    return { band: verdict.band, copy }
+  }
+
   function carDetail(carId: string): CarDetail | undefined {
     const car = findWorkableCar(carId)
     if (!car) return undefined
@@ -1834,6 +1866,7 @@ export const useGameStore = defineStore('game', () => {
       plannedEstimate: plannedEstimateFor(carId),
       symptoms: symptomChecklistForCar(car, apparentViewOf(car), model),
       workupGateReason: ownedWorkupGateReasonCore(gameState.value, carId, context.value),
+      supportReadout: supportReadoutFor(car, model),
     }
   }
 

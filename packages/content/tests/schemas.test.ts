@@ -483,6 +483,7 @@ describe('seed content validates against schemas', () => {
       'valuation',
       'marketPressure',
       'statFormulas',
+      'supportReadout',
       'bands',
       'partsGeneration',
       'reputation',

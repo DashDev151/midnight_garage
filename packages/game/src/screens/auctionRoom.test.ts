@@ -135,8 +135,8 @@ describe('auctionRoom machine', () => {
     expect(thinRatio).toBeLessThanOrEqual(config().turnout.thin.clearMax)
 
     const packedRoom = seat(packed!)
-    expect(packedRoom.reserveYen).toBe(50_073)
-    expect(packedRoom.clearingYen).toBe(81_328)
+    expect(packedRoom.reserveYen).toBe(47_643)
+    expect(packedRoom.clearingYen).toBe(77_382)
     const packedFraction = clearingFractionFor(
       createRng(hashStringToSeed(demoRoomSeed('packed', 0))),
       'packed',
@@ -198,11 +198,11 @@ describe('auctionRoom machine', () => {
       'a quiet man in a good coat',
     ])
     expect(room.dealers.every((dealer) => dealer.active)).toBe(true)
-    expect(room.reserveYen).toBe(50_073)
-    expect(room.boardYen).toBe(50_073)
-    expect(room.clearingYen).toBe(81_328)
+    expect(room.reserveYen).toBe(47_643)
+    expect(room.boardYen).toBe(47_643)
+    expect(room.clearingYen).toBe(77_382)
     expect(room.pendingRoomBid).toEqual({ atMs: 2645 })
-    expect(room.playerNumberYen).toBe(62_285)
+    expect(room.playerNumberYen).toBe(61_362)
   })
 
   it('lands the opener at its scheduled instant and resets the fuse from it', () => {
@@ -242,7 +242,7 @@ describe('auctionRoom machine', () => {
     tick(room, 3_600_000)
 
     expect(room.status).toBe('lost')
-    expect(room.boardYen).toBe(80_073)
+    expect(room.boardYen).toBe(72_643)
     expect(room.boardYen).toBeLessThanOrEqual(room.clearingYen)
     expect(room.boardYen + room.incrementYen).toBeGreaterThan(room.clearingYen)
     // No feud ignites at this seed: the packed room's opening board-to-clearing
@@ -250,8 +250,8 @@ describe('auctionRoom machine', () => {
     // under the threshold as the room climbs. The feud machinery has its own
     // dedicated coverage further down this file.
     expect(room.feud).toBeNull()
-    expect(room.leaderName).toBe('Ogata')
-    expect(room.log.at(-1)).toBe('Hammer. Ogata takes it at ¥80,073.')
+    expect(room.leaderName).toBe('Mrs. Sakaki')
+    expect(room.log.at(-1)).toBe('Hammer. Mrs. Sakaki takes it at ¥72,643.')
     expect(dealersInRoom(room)).toBe(1)
     expect(room.epilogue).toBe('You let it go. The room can overpay for that one.')
 
@@ -260,7 +260,7 @@ describe('auctionRoom machine', () => {
       'a quiet man in a good coat closes the folder.',
       'Ubukata sets the paddle down.',
       'Toyoshima steps out for a smoke.',
-      'Mrs. Sakaki checks the time and is done.',
+      'Ogata checks the time and is done.',
       'Endo closes the folder.',
     ]
     let lastIndex = -1

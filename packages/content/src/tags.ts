@@ -118,6 +118,25 @@ export const PhysicalDialSchema = z.enum(['grip', 'braking', 'driveline', 'aero'
 export const GradeSchema = z.enum(['stock', 'street', 'sport', 'race'])
 
 /**
+ * The five subsystems a build's support ratio is judged on
+ * (`packages/sim/src/support.ts`): cylinder pressure, fuelling, heat, revs and
+ * torque transmission. Each earns a ratio only because the game has no other
+ * way to express its shortfall (braking, grip and aerodynamic stability are
+ * already carried by the physical dials, so they are deliberately absent).
+ *
+ * Declaration order is load-bearing: when two subsystems tie for the lowest
+ * ratio, the headline names whichever comes first here, so the named
+ * subsystem is deterministic rather than iteration-order noise.
+ */
+export const SubsystemSchema = z.enum([
+  'cylinderPressure',
+  'fuelling',
+  'heat',
+  'revs',
+  'torqueTransmission',
+])
+
+/**
  * A car's engine response, derived from its own spec rather than authored
  * (`engineCharacterOf`, `packages/sim/src/derivedStats.ts`) - what an
  * aftermarket power part's fraction resolves against
@@ -190,6 +209,7 @@ export type CarPartId = z.infer<typeof CarPartIdSchema>
 export type ConditionBand = z.infer<typeof ConditionBandSchema>
 export type PhysicalDial = z.infer<typeof PhysicalDialSchema>
 export type Grade = z.infer<typeof GradeSchema>
+export type Subsystem = z.infer<typeof SubsystemSchema>
 export type EngineCharacter = z.infer<typeof EngineCharacterSchema>
 export type TyreCompound = z.infer<typeof TyreCompoundSchema>
 export type CarTier = z.infer<typeof CarTierSchema>

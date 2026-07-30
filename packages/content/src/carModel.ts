@@ -78,6 +78,20 @@ export const CarModelSchema = z
         ])
         .optional(),
       aspiration: z.enum(['NA', 'turbo', 'twin-turbo', 'supercharged']).optional(),
+      /**
+       * What this car is when everything is right: a stock mint example sits
+       * exactly here, and nothing the game does ever lifts a car above its own
+       * base (`computeDerivedStats`'s reliability derivation multiplies
+       * everything else). Required, not defaulted - the same footing as any
+       * other per-car character constant this schema carries - so a car added
+       * later cannot silently inherit a value nobody chose.
+       *
+       * The scale runs 65 to 100, age and engineering culture rather than
+       * price. The floor sits at 65 rather than lower because the base
+       * multiplies condition and coherence: a car with almost nothing to lose
+       * is a car where neither of those two systems still matters.
+       */
+      reliabilityBase: z.number().min(0).max(100),
       weightDistributionFront: z.number().gte(30).lte(70).optional(),
       wheelbaseMm: z.number().int().positive().optional(),
       comHeightMm: z.number().int().positive().optional(),

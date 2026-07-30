@@ -444,6 +444,72 @@ import storyMissions from '../data/storyMissions.json'
  * `storyMissionProbes.test.ts`'s own fixed formula yields against the new power
  * figures, never hand-picked; `street-power-street-manners`'s hand-set power floor
  * (180, PROVISIONAL) is untouched, since it was never a `floor90(measured)` pin.
+ *
+ * Re-pinned 2026-07-29 (maintainer approval, in session: "Levers 1 to 4 approved
+ * exactly as written, implement them"; levers 6, 7, 8 signed outright; lever 5 is a
+ * copy proposal, not a value) for `docs/sprints/sprint136.md`, support ratios and
+ * reliability as what they move. Eight levers:
+ *
+ * 1. `statFormulas.support.specByGrade` (NEW) - the support-specification ladder:
+ *    stock 0.00, street 0.25, sport 0.60, race 1.00.
+ * 2. `statFormulas.support.demandWeights` (NEW) - cylinderPressure 2.00, fuelling
+ *    0.80, heat 0.70, revs 3.50, torqueTransmission 0.90.
+ * 3. `statFormulas.support.supportWeights` (NEW) - cylinderPressure {internals 0.45,
+ *    block 0.25}, fuelling {fuelSystem 0.75}, heat {cooling 0.70}, revs
+ *    {headValvetrain 0.25, internals 0.15}, torqueTransmission {clutch 0.30, gearbox
+ *    0.25, driveline 0.15, differential 0.15}.
+ * 4. `statFormulas.support.thresholds` (NEW) - adequateAtOrAbove 0.90,
+ *    strainedAtOrAbove 0.75.
+ * 5. `supportReadout.shortfallCopy`/`framingByBand` (NEW) - the warning's copy, a
+ *    proposal like every other lever here, shown only at `strained`/`dangerous`.
+ * 6. `statFormulas.support.coherenceExponent` (NEW) - 2.0.
+ * 7. `CarModel.spec.reliabilityBase` (NEW, required field on `cars.json`, all 26
+ *    shipped cars) - replaces `statFormulas.reliabilityCap` (70), which is RETIRED
+ *    outright rather than moved. The 26 values, copied from
+ *    `docs/design/midnight-garage-roster.csv`: toyota-carina-at150 100,
+ *    honda-city-e-aa 99, nissan-sunny-b12 98, suzuki-wagon-r-ct21s 98,
+ *    honda-civic-sir2-eg6 97, honda-crx-sir-ef8 96, toyota-sera-exy10 95,
+ *    honda-prelude-si-vtec-bb4 95, toyota-aristo-30v-jzs147 95,
+ *    toyota-supra-rz-jza80 94, toyota-chaser-tourer-v-jzx90 94,
+ *    toyota-sprinter-trueno-ae86 94, nissan-cefiro-a31 93, toyota-mr2-aw11 93,
+ *    nissan-silvia-s13 92, nissan-180sx-rps13 92, nissan-silvia-ks-s14 92,
+ *    suzuki-alto-works-ha21s 91, honda-beat-pp1 91, toyota-mr2-sw20 90,
+ *    nissan-skyline-gtr-bnr32 90, honda-city-turbo-ii-aa 88,
+ *    subaru-impreza-wrx-sti-gc8 86, nissan-fairlady-z-z32 84,
+ *    mazda-savanna-rx7-fc3s 82, mazda-rx7-fd3s 80.
+ * 8. `statFormulas.condition.reliabilityCeiling` (NEW) - poor 0.55, scrap 0.25.
+ *
+ * `statModifiers.reliability` is removed from the schema and from all 472 SKUs in
+ * the same change, per the same missing-SKU-fails-loudly rule Sprint 135 set for
+ * `statModifiers.power`. `StatBlock.reliability` and the taxonomy's reliability
+ * weights are untouched; only a purchased part's ability to add a flat number goes.
+ *
+ * Every valuation pin that reads a mint car's reliability moves, because the
+ * ceiling is now per-car rather than a flat 70; re-derived from real runs
+ * (directive 17 case (a)), see the sim test suite's own pins
+ * (`packages/sim/tests/reliabilityModel.test.ts`, `valueModelProbes.test.ts`).
+ *
+ * Four story-mission reliability thresholds re-derive under the maintainer's
+ * narrow 2026-07-29 exception ("if we change systems deliberately then downstream
+ * should change too"): `wont-strand-her` 54 -> 75 and `first-proper-car` 54 -> 73
+ * (both still `floor90(measured)` pins, on honda-city-e-aa and honda-civic-sir2-eg6
+ * respectively, repaired to `fine`, all stock); `the-fleet-spare` 58 -> 79 (a
+ * hand-set floor with margin, re-derived by the same share-of-the-ceiling method the
+ * sprint doc names, on honda-crx-sir-ef8); `street-power-street-manners` 48 -> 82,
+ * re-derived from a real run of the SUPPORTED probe build (the doc's own instruction:
+ * the unsupported shape alone reads a dangerous 0.678 headline and 51-52 reliability,
+ * so the probe now also fits sport-grade internals/block/fuelSystem/cooling/clutch/
+ * gearbox/driveline/differential alongside the existing sport intake/exhaust/
+ * ignitionEcu/forcedInduction, reaching an adequate 0.966 headline and reliability
+ * exactly 92, `floor90(92)` = 82). The heavier probe also moves
+ * `street-power-street-manners`'s own `payoutYen`/`budgetCapYen` (992000 -> 1453000,
+ * the unchanged 1.3x/1.1x formula against the dearer probe cost) and its tuner
+ * taste-match floor (0.98 -> 1.01) and `first-proper-car`'s first-timer taste-match
+ * floor (0.97 -> 1), both `round2At97Percent` of the freshly measured taste ratio,
+ * which moved because reliability is 57 per cent of a first-timer's taste and 37 per
+ * cent of a tuner's. Each is recorded with its own arithmetic in
+ * `docs/sprints/sprint136.md`'s Exit, including which shipped cars each threshold now
+ * excludes.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -453,7 +519,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('d5fd4a8718e3bcd3ed5724d55995339c1c1186b5137eea81a6c5e028ef8826ae')
+    ).toBe('ba3df414b2989ca9788111bf75162990a8b47dae5268dabb60c43e190392a39f')
   })
 
   it('partPricing.json matches its approved content exactly', () => {
@@ -486,7 +552,7 @@ describe('the economy approval gate', () => {
       'make-it-pull': { payoutYen: 772000, budgetCapYen: 772000 },
       'the-column-clock': { payoutYen: 1000000, budgetCapYen: 1000000 },
       'low-and-loud': { payoutYen: 1162000, budgetCapYen: 1162000 },
-      'street-power-street-manners': { payoutYen: 992000, budgetCapYen: 992000 },
+      'street-power-street-manners': { payoutYen: 1453000, budgetCapYen: 1453000 },
       'under-one-fifteen': { payoutYen: 1693000, budgetCapYen: 1693000 },
       'the-fleet-spare': { payoutYen: 484000, budgetCapYen: 484000 },
       'the-showroom-standard': { payoutYen: 704000, budgetCapYen: 704000 },

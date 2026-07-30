@@ -210,10 +210,37 @@ arc after Sprint 135, and every pin is re-derived from a real run.
 `economyApprovalGate.test.ts` moves (`styleCap` retired); re-pin in the same change as the
 recorded sign-off.
 
+## Task 4: restore a power readout to the parts market (maintainer ruling 2026-07-30)
+
+Sprint 135 removed the power figure from the parts catalogue badge and did not replace it.
+The removal was correct: `statModifiers.power` was an absolute figure, its replacement
+`powerFraction` is keyed by engine character, and the catalogue has no car in view to resolve
+a character against. So the badge had nothing true left to say. It has said nothing since,
+which means a player browsing engine parts cannot see what any of them does.
+
+**The maintainer's ruling: show a power figure only when a specific car is selected, and show
+nothing otherwise.** A range across the three characters was offered and rejected. The reasoning
+is that a figure the player cannot act on is worse than no figure, and the character split is a
+mechanic they meet on a car rather than in a catalogue.
+
+So the readout resolves `powerFraction[engineCharacterOf(car)]` against that car's own
+`stockPowerPs`, exactly as `computeDerivedStats` already does, and renders a percentage. With no
+car selected the badge omits power entirely rather than showing a placeholder, a dash or a range.
+
+Two things this readout must NOT claim, both settled elsewhere in the arc:
+
+- **Support does not gate power** (Sprint 136 turns the weakest-link ratio into a reliability
+  factor and adds no power path, arc rule 8). An unsupported build makes its full power and
+  becomes unreliable. The percentage is therefore honest as shown and needs no support caveat.
+- **Condition does scale it.** A fitted worn part delivers less than its rating. That belongs to
+  the car's build view, which already has the installed band, not to the catalogue.
+
+No new lever, no new content value, no sign-off needed.
+
 ## Hard constraints
 
 - **Task 1 may proceed without sign-off. Tasks 2 and 3 may not.** If the levers are unsigned,
-  ship task 1 and stop.
+  ship task 1 and stop. **Task 4 needs no sign-off** and may ship with task 1.
 - **Do not delete `StatBlock.handling`**, and do not touch `StatBlock.reliability` at all.
 - **Do not change reliability, in any way.** Sprint 136 owns it end to end.
 - **Do not run this sprint's schema edit concurrently with Sprint 136's.** Whichever lands first
@@ -226,6 +253,8 @@ recorded sign-off.
 
 - [ ] `statModifiers.handling` gone from schema, sim and all 472 SKUs.
 - [ ] `StatModifierSchema` carries `style` and `authenticity` only, asserted.
+- [ ] The parts market shows a power percentage when a car is selected, resolved against that
+      car's own character and stock output, and shows nothing at all when none is.
 - [ ] `StatBlock` still carries all five stats; buyers still weight reliability.
 - [ ] Handling still responds to condition and to grip parts, proved by test.
 - [ ] Reliability provably unmoved by this sprint, all 26 cars, strict equality.

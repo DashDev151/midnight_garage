@@ -2,14 +2,18 @@ import {
   ALL_CAR_PART_IDS,
   PARTS,
   PARTS_TAXONOMY,
+  fitmentClassForTier,
   type CarInstance,
+  type CarModel,
   type CarPartId,
   type CarPartState,
   type ComponentId,
   type ConditionBand,
+  type Grade,
   type PartInstance,
   type ToolTiers,
 } from '@midnight-garage/content'
+import type { SimContext } from '../src/context'
 
 /** A full six-line `toolTiers` map, every line at 1 (the new-game floor)
  * unless overridden - so no test file hand-writes all six keys to move
@@ -158,4 +162,39 @@ const BASE_CAR_INSTANCE: Omit<CarInstance, 'parts'> = {
  * whatever the test needs. */
 export function buildCarInstance(overrides: Partial<CarInstance> = {}): CarInstance {
   return { ...BASE_CAR_INSTANCE, parts: mintCarParts(), ...overrides }
+}
+
+/**
+ * A real car model, built with a specific aftermarket grade fitted into
+ * whichever slots `gradesByPartId` names (the model's own fitment class,
+ * resolved from real catalog SKUs) and the model's own stock part
+ * everywhere else - every slot at one uniform condition `band`. The
+ * support-ratio and reliability model tests build a build's shape this way,
+ * since `supportRatios` reads both the fitted grade (specification) and the
+ * fitted band (condition) per slot.
+ */
+export function carWithGrades(
+  model: CarModel,
+  context: SimContext,
+  gradesByPartId: Partial<Record<CarPartId, Grade>>,
+  band: ConditionBand = 'mint',
+): CarInstance {
+  const fitmentClass = fitmentClassForTier(model.tier)
+  const overrides: Partial<Record<CarPartId, CarPartOverride>> = {}
+  for (const partId of ALL_CAR_PART_IDS) {
+    const grade = gradesByPartId[partId] ?? 'stock'
+    const part =
+      grade === 'stock'
+        ? context.stockPartByCarPartId[fitmentClass][partId]
+        : context.aftermarketPartByCarPartId[fitmentClass][partId]?.[grade]
+    if (!part) continue
+    overrides[partId] = {
+      id: `fixture-${partId}-${grade}`,
+      partId: part.id,
+      band,
+      genuinePeriod: false,
+      origin: { kind: 'market', day: 1 },
+    }
+  }
+  return buildCarInstance({ modelId: model.id, parts: mintCarParts(overrides) })
 }

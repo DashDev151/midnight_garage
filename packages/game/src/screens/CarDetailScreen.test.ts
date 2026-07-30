@@ -6,6 +6,7 @@ import {
   PARTS,
   PARTS_TAXONOMY,
   TOOL_LINES,
+  fitmentClassForTier,
   type CarPartId,
   type ComponentId,
   type ZoneId,
@@ -814,6 +815,106 @@ describe('CarDetailScreen', () => {
 
       const { wrapper } = await mountAt(id)
       expect(wrapper.find('[data-test="foundation-warning"]').exists()).toBe(false)
+    })
+  })
+
+  describe('Sprint 136: the support-ratio readout', () => {
+    /** Resets every slot on `carId` to the model's own stock part, mint -
+     * generated auction condition is randomised, and this test needs a known
+     * clean baseline to build a specific support ratio on top of. */
+    function resetToStockMint(game: ReturnType<typeof useGameStore>, carId: string): void {
+      const car = game.gameState.ownedCars.find((c) => c.id === carId)!
+      const model = game.context.modelsById[car.modelId]!
+      const fitmentClass = fitmentClassForTier(model.tier)
+      for (const partId of ALL_CAR_PART_IDS) {
+        const stockPart = game.context.stockPartByCarPartId[fitmentClass][partId]
+        car.parts[partId] = {
+          installed: {
+            id: `readout-test-${partId}`,
+            partId: stockPart.id,
+            band: 'mint',
+            genuinePeriod: false,
+            origin: { kind: 'market', day: 1 },
+          },
+        }
+      }
+    }
+
+    function fit(
+      game: ReturnType<typeof useGameStore>,
+      carId: string,
+      partId: CarPartId,
+      grade: 'street' | 'sport' | 'race',
+    ): void {
+      const car = game.gameState.ownedCars.find((c) => c.id === carId)!
+      const model = game.context.modelsById[car.modelId]!
+      const fitmentClass = fitmentClassForTier(model.tier)
+      const part = game.context.aftermarketPartByCarPartId[fitmentClass][partId]?.[grade]
+      if (!part) throw new Error(`no ${grade} ${partId} SKU for fitment class ${fitmentClass}`)
+      car.parts[partId] = {
+        installed: {
+          id: `readout-test-${partId}-${grade}`,
+          partId: part.id,
+          band: 'mint',
+          genuinePeriod: false,
+          origin: { kind: 'market', day: 1 },
+        },
+      }
+    }
+
+    it('is absent at adequate (a stock car)', async () => {
+      const game = useGameStore()
+      game.devGrantCar('nissan-180sx-rps13')
+      const id = game.gameState.ownedCars[0]!.id
+      resetToStockMint(game, id)
+
+      expect(game.carDetail(id)!.supportReadout).toBeNull()
+      const { wrapper } = await mountAt(id)
+      expect(wrapper.find('[data-test="support-readout"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="support-readout-listing"]').exists()).toBe(false)
+    })
+
+    it('names the shortfall at strained, restated in the sell section, with no numeric figure anywhere', async () => {
+      const game = useGameStore()
+      game.devGrantCar('nissan-180sx-rps13')
+      const id = game.gameState.ownedCars[0]!.id
+      resetToStockMint(game, id)
+      fit(game, id, 'intake', 'sport')
+      fit(game, id, 'exhaust', 'sport')
+      fit(game, id, 'ignitionEcu', 'sport')
+
+      const readout = game.carDetail(id)!.supportReadout
+      expect(readout).not.toBeNull()
+      expect(readout!.band).toBe('strained')
+
+      const { wrapper } = await mountAt(id)
+      const el = wrapper.find('[data-test="support-readout"]')
+      expect(el.exists()).toBe(true)
+      expect(el.text()).toContain('It will do, but it is')
+      expect(el.text()).not.toMatch(/\d/)
+
+      const listing = wrapper.find('[data-test="support-readout-listing"]')
+      expect(listing.exists()).toBe(true)
+      expect(listing.text()).toBe(el.text())
+    })
+
+    it('names cylinder pressure at dangerous for a race turbo on a stock bottom end, with no numeric figure', async () => {
+      const game = useGameStore()
+      game.devGrantCar('nissan-180sx-rps13')
+      const id = game.gameState.ownedCars[0]!.id
+      resetToStockMint(game, id)
+      fit(game, id, 'forcedInduction', 'race')
+
+      const readout = game.carDetail(id)!.supportReadout
+      expect(readout).not.toBeNull()
+      expect(readout!.band).toBe('dangerous')
+      expect(readout!.copy.toLowerCase()).toContain('bottom end')
+
+      const { wrapper } = await mountAt(id)
+      const el = wrapper.find('[data-test="support-readout"]')
+      expect(el.exists()).toBe(true)
+      expect(el.text()).toContain('This is')
+      expect(el.text()).not.toMatch(/\d/)
     })
   })
 

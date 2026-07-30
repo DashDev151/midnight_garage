@@ -96,11 +96,11 @@ describe('AuctionRoomDemoScreen', () => {
     expect(wrapper.find('[data-test="take-seat-thin"]').text()).toBe('Take a seat')
 
     const packed = packedCard(wrapper)
-    expect(packed.text()).toContain('the room says ¥91,041')
+    expect(packed.text()).toContain('the room says ¥86,623')
     const packedBadge = packed.find('.turnout-badge')
     expect(packedBadge.text()).toBe('Packed turnout')
     expect(packedBadge.classes()).toContain('turnout-packed')
-    expect(wrapper.find('[data-test="est-value-packed"]').text()).toContain('¥91,041')
+    expect(wrapper.find('[data-test="est-value-packed"]').text()).toContain('¥86,623')
     expect(wrapper.find('[data-test="take-seat-packed"]').text()).toBe('Take a seat')
 
     // The shared inspect control names the real labour and travel-fee cost; no
@@ -191,8 +191,8 @@ describe('AuctionRoomDemoScreen', () => {
     await resolveTrap(wrapper)
 
     const est = wrapper.find('[data-test="est-value-packed"]')
-    expect(est.find('.was').text()).toBe('¥91,041')
-    expect(est.find('.down').text()).toBe('¥62,285')
+    expect(est.find('.was').text()).toBe('¥86,623')
+    expect(est.find('.down').text()).toBe('¥61,362')
     expect(est.find('.up').exists()).toBe(false)
   })
 
@@ -281,7 +281,7 @@ describe('AuctionRoomDemoScreen', () => {
   it('marks danger independently on each raise option against its own landing price, not as one shared flag', async () => {
     const wrapper = mountScreen()
     await inspect(wrapper)
-    // Resolve the trap to its true worth (¥62,285); by the time the room has
+    // Resolve the trap to its true worth (¥61,362); by the time the room has
     // climbed for 18s, every rung on offer already lands past the player's
     // number, so all three read danger at once - each computed off its own
     // landing price, not one shared switch, which the identical `.classes()`
@@ -291,11 +291,11 @@ describe('AuctionRoomDemoScreen', () => {
     await advance(18_000)
     expect(wrapper.find('[data-test="seat-0"]').text()).toContain('Endo')
 
-    expect(wrapper.find('[data-test="bid"]').text()).toBe('Raise to ¥80,073')
+    expect(wrapper.find('[data-test="bid"]').text()).toBe('Raise to ¥67,643')
     expect(wrapper.find('[data-test="bid"]').classes()).toContain('danger')
-    expect(wrapper.find('[data-test="bid-jump-4"]').text()).toBe('Raise to ¥95,073')
+    expect(wrapper.find('[data-test="bid-jump-4"]').text()).toBe('Raise to ¥82,643')
     expect(wrapper.find('[data-test="bid-jump-4"]').classes()).toContain('danger')
-    expect(wrapper.find('[data-test="bid-jump-8"]').text()).toBe('Raise to ¥115,073')
+    expect(wrapper.find('[data-test="bid-jump-8"]').text()).toBe('Raise to ¥102,643')
     expect(wrapper.find('[data-test="bid-jump-8"]').classes()).toContain('danger')
   })
 

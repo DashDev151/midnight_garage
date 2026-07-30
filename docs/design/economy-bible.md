@@ -225,6 +225,7 @@ fails that test outright, rather than silently drifting).
 | `valuation.mileageFactorCurve`, `valuation.marketRepairDiscount` (Law 1), `valuation.partsRetention`, `valuation.genuinePeriodMultiplier`, `valuation.tasteSpread`, `valuation.walkAwaySpread`, `valuation.foundation` (Law 5) | `economy.json` | `marketValue.ts`'s guide-value formula (`valuation.foundation` scales the aftermarket premium by the worst foundational part) |
 | `marketPressure.*` | `economy.json` | Weekly market-heat drift (`marketHeat.ts`) |
 | `statFormulas.*` | `economy.json` | Derived car stats (`derivedStats.ts`) and buyer taste normalization |
+| `supportReadout.shortfallCopy`/`framingByBand` | `economy.json` | The support-ratio warning's copy (`packages/game/src/stores/gameStore.ts`'s `supportReadoutFor`) - qualitative only, no yen and no other number |
 | `bands.bandFactors`, `bands.migrationThresholds`, `bands.scrapValueFraction` | `economy.json` | The condition-band model and its save-migration mapping |
 | `partsGeneration.*` including `maxBillFraction` (Law 2) | `economy.json` | Car generation (`auctions.ts`'s `generateAuctionCarInstance`/`enforceMaxBillFraction`) |
 | `reputation.*` | `economy.json` | Clean/concours sale-quality bars and bonuses |

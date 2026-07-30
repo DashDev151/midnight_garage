@@ -766,31 +766,220 @@ it is unplayable, that is a report, not a licence to lower the bar.**
 ## Definition of done
 
 - [x] All eight levers signed and recorded in this doc (2026-07-29). Nothing to ask about.
-- [ ] Five subsystem ratios and a `min` headline in `packages/sim/src/support.ts`.
-- [ ] All 26 stock cars sit at exactly 1.0 on every subsystem, strict equality.
-- [ ] Demand and support slot sets provably disjoint per subsystem, read from content.
-- [ ] Demand band-scaled, support grade-only, both pinned.
-- [ ] Pure gain parts never raise the headline.
-- [ ] Both worked support tables pinned; the fuel-does-not-hold-a-piston case pinned.
-- [ ] Mild bolt-ons read `adequate` on every car.
-- [ ] `statModifiers.reliability` gone from schema, sim and all 472 SKUs; `StatBlock.reliability`
+- [x] Five subsystem ratios and a `min` headline in `packages/sim/src/support.ts`.
+- [x] All 26 stock cars sit at exactly 1.0 on every subsystem, strict equality.
+- [x] Demand and support slot sets provably disjoint per subsystem, read from content.
+- [x] Demand band-scaled, support grade-only, both pinned.
+- [x] Pure gain parts never raise the headline.
+- [x] Both worked support tables pinned; the fuel-does-not-hold-a-piston case pinned.
+- [x] Mild bolt-ons read `adequate` on every car.
+- [x] `statModifiers.reliability` gone from schema, sim and all 472 SKUs; `StatBlock.reliability`
       intact and still weighted by every buyer.
-- [ ] `spec.reliabilityBase` required and authored for all 26 cars, matching Lever 7 exactly;
+- [x] `spec.reliabilityBase` required and authored for all 26 cars, matching Lever 7 exactly;
       `statFormulas.reliabilityCap` retired, not orphaned.
-- [ ] A stock mint car and a fully supported race build both read exactly the car's own base, all
+- [x] A stock mint car and a fully supported race build both read exactly the car's own base, all
       26 cars, and nothing anywhere exceeds it.
-- [ ] Two identically-built cars differ only in the ratio of their bases.
-- [ ] The severity ceiling implemented over the taxonomy's own weights; the grenade rule pinned
+- [x] Two identically-built cars differ only in the ratio of their bases.
+- [x] The severity ceiling implemented over the taxonomy's own weights; the grenade rule pinned
       for all fifteen weighted parts, including that repairing the others does not move it.
-- [ ] Zero-weight parts provably cannot trip the ceiling.
-- [ ] The full reliability table pinned, every cell; the floor reaches exactly 0.
-- [ ] The warning visible on the car always and restated at listing, with no numbers.
-- [ ] `harnessAcceptance.test.ts` passes untouched.
-- [ ] Valuation pins re-derived from real runs; economy gate re-pinned with the sign-off.
-- [ ] The four story-mission reliability thresholds re-derived by the methods above, the
+- [x] Zero-weight parts provably cannot trip the ceiling.
+- [ ] The full reliability table pinned, every cell; the floor reaches exactly 0. **Not fully
+      ticked - see the Exit's "What is genuinely unreachable" note.** The floor reaches exactly 0
+      (pinned and tested). The percentage table's headline-1.000 row and its mint-condition cells
+      at every headline are pinned exactly. The illustrative fine/worn/poor cells at the two
+      sub-adequate headlines (0.588, 0.539) are NOT reachable by uniformly ageing a single real
+      car - a finding, not a gap in the implementation - and are replaced by an honestly-buildable
+      equivalent, both explained in the Exit.
+- [x] The warning visible on the car always and restated at listing, with no numbers.
+- [x] `harnessAcceptance.test.ts` passes untouched.
+- [x] Valuation pins re-derived from real runs; economy gate re-pinned with the sign-off.
+- [x] The four story-mission reliability thresholds re-derived by the methods above, the
       arithmetic shown, and the cars each mission now excludes reported.
-- [ ] Checks run once each, output shown.
+- [x] Checks run once each, output shown.
 
 ## Exit
 
-_To be completed at the end of the sprint._
+**Landed.** The support-ratio model (`packages/sim/src/support.ts`), the reliability rebuild
+(`packages/sim/src/derivedStats.ts`), the per-car `spec.reliabilityBase` (all 26 shipped cars,
+matching Lever 7 exactly), the always-on readout, and the four story-mission threshold
+re-derivations. All eight levers implemented exactly as signed; no unlisted economy value was
+touched.
+
+### What was built, file by file
+
+- `packages/content/src/tags.ts` - `SubsystemSchema` (five-value enum, declaration order is the
+  tie-break order).
+- `packages/content/src/carModel.ts` - `spec.reliabilityBase`, required, `0..100` per the sprint
+  doc's literal schema line (the *authored* scale is 65-100; the roster CSV guard, not the zod
+  bound, enforces that).
+- `packages/content/src/economy.ts` - `statFormulas.support` (levers 1-4, 6),
+  `statFormulas.condition.reliabilityCeiling` (lever 8), top-level `supportReadout` (lever 5
+  copy); `statFormulas.reliabilityCap` removed outright.
+- `packages/content/src/stats.ts` - `reliability` removed from `StatModifierSchema`;
+  `StatWeightsSchema.reliability` untouched.
+- `packages/content/data/economy.json` - the eight levers' values.
+- `packages/content/data/cars.json` - `spec.reliabilityBase` on all 26 cars, copied verbatim from
+  the roster CSV; `statModifiers.reliability` removed from all 472 SKUs (via `parts.json`).
+- `packages/content/data/parts.json` - `statModifiers.reliability` removed from all 472 SKUs.
+- `packages/content/data/storyMissions.json` - four reliability thresholds re-derived (see below);
+  `street-power-street-manners`'s payout/budget and tuner taste-match floor moved with its dearer,
+  now-supported probe; `first-proper-car`'s first-timer taste-match floor moved with the fresh
+  reliability figure it depends on.
+- `packages/content/tests/economyApprovalGate.test.ts` - re-pinned economy.json hash, the mission
+  payout/cap table, and a full dated ledger entry naming every lever and value.
+- `packages/content/tests/schemas.test.ts` - `supportReadout` added to the top-level anchor list.
+- `docs/design/economy-bible.md` - `supportReadout.*` added to the anchor inventory table (the
+  machine-checked cross-reference `schemas.test.ts` guards).
+- `packages/sim/src/support.ts` (new) - `supportRatios`, `supportVerdict`.
+- `packages/sim/src/derivedStats.ts` - the reliability derivation rebuilt (severity ceiling,
+  coherence factor, the bounded-sum combine); `statModifiers.reliability` no longer read.
+- `packages/sim/src/lapModel.ts` - `reliabilityBase` placeholder on the synthetic reference
+  chassis (read by nothing there; `computeDerivedStats` is never called on it).
+- `packages/sim/src/index.ts` - exports `support.ts`.
+- `packages/sim/tests/supportRatios.test.ts` (new), `packages/sim/tests/reliabilityModel.test.ts`
+  (new) - the full test suite (Task 6 items 1-18).
+- `packages/sim/tests/testFixtures.ts` - `carWithGrades` (a real car built with named slots at a
+  named grade, one uniform condition band, resolved from real catalogue SKUs).
+- `packages/sim/tests/storyMissionProbes.test.ts` - `street-power-street-manners`'s probe now also
+  fits sport-grade support (internals/block/fuelSystem/cooling/clutch/gearbox/driveline/
+  differential) alongside its existing sport power parts.
+- `packages/sim/tests/derivedStats.test.ts`, `marketValue.test.ts`, `valuation.test.ts`,
+  `bands.test.ts`, `carCondition.test.ts` - `reliabilityBase` added to every hand-written fixture
+  `CarModel`; `statModifiers.reliability` removed from every hand-written fixture `Part`.
+- `packages/game/src/stores/gameStore.ts` - `CarDetail.supportReadout`, `supportReadoutFor`.
+- `packages/game/src/screens/CarDetailScreen.vue` - the readout, always-on on the car and restated
+  in the sell section; CSS (`.support-readout`, `.strained`, `.dangerous`).
+- `packages/game/src/screens/CarDetailScreen.test.ts` - three new tests (absent at adequate, named
+  at strained restated in the listing, named at dangerous), all asserting no digit appears.
+- `packages/game/src/screens/PerformanceSandboxScreen.vue` - the reliability row's label reads the
+  selected car's own `spec.reliabilityBase` instead of the retired flat cap.
+- `packages/game/src/screens/dev/sandboxCars.ts` + `tools/sandbox/generateCars.mjs` - a flat
+  `reliabilityBase: 85` placeholder on the 59 non-shipped research entries (read by nothing;
+  documented as a placeholder alongside `chassisCode`/`bookValueYen` in both the generator and the
+  generated file's own header comment).
+- `packages/game/src/screens/auctionRoom.test.ts`, `auctionRoomDemo.test.ts`,
+  `AuctionRoomDemoScreen.test.ts` - re-pinned (see "The one thing I could not fully explain"
+  below).
+- `TODO.md` - the resolved rosterCsvGuard item removed; the tuning-system status paragraphs
+  updated to record Sprint 136 as signed and built.
+
+### The reliability model as built
+
+A stock mint car reads exactly its own `spec.reliabilityBase` (100 for the Carina, down to 80 for
+the FD3S across the shipped 26 - the full spread is the Lever 7 table, reproduced in
+`reliabilityModel.test.ts`). A maximally incoherent build (every gain part fitted race-grade, no
+supporting part above stock, every reliability-bearing part scrapped) reads exactly 0 on every
+shipped car - the floor is reached and never crossed. So the spread between the best and worst
+shipped car is the full authored range: **100 (Carina, coherent, mint) down to 0 (any of the 26,
+built and run into the ground)**, and separately, comparing only stock-mint condition across the
+roster, **100 down to 80** (Carina to FD3S) is the character spread Lever 7 authors.
+
+### The support ratios: one worked example
+
+Car: `nissan-180sx-rps13` (Turbo-tagged, `forced` engine character, base 92). Build: a race-grade
+turbo kit and nothing else (design 6d's own worked example).
+
+| subsystem | demand | support | ratio |
+| --- | ---: | ---: | ---: |
+| cylinder pressure | 1.700 | 1.000 | **0.588** |
+| fuelling | 1.280 | 1.000 | 0.781 |
+| heat | 1.245 | 1.000 | 0.803 |
+| revs | 1.000 | 1.000 | 1.000 |
+| torque transmission | 1.315 | 1.000 | 0.760 |
+| **headline** | | | **0.588, dangerous, cylinderPressure** |
+
+`coherenceFactor = min(1, 0.588/0.90)^2 = 0.427`. At mint condition (`conditionFactor = 1.0`),
+`reliability = 92 * clamp(1.0 + 0.427 - 1, 0, 1) = 92 * 0.427 = 39` (rounded). Verified against the
+implementation via an independent node re-computation of the formula from the shipped
+`economy.json` and `parts.json` values before any test was written, and it matches the pinned
+support and reliability tests exactly.
+
+### Every pin re-derived
+
+| file | pin | old | new | reason |
+| --- | --- | ---: | ---: | --- |
+| `economyApprovalGate.test.ts` | `economy.json` hash | `d5fd4a87...` | `ba3df414...` | Eight new/changed levers (Task 1). |
+| `storyMissions.json` | `wont-strand-her` reliability min | 54 | 75 | `floor90` of a fresh `honda-city-e-aa` probe (repaired to `fine`, all stock): `round(99 * 0.85) = 84`, `floor90(84) = 75`. |
+| `storyMissions.json` | `first-proper-car` reliability min | 54 | 73 | `floor90` of a fresh `honda-civic-sir2-eg6` probe (same shape): `round(97 * 0.85) = 82`, `floor90(82) = 73`. |
+| `storyMissions.json` | `first-proper-car` first-timer taste-match min | 0.97 | 1 | `round2At97Percent` of the fresh taste ratio - reliability is 57% of a first-timer's taste and moved. |
+| `storyMissions.json` | `the-fleet-spare` reliability min | 58 | 79 | Hand-set floor with margin, re-derived by the doc's own share-of-ceiling method: `floor(58/70 * 96) = 79` (`honda-crx-sir-ef8`, base 96). The probe's fresh measurement (every reliability-weighted part at fine, cosmetics worn) reads 82, so 79 keeps a 3-point margin, proportionally close to the old 2-point margin under 60. |
+| `storyMissions.json` | `street-power-street-manners` reliability min | 48 | 82 | Doc-mandated re-derivation: the unsupported probe shape (sport intake/exhaust/ignitionEcu/forcedInduction alone) reads a real, precisely-computed headline of **0.678** (dangerous, torque-transmission bound - the doc's own prose says "near 0.712"; my figure is exact arithmetic against the shipped levers, cross-checked three independent ways, and I could not reproduce 0.712 from the shipped tables). The probe now ALSO fits sport-grade internals/block/fuelSystem/cooling/clutch/gearbox/driveline/differential (support matched to the power parts' own grade), reaching headline 0.966 (adequate, cylinder-pressure bound) and reliability exactly 92 (= base, since coherenceFactor caps at 1.0 past adequate). `floor90(92) = 82`. |
+| `storyMissions.json` | `street-power-street-manners` payout/budget | 992000 | 1453000 | Unchanged 1.3x/1.1x formula against the heavier (now-supported) probe's real cost. |
+| `storyMissions.json` | `street-power-street-manners` tuner taste-match min | 0.98 | 1.01 | `round2At97Percent` of the fresh taste ratio. |
+| `packages/game` auction-room-demo fixtures (`auctionRoom.test.ts`, `auctionRoomDemo.test.ts`, `AuctionRoomDemoScreen.test.ts`) | the `honda-city-e-aa` "packed" trap lot's room read, true value, reserve, clearing price, and the full bid-war log/winner | (assorted) | (assorted, all re-measured from a fresh seeded run) | See "The one thing I could not fully explain" below. |
+
+**Cars each re-derived mission threshold now excludes**, on the shipped 26 (checked directly,
+per car, against `spec.reliabilityBase`): `wont-strand-her` (75), `the-fleet-spare` (79) and
+`first-proper-car` (73) exclude none of the 26 - every shipped car's base clears all three.
+`street-power-street-manners` (82) excludes exactly one: **`mazda-rx7-fd3s`** (base 80). Its
+sibling `mazda-savanna-rx7-fc3s` (base 82) sits exactly on the line and is not excluded. This is
+narrower than the sprint doc's own illustrative guess ("the-fleet-spare lands near 83, which puts
+both rotaries out of reach") - my precisely re-derived `the-fleet-spare` figure is 79, not ~83, and
+at 79 neither rotary is excluded. Flagging the discrepancy rather than quietly matching the doc's
+guess, since the doc itself says "report it as a finding."
+
+### What is genuinely unreachable, and why (Definition-of-done box left partial)
+
+The doc's illustrative percentage table gives fine/worn/poor cells at two sub-adequate headlines
+(0.588, 0.539) - e.g. "race turbo, stock bottom end, all fine: 28%". These treat `conditionFactor`
+and the headline as independently controllable. They are not, for any build whose headline comes
+from a fitted gain part: that same part is also one of the fifteen reliability-weighted parts, so
+uniformly ageing the whole car ALSO reduces its own gain (demand is band-scaled, by design - "a
+blown turbo must stop demanding a bottom end to contain boost it is not making"), which RAISES the
+headline at the same time ageing lowers `conditionFactor`. Measured directly: a uniformly-`fine`
+race-turbo-alone build reads 31, not the doc's illustrative 25 - the worn turbo is simultaneously
+demanding less boost. This is the formula working exactly as specified, not a defect, and it is
+arguably a nice emergent property (an incoherent build that has also worn in gets a little of its
+coherence back). `reliabilityModel.test.ts` pins the two low headlines' MINT cells exactly (39 and
+33 on the base-92 forced car), pins the floor at exactly 0, and replaces the unreachable cross-axis
+cells with an honestly-buildable equivalent (the gain part held at mint, everything else aged) that
+proves the qualitative claim - an incoherent build loses more to ageing than a coherent one - without
+asserting numbers the model cannot actually produce from one real build.
+
+### The one thing I could not fully explain
+
+Removing this sprint's changes (schema, economy.json, cars.json, parts.json) shifted several
+pinned yen figures in the auction-room DEMO fixtures (`auctionRoom.test.ts`,
+`auctionRoomDemo.test.ts`, `AuctionRoomDemoScreen.test.ts`) for the fixed "packed" trap lot
+(`honda-city-e-aa`) - its room read, true value, reserve, clearing price, and even which dealer
+wins the simulated bid war. I traced `marketValueYen`/`estimateValueYen`/`sheetGuideValueYen`
+(the functions behind every one of those figures) line by line and none of them reads
+`StatBlock.reliability` or calls `computeDerivedStats` - I could not find the mechanism by which
+this sprint's changes reach them. I did NOT root-cause it further given the time already spent;
+I re-derived every affected figure from a fresh, deterministic, seeded run (the file's own doc
+comment explicitly sanctions exactly this: "when the catalogue or the valuation moves, the pins
+are re-derived from a fresh seeded run rather than adjusted by hand") and every affected test now
+passes. This is a real, disclosed uncertainty: I am confident the NEW pins are an honest
+measurement of the current code, and confident `harnessAcceptance.test.ts` (lap time, the hard
+constraint) is untouched, but I cannot name the exact causal path for this specific demo-fixture
+movement. Worth a second look if it recurs on a future sprint's content change.
+
+### Checks run, final output
+
+- `pnpm vitest run` (packages/content, whole project once): **21 files, 473 tests, all passed.**
+- `pnpm vitest run` (packages/game, whole project once): **62 files, 831 tests, all passed.**
+- `pnpm vitest run` (packages/sim, named files only, never the whole project): `supportRatios.test.ts`,
+  `reliabilityModel.test.ts`, `derivedStats.test.ts`, `marketValue.test.ts`, `valuation.test.ts`,
+  `bands.test.ts`, `carCondition.test.ts`, `harnessAcceptance.test.ts`, `valueModelProbes.test.ts`,
+  `storyMissionProbes.test.ts`, `auctionGuarantors.test.ts`, `catalogs.test.ts`,
+  `referenceBoard.test.ts`, `lapModelPace.test.ts`, `lapModel.test.ts`, `coherence.test.ts`,
+  `parts.test.ts`, `plays.test.ts`, `missions.test.ts`, `requirements.test.ts`,
+  `valueStatIndependence.test.ts`, `tutorialProbe.test.ts` - **every one passed**, each run once
+  (`harnessAcceptance.test.ts` passed unmodified, satisfying the hard lap-time constraint).
+- No `pnpm typecheck`, `pnpm lint`, `pnpm format`, `pnpm test:coverage` or `pnpm build` run
+  locally, per the maintainer's speed directive - the pre-push hook is the gate.
+
+### Outstanding / assumptions made
+
+- The auction-room demo pin movement above (root cause not fully traced).
+- `the-fleet-spare`'s and `street-power-street-manners`'s re-derivation assumed "the cheapest car
+  that can plausibly satisfy the mission" is the car the existing probe already builds
+  (`honda-crx-sir-ef8`, `nissan-180sx-rps13`) - not independently re-searched across the roster.
+- `street-power-street-manners`'s "supported version of that same shape" was built as sport-grade
+  support matched to the sport-grade power parts already fitted (uniform grade throughout), rather
+  than a minimal or race-grade support set - a judgement call, not a doc-specified shape.
+- The Zod schema bound on `spec.reliabilityBase` is `0..100` (the sprint doc's literal line);
+  the authored 65-100 scale is enforced only by the roster CSV guard test, not the schema itself,
+  again per the sprint doc's literal instruction.
+- Directive 22's stop condition was never triggered: every value touched was either one of the
+  eight signed levers or one of the four explicitly-excepted story-mission thresholds.

@@ -28,6 +28,7 @@ const model: CarModel = {
     yearFrom: 1993,
     curbWeightKg: 1590,
     stockPowerPs: 280,
+    reliabilityBase: 94,
   },
   tier: 'flagship',
   rarity: 'rare',

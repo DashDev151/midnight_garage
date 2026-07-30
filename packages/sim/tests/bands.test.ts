@@ -70,6 +70,7 @@ const TEST_MODEL: CarModel = {
     yearFrom: 1990,
     curbWeightKg: 1200,
     stockPowerPs: 150,
+    reliabilityBase: 90,
   },
   tier: 'everyday',
   rarity: 'common',

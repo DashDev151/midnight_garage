@@ -21,6 +21,7 @@ const model: CarModel = {
     yearFrom: 1981,
     curbWeightKg: 690,
     stockPowerPs: 61,
+    reliabilityBase: 99,
   },
   tier: 'entry',
   rarity: 'common',
@@ -43,7 +44,6 @@ const coilovers: Part = {
     powerFraction: { 'high-strung-na': 0, 'lazy-na': 0, forced: 0 },
     handling: 8,
     style: 3,
-    reliability: 0,
     authenticity: 0,
   },
   physicalModifiers: { grip: 1, braking: 1, mass: 1 },
@@ -133,7 +133,6 @@ describe('computeDerivedStats', () => {
         powerFraction: { 'high-strung-na': 0, 'lazy-na': -10, forced: 0 },
         handling: 0,
         style: 0,
-        reliability: 0,
         authenticity: 0,
       },
     }
@@ -164,7 +163,6 @@ describe('computeDerivedStats', () => {
         powerFraction: { 'high-strung-na': 0, 'lazy-na': 0, forced: 0 },
         handling: 20,
         style: 0,
-        reliability: 0,
         authenticity: -15,
       },
     }

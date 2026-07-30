@@ -294,9 +294,12 @@ interface MetricRow {
   change: Change
 }
 
-/** The three caps the stat formulas are written against, read from the economy
- * content so a label can never quote a number the formula no longer uses. */
-const { powerNormalizationCeiling, styleCap, reliabilityCap } = game.context.economy.statFormulas
+/** The two flat caps the stat formulas are still written against, read from
+ * the economy content so a label can never quote a number the formula no
+ * longer uses. Reliability's own ceiling is per-car (`spec.reliabilityBase`),
+ * not a content constant, so its label reads the selected car's own value
+ * instead. */
+const { powerNormalizationCeiling, styleCap } = game.context.economy.statFormulas
 
 const statRows = computed<MetricRow[]>(() => {
   const stock = stockResult.value.stats
@@ -327,7 +330,7 @@ const statRows = computed<MetricRow[]>(() => {
     {
       key: 'reliability',
       label: 'Reliability',
-      unit: `0 to 100, condition alone reaches ${reliabilityCap}`,
+      unit: `0 to ${model.value.spec.reliabilityBase}, this car's own base`,
       stock: stock.reliability,
       current: now.reliability,
     },

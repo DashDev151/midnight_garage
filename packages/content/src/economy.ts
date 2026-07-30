@@ -718,8 +718,97 @@ export const EconomyConfigSchema = z.object({
     }),
     /** Style's cap at 100 body condition. */
     styleCap: z.number().positive(),
-    /** Reliability's cap at 100 average engine+drivetrain condition. */
-    reliabilityCap: z.number().positive(),
+    /**
+     * The support-ratio model (`packages/sim/src/support.ts`, design section
+     * 6): whether a build's own gains are backed by the specification that
+     * holds them together. `reliabilityCap` (a flat 70 with no per-car
+     * meaning) is RETIRED by this block rather than moved - it is replaced by
+     * `CarModel.spec.reliabilityBase`, a per-car value, so authoring a flat
+     * ceiling here first and overwriting it later would be pure waste.
+     *
+     * By construction a stock car sits at exactly 1.0 on every subsystem:
+     * every gain is 0 and every spec is 0, so `demand = support = 1`
+     * everywhere before a single aftermarket part is fitted.
+     */
+    support: z.object({
+      /**
+       * Lever 1: what a fitted grade is worth as SPECIFICATION on a
+       * supporting slot - flat per grade, the same on every slot and every
+       * car. Never band-scaled: specification does not decay, a worn forged
+       * conrod is still stronger than a stock cast one.
+       */
+      specByGrade: z.object({
+        stock: z.literal(0),
+        street: z.number().min(0).max(1),
+        sport: z.number().min(0).max(1),
+        race: z.number().min(0).max(1),
+      }),
+      /**
+       * Lever 2: how strongly each subsystem's demand responds to the
+       * band-scaled gain that drives it - `cylinderPressure`/`revs` read a
+       * single named slot's own gain (`forcedInduction`/`camsTiming`
+       * respectively); `fuelling`/`heat`/`torqueTransmission` read the total
+       * gain summed across every slot on the car.
+       */
+      demandWeights: z.object({
+        cylinderPressure: z.number().nonnegative(),
+        fuelling: z.number().nonnegative(),
+        heat: z.number().nonnegative(),
+        revs: z.number().nonnegative(),
+        torqueTransmission: z.number().nonnegative(),
+      }),
+      /**
+       * Lever 3: which slots support each subsystem, and how strongly - the
+       * dual-role convention (design section 6c) made data: within one
+       * subsystem a slot is a demander or a supporter, never both, but the
+       * SAME slot may demand one subsystem while supporting another (a
+       * bored block raises fuelling/heat/torque demand and supports cylinder
+       * pressure). `fuelSystem` and `clutch` carry zero power gain on every
+       * SKU, which is what keeps a pure enabler from partly paying for the
+       * gain its own slot demands.
+       */
+      supportWeights: z.object({
+        cylinderPressure: z.object({
+          internals: z.number().nonnegative(),
+          block: z.number().nonnegative(),
+        }),
+        fuelling: z.object({ fuelSystem: z.number().nonnegative() }),
+        heat: z.object({ cooling: z.number().nonnegative() }),
+        revs: z.object({
+          headValvetrain: z.number().nonnegative(),
+          internals: z.number().nonnegative(),
+        }),
+        torqueTransmission: z.object({
+          clutch: z.number().nonnegative(),
+          gearbox: z.number().nonnegative(),
+          driveline: z.number().nonnegative(),
+          differential: z.number().nonnegative(),
+        }),
+      }),
+      /**
+       * Lever 4: the headline support ratio's band thresholds.
+       * `adequateAtOrAbove` is load-bearing twice - it is both the readout's
+       * silence threshold (design 7b: competence is the baseline, not an
+       * achievement) and the knee of the coherence curve below, so
+       * `adequate` means exactly the same thing on both surfaces: this
+       * costs you nothing.
+       */
+      thresholds: z
+        .object({
+          adequateAtOrAbove: z.number().positive(),
+          strainedAtOrAbove: z.number().positive(),
+        })
+        .refine((t) => t.strainedAtOrAbove <= t.adequateAtOrAbove, {
+          message: 'statFormulas.support.thresholds.strainedAtOrAbove must be <= adequateAtOrAbove',
+        }),
+      /**
+       * Lever 6 (signed): the coherence curve's exponent -
+       * `min(1, headline / thresholds.adequateAtOrAbove) ^ coherenceExponent`.
+       * Capped at 1, so a build is never MORE reliable than stock; below the
+       * knee the exponent decides how sharply a shortfall bites.
+       */
+      coherenceExponent: z.number().positive(),
+    }),
     /** Soft power ceiling `valuateCarForBuyer` normalizes taste's power term
      * against (was the file-local `POWER_NORMALIZATION_CEILING` constant in
      * valuation.ts). */
@@ -957,6 +1046,56 @@ export const EconomyConfigSchema = z.object({
         driveline: PhysicalConditionCurveSchema,
         aero: PhysicalConditionCurveSchema,
       }),
+      /**
+       * Lever 8 (signed): a CEILING on reliability's condition mean, not a
+       * replacement for it - `min(weightedBandFactorForStat(..., 'reliability',
+       * ...), reliabilityCeiling[worstBand])`. The mean alone lets a single
+       * catastrophic fault average away against fourteen good parts (a seized
+       * block used to read 92/100); this caps that mean at what the WORST
+       * single reliability-bearing part allows, so a grenade caps the car no
+       * matter how perfect everything else is.
+       *
+       * "Any" is the right test rather than a crude one, because the parts
+       * that carry a `statWeights.reliability` weight in the taxonomy are
+       * exactly the parts that stop the car - springs and paint carry zero
+       * precisely because they do not. The worst band is read from the
+       * taxonomy's own weighted parts, never a hand-written list, and a
+       * MISSING reliability-bearing part counts as `scrap` for this ceiling
+       * (matching `weightedBandFactor`'s existing treatment of a missing part
+       * as a 0 band factor); a legitimately absent slot (an NA car's empty
+       * forced-induction slot) is not missing and never trips it.
+       *
+       * Only `scrap` and `poor` carry a real ceiling; `worn`, `fine` and
+       * `mint` are unconstrained (the mean is already <= 1 there, so a ceiling
+       * would do nothing).
+       */
+      reliabilityCeiling: z.object({
+        poor: z.number().min(0).max(1),
+        scrap: z.number().min(0).max(1),
+      }),
+    }),
+  }),
+  /**
+   * Lever 5: the support-ratio warning's copy (design 7c). Shown only at
+   * `strained` and `dangerous` - `adequate` shows nothing at all, because
+   * competence is the baseline rather than an achievement. `shortfallCopy`
+   * names what the named subsystem can't do; `framingByBand` wraps it,
+   * substituting the literal `{shortfall}` token the same way
+   * `diagnosis.saleRevealCopy` substitutes `<cause>`. The element itself is
+   * qualitative - the band and the named shortfall, no numbers - so nothing
+   * here ever carries a figure.
+   */
+  supportReadout: z.object({
+    shortfallCopy: z.object({
+      cylinderPressure: z.string().min(1),
+      fuelling: z.string().min(1),
+      heat: z.string().min(1),
+      revs: z.string().min(1),
+      torqueTransmission: z.string().min(1),
+    }),
+    framingByBand: z.object({
+      strained: z.string().min(1),
+      dangerous: z.string().min(1),
     }),
   }),
   /**

@@ -42,14 +42,18 @@ export const PowerFractionSchema = z.object({
   forced: z.number().default(0),
 })
 
-/** A part's effect on the five stats - deltas, so any sign, no change by
+/** A part's effect on the four stats - deltas, so any sign, no change by
  * default. `power` retired in favour of `powerFraction` (proportional,
  * per-engine-character power) - a flat PS delta could not tell an NA Beat
- * from a twin-turbo Supra apart. */
+ * from a twin-turbo Supra apart. `reliability` retired the same way: a part
+ * does not add reliability, the build supports its own output or it does not
+ * (`packages/sim/src/support.ts`), and reliability is condition plus
+ * coherence rather than a sum of per-part deltas. `StatWeightsSchema.
+ * reliability` is untouched - condition still reaches reliability through
+ * it. */
 export const StatModifierSchema = z.object({
   handling: z.number().default(0),
   style: z.number().default(0),
-  reliability: z.number().default(0),
   authenticity: z.number().default(0),
   powerFraction: PowerFractionSchema.default({
     'high-strung-na': 0,
