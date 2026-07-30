@@ -1025,8 +1025,12 @@ describe('the foundation law kills the incoherent-build profit (Sprint 60, law 5
         }),
       ) as CarInstance['parts']
       const car = buildCarInstance({ modelId: model.id, parts })
-      // Zero premium -> foundationFactor is inert by construction.
-      expect(installedPartsValueYen(car, PARTS_BY_ID, ECONOMY)).toBe(0)
+      // Zero premium -> foundationFactor is inert by construction. All-stock
+      // parts, so retention multiplies nothing - any value would do; the
+      // real ceiling documents what a genuinely stock car reads.
+      expect(
+        installedPartsValueYen(car, PARTS_BY_ID, ECONOMY, ECONOMY.valuation.retentionCeiling),
+      ).toBe(0)
     }
   })
 })

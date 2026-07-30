@@ -78,6 +78,12 @@ const RETIRED_IDENTIFIERS: readonly RetiredIdentifier[] = [
       'A duplicate representation of induction with nothing guarding that it agrees with tags; hasForcedInduction is the one source of truth sim code may read. Folded in from engineCharacter.test.ts rather than left as a second, hand-rolled guard.',
     scopedToPackages: ['sim'],
   },
+  {
+    identifier: 'partsRetention',
+    retiredInSprint: 144,
+    reason:
+      'A flat 0.55 for every build in the game, which is why modifying a car to sell it lost money whatever you did. Replaced by retentionFor (marketValue.ts), a curve between valuation.retentionFloor and valuation.retentionCeiling driven by the coherence factor of the build - deleted rather than left inert, per this sprint ruling that a lever reading live and doing nothing is worse than either extreme.',
+  },
 ]
 
 function escapeRegExp(text: string): string {

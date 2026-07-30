@@ -1,4 +1,11 @@
-import { BUYERS, CARS, PARTS, PARTS_TAXONOMY, type CarInstance } from '@midnight-garage/content'
+import {
+  BUYERS,
+  CARS,
+  PARTS,
+  PARTS_TAXONOMY,
+  type CarInstance,
+  type CarPartId,
+} from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { carOriginLabel, enforceMaxBillFraction, generateAuctionCarInstance } from '../src/auctions'
 import { carGuideValueYen } from '../src/bidding'
@@ -9,7 +16,9 @@ import { marketValueYen } from '../src/marketValue'
 import { createInitialGameState } from '../src/newGame'
 import { makeCarOrigin } from '../src/provenance'
 import { createRng } from '../src/rng'
+import { supportVerdict } from '../src/support'
 import { buildTutorialLot } from '../src/tutorial'
+import { carWithGrades } from './testFixtures'
 import { roomLedgerFor, valueLedgerFor, type ValueLedger } from '../src/valueLedger'
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
@@ -110,6 +119,68 @@ describe('valueLedgerFor sums exactly to marketValueYen', () => {
       CONTEXT.economy,
     )
     expect(offPar.lines.map((line) => line.id).slice(0, 3)).toEqual(['book', 'mileage', 'heat'])
+  })
+})
+
+describe("Stage C's coherence line", () => {
+  const FLAGSHIP_CAR = CARS.find((c) => c.id === 'toyota-supra-rz-jza80')!
+
+  it('appears, negative, only on an incoherent build - a fully supported one carries no coherence line', () => {
+    const bareTurbo = carWithGrades(FLAGSHIP_CAR, CONTEXT, { forcedInduction: 'race' }, 'mint')
+    const verdict = supportVerdict(bareTurbo, FLAGSHIP_CAR, CONTEXT.partsById, CONTEXT.economy)
+    expect(verdict.band).not.toBe('adequate') // sanity: this build really is incoherent
+
+    const incoherentLedger = valueLedgerFor(
+      bareTurbo,
+      FLAGSHIP_CAR,
+      100,
+      CONTEXT.partsById,
+      CONTEXT.partsTaxonomyById,
+      CONTEXT.economy,
+    )
+    const coherenceLines = incoherentLedger.lines.filter((line) => line.id === 'coherence')
+    expect(coherenceLines).toHaveLength(1)
+    expect(coherenceLines[0]!.yen).toBeLessThan(0)
+    expect(incoherentLedger.totalYen).toBe(
+      marketValueYen(
+        FLAGSHIP_CAR,
+        bareTurbo,
+        100,
+        CONTEXT.partsById,
+        CONTEXT.partsTaxonomyById,
+        CONTEXT.economy,
+      ),
+    )
+
+    const allRace: Partial<Record<CarPartId, 'race'>> = {
+      block: 'race',
+      internals: 'race',
+      headValvetrain: 'race',
+      camsTiming: 'race',
+      intake: 'race',
+      exhaust: 'race',
+      fuelSystem: 'race',
+      ignitionEcu: 'race',
+      cooling: 'race',
+      forcedInduction: 'race',
+      gearbox: 'race',
+      clutch: 'race',
+      driveline: 'race',
+      differential: 'race',
+    }
+    const supported = carWithGrades(FLAGSHIP_CAR, CONTEXT, allRace, 'mint')
+    expect(supportVerdict(supported, FLAGSHIP_CAR, CONTEXT.partsById, CONTEXT.economy).band).toBe(
+      'adequate',
+    )
+    const coherentLedger = valueLedgerFor(
+      supported,
+      FLAGSHIP_CAR,
+      100,
+      CONTEXT.partsById,
+      CONTEXT.partsTaxonomyById,
+      CONTEXT.economy,
+    )
+    expect(coherentLedger.lines.some((line) => line.id === 'coherence')).toBe(false)
   })
 })
 

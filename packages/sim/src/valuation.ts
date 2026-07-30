@@ -13,6 +13,21 @@ import { marketValueYen } from './marketValue'
 const STAT_WEIGHT_KEYS = ['power', 'handling', 'style', 'reliability', 'authenticity'] as const
 
 /**
+ * Stage C's per-buyer tolerance (the tolerance ruling, sprint144.md): reads
+ * `economy.valuation.tolerance` for this buyer's own archetype, falling back
+ * to `default` for the archetypes the design leaves unnamed (collector,
+ * racer, first-timer). Only `valuateCarForBuyer` and
+ * `valuateCarForBuyerViaChannel` call this - every other `marketValueYen`
+ * caller is buyer-agnostic and uses the function's own default of 1.0.
+ */
+function coherenceToleranceFor(buyer: Buyer, economy: EconomyConfig): number {
+  const { tolerance } = economy.valuation
+  if (buyer.archetype === 'stancer' && tolerance.stancer !== undefined) return tolerance.stancer
+  if (buyer.archetype === 'tuner' && tolerance.tuner !== undefined) return tolerance.tuner
+  return tolerance.default
+}
+
+/**
  * A car's power on the [0, 1] scale the other four derived stats reach by
  * dividing by 100: PS against `statFormulas.powerNormalizationCeiling`. The one
  * expression of that normalisation, for everything that needs power on the same
@@ -122,7 +137,15 @@ export function valuateCarForBuyer(
   heatPercent: number,
   economy: EconomyConfig,
 ): number {
-  const value = marketValueYen(model, instance, heatPercent, partsById, partsTaxonomyById, economy)
+  const value = marketValueYen(
+    model,
+    instance,
+    heatPercent,
+    partsById,
+    partsTaxonomyById,
+    economy,
+    coherenceToleranceFor(buyer, economy),
+  )
   const taste = tasteMultiplier(buyer, model, instance, partsById, partsTaxonomy, economy)
   return Math.round(Math.max(0, value * taste))
 }
@@ -172,7 +195,15 @@ export function valuateCarForBuyerViaChannel(
   economy: EconomyConfig,
   tasteCeiling: number,
 ): number {
-  const value = marketValueYen(model, instance, heatPercent, partsById, partsTaxonomyById, economy)
+  const value = marketValueYen(
+    model,
+    instance,
+    heatPercent,
+    partsById,
+    partsTaxonomyById,
+    economy,
+    coherenceToleranceFor(buyer, economy),
+  )
   const taste = channelBuyerTaste(
     buyer,
     model,

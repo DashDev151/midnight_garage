@@ -691,6 +691,48 @@ import storyMissions from '../data/storyMissions.json'
  * unaffected (re-confirmed passing, unchanged, in the same run): none of their
  * probes' repair or purchase math is sensitive to this SKU's price at the cars and
  * bands they build.
+ *
+ * Re-pinned 2026-07-30 (maintainer's standing authority of 2026-07-30, all seven
+ * levers signed by name and value in `docs/sprints/sprint144.md`'s own lever table)
+ * for Sprint 144, sections 3C and 3D of `sale-value-system.md`: an incoherent build
+ * now discounts the car (Stage C, new) and parts retention scales with coherence
+ * instead of being flat (Stage D, changed). Seven levers:
+ *
+ * 1. `valuation.coherenceDiscountWeight` (NEW) - 0.35. Stage C:
+ *    `coherenceDiscount = coherenceDiscountWeight * (1 - coherenceFactor) *
+ *    coherenceTolerance`.
+ * 2. `valuation.retentionFloor` (NEW) - 0.30.
+ * 3. `valuation.retentionCeiling` (NEW) - 1.10. Stage D:
+ *    `retention = retentionFloor + (retentionCeiling - retentionFloor) *
+ *    coherenceFactor`, replacing the flat `partsRetention`.
+ * 4. `valuation.partsRetention` - DELETED (was 0.55), not left inert. Added to
+ *    `retiredIdentifiers.test.ts` in the same change.
+ * 5. `valuation.tolerance.default` (NEW) - 1.0, the market's own view: every
+ *    buyer-agnostic caller of `marketValueYen` (the auction anchor, diagnosis
+ *    pricing, the balance probes, taste-blind exits) reads this by not passing the
+ *    function's new optional `coherenceTolerance` parameter at all.
+ * 6. `valuation.tolerance.stancer` (NEW) - 0.0: the stancer ignores the discount
+ *    entirely.
+ * 7. `valuation.tolerance.tuner` (NEW) - 0.5: the tuner feels half of it. Only
+ *    `valuateCarForBuyer`/`valuateCarForBuyerViaChannel` read a named archetype's
+ *    override (`coherenceToleranceFor`, `valuation.ts`); an archetype with no entry
+ *    (collector, racer, first-timer) falls back to `default`.
+ *
+ * The stock-car invariant (a car with no aftermarket parts must value exactly as
+ * before) is asserted across all 26 shipped cars in
+ * `stockCarValuationInvariant.test.ts` and holds: coherence reads fitted GRADE only,
+ * never band, so an all-stock car's `coherenceFactor` is exactly 1.0 regardless of
+ * condition, making Stage C's discount exactly zero and Stage D's retention curve
+ * multiply nothing (every slot is `grade === 'stock'`, which
+ * `installedPartsValueYen` already excludes). No mission payout, budget cap, or
+ * balance-probe figure moves: every `balanceProbes.ts` probe car is built via
+ * `stockInstanceFor` (all-stock, real generation-grade parts only), and every
+ * story-mission probe that fits aftermarket parts (`street-power-street-manners`)
+ * fits a matched, supported build whose measured headline (0.966) sits above the
+ * `adequate` knee (0.90), so its `coherenceFactor` is also exactly 1.0, capped -
+ * re-confirmed passing, unchanged, by a fresh `storyMissionProbes.test.ts`,
+ * `balanceProbes.test.ts` and `valueModelProbes.test.ts` run. `economy.json`'s hash
+ * changes only because of the four schema keys added and the one deleted.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -700,7 +742,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('65ae96c4757226d845b8c0bcafe625bd95687039026fbad440fecbf647e907d9')
+    ).toBe('c63987887418659103156de09e48af05c59a8ccad04938819fb3225a3e7ad7ab')
   })
 
   it('partPricing.json matches its approved content exactly', () => {

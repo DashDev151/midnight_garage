@@ -15,13 +15,21 @@ import {
   clampRepairTarget,
   repairCeilingForLevel,
 } from './bands'
+import { coherenceFactorFor } from './derivedStats'
+import { supportVerdict } from './support'
 
 /**
  * The taste-free "what is this car worth" answer, shared by every price in
- * the game: `marketValueYen` = `instanceValue + installedPartsValueYen`,
- * where `instanceValue` is clean value (book value scaled by mileage and
- * market heat; car age plays no part - a car's registration year is flavor
- * text only) minus a hassle-weighted restoration bill, floored.
+ * the game: `marketValueYen` = `stagedValue + creditedPremiumYen`, where
+ * `stagedValue` is clean value (book value scaled by mileage and market
+ * heat; car age plays no part - a car's registration year is flavor text
+ * only) minus a hassle-weighted restoration bill, floored (Stage B), then
+ * discounted for an unsupported build's own failure risk (Stage C, the
+ * coherence discount); `creditedPremiumYen` is the installed-parts premium,
+ * scaled by a retention curve that rewards a coherent build and penalises an
+ * incoherent one (Stage D), by the foundation factor, and by the tier's own
+ * aftermarket return. See `docs/design/systems/sale-value-system.md` section
+ * 3 for the design of record.
  */
 
 /**
@@ -179,11 +187,28 @@ export function sensibleRepairTargetBand(model: CarModel, economy: EconomyConfig
 }
 
 /**
+ * Stage D's retention curve (design section 3D): a part's contribution
+ * toward market value scales linearly with how well the whole build is
+ * supported - `retentionFloor` at `coherenceFactor` 0 to `retentionCeiling`
+ * at `coherenceFactor` 1. Replaces the old flat retention constant: a
+ * bodged build's parts are worth a fraction of their catalog price, a
+ * coherent one's are worth MORE than it (`retentionCeiling` is deliberately
+ * above 1). Not reduced by buyer tolerance (Stage C's own dial) - a bodged
+ * install is a bodged install to everyone, never a matter of taste.
+ */
+export function retentionFor(coherenceFactor: number, economy: EconomyConfig): number {
+  const { retentionFloor, retentionCeiling } = economy.valuation
+  return retentionFloor + (retentionCeiling - retentionFloor) * coherenceFactor
+}
+
+/**
  * Installed parts add real yen, additively rather than multiplicatively -
  * real markets: mods return cents on the yen, they don't multiply the
- * chassis price. Per installed part instance: `part.priceYen x
- * partsRetention x (genuinePeriod ? genuinePeriodMultiplier : 1.0)`, summed
- * and rounded.
+ * chassis price. Per installed part instance: `part.priceYen x retention x
+ * (genuinePeriod ? genuinePeriodMultiplier : 1.0)`, summed and rounded.
+ * `retention` is the caller's own Stage D figure (`retentionFor` above) -
+ * this function only spends it, so its summation shape stays exactly what it
+ * was when the retention it multiplied by was a flat constant.
  *
  * NO `bandFactor(installed.band)` discount here - a part's condition is
  * priced exactly once, through the restoration bill (`carCostToMintYen`
@@ -195,14 +220,15 @@ export function sensibleRepairTargetBand(model: CarModel, economy: EconomyConfig
  * A `grade === 'stock'` installed part contributes NOTHING here - stock is
  * the baseline every slot starts from, not an upgrade, so an all-stock-mint
  * car's value is exactly clean value and only genuine street/sport/race
- * aftermarket pushes above book.
+ * aftermarket pushes above book, regardless of `retention`'s value.
  */
 export function installedPartsValueYen(
   car: CarInstance,
   partsById: Readonly<Record<string, Part>>,
   economy: EconomyConfig,
+  retention: number,
 ): number {
-  const { partsRetention, genuinePeriodMultiplier } = economy.valuation
+  const { genuinePeriodMultiplier } = economy.valuation
   let total = 0
   for (const partId of ALL_CAR_PART_IDS) {
     const installed = car.parts[partId].installed
@@ -211,7 +237,7 @@ export function installedPartsValueYen(
     const part = partsById[installed.partId]
     if (!part || part.grade === 'stock') continue
     const genuineMultiplier = installed.genuinePeriod ? genuinePeriodMultiplier : 1.0
-    total += part.priceYen * partsRetention * genuineMultiplier
+    total += part.priceYen * retention * genuineMultiplier
   }
   return Math.round(total)
 }
@@ -239,24 +265,37 @@ export function foundationFactor(car: CarInstance, economy: EconomyConfig): numb
 }
 
 /**
- * The single shared value answer: `round(instanceValue) + foundationFactor
- * x installedPartsValueYen`, where `instanceValue` is `instanceBaseValueYen`
- * above - clean value (mileage/heat scaled) minus the hassle-weighted
- * restoration bill, floored. Heat applies exactly once, inside clean value
- * - no other price in the game multiplies by market heat a second time.
- * The aftermarket premium is scaled by `foundationFactor` (law 5): a buyer
- * withholds what they'd pay for the extras until the car's foundations
- * (brakes, tyres, steering, chassis, rust) are sound; the base term is
- * untouched, so fixing a failed foundation part returns its own repair
- * value PLUS the released premium.
+ * The single shared value answer: `stagedValue + foundationFactor x
+ * aftermarketReturn x installedPartsValueYen`.
  *
- * The premium's second multiplier, `aftermarketReturn`, is the tier's own
- * answer to "is this the kind of car anyone pays extra to modify?" - a race
- * turbo on a kei returns a fraction of its cost; on a rare car, all of it.
- * `foundationFactor` is about whether this SPECIFIC car is trustworthy,
- * `aftermarketReturn` about whether this KIND of car rewards modification.
- * Both are capped at 1, so the premium term can only ever be withheld,
- * never inflated.
+ * `stagedValue` is Stage C applied to `instanceBaseValueYen` (Stage B, clean
+ * value mileage/heat scaled minus the hassle-weighted restoration bill,
+ * floored - heat applies exactly once, inside clean value, no other price in
+ * the game multiplies by market heat a second time): the market discounts an
+ * unsupported build's own failure risk,
+ * `coherenceDiscount = coherenceDiscountWeight * (1 - coherenceFactor) *
+ * coherenceTolerance`, zero on a stock or fully-coherent build since
+ * `coherenceFactor` is 1 there.
+ *
+ * The aftermarket premium (Stage D) is `installedPartsValueYen`, itself
+ * scaled by the coherence-driven retention curve (`retentionFor`), then
+ * scaled again by `foundationFactor` (law 5: a buyer withholds what they'd
+ * pay for the extras until the car's foundations - brakes, tyres, steering,
+ * chassis, rust - are sound; the base term is untouched, so fixing a failed
+ * foundation part returns its own repair value PLUS the released premium)
+ * and by `aftermarketReturn`, the tier's own answer to "is this the kind of
+ * car anyone pays extra to modify?" - a race turbo on a kei returns a
+ * fraction of its cost, on a rare car all of it. `foundationFactor` and
+ * `aftermarketReturn` are both capped at 1, so they can only ever withhold
+ * the premium, never inflate it; `retentionCeiling` is the one place the
+ * premium is deliberately allowed to exceed the parts' own catalog price.
+ *
+ * `coherenceTolerance` defaults to 1.0 - the market's own view, not an
+ * accident. Every buyer-agnostic caller (the auction anchor, diagnosis
+ * pricing, the balance probes, taste-blind exits) gets this default and is
+ * correct; only `valuateCarForBuyer` and `valuateCarForBuyerViaChannel` pass
+ * a buyer's own tolerance (the stancer ignores the discount entirely, the
+ * tuner halves it), read from `economy.valuation.tolerance`.
  *
  * Every other price (the auction anchor, walk-in offers, listing asking
  * price, buyer taste, bot walk-away targets) is this value times a bounded
@@ -269,14 +308,25 @@ export function marketValueYen(
   partsById: Readonly<Record<string, Part>>,
   partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
   economy: EconomyConfig,
+  coherenceTolerance = 1.0,
 ): number {
   const baseValue = Math.round(
     instanceBaseValueYen(model, car, heatPercent, partsById, partsTaxonomyById, economy),
   )
-  const premiumYen = installedPartsValueYen(car, partsById, economy)
+
+  const coherenceFactor = coherenceFactorFor(
+    supportVerdict(car, model, partsById, economy).headline,
+    economy,
+  )
+  const coherenceDiscount =
+    economy.valuation.coherenceDiscountWeight * (1 - coherenceFactor) * coherenceTolerance
+  const stagedValue = Math.round(baseValue * (1 - coherenceDiscount))
+
+  const retention = retentionFor(coherenceFactor, economy)
+  const premiumYen = installedPartsValueYen(car, partsById, economy, retention)
   const creditedPremiumYen =
     foundationFactor(car, economy) *
     expectationForCar(model, economy).aftermarketReturn *
     premiumYen
-  return baseValue + Math.round(creditedPremiumYen)
+  return stagedValue + Math.round(creditedPremiumYen)
 }

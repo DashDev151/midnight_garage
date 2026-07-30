@@ -14,6 +14,7 @@ export const LEDGER_LINE_LABELS: Record<ValueLedgerLineId, string> = {
   wear: 'Work outstanding',
   polish: 'Polish',
   floor: 'Scrap floor',
+  coherence: 'Build risk',
   aftermarket: 'Fitted upgrades',
   fear: 'Doubts, at the odds',
 }

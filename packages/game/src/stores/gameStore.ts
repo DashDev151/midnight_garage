@@ -85,6 +85,7 @@ import {
   displayedBandFor,
   emptyDayActions,
   expectationForCar,
+  coherenceFactorFor,
   externalBlockersFor,
   foundationFactor,
   generateAuctionCarInstance,
@@ -117,6 +118,7 @@ import {
   removeAssemblyLaborSlotsFor,
   removeBlockReason,
   resolveHireMachineLine,
+  retentionFor,
   signatureGroupFor,
   nextBayMinReputationTier,
   nextBayPriceYen,
@@ -1729,14 +1731,20 @@ export const useGameStore = defineStore('game', () => {
    * aftermarket-premium yen they
    * withhold, or null when the foundation is sound OR the car carries no
    * premium to withhold. Reads the same `foundationFactor`/
-   * `installedPartsValueYen` the value formula itself uses, so what the panel
-   * says and what the price does can never disagree.
+   * `installedPartsValueYen`/`retentionFor` the value formula itself uses, so
+   * what the panel says and what the price does can never disagree.
    */
   function foundationWarningFor(
     car: CarInstance,
+    model: CarModel,
   ): { failingParts: string[]; withheldYen: number } | null {
     const economy = context.value.economy
-    const premiumYen = installedPartsValueYen(car, context.value.partsById, economy)
+    const coherenceFactor = coherenceFactorFor(
+      supportVerdict(car, model, context.value.partsById, economy).headline,
+      economy,
+    )
+    const retention = retentionFor(coherenceFactor, economy)
+    const premiumYen = installedPartsValueYen(car, context.value.partsById, economy, retention)
     const factor = foundationFactor(car, economy)
     const withheldYen = Math.round(premiumYen * (1 - factor))
     if (withheldYen <= 0) return null
@@ -1861,7 +1869,7 @@ export const useGameStore = defineStore('game', () => {
         lowYen: Math.round(trueValueYen * (1 - tasteSpread)),
         highYen: Math.round(trueValueYen * (1 + tasteSpread)),
       },
-      foundationWarning: foundationWarningFor(car),
+      foundationWarning: foundationWarningFor(car, model),
       passionSpendNotice: passionSpendNoticeFor(car, model),
       plannedEstimate: plannedEstimateFor(carId),
       symptoms: symptomChecklistForCar(car, apparentViewOf(car), model),

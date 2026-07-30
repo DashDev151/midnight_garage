@@ -9,13 +9,16 @@ import type {
 } from '@midnight-garage/content'
 import { carCostToBandYen, carCostToMintYen } from './bands'
 import type { SimContext } from './context'
+import { coherenceFactorFor } from './derivedStats'
 import { apparentViewOf, sheetGuideValueYen } from './diagnosis'
 import {
   cleanValueYen,
   expectationForCar,
   foundationFactor,
   installedPartsValueYen,
+  retentionFor,
 } from './marketValue'
+import { supportVerdict } from './support'
 
 /**
  * The value ledger: every price the game shows decomposes into these ordered,
@@ -24,7 +27,7 @@ import {
  * per id and never computes a yen figure of its own.
  */
 export type ValueLedgerLineId =
-  'book' | 'mileage' | 'heat' | 'wear' | 'polish' | 'floor' | 'aftermarket' | 'fear'
+  'book' | 'mileage' | 'heat' | 'wear' | 'polish' | 'floor' | 'coherence' | 'aftermarket' | 'fear'
 
 export interface ValueLedgerLine {
   id: ValueLedgerLineId
@@ -40,20 +43,25 @@ export interface ValueLedger {
  * Decomposes `marketValueYen` into its ledger lines, built from the same
  * atoms the value formula itself consumes (`cleanValueYen`,
  * `carCostToBandYen`/`carCostToMintYen`, `expectationForCar`,
+ * `coherenceFactorFor`/`supportVerdict`, `retentionFor`,
  * `installedPartsValueYen`, `foundationFactor`) - never a second value
  * computation. The base-term lines are rounded as telescoping differences of
  * the formula's own cumulative checkpoints, mirroring its expression order
- * exactly, so `totalYen` and the line sum both equal `marketValueYen` to the
- * yen with no tolerance anywhere (probed per roster model in
- * `tests/valueLedger.test.ts`).
+ * exactly, so `totalYen` and the line sum both equal `marketValueYen` (at its
+ * own default `coherenceTolerance` of 1.0 - the market's own view, matching
+ * this function having no buyer to read a tolerance from) to the yen with no
+ * tolerance anywhere (probed per roster model in `tests/valueLedger.test.ts`).
  *
  * Lines, in order: 'book' (book value), 'mileage' (the mileage-curve
  * adjustment), 'heat' (the market-heat adjustment, only when `heatPercent`
  * is not 100), 'wear' (the below-expectation restoration bill at
  * `marketRepairDiscount`, negative), 'polish' (the above-expectation bill at
  * the tier's `beyondDiscount`, negative), 'floor' (only when the scrap-value
- * backstop binds, the adjustment up to it), 'aftermarket' (the
- * foundation-and-tier-gated premium, only when non-zero).
+ * backstop binds, the adjustment up to it), 'coherence' (Stage C's discount
+ * for an unsupported build's own failure risk, only when it bites - zero on a
+ * stock or fully-coherent build), 'aftermarket' (the
+ * foundation-and-tier-gated premium, retention-scaled by the same build's
+ * coherence, only when non-zero).
  */
 export function valueLedgerFor(
   car: CarInstance,
@@ -100,10 +108,24 @@ export function valueLedgerFor(
   pushCheckpoint('polish', raw)
   if (base > raw) pushCheckpoint('floor', base)
 
+  // Stage C: the coherence discount, at the market's own default tolerance
+  // (this function has no buyer to read one from - see the doc comment
+  // above). `previousRounded` is exactly `marketValueYen`'s own `baseValue`
+  // at this point, so this checkpoint reproduces its `stagedValue` exactly.
+  const coherenceFactor = coherenceFactorFor(
+    supportVerdict(car, model, partsById, economy).headline,
+    economy,
+  )
+  const coherenceDiscount = economy.valuation.coherenceDiscountWeight * (1 - coherenceFactor)
+  if (coherenceDiscount > 0) {
+    pushCheckpoint('coherence', previousRounded * (1 - coherenceDiscount))
+  }
+
+  const retention = retentionFor(coherenceFactor, economy)
   const creditedPremiumYen = Math.round(
     foundationFactor(car, economy) *
       expectation.aftermarketReturn *
-      installedPartsValueYen(car, partsById, economy),
+      installedPartsValueYen(car, partsById, economy, retention),
   )
   if (creditedPremiumYen !== 0) lines.push({ id: 'aftermarket', yen: creditedPremiumYen })
 

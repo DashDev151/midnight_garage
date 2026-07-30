@@ -552,6 +552,24 @@ pass."
 
 ## Open balance/economy questions
 
+- [ ] **The retention floor barely bites, so on retention alone almost every incoherent build is
+  now BETTER off than under the old flat rate (measured at the end of Sprint 144).** Retention is
+  `retentionFloor + (retentionCeiling - retentionFloor) * coherenceFactor`, which at 0.30 and
+  1.10 crosses the retired flat `partsRetention` of 0.55 at a coherence of only **0.3125**.
+
+  So a bare race turbo with nothing supporting it, which the support readout calls `dangerous`
+  at a coherence of 0.605, retains **0.784** where it used to retain 0.55.
+
+  **This is not a defect and Sprint 144 is correct as built**, because Stage C's discount did not
+  exist before and takes 13.8 per cent off that same car's staged value, so the two together
+  still punish it. But if the intent was for RETENTION ITSELF to express "these parts are worth
+  less because they were fitted badly", it currently only says that about a catastrophe.
+
+  Three ways out if it wants changing, none of them signed: drop `retentionFloor` well below
+  0.30; make the curve non-linear so it falls away fast below the adequate knee; or accept it
+  and let Stage C carry the whole penalty, in which case the floor is a formality and should be
+  described as one.
+
 - [x] **ACCEPTED, not open: two slots still climb into better value per yen, worst 1.335x
   (maintainer decision 2026-07-30).** Measured across all 288 cases in
   `partPricing.test.ts` at the end of Sprint 135: 52 exceed parity, on `internals/street`,

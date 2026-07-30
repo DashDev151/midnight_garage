@@ -508,14 +508,50 @@ export const EconomyConfigSchema = z.object({
        * edit, checked by `valueModelProbes`'s floor probe.
        */
       marketRepairDiscount: z.number().min(1),
-      /** Installed-part value retention: a part is worth this fraction of its
-       * catalog price toward the car's market value (real markets: mods return
-       * cents on the yen, they don't multiply the chassis price). */
-      partsRetention: z.number().min(0).max(1),
-      /** Multiplier applied to a genuine-period installed part's contribution
-       * (on top of `partsRetention`) - period-correct parts hold more value
-       * than a modern reproduction of the same catalog part. */
+      /**
+       * Stage C (sale-value-system.md section 3, design v4): how hard the
+       * market discounts a car for an unsupported build's own failure risk -
+       * `coherenceDiscount = coherenceDiscountWeight * (1 - coherenceFactor) *
+       * tolerance`, applied to the Stage B condition value before the
+       * aftermarket premium is added. Zero on a fully coherent (or stock)
+       * build, since `coherenceFactor` is 1 there.
+       */
+      coherenceDiscountWeight: z.number().min(0).max(1),
+      /**
+       * Stage D (sale-value-system.md section 3): the floor and ceiling of
+       * the retention curve installed-parts value scales along with
+       * `coherenceFactor` - `retention = retentionFloor + (retentionCeiling -
+       * retentionFloor) * coherenceFactor`. Replaces the old flat retention
+       * constant: an incoherent build's parts are worth a fraction of their
+       * catalog price, a coherent one's are worth MORE than it -
+       * `retentionCeiling` is deliberately allowed above 1.
+       */
+      retentionFloor: z.number().min(0),
+      retentionCeiling: z.number().min(0),
+      /**
+       * Multiplier applied to a genuine-period installed part's contribution
+       * (on top of the retention curve above) - period-correct parts hold
+       * more value than a modern reproduction of the same catalog part.
+       */
       genuinePeriodMultiplier: z.number().positive(),
+      /**
+       * Stage C's per-buyer tolerance for the coherence discount (the
+       * tolerance ruling, sprint144.md): how much a given buyer archetype
+       * minds an unsupported build's failure risk, `[0, 1]` where 0 ignores
+       * it entirely and 1 feels the full discount. `default` is what every
+       * buyer-agnostic caller uses (`marketValueYen`'s own optional
+       * `coherenceTolerance` parameter defaults to it) - the market's own
+       * view, not an accident. Only `valuateCarForBuyer` and
+       * `valuateCarForBuyerViaChannel` read a named archetype's override; an
+       * archetype with no entry here falls back to `default`.
+       */
+      tolerance: z
+        .object({
+          default: z.number().min(0).max(1),
+          stancer: z.number().min(0).max(1).optional(),
+          tuner: z.number().min(0).max(1).optional(),
+        })
+        .strict(),
       /** Buyer-taste spread: `valuateCarForBuyer` bounds its taste multiplier
        * to `[1 - tasteSpread, 1 + tasteSpread]` around `marketValueYen` - how
        * well a buyer archetype's stat weights fit this car, never whether the
@@ -632,7 +668,10 @@ export const EconomyConfigSchema = z.object({
     .refine(
       (v) => PartFitmentClassSchema.options.every((c) => v.expectationByTier[c] !== undefined),
       { message: 'valuation.expectationByTier must name every fitment class' },
-    ),
+    )
+    .refine((v) => v.retentionFloor <= v.retentionCeiling, {
+      message: 'valuation.retentionFloor must be <= valuation.retentionCeiling',
+    }),
   /**
    * Repair cost per grade is ONE global fraction of the INSTALLED part's own
    * catalog `priceYen`, never the host car's tier -

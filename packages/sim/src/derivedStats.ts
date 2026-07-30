@@ -279,8 +279,13 @@ function reliabilitySeverityCeiling(
  * `coherenceExponent` and capped at 1 so no build is ever MORE reliable than
  * stock. At or above the `adequate` knee this is exactly 1 - competence is
  * the baseline, not a bonus.
+ *
+ * Exported for `marketValue.ts`'s Stage C (the coherence discount) and Stage
+ * D (coherence-scaled parts retention) - the sale-value design's own
+ * `coherenceFactor`, read from the same support verdict this file already
+ * computes reliability from. `marketValue.ts` never re-derives it.
  */
-function coherenceFactorFor(headline: number, economy: EconomyConfig): number {
+export function coherenceFactorFor(headline: number, economy: EconomyConfig): number {
   const { adequateAtOrAbove } = economy.statFormulas.support.thresholds
   const { coherenceExponent } = economy.statFormulas.support
   return Math.min(1, headline / adequateAtOrAbove) ** coherenceExponent
