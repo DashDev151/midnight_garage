@@ -1,0 +1,254 @@
+# Implementing the sale value system: gap register, sprint order, guards
+
+**2026-07-30. PLAN, not a design.** The design is `sale-value-system.md` v4. This document says
+what stands between the code today and that design, in what order it gets built, and how we
+stop ourselves shipping a new pipeline while the old one is still running.
+
+Written against three discovery passes over the code at HEAD, not against memory.
+
+---
+
+## 1. The headline: we are in a much better position than expected
+
+Three things came back better than assumed, and they change the plan's shape.
+
+**Stage A and Stage B are already built exactly as designed.** `beyondDiscount` ships at
+0.4 / 0.8 / 1.2 / 1.3, `marketRepairDiscount` at 1.3, `tasteSpread` at 0.12. **Nothing in the
+value stack's first half needs rework.**
+
+**There is exactly one valuation function and everything imports it.** `marketValueYen` is
+called by the auction anchor, player-sale offers, taste requirements, diagnosis pricing and the
+balance probes. **The design's §13.1 parity ruling is already true by construction**, not by
+discipline. I expected to find a second formula and there is none. So Stage C and D reprice
+auctions, reserves, buyouts and the live room **for free**, with no auction-side code change.
+
+**The coherence input already exists.** `coherenceFactorFor` sits private in `derivedStats.ts`,
+fed by `supportVerdict`. It needs exporting, not building. And `marketValueYen`'s signature
+already carries every argument `supportVerdict` needs, so **no new parameters anywhere**.
+
+Two more that save real work: `valueLedger.ts` already decomposes value using the value
+formula's own atoms and is asserted to sum to `marketValueYen`, which is exactly the appraisal
+pattern §10 wants. And `Buyer.wantLine` is already authored and already surfaced on live
+offers, so §4's "offers wear their archetype's face" is half-built.
+
+---
+
+## 2. Five real defects, found on the way, that must be fixed regardless
+
+These are not design gaps. They are live problems, and three of them are directly in the path
+of this rework.
+
+**D1. `matchedOnly` is a lie, and it will bite the new exits immediately.** The flag is declared
+in the schema, authored in content for the magazine and the meet, and read **only by a UI label
+helper**. The actual behaviour is a hardcoded switch on channel id in `selling.ts`. **Add a new
+channel with `matchedOnly: true` and the UI will confidently say "matched buyers only" while
+the draw silently falls through to `default: return {}` and no offer ever appears.** The design
+adds three exits. This gets fixed first, by making dispatch read the flag.
+
+**D2. `Buyer.priceSensitivity` is authored, schema-validated, test-asserted and read by
+nothing.** Five values, zero readers. Either wire it into Stage E or F, or retire it. It must
+not be carried into the new buyer schema unexamined.
+
+**D3. Two unrelated systems are called "coherence" in the same package.**
+`packages/sim/src/coherence.ts` is the economy-bible balance-probe module. The design's
+`coherenceFactor` is the build-support ratio in `derivedStats.ts`. Neither reads the other, so
+it is not a bug today, but somebody will grep and edit the wrong file. One of them gets renamed
+before Stage C lands.
+
+**D4. `StatWeightsSchema` still carries `.default(0)`** on power and reliability, the same shape
+as the `powerFraction` bug we just fixed, at lower stakes because it is 29 taxonomy entries
+rather than 472 SKUs.
+
+**D5. Zod is non-strict everywhere but one place in the codebase.** A *renamed* field does not
+error, its old key is silently stripped at parse. Any content schema this rework touches gets
+`.strict()`.
+
+---
+
+## 3. Gap register
+
+### Adjust (the mechanism exists, its shape changes)
+
+| what | where | change |
+| --- | --- | --- |
+| Retention | `installedPartsValueYen`, `marketValue.ts` | flat `partsRetention` 0.55 becomes a function of coherence |
+| Taste score | `normalizedTasteScore`, `valuation.ts` | weighted mean becomes per-stat target / upper / importance match. **One private function's body**; every caller is unaffected by signature |
+| Buyer schema | `buyer.ts`, `buyers.json` | `statWeights` becomes target / upper / importance triples. All five archetypes re-authored |
+| Lemon predicate | `saleReputationDeltaFor`, `carCondition.ts` | keeps its deterministic leg exactly as-is, gains a probabilistic hidden-coherence leg |
+| Channel dispatch | `drawOfferForChannel`, `selling.ts` | hardcoded switch becomes flag-driven (D1) |
+| Value ledger | `valueLedger.ts` | gains lines for the coherence discount and coherence-scaled retention |
+| Bay kinds | `facilities.ts` | `['service','parking']` gains `'forecourt'`; three binary switches gain a third arm |
+
+### Build from scratch
+
+| what | notes |
+| --- | --- |
+| Stage C, the coherence discount | small; the input exists |
+| `offersSeen` clock, staleness, offer quality | new persisted state on `ForSaleEntry` |
+| `presence` / `basePresence` / `seasonFactor` / `reputationFlowFactor` | nothing resembling any of it exists |
+| Magazine feature and the provenance multiplier | new event type; `DayLogEntry` has no shape for it |
+| "Cars resurface" | zero existing code |
+| Monthly cadence | **no monthly boundary exists anywhere in the game.** Day-of-week semantics do not exist either; only a 7-day modulo |
+| Fixer, favour meter, monthly appetite | zero hits for `favour` anywhere in `packages/` |
+| Export container, batching, deferred payout | no channel defers payment today |
+| Scrapyard venue and scored harvesting | `resolveScrapShell` is the nearest thing and is not a venue |
+| Shaken | no per-car calendrical property exists |
+| Per-car value keyframes | `bookValueYen` is one static scalar |
+| Per-car style baseline | **blocks authoring any style target** |
+
+### Scrap
+
+| what | why |
+| --- | --- |
+| `partsRetention` (the flat 0.55 lever) | replaced by the retention curve. **Delete the lever, do not leave it inert** |
+| `ForSaleEntry.sinceDay` | the absolute clock the design explicitly rejects. Its one reader is a bot helper; retire both together or they contradict |
+| `Buyer.priceSensitivity` | unless wired (D2) |
+| `tools/sale-value/model.mjs` | **on the day the shipped stack can generate §9**, per the maintainer's ruling |
+
+---
+
+## 4. Two rulings needed before any code
+
+**R1. What is the campaign's time axis?** `currentGameYear(reputationTier) = 1995 + 2 ×
+reputationTierIndex`. **The in-game year advances with reputation, not with days.** A player who
+stalls never leaves 1995.
+
+This blocks value keyframes, era events and seasonal presence, all three. It also interacts
+badly with this design specifically: **the dodgy player has low standing by construction and
+would be frozen in 1995 permanently.** Options are elapsed days, reputation tier, or a new
+independent clock. Nothing dated can be authored until this is settled.
+
+**R2. A directive 20 carve-out for typecheck.** The `PartsMarketScreen` failure was **cadence,
+not a missing guard**: `pnpm typecheck` is whole-program, compiles every `.vue` template, and
+caught the bug instantly the one time it ran. Nine commits landed on narrow test runs before
+anyone pushed. Proposed rule: **any task that retires, renames or reshapes a schema field runs
+`pnpm typecheck` before it reports.** Narrowest possible carve-out, cheapest stage of the gate.
+
+---
+
+## 5. The guards, and what each actually catches
+
+Approved by the maintainer, with one revision from discovery.
+
+**G1. Delete, never deprecate.** A replacement removes the old symbol in the same change, so
+the compiler finds every caller. Paired with R2's typecheck rule, this is the primary defence.
+
+**G2. A retired-identifier ledger.** A maintained list of dead names, walked over every `.ts`
+and `.vue` under `packages/*/src`, word-boundary matched, failing with file and line. The
+machinery exists three times over already (`commentHygieneGuard`, `noEmDash`, and a one-off
+in `engineCharacter.test.ts` that does exactly this for a single field). **Generalise that
+one-off.** Its value over typecheck is not power, it is reach and cost: it catches retired names
+inside string literals, `Record<string, X>` indexing and comments, which the compiler cannot
+see, and it runs as one narrow file rather than a whole-program compile.
+
+**G3. A duplicate-formula ban, replacing the parity test I originally proposed.** Discovery
+showed there is only one valuation stack, so there is nothing to compare. The real risk is a
+*second* formula appearing. So: no file outside the owner module may recombine
+`bookValueYen × mileageFactor(...)`. Same grep mechanism as G2, aimed at a live duplicate
+rather than a dead name.
+
+**G4. `model.mjs` dies when the shipped stack can generate §9.** One implementation, the
+document generated from what the player plays.
+
+**G5. `.strict()` on every content schema this rework touches** (from D5).
+
+**And a standing rule rather than a test: the ledger moves with the stack.** Any sprint that
+changes what a car is worth extends `valueLedger.ts` in the same sprint. That file is asserted
+to sum exactly to `marketValueYen`, so it is a live check that the player-visible explanation
+and the actual number never diverge. It is also how the appraisal gets built incrementally
+rather than as a late screen nobody has time for.
+
+---
+
+## 6. Sprint order
+
+Thirteen sprints. That is the honest number, and it is larger than the whole tuning arc. The
+sequencing is driven by what unblocks what, and by putting the cheap high-value work first.
+
+**Phase 0 — safety, no behaviour change**
+
+- **S1. Guards and defects.** G2, G3, G5. Fix D1 (flag-driven dispatch), D3 (rename a
+  coherence), D4. Rule on D2. Nothing a player can see changes. **Everything after this is
+  safer for it.**
+
+**Phase 1 — the value stack**
+
+- **S2. Stage C and Stage D.** Export `coherenceFactorFor`, add the discount, replace flat
+  retention with the curve, delete `partsRetention`. Extend the value ledger with both lines.
+  Re-run the `coherence.ts` probes, which call `marketValueYen` directly and will move.
+  **Highest value-to-effort ratio in the plan: it delivers "building well pays" on its own, and
+  it reprices auctions for free.**
+
+**Phase 2 — stats, then taste**
+
+- **S3. Per-car style baselines and the kei archetype.** This is Sprint 140's Task 0 pulled
+  forward, because **style targets cannot be authored while every stock car scores 20.** Also
+  settles which of the two `authenticity` values a buyer target reads (the raw immutable one, or
+  the derived taste one).
+- **S4. Taste as match.** Replace one private function's body; re-author five archetypes to
+  target / upper / importance. Ledger gains best-fit and poor-fit lines.
+
+**Phase 3 — time and space**
+
+- **S5. The listing clock.** `offersSeen`, staleness, the offer-quality distribution,
+  `relistRecovery`. Retire `sinceDay` and its bot reader together.
+- **S6. Space.** The `forecourt` bay kind, listing requires a forecourt slot, storage is
+  cheaper. Cars carry no location field, so this is a third parallel array, not a per-car change.
+- **S7. Rhythm.** The monthly cadence primitive and day-of-week semantics, then auction day,
+  the meet, and wages on Friday.
+
+**Phase 4 — standing**
+
+- **S8. The flow model.** Probabilistic lemon leg, `presence` / `basePresence` /
+  `reputationFlowFactor` / `seasonFactor`, magazine feature and provenance, cars resurface.
+  Ledger gains the lemon-risk line, which completes the appraisal.
+
+**Phase 5 — venues**
+
+- **S9. The exits.** Trade network requires a runner; the fixer with favour and a monthly
+  appetite; the export container with batching and deferred payment. **Depends on S1's D1 fix**
+  or all three will silently draw nothing.
+- **S10. The scrapyard.** The venue, favour gating, and scored harvesting.
+
+**Phase 6 — period depth**
+
+- **S11. Shaken.** Value and liquidity modifier, compliance bill, and the buying-side arbitrage.
+- **S12. The decade.** Whatever R1 rules, then keyframes, era events and seasonal presence.
+
+**Phase 7**
+
+- **S13. Sweep.** Delete `model.mjs`, generate §9 from the shipped sim, close the `TODO.md`
+  ratchet entry against the flow model, and re-derive every pin the arc moved.
+
+---
+
+## 7. How this fits the tuning arc
+
+**Sprints 138 and 139 are superseded and should be closed unbuilt**, with their docs recording
+why rather than being quietly rewritten. 138 was a measurement sprint whose question ("is the
+coherence penalty felt?") this design answers structurally, and 139 asked whether building well
+deserves a premium, which Stage D now answers yes.
+
+**Sprint 140 splits.** Its Task 0, per-car style baselines, becomes **S3 and is a prerequisite
+for S4**. The rest of 140 (deleting `statModifiers.handling`, the aero ceiling, the parts-market
+power readout) stays independent and can run whenever.
+
+**Sprints 141 and 142 are untouched.** The dyno screen and grade sensitivity depend on nothing
+here and nothing here depends on them.
+
+**So the tuning arc completes as 140, 141, 142**, with 138 and 139 closed, and this plan runs
+after or alongside.
+
+---
+
+## 8. What I would sign first
+
+In order, and the first two cost nothing:
+
+1. **R1**, the calendar axis. It blocks three sprints and nothing can be authored around it.
+2. **R2**, the typecheck carve-out.
+3. **S1**, which is pure safety and changes no behaviour.
+4. **S2's levers**: `coherenceDiscountWeight`, `retentionFloor`, `retentionCeiling`. Three
+   numbers that deliver the design's central promise.
+
+Everything else can wait behind measurement.

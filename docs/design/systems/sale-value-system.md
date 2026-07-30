@@ -11,6 +11,13 @@ Supersedes the scope of `sprint138.md` and `sprint139.md`. Companion:
 > same class of error, a mechanism changed in one section and the ledger not re-run. Computing
 > the table from the levers makes that class of error impossible, and turns every future tuning
 > question into a one-line experiment.
+>
+> **`model.mjs` is temporary and has a defined death date (maintainer ruling, 2026-07-30).**
+> It exists only because the shipped code cannot yet compute this table. **The moment the real
+> valuation stack can produce these paths, `model.mjs` is DELETED and section 9 is generated
+> from the shipped sim instead.** A second model that drifts from the implementation is worse
+> than no model at all, so there will be exactly one, and this document will be generated from
+> the thing the player actually plays.
 
 **v4 closes seams and adds no new systems.** The architecture stopped moving two rounds ago.
 
