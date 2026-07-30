@@ -757,8 +757,6 @@ export const EconomyConfigSchema = z.object({
     engineCharacter: z.object({
       naHighStrungThreshold: z.number().positive(),
     }),
-    /** Style's cap at 100 body condition. */
-    styleCap: z.number().positive(),
     /**
      * The support-ratio model (`packages/sim/src/support.ts`, design section
      * 6): whether a build's own gains are backed by the specification that

@@ -1,9 +1,19 @@
 # Sprint 140: stat simplification, aero ceiling, style base
 
-**Status: PART READY, PART BLOCKED ON AUTHORING.** Task 1 moves no economy value and can proceed
-the moment Sprint 135 has shipped. **Tasks 2 and 3 are blocked twice over**: both levers are
-authored for 26 of the 94 roster cars, which directive 24 makes the wrong scope, and neither is
-signed (directive 22). Task 0 closes the first; the maintainer closes the second.
+**Status: PART READY, PART BLOCKED ON AUTHORING, PART ALREADY DONE.** Task 1 moves no economy
+value and can proceed the moment Sprint 135 has shipped. **Task 2 (aeroCeiling) is blocked twice
+over**: the lever is authored for 26 of the 94 roster cars, which directive 24 makes the wrong
+scope, and it is not signed (directive 22). Task 0's `aeroCeiling` half closes the first; the
+maintainer closes the second.
+
+**Everything below about `styleBase` (Task 0's style half, Lever 2, Task 3, and the
+`styleCap`-retirement half of Task 6) landed early, in `docs/sprints/sprint145.md`, pulled
+forward because Sprint 146's buyer targets on style could not be authored while every stock car
+scored the same.** All 94 roster rows carry `styleBase`, the schema field is required on
+`CarModel.spec`, all 26 shipped cars carry it, `statFormulas.styleCap` is retired, and the
+per-mission re-derivation that followed is recorded in that sprint's own Exit. Do not redo any of
+it here; what remains of this sprint is `aeroCeiling` (Task 0's other half, Lever 1, Task 2) and
+the handling deletion (Task 1).
 
 Opens after Sprint 135. Seventh of nine in the tuning overhaul arc.
 
@@ -80,8 +90,9 @@ which **directive 24 makes the wrong scope**: a per-car value is decided for the
 it is introduced, not for whichever subset happens to be in content, because deciding it twice is
 how the tier labels drifted.
 
-**Both columns currently hold 26 of 94.** Completing them is Task 0 below and it blocks Tasks 2
-and 3. It does not block Task 1.
+**`styleBase` is DONE: all 94 rows carry a value, landed in `sprint145.md`.** `aeroCeiling` still
+holds 26 of 94. Completing it is Task 0's remaining half below and it blocks Task 2. It does not
+block Task 1.
 
 ### Lever 1: `spec.aeroCeiling` (94 values, 26 authored)
 
@@ -104,7 +115,7 @@ aerodynamic development behind it at all and no period aero aftermarket worth th
 sit low on physics while sitting high on desirability. That is correct and it is worth stating so
 nobody "fixes" it.
 
-### Lever 2: `spec.styleBase` (94 values, 26 authored)
+### Lever 2: `spec.styleBase` (94 values, 26 authored) - LANDED IN SPRINT 145
 
 Replaces the flat `statFormulas.styleCap` of 20 as the per-car mint ceiling on style, keeping the
 same 0 to 20 scale so nothing else in the formula moves.
@@ -123,10 +134,10 @@ is not a stylish car and the column must not quietly become a second performance
 
 ## Task breakdown
 
-### Task 0: finish authoring both columns to 94 (blocks Tasks 2 and 3)
+### Task 0: finish authoring both columns to 94 (blocks Task 2; `styleBase` half done)
 
-`docs/design/midnight-garage-roster.csv`: fill `aeroCeiling` and `styleBase` for the 68 rows that
-have neither, against the rubrics above.
+`docs/design/midnight-garage-roster.csv`: fill `aeroCeiling` for the 68 rows that have none,
+against the rubric above. **`styleBase` is complete for all 94 rows (`sprint145.md`).**
 
 **This is a design pass, not a data-entry pass**, and it is the maintainer's or the orchestrator's
 to do, not an implementation agent's. It is 136 judgements about what cars look like and how much
@@ -167,14 +178,13 @@ authored into `cars.json`. Directive 22 gates the values; directive 24 gates the
 4. **A stock car must be unaffected**, because a stock car carries no aero SKU and therefore
    no downforce to scale. Assert it for all 26.
 
-### Task 3: `spec.styleBase` (needs Lever 2 signed)
+### Task 3: `spec.styleBase` - DONE, landed in Sprint 145
 
-1. `packages/content/src/carModel.ts`: `styleBase: z.number().min(0).max(20)`, required.
-2. `packages/content/data/cars.json`: the 26 values.
-3. `packages/sim/src/derivedStats.ts`: `style = styleFraction * model.spec.styleBase`
-   replaces `styleFraction * styleCap`.
-4. `packages/content/data/economy.json`: retire `statFormulas.styleCap`. **Remove it rather
-   than leaving it unread**, so no future reader treats a dead lever as live.
+Landed as `styleBase: z.number().min(0).max(100)` (the same bound `reliabilityBase` uses; the
+authored 4-to-20 band is enforced by `rosterCsvGuard.test.ts`, not the schema), required, all 26
+shipped cars carry it, `style = styleFraction * model.spec.styleBase` replaces
+`styleFraction * styleCap`, and `statFormulas.styleCap` is retired and in
+`retiredIdentifiers.test.ts`. See `sprint145.md`'s Exit for the full record.
 
 ### Task 4: tests
 
@@ -210,12 +220,13 @@ different number of PRNG steps and reshuffles every later lot in a seeded catalo
 
 ### Task 6: re-derive whatever moved
 
-Directive 17 case (a). **Style moving changes taste-adjusted prices across the whole roster**,
-so expect sale-price and valuation pins to move widely. This is the largest fallout in the
-arc after Sprint 135, and every pin is re-derived from a real run.
+Directive 17 case (a). **The `styleBase`/`styleCap` half of this task is done, in Sprint 145**:
+`economyApprovalGate.test.ts` is re-pinned there, and the one moved mission pin
+(`low-and-loud`'s style threshold and stancer taste match) is recorded in that sprint's Exit.
 
-`economyApprovalGate.test.ts` moves (`styleCap` retired); re-pin in the same change as the
-recorded sign-off.
+**The `aeroCeiling` half is still open.** Downforce moving changes taste-adjusted prices and lap
+times across the whole roster, so expect sale-price, valuation and lap pins to move widely when
+Task 2 lands, re-derived from a real run.
 
 ## Task 4: restore a power readout to the parts market (maintainer ruling 2026-07-30)
 
@@ -267,13 +278,17 @@ No new lever, no new content value, no sign-off needed.
 - [ ] Reliability provably unmoved by this sprint, all 26 cars, strict equality.
 - [ ] The schema-sharing check done, following whatever Sprints 135 and 136 decided, and its
       outcome recorded in the Exit.
-- [ ] Both columns authored to all 94 rows in the roster CSV (Task 0).
-- [ ] Levers 1 and 2 signed and recorded, or tasks 2 and 3 deferred with that stated.
-- [ ] `aeroCeiling` and `styleBase` required on the spec schema and authored for all 26 cars.
-- [ ] `statFormulas.styleCap` removed, not orphaned.
+- [x] `styleBase` authored to all 94 rows in the roster CSV (Task 0's style half) - `sprint145.md`.
+- [ ] `aeroCeiling` authored to all 94 rows in the roster CSV (Task 0's remaining half).
+- [x] Lever 2 (`styleBase`) signed and landed - `sprint145.md`.
+- [ ] Lever 1 (`aeroCeiling`) signed and recorded, or Task 2 deferred with that stated.
+- [ ] `aeroCeiling` required on the spec schema and authored for all 26 cars.
+- [x] `styleBase` required on the spec schema and authored for all 26 cars - `sprint145.md`.
+- [x] `statFormulas.styleCap` removed, not orphaned - `sprint145.md`.
 - [ ] A wing on a Wagon R does very little; the same wing on an FD does a lot; both pinned.
 - [ ] `harnessAcceptance.test.ts` passes untouched.
-- [ ] Every moved price pin re-derived from a real run.
+- [ ] Every moved price pin re-derived from a real run (the `styleBase` share of this is done -
+      `sprint145.md`; the `aeroCeiling` share is still open).
 - [ ] Checks run once each, output shown.
 
 ## Exit

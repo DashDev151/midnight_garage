@@ -733,6 +733,33 @@ import storyMissions from '../data/storyMissions.json'
  * re-confirmed passing, unchanged, by a fresh `storyMissionProbes.test.ts`,
  * `balanceProbes.test.ts` and `valueModelProbes.test.ts` run. `economy.json`'s hash
  * changes only because of the four schema keys added and the one deleted.
+ *
+ * Re-pinned (maintainer's standing authority of 2026-07-30, signed by name in
+ * `docs/sprints/sprint145.md`'s lever table) for a car looking like itself:
+ * `statFormulas.styleCap` (flat 20 for every car) is RETIRED outright, the same
+ * footing `reliabilityCap` left this file on in the Sprint 136 entry above. It is
+ * replaced by `CarModel.spec.styleBase`, a per-car value authored for all 94 roster
+ * rows (91 from the original research pass; the three missing ones - Honda Civic
+ * 1.5 EF2 6, Nissan S-Cargo 12, Nissan Laurel Club S C33 11 - authored in the same
+ * change) and required on all 26 shipped cars. The scale is unchanged at 4 to 20,
+ * matching the retired cap's own ceiling: a deliberate restraint, not an oversight -
+ * rescaling those 94 judged values is authoring work for a later sprint, recorded in
+ * TODO.md rather than done here.
+ *
+ * A mint stock car authored at `styleBase` 20 reads style exactly as it did under
+ * the flat cap (asserted in `derivedStats.test.ts`); every car below 20 now reads
+ * less style than before, so its taste score falls for any buyer weighting style,
+ * which is the correction this sprint makes, not a regression. One mission
+ * requirement moves as a MECHANICAL CONSEQUENCE, re-derived from a fresh
+ * `storyMissionProbes.test.ts` run rather than hand-picked: `low-and-loud`'s probe
+ * (a mint `nissan-silvia-ks-s14` with sport aero/rims and street seats, authored
+ * `styleBase` 14) now measures style 56 (was 62 under the flat cap), so
+ * `statThreshold(style).min` `floor90(measured)` re-derives 55 -> 50, and
+ * `tasteMatch(stancer).minMultiplier` `round2At97Percent(measured ratio)` re-derives
+ * 1 -> 0.99. Neither `payoutYen` nor `budgetCapYen` moves (both stay 1161000): the
+ * probe's cost is unaffected by style, confirmed by the mission-payouts test above
+ * passing unchanged. No other story mission's probe carries a style-gated
+ * requirement, so no other threshold moves; re-confirmed by the same fresh run.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -742,7 +769,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('c63987887418659103156de09e48af05c59a8ccad04938819fb3225a3e7ad7ab')
+    ).toBe('c9110158453777a12cd600e5d32a6a3ec373ef8d5d3f671200b0e4665cb1598d')
   })
 
   it('partPricing.json matches its approved content exactly', () => {

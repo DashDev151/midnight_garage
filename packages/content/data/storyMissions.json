@@ -179,12 +179,12 @@
       {
         "kind": "tasteMatch",
         "buyerId": "stancer",
-        "minMultiplier": 1
+        "minMultiplier": 0.99
       },
       {
         "kind": "statThreshold",
         "stat": "style",
-        "min": 55
+        "min": 50
       }
     ],
     "budgetCapYen": 1161000,

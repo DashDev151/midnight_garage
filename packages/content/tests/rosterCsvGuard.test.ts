@@ -22,8 +22,9 @@ import cars from '../data/cars.json'
  *
  * The three tuning-arc constants - `reliabilityBase`, `styleBase` and
  * `aeroCeiling` - are asserted ONLY once they exist on the shipped model, so
- * this guard grows teeth as Sprints 136 and 140 land rather than needing to be
- * rewritten when they do.
+ * this guard grows teeth as each lands (`reliabilityBase` and `styleBase`
+ * already have; `aeroCeiling` still to come) rather than needing to be
+ * rewritten when it does.
  */
 const ROSTER_CSV_PATH = join(
   __dirname,
@@ -46,6 +47,13 @@ const TIERS = ['entry', 'everyday', 'enthusiast', 'flagship']
 const UID_PATTERN = /^MG-\d{3}$/
 const RELIABILITY_FLOOR = 65
 const RELIABILITY_CEILING = 100
+/**
+ * The authored values run 4 to 20 against the retired `styleCap`'s own 20, a
+ * deliberate restraint recorded in `docs/sprints/sprint145.md` - rescaling
+ * the 91 judged values is authoring work for later, not this guard's job.
+ */
+const STYLE_FLOOR = 4
+const STYLE_CEILING = 20
 
 /** RFC 4180 fields: quoted values may hold commas, newlines and "" escapes. */
 function parseCsv(text: string): string[][] {
@@ -141,6 +149,16 @@ describe('the roster CSV is well formed', () => {
       expect(Number.isInteger(base), where).toBe(true)
       expect(base, where).toBeGreaterThanOrEqual(RELIABILITY_FLOOR)
       expect(base, where).toBeLessThanOrEqual(RELIABILITY_CEILING)
+    }
+  })
+
+  it('gives every car a style base inside the authored band', () => {
+    for (const row of roster) {
+      const base = row.num('styleBase')
+      const where = `roster row ${row.get('rosterNo')} (${row.get('variantLabel')})`
+      expect(Number.isInteger(base), where).toBe(true)
+      expect(base, where).toBeGreaterThanOrEqual(STYLE_FLOOR)
+      expect(base, where).toBeLessThanOrEqual(STYLE_CEILING)
     }
   })
 

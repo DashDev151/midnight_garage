@@ -34,6 +34,7 @@ const model: CarModel = {
     curbWeightKg: 1200,
     stockPowerPs: 150,
     reliabilityBase: 90,
+    styleBase: 20,
   },
   tier: 'everyday',
   rarity: 'common',

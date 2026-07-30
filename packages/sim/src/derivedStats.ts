@@ -324,9 +324,11 @@ export function reliabilityIntensityFactor(
  * statModifiers from the parts catalog - sim has no data loader of its
  * own, so the caller supplies it.
  *
- * The magic numbers below (power's condition floor, style's cap) live in
+ * The magic number below (power's condition floor) lives in
  * `economy.json.statFormulas`; handling's whole model lives in
- * `statFormulas.grip` and is applied through `performance.ts`. Reliability's
+ * `statFormulas.grip` and is applied through `performance.ts`. Style's stock
+ * contribution scales the car's own `spec.styleBase`, the same shape
+ * reliability's derivation scales `spec.reliabilityBase` by. Reliability's
  * own three-factor derivation (condition, coherence, and an outer build-
  * intensity term, scaled by the car's own `spec.reliabilityBase`) is
  * described where it is computed below.
@@ -355,7 +357,7 @@ export function computeDerivedStats(
   partsTaxonomy: readonly CarPartTaxonomyEntry[],
   economy: EconomyConfig,
 ): StatBlock {
-  const { powerConditionFloor, styleCap, grip, aero } = economy.statFormulas
+  const { powerConditionFloor, grip, aero } = economy.statFormulas
 
   const powerConditionFraction = weightedBandFactorForStat(
     instance,
@@ -391,7 +393,7 @@ export function computeDerivedStats(
   let handling = mintHandling * handlingFraction
 
   const styleFraction = weightedBandFactorForStat(instance, model, 'style', partsTaxonomy, economy)
-  let style = styleFraction * styleCap
+  let style = styleFraction * model.spec.styleBase
 
   // Reliability is the bounded sum of two independent shortfalls (design
   // section 9): condition (parts wearing out) and coherence (a build

@@ -258,7 +258,9 @@ pass."
   flavour lines written in one pass would be filler, and the copy bar does not allow filler, so
   they are written per car by hand against the "lived in Japan in 1995" test. Both block authoring
   a car into `cars.json`, which `scope` already governs, and nothing else.
-  (`aeroCeiling` and `styleBase` are the same shape but they DO have a home: `sprint140.md` Task 0.)
+  (`aeroCeiling` is the same shape but has a home: `sprint140.md` Task 0. `styleBase` was the same
+  shape and landed early, in `sprint145.md`, pulled forward of Sprint 140 because Sprint 146's
+  buyer targets on style could not be authored while every stock car scored the same.)
 
 - [ ] **Apply the roster's tier assignments to `cars.json`: 13 of the 26 shipped cars are on the
   wrong tier.** The roster CSV is the single source of truth and `midnight-garage-roster.md`
@@ -465,15 +467,15 @@ pass."
   still lists `fr` or `cd` as estimated where the value that landed is a panel reading, and the
   spec book's own `est` list disagrees with ours on seven cars. Copy it from the book in whatever
   pass decides the first one.
-- [ ] **The style stat has no car-level input, so every stock car in the game scores
-  identically on style** (`docs/design/systems/tuning-system.md` section 11). `styleCap` is 20,
-  which means roughly 80 per cent of the scale exists only for bolt-on parts and the car itself
-  contributes nothing to how it looks: a Countach and a Wagon R start level. Style is the one
-  stat that design deliberately keeps as a purely additive taste judgement rather than physics,
-  so a car-level base is the natural fix and it is the only thing that makes the upper reaches
-  of the scale mean anything. Section 11 flags it alongside the schema simplification
-  (`StatModifierSchema` dropping to `style` and `authenticity` only); step 8 of that doc's build
-  order is where it is meant to land.
+- [ ] **RESOLVED IN PART (sprint145.md): `styleBase` gives every car its own car-level style
+  input, but stock style still tops out at 20, so the upper 80 per cent of the axis remains
+  reachable only through bolt-on parts.** The retired flat `styleCap` (20 for every stock car,
+  a Countach and a Wagon R scoring level) is gone; `CarModel.spec.styleBase` now differentiates
+  every car, authored 4 to 20 for all 94 roster rows. That range is a deliberate restraint, not
+  an oversight: rescaling those 94 judged values is authoring work, and the right time to do it
+  is with the appraisal screen in front of a reviewer and a stancer buyer actually shopping, not
+  as a wiring change. Landing the mechanism first means the eventual retune is one column in a
+  spreadsheet rather than a code change. Revisit once the appraisal screen exists.
 - [ ] **There is still no aero grade above `race`, and the headroom for it was opened
   deliberately** (`docs/design/systems/tuning-system.md` section 12, which records the gap;
   the acceptance target for the missing rung is in `docs/design/car-performance/README.md` 7g).

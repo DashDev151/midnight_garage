@@ -22,6 +22,10 @@ const model: CarModel = {
     curbWeightKg: 690,
     stockPowerPs: 61,
     reliabilityBase: 99,
+    // The retired flat styleCap's own value: a mint stock car authored here
+    // reads style exactly 20, so this fixture doubles as the smoke test
+    // below for styleBase replacing that cap.
+    styleBase: 20,
   },
   tier: 'entry',
   rarity: 'common',
@@ -248,5 +252,44 @@ describe('computeDerivedStats', () => {
     ).style
     expect(missingStyle).toBeLessThan(scrapStyle)
     expect(missingStyle).toBe(0)
+  })
+})
+
+/**
+ * The smoke test for `styleBase` replacing the flat `styleCap` as style's
+ * stock contribution: a car authored at 20 (the cap's own former value) must
+ * read identically to before, and two cars that previously tied on style
+ * (any two stock cars, under the flat cap) must now differ.
+ */
+describe('styleBase replaces the flat styleCap', () => {
+  it('a mint stock car authored at styleBase 20 reads style exactly 20 - unchanged from the retired flat cap', () => {
+    expect(stats(baseInstance).style).toBe(20)
+  })
+
+  it('a Toyota 2000GT and a Nissan S-Cargo no longer score identically on style', () => {
+    // Neither ships in cars.json, so their real authored roster values (15
+    // and 12, docs/design/midnight-garage-roster.csv) are read onto this
+    // fixture's own mint chassis, isolating the one thing under test.
+    const twoThousandGt: CarModel = {
+      ...model,
+      id: 'toyota-2000gt-mf10',
+      spec: { ...model.spec, styleBase: 15 },
+    }
+    const sCargo: CarModel = {
+      ...model,
+      id: 'nissan-s-cargo',
+      spec: { ...model.spec, styleBase: 12 },
+    }
+    const gtStyle = computeDerivedStats(
+      twoThousandGt,
+      baseInstance,
+      {},
+      PARTS_TAXONOMY,
+      ECONOMY,
+    ).style
+    const cargoStyle = computeDerivedStats(sCargo, baseInstance, {}, PARTS_TAXONOMY, ECONOMY).style
+    expect(gtStyle).toBe(15)
+    expect(cargoStyle).toBe(12)
+    expect(gtStyle).not.toBe(cargoStyle)
   })
 })

@@ -84,6 +84,12 @@ const RETIRED_IDENTIFIERS: readonly RetiredIdentifier[] = [
     reason:
       'A flat 0.55 for every build in the game, which is why modifying a car to sell it lost money whatever you did. Replaced by retentionFor (marketValue.ts), a curve between valuation.retentionFloor and valuation.retentionCeiling driven by the coherence factor of the build - deleted rather than left inert, per this sprint ruling that a lever reading live and doing nothing is worse than either extreme.',
   },
+  {
+    identifier: 'styleCap',
+    retiredInSprint: 145,
+    reason:
+      'A flat 20 for every car regardless of what it was, so a Toyota 2000GT and a Nissan S-Cargo scored identically on style. Replaced by CarModel.spec.styleBase (a per-car value) - the flat cap had no per-car meaning.',
+  },
 ]
 
 function escapeRegExp(text: string): string {

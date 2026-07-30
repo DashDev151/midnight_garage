@@ -61,6 +61,7 @@ const model: CarModel = {
     curbWeightKg: 1590,
     stockPowerPs: 280,
     reliabilityBase: 94,
+    styleBase: 20,
   },
   tier: 'flagship',
   rarity: 'rare',

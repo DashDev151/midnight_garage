@@ -92,6 +92,22 @@ export const CarModelSchema = z
        * is a car where neither of those two systems still matters.
        */
       reliabilityBase: z.number().min(0).max(100),
+      /**
+       * How the car looks stock, on the same footing as `reliabilityBase`
+       * above: a mint stock example sits exactly here, and no aftermarket
+       * modifier lifts a car above its own base until it is actually fitted.
+       * Required, not defaulted - a car added later cannot silently inherit
+       * a value nobody chose, which is exactly the `powerFraction` gap this
+       * schema already closed once.
+       *
+       * The scale runs 4 to 100. The authored roster only reaches as high as
+       * 20 (a Lamborghini Countach), because stock styling was deliberately
+       * left un-rescaled when this field replaced the flat 20 cap
+       * (`docs/sprints/sprint145.md`): the upper reaches of the axis stay
+       * reachable only through bolt-on parts until a later authoring pass
+       * revisits the 91 judged values.
+       */
+      styleBase: z.number().min(0).max(100),
       weightDistributionFront: z.number().gte(30).lte(70).optional(),
       wheelbaseMm: z.number().int().positive().optional(),
       comHeightMm: z.number().int().positive().optional(),
