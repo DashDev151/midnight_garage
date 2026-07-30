@@ -211,6 +211,26 @@ pass."
 
 ## Open engineering
 
+- [ ] **The balance probes and real generation use two different cost models for the same three
+  parts (found 2026-07-30, while making the probes read live data).** Real generation
+  (`generateAuctionCarInstance`) unconditionally rolls a `zoneState`, and that is what prices
+  `panels`, `paint` and `underbody`, through `bodyPartRepairBillYen`'s flat materials cost. The
+  probe cars in `packages/sim/src/coherence.ts` carry no `zoneState`, so those same three parts
+  price through the generic per-part formula (`costToBandYen`, scaled by catalogue part price)
+  instead.
+
+  **This is not a missing field, it is two cost models for one thing**, and it predates the
+  probe refactor rather than being caused by it. It matters because these probes are the economy
+  bible's Law 1 to Law 4 guards: to whatever extent the two models disagree, the guards are
+  validating a car the game does not generate.
+
+  Verified before stopping: synthesising a `zoneState` on the probes WOULD move `worstBillYen`,
+  `repairCostYen` and `sensibleFlipMarginYen`, and `computeModelCoherence`'s `planGroupRepair`
+  loop would need zone-pipeline-aware repair-cost logic it does not have today, because
+  `planGroupRepair` deliberately skips zone-backed parts. So closing this is a real change to
+  the probes' arithmetic, not a field addition, and every Law figure would need re-deriving.
+  A doc comment in `coherence.ts` flags it at the site.
+
 - [ ] **Two roster CSV columns are owed under directive 24, and neither blocks the tuning arc.**
   `rarity` holds 26 of 94: it is a spawn-rate lever, so the missing 68 need signing under
   directive 22 as well as authoring. `flavour` holds **0 of 94**, deliberately: ninety-four

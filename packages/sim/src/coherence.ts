@@ -137,20 +137,48 @@ function worstCaseMileageKm(context: SimContext): number {
 }
 
 /**
- * The worst PLAUSIBLE pre-guard roll for `model`: every real slot at `scrap`
- * (the maximum-cost band `costToMintYen` recognizes - at least as bad as
- * anything `generateAuctionCarInstance` could actually produce, since a
- * missing slot prices identically to scrap), at the roster's worst reachable
- * mileage. Stress-tests the real Law 2 guard against a state that is never
- * softer than a genuine generation roll, so a pass here proves the guard
- * holds for this model at its absolute worst, not merely on average.
+ * The one shared skeleton every band-uniform coherence probe in this file
+ * builds from: every real slot filled with a fresh stock `PartInstance` at
+ * a single `band`, through `stockInstanceFor` - the SAME per-part builder
+ * real generation (`generateAuctionCarInstance`, auctions.ts) uses to fill
+ * a fresh slot. `parts` walks `ALL_CAR_PART_IDS` (the schema's own live
+ * enum), so a new `CarPartId` needs no edit here, and it is the only piece
+ * of construction that ever touches the part catalogue.
+ *
+ * Every other `CarInstance` field a probe varies (id, mileage, provenance,
+ * authenticity) is a caller-supplied scalar, so the whole object shape is
+ * authored in exactly ONE place in this file: a future field on
+ * `CarInstance` needs one edit here, never three. `forcedInduction` is left
+ * absent on a model that was never built with one - `hasForcedInduction`'s
+ * own platform fact, not a per-probe decision.
+ *
+ * Deliberately NOT `zoneState`. Real generation always rolls one
+ * (`rollZoneStates` + `applyDerivedBodyBands`, auctions.ts/bodyPipeline.ts),
+ * which routes `panels`/`paint`/`underbody` through the body pipeline's flat
+ * materials cost (`bodyPartRepairBillYen`) instead of this file's generic
+ * per-part repair formula (`costToBandYen`, bands.ts) - a different pricing
+ * model for those three parts, not a different value on the same one.
+ * Synthesising a matching `zoneState` here would move every probe figure
+ * that touches them; that is a real finding for the maintainer to weigh
+ * (see the accompanying report), not something a refactor may decide by
+ * itself.
  */
-export function buildWorstCaseRawCar(model: CarModel, context: SimContext): CarInstance {
-  const mileageKm = worstCaseMileageKm(context)
+function buildUniformBandCar(
+  model: CarModel,
+  context: SimContext,
+  options: {
+    carId: string
+    band: ConditionBand
+    year: number
+    mileageKm: number
+    provenanceNote: string
+    authenticityPercent: number
+  },
+): CarInstance {
+  const { carId, band, year, mileageKm, provenanceNote, authenticityPercent } = options
   const fitmentClass = fitmentClassForTier(model.tier)
   const carHasForcedInduction = hasForcedInduction(model)
-  const carId = `coherence-${model.id}`
-  const origin = makeCarOrigin(carId, carOriginLabel(model, model.spec.yearFrom), 0)
+  const origin = makeCarOrigin(carId, carOriginLabel(model, year), 0)
   const parts = Object.fromEntries(
     ALL_CAR_PART_IDS.map((partId) => {
       if (partId === 'forcedInduction' && !carHasForcedInduction) {
@@ -158,8 +186,8 @@ export function buildWorstCaseRawCar(model: CarModel, context: SimContext): CarI
       }
       const installed = stockInstanceFor(
         partId,
-        'scrap',
-        `coherence-${model.id}`,
+        band,
+        carId,
         fitmentClass,
         context.stockPartByCarPartId,
         origin,
@@ -170,15 +198,35 @@ export function buildWorstCaseRawCar(model: CarModel, context: SimContext): CarI
   return {
     id: carId,
     modelId: model.id,
-    year: model.spec.yearFrom,
+    year,
     mileageKm,
     color: 'White',
-    provenanceNote: 'coherence probe',
-    authenticityPercent: 70,
+    provenanceNote,
+    authenticityPercent,
     parts,
     symptoms: [],
     apparentBandByPartId: null,
   }
+}
+
+/**
+ * The worst PLAUSIBLE pre-guard roll for `model`: every real slot at `scrap`
+ * (the maximum-cost band `costToMintYen` recognizes - at least as bad as
+ * anything `generateAuctionCarInstance` could actually produce, since a
+ * missing slot prices identically to scrap), at the roster's worst reachable
+ * mileage. Stress-tests the real Law 2 guard against a state that is never
+ * softer than a genuine generation roll, so a pass here proves the guard
+ * holds for this model at its absolute worst, not merely on average.
+ */
+export function buildWorstCaseRawCar(model: CarModel, context: SimContext): CarInstance {
+  return buildUniformBandCar(model, context, {
+    carId: `coherence-${model.id}`,
+    band: 'scrap',
+    year: model.spec.yearFrom,
+    mileageKm: worstCaseMileageKm(context),
+    provenanceNote: 'coherence probe',
+    authenticityPercent: 70,
+  })
 }
 
 /** The fixed seed the rough probe threads through `enforceMinWorkBill`'s
@@ -212,38 +260,16 @@ const ROUGH_PROBE_SEED = 0
  * wreck you can make good.
  */
 export function buildRoughProbeCar(model: CarModel, context: SimContext): CarInstance {
-  const fitmentClass = fitmentClassForTier(model.tier)
-  const carHasForcedInduction = hasForcedInduction(model)
   const carId = `rough-${model.id}`
-  const origin = makeCarOrigin(carId, carOriginLabel(model, model.spec.yearFrom), 0)
-  const parts = Object.fromEntries(
-    ALL_CAR_PART_IDS.map((partId) => {
-      if (partId === 'forcedInduction' && !carHasForcedInduction) {
-        return [partId, { installed: null }]
-      }
-      const installed = stockInstanceFor(
-        partId,
-        'poor',
-        carId,
-        fitmentClass,
-        context.stockPartByCarPartId,
-        origin,
-      )
-      return [partId, { installed }]
-    }),
-  ) as CarInstance['parts']
-  const raw: CarInstance = {
-    id: carId,
-    modelId: model.id,
+  const raw = buildUniformBandCar(model, context, {
+    carId,
+    band: 'poor',
     year: model.spec.yearFrom,
     mileageKm: worstCaseMileageKm(context),
-    color: 'White',
     provenanceNote: 'rough probe',
     authenticityPercent: 70,
-    parts,
-    symptoms: [],
-    apparentBandByPartId: null,
-  }
+  })
+  const origin = makeCarOrigin(carId, carOriginLabel(model, model.spec.yearFrom), 0)
   const softened = enforceMaxBillFraction(raw, model, context, origin)
   return enforceMinWorkBill(softened, model, context, origin, createRng(ROUGH_PROBE_SEED))
 }
@@ -474,38 +500,14 @@ function buildCleanProbeCar(
   idPrefix: string,
   provenanceNote: string,
 ): CarInstance {
-  const fitmentClass = fitmentClassForTier(model.tier)
-  const carHasForcedInduction = hasForcedInduction(model)
-  const carId = `${idPrefix}-${model.id}`
-  const cleanOrigin = makeCarOrigin(carId, carOriginLabel(model, model.spec.yearFrom), 0)
-  const parts = Object.fromEntries(
-    ALL_CAR_PART_IDS.map((partId) => {
-      if (partId === 'forcedInduction' && !carHasForcedInduction) {
-        return [partId, { installed: null }]
-      }
-      const installed = stockInstanceFor(
-        partId,
-        'mint',
-        carId,
-        fitmentClass,
-        context.stockPartByCarPartId,
-        cleanOrigin,
-      )
-      return [partId, { installed }]
-    }),
-  ) as CarInstance['parts']
-  return {
-    id: carId,
-    modelId: model.id,
+  return buildUniformBandCar(model, context, {
+    carId: `${idPrefix}-${model.id}`,
+    band: 'mint',
     year: model.spec.yearFrom,
     mileageKm: 0,
-    color: 'White',
     provenanceNote,
     authenticityPercent: 100,
-    parts,
-    symptoms: [],
-    apparentBandByPartId: null,
-  }
+  })
 }
 
 /**
