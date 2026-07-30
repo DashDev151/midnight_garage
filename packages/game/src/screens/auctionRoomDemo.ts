@@ -216,10 +216,10 @@ function buildDemoCarInstance(
  * true cause is pinned to `perished-grommet`, the cheapest of the five and
  * nowhere near that fear - so once the visit narrows the doubt all the way
  * down, the chassis turns out merely `'poor'`, not scrap, and the estimate
- * jumps well clear of the room's number. Verified against the live content
- * (2026-07-30): true value clears the room's read by roughly 17% (ratio
- * 1.166), more than double `VERDICT_BAND_FRACTION`'s 8% bar, so an ordinary
- * repricing cannot flip the verdict.
+ * jumps well clear of the room's number. Against the live content the true
+ * value clears the room's read by roughly 17% (ratio 1.166), more than double
+ * `VERDICT_BAND_FRACTION`'s 8% bar, so an ordinary repricing cannot flip the
+ * verdict.
  */
 const STEAL_MODEL_ID = 'honda-city-e-aa'
 const STEAL_SYMPTOM_ID = 'damp-passenger-footwell'
@@ -258,10 +258,9 @@ function buildStealLot(context: SimContext): AuctionLot {
  * Every part apart from the block reads at its ordinary, undamaged
  * condition, so the room never suspects anything before the visit; only
  * once the doubt narrows all the way down does the estimate crash to the
- * true, dear cause. Verified against the live content (2026-07-30): true
- * value undercuts the room's read by roughly 18% (ratio 0.822), comfortably
- * past both `TRAP_VALUE_FRACTION`'s 90% floor and `VERDICT_BAND_FRACTION`'s
- * 8% bar.
+ * true, dear cause. Against the live content the true value undercuts the
+ * room's read by roughly 18% (ratio 0.822), comfortably past both
+ * `TRAP_VALUE_FRACTION`'s 90% floor and `VERDICT_BAND_FRACTION`'s 8% bar.
  */
 const TRAP_MODEL_ID = 'nissan-sunny-b12'
 const TRAP_SYMPTOM_ID = 'overheats-in-traffic'
