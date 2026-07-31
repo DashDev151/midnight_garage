@@ -601,21 +601,21 @@ function listedOn(
 describe('drawDailyOffers (Sprint 31 decision 2; channels, Sprint 114)', () => {
   it('is deterministic for the same seed', () => {
     const state = { ...stateWithCar(car), carsForSale: listedOn('shopFront') }
-    const a = drawDailyOffers(state, CONTEXT, createRng(9))
-    const b = drawDailyOffers(state, CONTEXT, createRng(9))
+    const a = drawDailyOffers(state, CONTEXT, createRng(9), state.day)
+    const b = drawDailyOffers(state, CONTEXT, createRng(9), state.day)
     expect(a.state.pendingOffers).toEqual(b.state.pendingOffers)
     expect(a.log).toEqual(b.log)
   })
 
   it('never draws an offer for a car not marked for sale', () => {
     const state = stateWithCar(car) // carsForSale empty
-    const result = drawDailyOffers(state, CONTEXT, createRng(1))
+    const result = drawDailyOffers(state, CONTEXT, createRng(1), state.day)
     expect(result.state.pendingOffers).toEqual([])
   })
 
   it('prunes a stale for-sale entry once the car is no longer owned', () => {
     const state = { ...stateWithCar(car), ownedCars: [], carsForSale: listedOn('shopFront') }
-    const result = drawDailyOffers(state, CONTEXT, createRng(1))
+    const result = drawDailyOffers(state, CONTEXT, createRng(1), state.day)
     expect(result.state.carsForSale).toEqual([])
   })
 
@@ -623,7 +623,7 @@ describe('drawDailyOffers (Sprint 31 decision 2; channels, Sprint 114)', () => {
     const state = { ...stateWithCar(car), carsForSale: listedOn('shopFront') }
     let found = false
     for (let seed = 0; seed < 40 && !found; seed++) {
-      const result = drawDailyOffers(state, CONTEXT, createRng(seed))
+      const result = drawDailyOffers(state, CONTEXT, createRng(seed), state.day)
       if (result.state.pendingOffers.length > 0) {
         found = true
         expect(result.log).toContainEqual(
@@ -640,7 +640,7 @@ describe('drawDailyOffers (Sprint 31 decision 2; channels, Sprint 114)', () => {
     it('prices priceBand-uniform against plain market value, buyer presented as the trade network itself', () => {
       let found = false
       for (let seed = 0; seed < 40 && !found; seed++) {
-        const result = drawDailyOffers(state, CONTEXT, createRng(seed))
+        const result = drawDailyOffers(state, CONTEXT, createRng(seed), state.day)
         const offer = result.state.pendingOffers[0]
         if (!offer) continue
         found = true
@@ -661,37 +661,57 @@ describe('drawDailyOffers (Sprint 31 decision 2; channels, Sprint 114)', () => {
     })
 
     it('is deterministic for the same seed', () => {
-      const a = drawDailyOffers(state, CONTEXT, createRng(3))
-      const b = drawDailyOffers(state, CONTEXT, createRng(3))
+      const a = drawDailyOffers(state, CONTEXT, createRng(3), state.day)
+      const b = drawDailyOffers(state, CONTEXT, createRng(3), state.day)
       expect(a.state.pendingOffers).toEqual(b.state.pendingOffers)
     })
   })
 
-  describe('weekendMeet: one guaranteed draw, then spent', () => {
-    it('the flag is always consumed by the draw, hit or miss', () => {
-      const state = { ...stateWithCar(car), carsForSale: listedOn('weekendMeet') }
-      for (let seed = 0; seed < 10; seed++) {
-        const result = drawDailyOffers(state, CONTEXT, createRng(seed))
-        expect(result.state.carsForSale[0]?.weekendMeetPending).toBe(false)
-      }
-    })
+  describe('weekendMeet: one guaranteed draw, then spent, on its real day (sprint149)', () => {
+    // The meet only resolves on calendar.meetDayOfWeek now, not on whichever
+    // day happens to be the next End Day after listing - a non-meet day is
+    // just any day that isn't it.
+    const MEET_DAY = ECONOMY.calendar.meetDayOfWeek
+    const NON_MEET_DAY = MEET_DAY === 1 ? 2 : 1
 
-    it('never draws again once the flag is spent, for any seed', () => {
-      const spent = {
+    it('stays pending, drawing nothing, on a non-meet day, for any seed', () => {
+      const state = {
         ...stateWithCar(car),
-        carsForSale: listedOn('weekendMeet', { weekendMeetPending: false }),
+        day: NON_MEET_DAY,
+        carsForSale: listedOn('weekendMeet'),
       }
       for (let seed = 0; seed < 20; seed++) {
-        const result = drawDailyOffers(spent, CONTEXT, createRng(seed))
+        const result = drawDailyOffers(state, CONTEXT, createRng(seed), NON_MEET_DAY)
+        expect(result.state.carsForSale[0]?.weekendMeetPending).toBe(true)
         expect(result.state.pendingOffers).toEqual([])
       }
     })
 
-    it('can actually produce a real offer while the flag is still owed', () => {
-      const state = { ...stateWithCar(car), carsForSale: listedOn('weekendMeet') }
+    it('the flag is always consumed by the draw once the meet day arrives, hit or miss', () => {
+      const state = { ...stateWithCar(car), day: MEET_DAY, carsForSale: listedOn('weekendMeet') }
+      for (let seed = 0; seed < 10; seed++) {
+        const result = drawDailyOffers(state, CONTEXT, createRng(seed), MEET_DAY)
+        expect(result.state.carsForSale[0]?.weekendMeetPending).toBe(false)
+      }
+    })
+
+    it('never draws again once the flag is spent, for any seed, meet day or not', () => {
+      const spent = {
+        ...stateWithCar(car),
+        day: MEET_DAY,
+        carsForSale: listedOn('weekendMeet', { weekendMeetPending: false }),
+      }
+      for (let seed = 0; seed < 20; seed++) {
+        const result = drawDailyOffers(spent, CONTEXT, createRng(seed), MEET_DAY)
+        expect(result.state.pendingOffers).toEqual([])
+      }
+    })
+
+    it('can actually produce a real offer while the flag is still owed, on the meet day', () => {
+      const state = { ...stateWithCar(car), day: MEET_DAY, carsForSale: listedOn('weekendMeet') }
       let found = false
       for (let seed = 0; seed < 40 && !found; seed++) {
-        const result = drawDailyOffers(state, CONTEXT, createRng(seed))
+        const result = drawDailyOffers(state, CONTEXT, createRng(seed), MEET_DAY)
         if (result.state.pendingOffers.length > 0) found = true
       }
       expect(found).toBe(true)
@@ -755,10 +775,20 @@ describe('drawDailyOffers (Sprint 31 decision 2; channels, Sprint 114)', () => {
       // much RNG each channel draw consumes.
       let found = false
       for (let seed = 0; seed < 100 && !found; seed++) {
-        const shopFrontResult = drawDailyOffers(shopFrontState, mismatchContext, createRng(seed))
+        const shopFrontResult = drawDailyOffers(
+          shopFrontState,
+          mismatchContext,
+          createRng(seed),
+          shopFrontState.day,
+        )
         if (shopFrontResult.state.pendingOffers.length === 0) continue
         found = true
-        const magazineResult = drawDailyOffers(magazineState, mismatchContext, createRng(seed))
+        const magazineResult = drawDailyOffers(
+          magazineState,
+          mismatchContext,
+          createRng(seed),
+          magazineState.day,
+        )
         expect(magazineResult.state.pendingOffers).toEqual([])
       }
       expect(found, 'no seed in range cleared shopFront’s own chance roll').toBe(true)
@@ -793,7 +823,7 @@ describe('drawDailyOffers (Sprint 31 decision 2; channels, Sprint 114)', () => {
       const state = { ...stateWithCar(car), carsForSale: listedOn(FICTIONAL_CHANNEL_ID) }
       let found = false
       for (let seed = 0; seed < 10 && !found; seed++) {
-        const result = drawDailyOffers(state, fictionalContext, createRng(seed))
+        const result = drawDailyOffers(state, fictionalContext, createRng(seed), state.day)
         if (result.state.pendingOffers.length > 0) {
           found = true
           expect(result.log).toContainEqual(
@@ -819,7 +849,7 @@ describe('the normalised listing clock, end to end (sprint147)', () => {
   it('a listing that draws NO offers does not go stale over many days - the assertion that catches a day-based clock', () => {
     let state: GameState = { ...stateWithCar(car), carsForSale: listedOn('shopFront') }
     for (let day = 0; day < 90; day++) {
-      state = drawDailyOffers(state, CONTEXT, neverShowsUp).state
+      state = drawDailyOffers(state, CONTEXT, neverShowsUp, state.day).state
     }
     const entry = state.carsForSale[0]
     expect(entry?.offersSeen).toBe(0)
@@ -834,7 +864,7 @@ describe('the normalised listing clock, end to end (sprint147)', () => {
     const state = { ...stateWithCar(car), carsForSale: listedOn('shopFront') }
     let seedThatClears: number | undefined
     for (let seed = 0; seed < 40; seed++) {
-      const result = drawDailyOffers(state, CONTEXT, createRng(seed))
+      const result = drawDailyOffers(state, CONTEXT, createRng(seed), state.day)
       if (result.state.carsForSale[0]?.offersSeen === 1) {
         seedThatClears = seed
         break
@@ -845,8 +875,8 @@ describe('the normalised listing clock, end to end (sprint147)', () => {
 
   it('the quality draw is deterministic for the same seed, per the seeding rule', () => {
     const state = { ...stateWithCar(car), carsForSale: listedOn('shopFront') }
-    const a = drawDailyOffers(state, CONTEXT, createRng(5))
-    const b = drawDailyOffers(state, CONTEXT, createRng(5))
+    const a = drawDailyOffers(state, CONTEXT, createRng(5), state.day)
+    const b = drawDailyOffers(state, CONTEXT, createRng(5), state.day)
     expect(a.state.pendingOffers).toEqual(b.state.pendingOffers)
     expect(a.state.carsForSale).toEqual(b.state.carsForSale)
   })

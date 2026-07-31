@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { dayOfWeekName } from '@midnight-garage/sim'
 import { useGameStore } from '../stores/gameStore'
 import { classifyDayReport, pluralise } from '../utils/dayLogFormat'
 import { formatYen, formatYenDelta } from '../utils/formatYen'
@@ -7,6 +8,14 @@ import { formatYen, formatYenDelta } from '../utils/formatYen'
 const game = useGameStore()
 
 const report = computed(() => game.lastDayReport)
+
+/** The reported day's own weekday name (sprint149.md) - `report.day` is the
+ * day that just ENDED, already past by the time this modal shows, so this
+ * reads that specific day rather than `game.dayOfWeekLabel` (today's, the
+ * NEW day advanceDay has already rolled over to). */
+const reportDayOfWeek = computed(() =>
+  report.value ? dayOfWeekName(report.value.day, game.context.economy) : '',
+)
 
 /**
  * The report's structured view: wins as celebration cards, the recurring
@@ -39,13 +48,14 @@ const isQuietDay = computed(
            are the thing that happened. -->
       <h3 data-test="report-heading">
         <template v-if="view.wins.length === 1 && view.wins[0]">
-          Day {{ report.day }} - you {{ view.wins[0].kind === 'bought' ? 'bought' : 'won' }} the
-          {{ view.wins[0].modelName }}
+          Day {{ report.day }} ({{ reportDayOfWeek }}) - you
+          {{ view.wins[0].kind === 'bought' ? 'bought' : 'won' }} the {{ view.wins[0].modelName }}
         </template>
         <template v-else-if="view.wins.length > 1">
-          Day {{ report.day }} - {{ pluralise(view.wins.length, 'car') }} in the shop
+          Day {{ report.day }} ({{ reportDayOfWeek }}) - {{ pluralise(view.wins.length, 'car') }} in
+          the shop
         </template>
-        <template v-else>Day {{ report.day }} complete</template>
+        <template v-else>Day {{ report.day }} ({{ reportDayOfWeek }}) complete</template>
       </h3>
 
       <!-- Wins first: a car you won reads as the win it is, never a red loss. -->

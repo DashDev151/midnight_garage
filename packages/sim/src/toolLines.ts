@@ -6,7 +6,7 @@ import type {
   ToolTier,
   ToolTiers,
 } from '@midnight-garage/content'
-import { reputationAtLeast } from './calendar'
+import { reputationAtLeast } from './reputation'
 import type { SimContext } from './context'
 import type { UpgradeToolLineAction } from './actions'
 import type { Rng } from './rng'

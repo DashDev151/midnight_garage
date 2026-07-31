@@ -6,7 +6,7 @@ import type {
   GameState,
   ReputationTier,
 } from '@midnight-garage/content'
-import { reputationAtLeast } from './calendar'
+import { reputationAtLeast } from './reputation'
 import type { BuyBayAction, MoveCarAction } from './actions'
 
 /**

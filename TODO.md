@@ -211,6 +211,21 @@ pass."
 
 ## Open engineering
 
+- [ ] **The tutorial's "find" step assumes the Auctions tab is always open; Sprint 149's
+  auction-day gate (`calendar.auctionDayOfWeek`, currently Wednesday) can leave a fresh day-1
+  game unable to reach it for up to two days (found 2026-07-31, Sprint 149).**
+  `tutorialSteps.json`'s `find` step (`anchorScreen: "auctions"`, `anchorTestId:
+  "inspect-visit-local-yard"`) fires immediately after the player accepts Yuki's mission, which
+  happens on day 1 in every new career - but day 1's `dayOfWeek` is 1, not 3, so `AuctionScreen.vue`
+  now shows its closed message instead of the scripted tutorial lot, and the player is stuck until
+  the in-game calendar reaches Wednesday. Not caught by any existing test (nothing exercises this
+  step's timing against a live day count). Two ways out, neither authorised by Sprint 149's own
+  lever list or reuse analysis: exempt the tutorial from the gate (`tutorialActive(state)` bypass -
+  a new mechanism not in that sprint's "genuinely new" list), or move `auctionDayOfWeek`'s VALUE
+  (directive 22, needs the maintainer's specific sign-off). Left unresolved on purpose rather than
+  patched unilaterally; needs a maintainer decision before the next auction-adjacent sprint, and
+  ideally a regression test pinning whichever answer is chosen.
+
 - [ ] **`sale-value-system.md` §4 states `relistRecovery` as a fraction of "fresh", which does not
   survive contact with the counter it describes (found 2026-07-31, Sprint 147).** Fresh is
   `offersSeen = 0` and 0.70 of 0 is 0, so the prose has no arithmetic reading. Sprint 147 ruled it

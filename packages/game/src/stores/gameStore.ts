@@ -80,6 +80,7 @@ import {
   createInitialGameState,
   createRng,
   installTutorial,
+  dayOfWeekName,
   describeOrigin,
   deriveReputationTier,
   displayedBandFor,
@@ -102,6 +103,7 @@ import {
   hasParkingSpace,
   hireMachineLineGateReason as hireMachineLineGateReasonCore,
   inspectionVisitGateReason as inspectionVisitGateReasonCore,
+  isAuctionDay as isAuctionDayCore,
   isBodyDerivedPart,
   isCustomerOriginPart,
   isPartMissing,
@@ -1035,6 +1037,15 @@ export const useGameStore = defineStore('game', () => {
   }
 
   const day = computed(() => gameState.value.day)
+  /** The current day's weekday name (`calendar.ts`'s `dayOfWeekName`) - the
+   * one-word texture sprint149.md adds to every day-facing screen: "Day 12"
+   * alone reads as a resource counter, "Day 12 - Friday" reads as a place
+   * in a rhythm the player can plan payday and the auction around. */
+  const dayOfWeekLabel = computed(() => dayOfWeekName(gameState.value.day, context.value.economy))
+  /** Whether the auction catalogue is open today (`calendar.auctionDayOfWeek`,
+   * sprint149.md) - the auction house is a thing you wait for now, not a
+   * screen that is always open. */
+  const isAuctionDay = computed(() => isAuctionDayCore(gameState.value.day, context.value.economy))
   const cashYen = computed(() => gameState.value.cashYen)
   const reputationTier = computed(() => gameState.value.reputationTier)
   const reputationPoints = computed(() => gameState.value.reputationPoints)
@@ -4510,6 +4521,8 @@ export const useGameStore = defineStore('game', () => {
     context,
     logSessionEvent,
     day,
+    dayOfWeekLabel,
+    isAuctionDay,
     cashYen,
     reputationTier,
     reputationPoints,

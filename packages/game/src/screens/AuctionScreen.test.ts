@@ -52,8 +52,18 @@ function mountScreenWithRouter(): { wrapper: VueWrapper; router: Router } {
   return { wrapper, router }
 }
 
+/** Warps to a day with lots on the board AND the auction house actually open
+ * (`game.isAuctionDay`, sprint149.md: the catalogue is only visible on
+ * `calendar.auctionDayOfWeek`) - most of this file's tests exercise the
+ * catalogue's contents, which now only render behind that gate. */
 function warpToCatalog(game: ReturnType<typeof useGameStore>) {
-  for (let i = 0; i < 20 && game.gameState.activeAuctionLots.length === 0; i++) game.endDay()
+  for (
+    let i = 0;
+    i < 20 && (game.gameState.activeAuctionLots.length === 0 || !game.isAuctionDay);
+    i++
+  ) {
+    game.endDay()
+  }
 }
 
 /** A synthetic owned car, every slot stock-and-fine, with NO ledger entry -
@@ -136,9 +146,20 @@ describe('AuctionScreen', () => {
     for (const wrapper of mountedWrappers.splice(0)) wrapper.unmount()
   })
 
-  it('renders lots already on day 1 with a buyout control, with no empty first week', () => {
+  it('the auction house is closed outside auction day, in plain words, with no lots or buttons', () => {
     const game = useGameStore()
+    expect(game.isAuctionDay).toBe(false) // day 1 is not calendar.auctionDayOfWeek
     const wrapper = mountScreen()
+    expect(wrapper.find('[data-test="auction-closed"]').text()).toContain('only opens its doors')
+    expect(wrapper.findAll('.lot')).toHaveLength(0)
+  })
+
+  it('renders lots on the first auction day with a buyout control, with no empty catalogue once open (sprint149)', () => {
+    const game = useGameStore()
+    warpToCatalog(game)
+    expect(game.isAuctionDay).toBe(true)
+    const wrapper = mountScreen()
+    expect(wrapper.find('[data-test="auction-closed"]').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('No lots listed')
     expect(wrapper.findAll('.lot').length).toBe(game.gameState.activeAuctionLots.length)
     // Every lot offers an instant buyout.
@@ -287,6 +308,7 @@ describe('AuctionScreen', () => {
 
     it('warns about double-parking (not loss) once the shop is full but the grace slot is still free', () => {
       const game = useGameStore()
+      warpToCatalog(game)
       game.gameState = {
         ...game.gameState,
         parkingBayCount: 0,
@@ -301,6 +323,7 @@ describe('AuctionScreen', () => {
 
     it('warns about genuine loss only once the shop AND the grace slot are both full', () => {
       const game = useGameStore()
+      warpToCatalog(game)
       game.gameState = {
         ...game.gameState,
         parkingBayCount: 0,
@@ -782,6 +805,8 @@ describe('AuctionScreen', () => {
 
   describe('locked-tier guarantor copy (Sprint 115)', () => {
     it('renders the byte-verbatim guarantor line for every locked tier, with no inspect control', () => {
+      const game = useGameStore()
+      warpToCatalog(game)
       const wrapper = mountScreen()
       expect(wrapper.find('[data-test="locked-tier-regional"]').text()).toBe(
         'Members only. Somebody has to vouch for you, and nobody does. Yet.',
@@ -799,6 +824,7 @@ describe('AuctionScreen', () => {
 
     it('shows the plain tier label (never the rolled venue name) on a locked tier heading', () => {
       const game = useGameStore()
+      warpToCatalog(game)
       const wrapper = mountScreen()
       const headings = wrapper.findAll('.tier-head h3').map((h) => h.text())
       expect(headings).toContain(AUCTION_TIER_LABELS.regional)
@@ -806,6 +832,8 @@ describe('AuctionScreen', () => {
     })
 
     it('never shows the locked line for local-yard - it is open from day one', () => {
+      const game = useGameStore()
+      warpToCatalog(game)
       const wrapper = mountScreen()
       expect(wrapper.find('[data-test="locked-tier-local-yard"]').exists()).toBe(false)
     })

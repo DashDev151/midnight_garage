@@ -14,7 +14,8 @@ import {
   type SellingChannelId,
 } from '@midnight-garage/content'
 import { interestedBuyers } from './bidding'
-import { applyReputationDelta } from './calendar'
+import { applyReputationDelta } from './reputation'
+import { isMeetDay } from './calendar'
 import { carLedgerFor, deleteCarLedger } from './carLedger'
 import { saleQualityFor, saleReputationDeltaFor } from './carCondition'
 import type { SimContext } from './context'
@@ -626,14 +627,17 @@ function cadenceChanceFor(
 }
 
 /**
- * One listed car's channel-aware offer draw for today - reads the listing's
- * own `channelId` only to look up its content (`context.economy.
- * sellingChannels`), never to branch on it. `oneDrawNextEndDay` channels
- * (`weekendMeet`) get their guaranteed single draw, gated on
- * `weekendMeetPending`, in place of a daily cadence roll - staleness does
- * not gate it (it is not a chance roll at all), but the draw still prices
- * through this listing's own `offersSeen`. Every other channel's daily
- * chance is `offerChanceFor` multiplied by `stalenessFor(entry.offersSeen)`
+ * One listed car's channel-aware offer draw for the day about to begin -
+ * reads the listing's own `channelId` only to look up its content
+ * (`context.economy.sellingChannels`), never to branch on it.
+ * `oneDrawNextEndDay` channels (`weekendMeet`) get their guaranteed single
+ * draw, gated on BOTH `weekendMeetPending` and `calendar.isMeetDay(day, ...)`
+ * (sprint149.md: the meet has a real day now, not whichever day happens to
+ * be the next End Day after listing) - staleness does not gate it (it is
+ * not a chance roll at all), but the draw still prices through this
+ * listing's own `offersSeen`. A car listed on a non-meet day simply stays
+ * pending until the meet's day arrives. Every other channel's daily chance
+ * is `offerChanceFor` multiplied by `stalenessFor(entry.offersSeen)`
  * (Stage F: staleness multiplies the chance, it never replaces it); CLEARING
  * that roll is what `attempted` means (see `ChannelDraw` above) - a car
  * whose own chance is low clears it rarely, so its clock advances rarely,
@@ -646,11 +650,14 @@ function drawOfferForChannel(
   context: SimContext,
   heatPercent: number,
   rng: Rng,
+  day: number,
 ): ChannelDraw {
   const channel = context.economy.sellingChannels[entry.channelId]
 
   if (channel.oneDrawNextEndDay) {
-    if (!entry.weekendMeetPending) return { attempted: false }
+    if (!entry.weekendMeetPending || !isMeetDay(day, context.economy)) {
+      return { attempted: false }
+    }
     return {
       offer: drawFlaggedChannelOffer(
         car,
@@ -684,19 +691,22 @@ function drawOfferForChannel(
 }
 
 /**
- * The daily offer-draw step, called once per advanceDay tick for the day
- * about to begin: every for-sale, still-owned car draws through its own
- * listing channel (`drawOfferForChannel`); a hit becomes today's live offer
- * on that car. `pendingOffers` is REPLACED wholesale, not accumulated (the
- * no-reflex rule: an offer is valid the day it's drawn for only - see
- * advanceDay.ts's own call-site comment for the full day-cycle reasoning).
- * `carsForSale` entries are pruned to still-owned cars in the same pass, so
- * a sold (or otherwise departed) car's toggle never lingers.
+ * The daily offer-draw step, called once per advanceDay tick for `day`, the
+ * day about to begin (the caller passes `next.day + 1`, same convention as
+ * every other day-boundary generator in advanceDay.ts): every for-sale,
+ * still-owned car draws through its own listing channel
+ * (`drawOfferForChannel`); a hit becomes today's live offer on that car.
+ * `pendingOffers` is REPLACED wholesale, not accumulated (the no-reflex
+ * rule: an offer is valid the day it's drawn for only - see advanceDay.ts's
+ * own call-site comment for the full day-cycle reasoning). `carsForSale`
+ * entries are pruned to still-owned cars in the same pass, so a sold (or
+ * otherwise departed) car's toggle never lingers.
  */
 export function drawDailyOffers(
   state: GameState,
   context: SimContext,
   rng: Rng,
+  day: number,
 ): DailyOfferDrawResult {
   const ownedIds = new Set(state.ownedCars.map((c) => c.id))
   const stillListed = state.carsForSale.filter((f) => ownedIds.has(f.carInstanceId))
@@ -713,7 +723,7 @@ export function drawDailyOffers(
     }
 
     const heatPercent = state.marketHeat[car.modelId] ?? 100
-    const draw = drawOfferForChannel(car, model, entry, context, heatPercent, rng)
+    const draw = drawOfferForChannel(car, model, entry, context, heatPercent, rng, day)
     carsForSale.push({
       ...entry,
       offersSeen: draw.attempted ? entry.offersSeen + 1 : entry.offersSeen,

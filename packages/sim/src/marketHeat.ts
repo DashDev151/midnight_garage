@@ -1,4 +1,5 @@
 import type { DayLogEntry, GameState } from '@midnight-garage/content'
+import { isEndOfWeek } from './calendar'
 import type { SimContext } from './context'
 import { hashStringToSeed } from './rng'
 
@@ -69,10 +70,11 @@ export function bumpPlayerSales(state: GameState, modelId: string): GameState {
  * to it per update, so heat drifts rather than jumps. Both ledger counters
  * decay by `LEDGER_DECAY` first (dropped below `LEDGER_PRUNE_THRESHOLD`),
  * so old activity gradually fades. Fully deterministic - no `Date.now()`/`Math.random()` -
- * and a no-op off the day-7 boundary.
+ * and a no-op off `calendar.ts`'s end-of-week boundary (`isEndOfWeek`), the
+ * same cadence this update has always run on.
  */
 export function updateMarketHeat(state: GameState, context: SimContext): MarketHeatUpdateResult {
-  if (state.day % 7 !== 0) {
+  if (!isEndOfWeek(state.day, context.economy)) {
     return { state, log: [] }
   }
 

@@ -5,7 +5,7 @@ import type {
   StoryMission,
   StoryMissionRecord,
 } from '@midnight-garage/content'
-import { applyReputationDelta } from './calendar'
+import { applyReputationDelta } from './reputation'
 import { carLedgerFor, deleteCarLedger } from './carLedger'
 import { stockNewlyUnlockedTier } from './catalogs'
 import type { SimContext } from './context'

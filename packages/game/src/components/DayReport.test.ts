@@ -1,6 +1,7 @@
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { dayOfWeekName } from '@midnight-garage/sim'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
 import DayReport from './DayReport.vue'
@@ -30,7 +31,7 @@ describe('DayReport', () => {
     game.endDay()
     await wrapper.vm.$nextTick()
     expect(wrapper.find('[data-test="day-report"]').exists()).toBe(true)
-    expect(wrapper.text()).toContain('Day 1 complete')
+    expect(wrapper.text()).toContain(`Day 1 (${dayOfWeekName(1, game.context.economy)}) complete`)
 
     await wrapper.find('[data-test="report-continue"]').trigger('click')
     expect(wrapper.find('[data-test="day-report"]').exists()).toBe(false)

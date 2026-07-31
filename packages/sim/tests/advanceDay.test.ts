@@ -199,7 +199,7 @@ describe('advanceDay golden master', () => {
     // labour and cash figure, and every derived stat. A deliberate change to
     // any of those is re-derived from a real run of this script; the script
     // itself is never bent to preserve the number.
-    expect(hashState(finalState)).toBe('8cf486eb')
+    expect(hashState(finalState)).toBe('db7f2695')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -229,15 +229,20 @@ describe('advanceDay golden master', () => {
     expect(tiers.has('local-yard')).toBe(true)
   })
 
-  it('rent is charged again, every 7 days', () => {
+  it('rent is charged again, every calendar.daysPerWeek days (sprint149: on rentDayOfWeek, not day % 7)', () => {
     const finalState = runCareer(30)
-    // Rent charges on days 7/14/21/28 within a 30-day career (four times) at
-    // the opening bay counts' own computed rate (no bay is ever bought in
-    // this script, so the figure never moves). `hireForDay` fronts the body
-    // line's daily hire on day 1 (the body repair climbs a signature slot)
-    // and the suspension line's on day 3 (the dampers install targets one),
-    // each exactly once - a running cost, same treatment as rent, never
-    // charged per operation.
+    // Rent lands on calendar.rentDayOfWeek (1, the start of the week), not
+    // the old day % 7 === 0. Within a 30-day career that is days
+    // 1/8/15/22/29 - five charges, not four: 30 is not a clean multiple of
+    // calendar.daysPerWeek, so the exact count depends on which day of the
+    // week the landmark falls on (finances.test.ts's own 28-day span test is
+    // the one that proves the WEEKLY TOTAL is unchanged; this 30-day script
+    // is not a clean multiple of 7 and was never that proof). The opening
+    // bay counts' own computed rate never moves (no bay is ever bought in
+    // this script). `hireForDay` fronts the body line's daily hire on day 1
+    // (the body repair climbs a signature slot) and the suspension line's on
+    // day 3 (the dampers install targets one), each exactly once - a running
+    // cost, same treatment as rent, never charged per operation.
     const weeklyRentYen = computeWeeklyRentYen(bayCountsByKind(initialState()), CONTEXT.economy)
     const bodyPlan = planGroupRepair(
       initialState().ownedCars[0]!,
@@ -252,7 +257,7 @@ describe('advanceDay golden master', () => {
     )
     const { body: bodyFeeYen, suspension: suspensionFeeYen } =
       CONTEXT.economy.machineShopAssist.feeYenByGroup
-    const rentChargeCount = 4
+    const rentChargeCount = 5
     expect(finalState.cashYen).toBe(
       1_200_000 -
         bodyPlan.costYen -
@@ -327,7 +332,7 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // above: the lot's rolled condition, the car's derived stats and the
     // buyer's taste-adjusted price all feed it, so it is re-derived from a
     // real run whenever one of them deliberately changes.
-    expect(hashState(acquisitionCareer().sold)).toBe('634d4493')
+    expect(hashState(acquisitionCareer().sold)).toBe('0d29ca19')
   })
 })
 

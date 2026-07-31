@@ -16,12 +16,14 @@ import { formatYen } from '../utils/formatYen'
  */
 const game = useGameStore()
 
-const ariaLabel = computed(() => `Day ${game.day}; cash ${formatYen(game.cashYen)}`)
+const ariaLabel = computed(
+  () => `Day ${game.day}, ${game.dayOfWeekLabel}; cash ${formatYen(game.cashYen)}`,
+)
 </script>
 
 <template>
   <div class="day-cash-box" :aria-label="ariaLabel">
-    <span class="day" data-test="day-value">Day {{ game.day }}</span>
+    <span class="day" data-test="day-value">Day {{ game.day }} - {{ game.dayOfWeekLabel }}</span>
     <span class="cash">{{ formatYen(game.cashYen) }}</span>
   </div>
 </template>

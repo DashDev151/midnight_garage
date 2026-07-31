@@ -867,6 +867,24 @@ import storyMissions from '../data/storyMissions.json'
  * exact prior meaning. No mission payout, budget cap, or balance-probe figure moves: none of
  * those pipelines reads rent or the selling channels' capacity flag. `partPricing.json` is
  * untouched, so its own hash holds.
+ *
+ * Re-pinned for Sprint 149's calendar (docs/sprints/sprint149.md, signed under the standing
+ * lever grant recorded as R3 in docs/design/systems/sale-value-implementation-plan.md,
+ * provisional pending the maintainer's ratification): a new `calendar` block, six levers,
+ * scheduling positions rather than economic values - no yen figure changes in this sprint.
+ * `calendar.daysPerWeek` 7 (replaces the three private `% 7` literals `advanceDay.ts`,
+ * `finances.ts` and `marketHeat.ts` each kept), `calendar.daysPerMonth` 28 (four clean weeks,
+ * so a month boundary always lands on a week boundary too), `calendar.auctionDayOfWeek` 3
+ * (Wednesday), `calendar.meetDayOfWeek` 7 (Sunday, the weekend), `calendar.paydayOfWeek` 5
+ * (Friday), `calendar.rentDayOfWeek` 1 (Monday, the start of the week). Rent and wages split
+ * off the one shared 7-day boundary they used to fire on together onto these two separate
+ * named days; each still falls exactly once per `daysPerWeek`-day span, so the amount charged
+ * per week is unchanged (`finances.test.ts`'s own 28-day total-unchanged test asserts this
+ * directly) - only which day it lands on differs. The weekend meet's one guaranteed draw now
+ * waits for `calendar.meetDayOfWeek` instead of firing on whichever day happened to be the next
+ * End Day after listing. No mission payout, budget cap, or balance-probe figure moves: none of
+ * those pipelines reads the calendar block. `partPricing.json` is untouched, so its own hash
+ * holds.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -876,7 +894,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('c314c4a3978b91020b171e96fd1fdeeeb96a579cfa5087c64a7a901fde637958')
+    ).toBe('e6ca43bcc9ffbfee538b84507be7988ae71ddfa2f3a76ab77c5a05ff32ab26b8')
   })
 
   it('partPricing.json matches its approved content exactly', () => {

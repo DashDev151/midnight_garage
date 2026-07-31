@@ -1,10 +1,16 @@
 import type { BayKind, DayLogEntry, EconomyConfig, GameState } from '@midnight-garage/content'
 import { BayKindSchema } from '@midnight-garage/content'
+import { isPayday, isRentDay } from './calendar'
 import { bayCountsByKind } from './facilities'
+
+/** This resolver only ever logs its own two entry kinds - narrower than the
+ * full `DayLogEntry` union so a caller (or a test summing `amountYen`) never
+ * needs to guard against the entry kinds every OTHER resolver can produce. */
+export type WeeklyFinanceLogEntry = Extract<DayLogEntry, { type: 'rent-paid' | 'wage-paid' }>
 
 export interface WeeklyFinancesResult {
   state: GameState
-  log: DayLogEntry[]
+  log: WeeklyFinanceLogEntry[]
 }
 
 /**
@@ -32,22 +38,37 @@ export function computeWeeklyRentYen(
   )
 }
 
-/** Deducts rent + every staff member's wage on 7-day boundaries (GDD 6.2). */
+/**
+ * Deducts rent and every staff member's wage on their own named days
+ * (GDD 6.2; sprint149.md) - `calendar.rentDayOfWeek` and
+ * `calendar.paydayOfWeek`, separately, rather than the single 7-day
+ * boundary both used to share. Each still falls exactly once per
+ * `calendar.daysPerWeek`-day span, so the amount charged per week is
+ * unchanged; only which day it lands on differs, and rent/wages no longer
+ * land as one undifferentiated subtraction.
+ */
 export function applyWeeklyRentAndWages(
   state: GameState,
   economy: EconomyConfig,
 ): WeeklyFinancesResult {
-  if (state.day % 7 !== 0) {
-    return { state, log: [] }
+  const log: WeeklyFinanceLogEntry[] = []
+  let cashYen = state.cashYen
+
+  if (isRentDay(state.day, economy)) {
+    const rentYen = computeWeeklyRentYen(bayCountsByKind(state), economy)
+    cashYen -= rentYen
+    log.push({ type: 'rent-paid', amountYen: -rentYen })
   }
 
-  const rentYen = computeWeeklyRentYen(bayCountsByKind(state), economy)
-  const log: DayLogEntry[] = [{ type: 'rent-paid', amountYen: -rentYen }]
-  let cashYen = state.cashYen - rentYen
+  if (isPayday(state.day, economy)) {
+    for (const member of state.staff) {
+      cashYen -= member.weeklyWageYen
+      log.push({ type: 'wage-paid', staffId: member.id, amountYen: -member.weeklyWageYen })
+    }
+  }
 
-  for (const member of state.staff) {
-    cashYen -= member.weeklyWageYen
-    log.push({ type: 'wage-paid', staffId: member.id, amountYen: -member.weeklyWageYen })
+  if (log.length === 0) {
+    return { state, log: [] }
   }
 
   return { state: { ...state, cashYen }, log }

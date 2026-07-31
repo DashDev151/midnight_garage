@@ -1,17 +1,18 @@
-import {
-  ECONOMY,
-  ReputationTierSchema,
-  type GameState,
-  type ReputationTier,
-} from '@midnight-garage/content'
+import { ECONOMY, ReputationTierSchema } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import {
-  applyReputationDelta,
   currentGameYear,
-  deriveReputationTier,
-  reputationAtLeast,
+  dayOfWeek,
+  dayOfWeekName,
+  isAuctionDay,
+  isEndOfWeek,
+  isMeetDay,
+  isMonthBoundary,
+  isPayday,
+  isRentDay,
+  isStartOfWeek,
+  monthIndex,
 } from '../src/calendar'
-import { testSpecialty, testToolTiers } from './testFixtures'
 
 describe('currentGameYear', () => {
   it('starts the campaign in 1995 at unknown reputation (GDD 2.2)', () => {
@@ -28,115 +29,72 @@ describe('currentGameYear', () => {
   })
 })
 
-describe('reputationAtLeast', () => {
-  it('is true when current tier is the same as the minimum', () => {
-    expect(reputationAtLeast('known', 'known')).toBe(true)
+describe('the calendar (sprint149.md): day 1 is week 1 day 1 and month 1', () => {
+  it('day 1 is position 1 of week 1, and the start of the week', () => {
+    expect(dayOfWeek(1, ECONOMY)).toBe(1)
+    expect(isStartOfWeek(1, ECONOMY)).toBe(true)
+    expect(isEndOfWeek(1, ECONOMY)).toBe(false)
   })
 
-  it('is true when current tier outranks the minimum, false when it falls short', () => {
-    expect(reputationAtLeast('legend', 'respected')).toBe(true)
-    expect(reputationAtLeast('local', 'respected')).toBe(false)
+  it('day 7 (daysPerWeek) is the last position of week 1, the end of the week', () => {
+    expect(dayOfWeek(7, ECONOMY)).toBe(ECONOMY.calendar.daysPerWeek)
+    expect(isEndOfWeek(7, ECONOMY)).toBe(true)
+    expect(isStartOfWeek(7, ECONOMY)).toBe(false)
   })
 
-  it('agrees with tier order for every pair (no off-by-one at the boundaries)', () => {
-    const tiers = ReputationTierSchema.options
-    tiers.forEach((current: ReputationTier, i) => {
-      tiers.forEach((min: ReputationTier, j) => {
-        expect(reputationAtLeast(current, min)).toBe(i >= j)
-      })
-    })
-  })
-})
-
-describe('deriveReputationTier (Sprint 15)', () => {
-  it('returns unknown below every threshold', () => {
-    expect(deriveReputationTier(0, ECONOMY)).toBe('unknown')
-    expect(deriveReputationTier(ECONOMY.reputation.tierThresholds.local - 1, ECONOMY)).toBe(
-      'unknown',
-    )
+  it('day 8 wraps back around to position 1 of week 2', () => {
+    expect(dayOfWeek(8, ECONOMY)).toBe(1)
+    expect(isStartOfWeek(8, ECONOMY)).toBe(true)
   })
 
-  it('lands exactly on a tier at its threshold, not one below', () => {
-    const tiers = ReputationTierSchema.options
-    for (const tier of tiers) {
-      expect(deriveReputationTier(ECONOMY.reputation.tierThresholds[tier], ECONOMY)).toBe(tier)
+  it('day 1 is month 1; day 28 (daysPerMonth) is the last day of month 1; day 29 opens month 2', () => {
+    expect(monthIndex(1, ECONOMY)).toBe(1)
+    expect(monthIndex(ECONOMY.calendar.daysPerMonth, ECONOMY)).toBe(1)
+    expect(isMonthBoundary(ECONOMY.calendar.daysPerMonth, ECONOMY)).toBe(false)
+    expect(monthIndex(ECONOMY.calendar.daysPerMonth + 1, ECONOMY)).toBe(2)
+    expect(isMonthBoundary(ECONOMY.calendar.daysPerMonth + 1, ECONOMY)).toBe(true)
+  })
+
+  it('a month boundary always lands on a week boundary too (daysPerMonth is four clean weeks)', () => {
+    expect(ECONOMY.calendar.daysPerMonth % ECONOMY.calendar.daysPerWeek).toBe(0)
+  })
+
+  it('dayOfWeekName reads back the position for display, never for scheduling', () => {
+    expect(dayOfWeekName(ECONOMY.calendar.rentDayOfWeek, ECONOMY)).toBe('Monday')
+    expect(dayOfWeekName(ECONOMY.calendar.auctionDayOfWeek, ECONOMY)).toBe('Wednesday')
+    expect(dayOfWeekName(ECONOMY.calendar.paydayOfWeek, ECONOMY)).toBe('Friday')
+    expect(dayOfWeekName(ECONOMY.calendar.meetDayOfWeek, ECONOMY)).toBe('Sunday')
+  })
+
+  it('every named landmark fires exactly once per seven-day span, over a 100-day run', () => {
+    const { daysPerWeek } = ECONOMY.calendar
+    const landmarks: Record<string, (day: number) => boolean> = {
+      auction: (day) => isAuctionDay(day, ECONOMY),
+      meet: (day) => isMeetDay(day, ECONOMY),
+      payday: (day) => isPayday(day, ECONOMY),
+      rent: (day) => isRentDay(day, ECONOMY),
+      weekEnd: (day) => isEndOfWeek(day, ECONOMY),
+    }
+    for (const [name, fires] of Object.entries(landmarks)) {
+      const hitDays: number[] = []
+      for (let day = 1; day <= 100; day++) {
+        if (fires(day)) hitDays.push(day)
+      }
+      // 100 days is 14 full weeks plus 2 extra days, so any weekly
+      // landmark hits 14 or 15 times depending on phase alone.
+      expect(hitDays.length, name).toBeGreaterThanOrEqual(14)
+      expect(hitDays.length, name).toBeLessThanOrEqual(15)
+      // Consecutive hits are always exactly one week apart - never skipped,
+      // never doubled within a week.
+      for (let i = 1; i < hitDays.length; i++) {
+        expect(hitDays[i]! - hitDays[i - 1]!, name).toBe(daysPerWeek)
+      }
     }
   })
 
-  it('stays on a tier one point below the next threshold', () => {
-    expect(deriveReputationTier(ECONOMY.reputation.tierThresholds.known - 1, ECONOMY)).toBe('local')
-    expect(deriveReputationTier(ECONOMY.reputation.tierThresholds.legend - 1, ECONOMY)).toBe(
-      'respected',
-    )
-  })
-
-  it('reaches legend at and above the top threshold', () => {
-    expect(deriveReputationTier(ECONOMY.reputation.tierThresholds.legend, ECONOMY)).toBe('legend')
-    expect(deriveReputationTier(ECONOMY.reputation.tierThresholds.legend + 1_000, ECONOMY)).toBe(
-      'legend',
-    )
-  })
-})
-
-describe('applyReputationDelta (Sprint 15)', () => {
-  function stateWith(reputationPoints: number): GameState {
-    return {
-      day: 1,
-      seed: 1,
-      cashYen: 0,
-      reputationTier: deriveReputationTier(reputationPoints, ECONOMY),
-      reputationPoints,
-      specialty: testSpecialty(),
-      ownedCars: [],
-      partInventory: [],
-      staff: [],
-      staffAds: [],
-      jobs: [],
-      marketHeat: {},
-      activeAuctionLots: [],
-      carsForSale: [],
-      pendingOffers: [],
-      serviceJobOffers: [],
-      activeServiceJobs: [],
-      serviceBayCount: 1,
-      parkingBayCount: 3,
-      serviceBayCarIds: [],
-      parkingCarIds: [],
-      forecourtBayCount: 2,
-      forecourtCarIds: [null, null],
-      graceParkingCarId: null,
-      energySpentToday: 0,
-      toolTiers: testToolTiers(),
-      pendingPartOrders: [],
-      cartPartIds: [],
-      stagedCarWork: {},
-      marketLedger: { lotSupply: {}, playerSales: {} },
-      carLedgers: {},
-      machineListing: null,
-      nextMachineListingDay: null,
-      serviceJobLedgers: {},
-      inspectionVisit: null,
-      storyMissions: [],
-    }
-  }
-
-  it('adds a positive delta and re-derives the tier', () => {
-    const next = applyReputationDelta(stateWith(10), 10, ECONOMY)
-    expect(next.reputationPoints).toBe(20)
-    expect(next.reputationTier).toBe(deriveReputationTier(20, ECONOMY))
-  })
-
-  it('clamps a negative delta at zero rather than going negative', () => {
-    const next = applyReputationDelta(stateWith(3), -10, ECONOMY)
-    expect(next.reputationPoints).toBe(0)
-    expect(next.reputationTier).toBe('unknown')
-  })
-
-  it('crossing a tier threshold updates reputationTier, not just reputationPoints', () => {
-    const justBelow = stateWith(ECONOMY.reputation.tierThresholds.known - 1)
-    expect(justBelow.reputationTier).toBe('local')
-    const next = applyReputationDelta(justBelow, 1, ECONOMY)
-    expect(next.reputationPoints).toBe(ECONOMY.reputation.tierThresholds.known)
-    expect(next.reputationTier).toBe('known')
+  it('the four named landmarks land on four different days, so no two bills share a day', () => {
+    const { auctionDayOfWeek, meetDayOfWeek, paydayOfWeek, rentDayOfWeek } = ECONOMY.calendar
+    const days = [auctionDayOfWeek, meetDayOfWeek, paydayOfWeek, rentDayOfWeek]
+    expect(new Set(days).size).toBe(days.length)
   })
 })

@@ -1,7 +1,7 @@
 import type { DayLog, DayLogEntry, GameState, Job } from '@midnight-garage/content'
 import type { DayActions } from './actions'
 import { resolveBuyoutInstant } from './bidding'
-import { currentGameYear } from './calendar'
+import { currentGameYear, isEndOfWeek } from './calendar'
 import { generateDailyAuctionArrivals } from './catalogs'
 import type { SimContext } from './context'
 import { applyToolUpgrades, rollMachineListings } from './toolLines'
@@ -356,7 +356,7 @@ export function advanceDay(
   // tonight. `drawDailyOffers` replaces `pendingOffers` wholesale - an offer
   // is valid the day it's drawn for only, so whatever was live today and went
   // unaccepted (step 5b above already had its chance) is simply gone.
-  const offerDraw = drawDailyOffers(next, context, rng)
+  const offerDraw = drawDailyOffers(next, context, rng, next.day + 1)
   next = offerDraw.state
   log.push(...offerDraw.log)
 
@@ -393,11 +393,13 @@ export function advanceDay(
   log.push(...missions.log)
 
   // 7d. The weekly job-ad refresh - expired ads drop, then seeded rolls top
-  // the board back up to `economy.staff.maxOpenAds`. Same 7-day boundary as
-  // wages (step 9), read off `next.day` before the increment. Placed after
-  // every other rng consumer this tick so the ordering of upstream draws is
-  // preserved.
-  if (next.day % 7 === 0) {
+  // the board back up to `economy.staff.maxOpenAds`. Fires on the same
+  // end-of-week boundary market-heat drift uses (`calendar.isEndOfWeek`),
+  // read off `next.day` before the increment - a cadence, not a named
+  // landmark, so it stays put rather than moving to one of the four
+  // scheduled days (sprint149.md). Placed after every other rng consumer
+  // this tick so the ordering of upstream draws is preserved.
+  if (isEndOfWeek(next.day, context.economy)) {
     const staffAds = refreshStaffAds(next, context, rng)
     next = staffAds.state
     log.push(...staffAds.log)

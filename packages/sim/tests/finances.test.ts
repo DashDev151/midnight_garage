@@ -59,28 +59,75 @@ function stateOnDay(day: number, staff: StaffMember[] = []): GameState {
   }
 }
 
+/** The two landmark days rent/wages now fall on (sprint149.md:
+ * `calendar.rentDayOfWeek`/`calendar.paydayOfWeek`), plus a day that is
+ * neither. Read from ECONOMY rather than hard-coded, so a lever change
+ * can't silently desync these tests from the content it exercises. */
+const RENT_DAY = ECONOMY.calendar.rentDayOfWeek
+const PAYDAY = ECONOMY.calendar.paydayOfWeek
+const NEITHER_DAY = [1, 2, 3, 4, 5, 6, 7].find((d) => d !== RENT_DAY && d !== PAYDAY)!
+
 describe('applyWeeklyRentAndWages', () => {
-  it('does nothing off a 7-day boundary', () => {
-    const result = applyWeeklyRentAndWages(stateOnDay(3), ECONOMY)
+  it('does nothing on a day that is neither rent day nor payday', () => {
+    const result = applyWeeklyRentAndWages(stateOnDay(NEITHER_DAY), ECONOMY)
     expect(result.log).toHaveLength(0)
     expect(result.state.cashYen).toBe(1_000_000)
   })
 
-  it('deducts rent on day 7', () => {
+  it('deducts rent on calendar.rentDayOfWeek, alone', () => {
     const rentYen = computeWeeklyRentYen(OPENING_BAY_COUNTS, ECONOMY)
-    const result = applyWeeklyRentAndWages(stateOnDay(7), ECONOMY)
+    const result = applyWeeklyRentAndWages(stateOnDay(RENT_DAY, [staffMember]), ECONOMY)
     expect(result.state.cashYen).toBe(1_000_000 - rentYen)
     expect(result.log).toEqual([{ type: 'rent-paid', amountYen: -rentYen }])
   })
 
-  it('deducts rent and every staff wage on day 14', () => {
-    const rentYen = computeWeeklyRentYen(OPENING_BAY_COUNTS, ECONOMY)
-    const result = applyWeeklyRentAndWages(stateOnDay(14, [staffMember]), ECONOMY)
-    expect(result.state.cashYen).toBe(1_000_000 - rentYen - staffMember.weeklyWageYen)
+  it('deducts every staff wage on calendar.paydayOfWeek, alone - not bundled with rent', () => {
+    const result = applyWeeklyRentAndWages(stateOnDay(PAYDAY, [staffMember]), ECONOMY)
+    expect(result.state.cashYen).toBe(1_000_000 - staffMember.weeklyWageYen)
     expect(result.log).toEqual([
-      { type: 'rent-paid', amountYen: -rentYen },
       { type: 'wage-paid', staffId: staffMember.id, amountYen: -staffMember.weeklyWageYen },
     ])
+  })
+
+  it('rent day 8 (the next week) still charges rent alone - rentDayOfWeek repeats every daysPerWeek days', () => {
+    const rentYen = computeWeeklyRentYen(OPENING_BAY_COUNTS, ECONOMY)
+    const result = applyWeeklyRentAndWages(
+      stateOnDay(RENT_DAY + ECONOMY.calendar.daysPerWeek, [staffMember]),
+      ECONOMY,
+    )
+    expect(result.state.cashYen).toBe(1_000_000 - rentYen)
+    expect(result.log).toEqual([{ type: 'rent-paid', amountYen: -rentYen }])
+  })
+})
+
+/**
+ * The sprint's own honesty check (sprint149.md "the one thing to get
+ * right"): rent and wages moved off one shared 7-day boundary onto their
+ * own named days, but the AMOUNT charged per week must not change - only
+ * which day it lands on. This proves the 28-day total (four weeks, exactly
+ * four rent charges and four wage charges regardless of phase) equals what
+ * the pre-sprint flat `day % 7 === 0` cadence would have charged: both
+ * rent and wages firing together, once a week, four times.
+ */
+describe('the 28-day rent+wages total is unchanged from the pre-sprint cadence (sprint149.md)', () => {
+  it('sums to exactly 4 x (rent + wages) over days 1-28, whichever days they now land on', () => {
+    const rentYen = computeWeeklyRentYen(OPENING_BAY_COUNTS, ECONOMY)
+    let totalChargedYen = 0
+    for (let day = 1; day <= 28; day++) {
+      const result = applyWeeklyRentAndWages(stateOnDay(day, [staffMember]), ECONOMY)
+      totalChargedYen -= result.log.reduce((sum, entry) => sum + entry.amountYen, 0)
+    }
+    expect(totalChargedYen).toBe(4 * (rentYen + staffMember.weeklyWageYen))
+  })
+
+  it('holds over a 28-day span that does NOT start on day 1 either', () => {
+    const rentYen = computeWeeklyRentYen(OPENING_BAY_COUNTS, ECONOMY)
+    let totalChargedYen = 0
+    for (let day = 53; day <= 80; day++) {
+      const result = applyWeeklyRentAndWages(stateOnDay(day, [staffMember]), ECONOMY)
+      totalChargedYen -= result.log.reduce((sum, entry) => sum + entry.amountYen, 0)
+    }
+    expect(totalChargedYen).toBe(4 * (rentYen + staffMember.weeklyWageYen))
   })
 })
 

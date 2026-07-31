@@ -364,7 +364,39 @@ export const EconomyConfigSchema = z.object({
    */
   STARTING_CASH_YEN: z.number().int().positive(),
   /**
-   * Weekly rent, deducted alongside staff wages on 7-day boundaries
+   * The week's shape (sprint149.md): `calendar.ts` is the ONLY place
+   * `state.day` is ever turned into a day-of-week or a month - every other
+   * module calls its derivations rather than keeping a private day-of-week
+   * check of its own. `daysPerWeek`/`daysPerMonth` are the week/month
+   * LENGTH; the four `*DayOfWeek` fields are 1-indexed positions within
+   * that week (1 = the first day, `daysPerWeek` = the last), naming which
+   * day each landmark falls on: the auction catalogue, the weekend meet's
+   * one guaranteed draw, staff payday and the rent bill. `daysPerMonth` is
+   * chosen as four clean weeks, so a month boundary is always also a week
+   * boundary - no second cadence to reconcile. A game month is
+   * `floor((day - 1) / daysPerMonth) + 1`, never a Gregorian one (no leap
+   * years, no real 1995 calendar - the game counts days from day one).
+   */
+  calendar: z
+    .object({
+      daysPerWeek: z.number().int().positive(),
+      daysPerMonth: z.number().int().positive(),
+      auctionDayOfWeek: z.number().int().positive(),
+      meetDayOfWeek: z.number().int().positive(),
+      paydayOfWeek: z.number().int().positive(),
+      rentDayOfWeek: z.number().int().positive(),
+    })
+    .strict()
+    .refine(
+      (c) =>
+        [c.auctionDayOfWeek, c.meetDayOfWeek, c.paydayOfWeek, c.rentDayOfWeek].every(
+          (d) => d >= 1 && d <= c.daysPerWeek,
+        ),
+      { message: 'calendar: every *DayOfWeek lever must fall within [1, daysPerWeek]' },
+    ),
+  /**
+   * Weekly rent, deducted on its own named day (`calendar.rentDayOfWeek`,
+   * separate from staff wages on `calendar.paydayOfWeek` since sprint149.md)
    * (`finances.ts`'s `computeWeeklyRentYen`/`applyWeeklyRentAndWages`) -
    * `baseWeeklyYen` plus every owned bay's own per-kind rate, summed:
    * `weeklyRentYen = baseWeeklyYen + sum over kinds of (bayCount[kind] *

@@ -1,5 +1,13 @@
 {
   "STARTING_CASH_YEN": 300000,
+  "calendar": {
+    "daysPerWeek": 7,
+    "daysPerMonth": 28,
+    "auctionDayOfWeek": 3,
+    "meetDayOfWeek": 7,
+    "paydayOfWeek": 5,
+    "rentDayOfWeek": 1
+  },
   "rent": {
     "baseWeeklyYen": 6000,
     "perBayWeeklyYen": {

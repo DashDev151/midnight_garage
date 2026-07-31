@@ -480,6 +480,7 @@ describe('seed content validates against schemas', () => {
   it('economy.json top-level anchors match the bible audit table', () => {
     const expectedTopLevelKeys = [
       'STARTING_CASH_YEN',
+      'calendar',
       'rent',
       'DOUBLE_PARKING_FINE_YEN',
       'AUCTION_RESERVE_PRICE_FRACTION',

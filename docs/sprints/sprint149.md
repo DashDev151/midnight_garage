@@ -179,4 +179,235 @@ literals and adds exported symbols.
 
 ## Exit
 
-_To be completed on implementation._
+**Landed as designed, with one outstanding conflict flagged for the maintainer rather than fixed
+unilaterally (see below).**
+
+### OUTSTANDING: the auction cadence is decided and NOT built
+
+**This sprint shipped `calendar.auctionDayOfWeek: 3`, a single global auction day. The maintainer
+has since ruled a different design, and it is not in this sprint.** Recorded here so nobody reads
+the shipped lever as the intended one.
+
+The ruling, given 2026-07-31 and approved as stated: **auction cadence is a property of the
+VENUE, not one global day**, because a single weekly day makes the late game wait around, which
+is backwards; the player who has earned access should get more to do, not less.
+
+| auction tier | open on | cadence |
+| --- | --- | --- |
+| `local-yard` | days 1, 3, 5, 7 | every week |
+| `regional` | days 2, 4 | every week |
+| `premium` | day 6 | every week |
+| `collector-network` | days 6 and 7 | every second week, fresh lots each day |
+
+Two rulings ride with it: **the day-6 overlap between `premium` and `collector-network` on
+alternate weeks is deliberate, keep it**, and **attending an auction does not cost the day, so a
+player may attend more than one room on the same day.** The maintainer noted the cadence may
+still have too few overlaps and that more than one room per day is desirable, but ruled it stays
+as tabled for now.
+
+**Why it is not in this sprint.** The ruling arrived after this sprint's implementation was
+already running, and it is a schema change (per-tier cadence replacing one global day), not a
+lever value. `calendar.auctionDayOfWeek` is therefore **shipped-but-superseded** and must be
+retired by whichever sprint builds the per-tier cadence, into the retired-identifier ledger, in
+the same change.
+
+**A known bug ships with it until then:** day 1 is not `auctionDayOfWeek` 3, so a brand-new
+player is sent by the tutorial to an auction house showing a closed sign, and waits two days
+before the game's core activity is available. **The per-tier cadence fixes this by construction**
+(`local-yard` opens on day 1), which is the main reason it should be built next rather than
+later. Also recorded in `TODO.md`.
+
+**Task 0, run first as its own step.** `reputationAtLeast`, `deriveReputationTier` and
+`applyReputationDelta` moved from `calendar.ts` to a new `packages/sim/src/reputation.ts` (none
+existed beforehand - checked first, per the instruction), no re-exports left behind.
+`pnpm typecheck` immediately after named **13 errors across 7 files**: `TS2305` "has no exported
+member" at `packages/sim/src/bots/cautiousRestorer.ts:12` (`reputationAtLeast`),
+`facilities.ts:9` (`reputationAtLeast`), `missions.ts:8` (`applyReputationDelta`),
+`selling.ts:17` (`applyReputationDelta`), `serviceJobs.ts:22` (both, one line), `toolLines.ts:9`
+(`reputationAtLeast`), and `packages/sim/tests/calendar.test.ts:9,11,12` (all three). The
+remaining 3 of the 13 (`selling.ts:836-838`, `TS7006` implicit-any) were not separate callers:
+they were the SAME broken `applyReputationDelta` import cascading into an inferred `any` for
+`resolveSellViaWalkIn`'s `released` state, confirmed by disappearing the moment the import was
+fixed. All 7 files' imports repointed at `./reputation` (or `../reputation` for the one file
+under `bots/`); `index.ts` gained `export * from './reputation'` beside its existing
+`calendar.ts` line. `currentGameYear` stayed in `calendar.ts` untouched, still reading
+reputation tier, exactly as instructed (R1 changes what it reads later, not this sprint).
+`calendar.test.ts` was itself split the same way its source was: reputation describe blocks moved
+verbatim to a new `packages/sim/tests/reputation.test.ts`, `calendar.test.ts` kept only
+`currentGameYear` (then gained the new calendar-derivation tests below) - the doc's own checklist
+names "the calendar/reputation tests" as two things to run, so the test split matches the source
+split rather than leaving a `calendar.test.ts` that imports from two modules.
+
+**The calendar itself (`calendar.ts`), built only after task 0's typecheck came back clean.**
+Ten new exports, every one a pure function of `(day: number, economy: EconomyConfig)`, matching
+`deriveReputationTier`'s own existing parameter shape rather than threading a new `CalendarConfig`
+type everywhere: `dayOfWeek` (1-indexed position in the week), `dayOfWeekName` (display only,
+falls back to `` `day ${n}` `` if `daysPerWeek` ever outgrows the named list), `isStartOfWeek`,
+`isEndOfWeek` (the exact days the retired `day % 7 === 0` fired on, kept for the two cadences this
+sprint does not move to a named landmark), `isAuctionDay`, `isMeetDay`, `isPayday`, `isRentDay`
+(the four named landmarks), `monthIndex` (`floor((day - 1) / daysPerMonth) + 1`) and
+`isMonthBoundary` (true on the first day of a new month: 1, 29, 57, ...). Weekday names are
+Monday..Sunday, ISO-ordered, inferred from the lever table's own prose (`auctionDayOfWeek: 3`
+"midweek" = Wednesday, `meetDayOfWeek: 7` "the weekend" = Sunday, `paydayOfWeek: 5` "Friday",
+`rentDayOfWeek: 1` "the start of the week" = Monday) since the doc names the positions but not
+the words - a judgement call, flagged.
+
+**The `economy.calendar` content block**, `.strict()` per guard G5, with a refine pinning every
+`*DayOfWeek` lever into `[1, daysPerWeek]`. All six lever values landed exactly as signed in the
+doc's table (`daysPerWeek` 7, `daysPerMonth` 28, `auctionDayOfWeek` 3, `meetDayOfWeek` 7,
+`paydayOfWeek` 5, `rentDayOfWeek` 1).
+
+**The three `% 7` sites, replaced and the literals deleted, not supplemented:**
+
+- `advanceDay.ts`'s staff-ad refresh (was `next.day % 7 === 0`) now calls `isEndOfWeek(next.day,
+  context.economy)` - unmoved cadence (still days 7/14/21/..., a generic weekly cadence the doc
+  does not assign a named landmark, so it stays where it was).
+- `marketHeat.ts`'s weekly drift (was `state.day % 7 !== 0`) now calls `!isEndOfWeek(state.day,
+  context.economy)` - unmoved cadence, same reasoning.
+- `finances.ts`'s single combined rent+wages check split into two independent `if`s:
+  `isRentDay(state.day, economy)` and `isPayday(state.day, economy)`, each pushing its own log
+  entries and only returning a non-empty `log`/mutated `cashYen` when at least one fired.
+  `WeeklyFinancesResult.log`'s type was narrowed from the full `DayLogEntry` union to a new
+  exported `WeeklyFinanceLogEntry = Extract<DayLogEntry, { type: 'rent-paid' | 'wage-paid' }>`
+  (this resolver never produces any other kind) - a clarity improvement the doc didn't ask for but
+  the compiler did: a test summing `entry.amountYen` across the log needs the narrower type to
+  typecheck without a runtime guard.
+
+`selling.ts`'s `weekendMeet` guaranteed draw now waits for `calendar.isMeetDay`, not "whichever day
+happens to be the next End Day after listing": `drawOfferForChannel` and `drawDailyOffers` both
+gained a required `day` parameter (the day about to begin, `next.day + 1` at the
+`advanceDay.ts` call site - the same convention every other day-boundary generator in that file
+already uses), and the `oneDrawNextEndDay` branch now refuses (`attempted: false`, pending flag
+left `true`) unless `isMeetDay(day, economy)` is also true. A car listed on a non-meet day simply
+waits; the flag is spent, hit or miss, only on the day it actually resolves.
+
+**The guard test**, `packages/content/tests/calendarOwnershipGuard.test.ts`, built from
+`retiredIdentifiers.test.ts`'s own file-collection shape (same `SKIP_DIRS`, same colocated-test
+exclusion by filename) rather than inventing a second scanner. Bans three regexes outside
+`calendar.ts` (matched by basename, the same idiom `duplicateFormulaBan.test.ts` uses for its one
+exempt file): the literal `% 7` defect itself, and two "lazy equivalent" patterns
+(`% economy.calendar.daysPerWeek`, `% economy.calendar.daysPerMonth`) that would read the
+calendar's own constants but still do the modulo locally instead of calling a calendar function -
+the ownership this guard protects, not just the magic number. Confirmed by grep before writing it
+that the real `% 7` occurrences in `packages/*/src` were exactly the three now-fixed sites, so the
+guard's own doc-comment mentions of the retired pattern (`economy.ts`, `calendar.ts`) had to be
+reworded off the literal substring `% 7` to avoid tripping on their own prose - the same
+word-boundary-vs-prose tension `retiredIdentifiers.test.ts`'s ledger already documents, resolved
+the same way (reword the comment, don't loosen the guard).
+
+**Auction day (task 5).** `AuctionScreen.vue`'s entire catalogue - the yard-visit panel, the
+capacity-cascade warnings, every tier group and its lots - now renders behind `game.isAuctionDay`
+(a new store computed reading `isAuctionDay(gameState.day, context.economy)`); off that day the
+screen shows one plain-word message ("The auction house only opens its doors on Wednesday. Come
+back then.") naming the real day via `dayOfWeekName`, styled muted like the existing
+`.empty`/`.locked-tier` treatment rather than as an error. This is the literal reading of "the
+catalogue is a thing you wait for rather than a screen you open," not a narrower reading that
+gates only the buy buttons - see the flagged conflict below for the cost of that choice.
+
+**The month boundary (task 7).** `monthIndex`/`isMonthBoundary` exist, are tested, and nothing
+reads them yet, exactly as scoped ("establishing the month boundary is in scope; putting a monthly
+event on it is not").
+
+**Day-facing UI (task 8).** `DayCashBox.vue` (the always-mounted top-right box) now reads "Day N -
+Weekday"; `DayReport.vue`'s three heading variants now read "Day N (Weekday)" for the day the
+report is about - deliberately the ENDED day (`report.day`), not `game.day` (already the new day
+by the time the modal shows), so `DayReport.vue` imports `dayOfWeekName` directly from
+`@midnight-garage/sim` rather than reading the store's `dayOfWeekLabel` (which is always "today").
+
+**Judgement calls not fully dictated by the doc, flagged for review:**
+
+1. **The weekday-name mapping** (Monday=1..Sunday=7) is inferred from the lever table's prose,
+   not stated as a literal list anywhere in the doc. Any future re-signing of the four
+   `*DayOfWeek` values should keep this mapping in mind if the prose ("midweek", "the weekend",
+   "Friday", "the start of the week") is meant to keep matching the number.
+2. **Which `day` value each landmark reads.** `finances.ts`, `marketHeat.ts` and
+   `advanceDay.ts`'s staff-ad refresh all check `state.day`/`next.day` (the day currently being
+   closed, un-incremented) - the same value the OLD `% 7` checks read, so this preserves exact
+   prior semantics for the two cadences that didn't move and is the natural reading for "which
+   day is a bill due." `selling.ts`'s meet-day gate and the UI-facing `isAuctionDay`/
+   `dayOfWeekLabel` computeds instead read the "day about to begin" (`next.day + 1`) or the LIVE
+   current day the player is looking at, respectively, matching each site's own pre-existing
+   convention rather than forcing one convention everywhere. Not stated explicitly in the sprint
+   doc; decided by matching each call site's existing idiom.
+3. **AuctionScreen.test.ts's day-1 test was rewritten, not just re-pinned** (directive 17 case
+   (a)): "renders lots already on day 1... with no empty first week" asserted behaviour the
+   sprint intentionally supersedes. Split into two tests - the closed message shows on day 1 (not
+   the auction day), and the original assertion now runs after `warpToCatalog` (extended to also
+   wait for `game.isAuctionDay`, not just non-empty lots) lands on the real auction day. Six other
+   tests that mounted the screen without warping first (the capacity-cascade pair, the
+   locked-tier-copy pair, and the local-yard-is-never-locked test) gained a `warpToCatalog(game)`
+   call for the same reason.
+4. **`advanceDay.test.ts`'s "rent is charged again, every 7 days" test's own count changed from 4
+   to 5, and its title changed too** (case (a) again, but worth stating why the NUMBER moved and
+   not just the day): its 30-day script is not a clean multiple of `calendar.daysPerWeek`, so
+   which day of the week `rentDayOfWeek` lands on genuinely changes how many times rent fires
+   inside a fixed 30-day window (days 1/8/15/22/29 = five, where the old day-7-anchored cadence
+   gave four in the same window). This is NOT a violation of "the weekly total is unchanged" -
+   that guarantee only holds over spans that are themselves a multiple of `daysPerWeek` (28, not
+   30) - `finances.test.ts`'s own dedicated test is what actually proves the total, not this
+   script.
+5. **UNRESOLVED, flagged rather than fixed: the tutorial's "find" step assumes the Auctions tab
+   is always open.** `tutorialSteps.json`'s `find` step (`anchorScreen: "auctions"`,
+   `anchorTestId: "inspect-visit-local-yard"`) fires immediately after accepting Yuki's mission,
+   which happens on day 1 of every new career; day 1 is not `auctionDayOfWeek` (3), so a fresh
+   player now sees the closed message instead of the scripted tutorial lot and is stuck for up to
+   two days. No existing test caught this (nothing exercises the tutorial step's timing against a
+   live day count) and this sprint intentionally did not invent a fix: exempting the tutorial from
+   the gate is a new mechanism outside this sprint's reuse analysis, and moving `auctionDayOfWeek`
+   is a lever-value change directive 22 reserves for the maintainer by name. Recorded in
+   `TODO.md` under Open engineering, needs a decision before the next auction-adjacent sprint.
+
+**Re-derived pins, old -> new, re-run for determinism where hashed:**
+
+- `economyApprovalGate.test.ts`'s `economy.json` hash:
+  `c314c4a3978b91020b171e96fd1fdeeeb96a579cfa5087c64a7a901fde637958` ->
+  **`e6ca43bcc9ffbfee538b84507be7988ae71ddfa2f3a76ab77c5a05ff32ab26b8`**. Re-pinned in the same
+  change, citing the lever grant as R3 in `docs/design/systems/sale-value-implementation-plan.md`
+  per this sprint's own wording rule. `partPricing.json`'s hash and every mission payout/budget
+  cap are untouched (confirmed passing unchanged) - none of those pipelines reads the calendar
+  block.
+- `schemas.test.ts`'s `economy.json` top-level anchor list: `calendar` added.
+- `advanceDay.test.ts`'s job-loop golden master: `8cf486eb` -> **`db7f2695`**. Moves because rent
+  now lands on day 1/8/15/22/29 instead of 7/14/21/28 within the script's 30-day run (five charges
+  instead of four - see judgement call 4 above) and wages (none in this script - `staff: []`)
+  would have moved to a different day too had any existed.
+- `advanceDay.test.ts`'s acquisition-to-sale golden master: `634d4493` -> **`0d29ca19`**. Moves
+  for the same rent-timing reason. Both hashes re-run twice to confirm determinism before pinning.
+- `advanceDay.test.ts`'s "rent is charged again" cash assertion: `rentChargeCount` 4 -> **5**
+  (judgement call 4 above; not a hash, a re-derived count).
+- No `SAVE_VERSION` bump: this sprint reshapes no `GameState` field and adds none, per directive
+  19's "say so and move on" - nothing to say, because nothing needed protecting.
+
+**The 28-day honesty test, passing with real figures.** `finances.test.ts`'s new describe block
+sums every `rent-paid`/`wage-paid` `amountYen` returned by `applyWeeklyRentAndWages` across days
+1-28 and again across a span that does NOT start on day 1 (days 53-80), against one staff member
+(`weeklyWageYen` 45,000) and the opening bay counts (rent 20,000/week). Both spans total exactly
+**260,000** (`4 x (20,000 + 45,000)`), matching what the old single 7-day-boundary charge would
+have summed to over any 28-day span - proving the sprint moved rhythm, not cost.
+
+**Checks, run in the specified order (directive 20 - none re-run beyond what confirming
+determinism required):**
+
+1. `pnpm typecheck` immediately after task 0's move - **13 errors named across 7 files** (see
+   above), all fixed before writing a line of calendar logic.
+2. `pnpm typecheck` at the end - all three packages clean (content, sim, game/`vue-tsc`).
+3. `pnpm test --project content` - **540 passed (25 files)**, after fixing the two expected
+   directive-22/bible-audit failures (the approval-gate hash, the top-level anchor list).
+4. `pnpm test --project game` - **834 passed (62 files)**.
+5. Named sim files only: `calendar.test.ts` + `reputation.test.ts` + `finances.test.ts` +
+   `marketHeat.test.ts` + `selling.test.ts` + `advanceDay.test.ts` together - **128 passed (6
+   files)**; `advanceDay.test.ts` alone re-run twice more after re-pinning its two golden hashes
+   to confirm stability (**15 passed** both times).
+
+**A failing test, and which case it was (directive 17).** Every test failure this sprint hit was
+case (a) - the implementation intentionally changed what's correct, and the test was updated to
+assert the new correct behaviour, never loosened: `finances.test.ts`'s day-7/day-14 rent/wage
+tests (rent and wages now land on separate named days, not a shared boundary),
+`AuctionScreen.test.ts`'s day-1 catalogue test and the six tests that needed `warpToCatalog`
+extended to also wait for the auction day, `advanceDay.test.ts`'s two golden hashes and its
+"rent is charged again" count, and `packages/content/tests/schemas.test.ts`/
+`economyApprovalGate.test.ts`'s approval-gate pins (directive 22's own re-pin-on-approved-change
+path, not a regression).
+
+**Nothing left outstanding from the task breakdown except item 5 above (the tutorial conflict,
+deliberately unresolved and flagged, not silently patched or silently ignored).**

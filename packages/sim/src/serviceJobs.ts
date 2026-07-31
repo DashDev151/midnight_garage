@@ -19,7 +19,7 @@ import { ComponentIdSchema, fitmentClassForTier } from '@midnight-garage/content
 import { dissolveAssembliesForCar } from './assemblies'
 import { carOriginLabel, generateAuctionCarInstance, stockInstanceFor } from './auctions'
 import { bandsBelowExcludingScrap, planPartRepair } from './bands'
-import { applyReputationDelta, reputationAtLeast } from './calendar'
+import { applyReputationDelta, reputationAtLeast } from './reputation'
 import {
   GRADE_REPUTATION_MULTIPLIER,
   SERVICE_JOB_ARRIVAL_DELAY_DAYS,

@@ -1,6 +1,7 @@
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { dayOfWeekName } from '@midnight-garage/sim'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
 import DayCashBox from './DayCashBox.vue'
@@ -17,20 +18,20 @@ afterEach(() => {
 describe('DayCashBox', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
-  it('shows the live day and cash figures, day carrying the tutorial anchor', () => {
+  it('shows the live day, its weekday name, and cash figures, day carrying the tutorial anchor', () => {
     const game = useGameStore()
     const wrapper = track(mount(DayCashBox))
 
     const dayEl = wrapper.get('[data-test="day-value"]')
-    expect(dayEl.text()).toBe(`Day ${game.day}`)
+    expect(dayEl.text()).toBe(`Day ${game.day} - ${dayOfWeekName(game.day, game.context.economy)}`)
     expect(wrapper.get('.cash').text()).toBe(formatYen(game.cashYen))
   })
 
-  it('carries a live aria-label naming both figures', () => {
+  it('carries a live aria-label naming the day, its weekday, and cash', () => {
     const game = useGameStore()
     const wrapper = track(mount(DayCashBox))
     expect(wrapper.get('.day-cash-box').attributes('aria-label')).toBe(
-      `Day ${game.day}; cash ${formatYen(game.cashYen)}`,
+      `Day ${game.day}, ${dayOfWeekName(game.day, game.context.economy)}; cash ${formatYen(game.cashYen)}`,
     )
   })
 
@@ -41,9 +42,11 @@ describe('DayCashBox', () => {
     game.endDay()
     await wrapper.vm.$nextTick()
 
-    expect(wrapper.get('[data-test="day-value"]').text()).toBe(`Day ${game.day}`)
+    expect(wrapper.get('[data-test="day-value"]').text()).toBe(
+      `Day ${game.day} - ${dayOfWeekName(game.day, game.context.economy)}`,
+    )
     expect(wrapper.get('.day-cash-box').attributes('aria-label')).toBe(
-      `Day ${game.day}; cash ${formatYen(game.cashYen)}`,
+      `Day ${game.day}, ${dayOfWeekName(game.day, game.context.economy)}; cash ${formatYen(game.cashYen)}`,
     )
   })
 })

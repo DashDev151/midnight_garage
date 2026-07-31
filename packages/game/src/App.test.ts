@@ -90,7 +90,7 @@ describe('App (Sprint 51: chrome)', () => {
     expect(boxes).toHaveLength(1)
     const dayValues = wrapper.findAll('[data-test="day-value"]')
     expect(dayValues).toHaveLength(1)
-    expect(dayValues[0]!.text()).toBe(`Day ${game.day}`)
+    expect(dayValues[0]!.text()).toBe(`Day ${game.day} - ${game.dayOfWeekLabel}`)
     expect(boxes[0]!.text()).toContain(formatYen(game.cashYen))
   })
 
