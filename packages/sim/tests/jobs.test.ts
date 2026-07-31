@@ -229,6 +229,7 @@ describe('completeJob', () => {
       purchaseYen: null,
       repairYen: 0,
       partsYen: 42_000,
+      listingFeesYen: 0,
     })
   })
 
@@ -247,6 +248,7 @@ describe('completeJob', () => {
       purchaseYen: null,
       repairYen: 0,
       partsYen: 0,
+      listingFeesYen: 0,
     })
   })
 
@@ -487,6 +489,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
         purchaseYen: null,
         repairYen: plan.costYen,
         partsYen: 0,
+        listingFeesYen: 0,
       })
     })
 
@@ -1398,7 +1401,9 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     const state = baseState({
       ownedCars: [carWithAftermarket],
       partInventory: [],
-      carLedgers: { [car.id]: { purchaseYen: 900_000, repairYen: 12_000, partsYen: 55_000 } },
+      carLedgers: {
+        [car.id]: { purchaseYen: 900_000, repairYen: 12_000, partsYen: 55_000, listingFeesYen: 0 },
+      },
     })
     const result = resolveRemovePart(state, car.id, 'dampers', CONTEXT)
     // Ledger is completely untouched by the removal itself.
@@ -1406,6 +1411,7 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
       purchaseYen: 900_000,
       repairYen: 12_000,
       partsYen: 55_000,
+      listingFeesYen: 0,
     })
     // The pulled instance still carries its own pricePaidYen - not zeroed,
     // not refunded anywhere.

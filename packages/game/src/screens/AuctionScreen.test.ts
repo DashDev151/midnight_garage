@@ -52,14 +52,18 @@ function mountScreenWithRouter(): { wrapper: VueWrapper; router: Router } {
   return { wrapper, router }
 }
 
-/** Warps to a day with lots on the board AND the auction house actually open
- * (`game.isAuctionDay`, sprint149.md: the catalogue is only visible on
- * `calendar.auctionDayOfWeek`) - most of this file's tests exercise the
- * catalogue's contents, which now only render behind that gate. */
+/** Warps to a day with lots on a board that is actually sitting
+ * (`game.openAuctionTiers`, sprint150.md: each room keeps its own hours) -
+ * most of this file's tests exercise a catalogue's contents, which only
+ * render for a room open today. A fresh career has just the local yard
+ * unlocked and the local yard sits on day 1, so this normally advances
+ * nothing; it exists so no test can silently mount a screen with every board
+ * shut. */
 function warpToCatalog(game: ReturnType<typeof useGameStore>) {
   for (
     let i = 0;
-    i < 20 && (game.gameState.activeAuctionLots.length === 0 || !game.isAuctionDay);
+    i < 20 &&
+    !game.gameState.activeAuctionLots.some((lot) => game.openAuctionTiers.includes(lot.tier));
     i++
   ) {
     game.endDay()
@@ -146,18 +150,45 @@ describe('AuctionScreen', () => {
     for (const wrapper of mountedWrappers.splice(0)) wrapper.unmount()
   })
 
-  it('the auction house is closed outside auction day, in plain words, with no lots or buttons', () => {
+  /**
+   * The bug sprint149.md's Exit and TODO.md both carried: with one global
+   * auction day of 3, the tutorial's `find` step sent a brand-new player to
+   * a shuttered auction house on day 1 and anchored on a control that was
+   * not on screen. The local yard now sits on days 1, 3, 5 and 7, so day 1
+   * is an auction day by construction (sprint150.md). Directive 17 case (a):
+   * the old test asserted behaviour this sprint intentionally supersedes.
+   */
+  it('the local yard is open on day 1, with its board and its inspect control - the day-1 tutorial bug, closed', () => {
     const game = useGameStore()
-    expect(game.isAuctionDay).toBe(false) // day 1 is not calendar.auctionDayOfWeek
+    expect(game.day).toBe(1)
+    expect(game.openAuctionTiers).toContain('local-yard')
     const wrapper = mountScreen()
-    expect(wrapper.find('[data-test="auction-closed"]').text()).toContain('only opens its doors')
-    expect(wrapper.findAll('.lot')).toHaveLength(0)
+    expect(wrapper.find('[data-test="auction-closed"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="auction-open-today"]').text()).toContain('Open today')
+    // The exact anchor `tutorialSteps.json`'s `find` step spotlights.
+    expect(wrapper.find('[data-test="inspect-visit-local-yard"]').exists()).toBe(true)
+    expect(wrapper.findAll('.lot').length).toBeGreaterThan(0)
   })
 
-  it('renders lots on the first auction day with a buyout control, with no empty catalogue once open (sprint149)', () => {
+  it('a room that is shut today shows no board and says when it sits again, in plain words', () => {
+    const game = useGameStore()
+    // Day 2 is a Tuesday: the local yard sits 1/3/5/7, so its shutters are
+    // down and it opens again tomorrow.
+    game.gameState = { ...game.gameState, day: 2 }
+    expect(game.openAuctionTiers).not.toContain('local-yard')
+    const wrapper = mountScreen()
+    const closed = wrapper.find('[data-test="closed-tier-local-yard"]')
+    expect(closed.exists()).toBe(true)
+    expect(closed.text()).toContain('tomorrow')
+    expect(wrapper.findAll('.lot')).toHaveLength(0)
+    // No inspect control for a yard nobody is standing in.
+    expect(wrapper.find('[data-test="inspect-visit-local-yard"]').exists()).toBe(false)
+  })
+
+  it('renders every lot of an open room with a buyout control, and no empty-catalogue line', () => {
     const game = useGameStore()
     warpToCatalog(game)
-    expect(game.isAuctionDay).toBe(true)
+    expect(game.openAuctionTiers.length).toBeGreaterThan(0)
     const wrapper = mountScreen()
     expect(wrapper.find('[data-test="auction-closed"]').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('No lots listed')

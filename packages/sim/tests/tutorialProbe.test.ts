@@ -157,7 +157,7 @@ describe('tutorial satisfiability probe', () => {
       ...state,
       ownedCars: [afterCar],
       carLedgers: {
-        'tutorial-after-car': { purchaseYen: reserve, repairYen, partsYen },
+        'tutorial-after-car': { purchaseYen: reserve, repairYen, partsYen, listingFeesYen: 0 },
       },
     }
     const report = gradeMissionCar(graded, 'four-wheels', 'tutorial-after-car', CONTEXT)

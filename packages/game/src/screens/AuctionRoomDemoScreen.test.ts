@@ -6,7 +6,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
-import { enterRoom, nextRungYen, tick, type Learned, type Room } from './auctionRoom'
+import {
+  enterRoom,
+  nextRungYen,
+  roomConfigFrom,
+  tick,
+  type Learned,
+  type Room,
+} from './auctionRoom'
 import {
   buildDemoLobby,
   DEMO_BANKROLL_YEN,
@@ -46,7 +53,7 @@ function buildLobby(): DemoLobbyEntry[] {
 }
 
 function roomConfig() {
-  return useGameStore().context.economy.auctionRoom
+  return roomConfigFrom(useGameStore().context.economy)
 }
 
 /** The reserve `enterRoom` opens a lot's room on - the same formula it uses

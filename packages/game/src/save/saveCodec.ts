@@ -598,8 +598,18 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * didn't exist; a listed car simply stayed in whatever real slot it already
  * held. The version bump alone is still required (Save law) so an old
  * client rejects a v50 save rather than silently dropping the field.
+ * v50 -> v51 (listing fees land on the car): `CarLedgerSchema` gained
+ * `listingFeesYen` (default 0), the per-car half of the running-cost law - a
+ * listing fee is charged FOR a car, so it belongs on that car's ledger,
+ * where machine-shop hire, rent, bays and staff deliberately do not. The pure additive case (the genuinely-defaulted
+ * pattern `repairYen`/`partsYen` already use), so this needs NO
+ * `MIGRATIONS[50]` entry: a pre-v51 save decodes with `listingFeesYen`
+ * defaulting to 0, which is exactly right - no pre-v51 ledger ever recorded
+ * one. The version bump alone is still required (Save law) so an old client
+ * rejects a v51 save rather than silently dropping the field and under-
+ * reporting what a car cost.
  */
-export const SAVE_VERSION = 50
+export const SAVE_VERSION = 51
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

@@ -6,7 +6,12 @@ import type { CarLedger, GameState } from '@midnight-garage/content'
  * spend against a car" has exactly one implementation, not one per call site
  * (auction win/buyout, repair-job creation, install completion, sale).
  */
-const UNKNOWN_LEDGER: CarLedger = { purchaseYen: null, repairYen: 0, partsYen: 0 }
+const UNKNOWN_LEDGER: CarLedger = {
+  purchaseYen: null,
+  repairYen: 0,
+  partsYen: 0,
+  listingFeesYen: 0,
+}
 
 /** `carLedgers[carInstanceId]`, or the unknown-purchase default when no
  * entry exists yet (a car with unknown acquisition, or a dev-granted car) -

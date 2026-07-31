@@ -40,7 +40,12 @@ import { freshToolTiers } from './toolLines'
 /** A placeholder ledger for `isServiceTaskDone`'s call into
  * `evaluateRequirement` - `slotCondition` never reads `ledger`/`day`, but
  * the shared evaluator signature carries them for potential future primitives. */
-const EMPTY_LEDGER: CarLedger = { purchaseYen: null, repairYen: 0, partsYen: 0 }
+const EMPTY_LEDGER: CarLedger = {
+  purchaseYen: null,
+  repairYen: 0,
+  partsYen: 0,
+  listingFeesYen: 0,
+}
 
 /**
  * How many tiers short the shop's tool line is of `task.minToolTier` -

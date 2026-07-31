@@ -1,4 +1,4 @@
-import type { AuctionRoomConfig } from '@midnight-garage/content'
+import type { AuctionRoomConfig, EconomyConfig } from '@midnight-garage/content'
 import { createRng, hashStringToSeed } from '@midnight-garage/sim'
 import { formatYen } from '../utils/formatYen'
 
@@ -35,8 +35,28 @@ import { formatYen } from '../utils/formatYen'
  * unarmed path is untouched; an unarmed room draws exactly as before.
  */
 
-export type RoomConfig = AuctionRoomConfig
+/**
+ * The tuning a room is seated with: the `economy.auctionRoom` block plus the
+ * one number that is NOT authored there, the seller's floor.
+ *
+ * There used to be two: `AUCTION_RESERVE_PRICE_FRACTION` (0.6), which prices
+ * the reserve printed on every auction card, and a room-local copy of the
+ * same idea at 0.55, which the room actually opened at. One idea, two
+ * numbers, five points apart, so the board opened below the reserve the card
+ * advertised. sprint150.md retired the room's own copy under the ruling "set
+ * the reserve to 0.6 everywhere": the fraction is now authored once, at the
+ * top level, and folded in here by `roomConfigFrom`.
+ */
+export type RoomConfig = AuctionRoomConfig & { reserveFraction: number }
 export type TurnoutKey = keyof RoomConfig['turnout']
+
+/** The one place a `RoomConfig` is assembled from content - every screen that
+ * seats a room (the production floor, the tuning demo, the lobby cards) goes
+ * through this, so no caller can pair the room tuning with a second opinion
+ * about the reserve. */
+export function roomConfigFrom(economy: EconomyConfig): RoomConfig {
+  return { ...economy.auctionRoom, reserveFraction: economy.AUCTION_RESERVE_PRICE_FRACTION }
+}
 
 export type RoomStatus = 'open' | 'won' | 'lost' | 'no-sale'
 

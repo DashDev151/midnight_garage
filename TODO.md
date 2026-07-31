@@ -211,79 +211,24 @@ pass."
 
 ## Open engineering
 
-- [ ] **The per-tier auction cadence is APPROVED and NOT BUILT, and it is the next
-  auction-adjacent sprint's mandate (ruled 2026-07-31).** Sprint 149 shipped
-  `calendar.auctionDayOfWeek: 3`, one global auction day. The maintainer ruled a different design
-  after that implementation was already running: **auction cadence is a property of the VENUE, not
-  one global day**, because a single weekly day makes the late game wait around, which is
-  backwards. A player who has earned access should get more to do, not less.
+- [ ] **NEEDS DESIGN: a periodic financial summary for the shop's running costs (raised
+  2026-07-31, scoped out of Sprint 150 on purpose).** The running-cost ruling asks for rent, bays,
+  staff wages and machine-shop hire to be "shown on a overarching, maybe weekly, financial
+  summary". Sprint 150 built the per-car half of that ruling (listing fees now sit on
+  `CarLedger`); the shop-wide half does not exist. Today those costs land as individual day-log
+  lines (`rent-paid`, `wage-paid`, `machine-hired`) and are never totalled anywhere, so a player
+  cannot answer "what does a week cost me". **Not a bug and not a lever move: it is a new screen
+  or panel and needs a design pass**, including which period it covers (the calendar now has both
+  a week and a month boundary to hang it on: `isEndOfWeek`, `isMonthBoundary`) and whether it
+  reads live state or an accrued record.
 
-  | auction tier | open on | cadence |
-  | --- | --- | --- |
-  | `local-yard` | days 1, 3, 5, 7 | every week |
-  | `regional` | days 2, 4 | every week |
-  | `premium` | day 6 | every week |
-  | `collector-network` | days 6 and 7 | every second week, fresh lots each day |
-
-  Two rulings ride with it: **the day-6 overlap between `premium` and `collector-network` on
-  alternate weeks is deliberate, keep it**, and **attending an auction does not cost the day**, so
-  a player may attend more than one room on the same day. The maintainer noted the cadence may
-  still have too few overlaps and that more than one room per day is desirable, but ruled it
-  stays as tabled for now.
-
-  **It is a schema change (per-tier cadence replacing one global day), not a lever value**, which
-  is why Sprint 149 did not absorb it. `calendar.auctionDayOfWeek` is therefore
-  **shipped-but-superseded** and must be retired into `retiredIdentifiers.test.ts`'s ledger by
-  whichever sprint builds the replacement, in the same change. Building it also fixes the day-1
-  tutorial bug below by construction, since `local-yard` opens on day 1. Full record in
-  `docs/sprints/sprint149.md`'s Exit, which stays out of the archive until this lands.
-
-- [ ] **SIGNED LEVER, AWAITING IMPLEMENTATION: `auctionRoom.reserveFraction` moves 0.55 to 0.6
-  (maintainer, 2026-07-31).** The ruling in full: *"set the reserve to 0.6 everywhere."* Recorded
-  by name and value so it can be built under directive 22 without a second sign-off. It is signed,
-  not proposed.
-
-  **What it fixes: the game holds two different numbers for one idea.**
-  `AUCTION_RESERVE_PRICE_FRACTION`, which prices every reserve outside the live room, is already
-  **0.6**. The live room's own floor, `auctionRoom.reserveFraction`, is **0.55**. Five points of
-  disagreement about what a reserve is.
-
-  **What moves in the same change:** the value in `packages/content/data/economy.json`; the pin in
-  `packages/content/tests/schemas.test.ts`, which asserts 0.55 exactly; and
-  `docs/design/systems/live-auction.md`'s knob list, which states it as 0.55 in prose.
-  `packages/game/src/screens/auctionRoom.ts` reads it as the bottom of a cold room's clearing
-  draw, so a bargain room's floor rises with it, which is the intent rather than a side effect.
-  `docs/design/systems/worked-example-two-cars.md` quotes it in both acquisition sections and is
-  generated, so it re-derives on its next run rather than needing an edit.
-
-- [ ] **DESIGN LAW: running costs accrue to the business, per-car costs attribute to the car
-  (maintainer, 2026-07-31). It corrects an earlier assumption and implies work that does not
-  exist.** The ruling in full: *"Machine-shop hire is NOT a per car fee. you could hire in the
-  engine crane and remove 4 engines that day. not accurate to include it as a per car fee. same
-  with rent and bays and staff costs. these are running costs. They accrue and should be shown on
-  a overarching, maybe weekly, financial summary, but they are not attributed to a specific car.
-  listing fees are however."*
-
-  - **Running costs, never attributed to a car:** machine-shop hire, rent, bays, staff.
-  - **Per-car costs, attributed to the car:** purchase, parts, repair charges, **and listing
-    fees**.
-
-  Two consequences follow, and the first is a real gap in the shipped ledger:
-  1. **Listing fees are missing from `CarLedger` and should be added.** The type is
-     `{ purchaseYen, repairYen, partsYen }` (`packages/content/src/gameState.ts`), so a cost this
-     ruling puts on the car is currently charged only to the day.
-     `docs/design/systems/worked-example-two-cars.md` says as much in both car sections: the
-     ledger "does not carry the machine-line hires or the listing fee". Half of that sentence is
-     now correct by law and half of it is a defect.
-  2. **No periodic financial summary exists.** The ruling asks for the running costs to be shown
-     together, "maybe weekly"; today rent and wages land as day-log lines and are never totalled
-     anywhere. Worth scoping alongside the calendar entry further down this file, which is already
-     asking what a week looks like on screen.
-
-  **Machine-shop hire is correct as it stands and must NOT be moved onto the car ledger.** It is
-  charged once per line per day (`resolveHireMachineLine`), and `economy-bible.md`'s 2026-07-23
-  amendment already records it as a running cost on the daily summary, never on a car's ledger.
-  This ruling ratifies that and extends the same reasoning to rent, bays and staff.
+- [ ] **OPEN QUESTION the maintainer already flagged: the shipped auction cadence may have too
+  few overlaps, and the early game feels it hardest (raised 2026-07-31, ruled "ships as tabled
+  for now").** With the signed table, a day-1 player has only `local-yard` unlocked, and it sits
+  on days 1, 3, 5 and 7 - so three days in every seven have NO auction at all for a new career.
+  That is the shape the cadence was signed with, and the maintainer said at the time they like
+  more than one room per day. Worth revisiting once someone has played a week of it; any change
+  is a lever move under directive 22 (`auction.cadenceByTier`, by name and value).
 
 - [ ] **CONFIRMED BUG, needs a design decision: every kei generates as a wreck (maintainer,
   2026-07-31).** Their ruling: *"agreed. this is VERY broken and needs to be fixed. real bug."*
@@ -325,26 +270,13 @@ pass."
   **Terminology, maintainer instruction of 2026-07-31:** do not write "machine line" or "hire the
   line" in prose anywhere. It is ambiguous. Name the machinery (engine crane, and so on) or say
   "machine-shop hire". The codebase's `machineShopAssist` naming may stay as it is; this binds
-  writing, not identifiers. **One consequence for the harness rather than for a document:**
-  `packages/sim/src/workedExampleDoc.ts` prints the banned phrasing as prose in
-  `worked-example-two-cars.md` (the "Machine-line hire" ledger category, and the sentence "A
-  machine-line hire is a daily unlock"). That document is generated and must not be hand-edited,
-  so the wording is corrected in the renderer whenever it is next touched.
-
-- [ ] **The tutorial's "find" step assumes the Auctions tab is always open; Sprint 149's
-  auction-day gate (`calendar.auctionDayOfWeek`, currently Wednesday) can leave a fresh day-1
-  game unable to reach it for up to two days (found 2026-07-31, Sprint 149).**
-  `tutorialSteps.json`'s `find` step (`anchorScreen: "auctions"`, `anchorTestId:
-  "inspect-visit-local-yard"`) fires immediately after the player accepts Yuki's mission, which
-  happens on day 1 in every new career - but day 1's `dayOfWeek` is 1, not 3, so `AuctionScreen.vue`
-  now shows its closed message instead of the scripted tutorial lot, and the player is stuck until
-  the in-game calendar reaches Wednesday. Not caught by any existing test (nothing exercises this
-  step's timing against a live day count). Two ways out, neither authorised by Sprint 149's own
-  lever list or reuse analysis: exempt the tutorial from the gate (`tutorialActive(state)` bypass -
-  a new mechanism not in that sprint's "genuinely new" list), or move `auctionDayOfWeek`'s VALUE
-  (directive 22, needs the maintainer's specific sign-off). Left unresolved on purpose rather than
-  patched unilaterally; needs a maintainer decision before the next auction-adjacent sprint, and
-  ideally a regression test pinning whichever answer is chosen.
+  writing, not identifiers. **DONE for prose (Sprint 150):** `packages/sim/src/workedExampleDoc.ts`
+  was corrected in the renderer and `worked-example-two-cars.md` regenerated from it, and every
+  source comment under `packages/*/src` was swept. **Still outstanding: the `blockedReason`
+  VALUE is still the string `machine-line`**, which is an identifier and may stay, but
+  `dayLogFormat.ts` renders it raw to the player (see the silent-failure paragraph above) - that
+  raw token is the one place the banned phrasing still reaches a human, and it is a copy fix
+  waiting on the design decision above rather than a separate task.
 
 - [ ] **`sale-value-system.md` §4 states `relistRecovery` as a fraction of "fresh", which does not
   survive contact with the counter it describes (found 2026-07-31, Sprint 147).** Fresh is
@@ -674,6 +606,25 @@ pass."
   `sprint32.md`'s Exit), but the gap is real: a bot can genuinely believe a car is sale-ready when
   it isn't. Needs either a bot-side "is anything missing" check before declaring a car restored,
   or an install-focused fill-the-gap step alongside the existing repair step.
+
+- [ ] **Two measured defects leave `authenticity` and `style` unable to do the job the buyer
+  tables already ask of them, independent of whatever the desirability design
+  (`docs/design/systems/desirability-system.md`) decides to do about them.** These are facts
+  about the codebase today, not a design question.
+
+  - **`authenticity` is a frozen dice roll the player cannot touch.** All 472 parts in
+    `parts.json` carry `statModifiers.authenticity` of exactly 0, and no shipped content ever
+    sets `genuinePeriod: true` (six construction sites hardcode `false`; the only `true` values
+    anywhere in the repo are in test files). So `StatBlock.authenticity` equals the frozen
+    `rng.int(60, 95)` set once at car generation (`auctions.ts:759`) in every reachable game
+    state, and `valuation.genuinePeriodMultiplier` (1.25) is fully wired, fully tested and
+    unreachable.
+  - **`style` on a stock mint car equals `styleBase`, authored 4 to 20 across the roster, so no
+    stock car can clear any buyer's style target**: the stancer wants 0.65, the kei-specialist
+    0.55, the collector 0.50, the tuner 0.45. Only 7 of 29 taxonomy slots carry any style weight
+    at all, totalling 14 points. This is the sharp, buyer-facing version of the older styleBase
+    item above (this file, "RESOLVED IN PART"), which explains why 4 to 20 was chosen
+    deliberately; this entry states the numeric consequence of leaving it there.
 
 ## Open balance/economy questions
 

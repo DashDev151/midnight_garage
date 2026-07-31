@@ -37,7 +37,7 @@ const componentId = computed(() => game.groupForCarPart(props.carPartId))
  * reason instead of the generic "doesn't fit here" hint, since the block
  * isn't about any one part's fit, it's the slot itself not being buildable
  * yet. A bench-mode drawer (fitting a benched assembly member) reads the
- * member's own machine-line gate (only ever the wheels line, for tyres);
+ * member's own machine-shop gate (only ever the wheel machinery, for tyres);
  * an on-car drawer reads the NA-to-turbo capability ceiling instead - the
  * two gates never overlap, since an assembly member never has an on-car
  * Replace affordance of its own.

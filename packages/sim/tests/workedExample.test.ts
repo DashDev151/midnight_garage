@@ -44,15 +44,16 @@ describe('the two-car worked example reconciles to the yen', () => {
   })
 
   it('decomposes the same total into the two car ledgers plus the day costs', () => {
-    // Machine-line hire and listing fees are day costs, not car costs
-    // (`resolveHireMachineLine`, `resolveSetForSale`), so they sit outside
-    // both `CarLedger`s and have to be added back by hand here. Rent likewise.
+    // Machine-shop hire is a running cost, not a car cost
+    // (`resolveHireMachineLine` charges the day), so it sits outside both
+    // `CarLedger`s and has to be added back by hand here. Rent likewise.
+    // Listing fees do NOT appear here: they are on the car ledgers now
+    // (sprint150.md), so adding them again would double-count them.
     const decomposed =
       REPORT.carA.netYen +
       REPORT.carB.netYen +
       categoryTotal('rent') +
       categoryTotal('machine-hire') +
-      categoryTotal('listing') +
       categoryTotal('attendance') +
       categoryTotal('other')
     expect(decomposed).toBe(REPORT.finalCashYen - REPORT.startingCashYen)
@@ -86,11 +87,18 @@ describe("each car's ledger is the sim's own, not a recomputation", () => {
   it.each([
     ['car A', REPORT.carA],
     ['car B', REPORT.carB],
-  ])('%s: net equals priceYen minus the CarLedger triple', (_label, car: CarRunReport) => {
+  ])('%s: net equals priceYen minus every CarLedger line', (_label, car: CarRunReport) => {
     expect(car.netYen).toBe(
-      car.soldForYen - (car.ledgerPurchaseYen + car.ledgerRepairYen + car.ledgerPartsYen),
+      car.soldForYen -
+        (car.ledgerPurchaseYen +
+          car.ledgerRepairYen +
+          car.ledgerPartsYen +
+          car.ledgerListingFeesYen),
     )
     expect(car.ledgerPurchaseYen).toBe(car.acquisition.paidYen)
+    // The fee charged to list is the fee the ledger recorded - one number,
+    // read back off the sim's own state rather than recomputed.
+    expect(car.ledgerListingFeesYen).toBe(car.listingFeeYen)
   })
 
   it.each([

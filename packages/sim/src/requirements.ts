@@ -144,7 +144,11 @@ function evaluateStatBound(
 
 /** A spend ceiling over the caller's own `ledger` - purchase (0 when
  * unknown - only reachable via a dev grant, accepted), repairs, and
- * installed parts must together stay at or under `maxTotalSpendYen`. */
+ * installed parts must together stay at or under `maxTotalSpendYen`.
+ * `listingFeesYen` is deliberately NOT counted: a cap is a restoration
+ * budget for a car being built to order, and a car built for a client is
+ * never advertised, so folding sale costs in would quietly tighten every
+ * authored cap without anyone approving the new number. */
 function evaluateBudgetCap(
   spec: Extract<RequirementSpec, { kind: 'budgetCap' }>,
   ledger: CarLedger,

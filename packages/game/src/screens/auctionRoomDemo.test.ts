@@ -2,7 +2,7 @@ import { playerEstimateYen } from '@midnight-garage/sim'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useGameStore } from '../stores/gameStore'
-import { enterRoom, incrementYenFor } from './auctionRoom'
+import { enterRoom, incrementYenFor, roomConfigFrom } from './auctionRoom'
 import {
   buildDemoLobby,
   demoRoomSeed,
@@ -35,7 +35,7 @@ describe('auctionRoomDemo lobby', () => {
     // repricing can only move the yen figures below, never swap in a
     // different car or a different symptom.
     const game = useGameStore()
-    const roomConfig = game.context.economy.auctionRoom
+    const roomConfig = roomConfigFrom(game.context.economy)
     const [thin] = buildLobby()
 
     expect(thin!.key).toBe('thin')
@@ -66,7 +66,7 @@ describe('auctionRoomDemo lobby', () => {
 
   it('names the packed lot a Nissan Sunny trap, its symptom fresh and its true cause the dear one, reading comfortably worse than the room read', () => {
     const game = useGameStore()
-    const roomConfig = game.context.economy.auctionRoom
+    const roomConfig = roomConfigFrom(game.context.economy)
     const [, packed] = buildLobby()
 
     expect(packed!.key).toBe('packed')
@@ -97,7 +97,7 @@ describe('auctionRoomDemo lobby', () => {
 
   it('carries the player number at the true worth for a fully-looked room', () => {
     const game = useGameStore()
-    const config = game.context.economy.auctionRoom
+    const config = roomConfigFrom(game.context.economy)
     const [thin, packed] = buildLobby()
     // A full look knows the true worth, so the player's number is the value
     // itself, with no margin taken off it.

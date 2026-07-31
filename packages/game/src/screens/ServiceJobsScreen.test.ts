@@ -400,7 +400,7 @@ describe('ServiceJobsScreen', () => {
         ...game.gameState,
         carLedgers: {
           ...game.gameState.carLedgers,
-          [carId]: { purchaseYen: 90_614, repairYen: 3_000, partsYen: 5_500 },
+          [carId]: { purchaseYen: 90_614, repairYen: 3_000, partsYen: 5_500, listingFeesYen: 0 },
         },
       }
 

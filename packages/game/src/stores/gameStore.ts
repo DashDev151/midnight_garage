@@ -103,7 +103,8 @@ import {
   hasParkingSpace,
   hireMachineLineGateReason as hireMachineLineGateReasonCore,
   inspectionVisitGateReason as inspectionVisitGateReasonCore,
-  isAuctionDay as isAuctionDayCore,
+  isAuctionTierOpen as isAuctionTierOpenCore,
+  nextOpenDayForTier as nextOpenDayForTierCore,
   isBodyDerivedPart,
   isCustomerOriginPart,
   isPartMissing,
@@ -490,7 +491,7 @@ export interface NextRepairStepView {
  * unit, or refit it once it is on the bench. `blockedReason` is a plain string
  * naming why the relevant action (remove when off the bench, refit when on
  * it) can't run right now - an external blocker still in the way, or the
- * assembly's machine line neither owned nor hired today - phrased the same
+ * assembly's machinery neither owned nor hired today - phrased the same
  * way `removeBlockedReason` phrases a single-part blocker. Null when nothing
  * blocks it.
  */
@@ -774,8 +775,8 @@ export interface MissionResultView {
  * lifecycle exactly.
  *
  * Everything here is a READ: the car ledger already tracks purchase,
- * repairs and parts; `car-sold` already carries the price and a real
- * `profitYen`.
+ * repairs, parts and listing fees; `car-sold` already carries the price and
+ * a real `profitYen`.
  */
 export interface SaleResultView {
   displayName: string
@@ -783,6 +784,7 @@ export interface SaleResultView {
   purchaseYen: number
   repairYen: number
   partsYen: number
+  listingFeesYen: number
   totalSpentYen: number
   /** Null when the purchase price was never known (e.g. a dev-granted car).
    * Never fabricated - the same honesty `car-sold`'s optional `profitYen`
@@ -1042,10 +1044,6 @@ export const useGameStore = defineStore('game', () => {
    * alone reads as a resource counter, "Day 12 - Friday" reads as a place
    * in a rhythm the player can plan payday and the auction around. */
   const dayOfWeekLabel = computed(() => dayOfWeekName(gameState.value.day, context.value.economy))
-  /** Whether the auction catalogue is open today (`calendar.auctionDayOfWeek`,
-   * sprint149.md) - the auction house is a thing you wait for now, not a
-   * screen that is always open. */
-  const isAuctionDay = computed(() => isAuctionDayCore(gameState.value.day, context.value.economy))
   const cashYen = computed(() => gameState.value.cashYen)
   const reputationTier = computed(() => gameState.value.reputationTier)
   const reputationPoints = computed(() => gameState.value.reputationPoints)
@@ -2190,7 +2188,7 @@ export const useGameStore = defineStore('game', () => {
     return group ? machineLineGateCopy(group) : null
   }
 
-  /** Whether ANY currently staged action needs a machine line neither
+  /** Whether ANY currently staged action needs machinery neither
    * owned nor hired today - the Confirm button's own disable condition, so
    * a gated plan explains itself instead of quietly doing nothing. */
   function stagedWorkGated(carId: string): boolean {
@@ -2214,7 +2212,11 @@ export const useGameStore = defineStore('game', () => {
     const perfectionistCostSavedYen = plannedRepairCostYen(carId, false) - repairCostYen
     const ledger = carLedgerFor(gameState.value, carId)
     const totalSpentYenAfter =
-      (ledger.purchaseYen ?? 0) + ledger.repairYen + repairCostYen + ledger.partsYen
+      (ledger.purchaseYen ?? 0) +
+      ledger.repairYen +
+      repairCostYen +
+      ledger.partsYen +
+      ledger.listingFeesYen
     return {
       plannedRepairCostYen: repairCostYen,
       plannedLaborSlots: laborSlots,
@@ -2322,12 +2324,30 @@ export const useGameStore = defineStore('game', () => {
     }))
   })
 
-  /** Every auction tier open right now - derived from delivered guarantor
-   * missions (`local-yard` always included). `AuctionScreen` reads this to
-   * decide which tiers render their real board versus the locked-tier copy. */
+  /** Every auction tier this player may walk into - derived from delivered
+   * guarantor missions (`local-yard` always included). `AuctionScreen` reads
+   * this to decide which tiers render at all versus the locked-tier copy. */
   const unlockedAuctionTiers = computed<AuctionTier[]>(() =>
     unlockedAuctionTiersCore(gameState.value, context.value),
   )
+
+  /** Every auction room whose doors are open TODAY: unlocked (the guarantor
+   * gate) and sitting today (its own hours, `auction.cadenceByTier`,
+   * sprint150.md). Two questions kept apart on purpose - cadence says WHEN a
+   * room opens, the guarantor gate says WHETHER this player may walk in.
+   * More than one room here is normal and wanted, and taking a seat costs no
+   * part of the day, so the player may sit at every one of them. */
+  const openAuctionTiers = computed<AuctionTier[]>(() =>
+    unlockedAuctionTiers.value.filter((tier) =>
+      isAuctionTierOpenCore(gameState.value.day, tier, context.value.economy),
+    ),
+  )
+
+  /** The next day `tier`'s room sits, counting from tomorrow - what the
+   * auction screen tells the player about a room that is shut today. */
+  function nextOpenDayFor(tier: AuctionTier): number | null {
+    return nextOpenDayForTierCore(gameState.value.day + 1, tier, context.value.economy)
+  }
 
   /** Derived numbers + the 6 real group bands for one lot (lots are
    * transparent, no inspection gate). */
@@ -2691,7 +2711,7 @@ export const useGameStore = defineStore('game', () => {
    * blocks it (it may still refuse for insufficient labor - the labor bar
    * already shows that separately). Mirrors `installBlockedReason`'s own
    * reuse shape, over the sim's `removeBlockReason` predicate. A buried
-   * engine/drivetrain slot without the line owned or hired today gates here
+   * engine/drivetrain slot without the machinery owned or hired today gates here
    * too (`machine-line`) - the suspension/body/interior signature gates
    * never gate removal, only install/repair.
    */
@@ -3496,7 +3516,7 @@ export const useGameStore = defineStore('game', () => {
   /**
    * Refit a benched assembly back onto its source car -
    * free per member equal to its vacated baseline, charged install labour for a
-   * changed member, gated on the same machine line removal needed. A no-op if
+   * changed member, gated on the same machinery removal needed. A no-op if
    * the car has no such container on the bench, or the refit itself refuses.
    */
   function refitAssembly(carId: string, assemblyId: AssemblyId): boolean {
@@ -3567,7 +3587,7 @@ export const useGameStore = defineStore('game', () => {
   /**
    * Every assembly's car-level row for one workable car - whether it is on
    * the bench, whether it can be removed or refitted right now, and a plain
-   * "why not" when an external blocker or the assembly's own machine line is
+   * "why not" when an external blocker or the assembly's own machinery is
    * in the way. Empty for an unknown car.
    */
   function assemblyRowsFor(carId: string): AssemblyRowView[] {
@@ -4002,7 +4022,8 @@ export const useGameStore = defineStore('game', () => {
     const entry = result.log.find((e) => e.type === 'mission-delivered')
     if (entry?.type === 'mission-delivered' && mission) {
       const persona = context.value.personasById[mission.personaId]
-      const totalSpentYen = (ledger.purchaseYen ?? 0) + ledger.repairYen + ledger.partsYen
+      const totalSpentYen =
+        (ledger.purchaseYen ?? 0) + ledger.repairYen + ledger.partsYen + ledger.listingFeesYen
       lastMissionResult.value = {
         personaName: persona?.name ?? mission.personaId,
         copy: entry.tipYen > 0 ? mission.overdeliveredCopy : mission.deliveredCopy,
@@ -4151,13 +4172,15 @@ export const useGameStore = defineStore('game', () => {
       const purchaseYen = ledger?.purchaseYen ?? 0
       const repairYen = ledger?.repairYen ?? 0
       const partsYen = ledger?.partsYen ?? 0
+      const listingFeesYen = ledger?.listingFeesYen ?? 0
       lastSaleResult.value = {
         displayName: detail.displayName,
         priceYen: sold.priceYen,
         purchaseYen,
         repairYen,
         partsYen,
-        totalSpentYen: purchaseYen + repairYen + partsYen,
+        listingFeesYen,
+        totalSpentYen: purchaseYen + repairYen + partsYen + listingFeesYen,
         // `profitYen` is absent exactly when the purchase price was unknown.
         // Pass the gap through rather than inventing a number.
         profitYen: sold.profitYen ?? null,
@@ -4522,7 +4545,6 @@ export const useGameStore = defineStore('game', () => {
     logSessionEvent,
     day,
     dayOfWeekLabel,
-    isAuctionDay,
     cashYen,
     reputationTier,
     reputationPoints,
@@ -4545,6 +4567,8 @@ export const useGameStore = defineStore('game', () => {
     modelsCatalog,
     auctionLotsByTier,
     unlockedAuctionTiers,
+    openAuctionTiers,
+    nextOpenDayFor,
     resolveModelName,
     partName,
     componentLabel,

@@ -10,7 +10,7 @@ import { buildCarInstance, mintCarParts, uniformCarParts } from './testFixtures'
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 const MODEL = CARS[0]!
-const EMPTY_LEDGER: CarLedger = { purchaseYen: null, repairYen: 0, partsYen: 0 }
+const EMPTY_LEDGER: CarLedger = { purchaseYen: null, repairYen: 0, partsYen: 0, listingFeesYen: 0 }
 // `buildCarInstance`/`uniformCarParts` (testFixtures.ts) always build
 // 'everyday'-fitment-class stock parts regardless of the fixture model's real
 // tier, so the tyre override below matches that same class.
@@ -131,7 +131,12 @@ describe('evaluateRequirement', () => {
 
   describe('budgetCap (Sprint 76)', () => {
     it('passes at or under the cap', () => {
-      const ledger: CarLedger = { purchaseYen: 100_000, repairYen: 20_000, partsYen: 5_000 }
+      const ledger: CarLedger = {
+        purchaseYen: 100_000,
+        repairYen: 20_000,
+        partsYen: 5_000,
+        listingFeesYen: 0,
+      }
       const result = evaluateRequirement(
         { kind: 'budgetCap', maxTotalSpendYen: 125_000 },
         buildCarInstance(),
@@ -143,7 +148,12 @@ describe('evaluateRequirement', () => {
     })
 
     it('fails over the cap', () => {
-      const ledger: CarLedger = { purchaseYen: 100_000, repairYen: 20_000, partsYen: 5_001 }
+      const ledger: CarLedger = {
+        purchaseYen: 100_000,
+        repairYen: 20_000,
+        partsYen: 5_001,
+        listingFeesYen: 0,
+      }
       const result = evaluateRequirement(
         { kind: 'budgetCap', maxTotalSpendYen: 125_000 },
         buildCarInstance(),
@@ -155,7 +165,12 @@ describe('evaluateRequirement', () => {
     })
 
     it('treats an unknown (null) purchase as zero spend, per decision 1', () => {
-      const ledger: CarLedger = { purchaseYen: null, repairYen: 1_000, partsYen: 0 }
+      const ledger: CarLedger = {
+        purchaseYen: null,
+        repairYen: 1_000,
+        partsYen: 0,
+        listingFeesYen: 0,
+      }
       const atCap = evaluateRequirement(
         { kind: 'budgetCap', maxTotalSpendYen: 1_000 },
         buildCarInstance(),

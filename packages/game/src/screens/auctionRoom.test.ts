@@ -11,6 +11,7 @@ import {
   letGo,
   nextRungYen,
   playerBid,
+  roomConfigFrom,
   tick,
   type Dealer,
   type Learned,
@@ -56,7 +57,7 @@ function buildLobby(): DemoLobbyEntry[] {
 }
 
 function config(): RoomConfig {
-  return useGameStore().context.economy.auctionRoom
+  return roomConfigFrom(useGameStore().context.economy)
 }
 
 /** The reserve `enterRoom` opens on for a lot reading `roomReadYen` - the
@@ -269,8 +270,8 @@ describe('auctionRoom machine', () => {
     // catch.
     expect(room.boardYen).toBeLessThanOrEqual(room.clearingYen)
     expect(room.boardYen + room.incrementYen).toBeGreaterThan(room.clearingYen)
-    expect(room.leaderName).toBe('Endo')
-    expect(room.log.at(-1)).toBe(`Hammer. Endo takes it at ${formatYen(room.boardYen)}.`)
+    expect(room.leaderName).toBe('Mrs. Sakaki')
+    expect(room.log.at(-1)).toBe(`Hammer. Mrs. Sakaki takes it at ${formatYen(room.boardYen)}.`)
     expect(dealersInRoom(room)).toBe(1)
     expect(room.epilogue).toBe('You let it go. Someone got a bargain there.')
   })
@@ -288,8 +289,8 @@ describe('auctionRoom machine', () => {
     // under the threshold as the room climbs. The feud machinery has its own
     // dedicated coverage further down this file.
     expect(room.feud).toBeNull()
-    expect(room.leaderName).toBe('Endo')
-    expect(room.log.at(-1)).toBe(`Hammer. Endo takes it at ${formatYen(room.boardYen)}.`)
+    expect(room.leaderName).toBe('Mrs. Sakaki')
+    expect(room.log.at(-1)).toBe(`Hammer. Mrs. Sakaki takes it at ${formatYen(room.boardYen)}.`)
     expect(dealersInRoom(room)).toBe(1)
     expect(room.epilogue).toBe('You let it go. The room can overpay for that one.')
 
@@ -299,7 +300,7 @@ describe('auctionRoom machine', () => {
       'Ubukata sets the paddle down.',
       'Toyoshima steps out for a smoke.',
       'Ogata checks the time and is done.',
-      'Mrs. Sakaki closes the folder.',
+      'Endo closes the folder.',
     ]
     let lastIndex = -1
     for (const drop of drops) {
@@ -1034,8 +1035,8 @@ describe('auctionRoom machine', () => {
     expect(room.status).toBe('lost')
     expect(room.boardYen).toBeLessThanOrEqual(room.clearingYen)
     expect(room.boardYen + room.incrementYen).toBeGreaterThan(room.clearingYen)
-    expect(room.leaderName).toBe('Endo')
-    expect(room.log.at(-1)).toBe(`Hammer. Endo takes it at ${formatYen(room.boardYen)}.`)
+    expect(room.leaderName).toBe('Mrs. Sakaki')
+    expect(room.log.at(-1)).toBe(`Hammer. Mrs. Sakaki takes it at ${formatYen(room.boardYen)}.`)
     expect(dealersInRoom(room)).toBe(1)
     expect(room.epilogue).toBe('You let it go. Someone got a bargain there.')
     expect(room.armedReaction).toBeNull()

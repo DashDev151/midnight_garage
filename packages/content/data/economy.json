@@ -3,7 +3,6 @@
   "calendar": {
     "daysPerWeek": 7,
     "daysPerMonth": 28,
-    "auctionDayOfWeek": 3,
     "meetDayOfWeek": 7,
     "paydayOfWeek": 5,
     "rentDayOfWeek": 7
@@ -71,7 +70,13 @@
       "rare": 0.2,
       "legend": 0.05
     },
-    "turnoutBandWeights": [0.2, 0.45, 0.35]
+    "turnoutBandWeights": [0.2, 0.45, 0.35],
+    "cadenceByTier": {
+      "local-yard": { "openDaysOfWeek": [1, 3, 5, 7], "weeksBetween": 1 },
+      "regional": { "openDaysOfWeek": [2, 4], "weeksBetween": 1 },
+      "premium": { "openDaysOfWeek": [6], "weeksBetween": 1 },
+      "collector-network": { "openDaysOfWeek": [6, 7], "weeksBetween": 2 }
+    }
   },
   "restoration": {
     "repairStepFraction": 0.1
@@ -746,7 +751,6 @@
   },
   "auctionRoom": {
     "clockMs": 5000,
-    "reserveFraction": 0.55,
     "attendanceFeeYenByTier": {
       "local-yard": 0,
       "regional": 0,

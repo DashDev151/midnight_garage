@@ -251,6 +251,23 @@ describe('seed content validates against schemas', () => {
     expect(result.data.AUCTION_MIN_AGE_YEARS).toBe(3)
     // The lot-generation turnout roll weights live directly under `auction`.
     expect(result.data.auction.turnoutBandWeights).toEqual([0.2, 0.45, 0.35])
+    // Each room's own opening hours (sprint150.md), replacing the retired
+    // single global auction day. Signed as tabled; `calendar.test.ts` (sim)
+    // proves what these produce.
+    expect(result.data.auction.cadenceByTier).toEqual({
+      'local-yard': { openDaysOfWeek: [1, 3, 5, 7], weeksBetween: 1 },
+      regional: { openDaysOfWeek: [2, 4], weeksBetween: 1 },
+      premium: { openDaysOfWeek: [6], weeksBetween: 1 },
+      'collector-network': { openDaysOfWeek: [6, 7], weeksBetween: 2 },
+    })
+    // The two blocks validate independently, so the bound that ties them
+    // together lives here rather than in a cross-block Zod refine.
+    for (const cadence of Object.values(result.data.auction.cadenceByTier)) {
+      for (const day of cadence.openDaysOfWeek) {
+        expect(day).toBeGreaterThanOrEqual(1)
+        expect(day).toBeLessThanOrEqual(result.data.calendar.daysPerWeek)
+      }
+    }
     expect(result.data.valuation.tasteSpread).toBe(0.12)
     // Mileage curve inside clean value - car age no longer factors into
     // value at all, only mileage does.
@@ -536,7 +553,11 @@ describe('seed content validates against schemas', () => {
     expect(result.success).toBe(true)
     if (!result.success) return
     expect(result.data.auctionRoom.clockMs).toBe(5000)
-    expect(result.data.auctionRoom.reserveFraction).toBe(0.55)
+    // The room's opening bid is NOT authored in this block. It is the one
+    // seller's floor, AUCTION_RESERVE_PRICE_FRACTION, folded in by
+    // `auctionRoom.ts`'s `roomConfigFrom` - the retired room-local copy held
+    // a second, disagreeing 0.55 (sprint150.md: one reserve everywhere).
+    expect('reserveFraction' in result.data.auctionRoom).toBe(false)
     // Every tier ships at zero: the mechanic charges nothing until a tier's
     // price moves off zero.
     expect(result.data.auctionRoom.attendanceFeeYenByTier).toEqual({

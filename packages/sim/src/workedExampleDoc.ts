@@ -46,7 +46,7 @@ const CATEGORY_LABELS: Record<CashLine['category'], string> = {
   repair: 'Repair labour charges',
   parts: 'Parts',
   materials: 'Body-pipeline materials',
-  'machine-hire': 'Machine-line hire',
+  'machine-hire': 'Machine-shop hire',
   listing: 'Listing fee',
   sale: 'Sale proceeds',
   rent: 'Rent',
@@ -132,7 +132,7 @@ function carSection(report: WorkedExampleReport, car: CarRunReport, label: strin
   )
   out.push('')
   out.push(
-    `The realised price of a live-room win lands **somewhere between ${yen(car.acquisition.reserveYen)} and ${yen(car.acquisition.buyoutYen)}**, and the room decides where: its clearing draw is a fraction of this same anchor, floored at the room's own \`auctionRoom.reserveFraction\` of 0.55. This run settles the hammer at the reserve, which is the optimistic end of that band; every net figure below therefore also assumes the desk buyout would have cost ${yen(car.acquisition.buyoutYen - car.acquisition.reserveYen)} more.`,
+    `The realised price of a live-room win lands **somewhere between ${yen(car.acquisition.reserveYen)} and ${yen(car.acquisition.buyoutYen)}**, and the room decides where: its clearing draw is a fraction of this same anchor, floored at that same \`AUCTION_RESERVE_PRICE_FRACTION\`, which is the one seller floor the whole game prices against. This run settles the hammer at the reserve, which is the optimistic end of that band; every net figure below therefore also assumes the desk buyout would have cost ${yen(car.acquisition.buyoutYen - car.acquisition.reserveYen)} more.`,
   )
   out.push('')
   if (car.inheritedAftermarket.length > 0) {
@@ -183,7 +183,7 @@ function carSection(report: WorkedExampleReport, car: CarRunReport, label: strin
     )
     out.push('')
     out.push(
-      'A machine-line hire is a **daily** unlock and is charged to the day, never to the car (`resolveHireMachineLine`), so it never appears in the car ledger the net figure below is read from.',
+      'A machine-shop hire is a **daily** unlock and is charged to the day, never to the car (`resolveHireMachineLine`), so it never appears in the car ledger the net figure below is read from: hiring the engine crane for a day can pull four engines, so it belongs to no single one of them.',
     )
     out.push('')
   }
@@ -341,18 +341,17 @@ function carSection(report: WorkedExampleReport, car: CarRunReport, label: strin
         ['`purchaseYen`', yen(car.ledgerPurchaseYen)],
         ['`repairYen`', yen(car.ledgerRepairYen)],
         ['`partsYen`', yen(car.ledgerPartsYen)],
+        ['`listingFeesYen`', yen(car.ledgerListingFeesYen)],
         ['Sale `priceYen`', yen(car.soldForYen)],
         ['**Net**', `**${yen(car.netYen)}**`],
       ],
     ),
   )
   out.push('')
-  const offLedger = totalOf(
-    lines.filter((l) => l.category === 'machine-hire' || l.category === 'listing'),
-  )
+  const offLedger = totalOf(lines.filter((l) => l.category === 'machine-hire'))
   if (offLedger !== 0) {
     out.push(
-      `The car ledger does not carry the machine-line hires or the listing fee (${yen(-offLedger)} between them): those are day costs, not car costs. Counting them, this car actually returned **${yen(car.netYen + offLedger)}** to the bank.`,
+      `The car ledger carries the listing fee, because that fee was paid to advertise this car and nothing else. It does not carry the machine-shop hires (${yen(-offLedger)}): those are running costs, and a day's crane hire can pull four engines. Counting them anyway, this car returned **${yen(car.netYen + offLedger)}** to the bank.`,
     )
     out.push('')
   }
@@ -398,7 +397,6 @@ export function renderWorkedExampleMarkdown(report: WorkedExampleReport): string
   const out: string[] = []
   const rentTotal = totalOf(report.cashLines.filter((l) => l.category === 'rent'))
   const hireTotal = totalOf(report.cashLines.filter((l) => l.category === 'machine-hire'))
-  const listingTotal = totalOf(report.cashLines.filter((l) => l.category === 'listing'))
 
   out.push('# Two cars, end to end, generated from the shipped sim')
   out.push('')
@@ -456,7 +454,7 @@ export function renderWorkedExampleMarkdown(report: WorkedExampleReport): string
     '- Both cars are settled at the **auction reserve**, the bottom of the band a live room can produce. Each car section prices the desk buyout alongside it.',
   )
   out.push(
-    '- The shop never hires the engine, drivetrain or body machine lines, so buried engine internals, the gearbox and welding are all out of reach. What that leaves behind is itemised per car.',
+    '- The shop never books the engine, drivetrain or body machine-shop hires, so buried engine internals, the gearbox and welding are all out of reach. What that leaves behind is itemised per car.',
   )
   out.push('')
 
@@ -496,6 +494,11 @@ export function renderWorkedExampleMarkdown(report: WorkedExampleReport): string
         ],
         ['Repair charges (`repairYen`)', yen(carA.ledgerRepairYen), yen(carB.ledgerRepairYen)],
         ['Parts (`partsYen`)', yen(carA.ledgerPartsYen), yen(carB.ledgerPartsYen)],
+        [
+          'Listing fees (`listingFeesYen`)',
+          yen(carA.ledgerListingFeesYen),
+          yen(carB.ledgerListingFeesYen),
+        ],
         ['Sold for', yen(carA.soldForYen), yen(carB.soldForYen)],
         ['**Net (ledger)**', `**${yen(carA.netYen)}**`, `**${yen(carB.netYen)}**`],
         ['Labour spent (energy points)', `${carA.laborSlotsSpent}`, `${carB.laborSlotsSpent}`],
@@ -565,8 +568,7 @@ export function renderWorkedExampleMarkdown(report: WorkedExampleReport): string
         [`${carA.displayName} net (car ledger)`, yen(carA.netYen)],
         [`${carB.displayName} net (car ledger)`, yen(carB.netYen)],
         ['Rent', yen(rentTotal)],
-        ['Machine-line hire (day cost, not on any car ledger)', yen(hireTotal)],
-        ['Listing fees (day cost, not on any car ledger)', yen(listingTotal)],
+        ['Machine-shop hire (running cost, not on any car ledger)', yen(hireTotal)],
         ['**Change in cash**', `**${yen(report.finalCashYen - report.startingCashYen)}**`],
       ],
     ),

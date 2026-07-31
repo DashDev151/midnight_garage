@@ -210,7 +210,9 @@ describe('market: selling', () => {
         },
       ],
       pendingOffers: [{ carInstanceId: carId, buyerId: mismatch!.buyerId, priceYen: 500_000 }],
-      carLedgers: { [carId]: { purchaseYen: 300_000, repairYen: 40_000, partsYen: 20_000 } },
+      carLedgers: {
+        [carId]: { purchaseYen: 300_000, repairYen: 40_000, partsYen: 20_000, listingFeesYen: 0 },
+      },
     }
 
     expect(game.acceptOffer(carId)).toBe(true)

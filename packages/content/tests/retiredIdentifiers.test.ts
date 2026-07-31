@@ -109,6 +109,18 @@ const RETIRED_IDENTIFIERS: readonly RetiredIdentifier[] = [
       'A flat uniform band applied identically whether a car was listed this morning or two months ago, so time was free and the correct play was to skip days until a good number appeared. Replaced by the quality draw (economy.liquidity.qualityFresh/qualityFloor/qualityHalfLifeOffers/qualitySpread, drawQualityFraction in selling.ts) - a seeded Normal draw around a mean that slides down as offersSeen rises.',
   },
   {
+    identifier: 'auctionDayOfWeek',
+    retiredInSprint: 150,
+    reason:
+      'One global auction day for every room, so a player who had earned access to four rooms got exactly one buying day a week - backwards, since earning access should give you more to do, not less. It also sent a brand-new player to a shuttered auction house on day 1, breaking the tutorial. Replaced by economy.auction.cadenceByTier (openDaysOfWeek + weeksBetween per room) and calendar.ts isAuctionTierOpen: cadence is a property of the VENUE, not the calendar. Matched bare rather than as calendar.auctionDayOfWeek so any dotted path to it trips too.',
+  },
+  {
+    identifier: 'auctionRoom.reserveFraction',
+    retiredInSprint: 150,
+    reason:
+      'A second, disagreeing seller floor: 0.55 here against AUCTION_RESERVE_PRICE_FRACTION 0.6, over the same guide value, so the live room opened below the reserve its own auction card advertised. Maintainer ruling 2026-07-31, "set the reserve to 0.6 everywhere": the fraction is authored once at the top level and folded into the room tuning by auctionRoom.ts roomConfigFrom. Bare reserveFraction is deliberately NOT banned - RoomConfig still carries the field, it just no longer authors it.',
+  },
+  {
     identifier: 'WEEKLY_RENT_YEN',
     retiredInSprint: 148,
     reason:

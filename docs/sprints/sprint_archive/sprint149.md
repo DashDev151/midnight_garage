@@ -1,11 +1,11 @@
 # Sprint 149: the week has a shape
 
-**Status: BUILT AND COMMITTED 2026-07-31 (`c17be49`), WITH ONE APPROVED DESIGN NOT YET BUILT.**
-Seventh of the sale value arc. **This doc is NOT archived and must not be**, because the
-per-tier auction cadence the maintainer ruled on 2026-07-31 lives here and nowhere else in a
-buildable form: `calendar.auctionDayOfWeek` shipped as a single global day and is
-shipped-but-superseded. See "OUTSTANDING: the auction cadence is decided and NOT built" at the
-top of the Exit. A known day-1 bug rides with it until that work lands.
+**Status: BUILT AND COMMITTED 2026-07-31 (`c17be49`). CLOSED OUT BY SPRINT 150.** Seventh of the
+sale value arc. The outstanding per-tier auction cadence recorded below was built in
+`sprint150.md`: `calendar.auctionDayOfWeek` is retired into the retired-identifier ledger,
+cadence lives on `economy.auction.cadenceByTier`, and the day-1 tutorial bug is closed by
+construction (`local-yard` sits on day 1). The "OUTSTANDING" section at the top of the Exit is
+kept verbatim as the record of what was ruled and when; read it as history, not as open work.
 
 Design of record: `docs/design/systems/sale-value-system.md` §7.2.
 

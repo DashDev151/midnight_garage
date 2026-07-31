@@ -265,8 +265,9 @@ export interface CarRunReport {
   ledgerPurchaseYen: number
   ledgerRepairYen: number
   ledgerPartsYen: number
-  /** `priceYen - (purchaseYen + repairYen + partsYen)`, the same expression
-   * `resolveSellViaWalkIn` itself logs as `profitYen`. */
+  ledgerListingFeesYen: number
+  /** `priceYen - (purchaseYen + repairYen + partsYen + listingFeesYen)`, the
+   * same expression `resolveSellViaWalkIn` itself logs as `profitYen`. */
   netYen: number
   /** Parts still below the expected band once every route open to a tier-1
    * shop had been used - the honest residual. */
@@ -396,11 +397,7 @@ function cashLinesFromLog(log: readonly DayLogEntry[], day: number, scope: CashS
         push('parts', `Part ordered standard: ${entry.partId}`, -entry.priceYen)
         break
       case 'machine-hired':
-        push(
-          'machine-hire',
-          `Machine line hired for the day: ${entry.componentId}`,
-          -entry.priceYen,
-        )
+        push('machine-hire', `Machine-shop hire for the day: ${entry.componentId}`, -entry.priceYen)
         break
       case 'job-created':
         if (entry.costYen) push('repair', `Repair charge on ${entry.carInstanceId}`, -entry.costYen)
@@ -796,7 +793,7 @@ function reconditionLoosePart(
 }
 
 /** Fits one loose `PartInstance` into its slot through the player's own
- * instant path. A signature slot needs its group's machine line for the
+ * instant path. A signature slot needs its group's machinery for the
  * install (a hire that expires at End Day), so it is taken out here, as late
  * as possible and only when the fit actually needs it. */
 function installLoosePart(
@@ -1544,9 +1541,13 @@ function runOneCar(run: Run, script: CarScript, currentYear: number): CarRunRepo
     ledgerPurchaseYen: ledgerAtSale.purchaseYen ?? 0,
     ledgerRepairYen: ledgerAtSale.repairYen,
     ledgerPartsYen: ledgerAtSale.partsYen,
+    ledgerListingFeesYen: ledgerAtSale.listingFeesYen,
     netYen:
       soldForYen -
-      ((ledgerAtSale.purchaseYen ?? 0) + ledgerAtSale.repairYen + ledgerAtSale.partsYen),
+      ((ledgerAtSale.purchaseYen ?? 0) +
+        ledgerAtSale.repairYen +
+        ledgerAtSale.partsYen +
+        ledgerAtSale.listingFeesYen),
     residual,
     residualBillYen,
     stalenessWalk,

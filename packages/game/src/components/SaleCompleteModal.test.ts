@@ -24,6 +24,7 @@ const BASE_RESULT = {
   purchaseYen: 300_000,
   repairYen: 0,
   partsYen: 0,
+  listingFeesYen: 0,
   totalSpentYen: 300_000,
   profitYen: 200_000,
 }

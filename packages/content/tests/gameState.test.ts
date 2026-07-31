@@ -336,7 +336,14 @@ describe('GameState / DayLog round-trip', () => {
       cartPartIds: [],
       stagedCarWork: {},
       marketLedger: { lotSupply: {}, playerSales: {} },
-      carLedgers: { 'car-0001': { purchaseYen: 900_000, repairYen: 45_000, partsYen: 60_000 } },
+      carLedgers: {
+        'car-0001': {
+          purchaseYen: 900_000,
+          repairYen: 45_000,
+          partsYen: 60_000,
+          listingFeesYen: 0,
+        },
+      },
       machineListing: null,
       nextMachineListingDay: null,
       serviceJobLedgers: {},
@@ -472,16 +479,27 @@ describe('GameState / DayLog round-trip', () => {
     expect(withoutCost).not.toHaveProperty('costYen')
   })
 
-  it('Sprint 42: CarLedgerSchema requires purchaseYen (nullable) and defaults repair/parts to 0', () => {
+  it('Sprint 42: CarLedgerSchema requires purchaseYen (nullable) and defaults repair/parts/listing fees to 0', () => {
     const known = CarLedgerSchema.parse({
       purchaseYen: 900_000,
       repairYen: 45_000,
       partsYen: 60_000,
+      listingFeesYen: 8_000,
     })
-    expect(known).toEqual({ purchaseYen: 900_000, repairYen: 45_000, partsYen: 60_000 })
+    expect(known).toEqual({
+      purchaseYen: 900_000,
+      repairYen: 45_000,
+      partsYen: 60_000,
+      listingFeesYen: 8_000,
+    })
 
     const unknown = CarLedgerSchema.parse({ purchaseYen: null })
-    expect(unknown).toEqual({ purchaseYen: null, repairYen: 0, partsYen: 0 })
+    expect(unknown).toEqual({
+      purchaseYen: null,
+      repairYen: 0,
+      partsYen: 0,
+      listingFeesYen: 0,
+    })
 
     expect(() => CarLedgerSchema.parse({})).toThrow() // purchaseYen has no default - must be stated
   })

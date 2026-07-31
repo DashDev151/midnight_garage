@@ -47,6 +47,10 @@ const result = computed(() => game.lastSaleResult)
           <dt>Parts</dt>
           <dd>{{ formatYen(result.partsYen) }}</dd>
         </div>
+        <div v-if="result.listingFeesYen > 0">
+          <dt>Listing fees</dt>
+          <dd>{{ formatYen(result.listingFeesYen) }}</dd>
+        </div>
         <div v-if="result.totalSpentYen > 0">
           <dt>Total spent</dt>
           <dd>{{ formatYen(result.totalSpentYen) }}</dd>

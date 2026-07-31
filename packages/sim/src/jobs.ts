@@ -266,7 +266,7 @@ export function completeJob(state: GameState, job: Job, context: SimContext): Jo
 
   if (job.kind === 'install-part') {
     // A buried engine/drivetrain fit or a suspension/body/interior
-    // signature fit needs that group's machine line - owned outright, or
+    // signature fit needs that group's machinery - owned outright, or
     // hired for today. Checked before the part ever touches the car, so a
     // blocked install leaves the car and the job untouched, exactly like
     // the occupied-slot block below.
@@ -380,7 +380,7 @@ export function signatureGroupFor(carPartId: CarPartId, context: SimContext): Co
 }
 
 /**
- * The single group, if any, whose machine line gates a REMOVE or
+ * The single group, if any, whose machinery gates a REMOVE or
  * INSTALL/REPLACE of `carPartId` - a buried engine/drivetrain slot or a
  * suspension/body/interior signature slot. `null` for everything else. A
  * carPartId is gated by at most one group.
@@ -406,7 +406,7 @@ export function machineHiredToday(group: ComponentId, state: GameState): boolean
 
 /**
  * Whether `group`'s line is usable right now for every operation - owned
- * outright, or hired for today. The gate every machine-line-gated operation
+ * outright, or hired for today. The gate every machine-shop-gated operation
  * (signature repair, buried removal, buried/signature install) checks
  * before it proceeds.
  */
@@ -453,7 +453,7 @@ export function signatureOpFeeYen(
 /**
  * The catalog carPartId an install-part `job` targets, resolved from the
  * part still sitting in `state.partInventory` at this point - shared by the
- * machine-line install gate and the ledger's parts-cost lookup.
+ * machine-shop install gate and the ledger's parts-cost lookup.
  */
 function installTargetCarPartId(state: GameState, job: Job, context: SimContext): CarPartId | null {
   const partId = state.partInventory.find((p) => p.id === job.partInstanceId)?.partId
@@ -590,7 +590,7 @@ export function resolveRemovePart(
   const laborSlotsUsed = removeLaborSlotsFor(carPartId, context)
   if (laborSlotsUsed > laborAvailable) return { state, log: [], laborSlotsUsed: 0 }
 
-  // Buried engine/drivetrain removal needs that group's machine line - owned
+  // Buried engine/drivetrain removal needs that group's machinery - owned
   // outright, or hired for today (`resolveHireMachineLine`).
   const machineGroup = removeMachineGateGroup(carPartId, context)
   if (machineGroup && !hasMachineLineFor(machineGroup, state)) {
@@ -676,8 +676,8 @@ export type RemoveBlockReason =
  * simply already removed).
  *
  * A buried engine/drivetrain slot without the tier-2 machine owned or hired
- * for today is blocked here (`machine-line`) - hire the line, or buy the
- * tools.
+ * for today is blocked here (`machine-line`) - book the machine-shop hire,
+ * or buy the tools.
  */
 export function removeBlockReason(
   car: CarInstance,
@@ -735,7 +735,7 @@ function chargeRepairWork(
  * creation, never again. Tool lines are always owned per progression bible
  * law 1, so the shop's current tool tier mostly just sets the repair level
  * the work climbs at; the one real ownership gate is a suspension/body/
- * interior signature slot, which needs its group's machine line owned or
+ * interior signature slot, which needs its group's machinery owned or
  * hired for today.
  *
  * Repair-zone charges the real yen cost of the work from `planGroupRepair`'s
@@ -815,7 +815,7 @@ export function repairJobGate(
   }
 
   // A repair that climbs a suspension/body/interior signature slot needs
-  // that group's machine line - owned outright, or hired for today
+  // that group's machinery - owned outright, or hired for today
   // (`resolveHireMachineLine`). Engine/drivetrain/wheels have no signature
   // slots, so their repairs are never gated here.
   const needsMachineLine = plan.partIds.some(

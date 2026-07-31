@@ -20,7 +20,13 @@ import {
   stockInstanceFor,
   type SimContext,
 } from '@midnight-garage/sim'
-import { incrementYenFor, type Learned, type RoomVerdict, type TurnoutKey } from './auctionRoom'
+import {
+  incrementYenFor,
+  roomConfigFrom,
+  type Learned,
+  type RoomVerdict,
+  type TurnoutKey,
+} from './auctionRoom'
 
 /**
  * The dev-only tuning bench for the live auction room (AuctionRoomDemoScreen.vue):
@@ -294,7 +300,7 @@ export function buildDemoLobby(state: GameState, context: SimContext): DemoLobby
     thin: buildStealLot(context),
     packed: buildTrapLot(context),
   }
-  const roomConfig = context.economy.auctionRoom
+  const roomConfig = roomConfigFrom(context.economy)
   return ROOM_ORDER.map((key) => {
     const lot = lotByKey[key]
     const model = context.modelsById[lot.modelId]

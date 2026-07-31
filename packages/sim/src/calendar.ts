@@ -1,5 +1,6 @@
 import {
   ReputationTierSchema,
+  type AuctionTier,
   type EconomyConfig,
   type ReputationTier,
 } from '@midnight-garage/content'
@@ -81,10 +82,54 @@ export function isEndOfWeek(day: number, economy: EconomyConfig): boolean {
   return dayOfWeek(day, economy) === economy.calendar.daysPerWeek
 }
 
-/** Whether `day` is `calendar.auctionDayOfWeek` - the one day the auction
- * catalogue is open (`AuctionScreen.vue`). */
-export function isAuctionDay(day: number, economy: EconomyConfig): boolean {
-  return dayOfWeek(day, economy) === economy.calendar.auctionDayOfWeek
+/**
+ * `day`'s 1-indexed week number: days 1 to `daysPerWeek` are week 1, the
+ * next `daysPerWeek` days are week 2, and so on. The other half of an
+ * auction room's cadence, alongside `dayOfWeek` - a room that sits every
+ * second week needs to know WHICH week today is, not just which day.
+ */
+export function weekIndex(day: number, economy: EconomyConfig): number {
+  return Math.floor((day - 1) / economy.calendar.daysPerWeek) + 1
+}
+
+/**
+ * Whether `tier`'s auction room opens on `day` - the one implementation of
+ * "is this room open", read by the auction screen and nothing else derives
+ * it (sprint150.md). A room opens when today's position in the week is one
+ * of its `openDaysOfWeek` AND today's week satisfies its `weeksBetween`.
+ *
+ * Week 1 is an open week for every room, so `collector-network`
+ * (`weeksBetween` 2) first sits on days 6 and 7 of week 1, then weeks 3, 5
+ * and so on. Rooms deliberately overlap - `premium` and `collector-network`
+ * are both open on day 6 of an open week, which is desirable rather than a
+ * clash - and attending a room costs nothing but the admission, so a player
+ * may sit at every room open today.
+ */
+export function isAuctionTierOpen(day: number, tier: AuctionTier, economy: EconomyConfig): boolean {
+  const cadence = economy.auction.cadenceByTier[tier]
+  if (!cadence.openDaysOfWeek.includes(dayOfWeek(day, economy))) return false
+  return (weekIndex(day, economy) - 1) % cadence.weeksBetween === 0
+}
+
+/**
+ * The first day at or after `fromDay` that `tier` opens - what the auction
+ * screen tells the player when a room is shut. Searches one full cadence
+ * cycle (`daysPerWeek * weeksBetween` days), which always contains at least
+ * one sitting for any cadence the schema allows, so the `null` is
+ * unreachable in practice and exists only so a caller never has to trust
+ * that.
+ */
+export function nextOpenDayForTier(
+  fromDay: number,
+  tier: AuctionTier,
+  economy: EconomyConfig,
+): number | null {
+  const { weeksBetween } = economy.auction.cadenceByTier[tier]
+  const horizonDays = economy.calendar.daysPerWeek * weeksBetween
+  for (let day = fromDay; day < fromDay + horizonDays; day++) {
+    if (isAuctionTierOpen(day, tier, economy)) return day
+  }
+  return null
 }
 
 /** Whether `day` is `calendar.meetDayOfWeek` - the weekend meet's one

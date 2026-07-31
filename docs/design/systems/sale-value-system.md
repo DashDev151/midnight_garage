@@ -11,9 +11,10 @@ the sprint doc is authoritative.
 **In the game today:** Stage C's coherence discount and Stage D's coherence-scaled parts
 retention (Sprint 144), per-car `styleBase` (145), Stage E's per-buyer taste match and the kei
 specialist (146), Stage F's normalised listing clock and offer-quality draw (147), the forecourt
-and per-bay rent (148), and the named week (149). **Not built:** everything from Sprint 150
-onward. One shipped lever is already superseded: `calendar.auctionDayOfWeek` loses to the
-approved per-tier auction cadence recorded in `TODO.md` and `docs/sprints/sprint149.md`.
+and per-bay rent (148), the named week (149), and per-venue auction hours with listing fees
+on the car ledger (150). **Not built:** everything from Sprint 151 onward. The arc past 150 is
+being re-planned: the listing-channel ruling changed what a channel IS, which invalidates the
+shape of the old S8 and S9.
 
 Supersedes the scope of `docs/sprints/sprint_archive/sprint138.md` and `docs/sprints/sprint_archive/sprint139.md`. Companion:
 `sale-value-system-context.md`.

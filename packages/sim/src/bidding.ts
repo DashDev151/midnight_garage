@@ -179,7 +179,7 @@ function settleLotPurchase(
         activeAuctionLots: state.activeAuctionLots.filter((l) => l.id !== lot.id),
       },
       lot.car.id,
-      { purchaseYen: priceYen, repairYen: 0, partsYen: 0 },
+      { purchaseYen: priceYen, repairYen: 0, partsYen: 0, listingFeesYen: 0 },
     ),
     lot.car.id,
   )

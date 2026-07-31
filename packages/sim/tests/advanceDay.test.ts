@@ -199,7 +199,16 @@ describe('advanceDay golden master', () => {
     // labour and cash figure, and every derived stat. A deliberate change to
     // any of those is re-derived from a real run of this script; the script
     // itself is never bent to preserve the number.
-    expect(hashState(finalState)).toBe('8cf486eb')
+    //
+    // It also moves on a pure SHAPE change to any state this script still
+    // holds at day 31, because `hashState` serializes the whole thing:
+    // `CarLedger` gained `listingFeesYen` (sprint150.md) and this script ends
+    // still owning its car, so its ledger carries one more key. The
+    // acquisition-to-sale hash below is unmoved by the same change, because
+    // that script sells the car and `resolveSellViaWalkIn` deletes the ledger
+    // with it - which is the proof that this is a shape change and not a
+    // behavioural one.
+    expect(hashState(finalState)).toBe('3ff6dc44')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {

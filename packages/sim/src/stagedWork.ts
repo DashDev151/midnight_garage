@@ -65,8 +65,8 @@ export interface StagedWorkResolution {
  * Immediate free refits: true when staging `action` (an
  * 'install') would resolve for FREE right now - zero labour (the picked
  * instance matches the target slot's own vacated baseline exactly, the
- * equivalence refit `refitLaborSlotsFor` prices free) AND not machine-line
- * gated (no buried or signature slot needing a line neither owned nor hired
+ * equivalence refit `refitLaborSlotsFor` prices free) AND not machine-shop
+ * gated (no buried or signature slot needing machinery neither owned nor hired
  * today). A free refit is putting the car back together the way it was
  * found, not real work - the game store's `stageAction` resolves it right
  * away through the same job machinery Confirm would use, exactly as
@@ -180,8 +180,8 @@ function chargeAndApplyPipelineEffect(
 /** One `pipeline-stage` staged action's resolution - one of the six generic
  * stages (strip/prep, beat, weld, fill-and-sand, prime, polish) on one zone.
  * A prerequisite the zone doesn't meet is a silent no-op (the same "nothing
- * to do" idiom `repairJobGate` uses); the weld machine-line gate logs a
- * `job-blocked` entry, matching every other machine-line refusal in this
+ * to do" idiom `repairJobGate` uses); the weld machine-shop gate logs a
+ * `job-blocked` entry, matching every other machine-shop refusal in this
  * codebase. */
 function resolvePipelineStageAction(
   state: GameState,

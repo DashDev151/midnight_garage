@@ -906,6 +906,36 @@ import storyMissions from '../data/storyMissions.json'
  * restores the prior state bit for bit rather than merely restoring the rent day. `finances.
  * test.ts`'s 28-day total-unchanged tests pass untouched: the amount charged per week never
  * moved, only which day it lands on.
+ *
+ * Re-pinned for Sprint 150 (docs/sprints/sprint150.md; MAINTAINER RULINGS of 2026-07-31,
+ * explicit and signed - NOT under R3, which expired when the maintainer reviewed the arc's
+ * lever ledger). Three content changes, one of them a value and two of them shape:
+ *
+ * 1. `auctionRoom.reserveFraction` 0.55 -> RETIRED, unified into the existing
+ *    `AUCTION_RESERVE_PRICE_FRACTION` (already 0.6, unchanged). The ruling in full: "set the
+ *    reserve to 0.6 everywhere." One idea had two authored numbers over the SAME base (the
+ *    lot's guide value: `bidding.ts`'s `anchorValueYen` and the live room's `roomReadYen` are
+ *    both `carGuideValueYen`), five points apart, so the room opened below the reserve its own
+ *    auction card printed. The live room now folds the single top-level fraction into its
+ *    tuning via `auctionRoom.ts`'s `roomConfigFrom`; the retired name is in
+ *    `retiredIdentifiers.test.ts`. A cold room's clearing draw floor rises with it
+ *    (`clearingFractionFor` draws a bargain room between the reserve and the turnout band's
+ *    `clearMin`, so that band narrows) - a stated consequence of the ruling, and no other lever
+ *    moved to compensate.
+ * 2. `calendar.auctionDayOfWeek` 3 -> RETIRED, replaced by `auction.cadenceByTier`: per-room
+ *    opening hours (`openDaysOfWeek` + `weeksBetween`), signed as tabled. `local-yard` [1,3,5,7]
+ *    weekly, `regional` [2,4] weekly, `premium` [6] weekly, `collector-network` [6,7] every
+ *    SECOND week. Cadence is a property of the VENUE, not the calendar: one global auction day
+ *    gave a player who had earned four rooms exactly one buying day a week, which is backwards.
+ *    The day-6 overlap between `premium` and `collector-network` on alternate weeks is
+ *    deliberate and pinned by test; attending costs no part of the day. Week 1 is an open week
+ *    for every room, so `local-yard` sits on day 1 and the day-1 tutorial bug sprint149.md
+ *    recorded is closed by construction. `calendar` keeps `daysPerWeek` 7, `daysPerMonth` 28,
+ *    `meetDayOfWeek` 7, `paydayOfWeek` 5, `rentDayOfWeek` 7, all untouched.
+ * 3. No yen figure moves anywhere else. `partPricing.json` and every mission payout/budget cap
+ *    are untouched (confirmed passing unchanged): none of those pipelines reads the auction
+ *    cadence, and the reserve fraction they DO read (`AUCTION_RESERVE_PRICE_FRACTION`) is the
+ *    survivor at its existing 0.6.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -915,7 +945,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('04131e5c20274e6606ef03a74ab7380e92584614d3165af5d85ce4c3c01118c5')
+    ).toBe('2699aa1f66f2841eb305a35dfc7237532b3d435252cdca475376238d606a3052')
   })
 
   it('partPricing.json matches its approved content exactly', () => {

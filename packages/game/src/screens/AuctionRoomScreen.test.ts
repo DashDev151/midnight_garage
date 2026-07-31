@@ -130,7 +130,9 @@ describe('AuctionRoomScreen', () => {
     )
     // Symptom-free: the room's read and the player's own number agree.
     expect(playerNumberYen).toBe(roomReadYen)
-    const reserveYen = Math.round(roomReadYen * game.context.economy.auctionRoom.reserveFraction)
+    // One seller's floor everywhere (sprint150.md): the room opens on the
+    // same AUCTION_RESERVE_PRICE_FRACTION the auction card prints.
+    const reserveYen = Math.round(roomReadYen * game.context.economy.AUCTION_RESERVE_PRICE_FRACTION)
 
     const { wrapper } = await mountRoom(lot.id)
 

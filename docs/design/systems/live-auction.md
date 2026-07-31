@@ -26,7 +26,10 @@ that thin as the board climbs); there are no per-dealer valuations behind them.
 Every knob lives in one exported block; nothing else feeds the bidding.
 
 - `clockMs` - the per-bid fuse (5000 = 5s). Leading at fuse-out wins; trailing loses.
-- `reserveFraction` - the opening bid, as a fraction of the read (0.55).
+- the opening bid, as a fraction of the read: NOT authored in this block. It is the one
+  seller floor, `AUCTION_RESERVE_PRICE_FRACTION` (0.6), folded in by `auctionRoom.ts`s
+  `roomConfigFrom` so the reserve the auction card prints and the number the room opens at
+  are the same figure (sprint150.md retired the room-local 0.55 copy).
 - `bidDelayMs {min, max}` - the delay before each room raise (always < `clockMs`).
 - `bargainChance` - the chance a room is cold and clears below its floor (0.05).
 - bid step - `stepBelowYen` (5000) for a car under `stepThresholdYen` (500,000) of value,

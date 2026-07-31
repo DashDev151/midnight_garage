@@ -16,7 +16,15 @@ import AuctionRoomFloor from '../components/AuctionRoomFloor.vue'
 import AuctionLotCard, { type AuctionLotCardView } from '../components/AuctionLotCard.vue'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
-import { armReaction, enterRoom, letGo, playerBid, tick, type Room } from './auctionRoom'
+import {
+  armReaction,
+  enterRoom,
+  letGo,
+  playerBid,
+  roomConfigFrom,
+  tick,
+  type Room,
+} from './auctionRoom'
 import {
   DEMO_BANKROLL_YEN,
   buildDemoLobby,
@@ -189,7 +197,7 @@ function takeSeat(entry: DemoLobbyEntry): void {
       demoRoomSeed(entry.key, runIndex.value),
       demoNowMs.value,
       learned,
-      game.context.economy.auctionRoom,
+      roomConfigFrom(game.context.economy),
     ),
   )
   phase.value = 'room'
@@ -204,7 +212,7 @@ function runItBack(): void {
       demoRoomSeed(currentEntry.value.key, runIndex.value),
       demoNowMs.value,
       currentLearned.value,
-      game.context.economy.auctionRoom,
+      roomConfigFrom(game.context.economy),
     ),
   )
 }

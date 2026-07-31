@@ -91,7 +91,7 @@ function stagedActionGateReasonFor(action: StagedAction): string | null {
 }
 
 /** Whether Confirm should stay disabled because some staged action needs a
- * machine line neither owned nor hired today - explains itself via the
+ * machinery neither owned nor hired today - explains itself via the
  * per-row gate reason rather than failing silently. */
 const stagedWorkGated = computed(() => {
   const d = detail.value
@@ -413,7 +413,9 @@ function stopTakingOffers(): void {
 const totalSpentYen = computed(() => {
   const d = detail.value
   if (!d) return 0
-  return (d.ledger.purchaseYen ?? 0) + d.ledger.repairYen + d.ledger.partsYen
+  return (
+    (d.ledger.purchaseYen ?? 0) + d.ledger.repairYen + d.ledger.partsYen + d.ledger.listingFeesYen
+  )
 })
 
 // --- Staging, replace, remove ---
@@ -531,7 +533,7 @@ function onRemoveClick(carPartId: CarPartId): void {
 
 /**
  * The remove affordance's own gate reason (structural refusals - not
- * removable, blocked-by - plus the buried engine/drivetrain machine-line
+ * removable, blocked-by - plus the buried engine/drivetrain machine-shop
  * gate) - `null` when nothing blocks it.
  */
 function removeBlockedReasonFor(carPartId: CarPartId): string | null {
@@ -1595,6 +1597,15 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
           <div class="finance-row">
             <dt>Parts</dt>
             <dd data-test="finance-parts">{{ formatYen(detail.ledger.partsYen) }}</dd>
+          </div>
+          <!-- Advertising this car is a cost of this car; rent, bays, staff
+               and machine-shop hire are the shop's running costs and
+               deliberately never appear here. -->
+          <div v-if="detail.ledger.listingFeesYen > 0" class="finance-row">
+            <dt>Listing fees</dt>
+            <dd data-test="finance-listing-fees">
+              {{ formatYen(detail.ledger.listingFeesYen) }}
+            </dd>
           </div>
           <div class="finance-row total">
             <dt>Total spent</dt>

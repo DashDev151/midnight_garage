@@ -96,6 +96,39 @@ const CarTierWeightsByAuctionTierSchema = z.object({
   'collector-network': ByCarTierWeightSchema,
 })
 
+/**
+ * One auction room's opening hours (`auction.cadenceByTier`): which days of
+ * the week it lets people in, and how many weeks pass between sittings.
+ * `openDaysOfWeek` holds 1-indexed positions within the week
+ * (`calendar.ts`'s `dayOfWeek`, so 1 is the first day and `daysPerWeek` the
+ * last); `weeksBetween` is 1 for a room that sits every week and 2 for one
+ * that sits every second week. Week 1 is an open week for every room, so a
+ * `weeksBetween` of 2 sits in weeks 1, 3, 5 and so on
+ * (`calendar.ts`'s `isAuctionTierOpen`, the one implementation).
+ *
+ * Cadence belongs to the VENUE, which is why it lives here rather than as
+ * one global auction day on the calendar: a single day made the late game
+ * wait, when a player who has earned access to four rooms should get MORE to
+ * do rather than less. Two rooms open on the same day is deliberate and
+ * desirable, never a collision to resolve, and attending a room does not
+ * cost the day - a player may sit at every room open today.
+ */
+const AuctionTierCadenceSchema = z
+  .object({
+    openDaysOfWeek: z.array(z.number().int().positive()).min(1),
+    weeksBetween: z.number().int().positive(),
+  })
+  .strict()
+
+/** One cadence per auction tier, keyed explicitly so a missing room fails
+ * validation rather than silently never opening. */
+const CadenceByAuctionTierSchema = z.object({
+  'local-yard': AuctionTierCadenceSchema,
+  regional: AuctionTierCadenceSchema,
+  premium: AuctionTierCadenceSchema,
+  'collector-network': AuctionTierCadenceSchema,
+})
+
 /** An inclusive [min, max] day range, min <= max. */
 const DayRangeSchema = z
   .tuple([z.number().int().positive(), z.number().int().positive()])
@@ -137,16 +170,20 @@ const AuctionRoomTurnoutBandSchema = z
  * The live auction room's own tuning (`packages/game/src/screens/
  * auctionRoom.ts`), generalised out of the auction room demo so a shared,
  * config-driven machine seats both the demo and the production room off one
- * source of truth. Every field mirrors the demo's own former `ROOM_TUNING`
- * constant exactly; `turnout` grew a third band (`steady`, between `thin`
+ * source of truth. `turnout` grew a third band (`steady`, between `thin`
  * and `packed`) for the real board's three turnouts, where the demo only
  * ever needed two.
+ *
+ * The room's opening bid is NOT authored here. It is the seller's floor,
+ * `AUCTION_RESERVE_PRICE_FRACTION`, over the same guide value the room
+ * reads, so the reserve printed on the auction card and the number the room
+ * opens at are one figure by construction (sprint150.md, which retired the
+ * room-local copy of the fraction: it held a second, disagreeing 0.55).
+ * `auctionRoom.ts`'s `roomConfigFrom` folds it in for the machine.
  */
 export const AuctionRoomConfigSchema = z.object({
   /** Per-bid fuse, in milliseconds. */
   clockMs: z.number().int().positive(),
-  /** Opening bid, as a fraction of the room's read value. */
-  reserveFraction: z.number().min(0).max(1),
   /**
    * Per-tier admission charged the first time a room seats at that tier on
    * a given day - later sittings at the same tier the same day are covered
@@ -368,20 +405,23 @@ export const EconomyConfigSchema = z.object({
    * `state.day` is ever turned into a day-of-week or a month - every other
    * module calls its derivations rather than keeping a private day-of-week
    * check of its own. `daysPerWeek`/`daysPerMonth` are the week/month
-   * LENGTH; the four `*DayOfWeek` fields are 1-indexed positions within
+   * LENGTH; the three `*DayOfWeek` fields are 1-indexed positions within
    * that week (1 = the first day, `daysPerWeek` = the last), naming which
-   * day each landmark falls on: the auction catalogue, the weekend meet's
-   * one guaranteed draw, staff payday and the rent bill. `daysPerMonth` is
+   * day each landmark falls on: the weekend meet's one guaranteed draw,
+   * staff payday and the rent bill. `daysPerMonth` is
    * chosen as four clean weeks, so a month boundary is always also a week
    * boundary - no second cadence to reconcile. A game month is
    * `floor((day - 1) / daysPerMonth) + 1`, never a Gregorian one (no leap
    * years, no real 1995 calendar - the game counts days from day one).
+   *
+   * The auction house is NOT a landmark here. Each room keeps its own hours
+   * (`auction.cadenceByTier`, sprint150.md), so there is no one auction day
+   * to name.
    */
   calendar: z
     .object({
       daysPerWeek: z.number().int().positive(),
       daysPerMonth: z.number().int().positive(),
-      auctionDayOfWeek: z.number().int().positive(),
       meetDayOfWeek: z.number().int().positive(),
       paydayOfWeek: z.number().int().positive(),
       rentDayOfWeek: z.number().int().positive(),
@@ -389,7 +429,7 @@ export const EconomyConfigSchema = z.object({
     .strict()
     .refine(
       (c) =>
-        [c.auctionDayOfWeek, c.meetDayOfWeek, c.paydayOfWeek, c.rentDayOfWeek].every(
+        [c.meetDayOfWeek, c.paydayOfWeek, c.rentDayOfWeek].every(
           (d) => d >= 1 && d <= c.daysPerWeek,
         ),
       { message: 'calendar: every *DayOfWeek lever must fall within [1, daysPerWeek]' },
@@ -531,6 +571,16 @@ export const EconomyConfigSchema = z.object({
       z.number().nonnegative(),
       z.number().nonnegative(),
     ]),
+    /**
+     * When each room opens its doors, replacing the retired single global
+     * auction day the calendar block used to name (sprint150.md). Every entry's
+     * `openDaysOfWeek` must fall within `[1, calendar.daysPerWeek]`;
+     * `schemas.test.ts` asserts that bound, since the two blocks are
+     * validated independently. Rooms deliberately overlap: `premium` and
+     * `collector-network` share day 6 on alternate weeks, and that is the
+     * point, not a defect.
+     */
+    cadenceByTier: CadenceByAuctionTierSchema,
   }),
   /**
    * economy-bible.md law 1: a single slope, always above 1 - every repair

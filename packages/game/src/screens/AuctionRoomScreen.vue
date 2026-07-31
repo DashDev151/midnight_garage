@@ -12,6 +12,7 @@ import {
   letGo,
   nextRungYen,
   playerBid,
+  roomConfigFrom,
   tick,
   type Room,
   type RoomConfig,
@@ -103,7 +104,7 @@ function buildRoom(): Room | null {
     playerEstimateYen(lot.car, model, game.gameState, game.context),
   )
   const config = scaledConfig(
-    game.context.economy.auctionRoom,
+    roomConfigFrom(game.context.economy),
     game.fusePreset,
     lot.turnout,
     isTutorialLot,

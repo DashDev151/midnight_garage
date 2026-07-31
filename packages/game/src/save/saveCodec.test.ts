@@ -985,7 +985,7 @@ describe('saveCodec', () => {
   })
 
   it('a per-part staged action and job (carPartId set) round-trip exactly under version 17', () => {
-    expect(SAVE_VERSION).toBe(50)
+    expect(SAVE_VERSION).toBe(51)
     const perPart: GameState = GameStateSchema.parse({
       ...fullState,
       jobs: [
@@ -1034,7 +1034,7 @@ describe('saveCodec', () => {
   })
 
   it('a v31 state with an origin-carrying inventory part round-trips the origin exactly', () => {
-    expect(SAVE_VERSION).toBe(50)
+    expect(SAVE_VERSION).toBe(51)
     const withOrigin: GameState = GameStateSchema.parse({
       ...fullState,
       partInventory: [
@@ -1623,7 +1623,7 @@ describe('saveCodec', () => {
    * tracks the current value, not this fact.
    */
   it('a techniques and shop-title state round-trips at the current SAVE_VERSION', () => {
-    expect(SAVE_VERSION).toBe(50)
+    expect(SAVE_VERSION).toBe(51)
   })
 
   it('a v24 save with specialty high enough to unlock a technique/title decodes identically either way - nothing new is stored', () => {
@@ -1680,7 +1680,12 @@ describe('saveCodec', () => {
         },
       ],
       carLedgers: {
-        'car-ledger-01': { purchaseYen: 500_000, repairYen: 20_000, partsYen: 60_000 },
+        'car-ledger-01': {
+          purchaseYen: 500_000,
+          repairYen: 20_000,
+          partsYen: 60_000,
+          listingFeesYen: 4_500,
+        },
       },
     })
     const decoded = decodeSave(encodeSave(withLedger))
@@ -1689,6 +1694,7 @@ describe('saveCodec', () => {
       purchaseYen: 500_000,
       repairYen: 20_000,
       partsYen: 60_000,
+      listingFeesYen: 4_500,
     })
     expect(decoded.partInventory[0]?.pricePaidYen).toBe(60_000)
   })
@@ -1708,7 +1714,7 @@ describe('saveCodec', () => {
         },
       ],
       carLedgers: {
-        'car-ledger-02': { purchaseYen: null, repairYen: 0, partsYen: 0 },
+        'car-ledger-02': { purchaseYen: null, repairYen: 0, partsYen: 0, listingFeesYen: 0 },
       },
     })
     const decoded = decodeSave(encodeSave(withUnknownPurchase))
@@ -1726,7 +1732,7 @@ describe('saveCodec', () => {
    * a real double-parked car round-trips it exactly.
    */
   it('SAVE_VERSION is current', () => {
-    expect(SAVE_VERSION).toBe(50)
+    expect(SAVE_VERSION).toBe(51)
   })
 
   it('a real pre-v26 save (a v25 envelope with no graceParkingCarId field) decodes with nothing double-parked under v26', () => {
@@ -1758,8 +1764,8 @@ describe('saveCodec', () => {
    * exist yet), and a v27 state with a real live listing round-trips it
    * exactly.
    */
-  it('SAVE_VERSION is 48', () => {
-    expect(SAVE_VERSION).toBe(50)
+  it('SAVE_VERSION is current', () => {
+    expect(SAVE_VERSION).toBe(51)
   })
 
   it('a real pre-v27 save (a v26 envelope with neither field) decodes with nothing listed or scheduled under v27', () => {
@@ -1805,8 +1811,8 @@ describe('saveCodec', () => {
    * id installed must come out re-addressed to its own class sibling SKU,
    * same slot, same band, same everything else.
    */
-  it('SAVE_VERSION is 48', () => {
-    expect(SAVE_VERSION).toBe(50)
+  it('SAVE_VERSION is current', () => {
+    expect(SAVE_VERSION).toBe(51)
   })
 
   it("a real pre-v28 save remaps an entry-tier car's everyday-class stock part to its own class sibling SKU", () => {

@@ -51,17 +51,21 @@ describe('carLedgerFor (Sprint 42)', () => {
       purchaseYen: null,
       repairYen: 0,
       partsYen: 0,
+      listingFeesYen: 0,
     })
   })
 
   it('returns the real entry when one exists', () => {
     const state = baseState({
-      carLedgers: { 'car-1': { purchaseYen: 500_000, repairYen: 10_000, partsYen: 0 } },
+      carLedgers: {
+        'car-1': { purchaseYen: 500_000, repairYen: 10_000, partsYen: 0, listingFeesYen: 0 },
+      },
     })
     expect(carLedgerFor(state, 'car-1')).toEqual({
       purchaseYen: 500_000,
       repairYen: 10_000,
       partsYen: 0,
+      listingFeesYen: 0,
     })
   })
 })
@@ -73,16 +77,19 @@ describe('setCarLedger / updateCarLedger / deleteCarLedger (Sprint 42)', () => {
       purchaseYen: 900_000,
       repairYen: 0,
       partsYen: 0,
+      listingFeesYen: 0,
     })
     expect(result.carLedgers).toEqual({
-      'car-1': { purchaseYen: 900_000, repairYen: 0, partsYen: 0 },
+      'car-1': { purchaseYen: 900_000, repairYen: 0, partsYen: 0, listingFeesYen: 0 },
     })
     expect(state.carLedgers).toEqual({}) // input untouched
   })
 
   it('updateCarLedger folds an accumulation onto an existing entry', () => {
     const state = baseState({
-      carLedgers: { 'car-1': { purchaseYen: 900_000, repairYen: 0, partsYen: 0 } },
+      carLedgers: {
+        'car-1': { purchaseYen: 900_000, repairYen: 0, partsYen: 0, listingFeesYen: 0 },
+      },
     })
     const result = updateCarLedger(state, 'car-1', (l) => ({
       ...l,
@@ -92,6 +99,7 @@ describe('setCarLedger / updateCarLedger / deleteCarLedger (Sprint 42)', () => {
       purchaseYen: 900_000,
       repairYen: 5_000,
       partsYen: 0,
+      listingFeesYen: 0,
     })
   })
 
@@ -104,12 +112,15 @@ describe('setCarLedger / updateCarLedger / deleteCarLedger (Sprint 42)', () => {
       purchaseYen: null,
       repairYen: 0,
       partsYen: 12_000,
+      listingFeesYen: 0,
     })
   })
 
   it('deleteCarLedger removes an existing entry', () => {
     const state = baseState({
-      carLedgers: { 'car-1': { purchaseYen: 900_000, repairYen: 0, partsYen: 0 } },
+      carLedgers: {
+        'car-1': { purchaseYen: 900_000, repairYen: 0, partsYen: 0, listingFeesYen: 0 },
+      },
     })
     const result = deleteCarLedger(state, 'car-1')
     expect(result.carLedgers).toEqual({})

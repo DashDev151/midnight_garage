@@ -175,6 +175,33 @@ row on this page remains provisional under the R3 standing grant until reviewed.
 
 ---
 
+## Sprint 150: the rooms keep their own hours
+
+Two shape changes and no new yen figure. Sprint doc: `docs/sprints/sprint150.md`. **Signed by
+name and value BEFORE implementation, under directive 22 and NOT under R3 (which had already
+expired).**
+
+| lever | old | new | reason |
+| --- | --- | --- | --- |
+| `calendar.auctionDayOfWeek` | 3 | **RETIRED** | One global auction day gave a player who had earned four rooms exactly one buying day a week, which is backwards, and sent a brand-new player to a shuttered auction house on day 1. Cadence is a property of the VENUE. |
+| `auction.cadenceByTier['local-yard']` | new | `openDaysOfWeek` [1, 3, 5, 7], `weeksBetween` 1 | Signed as tabled. Opens on day 1, which closes the day-1 tutorial bug by construction. |
+| `auction.cadenceByTier.regional` | new | `openDaysOfWeek` [2, 4], `weeksBetween` 1 | Signed as tabled. |
+| `auction.cadenceByTier.premium` | new | `openDaysOfWeek` [6], `weeksBetween` 1 | Signed as tabled. |
+| `auction.cadenceByTier['collector-network']` | new | `openDaysOfWeek` [6, 7], `weeksBetween` 2 | Signed as tabled. Week 1 is an open week, so it first sits on days 6 and 7 of week 1. Its day-6 overlap with `premium` is deliberate and pinned by test. |
+| `auctionRoom.reserveFraction` | 0.55 | **RETIRED**, unified into `AUCTION_RESERVE_PRICE_FRACTION` (already 0.6, unmoved) | The ruling in full: "set the reserve to 0.6 everywhere." One idea had two authored numbers over the same base, so the live room opened five points BELOW the reserve its own auction card printed. |
+
+**The one consequence worth stating, because it is a real narrowing and no other lever moved to
+offset it:** `clearingFractionFor` draws a cold ("bargain") room uniformly between the reserve
+fraction and the turnout band's `clearMin`. Raising the floor from 0.55 to 0.6 narrows that band
+by five points, so a bargain room is slightly less of a bargain. That is entailed by the ruling,
+not a separate change.
+
+`CarLedger.listingFeesYen` is NOT a lever: it is a new state field carrying money that already
+moved, so no yen figure changes anywhere. It is here for completeness because the worked example's
+per-car net now includes it.
+
+---
+
 ## The four worth arguing about
 
 Chosen on blast radius (how much of the game they touch) and how much of a judgement call each

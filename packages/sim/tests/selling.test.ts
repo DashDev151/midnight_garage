@@ -14,6 +14,7 @@ import {
 import { describe, expect, it } from 'vitest'
 import { interestedBuyers } from '../src/bidding'
 import { buildSimContext } from '../src/context'
+import { resolveHireMachineLine } from '../src/jobs'
 import { bumpPlayerSales, updateMarketHeat } from '../src/marketHeat'
 import { marketValueYen } from '../src/marketValue'
 import {
@@ -433,6 +434,102 @@ describe('resolveSetForSale (Sprint 31; channels, Sprint 114)', () => {
     expect(again.state.cashYen).toBe(
       spent.cashYen - CONTEXT.economy.sellingChannels.weekendMeet.feeYen,
     )
+  })
+})
+
+/**
+ * The running-cost law: rent, bays, staff and
+ * machine-shop hire are RUNNING costs and accrue to the business; a listing
+ * fee is charged FOR a car and attributes to it. Before sprint150.md the
+ * ledger carried only purchase/repairs/parts, so every fee paid to advertise
+ * a car made the profit the game reported wrong by exactly that fee.
+ */
+describe('listing fees land on the car ledger (sprint150.md)', () => {
+  const paidChannelFeeYen = CONTEXT.economy.sellingChannels.tunerMagazine.feeYen
+
+  it("posts the channel's fee to the car's own ledger, by exactly the fee charged", () => {
+    const state = stateWithCar(car, {
+      cashYen: 1_000_000,
+      carLedgers: {
+        [car.id]: { purchaseYen: 500_000, repairYen: 0, partsYen: 0, listingFeesYen: 0 },
+      },
+    })
+    const result = resolveSetForSale(state, car.id, true, CONTEXT, 'tunerMagazine')
+    expect(paidChannelFeeYen).toBeGreaterThan(0)
+    expect(result.state.carLedgers[car.id]?.listingFeesYen).toBe(paidChannelFeeYen)
+    // Cash out and ledger in are the same figure - the ledger records money
+    // that already moved, it never charges anything itself.
+    expect(state.cashYen - result.state.cashYen).toBe(paidChannelFeeYen)
+    // Nothing else on the ledger moves.
+    expect(result.state.carLedgers[car.id]).toMatchObject({
+      purchaseYen: 500_000,
+      repairYen: 0,
+      partsYen: 0,
+    })
+  })
+
+  it('accumulates across re-listings rather than replacing the last fee paid', () => {
+    const state = stateWithCar(car, {
+      cashYen: 1_000_000,
+      carLedgers: {
+        [car.id]: { purchaseYen: 500_000, repairYen: 0, partsYen: 0, listingFeesYen: 0 },
+      },
+    })
+    const first = resolveSetForSale(state, car.id, true, CONTEXT, 'freeAdsPaper').state
+    const second = resolveSetForSale(first, car.id, true, CONTEXT, 'tunerMagazine').state
+    expect(second.carLedgers[car.id]?.listingFeesYen).toBe(
+      CONTEXT.economy.sellingChannels.freeAdsPaper.feeYen + paidChannelFeeYen,
+    )
+  })
+
+  it('a free channel posts nothing at all - no fee, no ledger entry minted', () => {
+    const state = stateWithCar(car, { cashYen: 1_000_000 }) // no ledger entry
+    const result = resolveSetForSale(state, car.id, true, CONTEXT, 'shopFront')
+    expect(CONTEXT.economy.sellingChannels.shopFront.feeYen).toBe(0)
+    expect(result.state.carLedgers).toEqual({})
+  })
+
+  it('changes the profit the sale reports by exactly the fee, and by nothing else', () => {
+    const ledgerNoFee = {
+      purchaseYen: 500_000,
+      repairYen: 100_000,
+      partsYen: 50_000,
+      listingFeesYen: 0,
+    }
+    const without = resolveSellViaWalkIn(
+      stateWithOffer(car, 900_000, 'tuner', { carLedgers: { [car.id]: ledgerNoFee } }),
+      car.id,
+      CONTEXT,
+    )
+    const with_ = resolveSellViaWalkIn(
+      stateWithOffer(car, 900_000, 'tuner', {
+        carLedgers: { [car.id]: { ...ledgerNoFee, listingFeesYen: paidChannelFeeYen } },
+      }),
+      car.id,
+      CONTEXT,
+    )
+    const soldWithout = without.log[0]
+    const soldWith = with_.log[0]
+    expect(soldWithout?.type).toBe('car-sold')
+    expect(soldWith?.type).toBe('car-sold')
+    if (soldWithout?.type !== 'car-sold' || soldWith?.type !== 'car-sold') return
+    expect(soldWithout.profitYen).toBe(900_000 - (500_000 + 100_000 + 50_000))
+    expect(soldWith.profitYen).toBe(soldWithout.profitYen! - paidChannelFeeYen)
+    // Only the profit moves - the buyer paid the same money either way.
+    expect(soldWith.priceYen).toBe(soldWithout.priceYen)
+  })
+
+  /**
+   * The other half of the same ruling, asserted so it cannot drift: a day's
+   * machine-shop hire can pull four engines, so it belongs to no single car.
+   * `resolveHireMachineLine` charges the day and must never touch a ledger.
+   */
+  it('machine-shop hire never appears on any car ledger', () => {
+    const state = stateWithCar(car, { cashYen: 1_000_000 })
+    const hired = resolveHireMachineLine(state, 'engine', CONTEXT)
+    expect(hired.state.cashYen).toBeLessThan(state.cashYen) // a real charge landed
+    expect(hired.state.carLedgers).toEqual({})
+    expect(hired.log.some((e) => e.type === 'machine-hired')).toBe(true)
   })
 })
 
@@ -934,7 +1031,12 @@ describe('resolveSellViaWalkIn (Sprint 31: resolves today’s pre-rolled offer)'
     it('logs profitYen = priceYen minus (purchase + repairs + parts) when the purchase price is known, and deletes the ledger entry', () => {
       const state = stateWithOffer(car, 900_000, 'tuner', {
         carLedgers: {
-          [car.id]: { purchaseYen: 500_000, repairYen: 100_000, partsYen: 50_000 },
+          [car.id]: {
+            purchaseYen: 500_000,
+            repairYen: 100_000,
+            partsYen: 50_000,
+            listingFeesYen: 0,
+          },
         },
       })
       const result = resolveSellViaWalkIn(state, car.id, CONTEXT)
@@ -950,7 +1052,9 @@ describe('resolveSellViaWalkIn (Sprint 31: resolves today’s pre-rolled offer)'
 
     it('logs no profitYen when the ledger exists but purchaseYen is explicitly null', () => {
       const state = stateWithOffer(car, 900_000, 'tuner', {
-        carLedgers: { [car.id]: { purchaseYen: null, repairYen: 20_000, partsYen: 0 } },
+        carLedgers: {
+          [car.id]: { purchaseYen: null, repairYen: 20_000, partsYen: 0, listingFeesYen: 0 },
+        },
       })
       const result = resolveSellViaWalkIn(state, car.id, CONTEXT)
       expect(result.log[0]).not.toHaveProperty('profitYen')
@@ -960,7 +1064,9 @@ describe('resolveSellViaWalkIn (Sprint 31: resolves today’s pre-rolled offer)'
 
     it('a negative profitYen (a loss) is logged as-is, not clamped', () => {
       const state = stateWithOffer(car, 900_000, 'tuner', {
-        carLedgers: { [car.id]: { purchaseYen: 1_200_000, repairYen: 0, partsYen: 0 } },
+        carLedgers: {
+          [car.id]: { purchaseYen: 1_200_000, repairYen: 0, partsYen: 0, listingFeesYen: 0 },
+        },
       })
       const result = resolveSellViaWalkIn(state, car.id, CONTEXT)
       expect(result.log[0]).toMatchObject({ profitYen: 900_000 - 1_200_000 })
@@ -1183,7 +1289,9 @@ describe('resolveScrapShell (Sprint 71 decision 7: the teardown game, scrap the 
   it("pays the model's book value at the flat scrap fraction, removes the car, frees its bay, and clears its ledger", () => {
     const state = stateWithCar(car, {
       cashYen: 100_000,
-      carLedgers: { [car.id]: { purchaseYen: 500_000, repairYen: 0, partsYen: 0 } },
+      carLedgers: {
+        [car.id]: { purchaseYen: 500_000, repairYen: 0, partsYen: 0, listingFeesYen: 0 },
+      },
     })
     const result = resolveScrapShell(state, car.id, CONTEXT)
     const expectedPriceYen = Math.round(

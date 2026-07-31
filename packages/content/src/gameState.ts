@@ -36,25 +36,39 @@ export type MarketLedger = z.infer<typeof MarketLedgerSchema>
 /**
  * The flip ledger: one owned car's money-in record - what it cost to
  * acquire (auction win or buyout hammer price), plus every yen sunk into it
- * since (repairs, installed parts). Pure bookkeeping: recording this never
- * changes an economic outcome, it only surfaces money that already moves
- * through the existing resolvers (auction/buyout, repair-job creation,
- * install completion). `purchaseYen: null` means unknown - an already-owned
- * car with no recorded acquisition, or a dev-granted car - so the panel
- * shows "-" rather than fabricating a number.
+ * since (repairs, installed parts, listing fees). Pure bookkeeping:
+ * recording this never changes an economic outcome, it only surfaces money
+ * that already moves through the existing resolvers (auction/buyout,
+ * repair-job creation, install completion, listing). `purchaseYen: null`
+ * means unknown - an already-owned car with no recorded acquisition, or a
+ * dev-granted car - so the panel shows "-" rather than fabricating a number.
+ *
+ * What belongs here and what does not is a design law, not a convenience: a
+ * cost attributes to a car when it is charged FOR that car, and accrues to
+ * the business when it is not. Purchase,
+ * repairs, parts and listing fees are per-car. Machine-shop hire, rent, bays
+ * and staff wages are running costs and must never be posted here: a day's
+ * engine-crane hire can pull four engines, so charging it to one car would
+ * be a fiction.
  */
 export const CarLedgerSchema = z.object({
   purchaseYen: z.number().int().nonnegative().nullable(),
   repairYen: z.number().int().nonnegative().default(0),
   partsYen: z.number().int().nonnegative().default(0),
+  /** Every listing fee this car has been charged, summed - a re-list on a
+   * dearer channel pays again and adds again (`resolveSetForSale`,
+   * sim/selling.ts), so this is a running total per car, not the last fee
+   * paid. */
+  listingFeesYen: z.number().int().nonnegative().default(0),
 })
 
 /**
- * The same repairYen/partsYen shape as `CarLedgerSchema`, at job scope
+ * The repair/parts half of `CarLedgerSchema`'s shape, at job scope
  * instead of car scope - what the player actually spent on a customer's
  * service job (repair charges fronted on their car, parts installed at their
- * paid price), keyed by job id. No `purchaseYen`: a service job has no
- * acquisition cost. Created lazily (a job with no entry has spent nothing
+ * paid price), keyed by job id. No `purchaseYen` and no `listingFeesYen`: a
+ * customer's car is never bought and never listed. Created lazily (a job
+ * with no entry has spent nothing
  * yet) and deleted at close-out (`resolveServiceJob`), same lifecycle as
  * `CarLedgerSchema` minus the "created at acquisition" step.
  */
@@ -332,8 +346,8 @@ export const GameStateSchema = z.object({
   stagedCarWork: z.record(z.string(), z.array(StagedActionSchema)).default({}),
   /**
    * The flip ledger: per-owned-car spend record, keyed by carInstanceId -
-   * created at acquisition (auction win/buyout), updated by repair charges
-   * and part installs, deleted at sale. Entries exist only for owned cars,
+   * created at acquisition (auction win/buyout), updated by repair charges,
+   * part installs and listing fees, deleted at sale. Entries exist only for owned cars,
    * never customer service-job cars (never ours). A car with no entry (an
    * already-owned car with no recorded acquisition, a dev grant) reads as
    * unknown-purchase, not a fabricated zero - see `CarLedgerSchema` above.
@@ -518,9 +532,9 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
        * uninstall, reassembly order matters (`installFitGate`). */
       'blocked-by',
       /** A buried engine/drivetrain or suspension/body/interior signature
-       * slot's operation needs its group's machine line owned or hired for
-       * today (`hasMachineLineFor`, sim/jobs.ts) - hire it, or buy the
-       * tools. */
+       * slot's operation needs its group's machinery owned or hired for
+       * today (`hasMachineLineFor`, sim/jobs.ts) - book the machine-shop
+       * hire, or buy the tools. */
       'machine-line',
       /** `panels`/`paint`/`underbody` bands are derived from zone state (the
        * body pipeline, sim/bodyPipeline.ts) - a direct repair-zone job

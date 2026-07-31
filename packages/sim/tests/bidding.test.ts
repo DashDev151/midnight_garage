@@ -221,6 +221,7 @@ describe('resolveBuyoutInstant', () => {
       purchaseYen: priceYen,
       repairYen: 0,
       partsYen: 0,
+      listingFeesYen: 0,
     })
   })
 
@@ -305,6 +306,7 @@ describe('settleAuctionHammer', () => {
       purchaseYen: hammerYen,
       repairYen: 0,
       partsYen: 0,
+      listingFeesYen: 0,
     })
   })
 

@@ -16,7 +16,7 @@ import {
 import { interestedBuyers } from './bidding'
 import { applyReputationDelta } from './reputation'
 import { isMeetDay } from './calendar'
-import { carLedgerFor, deleteCarLedger } from './carLedger'
+import { carLedgerFor, deleteCarLedger, updateCarLedger } from './carLedger'
 import { saleQualityFor, saleReputationDeltaFor } from './carCondition'
 import type { SimContext } from './context'
 import { saleRevealLineFor } from './diagnosis'
@@ -296,7 +296,9 @@ function resolveOffersSeenForNewListing(
 /**
  * Toggle a car's "taking offers" flag, and (while turning on) which channel
  * to list it on - free to unlist, but listing on a channel charges that
- * channel's `feeYen` immediately (`shopFront`/`tradeNetwork` are 0).
+ * channel's `feeYen` immediately (`shopFront`/`tradeNetwork` are 0) and posts
+ * it to that car's own ledger (`listingFeesYen`), so the profit the game
+ * reports on a flip is net of what advertising it cost.
  * Marking a car for sale doesn't sell it or resolve anything by itself, it
  * just makes the car eligible for the daily offer draw (`drawDailyOffers`)
  * below. Turning it off drops the toggle and any live offer on the car -
@@ -392,15 +394,27 @@ export function resolveSetForSale(
     channelId,
     weekendMeetPending: channelId === 'weekendMeet',
   }
+  const listedState: GameState = {
+    ...placedState,
+    cashYen: placedState.cashYen - feeYen,
+    carsForSale: [
+      ...placedState.carsForSale.filter((f) => f.carInstanceId !== carInstanceId),
+      entry,
+    ],
+  }
+  // A listing fee is charged FOR this car, so it goes on this car's ledger;
+  // rent, bays, staff and machine-shop hire are running costs and stay off
+  // it. A free channel posts nothing at all,
+  // the same silent no-op a zero attendance fee already gets - writing a 0
+  // would mint a ledger entry for a car that has none and say nothing.
   return {
-    state: {
-      ...placedState,
-      cashYen: placedState.cashYen - feeYen,
-      carsForSale: [
-        ...placedState.carsForSale.filter((f) => f.carInstanceId !== carInstanceId),
-        entry,
-      ],
-    },
+    state:
+      feeYen > 0
+        ? updateCarLedger(listedState, carInstanceId, (l) => ({
+            ...l,
+            listingFeesYen: l.listingFeesYen + feeYen,
+          }))
+        : listedState,
     log: [],
   }
 }
@@ -830,7 +844,8 @@ export function resolveSellViaWalkIn(
   const profitYen =
     ledger.purchaseYen === null
       ? undefined
-      : offer.priceYen - (ledger.purchaseYen + ledger.repairYen + ledger.partsYen)
+      : offer.priceYen -
+        (ledger.purchaseYen + ledger.repairYen + ledger.partsYen + ledger.listingFeesYen)
 
   // Computed against the original, pre-sale `state`/`car` - the same snapshot
   // every other figure above reads from, before this sale's own
