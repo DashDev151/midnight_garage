@@ -1542,12 +1542,22 @@ export const EconomyConfigSchema = z.object({
        * `rough`, because a young, barely-driven car cannot yet have been
        * given up on. Either threshold alone is not enough - a heavily driven
        * young car keeps its eligibility for the worst grade.
+       *
+       * `minWorkSteps` is a floor under the rolled-and-scaled step count, not
+       * a second roll: economy-bible.md's core-loop law guarantees a minimum
+       * of fixable work on every lot, and a `tidy` grade on a barely-driven
+       * car can otherwise scale toward zero steps, generating a car with
+       * nothing wrong at all. The floor is small relative to a car's 26
+       * ordinary slots, so it drops a handful of parts one band each (mint to
+       * fine) rather than ruining any of them - the young-car guards measure
+       * parts ruined to `poor`, which this floor does not touch.
        */
       damageGrades: z.object({
         weights: DamageGradeWeightsSchema,
         bandStepsByGrade: DamageGradeStepsSchema,
         projectGateMaxAgeYears: z.number().int().positive(),
         projectGateMaxMileageKm: z.number().int().positive(),
+        minWorkSteps: z.number().int().nonnegative(),
       }),
       /**
        * Per ELIGIBLE, non-missing slot (eligible = the catalog has a `grade >

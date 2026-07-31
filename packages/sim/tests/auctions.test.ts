@@ -823,12 +823,16 @@ describe('the damage budget: how rough a generated lot is', () => {
     // `wearExposure` scaling every grade's budget down by how much life this
     // car's rolled mileage has actually given it (well under 1 even for this
     // older probe car). The older probe car above also has less headroom
-    // under the ceiling than a young one would. Both effects compress the
-    // achieved gap well below the raw authored one, so the floor is 60 per
+    // under the ceiling than a young one would. `minWorkSteps` pulls the low
+    // end up further still, since a scaled `tidy` roll would otherwise sit
+    // under the floor most of the time - the floor exists precisely to stop a
+    // `tidy` car from reading as work-free, and doing so narrows the gap it
+    // opens against `project`. The three effects together compress the
+    // achieved gap well below the raw authored one, so the floor is 45 per
     // cent here.
     const { bandStepsByGrade } = ECONOMY.partsGeneration.damageGrades
     const authoredGap = bandStepsByGrade.project - bandStepsByGrade.tidy
-    expect(project - tidy).toBeGreaterThan(0.6 * authoredGap)
+    expect(project - tidy).toBeGreaterThan(0.45 * authoredGap)
     expect(project - tidy).toBeLessThanOrEqual(authoredGap)
   })
 

@@ -314,6 +314,9 @@ describe('seed content validates against schemas', () => {
     // The age gate: a young, low-mileage car cannot roll the worst grade.
     expect(result.data.partsGeneration.damageGrades.projectGateMaxAgeYears).toBe(6)
     expect(result.data.partsGeneration.damageGrades.projectGateMaxMileageKm).toBe(60000)
+    // The core-loop floor: every lot carries at least this many band steps of
+    // work, so a `tidy` roll on a barely-driven car cannot scale to nothing.
+    expect(result.data.partsGeneration.damageGrades.minWorkSteps).toBe(10)
     // Upkeep wear can only express in proportion to the car's own mileage -
     // a brand-new car is mint whoever owned it.
     expect(result.data.partsGeneration.wearExposureByMileageKm[0]).toEqual([0, 0])

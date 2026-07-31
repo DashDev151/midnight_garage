@@ -1055,6 +1055,25 @@ import storyMissions from '../data/storyMissions.json'
  * 48), paired with a new age gate - `projectGateMaxAgeYears` 6 and `projectGateMaxMileageKm`
  * 60000 - that demotes a rolled `project` to `rough` on any car under both thresholds, since the
  * flat roll otherwise put the worst grade on cars too young and lightly used to have earned it.
+ *
+ * Re-pinned for Sprint 153's core-loop amendment (economy-bible.md's core-loop clause, which the
+ * budget had left unimplemented since the retired floor was the only mechanism that guaranteed
+ * work on a lot). ONE key enters `partsGeneration.damageGrades`: `minWorkSteps` = **10**. The
+ * budget formula becomes `max(minWorkSteps, round(bandStepsByGrade[grade] * wearExposure(...)))`,
+ * so a scaled `tidy` roll on a barely-driven car can no longer round toward zero fixable work. Ten
+ * steps against a car's 26 ordinary slots is a handful of parts dropped one band each (mint to
+ * fine), which is real work but well short of what it takes to ruin one (three steps reach
+ * `poor`).
+ *
+ * Both `advanceDay` golden hashes move with it (30-day career `dc007267` -> `aa7ec752`,
+ * acquisition-to-sale `3c84008d` -> `5f6dd458`), as does `schemas.test.ts`'s lever pin. The floor
+ * also compresses `auctions.test.ts`'s grade-ladder gap test (tidy is now pulled up toward the
+ * floor), re-derived there rather than in this file. `partPricing.json` and every mission payout
+ * are untouched.
+ *
+ * `generationCoherence.test.ts`'s barely-driven-car median ruined-parts guard reads red at this
+ * value (median 1 against its signed 0) and was left untouched, not relaxed, per this sprint's own
+ * stop rule: no bound was loosened and no second lever was tuned to chase it green.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -1064,7 +1083,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('b0eafaf82c82554c8bde40cb02eee1cd84e7e9569f1e3f8d5ee15bd3c07cdd3a')
+    ).toBe('a1038d920ae555a36eda1d2c5bdd47d61fe688d19055552043698bb881ec3cb6')
   })
 
   it('partPricing.json matches its approved content exactly', () => {

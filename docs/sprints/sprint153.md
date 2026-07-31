@@ -372,6 +372,15 @@ sprint's own stop rule, no further lever was tuned to chase them green.
 rather than a flat step count; all three guards are now green (age-0 fraction 0.0131, Wagon R
 ordinary-poor 1.34, barely-driven median 0).
 
+### Amendment: a work-guarantee floor
+
+`partsGeneration.damageGrades.minWorkSteps` (10) now floors `budgetSteps` at
+`max(minWorkSteps, round(bandStepsByGrade[grade] * wearExposure(...)))`, re-implementing
+economy-bible.md's core-loop clause (a minimum of fixable work on every lot) that this sprint's
+budget had left unimplemented after retiring the old bill-chasing floor; the age-0 and Wagon R
+guards stay green at this value, but the barely-driven-car median guard reads red (1 rather than 0)
+and was left untouched, not relaxed, per this sprint's own stop rule.
+
 ### Checks
 
 | check | result |

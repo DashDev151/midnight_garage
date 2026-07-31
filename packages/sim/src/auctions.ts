@@ -235,8 +235,8 @@ const MAX_ZONE_STATE_STEPS =
  * under the damage budget's never-to-scrap rule: a part already at `poor`,
  * one band above `scrap`, is excluded outright. Iterates `ALL_CAR_PART_IDS`
  * in its own fixed order, so the candidate list is deterministic for a given
- * car state; the caller's seeded `rng.pick` is what actually chooses among
- * them. */
+ * car state; the caller narrows it to the least-damaged candidates and its
+ * seeded `rng.pick` chooses among those. */
 function degradeCandidates(car: CarInstance): CarPartId[] {
   const minDegradableIndex = bandIndex('poor') + 1
   return ALL_CAR_PART_IDS.filter((partId) => {
@@ -250,6 +250,21 @@ function degradeCandidates(car: CarInstance): CarPartId[] {
       ? hasZoneDegradeHeadroom(car.zoneState, partId)
       : bandIndex(installed.band) >= minDegradableIndex
   })
+}
+
+/** The candidates in `pool` carrying the least damage: those sharing the
+ * highest band index present. Confining each budget step to this set spreads
+ * the budget across the car, so every eligible part is dropped to a level
+ * before any part is taken below it. Preserves `ALL_CAR_PART_IDS` order, so
+ * the caller's seeded `rng.pick` over the result stays deterministic. */
+function shallowestCandidates(car: CarInstance, pool: readonly CarPartId[]): CarPartId[] {
+  const bandIndexOf = (partId: CarPartId) => bandIndex(car.parts[partId].installed!.band)
+  let shallowest = -1
+  for (const partId of pool) {
+    const idx = bandIndexOf(partId)
+    if (idx > shallowest) shallowest = idx
+  }
+  return pool.filter((partId) => bandIndexOf(partId) === shallowest)
 }
 
 /** One candidate's degrade step, applied to `working` - the zone-aware
@@ -376,6 +391,16 @@ export function damageStepsSpentBySymptoms(
  *   wear that the room prices in full, not a second hidden defect; and
  * - the caller has already deducted `damageStepsSpentBySymptoms` from `steps`.
  *
+ * Each step degrades one of the LEAST-damaged eligible parts
+ * (`shallowestCandidates`), never a uniform pick over the whole pool, so the
+ * budget spreads before it deepens: nothing is taken below a band until
+ * everything eligible has reached it. That is what separates a small budget
+ * from a large one in KIND rather than only in amount - ten steps drop ten
+ * different parts one band each (real work, nothing ruined), while a project
+ * car's budget covers the whole car and only then starts a second lap. A
+ * uniform pick could instead land on one part repeatedly and ruin it while
+ * its neighbours stayed untouched.
+ *
  * The candidate pool never offers an already-`poor` part, so no part is ever
  * forced to `scrap`, and every step runs under the same Law 2 ceiling the rest
  * of generation obeys (`degradeUnderCeiling`): a step that would breach it is
@@ -402,7 +427,7 @@ export function spendDamageBudget(
     // could still have carried it.
     let applied = false
     while (pool.length > 0 && !applied) {
-      const partId = rng.pick(pool)
+      const partId = rng.pick(shallowestCandidates(working, pool))
       const stepped = degradeUnderCeiling(working, model, context, carOrigin, partId)
       if (stepped) {
         working = stepped
@@ -798,9 +823,14 @@ export function generateAuctionCarInstance(
   // needs scaling by how much life the car has actually had, or a car fresh
   // off the lot rolling `used` would take the same steps as a decades-old one
   // rolling `used`. Reuses `wearExposure` - the same mileage-driven axis that
-  // already gates upkeep jitter above.
-  const budgetSteps = Math.round(
-    economy.partsGeneration.damageGrades.bandStepsByGrade[damageGrade] * exposure,
+  // already gates upkeep jitter above. `minWorkSteps` floors the scaled result
+  // so a barely-driven car never generates with nothing to fix at all: the
+  // core-loop law guarantees SOME work on every lot, and ten steps spread
+  // across the car is a handful of parts dropped one band each, not a ruined
+  // one - it lands well under what it takes to reach `poor`.
+  const budgetSteps = Math.max(
+    economy.partsGeneration.damageGrades.minWorkSteps,
+    Math.round(economy.partsGeneration.damageGrades.bandStepsByGrade[damageGrade] * exposure),
   )
   const remainingSteps = Math.max(
     0,

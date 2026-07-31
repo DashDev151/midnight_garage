@@ -525,7 +525,8 @@
         "project": 48
       },
       "projectGateMaxAgeYears": 6,
-      "projectGateMaxMileageKm": 60000
+      "projectGateMaxMileageKm": 60000,
+      "minWorkSteps": 10
     },
     "wearExposureByMileageKm": [
       [0, 0],

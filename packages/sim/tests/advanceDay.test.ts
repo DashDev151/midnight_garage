@@ -207,11 +207,12 @@ describe('advanceDay golden master', () => {
     // with it - which is the proof that this is a shape change and not a
     // behavioural one.
     //
-    // It last moved when the damage budget started scaling by
-    // `wearExposure(mileageKm)` before it is spent, so a car's rolled grade
-    // means "how rough for its age" rather than an age-blind step count.
-    // Re-derived from a real run, twice, to confirm determinism.
-    expect(hashState(finalState)).toBe('dc007267')
+    // It last moved when the damage budget changed which part each of its
+    // steps degrades: the budget now spends shallow-first, always degrading
+    // one of the least-damaged eligible parts, so the same rolled step count
+    // spreads across the car instead of being able to land on one part
+    // repeatedly. Re-derived from a real run, twice, to confirm determinism.
+    expect(hashState(finalState)).toBe('7037aa01')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -344,9 +345,9 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // above: the lot's rolled condition, the car's derived stats and the
     // buyer's taste-adjusted price all feed it, so it is re-derived from a
     // real run whenever one of them deliberately changes. It moved with the
-    // golden master above for the same reason: the damage budget now scales
-    // by `wearExposure(mileageKm)` before it is spent.
-    expect(hashState(acquisitionCareer().sold)).toBe('3c84008d')
+    // golden master above for the same reason: the damage budget now spends
+    // shallow-first, spreading its steps across the car.
+    expect(hashState(acquisitionCareer().sold)).toBe('25ecff09')
   })
 })
 
