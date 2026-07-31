@@ -490,11 +490,6 @@
       [120000, 78],
       [200000, 68]
     ],
-    "upkeepTierWeights": {
-      "neglected": 0.25,
-      "average": 0.5,
-      "cherished": 0.25
-    },
     "upkeepBaselineOffset": {
       "neglected": -22,
       "average": 0,
@@ -512,17 +507,45 @@
     },
     "maxBillFraction": 0.6,
     "damageGrades": {
-      "weights": {
-        "tidy": 45,
-        "used": 35,
-        "rough": 15,
-        "project": 5
+      "careProfiles": {
+        "cherished": { "tidy": 70, "used": 25, "rough": 5, "project": 0 },
+        "enthusiast": { "tidy": 50, "used": 35, "rough": 13, "project": 2 },
+        "mixed": { "tidy": 45, "used": 35, "rough": 15, "project": 5 },
+        "hammered": { "tidy": 25, "used": 35, "rough": 30, "project": 10 },
+        "worked": { "tidy": 20, "used": 35, "rough": 33, "project": 12 }
+      },
+      "careProfileByCulture": {
+        "kei": "worked",
+        "drift": "hammered",
+        "wangan": "enthusiast",
+        "kyusha": "cherished",
+        "rotary": "enthusiast",
+        "touge": "enthusiast",
+        "exotic": "cherished",
+        "kurokan": "hammered",
+        "honest-transport": "worked",
+        "rally-bred": "hammered",
+        "touring-car": "enthusiast",
+        "front-drive-tuner": "mixed",
+        "oddball": "mixed"
       },
       "bandStepsByGrade": {
         "tidy": 5,
         "used": 12,
         "rough": 26,
         "project": 48
+      },
+      "upkeepTierByGrade": {
+        "tidy": "cherished",
+        "used": "average",
+        "rough": "neglected",
+        "project": "neglected"
+      },
+      "aftermarketChanceMultiplierByGrade": {
+        "tidy": 0.6,
+        "used": 1,
+        "rough": 1.6,
+        "project": 2
       },
       "projectGateMaxAgeYears": 6,
       "projectGateMaxMileageKm": 60000,
@@ -741,10 +764,10 @@
   },
   "diagnosis": {
     "symptomChanceByTier": {
-      "entry": 0.55,
-      "everyday": 0.5,
-      "enthusiast": 0.45,
-      "flagship": 0.35
+      "entry": 0.597,
+      "everyday": 0.513,
+      "enthusiast": 0.474,
+      "flagship": 0.357
     },
     "secondSymptomChance": 0.15,
     "maxSymptomsPerCar": 2,

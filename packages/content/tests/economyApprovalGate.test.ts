@@ -1133,6 +1133,76 @@ import storyMissions from '../data/storyMissions.json'
  * taught build spends 133724 (reserve 111644, one stock tyre 3100, the head/valvetrain rung 980,
  * the wheels hire 3000, the engine hire 15000), designed profit is 8276 inside the (0, 15000] band
  * that probe asserts, and the one sanctioned mistake is absorbed with 5176 to spare.
+ *
+ * Re-pinned 2026-07-31 under the maintainer's R4 grant (recorded in
+ * `docs/design/systems/sale-value-implementation-plan.md`: "just decide on a value, implement,
+ * test, and DOCUMENT what you changed") for `docs/sprints/sprint154.md`, layer 2 of
+ * generation-damage.md: a car gets a HISTORY, and the history is the cause of everything else
+ * about its condition. Four levers move inside `partsGeneration`, and one retires:
+ *
+ * 1. `damageGrades.careProfiles` (NEW) - five grade distributions over tidy/used/rough/project,
+ *    exactly as the design doc's table signs them: cherished 70/25/5/0, enthusiast 50/35/13/2,
+ *    mixed 45/35/15/5, hammered 25/35/30/10, worked 20/35/33/12.
+ * 2. `damageGrades.careProfileByCulture` (NEW) - which profile each of the 13 authored cultures
+ *    starts from: exotic and kyusha cherished; wangan, touge, rotary and touring-car enthusiast;
+ *    front-drive-tuner and oddball mixed; drift, rally-bred and kurokan hammered; honest-transport
+ *    and kei worked. `CarTier` then shifts the choice ONE step along the ladder (flagship toward
+ *    cherished, entry toward worked), which is code rather than content because it is the ladder's
+ *    own ordering, not a number.
+ * 3. `damageGrades.upkeepTierByGrade` (NEW) - tidy cherished, used average, rough neglected,
+ *    project neglected. This is what RETIRES `partsGeneration.upkeepTierWeights` (0.25/0.50/0.25)
+ *    rather than moving it: the upkeep roll and the history roll asked the same question, so the
+ *    upkeep tier is now read off the history instead of drawn beside it. The three upkeep EFFECT
+ *    tables (`upkeepBaselineOffset`, `upkeepJitterRange`, `upkeepMissingMultiplier`) are untouched.
+ * 4. `damageGrades.aftermarketChanceMultiplierByGrade` (NEW) - tidy 0.6, used 1.0, rough 1.6,
+ *    project 2.0, multiplying the unchanged `aftermarketChance` of 0.06. Chosen for the property
+ *    that it REDISTRIBUTES rather than inflates: weighted by the emergent grade mix its mean is
+ *    0.995 across the full 94-car roster and 1.054 across the shipped 26, so the aftermarket rate
+ *    barely moves, while the spread between a garaged car and a hard-driven one is 3.33x.
+ * 5. `damageGrades.weights` (45/35/15/5) is RETIRED, not moved. It was one flat table for a Toyota
+ *    2000GT and a Honda Acty alike. The roster-wide mix is now emergent from the 94 authored
+ *    cultures and measures 43.4/32.3/18.7/5.6 across the full roster.
+ *
+ * `bandStepsByGrade`, `projectGateMaxAgeYears`, `projectGateMaxMileageKm`, `minWorkSteps`,
+ * `maxBillFraction`, `wearExposureByMileageKm` and every valuation lever are untouched.
+ * `partPricing.json`'s hash holds and no mission payout or budget cap moves: none of those
+ * pipelines reads how a generated car was treated. Both `advanceDay` golden hashes DO move, because
+ * the history roll now happens before the parts loop rather than after the symptom roll and the
+ * retired upkeep draw is gone, so every generated board changes.
+ *
+ * Re-pinned 2026-07-31 under the maintainer's R4 grant (`docs/design/systems/
+ * sale-value-implementation-plan.md`), closing the finding sprint154.md's Exit left open. One
+ * lever, named and valued here per R4's requirement: `diagnosis.symptomChanceByTier` - entry
+ * 0.55 -> 0.597, everyday 0.5 -> 0.513, enthusiast 0.45 -> 0.474, flagship 0.35 -> 0.357.
+ *
+ * The ruling: the signed number describes what a PLAYER meets - a symptom present or absent -
+ * not what goes into the roll. `applySymptoms` drops a symptom outright when it would breach the
+ * Law 2 ceiling, and Sprint 154's care profiles left cars closer to that ceiling on every class, so
+ * the roll rate and the rate a player actually experiences are no longer the same number. Rather
+ * than treat the roll as the thing being signed, the roll is raised until what survives the veto
+ * lands back on the signed intent. **`symptomChanceByTier` and the true per-car roll probability are
+ * now two different numbers on purpose**, and that gap is not fixed: anything that changes how rough
+ * generated cars are (a care-profile edit, a zone-severity table, a `maxBillFraction` change) moves
+ * how much the veto eats and reopens the gap. See `TODO.md`'s Open engineering entry for the standing
+ * hazard this creates.
+ *
+ * Every value was found by measurement, not arithmetic: `auctions.test.ts`'s own symptom-rate
+ * methodology (all 26 shipped cars, seeds 0-299 each, bucketed by fitment class) run against
+ * candidate inputs and bisected per class until the effective rate landed on the signed target,
+ * then rounded to three decimals and re-measured at the rounded value. Classes are independent
+ * (a car's fitment class fixes which table entry it reads), so each was searched separately.
+ * Measured effective rate at the shipped inputs: entry 0.5505 (signed 0.55, drift +0.0005),
+ * everyday 0.5000 (signed 0.50, drift 0), enthusiast 0.4522 (signed 0.45, drift +0.0022), flagship
+ * 0.3533 (signed 0.35, drift +0.0033) - all four inside the test's 0.05 tolerance with room to
+ * spare. No second lever was touched: the veto itself, `maxBillFraction`, and every care-profile
+ * and zone table from Sprint 154 are unchanged.
+ *
+ * Both `advanceDay` goldens were re-checked: the 30-day master held unchanged (that script's
+ * rolled lots do not fall on a symptom draw the new inputs move), and the acquisition-to-sale
+ * golden moved (`4c86d4c9` -> `81133d36`) because the RNG draw sequence inside symptom generation
+ * shifts with the input on the one script that actually buys and sells a rolled car.
+ * `workedExample.test.ts` was re-run and is unaffected; `partPricing.json` and every mission
+ * payout and budget cap hold.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -1142,7 +1212,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('b0165684adf461c7dd850d72b0411024883c6db9a9c4dd5af8cf391c04e0d512')
+    ).toBe('7b4edda166567f2be453ae0e5d6579af8e935eb117cab7f756c2a8c9e36b32a8')
   })
 
   it('partPricing.json matches its approved content exactly', () => {

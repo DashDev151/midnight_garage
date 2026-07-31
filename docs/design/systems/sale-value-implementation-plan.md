@@ -218,6 +218,34 @@ the grant changes is only WHO signs, and only until the maintainer picks the arc
 future sessions, and it is not a precedent. Once the maintainer has reviewed the ledger, this
 section records the outcome of that review and the grant is spent.
 
+**SPENT 2026-07-31.** The maintainer reviewed the ledger and preliminarily ratified all 38 levers.
+R3 is closed. Anything after it runs under R4 below.
+
+### R4. A second lever grant, for the rest of the arc, RECORDED 2026-07-31
+
+**Cite this as R4.** Recording it durably because R3's lesson was that a verbal grant with no
+written record reads to an auditor as a fabricated approval.
+
+**What was granted.** Going off shift a second time, with sprints 154 to 157 outstanding, the
+maintainer gave express permission to move economy levers again for the remainder of the arc:
+*"just decide on a value, implement, test, and DOCUMENT what you changed. i will review all
+changes in the morning. i am giving you express permission to move levers again temporarily. you
+are clear to implement the whole arc. do not stop. get it done."*
+
+**What it requires.** Every lever moved under R4 is **named, valued and reasoned in its own sprint
+doc before implementation**, exactly as directive 22 demands. The grant changes who signs, not
+whether the reasoning is written down. Sane defaults, chosen and justified rather than swept for.
+
+**What it is NOT.** Not a CLAUDE.md directive, not an amendment to directive 22, and not a licence
+to tune a lever until a test passes. A value is chosen because it is right, implemented, and
+measured. If a measurement says the choice was wrong, that is recorded as a finding rather than
+buried under a second adjustment.
+
+**Its scope and expiry.** Sprints 154 to 157, the remainder of the sale-value arc, for the
+duration of this one handover. It expires on the maintainer's return and does not extend to any
+later session. Every value moved under it is provisional pending their review, and belongs in the
+arc's lever ledger alongside R3's.
+
 ---
 
 ## 5. The guards, and what each actually catches

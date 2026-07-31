@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import cars from '../data/cars.json'
-import { BUYERS } from '../src'
+import { BUYERS, CAR_CULTURES } from '../src'
 
 /**
  * `docs/design/midnight-garage-roster.csv` is the single source of truth for
@@ -59,6 +59,17 @@ const RELIABILITY_CEILING = 100
  */
 const STYLE_FLOOR = 0
 const STYLE_CEILING = 100
+
+/**
+ * The CSV's `culture` column is written for a human reading a spreadsheet
+ * ("Honest transport", "Front-drive tuner"); `CarCultureSchema` is the kebab
+ * form of the same vocabulary. Normalising rather than carrying a second
+ * lookup table keeps the vocabulary in exactly one place: if a label ever
+ * stops normalising onto a real culture, the test below says so.
+ */
+function cultureIdFor(label: string): string {
+  return label.trim().toLowerCase().replace(/ /g, '-')
+}
 
 /** RFC 4180 fields: quoted values may hold commas, newlines and "" escapes. */
 function parseCsv(text: string): string[][] {
@@ -144,6 +155,20 @@ describe('the roster CSV is well formed', () => {
       expect(row.num('priceYen'), where).toBeGreaterThan(0)
       expect(['researched', 'STAND-IN'], where).toContain(row.get('priceStatus'))
       expect(['jdm', 'gaisha'], where).toContain(row.get('origin'))
+    }
+  })
+
+  /**
+   * Culture is what a car was USED for, authored for all 94 rows and the input
+   * to the care profile its history is rolled from
+   * (`partsGeneration.damageGrades.careProfileByCulture`). A label the schema
+   * does not know would leave a car with no profile at all, so every row is
+   * checked, not only the 26 that ship.
+   */
+  it('gives every car a culture the schema knows', () => {
+    for (const row of roster) {
+      const where = `roster row ${row.get('rosterNo')} (${row.get('variantLabel')})`
+      expect(CAR_CULTURES as readonly string[], where).toContain(cultureIdFor(row.get('culture')))
     }
   })
 
@@ -295,6 +320,14 @@ describe('cars.json agrees with the roster CSV', () => {
       expect(car.parodyBrand, id).toBe(row.get('parodyBrand'))
       expect(car.rarity, id).toBe(row.get('rarity'))
       expect(car.origin, id).toBe(row.get('origin'))
+    }
+  })
+
+  it('gives every shipped car the culture the roster authored for it', () => {
+    for (const car of shipped) {
+      const id = car.id as string
+      const spec = car.spec as Record<string, unknown>
+      expect(spec.culture, `${id}.spec.culture`).toBe(cultureIdFor(byId.get(id)!.get('culture')))
     }
   })
 

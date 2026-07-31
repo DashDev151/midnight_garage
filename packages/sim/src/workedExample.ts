@@ -225,7 +225,9 @@ export interface CarRunReport {
   modelId: string
   displayName: string
   tier: CarModel['tier']
-  culture: string
+  /** The model's own authored `spec.culture`, never a second copy: with `tier`
+   * it selects the care profile the lot's history was rolled from. */
+  culture: CarModel['spec']['culture']
   whyChosen: string
   carInstanceId: string
   year: number
@@ -302,7 +304,6 @@ export interface WorkedExampleReport {
 interface CarScript {
   scope: CashScope
   modelId: string
-  culture: string
   whyChosen: string
   generationSeed: number
   auctionTier: AuctionTier
@@ -323,7 +324,6 @@ const CAR_SCRIPTS: readonly CarScript[] = [
   {
     scope: 'car-a',
     modelId: 'suzuki-wagon-r-ct21s',
-    culture: 'Kei',
     whyChosen:
       'The cheapest thing a day-one shop can reach, and bought rough: entry tier, Kei culture, ¥230,000 of book value. Its tier expects only `worn`, its `beyondDiscount` is 0.4 and its `aftermarketReturn` is 0.3 - so it is the car the economy pays you to fix and charges you to modify.',
     generationSeed: 26,
@@ -345,7 +345,6 @@ const CAR_SCRIPTS: readonly CarScript[] = [
   {
     scope: 'car-b',
     modelId: 'nissan-silvia-s13',
-    culture: 'Drift',
     whyChosen:
       'Everything the Wagon R is not, and bought tidy rather than rough: everyday tier, Drift culture, ¥500,000 of book value. Its tier expects `fine`, its `beyondDiscount` is 0.8 and its `aftermarketReturn` is 0.6, so a coherent build gets twice the credit it would on the kei, and the tuner/racer/stancer crowd it draws will pay for it.',
     generationSeed: 9,
@@ -1508,7 +1507,7 @@ function runOneCar(run: Run, script: CarScript, currentYear: number): CarRunRepo
     modelId: model.id,
     displayName: model.displayName,
     tier: model.tier,
-    culture: script.culture,
+    culture: model.spec.culture,
     whyChosen: script.whyChosen,
     carInstanceId,
     year: asBought.year,

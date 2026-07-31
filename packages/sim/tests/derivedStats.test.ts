@@ -18,6 +18,7 @@ const model: CarModel = {
   spec: {
     chassisCode: 'AA',
     engineCode: 'ER',
+    culture: 'honest-transport',
     yearFrom: 1981,
     yearTo: 1981,
     curbWeightKg: 690,

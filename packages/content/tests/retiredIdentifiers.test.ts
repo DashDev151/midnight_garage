@@ -163,6 +163,24 @@ const RETIRED_IDENTIFIERS: readonly RetiredIdentifier[] = [
       'Asked whether the Law 2 ceiling was what stopped the retired floor short. The budget has no shortfall to explain away: it spends what it rolled and stops, so the question no longer has a caller.',
   },
   {
+    identifier: 'upkeepTierWeights',
+    retiredInSprint: 154,
+    reason:
+      'A second, independent roll of "how was this car treated", sitting beside the damage grade roll that asks the same question - so a car someone had given up on could carry a cherished provenance blurb. The upkeep tier is now DERIVED from the rolled history (partsGeneration.damageGrades.upkeepTierByGrade); one cause, several effects. The three upkeep EFFECT tables (upkeepBaselineOffset, upkeepJitterRange, upkeepMissingMultiplier) are untouched and still live.',
+  },
+  {
+    identifier: 'rollUpkeepTier',
+    retiredInSprint: 154,
+    reason:
+      'The roller for the weights above. Nothing replaced it: upkeepTierByGrade is a lookup on a value that has already been rolled, not a second draw.',
+  },
+  {
+    identifier: 'damageGrades.weights',
+    retiredInSprint: 154,
+    reason:
+      'One flat 45/35/15/5 applied to a Toyota 2000GT and a Honda Acty alike, so nothing about what a car IS changed how likely it was to have been looked after. Replaced by partsGeneration.damageGrades.careProfiles plus careProfileByCulture: culture picks a profile, tier shifts it one step, and the roster-wide mix is what the 94 authored cultures add up to rather than a number anyone sets. Matched as a dotted path because bare "weights" is a live local in rollDamageGrade and in several unrelated tables.',
+  },
+  {
     identifier: 'WEEKLY_RENT_YEN',
     retiredInSprint: 148,
     reason:

@@ -296,20 +296,54 @@ describe('seed content validates against schemas', () => {
     // ceiling every generated car is softened to satisfy - the other half
     // of the wage law's (D, F) pair (see marketRepairDiscount above).
     expect(result.data.partsGeneration.maxBillFraction).toBe(0.6)
-    // How rough a generated lot is: one roster-wide grade roll, and what each
-    // grade buys in band steps. Not a per-venue table - the gradient across
-    // rooms emerges from `auction.carTierWeightsByAuctionTier`.
-    expect(result.data.partsGeneration.damageGrades.weights).toEqual({
-      tidy: 45,
-      used: 35,
-      rough: 15,
-      project: 5,
+    // What happened to a generated car: the five care profiles a culture and
+    // tier select between, and what the rolled history buys in band steps.
+    // Not a per-venue table and no longer a roster-wide one either - the
+    // gradient across rooms emerges from `auction.carTierWeightsByAuctionTier`
+    // and the roster-wide mix from the 94 authored cultures.
+    expect(result.data.partsGeneration.damageGrades.careProfiles).toEqual({
+      cherished: { tidy: 70, used: 25, rough: 5, project: 0 },
+      enthusiast: { tidy: 50, used: 35, rough: 13, project: 2 },
+      mixed: { tidy: 45, used: 35, rough: 15, project: 5 },
+      hammered: { tidy: 25, used: 35, rough: 30, project: 10 },
+      worked: { tidy: 20, used: 35, rough: 33, project: 12 },
+    })
+    expect(result.data.partsGeneration.damageGrades.careProfileByCulture).toEqual({
+      exotic: 'cherished',
+      kyusha: 'cherished',
+      wangan: 'enthusiast',
+      touge: 'enthusiast',
+      rotary: 'enthusiast',
+      'touring-car': 'enthusiast',
+      'front-drive-tuner': 'mixed',
+      oddball: 'mixed',
+      drift: 'hammered',
+      'rally-bred': 'hammered',
+      kurokan: 'hammered',
+      'honest-transport': 'worked',
+      kei: 'worked',
     })
     expect(result.data.partsGeneration.damageGrades.bandStepsByGrade).toEqual({
       tidy: 5,
       used: 12,
       rough: 26,
       project: 48,
+    })
+    // The history is also the upkeep tier: it is derived here, never rolled
+    // beside the history, so how a car was treated and how rough it arrived
+    // are one fact.
+    expect(result.data.partsGeneration.damageGrades.upkeepTierByGrade).toEqual({
+      tidy: 'cherished',
+      used: 'average',
+      rough: 'neglected',
+      project: 'neglected',
+    })
+    // ...and it scales how likely each slot is to carry an aftermarket part.
+    expect(result.data.partsGeneration.damageGrades.aftermarketChanceMultiplierByGrade).toEqual({
+      tidy: 0.6,
+      used: 1,
+      rough: 1.6,
+      project: 2,
     })
     // The age gate: a young, low-mileage car cannot roll the worst grade.
     expect(result.data.partsGeneration.damageGrades.projectGateMaxAgeYears).toBe(6)
@@ -734,14 +768,36 @@ describe('seed content ids are unique', () => {
     expect(EconomyConfigSchema.safeParse(bad).success).toBe(false)
   })
 
-  it('refuses a damage-grade weight table that can never roll anything', () => {
+  it('refuses a care profile that can never roll anything', () => {
+    // Every profile is checked, not only the table as a whole: a single dead
+    // row would leave every car whose culture selects it with no history to
+    // roll at all.
     const bad = {
       ...economy,
       partsGeneration: {
         ...economy.partsGeneration,
         damageGrades: {
           ...economy.partsGeneration.damageGrades,
-          weights: { tidy: 0, used: 0, rough: 0, project: 0 },
+          careProfiles: {
+            ...economy.partsGeneration.damageGrades.careProfiles,
+            hammered: { tidy: 0, used: 0, rough: 0, project: 0 },
+          },
+        },
+      },
+    }
+    expect(EconomyConfigSchema.safeParse(bad).success).toBe(false)
+  })
+
+  it('refuses a culture with no care profile at all', () => {
+    const withoutDrift = { ...economy.partsGeneration.damageGrades.careProfileByCulture }
+    delete (withoutDrift as Record<string, unknown>).drift
+    const bad = {
+      ...economy,
+      partsGeneration: {
+        ...economy.partsGeneration,
+        damageGrades: {
+          ...economy.partsGeneration.damageGrades,
+          careProfileByCulture: withoutDrift,
         },
       },
     }

@@ -160,7 +160,7 @@ export function applyDerivedBodyBands(
 
 /** One `[w0,w1,w2,w3]` weighted roll over severities 0-3. Mirrors the
  * cumulative-sum-over-one-draw shape every other weighted roll in this
- * codebase uses (`auctions.ts`'s `rollUpkeepTier`/`pickWeightedCause`). */
+ * codebase uses (`auctions.ts`'s `rollDamageGrade`/`pickWeightedCause`). */
 function rollSeverity(weights: readonly [number, number, number, number], rng: Rng): number {
   const total = weights[0] + weights[1] + weights[2] + weights[3]
   const roll = rng.next() * total

@@ -201,6 +201,38 @@ export const CarRaritySchema = z.enum(['common', 'uncommon', 'rare', 'legend'])
  */
 export const CarOriginSchema = z.enum(['jdm', 'gaisha'])
 
+/**
+ * What the car was USED for, and by whom - the scene it belongs to, authored
+ * per car for all 94 roster rows (`docs/design/midnight-garage-roster.csv`,
+ * with the definitions in the roster legend). The kebab ids here are the
+ * normalised form of that column's labels: lowercase, spaces to hyphens.
+ *
+ * Culture is the axis that says how a car was LIKELY TREATED, which is why it
+ * selects a care profile (`partsGeneration.damageGrades.careProfileByCulture`)
+ * and, through it, how rough a generated example arrives. `CarTier` correlates
+ * with care but conflates it with price: a cheap Kyusha is cherished and an
+ * expensive drift car is hammered, so tier only shifts the profile one step
+ * rather than setting it.
+ *
+ * Deliberately says nothing about price band (`CarTier`), scarcity
+ * (`CarRarity`) or sourcing (`CarOrigin`).
+ */
+export const CarCultureSchema = z.enum([
+  'kei',
+  'drift',
+  'wangan',
+  'kyusha',
+  'rotary',
+  'touge',
+  'exotic',
+  'kurokan',
+  'honest-transport',
+  'rally-bred',
+  'touring-car',
+  'front-drive-tuner',
+  'oddball',
+])
+
 export const ReputationTierSchema = z.enum(['unknown', 'local', 'known', 'respected', 'legend'])
 
 export type Tag = z.infer<typeof TagSchema>
@@ -215,4 +247,8 @@ export type TyreCompound = z.infer<typeof TyreCompoundSchema>
 export type CarTier = z.infer<typeof CarTierSchema>
 export type CarRarity = z.infer<typeof CarRaritySchema>
 export type CarOrigin = z.infer<typeof CarOriginSchema>
+export type CarCulture = z.infer<typeof CarCultureSchema>
 export type ReputationTier = z.infer<typeof ReputationTierSchema>
+
+/** Every culture, in the schema's own declaration order. */
+export const CAR_CULTURES = CarCultureSchema.options

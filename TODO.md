@@ -630,6 +630,17 @@ pass."
   part's grade. `packages/sim/tests/authenticity.test.ts` pins the limitation and fails the
   moment a non-stock body SKU is added.
 
+- [ ] **`diagnosis.symptomChanceByTier` is coupled to how rough generated cars are, through the Law
+  2 veto in `applySymptoms`, so the two must be re-measured together whenever either moves.** See
+  the "Design decisions awaiting maintainer direction" entry on the same coupling for the open
+  design question (should the veto soften a symptom instead of dropping it) and `sprint154.md`'s
+  Exit ("Amendment: the veto-coupling lever, closed") for the fix and the numbers. The input is now
+  raised so the effective, post-veto rate matches the signed intent, but that gap is not fixed by
+  construction: a car generation change (a care-profile edit, a zone-severity table, a
+  `maxBillFraction` change) shifts how much the veto eats and reopens it. `auctions.test.ts`'s
+  symptom-rate guard will catch a drift past 0.05, but landing tight on the signed value again needs
+  the same measure-then-set pass this fix used, not a re-tune by feel.
+
 ## Open balance/economy questions
 
 - [ ] **BLOCKING, NEEDS A MAINTAINER LEVER DECISION: the unimproved instant flip became
@@ -1344,6 +1355,16 @@ pass."
   cast character-design item above for who delivers the leads.
 - [ ] Salvage & restore parts mechanic - maintainer said they'll expand on this separately; parked
   until that expansion exists, don't design it unprompted.
+- [ ] **RESOLVED for now, one open design question remains: the effective symptom rate had drifted
+  below its signed `diagnosis.symptomChanceByTier` on every fitment class** (`applySymptoms` drops a
+  symptom outright if it would breach the Law 2 ceiling, and Sprint 154's care profiles left cars
+  closer to that ceiling on every class, so the veto ate more of the roll silently).
+  `diagnosis.symptomChanceByTier` was raised (2026-07-31, R4) so the effective, post-veto rate lands
+  back on the signed intent; full numbers and reasoning in `sprint154.md`'s Exit ("Amendment: the
+  veto-coupling lever, closed") and the Open engineering entry above on the standing hazard this
+  leaves. **Still open:** whether the veto should soften a symptom instead of dropping it outright is
+  a design question, not answered by this fix - raising the input closes the immediate drift without
+  touching the veto's own behaviour.
 - [ ] **The game needs a JDM-specific hook - flagged by the maintainer 2026-07-15, to be scoped
   in a separate session; do not design unprompted.** The concern, verbatim in spirit: the current
   repair/component systems are mechanically generic - swap the car roster for European cars and

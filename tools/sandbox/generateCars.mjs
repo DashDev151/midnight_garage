@@ -226,7 +226,8 @@ function measuredFromFor(row) {
  * Romeo` on the one two-word marque; no physics reads it).
  *
  * Placeholders, read by nothing: `chassisCode`, `bookValueYen`, `rarity`,
- * `reliabilityBase`, `styleBase`, `styleCeiling`, and the two parody-name fields, which the
+ * `reliabilityBase`, `styleBase`, `styleCeiling`, `culture`, and the two
+ * parody-name fields, which the
  * sandbox never renders. `bookValueYen` in particular is why the screen shows
  * these cars no price at all: pricing a car the game does not sell would be
  * inventing an economy number, and `rarity` reaches only auction placement,
@@ -235,11 +236,14 @@ function measuredFromFor(row) {
  * `computeDerivedStats`'s reliability and style derivations, which this
  * lap-focused sandbox never calls - a flat value satisfies the type without
  * inventing a per-car figure the roster CSV does not carry for a non-shipped
- * research entry.
+ * research entry. `culture` is the same case one step further out: it reaches
+ * only auction generation's care profile, which a research entry never enters,
+ * and `oddball` is the honest label for a car with no authored scene.
  */
 const RESEARCH_RELIABILITY_BASE_PLACEHOLDER = 85
 const RESEARCH_STYLE_BASE_PLACEHOLDER = 12
 const RESEARCH_STYLE_CEILING_PLACEHOLDER = 12
+const RESEARCH_CULTURE_PLACEHOLDER = 'oddball'
 function synthesiseModel(row) {
   const displayName = displayNameFor(row)
   const section = TIER_BY_SECTION[row.sec]
@@ -263,6 +267,7 @@ function synthesiseModel(row) {
     spec: {
       chassisCode: 'unknown',
       engineCode: row.ec,
+      culture: RESEARCH_CULTURE_PLACEHOLDER,
       // The spec book records one build year per car, not a production window,
       // and a research entry never reaches auction generation (the only reader
       // of the window). Both ends therefore carry the book's own year rather
@@ -341,7 +346,8 @@ const header = `/**
  * section, \`tyreCompound\` from the stock tyre and the build year, and the
  * layout/induction/engine tags from the book's own drivetrain, engine position
  * and aspiration - all of which the physics reads. \`chassisCode\`,
- * \`bookValueYen\`, \`reliabilityBase\`, \`styleBase\`, \`styleCeiling\` and the parody names are
+ * \`bookValueYen\`, \`reliabilityBase\`, \`styleBase\`, \`styleCeiling\`, \`culture\` and the
+ * parody names are
  * placeholders that nothing reads, which is why the sandbox shows a research
  * entry no price rather than a made-up one.
  *

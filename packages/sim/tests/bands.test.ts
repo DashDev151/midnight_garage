@@ -67,6 +67,7 @@ const TEST_MODEL: CarModel = {
   spec: {
     chassisCode: 'TM',
     engineCode: 'TM',
+    culture: 'oddball',
     yearFrom: 1990,
     yearTo: 1990,
     curbWeightKg: 1200,

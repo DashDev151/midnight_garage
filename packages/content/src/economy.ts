@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { PartFitmentClassSchema } from './partFitment'
+import { UpkeepTierSchema } from './provenance'
 import {
   CarPartIdSchema,
   ComponentIdSchema,
@@ -82,6 +83,67 @@ const DamageGradeWeightsSchema = z.object({
   used: z.number().nonnegative(),
   rough: z.number().nonnegative(),
   project: z.number().nonnegative(),
+})
+
+/**
+ * How well a kind of car tends to have been looked after
+ * (docs/design/systems/generation-damage.md, layer 2). A car's culture picks
+ * one of these and its tier shifts the choice one step, so the profile is the
+ * distribution the car's own history is rolled from.
+ *
+ * DECLARATION ORDER IS LOAD-BEARING: this is one ordered ladder from
+ * best-treated to worst, and the tier shift walks it by index (a flagship
+ * moves one step toward `cherished`, an entry car one step toward `worked`).
+ */
+export const CareProfileSchema = z.enum(['cherished', 'enthusiast', 'mixed', 'hammered', 'worked'])
+export type CareProfile = z.infer<typeof CareProfileSchema>
+export const CARE_PROFILES = CareProfileSchema.options
+
+/** One grade distribution per care profile, keyed explicitly so a missing
+ * profile fails validation rather than leaving a culture with no table. */
+const CareProfileWeightsSchema = z.object({
+  cherished: DamageGradeWeightsSchema,
+  enthusiast: DamageGradeWeightsSchema,
+  mixed: DamageGradeWeightsSchema,
+  hammered: DamageGradeWeightsSchema,
+  worked: DamageGradeWeightsSchema,
+})
+
+/** Which care profile each culture starts from, keyed explicitly so a culture
+ * added to `CarCultureSchema` without a profile fails validation rather than
+ * silently generating undefined weights. */
+const CareProfileByCultureSchema = z.object({
+  kei: CareProfileSchema,
+  drift: CareProfileSchema,
+  wangan: CareProfileSchema,
+  kyusha: CareProfileSchema,
+  rotary: CareProfileSchema,
+  touge: CareProfileSchema,
+  exotic: CareProfileSchema,
+  kurokan: CareProfileSchema,
+  'honest-transport': CareProfileSchema,
+  'rally-bred': CareProfileSchema,
+  'touring-car': CareProfileSchema,
+  'front-drive-tuner': CareProfileSchema,
+  oddball: CareProfileSchema,
+})
+
+/** One non-negative multiplier per damage grade, keyed explicitly like every
+ * other grade table here. */
+const DamageGradeMultipliersSchema = z.object({
+  tidy: z.number().nonnegative(),
+  used: z.number().nonnegative(),
+  rough: z.number().nonnegative(),
+  project: z.number().nonnegative(),
+})
+
+/** Which upkeep tier each history reads as - the derivation that replaced the
+ * retired independent upkeep roll. */
+const UpkeepTierByGradeSchema = z.object({
+  tidy: UpkeepTierSchema,
+  used: UpkeepTierSchema,
+  rough: UpkeepTierSchema,
+  project: UpkeepTierSchema,
 })
 
 /** How many band steps of damage each grade buys. Zero is legitimate at the
@@ -1448,23 +1510,14 @@ export const EconomyConfigSchema = z.object({
        */
       conditionBaselineMinByMileageKm: CurveSchema,
       conditionBaselineMaxByMileageKm: CurveSchema,
-      /**
-       * A per-car upkeep roll, layered ON TOP of the mileage-based baseline
-       * above (that chain is unchanged) - real cross-car variance, so two
-       * cars at the same mileage can be a genuine wreck or genuinely sound,
-       * not interchangeably mediocre. Weights for the three tiers
-       * (`generateAuctionCarInstance` rolls one per car, weighted).
-       */
-      upkeepTierWeights: z.object({
-        neglected: z.number().nonnegative(),
-        average: z.number().nonnegative(),
-        cherished: z.number().nonnegative(),
-      }),
       /** Added to the mileage-rolled condition baseline (percent) before
        * per-part jitter - negative for neglected, 0 for average, positive for
        * cherished. Clamped into [0, 100]. SCALED by `wearExposureByMileageKm`
        * below, so upkeep only expresses itself in proportion to how far the
-       * car has actually been driven. */
+       * car has actually been driven. The upkeep tier itself is no longer
+       * rolled: it is read off the car's rolled history through
+       * `damageGrades.upkeepTierByGrade`, so how a car was treated and how
+       * rough it arrived are one fact rather than two. */
       upkeepBaselineOffset: z.object({
         neglected: z.number(),
         average: z.number(),
@@ -1492,8 +1545,8 @@ export const EconomyConfigSchema = z.object({
        * this curve governs the SECOND, independent axis - how badly the
        * previous owner treated it - which cannot have expressed itself on a
        * car that has barely moved. At exposure 0 every upkeep tier produces
-       * the same near-mint car; at exposure 1 a neglected roll bites exactly
-       * as hard as it did before.
+       * the same near-mint car; at exposure 1 a neglected history bites
+       * exactly as hard as it did before.
        */
       wearExposureByMileageKm: CurveSchema,
       /** Multiplies `missingSlotBaseChance * missingSlotWeightByPart[partId]`
@@ -1520,16 +1573,45 @@ export const EconomyConfigSchema = z.object({
        */
       maxBillFraction: z.number().positive().max(1),
       /**
-       * How rough a generated lot is (docs/design/systems/generation-damage.md,
-       * layer 1). One grade is rolled per car from `weights` - roster-wide
-       * shares, not a per-venue table, because
-       * `auction.carTierWeightsByAuctionTier` already decides which price bands
-       * a room sells and the roughness gradient across venues emerges from
-       * that. `bandStepsByGrade` is what the rolled grade buys, counted in BAND
-       * STEPS rather than in yen: `auctions.ts`'s `applyDamageBudget` degrades
-       * one installed part per step, under the same `maxBillFraction` ceiling
-       * every other generation step obeys, having first deducted the steps this
-       * car's symptoms already spent.
+       * A car's HISTORY: what happened to it before it reached the block, and
+       * the single cause every other roll about its condition now hangs off
+       * (docs/design/systems/generation-damage.md, layers 1 and 2).
+       *
+       * `careProfileByCulture` picks the profile a car's own scene tends to
+       * produce and `CarTier` shifts that choice one step along the
+       * `CARE_PROFILES` ladder (flagship toward `cherished`, entry toward
+       * `worked`; everyday and enthusiast sit where culture put them). The
+       * chosen row of `careProfiles` is the distribution the history is rolled
+       * from, which is why there is no roster-wide grade table: nobody wrecks
+       * a 2000GT and nobody handles an Acty with white gloves, so one flat
+       * table for both was the defect. The roster-wide MIX is an emergent
+       * property of the 94 authored cultures rather than an authored number.
+       *
+       * Still not a per-venue table: `auction.carTierWeightsByAuctionTier`
+       * already decides which price bands a room sells, so the roughness
+       * gradient across rooms emerges from the mix the rooms already have.
+       *
+       * Three things read the rolled history, and nothing else rolls them
+       * independently:
+       *
+       * - `bandStepsByGrade` is what it buys in BAND STEPS rather than in yen:
+       *   `auctions.ts`'s `spendDamageBudget` degrades one installed part per
+       *   step, under the same `maxBillFraction` ceiling every other generation
+       *   step obeys, having first deducted the steps this car's symptoms
+       *   already spent.
+       * - `upkeepTierByGrade` says which upkeep tier the history reads as,
+       *   feeding `upkeepBaselineOffset`, `upkeepJitterRange`,
+       *   `upkeepMissingMultiplier` and the provenance blurb pool. The upkeep
+       *   tier is DERIVED here rather than rolled beside the history: they
+       *   answered the same question ("how was this car treated") and a second
+       *   roll let a cherished blurb sit on a car someone had given up on.
+       * - `aftermarketChanceMultiplierByGrade` scales `aftermarketChance`
+       *   below, so a car that was driven hard is likelier to carry aftermarket
+       *   parts than one that was garaged. History is the CAUSE of both the
+       *   damage and the parts; inferring one from the other would be circular.
+       *
+       * WHICH parts a history implies, and where the damage lands, is layer 3
+       * and is deliberately not expressible here.
        *
        * Steps, not yen, because a step is what a player perceives while yen is
        * downstream of `partPricing.classFactors`. The bill then falls out of
@@ -1553,8 +1635,11 @@ export const EconomyConfigSchema = z.object({
        * parts ruined to `poor`, which this floor does not touch.
        */
       damageGrades: z.object({
-        weights: DamageGradeWeightsSchema,
+        careProfiles: CareProfileWeightsSchema,
+        careProfileByCulture: CareProfileByCultureSchema,
         bandStepsByGrade: DamageGradeStepsSchema,
+        upkeepTierByGrade: UpkeepTierByGradeSchema,
+        aftermarketChanceMultiplierByGrade: DamageGradeMultipliersSchema,
         projectGateMaxAgeYears: z.number().int().positive(),
         projectGateMaxMileageKm: z.number().int().positive(),
         minWorkSteps: z.number().int().nonnegative(),
@@ -1562,11 +1647,17 @@ export const EconomyConfigSchema = z.object({
       /**
        * Per ELIGIBLE, non-missing slot (eligible = the catalog has a `grade >
        * stock` entry for this `carPartId` at the car's own fitment class),
-       * the chance `generateAuctionCarInstance` fits that aftermarket part
-       * instead of the default stock one, at the SAME rolled band the stock
-       * part would have had. Runs strictly after the missing-slot roll (a
-       * missing slot is never also aftermarket) and before the symptom roll,
-       * so a symptom's cause can damage whatever ends up fitted either way.
+       * the BASE chance `generateAuctionCarInstance` fits that aftermarket
+       * part instead of the default stock one, at the SAME rolled band the
+       * stock part would have had. Runs strictly after the missing-slot roll
+       * (a missing slot is never also aftermarket) and before the symptom
+       * roll, so a symptom's cause can damage whatever ends up fitted either
+       * way.
+       *
+       * Scaled per car by
+       * `damageGrades.aftermarketChanceMultiplierByGrade[history]` and clamped
+       * back into [0, 1]: the car's history is what decides how modified it
+       * is likely to be.
        */
       aftermarketChance: z.number().min(0).max(1),
       /** The hard cap on how many slots per car this roll can ever fit - a
@@ -1601,9 +1692,16 @@ export const EconomyConfigSchema = z.object({
         surfaceExtraChance: z.number().min(0).max(1),
       }),
     })
-    .refine((pg) => DAMAGE_GRADES.some((grade) => pg.damageGrades.weights[grade] > 0), {
-      message: 'partsGeneration.damageGrades.weights must give at least one grade a real share',
-    })
+    .refine(
+      (pg) =>
+        CARE_PROFILES.every((profile) =>
+          DAMAGE_GRADES.some((grade) => pg.damageGrades.careProfiles[profile][grade] > 0),
+        ),
+      {
+        message:
+          'every partsGeneration.damageGrades.careProfiles row must give at least one grade a real share, or a car with that profile has nothing to roll',
+      },
+    )
     .refine(
       (pg) =>
         DAMAGE_GRADES.every(

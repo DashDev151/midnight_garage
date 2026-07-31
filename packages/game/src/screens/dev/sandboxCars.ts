@@ -12,7 +12,8 @@
  * section, `tyreCompound` from the stock tyre and the build year, and the
  * layout/induction/engine tags from the book's own drivetrain, engine position
  * and aspiration - all of which the physics reads. `chassisCode`,
- * `bookValueYen`, `reliabilityBase`, `styleBase`, `styleCeiling` and the parody names are
+ * `bookValueYen`, `reliabilityBase`, `styleBase`, `styleCeiling`, `culture` and the
+ * parody names are
  * placeholders that nothing reads, which is why the sandbox shows a research
  * entry no price rather than a made-up one.
  *
@@ -69,6 +70,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'M30/69',
+        culture: 'oddball',
         yearFrom: 1982,
         yearTo: 1982,
         curbWeightKg: 1300,
@@ -124,6 +126,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'B16B',
+        culture: 'oddball',
         yearFrom: 1997,
         yearTo: 1997,
         curbWeightKg: 1090,
@@ -179,6 +182,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'B18C5',
+        culture: 'oddball',
         yearFrom: 2001,
         yearTo: 2001,
         curbWeightKg: 1197,
@@ -237,6 +241,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: '4E-FTE',
+        culture: 'oddball',
         yearFrom: 1996,
         yearTo: 1996,
         curbWeightKg: 950,
@@ -301,6 +306,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'RB20DET',
+        culture: 'oddball',
         yearFrom: 1989,
         yearTo: 1989,
         curbWeightKg: 1350,
@@ -350,6 +356,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: '1JZ-GTE VVT-i',
+        culture: 'oddball',
         yearFrom: 1997,
         yearTo: 1997,
         curbWeightKg: 1480,
@@ -406,6 +413,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'E15S',
+        culture: 'oddball',
         yearFrom: 1989,
         yearTo: 1989,
         curbWeightKg: 950,
@@ -459,6 +467,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'EG33',
+        culture: 'oddball',
         yearFrom: 1996,
         yearTo: 1996,
         curbWeightKg: 1624,
@@ -514,6 +523,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: '6G72TT',
+        culture: 'oddball',
         yearFrom: 1997,
         yearTo: 1997,
         curbWeightKg: 1680,
@@ -569,6 +579,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'G54B',
+        culture: 'oddball',
         yearFrom: 1988,
         yearTo: 1988,
         curbWeightKg: 1320,
@@ -619,6 +630,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: '1JZ-GTE',
+        culture: 'oddball',
         yearFrom: 1997,
         yearTo: 1997,
         curbWeightKg: 1570,
@@ -674,6 +686,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'L24',
+        culture: 'oddball',
         yearFrom: 1971,
         yearTo: 1971,
         curbWeightKg: 1010,
@@ -723,6 +736,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'L16',
+        culture: 'oddball',
         yearFrom: 1970,
         yearTo: 1970,
         curbWeightKg: 965,
@@ -778,6 +792,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'S20',
+        culture: 'oddball',
         yearFrom: 1973,
         yearTo: 1973,
         curbWeightKg: 1145,
@@ -833,6 +848,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: '10A',
+        culture: 'oddball',
         yearFrom: 1972,
         yearTo: 1972,
         curbWeightKg: 940,
@@ -883,6 +899,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'M102',
+        culture: 'oddball',
         yearFrom: 1990,
         yearTo: 1990,
         curbWeightKg: 1340,
@@ -938,6 +955,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'S14',
+        culture: 'oddball',
         yearFrom: 1988,
         yearTo: 1988,
         curbWeightKg: 1253,
@@ -993,6 +1011,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: '831',
+        culture: 'oddball',
         yearFrom: 1992,
         yearTo: 1992,
         curbWeightKg: 1300,
@@ -1048,6 +1067,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'AR06',
+        culture: 'oddball',
         yearFrom: 1987,
         yearTo: 1987,
         curbWeightKg: 1250,
@@ -1097,6 +1117,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'F113G',
+        culture: 'oddball',
         yearFrom: 1992,
         yearTo: 1992,
         curbWeightKg: 1674,
@@ -1151,6 +1172,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'LP112D',
+        culture: 'oddball',
         yearFrom: 1988,
         yearTo: 1988,
         curbWeightKg: 1490,
@@ -1206,6 +1228,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'A-series',
+        culture: 'oddball',
         yearFrom: 1965,
         yearTo: 1965,
         curbWeightKg: 671,
@@ -1259,6 +1282,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'F129B',
+        culture: 'oddball',
         yearFrom: 1994,
         yearTo: 1994,
         curbWeightKg: 1450,
@@ -1314,6 +1338,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'S50B32',
+        culture: 'oddball',
         yearFrom: 1997,
         yearTo: 1997,
         curbWeightKg: 1460,
@@ -1369,6 +1394,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'YBT',
+        culture: 'oddball',
         yearFrom: 1992,
         yearTo: 1992,
         curbWeightKg: 1275,
@@ -1424,6 +1450,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'KR',
+        culture: 'oddball',
         yearFrom: 1992,
         yearTo: 1992,
         curbWeightKg: 1100,
@@ -1480,6 +1507,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: '20B-REW',
+        culture: 'oddball',
         yearFrom: 1990,
         yearTo: 1990,
         curbWeightKg: 1620,
@@ -1530,6 +1558,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: '3S-GTE',
+        culture: 'oddball',
         yearFrom: 1994,
         yearTo: 1994,
         curbWeightKg: 1440,
@@ -1585,6 +1614,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'SR20DET',
+        culture: 'oddball',
         yearFrom: 1990,
         yearTo: 1990,
         curbWeightKg: 1240,
@@ -1640,6 +1670,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'BPD',
+        culture: 'oddball',
         yearFrom: 1992,
         yearTo: 1992,
         curbWeightKg: 1210,
@@ -1690,6 +1721,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'VQ35DE',
+        culture: 'oddball',
         yearFrom: 2003,
         yearTo: 2003,
         curbWeightKg: 1501,
@@ -1745,6 +1777,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: '13B-MSP',
+        culture: 'oddball',
         yearFrom: 2011,
         yearTo: 2011,
         curbWeightKg: 1390,
@@ -1800,6 +1833,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: '4G63T',
+        culture: 'oddball',
         yearFrom: 2004,
         yearTo: 2004,
         curbWeightKg: 1410,
@@ -1856,6 +1890,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'K20A2',
+        culture: 'oddball',
         yearFrom: 2002,
         yearTo: 2002,
         curbWeightKg: 1279,
@@ -1911,6 +1946,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'JB-DET',
+        culture: 'oddball',
         yearFrom: 2002,
         yearTo: 2002,
         curbWeightKg: 810,
@@ -1961,6 +1997,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'VR38DETT',
+        culture: 'oddball',
         yearFrom: 2012,
         yearTo: 2012,
         curbWeightKg: 1763,
@@ -2017,6 +2054,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: '1LR-GUE',
+        culture: 'oddball',
         yearFrom: 2010,
         yearTo: 2010,
         curbWeightKg: 1480,
@@ -2072,6 +2110,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'RB26DETT',
+        culture: 'oddball',
         yearFrom: 2000,
         yearTo: 2000,
         curbWeightKg: 1560,
@@ -2128,6 +2167,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'C30A',
+        culture: 'oddball',
         yearFrom: 1992,
         yearTo: 1992,
         curbWeightKg: 1230,
@@ -2183,6 +2223,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'S20',
+        culture: 'oddball',
         yearFrom: 1971,
         yearTo: 1971,
         curbWeightKg: 1100,
@@ -2238,6 +2279,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'S20',
+        culture: 'oddball',
         yearFrom: 1969,
         yearTo: 1969,
         curbWeightKg: 1047,
@@ -2293,6 +2335,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'EJ22',
+        culture: 'oddball',
         yearFrom: 1998,
         yearTo: 1998,
         curbWeightKg: 1270,
@@ -2348,6 +2391,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: '4G63T',
+        culture: 'oddball',
         yearFrom: 2001,
         yearTo: 2001,
         curbWeightKg: 1280,
@@ -2404,6 +2448,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: '3M',
+        culture: 'oddball',
         yearFrom: 1969,
         yearTo: 1969,
         curbWeightKg: 1157,
@@ -2459,6 +2504,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'F6A',
+        culture: 'oddball',
         yearFrom: 1993,
         yearTo: 1993,
         curbWeightKg: 720,
@@ -2514,6 +2560,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: '13B-REW',
+        culture: 'oddball',
         yearFrom: 2002,
         yearTo: 2002,
         curbWeightKg: 1270,
@@ -2564,6 +2611,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'SR20DET',
+        culture: 'oddball',
         yearFrom: 2002,
         yearTo: 2002,
         curbWeightKg: 1240,
@@ -2621,6 +2669,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'RB25DET',
+        culture: 'oddball',
         yearFrom: 1997,
         yearTo: 1997,
         curbWeightKg: 1620,
@@ -2676,6 +2725,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: '3S-GE BEAMS',
+        culture: 'oddball',
         yearFrom: 1999,
         yearTo: 1999,
         curbWeightKg: 1360,
@@ -2731,6 +2781,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'F20C',
+        culture: 'oddball',
         yearFrom: 2003,
         yearTo: 2003,
         curbWeightKg: 1250,
@@ -2788,6 +2839,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'EB',
+        culture: 'oddball',
         yearFrom: 1985,
         yearTo: 1985,
         curbWeightKg: 570,
@@ -2838,6 +2890,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'E05A',
+        culture: 'oddball',
         yearFrom: 1988,
         yearTo: 1988,
         curbWeightKg: 620,
@@ -2887,6 +2940,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'EN07X',
+        culture: 'oddball',
         yearFrom: 1994,
         yearTo: 1994,
         curbWeightKg: 760,
@@ -2942,6 +2996,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'JB-JL',
+        culture: 'oddball',
         yearFrom: 1995,
         yearTo: 1995,
         curbWeightKg: 710,
@@ -2992,6 +3047,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'E07A',
+        culture: 'oddball',
         yearFrom: 1994,
         yearTo: 1994,
         curbWeightKg: 770,
@@ -3045,6 +3101,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'F6A',
+        culture: 'oddball',
         yearFrom: 1991,
         yearTo: 1991,
         curbWeightKg: 725,
@@ -3096,6 +3153,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'BP-ZE',
+        culture: 'oddball',
         yearFrom: 1994,
         yearTo: 1994,
         curbWeightKg: 1057,
@@ -3151,6 +3209,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'RB26DETT',
+        culture: 'oddball',
         yearFrom: 1997,
         yearTo: 1997,
         curbWeightKg: 1540,
@@ -3207,6 +3266,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
       spec: {
         chassisCode: 'unknown',
         engineCode: 'EJ207',
+        culture: 'oddball',
         yearFrom: 2004,
         yearTo: 2004,
         curbWeightKg: 1483,

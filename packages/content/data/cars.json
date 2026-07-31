@@ -8,6 +8,7 @@
     "spec": {
       "chassisCode": "AA",
       "engineCode": "ER",
+      "culture": "honest-transport",
       "yearFrom": 1984,
       "yearTo": 1986,
       "curbWeightKg": 670,
@@ -55,6 +56,7 @@
     "spec": {
       "chassisCode": "CT21S",
       "engineCode": "F6A",
+      "culture": "kei",
       "yearFrom": 1993,
       "yearTo": 1998,
       "curbWeightKg": 720,
@@ -97,6 +99,7 @@
     "spec": {
       "chassisCode": "EG6",
       "engineCode": "B16A",
+      "culture": "touge",
       "yearFrom": 1991,
       "yearTo": 1995,
       "curbWeightKg": 1050,
@@ -140,6 +143,7 @@
     "spec": {
       "chassisCode": "AE86",
       "engineCode": "4A-GE",
+      "culture": "touge",
       "yearFrom": 1985,
       "yearTo": 1987,
       "curbWeightKg": 950,
@@ -189,6 +193,7 @@
     "spec": {
       "chassisCode": "RPS13",
       "engineCode": "SR20DET",
+      "culture": "drift",
       "yearFrom": 1993,
       "yearTo": 1996,
       "curbWeightKg": 1322,
@@ -238,6 +243,7 @@
     "spec": {
       "chassisCode": "JZX90",
       "engineCode": "1JZ-GTE",
+      "culture": "drift",
       "yearFrom": 1991,
       "yearTo": 1996,
       "curbWeightKg": 1540,
@@ -286,6 +292,7 @@
     "spec": {
       "chassisCode": "S14",
       "engineCode": "SR20DET",
+      "culture": "drift",
       "yearFrom": 1994,
       "yearTo": 1996,
       "curbWeightKg": 1265,
@@ -335,6 +342,7 @@
     "spec": {
       "chassisCode": "FC3S",
       "engineCode": "13B-T",
+      "culture": "rotary",
       "yearFrom": 1990,
       "yearTo": 1991,
       "curbWeightKg": 1352,
@@ -384,6 +392,7 @@
     "spec": {
       "chassisCode": "FD3S",
       "engineCode": "13B-REW",
+      "culture": "rotary",
       "yearFrom": 1992,
       "yearTo": 1995,
       "curbWeightKg": 1260,
@@ -433,6 +442,7 @@
     "spec": {
       "chassisCode": "JZA80",
       "engineCode": "2JZ-GTE",
+      "culture": "wangan",
       "yearFrom": 1998,
       "yearTo": 2002,
       "curbWeightKg": 1510,
@@ -483,6 +493,7 @@
     "spec": {
       "chassisCode": "AT150",
       "engineCode": "3A-U",
+      "culture": "honest-transport",
       "yearFrom": 1984,
       "yearTo": 1988,
       "curbWeightKg": 955,
@@ -525,6 +536,7 @@
     "spec": {
       "chassisCode": "B12",
       "engineCode": "GA15S",
+      "culture": "honest-transport",
       "yearFrom": 1987,
       "yearTo": 1990,
       "curbWeightKg": 880,
@@ -566,6 +578,7 @@
     "spec": {
       "chassisCode": "HA21S",
       "engineCode": "K6A",
+      "culture": "kei",
       "yearFrom": 1994,
       "yearTo": 1998,
       "curbWeightKg": 650,
@@ -608,6 +621,7 @@
     "spec": {
       "chassisCode": "PP1",
       "engineCode": "E07A",
+      "culture": "kei",
       "yearFrom": 1991,
       "yearTo": 1996,
       "curbWeightKg": 760,
@@ -657,6 +671,7 @@
     "spec": {
       "chassisCode": "EF8",
       "engineCode": "B16A",
+      "culture": "touge",
       "yearFrom": 1991,
       "yearTo": 1991,
       "curbWeightKg": 980,
@@ -706,6 +721,7 @@
     "spec": {
       "chassisCode": "AA",
       "engineCode": "ER",
+      "culture": "front-drive-tuner",
       "yearFrom": 1983,
       "yearTo": 1986,
       "curbWeightKg": 735,
@@ -749,6 +765,7 @@
     "spec": {
       "chassisCode": "EXY10",
       "engineCode": "5E-FHE",
+      "culture": "oddball",
       "yearFrom": 1991,
       "yearTo": 1995,
       "curbWeightKg": 930,
@@ -797,6 +814,7 @@
     "spec": {
       "chassisCode": "BB4",
       "engineCode": "H22A",
+      "culture": "front-drive-tuner",
       "yearFrom": 1994,
       "yearTo": 1996,
       "curbWeightKg": 1302,
@@ -846,6 +864,7 @@
     "spec": {
       "chassisCode": "S13",
       "engineCode": "SR20DET",
+      "culture": "drift",
       "yearFrom": 1989,
       "yearTo": 1993,
       "curbWeightKg": 1140,
@@ -894,6 +913,7 @@
     "spec": {
       "chassisCode": "SW20",
       "engineCode": "3S-GTE",
+      "culture": "touge",
       "yearFrom": 1995,
       "yearTo": 1996,
       "curbWeightKg": 1205,
@@ -943,6 +963,7 @@
     "spec": {
       "chassisCode": "A31",
       "engineCode": "RB20DET",
+      "culture": "drift",
       "yearFrom": 1988,
       "yearTo": 1994,
       "curbWeightKg": 1370,
@@ -985,6 +1006,7 @@
     "spec": {
       "chassisCode": "GC8",
       "engineCode": "EJ20",
+      "culture": "rally-bred",
       "yearFrom": 1994,
       "yearTo": 2000,
       "curbWeightKg": 1230,
@@ -1028,6 +1050,7 @@
     "spec": {
       "chassisCode": "BNR32",
       "engineCode": "RB26DETT",
+      "culture": "touring-car",
       "yearFrom": 1992,
       "yearTo": 1994,
       "curbWeightKg": 1480,
@@ -1079,6 +1102,7 @@
     "spec": {
       "chassisCode": "Z32",
       "engineCode": "VG30DETT",
+      "culture": "wangan",
       "yearFrom": 1994,
       "yearTo": 2000,
       "curbWeightKg": 1520,
@@ -1129,6 +1153,7 @@
     "spec": {
       "chassisCode": "JZS147",
       "engineCode": "2JZ-GTE",
+      "culture": "wangan",
       "yearFrom": 1991,
       "yearTo": 1997,
       "curbWeightKg": 1680,
@@ -1173,6 +1198,7 @@
     "spec": {
       "chassisCode": "AW11",
       "engineCode": "4A-GZE",
+      "culture": "touge",
       "yearFrom": 1989,
       "yearTo": 1989,
       "curbWeightKg": 1188,

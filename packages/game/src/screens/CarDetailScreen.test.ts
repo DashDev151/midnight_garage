@@ -801,6 +801,15 @@ describe('CarDetailScreen', () => {
           origin: { kind: 'market', day: 1 },
         },
       }
+      // Every foundation slot is FILLED as well as mint. A missing slot reads
+      // as the `missing` state, which is itself below 1 in
+      // `valuation.foundation.factorByState`, so a fixture that only lifted
+      // the bands of slots that happened to be occupied was asserting "the
+      // foundations are sound" on a car that might have none in one corner.
+      // It held while an entry car's generated missing-slot chance was low and
+      // stopped holding once culture made those cars likelier to be neglected.
+      const model = game.context.modelsById[car.modelId]!
+      const fitmentClass = fitmentClassForTier(model.tier)
       for (const partId of [
         'brakePadsDiscs',
         'brakeCalipersLines',
@@ -810,7 +819,16 @@ describe('CarDetailScreen', () => {
         'underbody',
       ] as const) {
         const installed = car.parts[partId].installed
-        if (installed) car.parts[partId] = { installed: { ...installed, band: 'mint' } }
+        car.parts[partId] = {
+          installed: installed
+            ? { ...installed, band: 'mint' }
+            : {
+                id: `foundation-test-${partId}`,
+                partId: game.context.stockPartByCarPartId[fitmentClass][partId].id,
+                band: 'mint',
+                origin: { kind: 'market', day: 1 },
+              },
+        }
       }
       expect(game.carDetail(id)!.foundationWarning).toBeNull()
 

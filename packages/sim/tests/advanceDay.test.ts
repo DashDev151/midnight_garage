@@ -207,12 +207,14 @@ describe('advanceDay golden master', () => {
     // with it - which is the proof that this is a shape change and not a
     // behavioural one.
     //
-    // It last moved when the damage budget changed which part each of its
-    // steps degrades: the budget now spends shallow-first, always degrading
-    // one of the least-damaged eligible parts, so the same rolled step count
-    // spreads across the car instead of being able to land on one part
-    // repeatedly. Re-derived from a real run, twice, to confirm determinism.
-    expect(hashState(finalState)).toBe('7037aa01')
+    // It last moved when a car gained a HISTORY (sprint154.md). Two things in
+    // this script's rng stream changed together: the history roll moved to the
+    // top of generation, ahead of the parts loop, because the upkeep tier and
+    // the aftermarket chance are now read off it; and the separate upkeep draw
+    // it replaced is gone, so every draw after it shifts by one. Every
+    // generated board therefore differs. Re-derived from a real run, twice, to
+    // confirm determinism.
+    expect(hashState(finalState)).toBe('08ce1be6')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -348,8 +350,15 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // this time, while the 30-day golden master above held: the `entry` tier's
     // expected condition band became `fine`, which reprices a car but changes
     // nothing generation rolls, and this is the one script that actually buys
-    // and sells a car.
-    expect(hashState(acquisitionCareer().sold)).toBe('dba0a979')
+    // and sells a car. It moved again with the history roll (sprint154.md),
+    // this time alongside the 30-day master, because that change reaches every
+    // generated lot rather than only the priced ones. It moves once more, on
+    // its own again, for the symptomChanceByTier raise that restores the
+    // effective symptom rate to its signed value: the RNG draw sequence inside
+    // symptom generation shifts with the input, and this is again the one
+    // script whose rolled lot happens to fall on that draw; the 30-day master
+    // held unchanged.
+    expect(hashState(acquisitionCareer().sold)).toBe('81133d36')
   })
 })
 

@@ -1,5 +1,6 @@
 import {
   ALL_CAR_PART_IDS,
+  CARE_PROFILES,
   CarTierSchema,
   DAMAGE_GRADES,
   fitmentClassForTier,
@@ -7,6 +8,7 @@ import {
   type AgeBand,
   type AuctionLot,
   type AuctionTier,
+  type CareProfile,
   type CarInstance,
   type CarModel,
   type CarPartId,
@@ -22,7 +24,6 @@ import {
   type PartOrigin,
   type Symptom,
   type TurnoutBand,
-  type UpkeepTier,
 } from '@midnight-garage/content'
 import {
   bandForMigratedCondition,
@@ -62,20 +63,6 @@ function ageBandFor(ageYears: number): AgeBand {
   if (ageYears < AGE_BAND_MIDDLING_FROM_YEARS) return 'young'
   if (ageYears < AGE_BAND_OLD_FROM_YEARS) return 'middling'
   return 'old'
-}
-
-/** A per-car upkeep roll, layered on top of the mileage-based condition
- * baseline - real cross-car variance at the same mileage. */
-function rollUpkeepTier(weights: Readonly<Record<UpkeepTier, number>>, rng: Rng): UpkeepTier {
-  const entries = Object.entries(weights) as [UpkeepTier, number][]
-  const total = entries.reduce((sum, [, weight]) => sum + weight, 0)
-  const roll = rng.next() * total
-  let cumulative = 0
-  for (const [tier, weight] of entries) {
-    cumulative += weight
-    if (roll < cumulative) return tier
-  }
-  return entries[entries.length - 1]![0]
 }
 
 /** Weighted pick over a symptom's own `causes` list - same
@@ -306,17 +293,47 @@ function degradeUnderCeiling(
 }
 
 /**
- * Rolls how rough this lot is, straight from
- * `partsGeneration.damageGrades.weights` - one roster-wide distribution, NOT a
- * per-venue table. `auction.carTierWeightsByAuctionTier` already decides which
- * price bands a room sells (the local yard is 70 per cent entry cars, the
- * collector network 70 per cent flagship) and those bands differ in how old
- * their cars are, so the roughness gradient across rooms emerges from the mix
- * the rooms already have. A second, per-venue roughness roll would count that
- * one fact twice.
+ * How well a car of this kind tends to have been looked after: its culture
+ * picks a care profile, and its tier shifts that choice ONE STEP along the
+ * `CARE_PROFILES` ladder - a flagship toward `cherished`, an entry car toward
+ * `worked`, everyday and enthusiast left where culture put them.
+ *
+ * Culture is the primary axis because it captures how a car was USED. Tier
+ * correlates with care but conflates it with price (a cheap Kyusha is
+ * cherished, an expensive drift car is hammered), so it only nudges: an R32
+ * is still a car people drove hard, but it cost enough that someone cared.
+ *
+ * Deliberately keyed on `CarTier` rather than through `fitmentClassForTier`.
+ * The two value sets are identical today, but that function is the seam for
+ * "which parts basket is this car charged for", a different question from
+ * "how well was it looked after"; binding this shift to it would make a future
+ * divergence silently wrong in a place nobody would think to look.
  */
-export function rollDamageGrade(economy: EconomyConfig, rng: Rng): DamageGrade {
-  const { weights } = economy.partsGeneration.damageGrades
+export function careProfileFor(model: CarModel, economy: EconomyConfig): CareProfile {
+  const base = economy.partsGeneration.damageGrades.careProfileByCulture[model.spec.culture]
+  const index = CARE_PROFILES.indexOf(base)
+  if (model.tier === 'flagship') return CARE_PROFILES[Math.max(0, index - 1)]!
+  if (model.tier === 'entry') return CARE_PROFILES[Math.min(CARE_PROFILES.length - 1, index + 1)]!
+  return base
+}
+
+/**
+ * Rolls this car's HISTORY: what happened to it, drawn from the grade
+ * distribution its own care profile carries
+ * (`partsGeneration.damageGrades.careProfiles`). There is no roster-wide table
+ * any more, because nobody wrecks a 2000GT and nobody handles an Acty with
+ * white gloves; the roster-wide mix is what the 94 authored cultures add up
+ * to, not a number anyone sets.
+ *
+ * Still NOT a per-venue table. `auction.carTierWeightsByAuctionTier` already
+ * decides which price bands a room sells (the local yard is 70 per cent entry
+ * cars, the collector network 70 per cent flagship), so the roughness gradient
+ * across rooms emerges from the mix the rooms already have - and now from the
+ * cultures inside that mix as well. A per-venue roll would count the same fact
+ * a third time.
+ */
+export function rollDamageGrade(model: CarModel, economy: EconomyConfig, rng: Rng): DamageGrade {
+  const weights = economy.partsGeneration.damageGrades.careProfiles[careProfileFor(model, economy)]
   const total = DAMAGE_GRADES.reduce((sum, grade) => sum + weights[grade], 0)
   const roll = rng.next() * total
   let cumulative = 0
@@ -649,10 +666,31 @@ export function carOriginLabel(model: CarModel, year: number): string {
  * only through it. This is generation only, not value: `marketValue.ts` has
  * no age factor; mileage reaches value solely via `mileageFactor`.
  *
- * A per-car upkeep tier (neglected/average/cherished) is rolled once and
- * layered on top of the mileage-based baseline: it offsets the baseline,
- * reshapes the per-part jitter range, scales the missing-slot chance, and
- * picks `provenanceNote` from a tier-matched pool.
+ * THE CAR'S HISTORY IS ROLLED ONCE, EARLY, AND EVERYTHING ELSE ABOUT ITS
+ * CONDITION IS AN EFFECT OF IT (docs/design/systems/generation-damage.md,
+ * layer 2). Its culture and tier select a care profile (`careProfileFor`) and
+ * the history is drawn from that profile's grade distribution, gated by age
+ * and mileage (`gateProjectGrade`), because a young, barely-driven car cannot
+ * yet have been given up on. Three things then read it, and none of them rolls
+ * independently:
+ *
+ * - the UPKEEP TIER it reads as (`damageGrades.upkeepTierByGrade`), which
+ *   offsets the mileage-based condition baseline, reshapes the per-part jitter
+ *   range, scales the missing-slot chance, and picks `provenanceNote` from a
+ *   tier-matched pool. There is no separate upkeep roll: it and the history
+ *   answered the same question, and rolling both let a car someone had given
+ *   up on carry a cherished blurb;
+ * - the AFTERMARKET CHANCE per slot, scaled by
+ *   `damageGrades.aftermarketChanceMultiplierByGrade`, so a car that was
+ *   driven hard is likelier to have been modified than one that was garaged;
+ *   and
+ * - the DAMAGE BUDGET in band steps (`damageGrades.bandStepsByGrade`), spent
+ *   as honest visible wear after the symptoms have landed
+ *   (`spendDamageBudget`), less whatever those symptoms already spent.
+ *
+ * The direction of causation is the whole point and it only runs one way: the
+ * history causes the damage and the parts, and neither is ever read back to
+ * infer the history.
  *
  * `allowMissingSlots` (default true) lets `serviceJobs.ts`'s customer-car
  * generation pass false - a customer's car should never turn up missing an
@@ -661,19 +699,10 @@ export function carOriginLabel(model: CarModel, year: number): string {
  * pass false - symptoms only spawn on auction lots.
  *
  * After the missing-slot roll, a non-missing, non-`forcedInduction` slot
- * rolls a chance to fit a weighted-grade aftermarket part
+ * rolls its history-scaled chance to fit a weighted-grade aftermarket part
  * (`aftermarketInstanceFor`) instead of the default stock one, at the SAME
  * rolled band, capped at `maxAftermarketSlots` per car - this runs for
  * every caller, with no gating parameter.
- *
- * Once symptoms have landed, a damage grade is rolled
- * (`partsGeneration.damageGrades`) and gated: a `project` roll on a car under
- * both `projectGateMaxAgeYears` and `projectGateMaxMileageKm` is demoted to
- * `rough` (`gateProjectGrade`), since a young, barely-driven car cannot yet
- * have been given up on. The gated grade's budget of band steps is then
- * spent as honest visible wear (`spendDamageBudget`), less whatever the
- * symptoms already spent. How rough a lot is is therefore a bounded, rolled
- * property of the car, not a chase after a percentage of its book value.
  */
 export function generateAuctionCarInstance(
   model: CarModel,
@@ -709,15 +738,37 @@ export function generateAuctionCarInstance(
   const carHasForcedInduction = hasForcedInduction(model)
   const { missingSlotBaseChance, missingSlotWeightByPart, aftermarketChance, maxAftermarketSlots } =
     economy.partsGeneration
-  const { upkeepTierWeights, upkeepBaselineOffset, upkeepJitterRange, upkeepMissingMultiplier } =
+  const { upkeepBaselineOffset, upkeepJitterRange, upkeepMissingMultiplier } =
     economy.partsGeneration
+  const { upkeepTierByGrade, aftermarketChanceMultiplierByGrade } =
+    economy.partsGeneration.damageGrades
   // Shared across every part in the loop below (not reset per part) - the cap
   // is per car, not per slot.
   let aftermarketSlotsFitted = 0
-  const upkeepTier = rollUpkeepTier(upkeepTierWeights, rng)
+  // THE HISTORY, rolled here rather than at the end of generation because
+  // everything below is an effect of it. Age and mileage are already known, so
+  // the gate can run immediately: a car under both thresholds cannot have been
+  // given up on yet, whatever the profile rolled.
+  const history = gateProjectGrade(
+    rollDamageGrade(model, economy, rng),
+    ageYears,
+    mileageKm,
+    economy,
+  )
+  // How the car was treated is READ OFF the history rather than rolled beside
+  // it: they are one fact, and two rolls let a car someone had given up on
+  // carry a "one careful owner" blurb.
+  const upkeepTier = upkeepTierByGrade[history]
+  // A hard-driven car is likelier to have been modified than a garaged one.
+  // Clamped because the multiplier and the base chance are authored
+  // independently and their product is still a probability.
+  const slotAftermarketChance = Math.min(
+    1,
+    aftermarketChance * aftermarketChanceMultiplierByGrade[history],
+  )
   // Upkeep only expresses in proportion to how far the car has actually been
   // driven - see `wearExposure`. At ~0 km a nearly-new car is near-mint; at
-  // high mileage a neglected roll bites exactly as hard as before. A car can
+  // high mileage a neglected history bites exactly as hard as before. A car can
   // be better than its baseline at any age, it just cannot be worn out before
   // it has been used.
   const exposure = wearExposure(mileageKm, economy)
@@ -757,7 +808,7 @@ export function generateAuctionCarInstance(
       const rolledMissing = rng.next() < missingChance
       // Rolled unconditionally (even once the cap is already reached) so the
       // RNG draw sequence per slot stays uniform regardless of outcome.
-      const rolledAftermarket = rng.next() < aftermarketChance
+      const rolledAftermarket = rng.next() < slotAftermarketChance
       const aftermarket =
         !rolledMissing && rolledAftermarket && aftermarketSlotsFitted < maxAftermarketSlots
           ? aftermarketInstanceFor(
@@ -804,6 +855,7 @@ export function generateAuctionCarInstance(
     // SKUs are retired/migrated); the projection below immediately overwrites
     // that jittered band with the real, zone-derived one.
     zoneState: rollZoneStates(fitmentClass, economy, rng),
+    history,
   }
   const withDerivedBands = applyDerivedBodyBands(rolled, model, context)
   const softened = enforceMaxBillFraction(withDerivedBands, model, context, carOrigin)
@@ -814,23 +866,23 @@ export function generateAuctionCarInstance(
     symptoms,
     apparentBandByPartId,
   } = applySymptoms(softened, model, context, carOrigin, rng)
-  // Roll how rough this lot is, then spend what the symptoms above have not
-  // already spent. The order is load-bearing: the budget runs AFTER symptoms
-  // and never writes `apparentBandByPartId`, so budget damage is honest wear
-  // the room prices in full rather than a second hidden defect.
-  const damageGrade = gateProjectGrade(rollDamageGrade(economy, rng), ageYears, mileageKm, economy)
-  // The grade names how rough the car is FOR ITS AGE; the raw step count still
-  // needs scaling by how much life the car has actually had, or a car fresh
-  // off the lot rolling `used` would take the same steps as a decades-old one
-  // rolling `used`. Reuses `wearExposure` - the same mileage-driven axis that
-  // already gates upkeep jitter above. `minWorkSteps` floors the scaled result
-  // so a barely-driven car never generates with nothing to fix at all: the
-  // core-loop law guarantees SOME work on every lot, and ten steps spread
-  // across the car is a handful of parts dropped one band each, not a ruined
-  // one - it lands well under what it takes to reach `poor`.
+  // Spend what the history bought, less what the symptoms above already spent.
+  // The order is load-bearing: the budget runs AFTER symptoms and never writes
+  // `apparentBandByPartId`, so budget damage is honest wear the room prices in
+  // full rather than a second hidden defect.
+  //
+  // The history names how rough the car is FOR ITS AGE; the raw step count
+  // still needs scaling by how much life the car has actually had, or a car
+  // fresh off the lot rolling `used` would take the same steps as a
+  // decades-old one rolling `used`. Reuses `wearExposure` - the same
+  // mileage-driven axis that already gates upkeep jitter above. `minWorkSteps`
+  // floors the scaled result so a barely-driven car never generates with
+  // nothing to fix at all: the core-loop law guarantees SOME work on every lot,
+  // and ten steps spread across the car is a handful of parts dropped one band
+  // each, not a ruined one - it lands well under what it takes to reach `poor`.
   const budgetSteps = Math.max(
     economy.partsGeneration.damageGrades.minWorkSteps,
-    Math.round(economy.partsGeneration.damageGrades.bandStepsByGrade[damageGrade] * exposure),
+    Math.round(economy.partsGeneration.damageGrades.bandStepsByGrade[history] * exposure),
   )
   const remainingSteps = Math.max(
     0,

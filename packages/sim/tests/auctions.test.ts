@@ -1,16 +1,22 @@
 import {
   ALL_CAR_PART_IDS,
   BUYERS,
+  CAR_CULTURES,
+  CARE_PROFILES,
   CARS,
+  DAMAGE_GRADES,
   ECONOMY,
   fitmentClassForTier,
   PARTS,
   PARTS_TAXONOMY,
   type AuctionLot,
   type AuctionTier,
+  type CareProfile,
+  type CarCulture,
   type CarInstance,
   type CarModel,
   type DamageGrade,
+  type EconomyConfig,
   type GameState,
   type CarTier,
   type PartFitmentClass,
@@ -18,6 +24,7 @@ import {
 import { describe, expect, it } from 'vitest'
 import {
   canAppearAtAuctionTier,
+  careProfileFor,
   carOriginLabel,
   enforceMaxBillFraction,
   generateAuctionCarInstance,
@@ -33,6 +40,47 @@ import { createRng } from '../src/rng'
 import { testSpecialty, testToolTiers } from './testFixtures'
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
+
+/**
+ * A shipped model re-badged with a given culture and tier. The care profile
+ * reads exactly those two fields, so this is the honest probe for a
+ * culture/tier pair the SHIPPED 26 do not happen to cover: the roster CSV
+ * authors all 94, and cars like the Toyota 2000GT (kyusha, flagship) and the
+ * Honda Acty (kei, entry) are among the 68 not yet built into `cars.json`.
+ */
+function modelWith(culture: CarCulture, tier: CarTier): CarModel {
+  const base = CARS.find((c) => c.id === 'nissan-silvia-s13')
+  if (!base) throw new Error('fixture car missing from seed content')
+  return { ...base, tier, spec: { ...base.spec, culture } }
+}
+
+/** Every care profile forced onto the one grade, so whatever profile the probe
+ * car's culture and tier select, the history it rolls is `grade`. */
+function contextForcingGrade(grade: DamageGrade): SimContext {
+  const forced = { tidy: 0, used: 0, rough: 0, project: 0, [grade]: 1 }
+  return buildSimContext(
+    CARS,
+    PARTS,
+    BUYERS,
+    PARTS_TAXONOMY,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    {
+      ...ECONOMY,
+      partsGeneration: {
+        ...ECONOMY.partsGeneration,
+        damageGrades: {
+          ...ECONOMY.partsGeneration.damageGrades,
+          careProfiles: Object.fromEntries(
+            CARE_PROFILES.map((profile) => [profile, forced]),
+          ) as EconomyConfig['partsGeneration']['damageGrades']['careProfiles'],
+        },
+      },
+    },
+  )
+}
 
 function stateWithLots(
   lots: ReturnType<typeof generateAuctionCatalog>,
@@ -695,29 +743,6 @@ describe('the damage budget: how rough a generated lot is', () => {
     return steps + zones.chassis.finish
   }
 
-  function contextForcingGrade(grade: DamageGrade): SimContext {
-    return buildSimContext(
-      CARS,
-      PARTS,
-      BUYERS,
-      PARTS_TAXONOMY,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      {
-        ...ECONOMY,
-        partsGeneration: {
-          ...ECONOMY.partsGeneration,
-          damageGrades: {
-            ...ECONOMY.partsGeneration.damageGrades,
-            weights: { tidy: 0, used: 0, rough: 0, project: 0, [grade]: 1 },
-          },
-        },
-      },
-    )
-  }
-
   function generate(
     carModel: CarModel,
     count: number,
@@ -771,21 +796,47 @@ describe('the damage budget: how rough a generated lot is', () => {
       }, 0) / cars.length
     expect(ordinaryPoor).toBeLessThan(3)
 
-    // ...and it is not merely un-ruined, it is genuinely presentable: over half
-    // the car sits at `fine` or `mint`, where the floor left 4.9 slots there.
-    expect(meanSlotsAtBands(cars, ['fine', 'mint'])).toBeGreaterThan(14)
+    // ...and it is not merely un-ruined, it is presentable: 12.89 of its 29
+    // slots sit at `fine` or `mint`, where the retired floor left 4.9 there.
+    //
+    // The bar was 14 and is re-derived, not relaxed. It was calibrated when
+    // every car in the game drew its roughness from one flat 45/35/15/5 table;
+    // the Wagon R is kei at entry tier, which is the `worked` care profile
+    // (20/35/33/12), so it is now DESIGNED to be one of the rougher cars on the
+    // roster rather than an average one. The headline claim above is the one
+    // that must not move and does not: under 3 of its 26 ordinary slots ruined.
+    expect(meanSlotsAtBands(cars, ['fine', 'mint'])).toBeGreaterThan(12)
   })
 
-  it('rolls the four grades at their authored roster-wide shares', () => {
-    const rng = createRng(20260731)
-    const counts: Record<DamageGrade, number> = { tidy: 0, used: 0, rough: 0, project: 0 }
-    const draws = 40_000
-    for (let i = 0; i < draws; i++) counts[rollDamageGrade(ECONOMY, rng)] += 1
+  it("rolls a car's history at the authored shares of its own care profile", () => {
+    // One profile per draw sample, each on a model carrying a culture that
+    // selects it at a tier that does not shift it (`everyday`), so what is
+    // measured is the profile's own table rather than the ladder walk.
+    const CULTURE_FOR: Record<CareProfile, CarCulture> = {
+      cherished: 'kyusha',
+      enthusiast: 'wangan',
+      mixed: 'oddball',
+      hammered: 'drift',
+      worked: 'kei',
+    }
+    for (const profile of CARE_PROFILES) {
+      const model = modelWith(CULTURE_FOR[profile], 'everyday')
+      expect(careProfileFor(model, ECONOMY), `${profile} culture selects its own profile`).toBe(
+        profile,
+      )
+      const rng = createRng(20260731)
+      const counts: Record<DamageGrade, number> = { tidy: 0, used: 0, rough: 0, project: 0 }
+      const draws = 40_000
+      for (let i = 0; i < draws; i++) counts[rollDamageGrade(model, ECONOMY, rng)] += 1
 
-    const { weights } = ECONOMY.partsGeneration.damageGrades
-    const totalWeight = weights.tidy + weights.used + weights.rough + weights.project
-    for (const grade of ['tidy', 'used', 'rough', 'project'] as const) {
-      expect(counts[grade] / draws, `${grade} share`).toBeCloseTo(weights[grade] / totalWeight, 2)
+      const weights = ECONOMY.partsGeneration.damageGrades.careProfiles[profile]
+      const totalWeight = DAMAGE_GRADES.reduce((sum, grade) => sum + weights[grade], 0)
+      for (const grade of DAMAGE_GRADES) {
+        expect(counts[grade] / draws, `${profile} ${grade} share`).toBeCloseTo(
+          weights[grade] / totalWeight,
+          2,
+        )
+      }
     }
   })
 
@@ -833,7 +884,17 @@ describe('the damage budget: how rough a generated lot is', () => {
     const { bandStepsByGrade } = ECONOMY.partsGeneration.damageGrades
     const authoredGap = bandStepsByGrade.project - bandStepsByGrade.tidy
     expect(project - tidy).toBeGreaterThan(0.45 * authoredGap)
-    expect(project - tidy).toBeLessThanOrEqual(authoredGap)
+    // The upper bound used to be the authored gap itself, on the reasoning that
+    // the budget was the only thing the grade bought. It is not any more: the
+    // history also SETS THE UPKEEP TIER (`upkeepTierByGrade`), so a forced
+    // `tidy` car is cherished-upkeep and a forced `project` car is
+    // neglected-upkeep, and the condition baseline and jitter range move with
+    // them before the budget spends a single step. The measured gap is
+    // therefore 45.5 against an authored budget gap of 43, and that excess is
+    // the coupling working rather than the budget overspending. Bounded loosely
+    // at twice the authored gap: what is being asserted is still the ladder's
+    // shape, not a pinned figure.
+    expect(project - tidy).toBeLessThan(2 * authoredGap)
   })
 
   it('never generates a car outside its own production years, in any campaign year', () => {
@@ -982,13 +1043,21 @@ describe('the damage budget: how rough a generated lot is', () => {
         if (car.symptoms.length > 0) tally[fitmentClass]!.symptomatic += 1
       }
     }
-    for (const [fitmentClass, counted] of Object.entries(tally)) {
+    // Every class is measured and reported in one message rather than the
+    // first mismatch stopping the run: when the coupling DOES bite, which
+    // classes it bit and by how much is the whole of the information.
+    const measured = Object.entries(tally).map(([fitmentClass, counted]) => {
       const signed = ECONOMY.diagnosis.symptomChanceByTier[fitmentClass as PartFitmentClass]
-      expect(
-        counted.symptomatic / counted.cars,
-        `${fitmentClass}: effective symptom rate has drifted from its signed ${signed}`,
-      ).toBeCloseTo(signed, 1)
-    }
+      const rate = counted.symptomatic / counted.cars
+      return { fitmentClass, signed, rate, drift: rate - signed }
+    })
+    const report = measured
+      .map((m) => `${m.fitmentClass} ${m.rate.toFixed(4)} vs signed ${m.signed}`)
+      .join('; ')
+    expect(
+      measured.filter((m) => Math.abs(m.drift) >= 0.05).map((m) => m.fitmentClass),
+      `effective symptom rate has drifted from its signed value: ${report}`,
+    ).toEqual([])
   }, 30_000)
 
   /**
@@ -1004,7 +1073,9 @@ describe('the damage budget: how rough a generated lot is', () => {
     // A roughness bar in the project tail, not a claim about which grade a
     // given lot rolled: what is asserted is the ORDER across rooms, which is
     // the emergent property, never the level, which follows from content this
-    // sprint does not own.
+    // sprint does not own. The gradient now has TWO emergent sources rather
+    // than one, and neither is a venue lever: the room's own tier mix, and the
+    // care profiles the cars inside that mix carry.
     const PROJECT_STEP_BAR = 65
     const projectRateFor = (room: AuctionTier): number => {
       let lots = 0
@@ -1038,4 +1109,146 @@ describe('the damage budget: how rough a generated lot is', () => {
     // forbids one.
     expect(collector).toBeGreaterThan(0)
   }, 30_000)
+})
+
+/**
+ * A car has a history (docs/design/systems/generation-damage.md, layer 2). Its
+ * culture and tier select a care profile, the history is rolled from that
+ * profile, and the history is the CAUSE of both how rough the car arrives and
+ * how likely it is to carry aftermarket parts. Nothing here infers a history
+ * from the parts a car happens to be wearing: that direction is circular, and
+ * it is exactly why the roll runs first.
+ */
+describe("a car's history: culture and tier decide what kind of car this is", () => {
+  const GAME_YEAR = 1995
+
+  function gradeSharesFor(model: CarModel, draws = 40_000): Record<DamageGrade, number> {
+    const rng = createRng(19951203)
+    const counts: Record<DamageGrade, number> = { tidy: 0, used: 0, rough: 0, project: 0 }
+    for (let i = 0; i < draws; i++) counts[rollDamageGrade(model, ECONOMY, rng)] += 1
+    return {
+      tidy: counts.tidy / draws,
+      used: counts.used / draws,
+      rough: counts.rough / draws,
+      project: counts.project / draws,
+    }
+  }
+
+  it('gives every shipped car a culture that selects a real care profile', () => {
+    for (const model of CARS) {
+      expect(CAR_CULTURES, model.id).toContain(model.spec.culture)
+      expect(CARE_PROFILES, model.id).toContain(careProfileFor(model, ECONOMY))
+    }
+  })
+
+  it('nobody wrecks a 2000GT and nobody handles an Acty with white gloves', () => {
+    // The roster CSV's own authored pairs for two cars among the 68 not yet
+    // built into `cars.json`: the Toyota 2000GT is kyusha/flagship and the
+    // Honda Acty is kei/entry.
+    const twoThousandGt = modelWith('kyusha', 'flagship')
+    const acty = modelWith('kei', 'entry')
+    expect(careProfileFor(twoThousandGt, ECONOMY)).toBe('cherished')
+    expect(careProfileFor(acty, ECONOMY)).toBe('worked')
+
+    const gt = gradeSharesFor(twoThousandGt)
+    const kei = gradeSharesFor(acty)
+    // A cherished profile has no `project` share at all, so the outcome is not
+    // merely rare on a 2000GT: it is unreachable.
+    expect(gt.project).toBe(0)
+    expect(kei.project).toBeGreaterThan(0.1)
+    expect(gt.tidy).toBeGreaterThan(3 * kei.tidy)
+  })
+
+  it('shifts a flagship one step toward cherished and an entry car one step toward worked', () => {
+    // The tier shift is a walk along one ordered ladder, so the same culture
+    // reads differently at each end of the price range. A drift car is the
+    // design's own example: driven hard, but an expensive one cost enough that
+    // someone cared.
+    //
+    // ONE STEP IS ONE RUNG, with no rung skipped and no profile treated as
+    // off-ladder. `CARE_PROFILES` runs cherished > enthusiast > mixed >
+    // hammered > worked, strictly decreasing in its own `tidy` share, so a
+    // flagship drift car lands on `mixed`. generation-damage.md's worked
+    // example says "hammered shifted up to enthusiast", which is TWO rungs
+    // against its own table; recorded in sprint154.md rather than special-cased
+    // here, because a ladder with a skipped rung is a ladder with an exception.
+    expect(careProfileFor(modelWith('drift', 'everyday'), ECONOMY)).toBe('hammered')
+    expect(careProfileFor(modelWith('drift', 'enthusiast'), ECONOMY)).toBe('hammered')
+    expect(careProfileFor(modelWith('drift', 'flagship'), ECONOMY)).toBe('mixed')
+    expect(careProfileFor(modelWith('drift', 'entry'), ECONOMY)).toBe('worked')
+
+    // The ladder ends clamp rather than wrapping: a cherished culture cannot
+    // be shifted past cherished, nor a worked one past worked.
+    expect(careProfileFor(modelWith('exotic', 'flagship'), ECONOMY)).toBe('cherished')
+    expect(careProfileFor(modelWith('kei', 'entry'), ECONOMY)).toBe('worked')
+  })
+
+  it('leaves the shipped roster near the retired flat 45/35/15/5 without anyone authoring that', () => {
+    // The roster-wide mix is now an EMERGENT property of the authored
+    // cultures rather than a table. This asserts it has not drifted somewhere
+    // unrecognisable, deliberately with a wide band: the shipped 26 are a
+    // drift-and-kei-heavy subset of the 94, so they sit rougher than the full
+    // roster, and that is content authoring rather than a defect.
+    const totals: Record<DamageGrade, number> = { tidy: 0, used: 0, rough: 0, project: 0 }
+    for (const model of CARS) {
+      const weights =
+        ECONOMY.partsGeneration.damageGrades.careProfiles[careProfileFor(model, ECONOMY)]
+      const total = DAMAGE_GRADES.reduce((sum, grade) => sum + weights[grade], 0)
+      for (const grade of DAMAGE_GRADES) totals[grade] += weights[grade] / total / CARS.length
+    }
+    expect(totals.tidy).toBeGreaterThan(0.3)
+    expect(totals.tidy).toBeLessThan(0.55)
+    expect(totals.used).toBeCloseTo(0.35, 1)
+    expect(totals.rough).toBeGreaterThan(0.1)
+    expect(totals.rough).toBeLessThan(0.3)
+    expect(totals.project).toBeGreaterThan(0.02)
+    expect(totals.project).toBeLessThan(0.1)
+    expect(totals.tidy + totals.used + totals.rough + totals.project).toBeCloseTo(1, 6)
+  })
+
+  it('makes a hard-driven car likelier to carry aftermarket parts than a garaged one', () => {
+    // History is the cause and the fitted parts are the effect. Measured on
+    // ONE model at one age with only the forced history differing, so nothing
+    // but the multiplier can be moving the rate.
+    const model = CARS.find((c) => c.id === 'nissan-180sx-rps13')
+    if (!model) throw new Error('fixture car missing from seed content')
+    const UNGATED_YEAR = GAME_YEAR + 9
+    const aftermarketSlotsFor = (grade: DamageGrade): number => {
+      const context = contextForcingGrade(grade)
+      let fitted = 0
+      const runs = 400
+      for (let seed = 0; seed < runs; seed++) {
+        const car = generateAuctionCarInstance(
+          model,
+          `aftermarket-${grade}-${seed}`,
+          createRng(seed),
+          context,
+          UNGATED_YEAR,
+        )
+        for (const partId of ALL_CAR_PART_IDS) {
+          const installed = car.parts[partId].installed
+          if (installed && context.partsById[installed.partId]?.grade !== 'stock') fitted += 1
+        }
+      }
+      return fitted / runs
+    }
+    expect(aftermarketSlotsFor('project')).toBeGreaterThan(aftermarketSlotsFor('tidy'))
+  }, 30_000)
+
+  it('stamps the rolled history onto the generated car', () => {
+    const model = CARS.find((c) => c.id === 'nissan-cefiro-a31')
+    if (!model) throw new Error('fixture car missing from seed content')
+    for (const grade of DAMAGE_GRADES) {
+      // Generated old enough to clear the project age gate, so a forced
+      // `project` is not demoted before it reaches the car.
+      const car = generateAuctionCarInstance(
+        model,
+        `history-${grade}`,
+        createRng(7),
+        contextForcingGrade(grade),
+        2010,
+      )
+      expect(car.history, grade).toBe(grade)
+    }
+  })
 })

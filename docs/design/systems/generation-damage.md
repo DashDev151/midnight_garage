@@ -1,6 +1,6 @@
 # How a car arrives: age, damage, and what happened to it
 
-**Status: DESIGN. Layer 1 APPROVED. Layers 2 and 3 designed, not signed. NOT BUILT.**
+**Status: LAYERS 1 AND 2 BUILT (Sprints 153 and 154). Layer 3 designed, not signed, NOT BUILT.**
 
 Supersedes the 2026-07-31 draft, which covered only the damage budget.
 

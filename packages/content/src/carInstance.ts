@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { DamageGradeSchema } from './economy'
 import { PartInstanceSchema } from './part'
 import { CarPartIdSchema, ConditionBandSchema } from './tags'
 
@@ -152,6 +153,19 @@ export const CarInstanceSchema = z.object({
    * unchanged - absent reads as "not yet on the zone model."
    */
   zoneState: ZoneStatesSchema.optional(),
+  /**
+   * WHAT HAPPENED TO THIS CAR before it reached the block, rolled once at
+   * generation from the care profile its model's culture and tier select
+   * (docs/design/systems/generation-damage.md, layer 2). It is the single
+   * cause the rest of the car's condition hangs off: how many band steps of
+   * damage it carries, which upkeep tier it reads as, and how likely each
+   * slot was to have been modified.
+   *
+   * Optional because a HAND-AUTHORED car genuinely has no rolled history -
+   * the scripted tutorial lot, a probe car, a sandbox fixture - and absent
+   * reads as exactly that rather than as a missing default.
+   */
+  history: DamageGradeSchema.optional(),
 })
 
 export type CarInstance = z.infer<typeof CarInstanceSchema>

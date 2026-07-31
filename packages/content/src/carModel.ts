@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import {
+  CarCultureSchema,
   CarOriginSchema,
   CarRaritySchema,
   CarTierSchema,
@@ -53,6 +54,21 @@ export const CarModelSchema = z
       .object({
         chassisCode: z.string().min(1),
         engineCode: z.string().min(1),
+        /**
+         * The scene this car belongs to, authored per car for all 94 roster
+         * rows (directive 24) and normalised from the roster CSV's own
+         * `culture` column. It is the game's answer to "what kind of car is
+         * this likely to be": with `tier` it selects the car's care profile
+         * (`partsGeneration.damageGrades.careProfileByCulture`), which is the
+         * distribution its history is rolled from, and the history then drives
+         * both how rough the car arrives and how likely it is to carry
+         * aftermarket parts.
+         *
+         * Required, not defaulted, on the same footing as `reliabilityBase`
+         * and `styleBase`: a car added later cannot silently inherit a scene
+         * nobody chose.
+         */
+        culture: CarCultureSchema,
         /**
          * The variant's production window. A generated car's model year is
          * drawn inside `[yearFrom, yearTo]` (`generateAuctionCarInstance`), so

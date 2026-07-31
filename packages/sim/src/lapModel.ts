@@ -42,6 +42,10 @@ function referenceCarModel(weightKg: number, powerPs: number): CarModel {
     spec: {
       chassisCode: 'REF',
       engineCode: 'REF',
+      // Read by nothing either: culture reaches only the care profile auction
+      // generation rolls a history from, and a reference chassis is never
+      // generated as a car.
+      culture: 'oddball',
       yearFrom: 1995,
       yearTo: 1995,
       curbWeightKg: weightKg,

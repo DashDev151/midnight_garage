@@ -42,6 +42,7 @@ const model: CarModel = {
   spec: {
     chassisCode: 'JZA80',
     engineCode: '2JZ-GTE',
+    culture: 'wangan',
     yearFrom: 1993,
     yearTo: 1993,
     curbWeightKg: 1590,
