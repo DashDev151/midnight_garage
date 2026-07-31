@@ -10,7 +10,7 @@ WORKED_EXAMPLE_WRITE=1 pnpm test packages/sim/tests/workedExample.test.ts
 
 ## Plain language, first
 
-The shop opens with ¥300,000. It buys a rough 1993 Suzuki Wagon R (CT21S) for ¥114,017, spends ¥36,940 putting it right and dressing it up, and sells it on day 6 for ¥199,359. It then buys a tidy 1989 Nissan Silvia (S13) for ¥247,505, spends ¥61,120 on it, and sells that on day 12 for ¥494,311. Rent takes ¥20,000 over the same 12 days regardless of what the shop does. The till finishes at ¥514,088: **¥214,088 made in 12 days**, out of two cars and no other income at all.
+The shop opens with ¥300,000. It buys a rough 1993 Suzuki Wagon R (CT21S) for ¥102,565, spends ¥48,210 putting it right and dressing it up, and sells it on day 6 for ¥204,639. It then buys a tidy 1989 Nissan Silvia (S13) for ¥246,716, spends ¥52,950 on it, and sells that on day 12 for ¥460,964. Rent takes ¥20,000 over the same 12 days regardless of what the shop does. The till finishes at ¥495,162: **¥195,162 made in 12 days**, out of two cars and no other income at all.
 
 ## Seeds and assumptions
 
@@ -41,17 +41,17 @@ Deliberate limits of this run, stated so nothing reads as a claim it is not:
 | Tier / culture | entry / Kei | everyday / Drift |
 | Book value | ¥230,000 | ¥500,000 |
 | Condition bought | rough | tidy |
-| Paid (auction reserve) | ¥114,017 | ¥247,505 |
-| Desk buyout would have been | ¥190,029 | ¥412,508 |
-| Rung 1 - as bought | ¥190,029 | ¥414,035 |
-| Rung 2 - repaired | ¥209,824 | ¥475,512 |
-| Rung 3 - modified | ¥216,403 | ¥492,840 |
-| Repair charges (`repairYen`) | ¥7,280 | ¥18,600 |
-| Parts (`partsYen`) | ¥24,660 | ¥33,020 |
+| Paid (auction reserve) | ¥102,565 | ¥246,716 |
+| Desk buyout would have been | ¥170,941 | ¥411,193 |
+| Rung 1 - as bought | ¥170,941 | ¥412,476 |
+| Rung 2 - repaired | ¥211,750 | ¥468,688 |
+| Rung 3 - modified | ¥217,797 | ¥486,016 |
+| Repair charges (`repairYen`) | ¥10,480 | ¥10,500 |
+| Parts (`partsYen`) | ¥29,730 | ¥32,950 |
 | Listing fees (`listingFeesYen`) | ¥0 | ¥1,500 |
-| Sold for | ¥199,359 | ¥494,311 |
-| **Net (ledger)** | **¥53,402** | **¥193,686** |
-| Labour spent (energy points) | 121 | 219 |
+| Sold for | ¥204,639 | ¥460,964 |
+| **Net (ledger)** | **¥61,864** | **¥169,298** |
+| Labour spent (energy points) | 197 | 197 |
 | Days owned | 5 | 6 |
 
 **Fixed overheads, held out of both margins.** Rent is a function of bays owned, not of any one car: ¥20,000 a week at 1 service, 3 parking and 2 forecourt bays, charged on `calendar.rentDayOfWeek`. Over this run it took ¥20,000. That is what the week costs whatever the shop does with it, and it is never subtracted from a car's margin above.
@@ -66,47 +66,59 @@ Deliberate limits of this run, stated so nothing reads as a claim it is not:
 
 | Figure | Function | Yen |
 |---|---|---|
-| Guide value (the anchor) | `anchorValueYen` | ¥190,029 |
-| Auction reserve | `reserveYen` = anchor x `AUCTION_RESERVE_PRICE_FRACTION` (0.6) | ¥114,017 |
-| Desk buyout | `computeBuyoutPriceYen` = anchor x `AUCTION_BUYOUT_PREMIUM` (1.0) | ¥190,029 |
+| Guide value (the anchor) | `anchorValueYen` | ¥170,941 |
+| Auction reserve | `reserveYen` = anchor x `AUCTION_RESERVE_PRICE_FRACTION` (0.6) | ¥102,565 |
+| Desk buyout | `computeBuyoutPriceYen` = anchor x `AUCTION_BUYOUT_PREMIUM` (1.0) | ¥170,941 |
 | Attendance fee (local-yard) | `auctionRoom.attendanceFeeYenByTier` - live mechanism, currently zero for every tier | ¥0 |
 | Inspection / travel fee | `diagnosis.travelFeeYenByTier` - a live mechanism (`beginInspectionVisit`), not used by this run | not paid |
-| **Paid (this run)** | `settleAuctionHammer` at the reserve | **¥114,017** |
+| **Paid (this run)** | `settleAuctionHammer` at the reserve | **¥102,565** |
 
-The realised price of a live-room win lands **somewhere between ¥114,017 and ¥190,029**, and the room decides where: its clearing draw is a fraction of this same anchor, floored at that same `AUCTION_RESERVE_PRICE_FRACTION`, which is the one seller floor the whole game prices against. This run settles the hammer at the reserve, which is the optimistic end of that band; every net figure below therefore also assumes the desk buyout would have cost ¥76,012 more.
+The realised price of a live-room win lands **somewhere between ¥102,565 and ¥170,941**, and the room decides where: its clearing draw is a fraction of this same anchor, floored at that same `AUCTION_RESERVE_PRICE_FRACTION`, which is the one seller floor the whole game prices against. This run settles the hammer at the reserve, which is the optimistic end of that band; every net figure below therefore also assumes the desk buyout would have cost ¥68,376 more.
 
-It arrived carrying somebody else's parts: `camsTiming` Raiden Sport Cams (sport, worn), `antiRollBars` Kumo Sport Sway Bars (sport, worn), `steering` Kitsune Sport Rack (sport, poor). Generation fits up to `partsGeneration.maxAftermarketSlots` aftermarket slots per car, so a bought car can turn up with a half-finished build the market is already discounting.
+It arrived carrying somebody else's parts: `camsTiming` Raiden Sport Cams (sport, worn), `antiRollBars` Kumo Sport Sway Bars (sport, worn), `steering` Kitsune Sport Rack (sport, worn). Generation fits up to `partsGeneration.maxAftermarketSlots` aftermarket slots per car, so a bought car can turn up with a half-finished build the market is already discounting.
 
 ### 2. The work
 
 | Day | Category | Item | Yen |
 |---|---|---|---|
-| day 2 | Repair labour charges | Bench recondition: brakeCalipersLines to worn | -¥630 |
-| day 2 | Repair labour charges | Bench recondition: intake to worn | -¥250 |
-| day 2 | Repair labour charges | Bench recondition: exhaust to worn | -¥560 |
-| day 2 | Repair labour charges | Bench recondition: fuelSystem to worn | -¥250 |
-| day 2 | Repair labour charges | Bench recondition: driveline to worn | -¥420 |
-| day 3 | Repair labour charges | Bench recondition: springs to worn | -¥250 |
-| day 3 | Repair labour charges | Bench recondition: steering to worn | -¥620 |
-| day 3 | Repair labour charges | Repair charge on car-worked-car-a-26 | -¥1,820 |
-| day 3 | Repair labour charges | Repair charge on car-worked-car-a-26 | -¥360 |
+| day 2 | Repair labour charges | Bench recondition: brakeCalipersLines to fine | -¥630 |
+| day 2 | Repair labour charges | Bench recondition: rims to fine | -¥480 |
+| day 3 | Repair labour charges | Bench recondition: intake to fine | -¥250 |
+| day 3 | Repair labour charges | Bench recondition: exhaust to fine | -¥560 |
+| day 3 | Repair labour charges | Bench recondition: fuelSystem to fine | -¥250 |
+| day 3 | Repair labour charges | Bench recondition: ignitionEcu to fine | -¥390 |
+| day 3 | Repair labour charges | Bench recondition: cooling to fine | -¥200 |
+| day 4 | Repair labour charges | Bench recondition: driveline to fine | -¥420 |
+| day 4 | Repair labour charges | Bench recondition: dampers to fine | -¥560 |
+| day 4 | Repair labour charges | Bench recondition: springs to fine | -¥250 |
+| day 4 | Repair labour charges | Bench recondition: antiRollBars to fine | -¥340 |
+| day 4 | Repair labour charges | Bench recondition: steering to fine | -¥620 |
+| day 4 | Repair labour charges | Repair charge on car-worked-car-a-26 | -¥1,820 |
+| day 4 | Repair labour charges | Repair charge on car-worked-car-a-26 | -¥360 |
+| day 1 | Body-pipeline materials | Body pipeline polish on boot | -¥800 |
+| day 1 | Body-pipeline materials | Body pipeline polish on right | -¥800 |
+| day 1 | Body-pipeline materials | Body pipeline polish on roof | -¥800 |
 | day 1 | Body-pipeline materials | Body pipeline fillAndSand on chassis | -¥1,900 |
 | day 1 | Body-pipeline materials | Body pipeline prime on chassis | -¥1,200 |
 | day 1 | Body-pipeline materials | Body pipeline paint on chassis | -¥2,000 |
+| day 1 | Body-pipeline materials | Body pipeline polish on chassis | -¥800 |
 | day 1 | Parts | Part ordered standard: shitbox-stock-brake-pads-discs | -¥2,100 |
-| day 3 | Parts | Part bought express: shitbox-mikoshi-lip-kit | -¥5,170 |
-| day 3 | Parts | Part bought express: shitbox-suzaku-street-catback | -¥8,030 |
-| day 3 | Parts | Part bought express: shitbox-fubuki-cold-air-kit | -¥3,630 |
-| day 3 | Parts | Part bought express: shitbox-suiko-street-radiator | -¥2,750 |
-| day 3 | Machine-shop hire | Machine-shop hire for the day: suspension | -¥5,000 |
+| day 2 | Parts | Part ordered standard: shitbox-stock-tyres | -¥3,100 |
+| day 5 | Parts | Part bought express: shitbox-mikoshi-lip-kit | -¥5,170 |
+| day 5 | Parts | Part bought express: shitbox-suzaku-street-catback | -¥8,030 |
+| day 5 | Parts | Part bought express: shitbox-fubuki-cold-air-kit | -¥3,630 |
+| day 5 | Parts | Part bought express: shitbox-suiko-street-radiator | -¥2,750 |
+| day 3 | Machine-shop hire | Machine-shop hire for the day: wheels | -¥3,000 |
+| day 4 | Machine-shop hire | Machine-shop hire for the day: suspension | -¥5,000 |
 
-Work spend, all categories: **¥36,940**.
+Work spend, all categories: **¥48,210**.
 
-Labour is slots, not yen, and is never charged to the bank: this car consumed **121 energy points** out of a solo shop's `economy.energy.basePoolPoints` of 60 per day.
+Labour is slots, not yen, and is never charged to the bank: this car consumed **197 energy points** out of a solo shop's `economy.energy.basePoolPoints` of 60 per day.
 
 | Day | Line hired | Fee | What it unlocked |
 |---|---|---|---|
-| day 3 | `suspension` | ¥5,000 | fitting that group's signature slots (`machineShopAssist.signatureSlotsByGroup`) |
+| day 3 | `wheels` | ¥3,000 | mounting a fresh tyre onto the rim on the bench |
+| day 4 | `suspension` | ¥5,000 | fitting that group's signature slots (`machineShopAssist.signatureSlotsByGroup`) |
 
 A machine-shop hire is a **daily** unlock and is charged to the day, never to the car (`resolveHireMachineLine`), so it never appears in the car ledger the net figure below is read from: hiring the engine crane for a day can pull four engines, so it belongs to no single one of them.
 
@@ -118,41 +130,41 @@ A machine-shop hire is a **daily** unlock and is charged to the day, never to th
 |---|---|---|
 | Book value | `book` | ¥230,000 |
 | Mileage curve | `mileage` | ¥11,500 |
-| Restoration bill below the expected band (x marketRepairDiscount 1.3) | `wear` | -¥24,960 |
-| Restoration bill above the expected band (x the tier beyondDiscount) | `polish` | -¥24,900 |
-| Stage C coherence discount | `coherence` | -¥5,640 |
+| Restoration bill below the expected band (x marketRepairDiscount 1.3) | `wear` | -¥59,163 |
+| Restoration bill above the expected band (x the tier beyondDiscount) | `polish` | -¥10,364 |
+| Stage C coherence discount | `coherence` | -¥5,061 |
 | Stage D aftermarket premium | `aftermarket` | ¥4,029 |
-| **Total (`marketValueYen`)** |  | **¥190,029** |
+| **Total (`marketValueYen`)** |  | **¥170,941** |
 
-Restoration bill still owed to the `worn` band the tier expects: ¥19,200.
+Restoration bill still owed to the `fine` band the tier expects: ¥45,510.
 
-#### Rung 2: Repaired (day 3, market heat 100%)
+#### Rung 2: Repaired (day 5, market heat 100%)
 
 | Line | id | Yen |
 |---|---|---|
 | Book value | `book` | ¥230,000 |
 | Mileage curve | `mileage` | ¥11,500 |
-| Restoration bill below the expected band (x marketRepairDiscount 1.3) | `wear` | -¥8,359 |
-| Restoration bill above the expected band (x the tier beyondDiscount) | `polish` | -¥26,180 |
-| Stage C coherence discount | `coherence` | -¥6,091 |
+| Restoration bill below the expected band (x marketRepairDiscount 1.3) | `wear` | -¥16,471 |
+| Restoration bill above the expected band (x the tier beyondDiscount) | `polish` | -¥16,084 |
+| Stage C coherence discount | `coherence` | -¥6,149 |
 | Stage D aftermarket premium | `aftermarket` | ¥8,954 |
-| **Total (`marketValueYen`)** |  | **¥209,824** |
+| **Total (`marketValueYen`)** |  | **¥211,750** |
 
-Restoration bill still owed to the `worn` band the tier expects: ¥6,430.
+Restoration bill still owed to the `fine` band the tier expects: ¥12,670.
 
-#### Rung 3: Modified (day 3, market heat 100%)
+#### Rung 3: Modified (day 5, market heat 100%)
 
 | Line | id | Yen |
 |---|---|---|
 | Book value | `book` | ¥230,000 |
 | Mileage curve | `mileage` | ¥11,500 |
-| Restoration bill below the expected band (x marketRepairDiscount 1.3) | `wear` | -¥8,359 |
-| Restoration bill above the expected band (x the tier beyondDiscount) | `polish` | -¥25,084 |
-| Stage C coherence discount | `coherence` | -¥6,123 |
+| Restoration bill below the expected band (x marketRepairDiscount 1.3) | `wear` | -¥16,471 |
+| Restoration bill above the expected band (x the tier beyondDiscount) | `polish` | -¥15,536 |
+| Stage C coherence discount | `coherence` | -¥6,165 |
 | Stage D aftermarket premium | `aftermarket` | ¥14,469 |
-| **Total (`marketValueYen`)** |  | **¥216,403** |
+| **Total (`marketValueYen`)** |  | **¥217,797** |
 
-Restoration bill still owed to the `worn` band the tier expects: ¥6,430.
+Restoration bill still owed to the `fine` band the tier expects: ¥12,670.
 
 #### What decides the aftermarket premium
 
@@ -179,10 +191,14 @@ Parts total ¥19,580; the ladder above credits ¥5,515 of it back into the car's
 
 | Slot | Band | Why it stayed there |
 |---|---|---|
-| `block` | poor | assembly-gated (engineAssembly): worked only through the engine line |
-| `seats` | poor | signature slot: needs the interior line hired |
+| `block` | worn | assembly-gated (engineAssembly): worked only through the engine line |
+| `internals` | worn | assembly-gated (engineAssembly): worked only through the engine line |
+| `headValvetrain` | worn | assembly-gated (engineAssembly): worked only through the engine line |
+| `camsTiming` | worn | assembly-gated (engineAssembly): worked only through the engine line |
+| `seats` | worn | signature slot: needs the interior line hired |
+| `dashGauges` | worn | signature slot: needs the interior line hired |
 
-Remaining bill to the expected band: **¥6,430**. This is real, and the market is discounting it in every rung above.
+Remaining bill to the expected band: **¥12,670**. This is real, and the market is discounting it in every rung above.
 
 ### 4. The sale
 
@@ -191,34 +207,34 @@ Remaining bill to the expected band: **¥6,430**. This is real, and the market i
 | Channel | `shopFront` |
 | Listing fee | ¥0 |
 | Forecourt slot | 1 of 2 taken while listed |
-| Days listed before it sold | 3 days |
-| Buyer archetype | `kei-specialist` |
+| Days listed before it sold | 1 day |
+| Buyer archetype | `first-timer` |
 | Buyer taste (through the channel ceiling) | 1.0000 |
-| Offer quality fraction drawn | 0.9212 |
-| **Final `priceYen`** | **¥199,359** |
+| Offer quality fraction drawn | 0.9396 |
+| **Final `priceYen`** | **¥204,639** |
 
 #### The same car, the same buyer, every channel
 
 | Channel | Fee | tasteCeiling | Matched only | Buyer taste | Channel price | Price less fee vs shop front |
 |---|---|---|---|---|---|---|
-| `shopFront` | ¥0 | 1.00 | no | 1.0000 | ¥216,403 | - |
-| `freeAdsPaper` | ¥1,500 | 1.05 | no | 1.0332 | ¥223,593 | ¥5,690 |
-| `tunerMagazine` | ¥12,000 | 1.17 | yes | 1.0651 | ¥230,501 | ¥2,098 |
-| `tradeNetwork` | ¥0 | n/a (flat `priceBand`) | no | n/a | ¥216,403 | ¥0 |
-| `weekendMeet` | ¥3,000 | 1.17 | yes | 1.0651 | ¥230,501 | ¥11,098 |
+| `shopFront` | ¥0 | 1.00 | no | 1.0000 | ¥217,797 | - |
+| `freeAdsPaper` | ¥1,500 | 1.05 | no | 1.0500 | ¥228,687 | ¥9,390 |
+| `tunerMagazine` | ¥12,000 | 1.17 | yes | 1.1485 | ¥250,139 | ¥20,342 |
+| `tradeNetwork` | ¥0 | n/a (flat `priceBand`) | no | n/a | ¥217,797 | ¥0 |
+| `weekendMeet` | ¥3,000 | 1.17 | yes | 1.1485 | ¥250,139 | ¥29,342 |
 
 ### 5. Net, from the sim's own car ledger
 
 | `CarLedger` field | Yen |
 |---|---|
-| `purchaseYen` | ¥114,017 |
-| `repairYen` | ¥7,280 |
-| `partsYen` | ¥24,660 |
+| `purchaseYen` | ¥102,565 |
+| `repairYen` | ¥10,480 |
+| `partsYen` | ¥29,730 |
 | `listingFeesYen` | ¥0 |
-| Sale `priceYen` | ¥199,359 |
-| **Net** | **¥53,402** |
+| Sale `priceYen` | ¥204,639 |
+| **Net** | **¥61,864** |
 
-The car ledger carries the listing fee, because that fee was paid to advertise this car and nothing else. It does not carry the machine-shop hires (¥5,000): those are running costs, and a day's crane hire can pull four engines. Counting them anyway, this car returned **¥48,402** to the bank.
+The car ledger carries the listing fee, because that fee was paid to advertise this car and nothing else. It does not carry the machine-shop hires (¥8,000): those are running costs, and a day's crane hire can pull four engines. Counting them anyway, this car returned **¥53,864** to the bank.
 
 ## Car B: Nissan Silvia (S13)
 
@@ -230,41 +246,40 @@ The car ledger carries the listing fee, because that fee was paid to advertise t
 
 | Figure | Function | Yen |
 |---|---|---|
-| Guide value (the anchor) | `anchorValueYen` | ¥412,508 |
-| Auction reserve | `reserveYen` = anchor x `AUCTION_RESERVE_PRICE_FRACTION` (0.6) | ¥247,505 |
-| Desk buyout | `computeBuyoutPriceYen` = anchor x `AUCTION_BUYOUT_PREMIUM` (1.0) | ¥412,508 |
+| Guide value (the anchor) | `anchorValueYen` | ¥411,193 |
+| Auction reserve | `reserveYen` = anchor x `AUCTION_RESERVE_PRICE_FRACTION` (0.6) | ¥246,716 |
+| Desk buyout | `computeBuyoutPriceYen` = anchor x `AUCTION_BUYOUT_PREMIUM` (1.0) | ¥411,193 |
 | Attendance fee (regional) | `auctionRoom.attendanceFeeYenByTier` - live mechanism, currently zero for every tier | ¥0 |
 | Inspection / travel fee | `diagnosis.travelFeeYenByTier` - a live mechanism (`beginInspectionVisit`), not used by this run | not paid |
-| **Paid (this run)** | `settleAuctionHammer` at the reserve | **¥247,505** |
+| **Paid (this run)** | `settleAuctionHammer` at the reserve | **¥246,716** |
 
-The realised price of a live-room win lands **somewhere between ¥247,505 and ¥412,508**, and the room decides where: its clearing draw is a fraction of this same anchor, floored at that same `AUCTION_RESERVE_PRICE_FRACTION`, which is the one seller floor the whole game prices against. This run settles the hammer at the reserve, which is the optimistic end of that band; every net figure below therefore also assumes the desk buyout would have cost ¥165,003 more.
+The realised price of a live-room win lands **somewhere between ¥246,716 and ¥411,193**, and the room decides where: its clearing draw is a fraction of this same anchor, floored at that same `AUCTION_RESERVE_PRICE_FRACTION`, which is the one seller floor the whole game prices against. This run settles the hammer at the reserve, which is the optimistic end of that band; every net figure below therefore also assumes the desk buyout would have cost ¥164,477 more.
 
-It arrived carrying somebody else's part: `brakePadsDiscs` Shuriken Sport Pads & Discs (sport, fine). Generation fits up to `partsGeneration.maxAftermarketSlots` aftermarket slots per car, so a bought car can turn up with a half-finished build the market is already discounting.
+It arrived carrying somebody else's part: `brakePadsDiscs` Shuriken Sport Pads & Discs (sport, worn). Generation fits up to `partsGeneration.maxAftermarketSlots` aftermarket slots per car, so a bought car can turn up with a half-finished build the market is already discounting.
 
 ### 2. The work
 
 | Day | Category | Item | Yen |
 |---|---|---|---|
-| day 7 | Repair labour charges | Bench recondition: brakeCalipersLines to fine | -¥720 |
+| day 6 | Repair labour charges | Bench recondition: brakeCalipersLines to fine | -¥720 |
+| day 7 | Repair labour charges | Bench recondition: rims to fine | -¥540 |
 | day 8 | Repair labour charges | Bench recondition: intake to fine | -¥290 |
 | day 8 | Repair labour charges | Bench recondition: exhaust to fine | -¥1,280 |
-| day 8 | Repair labour charges | Bench recondition: ignitionEcu to fine | -¥900 |
+| day 8 | Repair labour charges | Bench recondition: ignitionEcu to fine | -¥450 |
 | day 8 | Repair labour charges | Bench recondition: cooling to fine | -¥220 |
-| day 9 | Repair labour charges | Bench recondition: dampers to fine | -¥1,280 |
+| day 8 | Repair labour charges | Bench recondition: driveline to fine | -¥480 |
+| day 9 | Repair labour charges | Bench recondition: dampers to fine | -¥640 |
 | day 9 | Repair labour charges | Bench recondition: springs to fine | -¥290 |
 | day 9 | Repair labour charges | Bench recondition: antiRollBars to fine | -¥190 |
 | day 9 | Repair labour charges | Bench recondition: steering to fine | -¥350 |
-| day 9 | Repair labour charges | Repair charge on car-worked-car-b-9 | -¥4,160 |
-| day 10 | Repair labour charges | Repair charge on car-worked-car-b-9 | -¥840 |
+| day 9 | Repair labour charges | Repair charge on car-worked-car-b-9 | -¥2,080 |
+| day 9 | Repair labour charges | Repair charge on car-worked-car-b-9 | -¥420 |
+| day 6 | Body-pipeline materials | Body pipeline polish on right | -¥800 |
 | day 6 | Body-pipeline materials | Body pipeline polish on chassis | -¥800 |
 | day 6 | Body-pipeline materials | Body pipeline prime on bonnet | -¥1,200 |
-| day 6 | Body-pipeline materials | Body pipeline fillAndSand on roof | -¥1,900 |
 | day 6 | Body-pipeline materials | Body pipeline paint on bonnet | -¥2,500 |
-| day 6 | Body-pipeline materials | Body pipeline fillAndSand on right | -¥1,900 |
 | day 6 | Body-pipeline materials | Body pipeline polish on bonnet | -¥800 |
-| day 6 | Body-pipeline materials | Body pipeline prime on right | -¥1,200 |
-| day 6 | Body-pipeline materials | Body pipeline paint on right | -¥2,500 |
-| day 7 | Body-pipeline materials | Body pipeline polish on right | -¥800 |
+| day 6 | Body-pipeline materials | Body pipeline fillAndSand on right | -¥1,900 |
 | day 7 | Parts | Part ordered standard: stock-tyres | -¥3,500 |
 | day 10 | Parts | Part ordered standard: koi-street-injector-kit | -¥3,700 |
 | day 10 | Parts | Part ordered standard: suiko-street-radiator | -¥2,900 |
@@ -274,9 +289,9 @@ It arrived carrying somebody else's part: `brakePadsDiscs` Shuriken Sport Pads &
 | day 8 | Machine-shop hire | Machine-shop hire for the day: wheels | -¥3,000 |
 | day 9 | Machine-shop hire | Machine-shop hire for the day: suspension | -¥5,000 |
 
-Work spend, all categories: **¥59,620**.
+Work spend, all categories: **¥51,450**.
 
-Labour is slots, not yen, and is never charged to the bank: this car consumed **219 energy points** out of a solo shop's `economy.energy.basePoolPoints` of 60 per day.
+Labour is slots, not yen, and is never charged to the bank: this car consumed **197 energy points** out of a solo shop's `economy.energy.basePoolPoints` of 60 per day.
 
 | Day | Line hired | Fee | What it unlocked |
 |---|---|---|---|
@@ -293,12 +308,12 @@ A machine-shop hire is a **daily** unlock and is charged to the day, never to th
 |---|---|---|
 | Book value | `book` | ¥500,000 |
 | Mileage curve | `mileage` | -¥14,492 |
-| Restoration bill below the expected band (x marketRepairDiscount 1.3) | `wear` | -¥52,299 |
-| Restoration bill above the expected band (x the tier beyondDiscount) | `polish` | -¥20,600 |
-| Stage D aftermarket premium | `aftermarket` | ¥1,426 |
-| **Total (`marketValueYen`)** |  | **¥414,035** |
+| Restoration bill below the expected band (x marketRepairDiscount 1.3) | `wear` | -¥54,080 |
+| Restoration bill above the expected band (x the tier beyondDiscount) | `polish` | -¥22,120 |
+| Stage D aftermarket premium | `aftermarket` | ¥3,168 |
+| **Total (`marketValueYen`)** |  | **¥412,476** |
 
-Restoration bill still owed to the `fine` band the tier expects: ¥40,230.
+Restoration bill still owed to the `fine` band the tier expects: ¥41,600.
 
 #### Rung 2: Repaired (day 10, market heat 105%)
 
@@ -307,12 +322,12 @@ Restoration bill still owed to the `fine` band the tier expects: ¥40,230.
 | Book value | `book` | ¥500,000 |
 | Mileage curve | `mileage` | -¥14,492 |
 | Market heat | `heat` | ¥24,275 |
-| Restoration bill below the expected band (x marketRepairDiscount 1.3) | `wear` | -¥8,359 |
-| Restoration bill above the expected band (x the tier beyondDiscount) | `polish` | -¥29,080 |
+| Restoration bill below the expected band (x marketRepairDiscount 1.3) | `wear` | -¥13,663 |
+| Restoration bill above the expected band (x the tier beyondDiscount) | `polish` | -¥30,600 |
 | Stage D aftermarket premium | `aftermarket` | ¥3,168 |
-| **Total (`marketValueYen`)** |  | **¥475,512** |
+| **Total (`marketValueYen`)** |  | **¥468,688** |
 
-Restoration bill still owed to the `fine` band the tier expects: ¥6,430.
+Restoration bill still owed to the `fine` band the tier expects: ¥10,510.
 
 #### Rung 3: Modified (day 11, market heat 105%)
 
@@ -321,18 +336,18 @@ Restoration bill still owed to the `fine` band the tier expects: ¥6,430.
 | Book value | `book` | ¥500,000 |
 | Mileage curve | `mileage` | -¥14,492 |
 | Market heat | `heat` | ¥24,275 |
-| Restoration bill below the expected band (x marketRepairDiscount 1.3) | `wear` | -¥8,359 |
-| Restoration bill above the expected band (x the tier beyondDiscount) | `polish` | -¥27,592 |
+| Restoration bill below the expected band (x marketRepairDiscount 1.3) | `wear` | -¥13,663 |
+| Restoration bill above the expected band (x the tier beyondDiscount) | `polish` | -¥29,112 |
 | Stage D aftermarket premium | `aftermarket` | ¥19,008 |
-| **Total (`marketValueYen`)** |  | **¥492,840** |
+| **Total (`marketValueYen`)** |  | **¥486,016** |
 
-Restoration bill still owed to the `fine` band the tier expects: ¥6,430.
+Restoration bill still owed to the `fine` band the tier expects: ¥10,510.
 
 #### What decides the aftermarket premium
 
 | Rung | Support headline | coherenceFactor | retentionFor | foundationFactor | aftermarketReturn | installedPartsValueYen | Credited premium |
 |---|---|---|---|---|---|---|---|
-| As bought | 1.000 | 1.000 | 1.100 | 0.45 | 0.60 | ¥5,280 | ¥1,426 |
+| As bought | 1.000 | 1.000 | 1.100 | 1.00 | 0.60 | ¥5,280 | ¥3,168 |
 | Repaired | 1.000 | 1.000 | 1.100 | 1.00 | 0.60 | ¥5,280 | ¥3,168 |
 | Modified | 0.940 | 1.000 | 1.100 | 1.00 | 0.60 | ¥31,680 | ¥19,008 |
 
@@ -355,12 +370,15 @@ Parts total ¥24,000; the ladder above credits ¥15,840 of it back into the car'
 | Slot | Band | Why it stayed there |
 |---|---|---|
 | `block` | worn | assembly-gated (engineAssembly): worked only through the engine line |
+| `internals` | worn | assembly-gated (engineAssembly): worked only through the engine line |
 | `headValvetrain` | worn | assembly-gated (engineAssembly): worked only through the engine line |
+| `camsTiming` | worn | assembly-gated (engineAssembly): worked only through the engine line |
 | `forcedInduction` | worn | not reached by this run |
-| `seats` | poor | signature slot: needs the interior line hired |
+| `brakePadsDiscs` | worn | replace-only aftermarket part, kept: its premium is worth more than its share of the bill |
+| `seats` | worn | signature slot: needs the interior line hired |
 | `dashGauges` | worn | signature slot: needs the interior line hired |
 
-Remaining bill to the expected band: **¥6,430**. This is real, and the market is discounting it in every rung above.
+Remaining bill to the expected band: **¥10,510**. This is real, and the market is discounting it in every rung above.
 
 ### 4. The sale
 
@@ -370,33 +388,33 @@ Remaining bill to the expected band: **¥6,430**. This is real, and the market i
 | Listing fee | ¥1,500 |
 | Forecourt slot | 1 of 2 taken while listed |
 | Days listed before it sold | 1 day |
-| Buyer archetype | `stancer` |
+| Buyer archetype | `first-timer` |
 | Buyer taste (through the channel ceiling) | 1.0500 |
-| Offer quality fraction drawn | 0.9552 |
-| **Final `priceYen`** | **¥494,311** |
+| Offer quality fraction drawn | 0.9033 |
+| **Final `priceYen`** | **¥460,964** |
 
 #### The same car, the same buyer, every channel
 
 | Channel | Fee | tasteCeiling | Matched only | Buyer taste | Channel price | Price less fee vs shop front |
 |---|---|---|---|---|---|---|
-| `shopFront` | ¥0 | 1.00 | no | 1.0000 | ¥492,840 | - |
-| `freeAdsPaper` | ¥1,500 | 1.05 | no | 1.0500 | ¥517,482 | ¥23,142 |
-| `tunerMagazine` | ¥12,000 | 1.17 | yes | 1.1312 | ¥557,503 | ¥52,663 |
-| `tradeNetwork` | ¥0 | n/a (flat `priceBand`) | no | n/a | ¥492,840 | ¥0 |
-| `weekendMeet` | ¥3,000 | 1.17 | yes | 1.1312 | ¥557,503 | ¥61,663 |
+| `shopFront` | ¥0 | 1.00 | no | 1.0000 | ¥486,016 | - |
+| `freeAdsPaper` | ¥1,500 | 1.05 | no | 1.0500 | ¥510,317 | ¥22,801 |
+| `tunerMagazine` | ¥12,000 | 1.17 | yes | 1.1669 | ¥567,115 | ¥69,099 |
+| `tradeNetwork` | ¥0 | n/a (flat `priceBand`) | no | n/a | ¥486,016 | ¥0 |
+| `weekendMeet` | ¥3,000 | 1.17 | yes | 1.1669 | ¥567,115 | ¥78,099 |
 
 ### 5. Net, from the sim's own car ledger
 
 | `CarLedger` field | Yen |
 |---|---|
-| `purchaseYen` | ¥247,505 |
-| `repairYen` | ¥18,600 |
-| `partsYen` | ¥33,020 |
+| `purchaseYen` | ¥246,716 |
+| `repairYen` | ¥10,500 |
+| `partsYen` | ¥32,950 |
 | `listingFeesYen` | ¥1,500 |
-| Sale `priceYen` | ¥494,311 |
-| **Net** | **¥193,686** |
+| Sale `priceYen` | ¥460,964 |
+| **Net** | **¥169,298** |
 
-The car ledger carries the listing fee, because that fee was paid to advertise this car and nothing else. It does not carry the machine-shop hires (¥8,000): those are running costs, and a day's crane hire can pull four engines. Counting them anyway, this car returned **¥185,686** to the bank.
+The car ledger carries the listing fee, because that fee was paid to advertise this car and nothing else. It does not carry the machine-shop hires (¥8,000): those are running costs, and a day's crane hire can pull four engines. Counting them anyway, this car returned **¥161,298** to the bank.
 
 ## Staleness: what happens if it does not sell straight away
 
@@ -404,29 +422,32 @@ A side branch off Nissan Silvia (S13)'s listing snapshot: the same listing, the 
 
 | Day | `offersSeen` at the draw | Buyer | Quality fraction | Offer |
 |---|---|---|---|---|
-| 12 | 0 | `stancer` | 0.9552 | ¥494,311 |
-| 13 | 1 | `kei-specialist` | 0.9839 | ¥509,132 |
-| 15 | 2 | `stancer` | 0.8314 | ¥447,180 |
-| 16 | 3 | `kei-specialist` | 0.9242 | ¥497,084 |
-| 18 | 4 | `racer` | 0.9089 | ¥488,860 |
-| 22 | 5 | `stancer` | 0.8440 | ¥462,571 |
-| 23 | 6 | `kei-specialist` | 0.8600 | ¥471,339 |
-| 25 | 7 | `first-timer` | 0.8813 | ¥483,040 |
-| 26 | 8 | `stancer` | 0.8600 | ¥471,339 |
-| 28 | 9 | `stancer` | 0.8600 | ¥471,339 |
-| 30 | 10 | `stancer` | 0.8600 | ¥475,723 |
-| 31 | 11 | `tuner` | 0.8732 | ¥483,006 |
-| 32 | 12 | `kei-specialist` | 0.8600 | ¥475,723 |
-| 34 | 13 | `stancer` | 0.8600 | ¥475,723 |
-| 36 | 14 | `tuner` | 0.8521 | ¥475,723 |
-| 38 | 15 | `racer` | 0.8600 | ¥480,107 |
-| 39 | 16 | `tuner` | 0.8703 | ¥485,865 |
-| 43 | 17 | `stancer` | 0.9353 | ¥503,072 |
-| 45 | 18 | `stancer` | 0.8600 | ¥462,571 |
-| 48 | 19 | `stancer` | 0.8600 | ¥462,571 |
-| 50 | 20 | `racer` | 0.8852 | ¥462,571 |
+| 12 | 0 | `first-timer` | 0.9033 | ¥460,964 |
+| 13 | 1 | `tuner` | 0.9411 | ¥480,246 |
+| 15 | 2 | `tuner` | 0.8906 | ¥472,624 |
+| 16 | 3 | `first-timer` | 0.8999 | ¥477,565 |
+| 20 | 4 | `stancer` | 0.8600 | ¥456,409 |
+| 21 | 5 | `first-timer` | 0.9142 | ¥485,172 |
+| 23 | 6 | `tuner` | 0.8600 | ¥465,177 |
+| 24 | 7 | `kei-specialist` | 0.8600 | ¥465,177 |
+| 25 | 8 | `stancer` | 0.8728 | ¥472,111 |
+| 26 | 9 | `racer` | 0.8605 | ¥463,449 |
+| 32 | 10 | `racer` | 0.8600 | ¥467,530 |
+| 34 | 11 | `tuner` | 0.8960 | ¥489,216 |
+| 36 | 12 | `tuner` | 0.8520 | ¥469,561 |
+| 37 | 13 | `first-timer` | 0.8600 | ¥473,945 |
+| 38 | 14 | `stancer` | 0.8600 | ¥473,945 |
+| 39 | 15 | `stancer` | 0.8600 | ¥473,945 |
+| 40 | 16 | `stancer` | 0.8600 | ¥473,945 |
+| 42 | 17 | `first-timer` | 0.8745 | ¥481,922 |
+| 43 | 18 | `kei-specialist` | 0.8862 | ¥488,400 |
+| 48 | 19 | `racer` | 0.8600 | ¥471,895 |
+| 49 | 20 | `tuner` | 0.8600 | ¥473,945 |
+| 50 | 21 | `racer` | 0.9221 | ¥501,308 |
+| 53 | 22 | `first-timer` | 0.9280 | ¥506,674 |
+| 55 | 23 | `first-timer` | 0.9608 | ¥524,583 |
 
-21 offers in 45 days. First offer **¥494,311** (day 12); best offer **¥509,132** (day 13). Holding out for the best one seen is worth **¥14,821** - and costs ¥120,000 of rent over the same stretch, plus a forecourt slot that could have held another car.
+24 offers in 45 days. First offer **¥460,964** (day 12); best offer **¥524,583** (day 55). Holding out for the best one seen is worth **¥63,619** - and costs ¥120,000 of rent over the same stretch, plus a forecourt slot that could have held another car.
 
 **Is there ever a point in not taking the first offer?** On these numbers, no. The quality fraction decays with `offersSeen` exactly as `qualityMeanFor` says it should (`qualityFresh` 0.96 down toward `qualityFloor` 0.86), so the OFFER side of the equation only ever gets worse. What moves the price up again is a different buyer walking in, not a better offer from the same one: the spread between archetypes on this car is far wider than the whole staleness decay. Waiting is therefore a bet on WHO turns up, at a known cost of ¥2,667 a day in rent alone, and the bet does not pay.
 
@@ -437,76 +458,86 @@ Every yen that moved, in order. This is the list the reconciliation test sums.
 | Day | Scope | Category | Item | Yen | Balance |
 |---|---|---|---|---|---|
 | - | - | - | Opening cash | - | ¥300,000 |
-| 1 | car-a | Acquisition | Hammer won on lot worked-car-a-26 | -¥114,017 | ¥185,983 |
-| 1 | car-a | Body-pipeline materials | Body pipeline fillAndSand on chassis | -¥1,900 | ¥184,083 |
-| 1 | car-a | Body-pipeline materials | Body pipeline prime on chassis | -¥1,200 | ¥182,883 |
-| 1 | car-a | Body-pipeline materials | Body pipeline paint on chassis | -¥2,000 | ¥180,883 |
-| 1 | car-a | Parts | Part ordered standard: shitbox-stock-brake-pads-discs | -¥2,100 | ¥178,783 |
-| 2 | car-a | Repair labour charges | Bench recondition: brakeCalipersLines to worn | -¥630 | ¥178,153 |
-| 2 | car-a | Repair labour charges | Bench recondition: intake to worn | -¥250 | ¥177,903 |
-| 2 | car-a | Repair labour charges | Bench recondition: exhaust to worn | -¥560 | ¥177,343 |
-| 2 | car-a | Repair labour charges | Bench recondition: fuelSystem to worn | -¥250 | ¥177,093 |
-| 2 | car-a | Repair labour charges | Bench recondition: driveline to worn | -¥420 | ¥176,673 |
-| 3 | car-a | Repair labour charges | Bench recondition: springs to worn | -¥250 | ¥176,423 |
-| 3 | car-a | Machine-shop hire | Machine-shop hire for the day: suspension | -¥5,000 | ¥171,423 |
-| 3 | car-a | Repair labour charges | Bench recondition: steering to worn | -¥620 | ¥170,803 |
-| 3 | car-a | Repair labour charges | Repair charge on car-worked-car-a-26 | -¥1,820 | ¥168,983 |
-| 3 | car-a | Repair labour charges | Repair charge on car-worked-car-a-26 | -¥360 | ¥168,623 |
-| 3 | car-a | Parts | Part bought express: shitbox-mikoshi-lip-kit | -¥5,170 | ¥163,453 |
-| 3 | car-a | Parts | Part bought express: shitbox-suzaku-street-catback | -¥8,030 | ¥155,423 |
-| 3 | car-a | Parts | Part bought express: shitbox-fubuki-cold-air-kit | -¥3,630 | ¥151,793 |
-| 3 | car-a | Parts | Part bought express: shitbox-suiko-street-radiator | -¥2,750 | ¥149,043 |
-| 6 | car-a | Sale proceeds | Car sold: car-worked-car-a-26 | ¥199,359 | ¥348,402 |
-| 6 | car-b | Acquisition | Hammer won on lot worked-car-b-9 | -¥247,505 | ¥100,897 |
-| 6 | car-b | Body-pipeline materials | Body pipeline polish on chassis | -¥800 | ¥100,097 |
-| 6 | car-b | Body-pipeline materials | Body pipeline prime on bonnet | -¥1,200 | ¥98,897 |
-| 6 | car-b | Body-pipeline materials | Body pipeline fillAndSand on roof | -¥1,900 | ¥96,997 |
-| 6 | car-b | Body-pipeline materials | Body pipeline paint on bonnet | -¥2,500 | ¥94,497 |
-| 6 | car-b | Body-pipeline materials | Body pipeline fillAndSand on right | -¥1,900 | ¥92,597 |
-| 6 | car-b | Body-pipeline materials | Body pipeline polish on bonnet | -¥800 | ¥91,797 |
-| 6 | car-b | Body-pipeline materials | Body pipeline prime on right | -¥1,200 | ¥90,597 |
-| 6 | car-b | Body-pipeline materials | Body pipeline paint on right | -¥2,500 | ¥88,097 |
-| 7 | car-b | Body-pipeline materials | Body pipeline polish on right | -¥800 | ¥87,297 |
-| 7 | car-b | Repair labour charges | Bench recondition: brakeCalipersLines to fine | -¥720 | ¥86,577 |
-| 7 | car-b | Parts | Part ordered standard: stock-tyres | -¥3,500 | ¥83,077 |
-| 7 | shop | Rent | Weekly rent | -¥20,000 | ¥63,077 |
-| 8 | car-b | Machine-shop hire | Machine-shop hire for the day: wheels | -¥3,000 | ¥60,077 |
-| 8 | car-b | Repair labour charges | Bench recondition: intake to fine | -¥290 | ¥59,787 |
-| 8 | car-b | Repair labour charges | Bench recondition: exhaust to fine | -¥1,280 | ¥58,507 |
-| 8 | car-b | Repair labour charges | Bench recondition: ignitionEcu to fine | -¥900 | ¥57,607 |
-| 8 | car-b | Repair labour charges | Bench recondition: cooling to fine | -¥220 | ¥57,387 |
-| 9 | car-b | Repair labour charges | Bench recondition: dampers to fine | -¥1,280 | ¥56,107 |
-| 9 | car-b | Machine-shop hire | Machine-shop hire for the day: suspension | -¥5,000 | ¥51,107 |
-| 9 | car-b | Repair labour charges | Bench recondition: springs to fine | -¥290 | ¥50,817 |
-| 9 | car-b | Repair labour charges | Bench recondition: antiRollBars to fine | -¥190 | ¥50,627 |
-| 9 | car-b | Repair labour charges | Bench recondition: steering to fine | -¥350 | ¥50,277 |
-| 9 | car-b | Repair labour charges | Repair charge on car-worked-car-b-9 | -¥4,160 | ¥46,117 |
-| 10 | car-b | Repair labour charges | Repair charge on car-worked-car-b-9 | -¥840 | ¥45,277 |
-| 10 | car-b | Parts | Part ordered standard: koi-street-injector-kit | -¥3,700 | ¥41,577 |
-| 10 | car-b | Parts | Part ordered standard: suiko-street-radiator | -¥2,900 | ¥38,677 |
-| 10 | car-b | Parts | Part ordered standard: fubuki-cold-air-kit | -¥3,700 | ¥34,977 |
-| 10 | car-b | Parts | Part ordered standard: suzaku-street-catback | -¥8,300 | ¥26,677 |
-| 10 | car-b | Parts | Part ordered standard: mikoshi-lip-kit | -¥5,400 | ¥21,277 |
-| 11 | car-b | Listing fee | Listing fee (freeAdsPaper) | -¥1,500 | ¥19,777 |
-| 12 | car-b | Sale proceeds | Car sold: car-worked-car-b-9 | ¥494,311 | ¥514,088 |
+| 1 | car-a | Acquisition | Hammer won on lot worked-car-a-26 | -¥102,565 | ¥197,435 |
+| 1 | car-a | Body-pipeline materials | Body pipeline polish on boot | -¥800 | ¥196,635 |
+| 1 | car-a | Body-pipeline materials | Body pipeline polish on right | -¥800 | ¥195,835 |
+| 1 | car-a | Body-pipeline materials | Body pipeline polish on roof | -¥800 | ¥195,035 |
+| 1 | car-a | Body-pipeline materials | Body pipeline fillAndSand on chassis | -¥1,900 | ¥193,135 |
+| 1 | car-a | Body-pipeline materials | Body pipeline prime on chassis | -¥1,200 | ¥191,935 |
+| 1 | car-a | Body-pipeline materials | Body pipeline paint on chassis | -¥2,000 | ¥189,935 |
+| 1 | car-a | Body-pipeline materials | Body pipeline polish on chassis | -¥800 | ¥189,135 |
+| 1 | car-a | Parts | Part ordered standard: shitbox-stock-brake-pads-discs | -¥2,100 | ¥187,035 |
+| 2 | car-a | Repair labour charges | Bench recondition: brakeCalipersLines to fine | -¥630 | ¥186,405 |
+| 2 | car-a | Repair labour charges | Bench recondition: rims to fine | -¥480 | ¥185,925 |
+| 2 | car-a | Parts | Part ordered standard: shitbox-stock-tyres | -¥3,100 | ¥182,825 |
+| 3 | car-a | Machine-shop hire | Machine-shop hire for the day: wheels | -¥3,000 | ¥179,825 |
+| 3 | car-a | Repair labour charges | Bench recondition: intake to fine | -¥250 | ¥179,575 |
+| 3 | car-a | Repair labour charges | Bench recondition: exhaust to fine | -¥560 | ¥179,015 |
+| 3 | car-a | Repair labour charges | Bench recondition: fuelSystem to fine | -¥250 | ¥178,765 |
+| 3 | car-a | Repair labour charges | Bench recondition: ignitionEcu to fine | -¥390 | ¥178,375 |
+| 3 | car-a | Repair labour charges | Bench recondition: cooling to fine | -¥200 | ¥178,175 |
+| 4 | car-a | Repair labour charges | Bench recondition: driveline to fine | -¥420 | ¥177,755 |
+| 4 | car-a | Repair labour charges | Bench recondition: dampers to fine | -¥560 | ¥177,195 |
+| 4 | car-a | Machine-shop hire | Machine-shop hire for the day: suspension | -¥5,000 | ¥172,195 |
+| 4 | car-a | Repair labour charges | Bench recondition: springs to fine | -¥250 | ¥171,945 |
+| 4 | car-a | Repair labour charges | Bench recondition: antiRollBars to fine | -¥340 | ¥171,605 |
+| 4 | car-a | Repair labour charges | Bench recondition: steering to fine | -¥620 | ¥170,985 |
+| 4 | car-a | Repair labour charges | Repair charge on car-worked-car-a-26 | -¥1,820 | ¥169,165 |
+| 4 | car-a | Repair labour charges | Repair charge on car-worked-car-a-26 | -¥360 | ¥168,805 |
+| 5 | car-a | Parts | Part bought express: shitbox-mikoshi-lip-kit | -¥5,170 | ¥163,635 |
+| 5 | car-a | Parts | Part bought express: shitbox-suzaku-street-catback | -¥8,030 | ¥155,605 |
+| 5 | car-a | Parts | Part bought express: shitbox-fubuki-cold-air-kit | -¥3,630 | ¥151,975 |
+| 5 | car-a | Parts | Part bought express: shitbox-suiko-street-radiator | -¥2,750 | ¥149,225 |
+| 6 | car-a | Sale proceeds | Car sold: car-worked-car-a-26 | ¥204,639 | ¥353,864 |
+| 6 | car-b | Acquisition | Hammer won on lot worked-car-b-9 | -¥246,716 | ¥107,148 |
+| 6 | car-b | Body-pipeline materials | Body pipeline polish on right | -¥800 | ¥106,348 |
+| 6 | car-b | Body-pipeline materials | Body pipeline polish on chassis | -¥800 | ¥105,548 |
+| 6 | car-b | Body-pipeline materials | Body pipeline prime on bonnet | -¥1,200 | ¥104,348 |
+| 6 | car-b | Body-pipeline materials | Body pipeline paint on bonnet | -¥2,500 | ¥101,848 |
+| 6 | car-b | Body-pipeline materials | Body pipeline polish on bonnet | -¥800 | ¥101,048 |
+| 6 | car-b | Body-pipeline materials | Body pipeline fillAndSand on right | -¥1,900 | ¥99,148 |
+| 6 | car-b | Repair labour charges | Bench recondition: brakeCalipersLines to fine | -¥720 | ¥98,428 |
+| 7 | car-b | Repair labour charges | Bench recondition: rims to fine | -¥540 | ¥97,888 |
+| 7 | car-b | Parts | Part ordered standard: stock-tyres | -¥3,500 | ¥94,388 |
+| 7 | shop | Rent | Weekly rent | -¥20,000 | ¥74,388 |
+| 8 | car-b | Machine-shop hire | Machine-shop hire for the day: wheels | -¥3,000 | ¥71,388 |
+| 8 | car-b | Repair labour charges | Bench recondition: intake to fine | -¥290 | ¥71,098 |
+| 8 | car-b | Repair labour charges | Bench recondition: exhaust to fine | -¥1,280 | ¥69,818 |
+| 8 | car-b | Repair labour charges | Bench recondition: ignitionEcu to fine | -¥450 | ¥69,368 |
+| 8 | car-b | Repair labour charges | Bench recondition: cooling to fine | -¥220 | ¥69,148 |
+| 8 | car-b | Repair labour charges | Bench recondition: driveline to fine | -¥480 | ¥68,668 |
+| 9 | car-b | Repair labour charges | Bench recondition: dampers to fine | -¥640 | ¥68,028 |
+| 9 | car-b | Machine-shop hire | Machine-shop hire for the day: suspension | -¥5,000 | ¥63,028 |
+| 9 | car-b | Repair labour charges | Bench recondition: springs to fine | -¥290 | ¥62,738 |
+| 9 | car-b | Repair labour charges | Bench recondition: antiRollBars to fine | -¥190 | ¥62,548 |
+| 9 | car-b | Repair labour charges | Bench recondition: steering to fine | -¥350 | ¥62,198 |
+| 9 | car-b | Repair labour charges | Repair charge on car-worked-car-b-9 | -¥2,080 | ¥60,118 |
+| 9 | car-b | Repair labour charges | Repair charge on car-worked-car-b-9 | -¥420 | ¥59,698 |
+| 10 | car-b | Parts | Part ordered standard: koi-street-injector-kit | -¥3,700 | ¥55,998 |
+| 10 | car-b | Parts | Part ordered standard: suiko-street-radiator | -¥2,900 | ¥53,098 |
+| 10 | car-b | Parts | Part ordered standard: fubuki-cold-air-kit | -¥3,700 | ¥49,398 |
+| 10 | car-b | Parts | Part ordered standard: suzaku-street-catback | -¥8,300 | ¥41,098 |
+| 10 | car-b | Parts | Part ordered standard: mikoshi-lip-kit | -¥5,400 | ¥35,698 |
+| 11 | car-b | Listing fee | Listing fee (freeAdsPaper) | -¥1,500 | ¥34,198 |
+| 12 | car-b | Sale proceeds | Car sold: car-worked-car-b-9 | ¥460,964 | ¥495,162 |
 
 ## Reconciliation
 
 | Check | Yen |
 |---|---|
 | Opening cash | ¥300,000 |
-| Sum of every ledger line above | ¥214,088 |
-| **Closing cash, from the sim** | **¥514,088** |
+| Sum of every ledger line above | ¥195,162 |
+| **Closing cash, from the sim** | **¥495,162** |
 | Difference | ¥0 |
 
 The same total, decomposed the other way:
 
 | Component | Yen |
 |---|---|
-| Suzuki Wagon R (CT21S) net (car ledger) | ¥53,402 |
-| Nissan Silvia (S13) net (car ledger) | ¥193,686 |
+| Suzuki Wagon R (CT21S) net (car ledger) | ¥61,864 |
+| Nissan Silvia (S13) net (car ledger) | ¥169,298 |
 | Rent | -¥20,000 |
-| Machine-shop hire (running cost, not on any car ledger) | -¥13,000 |
-| **Change in cash** | **¥214,088** |
+| Machine-shop hire (running cost, not on any car ledger) | -¥16,000 |
+| **Change in cash** | **¥195,162** |
 
 Both identities are asserted to the yen, with no tolerance, in `packages/sim/tests/workedExample.test.ts`. The harness additionally refuses to continue if any single scripted step moves cash it cannot name, so an incomplete ledger fails loudly rather than balancing by accident.

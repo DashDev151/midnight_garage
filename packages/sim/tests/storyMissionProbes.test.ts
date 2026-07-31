@@ -267,13 +267,14 @@ describe('story mission satisfiability probes (Sprint 78 decision 1)', () => {
     expect(target.budgetCapYen).toBeLessThan(budgetCapYenFor(probeCostYen))
     expect(target.payoutYen).toBeLessThan(payoutYenFor(probeCostYen))
 
-    // The near-break-even PROFIT/SLACK guard (profit in (0, 15000], one-mistake
-    // slack >= 10000) lives in tutorialProbe.test.ts, which measures the REAL
-    // taught build: bought at the fear-discounted auction reserve for ~140,489
-    // total spend. This generic probe's cost proxy is instead the worn car's
-    // full marketValueYen (~160,264), which overstates the discounted-reserve
-    // price a player actually pays and so cannot express the intro mission's
-    // break-even economics - only the off-formula direction asserted above.
+    // The near-break-even PROFIT guard (profit in (0, 15000], and one mistake
+    // still inside her money) lives in tutorialProbe.test.ts, which measures
+    // the REAL taught build: bought at the fear-discounted auction reserve for
+    // ~133,724 total spend. This generic probe's cost proxy is instead the
+    // worn car's full marketValueYen (~154,175), which overstates the
+    // discounted-reserve price a player actually pays and so cannot express
+    // the intro mission's break-even economics - only the off-formula
+    // direction asserted above.
   })
 
   it('wont-strand-her: a city repaired to fine, all stock, clears the reliability floor', () => {

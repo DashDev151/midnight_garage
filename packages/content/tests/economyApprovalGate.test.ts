@@ -1074,6 +1074,65 @@ import storyMissions from '../data/storyMissions.json'
  * `generationCoherence.test.ts`'s barely-driven-car median ruined-parts guard reads red at this
  * value (median 1 against its signed 0) and was left untouched, not relaxed, per this sprint's own
  * stop rule: no bound was loosened and no second lever was tuned to chase it green.
+ *
+ * Re-pinned 2026-07-31 (MAINTAINER RULING, explicit and signed): ONE lever moves,
+ * `valuation.expectationByTier.entry.band` `worn` -> **`fine`**. `everyday` and `enthusiast` were
+ * already `fine` and `flagship` stays **`mint`**. NO other value moves - every `beyondDiscount`
+ * (0.4 / 0.8 / 1.2 / 1.3) and every `aftermarketReturn` (0.3 / 0.6 / 0.9 / 1.0) is untouched.
+ *
+ * The defect this closes. `entry` expected `worn`, and the only band below `worn` is `poor`, so
+ * giving a cheap car real work and ruining it were the same operation: a cheap car could not carry
+ * a meaningful repair bill without being a wreck. Measured over 600 generated local-yard lots,
+ * 25.8 per cent arrived with fewer than three parts below the expected band, so a quarter of the
+ * first room a player ever sees held nothing worth doing.
+ *
+ * `flagship` was carried to `fine` as part of the same ruling and then REVERTED to `mint` on the
+ * maintainer's instruction, because the measurement said the drop cost more than it bought: with
+ * flagship at `fine` the dead-lot rate at premium and collector-network went 13.67% -> 17.17% and
+ * 6.00% -> 20.83%, since a flagship often arrived already presentable. `beyondDiscount` 1.3 on that
+ * tier is therefore still inert on a mint-expectation car, which is deliberate and NOT dead
+ * content: it is waiting on the machining system to create a rung above mint for it to price.
+ *
+ * Measured over 600 generated lots per room (`generateAuctionCatalog`, 60 draws of 10 per room,
+ * seed `hashStringToSeed("expectation-profile-<room>-<draw>")`, calendar year 1995), pre-sprint
+ * (entry `worn`, flagship `mint`) -> shipped (entry `fine`, flagship `mint`). Lots with fewer than
+ * three parts below the expected band: local-yard 25.83% -> 4.17%, regional 17.00% -> 8.83%,
+ * premium 13.67% -> 13.17%, collector-network 6.00% -> 6.00%. Only the two lower rooms move, which
+ * is exactly the scope of a lever that touches the `entry` tier alone. Law 1 as a number (median
+ * profit from repairing to expectation, `bill x (marketRepairDiscount - 1)`) is clearly positive in
+ * every room and rises where the bar rose: 5130 -> 11628, 7863 -> 10488, 15240 -> 15348, 42261 ->
+ * 42261 yen.
+ *
+ * Both structural guards hold untouched. Law 1: `marketRepairDiscount` stays 1.3, so every yen
+ * spent below the expected band still returns 1.3. Law 2: `worstCaseBill <= maxBillFraction x
+ * cleanValue` is a GENERATION guard against the mint-referenced bill, which this change does not
+ * touch at all (the expectation band only splits that bill for valuation), and
+ * `marketRepairDiscount x maxBillFraction` = 1.3 x 0.6 = 0.78 < 1 is unmoved.
+ *
+ * What moves as a MECHANICAL CONSEQUENCE, re-derived from real runs rather than hand-picked: every
+ * `balanceProbes` figure that reads the expectation band, `valueModelProbes`'s expectation-band
+ * probes, the acquisition-to-sale `advanceDay` golden hash, `workedExample`'s two-car walkthrough
+ * and its published doc, and the tutorial's scripted Wagon R. `partPricing.json` is untouched, so
+ * its own hash holds.
+ *
+ * ONE mission payout moves with it, per the maintainer's standing ruling that formula-derived
+ * payouts follow the formula ("NO mission payouts are set in stone"): `wont-strand-her` 156000 ->
+ * **125000**, its budget cap with it (the one-price contract). Its probe car, the Honda City E, is
+ * the only `entry`-tier car any mission probe builds on, and `payoutYenFor` reads that build's
+ * cost, which opens with the uniform-`worn` car's `marketValueYen` - the one term the expectation
+ * band does move. Every other formula-derived payout re-derives to its existing pin unchanged, and
+ * `four-wheels` is unchanged at 142000 because it sits deliberately off the generic formula.
+ *
+ * The tutorial's scripted lot is re-authored in the same change rather than its payout being tuned
+ * to chase the probe band (maintainer ruling: "the tutorial car is wrong, not the number").
+ * `tutorialLot.json` `baseBand` `worn` -> `fine`, the now-redundant `internals: fine` override
+ * dropped, and four honest-wear items on a 96,000 km daily added at `worn` (clutch,
+ * brakePadsDiscs, dampers, exhaust). The two taught faults are untouched (scrap tyres, a `poor`
+ * head/valvetrain), so the car arrives mostly at the bar it is now held to, carrying only the jobs
+ * the tutorial teaches plus wear a player may leave. Measured fresh through `tutorialProbe`: the
+ * taught build spends 133724 (reserve 111644, one stock tyre 3100, the head/valvetrain rung 980,
+ * the wheels hire 3000, the engine hire 15000), designed profit is 8276 inside the (0, 15000] band
+ * that probe asserts, and the one sanctioned mistake is absorbed with 5176 to spare.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -1083,7 +1142,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('a1038d920ae555a36eda1d2c5bdd47d61fe688d19055552043698bb881ec3cb6')
+    ).toBe('b0165684adf461c7dd850d72b0411024883c6db9a9c4dd5af8cf391c04e0d512')
   })
 
   it('partPricing.json matches its approved content exactly', () => {
@@ -1111,7 +1170,7 @@ describe('the economy approval gate', () => {
         '(CLAUDE.md directive 22): re-pin only alongside the recorded approval.',
     ).toEqual({
       'four-wheels': { payoutYen: 142000, budgetCapYen: 142000 },
-      'wont-strand-her': { payoutYen: 156000, budgetCapYen: 156000 },
+      'wont-strand-her': { payoutYen: 125000, budgetCapYen: 125000 },
       'first-proper-car': { payoutYen: 686000, budgetCapYen: 686000 },
       'make-it-pull': { payoutYen: 787000, budgetCapYen: 787000 },
       'the-column-clock': { payoutYen: 999000, budgetCapYen: 999000 },

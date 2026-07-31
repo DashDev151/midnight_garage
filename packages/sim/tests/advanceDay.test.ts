@@ -344,10 +344,12 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // The acquisition-to-sale hash, on the same terms as the golden master
     // above: the lot's rolled condition, the car's derived stats and the
     // buyer's taste-adjusted price all feed it, so it is re-derived from a
-    // real run whenever one of them deliberately changes. It moved with the
-    // golden master above for the same reason: the damage budget now spends
-    // shallow-first, spreading its steps across the car.
-    expect(hashState(acquisitionCareer().sold)).toBe('25ecff09')
+    // real run whenever one of them deliberately changes. It moved on its own
+    // this time, while the 30-day golden master above held: the `entry` tier's
+    // expected condition band became `fine`, which reprices a car but changes
+    // nothing generation rolls, and this is the one script that actually buys
+    // and sells a car.
+    expect(hashState(acquisitionCareer().sold)).toBe('dba0a979')
   })
 })
 

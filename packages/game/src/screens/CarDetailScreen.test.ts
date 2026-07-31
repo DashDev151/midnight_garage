@@ -758,7 +758,10 @@ describe('CarDetailScreen', () => {
 
       const notice = game.carDetail(id)!.passionSpendNotice
       expect(notice).not.toBeNull()
-      expect(notice!.band).toBe('worn')
+      // The market expects `fine` of an entry car now, so an all-`worn` one is
+      // BELOW the bar and the notice names the bar itself: everything past
+      // `fine` is the passion spend, at this tier's 0.4 return.
+      expect(notice!.band).toBe('fine')
       expect(notice!.returnRate).toBeLessThan(1)
 
       const { wrapper } = await mountAt(id)

@@ -1,5 +1,4 @@
 import {
-  ALL_CAR_PART_IDS,
   BUYERS,
   CARS,
   PARTS,
@@ -8,11 +7,12 @@ import {
   TUTORIAL_LOT,
   fitmentClassForTier,
   type CarInstance,
+  type CarPartId,
   type ConditionBand,
   type PartFitmentClass,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
-import { carCostToBandYen, hasForcedInduction } from '../src/bands'
+import { carCostToBandYen } from '../src/bands'
 import { reserveYen, settleAuctionHammer } from '../src/bidding'
 import { buildSimContext } from '../src/context'
 import { expectedTrueValueYen, sheetGuideValueYen } from '../src/diagnosis'
@@ -27,31 +27,20 @@ const RECIPE = TUTORIAL_LOT
 const MODEL = CARS.find((c) => c.id === RECIPE.modelId)!
 const FITMENT: PartFitmentClass = fitmentClassForTier(MODEL.tier)
 
-/** A full stock parts map at `band`, with per-slot overrides - the same shape
- * `stockCarPartsAt` in `storyMissionProbes.test.ts` uses, kept local so this
- * probe is self-contained. The Wagon R is naturally aspirated, so its
- * forcedInduction slot is left legitimately empty - the honest NA build the
- * tutorial car itself uses (`buildTutorialLot`), no phantom turbo, which
- * `roadworthy` grades as sound. */
-function stockPartsAt(
-  band: ConditionBand,
-  overrides: Partial<Record<string, ConditionBand>> = {},
+/** The scripted car's OWN parts map with per-slot bands overridden - taken
+ * from `buildTutorialLot` rather than synthesised, so the probe tracks the
+ * recipe (`tutorialLot.json`) automatically instead of restating it. The
+ * Wagon R is naturally aspirated, so its forcedInduction slot is legitimately
+ * empty and stays that way, which `roadworthy` grades as sound. */
+function scriptedPartsWith(
+  car: CarInstance,
+  overrides: Partial<Record<CarPartId, ConditionBand>>,
 ): CarInstance['parts'] {
-  const result = {} as CarInstance['parts']
-  for (const partId of ALL_CAR_PART_IDS) {
-    if (partId === 'forcedInduction' && !hasForcedInduction(MODEL)) {
-      result[partId] = { installed: null }
-      continue
-    }
-    const stockPart = CONTEXT.stockPartByCarPartId[FITMENT][partId]
-    result[partId] = {
-      installed: {
-        id: `probe-${partId}`,
-        partId: stockPart.id,
-        band: overrides[partId] ?? band,
-        origin: { kind: 'market', day: 1 },
-      },
-    }
+  const result = { ...car.parts }
+  for (const [partId, band] of Object.entries(overrides) as Array<[CarPartId, ConditionBand]>) {
+    const installed = result[partId].installed
+    if (!installed) throw new Error(`scripted car has no part in slot "${partId}"`)
+    result[partId] = { installed: { ...installed, band } }
   }
   return result
 }
@@ -88,8 +77,13 @@ describe('tutorial satisfiability probe', () => {
   // exactly the roadworthy bar, the taught lesson being "repair to what the
   // job needs".
   const engineHireYen = CONTEXT.economy.machineShopAssist.feeYenByGroup.engine
+  // The scripted car with its scrap tyres already discounted to the roadworthy
+  // bar: the taught wheel beat BUYS a fresh stock tyre (priced above as
+  // `stockTyreYen`), it never repairs the old one, so charging the rubber here
+  // as well would bill it twice. What is left below `worn` is the buried
+  // head/valvetrain alone.
   const hvRepairYen = carCostToBandYen(
-    { ...lot.car, parts: stockPartsAt('worn', { headValvetrain: 'poor' }) },
+    { ...lot.car, parts: scriptedPartsWith(lot.car, { tyres: 'worn' }) },
     MODEL,
     CONTEXT.partsById,
     CONTEXT.partsTaxonomyById,
@@ -127,7 +121,7 @@ describe('tutorial satisfiability probe', () => {
   })
 
   it('the taught build stays completable after one mistake, and clears a small deliberate profit', () => {
-    // Her budget and her pay are one figure (¥135,000); the mission is not
+    // Her budget and her pay are one figure (¥142,000); the mission is not
     // "spend under a cap higher than she pays" - it is "build within her
     // money and keep what is left". So the guarantee is that a single
     // wrong-band purchase still completes (spend + mistake within her
@@ -150,7 +144,7 @@ describe('tutorial satisfiability probe', () => {
       id: 'tutorial-after-car',
       symptoms: [],
       apparentBandByPartId: null,
-      parts: stockPartsAt('worn', { tyres: 'mint', headValvetrain: 'worn' }),
+      parts: scriptedPartsWith(lot.car, { tyres: 'mint', headValvetrain: 'worn' }),
     }
     const graded = {
       ...state,

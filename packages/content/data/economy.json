@@ -119,7 +119,7 @@
     },
     "expectationByTier": {
       "entry": {
-        "band": "worn",
+        "band": "fine",
         "beyondDiscount": 0.4,
         "aftermarketReturn": 0.3
       },

@@ -30,6 +30,7 @@ import {
   planGroupRepair,
 } from '../src/bands'
 import { computeRosterBalanceProbe } from '../src/balanceProbes'
+import { ALL_ZONE_IDS, severityThresholdForBand } from '../src/bodyPipeline'
 import { buildSimContext } from '../src/context'
 import {
   installedPartsValueYen,
@@ -135,6 +136,43 @@ function independentLots(count: number, startSeed: number): AuctionLot[] {
 }
 
 /**
+ * The body half of a restoration. `panels`, `paint` and `underbody` are
+ * DERIVED bands: `carCostToBandYen` routes them through
+ * `bodyPartRepairBillYen`, which reads `car.zoneState` and charges for every
+ * zone whose severity still exceeds the target's threshold. Lifting the
+ * carrier part's band alone therefore leaves the whole body bill outstanding
+ * while the value model credits the lift, so a "restored" car kept charging
+ * for damage it no longer had. Clamping every severity to the target's own
+ * threshold (`severityThresholdForBand`), clearing `panelMissing` and settling
+ * the whole car on one colour is what actually clears that bill: the zone is
+ * left exactly at, never above, the band being restored to.
+ */
+function zoneStateRestoredToBand(car: CarInstance, band: ConditionBand): CarInstance['zoneState'] {
+  const zoneState = car.zoneState
+  if (!zoneState) return zoneState
+  const threshold = severityThresholdForBand(band)
+  const restored = { ...zoneState }
+  for (const zoneId of ALL_ZONE_IDS) {
+    const zone = zoneState[zoneId]
+    restored[zoneId] = {
+      ...zone,
+      metal: Math.min(zone.metal, threshold),
+      // `surface` is a 0-2 scale, so its own maximum is the deepest it can
+      // legitimately sit under a `poor` (threshold 3) target.
+      surface: Math.min(zone.surface, threshold, 2),
+      finish: Math.min(zone.finish, threshold),
+      panelMissing: false,
+      // One colour across the car: two disagreeing painted zones cost
+      // `derivePaintBand` a whole band, which no repair bill ever charges
+      // for, so a restore that left them mismatched would read a band worse
+      // than the bill it just paid.
+      colour: zone.colour === undefined ? undefined : car.color,
+    }
+  }
+  return restored
+}
+
+/**
  * Every real part brought up to `band` - the value-side mirror of
  * `carCostToBandYen`: a slot already at or above it keeps what it has, a slot
  * below it is lifted to it, and a genuinely missing slot (the stripped-car
@@ -142,7 +180,8 @@ function independentLots(count: number, startSeed: number): AuctionLot[] {
  * component is a real defect the bill pays to put right. The one legitimate
  * exception is `forcedInduction` on an NA model, which restoration never adds
  * (`hasForcedInduction`, bands.ts) - it stays permanently, legitimately absent
- * either way.
+ * either way. Zone state is restored alongside the parts, so the body bill is
+ * genuinely cleared rather than merely papered over (`zoneStateRestoredToBand`).
  */
 function restoredToBand(car: CarInstance, model: CarModel, band: ConditionBand): CarInstance {
   const fitmentClass = fitmentClassForTier(model.tier)
@@ -168,7 +207,7 @@ function restoredToBand(car: CarInstance, model: CarModel, band: ConditionBand):
         : null,
     }
   }
-  return { ...car, parts }
+  return { ...car, parts, zoneState: zoneStateRestoredToBand(car, band) }
 }
 
 /** Every real part driven to mint - a full restoration, `restoredToBand` at
@@ -181,6 +220,38 @@ function median(values: number[]): number {
   const sorted = [...values].sort((a, b) => a - b)
   return sorted[Math.floor(sorted.length / 2)]!
 }
+
+describe('the restore helper this file measures against is itself a real restoration', () => {
+  it('a car restored to a band carries no bill left to reach that band, body pipeline included', () => {
+    // The regression this pins: `restoredToBand` used to lift every part's
+    // `installed.band` and leave `car.zoneState` untouched, so the body
+    // pipeline still charged its whole bill on a car every other probe here
+    // treated as finished. `carCostToBandYen` routes `panels`/`paint`/
+    // `underbody` through `zoneState` whenever it is present, so this is the
+    // one check that catches the two halves disagreeing.
+    for (const model of CARS) {
+      for (let seed = 0; seed < 8; seed++) {
+        const car = generateAuctionCarInstance(
+          model,
+          `restore-check-${model.id}-${seed}`,
+          createRng(seed),
+          CONTEXT,
+        )
+        for (const band of ['worn', 'fine', 'mint'] as const) {
+          const residualYen = carCostToBandYen(
+            restoredToBand(car, model, band),
+            model,
+            PARTS_BY_ID,
+            PARTS_TAXONOMY_BY_ID,
+            ECONOMY,
+            band,
+          )
+          expect(residualYen, `${model.id} seed ${seed} restored to ${band}`).toBe(0)
+        }
+      }
+    }
+  })
+})
 
 describe('restoration-uplift probe (acceptance, sprint21.md)', () => {
   it('median marketValue(fully restored) - marketValue(as rolled) is 35-60% of book', () => {

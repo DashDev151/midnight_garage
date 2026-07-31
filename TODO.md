@@ -220,6 +220,15 @@ pass."
 
 ## Open engineering
 
+- [ ] **THE TUTORIAL COPY NEEDS A REVIEW PASS: the scripted car is no longer scruffy (maintainer
+  note, 2026-07-31, flagged for later and deliberately NOT rewritten at the time).** The expected
+  condition band for `entry` cars moved to `fine`, so `tutorialLot.json`'s Wagon R was re-authored
+  from `baseBand: worn` to `baseBand: fine` with four honest-wear items and the two taught faults.
+  It now arrives mostly presentable. Any line in `tutorialSteps.json` (or the surrounding screens)
+  that describes it as scruffy, rough, a wreck or a shed is therefore false, and so is the
+  `provenanceNote` if it reads that way. This is a copy pass against the current car, not a
+  mechanics change; the economics are already pinned by `tutorialProbe.test.ts`.
+
 - [ ] **NEEDS DESIGN: a periodic financial summary for the shop's running costs (raised
   2026-07-31, scoped out of Sprint 150 on purpose).** The running-cost ruling asks for rent, bays,
   staff wages and machine-shop hire to be "shown on a overarching, maybe weekly, financial

@@ -8,11 +8,14 @@
   "mileageKm": 96000,
   "color": "Silver",
   "provenanceNote": "daily driver, honest wear",
-  "baseBand": "worn",
+  "baseBand": "fine",
   "partOverrides": [
     { "carPartId": "tyres", "band": "scrap" },
-    { "carPartId": "internals", "band": "fine" },
-    { "carPartId": "headValvetrain", "band": "poor" }
+    { "carPartId": "headValvetrain", "band": "poor" },
+    { "carPartId": "clutch", "band": "worn" },
+    { "carPartId": "brakePadsDiscs", "band": "worn" },
+    { "carPartId": "dampers", "band": "worn" },
+    { "carPartId": "exhaust", "band": "worn" }
   ],
   "symptom": {
     "symptomId": "tick-at-idle",
