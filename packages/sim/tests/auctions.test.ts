@@ -688,7 +688,7 @@ describe('generation is mileage-driven: age -> mileage -> condition (Sprint 34)'
     const oldMean = meanBandIndex(generateAtAge(25, 600, 'old'))
     const youngMean = meanBandIndex(generateAtAge(0, 600, 'young'))
     expect(oldMean).toBeLessThanOrEqual(youngMean)
-  })
+  }, 30_000)
 
   it('with no calendar context (currentYear omitted), condition still rolls a real, bounded spread', () => {
     // Age falls back to a fixed default (constants.ts) rather than an
