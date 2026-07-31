@@ -1,4 +1,5 @@
 import type { BayKind, DayLogEntry, EconomyConfig, GameState } from '@midnight-garage/content'
+import { BayKindSchema } from '@midnight-garage/content'
 import { bayCountsByKind } from './facilities'
 
 export interface WeeklyFinancesResult {
@@ -15,18 +16,19 @@ export interface WeeklyFinancesResult {
  * sell quickly rather than hold. Takes plain bay counts rather than a
  * `GameState` so it works equally for a live career (`bayCountsByKind`) and
  * a fresh day-1 game the caller has not yet built a full state for
- * (`exportCareers.ts`'s manifest).
+ * (`exportCareers.ts`'s manifest). Sums over `BayKindSchema.options` rather
+ * than naming each kind, so the set of kinds has one source: a new kind
+ * added to the schema is charged automatically instead of silently going
+ * unrented.
  */
 export function computeWeeklyRentYen(
   bayCounts: Record<BayKind, number>,
   economy: EconomyConfig,
 ): number {
   const { baseWeeklyYen, perBayWeeklyYen } = economy.rent
-  return (
-    baseWeeklyYen +
-    bayCounts.service * perBayWeeklyYen.service +
-    bayCounts.parking * perBayWeeklyYen.parking +
-    bayCounts.forecourt * perBayWeeklyYen.forecourt
+  return BayKindSchema.options.reduce(
+    (totalYen, kind) => totalYen + bayCounts[kind] * perBayWeeklyYen[kind],
+    baseWeeklyYen,
   )
 }
 

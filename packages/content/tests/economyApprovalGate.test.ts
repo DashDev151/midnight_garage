@@ -692,9 +692,11 @@ import storyMissions from '../data/storyMissions.json'
  * probes' repair or purchase math is sensitive to this SKU's price at the cars and
  * bands they build.
  *
- * Re-pinned 2026-07-30 (maintainer's standing authority of 2026-07-30, all seven
- * levers signed by name and value in `docs/sprints/sprint144.md`'s own lever table)
- * for Sprint 144, sections 3C and 3D of `sale-value-system.md`: an incoherent build
+ * Re-pinned 2026-07-30 under the standing lever grant recorded as R3 in
+ * `docs/design/systems/sale-value-implementation-plan.md` (all seven levers signed by
+ * name and value in `docs/sprints/sprint144.md`'s own lever table, provisional pending
+ * the maintainer's ratification) for Sprint 144, sections 3C and 3D of
+ * `sale-value-system.md`: an incoherent build
  * now discounts the car (Stage C, new) and parts retention scales with coherence
  * instead of being flat (Stage D, changed). Seven levers:
  *
@@ -734,8 +736,9 @@ import storyMissions from '../data/storyMissions.json'
  * `balanceProbes.test.ts` and `valueModelProbes.test.ts` run. `economy.json`'s hash
  * changes only because of the four schema keys added and the one deleted.
  *
- * Re-pinned (maintainer's standing authority of 2026-07-30, signed by name in
- * `docs/sprints/sprint145.md`'s lever table) for a car looking like itself:
+ * Re-pinned (under the R3 standing lever grant, `docs/design/systems/sale-value-
+ * implementation-plan.md`, signed by name in `docs/sprints/sprint145.md`'s lever table
+ * and provisional pending the maintainer's ratification) for a car looking like itself:
  * `statFormulas.styleCap` (flat 20 for every car) is RETIRED outright, the same
  * footing `reliabilityCap` left this file on in the Sprint 136 entry above. It is
  * replaced by `CarModel.spec.styleBase`, a per-car value authored for all 94 roster
@@ -761,8 +764,9 @@ import storyMissions from '../data/storyMissions.json'
  * passing unchanged. No other story mission's probe carries a style-gated
  * requirement, so no other threshold moves; re-confirmed by the same fresh run.
  *
- * Re-derived for Sprint 146 (buyer statTargets, all six archetypes signed under
- * the maintainer's standing authority of 2026-07-30, `docs/sprints/sprint146.md`):
+ * Re-derived for Sprint 146 (buyer statTargets, all six archetypes signed under the
+ * R3 standing lever grant, `docs/design/systems/sale-value-implementation-plan.md`,
+ * provisional pending the maintainer's ratification, `docs/sprints/sprint146.md`):
  * `normalizedTasteScore` (valuation.ts) became a per-stat target/upper/importance
  * MATCH instead of a weighted mean of five deliberately anti-correlated stats.
  * `economy.json` is untouched (only `Buyer.statTargets`, buyers.json, and the
@@ -791,7 +795,8 @@ import storyMissions from '../data/storyMissions.json'
  * probe's own stat thresholds, payout and budget cap are unaffected, as before.
  *
  * NOT a re-pin, recorded here because this file is the ledger of what moved and why:
- * under the maintainer's standing lever authority of 2026-07-30, `AUCTION_BUYOUT_PREMIUM`
+ * under the R3 standing lever grant (`docs/design/systems/sale-value-implementation-
+ * plan.md`), provisional pending the maintainer's ratification, `AUCTION_BUYOUT_PREMIUM`
  * was swept at 1.00/1.02/1.03/1.05/1.08 (`docs/sprints/sprint146.md`, "Amendment 2") to try
  * to close the instant-flip guard's remaining gap. Measured, not applied: the premium
  * cancels algebraically out of the guard's own `marginMedian < bound` comparison (both sides
@@ -805,7 +810,9 @@ import storyMissions from '../data/storyMissions.json'
  * authorised to pull. Sprint 147 is the fix to the first of those.
  *
  * Re-pinned for Sprint 147's normalised listing clock (docs/sprints/sprint147.md, all seven
- * levers signed by name and value under the maintainer's standing authority of 2026-07-30):
+ * levers signed by name and value under the R3 standing lever grant recorded in
+ * `docs/design/systems/sale-value-implementation-plan.md`, provisional pending the
+ * maintainer's ratification):
  * `selling.offerSpread` (the flat uniform band applied identically to a listing regardless
  * of age) is RETIRED outright and replaced by a new `liquidity` block, seven levers:
  * `stalenessFloor` 0.35, `stalenessHalfLifeOffers` 3.5, `qualityFresh` 0.98, `qualityFloor`
@@ -817,8 +824,9 @@ import storyMissions from '../data/storyMissions.json'
  * rewritten against the new quality curve's fresh mean rather than the retired spread's
  * midpoint - see that probe's own updated comment for the arithmetic.
  *
- * Re-pinned under the maintainer's standing lever authority of 2026-07-30, closing the
- * instant-flip guard `docs/sprints/sprint147.md` left red: `liquidity.qualityFresh`
+ * Re-pinned under the R3 standing lever grant (`docs/design/systems/sale-value-
+ * implementation-plan.md`), provisional pending the maintainer's ratification, closing
+ * the instant-flip guard `docs/sprints/sprint147.md` left red: `liquidity.qualityFresh`
  * 0.98 -> 0.96. `sellViaWalkIn`'s own contract is a buyer offering somewhat under their
  * true valuation for the convenience of an instant sale, and 0.98 was only a 2% convenience
  * discount that `pickWeightedCandidate`'s size-biased pick then ate 1.44 points of (the
