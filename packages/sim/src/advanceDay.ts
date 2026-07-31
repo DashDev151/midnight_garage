@@ -426,7 +426,11 @@ export function advanceDay(
   next = graceParking.state
   log.push(...graceParking.log)
 
-  // 9. Weekly rent/wages + market-heat update (both fire on 7-day boundaries).
+  // 9. The week's fixed costs and the market-heat update. Rent and wages each
+  // fall on their own named day (`calendar.rentDayOfWeek`,
+  // `calendar.paydayOfWeek`), read off `next.day` before the increment below,
+  // so the day a career starts on is charged like any other; market heat
+  // drifts on the end-of-week cadence instead.
   const finances = applyWeeklyRentAndWages(next, context.economy)
   next = finances.state
   log.push(...finances.log)

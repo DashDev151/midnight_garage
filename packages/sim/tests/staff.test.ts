@@ -192,13 +192,31 @@ describe('hire and dismiss (Sprint 80 decision 6)', () => {
 })
 
 describe('wage integration (the existing finances path picks up a hired member unchanged)', () => {
-  it('deducts a hired member wage on the weekly boundary via applyWeeklyRentAndWages', () => {
+  // Wages fall on `calendar.paydayOfWeek` and rent on `calendar.rentDayOfWeek`
+  // (sprint149.md), so a wage is no longer one half of a single weekly
+  // subtraction: on payday the member's wage is the whole of the charge, and
+  // on rent day the payroll costs nothing at all. Which day the money leaves
+  // is finances.test.ts's subject; what this asserts is that a member hired
+  // through staff.ts is the one being paid.
+  const PAYDAY = ECONOMY.calendar.paydayOfWeek
+  const RENT_DAY = ECONOMY.calendar.rentDayOfWeek
+
+  it('deducts a hired member wage, alone, on calendar.paydayOfWeek via applyWeeklyRentAndWages', () => {
     const m = member('waged', { engine: 4, chassis: 4, body: 4 }, 2)
-    const state = baseState({ day: 7, staff: [m], cashYen: 500_000 })
+    const state = baseState({ day: PAYDAY, staff: [m], cashYen: 500_000 })
+    const { state: after, log } = applyWeeklyRentAndWages(state, ECONOMY)
+    expect(m.weeklyWageYen).toBeGreaterThan(0) // sanity: the fixture really is on a wage
+    expect(after.cashYen).toBe(500_000 - m.weeklyWageYen)
+    expect(log).toEqual([{ type: 'wage-paid', staffId: 'waged', amountYen: -m.weeklyWageYen }])
+  })
+
+  it('pays that member nothing on calendar.rentDayOfWeek - only the rent bill lands there', () => {
+    const m = member('waged', { engine: 4, chassis: 4, body: 4 }, 2)
+    const state = baseState({ day: RENT_DAY, staff: [m], cashYen: 500_000 })
     const { state: after, log } = applyWeeklyRentAndWages(state, ECONOMY)
     const weeklyRentYen = computeWeeklyRentYen(bayCountsByKind(state), ECONOMY)
-    expect(after.cashYen).toBe(500_000 - weeklyRentYen - m.weeklyWageYen)
-    expect(log).toContainEqual({ type: 'wage-paid', staffId: 'waged', amountYen: -m.weeklyWageYen })
+    expect(after.cashYen).toBe(500_000 - weeklyRentYen)
+    expect(log.some((entry) => entry.type === 'wage-paid')).toBe(false)
   })
 })
 

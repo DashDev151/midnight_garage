@@ -7,14 +7,20 @@ import { generateAuctionCatalog } from '../src/auctions'
 import { buildSimContext } from '../src/context'
 import { createInitialGameState } from '../src/newGame'
 import { createRng } from '../src/rng'
+import { quietFinanceDay } from './testFixtures'
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
+
+/** The buyout price is what these tests measure, so they sit on a day that
+ * carries no rent bill and no wage run - the hammer price is then the only
+ * cash movement across the tick. */
+const QUIET_DAY = quietFinanceDay()
 
 function stateWithLot(seed: number) {
   const model = CARS.find((c) => c.id === 'honda-city-e-aa')!
   const [lot] = generateAuctionCatalog([model], 'local-yard', 7, 1, createRng(seed), CONTEXT)
   const base = createInitialGameState(CONTEXT, 1)
-  return { state: { ...base, activeAuctionLots: [lot!] }, lot: lot! }
+  return { state: { ...base, day: QUIET_DAY, activeAuctionLots: [lot!] }, lot: lot! }
 }
 
 describe('buyoutLots resolution', () => {

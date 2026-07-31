@@ -1,5 +1,6 @@
 import {
   ALL_CAR_PART_IDS,
+  ECONOMY,
   PARTS,
   PARTS_TAXONOMY,
   fitmentClassForTier,
@@ -15,7 +16,25 @@ import {
   type ToolTiers,
 } from '@midnight-garage/content'
 import { expect } from 'vitest'
+import { isPayday, isRentDay } from '../src/calendar'
 import type { SimContext } from '../src/context'
+
+/**
+ * The first day at or after `notBefore` that carries neither the weekly rent
+ * bill (`calendar.rentDayOfWeek`) nor the wage run (`calendar.paydayOfWeek`)
+ * - the day to put a test on when it asserts an exact cash figure across an
+ * `advanceDay` tick but is not about rent or wages at all. Both landmarks
+ * are read from `ECONOMY` rather than hard-coded, so moving either one can
+ * never silently reintroduce a rent bill into an unrelated assertion
+ * (sprint149.md gave each charge its own named day; before it, both fell on
+ * `day % 7 === 0` and day 1 happened to be free of them).
+ */
+export function quietFinanceDay(notBefore = 1): number {
+  for (let day = notBefore; day < notBefore + ECONOMY.calendar.daysPerWeek; day++) {
+    if (!isRentDay(day, ECONOMY) && !isPayday(day, ECONOMY)) return day
+  }
+  throw new Error('no day in a full week is free of both rent and wages - check economy.calendar')
+}
 
 /** A full six-line `toolTiers` map, every line at 1 (the new-game floor)
  * unless overridden - so no test file hand-writes all six keys to move

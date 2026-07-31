@@ -16,6 +16,7 @@ import { generateAuctionCatalog } from '../src/auctions'
 import { buildSimContext } from '../src/context'
 import { createInitialGameState } from '../src/newGame'
 import { createRng } from '../src/rng'
+import { quietFinanceDay } from './testFixtures'
 
 const CONTEXT = buildSimContext(
   CARS,
@@ -42,6 +43,11 @@ function stateWithLot(seed: number, overrides: Record<string, unknown> = {}) {
 }
 
 const noActions = DayActionsSchema.parse({})
+
+/** Every test below that pins an exact cash figure runs here: a day with no
+ * rent bill and no wage run on it, so the movement it asserts (a parking
+ * fine, a bay price) is the only one on the tick. */
+const QUIET_DAY = quietFinanceDay()
 
 /**
  * Generation rolls a per-car upkeep tier, so a given seed's panels slot
@@ -151,6 +157,7 @@ describe('labor is gated by service-bay membership', () => {
 describe('acquisitions require a free parking space at delivery, never at bidding', () => {
   it('a buyout is skipped (no spend, lot stays) only once parking, every service bay, AND the grace slot are all full (Sprint 45)', () => {
     const { state, lot } = stateWithLot(1, {
+      day: QUIET_DAY,
       parkingBayCount: 0,
       serviceBayCount: 0,
       graceParkingCarId: 'someone-elses-car',
@@ -215,7 +222,7 @@ describe('buying bays via DayActions (the bots’ path)', () => {
     const price = FACILITIES.service.bayPricesYen[0]!
     const rung1Tier = FACILITIES.service.minReputationTier[0]!
     const base = createInitialGameState(CONTEXT, 1)
-    const state = { ...base, cashYen: price, reputationTier: rung1Tier }
+    const state = { ...base, day: QUIET_DAY, cashYen: price, reputationTier: rung1Tier }
     const actions = DayActionsSchema.parse({ buyBays: [{ kind: 'service' }] })
     const { state: next, log } = advanceDay(state, actions, 1, CONTEXT)
     expect(next.serviceBayCount).toBe(base.serviceBayCount + 1)
@@ -229,7 +236,7 @@ describe('buying bays via DayActions (the bots’ path)', () => {
   it('refuses a reputation-gated bay purchase, even queued via DayActions', () => {
     const price = FACILITIES.service.bayPricesYen[0]!
     const base = createInitialGameState(CONTEXT, 1)
-    const state = { ...base, cashYen: price } // reputationTier stays 'unknown'
+    const state = { ...base, day: QUIET_DAY, cashYen: price } // reputationTier stays 'unknown'
     const actions = DayActionsSchema.parse({ buyBays: [{ kind: 'service' }] })
     const { state: next } = advanceDay(state, actions, 1, CONTEXT)
     expect(next.serviceBayCount).toBe(base.serviceBayCount)

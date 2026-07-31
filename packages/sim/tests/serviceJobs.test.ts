@@ -51,7 +51,13 @@ import {
   unlockedTechniques,
   upgradeHintFor,
 } from '../src/serviceJobs'
-import { buildCarInstance, mintCarParts, testSpecialty, testToolTiers } from './testFixtures'
+import {
+  buildCarInstance,
+  mintCarParts,
+  quietFinanceDay,
+  testSpecialty,
+  testToolTiers,
+} from './testFixtures'
 
 const CONTEXT = buildSimContext(
   CARS,
@@ -1849,7 +1855,17 @@ describe('service jobs in advanceDay', () => {
     const done = activeJob(twoRepairType, {
       parts: mintCarParts({ dampers: 'mint', springs: 'mint' }),
     })
-    const paidState = { ...createInitialGameState(CONTEXT, 1), day: 8, activeServiceJobs: [done] }
+    // The payout (or its absence) is the only cash movement these assertions
+    // want, so the backstop runs on the first day at or after the fixture's
+    // own deadline that carries no rent bill or wage run - day 8 itself is
+    // `calendar.rentDayOfWeek`. The backstop fires on any day at or past
+    // `dueOnDay`; the exact-boundary case is the staged-work test below.
+    const backstopDay = quietFinanceDay(done.dueOnDay!)
+    const paidState = {
+      ...createInitialGameState(CONTEXT, 1),
+      day: backstopDay,
+      activeServiceJobs: [done],
+    }
     const paidBefore = paidState.cashYen
     const paid = advanceDay(paidState, DayActionsSchema.parse({}), 8, CONTEXT).state
     expect(paid.cashYen).toBe(paidBefore + done.payoutYen)
@@ -1858,7 +1874,7 @@ describe('service jobs in advanceDay', () => {
     const undone = activeJob(twoRepairType, { parts: mintCarParts({ dampers: 'worn' }) })
     const failState = {
       ...createInitialGameState(CONTEXT, 1),
-      day: 8,
+      day: backstopDay,
       reputationPoints: 50,
       activeServiceJobs: [undone],
     }
