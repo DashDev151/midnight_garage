@@ -298,14 +298,36 @@ tail is, which is why the test asserts a project-tail rate rather than an averag
 
 ### Re-derived pins
 
-| pin | old | new |
+**This table originally recorded only the first derivation, below. The three amendments above each
+moved the same pins further; a pin recorded mid-sprint can be superseded by a later amendment in
+the same sprint, and the authoritative value is always what `economyApprovalGate.test.ts` and
+`advanceDay.test.ts` assert at HEAD.** The chain, read from `git`, across this sprint's own commits
+(`8826d19` the initial ship, `78fbca6` the further-rise/age-gate/wear-exposure amendment, `c80b828`
+the work-guarantee-floor amendment):
+
+| stage | `economyApprovalGate` economy.json hash | `advanceDay` 30-day career | `advanceDay` acquisition to sale |
+| --- | --- | --- | --- |
+| before Sprint 153 | `3f3d4565...` | `0460fdc2` | `5c5614ec` |
+| this sprint's initial derivation (`8826d19`) | `82d5f3b9...` | `ca96a465` | `0a55e42e` |
+| further-rise + age-gate + wear-exposure amendment (`78fbca6`) | `b0eafaf8...` | `dc007267` | `3c84008d` |
+| work-guarantee-floor amendment (`c80b828`), as this sprint left it | `a1038d92...` | `7037aa01` | `25ecff09` |
+
+The maintainer's signed "clean doubling" of `bandStepsByGrade` (tidy 4 / used 10 / rough 22 /
+project 40, the judgement call recorded above) never became its own commit: the further 20 per
+cent rise and the wear-exposure multiplier were signed in the same session, and all three landed
+together in `78fbca6`. Any hash derived for the doubling alone was superseded before it was ever
+committed and does not appear anywhere in `git` history.
+
+This sprint's own scope ends at the work-guarantee-floor amendment. A standalone change afterwards
+(`aad936b`, the entry expectation-band fix), then Sprint 154 and its own amendment, then Sprints
+155 and 156, moved every one of these pins further still. At HEAD: the economy hash is
+`a43d34af...`, the 30-day golden is `90b8b963`, and the acquisition-to-sale golden is `5f377288`.
+
+| pin | old | new (as this sprint left it) |
 | --- | --- | --- |
-| `economyApprovalGate` economy.json hash | `3f3d4565...` | `82d5f3b9...` |
-| `advanceDay` golden, 30-day career | `0460fdc2` | `ca96a465` |
-| `advanceDay` golden, acquisition to sale | `5c5614ec` | `0a55e42e` |
-| `schemas.test.ts` lever pin | `minWorkBillFractionByTier` 0.1/0.06/0.05/0.04 | `damageGrades` 45/35/15/5 and 2/5/11/20 |
-| `auctions.test.ts` age-0 assertion | `< 0.4` (relaxed) | `< 0.05` (restored; measures 0.028) |
-| `worked-example-two-cars.md` | - | regenerated from a real run |
+| `schemas.test.ts` lever pin | `minWorkBillFractionByTier` 0.1/0.06/0.05/0.04 | `damageGrades.weights` 45/35/15/5, `bandStepsByGrade` **5/12/26/48** (budget also scaled by `wearExposure(mileageKm)`), `minWorkSteps` **10** (new) |
+| `auctions.test.ts` age-0 assertion | `< 0.4` (relaxed) | `< 0.05`; measures **0.0131** (read red at 0.0780 between the age-gate and wear-exposure amendments, per the amendment notes above) |
+| `worked-example-two-cars.md` | - | regenerated from a real run after each amendment |
 
 `partPricing.json`'s hash, every mission payout and every budget cap hold unchanged: none of those
 pipelines reads generation damage or the model-year window. Both golden hashes were re-run twice

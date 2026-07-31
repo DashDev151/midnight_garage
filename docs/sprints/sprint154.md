@@ -286,12 +286,14 @@ a zone-severity table, a `maxBillFraction` change, moves how much the Law 2 veto
 the gap between what is signed and what a player meets. Recorded as an Open engineering item in
 `TODO.md` rather than only here, so the next lever move that touches generation roughness finds it.
 
-Re-derivation: the economy approval-gate hash moved (`5a0f898f...` -> `7b4edda1...`, full ledger
-entry in `economyApprovalGate.test.ts`). The 30-day `advanceDay` golden held unchanged; the
-acquisition-to-sale golden moved (`4c86d4c9` -> `81133d36`), because the RNG draw sequence inside
-symptom generation shifts with the input and that script is the one that rolls and sells a real
-lot. `workedExample.test.ts` is unaffected. `partPricing.json` and every mission payout and budget
-cap hold.
+Re-derivation: the economy approval-gate hash moved (`b0165684...` -> `7b4edda1...`; an
+intermediate `5a0f898f...`, derived mid-session before this amendment, never reached `main` because
+the base implementation and the amendment landed together in one commit, see the Re-derived pins
+section below). The 30-day `advanceDay` golden held unchanged over this specific amendment; the
+acquisition-to-sale golden moved (`dba0a979` -> `81133d36`; an intermediate `4c86d4c9`, derived the
+same way, likewise never landed), because the RNG draw sequence inside symptom generation shifts
+with the input and that script is the one that rolls and sells a real lot. `workedExample.test.ts`
+is unaffected. `partPricing.json` and every mission payout and budget cap hold.
 
 Checks: `pnpm typecheck` (content, sim, game all Done); `pnpm test --project content` (25 files,
 562 tests, all passed at the re-pinned hash); `pnpm test --project sim`, `auctions.test.ts`'s
@@ -325,15 +327,29 @@ under-specified fixture.
 
 ### Re-derived pins
 
-| pin | old | new |
+**A pin recorded mid-sprint can be superseded by a later amendment in the same sprint; the
+authoritative value is always what the test asserts at HEAD.** This sprint's base implementation
+and its own veto-coupling amendment (above) landed in a single commit (`ebeae6b`), so two values
+were derived after the base implementation and before the amendment, then superseded before either
+was ever its own commit: `5a0f898f...` for the economy hash and `4c86d4c9` for the
+acquisition-to-sale golden. Neither appears anywhere in `git` history; the "new" column below is
+what actually shipped.
+
+| pin | old | new (shipped) |
 | --- | --- | --- |
-| `economyApprovalGate` economy.json hash | `b0165684...` | `5a0f898f...` |
+| `economyApprovalGate` economy.json hash | `b0165684...` | `7b4edda1...` |
 | `advanceDay` golden, 30-day career | `7037aa01` | `08ce1be6` |
-| `advanceDay` golden, acquisition to sale | `dba0a979` | `4c86d4c9` |
+| `advanceDay` golden, acquisition to sale | `dba0a979` | `81133d36` |
 | `schemas.test.ts` lever pin | `damageGrades.weights` 45/35/15/5 | `careProfiles`, `careProfileByCulture`, `upkeepTierByGrade`, `aftermarketChanceMultiplierByGrade` |
 | `auctions.test.ts` Wagon R fine-or-mint bar | `> 14` | `> 12` (measures 12.89) |
 | `auctions.test.ts` grade-ladder upper bound | `<= authoredGap` | `< 2 x authoredGap` (measures 45.5 vs 43) |
 | `worked-example-two-cars.md` | - | regenerated from a real run |
+
+Superseded, for the record: the economy hash was derived mid-session as `5a0f898f...` and the
+acquisition-to-sale golden as `4c86d4c9`, both before the veto-coupling amendment folded into the
+same commit as the base implementation. Sprints 155 and 156 moved every one of these pins further
+still; at HEAD the economy hash is `a43d34af...`, the 30-day golden is `90b8b963`, and the
+acquisition-to-sale golden is `5f377288`.
 
 Both golden hashes were re-run twice to confirm determinism. `partPricing.json`'s hash, every
 mission payout and every budget cap hold unchanged: none of those pipelines reads how a generated
