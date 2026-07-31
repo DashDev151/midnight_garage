@@ -789,6 +789,19 @@ import storyMissions from '../data/storyMissions.json'
  * never hand-picked: `first-proper-car` (first-timer) 1.08 -> 1.07, `low-and-loud`
  * (stancer) 1.07 -> 1.06, `street-power-street-manners` (tuner) 1.07 -> 1.05. Every
  * probe's own stat thresholds, payout and budget cap are unaffected, as before.
+ *
+ * NOT a re-pin, recorded here because this file is the ledger of what moved and why:
+ * under the maintainer's standing lever authority of 2026-07-30, `AUCTION_BUYOUT_PREMIUM`
+ * was swept at 1.00/1.02/1.03/1.05/1.08 (`docs/sprints/sprint146.md`, "Amendment 2") to try
+ * to close the instant-flip guard's remaining gap. Measured, not applied: the premium
+ * cancels algebraically out of the guard's own `marginMedian < bound` comparison (both sides
+ * share the identical `/ premium - 1` shape), so the guard's real pass condition reduces to
+ * `resaleMedian < (spreadMin + spreadMax) / 2` regardless of the premium's value - confirmed
+ * empirically at all five swept values and at two absurd control values (5 and 1000). No
+ * value in economy.json changed; `AUCTION_BUYOUT_PREMIUM` stays at 1.00 and this hash holds
+ * unchanged. `offerSpread`, the buyer tables and `pickWeightedCandidate`'s weighting were
+ * left untouched per the ruling's own instruction; closing the guard needs one of those, or a
+ * fix to the guard's own bound formula, neither of which this sweep was authorised to pull.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {

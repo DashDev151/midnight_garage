@@ -105,6 +105,33 @@ proposals.
 | `liquidity.relistRecovery` | **0.70** |
 | `selling.offerSpread` | **RETIRED**, replaced by the quality draw |
 
+## This sprint inherits the instant-flip guard, and must close it
+
+`valueModelProbes.test.ts`'s instant-flip guard is red on all four tiers as of Sprint 146:
+buying a car and reselling it untouched the same day reads a margin of +0.08 to +1.05 per cent
+where it must lose at least 1.
+
+**`AUCTION_BUYOUT_PREMIUM` was swept and cannot close it, proven rather than assumed.** The
+probe's margin is `resaleRatio / premium - 1` and the guard's own bound is
+`(spreadMin + spreadMax) / 2 / premium - 1`. The premium cancels. The real pass condition is
+`resaleMedian < 0.99`, independent of the lever, and a premium of 1000 was tested to confirm it.
+Measured medians: entry 1.0053, everyday 1.0008, enthusiast 1.0037, flagship 1.0105.
+
+**It lands here because this sprint retires `offerSpread`**, which is the very thing the guard's
+bound is built from. The bound must be rewritten against whatever replaces it, and the natural
+replacement is the quality distribution's own fresh mean.
+
+So: **rewrite the guard's bound against the new quality curve, then make it pass honestly.** A
+fresh offer is now `qualityFresh` of channel price rather than the midpoint of a flat band, and
+the shop front clamps taste at 1.00, so an untouched same-day resale should land near 0.98 of
+market against an acquisition at 1.00 and lose about two per cent by construction.
+
+**If it still does not pass, STOP and report the numbers.** Do not loosen the bound to fit, and
+do not reach for a lever this sprint was not given. In particular, note that a car bought cheaply
+which happens to be a perfect match for a premium channel is a GENUINE arbitrage and should
+remain profitable: the player's edge is meant to be knowledge. The guard is about the typical
+car, not the well-spotted one, so check what it actually samples before concluding.
+
 ## Task breakdown
 
 1. **`offersSeen` on `ForSaleEntry`**, required, no default. Bump `SAVE_VERSION`. Note that

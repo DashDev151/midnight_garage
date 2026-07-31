@@ -405,3 +405,98 @@ nonzero `stockPowerPs`, for one).
 `pnpm test --project game` both shown clean; every named sim file above re-run individually,
 never the full sim project. `valueModelProbes.test.ts`'s instant-flip guard remains RED on all
 four tiers, by design - see above.
+
+## Amendment 2: the AUCTION_BUYOUT_PREMIUM sweep, and why the lever cannot close this guard
+
+**Under the maintainer's standing lever authority of 2026-07-30, `economy.AUCTION_BUYOUT_PREMIUM`
+was swept at 1.00, 1.02, 1.03, 1.05 and 1.08** (a real auction buyer's premium runs 5-10%, so any
+value in that region was defensible) to close the instant-flip guard's remaining gap left open by
+Amendment 1. It does not close, at any of the five values, and the reason turns out to be
+structural rather than a matter of picking the right number.
+
+**Measurement harness.** A scratch Vitest file replicated the guard's own probe loop exactly (same
+lot generation, same `flip-probe-sell:${lot.id}` walk-in RNG seed, same 60-seed sweep per model),
+built once via `buildSimContext`, then re-run per premium with only `economy.AUCTION_BUYOUT_PREMIUM`
+overridden on a shallow-cloned economy object - no edit to `economy.json` needed for the sweep
+itself. Validated bit-for-bit against the real, unmodified guard at premium 1.00 before trusting
+any swept number (an earlier pass of the harness mis-seeded the walk-in RNG with the premium value
+folded into the lot id, which silently changed which buyer each sale drew and produced numbers that
+did not match the shipped test; re-seeded to match the shipped test exactly and re-validated).
+
+**The sweep table** (`marginMedian` is the instant-flip probe's own measured margin; `bound` is the
+guard's own right-hand side, `(spreadMin + spreadMax) / 2 / premium - 1`; the guard requires
+`marginMedian < bound`):
+
+    premium  entry margin   everyday margin   enthusiast margin   flagship margin   bound
+    1.00     +0.534%        +0.082%           +0.373%             +1.050%           -1.000%
+    1.02     -1.437%        -1.881%           -1.595%             -0.932%           -2.941%
+    1.03     -2.394%        -2.833%           -2.551%             -1.893%           -3.883%
+    1.05     -4.253%        -4.684%           -4.407%             -3.762%           -5.714%
+    1.08     -6.913%        -7.332%           -7.062%             -6.435%           -8.333%
+
+**Every one of the 20 cells fails.** The margin gets more negative as the premium rises, exactly as
+intuition predicts (a dearer acquisition should make the flip lose more) - but the bound gets more
+negative in lock-step, and stays just ahead of it at every premium tried.
+
+**Why: the premium algebraically cancels out of the guard's own pass/fail condition.** The probe's
+margin is `marginFraction = offer.priceYen / wonPriceYen - 1`, and `wonPriceYen = anchor * premium`
+(`computeBuyoutPriceYen`), so `marginFraction = (offer.priceYen / anchor) / premium - 1 =
+resaleRatio / premium - 1`, where `resaleRatio = offer.priceYen / anchor` never touches the
+premium at all - it is a property of the walk-in sale side alone. Since medians of a positive
+scalar multiple preserve order, `marginMedian = resaleMedian / premium - 1`. The guard's own bound
+is `(spreadMin + spreadMax) / 2 / premium - 1` - the identical `/ premium - 1` shape. Substituting
+both into `marginMedian < bound` and multiplying through by `premium` (positive, so the inequality
+direction is unchanged) leaves:
+
+    resaleMedian < (spreadMin + spreadMax) / 2
+
+**`premium` has cancelled out of both sides.** Whether this guard passes or fails does not depend on
+`AUCTION_BUYOUT_PREMIUM` at all, for any positive value - only on whether the walk-in sale's own
+median resale ratio sits below the offer spread's midpoint (0.99, from `selling.offerSpread`
+`[0.93, 1.05]`). Confirmed empirically, not just algebraically: swept an absurd premium of 5 (every
+margin/bound pair moves to roughly -80%, still failing by the same small margin the low end showed)
+and 1000 (every tier's sample empties out - nobody can afford the buyout out of the probe's
+10,000,000 yen bankroll - before the inequality ever flips). The measured `resaleMedian` per tier,
+constant across every premium exactly as the algebra predicts: entry 1.0053, everyday 1.0008,
+enthusiast 1.0037, flagship 1.0105 - all above the 0.99 midpoint, on every tier, which is why the
+guard cannot pass at any premium.
+
+**This is the maintainer's own STOP condition, met exactly.** "Clearing the guard requires a
+premium above 1.08" understates it: no finite premium clears it, because the lever is not present
+in the guard's pass/fail decision once the algebra is carried through. Per the ruling, this thread
+stops here. **No lever was pulled**: `economy.json`'s `AUCTION_BUYOUT_PREMIUM` stays at 1.00,
+`economyApprovalGate.test.ts`'s hash is untouched (nothing to re-pin), and `offerSpread`, the buyer
+tables and `pickWeightedCandidate`'s weighting were not touched, per the ruling's own instruction.
+The scratch measurement harness was deleted after the sweep table above was transcribed from its
+output; it was never part of the shipped suite.
+
+**What this rules out and what it leaves open.** Amendment 1's diagnosis ("likeliest single cause:
+`AUCTION_BUYOUT_PREMIUM`... closing the remainder needs one of `economy.selling.offerSpread`,
+`economy.AUCTION_BUYOUT_PREMIUM`, or the `statTargets` tables") is now narrowed by measurement:
+`AUCTION_BUYOUT_PREMIUM` is ruled out completely, not merely under-tuned - it is structurally inert
+against this specific guard's formula. What remains genuinely open, neither authorised nor pulled
+under this ruling: `resaleMedian` sitting a little above the neutral 0.99 midpoint on every tier is
+`pickWeightedCandidate`'s value-weighted buyer selection at work (it hands a walk-in sale to
+whichever candidate buyer scores the car highest, which is not the same as a "neutral" mid-spread
+draw), so the two live options are (a) loosen `offerSpread` or the buyer-selection weighting so a
+walk-in's own median genuinely centres near 0.99 rather than above it, or (b) rewrite the guard's
+own bound so it does not divide by the same premium the margin already divides by (a test-authoring
+fix, not an economy lever, and outside this ruling's scope either way). Both are the maintainer's
+call, not this thread's.
+
+**Knock-on check (performed even though no lever moved, since the sweep touched real acquisition
+cost math in-memory):** `balanceProbes.ts` and `plays.ts` price their own "buy price" off
+`AUCTION_RESERVE_PRICE_FRACTION` (the contested-room reserve assumption), never off
+`AUCTION_BUYOUT_PREMIUM` or `computeBuyoutPriceYen` - confirmed by reading both files in full, no
+reference to the premium in either. `storyMissionProbes.test.ts` prices every mission's probe
+acquisition off `marketValueYen` directly (a full-guide-value purchase proxy), also never off the
+buyout premium. So even had a value been chosen and applied, no mission payout, budget cap, or
+`plays.ts` play ranking would have moved - the only real consumers of `AUCTION_BUYOUT_PREMIUM` are
+`computeBuyoutPriceYen` (`bidding.ts`), the bot buyout helpers (inert under directive 21), the game
+store's displayed buyout price, and this guard itself. Since the value did not move, none of this
+was exercised for real, but it is recorded here so the next attempt at this lever does not have to
+re-derive it.
+
+**Checks:** none of `economy.json`, `economyApprovalGate.test.ts`, or any shipped test changed, so
+no re-run was needed beyond the scratch harness itself (deleted). `git status` confirms the tree is
+unchanged by this amendment beyond this doc and `TODO.md`.
