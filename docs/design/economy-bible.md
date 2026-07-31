@@ -222,7 +222,7 @@ fails that test outright, rather than silently drifting).
 | `energy.*` (`pointsPerLabour`, `basePoolPoints`, `energyPerBandStepByToolTier`, `energyByClass`, `actionPoints.*`) | `economy.json` | The whole labour economy: the day's pool, repair/install labour, and every physical action's own labour figure (`actionPoints`, one key per action, zero = free at current tuning) - the single tuning location for labour costs |
 | `AUCTION_RESERVE_PRICE_FRACTION`, `AUCTION_BUYOUT_PREMIUM`, `AUCTION_WHOLESALE_FRACTION`, `AUCTION_BID_INCREMENT_FRACTION`, `AUCTION_BID_INCREMENT_STEP_YEN`, `AUCTION_QUIET_DAYS_TO_HAMMER`, `AUCTION_LOTS_PER_TIER`, `AUCTION_DURATION_*`, `AUCTION_FLASH_CHANCE`, `AUCTION_LONG_CHANCE_UNCOMMON_RARE`, `AUCTION_DAILY_SPAWN_RATE`, `auctionInterest.*` | `economy.json` | The whole auction reserve/buyout/contestation model (`bidding.ts`, `auctions.ts`) |
 | `restoration.repairStepFraction` | `economy.json` | Every repair-cost formula (`bands.ts`'s `costToMintYen` family) |
-| `valuation.mileageFactorCurve`, `valuation.marketRepairDiscount` (Law 1), `valuation.partsRetention`, `valuation.genuinePeriodMultiplier`, `valuation.tasteSpread`, `valuation.walkAwaySpread`, `valuation.foundation` (Law 5) | `economy.json` | `marketValue.ts`'s guide-value formula (`valuation.foundation` scales the aftermarket premium by the worst foundational part) |
+| `valuation.mileageFactorCurve`, `valuation.marketRepairDiscount` (Law 1), `valuation.coherenceDiscountWeight`, `valuation.retentionFloor`/`retentionCeiling`, `valuation.tolerance`, `valuation.tasteSpread`, `valuation.walkAwaySpread`, `valuation.foundation` (Law 5), `valuation.expectationByTier` | `economy.json` | `marketValue.ts`'s guide-value formula (`valuation.foundation` scales the aftermarket premium by the worst foundational part). `partsRetention` retired Sprint 144 and `genuinePeriodMultiplier` retired Sprint 151, both see the Amendment log |
 | `marketPressure.*` | `economy.json` | Weekly market-heat drift (`marketHeat.ts`) |
 | `statFormulas.*` | `economy.json` | Derived car stats (`derivedStats.ts`) and buyer taste normalization |
 | `supportReadout.shortfallCopy`/`framingByBand` | `economy.json` | The support-ratio warning's copy (`packages/game/src/stores/gameStore.ts`'s `supportReadoutFor`) - qualitative only, no yen and no other number |
@@ -288,6 +288,24 @@ This closes Law 4: every anchor is named, every derived number is a live functio
 maintainer or CI run can catch a coherence drift before a playtest does.
 
 ## Amendment log
+
+- 2026-07-31: **The anchor inventory's `valuation` row corrected to reality, by explicit maintainer
+  approval ("fix it to align with reality").** It still named two levers that no longer exist.
+  `valuation.partsRetention`, the flat 0.55, was retired in Sprint 144 and replaced by the
+  coherence-scaled curve `retentionFloor`/`retentionCeiling`. `valuation.genuinePeriodMultiplier`
+  was retired in Sprint 151 together with the `genuinePeriod` flag it multiplied, which no shipped
+  content ever set. The row now also names `coherenceDiscountWeight`, `tolerance` and
+  `expectationByTier`, which were live and unlisted. **No law changed and no number moved**: this
+  is the audit table catching up with four sprints of retirements.
+
+- 2026-07-31: **The core-loop law's clause (1) is under revision and its current wording is known
+  to overstate what ships.** It claims *"cherished provenance now means less damage, never none"*.
+  Measured during the Sprint 151 discovery pass, cherished and neglected upkeep converge on the
+  same roughly fifteen ruined parts; upkeep changes only how many steps the generator takes to get
+  there. The approved fix is in `docs/design/systems/generation-damage.md`, which replaces the
+  unbounded money target with a rolled damage budget. **The law's intent is unchanged and clause
+  (2) is untouched**; this note exists so nobody reads the current sentence as a description of
+  shipped behaviour.
 
 - 2026-07-22: **The core-loop law added by explicit maintainer approval (in session, verbatim:
   "The entire gameplay loop is Buying a car, FIXING IT, and then selling it. Without the FIXING
