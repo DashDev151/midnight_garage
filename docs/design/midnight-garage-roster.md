@@ -221,7 +221,7 @@ agreement), `powerRpm`, `peakTorqueNm`, `torqueRpm`, `redlineRpm`, `displacement
 
 **`reliabilityBase`** is what the car reads when everything about it is right. A mint, stock,
 coherently built example scores exactly this and nothing ever scores higher; condition and build
-coherence only take it down (`sprint136.md`).
+coherence only take it down (`docs/sprints/sprint_archive/sprint136.md`).
 
 **The scale is 65 to 100 and the axis is age and engineering culture, not price.** An NSX is a
 supercar you can drive to work and a Countach is not, so they sit thirty points apart inside the
@@ -238,9 +238,14 @@ those are the two systems the tuning arc exists to make matter.
 | 72-77 | the 1960s Japanese classics, and the triple-rotor Cosmo |
 | 65-71 | Italy, and a 1965 Mini |
 
-**`styleBase`** (0 to 20) and **`aeroCeiling`** (0 to 1) are proposed in `sprint140.md` and are
-**authored for the 26 shipped cars only**. Under directive 24 that is now wrong and both want
-completing to 94 before that sprint runs.
+**`styleBase`** (0 to 20) is **authored for all 94 rows and BUILT**: it landed in
+`docs/sprints/sprint_archive/sprint145.md`, `CarModel.spec.styleBase` is a required schema field,
+all 26 shipped cars carry it, and the flat `statFormulas.styleCap` it replaced is retired.
+`rosterCsvGuard.test.ts` holds every row inside the authored band.
+
+**`aeroCeiling`** (0 to 1) is proposed in `docs/sprints/sprint140.md` and is **authored for the 26
+shipped cars only**. Under directive 24 that is the wrong scope, and it wants completing to 94
+before that sprint runs. It is unsigned as well as incomplete.
 
 ### 3c. What the CSV is still missing, stated rather than discovered
 
@@ -250,7 +255,8 @@ Counts are out of 94.
 | --- | ---: | --- |
 | `flavour` | **0** | Deliberate. Ninety-four flavour lines written in one pass would be filler, and the copy bar (`CLAUDE.md`, the game-tone law) does not allow filler. Written per car, by hand, against the "lived in Japan in 1995" test. |
 | `rarity` | 26 | A spawn-rate lever, so it is directive 22 territory as well as directive 24. Needs the full 94 signed. |
-| `styleBase`, `aeroCeiling` | 26 | Section 3b. |
+| `styleBase` | **94** | Complete, and built. Section 3b. |
+| `aeroCeiling` | 26 | Section 3b. Still the wrong scope under directive 24, and unsigned. |
 | `stockPowerPs` and the rest of the engine block | 56 | 26 from `cars.json`, 30 from the research sweep. |
 | geometry (`wheelbaseMm`, `dragCd`, `comHeightMm`, tyres) | 26 | Only the shipped cars have been through the spec book. |
 | measured lateral G and braking | 43-46 | The research sweep did not reach every car. |

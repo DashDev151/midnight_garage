@@ -1,6 +1,7 @@
 # Sprint 148: somewhere to put it
 
-**Status: READY TO IMPLEMENT. Sixth of the sale value arc. Depends on Sprint 147.**
+**Status: BUILT AND COMMITTED 2026-07-31 (`044f5c8`, `5df8a01`). Nothing outstanding.** Sixth of
+the sale value arc.
 
 Design of record: `docs/design/systems/sale-value-system.md` §7.1, and the parking ruling in
 `sale-value-implementation-plan.md` §4.

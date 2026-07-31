@@ -20,5 +20,5 @@ hierarchy arc exists to close, just missed on first pass.
 `brakeCalipersLines` in `packages/content/data/parts-taxonomy.json`, then swept the remaining 27
 slots for the same class of omission. No other slot carried an equally unambiguous case (a
 component physically inaccessible without pulling a specific, identifiable other part first) - see
-`docs/sprints/sprint79.md`'s Exit for the sweep's own reasoning, including what was considered and
+`docs/sprints/sprint_archive/sprint79.md`'s Exit for the sweep's own reasoning, including what was considered and
 deliberately left alone.

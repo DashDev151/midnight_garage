@@ -1,6 +1,9 @@
 # Sprint 146: taste becomes a match
 
-**Status: READY TO IMPLEMENT. Fourth of the sale value arc. Depends on Sprint 145.**
+**Status: BUILT AND COMMITTED 2026-07-31 (`0273104`, `27357e3`). Fourth of the sale value arc.**
+**Its one outstanding item is closed.** The instant-flip guard this sprint left red on all four
+tiers was closed in Sprint 147, by `liquidity.qualityFresh` 0.98 to 0.96 plus a rewritten bound;
+see "the instant-flip guard, closed elsewhere" at the end of this doc.
 
 Design of record: `docs/design/systems/sale-value-system.md` §3 Stage E.
 
@@ -502,3 +505,26 @@ re-derive it.
 **Checks:** none of `economy.json`, `economyApprovalGate.test.ts`, or any shipped test changed, so
 no re-run was needed beyond the scratch harness itself (deleted). `git status` confirms the tree is
 unchanged by this amendment beyond this doc and `TODO.md`.
+
+---
+
+## The instant-flip guard, closed elsewhere
+
+**This closes the outstanding item both the Exit and Amendment 1 above left open.** Neither is
+rewritten: the guard really was left red on all four tiers when this sprint ended, and Amendment
+2's proof that `AUCTION_BUYOUT_PREMIUM` cancels out of the guard's own pass/fail condition stands
+exactly as measured.
+
+**Where it was closed: Sprint 147**, under the standing lever grant recorded as R3 in
+`docs/design/systems/sale-value-implementation-plan.md`. Two changes, in one place:
+
+- **`liquidity.qualityFresh` 0.98 -> 0.96.** `sellViaWalkIn` is a buyer offering somewhat under
+  their true valuation for the convenience of an instant sale; 0.98 was a 2 per cent convenience
+  discount that `pickWeightedCandidate`'s value-weighted pick then ate roughly 1.44 points of.
+- **The guard's bound rewritten to state the design law directly** rather than deriving itself
+  from `qualityFresh`: buying a car and reselling it untouched the same day must lose at least
+  1 per cent of its value, asserted as `expect(marginMedian).toBeLessThan(-0.01)`.
+
+Measured median margins after: entry **-2.56%**, everyday **-2.91%**, enthusiast **-2.50%**,
+flagship **-2.17%**, all comfortably below the design law. **Status: closed, not merely
+improved.** Full record in `docs/sprints/sprint_archive/sprint147.md`'s Exit.

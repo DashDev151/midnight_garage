@@ -134,7 +134,7 @@ Root cause: `selling.ts` (walk-in ~line 154-171, and the public-listing resoluti
 
 ### Fix 7 - documentation debt
 
-- [x] `docs/sprints/sprint15.md`/`sprint16.md`/`sprint19.md`/`sprint19b.md`/`sprint19c.md` headers:
+- [x] `docs/sprints/sprint_archive/sprint15.md`/`sprint16.md`/`sprint19.md`/`sprint19b.md`/`sprint19c.md` headers:
   status lines still say "not yet committed" - correct to committed (hashes from `git log`).
 - [x] `CLAUDE.md` "Current state" paragraph: rewrite post-arc (sprint number, what the arc changed,
   pointer to sprint20-24 docs).

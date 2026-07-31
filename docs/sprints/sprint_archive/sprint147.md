@@ -1,6 +1,9 @@
 # Sprint 147: the door that actually closes
 
-**Status: READY TO IMPLEMENT. Fifth of the sale value arc. Depends on Sprint 146.**
+**Status: BUILT AND COMMITTED 2026-07-31 (`487ab65`). Fifth of the sale value arc.** One item
+left open, deliberately and tracked in `TODO.md` rather than here: `sale-value-system.md` §4
+states `relistRecovery` as a fraction of "fresh", which has no arithmetic reading, and should be
+amended to state the formula next time that document is touched. Docs correction only, no code.
 
 Design of record: `docs/design/systems/sale-value-system.md` §4.
 

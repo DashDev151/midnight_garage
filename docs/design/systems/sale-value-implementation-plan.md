@@ -112,10 +112,10 @@ sale-value problem, so it can be fixed immediately and does not need to wait for
 
 | what | why |
 | --- | --- |
-| `partsRetention` (the flat 0.55 lever) | replaced by the retention curve. **Delete the lever, do not leave it inert** |
-| `ForSaleEntry.sinceDay` | the absolute clock the design explicitly rejects. Its one reader is a bot helper; retire both together or they contradict |
-| `Buyer.priceSensitivity` | unless wired (D2) |
-| `tools/sale-value/model.mjs` | **on the day the shipped stack can generate §9**, per the maintainer's ruling |
+| `partsRetention` (the flat 0.55 lever) | replaced by the retention curve. **DONE, Sprint 144**: deleted outright, not left inert, and in the retired-identifier ledger |
+| `ForSaleEntry.sinceDay` | the absolute clock the design explicitly rejects. **DONE, Sprint 147**: retired together with its one reader, `holdingDays` in `bots/sellingHelpers.ts` |
+| `Buyer.priceSensitivity` | **DONE, Sprint 143 (D2)**: not wired, so retired. Removed from `BuyerSchema`, all five `buyers.json` entries and every fixture, and added to the ledger |
+| `tools/sale-value/model.mjs` | **on the day the shipped stack can generate §9**, per the maintainer's ruling. Still live |
 
 ### Two name collisions, ruled before they cost a sprint
 

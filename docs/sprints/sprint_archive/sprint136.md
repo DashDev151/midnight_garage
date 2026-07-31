@@ -1,8 +1,10 @@
 # Sprint 136: support ratios, and reliability as what they move
 
-**Status: FULLY SIGNED 2026-07-29. Ready to implement. Nothing in this sprint needs asking about.**
-Levers 6, 7 and 8 are signed outright; levers 1 to 5 are signed preliminarily. Maintainer: *"cannot
-know until playtest, as long as we have sane defaults to start with."*
+**Status: BUILT AND COMMITTED 2026-07-30 (`44ed6a8`), plus three signed amendments in the same
+window (`edddd36`, `f0c2876`, `5f75606`). Fully signed 2026-07-29.** Levers 6, 7 and 8 were signed
+outright; levers 1 to 5 preliminarily. Maintainer: *"cannot know until playtest, as long as we
+have sane defaults to start with."* The Exit's one unexplained item is closed: see "The
+auction-demo pin movement, root-caused" at the end of this doc.
 
 **What "preliminary" means here, precisely, because it is not the same as unapproved.** Levers 1
 to 5 are approved to implement and to ship: an implementer does not stop, and directive 22 is
@@ -1468,3 +1470,28 @@ not investigated further here.
   file there references this mission by id, so it was not re-run).
 - No `pnpm typecheck`, `pnpm lint`, `pnpm format`, `pnpm test:coverage` or `pnpm build` run locally,
   matching this sprint's own speed directive.
+
+---
+
+## The auction-demo pin movement, root-caused
+
+**This closes "The one thing I could not fully explain" in the Exit above.** That section stays
+as written: the uncertainty was real and was disclosed rather than papered over. This is the
+answer, found later.
+
+**The mechanism.** `enforceMinWorkBill` draws a PRNG step per yen-floor increment, so any change
+to catalogue prices or part costs changes how many draws a lot consumes, which reshuffles the
+whole fixed-seed `local-yard` catalogue downstream of it. That is why a change touching only
+reliability could move a demo lot's car, its room read, its clearing price and which dealer won
+the bid war, without any of `marketValueYen`/`estimateValueYen`/`sheetGuideValueYen` ever
+reading `StatBlock.reliability`: the valuation functions were never the path, the lot
+*generation order* was.
+
+Confirmed by recurrence, which is the evidence the Exit asked for. The same trap fired again in
+Sprint 137's `camsTiming` amendment and was diagnosed there in full; its fix (widening
+`DEMO_CATALOG_N_STEPS`, then re-deriving every pin from a fresh seeded run) is the same fix
+applied here. The re-derived pins recorded above are therefore an honest measurement, as the
+Exit claimed, and the causal path is now named.
+
+**Status: closed.** The standing caution it produced (check the three auction-room fixture files
+by name whenever a price or part cost moves) is live practice across the rest of this arc.

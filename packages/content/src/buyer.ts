@@ -58,7 +58,7 @@ export const BuyerSchema = z
      * offer so the want IS the read (design doc `selling-rework.md` section
      * 3) - the want is the taste ceiling, surfaced rather than hidden.
      * Orchestrator-authored copy, transplanted verbatim from
-     * `docs/sprints/sprint114.md`'s "Authored copy" section.
+     * `docs/sprints/sprint_archive/sprint114.md`'s "Authored copy" section.
      */
     wantLine: z.string().min(1),
   })

@@ -10,7 +10,7 @@ Sources: GDD sections 6 and 9, roadmap risk R4. All currency is yen.*
 
 | Item | Value | Rationale |
 |---|---|---|
-| Starting cash | ~~¥1,200,000~~ **¥1,500,000** | **Corrected in Sprint 03** (implementation-time finding 3, `docs/sprints/sprint03.md`): 100 days of weekly rent alone is ¥1,260,000 - more than the original draft, leaving zero operating margin for *any* strategy regardless of how it played. The harness doing exactly its intended job. |
+| Starting cash | ~~¥1,200,000~~ **¥1,500,000** | **Corrected in Sprint 03** (implementation-time finding 3, `docs/sprints/sprint_archive/sprint03.md`): 100 days of weekly rent alone is ¥1,260,000 - more than the original draft, leaving zero operating margin for *any* strategy regardless of how it played. The harness doing exactly its intended job. |
 | Weekly rent | ¥90,000 | Real pressure: uncovered by service jobs alone after ~5 weeks |
 | Player labor slots | 2/day (14/week) | GDD 3.2 base |
 | Starting equipment | Basic tools | Gates jobs to Act 1 tier |
@@ -68,7 +68,7 @@ discount from these numbers.
 
 These become hard assertions in `tools/balance`; a failed assertion fails the build.
 
-**Amended in Sprint 03 design** (see `docs/sprints/sprint03.md` decision 3): reputation-tier
+**Amended in Sprint 03 design** (see `docs/sprints/sprint_archive/sprint03.md` decision 3): reputation-tier
 progression (Act 2/Act 3 gates) has no mechanic granting it yet, and neither does a real
 "event chaser" strategy (needs the events system). Rather than assert against mechanics that
 don't exist, #1 and #3 below are proxy invariants until a rep-gain mechanic lands.

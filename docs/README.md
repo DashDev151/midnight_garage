@@ -46,8 +46,17 @@ other files there are its data, its harness, and the arc's historical working no
 
 ## Working practice
 
-- A sprint's own `sprints/sprintNN.md` Exit is that sprint's permanent record. Nothing re-narrates
-  it, including `CLAUDE.md`.
+- A sprint's own `sprintNN.md` Exit is that sprint's permanent record. Nothing re-narrates it,
+  including `CLAUDE.md`.
+- **`sprints/` holds only live sprints; `sprints/sprint_archive/` holds finished ones.** A sprint
+  moves to the archive when it is genuinely done: either everything in it shipped and its Exit
+  records nothing still open, or it was deliberately closed unbuilt. A sprint whose Exit leaves
+  real work outstanding, or that carries an approved design nothing has built yet, stays in
+  `sprints/` however long ago it ran, because the archive is history and history is never a
+  mandate. Move with `git mv`, and fix every reference to the old path in the same change.
+  A sprint doc's own header status line says which of these it is; keep it true.
+- The two arc indexes, `sprints/tuning-arc.md` and `sprints/sale-value-arc-lever-ledger.md`, are
+  live documents and are not archived with the sprints they index.
 - `TODO.md` at the repo root carries deferred items with no sprint number attached. Check it when
   planning, and remove from it when something lands.
 - Archived documents keep a banner saying what superseded them. They are never deleted, and they are

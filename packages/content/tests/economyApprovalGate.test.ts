@@ -30,7 +30,7 @@ import storyMissions from '../data/storyMissions.json'
  * the payout to match rather than let the mission drift off-formula.
  *
  * Re-pinned for the body-model generation levers signed in the Sprint 119
- * lever table (`docs/sprints/sprint119.md`, "The complete lever table"): L3
+ * lever table (`docs/sprints/sprint_archive/sprint119.md`, "The complete lever table"): L3
  * added `partsGeneration.zoneStates` (per-tier metal/finish severity weight
  * tables, the chassis metal table one row kinder per tier, and
  * `surfaceExtraChance` 0.2) exactly as that table states.
@@ -56,7 +56,7 @@ import storyMissions from '../data/storyMissions.json'
  * sets the future modified-grip ceiling. Signed in docs/design/car-performance/archive/lap-calibration.md.
  *
  * Re-pinned for Sprint 124's grip-and-pace lap model (lever table sections A and
- * B, signed by the maintainer 2026-07-25 in docs/sprints/sprint124.md): the old
+ * B, signed by the maintainer 2026-07-25 in docs/sprints/sprint_archive/sprint124.md): the old
  * `lapModel` block (`C`, `ratioExp`, `gripMult`, `courseId`, `courseName`) is
  * removed, and `statFormulas.pace` is added, carrying the Forza-calibrated
  * physics constants (gravity, air density, driveline efficiency, rolling
@@ -70,7 +70,7 @@ import storyMissions from '../data/storyMissions.json'
  * hand-picked.
  *
  * Re-pinned for Sprint 125's aero model (lever table sections A and C, signed by
- * the maintainer 2026-07-25 in docs/sprints/sprint125.md): adds
+ * the maintainer 2026-07-25 in docs/sprints/sprint_archive/sprint125.md): adds
  * `statFormulas.aero` - `downforceK` 6.2e-5 (calibrated from the Calsonic BNR32
  * Gr.A's measured lateral-g pair), `maxGripMultiplier` 1.6, and the per-grade
  * downforce/drag table (street 0.10/+0.01, sport 0.40/+0.04, race 0.85/+0.09).
@@ -89,7 +89,7 @@ import storyMissions from '../data/storyMissions.json'
  * `under-one-fifteen` 248 -> 230.1); payouts are untouched.
  *
  * Re-pinned for the physics port's lever table (Sprint 128 section 6, signed by
- * the maintainer 2026-07-27 in docs/sprints/sprint128.md, including option C for
+ * the maintainer 2026-07-27 in docs/sprints/sprint_archive/sprint128.md, including option C for
  * the display curve). Section A deletes `statFormulas.pace.awdLaunchFactor`,
  * `launchCapCoeff`, `delivery` and `deliverySaturationSpeed`; section B changes
  * `agilityWeight` 0.3 -> 0.82 (the term's formula changed, so the numbers are not
@@ -110,7 +110,7 @@ import storyMissions from '../data/storyMissions.json'
  * such in the sprint doc.
  *
  * Not a re-pin, recorded here because this file is the ledger of what moved and
- * why: the aftermarket physical ladder approved in docs/sprints/sprint130.md
+ * why: the aftermarket physical ladder approved in docs/sprints/sprint_archive/sprint130.md
  * ("The ladder") puts a weight delta on the race exhaust line, so the two lap
  * missions' probe builds are fractionally lighter and their ceilings re-derive
  * mechanically through `storyMissionProbes`'s own `ceil1AtTwoPercentSlower` rule
@@ -118,7 +118,7 @@ import storyMissions from '../data/storyMissions.json'
  * this gate asserts changes: economy.json is untouched and every payout and
  * budget cap holds, because those derive from build cost, not from lap time.
  *
- * Re-pinned for the condition-to-physics curves approved in docs/sprints/sprint129.md
+ * Re-pinned for the condition-to-physics curves approved in docs/sprints/sprint_archive/sprint129.md
  * ("The curves"): adds `statFormulas.condition.bandFactor`, one five-band curve per
  * physical dial - `grip` 1.000/0.975/0.935/0.875/0.800, `braking`
  * 1.000/0.980/0.950/0.900/0.840, `driveline` 1.000/0.995/0.980/0.960/0.930, `aero`
@@ -128,7 +128,7 @@ import storyMissions from '../data/storyMissions.json'
  * acceptance times are untouched.
  *
  * Re-pinned for the maintainer's correction to those same four curves, recorded in
- * docs/sprints/sprint129.md ("The curves"): the first pass was far too mild for what
+ * docs/sprints/sprint_archive/sprint129.md ("The curves"): the first pass was far too mild for what
  * the bands mean, so every sub-mint value steepens - `grip`
  * 1.000/0.960/0.880/0.740/0.550, `braking` 1.000/0.950/0.860/0.700/0.500, `driveline`
  * 1.000/0.985/0.950/0.890/0.800, `aero` 1.000/0.980/0.930/0.840/0.680. The braking
@@ -138,7 +138,7 @@ import storyMissions from '../data/storyMissions.json'
  * lever moves. Still PROVISIONAL, and mint is still exactly 1.000 on all four, so the
  * harness acceptance times, every mission ceiling and every payout are untouched.
  *
- * Re-pinned for the period parts recalibration signed in docs/sprints/sprint132.md
+ * Re-pinned for the period parts recalibration signed in docs/sprints/sprint_archive/sprint132.md
  * section 4a (the ten live levers: nine `partPricing.json` base costs plus
  * `gradeFactors.race` 2.8 -> 3.0, each anchored to 1994-2004 catalogue data).
  * economy.json itself is untouched, so its hash holds. What moves is every
@@ -192,7 +192,7 @@ import storyMissions from '../data/storyMissions.json'
  * spends 128070, the one sanctioned mistake adds 5500 for 133570 against the 135000
  * cap, and designed profit is 6930, inside the (0, 15000] band that probe asserts.
  *
- * Re-pinned for the tier/rarity/origin split approved in docs/sprints/sprint133.md
+ * Re-pinned for the tier/rarity/origin split approved in docs/sprints/sprint_archive/sprint133.md
  * (sections 4 and 8). NO VALUE MOVES: the six tier-keyed blocks
  * (`valuation.expectationByTier`, `partsGeneration.minWorkBillFractionByTier`, the
  * three `partsGeneration.zoneStates` weight tables, and `diagnosis.symptomChanceByTier`)
@@ -357,7 +357,7 @@ import storyMissions from '../data/storyMissions.json'
  * and value so the gate carries its own ledger from the start:
  *
  * - `baseCostYen`, the nine period-recalibrated entries signed in
- *   docs/sprints/sprint132.md section 4a: exhaust 40000, springs 18000, dampers
+ *   docs/sprints/sprint_archive/sprint132.md section 4a: exhaust 40000, springs 18000, dampers
  *   40000, brakePadsDiscs 15000, brakeCalipersLines 45000, intake 18000,
  *   ignitionEcu 28000, rims 34000, aero 26000. The other 21 are unchanged from the
  *   original sheet. These are NOT catalogue shelf prices: period bills carried 20 to
@@ -390,7 +390,7 @@ import storyMissions from '../data/storyMissions.json'
  * fresh measurement, never hand-picked.
  *
  * Re-pinned 2026-07-29 (maintainer approval, in session: "Levers 1 to 4 approved
- * exactly as written", lever 5 added the same day) for `docs/sprints/sprint135.md`,
+ * exactly as written", lever 5 added the same day) for `docs/sprints/sprint_archive/sprint135.md`,
  * proportional power replacing the flat additive ladder. Five levers, each approved by
  * name and value:
  *
@@ -447,7 +447,7 @@ import storyMissions from '../data/storyMissions.json'
  *
  * Re-pinned 2026-07-29 (maintainer approval, in session: "Levers 1 to 4 approved
  * exactly as written, implement them"; levers 6, 7, 8 signed outright; lever 5 is a
- * copy proposal, not a value) for `docs/sprints/sprint136.md`, support ratios and
+ * copy proposal, not a value) for `docs/sprints/sprint_archive/sprint136.md`, support ratios and
  * reliability as what they move. Eight levers:
  *
  * 1. `statFormulas.support.specByGrade` (NEW) - the support-specification ladder:
@@ -508,12 +508,12 @@ import storyMissions from '../data/storyMissions.json'
  * floor (0.97 -> 1), both `round2At97Percent` of the freshly measured taste ratio,
  * which moved because reliability is 57 per cent of a first-timer's taste and 37 per
  * cent of a tuner's. Each is recorded with its own arithmetic in
- * `docs/sprints/sprint136.md`'s Exit, including which shipped cars each threshold now
+ * `docs/sprints/sprint_archive/sprint136.md`'s Exit, including which shipped cars each threshold now
  * excludes.
  *
  * Re-pinned 2026-07-30 (maintainer approval, in session, all nine levers signed by
  * name and value in the same session) for the Sprint 136 reliability rebalance
- * (`docs/sprints/sprint136.md`'s amendment section), measured after the sprint
+ * (`docs/sprints/sprint_archive/sprint136.md`'s amendment section), measured after the sprint
  * shipped and fixing three defects it left behind:
  *
  * 1. `parts-taxonomy.json` `statWeights.reliability` (NEW, additive, six parts) -
@@ -536,8 +536,9 @@ import storyMissions from '../data/storyMissions.json'
  *    reliability figures alongside the five content levers above. Band-scaled
  *    demand let a rotting gain part demand less of the bottom end it was rated for,
  *    which raised the coherence factor as the part aged (172 measured cases; the
- *    worn-FD figure sprint136.md line 511 published as 6 only reproduces without
- *    band-scaling - the shipped code gave 19).
+ *    worn-FD figure docs/sprints/sprint_archive/sprint136.md published as 6, in its
+ *    illustrative table's "race turbo on a stock bottom end, all worn" row, only
+ *    reproduces without band-scaling - the shipped code gave 19).
  *
  * No mission payout, budget cap, or reliability threshold moves: `wont-strand-her`,
  * `first-proper-car` and `street-power-street-manners`'s probes are all-stock
@@ -550,7 +551,7 @@ import storyMissions from '../data/storyMissions.json'
  * passes untouched: reliability is not read by the lap model.
  *
  * Re-pinned 2026-07-30 (maintainer approval, in session, single lever signed by name
- * and value) for `docs/sprints/sprint136.md`'s second same-day amendment:
+ * and value) for `docs/sprints/sprint_archive/sprint136.md`'s second same-day amendment:
  * `statFormulas.support.stockSupportMargin` 0.55 -> 0.27. The 0.55 value signed
  * earlier the same day was itself wrong: it put a mathematical floor of `margin +
  * (1 - margin) / demand` under every headline, which never fell below roughly 0.793
@@ -569,7 +570,7 @@ import storyMissions from '../data/storyMissions.json'
  * regardless of the margin). All four story-mission reliability thresholds were
  * checked against a fresh `storyMissionProbes.test.ts` run and none moved: none of
  * their probes is an imbalanced build the margin bites on. Full pin table and
- * arithmetic in `docs/sprints/sprint136.md`'s second amendment.
+ * arithmetic in `docs/sprints/sprint_archive/sprint136.md`'s second amendment.
  *
  * Re-pinned 2026-07-30 (adversarial-verification defect fix, no value approval
  * needed - directive 22 gates VALUES, and this changes none): `sprint136.md`'s own
@@ -588,7 +589,7 @@ import storyMissions from '../data/storyMissions.json'
  *
  * Re-pinned 2026-07-30 (maintainer approval, in session, single lever signed by name
  * and value: `stressCoefficient` = 0.20) for the reliability build-intensity term
- * (`docs/sprints/sprint136.md`'s third amendment): `statFormulas.support.
+ * (`docs/sprints/sprint_archive/sprint136.md`'s third amendment): `statFormulas.support.
  * stressCoefficient` (NEW) - 0.20. A fully supported race build no longer reads
  * exactly its own `spec.reliabilityBase`: reliability gains an OUTER multiplier,
  * `1 - stressCoefficient * totalGainFraction` (clamped to `[0, 1]`), where
@@ -606,7 +607,7 @@ import storyMissions from '../data/storyMissions.json'
  * place as the historical record of what that change did; from this lever onward
  * it is a supported build with ZERO total gain that reads exactly base, not every
  * supported build.** Full arithmetic and every re-derived pin in
- * `docs/sprints/sprint136.md`'s third amendment and `packages/sim/tests/
+ * `docs/sprints/sprint_archive/sprint136.md`'s third amendment and `packages/sim/tests/
  * reliabilityModel.test.ts`.
  *
  * Re-derived in the same change, as a MECHANICAL CONSEQUENCE of the `stressCoefficient`
@@ -627,7 +628,7 @@ import storyMissions from '../data/storyMissions.json'
  * signed, and this threshold is its arithmetic consequence, not a second decision.
  *
  * Re-pinned 2026-07-29 (maintainer approval, in session, both levers signed as a pair)
- * for `docs/sprints/sprint137.md`, the forced-induction return curve. `economy.json`
+ * for `docs/sprints/sprint_archive/sprint137.md`, the forced-induction return curve. `economy.json`
  * is untouched (only `parts.json` and `partPricing.json` move), so its hash holds. Two
  * levers:
  *
@@ -651,7 +652,7 @@ import storyMissions from '../data/storyMissions.json'
  * at a non-stock grade.
  *
  * Re-pinned 2026-07-30 (maintainer approval, in session, both levers signed by name
- * and value) for `docs/sprints/sprint137.md`'s amendment, the `camsTiming` price
+ * and value) for `docs/sprints/sprint_archive/sprint137.md`'s amendment, the `camsTiming` price
  * correction that fixed the acceptance-2b defect this sprint's own Exit had left
  * open. `economy.json` is untouched (only `partPricing.json` moves), so its hash
  * holds. Two levers, approved as a pair:
@@ -694,7 +695,7 @@ import storyMissions from '../data/storyMissions.json'
  *
  * Re-pinned 2026-07-30 under the standing lever grant recorded as R3 in
  * `docs/design/systems/sale-value-implementation-plan.md` (all seven levers signed by
- * name and value in `docs/sprints/sprint144.md`'s own lever table, provisional pending
+ * name and value in `docs/sprints/sprint_archive/sprint144.md`'s own lever table, provisional pending
  * the maintainer's ratification) for Sprint 144, sections 3C and 3D of
  * `sale-value-system.md`: an incoherent build
  * now discounts the car (Stage C, new) and parts retention scales with coherence
@@ -737,7 +738,7 @@ import storyMissions from '../data/storyMissions.json'
  * changes only because of the four schema keys added and the one deleted.
  *
  * Re-pinned (under the R3 standing lever grant, `docs/design/systems/sale-value-
- * implementation-plan.md`, signed by name in `docs/sprints/sprint145.md`'s lever table
+ * implementation-plan.md`, signed by name in `docs/sprints/sprint_archive/sprint145.md`'s lever table
  * and provisional pending the maintainer's ratification) for a car looking like itself:
  * `statFormulas.styleCap` (flat 20 for every car) is RETIRED outright, the same
  * footing `reliabilityCap` left this file on in the Sprint 136 entry above. It is
@@ -766,7 +767,7 @@ import storyMissions from '../data/storyMissions.json'
  *
  * Re-derived for Sprint 146 (buyer statTargets, all six archetypes signed under the
  * R3 standing lever grant, `docs/design/systems/sale-value-implementation-plan.md`,
- * provisional pending the maintainer's ratification, `docs/sprints/sprint146.md`):
+ * provisional pending the maintainer's ratification, `docs/sprints/sprint_archive/sprint146.md`):
  * `normalizedTasteScore` (valuation.ts) became a per-stat target/upper/importance
  * MATCH instead of a weighted mean of five deliberately anti-correlated stats.
  * `economy.json` is untouched (only `Buyer.statTargets`, buyers.json, and the
@@ -797,7 +798,7 @@ import storyMissions from '../data/storyMissions.json'
  * NOT a re-pin, recorded here because this file is the ledger of what moved and why:
  * under the R3 standing lever grant (`docs/design/systems/sale-value-implementation-
  * plan.md`), provisional pending the maintainer's ratification, `AUCTION_BUYOUT_PREMIUM`
- * was swept at 1.00/1.02/1.03/1.05/1.08 (`docs/sprints/sprint146.md`, "Amendment 2") to try
+ * was swept at 1.00/1.02/1.03/1.05/1.08 (`docs/sprints/sprint_archive/sprint146.md`, "Amendment 2") to try
  * to close the instant-flip guard's remaining gap. Measured, not applied: the premium
  * cancels algebraically out of the guard's own `marginMedian < bound` comparison (both sides
  * share the identical `/ premium - 1` shape), so the guard's real pass condition reduces to
@@ -809,7 +810,7 @@ import storyMissions from '../data/storyMissions.json'
  * one of those, or a fix to the guard's own bound formula, neither of which this sweep was
  * authorised to pull. Sprint 147 is the fix to the first of those.
  *
- * Re-pinned for Sprint 147's normalised listing clock (docs/sprints/sprint147.md, all seven
+ * Re-pinned for Sprint 147's normalised listing clock (docs/sprints/sprint_archive/sprint147.md, all seven
  * levers signed by name and value under the R3 standing lever grant recorded in
  * `docs/design/systems/sale-value-implementation-plan.md`, provisional pending the
  * maintainer's ratification):
@@ -826,7 +827,7 @@ import storyMissions from '../data/storyMissions.json'
  *
  * Re-pinned under the R3 standing lever grant (`docs/design/systems/sale-value-
  * implementation-plan.md`), provisional pending the maintainer's ratification, closing
- * the instant-flip guard `docs/sprints/sprint147.md` left red: `liquidity.qualityFresh`
+ * the instant-flip guard `docs/sprints/sprint_archive/sprint147.md` left red: `liquidity.qualityFresh`
  * 0.98 -> 0.96. `sellViaWalkIn`'s own contract is a buyer offering somewhat under their
  * true valuation for the convenience of an instant sale, and 0.98 was only a 2% convenience
  * discount that `pickWeightedCandidate`'s size-biased pick then ate 1.44 points of (the
@@ -839,7 +840,7 @@ import storyMissions from '../data/storyMissions.json'
  * flagship: -1.07%/-1.22%/-0.55%/-0.06% (qualityFresh 0.98, guard red) -> see
  * `valueModelProbes.test.ts`'s own updated guard for the closed figures.
  *
- * Re-pinned for Sprint 148's space and rent (docs/sprints/sprint148.md, both lever groups
+ * Re-pinned for Sprint 148's space and rent (docs/sprints/sprint_archive/sprint148.md, both lever groups
  * signed by name and value, under the standing lever grant recorded as R3 in
  * docs/design/systems/sale-value-implementation-plan.md): selling a car now costs a
  * forecourt slot, and rent scales with what the shop owns rather than sitting flat forever.

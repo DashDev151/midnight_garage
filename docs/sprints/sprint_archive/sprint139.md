@@ -1,10 +1,12 @@
 # Sprint 139: the premium for building well, if there is to be one
 
-**Status: BLOCKED, and possibly unnecessary. HARD GATE: Sprint 138 has reported AND the
-maintainer has read the measurement and chosen a shape.**
+**Status: CLOSED UNBUILT 2026-07-30 (`a27cda9`), superseded. Nothing outstanding; nothing
+further will happen to this sprint.** The premium it asked about was delivered from the value
+side instead, as Stage D of the sale value system. The full reasoning is under "Closure" at the
+end of this doc; everything between here and there is the brief as it stood when it was closed.
 
-**This sprint does not open on Sprint 138 merely having run.** It opens when the maintainer has
-read the numbers and said which of the shapes below to build, or said that none is needed.
+It was hard-gated on Sprint 138 reporting AND the maintainer choosing a shape. Sprint 138 was
+itself closed unbuilt, so that gate never opened.
 
 Sixth of nine in the tuning overhaul arc.
 
@@ -227,7 +229,8 @@ change as the recorded sign-off.
 
 ## Exit
 
-_To be completed at the end of the sprint._
+**There is none, and there never will be: this sprint was closed unbuilt.** See "Closure"
+immediately below, which is this sprint's permanent record in place of an Exit.
 
 ---
 

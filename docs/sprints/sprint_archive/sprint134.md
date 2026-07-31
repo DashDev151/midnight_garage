@@ -1,7 +1,9 @@
 # Sprint 134: condition reaches the build
 
-**Status: READY TO IMPLEMENT. No sign-off required, because this sprint moves no economy
-value.** First of nine in the tuning overhaul arc (`docs/sprints/tuning-arc.md`).
+**Status: BUILT AND COMMITTED 2026-07-29 (`f397198`). Nothing outstanding.** No sign-off was
+required, because this sprint moved no economy value. First of nine in the tuning overhaul arc
+(`docs/sprints/tuning-arc.md`). The Exit's closing "not committed" line records the state at the
+moment the work was handed over, not today's.
 
 Design reference: `docs/design/systems/tuning-system.md` sections 1d and 10.
 

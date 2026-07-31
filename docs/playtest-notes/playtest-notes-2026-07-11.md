@@ -3,7 +3,7 @@
 Second maintainer playtest, first one on the post-Sprint-24 build (foundational-economy arc
 complete plus the hover-fix/UI-declutter hotfix). Raw notes below, lightly formatted but
 otherwise verbatim; numbering is the maintainer's own. Triage and sprint mapping live in
-`docs/sprints/sprint25.md` through `sprint31.md` (the Loop Rework arc); each note's
+`docs/sprints/sprint_archive/sprint25.md` through `sprint31.md` (the Loop Rework arc); each note's
 disposition is recorded there, not here.
 
 1. Move the Upgrades button on the main garage page to the main menu bar at the top rather,

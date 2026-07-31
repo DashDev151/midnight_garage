@@ -1,7 +1,8 @@
 # Sprint 137: the forced-induction return curve
 
-**Status: SIGNED 2026-07-29, ready to implement once the gate opens.**
-**HARD GATE: Sprint 136 must have shipped and be green before any work starts here.**
+**Status: BUILT AND COMMITTED 2026-07-30 (`57665d4`), plus the signed `camsTiming` price
+amendment (`c0eb13f`, `ce729d8`). Signed 2026-07-29. Nothing outstanding.** Its hard gate on
+Sprint 136 was met before work started.
 
 Fourth of nine in the tuning overhaul arc. **This is a small sprint: one category's power curve
 and its matching price ladder.** It is separate only because it is the one shape that is

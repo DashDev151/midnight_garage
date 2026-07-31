@@ -1,7 +1,8 @@
 # Sprint 135: power becomes proportional and engine-specific, and the price ladder follows it
 
-**Status: SIGNED OFF 2026-07-29. Ready to implement.** Opens after Sprint 134. Second of nine in
-the tuning overhaul arc.
+**Status: BUILT AND COMMITTED 2026-07-30 (`ff21ab7`). Signed off 2026-07-29.** Second of nine in
+the tuning overhaul arc. **Its one open finding is closed:** see "The rule 5 finding, closed"
+below the Exit.
 
 Design reference: `docs/design/systems/tuning-system.md` sections 5a, 5b, 5c, 5d, and the bar
 set in 1b.
@@ -786,3 +787,22 @@ touches enough content files to warrant it). Never ran the full sim project or b
 - The `street-power-street-manners` power-floor question (still hand-set at 180) is now
   decoupled from the ladder-shape decision but not itself re-examined - noted in `TODO.md` for
   whoever next revisits mission thresholds.
+
+---
+
+## The rule 5 finding, closed
+
+**This section closes the one open finding the Exit above left for the maintainer.** It is a
+pointer, not a rewrite: the Exit's measurement (52 of 288 catalogue cases above parity, maximum
+value-per-yen index 1.335) was correct when it was written and stays as the record of it.
+
+**What happened next.** Sprint 137's `camsTiming` amendment (signed 2026-07-30) gave
+`camsTiming` its own price ladder, exactly the Lever 5 treatment this finding proposed as the
+most likely candidate. That cleared its 12 `street` cases outright: the catalogue-wide residue
+fell **52 -> 51 -> 39** across Sprint 137 and its amendment, with the maximum unchanged at
+1.334961x. The remaining 39 cases are `internals` and `block`, which the maintainer had already
+accepted in this sprint's own sign-off.
+
+**Status: no longer open.** The residue is a recorded maintainer acceptance rather than an
+unanswered question, and it is tracked in `TODO.md`'s "Open balance/economy questions" for
+whoever revisits the power ladder. Nothing here is waiting on a decision.

@@ -13,7 +13,7 @@ foundational-economy arc - Sprints 20-24 - landed; see `git log` for every sprin
 ## Playtest status
 
 The playtest happened 2026-07-11 (raw notes: `docs/playtest-notes/playtest-notes-2026-07-11.md`). Its triage
-produced the Loop Rework arc, Sprints 25-31 (`docs/sprints/sprint25.md` onward), which now
+produced the Loop Rework arc, Sprints 25-31 (`docs/sprints/sprint_archive/sprint25.md` onward), which now
 carries every finding; per this file's policy those items live there, not here. Still open from
 the old checklist:
 
@@ -211,6 +211,33 @@ pass."
 
 ## Open engineering
 
+- [ ] **The per-tier auction cadence is APPROVED and NOT BUILT, and it is the next
+  auction-adjacent sprint's mandate (ruled 2026-07-31).** Sprint 149 shipped
+  `calendar.auctionDayOfWeek: 3`, one global auction day. The maintainer ruled a different design
+  after that implementation was already running: **auction cadence is a property of the VENUE, not
+  one global day**, because a single weekly day makes the late game wait around, which is
+  backwards. A player who has earned access should get more to do, not less.
+
+  | auction tier | open on | cadence |
+  | --- | --- | --- |
+  | `local-yard` | days 1, 3, 5, 7 | every week |
+  | `regional` | days 2, 4 | every week |
+  | `premium` | day 6 | every week |
+  | `collector-network` | days 6 and 7 | every second week, fresh lots each day |
+
+  Two rulings ride with it: **the day-6 overlap between `premium` and `collector-network` on
+  alternate weeks is deliberate, keep it**, and **attending an auction does not cost the day**, so
+  a player may attend more than one room on the same day. The maintainer noted the cadence may
+  still have too few overlaps and that more than one room per day is desirable, but ruled it
+  stays as tabled for now.
+
+  **It is a schema change (per-tier cadence replacing one global day), not a lever value**, which
+  is why Sprint 149 did not absorb it. `calendar.auctionDayOfWeek` is therefore
+  **shipped-but-superseded** and must be retired into `retiredIdentifiers.test.ts`'s ledger by
+  whichever sprint builds the replacement, in the same change. Building it also fixes the day-1
+  tutorial bug below by construction, since `local-yard` opens on day 1. Full record in
+  `docs/sprints/sprint149.md`'s Exit, which stays out of the archive until this lands.
+
 - [ ] **The tutorial's "find" step assumes the Auctions tab is always open; Sprint 149's
   auction-day gate (`calendar.auctionDayOfWeek`, currently Wednesday) can leave a fresh day-1
   game unable to reach it for up to two days (found 2026-07-31, Sprint 149).**
@@ -262,7 +289,7 @@ pass."
   they are written per car by hand against the "lived in Japan in 1995" test. Both block authoring
   a car into `cars.json`, which `scope` already governs, and nothing else.
   (`aeroCeiling` is the same shape but has a home: `sprint140.md` Task 0. `styleBase` was the same
-  shape and landed early, in `sprint145.md`, pulled forward of Sprint 140 because Sprint 146's
+  shape and landed early, in `docs/sprints/sprint_archive/sprint145.md`, pulled forward of Sprint 140 because Sprint 146's
   buyer targets on style could not be authored while every stock car scored the same.)
 
 - [ ] **Apply the roster's tier assignments to `cars.json`: 13 of the 26 shipped cars are on the
@@ -470,7 +497,7 @@ pass."
   still lists `fr` or `cd` as estimated where the value that landed is a panel reading, and the
   spec book's own `est` list disagrees with ours on seven cars. Copy it from the book in whatever
   pass decides the first one.
-- [ ] **RESOLVED IN PART (sprint145.md): `styleBase` gives every car its own car-level style
+- [ ] **RESOLVED IN PART (docs/sprints/sprint_archive/sprint145.md): `styleBase` gives every car its own car-level style
   input, but stock style still tops out at 20, so the upper 80 per cent of the axis remains
   reachable only through bolt-on parts.** The retired flat `styleCap` (20 for every stock car,
   a Countach and a Wagon R scoring level) is gone; `CarModel.spec.styleBase` now differentiates
@@ -774,23 +801,26 @@ pass."
   the flat additive ladder, an engine-response character per car, and the per-slot price ladder;
   136 landed the per-subsystem support ratios, the coherence curve, and reliability rebuilt as
   condition plus coherence off a per-car `spec.reliabilityBase` (`reliabilityCap` retired
-  outright, not moved) - see `docs/sprints/sprint135.md` and `docs/sprints/sprint136.md`'s own
+  outright, not moved) - see `docs/sprints/sprint_archive/sprint135.md` and `docs/sprints/sprint_archive/sprint136.md`'s own
   Exits for what landed and what each moved. **Sprint 137 (the forced-induction return curve) is
-  implemented and ready for review, not yet committed**: see `docs/sprints/sprint137.md`'s own
-  Exit for what landed and the one genuine open finding (a pre-existing cross-category value-per-
-  yen defect, unrelated to this sprint's own two levers, recorded separately above under "Open
-  balance/economy questions"). 134 needed nothing.
+  SIGNED, BUILT AND COMMITTED too**, along with its `camsTiming` price amendment: see
+  `docs/sprints/sprint_archive/sprint137.md`'s own Exit for what landed. Its one genuine open
+  finding (a pre-existing cross-category value-per-yen defect, unrelated to that sprint's own two
+  levers) was closed by the same amendment and is recorded above under "Open balance/economy
+  questions". 134 needed nothing. **138 and 139 were closed unbuilt, superseded by the sale value
+  system.** What remains of the tuning arc is 140 (`aeroCeiling` and the handling deletion), 141
+  and 142, all still in `docs/sprints/`.
 
   Blocking decisions, all recorded in the doc. Constraint A (section 17): the
   forced-induction return curve must not ship before the support ratios, because increasing
-  returns on its own is a new dominant strategy. **Constraint B is resolved and the resolution
+  returns on its own is a new dominant strategy. That constraint was honoured; 137 ran behind
+  136's hard gate. **Constraint B is resolved and the resolution
   changed the arc's shape (maintainer, 2026-07-29): cohesion reaches value through
   RELIABILITY**, not through a separate buyer-selection path. Reliability becomes the build's
   coherence times its condition, and because reliability is already 57 per cent of a
   first-timer's taste and zero per cent of a stancer's, buyer selection falls out of the
-  existing valuation code with nothing built for it. Sprint 138 now measures a running system
-  rather than a hypothesis, and sprint 139 shrank to the question of whether building well also
-  deserves a premium, which may be answered "no" and closed unbuilt. And section 7b's
+  existing valuation code with nothing built for it. Sprints 138 and 139 were closed unbuilt on
+  the strength of that, rather than run. And section 7b's
   reputation half is descoped outright because reputation is a ratchet, which is the entry
   under "Open balance/economy questions" above: until that lands, the tuning system's
   reputation effect is knowingly inert and the sprint should say so rather than inflate
@@ -1114,7 +1144,7 @@ pass."
   factual board for the mid-game design session, holes ranked.** Headliners: the
   collector-network auction tier has no unlocking guarantor mission yet (Sprint 115 shipped
   guarantor unlocks for regional/premium; the collector persona Kurogane and mission
-  the-quiet-crate are written, byte-verbatim, in `docs/sprints/sprint115.md` section 5, but
+  the-quiet-crate are written, byte-verbatim, in `docs/sprints/sprint_archive/sprint115.md` section 5, but
   held out deliberately - unlocking an empty tier is worse than the silence, and zero
   legend-rarity cars exist in content yet for it to hold); the `legend` rep rung (1,400)
   gates nothing but staff stat rolls; three of five staff traits are hireable but

@@ -70,7 +70,7 @@ here per the standing triage workflow; the sprint mapping is at the end.
 
 ## Triage -> sprints
 
-Designed as Sprints 59-65 (docs/sprints/sprint59.md onward). Economy first - items 18 and 19
+Designed as Sprints 59-65 (docs/sprints/sprint_archive/sprint59.md onward). Economy first - items 18 and 19
 are the critical ones - then trust/legibility, then chrome.
 
 | Sprint | Items | Theme |

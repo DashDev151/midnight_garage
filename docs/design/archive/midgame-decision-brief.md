@@ -1,4 +1,4 @@
-> **ARCHIVED.** Five mid-game design decisions put to the maintainer with options and a recommendation each; the picks shipped in Sprints 115 and 117. Superseded by `docs/sprints/sprint115.md`. Kept as the historical record; do not read it as current.
+> **ARCHIVED.** Five mid-game design decisions put to the maintainer with options and a recommendation each; the picks shipped in Sprints 115 and 117. Superseded by `docs/sprints/sprint_archive/sprint115.md`. Kept as the historical record; do not read it as current.
 
 # Mid-game decision brief
 

@@ -1,10 +1,12 @@
 # Sprint 138: measure what coherence actually did to the money
 
-**Status: READY TO IMPLEMENT once Sprint 136 has shipped. No sign-off required, because this
-sprint changes nothing.**
+**Status: CLOSED UNBUILT 2026-07-30 (`a27cda9`), superseded by the sale value system design.
+Nothing outstanding; nothing further will happen to this sprint.** The full reasoning is under
+"Closure" at the end of this doc. Everything between here and there is the brief as it stood
+when it was closed, kept so the question it asked is not lost.
 
-**THIS IS A MEASUREMENT SPRINT. BUILD NOTHING.** No schema, no lever, no screen, no behaviour
-change. The deliverable is a table of numbers and a recommendation.
+**IT WAS A MEASUREMENT SPRINT. BUILD NOTHING.** No schema, no lever, no screen, no behaviour
+change. The deliverable was to have been a table of numbers and a recommendation.
 
 Fifth of nine in the tuning overhaul arc. Sprint 139 is hard-gated on this one.
 
@@ -184,7 +186,8 @@ Nothing else can have moved, because nothing was changed.
 
 ## Exit
 
-_To be completed at the end of the sprint._
+**There is none, and there never will be: this sprint was closed unbuilt.** See "Closure"
+immediately below, which is this sprint's permanent record in place of an Exit.
 
 ---
 

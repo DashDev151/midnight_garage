@@ -1,6 +1,6 @@
 # Playtest notes - 2026-07-13 (maintainer, new game start)
 
-Raw notes as dumped, lightly numbered. Triage produced Sprints 40-43 (see `docs/sprints/sprint40.md`
+Raw notes as dumped, lightly numbered. Triage produced Sprints 40-43 (see `docs/sprints/sprint_archive/sprint40.md`
 onward). Maintainer design decisions taken 2026-07-13 during triage are recorded at the bottom.
 
 1. We need a temporary "main menu" and to move the New Game button there, along with the usual

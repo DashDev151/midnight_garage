@@ -113,7 +113,7 @@ Every sprint lists **Deliverable** and **Definition of Done (DoD)**. If a sprint
 > end to end (banded condition model, transparent cost-weighted value, service-jobs framework v2,
 > living auctions) and, in doing so, delivered this plan's Sprint 14 "Commissions" line in full -
 > service jobs exist now with fully **derived** payouts (never authored, never a "brief" the player
-> is scored against); see `docs/sprints/sprint29.md` onward. The **Progression Rework arc (actual
+> is scored against); see `docs/sprints/sprint_archive/sprint29.md` onward. The **Progression Rework arc (actual
 > Sprints 36-39)** replaced this plan's Sprint 14 "equipment purchases as unlocks" framing entirely:
 > content is now gated by six always-owned, always-upgradeable tool tiers, never a single-purchase
 > unlock ladder - see `docs/design/progression-bible.md`, now the canonical progression source,

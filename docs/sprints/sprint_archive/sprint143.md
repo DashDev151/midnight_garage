@@ -1,6 +1,8 @@
 # Sprint 143: make the ground safe before building on it
 
-**Status: READY TO IMPLEMENT. First of the sale value arc (143 to 155).**
+**Status: BUILT AND COMMITTED 2026-07-30 (`1d4950f`). Nothing outstanding.** First of the sale
+value arc (143 to 155). All three items its Exit left for the maintainer are closed: items 1 and
+2 in this doc's own follow-up section, item 3 by the plan doc's retirement table being corrected.
 
 Plan of record: `docs/design/systems/sale-value-implementation-plan.md`. Design of record:
 `docs/design/systems/sale-value-system.md` v4.

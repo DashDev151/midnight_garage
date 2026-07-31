@@ -7,7 +7,7 @@ scope, and it is not signed (directive 22). Task 0's `aeroCeiling` half closes t
 maintainer closes the second.
 
 **Everything below about `styleBase` (Task 0's style half, Lever 2, Task 3, and the
-`styleCap`-retirement half of Task 6) landed early, in `docs/sprints/sprint145.md`, pulled
+`styleCap`-retirement half of Task 6) landed early, in `docs/sprints/sprint_archive/sprint145.md`, pulled
 forward because Sprint 146's buyer targets on style could not be authored while every stock car
 scored the same.** All 94 roster rows carry `styleBase`, the schema field is required on
 `CarModel.spec`, all 26 shipped cars carry it, `statFormulas.styleCap` is retired, and the
@@ -90,7 +90,7 @@ which **directive 24 makes the wrong scope**: a per-car value is decided for the
 it is introduced, not for whichever subset happens to be in content, because deciding it twice is
 how the tier labels drifted.
 
-**`styleBase` is DONE: all 94 rows carry a value, landed in `sprint145.md`.** `aeroCeiling` still
+**`styleBase` is DONE: all 94 rows carry a value, landed in `docs/sprints/sprint_archive/sprint145.md`.** `aeroCeiling` still
 holds 26 of 94. Completing it is Task 0's remaining half below and it blocks Task 2. It does not
 block Task 1.
 
@@ -137,7 +137,7 @@ is not a stylish car and the column must not quietly become a second performance
 ### Task 0: finish authoring both columns to 94 (blocks Task 2; `styleBase` half done)
 
 `docs/design/midnight-garage-roster.csv`: fill `aeroCeiling` for the 68 rows that have none,
-against the rubric above. **`styleBase` is complete for all 94 rows (`sprint145.md`).**
+against the rubric above. **`styleBase` is complete for all 94 rows (`docs/sprints/sprint_archive/sprint145.md`).**
 
 **This is a design pass, not a data-entry pass**, and it is the maintainer's or the orchestrator's
 to do, not an implementation agent's. It is 136 judgements about what cars look like and how much
@@ -184,7 +184,7 @@ Landed as `styleBase: z.number().min(0).max(100)` (the same bound `reliabilityBa
 authored 4-to-20 band is enforced by `rosterCsvGuard.test.ts`, not the schema), required, all 26
 shipped cars carry it, `style = styleFraction * model.spec.styleBase` replaces
 `styleFraction * styleCap`, and `statFormulas.styleCap` is retired and in
-`retiredIdentifiers.test.ts`. See `sprint145.md`'s Exit for the full record.
+`retiredIdentifiers.test.ts`. See `docs/sprints/sprint_archive/sprint145.md`'s Exit for the full record.
 
 ### Task 4: tests
 
@@ -278,19 +278,39 @@ No new lever, no new content value, no sign-off needed.
 - [ ] Reliability provably unmoved by this sprint, all 26 cars, strict equality.
 - [ ] The schema-sharing check done, following whatever Sprints 135 and 136 decided, and its
       outcome recorded in the Exit.
-- [x] `styleBase` authored to all 94 rows in the roster CSV (Task 0's style half) - `sprint145.md`.
+- [x] `styleBase` authored to all 94 rows in the roster CSV (Task 0's style half) - `docs/sprints/sprint_archive/sprint145.md`.
 - [ ] `aeroCeiling` authored to all 94 rows in the roster CSV (Task 0's remaining half).
-- [x] Lever 2 (`styleBase`) signed and landed - `sprint145.md`.
+- [x] Lever 2 (`styleBase`) signed and landed - `docs/sprints/sprint_archive/sprint145.md`.
 - [ ] Lever 1 (`aeroCeiling`) signed and recorded, or Task 2 deferred with that stated.
 - [ ] `aeroCeiling` required on the spec schema and authored for all 26 cars.
-- [x] `styleBase` required on the spec schema and authored for all 26 cars - `sprint145.md`.
-- [x] `statFormulas.styleCap` removed, not orphaned - `sprint145.md`.
+- [x] `styleBase` required on the spec schema and authored for all 26 cars - `docs/sprints/sprint_archive/sprint145.md`.
+- [x] `statFormulas.styleCap` removed, not orphaned - `docs/sprints/sprint_archive/sprint145.md`.
 - [ ] A wing on a Wagon R does very little; the same wing on an FD does a lot; both pinned.
 - [ ] `harnessAcceptance.test.ts` passes untouched.
 - [ ] Every moved price pin re-derived from a real run (the `styleBase` share of this is done -
-      `sprint145.md`; the `aeroCeiling` share is still open).
+      `docs/sprints/sprint_archive/sprint145.md`; the `aeroCeiling` share is still open).
 - [ ] Checks run once each, output shown.
 
 ## Exit
 
-_To be completed at the end of the sprint._
+**Partial, and this sprint is still open.** It cannot have a full Exit yet, because only one of
+its two halves has run.
+
+**What has landed, and where its record is.** The whole `styleBase` half (Task 0's style share,
+Lever 2, Task 3, and the `styleCap`-retirement share of Task 6) shipped early inside
+`docs/sprints/sprint_archive/sprint145.md`, pulled forward because Sprint 146's buyer targets on
+style could not be authored while every stock car scored the same. **That doc's Exit is the
+permanent record of it; this one does not restate it.** All 94 roster rows carry a `styleBase`,
+`spec.styleBase` is required on the schema and authored for all 26 shipped cars,
+`statFormulas.styleCap` is retired into the ledger, and the checkboxes above are ticked
+accordingly.
+
+**What is still open**, and what this sprint is waiting on:
+
+- **Task 2, `aeroCeiling`: blocked twice over.** Authored for 26 of the 94 roster cars, which
+  directive 24 makes the wrong scope, and the lever is unsigned under directive 22. Task 0's
+  `aeroCeiling` share closes the first; only the maintainer closes the second.
+- **Task 1, the stat simplification**, and the `aeroCeiling` share of Tasks 4 and 6.
+
+This Exit is completed when that work runs. Until then this doc stays in `docs/sprints/`, not in
+the archive.

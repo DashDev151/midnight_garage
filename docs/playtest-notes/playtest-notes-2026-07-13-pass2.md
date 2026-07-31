@@ -1,7 +1,7 @@
 # Playtest notes - 2026-07-13, second pass (raw dump)
 
 Maintainer playtest, dumped unstructured. Numbered 1-20 as given. Wording kept close to the
-original. Triage and sprint design follow in `docs/sprints/sprint46.md` onward.
+original. Triage and sprint design follow in `docs/sprints/sprint_archive/sprint46.md` onward.
 
 ## The 20 items
 

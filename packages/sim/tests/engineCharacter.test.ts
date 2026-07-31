@@ -14,7 +14,7 @@ import { engineCharacterOf, specificOutputOf } from '../src/derivedStats'
 
 /** One row per shipped car, hand-derived from `spec.stockPowerPs` and
  * `spec.displacementCc` (rotary cars scaled 1.8x first) against the signed
- * 80.0 threshold - `docs/sprints/sprint135.md` lever 1's own table for the
+ * 80.0 threshold - `docs/sprints/sprint_archive/sprint135.md` lever 1's own table for the
  * ten NA cars; the sixteen forced-induction cars all read `forced` outright. */
 const EXPECTED_CHARACTER: Readonly<Record<string, EngineCharacter>> = {
   'honda-city-e-aa': 'lazy-na',

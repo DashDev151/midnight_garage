@@ -40,7 +40,7 @@ at the time:
    whether the resulting car could ever be restored profitably - value-trap lots were the norm,
    not the exception, at the only tier a new player can afford.
 
-Full arithmetic trace: `docs/sprints/sprint53.md`'s Diagnosis section (this bible condenses it;
+Full arithmetic trace: `docs/sprints/sprint_archive/sprint53.md`'s Diagnosis section (this bible condenses it;
 that sprint doc is the historical record).
 
 ## The laws
@@ -238,7 +238,7 @@ fails that test outright, rather than silently drifting).
 | `lapModel.C`/`ratioExp`/`gripMult`/`courseId`/`courseName` | `economy.json` | The reference-lap requirement's pure time formula (`lapModel.ts`'s `lapTimeSecondsFor`) and the reference board's own model-computed rows |
 | `auctionRoom.*` | `economy.json` | The live auction room: fuse clock, reserve/clearing draws, turnout bands, bid rungs, and the reaction chances (rows added 2026-07-22 for blocks landed with their sprints' recorded mandates; `staff.*` and `machineShopAssist`-family keys remain the known table gap awaiting the standing ruling) |
 | `auctionGrading.overallRatioSteps` | `economy.json` | The four-stamp sheet's OVERALL grade (apparent restoration bill over book value, stepped; maintainer-locked design, Sprint 112's doc is the approval record) |
-| `sellingChannels.*` and `reputation.matchedSaleRepBonus` | `economy.json` | The listing channels' fees, cadences, taste ceilings, and the trade-network price band, plus the matched-sale word-of-mouth term (values maintainer-locked in session; `docs/sprints/sprint114.md`'s lever table is the approval record) |
+| `sellingChannels.*` and `reputation.matchedSaleRepBonus` | `economy.json` | The listing channels' fees, cadences, taste ceilings, and the trade-network price band, plus the matched-sale word-of-mouth term (values maintainer-locked in session; `docs/sprints/sprint_archive/sprint114.md`'s lever table is the approval record) |
 
 **Derived** (never edit directly; edit the anchor that feeds them):
 
@@ -300,7 +300,7 @@ maintainer or CI run can catch a coherence drift before a playtest does.
   Law 1's below-band clause ALREADY guarantees per repair yen (`marketRepairDiscount`,
   unchanged at 1.3): the ruling adds no new profitability accounting. Law 1's
   beyond-expectation diminishing clause is deliberately UNCHANGED: the when-to-stop decision
-  stays. Implementation: the generation floor alone, Sprint 113 (`docs/sprints/sprint113.md`),
+  stays. Implementation: the generation floor alone, Sprint 113 (`docs/sprints/sprint_archive/sprint113.md`),
   triggered by the 2026-07-22 long-run playtest blocker (20% of shitbox lots generated with
   zero fixable work).
 
@@ -345,7 +345,7 @@ maintainer or CI run can catch a coherence drift before a playtest does.
   walk-in roll could erase the worst-case flip margin the Law 2 guard still permits, without
   breaking Sprint 54's no-free-lunch invariant). Book values and the mileage-curve floor stayed
   untouched - the coherence table showed no model out of line at either. Full before/after
-  harness numbers in `docs/sprints/sprint55.md`'s Exit.
+  harness numbers in `docs/sprints/sprint_archive/sprint55.md`'s Exit.
 - 2026-07-14: **Law 5 (the foundation law) added by explicit maintainer approval** (Sprint 60,
   playtest pass-2 item 18), graduating the "build coherence" TODO capture into a designed system.
   `marketValueYen` becomes `base + foundationFactor(car) x installedPartsValueYen` - the ONLY
@@ -362,7 +362,7 @@ maintainer or CI run can catch a coherence drift before a playtest does.
   unchanged (its all-scrap-STOCK probe car carries zero premium, so the factor is inert on it -
   asserted directly). Balance harness re-run clean: all 9 hard gates pass, days-to-`local` p50
   unchanged. First-pass factor numbers are maintainer-tuning bait. Full detail in
-  `docs/sprints/sprint60.md`'s Exit.
+  `docs/sprints/sprint_archive/sprint60.md`'s Exit.
 - 2026-07-15: **Law 6 (the wage law) added, and Laws 1 and 5 amended, by explicit maintainer
   approval** (Sprint 66, playtest pass-3 item 19). Approving `sprint66.md` carries Law 6; the
   Law 1/Law 5 amendments were approved separately and in terms ("Happy to make the amendment
@@ -413,17 +413,17 @@ maintainer or CI run can catch a coherence drift before a playtest does.
   symptom), so inspection is the only way to tell a steal from a grenade. Golden masters and the
   formula-locked story-mission payout probes moved as intended (case (a)); the value-model, wage,
   and coherence probes were re-run and assessed. First-pass numbers, to settle in playtesting.
-  Full detail in `docs/sprints/sprint105.md`'s Exit.
+  Full detail in `docs/sprints/sprint_archive/sprint105.md`'s Exit.
 
   All eight decision-7 numbers are first-pass tuning bait. Full detail and the measured
-  before/after in `docs/sprints/sprint66.md`'s Exit.
+  before/after in `docs/sprints/sprint_archive/sprint66.md`'s Exit.
 - 2026-07-15: **`teardown.*` added as a new anchor group** (Sprint 71, the teardown game;
   maintainer pre-approved the whole component-hierarchy arc the same day). Not a new law - the
   four per-depth-class labour figures, the used-part sale haircut, and the donor break-even
   measurement threshold are all ordinary content anchors, added to the audit table above. The
   donor coherence probes (`balanceProbes.ts`'s `computeDonorBalanceProbe`) measure and disclose the
   whole-vs-parted crossover per roster model rather than hard-gating an exact number. Full detail
-  in `docs/sprints/sprint71.md`'s Exit.
+  in `docs/sprints/sprint_archive/sprint71.md`'s Exit.
 - 2026-07-16: **`diagnosis.*` added as a new anchor group** (Sprint 73, diagnosis I; maintainer
   pre-approved decision 5 the same day the arc was scoped, 2026-07-15). Not a new law - the
   fear-priced sheet value (`diagnosis.ts`'s `sheetGuideValueYen = apparentValue - fearPremium x
@@ -434,12 +434,12 @@ maintainer or CI run can catch a coherence drift before a playtest does.
   content anchors, added to the audit table above. The blind-buy guardrail
   (`balanceProbes.ts`'s `computeSymptomBalanceProbe`) measures and discloses the per-symptom expected-
   value spread per tier rather than hard-gating an exact number, same treatment as the donor
-  coherence probes above. Full detail in `docs/sprints/sprint73.md`'s Exit.
+  coherence probes above. Full detail in `docs/sprints/sprint_archive/sprint73.md`'s Exit.
 - 2026-07-16: **`lapModel.*` added as a new anchor group** (Sprint 77, story missions II; maintainer
   pre-approved the reference-lap board decision 2026-07-15). Not a new law - one pure, monotonic
   formula (`C x (curbWeightKg / power) ^ ratioExp x gripMult[tyreGrade]`) over the car's own current
   derived stats, ordinary content anchors added to the audit table above. Full detail in
-  `docs/sprints/sprint77.md`'s Exit.
+  `docs/sprints/sprint_archive/sprint77.md`'s Exit.
 - 2026-07-19: **`diagnosis.fearPremium` RETIRED, and the ledger/two-number presentation law
   added** (Sprint 98, economy legibility stage 1; maintainer approval 2026-07-19: "agreed...
   this looks like a very good foundation. go ahead", full design in
@@ -452,7 +452,7 @@ maintainer or CI run can catch a coherence drift before a playtest does.
   price derives from the shared value ledger (`packages/sim/src/valueLedger.ts`), whose line
   items provably sum to the engine's totals; surfaces show at most two prices, the room's
   number and the player's. `fearPremium` leaves the audit table with this entry. Full detail
-  in `docs/sprints/sprint98.md`'s Exit.
+  in `docs/sprints/sprint_archive/sprint98.md`'s Exit.
 - 2026-07-19: **the bid ladder halves** (maintainer tuning order ahead of the Sprint 99
   room-demo sitting: "our intervals are too large... drop it to like 5000Y, especially
   for the cheaper cars"). `AUCTION_BID_INCREMENT_FRACTION` 0.05 -> 0.025, and the
@@ -473,7 +473,7 @@ maintainer or CI run can catch a coherence drift before a playtest does.
   `auctionRoom.*` row still stands. Not a law change.
 - 2026-07-23: **The body-zone workshop model, and `the-showroom-standard`'s payout bumped
   to match its re-derived recipe** (Sprint 119, the workshop rework phase 1b; levers signed
-  in `docs/sprints/sprint119.md`'s lever table). Body condition is now generated and worked
+  in `docs/sprints/sprint_archive/sprint119.md`'s lever table). Body condition is now generated and worked
   as six zones (metal/surface/finish); `panels`/`paint`/`underbody` bands DERIVE from zone
   state (worst-governs) and are priced money-only through the pipeline (materials +
   replacement panels, never labour, per the maintainer's L9 ruling). New anchors: the six

@@ -27,7 +27,7 @@ included below.
 ## Sprint 144: a build reaches the money
 
 Stage C (coherence discount) and Stage D (retention scales with coherence). Design of record:
-`sale-value-system.md` sections 3C/3D. Sprint doc: `docs/sprints/sprint144.md`.
+`sale-value-system.md` sections 3C/3D. Sprint doc: `docs/sprints/sprint_archive/sprint144.md`.
 
 | lever | old | new | reason |
 | --- | --- | --- | --- |
@@ -49,7 +49,7 @@ proven to work (`coherenceValuation.test.ts`), just not yet exercised by shipped
 ## Sprint 145: a car looks like itself
 
 Per-car `styleBase` replaces the flat `styleCap` of 20. Design of record: `sale-value-system.md`
-section 13.2. Sprint doc: `docs/sprints/sprint145.md`.
+section 13.2. Sprint doc: `docs/sprints/sprint_archive/sprint145.md`.
 
 | lever | old | new | reason |
 | --- | --- | --- | --- |
@@ -63,7 +63,7 @@ section 13.2. Sprint doc: `docs/sprints/sprint145.md`.
 
 `Buyer.statWeights` (a weighted mean) replaced by `Buyer.statTargets` (target / optional upper /
 importance per stat). Design of record: `sale-value-system.md` section 3 Stage E. Sprint doc:
-`docs/sprints/sprint146.md`. Abbreviations below: t = target, u = upper, i = importance, all on
+`docs/sprints/sprint_archive/sprint146.md`. Abbreviations below: t = target, u = upper, i = importance, all on
 the normalised 0-1 stat scale; blank u means no upper bound.
 
 | lever | old | new | reason |
@@ -85,7 +85,7 @@ amendment**, so it is a formula fix, not a lever, and is not listed as a separat
 ## Sprint 147: the door that actually closes
 
 The flat `offerSpread` band replaced by a listing-age curve keyed on `offersSeen` (never a day
-count). Design of record: `sale-value-system.md` section 4. Sprint doc: `docs/sprints/sprint147.md`.
+count). Design of record: `sale-value-system.md` section 4. Sprint doc: `docs/sprints/sprint_archive/sprint147.md`.
 
 | lever | old | new | reason |
 | --- | --- | --- | --- |
@@ -112,7 +112,7 @@ convenience of an instant sale). See "the four worth arguing about" below.
 
 A third bay kind (`forecourt`) and rent that scales with bay count, replacing the flat
 `WEEKLY_RENT_YEN`. Design of record: `sale-value-system.md` section 7.1. Sprint doc:
-`docs/sprints/sprint148.md`. **Implementation is still running as this ledger is written; the
+`docs/sprints/sprint_archive/sprint148.md`. **Implementation is still running as this ledger is written; the
 Levers section is final in the doc, the Exit is not yet filled in.**
 
 | lever | old | new | reason |
@@ -215,11 +215,11 @@ chose these numbers; they are what the hash function or the version counter prod
 
 | after | hash | note |
 | --- | --- | --- |
-| sprint144 | not quoted in `sprint144.md` itself | inferred only as the value `sprint145.md`'s Exit records as its own starting hash (see next row); flagged, not directly sourced |
+| sprint144 | not quoted in `docs/sprints/sprint_archive/sprint144.md` itself | inferred only as the value `docs/sprints/sprint_archive/sprint145.md`'s Exit records as its own starting hash (see next row); flagged, not directly sourced |
 | sprint145 | `c63987887418659103156de09e48af05c59a8ccad04938819fb3225a3e7ad7ab` -> `c9110158453777a12cd600e5d32a6a3ec373ef8d5d3f671200b0e4665cb1598d` | `styleCap` deleted |
 | sprint146 | unchanged | `economy.json` untouched; `buyers.json` is not covered by this hash at all |
 | sprint147 (liquidity landing) | `c9110158453777a12cd600e5d32a6a3ec373ef8d5d3f671200b0e4665cb1598d` -> `47c24d8b61889155a07276ab9994912c53f98f0b1acee37b94e436c8c77a8b2d` | `offerSpread` retired, `liquidity` block added |
-| sprint147 (`qualityFresh` fix) | -> `7902e54c1533a941755a4de4ea63c35f9c0802f2ed2a71080dd51946ef56b520` | current value, read directly from the test file; not quoted as a literal string in `sprint147.md`'s own prose |
+| sprint147 (`qualityFresh` fix) | -> `7902e54c1533a941755a4de4ea63c35f9c0802f2ed2a71080dd51946ef56b520` | current value, read directly from the test file; not quoted as a literal string in `docs/sprints/sprint_archive/sprint147.md`'s own prose |
 | sprint148/149 | not yet re-pinned | implementation in progress at time of writing |
 
 `partPricing.json`'s approval-gate hash did not move at any point in sprints 144-149; nothing in

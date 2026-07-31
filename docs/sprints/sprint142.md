@@ -1,9 +1,9 @@
 # Sprint 142: grade sensitivity and the provisional condition curves
 
-**Status: AWAITING SIGN-OFF.** **Gated on Sprint 134 alone, and on nothing else in the arc.**
-Its grade-sensitivity half is independent of power, support and value, so it may run at any
-point after 134; it is numbered last because its second half, the review of the four condition
-curves, is most useful once the rest has landed.
+**Status: NOT STARTED, AWAITING SIGN-OFF.** **Gated on Sprint 134 alone, and that gate is met:
+134 shipped 2026-07-29.** Its grade-sensitivity half is independent of power, support and value,
+so it may run now; it is numbered last because its second half, the review of the four condition
+curves, is most useful once the rest has landed, and 135 to 137 have since landed too.
 Last of nine in the tuning overhaul arc.
 
 Design reference: `docs/design/systems/tuning-system.md` section 10, and

@@ -93,7 +93,7 @@ not a default assumption baked into a TODO.md one-liner.
 
 **What Sprint 14 actually covers instead:** the real, sourced playtest ask (#7, "the parts-market
 cart/checkout overhaul" - batch-buying multiple parts in one flow) plus sorting/filtering, which is
-pure UI/QoL over the existing single-grade catalog, not a new mechanic. See `docs/sprints/sprint14.md`
+pure UI/QoL over the existing single-grade catalog, not a new mechanic. See `docs/sprints/sprint_archive/sprint14.md`
 once it exists.
 
 **If this is ever pursued:** it would need its own reuse-analysis pass against `GradeSchema` (adding a

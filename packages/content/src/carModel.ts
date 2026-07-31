@@ -103,7 +103,7 @@ export const CarModelSchema = z
        * The scale runs 4 to 100. The authored roster only reaches as high as
        * 20 (a Lamborghini Countach), because stock styling was deliberately
        * left un-rescaled when this field replaced the flat 20 cap
-       * (`docs/sprints/sprint145.md`): the upper reaches of the axis stay
+       * (`docs/sprints/sprint_archive/sprint145.md`): the upper reaches of the axis stay
        * reachable only through bolt-on parts until a later authoring pass
        * revisits the 91 judged values.
        */

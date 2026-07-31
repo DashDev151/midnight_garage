@@ -1,7 +1,9 @@
 # Sprint 141: the dyno screen
 
-**Status: AWAITING SIGN-OFF AND ONE MAINTAINER RULING.** Opens after Sprint 136, whose
-support ratios are the thing this screen displays. Eighth of nine in the tuning overhaul arc.
+**Status: NOT STARTED, AWAITING SIGN-OFF AND ONE MAINTAINER RULING.** Its only dependency is
+met: Sprint 136 shipped 2026-07-30, and its support ratios are the thing this screen displays.
+Nothing but the sign-off and the ruling stands between this doc and implementation. Eighth of
+nine in the tuning overhaul arc.
 
 Design reference: `docs/design/systems/tuning-system.md` section 14, and GDD 5.4.
 

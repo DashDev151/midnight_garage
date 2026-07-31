@@ -1,6 +1,9 @@
 # Sprint 145: a car looks like itself
 
-**Status: READY TO IMPLEMENT. Third of the sale value arc. Prerequisite for Sprint 146.**
+**Status: BUILT AND COMMITTED 2026-07-31 (`51de543`, `85b1434`). Third of the sale value arc,
+and the prerequisite Sprint 146 needed.** One deferral, deliberate and tracked in `TODO.md`
+rather than open here: stock style still tops out at 20, so rescaling the 94 authored values
+waits for the appraisal screen.
 
 Design of record: `docs/design/systems/sale-value-system.md` §13.2. Plan:
 `docs/design/systems/sale-value-implementation-plan.md` §6, S3.

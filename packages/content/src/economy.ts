@@ -1090,7 +1090,7 @@ export const EconomyConfigSchema = z.object({
      * Calsonic BNR32 Gr.A's measured lateral-g pair; `maxGripMultiplier` bounds
      * the term so nothing runs away at top speed. `byGrade` is what a fitted
      * aero-functional SKU provides, by its grade. Signed in
-     * docs/sprints/sprint125.md. */
+     * docs/sprints/sprint_archive/sprint125.md. */
     aero: z.object({
       downforceK: z.number().positive(),
       maxGripMultiplier: z.number().positive(),
@@ -1105,7 +1105,7 @@ export const EconomyConfigSchema = z.object({
      * the quasi-static point-mass sim, the direction-change term, the geometric
      * corner-grip ceiling, and the fallback regressions that answer for a car
      * carrying no measurement. Calibrated against real driven laps; signed in
-     * docs/sprints/sprint128.md section 6. */
+     * docs/sprints/sprint_archive/sprint128.md section 6. */
     pace: z.object({
       gravity: z.number().positive(),
       airDensity: z.number().positive(),

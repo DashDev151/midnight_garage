@@ -13,25 +13,26 @@ says so and stops rather than inviting the implementer to make it.
 
 ## The arc at a glance
 
-| sprint | what | gated by | sign-off |
+**Six of the nine are finished and their docs are in `docs/sprints/sprint_archive/`.** Only 140,
+141 and 142 are still live, and all three are still in `docs/sprints/`.
+
+| sprint | what | state | where its doc is |
 | --- | --- | --- | --- |
-| **134** | Condition reaches the build | nothing | **none needed** |
-| **135** | Proportional power, and the ECU price ladder | 134 | **SIGNED 2026-07-29** |
-| **136** | Support ratios, and reliability as what they move | 135 | **SIGNED 2026-07-29** |
-| **137** | The forced-induction curve and its price ladder | **136, hard** | **SIGNED 2026-07-29** |
-| **138** | Measure what coherence did to the money | 136 | **CLOSED UNBUILT 2026-07-30, superseded** |
-| **139** | The premium for building well, if there is one | **138 accepted, hard** | **CLOSED UNBUILT 2026-07-30, superseded** |
-| **140** | Stat simplification, aero ceiling, style base | 135 | aero ceiling, style base, **and 68 of each still unauthored** |
-| **141** | The dyno screen | 136 | fee, hire-or-facility, plus a GDD ruling |
-| **142** | Grade sensitivity and the condition review | 134 | grade band curves |
+| **134** | Condition reaches the build | **BUILT** 2026-07-29 | archive |
+| **135** | Proportional power, and the ECU price ladder | **BUILT** 2026-07-30 | archive |
+| **136** | Support ratios, and reliability as what they move | **BUILT** 2026-07-30, plus three signed amendments | archive |
+| **137** | The forced-induction curve and its price ladder | **BUILT** 2026-07-30, plus the signed `camsTiming` amendment | archive |
+| **138** | Measure what coherence did to the money | **CLOSED UNBUILT** 2026-07-30, superseded | archive |
+| **139** | The premium for building well, if there is one | **CLOSED UNBUILT** 2026-07-30, superseded | archive |
+| **140** | Stat simplification, aero ceiling, style base | **PART BUILT**: the whole `styleBase` half landed early inside Sprint 145. `aeroCeiling` and the handling deletion are open | live |
+| **141** | The dyno screen | **NOT STARTED**: awaiting sign-off (fee, hire-or-facility) and a GDD ruling | live |
+| **142** | Grade sensitivity and the condition review | **NOT STARTED**: awaiting sign-off on the grade band curves | live |
 
-**Sprints 134 to 138 are all clear to start**, in order, subject to 137's hard gate on 136.
-**Every lever they need is signed**, so an implementation agent works straight through them
-without stopping to ask.
-
-**What is still unsigned is all downstream of 138**: 140's aero and style tables (and 68 of each
-still unauthored), 141's dyno fee plus the GDD ruling, and 142's grade band curves. 139's shape
-is set by 138's report.
+**What is still unsigned:** 140's aero table (`aeroCeiling` holds 26 of 94 rows, which directive
+24 makes the wrong scope, and the lever itself is unsigned), 141's dyno fee plus the GDD ruling,
+and 142's grade band curves. Nothing in the arc is blocked on anything the arc itself still owes
+it: 140 and 142 can each run the moment their tables are signed, and 141 the moment its ruling is
+given.
 
 ---
 
@@ -208,7 +209,7 @@ Measured against shipped content on 2026-07-29, not assumed:
 must never raise that car's headline ratio". **That is too strong and would fail
 correctly-implemented code**, because fitting race internals to a big-turbo car raises
 cylinder-pressure support far more than it raises fuelling demand, so the headline rises, and it
-should: buying the bottom end is exactly what fixes that build. `sprint136.md` carries the correct
+should: buying the bottom end is exactly what fixes that build. `docs/sprints/sprint_archive/sprint136.md` carries the correct
 pair: a structural assertion (demand and support slot sets are disjoint per subsystem) and a
 behavioural one (a **pure gain** part, supporting nothing, never raises the headline).
 
@@ -218,9 +219,10 @@ for demand would charge condition twice. Both halves were wrong, and shipping th
 version cost a working invariant: 172 measured cases where ageing a fitted gain part RAISED
 reliability, because shrinking the part's own band-scaled demand outran the condition mean's own
 fall. A worn turbo that reads as MORE reliable than a mint one is exactly the defect this arc
-exists to remove. `sprint136.md`'s own worked example is the smoking gun: its line 511 publishes a
-worn-FD figure of 6, which is what the formula gives WITHOUT band-scaling; the shipped,
-band-scaled code gave 19 on the same build.
+exists to remove. `docs/sprints/sprint_archive/sprint136.md`'s own worked example is the smoking
+gun: its illustrative percentage table's "race turbo on a stock bottom end, all worn" row
+publishes a worn-FD figure of 6, which is what the formula gives WITHOUT band-scaling; the
+shipped, band-scaled code gave 19 on the same build.
 
 The correct rule: demand and support both read the fitted GRADE only, never the band. A blown
 turbo does not stop demanding the bottom end its own hardware was built to stress; only its
@@ -251,7 +253,7 @@ kept deliberately apart from `coherenceFactor`'s own additive shortfall - foldin
 measured and rejected, because it would subtract an identical flat amount from a supported and an
 unsupported build alike and collapse the unsupported case toward an uninteresting floor.
 `totalGainFraction` is exactly 0 on a stock car, so the multiplier is exactly 1 there and the
-stock-car-reads-exactly-its-base identity is untouched. Full arithmetic in `sprint136.md`'s third
+stock-car-reads-exactly-its-base identity is untouched. Full arithmetic in `docs/sprints/sprint_archive/sprint136.md`'s third
 amendment.
 
 ---

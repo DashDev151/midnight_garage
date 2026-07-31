@@ -1,6 +1,7 @@
 # Sprint 144: a build reaches the money
 
-**Status: READY TO IMPLEMENT once Sprint 143 has landed. Second of the sale value arc.**
+**Status: BUILT AND COMMITTED 2026-07-31 (`abb60f0`). Nothing outstanding.** Second of the sale
+value arc.
 
 Design of record: `docs/design/systems/sale-value-system.md` v4, sections 3C and 3D.
 Plan: `docs/design/systems/sale-value-implementation-plan.md`.

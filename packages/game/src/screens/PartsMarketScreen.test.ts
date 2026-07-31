@@ -67,7 +67,7 @@ describe('PartsMarketScreen', () => {
     // `panels`/`paint`/`underbody`'s own stock SKU (one per fitment class,
     // 3 x 4 = 12) stays in the catalogue as the derived value carriers'
     // installed reference (`bodyPipeline.ts`) but is never listed for sale -
-    // the market never lists them again (docs/sprints/sprint119.md's SKU
+    // the market never lists them again (docs/sprints/sprint_archive/sprint119.md's SKU
     // dispositions).
     expect(wrapper.findAll('.part').length).toBe(PARTS.length - 12)
     expect(wrapper.text()).toContain(`${cheapest.brand} ${cheapest.name}`)

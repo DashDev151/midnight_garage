@@ -49,7 +49,7 @@ const RELIABILITY_FLOOR = 65
 const RELIABILITY_CEILING = 100
 /**
  * The authored values run 4 to 20 against the retired `styleCap`'s own 20, a
- * deliberate restraint recorded in `docs/sprints/sprint145.md` - rescaling
+ * deliberate restraint recorded in `docs/sprints/sprint_archive/sprint145.md` - rescaling
  * the 91 judged values is authoring work for later, not this guard's job.
  */
 const STYLE_FLOOR = 4

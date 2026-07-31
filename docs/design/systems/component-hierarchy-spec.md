@@ -73,7 +73,7 @@ Decisions, recorded:
   cleared by any install into the slot) is what lets a matching refit skip install labour too -
   putting the car back together exactly as it was found costs nothing; a repaired, replaced, or
   upgraded part still costs the full class-based labour. Deep work is now expensive in proportion
-  to the value added on the bench, never the teardown itself. See `docs/sprints/sprint79.md`'s
+  to the value added on the bench, never the teardown itself. See `docs/sprints/sprint_archive/sprint79.md`'s
   Exit for the full before/after economics.
 - **Machine gate.** Buried-class removal requires the appropriate garage machine (lift or crane)
   if one exists in the machine catalogue; bind to real machine ids at sprint scoping, and add no

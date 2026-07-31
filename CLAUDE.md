@@ -53,12 +53,19 @@ All development happens in sprints, driven by the roadmap. Sprint docs live in `
 (synthwave pixel art, JDM car culture, hunt-build-sell loop). Solo-dev passion project, ~13-month
 roadmap to a free itch.io launch.
 
-**Current state:** Sprints 00-133 implemented and committed (Sprint 100 was superseded unbuilt
-by Sprint 110's live-room promotion; its doc records that). Sprints 132-133 rebuilt the economy on
-period-researched prices: canonical car and parts values, `tier`/`rarity`/`origin` split into three
-axes, auction houses drawing a tier mix rather than one rarity each, and the teardown economics
-re-ordered so repair beats stripping on every car. The tuning overhaul is DESIGNED and NOT BUILT
-(`docs/design/systems/tuning-system.md`, sprints planned in `docs/sprints/tuning-arc.md`).
+**Current state:** Sprints 00-139 and 143-149 implemented and committed. Two were superseded
+unbuilt and their docs record it (Sprint 100 by Sprint 110's live-room promotion; Sprints 138-139
+by the sale value system). **Three sprints are still live and their docs are the only ones left in
+`docs/sprints/`: 140, 141, 142** (the rest of the tuning arc) plus **149, which shipped but
+carries an approved, unbuilt per-tier auction cadence**. The tuning overhaul is BUILT as far as
+137 (`docs/design/systems/tuning-system.md`, arc index `docs/sprints/tuning-arc.md`): condition
+reaches the build, power is a per-car fraction rather than a flat ladder, support ratios drive
+reliability off a per-car `spec.reliabilityBase`, and forced induction returns increase. The sale
+value arc (143 to 155) is BUILT as far as 149 (`docs/design/systems/sale-value-system.md`, plan
+`sale-value-implementation-plan.md`, lever ledger `docs/sprints/sale-value-arc-lever-ledger.md`):
+coherence discounts value and scales parts retention, taste is a per-buyer match rather than a
+weighted mean, a listing goes stale by offers seen rather than days, listed cars occupy a
+purchasable forecourt, rent scales with owned bays, and the week has named days.
 
 The **car performance model is LOCKED and validated** to about 2% on blind predictions against
 the maintainer's own driven laps. `docs/design/car-performance/` is the whole of it and its
@@ -72,9 +79,10 @@ Sprint 130 (per-SKU `physicalModifiers` on grip, braking and mass, also PROVISIO
 ladder deliberately left alone and its shape an open question in `TODO.md`). Sprint 126 was
 overtaken before it was built and its lever table is dead.
 
-**Where the history lives, and why it is not here.** Each sprint's own
-`docs/sprints/sprintNN.md` Exit is its permanent record; `git log` has every hash. **This file
-never re-narrates them.** Before new work, read the current sprint's doc and the previous one (per
+**Where the history lives, and why it is not here.** Each sprint's own `sprintNN.md` Exit is its
+permanent record; `git log` has every hash. **Live sprints sit in `docs/sprints/`; finished ones
+move to `docs/sprints/sprint_archive/`**, so what is left in `docs/sprints/` is exactly what is
+still open. **This file never re-narrates them.** Before new work, read the current sprint's doc and the previous one (per
 the Sprint workflow above) plus `TODO.md` (open items with no sprint number attached, including
 the standing bot-harness rework and the parts-provenance rework scheduled after Sprint 69).
 `docs/README.md` explains the docs tree: which folders are law, which are live specs, and which

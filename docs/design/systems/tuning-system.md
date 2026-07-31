@@ -1,16 +1,25 @@
 # The tuning system
 
-**Status: DESIGNED, REVIEWED, NOT IMPLEMENTED. Nothing in this document exists in
-the game.**
+**Status: PARTLY IMPLEMENTED. Sprints 134 to 137 are BUILT and their levers are SIGNED; 140 to
+142 are not.** This document is no longer a pure proposal, so read it with the arc index
+`docs/sprints/tuning-arc.md` beside it: that table says what shipped, and **each shipped sprint's
+own doc is authoritative over this document wherever they disagree** (see "Amendments since this
+document was written", below).
 
-**One exception, and it matters: section 1d is not a proposal. It describes a bug in
-shipped code today**, where `buildFactors` ignores a part's condition band entirely.
-That one is real, live, and is step 1 of the build order.
+**What is in the game today:** section 1d's condition-scaled build factors (Sprint 134); the
+proportional, per-engine-character power curve and the per-slot price ladders that replaced the
+flat additive ladder (135); the per-subsystem support ratios, the coherence factor, the
+build-intensity term, and reliability rebuilt off a per-car `spec.reliabilityBase` (136 and its
+three amendments); the increasing forced-induction return curve and its own price ladder (137).
+Section 1d's bug is fixed and is no longer live.
 
-The design of record for what an aftermarket part does, how a build holds together,
-and what that is worth. **Every number here is a proposal and unapproved**; directive
-22 applies, so no value may be pulled without the maintainer signing that specific
-lever.
+**What is still a proposal:** the aero ceiling and the handling deletion (Sprint 140), the dyno
+screen (141), and the grade-sensitivity curves and the condition-curve review (142). Every number
+in those parts remains unapproved; directive 22 applies, so no value may be pulled without the
+maintainer signing that specific lever.
+
+The design of record for what an aftermarket part does, how a build holds together, and what that
+is worth.
 
 **Deferred out of this system, deliberately:**
 
@@ -32,7 +41,7 @@ did not anticipate. **Each sprint doc is authoritative over this document where 
 and this list says where that is.
 
 **1. Coherence reaches value through reliability, not through a separate path (maintainer,
-2026-07-29). Amends section 7a; `sprint136.md` is authoritative.** Section 7a proposes that a
+2026-07-29). Amends section 7a; `docs/sprints/sprint_archive/sprint136.md` is authoritative.** Section 7a proposes that a
 coherent build reaches a different *set of buyers*. The maintainer's ruling goes one level deeper:
 *"WHY is there less demand for a stupid build? BECAUSE it is going to blow up. Reliability IS the
 final figure that gets moved by coherence."* So reliability becomes

@@ -53,7 +53,7 @@ that range already went through the prior review and has more real-world mileage
 1. `CLAUDE.md` - core directives, engineering laws, current commit/sprint state (kept intentionally
    short; full history lives in the sprint docs below, not duplicated here).
 2. `docs/design/midnight-garage-gdd.md` - the frozen-for-v1.0 design doc; canonical for mechanics.
-3. `docs/sprints/sprint15.md` through `sprint19c.md` - one doc per sprint in scope. Each opens with a
+3. `docs/sprints/sprint_archive/sprint15.md` through `sprint19c.md` - one doc per sprint in scope. Each opens with a
    mandatory reuse analysis (what's new vs. what's reused) and closes with an Exit section documenting
    what actually shipped, including deviations and bugs found during implementation - read the Exit
    sections if you only have time for one part of each.
