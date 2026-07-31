@@ -72,6 +72,7 @@ const TEST_MODEL: CarModel = {
     stockPowerPs: 150,
     reliabilityBase: 90,
     styleBase: 20,
+    styleCeiling: 80,
   },
   tier: 'everyday',
   rarity: 'common',

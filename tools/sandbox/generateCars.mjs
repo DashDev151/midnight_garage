@@ -226,12 +226,12 @@ function measuredFromFor(row) {
  * Romeo` on the one two-word marque; no physics reads it).
  *
  * Placeholders, read by nothing: `chassisCode`, `bookValueYen`, `rarity`,
- * `reliabilityBase`, `styleBase`, and the two parody-name fields, which the
+ * `reliabilityBase`, `styleBase`, `styleCeiling`, and the two parody-name fields, which the
  * sandbox never renders. `bookValueYen` in particular is why the screen shows
  * these cars no price at all: pricing a car the game does not sell would be
  * inventing an economy number, and `rarity` reaches only auction placement,
- * which no research entry ever enters. `reliabilityBase` and `styleBase` are
- * required by the schema (Sprints 136 and 145) but reach only
+ * which no research entry ever enters. `reliabilityBase`, `styleBase` and
+ * `styleCeiling` are required by the schema but reach only
  * `computeDerivedStats`'s reliability and style derivations, which this
  * lap-focused sandbox never calls - a flat value satisfies the type without
  * inventing a per-car figure the roster CSV does not carry for a non-shipped
@@ -239,6 +239,7 @@ function measuredFromFor(row) {
  */
 const RESEARCH_RELIABILITY_BASE_PLACEHOLDER = 85
 const RESEARCH_STYLE_BASE_PLACEHOLDER = 12
+const RESEARCH_STYLE_CEILING_PLACEHOLDER = 12
 function synthesiseModel(row) {
   const displayName = displayNameFor(row)
   const section = TIER_BY_SECTION[row.sec]
@@ -267,6 +268,7 @@ function synthesiseModel(row) {
       stockPowerPs: row.ps,
       reliabilityBase: RESEARCH_RELIABILITY_BASE_PLACEHOLDER,
       styleBase: RESEARCH_STYLE_BASE_PLACEHOLDER,
+      styleCeiling: RESEARCH_STYLE_CEILING_PLACEHOLDER,
       quotedPowerPs: omitNull(row.q),
       powerRpm: omitNull(row.psr),
       peakTorqueNm: omitNull(row.tq),
@@ -334,7 +336,7 @@ const header = `/**
  * section, \`tyreCompound\` from the stock tyre and the build year, and the
  * layout/induction/engine tags from the book's own drivetrain, engine position
  * and aspiration - all of which the physics reads. \`chassisCode\`,
- * \`bookValueYen\`, \`reliabilityBase\`, \`styleBase\` and the parody names are
+ * \`bookValueYen\`, \`reliabilityBase\`, \`styleBase\`, \`styleCeiling\` and the parody names are
  * placeholders that nothing reads, which is why the sandbox shows a research
  * entry no price rather than a made-up one.
  *

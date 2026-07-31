@@ -22,10 +22,10 @@ const model: CarModel = {
     curbWeightKg: 690,
     stockPowerPs: 61,
     reliabilityBase: 99,
-    // The retired flat styleCap's own value: a mint stock car authored here
-    // reads style exactly 20, so this fixture doubles as the smoke test
-    // below for styleBase replacing that cap.
-    styleBase: 20,
+    // The roster's own authored pair for this car: 43 points of headroom
+    // between how it looks stock and the best it could ever look.
+    styleBase: 23,
+    styleCeiling: 66,
   },
   tier: 'entry',
   rarity: 'common',
@@ -81,7 +81,15 @@ describe('computeDerivedStats', () => {
     const withPart = stats(instance, { [coilovers.id]: coilovers })
     const stock = stats(baseInstance)
     expect(withPart.handling).toBe(stock.handling + 8)
-    expect(withPart.style).toBe(stock.style + 3)
+    // Style is the one modifier that is not an addition: the part's 3 points
+    // are spent CLOSING the gap between this car's own base and its own
+    // ceiling, so 3 of the 60 saturation points buys 5 per cent of the 43
+    // points of headroom rather than 3 points outright. `style.test.ts` owns
+    // the shape; what belongs here is that a fitted part still reaches it.
+    const { styleBase, styleCeiling } = model.spec
+    const reach = 3 / ECONOMY.statFormulas.styleSaturationPoints
+    expect(withPart.style).toBe(Math.round(styleBase + (styleCeiling - styleBase) * reach))
+    expect(withPart.style).toBeGreaterThan(stock.style)
   })
 
   it('a worn installed part contributes proportionally less benefit than a mint one', () => {
@@ -250,44 +258,5 @@ describe('computeDerivedStats', () => {
     ).style
     expect(missingStyle).toBeLessThan(scrapStyle)
     expect(missingStyle).toBe(0)
-  })
-})
-
-/**
- * The smoke test for `styleBase` replacing the flat `styleCap` as style's
- * stock contribution: a car authored at 20 (the cap's own former value) must
- * read identically to before, and two cars that previously tied on style
- * (any two stock cars, under the flat cap) must now differ.
- */
-describe('styleBase replaces the flat styleCap', () => {
-  it('a mint stock car authored at styleBase 20 reads style exactly 20 - unchanged from the retired flat cap', () => {
-    expect(stats(baseInstance).style).toBe(20)
-  })
-
-  it('a Toyota 2000GT and a Nissan S-Cargo no longer score identically on style', () => {
-    // Neither ships in cars.json, so their real authored roster values (15
-    // and 12, docs/design/midnight-garage-roster.csv) are read onto this
-    // fixture's own mint chassis, isolating the one thing under test.
-    const twoThousandGt: CarModel = {
-      ...model,
-      id: 'toyota-2000gt-mf10',
-      spec: { ...model.spec, styleBase: 15 },
-    }
-    const sCargo: CarModel = {
-      ...model,
-      id: 'nissan-s-cargo',
-      spec: { ...model.spec, styleBase: 12 },
-    }
-    const gtStyle = computeDerivedStats(
-      twoThousandGt,
-      baseInstance,
-      {},
-      PARTS_TAXONOMY,
-      ECONOMY,
-    ).style
-    const cargoStyle = computeDerivedStats(sCargo, baseInstance, {}, PARTS_TAXONOMY, ECONOMY).style
-    expect(gtStyle).toBe(15)
-    expect(cargoStyle).toBe(12)
-    expect(gtStyle).not.toBe(cargoStyle)
   })
 })

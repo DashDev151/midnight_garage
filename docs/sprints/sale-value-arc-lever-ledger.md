@@ -76,7 +76,7 @@ section 13.2. Sprint doc: `docs/sprints/sprint_archive/sprint145.md`.
 | --- | --- | --- | --- |
 | `CarModel.spec.styleBase`, 91 roster cars | already authored in the roster CSV | unchanged, now wired live | The values existed in the research pass; this sprint is the first time the game reads them. |
 | `CarModel.spec.styleBase`, 3 missing cars | new | Honda Civic 1.5 EF2 6, Nissan S-Cargo 12, Nissan Laurel Club S C33 11 | Completes all 94 roster rows so the guard test can hold every car. |
-| `statFormulas.styleCap` | 20 (flat, every car) | RETIRED, replaced by per-car `styleBase` | A 2000GT and an S-Cargo scored identically on style before this; deliberately not rescaling the 4-20 authored range yet (recorded in `TODO.md`). |
+| `statFormulas.styleCap` | 20 (flat, every car) | RETIRED, replaced by per-car `styleBase` | A 2000GT and an S-Cargo scored identically on style before this. The 4-20 authored range it left behind was rescaled to 15-88 in Sprint 152, alongside a new per-car `styleCeiling`. |
 
 ---
 

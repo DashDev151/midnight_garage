@@ -1,13 +1,17 @@
 # Style base and ceiling: a proposal for all 94 cars
 
-**Status: PROPOSAL. Nothing is signed and nothing is built.** Serves
+**Status: IMPLEMENTED IN SPRINT 152 AS PRELIMINARY VALUES. Still not signed.** Every figure below
+is live: it is what the game reads. Adopting a reviewed proposal is not the same as ratifying it,
+so section 6's ten calls to review remain open and a later pass can move any of them. Serves
 `desirability-system.md` section 2, which asks for a rescaled base and a new ceiling, authored
 per car for the whole roster.
 
-Two new columns are appended to `midnight-garage-roster.csv`: **`styleBaseProposed`** (how good
-the car looks as it left the factory, mint and unmodified) and **`styleCeiling`** (how good it
-could ever look, fully and tastefully modified). Both 0 to 100. The existing `styleBase` column
-is untouched.
+**Where the values live now.** `midnight-garage-roster.csv` carries **`styleBase`** (how good the
+car looks as it left the factory, mint and unmodified) and **`styleCeiling`** (how good it could
+ever look, fully and tastefully modified) for all 94 rows, both 0 to 100. The proposal was
+delivered in a separate `styleBaseProposed` column; Sprint 152 promoted that column into
+`styleBase` and deleted it, because two columns answering one question is exactly the drift the
+CSV is canonical to prevent. **Where this document says `styleBaseProposed`, read `styleBase`.**
 
 **The gap is the product.** A beautiful car has a high base and no headroom, so it is a
 restoration car. A plain car has a low base and a large ceiling, so it is a building car.

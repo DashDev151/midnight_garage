@@ -964,6 +964,33 @@ import storyMissions from '../data/storyMissions.json'
  * enters valuation only through buyer taste and never through `marketValueYen`. What DOES move
  * is every generated board and both `advanceDay` golden hashes, because generation stopped
  * consuming an rng draw for the retired roll and every draw after it in the stream shifts.
+ *
+ * Re-pinned for Sprint 152 (docs/sprints/sprint152.md), style becoming an axis a car can climb.
+ * ONE key ENTERS economy.json and no existing value moves:
+ * `statFormulas.styleSaturationPoints` = **60**. It is the exchange rate between the
+ * catalogue's style points and every car's own headroom: an aftermarket part no longer ADDS
+ * style, it closes the gap between the car's own `spec.styleBase` and its own new
+ * `spec.styleCeiling`, and `reach = min(1, fitted / styleSaturationPoints)` says how much of
+ * that gap a given fit buys. At 60 against the 82 points a fit-the-best-in-every-slot build
+ * totals, a focused build reaches its car's ceiling without needing literally every style part.
+ *
+ * This is a PRELIMINARY figure, recorded in that sprint doc as the value implemented rather
+ * than signed under directive 22, so a later pass can move it.
+ *
+ * NOT gated by this hash, recorded here because this file is the ledger of what moved and why:
+ * `cars.json` gains `spec.styleCeiling` on all 26 shipped cars and every one of the 26
+ * `spec.styleBase` values is REPLACED, both promoted from `docs/design/midnight-garage-roster.csv`
+ * where they are authored for all 94 roster rows. The base scale moves from the retired flat
+ * cap's own 4-to-20 (Sprint 145's deliberately un-rescaled placeholder) to a real 15-to-88, and
+ * the ceilings run 42 to 96. Those are PRELIMINARY too, reviewed and accepted as sane in
+ * `docs/design/systems/style-authoring-proposal.md`. No part SKU changes: the 19 style-bearing
+ * families keep their points, and what moves is what those points buy.
+ *
+ * No mission payout or budget cap moves, and `partPricing.json` holds: style reaches value only
+ * through buyer taste, never through `marketValueYen`. Every story mission's own
+ * `statThreshold(style)` and `tasteMatch.minMultiplier` DOES move, re-derived mechanically from
+ * a fresh `storyMissionProbes.test.ts` run against each probe's same build rather than
+ * hand-picked, because a stock car's style is no longer near zero.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -973,7 +1000,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('b014412563d50d237a00492058f7a6802a46007ddcf79727d3b0bdc6127922b0')
+    ).toBe('3f3d4565301a8b5881924f2b0f6c57dd381dfc7de99fd8d17b04bef70cc72536')
   })
 
   it('partPricing.json matches its approved content exactly', () => {

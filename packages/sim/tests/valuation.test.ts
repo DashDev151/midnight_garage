@@ -46,7 +46,8 @@ const model: CarModel = {
     curbWeightKg: 1590,
     stockPowerPs: 280,
     reliabilityBase: 94,
-    styleBase: 20,
+    styleBase: 74,
+    styleCeiling: 95,
   },
   tier: 'flagship',
   rarity: 'rare',
@@ -271,7 +272,36 @@ describe('Sprint 146: taste is a match, not a mean', () => {
         },
       }),
     })
-    const wellOverTarget = buildLoudLowUnreliableSilvia()
+    // The same build plus one more style-bearing slot, and deliberately a
+    // slot that carries NOTHING else: a race dash is 11 style points with no
+    // handling modifier and no physical modifier at all, so the only thing
+    // separating these two cars is how far each has closed its own style gap.
+    // (Style is no longer additive, so "more excess" cannot be manufactured
+    // by fitting a worn part: condition scales the whole result, and a poor
+    // part drags the number DOWN however many points it carries.)
+    const wellOverTarget = buildCarInstance({
+      modelId: silvia.id,
+      parts: mintCarParts({
+        aero: {
+          id: 'x-aero',
+          partId: 'frp-race-aero',
+          band: 'mint',
+          origin: { kind: 'market', day: 1 },
+        },
+        rims: {
+          id: 'x-rims',
+          partId: 'ronin-race-forged',
+          band: 'mint',
+          origin: { kind: 'market', day: 1 },
+        },
+        dashGauges: {
+          id: 'x-dash',
+          partId: 'sokudo-digital-race-dash',
+          band: 'mint',
+          origin: { kind: 'market', day: 1 },
+        },
+      }),
+    })
 
     const atTargetStats = computeDerivedStats(
       silvia,

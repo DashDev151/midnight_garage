@@ -206,9 +206,9 @@ Remaining bill to the expected band: **¥14,570**. This is real, and the market 
 |---|---|---|---|---|---|---|
 | `shopFront` | ¥0 | 1.00 | no | 1.0000 | ¥208,776 | - |
 | `freeAdsPaper` | ¥1,500 | 1.05 | no | 1.0500 | ¥219,215 | ¥8,939 |
-| `tunerMagazine` | ¥12,000 | 1.17 | yes | 1.1007 | ¥229,808 | ¥9,032 |
+| `tunerMagazine` | ¥12,000 | 1.17 | yes | 1.1019 | ¥230,053 | ¥9,277 |
 | `tradeNetwork` | ¥0 | n/a (flat `priceBand`) | no | n/a | ¥208,776 | ¥0 |
-| `weekendMeet` | ¥3,000 | 1.17 | yes | 1.1007 | ¥229,808 | ¥18,032 |
+| `weekendMeet` | ¥3,000 | 1.17 | yes | 1.1019 | ¥230,053 | ¥18,277 |
 
 ### 5. Net, from the sim's own car ledger
 
@@ -376,9 +376,9 @@ Remaining bill to the expected band: **¥5,870**. This is real, and the market i
 |---|---|---|---|---|---|---|
 | `shopFront` | ¥0 | 1.00 | no | 1.0000 | ¥507,136 | - |
 | `freeAdsPaper` | ¥1,500 | 1.05 | no | 1.0500 | ¥532,493 | ¥23,857 |
-| `tunerMagazine` | ¥12,000 | 1.17 | yes | 1.0980 | ¥556,827 | ¥37,691 |
+| `tunerMagazine` | ¥12,000 | 1.17 | yes | 1.1238 | ¥569,900 | ¥50,764 |
 | `tradeNetwork` | ¥0 | n/a (flat `priceBand`) | no | n/a | ¥507,136 | ¥0 |
-| `weekendMeet` | ¥3,000 | 1.17 | yes | 1.0980 | ¥556,827 | ¥46,691 |
+| `weekendMeet` | ¥3,000 | 1.17 | yes | 1.1238 | ¥569,900 | ¥59,764 |
 
 ### 5. Net, from the sim's own car ledger
 
@@ -400,24 +400,24 @@ A side branch off Nissan Silvia (S13)'s listing snapshot: the same listing, the 
 | Day | `offersSeen` at the draw | Buyer | Quality fraction | Offer |
 |---|---|---|---|---|
 | 9 | 0 | `tuner` | 0.8835 | ¥470,469 |
-| 10 | 1 | `stancer` | 0.9057 | ¥451,019 |
+| 10 | 1 | `stancer` | 0.9057 | ¥482,280 |
 | 13 | 2 | `racer` | 0.9231 | ¥490,615 |
 | 14 | 3 | `kei-specialist` | 0.8680 | ¥462,215 |
 | 15 | 4 | `first-timer` | 0.8485 | ¥469,627 |
 | 20 | 5 | `tuner` | 0.9307 | ¥515,143 |
-| 21 | 6 | `racer` | 0.9155 | ¥505,747 |
-| 22 | 7 | `stancer` | 0.8480 | ¥447,252 |
+| 21 | 6 | `stancer` | 0.9155 | ¥506,727 |
+| 22 | 7 | `stancer` | 0.8480 | ¥478,252 |
 | 23 | 8 | `tuner` | 0.8600 | ¥485,027 |
 | 24 | 9 | `first-timer` | 0.8696 | ¥490,433 |
 | 26 | 10 | `kei-specialist` | 0.8600 | ¥485,027 |
-| 28 | 11 | `stancer` | 0.8600 | ¥453,588 |
+| 28 | 11 | `stancer` | 0.8600 | ¥485,027 |
 | 30 | 12 | `tuner` | 0.8783 | ¥499,967 |
 | 31 | 13 | `first-timer` | 0.8600 | ¥489,541 |
 | 33 | 14 | `kei-specialist` | 0.8600 | ¥489,541 |
-| 34 | 15 | `stancer` | 0.8600 | ¥457,810 |
+| 34 | 15 | `stancer` | 0.8600 | ¥489,541 |
 | 37 | 16 | `racer` | 0.8600 | ¥493,100 |
 | 41 | 17 | `racer` | 0.8905 | ¥510,575 |
-| 44 | 18 | `stancer` | 0.8713 | ¥468,117 |
+| 44 | 18 | `stancer` | 0.8713 | ¥500,562 |
 | 48 | 19 | `racer` | 0.8600 | ¥493,100 |
 | 52 | 20 | `tuner` | 0.9215 | ¥510,065 |
 

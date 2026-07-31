@@ -195,6 +195,51 @@ export function authenticityPercentOf(
 }
 
 /**
+ * The whole of style (desirability-system.md section 2):
+ *
+ *     fitted   = sum of statModifiers.style over installed parts
+ *     reach    = min(1, fitted / styleSaturationPoints)
+ *     styleRaw = styleBase + (styleCeiling - styleBase) * reach
+ *     style    = round(clamp(styleRaw * conditionFactor, 0, 100))
+ *
+ * An aftermarket part does not ADD style, it CLOSES THE GAP between what the
+ * car looks like stock and the best it could ever look. That is what lets one
+ * kit be transformative on a car with sixty points of headroom and near
+ * worthless on one with five, with no special case anywhere: the two cars are
+ * simply different cars. A stock car reads exactly its own `styleBase`,
+ * because `reach` is 0 there.
+ *
+ * Each part's points are scaled by its own band before they are summed, the
+ * same way `buildFactors` scales a `physicalModifier`: a scrap bodykit is a
+ * bad bodykit, and it buys less of the gap than a mint one.
+ *
+ * `conditionFactor` multiplies the WHOLE result, not just the base, so a
+ * rough car does not look good however it is dressed and a poor-condition
+ * maxed-out build always reads below a mint one.
+ */
+export function stylePercentOf(
+  car: CarInstance,
+  model: CarModel,
+  partsById: Readonly<Record<string, Part>>,
+  partsTaxonomy: readonly CarPartTaxonomyEntry[],
+  economy: EconomyConfig,
+): number {
+  const { styleBase, styleCeiling } = model.spec
+  let fitted = 0
+  for (const partId of ALL_CAR_PART_IDS) {
+    const installed = car.parts[partId].installed
+    if (!installed) continue
+    const part = partsById[installed.partId]
+    if (!part) continue
+    fitted += part.statModifiers.style * bandFactor(installed.band, economy)
+  }
+  const reach = Math.min(1, fitted / economy.statFormulas.styleSaturationPoints)
+  const raw = styleBase + (styleCeiling - styleBase) * reach
+  const conditionFactor = weightedBandFactorForStat(car, model, 'style', partsTaxonomy, economy)
+  return Math.round(clamp(raw * conditionFactor, 0, 100))
+}
+
+/**
  * The same traversal over the taxonomy's `physicalWeights`, on each dial's own
  * far gentler curve: how much grip, braking, driveline and downforce the car
  * still delivers from CONDITION ALONE - the flat, part-agnostic weighted mean
@@ -430,15 +475,18 @@ export function reliabilityIntensityFactor(
  *
  * The magic number below (power's condition floor) lives in
  * `economy.json.statFormulas`; handling's whole model lives in
- * `statFormulas.grip` and is applied through `performance.ts`. Style's stock
- * contribution scales the car's own `spec.styleBase`, the same shape
- * reliability's derivation scales `spec.reliabilityBase` by. Reliability's
- * own three-factor derivation (condition, coherence, and an outer build-
- * intensity term, scaled by the car's own `spec.reliabilityBase`) is
- * described where it is computed below. Authenticity is `authenticityPercentOf`
- * above, whole: originality times condition, both read off the taxonomy's
- * one authenticity weight column, so it is the only stat here that no
- * installed SKU can adjust after the fact.
+ * `statFormulas.grip` and is applied through `performance.ts`. Style is
+ * `stylePercentOf` above, whole: a car's own `spec.styleBase` walked toward
+ * its own `spec.styleCeiling` by what is fitted, times condition.
+ * Reliability's own three-factor derivation (condition, coherence, and an
+ * outer build-intensity term, scaled by the car's own `spec.reliabilityBase`)
+ * is described where it is computed below. Authenticity is
+ * `authenticityPercentOf` above, whole: originality times condition, both read
+ * off the taxonomy's one authenticity weight column.
+ *
+ * **Only power and handling accumulate per-part.** Style, reliability and
+ * authenticity are each derived whole above and never enter the loop, so the
+ * loop below reads a car's fitted SKUs for exactly two quantities.
  *
  * Handling's mint base is the grip readout (`gripToDisplay`) at the fitted
  * tyre's effective compound and the downforce the car is actually running, less
@@ -500,8 +548,11 @@ export function computeDerivedStats(
     grip.balance.weight * Math.abs(balanceOf(model, grip))
   let handling = mintHandling * handlingFraction
 
-  const styleFraction = weightedBandFactorForStat(instance, model, 'style', partsTaxonomy, economy)
-  let style = styleFraction * model.spec.styleBase
+  // Style takes no per-part addition at all: an installed part closes part of
+  // the gap between the car's own base and its own ceiling rather than adding
+  // points to a total, so it is derived whole by `stylePercentOf` above and
+  // never enters the accumulation loop below.
+  const style = stylePercentOf(instance, model, partsById, partsTaxonomy, economy)
 
   // Reliability is the bounded sum of two independent shortfalls (design
   // section 9): condition (parts wearing out) and coherence (a build
@@ -561,13 +612,12 @@ export function computeDerivedStats(
     const wear = bandFactor(installed.band, economy)
     power += model.spec.stockPowerPs * part.statModifiers.powerFraction[engineCharacter] * wear
     handling += part.statModifiers.handling * wear
-    style += part.statModifiers.style * wear
   }
 
   return {
     power: Math.round(Math.max(0, power)),
     handling: Math.round(clamp(handling, 0, 100)),
-    style: Math.round(clamp(style, 0, 100)),
+    style,
     reliability: Math.round(clamp(reliability, 0, 100)),
     authenticity,
   }

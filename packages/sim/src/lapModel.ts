@@ -48,9 +48,11 @@ function referenceCarModel(weightKg: number, powerPs: number): CarModel {
       // Read by nothing: this reference chassis never reaches
       // `computeDerivedStats` (only `lapTime` directly), so no reliability
       // or style figure is ever displayed for it. Flat placeholders, same
-      // footing as the other REF spec fields around them.
+      // footing as the other REF spec fields around them; the style pair is
+      // deliberately gapless, since a chassis nobody sells cannot be dressed.
       reliabilityBase: 90,
       styleBase: 12,
+      styleCeiling: 12,
       engineConfig: 'I4',
       aspiration: 'NA',
       weightDistributionFront: 53,

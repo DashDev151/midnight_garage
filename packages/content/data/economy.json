@@ -209,6 +209,7 @@
       "coherenceExponent": 2.0
     },
     "powerNormalizationCeiling": 300,
+    "styleSaturationPoints": 60,
     "grip": {
       "eraRubberBands": [
         {

@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import cars from '../data/cars.json'
+import { BUYERS } from '../src'
 
 /**
  * `docs/design/midnight-garage-roster.csv` is the single source of truth for
@@ -20,9 +21,9 @@ import cars from '../data/cars.json'
  * `variantLabel` against `displayName` (two different jobs, not one field
  * copied twice).
  *
- * The three tuning-arc constants - `reliabilityBase`, `styleBase` and
- * `aeroCeiling` - are asserted ONLY once they exist on the shipped model, so
- * this guard grows teeth as each lands (`reliabilityBase` and `styleBase`
+ * The four tuning-arc constants - `reliabilityBase`, `styleBase`,
+ * `styleCeiling` and `aeroCeiling` - are asserted ONLY once they exist on the
+ * shipped model, so this guard grows teeth as each lands (the first three
  * already have; `aeroCeiling` still to come) rather than needing to be
  * rewritten when it does.
  */
@@ -48,12 +49,16 @@ const UID_PATTERN = /^MG-\d{3}$/
 const RELIABILITY_FLOOR = 65
 const RELIABILITY_CEILING = 100
 /**
- * The authored values run 4 to 20 against the retired `styleCap`'s own 20, a
- * deliberate restraint recorded in `docs/sprints/sprint_archive/sprint145.md` - rescaling
- * the 91 judged values is authoring work for later, not this guard's job.
+ * Style is a pair, not a single value: `styleBase` is how the car looks stock
+ * and `styleCeiling` is the best it could ever look, with the GAP between them
+ * the thing aftermarket parts buy. Both are authored per car across the whole
+ * roster and both live on the same 0-to-100 scale the stat is read on, so one
+ * band holds both. The authored spread runs 15 to 88 on the base and 42 to 96
+ * on the ceiling; the band is deliberately wider than either, because it is
+ * here to catch a typo or a stale scale, not to re-adjudicate authoring.
  */
-const STYLE_FLOOR = 4
-const STYLE_CEILING = 20
+const STYLE_FLOOR = 0
+const STYLE_CEILING = 100
 
 /** RFC 4180 fields: quoted values may hold commas, newlines and "" escapes. */
 function parseCsv(text: string): string[][] {
@@ -152,14 +157,77 @@ describe('the roster CSV is well formed', () => {
     }
   })
 
-  it('gives every car a style base inside the authored band', () => {
+  it('gives every car a style base and ceiling inside the authored band', () => {
     for (const row of roster) {
-      const base = row.num('styleBase')
       const where = `roster row ${row.get('rosterNo')} (${row.get('variantLabel')})`
-      expect(Number.isInteger(base), where).toBe(true)
-      expect(base, where).toBeGreaterThanOrEqual(STYLE_FLOOR)
-      expect(base, where).toBeLessThanOrEqual(STYLE_CEILING)
+      for (const column of ['styleBase', 'styleCeiling'] as const) {
+        const value = row.num(column)
+        expect(row.get(column), `${where}: ${column} is blank`).not.toBe('')
+        expect(Number.isInteger(value), `${where}: ${column}`).toBe(true)
+        expect(value, `${where}: ${column}`).toBeGreaterThanOrEqual(STYLE_FLOOR)
+        expect(value, `${where}: ${column}`).toBeLessThanOrEqual(STYLE_CEILING)
+      }
     }
+  })
+
+  /**
+   * The gap is the product: a car with a high base and no headroom is a
+   * restoration car and one with a low base and a large ceiling is a building
+   * car. An inverted pair would mean fitting parts made a car look WORSE the
+   * closer it got to its own best, which the formula has no way to express.
+   */
+  it('never authors a style ceiling below its own base', () => {
+    for (const row of roster) {
+      const where = `roster row ${row.get('rosterNo')} (${row.get('variantLabel')})`
+      expect(row.num('styleCeiling'), where).toBeGreaterThanOrEqual(row.num('styleBase'))
+    }
+  })
+
+  /**
+   * The authoring pass's own sanity checks, pinned so the roster and the
+   * buyer table can never drift apart quietly. They are readable straight off
+   * the two style columns because the formula makes them so
+   * (`packages/sim/tests/style.test.ts` proves both identities on all 26
+   * shipped cars): a stock mint car scores exactly its `styleBase`, and a
+   * fully dressed mint car scores exactly its `styleCeiling`. So "satisfies a
+   * buyer stock" is `styleBase >= target` and "can never satisfy one" is
+   * `styleCeiling < target`.
+   *
+   * A count moving is not automatically a failure, but it IS a decision:
+   * re-pin it alongside the authoring change that moved it.
+   */
+  describe('what the authored pair means against the buyer table', () => {
+    const targetOf = (id: string): number => {
+      const buyer = BUYERS.find((b) => b.id === id)
+      if (!buyer) throw new Error(`no buyer named ${id}`)
+      return buyer.statTargets.style.target * 100
+    }
+    const stancer = targetOf('stancer')
+    const tuner = targetOf('tuner')
+
+    it('lets 23 of the 94 satisfy the stancer stock, none of them entry tier', () => {
+      const satisfy = roster.filter((r) => r.num('styleBase') >= stancer)
+      expect(satisfy).toHaveLength(23)
+      expect(satisfy.filter((r) => r.get('tier') === 'entry')).toHaveLength(0)
+      // A beautiful car straight out of the box is a late-game purchase: all
+      // but the AZ-1 cost 850,000 yen or more.
+      expect(
+        satisfy.filter((r) => r.num('priceYen') < 850_000).map((r) => r.get('variantLabel')),
+      ).toEqual(['Autozam AZ-1 (PG6SA)'])
+    })
+
+    it('leaves exactly two cars unable to reach the tuner at any build', () => {
+      const unreachable = roster
+        .filter((r) => r.num('styleCeiling') < tuner)
+        .map((r) => r.get('variantLabel'))
+      expect(unreachable.sort()).toEqual(['Honda Acty (HA4 Truck)', 'Suzuki Wagon R (CT21S)'])
+    })
+
+    it('leaves seven cars unable to reach the stancer at any build, all of them entry', () => {
+      const unreachable = roster.filter((r) => r.num('styleCeiling') < stancer)
+      expect(unreachable).toHaveLength(7)
+      expect(unreachable.every((r) => r.get('tier') === 'entry')).toBe(true)
+    })
   })
 
   it('uses ids that are unique, and only on cars marked as built', () => {
@@ -265,6 +333,7 @@ describe('the tuning-arc constants, once they reach content', () => {
   const CONSTANTS = [
     { field: 'reliabilityBase', column: 'reliabilityBase' },
     { field: 'styleBase', column: 'styleBase' },
+    { field: 'styleCeiling', column: 'styleCeiling' },
     { field: 'aeroCeiling', column: 'aeroCeiling' },
   ] as const
 

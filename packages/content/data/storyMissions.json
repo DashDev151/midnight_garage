@@ -77,7 +77,7 @@
       {
         "kind": "tasteMatch",
         "buyerId": "first-timer",
-        "minMultiplier": 1.07
+        "minMultiplier": 1.08
       },
       {
         "kind": "statThreshold",
@@ -179,12 +179,12 @@
       {
         "kind": "tasteMatch",
         "buyerId": "stancer",
-        "minMultiplier": 1.06
+        "minMultiplier": 1.09
       },
       {
         "kind": "statThreshold",
         "stat": "style",
-        "min": 50
+        "min": 74
       }
     ],
     "budgetCapYen": 1161000,
@@ -217,7 +217,7 @@
       {
         "kind": "tasteMatch",
         "buyerId": "tuner",
-        "minMultiplier": 1.05
+        "minMultiplier": 1.08
       }
     ],
     "budgetCapYen": 1497000,

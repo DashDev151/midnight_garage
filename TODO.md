@@ -522,15 +522,6 @@ pass."
   still lists `fr` or `cd` as estimated where the value that landed is a panel reading, and the
   spec book's own `est` list disagrees with ours on seven cars. Copy it from the book in whatever
   pass decides the first one.
-- [ ] **RESOLVED IN PART (docs/sprints/sprint_archive/sprint145.md): `styleBase` gives every car its own car-level style
-  input, but stock style still tops out at 20, so the upper 80 per cent of the axis remains
-  reachable only through bolt-on parts.** The retired flat `styleCap` (20 for every stock car,
-  a Countach and a Wagon R scoring level) is gone; `CarModel.spec.styleBase` now differentiates
-  every car, authored 4 to 20 for all 94 roster rows. That range is a deliberate restraint, not
-  an oversight: rescaling those 94 judged values is authoring work, and the right time to do it
-  is with the appraisal screen in front of a reviewer and a stancer buyer actually shopping, not
-  as a wiring change. Landing the mechanism first means the eventual retune is one column in a
-  spreadsheet rather than a code change. Revisit once the appraisal screen exists.
 - [ ] **There is still no aero grade above `race`, and the headroom for it was opened
   deliberately** (`docs/design/systems/tuning-system.md` section 12, which records the gap;
   the acceptance target for the missing rung is in `docs/design/car-performance/README.md` 7g).
@@ -620,20 +611,39 @@ pass."
   part's grade. `packages/sim/tests/authenticity.test.ts` pins the limitation and fails the
   moment a non-stock body SKU is added.
 
-- [ ] **One measured defect leaves `style` unable to do the job the buyer tables already ask of
-  it, independent of whatever the desirability design
-  (`docs/design/systems/desirability-system.md`) decides to do about it.** A fact about the
-  codebase today, not a design question. (Its `authenticity` twin was the frozen dice roll,
-  fixed in Sprint 151.)
-
-  - **`style` on a stock mint car equals `styleBase`, authored 4 to 20 across the roster, so no
-    stock car can clear any buyer's style target**: the stancer wants 0.65, the kei-specialist
-    0.55, the collector 0.50, the tuner 0.45. Only 7 of 29 taxonomy slots carry any style weight
-    at all, totalling 14 points. This is the sharp, buyer-facing version of the older styleBase
-    item above (this file, "RESOLVED IN PART"), which explains why 4 to 20 was chosen
-    deliberately; this entry states the numeric consequence of leaving it there.
-
 ## Open balance/economy questions
+
+- [ ] **BLOCKING, NEEDS A MAINTAINER LEVER DECISION: the unimproved instant flip became
+  profitable on the top two tiers when style became a real number (Sprint 152, 2026-07-31).**
+  Nothing was tuned to chase it, because every candidate lever is outside what that sprint was
+  authorised to touch (directive 22). `valueModelProbes.test.ts`'s unimproved-flip guard fails on
+  three of its four tiers and **those three failures are in the tree**:
+
+  | tier | median flip margin | share of flips profitable | verdict |
+  | --- | ---: | ---: | --- |
+  | `entry` | below -1% | - | **passes** |
+  | `everyday` | **-0.99%** | 42.3% | fails a -1% bar by a hair |
+  | `enthusiast` | **+0.19%** | 51.5% | fails |
+  | `flagship` | **+1.05%** | 65.0% | fails |
+
+  **The cause is arithmetic, not a defect.** Median stock style by tier went 7 -> 24 (`entry`),
+  13 -> 53 (`everyday`), 15 -> 64 (`enthusiast`), 17 -> 74 (`flagship`). Buyer style targets are
+  stancer 65, kei-specialist 55, collector 50, tuner 45. Under the old 4-to-20 scale no stock car
+  cleared any of them, so an untouched car's taste multiplier was always below 1; now a mint stock
+  flagship clears all four. The guard's own comment ("a walk-in never pays over the taste-free
+  market read for an untouched car") was true only because of that, and is now false.
+
+  **The structural asymmetry underneath it is the real question.** `marketValueYen` takes no stats
+  at all (a locked ruling: a car is never worth more because it is faster), so the BUY side does
+  not price beauty, while the sell side does, through buyer taste. Style just became the largest
+  taste term on an untouched car. Candidate levers, none of them pulled and none of them signed:
+  `liquidity.qualityFresh`, `valuation.tasteSpread`, the auction buyout premium, or the six buyer
+  `statTargets.style` values. **`statFormulas.styleSaturationPoints` cannot fix it and is not a
+  candidate:** an unimproved car has fitted style points near zero, so its `reach` is near zero
+  and the saturation lever has no leverage on a stock car by construction.
+
+  `desirability-system.md` section 6 predicted exactly this ("buyer style targets were authored
+  against the old scale and should be re-checked against the new one"). The re-check is above.
 
 - [ ] **CORRECTED FINDING: "the money is in the buying, not the fixing" was WRONG. The
   fixing-is-always-profitable law is NOT broken (2026-07-31).** The original finding combined
@@ -1274,6 +1284,18 @@ pass."
   teach generation to pick among a grade's kit SKUs so auction lots can wear them.
 
 ## Design decisions awaiting maintainer direction
+
+- [ ] **The reputation system wants a fresh look once the sale-value arc lands (maintainer
+  instruction, 2026-07-31, raised while ruling on the instant-flip guard).** Settling the guard's
+  bound (`valueModelProbes.test.ts`, the unimproved-flip probe), the maintainer named reputation
+  loss on some sales, alongside the opportunity cost of not building a car already owned, as one
+  of the real forces that stop a player flipping every car. That is a live claim about what
+  reputation does today, made in passing while deciding something else, and reputation itself has
+  not been re-examined against it. Two items already open here bear on whether it holds and
+  should be read alongside this one rather than restated: reputation is a ratchet, so losing it is
+  close to free once a shop has everything unlocked (Open balance/economy questions); and a sale
+  carries no reputation-quality provenance today, since specialty earns from service-job work only
+  (Open engineering). Worth a dedicated look once the sale-value arc is settled, not before.
 
 - [ ] **The progression map is drafted (`docs/design/progression-map.md`, 2026-07-22): the
   factual board for the mid-game design session, holes ranked.** Headliners: the

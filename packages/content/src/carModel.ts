@@ -49,125 +49,138 @@ export const CarModelSchema = z
     brand: z.string().min(1),
     parodyName: z.string().min(1),
     parodyBrand: z.string().min(1),
-    spec: z.object({
-      chassisCode: z.string().min(1),
-      engineCode: z.string().min(1),
-      yearFrom: z.number().int().gte(1955).lte(2010),
-      curbWeightKg: z.number().int().positive(),
-      stockPowerPs: z.number().int().positive(),
-      quotedPowerPs: z.number().int().positive().optional(),
-      powerRpm: z.number().int().positive().optional(),
-      peakTorqueNm: z.number().int().positive().optional(),
-      torqueRpm: z.number().int().positive().optional(),
-      redlineRpm: z.number().int().positive().optional(),
-      displacementCc: z.number().int().positive().optional(),
-      engineConfig: z
-        .enum([
-          'I3',
-          'I4',
-          'I5',
-          'I6',
-          'V6',
-          'V8',
-          'V10',
-          'V12',
-          'flat-4',
-          'flat-6',
-          'rotary-2',
-          'rotary-3',
-        ])
-        .optional(),
-      aspiration: z.enum(['NA', 'turbo', 'twin-turbo', 'supercharged']).optional(),
-      /**
-       * What this car is when everything is right: a stock mint example sits
-       * exactly here, and nothing the game does ever lifts a car above its own
-       * base (`computeDerivedStats`'s reliability derivation multiplies
-       * everything else). Required, not defaulted - the same footing as any
-       * other per-car character constant this schema carries - so a car added
-       * later cannot silently inherit a value nobody chose.
-       *
-       * The scale runs 65 to 100, age and engineering culture rather than
-       * price. The floor sits at 65 rather than lower because the base
-       * multiplies condition and coherence: a car with almost nothing to lose
-       * is a car where neither of those two systems still matters.
-       */
-      reliabilityBase: z.number().min(0).max(100),
-      /**
-       * How the car looks stock, on the same footing as `reliabilityBase`
-       * above: a mint stock example sits exactly here, and no aftermarket
-       * modifier lifts a car above its own base until it is actually fitted.
-       * Required, not defaulted - a car added later cannot silently inherit
-       * a value nobody chose, which is exactly the `powerFraction` gap this
-       * schema already closed once.
-       *
-       * The scale runs 4 to 100. The authored roster only reaches as high as
-       * 20 (a Lamborghini Countach), because stock styling was deliberately
-       * left un-rescaled when this field replaced the flat 20 cap
-       * (`docs/sprints/sprint_archive/sprint145.md`): the upper reaches of the axis stay
-       * reachable only through bolt-on parts until a later authoring pass
-       * revisits the 91 judged values.
-       */
-      styleBase: z.number().min(0).max(100),
-      weightDistributionFront: z.number().gte(30).lte(70).optional(),
-      wheelbaseMm: z.number().int().positive().optional(),
-      comHeightMm: z.number().int().positive().optional(),
-      dragCd: z.number().positive().optional(),
-      // real published body width/height (mm); frontal area for aero drag derives as 0.82 * width * height
-      widthMm: z.number().int().positive().optional(),
-      heightMm: z.number().int().positive().optional(),
-      stockTyre: z.string().min(1).optional(),
-      tyreCompound: TyreCompoundSchema.optional(),
-      /** Factory aerodynamic downforce coefficient: grip gained per (m/s)^2 of
-       * speed, so it is worth nothing at a standstill and a great deal on a fast
-       * corner. Absent (0) on almost every road car; only genuine factory aero
-       * earns a value. Aftermarket aero replaces it (same slot). */
-      downforceCoeff: z.number().nonnegative().optional(),
-      /** Factory active torque-vectoring (ATTESA E-TS Pro / Super AYC), the
-       * cornering edge that lifts an equipped AWD car's mechanical grip above
-       * a passive one. Absent on every car without it. */
-      activeYaw: z.enum(['attesa', 'ayc']).optional(),
-      zeroToHundredS: z.number().positive().optional(),
-      /** Top speed in km/h. Not whole-number constrained: a measured figure
-       * converted from mph rarely lands on one, and rounding it would break the
-       * drag coefficient that was back-solved from it. */
-      topSpeedKmh: z.number().positive().optional(),
-      /**
-       * Measured performance, copied from the vetted spec book. Every entry
-       * belongs to a PAIR read at two speeds, and the pair is the whole method:
-       * a single figure cannot separate mechanical grip from aerodynamic
-       * downforce, or launch traction from engine power.
-       *
-       * The lateral pair is indivisible, and the refinements below reject a
-       * half of it. Braking and acceleration are not: a car too slow to reach
-       * 161 km/h publishes only the 97 km/h figure, and the model has a
-       * one-measurement path that spends it rather than discarding it. What is
-       * always rejected is the FASTER half alone, which is a gap in the data
-       * rather than a fact about the car.
-       *
-       * MIND THE SPEEDS, they differ by pair. Lateral grip is read at 97 and
-       * 193 km/h (g); braking distance at 97 and 161 km/h (metres); and
-       * acceleration to 97 and to 161 km/h (seconds). Downforce rises with the
-       * square of speed, so reading `lateralG193` as a 161 km/h figure corrupts
-       * every quantity fitted from it.
-       */
-      lateralG97: z.number().positive().optional(),
-      lateralG193: z.number().positive().optional(),
-      braking97To0M: z.number().positive().optional(),
-      braking161To0M: z.number().positive().optional(),
-      zeroTo97S: z.number().positive().optional(),
-      zeroTo161S: z.number().positive().optional(),
-      /**
-       * Where the measured figures come from. `forza-panel` is a panel reading
-       * carried as published. `forza-panel-override` is a car whose panel
-       * measures a preset build rather than the stock one, so the figures here
-       * are the corrected stock values and the spec book carries the ruling
-       * that replaced them. `modelled` is a car with no measurement at all,
-       * whose behaviour comes from the fallback regressions.
-       */
-      measuredFrom: z.enum(['forza-panel', 'forza-panel-override', 'modelled']).optional(),
-      dataConfidence: z.enum(['HIGH', 'MED', 'LOW']).optional(),
-      estimatedFields: z.array(z.string()).optional(),
-    }),
+    spec: z
+      .object({
+        chassisCode: z.string().min(1),
+        engineCode: z.string().min(1),
+        yearFrom: z.number().int().gte(1955).lte(2010),
+        curbWeightKg: z.number().int().positive(),
+        stockPowerPs: z.number().int().positive(),
+        quotedPowerPs: z.number().int().positive().optional(),
+        powerRpm: z.number().int().positive().optional(),
+        peakTorqueNm: z.number().int().positive().optional(),
+        torqueRpm: z.number().int().positive().optional(),
+        redlineRpm: z.number().int().positive().optional(),
+        displacementCc: z.number().int().positive().optional(),
+        engineConfig: z
+          .enum([
+            'I3',
+            'I4',
+            'I5',
+            'I6',
+            'V6',
+            'V8',
+            'V10',
+            'V12',
+            'flat-4',
+            'flat-6',
+            'rotary-2',
+            'rotary-3',
+          ])
+          .optional(),
+        aspiration: z.enum(['NA', 'turbo', 'twin-turbo', 'supercharged']).optional(),
+        /**
+         * What this car is when everything is right: a stock mint example sits
+         * exactly here, and nothing the game does ever lifts a car above its own
+         * base (`computeDerivedStats`'s reliability derivation multiplies
+         * everything else). Required, not defaulted - the same footing as any
+         * other per-car character constant this schema carries - so a car added
+         * later cannot silently inherit a value nobody chose.
+         *
+         * The scale runs 65 to 100, age and engineering culture rather than
+         * price. The floor sits at 65 rather than lower because the base
+         * multiplies condition and coherence: a car with almost nothing to lose
+         * is a car where neither of those two systems still matters.
+         */
+        reliabilityBase: z.number().min(0).max(100),
+        /**
+         * How the car looks stock, on the same footing as `reliabilityBase`
+         * above: a mint stock example sits exactly here, and no aftermarket
+         * part lifts a car above it until one is actually fitted.
+         * Required, not defaulted - a car added later cannot silently inherit
+         * a value nobody chose, which is exactly the `powerFraction` gap this
+         * schema already closed once.
+         *
+         * The scale runs 0 to 100 and the authored roster spans 15 (a Honda
+         * Acty) to 88 (a Lamborghini Countach), so a beautiful car is beautiful
+         * before anything is bolted to it.
+         */
+        styleBase: z.number().min(0).max(100),
+        /**
+         * How good the car could ever look, fully and tastefully modified. With
+         * `styleBase` above it forms the pair the whole style axis turns on:
+         * aftermarket parts do not ADD style, they close the gap between the
+         * two (`computeDerivedStats`), so the same kit is transformative on a
+         * car with sixty points of headroom and near worthless on one with
+         * five.
+         *
+         * Authored per car for all 94 roster rows, never derived - not from
+         * `aeroCeiling` (which asks what a body can be made to DO, a different
+         * question from what a scene can be made to do WITH it) and not from
+         * `culture`. The roster spans 42 to 96.
+         */
+        styleCeiling: z.number().min(0).max(100),
+        weightDistributionFront: z.number().gte(30).lte(70).optional(),
+        wheelbaseMm: z.number().int().positive().optional(),
+        comHeightMm: z.number().int().positive().optional(),
+        dragCd: z.number().positive().optional(),
+        // real published body width/height (mm); frontal area for aero drag derives as 0.82 * width * height
+        widthMm: z.number().int().positive().optional(),
+        heightMm: z.number().int().positive().optional(),
+        stockTyre: z.string().min(1).optional(),
+        tyreCompound: TyreCompoundSchema.optional(),
+        /** Factory aerodynamic downforce coefficient: grip gained per (m/s)^2 of
+         * speed, so it is worth nothing at a standstill and a great deal on a fast
+         * corner. Absent (0) on almost every road car; only genuine factory aero
+         * earns a value. Aftermarket aero replaces it (same slot). */
+        downforceCoeff: z.number().nonnegative().optional(),
+        /** Factory active torque-vectoring (ATTESA E-TS Pro / Super AYC), the
+         * cornering edge that lifts an equipped AWD car's mechanical grip above
+         * a passive one. Absent on every car without it. */
+        activeYaw: z.enum(['attesa', 'ayc']).optional(),
+        zeroToHundredS: z.number().positive().optional(),
+        /** Top speed in km/h. Not whole-number constrained: a measured figure
+         * converted from mph rarely lands on one, and rounding it would break the
+         * drag coefficient that was back-solved from it. */
+        topSpeedKmh: z.number().positive().optional(),
+        /**
+         * Measured performance, copied from the vetted spec book. Every entry
+         * belongs to a PAIR read at two speeds, and the pair is the whole method:
+         * a single figure cannot separate mechanical grip from aerodynamic
+         * downforce, or launch traction from engine power.
+         *
+         * The lateral pair is indivisible, and the refinements below reject a
+         * half of it. Braking and acceleration are not: a car too slow to reach
+         * 161 km/h publishes only the 97 km/h figure, and the model has a
+         * one-measurement path that spends it rather than discarding it. What is
+         * always rejected is the FASTER half alone, which is a gap in the data
+         * rather than a fact about the car.
+         *
+         * MIND THE SPEEDS, they differ by pair. Lateral grip is read at 97 and
+         * 193 km/h (g); braking distance at 97 and 161 km/h (metres); and
+         * acceleration to 97 and to 161 km/h (seconds). Downforce rises with the
+         * square of speed, so reading `lateralG193` as a 161 km/h figure corrupts
+         * every quantity fitted from it.
+         */
+        lateralG97: z.number().positive().optional(),
+        lateralG193: z.number().positive().optional(),
+        braking97To0M: z.number().positive().optional(),
+        braking161To0M: z.number().positive().optional(),
+        zeroTo97S: z.number().positive().optional(),
+        zeroTo161S: z.number().positive().optional(),
+        /**
+         * Where the measured figures come from. `forza-panel` is a panel reading
+         * carried as published. `forza-panel-override` is a car whose panel
+         * measures a preset build rather than the stock one, so the figures here
+         * are the corrected stock values and the spec book carries the ruling
+         * that replaced them. `modelled` is a car with no measurement at all,
+         * whose behaviour comes from the fallback regressions.
+         */
+        measuredFrom: z.enum(['forza-panel', 'forza-panel-override', 'modelled']).optional(),
+        dataConfidence: z.enum(['HIGH', 'MED', 'LOW']).optional(),
+        estimatedFields: z.array(z.string()).optional(),
+      })
+      .strict(),
     /** Market position: what the car is worth and what basket of parts it is
      * charged for. Independent of `rarity` and `origin`. */
     tier: CarTierSchema,
@@ -201,6 +214,11 @@ export const CarModelSchema = z
   .refine((m) => hasSlowerHalf(m.spec.zeroTo97S, m.spec.zeroTo161S), {
     message: 'zeroTo161S needs zeroTo97S beside it: the 0-97 may stand alone',
     path: ['spec', 'zeroTo97S'],
+  })
+  .refine((m) => m.spec.styleCeiling >= m.spec.styleBase, {
+    message:
+      'styleCeiling is what the car could look like at its best: it cannot sit below styleBase',
+    path: ['spec', 'styleCeiling'],
   })
 
 export const CarModelsSchema = z.array(CarModelSchema).min(1)

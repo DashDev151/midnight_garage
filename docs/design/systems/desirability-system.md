@@ -1,8 +1,18 @@
 # Authenticity and style: two stats a car can actually earn
 
-**Status: SECTION 3 (authenticity) BUILT in Sprint 151. SECTION 2 (style) NOT BUILT.** Supersedes
-both earlier 2026-07-31 drafts of this document. The first invented two new stats and was wrong
-to; the second stated the problem without specifying the system. This one specifies it.
+**Status: BOTH SECTIONS BUILT. Section 3 (authenticity) in Sprint 151, section 2 (style) in
+Sprint 152.** Supersedes both earlier 2026-07-31 drafts of this document. The first invented two
+new stats and was wrong to; the second stated the problem without specifying the system. This one
+specifies it.
+
+**One consequence this document predicted has a number attached now, and it is open.** Section 6
+says "buyer style targets were authored against the old scale and should be re-checked against
+the new one". The re-check happened by itself: median stock style rose from 13 to 53 on
+`everyday`, 15 to 64 on `enthusiast` and 17 to 74 on `flagship`, so a mint stock car now clears
+targets that used to be out of reach without work, and the unimproved-flip guard
+(`valueModelProbes.test.ts`) fails on those three tiers. See `docs/sprints/sprint152.md`'s Exit:
+the numbers are measured and NOTHING was tuned, because every candidate lever is outside the one
+this sprint was authorised to move.
 
 **What shipped, and the one thing that did not.** Authenticity is derived exactly as section 3
 states, on the 29 per-slot weights recorded in `authenticity-weights-proposal.md`, and all four
@@ -181,9 +191,9 @@ it is modified, which turns the collector away, so no second mechanism is needed
 
 | what | where | scope | status |
 | --- | --- | --- | --- |
-| `styleBase`, rescaled | roster CSV | all 94 | **needs authoring**, replaces the 4-20 range |
-| `styleCeiling` | roster CSV | all 94 | **new, needs authoring** |
-| `styleSaturationPoints` | `economy.json` | one value | **needs signing** |
+| `styleBase`, rescaled | roster CSV | all 94 | **AUTHORED (Sprint 152)**, 15-88, replaces the 4-20 range |
+| `styleCeiling` | roster CSV | all 94 | **AUTHORED (Sprint 152)**, 42-96, preliminary and unsigned |
+| `styleSaturationPoints` | `economy.json` | one value | **IMPLEMENTED (Sprint 152)** at 60, preliminary and unsigned |
 | per-slot authenticity weights | `parts-taxonomy.json` | 29 slots | **AUTHORED (Sprint 151)**, preliminary and unsigned |
 | per-operation authenticity cost | machining content | 13 operations baselined | **stand-in figures, need signing** |
 | `CarInstance.authenticityPercent` | `carInstance.ts` | - | **RETIRED (Sprint 151)** |
@@ -214,13 +224,21 @@ against the old scale and should be re-checked against the new one, though not n
 
 ## 7. What is still open
 
-1. **The rescaled `styleBase` and new `styleCeiling` values for 94 cars.** Authoring work, and the
-   largest single job in this design.
-2. **`styleSaturationPoints`.** Today about 82 points of style are fittable across all slots. A
-   saturation point near that means a fully dressed car exactly fills its gap.
-3. **The machining system**, on which the authenticity costs depend. `machiningCost(car)` is wired
+1. **Signing the 94 `styleBase` and `styleCeiling` pairs.** Authored in Sprint 152 from
+   `style-authoring-proposal.md` and shipped as preliminary, reviewed-and-sane values. That
+   document's section 6 lists the ten calls to review first, headed by the Z33 at 45 against the
+   worked example's own 30.
+2. **Signing `styleSaturationPoints`.** Implemented at 60 against the roughly 82 points fittable
+   across all slots, so a focused build reaches its car's ceiling without needing every part.
+3. **What the risen stock-style scale does to the sale side.** The unimproved-flip guard now
+   fails on `everyday` (margin -0.99 per cent against a -1 per cent bar), `enthusiast` (+0.19)
+   and `flagship` (+1.05): a beautiful stock car is genuinely worth more to a buyer who cares
+   how it looks, and nothing on the BUY side prices beauty, because `marketValueYen` takes no
+   stats. Measured in `docs/sprints/sprint152.md`; the fix is a lever decision, not an
+   implementation one.
+4. **The machining system**, on which the authenticity costs depend. `machiningCost(car)` is wired
    and returns 0 until it exists.
-4. **Originality for `paint`, `panels` and `underbody`**, which cannot currently read as modified
+5. **Originality for `paint`, `panels` and `underbody`**, which cannot currently read as modified
    at all. See the header and `TODO.md`.
-5. **Signing the 29 authenticity weights.** They ship as preliminary defaults, recorded in
+6. **Signing the 29 authenticity weights.** They ship as preliminary defaults, recorded in
    `sprint151.md` as the values implemented rather than approved under directive 22.

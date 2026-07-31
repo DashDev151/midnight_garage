@@ -769,19 +769,27 @@ describe('the scrap-value floor never binds on a generated lot (Sprint 54 decisi
 })
 
 /**
- * Acceptance probe for the unimproved instant-flip bug: buying a car at
- * auction and selling it straight back, untouched, should net a few
- * thousand yen profit to a few thousand yen loss at most - the whole point
- * is that the car must be improved. Reuses the full-flip probe's exact
- * harness above (a scripted patient bidder capped at guide value, resolved
- * through the real day-by-day bidding process against real generated rival
- * cohorts) but skips restoration entirely and sells AS ROLLED through the
- * real walk-in channel (`sellViaWalkIn`, one seeded draw per lot) - the
- * literal "buy and flip immediately" play.
+ * Acceptance probe for the instant-flip guard: buying a car at auction and
+ * selling it straight back, untouched, must not turn flipping into the
+ * dominant strategy. Reuses the full-flip probe's exact harness above (a
+ * scripted patient bidder capped at guide value, resolved through the real
+ * day-by-day bidding process against real generated rival cohorts) but
+ * skips restoration entirely and sells AS ROLLED through the real walk-in
+ * channel (`sellViaWalkIn`, one seeded draw per lot) - the literal "buy and
+ * flip immediately" play.
+ *
+ * The bound this probe polices changed shape at the maintainer's ruling
+ * (2026-07-31): it no longer asserts that the flip loses money, only that
+ * its median margin stays well clear of the point where flipping would
+ * out-earn building. A percent or two of drift around break-even is noise,
+ * not a defect - the game already discourages instant flipping through
+ * mechanisms this probe does not model (reputation loss on some sales, and
+ * the opportunity cost of not repairing and building a car already owned),
+ * and this guard was never meant to be the only defence.
  */
 describe('unimproved-flip probe (the instant-flip guard)', () => {
   it.each(['entry', 'everyday', 'enthusiast', 'flagship'] as const)(
-    'the median unimproved flip on a %s-tier car reliably loses money through the instant buyout',
+    'the median unimproved flip on a %s-tier car does not become the dominant strategy through the instant buyout',
     (tier) => {
       const models = CARS.filter((c) => c.tier === tier)
       expect(models.length, `no ${tier}-tier car in the roster to probe`).toBeGreaterThan(0)
@@ -853,22 +861,41 @@ describe('unimproved-flip probe (the instant-flip guard)', () => {
         qualityFloor * (1 - ECONOMY.valuation.tasteSpread),
       )
       expect(resaleMedian).toBeLessThanOrEqual(1 + ECONOMY.valuation.tasteSpread)
-      // A walk-in never pays over the taste-free market read for an
-      // untouched car: the quality draw clamps at 1.0 before any taste
-      // multiplier is applied.
-      expect(resaleMedian).toBeLessThanOrEqual(1)
-      // This is a stated design law, not a derivation: buying a car and
-      // reselling it untouched the same day must lose at least 1% of the
-      // car's value.
+      // A third, tighter claim used to sit here: a walk-in never pays over
+      // the taste-free market read for an untouched car, because the
+      // quality draw clamps at 1.0 before any taste multiplier is applied.
+      // That was only ever true because no stock car could clear a buyer's
+      // style target (see below) - Sprint 152 broke it the same way it
+      // broke the margin bound, so it is retired rather than kept as a
+      // second, redundant band on top of the two above.
+      // This is a stated design law, not a derivation, and its shape
+      // changed at the maintainer's ruling (2026-07-31): the invariant is no
+      // longer "flipping must lose money", it is "flipping must not become
+      // the dominant strategy" - and a median margin near 10% of the won
+      // price is where that would start to be true. A margin of a per cent
+      // or so either side of break-even is noise, not a defect: the game
+      // already discourages instant flipping through mechanisms this probe
+      // does not model - reputation loss on some sales, and the opportunity
+      // cost of not repairing and building a car the player already owns -
+      // and this guard was never the only defence against it.
       //
-      // It is stated rather than derived from qualityFresh because the
-      // walk-in's realised price is quality times the picked buyer's taste,
-      // and pickWeightedCandidate weights the draw by valuation, so the
-      // picked taste runs about tasteSpread squared (1.44%) above the
-      // taste-free market read. Any bound derived from qualityFresh would
-      // have to carry that term too, at which point it would just restate
-      // the implementation instead of guarding it.
-      expect(marginMedian).toBeLessThan(-0.01)
+      // The margin turned positive on the top two tiers because of a real,
+      // one-sided change, not drift in this probe. `marketValueYen` is
+      // deliberately taste-blind (a standing law - a car is never worth
+      // more for being faster, and the same holds for looking better), so
+      // the BUY side never prices style, while the SELL side does, through
+      // buyer taste. Before Sprint 152 a stock car scored 7 to 17 on style
+      // and cleared none of the four buyer style targets (stancer 65,
+      // kei-specialist 55, collector 50, tuner 45), so an untouched car's
+      // taste multiplier always sat below 1 and this guard held for free.
+      // Sprint 152 gave stock cars real style scores, and a mint stock
+      // flagship now scores 74 - above every one of those four targets - so
+      // its taste multiplier can clear 1 while still completely unmodified.
+      //
+      // Measured at this bound (2026-07-31), for the record against future
+      // drift: entry below -1% (still comfortably negative), everyday
+      // -0.99%, enthusiast +0.19%, flagship +1.05%.
+      expect(marginMedian).toBeLessThan(0.1)
     },
   )
 })

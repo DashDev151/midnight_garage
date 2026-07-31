@@ -1025,6 +1025,21 @@ export const EconomyConfigSchema = z.object({
      * valuation.ts). */
     powerNormalizationCeiling: z.number().positive(),
     /**
+     * How many points of fitted `statModifiers.style` take a car all the way
+     * from its own `spec.styleBase` to its own `spec.styleCeiling`
+     * (`computeDerivedStats`): `reach = min(1, fitted / styleSaturationPoints)`.
+     * Style is the one stat where a part closes a gap rather than adding to a
+     * total, so this is the exchange rate between the catalogue's points and
+     * every car's own headroom.
+     *
+     * At 60 against the roughly 82 points a maximal fit-everything build
+     * totals, a focused and coherent build reaches its car's ceiling without
+     * needing literally every style part, and the last stretch is spent on an
+     * already-finished car. Setting it at the maximum instead would mean only
+     * an exhaustive build ever reaches a ceiling, which punishes taste.
+     */
+    styleSaturationPoints: z.number().positive(),
+    /**
      * Handling's grip model (`performance.ts`). Every constant of the
      * mechanical-grip calculation, the tyre-grade-to-compound map, the
      * two-segment 0-100 display curve, and the balance term lives here so
