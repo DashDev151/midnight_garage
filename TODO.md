@@ -238,6 +238,99 @@ pass."
   tutorial bug below by construction, since `local-yard` opens on day 1. Full record in
   `docs/sprints/sprint149.md`'s Exit, which stays out of the archive until this lands.
 
+- [ ] **SIGNED LEVER, AWAITING IMPLEMENTATION: `auctionRoom.reserveFraction` moves 0.55 to 0.6
+  (maintainer, 2026-07-31).** The ruling in full: *"set the reserve to 0.6 everywhere."* Recorded
+  by name and value so it can be built under directive 22 without a second sign-off. It is signed,
+  not proposed.
+
+  **What it fixes: the game holds two different numbers for one idea.**
+  `AUCTION_RESERVE_PRICE_FRACTION`, which prices every reserve outside the live room, is already
+  **0.6**. The live room's own floor, `auctionRoom.reserveFraction`, is **0.55**. Five points of
+  disagreement about what a reserve is.
+
+  **What moves in the same change:** the value in `packages/content/data/economy.json`; the pin in
+  `packages/content/tests/schemas.test.ts`, which asserts 0.55 exactly; and
+  `docs/design/systems/live-auction.md`'s knob list, which states it as 0.55 in prose.
+  `packages/game/src/screens/auctionRoom.ts` reads it as the bottom of a cold room's clearing
+  draw, so a bargain room's floor rises with it, which is the intent rather than a side effect.
+  `docs/design/systems/worked-example-two-cars.md` quotes it in both acquisition sections and is
+  generated, so it re-derives on its next run rather than needing an edit.
+
+- [ ] **DESIGN LAW: running costs accrue to the business, per-car costs attribute to the car
+  (maintainer, 2026-07-31). It corrects an earlier assumption and implies work that does not
+  exist.** The ruling in full: *"Machine-shop hire is NOT a per car fee. you could hire in the
+  engine crane and remove 4 engines that day. not accurate to include it as a per car fee. same
+  with rent and bays and staff costs. these are running costs. They accrue and should be shown on
+  a overarching, maybe weekly, financial summary, but they are not attributed to a specific car.
+  listing fees are however."*
+
+  - **Running costs, never attributed to a car:** machine-shop hire, rent, bays, staff.
+  - **Per-car costs, attributed to the car:** purchase, parts, repair charges, **and listing
+    fees**.
+
+  Two consequences follow, and the first is a real gap in the shipped ledger:
+  1. **Listing fees are missing from `CarLedger` and should be added.** The type is
+     `{ purchaseYen, repairYen, partsYen }` (`packages/content/src/gameState.ts`), so a cost this
+     ruling puts on the car is currently charged only to the day.
+     `docs/design/systems/worked-example-two-cars.md` says as much in both car sections: the
+     ledger "does not carry the machine-line hires or the listing fee". Half of that sentence is
+     now correct by law and half of it is a defect.
+  2. **No periodic financial summary exists.** The ruling asks for the running costs to be shown
+     together, "maybe weekly"; today rent and wages land as day-log lines and are never totalled
+     anywhere. Worth scoping alongside the calendar entry further down this file, which is already
+     asking what a week looks like on screen.
+
+  **Machine-shop hire is correct as it stands and must NOT be moved onto the car ledger.** It is
+  charged once per line per day (`resolveHireMachineLine`), and `economy-bible.md`'s 2026-07-23
+  amendment already records it as a running cost on the daily summary, never on a car's ledger.
+  This ruling ratifies that and extends the same reasoning to rent, bays and staff.
+
+- [ ] **CONFIRMED BUG, needs a design decision: every kei generates as a wreck (maintainer,
+  2026-07-31).** Their ruling: *"agreed. this is VERY broken and needs to be fixed. real bug."*
+  It bites hardest where it can least afford to, since the cheapest cars are the ones a day-one
+  shop can reach, so the first cars a player ever meets are all corpses.
+
+  **The constraint any fix has to satisfy, in their words:** *"Need to ground in reality. Some
+  cars should legitimately look like that, but it should be the exception."* A wreck is something
+  the game should still be able to produce; it should be rare.
+
+  **Two candidate directions were floated and NOT chosen between**: balance a car's tier on *"how
+  much labour they take to fix"*, or on *"how much money (scaled to their price of course)"*.
+  Their own closing note: *"i dont know how to fix it, but its broken."* So this is an open design
+  problem, not a queued task.
+
+  Whichever direction wins moves tier-keyed generation levers
+  (`partsGeneration.minWorkBillFractionByTier` and the three `partsGeneration.zoneStates` severity
+  tables are the ones that decide how rough a lot arrives), so every value needs signing under
+  directive 22 by name before any implementation.
+
+- [ ] **The daily expiry of machine-shop hire is INTENDED DESIGN, not a bug (maintainer,
+  2026-07-31). What may still be a defect is what the game does when the work does not finish.**
+  An earlier finding reported the overnight expiry as a defect. The maintainer challenged it and
+  the reasoning stands: hiring an engine crane for a day, not finishing, and having to hire it
+  again is *"an incentive to plan work properly to get it done in a day, otherwise pay extra"*.
+  Recorded here so it is not re-reported as a bug.
+
+  **What is genuinely open is the silent failure.** A job whose machinery is not hired stays in
+  `state.jobs` with `blockedReason: 'machine-line'` (`packages/sim/src/jobs.ts`) and nothing tells
+  the player in any usable form. The sim does emit a `job-blocked` day-log event carrying that
+  same reason, and `packages/game/src/utils/dayLogFormat.ts` renders it as
+  `Job <id> blocked (machine-line)`: a raw job id and a raw reason token, which is a developer
+  line rather than something a player can act on.
+
+  **UNVERIFIED, because nobody has checked it: whether the job resumes if the machinery is hired
+  again the next day, or whether it is wedged.** That answer decides whether this is a copy
+  problem or a mechanic problem, and it should be established before anything is designed.
+
+  **Terminology, maintainer instruction of 2026-07-31:** do not write "machine line" or "hire the
+  line" in prose anywhere. It is ambiguous. Name the machinery (engine crane, and so on) or say
+  "machine-shop hire". The codebase's `machineShopAssist` naming may stay as it is; this binds
+  writing, not identifiers. **One consequence for the harness rather than for a document:**
+  `packages/sim/src/workedExampleDoc.ts` prints the banned phrasing as prose in
+  `worked-example-two-cars.md` (the "Machine-line hire" ledger category, and the sentence "A
+  machine-line hire is a daily unlock"). That document is generated and must not be hand-edited,
+  so the wording is corrected in the renderer whenever it is next touched.
+
 - [ ] **The tutorial's "find" step assumes the Auctions tab is always open; Sprint 149's
   auction-day gate (`calendar.auctionDayOfWeek`, currently Wednesday) can leave a fresh day-1
   game unable to reach it for up to two days (found 2026-07-31, Sprint 149).**
@@ -583,6 +676,90 @@ pass."
   or an install-focused fill-the-gap step alongside the existing repair step.
 
 ## Open balance/economy questions
+
+- [ ] **CORRECTED FINDING: "the money is in the buying, not the fixing" was WRONG. The
+  fixing-is-always-profitable law is NOT broken (2026-07-31).** The original finding combined
+  repair spend with modification spend and reported the sum as though it were one play. Repair on
+  its own clears the bar comfortably. Decomposed from the two-car worked example's own figures for
+  the Wagon R:
+
+  | play | spent | value gained | result |
+  | --- | ---: | ---: | --- |
+  | repair to the expected band | ¥17,450 (¥7,780 repair charges + ¥9,670 repair parts) | ¥26,761 (¥184,284 to ¥211,045) | **+¥9,311, a 1.53x return** |
+  | modification | ¥19,580 | ¥6,579 (¥211,045 to ¥217,624) | **-¥13,001** |
+  | the two summed | ¥37,030 | ¥33,340 | -¥3,690, the misleading number originally reported |
+
+  **Repair beat the 1.3 `marketRepairDiscount` for two real reasons**, both worth remembering
+  whenever that lever is next argued about: body-pipeline materials are flat-priced while the bill
+  they clear scales with the car, and lifting the brake pads and calipers raised
+  `foundationFactor`, which multiplies the aftermarket premium already sitting on the car (its
+  `aftermarket` ledger line rose ¥4,029 to ¥8,954).
+
+  **What survives is weaker, and it is a question about PROPORTION rather than a broken law.**
+  Repair earned ¥9,311, while buying at the auction reserve rather than the desk buyout earned
+  ¥73,714 for no work at all. So fixing pays, and it is about 11 per cent of that car's profit.
+  The acquisition channel that produces the rest lives outside `packages/sim`
+  (`packages/game/src/screens/auctionRoom.ts` decides where a live room clears) and has never been
+  balance-tested. Whether that split is the intended shape is the open question. The economy
+  bible's core-loop law is not in question and this item must not be read as reopening it.
+
+- [ ] **APPROVED TO DESIGN, NO VALUE SIGNED: raise the shop front's taste ceiling, conservatively
+  (maintainer, 2026-07-31).** `sellingChannels.shopFront.tasteCeiling` is 1.0, so the forecourt
+  can never return more than the market value of the car however well it suits whoever walks in.
+  The maintainer likes raising it, with four constraints that all bind any design:
+  - The shop front *"should not be the best way to sell your cars, it should just be the first
+    way"*.
+  - Raise the cap *"concervatively"*.
+  - They like the idea that *"all types of buyers can be seen in the shop"*, which is a change to
+    who appears rather than to the ceiling, and may be the better half of the answer.
+  - It must not overlap too much with the dealer network (`tradeNetwork`), which is the fast,
+    taste-blind, flat-`priceBand` exit (0.95 to 1.02) and has to keep a reason to exist.
+
+  **No value is signed.** The design comes back with its number for sign-off under directive 22.
+  Sits under the listing-avenues ruling, `sale-value-system.md` section 6.
+
+- [ ] **The tuner magazine and the weekend meet need reworking into different buyer bases
+  (maintainer, 2026-07-31, agreed and unsigned).** Their words: *"they need to serve different
+  buyer bases. too much overlap."* **This is a buyer-base differentiation, not a fee adjustment**,
+  and a change that only moves `feeYen` has not addressed it.
+
+  The overlap is exact rather than approximate: both channels carry `tasteCeiling` 1.17 and both
+  are `matchedOnly`, so they draw the same buyers and price them identically. The worked example
+  lands on the same yen twice, ¥240,184 on the Wagon R and ¥542,568 on the S13, with the two
+  differing only in fee (¥12,000 against ¥3,000) and cadence (`offerChanceFactor` 0.6 against one
+  draw on the next end day). On those numbers the magazine is the meet with a bigger bill.
+
+  Unsigned. It sits under the listing-avenues ruling in `sale-value-system.md` section 6, whose
+  general-versus-specific axis is exactly what would tell these two apart.
+
+- [ ] **A starting shop CAN finish a car. The language correction matters, and the intent behind
+  it is an open question (maintainer, 2026-07-31).** The framing *"a starting shop can't finish a
+  car"* was rejected as inaccurate and should not be repeated: it can.
+
+  **The design target, in their words:** hiring in all the machinery to do the job properly
+  *"should destroy a lot of the margin"*, so the player faces a real choice. *"hire in the tools,
+  fix the car properly, make less money and more reputation. or dont hire in all of the tools, do
+  a half assed job on the repair, make slightly more money and slightly less rep."*
+
+  **Open: whether that trade-off exists in the game today.** It has not been measured, and it has
+  two independent halves. Are the hire fees heavy enough to eat a meaningful part of the margin?
+  And does the shallower repair actually cost reputation, rather than merely being permitted? If
+  either half is missing then the choice is not a choice, and which half is missing decides what
+  the fix is.
+
+- [ ] **What replacing a worn performance part with a stock one is worth: OPEN, with the
+  maintainer's own split to be worked through rather than assumed (2026-07-31).** Two scenarios,
+  and they behave differently:
+  1. **You are left with nothing.** Consumables such as brake pads and clutch, and any part in
+     `scrap` condition that cannot be repaired. The old part is gone and only the new one counts.
+  2. **You are left with the old part.** A `poor` aftermarket sport camshaft replaced by a `fine`
+     stock one, for instance. The removed part goes to inventory and *"has value and needs to be
+     factored in. it can be reconditioned and used in subsequent builds."* Any analysis that
+     prices this swap without counting what came off the car is wrong.
+
+  **Their open question, recorded as theirs:** *"maybe replacing brake pads shouldnt be that
+  profitable even though they are better condition. there are other reasons to do it, like
+  reliability."*
 
 - [ ] **The retention floor barely bites, so on retention alone almost every incoherent build is
   now BETTER off than under the old flat rate (measured at the end of Sprint 144).** Retention is

@@ -496,3 +496,19 @@ is the opposite error and was a plain misnaming: EF3 is the 1.6 Si, so the cheap
 5. **The Cosmo Sport (row 80) is the least-defended price of the original 85**, proven absent
    from every period source. Confident in its slot, not in the digit.
 6. **The Kenmeri as GT-R at ¥8.8M** is the single largest price lever in the table.
+
+---
+
+## 12. Amendment log
+
+**This document is a bible: an amendment needs explicit maintainer approval, recorded here.**
+
+- **2026-07-31: APPROVED. The `styleBase` entries in sections 3b and 3c, corrected from
+  "proposed, authored for the 26 shipped cars only" to "authored for all 94 rows and BUILT".**
+  The count had gone stale rather than been wrong when written: `midnight-garage-roster.csv`,
+  which this document designates as the source of truth, carries `styleBase` for all 94 rows;
+  `CarModel.spec.styleBase` is a schema-required field; and the flat `statFormulas.styleCap` it
+  replaced was retired in `docs/sprints/sprint_archive/sprint145.md`. **No rule, no number and no
+  car moved.** `aeroCeiling`, which shared the sentence being corrected, keeps its 26-of-94 status
+  and its unsigned mark unchanged. The edit landed in commit `1fb2681`, flagged there for
+  ratification rather than assumed; this entry is that ratification.

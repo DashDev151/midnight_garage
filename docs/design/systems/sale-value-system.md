@@ -308,6 +308,39 @@ presence**: cheap, low ceiling, but it puts an ordinary car in front of more arc
 the shop front does. It is the volume channel for common metal. **If that niche is not wanted,
 cut it** rather than leave a channel nobody has a reason to choose.
 
+### RULING: listing avenues are PROGRESSION (maintainer, 2026-07-31)
+
+**This is a stated direction, not a finished design.** The maintainer's own closing words: *"How
+we get there im not quite sure, but that is the general idea"*. It is recorded here, in the
+document of record for channels, so the direction survives; the mechanism that delivers it is
+still to be designed.
+
+**Two axes, and every channel sits on both.**
+
+**1. The general axis: channels improve as you progress.** *"They are progression. not all of
+them should be available to the player from day 1"*, and *"as you progress in the game your
+listing options should improve in a general sense."* So which channels a player can reach is
+earned, and a late shop lists better than a day-one shop does across the board.
+
+**2. The specific axis: some channels are unambiguously better for certain kinds of car.** In
+the maintainer's own framing: *"the listing avenues should be designed around the concept of
+general vs specific. In one sentance: some listing methods should be unambigously better for
+some kinds of cars."* A tuner car can be sold off the forecourt, but *"you will get a better
+buyer base if you list it in the magazine or whatever one is the best for that type of car"*.
+
+**A channel is therefore a BUYER BASE before it is a price multiplier with a fee attached.**
+That is the sharpest consequence of the ruling for anyone designing against it: the question a
+channel answers is "who sees this car", not "how much is added to it".
+
+**The shop front is the floor, deliberately.** *"listing in the shop front should be deliberatly
+the worst way to sell, but free."* It is the FIRST way to sell, never the best one, and it stays
+free so a player with nothing is never locked out of selling.
+
+**Two channel reworks ride on this ruling and are tracked in `TODO.md`**, both approved to design
+and neither carrying a signed number: raising the shop front's taste ceiling conservatively
+(without letting it overlap the trade network), and separating the tuner magazine and the
+weekend meet, which today are the same buyer base at two prices.
+
 ---
 
 ## 7. Time, space and rhythm

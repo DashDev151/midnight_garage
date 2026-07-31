@@ -64,6 +64,21 @@ modern ones**. The hook already exists: `CarInstance.parts[].installed.genuinePe
 boolean and `valuation.genuinePeriodMultiplier` is **1.25**
 (`marketValue.ts:239`). A third playstyle off machinery that already ships.
 
+**6. Modification barely paying on the wrong car is CORRECT, and this rework must preserve it.
+RULED 2026-07-31.**
+
+The finding this answers came out of the two-car worked example: modifying the Wagon R spent
+¥19,580 on parts and lifted the car ¥6,579, a loss of ¥13,001. **Ruled not a defect**, and ruled
+to be answered by this rework rather than ahead of it. The maintainer's words: *"modifying a kei
+with performance parts should be mostly a losing proposition unless you can find someone to pay
+you for it. already sounds pretty good to me."*
+
+**So it is a constraint on the design, not a problem for the design to fix.** The two halves of
+that sentence map onto the two things this document already decides: a kei's low **expression
+ceiling** is what makes the loss the default, and *"unless you can find someone to pay you for
+it"* is the buyer match, which is what makes the same build occasionally right. A rework that
+made a modified kei reliably profitable would have broken this, whatever else it achieved.
+
 ## What is open, and it is the hard part
 
 **1. Originality is half-baked.** It is named but not designed. What raises it, what lowers it,
