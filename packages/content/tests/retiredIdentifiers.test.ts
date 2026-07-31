@@ -90,6 +90,12 @@ const RETIRED_IDENTIFIERS: readonly RetiredIdentifier[] = [
     reason:
       'A flat 20 for every car regardless of what it was, so a Toyota 2000GT and a Nissan S-Cargo scored identically on style. Replaced by CarModel.spec.styleBase (a per-car value) - the flat cap had no per-car meaning.',
   },
+  {
+    identifier: 'buyer.statWeights',
+    retiredInSprint: 146,
+    reason:
+      'A weighted MEAN of five deliberately anti-correlated stats, so no real car could score highly and the taste band sat near the middle by construction. Replaced by Buyer.statTargets (target/upper/importance per stat, normalizedTasteScore in valuation.ts) - a match, where clearing a target earns full marks and an upper bound can actively cost them. Bare "statWeights" is not banned: CarPartTaxonomyEntryContentSchema.statWeights (parts-taxonomy.json condition weighting) is an unrelated, still-live field of the same name.',
+  },
 ]
 
 function escapeRegExp(text: string): string {

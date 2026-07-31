@@ -1,6 +1,5 @@
 import { z } from 'zod'
 import { CarTierSchema } from './tags'
-import { StatBlockSchema } from './stats'
 
 export const BuyerArchetypeSchema = z.enum([
   'collector',
@@ -8,6 +7,7 @@ export const BuyerArchetypeSchema = z.enum([
   'stancer',
   'racer',
   'first-timer',
+  'kei-specialist',
 ])
 
 /** Taste by market position: which league of car this archetype turns up for.
@@ -18,12 +18,40 @@ const TierPreferenceSchema = z.object({
   weight: z.number().min(0),
 })
 
+/**
+ * One derived stat's fit for a buyer archetype: taste is a match, not a
+ * mean (sprint146.md). `target` is the normalised [0, 1] value that fully
+ * satisfies the buyer on this stat - clearing it earns exactly as much as
+ * exceeding it, which is what lets a specialised car reach a perfect match
+ * instead of a generalist one always sitting closer to the middle. `upper`,
+ * when present, is the point past which the car starts actively working
+ * against the buyer (a caged race car putting off a first-timer, a built
+ * engine putting off a collector); absent, there is no ceiling on this stat.
+ * `importance` weights how much this stat counts toward the overall match;
+ * 0 means the buyer genuinely does not look at it.
+ */
+const StatTasteSchema = z.object({
+  target: z.number(),
+  upper: z.number().optional(),
+  importance: z.number().min(0),
+})
+
+/** Every derived stat's taste profile for a buyer archetype - the whole
+ * shape `normalizedTasteScore` (sim/valuation.ts) scores a car against. */
+const TasteProfileSchema = z.object({
+  power: StatTasteSchema,
+  handling: StatTasteSchema,
+  style: StatTasteSchema,
+  reliability: StatTasteSchema,
+  authenticity: StatTasteSchema,
+})
+
 export const BuyerSchema = z
   .object({
     id: z.string().regex(/^[a-z0-9-]+$/, 'ids are kebab-case: lowercase letters, digits, hyphens'),
     archetype: BuyerArchetypeSchema,
     displayName: z.string().min(1),
-    statWeights: StatBlockSchema,
+    statTargets: TasteProfileSchema,
     tierPreferences: z.array(TierPreferenceSchema).default([]),
     /**
      * One authored line naming this archetype's want, shown alongside an

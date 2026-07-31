@@ -616,8 +616,11 @@ describe('seed content ids are unique', () => {
    * since this is orchestrator-personal copy.
    */
   it('buyer want-lines match the sprint114.md authored copy exactly', () => {
+    const SPRINT_114_ARCHETYPES = new Set(['collector', 'tuner', 'stancer', 'racer', 'first-timer'])
     const wantLineById = Object.fromEntries(
-      BuyersSchema.parse(buyers).map((b) => [b.id, b.wantLine]),
+      BuyersSchema.parse(buyers)
+        .filter((b) => SPRINT_114_ARCHETYPES.has(b.id))
+        .map((b) => [b.id, b.wantLine]),
     )
     expect(wantLineById).toEqual({
       collector:
@@ -628,6 +631,18 @@ describe('seed content ids are unique', () => {
       'first-timer':
         'Needs it to start every cold morning without eating the budget. A service history beats a spoiler.',
     })
+  })
+
+  /**
+   * The kei specialist's want-line is fresh copy authored for its own
+   * archetype, pinned separately from the sprint114.md transplant above
+   * rather than folded into it.
+   */
+  it('the kei specialist want-line matches its authored copy exactly', () => {
+    const keiSpecialist = BuyersSchema.parse(buyers).find((b) => b.id === 'kei-specialist')
+    expect(keiSpecialist?.wantLine).toBe(
+      'Wants a kei that still drives like a kei: light and tidy on its feet. A big turbo does not impress him; it worries him, because that is not what the car was built for.',
+    )
   })
 
   it('parts-taxonomy ids cover exactly the 29 real parts, no duplicates', () => {

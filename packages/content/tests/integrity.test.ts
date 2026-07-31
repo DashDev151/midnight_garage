@@ -27,11 +27,11 @@ const TAXONOMY_CONTENT = CarPartTaxonomyContentSchema.parse(partsTaxonomy)
 const GROUP_BY_PART_ID = new Map(TAXONOMY_CONTENT.map((entry) => [entry.id, entry.group]))
 
 describe('referential integrity', () => {
-  it('every buyer statWeights covers exactly the five derived stats', () => {
+  it('every buyer statTargets covers exactly the five derived stats', () => {
     const parsedBuyers = BuyersSchema.parse(buyers)
     const expectedKeys = ['power', 'handling', 'style', 'reliability', 'authenticity'].sort()
     for (const buyer of parsedBuyers) {
-      expect(Object.keys(buyer.statWeights).sort()).toEqual(expectedKeys)
+      expect(Object.keys(buyer.statTargets).sort()).toEqual(expectedKeys)
     }
   })
 

@@ -172,23 +172,25 @@ describe('Stage C: the coherence discount on the whole car, at the market defaul
 })
 
 describe('the tolerance ruling: the stancer is exempt, the tuner is halved, against a first-timer', () => {
-  // Identical statWeights on all three, differing only by archetype, so
-  // tasteMultiplier is bit-identical across the three calls below and any
-  // difference in valuateCarForBuyer's output isolates the coherence
-  // discount's own per-archetype tolerance (economy.json's
+  // Identical statTargets on all three, differing only by archetype, and
+  // every target trivially cleared (0) at importance 1 regardless of what
+  // the car actually measures - so the match, and therefore
+  // tasteMultiplier, is bit-identical (always the ceiling) across the three
+  // calls below, and any difference in valuateCarForBuyer's output isolates
+  // the coherence discount's own per-archetype tolerance (economy.json's
   // valuation.tolerance) - not a difference in what each archetype likes.
-  const sharedWeights = {
-    power: 0.5,
-    handling: 0.5,
-    style: 0.5,
-    reliability: 0.5,
-    authenticity: 0.5,
+  const trivialTargets = {
+    power: { target: 0, importance: 1 },
+    handling: { target: 0, importance: 1 },
+    style: { target: 0, importance: 1 },
+    reliability: { target: 0, importance: 1 },
+    authenticity: { target: 0, importance: 1 },
   }
   const stancerBuyer: Buyer = {
     id: 'test-stancer',
     archetype: 'stancer',
     displayName: 'Test Stancer',
-    statWeights: sharedWeights,
+    statTargets: trivialTargets,
     tierPreferences: [],
     wantLine: 'test',
   }

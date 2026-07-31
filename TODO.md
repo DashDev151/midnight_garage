@@ -554,6 +554,35 @@ pass."
 
 ## Open balance/economy questions
 
+- [ ] **The instant-flip guard still fails on every tier after the Sprint 146 amendment (the
+  shortfall-normalisation fix), though the amendment closed most of the gap.** Root cause of the
+  ORIGINAL failure was structural, not a tuning miss: an absolute (unnormalized) shortfall capped
+  the worst possible match well above 0 for every archetype (0.30 to 0.50), so no car ever read as
+  a genuinely bad match. The amendment (`docs/sprints/sprint146.md`'s "Amendment" section)
+  normalizes each shortfall by the room it had to fall short in, so a car satisfying nothing now
+  scores exactly 0 - measured and asserted in `valuation.test.ts`. No `statTargets` value moved.
+
+  That fix cut the guard's `unimproved-flip probe` median margin from +4.0%/+4.35%/+4.44%
+  (everyday/enthusiast/flagship) to +0.08%/+0.37%/+1.05%, and entry's median resale ratio from
+  1.0528 (outright above the offer spread's own 1.05 ceiling) to 1.0053 (inside the spread, margin
+  +0.53%). **A small median profit remains on all four tiers and the guard is still red.**
+
+  Likeliest remaining cause: `economy.AUCTION_BUYOUT_PREMIUM` is pinned at exactly **1.00** (an
+  explicit INTERIM value per its own `economyApprovalGate.test.ts` ledger entry, pending
+  playtesting) - full guide value with no premium at all for the convenience of an instant,
+  uncontested purchase, leaving zero cushion for the walk-in sale side's natural upward skew.
+  `pickWeightedCandidate`'s pre-existing value-weighted buyer selection (whichever buyer scores
+  the car highest is disproportionately likely to be the one who walks in) still pushes the
+  realised median match, and so the realised median offer, above the "neutral" assumption the
+  guard's own bound is built on, even though no single buyer's worst case is free money anymore.
+
+  Not a bug in the match formula (verified against the amended spec) and not something the
+  amendment's own scope (a normalisation fix, explicitly not a retune) authorised - closing it
+  needs one of `economy.selling.offerSpread`, `economy.AUCTION_BUYOUT_PREMIUM` or the
+  `statTargets` tables themselves, all directive-22 levers. Left failing rather than silently
+  patched or the test loosened to hide it; reproduce via
+  `pnpm test --project sim packages/sim/tests/valueModelProbes.test.ts`.
+
 - [ ] **The retention floor barely bites, so on retention alone almost every incoherent build is
   now BETTER off than under the old flat rate (measured at the end of Sprint 144).** Retention is
   `retentionFloor + (retentionCeiling - retentionFloor) * coherenceFactor`, which at 0.30 and

@@ -528,30 +528,49 @@ describe('drawDailyOffers (Sprint 31 decision 2; channels, Sprint 114)', () => {
   })
 
   describe('the mismatch mechanism (tunerMagazine, matchedOnly)', () => {
-    // An entry-tier car's only genuine buyer pool is first-timer (buyers.json's
-    // only entry tierPreference), whose statWeights lean hard on reliability
-    // (0.8 of 1.4). Per-car `spec.reliabilityBase` puts honda-city-e-aa at 99
-    // (cheap cars are genuinely dependable), so a merely `worn` example no
-    // longer drags the taste score under 1.0: the condition has to be `poor`
-    // before first-timer's want goes unmet. A neglected
-    // entry-tier beater at `poor` across the board is exactly the car this
-    // channel should reject while the shop front still takes it - a stock
-    // stat block of reliability 40 / power 44 / handling 5 / style 8 /
-    // authenticity 70 (this fixture's actual computeDerivedStats output)
-    // scores under the magazine's matched threshold. Seed 0 is the first seed
-    // low enough to clear both channels' own chance rolls (verified: shopFront
-    // draws a first-timer offer, magazine draws nothing, on this exact seed).
+    /**
+     * No REAL archetype's authored targets can fail this gate on every car,
+     * because the taste-match formula's worst case is bounded
+     * away from 0 (`1 - weighted-mean(target)`, never lower) whenever a
+     * buyer's targets sit below 1.0 - true of all six shipped archetypes.
+     * The tunerMagazine's own high ceiling (1.17) then stretches that floor
+     * comfortably above the `>= 1` matched threshold for every real
+     * archetype/car pairing tried. A synthetic buyer that cares only about
+     * authenticity (target 1, importance 1 - the same pattern the
+     * matched-sale block above uses) keeps this test's actual point alive:
+     * the channel's own `matchedOnly` flag genuinely excludes a car the
+     * buyer does not want, while the shop front still takes it.
+     */
+    const inauthenticityAverseBuyer = {
+      id: 'entry-authenticity-only',
+      archetype: 'first-timer' as const,
+      displayName: 'Entry Authenticity Only',
+      statTargets: {
+        power: { target: 0, importance: 0 },
+        handling: { target: 0, importance: 0 },
+        style: { target: 0, importance: 0 },
+        reliability: { target: 0, importance: 0 },
+        authenticity: { target: 1, importance: 1 },
+      },
+      tierPreferences: [{ tier: 'entry' as const, weight: 1 }],
+      wantLine: 'synthetic fixture buyer - no authored copy needed',
+    }
+    const mismatchContext = buildSimContext(
+      CARS,
+      PARTS,
+      [inauthenticityAverseBuyer],
+      PARTS_TAXONOMY,
+    )
+
     const entryModel = CARS.find((c) => c.id === 'honda-city-e-aa')
     if (!entryModel) throw new Error('fixture car missing from seed content')
     const entryCar: CarInstance = buildCarInstance({
       modelId: entryModel.id,
-      year: 1990,
-      mileageKm: 120_000,
-      authenticityPercent: 70,
-      parts: uniformCarParts('poor'),
+      authenticityPercent: 0,
+      parts: uniformCarParts('mint'),
     })
 
-    it('a stock entry-tier car listed in the magazine draws no offer on a seeded day the same car on shopFront does', () => {
+    it('an inauthentic entry-tier car listed in the magazine draws no offer on a seeded day the same car on shopFront does', () => {
       const shopFrontState: GameState = {
         ...stateWithCar(entryCar),
         carsForSale: listedOn('shopFront', { carInstanceId: entryCar.id }),
@@ -560,10 +579,18 @@ describe('drawDailyOffers (Sprint 31 decision 2; channels, Sprint 114)', () => {
         ...shopFrontState,
         carsForSale: listedOn('tunerMagazine', { carInstanceId: entryCar.id }),
       }
-      const shopFrontResult = drawDailyOffers(shopFrontState, CONTEXT, createRng(0))
-      const magazineResult = drawDailyOffers(magazineState, CONTEXT, createRng(0))
-      expect(shopFrontResult.state.pendingOffers.length).toBeGreaterThan(0)
-      expect(magazineResult.state.pendingOffers).toEqual([])
+      // Search for a seed that actually clears shopFront's own chance roll,
+      // rather than pin one by hand - robust to any future change in how
+      // much RNG each channel draw consumes.
+      let found = false
+      for (let seed = 0; seed < 100 && !found; seed++) {
+        const shopFrontResult = drawDailyOffers(shopFrontState, mismatchContext, createRng(seed))
+        if (shopFrontResult.state.pendingOffers.length === 0) continue
+        found = true
+        const magazineResult = drawDailyOffers(magazineState, mismatchContext, createRng(seed))
+        expect(magazineResult.state.pendingOffers).toEqual([])
+      }
+      expect(found, 'no seed in range cleared shopFront’s own chance roll').toBe(true)
     })
   })
 
@@ -735,19 +762,26 @@ describe('resolveSellViaWalkIn (Sprint 31: resolves today’s pre-rolled offer)'
   })
 
   describe('the matched-sale word-of-mouth bonus (Sprint 114)', () => {
-    // A synthetic buyer weighted purely on authenticity: `authenticity` is a
+    // A synthetic buyer that cares only about authenticity (target 1,
+    // importance 1; every other stat importance 0): `authenticity` is a
     // direct, uncapped passthrough of `car.authenticityPercent` (unlike
     // power/handling/style/reliability, which all cap below 100 through
     // their own stat formulas), so this is the one stat a fixture can push
-    // to an exact normalizedTasteScore of 1.0 without depending on roster
-    // content. score=1 -> shopFront taste clamps to exactly its 1.00
-    // ceiling (matched); a buyer weighted the same way at authenticity 0
-    // scores 0 -> taste 0.88 (not matched).
+    // to an exact match of 1.0 without depending on roster content.
+    // score=1 -> shopFront taste clamps to exactly its 1.00 ceiling
+    // (matched); the same buyer at authenticity 0 scores 0 -> taste 0.88
+    // (not matched).
     const authenticityBuyer = {
       id: 'authenticity-only',
       archetype: 'collector' as const,
       displayName: 'Authenticity Only',
-      statWeights: { power: 0, handling: 0, style: 0, reliability: 0, authenticity: 1 },
+      statTargets: {
+        power: { target: 0, importance: 0 },
+        handling: { target: 0, importance: 0 },
+        style: { target: 0, importance: 0 },
+        reliability: { target: 0, importance: 0 },
+        authenticity: { target: 1, importance: 1 },
+      },
       tierPreferences: [{ tier: 'everyday' as const, weight: 1 }],
       wantLine: 'synthetic fixture buyer - no authored copy needed',
     }
@@ -817,7 +851,13 @@ describe('ceiling clamps (Sprint 114): honest, per the lever table', () => {
     id: 'authenticity-only',
     archetype: 'collector' as const,
     displayName: 'Authenticity Only',
-    statWeights: { power: 0, handling: 0, style: 0, reliability: 0, authenticity: 1 },
+    statTargets: {
+      power: { target: 0, importance: 0 },
+      handling: { target: 0, importance: 0 },
+      style: { target: 0, importance: 0 },
+      reliability: { target: 0, importance: 0 },
+      authenticity: { target: 1, importance: 1 },
+    },
     tierPreferences: [],
     wantLine: 'synthetic fixture buyer - no authored copy needed',
   }
@@ -974,7 +1014,14 @@ describe('reputation side effects (Sprint 15; re-based on bands, Sprint 26; Spri
   })
 
   it('accepting an offer on an ordinary car carries no reputationDelta field', () => {
-    const state = stateWithOffer(car, 900_000, 'tuner') // fixture car: one worn part, otherwise mint - unremarkable
+    // 'trade-network' resolves to no real Buyer (TRADE_NETWORK_BUYER_ID,
+    // selling.ts), so the matched-sale bonus structurally cannot fire here
+    // regardless of taste - the fixture car (one worn part, otherwise mint)
+    // is deliberately unremarkable enough to clear condition-based
+    // reputation too - a real archetype is no longer a safe choice for
+    // "definitely unmatched" here, since the taste-match formula reads this
+    // car as a reasonable fit for most of them.
+    const state = stateWithOffer(car, 900_000, 'trade-network')
     const result = resolveSellViaWalkIn(state, car.id, CONTEXT)
     expect(result.log[0]).not.toHaveProperty('reputationDelta')
   })

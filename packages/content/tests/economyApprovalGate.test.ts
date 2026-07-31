@@ -760,6 +760,35 @@ import storyMissions from '../data/storyMissions.json'
  * probe's cost is unaffected by style, confirmed by the mission-payouts test above
  * passing unchanged. No other story mission's probe carries a style-gated
  * requirement, so no other threshold moves; re-confirmed by the same fresh run.
+ *
+ * Re-derived for Sprint 146 (buyer statTargets, all six archetypes signed under
+ * the maintainer's standing authority of 2026-07-30, `docs/sprints/sprint146.md`):
+ * `normalizedTasteScore` (valuation.ts) became a per-stat target/upper/importance
+ * MATCH instead of a weighted mean of five deliberately anti-correlated stats.
+ * `economy.json` is untouched (only `Buyer.statTargets`, buyers.json, and the
+ * private scoring function's body move), so its hash holds; every mission's
+ * `tasteMatch.minMultiplier` re-derives mechanically from a fresh
+ * `storyMissionProbes.test.ts` run against each probe's SAME build, never
+ * hand-picked: `first-proper-car` (first-timer) 1 -> 1.08, `low-and-loud`
+ * (stancer) 0.99 -> 1.07, `street-power-street-manners` (tuner) 1 -> 1.07. Every
+ * probe's own stat thresholds, payout and budget cap are unaffected - taste never
+ * touches `marketValueYen`, only the taste-match requirement's own ratio.
+ * `make-it-pull`, `the-column-clock`, `the-fleet-spare`, `the-showroom-standard`,
+ * `four-wheels`, `wont-strand-her` and `under-one-fifteen` carry no `tasteMatch`
+ * requirement and are unaffected.
+ *
+ * Re-derived for the Sprint 146 amendment (the shortfall normalisation defect):
+ * `tasteMatchFor` (valuation.ts, split out from `normalizedTasteScore` in the same
+ * change) now normalizes each stat's shortfall by the room it had to fall short in
+ * (`/ target` below the bar, `/ (1 - upper)` above it) instead of carrying it as an
+ * absolute gap in score units. No target, upper or importance value moves - every
+ * `Buyer.statTargets` entry in `buyers.json` is untouched, per the amendment's own
+ * constraint - so this is not a directive-22 lever; `economy.json` is untouched and
+ * its hash holds. Every mission's `tasteMatch.minMultiplier` re-derives mechanically
+ * from a fresh `storyMissionProbes.test.ts` run against each probe's SAME build,
+ * never hand-picked: `first-proper-car` (first-timer) 1.08 -> 1.07, `low-and-loud`
+ * (stancer) 1.07 -> 1.06, `street-power-street-manners` (tuner) 1.07 -> 1.05. Every
+ * probe's own stat thresholds, payout and budget cap are unaffected, as before.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {

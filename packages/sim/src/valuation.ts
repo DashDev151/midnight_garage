@@ -10,7 +10,11 @@ import type {
 import { computeDerivedStats } from './derivedStats'
 import { marketValueYen } from './marketValue'
 
-const STAT_WEIGHT_KEYS = ['power', 'handling', 'style', 'reliability', 'authenticity'] as const
+const STAT_KEYS = ['power', 'handling', 'style', 'reliability', 'authenticity'] as const
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value))
+}
 
 /**
  * Stage C's per-buyer tolerance (the tolerance ruling, sprint144.md): reads
@@ -38,12 +42,68 @@ export function normalizedPowerScore(powerPs: number, economy: EconomyConfig): n
   return powerPs / economy.statFormulas.powerNormalizationCeiling
 }
 
+/** A car's five taste stats, already normalized to the same [0, 1] footing
+ * `Buyer.statTargets` is authored on - `normalizedPowerScore` for power,
+ * `/ 100` for the other four. What `tasteMatchFor` below scores a buyer
+ * against. */
+type StatScoreByKey = Record<(typeof STAT_KEYS)[number], number>
+
 /**
- * How well a buyer archetype's stat weights fit this car's derived stats,
- * normalized to [0, 1] (0 = the archetype's weighted stats read as worthless,
- * 1 = a perfect fit). The shared input every taste band below maps onto its
- * own range - stats never touch `marketValueYen` itself, only who pays a bit
- * more.
+ * The Stage E match formula in isolation (sale-value-system.md S3 Stage E,
+ * amended sprint146.md), pure over an already-normalized score vector: a
+ * match, not a mean (sprint146.md). Each stat carries a `target` - clearing
+ * it earns full marks on that stat, exceeding it earns nothing more - and
+ * an optional `upper`, past which the car starts actively costing the
+ * buyer marks instead.
+ *
+ * Each shortfall is normalized by the room it had to fall short in, not
+ * carried as an absolute gap: `low` divides by `target` itself, `high` by
+ * the remaining room above `upper`. The amendment this replaces measured
+ * `shortfall = max(0, target - score) + max(0, score - upper)` directly in
+ * score units, which caps the low shortfall at `target` - a buyer with a
+ * modest target could never be badly disappointed, so a car clearing
+ * NOTHING still scored a match well above 0 (0.30 to 0.50 across the six
+ * shipped archetypes) and read as free money through the walk-in channel's
+ * value-weighted buyer draw (`valueModelProbes.test.ts`'s instant-flip
+ * guard). Normalizing by the room available makes missing a target
+ * entirely cost that stat's full importance, so a car satisfying nothing
+ * scores exactly 0 against every buyer - the design's other half, that a
+ * specialised car is also somebody's WRONG car.
+ *
+ * Split out from `normalizedTasteScore` below so the formula itself is
+ * directly testable against a buyer's real authored targets without
+ * needing a car whose derived stats happen to land on a particular number:
+ * the floor test that caught the instant-flip defect scores a hypothetical
+ * car that clears nothing on any stat, which only a raw score vector of
+ * zeros can express exactly.
+ */
+export function tasteMatchFor(targets: Buyer['statTargets'], scoreByStat: StatScoreByKey): number {
+  let weightedShortfall = 0
+  let totalImportance = 0
+  for (const key of STAT_KEYS) {
+    const { target, upper, importance } = targets[key]
+    const score = scoreByStat[key]
+    // A target of 0 means the buyer does not care about this stat at all,
+    // so it can never contribute a shortfall; an upper of exactly 1 can
+    // never be exceeded (only power is uncapped, and no shipped archetype
+    // sets a power upper at 1). Both guard the same division by zero.
+    const lowShortfall = target > 0 ? Math.max(0, target - score) / target : 0
+    const highShortfall =
+      upper !== undefined && upper < 1 ? Math.max(0, score - upper) / (1 - upper) : 0
+    const shortfall = clamp(lowShortfall + highShortfall, 0, 1)
+    weightedShortfall += importance * shortfall
+    totalImportance += importance
+  }
+
+  if (totalImportance <= 0) return 1
+  return clamp(1 - weightedShortfall / totalImportance, 0, 1)
+}
+
+/**
+ * How well this car satisfies a buyer archetype's taste, normalized to
+ * [0, 1] via `tasteMatchFor` above. The shared input every taste band below
+ * maps onto its own range - stats never touch `marketValueYen` itself, only
+ * who pays a bit more.
  */
 function normalizedTasteScore(
   buyer: Buyer,
@@ -54,17 +114,14 @@ function normalizedTasteScore(
   economy: EconomyConfig,
 ): number {
   const stats = computeDerivedStats(model, instance, partsById, partsTaxonomy, economy)
-  const weights = buyer.statWeights
-
-  const weightedScore =
-    normalizedPowerScore(stats.power, economy) * weights.power +
-    (stats.handling / 100) * weights.handling +
-    (stats.style / 100) * weights.style +
-    (stats.reliability / 100) * weights.reliability +
-    (stats.authenticity / 100) * weights.authenticity
-
-  const sumOfWeights = STAT_WEIGHT_KEYS.reduce((sum, key) => sum + weights[key], 0)
-  return sumOfWeights > 0 ? weightedScore / sumOfWeights : 0
+  const scoreByStat: StatScoreByKey = {
+    power: normalizedPowerScore(stats.power, economy),
+    handling: stats.handling / 100,
+    style: stats.style / 100,
+    reliability: stats.reliability / 100,
+    authenticity: stats.authenticity / 100,
+  }
+  return tasteMatchFor(buyer.statTargets, scoreByStat)
 }
 
 /**

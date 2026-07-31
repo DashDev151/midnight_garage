@@ -166,8 +166,38 @@ describe('market: selling', () => {
 
   it('accepting an offer produces a real sale receipt off the Sprint 42 ledger', () => {
     const game = useGameStore()
-    game.devGrantCar(CARS[0]!.id)
-    const carId = game.gameState.ownedCars[0]!.id
+    // Finds a genuinely UNMATCHED real buyer/generated-car pairing via
+    // `channelBuyerTaste` (the same public sim function `resolveSellViaWalkIn`
+    // itself uses), the mirror of the matched-sale test below - a hardcoded
+    // buyer/car pairing is not a safe choice for "definitely unmatched": the
+    // taste-match formula reads most real pairings as a reasonable fit.
+    let mismatch: { carId: string; buyerId: string } | undefined
+    for (let i = 0; i < CARS.length && !mismatch; i++) {
+      game.devGrantCar(CARS[i]!.id)
+      const car = game.gameState.ownedCars[game.gameState.ownedCars.length - 1]!
+      const model = game.context.modelsById[car.modelId]!
+      for (const buyer of game.context.buyers) {
+        const taste = channelBuyerTaste(
+          buyer,
+          model,
+          car,
+          game.context.partsById,
+          game.context.partsTaxonomy,
+          game.context.economy,
+          game.context.economy.sellingChannels.shopFront.tasteCeiling!,
+        )
+        if (taste < 1) {
+          mismatch = { carId: car.id, buyerId: buyer.id }
+          break
+        }
+      }
+    }
+    expect(
+      mismatch,
+      'expected at least one real buyer/generated-car pairing to miss a taste ceiling',
+    ).toBeDefined()
+
+    const carId = mismatch!.carId
     const displayName = game.carDetail(carId)!.displayName
     game.gameState = {
       ...game.gameState,
@@ -179,7 +209,7 @@ describe('market: selling', () => {
           weekendMeetPending: false,
         },
       ],
-      pendingOffers: [{ carInstanceId: carId, buyerId: 'first-timer', priceYen: 500_000 }],
+      pendingOffers: [{ carInstanceId: carId, buyerId: mismatch!.buyerId, priceYen: 500_000 }],
       carLedgers: { [carId]: { purchaseYen: 300_000, repairYen: 40_000, partsYen: 20_000 } },
     }
 
@@ -194,9 +224,7 @@ describe('market: selling', () => {
     expect(receipt!.partsYen).toBe(20_000)
     expect(receipt!.totalSpentYen).toBe(360_000)
     expect(receipt!.profitYen).toBe(140_000) // 500,000 - 360,000
-    // The receipt threads `car-sold`'s own `matchedSale` flag - this pairing
-    // (a generated shitbox, the reliability-led first-timer archetype) is
-    // not the buyer's visible want, so unmatched.
+    // The receipt threads `car-sold`'s own `matchedSale` flag.
     expect(receipt!.matchedSale).toBe(false)
 
     game.dismissSaleResult()

@@ -3,12 +3,12 @@
     "id": "collector",
     "archetype": "collector",
     "displayName": "Collector",
-    "statWeights": {
-      "power": 0.1,
-      "handling": 0.2,
-      "style": 0.3,
-      "reliability": 0.3,
-      "authenticity": 1
+    "statTargets": {
+      "power": { "target": 0.3, "upper": 0.5, "importance": 0.15 },
+      "handling": { "target": 0.3, "importance": 0.15 },
+      "style": { "target": 0.5, "importance": 0.4 },
+      "reliability": { "target": 0.6, "importance": 0.3 },
+      "authenticity": { "target": 0.9, "importance": 1 }
     },
     "tierPreferences": [
       {
@@ -26,12 +26,12 @@
     "id": "tuner",
     "archetype": "tuner",
     "displayName": "Tuner",
-    "statWeights": {
-      "power": 1,
-      "handling": 0.6,
-      "style": 0.3,
-      "reliability": 0.3,
-      "authenticity": 0
+    "statTargets": {
+      "power": { "target": 0.65, "importance": 0.9 },
+      "handling": { "target": 0.55, "importance": 0.6 },
+      "style": { "target": 0.45, "importance": 0.4 },
+      "reliability": { "target": 0.45, "importance": 0.4 },
+      "authenticity": { "target": 0, "importance": 0 }
     },
     "tierPreferences": [
       {
@@ -53,12 +53,12 @@
     "id": "stancer",
     "archetype": "stancer",
     "displayName": "Shakotan",
-    "statWeights": {
-      "power": 0.1,
-      "handling": 0.2,
-      "style": 1,
-      "reliability": 0,
-      "authenticity": 0.2
+    "statTargets": {
+      "power": { "target": 0.2, "importance": 0.1 },
+      "handling": { "target": 0.1, "importance": 0.05 },
+      "style": { "target": 0.65, "importance": 1 },
+      "reliability": { "target": 0, "importance": 0 },
+      "authenticity": { "target": 0, "importance": 0 }
     },
     "tierPreferences": [
       {
@@ -80,12 +80,12 @@
     "id": "racer",
     "archetype": "racer",
     "displayName": "Racer",
-    "statWeights": {
-      "power": 0.5,
-      "handling": 1,
-      "style": 0,
-      "reliability": 1,
-      "authenticity": 0.2
+    "statTargets": {
+      "power": { "target": 0.75, "importance": 1 },
+      "handling": { "target": 0.75, "importance": 0.9 },
+      "style": { "target": 0.1, "importance": 0.05 },
+      "reliability": { "target": 0.6, "importance": 0.6 },
+      "authenticity": { "target": 0, "importance": 0 }
     },
     "tierPreferences": [
       {
@@ -107,12 +107,12 @@
     "id": "first-timer",
     "archetype": "first-timer",
     "displayName": "First-timer",
-    "statWeights": {
-      "power": 0.2,
-      "handling": 0.2,
-      "style": 0.1,
-      "reliability": 0.8,
-      "authenticity": 0.1
+    "statTargets": {
+      "power": { "target": 0.25, "upper": 0.55, "importance": 0.3 },
+      "handling": { "target": 0.3, "importance": 0.2 },
+      "style": { "target": 0.2, "importance": 0.15 },
+      "reliability": { "target": 0.75, "importance": 1 },
+      "authenticity": { "target": 0.5, "importance": 0.2 }
     },
     "tierPreferences": [
       {
@@ -125,5 +125,28 @@
       }
     ],
     "wantLine": "Needs it to start every cold morning without eating the budget. A service history beats a spoiler."
+  },
+  {
+    "id": "kei-specialist",
+    "archetype": "kei-specialist",
+    "displayName": "Kei Specialist",
+    "statTargets": {
+      "power": { "target": 0.15, "upper": 0.5, "importance": 0.4 },
+      "handling": { "target": 0.5, "importance": 0.7 },
+      "style": { "target": 0.55, "importance": 0.8 },
+      "reliability": { "target": 0.6, "importance": 0.6 },
+      "authenticity": { "target": 0.6, "importance": 0.5 }
+    },
+    "tierPreferences": [
+      {
+        "tier": "entry",
+        "weight": 1
+      },
+      {
+        "tier": "everyday",
+        "weight": 0.6
+      }
+    ],
+    "wantLine": "Wants a kei that still drives like a kei: light and tidy on its feet. A big turbo does not impress him; it worries him, because that is not what the car was built for."
   }
 ]

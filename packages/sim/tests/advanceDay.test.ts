@@ -321,7 +321,7 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // above: the lot's rolled condition, the car's derived stats and the
     // buyer's taste-adjusted price all feed it, so it is re-derived from a
     // real run whenever one of them deliberately changes.
-    expect(hashState(acquisitionCareer().sold)).toBe('c4048612')
+    expect(hashState(acquisitionCareer().sold)).toBe('d467f8b9')
   })
 })
 

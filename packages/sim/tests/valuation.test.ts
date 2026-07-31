@@ -1,5 +1,8 @@
 import {
+  BUYERS,
+  CARS,
   ECONOMY,
+  PARTS,
   PARTS_TAXONOMY,
   type Buyer,
   type CarInstance,
@@ -8,13 +11,27 @@ import {
   type CarPartTaxonomyEntry,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
+import { buildSimContext } from '../src/context'
+import { computeDerivedStats } from '../src/derivedStats'
 import { marketValueYen } from '../src/marketValue'
-import { valuateCarForBuyer } from '../src/valuation'
-import { buildCarInstance, uniformCarParts } from './testFixtures'
+import { channelBuyerTaste, tasteMatchFor, valuateCarForBuyer } from '../src/valuation'
+import { buildCarInstance, carWithGrades, mintCarParts, uniformCarParts } from './testFixtures'
 
+const PARTS_BY_ID = Object.fromEntries(PARTS.map((p) => [p.id, p]))
 const PARTS_TAXONOMY_BY_ID = Object.fromEntries(
   PARTS_TAXONOMY.map((entry) => [entry.id, entry]),
 ) as Record<CarPartId, CarPartTaxonomyEntry>
+
+const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
+
+// The real, shipped archetypes (buyers.json) - reused rather than hand-rolled,
+// so a fixture can never quietly drift from what the game actually ships.
+const collector = BUYERS.find((b) => b.id === 'collector')!
+const firstTimer = BUYERS.find((b) => b.id === 'first-timer')!
+const stancer = BUYERS.find((b) => b.id === 'stancer')!
+const keiSpecialist = BUYERS.find((b) => b.id === 'kei-specialist')!
+const tuner = BUYERS.find((b) => b.id === 'tuner')!
+const racer = BUYERS.find((b) => b.id === 'racer')!
 
 const model: CarModel = {
   id: 'toyota-supra-rz-jza80',
@@ -45,26 +62,6 @@ const stockInstance: CarInstance = buildCarInstance({
   parts: uniformCarParts('fine'),
 })
 
-const collector: Buyer = {
-  id: 'collector',
-  archetype: 'collector',
-  displayName: 'Collector',
-  statWeights: { power: 0.1, handling: 0.2, style: 0.3, reliability: 0.3, authenticity: 1.0 },
-  tierPreferences: [{ tier: 'flagship', weight: 0.8 }],
-  wantLine:
-    'Asks who owned it before you, and who before that. Originality is the price of entry; everything else is small talk.',
-}
-
-const firstTimer: Buyer = {
-  id: 'first-timer',
-  archetype: 'first-timer',
-  displayName: 'First-timer',
-  statWeights: { power: 0.2, handling: 0.2, style: 0.1, reliability: 0.8, authenticity: 0.1 },
-  tierPreferences: [{ tier: 'entry', weight: 1.0 }],
-  wantLine:
-    'Needs it to start every cold morning without eating the budget. A service history beats a spoiler.',
-}
-
 function valuate(buyer: Buyer, instance: CarInstance, heatPercent = 100) {
   return valuateCarForBuyer(
     buyer,
@@ -85,12 +82,6 @@ describe('valuateCarForBuyer', () => {
     expect(a).toBe(b)
   })
 
-  it('a high-authenticity car is worth more to a Collector than a First-timer', () => {
-    const collectorValue = valuate(collector, stockInstance)
-    const firstTimerValue = valuate(firstTimer, stockInstance)
-    expect(collectorValue).toBeGreaterThan(firstTimerValue)
-  })
-
   it('never returns a negative value', () => {
     const wornOut = buildCarInstance({
       modelId: model.id,
@@ -101,12 +92,6 @@ describe('valuateCarForBuyer', () => {
     expect(value).toBeGreaterThanOrEqual(0)
   })
 
-  /**
-   * Value and taste are two separate, testable pieces - `valuateCarForBuyer`
-   * is exactly `marketValueYen x taste`, so a buyer's valuation of a fixed
-   * car must always land within `[1 - tasteSpread, 1 + tasteSpread]` of
-   * that car's taste-free market value.
-   */
   describe('taste (marketValue x bounded taste multiplier)', () => {
     const spread = ECONOMY.valuation.tasteSpread
 
@@ -119,22 +104,363 @@ describe('valuateCarForBuyer', () => {
       }
     })
 
-    it('is monotonic in stat fit: a buyer weighting every stat outvalues one weighting none', () => {
-      const value = marketValueYen(model, stockInstance, 100, {}, PARTS_TAXONOMY_BY_ID, ECONOMY)
-      const enthusiast: Buyer = {
-        ...collector,
-        statWeights: { power: 1, handling: 1, style: 1, reliability: 1, authenticity: 1 },
-      }
-      const indifferent: Buyer = {
-        ...collector,
-        statWeights: { power: 0, handling: 0, style: 0, reliability: 0, authenticity: 0 },
-      }
-      const enthusiastValue = valuate(enthusiast, stockInstance)
-      const indifferentValue = valuate(indifferent, stockInstance)
-      expect(enthusiastValue).toBeGreaterThan(indifferentValue)
-      // indifferent (normalizedStatScore undefined -> 0 via the sum-of-weights
-      // guard) lands at the taste floor.
-      expect(indifferentValue).toBe(Math.round(value * (1 - spread)))
+    /**
+     * Authenticity swing, not an absolute ranking: the old "a
+     * high-authenticity car is worth more to a Collector than a
+     * First-timer" assertion no longer holds in general - this stock Supra
+     * actually values HIGHER to the first-timer, because
+     * the collector's own style target (0.5) and power upper (0.5) also
+     * bite on a car authored with styleBase 20 and 280+ PS, and neither
+     * buyer's overall match is authenticity alone anymore. What the match
+     * formula DOES guarantee is the relative sensitivity the authored
+     * tables intend: the collector's authenticity importance (1.0, target
+     * 0.9) dwarfs the first-timer's (0.2, target 0.5), so moving the SAME
+     * car from inauthentic to authentic swings the collector's price far
+     * more than it swings the first-timer's.
+     */
+    it('authenticity swings the Collector price far more than the First-timer price', () => {
+      const inauthentic = buildCarInstance({
+        modelId: model.id,
+        authenticityPercent: 0,
+        parts: uniformCarParts('fine'),
+      })
+      const authentic = buildCarInstance({
+        modelId: model.id,
+        authenticityPercent: 100,
+        parts: uniformCarParts('fine'),
+      })
+      const collectorSwing = valuate(collector, authentic) - valuate(collector, inauthentic)
+      const firstTimerSwing = valuate(firstTimer, authentic) - valuate(firstTimer, inauthentic)
+      expect(collectorSwing).toBeGreaterThan(firstTimerSwing * 4)
     })
   })
+})
+
+describe('Sprint 146: taste is a match, not a mean', () => {
+  const spread = ECONOMY.valuation.tasteSpread
+  const ceiling = 1 + spread
+
+  const silvia = CARS.find((c) => c.id === 'nissan-silvia-s13')!
+
+  /**
+   * The stancer's only real target is style (0.65, importance 1.00); power
+   * and handling barely count (importance 0.10/0.05) and reliability/
+   * authenticity are ignored outright (importance 0). This build clears
+   * style comfortably (0.71) while genuinely being loud (a race aero kit
+   * and forged wheels), low on authenticity (20%, heavily modified) and
+   * unreliable (a worn valvetrain and cooling system) - the archetype's
+   * "loud, low, unreliable car" made concrete.
+   */
+  function buildLoudLowUnreliableSilvia(): CarInstance {
+    return buildCarInstance({
+      modelId: silvia.id,
+      authenticityPercent: 20,
+      parts: mintCarParts({
+        aero: {
+          id: 'x-aero',
+          partId: 'frp-race-aero',
+          band: 'mint',
+          genuinePeriod: false,
+          origin: { kind: 'market', day: 1 },
+        },
+        rims: {
+          id: 'x-rims',
+          partId: 'ronin-race-forged',
+          band: 'mint',
+          genuinePeriod: false,
+          origin: { kind: 'market', day: 1 },
+        },
+        seats: {
+          id: 'x-seats',
+          partId: 'zashiki-race-buckets',
+          band: 'poor',
+          genuinePeriod: false,
+          origin: { kind: 'market', day: 1 },
+        },
+        headValvetrain: 'poor',
+        cooling: 'poor',
+      }),
+    })
+  }
+
+  it('SMOKE: a loud, low, unreliable car reaches a match of 1.0 against the stancer', () => {
+    const loudLowUnreliable = buildLoudLowUnreliableSilvia()
+    // Sanity: this really is the loud/low/unreliable build the archetype
+    // describes, not an accidentally-tidy one.
+    const stats = computeDerivedStats(
+      silvia,
+      loudLowUnreliable,
+      PARTS_BY_ID,
+      PARTS_TAXONOMY,
+      ECONOMY,
+    )
+    expect(stats.style).toBeGreaterThanOrEqual(65)
+    expect(stats.authenticity).toBeLessThan(50)
+    expect(stats.reliability).toBeLessThan(80)
+
+    const value = marketValueYen(
+      silvia,
+      loudLowUnreliable,
+      100,
+      PARTS_BY_ID,
+      PARTS_TAXONOMY_BY_ID,
+      ECONOMY,
+      // The stancer's own coherence tolerance (coherenceToleranceFor,
+      // valuation.ts): economy.json's tolerance.stancer if set, else default.
+      ECONOMY.valuation.tolerance.stancer ?? ECONOMY.valuation.tolerance.default,
+    )
+    const valuation = valuateCarForBuyer(
+      stancer,
+      silvia,
+      loudLowUnreliable,
+      PARTS_BY_ID,
+      PARTS_TAXONOMY,
+      PARTS_TAXONOMY_BY_ID,
+      100,
+      ECONOMY,
+    )
+    // A match of 1.0 is the top of the standard taste band: value x (1 + tasteSpread).
+    expect(valuation).toBe(Math.round(value * ceiling))
+  })
+
+  it('exceeding a target earns nothing: a bigger style excess prices identically to a smaller one', () => {
+    const atTarget = buildCarInstance({
+      modelId: silvia.id,
+      authenticityPercent: 20,
+      parts: mintCarParts({
+        aero: {
+          id: 'x-aero',
+          partId: 'frp-race-aero',
+          band: 'mint',
+          genuinePeriod: false,
+          origin: { kind: 'market', day: 1 },
+        },
+        rims: {
+          id: 'x-rims',
+          partId: 'ronin-race-forged',
+          band: 'mint',
+          genuinePeriod: false,
+          origin: { kind: 'market', day: 1 },
+        },
+      }),
+    })
+    const wellOverTarget = buildLoudLowUnreliableSilvia()
+
+    const atTargetStats = computeDerivedStats(
+      silvia,
+      atTarget,
+      PARTS_BY_ID,
+      PARTS_TAXONOMY,
+      ECONOMY,
+    )
+    const overStats = computeDerivedStats(
+      silvia,
+      wellOverTarget,
+      PARTS_BY_ID,
+      PARTS_TAXONOMY,
+      ECONOMY,
+    )
+    expect(atTargetStats.style).toBeGreaterThanOrEqual(65) // clears the stancer's target...
+    expect(overStats.style).toBeGreaterThan(atTargetStats.style) // ...this build clears it by more...
+
+    const tasteAtTarget = channelBuyerTaste(
+      stancer,
+      silvia,
+      atTarget,
+      PARTS_BY_ID,
+      PARTS_TAXONOMY,
+      ECONOMY,
+      ceiling,
+    )
+    const tasteOverTarget = channelBuyerTaste(
+      stancer,
+      silvia,
+      wellOverTarget,
+      PARTS_BY_ID,
+      PARTS_TAXONOMY,
+      ECONOMY,
+      ceiling,
+    )
+    // ...and yet the stancer pays exactly the same for both.
+    expect(tasteOverTarget).toBe(tasteAtTarget)
+  })
+
+  it('an upper bound actively reduces a match: a caged, fully-built engine costs more with the First-timer than the stock car it started from', () => {
+    const cityTurbo = CARS.find((c) => c.id === 'honda-city-turbo-ii-aa')!
+    // The same "maximal forced-induction build, race grade throughout" shape
+    // coherenceValuation.test.ts pins as genuinely coherent - reused here so
+    // the caged car's reliability loss is the real reliabilityIntensityFactor
+    // cost of that much power, not an artefact of an unsupported build.
+    const ALL_RACE_SUPPORTED: Partial<Record<CarPartId, 'race'>> = {
+      block: 'race',
+      internals: 'race',
+      headValvetrain: 'race',
+      camsTiming: 'race',
+      intake: 'race',
+      exhaust: 'race',
+      fuelSystem: 'race',
+      ignitionEcu: 'race',
+      cooling: 'race',
+      forcedInduction: 'race',
+      gearbox: 'race',
+      clutch: 'race',
+      driveline: 'race',
+      differential: 'race',
+    }
+    const stockCar = carWithGrades(cityTurbo, CONTEXT, {}, 'mint')
+    const cagedCar = carWithGrades(cityTurbo, CONTEXT, ALL_RACE_SUPPORTED, 'mint')
+
+    const { power: stockPower } = computeDerivedStats(
+      cityTurbo,
+      stockCar,
+      CONTEXT.partsById,
+      PARTS_TAXONOMY,
+      ECONOMY,
+    )
+    const { power: cagedPower } = computeDerivedStats(
+      cityTurbo,
+      cagedCar,
+      CONTEXT.partsById,
+      PARTS_TAXONOMY,
+      ECONOMY,
+    )
+    const powerUpper = firstTimer.statTargets.power.upper!
+    expect(stockPower / ECONOMY.statFormulas.powerNormalizationCeiling).toBeLessThanOrEqual(
+      powerUpper,
+    )
+    expect(cagedPower / ECONOMY.statFormulas.powerNormalizationCeiling).toBeGreaterThan(powerUpper)
+
+    const stockTaste = channelBuyerTaste(
+      firstTimer,
+      cityTurbo,
+      stockCar,
+      CONTEXT.partsById,
+      PARTS_TAXONOMY,
+      ECONOMY,
+      ceiling,
+    )
+    const cagedTaste = channelBuyerTaste(
+      firstTimer,
+      cityTurbo,
+      cagedCar,
+      CONTEXT.partsById,
+      PARTS_TAXONOMY,
+      ECONOMY,
+      ceiling,
+    )
+    expect(cagedTaste).toBeLessThan(stockTaste)
+  })
+
+  it('a specialised car beats a generalist one for the buyer it was built for, and loses for the buyer it was not', () => {
+    const stockSilvia = buildCarInstance({ modelId: silvia.id, parts: uniformCarParts('mint') })
+    const specialisedSilvia = buildLoudLowUnreliableSilvia()
+
+    const stockVsStancer = channelBuyerTaste(
+      stancer,
+      silvia,
+      stockSilvia,
+      PARTS_BY_ID,
+      PARTS_TAXONOMY,
+      ECONOMY,
+      ceiling,
+    )
+    const specialisedVsStancer = channelBuyerTaste(
+      stancer,
+      silvia,
+      specialisedSilvia,
+      PARTS_BY_ID,
+      PARTS_TAXONOMY,
+      ECONOMY,
+      ceiling,
+    )
+    expect(specialisedVsStancer).toBeGreaterThan(stockVsStancer)
+
+    const stockVsFirstTimer = channelBuyerTaste(
+      firstTimer,
+      silvia,
+      stockSilvia,
+      PARTS_BY_ID,
+      PARTS_TAXONOMY,
+      ECONOMY,
+      ceiling,
+    )
+    const specialisedVsFirstTimer = channelBuyerTaste(
+      firstTimer,
+      silvia,
+      specialisedSilvia,
+      PARTS_BY_ID,
+      PARTS_TAXONOMY,
+      ECONOMY,
+      ceiling,
+    )
+    expect(specialisedVsFirstTimer).toBeLessThan(stockVsFirstTimer)
+  })
+
+  /**
+   * The Cappuccino itself (roster uid MG-028) isn't in the shipped
+   * `cars.json` subset yet (builtInContent: no in
+   * midnight-garage-roster.csv - it's still missing measured performance
+   * figures), so this uses the Honda Beat PP1, the other shipped kei the
+   * archetype's own flavour text names, against the flagship Supra.
+   */
+  it('the kei specialist prefers a small kei car to a fast flagship one', () => {
+    const beat = CARS.find((c) => c.id === 'honda-beat-pp1')!
+    const supra = CARS.find((c) => c.id === 'toyota-supra-rz-jza80')!
+    const beatInstance = buildCarInstance({ modelId: beat.id, parts: uniformCarParts('mint') })
+    const supraInstance = buildCarInstance({ modelId: supra.id, parts: uniformCarParts('mint') })
+
+    const beatTaste = channelBuyerTaste(
+      keiSpecialist,
+      beat,
+      beatInstance,
+      PARTS_BY_ID,
+      PARTS_TAXONOMY,
+      ECONOMY,
+      ceiling,
+    )
+    const supraTaste = channelBuyerTaste(
+      keiSpecialist,
+      supra,
+      supraInstance,
+      PARTS_BY_ID,
+      PARTS_TAXONOMY,
+      ECONOMY,
+      ceiling,
+    )
+    expect(beatTaste).toBeGreaterThan(supraTaste)
+  })
+})
+
+describe('Sprint 146 amendment: shortfall normalisation', () => {
+  /**
+   * A car that clears NOTHING: every stat reads 0 against every buyer's
+   * target. Under an absolute (unnormalized) shortfall, a target is
+   * the shortfall's own ceiling, so a buyer whose targets are modest can
+   * never be badly disappointed - measured floor per archetype, old
+   * formula: collector 0.315, racer 0.298, stancer 0.413, tuner 0.446,
+   * first-timer 0.451, kei-specialist 0.497 (all `1 - importance-weighted
+   * mean target`, the closed form of scoring every stat at 0). That is free
+   * money on an unimproved car through a value-weighted buyer draw, and the
+   * root cause `valueModelProbes.test.ts`'s instant-flip guard caught.
+   *
+   * Normalising each shortfall by the room it had to fall short in fixes
+   * it structurally: missing a target entirely now costs that stat's full
+   * importance, so a car satisfying nothing scores exactly 0 against every
+   * archetype, not merely "worse than a car that satisfies something."
+   */
+  const nothingSatisfied = { power: 0, handling: 0, style: 0, reliability: 0, authenticity: 0 }
+
+  it.each([
+    ['collector', collector],
+    ['racer', racer],
+    ['stancer', stancer],
+    ['tuner', tuner],
+    ['first-timer', firstTimer],
+    ['kei-specialist', keiSpecialist],
+  ] as const)(
+    'a car satisfying nothing scores a match of exactly 0 against the %s',
+    (_name, buyer) => {
+      expect(tasteMatchFor(buyer.statTargets, nothingSatisfied)).toBe(0)
+    },
+  )
 })

@@ -125,11 +125,29 @@ tolerance: a bodged install is a bodged install to everyone.
 
 ### Stage E
 
-    shortfall(stat) = max(0, target[stat] - s) + max(0, s - upper[stat])
-    match           = clamp(1 - sum(importance * shortfall) / sum(importance), 0, 1)
+    lowShortfall  = target > 0 ? max(0, target - s) / target : 0
+    highShortfall = upper != null && upper < 1 ? max(0, s - upper) / (1 - upper) : 0
+    shortfall     = clamp(lowShortfall + highShortfall, 0, 1)
+    match         = clamp(1 - sum(importance * shortfall) / sum(importance), 0, 1)
 
 **Exceeding a target earns nothing: the buyer is satisfied, not impressed.** The upper bound is
 what makes "modification narrows your market" a mechanism rather than an authoring convention.
+
+**Each shortfall is normalized by the room it had to fall short in, not carried as an absolute
+gap in score units.** Sprint 146 shipped `shortfall = max(0, target - s) + max(0, s - upper)`
+directly in score units, which caps the low shortfall at `target` itself - a buyer with a modest
+target could never be badly disappointed, no matter how completely the car missed it. Measured
+worst case across the six shipped archetypes: a car clearing NOTHING still scored a match of
+0.30 to 0.50, not 0. Through the shop front that is a multiplier of 0.95 to 1.00 - the worst car
+in the game still fetched essentially full market value from somebody, and buyer selection is
+value-weighted, so the game handed the player the best-matching buyer regardless. The design's
+own claim that a specialised car is also somebody's WRONG car was half-missing: the "somebody's
+perfect car" half worked, the "somebody else's wrong car" half did not exist. Dividing by the
+room available (`target` below the bar, `1 - upper` above it) fixes this structurally: missing a
+target entirely now costs that stat's full importance, so a car satisfying nothing scores exactly
+0 against every buyer. A target of 0 (the buyer does not care) and an upper of exactly 1 (which
+only power, uncapped, could ever reach, and no shipped archetype's power upper is that high) both
+guard the same division by zero rather than being reachable in authored content today.
 
     standard channel (ceiling <= 1 + tasteSpread):
         multiplier = min(1 - tasteSpread + 2 * tasteSpread * match, ceiling)
