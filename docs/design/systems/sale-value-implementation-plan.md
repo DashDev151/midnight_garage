@@ -98,7 +98,7 @@ sale-value problem, so it can be fixed immediately and does not need to wait for
 | Stage C, the coherence discount | small; the input exists |
 | `offersSeen` clock, staleness, offer quality | new persisted state on `ForSaleEntry` |
 | `presence` / `basePresence` / `seasonFactor` / `reputationFlowFactor` | nothing resembling any of it exists |
-| Magazine feature and the provenance multiplier | new event type; `DayLogEntry` has no shape for it |
+| Magazine feature and its value multiplier | new event type; `DayLogEntry` has no shape for it. **Do NOT call this "provenance", see the naming ruling below** |
 | "Cars resurface" | zero existing code |
 | Monthly cadence | **no monthly boundary exists anywhere in the game.** Day-of-week semantics do not exist either; only a 7-day modulo |
 | Fixer, favour meter, monthly appetite | zero hits for `favour` anywhere in `packages/` |
@@ -116,6 +116,36 @@ sale-value problem, so it can be fixed immediately and does not need to wait for
 | `ForSaleEntry.sinceDay` | the absolute clock the design explicitly rejects. Its one reader is a bot helper; retire both together or they contradict |
 | `Buyer.priceSensitivity` | unless wired (D2) |
 | `tools/sale-value/model.mjs` | **on the day the shipped stack can generate §9**, per the maintainer's ruling |
+
+### Two name collisions, ruled before they cost a sprint
+
+Found 2026-07-31 by an audit run specifically for this failure mode, after `calendar.ts` was
+caught by accident. Both are cases where the design names something that already exists in the
+codebase meaning something else. **A sprint brief that says "build X" when a live `X` already
+exists is how a mechanic gets bolted onto the wrong module.**
+
+**"Provenance" is taken, twice.** The design calls the magazine feature's value boost "the
+provenance multiplier" (`sale-value-system.md` §5). Two unrelated live modules already own that
+word:
+
+- `packages/content/src/provenance.ts` plus `provenance.json`: flavour history lines keyed by age
+  and upkeep, feeding `CarInstance.provenanceNote`. Read by auctions, the body pipeline, the
+  tutorial and the balance probes.
+- `packages/sim/src/provenance.ts`: part **ownership** tracking (`makeCarOrigin`,
+  `makeMarketOrigin`, `isCustomerOriginPart`). Nothing to do with car history or value.
+
+**RULING: the new concept is named for what it is, a magazine feature.** State on the car is
+`magazineFeature`; the value term is `magazineFeatureMultiplier`. The word "provenance" is not
+used for it anywhere, in code, content, or design prose. When §5 is next edited, its wording
+changes to match. This costs one sentence now and it is the third instance of this failure.
+
+**`tradeNetwork` is an ADJUST, not a build.** §6's exits table specifies a trade network paying
+**0.87**, gated to **runners only**. The shipped channel
+(`economy.json` `sellingChannels.tradeNetwork`) pays a `priceBand` of **0.95 to 1.02**, is open
+to everyone, and carries `offerChanceFactor: 3`. So S9 does not stand up a new channel: it
+re-prices and gates an existing, tested, hash-pinned one, and the price gap is a lever change
+needing sign-off rather than an authoring decision. The sprint brief must say so, or it will be
+scoped as new work and the existing channel will quietly survive alongside it.
 
 ---
 
@@ -269,9 +299,12 @@ sequencing is driven by what unblocks what, and by putting the cheap high-value 
 
 **Phase 5, venues**
 
-- **S9. The exits.** Trade network requires a runner; the fixer with favour and a monthly
-  appetite; the export container with batching and deferred payment. **Depends on S1's D1 fix**
-  or all three will silently draw nothing.
+- **S9. The exits.** The trade network is **re-priced and gated, not built**: it ships today at a
+  `priceBand` of 0.95 to 1.02, open to everyone, and §6 wants 0.87 and runners only. That is a
+  lever change on hash-pinned content plus a gate, and the sprint brief must say so or the
+  existing channel will survive alongside the "new" one. The fixer with favour and a monthly
+  appetite, and the export container with batching and deferred payment, are genuinely new.
+  **Depends on S1's D1 fix** or all three will silently draw nothing.
 - **S10. The scrapyard.** The venue, favour gating, and scored harvesting.
 
 **Phase 6, period depth**

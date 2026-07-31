@@ -22,13 +22,34 @@ And there is a design cost, not just an engineering one. **A flat week has no te
 day offers the same actions, so a day is a resource to spend rather than a place in a rhythm,
 and "what shall I do today" never has a wrong answer for reasons of timing.
 
+## There is already a `calendar.ts`, and it is not a calendar
+
+**Read this before touching anything.** `packages/sim/src/calendar.ts` exists, is tracked, and
+has four exports. Three of them are reputation mechanics: `reputationAtLeast`,
+`deriveReputationTier`, `applyReputationDelta`. Only `currentGameYear` is calendrical, and it
+derives the year from the reputation tier rather than from elapsed time.
+
+So the module is misnamed today, and R1 in `sale-value-implementation-plan.md` has already
+settled that the campaign year moves off reputation and onto elapsed time through a
+`campaignYearCurve`. When that lands, `currentGameYear` stops reading reputation entirely and
+this file becomes a genuine calendar with three reputation functions stranded inside it.
+
+**This sprint makes the name true, first, before adding anything to it:**
+
+- **`packages/sim/src/reputation.ts`** takes `reputationAtLeast`, `deriveReputationTier` and
+  `applyReputationDelta`. Move them, do not re-export them from `calendar.ts` (guard G1: delete,
+  never deprecate, so the compiler finds every caller).
+- **`packages/sim/src/calendar.ts`** keeps `currentGameYear` and becomes what this sprint needs.
+
+It is a 70-line file and four symbols, and `pnpm typecheck` is whole-program, so this costs
+minutes and it is the difference between a calendar module and a drawer.
+
 ## The fix
 
 **One calendar module, then hang the rhythm off it.**
 
-    packages/sim/src/calendar.ts
-
-It owns every derivation from `state.day` and nothing else derives them:
+`calendar.ts`, once emptied of reputation, owns every derivation from `state.day` and nothing
+else derives them:
 
 - the day of the week
 - whether today is the start or end of a week
@@ -48,12 +69,19 @@ Then the week gets its landmarks:
 
 ### Genuinely new
 
-- **`calendar.ts`**, a pure derivation module with no state of its own.
+- **The day-of-week and month derivations**, added to `calendar.ts` once it has been emptied of
+  reputation. Pure functions of `state.day`, no state of their own.
 - **A `calendar` content block** naming which day of the week each landmark falls on.
 - **A month boundary**, which the game has never had.
 
 ### Existing mechanisms reused
 
+- **`calendar.ts` itself.** It exists; this sprint gives it its real job rather than standing up
+  a second time module beside it. `currentGameYear` stays exactly as it is (R1 changes what it
+  reads, in a later sprint, and this sprint must not pre-empt that).
+- **`packages/sim/src/reputation.ts` as the new home for the three moved functions.** If a
+  reputation module already exists by the time this runs, move them there rather than creating a
+  second one. Check before creating.
 - **The three `% 7` sites**, which are replaced by calls, not supplemented by them. This sprint
   removes as much code as it adds.
 - **`weekendMeetPending` and `oneDrawNextEndDay`**, which are the meet's mechanism already. The
@@ -108,7 +136,12 @@ seeing a golden hash move will want to know the total did not.
 
 ## Task breakdown
 
-1. **`calendar.ts`** with the derivations above, plus its content block and Zod entries
+0. **Split `calendar.ts` first.** Move `reputationAtLeast`, `deriveReputationTier` and
+   `applyReputationDelta` to `reputation.ts`, with no re-exports left behind. Run `pnpm
+   typecheck` immediately after; it is whole-program and will name every caller. Do this as its
+   own step before writing a line of the calendar itself, so a compile error is unambiguously
+   about the move.
+1. **The calendar derivations** in `calendar.ts`, plus its content block and Zod entries
    (`.strict()`, guard G5).
 2. **Replace all three `% 7` sites** with calendar calls. Delete the literals.
 3. **The guard test** pinning `calendar.ts` as the only deriver.

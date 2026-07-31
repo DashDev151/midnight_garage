@@ -240,27 +240,6 @@ pass."
   the probes' arithmetic, not a field addition, and every Law figure would need re-deriving.
   A doc comment in `balanceProbes.ts` flags it at the site.
 
-- [ ] **The duplicate-formula ban (Sprint 143's G3 guard,
-  `packages/content/tests/duplicateFormulaBan.test.ts`) found three pre-existing hand copies of
-  the clean-value formula (`bookValueYen * mileageFactor(...)`) outside `marketValue.ts`, not
-  one.** The guard as written exempts only `marketValue.ts`; left red on purpose rather than
-  quietly exempted, per the sprint's own instruction to report a guard's real findings rather than
-  paper over them.
-  - `packages/sim/src/auctions.ts:810` (`enforceMaxBillFraction`'s `cleanValue`, the Law 2
-    generation-guard ceiling) and `packages/sim/src/balanceProbes.ts:317`
-    (`computeModelBalanceProbe`'s `cleanValueYen`) are genuine re-derivations with no parity
-    test tying them to `marketValueYen` - the exact drift risk directive 16 exists to prevent,
-    and the one `balanceProbes.ts`'s own file doc comment claims never happens ("never a
-    re-derivation of their formulas").
-  - `packages/sim/src/valueLedger.ts:69-70` (`valueLedgerFor`'s `mileageAdjusted`) is a weaker
-    case: its own doc comment states it is "built from the same atoms the value formula itself
-    consumes... never a second value computation," and `valueLedger.test.ts` pins its total to
-    `marketValueYen` to the yen on every roster model, so drift cannot land silently the way it
-    can in the other two.
-  Needs a maintainer call: extend the guard's exemption list (at least for `valueLedger.ts`,
-  given its parity test), or extract a shared exported `cleanValueYen` helper from
-  `marketValue.ts` that all three call instead of each computing it by hand.
-
 - [ ] **Two roster CSV columns are owed under directive 24, and neither blocks the tuning arc.**
   `rarity` holds 26 of 94: it is a spawn-rate lever, so the missing 68 need signing under
   directive 22 as well as authoring. `flavour` holds **0 of 94**, deliberately: ninety-four
@@ -741,13 +720,13 @@ pass."
   labour was honestly priced (the same shape as the Law 6 shitbox finding above, the other side of
   the teardown economy). **Sprint 79 (the equivalence-priced labour model) removes that labour cost
   entirely** - `computeDonorBalanceProbe`'s `stripLaborSlots` is now 0 for every roster model, since
-  removal is free. Re-measured on the worst-case rolled car per model (`ModelDonorCoherenceRow.
+  removal is free. Re-measured on the worst-case rolled car per model (`ModelDonorBalanceProbeRow.
   partedYieldOfWorstCaseYen` against that model's own `sensibleFlipMarginYen`): parting now WINS on
   three roster models' worst-case corpse - `honda-city-e-aa` (49.5% bill/clean), `honda-civic-
   sir2-eg6` (54.8%), and `nissan-180sx-rps13` itself (55.3%, the exact model Sprint 75 found never
   crossed over) - while seven others (including both rare-tier RX7s and the Supra, whose bill/clean
-  ratio is only 31.7%) still favour repair. The crossover is not a single ratio (`coherence.test.ts`
-  disclosed this from the start): the lowest ratio at which parting wins (49.5%) sits comfortably
+  ratio is only 31.7%) still favour repair. The crossover is not a single ratio
+  (`packages/sim/tests/balanceProbes.test.ts` disclosed this from the start): the lowest ratio at which parting wins (49.5%) sits comfortably
   above the 0.20 decision gate this sprint's own doc set (`sprint79.md` decision 3) - buy-strip-sell
   is not threatening moderately-damaged cars, only genuine corpses, so `usedPartSaleFraction` (0.55)
   is NOT touched. Maintainer call needed: is a three-model donor loop the intended shape for v1.0,

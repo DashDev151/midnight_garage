@@ -172,7 +172,13 @@ build is already rare-to-sell through `presence`; charging it again on an absolu
 would tax the same scarcity twice and sink every listed path below the taste-blind exits.
 
 Proposed: `stalenessFloor` **0.35**, `stalenessHalfLifeOffers` **3.5**, `qualityFresh`
-**0.98**, `qualityFloor` **0.86**, `qualityHalfLifeOffers` **3.0**, `qualitySpread` **0.04**.
+**0.96**, `qualityFloor` **0.86**, `qualityHalfLifeOffers` **3.0**, `qualitySpread` **0.04**.
+
+`qualityFresh` shipped at **0.96**, not the 0.98 first proposed here. Sprint 147 found that 0.98
+leaves only two points between a fresh offer and market value, and that `pickWeightedCandidate`
+draws the buyer in proportion to their own valuation, a size bias worth about `tasteSpread`
+squared (1.44 points), which ate most of them and left an untouched same-day flip profitable.
+0.96 also puts the draw's 1.0 clamp one standard deviation out rather than half of one.
 
 This delivers, in one mechanism: the price decay §4 previously only promised; the lowball, as
 the day-3 offer at 0.96 you refuse and the day-19 at 0.88 you stare at; and the texture of a
@@ -209,12 +215,17 @@ looks-versus-truth theme rendered into the reputation rules:
 
 **Concours** requires mint condition, high coherence **and high authenticity**. A mint,
 coherent, **modified** car earns a **magazine feature** instead, which is the period-correct
-honour and carries the **provenance multiplier**. That single split closes concours semantics,
-the provenance placeholder, and the "should `retentionCeiling` exceed 1.10" question. It should
-not.
+honour and carries the **`magazineFeatureMultiplier`**. That single split closes concours
+semantics, the value-boost placeholder, and the "should `retentionCeiling` exceed 1.10" question.
+It should not.
+
+**Do not call this "provenance".** The word is already taken twice over in the codebase, by
+`packages/content/src/provenance.ts` (flavour history lines) and `packages/sim/src/provenance.ts`
+(part ownership tracking), neither related to this. The car carries `magazineFeature`; the value
+term is `magazineFeatureMultiplier`. Ruled in `sale-value-implementation-plan.md` §3.
 
 **The feature is an offered event, not a threshold crossed silently.** A qualifying magazine
-listing draws an offer to shoot the car: hold it a week, and it gains the provenance multiplier
+listing draws an offer to shoot the car: hold it a week, and it gains the multiplier
 plus a small heat blip on its own model. **Players can pump their own market, and that is
 allowed**, it is a real thing a famous shop could do.
 
@@ -420,7 +431,7 @@ stancers thin in winter.
 | `tolerance[archetype]` | 1.0; stancer 0.0, tuner 0.5 |
 | `lemonRiskCeiling` / `lemonRiskFloor` | 0.65 / 0.45 |
 | `stalenessFloor` / `stalenessHalfLifeOffers` | 0.35 / 3.5 |
-| `qualityFresh` / `qualityFloor` / `qualityHalfLifeOffers` / `qualitySpread` | 0.98 / 0.86 / 3.0 / 0.04 |
+| `qualityFresh` / `qualityFloor` / `qualityHalfLifeOffers` / `qualitySpread` | **0.96** (shipped, see §4) / 0.86 / 3.0 / 0.04 |
 | `relistRecovery` | 0.70 |
 | `salvageRouteScore` range | 0.70 to 0.90 |
 | lemon cost anchor | ~57,000, one Path-0 flip of foregone flow |
