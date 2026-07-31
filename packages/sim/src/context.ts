@@ -52,6 +52,7 @@ import {
 const DEFAULT_FACILITIES: Facilities = {
   service: { startCount: 1, maxCount: 1, bayPricesYen: [], minReputationTier: [] },
   parking: { startCount: 3, maxCount: 3, bayPricesYen: [], minReputationTier: [] },
+  forecourt: { startCount: 2, maxCount: 2, bayPricesYen: [], minReputationTier: [] },
 }
 
 /**

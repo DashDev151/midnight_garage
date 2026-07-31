@@ -108,6 +108,12 @@ const RETIRED_IDENTIFIERS: readonly RetiredIdentifier[] = [
     reason:
       'A flat uniform band applied identically whether a car was listed this morning or two months ago, so time was free and the correct play was to skip days until a good number appeared. Replaced by the quality draw (economy.liquidity.qualityFresh/qualityFloor/qualityHalfLifeOffers/qualitySpread, drawQualityFraction in selling.ts) - a seeded Normal draw around a mean that slides down as offersSeen rises.',
   },
+  {
+    identifier: 'WEEKLY_RENT_YEN',
+    retiredInSprint: 148,
+    reason:
+      'A flat 20,000 regardless of how much yard the player owned, so a bought bay was free to hold forever and capacity was a pure ratchet. Replaced by economy.rent (baseWeeklyYen plus a per-kind perBayWeeklyYen rate) and computeWeeklyRentYen (finances.ts), which sums base plus every owned bay of every kind - sized so day 1 is unchanged at exactly 20,000.',
+  },
 ]
 
 function escapeRegExp(text: string): string {

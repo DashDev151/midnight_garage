@@ -87,6 +87,7 @@ import {
   expectationForCar,
   coherenceFactorFor,
   externalBlockersFor,
+  forecourtOccupancy,
   foundationFactor,
   generateAuctionCarInstance,
   gradeMissionCar,
@@ -96,6 +97,8 @@ import {
   installLaborSlotsFor,
   isFreeInstallRefit,
   refitLaborSlotsFor,
+  bayCountsByKind,
+  hasForecourtSpace as hasForecourtSpaceCore,
   hasParkingSpace,
   hireMachineLineGateReason as hireMachineLineGateReasonCore,
   inspectionVisitGateReason as inspectionVisitGateReasonCore,
@@ -2776,6 +2779,17 @@ export const useGameStore = defineStore('game', () => {
     gameState.value.parkingCarIds.map((id) => (id ? (shopCarView(id) ?? null) : null)),
   )
 
+  /**
+   * The forecourt counterpart to `serviceBaysView`/`parkingView` above - same
+   * shape, but every occupant is, by construction, a car currently listed on
+   * a `requiresForecourt` channel (`resolveSetForSale`, sprint148.md). Read
+   * only: `GarageScreen.vue` renders it without any drag/drop affordance,
+   * since a car reaches the forecourt exclusively by being listed.
+   */
+  const forecourtView = computed<(ShopCarView | null)[]>(() =>
+    gameState.value.forecourtCarIds.map((id) => (id ? (shopCarView(id) ?? null) : null)),
+  )
+
   const parkingCapacity = computed(() => gameState.value.parkingBayCount)
   const parkingOccupancyCount = computed(() => parkingOccupancy(gameState.value))
   const parkingFull = computed(() => !hasParkingSpace(gameState.value))
@@ -2783,6 +2797,9 @@ export const useGameStore = defineStore('game', () => {
   const serviceBayFreeCount = computed(
     () => gameState.value.serviceBayCarIds.filter((id) => id === null).length,
   )
+  const forecourtCapacity = computed(() => gameState.value.forecourtBayCount)
+  const forecourtOccupancyCount = computed(() => forecourtOccupancy(gameState.value))
+  const hasForecourtSpace = computed(() => hasForecourtSpaceCore(gameState.value))
   /** True when neither side has a free slot - a direct move can never succeed, only a swap can. */
   const shopAtCapacity = computed(() => parkingFull.value && serviceBayFreeCount.value <= 0)
 
@@ -2816,6 +2833,22 @@ export const useGameStore = defineStore('game', () => {
    * or null if that's already met, ungated, or the ladder is maxed. */
   function nextBayReputationGate(kind: BayKind): ReputationTier | null {
     return nextBayMinReputationTier(gameState.value, kind, context.value.facilities)
+  }
+
+  /**
+   * Why listing `carId` on `channelId` would be refused right now for want
+   * of forecourt space, or `null` when it wouldn't - the forecourt half of
+   * `CarDetailScreen.vue`'s existing disabled-reason idiom
+   * (`channelDisabledReason`, which covers the cash half itself). A channel
+   * that doesn't need a forecourt (the trade network), or a car already
+   * sitting on one (switching between two forecourt channels keeps the same
+   * slot), is never blocked here.
+   */
+  function forecourtBlockedReason(carId: string, channelId: SellingChannelId): string | null {
+    if (!context.value.economy.sellingChannels[channelId].requiresForecourt) return null
+    if (gameState.value.forecourtCarIds.includes(carId)) return null
+    if (hasForecourtSpace.value) return null
+    return 'No forecourt space free - every slot already has a car on show'
   }
 
   /**
@@ -4158,8 +4191,13 @@ export const useGameStore = defineStore('game', () => {
   ): boolean {
     const before = gameState.value
     const result = resolveSetForSale(before, carId, forSale, context.value, channelId)
-    if (result.state === before) return false
+    // A refused listing (no forecourt space) leaves state untouched but
+    // still logs (`acquisition-blocked`, reusing the existing no-space
+    // shape) - checked separately from state identity so that log still
+    // surfaces, the same "something happened" contract `buyout` uses.
+    if (result.state === before && result.log.length === 0) return false
     gameState.value = result.state
+    if (result.log.length > 0) dayLog.value.push(...result.log)
     logSessionEvent('setForSale', { carId, forSale, channelId })
     return true
   }
@@ -4375,21 +4413,31 @@ export const useGameStore = defineStore('game', () => {
    * A no-op once the kind's ladder is already maxed (nothing to add). */
   function devGrantBay(kind: BayKind): void {
     const cfg = context.value.facilities[kind]
-    const current =
-      kind === 'service' ? gameState.value.serviceBayCount : gameState.value.parkingBayCount
+    const current = bayCountsByKind(gameState.value)[kind]
     if (current >= cfg.maxCount) return
-    gameState.value =
-      kind === 'service'
-        ? {
-            ...gameState.value,
-            serviceBayCount: current + 1,
-            serviceBayCarIds: [...gameState.value.serviceBayCarIds, null],
-          }
-        : {
-            ...gameState.value,
-            parkingBayCount: current + 1,
-            parkingCarIds: [...gameState.value.parkingCarIds, null],
-          }
+    switch (kind) {
+      case 'service':
+        gameState.value = {
+          ...gameState.value,
+          serviceBayCount: current + 1,
+          serviceBayCarIds: [...gameState.value.serviceBayCarIds, null],
+        }
+        return
+      case 'parking':
+        gameState.value = {
+          ...gameState.value,
+          parkingBayCount: current + 1,
+          parkingCarIds: [...gameState.value.parkingCarIds, null],
+        }
+        return
+      case 'forecourt':
+        gameState.value = {
+          ...gameState.value,
+          forecourtBayCount: current + 1,
+          forecourtCarIds: [...gameState.value.forecourtCarIds, null],
+        }
+        return
+    }
   }
 
   /**
@@ -4546,6 +4594,11 @@ export const useGameStore = defineStore('game', () => {
     parkingFull,
     serviceBayCount,
     serviceBayFreeCount,
+    forecourtView,
+    forecourtCapacity,
+    forecourtOccupancyCount,
+    hasForecourtSpace,
+    forecourtBlockedReason,
     shopAtCapacity,
     graceParkedCarView,
     graceSlotOccupied,

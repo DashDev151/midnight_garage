@@ -15,9 +15,13 @@ import {
   applyBayPurchase,
   applyBayPurchases,
   applyMoves,
+  assignToForecourt,
   assignToParking,
   assignToShop,
+  bayCountsByKind,
+  forecourtOccupancy,
   hasAcquisitionSpace,
+  hasForecourtSpace,
   hasGraceSpace,
   hasOwnedShopSpace,
   hasParkingSpace,
@@ -31,10 +35,11 @@ import {
   resolveGraceParking,
   serviceBayOccupancy,
   swapCars,
+  tryAssignToRealOrGrace,
 } from '../src/facilities'
 import { createInitialGameState } from '../src/newGame'
 import { createRng } from '../src/rng'
-import { buildCarInstance } from './testFixtures'
+import { assertPlacementInvariant, buildCarInstance } from './testFixtures'
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY, [], FACILITIES)
 
@@ -662,5 +667,213 @@ describe('applyBayPurchase / applyBayPurchases', () => {
     expect(result.log).toHaveLength(2)
     expect(result.log[0]).toMatchObject({ priceYen: FACILITIES.service.bayPricesYen[0] })
     expect(result.log[1]).toMatchObject({ priceYen: FACILITIES.service.bayPricesYen[1] })
+  })
+
+  it('works identically for the forecourt kind (sprint148: a third, purchasable bay kind)', () => {
+    const price = FACILITIES.forecourt.bayPricesYen[0]!
+    const rung1Tier = FACILITIES.forecourt.minReputationTier[0]!
+    const state = baseState({ cashYen: price, reputationTier: rung1Tier })
+    const result = applyBayPurchase(state, 'forecourt', FACILITIES)
+    expect(result.applied).toBe(true)
+    expect(result.state.cashYen).toBe(0)
+    expect(result.state.forecourtBayCount).toBe(FACILITIES.forecourt.startCount + 1)
+    expect(result.state.forecourtCarIds).toHaveLength(state.forecourtCarIds.length + 1)
+    expect(result.state.forecourtCarIds.at(-1)).toBeNull()
+    expect(result.log).toEqual([{ type: 'bay-purchased', kind: 'forecourt', priceYen: price }])
+  })
+})
+
+describe('forecourtOccupancy / hasForecourtSpace (sprint148)', () => {
+  it('counts every real, explicitly-placed forecourt slot', () => {
+    const state = baseState({ forecourtBayCount: 3, forecourtCarIds: ['car-1', null, 'car-2'] })
+    expect(forecourtOccupancy(state)).toBe(2)
+  })
+
+  it('is full once occupancy reaches forecourtBayCount', () => {
+    const state = baseState({ forecourtBayCount: 1, forecourtCarIds: ['car-1'] })
+    expect(hasForecourtSpace(state)).toBe(false)
+  })
+
+  it('has space below capacity', () => {
+    const state = baseState({ forecourtBayCount: 2, forecourtCarIds: ['car-1', null] })
+    expect(hasForecourtSpace(state)).toBe(true)
+  })
+})
+
+describe('the forecourt is not acquisition capacity (sprint148 - the decision this sprint keeps sharp)', () => {
+  it('hasOwnedShopSpace stays false with free forecourt slots but full parking and every service bay', () => {
+    const state = baseState({
+      parkingBayCount: 1,
+      parkingCarIds: ['car-1'],
+      serviceBayCount: 1,
+      serviceBayCarIds: ['car-2'],
+      forecourtBayCount: 2,
+      forecourtCarIds: [null, null],
+    })
+    expect(hasOwnedShopSpace(state)).toBe(false)
+  })
+
+  it('hasAcquisitionSpace is true only via the grace slot, never via a free forecourt slot', () => {
+    const fullRealFreeForecourt = baseState({
+      parkingBayCount: 1,
+      parkingCarIds: ['car-1'],
+      serviceBayCount: 1,
+      serviceBayCarIds: ['car-2'],
+      forecourtBayCount: 2,
+      forecourtCarIds: [null, null],
+      graceParkingCarId: 'car-3', // grace also full
+    })
+    expect(hasAcquisitionSpace(fullRealFreeForecourt)).toBe(false)
+
+    const graceFree = { ...fullRealFreeForecourt, graceParkingCarId: null }
+    expect(hasAcquisitionSpace(graceFree)).toBe(true)
+  })
+
+  it('assignToShop never places into the forecourt - a fresh acquisition falls to grace once real capacity is full, forecourt space notwithstanding', () => {
+    const state = baseState({
+      parkingBayCount: 1,
+      parkingCarIds: ['car-1'],
+      serviceBayCount: 1,
+      serviceBayCarIds: ['car-2'],
+      forecourtBayCount: 2,
+      forecourtCarIds: [null, null],
+    })
+    const next = assignToShop(state, 'car-3')
+    expect(next.graceParkingCarId).toBe('car-3')
+    expect(next.forecourtCarIds).toEqual([null, null])
+  })
+})
+
+describe('assignToForecourt (sprint148)', () => {
+  it('places a car in the first empty forecourt slot', () => {
+    const state = baseState({ forecourtBayCount: 2, forecourtCarIds: [null, null] })
+    const next = assignToForecourt(state, 'car-1')
+    expect(next.forecourtCarIds).toEqual(['car-1', null])
+  })
+})
+
+describe('moveCarToSlot / moveCar refuse the forecourt as a hand-move target (sprint148)', () => {
+  it('moveCarToSlot refuses to place a car onto the forecourt', () => {
+    const state = baseState({
+      ownedCars: [ownedCar('car-1')],
+      parkingCarIds: ['car-1'],
+      forecourtBayCount: 2,
+      forecourtCarIds: [null, null],
+    })
+    const result = moveCarToSlot(state, 'car-1', 'forecourt', 0)
+    expect(result.changed).toBe(false)
+    expect(result.state).toBe(state)
+  })
+
+  it('moveCar refuses the forecourt too, even with a free slot', () => {
+    const state = baseState({
+      ownedCars: [ownedCar('car-1')],
+      serviceBayCarIds: ['car-1'],
+      forecourtBayCount: 2,
+      forecourtCarIds: [null, null],
+    })
+    const result = moveCar(state, 'car-1', 'forecourt')
+    expect(result.changed).toBe(false)
+  })
+
+  it('a car sitting on the forecourt cannot be located as a move source either', () => {
+    const state = baseState({
+      ownedCars: [ownedCar('car-1')],
+      forecourtBayCount: 2,
+      forecourtCarIds: ['car-1', null],
+    })
+    const result = moveCar(state, 'car-1', 'service')
+    expect(result.changed).toBe(false)
+  })
+})
+
+describe('releaseCarFromShop clears the forecourt slot too (sprint148)', () => {
+  it('clears the slot if the car is on the forecourt', () => {
+    const state = baseState({ forecourtCarIds: ['car-1', 'car-2'] })
+    const next = releaseCarFromShop(state, 'car-1')
+    expect(next.forecourtCarIds).toEqual([null, 'car-2'])
+  })
+})
+
+describe('tryAssignToRealOrGrace (sprint148: the checked cascade a listing release needs)', () => {
+  it('places into parking first when it has room', () => {
+    const state = baseState({ parkingBayCount: 1, parkingCarIds: [null], serviceBayCount: 1 })
+    const next = tryAssignToRealOrGrace(state, 'car-1')
+    expect(next?.parkingCarIds).toEqual(['car-1'])
+  })
+
+  it('falls back to a service bay once parking is full', () => {
+    const state = baseState({
+      parkingBayCount: 1,
+      parkingCarIds: ['car-0'],
+      serviceBayCount: 1,
+      serviceBayCarIds: [null],
+    })
+    const next = tryAssignToRealOrGrace(state, 'car-1')
+    expect(next?.serviceBayCarIds).toEqual(['car-1'])
+  })
+
+  it('falls back to grace only once parking AND every service bay are full', () => {
+    const state = baseState({
+      parkingBayCount: 1,
+      parkingCarIds: ['car-0'],
+      serviceBayCount: 1,
+      serviceBayCarIds: ['car-00'],
+      graceParkingCarId: null,
+    })
+    const next = tryAssignToRealOrGrace(state, 'car-1')
+    expect(next?.graceParkingCarId).toBe('car-1')
+  })
+
+  it('refuses (null) rather than clobbering an already-occupied grace slot - the difference from assignToShop', () => {
+    const state = baseState({
+      parkingBayCount: 1,
+      parkingCarIds: ['car-0'],
+      serviceBayCount: 1,
+      serviceBayCarIds: ['car-00'],
+      graceParkingCarId: 'someone-else',
+    })
+    expect(tryAssignToRealOrGrace(state, 'car-1')).toBeNull()
+  })
+})
+
+describe('bayCountsByKind (sprint148)', () => {
+  it('reads all three bay counts, keyed by kind', () => {
+    const state = baseState({ serviceBayCount: 2, parkingBayCount: 5, forecourtBayCount: 3 })
+    expect(bayCountsByKind(state)).toEqual({ service: 2, parking: 5, forecourt: 3 })
+  })
+})
+
+describe('the placement invariant (sprint148: every owned car appears exactly once)', () => {
+  it('holds after acquisition, moves, a bay purchase and release, across all four collections', () => {
+    // Real FACILITIES start counts throughout (parking 3, service 1,
+    // forecourt 2), so the later applyBayPurchase call re-prices off the
+    // ladder correctly - a hand-picked custom count would misalign
+    // `nextBayPriceYen`'s owned-minus-startCount indexing.
+    let state = baseState({ cashYen: 999_999_999, reputationTier: 'legend' })
+
+    // Five acquisitions in a row: fills parking (3), then the one service
+    // bay, then the grace slot - each placing AND owning in the same step,
+    // mirroring real acquisition (bidding.ts), so a car never sits in
+    // ownedCars unplaced even momentarily.
+    for (const id of ['car-1', 'car-2', 'car-3', 'car-4', 'car-5']) {
+      state = { ...assignToShop(state, id), ownedCars: [...state.ownedCars, ownedCar(id)] }
+      assertPlacementInvariant(state)
+    }
+    expect(state.graceParkingCarId).toBe('car-5')
+
+    const purchased = applyBayPurchase(state, 'parking', FACILITIES)
+    expect(purchased.applied).toBe(true)
+    state = purchased.state
+    assertPlacementInvariant(state)
+
+    const migrated = resolveGraceParking(state, ECONOMY)
+    state = migrated.state
+    expect(state.graceParkingCarId).toBeNull() // migrated into the freshly bought parking bay
+    assertPlacementInvariant(state)
+
+    state = releaseCarFromShop(state, 'car-2')
+    state = { ...state, ownedCars: state.ownedCars.filter((c) => c.id !== 'car-2') }
+    assertPlacementInvariant(state)
   })
 })

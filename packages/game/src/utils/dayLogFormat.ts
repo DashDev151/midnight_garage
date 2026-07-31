@@ -154,9 +154,11 @@ export function describeLogEntry(
       const reasonText =
         entry.reason === 'no-space'
           ? 'no room anywhere - parking, every bay, and the double-parking spot are all full'
-          : entry.reason === 'technique'
-            ? 'needs a technique not yet unlocked'
-            : 'needs a tool upgrade'
+          : entry.reason === 'no-forecourt-space'
+            ? 'no forecourt slot free - every one is already showing a car'
+            : entry.reason === 'technique'
+              ? 'needs a technique not yet unlocked'
+              : 'needs a tool upgrade'
       return `${entry.kind} blocked - ${reasonText}`
     }
     case 'equipment-purchased':

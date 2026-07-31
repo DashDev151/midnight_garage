@@ -31,6 +31,7 @@ import {
 import { channelBuyerTaste, valuateCarForBuyer } from '../src/valuation'
 import { createRng, type Rng } from '../src/rng'
 import {
+  assertPlacementInvariant,
   buildCarInstance,
   mintCarParts,
   testSpecialty,
@@ -182,6 +183,8 @@ function stateWithCar(car: CarInstance, overrides: Partial<GameState> = {}): Gam
     parkingBayCount: 3,
     serviceBayCarIds: [car.id],
     parkingCarIds: [],
+    forecourtBayCount: 2,
+    forecourtCarIds: [null, null],
     graceParkingCarId: null,
     energySpentToday: 0,
     toolTiers: testToolTiers(),
@@ -430,6 +433,105 @@ describe('resolveSetForSale (Sprint 31; channels, Sprint 114)', () => {
     expect(again.state.cashYen).toBe(
       spent.cashYen - CONTEXT.economy.sellingChannels.weekendMeet.feeYen,
     )
+  })
+})
+
+describe('resolveSetForSale and the forecourt (sprint148)', () => {
+  it('listing on a requiresForecourt channel moves the car onto the forecourt and frees its real slot', () => {
+    // stateWithCar sits the car in the one service bay by default.
+    const state = stateWithCar(car, { cashYen: 100_000 })
+    const result = resolveSetForSale(state, car.id, true, CONTEXT, 'shopFront')
+    expect(CONTEXT.economy.sellingChannels.shopFront.requiresForecourt).toBe(true)
+    expect(result.state.forecourtCarIds).toEqual([car.id, null])
+    expect(result.state.serviceBayCarIds).toEqual([null])
+    assertPlacementInvariant(result.state)
+  })
+
+  it('refuses to list on a requiresForecourt channel with no forecourt slot free, no state change, and logs the block', () => {
+    const state = stateWithCar(car, {
+      cashYen: 100_000,
+      forecourtBayCount: 1,
+      forecourtCarIds: ['someone-elses-car'],
+    })
+    const result = resolveSetForSale(state, car.id, true, CONTEXT, 'shopFront')
+    expect(result.state).toBe(state)
+    expect(result.log).toEqual([
+      { type: 'acquisition-blocked', kind: 'listing', reason: 'no-forecourt-space' },
+    ])
+  })
+
+  it('switching between two forecourt-requiring channels keeps the same forecourt slot - no release and retake', () => {
+    const listed = resolveSetForSale(
+      stateWithCar(car, { cashYen: 100_000 }),
+      car.id,
+      true,
+      CONTEXT,
+      'shopFront',
+    ).state
+    expect(CONTEXT.economy.sellingChannels.freeAdsPaper.requiresForecourt).toBe(true)
+    const switched = resolveSetForSale(listed, car.id, true, CONTEXT, 'freeAdsPaper')
+    expect(switched.state.forecourtCarIds).toEqual(listed.forecourtCarIds)
+    expect(switched.state.carsForSale[0]?.channelId).toBe('freeAdsPaper')
+    assertPlacementInvariant(switched.state)
+  })
+
+  it('switching to the trade network (no forecourt needed) is a real move back to a real slot', () => {
+    const listed = resolveSetForSale(
+      stateWithCar(car, { cashYen: 100_000 }),
+      car.id,
+      true,
+      CONTEXT,
+      'shopFront',
+    ).state
+    expect(listed.forecourtCarIds).toContain(car.id)
+    expect(CONTEXT.economy.sellingChannels.tradeNetwork.requiresForecourt).toBe(false)
+    const switched = resolveSetForSale(listed, car.id, true, CONTEXT, 'tradeNetwork')
+    expect(switched.state.forecourtCarIds).not.toContain(car.id)
+    expect(
+      switched.state.serviceBayCarIds.includes(car.id) ||
+        switched.state.parkingCarIds.includes(car.id) ||
+        switched.state.graceParkingCarId === car.id,
+    ).toBe(true)
+    assertPlacementInvariant(switched.state)
+  })
+
+  it('delisting a forecourt car with no real slot free takes the grace slot', () => {
+    const state: GameState = {
+      ...stateWithCar(car, { cashYen: 100_000 }),
+      serviceBayCount: 1,
+      serviceBayCarIds: ['other-car'],
+      parkingBayCount: 1,
+      parkingCarIds: ['another-car'],
+      forecourtBayCount: 2,
+      forecourtCarIds: [car.id, null],
+      carsForSale: listedOn('shopFront'),
+      graceParkingCarId: null,
+    }
+    const result = resolveSetForSale(state, car.id, false, CONTEXT)
+    expect(result.state.graceParkingCarId).toBe(car.id)
+    expect(result.state.forecourtCarIds).toEqual([null, null])
+    expect(result.state.carsForSale).toEqual([])
+    // assertPlacementInvariant only checks state.ownedCars (just `car` here,
+    // per stateWithCar's own fixture) - 'other-car'/'another-car' are plain
+    // slot-filler ids, not owned cars, so they're outside its scope.
+    assertPlacementInvariant(result.state)
+  })
+
+  it('refuses to delist when even the grace slot is taken too - no state change', () => {
+    const state: GameState = {
+      ...stateWithCar(car, { cashYen: 100_000 }),
+      serviceBayCount: 1,
+      serviceBayCarIds: ['other-car'],
+      parkingBayCount: 1,
+      parkingCarIds: ['another-car'],
+      forecourtBayCount: 2,
+      forecourtCarIds: [car.id, null],
+      carsForSale: listedOn('shopFront'),
+      graceParkingCarId: 'someone-elses-car',
+    }
+    const result = resolveSetForSale(state, car.id, false, CONTEXT)
+    expect(result.state).toBe(state)
+    expect(result.log).toEqual([])
   })
 })
 
@@ -771,6 +873,16 @@ describe('resolveSellViaWalkIn (Sprint 31: resolves today’s pre-rolled offer)'
     const result = resolveSellViaWalkIn(state, 'ghost-car', CONTEXT)
     expect(result.state).toBe(state)
     expect(result.log).toEqual([])
+  })
+
+  it('frees the forecourt slot too, when the sold car was listed there (sprint148)', () => {
+    const state = stateWithOffer(car, 900_000, 'tuner', {
+      serviceBayCarIds: [], // not in a real slot any more - it's on the forecourt
+      forecourtCarIds: [car.id, null],
+    })
+    const result = resolveSellViaWalkIn(state, car.id, CONTEXT)
+    expect(result.state.ownedCars).toHaveLength(0)
+    expect(result.state.forecourtCarIds).toEqual([null, null])
   })
 
   it('is a no-op when there is no live offer today (Sprint 31: nothing to accept)', () => {

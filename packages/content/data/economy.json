@@ -1,6 +1,13 @@
 {
   "STARTING_CASH_YEN": 300000,
-  "WEEKLY_RENT_YEN": 20000,
+  "rent": {
+    "baseWeeklyYen": 6000,
+    "perBayWeeklyYen": {
+      "service": 5000,
+      "parking": 2000,
+      "forecourt": 1500
+    }
+  },
   "DOUBLE_PARKING_FINE_YEN": 8000,
   "AUCTION_RESERVE_PRICE_FRACTION": 0.6,
   "AUCTION_LOTS_PER_TIER": {
@@ -592,7 +599,8 @@
     "shopFront": {
       "feeYen": 0,
       "offerChanceFactor": 0.7,
-      "tasteCeiling": 1
+      "tasteCeiling": 1,
+      "requiresForecourt": true
     },
     "freeAdsPaper": {
       "feeYen": 1500,
@@ -602,13 +610,15 @@
         "rare": 0.5,
         "legend": 0.5
       },
-      "tasteCeiling": 1.05
+      "tasteCeiling": 1.05,
+      "requiresForecourt": true
     },
     "tunerMagazine": {
       "feeYen": 12000,
       "offerChanceFactor": 0.6,
       "tasteCeiling": 1.17,
-      "matchedOnly": true
+      "matchedOnly": true,
+      "requiresForecourt": true
     },
     "tradeNetwork": {
       "feeYen": 0,
@@ -616,13 +626,15 @@
       "priceBand": {
         "min": 0.95,
         "max": 1.02
-      }
+      },
+      "requiresForecourt": false
     },
     "weekendMeet": {
       "feeYen": 3000,
       "oneDrawNextEndDay": true,
       "tasteCeiling": 1.17,
-      "matchedOnly": true
+      "matchedOnly": true,
+      "requiresForecourt": true
     }
   },
   "toolCeilings": {

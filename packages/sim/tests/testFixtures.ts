@@ -9,10 +9,12 @@ import {
   type CarPartState,
   type ComponentId,
   type ConditionBand,
+  type GameState,
   type Grade,
   type PartInstance,
   type ToolTiers,
 } from '@midnight-garage/content'
+import { expect } from 'vitest'
 import type { SimContext } from '../src/context'
 
 /** A full six-line `toolTiers` map, every line at 1 (the new-game floor)
@@ -197,4 +199,28 @@ export function carWithGrades(
     }
   }
   return buildCarInstance({ modelId: model.id, parts: mintCarParts(overrides) })
+}
+
+/**
+ * The placement invariant sprint148.md exists to protect: every OWNED car id
+ * appears exactly once across `serviceBayCarIds`, `parkingCarIds`,
+ * `forecourtCarIds` and `graceParkingCarId` - never two places at once,
+ * never nowhere. Call after every state transition a test exercises (list,
+ * delist, sell, buy, move, swap, bay purchase). A car that can be listed
+ * while still holding its parking slot is exactly the failure this catches.
+ */
+export function assertPlacementInvariant(state: GameState): void {
+  const allSlotIds = [
+    ...state.serviceBayCarIds,
+    ...state.parkingCarIds,
+    ...state.forecourtCarIds,
+    state.graceParkingCarId,
+  ].filter((id): id is string => id !== null)
+  for (const car of state.ownedCars) {
+    const occurrences = allSlotIds.filter((id) => id === car.id).length
+    expect(
+      occurrences,
+      `owned car ${car.id} appears in ${occurrences} slots (service/parking/forecourt/grace), expected exactly 1`,
+    ).toBe(1)
+  }
 }

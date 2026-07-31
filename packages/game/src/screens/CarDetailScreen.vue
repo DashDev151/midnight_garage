@@ -379,10 +379,16 @@ watch(
 
 /** Why `id` can't be armed right now, `null` when it can - the existing
  * disabled-reason idiom (`AuctionScreen.vue`'s buyout button: disabled +
- * title share the same check). */
+ * title share the same check). Covers both the cash gate and (sprint148.md)
+ * the forecourt-space gate a `requiresForecourt` channel needs. */
 function channelDisabledReason(id: SellingChannelId): string | null {
   const feeYen = game.context.economy.sellingChannels[id].feeYen
   if (game.cashYen < feeYen) return `Not enough cash - listing here costs ${formatYen(feeYen)}`
+  const d = detail.value
+  if (d) {
+    const forecourtReason = game.forecourtBlockedReason(d.car.id, id)
+    if (forecourtReason) return forecourtReason
+  }
   return null
 }
 

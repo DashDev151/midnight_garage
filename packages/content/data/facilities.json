@@ -25,5 +25,11 @@
       "respected",
       "respected"
     ]
+  },
+  "forecourt": {
+    "startCount": 2,
+    "maxCount": 8,
+    "bayPricesYen": [150000, 220000, 320000, 450000, 620000, 800000],
+    "minReputationTier": ["local", "local", "known", "known", "respected", "respected"]
   }
 }

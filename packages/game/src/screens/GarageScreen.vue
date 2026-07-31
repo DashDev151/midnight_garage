@@ -132,6 +132,35 @@ const draggedCarName = computed(() => {
       </ul>
     </section>
 
+    <section class="forecourt">
+      <h3>
+        Forecourt ({{ game.forecourtOccupancyCount }}/{{ game.forecourtCapacity }})
+        <HelpHint label="Forecourt">
+          Where listed cars go on show. Listing a car on a channel where a buyer comes to look at it
+          moves the car here from parking or a service bay; delisting moves it back. You can't drag
+          a car onto the forecourt by hand - it only ever holds cars you've put up for sale.
+        </HelpHint>
+      </h3>
+      <ul class="forecourt-list" data-test="forecourt-list">
+        <li
+          v-for="(slot, i) in game.forecourtView"
+          :key="slot?.carId ?? 'empty-forecourt-' + i"
+          class="forecourt-slot"
+          :data-test="'forecourt-slot-' + i"
+        >
+          <RouterLink
+            v-if="slot"
+            :to="{ name: 'car', params: { id: slot.carId } }"
+            class="forecourt-car"
+          >
+            {{ slot.displayName }}
+            <span v-if="slot.hasOffer" class="badge offer">offer today</span>
+          </RouterLink>
+          <span v-else class="empty">empty forecourt slot</span>
+        </li>
+      </ul>
+    </section>
+
     <section v-if="game.graceParkedCarView" class="grace-parking" data-test="grace-parking">
       <h3>
         Double parked
@@ -271,6 +300,45 @@ button:disabled {
      against its fixed height, rather than reading as a wide letterbox. */
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: var(--mg-space-3);
+}
+
+.forecourt-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--mg-space-4);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--mg-space-3);
+}
+
+.forecourt-slot {
+  display: flex;
+  align-items: center;
+  min-height: 56px;
+  background: var(--mg-panel);
+  border: 1px dashed var(--mg-panel-edge);
+  border-radius: var(--mg-radius);
+  padding: var(--mg-space-3);
+}
+
+.forecourt-car {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mg-space-1);
+  color: var(--mg-neon-violet);
+  text-decoration: none;
+  font-size: var(--mg-fs-sm);
+}
+
+.forecourt-slot .badge {
+  color: var(--mg-neon-violet);
+  font-size: var(--mg-fs-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.forecourt-slot .badge.offer {
+  color: var(--mg-yen);
 }
 
 .grace-parking h3 {

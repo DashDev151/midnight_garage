@@ -830,6 +830,35 @@ import storyMissions from '../data/storyMissions.json'
  * No other lever moves. Measured median instant-flip margins, entry/everyday/enthusiast/
  * flagship: -1.07%/-1.22%/-0.55%/-0.06% (qualityFresh 0.98, guard red) -> see
  * `valueModelProbes.test.ts`'s own updated guard for the closed figures.
+ *
+ * Re-pinned for Sprint 148's space and rent (docs/sprints/sprint148.md, both lever groups
+ * signed by name and value, under the standing lever grant recorded as R3 in
+ * docs/design/systems/sale-value-implementation-plan.md): selling a car now costs a
+ * forecourt slot, and rent scales with what the shop owns rather than sitting flat forever.
+ * Three lever groups:
+ *
+ * 1. `WEEKLY_RENT_YEN` (flat 20000) is RETIRED outright, replaced by a new `rent` block:
+ *    `rent.baseWeeklyYen` 6000, `rent.perBayWeeklyYen.service` 5000,
+ *    `rent.perBayWeeklyYen.parking` 2000, `rent.perBayWeeklyYen.forecourt` 1500.
+ *    `weeklyRentYen = baseWeeklyYen + sum over kinds of (bayCount[kind] *
+ *    perBayWeeklyYen[kind])` (`finances.ts`'s `computeWeeklyRentYen`), chosen so day 1 is
+ *    unchanged at exactly 20000 (6000 + 5000x1 + 2000x3 + 1500x2). Added to
+ *    `retiredIdentifiers.test.ts` in the same change.
+ * 2. The `forecourt` facility (NEW, `facilities.json`) - `startCount` 2, `maxCount` 8,
+ *    `bayPricesYen` [150000, 220000, 320000, 450000, 620000, 800000], `minReputationTier`
+ *    [local, local, known, known, respected, respected].
+ * 3. `requiresForecourt` (NEW, required on every `sellingChannels` entry): true when a buyer
+ *    comes to look at the car in person, false when it is collected or shipped instead.
+ *    `shopFront`/`freeAdsPaper`/`tunerMagazine`/`weekendMeet` are true; `tradeNetwork` is the
+ *    one false.
+ *
+ * Listing a car on a `requiresForecourt` channel now moves it onto a forecourt slot, freeing
+ * its real one; delisting (or switching to the trade network) is the reverse move, falling
+ * back to the grace slot and refusing only when even that is taken. The forecourt is
+ * deliberately NOT acquisition capacity: `hasOwnedShopSpace`/`hasAcquisitionSpace` keep their
+ * exact prior meaning. No mission payout, budget cap, or balance-probe figure moves: none of
+ * those pipelines reads rent or the selling channels' capacity flag. `partPricing.json` is
+ * untouched, so its own hash holds.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -839,7 +868,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('7902e54c1533a941755a4de4ea63c35f9c0802f2ed2a71080dd51946ef56b520')
+    ).toBe('c314c4a3978b91020b171e96fd1fdeeeb96a579cfa5087c64a7a901fde637958')
   })
 
   it('partPricing.json matches its approved content exactly', () => {

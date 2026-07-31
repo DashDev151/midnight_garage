@@ -12,7 +12,8 @@ import {
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '../src/context'
-import { applyWeeklyRentAndWages } from '../src/finances'
+import { bayCountsByKind } from '../src/facilities'
+import { applyWeeklyRentAndWages, computeWeeklyRentYen } from '../src/finances'
 import { energyMax } from '../src/laborSlots'
 import { createInitialGameState } from '../src/newGame'
 import { createRng } from '../src/rng'
@@ -195,7 +196,8 @@ describe('wage integration (the existing finances path picks up a hired member u
     const m = member('waged', { engine: 4, chassis: 4, body: 4 }, 2)
     const state = baseState({ day: 7, staff: [m], cashYen: 500_000 })
     const { state: after, log } = applyWeeklyRentAndWages(state, ECONOMY)
-    expect(after.cashYen).toBe(500_000 - ECONOMY.WEEKLY_RENT_YEN - m.weeklyWageYen)
+    const weeklyRentYen = computeWeeklyRentYen(bayCountsByKind(state), ECONOMY)
+    expect(after.cashYen).toBe(500_000 - weeklyRentYen - m.weeklyWageYen)
     expect(log).toContainEqual({ type: 'wage-paid', staffId: 'waged', amountYen: -m.weeklyWageYen })
   })
 })

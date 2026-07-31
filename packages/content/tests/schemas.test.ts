@@ -216,15 +216,20 @@ describe('seed content validates against schemas', () => {
     expect(result.data.parking.minReputationTier.length).toBe(
       result.data.parking.bayPricesYen.length,
     )
+    expect(result.data.forecourt.minReputationTier.length).toBe(
+      result.data.forecourt.bayPricesYen.length,
+    )
   })
 
   it('economy.json', () => {
     const result = EconomyConfigSchema.safeParse(economy)
     if (!result.success) throw new Error(result.error.message)
-    // Rent is a tuned knob (0.3x measured median weekly gross margin,
-    // rounded to the nearest Y10,000 - see economy.ts's own doc comment for
-    // the full derivation).
-    expect(result.data.WEEKLY_RENT_YEN).toBe(20_000)
+    // Rent is base + a per-bay rate per kind (sprint148.md), replacing the
+    // old flat WEEKLY_RENT_YEN - sized so day 1 is unchanged at 20,000.
+    expect(result.data.rent).toEqual({
+      baseWeeklyYen: 6_000,
+      perBayWeeklyYen: { service: 5_000, parking: 2_000, forecourt: 1_500 },
+    })
     // The daily fine for leaving a car in the grace/"double parking"
     // overflow slot.
     expect(result.data.DOUBLE_PARKING_FINE_YEN).toBe(8_000)
@@ -372,6 +377,7 @@ describe('seed content validates against schemas', () => {
       feeYen: 0,
       offerChanceFactor: 0.7,
       tasteCeiling: 1.0,
+      requiresForecourt: true,
     })
     expect(result.data.sellingChannels.freeAdsPaper).toEqual({
       feeYen: 1500,
@@ -382,23 +388,27 @@ describe('seed content validates against schemas', () => {
         legend: 0.5,
       },
       tasteCeiling: 1.05,
+      requiresForecourt: true,
     })
     expect(result.data.sellingChannels.tunerMagazine).toEqual({
       feeYen: 12_000,
       offerChanceFactor: 0.6,
       tasteCeiling: 1.17,
       matchedOnly: true,
+      requiresForecourt: true,
     })
     expect(result.data.sellingChannels.tradeNetwork).toEqual({
       feeYen: 0,
       offerChanceFactor: 3.0,
       priceBand: { min: 0.95, max: 1.02 },
+      requiresForecourt: false,
     })
     expect(result.data.sellingChannels.weekendMeet).toEqual({
       feeYen: 3000,
       oneDrawNextEndDay: true,
       tasteCeiling: 1.17,
       matchedOnly: true,
+      requiresForecourt: true,
     })
     // economy-bible.md law 4: the roster-coherence "brake pads vs car
     // price" cap - a content anchor, not a hardcoded check constant.
@@ -470,7 +480,7 @@ describe('seed content validates against schemas', () => {
   it('economy.json top-level anchors match the bible audit table', () => {
     const expectedTopLevelKeys = [
       'STARTING_CASH_YEN',
-      'WEEKLY_RENT_YEN',
+      'rent',
       'DOUBLE_PARKING_FINE_YEN',
       'AUCTION_RESERVE_PRICE_FRACTION',
       'AUCTION_LOTS_PER_TIER',

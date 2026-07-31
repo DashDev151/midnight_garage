@@ -111,6 +111,7 @@ function warp(): void {
       <select v-model="grantBayKind">
         <option value="service">service bay</option>
         <option value="parking">parking bay</option>
+        <option value="forecourt">forecourt bay</option>
       </select>
       <button @click="game.devGrantBay(grantBayKind)">grant bay</button>
     </div>

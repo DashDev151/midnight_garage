@@ -587,8 +587,19 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * - a pre-v49 save with anything listed simply fails to decode and falls
  * back to a new game, the same fallback path v45's `channelId` bump already
  * relied on.
+ * v49 -> v50 (somewhere to put it): `GameState` gained `forecourtBayCount`
+ * (default 2) and `forecourtCarIds` (default `[]`) - the third bay kind
+ * (sprint148.md), holding a car exactly while it is listed on a channel a
+ * buyer views it through. The pure additive case (the genuinely-defaulted
+ * pattern `serviceBayCount`/`parkingBayCount` already use), so this needs NO
+ * `MIGRATIONS[49]` entry: a pre-v50 save decodes with `forecourtBayCount`
+ * defaulting to 2 and `forecourtCarIds` to `[]`, which is exactly correct -
+ * no pre-v50 save ever had a car on a forecourt slot, because the concept
+ * didn't exist; a listed car simply stayed in whatever real slot it already
+ * held. The version bump alone is still required (Save law) so an old
+ * client rejects a v50 save rather than silently dropping the field.
  */
-export const SAVE_VERSION = 49
+export const SAVE_VERSION = 50
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

@@ -248,12 +248,15 @@ export const GameStateSchema = z.object({
    * Defaults here are the save-migration fallback for a save that never had
    * a bay system - kept in sync with facilities.json's `startCount`s, which
    * is what a genuinely new game reads (see sim's createInitialGameState).
-   * Two sources of the same "1" / "3" because they answer different
+   * Three sources of the same "1" / "3" / "2" because they answer different
    * questions (migrate an old save vs. seed a new one), not duplication to
    * clean up.
    */
   serviceBayCount: z.number().int().positive().default(1),
   parkingBayCount: z.number().int().positive().default(3),
+  /** The forecourt counterpart to `serviceBayCount`/`parkingBayCount` above -
+   * how many cars can be on show for sale at once (sprint148.md). */
+  forecourtBayCount: z.number().int().positive().default(2),
   /**
    * Real, index-addressable service-bay slots: `serviceBayCarIds[i]` is the
    * car physically sitting in bay `i`, or `null` if that bay is empty. Array
@@ -267,6 +270,16 @@ export const GameStateSchema = z.object({
    * invariant (length tracks `parkingBayCount`); a specific parking slot has
    * real identity a drag-and-drop can target. */
   parkingCarIds: z.array(z.string().min(1).nullable()).default([]),
+  /**
+   * The forecourt counterpart to `serviceBayCarIds`/`parkingCarIds` above -
+   * same shape, same invariant (length tracks `forecourtBayCount`), but a
+   * different kind of occupant: a forecourt slot holds a car exactly while
+   * it is listed on a channel that needs a buyer to come and look at it
+   * (`requiresForecourt`, economy.ts) - `resolveSetForSale` (selling.ts)
+   * moves a car here off its real slot, never a hand move or a fresh
+   * acquisition (sprint148.md).
+   */
+  forecourtCarIds: z.array(z.string().min(1).nullable()).default([]),
   /**
    * The one "double parking" overflow slot - always exactly one slot past
    * whatever real parking/service-bay capacity the player currently owns,
@@ -761,8 +774,12 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
      * `buyout`: an instant-buyout purchase with nowhere to put the car. Both
      * resolve instantly against the current state - cash is checked at the same
      * moment and refuses quietly (no log entry) rather than forfeiting, so
-     * neither channel can ever produce a `no-cash` reason here. */
-    kind: z.enum(['auction-win', 'buyout', 'service-accept']),
+     * neither channel can ever produce a `no-cash` reason here. `listing`
+     * (sprint148.md): `resolveSetForSale` refused to list a car on a
+     * forecourt-requiring channel because no forecourt slot is free - unlike
+     * the other three kinds, no cash moves and no car is forfeited, the
+     * listing simply does not happen. */
+    kind: z.enum(['auction-win', 'buyout', 'service-accept', 'listing']),
     /** `no-space`: parking, every service bay, AND the one grace/"double
      * parking" overflow slot are all full - genuinely nowhere to put the
      * car. No money spent, the win is forfeited rather than the purchase
@@ -770,8 +787,12 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
      * least one task's `minToolTier` exceeds the line's current tier.
      * `technique`: a signature template's `requiresTechnique` is no longer
      * unlocked at accept time (specialty dropped, or the offer is stale) -
-     * the technique-gated twin of `tool-tier`. */
-    reason: z.enum(['no-space', 'tool-tier', 'technique']),
+     * the technique-gated twin of `tool-tier`. `no-forecourt-space`
+     * (sprint148.md, `kind: 'listing'` only): every forecourt slot already
+     * holds a car - the forecourt half of `no-space`, kept as its own reason
+     * because the fix is different (sell or delist something, not buy more
+     * real capacity). */
+    reason: z.enum(['no-space', 'tool-tier', 'technique', 'no-forecourt-space']),
   }),
   /** Kept for old-log decode compatibility (the buy-equipment action itself
    * is retired; `tool-upgraded` below is its replacement). */

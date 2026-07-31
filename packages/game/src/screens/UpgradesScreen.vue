@@ -11,8 +11,10 @@ const game = useGameStore()
 
 const nextServiceBayPriceYen = computed(() => game.nextBayPrice('service'))
 const nextParkingBayPriceYen = computed(() => game.nextBayPrice('parking'))
+const nextForecourtBayPriceYen = computed(() => game.nextBayPrice('forecourt'))
 const nextServiceBayRepGate = computed(() => game.nextBayReputationGate('service'))
 const nextParkingBayRepGate = computed(() => game.nextBayReputationGate('parking'))
+const nextForecourtBayRepGate = computed(() => game.nextBayReputationGate('forecourt'))
 
 /**
  * The selected/hovered ladder rung whose info box is
@@ -113,6 +115,27 @@ const selectedInfo = computed(() =>
               v-if="nextParkingBayRepGate"
               data-test="gate-tip-parking-bay"
               :text="`Your standing isn't there yet - needs ${nextParkingBayRepGate} reputation`"
+            />
+          </template>
+          <span v-else class="maxed">Fully equipped</span>
+        </div>
+        <div class="purchase-card" :class="{ gated: nextForecourtBayRepGate !== null }">
+          <h4>Forecourt bays</h4>
+          <p class="owned-count">{{ game.forecourtCapacity }} owned</p>
+          <template v-if="nextForecourtBayPriceYen !== null">
+            <button
+              :disabled="
+                game.cashYen < nextForecourtBayPriceYen || nextForecourtBayRepGate !== null
+              "
+              data-test="buy-forecourt-bay"
+              @click="game.buyBay('forecourt')"
+            >
+              Next bay - {{ formatYen(nextForecourtBayPriceYen) }}
+            </button>
+            <HintTooltip
+              v-if="nextForecourtBayRepGate"
+              data-test="gate-tip-forecourt-bay"
+              :text="`Your standing isn't there yet - needs ${nextForecourtBayRepGate} reputation`"
             />
           </template>
           <span v-else class="maxed">Fully equipped</span>

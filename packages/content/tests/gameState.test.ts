@@ -312,6 +312,8 @@ describe('GameState / DayLog round-trip', () => {
       parkingBayCount: 3,
       serviceBayCarIds: ['car-0001'],
       parkingCarIds: [null, null, null],
+      forecourtBayCount: 2,
+      forecourtCarIds: [],
       graceParkingCarId: null,
       energySpentToday: 0,
       toolTiers: {

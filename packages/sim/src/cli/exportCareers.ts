@@ -44,6 +44,9 @@ import {
   computeSymptomBalanceProbe,
 } from '../balanceProbes'
 import { buildSimContext } from '../context'
+import { bayCountsByKind } from '../facilities'
+import { computeWeeklyRentYen } from '../finances'
+import { createInitialGameState } from '../newGame'
 
 const CAREERS_PER_STRATEGY = 1000
 const DAYS_PER_CAREER = 100
@@ -184,6 +187,10 @@ function main(): void {
     TOOL_LINES,
     ECONOMY,
   )
+  // Day-1 bay counts, read from the same construction every real career and
+  // bot uses - the opening rent figure below is computed from these, never
+  // hand-rederived from FACILITIES.*.startCount a second time.
+  const openingBayCounts = bayCountsByKind(createInitialGameState(context, 1))
   const rows: string[] = []
   const acquisitionRows: string[] = []
   const offerRows: string[] = []
@@ -246,9 +253,11 @@ function main(): void {
     strategies: STRATEGIES.map((s) => s.name),
     columns: COLUMNS,
     // So the Python check validates against the values that actually ran
-    // this export, not a second, drift-prone copy in Python.
+    // this export, not a second, drift-prone copy in Python. weeklyRentYen
+    // is the computed opening figure (sprint148.md retired the old flat
+    // rent constant), not a dead literal.
     startingCashYen: ECONOMY.STARTING_CASH_YEN,
-    weeklyRentYen: ECONOMY.WEEKLY_RENT_YEN,
+    weeklyRentYen: computeWeeklyRentYen(openingBayCounts, ECONOMY),
   })
 
   writeCsv('acquisitions.csv', ACQUISITIONS_COLUMNS, acquisitionRows)

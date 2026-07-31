@@ -19,7 +19,12 @@ import { carLedgerFor, deleteCarLedger } from './carLedger'
 import { saleQualityFor, saleReputationDeltaFor } from './carCondition'
 import type { SimContext } from './context'
 import { saleRevealLineFor } from './diagnosis'
-import { releaseCarFromShop } from './facilities'
+import {
+  assignToForecourt,
+  hasForecourtSpace,
+  releaseCarFromShop,
+  tryAssignToRealOrGrace,
+} from './facilities'
 import { marketValueYen } from './marketValue'
 import { bumpPlayerSales } from './marketHeat'
 import { bellNormal, type Rng } from './rng'
@@ -310,6 +315,16 @@ function resolveOffersSeenForNewListing(
  * resetting it to fresh (`resolveOffersSeenForNewListing` above) - the
  * exploit this sprint closes: switching channels used to refresh a listing
  * for free.
+ *
+ * Listing is also a MOVE now (sprint148.md): a channel that
+ * `requiresForecourt` (a buyer comes to look at the car) needs a free
+ * forecourt slot, taken by releasing the car's real slot; a channel that
+ * doesn't (the trade network) leaves the car exactly where it sits. Switching
+ * between two forecourt-requiring channels keeps the same forecourt slot -
+ * only a transition across the forecourt/trade-network line is a real move,
+ * in whichever direction it happens. Delisting is the reverse: a car coming
+ * off the forecourt returns to a real slot, falling back to the grace slot,
+ * refusing (silently, no state change) only when even that is taken.
  */
 export function resolveSetForSale(
   state: GameState,
@@ -321,14 +336,21 @@ export function resolveSetForSale(
   const owned = state.ownedCars.some((c) => c.id === carInstanceId)
   if (!owned) return { state, log: [] }
   const existing = state.carsForSale.find((f) => f.carInstanceId === carInstanceId)
+  const onForecourt = state.forecourtCarIds.includes(carInstanceId)
 
   if (!forSale) {
     if (!existing) return { state, log: [] }
+    let placedState = state
+    if (onForecourt) {
+      const placed = tryAssignToRealOrGrace(releaseCarFromShop(state, carInstanceId), carInstanceId)
+      if (!placed) return { state, log: [] } // nowhere real (or grace) to put it back - refuse
+      placedState = placed
+    }
     return {
       state: {
-        ...state,
-        carsForSale: state.carsForSale.filter((f) => f.carInstanceId !== carInstanceId),
-        pendingOffers: state.pendingOffers.filter((o) => o.carInstanceId !== carInstanceId),
+        ...placedState,
+        carsForSale: placedState.carsForSale.filter((f) => f.carInstanceId !== carInstanceId),
+        pendingOffers: placedState.pendingOffers.filter((o) => o.carInstanceId !== carInstanceId),
       },
       log: [],
     }
@@ -338,8 +360,30 @@ export function resolveSetForSale(
     return { state, log: [] }
   }
 
-  const feeYen = context.economy.sellingChannels[channelId].feeYen
+  const channel = context.economy.sellingChannels[channelId]
+  const feeYen = channel.feeYen
   if (state.cashYen < feeYen) return { state, log: [] }
+
+  let placedState = state
+  if (channel.requiresForecourt) {
+    if (!onForecourt) {
+      if (!hasForecourtSpace(state)) {
+        return {
+          state,
+          log: [{ type: 'acquisition-blocked', kind: 'listing', reason: 'no-forecourt-space' }],
+        }
+      }
+      placedState = assignToForecourt(releaseCarFromShop(state, carInstanceId), carInstanceId)
+    }
+    // else: already on the forecourt, switching between two forecourt
+    // channels - the same slot carries over, no release-and-retake.
+  } else if (onForecourt) {
+    // Switching away from a forecourt channel to one that doesn't need it
+    // (the trade network) - a real move back to a real slot or grace.
+    const placed = tryAssignToRealOrGrace(releaseCarFromShop(state, carInstanceId), carInstanceId)
+    if (!placed) return { state, log: [] }
+    placedState = placed
+  }
 
   const entry: ForSaleEntry = {
     carInstanceId,
@@ -349,9 +393,12 @@ export function resolveSetForSale(
   }
   return {
     state: {
-      ...state,
-      cashYen: state.cashYen - feeYen,
-      carsForSale: [...state.carsForSale.filter((f) => f.carInstanceId !== carInstanceId), entry],
+      ...placedState,
+      cashYen: placedState.cashYen - feeYen,
+      carsForSale: [
+        ...placedState.carsForSale.filter((f) => f.carInstanceId !== carInstanceId),
+        entry,
+      ],
     },
     log: [],
   }

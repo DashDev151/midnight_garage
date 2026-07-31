@@ -266,6 +266,11 @@ export type SellingChannelId = z.infer<typeof SellingChannelIdSchema>
  * value); `priceBand` replaces the taste roll with a fixed fraction-of-value
  * range instead; `matchedOnly` restricts the pool to buyers whose visible
  * want the listed car satisfies - a mismatch draws no offers at all.
+ * `requiresForecourt` (sprint148.md): true when a buyer comes to look at the
+ * car in person, so listing on this channel moves it onto a forecourt slot;
+ * false when the car is collected or shipped instead (the trade network is
+ * the one `false` today). Required, not optional - every channel must state
+ * which it is.
  */
 const SellingChannelSchema = z
   .object({
@@ -281,6 +286,7 @@ const SellingChannelSchema = z
       })
       .optional(),
     matchedOnly: z.boolean().optional(),
+    requiresForecourt: z.boolean(),
   })
   .strict()
   .refine(
@@ -358,18 +364,34 @@ export const EconomyConfigSchema = z.object({
    */
   STARTING_CASH_YEN: z.number().int().positive(),
   /**
-   * Weekly rent, deducted alongside staff wages on 7-day boundaries. Sized as
-   * 0.3 x measured median weekly gross margin (274 local-yard flips, median
-   * margin Y168,569 at 16 median days-per-flip -> 0.4375 flips/week, well
-   * under the 2/week cap), rounded to the nearest Y10,000. Real but beatable
-   * relative to the median per-flip margin, not a guess.
+   * Weekly rent, deducted alongside staff wages on 7-day boundaries
+   * (`finances.ts`'s `computeWeeklyRentYen`/`applyWeeklyRentAndWages`) -
+   * `baseWeeklyYen` plus every owned bay's own per-kind rate, summed:
+   * `weeklyRentYen = baseWeeklyYen + sum over kinds of (bayCount[kind] *
+   * perBayWeeklyYen[kind])`. Replaces the old flat constant this block used
+   * to be (sprint148.md): a one-off bay purchase used to be free to hold
+   * forever, so capacity was a pure ratchet with never a reason to sell
+   * quickly rather than hold. Every bay now bills weekly, so unused capacity
+   * bleeds and a held car costs the slot it occupies. Sized so day 1 is
+   * unchanged at exactly 20,000 (6000 + 5000x1 + 2000x3 + 1500x2), matching
+   * the retired constant's own median-margin derivation.
    */
-  WEEKLY_RENT_YEN: z.number().int().nonnegative(),
+  rent: z.object({
+    baseWeeklyYen: z.number().int().nonnegative(),
+    /** Explicit per-kind keys (not `z.record`), so a missing kind fails
+     * validation rather than silently billing nothing for it - same
+     * preference `ByCarTierWeightSchema` above uses. */
+    perBayWeeklyYen: z.object({
+      service: z.number().int().nonnegative(),
+      parking: z.number().int().nonnegative(),
+      forecourt: z.number().int().nonnegative(),
+    }),
+  }),
   /**
    * The daily cost of leaving a car in the one grace/"double parking"
    * overflow slot (`facilities.ts`'s `resolveGraceParking`) - charged every
    * End Day the slot is still occupied, same unconditional-deduction shape as
-   * `WEEKLY_RENT_YEN` (no floor check; going negative is already an accepted
+   * weekly rent (no floor check; going negative is already an accepted
    * possibility elsewhere in this economy).
    */
   DOUBLE_PARKING_FINE_YEN: z.number().int().nonnegative(),

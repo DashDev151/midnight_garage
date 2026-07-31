@@ -12,10 +12,11 @@ import type { BuyBayAction, MoveCarAction } from './actions'
 /**
  * Reads slot `index` from a bay array, treating any index at or beyond the
  * array's actual length as an implicit empty slot. `serviceBayCarIds`/
- * `parkingCarIds` are meant to track their bay count exactly (every mutator
- * below keeps them in sync), but nothing enforces that at the schema level -
- * a shorter array (an older fixture, a hand-built test state) is still
- * handled correctly rather than throwing or under-counting real capacity.
+ * `parkingCarIds`/`forecourtCarIds` are meant to track their bay count
+ * exactly (every mutator below keeps them in sync), but nothing enforces
+ * that at the schema level - a shorter array (an older fixture, a hand-built
+ * test state) is still handled correctly rather than throwing or
+ * under-counting real capacity.
  */
 function slotAt(arr: readonly (string | null)[], index: number): string | null {
   return arr[index] ?? null
@@ -34,34 +35,129 @@ function withSlot(
   return next
 }
 
+/**
+ * The kind-keyed accessor pair every placement/move/occupancy function below
+ * reads and writes through, instead of branching on `kind` itself - the one
+ * place a `BayKind` maps onto its concrete `GameState` fields. A fourth kind
+ * needs a new pair of `GameState` fields (unavoidable - each kind's array and
+ * count are real, independently-sized, persisted state, not a
+ * `Record<BayKind, ...>`) and one more `case` in each of these four
+ * functions; nothing else in this file changes.
+ */
+function carIdsFor(state: GameState, kind: BayKind): readonly (string | null)[] {
+  switch (kind) {
+    case 'service':
+      return state.serviceBayCarIds
+    case 'parking':
+      return state.parkingCarIds
+    case 'forecourt':
+      return state.forecourtCarIds
+  }
+}
+
+/** The write half of `carIdsFor` - a copy of `state` with `kind`'s slot
+ * array replaced. */
+function withCarIdsFor(state: GameState, kind: BayKind, arr: (string | null)[]): GameState {
+  switch (kind) {
+    case 'service':
+      return { ...state, serviceBayCarIds: arr }
+    case 'parking':
+      return { ...state, parkingCarIds: arr }
+    case 'forecourt':
+      return { ...state, forecourtCarIds: arr }
+  }
+}
+
+/** The owned bay count for a bay kind. */
+function bayCountFor(state: GameState, kind: BayKind): number {
+  switch (kind) {
+    case 'service':
+      return state.serviceBayCount
+    case 'parking':
+      return state.parkingBayCount
+    case 'forecourt':
+      return state.forecourtBayCount
+  }
+}
+
+/** The write half of `bayCountFor` - a copy of `state` with `kind`'s owned
+ * count replaced. */
+function withBayCountFor(state: GameState, kind: BayKind, count: number): GameState {
+  switch (kind) {
+    case 'service':
+      return { ...state, serviceBayCount: count }
+    case 'parking':
+      return { ...state, parkingBayCount: count }
+    case 'forecourt':
+      return { ...state, forecourtBayCount: count }
+  }
+}
+
+/** Every bay kind's current owned count, keyed by kind - the one place a
+ * caller needing all three at once (rent, a facilities summary) reads them,
+ * rather than hand-listing each field itself. */
+export function bayCountsByKind(state: GameState): Record<BayKind, number> {
+  return {
+    service: state.serviceBayCount,
+    parking: state.parkingBayCount,
+    forecourt: state.forecourtBayCount,
+  }
+}
+
+/** Occupancy of a bay kind - its slot array's non-null count. */
+function occupancyOf(state: GameState, kind: BayKind): number {
+  return carIdsFor(state, kind).filter((id) => id !== null).length
+}
+
+/** Whether one more car could occupy a bay of this kind right now. */
+function hasSpaceIn(state: GameState, kind: BayKind): boolean {
+  return occupancyOf(state, kind) < bayCountFor(state, kind)
+}
+
 /** How many cars are currently sitting in parking - `parkingCarIds` is
  * real, index-addressable state (a specific slot each), so occupancy is
  * just its non-null count. */
 export function parkingOccupancy(state: GameState): number {
-  return state.parkingCarIds.filter((id) => id !== null).length
+  return occupancyOf(state, 'parking')
 }
 
 /** Whether one more car could be parked right now. */
 export function hasParkingSpace(state: GameState): boolean {
-  return parkingOccupancy(state) < state.parkingBayCount
+  return hasSpaceIn(state, 'parking')
 }
 
 /** How many cars are currently sitting in a service bay - the service-side
  * counterpart to `parkingOccupancy`. */
 export function serviceBayOccupancy(state: GameState): number {
-  return state.serviceBayCarIds.filter((id) => id !== null).length
+  return occupancyOf(state, 'service')
 }
 
 /** Whether one more car could occupy a service bay right now - the
  * service-side counterpart to `hasParkingSpace`. */
 export function hasServiceBaySpace(state: GameState): boolean {
-  return serviceBayOccupancy(state) < state.serviceBayCount
+  return hasSpaceIn(state, 'service')
+}
+
+/** How many cars are currently on show on the forecourt - the forecourt
+ * counterpart to `parkingOccupancy`/`serviceBayOccupancy`. Every forecourt
+ * occupant is, by construction, a car listed on a `requiresForecourt`
+ * channel (`resolveSetForSale`, selling.ts). */
+export function forecourtOccupancy(state: GameState): number {
+  return occupancyOf(state, 'forecourt')
+}
+
+/** Whether one more car could go on show on the forecourt right now. */
+export function hasForecourtSpace(state: GameState): boolean {
+  return hasSpaceIn(state, 'forecourt')
 }
 
 /**
  * Whether the shop has any REAL (owned) capacity free right now - parking
  * or a service bay, either counts, so a car with no free parking spot but
- * an open bay still has somewhere real to go.
+ * an open bay still has somewhere real to go. Deliberately excludes the
+ * forecourt (sprint148.md): the forecourt is display space for a listed
+ * car, not storage, and must never widen what counts as "somewhere to put
+ * a car".
  */
 export function hasOwnedShopSpace(state: GameState): boolean {
   return hasParkingSpace(state) || hasServiceBaySpace(state)
@@ -80,26 +176,31 @@ export function hasGraceSpace(state: GameState): boolean {
  * The real acquisition gate: true whenever there is ANYWHERE for a new car
  * to go - real capacity first, the grace slot as the last resort. Only
  * when this is false does an acquisition genuinely fail with no money
- * spent.
+ * spent. Deliberately excludes the forecourt, same reasoning as
+ * `hasOwnedShopSpace` above: the forecourt is not acquisition capacity.
  */
 export function hasAcquisitionSpace(state: GameState): boolean {
   return hasOwnedShopSpace(state) || hasGraceSpace(state)
 }
 
+/** Every bay kind whose slot array can hold a car - the order
+ * `releaseCarFromShop` searches in. Order doesn't affect correctness (a car
+ * only ever sits in one place, by the placement invariant sprint148.md
+ * exists to protect), only which lookup runs first. */
+const ALL_BAY_KINDS: readonly BayKind[] = ['service', 'parking', 'forecourt']
+
 /**
- * Clears a car's slot - wherever it currently sits, service, parking, or
- * the grace overflow slot - called whenever a car leaves the shop entirely
- * (sold, listed, scrapped, or a service job resolved) so the freed slot is
- * immediately reusable, not haunted by a stale id.
+ * Clears a car's slot - wherever it currently sits, service, parking,
+ * forecourt, or the grace overflow slot - called whenever a car leaves the
+ * shop entirely (sold, scrapped, or a service job resolved) so the freed
+ * slot is immediately reusable, not haunted by a stale id.
  */
 export function releaseCarFromShop(state: GameState, carInstanceId: string): GameState {
-  const serviceIndex = state.serviceBayCarIds.indexOf(carInstanceId)
-  if (serviceIndex !== -1) {
-    return { ...state, serviceBayCarIds: withSlot(state.serviceBayCarIds, serviceIndex, null) }
-  }
-  const parkingIndex = state.parkingCarIds.indexOf(carInstanceId)
-  if (parkingIndex !== -1) {
-    return { ...state, parkingCarIds: withSlot(state.parkingCarIds, parkingIndex, null) }
+  for (const kind of ALL_BAY_KINDS) {
+    const index = carIdsFor(state, kind).indexOf(carInstanceId)
+    if (index !== -1) {
+      return withCarIdsFor(state, kind, withSlot(carIdsFor(state, kind), index, null))
+    }
   }
   if (state.graceParkingCarId === carInstanceId) {
     return { ...state, graceParkingCarId: null }
@@ -133,27 +234,21 @@ export function assignToParking(state: GameState, carInstanceId: string): GameSt
 }
 
 /**
- * Assigns a car to the first free spot of `to` ('service' or 'parking') at
- * whatever slot index is open - the shared placement core `assignToShop`
- * (below) and the grace-slot migration in `resolveGraceParking` both use, so
- * "find the first empty real slot" has exactly one implementation.
+ * Assigns a car to the first free slot of `to` at whatever slot index is
+ * open - the shared placement core `assignToShop`/`resolveGraceParking`
+ * (real capacity only) and `resolveSetForSale` (the forecourt) all use, so
+ * "find the first empty slot of a kind" has exactly one implementation
+ * whichever of the three kinds it's asked for.
  */
-function assignToFirstOpenRealSlot(
-  state: GameState,
-  carInstanceId: string,
-  to: BayKind,
-): GameState {
-  const destArray = to === 'service' ? state.serviceBayCarIds : state.parkingCarIds
-  const destCount = to === 'service' ? state.serviceBayCount : state.parkingBayCount
+function assignToFirstOpenSlot(state: GameState, carInstanceId: string, kind: BayKind): GameState {
+  const destArray = carIdsFor(state, kind)
+  const destCount = bayCountFor(state, kind)
   for (let i = 0; i < destCount; i++) {
     if (slotAt(destArray, i) === null) {
-      const filled = withSlot(destArray, i, carInstanceId)
-      return to === 'service'
-        ? { ...state, serviceBayCarIds: filled }
-        : { ...state, parkingCarIds: filled }
+      return withCarIdsFor(state, kind, withSlot(destArray, i, carInstanceId))
     }
   }
-  return state // should not happen - caller already confirmed room via hasParkingSpace/hasServiceBaySpace
+  return state // should not happen - every caller already confirmed room
 }
 
 /**
@@ -161,12 +256,42 @@ function assignToFirstOpenRealSlot(
  * parking is full, the one grace/"double parking" overflow slot only if
  * neither real option is free. Callers must already have confirmed
  * `hasAcquisitionSpace(state)` - this function does not re-check or
- * refuse, it places into whichever tier is actually free.
+ * refuse, it places into whichever tier is actually free. Never the
+ * forecourt: a fresh acquisition is never listed for sale by construction.
  */
 export function assignToShop(state: GameState, carInstanceId: string): GameState {
-  if (hasParkingSpace(state)) return assignToFirstOpenRealSlot(state, carInstanceId, 'parking')
-  if (hasServiceBaySpace(state)) return assignToFirstOpenRealSlot(state, carInstanceId, 'service')
+  if (hasParkingSpace(state)) return assignToFirstOpenSlot(state, carInstanceId, 'parking')
+  if (hasServiceBaySpace(state)) return assignToFirstOpenSlot(state, carInstanceId, 'service')
   return { ...state, graceParkingCarId: carInstanceId }
+}
+
+/**
+ * The same real-capacity-then-grace cascade `assignToShop` uses, but
+ * checking (rather than trusting) that the grace slot is actually free -
+ * returns `null` when even that is taken, instead of clobbering whoever is
+ * already double-parked. `assignToShop` may assume grace is free because
+ * every caller has already confirmed `hasAcquisitionSpace`; a car coming
+ * OFF the forecourt (a delist, or a listing switching away from a
+ * forecourt-requiring channel, `resolveSetForSale`) is not a fresh
+ * acquisition, so there is no such earlier check guaranteeing room.
+ */
+export function tryAssignToRealOrGrace(state: GameState, carInstanceId: string): GameState | null {
+  if (hasParkingSpace(state)) return assignToFirstOpenSlot(state, carInstanceId, 'parking')
+  if (hasServiceBaySpace(state)) return assignToFirstOpenSlot(state, carInstanceId, 'service')
+  if (hasGraceSpace(state)) return { ...state, graceParkingCarId: carInstanceId }
+  return null
+}
+
+/**
+ * Places a car onto the first open forecourt slot - `resolveSetForSale`'s
+ * (selling.ts) own placement call, and the ONE legitimate way a car reaches
+ * the forecourt. Callers must already have confirmed `hasForecourtSpace`;
+ * this does not re-check or refuse. Deliberately not reachable through
+ * `moveCar`/`moveCarToSlot`, which refuse `to === 'forecourt'` outright -
+ * the forecourt is populated by listing, never by hand.
+ */
+export function assignToForecourt(state: GameState, carInstanceId: string): GameState {
+  return assignToFirstOpenSlot(state, carInstanceId, 'forecourt')
 }
 
 export interface GraceParkingResult {
@@ -190,7 +315,7 @@ export function resolveGraceParking(state: GameState, economy: EconomyConfig): G
   if (!carInstanceId) return { state, log: [] }
 
   if (hasParkingSpace(state)) {
-    const moved = assignToFirstOpenRealSlot(
+    const moved = assignToFirstOpenSlot(
       { ...state, graceParkingCarId: null },
       carInstanceId,
       'parking',
@@ -198,7 +323,7 @@ export function resolveGraceParking(state: GameState, economy: EconomyConfig): G
     return { state: moved, log: [{ type: 'car-moved', carInstanceId, to: 'parking' }] }
   }
   if (hasServiceBaySpace(state)) {
-    const moved = assignToFirstOpenRealSlot(
+    const moved = assignToFirstOpenSlot(
       { ...state, graceParkingCarId: null },
       carInstanceId,
       'service',
@@ -219,12 +344,20 @@ export interface MoveResult {
   changed: boolean
 }
 
+/** The bay kinds a car can be found in by `locate`, and can be dragged/
+ * dropped into by `moveCarToSlot`/`moveCar`/`swapCars` - real storage only.
+ * The forecourt is deliberately excluded: a listed car is never a manual
+ * move source (it can only leave via `resolveSetForSale`, sprint148.md) and
+ * `moveCarToSlot` below refuses the forecourt as a destination for the same
+ * reason. */
+const REAL_BAY_KINDS: readonly BayKind[] = ['service', 'parking']
+
 /** Which section (if any) currently holds this car, and at what index. */
 function locate(state: GameState, carInstanceId: string): { from: BayKind; index: number } | null {
-  const serviceIndex = state.serviceBayCarIds.indexOf(carInstanceId)
-  if (serviceIndex !== -1) return { from: 'service', index: serviceIndex }
-  const parkingIndex = state.parkingCarIds.indexOf(carInstanceId)
-  if (parkingIndex !== -1) return { from: 'parking', index: parkingIndex }
+  for (const kind of REAL_BAY_KINDS) {
+    const index = carIdsFor(state, kind).indexOf(carInstanceId)
+    if (index !== -1) return { from: kind, index }
+  }
   return null
 }
 
@@ -236,6 +369,11 @@ function locate(state: GameState, carInstanceId: string): { from: BayKind; index
  * its own slot is a no-op. Slot position is real, persisted state -
  * "parking bay 4" means bay 4. `slotIndex` is checked against the bay
  * *count*, not the array's current length - see `slotAt`/`withSlot`.
+ *
+ * Refuses `to === 'forecourt'` outright: the forecourt holds listed cars
+ * only, placed there exclusively by `resolveSetForSale` (sprint148.md) -
+ * never a hand move. `locate` above also never resolves a `source` sitting
+ * on the forecourt, so a listed car cannot be dragged AWAY from it either.
  *
  * A move's labour is `energy.actionPoints.moveCar` (0 in shipped content,
  * so moves are free today): when `economy` is passed and the figure is
@@ -251,6 +389,8 @@ export function moveCarToSlot(
   economy?: EconomyConfig,
   laborAvailable: number = Infinity,
 ): MoveResult {
+  if (to === 'forecourt') return { state, changed: false }
+
   const inShop =
     state.ownedCars.some((c) => c.id === carInstanceId) ||
     state.activeServiceJobs.some((sj) => sj.car.id === carInstanceId)
@@ -259,7 +399,7 @@ export function moveCarToSlot(
   const source = locate(state, carInstanceId)
   if (!source) return { state, changed: false }
 
-  const destCount = to === 'service' ? state.serviceBayCount : state.parkingBayCount
+  const destCount = bayCountFor(state, to)
   if (slotIndex < 0 || slotIndex >= destCount) return { state, changed: false }
   if (source.from === to && source.index === slotIndex) return { state, changed: false }
 
@@ -267,33 +407,26 @@ export function moveCarToSlot(
   if (laborSlotsUsed > laborAvailable) return { state, changed: false }
   const energySpentToday = state.energySpentToday + laborSlotsUsed
 
-  const destArray = to === 'service' ? state.serviceBayCarIds : state.parkingCarIds
+  const destArray = carIdsFor(state, to)
   const occupant = slotAt(destArray, slotIndex)
 
   if (source.from === to) {
     // Same-section reorder or swap - one array, mutated twice.
     const arr = withSlot(withSlot(destArray, source.index, occupant), slotIndex, carInstanceId)
-    return {
-      state:
-        to === 'service'
-          ? { ...state, serviceBayCarIds: arr, energySpentToday }
-          : { ...state, parkingCarIds: arr, energySpentToday },
-      changed: true,
-    }
+    return { state: { ...withCarIdsFor(state, to, arr), energySpentToday }, changed: true }
   }
 
   // Cross-section move or swap. Targeting a specific empty slot within
   // `destCount` already proves room exists, so (unlike the old exclusion-
   // based model) there's no separate capacity check to duplicate here.
   const newDest = withSlot(destArray, slotIndex, carInstanceId)
-  const sourceArray = source.from === 'service' ? state.serviceBayCarIds : state.parkingCarIds
+  const sourceArray = carIdsFor(state, source.from)
   const newSource = withSlot(sourceArray, source.index, occupant)
 
-  const next: GameState =
-    to === 'service'
-      ? { ...state, serviceBayCarIds: newDest, parkingCarIds: newSource, energySpentToday }
-      : { ...state, serviceBayCarIds: newSource, parkingCarIds: newDest, energySpentToday }
-
+  const next: GameState = {
+    ...withCarIdsFor(withCarIdsFor(state, to, newDest), source.from, newSource),
+    energySpentToday,
+  }
   return { state: next, changed: true }
 }
 
@@ -301,7 +434,8 @@ export function moveCarToSlot(
  * Moves a car into the FIRST available slot of `to` - for callers that
  * don't care which specific slot (every bot, and the plain "→ parking"/
  * "→ service bay" buttons that don't require a drag gesture). A thin
- * wrapper over `moveCarToSlot` so there's exactly one resolution path.
+ * wrapper over `moveCarToSlot` so there's exactly one resolution path
+ * (including its forecourt refusal).
  */
 export function moveCar(
   state: GameState,
@@ -310,8 +444,8 @@ export function moveCar(
   economy?: EconomyConfig,
   laborAvailable: number = Infinity,
 ): MoveResult {
-  const destArray = to === 'service' ? state.serviceBayCarIds : state.parkingCarIds
-  const destCount = to === 'service' ? state.serviceBayCount : state.parkingBayCount
+  const destArray = carIdsFor(state, to)
+  const destCount = bayCountFor(state, to)
   for (let i = 0; i < destCount; i++) {
     if (slotAt(destArray, i) === null) {
       return moveCarToSlot(state, carInstanceId, to, i, economy, laborAvailable)
@@ -366,11 +500,6 @@ export function applyMoves(
   return { state: next, log }
 }
 
-/** The current owned count for a bay kind. */
-function currentCount(state: GameState, kind: BayKind): number {
-  return kind === 'service' ? state.serviceBayCount : state.parkingBayCount
-}
-
 /** Price of the next bay of this kind, or null if already at the max count. */
 export function nextBayPriceYen(
   state: GameState,
@@ -378,7 +507,7 @@ export function nextBayPriceYen(
   facilities: Facilities,
 ): number | null {
   const cfg = facilities[kind]
-  const owned = currentCount(state, kind)
+  const owned = bayCountFor(state, kind)
   if (owned >= cfg.maxCount) return null
   return cfg.bayPricesYen[owned - cfg.startCount] ?? null
 }
@@ -397,7 +526,7 @@ export function nextBayMinReputationTier(
   facilities: Facilities,
 ): ReputationTier | null {
   const cfg = facilities[kind]
-  const owned = currentCount(state, kind)
+  const owned = bayCountFor(state, kind)
   if (owned >= cfg.maxCount) return null
   const required = cfg.minReputationTier[owned - cfg.startCount]
   if (!required || reputationAtLeast(state.reputationTier, required)) return null
@@ -416,7 +545,10 @@ export interface BayPurchaseResult {
  * price is unknown (at the max), unaffordable, or the required reputation
  * tier hasn't been reached yet. Appends a new empty slot to the relevant
  * indexed array so array length keeps tracking the purchased count exactly
- * under normal play.
+ * under normal play. Works identically for all three kinds, forecourt
+ * included: a forecourt bay is a purchasable facility exactly like a
+ * service bay or a parking bay, it just happens to hold listed cars rather
+ * than owned ones generally.
  */
 export function applyBayPurchase(
   state: GameState,
@@ -430,20 +562,9 @@ export function applyBayPurchase(
   if (nextBayMinReputationTier(state, kind, facilities) !== null) {
     return { state, log: [], applied: false }
   }
-  const next: GameState =
-    kind === 'service'
-      ? {
-          ...state,
-          cashYen: state.cashYen - priceYen,
-          serviceBayCount: state.serviceBayCount + 1,
-          serviceBayCarIds: [...state.serviceBayCarIds, null],
-        }
-      : {
-          ...state,
-          cashYen: state.cashYen - priceYen,
-          parkingBayCount: state.parkingBayCount + 1,
-          parkingCarIds: [...state.parkingCarIds, null],
-        }
+  const paid: GameState = { ...state, cashYen: state.cashYen - priceYen }
+  const withCount = withBayCountFor(paid, kind, bayCountFor(paid, kind) + 1)
+  const next = withCarIdsFor(withCount, kind, [...carIdsFor(paid, kind), null])
   return { state: next, log: [{ type: 'bay-purchased', kind, priceYen }], applied: true }
 }
 

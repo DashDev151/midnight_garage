@@ -4,6 +4,8 @@ import { describe, expect, it } from 'vitest'
 import { advanceDay } from '../src/advanceDay'
 import { planGroupRepair } from '../src/bands'
 import { buildSimContext } from '../src/context'
+import { bayCountsByKind } from '../src/facilities'
+import { computeWeeklyRentYen } from '../src/finances'
 import { hashState } from '../src/hashState'
 import { resolveHireMachineLine } from '../src/jobs'
 import { createInitialGameState } from '../src/newGame'
@@ -87,6 +89,8 @@ function initialState(): GameState {
     // car-0001 starts parked - day 1's scripted move-to-service action
     // needs a real source slot to move it out of.
     parkingCarIds: ['car-0001', null, null],
+    forecourtBayCount: 2,
+    forecourtCarIds: [null, null],
     graceParkingCarId: null,
     energySpentToday: 0,
     // Every tool line is owned at tier 1 from day one - the scripted
@@ -195,7 +199,7 @@ describe('advanceDay golden master', () => {
     // labour and cash figure, and every derived stat. A deliberate change to
     // any of those is re-derived from a real run of this script; the script
     // itself is never bent to preserve the number.
-    expect(hashState(finalState)).toBe('ae049e78')
+    expect(hashState(finalState)).toBe('8cf486eb')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -228,11 +232,13 @@ describe('advanceDay golden master', () => {
   it('rent is charged again, every 7 days', () => {
     const finalState = runCareer(30)
     // Rent charges on days 7/14/21/28 within a 30-day career (four times) at
-    // economy.json's WEEKLY_RENT_YEN. `hireForDay` fronts the body line's
-    // daily hire on day 1 (the body repair climbs a signature slot) and the
-    // suspension line's on day 3 (the dampers install targets one), each
-    // exactly once - a running cost, same treatment as rent, never charged
-    // per operation.
+    // the opening bay counts' own computed rate (no bay is ever bought in
+    // this script, so the figure never moves). `hireForDay` fronts the body
+    // line's daily hire on day 1 (the body repair climbs a signature slot)
+    // and the suspension line's on day 3 (the dampers install targets one),
+    // each exactly once - a running cost, same treatment as rent, never
+    // charged per operation.
+    const weeklyRentYen = computeWeeklyRentYen(bayCountsByKind(initialState()), CONTEXT.economy)
     const bodyPlan = planGroupRepair(
       initialState().ownedCars[0]!,
       'body',
@@ -252,7 +258,7 @@ describe('advanceDay golden master', () => {
         bodyPlan.costYen -
         bodyFeeYen -
         suspensionFeeYen -
-        rentChargeCount * CONTEXT.economy.WEEKLY_RENT_YEN,
+        rentChargeCount * weeklyRentYen,
     )
   })
 })
@@ -321,7 +327,7 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // above: the lot's rolled condition, the car's derived stats and the
     // buyer's taste-adjusted price all feed it, so it is re-derived from a
     // real run whenever one of them deliberately changes.
-    expect(hashState(acquisitionCareer().sold)).toBe('f3ee5dec')
+    expect(hashState(acquisitionCareer().sold)).toBe('634d4493')
   })
 })
 

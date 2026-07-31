@@ -1,8 +1,14 @@
 import { z } from 'zod'
 import { ReputationTierSchema } from './tags'
 
-/** The two physical capacities a shop has. */
-export const BayKindSchema = z.enum(['service', 'parking'])
+/**
+ * The three physical capacities a shop has. `service` and `parking` are
+ * storage: any owned car may sit there. `forecourt` is display only - a slot
+ * a car occupies exactly while listed on a channel that needs a buyer to
+ * come and look at it (sprint148.md); it is never a manual move target and
+ * never counts toward acquisition capacity.
+ */
+export const BayKindSchema = z.enum(['service', 'parking', 'forecourt'])
 
 /**
  * One bay kind's progression: how many you start with, the hard ceiling, and
@@ -30,6 +36,7 @@ const BayFacilitySchema = z
 export const FacilitiesSchema = z.object({
   service: BayFacilitySchema,
   parking: BayFacilitySchema,
+  forecourt: BayFacilitySchema,
 })
 
 export type BayKind = z.infer<typeof BayKindSchema>

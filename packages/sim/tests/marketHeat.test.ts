@@ -50,6 +50,8 @@ function stateOnDay(
     parkingBayCount: 3,
     serviceBayCarIds: [],
     parkingCarIds: [],
+    forecourtBayCount: 2,
+    forecourtCarIds: [null, null],
     graceParkingCarId: null,
     energySpentToday: 0,
     toolTiers: testToolTiers(),

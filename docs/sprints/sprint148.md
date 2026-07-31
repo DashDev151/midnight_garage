@@ -91,7 +91,9 @@ holding its parking slot, the sprint has delivered nothing at all.
 
 ## Levers
 
-**Signed under the maintainer's standing authority of 2026-07-30.** Recorded here for review.
+**Signed under the standing lever grant recorded as R3 in
+`docs/design/systems/sale-value-implementation-plan.md`, provisional until the maintainer
+ratifies it.** Recorded here for review.
 
 ### Rent, replacing the flat constant
 
@@ -196,4 +198,152 @@ constant, adds an enum value and reshapes state.
 
 ## Exit
 
-_To be completed on implementation._
+**Landed as designed.** `forecourt` joined `BayKindSchema` and `facilities.json` at the signed
+values; `GameState` gained `forecourtBayCount`/`forecourtCarIds` (defaulted, mirroring the
+parking pair exactly, `SAVE_VERSION` 49 -> 50, no migration per directive 19); `facilities.ts`'s
+kind dispatch is generalised; `requiresForecourt` is required and `.strict()` on every selling
+channel; listing/delisting move a car on and off the forecourt; rent is `economy.rent`
+(`baseWeeklyYen` + per-kind `perBayWeeklyYen`), computed by `finances.ts`'s new
+`computeWeeklyRentYen`; the garage, car-detail and upgrades screens all show and gate the
+forecourt.
+
+**Task 3, the real engineering.** `facilities.ts`'s `to === 'service' ? ... : ...` ternaries are
+gone, replaced by two small kind-keyed accessor pairs: `carIdsFor`/`withCarIdsFor` (the slot
+array for a kind) and `bayCountFor`/`withBayCountFor` (the owned count for a kind), each a single
+3-case `switch` in exactly one place. Every function that used to branch on kind now calls
+these instead: `releaseCarFromShop` loops `ALL_BAY_KINDS`; the renamed `assignToFirstOpenSlot`
+(was `assignToFirstOpenRealSlot`) takes any kind; `moveCarToSlot`'s two-branch object-spread
+collapsed to generic reads/writes; `applyBayPurchase`'s duplicated `kind === 'service' ? {...} :
+{...}` collapsed to one dynamic composition. A fourth kind needs one enum value, one
+`facilities.json` entry, one more `GameState` field pair (unavoidable - each kind's array/count
+are real, independently-sized, persisted state), and one more `case` in each of the four
+accessor functions - nothing else in the file changes. `bayCountsByKind` (new, exported) reads
+all three at once for `finances.ts` and `exportCareers.ts`.
+
+**The forecourt-specific additions**, built from those same primitives rather than a parallel
+system: `assignToForecourt` (a thin wrapper over `assignToFirstOpenSlot`, the one legitimate way
+a car reaches the forecourt) and `tryAssignToRealOrGrace` (the real-then-grace cascade
+`assignToShop` already uses, but CHECKING rather than trusting that grace is free - `assignToShop`
+may assume it because every caller has already confirmed `hasAcquisitionSpace`; a car coming off
+the forecourt is not a fresh acquisition, so there is no such earlier guarantee, and this refuses,
+returning `null`, instead of clobbering whoever is already double-parked). `moveCarToSlot`
+refuses `to === 'forecourt'` outright in one guard clause, and `locate` only ever searches
+`['service', 'parking']`, so a listed car cannot be dragged onto or off the forecourt by hand
+either direction - the forecourt is populated and vacated exclusively through
+`resolveSetForSale`. `hasOwnedShopSpace`/`hasAcquisitionSpace` are untouched: still exactly
+`hasParkingSpace || hasServiceBaySpace` (+ grace for the latter), the forecourt deliberately
+excluded, tested directly (`the forecourt is not acquisition capacity` describe block).
+
+**`resolveSetForSale` (selling.ts).** Listing on a `requiresForecourt` channel releases the
+car's real slot and places it on the forecourt, refusing - no state change, logging
+`{ type: 'acquisition-blocked', kind: 'listing', reason: 'no-forecourt-space' }` - when none is
+free. A car already on the forecourt switching to another forecourt channel keeps its slot (no
+release-and-retake); switching to the trade network (the one `requiresForecourt: false` channel)
+is a real move back to a real slot or grace. Delisting mirrors this: a forecourt car returns via
+`tryAssignToRealOrGrace`, refusing silently (matching the file's existing silent-refusal
+convention - insufficient cash already refuses the same way) when even grace is taken. A
+completed sale (`resolveSellViaWalkIn`) frees the forecourt slot automatically, because
+`releaseCarFromShop` now searches all three kinds - no new code path, per the reuse analysis.
+
+**Judgement calls not fully dictated by the doc, flagged for review:**
+
+1. **The no-space log event's exact shape.** "Reusing the existing no-space event shape" is read
+   as reusing `acquisition-blocked`'s STRUCTURE (extend its `kind` enum with `'listing'`, its
+   `reason` enum with `'no-forecourt-space'`) rather than its literal `reason: 'no-space'` value -
+   the existing `'no-space'` copy ("parking, every bay, and the double-parking spot are all full")
+   would be actively wrong for a forecourt-only block, so a new, accurate reason was added instead
+   of reusing the old string. `dayLogFormat.ts`'s `acquisition-blocked` case gained the branch.
+2. **The delist/switch-away refusal stays silent (no log entry).** Task 5 explicitly asks for a
+   log entry on the listing refusal; task 6 does not ask for one on the delist refusal, and
+   `resolveSetForSale`'s own doc comment already documents a silent-refusal convention (insufficient
+   cash). Kept consistent rather than introduced a second logged-refusal shape unasked for.
+3. **`forecourtBayCount`/`forecourtCarIds` keep Zod defaults** (`.default(2)`/`.default([])`),
+   mirroring the parking pair's CURRENT shape exactly as task 2 instructs. This means a pre-v50
+   save decodes cleanly (forecourt empty, no car ever having been listed under the old model, which
+   is exactly correct) rather than failing to parse the way sprint147's `offersSeen` deliberately
+   does. Both are compliant with directive 19 (neither writes a migration); this sprint's own
+   instruction to mirror the parking pair is what decided it, flagged since sprint147 set a newer,
+   different precedent (required, no default) for its own new field.
+4. **`GarageScreen.vue`'s forecourt slots are plain, not `ShopSlot.vue`** - `ShopSlot` always
+   renders a grab-handle and a move button, which would misrepresent the forecourt as a hand-move
+   target. A small read-only block (RouterLink + "empty forecourt slot" text) was used instead,
+   styled to match the existing grace-parking block's dashed-border treatment.
+5. **`UpgradesScreen.vue` gained a "Forecourt bays" purchase card** and `DevConsole.vue`'s
+   `devGrantBay` selector gained a `forecourt` option. Neither file is named in the sprint doc's
+   task list, but `applyBayPurchase`/`nextBayPriceYen`/`nextBayMinReputationTier` all generalised
+   to the forecourt automatically (task 3), and leaving the facility unpurchasable in the live UI,
+   or leaving `devGrantBay`'s own two-branch ternary un-generalised (a real latent bug: granting a
+   forecourt bay from the dev console would have silently incremented `parkingBayCount` instead),
+   would have been an incomplete generalisation of exactly the thing task 3 asks for.
+
+**Re-derived pins, old -> new:**
+
+- `economyApprovalGate.test.ts`'s `economy.json` hash:
+  `7902e54c1533a941755a4de4ea63c35f9c0802f2ed2a71080dd51946ef56b520` ->
+  **`c314c4a3978b91020b171e96fd1fdeeeb96a579cfa5087c64a7a901fde637958`**. Re-pinned in the same
+  change, citing the lever grant as R3 in `docs/design/systems/sale-value-implementation-plan.md`
+  per the maintainer's own wording rule for this sprint (not "standing authority of 2026-07-30",
+  which is the separate R2 typecheck carve-out). `partPricing.json`'s hash and every mission
+  payout/budget cap are untouched (confirmed passing unchanged) - neither pipeline reads rent or
+  the selling channels' capacity flag.
+- `advanceDay.test.ts`'s job-loop golden master: `ae049e78` -> **`8cf486eb`**. Moves because the
+  state now carries `forecourtBayCount`/`forecourtCarIds`; the actual rent CHARGED across the
+  script's four boundaries is numerically unchanged (day 1's bay counts price to exactly 20,000
+  under the new formula, same as the old constant), asserted directly in the same test via
+  `computeWeeklyRentYen(bayCountsByKind(initialState()), CONTEXT.economy)` replacing the retired
+  `CONTEXT.economy.WEEKLY_RENT_YEN` reference.
+- `advanceDay.test.ts`'s acquisition-to-sale golden master: `f3ee5dec` -> **`634d4493`**. Moves
+  for the same new-fields reason, plus the scripted car is now physically moved onto the forecourt
+  while listed and back off it at sale, which the hash also captures. Both hashes re-run twice to
+  confirm determinism before pinning.
+- `SAVE_VERSION`: 49 -> **50**. All six literal `expect(SAVE_VERSION).toBe(49)` canaries in
+  `saveCodec.test.ts` re-pinned to `50` in the same change (two of the six sit in tests literally
+  titled "SAVE_VERSION is 48" - historical names tracking the live constant rather than their own
+  chapter, per the same pattern sprint147's Exit already noted).
+- `schemas.test.ts`'s `economy.json` top-level anchor list: `WEEKLY_RENT_YEN` removed, `rent`
+  added; its `sellingChannels`/`liquidity` exact-object pins gained `requiresForecourt` on all
+  five channels and a `forecourt` entry check in the `facilities.json` pin.
+- `packages/content/tests/gameState.test.ts`'s hand-built round-trip fixture and every raw
+  `GameState` literal across seventeen `packages/sim/tests/*.test.ts` files (`actionPoints`,
+  `advanceDay`, `assemblies`, `auctions`, `bidding`, `bots/investor`, `buyoutHelpers`, `calendar`,
+  `carLedger`, `energyCalibration`, `finances`, `jobs`, `laborSlots`, `marketHeat`, `parts`,
+  `provenance`, `selling`, `stagedWork`, `valueModelProbes`, `staff`) rebuilt with
+  `forecourtBayCount`/`forecourtCarIds` in place - every one found and fixed via
+  `pnpm typecheck`'s whole-program compile, per the directive 20 carve-out. Fixtures built via
+  `{ ...createInitialGameState(...), ...overrides }` needed no changes (the new fields ride along
+  automatically); only hand-rolled literals did.
+- `WEEKLY_RENT_YEN` and `offerSpread`-style retirement: added to
+  `packages/content/tests/retiredIdentifiers.test.ts` (case (a), directive 17 - the field is gone,
+  not a bug); three prose mentions of the literal string in doc comments (`economy.ts`,
+  `finances.ts`, `exportCareers.ts`) reworded so the ledger's own word-boundary scan stays clean.
+
+**Nothing left outstanding.** Every task in the breakdown landed; every test in the sprint's own
+list exists and passes; `hasOwnedShopSpace`/`hasAcquisitionSpace` are unchanged and directly
+tested as such.
+
+**Checks, run in order (directive 20 - none re-run once green):**
+
+1. `pnpm typecheck` - all three packages clean (content, sim, game/`vue-tsc`), after fixing every
+   error the schema/state reshape surfaced (see the pin list above).
+2. `pnpm test --project content` - 536 passed (24 files).
+3. `pnpm test --project game` - 833 passed (62 files).
+4. Named sim files only, never the full suite: `packages/sim/tests/facilities.test.ts` +
+   `packages/sim/tests/selling.test.ts` + `packages/sim/tests/finances.test.ts` together (154
+   passed, after fixing one self-inflicted bug in the new placement-invariant test itself - see
+   below), then `packages/sim/tests/advanceDay.test.ts` separately (15 passed, run twice to
+   confirm the re-derived hashes are stable before pinning).
+
+A small follow-up narrow re-check, outside the four above but scoped to a fix made while
+verifying task 3's generalisation was complete: `devGrantBay` (gameStore.ts) had its own
+un-generalised two-branch ternary, which would have silently corrupted state if the dev console
+ever granted a forecourt bay. Fixed and re-verified with `pnpm --filter @midnight-garage/game
+typecheck` plus the two directly affected files (`GarageScreen.test.ts` + `gameStore.test.ts`,
+28 passed) rather than re-running the full 833-test game suite a second time.
+
+**A failing test, and which case it was (directive 17).** The placement-invariant test I wrote
+myself (`facilities.test.ts`, "holds after acquisition, moves, a bay purchase and release") first
+failed with "owned car car-2 appears in 0 slots". This was case (b) inverted: not a regression in
+the implementation, but my own test script declaring three cars as owned up front and only then
+placing them one at a time - a genuinely invalid intermediate state the invariant correctly
+caught. Fixed by placing-and-owning each car atomically per step (mirroring how real acquisition
+actually works), not by loosening the assertion.
