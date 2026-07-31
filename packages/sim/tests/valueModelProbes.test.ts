@@ -950,9 +950,23 @@ describe('unimproved-flip probe (the instant-flip guard)', () => {
       // while the car is completely unmodified. That asymmetry is intended;
       // it is what makes knowing which cars are wanted worth something.
       //
+      // The draw weight is valuation MULTIPLIED BY the buyer's own pool
+      // weight, so the size bias described above survives a channel weighting
+      // rather than being replaced by one. The walk-in this probe uses passes
+      // no channel at all, so the only pool term here is each archetype's own
+      // `tierPreferences` weight, which is read as a probability now instead
+      // of being discarded.
+      //
       // Measured margins at this bound, for the record against future drift:
-      // entry comfortably negative, everyday -0.99%, enthusiast +0.19%,
-      // flagship +1.05%.
+      // entry -1.68%, everyday -0.92%, enthusiast -0.99%, flagship +1.87%
+      // (resale ratios 0.9832 / 0.9908 / 0.9901 / 1.0187). Flagship is the
+      // one tier that moved materially (+1.05% before the preference weights
+      // were read), because the collector states the strongest flagship
+      // preference of any archetype (0.8, against the tuner's 0.6, the
+      // racer's 0.5 and the stancer's 0.3) and is exactly the buyer who pays
+      // most for an untouched original. That is the asymmetry described
+      // above, now weighted the way the content always said it should be, and
+      // it sits five times inside this bound.
       expect(marginMedian).toBeLessThan(0.1)
     },
   )

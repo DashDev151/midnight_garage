@@ -20,7 +20,10 @@ import { bumpPlayerSales, updateMarketHeat } from '../src/marketHeat'
 import { marketValueYen } from '../src/marketValue'
 import {
   bestFitBuyer,
+  channelDrawWeighting,
   drawDailyOffers,
+  isSellingChannelUnlocked,
+  likelyChannelBuyer,
   offerChanceFor,
   qualityMeanFor,
   resolveRejectOffer,
@@ -29,8 +32,13 @@ import {
   resolveSetForSale,
   sellViaWalkIn,
   stalenessFor,
+  type ChannelDrawWeighting,
 } from '../src/selling'
-import { channelBuyerTaste, valuateCarForBuyer } from '../src/valuation'
+import {
+  channelBuyerTaste,
+  valuateCarForBuyer,
+  valuateCarForBuyerViaChannel,
+} from '../src/valuation'
 import { createRng, type Rng } from '../src/rng'
 import {
   assertPlacementInvariant,
@@ -197,6 +205,18 @@ describe('sell-side buyer gate (Sprint 11, round-2 playtest #4)', () => {
   })
 })
 
+/**
+ * Every channel-opening mission delivered - the default precondition for the
+ * listing tests below, which are about fees, clocks and cadence rather than
+ * about who has put your name forward yet. Derived from the shipped campaign
+ * rather than naming mission ids, so re-authoring which mission opens which
+ * channel never silently un-arms this fixture. The unlock behaviour itself is
+ * tested against `storyMissions: []` in its own block.
+ */
+const EVERY_CHANNEL_OPEN: GameState['storyMissions'] = CONTEXT.storyMissions
+  .filter((mission) => mission.unlocksSellingChannel !== undefined)
+  .map((mission) => ({ missionId: mission.id, status: 'delivered' as const, acceptedOnDay: 1 }))
+
 function stateWithCar(car: CarInstance, overrides: Partial<GameState> = {}): GameState {
   return {
     day: 1,
@@ -234,7 +254,7 @@ function stateWithCar(car: CarInstance, overrides: Partial<GameState> = {}): Gam
     nextMachineListingDay: null,
     serviceJobLedgers: {},
     inspectionVisit: null,
-    storyMissions: [],
+    storyMissions: EVERY_CHANNEL_OPEN,
     ...overrides,
   }
 }
@@ -1314,6 +1334,446 @@ describe('ceiling clamps (Sprint 114): honest, per the lever table', () => {
       )
       expect(taste).toBeCloseTo(floor, 6)
     }
+  })
+})
+
+/**
+ * A channel is a buyer base before it is a price with a fee attached
+ * (sprint156.md). Every claim below is measured through the shipped draw
+ * (`drawDailyOffers`) or the shipped deterministic read
+ * (`likelyChannelBuyer`), never against a reimplementation of the weighting.
+ */
+describe('a channel is a buyer base (sprint156)', () => {
+  function requireModel(modelId: string): CarModel {
+    const found = CARS.find((c) => c.id === modelId)
+    if (!found) throw new Error(`fixture car ${modelId} missing from seed content`)
+    return found
+  }
+  const KEI_MODEL = requireModel('suzuki-wagon-r-ct21s')
+  const STYLE_MODEL = requireModel('nissan-silvia-s13')
+
+  /** A tidy example of `forModel`, built from that model's OWN fitment class
+   * (never the fixture default's `everyday` parts, which would price a kei's
+   * slots at four times what they cost). */
+  function tidy(forModel: CarModel): CarInstance {
+    return carWithGrades(forModel, CONTEXT, {})
+  }
+
+  const MEET_DAY = ECONOMY.calendar.meetDayOfWeek
+
+  /** Every offer `channelId` draws on `target` across `seedCount` seeded days,
+   * through the real daily draw. A seed that draws nothing (the cadence roll
+   * missed, or a matched-only channel rejected whoever turned up) contributes
+   * nothing, which is itself part of what these tests measure. */
+  function sweep(
+    target: CarInstance,
+    forModel: CarModel,
+    channelId: SellingChannelId,
+    seedCount = 200,
+    stateOverrides: Partial<GameState> = {},
+  ): { buyerId: string; priceYen: number }[] {
+    const day = channelId === 'weekendMeet' ? MEET_DAY : 1
+    const base = stateWithCar(target, {
+      day,
+      carsForSale: [
+        {
+          carInstanceId: target.id,
+          offersSeen: 0,
+          channelId,
+          weekendMeetPending: channelId === 'weekendMeet',
+        },
+      ],
+      ...stateOverrides,
+    })
+    const stateForModel: GameState = { ...base, ownedCars: [{ ...target, modelId: forModel.id }] }
+    const offers: { buyerId: string; priceYen: number }[] = []
+    for (let seed = 0; seed < seedCount; seed++) {
+      const drawn = drawDailyOffers(stateForModel, CONTEXT, createRng(seed), day)
+      for (const offer of drawn.state.pendingOffers) {
+        offers.push({ buyerId: offer.buyerId, priceYen: offer.priceYen })
+      }
+    }
+    return offers
+  }
+
+  function shareOf(offers: { buyerId: string }[], buyerIds: readonly string[]): number {
+    if (offers.length === 0) return 0
+    return offers.filter((o) => buyerIds.includes(o.buyerId)).length / offers.length
+  }
+
+  /** What `channelId` would price `target` at, through the buyer that channel
+   * itself most likely brings - the same pair of reads the worked example's
+   * quote table uses, with no roll in either. */
+  function channelQuote(
+    target: CarInstance,
+    forModel: CarModel,
+    channelId: SellingChannelId,
+    reputationTier: GameState['reputationTier'] = 'unknown',
+  ): { buyerId: string | undefined; priceYen: number } {
+    const channel = ECONOMY.sellingChannels[channelId]
+    const weighting = channelDrawWeighting(channel, reputationTier, ECONOMY)
+    const buyer = likelyChannelBuyer(
+      target,
+      forModel,
+      CONTEXT.buyers,
+      CONTEXT.partsById,
+      PARTS_TAXONOMY,
+      CONTEXT.partsTaxonomyById,
+      100,
+      ECONOMY,
+      weighting,
+    )
+    if (!buyer || channel.tasteCeiling === undefined) return { buyerId: buyer?.id, priceYen: 0 }
+    return {
+      buyerId: buyer.id,
+      priceYen: valuateCarForBuyerViaChannel(
+        buyer,
+        forModel,
+        target,
+        CONTEXT.partsById,
+        PARTS_TAXONOMY,
+        CONTEXT.partsTaxonomyById,
+        100,
+        ECONOMY,
+        channel.tasteCeiling,
+      ),
+    }
+  }
+
+  describe('the magazine and the meet are two buyer bases, not one with two invoices', () => {
+    const styleCar = tidy(STYLE_MODEL)
+
+    it('brings a different person, and therefore a different price, on the same car', () => {
+      const magazine = channelQuote(styleCar, STYLE_MODEL, 'tunerMagazine')
+      const meet = channelQuote(styleCar, STYLE_MODEL, 'weekendMeet')
+      expect(magazine.buyerId).not.toBe(meet.buyerId)
+      expect(magazine.priceYen).not.toBe(meet.priceYen)
+    })
+
+    it('draws measurably different crowds through the real daily draw', () => {
+      const magazineOffers = sweep(styleCar, STYLE_MODEL, 'tunerMagazine')
+      const meetOffers = sweep(styleCar, STYLE_MODEL, 'weekendMeet')
+      expect(magazineOffers.length).toBeGreaterThan(20)
+      expect(meetOffers.length).toBeGreaterThan(20)
+      // The magazine is read by people chasing numbers; the meet is a car park
+      // full of people looking at how a car sits.
+      expect(shareOf(magazineOffers, ['tuner', 'racer'])).toBeGreaterThan(
+        shareOf(meetOffers, ['tuner', 'racer']),
+      )
+      expect(shareOf(meetOffers, ['stancer'])).toBeGreaterThan(shareOf(magazineOffers, ['stancer']))
+    })
+  })
+
+  describe('a kei has a channel that is unambiguously good for it', () => {
+    const keiCar = tidy(KEI_MODEL)
+
+    it('the free ads paper beats the shop front on all three axes, from day one', () => {
+      // Who: the archetypes that actually state an interest in this league of
+      // car arrive far more often through the paper than off the forecourt.
+      const keiInterested = CONTEXT.buyers
+        .filter((b) => b.tierPreferences.some((p) => p.tier === KEI_MODEL.tier && p.weight > 0))
+        .map((b) => b.id)
+      expect(keiInterested).toEqual(expect.arrayContaining(['first-timer', 'kei-specialist']))
+      const paperOffers = sweep(keiCar, KEI_MODEL, 'freeAdsPaper')
+      const shopOffers = sweep(keiCar, KEI_MODEL, 'shopFront')
+      expect(paperOffers.length).toBeGreaterThan(20)
+      expect(shopOffers.length).toBeGreaterThan(20)
+      expect(shareOf(paperOffers, keiInterested)).toBeGreaterThan(
+        shareOf(shopOffers, keiInterested),
+      )
+
+      // How much: the paper's ceiling clears the shop front's 1.00.
+      expect(channelQuote(keiCar, KEI_MODEL, 'freeAdsPaper').priceYen).toBeGreaterThan(
+        channelQuote(keiCar, KEI_MODEL, 'shopFront').priceYen,
+      )
+
+      // How often: an ordinary car is exactly what the classifieds move.
+      expect(
+        ECONOMY.sellingChannels.freeAdsPaper.offerChanceFactorByRarity![KEI_MODEL.rarity],
+      ).toBeGreaterThan(ECONOMY.sellingChannels.shopFront.offerChanceFactor!)
+
+      // And it costs nothing to reach: open on day one, no mission needed.
+      expect(
+        isSellingChannelUnlocked(
+          stateWithCar(keiCar, { storyMissions: [] }),
+          CONTEXT,
+          'freeAdsPaper',
+        ),
+      ).toBe(true)
+    })
+
+    it('the weekend meet is the best-priced channel of the five once it opens, and the kei specialist is who it brings', () => {
+      const quotes = (['shopFront', 'freeAdsPaper', 'tunerMagazine', 'weekendMeet'] as const).map(
+        (channelId) => ({ channelId, ...channelQuote(keiCar, KEI_MODEL, channelId) }),
+      )
+      const meet = quotes.find((q) => q.channelId === 'weekendMeet')!
+      expect(meet.buyerId).toBe('kei-specialist')
+      for (const quote of quotes) {
+        if (quote.channelId === 'weekendMeet') continue
+        expect(meet.priceYen, `${quote.channelId}`).toBeGreaterThan(quote.priceYen)
+      }
+    })
+
+    it('and the paper beats the tuner magazine on a kei on the measure a player actually compares', () => {
+      // Not "does the magazine ever draw" - it does, because widening reaches
+      // the people who would pay for an unmolested survivor, and that is right.
+      // The question is what a listed day is worth: the classifieds move an
+      // ordinary common car at more than twice the rate a tuning monthly does,
+      // and cost ¥10,500 less to open. Measured over the same seeds through
+      // the real draw, so the cadence, the matched gate and the pool all count.
+      const SEEDS = 200
+      const perDay = (channelId: SellingChannelId): number => {
+        const offers = sweep(keiCar, KEI_MODEL, channelId, SEEDS)
+        const total = offers.reduce((sum, o) => sum + o.priceYen, 0)
+        return total / SEEDS
+      }
+      // Measured on a tidy Wagon R over these 200 seeds, for the record:
+      // the paper draws on every one of them at a mean ¥227,155, the magazine
+      // on 18 at a mean ¥235,466. ¥227,155 a listed day against ¥21,192, for
+      // an eighth of the fee.
+      expect(perDay('freeAdsPaper')).toBeGreaterThan(perDay('tunerMagazine'))
+      expect(ECONOMY.sellingChannels.freeAdsPaper.feeYen).toBeLessThan(
+        ECONOMY.sellingChannels.tunerMagazine.feeYen,
+      )
+      // And the magazine's own authoring says who it is for: the two practical
+      // archetypes a kei sells to are the bottom of its pool and the top of
+      // the paper's.
+      const magazine = ECONOMY.sellingChannels.tunerMagazine.buyerPoolWeights!
+      const paper = ECONOMY.sellingChannels.freeAdsPaper.buyerPoolWeights!
+      for (const archetype of ['first-timer', 'kei-specialist'] as const) {
+        expect(magazine[archetype]).toBeLessThan(paper[archetype])
+      }
+    })
+  })
+
+  describe('the shop front is the deliberate floor', () => {
+    it('is free, open on day one with no mission delivered, and lists successfully', () => {
+      const state = stateWithCar(car, { cashYen: 0, storyMissions: [] })
+      expect(ECONOMY.sellingChannels.shopFront.feeYen).toBe(0)
+      expect(isSellingChannelUnlocked(state, CONTEXT, 'shopFront')).toBe(true)
+      const result = resolveSetForSale(state, car.id, true, CONTEXT, 'shopFront')
+      expect(result.state.carsForSale).toHaveLength(1)
+      expect(result.state.cashYen).toBe(0)
+    })
+
+    it('carries the lowest ceiling of any persona channel, so it can never pay the most', () => {
+      const others = (['freeAdsPaper', 'tunerMagazine', 'weekendMeet'] as const).map(
+        (id) => ECONOMY.sellingChannels[id].tasteCeiling!,
+      )
+      for (const ceiling of others) {
+        expect(ECONOMY.sellingChannels.shopFront.tasteCeiling!).toBeLessThan(ceiling)
+      }
+    })
+
+    it('never improves with standing - a flat pool is untouched by any focus exponent', () => {
+      // The shop front's pool is exactly 1 on every archetype, and 1 raised to
+      // anything is 1. That is the design rather than a coincidence of the
+      // values: standing improves the channels you were let into, never the
+      // one that was always there.
+      const weights = Object.values(ECONOMY.sellingChannels.shopFront.buyerPoolWeights!)
+      expect(new Set(weights)).toEqual(new Set([1]))
+      for (const forModel of [KEI_MODEL, STYLE_MODEL]) {
+        const target = tidy(forModel)
+        expect(channelQuote(target, forModel, 'shopFront', 'legend')).toEqual(
+          channelQuote(target, forModel, 'shopFront', 'unknown'),
+        )
+      }
+    })
+  })
+
+  describe('channels open by named event, and never close', () => {
+    const NEW_CAREER = stateWithCar(car, { cashYen: 500_000, storyMissions: [] })
+
+    it('the two premium channels are each claimed by exactly one shipped mission, and no mission claims a day-one channel', () => {
+      const claimsByChannel = new Map<SellingChannelId, string[]>()
+      for (const mission of CONTEXT.storyMissions) {
+        if (!mission.unlocksSellingChannel) continue
+        const claims = claimsByChannel.get(mission.unlocksSellingChannel) ?? []
+        claims.push(mission.id)
+        claimsByChannel.set(mission.unlocksSellingChannel, claims)
+      }
+      expect(claimsByChannel.get('weekendMeet')).toEqual(['low-and-loud'])
+      expect(claimsByChannel.get('tunerMagazine')).toEqual(['street-power-street-manners'])
+      expect(claimsByChannel.has('shopFront')).toBe(false)
+      expect(claimsByChannel.has('tradeNetwork')).toBe(false)
+      expect(claimsByChannel.has('freeAdsPaper')).toBe(false)
+    })
+
+    it('a new career cannot list on a claimed channel - no state change, no fee taken', () => {
+      for (const channelId of ['tunerMagazine', 'weekendMeet'] as const) {
+        expect(isSellingChannelUnlocked(NEW_CAREER, CONTEXT, channelId)).toBe(false)
+        const result = resolveSetForSale(NEW_CAREER, car.id, true, CONTEXT, channelId)
+        expect(result.state, channelId).toBe(NEW_CAREER)
+        expect(result.log, channelId).toEqual([])
+      }
+    })
+
+    it('delivering the claiming mission opens it, and merely having it in hand does not', () => {
+      const inProgress: GameState = {
+        ...NEW_CAREER,
+        storyMissions: [{ missionId: 'low-and-loud', status: 'active', acceptedOnDay: 1 }],
+      }
+      expect(isSellingChannelUnlocked(inProgress, CONTEXT, 'weekendMeet')).toBe(false)
+      const delivered: GameState = {
+        ...NEW_CAREER,
+        storyMissions: [{ missionId: 'low-and-loud', status: 'delivered', acceptedOnDay: 1 }],
+      }
+      expect(isSellingChannelUnlocked(delivered, CONTEXT, 'weekendMeet')).toBe(true)
+      const listed = resolveSetForSale(delivered, car.id, true, CONTEXT, 'weekendMeet')
+      expect(listed.state.carsForSale[0]?.channelId).toBe('weekendMeet')
+    })
+
+    it('never closes: the delivered record is the whole of the fact, and nothing takes it back', () => {
+      const delivered: GameState = {
+        ...NEW_CAREER,
+        storyMissions: [{ missionId: 'low-and-loud', status: 'delivered', acceptedOnDay: 1 }],
+      }
+      // Reputation collapse, cash gone, car sold, days passed: none of it is
+      // read by the unlock, because none of it can undeliver a mission.
+      const later: GameState = {
+        ...delivered,
+        day: 400,
+        cashYen: 0,
+        reputationPoints: 0,
+        reputationTier: 'unknown',
+        ownedCars: [],
+        carsForSale: [],
+        serviceBayCarIds: [],
+      }
+      expect(isSellingChannelUnlocked(later, CONTEXT, 'weekendMeet')).toBe(true)
+    })
+  })
+
+  describe('the tier preference weight is finally read', () => {
+    /** Two buyers identical in every way that touches valuation, differing
+     * ONLY in how strongly they state an interest in this tier. Anything that
+     * discarded the weight would draw them equally. */
+    function preferenceProbe(id: string, weight: number) {
+      return {
+        id,
+        archetype: 'collector' as const,
+        displayName: id,
+        statTargets: {
+          power: { target: 0, importance: 0 },
+          handling: { target: 0, importance: 0 },
+          style: { target: 0, importance: 0 },
+          reliability: { target: 0, importance: 0 },
+          authenticity: { target: 0, importance: 0 },
+        },
+        tierPreferences: [{ tier: model!.tier, weight }],
+        wantLine: 'synthetic fixture buyer - no authored copy needed',
+      }
+    }
+
+    it('draws a strongly-interested archetype far more often than a barely-interested one', () => {
+      const buyers = [preferenceProbe('keen', 1), preferenceProbe('idle', 0.2)]
+      const probeContext = { ...CONTEXT, buyers }
+      const state = { ...stateWithCar(car), carsForSale: listedOn('shopFront') }
+      const counts = { keen: 0, idle: 0 }
+      for (let seed = 0; seed < 400; seed++) {
+        const drawn = drawDailyOffers(state, probeContext, createRng(seed), state.day)
+        const buyerId = drawn.state.pendingOffers[0]?.buyerId
+        if (buyerId === 'keen') counts.keen++
+        if (buyerId === 'idle') counts.idle++
+      }
+      expect(counts.keen + counts.idle).toBeGreaterThan(50)
+      // The two value the car identically (no stat targets at all), so the
+      // only thing separating them is the 5:1 preference weight.
+      expect(counts.keen).toBeGreaterThan(counts.idle * 2)
+    })
+  })
+
+  describe('poolWidening turns the tier gate into a weighting', () => {
+    const keiCar = tidy(KEI_MODEL)
+
+    function likelyBuyerIds(weighting: ChannelDrawWeighting): string[] {
+      return CONTEXT.buyers
+        .filter(
+          (b) =>
+            likelyChannelBuyer(
+              keiCar,
+              KEI_MODEL,
+              [b],
+              CONTEXT.partsById,
+              PARTS_TAXONOMY,
+              CONTEXT.partsTaxonomyById,
+              100,
+              ECONOMY,
+              weighting,
+            ) !== undefined,
+        )
+        .map((b) => b.id)
+        .sort()
+    }
+
+    it('without it, only archetypes that state an interest in the tier can be drawn', () => {
+      expect(likelyBuyerIds({ focusExponent: 1 })).toEqual(['first-timer', 'kei-specialist'])
+    })
+
+    it('with it, the rest of the market can be reached too', () => {
+      expect(likelyBuyerIds({ focusExponent: 1, poolWidening: 0.25 })).toEqual([
+        'collector',
+        'first-timer',
+        'kei-specialist',
+        'racer',
+        'stancer',
+        'tuner',
+      ])
+    })
+
+    it('is authored widest on the channel whose whole niche is reach', () => {
+      const { shopFront, freeAdsPaper, tunerMagazine, weekendMeet } = ECONOMY.sellingChannels
+      expect(freeAdsPaper.poolWidening!).toBeGreaterThan(weekendMeet.poolWidening!)
+      expect(weekendMeet.poolWidening!).toBeGreaterThan(shopFront.poolWidening!)
+      expect(shopFront.poolWidening!).toBeGreaterThan(tunerMagazine.poolWidening!)
+    })
+  })
+
+  describe('standing improves who walks through an open door', () => {
+    it("a legend's weekend meet draws its own crowd more reliably than an unknown's", () => {
+      const styleCar = tidy(STYLE_MODEL)
+      const unknown = sweep(styleCar, STYLE_MODEL, 'weekendMeet', 200)
+      const legend = sweep(styleCar, STYLE_MODEL, 'weekendMeet', 200, {
+        reputationTier: 'legend',
+        reputationPoints: 2000,
+      })
+      expect(unknown.length).toBeGreaterThan(20)
+      expect(legend.length).toBeGreaterThan(20)
+      // The meet's own top-weighted archetype is the stancer (1.8); standing
+      // sharpens the pool toward it rather than opening anything new.
+      expect(shareOf(legend, ['stancer'])).toBeGreaterThan(shareOf(unknown, ['stancer']))
+    })
+
+    it('is exactly 1 at unknown, so a new career draws every pool as authored', () => {
+      expect(ECONOMY.selling.channelStandingFocusByReputationTier.unknown).toBe(1)
+    })
+  })
+
+  describe('the trade network keeps its reason to exist', () => {
+    it('is the only channel that needs no forecourt slot, and the fastest of the five', () => {
+      const channels = ECONOMY.sellingChannels
+      const noForecourt = Object.entries(channels)
+        .filter(([, c]) => !c.requiresForecourt)
+        .map(([id]) => id)
+      expect(noForecourt).toEqual(['tradeNetwork'])
+      for (const id of ['shopFront', 'tunerMagazine'] as const) {
+        expect(channels.tradeNetwork.offerChanceFactor!).toBeGreaterThan(
+          channels[id].offerChanceFactor!,
+        )
+      }
+    })
+
+    it('has no buyer pool at all, so it never turns a car away for being the wrong sort', () => {
+      const keiCar = tidy(KEI_MODEL)
+      expect(ECONOMY.sellingChannels.tradeNetwork.buyerPoolWeights).toBeUndefined()
+      // No pool and no taste roll, so nothing can veto the draw: the trade
+      // answers on far more days than any matched-only channel, on a car
+      // neither of them was written for.
+      const tradeOffers = sweep(keiCar, KEI_MODEL, 'tradeNetwork')
+      expect(tradeOffers.length).toBeGreaterThan(sweep(keiCar, KEI_MODEL, 'tunerMagazine').length)
+      expect(tradeOffers.length).toBeGreaterThan(20)
+      expect(tradeOffers.every((o) => o.buyerId === 'trade-network')).toBe(true)
+    })
   })
 })
 

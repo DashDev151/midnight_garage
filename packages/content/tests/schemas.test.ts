@@ -461,16 +461,31 @@ describe('seed content validates against schemas', () => {
       qualitySpread: 0.04,
       relistRecovery: 0.7,
     })
-    // The five listing channels (directive 22 lever list). The shop front
-    // is the deliberate worst-typical-outcome floor (tasteCeiling 1.00,
-    // never above value); the trade network trades taste upside for a
-    // fixed, near-value band; the tuner magazine and weekend meet are the
-    // only two channels whose ceiling clears 1.0, both matched-persona-only.
+    // The five listing channels (directive 22 lever list). A channel is a
+    // buyer base first: `buyerPoolWeights` decides who walks in and
+    // `poolWidening` how far past the tier gate the channel reaches, and only
+    // then does `tasteCeiling` decide how much headroom whoever arrived has.
+    // The shop front is the deliberate floor on the price axis (ceiling 1.00,
+    // never above value) and the widest on the reach axis (a flat pool, so
+    // nobody is favoured, plus the widening that puts everyone in it); the
+    // trade network trades both axes for a fixed, near-value band and has no
+    // persona at all; the tuner magazine and weekend meet are the only two
+    // channels whose ceiling clears 1.0, both matched-persona-only, and their
+    // pools point at different halves of the scene.
     expect(result.data.reputation.matchedSaleRepBonus).toBe(1)
     expect(result.data.sellingChannels.shopFront).toEqual({
       feeYen: 0,
       offerChanceFactor: 0.7,
       tasteCeiling: 1.0,
+      buyerPoolWeights: {
+        collector: 1,
+        tuner: 1,
+        stancer: 1,
+        racer: 1,
+        'first-timer': 1,
+        'kei-specialist': 1,
+      },
+      poolWidening: 0.35,
       requiresForecourt: true,
     })
     expect(result.data.sellingChannels.freeAdsPaper).toEqual({
@@ -482,6 +497,15 @@ describe('seed content validates against schemas', () => {
         legend: 0.5,
       },
       tasteCeiling: 1.05,
+      buyerPoolWeights: {
+        collector: 0.4,
+        tuner: 0.5,
+        stancer: 0.5,
+        racer: 0.2,
+        'first-timer': 1.6,
+        'kei-specialist': 1.4,
+      },
+      poolWidening: 0.5,
       requiresForecourt: true,
     })
     expect(result.data.sellingChannels.tunerMagazine).toEqual({
@@ -489,6 +513,15 @@ describe('seed content validates against schemas', () => {
       offerChanceFactor: 0.6,
       tasteCeiling: 1.17,
       matchedOnly: true,
+      buyerPoolWeights: {
+        collector: 0.15,
+        tuner: 1.8,
+        stancer: 0.6,
+        racer: 1.4,
+        'first-timer': 0.05,
+        'kei-specialist': 0.05,
+      },
+      poolWidening: 0.25,
       requiresForecourt: true,
     })
     expect(result.data.sellingChannels.tradeNetwork).toEqual({
@@ -502,7 +535,27 @@ describe('seed content validates against schemas', () => {
       oneDrawNextEndDay: true,
       tasteCeiling: 1.17,
       matchedOnly: true,
+      buyerPoolWeights: {
+        collector: 0.3,
+        tuner: 1.2,
+        stancer: 1.8,
+        racer: 0.5,
+        'first-timer': 0.1,
+        'kei-specialist': 0.8,
+      },
+      poolWidening: 0.4,
       requiresForecourt: true,
+    })
+    // Standing sharpens a channel's own pool rather than opening a door: the
+    // exponent every `buyerPoolWeights` entry is raised to. Monotone up the
+    // ladder, and exactly 1 at `unknown` so a new career draws the pool as
+    // authored.
+    expect(result.data.selling.channelStandingFocusByReputationTier).toEqual({
+      unknown: 1,
+      local: 1.2,
+      known: 1.45,
+      respected: 1.7,
+      legend: 2,
     })
     // economy-bible.md law 4: the roster-coherence "brake pads vs car
     // price" cap - a content anchor, not a hardcoded check constant.

@@ -194,8 +194,9 @@
     "lapTipTriggerFraction": 0.03,
     "reputationReward": 40,
     "specialtyGroups": ["body", "wheels"],
-    "deliveredCopy": "That stance. That's the one.",
-    "overdeliveredCopy": "People will stop walking when they see this. That's the whole point."
+    "deliveredCopy": "That stance. That's the one. We park up at the bay-side PA on Sunday nights. Bring something worth looking at and I'll tell them whose work it is.",
+    "overdeliveredCopy": "People will stop walking when they see this. That's the whole point.",
+    "unlocksSellingChannel": "weekendMeet"
   },
   {
     "id": "street-power-street-manners",
@@ -227,8 +228,9 @@
     "lapTipTriggerFraction": 0.03,
     "reputationReward": 50,
     "specialtyGroups": ["engine", "drivetrain"],
-    "deliveredCopy": "Power AND manners. That's the hard one, and you did it.",
-    "overdeliveredCopy": "It made the number and then it just... idled. Beautiful."
+    "deliveredCopy": "Power AND manners. That's the hard one, and you did it. There's an editor at one of the tuning monthlies who still owes me a favour. Expect a phone call.",
+    "overdeliveredCopy": "It made the number and then it just... idled. Beautiful.",
+    "unlocksSellingChannel": "tunerMagazine"
   },
   {
     "id": "under-one-fifteen",

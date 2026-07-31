@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { AuctionTierSchema } from './auction'
+import { SellingChannelIdSchema } from './economy'
 import { ComponentIdSchema } from './tags'
 import { RequirementSpecSchema } from './requirement'
 
@@ -54,6 +55,22 @@ export const StoryMissionSchema = z.object({
   unlocksAuctionTier: AuctionTierSchema.optional().refine(
     (tier) => tier === undefined || tier !== 'local-yard',
     { message: "unlocksAuctionTier can never be 'local-yard' - it is open from day one" },
+  ),
+  /**
+   * The listing channel this mission's delivery opens, on exactly the
+   * footing `unlocksAuctionTier` opens an auction room: a named person in
+   * the world puts your name forward, and the channel is open from then on
+   * and never closes. Absent for every mission that opens no channel.
+   * Never `'shopFront'` or `'tradeNetwork'`: both are open from day one, so
+   * neither is something a mission could unlock.
+   */
+  unlocksSellingChannel: SellingChannelIdSchema.optional().refine(
+    (channelId) =>
+      channelId === undefined || (channelId !== 'shopFront' && channelId !== 'tradeNetwork'),
+    {
+      message:
+        "unlocksSellingChannel can never be 'shopFront' or 'tradeNetwork' - both are open from day one",
+    },
   ),
 })
 

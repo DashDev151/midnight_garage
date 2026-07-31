@@ -18,18 +18,31 @@ import { bellNormal, createRng, hashStringToSeed } from './rng'
 export type { TurnoutBand }
 
 /**
+ * How strongly one archetype turns up for a `tier` at all: their own
+ * `tierPreferences` weight, 0 when they have no entry for it. The single
+ * expression of that lookup - `interestedBuyers` below gates on it, and
+ * `selling.ts`'s channel draw scales by it, so a preference of 0.3 means
+ * "rarely" everywhere rather than "never" in one place and "as often as
+ * anyone" in another.
+ */
+export function tierPreferenceWeight(buyer: Buyer, model: CarModel): number {
+  return buyer.tierPreferences.find((p) => p.tier === model.tier)?.weight ?? 0
+}
+
+/**
  * Buyer archetypes with a genuinely stated interest in a model's tier. No
  * entry for a tier means that archetype never bids on it; there is no
- * default fallback. Also used by `selling.ts` to apply the identical gate
- * to walk-in/listing buyers - the same rule, not a different one.
+ * default fallback. The hard gate the auction room applies; `selling.ts`
+ * reads the same weights but may additionally widen past this gate when a
+ * channel's own content says it reaches beyond the forecourt.
  */
 export function interestedBuyers(
   model: CarModel,
   buyers: readonly Buyer[],
 ): { buyer: Buyer; weight: number }[] {
   return buyers.flatMap((buyer) => {
-    const preference = buyer.tierPreferences.find((p) => p.tier === model.tier)
-    return preference && preference.weight > 0 ? [{ buyer, weight: preference.weight }] : []
+    const weight = tierPreferenceWeight(buyer, model)
+    return weight > 0 ? [{ buyer, weight }] : []
   })
 }
 

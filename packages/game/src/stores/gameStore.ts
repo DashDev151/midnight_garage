@@ -97,6 +97,7 @@ import {
   installedPartsValueYen,
   installLaborSlotsFor,
   isFreeInstallRefit,
+  isSellingChannelUnlocked,
   refitLaborSlotsFor,
   bayCountsByKind,
   hasForecourtSpace as hasForecourtSpaceCore,
@@ -210,6 +211,7 @@ import { machineLineGateCopy } from '../utils/dayLogFormat'
 import { formatYen } from '../utils/formatYen'
 import { offerCopy } from '../utils/offerCopy'
 import { addressesOverlap, hasWorkAddress, stagedActionsCollide } from '../utils/partAddress'
+import { SELLING_CHANNEL_ORDER } from '../utils/sellingChannelLabels'
 
 /**
  * Placeholder seed for the eager store init (immediately replaced by
@@ -2875,6 +2877,19 @@ export const useGameStore = defineStore('game', () => {
    * sitting on one (switching between two forecourt channels keeps the same
    * slot), is never blocked here.
    */
+  /**
+   * The listing channels open to this career right now, in the picker's own
+   * display order. A channel a story mission has yet to open simply is not in
+   * the list: the picker growing a new row when someone puts your name
+   * forward is the whole of how the player learns it happened (progression
+   * bible Law 4 - the shop changes, nothing announces it).
+   */
+  const availableSellingChannelIds = computed<SellingChannelId[]>(() =>
+    SELLING_CHANNEL_ORDER.filter((id) =>
+      isSellingChannelUnlocked(gameState.value, context.value, id),
+    ),
+  )
+
   function forecourtBlockedReason(carId: string, channelId: SellingChannelId): string | null {
     if (!context.value.economy.sellingChannels[channelId].requiresForecourt) return null
     if (gameState.value.forecourtCarIds.includes(carId)) return null
@@ -4591,6 +4606,7 @@ export const useGameStore = defineStore('game', () => {
     symptomChecklistForCar,
     isForSale,
     listingChannelId,
+    availableSellingChannelIds,
     offerFor,
     pendingOffersView,
     estimatedSaleValue,

@@ -10,7 +10,7 @@ WORKED_EXAMPLE_WRITE=1 pnpm test packages/sim/tests/workedExample.test.ts
 
 ## Plain language, first
 
-The shop opens with ¥300,000. It buys a rough 1993 Suzuki Wagon R (CT21S) for ¥120,592, spends ¥35,320 putting it right and dressing it up, and sells it on day 7 for ¥198,969. It then buys a tidy 1989 Nissan Silvia (S13) for ¥194,668, spends ¥83,320 on it, and sells that on day 14 for ¥390,253. Rent takes ¥20,000 over the same 14 days regardless of what the shop does. The till finishes at ¥435,322: **¥135,322 made in 14 days**, out of two cars and no other income at all.
+The shop opens with ¥300,000. It buys a rough 1993 Suzuki Wagon R (CT21S) for ¥120,592, spends ¥35,320 putting it right and dressing it up, and sells it on day 7 for ¥194,314. It then buys a tidy 1989 Nissan Silvia (S13) for ¥194,668, spends ¥83,320 on it, and sells that on day 14 for ¥400,489. Rent takes ¥20,000 over the same 14 days regardless of what the shop does. The till finishes at ¥440,903: **¥140,903 made in 14 days**, out of two cars and no other income at all.
 
 ## Seeds and assumptions
 
@@ -49,8 +49,8 @@ Deliberate limits of this run, stated so nothing reads as a claim it is not:
 | Repair charges (`repairYen`) | ¥9,160 | ¥41,000 |
 | Parts (`partsYen`) | ¥23,160 | ¥32,820 |
 | Listing fees (`listingFeesYen`) | ¥0 | ¥1,500 |
-| Sold for | ¥198,969 | ¥390,253 |
-| **Net (ledger)** | **¥46,057** | **¥120,265** |
+| Sold for | ¥194,314 | ¥400,489 |
+| **Net (ledger)** | **¥41,402** | **¥130,501** |
 | Labour spent (energy points) | 72 | 312 |
 | Days owned | 6 | 7 |
 
@@ -173,20 +173,20 @@ Parts total ¥19,580; the ladder above credits ¥5,874 of it back into the car's
 | Listing fee | ¥0 |
 | Forecourt slot | 1 of 2 taken while listed |
 | Days listed before it sold | 5 days |
-| Buyer archetype | `first-timer` |
-| Buyer taste (through the channel ceiling) | 1.0000 |
+| Buyer archetype | `racer` |
+| Buyer taste (through the channel ceiling) | 0.9766 |
 | Offer quality fraction drawn | 0.8839 |
-| **Final `priceYen`** | **¥198,969** |
+| **Final `priceYen`** | **¥194,314** |
 
-#### The same car, the same buyer, every channel
+#### The same car, every channel, and who each one brings
 
-| Channel | Fee | tasteCeiling | Matched only | Buyer taste | Channel price | Price less fee vs shop front |
-|---|---|---|---|---|---|---|
-| `shopFront` | ¥0 | 1.00 | no | 1.0000 | ¥225,094 | - |
-| `freeAdsPaper` | ¥1,500 | 1.05 | no | 1.0500 | ¥236,349 | ¥9,755 |
-| `tunerMagazine` | ¥12,000 | 1.17 | yes | 1.1353 | ¥255,538 | ¥18,444 |
-| `tradeNetwork` | ¥0 | n/a (flat `priceBand`) | no | n/a | ¥225,094 | ¥0 |
-| `weekendMeet` | ¥3,000 | 1.17 | yes | 1.1353 | ¥255,538 | ¥27,444 |
+| Channel | Fee | Who it draws | tasteCeiling | Matched only | Buyer taste | Channel price | Price less fee vs shop front |
+|---|---|---|---|---|---|---|---|
+| `shopFront` | ¥0 | First-timer | 1.00 | no | 1.0000 | ¥225,094 | - |
+| `freeAdsPaper` | ¥1,500 | First-timer | 1.05 | no | 1.0500 | ¥236,349 | ¥9,755 |
+| `tunerMagazine` | ¥12,000 | Tuner | 1.17 | yes | 0.9977 | ¥224,587 | -¥12,507 |
+| `tradeNetwork` | ¥0 | the trade | n/a (flat `priceBand`) | no | n/a | ¥225,094 | ¥0 |
+| `weekendMeet` | ¥3,000 | Kei Specialist | 1.17 | yes | 1.0652 | ¥239,769 | ¥11,675 |
 
 ### 5. Net, from the sim's own car ledger
 
@@ -196,10 +196,10 @@ Parts total ¥19,580; the ladder above credits ¥5,874 of it back into the car's
 | `repairYen` | ¥9,160 |
 | `partsYen` | ¥23,160 |
 | `listingFeesYen` | ¥0 |
-| Sale `priceYen` | ¥198,969 |
-| **Net** | **¥46,057** |
+| Sale `priceYen` | ¥194,314 |
+| **Net** | **¥41,402** |
 
-The car ledger carries the listing fee, because that fee was paid to advertise this car and nothing else. It does not carry the machine-shop hires (¥3,000): those are running costs, and a day's crane hire can pull four engines. Counting them anyway, this car returned **¥43,057** to the bank.
+The car ledger carries the listing fee, because that fee was paid to advertise this car and nothing else. It does not carry the machine-shop hires (¥3,000): those are running costs, and a day's crane hire can pull four engines. Counting them anyway, this car returned **¥38,402** to the bank.
 
 ## Car B: Nissan Silvia (S13)
 
@@ -370,20 +370,20 @@ Remaining bill to the expected band: **¥61,460**. This is real, and the market 
 | Listing fee | ¥1,500 |
 | Forecourt slot | 1 of 2 taken while listed |
 | Days listed before it sold | 1 day |
-| Buyer archetype | `racer` |
-| Buyer taste (through the channel ceiling) | 1.0232 |
+| Buyer archetype | `first-timer` |
+| Buyer taste (through the channel ceiling) | 1.0500 |
 | Offer quality fraction drawn | 0.9332 |
-| **Final `priceYen`** | **¥390,253** |
+| **Final `priceYen`** | **¥400,489** |
 
-#### The same car, the same buyer, every channel
+#### The same car, every channel, and who each one brings
 
-| Channel | Fee | tasteCeiling | Matched only | Buyer taste | Channel price | Price less fee vs shop front |
-|---|---|---|---|---|---|---|
-| `shopFront` | ¥0 | 1.00 | no | 1.0000 | ¥408,733 | - |
-| `freeAdsPaper` | ¥1,500 | 1.05 | no | 1.0232 | ¥418,201 | ¥7,968 |
-| `tunerMagazine` | ¥12,000 | 1.17 | yes | 1.0530 | ¥430,391 | ¥9,658 |
-| `tradeNetwork` | ¥0 | n/a (flat `priceBand`) | no | n/a | ¥408,733 | ¥0 |
-| `weekendMeet` | ¥3,000 | 1.17 | yes | 1.0530 | ¥430,391 | ¥18,658 |
+| Channel | Fee | Who it draws | tasteCeiling | Matched only | Buyer taste | Channel price | Price less fee vs shop front |
+|---|---|---|---|---|---|---|---|
+| `shopFront` | ¥0 | Kei Specialist | 1.00 | no | 1.0000 | ¥408,733 | - |
+| `freeAdsPaper` | ¥1,500 | First-timer | 1.05 | no | 1.0500 | ¥429,170 | ¥18,937 |
+| `tunerMagazine` | ¥12,000 | Tuner | 1.17 | yes | 1.0979 | ¥448,745 | ¥28,012 |
+| `tradeNetwork` | ¥0 | the trade | n/a (flat `priceBand`) | no | n/a | ¥408,733 | ¥0 |
+| `weekendMeet` | ¥3,000 | Shakotan | 1.17 | yes | 1.1273 | ¥460,775 | ¥49,042 |
 
 ### 5. Net, from the sim's own car ledger
 
@@ -393,10 +393,10 @@ Remaining bill to the expected band: **¥61,460**. This is real, and the market 
 | `repairYen` | ¥41,000 |
 | `partsYen` | ¥32,820 |
 | `listingFeesYen` | ¥1,500 |
-| Sale `priceYen` | ¥390,253 |
-| **Net** | **¥120,265** |
+| Sale `priceYen` | ¥400,489 |
+| **Net** | **¥130,501** |
 
-The car ledger carries the listing fee, because that fee was paid to advertise this car and nothing else. It does not carry the machine-shop hires (¥8,000): those are running costs, and a day's crane hire can pull four engines. Counting them anyway, this car returned **¥112,265** to the bank.
+The car ledger carries the listing fee, because that fee was paid to advertise this car and nothing else. It does not carry the machine-shop hires (¥8,000): those are running costs, and a day's crane hire can pull four engines. Counting them anyway, this car returned **¥122,501** to the bank.
 
 ## Staleness: what happens if it does not sell straight away
 
@@ -404,33 +404,33 @@ A side branch off Nissan Silvia (S13)'s listing snapshot: the same listing, the 
 
 | Day | `offersSeen` at the draw | Buyer | Quality fraction | Offer |
 |---|---|---|---|---|
-| 14 | 0 | `racer` | 0.9332 | ¥390,253 |
+| 14 | 0 | `first-timer` | 0.9332 | ¥400,489 |
 | 15 | 1 | `kei-specialist` | 0.9061 | ¥407,337 |
-| 16 | 2 | `stancer` | 0.8600 | ¥386,622 |
-| 17 | 3 | `tuner` | 0.9444 | ¥424,581 |
-| 18 | 4 | `racer` | 0.8986 | ¥393,634 |
+| 16 | 2 | `first-timer` | 0.8600 | ¥386,622 |
+| 17 | 3 | `collector` | 0.9444 | ¥424,581 |
+| 18 | 4 | `first-timer` | 0.8986 | ¥403,959 |
 | 21 | 5 | `tuner` | 0.9078 | ¥408,126 |
 | 25 | 6 | `first-timer` | 0.8781 | ¥403,720 |
 | 28 | 7 | `kei-specialist` | 0.8600 | ¥395,390 |
 | 29 | 8 | `first-timer` | 0.8506 | ¥395,390 |
 | 30 | 9 | `kei-specialist` | 0.8600 | ¥399,774 |
-| 33 | 10 | `tuner` | 0.8768 | ¥407,595 |
-| 34 | 11 | `stancer` | 0.9521 | ¥442,609 |
-| 36 | 12 | `tuner` | 0.8507 | ¥399,774 |
+| 33 | 10 | `stancer` | 0.8768 | ¥407,595 |
+| 34 | 11 | `racer` | 0.9521 | ¥431,296 |
+| 36 | 12 | `collector` | 0.8507 | ¥399,774 |
 | 37 | 13 | `first-timer` | 0.8790 | ¥413,103 |
-| 38 | 14 | `tuner` | 0.8600 | ¥404,159 |
+| 38 | 14 | `collector` | 0.8600 | ¥404,159 |
 | 40 | 15 | `tuner` | 0.8667 | ¥407,301 |
-| 41 | 16 | `racer` | 0.8906 | ¥407,848 |
-| 42 | 17 | `stancer` | 0.8600 | ¥404,159 |
-| 43 | 18 | `racer` | 0.8662 | ¥396,651 |
+| 41 | 16 | `first-timer` | 0.8906 | ¥418,546 |
+| 42 | 17 | `first-timer` | 0.8600 | ¥404,159 |
+| 43 | 18 | `first-timer` | 0.8662 | ¥407,055 |
 | 45 | 19 | `kei-specialist` | 0.8600 | ¥404,159 |
-| 46 | 20 | `racer` | 0.9187 | ¥420,728 |
-| 47 | 21 | `first-timer` | 0.8600 | ¥404,159 |
-| 48 | 22 | `racer` | 0.8640 | ¥395,649 |
+| 46 | 20 | `first-timer` | 0.9187 | ¥431,764 |
+| 47 | 21 | `kei-specialist` | 0.8600 | ¥404,159 |
+| 48 | 22 | `first-timer` | 0.8640 | ¥406,027 |
 | 53 | 23 | `stancer` | 0.8600 | ¥399,774 |
 | 58 | 24 | `kei-specialist` | 0.9155 | ¥402,230 |
 
-25 offers in 45 days. First offer **¥390,253** (day 14); best offer **¥442,609** (day 34). Holding out for the best one seen is worth **¥52,356** - and costs ¥140,000 of rent over the same stretch, plus a forecourt slot that could have held another car.
+25 offers in 45 days. First offer **¥400,489** (day 14); best offer **¥431,764** (day 46). Holding out for the best one seen is worth **¥31,275** - and costs ¥140,000 of rent over the same stretch, plus a forecourt slot that could have held another car.
 
 **Is there ever a point in not taking the first offer?** On these numbers, no. The quality fraction decays with `offersSeen` exactly as `qualityMeanFor` says it should (`qualityFresh` 0.96 down toward `qualityFloor` 0.86), so the OFFER side of the equation only ever gets worse. What moves the price up again is a different buyer walking in, not a better offer from the same one: the spread between archetypes on this car is far wider than the whole staleness decay. Waiting is therefore a bet on WHO turns up, at a known cost of ¥3,111 a day in rent alone, and the bet does not pay.
 
@@ -457,70 +457,70 @@ Every yen that moved, in order. This is the list the reconciliation test sums.
 | 2 | car-a | Parts | Part bought express: shitbox-suzaku-street-catback | -¥8,030 | ¥150,468 |
 | 2 | car-a | Parts | Part bought express: shitbox-fubuki-cold-air-kit | -¥3,630 | ¥146,838 |
 | 2 | car-a | Parts | Part bought express: shitbox-suiko-street-radiator | -¥2,750 | ¥144,088 |
-| 7 | car-a | Sale proceeds | Car sold: car-worked-car-a-26 | ¥198,969 | ¥343,057 |
-| 7 | car-b | Acquisition | Hammer won on lot worked-car-b-9 | -¥194,668 | ¥148,389 |
-| 7 | car-b | Body-pipeline materials | Body pipeline fillAndSand on bonnet | -¥1,900 | ¥146,489 |
-| 7 | car-b | Body-pipeline materials | Body pipeline fillAndSand on boot | -¥1,900 | ¥144,589 |
-| 7 | car-b | Body-pipeline materials | Body pipeline fillAndSand on roof | -¥1,900 | ¥142,689 |
-| 7 | car-b | Body-pipeline materials | Body pipeline prime on bonnet | -¥1,200 | ¥141,489 |
-| 7 | car-b | Body-pipeline materials | Body pipeline prime on boot | -¥1,200 | ¥140,289 |
-| 7 | car-b | Body-pipeline materials | Body pipeline fillAndSand on left | -¥1,900 | ¥138,389 |
-| 7 | car-b | Body-pipeline materials | Body pipeline prime on roof | -¥1,200 | ¥137,189 |
-| 7 | car-b | Body-pipeline materials | Body pipeline prime on chassis | -¥1,200 | ¥135,989 |
-| 7 | shop | Rent | Weekly rent | -¥20,000 | ¥115,989 |
-| 8 | car-b | Body-pipeline materials | Body pipeline paint on bonnet | -¥2,500 | ¥113,489 |
-| 8 | car-b | Body-pipeline materials | Body pipeline paint on boot | -¥2,500 | ¥110,989 |
-| 8 | car-b | Body-pipeline materials | Body pipeline prime on left | -¥1,200 | ¥109,789 |
-| 8 | car-b | Body-pipeline materials | Body pipeline fillAndSand on right | -¥1,900 | ¥107,889 |
-| 8 | car-b | Body-pipeline materials | Body pipeline paint on roof | -¥2,500 | ¥105,389 |
-| 8 | car-b | Body-pipeline materials | Body pipeline paint on chassis | -¥2,000 | ¥103,389 |
-| 8 | car-b | Body-pipeline materials | Body pipeline polish on bonnet | -¥800 | ¥102,589 |
-| 8 | car-b | Body-pipeline materials | Body pipeline polish on boot | -¥800 | ¥101,789 |
-| 8 | car-b | Body-pipeline materials | Body pipeline paint on left | -¥2,500 | ¥99,289 |
-| 8 | car-b | Body-pipeline materials | Body pipeline prime on right | -¥1,200 | ¥98,089 |
-| 8 | car-b | Body-pipeline materials | Body pipeline polish on roof | -¥800 | ¥97,289 |
-| 8 | car-b | Body-pipeline materials | Body pipeline polish on chassis | -¥800 | ¥96,489 |
-| 9 | car-b | Body-pipeline materials | Body pipeline polish on left | -¥800 | ¥95,689 |
-| 9 | car-b | Body-pipeline materials | Body pipeline paint on right | -¥2,500 | ¥93,189 |
-| 9 | car-b | Body-pipeline materials | Body pipeline polish on right | -¥800 | ¥92,389 |
-| 9 | car-b | Repair labour charges | Bench recondition: brakeCalipersLines to fine | -¥1,440 | ¥90,949 |
-| 9 | car-b | Repair labour charges | Bench recondition: rims to fine | -¥1,080 | ¥89,869 |
-| 9 | car-b | Parts | Part ordered standard: stock-tyres | -¥3,500 | ¥86,369 |
-| 10 | car-b | Machine-shop hire | Machine-shop hire for the day: wheels | -¥3,000 | ¥83,369 |
-| 10 | car-b | Repair labour charges | Bench recondition: intake to fine | -¥580 | ¥82,789 |
-| 10 | car-b | Repair labour charges | Bench recondition: exhaust to fine | -¥1,280 | ¥81,509 |
-| 10 | car-b | Repair labour charges | Bench recondition: cooling to fine | -¥900 | ¥80,609 |
-| 11 | car-b | Repair labour charges | Bench recondition: dampers to fine | -¥1,280 | ¥79,329 |
-| 11 | car-b | Machine-shop hire | Machine-shop hire for the day: suspension | -¥5,000 | ¥74,329 |
-| 11 | car-b | Repair labour charges | Bench recondition: springs to fine | -¥580 | ¥73,749 |
-| 11 | car-b | Repair labour charges | Bench recondition: antiRollBars to fine | -¥380 | ¥73,369 |
-| 11 | car-b | Repair labour charges | Bench recondition: steering to fine | -¥700 | ¥72,669 |
-| 12 | car-b | Repair labour charges | Repair charge on car-worked-car-b-9 | -¥4,160 | ¥68,509 |
-| 12 | car-b | Repair labour charges | Repair charge on car-worked-car-b-9 | -¥840 | ¥67,669 |
-| 12 | car-b | Parts | Part ordered standard: koi-street-injector-kit | -¥3,700 | ¥63,969 |
-| 12 | car-b | Parts | Part ordered standard: fubuki-cold-air-kit | -¥3,700 | ¥60,269 |
-| 12 | car-b | Parts | Part ordered standard: suzaku-street-catback | -¥8,300 | ¥51,969 |
-| 12 | car-b | Parts | Part ordered standard: mikoshi-lip-kit | -¥5,400 | ¥46,569 |
-| 13 | car-b | Listing fee | Listing fee (freeAdsPaper) | -¥1,500 | ¥45,069 |
-| 14 | car-b | Sale proceeds | Car sold: car-worked-car-b-9 | ¥390,253 | ¥435,322 |
+| 7 | car-a | Sale proceeds | Car sold: car-worked-car-a-26 | ¥194,314 | ¥338,402 |
+| 7 | car-b | Acquisition | Hammer won on lot worked-car-b-9 | -¥194,668 | ¥143,734 |
+| 7 | car-b | Body-pipeline materials | Body pipeline fillAndSand on bonnet | -¥1,900 | ¥141,834 |
+| 7 | car-b | Body-pipeline materials | Body pipeline fillAndSand on boot | -¥1,900 | ¥139,934 |
+| 7 | car-b | Body-pipeline materials | Body pipeline fillAndSand on roof | -¥1,900 | ¥138,034 |
+| 7 | car-b | Body-pipeline materials | Body pipeline prime on bonnet | -¥1,200 | ¥136,834 |
+| 7 | car-b | Body-pipeline materials | Body pipeline prime on boot | -¥1,200 | ¥135,634 |
+| 7 | car-b | Body-pipeline materials | Body pipeline fillAndSand on left | -¥1,900 | ¥133,734 |
+| 7 | car-b | Body-pipeline materials | Body pipeline prime on roof | -¥1,200 | ¥132,534 |
+| 7 | car-b | Body-pipeline materials | Body pipeline prime on chassis | -¥1,200 | ¥131,334 |
+| 7 | shop | Rent | Weekly rent | -¥20,000 | ¥111,334 |
+| 8 | car-b | Body-pipeline materials | Body pipeline paint on bonnet | -¥2,500 | ¥108,834 |
+| 8 | car-b | Body-pipeline materials | Body pipeline paint on boot | -¥2,500 | ¥106,334 |
+| 8 | car-b | Body-pipeline materials | Body pipeline prime on left | -¥1,200 | ¥105,134 |
+| 8 | car-b | Body-pipeline materials | Body pipeline fillAndSand on right | -¥1,900 | ¥103,234 |
+| 8 | car-b | Body-pipeline materials | Body pipeline paint on roof | -¥2,500 | ¥100,734 |
+| 8 | car-b | Body-pipeline materials | Body pipeline paint on chassis | -¥2,000 | ¥98,734 |
+| 8 | car-b | Body-pipeline materials | Body pipeline polish on bonnet | -¥800 | ¥97,934 |
+| 8 | car-b | Body-pipeline materials | Body pipeline polish on boot | -¥800 | ¥97,134 |
+| 8 | car-b | Body-pipeline materials | Body pipeline paint on left | -¥2,500 | ¥94,634 |
+| 8 | car-b | Body-pipeline materials | Body pipeline prime on right | -¥1,200 | ¥93,434 |
+| 8 | car-b | Body-pipeline materials | Body pipeline polish on roof | -¥800 | ¥92,634 |
+| 8 | car-b | Body-pipeline materials | Body pipeline polish on chassis | -¥800 | ¥91,834 |
+| 9 | car-b | Body-pipeline materials | Body pipeline polish on left | -¥800 | ¥91,034 |
+| 9 | car-b | Body-pipeline materials | Body pipeline paint on right | -¥2,500 | ¥88,534 |
+| 9 | car-b | Body-pipeline materials | Body pipeline polish on right | -¥800 | ¥87,734 |
+| 9 | car-b | Repair labour charges | Bench recondition: brakeCalipersLines to fine | -¥1,440 | ¥86,294 |
+| 9 | car-b | Repair labour charges | Bench recondition: rims to fine | -¥1,080 | ¥85,214 |
+| 9 | car-b | Parts | Part ordered standard: stock-tyres | -¥3,500 | ¥81,714 |
+| 10 | car-b | Machine-shop hire | Machine-shop hire for the day: wheels | -¥3,000 | ¥78,714 |
+| 10 | car-b | Repair labour charges | Bench recondition: intake to fine | -¥580 | ¥78,134 |
+| 10 | car-b | Repair labour charges | Bench recondition: exhaust to fine | -¥1,280 | ¥76,854 |
+| 10 | car-b | Repair labour charges | Bench recondition: cooling to fine | -¥900 | ¥75,954 |
+| 11 | car-b | Repair labour charges | Bench recondition: dampers to fine | -¥1,280 | ¥74,674 |
+| 11 | car-b | Machine-shop hire | Machine-shop hire for the day: suspension | -¥5,000 | ¥69,674 |
+| 11 | car-b | Repair labour charges | Bench recondition: springs to fine | -¥580 | ¥69,094 |
+| 11 | car-b | Repair labour charges | Bench recondition: antiRollBars to fine | -¥380 | ¥68,714 |
+| 11 | car-b | Repair labour charges | Bench recondition: steering to fine | -¥700 | ¥68,014 |
+| 12 | car-b | Repair labour charges | Repair charge on car-worked-car-b-9 | -¥4,160 | ¥63,854 |
+| 12 | car-b | Repair labour charges | Repair charge on car-worked-car-b-9 | -¥840 | ¥63,014 |
+| 12 | car-b | Parts | Part ordered standard: koi-street-injector-kit | -¥3,700 | ¥59,314 |
+| 12 | car-b | Parts | Part ordered standard: fubuki-cold-air-kit | -¥3,700 | ¥55,614 |
+| 12 | car-b | Parts | Part ordered standard: suzaku-street-catback | -¥8,300 | ¥47,314 |
+| 12 | car-b | Parts | Part ordered standard: mikoshi-lip-kit | -¥5,400 | ¥41,914 |
+| 13 | car-b | Listing fee | Listing fee (freeAdsPaper) | -¥1,500 | ¥40,414 |
+| 14 | car-b | Sale proceeds | Car sold: car-worked-car-b-9 | ¥400,489 | ¥440,903 |
 
 ## Reconciliation
 
 | Check | Yen |
 |---|---|
 | Opening cash | ¥300,000 |
-| Sum of every ledger line above | ¥135,322 |
-| **Closing cash, from the sim** | **¥435,322** |
+| Sum of every ledger line above | ¥140,903 |
+| **Closing cash, from the sim** | **¥440,903** |
 | Difference | ¥0 |
 
 The same total, decomposed the other way:
 
 | Component | Yen |
 |---|---|
-| Suzuki Wagon R (CT21S) net (car ledger) | ¥46,057 |
-| Nissan Silvia (S13) net (car ledger) | ¥120,265 |
+| Suzuki Wagon R (CT21S) net (car ledger) | ¥41,402 |
+| Nissan Silvia (S13) net (car ledger) | ¥130,501 |
 | Rent | -¥20,000 |
 | Machine-shop hire (running cost, not on any car ledger) | -¥11,000 |
-| **Change in cash** | **¥135,322** |
+| **Change in cash** | **¥140,903** |
 
 Both identities are asserted to the yen, with no tolerance, in `packages/sim/tests/workedExample.test.ts`. The harness additionally refuses to continue if any single scripted step moves cash it cannot name, so an incomplete ledger fails loudly rather than balancing by accident.

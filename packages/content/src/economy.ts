@@ -401,6 +401,25 @@ export const SellingChannelIdSchema = z.enum([
 export type SellingChannelId = z.infer<typeof SellingChannelIdSchema>
 
 /**
+ * A channel's own buyer base: one non-negative draw multiplier per buyer
+ * archetype, deciding WHO walks in rather than what they pay. Multiplied into
+ * the weighted persona pick (`pickWeightedCandidate`, sim/selling.ts)
+ * alongside each buyer's own valuation and their `tierPreferences` weight, so
+ * it composes with the valuation size bias rather than replacing it. All six
+ * archetypes are stated on every channel that has a pool at all: a silently
+ * absent archetype and a deliberate 0 are different authoring intentions and
+ * this schema will not let them look alike.
+ */
+const BuyerPoolWeightsSchema = z.object({
+  collector: z.number().nonnegative(),
+  tuner: z.number().nonnegative(),
+  stancer: z.number().nonnegative(),
+  racer: z.number().nonnegative(),
+  'first-timer': z.number().nonnegative(),
+  'kei-specialist': z.number().nonnegative(),
+})
+
+/**
  * One listing channel's shape - where you list decides who shows up, at what
  * cost, at what speed, and how much of the +/-12% taste band the arriving
  * pool can express. Every field but `feeYen` is optional; each channel uses
@@ -415,6 +434,13 @@ export type SellingChannelId = z.infer<typeof SellingChannelIdSchema>
  * value); `priceBand` replaces the taste roll with a fixed fraction-of-value
  * range instead; `matchedOnly` restricts the pool to buyers whose visible
  * want the listed car satisfies - a mismatch draws no offers at all.
+ * `buyerPoolWeights` is the channel's own buyer base (above), and
+ * `poolWidening` is the weight an archetype with NO stated interest in the
+ * car's tier still draws at: absent means the tier gate stays hard, a value
+ * in (0, 1] admits the rest of the market at that fraction of a full tier
+ * preference, which is how a channel reaches people who would never come to
+ * the forecourt. Both are persona properties, so a `priceBand` channel (no
+ * persona at all) may carry neither.
  * `requiresForecourt` (sprint148.md): true when a buyer comes to look at the
  * car in person, so listing on this channel moves it onto a forecourt slot;
  * false when the car is collected or shipped instead (the trade network is
@@ -435,6 +461,8 @@ const SellingChannelSchema = z
       })
       .optional(),
     matchedOnly: z.boolean().optional(),
+    buyerPoolWeights: BuyerPoolWeightsSchema.optional(),
+    poolWidening: z.number().positive().max(1).optional(),
     requiresForecourt: z.boolean(),
   })
   .strict()
@@ -450,6 +478,16 @@ const SellingChannelSchema = z
     {
       message:
         'sellingChannels: each channel needs exactly one cadence shape (offerChanceFactor, offerChanceFactorByRarity, or oneDrawNextEndDay)',
+    },
+  )
+  .refine(
+    (c) =>
+      c.priceBand
+        ? c.buyerPoolWeights === undefined && c.poolWidening === undefined
+        : c.buyerPoolWeights !== undefined,
+    {
+      message:
+        'sellingChannels: a persona channel must state its own buyerPoolWeights, and a priceBand channel (no persona at all) must state neither buyerPoolWeights nor poolWidening',
     },
   )
 
@@ -1911,6 +1949,26 @@ export const EconomyConfigSchema = z.object({
         cold: z.number().nonnegative(),
         normal: z.number().nonnegative(),
         hot: z.number().nonnegative(),
+      }),
+      /**
+       * How sharply a channel's own crowd turns up, by standing: the exponent
+       * every `sellingChannels[*].buyerPoolWeights` entry is raised to before
+       * the draw. 1.0 leaves a pool exactly as authored; above 1 the
+       * archetypes a channel is FOR crowd out the ones it is not, because a
+       * weight above 1 grows and a weight below 1 shrinks under the same
+       * exponent. This is what standing buys on the sell side: not a door,
+       * and not a bigger number on the same offer, but the right people
+       * arriving more reliably through a channel already open. A flat pool
+       * (every archetype at exactly 1, the shop front) is mathematically
+       * untouched by any exponent, so the free channel never improves - which
+       * is the design, not an accident of the values.
+       */
+      channelStandingFocusByReputationTier: z.object({
+        unknown: z.number().min(1),
+        local: z.number().min(1),
+        known: z.number().min(1),
+        respected: z.number().min(1),
+        legend: z.number().min(1),
       }),
     })
     .refine((s) => s.heatBandColdBelowPercent <= s.heatBandHotAtOrAbovePercent, {

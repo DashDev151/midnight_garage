@@ -12,6 +12,7 @@ import {
   type DayLogEntry,
   type GameState,
   type Grade,
+  type ReputationTier,
   type SellingChannelId,
   type StagedAction,
   type ZoneId,
@@ -67,7 +68,12 @@ import {
 import { createInitialGameState } from './newGame'
 import { gradeAtLeast, resolveBuyPart } from './parts'
 import { createRng } from './rng'
-import { resolveSellViaWalkIn, resolveSetForSale } from './selling'
+import {
+  channelDrawWeighting,
+  likelyChannelBuyer,
+  resolveSellViaWalkIn,
+  resolveSetForSale,
+} from './selling'
 import { confirmStagedWork } from './stagedWork'
 import { supportVerdict } from './support'
 import { channelBuyerTaste, valuateCarForBuyerViaChannel } from './valuation'
@@ -186,11 +192,12 @@ export interface OfferObservation {
   qualityFraction: number
 }
 
-/** What the SAME car, on the SAME day, to the SAME buyer would have been
- * priced at through each listing channel - the taste ceiling is the only thing
- * that differs, so this isolates what a specialised sale is actually worth.
- * Every figure is a direct `valuateCarForBuyerViaChannel` read; no draw, no
- * RNG. */
+/** What the SAME car, on the SAME day, would have been priced at through each
+ * listing channel, each against the buyer that channel itself would most
+ * likely bring. Two things differ between rows now: who the channel reaches,
+ * and how much taste headroom that person has once they arrive. Every figure
+ * is a direct `likelyChannelBuyer` + `valuateCarForBuyerViaChannel` read; no
+ * draw, no RNG. */
 export interface ChannelQuote {
   channelId: SellingChannelId
   feeYen: number
@@ -199,6 +206,12 @@ export interface ChannelQuote {
   tasteCeiling: number | null
   matchedOnly: boolean
   requiresForecourt: boolean
+  /** The archetype this channel's own pool most likely brings for this car -
+   * `null` for a channel with no persona behind it (the trade network), and
+   * for a channel whose pool cannot reach anybody interested in this car. */
+  buyerId: string | null
+  /** `buyerId`'s display name, or "the trade" when there is no persona. */
+  buyerName: string
   /** The buyer's taste for this car read through this channel's own ceiling. */
   buyerTaste: number
   /** The channel price the daily draw would then apply its quality fraction
@@ -1179,15 +1192,22 @@ function qualityFractionOf(
   return value > 0 ? priceYen / value : Number.NaN
 }
 
-/** Prices one car, for one buyer, through every listing channel the economy
- * ships. Pure reads: `channelBuyerTaste` and `valuateCarForBuyerViaChannel`
+/**
+ * Prices one car through every listing channel the economy ships, each one
+ * against the buyer THAT channel would most likely bring
+ * (`likelyChannelBuyer`), not against one fixed buyer for all five. That is
+ * the whole point of the table: a channel is a buyer base first, so two
+ * channels quoting the same number is now evidence they genuinely draw the
+ * same person rather than an artefact of the measurement. Pure reads:
+ * `likelyChannelBuyer`, `channelBuyerTaste` and `valuateCarForBuyerViaChannel`
  * carry no RNG, so this is what the channel WOULD price against before its
- * own quality draw. */
+ * own quality draw.
+ */
 function channelQuotesFor(
   car: CarInstance,
   model: CarModel,
-  buyer: Buyer | undefined,
   heatPercent: number,
+  reputationTier: ReputationTier,
   context: SimContext,
 ): ChannelQuote[] {
   const quotes: ChannelQuote[] = []
@@ -1196,6 +1216,23 @@ function channelQuotesFor(
     (typeof context.economy.sellingChannels)[SellingChannelId],
   ][]) {
     const tasteCeiling = channel.tasteCeiling ?? null
+    // A `priceBand` channel is the trade, not a person: no pool, no taste
+    // roll, nobody to name. Every other channel quotes through the buyer its
+    // own pool most likely brings.
+    const buyer =
+      tasteCeiling === null
+        ? undefined
+        : likelyChannelBuyer(
+            car,
+            model,
+            context.buyers,
+            context.partsById,
+            context.partsTaxonomy,
+            context.partsTaxonomyById,
+            heatPercent,
+            context.economy,
+            channelDrawWeighting(channel, reputationTier, context.economy),
+          )
     const buyerTaste =
       buyer && tasteCeiling !== null
         ? channelBuyerTaste(
@@ -1235,6 +1272,8 @@ function channelQuotesFor(
       tasteCeiling,
       matchedOnly: channel.matchedOnly === true,
       requiresForecourt: channel.requiresForecourt,
+      buyerId: buyer?.id ?? null,
+      buyerName: buyer?.displayName ?? 'the trade',
       buyerTaste,
       channelPriceYen,
     })
@@ -1487,7 +1526,13 @@ function runOneCar(run: Run, script: CarScript, currentYear: number): CarRunRepo
       offer.priceYen,
       context,
     )
-    channelQuotes = channelQuotesFor(listedCar, model, buyer, heatPercent, context)
+    channelQuotes = channelQuotesFor(
+      listedCar,
+      model,
+      heatPercent,
+      run.state.reputationTier,
+      context,
+    )
     ledgerAtSale = carLedgerFor(run.state, carInstanceId)
     soldOnDay = run.day
     soldToBuyerId = offer.buyerId

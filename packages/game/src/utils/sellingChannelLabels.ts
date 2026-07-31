@@ -1,4 +1,4 @@
-import type { EconomyConfig, SellingChannelId } from '@midnight-garage/content'
+import type { Buyer, EconomyConfig, SellingChannelId } from '@midnight-garage/content'
 import { formatYen } from './formatYen'
 
 /** One channel's own config shape (`economy.sellingChannels[id]`) - the
@@ -52,4 +52,30 @@ export function sellingChannelCadenceLabel(channel: SellingChannelConfig): strin
   if (channel.matchedOnly) return 'Daily chance, matched buyers only'
   if (channel.offerChanceFactorByRarity) return 'Daily chance, by car rarity'
   return 'Daily chance'
+}
+
+/**
+ * Who reads this channel, in the buyers' own display names - the one fact
+ * that separates two channels charging different fees for the same cadence,
+ * so the picker has to show it. Derived from the channel's own
+ * `buyerPoolWeights` rather than hand-written per channel: the archetypes
+ * that carry at least half the channel's top weight, in weight order. A flat
+ * pool (the shop front) reaches everybody equally and says so; a channel with
+ * no pool at all (the trade network sells to the trade, not to a person)
+ * returns `null` and renders nothing.
+ */
+export function sellingChannelAudienceLabel(
+  channel: SellingChannelConfig,
+  buyers: readonly Buyer[],
+): string | null {
+  const weights = channel.buyerPoolWeights
+  if (!weights) return null
+  const top = Math.max(...Object.values(weights))
+  if (top <= 0) return null
+  const named = buyers
+    .filter((buyer) => (weights[buyer.archetype] ?? 0) >= top / 2)
+    .sort((a, b) => weights[b.archetype] - weights[a.archetype])
+  if (named.length === 0) return null
+  if (named.length === buyers.length) return 'Everyone who walks past'
+  return named.map((buyer) => buyer.displayName).join(', ')
 }

@@ -145,36 +145,53 @@ describe('the value ladder is the shipped valuation, decomposed', () => {
     }
   })
 
-  it('prices every channel off the same underlying market value', () => {
+  it('prices every channel off the same underlying market value, through the buyer that channel itself brings', () => {
     // Every quote in this set is taken at ONE instant, on the car as listed,
-    // so they can be compared to each other to the yen. The claim is that a
-    // channel changes only how much taste headroom a buyer can express, never
-    // what the car is worth underneath: the trade network has no taste roll at
-    // all, the shop front has a ceiling of exactly 1 (so its taste is always
-    // exactly 1), and those two therefore quote the identical number. Every
-    // channel with headroom above 1 quotes at or above it, and never below.
+    // so they can be compared to each other to the yen. Two things vary
+    // between rows and nothing else does: WHO the channel reaches (its own
+    // `buyerPoolWeights`, resolved to the single likeliest arrival), and how
+    // much taste headroom that person has once they are there
+    // (`tasteCeiling`). What the car is worth underneath never moves.
     //
     // Deliberately NOT compared against the 'Modified' rung: that rung is read
     // the moment the build is fitted and these quotes come from the day an
     // offer lands, so the two describe the same car at different points in the
     // run and any equality between them is a coincidence of scheduling.
+    const { tasteSpread } = CONTEXT.economy.valuation
     for (const car of [REPORT.carA, REPORT.carB]) {
       const tradeNetwork = car.channelQuotes.find((q) => q.channelId === 'tradeNetwork')!
       const shopFront = car.channelQuotes.find((q) => q.channelId === 'shopFront')!
+      // The trade network has no persona and no taste roll at all.
       expect(tradeNetwork.tasteCeiling).toBeNull()
+      expect(tradeNetwork.buyerId).toBeNull()
+      // The shop front is the floor on the price axis: a ceiling of exactly 1,
+      // so whoever walks in can never pay over the taste-free read.
       expect(shopFront.tasteCeiling).toBe(1)
-      expect(shopFront.buyerTaste, car.modelId).toBe(1)
-      expect(shopFront.channelPriceYen, car.modelId).toBe(tradeNetwork.channelPriceYen)
+      expect(shopFront.buyerTaste, car.modelId).toBeLessThanOrEqual(1)
       for (const quote of car.channelQuotes) {
-        if (quote.tasteCeiling === null || quote.tasteCeiling <= 1) continue
-        expect(quote.buyerTaste, `${car.modelId} ${quote.channelId}`).toBeGreaterThanOrEqual(1)
+        if (quote.tasteCeiling === null) continue
+        // Every channel shares the same honest floor; only the top moves.
+        expect(quote.buyerTaste, `${car.modelId} ${quote.channelId}`).toBeGreaterThanOrEqual(
+          1 - tasteSpread,
+        )
         expect(quote.buyerTaste, `${car.modelId} ${quote.channelId}`).toBeLessThanOrEqual(
           quote.tasteCeiling,
         )
-        expect(quote.channelPriceYen, `${car.modelId} ${quote.channelId}`).toBeGreaterThanOrEqual(
-          tradeNetwork.channelPriceYen,
-        )
       }
+    }
+  })
+
+  it('never quotes the tuner magazine and the weekend meet at the same number', () => {
+    // The defect sprint156.md was written against: the two premium channels
+    // priced byte-identically on both cars, because the only thing separating
+    // them was a fee. They are two buyer bases now, so the same car reaches a
+    // different person through each - and which of the two pays more depends
+    // on the car rather than on the fee.
+    for (const car of [REPORT.carA, REPORT.carB]) {
+      const magazine = car.channelQuotes.find((q) => q.channelId === 'tunerMagazine')!
+      const meet = car.channelQuotes.find((q) => q.channelId === 'weekendMeet')!
+      expect(magazine.buyerId, car.modelId).not.toBe(meet.buyerId)
+      expect(magazine.channelPriceYen, car.modelId).not.toBe(meet.channelPriceYen)
     }
   })
 })

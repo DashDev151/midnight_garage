@@ -1,6 +1,7 @@
 import {
   ALL_CAR_PART_IDS,
   type Buyer,
+  type BuyerArchetype,
   type CarInstance,
   type CarModel,
   type CarPartId,
@@ -11,9 +12,10 @@ import {
   type GameState,
   type Part,
   type PendingSaleOffer,
+  type ReputationTier,
   type SellingChannelId,
 } from '@midnight-garage/content'
-import { interestedBuyers } from './bidding'
+import { tierPreferenceWeight } from './bidding'
 import { applyReputationDelta } from './reputation'
 import { isMeetDay } from './calendar'
 import { carLedgerFor, deleteCarLedger, updateCarLedger } from './carLedger'
@@ -54,12 +56,76 @@ export interface SaleOffer {
 }
 
 /**
- * The candidate buyer pool for a sale - only archetypes with a genuinely
- * stated interest in the car's tier. Reuses the exact gate `bidding.ts`
- * already applies to auction rivals - the same rule, not a different one.
+ * A channel's own answer to "who sees this car", resolved for one moment in
+ * one career: the authored per-archetype pool, how far past the tier gate
+ * the channel reaches, and how sharply standing focuses the pool right now
+ * (`channelDrawWeighting` below). Absent entirely for a walk-in, which is
+ * nobody's advertisement and reaches exactly the people who already care
+ * about this league of car.
  */
-function saleCandidates(model: CarModel, buyers: readonly Buyer[]): Buyer[] {
-  return interestedBuyers(model, buyers).map((i) => i.buyer)
+export interface ChannelDrawWeighting {
+  /** Per-archetype draw multiplier; an archetype absent from the map, or the
+   * whole map absent, draws at a flat 1. */
+  buyerPoolWeights?: Readonly<Record<BuyerArchetype, number>>
+  /** The weight an archetype with NO stated interest in this car's tier
+   * still draws at. Absent (or 0) keeps the tier gate hard. */
+  poolWidening?: number
+  /** The exponent `buyerPoolWeights` is raised to before the draw - 1 leaves
+   * the pool exactly as authored, above 1 crowds the channel's own people in
+   * and everyone else out. */
+  focusExponent: number
+}
+
+/**
+ * One channel's draw weighting for a career at `reputationTier`. The two
+ * halves are content: the pool and the widening are the channel's own, and
+ * the exponent is `selling.channelStandingFocusByReputationTier`. Nothing
+ * here depends on which channel it is.
+ */
+export function channelDrawWeighting(
+  channel: SellingChannelConfig,
+  reputationTier: ReputationTier,
+  economy: EconomyConfig,
+): ChannelDrawWeighting {
+  return {
+    ...(channel.buyerPoolWeights ? { buyerPoolWeights: channel.buyerPoolWeights } : {}),
+    ...(channel.poolWidening === undefined ? {} : { poolWidening: channel.poolWidening }),
+    focusExponent: economy.selling.channelStandingFocusByReputationTier[reputationTier],
+  }
+}
+
+/** One archetype's standing in a draw before their own valuation is read:
+ * how much this league of car interests them, times how much this channel
+ * is theirs. */
+interface PoolCandidate {
+  buyer: Buyer
+  poolWeight: number
+}
+
+/**
+ * The candidate buyer pool for a sale, and how strongly each of them turns
+ * up. Two multiplied facts: the buyer's own `tierPreferences` weight for
+ * this league of car (0 when they have no entry, unless the channel widens
+ * past the gate), and the channel's own weight for their archetype, focused
+ * by standing. With no `weighting` this is exactly the hard tier gate the
+ * auction room applies, with the authored preference weights finally read as
+ * probabilities rather than discarded.
+ */
+function saleCandidates(
+  model: CarModel,
+  buyers: readonly Buyer[],
+  weighting?: ChannelDrawWeighting,
+): PoolCandidate[] {
+  const widening = weighting?.poolWidening ?? 0
+  return buyers.flatMap((buyer) => {
+    const stated = tierPreferenceWeight(buyer, model)
+    const tierWeight = stated > 0 ? stated : widening
+    if (tierWeight <= 0) return []
+    const authored = weighting?.buyerPoolWeights?.[buyer.archetype] ?? 1
+    const channelWeight = weighting === undefined ? 1 : Math.pow(authored, weighting.focusExponent)
+    const poolWeight = tierWeight * channelWeight
+    return poolWeight > 0 ? [{ buyer, poolWeight }] : []
+  })
 }
 
 /**
@@ -68,8 +134,15 @@ function saleCandidates(model: CarModel, buyers: readonly Buyer[]): Buyer[] {
  * "a stranger is offered a car they don't care about." Shared by
  * `sellViaWalkIn` below and every listing-channel draw
  * (`drawDailyOffers`/selling.ts) - one picking mechanism, channels only
- * change what happens to the pick afterward. Returns `undefined` when no
- * buyer archetype is interested in this tier at all.
+ * change who is in the hat and how many tickets each of them holds.
+ *
+ * The draw weight is each buyer's own valuation MULTIPLIED BY their pool
+ * weight, never one in place of the other. The valuation term is the size
+ * bias that keeps an unimproved flip from paying (a buyer who values the car
+ * highly is the one most likely to arrive, so a car bought at its own value
+ * cannot systematically resell above it); the pool term is who the channel
+ * reaches. Composing them keeps both properties at once. Returns `undefined`
+ * when nobody at all can be drawn.
  */
 function pickWeightedCandidate(
   car: CarInstance,
@@ -81,12 +154,11 @@ function pickWeightedCandidate(
   heatPercent: number,
   economy: EconomyConfig,
   rng: Rng,
+  weighting?: ChannelDrawWeighting,
 ): { buyer: Buyer; value: number } | undefined {
-  const candidates = saleCandidates(model, buyers)
-  const valuations = candidates.map((buyer) => ({
-    buyer,
-    value: valuateCarForBuyer(
-      buyer,
+  const valuations = saleCandidates(model, buyers, weighting).map((candidate) => {
+    const value = valuateCarForBuyer(
+      candidate.buyer,
       model,
       car,
       partsById,
@@ -94,15 +166,16 @@ function pickWeightedCandidate(
       partsTaxonomyById,
       heatPercent,
       economy,
-    ),
-  }))
+    )
+    return { buyer: candidate.buyer, value, drawWeight: value * candidate.poolWeight }
+  })
 
   let picked = valuations[0]
-  const totalValue = valuations.reduce((sum, v) => sum + v.value, 0)
-  if (totalValue > 0) {
-    let roll = rng.next() * totalValue
+  const totalWeight = valuations.reduce((sum, v) => sum + v.drawWeight, 0)
+  if (totalWeight > 0) {
+    let roll = rng.next() * totalWeight
     for (const v of valuations) {
-      roll -= v.value
+      roll -= v.drawWeight
       if (roll <= 0) {
         picked = v
         break
@@ -112,6 +185,43 @@ function pickWeightedCandidate(
     picked = valuations[rng.int(0, valuations.length - 1)]
   }
   return picked
+}
+
+/**
+ * Who a channel most likely brings, and what they would pay - the
+ * deterministic mode of `pickWeightedCandidate`'s own distribution
+ * (`valuation x poolWeight`), with no roll. What a quote, a preview or a
+ * picker label needs when it has to name one buyer rather than sample one.
+ * `undefined` when the channel can draw nobody at all for this car.
+ */
+export function likelyChannelBuyer(
+  car: CarInstance,
+  model: CarModel,
+  buyers: readonly Buyer[],
+  partsById: Readonly<Record<string, Part>>,
+  partsTaxonomy: readonly CarPartTaxonomyEntry[],
+  partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
+  heatPercent: number,
+  economy: EconomyConfig,
+  weighting?: ChannelDrawWeighting,
+): Buyer | undefined {
+  let best: { buyer: Buyer; drawWeight: number } | undefined
+  for (const candidate of saleCandidates(model, buyers, weighting)) {
+    const drawWeight =
+      candidate.poolWeight *
+      valuateCarForBuyer(
+        candidate.buyer,
+        model,
+        car,
+        partsById,
+        partsTaxonomy,
+        partsTaxonomyById,
+        heatPercent,
+        economy,
+      )
+    if (!best || drawWeight > best.drawWeight) best = { buyer: candidate.buyer, drawWeight }
+  }
+  return best?.buyer
 }
 
 /**
@@ -174,7 +284,7 @@ export function bestFitBuyer(
   economy: EconomyConfig,
 ): Buyer | undefined {
   let best: { buyer: Buyer; value: number } | undefined
-  for (const buyer of saleCandidates(model, buyers)) {
+  for (const { buyer } of saleCandidates(model, buyers)) {
     const value = valuateCarForBuyer(
       buyer,
       model,
@@ -278,6 +388,30 @@ export interface SetForSaleResult {
 }
 
 /**
+ * Whether `channelId` is open for `state` right now - derived, never stored,
+ * on exactly the footing `isAuctionTierUnlocked` (catalogs.ts) derives an
+ * auction room. The rule runs the other way round from a room's, because the
+ * two answer different questions: a room is shut until a guarantor opens it,
+ * while a channel is open unless some mission CLAIMS it. So a channel nobody
+ * has written an unlocking mission for is simply available, and Law 1's
+ * floor lives in content (`StoryMissionSchema` forbids a mission claiming the
+ * shop front or the trade network) rather than in a list of exceptions here.
+ * Once claimed, the claiming mission's own `delivered` record IS the fact,
+ * and a delivered mission is never undelivered, so a channel never closes.
+ */
+export function isSellingChannelUnlocked(
+  state: GameState,
+  context: SimContext,
+  channelId: SellingChannelId,
+): boolean {
+  const openers = context.storyMissions.filter((m) => m.unlocksSellingChannel === channelId)
+  if (openers.length === 0) return true
+  return openers.some((mission) =>
+    state.storyMissions.some((r) => r.missionId === mission.id && r.status === 'delivered'),
+  )
+}
+
+/**
  * A re-listed entry's starting `offersSeen` (`resolveSetForSale` below):
  * fresh (0) for a car with no prior listing, otherwise the old entry's own
  * `offersSeen` carried forward at `economy.liquidity.relistRecovery` rather
@@ -362,6 +496,12 @@ export function resolveSetForSale(
   if (existing && existing.channelId === channelId && channelId !== 'weekendMeet') {
     return { state, log: [] }
   }
+
+  // A channel nobody has put your name forward for is not a channel you can
+  // list on. Quiet refusal, the same silent gate-reason idiom the cash and
+  // ownership gates above use: the picker simply does not offer a channel
+  // that is not open yet.
+  if (!isSellingChannelUnlocked(state, context, channelId)) return { state, log: [] }
 
   const channel = context.economy.sellingChannels[channelId]
   const feeYen = channel.feeYen
@@ -490,6 +630,7 @@ function drawPersonaChannelOffer(
   matchedOnly: boolean,
   offersSeen: number,
   rng: Rng,
+  weighting: ChannelDrawWeighting,
 ): SaleOffer | undefined {
   const picked = pickWeightedCandidate(
     car,
@@ -501,6 +642,7 @@ function drawPersonaChannelOffer(
     heatPercent,
     context.economy,
     rng,
+    weighting,
   )
   if (!picked) return undefined
   if (matchedOnly) {
@@ -605,6 +747,7 @@ function drawFlaggedChannelOffer(
   channel: SellingChannelConfig,
   offersSeen: number,
   rng: Rng,
+  reputationTier: ReputationTier,
 ): SaleOffer | undefined {
   if (channel.priceBand) {
     return drawTradeNetworkOffer(car, model, context, heatPercent, channel.priceBand, rng)
@@ -618,6 +761,7 @@ function drawFlaggedChannelOffer(
     channel.matchedOnly === true,
     offersSeen,
     rng,
+    channelDrawWeighting(channel, reputationTier, context.economy),
   )
 }
 
@@ -665,6 +809,7 @@ function drawOfferForChannel(
   heatPercent: number,
   rng: Rng,
   day: number,
+  reputationTier: ReputationTier,
 ): ChannelDraw {
   const channel = context.economy.sellingChannels[entry.channelId]
 
@@ -681,6 +826,7 @@ function drawOfferForChannel(
         channel,
         entry.offersSeen,
         rng,
+        reputationTier,
       ),
       weekendMeetPending: false,
       attempted: true,
@@ -699,6 +845,7 @@ function drawOfferForChannel(
       channel,
       entry.offersSeen,
       rng,
+      reputationTier,
     ),
     attempted: true,
   }
@@ -737,7 +884,16 @@ export function drawDailyOffers(
     }
 
     const heatPercent = state.marketHeat[car.modelId] ?? 100
-    const draw = drawOfferForChannel(car, model, entry, context, heatPercent, rng, day)
+    const draw = drawOfferForChannel(
+      car,
+      model,
+      entry,
+      context,
+      heatPercent,
+      rng,
+      day,
+      state.reputationTier,
+    )
     carsForSale.push({
       ...entry,
       offersSeen: draw.attempted ? entry.offersSeen + 1 : entry.offersSeen,

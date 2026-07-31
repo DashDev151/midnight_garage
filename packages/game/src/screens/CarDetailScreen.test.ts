@@ -945,15 +945,11 @@ describe('CarDetailScreen', () => {
   })
 
   describe('Sprint 114: the selling rework (channel picker + want-line)', () => {
-    const CHANNEL_IDS = [
-      'shopFront',
-      'freeAdsPaper',
-      'tunerMagazine',
-      'tradeNetwork',
-      'weekendMeet',
-    ] as const
+    /** The channels a career starts with - the two premium ones are opened by
+     * a named story mission (sprint156.md), so a fresh shop cannot see them. */
+    const DAY_ONE_CHANNEL_IDS = ['shopFront', 'freeAdsPaper', 'tradeNetwork'] as const
 
-    it('renders all five channel options with real fee text, defaulting the armed choice to shopFront', async () => {
+    it('renders the day-one channel options with real fee text, defaulting the armed choice to shopFront', async () => {
       const game = useGameStore()
       game.devGrantCar(CARS[0]!.id)
       const id = game.gameState.ownedCars[0]!.id
@@ -961,13 +957,60 @@ describe('CarDetailScreen', () => {
 
       const picker = wrapper.find('[data-test="channel-picker"]')
       expect(picker.exists()).toBe(true)
-      for (const channelId of CHANNEL_IDS) {
+      for (const channelId of DAY_ONE_CHANNEL_IDS) {
         const option = picker.find(`[data-test="channel-option-${channelId}"]`)
         expect(option.exists()).toBe(true)
         const feeYen = game.context.economy.sellingChannels[channelId].feeYen
         expect(option.text()).toContain(feeYen === 0 ? 'Free' : formatYen(feeYen))
       }
       expect(picker.find('[data-test="channel-option-shopFront"]').classes()).toContain('selected')
+    })
+
+    it('shows who each channel draws, so the fee is never the only thing separating two of them', async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      const { wrapper } = await mountAt(id)
+
+      // The shop front's pool is flat across every archetype, so it says so in
+      // words rather than listing all six; the paper names the people who
+      // actually read it. The trade network has no persona at all and shows no
+      // audience line.
+      expect(wrapper.find('[data-test="channel-option-shopFront"]').text()).toContain(
+        'Everyone who walks past',
+      )
+      expect(wrapper.find('[data-test="channel-option-freeAdsPaper"]').text()).toContain(
+        'First-timer',
+      )
+      const trade = wrapper.find('[data-test="channel-option-tradeNetwork"]')
+      expect(trade.find('[data-test="channel-audience"]').exists()).toBe(false)
+    })
+
+    it('does not offer a channel no one has put the shop forward for, and grows the list when they do', async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      const beforeMount = await mountAt(id)
+
+      // Law 4: the list changing shape IS the signal; nothing announces it.
+      for (const channelId of ['tunerMagazine', 'weekendMeet'] as const) {
+        expect(
+          beforeMount.wrapper.find(`[data-test="channel-option-${channelId}"]`).exists(),
+          channelId,
+        ).toBe(false)
+      }
+
+      game.gameState = {
+        ...game.gameState,
+        storyMissions: [{ missionId: 'low-and-loud', status: 'delivered', acceptedOnDay: 1 }],
+      }
+      const afterMount = await mountAt(id)
+      expect(afterMount.wrapper.find('[data-test="channel-option-weekendMeet"]').exists()).toBe(
+        true,
+      )
+      expect(afterMount.wrapper.find('[data-test="channel-option-tunerMagazine"]').exists()).toBe(
+        false,
+      )
     })
 
     it('lists the car on the armed channel and shows it as the active channel', async () => {

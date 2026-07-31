@@ -1,7 +1,9 @@
 # Listing channels: who sees the car
 
-**Status: DESIGN. NOT BUILT.** Implements the maintainer's ruling of 2026-07-31, recorded in
-`sale-value-system.md` §6.
+**Status: BUILT (Sprint 156).** Implements the maintainer's ruling of 2026-07-31, recorded in
+`sale-value-system.md` §6. Every value is in `docs/sprints/sprint156.md`'s Exit and in the
+economy approval gate's own ledger; the four open questions below are answered at the foot of
+this document.
 
 ## What is wrong
 
@@ -97,15 +99,28 @@ them.**
 - **No unlock toast.** Law 4 bans ambient notification. The channel list changing shape on the car
   page is diegetic; a banner announcing it is not.
 
-## Open, needs the maintainer
+## Answered on implementation (Sprint 156, under R4)
 
-1. **Which channels lock, and behind what named event.** The shop front and trade network stay
-   open. The magazine, the meet and the free ads paper are candidates.
-2. **The buyer pool weights per channel.** Authored content, six archetypes across five channels.
-3. **The shop front's taste ceiling.** Approved to raise, conservatively, unsigned. The maintainer
-   also floated that **all buyer types should be visible in the shop**, which may be the better
-   half of the answer: widen who appears rather than raise what they pay.
-4. **Does the free ads paper survive?** It earns the presence-widening niche above, or it is cut.
+1. **Which channels lock, and behind what named event.** `weekendMeet` opens on delivering
+   `low-and-loud` (Daisuke, the shakotan customer, who parks up at the bay-side PA on Sundays);
+   `tunerMagazine` opens on delivering `street-power-street-manners` (Gen, whose editor friend at
+   one of the tuning monthlies owes him a favour). The shop front, the trade network **and the
+   free ads paper** stay open from day one, so a new career has three genuinely different ways to
+   sell rather than one. The line between open and locked is exactly the line the progression
+   bible draws: the two locked channels are the only two whose `tasteCeiling` clears 1.00, and a
+   better price for the same car is clientele quality, which the pillar table assigns to
+   reputation.
+2. **The buyer pool weights per channel.** Authored on the four persona channels; the trade
+   network has no persona and carries none. Full table in `sprint156.md`'s Exit.
+3. **The shop front's taste ceiling.** Left at exactly 1.00. The maintainer's own floated
+   alternative was the better half of the answer: the shop front now reaches **everybody** (a flat
+   pool plus the widest-but-one `poolWidening`), and stays the deliberate floor on price. Its flat
+   pool also makes it the one channel standing cannot improve, since 1 raised to any exponent is
+   still 1.
+4. **Does the free ads paper survive?** Yes, and it earns the presence-widening niche outright: it
+   carries the widest `poolWidening` of the five and is the best day-one answer for an ordinary
+   car. Measured on a tidy Wagon R, it returns ¥227,155 per listed day against the shop front's
+   ¥104,991.
 
 ## What moves when this lands
 

@@ -1241,6 +1241,55 @@ import storyMissions from '../data/storyMissions.json'
  * rolled (`panels`/`paint` derive from the worst panel zone, and a worst-of is permutation
  * invariant), so no derived band, repair bill or Law 2 check sees a different distribution.
  * `partPricing.json` holds and no mission payout or budget cap moves.
+ *
+ * Re-pinned 2026-08-01 for Sprint 156 (listing channels, `listing-channels.md`), under the same
+ * R4 grant. A channel was a fee and a taste ceiling, with no buyer pool at all, so the tuner
+ * magazine and the weekend meet priced byte-identically on both worked-example cars. Levers moved,
+ * named and valued per R4's requirement:
+ *
+ * 1. NEW `sellingChannels[*].buyerPoolWeights` - one draw multiplier per buyer archetype, on the
+ *    four persona channels (the trade network has no persona and carries none). Over collector /
+ *    tuner / stancer / racer / first-timer / kei-specialist:
+ *    shopFront 1 / 1 / 1 / 1 / 1 / 1 (flat: everyone walks past a forecourt, nobody is favoured);
+ *    freeAdsPaper 0.4 / 0.5 / 0.5 / 0.2 / 1.6 / 1.4 (the classifieds: practical buyers, plus the
+ *    collector who combs small ads for a survivor); tunerMagazine 0.15 / 1.8 / 0.6 / 1.4 / 0.05 /
+ *    0.05 (a tuning monthly's readership); weekendMeet 0.3 / 1.2 / 1.8 / 0.5 / 0.1 / 0.8 (a car
+ *    park on a Sunday night, stance-led). Multiplied INTO the existing valuation-weighted draw,
+ *    never in place of it, so the size bias holding the instant-flip guard closed survives.
+ * 2. NEW `sellingChannels[*].poolWidening` - shopFront 0.35, freeAdsPaper 0.5, weekendMeet 0.4,
+ *    tunerMagazine 0.25. The weight an archetype with NO stated interest in the car's tier still
+ *    draws at, which is what finally makes `Buyer.tierPreferences[].weight` (authored 0.3 to 1.0
+ *    and, until this sprint, read by nothing) a probability rather than a wall. Ordered by how far
+ *    each channel reaches past the people already looking at that league of car: the paper widest,
+ *    because presence-widening is the niche `sale-value-system.md` S6 gives it; the magazine
+ *    narrowest, a national title with a specific readership, but non-zero so a tuned Alto Works is
+ *    reachable by the people who would actually want it.
+ * 3. NEW `selling.channelStandingFocusByReputationTier` - unknown 1, local 1.2, known 1.45,
+ *    respected 1.7, legend 2. The exponent `buyerPoolWeights` is raised to before the draw, so
+ *    standing sharpens a channel's own crowd rather than opening a door or adding to a price. A
+ *    flat pool is untouched by any exponent, so the free shop front never improves, which is the
+ *    design rather than a coincidence of the values.
+ * 4. NEW `StoryMission.unlocksSellingChannel`, the `unlocksAuctionTier` pattern applied to
+ *    channels: `low-and-loud` opens `weekendMeet`, `street-power-street-manners` opens
+ *    `tunerMagazine`. Not an economy.json value and not gated by this hash; recorded here because
+ *    it decides when two of these five channels exist at all. Both missions' `deliveredCopy` gains
+ *    the sentence that hands the introduction over. Shop front, free ads paper and trade network
+ *    stay open from day one, and the schema forbids a mission claiming either always-open channel.
+ *
+ * NOT moved, deliberately: `tasteCeiling` on any channel, including the shop front's 1.00, which
+ * R4 covered and the maintainer's own note preferred to leave alone ("widening who appears may be
+ * the better half of the answer"). No fee moves. No cadence moves. `matchedOnly` and
+ * `requiresForecourt` are untouched on every channel. No mission payout or budget cap moves, and
+ * `partPricing.json` and `damagePatterns.json` both hold.
+ *
+ * Both `advanceDay` goldens were re-checked and BOTH HELD unchanged: neither scripted career's
+ * offer draw falls on a pool the weighting reorders. The instant-flip guard was re-measured rather
+ * than assumed - it stays green, and its medians move to entry -1.68%, everyday -0.92%, enthusiast
+ * -0.99%, flagship +1.87% (from a bound of 0.10), because the walk-in now reads each archetype's
+ * own tier-preference weight. The worked example was regenerated: the magazine and the meet no
+ * longer agree on either car (Wagon R ¥224,587 to a tuner who fails the matched gate, against
+ * ¥239,769 to the kei specialist; Silvia ¥448,745 to a tuner against ¥460,775 to a shakotan), and
+ * which of the two pays more now depends on the car rather than the fee.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -1250,7 +1299,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('35c62a03ebf58d1b3e176437eddd1140561c21c721277c951bf72ac9bca778e8')
+    ).toBe('a43d34af3c49e091f0d591496773daa7e5d46225d1ce32034e70f0180dcd252d')
   })
 
   it('damagePatterns.json matches its approved content exactly', () => {

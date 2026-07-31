@@ -46,7 +46,7 @@ import { LEDGER_LINE_LABELS, formatLedgerLineYen } from '../utils/ledgerLabels'
 import { addressesOverlap, hasWorkAddress } from '../utils/partAddress'
 import {
   SELLING_CHANNEL_LABELS,
-  SELLING_CHANNEL_ORDER,
+  sellingChannelAudienceLabel,
   sellingChannelCadenceLabel,
   sellingChannelFeeLabel,
 } from '../utils/sellingChannelLabels'
@@ -376,6 +376,12 @@ watch(
   },
   { immediate: true },
 )
+
+/** Who this channel reaches, from its own authored buyer pool - `null` for a
+ * channel with no persona behind it at all (the trade network). */
+function audienceLabelFor(id: SellingChannelId): string | null {
+  return sellingChannelAudienceLabel(game.context.economy.sellingChannels[id], game.context.buyers)
+}
 
 /** Why `id` can't be armed right now, `null` when it can - the existing
  * disabled-reason idiom (`AuctionScreen.vue`'s buyout button: disabled +
@@ -1700,7 +1706,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             Listed on {{ SELLING_CHANNEL_LABELS[activeChannelId] }}
           </p>
           <ul class="channel-options">
-            <li v-for="id in SELLING_CHANNEL_ORDER" :key="id">
+            <li v-for="id in game.availableSellingChannelIds" :key="id">
               <button
                 type="button"
                 class="channel-option"
@@ -1717,6 +1723,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                 <span class="channel-cadence">{{
                   sellingChannelCadenceLabel(game.context.economy.sellingChannels[id])
                 }}</span>
+                <span
+                  v-if="audienceLabelFor(id)"
+                  class="channel-audience"
+                  data-test="channel-audience"
+                  >{{ audienceLabelFor(id) }}</span
+                >
               </button>
             </li>
           </ul>
@@ -2400,6 +2412,12 @@ h4 {
 .channel-cadence {
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
+}
+
+.channel-audience {
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+  font-style: italic;
 }
 
 .for-sale-toggle {

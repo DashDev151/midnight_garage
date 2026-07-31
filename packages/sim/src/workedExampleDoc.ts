@@ -319,13 +319,14 @@ function carSection(report: WorkedExampleReport, car: CarRunReport, label: strin
     ),
   )
   out.push('')
-  out.push('#### The same car, the same buyer, every channel')
+  out.push('#### The same car, every channel, and who each one brings')
   out.push('')
   out.push(
     table(
       [
         'Channel',
         'Fee',
+        'Who it draws',
         'tasteCeiling',
         'Matched only',
         'Buyer taste',
@@ -338,6 +339,7 @@ function carSection(report: WorkedExampleReport, car: CarRunReport, label: strin
         return [
           `\`${quote.channelId}\``,
           yen(quote.feeYen),
+          quote.buyerName,
           quote.tasteCeiling === null ? 'n/a (flat `priceBand`)' : num(quote.tasteCeiling, 2),
           quote.matchedOnly ? 'yes' : 'no',
           num(quote.buyerTaste, 4),
