@@ -115,7 +115,14 @@ describe('the radial-offer gate (Sprint 95 decision 4)', () => {
   it('a non-tutorial career (tutorialStatus absent) still seeds day-1 offers as before', () => {
     const state = createInitialGameState(CONTEXT, 1)
     expect(state.tutorialStatus).toBeUndefined()
-    expect(state.serviceJobOffers.length).toBeGreaterThan(0)
+    // The daily offer count is a weighted draw that can legitimately roll
+    // zero (see `advanceUntilOffers` above) - a single seed proves nothing
+    // about the gate either way, so sweep a few and require only that the
+    // gate never blocks every one of them.
+    const seedsWithOffers = [1, 2, 3, 4, 5].filter(
+      (seed) => createInitialGameState(CONTEXT, seed).serviceJobOffers.length > 0,
+    )
+    expect(seedsWithOffers.length).toBeGreaterThan(0)
     // The options parameter's default changes nothing for existing callers.
     expect(createInitialGameState(CONTEXT, 7)).toEqual(createInitialGameState(CONTEXT, 7, {}))
   })

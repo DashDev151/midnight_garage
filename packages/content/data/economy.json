@@ -519,11 +519,13 @@
         "project": 5
       },
       "bandStepsByGrade": {
-        "tidy": 2,
-        "used": 5,
-        "rough": 11,
-        "project": 20
-      }
+        "tidy": 5,
+        "used": 12,
+        "rough": 26,
+        "project": 48
+      },
+      "projectGateMaxAgeYears": 6,
+      "projectGateMaxMileageKm": 60000
     },
     "wearExposureByMileageKm": [
       [0, 0],

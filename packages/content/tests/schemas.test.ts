@@ -306,11 +306,14 @@ describe('seed content validates against schemas', () => {
       project: 5,
     })
     expect(result.data.partsGeneration.damageGrades.bandStepsByGrade).toEqual({
-      tidy: 2,
-      used: 5,
-      rough: 11,
-      project: 20,
+      tidy: 5,
+      used: 12,
+      rough: 26,
+      project: 48,
     })
+    // The age gate: a young, low-mileage car cannot roll the worst grade.
+    expect(result.data.partsGeneration.damageGrades.projectGateMaxAgeYears).toBe(6)
+    expect(result.data.partsGeneration.damageGrades.projectGateMaxMileageKm).toBe(60000)
     // Upkeep wear can only express in proportion to the car's own mileage -
     // a brand-new car is mint whoever owned it.
     expect(result.data.partsGeneration.wearExposureByMileageKm[0]).toEqual([0, 0])

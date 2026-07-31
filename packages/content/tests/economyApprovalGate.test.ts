@@ -1033,6 +1033,28 @@ import storyMissions from '../data/storyMissions.json'
  * model-year window, and `partPricing.json` is untouched so its own hash holds. What DOES move
  * is every generated car in the game, which is the point of the sprint, and with it both
  * `advanceDay` golden hashes and every probe derived from `buildRoughProbeCar`.
+ *
+ * Re-pinned 2026-07-31 (maintainer approval, in session, single lever signed by name and value):
+ * `partsGeneration.damageGrades.bandStepsByGrade` doubles across the board - tidy 2 -> 4, used
+ * 5 -> 10, rough 11 -> 22, project 20 -> 40. `damageGrades.weights` is untouched. Both halves of
+ * `damageGrades` are now SIGNED: `weights` was signed with the mechanism itself, and
+ * `bandStepsByGrade` (PRELIMINARY at Sprint 153) is signed here for the first time.
+ *
+ * Both `advanceDay` golden hashes move with it (30-day career `ca96a465` -> `e37069f7`,
+ * acquisition-to-sale `0a55e42e` -> `4ae2f761`), as do `schemas.test.ts`'s lever pin and
+ * `docs/design/systems/worked-example-two-cars.md`. `partPricing.json` and every mission payout
+ * are untouched.
+ *
+ * At this value, three generation guards calibrated against the smaller budget read red and were
+ * left untouched, not relaxed: `auctions.test.ts`'s age-0 regression (measures 8.09% against its
+ * signed 5% ceiling), its Wagon R "reads as tidy" headline, and `generationCoherence.test.ts`'s
+ * barely-driven-car median.
+ *
+ * Re-pinned (maintainer approval, in session, two levers signed by name and value): a further 20
+ * per cent rise on `bandStepsByGrade` (tidy 4 -> 5, used 10 -> 12, rough 22 -> 26, project 40 ->
+ * 48), paired with a new age gate - `projectGateMaxAgeYears` 6 and `projectGateMaxMileageKm`
+ * 60000 - that demotes a rolled `project` to `rough` on any car under both thresholds, since the
+ * flat roll otherwise put the worst grade on cars too young and lightly used to have earned it.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -1042,7 +1064,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('82d5f3b9a636629667f2477b5076f1fd27827e136bf985ab6c2f04a0dcf3e29f')
+    ).toBe('b0eafaf82c82554c8bde40cb02eee1cd84e7e9569f1e3f8d5ee15bd3c07cdd3a')
   })
 
   it('partPricing.json matches its approved content exactly', () => {

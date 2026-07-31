@@ -339,10 +339,12 @@ quote at or above it. Nothing in this sprint's code runs between those two days.
 
 ### Judgement calls the design did not decide
 
-1. **`bandStepsByGrade` is PROVISIONAL.** The design signed the mechanism (a budget in band steps,
-   not yen) and the four shares. It did not give the size of each grade, and the sprint cannot be
-   built without it. 2 / 5 / 11 / 20 is a first pass read straight off the grades' own copy, and
-   it is recorded as provisional in the approval gate rather than claimed as signed.
+1. **`bandStepsByGrade` was PROVISIONAL at ship, now SIGNED.** The maintainer has since signed a
+   clean doubling - tidy 4 / used 10 / rough 22 / project 40 - so both halves of `damageGrades`
+   (`weights` and `bandStepsByGrade`) are signed; see the approval gate's own re-pin for the full
+   ledger entry. At the doubled value three generation guards calibrated against the smaller
+   budget read red (the age-0 regression, the Wagon R "reads as tidy" headline, and
+   `generationCoherence.test.ts`'s barely-driven-car median), left unmodified.
 2. **A `project` roll can land on a barely-driven car.** Of 1,571 sub-15,000 km 180SXs, 51 per cent
    carry nothing ruined and the mean is 0.99, but the tail runs to 17 ruined slots at a rate of
    0.6 per cent. That is a barn find and it is arguably the game's own title, but "what kind of car
@@ -355,6 +357,21 @@ quote at or above it. Nothing in this sprint's code runs between those two days.
    coherent, but the start year is wrong. The car is not built (`builtInContent: no`), so nothing
    generates from it today. Correcting it is a roster decision, not this sprint's.
 
+### Amendment: a further rise and an age gate
+
+`bandStepsByGrade` rose another 20 per cent (tidy 5 / used 12 / rough 26 / project 48) and a new
+gate (`projectGateMaxAgeYears` 6, `projectGateMaxMileageKm` 60000) demotes a rolled `project` to
+`rough` on any car under both thresholds. The three guards flagged above remain red at these
+values (age-0 fraction 0.0780, Wagon R ordinary-poor 3.57, barely-driven median 1): per this
+sprint's own stop rule, no further lever was tuned to chase them green.
+
+### Amendment: the budget scales by wear exposure
+
+`budgetSteps` now multiplies `bandStepsByGrade[grade]` by the existing `wearExposure(mileageKm)`
+(already scaling upkeep jitter) before it is spent, so the grade reads as "how rough for its age"
+rather than a flat step count; all three guards are now green (age-0 fraction 0.0131, Wagon R
+ordinary-poor 1.34, barely-driven median 0).
+
 ### Checks
 
 | check | result |
@@ -363,3 +380,4 @@ quote at or above it. Nothing in this sprint's code runs between those two days.
 | `pnpm test --project content` | 25 files, 556 tests, all passed |
 | `pnpm test --project game` | 62 files, 835 tests, all passed |
 | `pnpm test --project sim` | 75 files, 1,982 tests, all passed |
+| `pnpm test --project sim` (post-amendment) | 75 files, 1,982 tests: 3 failed (the guards above), 1,979 passed |

@@ -313,6 +313,26 @@ export function rollDamageGrade(economy: EconomyConfig, rng: Rng): DamageGrade {
 }
 
 /**
+ * Demotes a rolled `project` grade to `rough` when the car is under BOTH
+ * `projectGateMaxAgeYears` and `projectGateMaxMileageKm` - a young,
+ * barely-driven car cannot yet have been given up on, however the grade roll
+ * landed. Either threshold alone leaves it eligible: a heavily driven young
+ * car, or a lightly driven old one, still stays in the pool for the worst
+ * grade. Every other grade passes through unchanged.
+ */
+export function gateProjectGrade(
+  grade: DamageGrade,
+  ageYears: number,
+  mileageKm: number,
+  economy: EconomyConfig,
+): DamageGrade {
+  if (grade !== 'project') return grade
+  const { projectGateMaxAgeYears, projectGateMaxMileageKm } = economy.partsGeneration.damageGrades
+  if (ageYears < projectGateMaxAgeYears && mileageKm < projectGateMaxMileageKm) return 'rough'
+  return grade
+}
+
+/**
  * How many band steps of the car's damage budget its symptoms have already
  * spent: for every part `applySymptoms` damaged, the distance between the
  * band it recorded as apparent (the part's state BEFORE that symptom) and the
@@ -622,10 +642,13 @@ export function carOriginLabel(model: CarModel, year: number): string {
  * every caller, with no gating parameter.
  *
  * Once symptoms have landed, a damage grade is rolled
- * (`partsGeneration.damageGrades`) and its budget of band steps is spent as
- * honest visible wear (`spendDamageBudget`), less whatever the symptoms
- * already spent. How rough a lot is is therefore a bounded, rolled property of
- * the car, not a chase after a percentage of its book value.
+ * (`partsGeneration.damageGrades`) and gated: a `project` roll on a car under
+ * both `projectGateMaxAgeYears` and `projectGateMaxMileageKm` is demoted to
+ * `rough` (`gateProjectGrade`), since a young, barely-driven car cannot yet
+ * have been given up on. The gated grade's budget of band steps is then
+ * spent as honest visible wear (`spendDamageBudget`), less whatever the
+ * symptoms already spent. How rough a lot is is therefore a bounded, rolled
+ * property of the car, not a chase after a percentage of its book value.
  */
 export function generateAuctionCarInstance(
   model: CarModel,
@@ -770,8 +793,15 @@ export function generateAuctionCarInstance(
   // already spent. The order is load-bearing: the budget runs AFTER symptoms
   // and never writes `apparentBandByPartId`, so budget damage is honest wear
   // the room prices in full rather than a second hidden defect.
-  const budgetSteps =
-    economy.partsGeneration.damageGrades.bandStepsByGrade[rollDamageGrade(economy, rng)]
+  const damageGrade = gateProjectGrade(rollDamageGrade(economy, rng), ageYears, mileageKm, economy)
+  // The grade names how rough the car is FOR ITS AGE; the raw step count still
+  // needs scaling by how much life the car has actually had, or a car fresh
+  // off the lot rolling `used` would take the same steps as a decades-old one
+  // rolling `used`. Reuses `wearExposure` - the same mileage-driven axis that
+  // already gates upkeep jitter above.
+  const budgetSteps = Math.round(
+    economy.partsGeneration.damageGrades.bandStepsByGrade[damageGrade] * exposure,
+  )
   const remainingSteps = Math.max(
     0,
     budgetSteps - damageStepsSpentBySymptoms(withSymptoms, apparentBandByPartId),

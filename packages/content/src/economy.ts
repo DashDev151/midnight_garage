@@ -1535,10 +1535,19 @@ export const EconomyConfigSchema = z.object({
        * downstream of `partPricing.classFactors`. The bill then falls out of
        * the parts' own prices, which is the right direction of causation: a
        * rough cheap car SHOULD have a small bill.
+       *
+       * `projectGateMaxAgeYears`/`projectGateMaxMileageKm` gate the worst
+       * grade: age and mileage are already rolled ahead of the grade, and a
+       * car under BOTH thresholds has a rolled `project` demoted one step to
+       * `rough`, because a young, barely-driven car cannot yet have been
+       * given up on. Either threshold alone is not enough - a heavily driven
+       * young car keeps its eligibility for the worst grade.
        */
       damageGrades: z.object({
         weights: DamageGradeWeightsSchema,
         bandStepsByGrade: DamageGradeStepsSchema,
+        projectGateMaxAgeYears: z.number().int().positive(),
+        projectGateMaxMileageKm: z.number().int().positive(),
       }),
       /**
        * Per ELIGIBLE, non-missing slot (eligible = the catalog has a `grade >
