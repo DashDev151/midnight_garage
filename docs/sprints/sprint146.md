@@ -63,7 +63,8 @@ avoided them rather than merely not caring.
 
 ## The authoring
 
-**Six archetypes, all signed under the maintainer's standing authority of 2026-07-30.** Stats
+**Six archetypes, all signed under the standing lever grant recorded as R3 in
+`docs/design/systems/sale-value-implementation-plan.md`, provisional until ratified.** Stats
 are on the normalised 0 to 1 scale. Blank upper means no upper bound. Importance 0 means the
 buyer genuinely does not look at that stat.
 
@@ -408,7 +409,8 @@ four tiers, by design - see above.
 
 ## Amendment 2: the AUCTION_BUYOUT_PREMIUM sweep, and why the lever cannot close this guard
 
-**Under the maintainer's standing lever authority of 2026-07-30, `economy.AUCTION_BUYOUT_PREMIUM`
+**Under the standing lever grant recorded as R3 in
+`docs/design/systems/sale-value-implementation-plan.md`, `economy.AUCTION_BUYOUT_PREMIUM`
 was swept at 1.00, 1.02, 1.03, 1.05 and 1.08** (a real auction buyer's premium runs 5-10%, so any
 value in that region was defensible) to close the instant-flip guard's remaining gap left open by
 Amendment 1. It does not close, at any of the five values, and the reason turns out to be

@@ -211,6 +211,15 @@ pass."
 
 ## Open engineering
 
+- [ ] **`sale-value-system.md` §4 states `relistRecovery` as a fraction of "fresh", which does not
+  survive contact with the counter it describes (found 2026-07-31, Sprint 147).** Fresh is
+  `offersSeen = 0` and 0.70 of 0 is 0, so the prose has no arithmetic reading. Sprint 147 ruled it
+  on the lever's name (a recovery of 0.70 recovers seventy per cent of freshness, so
+  `newOffersSeen = round(oldOffersSeen * (1 - relistRecovery))`) and the shipped code and tests
+  follow that ruling. **Amend §4 to state the formula rather than the fraction** next time that
+  document is touched, so the design of record and the implementation stop disagreeing on their
+  face. No code change: this is a docs correction only.
+
 - [ ] **The balance probes and real generation use two different cost models for the same three
   parts (found 2026-07-30, while making the probes read live data).** Real generation
   (`generateAuctionCarInstance`) unconditionally rolls a `zoneState`, and that is what prices

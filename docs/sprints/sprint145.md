@@ -74,8 +74,9 @@ with reasons:
 
 ## The levers
 
-**Signed under the maintainer's standing authority of 2026-07-30, to be reviewed on their
-return.**
+**Signed under the standing lever grant recorded as R3 in
+`docs/design/systems/sale-value-implementation-plan.md`, and provisional until the maintainer
+ratifies it.**
 
 | lever | value |
 | --- | --- |

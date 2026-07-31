@@ -74,8 +74,9 @@ trip Sprint 143's own guard.
 
 ## The levers
 
-**Signed under the maintainer's standing authority of 2026-07-30, to be reviewed on their
-return. Every value is the design's own proposal, unchanged.**
+**Signed under the standing lever grant recorded as R3 in
+`docs/design/systems/sale-value-implementation-plan.md`, and provisional until the maintainer
+ratifies it. Every value is the design's own proposal, unchanged.**
 
 | lever | from | to |
 | --- | --- | --- |

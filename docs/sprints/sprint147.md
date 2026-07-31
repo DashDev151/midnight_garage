@@ -91,8 +91,9 @@ Bot code is directive-21-forbidden to run, but it still compiles and must stay c
 
 ## The levers
 
-**Signed under the maintainer's standing authority of 2026-07-30.** All are the design's own
-proposals.
+**Signed under the standing lever grant recorded as R3 in
+`docs/design/systems/sale-value-implementation-plan.md`, provisional until the maintainer
+ratifies it.** All are the design's own proposals.
 
 | lever | value |
 | --- | ---: |
@@ -258,8 +259,8 @@ in its own doc comment.
   keeps the literal string `sinceDay`, because that test is exercising what a genuinely historical
   pre-v45 save looked like, not the current schema.
 
-**The instant-flip guard is closed, in a follow-up change under the maintainer's standing lever
-authority of 2026-07-30.** The rewritten bound (`qualityFresh / AUCTION_BUYOUT_PREMIUM - 1` =
+**The instant-flip guard is closed, in a follow-up change under the standing lever grant recorded
+as R3 in `docs/design/systems/sale-value-implementation-plan.md`.** The rewritten bound (`qualityFresh / AUCTION_BUYOUT_PREMIUM - 1` =
 -2%) still fell short at `qualityFresh` 0.98, for a confirmed reason rather than an assumed one:
 `pickWeightedCandidate` (the same weighted persona pick `sellViaWalkIn` and every listed channel
 share) draws the walk-in buyer weighted by currency VALUE, and value is
@@ -294,16 +295,20 @@ entry **-2.56%**, everyday **-2.91%**, enthusiast **-2.50%**, flagship **-2.17%*
 the moved lever. `TODO.md`'s instant-flip entry is removed; the guard is closed, not merely
 improved.
 
-**One judgement call, flagged for review rather than assumed correct.** The design doc's own
-prose reads "relisting returns to `relistRecovery` = 0.70 of fresh" without stating the exact
-arithmetic, since `offersSeen` (not yet designed when that line was drafted) has no natural "0.70
-of fresh" reading of its own (fresh is `offersSeen = 0`, and 70% of 0 is 0). The implementation
-here reads it as a fractional carry directly on the counter -
-`newOffersSeen = round(oldOffersSeen * (1 - relistRecovery))` - discarding 70% of the old
-staleness rather than keeping 70% of it, on the naming convention that a "recovery" of 0.70 means
-70% recovered. Tested and asserted exactly as implemented; if the maintainer intended the other
-direction (keeping 70%, discarding 30%), it is a one-line change to
-`resolveOffersSeenForNewListing` plus its test.
+**One ambiguity in the design prose, now ruled rather than left open.** The design doc reads
+"relisting returns the counter to `relistRecovery` of fresh, not to fresh" without stating the
+arithmetic, and that phrasing does not survive contact with the counter it now describes:
+`offersSeen` was not designed when the line was drafted, fresh is `offersSeen = 0`, and 0.70 of 0
+is 0. Two readings were available. **The name settles it.** A lever called `relistRecovery` set
+to 0.70 means seventy per cent of freshness is recovered, so thirty per cent of the accumulated
+staleness is kept:
+
+    newOffersSeen = round(oldOffersSeen * (1 - relistRecovery))
+
+The opposite reading would have the lever's value rise as recovery falls, which no reader would
+guess from its name. The implementation and its test are correct as they stand; the design doc's
+prose is what was imprecise, and §4 should be amended to state the arithmetic rather than the
+fraction when that document is next touched. Recorded in `TODO.md`.
 
 **Checks:** `pnpm typecheck` (all three packages, clean). `pnpm test --project content` (535
 passed, after re-pinning the economy approval-gate hash and the `liquidity.qualityFresh` schema

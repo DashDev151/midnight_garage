@@ -88,8 +88,9 @@ nothing permanent.
 
 ## Levers
 
-**Signed under the maintainer's standing authority of 2026-07-30.** A new `economy.calendar`
-block. These are scheduling positions, not economic values: no yen figure changes in this
+**Signed under the standing lever grant recorded as R3 in
+`docs/design/systems/sale-value-implementation-plan.md`, provisional until the maintainer
+ratifies it.** A new `economy.calendar` block. These are scheduling positions, not economic values: no yen figure changes in this
 sprint, and the weekly totals charged are identical to today's.
 
 | lever | value | note |
