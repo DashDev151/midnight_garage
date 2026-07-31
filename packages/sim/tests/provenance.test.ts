@@ -272,7 +272,6 @@ describe('close-out parity (Sprint 68 post-fix baseline, reimplemented over orig
           id: 'pi-customers-dampers',
           partId: 'shitbox-stock-dampers',
           band: 'worn',
-          genuinePeriod: false,
           origin: carOrigin,
         },
       }),

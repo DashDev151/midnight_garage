@@ -44,7 +44,6 @@ function initialState(): GameState {
         mileageKm: 128_000,
         color: 'Sodium Amber',
         provenanceNote: 'one-owner, garage kept, Gunma plates',
-        authenticityPercent: 88,
         parts: {
           ...groupCarParts({
             engine: 'worn',
@@ -72,7 +71,6 @@ function initialState(): GameState {
         // fitment-class gate refuses a mismatched-class spare part.
         partId: 'shitbox-tanuki-street-coilovers',
         band: 'mint',
-        genuinePeriod: false,
         origin: { kind: 'market', day: 1 },
       },
     ],
@@ -208,7 +206,13 @@ describe('advanceDay golden master', () => {
     // that script sells the car and `resolveSellViaWalkIn` deletes the ledger
     // with it - which is the proof that this is a shape change and not a
     // behavioural one.
-    expect(hashState(finalState)).toBe('3ff6dc44')
+    //
+    // It last moved when generation stopped rolling a stored authenticity
+    // number: that draw sat between the provenance pick and the zone-state
+    // roll, so removing it shifts every draw after it in the stream and every
+    // generated board with it. Re-derived from a real run, twice, to confirm
+    // determinism.
+    expect(hashState(finalState)).toBe('0460fdc2')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -340,8 +344,10 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // The acquisition-to-sale hash, on the same terms as the golden master
     // above: the lot's rolled condition, the car's derived stats and the
     // buyer's taste-adjusted price all feed it, so it is re-derived from a
-    // real run whenever one of them deliberately changes.
-    expect(hashState(acquisitionCareer().sold)).toBe('634d4493')
+    // real run whenever one of them deliberately changes. It moved with the
+    // golden master above for the same reason: generation no longer draws a
+    // stored authenticity number, so every lot after that draw differs.
+    expect(hashState(acquisitionCareer().sold)).toBe('5c5614ec')
   })
 })
 

@@ -74,7 +74,6 @@ function withWornPanels(state: GameState): GameState {
               // honda-city-e-aa (this file's fixture model) is entry tier.
               partId: CONTEXT.stockPartByCarPartId.entry.panels!.id,
               band: 'worn',
-              genuinePeriod: false,
               origin: { kind: 'market', day: 1 },
             },
           },

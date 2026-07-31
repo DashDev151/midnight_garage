@@ -109,7 +109,6 @@ function stockPartFixture(carPartId: string, band: ConditionBandFixture): PartIn
     id: `fixture-stock-${carPartId}`,
     partId: `fixture-stock-part-${carPartId}`,
     band,
-    genuinePeriod: false,
     origin: { kind: 'market', day: 1 },
   }
 }
@@ -349,7 +348,6 @@ describe('saveCodec', () => {
       mileageKm: 100_000,
       color: 'White',
       provenanceNote: '',
-      authenticityPercent: 90,
       parts: mintParts(),
     })
     const preV9 = {
@@ -456,7 +454,6 @@ describe('saveCodec', () => {
               mileageKm: 120_000,
               color: 'White',
               provenanceNote: '',
-              authenticityPercent: 85,
               parts: mintParts(),
             },
           },
@@ -493,7 +490,6 @@ describe('saveCodec', () => {
       mileageKm: 120_000,
       color: 'White',
       provenanceNote: '',
-      authenticityPercent: 85,
       parts: mintParts(),
     })
     const preV12 = {
@@ -637,7 +633,6 @@ describe('saveCodec', () => {
             color: 'White',
             provenanceNote: '',
             hiddenIssues: [{ issueId: 'rusted-rails', revealed: true }],
-            authenticityPercent: 85,
             parts: mintParts(),
           },
         ],
@@ -660,7 +655,6 @@ describe('saveCodec', () => {
               color: 'White',
               provenanceNote: '',
               hiddenIssues: [{ issueId: 'rusted-rails', revealed: false }],
-              authenticityPercent: 85,
               parts: mintParts(),
             },
           },
@@ -684,7 +678,6 @@ describe('saveCodec', () => {
               color: 'White',
               provenanceNote: '',
               hiddenIssues: [{ issueId: 'rusted-rails', revealed: false }],
-              authenticityPercent: 85,
               parts: mintParts(),
             },
           },
@@ -741,7 +734,6 @@ describe('saveCodec', () => {
               mileageKm: 120_000,
               color: 'White',
               provenanceNote: '',
-              authenticityPercent: 85,
               parts: mintParts(),
             },
           },
@@ -776,7 +768,6 @@ describe('saveCodec', () => {
             mileageKm: 120_000,
             color: 'White',
             provenanceNote: '',
-            authenticityPercent: 85,
             parts: mintParts(),
           },
         },
@@ -828,7 +819,6 @@ describe('saveCodec', () => {
             provenanceNote: '',
             condition: { engine: 50, drivetrain: 50, suspension: 50, body: 50, interior: 50 },
             hiddenIssues: [],
-            authenticityPercent: 90,
             buildSheet: {
               engine: null,
               forcedInduction: null,
@@ -903,7 +893,6 @@ describe('saveCodec', () => {
           mileageKm: 100_000,
           color: 'White',
           provenanceNote: '',
-          authenticityPercent: 90,
           parts: mintParts({ dampers: 'worn' }),
         },
       ],
@@ -985,7 +974,7 @@ describe('saveCodec', () => {
   })
 
   it('a per-part staged action and job (carPartId set) round-trip exactly under version 17', () => {
-    expect(SAVE_VERSION).toBe(51)
+    expect(SAVE_VERSION).toBe(52)
     const perPart: GameState = GameStateSchema.parse({
       ...fullState,
       jobs: [
@@ -1024,9 +1013,7 @@ describe('saveCodec', () => {
       version: 30,
       gameState: {
         ...fullState,
-        partInventory: [
-          { id: 'pi-spare-1', partId: 'khs-street-ecu', band: 'worn', genuinePeriod: false },
-        ],
+        partInventory: [{ id: 'pi-spare-1', partId: 'khs-street-ecu', band: 'worn' }],
       },
     }
     const code = 'MGSAVE1.' + btoa(JSON.stringify(preV31))
@@ -1034,7 +1021,7 @@ describe('saveCodec', () => {
   })
 
   it('a v31 state with an origin-carrying inventory part round-trips the origin exactly', () => {
-    expect(SAVE_VERSION).toBe(51)
+    expect(SAVE_VERSION).toBe(52)
     const withOrigin: GameState = GameStateSchema.parse({
       ...fullState,
       partInventory: [
@@ -1090,7 +1077,6 @@ describe('saveCodec', () => {
             mileageKm: 140_000,
             color: 'Black',
             provenanceNote: '',
-            authenticityPercent: 80,
             components: {
               engine: {
                 condition: 95,
@@ -1145,7 +1131,6 @@ describe('saveCodec', () => {
                 mileageKm: 120_000,
                 color: 'White',
                 provenanceNote: '',
-                authenticityPercent: 85,
                 parts: mintParts(),
               },
             },
@@ -1199,7 +1184,6 @@ describe('saveCodec', () => {
                 mileageKm: 120_000,
                 color: 'White',
                 provenanceNote: '',
-                authenticityPercent: 85,
                 parts: mintParts(),
               },
             },
@@ -1250,7 +1234,6 @@ describe('saveCodec', () => {
                 mileageKm: 120_000,
                 color: 'White',
                 provenanceNote: '',
-                authenticityPercent: 85,
                 parts: mintParts(),
               },
             },
@@ -1295,7 +1278,6 @@ describe('saveCodec', () => {
               mileageKm: 120_000,
               color: 'White',
               provenanceNote: '',
-              authenticityPercent: 85,
               parts: mintParts(),
             },
           },
@@ -1335,7 +1317,6 @@ describe('saveCodec', () => {
                 mileageKm: 120_000,
                 color: 'White',
                 provenanceNote: '',
-                authenticityPercent: 85,
                 parts: mintParts(),
               },
             },
@@ -1370,7 +1351,6 @@ describe('saveCodec', () => {
               mileageKm: 120_000,
               color: 'White',
               provenanceNote: '',
-              authenticityPercent: 85,
               parts: mintParts(),
             },
           },
@@ -1479,7 +1459,6 @@ describe('saveCodec', () => {
               mileageKm: 90_000,
               color: 'Black',
               provenanceNote: '',
-              authenticityPercent: 80,
               parts: Object.fromEntries(
                 ALL_CAR_PART_IDS_FOR_TEST.map((id) => [
                   id,
@@ -1505,7 +1484,6 @@ describe('saveCodec', () => {
             mileageKm: 100_000,
             color: 'White',
             provenanceNote: '',
-            authenticityPercent: 90,
             parts: mintParts({
               // A genuinely missing slot (a real defect).
               rims: null,
@@ -1514,7 +1492,6 @@ describe('saveCodec', () => {
                 id: 'pi-0001',
                 partId: 'tanuki-street-coilovers',
                 band: 'fine',
-                genuinePeriod: false,
                 origin: { kind: 'market', day: 1 },
               },
             }),
@@ -1623,7 +1600,7 @@ describe('saveCodec', () => {
    * tracks the current value, not this fact.
    */
   it('a techniques and shop-title state round-trips at the current SAVE_VERSION', () => {
-    expect(SAVE_VERSION).toBe(51)
+    expect(SAVE_VERSION).toBe(52)
   })
 
   it('a v24 save with specialty high enough to unlock a technique/title decodes identically either way - nothing new is stored', () => {
@@ -1665,7 +1642,6 @@ describe('saveCodec', () => {
           year: 1984,
           mileageKm: 100_000,
           color: 'White',
-          authenticityPercent: 80,
           parts: mintParts(),
         },
       ],
@@ -1674,7 +1650,6 @@ describe('saveCodec', () => {
           id: 'pi-priced',
           partId: 'khs-street-ecu',
           band: 'mint',
-          genuinePeriod: false,
           origin: { kind: 'market', day: 1 },
           pricePaidYen: 60_000,
         },
@@ -1709,7 +1684,6 @@ describe('saveCodec', () => {
           year: 1984,
           mileageKm: 100_000,
           color: 'White',
-          authenticityPercent: 80,
           parts: mintParts(),
         },
       ],
@@ -1732,7 +1706,7 @@ describe('saveCodec', () => {
    * a real double-parked car round-trips it exactly.
    */
   it('SAVE_VERSION is current', () => {
-    expect(SAVE_VERSION).toBe(51)
+    expect(SAVE_VERSION).toBe(52)
   })
 
   it('a real pre-v26 save (a v25 envelope with no graceParkingCarId field) decodes with nothing double-parked under v26', () => {
@@ -1765,7 +1739,7 @@ describe('saveCodec', () => {
    * exactly.
    */
   it('SAVE_VERSION is current', () => {
-    expect(SAVE_VERSION).toBe(51)
+    expect(SAVE_VERSION).toBe(52)
   })
 
   it('a real pre-v27 save (a v26 envelope with neither field) decodes with nothing listed or scheduled under v27', () => {
@@ -1812,7 +1786,7 @@ describe('saveCodec', () => {
    * same slot, same band, same everything else.
    */
   it('SAVE_VERSION is current', () => {
-    expect(SAVE_VERSION).toBe(51)
+    expect(SAVE_VERSION).toBe(52)
   })
 
   it("a real pre-v28 save remaps an entry-tier car's everyday-class stock part to its own class sibling SKU", () => {
@@ -1826,13 +1800,11 @@ describe('saveCodec', () => {
           mileageKm: 80_000,
           color: 'Red',
           provenanceNote: '',
-          authenticityPercent: 80,
           parts: mintParts({
             block: {
               id: 'pi-block-01',
               partId: 'stock-block',
               band: 'worn',
-              genuinePeriod: false,
               origin: { kind: 'market', day: 1 },
             },
           }),
@@ -1857,7 +1829,6 @@ describe('saveCodec', () => {
           id: 'pi-loose-01',
           partId: 'stock-block',
           band: 'mint',
-          genuinePeriod: false,
           // `origin` is required by the current schema, but this migration
           // itself (and this test's own assertions) only ever touch
           // `customerJobId`/`partId` - `origin` is untouched filler so the
@@ -1886,7 +1857,6 @@ describe('saveCodec', () => {
             mileageKm: 60_000,
             color: 'White',
             provenanceNote: '',
-            authenticityPercent: 85,
             parts: mintParts(),
           },
           payoutYen: 50_000,
@@ -1914,7 +1884,6 @@ describe('saveCodec', () => {
           id: 'pi-loose-02',
           partId: 'stock-block',
           band: 'mint',
-          genuinePeriod: false,
           origin: { kind: 'market', day: 1 },
         },
       ],
@@ -1984,7 +1953,6 @@ describe('saveCodec', () => {
           mileageKm: 80_000,
           color: 'Red',
           provenanceNote: '',
-          authenticityPercent: 85,
           parts: mintParts(),
         },
       ],
@@ -2007,7 +1975,6 @@ describe('saveCodec', () => {
           mileageKm: 12_000,
           color: 'Red',
           provenanceNote: '',
-          authenticityPercent: 85,
           parts: mintParts({
             headValvetrain: stockPartFixture('headValvetrain', 'worn'),
           }),
@@ -2056,7 +2023,6 @@ describe('saveCodec', () => {
           mileageKm: 12_000,
           color: 'Red',
           provenanceNote: '',
-          authenticityPercent: 85,
           parts: mintParts({ headValvetrain: stockPartFixture('headValvetrain', 'worn') }),
           symptoms: [
             {
@@ -2089,7 +2055,6 @@ describe('saveCodec', () => {
           mileageKm: 12_000,
           color: 'Red',
           provenanceNote: '',
-          authenticityPercent: 85,
           parts: mintParts({ headValvetrain: stockPartFixture('headValvetrain', 'worn') }),
           symptoms: [
             {

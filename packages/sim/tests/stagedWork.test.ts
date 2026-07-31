@@ -37,7 +37,6 @@ const car: CarInstance = buildCarInstance({
   modelId: 'honda-city-e-aa',
   year: 1984,
   mileageKm: 100_000,
-  authenticityPercent: 90,
   parts: {
     // 'interior' (surface, still on-car-repairable) joins the fixture -
     // 'engine' is bench-only, so the two-staged-actions test below needs
@@ -75,7 +74,6 @@ const sparePart: PartInstance = {
   id: 'pi-0001',
   partId: 'shitbox-tanuki-street-coilovers',
   band: 'mint',
-  genuinePeriod: false,
   origin: { kind: 'market', day: 1 },
 }
 
@@ -241,7 +239,6 @@ describe('confirmStagedWork: pipeline-swap-panel', () => {
       modelId: 'honda-city-e-aa',
       year: 1984,
       mileageKm: 100_000,
-      authenticityPercent: 90,
       // Pre-swap panels band starts deliberately wrong ('poor') so the
       // post-confirm assertion proves the derived band was re-projected from
       // zone state, not merely left at whatever the fixture set.
@@ -252,7 +249,6 @@ describe('confirmStagedWork: pipeline-swap-panel', () => {
       id: 'pi-panel-new-bonnet',
       partId: bonnetPanelPart.id,
       band: 'mint',
-      genuinePeriod: false,
       origin: { kind: 'market', day: 1 },
     }
     const state = baseState({
@@ -369,7 +365,6 @@ describe('isFreeInstallRefit (immediate free refits)', () => {
           vacatedBaseline: {
             partId: installedAntiRollBars.partId,
             band: installedAntiRollBars.band,
-            genuinePeriod: installedAntiRollBars.genuinePeriod,
           },
         },
       },

@@ -178,11 +178,15 @@ costs money and time and is a deliberate step, not a checkbox.
 "Restore the numbers-matching engine, or drop in the big turbo lump" only works if
 both are genuinely viable, which means **the market has to disagree with itself**.
 
-The machinery exists. `authenticityPercent` is already a stat, buyer taste already
-weights stats per buyer, and `buyers.json` already keys preferences. A swap should:
+The machinery exists, and more of it than when this was drafted. `StatBlock.authenticity`
+is now DERIVED from which parts are fitted (`stocknessOf`, `derivedStats.ts`), buyer taste
+already weights stats per buyer, and `buyers.json` already keys preferences. A swap should:
 
 - **Tank authenticity**, per the GDD. A numbers-matching car is worth more to the
-  buyer who cares.
+  buyer who cares. **This now happens for free**: `block` carries authenticity weight 18
+  of 100, so a non-stock block costs 18 points on its own and fails the concours gate (85)
+  by itself, before the head, internals, cams and ancillaries a real swap drags with it
+  take the car down to about 58.
 - **Raise the power ceiling**, so it is worth more to the buyer who wants speed.
 - **Be a real fork**, not a strict upgrade. If swapping is always right, the
   mechanic is decoration.
@@ -207,7 +211,7 @@ kit and its derived difficulty; the 公認 state and its flow; swap-specific lab
 | Rescaling honestly when power moves | `powerRatio`, the ratio bridge |
 | Mass and balance as inputs | `spec.curbWeightKg`, `weightDistributionFront` |
 | Whether an engine is forced | `hasForcedInduction`, once the duplicate is collapsed |
-| Authenticity as a stat, and buyers who weigh it | `authenticityPercent`, `buyers.json` |
+| Authenticity as a stat, and buyers who weigh it | `StatBlock.authenticity` (derived from fitted grades by `stocknessOf`, `derivedStats.ts` - the stored `authenticityPercent` roll was retired in Sprint 151), `buyers.json` |
 | A job that costs labour and days | the existing job and labour system. **Reuse it. Directive 16 exists because a parallel job system was built once already** |
 | A part that has to be sourced and delivered | `resolveBuyPart`, standard and express |
 | Reliability as a stat | `computeDerivedStats`'s condition-plus-coherence combine (`packages/sim/src/derivedStats.ts`, `support.ts`), scaled by the car's own `spec.reliabilityBase` - `statModifiers.reliability` was retired in Sprint 136 |

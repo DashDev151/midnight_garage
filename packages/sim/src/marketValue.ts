@@ -204,11 +204,11 @@ export function retentionFor(coherenceFactor: number, economy: EconomyConfig): n
 /**
  * Installed parts add real yen, additively rather than multiplicatively -
  * real markets: mods return cents on the yen, they don't multiply the
- * chassis price. Per installed part instance: `part.priceYen x retention x
- * (genuinePeriod ? genuinePeriodMultiplier : 1.0)`, summed and rounded.
- * `retention` is the caller's own Stage D figure (`retentionFor` above) -
- * this function only spends it, so its summation shape stays exactly what it
- * was when the retention it multiplied by was a flat constant.
+ * chassis price. Per installed part instance: `part.priceYen x retention`,
+ * summed and rounded. `retention` is the caller's own Stage D figure
+ * (`retentionFor` above) - this function only spends it, so its summation
+ * shape stays exactly what it was when the retention it multiplied by was a
+ * flat constant.
  *
  * NO `bandFactor(installed.band)` discount here - a part's condition is
  * priced exactly once, through the restoration bill (`carCostToMintYen`
@@ -219,16 +219,17 @@ export function retentionFor(coherenceFactor: number, economy: EconomyConfig): n
  *
  * A `grade === 'stock'` installed part contributes NOTHING here - stock is
  * the baseline every slot starts from, not an upgrade, so an all-stock-mint
- * car's value is exactly clean value and only genuine street/sport/race
- * aftermarket pushes above book, regardless of `retention`'s value.
+ * car's value is exactly clean value and only street/sport/race aftermarket
+ * pushes above book, regardless of `retention`'s value.
+ *
+ * Takes no `EconomyConfig`: every lever it used to read is now the caller's
+ * `retention` figure alone.
  */
 export function installedPartsValueYen(
   car: CarInstance,
   partsById: Readonly<Record<string, Part>>,
-  economy: EconomyConfig,
   retention: number,
 ): number {
-  const { genuinePeriodMultiplier } = economy.valuation
   let total = 0
   for (const partId of ALL_CAR_PART_IDS) {
     const installed = car.parts[partId].installed
@@ -236,8 +237,7 @@ export function installedPartsValueYen(
     if (installed.band === 'scrap') continue
     const part = partsById[installed.partId]
     if (!part || part.grade === 'stock') continue
-    const genuineMultiplier = installed.genuinePeriod ? genuinePeriodMultiplier : 1.0
-    total += part.priceYen * retention * genuineMultiplier
+    total += part.priceYen * retention
   }
   return Math.round(total)
 }
@@ -323,7 +323,7 @@ export function marketValueYen(
   const stagedValue = Math.round(baseValue * (1 - coherenceDiscount))
 
   const retention = retentionFor(coherenceFactor, economy)
-  const premiumYen = installedPartsValueYen(car, partsById, economy, retention)
+  const premiumYen = installedPartsValueYen(car, partsById, retention)
   const creditedPremiumYen =
     foundationFactor(car, economy) *
     expectationForCar(model, economy).aftermarketReturn *

@@ -28,7 +28,7 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value))
 }
 
-type StatKey = 'power' | 'handling' | 'style' | 'reliability'
+type StatKey = 'power' | 'handling' | 'style' | 'reliability' | 'authenticity'
 
 /**
  * How well one quantity is served by the car's real parts - a weighted mean of
@@ -88,6 +88,110 @@ function weightedBandFactorForStat(
     (entry) => entry.statWeights[stat],
     (band) => bandFactor(band, economy),
   )
+}
+
+/**
+ * How much of the car is still the parts it left the factory with
+ * (desirability-system.md section 3): `sum(weight_s * isStock(s)) /
+ * sum(weight_s)` over every slot, weighted by the taxonomy's own
+ * `statWeights.authenticity` column. 1 for a car nothing has been swapped
+ * on, 0 for one where every weight-carrying slot is aftermarket.
+ *
+ * `isStock` is the fitted SKU's `grade === 'stock'` and nothing else - a
+ * part's grade already answers "is this the original", so no second per-part
+ * field is involved. **An EMPTY slot counts as NOT stock**: a missing part is
+ * not an original part, and a car with its wheels gone is not more authentic
+ * for it. A slot the catalogue cannot resolve counts as not stock for the
+ * same reason - an unknown SKU is not evidence of originality.
+ *
+ * The one slot that drops out of BOTH sums is a legitimately absent one (an
+ * NA car's `forcedInduction`), exactly as it does in `weightedBandFactor`
+ * above: a car that never had a turbo is not missing one. On such a car the
+ * denominator is 97 rather than 100, so the remaining slots simply share the
+ * whole scale out between them.
+ *
+ * Returns 1 (perfectly original) when no slot on the car carries authenticity
+ * weight at all, mirroring `weightedBandFactor`'s own divide-by-zero guard.
+ */
+export function stocknessOf(
+  car: CarInstance,
+  model: CarModel,
+  partsById: Readonly<Record<string, Part>>,
+  partsTaxonomy: readonly CarPartTaxonomyEntry[],
+): number {
+  let stockWeight = 0
+  let totalWeight = 0
+  for (const entry of partsTaxonomy) {
+    const weight = entry.statWeights.authenticity
+    if (!weight) continue
+    const installed = car.parts[entry.id].installed
+    if (!installed && !isPartMissing(car, model, entry.id)) continue // legitimately absent
+    totalWeight += weight
+    if (installed && partsById[installed.partId]?.grade === 'stock') stockWeight += weight
+  }
+  return totalWeight > 0 ? stockWeight / totalWeight : 1
+}
+
+/**
+ * The machining term of the authenticity formula
+ * (desirability-system.md section 3): the summed authenticity cost of every
+ * machining operation applied to this car, on the design's 1-to-10 scale
+ * (1-2 a purist shrugs, 4-6 a raised eyebrow, 7-9 a collector weeps).
+ *
+ * **Exactly 0 for every car, because the machining system does not exist.**
+ * No operation can be applied, so nothing can have been applied, and the term
+ * is honestly zero rather than approximated. This is the seam machining will
+ * be built against: when operations become real, this function sums their
+ * ratings and nothing else in the authenticity pipeline changes. It is a
+ * function rather than a literal 0 so that the formula reads as the design
+ * states it and the future change lands in one place.
+ *
+ * Deliberately NOT a content table: no operation exists to price, and
+ * authoring one now would be inventing the system rather than reserving its
+ * seat.
+ */
+export function machiningCost(car: CarInstance): number {
+  // Nothing a `CarInstance` carries records machining, so there is nothing
+  // here to sum yet. The parameter is the seam, deliberately unread.
+  void car
+  return 0
+}
+
+/**
+ * The whole of authenticity (desirability-system.md section 3):
+ *
+ *     authenticity = round(clamp((100 * stockness - machiningCost) * conditionFactor, 0, 100))
+ *
+ * `conditionFactor` is `weightedBandFactorForStat` over the SAME authenticity
+ * weights `stocknessOf` uses, so a slot weighted 0 leaves both terms at once.
+ * That is intended and is what the zeros are for: nobody marks a car down for
+ * new tyres, a fresh clutch or a recent radiator, so neither their grade nor
+ * their condition should touch this number.
+ *
+ * **All stock and all mint is exactly 100.** That is the definition of the
+ * stat, not a calibration of it: both factors are exactly 1 there and the
+ * machining term is 0, so the identity holds by construction.
+ *
+ * Exported because the concours gate (`carCondition.ts`) needs the same
+ * figure the radar chart shows, and must never derive its own.
+ */
+export function authenticityPercentOf(
+  car: CarInstance,
+  model: CarModel,
+  partsById: Readonly<Record<string, Part>>,
+  partsTaxonomy: readonly CarPartTaxonomyEntry[],
+  economy: EconomyConfig,
+): number {
+  const stockness = stocknessOf(car, model, partsById, partsTaxonomy)
+  const conditionFactor = weightedBandFactorForStat(
+    car,
+    model,
+    'authenticity',
+    partsTaxonomy,
+    economy,
+  )
+  const raw = 100 * stockness - machiningCost(car)
+  return Math.round(clamp(raw * conditionFactor, 0, 100))
 }
 
 /**
@@ -331,7 +435,10 @@ export function reliabilityIntensityFactor(
  * reliability's derivation scales `spec.reliabilityBase` by. Reliability's
  * own three-factor derivation (condition, coherence, and an outer build-
  * intensity term, scaled by the car's own `spec.reliabilityBase`) is
- * described where it is computed below.
+ * described where it is computed below. Authenticity is `authenticityPercentOf`
+ * above, whole: originality times condition, both read off the taxonomy's
+ * one authenticity weight column, so it is the only stat here that no
+ * installed SKU can adjust after the fact.
  *
  * Handling's mint base is the grip readout (`gripToDisplay`) at the fitted
  * tyre's effective compound and the downforce the car is actually running, less
@@ -347,8 +454,9 @@ export function reliabilityIntensityFactor(
  * intake, exhaust, internals, FI when fitted), handling from suspension
  * and tyres, reliability from engine and drivetrain with cooling
  * emphasized (its own higher authored weight), style from body, interior,
- * and rims. A part's `band` is the single, un-adjusted truth this formula
- * reads.
+ * and rims, authenticity from everything a purist would notice with the
+ * consumables weighted out. A part's `band` is the single, un-adjusted truth
+ * this formula reads.
  */
 export function computeDerivedStats(
   model: CarModel,
@@ -438,7 +546,11 @@ export function computeDerivedStats(
     clamp(conditionFactor + coherenceFactor - 1, 0, 1) *
     intensityFactor
 
-  let authenticity = instance.authenticityPercent
+  // Authenticity takes no per-part modifier at all: it is a fact about which
+  // parts are on the car and what state they are in, derived whole by
+  // `authenticityPercentOf` above, so it never enters the accumulation loop
+  // below.
+  const authenticity = authenticityPercentOf(instance, model, partsById, partsTaxonomy, economy)
 
   for (const partId of ALL_CAR_PART_IDS) {
     const installed = instance.parts[partId].installed
@@ -450,12 +562,6 @@ export function computeDerivedStats(
     power += model.spec.stockPowerPs * part.statModifiers.powerFraction[engineCharacter] * wear
     handling += part.statModifiers.handling * wear
     style += part.statModifiers.style * wear
-    // GDD 5.3: genuine period parts add authenticity; reproductions never
-    // add it, though a non-genuine part's *penalty* (a negative modifier)
-    // still applies - modification away from stock hurts either way.
-    authenticity += installed.genuinePeriod
-      ? part.statModifiers.authenticity
-      : Math.min(0, part.statModifiers.authenticity)
   }
 
   return {
@@ -463,6 +569,6 @@ export function computeDerivedStats(
     handling: Math.round(clamp(handling, 0, 100)),
     style: Math.round(clamp(style, 0, 100)),
     reliability: Math.round(clamp(reliability, 0, 100)),
-    authenticity: Math.round(clamp(authenticity, 0, 100)),
+    authenticity,
   }
 }

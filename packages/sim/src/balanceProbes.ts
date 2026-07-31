@@ -149,12 +149,12 @@ function worstCaseMileageKm(context: SimContext): number {
  * enum), so a new `CarPartId` needs no edit here, and it is the only piece
  * of construction that ever touches the part catalogue.
  *
- * Every other `CarInstance` field a probe varies (id, mileage, provenance,
- * authenticity) is a caller-supplied scalar, so the whole object shape is
- * authored in exactly ONE place in this file: a future field on
- * `CarInstance` needs one edit here, never three. `forcedInduction` is left
- * absent on a model that was never built with one - `hasForcedInduction`'s
- * own platform fact, not a per-probe decision.
+ * Every other `CarInstance` field a probe varies (id, mileage, provenance)
+ * is a caller-supplied scalar, so the whole object shape is authored in
+ * exactly ONE place in this file: a future field on `CarInstance` needs one
+ * edit here, never three. `forcedInduction` is left absent on a model that
+ * was never built with one - `hasForcedInduction`'s own platform fact, not a
+ * per-probe decision.
  *
  * Deliberately NOT `zoneState`. Real generation always rolls one
  * (`rollZoneStates` + `applyDerivedBodyBands`, auctions.ts/bodyPipeline.ts),
@@ -175,10 +175,9 @@ function buildUniformBandCar(
     year: number
     mileageKm: number
     provenanceNote: string
-    authenticityPercent: number
   },
 ): CarInstance {
-  const { carId, band, year, mileageKm, provenanceNote, authenticityPercent } = options
+  const { carId, band, year, mileageKm, provenanceNote } = options
   const fitmentClass = fitmentClassForTier(model.tier)
   const carHasForcedInduction = hasForcedInduction(model)
   const origin = makeCarOrigin(carId, carOriginLabel(model, year), 0)
@@ -205,7 +204,6 @@ function buildUniformBandCar(
     mileageKm,
     color: 'White',
     provenanceNote,
-    authenticityPercent,
     parts,
     symptoms: [],
     apparentBandByPartId: null,
@@ -228,7 +226,6 @@ export function buildWorstCaseRawCar(model: CarModel, context: SimContext): CarI
     year: model.spec.yearFrom,
     mileageKm: worstCaseMileageKm(context),
     provenanceNote: 'coherence probe',
-    authenticityPercent: 70,
   })
 }
 
@@ -270,7 +267,6 @@ export function buildRoughProbeCar(model: CarModel, context: SimContext): CarIns
     year: model.spec.yearFrom,
     mileageKm: worstCaseMileageKm(context),
     provenanceNote: 'rough probe',
-    authenticityPercent: 70,
   })
   const origin = makeCarOrigin(carId, carOriginLabel(model, model.spec.yearFrom), 0)
   const softened = enforceMaxBillFraction(raw, model, context, origin)
@@ -520,7 +516,6 @@ function buildCleanProbeCar(
     year: model.spec.yearFrom,
     mileageKm: 0,
     provenanceNote,
-    authenticityPercent: 100,
   })
 }
 

@@ -58,7 +58,6 @@ const model: CarModel = {
 const stockInstance: CarInstance = buildCarInstance({
   modelId: model.id,
   year: 1994,
-  authenticityPercent: 95,
   parts: uniformCarParts('fine'),
 })
 
@@ -68,6 +67,22 @@ function valuate(buyer: Buyer, instance: CarInstance, heatPercent = 100) {
     model,
     instance,
     {},
+    PARTS_TAXONOMY,
+    PARTS_TAXONOMY_BY_ID,
+    heatPercent,
+    ECONOMY,
+  )
+}
+
+/** `valuate` against the REAL parts catalogue - needed by any fixture whose
+ * point is what grade is fitted, since an unresolvable SKU reads as neither
+ * stock nor anything else. */
+function valuateWithCatalogue(buyer: Buyer, instance: CarInstance, heatPercent = 100) {
+  return valuateCarForBuyer(
+    buyer,
+    model,
+    instance,
+    PARTS_BY_ID,
     PARTS_TAXONOMY,
     PARTS_TAXONOMY_BY_ID,
     heatPercent,
@@ -86,7 +101,6 @@ describe('valuateCarForBuyer', () => {
     const wornOut = buildCarInstance({
       modelId: model.id,
       parts: uniformCarParts('scrap'),
-      authenticityPercent: 0,
     })
     const value = valuate(firstTimer, wornOut)
     expect(value).toBeGreaterThanOrEqual(0)
@@ -105,32 +119,47 @@ describe('valuateCarForBuyer', () => {
     })
 
     /**
-     * Authenticity swing, not an absolute ranking: the old "a
-     * high-authenticity car is worth more to a Collector than a
-     * First-timer" assertion no longer holds in general - this stock Supra
-     * actually values HIGHER to the first-timer, because
-     * the collector's own style target (0.5) and power upper (0.5) also
-     * bite on a car authored with styleBase 20 and 280+ PS, and neither
-     * buyer's overall match is authenticity alone anymore. What the match
-     * formula DOES guarantee is the relative sensitivity the authored
-     * tables intend: the collector's authenticity importance (1.0, target
-     * 0.9) dwarfs the first-timer's (0.2, target 0.5), so moving the SAME
-     * car from inauthentic to authentic swings the collector's price far
-     * more than it swings the first-timer's.
+     * A swing, not an absolute ranking: the old "a high-authenticity car is
+     * worth more to a Collector than a First-timer" assertion does not hold
+     * in general - this stock Supra actually values HIGHER to the
+     * first-timer, because the collector's own style target (0.5) and power
+     * upper (0.5) also bite on a car authored with styleBase 20 and 280+ PS,
+     * and neither buyer's overall match is authenticity alone.
+     *
+     * The swing can no longer be a PURE authenticity delta, and that is a
+     * fact about the stat rather than a gap in the fixture: authenticity is
+     * derived from which parts are fitted, and no taxonomy slot carries
+     * authenticity weight alone, so any car that is less original is also a
+     * different car in some other way. The two fixtures below are therefore
+     * the same platform at the same band, one untouched and one heavily
+     * built, which is the comparison the authored tables actually have to
+     * get right: the collector's authenticity importance (1.0, target 0.9)
+     * dwarfs the first-timer's (0.2, target 0.5), so building the car costs
+     * the collector's price far more than the first-timer's.
      */
-    it('authenticity swings the Collector price far more than the First-timer price', () => {
-      const inauthentic = buildCarInstance({
-        modelId: model.id,
-        authenticityPercent: 0,
-        parts: uniformCarParts('fine'),
-      })
-      const authentic = buildCarInstance({
-        modelId: model.id,
-        authenticityPercent: 100,
-        parts: uniformCarParts('fine'),
-      })
-      const collectorSwing = valuate(collector, authentic) - valuate(collector, inauthentic)
-      const firstTimerSwing = valuate(firstTimer, authentic) - valuate(firstTimer, inauthentic)
+    it('modifying a car swings the Collector price far more than the First-timer price', () => {
+      const authentic = carWithGrades(model, CONTEXT, {}, 'fine')
+      const built = carWithGrades(
+        model,
+        CONTEXT,
+        {
+          block: 'race',
+          internals: 'race',
+          headValvetrain: 'race',
+          camsTiming: 'race',
+          gearbox: 'race',
+          aero: 'race',
+          rims: 'race',
+          seats: 'race',
+        },
+        'fine',
+      )
+      // The catalogue has to be resolvable here, or neither car's grades can
+      // be read and both would score identically.
+      const collectorSwing =
+        valuateWithCatalogue(collector, authentic) - valuateWithCatalogue(collector, built)
+      const firstTimerSwing =
+        valuateWithCatalogue(firstTimer, authentic) - valuateWithCatalogue(firstTimer, built)
       expect(collectorSwing).toBeGreaterThan(firstTimerSwing * 4)
     })
   })
@@ -147,34 +176,31 @@ describe('Sprint 146: taste is a match, not a mean', () => {
    * and handling barely count (importance 0.10/0.05) and reliability/
    * authenticity are ignored outright (importance 0). This build clears
    * style comfortably (0.71) while genuinely being loud (a race aero kit
-   * and forged wheels), low on authenticity (20%, heavily modified) and
+   * and forged wheels), no longer original (a kit, the wheels and the seats
+   * are all somebody else's, and the seats are past their best) and
    * unreliable (a worn valvetrain and cooling system) - the archetype's
    * "loud, low, unreliable car" made concrete.
    */
   function buildLoudLowUnreliableSilvia(): CarInstance {
     return buildCarInstance({
       modelId: silvia.id,
-      authenticityPercent: 20,
       parts: mintCarParts({
         aero: {
           id: 'x-aero',
           partId: 'frp-race-aero',
           band: 'mint',
-          genuinePeriod: false,
           origin: { kind: 'market', day: 1 },
         },
         rims: {
           id: 'x-rims',
           partId: 'ronin-race-forged',
           band: 'mint',
-          genuinePeriod: false,
           origin: { kind: 'market', day: 1 },
         },
         seats: {
           id: 'x-seats',
           partId: 'zashiki-race-buckets',
           band: 'poor',
-          genuinePeriod: false,
           origin: { kind: 'market', day: 1 },
         },
         headValvetrain: 'poor',
@@ -195,7 +221,11 @@ describe('Sprint 146: taste is a match, not a mean', () => {
       ECONOMY,
     )
     expect(stats.style).toBeGreaterThanOrEqual(65)
-    expect(stats.authenticity).toBeLessThan(50)
+    // Modified enough to have given up any claim to being original: it fails
+    // the concours gate outright. It does not go lower because three body
+    // slots have no aftermarket SKU to fit, so 23 of the 100 authenticity
+    // points are currently unreachable by modification.
+    expect(stats.authenticity).toBeLessThan(ECONOMY.reputation.concoursSaleMinAuthenticityPercent)
     expect(stats.reliability).toBeLessThan(80)
 
     const value = marketValueYen(
@@ -226,20 +256,17 @@ describe('Sprint 146: taste is a match, not a mean', () => {
   it('exceeding a target earns nothing: a bigger style excess prices identically to a smaller one', () => {
     const atTarget = buildCarInstance({
       modelId: silvia.id,
-      authenticityPercent: 20,
       parts: mintCarParts({
         aero: {
           id: 'x-aero',
           partId: 'frp-race-aero',
           band: 'mint',
-          genuinePeriod: false,
           origin: { kind: 'market', day: 1 },
         },
         rims: {
           id: 'x-rims',
           partId: 'ronin-race-forged',
           band: 'mint',
-          genuinePeriod: false,
           origin: { kind: 'market', day: 1 },
         },
       }),

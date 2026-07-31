@@ -22,6 +22,7 @@ import {
 import { bandIndex, carCostToBandYen } from '../src/bands'
 import { isBodyDerivedPart, PANEL_ZONE_IDS } from '../src/bodyPipeline'
 import { buildSimContext } from '../src/context'
+import { computeDerivedStats } from '../src/derivedStats'
 import { expectationForCar } from '../src/marketValue'
 import { createRng } from '../src/rng'
 import { testSpecialty, testToolTiers } from './testFixtures'
@@ -287,7 +288,7 @@ describe('generateAuctionCarInstance', () => {
   const model = CARS.find((c) => c.id === 'honda-city-e-aa')
   if (!model) throw new Error('fixture car missing from seed content')
 
-  it('rolls every filled slot to a real band, authenticity within sane bounds', () => {
+  it('rolls every filled slot to a real band and a plausible year', () => {
     const rng = createRng(1)
     const instance = generateAuctionCarInstance(model, 'car-test', rng, CONTEXT)
     for (const partId of ALL_CAR_PART_IDS) {
@@ -296,9 +297,26 @@ describe('generateAuctionCarInstance', () => {
         expect(['scrap', 'poor', 'worn', 'fine', 'mint']).toContain(installed.band)
       }
     }
-    expect(instance.authenticityPercent).toBeGreaterThanOrEqual(60)
-    expect(instance.authenticityPercent).toBeLessThanOrEqual(95)
     expect(instance.year).toBeGreaterThanOrEqual(model.spec.yearFrom)
+  })
+
+  /**
+   * Generation rolls no authenticity number at all: a generated car's
+   * authenticity falls out of the parts generation already fitted it with,
+   * so there is nothing stored that could be inconsistent with them.
+   */
+  it('stores no authenticity of its own - it is derived from the parts it rolled', () => {
+    const instance = generateAuctionCarInstance(model, 'car-test', createRng(1), CONTEXT)
+    expect(Object.keys(instance)).not.toContain('authenticityPercent')
+    const derived = computeDerivedStats(
+      model,
+      instance,
+      CONTEXT.partsById,
+      PARTS_TAXONOMY,
+      ECONOMY,
+    ).authenticity
+    expect(derived).toBeGreaterThanOrEqual(0)
+    expect(derived).toBeLessThanOrEqual(100)
   })
 
   /** The aftermarket-specific frequency/cap/fit tests live in their own

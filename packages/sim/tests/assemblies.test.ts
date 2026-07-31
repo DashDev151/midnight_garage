@@ -114,14 +114,12 @@ const originalRims: PartInstance = {
   id: 'pi-original-rims',
   partId: stockRims.id,
   band: 'worn',
-  genuinePeriod: false,
   origin: makeCarOrigin('car-wheels-worn', 'Test Car', 0),
 }
 const originalTyres: PartInstance = {
   id: 'pi-original-tyres',
   partId: stockTyres.id,
   band: 'worn',
-  genuinePeriod: false,
   origin: makeCarOrigin('car-wheels-worn', 'Test Car', 0),
 }
 function wheelsWornCar(): CarInstance {
@@ -139,7 +137,6 @@ function newTyre(id: string): PartInstance {
     id,
     partId: fittingTyre.id,
     band: 'mint',
-    genuinePeriod: false,
     origin: makeMarketOrigin(1),
   }
 }
@@ -154,7 +151,6 @@ function wrongClassTyre(id: string): PartInstance {
     id,
     partId: wrongClassTyrePart.id,
     band: 'mint',
-    genuinePeriod: false,
     origin: makeMarketOrigin(1),
   }
 }
@@ -262,14 +258,12 @@ describe('the Sprint 79 contract cases, re-expressed at assembly level (Sprint 8
       id: 'pi-gbx',
       partId: CONTEXT.stockPartByCarPartId.everyday!.gearbox!.id,
       band: 'worn' as const,
-      genuinePeriod: false,
       origin: makeCarOrigin('car-gbx', 'Test Car', 0),
     }
     const clutch = {
       id: 'pi-clu',
       partId: CONTEXT.stockPartByCarPartId.everyday!.clutch!.id,
       band: 'worn' as const,
-      genuinePeriod: false,
       origin: makeCarOrigin('car-gbx', 'Test Car', 0),
     }
     const car = buildCarInstance({
@@ -362,7 +356,6 @@ describe('worked example: worn internals (binding total)', () => {
         id: 'pi-internals',
         partId: CONTEXT.stockPartByCarPartId.everyday!.internals!.id,
         band: 'worn',
-        genuinePeriod: false,
         origin: makeCarOrigin('car-engine', 'Test Car', 0),
       }
       // Start with the external blockers (intake/exhaust/cooling) already stripped
@@ -405,7 +398,6 @@ describe('worked example: worn internals (binding total)', () => {
       id: 'pi-internals-gate',
       partId: CONTEXT.stockPartByCarPartId.everyday!.internals!.id,
       band: 'worn',
-      genuinePeriod: false,
       origin: makeCarOrigin('car-engine-gate', 'Test Car', 0),
     }
     const car = buildCarInstance({
@@ -460,14 +452,12 @@ describe('bench work, build-from-loose, and car-exit dissolve (Sprint 87)', () =
       id: 'pi-br',
       partId: stockRims.id,
       band: 'mint',
-      genuinePeriod: false,
       origin: makeMarketOrigin(1),
     }
     const bareTyres: PartInstance = {
       id: 'pi-bt',
       partId: fittingTyre.id,
       band: 'mint',
-      genuinePeriod: false,
       origin: makeMarketOrigin(1),
     }
     const car = buildCarInstance({
@@ -564,7 +554,6 @@ describe('the fitment law applies at the bench, not only on the car', () => {
       id: 'pi-br-fit',
       partId: stockRims.id,
       band: 'mint',
-      genuinePeriod: false,
       origin: makeMarketOrigin(1),
     }
     const wrongTyre = wrongClassTyre('pi-wrong-refit')

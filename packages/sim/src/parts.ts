@@ -133,7 +133,6 @@ export function resolveBuyPart(
     id: `part-${state.day}-${state.partInventory.length}`,
     partId: part.id,
     band: 'mint',
-    genuinePeriod: false,
     origin: makeMarketOrigin(state.day),
     pricePaidYen: priceYen,
   }
@@ -192,7 +191,6 @@ export function resolvePartDeliveries(state: GameState): PartDeliveryResult {
       id: `part-${state.day}-${partInventory.length}`,
       partId: order.partId,
       band: 'mint',
-      genuinePeriod: false,
       origin: makeMarketOrigin(state.day),
       // The order's own locked price (set at purchase time, not today's sticker
       // price) - a standard order's real cost.

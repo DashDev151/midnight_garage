@@ -57,7 +57,6 @@ function grantRoadworthyCar(game: ReturnType<typeof useGameStore>): string {
                 id: `test-mint-${partId}`,
                 partId: `stock-${partId}`,
                 band: 'mint' as const,
-                genuinePeriod: false,
                 origin: { kind: 'market' as const, day: 1 },
               },
         },

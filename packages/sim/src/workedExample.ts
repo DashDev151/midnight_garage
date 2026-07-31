@@ -232,6 +232,12 @@ export interface CarRunReport {
   mileageKm: number
   generationSeed: number
   acquisition: AcquisitionQuote
+  /** How many symptoms the lot arrived carrying. Zero means the room and the
+   * ladder priced the identical car, so `acquisition.anchorYen` is exactly
+   * this report's first rung; above zero the room quoted off the car's
+   * APPARENT condition through `sheetGuideValueYen` instead, and the gap
+   * between the two numbers is the diagnosis game rather than a discrepancy. */
+  symptomsAtPurchase: number
   expectedBand: ConditionBand
   repairTargetBand: ConditionBand
   rungs: ValueRung[]
@@ -600,12 +606,7 @@ function readRung(
     retention,
     foundationFactor: foundationFactor(car, context.economy),
     aftermarketReturn: expectation.aftermarketReturn,
-    installedPartsValueYen: installedPartsValueYen(
-      car,
-      context.partsById,
-      context.economy,
-      retention,
-    ),
+    installedPartsValueYen: installedPartsValueYen(car, context.partsById, retention),
   }
 }
 
@@ -1522,6 +1523,7 @@ function runOneCar(run: Run, script: CarScript, currentYear: number): CarRunRepo
       attendanceFeeYen,
       paidYen: reserve,
     },
+    symptomsAtPurchase: asBought.symptoms.length,
     expectedBand: expectationForCar(model, context.economy).band,
     repairTargetBand: target,
     rungs,

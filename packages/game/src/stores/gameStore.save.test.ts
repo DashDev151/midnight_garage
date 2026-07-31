@@ -63,7 +63,6 @@ describe('persistence: export / import save code', () => {
             provenanceNote: '',
             condition: { engine: 50, drivetrain: 50, suspension: 50, body: 50, interior: 50 },
             hiddenIssues: [],
-            authenticityPercent: 90,
             buildSheet: {
               engine: null,
               forcedInduction: null,

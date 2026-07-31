@@ -128,11 +128,21 @@ describe('the value ladder is the shipped valuation, decomposed', () => {
     }
   })
 
-  it("car A's rung-1 total is exactly the auction anchor it was priced from", () => {
-    // Both are `marketValueYen` on an honest car at the same heat, so the
-    // acquisition quote and the ladder can never disagree.
-    expect(REPORT.carA.rungs[0]!.ledger.totalYen).toBe(REPORT.carA.acquisition.anchorYen)
-    expect(REPORT.carB.rungs[0]!.ledger.totalYen).toBe(REPORT.carB.acquisition.anchorYen)
+  it("an honest lot's rung-1 total is exactly the auction anchor it was priced from", () => {
+    // Both are `marketValueYen` on an HONEST car at the same heat, so the
+    // acquisition quote and the ladder can never disagree there. A lot that
+    // arrives carrying a symptom is quoted off the room's APPARENT view
+    // instead (`sheetGuideValueYen`) - a different function of a different
+    // car - so no equality is claimed for it, and the document says so in
+    // its own stated limits.
+    const honest = [REPORT.carA, REPORT.carB].filter((car) => car.symptomsAtPurchase === 0)
+    expect(
+      honest.length,
+      'both lots came up symptomatic: this check has nothing left to prove',
+    ).toBeGreaterThan(0)
+    for (const car of honest) {
+      expect(car.rungs[0]!.ledger.totalYen, car.modelId).toBe(car.acquisition.anchorYen)
+    }
   })
 
   it('prices every channel off the same underlying market value', () => {

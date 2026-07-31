@@ -1756,7 +1756,7 @@ export const useGameStore = defineStore('game', () => {
       economy,
     )
     const retention = retentionFor(coherenceFactor, economy)
-    const premiumYen = installedPartsValueYen(car, context.value.partsById, economy, retention)
+    const premiumYen = installedPartsValueYen(car, context.value.partsById, retention)
     const factor = foundationFactor(car, economy)
     const withheldYen = Math.round(premiumYen * (1 - factor))
     if (withheldYen <= 0) return null
@@ -4426,7 +4426,6 @@ export const useGameStore = defineStore('game', () => {
       id: `dev-part-${grantCounter.value}`,
       partId: part.id,
       band: 'mint',
-      genuinePeriod: false,
       origin: makeMarketOrigin(gameState.value.day),
     }
     gameState.value = {

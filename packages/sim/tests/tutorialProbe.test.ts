@@ -49,7 +49,6 @@ function stockPartsAt(
         id: `probe-${partId}`,
         partId: stockPart.id,
         band: overrides[partId] ?? band,
-        genuinePeriod: false,
         origin: { kind: 'market', day: 1 },
       },
     }

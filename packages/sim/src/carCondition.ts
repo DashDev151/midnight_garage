@@ -5,8 +5,10 @@ import {
   type CarPartId,
   type CarPartTaxonomyEntry,
   type EconomyConfig,
+  type Part,
 } from '@midnight-garage/content'
 import { bandIndex, costWeightedBandFactor, isPartMissing } from './bands'
+import { authenticityPercentOf } from './derivedStats'
 
 /**
  * The reputation effect of selling this car, shared by both sale
@@ -23,10 +25,19 @@ import { bandIndex, costWeightedBandFactor, isPartMissing } from './bands'
  * - **Clean**: every present part at or above `cleanSaleMinBand` - a floor
  *   per part so seven great parts can't hide one neglected one, reachable
  *   by player effort alone.
- * - **Concours**: clean, AND every present part is `mint`, AND
- *   `authenticityPercent` clears its own bar - a genuine bonus for a
- *   well-matched find (that value is never player-modifiable), not the only
- *   door into the faucet.
+ * - **Concours**: clean, AND every present part is `mint`, AND the car's
+ *   DERIVED authenticity (`authenticityPercentOf`, derivedStats.ts - the
+ *   same number the radar chart shows, never a second derivation) clears
+ *   `concoursSaleMinAuthenticityPercent`.
+ *
+ * Concours is therefore something a player builds toward rather than a
+ * property of the lot they happened to win. Since the mint check above
+ * already puts every condition factor at 1, what the authenticity bar
+ * actually measures here is ORIGINALITY: at the shipped bar of 85, a
+ * concours car may have given up at most 15 of the taxonomy's 100
+ * authenticity points, so an aftermarket block (18) or a kit and wheels
+ * together (17) each fail it outright, while a full set of new consumables
+ * costs nothing.
  *
  * A MISSING part (`isPartMissing` - a real defect, distinct from the one
  * legitimately-empty `forcedInduction`-on-NA case) fails clean/concours
@@ -37,6 +48,8 @@ import { bandIndex, costWeightedBandFactor, isPartMissing } from './bands'
 export function saleReputationDeltaFor(
   car: CarInstance,
   model: CarModel,
+  partsById: Readonly<Record<string, Part>>,
+  partsTaxonomy: readonly CarPartTaxonomyEntry[],
   partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
   economy: EconomyConfig,
 ): number {
@@ -57,7 +70,8 @@ export function saleReputationDeltaFor(
   if (!isClean) return 0
 
   const isConcours =
-    car.authenticityPercent >= economy.reputation.concoursSaleMinAuthenticityPercent &&
+    authenticityPercentOf(car, model, partsById, partsTaxonomy, economy) >=
+      economy.reputation.concoursSaleMinAuthenticityPercent &&
     ALL_CAR_PART_IDS.every((id) => {
       const installed = car.parts[id].installed
       return installed ? installed.band === 'mint' : !isPartMissing(car, model, id)

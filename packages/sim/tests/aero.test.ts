@@ -58,7 +58,6 @@ function carWithAero(part?: Part, modelId: string = SUPRA.id) {
       id: `fixture-${part.id}`,
       partId: part.id,
       band: 'mint',
-      genuinePeriod: false,
       origin: { kind: 'market' as const, day: 1 },
     }
   }

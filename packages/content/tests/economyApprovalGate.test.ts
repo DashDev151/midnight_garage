@@ -936,6 +936,34 @@ import storyMissions from '../data/storyMissions.json'
  *    are untouched (confirmed passing unchanged): none of those pipelines reads the auction
  *    cadence, and the reserve fraction they DO read (`AUCTION_RESERVE_PRICE_FRACTION`) is the
  *    survivor at its existing 0.6.
+ *
+ * Re-pinned for Sprint 151 (docs/sprints/sprint151.md), authenticity becoming a fact about the
+ * car. ONE key leaves economy.json and no value moves: `valuation.genuinePeriodMultiplier`
+ * (1.25) is RETIRED outright, on the same footing `partsRetention` and `styleCap` left this
+ * file on. It multiplied an installed part's contribution when that instance was genuine
+ * period; no shipped content ever set `genuinePeriod` true (six construction sites hardcoded
+ * false), so it multiplied by exactly 1.0 on every part of every car in the game and its
+ * deletion cannot move a single yen. The flag it read is retired with it, along with
+ * `CarInstance.authenticityPercent` (a stored rng.int(60, 95) roll) and
+ * `statModifiers.authenticity` (exactly 0 on all 472 SKUs); all four are in
+ * `retiredIdentifiers.test.ts`.
+ *
+ * NOT gated by this hash, recorded here because this file is the ledger of what moved and why:
+ * `parts-taxonomy.json` gains a `statWeights.authenticity` column on all 29 slots, totalling
+ * exactly 100 - block 18, paint 11, panels 11, aero 10, internals 8, rims 7, headValvetrain 6,
+ * gearbox 6, camsTiming 4, seats 4, forcedInduction 3, springs 2, then 1 apiece for steering,
+ * chassis, differential, dampers, brakeCalipersLines, underbody, exhaust, ignitionEcu, intake
+ * and dashGauges, and 0 for tyres, brakePadsDiscs, clutch, cooling, fuelSystem, driveline and
+ * antiRollBars. These are PRELIMINARY figures accepted as sane defaults, recorded in that
+ * sprint doc as the values implemented rather than signed under directive 22, so a later pass
+ * can move them. `authenticityPercentOf` (packages/sim/src/derivedStats.ts) reads them twice,
+ * once for originality and once for the condition factor, which is why a weight of 0 removes a
+ * slot from both.
+ *
+ * No mission payout or budget cap moves: none of those pipelines reads authenticity, which
+ * enters valuation only through buyer taste and never through `marketValueYen`. What DOES move
+ * is every generated board and both `advanceDay` golden hashes, because generation stopped
+ * consuming an rng draw for the retired roll and every draw after it in the stream shifts.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -945,7 +973,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('2699aa1f66f2841eb305a35dfc7237532b3d435252cdca475376238d606a3052')
+    ).toBe('b014412563d50d237a00492058f7a6802a46007ddcf79727d3b0bdc6127922b0')
   })
 
   it('partPricing.json matches its approved content exactly', () => {

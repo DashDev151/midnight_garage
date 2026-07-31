@@ -28,6 +28,23 @@ function num(value: number, places: number): string {
   return Number.isFinite(value) ? value.toFixed(places) : 'n/a'
 }
 
+/**
+ * The stated-limits bullet about how honest the two lots came up. Read off
+ * the run rather than asserted, because whether a generated lot carries a
+ * symptom is a seeded roll: a hard-coded "both lots came up honest" silently
+ * becomes a false claim the moment anything upstream shifts the stream.
+ */
+function honestLotsLine(report: WorkedExampleReport): string {
+  const symptomatic = [report.carA, report.carB].filter((car) => car.symptomsAtPurchase > 0)
+  const tail =
+    'A symptomatic lot prices through `sheetGuideValueYen` rather than `marketValueYen`, off the car as the room SEES it, which adds a negative `fear` line to the room ledger and puts a diagnosis game on top. Its guide value therefore does not match its own first value rung, and the gap is the diagnosis game rather than a discrepancy.'
+  if (symptomatic.length === 0) {
+    return `Both lots came up **honest** (no symptoms), so each one's guide value is exactly its own first value rung. ${tail}`
+  }
+  const named = symptomatic.map((car) => `**${car.displayName}**`).join(' and ')
+  return `${named} came up carrying a symptom; the run buys and repairs it exactly as it would any other car, with no diagnosis played. ${tail}`
+}
+
 const VALUE_LINE_LABELS: Record<ValueLedgerLineId, string> = {
   book: 'Book value',
   mileage: 'Mileage curve',
@@ -444,9 +461,7 @@ export function renderWorkedExampleMarkdown(report: WorkedExampleReport): string
   out.push('')
   out.push('Deliberate limits of this run, stated so nothing reads as a claim it is not:')
   out.push('')
-  out.push(
-    '- Both lots came up **honest** (no symptoms). A symptomatic lot prices through `sheetGuideValueYen` instead, which adds a negative `fear` line to the room ledger and a diagnosis game on top. That is a different document.',
-  )
+  out.push(`- ${honestLotsLine(report)}`)
   out.push(
     '- The opening auction catalogue and the day-1 service-job board are cleared before the run starts, so the two scripted lots are the only lots and no service job, story mission or staff retainer can pay into the till by accident. The test asserts all three streams stayed empty.',
   )

@@ -121,6 +121,30 @@ const RETIRED_IDENTIFIERS: readonly RetiredIdentifier[] = [
       'A second, disagreeing seller floor: 0.55 here against AUCTION_RESERVE_PRICE_FRACTION 0.6, over the same guide value, so the live room opened below the reserve its own auction card advertised. Maintainer ruling 2026-07-31, "set the reserve to 0.6 everywhere": the fraction is authored once at the top level and folded into the room tuning by auctionRoom.ts roomConfigFrom. Bare reserveFraction is deliberately NOT banned - RoomConfig still carries the field, it just no longer authors it.',
   },
   {
+    identifier: 'authenticityPercent',
+    retiredInSprint: 151,
+    reason:
+      'CarInstance.authenticityPercent was a stored rng.int(60, 95) roll no player action could ever move, which contradicts the maintainer definition that an all-stock, all-mint car IS perfectly authentic. Replaced by the derived authenticityPercentOf (sim/derivedStats.ts): stockness over the taxonomy authenticity weights, times the same weights condition factor. The replacement name is deliberately not caught by this entry, since the word boundary after "Percent" fails against "PercentOf".',
+  },
+  {
+    identifier: 'statModifiers.authenticity',
+    retiredInSprint: 151,
+    reason:
+      'A per-part authenticity delta that every one of the 472 shipped SKUs authored as exactly 0, so the whole mechanism was inert. A part grade already says whether it is the original, which is the entire originality signal stocknessOf reads; a second per-part number was a duplicate answer to one question.',
+  },
+  {
+    identifier: 'genuinePeriod',
+    retiredInSprint: 151,
+    reason:
+      'A PartInstance/PartBaseline flag no shipped content ever set true (six construction sites hardcoded false), gating a valuation multiplier and half of the dead authenticity delta above. RULED 2026-07-31 redundant and re-addable later if a genuine-versus-repro distinction earns its place. Bare rather than dotted so any path to it trips; genuinePeriodMultiplier is a separate entry because the word boundary does not match inside it.',
+  },
+  {
+    identifier: 'genuinePeriodMultiplier',
+    retiredInSprint: 151,
+    reason:
+      'valuation.genuinePeriodMultiplier (1.25) multiplied an installed part contribution when its instance was genuine period. Nothing ever was, so it multiplied by 1.0 on every part of every car in the game; it dies with the flag it read.',
+  },
+  {
     identifier: 'WEEKLY_RENT_YEN',
     retiredInSprint: 148,
     reason:

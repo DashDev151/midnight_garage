@@ -197,7 +197,6 @@ function buildDemoCarInstance(
     mileageKm: 60_000,
     color: 'White',
     provenanceNote: '',
-    authenticityPercent: 80,
     parts,
     symptoms: [
       {

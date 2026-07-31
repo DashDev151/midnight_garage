@@ -111,7 +111,6 @@ function partInstance(partId: string): PartInstance {
     id: `pi-${partId}`,
     partId,
     band: 'mint',
-    genuinePeriod: false,
     origin: makeMarketOrigin(1),
   }
 }
@@ -657,7 +656,6 @@ describe('isServiceTaskDone / isServiceWorkDone (Sprint 29 multi-task, per-part)
             id: originalId,
             partId: streetPart.id,
             band: 'fine',
-            genuinePeriod: false,
           },
         }),
       })
@@ -671,7 +669,6 @@ describe('isServiceTaskDone / isServiceWorkDone (Sprint 29 multi-task, per-part)
             id: originalId,
             partId: streetPart.id,
             band: 'poor',
-            genuinePeriod: false,
           },
         }),
       })
@@ -685,7 +682,6 @@ describe('isServiceTaskDone / isServiceWorkDone (Sprint 29 multi-task, per-part)
             id: 'pi-fresh',
             partId: streetPart.id,
             band: 'mint',
-            genuinePeriod: false,
           },
         }),
       })
@@ -700,7 +696,6 @@ describe('isServiceTaskDone / isServiceWorkDone (Sprint 29 multi-task, per-part)
             id: 'pi-fresh-stock',
             partId: stockPart.id,
             band: 'mint',
-            genuinePeriod: false,
           },
         }),
       })
@@ -883,7 +878,6 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
       id: 'pi-mine',
       partId: 'khs-street-ecu',
       band: 'mint',
-      genuinePeriod: false,
       origin: makeMarketOrigin(1),
     }
     /** A part whose origin traces to `carInstanceId`. */
@@ -891,7 +885,6 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
       id,
       partId: 'khs-street-ecu',
       band: 'poor',
-      genuinePeriod: false,
       origin: makeCarOrigin(carInstanceId, 'Customer Car', 0),
     })
 
@@ -930,7 +923,6 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
                 id: PLAYER_BOUGHT,
                 partId: 'khs-street-ecu',
                 band: 'mint',
-                genuinePeriod: false,
                 origin: makeMarketOrigin(1),
                 pricePaidYen: 40_000,
               },
@@ -1018,7 +1010,6 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
                 id: 'pi-original-refitted',
                 partId: streetPart.id,
                 band: 'fine',
-                genuinePeriod: false,
                 origin: makeCarOrigin(baseJob.car.id, 'Customer Car', 0),
               },
             },
@@ -1046,7 +1037,6 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
                 id: 'pi-bought',
                 partId: streetPart.id,
                 band: 'mint',
-                genuinePeriod: false,
                 origin: makeMarketOrigin(5),
               },
             },
@@ -1057,7 +1047,6 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
         id: 'pi-original-displaced',
         partId: stockPart.id,
         band: 'poor',
-        genuinePeriod: false,
         origin: makeCarOrigin(job.car.id, 'Customer Car', 0),
       }
       const state = stateWith(job, { partInventory: [displacedOriginal] })
@@ -1085,7 +1074,6 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
                 id: 'pi-donor-pulled',
                 partId: streetPart.id,
                 band: 'fine',
-                genuinePeriod: false,
                 // A different car's id - NOT the job's own car - is what makes
                 // this a donor pull rather than the customer's own part.
                 origin: makeCarOrigin('donor-car-99', 'Donor Car', 0),
@@ -1098,7 +1086,6 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
         id: 'pi-original-displaced',
         partId: stockPart.id,
         band: 'poor',
-        genuinePeriod: false,
         origin: makeCarOrigin(job.car.id, 'Customer Car', 0),
       }
       const state = stateWith(job, { partInventory: [displacedOriginal] })

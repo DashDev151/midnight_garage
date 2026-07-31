@@ -49,7 +49,6 @@ function ownedCar(id: string) {
     modelId: 'honda-city-e-aa',
     year: 1984,
     mileageKm: 100_000,
-    authenticityPercent: 90,
   })
 }
 

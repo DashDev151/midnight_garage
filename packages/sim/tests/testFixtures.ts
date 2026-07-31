@@ -92,7 +92,6 @@ function stockInstanceFor(partId: CarPartId, band: ConditionBand): PartInstance 
     id: `fixture-stock-${partId}`,
     partId: STOCK_PART_ID_BY_CAR_PART_ID[partId]!,
     band,
-    genuinePeriod: false,
     origin: { kind: 'car', carInstanceId: BASE_CAR_INSTANCE.id, carLabel: 'Test Car', day: 0 },
   }
 }
@@ -174,7 +173,6 @@ const BASE_CAR_INSTANCE: Omit<CarInstance, 'parts'> = {
   mileageKm: 60_000,
   color: 'White',
   provenanceNote: '',
-  authenticityPercent: 80,
   symptoms: [],
   apparentBandByPartId: null,
 }
@@ -213,7 +211,6 @@ export function carWithGrades(
       id: `fixture-${partId}-${grade}`,
       partId: part.id,
       band,
-      genuinePeriod: false,
       origin: { kind: 'market', day: 1 },
     }
   }

@@ -607,18 +607,25 @@ pass."
   it isn't. Needs either a bot-side "is anything missing" check before declaring a car restored,
   or an install-focused fill-the-gap step alongside the existing repair step.
 
-- [ ] **Two measured defects leave `authenticity` and `style` unable to do the job the buyer
-  tables already ask of them, independent of whatever the desirability design
-  (`docs/design/systems/desirability-system.md`) decides to do about them.** These are facts
-  about the codebase today, not a design question.
+- [ ] **`paint`, `panels` and `underbody` can never read as non-original, so 23 of
+  authenticity's 100 points are unloseable and a resprayed car scores as untouched.** The
+  authenticity derivation (`stocknessOf`, `packages/sim/src/derivedStats.ts`) asks each slot
+  whether its fitted part is `grade: 'stock'`. Those three slots are zone-derived: the body
+  pipeline computes their bands from `zoneState` and fills them with the one stock SKU, and
+  `parts.json` ships no non-stock SKU for any of them (4, 24 and 4 SKUs respectively, every one
+  stock). Their weight is NOT dead - the same column drives authenticity's condition factor,
+  where rough paint and a rusty floor bite correctly and hardest of anything on the list - but
+  originality cannot move there. The fix is a per-zone refinished flag, set when the player does
+  paint or panel work and rolled at generation, read by `stocknessOf` instead of the carrier
+  part's grade. `packages/sim/tests/authenticity.test.ts` pins the limitation and fails the
+  moment a non-stock body SKU is added.
 
-  - **`authenticity` is a frozen dice roll the player cannot touch.** All 472 parts in
-    `parts.json` carry `statModifiers.authenticity` of exactly 0, and no shipped content ever
-    sets `genuinePeriod: true` (six construction sites hardcode `false`; the only `true` values
-    anywhere in the repo are in test files). So `StatBlock.authenticity` equals the frozen
-    `rng.int(60, 95)` set once at car generation (`auctions.ts:759`) in every reachable game
-    state, and `valuation.genuinePeriodMultiplier` (1.25) is fully wired, fully tested and
-    unreachable.
+- [ ] **One measured defect leaves `style` unable to do the job the buyer tables already ask of
+  it, independent of whatever the desirability design
+  (`docs/design/systems/desirability-system.md`) decides to do about it.** A fact about the
+  codebase today, not a design question. (Its `authenticity` twin was the frozen dice roll,
+  fixed in Sprint 151.)
+
   - **`style` on a stock mint car equals `styleBase`, authored 4 to 20 across the roster, so no
     stock car can clear any buyer's style target**: the stancer wants 0.65, the kei-specialist
     0.55, the collector 0.50, the tuner 0.45. Only 7 of 29 taxonomy slots carry any style weight

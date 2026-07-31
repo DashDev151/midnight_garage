@@ -1,9 +1,12 @@
 import {
   ECONOMY,
+  PARTS,
   PARTS_TAXONOMY,
   type CarModel,
   type CarPartId,
   type CarPartTaxonomyEntry,
+  type Part,
+  type PartInstance,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { isPartMissing } from '../src/bands'
@@ -13,6 +16,36 @@ import { buildCarInstance, mintCarParts, uniformCarParts } from './testFixtures'
 const PARTS_TAXONOMY_BY_ID = Object.fromEntries(
   PARTS_TAXONOMY.map((entry) => [entry.id, entry]),
 ) as Record<CarPartId, CarPartTaxonomyEntry>
+const PARTS_BY_ID = Object.fromEntries(PARTS.map((part) => [part.id, part])) as Record<string, Part>
+
+/** The `everyday`-class race SKU for `carPartId` - the fixtures below build
+ * from the same class `mintCarParts` fills a slot with, so a swapped part is
+ * a real, fitting catalogue entry rather than a synthetic one. */
+function aftermarketInstance(carPartId: CarPartId): PartInstance {
+  const part = PARTS.find(
+    (p) => p.carPartId === carPartId && p.fitmentClass === 'everyday' && p.grade === 'race',
+  )
+  if (!part) throw new Error(`no everyday-class race SKU for ${carPartId}`)
+  return {
+    id: `fixture-race-${carPartId}`,
+    partId: part.id,
+    band: 'mint',
+    origin: { kind: 'market', day: 1 },
+  }
+}
+
+/** Every `saleReputationDeltaFor` call in this file, with the four content
+ * arguments it reads authenticity through spelled once. */
+function deltaFor(car: Parameters<typeof saleReputationDeltaFor>[0], forModel = model): number {
+  return saleReputationDeltaFor(
+    car,
+    forModel,
+    PARTS_BY_ID,
+    PARTS_TAXONOMY,
+    PARTS_TAXONOMY_BY_ID,
+    ECONOMY,
+  )
+}
 
 /**
  * `saleReputationDeltaFor` takes a `model` parameter to decide whether an
@@ -50,58 +83,56 @@ const naModel: CarModel = {
 }
 
 describe('saleReputationDeltaFor (Sprint 26 decision 9: bands, not condition percent)', () => {
-  it('grants the concours bonus when every part is mint and authenticity clears its bar', () => {
-    const car = buildCarInstance({ parts: uniformCarParts('mint'), authenticityPercent: 90 })
-    expect(saleReputationDeltaFor(car, model, PARTS_TAXONOMY_BY_ID, ECONOMY)).toBe(
-      ECONOMY.reputation.concoursSaleBonus,
-    )
+  it('grants the concours bonus when every part is mint and stock - authenticity is exactly 100 there', () => {
+    const car = buildCarInstance({ parts: uniformCarParts('mint') })
+    expect(deltaFor(car)).toBe(ECONOMY.reputation.concoursSaleBonus)
   })
 
-  it('grants the clean bonus when every part clears cleanSaleMinBand but authenticity does not', () => {
-    const car = buildCarInstance({ parts: uniformCarParts('fine'), authenticityPercent: 50 })
-    expect(saleReputationDeltaFor(car, model, PARTS_TAXONOMY_BY_ID, ECONOMY)).toBe(
-      ECONOMY.reputation.cleanSaleBonus,
-    )
+  /**
+   * Concours is something a player can lose by BUILDING the car. A mint,
+   * otherwise-untouched example with one aftermarket block fitted reads
+   * authenticity 82 (the block's own 18 of the taxonomy's 100 points, at a
+   * condition factor of 1), which misses the 85 bar, so a flawless
+   * swapped-engine car earns the clean bonus and no more.
+   */
+  it('drops a mint car from concours to clean when one aftermarket block is fitted', () => {
+    const car = buildCarInstance({
+      parts: mintCarParts({ block: aftermarketInstance('block') }),
+    })
+    expect(deltaFor(car)).toBe(ECONOMY.reputation.cleanSaleBonus)
   })
 
-  it('does not grant concours when parts are only fine, even with high authenticity - concours needs mint', () => {
-    const car = buildCarInstance({ parts: uniformCarParts('fine'), authenticityPercent: 95 })
-    expect(saleReputationDeltaFor(car, model, PARTS_TAXONOMY_BY_ID, ECONOMY)).toBe(
-      ECONOMY.reputation.cleanSaleBonus,
-    )
+  it('does not grant concours when parts are only fine - concours needs mint regardless of originality', () => {
+    const car = buildCarInstance({ parts: uniformCarParts('fine') })
+    expect(deltaFor(car)).toBe(ECONOMY.reputation.cleanSaleBonus)
   })
 
   it('is neutral when a single part sits below cleanSaleMinBand, even though the rest are mint', () => {
     const car = mintWithOneOverride('dampers', 'worn')
-    expect(saleReputationDeltaFor(car, model, PARTS_TAXONOMY_BY_ID, ECONOMY)).toBe(0)
+    expect(deltaFor(car)).toBe(0)
   })
 
   it('penalizes a lemon by low cost-weighted average band factor - everything poor', () => {
     const car = buildCarInstance({ parts: uniformCarParts('poor') })
-    expect(saleReputationDeltaFor(car, model, PARTS_TAXONOMY_BY_ID, ECONOMY)).toBe(
-      -ECONOMY.reputation.lemonSalePenalty,
-    )
+    expect(deltaFor(car)).toBe(-ECONOMY.reputation.lemonSalePenalty)
   })
 
   it('penalizes a lemon by a single scrap part, even with every other part mint', () => {
     const car = mintWithOneOverride('tyres', 'scrap')
-    expect(saleReputationDeltaFor(car, model, PARTS_TAXONOMY_BY_ID, ECONOMY)).toBe(
-      -ECONOMY.reputation.lemonSalePenalty,
-    )
+    expect(deltaFor(car)).toBe(-ECONOMY.reputation.lemonSalePenalty)
   })
 
-  it('lemon (scrap) takes precedence over concours even when authenticity clears its bar', () => {
-    const car = mintWithOneOverride('tyres', 'scrap', 95)
-    expect(saleReputationDeltaFor(car, model, PARTS_TAXONOMY_BY_ID, ECONOMY)).toBe(
-      -ECONOMY.reputation.lemonSalePenalty,
-    )
+  it('lemon (scrap) takes precedence over concours even on an otherwise all-stock car', () => {
+    // `tyres` carries authenticity weight 0, so a scrap tyre does not move
+    // authenticity at all - this car still reads 100 and would otherwise be
+    // concours. Lemon is checked first and wins.
+    const car = mintWithOneOverride('tyres', 'scrap')
+    expect(deltaFor(car)).toBe(-ECONOMY.reputation.lemonSalePenalty)
   })
 
   it('penalizes a lemon by a single missing (non-FI) part, even with every other part mint', () => {
     const car = mintWithOneOverride('tyres', null)
-    expect(saleReputationDeltaFor(car, model, PARTS_TAXONOMY_BY_ID, ECONOMY)).toBe(
-      -ECONOMY.reputation.lemonSalePenalty,
-    )
+    expect(deltaFor(car)).toBe(-ECONOMY.reputation.lemonSalePenalty)
   })
 
   /**
@@ -120,19 +151,13 @@ describe('saleReputationDeltaFor (Sprint 26 decision 9: bands, not condition per
   it('an empty forcedInduction slot triggers lemon on a Turbo car but still allows concours on an NA car', () => {
     const turboCarMissingFi = buildCarInstance({
       parts: mintCarParts({ forcedInduction: null }),
-      authenticityPercent: 90,
     })
-    expect(saleReputationDeltaFor(turboCarMissingFi, model, PARTS_TAXONOMY_BY_ID, ECONOMY)).toBe(
-      -ECONOMY.reputation.lemonSalePenalty,
-    )
+    expect(deltaFor(turboCarMissingFi)).toBe(-ECONOMY.reputation.lemonSalePenalty)
 
     const naCarMissingFi = buildCarInstance({
       parts: mintCarParts({ forcedInduction: null }),
-      authenticityPercent: 90,
     })
-    expect(saleReputationDeltaFor(naCarMissingFi, naModel, PARTS_TAXONOMY_BY_ID, ECONOMY)).toBe(
-      ECONOMY.reputation.concoursSaleBonus,
-    )
+    expect(deltaFor(naCarMissingFi, naModel)).toBe(ECONOMY.reputation.concoursSaleBonus)
   })
 })
 
@@ -148,8 +173,6 @@ describe('saleQualityFor', () => {
 function mintWithOneOverride(
   partId: CarPartId,
   band: 'scrap' | 'poor' | 'worn' | 'fine' | 'mint' | null,
-  authenticityPercent = 90,
 ) {
-  const parts = mintCarParts({ [partId]: band })
-  return buildCarInstance({ parts, authenticityPercent })
+  return buildCarInstance({ parts: mintCarParts({ [partId]: band }) })
 }

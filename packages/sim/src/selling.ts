@@ -823,6 +823,8 @@ export function resolveSellViaWalkIn(
   const conditionDelta = saleReputationDeltaFor(
     car,
     model,
+    context.partsById,
+    context.partsTaxonomy,
     context.partsTaxonomyById,
     context.economy,
   )

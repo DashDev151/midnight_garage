@@ -555,7 +555,7 @@ export function stockInstanceFor(
 ): PartInstance | null {
   const catalogPart = stockPartByCarPartId[fitmentClass]?.[partId]
   if (!catalogPart) return null
-  return { id: `${idPrefix}-${partId}`, partId: catalogPart.id, band, genuinePeriod: false, origin }
+  return { id: `${idPrefix}-${partId}`, partId: catalogPart.id, band, origin }
 }
 
 /** The aftermarket-at-generation roll's own instance builder - same shape
@@ -590,7 +590,7 @@ function aftermarketInstanceFor(
     }
   }
   const catalogPart = byGrade[chosenGrade]!
-  return { id: `${idPrefix}-${partId}`, partId: catalogPart.id, band, genuinePeriod: false, origin }
+  return { id: `${idPrefix}-${partId}`, partId: catalogPart.id, band, origin }
 }
 
 /** The denormalised label a `PartOrigin` carries - `"'95 Corolla"` style,
@@ -756,7 +756,6 @@ export function generateAuctionCarInstance(
     color: rng.pick(COLOR_POOL),
     // The blurb must fit the car's AGE as well as its upkeep.
     provenanceNote: rng.pick(context.provenancePool[ageBandFor(ageYears)][upkeepTier]),
-    authenticityPercent: rng.int(60, 95),
     parts,
     symptoms: [],
     apparentBandByPartId: null,

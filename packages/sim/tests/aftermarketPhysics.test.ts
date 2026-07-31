@@ -81,7 +81,6 @@ function buildAt(
             id: `build-${partId}`,
             partId: part.id,
             band: 'mint',
-            genuinePeriod: false,
             origin: { kind: 'market', day: 0 },
           },
         }

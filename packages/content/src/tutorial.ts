@@ -177,7 +177,6 @@ export const TutorialLotRecipeSchema = z.object({
   color: z.string().min(1),
   /** Reused verbatim from `provenance.json`'s pool - not invented copy. */
   provenanceNote: z.string().min(1),
-  authenticityPercent: z.number().min(0).max(100),
   /** The band every slot starts at before `partOverrides` are applied. */
   baseBand: ConditionBandSchema,
   partOverrides: z.array(TutorialPartOverrideSchema),

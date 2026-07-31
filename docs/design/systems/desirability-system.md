@@ -1,8 +1,16 @@
 # Authenticity and style: two stats a car can actually earn
 
-**Status: DESIGN. NOT BUILT.** Supersedes both earlier 2026-07-31 drafts of this document. The
-first invented two new stats and was wrong to; the second stated the problem without specifying
-the system. This one specifies it.
+**Status: SECTION 3 (authenticity) BUILT in Sprint 151. SECTION 2 (style) NOT BUILT.** Supersedes
+both earlier 2026-07-31 drafts of this document. The first invented two new stats and was wrong
+to; the second stated the problem without specifying the system. This one specifies it.
+
+**What shipped, and the one thing that did not.** Authenticity is derived exactly as section 3
+states, on the 29 per-slot weights recorded in `authenticity-weights-proposal.md`, and all four
+retirements landed. The gap that ships with it: `paint`, `panels` and `underbody` are
+zone-derived and the catalogue has no non-stock SKU for any of them, so `isStock` is always true
+there and **23 of the 100 points cannot be lost to modification** - a resprayed car still reads
+as fully original. Their weight still drives the condition factor, where it is correct and
+load-bearing. The fix (per-zone refinished state) is its own follow-up, recorded in `TODO.md`.
 
 **There is no third stat.** An earlier draft proposed rolling the two into a `desirability` dial.
 **RULED 2026-07-31: deleted as a concept.** Buyers score authenticity and style separately, which
@@ -63,6 +71,10 @@ was the thing that felt wrong.
 ---
 
 ## 3. Authenticity
+
+**BUILT (Sprint 151).** `stocknessOf`, `machiningCost` and `authenticityPercentOf` in
+`packages/sim/src/derivedStats.ts`; weights in `parts-taxonomy.json`'s existing `statWeights`;
+tests in `packages/sim/tests/authenticity.test.ts`.
 
 ### The formula
 
@@ -172,12 +184,12 @@ it is modified, which turns the collector away, so no second mechanism is needed
 | `styleBase`, rescaled | roster CSV | all 94 | **needs authoring**, replaces the 4-20 range |
 | `styleCeiling` | roster CSV | all 94 | **new, needs authoring** |
 | `styleSaturationPoints` | `economy.json` | one value | **needs signing** |
-| per-slot authenticity weights | `parts-taxonomy.json` | 29 slots | **new, needs authoring** |
+| per-slot authenticity weights | `parts-taxonomy.json` | 29 slots | **AUTHORED (Sprint 151)**, preliminary and unsigned |
 | per-operation authenticity cost | machining content | 13 operations baselined | **stand-in figures, need signing** |
-| `CarInstance.authenticityPercent` | `carInstance.ts` | - | **RETIRE** |
-| `statModifiers.authenticity` | `stats.ts`, `parts.json` | 472 SKUs | **RETIRE** |
-| `genuinePeriod` | `carInstance.ts`, `part.ts` | - | **RETIRE** |
-| `valuation.genuinePeriodMultiplier` | `economy.json` | 1.25 | **RETIRE** |
+| `CarInstance.authenticityPercent` | `carInstance.ts` | - | **RETIRED (Sprint 151)** |
+| `statModifiers.authenticity` | `stats.ts`, `parts.json` | 472 SKUs | **RETIRED (Sprint 151)** |
+| `genuinePeriod` | `carInstance.ts`, `part.ts` | - | **RETIRED (Sprint 151)** |
+| `valuation.genuinePeriodMultiplier` | `economy.json` | 1.25 | **RETIRED (Sprint 151)** |
 
 Nothing in `buyers.json` changes. The collector already weights authenticity 1.00 and the stancer
 already weights style 1.00 with authenticity at 0.00, so the discrimination this design needs is
@@ -206,5 +218,9 @@ against the old scale and should be re-checked against the new one, though not n
    largest single job in this design.
 2. **`styleSaturationPoints`.** Today about 82 points of style are fittable across all slots. A
    saturation point near that means a fully dressed car exactly fills its gap.
-3. **Per-slot authenticity weights.** 29 numbers, authored once.
-4. **The machining system**, on which the authenticity costs depend.
+3. **The machining system**, on which the authenticity costs depend. `machiningCost(car)` is wired
+   and returns 0 until it exists.
+4. **Originality for `paint`, `panels` and `underbody`**, which cannot currently read as modified
+   at all. See the header and `TODO.md`.
+5. **Signing the 29 authenticity weights.** They ship as preliminary defaults, recorded in
+   `sprint151.md` as the values implemented rather than approved under directive 22.

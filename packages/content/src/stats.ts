@@ -17,21 +17,31 @@ export const StatBlockSchema = z.object({
  * per-character object, since a condition weight is still one plain number
  * per stat.
  *
- * `power` and `reliability` are REQUIRED, not defaulted: both are the
- * proportional-power/support-ratio era's own condition inputs (the same
- * missing-entry-fails-loudly rule `PowerFractionSchema` already applies to
- * SKUs), so a taxonomy entry that forgets one now fails schema validation
- * instead of silently reading as zero. `handling`/`style`/`authenticity`
- * keep their default: nothing in this sprint calls their coverage into
- * question.
+ * `power`, `reliability` and `authenticity` are REQUIRED, not defaulted:
+ * each is a live condition input (the same missing-entry-fails-loudly rule
+ * `PowerFractionSchema` already applies to SKUs), so a taxonomy entry that
+ * forgets one now fails schema validation instead of silently reading as
+ * zero. `authenticity` does double duty and is the reason it joined them:
+ * it weights the ORIGINALITY sum (`stocknessOf`, sim/derivedStats.ts) as
+ * well as authenticity's own condition mean, so a slot left unauthored
+ * would silently drop out of both. All 29 slots author it explicitly,
+ * including the seven deliberate zeros (consumables and invisible bolt-ons,
+ * which say nothing about whether a car is the car it claims to be).
+ * `handling`/`style` keep their default.
+ *
+ * `.strict()`: a misspelt weight key is a slot silently carrying no weight
+ * at all, which is exactly the failure the required keys above exist to
+ * prevent, so an unknown key fails validation rather than being stripped.
  */
-export const StatWeightsSchema = z.object({
-  power: z.number(),
-  handling: z.number().default(0),
-  style: z.number().default(0),
-  reliability: z.number(),
-  authenticity: z.number().default(0),
-})
+export const StatWeightsSchema = z
+  .object({
+    power: z.number(),
+    handling: z.number().default(0),
+    style: z.number().default(0),
+    reliability: z.number(),
+    authenticity: z.number(),
+  })
+  .strict()
 
 /**
  * A fraction of the car's own STOCK power this SKU contributes, one value per
@@ -53,19 +63,22 @@ export const PowerFractionSchema = z.object({
   forced: z.number(),
 })
 
-/** A part's effect on the four stats - deltas, so any sign, no change by
- * default. `power` retired in favour of `powerFraction` (proportional,
- * per-engine-character power) - a flat PS delta could not tell an NA Beat
- * from a twin-turbo Supra apart. `reliability` retired the same way: a part
- * does not add reliability, the build supports its own output or it does not
- * (`packages/sim/src/support.ts`), and reliability is condition plus
- * coherence rather than a sum of per-part deltas. `StatWeightsSchema.
- * reliability` is untouched - condition still reaches reliability through
- * it. */
+/** A part's effect on the two stats it still moves - deltas, so any sign, no
+ * change by default. `power` retired in favour of `powerFraction`
+ * (proportional, per-engine-character power) - a flat PS delta could not tell
+ * an NA Beat from a twin-turbo Supra apart. `reliability` retired the same
+ * way: a part does not add reliability, the build supports its own output or
+ * it does not (`packages/sim/src/support.ts`), and reliability is condition
+ * plus coherence rather than a sum of per-part deltas. `authenticity` retired
+ * for the same class of reason: a part's `grade` already says whether it is
+ * the original, so a second per-part authenticity number was a duplicate
+ * answer to one question (and every one of the 472 shipped SKUs carried
+ * exactly 0). `StatWeightsSchema`'s own `reliability` and `authenticity`
+ * columns are untouched - condition and originality both still reach their
+ * stats through the taxonomy's weights. */
 export const StatModifierSchema = z.object({
   handling: z.number().default(0),
   style: z.number().default(0),
-  authenticity: z.number().default(0),
   // REQUIRED, not defaulted (Zod is non-strict, so an absent object here
   // would otherwise validate silently and every character's fraction would
   // read as 0 - a missing SKU must fail the schema, not fail loudly only in

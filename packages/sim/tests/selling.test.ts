@@ -1,4 +1,5 @@
 import {
+  ALL_CAR_PART_IDS,
   BUYERS,
   CARS,
   ECONOMY,
@@ -34,6 +35,7 @@ import { createRng, type Rng } from '../src/rng'
 import {
   assertPlacementInvariant,
   buildCarInstance,
+  carWithGrades,
   mintCarParts,
   testSpecialty,
   testToolTiers,
@@ -52,9 +54,43 @@ const car: CarInstance = buildCarInstance({
   modelId: model.id,
   year: 1992,
   mileageKm: 90_000,
-  authenticityPercent: 85,
   parts: mintCarParts({ block: 'worn' }),
 })
+
+/**
+ * Authenticity fixtures for the synthetic authenticity-only buyers below.
+ * The stat is derived from the slots now, so a fixture that wants a
+ * particular authenticity has to BE that car rather than declare it.
+ *
+ * `authenticCar` is all stock and all mint, which is exactly 100 by
+ * definition. `modifiedCar` swaps the heaviest-weighted slots the catalogue
+ * actually ships an aftermarket SKU for, which lands well under any bar.
+ * `strippedShell` has every slot empty: nothing original and nothing in any
+ * condition, so it is the only fixture that reaches exactly 0 - the taste
+ * floor cannot be reached with modification alone, because three body slots
+ * carry no non-stock SKU at all.
+ */
+function authenticCar(modelId = model!.id): CarInstance {
+  return buildCarInstance({ modelId, parts: uniformCarParts('mint') })
+}
+
+function modifiedCar(forModel: CarModel = model!): CarInstance {
+  return carWithGrades(forModel, CONTEXT, {
+    block: 'race',
+    internals: 'race',
+    headValvetrain: 'race',
+    camsTiming: 'race',
+    gearbox: 'race',
+    aero: 'race',
+    rims: 'race',
+    seats: 'race',
+  })
+}
+
+function strippedShell(modelId = model!.id): CarInstance {
+  const empty = Object.fromEntries(ALL_CAR_PART_IDS.map((partId) => [partId, null]))
+  return buildCarInstance({ modelId, parts: mintCarParts(empty) })
+}
 
 function walkIn(
   target: CarInstance,
@@ -852,11 +888,7 @@ describe('drawDailyOffers (Sprint 31 decision 2; channels, Sprint 114)', () => {
 
     const entryModel = CARS.find((c) => c.id === 'honda-city-e-aa')
     if (!entryModel) throw new Error('fixture car missing from seed content')
-    const entryCar: CarInstance = buildCarInstance({
-      modelId: entryModel.id,
-      authenticityPercent: 0,
-      parts: uniformCarParts('mint'),
-    })
+    const entryCar: CarInstance = modifiedCar(entryModel)
 
     it('an inauthentic entry-tier car listed in the magazine draws no offer on a seeded day the same car on shopFront does', () => {
       const shopFrontState: GameState = {
@@ -1126,13 +1158,13 @@ describe('resolveSellViaWalkIn (Sprint 31: resolves today’s pre-rolled offer)'
 
   describe('the matched-sale word-of-mouth bonus (Sprint 114)', () => {
     // A synthetic buyer that cares only about authenticity (target 1,
-    // importance 1; every other stat importance 0): `authenticity` is a
-    // direct, uncapped passthrough of `car.authenticityPercent` (unlike
+    // importance 1; every other stat importance 0): an all-stock, all-mint
+    // car reads authenticity exactly 100 by construction (unlike
     // power/handling/style/reliability, which all cap below 100 through
     // their own stat formulas), so this is the one stat a fixture can push
     // to an exact match of 1.0 without depending on roster content.
     // score=1 -> shopFront taste clamps to exactly its 1.00 ceiling
-    // (matched); the same buyer at authenticity 0 scores 0 -> taste 0.88
+    // (matched); a car that scores 0 on the same buyer gets taste 0.88
     // (not matched).
     const authenticityBuyer = {
       id: 'authenticity-only',
@@ -1148,20 +1180,20 @@ describe('resolveSellViaWalkIn (Sprint 31: resolves today’s pre-rolled offer)'
       tierPreferences: [{ tier: 'everyday' as const, weight: 1 }],
       wantLine: 'synthetic fixture buyer - no authored copy needed',
     }
-    const matchedCar: CarInstance = buildCarInstance({
-      modelId: car.modelId,
-      authenticityPercent: 100,
-      parts: uniformCarParts('mint'),
-    })
-    const mismatchedCar: CarInstance = buildCarInstance({
-      modelId: car.modelId,
-      authenticityPercent: 0,
-      parts: uniformCarParts('mint'),
-    })
+    const matchedCar: CarInstance = authenticCar()
+    const mismatchedCar: CarInstance = modifiedCar()
 
     it('fires (stacks a reputation point on top) exactly when the buyer taste was >= 1.0', () => {
       expect(
-        channelBuyerTaste(authenticityBuyer, model, matchedCar, {}, PARTS_TAXONOMY, ECONOMY, 1),
+        channelBuyerTaste(
+          authenticityBuyer,
+          model,
+          matchedCar,
+          CONTEXT.partsById,
+          PARTS_TAXONOMY,
+          ECONOMY,
+          1,
+        ),
       ).toBeGreaterThanOrEqual(1)
 
       const matchedState = stateWithOffer(matchedCar, 900_000, authenticityBuyer.id)
@@ -1178,7 +1210,15 @@ describe('resolveSellViaWalkIn (Sprint 31: resolves today’s pre-rolled offer)'
 
     it('never fires below taste 1.0', () => {
       expect(
-        channelBuyerTaste(authenticityBuyer, model, mismatchedCar, {}, PARTS_TAXONOMY, ECONOMY, 1),
+        channelBuyerTaste(
+          authenticityBuyer,
+          model,
+          mismatchedCar,
+          CONTEXT.partsById,
+          PARTS_TAXONOMY,
+          ECONOMY,
+          1,
+        ),
       ).toBeLessThan(1)
 
       const mismatchedState = stateWithOffer(mismatchedCar, 900_000, authenticityBuyer.id)
@@ -1224,18 +1264,14 @@ describe('ceiling clamps (Sprint 114): honest, per the lever table', () => {
     tierPreferences: [],
     wantLine: 'synthetic fixture buyer - no authored copy needed',
   }
-  const perfectFitCar: CarInstance = buildCarInstance({
-    modelId: car.modelId,
-    authenticityPercent: 100,
-    parts: uniformCarParts('mint'),
-  })
+  const perfectFitCar: CarInstance = authenticCar()
 
   it('shopFront never yields taste above its 1.00 ceiling, even at a perfect stat fit', () => {
     const taste = channelBuyerTaste(
       perfectFitBuyer,
       model,
       perfectFitCar,
-      {},
+      CONTEXT.partsById,
       PARTS_TAXONOMY,
       ECONOMY,
       ECONOMY.sellingChannels.shopFront.tasteCeiling!,
@@ -1248,7 +1284,7 @@ describe('ceiling clamps (Sprint 114): honest, per the lever table', () => {
       perfectFitBuyer,
       model,
       perfectFitCar,
-      {},
+      CONTEXT.partsById,
       PARTS_TAXONOMY,
       ECONOMY,
       ECONOMY.sellingChannels.tunerMagazine.tasteCeiling!,
@@ -1258,11 +1294,7 @@ describe('ceiling clamps (Sprint 114): honest, per the lever table', () => {
   })
 
   it('the low end never moves - every channel shares the same floor as the standard band', () => {
-    const worstFitCar: CarInstance = buildCarInstance({
-      modelId: car.modelId,
-      authenticityPercent: 0,
-      parts: uniformCarParts('mint'),
-    })
+    const worstFitCar: CarInstance = strippedShell()
     const floor = 1 - ECONOMY.valuation.tasteSpread
     for (const channelId of [
       'shopFront',
@@ -1275,7 +1307,7 @@ describe('ceiling clamps (Sprint 114): honest, per the lever table', () => {
         perfectFitBuyer,
         model,
         worstFitCar,
-        {},
+        CONTEXT.partsById,
         PARTS_TAXONOMY,
         ECONOMY,
         ceiling,
@@ -1346,12 +1378,10 @@ describe('resolveScrapShell (Sprint 71 decision 7: the teardown game, scrap the 
 describe('reputation side effects (Sprint 15; re-based on bands, Sprint 26; Sprint 31: via an accepted offer)', () => {
   const qualityCar: CarInstance = buildCarInstance({
     modelId: car.modelId,
-    authenticityPercent: 90,
     parts: uniformCarParts('mint'),
   })
   const lemonCar: CarInstance = buildCarInstance({
     modelId: car.modelId,
-    authenticityPercent: 80,
     parts: uniformCarParts('poor'),
   })
 

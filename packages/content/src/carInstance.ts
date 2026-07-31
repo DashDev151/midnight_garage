@@ -26,7 +26,6 @@ import { CarPartIdSchema, ConditionBandSchema } from './tags'
 const PartBaselineSchema = z.object({
   partId: z.string().min(1),
   band: ConditionBandSchema,
-  genuinePeriod: z.boolean(),
 })
 
 const CarPartStateSchema = z.object({
@@ -131,7 +130,6 @@ export const CarInstanceSchema = z.object({
   mileageKm: z.number().int().nonnegative(),
   color: z.string().min(1),
   provenanceNote: z.string().default(''),
-  authenticityPercent: z.number().min(0).max(100),
   parts: CarPartsSchema,
   /** Every symptom this car was generated with (default `[]` - an honest car). */
   symptoms: z.array(CarSymptomSchema).default([]),

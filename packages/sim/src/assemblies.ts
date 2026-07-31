@@ -278,7 +278,6 @@ export function resolveRemoveAssembly(
           vacatedBaseline: {
             partId: installed.partId,
             band: installed.band,
-            genuinePeriod: installed.genuinePeriod,
           },
         },
       },

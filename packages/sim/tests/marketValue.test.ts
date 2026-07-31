@@ -102,7 +102,6 @@ function carAtUniformBand(band: 'scrap' | 'poor' | 'worn' | 'fine' | 'mint'): Ca
   return buildCarInstance({
     modelId: model.id,
     year: CAR_YEAR,
-    authenticityPercent: 90,
     parts: uniformCarParts(band),
   })
 }
@@ -147,7 +146,7 @@ describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
     // Stock is the baseline, not an upgrade - it must contribute nothing to
     // installed-parts value, or this car would price above book despite
     // carrying no real aftermarket parts.
-    expect(installedPartsValueYen(stockCar, {}, ECONOMY, RETENTION)).toBe(0)
+    expect(installedPartsValueYen(stockCar, {}, RETENTION)).toBe(0)
     expect(marketValueYen(model, stockCar, 100, PARTS_BY_ID, PARTS_TAXONOMY_BY_ID, ECONOMY)).toBe(
       model.bookValueYen,
     )
@@ -316,7 +315,6 @@ describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
         powerFraction: { 'high-strung-na': 0, 'lazy-na': 0, forced: 0 },
         handling: 8,
         style: 3,
-        authenticity: 0,
       },
       physicalModifiers: { grip: 1, braking: 1, mass: 1 },
       priceYen: 100_000,
@@ -344,7 +342,6 @@ describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
             id: 'pi-0001',
             partId: suspensionKit.id,
             band: 'mint',
-            genuinePeriod: false,
             origin: { kind: 'market', day: 1 },
           },
         },
@@ -359,7 +356,7 @@ describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
       PARTS_TAXONOMY_BY_ID,
       ECONOMY,
     )
-    const partValue = installedPartsValueYen(withPart, partsById, ECONOMY, RETENTION)
+    const partValue = installedPartsValueYen(withPart, partsById, RETENTION)
     expect(withInstalled).toBe(bare + partValue)
   })
 })
@@ -412,17 +409,13 @@ describe('installedPartsValueYen', () => {
       powerFraction: { 'high-strung-na': 0, 'lazy-na': 0, forced: 0 },
       handling: 8,
       style: 3,
-      authenticity: 0,
     },
     physicalModifiers: { grip: 1, braking: 1, mass: 1 },
     priceYen: 100_000,
   }
   const partsById = { [suspensionKit.id]: suspensionKit }
 
-  function carWithInstalledPart(
-    band: 'scrap' | 'poor' | 'worn' | 'fine' | 'mint',
-    genuinePeriod: boolean,
-  ): CarInstance {
+  function carWithInstalledPart(band: 'scrap' | 'poor' | 'worn' | 'fine' | 'mint'): CarInstance {
     const car = carAtUniformBand('mint')
     return {
       ...car,
@@ -433,7 +426,6 @@ describe('installedPartsValueYen', () => {
             id: 'pi-0001',
             partId: suspensionKit.id,
             band,
-            genuinePeriod,
             origin: { kind: 'market', day: 1 },
           },
         },
@@ -441,43 +433,55 @@ describe('installedPartsValueYen', () => {
     }
   }
 
-  it('applies partsRetention (no band discount, Sprint 34 double-count fix) to a non-genuine part', () => {
-    const car = carWithInstalledPart('fine', false)
+  it('applies the retention curve (no band discount, Sprint 34 double-count fix) to an installed part', () => {
+    const car = carWithInstalledPart('fine')
     const expected = Math.round(suspensionKit.priceYen * RETENTION)
-    expect(installedPartsValueYen(car, partsById, ECONOMY, RETENTION)).toBe(expected)
+    expect(installedPartsValueYen(car, partsById, RETENTION)).toBe(expected)
   })
 
-  it('applies genuinePeriodMultiplier on top for a genuine-period part (still no band discount)', () => {
-    const car = carWithInstalledPart('fine', true)
-    const expected = Math.round(
-      suspensionKit.priceYen * RETENTION * ECONOMY.valuation.genuinePeriodMultiplier,
+  /**
+   * There is exactly ONE price an installed part contributes - its catalogue
+   * price times the caller's retention - so two instances of the same SKU at
+   * the same band can never be worth different amounts. No per-instance
+   * provenance multiplier exists.
+   */
+  it('values two instances of the same SKU at the same band identically - no per-instance provenance multiplier survives', () => {
+    const one = carWithInstalledPart('fine')
+    const two = {
+      ...one,
+      parts: {
+        ...one.parts,
+        dampers: {
+          installed: { ...one.parts.dampers.installed!, id: 'pi-0002' },
+        },
+      },
+    }
+    expect(installedPartsValueYen(two, partsById, RETENTION)).toBe(
+      installedPartsValueYen(one, partsById, RETENTION),
     )
-    expect(installedPartsValueYen(car, partsById, ECONOMY, RETENTION)).toBe(expected)
   })
 
   it('does not band-discount an aftermarket part: a worn part contributes the same installed-parts value as a mint one (Sprint 34 - condition is priced only by the restoration bill now)', () => {
     const expected = Math.round(suspensionKit.priceYen * RETENTION)
-    expect(
-      installedPartsValueYen(carWithInstalledPart('worn', false), partsById, ECONOMY, RETENTION),
-    ).toBe(expected)
-    expect(
-      installedPartsValueYen(carWithInstalledPart('mint', false), partsById, ECONOMY, RETENTION),
-    ).toBe(expected)
+    expect(installedPartsValueYen(carWithInstalledPart('worn'), partsById, RETENTION)).toBe(
+      expected,
+    )
+    expect(installedPartsValueYen(carWithInstalledPart('mint'), partsById, RETENTION)).toBe(
+      expected,
+    )
   })
 
   it('a scrap aftermarket part contributes zero (Sprint 34: it cannot be restored, and the bill already replaces it at stock price)', () => {
-    expect(
-      installedPartsValueYen(carWithInstalledPart('scrap', false), partsById, ECONOMY, RETENTION),
-    ).toBe(0)
+    expect(installedPartsValueYen(carWithInstalledPart('scrap'), partsById, RETENTION)).toBe(0)
   })
 
   it('counts condition exactly once: restoring a worn aftermarket part raises car value only through the shrinking restoration bill, not through installed-parts value (Sprint 34 de-dup)', () => {
-    const wornCar = carWithInstalledPart('worn', false)
-    const restoredCar = carWithInstalledPart('mint', false)
+    const wornCar = carWithInstalledPart('worn')
+    const restoredCar = carWithInstalledPart('mint')
     // Installed-parts value is band-independent now, so restoring the part
     // changes nothing on that channel...
-    expect(installedPartsValueYen(restoredCar, partsById, ECONOMY, RETENTION)).toBe(
-      installedPartsValueYen(wornCar, partsById, ECONOMY, RETENTION),
+    expect(installedPartsValueYen(restoredCar, partsById, RETENTION)).toBe(
+      installedPartsValueYen(wornCar, partsById, RETENTION),
     )
     const wornValue = marketValueYen(model, wornCar, 100, partsById, PARTS_TAXONOMY_BY_ID, ECONOMY)
     const restoredValue = marketValueYen(
@@ -498,11 +502,11 @@ describe('installedPartsValueYen', () => {
   })
 
   it('is 0 with no installed parts', () => {
-    expect(installedPartsValueYen(carAtUniformBand('fine'), {}, ECONOMY, RETENTION)).toBe(0)
+    expect(installedPartsValueYen(carAtUniformBand('fine'), {}, RETENTION)).toBe(0)
   })
 
   it('sums contributions across multiple installed parts', () => {
-    const car = carWithInstalledPart('mint', false)
+    const car = carWithInstalledPart('mint')
     const withTwo: CarInstance = {
       ...car,
       parts: {
@@ -512,14 +516,13 @@ describe('installedPartsValueYen', () => {
             id: 'pi-0002',
             partId: suspensionKit.id,
             band: 'mint',
-            genuinePeriod: false,
             origin: { kind: 'market', day: 1 },
           },
         },
       },
     }
-    const one = installedPartsValueYen(car, partsById, ECONOMY, RETENTION)
-    const two = installedPartsValueYen(withTwo, partsById, ECONOMY, RETENTION)
+    const one = installedPartsValueYen(car, partsById, RETENTION)
+    const two = installedPartsValueYen(withTwo, partsById, RETENTION)
     expect(two).toBe(one * 2)
   })
 })
@@ -582,7 +585,6 @@ describe('marketValueYen scales the aftermarket premium by foundationFactor (Spr
       powerFraction: { 'high-strung-na': 0.02, 'lazy-na': 0.03, forced: 0.05 },
       handling: 0,
       style: 4,
-      authenticity: 0,
     },
     physicalModifiers: { grip: 1, braking: 1, mass: 1 },
     priceYen: 260_000,
@@ -603,7 +605,6 @@ describe('marketValueYen scales the aftermarket premium by foundationFactor (Spr
           id: 'pi-race-intake',
           partId: raceIntake.id,
           band: 'mint',
-          genuinePeriod: false,
           origin: { kind: 'market', day: 1 },
         },
       }),
@@ -614,7 +615,7 @@ describe('marketValueYen scales the aftermarket premium by foundationFactor (Spr
     marketValueYen(model, carWithPremium(), 100, partsById, PARTS_TAXONOMY_BY_ID, ECONOMY)
 
   it('credits the full premium when foundations are sound', () => {
-    const premiumYen = installedPartsValueYen(carWithPremium(), partsById, ECONOMY, RETENTION)
+    const premiumYen = installedPartsValueYen(carWithPremium(), partsById, RETENTION)
     expect(premiumYen).toBeGreaterThan(0) // the fixture really has a premium to withhold
     const stockValue = marketValueYen(
       model,
@@ -630,7 +631,7 @@ describe('marketValueYen scales the aftermarket premium by foundationFactor (Spr
 
   it('withholds most of the premium when a foundational part is scrap', () => {
     const scrapBrakeCar = carWithPremium({ brakePadsDiscs: 'scrap' })
-    const premiumYen = installedPartsValueYen(scrapBrakeCar, partsById, ECONOMY, RETENTION)
+    const premiumYen = installedPartsValueYen(scrapBrakeCar, partsById, RETENTION)
     const factor = ECONOMY.valuation.foundation.factorByState.scrap
     // The base value already prices the scrap brake through the bill; on TOP
     // of that, the premium is scaled to the scrap factor - the two effects are
@@ -678,7 +679,7 @@ describe('marketValueYen scales the aftermarket premium by foundationFactor (Spr
       PARTS_TAXONOMY_BY_ID,
       ECONOMY,
     )
-    const premiumYen = installedPartsValueYen(carWithPremium(), partsById, ECONOMY, RETENTION)
+    const premiumYen = installedPartsValueYen(carWithPremium(), partsById, RETENTION)
     const releasedPremiumYen =
       premiumYen - Math.round(ECONOMY.valuation.foundation.factorByState.scrap * premiumYen)
     // The total gain exceeds the base-value repair gain alone by exactly the

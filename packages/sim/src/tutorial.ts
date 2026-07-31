@@ -117,7 +117,6 @@ export function buildTutorialLot(context: SimContext, day: number): AuctionLot {
     mileageKm: recipe.mileageKm,
     color: recipe.color,
     provenanceNote: recipe.provenanceNote,
-    authenticityPercent: recipe.authenticityPercent,
     parts,
     symptoms: [
       {

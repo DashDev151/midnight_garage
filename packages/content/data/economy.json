@@ -92,7 +92,6 @@
     "coherenceDiscountWeight": 0.35,
     "retentionFloor": 0.3,
     "retentionCeiling": 1.1,
-    "genuinePeriodMultiplier": 1.25,
     "tolerance": {
       "default": 1.0,
       "stancer": 0.0,

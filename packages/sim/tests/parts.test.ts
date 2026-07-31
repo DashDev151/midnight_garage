@@ -237,7 +237,6 @@ describe('resolveScrapPart (Sprint 26 decision 6; Sprint 35 customer-owned lock)
     id: 'pi-scrap',
     partId: CHEAPEST.id,
     band: 'scrap',
-    genuinePeriod: false,
     origin: makeMarketOrigin(1),
   }
 
@@ -290,7 +289,6 @@ describe('resolveSellPart (Sprint 71 decision 6: the teardown game donor economy
     id: 'pi-used',
     partId: CHEAPEST.id,
     band: 'fine',
-    genuinePeriod: false,
     origin: makeMarketOrigin(1),
   }
 

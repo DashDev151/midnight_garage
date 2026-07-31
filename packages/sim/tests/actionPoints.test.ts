@@ -96,7 +96,7 @@ const stockTyresId = CONTEXT.stockPartByCarPartId.entry!.tyres!.id
 const stockRimsId = CONTEXT.stockPartByCarPartId.entry!.rims!.id
 
 function binPart(id: string, partId: string, band: PartInstance['band'] = 'mint'): PartInstance {
-  return { id, partId, band, genuinePeriod: false, origin: makeMarketOrigin(1) }
+  return { id, partId, band, origin: makeMarketOrigin(1) }
 }
 
 /** An owned fixture car (every slot a mint stock part unless overridden). */

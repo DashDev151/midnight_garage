@@ -1,6 +1,11 @@
 # Per-slot authenticity weights: a proposal
 
-**Status: PROPOSAL. Nothing implemented, nothing edited.** Serves
+**Status: IMPLEMENTED AS PROPOSED (Sprint 151), NOT SIGNED.** All 29 weights below are live in
+`parts-taxonomy.json`'s `statWeights.authenticity` column, exactly as tabled. They are
+preliminary figures accepted as sane defaults; `sprint151.md` records them as the values
+implemented rather than approved under directive 22, so a later pass can move them. Sections 3
+and 4 below (the structural findings and the calls this document is least confident about)
+remain open exactly as written. Serves
 `desirability-system.md` section 3, which specifies
 
     stockness = sum(weight_s * isStock(s)) / sum(weight_s)   over every slot s

@@ -190,17 +190,20 @@ function fitsAnyOwnedCar(part: Part): boolean {
 }
 
 /**
- * Power and reliability are both absent from this badge deliberately.
- * Power is not a flat PS delta a part carries on its own, but a fraction of
- * the fitted CAR's own stock power that depends on that car's engine
- * character (`powerFraction`) - this generic catalog listing has no car in
- * view, so there is no honest single number to show here. Reliability is
+ * Power, reliability and authenticity are all absent from this badge
+ * deliberately. Power is not a flat PS delta a part carries on its own, but a
+ * fraction of the fitted CAR's own stock power that depends on that car's
+ * engine character (`powerFraction`) - this generic catalog listing has no car
+ * in view, so there is no honest single number to show here. Reliability is
  * not a per-part delta at all any more: a part does not add reliability,
  * the build supports its own output or it does not
- * (`packages/sim/src/support.ts`).
+ * (`packages/sim/src/support.ts`). Authenticity likewise: it is a fact about
+ * how much of the car is still original, so fitting ANY non-stock part costs
+ * that slot's whole authenticity weight, which is a property of the slot
+ * rather than of this SKU.
  */
 function statSummary(part: Part): string {
-  return (['handling', 'style', 'authenticity'] as const)
+  return (['handling', 'style'] as const)
     .map((k) => ({ k, v: part.statModifiers[k] }))
     .filter((s) => s.v !== 0)
     .map((s) => `${s.k[0]!.toUpperCase()}${s.v > 0 ? '+' : ''}${s.v}`)

@@ -68,12 +68,7 @@ export function refitLaborSlotsFor(
   context: SimContext,
 ): number {
   const baseline = car.parts[carPartId].vacatedBaseline
-  if (
-    baseline &&
-    baseline.partId === partInstance.partId &&
-    baseline.band === partInstance.band &&
-    baseline.genuinePeriod === partInstance.genuinePeriod
-  ) {
+  if (baseline && baseline.partId === partInstance.partId && baseline.band === partInstance.band) {
     // An unchanged member's refit labour - free at the shipped default of 0.
     return context.economy.energy.actionPoints.refitUnchangedMember
   }
@@ -547,7 +542,7 @@ export function resolveHireMachineLine(
  * content), gating on `laborAvailable` and spending into `energySpentToday`.
  * Access is gated separately (the machine/blocker checks above), so a removal
  * can refuse for want of labour or for want of a line. The removed instance's own
- * `{partId, band, genuinePeriod}` is stamped onto the resulting slot as
+ * `{partId, band}` is stamped onto the resulting slot as
  * `vacatedBaseline` - what a later refit is compared against
  * (`refitLaborSlotsFor`) to decide whether putting the car back together is
  * free logistics or chargeable work.
@@ -604,7 +599,6 @@ export function resolveRemovePart(
   const vacatedBaseline = {
     partId: installed.partId,
     band: installed.band,
-    genuinePeriod: installed.genuinePeriod,
   }
   const updatedCar: CarInstance = {
     ...car,

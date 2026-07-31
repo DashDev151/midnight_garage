@@ -310,7 +310,6 @@ function resolvePipelineSwapPanelAction(
         id: `panel-${state.day}-${partInventory.length}`,
         partId: oldPanelCatalogPart.id,
         band: bandForSeverity(zone.metal),
-        genuinePeriod: false,
         origin: makeCarOrigin(car.id, carOriginLabel(model, car.year), state.day),
       },
     ]

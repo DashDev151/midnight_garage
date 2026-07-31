@@ -7,7 +7,8 @@
     "blockedBy": ["intake", "exhaust", "cooling"],
     "statWeights": {
       "power": 0,
-      "reliability": 2
+      "reliability": 2,
+      "authenticity": 18
     },
     "scrapDisablesCar": true
   },
@@ -19,7 +20,8 @@
     "blockedBy": ["headValvetrain"],
     "statWeights": {
       "power": 2,
-      "reliability": 2
+      "reliability": 2,
+      "authenticity": 8
     },
     "scrapDisablesCar": true
   },
@@ -31,7 +33,8 @@
     "blockedBy": ["camsTiming", "intake"],
     "statWeights": {
       "power": 0,
-      "reliability": 2
+      "reliability": 2,
+      "authenticity": 6
     },
     "scrapDisablesCar": true
   },
@@ -43,7 +46,8 @@
     "blockedBy": ["cooling"],
     "statWeights": {
       "power": 2,
-      "reliability": 1
+      "reliability": 1,
+      "authenticity": 4
     },
     "scrapDisablesCar": true
   },
@@ -53,7 +57,8 @@
     "displayName": "Intake",
     "statWeights": {
       "power": 1,
-      "reliability": 1
+      "reliability": 1,
+      "authenticity": 1
     }
   },
   {
@@ -62,7 +67,8 @@
     "displayName": "Exhaust",
     "statWeights": {
       "power": 1,
-      "reliability": 1
+      "reliability": 1,
+      "authenticity": 1
     }
   },
   {
@@ -71,7 +77,8 @@
     "displayName": "Fuel System",
     "statWeights": {
       "power": 0,
-      "reliability": 1
+      "reliability": 1,
+      "authenticity": 0
     },
     "scrapDisablesCar": true
   },
@@ -81,7 +88,8 @@
     "displayName": "Ignition & ECU",
     "statWeights": {
       "power": 2,
-      "reliability": 1
+      "reliability": 1,
+      "authenticity": 1
     },
     "scrapDisablesCar": true
   },
@@ -91,7 +99,8 @@
     "displayName": "Cooling",
     "statWeights": {
       "power": 0,
-      "reliability": 3
+      "reliability": 3,
+      "authenticity": 0
     },
     "scrapDisablesCar": true
   },
@@ -102,7 +111,8 @@
     "blockedBy": ["intake"],
     "statWeights": {
       "power": 3,
-      "reliability": 1
+      "reliability": 1,
+      "authenticity": 3
     }
   },
   {
@@ -113,7 +123,8 @@
     "blockedBy": ["driveline", "exhaust"],
     "statWeights": {
       "power": 0,
-      "reliability": 2
+      "reliability": 2,
+      "authenticity": 6
     },
     "physicalWeights": {
       "driveline": 1
@@ -129,7 +140,8 @@
     "blockedBy": ["gearbox"],
     "statWeights": {
       "power": 0,
-      "reliability": 1
+      "reliability": 1,
+      "authenticity": 0
     },
     "physicalWeights": {
       "driveline": 2
@@ -143,7 +155,8 @@
     "blockedBy": ["driveline"],
     "statWeights": {
       "power": 0,
-      "reliability": 1
+      "reliability": 1,
+      "authenticity": 1
     },
     "physicalWeights": {
       "driveline": 1
@@ -156,7 +169,8 @@
     "displayName": "Driveline",
     "statWeights": {
       "power": 0,
-      "reliability": 1
+      "reliability": 1,
+      "authenticity": 0
     },
     "physicalWeights": {
       "driveline": 2
@@ -171,7 +185,8 @@
     "removable": false,
     "statWeights": {
       "power": 0,
-      "reliability": 2
+      "reliability": 2,
+      "authenticity": 1
     }
   },
   {
@@ -181,7 +196,8 @@
     "statWeights": {
       "power": 0,
       "handling": 2,
-      "reliability": 0
+      "reliability": 0,
+      "authenticity": 1
     },
     "physicalWeights": {
       "grip": 2
@@ -194,7 +210,8 @@
     "statWeights": {
       "power": 0,
       "handling": 2,
-      "reliability": 1
+      "reliability": 1,
+      "authenticity": 2
     },
     "physicalWeights": {
       "grip": 2
@@ -207,7 +224,8 @@
     "statWeights": {
       "power": 0,
       "handling": 2,
-      "reliability": 0
+      "reliability": 0,
+      "authenticity": 0
     },
     "physicalWeights": {
       "grip": 2
@@ -220,7 +238,8 @@
     "statWeights": {
       "power": 0,
       "handling": 2,
-      "reliability": 2
+      "reliability": 2,
+      "authenticity": 1
     },
     "physicalWeights": {
       "grip": 1
@@ -236,7 +255,8 @@
     "statWeights": {
       "power": 0,
       "handling": 1,
-      "reliability": 1
+      "reliability": 1,
+      "authenticity": 0
     },
     "physicalWeights": {
       "braking": 3
@@ -251,7 +271,8 @@
     "statWeights": {
       "power": 0,
       "handling": 1,
-      "reliability": 2
+      "reliability": 2,
+      "authenticity": 1
     },
     "physicalWeights": {
       "braking": 2
@@ -265,7 +286,8 @@
     "statWeights": {
       "power": 0,
       "style": 3,
-      "reliability": 0
+      "reliability": 0,
+      "authenticity": 7
     },
     "physicalWeights": {
       "grip": 1
@@ -280,7 +302,8 @@
     "statWeights": {
       "power": 0,
       "handling": 3,
-      "reliability": 2
+      "reliability": 2,
+      "authenticity": 0
     },
     "physicalWeights": {
       "grip": 3
@@ -296,7 +319,8 @@
     "statWeights": {
       "power": 0,
       "style": 2,
-      "reliability": 0
+      "reliability": 0,
+      "authenticity": 11
     },
     "physicalWeights": {
       "aero": 1
@@ -311,7 +335,8 @@
     "statWeights": {
       "power": 0,
       "style": 2,
-      "reliability": 0
+      "reliability": 0,
+      "authenticity": 11
     }
   },
   {
@@ -323,7 +348,8 @@
     "statWeights": {
       "power": 0,
       "style": 2,
-      "reliability": 1
+      "reliability": 1,
+      "authenticity": 1
     },
     "physicalWeights": {
       "aero": 1
@@ -338,7 +364,8 @@
       "power": 0,
       "style": 2,
       "handling": 1,
-      "reliability": 0
+      "reliability": 0,
+      "authenticity": 10
     },
     "physicalWeights": {
       "aero": 3
@@ -352,7 +379,8 @@
     "statWeights": {
       "power": 0,
       "style": 2,
-      "reliability": 0
+      "reliability": 0,
+      "authenticity": 4
     }
   },
   {
@@ -363,7 +391,8 @@
     "statWeights": {
       "power": 0,
       "style": 1,
-      "reliability": 0
+      "reliability": 0,
+      "authenticity": 1
     }
   }
 ]

@@ -8,7 +8,6 @@
   "mileageKm": 96000,
   "color": "Silver",
   "provenanceNote": "daily driver, honest wear",
-  "authenticityPercent": 82,
   "baseBand": "worn",
   "partOverrides": [
     { "carPartId": "tyres", "band": "scrap" },

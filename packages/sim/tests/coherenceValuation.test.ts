@@ -80,7 +80,7 @@ function creditedPremiumYen(car: CarInstance, coherenceFactor: number): number {
   return (
     foundationFactor(car, ECONOMY) *
     expectationForCar(FLAGSHIP_CAR, ECONOMY).aftermarketReturn *
-    installedPartsValueYen(car, CONTEXT.partsById, ECONOMY, retention)
+    installedPartsValueYen(car, CONTEXT.partsById, retention)
   )
 }
 

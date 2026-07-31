@@ -106,18 +106,17 @@ export const PartOriginSchema = z.discriminatedUnion('kind', [
 export type PartOrigin = z.infer<typeof PartOriginSchema>
 
 /**
- * An owned/installed part. Band and genuine-period status are per-instance
- * (a used genuine part differs from a new reproduction of the same catalog
- * part), so they live here, not on Part. A purchased part always starts `mint`.
- * `origin` is required and immutable - every birth site stamps it
- * (`provenance.ts`'s `makeCarOrigin`/`makeMarketOrigin`), and no code path may
- * rewrite it once set.
+ * An owned/installed part. Condition is per-instance (a used part differs
+ * from a fresh one of the same catalog SKU), so `band` lives here, not on
+ * Part. A purchased part always starts `mint`. `origin` is required and
+ * immutable - every birth site stamps it (`provenance.ts`'s
+ * `makeCarOrigin`/`makeMarketOrigin`), and no code path may rewrite it once
+ * set.
  */
 export const PartInstanceSchema = z.object({
   id: z.string().min(1),
   partId: z.string().min(1),
   band: ConditionBandSchema.default('mint'),
-  genuinePeriod: z.boolean().default(false),
   origin: PartOriginSchema,
   /**
    * What this specific instance actually cost - set at purchase

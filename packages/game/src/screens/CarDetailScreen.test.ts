@@ -729,7 +729,6 @@ describe('CarDetailScreen', () => {
           id: 'pi-premium',
           partId: 'shitbox-oni-race-piston-kit',
           band: 'mint',
-          genuinePeriod: false,
           origin: { kind: 'market', day: 1 },
         },
       }
@@ -796,7 +795,6 @@ describe('CarDetailScreen', () => {
           id: 'pi-premium',
           partId: 'shitbox-oni-race-piston-kit',
           band: 'mint',
-          genuinePeriod: false,
           origin: { kind: 'market', day: 1 },
         },
       }
@@ -833,7 +831,6 @@ describe('CarDetailScreen', () => {
             id: `readout-test-${partId}`,
             partId: stockPart.id,
             band: 'mint',
-            genuinePeriod: false,
             origin: { kind: 'market', day: 1 },
           },
         }
@@ -856,7 +853,6 @@ describe('CarDetailScreen', () => {
           id: `readout-test-${partId}-${grade}`,
           partId: part.id,
           band: 'mint',
-          genuinePeriod: false,
           origin: { kind: 'market', day: 1 },
         },
       }
@@ -1114,7 +1110,6 @@ describe('CarDetailScreen', () => {
                   id: 'test-scrap-dampers',
                   partId: scrapPart.id,
                   band: 'scrap',
-                  genuinePeriod: false,
                   origin: { kind: 'market', day: 1 },
                 },
               },
@@ -1453,7 +1448,6 @@ describe('CarDetailScreen', () => {
             id: 'scrap-instance',
             partId: goodPart.id,
             band: 'scrap',
-            genuinePeriod: false,
             origin: { kind: 'market', day: 1 },
           },
         ],

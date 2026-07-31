@@ -35,7 +35,6 @@ const instance: PartInstance = {
   id: 'pi-1',
   partId: part.id,
   band: 'mint',
-  genuinePeriod: false,
   origin: makeMarketOrigin(1),
 }
 
@@ -124,7 +123,6 @@ describe('PartCard (Sprint 24 fix 5; scrap + rotary marker in Sprint 28)', () =>
         id: 'pi-rotary',
         partId: rotaryPart.id,
         band: 'mint',
-        genuinePeriod: false,
         origin: makeMarketOrigin(1),
       }
       const wrapper = mountCard({ props: { instance: rotaryInstance, part: rotaryPart } })

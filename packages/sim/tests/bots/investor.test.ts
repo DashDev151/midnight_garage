@@ -93,7 +93,6 @@ describe('investorStrategy replace-loop fixes (2026-07-12)', () => {
       id: 'part-landed-01',
       partId: boughtPartId,
       band: 'mint' as const,
-      genuinePeriod: false,
       origin: { kind: 'market' as const, day: 1 },
     }
     const state = baseState({ partInventory: [landed] })

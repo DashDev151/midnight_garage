@@ -145,7 +145,6 @@ export function applyDerivedBodyBands(
           id: `${car.id}-${carPartId}-derived`,
           partId: catalogPart.id,
           band,
-          genuinePeriod: false,
           origin: {
             kind: 'car',
             carInstanceId: car.id,

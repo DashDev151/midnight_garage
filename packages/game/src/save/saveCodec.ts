@@ -608,8 +608,20 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * one. The version bump alone is still required (Save law) so an old client
  * rejects a v51 save rather than silently dropping the field and under-
  * reporting what a car cost.
+ * v51 -> v52 (authenticity becomes a fact about the car): three fields are
+ * DELETED - `CarInstance`'s stored authenticity roll (60 to 95 at
+ * generation, now derived from which parts are fitted and what state they
+ * are in), and the genuine-period flag on both `PartInstance` and a slot's
+ * `vacatedBaseline` (a boolean no shipped content ever set true). All three
+ * are in `retiredIdentifiers.test.ts`. Per directive 19 (no pre-launch save
+ * compatibility), a plain bump with NO migration: a pre-v52 save's cars
+ * simply have the removed keys stripped by `GameStateSchema.parse`, which is
+ * exactly right - every one of those values is now either derived or gone.
+ * The version bump alone is still required (Save law) so an old client
+ * rejects a v52 save rather than decoding a car whose authenticity it has
+ * nowhere to read.
  */
-export const SAVE_VERSION = 51
+export const SAVE_VERSION = 52
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'
@@ -1116,7 +1128,6 @@ function migratePartSlotToStock(oldSlot: unknown, carPartId: string): { installe
       id: `part-migrated-${migratedStockInstanceCounter}`,
       partId: stockPartId,
       band,
-      genuinePeriod: false,
     },
   }
 }

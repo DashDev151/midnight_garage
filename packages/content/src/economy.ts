@@ -633,12 +633,6 @@ export const EconomyConfigSchema = z.object({
       retentionFloor: z.number().min(0),
       retentionCeiling: z.number().min(0),
       /**
-       * Multiplier applied to a genuine-period installed part's contribution
-       * (on top of the retention curve above) - period-correct parts hold
-       * more value than a modern reproduction of the same catalog part.
-       */
-      genuinePeriodMultiplier: z.number().positive(),
-      /**
        * Stage C's per-buyer tolerance for the coherence discount (the
        * tolerance ruling, sprint144.md): how much a given buyer archetype
        * minds an unsupported build's failure risk, `[0, 1]` where 0 ignores
@@ -1556,11 +1550,12 @@ export const EconomyConfigSchema = z.object({
       },
     ),
   /**
-   * Two reachable quality tiers. Clean requires only player effort (no part
-   * below the band bar); concours additionally requires authenticityPercent
-   * to clear its own bar - a value the player can never raise, rolled 60-95
-   * at generation, so concours stays a genuine bonus for a well-matched car
-   * rather than the only way to earn anything at all. Lemon's penalty and
+   * Two reachable quality tiers, both earned. Clean requires only that no
+   * part sits below the band bar; concours additionally requires the car's
+   * DERIVED authenticity (`computeDerivedStats`, sim/derivedStats.ts) to
+   * clear its own bar. That number used to be a stored roll no player could
+   * move; it is now originality times condition, so concours means an
+   * unmodified car in genuinely excellent order. Lemon's penalty and
    * thresholds (`LEMON_MAX_AVERAGE_CONDITION` etc.) live in
    * `sim/constants.ts`.
    */
@@ -1595,12 +1590,14 @@ export const EconomyConfigSchema = z.object({
             'reputation.tierThresholds must be strictly ascending (each rung genuinely harder than the last)',
         }),
       /** Every part's band must be at or above this to count as a clean sale -
-       * a floor per part ("seven great parts can't hide one neglected one"),
-       * reachable by effort alone, unlike the authenticity roll below. */
+       * a floor per part ("seven great parts can't hide one neglected one"). */
       cleanSaleMinBand: z.enum(['scrap', 'poor', 'worn', 'fine', 'mint']),
       cleanSaleBonus: z.number().int().nonnegative(),
-      /** Concours also requires the car's (unmodifiable) authenticityPercent to
-       * clear this bar - on top of, not instead of, the clean band bar. */
+      /** Concours also requires the car's derived authenticity to clear this
+       * bar - on top of, not instead of, the clean band bar. Since
+       * authenticity is originality times condition, and concours already
+       * demands every part mint, in practice this is a bar on how much of the
+       * car is still the parts it left the factory with. */
       concoursSaleMinAuthenticityPercent: z.number().int().min(0).max(100),
       /** Concours bonus; replaces (does not stack with) cleanSaleBonus. */
       concoursSaleBonus: z.number().int().nonnegative(),

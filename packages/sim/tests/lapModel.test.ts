@@ -34,7 +34,6 @@ function tyreInstance(part: (typeof PARTS)[number], band: 'mint' | 'scrap' = 'mi
     id: `fixture-${part.id}`,
     partId: part.id,
     band,
-    genuinePeriod: false,
     origin: { kind: 'market' as const, day: 1 },
   }
 }

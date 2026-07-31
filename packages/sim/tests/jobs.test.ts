@@ -49,7 +49,6 @@ const car: CarInstance = buildCarInstance({
   modelId: 'honda-city-e-aa',
   year: 1984,
   mileageKm: 100_000,
-  authenticityPercent: 90,
   parts: {
     ...groupCarParts({
       engine: 'worn',
@@ -74,7 +73,6 @@ const sparePart: PartInstance = {
   id: 'pi-0001',
   partId: 'shitbox-tanuki-street-coilovers',
   band: 'mint',
-  genuinePeriod: false,
   origin: makeMarketOrigin(1),
 }
 
@@ -314,7 +312,6 @@ describe('completeJob', () => {
             id: 'pi-existing',
             partId: 'tanuki-n1-coilovers',
             band: 'fine',
-            genuinePeriod: true,
             origin: makeMarketOrigin(1),
           },
         },
@@ -600,7 +597,6 @@ describe('findOrCreateJob (Sprint 11)', () => {
         id: 'pi-wrong',
         partId: wrongPart.id,
         band: 'mint',
-        genuinePeriod: false,
         origin: makeMarketOrigin(1),
       }
       const state = baseState({ partInventory: [sparePart, wrongInstance] })
@@ -648,7 +644,6 @@ describe('findOrCreateJob (Sprint 11)', () => {
         id: 'pi-turbo',
         partId: turboKit.id,
         band: 'mint',
-        genuinePeriod: false,
         origin: makeMarketOrigin(1),
       }
       const spec = {
@@ -741,7 +736,6 @@ describe('findOrCreateJob (Sprint 11)', () => {
         id: 'pi-scrap',
         partId: sparePart.partId,
         band: 'scrap',
-        genuinePeriod: false,
         origin: makeMarketOrigin(1),
       }
       const state = baseState({ partInventory: [scrapInstance] })
@@ -765,7 +759,6 @@ describe('findOrCreateJob (Sprint 11)', () => {
         modelId: 'honda-city-e-aa',
         year: 1984,
         mileageKm: 100_000,
-        authenticityPercent: 90,
         parts: {
           ...groupCarParts({
             engine: 'worn',
@@ -853,7 +846,6 @@ describe('findOrCreateJob (Sprint 11)', () => {
         id: 'pi-turbo-blocked',
         partId: turboKit.id,
         band: 'mint',
-        genuinePeriod: false,
         origin: makeMarketOrigin(1),
       }
       const spec = {
@@ -1149,7 +1141,6 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
       id: 'pi-aftermarket-dampers',
       partId: 'tanuki-street-coilovers', // grade 'street' - aftermarket
       band: 'worn',
-      genuinePeriod: false,
       origin: makeMarketOrigin(1),
     }
     const carWithAftermarket: CarInstance = {
@@ -1177,7 +1168,6 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
       id: 'pi-aftermarket-dampers-baseline',
       partId: 'tanuki-street-coilovers',
       band: 'worn',
-      genuinePeriod: false,
       origin: makeMarketOrigin(2),
     }
     const carWithAftermarket: CarInstance = {
@@ -1192,7 +1182,6 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     expect(slot.vacatedBaseline).toEqual({
       partId: 'tanuki-street-coilovers',
       band: 'worn',
-      genuinePeriod: false,
     })
     expect(result.state.partInventory).toEqual([aftermarketInstance])
   })
@@ -1202,7 +1191,6 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
       id: 'pi-aftermarket-dampers-chain',
       partId: 'tanuki-street-coilovers',
       band: 'worn',
-      genuinePeriod: false,
       origin: makeMarketOrigin(3),
     }
     const stockDampers = CONTEXT.stockPartByCarPartId.entry!.dampers!
@@ -1210,7 +1198,6 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
       id: 'pi-new-stock-dampers',
       partId: stockDampers.id,
       band: 'mint',
-      genuinePeriod: false,
       origin: makeMarketOrigin(4),
     }
     const carWithAftermarket: CarInstance = {
@@ -1365,7 +1352,6 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
       id: 'pi-player-bought',
       partId: 'tanuki-street-coilovers',
       band: 'worn',
-      genuinePeriod: false,
       origin: makeMarketOrigin(3),
     }
     const customerCar: CarInstance = {
@@ -1390,7 +1376,6 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
       id: 'pi-aftermarket-dampers-2',
       partId: 'tanuki-street-coilovers',
       band: 'worn',
-      genuinePeriod: false,
       origin: makeMarketOrigin(1),
       pricePaidYen: 55_000,
     }
@@ -1484,7 +1469,6 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
       id: 'pi-new-cams',
       partId: stockCams.id,
       band: 'mint',
-      genuinePeriod: false,
       origin: makeMarketOrigin(1),
       pricePaidYen: 20_000,
     }
@@ -1631,7 +1615,6 @@ function vacateSlot(state: GameState, carInstanceId: string, carPartId: CarPartI
         vacatedBaseline: {
           partId: installed.partId,
           band: installed.band,
-          genuinePeriod: installed.genuinePeriod,
         },
       },
     },
@@ -1648,14 +1631,12 @@ describe('the equivalence-priced labour model (Sprint 79 decision 1, maintainer 
     id: 'pi-original-rims',
     partId: stockRims.id,
     band: 'worn',
-    genuinePeriod: false,
     origin: makeCarOrigin('car-wheels-worn', 'Test Car', 0),
   }
   const originalTyres: PartInstance = {
     id: 'pi-original-tyres',
     partId: stockTyres.id,
     band: 'worn',
-    genuinePeriod: false,
     origin: makeCarOrigin('car-wheels-worn', 'Test Car', 0),
   }
   const wheelsWornCar: CarInstance = buildCarInstance({
@@ -1724,7 +1705,6 @@ describe('the equivalence-priced labour model (Sprint 79 decision 1, maintainer 
       id: 'pi-new-tyres',
       partId: fittingTyre.id,
       band: 'mint',
-      genuinePeriod: false,
       origin: makeMarketOrigin(1),
     }
     const state = baseState({
@@ -1782,7 +1762,6 @@ describe('the equivalence-priced labour model (Sprint 79 decision 1, maintainer 
       id: 'pi-new-tyres-2',
       partId: fittingTyre.id,
       band: 'mint',
-      genuinePeriod: false,
       origin: makeMarketOrigin(1),
     }
     const state = baseState({
@@ -1850,7 +1829,7 @@ describe('the equivalence-priced labour model (Sprint 79 decision 1, maintainer 
     expect(rimsRefit.state.ownedCars[0]?.parts.tyres.installed?.id).toBe(newTyres.id)
   })
 
-  it('the equivalence hole: a different-SKU part at the SAME band as the vacated baseline is still charged (partId, band, and genuinePeriod must all match)', () => {
+  it('the equivalence hole: a different-SKU part at the SAME band as the vacated baseline is still charged (partId and band must both match)', () => {
     const state = baseState({
       ownedCars: [wheelsWornCar],
       partInventory: [],
@@ -1865,7 +1844,6 @@ describe('the equivalence-priced labour model (Sprint 79 decision 1, maintainer 
       id: 'pi-different-sku',
       partId: fittingRims.id,
       band: 'worn',
-      genuinePeriod: false,
       origin: makeMarketOrigin(1),
     }
     expect(differentSkuSameBand.partId).not.toBe(originalRims.partId)
@@ -1897,7 +1875,6 @@ describe('the equivalence-priced labour model (Sprint 79 decision 1, maintainer 
       id: 'pi-new-clutch',
       partId: fittingClutch.id,
       band: 'mint',
-      genuinePeriod: false,
       origin: makeMarketOrigin(1),
     }
     const carAfterClutchOff = {
@@ -2019,7 +1996,7 @@ describe('resolveRemovePart wiring to revealOnRemoval (Sprint 74 decision 4): th
           ...base.parts,
           seats: {
             installed: null,
-            vacatedBaseline: { partId: 'stub', band: 'poor', genuinePeriod: false },
+            vacatedBaseline: { partId: 'stub', band: 'poor' },
           },
         },
       }
@@ -2027,7 +2004,6 @@ describe('resolveRemovePart wiring to revealOnRemoval (Sprint 74 decision 4): th
         id: 'pi-mint-seats',
         partId: PARTS.find((p) => p.carPartId === 'seats' && p.grade === 'stock')!.id,
         band: 'mint',
-        genuinePeriod: false,
         origin: makeMarketOrigin(1),
       }
       const state = baseState({ ownedCars: [resolvedCar], partInventory: [mintSeats] })
@@ -2057,7 +2033,6 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
     id: 'pi-recon',
     partId: stockPanelsId,
     band: 'poor',
-    genuinePeriod: false,
     origin: makeMarketOrigin(1),
   }
 
@@ -2247,7 +2222,6 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
       id: 'pi-worn-tyres',
       partId: wornTyresId,
       band: 'worn',
-      genuinePeriod: false,
       origin: makeMarketOrigin(1),
     }
     const state = baseState({ ownedCars: [], partInventory: [wornTyres] })

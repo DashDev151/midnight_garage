@@ -34,7 +34,7 @@ const model: CarModel = {
   bookValueYen: 180_000,
 }
 
-const baseInstance: CarInstance = buildCarInstance({ modelId: model.id, authenticityPercent: 90 })
+const baseInstance: CarInstance = buildCarInstance({ modelId: model.id })
 
 const coilovers: Part = {
   id: 'tanuki-street-coilovers',
@@ -48,7 +48,6 @@ const coilovers: Part = {
     powerFraction: { 'high-strung-na': 0, 'lazy-na': 0, forced: 0 },
     handling: 8,
     style: 3,
-    authenticity: 0,
   },
   physicalModifiers: { grip: 1, braking: 1, mass: 1 },
   priceYen: 70_000,
@@ -62,10 +61,9 @@ describe('computeDerivedStats', () => {
   it('a stock car with every part mint returns the platform baseline', () => {
     const result = stats(baseInstance)
     expect(result.power).toBe(model.spec.stockPowerPs)
-    expect(result.authenticity).toBe(90)
   })
 
-  it('a genuine-period installed part fully applies its modifiers', () => {
+  it('an installed part fully applies its modifiers at mint', () => {
     const instance: CarInstance = {
       ...baseInstance,
       parts: {
@@ -75,7 +73,6 @@ describe('computeDerivedStats', () => {
             id: 'pi-0001',
             partId: coilovers.id,
             band: 'mint',
-            genuinePeriod: true,
             origin: { kind: 'market', day: 1 },
           },
         },
@@ -97,7 +94,6 @@ describe('computeDerivedStats', () => {
             id: 'pi-0001',
             partId: coilovers.id,
             band: 'mint',
-            genuinePeriod: true,
             origin: { kind: 'market', day: 1 },
           },
         },
@@ -112,7 +108,6 @@ describe('computeDerivedStats', () => {
             id: 'pi-0002',
             partId: coilovers.id,
             band: 'worn',
-            genuinePeriod: true,
             origin: { kind: 'market', day: 1 },
           },
         },
@@ -137,7 +132,6 @@ describe('computeDerivedStats', () => {
         powerFraction: { 'high-strung-na': 0, 'lazy-na': -10, forced: 0 },
         handling: 0,
         style: 0,
-        authenticity: 0,
       },
     }
     const instance: CarInstance = {
@@ -149,7 +143,6 @@ describe('computeDerivedStats', () => {
             id: 'pi-0004',
             partId: brokenPart.id,
             band: 'mint',
-            genuinePeriod: true,
             origin: { kind: 'market', day: 1 },
           },
         },
@@ -159,15 +152,20 @@ describe('computeDerivedStats', () => {
     expect(result.power).toBe(0)
   })
 
-  it('a non-genuine part with a negative authenticity modifier still penalizes authenticity', () => {
-    const modifiedPart: Part = {
+  /**
+   * A part's own `grade` is the whole originality signal; no SKU carries an
+   * authenticity number. Authenticity's own behaviour lives in
+   * `authenticity.test.ts`; what belongs here is that this function never
+   * lets an installed SKU adjust it.
+   */
+  it('lets no installed SKU adjust authenticity - it is derived from the slots, never accumulated', () => {
+    const loudPart: Part = {
       ...coilovers,
       id: 'race-coilovers',
       statModifiers: {
         powerFraction: { 'high-strung-na': 0, 'lazy-na': 0, forced: 0 },
         handling: 20,
         style: 0,
-        authenticity: -15,
       },
     }
     const instance: CarInstance = {
@@ -177,16 +175,22 @@ describe('computeDerivedStats', () => {
         dampers: {
           installed: {
             id: 'pi-0003',
-            partId: modifiedPart.id,
+            partId: loudPart.id,
             band: 'mint',
-            genuinePeriod: false,
             origin: { kind: 'market', day: 1 },
           },
         },
       },
     }
-    const result = stats(instance, { [modifiedPart.id]: modifiedPart })
-    expect(result.authenticity).toBe(75)
+    // The same slot, same band, resolved against a catalogue that knows the
+    // SKU and one that does not: handling moves (the SKU carries a modifier),
+    // authenticity does not (nothing about that SKU is an authenticity
+    // number - only whether it resolves to `grade: 'stock'`, which it never
+    // does either way here).
+    const known = stats(instance, { [loudPart.id]: loudPart })
+    const unknown = stats(instance, {})
+    expect(known.handling).toBeGreaterThan(unknown.handling)
+    expect(known.authenticity).toBe(unknown.authenticity)
   })
 
   it('every previously-inert group now measurably affects a stat via its own band', () => {
@@ -194,21 +198,18 @@ describe('computeDerivedStats', () => {
 
     const scrapBrakes = buildCarInstance({
       modelId: model.id,
-      authenticityPercent: 90,
       parts: mintCarParts({ brakePadsDiscs: 'scrap' }),
     })
     expect(stats(scrapBrakes).handling).toBeLessThan(baseline.handling)
 
     const scrapRims = buildCarInstance({
       modelId: model.id,
-      authenticityPercent: 90,
       parts: mintCarParts({ rims: 'scrap' }),
     })
     expect(stats(scrapRims).style).toBeLessThan(baseline.style)
 
     const scrapSeats = buildCarInstance({
       modelId: model.id,
-      authenticityPercent: 90,
       parts: mintCarParts({ seats: 'scrap' }),
     })
     expect(stats(scrapSeats).style).toBeLessThan(baseline.style)
@@ -219,7 +220,6 @@ describe('computeDerivedStats', () => {
     // slot legitimate absence, not a defect.
     const naCar = buildCarInstance({
       modelId: model.id,
-      authenticityPercent: 90,
       parts: mintCarParts({ forcedInduction: null }),
     })
     expect(stats(naCar).power).toBe(model.spec.stockPowerPs)
@@ -234,12 +234,10 @@ describe('computeDerivedStats', () => {
     const rimsOnlyTaxonomy = PARTS_TAXONOMY.filter((entry) => entry.id === 'rims')
     const scrapRims = buildCarInstance({
       modelId: model.id,
-      authenticityPercent: 90,
       parts: mintCarParts({ rims: 'scrap' }),
     })
     const missingRims = buildCarInstance({
       modelId: model.id,
-      authenticityPercent: 90,
       parts: mintCarParts({ rims: null }),
     })
     const scrapStyle = computeDerivedStats(model, scrapRims, {}, rimsOnlyTaxonomy, ECONOMY).style

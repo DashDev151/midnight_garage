@@ -88,7 +88,6 @@ function giveReliableOwnedCar(game: ReturnType<typeof useGameStore>): string {
         id: `test-reliable-${partId}`,
         partId: stockPart.id,
         band: 'fine',
-        genuinePeriod: false,
         origin: { kind: 'market', day: 1 },
       },
     }
@@ -100,7 +99,6 @@ function giveReliableOwnedCar(game: ReturnType<typeof useGameStore>): string {
     mileageKm: 120_000,
     color: 'White',
     provenanceNote: '',
-    authenticityPercent: 80,
     symptoms: [],
     apparentBandByPartId: null,
     parts,

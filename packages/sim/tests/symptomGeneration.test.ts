@@ -151,20 +151,29 @@ describe('symptom generation (Sprint 73 decision 2)', () => {
         guardedContext,
         GAME_YEAR,
       )
-      // `panels`' money bill rides on `surface` alone - `metal` is repaired
-      // by hand and never priced in yen. A symptom cause that damages
-      // `panels` via metal (the real content's "quarter-panel-filler"
-      // symptom: `panel-respray`, `rust-patch`) therefore adds ZERO money
-      // cost, so the money-driven Law 2 veto correctly has nothing to drop -
-      // a real, disclosed consequence of pricing labour outside yen, not a
-      // broken guard. Every OTHER surviving symptom would be a genuine
-      // violation.
+      // A cause on a zone-derived body part can add ZERO money cost by two
+      // routes, and the money-driven Law 2 veto then correctly has nothing
+      // to drop. First, `panels`' money bill rides on `surface` alone -
+      // `metal` is repaired by hand and never priced in yen - so damage
+      // routed through metal (the real content's "quarter-panel-filler"
+      // symptom: `panel-respray`, `rust-patch`) is free. Second,
+      // `setZoneCarrierToAtLeastBand` is a no-op when the zone ALREADY
+      // carries at least that severity, so a cause describing damage the
+      // car had anyway (the real content's `rotted-subframe-mount`, which
+      // sets `underbody` to scrap) adds nothing to the bill either.
+      //
+      // Both are real, disclosed consequences of pricing body work outside
+      // yen, not a broken guard, and neither can hide a genuine violation:
+      // the per-part loop below independently asserts that no zone-derived
+      // carrier has any money-improve headroom left. Every OTHER surviving
+      // symptom would be a genuine violation.
       const survivingCause = car.symptoms[0]
         ? guardedContext.symptomsById[car.symptoms[0].symptomId]?.causes.find(
             (c) => c.id === car.symptoms[0]!.trueCauseId,
           )
         : undefined
-      const survivorIsMoneyFreeBodyDamage = survivingCause?.carPartId === 'panels'
+      const survivorIsMoneyFreeBodyDamage =
+        survivingCause !== undefined && isBodyDerivedPart(survivingCause.carPartId)
       if (!survivorIsMoneyFreeBodyDamage) {
         expect(
           car.symptoms,

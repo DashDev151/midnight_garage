@@ -243,9 +243,9 @@ export function defaultBuild(model: CarModel): SandboxBuild {
  * catalogue's own SKU for that part, class and grade and carries the identical
  * `PartInstance` shape.
  *
- * `authenticityPercent` is 100 rather than the auction generator's 60 to 95
- * roll: a sandbox car with every original part fitted IS untouched, and
- * anything that moves the number from there is then visibly the build's doing.
+ * Authenticity is not set here and never was a field: it derives from the
+ * slots below, so an all-stock, all-mint sandbox car reads 100 and every
+ * point it loses is visibly the build's own doing.
  */
 export function buildCarInstance(
   model: CarModel,
@@ -284,7 +284,6 @@ export function buildCarInstance(
             id: `${id}-part-${partId}`,
             partId: part.id,
             band: slot.band,
-            genuinePeriod: false,
             origin,
           }
         : null,
@@ -298,7 +297,6 @@ export function buildCarInstance(
     mileageKm,
     color: 'White',
     provenanceNote: '',
-    authenticityPercent: 100,
     parts,
     symptoms: [],
     apparentBandByPartId: null,

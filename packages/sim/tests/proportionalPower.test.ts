@@ -65,7 +65,6 @@ function installedFrom(part: Part, band: ConditionBand = 'mint'): PartInstance {
     id: `test-install-${part.id}`,
     partId: part.id,
     band,
-    genuinePeriod: false,
     origin: { kind: 'market', day: 0 },
   }
 }
