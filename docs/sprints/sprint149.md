@@ -133,7 +133,7 @@ sprint, and the weekly totals charged are identical to today's.
 | `calendar.auctionDayOfWeek` | **3** | midweek, so a won car has the rest of the week to be worked on |
 | `calendar.meetDayOfWeek` | **7** | the weekend, which is what the channel is called |
 | `calendar.paydayOfWeek` | **5** | Friday, per the design |
-| `calendar.rentDayOfWeek` | **1** | the start of the week, so a new week opens with its fixed cost visible |
+| `calendar.rentDayOfWeek` | **7** | the maintainer ruled 2026-07-31 that charging rent before a new player has done anything is wrong; day 7 restores the pre-sprint behaviour exactly (see "AMENDED" below) |
 
 Rent and wages both fall inside every seven-day span exactly once, so **the amount charged per
 week does not change**; only which day it lands on does. Say so in the Exit, because a reviewer
@@ -221,6 +221,31 @@ player is sent by the tutorial to an auction house showing a closed sign, and wa
 before the game's core activity is available. **The per-tier cadence fixes this by construction**
 (`local-yard` opens on day 1), which is the main reason it should be built next rather than
 later. Also recorded in `TODO.md`.
+
+### AMENDED 2026-07-31: `calendar.rentDayOfWeek` corrected from 1 to 7
+
+**MAINTAINER RULING, explicit and signed: "rent starts on day 7. like current."** This sprint
+shipped `rentDayOfWeek: 1` (Monday, "the start of the week, so a new week opens with its fixed
+cost visible" - the rationale the Levers table originally gave). Reviewing
+`sale-value-arc-lever-ledger.md`, the maintainer rejected it: at day 1, a brand-new player's very
+first End Day took 20,000 off their 300,000 starting cash before they had bought, fixed or sold
+anything. Day 7 restores the pre-sprint `day % 7 === 0` cadence exactly, and is now the only
+value the calendar has ever shipped with in practice.
+
+This is the only lever that moved; `paydayOfWeek`, `meetDayOfWeek`, `auctionDayOfWeek`,
+`daysPerWeek` and `daysPerMonth` are untouched, and no yen value in `economy.rent` moved either.
+Rent day 7 now coincides with meet day 7 - ruled fine and expected, since one is a charge and the
+other is a selling-channel draw; not "fixed."
+
+Both `advanceDay.test.ts` golden-master hashes moved back to exactly their pre-sprint values
+(job-loop `db7f2695` -> `8cf486eb`; acquisition-to-sale `0d29ca19` -> `634d4493`), confirming the
+correction restores the prior state bit for bit, not merely the rent day. Its "rent is charged
+again" count reverted from 5 to 4 (the 30-day script's rent days move from 1/8/15/22/29 back to
+7/14/21/28). `finances.test.ts`'s 28-day total-unchanged tests passed untouched throughout, proving
+the weekly total was never at risk. The economy approval-gate hash was re-pinned in the same
+change, under this explicit ruling rather than the R3 standing grant (R3 expired once the
+maintainer reviewed the ledger). Full detail and the re-derivation record: the re-pin comment in
+`packages/content/tests/economyApprovalGate.test.ts`.
 
 **Task 0, run first as its own step.** `reputationAtLeast`, `deriveReputationTier` and
 `applyReputationDelta` moved from `calendar.ts` to a new `packages/sim/src/reputation.ts` (none

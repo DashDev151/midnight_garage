@@ -60,7 +60,9 @@ describe('the calendar (sprint149.md): day 1 is week 1 day 1 and month 1', () =>
   })
 
   it('dayOfWeekName reads back the position for display, never for scheduling', () => {
-    expect(dayOfWeekName(ECONOMY.calendar.rentDayOfWeek, ECONOMY)).toBe('Monday')
+    // rentDayOfWeek is 7, the same position as meetDayOfWeek - both read
+    // 'Sunday' by design; see the "share a day" test below.
+    expect(dayOfWeekName(ECONOMY.calendar.rentDayOfWeek, ECONOMY)).toBe('Sunday')
     expect(dayOfWeekName(ECONOMY.calendar.auctionDayOfWeek, ECONOMY)).toBe('Wednesday')
     expect(dayOfWeekName(ECONOMY.calendar.paydayOfWeek, ECONOMY)).toBe('Friday')
     expect(dayOfWeekName(ECONOMY.calendar.meetDayOfWeek, ECONOMY)).toBe('Sunday')
@@ -92,9 +94,17 @@ describe('the calendar (sprint149.md): day 1 is week 1 day 1 and month 1', () =>
     }
   })
 
-  it('the four named landmarks land on four different days, so no two bills share a day', () => {
-    const { auctionDayOfWeek, meetDayOfWeek, paydayOfWeek, rentDayOfWeek } = ECONOMY.calendar
-    const days = [auctionDayOfWeek, meetDayOfWeek, paydayOfWeek, rentDayOfWeek]
-    expect(new Set(days).size).toBe(days.length)
+  // Was "the four named landmarks land on four different days" until
+  // rentDayOfWeek moved back to 7, the same position as meetDayOfWeek, on
+  // purpose: rent (a charge) and the meet (a selling-channel draw) are
+  // different mechanisms, so sharing a day is fine. Directive 17 case (a) -
+  // the old invariant was wrong, not the implementation: what must actually
+  // never collide is the two CHARGES finances.ts can levy in the same tick,
+  // since sprint149.md's whole point was that rent and wages stop landing as
+  // one undifferentiated subtraction. A non-charge landmark (auction, meet)
+  // is free to share a day with either.
+  it('the two charges (rent, payday) never share a day', () => {
+    const { paydayOfWeek, rentDayOfWeek } = ECONOMY.calendar
+    expect(rentDayOfWeek).not.toBe(paydayOfWeek)
   })
 })

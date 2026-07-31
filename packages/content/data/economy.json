@@ -6,7 +6,7 @@
     "auctionDayOfWeek": 3,
     "meetDayOfWeek": 7,
     "paydayOfWeek": 5,
-    "rentDayOfWeek": 1
+    "rentDayOfWeek": 7
   },
   "rent": {
     "baseWeeklyYen": 6000,

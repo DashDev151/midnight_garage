@@ -31,9 +31,10 @@ export function currentGameYear(reputationTier: ReputationTier): number {
 
 /** Weekday names for `dayOfWeek`'s 1-indexed positions - a repeating
  * 7-day week labelled for display only (sprint149.md); not a real 1995
- * calendar and never grows leap years or actual dates. Position 1 is
- * `calendar.rentDayOfWeek`'s "start of the week"; the last position is
- * `calendar.meetDayOfWeek`'s weekend. */
+ * calendar and never grows leap years or actual dates. The last position
+ * is `calendar.meetDayOfWeek`'s weekend, and also `calendar.rentDayOfWeek`:
+ * rent and the meet deliberately share a day, one a charge and the other a
+ * selling-channel draw. */
 const WEEKDAY_NAMES = [
   'Monday',
   'Tuesday',
@@ -102,8 +103,10 @@ export function isPayday(day: number, economy: EconomyConfig): boolean {
 }
 
 /** Whether `day` is `calendar.rentDayOfWeek` - the rent bill falls here
- * (`finances.ts`), at the start of the week so a new week opens with its
- * fixed cost visible. */
+ * (`finances.ts`), at the end of the week (restoring the pre-sprint149.md
+ * `day % 7 === 0` cadence exactly) rather than its start: a brand-new
+ * player's very first End Day must not take rent off their starting cash
+ * before they have bought, fixed or sold anything. */
 export function isRentDay(day: number, economy: EconomyConfig): boolean {
   return dayOfWeek(day, economy) === economy.calendar.rentDayOfWeek
 }

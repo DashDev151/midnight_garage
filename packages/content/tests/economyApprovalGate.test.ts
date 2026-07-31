@@ -886,6 +886,26 @@ import storyMissions from '../data/storyMissions.json'
  * End Day after listing. No mission payout, budget cap, or balance-probe figure moves: none of
  * those pipelines reads the calendar block. `partPricing.json` is untouched, so its own hash
  * holds.
+ *
+ * Re-pinned 2026-07-31 (MAINTAINER RULING, explicit and signed - NOT under R3, which expired
+ * once the maintainer reviewed `docs/sprints/sale-value-arc-lever-ledger.md`): `calendar.
+ * rentDayOfWeek` 1 -> 7. The maintainer's own words: "rent starts on day 7. like current." This
+ * is the one lever moved; `paydayOfWeek` stays 5, `meetDayOfWeek` stays 7, `auctionDayOfWeek`
+ * stays 3, `daysPerWeek` stays 7, `daysPerMonth` stays 28. At `rentDayOfWeek` 1 a brand-new
+ * player's very first End Day took 20,000 off their 300,000 starting cash before they had
+ * bought, fixed or sold anything; day 7 restores the pre-sprint149.md `day % 7 === 0` cadence
+ * exactly. Rent day 7 now coincides with meet day 7 - ruled fine and expected, since one is a
+ * charge and the other is a selling-channel draw, not a defect to fix. `partPricing.json` and
+ * every mission payout/budget cap are untouched (confirmed passing unchanged): none of those
+ * pipelines reads the calendar block. What moves as a consequence: `advanceDay.test.ts`'s two
+ * golden-master hashes (job-loop `db7f2695` -> `8cf486eb`, acquisition-to-sale `0d29ca19` ->
+ * `634d4493`, both re-run twice to confirm determinism) and its "rent is charged again" count
+ * (5 -> 4, since the 30-day script's rent days move from 1/8/15/22/29 back to 7/14/21/28). Both
+ * new hashes are exactly the PRE-sprint149.md values recorded in `sale-value-arc-lever-ledger.md`
+ * ("sprint148/149 | 8cf486eb -> db7f2695" and "634d4493 -> 0d29ca19"), confirming the change
+ * restores the prior state bit for bit rather than merely restoring the rent day. `finances.
+ * test.ts`'s 28-day total-unchanged tests pass untouched: the amount charged per week never
+ * moved, only which day it lands on.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -895,7 +915,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('e6ca43bcc9ffbfee538b84507be7988ae71ddfa2f3a76ab77c5a05ff32ab26b8')
+    ).toBe('04131e5c20274e6606ef03a74ab7380e92584614d3165af5d85ce4c3c01118c5')
   })
 
   it('partPricing.json matches its approved content exactly', () => {

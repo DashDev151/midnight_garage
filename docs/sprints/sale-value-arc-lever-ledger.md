@@ -1,11 +1,31 @@
 # Sale-value arc: the lever ledger for review
 
+## RULING: all 38 levers PRELIMINARILY RATIFIED, 2026-07-31
+
+**The maintainer has preliminarily ratified every lever in this document**, after reading the
+two-car worked example (`docs/design/systems/worked-example-two-cars.md`). Their words: the
+example is "far from perfect" but gives "a much better indication of feel than anything else up
+to now", and the numbers "feel quite sane".
+
+**What "preliminarily" means, and it matters.** These values are no longer provisional and no
+longer depend on R3, which has expired. They are signed and they are what the game runs on. But
+they are signed on **modelled feel, not on played feel**: nobody has yet played a career with
+them. They are expected to move again after playtesting, and moving one then is a normal tuning
+decision rather than a reversal.
+
+**One row is separately and explicitly ratified**, not preliminarily:
+`calendar.rentDayOfWeek`, ruled to 7 on 2026-07-31 so a new player is not charged rent before
+they have done anything. It is marked in the Sprint 149 table.
+
+**What still needs signing is anything NOT in this document.** R3 is spent. Every future lever
+move needs its own explicit sign-off under directive 22, one at a time, by name and value.
+
 ## What this is
 
 Between 2026-07-30 and 2026-07-31 an orchestrator ran sprints 143 to 149 of the sale-value arc.
-Every economy lever those sprints moved is **provisional pending your ratification**. This
-document collates all of them, sprint by sprint, so you can review the whole arc in one sitting
-instead of opening six sprint docs.
+This document collates every economy lever those sprints moved, sprint by sprint, so the whole
+arc can be reviewed in one sitting instead of opening six sprint docs. **It is now a record of
+what was ratified rather than a request for ratification.**
 
 **R3, the standing lever grant.** Before going off shift on 2026-07-30 you handed the arc over
 verbally, in session: everything designed to that point was signed off, work continued without
@@ -15,9 +35,10 @@ sign-off, on condition every change is documented for your review and sane defau
 `docs/design/systems/sale-value-implementation-plan.md` section 4 and in the session transcript.
 The grant covers only this handover window and expires once you have reviewed this ledger.
 
-**How to use this document.** Each row is one lever. Tick it to ratify as-is, strike it to reject.
-Where you reject one, say what should happen instead (revert to old value, pick a new number, or
-leave retired). Section 5 tells you mechanically how a rejection gets applied.
+**How to use this document, now that it is ratified.** It is the record of what the arc's numbers
+are and why each was chosen. When playtesting says a value is wrong, find its row, read the
+reason it was picked, and change it as a normal signed tuning decision. Section 5 still describes
+how a value gets moved mechanically, including which tests will name themselves when it does.
 
 Sprint 143 (guards and defects) moved no economy value; its Exit says so explicitly. It is not
 included below.
@@ -145,10 +166,12 @@ final in the doc, the Exit is not yet filled in.**
 | `calendar.auctionDayOfWeek` | new | 3 | Midweek, so a won car has the rest of the week to be worked on. |
 | `calendar.meetDayOfWeek` | new | 7 | The weekend, matching what the channel is called. |
 | `calendar.paydayOfWeek` | new | 5 | Friday, per the design. |
-| `calendar.rentDayOfWeek` | new | 1 | Start of the week, so a new week opens with its fixed cost visible. |
+| `calendar.rentDayOfWeek` | new | 7 | **RATIFIED, 2026-07-31 maintainer ruling ("rent starts on day 7. like current."), not provisional under R3.** Shipped provisionally at 1 (start of the week); reviewing this ledger, the maintainer rejected that value - a brand-new player's first End Day took 20,000 off their 300,000 starting cash before they had bought, fixed or sold anything. Day 7 restores the pre-sprint behaviour exactly. |
 
 These are scheduling positions, not economic values: the sprint doc states no yen figure changes
-and the same total is charged per week, only on different days.
+and the same total is charged per week, only on different days. `calendar.rentDayOfWeek` is the
+one lever in this whole arc the maintainer has explicitly ratified by name and value; every other
+row on this page remains provisional under the R3 standing grant until reviewed.
 
 ---
 
