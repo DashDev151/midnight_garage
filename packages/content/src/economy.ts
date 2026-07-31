@@ -64,6 +64,35 @@ const ByPartFitmentClassZoneWeightsSchema = z.object({
   flagship: ZoneSeverityWeightsSchema,
 })
 
+/**
+ * How rough a generated car is, as one ordered four-point scale: `tidy` is a
+ * couple of jobs and a good weekend, `used` is honest wear and real work,
+ * `rough` is a proper project, `project` is a car someone gave up on. Ordered
+ * tidy-to-project, and the order is load-bearing - the schema refines the
+ * band-step ladder to rise along it.
+ */
+export const DamageGradeSchema = z.enum(['tidy', 'used', 'rough', 'project'])
+export type DamageGrade = z.infer<typeof DamageGradeSchema>
+export const DAMAGE_GRADES = DamageGradeSchema.options
+
+/** One non-negative draw weight per damage grade, keyed explicitly so a
+ * missing grade fails validation rather than silently reading as zero. */
+const DamageGradeWeightsSchema = z.object({
+  tidy: z.number().nonnegative(),
+  used: z.number().nonnegative(),
+  rough: z.number().nonnegative(),
+  project: z.number().nonnegative(),
+})
+
+/** How many band steps of damage each grade buys. Zero is legitimate at the
+ * tidy end (a car that arrives exactly as the wear model left it). */
+const DamageGradeStepsSchema = z.object({
+  tidy: z.number().int().nonnegative(),
+  used: z.number().int().nonnegative(),
+  rough: z.number().int().nonnegative(),
+  project: z.number().int().nonnegative(),
+})
+
 /** One yen/count value per auction tier - the same shape `AUCTION_LOTS_PER_TIER`
  * used as `Readonly<Record<AuctionTier, number>>` in sim/constants.ts before
  * this file existed. Explicit per-tier keys (not a generic `z.record`) so a
@@ -1491,22 +1520,26 @@ export const EconomyConfigSchema = z.object({
        */
       maxBillFraction: z.number().positive().max(1),
       /**
-       * The core-loop law's floor: the minimum below-expectation restoration
-       * bill a generated car must carry, as a fraction of `bookValueYen`, keyed
-       * by `PartFitmentClass` (`fitmentClassForTier`, same as every other
-       * fitment-keyed config). After symptoms
-       * land, `auctions.ts`'s `enforceMinWorkBill` degrades installed parts
-       * (seeded, honest visible wear, never forced to `scrap`) until the true
-       * car's bill to its own tier's expectation band
-       * (`valuation.expectationByTier[tier].band`) clears `bookValueYen *
-       * minWorkBillFractionByTier[tier]`. Without this floor a generated lot
-       * could roll with nothing below expectation to fix at all - no fixable
-       * work, no core loop. The trailing refine below keeps every tier's floor
-       * strictly under `maxBillFraction`'s ceiling: the floor top-up runs under
-       * the SAME Law 2 guard `enforceMaxBillFraction` already enforces, so the
-       * floor must never be able to reach the ceiling it is itself bounded by.
+       * How rough a generated lot is (docs/design/systems/generation-damage.md,
+       * layer 1). One grade is rolled per car from `weights` - roster-wide
+       * shares, not a per-venue table, because
+       * `auction.carTierWeightsByAuctionTier` already decides which price bands
+       * a room sells and the roughness gradient across venues emerges from
+       * that. `bandStepsByGrade` is what the rolled grade buys, counted in BAND
+       * STEPS rather than in yen: `auctions.ts`'s `applyDamageBudget` degrades
+       * one installed part per step, under the same `maxBillFraction` ceiling
+       * every other generation step obeys, having first deducted the steps this
+       * car's symptoms already spent.
+       *
+       * Steps, not yen, because a step is what a player perceives while yen is
+       * downstream of `partPricing.classFactors`. The bill then falls out of
+       * the parts' own prices, which is the right direction of causation: a
+       * rough cheap car SHOULD have a small bill.
        */
-      minWorkBillFractionByTier: z.record(PartFitmentClassSchema, z.number().positive().max(1)),
+      damageGrades: z.object({
+        weights: DamageGradeWeightsSchema,
+        bandStepsByGrade: DamageGradeStepsSchema,
+      }),
       /**
        * Per ELIGIBLE, non-missing slot (eligible = the catalog has a `grade >
        * stock` entry for this `carPartId` at the car's own fitment class),
@@ -1549,19 +1582,20 @@ export const EconomyConfigSchema = z.object({
         surfaceExtraChance: z.number().min(0).max(1),
       }),
     })
+    .refine((pg) => DAMAGE_GRADES.some((grade) => pg.damageGrades.weights[grade] > 0), {
+      message: 'partsGeneration.damageGrades.weights must give at least one grade a real share',
+    })
     .refine(
       (pg) =>
-        PartFitmentClassSchema.options.every((c) => pg.minWorkBillFractionByTier[c] !== undefined),
-      { message: 'partsGeneration.minWorkBillFractionByTier must name every fitment class' },
-    )
-    .refine(
-      (pg) =>
-        PartFitmentClassSchema.options.every(
-          (c) => pg.minWorkBillFractionByTier[c]! < pg.maxBillFraction,
+        DAMAGE_GRADES.every(
+          (grade, i) =>
+            i === 0 ||
+            pg.damageGrades.bandStepsByGrade[grade] >=
+              pg.damageGrades.bandStepsByGrade[DAMAGE_GRADES[i - 1]!],
         ),
       {
         message:
-          'partsGeneration.minWorkBillFractionByTier[*] must be strictly below partsGeneration.maxBillFraction - the floor top-up runs under the same Law 2 ceiling guard, so it must never be able to reach it',
+          'partsGeneration.damageGrades.bandStepsByGrade must rise from tidy to project - the grades are one ordered scale of how rough a car is',
       },
     ),
   /**

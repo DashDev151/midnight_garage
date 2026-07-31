@@ -146,12 +146,35 @@ describe('the value ladder is the shipped valuation, decomposed', () => {
   })
 
   it('prices every channel off the same underlying market value', () => {
+    // Every quote in this set is taken at ONE instant, on the car as listed,
+    // so they can be compared to each other to the yen. The claim is that a
+    // channel changes only how much taste headroom a buyer can express, never
+    // what the car is worth underneath: the trade network has no taste roll at
+    // all, the shop front has a ceiling of exactly 1 (so its taste is always
+    // exactly 1), and those two therefore quote the identical number. Every
+    // channel with headroom above 1 quotes at or above it, and never below.
+    //
+    // Deliberately NOT compared against the 'Modified' rung: that rung is read
+    // the moment the build is fitted and these quotes come from the day an
+    // offer lands, so the two describe the same car at different points in the
+    // run and any equality between them is a coincidence of scheduling.
     for (const car of [REPORT.carA, REPORT.carB]) {
       const tradeNetwork = car.channelQuotes.find((q) => q.channelId === 'tradeNetwork')!
+      const shopFront = car.channelQuotes.find((q) => q.channelId === 'shopFront')!
       expect(tradeNetwork.tasteCeiling).toBeNull()
-      // The trade network has no taste roll, so its quote IS the taste-free
-      // market value of the same car at the same heat.
-      expect(tradeNetwork.channelPriceYen).toBe(car.rungs[2]!.ledger.totalYen)
+      expect(shopFront.tasteCeiling).toBe(1)
+      expect(shopFront.buyerTaste, car.modelId).toBe(1)
+      expect(shopFront.channelPriceYen, car.modelId).toBe(tradeNetwork.channelPriceYen)
+      for (const quote of car.channelQuotes) {
+        if (quote.tasteCeiling === null || quote.tasteCeiling <= 1) continue
+        expect(quote.buyerTaste, `${car.modelId} ${quote.channelId}`).toBeGreaterThanOrEqual(1)
+        expect(quote.buyerTaste, `${car.modelId} ${quote.channelId}`).toBeLessThanOrEqual(
+          quote.tasteCeiling,
+        )
+        expect(quote.channelPriceYen, `${car.modelId} ${quote.channelId}`).toBeGreaterThanOrEqual(
+          tradeNetwork.channelPriceYen,
+        )
+      }
     }
   })
 })

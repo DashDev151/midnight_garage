@@ -511,11 +511,19 @@
       "cherished": 0
     },
     "maxBillFraction": 0.6,
-    "minWorkBillFractionByTier": {
-      "entry": 0.1,
-      "everyday": 0.06,
-      "enthusiast": 0.05,
-      "flagship": 0.04
+    "damageGrades": {
+      "weights": {
+        "tidy": 45,
+        "used": 35,
+        "rough": 15,
+        "project": 5
+      },
+      "bandStepsByGrade": {
+        "tidy": 2,
+        "used": 5,
+        "rough": 11,
+        "project": 20
+      }
     },
     "wearExposureByMileageKm": [
       [0, 0],

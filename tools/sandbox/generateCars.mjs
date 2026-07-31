@@ -263,7 +263,12 @@ function synthesiseModel(row) {
     spec: {
       chassisCode: 'unknown',
       engineCode: row.ec,
+      // The spec book records one build year per car, not a production window,
+      // and a research entry never reaches auction generation (the only reader
+      // of the window). Both ends therefore carry the book's own year rather
+      // than an invented production end.
       yearFrom: row.y,
+      yearTo: row.y,
       curbWeightKg: row.kg,
       stockPowerPs: row.ps,
       reliabilityBase: RESEARCH_RELIABILITY_BASE_PLACEHOLDER,

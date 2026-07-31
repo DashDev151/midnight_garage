@@ -207,12 +207,13 @@ describe('advanceDay golden master', () => {
     // with it - which is the proof that this is a shape change and not a
     // behavioural one.
     //
-    // It last moved when generation stopped rolling a stored authenticity
-    // number: that draw sat between the provenance pick and the zone-state
-    // roll, so removing it shifts every draw after it in the stream and every
-    // generated board with it. Re-derived from a real run, twice, to confirm
-    // determinism.
-    expect(hashState(finalState)).toBe('0460fdc2')
+    // It last moved when the generation damage model changed: a car's model
+    // year is now drawn inside its own production window rather than
+    // `yearFrom + rng.int(0, 8)`, and the bill-chasing floor was replaced by a
+    // rolled damage budget spent in band steps, so both the ages and the
+    // condition of every lot on every board differ. Re-derived from a real
+    // run, twice, to confirm determinism.
+    expect(hashState(finalState)).toBe('ca96a465')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -345,9 +346,10 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // above: the lot's rolled condition, the car's derived stats and the
     // buyer's taste-adjusted price all feed it, so it is re-derived from a
     // real run whenever one of them deliberately changes. It moved with the
-    // golden master above for the same reason: generation no longer draws a
-    // stored authenticity number, so every lot after that draw differs.
-    expect(hashState(acquisitionCareer().sold)).toBe('5c5614ec')
+    // golden master above for the same reason: a lot's model year now comes
+    // from the car's own production window and its damage from a rolled budget
+    // in band steps, so every lot differs in both age and condition.
+    expect(hashState(acquisitionCareer().sold)).toBe('0a55e42e')
   })
 })
 

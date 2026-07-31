@@ -68,6 +68,7 @@ const TEST_MODEL: CarModel = {
     chassisCode: 'TM',
     engineCode: 'TM',
     yearFrom: 1990,
+    yearTo: 1990,
     curbWeightKg: 1200,
     stockPowerPs: 150,
     reliabilityBase: 90,

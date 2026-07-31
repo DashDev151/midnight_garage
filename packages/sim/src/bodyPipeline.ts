@@ -295,8 +295,8 @@ export function setZoneCarrierToAtLeastBand(
 /**
  * Worsens whichever panel zone has the LEAST headroom left before hitting
  * `carPartId`'s money-relevant field cap (`underbody` reads the chassis zone
- * alone) - the core-loop floor's zone-aware top-up move
- * (`enforceMinWorkBill`, auctions.ts). A no-op once every relevant zone is
+ * alone) - the generation damage budget's zone-aware degrade move
+ * (`spendDamageBudget`, auctions.ts). A no-op once every relevant zone is
  * already capped: `panels` never reaches `scrap` this way - that needs a
  * missing panel, a separate and more drastic state this helper never
  * touches, matching `degradeBand`'s own never-forced-to-scrap contract.

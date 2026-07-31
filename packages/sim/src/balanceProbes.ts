@@ -16,7 +16,7 @@ import {
 import {
   carOriginLabel,
   enforceMaxBillFraction,
-  enforceMinWorkBill,
+  spendDamageBudget,
   stockInstanceFor,
 } from './auctions'
 import {
@@ -229,8 +229,8 @@ export function buildWorstCaseRawCar(model: CarModel, context: SimContext): CarI
   })
 }
 
-/** The fixed seed the rough probe threads through `enforceMinWorkBill`'s
- * candidate picks - the floor top-up is the one generation guard that draws,
+/** The fixed seed the rough probe threads through `spendDamageBudget`'s
+ * candidate picks - the damage budget is the one generation guard that draws,
  * and pinning the draw keeps the coherence table reproducible. */
 const ROUGH_PROBE_SEED = 0
 
@@ -240,16 +240,17 @@ const ROUGH_PROBE_SEED = 0
  * Every real slot starts at `poor` at the roster's worst reachable mileage,
  * and then the two generation guards run in the order
  * `generateAuctionCarInstance` runs them - `enforceMaxBillFraction` softens
- * whatever the Law 2 ceiling forbids, and `enforceMinWorkBill` puts the
- * core-loop floor's fixable work back in.
+ * whatever the Law 2 ceiling forbids, and the damage budget spends a
+ * `project` grade's worth of band steps back into what the softening freed.
  *
  * Both guards are essential. A raw all-`poor` car sits far above the Law 2
  * ceiling for most of the roster - its bill to mint runs to several times
  * what the guard permits - so anything measured on one is measured on a lot
  * the game can never produce: the market prices such a car at a few percent
  * of clean, and the restoration it "needs" is a bill no player would ever be
- * offered. The floor top-up is the other half: it is what puts real,
- * below-expectation work back on the softened car.
+ * offered. The budget is the other half, at the worst grade the roll can
+ * produce, so the probe car is the worst a real lot can be rather than the
+ * worst arithmetic allows.
  *
  * Deliberately NOT `buildWorstCaseRawCar`. That car is all-`scrap`, and scrap
  * is unrepairable by definition (`costToBandYen`'s own first branch): it is
@@ -270,7 +271,14 @@ export function buildRoughProbeCar(model: CarModel, context: SimContext): CarIns
   })
   const origin = makeCarOrigin(carId, carOriginLabel(model, model.spec.yearFrom), 0)
   const softened = enforceMaxBillFraction(raw, model, context, origin)
-  return enforceMinWorkBill(softened, model, context, origin, createRng(ROUGH_PROBE_SEED))
+  return spendDamageBudget(
+    softened,
+    model,
+    context,
+    origin,
+    createRng(ROUGH_PROBE_SEED),
+    context.economy.partsGeneration.damageGrades.bandStepsByGrade.project,
+  )
 }
 
 /**

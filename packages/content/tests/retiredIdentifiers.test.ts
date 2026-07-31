@@ -145,6 +145,24 @@ const RETIRED_IDENTIFIERS: readonly RetiredIdentifier[] = [
       'valuation.genuinePeriodMultiplier (1.25) multiplied an installed part contribution when its instance was genuine period. Nothing ever was, so it multiplied by 1.0 on every part of every car in the game; it dies with the flag it read.',
   },
   {
+    identifier: 'minWorkBillFractionByTier',
+    retiredInSprint: 153,
+    reason:
+      'A per-tier fraction of book value that generation broke parts until the repair bill reached, with no limit: it authored 62 to 89 per cent of the damage on every car in the game, and hit cheap cars hardest because their parts are cheap so it had to break more of them. Replaced by partsGeneration.damageGrades - a grade rolled per lot and spent in BAND STEPS, so the bill falls out of the parts own prices instead of driving them.',
+  },
+  {
+    identifier: 'enforceMinWorkBill',
+    retiredInSprint: 153,
+    reason:
+      'The loop that chased the fraction above. Replaced by spendDamageBudget (sim/auctions.ts): same stepping machinery, same Law 2 ceiling guard, same never-to-scrap candidate rule, but the stop condition is a spent budget rather than a yen target.',
+  },
+  {
+    identifier: 'minWorkTopUpCeilingBinds',
+    retiredInSprint: 153,
+    reason:
+      'Asked whether the Law 2 ceiling was what stopped the retired floor short. The budget has no shortfall to explain away: it spends what it rolled and stops, so the question no longer has a caller.',
+  },
+  {
     identifier: 'WEEKLY_RENT_YEN',
     retiredInSprint: 148,
     reason:

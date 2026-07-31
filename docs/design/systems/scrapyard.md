@@ -198,6 +198,44 @@ has been picked over is eventually crushed and leaves. That last part matters,
 because **a wreck the player passed on should be able to disappear.** Deciding not
 to buy has to be able to cost something or it is not a decision.
 
+### What arrives, and in what state. RULED 2026-07-31
+
+**The yard inverts the auction generation rules, deliberately.** Both points below are
+maintainer rulings and both are the opposite of how an auction room stocks itself. See
+`generation-damage.md` for the auction side; this section is the authority for the yard, and a
+scrapyard sprint should not need to read that document to get this right.
+
+**1. Tier availability is FLAT. Any car, entry through flagship.** Auction rooms draw from
+`auction.carTierWeightsByAuctionTier`, a weighted mix per room: the local yard is 70 per cent
+entry, the collector network 70 per cent flagship. **The scrapyard uses no such weighting.** A
+yard takes whatever arrives on the truck, and a crashed flagship is exactly as plausible as a
+crashed kei.
+
+**2. Condition is IMPOSED BY THE VENUE, not emergent from the car.** On the auction side a car's
+roughness comes from its own culture and tier profile, and the gradient across rooms is an
+emergent consequence of which cars each room sells. **At the yard that is reversed: everything is
+in bad condition whatever the car is.** A cherished-profile flagship still arrives wrecked,
+because it is in a scrapyard.
+
+Neither is an inconsistency. **An auction room's stock reflects who shops there; a yard's stock
+reflects how the car ended up there.**
+
+### Why this matters more than it looks
+
+**This is how a player touches a flagship early.** An intact Supra is gated behind money for a
+very long time. A crashed one is not, and a crashed Supra in a yard is the whole fantasy of the
+place.
+
+So the yard is **a progression on-ramp to cars the auction economy otherwise gates behind
+money**, which is a better reason for it to exist than cheap parts, and it should be designed and
+priced as one.
+
+It also pairs with a change on the auction side: `generation-damage.md` makes project-grade cars
+rare at auction by construction (roughly 9 per cent at the local yard falling to 2 per cent at the
+collector network, purely from the tier mix). **So the scrapyard becomes where a player goes when
+a wreck is exactly what they want.** Those two only work as a pair, and weakening either one
+weakens both.
+
 ---
 
 ## 7. Economics, and the risk this venue carries

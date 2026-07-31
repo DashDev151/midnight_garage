@@ -19,6 +19,7 @@ const model: CarModel = {
     chassisCode: 'AA',
     engineCode: 'ER',
     yearFrom: 1981,
+    yearTo: 1981,
     curbWeightKg: 690,
     stockPowerPs: 61,
     reliabilityBase: 99,

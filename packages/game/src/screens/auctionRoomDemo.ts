@@ -42,8 +42,8 @@ import {
  * versions of this module instead SEARCHED a fixed-seed generated catalogue
  * of thousands of lots for a pair clearing a "clear steal"/"genuine trap"
  * bar - car generation consumes the seeded PRNG a variable number of times
- * per lot (`enforceMinWorkBill`, sim/auctions.ts, loops while the repair
- * bill climbs to a yen floor), so ANY part-price change anywhere reshuffled
+ * per lot (`spendDamageBudget`, sim/auctions.ts, loops once per band step of
+ * the lot's rolled damage budget), so ANY part-price change anywhere reshuffled
  * the whole catalogue and a different car won the search. That search broke
  * this module's own tests three sprints running (140, 141, 142) - twice on a
  * pinned yen figure moving, once on the selected car's SYMPTOMS changing

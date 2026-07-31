@@ -147,6 +147,24 @@ describe('the roster CSV is well formed', () => {
     }
   })
 
+  /**
+   * The production window, authored at both ends for all 94 rows. A car
+   * generates inside it and nowhere else, so a missing or inverted end would
+   * put a Hakosuka on a 1977 plate.
+   */
+  it('gives every car a closed production window', () => {
+    for (const row of roster) {
+      const where = `roster row ${row.get('rosterNo')} (${row.get('variantLabel')})`
+      for (const column of ['yearFrom', 'yearTo'] as const) {
+        expect(row.get(column), `${where}: ${column} is blank`).not.toBe('')
+        expect(Number.isInteger(row.num(column)), `${where}: ${column}`).toBe(true)
+      }
+      expect(row.num('yearTo'), `${where}: yearTo below yearFrom`).toBeGreaterThanOrEqual(
+        row.num('yearFrom'),
+      )
+    }
+  })
+
   it('gives every car a reliability base inside the authored band', () => {
     for (const row of roster) {
       const base = row.num('reliabilityBase')
@@ -283,6 +301,7 @@ describe('cars.json agrees with the roster CSV', () => {
   it('carries the same physical spec as the roster', () => {
     const NUMERIC = [
       'yearFrom',
+      'yearTo',
       'stockPowerPs',
       'peakTorqueNm',
       'displacementCc',

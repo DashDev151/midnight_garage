@@ -43,6 +43,7 @@ function referenceCarModel(weightKg: number, powerPs: number): CarModel {
       chassisCode: 'REF',
       engineCode: 'REF',
       yearFrom: 1995,
+      yearTo: 1995,
       curbWeightKg: weightKg,
       stockPowerPs: powerPs,
       // Read by nothing: this reference chassis never reaches

@@ -76,15 +76,16 @@ describe('generated cars are coherent (Sprint 66, item 6a)', () => {
   })
 
   /**
-   * A symptom's cause sets its part to the worse of its current band and
-   * the cause's own `setBand`, regardless of mileage - the entire point
-   * of a symptom is a surprising, otherwise-inexplicable fault on a car
-   * that looks fine everywhere else (a smoking engine on a genuinely
-   * low-mileage example is exactly the scenario symptoms exist to
-   * create). That is a deliberate exception to THIS test's wear-model
-   * coherence claim, not a violation of it - cars that rolled a symptom
-   * are excluded from the sample so this keeps checking the age/mileage/
-   * upkeep chain alone (directive 17 case (a)).
+   * The wear model alone, asked of it alone. Generation has two further,
+   * deliberate damage stages after it, and neither is a claim about mileage:
+   * a symptom's cause sets its part to the worse of its current band and the
+   * cause's own `setBand` regardless of how far the car has been driven (the
+   * whole point of a symptom is a surprising fault on a car that looks fine
+   * everywhere else), and the damage budget spends a rolled grade's worth of
+   * band steps on whatever the car has. `allowSymptoms: false` stops
+   * generation exactly where this test's own claim ends, so the age -> mileage
+   * -> condition chain is measured on its own rather than through a filter
+   * that could never have excluded the budget anyway (directive 17 case (a)).
    */
   it('a barely-driven car is never rough from the wear model alone, at ANY upkeep tier', () => {
     const model = CARS.find((c) => c.id === 'nissan-180sx-rps13')
@@ -98,9 +99,11 @@ describe('generated cars are coherent (Sprint 66, item 6a)', () => {
         createRng(seed),
         CONTEXT,
         GAME_YEAR,
+        true,
+        0,
+        false, // the wear model and the Law 2 ceiling, and nothing after them
       )
       if (car.mileageKm > 15_000) continue // only the barely-driven tail
-      if (car.symptoms.length > 0) continue // a symptom is a deliberate exception, not wear
       sampled++
       // `worn` is the floor for a nearly-new car; `poor`/`scrap` are the bug.
       expect(
@@ -109,6 +112,49 @@ describe('generated cars are coherent (Sprint 66, item 6a)', () => {
       ).toBeGreaterThanOrEqual(bandIndex('worn'))
     }
     expect(sampled, 'expected some low-mileage cars in the sample').toBeGreaterThan(0)
+  })
+
+  /**
+   * ...and the whole pipeline, on the claim that still holds there: a
+   * barely-driven car is TYPICALLY tidy. The damage budget can put real
+   * damage on a low-mileage car and is meant to - a barn find is exactly a
+   * car with no miles and perished everything - but that is the tail, not the
+   * shape. The original bug this file exists for (a `1995 - 11 km` 180SX with
+   * mostly worn parts) is a claim about the typical car, and this measures it
+   * as one: over half of barely-driven cars carry nothing ruined at all.
+   */
+  it('a barely-driven car is typically tidy once every generation stage has run', () => {
+    const model = CARS.find((c) => c.id === 'nissan-180sx-rps13')
+    if (!model) throw new Error('fixture car missing from seed content')
+
+    const ruinedCounts: number[] = []
+    for (let seed = 0; seed < 4000; seed++) {
+      const car = generateAuctionCarInstance(
+        model,
+        `low-full-${seed}`,
+        createRng(seed),
+        CONTEXT,
+        GAME_YEAR,
+      )
+      if (car.mileageKm > 15_000) continue
+      let ruined = 0
+      for (const partId of ALL_CAR_PART_IDS) {
+        if (isBodyDerivedPart(partId)) continue
+        const band = car.parts[partId].installed?.band
+        if (band && bandIndex(band) < bandIndex('worn')) ruined += 1
+      }
+      ruinedCounts.push(ruined)
+    }
+    expect(ruinedCounts.length, 'expected some low-mileage cars in the sample').toBeGreaterThan(500)
+
+    const sorted = [...ruinedCounts].sort((a, b) => a - b)
+    const median = sorted[Math.floor(sorted.length / 2)]!
+    const mean = ruinedCounts.reduce((sum, n) => sum + n, 0) / ruinedCounts.length
+    // The median barely-driven car has nothing ruined at all, and the mean sits
+    // around one part. The retired core-loop floor put roughly twelve on every
+    // one of them regardless of mileage, which is what this bar catches.
+    expect(median).toBe(0)
+    expect(mean).toBeLessThan(1.5)
   })
 
   it('still lets neglect bite hard on a thoroughly-used car (the model is scaled, not defanged)', () => {

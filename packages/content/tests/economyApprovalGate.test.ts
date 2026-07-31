@@ -991,6 +991,48 @@ import storyMissions from '../data/storyMissions.json'
  * `statThreshold(style)` and `tasteMatch.minMultiplier` DOES move, re-derived mechanically from
  * a fresh `storyMissionProbes.test.ts` run against each probe's same build rather than
  * hand-picked, because a stock car's style is no longer near zero.
+ *
+ * Re-pinned for Sprint 153 (docs/sprints/sprint153.md), cars no longer arriving as wrecks. ONE
+ * key leaves economy.json and ONE enters it:
+ *
+ * 1. `partsGeneration.minWorkBillFractionByTier` (entry 0.1 / everyday 0.06 / enthusiast 0.05 /
+ *    flagship 0.04) is RETIRED outright, on the same footing `partsRetention`, `styleCap` and
+ *    `genuinePeriodMultiplier` left this file on. Generation broke parts until the repair bill
+ *    reached that fraction of book value, with a 121-step spin guard as its only real limit, so
+ *    it authored 62 to 89 per cent of the final damage on every car in the game and hit cheap
+ *    cars hardest (their parts are cheap, so it had to break more of them). Measured on the
+ *    1993 Wagon R the tutorial ships: 14.5 of 29 slots at `poor`. `enforceMinWorkBill` and
+ *    `minWorkTopUpCeilingBinds` are retired with it, in `retiredIdentifiers.test.ts`.
+ * 2. `partsGeneration.damageGrades` (NEW) - `weights` tidy 45 / used 35 / rough 15 / project 5,
+ *    the roster-wide shares tabled in `docs/design/systems/generation-damage.md` layer 1 and
+ *    signed there; and `bandStepsByGrade` tidy 2 / used 5 / rough 11 / project 20, what each
+ *    grade buys in BAND STEPS. The share table is the signed half. The step ladder is a
+ *    PRELIMINARY figure, recorded in that sprint doc as the value implemented rather than
+ *    signed under directive 22: the design fixes the mechanism (a budget counted in steps, not
+ *    yen) and the shares, and leaves the size of each grade to a first pass that a later tuning
+ *    round can move. Measured against the retired floor on the same Wagon R: 3.8 slots at
+ *    `poor` rather than 14.5, and 15.4 slots at `fine` or better rather than 4.9.
+ *
+ * There is NO per-venue lever. An earlier draft of the sprint carried a presentability floor
+ * (premium refusing worse than `rough`, collector-network worse than `used`); it was CUT by
+ * maintainer ruling, because a rare wreck at a premium auction is interesting rather than a
+ * problem. The roughness gradient across rooms is entirely emergent from the already-signed
+ * `auction.carTierWeightsByAuctionTier`, and `auctions.test.ts` now asserts that emergent
+ * ordering directly rather than leaving it assumed.
+ *
+ * NOT gated by this hash, recorded here because this file is the ledger of what moved and why:
+ * `CarModel.spec` gains a required `yearTo`, authored for all 94 roster rows in
+ * `docs/design/midnight-garage-roster.csv` and copied onto the shipped 26, and the hardcoded
+ * nine-year `rng.int(0, 8)` model-year window is replaced by the car's own production window.
+ * Four roster rows that had never carried a `yearFrom` at all (the Honda Today, the Mira TR-XX
+ * L70, the BCNR33 and the R35) gain one in the same pass, since a window with one end missing
+ * cannot be validated. `AUCTION_MIN_AGE_YEARS` is untouched at 3 and still sits inside the same
+ * `max()`, so a 1994 model in a 1995 campaign still generates as a 1994 car.
+ *
+ * No mission payout or budget cap moves: none of those pipelines reads generation damage or the
+ * model-year window, and `partPricing.json` is untouched so its own hash holds. What DOES move
+ * is every generated car in the game, which is the point of the sprint, and with it both
+ * `advanceDay` golden hashes and every probe derived from `buildRoughProbeCar`.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -1000,7 +1042,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('3f3d4565301a8b5881924f2b0f6c57dd381dfc7de99fd8d17b04bef70cc72536')
+    ).toBe('82d5f3b9a636629667f2477b5076f1fd27827e136bf985ab6c2f04a0dcf3e29f')
   })
 
   it('partPricing.json matches its approved content exactly', () => {

@@ -43,6 +43,7 @@ const model: CarModel = {
     chassisCode: 'JZA80',
     engineCode: '2JZ-GTE',
     yearFrom: 1993,
+    yearTo: 1993,
     curbWeightKg: 1590,
     stockPowerPs: 280,
     reliabilityBase: 94,

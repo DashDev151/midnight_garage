@@ -7,23 +7,28 @@ import {
   PARTS,
   PARTS_TAXONOMY,
   type AuctionLot,
+  type AuctionTier,
   type CarInstance,
   type CarModel,
+  type DamageGrade,
   type GameState,
   type CarTier,
+  type PartFitmentClass,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import {
   canAppearAtAuctionTier,
+  carOriginLabel,
+  enforceMaxBillFraction,
   generateAuctionCarInstance,
   generateAuctionCatalog,
-  minWorkTopUpCeilingBinds,
+  rollDamageGrade,
 } from '../src/auctions'
-import { bandIndex, carCostToBandYen } from '../src/bands'
+import { bandIndex, carCostToMintYen } from '../src/bands'
 import { isBodyDerivedPart, PANEL_ZONE_IDS } from '../src/bodyPipeline'
-import { buildSimContext } from '../src/context'
+import { buildSimContext, type SimContext } from '../src/context'
 import { computeDerivedStats } from '../src/derivedStats'
-import { expectationForCar } from '../src/marketValue'
+import { makeCarOrigin } from '../src/provenance'
 import { createRng } from '../src/rng'
 import { testSpecialty, testToolTiers } from './testFixtures'
 
@@ -611,29 +616,27 @@ describe('generation is mileage-driven: age -> mileage -> condition (Sprint 34)'
   })
 
   it('a brand-new (age-0) car does not roll nearly every part poor', () => {
-    // A near-new car is low-mileage, so its wear-model condition baseline
-    // sits high. The core-loop floor now layers a SEPARATE, deliberate
-    // below-expectation top-up on top of that baseline (regardless of age -
-    // every generated car carries some floor-level fixable work), and for a
-    // entry-tier model that top-up can only ever land on `poor` (its own
-    // 'worn' expectation band means anything milder does not count as
-    // below-expectation work), never a spread of gentler bands. The honest
-    // post-floor fraction therefore sits well above the old wear-model-only
-    // baseline this test measured before the floor existed - not a majority,
-    // but no longer a small tail either.
-    expect(poorOrWorseFraction(generateAtAge(0, 100, 'young'))).toBeLessThan(0.4)
+    // Restored to a bar that bites. The retired core-loop floor
+    // broke parts until the repair bill reached a fraction of book value, and
+    // on an entry-tier car only `poor` counted toward that bill, so a
+    // near-new car came out with 17 per cent of its slots ruined and this
+    // assertion had been relaxed to 0.4 to let it pass. The damage budget
+    // spends a rolled number of band steps instead, spread over whatever the
+    // car has, so an age-0 car reads as a young car: measured 2.8 per cent of
+    // slots at `poor` or worse against the 16.6 per cent the floor produced.
+    expect(poorOrWorseFraction(generateAtAge(0, 100, 'young'))).toBeLessThan(0.05)
   })
 
-  it('an old (age ~25) car is never in better condition than an age-0 car on the non-body parts, even once the core-loop floor levels both toward the same bar', () => {
-    // The core-loop floor top-up (`enforceMinWorkBill`) tops EVERY car up to
-    // the SAME absolute floor regardless of age, and a clean age-0 car needs
-    // more of that top-up to reach it than an already-worn age-25 car does - a
-    // real levelling effect, and one that lands hardest on the `poor`/`scrap`
-    // tail this probe used to read, where it can invert the comparison
-    // outright. Across the whole band spread the chain is unambiguous, so that
-    // is what is asserted: an old car is never the better car. A margin is
-    // deliberately not pinned - the guards decide how much of the gap survives
-    // on any given model, and only the direction is a design claim.
+  it('an old (age ~25) car is never in better condition than an age-0 car on the non-body parts, even once the damage budget levels both toward the same bar', () => {
+    // The damage budget spends the SAME rolled number of band steps whatever
+    // the car's age, so a clean age-0 car and an already-worn age-25 car both
+    // take it - a real levelling effect, and one that lands hardest on the
+    // `poor`/`scrap` tail this probe used to read, where it can invert the
+    // comparison outright. Across the whole band spread the chain is
+    // unambiguous, so that is what is asserted: an old car is never the better
+    // car. A margin is deliberately not pinned - the guards decide how much of
+    // the gap survives on any given model, and only the direction is a design
+    // claim.
     const oldMean = meanBandIndex(generateAtAge(25, 600, 'old'))
     const youngMean = meanBandIndex(generateAtAge(0, 600, 'young'))
     expect(oldMean).toBeLessThanOrEqual(youngMean)
@@ -664,137 +667,352 @@ describe('lot transparency (Sprint 26 decision 10 - no reveal machinery)', () =>
 })
 
 /**
- * The core-loop law's floor: generation never produces a car with nothing
- * below-expectation to fix. `partsGeneration.minWorkBillFractionByTier`
- * fixes a minimum below-expectation bill per fitment class, and
- * `generateAuctionCarInstance` tops up honest visible wear until every
- * generated car clears it, cherished provenance included (cherished only
- * ever means LESS damage, never none).
+ * How rough a generated lot is (docs/design/systems/generation-damage.md,
+ * layer 1). A grade is rolled per car from one roster-wide distribution and its
+ * budget is spent in BAND STEPS, replacing the retired floor that broke parts
+ * until the repair bill reached a fraction of book value with no limit.
  *
- * The top-up's own contract has two legitimate outcomes, never a silent
- * third: either the floor is met, or every present part has already bottomed
- * out at `poor` (the worst band the never-force-`scrap` rule ever leaves a
- * part at) with nothing left anywhere on the car to degrade further - a
- * model whose parts are collectively too cheap, relative to its own book
- * value, to reach the floor without scrapping something. Both outcomes are
- * checked explicitly below; a shortfall that is NOT also fully exhausted is
- * a real failure, not tolerance.
+ * A "step" here is exactly what `spendDamageBudget` spends: one band on an
+ * ordinary part, or one unit of a body zone's money-relevant field (a panel
+ * zone's surface or finish, the chassis zone's finish). Metal never counts -
+ * it is beaten and welded by hand, never priced in yen, so no degrade step
+ * ever moves it.
  */
-describe('the core-loop floor: every generated lot carries fixable work', () => {
-  // The floor fraction is keyed by fitment class, so every car TIER needs its
-  // own sample. Which room a tier's cars are drawn from is a separate question
-  // (a room weights price bands), so each tier draws from every room it reaches.
-  const TIERS: readonly CarTier[] = ['entry', 'everyday', 'enthusiast', 'flagship']
-  const SEEDS = [11, 22, 33, 44, 55]
-  const LOTS_PER_SEED = 50 // 5 seeds x 50 = 250 lots per tier, clearing the 200-lot floor
+describe('the damage budget: how rough a generated lot is', () => {
+  const GAME_YEAR = 1995
 
-  const CHERISHED_PROVENANCE_NOTES = new Set(
-    Object.values(CONTEXT.provenancePool).flatMap((byUpkeepTier) => byUpkeepTier.cherished),
-  )
+  function damageStepsOf(car: CarInstance): number {
+    let steps = 0
+    for (const partId of ALL_CAR_PART_IDS) {
+      if (isBodyDerivedPart(partId)) continue
+      const installed = car.parts[partId].installed
+      if (!installed) continue
+      steps += bandIndex('mint') - bandIndex(installed.band)
+    }
+    const zones = car.zoneState
+    if (!zones) return steps
+    for (const zoneId of PANEL_ZONE_IDS) steps += zones[zoneId].surface + zones[zoneId].finish
+    return steps + zones.chassis.finish
+  }
 
-  function floorYenFor(model: CarModel): number {
-    const fitmentClass = fitmentClassForTier(model.tier)
-    return Math.round(
-      model.bookValueYen * ECONOMY.partsGeneration.minWorkBillFractionByTier[fitmentClass],
+  function contextForcingGrade(grade: DamageGrade): SimContext {
+    return buildSimContext(
+      CARS,
+      PARTS,
+      BUYERS,
+      PARTS_TAXONOMY,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      {
+        ...ECONOMY,
+        partsGeneration: {
+          ...ECONOMY.partsGeneration,
+          damageGrades: {
+            ...ECONOMY.partsGeneration.damageGrades,
+            weights: { tidy: 0, used: 0, rough: 0, project: 0, [grade]: 1 },
+          },
+        },
+      },
     )
   }
 
-  function billBelowExpectationYen(car: CarInstance, model: CarModel): number {
-    return carCostToBandYen(
-      car,
-      model,
-      CONTEXT.partsById,
-      CONTEXT.partsTaxonomyById,
-      ECONOMY,
-      expectationForCar(model, ECONOMY).band,
+  function generate(
+    carModel: CarModel,
+    count: number,
+    label: string,
+    context: SimContext = CONTEXT,
+  ): CarInstance[] {
+    return Array.from({ length: count }, (_, seed) =>
+      generateAuctionCarInstance(carModel, `${label}-${seed}`, createRng(seed), context, GAME_YEAR),
     )
   }
 
-  /** True once every present part sits at `poor` or worse - the state the
-   * top-up's never-force-`scrap` rule leaves a fully-exhausted candidate pool
-   * in. A missing or legitimately-absent slot was never a top-up candidate,
-   * so it never counts against this. `panels`/`paint`/`underbody` are
-   * checked through their own zone state, never their derived BAND: the
-   * degrade top-up only ever moves surface/finish (money-relevant fields,
-   * `bodyPipeline.ts`'s `degradeZoneCarrierOneStep`), never metal (labour-
-   * only, never priced) - so a zone-backed part's band can sit well short of
-   * `poor` (metal-driven) while its money contribution is nonetheless fully
-   * exhausted (every zone's surface/finish already at its own cap). Checking
-   * the band alone for these three would under-count real exhaustion.
-   */
-  function everyPartAtWorstReachableBand(car: CarInstance): boolean {
-    const zoneState = car.zoneState
-    const zoneExhausted =
-      !zoneState ||
-      (PANEL_ZONE_IDS.every((id) => zoneState[id].surface >= 2) &&
-        PANEL_ZONE_IDS.every((id) => zoneState[id].finish >= 3) &&
-        zoneState.chassis.finish >= 3)
-    return (
-      zoneExhausted &&
-      ALL_CAR_PART_IDS.every((partId) => {
-        if (isBodyDerivedPart(partId)) return true // covered by zoneExhausted above
+  function meanSlotsAtBands(cars: readonly CarInstance[], bands: readonly string[]): number {
+    let count = 0
+    for (const car of cars) {
+      for (const partId of ALL_CAR_PART_IDS) {
         const installed = car.parts[partId].installed
-        return !installed || bandIndex(installed.band) <= bandIndex('poor')
-      })
-    )
-  }
-
-  function expectMeetsFloorOrExhausted(
-    lot: ReturnType<typeof generateAuctionCatalog>[number],
-    lotModel: CarModel,
-    carTier: CarTier,
-  ): void {
-    const billBelow = billBelowExpectationYen(lot.car, lotModel)
-    const floor = floorYenFor(lotModel)
-    const metFloor = billBelow >= floor
-    // The top-up's OTHER legitimate stopping condition, asked of the real
-    // generation code rather than approximated here: every remaining candidate
-    // would breach the Law 2 ceiling. The bill does not have to be hugging
-    // that ceiling for this to bind - on the body pipeline's flat, era-true
-    // materials prices a single remaining stage can cost far more than the
-    // headroom left, which happens on the cheapest tiers where one stage is a
-    // large step against a small book value. A real, disclosed interaction
-    // between two independently-tuned guards, not a bug.
-    const exhausted =
-      everyPartAtWorstReachableBand(lot.car) || minWorkTopUpCeilingBinds(lot.car, lotModel, CONTEXT)
-    expect(
-      metFloor || exhausted,
-      `${lot.id} (${lotModel.id}): below-expectation bill ${billBelow} under its ${carTier} floor ${floor}, not every part exhausted, and the Law 2 ceiling isn't binding either - a real shortfall`,
-    ).toBe(true)
-  }
-
-  for (const carTier of TIERS) {
-    it(`every ${carTier} lot's true car meets its floor (or is fully exhausted trying), over >= 200 lots across several seeds`, () => {
-      const models = CARS.filter((m) => m.tier === carTier)
-      expect(models.length, `fixture roster has no ${carTier} models`).toBeGreaterThan(0)
-
-      const rooms = AUCTION_TIERS.filter((room) =>
-        models.some((m) => canAppearAtAuctionTier(m, room, ECONOMY)),
-      )
-      const lots = rooms.flatMap((room) =>
-        SEEDS.flatMap((seed) =>
-          generateAuctionCatalog(models, room, 7, LOTS_PER_SEED, createRng(seed), CONTEXT),
-        ),
-      )
-      expect(lots.length).toBeGreaterThanOrEqual(200)
-
-      for (const lot of lots) {
-        const lotModel = CONTEXT.modelsById[lot.modelId]
-        if (!lotModel) throw new Error(`generated lot references unknown model "${lot.modelId}"`)
-        expectMeetsFloorOrExhausted(lot, lotModel, carTier)
+        if (installed && bands.includes(installed.band)) count += 1
       }
+    }
+    return count / cars.length
+  }
 
-      const cherishedLots = lots.filter((lot) =>
-        CHERISHED_PROVENANCE_NOTES.has(lot.car.provenanceNote),
-      )
+  /**
+   * THE HEADLINE. The scripted tutorial car, at the age and mileage the
+   * campaign actually generates it at: a 1993 car in 1995, mean mileage about
+   * 17,600 km. The retired floor left it with 14.5 of its 29 slots at `poor`
+   * on the ~23,500 km sample the sprint measured; the budget leaves 3.8, of
+   * which about 1.8 are the three body carriers reading their own zone
+   * severities rather than anything the budget did.
+   */
+  it('a young, low-mileage Wagon R reads as a tidy car, not a wreck', () => {
+    const wagonR = CARS.find((c) => c.id === 'suzuki-wagon-r-ct21s')
+    if (!wagonR) throw new Error('fixture car missing from seed content')
+    const cars = generate(wagonR, 400, 'wagon-r')
+    for (const car of cars) expect(car.year).toBe(1993)
+
+    // Under 3 of the 26 ordinary slots ruined, against the 12.3 the floor
+    // produced. The three body carriers are excluded here: their bands derive
+    // from the zone severity tables, a separate authored axis this sprint does
+    // not touch.
+    const ordinaryPoor =
+      cars.reduce((sum, car) => {
+        let poor = 0
+        for (const partId of ALL_CAR_PART_IDS) {
+          if (isBodyDerivedPart(partId)) continue
+          const band = car.parts[partId].installed?.band
+          if (band === 'poor' || band === 'scrap') poor += 1
+        }
+        return sum + poor
+      }, 0) / cars.length
+    expect(ordinaryPoor).toBeLessThan(3)
+
+    // ...and it is not merely un-ruined, it is genuinely presentable: over half
+    // the car sits at `fine` or `mint`, where the floor left 4.9 slots there.
+    expect(meanSlotsAtBands(cars, ['fine', 'mint'])).toBeGreaterThan(14)
+  })
+
+  it('rolls the four grades at their authored roster-wide shares', () => {
+    const rng = createRng(20260731)
+    const counts: Record<DamageGrade, number> = { tidy: 0, used: 0, rough: 0, project: 0 }
+    const draws = 40_000
+    for (let i = 0; i < draws; i++) counts[rollDamageGrade(ECONOMY, rng)] += 1
+
+    const { weights } = ECONOMY.partsGeneration.damageGrades
+    const totalWeight = weights.tidy + weights.used + weights.rough + weights.project
+    for (const grade of ['tidy', 'used', 'rough', 'project'] as const) {
+      expect(counts[grade] / draws, `${grade} share`).toBeCloseTo(weights[grade] / totalWeight, 2)
+    }
+  })
+
+  it('spends what it rolled: each grade puts materially more damage on the same car than the grade above it', () => {
+    const wagonR = CARS.find((c) => c.id === 'suzuki-wagon-r-ct21s')
+    if (!wagonR) throw new Error('fixture car missing from seed content')
+    const meanSteps = (grade: DamageGrade) => {
+      const cars = generate(wagonR, 300, `graded-${grade}`, contextForcingGrade(grade))
+      return cars.reduce((sum, car) => sum + damageStepsOf(car), 0) / cars.length
+    }
+    const tidy = meanSteps('tidy')
+    const used = meanSteps('used')
+    const rough = meanSteps('rough')
+    const project = meanSteps('project')
+    expect(tidy).toBeLessThan(used)
+    expect(used).toBeLessThan(rough)
+    expect(rough).toBeLessThan(project)
+
+    // The gaps track the authored ladder rather than merely pointing the right
+    // way: a `project` car carries most of the extra steps its grade buys over
+    // a `tidy` one, the remainder lost to the Law 2 ceiling and to parts
+    // already at `poor` that the never-to-scrap rule refuses to touch.
+    const { bandStepsByGrade } = ECONOMY.partsGeneration.damageGrades
+    const authoredGap = bandStepsByGrade.project - bandStepsByGrade.tidy
+    expect(project - tidy).toBeGreaterThan(0.8 * authoredGap)
+    expect(project - tidy).toBeLessThanOrEqual(authoredGap)
+  })
+
+  it('never generates a car outside its own production years, in any campaign year', () => {
+    for (const carModel of CARS) {
+      for (const currentYear of [1995, 2005, undefined]) {
+        for (let seed = 0; seed < 40; seed++) {
+          const car = generateAuctionCarInstance(
+            carModel,
+            `year-${carModel.id}-${seed}`,
+            createRng(seed * 13 + 1),
+            CONTEXT,
+            currentYear,
+          )
+          expect(
+            car.year,
+            `${carModel.id} generated ${car.year}, before its ${carModel.spec.yearFrom} launch`,
+          ).toBeGreaterThanOrEqual(carModel.spec.yearFrom)
+          expect(
+            car.year,
+            `${carModel.id} generated ${car.year}, past its ${carModel.spec.yearTo} production end`,
+          ).toBeLessThanOrEqual(carModel.spec.yearTo)
+        }
+      }
+    }
+  })
+
+  it('holds the three-year minimum age without ever overriding a model still in production', () => {
+    // A 1994 model in a 1995 campaign generates as a 1994 car, age 1: near-new
+    // cars are supposed to exist, and `yearFrom` wins outright when the
+    // minimum-age clamp would otherwise push the window shut.
+    const s14 = CARS.find((c) => c.id === 'nissan-silvia-ks-s14')
+    if (!s14) throw new Error('fixture car missing from seed content')
+    expect(s14.spec.yearFrom).toBe(1994)
+    for (const car of generate(s14, 30, 's14')) expect(car.year).toBe(1994)
+
+    // A model that launched well before the clamp, and was still in production
+    // past it, gets the clamp rather than its own production end: the Cefiro
+    // ran 1988 to 1994 and generates no later than 1992.
+    const cefiro = CARS.find((c) => c.id === 'nissan-cefiro-a31')
+    if (!cefiro) throw new Error('fixture car missing from seed content')
+    expect(cefiro.spec.yearFrom).toBeLessThan(GAME_YEAR - ECONOMY.AUCTION_MIN_AGE_YEARS)
+    expect(cefiro.spec.yearTo).toBeGreaterThan(GAME_YEAR - ECONOMY.AUCTION_MIN_AGE_YEARS)
+    for (const car of generate(cefiro, 30, 'cefiro')) {
+      expect(car.year).toBeLessThanOrEqual(GAME_YEAR - ECONOMY.AUCTION_MIN_AGE_YEARS)
+      expect(car.year).toBeGreaterThanOrEqual(cefiro.spec.yearFrom)
+    }
+  })
+
+  it('leaves the Law 2 ceiling intact on every generated lot', () => {
+    for (const carModel of CARS) {
+      for (let seed = 0; seed < 25; seed++) {
+        const car = generateAuctionCarInstance(
+          carModel,
+          `law2-${carModel.id}-${seed}`,
+          createRng(seed * 11 + 5),
+          CONTEXT,
+          GAME_YEAR,
+        )
+        const origin = makeCarOrigin(car.id, carOriginLabel(carModel, car.year), 0)
+        const billOf = (c: CarInstance) =>
+          carCostToMintYen(c, carModel, CONTEXT.partsById, CONTEXT.partsTaxonomyById, ECONOMY)
+        // Re-running the guard on a compliant car is a no-op, so an unchanged
+        // bill IS the ceiling holding.
+        expect(
+          billOf(enforceMaxBillFraction(car, carModel, CONTEXT, origin)),
+          `${carModel.id} seed ${seed}: the budget pushed a lot past its own Law 2 ceiling`,
+        ).toBe(billOf(car))
+      }
+    }
+  })
+
+  /**
+   * The symptom seam. A symptom is a LABEL on damage that already exists, so
+   * the budget deducts whatever the symptoms already spent
+   * (`damageStepsSpentBySymptoms`) before spending the rest. Without that
+   * deduction a symptomatic car would take its whole budget on top of its
+   * symptom and come out systematically rougher than an honest one, for no
+   * reason a player could ever see.
+   */
+  it('a symptomatic car is no rougher than an honest one: symptoms spend the budget, they do not stack on it', () => {
+    const wagonR = CARS.find((c) => c.id === 'suzuki-wagon-r-ct21s')
+    if (!wagonR) throw new Error('fixture car missing from seed content')
+    const cars = generate(wagonR, 3000, 'seam')
+    const symptomatic = cars.filter((car) => car.symptoms.length > 0)
+    const honest = cars.filter((car) => car.symptoms.length === 0)
+    expect(symptomatic.length).toBeGreaterThan(200)
+    expect(honest.length).toBeGreaterThan(200)
+
+    const meanSteps = (sample: readonly CarInstance[]) =>
+      sample.reduce((sum, car) => sum + damageStepsOf(car), 0) / sample.length
+    const ratio = meanSteps(symptomatic) / meanSteps(honest)
+    // Symptoms cost about 1.8 band steps on this car against a ~44-step total,
+    // so a missing deduction would read as roughly a 4 per cent excess -
+    // outside this band, which measures 0.993.
+    expect(ratio).toBeGreaterThan(0.97)
+    expect(ratio).toBeLessThan(1.03)
+  })
+
+  it('never records an apparent band for budget damage: only a symptom cause ever masks a part', () => {
+    for (const carModel of CARS) {
+      for (let seed = 0; seed < 60; seed++) {
+        const car = generateAuctionCarInstance(
+          carModel,
+          `apparent-${carModel.id}-${seed}`,
+          createRng(seed * 7 + 3),
+          CONTEXT,
+          GAME_YEAR,
+        )
+        if (!car.apparentBandByPartId) continue
+        const causeParts = new Set<string>(
+          car.symptoms.flatMap((carSymptom) =>
+            (CONTEXT.symptomsById[carSymptom.symptomId]?.causes ?? []).map(
+              (cause) => cause.carPartId as string,
+            ),
+          ),
+        )
+        for (const partId of Object.keys(car.apparentBandByPartId)) {
+          expect(
+            causeParts.has(partId),
+            `${carModel.id} seed ${seed}: ${partId} carries an apparent band but no symptom damaged it`,
+          ).toBe(true)
+        }
+      }
+    }
+  })
+
+  it('holds the real symptom rate at its signed per-class value: the budget does not eat the ceiling headroom symptoms need', () => {
+    // `applySymptoms` drops a symptom outright if it would breach the Law 2
+    // ceiling, so a generation change that leaves cars closer to that ceiling
+    // silently lowers the effective symptom rate below `symptomChanceByTier`.
+    // The budget runs strictly AFTER symptoms, so it cannot reach them - and
+    // this measures rather than assumes that.
+    const tally: Record<string, { cars: number; symptomatic: number }> = {}
+    for (const carModel of CARS) {
+      const fitmentClass = fitmentClassForTier(carModel.tier)
+      tally[fitmentClass] ??= { cars: 0, symptomatic: 0 }
+      for (let seed = 0; seed < 300; seed++) {
+        const car = generateAuctionCarInstance(
+          carModel,
+          `rate-${carModel.id}-${seed}`,
+          createRng(seed * 31 + 7),
+          CONTEXT,
+          GAME_YEAR,
+        )
+        tally[fitmentClass]!.cars += 1
+        if (car.symptoms.length > 0) tally[fitmentClass]!.symptomatic += 1
+      }
+    }
+    for (const [fitmentClass, counted] of Object.entries(tally)) {
+      const signed = ECONOMY.diagnosis.symptomChanceByTier[fitmentClass as PartFitmentClass]
       expect(
-        cherishedLots.length,
-        `expected at least one cherished-provenance ${carTier} lot in the sample`,
-      ).toBeGreaterThan(0)
-      for (const lot of cherishedLots) {
-        const lotModel = CONTEXT.modelsById[lot.modelId]!
-        expectMeetsFloorOrExhausted(lot, lotModel, carTier)
+        counted.symptomatic / counted.cars,
+        `${fitmentClass}: effective symptom rate has drifted from its signed ${signed}`,
+      ).toBeCloseTo(signed, 1)
+    }
+  })
+
+  /**
+   * The venue gradient is EMERGENT, and this is the assertion the design leans
+   * on. There is no per-venue roughness lever and no presentability floor
+   * (RULED): `auction.carTierWeightsByAuctionTier` already makes the
+   * local yard 70 per cent entry cars and the collector network 70 per cent
+   * flagship, and those price bands differ in how old their cars are and how
+   * harshly the zone severity tables treat them. A second per-venue roll would
+   * count that one fact twice.
+   */
+  it('the project-grade rate falls from the local yard to the collector network, from the tier mix alone', () => {
+    // A roughness bar in the project tail, not a claim about which grade a
+    // given lot rolled: what is asserted is the ORDER across rooms, which is
+    // the emergent property, never the level, which follows from content this
+    // sprint does not own.
+    const PROJECT_STEP_BAR = 65
+    const projectRateFor = (room: AuctionTier): number => {
+      let lots = 0
+      let project = 0
+      for (let seed = 0; seed < 60; seed++) {
+        for (const lot of generateAuctionCatalog(
+          CARS,
+          room,
+          7,
+          40,
+          createRng(seed * 977 + 13),
+          CONTEXT,
+          GAME_YEAR,
+        )) {
+          lots += 1
+          if (damageStepsOf(lot.car) >= PROJECT_STEP_BAR) project += 1
+        }
       }
-    })
-  }
+      return project / lots
+    }
+    const localYard = projectRateFor('local-yard')
+    const regional = projectRateFor('regional')
+    const premium = projectRateFor('premium')
+    const collector = projectRateFor('collector-network')
+
+    expect(localYard).toBeGreaterThan(regional)
+    expect(regional).toBeGreaterThan(premium)
+    expect(premium).toBeGreaterThan(collector)
+    // Every room still sells the occasional project. A rare wreck at a premium
+    // auction is interesting rather than a problem, and nothing structurally
+    // forbids one.
+    expect(collector).toBeGreaterThan(0)
+  })
 })

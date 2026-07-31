@@ -1,6 +1,7 @@
 import {
   ALL_CAR_PART_IDS,
   CarTierSchema,
+  DAMAGE_GRADES,
   fitmentClassForTier,
   resolveCarDisplayName,
   type AgeBand,
@@ -13,6 +14,7 @@ import {
   type CarTier,
   type Cause,
   type ConditionBand,
+  type DamageGrade,
   type EconomyConfig,
   type Grade,
   type PartFitmentClass,
@@ -25,7 +27,6 @@ import {
 import {
   bandForMigratedCondition,
   bandIndex,
-  carCostToBandYen,
   carCostToMintYen,
   climbBand,
   degradeBand,
@@ -45,7 +46,7 @@ import {
 } from './bodyPipeline'
 import { DEFAULT_CONDITION_AGE_YEARS_WHEN_UNBOUNDED } from './constants'
 import type { SimContext } from './context'
-import { cleanValueYen, expectationForCar } from './marketValue'
+import { cleanValueYen } from './marketValue'
 import { makeCarOrigin } from './provenance'
 import type { Rng } from './rng'
 
@@ -214,13 +215,6 @@ function applySymptoms(
   }
 }
 
-/** The number of times any single ORDINARY (non-zone-backed) part could ever
- * be degraded by `enforceMinWorkBill` below before it drops out of the
- * candidate pool (see that function's own doc comment) - `mint` down to one
- * step above `scrap`. Bounds the top-up loop so an unreachable floor stops
- * cleanly rather than spinning. */
-const MAX_DEGRADE_STEPS_PER_PART = bandIndex('mint') - bandIndex('poor')
-
 /**
  * The worst-case number of times a zone-aware step (`degradeZoneCarrierOneStep`
  * or `improveZoneCarrierOneStep`) can move real headroom for the three body
@@ -229,9 +223,8 @@ const MAX_DEGRADE_STEPS_PER_PART = bandIndex('mint') - bandIndex('poor')
  * `paint`'s finish (5 zones x 3) + `underbody`'s chassis finish (1 x 3). One
  * `degradeCandidates`/worst-band selection of a body carrier only ever
  * advances ONE zone one step (never the whole part at once, unlike an
- * ordinary part's `degradeBand`/`climbBand`), so the flat
- * `MAX_DEGRADE_STEPS_PER_PART` bound below would undercount these three
- * parts' true room and could cut the floor top-up or the Law 2 softening
+ * ordinary part's `degradeBand`/`climbBand`), so a flat per-part bound would
+ * undercount these three parts' true room and could cut the Law 2 softening
  * pass short before real, cheap headroom (e.g. an untouched zone's surface)
  * was ever used.
  */
@@ -239,64 +232,26 @@ const MAX_ZONE_STATE_STEPS =
   PANEL_ZONE_IDS.length + PANEL_ZONE_IDS.length * 2 + PANEL_ZONE_IDS.length * 3 + 3
 
 /** Every present, installed part on `car` eligible for one more degrade step
- * under `enforceMinWorkBill`'s never-to-scrap rule (a part already at `poor`,
- * one band above `scrap`, is excluded outright), filtered further by whether
- * its current band sits at/above `expectationBand` or strictly below it - the
- * two-pass preference order that function draws from. Iterates
- * `ALL_CAR_PART_IDS` in its own fixed order, so the candidate list is
- * deterministic for a given car state; the caller's seeded `rng.pick` is what
- * actually chooses among them. */
-function degradeCandidates(
-  car: CarInstance,
-  expectationBand: ConditionBand,
-  atOrAboveExpectation: boolean,
-): CarPartId[] {
+ * under the damage budget's never-to-scrap rule: a part already at `poor`,
+ * one band above `scrap`, is excluded outright. Iterates `ALL_CAR_PART_IDS`
+ * in its own fixed order, so the candidate list is deterministic for a given
+ * car state; the caller's seeded `rng.pick` is what actually chooses among
+ * them. */
+function degradeCandidates(car: CarInstance): CarPartId[] {
   const minDegradableIndex = bandIndex('poor') + 1
   return ALL_CAR_PART_IDS.filter((partId) => {
     const installed = car.parts[partId].installed
     if (!installed) return false
     // A zone-backed part's derived BAND can saturate at `poor` from `metal`
-    // alone (the degrade top-up never touches metal - it is money-free), so
+    // alone (a degrade step never touches metal - it is money-free), so
     // eligibility here reads the real money headroom in the zones directly
     // rather than the coarser band index every ordinary part uses.
-    const eligible =
-      car.zoneState && isBodyDerivedPart(partId)
-        ? hasZoneDegradeHeadroom(car.zoneState, partId)
-        : bandIndex(installed.band) >= minDegradableIndex
-    if (!eligible) return false
-    const meetsExpectation = bandIndex(installed.band) >= bandIndex(expectationBand)
-    return atOrAboveExpectation ? meetsExpectation : !meetsExpectation
+    return car.zoneState && isBodyDerivedPart(partId)
+      ? hasZoneDegradeHeadroom(car.zoneState, partId)
+      : bandIndex(installed.band) >= minDegradableIndex
   })
 }
 
-/**
- * The core-loop floor (economy.json's `partsGeneration.
- * minWorkBillFractionByTier`): every generated car must carry at least this
- * much below-expectation restoration work, so there is always something
- * profitable to fix. Runs on the already symptom-rolled, already Law-2
- * (`enforceMaxBillFraction`) compliant TRUE car - the true state, not the
- * apparent one, so a masked symptom can never be mistaken for real fixable
- * work.
- *
- * While the true car's bill to its own tier's expectation band
- * (`carCostToBandYen`, `expectationForCar`) sits under the floor, one
- * installed part degrades a single band via the SAME seeded `rng` the rest
- * of generation threads: preferring a part currently at or above the
- * expectation band (`degradeCandidates` with `atOrAboveExpectation: true`),
- * falling back to a below-expectation part only once none remain. This is
- * honest visible wear, never a masked symptom - it never writes to
- * `apparentBandByPartId`. The candidate pool never offers an already-`poor`
- * part, so no part is ever forced to `scrap`; a car whose every part has
- * already bottomed out at `poor` stops at best effort rather than looping
- * forever (`MAX_DEGRADE_STEPS_PER_PART` bounds the loop).
- *
- * The top-up runs under the same Law 2 ceiling every other generation step
- * obeys: after the loop, `enforceMaxBillFraction` runs once, and if it would
- * move ANY band (the ceiling binds), the last degrade step reverts and the
- * loop stops there - best-effort floor, never a breached ceiling. The content
- * schema keeps the floor strictly under the ceiling, so this guard is a
- * backstop rather than a path real content is expected to hit.
- */
 /** One candidate's degrade step, applied to `working` - the zone-aware
  * branch for a derived body carrier, or a plain band step otherwise. Pure:
  * never mutates `working`, always returns a fresh `CarInstance`. */
@@ -320,14 +275,6 @@ function degradeOnePart(
   }
 }
 
-/** The top-up's candidate pool for one step: parts already at or above the
- * expectation band first, falling back to below-expectation parts only once
- * none remain. */
-function minWorkTopUpPool(car: CarInstance, expectationBand: ConditionBand): CarPartId[] {
-  const preferred = degradeCandidates(car, expectationBand, true)
-  return preferred.length > 0 ? preferred : degradeCandidates(car, expectationBand, false)
-}
-
 /** One candidate's degrade step, taken only if the result still clears the
  * SAME Law 2 ceiling every other generation step obeys - the softened car if
  * it does, `null` if the ceiling would push a band straight back. */
@@ -344,58 +291,95 @@ function degradeUnderCeiling(
 }
 
 /**
- * True when the Law 2 ceiling is what stops `enforceMinWorkBill` on this car:
- * there are candidates left to degrade, and every one of them would breach the
- * ceiling. That is the function's own `!applied` exit asked as a question, so
- * a caller can tell a legitimate ceiling-bound shortfall from a real one -
- * the bill does not have to be hugging the ceiling for this to be true, since
- * a single remaining step can cost far more than the headroom left.
- *
- * The `PartOrigin` `enforceMaxBillFraction` wants only labels parts it
- * backfills into missing slots, and the comparison here reads bands alone, so
- * this builds its own rather than making every caller carry one.
+ * Rolls how rough this lot is, straight from
+ * `partsGeneration.damageGrades.weights` - one roster-wide distribution, NOT a
+ * per-venue table. `auction.carTierWeightsByAuctionTier` already decides which
+ * price bands a room sells (the local yard is 70 per cent entry cars, the
+ * collector network 70 per cent flagship) and those bands differ in how old
+ * their cars are, so the roughness gradient across rooms emerges from the mix
+ * the rooms already have. A second, per-venue roughness roll would count that
+ * one fact twice.
  */
-export function minWorkTopUpCeilingBinds(
-  car: CarInstance,
-  model: CarModel,
-  context: SimContext,
-): boolean {
-  const expectationBand = expectationForCar(model, context.economy).band
-  const pool = minWorkTopUpPool(car, expectationBand)
-  if (pool.length === 0) return false // nothing left to degrade at all - exhaustion, not the ceiling
-  const origin = makeCarOrigin(car.id, carOriginLabel(model, car.year), 0)
-  return pool.every((partId) => degradeUnderCeiling(car, model, context, origin, partId) === null)
+export function rollDamageGrade(economy: EconomyConfig, rng: Rng): DamageGrade {
+  const { weights } = economy.partsGeneration.damageGrades
+  const total = DAMAGE_GRADES.reduce((sum, grade) => sum + weights[grade], 0)
+  const roll = rng.next() * total
+  let cumulative = 0
+  for (const grade of DAMAGE_GRADES) {
+    cumulative += weights[grade]
+    if (roll < cumulative) return grade
+  }
+  return DAMAGE_GRADES[DAMAGE_GRADES.length - 1]!
 }
 
-export function enforceMinWorkBill(
+/**
+ * How many band steps of the car's damage budget its symptoms have already
+ * spent: for every part `applySymptoms` damaged, the distance between the
+ * band it recorded as apparent (the part's state BEFORE that symptom) and the
+ * band the part actually holds now.
+ *
+ * Without this the budget would stack on top of a symptom's damage and a
+ * symptomatic car would come out systematically rougher than an honest one,
+ * for no reason a player could ever see - a symptom is a LABEL on damage, not
+ * a second helping of it.
+ */
+export function damageStepsSpentBySymptoms(
+  car: CarInstance,
+  apparentBandByPartId: CarInstance['apparentBandByPartId'],
+): number {
+  if (!apparentBandByPartId) return 0
+  let steps = 0
+  for (const [partId, apparentBand] of Object.entries(apparentBandByPartId)) {
+    if (!apparentBand) continue
+    const installed = car.parts[partId as CarPartId].installed
+    if (!installed) continue
+    steps += Math.max(0, bandIndex(apparentBand) - bandIndex(installed.band))
+  }
+  return steps
+}
+
+/**
+ * Spends `steps` band steps of honest visible wear on `car`, one installed
+ * part at a time via the SAME seeded `rng` the rest of generation threads.
+ * This is the whole of how much damage a generated lot carries beyond what its
+ * own mileage produced (docs/design/systems/generation-damage.md, layer 1),
+ * and it replaces the old bill-chasing floor: a yen target had no limit and
+ * had to break far more of a cheap car's parts to reach the same number, which
+ * is why entry-tier lots arrived as wrecks. The bill now falls out of the
+ * parts' own prices instead.
+ *
+ * Three properties are load-bearing and each one, broken, inverts the
+ * diagnosis game silently:
+ *
+ * - it runs AFTER `applySymptoms`, never before;
+ * - it never writes `apparentBandByPartId`. Budget damage is honest visible
+ *   wear that the room prices in full, not a second hidden defect; and
+ * - the caller has already deducted `damageStepsSpentBySymptoms` from `steps`.
+ *
+ * The candidate pool never offers an already-`poor` part, so no part is ever
+ * forced to `scrap`, and every step runs under the same Law 2 ceiling the rest
+ * of generation obeys (`degradeUnderCeiling`): a step that would breach it is
+ * dropped and the next candidate tried, and the budget stops at best effort
+ * once the pool is empty or the ceiling refuses every remaining candidate.
+ */
+export function spendDamageBudget(
   car: CarInstance,
   model: CarModel,
   context: SimContext,
   carOrigin: PartOrigin,
   rng: Rng,
+  steps: number,
 ): CarInstance {
-  const { economy, partsById, partsTaxonomyById } = context
-  const fitmentClass = fitmentClassForTier(model.tier)
-  const floorYen = Math.round(
-    model.bookValueYen * economy.partsGeneration.minWorkBillFractionByTier[fitmentClass],
-  )
-  const expectationBand = expectationForCar(model, economy).band
-  const billBelowExpectation = (c: CarInstance) =>
-    carCostToBandYen(c, model, partsById, partsTaxonomyById, economy, expectationBand)
-
   let working = car
-  const ordinaryPartCount = car.zoneState ? ALL_CAR_PART_IDS.length - 3 : ALL_CAR_PART_IDS.length
-  const maxSteps =
-    ordinaryPartCount * MAX_DEGRADE_STEPS_PER_PART + (car.zoneState ? MAX_ZONE_STATE_STEPS : 0)
-  for (let step = 0; step < maxSteps && billBelowExpectation(working) < floorYen; step++) {
-    let pool = minWorkTopUpPool(working, expectationBand)
+  for (let step = 0; step < steps; step++) {
+    let pool = degradeCandidates(working)
     if (pool.length === 0) break // nothing left to degrade anywhere - best effort
 
-    // Try candidates from the pool until one clears the Law 2 ceiling,
-    // dropping any that would breach it and trying the next rather than
-    // giving up the whole step outright - a single unlucky pick (e.g. the one
-    // candidate already hugging the ceiling) must never stop the floor short
-    // when another candidate could still have carried it forward.
+    // Try candidates until one clears the Law 2 ceiling, dropping any that
+    // would breach it and trying the next rather than giving up the whole step
+    // outright - a single unlucky pick (e.g. the one candidate already hugging
+    // the ceiling) must never spend the budget short when another candidate
+    // could still have carried it.
     let applied = false
     while (pool.length > 0 && !applied) {
       const partId = rng.pick(pool)
@@ -407,7 +391,7 @@ export function enforceMinWorkBill(
         pool = pool.filter((id) => id !== partId)
       }
     }
-    if (!applied) break // every remaining candidate would breach the ceiling - true backstop
+    if (!applied) break // every remaining candidate would breach the ceiling
   }
   return working
 }
@@ -637,9 +621,11 @@ export function carOriginLabel(model: CarModel, year: number): string {
  * rolled band, capped at `maxAftermarketSlots` per car - this runs for
  * every caller, with no gating parameter.
  *
- * Once symptoms have landed, `enforceMinWorkBill` tops up the car with
- * honest visible wear until its below-expectation bill clears the tier's
- * floor - a generated auction lot always carries fixable work.
+ * Once symptoms have landed, a damage grade is rolled
+ * (`partsGeneration.damageGrades`) and its budget of band steps is spent as
+ * honest visible wear (`spendDamageBudget`), less whatever the symptoms
+ * already spent. How rough a lot is is therefore a bounded, rolled property of
+ * the car, not a chase after a percentage of its book value.
  */
 export function generateAuctionCarInstance(
   model: CarModel,
@@ -653,13 +639,18 @@ export function generateAuctionCarInstance(
 ): CarInstance {
   const { economy, stockPartByCarPartId } = context
   const fitmentClass = fitmentClassForTier(model.tier)
-  // A current-model-year car doesn't turn up at a backyard auction. Clamp the
-  // rolled year to at least `AUCTION_MIN_AGE_YEARS` old, never earlier than
-  // the model's own release (a car can't predate its model).
+  // The model year is drawn inside the car's own production window, so a
+  // Hakosuka built 1969 to 1972 can never turn up on a 1977 plate. Two clamps
+  // narrow the top of that window and neither can ever open it: a
+  // current-model-year car doesn't reach a backyard auction, so the newest
+  // year is at least `AUCTION_MIN_AGE_YEARS` old; and `yearFrom` wins outright
+  // if that pushes the window shut, because a car cannot predate its own
+  // model. A 1994 model in a 1995 campaign therefore still generates as a 1994
+  // car, age 1 - near-new cars are supposed to exist.
   const youngestAllowedYear = Number.isFinite(currentYear)
-    ? Math.max(model.spec.yearFrom, currentYear - economy.AUCTION_MIN_AGE_YEARS)
-    : Infinity
-  const year = Math.min(model.spec.yearFrom + rng.int(0, 8), youngestAllowedYear)
+    ? Math.min(model.spec.yearTo, currentYear - economy.AUCTION_MIN_AGE_YEARS)
+    : model.spec.yearTo
+  const year = rng.int(model.spec.yearFrom, Math.max(model.spec.yearFrom, youngestAllowedYear))
   const ageYears = Number.isFinite(currentYear)
     ? Math.max(0, currentYear - year)
     : DEFAULT_CONDITION_AGE_YEARS_WHEN_UNBOUNDED
@@ -775,8 +766,18 @@ export function generateAuctionCarInstance(
     symptoms,
     apparentBandByPartId,
   } = applySymptoms(softened, model, context, carOrigin, rng)
-  const withMinWorkBill = enforceMinWorkBill(withSymptoms, model, context, carOrigin, rng)
-  return { ...withMinWorkBill, symptoms, apparentBandByPartId }
+  // Roll how rough this lot is, then spend what the symptoms above have not
+  // already spent. The order is load-bearing: the budget runs AFTER symptoms
+  // and never writes `apparentBandByPartId`, so budget damage is honest wear
+  // the room prices in full rather than a second hidden defect.
+  const budgetSteps =
+    economy.partsGeneration.damageGrades.bandStepsByGrade[rollDamageGrade(economy, rng)]
+  const remainingSteps = Math.max(
+    0,
+    budgetSteps - damageStepsSpentBySymptoms(withSymptoms, apparentBandByPartId),
+  )
+  const damaged = spendDamageBudget(withSymptoms, model, context, carOrigin, rng, remainingSteps)
+  return { ...damaged, symptoms, apparentBandByPartId }
 }
 
 /**
@@ -822,7 +823,7 @@ export function enforceMaxBillFraction(
   // covered by `ALL_CAR_PART_IDS.length`; a zone-backed carrier only ever
   // advances ONE zone one step per pass (never the whole part), so a car on
   // the zone model gets `MAX_ZONE_STATE_STEPS` more passes on top - the same
-  // bound `enforceMinWorkBill` sizes its own loop with.
+  // bound the zone-aware degrade step is itself sized against.
   const maxPasses = ALL_CAR_PART_IDS.length + (car.zoneState ? MAX_ZONE_STATE_STEPS : 0)
   for (let pass = 0; pass < maxPasses && billFor(working) > maxBillYen; pass++) {
     let worstBandIdx: number | null = null

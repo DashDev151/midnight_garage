@@ -21,6 +21,15 @@ the old checklist:
   the first artifact for the recorded-play idea below. Not confirmed done during the 2026-07-11
   session.
 
+## Roster data
+
+- [ ] **MG-074, the Z33 Fairlady Z, carries `yearFrom` 1994 for a car launched in 2002.** Found
+  while authoring `yearTo` across all 94 rows; its `yearTo` was authored at 2008 so the production
+  window is at least coherent, but the start year is a decade early. The row is not built
+  (`builtInContent: no`), so nothing generates from it today and no shipped figure is affected.
+  Correcting it is a roster decision, not an implementation one, which is why it sits here rather
+  than in the sprint that found it.
+
 ## Standing concerns
 
 Not single tasks - revisit when related work comes up, don't treat either as resolved by "checks
@@ -245,7 +254,7 @@ pass."
   problem, not a queued task.
 
   Whichever direction wins moves tier-keyed generation levers
-  (`partsGeneration.minWorkBillFractionByTier` and the three `partsGeneration.zoneStates` severity
+  (`partsGeneration.damageGrades` and the three `partsGeneration.zoneStates` severity
   tables are the ones that decide how rough a lot arrives), so every value needs signing under
   directive 22 by name before any implementation.
 
@@ -334,8 +343,8 @@ pass."
   and so on), and the Beat sat in `entry` at 580,000 above four `enthusiast` cars.
 
   **This is not a cosmetic relabel.** `tier` keys `valuation.expectationByTier`,
-  `partPricing.classFactors`, `partsGeneration.minWorkBillFractionByTier`, the three
-  `partsGeneration.zoneStates` severity tables and `diagnosis.symptomChanceByTier`, so all six
+  `partPricing.classFactors`, the three
+  `partsGeneration.zoneStates` severity tables and `diagnosis.symptomChanceByTier`, so all five
   move for every car listed. Expect wide movement in valuation and mission-payout pins, every one
   re-derived from a real run (directive 17 case (a)).
 
@@ -406,8 +415,9 @@ pass."
   1. **Three new economy levers, unapproved.** `expectationForCar` reads
      `economy.valuation.expectationByTier[fitmentClass]` and **throws** on a missing class, so a
      fifth block carrying `band`, `beyondDiscount` and `aftermarketReturn` is mandatory, not
-     optional. `partPricing.classFactors`, `minWorkBillFractionByTier`, `symptomChanceByTier` and
-     the three `zoneStates` weight tables each need a fifth row too. Directive 22 sign-off needed
+     optional. `partPricing.classFactors`, `symptomChanceByTier` and
+     the three `zoneStates` weight tables each need a fifth row too (`partsGeneration.damageGrades`
+     does not: it is keyed by damage grade, not by fitment class). Directive 22 sign-off needed
      on every specific value. Note the classFactors item above: that ladder wants re-signing
      against the current four before a fifth is added to it.
   2. **The class count is load-bearing.** The catalogue is 118 SKUs per class; adding a fifth means

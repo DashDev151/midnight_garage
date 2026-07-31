@@ -190,7 +190,12 @@ database or generated into content.
 `displayName` (the player-facing string, identical to `cars.json` where the car is built),
 `variantLabel` (the precise variant, which is what tells two FD3S rows apart), `brand`,
 `parodyName`, `parodyBrand` (the Naming Layer, engineering law 3), `chassisCode`, `engineCode`,
-`yearFrom`.
+`yearFrom`, `yearTo`.
+
+`yearFrom` and `yearTo` are the variant's **production window**, and a generated car's model year
+is drawn inside it. Both ends are authored for every row: a variant built in one model year
+carries the same value twice, and a car still in production at the roster's 2010 horizon carries
+2010. Without the closing end a Hakosuka, built 1969 to 1972, could turn up on a 1977 plate.
 
 **Market** - `priceYen`, `priceStatus` (`researched` or `STAND-IN`), `bookValueYen` (what
 `cars.json` actually ships, so any disagreement with `priceYen` is visible), `tier`, `rarity`,

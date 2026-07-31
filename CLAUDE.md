@@ -102,7 +102,7 @@ roster for car scope). Bibles require explicit maintainer approval, recorded in 
   into the GDD.
 - `midnight-garage-roadmap.md` - sprint-by-sprint plan (P0-P7), risk register, content pipeline.
 - `midnight-garage-roster.csv` - **the single source of truth for the full 94-car roster**: one
-  row per car, 57 columns keyed on a permanent `uid`, every per-car value the game has (identity, price, tier, rarity,
+  row per car, 58 columns keyed on a permanent `uid`, every per-car value the game has (identity, price, production window, tier, rarity,
   origin, culture, scope, `reliabilityBase`/`styleBase`/`styleCeiling`/`aeroCeiling`, the full engine and chassis
   spec, the measured performance figures, provenance, notes). Edit it in a spreadsheet. Nothing
   else may carry a second copy of any value in it. `midnight-garage-roster.md` (v2.3) is its

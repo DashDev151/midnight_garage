@@ -124,11 +124,14 @@ describe('symptom generation (Sprint 73 decision 2)', () => {
       partsGeneration: {
         ...ECONOMY.partsGeneration,
         maxBillFraction: 0.0001,
-        // The core-loop floor is a separate mechanism from the Law 2 drop
-        // rule this test targets - zeroed here so it never tops up a part
-        // away from mint and confounds the "every part reverts" assertion
-        // below.
-        minWorkBillFractionByTier: { entry: 0, everyday: 0, enthusiast: 0, flagship: 0 },
+        // The damage budget is a separate mechanism from the Law 2 drop rule
+        // this test targets - every grade zeroed here so it never degrades a
+        // part away from mint and confounds the "every part reverts"
+        // assertion below.
+        damageGrades: {
+          ...ECONOMY.partsGeneration.damageGrades,
+          bandStepsByGrade: { tidy: 0, used: 0, rough: 0, project: 0 },
+        },
       },
       diagnosis: economyWithGuaranteedSymptom().diagnosis,
     }

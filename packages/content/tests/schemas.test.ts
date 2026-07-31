@@ -296,22 +296,21 @@ describe('seed content validates against schemas', () => {
     // ceiling every generated car is softened to satisfy - the other half
     // of the wage law's (D, F) pair (see marketRepairDiscount above).
     expect(result.data.partsGeneration.maxBillFraction).toBe(0.6)
-    // The core-loop law's floor: every generated car must carry at least
-    // this much below-expectation work, strictly under the ceiling above.
-    expect(result.data.partsGeneration.minWorkBillFractionByTier).toEqual({
-      entry: 0.1,
-      everyday: 0.06,
-      enthusiast: 0.05,
-      flagship: 0.04,
+    // How rough a generated lot is: one roster-wide grade roll, and what each
+    // grade buys in band steps. Not a per-venue table - the gradient across
+    // rooms emerges from `auction.carTierWeightsByAuctionTier`.
+    expect(result.data.partsGeneration.damageGrades.weights).toEqual({
+      tidy: 45,
+      used: 35,
+      rough: 15,
+      project: 5,
     })
-    for (const [tier, floorFraction] of Object.entries(
-      result.data.partsGeneration.minWorkBillFractionByTier,
-    )) {
-      expect(
-        floorFraction,
-        `${tier} floor fraction must stay strictly under the maxBillFraction ceiling`,
-      ).toBeLessThan(result.data.partsGeneration.maxBillFraction)
-    }
+    expect(result.data.partsGeneration.damageGrades.bandStepsByGrade).toEqual({
+      tidy: 2,
+      used: 5,
+      rough: 11,
+      project: 20,
+    })
     // Upkeep wear can only express in proportion to the car's own mileage -
     // a brand-new car is mint whoever owned it.
     expect(result.data.partsGeneration.wearExposureByMileageKm[0]).toEqual([0, 0])
@@ -709,17 +708,34 @@ describe('seed content ids are unique', () => {
     expect(ladder.respected).toBeLessThan(ladder.legend)
   })
 
-  it('the minimum-work floor stays strictly under the max-bill ceiling for every fitment class', () => {
-    // The floor top-up runs under the same Law 2 ceiling guard, so a floor
-    // fraction at or above the ceiling would make the guarantee unreachable -
-    // a bug, not a tuning choice, so the schema refuses it.
+  it('refuses a damage-grade ladder that does not rise from tidy to project', () => {
+    // The four grades are one ordered scale of how rough a car is, so a
+    // `rough` car buying fewer band steps than a `used` one is a typo, not a
+    // tuning choice.
     const bad = {
       ...economy,
       partsGeneration: {
         ...economy.partsGeneration,
-        minWorkBillFractionByTier: {
-          ...economy.partsGeneration.minWorkBillFractionByTier,
-          entry: economy.partsGeneration.maxBillFraction,
+        damageGrades: {
+          ...economy.partsGeneration.damageGrades,
+          bandStepsByGrade: {
+            ...economy.partsGeneration.damageGrades.bandStepsByGrade,
+            rough: 0,
+          },
+        },
+      },
+    }
+    expect(EconomyConfigSchema.safeParse(bad).success).toBe(false)
+  })
+
+  it('refuses a damage-grade weight table that can never roll anything', () => {
+    const bad = {
+      ...economy,
+      partsGeneration: {
+        ...economy.partsGeneration,
+        damageGrades: {
+          ...economy.partsGeneration.damageGrades,
+          weights: { tidy: 0, used: 0, rough: 0, project: 0 },
         },
       },
     }

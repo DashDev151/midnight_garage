@@ -53,7 +53,17 @@ export const CarModelSchema = z
       .object({
         chassisCode: z.string().min(1),
         engineCode: z.string().min(1),
+        /**
+         * The variant's production window. A generated car's model year is
+         * drawn inside `[yearFrom, yearTo]` (`generateAuctionCarInstance`), so
+         * a Hakosuka built 1969 to 1972 can no longer turn up as a 1977 car.
+         * Both ends are authored per car for all 94 roster rows, never
+         * derived; a variant built in one model year only carries the same
+         * value twice, and a car still in production at the roster's 2010
+         * horizon carries 2010.
+         */
         yearFrom: z.number().int().gte(1955).lte(2010),
+        yearTo: z.number().int().gte(1955).lte(2010),
         curbWeightKg: z.number().int().positive(),
         stockPowerPs: z.number().int().positive(),
         quotedPowerPs: z.number().int().positive().optional(),
@@ -214,6 +224,10 @@ export const CarModelSchema = z
   .refine((m) => hasSlowerHalf(m.spec.zeroTo97S, m.spec.zeroTo161S), {
     message: 'zeroTo161S needs zeroTo97S beside it: the 0-97 may stand alone',
     path: ['spec', 'zeroTo97S'],
+  })
+  .refine((m) => m.spec.yearTo >= m.spec.yearFrom, {
+    message: 'yearTo closes the production window opened by yearFrom: it cannot sit below it',
+    path: ['spec', 'yearTo'],
   })
   .refine((m) => m.spec.styleCeiling >= m.spec.styleBase, {
     message:
