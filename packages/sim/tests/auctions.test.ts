@@ -126,6 +126,19 @@ function stateWithLots(
   }
 }
 
+/**
+ * The symptom rate the design SIGNED, per fitment class: what a player meets, a
+ * symptom present or absent. Deliberately not `ECONOMY.diagnosis.
+ * symptomChanceByTier`, which is the input to a roll the Law 2 veto sits
+ * downstream of and is therefore derived as `signed / measured survival`.
+ */
+const SIGNED_SYMPTOM_RATE: Record<PartFitmentClass, number> = {
+  entry: 0.55,
+  everyday: 0.5,
+  enthusiast: 0.45,
+  flagship: 0.35,
+}
+
 const AUCTION_TIERS = ['local-yard', 'regional', 'premium', 'collector-network'] as const
 
 describe('canAppearAtAuctionTier', () => {
@@ -1024,9 +1037,17 @@ describe('the damage budget: how rough a generated lot is', () => {
   it('holds the real symptom rate at its signed per-class value: the budget does not eat the ceiling headroom symptoms need', () => {
     // `applySymptoms` drops a symptom outright if it would breach the Law 2
     // ceiling, so a generation change that leaves cars closer to that ceiling
-    // silently lowers the effective symptom rate below `symptomChanceByTier`.
-    // The budget runs strictly AFTER symptoms, so it cannot reach them - and
-    // this measures rather than assumes that.
+    // silently lowers the effective symptom rate. The budget runs strictly
+    // AFTER symptoms, so it cannot reach them - and this measures rather than
+    // assumes that.
+    //
+    // MEASURED AGAINST THE SIGNED INTENT, NOT AGAINST THE INPUT LEVER. The two
+    // are deliberately different numbers: the signed rate is what a player
+    // MEETS (a symptom present or absent), the Law 2 veto sits between the roll
+    // and that, and `diagnosis.symptomChanceByTier` is therefore derived as
+    // `signed / measured survival` rather than authored. Comparing the measured
+    // rate against the input would assert the survival fraction is 1, which is
+    // exactly what it is not.
     const tally: Record<string, { cars: number; symptomatic: number }> = {}
     for (const carModel of CARS) {
       const fitmentClass = fitmentClassForTier(carModel.tier)
@@ -1047,7 +1068,7 @@ describe('the damage budget: how rough a generated lot is', () => {
     // first mismatch stopping the run: when the coupling DOES bite, which
     // classes it bit and by how much is the whole of the information.
     const measured = Object.entries(tally).map(([fitmentClass, counted]) => {
-      const signed = ECONOMY.diagnosis.symptomChanceByTier[fitmentClass as PartFitmentClass]
+      const signed = SIGNED_SYMPTOM_RATE[fitmentClass as PartFitmentClass]
       const rate = counted.symptomatic / counted.cars
       return { fitmentClass, signed, rate, drift: rate - signed }
     })

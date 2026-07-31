@@ -7,6 +7,7 @@ import {
   type CarModel,
   type ConditionBand,
   type EconomyConfig,
+  type PanelZoneId,
   type Part,
   type PartFitmentClass,
   type PipelineStageId,
@@ -180,11 +181,23 @@ function rollSeverity(weights: readonly [number, number, number, number], rng: R
  * with a missing panel or a colour (both are player/pipeline-driven states,
  * never rolled). Seeded via `rng`, the same stream the rest of generation
  * threads.
+ *
+ * `severityOrder` ARRANGES the five panel zones' rolled severities without
+ * changing them: the rolled states are dealt out worst-first along that order,
+ * so the caller decides which zones carry the damage the tier tables already
+ * decided the car has. Six independent per-zone rolls could not express a
+ * collision at all, because `left` and `right` were unrelated and there was no
+ * front or rear. It is a pure permutation, which is exactly what a damage
+ * pattern is allowed to do: `panels`/`paint` derive from the WORST panel zone,
+ * and a worst-of is invariant under permutation, so the derived bands, the
+ * repair bill and every Law 2 check see an identical distribution. Only WHERE
+ * moves. Defaults to the zones' own order, which is a no-op.
  */
 export function rollZoneStates(
   fitmentClass: PartFitmentClass,
   economy: EconomyConfig,
   rng: Rng,
+  severityOrder: readonly PanelZoneId[] = PANEL_ZONE_IDS,
 ): ZoneStates {
   const { metalWeightsByTier, finishWeightsByTier, chassisMetalWeightsByTier, surfaceExtraChance } =
     economy.partsGeneration.zoneStates
@@ -196,8 +209,13 @@ export function rollZoneStates(
     return { metal, surface, finish, panelMissing: false, primed: false }
   }
   const zoneStates = {} as Record<ZoneId, ZoneState>
-  for (const zoneId of PANEL_ZONE_IDS)
-    zoneStates[zoneId] = rollZone(metalWeightsByTier[fitmentClass])
+  // Rolled first, in the zones' own fixed order so the draw sequence is
+  // unchanged, then dealt out worst-first along `severityOrder`.
+  const rolled = PANEL_ZONE_IDS.map(() => rollZone(metalWeightsByTier[fitmentClass]))
+  rolled.sort((a, b) => b.metal + b.surface + b.finish - (a.metal + a.surface + a.finish))
+  severityOrder.forEach((zoneId, index) => {
+    zoneStates[zoneId] = rolled[index]!
+  })
   zoneStates.chassis = rollZone(chassisMetalWeightsByTier[fitmentClass])
   return zoneStates as ZoneStates
 }
@@ -255,23 +273,32 @@ export function hasZoneImproveHeadroom(
 }
 
 /**
- * Sets a body-derived carrier's zone state to reach AT LEAST `targetBand` -
- * a symptom's damage (`auctions.ts`'s `applySymptoms`), the one other
- * writer of these three parts' apparent severity besides generation and the
- * pipeline itself. Unlike the money-only degrade/improve helpers above, a
+ * Sets a body-derived carrier's zone state to reach AT LEAST `targetBand` on
+ * `panelZoneId` - a symptom's damage (`auctions.ts`'s `applySymptoms`), the one
+ * other writer of these three parts' apparent severity besides generation and
+ * the pipeline itself. Unlike the money-only degrade/improve helpers above, a
  * symptom is a real, hidden DEFECT (not a money-optimisation move), so it
  * legitimately moves METAL too - a "rust patch" or "panel respray" cause is
- * about the panel's physical state, not what the cheapest fix costs. Always
- * applied to the SAME fixed zone (deterministic, no extra RNG draw) -
- * worst-governs means one zone carrying it is enough to drive the whole
- * carrier's derived band. A no-op if the carrier is already at or worse
- * than `targetBand` (mirrors the "worse of current or cause" rule every
- * other symptom cause already follows).
+ * about the panel's physical state, not what the cheapest fix costs.
+ *
+ * The zone is the CALLER'S choice, drawn from the car's damage pattern
+ * (docs/design/systems/generation-damage.md, layer 3). It used to be a fixed
+ * `PANEL_ZONE_IDS[0]` to avoid an RNG draw, which put every rust patch and
+ * every respray in the game on the bonnet; worst-governs means one zone
+ * carrying the damage is enough to drive the whole carrier's derived band, so
+ * WHICH zone was free to be arbitrary and is now free to be the one the car's
+ * own story implicates. `underbody` ignores the argument: it reads the chassis
+ * zone alone, so there is no choice to make.
+ *
+ * A no-op if the carrier is already at or worse than `targetBand` on that zone
+ * (mirrors the "worse of current or cause" rule every other symptom cause
+ * already follows).
  */
 export function setZoneCarrierToAtLeastBand(
   zoneStates: ZoneStates,
   carPartId: DerivedBodyPartId,
   targetBand: ConditionBand,
+  panelZoneId: PanelZoneId,
 ): ZoneStates {
   const targetSeverity = Math.min(3, severityThresholdForBand(targetBand))
   if (carPartId === 'underbody') {
@@ -282,7 +309,7 @@ export function setZoneCarrierToAtLeastBand(
       chassis: { ...chassis, finish: Math.max(chassis.finish, targetSeverity) },
     }
   }
-  const zoneId = PANEL_ZONE_IDS[0]!
+  const zoneId = panelZoneId
   const zone = zoneStates[zoneId]
   if (carPartId === 'panels') {
     if (Math.max(zone.metal, zone.surface) >= targetSeverity) return zoneStates
@@ -293,17 +320,27 @@ export function setZoneCarrierToAtLeastBand(
 }
 
 /**
- * Worsens whichever panel zone has the LEAST headroom left before hitting
- * `carPartId`'s money-relevant field cap (`underbody` reads the chassis zone
- * alone) - the generation damage budget's zone-aware degrade move
- * (`spendDamageBudget`, auctions.ts). A no-op once every relevant zone is
- * already capped: `panels` never reaches `scrap` this way - that needs a
- * missing panel, a separate and more drastic state this helper never
- * touches, matching `degradeBand`'s own never-forced-to-scrap contract.
+ * Worsens one panel zone that still has headroom before hitting `carPartId`'s
+ * money-relevant field cap (`underbody` reads the chassis zone alone) - the
+ * generation damage budget's zone-aware degrade move (`spendDamageBudget`,
+ * auctions.ts).
+ *
+ * WHICH zone is the caller's to choose, through `chooseZone`, because that is
+ * the whole of how a collision becomes expressible: the budget hands it the
+ * car's own damage pattern and a shunted car spends its bodywork on the bonnet
+ * and the wings rather than evenly around the shell. Absent, it falls back to
+ * the zone with the least headroom left, which deepens one zone before starting
+ * another and is the right default for a caller with no story to tell.
+ *
+ * A no-op once every relevant zone is already capped: `panels` never reaches
+ * `scrap` this way - that needs a missing panel, a separate and more drastic
+ * state this helper never touches, matching `degradeBand`'s own
+ * never-forced-to-scrap contract.
  */
 export function degradeZoneCarrierOneStep(
   zoneStates: ZoneStates,
   carPartId: DerivedBodyPartId,
+  chooseZone?: (candidates: readonly PanelZoneId[]) => PanelZoneId,
 ): ZoneStates {
   const { field, cap } = moneyFieldFor(carPartId)
   if (carPartId === 'underbody') {
@@ -313,9 +350,11 @@ export function degradeZoneCarrierOneStep(
   }
   const withHeadroom = PANEL_ZONE_IDS.filter((zoneId) => zoneStates[zoneId][field] < cap)
   if (withHeadroom.length === 0) return zoneStates
-  const targetId = withHeadroom.reduce((worst, zoneId) =>
-    zoneStates[zoneId][field] > zoneStates[worst][field] ? zoneId : worst,
-  )
+  const targetId = chooseZone
+    ? chooseZone(withHeadroom)
+    : withHeadroom.reduce((worst, zoneId) =>
+        zoneStates[zoneId][field] > zoneStates[worst][field] ? zoneId : worst,
+      )
   const zone = zoneStates[targetId]
   return { ...zoneStates, [targetId]: { ...zone, [field]: zone[field] + 1 } }
 }

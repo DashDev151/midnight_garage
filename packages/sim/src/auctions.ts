@@ -17,6 +17,7 @@ import {
   type Cause,
   type ConditionBand,
   type DamageGrade,
+  type DamagePattern,
   type EconomyConfig,
   type Grade,
   type PartFitmentClass,
@@ -47,9 +48,16 @@ import {
 } from './bodyPipeline'
 import { DEFAULT_CONDITION_AGE_YEARS_WHEN_UNBOUNDED } from './constants'
 import type { SimContext } from './context'
+import {
+  pickPatternGroup,
+  pickPatternZone,
+  rollDamagePattern,
+  symptomDrawWeight,
+  zoneDamageOrder,
+} from './damagePatterns'
 import { cleanValueYen } from './marketValue'
 import { makeCarOrigin } from './provenance'
-import type { Rng } from './rng'
+import { pickWeighted, type Rng } from './rng'
 
 const COLOR_POOL = ['White', 'Black', 'Silver', 'Gunmetal', 'Red', 'Blue'] as const
 
@@ -115,12 +123,28 @@ function bandsMatch(a: CarInstance, b: CarInstance): boolean {
  * targeting an already-missing slot is dropped the same way.
  * `apparentBandByPartId` records a part's band from BEFORE THE FIRST
  * symptom that damages it, never overwritten by a later one.
+ *
+ * WHICH symptom is drawn is weighted by the car's own damage `pattern`
+ * (`symptomDrawWeight`, damagePatterns.ts) rather than picked uniformly, so a
+ * car that went in the front is likelier to present a front-end symptom than a
+ * gearbox whine. That is the same weighting the damage budget spends against,
+ * which is what makes a car's visible damage and its hidden fault two halves of
+ * one event instead of two unrelated rolls.
+ *
+ * The pattern is read from the car's HISTORY and never from its parts. History
+ * is the cause; the damage and the symptom are both effects of it, and
+ * inferring one effect from the other would be circular.
+ *
+ * The pattern still decides only WHERE. It sets no band (the cause's own
+ * `setBand` does, as a floor), creates no symptom (this function does, subject
+ * to the Law 2 veto below) and writes no `apparentBandByPartId`.
  */
 function applySymptoms(
   car: CarInstance,
   model: CarModel,
   context: SimContext,
   carOrigin: PartOrigin,
+  pattern: DamagePattern,
   rng: Rng,
 ): {
   car: CarInstance
@@ -133,8 +157,13 @@ function applySymptoms(
 
   const pool = [...context.symptoms]
   const drawn: Symptom[] = []
+  const bias = context.economy.partsGeneration.damageGrades.patternSymptomBias
   for (let i = 0; i < count && pool.length > 0; i++) {
-    const symptom = rng.pick(pool)
+    const symptom = pickWeighted(
+      pool,
+      (candidate) => symptomDrawWeight(candidate, pattern, context.partsTaxonomyById, bias),
+      rng,
+    )
     drawn.push(symptom)
     pool.splice(pool.indexOf(symptom), 1)
   }
@@ -152,7 +181,10 @@ function applySymptoms(
     // A body-derived carrier's damage moves the underlying zone state (never
     // the band directly, per the single-writer rule) - a symptom cause is a
     // real hidden defect, so unlike the money-only degrade/improve passes it
-    // legitimately touches metal too (`setZoneCarrierToAtLeastBand`).
+    // legitimately touches metal too (`setZoneCarrierToAtLeastBand`). WHICH
+    // zone it lands on is drawn from the pattern: it used to be a fixed
+    // `bonnet` to save an RNG draw, which put every rust patch and every
+    // respray in the game on the same panel.
     const tentative: CarInstance =
       working.zoneState && isBodyDerivedPart(cause.carPartId)
         ? applyDerivedBodyBands(
@@ -162,6 +194,7 @@ function applySymptoms(
                 working.zoneState,
                 cause.carPartId,
                 cause.setBand,
+                pickPatternZone(PANEL_ZONE_IDS, pattern, rng),
               ),
             },
             model,
@@ -255,16 +288,23 @@ function shallowestCandidates(car: CarInstance, pool: readonly CarPartId[]): Car
 }
 
 /** One candidate's degrade step, applied to `working` - the zone-aware
- * branch for a derived body carrier, or a plain band step otherwise. Pure:
- * never mutates `working`, always returns a fresh `CarInstance`. */
+ * branch for a derived body carrier, or a plain band step otherwise. A body
+ * carrier's step lands on whichever zone the car's damage pattern implicates,
+ * which is how a shunt reads as a shunt rather than as bodywork spread evenly
+ * around the shell. Pure in `working`: never mutates it, always returns a fresh
+ * `CarInstance` (it does draw on `rng` for the zone). */
 function degradeOnePart(
   working: CarInstance,
   model: CarModel,
   context: SimContext,
+  pattern: DamagePattern,
+  rng: Rng,
   partId: CarPartId,
 ): CarInstance {
   if (working.zoneState && isBodyDerivedPart(partId)) {
-    const zoneState = degradeZoneCarrierOneStep(working.zoneState, partId)
+    const zoneState = degradeZoneCarrierOneStep(working.zoneState, partId, (candidates) =>
+      pickPatternZone(candidates, pattern, rng),
+    )
     return applyDerivedBodyBands({ ...working, zoneState }, model, context)
   }
   const installed = working.parts[partId].installed!
@@ -285,9 +325,11 @@ function degradeUnderCeiling(
   model: CarModel,
   context: SimContext,
   carOrigin: PartOrigin,
+  pattern: DamagePattern,
+  rng: Rng,
   partId: CarPartId,
 ): CarInstance | null {
-  const candidate = degradeOnePart(working, model, context, partId)
+  const candidate = degradeOnePart(working, model, context, pattern, rng, partId)
   const softened = enforceMaxBillFraction(candidate, model, context, carOrigin)
   return bandsMatch(softened, candidate) ? softened : null
 }
@@ -418,6 +460,15 @@ export function damageStepsSpentBySymptoms(
  * uniform pick could instead land on one part repeatedly and ruin it while
  * its neighbours stayed untouched.
  *
+ * WHICH of those least-damaged candidates takes the step is drawn from the
+ * car's damage `pattern` rather than uniformly (docs/design/systems/
+ * generation-damage.md, layer 3), and a body carrier's step lands on the zone
+ * the pattern implicates. The shallow-first rule is unchanged and still binds
+ * first, so the pattern decides the ORDER within a level and therefore where a
+ * budget that runs out mid-level stopped: a shunted car reaches the bonnet, the
+ * wings and the engine bay before its budget is spent, and its gearbox and
+ * cabin are what the budget never got to.
+ *
  * The candidate pool never offers an already-`poor` part, so no part is ever
  * forced to `scrap`, and every step runs under the same Law 2 ceiling the rest
  * of generation obeys (`degradeUnderCeiling`): a step that would breach it is
@@ -429,6 +480,7 @@ export function spendDamageBudget(
   model: CarModel,
   context: SimContext,
   carOrigin: PartOrigin,
+  pattern: DamagePattern,
   rng: Rng,
   steps: number,
 ): CarInstance {
@@ -444,8 +496,14 @@ export function spendDamageBudget(
     // could still have carried it.
     let applied = false
     while (pool.length > 0 && !applied) {
-      const partId = rng.pick(shallowestCandidates(working, pool))
-      const stepped = degradeUnderCeiling(working, model, context, carOrigin, partId)
+      // The pattern draws the GROUP, and the shallow-first rule then spreads
+      // within it. Weighting the individual candidates instead measures as
+      // doing nothing: shallow-first finishes a level whatever order it takes
+      // it in (see `pickPatternGroup`).
+      const group = pickPatternGroup(pool, pattern, context.partsTaxonomyById, rng)
+      const inGroup = pool.filter((id) => context.partsTaxonomyById[id].group === group)
+      const partId = rng.pick(shallowestCandidates(working, inGroup))
+      const stepped = degradeUnderCeiling(working, model, context, carOrigin, pattern, rng, partId)
       if (stepped) {
         working = stepped
         applied = true
@@ -671,7 +729,7 @@ export function carOriginLabel(model: CarModel, year: number): string {
  * layer 2). Its culture and tier select a care profile (`careProfileFor`) and
  * the history is drawn from that profile's grade distribution, gated by age
  * and mileage (`gateProjectGrade`), because a young, barely-driven car cannot
- * yet have been given up on. Three things then read it, and none of them rolls
+ * yet have been given up on. Four things then read it, and none of them rolls
  * independently:
  *
  * - the UPKEEP TIER it reads as (`damageGrades.upkeepTierByGrade`), which
@@ -686,11 +744,18 @@ export function carOriginLabel(model: CarModel, year: number): string {
  *   and
  * - the DAMAGE BUDGET in band steps (`damageGrades.bandStepsByGrade`), spent
  *   as honest visible wear after the symptoms have landed
- *   (`spendDamageBudget`), less whatever those symptoms already spent.
+ *   (`spendDamageBudget`), less whatever those symptoms already spent; and
+ * - the DAMAGE PATTERN (`damageGrades.patternWeightsByGrade`), which is the
+ *   sole answer to WHERE (layer 3). One weighting over part slots, drawn once
+ *   here and read by two consumers: the budget spends against it, and the
+ *   symptom draw weights each candidate by how much its causes sit in the
+ *   groups it implicates. That single join is why a car that went in the front
+ *   has front-end damage AND presents a front-end symptom, rather than a
+ *   ruined nose and an unrelated gearbox whine.
  *
  * The direction of causation is the whole point and it only runs one way: the
- * history causes the damage and the parts, and neither is ever read back to
- * infer the history.
+ * history causes the damage, the parts and the symptom, and none of them is
+ * ever read back to infer the history.
  *
  * `allowMissingSlots` (default true) lets `serviceJobs.ts`'s customer-car
  * generation pass false - a customer's car should never turn up missing an
@@ -755,6 +820,12 @@ export function generateAuctionCarInstance(
     mileageKm,
     economy,
   )
+  // WHERE that history left its mark, drawn immediately after it because the
+  // two are one fact: the history says how rough the car is and the pattern
+  // says what happened to it. Both the damage budget and the symptom draw read
+  // this one weighting, which is what stops a car's visible damage and its
+  // hidden fault describing two unrelated events.
+  const pattern = rollDamagePattern(history, economy, context.damagePatterns, rng)
   // How the car was treated is READ OFF the history rather than rolled beside
   // it: they are one fact, and two rolls let a car someone had given up on
   // carry a "one careful owner" blurb.
@@ -854,8 +925,16 @@ export function generateAuctionCarInstance(
     // underbody with a stock part (never missing or aftermarket, since those
     // SKUs are retired/migrated); the projection below immediately overwrites
     // that jittered band with the real, zone-derived one.
-    zoneState: rollZoneStates(fitmentClass, economy, rng),
+    // The zone severities the tier tables rolled, ARRANGED by the pattern:
+    // the same damage, on the panels the car's own story implicates.
+    zoneState: rollZoneStates(
+      fitmentClass,
+      economy,
+      rng,
+      zoneDamageOrder(PANEL_ZONE_IDS, pattern, rng),
+    ),
     history,
+    damagePattern: pattern.id,
   }
   const withDerivedBands = applyDerivedBodyBands(rolled, model, context)
   const softened = enforceMaxBillFraction(withDerivedBands, model, context, carOrigin)
@@ -865,7 +944,7 @@ export function generateAuctionCarInstance(
     car: withSymptoms,
     symptoms,
     apparentBandByPartId,
-  } = applySymptoms(softened, model, context, carOrigin, rng)
+  } = applySymptoms(softened, model, context, carOrigin, pattern, rng)
   // Spend what the history bought, less what the symptoms above already spent.
   // The order is load-bearing: the budget runs AFTER symptoms and never writes
   // `apparentBandByPartId`, so budget damage is honest wear the room prices in
@@ -888,7 +967,15 @@ export function generateAuctionCarInstance(
     0,
     budgetSteps - damageStepsSpentBySymptoms(withSymptoms, apparentBandByPartId),
   )
-  const damaged = spendDamageBudget(withSymptoms, model, context, carOrigin, rng, remainingSteps)
+  const damaged = spendDamageBudget(
+    withSymptoms,
+    model,
+    context,
+    carOrigin,
+    pattern,
+    rng,
+    remainingSteps,
+  )
   return { ...damaged, symptoms, apparentBandByPartId }
 }
 

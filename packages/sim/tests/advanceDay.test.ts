@@ -207,14 +207,15 @@ describe('advanceDay golden master', () => {
     // with it - which is the proof that this is a shape change and not a
     // behavioural one.
     //
-    // It last moved when a car gained a HISTORY (sprint154.md). Two things in
-    // this script's rng stream changed together: the history roll moved to the
-    // top of generation, ahead of the parts loop, because the upkeep tier and
-    // the aftermarket chance are now read off it; and the separate upkeep draw
-    // it replaced is gone, so every draw after it shifts by one. Every
-    // generated board therefore differs. Re-derived from a real run, twice, to
-    // confirm determinism.
-    expect(hashState(finalState)).toBe('08ce1be6')
+    // It last moved when a car gained a DAMAGE PATTERN (sprint155.md). Four
+    // things in this script's rng stream changed together: the pattern is drawn
+    // right after the history, the panel zones are dealt out along a
+    // pattern-weighted order (four more draws), the symptom draw is weighted
+    // rather than uniform, and the budget draws a taxonomy group before it
+    // picks a slot inside it. Every generated board therefore differs, and
+    // every car carries one more stamped field. Re-derived from a real run,
+    // twice, to confirm determinism.
+    expect(hashState(finalState)).toBe('90b8b963')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -357,8 +358,11 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // effective symptom rate to its signed value: the RNG draw sequence inside
     // symptom generation shifts with the input, and this is again the one
     // script whose rolled lot happens to fall on that draw; the 30-day master
-    // held unchanged.
-    expect(hashState(acquisitionCareer().sold)).toBe('81133d36')
+    // held unchanged. It moves again with damage patterns (sprint155.md),
+    // alongside the 30-day master, because that change reaches every generated
+    // lot: where the damage lands, which zone carries it, and which symptom is
+    // drawn.
+    expect(hashState(acquisitionCareer().sold)).toBe('5f377288')
   })
 })
 

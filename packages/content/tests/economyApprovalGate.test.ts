@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
+import damagePatterns from '../data/damagePatterns.json'
 import economy from '../data/economy.json'
 import partPricing from '../data/partPricing.json'
 import storyMissions from '../data/storyMissions.json'
@@ -1203,6 +1204,43 @@ import storyMissions from '../data/storyMissions.json'
  * shifts with the input on the one script that actually buys and sells a rolled car.
  * `workedExample.test.ts` was re-run and is unaffected; `partPricing.json` and every mission
  * payout and budget cap hold.
+ *
+ * Re-pinned 2026-08-01 for Sprint 155 (damage patterns, `generation-damage.md` layer 3), under
+ * the same R4 grant. `damagePatterns.json` joins this gate as a fourth pinned file, because a
+ * pattern's slot weights are levers in every sense that matters even though they are not economy
+ * numbers. Levers moved, named and valued per R4's requirement:
+ *
+ * 1. NEW `damageGrades.patternWeightsByGrade` - which named thing happened to a car that arrived
+ *    at each grade. tidy 60/25/6/7/2, used 30/40/12/15/3, rough 8/34/24/26/8, project
+ *    2/20/33/25/20 over garaged / neglected-commuter / frontal-collision / drifted / grenade. A
+ *    tidy car mostly has no story; a project car got that way for a reason, and the two reasons
+ *    people give up on a car are a shunt and a let-go engine.
+ * 2. NEW `damageGrades.patternSymptomBias` 0.6 - how hard the pattern leans on the symptom draw,
+ *    as a linear blend between an even draw (0) and a fully pattern-proportional one (1). At 0.6
+ *    the most-implicated group runs about 3x the least on a directional pattern and nothing falls
+ *    below 0.54 of an even draw, so a shunted car with a tired gearbox stays a real car.
+ * 3. NEW `damagePatterns.json` - five patterns, each a weighting over the six taxonomy groups and
+ *    the five panel zones, and nothing else. No band, no amount, no list of effects.
+ * 4. `diagnosis.symptomChanceByTier` MOVED AGAIN - entry 0.597 -> 0.566, everyday 0.513 -> 0.510,
+ *    enthusiast 0.474 -> 0.465, flagship 0.357 -> 0.365. Not a re-tune: these four are derived,
+ *    not authored, as `signed / measured survival` (see the 2026-07-31 entry above for the
+ *    ruling). Biasing the symptom draw toward the pattern's own groups draws symptoms that
+ *    survive the Law 2 veto more often, so survival rose from about 0.92 to 0.958-0.980 and the
+ *    inputs come back down. Survival was measured at 1500 seeds per shipped model (n=10500
+ *    entry / 12000 everyday / 13500 enthusiast / 3000 flagship, roughly 4x the sample the
+ *    2026-07-31 entry used), the inputs set to `signed / survival` rounded to three decimals, and
+ *    the effective rate re-measured at the rounded values: entry 0.5524, everyday 0.4998,
+ *    enthusiast 0.4507, flagship 0.3493, every class within 0.0025 of signed. Disclosed rather
+ *    than smoothed over: at that sample only `entry` had drifted materially (+0.0305); everyday
+ *    (+0.0027), enthusiast (+0.0091) and flagship (-0.0080) were inside one to two standard
+ *    errors, and their moves are refinements from the larger sample rather than corrections.
+ *
+ * Nothing else moved. `bandStepsByGrade`, `minWorkSteps`, the age gate, `maxBillFraction`, the
+ * care profiles, the zone severity tables and every valuation lever are untouched, and the zone
+ * ARRANGEMENT this sprint added is a pure permutation of the severities those tables already
+ * rolled (`panels`/`paint` derive from the worst panel zone, and a worst-of is permutation
+ * invariant), so no derived band, repair bill or Law 2 check sees a different distribution.
+ * `partPricing.json` holds and no mission payout or budget cap moves.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -1212,7 +1250,17 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('7b4edda166567f2be453ae0e5d6579af8e935eb117cab7f756c2a8c9e36b32a8')
+    ).toBe('35c62a03ebf58d1b3e176437eddd1140561c21c721277c951bf72ac9bca778e8')
+  })
+
+  it('damagePatterns.json matches its approved content exactly', () => {
+    const hash = createHash('sha256').update(JSON.stringify(damagePatterns)).digest('hex')
+    expect(
+      hash,
+      'damagePatterns.json changed. The slot weights decide where every generated car is ' +
+        'damaged and which symptom it presents: re-pin this hash ONLY in the same change as ' +
+        'the recorded approval of the specific weighting.',
+    ).toBe('7b0bdc45c9666442702ce1996290d6c33216f8c435247fcbf41e652e58b18c41')
   })
 
   it('partPricing.json matches its approved content exactly', () => {

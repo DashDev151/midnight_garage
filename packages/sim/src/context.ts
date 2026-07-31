@@ -7,6 +7,8 @@ import type {
   CarPartTaxonomyEntry,
   ComponentId,
   Course,
+  DamagePattern,
+  DamagePatternId,
   DiagnosticTest,
   EconomyConfig,
   Facilities,
@@ -29,6 +31,7 @@ import type {
 import {
   ASSEMBLIES,
   COURSES,
+  DAMAGE_PATTERNS,
   DIAGNOSTIC_TESTS,
   ECONOMY,
   LAP_REFERENCES,
@@ -121,6 +124,11 @@ export interface SimContext {
    * reference by id. */
   symptoms: readonly Symptom[]
   symptomsById: Readonly<Record<string, Symptom>>
+  /** The named damage patterns a generated car's history draws from - one
+   * weighting over part slots each, read by the damage budget and the symptom
+   * draw alike (`damagePatterns.ts`). */
+  damagePatterns: readonly DamagePattern[]
+  damagePatternsById: Readonly<Record<DamagePatternId, DamagePattern>>
   diagnosticTests: readonly DiagnosticTest[]
   diagnosticTestsById: Readonly<Record<string, DiagnosticTest>>
   /** The hand-authored campaign, sorted by `gateReputationPoints` (the
@@ -239,6 +247,7 @@ export function buildSimContext(
   assemblies: readonly AssemblyDef[] = ASSEMBLIES,
   venueNames: VenueNames = VENUE_NAMES,
   courses: readonly Course[] = COURSES,
+  damagePatterns: readonly DamagePattern[] = DAMAGE_PATTERNS,
 ): SimContext {
   const sortedStoryMissions = [...storyMissions].sort(
     (a, b) => a.gateReputationPoints - b.gateReputationPoints,
@@ -276,6 +285,8 @@ export function buildSimContext(
     provenancePool,
     symptoms,
     symptomsById: indexById(symptoms),
+    damagePatterns,
+    damagePatternsById: indexById(damagePatterns) as Record<DamagePatternId, DamagePattern>,
     diagnosticTests,
     diagnosticTestsById: indexById(diagnosticTests),
     storyMissions: sortedStoryMissions,

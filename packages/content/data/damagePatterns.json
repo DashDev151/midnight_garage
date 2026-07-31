@@ -1,0 +1,77 @@
+[
+  {
+    "id": "garaged",
+    "displayName": "Kept in the dry",
+    "slotWeights": {
+      "groups": {
+        "engine": 17,
+        "drivetrain": 16,
+        "suspension": 17,
+        "wheels": 17,
+        "body": 17,
+        "interior": 16
+      },
+      "zones": { "bonnet": 20, "boot": 20, "left": 20, "right": 20, "roof": 20 }
+    }
+  },
+  {
+    "id": "neglected-commuter",
+    "displayName": "Never serviced",
+    "slotWeights": {
+      "groups": {
+        "engine": 26,
+        "drivetrain": 12,
+        "suspension": 22,
+        "wheels": 20,
+        "body": 14,
+        "interior": 6
+      },
+      "zones": { "bonnet": 22, "boot": 22, "left": 16, "right": 16, "roof": 24 }
+    }
+  },
+  {
+    "id": "frontal-collision",
+    "displayName": "Went in the front",
+    "slotWeights": {
+      "groups": {
+        "engine": 30,
+        "drivetrain": 5,
+        "suspension": 15,
+        "wheels": 10,
+        "body": 36,
+        "interior": 4
+      },
+      "zones": { "bonnet": 40, "boot": 10, "left": 22, "right": 22, "roof": 6 }
+    }
+  },
+  {
+    "id": "drifted",
+    "displayName": "Driven sideways",
+    "slotWeights": {
+      "groups": {
+        "engine": 12,
+        "drivetrain": 22,
+        "suspension": 26,
+        "wheels": 28,
+        "body": 9,
+        "interior": 3
+      },
+      "zones": { "bonnet": 8, "boot": 34, "left": 26, "right": 26, "roof": 6 }
+    }
+  },
+  {
+    "id": "grenade",
+    "displayName": "The engine let go",
+    "slotWeights": {
+      "groups": {
+        "engine": 62,
+        "drivetrain": 14,
+        "suspension": 8,
+        "wheels": 6,
+        "body": 6,
+        "interior": 4
+      },
+      "zones": { "bonnet": 20, "boot": 20, "left": 20, "right": 20, "roof": 20 }
+    }
+  }
+]

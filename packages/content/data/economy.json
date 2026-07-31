@@ -547,6 +547,37 @@
         "rough": 1.6,
         "project": 2
       },
+      "patternWeightsByGrade": {
+        "tidy": {
+          "garaged": 60,
+          "neglected-commuter": 25,
+          "frontal-collision": 6,
+          "drifted": 7,
+          "grenade": 2
+        },
+        "used": {
+          "garaged": 30,
+          "neglected-commuter": 40,
+          "frontal-collision": 12,
+          "drifted": 15,
+          "grenade": 3
+        },
+        "rough": {
+          "garaged": 8,
+          "neglected-commuter": 34,
+          "frontal-collision": 24,
+          "drifted": 26,
+          "grenade": 8
+        },
+        "project": {
+          "garaged": 2,
+          "neglected-commuter": 20,
+          "frontal-collision": 33,
+          "drifted": 25,
+          "grenade": 20
+        }
+      },
+      "patternSymptomBias": 0.6,
       "projectGateMaxAgeYears": 6,
       "projectGateMaxMileageKm": 60000,
       "minWorkSteps": 10
@@ -764,10 +795,10 @@
   },
   "diagnosis": {
     "symptomChanceByTier": {
-      "entry": 0.597,
-      "everyday": 0.513,
-      "enthusiast": 0.474,
-      "flagship": 0.357
+      "entry": 0.566,
+      "everyday": 0.51,
+      "enthusiast": 0.465,
+      "flagship": 0.365
     },
     "secondSymptomChance": 0.15,
     "maxSymptomsPerCar": 2,

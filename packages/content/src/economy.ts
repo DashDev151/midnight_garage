@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { DAMAGE_PATTERN_IDS } from './damagePattern'
 import { PartFitmentClassSchema } from './partFitment'
 import { UpkeepTierSchema } from './provenance'
 import {
@@ -153,6 +154,26 @@ const DamageGradeStepsSchema = z.object({
   used: z.number().int().nonnegative(),
   rough: z.number().int().nonnegative(),
   project: z.number().int().nonnegative(),
+})
+
+/** One non-negative draw weight per damage pattern, keyed explicitly so a
+ * pattern added to `DamagePatternIdSchema` without a weight fails validation
+ * rather than becoming silently unreachable. */
+const DamagePatternWeightsSchema = z.object({
+  garaged: z.number().nonnegative(),
+  'neglected-commuter': z.number().nonnegative(),
+  'frontal-collision': z.number().nonnegative(),
+  drifted: z.number().nonnegative(),
+  grenade: z.number().nonnegative(),
+})
+
+/** Which patterns each history can have left behind, one weighted row per
+ * grade. See `damageGrades.patternWeightsByGrade` for what the rows mean. */
+const PatternWeightsByGradeSchema = z.object({
+  tidy: DamagePatternWeightsSchema,
+  used: DamagePatternWeightsSchema,
+  rough: DamagePatternWeightsSchema,
+  project: DamagePatternWeightsSchema,
 })
 
 /** One yen/count value per auction tier - the same shape `AUCTION_LOTS_PER_TIER`
@@ -1609,9 +1630,21 @@ export const EconomyConfigSchema = z.object({
        *   below, so a car that was driven hard is likelier to carry aftermarket
        *   parts than one that was garaged. History is the CAUSE of both the
        *   damage and the parts; inferring one from the other would be circular.
+       * - `patternWeightsByGrade` says which NAMED THINGS could have happened to
+       *   a car that arrived at this grade, and the pattern it draws
+       *   (`damagePatterns.json`) is the sole answer to WHERE the damage landed
+       *   (layer 3). A `tidy` car mostly has no story at all, so its row is
+       *   dominated by `garaged`; a `project` car got that way for a reason, so
+       *   its row is dominated by the shunt and the let-go engine. The grade
+       *   still owns HOW MUCH and the pattern only owns WHERE, which is why the
+       *   two tables are separate and neither can express the other's half.
        *
-       * WHICH parts a history implies, and where the damage lands, is layer 3
-       * and is deliberately not expressible here.
+       * `patternSymptomBias` is how hard that pattern leans on the SYMPTOM draw,
+       * in [0, 1]: 0 leaves the draw uniform over the symptom pool exactly as it
+       * was before layer 3, and 1 makes it strictly proportional to how much a
+       * symptom's causes sit in the groups the pattern implicates. It is one
+       * lever rather than a per-pattern field because it is a statement about
+       * how legible we want a car to be, not about any one kind of damage.
        *
        * Steps, not yen, because a step is what a player perceives while yen is
        * downstream of `partPricing.classFactors`. The bill then falls out of
@@ -1640,6 +1673,8 @@ export const EconomyConfigSchema = z.object({
         bandStepsByGrade: DamageGradeStepsSchema,
         upkeepTierByGrade: UpkeepTierByGradeSchema,
         aftermarketChanceMultiplierByGrade: DamageGradeMultipliersSchema,
+        patternWeightsByGrade: PatternWeightsByGradeSchema,
+        patternSymptomBias: z.number().min(0).max(1),
         projectGateMaxAgeYears: z.number().int().positive(),
         projectGateMaxMileageKm: z.number().int().positive(),
         minWorkSteps: z.number().int().nonnegative(),
@@ -1713,6 +1748,18 @@ export const EconomyConfigSchema = z.object({
       {
         message:
           'partsGeneration.damageGrades.bandStepsByGrade must rise from tidy to project - the grades are one ordered scale of how rough a car is',
+      },
+    )
+    .refine(
+      (pg) =>
+        DAMAGE_GRADES.every((grade) =>
+          DAMAGE_PATTERN_IDS.some(
+            (patternId) => pg.damageGrades.patternWeightsByGrade[grade][patternId] > 0,
+          ),
+        ),
+      {
+        message:
+          'every partsGeneration.damageGrades.patternWeightsByGrade row must give at least one pattern a real share, or a car at that grade has no pattern to roll',
       },
     ),
   /**
@@ -2198,6 +2245,18 @@ export const EconomyConfigSchema = z.object({
    * `secondSymptomChance` is the independent roll for a SECOND symptom once
    * the first lands, capped at `maxSymptomsPerCar`.
    * `visitMinutes`/`travelFeeYenByTier` govern the yard inspection verb.
+   *
+   * `symptomChanceByTier` IS AN INPUT AND NOT THE RATE A PLAYER MEETS, on
+   * purpose. `applySymptoms` drops a symptom outright if it would breach the
+   * Law 2 ceiling, so the EFFECTIVE rate is this number times a survival
+   * fraction, and the signed design intent (0.55 / 0.50 / 0.45 / 0.35) is a
+   * statement about the effective rate. These four are therefore derived as
+   * `signed / measured survival` rather than authored directly.
+   *
+   * The standing hazard, recorded in TODO.md as well as here: anything that
+   * changes how rough generated cars are, or which symptoms get drawn, moves
+   * that survival fraction and silently reopens the gap. Re-measure and
+   * re-derive rather than assuming these four still hold.
    */
   diagnosis: z.object({
     symptomChanceByTier: z.object({

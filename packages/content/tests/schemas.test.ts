@@ -345,6 +345,44 @@ describe('seed content validates against schemas', () => {
       rough: 1.6,
       project: 2,
     })
+    // ...and it says which NAMED THINGS could have happened to a car that
+    // arrived this rough (layer 3). The grade owns how much and the pattern
+    // owns only where, so a tidy car mostly has no story and a project car
+    // mostly has a shunt or a let-go engine.
+    expect(result.data.partsGeneration.damageGrades.patternWeightsByGrade).toEqual({
+      tidy: {
+        garaged: 60,
+        'neglected-commuter': 25,
+        'frontal-collision': 6,
+        drifted: 7,
+        grenade: 2,
+      },
+      used: {
+        garaged: 30,
+        'neglected-commuter': 40,
+        'frontal-collision': 12,
+        drifted: 15,
+        grenade: 3,
+      },
+      rough: {
+        garaged: 8,
+        'neglected-commuter': 34,
+        'frontal-collision': 24,
+        drifted: 26,
+        grenade: 8,
+      },
+      project: {
+        garaged: 2,
+        'neglected-commuter': 20,
+        'frontal-collision': 33,
+        drifted: 25,
+        grenade: 20,
+      },
+    })
+    // How hard the pattern leans on the symptom draw. Deliberately short of 1:
+    // a front-end car that turns out to have a tired gearbox is a real car, and
+    // a diagnosis game whose answer is given away by the history is not a game.
+    expect(result.data.partsGeneration.damageGrades.patternSymptomBias).toBe(0.6)
     // The age gate: a young, low-mileage car cannot roll the worst grade.
     expect(result.data.partsGeneration.damageGrades.projectGateMaxAgeYears).toBe(6)
     expect(result.data.partsGeneration.damageGrades.projectGateMaxMileageKm).toBe(60000)

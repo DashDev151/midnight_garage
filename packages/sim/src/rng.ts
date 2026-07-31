@@ -52,6 +52,28 @@ export function hashStringToSeed(value: string): number {
 }
 
 /**
+ * One weighted pick over `items`, in the same cumulative-sum-over-a-single-draw
+ * shape every hand-written weighted roll in this codebase already uses. Falls
+ * back to a uniform pick when every weight is zero (or negative), so a caller
+ * whose weighting happens to exclude its whole candidate list still returns
+ * something rather than throwing. Throws on an empty list, exactly as
+ * `rng.pick` does.
+ */
+export function pickWeighted<T>(items: readonly T[], weightOf: (item: T) => number, rng: Rng): T {
+  if (items.length === 0) throw new RangeError('cannot pick from an empty array')
+  let total = 0
+  for (const item of items) total += Math.max(0, weightOf(item))
+  if (total <= 0) return rng.pick(items)
+  const roll = rng.next() * total
+  let cumulative = 0
+  for (const item of items) {
+    cumulative += Math.max(0, weightOf(item))
+    if (roll < cumulative) return item
+  }
+  return items[items.length - 1]!
+}
+
+/**
  * An approximately-normal(mean, sd) sample via the Irwin-Hall trick: the sum
  * of 12 uniform(0,1) draws has variance exactly 1, so subtracting its mean
  * (6) gives a cheap, deterministic, bell-shaped value with no external

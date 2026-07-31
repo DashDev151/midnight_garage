@@ -641,6 +641,14 @@ pass."
   symptom-rate guard will catch a drift past 0.05, but landing tight on the signed value again needs
   the same measure-then-set pass this fix used, not a re-tune by feel.
 
+  **It reopened one sprint later, exactly as predicted, and by a route the entry above did not
+  list.** Sprint 155's damage patterns weight the symptom DRAW rather than how rough a car is, and
+  that alone moved survival from about 0.92 to 0.958-0.980, because the symptoms a pattern favours
+  survive the veto more often than the ones it does not. All four inputs were re-derived
+  (`signed / measured survival`, measured at 1500 seeds per shipped model) and are recorded in
+  `sprint155.md`'s Exit. Widen the trigger accordingly: **anything that changes WHICH symptoms are
+  drawn reopens this gap too, not only anything that changes how rough cars are.**
+
 ## Open balance/economy questions
 
 - [ ] **BLOCKING, NEEDS A MAINTAINER LEVER DECISION: the unimproved instant flip became

@@ -1,6 +1,8 @@
 # How a car arrives: age, damage, and what happened to it
 
-**Status: LAYERS 1 AND 2 BUILT (Sprints 153 and 154). Layer 3 designed, not signed, NOT BUILT.**
+**Status: ALL THREE LAYERS BUILT (Sprints 153, 154 and 155).** Layer 3's implementation record,
+including the authored pattern weights and the two places the built mechanism differs from the
+sketch below, is `docs/sprints/sprint155.md`'s Exit.
 
 Supersedes the 2026-07-31 draft, which covered only the damage budget.
 

@@ -4,6 +4,7 @@ import buyersJson from '../data/buyers.json'
 import carsJson from '../data/cars.json'
 import componentDisplayNamesJson from '../data/componentDisplayNames.json'
 import coursesJson from '../data/courses.json'
+import damagePatternsJson from '../data/damagePatterns.json'
 import diagnosticTestsJson from '../data/diagnosticTests.json'
 import economyJson from '../data/economy.json'
 import facilitiesJson from '../data/facilities.json'
@@ -55,6 +56,7 @@ import { ProvenancePoolSchema } from './provenance'
 import { ServiceJobCustomerNamesSchema, ServiceJobTypesSchema } from './serviceJob'
 import { SpecialtyCopySchema } from './specialtyCopy'
 import { StoryMissionsSchema, type StoryMission } from './storyMission'
+import { DamagePatternsSchema } from './damagePattern'
 import { resolveSymptomCauses, SymptomsContentSchema, SymptomsSchema } from './symptom'
 import { StaffCandidatePoolSchema, TraitDefinitionsSchema } from './staff'
 import { TechniquesSchema } from './techniques'
@@ -196,6 +198,15 @@ export const SYMPTOMS = SymptomsSchema.parse(
   SYMPTOMS_CONTENT.map((symptom) => resolveSymptomCauses(symptom, FAILURE_MODE_BY_ID)),
 )
 export const DIAGNOSTIC_TESTS = DiagnosticTestsSchema.parse(diagnosticTestsJson)
+
+/**
+ * The named damage patterns a car's rolled history selects between
+ * (docs/design/systems/generation-damage.md, layer 3) - each one a weighting
+ * over part slots and nothing else. Shares the failure-mode registry's
+ * vocabulary through `parts-taxonomy.json`'s groups, which is what lets the
+ * damage a car carries and the symptom it presents describe the same event.
+ */
+export const DAMAGE_PATTERNS = DamagePatternsSchema.parse(damagePatternsJson)
 
 /**
  * The hand-authored campaign's customers, and the missions themselves.

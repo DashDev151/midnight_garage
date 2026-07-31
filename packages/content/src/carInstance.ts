@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { DamagePatternIdSchema } from './damagePattern'
 import { DamageGradeSchema } from './economy'
 import { PartInstanceSchema } from './part'
 import { CarPartIdSchema, ConditionBandSchema } from './tags'
@@ -166,6 +167,17 @@ export const CarInstanceSchema = z.object({
    * reads as exactly that rather than as a missing default.
    */
   history: DamageGradeSchema.optional(),
+  /**
+   * WHERE that history left its damage, drawn from the history at generation
+   * (docs/design/systems/generation-damage.md, layer 3). The pattern is a
+   * weighting over part slots and nothing else: it decided which slots the
+   * damage budget degraded and which symptom the car presents, and it never
+   * set a band or created a symptom itself.
+   *
+   * Stored for the same reason `history` is, and optional for the same reason:
+   * a hand-authored car has no rolled pattern and absent reads as exactly that.
+   */
+  damagePattern: DamagePatternIdSchema.optional(),
 })
 
 export type CarInstance = z.infer<typeof CarInstanceSchema>

@@ -276,6 +276,11 @@ export function buildRoughProbeCar(model: CarModel, context: SimContext): CarIns
     model,
     context,
     origin,
+    // `garaged` is the one pattern authored flat across every group and zone,
+    // so the probe stays deliberately pattern-NEUTRAL: it measures what the
+    // worst reachable lot costs and returns, and a probe that leaned toward
+    // one group would be measuring a story rather than a bound.
+    context.damagePatternsById.garaged,
     createRng(ROUGH_PROBE_SEED),
     context.economy.partsGeneration.damageGrades.bandStepsByGrade.project,
   )

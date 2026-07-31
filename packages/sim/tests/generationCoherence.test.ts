@@ -121,7 +121,8 @@ describe('generated cars are coherent (Sprint 66, item 6a)', () => {
    * car with no miles and perished everything - but that is the tail, not the
    * shape. The original bug this file exists for (a `1995 - 11 km` 180SX with
    * mostly worn parts) is a claim about the typical car, and this measures it
-   * as one: over half of barely-driven cars carry nothing ruined at all.
+   * as one: nearly half of barely-driven cars carry nothing ruined at all and
+   * nine in ten carry no more than three ruined slots out of 26.
    */
   it('a barely-driven car is typically tidy once every generation stage has run', () => {
     const model = CARS.find((c) => c.id === 'nissan-180sx-rps13')
@@ -149,11 +150,23 @@ describe('generated cars are coherent (Sprint 66, item 6a)', () => {
 
     const sorted = [...ruinedCounts].sort((a, b) => a - b)
     const median = sorted[Math.floor(sorted.length / 2)]!
+    const p90 = sorted[Math.floor(sorted.length * 0.9)]!
     const mean = ruinedCounts.reduce((sum, n) => sum + n, 0) / ruinedCounts.length
-    // The median barely-driven car has nothing ruined at all, and the mean sits
-    // around one part. The retired core-loop floor put roughly twelve on every
-    // one of them regardless of mileage, which is what this bar catches.
-    expect(median).toBe(0)
+    const noneRuined = ruinedCounts.filter((count) => count === 0).length / ruinedCounts.length
+    // The retired core-loop floor put roughly twelve ruined slots on every one
+    // of these cars regardless of mileage, which is what this bar catches.
+    //
+    // The exact-median bar this replaces (`median === 0`) sat on a knife edge:
+    // it was pinning the tipping point of a distribution whose zero share was
+    // barely over half, so Sprint 155's damage patterns flipped it by moving
+    // that share from just over 0.5 to 0.447 - the same total damage on fewer
+    // parts, which is the whole point of concentrating it. The shape it stood
+    // for is asserted directly instead, and every bar below is measured rather
+    // than relaxed: 0.447 with nothing ruined, median 1, p90 3, mean 1.211 of
+    // the car's 26 ordinary slots.
+    expect(noneRuined).toBeGreaterThan(0.4)
+    expect(median).toBeLessThanOrEqual(1)
+    expect(p90).toBeLessThanOrEqual(3)
     expect(mean).toBeLessThan(1.5)
   }, 30_000)
 
