@@ -8,19 +8,20 @@ export interface SellDecisionOptions {
   /** Accept today's offer once it clears this fraction of the car's own
    * best-fit valuation, checked against a real, materialized offer. */
   acceptFraction: number
-  /** Accept ANY live offer, price aside, once the car has been up for
-   * sale this many days or more. Rent and parking scarcity make waiting
-   * forever a genuinely bad idea, not just a patience question, so a
-   * purely price-gated bot would otherwise sit on a car forever if the
-   * market never rolls a generous offer. */
-  maxHoldingDays: number
+  /** Accept ANY live offer, price aside, once the listing's own
+   * `offersSeen` (sale-value-system.md S4's normalised clock) reaches this
+   * many or more. Rent and parking scarcity make waiting forever a
+   * genuinely bad idea, not just a patience question, so a purely
+   * price-gated bot would otherwise sit on a car forever if the market
+   * never rolls a generous offer. */
+  maxOffersSeen: number
 }
 
 /**
  * One car's full sell decision for one bot day: ensure it's marked for
  * sale, then accept today's live offer (if any) once it clears
- * `acceptFraction` of the car's best-fit valuation OR the car has been
- * sitting for-sale `maxHoldingDays` or more. One shared accept-threshold
+ * `acceptFraction` of the car's best-fit valuation OR the listing's
+ * `offersSeen` reaches `maxOffersSeen`. One shared accept-threshold
  * policy - the archetypes differ only in which `SellDecisionOptions` they
  * pass in.
  */
@@ -66,10 +67,10 @@ export function decideSale(
     : 0
 
   const forSaleEntry = state.carsForSale.find((f) => f.carInstanceId === car.id)
-  const holdingDays = forSaleEntry ? state.day - forSaleEntry.sinceDay : 0
+  const offersSeen = forSaleEntry?.offersSeen ?? 0
   const clearsThreshold =
     trueValueYen > 0 && offer.priceYen >= trueValueYen * options.acceptFraction
-  const pressured = holdingDays >= options.maxHoldingDays
+  const pressured = offersSeen >= options.maxOffersSeen
 
   if (clearsThreshold || pressured) {
     actions.acceptOffers.push({ carInstanceId: car.id })

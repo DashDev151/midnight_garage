@@ -22,7 +22,7 @@ import { saleRevealLineFor } from './diagnosis'
 import { releaseCarFromShop } from './facilities'
 import { marketValueYen } from './marketValue'
 import { bumpPlayerSales } from './marketHeat'
-import type { Rng } from './rng'
+import { bellNormal, type Rng } from './rng'
 import { dissolveAssembliesForCar } from './assemblies'
 import { clearStagedWork } from './stagedWork'
 import { channelBuyerTaste, valuateCarForBuyer, valuateCarForBuyerViaChannel } from './valuation'
@@ -110,14 +110,17 @@ function pickWeightedCandidate(
 
 /**
  * GDD 6.3: "fast, variable" - a buyer archetype rolls up the same day,
- * offering somewhat under (or, occasionally, a little over) their true
- * valuation for the convenience of an instant sale.
+ * offering somewhat under (rarely, right at) their true valuation for the
+ * convenience of an instant sale.
  *
- * This is the core roll the harness/tests use directly - the spread itself
- * lives in `economy.selling.offerSpread` (the content law: designer-tunable
- * numbers live in JSON). The daily offer-draw step (`drawDailyOffers`) does
- * not call this directly - each listing channel prices its own draw - but
- * this remains the plain, un-channelled walk-in computation.
+ * This is the core roll the harness/tests use directly - priced through the
+ * same Stage F quality draw every listed channel now uses
+ * (`drawQualityFraction`, `economy.liquidity`), at `offersSeen = 0`: a walk-in
+ * carries no listing history, so it prices as a genuinely fresh offer every
+ * time. The daily offer-draw step (`drawDailyOffers`) does not call this
+ * directly - each listing channel prices its own draw against its own
+ * listing's real `offersSeen` - but this remains the plain, un-channelled
+ * walk-in computation.
  */
 export function sellViaWalkIn(
   car: CarInstance,
@@ -145,8 +148,8 @@ export function sellViaWalkIn(
     throw new RangeError(`sellViaWalkIn: no buyer archetype is interested in tier "${model.tier}"`)
   }
 
-  const [min, max] = economy.selling.offerSpread
-  const priceYen = Math.round(picked.value * (min + rng.next() * (max - min)))
+  const quality = drawQualityFraction(0, economy, rng)
+  const priceYen = Math.round(picked.value * quality)
   return { buyerId: picked.buyer.id, priceYen }
 }
 
@@ -197,13 +200,16 @@ function heatBandFor(heatPercent: number, economy: EconomyConfig): 'cold' | 'nor
 }
 
 /**
- * Today's chance a for-sale car draws an offer at all: base x this
- * model's RARITY desirability x today's heat-band multiplier, clamped to
- * [0, 1]. How scarce a car is decides how much foot traffic it draws;
- * whether anyone in that traffic actually buys this LEAGUE of car is the
- * separate `saleCandidates` tier gate, which still runs inside
- * `sellViaWalkIn` itself - so a tier nobody wants never produces a live
- * offer even when this chance rolls true.
+ * Today's chance a for-sale car draws an offer at all, BEFORE listing
+ * staleness (`stalenessFor` below): base x this model's RARITY desirability
+ * x today's heat-band multiplier, clamped to [0, 1]. How scarce a car is
+ * decides how much foot traffic it draws; whether anyone in that traffic
+ * actually buys this LEAGUE of car is the separate `saleCandidates` tier
+ * gate, which still runs inside `sellViaWalkIn` itself - so a tier nobody
+ * wants never produces a live offer even when this chance rolls true. A real
+ * listing's own daily chance is this multiplied by `stalenessFor` -
+ * deliberately kept out of this function, which knows nothing about any one
+ * listing's `offersSeen`.
  */
 export function offerChanceFor(
   model: CarModel,
@@ -216,9 +222,69 @@ export function offerChanceFor(
   return Math.max(0, Math.min(1, chance))
 }
 
+/**
+ * Stage F's staleness multiplier (sale-value-system.md S4): a listing's own
+ * daily offer-chance factor, sliding from 1.0 at a genuinely fresh listing
+ * (`offersSeen` = 0) down toward `stalenessFloor` as more offers accumulate
+ * against it. Reads `offersSeen` only, NEVER a day count - a specialist car
+ * nobody has come to look at yet has not gone stale; it goes stale once
+ * people have looked and passed (sprint147.md).
+ */
+export function stalenessFor(offersSeen: number, economy: EconomyConfig): number {
+  const { stalenessFloor, stalenessHalfLifeOffers } = economy.liquidity
+  return stalenessFloor + (1 - stalenessFloor) * Math.exp(-offersSeen / stalenessHalfLifeOffers)
+}
+
+/**
+ * Stage F's offer-quality mean (sale-value-system.md S4): a genuinely fresh
+ * listing's first offer averages `qualityFresh` of channel price; the mean
+ * slides toward `qualityFloor` as more offers land against the same unsold
+ * listing. Reads `offersSeen` only, on the same normalised clock
+ * `stalenessFor` uses - the one thing this sprint must get right. Exported so
+ * a fresh (`offersSeen` = 0) draw and the curve's own shape are both directly
+ * testable without going through a full listing.
+ */
+export function qualityMeanFor(offersSeen: number, economy: EconomyConfig): number {
+  const { qualityFresh, qualityFloor, qualityHalfLifeOffers } = economy.liquidity
+  return (
+    qualityFresh -
+    (qualityFresh - qualityFloor) * (1 - Math.exp(-offersSeen / qualityHalfLifeOffers))
+  )
+}
+
+/**
+ * One seeded draw of the offer-quality fraction an arriving offer prices
+ * against (`priceYen = channelPrice * quality` - quality is baked into the
+ * price at draw time, never stored separately, the same convention the
+ * old flat spread roll used). Normal around `qualityMeanFor`, clamped
+ * to `[qualityFloor, 1.0]`: never a premium over channel price, and never
+ * below the floor even a badly stale listing still commands.
+ */
+function drawQualityFraction(offersSeen: number, economy: EconomyConfig, rng: Rng): number {
+  const mean = qualityMeanFor(offersSeen, economy)
+  const raw = bellNormal(mean, economy.liquidity.qualitySpread, rng)
+  return Math.max(economy.liquidity.qualityFloor, Math.min(1, raw))
+}
+
 export interface SetForSaleResult {
   state: GameState
   log: DayLogEntry[]
+}
+
+/**
+ * A re-listed entry's starting `offersSeen` (`resolveSetForSale` below):
+ * fresh (0) for a car with no prior listing, otherwise the old entry's own
+ * `offersSeen` carried forward at `economy.liquidity.relistRecovery` rather
+ * than reset. Same plate, same advertisement: everyone has already seen it,
+ * so a channel switch alone cannot buy back a stale listing's full
+ * freshness for the price of a fee.
+ */
+function resolveOffersSeenForNewListing(
+  existing: ForSaleEntry | undefined,
+  economy: EconomyConfig,
+): number {
+  if (!existing) return 0
+  return Math.round(existing.offersSeen * (1 - economy.liquidity.relistRecovery))
 }
 
 /**
@@ -238,6 +304,12 @@ export interface SetForSaleResult {
  * "attend again" flow and re-charges the fee for one more draw. Insufficient
  * cash refuses quietly (no log entry), the same silent gate-reason idiom
  * every other cash-gated resolver in this codebase uses.
+ *
+ * Every re-list (a channel switch, or `weekendMeet`'s attend-again) carries
+ * the OLD entry's `offersSeen` forward at `relistRecovery` rather than
+ * resetting it to fresh (`resolveOffersSeenForNewListing` above) - the
+ * exploit this sprint closes: switching channels used to refresh a listing
+ * for free.
  */
 export function resolveSetForSale(
   state: GameState,
@@ -271,7 +343,7 @@ export function resolveSetForSale(
 
   const entry: ForSaleEntry = {
     carInstanceId,
-    sinceDay: state.day,
+    offersSeen: resolveOffersSeenForNewListing(existing, context.economy),
     channelId,
     weekendMeetPending: channelId === 'weekendMeet',
   }
@@ -343,7 +415,9 @@ function clampedChance(chance: number): number {
  * simply never pays above its ceiling; there is no separate no-show roll.
  * Covers shopFront/freeAdsPaper (`matchedOnly` unset) and
  * tunerMagazine/weekendMeet (`matchedOnly` true) with one function, driven
- * entirely by the channel's own content flags.
+ * entirely by the channel's own content flags. Priced through the Stage F
+ * quality draw at this listing's own `offersSeen`, replacing the old flat
+ * uniform spread band.
  */
 function drawPersonaChannelOffer(
   car: CarInstance,
@@ -352,6 +426,7 @@ function drawPersonaChannelOffer(
   heatPercent: number,
   tasteCeiling: number,
   matchedOnly: boolean,
+  offersSeen: number,
   rng: Rng,
 ): SaleOffer | undefined {
   const picked = pickWeightedCandidate(
@@ -390,8 +465,8 @@ function drawPersonaChannelOffer(
     context.economy,
     tasteCeiling,
   )
-  const [min, max] = context.economy.selling.offerSpread
-  const priceYen = Math.round(value * (min + rng.next() * (max - min)))
+  const quality = drawQualityFraction(offersSeen, context.economy, rng)
+  const priceYen = Math.round(value * quality)
   return { buyerId: picked.buyer.id, priceYen }
 }
 
@@ -430,6 +505,21 @@ interface ChannelDraw {
    * owed after this draw. Always `false` the moment a draw runs, hit or
    * miss (the meet is spent either way). */
   weekendMeetPending?: boolean
+  /**
+   * Whether a buyer genuinely showed up today - `offersSeen` increments
+   * exactly when this is true (`drawDailyOffers`), hit (a real offer got
+   * priced) or miss (the visitor showed up but `matchedOnly`/tier-interest
+   * rejected them, so no offer). This is deliberately NOT "did a cadence
+   * roll happen" - the cadence roll runs every day a car is listed on a
+   * standard channel regardless of the car's own desirability, so counting
+   * that would make `offersSeen` a day count wearing a new name, exactly
+   * the bug this sprint exists to fix. It is CLEARING that roll - the
+   * chance itself already scaled by rarity/heat/staleness - that means
+   * someone actually came to look, which is the one thing `offersSeen` is
+   * allowed to measure. A specialist car's own low chance is therefore
+   * what protects it: the roll rarely clears, so its clock rarely advances.
+   */
+  attempted: boolean
 }
 
 /**
@@ -439,7 +529,11 @@ interface ChannelDraw {
  * selects the trade-network-shaped, no-persona pricing; anything else prices
  * through the weighted-persona path, additionally gated on `matchedOnly`
  * when that flag is set. `SellingChannelSchema`'s own refine guarantees a
- * `tasteCeiling` accompanies every non-`priceBand` channel.
+ * `tasteCeiling` accompanies every non-`priceBand` channel. `offersSeen` is
+ * this listing's own Stage F clock, threaded through to whichever pricing
+ * path actually reads it (the persona path's quality draw; the trade
+ * network's flat `priceBand` ignores it, by design - see `sale-value-
+ * system.md` S4/S6).
  */
 function drawFlaggedChannelOffer(
   car: CarInstance,
@@ -447,6 +541,7 @@ function drawFlaggedChannelOffer(
   context: SimContext,
   heatPercent: number,
   channel: SellingChannelConfig,
+  offersSeen: number,
   rng: Rng,
 ): SaleOffer | undefined {
   if (channel.priceBand) {
@@ -459,6 +554,7 @@ function drawFlaggedChannelOffer(
     heatPercent,
     channel.tasteCeiling!,
     channel.matchedOnly === true,
+    offersSeen,
     rng,
   )
 }
@@ -487,9 +583,14 @@ function cadenceChanceFor(
  * own `channelId` only to look up its content (`context.economy.
  * sellingChannels`), never to branch on it. `oneDrawNextEndDay` channels
  * (`weekendMeet`) get their guaranteed single draw, gated on
- * `weekendMeetPending`, in place of a daily cadence roll; every other
- * channel rolls today's chance (`cadenceChanceFor`) and, on a hit, prices
- * through `drawFlaggedChannelOffer`.
+ * `weekendMeetPending`, in place of a daily cadence roll - staleness does
+ * not gate it (it is not a chance roll at all), but the draw still prices
+ * through this listing's own `offersSeen`. Every other channel's daily
+ * chance is `offerChanceFor` multiplied by `stalenessFor(entry.offersSeen)`
+ * (Stage F: staleness multiplies the chance, it never replaces it); CLEARING
+ * that roll is what `attempted` means (see `ChannelDraw` above) - a car
+ * whose own chance is low clears it rarely, so its clock advances rarely,
+ * which is the whole of the specialist protection this sprint exists for.
  */
 function drawOfferForChannel(
   car: CarInstance,
@@ -502,16 +603,37 @@ function drawOfferForChannel(
   const channel = context.economy.sellingChannels[entry.channelId]
 
   if (channel.oneDrawNextEndDay) {
-    if (!entry.weekendMeetPending) return {}
+    if (!entry.weekendMeetPending) return { attempted: false }
     return {
-      offer: drawFlaggedChannelOffer(car, model, context, heatPercent, channel, rng),
+      offer: drawFlaggedChannelOffer(
+        car,
+        model,
+        context,
+        heatPercent,
+        channel,
+        entry.offersSeen,
+        rng,
+      ),
       weekendMeetPending: false,
+      attempted: true,
     }
   }
 
-  const baseChance = offerChanceFor(model, heatPercent, context.economy)
-  if (rng.next() >= cadenceChanceFor(channel, model, baseChance)) return {}
-  return { offer: drawFlaggedChannelOffer(car, model, context, heatPercent, channel, rng) }
+  const staleness = stalenessFor(entry.offersSeen, context.economy)
+  const baseChance = offerChanceFor(model, heatPercent, context.economy) * staleness
+  if (rng.next() >= cadenceChanceFor(channel, model, baseChance)) return { attempted: false }
+  return {
+    offer: drawFlaggedChannelOffer(
+      car,
+      model,
+      context,
+      heatPercent,
+      channel,
+      entry.offersSeen,
+      rng,
+    ),
+    attempted: true,
+  }
 }
 
 /**
@@ -545,11 +667,13 @@ export function drawDailyOffers(
 
     const heatPercent = state.marketHeat[car.modelId] ?? 100
     const draw = drawOfferForChannel(car, model, entry, context, heatPercent, rng)
-    carsForSale.push(
-      draw.weekendMeetPending === undefined
-        ? entry
-        : { ...entry, weekendMeetPending: draw.weekendMeetPending },
-    )
+    carsForSale.push({
+      ...entry,
+      offersSeen: draw.attempted ? entry.offersSeen + 1 : entry.offersSeen,
+      ...(draw.weekendMeetPending === undefined
+        ? {}
+        : { weekendMeetPending: draw.weekendMeetPending }),
+    })
     if (draw.offer) {
       pendingOffers.push({
         carInstanceId: car.id,

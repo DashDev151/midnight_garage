@@ -263,7 +263,7 @@ describe('staged repair/install work', () => {
       carsForSale: [
         {
           carInstanceId: carId,
-          sinceDay: game.gameState.day,
+          offersSeen: 0,
           channelId: 'shopFront',
           weekendMeetPending: false,
         },

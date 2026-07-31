@@ -35,10 +35,10 @@ const REPAIRABLE_COMPONENTS: readonly ComponentId[] = [
  * "First okay offer," not "first offer, period." A mid player still has a
  * floor: below this fraction of the car's best-fit valuation, a live
  * offer reads as a lowball and gets left on the table - unless
- * holding-cost pressure (`MAX_HOLDING_DAYS`) forces a sale anyway.
+ * holding-cost pressure (`MAX_OFFERS_SEEN`) forces a sale anyway.
  */
 const ACCEPT_FRACTION = 0.85
-const MAX_HOLDING_DAYS = 12
+const MAX_OFFERS_SEEN = 12
 
 /**
  * A completely average decision-maker (user-requested, sitting between
@@ -115,7 +115,7 @@ export function balancedPlayerStrategy(
     if (jobbedCarIds.has(car.id)) continue
     decideSale(state, car, context, actions, {
       acceptFraction: ACCEPT_FRACTION,
-      maxHoldingDays: MAX_HOLDING_DAYS,
+      maxOffersSeen: MAX_OFFERS_SEEN,
     })
   }
 

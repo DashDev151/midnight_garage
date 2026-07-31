@@ -799,9 +799,37 @@ import storyMissions from '../data/storyMissions.json'
  * `resaleMedian < (spreadMin + spreadMax) / 2` regardless of the premium's value - confirmed
  * empirically at all five swept values and at two absurd control values (5 and 1000). No
  * value in economy.json changed; `AUCTION_BUYOUT_PREMIUM` stays at 1.00 and this hash holds
- * unchanged. `offerSpread`, the buyer tables and `pickWeightedCandidate`'s weighting were
- * left untouched per the ruling's own instruction; closing the guard needs one of those, or a
- * fix to the guard's own bound formula, neither of which this sweep was authorised to pull.
+ * unchanged. The old flat walk-in spread, the buyer tables and `pickWeightedCandidate`'s
+ * weighting were left untouched per the ruling's own instruction; closing the guard needs
+ * one of those, or a fix to the guard's own bound formula, neither of which this sweep was
+ * authorised to pull. Sprint 147 is the fix to the first of those.
+ *
+ * Re-pinned for Sprint 147's normalised listing clock (docs/sprints/sprint147.md, all seven
+ * levers signed by name and value under the maintainer's standing authority of 2026-07-30):
+ * `selling.offerSpread` (the flat uniform band applied identically to a listing regardless
+ * of age) is RETIRED outright and replaced by a new `liquidity` block, seven levers:
+ * `stalenessFloor` 0.35, `stalenessHalfLifeOffers` 3.5, `qualityFresh` 0.98, `qualityFloor`
+ * 0.86, `qualityHalfLifeOffers` 3.0, `qualitySpread` 0.04, `relistRecovery` 0.70. Both the
+ * offer-chance staleness curve and the offer-quality curve read `ForSaleEntry.offersSeen`
+ * only, never a day count - the hard constraint this sprint exists to enforce. No mission
+ * payout, budget cap, or balance-probe figure moves: none of those pipelines reads
+ * `economy.selling`/`economy.liquidity` at all. The instant-flip guard's own bound is
+ * rewritten against the new quality curve's fresh mean rather than the retired spread's
+ * midpoint - see that probe's own updated comment for the arithmetic.
+ *
+ * Re-pinned under the maintainer's standing lever authority of 2026-07-30, closing the
+ * instant-flip guard `docs/sprints/sprint147.md` left red: `liquidity.qualityFresh`
+ * 0.98 -> 0.96. `sellViaWalkIn`'s own contract is a buyer offering somewhat under their
+ * true valuation for the convenience of an instant sale, and 0.98 was only a 2% convenience
+ * discount that `pickWeightedCandidate`'s size-biased pick then ate 1.44 points of (the
+ * picked buyer's taste runs about `tasteSpread^2` above the taste-free market read, since
+ * the draw is weighted by valuation). 0.96 also moves the 1.0 clamp from z = +0.5 to
+ * z = +1 on the quality draw's own Normal, so roughly 16% of fresh offers land near full
+ * value instead of 31% piling on the ceiling. `pickWeightedCandidate`'s weighting is
+ * unchanged and stays: it is the mechanism that lets a specialised build find its buyer.
+ * No other lever moves. Measured median instant-flip margins, entry/everyday/enthusiast/
+ * flagship: -1.07%/-1.22%/-0.55%/-0.06% (qualityFresh 0.98, guard red) -> see
+ * `valueModelProbes.test.ts`'s own updated guard for the closed figures.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -811,7 +839,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('c9110158453777a12cd600e5d32a6a3ec373ef8d5d3f671200b0e4665cb1598d')
+    ).toBe('7902e54c1533a941755a4de4ea63c35f9c0802f2ed2a71080dd51946ef56b520')
   })
 
   it('partPricing.json matches its approved content exactly', () => {

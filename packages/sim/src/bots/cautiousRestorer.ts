@@ -64,7 +64,7 @@ const MAX_RESTORATION_TO_CLEAN_VALUE_RATIO = 0.6
  * lowball gamble) - it holds out near full value and tolerates a long
  * wait before holding-cost pressure forces a sale. */
 const ACCEPT_FRACTION = 0.95
-const MAX_HOLDING_DAYS = 20
+const MAX_OFFERS_SEEN = 20
 
 /** A cautious double-cover buffer on tool upgrades - this bot only
  * invests in speed when its bankroll comfortably covers it. */
@@ -205,7 +205,7 @@ export function cautiousRestorerStrategy(
     if (isRestored) {
       decideSale(state, car, context, actions, {
         acceptFraction: ACCEPT_FRACTION,
-        maxHoldingDays: MAX_HOLDING_DAYS,
+        maxOffersSeen: MAX_OFFERS_SEEN,
       })
     }
   }

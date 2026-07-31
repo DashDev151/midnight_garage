@@ -139,7 +139,7 @@ describe('market: selling', () => {
       carsForSale: [
         {
           carInstanceId: carId,
-          sinceDay: game.gameState.day,
+          offersSeen: 0,
           channelId: 'shopFront',
           weekendMeetPending: false,
         },
@@ -204,7 +204,7 @@ describe('market: selling', () => {
       carsForSale: [
         {
           carInstanceId: carId,
-          sinceDay: game.gameState.day,
+          offersSeen: 0,
           channelId: 'shopFront',
           weekendMeetPending: false,
         },
@@ -272,7 +272,7 @@ describe('market: selling', () => {
       carsForSale: [
         {
           carInstanceId: match!.carId,
-          sinceDay: game.gameState.day,
+          offersSeen: 0,
           channelId: 'weekendMeet',
           weekendMeetPending: false,
         },
@@ -297,7 +297,7 @@ describe('market: selling', () => {
       carsForSale: [
         {
           carInstanceId: carId,
-          sinceDay: game.gameState.day,
+          offersSeen: 0,
           channelId: 'shopFront',
           weekendMeetPending: false,
         },
@@ -321,7 +321,7 @@ describe('market: selling', () => {
       carsForSale: [
         {
           carInstanceId: carId,
-          sinceDay: game.gameState.day,
+          offersSeen: 0,
           channelId: 'shopFront',
           weekendMeetPending: false,
         },
@@ -345,7 +345,7 @@ describe('market: selling', () => {
       carsForSale: [
         {
           carInstanceId: carId,
-          sinceDay: game.gameState.day,
+          offersSeen: 0,
           channelId: 'shopFront',
           weekendMeetPending: false,
         },

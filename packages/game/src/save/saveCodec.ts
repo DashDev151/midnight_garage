@@ -576,8 +576,19 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * so its cars would read the wrong parts basket. Per directive 19, a plain
  * SAVE_VERSION bump with NO migration: a pre-v48 save is wiped and a new game
  * started, which is the correct outcome pre-launch.
+ * v48 -> v49 (the door that actually closes): `ForSaleEntrySchema` dropped
+ * its old absolute-day listing clock for REQUIRED `offersSeen`
+ * (sale-value-system.md S4's normalised clock: expected offer draws this
+ * listing has already produced, never a day count). No schema default
+ * carries the old field forward into the new one - they measure different
+ * things - so a pre-v49 save's `carsForSale` entries fail
+ * `ForSaleEntrySchema.parse` outright. Per directive 19 (no pre-launch save
+ * compatibility), that is fine as-is: no `MIGRATIONS[48]` entry, no backfill
+ * - a pre-v49 save with anything listed simply fails to decode and falls
+ * back to a new game, the same fallback path v45's `channelId` bump already
+ * relied on.
  */
-export const SAVE_VERSION = 48
+export const SAVE_VERSION = 49
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

@@ -638,11 +638,12 @@ describe('sensible-restore probe per tier (Sprint 54 decision 5 - law 2, no valu
 
 describe('no-free-lunch probe (Sprint 54 decision 5)', () => {
   it('buying at full guide value with no repair done nets no expected profit via the real walk-in sale channel', () => {
-    const [min, max] = ECONOMY.selling.offerSpread
-    const expectedOfferMultiplier = (min + max) / 2
-    // The walk-in offer spread is centered at or below 1.0 (an instant sale
-    // trades at a discount, not a premium) - the profit engine is the
+    // A walk-in prices at offersSeen = 0, so its expected multiplier is the
+    // Stage F quality curve's own fresh mean (sprint147.md) - clamped at
+    // 1.0 by construction, so it is centred at or below 1.0 (an instant
+    // sale trades at a discount, not a premium): the profit engine is the
     // acquisition discount plus repair margin, never merely holding a car.
+    const expectedOfferMultiplier = ECONOMY.liquidity.qualityFresh
     expect(expectedOfferMultiplier).toBeLessThanOrEqual(1)
     for (const lot of independentLots(50, 8000)) {
       const guideYen = marketValueYen(
@@ -838,25 +839,38 @@ describe('unimproved-flip probe (the instant-flip guard)', () => {
       expect(marginFractions.length).toBeGreaterThan(10)
       const marginMedian = median(marginFractions)
       const resaleMedian = median(resaleRatios)
-      const [spreadMin, spreadMax] = ECONOMY.selling.offerSpread
+      const { qualityFloor } = ECONOMY.liquidity
       // The instant buyout is a flat premium over the value anchor
       // (AUCTION_BUYOUT_PREMIUM), never a contested price, and the walk-in
-      // sells back through `selling.offerSpread`. The whole play is therefore
-      // resale-ratio / premium - 1, so both bounds below derive from those two
-      // levers rather than from magnitudes that only hold at one premium.
+      // sells back through the Stage F quality draw (sprint147.md) at
+      // offersSeen = 0: a fresh, unlisted offer averaging qualityFresh of
+      // the picked buyer's own taste-adjusted value.
       //
-      // The sale side sits inside its own spread band: a walk-in returns close
-      // to guide value, so any loss here is the premium's doing rather than a
-      // resale collapse.
-      expect(resaleMedian).toBeGreaterThanOrEqual(spreadMin)
-      expect(resaleMedian).toBeLessThanOrEqual(spreadMax)
-      // And a weighted-random buyer's taste fit never pays above the taste-free
-      // market read, so the loss is at least the premium's own arithmetic
-      // against a mid-spread offer: buying outright and reselling untouched the
-      // same day is never free money.
-      expect(marginMedian).toBeLessThan(
-        (spreadMin + spreadMax) / 2 / ECONOMY.AUCTION_BUYOUT_PREMIUM - 1,
+      // The sale side sits inside the quality draw's own reachable band: a
+      // walk-in never pays a premium over the picked buyer's own valuation
+      // (quality clamps at 1.0), and never falls below the floor even on
+      // the tail of the Normal draw, whatever the picked buyer's own taste
+      // multiplier does to that valuation first.
+      expect(resaleMedian).toBeGreaterThanOrEqual(
+        qualityFloor * (1 - ECONOMY.valuation.tasteSpread),
       )
+      expect(resaleMedian).toBeLessThanOrEqual(1 + ECONOMY.valuation.tasteSpread)
+      // A walk-in never pays over the taste-free market read for an
+      // untouched car: the quality draw clamps at 1.0 before any taste
+      // multiplier is applied.
+      expect(resaleMedian).toBeLessThanOrEqual(1)
+      // This is a stated design law, not a derivation: buying a car and
+      // reselling it untouched the same day must lose at least 1% of the
+      // car's value.
+      //
+      // It is stated rather than derived from qualityFresh because the
+      // walk-in's realised price is quality times the picked buyer's taste,
+      // and pickWeightedCandidate weights the draw by valuation, so the
+      // picked taste runs about tasteSpread squared (1.44%) above the
+      // taste-free market read. Any bound derived from qualityFresh would
+      // have to carry that term too, at which point it would just restate
+      // the implementation instead of guarding it.
+      expect(marginMedian).toBeLessThan(-0.01)
     },
   )
 })

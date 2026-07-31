@@ -96,6 +96,18 @@ const RETIRED_IDENTIFIERS: readonly RetiredIdentifier[] = [
     reason:
       'A weighted MEAN of five deliberately anti-correlated stats, so no real car could score highly and the taste band sat near the middle by construction. Replaced by Buyer.statTargets (target/upper/importance per stat, normalizedTasteScore in valuation.ts) - a match, where clearing a target earns full marks and an upper bound can actively cost them. Bare "statWeights" is not banned: CarPartTaxonomyEntryContentSchema.statWeights (parts-taxonomy.json condition weighting) is an unrelated, still-live field of the same name.',
   },
+  {
+    identifier: 'sinceDay',
+    retiredInSprint: 147,
+    reason:
+      'ForSaleEntry.sinceDay was the absolute day clock the design rejects: it double-charges a specialist car that is already slow to sell because offers arrive rarely. Replaced by offersSeen, the normalised clock (sale-value-system.md S4) that both the staleness and offer-quality curves read - a car nobody has come to look at has not gone stale. Its one reader, holdingDays in bots/sellingHelpers.ts, is retired in the same change.',
+  },
+  {
+    identifier: 'offerSpread',
+    retiredInSprint: 147,
+    reason:
+      'A flat uniform band applied identically whether a car was listed this morning or two months ago, so time was free and the correct play was to skip days until a good number appeared. Replaced by the quality draw (economy.liquidity.qualityFresh/qualityFloor/qualityHalfLifeOffers/qualitySpread, drawQualityFraction in selling.ts) - a seeded Normal draw around a mean that slides down as offersSeen rises.',
+  },
 ]
 
 function escapeRegExp(text: string): string {

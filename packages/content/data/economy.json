@@ -577,8 +577,16 @@
       "cold": 0.75,
       "normal": 1,
       "hot": 1.3
-    },
-    "offerSpread": [0.93, 1.05]
+    }
+  },
+  "liquidity": {
+    "stalenessFloor": 0.35,
+    "stalenessHalfLifeOffers": 3.5,
+    "qualityFresh": 0.96,
+    "qualityFloor": 0.86,
+    "qualityHalfLifeOffers": 3.0,
+    "qualitySpread": 0.04,
+    "relistRecovery": 0.7
   },
   "sellingChannels": {
     "shopFront": {

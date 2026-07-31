@@ -1022,7 +1022,7 @@ describe('CarDetailScreen', () => {
         carsForSale: [
           {
             carInstanceId: id,
-            sinceDay: game.gameState.day,
+            offersSeen: 0,
             channelId: 'shopFront',
             weekendMeetPending: false,
           },

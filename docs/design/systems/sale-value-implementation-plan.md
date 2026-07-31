@@ -159,6 +159,35 @@ the bay it occupies. This way unused capacity bleeds every week, a held car cost
 would otherwise put there, and the fiction is honest: you rent the premises, and a bigger yard
 costs more.
 
+### R3. The standing lever grant, and exactly what it is, RECORDED 2026-07-30
+
+Sprints 144 onward cite "the maintainer's standing authority of 2026-07-30" when signing economy
+levers. **This section is what that phrase refers to, and it is the only record of it.** Cite it
+by name (R3) rather than by date, so a reader can find it.
+
+**What was granted.** Before going off shift on 2026-07-30, the maintainer handed the arc over
+verbally, in session: everything designed to that point was to be treated as signed off, work
+was to continue without them, and the orchestrator was given authority to move levers that would
+normally need per-lever sign-off, on condition that **every such change is documented for review
+on their return** and that sane defaults are chosen.
+
+**What it is NOT.** It is **not a CLAUDE.md directive and not an amendment to directive 22**.
+The only CLAUDE.md change dated 2026-07-30 is the directive 20 typecheck carve-out at R2 above,
+which is a different thing entirely. Anyone auditing a lever change against CLAUDE.md alone will
+not find this grant, and should not conclude from that absence that a lever was moved without
+authority. Equally, no agent may infer this grant from CLAUDE.md; it exists here and in the
+session transcript, nowhere else.
+
+**Its standing.** Every lever moved under it is **provisional pending the maintainer's
+ratification**, listed by name and value in its own sprint doc per directive 22's recording
+requirement, and consolidated for review in the arc's lever ledger. Directive 22's substance is
+unchanged: levers are still moved one at a time, by name, with the reasoning written down. What
+the grant changes is only WHO signs, and only until the maintainer picks the arc back up.
+
+**Its expiry.** The grant covers the handover period it was given for. It does **not** extend to
+future sessions, and it is not a precedent. Once the maintainer has reviewed the ledger, this
+section records the outcome of that review and the grant is spent.
+
 ---
 
 ## 5. The guards, and what each actually catches

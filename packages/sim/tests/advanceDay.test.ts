@@ -321,7 +321,7 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // above: the lot's rolled condition, the car's derived stats and the
     // buyer's taste-adjusted price all feed it, so it is re-derived from a
     // real run whenever one of them deliberately changes.
-    expect(hashState(acquisitionCareer().sold)).toBe('d467f8b9')
+    expect(hashState(acquisitionCareer().sold)).toBe('f3ee5dec')
   })
 })
 
@@ -389,7 +389,7 @@ describe('advanceDay: the daily offer draw and acceptance (Sprint 31)', () => {
       carsForSale: [
         {
           carInstanceId: 'car-0001',
-          sinceDay: 10,
+          offersSeen: 0,
           channelId: 'shopFront',
           weekendMeetPending: false,
         },
@@ -416,7 +416,7 @@ describe('advanceDay: the daily offer draw and acceptance (Sprint 31)', () => {
       carsForSale: [
         {
           carInstanceId: 'car-0001',
-          sinceDay: 10,
+          offersSeen: 0,
           channelId: 'shopFront',
           weekendMeetPending: false,
         },

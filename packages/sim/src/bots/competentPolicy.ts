@@ -47,7 +47,7 @@ const CASH_BUFFER_MULTIPLIER = 1.15
  * doc comment): a future retune of one must never silently drag the other.
  */
 const ACCEPT_FRACTION = 0.9
-const MAX_HOLDING_DAYS = 15
+const MAX_OFFERS_SEEN = 15
 
 /** A competent player's double-cover buffer on tool upgrades - speed is
  * bought when the bankroll comfortably covers it, never before. */
@@ -200,7 +200,7 @@ export function competentPolicyStrategy(
     if (isRestored) {
       decideSale(state, car, context, actions, {
         acceptFraction: ACCEPT_FRACTION,
-        maxHoldingDays: MAX_HOLDING_DAYS,
+        maxOffersSeen: MAX_OFFERS_SEEN,
       })
     }
   }

@@ -300,7 +300,7 @@ describe('GameState / DayLog round-trip', () => {
       carsForSale: [
         {
           carInstanceId: 'car-0002',
-          sinceDay: 4,
+          offersSeen: 4,
           channelId: 'shopFront',
           weekendMeetPending: false,
         },

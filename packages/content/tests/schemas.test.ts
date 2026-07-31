@@ -351,12 +351,17 @@ describe('seed content validates against schemas', () => {
     expect(result.data.selling.offerChanceByHeatBand.hot).toBeGreaterThan(
       result.data.selling.offerChanceByHeatBand.cold,
     )
-    // economy-bible.md law 4: the floor must stay high enough that a bad
-    // walk-in roll can no longer erase the worst-case flip margin the Law 2
-    // generation guard still permits; the mean stays at/below 1.0 (the
-    // no-free-lunch invariant) with tails narrow enough that a lucky roll
-    // can't manufacture profit on an unimproved flip.
-    expect(result.data.selling.offerSpread).toEqual([0.93, 1.05])
+    // Stage F, the normalised listing clock (sale-value-system.md S4,
+    // sprint147.md): both curves read offersSeen only, never a day count.
+    expect(result.data.liquidity).toEqual({
+      stalenessFloor: 0.35,
+      stalenessHalfLifeOffers: 3.5,
+      qualityFresh: 0.96,
+      qualityFloor: 0.86,
+      qualityHalfLifeOffers: 3.0,
+      qualitySpread: 0.04,
+      relistRecovery: 0.7,
+    })
     // The five listing channels (directive 22 lever list). The shop front
     // is the deliberate worst-typical-outcome floor (tasteCeiling 1.00,
     // never above value); the trade network trades taste upside for a
@@ -489,6 +494,7 @@ describe('seed content validates against schemas', () => {
       'reputation',
       'serviceJobs',
       'selling',
+      'liquidity',
       'sellingChannels',
       'toolCeilings',
       'repairBandCeilingByTier',

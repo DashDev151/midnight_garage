@@ -20,14 +20,16 @@ import {
   bestFitBuyer,
   drawDailyOffers,
   offerChanceFor,
+  qualityMeanFor,
   resolveRejectOffer,
   resolveScrapShell,
   resolveSellViaWalkIn,
   resolveSetForSale,
   sellViaWalkIn,
+  stalenessFor,
 } from '../src/selling'
 import { channelBuyerTaste, valuateCarForBuyer } from '../src/valuation'
-import { createRng } from '../src/rng'
+import { createRng, type Rng } from '../src/rng'
 import {
   buildCarInstance,
   mintCarParts,
@@ -104,14 +106,17 @@ function valuate(
 }
 
 describe('sellViaWalkIn', () => {
-  it("offers within the configured spread of the chosen buyer's true valuation", () => {
+  it("offers within the fresh quality-draw band of the chosen buyer's true valuation", () => {
     const offer = walkIn(car, model)
     const buyer = BUYERS.find((b) => b.id === offer.buyerId)
     if (!buyer) throw new Error('offer referenced an unknown buyer')
     const trueValue = valuate(buyer, car, model)
-    const [min, max] = ECONOMY.selling.offerSpread
-    expect(offer.priceYen).toBeGreaterThanOrEqual(Math.round(trueValue * min))
-    expect(offer.priceYen).toBeLessThanOrEqual(Math.round(trueValue * max))
+    // A walk-in prices at offersSeen = 0 (sellViaWalkIn.ts), so the drawn
+    // fraction is clamped to [qualityFloor, 1.0] - never above true value,
+    // never below the floor even on the tail of the Normal draw.
+    const { qualityFloor } = ECONOMY.liquidity
+    expect(offer.priceYen).toBeGreaterThanOrEqual(Math.round(trueValue * qualityFloor))
+    expect(offer.priceYen).toBeLessThanOrEqual(trueValue)
   })
 
   it('is deterministic for the same seed', () => {
@@ -207,7 +212,7 @@ function stateWithOffer(
 ): GameState {
   return stateWithCar(car, {
     carsForSale: [
-      { carInstanceId: car.id, sinceDay: 1, channelId: 'shopFront', weekendMeetPending: false },
+      { carInstanceId: car.id, offersSeen: 0, channelId: 'shopFront', weekendMeetPending: false },
     ],
     pendingOffers: [{ carInstanceId: car.id, buyerId, priceYen }],
     ...overrides,
@@ -225,7 +230,7 @@ describe('resolveRejectOffer (Sprint 68 decision 3, playtest item 21)', () => {
     // The whole point: rejecting one lowball is not the same as pulling the
     // car off the market.
     expect(result.state.carsForSale).toEqual([
-      { carInstanceId: car.id, sinceDay: 1, channelId: 'shopFront', weekendMeetPending: false },
+      { carInstanceId: car.id, offersSeen: 0, channelId: 'shopFront', weekendMeetPending: false },
     ])
   })
 
@@ -256,7 +261,7 @@ describe('resolveRejectOffer (Sprint 68 decision 3, playtest item 21)', () => {
   it('is a no-op with no live offer, or for a car not owned', () => {
     const listedNoOffer = stateWithCar(car, {
       carsForSale: [
-        { carInstanceId: car.id, sinceDay: 1, channelId: 'shopFront', weekendMeetPending: false },
+        { carInstanceId: car.id, offersSeen: 0, channelId: 'shopFront', weekendMeetPending: false },
       ],
     })
     expect(resolveRejectOffer(listedNoOffer, car.id).state).toBe(listedNoOffer)
@@ -289,7 +294,7 @@ describe('resolveSetForSale (Sprint 31; channels, Sprint 114)', () => {
     expect(on.state.carsForSale).toEqual([
       {
         carInstanceId: car.id,
-        sinceDay: state.day,
+        offersSeen: 0,
         channelId: 'shopFront',
         weekendMeetPending: false,
       },
@@ -325,7 +330,7 @@ describe('resolveSetForSale (Sprint 31; channels, Sprint 114)', () => {
     expect(result.state.carsForSale).toEqual([
       {
         carInstanceId: car.id,
-        sinceDay: state.day,
+        offersSeen: 0,
         channelId: 'freeAdsPaper',
         weekendMeetPending: false,
       },
@@ -355,11 +360,41 @@ describe('resolveSetForSale (Sprint 31; channels, Sprint 114)', () => {
     expect(relisted.state.carsForSale).toEqual([
       {
         carInstanceId: car.id,
-        sinceDay: listed.day,
+        offersSeen: 0,
         channelId: 'tunerMagazine',
         weekendMeetPending: false,
       },
     ])
+  })
+
+  it('carries a stale listing’s offersSeen forward at relistRecovery on a channel switch, rather than resetting to fresh (sprint147)', () => {
+    const listed = resolveSetForSale(
+      stateWithCar(car, { cashYen: 100_000 }),
+      car.id,
+      true,
+      CONTEXT,
+      'shopFront',
+    ).state
+    // resolveSetForSale itself never rolls the RNG or advances the day, so
+    // offersSeen is seeded directly here rather than accumulated through a
+    // probabilistic run of drawDailyOffers - this keeps the test a pure
+    // check of the recovery formula.
+    const stale = {
+      ...listed,
+      carsForSale: [{ ...listed.carsForSale[0]!, offersSeen: 10 }],
+    }
+    const relisted = resolveSetForSale(stale, car.id, true, CONTEXT, 'tunerMagazine')
+    expect(relisted.state.carsForSale).toEqual([
+      {
+        carInstanceId: car.id,
+        offersSeen: Math.round(10 * (1 - CONTEXT.economy.liquidity.relistRecovery)),
+        channelId: 'tunerMagazine',
+        weekendMeetPending: false,
+      },
+    ])
+    // Never a full reset back to fresh, and never worse than it already was.
+    expect(relisted.state.carsForSale[0]?.offersSeen).toBeLessThan(10)
+    expect(relisted.state.carsForSale[0]?.offersSeen).toBeGreaterThan(0)
   })
 
   it('insufficient cash refuses quietly - no state change, no log entry', () => {
@@ -377,7 +412,7 @@ describe('resolveSetForSale (Sprint 31; channels, Sprint 114)', () => {
     expect(first.state.carsForSale).toEqual([
       {
         carInstanceId: car.id,
-        sinceDay: state.day,
+        offersSeen: 0,
         channelId: 'weekendMeet',
         weekendMeetPending: true,
       },
@@ -411,6 +446,40 @@ describe('offerChanceFor (Sprint 31 decision 2)', () => {
   })
 })
 
+describe('stalenessFor / qualityMeanFor (sprint147: the normalised listing clock)', () => {
+  it('a fresh listing (offersSeen = 0) has no staleness discount at all', () => {
+    expect(stalenessFor(0, ECONOMY)).toBe(1)
+  })
+
+  it('offer chance falls as offersSeen rises, flooring at stalenessFloor and never below it', () => {
+    const { stalenessFloor } = ECONOMY.liquidity
+    const early = stalenessFor(1, ECONOMY)
+    const later = stalenessFor(10, ECONOMY)
+    expect(early).toBeLessThan(1)
+    expect(later).toBeLessThan(early)
+    expect(later).toBeGreaterThanOrEqual(stalenessFloor)
+    expect(stalenessFor(10_000, ECONOMY)).toBeCloseTo(stalenessFloor, 6)
+  })
+
+  it("a fresh listing's expected offer is near qualityFresh; a long-stale one decays toward qualityFloor", () => {
+    const { qualityFresh, qualityFloor } = ECONOMY.liquidity
+    expect(qualityMeanFor(0, ECONOMY)).toBeCloseTo(qualityFresh, 6)
+    expect(qualityMeanFor(10_000, ECONOMY)).toBeCloseTo(qualityFloor, 6)
+    // Monotonic in between - more offers seen never IMPROVES the mean.
+    expect(qualityMeanFor(1, ECONOMY)).toBeLessThan(qualityFresh)
+    expect(qualityMeanFor(1, ECONOMY)).toBeGreaterThan(qualityMeanFor(10, ECONOMY))
+  })
+
+  it('both curves read offersSeen only - never a day count (the hard constraint this sprint exists to enforce)', () => {
+    // Nothing about either function's signature accepts a day; this is a
+    // structural guard as much as a behavioural one - the same offersSeen
+    // value must produce the identical reading no matter how many
+    // in-game days have elapsed around it.
+    expect(stalenessFor(4, ECONOMY)).toBe(stalenessFor(4, ECONOMY))
+    expect(qualityMeanFor(4, ECONOMY)).toBe(qualityMeanFor(4, ECONOMY))
+  })
+})
+
 /** A listing entry on `channelId`, `shopFront`'s own defaults otherwise. */
 function listedOn(
   channelId: SellingChannelId,
@@ -419,7 +488,7 @@ function listedOn(
   return [
     {
       carInstanceId: car.id,
-      sinceDay: 1,
+      offersSeen: 0,
       channelId,
       weekendMeetPending: channelId === 'weekendMeet',
       ...overrides,
@@ -635,6 +704,52 @@ describe('drawDailyOffers (Sprint 31 decision 2; channels, Sprint 114)', () => {
   })
 })
 
+describe('the normalised listing clock, end to end (sprint147)', () => {
+  /** Never clears any real cadence chance (always < 1) - a deterministic
+   * stand-in for "no buyer ever shows up," so the test below is an exact
+   * assertion rather than a seed sweep hoping to avoid a lucky roll. */
+  const neverShowsUp: Rng = {
+    next: () => 0.999999,
+    int: (min) => min,
+    pick: (items) => items[0]!,
+  }
+
+  it('a listing that draws NO offers does not go stale over many days - the assertion that catches a day-based clock', () => {
+    let state: GameState = { ...stateWithCar(car), carsForSale: listedOn('shopFront') }
+    for (let day = 0; day < 90; day++) {
+      state = drawDailyOffers(state, CONTEXT, neverShowsUp).state
+    }
+    const entry = state.carsForSale[0]
+    expect(entry?.offersSeen).toBe(0)
+    expect(stalenessFor(entry?.offersSeen ?? -1, ECONOMY)).toBe(1)
+    expect(qualityMeanFor(entry?.offersSeen ?? -1, ECONOMY)).toBeCloseTo(
+      ECONOMY.liquidity.qualityFresh,
+      6,
+    )
+  })
+
+  it('offersSeen climbs by one each time a buyer genuinely shows up (the cadence roll clears), hit or miss', () => {
+    const state = { ...stateWithCar(car), carsForSale: listedOn('shopFront') }
+    let seedThatClears: number | undefined
+    for (let seed = 0; seed < 40; seed++) {
+      const result = drawDailyOffers(state, CONTEXT, createRng(seed))
+      if (result.state.carsForSale[0]?.offersSeen === 1) {
+        seedThatClears = seed
+        break
+      }
+    }
+    expect(seedThatClears, 'no seed in range cleared the cadence roll').not.toBeUndefined()
+  })
+
+  it('the quality draw is deterministic for the same seed, per the seeding rule', () => {
+    const state = { ...stateWithCar(car), carsForSale: listedOn('shopFront') }
+    const a = drawDailyOffers(state, CONTEXT, createRng(5))
+    const b = drawDailyOffers(state, CONTEXT, createRng(5))
+    expect(a.state.pendingOffers).toEqual(b.state.pendingOffers)
+    expect(a.state.carsForSale).toEqual(b.state.carsForSale)
+  })
+})
+
 describe('resolveSellViaWalkIn (Sprint 31: resolves today’s pre-rolled offer)', () => {
   it('sells the car, adds cash, and releases its service bay slot', () => {
     const state = stateWithOffer(car, 900_000, 'tuner')
@@ -832,7 +947,7 @@ describe('resolveSellViaWalkIn (Sprint 31: resolves today’s pre-rolled offer)'
         carsForSale: [
           {
             carInstanceId: car.id,
-            sinceDay: 1,
+            offersSeen: 0,
             channelId: 'tradeNetwork',
             weekendMeetPending: false,
           },

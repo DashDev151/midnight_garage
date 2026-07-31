@@ -554,43 +554,6 @@ pass."
 
 ## Open balance/economy questions
 
-- [ ] **The instant-flip guard still fails on every tier after the Sprint 146 amendment (the
-  shortfall-normalisation fix), though the amendment closed most of the gap.** Root cause of the
-  ORIGINAL failure was structural, not a tuning miss: an absolute (unnormalized) shortfall capped
-  the worst possible match well above 0 for every archetype (0.30 to 0.50), so no car ever read as
-  a genuinely bad match. The amendment (`docs/sprints/sprint146.md`'s "Amendment" section)
-  normalizes each shortfall by the room it had to fall short in, so a car satisfying nothing now
-  scores exactly 0 - measured and asserted in `valuation.test.ts`. No `statTargets` value moved.
-
-  That fix cut the guard's `unimproved-flip probe` median margin from +4.0%/+4.35%/+4.44%
-  (everyday/enthusiast/flagship) to +0.08%/+0.37%/+1.05%, and entry's median resale ratio from
-  1.0528 (outright above the offer spread's own 1.05 ceiling) to 1.0053 (inside the spread, margin
-  +0.53%). **A small median profit remains on all four tiers and the guard is still red.**
-
-  **`economy.AUCTION_BUYOUT_PREMIUM` is now RULED OUT, by measurement, as a way to close this
-  guard - not merely under-tuned at its 1.00 INTERIM value, but structurally incapable of closing
-  it at ANY value** (`docs/sprints/sprint146.md`'s "Amendment 2", swept 2026-07-30 under the
-  maintainer's standing lever authority). The probe's margin is `resaleRatio / premium - 1` and the
-  guard's own bound is `(spreadMin + spreadMax) / 2 / premium - 1` - the identical `/ premium - 1`
-  shape on both sides, so `premium` cancels algebraically out of the `margin < bound` comparison
-  entirely. The guard's real, premium-independent pass condition is `resaleMedian < (spreadMin +
-  spreadMax) / 2` (currently `0.99`), and the measured `resaleMedian` sits above it on every tier
-  (entry 1.0053, everyday 1.0008, enthusiast 1.0037, flagship 1.0105) regardless of what
-  `AUCTION_BUYOUT_PREMIUM` is set to. Swept 1.00/1.02/1.03/1.05/1.08 (all 20 tier/premium cells
-  fail, full table in the sprint doc) and confirmed at absurd values (5 and 1000: the bound and
-  margin both race toward -100% together without the inequality ever flipping, and at 1000 nobody
-  can afford the buyout at all before that happens) - this is not a "try a higher number" situation.
-
-  What remains genuinely open: `resaleMedian` sitting a little above the neutral 0.99 midpoint on
-  every tier is `pickWeightedCandidate`'s pre-existing value-weighted buyer selection (it hands a
-  walk-in sale to whichever candidate buyer scores the car highest, not a neutral mid-spread draw).
-  Closing it needs either (a) `economy.selling.offerSpread` or the buyer-selection weighting
-  retuned so a walk-in's own median genuinely centres near 0.99, or (b) the guard's own bound
-  formula rewritten so it does not divide by the same premium the margin already divides by (a
-  test-authoring fix, not a directive-22 economy lever). Neither is authorised or pulled here - both
-  are the maintainer's call. Left failing rather than silently patched or the test loosened to hide
-  it; reproduce via `pnpm test --project sim packages/sim/tests/valueModelProbes.test.ts`.
-
 - [ ] **The retention floor barely bites, so on retention alone almost every incoherent build is
   now BETTER off than under the old flat rate (measured at the end of Sprint 144).** Retention is
   `retentionFloor + (retentionCeiling - retentionFloor) * coherenceFactor`, which at 0.30 and

@@ -46,7 +46,7 @@ const REPAIRABLE_COMPONENTS: readonly ComponentId[] = [
 /** Flip fast means take the FIRST live offer, whatever it is - no price
  * floor, no patience. */
 const ACCEPT_FRACTION = 0
-const MAX_HOLDING_DAYS = 0
+const MAX_OFFERS_SEEN = 0
 
 /**
  * Buy rough at a discount, do one quick repair, flip fast (GDD 9.0's
@@ -110,7 +110,7 @@ export function flipperStrategy(state: GameState, context: SimContext, rng: Rng)
     if (jobbedCarIds.has(car.id)) continue
     decideSale(state, car, context, actions, {
       acceptFraction: ACCEPT_FRACTION,
-      maxHoldingDays: MAX_HOLDING_DAYS,
+      maxOffersSeen: MAX_OFFERS_SEEN,
     })
   }
 

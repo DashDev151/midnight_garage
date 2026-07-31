@@ -1598,26 +1598,52 @@ export const EconomyConfigSchema = z.object({
         normal: z.number().nonnegative(),
         hot: z.number().nonnegative(),
       }),
-      /**
-       * `offerYen = valuateCarForBuyer * uniform(min, max)` - the "fast,
-       * variable" walk-in-style roll. CONSTRAINT: the floor must stay high
-       * enough that, compounded with `valuation.tasteSpread`'s own worst
-       * case, a fully-restored car's worst-case walk-in sale cannot erase the
-       * worst-case flip margin the Law 2 generation guard still permits
-       * (`balanceProbes.ts`). CONSTRAINT: the mean must not exceed 1.0 - the
-       * no-free-lunch invariant that an unmodified car's expected walk-in
-       * sale never nets a profit over its own guide value
-       * (`valueModelProbes.test.ts`). The current range keeps the mean at
-       * 0.99, a real discount on average, with narrow enough tails that a
-       * patient, unimproved flip can't rely on a lucky high roll to clear a
-       * real profit.
-       */
-      offerSpread: z
-        .tuple([z.number().positive(), z.number().positive()])
-        .refine(([min, max]) => min <= max, { message: 'offerSpread min must be <= max' }),
     })
     .refine((s) => s.heatBandColdBelowPercent <= s.heatBandHotAtOrAbovePercent, {
       message: 'selling.heatBandColdBelowPercent must be <= heatBandHotAtOrAbovePercent',
+    }),
+  /**
+   * Stage F, the normalised listing clock (sale-value-system.md S4): how an
+   * arriving offer's chance and price both slide as a listing's own
+   * `ForSaleEntry.offersSeen` climbs - never `daysListed`. A car nobody has
+   * come to look at has not gone stale; it goes stale once people have
+   * looked and passed (sprint147.md). `stalenessFor`/`qualityMeanFor`
+   * (selling.ts) are the two curve implementations.
+   */
+  liquidity: z
+    .object({
+      /** The floor `stalenessFor` decays toward as `offersSeen` grows - a
+       * long-stale listing still draws SOME foot traffic, never zero. */
+      stalenessFloor: z.number().min(0).max(1),
+      /** Offers-seen at which the staleness multiplier has closed half the
+       * gap between 1.0 (fresh) and `stalenessFloor`. */
+      stalenessHalfLifeOffers: z.number().positive(),
+      /** A genuinely fresh listing's expected offer quality, as a fraction
+       * of channel price (`offersSeen` = 0). */
+      qualityFresh: z.number().min(0).max(1),
+      /** The floor `qualityMeanFor`'s mean decays toward as `offersSeen`
+       * grows, and the hard clamp every drawn offer respects regardless of
+       * how the roll lands. */
+      qualityFloor: z.number().min(0).max(1),
+      /** Offers-seen at which the quality mean has closed half the gap
+       * between `qualityFresh` and `qualityFloor`. */
+      qualityHalfLifeOffers: z.number().positive(),
+      /** Standard deviation of the seeded Normal draw around the quality
+       * mean, before the `[qualityFloor, 1.0]` clamp. */
+      qualitySpread: z.number().nonnegative(),
+      /**
+       * Re-listing (`resolveSetForSale`, on a channel switch or a same-
+       * channel re-list) carries the old entry's `offersSeen` forward at
+       * this fraction rather than resetting to 0 fresh:
+       * `newOffersSeen = round(oldOffersSeen * (1 - relistRecovery))`. Same
+       * plate, same advertisement, everyone has seen it - a full reset would
+       * sell patience back for the price of a listing fee.
+       */
+      relistRecovery: z.number().min(0).max(1),
+    })
+    .strict()
+    .refine((l) => l.qualityFloor <= l.qualityFresh, {
+      message: 'liquidity.qualityFloor must be <= liquidity.qualityFresh',
     }),
   /**
    * The five listing channels a for-sale car can be listed on (directive 22

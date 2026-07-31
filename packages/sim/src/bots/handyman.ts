@@ -32,9 +32,9 @@ const REPAIRABLE_COMPONENTS: readonly ComponentId[] = [
   'interior',
 ]
 /** Accept an offer once it clears this fraction of the car's best-fit
- * valuation, or once it's been for-sale this many days. */
+ * valuation, or once the listing's own `offersSeen` reaches this many. */
 const ACCEPT_FRACTION = 0.85
-const MAX_HOLDING_DAYS = 12
+const MAX_OFFERS_SEEN = 12
 
 /**
  * The tier-payback archetype: "invest fast, harvest the labor-efficiency
@@ -126,7 +126,7 @@ export function handymanStrategy(state: GameState, context: SimContext, rng: Rng
     if (!isRestored) continue
     decideSale(state, car, context, actions, {
       acceptFraction: ACCEPT_FRACTION,
-      maxHoldingDays: MAX_HOLDING_DAYS,
+      maxOffersSeen: MAX_OFFERS_SEEN,
     })
   }
 

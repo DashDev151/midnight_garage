@@ -44,17 +44,17 @@ interface ArchetypeProfile {
    * Player's/Cautious Restorer's own constants (see each bot's own
    * `sellingHelpers.ts` call site). */
   acceptFraction: number
-  maxHoldingDays: number
+  maxOffersSeen: number
 }
 
 /** Mirrors Flipper / Balanced Player / Cautious Restorer's own repair depth and accept-threshold. */
 const PROFILES: Record<Archetype, ArchetypeProfile> = {
-  flip: { repairZonesBeforeSale: 1, acceptFraction: 0, maxHoldingDays: 0 },
-  mid: { repairZonesBeforeSale: 2, acceptFraction: 0.85, maxHoldingDays: 12 },
+  flip: { repairZonesBeforeSale: 1, acceptFraction: 0, maxOffersSeen: 0 },
+  mid: { repairZonesBeforeSale: 2, acceptFraction: 0.85, maxOffersSeen: 12 },
   restore: {
     repairZonesBeforeSale: REPAIRABLE_COMPONENTS.length,
     acceptFraction: 0.95,
-    maxHoldingDays: 20,
+    maxOffersSeen: 20,
   },
 }
 
@@ -155,7 +155,7 @@ export function randomStrategy(state: GameState, context: SimContext, rng: Rng):
 
     decideSale(state, car, context, actions, {
       acceptFraction: profile.acceptFraction,
-      maxHoldingDays: profile.maxHoldingDays,
+      maxOffersSeen: profile.maxOffersSeen,
     })
   }
 
