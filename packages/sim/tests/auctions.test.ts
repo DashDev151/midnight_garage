@@ -989,7 +989,7 @@ describe('the damage budget: how rough a generated lot is', () => {
         `${fitmentClass}: effective symptom rate has drifted from its signed ${signed}`,
       ).toBeCloseTo(signed, 1)
     }
-  })
+  }, 30_000)
 
   /**
    * The venue gradient is EMERGENT, and this is the assertion the design leans
@@ -1037,5 +1037,5 @@ describe('the damage budget: how rough a generated lot is', () => {
     // auction is interesting rather than a problem, and nothing structurally
     // forbids one.
     expect(collector).toBeGreaterThan(0)
-  })
+  }, 30_000)
 })

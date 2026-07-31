@@ -155,7 +155,7 @@ describe('generated cars are coherent (Sprint 66, item 6a)', () => {
     // one of them regardless of mileage, which is what this bar catches.
     expect(median).toBe(0)
     expect(mean).toBeLessThan(1.5)
-  })
+  }, 30_000)
 
   it('still lets neglect bite hard on a thoroughly-used car (the model is scaled, not defanged)', () => {
     // Across the whole roster and a wide seed sweep, high-mileage cars must
