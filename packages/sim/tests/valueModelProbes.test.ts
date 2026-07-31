@@ -778,14 +778,13 @@ describe('the scrap-value floor never binds on a generated lot (Sprint 54 decisi
  * channel (`sellViaWalkIn`, one seeded draw per lot) - the literal "buy and
  * flip immediately" play.
  *
- * The bound this probe polices changed shape at the maintainer's ruling
- * (2026-07-31): it no longer asserts that the flip loses money, only that
- * its median margin stays well clear of the point where flipping would
- * out-earn building. A percent or two of drift around break-even is noise,
- * not a defect - the game already discourages instant flipping through
- * mechanisms this probe does not model (reputation loss on some sales, and
- * the opportunity cost of not repairing and building a car already owned),
- * and this guard was never meant to be the only defence.
+ * What this bound polices is NOT that the flip loses money. It is that the
+ * flip never becomes the dominant strategy. A percent or two either side of
+ * break-even is noise rather than a defect: the game discourages instant
+ * flipping through forces this probe does not model, chiefly reputation loss
+ * on some sales and the opportunity cost of not repairing and building a car
+ * already owned. This guard is one defence among several and is written as
+ * such.
  */
 describe('unimproved-flip probe (the instant-flip guard)', () => {
   it.each(['entry', 'everyday', 'enthusiast', 'flagship'] as const)(
@@ -861,40 +860,28 @@ describe('unimproved-flip probe (the instant-flip guard)', () => {
         qualityFloor * (1 - ECONOMY.valuation.tasteSpread),
       )
       expect(resaleMedian).toBeLessThanOrEqual(1 + ECONOMY.valuation.tasteSpread)
-      // A third, tighter claim used to sit here: a walk-in never pays over
-      // the taste-free market read for an untouched car, because the
-      // quality draw clamps at 1.0 before any taste multiplier is applied.
-      // That was only ever true because no stock car could clear a buyer's
-      // style target (see below) - Sprint 152 broke it the same way it
-      // broke the margin bound, so it is retired rather than kept as a
-      // second, redundant band on top of the two above.
-      // This is a stated design law, not a derivation, and its shape
-      // changed at the maintainer's ruling (2026-07-31): the invariant is no
-      // longer "flipping must lose money", it is "flipping must not become
-      // the dominant strategy" - and a median margin near 10% of the won
-      // price is where that would start to be true. A margin of a per cent
-      // or so either side of break-even is noise, not a defect: the game
-      // already discourages instant flipping through mechanisms this probe
-      // does not model - reputation loss on some sales, and the opportunity
-      // cost of not repairing and building a car the player already owns -
-      // and this guard was never the only defence against it.
+      // There is deliberately no third, tighter band here. "A walk-in never
+      // pays over the taste-free market read" holds only while no stock car
+      // can clear a buyer's style target, which is no longer the case, so
+      // asserting it would pin the wrong world.
       //
-      // The margin turned positive on the top two tiers because of a real,
-      // one-sided change, not drift in this probe. `marketValueYen` is
-      // deliberately taste-blind (a standing law - a car is never worth
-      // more for being faster, and the same holds for looking better), so
-      // the BUY side never prices style, while the SELL side does, through
-      // buyer taste. Before Sprint 152 a stock car scored 7 to 17 on style
-      // and cleared none of the four buyer style targets (stancer 65,
-      // kei-specialist 55, collector 50, tuner 45), so an untouched car's
-      // taste multiplier always sat below 1 and this guard held for free.
-      // Sprint 152 gave stock cars real style scores, and a mint stock
-      // flagship now scores 74 - above every one of those four targets - so
-      // its taste multiplier can clear 1 while still completely unmodified.
+      // The bound below is a stated design law rather than a derivation:
+      // flipping must not become the dominant strategy, and a median margin
+      // near 10% of the won price is where that would start to be true.
       //
-      // Measured at this bound (2026-07-31), for the record against future
-      // drift: entry below -1% (still comfortably negative), everyday
-      // -0.99%, enthusiast +0.19%, flagship +1.05%.
+      // The margin sits slightly positive on the top two tiers for a
+      // structural reason worth knowing. `marketValueYen` is deliberately
+      // taste-blind: a car is never worth more for being faster, and the same
+      // holds for looking better. So the BUY side never prices style while
+      // the SELL side does, through buyer taste. A mint stock flagship scores
+      // 74 on style, above all four buyer targets (stancer 65, kei-specialist
+      // 55, collector 50, tuner 45), so its taste multiplier can clear 1
+      // while the car is completely unmodified. That asymmetry is intended;
+      // it is what makes knowing which cars are wanted worth something.
+      //
+      // Measured margins at this bound, for the record against future drift:
+      // entry comfortably negative, everyday -0.99%, enthusiast +0.19%,
+      // flagship +1.05%.
       expect(marginMedian).toBeLessThan(0.1)
     },
   )
