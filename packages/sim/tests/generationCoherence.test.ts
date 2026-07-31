@@ -156,11 +156,11 @@ describe('generated cars are coherent (Sprint 66, item 6a)', () => {
     // The retired core-loop floor put roughly twelve ruined slots on every one
     // of these cars regardless of mileage, which is what this bar catches.
     //
-    // The exact-median bar this replaces (`median === 0`) sat on a knife edge:
-    // it was pinning the tipping point of a distribution whose zero share was
-    // barely over half, so Sprint 155's damage patterns flipped it by moving
-    // that share from just over 0.5 to 0.447 - the same total damage on fewer
-    // parts, which is the whole point of concentrating it. The shape it stood
+    // An exact-median bar (`median === 0`) would sit on a knife edge here: it
+    // pins the tipping point of a distribution whose zero share is barely over
+    // half, so concentrating damage into a pattern flips it by moving that
+    // share to 0.447 - the same total damage on fewer parts, which is the
+    // whole point of concentrating it. The shape such a bar stands
     // for is asserted directly instead, and every bar below is measured rather
     // than relaxed: 0.447 with nothing ruined, median 1, p90 3, mean 1.211 of
     // the car's 26 ordinary slots.
