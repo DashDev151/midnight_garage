@@ -53,13 +53,25 @@ All development happens in sprints, driven by the roadmap. Sprint docs live in `
 (synthwave pixel art, JDM car culture, hunt-build-sell loop). Solo-dev passion project, ~13-month
 roadmap to a free itch.io launch.
 
-**Current state:** Sprints 00-139 and 143-157 implemented and committed. Two were superseded
-unbuilt and their docs record it (Sprint 100 by Sprint 110's live-room promotion; Sprints 138-139
-by the sale value system). **Three sprints are still live and their docs are the only ones left in
-`docs/sprints/`: 140, 141, 142** (the rest of the tuning arc). The tuning overhaul is BUILT as far
-as 137 (`docs/design/systems/tuning-system.md`, arc index `docs/sprints/tuning-arc.md`): condition
+**Current state:** Sprints 00-139, 142-157 and 159-164 implemented and committed. Two were
+superseded unbuilt and their docs record it (Sprint 100 by Sprint 110's live-room promotion;
+Sprints 138-139 by the sale value system). **Two sprints are still live: 140 and 141.** 140 is
+blocked twice over (`aeroCeiling` is authored for 26 of the 94 roster cars, which directive 24
+makes the wrong scope, and it exists as a roster CSV column but on no `CarModel` field, so nothing
+reads it); 141, the dyno screen, awaits sign-off and one ruling. The tuning overhaul is otherwise
+BUILT (`docs/design/systems/tuning-system.md`, arc index `docs/sprints/tuning-arc.md`): condition
 reaches the build, power is a per-car fraction rather than a flat ladder, support ratios drive
-reliability off a per-car `spec.reliabilityBase`, and forced induction returns increase.
+reliability off a per-car `spec.reliabilityBase`, forced induction returns increase, and a part's
+band curve varies by grade, so a race part at `poor` delivers less than a street part at `mint`.
+The four physical dial curves were reviewed in Sprint 142 and deliberately left PROVISIONAL: no
+driven measurement of a worn car exists, so a new value would be as unmeasured as the current one.
+
+**The body is a system (159-164).** A panel can be ruined past repair or absent, and either forces
+a replacement rather than offering one; the repair bill charges for the distance travelled rather
+than for crossing a threshold, derived by walking the workshop's own stage costs so one pricing
+model exists instead of two; the three body carriers hold real `partId`s, so a body kit is a body
+part and a modified body loses its authenticity. `aero` is now exactly the performance slot.
+Analysis of record `docs/design/systems/body-system-analysis.md`.
 
 **The sale value arc (143 to 157) is COMPLETE.** Design of record
 `docs/design/systems/sale-value-system.md`, plan `sale-value-implementation-plan.md`, lever
