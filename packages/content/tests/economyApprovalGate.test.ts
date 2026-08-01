@@ -1478,6 +1478,43 @@ import storyMissions from '../data/storyMissions.json'
  * floor is unchanged: every probe builds at mint, where this table is the identity. What moves is
  * a car carrying NON-MINT aftermarket parts, and it moves by the grade of what is fitted - a race
  * coilover at `poor` now delivers 1.00725 against a mint street coilover's 1.01000.
+ *
+ * NOT re-pinned, and recorded here only because it moves a formula-derived mission threshold:
+ * Sprint 140's retirement of the flat per-part handling delta (`docs/sprints/sprint140.md`, task
+ * 1, which needs no sign-off - it deletes a duplicate of `physicalModifiers.grip` and moves no
+ * economy value). NO hash in this file changes: `economy.json` and `partPricing.json` are both
+ * untouched, no part price moves, and every `payoutYen`/`budgetCapYen` above holds, confirmed by
+ * a fresh `storyMissionProbes.test.ts` run rather than assumed. ONE formula-derived STAT
+ * THRESHOLD in `storyMissions.json` (not gated by this hash, the same class of mechanical
+ * re-derivation as the Sprint 135 and 136 entries above) moves with it:
+ * `street-power-street-manners`'s `tasteMatch(tuner).minMultiplier`, `round2At97Percent` of the
+ * freshly measured taste ratio, **1.08 -> 1.06**. Its probe is the one that fits aftermarket
+ * suspension and body parts, so the handling stat those SKUs used to add to falls and the tuner's
+ * taste match falls with it. Nothing else in the ten missions moves: every other probe is
+ * all-stock, cosmetics-only, or engine-only.
+ *
+ * NOT re-pinned and NOT signed, recorded because this file is the ledger of what moved and why:
+ * Sprint 140's `spec.aeroCeiling` (`docs/sprints/sprint140.md`, task 2). NINETY-FOUR values, one
+ * per roster row in `docs/design/midnight-garage-roster.csv`, of which the 26 shipped cars carry
+ * theirs in `cars.json`. They are **AUTHORED AND PRELIMINARY**: figures good enough to unblock the
+ * sprint, offered for review rather than taken as signed, so they hold exactly the standing Sprint
+ * 159's two chances held before ratification and must be re-recorded here as RATIFIED once the
+ * maintainer signs them. The rubric, the classics ruling and the deliberate calls behind the
+ * outliers are in that sprint doc.
+ *
+ * The lever is a 0-to-1 multiplier on what a FITTED aero SKU's downforce is worth on a given body.
+ * It never touches the car's own factory figure and never touches drag, so its entire reach is the
+ * handling readout and the lap time of a car with a functional wing bolted to it. NO hash in this
+ * file changes: `economy.json`, `damagePatterns.json` and `partPricing.json` are untouched, no part
+ * price moves, and every `payoutYen`/`budgetCapYen` above holds.
+ *
+ * No formula-derived mission threshold moves either, confirmed by a fresh
+ * `storyMissionProbes.test.ts` run rather than assumed, and the one probe that could have moved is
+ * worth naming: `low-and-loud` fits a sport wing to a Silvia S14, whose ceiling is 0.85, which
+ * takes that build's handling readout from 40 to 39. `tasteMatch(stancer).minMultiplier` holds at
+ * its pinned value regardless, because the stancer buys style rather than handling and the shave
+ * is inside the second decimal place the threshold is rounded to. `harnessAcceptance.test.ts`
+ * passes untouched: a stock car carries no aero SKU, so there is nothing for a ceiling to scale.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {

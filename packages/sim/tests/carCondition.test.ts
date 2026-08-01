@@ -71,6 +71,7 @@ const model: CarModel = {
     reliabilityBase: 90,
     styleBase: 20,
     styleCeiling: 80,
+    aeroCeiling: 1,
   },
   tier: 'everyday',
   rarity: 'common',

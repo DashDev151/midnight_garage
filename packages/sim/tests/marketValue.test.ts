@@ -65,6 +65,7 @@ const model: CarModel = {
     reliabilityBase: 94,
     styleBase: 74,
     styleCeiling: 95,
+    aeroCeiling: 1,
   },
   tier: 'flagship',
   rarity: 'rare',
@@ -316,7 +317,6 @@ describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
       requiredTags: [],
       statModifiers: {
         powerFraction: { 'high-strung-na': 0, 'lazy-na': 0, forced: 0 },
-        handling: 8,
         style: 3,
       },
       physicalModifiers: { grip: 1, braking: 1, mass: 1 },
@@ -410,7 +410,6 @@ describe('installedPartsValueYen', () => {
     requiredTags: [],
     statModifiers: {
       powerFraction: { 'high-strung-na': 0, 'lazy-na': 0, forced: 0 },
-      handling: 8,
       style: 3,
     },
     physicalModifiers: { grip: 1, braking: 1, mass: 1 },
@@ -586,7 +585,6 @@ describe('marketValueYen scales the aftermarket premium by foundationFactor (Spr
     requiredTags: [],
     statModifiers: {
       powerFraction: { 'high-strung-na': 0.02, 'lazy-na': 0.03, forced: 0.05 },
-      handling: 0,
       style: 4,
     },
     physicalModifiers: { grip: 1, braking: 1, mass: 1 },

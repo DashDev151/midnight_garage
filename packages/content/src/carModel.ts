@@ -146,6 +146,27 @@ export const CarModelSchema = z
          * `culture`. The roster spans 42 to 96.
          */
         styleCeiling: z.number().min(0).max(100),
+        /**
+         * How much of a fitted aero part's downforce this body can actually
+         * work: a 0-to-1 multiplier on whatever the aero grade delivers
+         * (`effectiveDownforce`). 1.0 means the part performs exactly as
+         * authored; a kei box at 0.20 keeps a fifth of it, so the same wing
+         * transforms an FD and does almost nothing to a Wagon R. It scales the
+         * downforce only, never the drag that comes with it, which is why a
+         * wing on the wrong car is worse than no wing at all.
+         *
+         * The question it answers is what a body can be made to DO - shape,
+         * floor, and whether real aerodynamic development sits behind it - and
+         * not how fast, expensive or desirable the car is. Several of the most
+         * desirable cars on the roster sit near the bottom because they have no
+         * aerodynamic development behind them at all, which is the correct
+         * reading rather than a gap to be closed.
+         *
+         * Authored per car for all 94 roster rows. Required, not defaulted, on
+         * the same footing as `reliabilityBase` and `styleBase`: a car added
+         * later cannot silently inherit a value nobody chose.
+         */
+        aeroCeiling: z.number().min(0).max(1),
         weightDistributionFront: z.number().gte(30).lte(70).optional(),
         wheelbaseMm: z.number().int().positive().optional(),
         comHeightMm: z.number().int().positive().optional(),

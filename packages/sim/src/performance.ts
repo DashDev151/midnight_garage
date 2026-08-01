@@ -412,6 +412,13 @@ export function aeroGripMultiplier(v: number, downforceCoeff: number, aero: Aero
  * same slot - the factory item came off). Anything else, including a cosmetic or
  * body-panel SKU in the aero slot, leaves the car on its own factory downforce
  * at no extra drag, since a published Cd already includes the factory bodywork.
+ *
+ * The car's own `spec.aeroCeiling` scales what a fitted part's downforce is
+ * worth, so the same wing is transformative on a body with real aerodynamic
+ * potential and nearly inert on one without. It scales the downforce ONLY: the
+ * drag arrives in full whatever the body, which is what makes a wing on the
+ * wrong car a straight loss. It never touches the factory figure, so a stock
+ * car reads exactly as it is measured.
  */
 export function effectiveDownforce(
   car: CarInstance,
@@ -422,7 +429,13 @@ export function effectiveDownforce(
   const installed = car.parts.aero?.installed
   if (installed) {
     const part = partsById[installed.partId]
-    if (part?.aeroFunctional) return aero.byGrade[part.grade]
+    if (part?.aeroFunctional) {
+      const graded = aero.byGrade[part.grade]
+      return {
+        downforceCoeff: graded.downforceCoeff * model.spec.aeroCeiling,
+        dragCdDelta: graded.dragCdDelta,
+      }
+    }
   }
   return factoryAeroOf(model, aero)
 }

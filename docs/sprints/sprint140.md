@@ -269,48 +269,176 @@ No new lever, no new content value, no sign-off needed.
 
 ## Definition of done
 
-- [ ] `statModifiers.handling` gone from schema, sim and all 472 SKUs.
-- [ ] `StatModifierSchema` carries `style` and `authenticity` only, asserted.
-- [ ] The parts market shows a power percentage when a car is selected, resolved against that
+- [x] `statModifiers.handling` gone from schema, sim and all 472 SKUs.
+- [x] `StatModifierSchema` carries `style` and **`powerFraction`** only, asserted. **The line above
+      originally read "`style` and `authenticity`" and was stale on both counts**:
+      `statModifiers.authenticity` was retired in Sprint 151 and is in the retired-identifier
+      ledger, and `powerFraction` is the surviving power path from Sprint 135.
+- [x] The parts market shows a power percentage when a car is selected, resolved against that
       car's own character and stock output, and shows nothing at all when none is.
-- [ ] `StatBlock` still carries all five stats; buyers still weight reliability.
-- [ ] Handling still responds to condition and to grip parts, proved by test.
-- [ ] Reliability provably unmoved by this sprint, all 26 cars, strict equality.
-- [ ] The schema-sharing check done, following whatever Sprints 135 and 136 decided, and its
+- [x] `StatBlock` still carries all five stats; buyers still weight reliability.
+- [x] Handling still responds to condition and to grip parts, proved by test.
+- [x] Reliability provably unmoved by this sprint, all 26 cars, strict equality.
+- [x] The schema-sharing check done, following whatever Sprints 135 and 136 decided, and its
       outcome recorded in the Exit.
 - [x] `styleBase` authored to all 94 rows in the roster CSV (Task 0's style half) - `docs/sprints/sprint_archive/sprint145.md`.
-- [ ] `aeroCeiling` authored to all 94 rows in the roster CSV (Task 0's remaining half).
+- [x] `aeroCeiling` authored to all 94 rows in the roster CSV (Task 0's remaining half).
 - [x] Lever 2 (`styleBase`) signed and landed - `docs/sprints/sprint_archive/sprint145.md`.
-- [ ] Lever 1 (`aeroCeiling`) signed and recorded, or Task 2 deferred with that stated.
-- [ ] `aeroCeiling` required on the spec schema and authored for all 26 cars.
+- [ ] **Lever 1 (`aeroCeiling`) NOT signed.** The 94 values are authored and PRELIMINARY at the
+      maintainer's instruction to produce figures that unblock the sprint. Recorded as
+      authored-and-preliminary in the approval-gate ledger, to be re-recorded as RATIFIED on
+      signature. **This is the one box this sprint cannot tick for itself.**
+- [x] `aeroCeiling` required on the spec schema and authored for all 26 cars.
 - [x] `styleBase` required on the spec schema and authored for all 26 cars - `docs/sprints/sprint_archive/sprint145.md`.
 - [x] `statFormulas.styleCap` removed, not orphaned - `docs/sprints/sprint_archive/sprint145.md`.
-- [ ] A wing on a Wagon R does very little; the same wing on an FD does a lot; both pinned.
-- [ ] `harnessAcceptance.test.ts` passes untouched.
-- [ ] Every moved price pin re-derived from a real run (the `styleBase` share of this is done -
-      `docs/sprints/sprint_archive/sprint145.md`; the `aeroCeiling` share is still open).
-- [ ] Checks run once each, output shown.
+- [x] A wing on a Wagon R does very little; the same wing on an FD does a lot; both pinned.
+- [x] `harnessAcceptance.test.ts` passes untouched.
+- [x] Every moved price pin re-derived from a real run (the `styleBase` share of this is done -
+      `docs/sprints/sprint_archive/sprint145.md`; the `aeroCeiling` share moved nothing).
+- [x] Checks run once each, output shown.
+
+## The `aeroCeiling` authoring pass (68 values, PRELIMINARY)
+
+Authored against the rubric above, calibrated on the 26 that already existed, and explicitly
+preliminary: the maintainer asked for figures good enough to unblock the sprint, to be reviewed
+rather than taken as signed. The values live in the roster CSV; what follows is the reasoning for
+the calls the rubric does not make on its own.
+
+**The rule the column is authored to.** `aeroCeiling` asks what a body can be made to DO, which is
+a question about shape, floor and the presence of real aerodynamic development. It is not a
+question about how good, fast, expensive or desirable the car is, and it must not become a second
+performance ranking. Several of the most desirable cars on the roster sit near the bottom.
+
+**The classics ruling, applied.** Hakosuka 0.30, Kenmeri 0.30, 2000GT 0.30, Cosmo Sport 0.35, 510
+Bluebird 0.35, Z432 0.40, Mini Cooper S 0.20. No aerodynamic development and no period aero
+aftermarket worth the name. Low on physics while high on desirability is the correct reading and
+is not a mistake to be fixed.
+
+**One deliberate exception to it: the 240ZG at 0.55.** Unlike the other classics it was a
+homologation model built with aero intent, so the G-nose, the over-fenders and the rear spoiler
+are real rather than decorative. It earns a place above the classic floor and below the modern
+sports shapes.
+
+**The aero homologation specials score on their bodywork, not their tier.** 190E 2.5-16 Evolution
+II 0.95, Escort RS Cosworth 0.95, Evo VI Tommi Makinen 0.95, Impreza 22B 0.95, Evo VIII MR 0.95,
+E30 M3 0.90, Celica GT-Four ST205 0.90. These are cars whose shells were shaped to make downforce,
+and the column should say so.
+
+**The 1.00 club stays at eight**: FD3S, FD3S Spirit R, Supra RZ, BNR32, BCNR33, BNR34, R35, LFA.
+The rubric wants a real factory wing AND a genuine period aftermarket behind it. The 190E and the
+Escort have the first and, in this game's setting, not the second, so they sit at 0.95 rather than
+joining it.
+
+**Two comedy calls, both deliberate.** The Countach sits at 0.50: its aerodynamics were famously
+poor and its wing cost more top speed than it bought grip, so it is the exotic equivalent of the
+classics ruling. The Pajero Evolution sits at 0.35, the top of the boxes band: genuine Dakar
+homologation aero addenda bolted to a brick earns the top of that band and nothing above it.
+
+**The 0.20 floor is the Wagon R's and nothing goes below it**, so it stays the reference joke.
+Sharing it: Acty truck, S-Cargo, Delica Star Wagon, Jimny, Safari, Land Cruiser 70, Today, Mini.
+A kei truck is arguably worse aerodynamically than a tall hatch, and if the maintainer wants a
+true floor beneath the Wagon R that is a one-value change.
+
+**Roadsters are capped by having no roof to work and a short rear deck**: Cappuccino 0.40, Copen
+0.40, NA Roadster 0.50, S2000 0.70. The S2000 sits highest because it is the only one of them
+developed as a serious circuit car.
+
+**One data oddity noticed while authoring, not fixed**: roster row 74, the Fairlady Z badged
+`Z33, '02`, carries `yearFrom` 1994 and `curbWeightKg` 1520, which are row 58's figures for the
+Z32 exactly. The Z33 is a 2002 car. Its `dragCd` does differ (0.30 against the Z32's 0.378), so
+the row is not a wholesale duplicate. Nothing in this sprint reads either field, so it is reported
+rather than changed.
 
 ## Exit
 
-**Partial, and this sprint is still open.** It cannot have a full Exit yet, because only one of
-its two halves has run.
+**Built and ready for review. One thing outstanding and it is the maintainer's: Lever 1's
+signature.** The 94 `aeroCeiling` values are authored and PRELIMINARY, produced on the
+maintainer's instruction to unblock the sprint rather than to close directive 22. Everything else
+is done.
 
-**What has landed, and where its record is.** The whole `styleBase` half (Task 0's style share,
-Lever 2, Task 3, and the `styleCap`-retirement share of Task 6) shipped early inside
-`docs/sprints/sprint_archive/sprint145.md`, pulled forward because Sprint 146's buyer targets on
-style could not be authored while every stock car scored the same. **That doc's Exit is the
-permanent record of it; this one does not restate it.** All 94 roster rows carry a `styleBase`,
-`spec.styleBase` is required on the schema and authored for all 26 shipped cars,
-`statFormulas.styleCap` is retired into the ledger, and the checkboxes above are ticked
-accordingly.
+**The `styleBase` half is not restated here.** It shipped early inside
+`docs/sprints/sprint_archive/sprint145.md` and that doc's Exit is its permanent record.
 
-**What is still open**, and what this sprint is waiting on:
+### 1. A wing on a Wagon R is now a bad idea
 
-- **Task 2, `aeroCeiling`: blocked twice over.** Authored for 26 of the 94 roster cars, which
-  directive 24 makes the wrong scope, and the lever is unsigned under directive 22. Task 0's
-  `aeroCeiling` share closes the first; only the maintainer closes the second.
-- **Task 1, the stat simplification**, and the `aeroCeiling` share of Tasks 4 and 6.
+The whole point of Lever 1, measured with one SKU (`mikoshi-gt-wing`, race grade, downforce 1.2,
+drag +0.09) bolted to both ends of the roster:
 
-This Exit is completed when that work runs. Until then this doc stays in `docs/sprints/`, not in
-the archive.
+| | ceiling | downforce delivered | Misaki | Wangan | Hakone | Yatabe |
+| --- | ---: | ---: | --- | --- | --- | --- |
+| Wagon R (CT21S) | 0.20 | **0.24** | -0.1 | **-0.7** | -0.3 | **-0.7** |
+| RX-7 (FD3S) | 1.00 | **1.20** | **+4.2** | **+4.7** | +1.2 | -0.3 |
+
+**The wing is a straight loss on the Wagon R on every course**, because the ceiling scales the
+downforce while the drag arrives in full. Without the ceiling the same wing gained the Wagon R
+0.71s at Misaki and 0.77s at Hakone. It now costs it time everywhere, which is the joke landing
+without anyone having to write a special case for silly cars.
+
+The handling readout follows: with a sport wing the Wagon R reads 13 rather than 18, the S14
+(0.85) reads 39 rather than 40, and the FD (1.00) is unmoved at 42.
+
+### 2. Stock cars are untouched, all 26
+
+Asserted directly rather than inferred: a stock mint instance's `effectiveDownforce` equals
+`factoryDownforceCoeff` exactly, and is byte-identical with the model's ceiling forced to 0, which
+would flatten every factory figure if the two paths were joined. **15 of the 26 carry a measured
+factory downforce and 13 of those sit below 1.00**, so the check has teeth rather than passing
+vacuously. Shown lap time is asserted identical on all 26 cars across all four courses.
+`harnessAcceptance.test.ts` passed untouched, run explicitly.
+
+### 3. The stat simplification, and what it revealed
+
+`statModifiers.handling` is gone from the schema, the sim and all 472 SKUs.
+
+**The schema-sharing risk did not materialise, because Sprint 135 had already resolved it.**
+`StatWeightsSchema` (the taxonomy's five condition-weight columns) and `StatModifierSchema` (a
+part's own deltas) have been separate objects since then, and Sprint 136 followed that split when
+it deleted `reliability`. `weightedBandFactorForStat(..., 'handling', ...)` reads
+`entry.statWeights.handling`, which never touched the deleted field. No split was needed and none
+was made. Both halves are now asserted, including that `StatWeightsSchema` still carries all five
+columns and still rejects an unknown key.
+
+**The measured effect is larger than the sprint expected.** The additive column was saturating the
+stat: a full race chassis build read **exactly 100 handling on all 26 cars**, at mint and at worn
+alike. It now spreads **42 (Wagon R) to 71 (Supra)** at mint and 15 to 32 at worn, against a stock
+spread of 12 to 41. The stat discriminates between cars again instead of pegging at its ceiling,
+which is the real reason the second path had to go rather than merely being a duplicate.
+
+Reliability is provably unmoved: the baseline was measured BEFORE the deletion, on a build filling
+all 14 slots that carried the field at race grade, and every one of the 26 cars reads strict
+equality at mint and at worn.
+
+### 4. What moved
+
+**One pin, and it is not a price.** `street-power-street-manners`'s
+`tasteMatch(tuner).minMultiplier` went 1.08 to 1.06, which is `round2At97Percent` of the freshly
+measured taste ratio per the probe's own stated formula: handling is a buyer-weighted stat and 148
+SKUs stopped contributing to it. Directive 17 case (a), explicitly not hash-gated, and recorded in
+the approval-gate ledger.
+
+**Nothing else.** No payout, no budget cap, no `economy.json` or `partPricing.json` value, and no
+part price or bill threshold, so `enforceMinWorkBill` drew the same PRNG steps and the three
+seeded auction-demo suites pass untouched. No valuation or sale-price pin moved either:
+`marketValueYen` takes no stats, so a downforce ceiling cannot reach it.
+
+Five sim fixtures and two reference chassis gained an `aeroCeiling` line. **Neither directive 17
+case applies to those**: no test failed and no assertion changed, a newly required schema field
+simply stopped incomplete object literals compiling.
+
+### 5. The roster guard grew teeth
+
+Proved by mutation rather than asserted: changing the Wagon R's 0.20 to 0.25 fails the guard, and
+the change was reverted. Two checks were added in the same file, because a blank cell would parse
+as 0 and silently kill a car's wing: every one of the 94 rows carries an in-band value, and the two
+authored ends are pinned (the 0.20 floor is the Wagon R's, and the 1.00 club is eight cars).
+
+### 6. Flagged, deliberately not changed
+
+- **`nissan-fairlady-z-z32` at 0.95** sits above the FC3S and SW20 (0.90) and level with the
+  homologation specials, which reads generous for a heavy GT.
+- **`toyota-sera-exy10` at 0.45** is the one coupe below the 0.65-0.80 coupe band. Defensible for a
+  Starlet-based glasshouse, but it is the single value outside its rubric band.
+- **Pre-existing and untouched by this sprint**: `honda-city-e-aa`'s measured lateral pair
+  (0.86 rising to 0.97) implies a factory downforce coefficient of **1.004** on a 63 PS 1984 city
+  car, which is near race-wing levels. The ceiling deliberately does not scale factory figures, so
+  this sprint leaves it exactly as it found it, but it is an artefact worth an eye.

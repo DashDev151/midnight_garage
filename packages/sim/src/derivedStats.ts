@@ -497,14 +497,17 @@ export function reliabilityIntensityFactor(
  * `authenticityPercentOf` above, whole: originality times condition, both read
  * off the taxonomy's one authenticity weight column.
  *
- * **Only power and handling accumulate per-part.** Style, reliability and
+ * **Only power accumulates per-part.** Handling, style, reliability and
  * authenticity are each derived whole above and never enter the loop, so the
- * loop below reads a car's fitted SKUs for exactly two quantities.
+ * loop below reads a car's fitted SKUs for exactly one quantity.
  *
  * Handling's mint base is the grip readout (`gripToDisplay`) at the fitted
  * tyre's effective compound and the downforce the car is actually running, less
- * a balance penalty; condition and part modifiers then scale and adjust it
- * exactly like every other stat. The grip it reads is `effectiveGrip`, the same
+ * a balance penalty; the taxonomy's condition weighting then scales it. A
+ * fitted part reaches handling ONLY through the grip and the downforce it
+ * moves, never as a flat addition on top: `physicalModifiers.grip` already
+ * carries the whole of what a suspension upgrade does, and a second additive
+ * column would charge one upgrade twice. The grip it reads is `effectiveGrip`, the same
  * quantity the lap model corners on, through the same condition AND build
  * factors the lap runs on, so a car whose grip was measured cannot show a
  * handling number its own lap time disagrees with, worn or built.
@@ -559,7 +562,7 @@ export function computeDerivedStats(
       aero,
     ) -
     grip.balance.weight * Math.abs(balanceOf(model, grip))
-  let handling = mintHandling * handlingFraction
+  const handling = mintHandling * handlingFraction
 
   // Style takes no per-part addition at all: an installed part closes part of
   // the gap between the car's own base and its own ceiling rather than adding
@@ -624,7 +627,6 @@ export function computeDerivedStats(
 
     const wear = bandFactor(installed.band, economy)
     power += model.spec.stockPowerPs * part.statModifiers.powerFraction[engineCharacter] * wear
-    handling += part.statModifiers.handling * wear
   }
 
   return {

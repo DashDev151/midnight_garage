@@ -239,10 +239,17 @@ function measuredFromFor(row) {
  * research entry. `culture` is the same case one step further out: it reaches
  * only auction generation's care profile, which a research entry never enters,
  * and `oddball` is the honest label for a car with no authored scene.
+ *
+ * `aeroCeiling` is the one required per-car constant the sandbox DOES read: it
+ * scales what a fitted aero part's downforce is worth, and the sandbox fits
+ * parts. A research entry therefore carries the NEUTRAL 1.0 rather than a
+ * placeholder, so its aero performs exactly as the grade authors it instead of
+ * at a per-car fraction nobody chose.
  */
 const RESEARCH_RELIABILITY_BASE_PLACEHOLDER = 85
 const RESEARCH_STYLE_BASE_PLACEHOLDER = 12
 const RESEARCH_STYLE_CEILING_PLACEHOLDER = 12
+const RESEARCH_AERO_CEILING_NEUTRAL = 1
 const RESEARCH_CULTURE_PLACEHOLDER = 'oddball'
 function synthesiseModel(row) {
   const displayName = displayNameFor(row)
@@ -279,6 +286,7 @@ function synthesiseModel(row) {
       reliabilityBase: RESEARCH_RELIABILITY_BASE_PLACEHOLDER,
       styleBase: RESEARCH_STYLE_BASE_PLACEHOLDER,
       styleCeiling: RESEARCH_STYLE_CEILING_PLACEHOLDER,
+      aeroCeiling: RESEARCH_AERO_CEILING_NEUTRAL,
       quotedPowerPs: omitNull(row.q),
       powerRpm: omitNull(row.psr),
       peakTorqueNm: omitNull(row.tq),
@@ -346,10 +354,11 @@ const header = `/**
  * section, \`tyreCompound\` from the stock tyre and the build year, and the
  * layout/induction/engine tags from the book's own drivetrain, engine position
  * and aspiration - all of which the physics reads. \`chassisCode\`,
- * \`bookValueYen\`, \`reliabilityBase\`, \`styleBase\`, \`styleCeiling\`, \`culture\` and the
- * parody names are
- * placeholders that nothing reads, which is why the sandbox shows a research
- * entry no price rather than a made-up one.
+ * \`bookValueYen\`, \`reliabilityBase\`, \`styleBase\`, \`styleCeiling\`, \`culture\` and
+ * the parody names are placeholders that nothing reads, which is why the
+ * sandbox shows a research entry no price rather than a made-up one.
+ * \`aeroCeiling\` is neutral rather than a placeholder: the sandbox does read it,
+ * so a research entry runs a fitted aero part at exactly its authored value.
  *
  * Dev-only data. It is imported by the sandbox screen alone, which is reachable
  * only through the \`import.meta.env.DEV\` gate in \`router/index.ts\`, so a

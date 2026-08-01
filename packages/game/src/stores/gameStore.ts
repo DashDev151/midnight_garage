@@ -24,6 +24,7 @@ import type {
   ComponentId,
   ConditionBand,
   DayLogEntry,
+  EngineCharacter,
   FusePreset,
   GameState,
   Grade,
@@ -88,6 +89,7 @@ import {
   deriveReputationTier,
   displayedBandFor,
   emptyDayActions,
+  engineCharacterOf,
   expectationForCar,
   coherenceFactorFor,
   externalBlockersFor,
@@ -627,6 +629,12 @@ export interface PartsFitVehicleOption {
   id: string
   label: string
   fitmentClass: PartFitmentClass | null
+  /** The car's engine response character, which is what decides how much
+   * power any engine SKU is worth on it (`statModifiers.powerFraction` is
+   * authored per character). The parts catalogue reads this to show a power
+   * figure once a vehicle is picked; `null` when the car's model cannot be
+   * resolved, and the catalogue then shows no power figure at all. */
+  engineCharacter: EngineCharacter | null
 }
 
 /** The reputation half of the Standing screen. */
@@ -1212,6 +1220,7 @@ export const useGameStore = defineStore('game', () => {
         id: car.id,
         label: model ? resolveCarDisplayName(model) : car.modelId,
         fitmentClass: model ? fitmentClassForTier(model.tier) : null,
+        engineCharacter: model ? engineCharacterOf(model, context.value.economy) : null,
       }
     })
     const customer = gameState.value.activeServiceJobs.map((job) => {
@@ -1226,6 +1235,7 @@ export const useGameStore = defineStore('game', () => {
         id: job.car.id,
         label: `${name}${suffix}`,
         fitmentClass: model ? fitmentClassForTier(model.tier) : null,
+        engineCharacter: model ? engineCharacterOf(model, context.value.economy) : null,
       }
     })
     return [...owned, ...customer]

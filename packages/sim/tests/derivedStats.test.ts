@@ -28,6 +28,7 @@ const model: CarModel = {
     // between how it looks stock and the best it could ever look.
     styleBase: 23,
     styleCeiling: 66,
+    aeroCeiling: 1,
   },
   tier: 'entry',
   rarity: 'common',
@@ -48,7 +49,6 @@ const coilovers: Part = {
   requiredTags: [],
   statModifiers: {
     powerFraction: { 'high-strung-na': 0, 'lazy-na': 0, forced: 0 },
-    handling: 8,
     style: 3,
   },
   physicalModifiers: { grip: 1, braking: 1, mass: 1 },
@@ -82,8 +82,12 @@ describe('computeDerivedStats', () => {
     }
     const withPart = stats(instance, { [coilovers.id]: coilovers })
     const stock = stats(baseInstance)
-    expect(withPart.handling).toBe(stock.handling + 8)
-    // Style is the one modifier that is not an addition: the part's 3 points
+    // No stat is added outright any more: this SKU moves no physical dial
+    // (grip 1.0), so the handling readout it feeds is exactly where the stock
+    // part left it. `handlingModel.test.ts` owns the two routes a part DOES
+    // reach handling by.
+    expect(withPart.handling).toBe(stock.handling)
+    // Style is not an addition either: the part's 3 points
     // are spent CLOSING the gap between this car's own base and its own
     // ceiling, so 3 of the 60 saturation points buys 5 per cent of the 43
     // points of headroom rather than 3 points outright. `style.test.ts` owns
@@ -126,8 +130,11 @@ describe('computeDerivedStats', () => {
     const stock = stats(baseInstance)
     const mint = stats(mintInstalled, { [coilovers.id]: coilovers })
     const worn = stats(wornInstalled, { [coilovers.id]: coilovers })
-    expect(worn.handling).toBeGreaterThan(stock.handling)
-    expect(worn.handling).toBeLessThan(mint.handling)
+    // Style is the stat this SKU carries, and its points are scaled by the
+    // part's own band before they are spent closing the car's style gap - so
+    // a worn one buys some of that gap, and less of it than a mint one.
+    expect(worn.style).toBeGreaterThan(stock.style)
+    expect(worn.style).toBeLessThan(mint.style)
   })
 
   it('power never goes negative even with a large negative part modifier', () => {
@@ -140,7 +147,6 @@ describe('computeDerivedStats', () => {
       carPartId: 'block',
       statModifiers: {
         powerFraction: { 'high-strung-na': 0, 'lazy-na': -10, forced: 0 },
-        handling: 0,
         style: 0,
       },
     }
@@ -174,8 +180,7 @@ describe('computeDerivedStats', () => {
       id: 'race-coilovers',
       statModifiers: {
         powerFraction: { 'high-strung-na': 0, 'lazy-na': 0, forced: 0 },
-        handling: 20,
-        style: 0,
+        style: 20,
       },
     }
     const instance: CarInstance = {
@@ -193,13 +198,13 @@ describe('computeDerivedStats', () => {
       },
     }
     // The same slot, same band, resolved against a catalogue that knows the
-    // SKU and one that does not: handling moves (the SKU carries a modifier),
+    // SKU and one that does not: style moves (the SKU carries points),
     // authenticity does not (nothing about that SKU is an authenticity
     // number - only whether it resolves to `grade: 'stock'`, which it never
     // does either way here).
     const known = stats(instance, { [loudPart.id]: loudPart })
     const unknown = stats(instance, {})
-    expect(known.handling).toBeGreaterThan(unknown.handling)
+    expect(known.style).toBeGreaterThan(unknown.style)
     expect(known.authenticity).toBe(unknown.authenticity)
   })
 

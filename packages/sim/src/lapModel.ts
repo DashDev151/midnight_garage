@@ -58,6 +58,10 @@ function referenceCarModel(weightKg: number, powerPs: number): CarModel {
       reliabilityBase: 90,
       styleBase: 12,
       styleCeiling: 12,
+      // Read by nothing either: the ceiling scales a FITTED aero part and the
+      // reference chassis runs on its own bodywork alone. Neutral, so the board
+      // would read the same if one were ever fitted.
+      aeroCeiling: 1,
       engineConfig: 'I4',
       aspiration: 'NA',
       weightDistributionFront: 53,

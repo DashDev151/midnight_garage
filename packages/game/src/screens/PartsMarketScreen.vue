@@ -2,6 +2,7 @@
 import type {
   CarPartId,
   ComponentId,
+  EngineCharacter,
   Grade,
   Part,
   PartFitmentClass,
@@ -121,9 +122,15 @@ const vehicleFilter = ref<string>('')
 // car that isn't physically in the shop yet.
 const vehicleOptions = computed(() => game.partsFitVehicleOptions)
 
+/** Whichever car the "fits this vehicle" picker is pointed at, or `null` when
+ * none is - the one resolution of that id, shared by the class shortcut below
+ * and the power figure on each catalogue row. */
+const selectedVehicle = computed(
+  () => vehicleOptions.value.find((v) => v.id === vehicleFilter.value) ?? null,
+)
+
 function onVehicleFilterChange(): void {
-  const chosen = vehicleOptions.value.find((v) => v.id === vehicleFilter.value)
-  classFilter.value = chosen?.fitmentClass ?? ''
+  classFilter.value = selectedVehicle.value?.fitmentClass ?? ''
 }
 
 /** Hero click: home -> a specific department's catalog view. */
@@ -190,24 +197,46 @@ function fitsAnyOwnedCar(part: Part): boolean {
 }
 
 /**
- * Power, reliability and authenticity are all absent from this badge
- * deliberately. Power is not a flat PS delta a part carries on its own, but a
- * fraction of the fitted CAR's own stock power that depends on that car's
- * engine character (`powerFraction`) - this generic catalog listing has no car
- * in view, so there is no honest single number to show here. Reliability is
- * not a per-part delta at all any more: a part does not add reliability,
- * the build supports its own output or it does not
+ * What a SKU is worth in power ON THE SELECTED CAR, as a percentage of that
+ * car's own stock output: `powerFraction` is authored per engine character,
+ * and `computeDerivedStats` spends it as `stockPowerPs * fraction`, so the
+ * percentage is the fraction and the car's own stock power is the thing it is
+ * a percentage OF. Returns `null` with no car picked, because the same SKU is
+ * worth an order of magnitude more on a turbo than on a high-strung NA engine
+ * and a catalogue with no car in view has nothing true to say about which.
+ *
+ * The figure is honest as shown and carries no caveats. Support does not gate
+ * power - an unsupported build makes its full power and pays for it in
+ * reliability (`packages/sim/src/support.ts`) - so nothing here is
+ * conditional on the rest of the build. Condition DOES scale what a fitted
+ * part delivers, but a catalogue SKU is not fitted and not worn; the car's
+ * own build view is where an installed part's band is shown.
+ */
+function powerPercent(part: Part): number | null {
+  const character: EngineCharacter | null = selectedVehicle.value?.engineCharacter ?? null
+  if (!character) return null
+  const fraction = part.statModifiers.powerFraction[character]
+  return fraction === 0 ? null : Math.round(fraction * 100)
+}
+
+/**
+ * Reliability and authenticity are both absent from this badge deliberately.
+ * Reliability is not a per-part delta at all any more: a part does not add
+ * reliability, the build supports its own output or it does not
  * (`packages/sim/src/support.ts`). Authenticity likewise: it is a fact about
  * how much of the car is still original, so fitting ANY non-stock part costs
  * that slot's whole authenticity weight, which is a property of the slot
- * rather than of this SKU.
+ * rather than of this SKU. Handling is absent for a third reason: a part
+ * reaches it only through the grip it moves, which is a physical modifier
+ * rather than a stat delta.
  */
 function statSummary(part: Part): string {
-  return (['handling', 'style'] as const)
-    .map((k) => ({ k, v: part.statModifiers[k] }))
-    .filter((s) => s.v !== 0)
-    .map((s) => `${s.k[0]!.toUpperCase()}${s.v > 0 ? '+' : ''}${s.v}`)
-    .join(' ')
+  const signed = (value: number): string => `${value > 0 ? '+' : ''}${value}`
+  const entries: string[] = []
+  const power = powerPercent(part)
+  if (power !== null) entries.push(`P${signed(power)}%`)
+  if (part.statModifiers.style !== 0) entries.push(`S${signed(part.statModifiers.style)}`)
+  return entries.join(' ')
 }
 
 /** `panels`/`paint`/`underbody`'s own stock SKU stays in the catalogue (the

@@ -724,6 +724,80 @@ describe('reliability model: monotonicity', () => {
   })
 })
 
+/**
+ * Reliability reads a car's parts for their CONDITION and their GRADE, never
+ * for a stat delta, and the retirement of the last additive stat column (the
+ * flat per-part handling number) must therefore leave it bit-for-bit alone.
+ * The build below is the sharp case: every slot that used to carry that
+ * column, fitted at race grade, so if the two ever shared a path this table
+ * is where it would show. Both figures were measured before the column was
+ * removed and are asserted with strict equality.
+ */
+describe('reliability model: unmoved by the handling retirement', () => {
+  /** The fourteen chassis, wheel, body and interior slots - none of them a
+   * gain slot, so a mint build of them reads exactly the car's own base and
+   * the whole table below is condition alone. */
+  const RACE_CHASSIS: Partial<Record<CarPartId, 'race'>> = {
+    gearbox: 'race',
+    differential: 'race',
+    chassis: 'race',
+    dampers: 'race',
+    springs: 'race',
+    antiRollBars: 'race',
+    steering: 'race',
+    brakePadsDiscs: 'race',
+    brakeCalipersLines: 'race',
+    rims: 'race',
+    panels: 'race',
+    underbody: 'race',
+    aero: 'race',
+    seats: 'race',
+  }
+
+  it("at mint reads exactly the car's own base, all 26 shipped cars", () => {
+    for (const model of CARS) {
+      const car = carWithGrades(model, CONTEXT, RACE_CHASSIS, 'mint')
+      expect(stats(car, model).reliability, model.id).toBe(model.spec.reliabilityBase)
+    }
+  })
+
+  it('at worn reads the same 26 figures it read before, strict equality', () => {
+    const WORN_EXPECTED: Record<string, number> = {
+      'honda-beat-pp1': 59,
+      'honda-city-e-aa': 64,
+      'honda-city-turbo-ii-aa': 57,
+      'honda-civic-sir2-eg6': 63,
+      'honda-crx-sir-ef8': 62,
+      'honda-prelude-si-vtec-bb4': 62,
+      'mazda-rx7-fd3s': 52,
+      'mazda-savanna-rx7-fc3s': 53,
+      'nissan-180sx-rps13': 60,
+      'nissan-cefiro-a31': 60,
+      'nissan-fairlady-z-z32': 55,
+      'nissan-silvia-ks-s14': 60,
+      'nissan-silvia-s13': 60,
+      'nissan-skyline-gtr-bnr32': 58,
+      'nissan-sunny-b12': 64,
+      'subaru-impreza-wrx-sti-gc8': 56,
+      'suzuki-alto-works-ha21s': 59,
+      'suzuki-wagon-r-ct21s': 64,
+      'toyota-aristo-30v-jzs147': 62,
+      'toyota-carina-at150': 65,
+      'toyota-chaser-tourer-v-jzx90': 61,
+      'toyota-mr2-aw11': 60,
+      'toyota-mr2-sw20': 58,
+      'toyota-sera-exy10': 62,
+      'toyota-sprinter-trueno-ae86': 61,
+      'toyota-supra-rz-jza80': 61,
+    }
+    expect(Object.keys(WORN_EXPECTED).sort()).toEqual(CARS.map((c) => c.id).sort())
+    for (const model of CARS) {
+      const car = carWithGrades(model, CONTEXT, RACE_CHASSIS, 'worn')
+      expect(stats(car, model).reliability, model.id).toBe(WORN_EXPECTED[model.id])
+    }
+  })
+})
+
 describe('reliability model: statFormulas.reliabilityCap is retired', () => {
   it('economy.json no longer carries statFormulas.reliabilityCap', () => {
     expect('reliabilityCap' in ECONOMY.statFormulas).toBe(false)

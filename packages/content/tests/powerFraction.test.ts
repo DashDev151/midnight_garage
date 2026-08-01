@@ -185,7 +185,7 @@ describe('powerFraction catalogue completeness (Sprint 135)', () => {
       carPartId: 'intake',
       fitmentClass: 'everyday',
       grade: 'race',
-      statModifiers: { handling: 0, style: 0, authenticity: 0 },
+      statModifiers: { style: 0 },
     }
     expect(() => PartCatalogEntrySchema.parse(withoutPowerFraction)).toThrow()
   })
@@ -199,9 +199,7 @@ describe('powerFraction catalogue completeness (Sprint 135)', () => {
       fitmentClass: 'everyday',
       grade: 'race',
       statModifiers: {
-        handling: 0,
         style: 0,
-        authenticity: 0,
         powerFraction: { 'high-strung-na': 0.5, 'lazy-na': 0.3 },
       },
     }

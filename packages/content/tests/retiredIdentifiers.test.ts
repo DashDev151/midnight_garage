@@ -60,6 +60,12 @@ const RETIRED_IDENTIFIERS: readonly RetiredIdentifier[] = [
       'A part does not add reliability outright: reliability is condition plus the support-ratio coherence factor (support.ts), never a sum of per-part deltas.',
   },
   {
+    identifier: 'statModifiers.handling',
+    retiredInSprint: 140,
+    reason:
+      'A flat per-part handling delta sitting alongside physicalModifiers.grip, which already moves the quantity the handling readout is built from - the second path PhysicalModifierSchema bans by name for power and downforce, charging one suspension upgrade twice. Every one of the 148 SKUs that carried it saturated the stat: a full race chassis build read exactly 100 handling on all 26 cars. The handling STAT is untouched and so is the taxonomy statWeights.handling column: condition and grip both still reach it through computeDerivedStats.',
+  },
+  {
     identifier: 'reliabilityCap',
     retiredInSprint: 136,
     reason:

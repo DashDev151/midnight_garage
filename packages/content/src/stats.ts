@@ -63,7 +63,7 @@ export const PowerFractionSchema = z.object({
   forced: z.number(),
 })
 
-/** A part's effect on the two stats it still moves - deltas, so any sign, no
+/** A part's effect on the stats it still moves - deltas, so any sign, no
  * change by default. `power` retired in favour of `powerFraction`
  * (proportional, per-engine-character power) - a flat PS delta could not tell
  * an NA Beat from a twin-turbo Supra apart. `reliability` retired the same
@@ -73,11 +73,15 @@ export const PowerFractionSchema = z.object({
  * for the same class of reason: a part's `grade` already says whether it is
  * the original, so a second per-part authenticity number was a duplicate
  * answer to one question (and every one of the 472 shipped SKUs carried
- * exactly 0). `StatWeightsSchema`'s own `reliability` and `authenticity`
- * columns are untouched - condition and originality both still reach their
- * stats through the taxonomy's weights. */
+ * exactly 0). The flat handling delta retired last: `physicalModifiers.grip`
+ * already moves the quantity the handling readout is built from, and the
+ * additive column on top of it was a second path to the same upgrade, which
+ * `PhysicalModifierSchema` below bans by name for power and downforce. The
+ * handling STAT is untouched - `computeDerivedStats` derives it from grip -
+ * and so are `StatWeightsSchema`'s own handling, reliability and authenticity
+ * columns, so condition and originality still reach their stats through the
+ * taxonomy's weights. */
 export const StatModifierSchema = z.object({
-  handling: z.number().default(0),
   style: z.number().default(0),
   // REQUIRED, not defaulted (Zod is non-strict, so an absent object here
   // would otherwise validate silently and every character's fraction would

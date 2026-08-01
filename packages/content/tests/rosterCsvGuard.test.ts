@@ -23,9 +23,9 @@ import { BUYERS, CAR_CULTURES } from '../src'
  *
  * The four tuning-arc constants - `reliabilityBase`, `styleBase`,
  * `styleCeiling` and `aeroCeiling` - are asserted ONLY once they exist on the
- * shipped model, so this guard grows teeth as each lands (the first three
- * already have; `aeroCeiling` still to come) rather than needing to be
- * rewritten when it does.
+ * shipped model, so this guard grows teeth as each lands rather than needing to
+ * be rewritten when it does. All four are on the shipped model and all four are
+ * therefore asserted against the CSV on every one of the 26.
  */
 const ROSTER_CSV_PATH = join(
   __dirname,
@@ -59,6 +59,14 @@ const RELIABILITY_CEILING = 100
  */
 const STYLE_FLOOR = 0
 const STYLE_CEILING = 100
+/**
+ * The aero ceiling is a 0-to-1 fraction of what a fitted aero part delivers.
+ * The authored column runs from `AERO_JOKE_FLOOR`, which is the Wagon R's and
+ * is deliberately the bottom of the roster, up to a full 1.0.
+ */
+const AERO_FLOOR = 0
+const AERO_CEILING = 1
+const AERO_JOKE_FLOOR = 0.2
 
 /**
  * The CSV's `culture` column is written for a human reading a spreadsheet
@@ -211,6 +219,37 @@ describe('the roster CSV is well formed', () => {
         expect(value, `${where}: ${column}`).toBeLessThanOrEqual(STYLE_CEILING)
       }
     }
+  })
+
+  /**
+   * `aeroCeiling` is a fraction rather than a score: it multiplies what a fitted
+   * aero part's downforce is worth on that body, so 1.0 is "the part performs as
+   * authored" and there is no reading above it. Every row carries one, because a
+   * blank would parse as 0 and silently make a car's wing inert.
+   */
+  it('gives every car an aero ceiling inside the authored band', () => {
+    for (const row of roster) {
+      const where = `roster row ${row.get('rosterNo')} (${row.get('variantLabel')})`
+      const value = row.num('aeroCeiling')
+      expect(row.get('aeroCeiling'), `${where}: aeroCeiling is blank`).not.toBe('')
+      expect(value, where).toBeGreaterThanOrEqual(AERO_FLOOR)
+      expect(value, where).toBeLessThanOrEqual(AERO_CEILING)
+    }
+  })
+
+  /**
+   * The two ends of the column are authored decisions rather than emergent
+   * values, so they are pinned here in the same way the style counts below are:
+   * a count moving is not automatically a failure, but it IS a decision, and it
+   * gets re-pinned alongside the authoring change that moved it.
+   */
+  it('floors the column on the Wagon R and holds the full-effect club at eight', () => {
+    const lowest = Math.min(...roster.map((r) => r.num('aeroCeiling')))
+    expect(lowest).toBe(AERO_JOKE_FLOOR)
+    expect(
+      roster.filter((r) => r.num('aeroCeiling') === lowest).map((r) => r.get('variantLabel')),
+    ).toContain('Suzuki Wagon R (CT21S)')
+    expect(roster.filter((r) => r.num('aeroCeiling') === AERO_CEILING)).toHaveLength(8)
   })
 
   /**

@@ -155,6 +155,102 @@ describe('effectiveDownforce', () => {
   })
 })
 
+describe('the per-car aero ceiling', () => {
+  const RACE_WING = aeroPart('race')
+
+  it('scales a fitted wing by the car’s own ceiling, and never scales its drag', () => {
+    for (const model of CARS) {
+      const fitted = effectiveDownforce(
+        carWithAero(RACE_WING, model.id),
+        model,
+        CONTEXT.partsById,
+        AERO,
+      )
+      expect(fitted.downforceCoeff, model.id).toBe(
+        AERO.byGrade.race.downforceCoeff * model.spec.aeroCeiling,
+      )
+      // The drag arrives in full whatever the body, which is what makes a wing
+      // on the wrong car a straight loss rather than merely a weak gain.
+      expect(fitted.dragCdDelta, model.id).toBe(AERO.byGrade.race.dragCdDelta)
+    }
+  })
+
+  /**
+   * A stock car carries no aero SKU, so there is nothing for the ceiling to
+   * scale and it must read exactly as it is measured. Asserted against the same
+   * car on a model whose ceiling is forced to zero, which would flatten every
+   * factory figure if the fitted and factory paths were ever joined: 15 of the
+   * 26 shipped cars carry measured factory downforce and 13 of those sit below
+   * a ceiling of 1.0, so the check has real teeth rather than being vacuous.
+   */
+  it('leaves a stock car exactly where it was, on all 26 and every course', () => {
+    for (const model of CARS) {
+      const stock = carWithAero(undefined, model.id)
+      const grounded = { ...model, spec: { ...model.spec, aeroCeiling: 0 } }
+      const asShipped = effectiveDownforce(stock, model, CONTEXT.partsById, AERO)
+      expect(asShipped.downforceCoeff, model.id).toBe(factoryDownforceCoeff(model, AERO))
+      expect(asShipped.dragCdDelta, model.id).toBe(0)
+      expect(effectiveDownforce(stock, grounded, CONTEXT.partsById, AERO), model.id).toEqual(
+        asShipped,
+      )
+      for (const course of COURSES) {
+        expect(
+          lapTimeSecondsFor(stock, grounded, CONTEXT, course.id),
+          `${model.id} on ${course.id}`,
+        ).toBe(lapTimeSecondsFor(stock, model, CONTEXT, course.id))
+      }
+    }
+  })
+
+  /**
+   * The widest pair the roster offers, a kei box at 0.20 against an FD at 1.00,
+   * with the SAME race wing on both so the only thing that differs is the body
+   * it is bolted to. The FD keeps all 1.2 of the grade's downforce; the Wagon R
+   * keeps 0.24 of it and pays the full drag either way.
+   *
+   * Which is why the lap goes the way it does: the FD takes four seconds out of
+   * Misaki and the Wagon R LOSES a tenth there and two thirds of a second on the
+   * bayshore. A wing on a kei van is not a small gain, it is a cost.
+   */
+  describe('a wing on a Wagon R against the same wing on an FD', () => {
+    const WAGON_R = CARS.find((c) => c.id === 'suzuki-wagon-r-ct21s')!
+    const FD = CARS.find((c) => c.id === 'mazda-rx7-fd3s')!
+
+    const downforceWith = (model: typeof WAGON_R) =>
+      effectiveDownforce(carWithAero(RACE_WING, model.id), model, CONTEXT.partsById, AERO)
+        .downforceCoeff
+
+    /** The shown lap time (the figure the player reads) stock, then winged. */
+    const shownTimes = (model: typeof WAGON_R, courseId: string) => ({
+      stock: lapTimeSecondsFor(carWithAero(undefined, model.id), model, CONTEXT, courseId)!,
+      winged: lapTimeSecondsFor(carWithAero(RACE_WING, model.id), model, CONTEXT, courseId)!,
+    })
+
+    it('gives the FD five times the downforce it gives the Wagon R', () => {
+      expect(WAGON_R.spec.aeroCeiling).toBe(0.2)
+      expect(FD.spec.aeroCeiling).toBe(1)
+      expect(downforceWith(WAGON_R)).toBeCloseTo(0.24, 10)
+      expect(downforceWith(FD)).toBeCloseTo(1.2, 10)
+    })
+
+    it('costs the Wagon R time on every course', () => {
+      expect(shownTimes(WAGON_R, 'misaki')).toEqual({ stock: 148.9, winged: 149 })
+      expect(shownTimes(WAGON_R, 'wangan')).toEqual({ stock: 201, winged: 201.7 })
+      expect(shownTimes(WAGON_R, 'hakone')).toEqual({ stock: 142.9, winged: 143.2 })
+      expect(shownTimes(WAGON_R, 'yatabe')).toEqual({ stock: 36, winged: 36.7 })
+    })
+
+    it('buys the FD four seconds a lap where the corners are fast', () => {
+      expect(shownTimes(FD, 'misaki')).toEqual({ stock: 106.2, winged: 102 })
+      expect(shownTimes(FD, 'wangan')).toEqual({ stock: 134.8, winged: 130.1 })
+      expect(shownTimes(FD, 'hakone')).toEqual({ stock: 113.7, winged: 112.5 })
+      // The standing kilometre has no corners to pay the drag back, so even the
+      // FD loses there. Downforce is worth nothing in a straight line.
+      expect(shownTimes(FD, 'yatabe')).toEqual({ stock: 24.3, winged: 24.6 })
+    })
+  })
+})
+
 describe('aero in the lap model', () => {
   it("a lap's default aero effect is the car's own factory bodywork, on every car and course", () => {
     for (const model of CARS) {

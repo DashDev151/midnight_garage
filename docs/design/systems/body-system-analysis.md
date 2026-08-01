@@ -558,12 +558,17 @@ beating should be correct.
 
 ## 4.4 `aeroCeiling` versus `styleCeiling`
 
-**`aeroCeiling` does not exist in the game.** It is a column in
-`docs/design/midnight-garage-roster.csv` (index 23, filled on 32 of 94 rows), it is NOT a field on
-`CarModelSchema` (`carModel.ts:144` mentions it only in a doc comment on `styleCeiling`), no key of
-that name appears anywhere in `cars.json`, and `rosterCsvGuard.test.ts:389-397` skips it because its
-own loop does `if (spec[field] === undefined) continue`. **A bodykit cannot do anything to
-`aeroCeiling`, because nothing reads `aeroCeiling`.**
+**`aeroCeiling` is now a real field, and this section's original claim that it was not is
+superseded.** It was measured while the column existed only in
+`docs/design/midnight-garage-roster.csv` and reached no code. Sprint 140 authored it for all 94
+roster rows, made it required on `CarModelSchema`, and had `effectiveDownforce` scale its resolved
+downforce coefficient by it, so the roster guard now has teeth on the column too.
+
+**What that changed about the question below, and what it did not.** A bodykit still cannot move
+`aeroCeiling`: the ceiling describes what a given car's body can be made to do and is authored per
+car, not something a purchased part raises. What it does is scale what an aero SKU delivers once
+fitted, which is why the same wing gains an FD over four seconds a lap and costs a Wagon R time.
+The rest of this section's reading of the aero weights stands as measured.
 
 What actually happens to aero, from the code:
 

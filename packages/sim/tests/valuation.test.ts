@@ -50,6 +50,7 @@ const model: CarModel = {
     reliabilityBase: 94,
     styleBase: 74,
     styleCeiling: 95,
+    aeroCeiling: 1,
   },
   tier: 'flagship',
   rarity: 'rare',
@@ -276,7 +277,7 @@ describe('Sprint 146: taste is a match, not a mean', () => {
     })
     // The same build plus one more style-bearing slot, and deliberately a
     // slot that carries NOTHING else: a race dash is 11 style points with no
-    // handling modifier and no physical modifier at all, so the only thing
+    // power fraction and no physical modifier at all, so the only thing
     // separating these two cars is how far each has closed its own style gap.
     // (Style is no longer additive, so "more excess" cannot be manufactured
     // by fitting a worn part: condition scales the whole result, and a poor

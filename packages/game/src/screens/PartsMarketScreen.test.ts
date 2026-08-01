@@ -220,6 +220,56 @@ describe('PartsMarketScreen', () => {
     expect(wrapper.findAll('.hero-card')).toHaveLength(6)
   })
 
+  /**
+   * The catalogue says nothing about power until it knows which car the part
+   * is going on, because `powerFraction` is authored per engine character and
+   * the same ECU is worth an order of magnitude more on a turbo than on a
+   * high-strung NA engine. A figure the player cannot act on is worse than no
+   * figure, so with no car picked there is no placeholder, no dash and no
+   * range - the field is simply absent.
+   */
+  async function openEcuCatalogue() {
+    const { wrapper } = await mountScreen()
+    await wrapper.find('[data-test="hero-engine"]').trigger('click')
+    await wrapper.find('[data-test="catalog-part-ignitionEcu"]').trigger('click')
+    return wrapper
+  }
+
+  it('shows no power figure at all while no vehicle is picked', async () => {
+    const game = useGameStore()
+    game.devGrantCar('nissan-180sx-rps13')
+    const wrapper = await openEcuCatalogue()
+    expect(wrapper.findAll('.part').length).toBeGreaterThan(0)
+    expect(wrapper.find('.catalog').text()).not.toContain('P+')
+    expect(wrapper.find('.catalog').text()).toContain('no stat change')
+  })
+
+  it("shows the percentage of the picked car's own stock power once a vehicle is chosen: 25 per cent on a turbo, 3 per cent on a high-strung NA engine, same race ECU", async () => {
+    const game = useGameStore()
+    game.devGrantCar('nissan-180sx-rps13') // forced induction
+    game.devGrantCar('toyota-sprinter-trueno-ae86') // high-strung NA
+    const [turbo, na] = game.gameState.ownedCars
+    const wrapper = await openEcuCatalogue()
+
+    await wrapper.find('[data-test="filter-vehicle"]').setValue(turbo!.id)
+    expect(wrapper.find('.catalog').text()).toContain('P+25%')
+
+    await wrapper.find('[data-test="filter-vehicle"]').setValue(na!.id)
+    expect(wrapper.find('.catalog').text()).toContain('P+3%')
+    expect(wrapper.find('.catalog').text()).not.toContain('P+25%')
+  })
+
+  it('leaves a part with no power fraction alone, picked vehicle or not', async () => {
+    const game = useGameStore()
+    game.devGrantCar('nissan-180sx-rps13')
+    const { wrapper } = await mountScreen()
+    await wrapper.find('[data-test="hero-suspension"]').trigger('click')
+    await wrapper.find('[data-test="catalog-part-dampers"]').trigger('click')
+    await wrapper.find('[data-test="filter-vehicle"]').setValue(game.gameState.ownedCars[0]!.id)
+    expect(wrapper.findAll('.part').length).toBeGreaterThan(0)
+    expect(wrapper.find('.catalog').text()).not.toContain('P+')
+  })
+
   it('the "fits this vehicle" filter lists an accepted customer service-job car', async () => {
     const game = useGameStore()
     game.newGame(1)
