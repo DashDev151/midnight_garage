@@ -95,7 +95,10 @@ export function derivePanelsBand(zoneStates: ZoneStates): ConditionBand {
 /** `paint` band is the worst finish across the five panel zones, same
  * mapping, stepped one band worse when two or more painted zones disagree on
  * colour (the mismatch penalty) - an unpainted zone (`colour` absent) never
- * participates in the disagreement check. */
+ * participates in the disagreement check. The step goes through the same
+ * severity/band pair every other derivation uses, so `scrap` is its floor:
+ * `bandForSeverity` clamps at the worst rung the ladder expresses, and panels
+ * disagreeing about their colour cannot leave a car worse than that. */
 export function derivePaintBand(zoneStates: ZoneStates): ConditionBand {
   const worst = Math.max(...PANEL_ZONE_IDS.map((zoneId) => zoneStates[zoneId].finish))
   const band = bandForSeverity(worst)
@@ -105,8 +108,7 @@ export function derivePaintBand(zoneStates: ZoneStates): ConditionBand {
     ),
   )
   if (colours.size < 2) return band
-  const idx = SEVERITY_BAND_ORDER.indexOf(band)
-  return idx <= 0 ? 'scrap' : SEVERITY_BAND_ORDER[idx - 1]!
+  return bandForSeverity(severityThresholdForBand(band) + 1)
 }
 
 /** `underbody` band = max(metal, finish) on the chassis zone alone, same
