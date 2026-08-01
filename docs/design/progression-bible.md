@@ -72,6 +72,20 @@ name `reputationTier` predates this and stays; do not rename code symbols to cha
    `StandingScreen.test.ts`). Banned vocabulary (xp/mastery/level/prestige) is untouched: the
    maintainer's word "mastery" is their shorthand, and shipped copy still says
    *specialty*/*discipline*.
+
+   **Third amendment (Sprint 157, 2026-08-01, maintainer-approved).** Sprint 62's amendment granted
+   exactly ONE pull-not-push screen; there are now two. **A single dedicated weekly cost sheet may
+   show the shop's own money in real yen** - money in, on cars, parts on the shelf, running the
+   shop, into the shop, and the net, one sheet per week. The amendment's own justification carries
+   it: *a shop owner CAN keep a ledger of their own record.* A weekly cost sheet is a MORE literal
+   1995 artefact than the reputation bar Sprint 62 allowed: shops kept them, on paper, on a
+   clipboard by the door. The Standing screen's "ledger" is a metaphor; this one is not, and Law 4's
+   litmus (*could a 1995 shop owner perceive this signal in the real world?*) passes without
+   argument. Everything else is untouched and still binds: the sheet never auto-opens, never
+   renders on a gameplay screen, never follows the player around (which rules out `DayCashBox.vue`,
+   mounted at the app root), shows no percentage, and offers no trend, chart or advice. It reports
+   what happened and never tells the player they are spending too much on anything, because that
+   would be both a judgement instrument and a push.
 5. **Every unlock is a named, real thing** from the era and the culture (corner weighting,
    blueprinting, NA-to-turbo conversion), with parody brands only. *Litmus: if an unlock needs a
    made-up fantasy name or a number ("Repair II"), it is not grounded enough to ship.*
@@ -139,6 +153,21 @@ name `reputationTier` predates this and stays; do not rename code symbols to cha
   threshold. At `legend` the bar reads FULL rather than empty - an empty rail at the top of a
   ladder reads as failure, which is the opposite of the truth. Banned vocabulary untouched: the
   maintainer's word "mastery" is shorthand, and shipped copy still says specialty/discipline.
+- 2026-08-01: **Law 4 amended a THIRD time** (Sprint 157, maintainer-approved). Sprint 62's
+  amendment granted exactly one pull-not-push screen and `StandingScreen.vue` was it; the weekly
+  cost sheet is the second. The maintainer's ruling that created it: *"Machine-shop hire is NOT a
+  per car fee... same with rent and bays and staff costs. These are running costs. They accrue and
+  should be shown on a overarching, maybe weekly, financial summary, but they are not attributed to
+  a specific car. listing fees are however."* The amendment's own justification carries the screen:
+  a shop owner CAN keep a ledger of their own record, and a weekly cost sheet is a MORE literal
+  1995 artefact than a reputation bar - shops kept them on paper, and unlike the Standing screen's
+  metaphorical "ledger" this one is the real thing. Implemented as `CostSheetScreen.vue` at
+  `/costs` over the store's `costSheetView` (pure derivation over `GameState.financeLedger`, no
+  state of its own), reached from its own nav entry. Every other clause of Law 4 binds unchanged
+  and is guarded in `CostSheetScreen.test.ts`: no auto-open, no gameplay screen, nothing that
+  follows the player around, no percentage, no trend or advice. The sheet's completeness is a test
+  rather than a claim - `financeLedger.test.ts` asserts, per week and to the yen, that money in
+  less everything out equals what the shop's cash actually did.
 - 2026-07-15: **Sprint 69 also recorded a CANCELLATION, not an amendment.** An earlier draft of
   that sprint proposed folding the Standing screen into `UpgradesScreen` (reasoning: progression
   belongs where it is gated). The maintainer overruled it after using the screen - *"The standing

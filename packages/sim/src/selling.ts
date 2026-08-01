@@ -22,6 +22,7 @@ import { carLedgerFor, deleteCarLedger, updateCarLedger } from './carLedger'
 import { saleQualityFor, saleReputationDeltaFor } from './carCondition'
 import type { SimContext } from './context'
 import { saleRevealLineFor } from './diagnosis'
+import { bookCashMovements } from './financeLedger'
 import {
   assignToForecourt,
   hasForecourtSpace,
@@ -547,15 +548,18 @@ export function resolveSetForSale(
   // it. A free channel posts nothing at all,
   // the same silent no-op a zero attendance fee already gets - writing a 0
   // would mint a ledger entry for a car that has none and say nothing.
+  if (feeYen <= 0) return { state: listedState, log: [] }
+  const log: DayLogEntry[] = [{ type: 'car-listed', carInstanceId, channelId, feeYen }]
   return {
-    state:
-      feeYen > 0
-        ? updateCarLedger(listedState, carInstanceId, (l) => ({
-            ...l,
-            listingFeesYen: l.listingFeesYen + feeYen,
-          }))
-        : listedState,
-    log: [],
+    state: bookCashMovements(
+      updateCarLedger(listedState, carInstanceId, (l) => ({
+        ...l,
+        listingFeesYen: l.listingFeesYen + feeYen,
+      })),
+      log,
+      context.economy,
+    ),
+    log,
   }
 }
 
@@ -1010,37 +1014,42 @@ export function resolveSellViaWalkIn(
   // reputation/heat effects apply.
   const saleRevealLine = saleRevealLineFor(car, model, state, context)
 
+  const log: DayLogEntry[] = [
+    {
+      type: 'car-sold',
+      carInstanceId,
+      channel: 'walk-in-offer',
+      priceYen: offer.priceYen,
+      ...(profitYen !== undefined ? { profitYen } : {}),
+      ...(appliedDelta !== 0
+        ? {
+            reputationDelta: appliedDelta,
+            saleQuality: saleQualityFor(conditionDelta, context.economy) ?? undefined,
+          }
+        : {}),
+      ...(saleRevealLine !== undefined ? { saleRevealLine } : {}),
+      ...(matchedBonus > 0 ? { matchedSale: true as const } : {}),
+    },
+  ]
   return {
-    state: bumpPlayerSales(
-      deleteCarLedger(
-        {
-          ...released,
-          cashYen: released.cashYen + offer.priceYen,
-          ownedCars: released.ownedCars.filter((c) => c.id !== carInstanceId),
-          carsForSale: released.carsForSale.filter((f) => f.carInstanceId !== carInstanceId),
-          pendingOffers: released.pendingOffers.filter((o) => o.carInstanceId !== carInstanceId),
-        },
-        carInstanceId,
+    state: bookCashMovements(
+      bumpPlayerSales(
+        deleteCarLedger(
+          {
+            ...released,
+            cashYen: released.cashYen + offer.priceYen,
+            ownedCars: released.ownedCars.filter((c) => c.id !== carInstanceId),
+            carsForSale: released.carsForSale.filter((f) => f.carInstanceId !== carInstanceId),
+            pendingOffers: released.pendingOffers.filter((o) => o.carInstanceId !== carInstanceId),
+          },
+          carInstanceId,
+        ),
+        car.modelId,
       ),
-      car.modelId,
+      log,
+      context.economy,
     ),
-    log: [
-      {
-        type: 'car-sold',
-        carInstanceId,
-        channel: 'walk-in-offer',
-        priceYen: offer.priceYen,
-        ...(profitYen !== undefined ? { profitYen } : {}),
-        ...(appliedDelta !== 0
-          ? {
-              reputationDelta: appliedDelta,
-              saleQuality: saleQualityFor(conditionDelta, context.economy) ?? undefined,
-            }
-          : {}),
-        ...(saleRevealLine !== undefined ? { saleRevealLine } : {}),
-        ...(matchedBonus > 0 ? { matchedSale: true as const } : {}),
-      },
-    ],
+    log,
   }
 }
 
@@ -1080,18 +1089,27 @@ export function resolveScrapShell(
     carInstanceId,
   )
 
+  const log: DayLogEntry[] = [
+    { type: 'shell-scrapped', carInstanceId, modelId: car.modelId, priceYen, carPartIds },
+  ]
   return {
-    state: deleteCarLedger(
-      {
-        ...clearedState,
-        cashYen: clearedState.cashYen + priceYen,
-        ownedCars: clearedState.ownedCars.filter((c) => c.id !== carInstanceId),
-        carsForSale: clearedState.carsForSale.filter((f) => f.carInstanceId !== carInstanceId),
-        pendingOffers: clearedState.pendingOffers.filter((o) => o.carInstanceId !== carInstanceId),
-        energySpentToday: clearedState.energySpentToday + laborSlotsUsed,
-      },
-      carInstanceId,
+    state: bookCashMovements(
+      deleteCarLedger(
+        {
+          ...clearedState,
+          cashYen: clearedState.cashYen + priceYen,
+          ownedCars: clearedState.ownedCars.filter((c) => c.id !== carInstanceId),
+          carsForSale: clearedState.carsForSale.filter((f) => f.carInstanceId !== carInstanceId),
+          pendingOffers: clearedState.pendingOffers.filter(
+            (o) => o.carInstanceId !== carInstanceId,
+          ),
+          energySpentToday: clearedState.energySpentToday + laborSlotsUsed,
+        },
+        carInstanceId,
+      ),
+      log,
+      context.economy,
     ),
-    log: [{ type: 'shell-scrapped', carInstanceId, modelId: car.modelId, priceYen, carPartIds }],
+    log,
   }
 }

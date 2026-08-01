@@ -5,11 +5,13 @@ import type {
   CarInstance,
   CarModel,
   DayLogEntry,
+  EconomyConfig,
   GameState,
   TurnoutBand,
 } from '@midnight-garage/content'
 import { setCarLedger } from './carLedger'
 import type { SimContext } from './context'
+import { bookCashMovements } from './financeLedger'
 import { sheetGuideValueYen } from './diagnosis'
 import { assignToShop, hasAcquisitionSpace } from './facilities'
 import { marketValueYen } from './marketValue'
@@ -177,6 +179,7 @@ function settleLotPurchase(
   priceYen: number,
   blockedKind: 'buyout' | 'auction-win',
   buildLogEntry: (priceYen: number) => DayLogEntry,
+  economy: EconomyConfig,
 ): AcquisitionResult {
   if (state.cashYen < priceYen) return { state, log: [] }
   if (!hasAcquisitionSpace(state)) {
@@ -196,7 +199,8 @@ function settleLotPurchase(
     ),
     lot.car.id,
   )
-  return { state: withCar, log: [buildLogEntry(priceYen)] }
+  const log = [buildLogEntry(priceYen)]
+  return { state: bookCashMovements(withCar, log, economy), log }
 }
 
 /**
@@ -214,13 +218,20 @@ export function resolveBuyoutInstant(
   const lot = state.activeAuctionLots.find((l) => l.id === lotId)
   if (!lot) return { state, log: [] }
   const priceYen = computeBuyoutPriceYen(lot, state, context)
-  return settleLotPurchase(state, lot, priceYen, 'buyout', (settledYen) => ({
-    type: 'lot-bought-out',
-    lotId,
-    priceYen: settledYen,
-    modelId: lot.car.modelId,
-    year: lot.car.year,
-  }))
+  return settleLotPurchase(
+    state,
+    lot,
+    priceYen,
+    'buyout',
+    (settledYen) => ({
+      type: 'lot-bought-out',
+      lotId,
+      priceYen: settledYen,
+      modelId: lot.car.modelId,
+      year: lot.car.year,
+    }),
+    context.economy,
+  )
 }
 
 /**
@@ -246,13 +257,20 @@ export function settleAuctionHammer(
   const lot = state.activeAuctionLots.find((l) => l.id === lotId)
   if (!lot) return { state, log: [] }
   if (!context.modelsById[lot.modelId]) return { state, log: [] }
-  return settleLotPurchase(state, lot, priceYen, 'auction-win', (settledYen) => ({
-    type: 'auction-hammer-won',
-    lotId,
-    priceYen: settledYen,
-    modelId: lot.car.modelId,
-    year: lot.car.year,
-  }))
+  return settleLotPurchase(
+    state,
+    lot,
+    priceYen,
+    'auction-win',
+    (settledYen) => ({
+      type: 'auction-hammer-won',
+      lotId,
+      priceYen: settledYen,
+      modelId: lot.car.modelId,
+      year: lot.car.year,
+    }),
+    context.economy,
+  )
 }
 
 /**
@@ -322,5 +340,12 @@ export function resolveAttendAuction(
     cashYen: state.cashYen - feeYen,
     attendanceFeePaidDayByTier: { ...state.attendanceFeePaidDayByTier, [tier]: state.day },
   }
-  return { state: nextState, log: [], outcome: 'attended' }
+  // Admission buys a seat in the room for the day, not a stake in any one lot,
+  // so it is a running cost and never lands on a car bought there.
+  const log: DayLogEntry[] = [{ type: 'auction-attended', tier, feeYen }]
+  return {
+    state: bookCashMovements(nextState, log, context.economy),
+    log,
+    outcome: 'attended',
+  }
 }

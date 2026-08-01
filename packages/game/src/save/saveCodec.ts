@@ -620,8 +620,18 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * The version bump alone is still required (Save law) so an old client
  * rejects a v52 save rather than decoding a car whose authenticity it has
  * nowhere to read.
+ * v52 -> v53 (what the week cost): `GameState` gained `financeLedger`, the
+ * weekly cost sheet's accumulator - one five-line `FinanceWeek` per week the
+ * shop moved money in, keyed by `weekIndex`. Additive and genuinely optional
+ * (the `attendanceFeePaidDayByTier` pattern), so this needs NO
+ * `MIGRATIONS[52]` entry: a pre-v53 save decodes with the key absent, which
+ * reads as an empty sheet, which is exactly right - nothing was accumulated
+ * because nothing was accumulating. The weeks that career already played
+ * cannot be reconstructed and are not faked. The version bump alone is still
+ * required (Save law) so an old client rejects a v53 save rather than
+ * dropping a week's figures on the next write.
  */
-export const SAVE_VERSION = 52
+export const SAVE_VERSION = 53
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

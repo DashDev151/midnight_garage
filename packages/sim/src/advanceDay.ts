@@ -7,6 +7,7 @@ import type { SimContext } from './context'
 import { applyToolUpgrades, rollMachineListings } from './toolLines'
 import { applyWeeklyRentAndWages } from './finances'
 import { applyBayPurchases, applyMoves, resolveGraceParking } from './facilities'
+import { bookCashMovements } from './financeLedger'
 import {
   applyAvailableLaborToJob,
   completeJob,
@@ -76,7 +77,12 @@ export function advanceDay(
   next = toolUpgrades.state
   log.push(...toolUpgrades.log)
 
-  const bayPurchases = applyBayPurchases(next, queuedActions.buyBays, context.facilities)
+  const bayPurchases = applyBayPurchases(
+    next,
+    queuedActions.buyBays,
+    context.facilities,
+    context.economy,
+  )
   next = bayPurchases.state
   log.push(...bayPurchases.log)
 
@@ -134,15 +140,20 @@ export function advanceDay(
       log.push(...gate.log)
       return
     }
-    next = gate.state
+    const costYen = next.cashYen - gate.state.cashYen || undefined
     const job = createJob(spec, `job-${next.day}-${i}`)
     jobs.push(job)
-    log.push({
-      type: 'job-created',
-      jobId: job.id,
-      carInstanceId: job.carInstanceId,
-      kind: job.kind,
-    })
+    const created: DayLogEntry[] = [
+      {
+        type: 'job-created',
+        jobId: job.id,
+        carInstanceId: job.carInstanceId,
+        kind: job.kind,
+        ...(costYen ? { costYen } : {}),
+      },
+    ]
+    next = bookCashMovements(gate.state, created, context.economy)
+    log.push(...created)
   })
   next = { ...next, jobs }
 
@@ -412,8 +423,13 @@ export function advanceDay(
   // never pays a member the player parked this morning.
   const contractIncome = computeContractIncomeYen(next.staff, context.economy)
   if (contractIncome > 0) {
-    next = { ...next, cashYen: next.cashYen + contractIncome }
-    log.push({ type: 'contract-income', amountYen: contractIncome })
+    const earned: DayLogEntry[] = [{ type: 'contract-income', amountYen: contractIncome }]
+    next = bookCashMovements(
+      { ...next, cashYen: next.cashYen + contractIncome },
+      earned,
+      context.economy,
+    )
+    log.push(...earned)
   }
 
   // 8a. The grace/"double parking" overflow slot's own day-boundary

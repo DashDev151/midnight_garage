@@ -148,4 +148,154 @@ Run `pnpm typecheck`. Run content, sim AND game.
 
 ## Exit
 
-_To be completed on implementation._
+**Status: READY FOR REVIEW.** Not committed.
+
+### The reconciliation identity holds, to the yen
+
+    income - (onCars + stock + running + investment) == the week's cash movement
+
+Asserted per week over the scripted two-car career (`packages/sim/tests/financeLedger.test.ts`),
+against `state.cashYen` read at each week's edges and never against another total. The career's
+weeks all balance exactly, and the sum of every week's net plus the starting cash equals the closing
+cash the sim reports. A second assertion rebuilds the same figures from the document's own named
+cash lines and requires them to equal the accumulator bucket for bucket, so the sheet and the worked
+example are the same reading of the same career.
+
+The proof is not circular. `Run.step` in `workedExample.ts` already threw on any step whose named
+lines did not equal the real cash delta; it now names them from `cashMovementFor` alone, with the
+three hand-quoted `extra` workarounds deleted. That the run still passes is the evidence that every
+yen the sim moves now has a log entry to explain it.
+
+### The four movements that left no record
+
+| Movement | Before | Now |
+| --- | --- | --- |
+| Auction admission (`bidding.ts`) | `log: []` | `auction-attended` { tier, feeYen } |
+| Listing fee (`selling.ts`) | `log: []` | `car-listed` { carInstanceId, channelId, feeYen } |
+| Body-pipeline materials (`stagedWork.ts`) | `log: []` | `body-materials-bought` { carInstanceId, zoneId, stage, costYen } |
+| Bench recondition (`jobs.ts`) | `part-reconditioned`, band only | `job-created` { kind: `recondition-part`, costYen } at the charge site |
+
+**The fourth is not what the sprint text asked for, and deliberately so.** The brief said to give
+`part-reconditioned` its amount. `part-reconditioned` fires at COMPLETION; the money leaves at
+CREATION, which can be days earlier. Putting the amount on the completion entry would have dated the
+charge to the wrong day and, on a recondition that spans a week boundary, to the wrong week - the
+one thing this sprint exists to get right. So the charge is logged where it happens, through the
+`job-created` entry an on-car repair already uses (directive 16: the mechanism exists, reuse it).
+`resolveReconditionLabor` had been creating a job and taking cash without ever emitting
+`job-created`; that was the actual defect. `part-reconditioned` keeps its band and gains nothing, so
+no second place prices the same fact.
+
+`job-created`'s `costYen` is now also RENDERED ("Job started (repair-zone) on car-1 for ¥8,000"), so
+an on-car repair charge is legible too; it was in the entry but never on screen.
+
+### Authored values and their reasoning (R4)
+
+**No economy lever moved.** `economy.json` is untouched, no payout, budget, price or formula
+changed, and `economyApprovalGate.test.ts` passes unmodified. This sprint is reporting only. The
+values below are structural decisions, not tunables.
+
+| Decision | Value | Reasoning |
+| --- | --- | --- |
+| Accumulator period | week (`weekIndex`) | A week holds exactly one rent charge and one payday. `daysPerMonth` is 28, so a month is four clean weeks and monthly comes free from four rows; the reverse does not hold, and monthly-first would delay the first sheet to day 28. As designed. |
+| Ledger key type | `Record<string, FinanceWeek>` | Matches `marketLedger`/`carLedgers`. JSON-safe, sparse: a week with no money in it has no row. About fifteen rows of five integers over a 100-day career. |
+| Field optionality | `.optional()`, not `.default({})` | The genuinely-optional-key pattern `attendanceFeePaidDayByTier`, `venueNameByTier`, `assemblyInventory` and `uiSettings` already use, and for its stated reason: no existing `GameState` literal needs touching, so twenty unrelated test fixtures stay as they are. `createInitialGameState` seeds `{}` explicitly; readers treat absent as an empty sheet. A deviation from the design doc's `.default({})`, recorded here. |
+| Buckets | income / onCars / stock / running / investment | The design's own table, unchanged. |
+| Double-parking fine | `running` | The design's open ruling, taken as recommended. It names a car but prices a bay shortage: park a different car in the overflow slot and the same fine falls. |
+| Bench recondition | `stock` | It is spend on a loose part on the shelf, not on any car. It reaches a car's ledger later, through the part's `pricePaidYen`, if and when it is fitted. |
+| `equipment-purchased` | `investment` | The action is retired but the entry decodes from old logs; classifying it costs nothing and leaves no hole. |
+| Route and nav | `/costs`, nav entry "Costs" | Its own route beside `/standing`, per Law 4. Reached only from the header nav. |
+| Screen name | "What the week cost" | Says what it is. No jargon, no metaphor. |
+| `SAVE_VERSION` | 52 to 53 | Additive field. No migration, no golden save (directive 19). Six canaries re-derived. |
+
+### Where the money is posted
+
+`bookCashMovements(state, log, economy)` (`sim/financeLedger.ts`) folds a log through
+`cashMovementFor` and bumps `weekIndex(state.day)`'s row. **The rule it enforces, written into its
+doc comment: every resolver books exactly the entries it CONSTRUCTS, and a caller that forwards a
+nested log books nothing.** That is what keeps `advanceDay` from double-counting the same
+`resolveSellViaWalkIn` or `resolveServiceJob` a player's click also drives. Seventeen sites book:
+`finances`, `facilities` (x2), `advanceDay` (contract income, and the bot job-creation loop),
+`bidding` (x2), `parts` (x4), `selling` (x3), `serviceJobs`, `missions`, `staff`, `toolLines`,
+`jobs` (x3), `stagedWork`, `diagnosis`.
+
+`applyBayPurchase`/`applyBayPurchases` gained an `economy` parameter; every other charge site
+already had one.
+
+### The classification is shared, not copied
+
+`cashMovementFor` (`content/cashLedger.ts`) is the one enumeration of the law stated in
+`CarLedgerSchema`'s doc comment, exhaustive over the whole `DayLogEntry` union so a new entry type
+is a compile error rather than a yen that quietly falls out of the arithmetic. Three copies
+collapsed onto it:
+
+- `classifyDayReport` (`dayLogFormat.ts`) now sums buckets instead of hand-mapping types. Its
+  `default` fall-through is gone: `bay-purchased`, `tool-upgraded`, `equipment-purchased`,
+  `inspection-visit`, `staff-hired`, `part-bought`, `part-ordered` and `mission-delivered` all
+  counted towards nothing before and count now.
+- `cashLinesFromLog` (`workedExample.ts`) takes bucket and amount from the shared function and keeps
+  only its own display `category` and label. `CashLine` gained `bucket`.
+- `CarLedgerSchema`'s doc comment points at it rather than restating it.
+
+### The screen, as built
+
+`CostSheetScreen.vue` at `/costs`: a stack of carbon copies on a clipboard, one sheet per week,
+newest clipped on top, ruled lines under six rows of yen. Drawn entirely from existing tokens, no
+assets. The week in progress is marked "still running" and its net reads "So far", never a result.
+Pure renderer over `game.costSheetView`, which is a pure derivation over `financeLedger` - no state,
+no local refs, no writes. `CostSheetScreen.test.ts` guards each Law 4 clause, including that
+mounting it leaves `gameState` byte-identical and that no `%` reaches the page.
+
+### Checks
+
+    pnpm typecheck                content, sim, game - Done
+    pnpm test --project content   Test Files  26 passed (26)   Tests  569 passed (569)
+    pnpm test --project sim       Test Files  77 passed (77)   Tests  2038 passed (2038)
+    pnpm test --project game      Test Files  63 passed (63)   Tests  847 passed (847)
+
+Run once each, per directive 20. No bot careers were run (directive 21): the reconciliation is
+arithmetic over one scripted, hand-written career, the same footing `workedExample.ts` already
+stands on.
+
+### Re-derived pins
+
+| Pin | Old | New |
+| --- | --- | --- |
+| `SAVE_VERSION` (+ 6 canaries in `saveCodec.test.ts`) | 52 | 53 |
+| `advanceDay` golden, 30-day career | `90b8b963` | `f419f088` |
+| `advanceDay` golden, acquisition to sale | `5f377288` | `964ca42d` |
+| `worked-example-two-cars.md` | - | regenerated (`WORKED_EXAMPLE_WRITE=1`) |
+
+Both goldens moved for the same reason and it is a shape change, not a behavioural one: `GameState`
+carries a new field and `hashState` serialises the whole thing. No cash figure, rng draw or derived
+stat moved. Unlike a `CarLedger`, `financeLedger` survives the sale, so the acquisition-to-sale
+golden moved too - a sold car's week still has to add up.
+
+The economy approval hash is UNCHANGED: no content value moved.
+
+### Scope fences held
+
+- `lastDayReport` being the overnight tick is untouched and recorded in `TODO.md` as its own change,
+  with the fix named (a session-scoped per-day log the store appends to, not a change to
+  `advanceDay`'s contract).
+- Generation, channels and `expectationByTier` untouched.
+
+### Bible amendment
+
+Law 4's THIRD amendment recorded in `progression-bible.md` (2026-08-01, maintainer-approved), with
+the reasoning the sprint specified: the amendment's own justification is that a shop owner can keep
+a ledger of their own record, and a weekly cost sheet is a more literal 1995 artefact than a
+reputation bar. `financial-summary.md` moves to BUILT and both its open rulings are recorded as
+made.
+
+### Tasks
+
+- [x] `FinanceWeekSchema` + `GameState.financeLedger`, and three new `DayLogEntry` types.
+- [x] `cashMovementFor` in content: one enumeration of the law, exhaustive over the union.
+- [x] `bookCashMovements` in sim, called at all seventeen charge sites.
+- [x] The four silent movements log their amounts, on the day the money leaves.
+- [x] `classifyDayReport` rebuilt on the shared table, `default` fall-through closed.
+- [x] `workedExample.ts` rebuilt on it too, all three `extra` workarounds deleted.
+- [x] `CostSheetScreen.vue`, its route, and its nav entry.
+- [x] Reconciliation identity asserted per week, to the yen.
+- [x] Law 4 amendment recorded.
+- [x] `SAVE_VERSION` and both goldens re-derived.

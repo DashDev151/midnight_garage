@@ -229,16 +229,16 @@ pass."
   `provenanceNote` if it reads that way. This is a copy pass against the current car, not a
   mechanics change; the economics are already pinned by `tutorialProbe.test.ts`.
 
-- [ ] **NEEDS DESIGN: a periodic financial summary for the shop's running costs (raised
-  2026-07-31, scoped out of Sprint 150 on purpose).** The running-cost ruling asks for rent, bays,
-  staff wages and machine-shop hire to be "shown on a overarching, maybe weekly, financial
-  summary". Sprint 150 built the per-car half of that ruling (listing fees now sit on
-  `CarLedger`); the shop-wide half does not exist. Today those costs land as individual day-log
-  lines (`rent-paid`, `wage-paid`, `machine-hired`) and are never totalled anywhere, so a player
-  cannot answer "what does a week cost me". **Not a bug and not a lever move: it is a new screen
-  or panel and needs a design pass**, including which period it covers (the calendar now has both
-  a week and a month boundary to hang it on: `isEndOfWeek`, `isMonthBoundary`) and whether it
-  reads live state or an accrued record.
+- [ ] **CONFIRMED DEFECT, its own change: `lastDayReport` is the overnight tick, not the day
+  (deliberately out of scope for Sprint 157, which verified it).** `endDay` calls `advanceDay` with
+  an EMPTY action batch, so `lastDayReport.entries` holds only what the day-boundary tick itself
+  produced, and `cashDeltaYen` is the overnight delta alone. Everything the player actually did
+  that day - every purchase, sale, repair, part bought, fee paid - resolved instantly through the
+  store and never reaches the report they read the next morning. It already needed a hand-rolled
+  patch in `gameStore.ts` to put machine hire back in, which is the shape of a workaround rather
+  than a fix. The end-of-day report is the game's main mirror on a day's play and it is currently
+  showing about a tenth of it. The fix is a session-scoped per-day log the store appends to and
+  `endDay` reads, NOT a change to `advanceDay`'s contract, and it is unverified in play.
 
 - [ ] **OPEN QUESTION the maintainer already flagged: the shipped auction cadence may have too
   few overlaps, and the early game feels it hardest (raised 2026-07-31, ruled "ships as tabled

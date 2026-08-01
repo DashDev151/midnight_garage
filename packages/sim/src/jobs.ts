@@ -27,6 +27,7 @@ import { updateCarLedger } from './carLedger'
 import type { SimContext } from './context'
 import { crewEnergySaved, perfectionistCostMultiplier } from './crewSkills'
 import { pruneCuredCauses, revealOnRemoval } from './diagnosis'
+import { bookCashMovements } from './financeLedger'
 import { partFitsCar } from './parts'
 import { isCustomerOriginPart } from './provenance'
 import { updateServiceJobLedger } from './serviceJobLedger'
@@ -510,7 +511,11 @@ export function resolveHireMachineLine(
     machineHirePaidDayByGroup: { ...state.machineHirePaidDayByGroup, [group]: state.day },
   }
   const log: DayLogEntry[] = [{ type: 'machine-hired', componentId: group, priceYen: feeYen }]
-  return { state: nextState, log, outcome: 'hired' }
+  return {
+    state: bookCashMovements(nextState, log, context.economy),
+    log,
+    outcome: 'hired',
+  }
 }
 
 /**
@@ -974,18 +979,23 @@ export function findOrCreateJob(
 
   const job = createJob(spec, id)
   const totalCostYen = state.cashYen - gate.state.cashYen || undefined
+  const log: DayLogEntry[] = [
+    {
+      type: 'job-created',
+      jobId: job.id,
+      carInstanceId: job.carInstanceId,
+      kind: job.kind,
+      ...(totalCostYen ? { costYen: totalCostYen } : {}),
+    },
+  ]
   return {
-    state: { ...gate.state, jobs: [...gate.state.jobs, job] },
+    state: bookCashMovements(
+      { ...gate.state, jobs: [...gate.state.jobs, job] },
+      log,
+      context.economy,
+    ),
     job,
-    log: [
-      {
-        type: 'job-created',
-        jobId: job.id,
-        carInstanceId: job.carInstanceId,
-        kind: job.kind,
-        ...(totalCostYen ? { costYen: totalCostYen } : {}),
-      },
-    ],
+    log,
   }
 }
 
@@ -1309,6 +1319,24 @@ export function resolveReconditionLabor(
     laborSlotsRequired: planned.plan.laborSlotsRequired,
     laborSlotsSpent: 0,
   }
-  const withJob: GameState = { ...pricedState, jobs: [...pricedState.jobs, job] }
-  return applyAvailableLaborToJob(withJob, jobId, laborAvailable, context)
+  // The bench work is charged the moment the job opens, exactly as an on-car
+  // repair is, so it reports through the same `job-created` entry on the same
+  // day the money actually leaves - a recondition that takes three days to
+  // finish was still paid for on the first.
+  const created: DayLogEntry[] = [
+    {
+      type: 'job-created',
+      jobId,
+      carInstanceId: job.carInstanceId,
+      kind: job.kind,
+      ...(charged.totalCostYen ? { costYen: charged.totalCostYen } : {}),
+    },
+  ]
+  const withJob: GameState = bookCashMovements(
+    { ...pricedState, jobs: [...pricedState.jobs, job] },
+    created,
+    context.economy,
+  )
+  const worked = applyAvailableLaborToJob(withJob, jobId, laborAvailable, context)
+  return { ...worked, log: [...created, ...worked.log] }
 }

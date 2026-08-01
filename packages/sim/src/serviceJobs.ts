@@ -28,6 +28,7 @@ import {
 } from './constants'
 import type { SimContext } from './context'
 import { assignToShop, hasAcquisitionSpace, releaseCarFromShop } from './facilities'
+import { bookCashMovements } from './financeLedger'
 import { installLaborSlotsFor } from './jobs'
 import { gradeAtLeast, partFitsCar } from './parts'
 import { makeCarOrigin, partsOriginatingFromCar } from './provenance'
@@ -1033,28 +1034,35 @@ export function resolveServiceJob(
       distinctTaskGroups(job.tasks, context),
       reputationGained,
     )
-    return {
-      state: {
-        ...withSpecialty,
-        cashYen: withSpecialty.cashYen + job.payoutYen,
-        activeServiceJobs,
-        jobs,
-        partInventory,
+    // Only the payout moves cash here: the repair and parts figures below are
+    // what was already spent (and already booked) on the customer's car.
+    const log: DayLogEntry[] = [
+      {
+        type: 'service-job-completed',
+        jobId: job.id,
+        payoutYen: job.payoutYen,
+        reputationGained,
+        repairCostYen: ledger.repairYen,
+        partsCostYen: ledger.partsYen,
+        specialtyGained,
+        netProfitYen: job.payoutYen - ledger.repairYen - ledger.partsYen,
+        ...(acceptedOnDay !== null ? { daysSpent: releasedState.day - acceptedOnDay } : {}),
       },
-      log: [
+      ...returnedPartsLog,
+    ]
+    return {
+      state: bookCashMovements(
         {
-          type: 'service-job-completed',
-          jobId: job.id,
-          payoutYen: job.payoutYen,
-          reputationGained,
-          repairCostYen: ledger.repairYen,
-          partsCostYen: ledger.partsYen,
-          specialtyGained,
-          netProfitYen: job.payoutYen - ledger.repairYen - ledger.partsYen,
-          ...(acceptedOnDay !== null ? { daysSpent: releasedState.day - acceptedOnDay } : {}),
+          ...withSpecialty,
+          cashYen: withSpecialty.cashYen + job.payoutYen,
+          activeServiceJobs,
+          jobs,
+          partInventory,
         },
-        ...returnedPartsLog,
-      ],
+        log,
+        context.economy,
+      ),
+      log,
       outcome: 'paid',
     }
   }

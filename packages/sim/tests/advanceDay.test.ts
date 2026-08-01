@@ -215,7 +215,13 @@ describe('advanceDay golden master', () => {
     // picks a slot inside it. Every generated board therefore differs, and
     // every car carries one more stamped field. Re-derived from a real run,
     // twice, to confirm determinism.
-    expect(hashState(finalState)).toBe('90b8b963')
+    //
+    // It last moved for the weekly cost sheet (sprint157.md): `GameState`
+    // gained `financeLedger`, and this script trades, so the state carries a
+    // week of real figures at day 31. Another pure shape-and-record change -
+    // no cash figure, rng draw or derived stat moved, and the ledger is the
+    // same money the career already moved, written down.
+    expect(hashState(finalState)).toBe('f419f088')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -361,8 +367,11 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // held unchanged. It moves again with damage patterns (sprint155.md),
     // alongside the 30-day master, because that change reaches every generated
     // lot: where the damage lands, which zone carries it, and which symptom is
-    // drawn.
-    expect(hashState(acquisitionCareer().sold)).toBe('5f377288')
+    // drawn. It moves again for the weekly cost sheet (sprint157.md), this
+    // time alongside the 30-day master and for the same reason: `financeLedger`
+    // is new state, and unlike a `CarLedger` it survives the sale - a sold
+    // car's week still has to add up.
+    expect(hashState(acquisitionCareer().sold)).toBe('964ca42d')
   })
 })
 

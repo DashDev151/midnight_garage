@@ -85,6 +85,11 @@ export const router = createRouter({
       component: () => import('../screens/StandingScreen.vue'),
     },
     {
+      path: '/costs',
+      name: 'costs',
+      component: () => import('../screens/CostSheetScreen.vue'),
+    },
+    {
       path: '/staff',
       name: 'staff',
       component: () => import('../screens/StaffOfficeScreen.vue'),

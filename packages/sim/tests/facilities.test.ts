@@ -618,7 +618,7 @@ describe('applyBayPurchase / applyBayPurchases', () => {
     const price = FACILITIES.service.bayPricesYen[0]!
     const rung1Tier = FACILITIES.service.minReputationTier[0]!
     const state = baseState({ cashYen: price, reputationTier: rung1Tier })
-    const result = applyBayPurchase(state, 'service', FACILITIES)
+    const result = applyBayPurchase(state, 'service', FACILITIES, ECONOMY)
     expect(result.applied).toBe(true)
     expect(result.state.cashYen).toBe(0)
     expect(result.state.serviceBayCount).toBe(FACILITIES.service.startCount + 1)
@@ -629,7 +629,7 @@ describe('applyBayPurchase / applyBayPurchases', () => {
     const price = FACILITIES.service.bayPricesYen[0]!
     const rung1Tier = FACILITIES.service.minReputationTier[0]!
     const state = baseState({ cashYen: price, reputationTier: rung1Tier })
-    const result = applyBayPurchase(state, 'service', FACILITIES)
+    const result = applyBayPurchase(state, 'service', FACILITIES, ECONOMY)
     expect(result.state.serviceBayCarIds).toHaveLength(state.serviceBayCarIds.length + 1)
     expect(result.state.serviceBayCarIds.at(-1)).toBeNull()
   })
@@ -637,7 +637,7 @@ describe('applyBayPurchase / applyBayPurchases', () => {
   it('refuses when unaffordable, with no state change', () => {
     const rung1Tier = FACILITIES.service.minReputationTier[0]!
     const state = baseState({ cashYen: 0, reputationTier: rung1Tier })
-    const result = applyBayPurchase(state, 'service', FACILITIES)
+    const result = applyBayPurchase(state, 'service', FACILITIES, ECONOMY)
     expect(result.applied).toBe(false)
     expect(result.state).toBe(state)
   })
@@ -648,20 +648,25 @@ describe('applyBayPurchase / applyBayPurchases', () => {
       reputationTier: 'legend',
       serviceBayCount: FACILITIES.service.maxCount,
     })
-    const result = applyBayPurchase(state, 'service', FACILITIES)
+    const result = applyBayPurchase(state, 'service', FACILITIES, ECONOMY)
     expect(result.applied).toBe(false)
   })
 
   it('refuses a reputation-gated rung even with unlimited cash', () => {
     const state = baseState({ cashYen: 999_999_999, reputationTier: 'unknown' })
-    const result = applyBayPurchase(state, 'service', FACILITIES)
+    const result = applyBayPurchase(state, 'service', FACILITIES, ECONOMY)
     expect(result.applied).toBe(false)
     expect(result.state).toBe(state)
   })
 
   it('a batch purchase re-prices each subsequent bay off the escalating ladder', () => {
     const state = baseState({ cashYen: 999_999_999, reputationTier: 'legend' })
-    const result = applyBayPurchases(state, [{ kind: 'service' }, { kind: 'service' }], FACILITIES)
+    const result = applyBayPurchases(
+      state,
+      [{ kind: 'service' }, { kind: 'service' }],
+      FACILITIES,
+      ECONOMY,
+    )
     expect(result.state.serviceBayCount).toBe(FACILITIES.service.startCount + 2)
     expect(result.log).toHaveLength(2)
     expect(result.log[0]).toMatchObject({ priceYen: FACILITIES.service.bayPricesYen[0] })
@@ -672,7 +677,7 @@ describe('applyBayPurchase / applyBayPurchases', () => {
     const price = FACILITIES.forecourt.bayPricesYen[0]!
     const rung1Tier = FACILITIES.forecourt.minReputationTier[0]!
     const state = baseState({ cashYen: price, reputationTier: rung1Tier })
-    const result = applyBayPurchase(state, 'forecourt', FACILITIES)
+    const result = applyBayPurchase(state, 'forecourt', FACILITIES, ECONOMY)
     expect(result.applied).toBe(true)
     expect(result.state.cashYen).toBe(0)
     expect(result.state.forecourtBayCount).toBe(FACILITIES.forecourt.startCount + 1)
@@ -861,7 +866,7 @@ describe('the placement invariant (sprint148: every owned car appears exactly on
     }
     expect(state.graceParkingCarId).toBe('car-5')
 
-    const purchased = applyBayPurchase(state, 'parking', FACILITIES)
+    const purchased = applyBayPurchase(state, 'parking', FACILITIES, ECONOMY)
     expect(purchased.applied).toBe(true)
     state = purchased.state
     assertPlacementInvariant(state)

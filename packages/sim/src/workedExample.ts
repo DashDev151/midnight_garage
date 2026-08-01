@@ -1,5 +1,6 @@
 import {
   ALL_CAR_PART_IDS,
+  cashMovementFor,
   fitmentClassForTier,
   type AuctionLot,
   type AuctionTier,
@@ -16,6 +17,7 @@ import {
   type SellingChannelId,
   type StagedAction,
   type ZoneId,
+  type CashBucket,
   type ZoneState,
 } from '@midnight-garage/content'
 import { emptyDayActions } from './actions'
@@ -92,11 +94,10 @@ import { valueLedgerFor, type ValueLedger } from './valueLedger'
  * by step. `docs/design/systems/worked-example-two-cars.md` is its output.
  *
  * The one law this file enforces on itself is in `Run.step` below: every
- * scripted step must explain its own cash movement, line by line, from figures
- * the sim reported (a day-log entry, or a planner's own quote for the two
- * charges that emit no log). A step that moves cash this file cannot name
- * throws immediately, so an incomplete ledger fails loudly rather than
- * silently rounding itself right.
+ * scripted step must explain its own cash movement, line by line, from the
+ * sim's own day-log entries and nothing else. A step that moves cash this
+ * file cannot name throws immediately, so an incomplete ledger fails loudly
+ * rather than silently rounding itself right.
  */
 
 /** Which side of the ledger a cash line belongs to. Fixed overheads are
@@ -118,11 +119,13 @@ export type CashCategory =
   | 'other'
 
 /** One named cash movement, signed as the bank sees it: negative out,
- * positive in. */
+ * positive in. `bucket` is the shared classification the weekly cost sheet
+ * totals by; `category` is this document's own finer name for the same line. */
 export interface CashLine {
   day: number
   scope: CashScope
   category: CashCategory
+  bucket: CashBucket
   label: string
   yen: number
 }
@@ -306,6 +309,12 @@ export interface WorkedExampleReport {
   finalCashYen: number
   weeklyRentYen: number
   cashLines: CashLine[]
+  /** The sim's own weekly accumulator at the end of the run - what the cost
+   * sheet would show, straight off the state rather than re-totalled here. */
+  financeLedger: GameState['financeLedger']
+  /** Cash after every step, in order - what the weekly figures are reconciled
+   * against. */
+  cashTrail: readonly { day: number; cashYen: number }[]
   carA: CarRunReport
   carB: CarRunReport
   /** Every non-car income stream that fired. All three must be empty for the
@@ -389,73 +398,93 @@ const WORK_GROUPS: readonly ComponentId[] = [
   'interior',
 ]
 
-/** Day-log entries that move cash, and the sign the bank sees. Everything the
- * scripted run can trigger is named here; anything else is unaccounted by
- * construction and trips the reconciliation in `Run.step`. */
+/** The finer, document-facing name for one cash-moving entry, and the words
+ * the ledger row reads. Only the presentation lives here: which of the five
+ * lines the money lands on, and how much, is `cashMovementFor`'s answer and
+ * this file never second-guesses it. */
+function describeCashLine(entry: DayLogEntry): { category: CashCategory; label: string } {
+  switch (entry.type) {
+    case 'lot-bought-out':
+      return { category: 'acquisition', label: `Bought out lot ${entry.lotId}` }
+    case 'auction-hammer-won':
+      return { category: 'acquisition', label: `Hammer won on lot ${entry.lotId}` }
+    case 'part-bought':
+      return { category: 'parts', label: `Part bought express: ${entry.partId}` }
+    case 'part-ordered':
+      return { category: 'parts', label: `Part ordered standard: ${entry.partId}` }
+    case 'part-scrapped':
+      return { category: 'parts', label: `Scrap part sold: ${entry.partInstanceId}` }
+    case 'part-sold':
+      return { category: 'parts', label: `Used part sold: ${entry.partInstanceId}` }
+    case 'machine-hired':
+      return {
+        category: 'machine-hire',
+        label: `Machine-shop hire for the day: ${entry.componentId}`,
+      }
+    case 'job-created':
+      return entry.kind === 'recondition-part'
+        ? { category: 'repair', label: `Bench recondition of ${entry.carInstanceId}` }
+        : { category: 'repair', label: `Repair charge on ${entry.carInstanceId}` }
+    case 'body-materials-bought':
+      return {
+        category: 'materials',
+        label: `Body pipeline ${entry.stage} on ${entry.zoneId}`,
+      }
+    case 'car-listed':
+      return { category: 'listing', label: `Listing fee (${entry.channelId})` }
+    case 'rent-paid':
+      return { category: 'rent', label: 'Weekly rent' }
+    case 'wage-paid':
+      return { category: 'other', label: 'Staff wage' }
+    case 'double-parking-fine':
+      return { category: 'other', label: 'Double-parking fine' }
+    case 'contract-income':
+      return { category: 'other', label: 'Contract staff retainer' }
+    case 'car-sold':
+      return { category: 'sale', label: `Car sold: ${entry.carInstanceId}` }
+    case 'shell-scrapped':
+      return { category: 'other', label: `Shell scrapped: ${entry.carInstanceId}` }
+    case 'inspection-visit':
+      return { category: 'attendance', label: `Inspection visit at the ${entry.tier} rooms` }
+    case 'auction-attended':
+      return { category: 'attendance', label: `Admission to the ${entry.tier} rooms` }
+    case 'service-job-completed':
+      return { category: 'other', label: `Service job payout: ${entry.jobId}` }
+    case 'mission-delivered':
+      return { category: 'other', label: `Story mission payout: ${entry.missionId}` }
+    case 'bay-purchased':
+      return { category: 'other', label: `Bay bought: ${entry.kind}` }
+    case 'tool-upgraded':
+      return { category: 'other', label: `Tool line bought: ${entry.componentId}` }
+    case 'equipment-purchased':
+      return { category: 'other', label: `Equipment bought: ${entry.equipmentId}` }
+    case 'staff-hired':
+      return { category: 'other', label: `Introduction fee for ${entry.displayName}` }
+    default:
+      return { category: 'other', label: entry.type }
+  }
+}
+
+/** Every cash movement in a day's log, signed as the bank sees it. The
+ * classification is `cashMovementFor`'s and only its: an entry it calls
+ * moneyless produces no line, so a charge that reaches cash without an entry
+ * to name it trips the reconciliation in `Run.step` rather than passing
+ * quietly. Fixed overheads are booked to the shop whatever car the step was
+ * about. */
 function cashLinesFromLog(log: readonly DayLogEntry[], day: number, scope: CashScope): CashLine[] {
   const lines: CashLine[] = []
-  const push = (category: CashCategory, label: string, yen: number): void => {
-    if (yen !== 0) lines.push({ day, scope, category, label, yen })
-  }
-  const pushShop = (category: CashCategory, label: string, yen: number): void => {
-    if (yen !== 0) lines.push({ day, scope: 'shop', category, label, yen })
-  }
   for (const entry of log) {
-    switch (entry.type) {
-      case 'lot-bought-out':
-        push('acquisition', `Bought out lot ${entry.lotId}`, -entry.priceYen)
-        break
-      case 'auction-hammer-won':
-        push('acquisition', `Hammer won on lot ${entry.lotId}`, -entry.priceYen)
-        break
-      case 'part-bought':
-        push('parts', `Part bought express: ${entry.partId}`, -entry.priceYen)
-        break
-      case 'part-ordered':
-        push('parts', `Part ordered standard: ${entry.partId}`, -entry.priceYen)
-        break
-      case 'machine-hired':
-        push('machine-hire', `Machine-shop hire for the day: ${entry.componentId}`, -entry.priceYen)
-        break
-      case 'job-created':
-        if (entry.costYen) push('repair', `Repair charge on ${entry.carInstanceId}`, -entry.costYen)
-        break
-      case 'rent-paid':
-        pushShop('rent', 'Weekly rent', entry.amountYen)
-        break
-      case 'wage-paid':
-        pushShop('other', 'Staff wage', entry.amountYen)
-        break
-      case 'double-parking-fine':
-        push('other', 'Double-parking fine', -entry.amountYen)
-        break
-      case 'contract-income':
-        push('other', 'Contract staff retainer', entry.amountYen)
-        break
-      case 'car-sold':
-        push('sale', `Car sold: ${entry.carInstanceId}`, entry.priceYen)
-        break
-      case 'part-scrapped':
-        push('parts', `Scrap part sold: ${entry.partInstanceId}`, entry.priceYen)
-        break
-      case 'part-sold':
-        push('parts', `Used part sold: ${entry.partInstanceId}`, entry.priceYen)
-        break
-      case 'shell-scrapped':
-        push('other', `Shell scrapped: ${entry.carInstanceId}`, entry.priceYen)
-        break
-      case 'inspection-visit':
-        push('attendance', `Inspection visit at the ${entry.tier} rooms`, -entry.feeYen)
-        break
-      case 'service-job-completed':
-        push('other', `Service job payout: ${entry.jobId}`, entry.payoutYen)
-        break
-      case 'mission-delivered':
-        push('other', `Story mission payout: ${entry.missionId}`, entry.payoutYen)
-        break
-      default:
-        break
-    }
+    const movement = cashMovementFor(entry)
+    if (!movement || movement.amountYen === 0) continue
+    const { category, label } = describeCashLine(entry)
+    lines.push({
+      day,
+      scope: category === 'rent' || label === 'Staff wage' ? 'shop' : scope,
+      category,
+      bucket: movement.bucket,
+      label,
+      yen: movement.bucket === 'income' ? movement.amountYen : -movement.amountYen,
+    })
   }
   return lines
 }
@@ -465,6 +494,11 @@ function cashLinesFromLog(log: readonly DayLogEntry[], day: number, scope: CashS
 class Run {
   state: GameState
   readonly lines: CashLine[] = []
+  /** The shop's real bank balance after every step, in order, tagged with
+   * the day the step belonged to - the raw cash the weekly reconciliation is
+   * checked against, so no total anywhere is ever checked only against
+   * another total. */
+  readonly cashTrail: { day: number; cashYen: number }[] = []
   readonly laborByScope: Record<CashScope, number> = { 'car-a': 0, 'car-b': 0, shop: 0 }
 
   constructor(
@@ -484,21 +518,20 @@ class Run {
   }
 
   /**
-   * Runs one scripted step and books its cash movement. `extra` carries lines
-   * for the two charges the sim makes without logging them (body-pipeline
-   * materials, and a bench recondition), each taken from the relevant
-   * planner's own quote rather than from arithmetic here. Throws when the
-   * named lines do not add up to the real cash delta.
+   * Runs one scripted step and books its cash movement, entirely from the
+   * entries the sim itself logged. Throws when the named lines do not add up
+   * to the real cash delta, which is the whole point: a charge that reaches
+   * cash without a log entry to explain it stops this file dead.
    */
   step(
     scope: CashScope,
-    run: () => { state: GameState; log: readonly DayLogEntry[]; extra?: CashLine[] },
+    run: () => { state: GameState; log: readonly DayLogEntry[] },
   ): readonly DayLogEntry[] {
     const before = this.state
     const labourBefore = before.energySpentToday
     const result = run()
     const day = before.day
-    const lines = [...cashLinesFromLog(result.log, day, scope), ...(result.extra ?? [])]
+    const lines = cashLinesFromLog(result.log, day, scope)
     const named = lines.reduce((sum, line) => sum + line.yen, 0)
     const actual = result.state.cashYen - before.cashYen
     if (named !== actual) {
@@ -510,6 +543,7 @@ class Run {
     }
     this.state = result.state
     this.lines.push(...lines)
+    this.cashTrail.push({ day, cashYen: result.state.cashYen })
     // A day boundary resets the pool, so labour only accumulates within a day.
     const labourAfter = result.state.energySpentToday
     if (labourAfter >= labourBefore) this.laborByScope[scope] += labourAfter - labourBefore
@@ -676,16 +710,14 @@ function nextZoneStage(
   return null
 }
 
-/** Runs one staged body-pipeline action through the real `confirmStagedWork`,
- * booking the materials charge from the planner's own quote (the resolver
- * charges cash without logging it). */
+/** Runs one staged body-pipeline action through the real `confirmStagedWork`.
+ * The materials charge names itself now (`body-materials-bought`), so nothing
+ * here has to quote it. */
 function confirmOnePipelineAction(
   run: Run,
   scope: CashScope,
   carInstanceId: string,
   action: StagedAction,
-  materialsCostYen: number,
-  label: string,
 ): void {
   run.step(scope, () => {
     const withStaged: GameState = {
@@ -693,23 +725,7 @@ function confirmOnePipelineAction(
       stagedCarWork: { ...run.state.stagedCarWork, [carInstanceId]: [action] },
     }
     const result = confirmStagedWork(withStaged, carInstanceId, run.labourLeft, run.context)
-    const spentYen = withStaged.cashYen - result.state.cashYen
-    return {
-      state: result.state,
-      log: result.log,
-      extra:
-        spentYen === 0
-          ? []
-          : [
-              {
-                day: run.day,
-                scope,
-                category: 'materials' as const,
-                label,
-                yen: -materialsCostYen,
-              },
-            ],
-    }
+    return { state: result.state, log: result.log }
   })
 }
 
@@ -743,26 +759,20 @@ function runBodyPipeline(
         const plan = planPaintStage(zone, zoneId, 'Factory White', capability)
         if (!plan.ok) continue
         run.ensureLabour(scope, plan.laborUnits * 5)
-        confirmOnePipelineAction(
-          run,
-          scope,
-          carInstanceId,
-          { kind: 'pipeline-paint', zoneId, colour: 'Factory White' },
-          plan.materialsCostYen,
-          `Body pipeline paint on ${zoneId}`,
-        )
+        confirmOnePipelineAction(run, scope, carInstanceId, {
+          kind: 'pipeline-paint',
+          zoneId,
+          colour: 'Factory White',
+        })
       } else {
         const plan = planPipelineStage(next.stage, zone, capability)
         if (!plan.ok) continue
         run.ensureLabour(scope, plan.laborUnits * 5)
-        confirmOnePipelineAction(
-          run,
-          scope,
-          carInstanceId,
-          { kind: 'pipeline-stage', stage: next.stage, zoneId },
-          plan.materialsCostYen,
-          `Body pipeline ${next.stage} on ${zoneId}`,
-        )
+        confirmOnePipelineAction(run, scope, carInstanceId, {
+          kind: 'pipeline-stage',
+          stage: next.stage,
+          zoneId,
+        })
       }
       const after = carOf(run.state, carInstanceId).zoneState![zoneId]
       if (JSON.stringify(after) !== JSON.stringify(zone)) didSomething = true
@@ -772,19 +782,18 @@ function runBodyPipeline(
   }
 }
 
-/** Books a bench recondition of one loose part, taking the charge from
- * `reconditionQuote` (the resolver charges cash without logging it). */
+/** Books a bench recondition of one loose part. The charge names itself now
+ * (`job-created` carries it, exactly as an on-car repair's does), so the
+ * quote is only read to make sure the labour is there to finish it. */
 function reconditionLoosePart(
   run: Run,
   scope: CashScope,
   partInstanceId: string,
   target: ConditionBand,
-  label: string,
 ): void {
   const quote = reconditionQuote(run.state, partInstanceId, target, run.context)
   if (!quote) return
   run.ensureLabour(scope, quote.laborSlotsRequired)
-  const costYen = quote.costYen
   run.step(scope, () => {
     const result = resolveReconditionLabor(
       run.state,
@@ -793,15 +802,7 @@ function reconditionLoosePart(
       run.labourLeft,
       run.context,
     )
-    const spentYen = run.state.cashYen - result.state.cashYen
-    return {
-      state: result.state,
-      log: result.log,
-      extra:
-        spentYen === 0
-          ? []
-          : [{ day: run.day, scope, category: 'repair' as const, label, yen: -costYen }],
-    }
+    return { state: result.state, log: result.log }
   })
 }
 
@@ -875,13 +876,7 @@ function benchCyclePart(
   removeSlot(run, scope, carInstanceId, carPartId)
   if (!run.state.partInventory.some((p) => p.id === partInstanceId)) return
 
-  reconditionLoosePart(
-    run,
-    scope,
-    partInstanceId,
-    target,
-    `Bench recondition: ${carPartId} to ${target}`,
-  )
+  reconditionLoosePart(run, scope, partInstanceId, target)
   installLoosePart(run, scope, carInstanceId, carPartId, partInstanceId, hires)
 }
 
@@ -982,7 +977,7 @@ function wheelOffWindow(
 
   const rims = container.members.rims
   if (rims) {
-    reconditionLoosePart(run, scope, rims.id, target, `Bench recondition: rims to ${target}`)
+    reconditionLoosePart(run, scope, rims.id, target)
   }
 
   const tyres = container.members.tyres
@@ -1458,22 +1453,7 @@ function runOneCar(run: Run, script: CarScript, currentYear: number): CarRunRepo
       context,
       script.listingChannelId,
     )
-    return {
-      state: result.state,
-      log: result.log,
-      extra:
-        listingFeeYen === 0
-          ? []
-          : [
-              {
-                day: run.day,
-                scope,
-                category: 'listing' as const,
-                label: `Listing fee (${script.listingChannelId})`,
-                yen: -listingFeeYen,
-              },
-            ],
-    }
+    return { state: result.state, log: result.log }
   })
 
   const listingSnapshot = run.state
@@ -1655,6 +1635,8 @@ export function runWorkedExample(
     finalCashYen: run.state.cashYen,
     weeklyRentYen: weeklyRentForStartingBays(context),
     cashLines: run.lines,
+    financeLedger: run.state.financeLedger,
+    cashTrail: run.cashTrail,
     carA,
     carB,
     excludedIncome,

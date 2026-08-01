@@ -79,7 +79,7 @@ The realised price of a live-room win lands **somewhere between ¥120,592 and ¥
 
 | Day | Category | Item | Yen |
 |---|---|---|---|
-| day 1 | Repair labour charges | Bench recondition: rims to fine | -¥480 |
+| day 1 | Repair labour charges | Bench recondition of car-worked-car-a-26-part-rims | -¥480 |
 | day 2 | Repair labour charges | Repair charge on car-worked-car-a-26 | -¥360 |
 | day 1 | Body-pipeline materials | Body pipeline fillAndSand on bonnet | -¥1,900 |
 | day 1 | Body-pipeline materials | Body pipeline polish on boot | -¥800 |
@@ -226,15 +226,15 @@ It arrived carrying somebody else's parts: `cooling` Suiko Track Radiator Kit (s
 
 | Day | Category | Item | Yen |
 |---|---|---|---|
-| day 9 | Repair labour charges | Bench recondition: brakeCalipersLines to fine | -¥1,440 |
-| day 9 | Repair labour charges | Bench recondition: rims to fine | -¥1,080 |
-| day 10 | Repair labour charges | Bench recondition: intake to fine | -¥580 |
-| day 10 | Repair labour charges | Bench recondition: exhaust to fine | -¥1,280 |
-| day 10 | Repair labour charges | Bench recondition: cooling to fine | -¥900 |
-| day 11 | Repair labour charges | Bench recondition: dampers to fine | -¥1,280 |
-| day 11 | Repair labour charges | Bench recondition: springs to fine | -¥580 |
-| day 11 | Repair labour charges | Bench recondition: antiRollBars to fine | -¥380 |
-| day 11 | Repair labour charges | Bench recondition: steering to fine | -¥700 |
+| day 9 | Repair labour charges | Bench recondition of car-worked-car-b-9-part-brakeCalipersLines | -¥1,440 |
+| day 9 | Repair labour charges | Bench recondition of car-worked-car-b-9-part-rims | -¥1,080 |
+| day 10 | Repair labour charges | Bench recondition of car-worked-car-b-9-part-intake | -¥580 |
+| day 10 | Repair labour charges | Bench recondition of car-worked-car-b-9-part-exhaust | -¥1,280 |
+| day 10 | Repair labour charges | Bench recondition of car-worked-car-b-9-part-cooling | -¥900 |
+| day 11 | Repair labour charges | Bench recondition of car-worked-car-b-9-part-dampers | -¥1,280 |
+| day 11 | Repair labour charges | Bench recondition of car-worked-car-b-9-part-springs | -¥580 |
+| day 11 | Repair labour charges | Bench recondition of car-worked-car-b-9-part-antiRollBars | -¥380 |
+| day 11 | Repair labour charges | Bench recondition of car-worked-car-b-9-part-steering | -¥700 |
 | day 12 | Repair labour charges | Repair charge on car-worked-car-b-9 | -¥4,160 |
 | day 12 | Repair labour charges | Repair charge on car-worked-car-b-9 | -¥840 |
 | day 7 | Body-pipeline materials | Body pipeline fillAndSand on bonnet | -¥1,900 |
@@ -449,7 +449,7 @@ Every yen that moved, in order. This is the list the reconciliation test sums.
 | 1 | car-a | Body-pipeline materials | Body pipeline prime on bonnet | -¥1,200 | ¥173,908 |
 | 1 | car-a | Body-pipeline materials | Body pipeline paint on bonnet | -¥2,500 | ¥171,408 |
 | 1 | car-a | Body-pipeline materials | Body pipeline polish on bonnet | -¥800 | ¥170,608 |
-| 1 | car-a | Repair labour charges | Bench recondition: rims to fine | -¥480 | ¥170,128 |
+| 1 | car-a | Repair labour charges | Bench recondition of car-worked-car-a-26-part-rims | -¥480 | ¥170,128 |
 | 1 | car-a | Parts | Part ordered standard: shitbox-stock-tyres | -¥3,100 | ¥167,028 |
 | 2 | car-a | Machine-shop hire | Machine-shop hire for the day: wheels | -¥3,000 | ¥164,028 |
 | 2 | car-a | Repair labour charges | Repair charge on car-worked-car-a-26 | -¥360 | ¥163,668 |
@@ -483,18 +483,18 @@ Every yen that moved, in order. This is the list the reconciliation test sums.
 | 9 | car-b | Body-pipeline materials | Body pipeline polish on left | -¥800 | ¥91,034 |
 | 9 | car-b | Body-pipeline materials | Body pipeline paint on right | -¥2,500 | ¥88,534 |
 | 9 | car-b | Body-pipeline materials | Body pipeline polish on right | -¥800 | ¥87,734 |
-| 9 | car-b | Repair labour charges | Bench recondition: brakeCalipersLines to fine | -¥1,440 | ¥86,294 |
-| 9 | car-b | Repair labour charges | Bench recondition: rims to fine | -¥1,080 | ¥85,214 |
+| 9 | car-b | Repair labour charges | Bench recondition of car-worked-car-b-9-part-brakeCalipersLines | -¥1,440 | ¥86,294 |
+| 9 | car-b | Repair labour charges | Bench recondition of car-worked-car-b-9-part-rims | -¥1,080 | ¥85,214 |
 | 9 | car-b | Parts | Part ordered standard: stock-tyres | -¥3,500 | ¥81,714 |
 | 10 | car-b | Machine-shop hire | Machine-shop hire for the day: wheels | -¥3,000 | ¥78,714 |
-| 10 | car-b | Repair labour charges | Bench recondition: intake to fine | -¥580 | ¥78,134 |
-| 10 | car-b | Repair labour charges | Bench recondition: exhaust to fine | -¥1,280 | ¥76,854 |
-| 10 | car-b | Repair labour charges | Bench recondition: cooling to fine | -¥900 | ¥75,954 |
-| 11 | car-b | Repair labour charges | Bench recondition: dampers to fine | -¥1,280 | ¥74,674 |
+| 10 | car-b | Repair labour charges | Bench recondition of car-worked-car-b-9-part-intake | -¥580 | ¥78,134 |
+| 10 | car-b | Repair labour charges | Bench recondition of car-worked-car-b-9-part-exhaust | -¥1,280 | ¥76,854 |
+| 10 | car-b | Repair labour charges | Bench recondition of car-worked-car-b-9-part-cooling | -¥900 | ¥75,954 |
+| 11 | car-b | Repair labour charges | Bench recondition of car-worked-car-b-9-part-dampers | -¥1,280 | ¥74,674 |
 | 11 | car-b | Machine-shop hire | Machine-shop hire for the day: suspension | -¥5,000 | ¥69,674 |
-| 11 | car-b | Repair labour charges | Bench recondition: springs to fine | -¥580 | ¥69,094 |
-| 11 | car-b | Repair labour charges | Bench recondition: antiRollBars to fine | -¥380 | ¥68,714 |
-| 11 | car-b | Repair labour charges | Bench recondition: steering to fine | -¥700 | ¥68,014 |
+| 11 | car-b | Repair labour charges | Bench recondition of car-worked-car-b-9-part-springs | -¥580 | ¥69,094 |
+| 11 | car-b | Repair labour charges | Bench recondition of car-worked-car-b-9-part-antiRollBars | -¥380 | ¥68,714 |
+| 11 | car-b | Repair labour charges | Bench recondition of car-worked-car-b-9-part-steering | -¥700 | ¥68,014 |
 | 12 | car-b | Repair labour charges | Repair charge on car-worked-car-b-9 | -¥4,160 | ¥63,854 |
 | 12 | car-b | Repair labour charges | Repair charge on car-worked-car-b-9 | -¥840 | ¥63,014 |
 | 12 | car-b | Parts | Part ordered standard: koi-street-injector-kit | -¥3,700 | ¥59,314 |

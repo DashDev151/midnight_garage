@@ -15,6 +15,7 @@ import { bandIndex } from './bands'
 import { energyMax } from './laborSlots'
 import type { SimContext } from './context'
 import { benchHasTrait, benchedMemberWithTrait } from './crewSkills'
+import { bookCashMovements } from './financeLedger'
 import { marketValueYen } from './marketValue'
 
 type CarSymptom = CarInstance['symptoms'][number]
@@ -430,9 +431,12 @@ export function beginInspectionVisit(
     energySpentToday: state.energySpentToday + context.economy.energy.actionPoints.inspectionVisit,
     inspectionVisit: { tier, minutesLeft: minutesGranted },
   }
+  // Getting to the yard is a cost of doing business, not of any lot looked at
+  // there - most visits end without buying anything.
+  const log: DayLogEntry[] = [{ type: 'inspection-visit', tier, feeYen, minutesGranted }]
   return {
-    state: nextState,
-    log: [{ type: 'inspection-visit', tier, feeYen, minutesGranted }],
+    state: bookCashMovements(nextState, log, context.economy),
+    log,
     outcome: 'started',
   }
 }

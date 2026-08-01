@@ -9,6 +9,7 @@ import type {
 } from '@midnight-garage/content'
 import { TraitIdSchema } from '@midnight-garage/content'
 import type { SimContext } from './context'
+import { bookCashMovements } from './financeLedger'
 import type { Rng } from './rng'
 
 export interface StaffResolution {
@@ -149,17 +150,24 @@ export function resolveHireStaff(
   const feeYen = introductionFeeYen(ad.candidate.weeklyWageYen, context.economy)
   const staff = [...state.staff, ad.candidate]
   const staffAds = state.staffAds.filter((entry) => entry.candidate.id !== candidateId)
+  // The agency's fee is a cost of running the shop, the same line the wages
+  // that follow it land on.
+  const log: DayLogEntry[] = [
+    {
+      type: 'staff-hired',
+      staffId: ad.candidate.id,
+      displayName: ad.candidate.displayName,
+      weeklyWageYen: ad.candidate.weeklyWageYen,
+      introFeeYen: feeYen,
+    },
+  ]
   return {
-    state: { ...state, staff, staffAds, cashYen: state.cashYen - feeYen },
-    log: [
-      {
-        type: 'staff-hired',
-        staffId: ad.candidate.id,
-        displayName: ad.candidate.displayName,
-        weeklyWageYen: ad.candidate.weeklyWageYen,
-        introFeeYen: feeYen,
-      },
-    ],
+    state: bookCashMovements(
+      { ...state, staff, staffAds, cashYen: state.cashYen - feeYen },
+      log,
+      context.economy,
+    ),
+    log,
   }
 }
 

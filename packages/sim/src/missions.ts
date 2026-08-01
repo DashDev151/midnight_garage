@@ -11,6 +11,7 @@ import { stockNewlyUnlockedTier } from './catalogs'
 import type { SimContext } from './context'
 import { computeDerivedStats } from './derivedStats'
 import { releaseCarFromShop } from './facilities'
+import { bookCashMovements } from './financeLedger'
 import { lapTimeSecondsFor } from './lapModel'
 import { evaluateRequirement, type RequirementResult } from './requirements'
 import { createRng, hashStringToSeed } from './rng'
@@ -225,16 +226,6 @@ export function resolveDeliverMission(
   )
   const totalPayoutYen = mission.payoutYen + tipYen
 
-  const deliveredState = deleteCarLedger(
-    {
-      ...withSpecialty,
-      cashYen: withSpecialty.cashYen + totalPayoutYen,
-      ownedCars: withSpecialty.ownedCars.filter((c) => c.id !== carInstanceId),
-      storyMissions,
-    },
-    carInstanceId,
-  )
-
   const log: DayLogEntry[] = [
     {
       type: 'mission-delivered',
@@ -245,6 +236,20 @@ export function resolveDeliverMission(
       specialtyGained,
     },
   ]
+
+  const deliveredState = bookCashMovements(
+    deleteCarLedger(
+      {
+        ...withSpecialty,
+        cashYen: withSpecialty.cashYen + totalPayoutYen,
+        ownedCars: withSpecialty.ownedCars.filter((c) => c.id !== carInstanceId),
+        storyMissions,
+      },
+      carInstanceId,
+    ),
+    log,
+    context.economy,
+  )
 
   // A guarantor mission's reward is a tier unlock, not just yen - the
   // newly-open room gets stocked THIS SAME DAY (the "come by Thursday"

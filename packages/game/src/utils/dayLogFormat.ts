@@ -1,14 +1,16 @@
-import type { ComponentId, DayLogEntry } from '@midnight-garage/content'
+import type { CashBucket, ComponentId, DayLogEntry } from '@midnight-garage/content'
 import {
   COMPONENT_DISPLAY_NAMES,
   ComponentIdSchema,
   PARTS,
   TOOL_LINES,
+  cashMovementFor,
   componentDisplayName,
   titleCaseFromSlug,
 } from '@midnight-garage/content'
 import { formatYen, formatYenDelta } from './formatYen'
 import { offerCopy } from './offerCopy'
+import { SELLING_CHANNEL_LABELS } from './sellingChannelLabels'
 
 /** Catalogue part id -> its player-facing "Brand Name" label; internal ids
  * (e.g. `shitbox-stock-tyres`) never reach the day report. */
@@ -64,8 +66,14 @@ export function describeLogEntry(
       return `Double-parking fine (${entry.carInstanceId}): ${formatYen(entry.amountYen)}`
     case 'wage-paid':
       return `Wage paid to ${entry.staffId}: ${formatYen(entry.amountYen)}`
-    case 'job-created':
-      return `Job started (${entry.kind}) on ${entry.carInstanceId}`
+    case 'job-created': {
+      const charge = entry.costYen === undefined ? '' : ` for ${formatYen(entry.costYen)}`
+      // A recondition works a loose part on the bench, so it has no car to
+      // name - `carInstanceId` holds the part instance for identity only.
+      return entry.kind === 'recondition-part'
+        ? `Bench recondition started${charge}`
+        : `Job started (${entry.kind}) on ${entry.carInstanceId}${charge}`
+    }
     case 'job-progress':
       return `Job ${entry.jobId}: +${entry.laborSlotsSpent} labour`
     case 'job-completed':
@@ -84,6 +92,8 @@ export function describeLogEntry(
       return `Won the ${entry.year} ${resolveModelName(entry.modelId)} for ${formatYen(entry.priceYen)}`
     case 'lot-bought-out':
       return `Bought the ${entry.year} ${resolveModelName(entry.modelId)} for ${formatYen(entry.priceYen)}`
+    case 'auction-attended':
+      return `Paid in at the ${entry.tier} rooms: ${formatYen(entry.feeYen)}`
     case 'offer-received':
       return offerCopy(
         resolveBuyerName(entry.buyerId),
@@ -114,6 +124,10 @@ export function describeLogEntry(
       // unresolved symptom.
       return entry.saleRevealLine ? `${withQuality} ${entry.saleRevealLine}` : withQuality
     }
+    case 'car-listed':
+      return `Advertising for ${entry.carInstanceId} (${SELLING_CHANNEL_LABELS[entry.channelId]}): ${formatYen(entry.feeYen)}`
+    case 'body-materials-bought':
+      return `Body materials, ${entry.stage} on the ${entry.zoneId}: ${formatYen(entry.costYen)}`
     case 'part-bought':
       return `Bought ${partLabel(entry.partId)} for ${formatYen(entry.priceYen)}`
     case 'part-ordered':
@@ -217,14 +231,27 @@ export interface DayReportWin {
   kind: 'won' | 'bought'
 }
 
+/**
+ * The morning report's three money lines, each a sum over `cashMovementFor`'s
+ * buckets and never a second classification: `earnedYen` is `income`,
+ * `onCarsYen` is what went on cars and the stock waiting to go on them, and
+ * `billsYen` is what running the shop and investing in it cost. Same law as
+ * the weekly cost sheet, read at a day's scale instead of a week's, and
+ * folded to three lines because a day rarely holds enough for five.
+ */
 export interface DayReportMoney {
-  /** Money in: sales, service-job payouts, passive bay income, scrapped/sold
-   * parts, and a scrapped shell. */
   earnedYen: number
-  /** Money out on acquiring cars: auction wins + buyouts. */
   onCarsYen: number
-  /** Recurring costs: rent, wages, double-parking fines. */
   billsYen: number
+}
+
+/** Which of the report's three lines each bucket totals into. */
+const DAY_REPORT_LINE_BY_BUCKET: Record<CashBucket, keyof DayReportMoney> = {
+  income: 'earnedYen',
+  onCars: 'onCarsYen',
+  stock: 'onCarsYen',
+  running: 'billsYen',
+  investment: 'billsYen',
 }
 
 export interface DayReportView {
@@ -236,8 +263,6 @@ export interface DayReportView {
   noise: string[]
 }
 
-/** Types that become celebration cards, not list lines. */
-const WIN_TYPES = new Set<DayLogEntry['type']>(['auction-hammer-won', 'lot-bought-out'])
 /** Types represented in the money split only - no individual list line. */
 const MONEY_ONLY_TYPES = new Set<DayLogEntry['type']>(['rent-paid', 'wage-paid', 'contract-income'])
 /** Types folded into aggregated noise lines rather than shown one-per-entry. */
@@ -262,7 +287,15 @@ export function classifyDayReport(
   let labourTicked = 0
 
   for (const entry of entries) {
+    // Every yen is classified once, by the shared law - so a movement the
+    // report used to drop into prose (a bay, a tool line, an inspection
+    // visit, a part bought) now counts, and none of them can be counted
+    // differently here than the weekly sheet counts them.
+    const movement = cashMovementFor(entry)
+    if (movement) money[DAY_REPORT_LINE_BY_BUCKET[movement.bucket]] += movement.amountYen
+
     switch (entry.type) {
+      // A car coming home is a celebration card, never a red number in a list.
       case 'auction-hammer-won':
         wins.push({
           modelName: resolveModelName(entry.modelId),
@@ -270,7 +303,6 @@ export function classifyDayReport(
           priceYen: entry.priceYen,
           kind: 'won',
         })
-        money.onCarsYen += entry.priceYen
         break
       case 'lot-bought-out':
         wins.push({
@@ -279,39 +311,6 @@ export function classifyDayReport(
           priceYen: entry.priceYen,
           kind: 'bought',
         })
-        money.onCarsYen += entry.priceYen
-        break
-      case 'car-sold':
-        money.earnedYen += entry.priceYen
-        rest.push(describeLogEntry(entry, resolveModelName, resolveBuyerName))
-        break
-      case 'service-job-completed':
-        money.earnedYen += entry.payoutYen
-        rest.push(describeLogEntry(entry, resolveModelName, resolveBuyerName))
-        break
-      case 'part-scrapped':
-      case 'part-sold':
-      case 'shell-scrapped':
-        money.earnedYen += entry.priceYen
-        rest.push(describeLogEntry(entry, resolveModelName, resolveBuyerName))
-        break
-      case 'contract-income':
-        money.earnedYen += entry.amountYen
-        break
-      case 'rent-paid':
-      case 'wage-paid':
-        money.billsYen += Math.abs(entry.amountYen)
-        break
-      case 'double-parking-fine':
-        money.billsYen += Math.abs(entry.amountYen)
-        rest.push(describeLogEntry(entry, resolveModelName, resolveBuyerName))
-        break
-      // A daily machine hire is a running cost, same treatment as rent, but
-      // (unlike rent) also worth its own notable line - the player staged
-      // work today that needed it.
-      case 'machine-hired':
-        money.billsYen += entry.priceYen
-        rest.push(describeLogEntry(entry, resolveModelName, resolveBuyerName))
         break
       // Swallowed on purpose. The sim still logs the entry (the day log and the
       // harness both read it); the morning report simply stops narrating
@@ -325,11 +324,7 @@ export function classifyDayReport(
         labourTicked += entry.laborSlotsSpent
         break
       default:
-        if (
-          !WIN_TYPES.has(entry.type) &&
-          !MONEY_ONLY_TYPES.has(entry.type) &&
-          !NOISE_TYPES.has(entry.type)
-        ) {
+        if (!MONEY_ONLY_TYPES.has(entry.type) && !NOISE_TYPES.has(entry.type)) {
           rest.push(describeLogEntry(entry, resolveModelName, resolveBuyerName))
         }
     }

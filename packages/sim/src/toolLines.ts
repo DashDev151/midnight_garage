@@ -8,6 +8,7 @@ import type {
 } from '@midnight-garage/content'
 import { reputationAtLeast } from './reputation'
 import type { SimContext } from './context'
+import { bookCashMovements } from './financeLedger'
 import type { UpgradeToolLineAction } from './actions'
 import type { Rng } from './rng'
 
@@ -216,17 +217,26 @@ export function applyToolUpgrade(
   // refusal reason, same shape as the reputation gate above); the
   // player's own Upgrade button is disabled the same way.
   if (!isToolTierListed(state, componentId, toTier)) return { state, log: [], applied: false }
+  // A machine bought outright is shop investment, not a running cost - unlike
+  // the daily hire of the same line, which is.
+  const log: DayLogEntry[] = [
+    { type: 'tool-upgraded', componentId, toTier, priceYen: nextTier.upgradePriceYen },
+  ]
   return {
-    state: {
-      ...state,
-      cashYen: state.cashYen - nextTier.upgradePriceYen,
-      toolTiers: { ...state.toolTiers, [componentId]: toTier },
-      // The listing is consumed the moment its machine sells - left live,
-      // it would keep advertising a tier the shop already owns until its
-      // window happened to lapse naturally.
-      machineListing: null,
-    },
-    log: [{ type: 'tool-upgraded', componentId, toTier, priceYen: nextTier.upgradePriceYen }],
+    state: bookCashMovements(
+      {
+        ...state,
+        cashYen: state.cashYen - nextTier.upgradePriceYen,
+        toolTiers: { ...state.toolTiers, [componentId]: toTier },
+        // The listing is consumed the moment its machine sells - left live,
+        // it would keep advertising a tier the shop already owns until its
+        // window happened to lapse naturally.
+        machineListing: null,
+      },
+      log,
+      context.economy,
+    ),
+    log,
     applied: true,
   }
 }

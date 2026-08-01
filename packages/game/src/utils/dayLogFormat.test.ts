@@ -358,3 +358,70 @@ describe('classifyDayReport', () => {
     expect(view.money.billsYen).toBe(5_000 + 90_000)
   })
 })
+
+describe('the cash movements that used to leave no trace', () => {
+  it('names the auction admission, the listing fee, the body materials and the bench recondition', () => {
+    expect(describeLogEntry({ type: 'auction-attended', tier: 'regional', feeYen: 3_000 })).toBe(
+      'Paid in at the regional rooms: ¥3,000',
+    )
+    expect(
+      describeLogEntry({
+        type: 'car-listed',
+        carInstanceId: 'car-1',
+        channelId: 'freeAdsPaper',
+        feeYen: 1_500,
+      }),
+    ).toBe('Advertising for car-1 (Free ads paper): ¥1,500')
+    expect(
+      describeLogEntry({
+        type: 'body-materials-bought',
+        carInstanceId: 'car-1',
+        zoneId: 'bonnet',
+        stage: 'prime',
+        costYen: 3_200,
+      }),
+    ).toBe('Body materials, prime on the bonnet: ¥3,200')
+    expect(
+      describeLogEntry({
+        type: 'job-created',
+        jobId: 'job-1',
+        carInstanceId: 'part-1-0',
+        kind: 'recondition-part',
+        costYen: 12_400,
+      }),
+    ).toBe('Bench recondition started for ¥12,400')
+  })
+
+  it('shows what a repair cost the moment the job opens', () => {
+    expect(
+      describeLogEntry({
+        type: 'job-created',
+        jobId: 'job-1',
+        carInstanceId: 'car-1',
+        kind: 'repair-zone',
+        costYen: 8_000,
+      }),
+    ).toBe('Job started (repair-zone) on car-1 for ¥8,000')
+  })
+
+  it('counts every one of them into the day report, none into prose alone', () => {
+    const view = classifyDayReport([
+      { type: 'auction-attended', tier: 'regional', feeYen: 3_000 },
+      { type: 'car-listed', carInstanceId: 'car-1', channelId: 'freeAdsPaper', feeYen: 1_500 },
+      {
+        type: 'body-materials-bought',
+        carInstanceId: 'car-1',
+        zoneId: 'bonnet',
+        stage: 'paint',
+        costYen: 3_200,
+      },
+      { type: 'bay-purchased', kind: 'parking', priceYen: 400_000 },
+      { type: 'part-bought', partId: 'x', partInstanceId: 'p1', priceYen: 20_000 },
+    ])
+    // Admission and the bay are the shop's own costs; the listing fee, the
+    // materials and the part are all spent towards cars.
+    expect(view.money.billsYen).toBe(3_000 + 400_000)
+    expect(view.money.onCarsYen).toBe(1_500 + 3_200 + 20_000)
+    expect(view.money.earnedYen).toBe(0)
+  })
+})

@@ -2,6 +2,7 @@ import type { BayKind, DayLogEntry, EconomyConfig, GameState } from '@midnight-g
 import { BayKindSchema } from '@midnight-garage/content'
 import { isPayday, isRentDay } from './calendar'
 import { bayCountsByKind } from './facilities'
+import { bookCashMovements } from './financeLedger'
 
 /** This resolver only ever logs its own two entry kinds - narrower than the
  * full `DayLogEntry` union so a caller (or a test summing `amountYen`) never
@@ -71,5 +72,5 @@ export function applyWeeklyRentAndWages(
     return { state, log: [] }
   }
 
-  return { state: { ...state, cashYen }, log }
+  return { state: bookCashMovements({ ...state, cashYen }, log, economy), log }
 }

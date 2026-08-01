@@ -88,6 +88,7 @@ export function createInitialGameState(
     cartPartIds: [],
     stagedCarWork: {},
     carLedgers: {},
+    financeLedger: {},
     machineListing: null,
     nextMachineListingDay: null,
     serviceJobLedgers: {},

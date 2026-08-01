@@ -1,6 +1,6 @@
 # The weekly cost sheet: what running the shop costs
 
-**Status: DESIGN, NOT BUILT. Two rulings open (bottom of this document).**
+**Status: BUILT (Sprint 157). Both open rulings were made; see the bottom of this document.**
 
 ## The ruling this implements
 
@@ -172,9 +172,9 @@ play** and needs its own sprint.
 
 ---
 
-## Two open rulings
+## Both rulings, made
 
-### 1. It needs a bible amendment
+### 1. It needs a bible amendment - GRANTED
 
 Progression bible Law 4 grants exactly one pull-not-push screen exception, and `StandingScreen.vue`
 is it. A financial summary would be the second. The amendment's own justification reads:
@@ -184,15 +184,20 @@ is it. A financial summary would be the second. The amendment's own justificatio
 
 A weekly cost sheet is a more literal 1995 artefact than a reputation bar: shops kept them, the
 Standing screen's "ledger" is a metaphor and this one is not. Law 4's litmus (*could a 1995 shop
-owner perceive this signal in the real world?*) passes cleanly. **But it is a bible, and a second
-exception is the maintainer's call, recorded in the amendment log or not made.**
+owner perceive this signal in the real world?*) passes cleanly.
 
-### 2. The double-parking fine
+**Granted by the maintainer and recorded** as Law 4's third amendment, in
+`progression-bible.md`'s amendment log (2026-08-01).
 
-Charged for a named car, and its log entry carries `carInstanceId` (`facilities.ts:334-337`), so the
+### 2. The double-parking fine - RUNNING COST
+
+Charged for a named car, and its log entry carries `carInstanceId` (`facilities.ts`), so the
 schema's own test ("charged FOR that car") reads per-car. Against that: it prices a bay shortage, not
 that car. The car is the one that happened to be last through the gate; park a different car there
-and the same fine falls. **Recommendation: running cost.** Maintainer's call.
+and the same fine falls.
+
+**Ruled: running cost.** `cashMovementFor` books it to `running`, and it stays off the named car's
+ledger exactly as it always did.
 
 ---
 
@@ -200,7 +205,7 @@ and the same fine falls. **Recommendation: running cost.** Maintainer's call.
 
 | What | Where |
 | --- | --- |
-| `SAVE_VERSION` 51 to 52, bump only, no migration (directive 19) | `saveCodec.ts:612` |
+| `SAVE_VERSION` 52 to 53, bump only, no migration (directive 19) | `saveCodec.ts` |
 | One additive `GameState` field and its default | `gameState.ts` |
 | The bucket table, authored once, replacing three prose copies | `gameState.ts:46-53`, `workedExample.ts:96-112`, `dayLogFormat.ts:309-311` |
 | `classifyDayReport` refactored onto the shared table, closing its `default` fall-through | `dayLogFormat.ts:253-344` |

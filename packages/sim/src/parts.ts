@@ -15,6 +15,7 @@ import {
 import { scrapValueYen, usedPartSaleValueYen } from './bands'
 import { PARTS_EXPRESS_SURCHARGE_FRACTION, PARTS_STANDARD_DELIVERY_DAYS } from './constants'
 import type { SimContext } from './context'
+import { bookCashMovements } from './financeLedger'
 import { isCustomerOriginPart, makeMarketOrigin } from './provenance'
 
 export type DeliverySpeed = 'standard' | 'express'
@@ -108,21 +109,29 @@ export function resolveBuyPart(
       purchasedOnDay: state.day,
       arrivesOnDay: state.day + PARTS_STANDARD_DELIVERY_DAYS,
     }
-    return {
-      state: {
-        ...state,
-        cashYen: state.cashYen - part.priceYen,
-        pendingPartOrders: [...state.pendingPartOrders, order],
+    // Cash leaves now and the part arrives later, so the spend is stock the
+    // day it is ordered - a car's own ledger only sees it if and when it is
+    // fitted.
+    const log: DayLogEntry[] = [
+      {
+        type: 'part-ordered',
+        orderId: order.id,
+        partId: part.id,
+        priceYen: order.priceYen,
+        arrivesOnDay: order.arrivesOnDay,
       },
-      log: [
+    ]
+    return {
+      state: bookCashMovements(
         {
-          type: 'part-ordered',
-          orderId: order.id,
-          partId: part.id,
-          priceYen: order.priceYen,
-          arrivesOnDay: order.arrivesOnDay,
+          ...state,
+          cashYen: state.cashYen - part.priceYen,
+          pendingPartOrders: [...state.pendingPartOrders, order],
         },
-      ],
+        log,
+        context.economy,
+      ),
+      log,
     }
   }
 
@@ -136,20 +145,25 @@ export function resolveBuyPart(
     origin: makeMarketOrigin(state.day),
     pricePaidYen: priceYen,
   }
-  return {
-    state: {
-      ...state,
-      cashYen: state.cashYen - priceYen,
-      partInventory: [...state.partInventory, partInstance],
+  const log: DayLogEntry[] = [
+    {
+      type: 'part-bought',
+      partId: part.id,
+      partInstanceId: partInstance.id,
+      priceYen,
     },
-    log: [
+  ]
+  return {
+    state: bookCashMovements(
       {
-        type: 'part-bought',
-        partId: part.id,
-        partInstanceId: partInstance.id,
-        priceYen,
+        ...state,
+        cashYen: state.cashYen - priceYen,
+        partInventory: [...state.partInventory, partInstance],
       },
-    ],
+      log,
+      context.economy,
+    ),
+    log,
   }
 }
 
@@ -247,14 +261,19 @@ export function resolveScrapPart(
   if (laborSlotsUsed > laborAvailable) return { state, log: [] }
 
   const priceYen = scrapValueYen(taxonomyEntry, context.economy, part.fitmentClass)
+  const log: DayLogEntry[] = [{ type: 'part-scrapped', partInstanceId, priceYen }]
   return {
-    state: {
-      ...state,
-      cashYen: state.cashYen + priceYen,
-      partInventory: state.partInventory.filter((p) => p.id !== partInstanceId),
-      energySpentToday: state.energySpentToday + laborSlotsUsed,
-    },
-    log: [{ type: 'part-scrapped', partInstanceId, priceYen }],
+    state: bookCashMovements(
+      {
+        ...state,
+        cashYen: state.cashYen + priceYen,
+        partInventory: state.partInventory.filter((p) => p.id !== partInstanceId),
+        energySpentToday: state.energySpentToday + laborSlotsUsed,
+      },
+      log,
+      context.economy,
+    ),
+    log,
   }
 }
 
@@ -289,12 +308,17 @@ export function resolveSellPart(
   if (!part) return { state, log: [] }
 
   const priceYen = usedPartSaleValueYen(part.priceYen, instance.band, context.economy)
+  const log: DayLogEntry[] = [{ type: 'part-sold', partInstanceId, priceYen }]
   return {
-    state: {
-      ...state,
-      cashYen: state.cashYen + priceYen,
-      partInventory: state.partInventory.filter((p) => p.id !== partInstanceId),
-    },
-    log: [{ type: 'part-sold', partInstanceId, priceYen }],
+    state: bookCashMovements(
+      {
+        ...state,
+        cashYen: state.cashYen + priceYen,
+        partInventory: state.partInventory.filter((p) => p.id !== partInstanceId),
+      },
+      log,
+      context.economy,
+    ),
+    log,
   }
 }

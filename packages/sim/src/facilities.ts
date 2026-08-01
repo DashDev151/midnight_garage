@@ -7,6 +7,7 @@ import type {
   ReputationTier,
 } from '@midnight-garage/content'
 import { reputationAtLeast } from './reputation'
+import { bookCashMovements } from './financeLedger'
 import type { BuyBayAction, MoveCarAction } from './actions'
 
 /**
@@ -332,9 +333,13 @@ export function resolveGraceParking(state: GameState, economy: EconomyConfig): G
   }
 
   const amountYen = economy.DOUBLE_PARKING_FINE_YEN
+  // The fine names a car, but it prices a bay shortage rather than that car:
+  // park a different one in the overflow slot and the same fine falls. It is a
+  // running cost, and stays off the named car's own ledger.
+  const log: DayLogEntry[] = [{ type: 'double-parking-fine', carInstanceId, amountYen }]
   return {
-    state: { ...state, cashYen: state.cashYen - amountYen },
-    log: [{ type: 'double-parking-fine', carInstanceId, amountYen }],
+    state: bookCashMovements({ ...state, cashYen: state.cashYen - amountYen }, log, economy),
+    log,
   }
 }
 
@@ -554,6 +559,7 @@ export function applyBayPurchase(
   state: GameState,
   kind: BayKind,
   facilities: Facilities,
+  economy: EconomyConfig,
 ): BayPurchaseResult {
   const priceYen = nextBayPriceYen(state, kind, facilities)
   if (priceYen === null || state.cashYen < priceYen) {
@@ -565,7 +571,10 @@ export function applyBayPurchase(
   const paid: GameState = { ...state, cashYen: state.cashYen - priceYen }
   const withCount = withBayCountFor(paid, kind, bayCountFor(paid, kind) + 1)
   const next = withCarIdsFor(withCount, kind, [...carIdsFor(paid, kind), null])
-  return { state: next, log: [{ type: 'bay-purchased', kind, priceYen }], applied: true }
+  // Shop investment, not a running cost: a bay bought once for millions in the
+  // same line as a week's rent would destroy the running figure.
+  const log: DayLogEntry[] = [{ type: 'bay-purchased', kind, priceYen }]
+  return { state: bookCashMovements(next, log, economy), log, applied: true }
 }
 
 /** Applies a batch of bay purchases in order (each affects the next one's price/affordability). */
@@ -573,11 +582,12 @@ export function applyBayPurchases(
   state: GameState,
   purchases: readonly BuyBayAction[],
   facilities: Facilities,
+  economy: EconomyConfig,
 ): { state: GameState; log: DayLogEntry[] } {
   let next = state
   const log: DayLogEntry[] = []
   for (const purchase of purchases) {
-    const result = applyBayPurchase(next, purchase.kind, facilities)
+    const result = applyBayPurchase(next, purchase.kind, facilities, economy)
     next = result.state
     log.push(...result.log)
   }

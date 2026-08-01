@@ -3,6 +3,7 @@ import {
   type CarInstance,
   type DayLogEntry,
   type GameState,
+  type PipelineStageId,
   type StagedAction,
   type ZoneId,
 } from '@midnight-garage/content'
@@ -28,6 +29,7 @@ import {
 import { carOriginLabel } from './auctions'
 import { updateCarLedger } from './carLedger'
 import type { SimContext } from './context'
+import { bookCashMovements } from './financeLedger'
 import {
   findWorkableCar,
   hasMachineLineFor,
@@ -128,6 +130,7 @@ function chargeAndApplyPipelineEffect(
   carInstanceId: string,
   car: CarInstance,
   zoneId: ZoneId,
+  stage: PipelineStageId,
   effect: PipelineStageEffect,
   laborSlotsRequired: number,
   laborAvailable: number,
@@ -174,7 +177,25 @@ function chargeAndApplyPipelineEffect(
         ...ledger,
         repairYen: ledger.repairYen + effect.materialsCostYen,
       }))
-  return { state: next, log: [], laborSlotsUsed: laborSlotsRequired }
+  // Filler, primer and paint are bought for this zone on this car, so the
+  // charge is a car cost and reads as one on the day it is made.
+  const log: DayLogEntry[] =
+    effect.materialsCostYen > 0
+      ? [
+          {
+            type: 'body-materials-bought',
+            carInstanceId,
+            zoneId,
+            stage,
+            costYen: effect.materialsCostYen,
+          },
+        ]
+      : []
+  return {
+    state: bookCashMovements(next, log, context.economy),
+    log,
+    laborSlotsUsed: laborSlotsRequired,
+  }
 }
 
 /** One `pipeline-stage` staged action's resolution - one of the six generic
@@ -218,6 +239,7 @@ function resolvePipelineStageAction(
     carInstanceId,
     car,
     action.zoneId,
+    action.stage,
     plan,
     laborSlotsRequired,
     laborAvailable,
@@ -247,6 +269,7 @@ function resolvePipelinePaintAction(
     carInstanceId,
     car,
     action.zoneId,
+    'paint',
     plan,
     laborSlotsRequired,
     laborAvailable,

@@ -44,6 +44,7 @@ import type {
 import {
   componentDisplayName,
   fitmentClassForTier,
+  netCashYen,
   partFitmentClassLabel,
   resolveCarDisplayName,
   titleCaseFromSlug,
@@ -81,6 +82,7 @@ import {
   createRng,
   installTutorial,
   dayOfWeekName,
+  weekIndex,
   describeOrigin,
   deriveReputationTier,
   displayedBandFor,
@@ -647,6 +649,30 @@ export interface StandingView {
   reputation: StandingReputationView
   specialties: StandingSpecialtyView[]
   shopTitleName: string | null
+}
+
+/**
+ * One week's row on the cost sheet: the five lines as the shop's own ledger
+ * records them, the days they cover, and the net. `open` marks the week still
+ * being played - a running total, never presented as a result.
+ */
+export interface CostSheetWeekView {
+  weekNumber: number
+  firstDay: number
+  lastDay: number
+  open: boolean
+  incomeYen: number
+  onCarsYen: number
+  stockYen: number
+  runningYen: number
+  investmentYen: number
+  netYen: number
+}
+
+/** Everything the cost sheet renders: every week the shop has traded, newest
+ * first. Pure derivation over `financeLedger` - no state of its own. */
+export interface CostSheetView {
+  weeks: CostSheetWeekView[]
 }
 
 /** The staff card/office view interfaces
@@ -2975,7 +3001,12 @@ export const useGameStore = defineStore('game', () => {
    * false if already at the max count or unaffordable.
    */
   function buyBay(kind: BayKind): boolean {
-    const result = applyBayPurchase(gameState.value, kind, context.value.facilities)
+    const result = applyBayPurchase(
+      gameState.value,
+      kind,
+      context.value.facilities,
+      context.value.economy,
+    )
     if (!result.applied) return false
     gameState.value = result.state
     dayLog.value.push(...result.log)
@@ -3144,6 +3175,35 @@ export const useGameStore = defineStore('game', () => {
       },
       specialties,
       shopTitleName: shopTitleName.value,
+    }
+  })
+
+  /**
+   * The cost sheet's whole payload: every week the shop has moved money in,
+   * newest first, straight off `financeLedger`. A pure derivation with no
+   * state of its own - the sheet screen renders this and nothing else, and
+   * opening it changes nothing. Weeks are read back through `weekIndex`, the
+   * only week arithmetic there is; the current week is marked open so its
+   * running total is never read as a closed result.
+   */
+  const costSheetView = computed<CostSheetView>(() => {
+    const ledger = gameState.value.financeLedger ?? {}
+    const daysPerWeek = context.value.economy.calendar.daysPerWeek
+    const currentWeek = weekIndex(gameState.value.day, context.value.economy)
+    return {
+      weeks: Object.entries(ledger)
+        .map(([key, week]) => {
+          const weekNumber = Number(key)
+          return {
+            weekNumber,
+            firstDay: (weekNumber - 1) * daysPerWeek + 1,
+            lastDay: weekNumber * daysPerWeek,
+            open: weekNumber >= currentWeek,
+            ...week,
+            netYen: netCashYen(week),
+          }
+        })
+        .sort((a, b) => b.weekNumber - a.weekNumber),
     }
   })
 
@@ -4669,6 +4729,7 @@ export const useGameStore = defineStore('game', () => {
     shopTitleName,
     unlockedTechniqueViews,
     standingView,
+    costSheetView,
     repair,
     install,
     isPartStagedAnywhere,

@@ -5,6 +5,9 @@ import {
   ConditionBandSchema,
   ReputationTierSchema,
 } from './tags'
+import { SellingChannelIdSchema } from './economy'
+import { PipelineStageIdSchema } from './material'
+import { ZoneIdSchema } from './zone'
 import { ToolTierSchema, ToolTiersSchema } from './toolLines'
 import { AssemblyIdSchema } from './assembly'
 import { CarInstanceSchema } from './carInstance'
@@ -34,6 +37,35 @@ export const MarketLedgerSchema = z.object({
 export type MarketLedger = z.infer<typeof MarketLedgerSchema>
 
 /**
+ * One week's cost sheet: the five money lines the weekly summary reports, in
+ * yen, all held as positive magnitudes (the four out-lines are money spent,
+ * not signed deltas). Which line a given movement lands on is decided once,
+ * by `cashMovementFor` (cashLedger.ts), against the attribution law stated in
+ * `CarLedgerSchema` below - this schema only stores the totals it produces.
+ *
+ * The week's net cash movement is `incomeYen - (onCarsYen + stockYen +
+ * runningYen + investmentYen)` (`netCashYen`), and that identity holding to
+ * the yen against the shop's real cash is what makes the sheet complete
+ * rather than merely plausible.
+ *
+ * `stockYen` is separate from `onCarsYen` because cash leaves the till when a
+ * part is bought but `CarLedger.partsYen` only bumps when it is fitted:
+ * calling the purchase a car cost would name the wrong car, and deferring it
+ * to fitting would break the week's arithmetic. `investmentYen` is separate
+ * from `runningYen` because a bay costing millions in the same line as a few
+ * thousand yen of rent destroys the running figure entirely.
+ */
+export const FinanceWeekSchema = z.object({
+  incomeYen: z.number().int().default(0),
+  onCarsYen: z.number().int().default(0),
+  stockYen: z.number().int().default(0),
+  runningYen: z.number().int().default(0),
+  investmentYen: z.number().int().default(0),
+})
+
+export type FinanceWeek = z.infer<typeof FinanceWeekSchema>
+
+/**
  * The flip ledger: one owned car's money-in record - what it cost to
  * acquire (auction win or buyout hammer price), plus every yen sunk into it
  * since (repairs, installed parts, listing fees). Pure bookkeeping:
@@ -50,6 +82,11 @@ export type MarketLedger = z.infer<typeof MarketLedgerSchema>
  * and staff wages are running costs and must never be posted here: a day's
  * engine-crane hire can pull four engines, so charging it to one car would
  * be a fiction.
+ *
+ * `cashMovementFor` (cashLedger.ts) is that law's one full enumeration, over
+ * every cash-moving day-log entry there is. Anything that needs to know which
+ * side of the line a movement falls on reads it there rather than deciding
+ * again.
  */
 export const CarLedgerSchema = z.object({
   purchaseYen: z.number().int().nonnegative().nullable(),
@@ -353,6 +390,20 @@ export const GameStateSchema = z.object({
    * unknown-purchase, not a fabricated zero - see `CarLedgerSchema` above.
    */
   carLedgers: z.record(z.string(), CarLedgerSchema).default({}),
+  /**
+   * The weekly cost sheet's accumulator: one `FinanceWeek` per week the shop
+   * moved money in, keyed by `weekIndex`'s number as a string. Bumped at the
+   * charge sites themselves (`bookCashMovements`, sim/financeLedger.ts), never
+   * reconstructed from the day log - the log is session-scoped, carries no
+   * day, and is thrown away on reload. A week with no entry simply had no
+   * money move in it.
+   *
+   * The genuinely-optional-key pattern (like `attendanceFeePaidDayByTier`
+   * below), so no existing `GameState` literal needs touching: readers treat
+   * absent as an empty sheet. A fresh career seeds it to `{}` explicitly
+   * (`createInitialGameState`).
+   */
+  financeLedger: z.record(z.string(), FinanceWeekSchema).optional(),
   /** The current classifieds listing, if any - `null` is the common case
    * (nothing on offer right now). */
   machineListing: MachineListingSchema.nullable().default(null),
@@ -488,9 +539,12 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     jobId: z.string().min(1),
     carInstanceId: z.string().min(1),
     kind: JobKindSchema,
-    /** The repair/recondition consumables + banded-repair cost charged to
-     * open the job (`jobs.ts`'s `findOrCreateJob`) - read by the financial
-     * ledger. */
+    /** The banded-repair cost charged to open the job - the whole of what a
+     * repair or a bench recondition takes out of the till, and the day it
+     * leaves. Emitted by `findOrCreateJob` and `resolveReconditionLabor`
+     * (jobs.ts) alike; absent when the job opened free. A recondition's cost
+     * is stock, a car job's is a car cost, and `kind` is what separates
+     * them. */
     costYen: z.number().int().nonnegative().optional(),
   }),
   z.object({
@@ -582,6 +636,16 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     priceYen: z.number().int().nonnegative(),
     modelId: z.string().min(1),
     year: z.number().int(),
+  }),
+  /** A room's admission was paid to take a seat at `tier` today
+   * (`resolveAttendAuction`, sim/bidding.ts) - a running cost, the same
+   * treatment rent and machine hire get, and charged once per tier per day
+   * however many lots are sat through. Emitted only when a nonzero fee
+   * actually changes hands; a free room is a silent no-op. */
+  z.object({
+    type: z.literal('auction-attended'),
+    tier: AuctionTierSchema,
+    feeYen: z.number().int().positive(),
   }),
   z.object({
     type: z.literal('service-job-accepted'),
@@ -693,6 +757,29 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
      * for an unmatched sale, never emitted as `false`.
      */
     matchedSale: z.literal(true).optional(),
+  }),
+  /** A car was put up for sale on `channelId` and its advertising fee paid
+   * (`resolveSetForSale`, sim/selling.ts). Charged FOR this car, so it lands
+   * on the car's own ledger as well as the week's on-cars line. Emitted only
+   * when the channel actually charges; a free channel lists silently. A
+   * re-list on a dearer channel pays again and logs again. */
+  z.object({
+    type: z.literal('car-listed'),
+    carInstanceId: z.string().min(1),
+    channelId: SellingChannelIdSchema,
+    feeYen: z.number().int().positive(),
+  }),
+  /** Materials bought for one body-pipeline stage on one zone
+   * (`confirmStagedWork`, sim/stagedWork.ts) - filler, primer, paint and the
+   * rest, charged the moment the stage is confirmed. A car cost, and already
+   * posted to that car's `repairYen`. Emitted only when the stage actually
+   * costs something. */
+  z.object({
+    type: z.literal('body-materials-bought'),
+    carInstanceId: z.string().min(1),
+    zoneId: ZoneIdSchema,
+    stage: PipelineStageIdSchema,
+    costYen: z.number().int().positive(),
   }),
   /** The whole car scrapped at once, shell and all - `carPartIds` lists
    * every slot that was still installed and went down with it (an empty
