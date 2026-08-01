@@ -181,6 +181,12 @@ const RETIRED_IDENTIFIERS: readonly RetiredIdentifier[] = [
       'One flat 45/35/15/5 applied to a Toyota 2000GT and a Honda Acty alike, so nothing about what a car IS changed how likely it was to have been looked after. Replaced by partsGeneration.damageGrades.careProfiles plus careProfileByCulture: culture picks a profile, tier shifts it one step, and the roster-wide mix is what the 94 authored cultures add up to rather than a number anyone sets. Matched as a dotted path because bare "weights" is a live local in rollDamageGrade and in several unrelated tables.',
   },
   {
+    identifier: 'kei-specialist',
+    retiredInSprint: 158,
+    reason:
+      'Renamed to hobbyist, no value moved. The archetype was never kei-only: its tierPreferences are entry 1.0 AND everyday 0.6, so it turns up for a Corolla as readily as for a Cappuccino, and its want-line claimed otherwise. Every other archetype is a role-noun (collector, tuner, stancer, racer, first-timer) and this one named a market segment instead.',
+  },
+  {
     identifier: 'WEEKLY_RENT_YEN',
     retiredInSprint: 148,
     reason:

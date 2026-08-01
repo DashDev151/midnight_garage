@@ -122,7 +122,7 @@ describe('generated cars are coherent (Sprint 66, item 6a)', () => {
    * shape. The original bug this file exists for (a `1995 - 11 km` 180SX with
    * mostly worn parts) is a claim about the typical car, and this measures it
    * as one: nearly half of barely-driven cars carry nothing ruined at all and
-   * nine in ten carry no more than three ruined slots out of 26.
+   * nine in ten carry no more than four ruined slots out of 26.
    */
   it('a barely-driven car is typically tidy once every generation stage has run', () => {
     const model = CARS.find((c) => c.id === 'nissan-180sx-rps13')
@@ -159,14 +159,21 @@ describe('generated cars are coherent (Sprint 66, item 6a)', () => {
     // An exact-median bar (`median === 0`) would sit on a knife edge here: it
     // pins the tipping point of a distribution whose zero share is barely over
     // half, so concentrating damage into a pattern flips it by moving that
-    // share to 0.447 - the same total damage on fewer parts, which is the
+    // share to 0.428 - the same total damage on fewer parts, which is the
     // whole point of concentrating it. The shape such a bar stands
     // for is asserted directly instead, and every bar below is measured rather
-    // than relaxed: 0.447 with nothing ruined, median 1, p90 3, mean 1.211 of
+    // than relaxed: 0.428 with nothing ruined, median 1, p90 4, mean 1.384 of
     // the car's 26 ordinary slots.
+    //
+    // The tail thickened by exactly one slot when the damage pattern started
+    // offsetting the condition roll, and it is concentration rather than
+    // damage: run against the same seeds with
+    // `patternConditionSwingPercent` at 0, these cars carry 29.73 band steps
+    // apiece and a p90 of 3; at the shipped 7 they carry 29.98 and a p90 of 4.
+    // Same damage, fewer slots, which is what a pattern is for.
     expect(noneRuined).toBeGreaterThan(0.4)
     expect(median).toBeLessThanOrEqual(1)
-    expect(p90).toBeLessThanOrEqual(3)
+    expect(p90).toBeLessThanOrEqual(4)
     expect(mean).toBeLessThan(1.5)
   }, 30_000)
 

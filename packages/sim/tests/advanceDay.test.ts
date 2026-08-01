@@ -221,7 +221,16 @@ describe('advanceDay golden master', () => {
     // week of real figures at day 31. Another pure shape-and-record change -
     // no cash figure, rng draw or derived stat moved, and the ledger is the
     // same money the career already moved, written down.
-    expect(hashState(finalState)).toBe('f419f088')
+    //
+    // It last moved because the damage pattern reached the CONDITION ROLL:
+    // every slot now takes its group's pattern offset
+    // (`partsGeneration.patternConditionSwingPercent`) before it buckets into a
+    // band, so every generated board carries the same damage arranged
+    // differently. No draw was added or removed - the offset consumes no rng -
+    // and the style catalogue re-author moves every derived style figure the
+    // state records alongside it. Re-derived from a real run, twice, to
+    // confirm determinism.
+    expect(hashState(finalState)).toBe('808948e0')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -370,8 +379,11 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // drawn. It moves again for the weekly cost sheet (sprint157.md), this
     // time alongside the 30-day master and for the same reason: `financeLedger`
     // is new state, and unlike a `CarLedger` it survives the sale - a sold
-    // car's week still has to add up.
-    expect(hashState(acquisitionCareer().sold)).toBe('964ca42d')
+    // car's week still has to add up. It moves again with the pattern's reach
+    // into the condition roll, alongside the 30-day master and for the same
+    // reason as damage patterns themselves: every generated lot's bands are
+    // arranged differently, and this script both buys and prices one.
+    expect(hashState(acquisitionCareer().sold)).toBe('1bb7d3b7')
   })
 })
 

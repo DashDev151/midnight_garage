@@ -184,7 +184,7 @@
       {
         "kind": "statThreshold",
         "stat": "style",
-        "min": 74
+        "min": 64
       }
     ],
     "budgetCapYen": 1161000,

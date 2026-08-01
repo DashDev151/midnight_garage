@@ -1290,6 +1290,40 @@ import storyMissions from '../data/storyMissions.json'
  * longer agree on either car (Wagon R ¥224,587 to a tuner who fails the matched gate, against
  * ¥239,769 to the kei specialist; Silvia ¥448,745 to a tuner against ¥460,775 to a shakotan), and
  * which of the two pays more now depends on the car rather than the fee.
+ *
+ * Re-pinned for Sprint 158 (docs/sprints/sprint158.md), two defects found by measurement after
+ * the arc shipped. ONE key ENTERS economy.json, ONE moves, and four are RENAMED with no value
+ * change:
+ *
+ * 1. `partsGeneration.patternConditionSwingPercent` = **7** (NEW). How far a damage pattern moves
+ *    a slot's rolled condition, in percent per unit of its group's relative pattern weight, summed
+ *    to exactly zero across the car. A pattern reached the mechanical groups only through the
+ *    damage budget, which is a fifth of a car's band steps, so the widest group it could move
+ *    measured 1.26x the flat baseline while the body zones moved 1.47x. Rearranging the rolled
+ *    condition instead tops out at a measured 1.22x, so the roll itself has to move. At 7, against
+ *    band widths of 20 to 30 percent and a sharpest authored relative weight of 3.7 (`grenade`,
+ *    engine), the loudest group shifts by about one band and no more, and the widest measured
+ *    per-group multiple lands at 1.53x with total damage per pattern still inside 1.06.
+ * 2. `statFormulas.styleSaturationPoints` 60 -> **66**, moved with the catalogue it prices rather
+ *    than on its own. See below.
+ * 3. `sellingChannels.*.buyerPoolWeights["kei-specialist"]` -> `["hobbyist"]` on all four channels
+ *    that carry a pool. A pure rename: 1, 1.4, 0.05 and 0.8 are unchanged. The archetype was never
+ *    kei-only (`tierPreferences` entry 1.0 AND everyday 0.6) and every other archetype is a
+ *    role-noun. The old name is in `retiredIdentifiers.test.ts`.
+ *
+ * NOT gated by this hash, recorded here because this file is the ledger of what moved and why:
+ * `parts.json` re-authors `statModifiers.style` on 144 rows (36 SKU families across the four
+ * fitment classes). The axis was three parts long: `aero` 30, `rims` 20 and `seats` 18 totalled 68
+ * against a saturation of 60, so a car reached its ceiling on three purchases and every other
+ * style part in the game was then worth exactly nothing on it. Style now sits on TEN slots with a
+ * best-in-slot ladder of aero 18, rims 14, seats 10, dampers 8, dashGauges 8, exhaust 7, springs 7,
+ * brakeCalipersLines 6, tyres 6, intake 4 - 88 points total, of which the loudest three hold 47.7
+ * per cent (was 83). Grade order holds in every slot, which it did not before: `dampers` ran street
+ * 3, sport 0, race 0. Against 66, a top-grade build buys half a car's headroom in three parts, four
+ * fifths in five and the last of it in seven (was one, two and three). `buyers.json` renames the
+ * archetype and re-authors its want-line, which claimed it only wanted keis; no target, importance
+ * or tier-preference value moves. `partPricing.json` holds: a SKU's price reads its slot, class and
+ * grade, never its stat block.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -1299,7 +1333,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('a43d34af3c49e091f0d591496773daa7e5d46225d1ce32034e70f0180dcd252d')
+    ).toBe('67f82042bd36468a5f7adc8d39aeb061d85faee2be5062e835ceeeac7b0e0b5b')
   })
 
   it('damagePatterns.json matches its approved content exactly', () => {

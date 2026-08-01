@@ -29,7 +29,7 @@ const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 const collector = BUYERS.find((b) => b.id === 'collector')!
 const firstTimer = BUYERS.find((b) => b.id === 'first-timer')!
 const stancer = BUYERS.find((b) => b.id === 'stancer')!
-const keiSpecialist = BUYERS.find((b) => b.id === 'kei-specialist')!
+const hobbyist = BUYERS.find((b) => b.id === 'hobbyist')!
 const tuner = BUYERS.find((b) => b.id === 'tuner')!
 const racer = BUYERS.find((b) => b.id === 'racer')!
 
@@ -462,14 +462,14 @@ describe('Sprint 146: taste is a match, not a mean', () => {
    * figures), so this uses the Honda Beat PP1, the other shipped kei the
    * archetype's own flavour text names, against the flagship Supra.
    */
-  it('the kei specialist prefers a small kei car to a fast flagship one', () => {
+  it('the hobbyist prefers a small kei car to a fast flagship one', () => {
     const beat = CARS.find((c) => c.id === 'honda-beat-pp1')!
     const supra = CARS.find((c) => c.id === 'toyota-supra-rz-jza80')!
     const beatInstance = buildCarInstance({ modelId: beat.id, parts: uniformCarParts('mint') })
     const supraInstance = buildCarInstance({ modelId: supra.id, parts: uniformCarParts('mint') })
 
     const beatTaste = channelBuyerTaste(
-      keiSpecialist,
+      hobbyist,
       beat,
       beatInstance,
       PARTS_BY_ID,
@@ -478,7 +478,7 @@ describe('Sprint 146: taste is a match, not a mean', () => {
       ceiling,
     )
     const supraTaste = channelBuyerTaste(
-      keiSpecialist,
+      hobbyist,
       supra,
       supraInstance,
       PARTS_BY_ID,
@@ -497,7 +497,7 @@ describe('Sprint 146 amendment: shortfall normalisation', () => {
    * the shortfall's own ceiling, so a buyer whose targets are modest can
    * never be badly disappointed - measured floor per archetype, old
    * formula: collector 0.315, racer 0.298, stancer 0.413, tuner 0.446,
-   * first-timer 0.451, kei-specialist 0.497 (all `1 - importance-weighted
+   * first-timer 0.451, hobbyist 0.497 (all `1 - importance-weighted
    * mean target`, the closed form of scoring every stat at 0). That is free
    * money on an unimproved car through a value-weighted buyer draw, and the
    * root cause `valueModelProbes.test.ts`'s instant-flip guard caught.
@@ -515,7 +515,7 @@ describe('Sprint 146 amendment: shortfall normalisation', () => {
     ['stancer', stancer],
     ['tuner', tuner],
     ['first-timer', firstTimer],
-    ['kei-specialist', keiSpecialist],
+    ['hobbyist', hobbyist],
   ] as const)(
     'a car satisfying nothing scores a match of exactly 0 against the %s',
     (_name, buyer) => {

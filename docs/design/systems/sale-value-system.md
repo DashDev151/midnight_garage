@@ -503,7 +503,7 @@ cap of 20 prices a 2000GT and a delivery van identically, which is harmless toda
 pricing defect the instant any archetype targets looks. **Author per-car style baselines, or
 formally redefine the stat as custom style only, before buyer targets are authored.** And
 absolute power targets would lock entry cars out of premium channels: the answer is a
-**kei-specialist archetype**, the Cappuccino, Beat and AZ-1 scene was real, not tier-relative
+**hobbyist archetype**, the Cappuccino, Beat and AZ-1 scene was real, not tier-relative
 targets, which would make a Wagon R and a Supra equally impressive.
 
 **3. Reputation architecture.** Public standing is a continuous throughput dial; underworld

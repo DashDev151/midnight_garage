@@ -49,6 +49,7 @@ import {
 import { DEFAULT_CONDITION_AGE_YEARS_WHEN_UNBOUNDED } from './constants'
 import type { SimContext } from './context'
 import {
+  patternConditionOffsets,
   pickPatternGroup,
   pickPatternZone,
   rollDamagePattern,
@@ -705,6 +706,38 @@ export function carOriginLabel(model: CarModel, year: number): string {
 }
 
 /**
+ * The condition offset this car's damage pattern applies to each slot, in
+ * condition percent: the whole of how the pattern reaches a car's condition
+ * roll, and the reason a shunted car's engine bay reads as a shunt rather than
+ * as an ordinary car with a slightly unlucky bonnet.
+ *
+ * Two slots are held out and take no offset, both for the same reason - the
+ * offsets sum to zero across the slots they are computed over, and a slot whose
+ * rolled band is then thrown away would break that:
+ *
+ * - the zone-derived body carriers, whose band `applyDerivedBodyBands`
+ *   overwrites from the zone table moments later (the pattern reaches the shell
+ *   through `zoneDamageOrder` instead); and
+ * - `forcedInduction` on a car that never had any, which fills no slot at all.
+ */
+function patternOffsetByPartId(
+  carHasForcedInduction: boolean,
+  pattern: DamagePattern,
+  context: SimContext,
+): Record<string, number> {
+  const offsetable = ALL_CAR_PART_IDS.filter(
+    (partId) =>
+      !isBodyDerivedPart(partId) && (partId !== 'forcedInduction' || carHasForcedInduction),
+  )
+  return patternConditionOffsets(
+    offsetable,
+    pattern,
+    context.partsTaxonomyById,
+    context.economy.partsGeneration.patternConditionSwingPercent,
+  )
+}
+
+/**
  * Rolls a fresh, not-yet-owned car for an auction lot. Every slot fills with
  * a fresh stock `PartInstance` at the rolled condition band by default - an
  * auction car hasn't been touched yet (GDD: "buy rough, restore/build").
@@ -712,7 +745,8 @@ export function carOriginLabel(model: CarModel, year: number): string {
  * year to the in-game calendar.
  *
  * One 0-100 condition baseline is rolled per car, and each of the 29 real
- * parts jitters around it, then buckets into its band via
+ * parts jitters around it and takes its damage pattern's own offset
+ * (`patternOffsetByPartId`), then buckets into its band via
  * `bandForMigratedCondition`. `forcedInduction` alone follows the model's
  * tag, never the missing-slot roll; every OTHER slot additionally rolls a
  * small, content-tunable chance of coming up MISSING instead of its default
@@ -747,11 +781,14 @@ export function carOriginLabel(model: CarModel, year: number): string {
  *   (`spendDamageBudget`), less whatever those symptoms already spent; and
  * - the DAMAGE PATTERN (`damageGrades.patternWeightsByGrade`), which is the
  *   sole answer to WHERE (layer 3). One weighting over part slots, drawn once
- *   here and read by two consumers: the budget spends against it, and the
- *   symptom draw weights each candidate by how much its causes sit in the
- *   groups it implicates. That single join is why a car that went in the front
- *   has front-end damage AND presents a front-end symptom, rather than a
- *   ruined nose and an unrelated gearbox whine.
+ *   here and read by three consumers: the condition roll is OFFSET by it
+ *   (`patternOffsetByPartId`), the budget spends against it, and the symptom
+ *   draw weights each candidate by how much its causes sit in the groups it
+ *   implicates. That single join is why a car that went in the front has
+ *   front-end damage AND presents a front-end symptom, rather than a ruined
+ *   nose and an unrelated gearbox whine. The offset is the load-bearing one of
+ *   the three: the budget is only about a fifth of a car's band steps, so a
+ *   pattern that reached the budget alone could barely move a group's total.
  *
  * The direction of causation is the whole point and it only runs one way: the
  * history causes the damage, the parts and the symptom, and none of them is
@@ -852,9 +889,14 @@ export function generateAuctionCarInstance(
   // before any per-part loop, so the whole car reads as a single birth event.
   const carOrigin = makeCarOrigin(id, carOriginLabel(model, year), day)
 
+  // How far the car's story moves each slot off that shared baseline.
+  const patternOffset = patternOffsetByPartId(carHasForcedInduction, pattern, context)
+
   const parts = Object.fromEntries(
     ALL_CAR_PART_IDS.map((partId) => {
-      const percent = clampCondition(conditionBaseline + rng.int(jitterMin, jitterMax))
+      const percent = clampCondition(
+        conditionBaseline + rng.int(jitterMin, jitterMax) + (patternOffset[partId] ?? 0),
+      )
       const band = bandForMigratedCondition(percent, economy)
 
       if (partId === 'forcedInduction') {

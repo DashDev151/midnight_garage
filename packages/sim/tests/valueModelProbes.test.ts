@@ -945,7 +945,7 @@ describe('unimproved-flip probe (the instant-flip guard)', () => {
       // taste-blind: a car is never worth more for being faster, and the same
       // holds for looking better. So the BUY side never prices style while
       // the SELL side does, through buyer taste. A mint stock flagship scores
-      // 74 on style, above all four buyer targets (stancer 65, kei-specialist
+      // 74 on style, above all four buyer targets (stancer 65, hobbyist
       // 55, collector 50, tuner 45), so its taste multiplier can clear 1
       // while the car is completely unmodified. That asymmetry is intended;
       // it is what makes knowing which cars are wanted worth something.

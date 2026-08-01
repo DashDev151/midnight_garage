@@ -82,9 +82,9 @@ car may give up at most 15 points of originality. The prices, per slot:
 ## 3. Style is an axis a car can climb
 
 `stylePercentOf`: `styleRaw = styleBase + (styleCeiling - styleBase) * reach`, where
-`reach = min(1, fitted / 60)`, then scaled by the car's own
+`reach = min(1, fitted / 66)`, then scaled by the car's own
 style condition factor. Every car below is all-mint, so the condition factor is exactly 1 and stock
-reads exactly `styleBase`. Buyer style targets: stancer 65, kei-specialist 55, collector 50, tuner 45, first-timer 20, racer 10. The two "clears" columns list only the four real bars (stancer 65, kei-specialist 55, collector 50, tuner 45); the first-timer's 20 and the racer's 10 are near-free, cleared
+reads exactly `styleBase`. Buyer style targets: stancer 65, hobbyist 55, collector 50, tuner 45, first-timer 20, racer 10. The two "clears" columns list only the four real bars (stancer 65, hobbyist 55, collector 50, tuner 45); the first-timer's 20 and the racer's 10 are near-free, cleared
 stock by all but 1 of the 26 shipped cars.
 
 **The Toyota 2000GT is not in shipped content.** `cars.json` carries 26 cars and the 2000GT is
@@ -93,27 +93,37 @@ car, the RX-7 FD3S, stands in for it below, and the Wagon R is the plain canvas.
 
 | car | tier | styleBase | styleCeiling | stock, mint | street kit and wheels | fully built | clears stock | clears built |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Suzuki Wagon R (CT21S) | entry | 16 | 44 | 16 | 25 | 44 | none | none |
-| Toyota Carina (AT150) | entry | 20 | 60 | 20 | 33 | 60 | none | kei-specialist, collector, tuner |
-| Nissan Cefiro (A31) | everyday | 40 | 90 | 40 | 56 | 90 | none | stancer, kei-specialist, collector, tuner |
-| Honda Civic SiR-II (EG6) | everyday | 45 | 92 | 45 | 60 | 92 | tuner | stancer, kei-specialist, collector, tuner |
-| Nissan Silvia (S13) | everyday | 64 | 95 | 64 | 74 | 95 | kei-specialist, collector, tuner | stancer, kei-specialist, collector, tuner |
-| Toyota Supra RZ (JZA80) | flagship | 74 | 95 | 74 | 81 | 95 | stancer, kei-specialist, collector, tuner | stancer, kei-specialist, collector, tuner |
-| Mazda RX-7 (FD3S) | enthusiast | 82 | 96 | 82 | 86 | 96 | stancer, kei-specialist, collector, tuner | stancer, kei-specialist, collector, tuner |
-| Toyota Sera (EXY10) | entry | 59 | 68 | 59 | 62 | 68 | kei-specialist, collector, tuner | stancer, kei-specialist, collector, tuner |
+| Suzuki Wagon R (CT21S) | entry | 16 | 44 | 16 | 22 | 44 | none | none |
+| Toyota Carina (AT150) | entry | 20 | 60 | 20 | 28 | 60 | none | hobbyist, collector, tuner |
+| Nissan Cefiro (A31) | everyday | 40 | 90 | 40 | 50 | 90 | none | stancer, hobbyist, collector, tuner |
+| Honda Civic SiR-II (EG6) | everyday | 45 | 92 | 45 | 54 | 92 | tuner | stancer, hobbyist, collector, tuner |
+| Nissan Silvia (S13) | everyday | 64 | 95 | 64 | 70 | 95 | hobbyist, collector, tuner | stancer, hobbyist, collector, tuner |
+| Toyota Supra RZ (JZA80) | flagship | 74 | 95 | 74 | 78 | 95 | stancer, hobbyist, collector, tuner | stancer, hobbyist, collector, tuner |
+| Mazda RX-7 (FD3S) | enthusiast | 82 | 96 | 82 | 85 | 96 | stancer, hobbyist, collector, tuner | stancer, hobbyist, collector, tuner |
+| Toyota Sera (EXY10) | entry | 59 | 68 | 59 | 61 | 68 | hobbyist, collector, tuner | stancer, hobbyist, collector, tuner |
 
-The "fully built" column is the 5-slot dress below, worth 82 style points against a saturation point of
-60. It therefore saturates `reach` at 1 and every car lands
+The "street kit and wheels" column is a street lip kit plus street alloys, 13 points against a
+saturation of 66, so it buys just under a fifth of every car's own gap.
+
+The "fully built" column is the 10-slot dress below, worth 88 style points against a saturation
+point of 66. It therefore saturates `reach` at 1 and every car lands
 exactly on its own `styleCeiling`, which is the shape of the design: a car's ceiling is the car's,
-not the parts bin's.
+not the parts bin's. Fitted loudest-first, three of these parts buy half a car's gap, five buy four
+fifths, and the last of it takes seven; no three slots can finish a car between them, which is what
+the flattening was for.
 
 | slot | grade | SKU resolved | style points |
 | --- | --- | --- | --- |
-| `aero` | race | FRP Race Aero Kit | 30 |
-| `rims` | race | Ronin Race Forged Wheels | 20 |
-| `seats` | race | Zashiki Race Bucket Seats | 18 |
-| `dashGauges` | race | Sokudo Digital Race Dash | 11 |
-| `dampers` | street | Tanuki Street Coilovers | 3 |
+| `aero` | race | FRP Race Aero Kit | 18 |
+| `rims` | race | Ronin Race Forged Wheels | 14 |
+| `seats` | race | Zashiki Race Bucket Seats | 10 |
+| `dampers` | race | Tanuki N1 Coilovers | 8 |
+| `dashGauges` | race | Sokudo Digital Race Dash | 8 |
+| `exhaust` | race | Suzaku Race Header Kit | 7 |
+| `springs` | race | Enzan Race Springs | 7 |
+| `brakeCalipersLines` | race | Shuriken Race Caliper Kit | 6 |
+| `tyres` | race | Tsume Race Slicks | 6 |
+| `intake` | race | Fubuki Velocity Stack Kit | 4 |
 
 ## 4. A car has a history and a story
 
@@ -125,26 +135,33 @@ carried by the zone table below instead.
 
 Mean band steps by taxonomy group, with each pattern's own multiple of the flat `garaged`
 baseline in brackets. The total budget is fixed by the car's history grade, so a pattern
-REDISTRIBUTES steps rather than adding them:
+REDISTRIBUTES steps rather than adding them: the totals across this table run 42.62 to 45.10, a
+spread of 1.058, while the widest single group moves 1.53x.
+
+The pattern reaches the parts through THREE consumers and the first of them carries most of it:
+the condition roll takes its group's offset (`patternConditionOffsets`, sized by
+`partsGeneration.patternConditionSwingPercent`), the damage budget spends against its group row,
+and the symptom draw weights each candidate by where its causes sit. The offset is the load-bearing
+one because the budget is only about a fifth of a car's band steps.
 
 | pattern | engine | drivetrain | suspension | wheels | body | interior |
 | --- | --- | --- | --- | --- | --- | --- |
-| `garaged` | 15.80 | 8.65 | 10.03 | 3.85 | 1.88 | 3.83 |
-| `neglected-commuter` | 16.70 (1.06x) | 8.24 (0.95x) | 10.48 (1.04x) | 4.01 (1.04x) | 1.79 (0.95x) | 3.16 (0.83x) |
-| `frontal-collision` | 17.00 (1.08x) | 7.45 (0.86x) | 9.68 (0.96x) | 3.31 (0.86x) | 2.31 (1.23x) | 2.97 (0.77x) |
-| `drifted` | 15.29 (0.97x) | 9.30 (1.08x) | 11.00 (1.10x) | 4.46 (1.16x) | 1.64 (0.87x) | 2.92 (0.76x) |
-| `grenade` | 19.93 (1.26x) | 8.38 (0.97x) | 9.01 (0.90x) | 3.04 (0.79x) | 1.52 (0.81x) | 3.00 (0.78x) |
+| `garaged` | 15.99 | 8.62 | 10.15 | 3.88 | 1.89 | 3.83 |
+| `neglected-commuter` | 17.70 (1.11x) | 7.60 (0.88x) | 10.68 (1.05x) | 4.05 (1.04x) | 1.76 (0.93x) | 2.81 (0.73x) |
+| `frontal-collision` | 18.76 (1.17x) | 6.41 (0.74x) | 9.39 (0.93x) | 3.12 (0.80x) | 2.38 (1.26x) | 2.56 (0.67x) |
+| `drifted` | 14.48 (0.91x) | 9.67 (1.12x) | 11.84 (1.17x) | 4.71 (1.21x) | 1.57 (0.83x) | 2.53 (0.66x) |
+| `grenade` | 24.38 (1.53x) | 7.43 (0.86x) | 7.19 (0.71x) | 2.50 (0.64x) | 1.29 (0.68x) | 2.31 (0.60x) |
 
 Mean body-zone severity (metal + surface + finish, higher is worse). This is where the
 concentration is loud:
 
 | pattern | bonnet | boot | left | right | roof |
 | --- | --- | --- | --- | --- | --- |
-| `garaged` | 3.16 | 3.29 | 3.21 | 3.02 | 3.05 |
-| `neglected-commuter` | 3.32 | 3.29 | 2.91 | 2.71 | 3.27 |
-| `frontal-collision` | 4.63 | 2.79 | 3.63 | 3.61 | 2.12 |
-| `drifted` | 2.31 | 4.05 | 3.51 | 3.43 | 2.05 |
-| `grenade` | 3.04 | 3.21 | 3.10 | 2.90 | 2.93 |
+| `garaged` | 3.16 | 3.29 | 3.21 | 3.02 | 3.06 |
+| `neglected-commuter` | 3.33 | 3.28 | 2.91 | 2.70 | 3.25 |
+| `frontal-collision` | 4.71 | 2.84 | 3.66 | 3.65 | 2.17 |
+| `drifted` | 2.34 | 4.05 | 3.51 | 3.46 | 2.04 |
+| `grenade` | 3.06 | 3.21 | 3.12 | 2.90 | 2.94 |
 
 The symptom draw reads the same pattern (`symptomDrawWeight`, bias
 0.6). A symptom is classified by the taxonomy
@@ -172,6 +189,11 @@ whose causes are dominated by `body` or `suspension`; drivetrain is `drivetrain`
 
 Two cars from different seeds (108 and 1), each the most
 characteristic example of its own pattern in the sample.
+
+**The two slot-by-slot listings below, and the symptom tables under them, predate the condition
+offset** and were not re-measured with it. Their shape is still the claim (a shunted car's front
+end against a drifted car's driveline); their individual bands are one generation behind. The
+group and zone tables above are current.
 
 ### A shunted car, in full
 
@@ -329,7 +351,7 @@ league of car at all:
 | stancer | none, reachable only by pool widening | 0.759 |
 | racer | none, reachable only by pool widening | 0.461 |
 | first-timer | 1 | 0.940 |
-| kei-specialist | 1 | 0.821 |
+| hobbyist | 1 | 0.821 |
 
 ### Mazda RX-7 (FD3S) (enthusiast, an enthusiast car with a supported power build)
 
@@ -355,7 +377,7 @@ league of car at all:
 | stancer | 0.5 | 1.000 |
 | racer | 0.6 | 0.887 |
 | first-timer | none, reachable only by pool widening | 0.751 |
-| kei-specialist | none, reachable only by pool widening | 0.867 |
+| hobbyist | none, reachable only by pool widening | 0.867 |
 
 ## 6. A week of running the shop
 
@@ -482,11 +504,11 @@ that something did not work is worth more than a clean table.
 
 4. 1 of the 26 shipped cars cannot clear ANY of the four real style bars even fully built, because its `styleCeiling` sits below the lowest of them (the tuner's 45): Suzuki Wagon R (CT21S), ceiling 44. That is a legitimate design position, but it means style is not an axis that car can climb into anybody's want list, only one it can climb within.
 
-5. The style axis is short. Saturation is 60 points, and the 3 race-grade parts carrying the most style (aero 30, rims 20, seats 18) already total 68. So 3 slots take any car to its own `styleCeiling`, and every style point fitted after that is worth exactly nothing. If style is meant to be a build the player works at over a career, `styleSaturationPoints` is the lever, and it currently puts the destination 3 parts away.
+5. **FIXED, Sprint 158.** The style axis was short. Saturation was 60 points and the 3 race-grade parts carrying the most style (aero 30, rims 20, seats 18) already totalled 68, so 3 slots took any car to its own `styleCeiling` and every style point fitted after that was worth exactly nothing. The catalogue was the deeper half of it: 19 SKU families in 5 slots, with the loudest three holding 83 per cent of the points. Style now sits on 10 slots totalling 88 points, top three at 47.7 per cent, against a saturation of 66. Three parts buy half a car's gap, five buy four fifths, seven buy all of it.
 
-6. A damage pattern shows up far more strongly in the body zones than in the mechanical groups. Against the flat `garaged` baseline, the widest per-group shift any pattern produces is 1.26x, while the widest per-zone shift is 1.47x. The group draw is doing its job, but the shallow-first rule inside the damage budget flattens most of it: a pattern reorders which slot in a group takes the next step, and the budget finishes that level anyway. If the intention was for a shunted car's gearbox to be visibly untouched, the group weighting alone is not delivering it.
+6. **FIXED, Sprint 158, and the cause was not the one named here.** A damage pattern showed up far more strongly in the body zones (1.47x) than in the mechanical groups (1.26x). Shallow-first was NOT flattening it: measured stage by stage, the budget's own allocation already landed within a few points of the authored group weights. The pattern simply never reached the other 78 per cent of a car's band steps, which come from a per-part condition roll that had no reference to what happened to the car. The roll now takes the pattern's offset (`patternConditionOffsets`), the widest per-group shift is 1.53x against the zones' 1.49x, and total damage still varies only 1.058 across patterns.
 
-7. On the Suzuki Alto Works (HA21S) (entry), `tuner` and `stancer` are the likeliest arrival on at least one channel despite having NO stated interest in this tier at all, reaching the car only through that channel's `poolWidening`. Meanwhile `kei-specialist`, which does state a preference for this tier, is never the likeliest arrival anywhere. A channel's `buyerPoolWeights` currently outweigh a buyer's own stated tier interest. That matters most here: the arc added `kei-specialist` specifically for this league of car, and on a kei it still never comes first.
+7. On the Suzuki Alto Works (HA21S) (entry), `tuner` and `stancer` are the likeliest arrival on at least one channel despite having NO stated interest in this tier at all, reaching the car only through that channel's `poolWidening`. Meanwhile `hobbyist`, which does state a preference for this tier, is never the likeliest arrival anywhere. A channel's `buyerPoolWeights` currently outweigh a buyer's own stated tier interest. That matters most here: the arc added `hobbyist` specifically for this league of car, and on a kei it still never comes first.
 
 8. On the Mazda RX-7 (FD3S) (enthusiast), `first-timer` is the likeliest arrival on at least one channel despite having NO stated interest in this tier at all, reaching the car only through that channel's `poolWidening`. Meanwhile `collector` and `racer`, which do state a preference for this tier, are never the likeliest arrival anywhere. A channel's `buyerPoolWeights` currently outweigh a buyer's own stated tier interest.
 

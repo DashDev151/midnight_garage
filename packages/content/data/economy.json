@@ -209,7 +209,7 @@
       "coherenceExponent": 2.0
     },
     "powerNormalizationCeiling": 300,
-    "styleSaturationPoints": 60,
+    "styleSaturationPoints": 66,
     "grip": {
       "eraRubberBands": [
         {
@@ -506,6 +506,7 @@
       "cherished": 0
     },
     "maxBillFraction": 0.6,
+    "patternConditionSwingPercent": 7,
     "damageGrades": {
       "careProfiles": {
         "cherished": { "tidy": 70, "used": 25, "rough": 5, "project": 0 },
@@ -691,7 +692,7 @@
         "stancer": 1,
         "racer": 1,
         "first-timer": 1,
-        "kei-specialist": 1
+        "hobbyist": 1
       },
       "poolWidening": 0.35,
       "requiresForecourt": true
@@ -711,7 +712,7 @@
         "stancer": 0.5,
         "racer": 0.2,
         "first-timer": 1.6,
-        "kei-specialist": 1.4
+        "hobbyist": 1.4
       },
       "poolWidening": 0.5,
       "requiresForecourt": true
@@ -727,7 +728,7 @@
         "stancer": 0.6,
         "racer": 1.4,
         "first-timer": 0.05,
-        "kei-specialist": 0.05
+        "hobbyist": 0.05
       },
       "poolWidening": 0.25,
       "requiresForecourt": true
@@ -752,7 +753,7 @@
         "stancer": 1.8,
         "racer": 0.5,
         "first-timer": 0.1,
-        "kei-specialist": 0.8
+        "hobbyist": 0.8
       },
       "poolWidening": 0.4,
       "requiresForecourt": true

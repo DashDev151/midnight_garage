@@ -127,9 +127,9 @@
     "wantLine": "Needs it to start every cold morning without eating the budget. A service history beats a spoiler."
   },
   {
-    "id": "kei-specialist",
-    "archetype": "kei-specialist",
-    "displayName": "Kei Specialist",
+    "id": "hobbyist",
+    "archetype": "hobbyist",
+    "displayName": "Hobbyist",
     "statTargets": {
       "power": { "target": 0.15, "upper": 0.5, "importance": 0.4 },
       "handling": { "target": 0.5, "importance": 0.7 },
@@ -147,6 +147,6 @@
         "weight": 0.6
       }
     ],
-    "wantLine": "Wants a kei that still drives like a kei: light and tidy on its feet. A big turbo does not impress him; it worries him, because that is not what the car was built for."
+    "wantLine": "Wants a small, light car that still drives the way it was built to: tidy on its feet, nothing shouting. A big turbo does not impress him; it worries him, because that is not what the car was for."
   }
 ]

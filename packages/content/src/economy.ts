@@ -416,7 +416,7 @@ const BuyerPoolWeightsSchema = z.object({
   stancer: z.number().nonnegative(),
   racer: z.number().nonnegative(),
   'first-timer': z.number().nonnegative(),
-  'kei-specialist': z.number().nonnegative(),
+  hobbyist: z.number().nonnegative(),
 })
 
 /**
@@ -1182,11 +1182,17 @@ export const EconomyConfigSchema = z.object({
      * total, so this is the exchange rate between the catalogue's points and
      * every car's own headroom.
      *
-     * At 60 against the roughly 82 points a maximal fit-everything build
+     * At 66 against the 88 points a maximal fit-the-best-in-every-slot build
      * totals, a focused and coherent build reaches its car's ceiling without
      * needing literally every style part, and the last stretch is spent on an
      * already-finished car. Setting it at the maximum instead would mean only
      * an exhaustive build ever reaches a ceiling, which punishes taste.
+     *
+     * It is set against the catalogue's whole shape rather than against its
+     * loudest few parts, and the two have to move together. The catalogue holds
+     * ten style-bearing slots with a best-in-slot ladder from 18 (`aero`) down
+     * to 4 (`intake`), so on a top-grade build three parts buy half a car's
+     * headroom, five buy four fifths, and the last of it takes seven.
      */
     styleSaturationPoints: z.number().positive(),
     /**
@@ -1631,6 +1637,29 @@ export const EconomyConfigSchema = z.object({
        * the scrap floor. Never move one without the other.
        */
       maxBillFraction: z.number().positive().max(1),
+      /**
+       * How far a damage pattern moves a slot's rolled condition, in condition
+       * percent per unit of its group's RELATIVE pattern weight
+       * (`damagePatterns.ts`'s `patternConditionOffsets`). A group the pattern
+       * weights at twice an even share sits one swing below the car it is in,
+       * one weighted at three times sits two swings below, and the groups the
+       * pattern spares come up by whatever those cost: the offsets sum to zero
+       * across the car, so this decides WHERE a car's condition sits and never
+       * how much of it there is.
+       *
+       * It exists because nothing else could carry the answer. The damage
+       * budget is about a fifth of a car's band steps, and merely rearranging
+       * the rolled condition tops out at 1.22x a group's flat share (every part
+       * jitters around one baseline, so a car's own spread is narrow). At 0 a
+       * pattern reaches only the budget, the shell and the symptom draw, which
+       * is the state this lever was added to fix.
+       *
+       * Sized against the band widths it has to cross: `bands` are 20 to 30
+       * percent wide, and the sharpest authored pattern (`grenade`, engine at
+       * 62 of 100 against an even 16.7) carries a relative weight of 3.7, so 7
+       * moves its engine about 20 percent - one full band, and no more than one.
+       */
+      patternConditionSwingPercent: z.number().nonnegative(),
       /**
        * A car's HISTORY: what happened to it before it reached the block, and
        * the single cause every other roll about its condition now hangs off

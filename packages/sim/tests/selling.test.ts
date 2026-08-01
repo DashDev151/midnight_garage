@@ -1473,7 +1473,7 @@ describe('a channel is a buyer base (sprint156)', () => {
       const keiInterested = CONTEXT.buyers
         .filter((b) => b.tierPreferences.some((p) => p.tier === KEI_MODEL.tier && p.weight > 0))
         .map((b) => b.id)
-      expect(keiInterested).toEqual(expect.arrayContaining(['first-timer', 'kei-specialist']))
+      expect(keiInterested).toEqual(expect.arrayContaining(['first-timer', 'hobbyist']))
       const paperOffers = sweep(keiCar, KEI_MODEL, 'freeAdsPaper')
       const shopOffers = sweep(keiCar, KEI_MODEL, 'shopFront')
       expect(paperOffers.length).toBeGreaterThan(20)
@@ -1502,12 +1502,12 @@ describe('a channel is a buyer base (sprint156)', () => {
       ).toBe(true)
     })
 
-    it('the weekend meet is the best-priced channel of the five once it opens, and the kei specialist is who it brings', () => {
+    it('the weekend meet is the best-priced channel of the five once it opens, and the hobbyist is who it brings', () => {
       const quotes = (['shopFront', 'freeAdsPaper', 'tunerMagazine', 'weekendMeet'] as const).map(
         (channelId) => ({ channelId, ...channelQuote(keiCar, KEI_MODEL, channelId) }),
       )
       const meet = quotes.find((q) => q.channelId === 'weekendMeet')!
-      expect(meet.buyerId).toBe('kei-specialist')
+      expect(meet.buyerId).toBe('hobbyist')
       for (const quote of quotes) {
         if (quote.channelId === 'weekendMeet') continue
         expect(meet.priceYen, `${quote.channelId}`).toBeGreaterThan(quote.priceYen)
@@ -1540,7 +1540,7 @@ describe('a channel is a buyer base (sprint156)', () => {
       // the paper's.
       const magazine = ECONOMY.sellingChannels.tunerMagazine.buyerPoolWeights!
       const paper = ECONOMY.sellingChannels.freeAdsPaper.buyerPoolWeights!
-      for (const archetype of ['first-timer', 'kei-specialist'] as const) {
+      for (const archetype of ['first-timer', 'hobbyist'] as const) {
         expect(magazine[archetype]).toBeLessThan(paper[archetype])
       }
     })
@@ -1707,14 +1707,14 @@ describe('a channel is a buyer base (sprint156)', () => {
     }
 
     it('without it, only archetypes that state an interest in the tier can be drawn', () => {
-      expect(likelyBuyerIds({ focusExponent: 1 })).toEqual(['first-timer', 'kei-specialist'])
+      expect(likelyBuyerIds({ focusExponent: 1 })).toEqual(['first-timer', 'hobbyist'])
     })
 
     it('with it, the rest of the market can be reached too', () => {
       expect(likelyBuyerIds({ focusExponent: 1, poolWidening: 0.25 })).toEqual([
         'collector',
         'first-timer',
-        'kei-specialist',
+        'hobbyist',
         'racer',
         'stancer',
         'tuner',

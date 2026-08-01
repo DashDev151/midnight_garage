@@ -666,7 +666,7 @@ pass."
 
   **The cause is arithmetic, not a defect.** Median stock style by tier went 7 -> 24 (`entry`),
   13 -> 53 (`everyday`), 15 -> 64 (`enthusiast`), 17 -> 74 (`flagship`). Buyer style targets are
-  stancer 65, kei-specialist 55, collector 50, tuner 45. Under the old 4-to-20 scale no stock car
+  stancer 65, hobbyist 55, collector 50, tuner 45. Under the old 4-to-20 scale no stock car
   cleared any of them, so an untouched car's taste multiplier was always below 1; now a mint stock
   flagship clears all four. The guard's own comment ("a walk-in never pays over the taste-free
   market read for an untouched car") was true only because of that, and is now false.

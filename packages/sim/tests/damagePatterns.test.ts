@@ -158,16 +158,16 @@ describe('a damage pattern decides WHERE the damage is', () => {
     const sidewaysGroups = meanStepsByGroup(sideways)
 
     // The front of the car: the engine bay behind the impact, and the bodywork
-    // that took it. Measured 17.23 vs 15.48 steps on engine and 2.31 vs 1.67 on
+    // that took it. Measured 18.76 vs 14.48 steps on engine and 2.38 vs 1.57 on
     // body; the bars sit well inside those margins rather than on them.
-    expect(shuntedGroups.engine / sidewaysGroups.engine).toBeGreaterThan(1.05)
-    expect(shuntedGroups.body / sidewaysGroups.body).toBeGreaterThan(1.15)
+    expect(shuntedGroups.engine / sidewaysGroups.engine).toBeGreaterThan(1.15)
+    expect(shuntedGroups.body / sidewaysGroups.body).toBeGreaterThan(1.3)
 
-    // ...and the reverse on everything a drift car consumes. Measured 4.52 vs
-    // 3.41 on wheels, 11.16 vs 9.85 on suspension, 9.39 vs 7.50 on drivetrain.
-    expect(sidewaysGroups.wheels / shuntedGroups.wheels).toBeGreaterThan(1.15)
-    expect(sidewaysGroups.suspension / shuntedGroups.suspension).toBeGreaterThan(1.05)
-    expect(sidewaysGroups.drivetrain / shuntedGroups.drivetrain).toBeGreaterThan(1.1)
+    // ...and the reverse on everything a drift car consumes. Measured 4.71 vs
+    // 3.12 on wheels, 11.84 vs 9.39 on suspension, 9.67 vs 6.41 on drivetrain.
+    expect(sidewaysGroups.wheels / shuntedGroups.wheels).toBeGreaterThan(1.3)
+    expect(sidewaysGroups.suspension / shuntedGroups.suspension).toBeGreaterThan(1.15)
+    expect(sidewaysGroups.drivetrain / shuntedGroups.drivetrain).toBeGreaterThan(1.3)
 
     // The body zones invert outright, which is the thing six independent zone
     // rolls could not express at all: there was no front and no rear, and
@@ -178,6 +178,40 @@ describe('a damage pattern decides WHERE the damage is', () => {
     expect(shuntedZones.bonnet / sidewaysZones.bonnet).toBeGreaterThan(1.4)
     expect(sidewaysZones.boot / shuntedZones.boot).toBeGreaterThan(1.15)
   }, 30_000)
+
+  it('grips the mechanical groups at least as hard as it grips the shell', () => {
+    // The bar this whole layer lives or dies on, and the one it previously
+    // failed. A pattern reached the mechanical groups only through the damage
+    // BUDGET, which is about a fifth of a car's band steps, so the widest group
+    // it could move measured 1.26x the flat baseline while the body zones -
+    // whose whole severity is dealt along the pattern - moved 1.47x. The
+    // condition roll now carries the pattern's offset
+    // (`patternConditionOffsets`), so the groups move on the same scale as the
+    // panels do.
+    const flat = meanStepsByGroup(generate(400, contextForcingPattern('garaged'), 'flat-base'))
+    let widest = 0
+    for (const patternId of DAMAGE_PATTERN_IDS) {
+      if (patternId === 'garaged') continue
+      const groups = meanStepsByGroup(
+        generate(400, contextForcingPattern(patternId), `shift-${patternId}`),
+      )
+      const multiples = (Object.keys(flat) as ComponentId[]).map(
+        (group) => groups[group] / flat[group],
+      )
+      const highest = Math.max(...multiples)
+      const lowest = Math.min(...multiples)
+      widest = Math.max(widest, highest)
+      // Every authored pattern separates the group it ruins from the group it
+      // spares by at least half again. Measured 1.51, 1.89, 1.83 and 2.52.
+      expect(
+        highest / lowest,
+        `${patternId}: most- against least-implicated group, ${multiples.map((m) => m.toFixed(2)).join(', ')}`,
+      ).toBeGreaterThan(1.5)
+    }
+    // ...and the hardest-pulled group in the catalogue reaches the multiple the
+    // body zones already reached. Measured 1.53 (`grenade`, engine).
+    expect(widest, 'widest per-group multiple of the flat baseline').toBeGreaterThan(1.45)
+  }, 60_000)
 
   it('moves the damage without adding any: the pattern owns where, the grade owns how much', () => {
     // The clearest statement that a pattern sets no band and buys no damage. If

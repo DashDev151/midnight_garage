@@ -92,8 +92,8 @@ describe("the two ends of a car's own range", () => {
 
   /**
    * Saturation, not a cap on the sum: the best part in every style-bearing
-   * slot totals 82 points against a saturation of 60, so the last 22 buy
-   * nothing. Fitting a strict subset that already clears 60 must land on the
+   * slot totals 88 points against a saturation of 66, so the last 22 buy
+   * nothing. Fitting a strict subset that already clears 66 must land on the
    * same ceiling as fitting everything.
    */
   it('fitting more style parts past saturation changes nothing', () => {
@@ -211,6 +211,73 @@ describe('condition scales the whole result, not just the base', () => {
       const expected = Math.round(eg6.spec.styleBase * ECONOMY.bands.bandFactors[band])
       expect(styleOf(eg6, rough), band).toBe(expected)
     }
+  })
+})
+
+/**
+ * The catalogue's own shape, which is half of what style FEELS like to play.
+ * The formula can be perfect and the axis still be three parts long: when the
+ * loudest three slots between them carried more points than saturation, a car
+ * hit its ceiling on aero, rims and seats and every other style part in the
+ * game was worth exactly nothing on it.
+ */
+describe('the style catalogue spreads across the car', () => {
+  const bestBySlot = () => {
+    const best = new Map<string, number>()
+    for (const part of PARTS) {
+      if (part.fitmentClass !== 'everyday' || !part.statModifiers.style) continue
+      best.set(part.carPartId, Math.max(best.get(part.carPartId) ?? 0, part.statModifiers.style))
+    }
+    return best
+  }
+
+  it('puts style on enough slots that dressing a car is a series of choices', () => {
+    const best = bestBySlot()
+    expect(best.size, 'style-bearing slots').toBeGreaterThanOrEqual(9)
+
+    const descending = [...best.values()].sort((a, b) => b - a)
+    const total = descending.reduce((sum, value) => sum + value, 0)
+    const topThree = descending.slice(0, 3).reduce((sum, value) => sum + value, 0)
+    // The defect this bar exists for measured 83 per cent in the top three
+    // slots, on 68 points against a saturation of 60. Now 42 of 88.
+    expect(topThree / total, `top three of ${total} points`).toBeLessThan(0.55)
+    // ...and no three slots can finish a car on their own any more.
+    expect(topThree, 'the loudest three slots against saturation').toBeLessThan(SATURATION)
+  })
+
+  it('keeps race above sport above street in every slot that carries style', () => {
+    const bestByGrade = new Map<string, Map<string, number>>()
+    for (const part of PARTS) {
+      if (part.fitmentClass !== 'everyday' || !part.statModifiers.style) continue
+      const slot = bestByGrade.get(part.carPartId) ?? new Map<string, number>()
+      slot.set(part.grade, Math.max(slot.get(part.grade) ?? 0, part.statModifiers.style))
+      bestByGrade.set(part.carPartId, slot)
+    }
+    for (const [carPartId, byGrade] of bestByGrade) {
+      const street = byGrade.get('street') ?? 0
+      const sport = byGrade.get('sport') ?? 0
+      const race = byGrade.get('race') ?? 0
+      expect(sport, `${carPartId}: sport over street`).toBeGreaterThan(street)
+      expect(race, `${carPartId}: race over sport`).toBeGreaterThan(sport)
+    }
+  })
+
+  it('takes three parts to buy half a car of headroom, five for four fifths and seven for all of it', () => {
+    // The measurement the flattening is FOR. Best-in-slot parts fitted loudest
+    // first, which is the cheapest possible route to a ceiling: anything else a
+    // player does takes more parts than this, never fewer.
+    const descending = [...bestBySlot().values()].sort((a, b) => b - a)
+    const partsToReach = (fraction: number) => {
+      let fitted = 0
+      for (const [index, points] of descending.entries()) {
+        fitted += points
+        if (fitted / SATURATION >= fraction) return index + 1
+      }
+      return descending.length
+    }
+    expect(partsToReach(0.5), 'parts to half the gap').toBe(3)
+    expect(partsToReach(0.8), 'parts to four fifths of the gap').toBe(5)
+    expect(partsToReach(1), 'parts to the whole gap').toBe(7)
   })
 })
 

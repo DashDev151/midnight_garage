@@ -351,7 +351,7 @@ const CAR_SCRIPTS: readonly CarScript[] = [
     generationSeed: 26,
     auctionTier: 'local-yard',
     // A modest warm-over, not a power build: both entry-tier buyers
-    // (first-timer, kei-specialist) cap power with an `upper` target, so the
+    // (first-timer, hobbyist) cap power with an `upper` target, so the
     // money goes into a lip kit and a breathe-easier top end rather than
     // chasing horsepower a kei buyer would mark down.
     build: [

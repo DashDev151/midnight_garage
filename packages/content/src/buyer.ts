@@ -7,7 +7,7 @@ export const BuyerArchetypeSchema = z.enum([
   'stancer',
   'racer',
   'first-timer',
-  'kei-specialist',
+  'hobbyist',
 ])
 
 /** Taste by market position: which league of car this archetype turns up for.

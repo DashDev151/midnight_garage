@@ -483,7 +483,7 @@ describe('seed content validates against schemas', () => {
         stancer: 1,
         racer: 1,
         'first-timer': 1,
-        'kei-specialist': 1,
+        hobbyist: 1,
       },
       poolWidening: 0.35,
       requiresForecourt: true,
@@ -503,7 +503,7 @@ describe('seed content validates against schemas', () => {
         stancer: 0.5,
         racer: 0.2,
         'first-timer': 1.6,
-        'kei-specialist': 1.4,
+        hobbyist: 1.4,
       },
       poolWidening: 0.5,
       requiresForecourt: true,
@@ -519,7 +519,7 @@ describe('seed content validates against schemas', () => {
         stancer: 0.6,
         racer: 1.4,
         'first-timer': 0.05,
-        'kei-specialist': 0.05,
+        hobbyist: 0.05,
       },
       poolWidening: 0.25,
       requiresForecourt: true,
@@ -541,7 +541,7 @@ describe('seed content validates against schemas', () => {
         stancer: 1.8,
         racer: 0.5,
         'first-timer': 0.1,
-        'kei-specialist': 0.8,
+        hobbyist: 0.8,
       },
       poolWidening: 0.4,
       requiresForecourt: true,
@@ -802,14 +802,14 @@ describe('seed content ids are unique', () => {
   })
 
   /**
-   * The kei specialist's want-line is fresh copy authored for its own
+   * The hobbyist's want-line is fresh copy authored for its own
    * archetype, pinned separately from the sprint114.md transplant above
    * rather than folded into it.
    */
-  it('the kei specialist want-line matches its authored copy exactly', () => {
-    const keiSpecialist = BuyersSchema.parse(buyers).find((b) => b.id === 'kei-specialist')
-    expect(keiSpecialist?.wantLine).toBe(
-      'Wants a kei that still drives like a kei: light and tidy on its feet. A big turbo does not impress him; it worries him, because that is not what the car was built for.',
+  it('the hobbyist want-line matches its authored copy exactly', () => {
+    const hobbyist = BuyersSchema.parse(buyers).find((b) => b.id === 'hobbyist')
+    expect(hobbyist?.wantLine).toBe(
+      'Wants a small, light car that still drives the way it was built to: tidy on its feet, nothing shouting. A big turbo does not impress him; it worries him, because that is not what the car was for.',
     )
   })
 

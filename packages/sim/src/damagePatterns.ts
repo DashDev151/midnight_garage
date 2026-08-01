@@ -123,6 +123,51 @@ export function zoneDamageOrder(
 }
 
 /**
+ * How many condition percent this pattern moves each of `partIds` by: down on
+ * the groups it implicates, up on the groups it spares, and summing to exactly
+ * zero across the list. Generation adds these to the per-part condition roll,
+ * which is the pattern's main grip on where a car's damage sits.
+ *
+ * It needs one, and the reason is arithmetic. The damage BUDGET is a minority
+ * of a car's band steps (measured at about a fifth of them) and the condition
+ * roll is the rest; a pattern that reached only the budget could not move a
+ * group's total by much however exactly it spent it. Nor is REARRANGING the
+ * rolled percents enough on its own: every part jitters around one baseline, so
+ * a car's own spread is narrow, and handing the worst ten of twenty-six rolled
+ * conditions to a single group measures at 1.22x that group's flat share, which
+ * is the hard ceiling on any permutation. Moving the roll clears it.
+ *
+ * The offset is centred on the part-count-weighted mean, so it redistributes
+ * condition rather than adding any: a grenaded car's engine is worse than the
+ * car it sits in AND its interior is better, which is both the honest reading
+ * of the event and what keeps the pattern answering WHERE while the history
+ * still owns HOW MUCH. A pattern that implicates every group equally weights
+ * every group at exactly 1, every offset is exactly zero, and the condition
+ * roll is left precisely as it was.
+ *
+ * Weighting per PART rather than per group is load-bearing: `relativeGroupWeight`
+ * is a property of the group, so every slot inside it moves together and a
+ * group holding one slot cannot soak the same swing as one holding ten.
+ */
+export function patternConditionOffsets(
+  partIds: readonly CarPartId[],
+  pattern: DamagePattern,
+  partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
+  swingPercent: number,
+): Record<string, number> {
+  if (partIds.length === 0) return {}
+  const relative = partIds.map((partId) =>
+    relativeGroupWeight(pattern, partsTaxonomyById[partId].group),
+  )
+  const mean = relative.reduce((sum, value) => sum + value, 0) / relative.length
+  const offsets: Record<string, number> = {}
+  partIds.forEach((partId, index) => {
+    offsets[partId] = -swingPercent * (relative[index]! - mean)
+  })
+  return offsets
+}
+
+/**
  * How much this symptom's causes sit in the groups the pattern implicates,
  * relative to an even weighting: the weighted mean of `relativeGroupWeight`
  * over the symptom's own cause list, using each cause's authored odds.

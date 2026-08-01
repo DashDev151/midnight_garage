@@ -1237,7 +1237,7 @@
         "forced": 0.03
       },
       "handling": 0,
-      "style": 0
+      "style": 2
     },
     "fitmentClass": "everyday"
   },
@@ -1255,7 +1255,7 @@
         "forced": 0.03
       },
       "handling": 0,
-      "style": 0
+      "style": 2
     },
     "fitmentClass": "entry"
   },
@@ -1273,7 +1273,7 @@
         "forced": 0.03
       },
       "handling": 0,
-      "style": 0
+      "style": 2
     },
     "fitmentClass": "enthusiast"
   },
@@ -1291,7 +1291,7 @@
         "forced": 0.03
       },
       "handling": 0,
-      "style": 0
+      "style": 2
     },
     "fitmentClass": "flagship"
   },
@@ -1309,7 +1309,7 @@
         "forced": 0.043
       },
       "handling": 0,
-      "style": 0
+      "style": 3
     },
     "fitmentClass": "everyday"
   },
@@ -1327,7 +1327,7 @@
         "forced": 0.043
       },
       "handling": 0,
-      "style": 0
+      "style": 3
     },
     "fitmentClass": "entry"
   },
@@ -1345,7 +1345,7 @@
         "forced": 0.043
       },
       "handling": 0,
-      "style": 0
+      "style": 3
     },
     "fitmentClass": "enthusiast"
   },
@@ -1363,7 +1363,7 @@
         "forced": 0.043
       },
       "handling": 0,
-      "style": 0
+      "style": 3
     },
     "fitmentClass": "flagship"
   },
@@ -1381,7 +1381,7 @@
         "forced": 0.05
       },
       "handling": 0,
-      "style": 0
+      "style": 4
     },
     "fitmentClass": "everyday"
   },
@@ -1399,7 +1399,7 @@
         "forced": 0.05
       },
       "handling": 0,
-      "style": 0
+      "style": 4
     },
     "fitmentClass": "entry"
   },
@@ -1417,7 +1417,7 @@
         "forced": 0.05
       },
       "handling": 0,
-      "style": 0
+      "style": 4
     },
     "fitmentClass": "enthusiast"
   },
@@ -1435,7 +1435,7 @@
         "forced": 0.05
       },
       "handling": 0,
-      "style": 0
+      "style": 4
     },
     "fitmentClass": "flagship"
   },
@@ -1525,7 +1525,7 @@
         "forced": 0.07
       },
       "handling": 0,
-      "style": 0
+      "style": 3
     },
     "physicalModifiers": {
       "mass": 0.9931
@@ -1546,7 +1546,7 @@
         "forced": 0.07
       },
       "handling": 0,
-      "style": 0
+      "style": 3
     },
     "physicalModifiers": {
       "mass": 0.9931
@@ -1567,7 +1567,7 @@
         "forced": 0.07
       },
       "handling": 0,
-      "style": 0
+      "style": 3
     },
     "physicalModifiers": {
       "mass": 0.9931
@@ -1588,7 +1588,7 @@
         "forced": 0.07
       },
       "handling": 0,
-      "style": 0
+      "style": 3
     },
     "physicalModifiers": {
       "mass": 0.9931
@@ -1609,7 +1609,7 @@
         "forced": 0.112
       },
       "handling": 0,
-      "style": 0
+      "style": 5
     },
     "physicalModifiers": {
       "mass": 0.98623
@@ -1630,7 +1630,7 @@
         "forced": 0.112
       },
       "handling": 0,
-      "style": 0
+      "style": 5
     },
     "physicalModifiers": {
       "mass": 0.98623
@@ -1651,7 +1651,7 @@
         "forced": 0.112
       },
       "handling": 0,
-      "style": 0
+      "style": 5
     },
     "physicalModifiers": {
       "mass": 0.98623
@@ -1672,7 +1672,7 @@
         "forced": 0.112
       },
       "handling": 0,
-      "style": 0
+      "style": 5
     },
     "physicalModifiers": {
       "mass": 0.98623
@@ -1693,7 +1693,7 @@
         "forced": 0.14
       },
       "handling": 0,
-      "style": 0
+      "style": 7
     },
     "physicalModifiers": {
       "mass": 0.97915
@@ -1714,7 +1714,7 @@
         "forced": 0.14
       },
       "handling": 0,
-      "style": 0
+      "style": 7
     },
     "physicalModifiers": {
       "mass": 0.97915
@@ -1735,7 +1735,7 @@
         "forced": 0.14
       },
       "handling": 0,
-      "style": 0
+      "style": 7
     },
     "physicalModifiers": {
       "mass": 0.97915
@@ -1756,7 +1756,7 @@
         "forced": 0.14
       },
       "handling": 0,
-      "style": 0
+      "style": 7
     },
     "physicalModifiers": {
       "mass": 0.97915
@@ -4549,7 +4549,7 @@
         "forced": 0
       },
       "handling": 8,
-      "style": 3
+      "style": 4
     },
     "physicalModifiers": {
       "grip": 1.01
@@ -4570,7 +4570,7 @@
         "forced": 0
       },
       "handling": 8,
-      "style": 3
+      "style": 4
     },
     "physicalModifiers": {
       "grip": 1.01
@@ -4591,7 +4591,7 @@
         "forced": 0
       },
       "handling": 8,
-      "style": 3
+      "style": 4
     },
     "physicalModifiers": {
       "grip": 1.01
@@ -4612,7 +4612,7 @@
         "forced": 0
       },
       "handling": 8,
-      "style": 3
+      "style": 4
     },
     "physicalModifiers": {
       "grip": 1.01
@@ -4633,7 +4633,7 @@
         "forced": 0
       },
       "handling": 18,
-      "style": 0
+      "style": 6
     },
     "physicalModifiers": {
       "grip": 1.02
@@ -4654,7 +4654,7 @@
         "forced": 0
       },
       "handling": 18,
-      "style": 0
+      "style": 6
     },
     "physicalModifiers": {
       "grip": 1.02
@@ -4675,7 +4675,7 @@
         "forced": 0
       },
       "handling": 18,
-      "style": 0
+      "style": 6
     },
     "physicalModifiers": {
       "grip": 1.02
@@ -4696,7 +4696,7 @@
         "forced": 0
       },
       "handling": 18,
-      "style": 0
+      "style": 6
     },
     "physicalModifiers": {
       "grip": 1.02
@@ -4717,7 +4717,7 @@
         "forced": 0
       },
       "handling": 28,
-      "style": 0
+      "style": 8
     },
     "physicalModifiers": {
       "grip": 1.029
@@ -4738,7 +4738,7 @@
         "forced": 0
       },
       "handling": 28,
-      "style": 0
+      "style": 8
     },
     "physicalModifiers": {
       "grip": 1.029
@@ -4759,7 +4759,7 @@
         "forced": 0
       },
       "handling": 28,
-      "style": 0
+      "style": 8
     },
     "physicalModifiers": {
       "grip": 1.029
@@ -4780,7 +4780,7 @@
         "forced": 0
       },
       "handling": 28,
-      "style": 0
+      "style": 8
     },
     "physicalModifiers": {
       "grip": 1.029
@@ -4873,7 +4873,7 @@
         "forced": 0
       },
       "handling": 7,
-      "style": 0
+      "style": 3
     },
     "physicalModifiers": {
       "grip": 1.01
@@ -4894,7 +4894,7 @@
         "forced": 0
       },
       "handling": 7,
-      "style": 0
+      "style": 3
     },
     "physicalModifiers": {
       "grip": 1.01
@@ -4915,7 +4915,7 @@
         "forced": 0
       },
       "handling": 7,
-      "style": 0
+      "style": 3
     },
     "physicalModifiers": {
       "grip": 1.01
@@ -4936,7 +4936,7 @@
         "forced": 0
       },
       "handling": 7,
-      "style": 0
+      "style": 3
     },
     "physicalModifiers": {
       "grip": 1.01
@@ -4957,7 +4957,7 @@
         "forced": 0
       },
       "handling": 12,
-      "style": 0
+      "style": 5
     },
     "physicalModifiers": {
       "grip": 1.02
@@ -4978,7 +4978,7 @@
         "forced": 0
       },
       "handling": 12,
-      "style": 0
+      "style": 5
     },
     "physicalModifiers": {
       "grip": 1.02
@@ -4999,7 +4999,7 @@
         "forced": 0
       },
       "handling": 12,
-      "style": 0
+      "style": 5
     },
     "physicalModifiers": {
       "grip": 1.02
@@ -5020,7 +5020,7 @@
         "forced": 0
       },
       "handling": 12,
-      "style": 0
+      "style": 5
     },
     "physicalModifiers": {
       "grip": 1.02
@@ -5041,7 +5041,7 @@
         "forced": 0
       },
       "handling": 18,
-      "style": 0
+      "style": 7
     },
     "physicalModifiers": {
       "grip": 1.029
@@ -5062,7 +5062,7 @@
         "forced": 0
       },
       "handling": 18,
-      "style": 0
+      "style": 7
     },
     "physicalModifiers": {
       "grip": 1.029
@@ -5083,7 +5083,7 @@
         "forced": 0
       },
       "handling": 18,
-      "style": 0
+      "style": 7
     },
     "physicalModifiers": {
       "grip": 1.029
@@ -5104,7 +5104,7 @@
         "forced": 0
       },
       "handling": 18,
-      "style": 0
+      "style": 7
     },
     "physicalModifiers": {
       "grip": 1.029
@@ -6133,7 +6133,7 @@
         "forced": 0
       },
       "handling": 5,
-      "style": 0
+      "style": 2
     },
     "physicalModifiers": {
       "braking": 1.0237
@@ -6154,7 +6154,7 @@
         "forced": 0
       },
       "handling": 5,
-      "style": 0
+      "style": 2
     },
     "physicalModifiers": {
       "braking": 1.0237
@@ -6175,7 +6175,7 @@
         "forced": 0
       },
       "handling": 5,
-      "style": 0
+      "style": 2
     },
     "physicalModifiers": {
       "braking": 1.0237
@@ -6196,7 +6196,7 @@
         "forced": 0
       },
       "handling": 5,
-      "style": 0
+      "style": 2
     },
     "physicalModifiers": {
       "braking": 1.0237
@@ -6217,7 +6217,7 @@
         "forced": 0
       },
       "handling": 12,
-      "style": 0
+      "style": 4
     },
     "physicalModifiers": {
       "braking": 1.0479
@@ -6238,7 +6238,7 @@
         "forced": 0
       },
       "handling": 12,
-      "style": 0
+      "style": 4
     },
     "physicalModifiers": {
       "braking": 1.0479
@@ -6259,7 +6259,7 @@
         "forced": 0
       },
       "handling": 12,
-      "style": 0
+      "style": 4
     },
     "physicalModifiers": {
       "braking": 1.0479
@@ -6280,7 +6280,7 @@
         "forced": 0
       },
       "handling": 12,
-      "style": 0
+      "style": 4
     },
     "physicalModifiers": {
       "braking": 1.0479
@@ -6301,7 +6301,7 @@
         "forced": 0
       },
       "handling": 12,
-      "style": 0
+      "style": 6
     },
     "physicalModifiers": {
       "braking": 1.0724
@@ -6322,7 +6322,7 @@
         "forced": 0
       },
       "handling": 12,
-      "style": 0
+      "style": 6
     },
     "physicalModifiers": {
       "braking": 1.0724
@@ -6343,7 +6343,7 @@
         "forced": 0
       },
       "handling": 12,
-      "style": 0
+      "style": 6
     },
     "physicalModifiers": {
       "braking": 1.0724
@@ -6364,7 +6364,7 @@
         "forced": 0
       },
       "handling": 12,
-      "style": 0
+      "style": 6
     },
     "physicalModifiers": {
       "braking": 1.0724
@@ -6457,7 +6457,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 9
+      "style": 6
     },
     "physicalModifiers": {
       "mass": 0.9931
@@ -6478,7 +6478,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 9
+      "style": 6
     },
     "physicalModifiers": {
       "mass": 0.9931
@@ -6499,7 +6499,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 9
+      "style": 6
     },
     "physicalModifiers": {
       "mass": 0.9931
@@ -6520,7 +6520,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 9
+      "style": 6
     },
     "physicalModifiers": {
       "mass": 0.9931
@@ -6541,7 +6541,7 @@
         "forced": 0
       },
       "handling": 4,
-      "style": 15
+      "style": 10
     },
     "physicalModifiers": {
       "mass": 0.98623
@@ -6562,7 +6562,7 @@
         "forced": 0
       },
       "handling": 4,
-      "style": 15
+      "style": 10
     },
     "physicalModifiers": {
       "mass": 0.98623
@@ -6583,7 +6583,7 @@
         "forced": 0
       },
       "handling": 4,
-      "style": 15
+      "style": 10
     },
     "physicalModifiers": {
       "mass": 0.98623
@@ -6604,7 +6604,7 @@
         "forced": 0
       },
       "handling": 4,
-      "style": 15
+      "style": 10
     },
     "physicalModifiers": {
       "mass": 0.98623
@@ -6625,7 +6625,7 @@
         "forced": 0
       },
       "handling": 4,
-      "style": 20
+      "style": 14
     },
     "physicalModifiers": {
       "mass": 0.97915
@@ -6646,7 +6646,7 @@
         "forced": 0
       },
       "handling": 4,
-      "style": 20
+      "style": 14
     },
     "physicalModifiers": {
       "mass": 0.97915
@@ -6667,7 +6667,7 @@
         "forced": 0
       },
       "handling": 4,
-      "style": 20
+      "style": 14
     },
     "physicalModifiers": {
       "mass": 0.97915
@@ -6688,7 +6688,7 @@
         "forced": 0
       },
       "handling": 4,
-      "style": 20
+      "style": 14
     },
     "physicalModifiers": {
       "mass": 0.97915
@@ -6781,7 +6781,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 0
+      "style": 2
     },
     "fitmentClass": "everyday"
   },
@@ -6799,7 +6799,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 0
+      "style": 2
     },
     "fitmentClass": "entry"
   },
@@ -6817,7 +6817,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 0
+      "style": 2
     },
     "fitmentClass": "enthusiast"
   },
@@ -6835,7 +6835,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 0
+      "style": 2
     },
     "fitmentClass": "flagship"
   },
@@ -6853,7 +6853,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 0
+      "style": 4
     },
     "fitmentClass": "everyday"
   },
@@ -6871,7 +6871,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 0
+      "style": 4
     },
     "fitmentClass": "entry"
   },
@@ -6889,7 +6889,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 0
+      "style": 4
     },
     "fitmentClass": "enthusiast"
   },
@@ -6907,7 +6907,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 0
+      "style": 4
     },
     "fitmentClass": "flagship"
   },
@@ -6925,7 +6925,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 0
+      "style": 6
     },
     "fitmentClass": "everyday"
   },
@@ -6943,7 +6943,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 0
+      "style": 6
     },
     "fitmentClass": "entry"
   },
@@ -6961,7 +6961,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 0
+      "style": 6
     },
     "fitmentClass": "enthusiast"
   },
@@ -6979,7 +6979,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 0
+      "style": 6
     },
     "fitmentClass": "flagship"
   },
@@ -7470,7 +7470,7 @@
         "forced": 0
       },
       "handling": 2,
-      "style": 7
+      "style": 5
     },
     "fitmentClass": "everyday"
   },
@@ -7489,7 +7489,7 @@
         "forced": 0
       },
       "handling": 2,
-      "style": 7
+      "style": 5
     },
     "fitmentClass": "entry"
   },
@@ -7508,7 +7508,7 @@
         "forced": 0
       },
       "handling": 2,
-      "style": 7
+      "style": 5
     },
     "fitmentClass": "enthusiast"
   },
@@ -7527,7 +7527,7 @@
         "forced": 0
       },
       "handling": 2,
-      "style": 7
+      "style": 5
     },
     "fitmentClass": "flagship"
   },
@@ -7546,7 +7546,7 @@
         "forced": 0
       },
       "handling": 3,
-      "style": 11
+      "style": 9
     },
     "fitmentClass": "everyday"
   },
@@ -7565,7 +7565,7 @@
         "forced": 0
       },
       "handling": 3,
-      "style": 11
+      "style": 9
     },
     "fitmentClass": "entry"
   },
@@ -7584,7 +7584,7 @@
         "forced": 0
       },
       "handling": 3,
-      "style": 11
+      "style": 9
     },
     "fitmentClass": "enthusiast"
   },
@@ -7603,7 +7603,7 @@
         "forced": 0
       },
       "handling": 3,
-      "style": 11
+      "style": 9
     },
     "fitmentClass": "flagship"
   },
@@ -7622,7 +7622,7 @@
         "forced": 0
       },
       "handling": 5,
-      "style": 16
+      "style": 12
     },
     "fitmentClass": "everyday"
   },
@@ -7641,7 +7641,7 @@
         "forced": 0
       },
       "handling": 5,
-      "style": 16
+      "style": 12
     },
     "fitmentClass": "entry"
   },
@@ -7660,7 +7660,7 @@
         "forced": 0
       },
       "handling": 5,
-      "style": 16
+      "style": 12
     },
     "fitmentClass": "enthusiast"
   },
@@ -7679,7 +7679,7 @@
         "forced": 0
       },
       "handling": 5,
-      "style": 16
+      "style": 12
     },
     "fitmentClass": "flagship"
   },
@@ -7842,7 +7842,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 11
+      "style": 8
     },
     "fitmentClass": "everyday"
   },
@@ -7861,7 +7861,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 11
+      "style": 8
     },
     "fitmentClass": "entry"
   },
@@ -7880,7 +7880,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 11
+      "style": 8
     },
     "fitmentClass": "enthusiast"
   },
@@ -7899,7 +7899,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 11
+      "style": 8
     },
     "fitmentClass": "flagship"
   },
@@ -7918,7 +7918,7 @@
         "forced": 0
       },
       "handling": 4,
-      "style": 10
+      "style": 8
     },
     "fitmentClass": "everyday"
   },
@@ -7937,7 +7937,7 @@
         "forced": 0
       },
       "handling": 4,
-      "style": 10
+      "style": 8
     },
     "fitmentClass": "entry"
   },
@@ -7956,7 +7956,7 @@
         "forced": 0
       },
       "handling": 4,
-      "style": 10
+      "style": 8
     },
     "fitmentClass": "enthusiast"
   },
@@ -7975,7 +7975,7 @@
         "forced": 0
       },
       "handling": 4,
-      "style": 10
+      "style": 8
     },
     "fitmentClass": "flagship"
   },
@@ -7994,7 +7994,7 @@
         "forced": 0
       },
       "handling": 9,
-      "style": 8
+      "style": 6
     },
     "fitmentClass": "everyday"
   },
@@ -8013,7 +8013,7 @@
         "forced": 0
       },
       "handling": 9,
-      "style": 8
+      "style": 6
     },
     "fitmentClass": "entry"
   },
@@ -8032,7 +8032,7 @@
         "forced": 0
       },
       "handling": 9,
-      "style": 8
+      "style": 6
     },
     "fitmentClass": "enthusiast"
   },
@@ -8051,7 +8051,7 @@
         "forced": 0
       },
       "handling": 9,
-      "style": 8
+      "style": 6
     },
     "fitmentClass": "flagship"
   },
@@ -8141,7 +8141,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 10
+      "style": 7
     },
     "fitmentClass": "everyday",
     "aeroFunctional": true
@@ -8160,7 +8160,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 10
+      "style": 7
     },
     "fitmentClass": "entry",
     "aeroFunctional": true
@@ -8179,7 +8179,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 10
+      "style": 7
     },
     "fitmentClass": "enthusiast",
     "aeroFunctional": true
@@ -8198,7 +8198,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 10
+      "style": 7
     },
     "fitmentClass": "flagship",
     "aeroFunctional": true
@@ -8217,7 +8217,7 @@
         "forced": 0
       },
       "handling": 5,
-      "style": 18
+      "style": 13
     },
     "fitmentClass": "everyday",
     "aeroFunctional": true
@@ -8236,7 +8236,7 @@
         "forced": 0
       },
       "handling": 5,
-      "style": 18
+      "style": 13
     },
     "fitmentClass": "entry",
     "aeroFunctional": true
@@ -8255,7 +8255,7 @@
         "forced": 0
       },
       "handling": 5,
-      "style": 18
+      "style": 13
     },
     "fitmentClass": "enthusiast",
     "aeroFunctional": true
@@ -8274,7 +8274,7 @@
         "forced": 0
       },
       "handling": 5,
-      "style": 18
+      "style": 13
     },
     "fitmentClass": "flagship",
     "aeroFunctional": true
@@ -8293,7 +8293,7 @@
         "forced": 0
       },
       "handling": 15,
-      "style": 30
+      "style": 18
     },
     "fitmentClass": "everyday",
     "aeroFunctional": true
@@ -8312,7 +8312,7 @@
         "forced": 0
       },
       "handling": 15,
-      "style": 30
+      "style": 18
     },
     "fitmentClass": "entry",
     "aeroFunctional": true
@@ -8331,7 +8331,7 @@
         "forced": 0
       },
       "handling": 15,
-      "style": 30
+      "style": 18
     },
     "fitmentClass": "enthusiast",
     "aeroFunctional": true
@@ -8350,7 +8350,7 @@
         "forced": 0
       },
       "handling": 15,
-      "style": 30
+      "style": 18
     },
     "fitmentClass": "flagship",
     "aeroFunctional": true
@@ -8441,7 +8441,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 9
+      "style": 4
     },
     "physicalModifiers": {
       "mass": 0.9931
@@ -8462,7 +8462,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 9
+      "style": 4
     },
     "physicalModifiers": {
       "mass": 0.9931
@@ -8483,7 +8483,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 9
+      "style": 4
     },
     "physicalModifiers": {
       "mass": 0.9931
@@ -8504,7 +8504,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 9
+      "style": 4
     },
     "physicalModifiers": {
       "mass": 0.9931
@@ -8525,7 +8525,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 13
+      "style": 7
     },
     "physicalModifiers": {
       "mass": 0.98623
@@ -8546,7 +8546,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 13
+      "style": 7
     },
     "physicalModifiers": {
       "mass": 0.98623
@@ -8567,7 +8567,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 13
+      "style": 7
     },
     "physicalModifiers": {
       "mass": 0.98623
@@ -8588,7 +8588,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 13
+      "style": 7
     },
     "physicalModifiers": {
       "mass": 0.98623
@@ -8609,7 +8609,7 @@
         "forced": 0
       },
       "handling": 4,
-      "style": 18
+      "style": 10
     },
     "physicalModifiers": {
       "mass": 0.97915
@@ -8630,7 +8630,7 @@
         "forced": 0
       },
       "handling": 4,
-      "style": 18
+      "style": 10
     },
     "physicalModifiers": {
       "mass": 0.97915
@@ -8651,7 +8651,7 @@
         "forced": 0
       },
       "handling": 4,
-      "style": 18
+      "style": 10
     },
     "physicalModifiers": {
       "mass": 0.97915
@@ -8672,7 +8672,7 @@
         "forced": 0
       },
       "handling": 4,
-      "style": 18
+      "style": 10
     },
     "physicalModifiers": {
       "mass": 0.97915
@@ -8765,7 +8765,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 5
+      "style": 3
     },
     "fitmentClass": "everyday"
   },
@@ -8783,7 +8783,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 5
+      "style": 3
     },
     "fitmentClass": "entry"
   },
@@ -8801,7 +8801,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 5
+      "style": 3
     },
     "fitmentClass": "enthusiast"
   },
@@ -8819,7 +8819,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 5
+      "style": 3
     },
     "fitmentClass": "flagship"
   },
@@ -8837,7 +8837,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 8
+      "style": 5
     },
     "fitmentClass": "everyday"
   },
@@ -8855,7 +8855,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 8
+      "style": 5
     },
     "fitmentClass": "entry"
   },
@@ -8873,7 +8873,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 8
+      "style": 5
     },
     "fitmentClass": "enthusiast"
   },
@@ -8891,7 +8891,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 8
+      "style": 5
     },
     "fitmentClass": "flagship"
   },
@@ -8909,7 +8909,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 11
+      "style": 8
     },
     "fitmentClass": "everyday"
   },
@@ -8927,7 +8927,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 11
+      "style": 8
     },
     "fitmentClass": "entry"
   },
@@ -8945,7 +8945,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 11
+      "style": 8
     },
     "fitmentClass": "enthusiast"
   },
@@ -8963,7 +8963,7 @@
         "forced": 0
       },
       "handling": 0,
-      "style": 11
+      "style": 8
     },
     "fitmentClass": "flagship"
   }

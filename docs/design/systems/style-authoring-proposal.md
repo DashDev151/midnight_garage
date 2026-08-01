@@ -113,7 +113,7 @@ style target.
 
 **Is any car's ceiling below its own buyers?**
 
-- **Kei versus the kei-specialist (55):** nine of eleven reach it. The two that cannot are again
+- **Kei versus the hobbyist (55):** nine of eleven reach it. The two that cannot are again
   the Acty and the Wagon R, which is correct against his own want line ("a kei that still drives
   like a kei: light and tidy on its feet"). Every kei hatch, roadster and sports kei clears.
 - **Stancer (65) reachability:** seven cars can never reach it at any build. Acty 42, Wagon R 44,
@@ -165,7 +165,7 @@ system turns on.
 | Autozam AZ-1 (PG6SA) | everyday | 75 | 84 | 9 |
 
 Ceilings top out around 66 for the ordinary keis, which is what keeps modifying the wrong kei a
-losing move while still letting a good build clear the kei-specialist's 55. The sports trio
+losing move while still letting a good build clear the hobbyist's 55. The sports trio
 (Cappuccino, Beat, AZ-1) are pretty stock and have little to gain, which is the correct shape for
 cars whose whole appeal is that they are already finished.
 

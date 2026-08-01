@@ -40,7 +40,7 @@ true** (six sites hardcode `false`). So the collector, who wants authenticity 0.
 
 **`style` is a modification-only axis with an 80-point head.** A stock mint car scores exactly its
 `styleBase`, authored 4 to 20 across the roster, so **no stock car can clear any buyer's style
-target** (stancer 0.65, kei-specialist 0.55, collector 0.50, tuner 0.45). Only 7 of 29 slots carry
+target** (stancer 0.65, hobbyist 0.55, collector 0.50, tuner 0.45). Only 7 of 29 slots carry
 style weight, totalling 14 points.
 
 ---
