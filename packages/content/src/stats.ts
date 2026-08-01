@@ -108,8 +108,8 @@ export const PhysicalModifierSchema = z.object({
    * shell contribute. The tyre is not here - its compound tier already carries
    * it through the grip formula's own ratio. `.min(1)`: `buildFactors`
    * (sim/derivedStats.ts) interpolates a worn part's effective modifier as
-   * `1 + (modifier - 1) * bandFactor(band)`, which pulls the modifier BACK
-   * TOWARD 1 as the part wears. A modifier below 1 would therefore get
+   * `1 + (modifier - 1) * gradeBandFactor[grade][band]`, which pulls the
+   * modifier BACK TOWARD 1 as the part wears. A modifier below 1 would get
    * BETTER as it wears out - a worn penalty part reading as an improvement
    * over mint. Every physicalModifier on this schema is an upgrade or a
    * no-op, never a stock-grade regression, so 1 is the floor. */

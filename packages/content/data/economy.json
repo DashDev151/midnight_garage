@@ -389,6 +389,36 @@
           "scrap": 0.68
         }
       },
+      "gradeBandFactor": {
+        "stock": {
+          "mint": 1,
+          "fine": 0.85,
+          "worn": 0.65,
+          "poor": 0.4,
+          "scrap": 0.15
+        },
+        "street": {
+          "mint": 1,
+          "fine": 0.9,
+          "worn": 0.75,
+          "poor": 0.52,
+          "scrap": 0.22
+        },
+        "sport": {
+          "mint": 1,
+          "fine": 0.86,
+          "worn": 0.65,
+          "poor": 0.38,
+          "scrap": 0.13
+        },
+        "race": {
+          "mint": 1,
+          "fine": 0.8,
+          "worn": 0.52,
+          "poor": 0.25,
+          "scrap": 0.05
+        }
+      },
       "reliabilityCeiling": {
         "poor": 0.7,
         "scrap": 0.4

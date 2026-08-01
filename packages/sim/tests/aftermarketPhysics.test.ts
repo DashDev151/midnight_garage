@@ -42,6 +42,13 @@ import { buildCarInstance } from './testFixtures'
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 const GRADE_ORDER: readonly Grade[] = ['stock', 'street', 'sport', 'race']
+const BANDS_BEST_FIRST: readonly ConditionBand[] = ['mint', 'fine', 'worn', 'poor', 'scrap']
+const SUB_MINT_BANDS = BANDS_BEST_FIRST.slice(1)
+/** The three grades that carry an advantage for a band curve to scale. A stock
+ * SKU's modifiers are all exactly 1, so its row can never move a dial however
+ * steep it is; it exists to hold the pre-grade-split identity, not to deliver
+ * anything. */
+const GRADES_WITH_ADVANTAGE: readonly Grade[] = ['street', 'sport', 'race']
 
 /** The best SKU of at most `maxGrade` that this car may legally be given for
  * `partId`: right fitment class, every required tag present, and never a
@@ -87,6 +94,63 @@ function buildAt(
       : { installed: null }
   }
   return buildCarInstance({ modelId: model.id, parts: parts as CarInstance['parts'] })
+}
+
+/** Same override pattern as `buildAt`, but pins one slot to an explicit band
+ * rather than always `mint`, so a test can exercise the interpolation
+ * `buildFactors` performs. */
+function buildAtBand(
+  model: CarModel,
+  partId: CarPartId,
+  grade: Grade,
+  band: ConditionBand,
+): CarInstance {
+  const car = buildAt(model, 'stock', { [partId]: grade } as Partial<Record<CarPartId, Grade>>)
+  const installed = car.parts[partId].installed!
+  return { ...car, parts: { ...car.parts, [partId]: { installed: { ...installed, band } } } }
+}
+
+/** The same build with every filled slot moved to one band. */
+function atBand(car: CarInstance, band: ConditionBand): CarInstance {
+  const parts = { ...car.parts }
+  for (const partId of ALL_CAR_PART_IDS) {
+    const installed = parts[partId].installed
+    if (installed) parts[partId] = { installed: { ...installed, band } }
+  }
+  return { ...car, parts }
+}
+
+/** The bare product of the fitted SKUs' `physicalModifiers`, with no condition
+ * scaling at all - what `buildFactors` must return exactly at mint. */
+function rawProductOf(car: CarInstance): BuildFactors {
+  const product = { ...STOCK_BUILD_FACTORS }
+  for (const partId of ALL_CAR_PART_IDS) {
+    const installed = car.parts[partId].installed
+    if (!installed) continue
+    const modifiers = CONTEXT.partsById[installed.partId]?.physicalModifiers
+    if (!modifiers) continue
+    product.grip *= modifiers.grip
+    product.braking *= modifiers.braking
+    product.mass *= modifiers.mass
+  }
+  return product
+}
+
+/** The fraction of its own advantage a single fitted SKU still delivers, read
+ * back out of the real build factors: `(effective - 1) / (modifier - 1)`. Reads
+ * the number the grade curve is denominated in, so it compares like with like
+ * across parts whose modifiers differ. */
+function retainedAdvantage(
+  model: CarModel,
+  partId: CarPartId,
+  grade: Grade,
+  band: ConditionBand,
+  dial: keyof BuildFactors,
+): number {
+  const car = buildAtBand(model, partId, grade, band)
+  const modifier = CONTEXT.partsById[car.parts[partId].installed!.partId]!.physicalModifiers[dial]
+  const effective = buildFactors(car, CONTEXT.partsById, ECONOMY)[dial]
+  return (effective - 1) / (modifier - 1)
 }
 
 /** The mechanical grip a build actually corners on - the same quantity the lap
@@ -246,32 +310,9 @@ describe('the grade ladder reaches the driven targets', () => {
 })
 
 describe("a part's own condition band scales its physical modifiers", () => {
-  /** Same override pattern as `buildAt`, but pins one slot to an explicit
-   * band rather than always `mint`, so these tests can exercise the
-   * interpolation `buildFactors` now performs. */
-  function buildAtBand(
-    model: CarModel,
-    partId: CarPartId,
-    grade: Grade,
-    band: ConditionBand,
-  ): CarInstance {
-    const car = buildAt(model, 'stock', { [partId]: grade } as Partial<Record<CarPartId, Grade>>)
-    const installed = car.parts[partId].installed!
-    return { ...car, parts: { ...car.parts, [partId]: { installed: { ...installed, band } } } }
-  }
-
   it("a mint build returns factors strictly equal to the raw product of the SKUs' physicalModifiers", () => {
     const car = buildAt(GTR, 'race')
-    const rawProduct = { ...STOCK_BUILD_FACTORS }
-    for (const partId of ALL_CAR_PART_IDS) {
-      const installed = car.parts[partId].installed
-      if (!installed) continue
-      const modifiers = CONTEXT.partsById[installed.partId]?.physicalModifiers
-      if (!modifiers) continue
-      rawProduct.grip *= modifiers.grip
-      rawProduct.braking *= modifiers.braking
-      rawProduct.mass *= modifiers.mass
-    }
+    const rawProduct = rawProductOf(car)
     const built = buildFactors(car, CONTEXT.partsById, ECONOMY)
     expect(built.grip).toBe(rawProduct.grip)
     expect(built.braking).toBe(rawProduct.braking)
@@ -309,13 +350,13 @@ describe("a part's own condition band scales its physical modifiers", () => {
   })
 
   it('the five-band shape is pinned for one grip part and one mass part', () => {
-    const BANDS: ConditionBand[] = ['mint', 'fine', 'worn', 'poor', 'scrap']
     const gripInstalled = buildAtBand(GTR, 'dampers', 'race', 'mint').parts.dampers.installed!
     const massInstalled = buildAtBand(GTR, 'exhaust', 'race', 'mint').parts.exhaust.installed!
     const gripModifier = CONTEXT.partsById[gripInstalled.partId]!.physicalModifiers.grip
     const massModifier = CONTEXT.partsById[massInstalled.partId]!.physicalModifiers.mass
-    for (const band of BANDS) {
-      const wear = ECONOMY.bands.bandFactors[band]
+    for (const band of BANDS_BEST_FIRST) {
+      // Both probe parts are race grade, so they run on the race row.
+      const wear = ECONOMY.statFormulas.condition.gradeBandFactor.race[band]
       const expectedGrip = 1 + (gripModifier - 1) * wear
       const expectedMass = 1 + (massModifier - 1) * wear
       const grip = buildFactors(
@@ -334,14 +375,140 @@ describe("a part's own condition band scales its physical modifiers", () => {
   })
 
   it('the delivered grip advantage is non-increasing as the band worsens, across all five bands', () => {
-    const bandsBestToWorst: ConditionBand[] = ['mint', 'fine', 'worn', 'poor', 'scrap']
-    const grips = bandsBestToWorst.map(
+    const grips = BANDS_BEST_FIRST.map(
       (band) =>
         buildFactors(buildAtBand(GTR, 'dampers', 'race', band), CONTEXT.partsById, ECONOMY).grip,
     )
     for (let i = 1; i < grips.length; i++) {
-      expect(grips[i], bandsBestToWorst[i]).toBeLessThanOrEqual(grips[i - 1]!)
+      expect(grips[i], BANDS_BEST_FIRST[i]).toBeLessThanOrEqual(grips[i - 1]!)
     }
+  })
+})
+
+/**
+ * How sharply a part's own advantage fades is a property of its GRADE, not one
+ * curve shared by the whole catalogue. A race part is highly strung and a stock
+ * part is under-stressed, so at the same band the race part has given up more of
+ * what it was bought for.
+ *
+ * Nothing here is a wear rate. No band moves during play, so these curves say
+ * what a part in a given state delivers, never how fast it got there.
+ */
+describe('a part grade decides how sharply its own advantage fades', () => {
+  const CURVES = ECONOMY.statFormulas.condition.gradeBandFactor
+
+  it('the stock row is the value-side band curve exactly, and a stock build is unmoved at every band', () => {
+    expect(CURVES.stock).toEqual(ECONOMY.bands.bandFactors)
+    for (const model of CARS) {
+      for (const band of BANDS_BEST_FIRST) {
+        const car = atBand(buildAt(model, 'stock'), band)
+        expect(buildFactors(car, CONTEXT.partsById, ECONOMY), `${model.id} @${band}`).toEqual(
+          STOCK_BUILD_FACTORS,
+        )
+      }
+    }
+  })
+
+  /** The identity that keeps `harnessAcceptance.test.ts` green, asserted
+   * directly rather than inferred from a lap time. */
+  it('every grade delivers its modifier exactly at mint', () => {
+    for (const grade of GRADE_ORDER) {
+      expect(CURVES[grade].mint, grade).toBe(1)
+    }
+    for (const model of [CIVIC, GTR]) {
+      for (const grade of GRADE_ORDER) {
+        const car = buildAt(model, grade)
+        const raw = rawProductOf(car)
+        const built = buildFactors(car, CONTEXT.partsById, ECONOMY)
+        expect(built.grip, `${model.id} @${grade}`).toBe(raw.grip)
+        expect(built.braking, `${model.id} @${grade}`).toBe(raw.braking)
+        expect(built.mass, `${model.id} @${grade}`).toBe(raw.mass)
+      }
+    }
+  })
+
+  /** The whole point of the grade split, in one comparison: a knackered race
+   * damper is worse than a healthy street one, so buying the sharpest part and
+   * neglecting it is a real mistake rather than a slightly smaller gain. */
+  it('a race coilover at poor delivers less grip than a street coilover at mint, and so does a sport one', () => {
+    const gripAt = (grade: Grade, band: ConditionBand) =>
+      buildFactors(buildAtBand(GTR, 'dampers', grade, band), CONTEXT.partsById, ECONOMY).grip
+    const streetMint = gripAt('street', 'mint')
+    expect(gripAt('race', 'poor')).toBeLessThan(streetMint)
+    expect(gripAt('sport', 'poor')).toBeLessThan(streetMint)
+    // Still an upgrade, never a penalty: a bad part is a bad part, not an absent one.
+    expect(gripAt('race', 'poor')).toBeGreaterThan(STOCK_BUILD_FACTORS.grip)
+  })
+
+  it('for a fixed grade, a part delivers less of its advantage as its band worsens', () => {
+    for (const grade of GRADES_WITH_ADVANTAGE) {
+      const retained = BANDS_BEST_FIRST.map((band) =>
+        retainedAdvantage(GTR, 'dampers', grade, band, 'grip'),
+      )
+      for (let i = 1; i < retained.length; i++) {
+        expect(retained[i], `${grade} @${BANDS_BEST_FIRST[i]}`).toBeLessThan(retained[i - 1]!)
+      }
+    }
+  })
+
+  /** The property the grade split exists for, stated on its own: hold the band
+   * still and climb the ladder, and each rung keeps less of what it promised. */
+  it('for a fixed band below mint, a part delivers less of its advantage as its grade rises', () => {
+    for (const band of SUB_MINT_BANDS) {
+      const retained = GRADES_WITH_ADVANTAGE.map((grade) =>
+        retainedAdvantage(GTR, 'dampers', grade, band, 'grip'),
+      )
+      for (let i = 1; i < retained.length; i++) {
+        expect(retained[i], `${band} @${GRADES_WITH_ADVANTAGE[i]}`).toBeLessThan(retained[i - 1]!)
+      }
+    }
+  })
+
+  it('a lightweight part at poor saves less weight than a street one at mint, on both grades above street', () => {
+    const massAt = (grade: Grade, band: ConditionBand) =>
+      buildFactors(buildAtBand(GTR, 'exhaust', grade, band), CONTEXT.partsById, ECONOMY).mass
+    const streetMint = massAt('street', 'mint')
+    for (const grade of ['sport', 'race'] as const) {
+      expect(massAt(grade, 'poor'), grade).toBeGreaterThan(streetMint)
+    }
+  })
+
+  /** The sign test, over all four rows and the whole catalogue rather than one
+   * probe part: a weight-saving modifier is below 1, so a curve that ever went
+   * above 1 would make a worn part heavier than the stock item it replaced. */
+  it('no SKU at any band adds mass over stock', () => {
+    const offenders: string[] = []
+    for (const part of PARTS) {
+      for (const band of BANDS_BEST_FIRST) {
+        const effective = 1 + (part.physicalModifiers.mass - 1) * CURVES[part.grade][band]
+        if (effective > 1) offenders.push(`${part.id} @${band}`)
+      }
+    }
+    expect(offenders).toEqual([])
+  })
+
+  it('no grade curve leaves [0, 1]', () => {
+    for (const grade of GRADE_ORDER) {
+      for (const band of BANDS_BEST_FIRST) {
+        const factor = CURVES[grade][band]
+        expect(factor, `${grade} @${band}`).toBeGreaterThanOrEqual(0)
+        expect(factor, `${grade} @${band}`).toBeLessThanOrEqual(1)
+      }
+    }
+  })
+
+  /** An unresolvable SKU never reaches the curve lookup at all, which is
+   * stricter than the `stock` fallback the lookup itself carries. */
+  it('a slot whose SKU the catalogue cannot resolve moves no dial', () => {
+    const car = buildAtBand(GTR, 'dampers', 'race', 'poor')
+    const orphaned: CarInstance = {
+      ...car,
+      parts: {
+        ...car.parts,
+        dampers: { installed: { ...car.parts.dampers.installed!, partId: 'no-such-sku' } },
+      },
+    }
+    expect(buildFactors(orphaned, CONTEXT.partsById, ECONOMY)).toEqual(STOCK_BUILD_FACTORS)
   })
 })
 

@@ -1,6 +1,7 @@
 # Sprint 142: grade sensitivity and the provisional condition curves
 
-**Status: NOT STARTED, AWAITING SIGN-OFF.** **Gated on Sprint 134 alone, and that gate is met:
+**Status: BUILT, ready for review** (Lever 1 signed 2026-08-01, exactly the table below). **Gated
+on Sprint 134 alone, and that gate is met:
 134 shipped 2026-07-29.** Its grade-sensitivity half is independent of power, support and value,
 so it may run now; it is numbered last because its second half, the review of the four condition
 curves, is most useful once the rest has landed, and 135 to 137 have since landed too.
@@ -196,22 +197,233 @@ moves; re-pin in the same change as the recorded sign-off.
 
 ## Definition of done
 
-- [ ] Sprint 134 shipped. Which other sprints have landed is recorded here, because the
+- [x] Sprint 134 shipped. Which other sprints have landed is recorded here, because the
       condition review in Task 3 is only worth as much as the system it looks at. **Task 3's
       value question needs Sprint 136 landed**; if it has not, run the grade-sensitivity half
       and record that the review is deferred rather than doing it against half a system.
-- [ ] Lever 1 signed and recorded.
-- [ ] `gradeBandFactor` in content, with the stock row identical to `bandFactor`.
-- [ ] `buildFactors` reads it; an unresolvable grade falls back to the stock row.
-- [ ] A stock-parts build is byte-identical to before this sprint.
-- [ ] A race part at `poor` is worse than a street part at `mint`, pinned, with the sport case.
-- [ ] Monotonicity holds across bands and across grades.
-- [ ] The mass direction proved for all four curves.
-- [ ] `harnessAcceptance.test.ts` passes untouched.
-- [ ] The four dial curves reviewed, the lap figures reported beside Sprint 129's, the worn and
+      **134 to 137 have all landed, so the review ran against the whole system.**
+- [x] Lever 1 signed and recorded.
+- [x] `gradeBandFactor` in content, with the stock row identical to `bandFactor`.
+- [x] `buildFactors` reads it; an unresolvable grade falls back to the stock row.
+- [x] A stock-parts build is byte-identical to before this sprint.
+- [x] A race part at `poor` is worse than a street part at `mint`, pinned, with the sport case.
+- [x] Monotonicity holds across bands and across grades.
+- [x] The mass direction proved for all four curves.
+- [x] `harnessAcceptance.test.ts` passes untouched.
+- [x] The four dial curves reviewed, the lap figures reported beside Sprint 129's, the worn and
       poor price shares reported, and a recommendation given. No curve moved in this sprint.
-- [ ] Checks run once each, output shown.
+- [x] Checks run once each, output shown.
 
 ## Exit
 
-_To be completed at the end of the sprint._
+**Status: ready for review.** A part's grade now decides how sharply its own advantage fades, and
+the four dial curves were reviewed rather than moved.
+
+### What landed, and where
+
+| File | Change |
+|---|---|
+| `packages/content/src/economy.ts` | `GradeBandCurveSchema` (five bands, each bounded to `[0, 1]`) and `statFormulas.condition.gradeBandFactor`, four grades by five bands. The schema comment states the stock-row identity, the mint identity, and the no-wear-rate rule where the table is defined. |
+| `packages/content/data/economy.json` | The four rows, exactly as the lever table above. |
+| `packages/content/src/stats.ts` | `PhysicalModifierSchema.grip`'s comment now names the formula the interpolation actually runs (`gradeBandFactor[grade][band]`). |
+| `packages/sim/src/derivedStats.ts` | `buildFactors` resolves the installed SKU's grade and reads `gradeBandFactor[grade][band]` in place of `bandFactor(band, economy)`; a grade that cannot be read falls back to the `stock` row. `bandFactor` itself is untouched and keeps its other three jobs. |
+| `packages/sim/tests/aftermarketPhysics.test.ts` | Eight new tests plus three shared helpers hoisted to module scope (`buildAtBand`, `rawProductOf`, `retainedAdvantage`), so the grade block and the band block share one set rather than each growing its own. |
+| `packages/content/tests/economyApprovalGate.test.ts` | Re-pinned for the one signed lever, with its own ledger entry. |
+
+### The design requirement, proved
+
+Measured off the real `enthusiast`-class SKUs, through `buildFactors` rather than by hand:
+
+| part | modifier | band | curve | delivered |
+|---|---:|---|---:|---:|
+| street coilover | 1.010 | mint | 1.00 | **1.01000** |
+| sport coilover | 1.020 | poor | 0.38 | **1.00760** |
+| race coilover | 1.029 | poor | 0.25 | **1.00725** |
+
+**The race part at `poor` is worse than the street part at `mint`, and so is the sport part.** The
+same ordering holds on the other two dials without being aimed at: race pads at `poor` deliver
+1.01810 against a mint street pad's 1.02370, and a race exhaust at `poor` saves 0.52 per cent of
+kerb weight against a mint street exhaust's 0.69 per cent. It is a rule across the ladder, not a
+coincidence at its ends.
+
+**Monotonicity holds in both directions.** For a fixed grade the retained fraction falls at every
+band step; for a fixed band below `mint` it falls at every step UP the ladder, street to sport to
+race. The `stock` row is deliberately outside that chain: a stock SKU's modifiers are all exactly
+1, so its row can never move a dial however steep it is, and it exists only to hold the
+pre-sprint identity.
+
+### The two identities that keep everything else still
+
+- **The stock row is `bands.bandFactors` verbatim.** Asserted by strict equality on the table
+  itself, and separately on all 26 shipped cars at all five bands: a car built entirely from stock
+  parts returns exactly `STOCK_BUILD_FACTORS`.
+- **Every row is exactly 1.00 at `mint`.** Asserted directly on the table and on real builds at all
+  four grades, so `harnessAcceptance.test.ts` passes untouched (27 tests) and every story-mission
+  payout, budget cap, lap ceiling, power floor, reliability threshold and taste floor is unchanged
+  against a fresh `storyMissionProbes.test.ts` run. Every probe builds at mint, where this table is
+  the identity.
+
+No part price and no bill threshold moved, so `enforceMinWorkBill` draws the same PRNG steps and
+the seeded auction catalogues are untouched: `auctions.test.ts`, `advanceDay.test.ts` and
+`hashState.test.ts` all pass unchanged and the auction-demo benches needed no re-derivation.
+
+---
+
+## Task 3: the review of the four dial curves
+
+**Recommendation: leave `statFormulas.condition.bandFactor` exactly as it is. No curve moved in
+this sprint, and none should move on the strength of these numbers.** The reasoning is below, and
+so are the two things that would change the answer.
+
+### 1. What a worn car does, beside Sprint 129's figures
+
+The whole car through the game-facing `lapTimeSecondsFor`, every slot at the same band, the
+model's own fitment class. **Every figure is identical to Sprint 129's Exit table, to the tenth of
+a second, on all three cars and all four courses.** The arc moved nothing about what a worn STOCK
+car does on track, which is the expected result: 134 and 137 touch aftermarket parts only, 135's
+`powerFraction` is zero on every stock SKU, and 136 moved reliability, which the lap model does not
+read.
+
+| Car | Band | Hakone | Wangan | Misaki | Yatabe (standing km) |
+|---|---|---|---|---|---|
+| Honda City E | mint | 131.8 | 196.0 | 143.7 | 34.9 |
+| | fine | 135.8 (+3.0%) | 197.9 (+1.0%) | 145.4 (+1.2%) | 36.0 (+3.2%) |
+| | worn | 143.7 (+9.0%) | 201.8 (+3.0%) | 148.6 (+3.4%) | 37.9 (+8.6%) |
+| | poor | 160.1 (+21.5%) | 218.6 (+11.5%) | 162.0 (+12.7%) | 41.2 (+18.1%) |
+| | scrap | **no time** | **no time** | **no time** | **no time** |
+| Silvia K's S14 | mint | 118.0 | 139.1 | 109.6 | 26.4 |
+| | fine | 121.4 (+2.9%) | 142.8 (+2.7%) | 112.5 (+2.6%) | 27.2 (+3.0%) |
+| | worn | 128.6 (+9.0%) | 150.5 (+8.2%) | 118.7 (+8.3%) | 28.6 (+8.3%) |
+| | poor | 143.5 (+21.6%) | 166.0 (+19.3%) | 131.3 (+19.8%) | 31.1 (+17.8%) |
+| | scrap | **no time** | **no time** | **no time** | **no time** |
+| Skyline GT-R BNR32 | mint | 114.1 | 135.6 | 107.1 | 24.1 |
+| | fine | 117.5 (+3.0%) | 139.3 (+2.7%) | 110.0 (+2.7%) | 24.8 (+2.9%) |
+| | worn | 124.5 (+9.1%) | 146.8 (+8.3%) | 116.1 (+8.4%) | 26.1 (+8.3%) |
+| | poor | 139.0 (+21.8%) | 162.0 (+19.5%) | 128.4 (+19.9%) | 28.3 (+17.4%) |
+| | scrap | **no time** | **no time** | **no time** | **no time** |
+
+The four dials ALONE, power held at stock, across the whole 26-car roster. **Also identical to
+Sprint 129's table in every cell.**
+
+| Band | Hakone | Wangan | Misaki | Yatabe |
+|---|---|---|---|---|
+| fine | +2.1% to +2.3% | +0.6% to +2.0% | +0.8% to +2.1% | +0.8% to +1.1% |
+| worn | +6.8% to +7.5% | +2.0% to +6.4% | +2.5% to +6.7% | +2.6% to +3.8% |
+| poor | +17.3% to +19.3% | +5.0% to +16.9% | +6.9% to +17.0% | +6.4% to +9.6% |
+| scrap (dials only, unreachable in play) | +40.1% to +45.2% | +11.7% to +37.5% | +18.1% to +38.6% | +14.0% to +22.7% |
+
+### 2. Condition against the aftermarket ladder, which is new information
+
+The measurement Sprint 129 could not make, because the ladder did not exist: a full chassis build
+(race dampers, springs, anti-roll bars, chassis, both brake lines, exhaust, rims and tyres, engine
+untouched) at each band, against the same car stock and mint, on Hakone.
+
+| Car | stock, mint | built, mint | built, fine | built, worn | built, poor |
+|---|---:|---:|---:|---:|---:|
+| Honda City E | 131.8 | 112.7 (-14.5%) | 116.8 (-11.4%) | 125.5 (-4.8%) | 141.5 (**+7.4%**) |
+| Skyline GT-R BNR32 | 114.1 | 97.8 (-14.3%) | 100.8 (-11.7%) | 108.8 (-4.6%) | 123.5 (**+8.2%**) |
+
+**A neglected race build crosses below a healthy stock car between `worn` and `poor`.** That is
+design section 10's stated goal reached end to end ("a blown race turbo is not something anyone
+wants"), and it is produced by the two paths together: the dial curves take the car's baseline
+down, and the new grade curve takes the fitted parts' own advantage down harder because they are
+race parts. It is the strongest argument in the review that the dial curves are already steep
+enough, since making them steeper would push the crossover up into `worn`, where the market
+expects most of the roster to be sold.
+
+### 3. What a worn car is worth, beside the same figures from before the arc
+
+Every shipped car, all stock, uniform band, at neutral mileage and 100 heat, so book value is the
+clean value and the share is condition's own work. `bestOffer` is the highest of the six shipped
+buyer archetypes through `valuateCarForBuyer`; `pre-arc` recomputes the same offer with the
+pre-Sprint-136 reliability (`70 x bandFactor`, which for a uniform-band car is exact, since a
+weighted mean of a constant is that constant).
+
+| Band | Guide value, share of book (median) | Best offer (median) | Best offer, pre-arc (median) | Reliability | Reliability, pre-arc |
+|---|---|---|---|---|---|
+| mint | 100.0% (100.0%) | 109.0% to 112.0% (111.6%) | 108.2% to 112.0% (111.6%) | 80 to 100 | 70 |
+| fine | 91.4% to 98.1% (96.4%) | 100.7% to 109.0% (106.2%) | 100.7% to 108.5% (105.5%) | 68 to 85 | 60 |
+| **worn** | **66.2% to 92.4% (87.4%)** | **71.0% to 98.4% (94.3%)** | **69.0% to 97.7% (92.5%)** | **52 to 65** | **46** |
+| **poor** | **47.2% to 88.7% (81.4%)** | **47.5% to 91.3% (83.4%)** | **46.5% to 90.5% (82.1%)** | **32 to 40** | **28** |
+| scrap | 5.0% to 61.8% (38.1%) | 4.7% to 61.1% (36.7%) | 4.6% to 60.9% (36.6%) | 12 to 15 | 11 |
+
+**The guide-value column did not move across the arc at all, and could not have.**
+`marketValueYen` takes no derived stat as an argument; the one arc mechanism that reaches it,
+Stage C's coherence discount, is exactly zero on a stock car at every band, because
+`supportRatios` reads the fitted GRADE and never the band, so a stock car's headline is 1
+whatever state it is in. **The widened reliability band therefore reaches price only through the
+taste multiplier**, bounded to `[0.88, 1.12]` and shared across all five stats: a worn car's best
+offer rises 1.8 points of book (92.5% to 94.3% median) and a poor car's 1.3 points. That is the
+whole of Sprint 136's price effect on a worn car, and it is small by construction.
+
+### 4. Does any of that argue for moving the four dial curves?
+
+**No, on four counts.**
+
+1. **There is nothing to correct.** Every figure the curves produce reproduces Sprint 129's own
+   Exit tables exactly, on every car and every course. The arc did not drift them; it did not
+   touch them.
+2. **They do not reach price**, so the price question this review inherited is not theirs to
+   answer. Their only route to money is the `handling` term inside a bounded taste multiplier, so
+   moving them would be a change to PACE alone, dressed up as a change to value.
+3. **The band that matters most is the one they treat most gently.** `valuation.expectationByTier`
+   expects `fine` on three tiers and `mint` on the fourth, so the state a car is SOLD in costs
+   2.1% to 2.3% of Hakone pace. `worn` and `poor` are the states a car is BOUGHT in, where the
+   curves' job is to make a rough car feel rough on the reference board, and at +7% and +18% they
+   do that unambiguously.
+4. **The new crossover measurement points the other way.** A race build at `poor` is already 7 to
+   8 per cent slower than a stock mint car. Steeper curves would move that crossover into `worn`,
+   which would make the market's own expectation band a state in which a built car is worse than
+   an unbuilt one.
+
+**And the honest reason not to touch them regardless: no measurement exists.** Sprint 129 recorded
+that they were "not calibrated against a driven worn car, because no such measurement exists", and
+that is still true. Any new value would be exactly as unmeasured as the current one, minus the
+advantage that the current one is what the whole arc was built and validated against. They stay
+**PROVISIONAL**, and the schema still says so.
+
+**Two things would change this answer**, and each is a lever request with numbers rather than a
+judgement call:
+
+- A driven lap on a genuinely worn car, which is the only thing that turns this review into a
+  derivation.
+- Playtesting showing that the crossover sits in the wrong place: if a player who buys a rough
+  built car and repairs it to `fine` finds the build reads as no better than stock, the grade
+  curve (this sprint's table) is the one to look at first, not the dial curves.
+
+### Directive 17: every test touched
+
+| Test | Case | Why |
+|---|---|---|
+| `aftermarketPhysics.test.ts`, "the five-band shape is pinned for one grip part and one mass part" | **(a)** stale assertion | It read `ECONOMY.bands.bandFactors[band]` for two RACE-grade probe parts. That was the correct source before this sprint and is the wrong one after it; it now reads `gradeBandFactor.race[band]`, which is what those parts actually run on. The implementation deliberately changed what is correct. |
+| `aftermarketPhysics.test.ts`, the shared helpers and `BANDS_BEST_FIRST` | neither | Structural only: `buildAtBand` was hoisted out of one describe block so both blocks share it, the raw-product loop became `rawProductOf`, and two inline band arrays became one module constant. No assertion changed. |
+| `economyApprovalGate.test.ts` | **(a)** stale pin | `economy.json` gained the signed table, so the hash moved by construction. Re-pinned in the same change as the recorded approval, with its own ledger entry naming the lever and all twenty values. |
+
+Every other test in the suite passed **unchanged**, including the two that would have caught a
+mistake fastest: `harnessAcceptance.test.ts` (the calibration guard) and
+`storyMissionProbes.test.ts` (every formula-derived payout and threshold).
+
+### Checks run
+
+```text
+pnpm typecheck                                    3 projects, Done
+pnpm test --project content                       26 files, 573 tests passed
+aftermarketPhysics.test.ts                        28 tests passed (20 before, 8 new)
+harnessAcceptance.test.ts                         27 tests passed, untouched
+conditionPhysics / derivedStats / lapModel /
+  lapModelPace / aero / proportionalPower /
+  engineCharacter                                 268 tests passed
+reliabilityModel / supportRatios / valueModelProbes /
+  coherenceValuation / valueStatIndependence /
+  marketValue / valuation / style / plays          212 tests passed
+advanceDay / hashState / auctions / requirements /
+  missions / tutorialProbe / balanceProbes /
+  referenceBoard                                   141 tests passed
+storyMissionProbes.test.ts                        19 tests passed
+sandboxCars.test.ts (game, the one file reading
+  `buildFactors`)                                 86 tests passed
+```
+
+The sim suite is run file by file rather than whole, per the standing rule. `pnpm typecheck` is
+the directive 20 carve-out run: this sprint reshapes a schema block, and the whole-program check is
+the cheapest thing that catches a `.vue` template still reading the old shape.

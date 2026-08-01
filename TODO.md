@@ -1038,8 +1038,12 @@ pass."
   finding (a pre-existing cross-category value-per-yen defect, unrelated to that sprint's own two
   levers) was closed by the same amendment and is recorded above under "Open balance/economy
   questions". 134 needed nothing. **138 and 139 were closed unbuilt, superseded by the sale value
-  system.** What remains of the tuning arc is 140 (`aeroCeiling` and the handling deletion), 141
-  and 142, all still in `docs/sprints/`.
+  system.** **Sprint 142 (grade sensitivity) is SIGNED AND BUILT**: an installed SKU's own
+  advantage now fades on a curve keyed to its GRADE, so a race damper at `poor` delivers less than
+  a street damper at `mint`, and its second half reviewed the four provisional condition-to-physics
+  curves and left them exactly where they are, with the reasoning and the measurements in
+  `docs/sprints/sprint142.md`'s Exit. What remains of the tuning arc is 140 (`aeroCeiling` and the
+  handling deletion) and 141, both still in `docs/sprints/`.
 
   Blocking decisions, all recorded in the doc. Constraint A (section 17): the
   forced-induction return curve must not ship before the support ratios, because increasing

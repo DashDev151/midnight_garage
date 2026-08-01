@@ -535,6 +535,23 @@ const PhysicalConditionCurveSchema = z.object({
   scrap: z.number().positive(),
 })
 
+/** A fraction of a fitted part's own advantage over stock. Above 1 a worn
+ * part would beat the same part at mint; below 0 its advantage would change
+ * sign and an upgrade would read as a penalty. */
+const RetainedAdvantageFraction = z.number().min(0).max(1)
+
+/**
+ * One part grade's band curve: how much of an installed SKU's own advantage
+ * over stock survives at each condition band.
+ */
+const GradeBandCurveSchema = z.object({
+  mint: RetainedAdvantageFraction,
+  fine: RetainedAdvantageFraction,
+  worn: RetainedAdvantageFraction,
+  poor: RetainedAdvantageFraction,
+  scrap: RetainedAdvantageFraction,
+})
+
 /**
  * Designer-tunable economy/auction numbers live here (content law), threaded
  * through `SimContext` like every other content file.
@@ -1427,6 +1444,44 @@ export const EconomyConfigSchema = z.object({
         braking: PhysicalConditionCurveSchema,
         driveline: PhysicalConditionCurveSchema,
         aero: PhysicalConditionCurveSchema,
+      }),
+      /**
+       * How much of an installed SKU's own `physicalModifiers` advantage
+       * survives its condition band, by the GRADE of the part fitted.
+       * `buildFactors` (sim/derivedStats.ts) spends it as `1 + (modifier - 1)
+       * * gradeBandFactor[grade][band]`, so a row is a fraction of the
+       * ADVANTAGE a part carries over stock, never a multiplier on the dial
+       * itself.
+       *
+       * The rows steepen up the ladder because a race part is highly strung
+       * and a stock part is under-stressed: at the same band a race part has
+       * given up more of its advantage than a street part has. That is what
+       * makes a race damper at `poor` deliver less than a street damper at
+       * `mint`, across the ladder rather than only at its extremes.
+       *
+       * **This is a curve shape, not a wear rate.** Nothing in the game
+       * degrades with use: `degradeBand` runs only at generation, before the
+       * player ever sees the car, and the only thing that moves a band during
+       * play is the player repairing it. A race part is more SENSITIVE at a
+       * given band, never more fragile over time, so no value here is
+       * denominated in days and nothing may introduce one.
+       *
+       * The `stock` row is `bands.bandFactors` exactly, so a car built from
+       * stock parts delivers precisely what it always did; every row is 1.00
+       * at `mint`, so the calibrated harness times are untouched at the top of
+       * the band.
+       *
+       * Deliberately separate from `bandFactor` above. That curve says what
+       * CONDITION does to the four physical dials of any car; this one says
+       * how much of a FITTED PART's own upgrade survives. Both apply to a worn
+       * aftermarket part, and they are two different jobs rather than one
+       * charged twice.
+       */
+      gradeBandFactor: z.object({
+        stock: GradeBandCurveSchema,
+        street: GradeBandCurveSchema,
+        sport: GradeBandCurveSchema,
+        race: GradeBandCurveSchema,
       }),
       /**
        * Lever 8 (rebalanced): a CEILING on reliability's condition mean, not

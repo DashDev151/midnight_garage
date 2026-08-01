@@ -288,35 +288,48 @@ export function physicalConditionFactors(
  *
  * A `physicalModifier` is a multiplier around unity (1.029 is "2.9 per cent
  * better than stock"), so a worn part must deliver less of its advantage, not
- * less than stock: `effective = 1 + (modifier - 1) * bandFactor(band,
- * economy)`. At `mint`, `bandFactor` is 1.0 and `effective` equals the
- * modifier exactly, so a mint build is unchanged from the raw product. At
- * `scrap` the modifier is pulled most of the way back to 1.0 but never past
- * it, so a knackered part is a bad part, never an absent one (an absent part
- * is `scrapDisablesCar`/`isPartMissing`'s concern, not this one). The same
- * expression handles a sub-1 mass modifier without a second case: `modifier -
- * 1` is negative for a weight-saving part, so wear pulls it back toward 1.0
- * from below and a worn lightweight part never adds mass over stock.
+ * less than stock: `effective = 1 + (modifier - 1) *
+ * gradeBandFactor[grade][band]`. Every grade's curve is 1.0 at `mint`, so
+ * `effective` equals the modifier exactly there and a mint build is unchanged
+ * from the raw product. Below mint the modifier is pulled back toward 1.0 but
+ * never past it, so a knackered part is a bad part, never an absent one (an
+ * absent part is `scrapDisablesCar`/`isPartMissing`'s concern, not this one).
+ * The same expression handles a sub-1 mass modifier without a second case:
+ * `modifier - 1` is negative for a weight-saving part, so the factor pulls it
+ * back toward 1.0 from below and a worn lightweight part never adds mass over
+ * stock.
+ *
+ * The curve is keyed by the fitted SKU's own GRADE, which is what makes a race
+ * damper at `poor` deliver less than a street damper at `mint`: a highly
+ * strung part has given up more of its advantage at a given band than an
+ * under-stressed one has. It is a curve shape rather than a rate, since
+ * nothing here degrades with use. The `stock` row is the value-side band
+ * curve exactly, so a car built from stock parts is untouched by the grade
+ * split.
  *
  * The product is what makes a group figure the group's, not each member's: three
  * suspension SKUs at 1.029 apiece reach 1.090 fitted together and a car with one
  * of them fitted gets only that one's share.
  *
  * A slot the catalog cannot resolve contributes nothing rather than defaulting
- * to something, so an unknown part id can never silently move the physics.
+ * to something, so an unknown part id can never silently move the physics; a
+ * grade that cannot be read falls back to the `stock` row for the same reason,
+ * so nothing unresolvable ever takes the sharper race curve.
  */
 export function buildFactors(
   car: CarInstance,
   partsById: Readonly<Record<string, Part>>,
   economy: EconomyConfig,
 ): BuildFactors {
+  const curves = economy.statFormulas.condition.gradeBandFactor
   const factors = { ...STOCK_BUILD_FACTORS }
   for (const partId of ALL_CAR_PART_IDS) {
     const installed = car.parts[partId].installed
     if (!installed) continue
-    const modifiers = partsById[installed.partId]?.physicalModifiers
+    const part = partsById[installed.partId]
+    const modifiers = part?.physicalModifiers
     if (!modifiers) continue
-    const wear = bandFactor(installed.band, economy)
+    const wear = curves[part?.grade ?? 'stock'][installed.band]
     factors.grip *= 1 + (modifiers.grip - 1) * wear
     factors.braking *= 1 + (modifiers.braking - 1) * wear
     factors.mass *= 1 + (modifiers.mass - 1) * wear

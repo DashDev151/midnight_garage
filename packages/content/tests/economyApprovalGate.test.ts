@@ -1448,6 +1448,36 @@ import storyMissions from '../data/storyMissions.json'
  * identical before and after; only 10 of the 400 lots see any movement at all, because a strip's
  * takings never include the body carriers and the buy price barely moves. Closing it needs a
  * different lever and is left to the maintainer.
+ *
+ * Re-pinned 2026-08-01 (maintainer approval, in session, the one lever signed as exactly the
+ * four-by-five table it carries) for `docs/sprints/sprint142.md`, grade sensitivity. ONE lever,
+ * and no second:
+ *
+ * 1. `statFormulas.condition.gradeBandFactor` (NEW) - how much of an installed SKU's own
+ *    `physicalModifiers` advantage survives its condition band, by the GRADE of the part fitted.
+ *    Four rows of five, mint/fine/worn/poor/scrap: stock 1.00/0.85/0.65/0.40/0.15, street
+ *    1.00/0.90/0.75/0.52/0.22, sport 1.00/0.86/0.65/0.38/0.13, race 1.00/0.80/0.52/0.25/0.05.
+ *    `buildFactors` (packages/sim/src/derivedStats.ts) reads it in place of `bandFactor(band,
+ *    economy)`; a grade that cannot be read falls back to the `stock` row.
+ *
+ * `statFormulas.condition.bandFactor` and `bands.bandFactors` are both UNTOUCHED, and `bandFactor`
+ * keeps every other job it had: the condition input to all five derived stats, the `style` part
+ * modifier, and the cost-weighted value shim. This lever replaces its use inside `buildFactors`
+ * alone.
+ *
+ * It is a curve shape and not a wear rate. No band moves during play (`degradeBand` runs only at
+ * generation, and only a repair moves a band afterwards), so a race part is more SENSITIVE at a
+ * given band rather than more fragile over time, and no value here is denominated in days.
+ *
+ * Nothing else moves, and the two identities are why. The `stock` row is `bands.bandFactors`
+ * verbatim, so a car built from stock parts produces byte-identical build factors, asserted by
+ * strict equality on all 26 shipped cars at all five bands; and every row is exactly 1.00 at
+ * `mint`, so a mint build reads the raw product of its SKUs' modifiers as it always did.
+ * `harnessAcceptance.test.ts` passes untouched, and a fresh `storyMissionProbes.test.ts` run
+ * confirms every payout, budget cap, lap ceiling, power floor, reliability threshold and taste
+ * floor is unchanged: every probe builds at mint, where this table is the identity. What moves is
+ * a car carrying NON-MINT aftermarket parts, and it moves by the grade of what is fitted - a race
+ * coilover at `poor` now delivers 1.00725 against a mint street coilover's 1.01000.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -1457,7 +1487,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('696b8acfe1c8efd497a7c1b3070a2219e516e06b6a1de22d933bf8d691e31c5e')
+    ).toBe('c2390f4896a345cee903360ba4c3c395c6607670c9bfb541a0ca6317af8f83b1')
   })
 
   it('damagePatterns.json matches its approved content exactly', () => {
