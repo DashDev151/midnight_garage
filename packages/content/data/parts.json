@@ -7460,7 +7460,7 @@
     "brand": "FRP",
     "name": "Lightweight Body Kit",
     "carPartId": "aero",
-    "priceBasisPartId": "panels",
+    "priceBasisPartId": "bodyKit",
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
@@ -7479,7 +7479,7 @@
     "brand": "FRP",
     "name": "Lightweight Body Kit",
     "carPartId": "aero",
-    "priceBasisPartId": "panels",
+    "priceBasisPartId": "bodyKit",
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
@@ -7498,7 +7498,7 @@
     "brand": "FRP",
     "name": "Lightweight Body Kit",
     "carPartId": "aero",
-    "priceBasisPartId": "panels",
+    "priceBasisPartId": "bodyKit",
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
@@ -7517,7 +7517,7 @@
     "brand": "FRP",
     "name": "Lightweight Body Kit",
     "carPartId": "aero",
-    "priceBasisPartId": "panels",
+    "priceBasisPartId": "bodyKit",
     "grade": "street",
     "requiredTags": [],
     "statModifiers": {
@@ -7536,7 +7536,7 @@
     "brand": "FRP",
     "name": "Sport Body Kit",
     "carPartId": "aero",
-    "priceBasisPartId": "panels",
+    "priceBasisPartId": "bodyKit",
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
@@ -7555,7 +7555,7 @@
     "brand": "FRP",
     "name": "Sport Body Kit",
     "carPartId": "aero",
-    "priceBasisPartId": "panels",
+    "priceBasisPartId": "bodyKit",
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
@@ -7574,7 +7574,7 @@
     "brand": "FRP",
     "name": "Sport Body Kit",
     "carPartId": "aero",
-    "priceBasisPartId": "panels",
+    "priceBasisPartId": "bodyKit",
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
@@ -7593,7 +7593,7 @@
     "brand": "FRP",
     "name": "Sport Body Kit",
     "carPartId": "aero",
-    "priceBasisPartId": "panels",
+    "priceBasisPartId": "bodyKit",
     "grade": "sport",
     "requiredTags": [],
     "statModifiers": {
@@ -7612,7 +7612,7 @@
     "brand": "FRP",
     "name": "Carbon Body Kit",
     "carPartId": "aero",
-    "priceBasisPartId": "panels",
+    "priceBasisPartId": "bodyKit",
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
@@ -7631,7 +7631,7 @@
     "brand": "FRP",
     "name": "Carbon Body Kit",
     "carPartId": "aero",
-    "priceBasisPartId": "panels",
+    "priceBasisPartId": "bodyKit",
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
@@ -7650,7 +7650,7 @@
     "brand": "FRP",
     "name": "Carbon Body Kit",
     "carPartId": "aero",
-    "priceBasisPartId": "panels",
+    "priceBasisPartId": "bodyKit",
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {
@@ -7669,7 +7669,7 @@
     "brand": "FRP",
     "name": "Carbon Body Kit",
     "carPartId": "aero",
-    "priceBasisPartId": "panels",
+    "priceBasisPartId": "bodyKit",
     "grade": "race",
     "requiredTags": [],
     "statModifiers": {

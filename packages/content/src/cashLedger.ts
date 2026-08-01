@@ -25,9 +25,8 @@ export interface CashMovement {
  * This is the single enumeration of the attribution law stated in
  * `CarLedgerSchema`'s doc comment: a cost attributes to a car when it is
  * charged FOR that car, and accrues to the business when it is not. Nothing
- * else may decide a bucket; the weekly cost sheet, the morning report and the
- * worked example all read this one function, so the three surfaces can never
- * drift apart.
+ * else may decide a bucket; the weekly cost sheet and the morning report both
+ * read this one function, so the two surfaces can never drift apart.
  *
  * Deliberately exhaustive over the discriminated union, like
  * `describeLogEntry`: a new `DayLogEntry` type is a compile error here rather

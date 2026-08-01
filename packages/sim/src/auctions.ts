@@ -240,7 +240,8 @@ function applySymptoms(
  * The worst-case number of times a zone-aware step (`degradeZoneCarrierOneStep`
  * or `improveZoneCarrierOneStep`) can move real headroom for the three body
  * carriers COMBINED, in EITHER direction, before every zone field is at its
- * bound: un-missing up to 5 panel zones + `panels`' surface (5 zones x 2) +
+ * bound: putting up to 5 panel zones back on the repairable ladder (one step
+ * each, whether the panel was gone, past saving, or both) + `panels`' surface (5 zones x 2) +
  * `paint`'s finish (5 zones x 3) + `underbody`'s chassis finish (1 x 3). One
  * `degradeCandidates`/worst-band selection of a body carrier only ever
  * advances ONE zone one step (never the whole part at once, unlike an
@@ -796,7 +797,8 @@ function patternOffsetByPartId(
  *
  * `allowMissingSlots` (default true) lets `serviceJobs.ts`'s customer-car
  * generation pass false - a customer's car should never turn up missing an
- * unrelated part. `day` (default 0) stamps every part's `origin`.
+ * unrelated part, nor with one of its body panels gone. `day` (default 0)
+ * stamps every part's `origin`.
  * `allowSymptoms` (default true) similarly lets customer-car generation
  * pass false - symptoms only spawn on auction lots.
  *
@@ -968,12 +970,18 @@ export function generateAuctionCarInstance(
     // SKUs are retired/migrated); the projection below immediately overwrites
     // that jittered band with the real, zone-derived one.
     // The zone severities the tier tables rolled, ARRANGED by the pattern:
-    // the same damage, on the panels the car's own story implicates.
+    // the same damage, on the panels the car's own story implicates. The
+    // history rides along because it alone decides whether the panel the
+    // pattern hit hardest is past saving rather than merely bent, and a
+    // customer's own car never turns up with a panel gone, exactly as it never
+    // turns up missing an unrelated slot.
     zoneState: rollZoneStates(
       fitmentClass,
       economy,
       rng,
       zoneDamageOrder(PANEL_ZONE_IDS, pattern, rng),
+      history,
+      allowMissingSlots,
     ),
     history,
     damagePattern: pattern.id,

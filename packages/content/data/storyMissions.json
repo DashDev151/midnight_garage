@@ -33,8 +33,8 @@
         "min": 75
       }
     ],
-    "budgetCapYen": 125000,
-    "payoutYen": 125000,
+    "budgetCapYen": 123000,
+    "payoutYen": 123000,
     "tipFraction": 0.1,
     "tipTriggerFraction": 0.15,
     "lapTipTriggerFraction": 0.03,
@@ -56,8 +56,8 @@
         "min": 79
       }
     ],
-    "budgetCapYen": 483000,
-    "payoutYen": 483000,
+    "budgetCapYen": 481000,
+    "payoutYen": 481000,
     "tipFraction": 0.1,
     "tipTriggerFraction": 0.15,
     "lapTipTriggerFraction": 0.03,
@@ -85,8 +85,8 @@
         "min": 73
       }
     ],
-    "budgetCapYen": 686000,
-    "payoutYen": 686000,
+    "budgetCapYen": 684000,
+    "payoutYen": 684000,
     "tipFraction": 0.1,
     "tipTriggerFraction": 0.15,
     "lapTipTriggerFraction": 0.03,
@@ -131,8 +131,8 @@
         "maxSeconds": 125.7
       }
     ],
-    "budgetCapYen": 999000,
-    "payoutYen": 999000,
+    "budgetCapYen": 996000,
+    "payoutYen": 996000,
     "tipFraction": 0.1,
     "tipTriggerFraction": 0.15,
     "lapTipTriggerFraction": 0.03,
@@ -158,8 +158,8 @@
         "min": 50
       }
     ],
-    "budgetCapYen": 703000,
-    "payoutYen": 703000,
+    "budgetCapYen": 701000,
+    "payoutYen": 701000,
     "tipFraction": 0.1,
     "tipTriggerFraction": 0.15,
     "lapTipTriggerFraction": 0.03,
@@ -187,8 +187,8 @@
         "min": 64
       }
     ],
-    "budgetCapYen": 1161000,
-    "payoutYen": 1161000,
+    "budgetCapYen": 1159000,
+    "payoutYen": 1159000,
     "tipFraction": 0.1,
     "tipTriggerFraction": 0.15,
     "lapTipTriggerFraction": 0.03,
@@ -221,8 +221,8 @@
         "minMultiplier": 1.08
       }
     ],
-    "budgetCapYen": 1497000,
-    "payoutYen": 1497000,
+    "budgetCapYen": 1494000,
+    "payoutYen": 1494000,
     "tipFraction": 0.1,
     "tipTriggerFraction": 0.15,
     "lapTipTriggerFraction": 0.03,
@@ -245,8 +245,8 @@
         "maxSeconds": 113.5
       }
     ],
-    "budgetCapYen": 1693000,
-    "payoutYen": 1693000,
+    "budgetCapYen": 1690000,
+    "payoutYen": 1690000,
     "tipFraction": 0.1,
     "tipTriggerFraction": 0.15,
     "lapTipTriggerFraction": 0.03,

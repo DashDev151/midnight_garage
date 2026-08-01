@@ -1900,7 +1900,7 @@ describe('CarDetailScreen', () => {
       expect(wrapper.find('[data-test="panel-empty"]').exists()).toBe(false)
       expect(wrapper.get('[data-test="panel-name"]').text()).toBe('Bonnet')
       expect(wrapper.get('[data-test="zone-severity-bonnet"]').text()).toBe(
-        'metal 1 of 3, surface 1 of 2, finish 2 of 3',
+        'metal 1 of 4, surface 1 of 2, finish 2 of 3',
       )
       for (const stage of ['stripPrep', 'beat', 'weld', 'fillAndSand', 'prime', 'polish']) {
         expect(
@@ -2025,6 +2025,35 @@ describe('CarDetailScreen', () => {
       const empty = wrapper.get('[data-test="no-panels-bonnet"]')
       expect(empty.text()).toContain('No panel for this zone on hand')
       expect(empty.text()).toContain('parts shop')
+    })
+
+    it('says a panel is past saving and disables every stage, rather than offering dead buttons', async () => {
+      const { wrapper } = await grantAndDock('bonnet', { ...ROUGH, metal: 4 })
+
+      expect(wrapper.get('[data-test="zone-needs-panel-bonnet"]').text()).toContain('past saving')
+      // Beat and weld are the two the metal state itself shuts; nothing on the
+      // list offers a total, because none of it would do anything.
+      for (const stage of ['beat', 'weld']) {
+        expect(
+          wrapper.get(`[data-test="pipeline-${stage}-bonnet"]`).attributes('disabled'),
+          `${stage} control`,
+        ).toBeDefined()
+      }
+    })
+
+    it('says a panel is off the car and shuts the whole zone pipeline until one is fitted', async () => {
+      const { wrapper } = await grantAndDock('bonnet', { ...ROUGH, panelMissing: true })
+
+      expect(wrapper.get('[data-test="zone-needs-panel-bonnet"]').text()).toContain('off the car')
+      for (const stage of ['stripPrep', 'beat', 'weld', 'fillAndSand', 'prime', 'polish']) {
+        expect(
+          wrapper.get(`[data-test="pipeline-${stage}-bonnet"]`).attributes('disabled'),
+          `${stage} control`,
+        ).toBeDefined()
+      }
+      expect(
+        wrapper.get('[data-test="pipeline-paint-bonnet"]').attributes('disabled'),
+      ).toBeDefined()
     })
 
     it('carries none of the three retired controls: no dropdown, no free-text colour, no hover-only cost', async () => {

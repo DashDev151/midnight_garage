@@ -50,13 +50,17 @@ const ByCarPartIdPriceSchema = z.object({
 /**
  * `ByCarPartIdPriceSchema` plus the pricing bases that are not a `CarPartId`
  * at all - a catalog entry's `priceBasisPartId` can address one of these
- * instead of its own `carPartId` (`resolvePartPriceYen` below). `zonePanel`
- * is optional: only ships once a catalog entry actually prices from it.
+ * instead of its own `carPartId` (`resolvePartPriceYen` below). Both are
+ * optional: each only ships once a catalog entry actually prices from it.
  */
 const ByPriceBasisIdPriceSchema = ByCarPartIdPriceSchema.extend({
   /** The stock, everyday-class base a zone-panel SKU prices from, independent
    * of the derived `panels` carPartId's own base. */
   zonePanel: z.number().int().positive().optional(),
+  /** The base an aftermarket body-kit SKU prices from. A kit sits in the
+   * `aero` slot and is bought over a counter; the `panels` base prices a
+   * car's bodyshell instead, so the two move independently. */
+  bodyKit: z.number().int().positive().optional(),
 })
 
 const ByFitmentClassFactorSchema = z.object({

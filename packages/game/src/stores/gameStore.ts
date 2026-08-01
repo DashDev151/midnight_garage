@@ -69,6 +69,7 @@ import {
   canRepair,
   climbBand,
   bestFitBuyer,
+  bodyLineCapability,
   buildSimContext,
   carCostToBandYen,
   carCostToMintYen,
@@ -1996,11 +1997,7 @@ export const useGameStore = defineStore('game', () => {
     const zone = car.zoneState[action.zoneId]
     const repairLevel = repairLevelForGroup(gameState.value.toolTiers, 'body')
     const rate = context.value.economy.energy.energyPerBandStepByToolTier[repairLevel]
-    const capability = {
-      unlocked: hasMachineLineFor('body', gameState.value),
-      fullCapability:
-        gameState.value.toolTiers.body >= 3 || machineHiredToday('body', gameState.value),
-    }
+    const capability = bodyLineCapability(gameState.value)
     if (action.kind === 'pipeline-stage') {
       const plan = planPipelineStage(action.stage, zone, capability)
       if (!plan.ok) return null

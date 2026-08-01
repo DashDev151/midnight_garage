@@ -23,13 +23,14 @@
     "brakeCalipersLines": 45000,
     "rims": 34000,
     "tyres": 22000,
-    "panels": 28000,
+    "panels": 140000,
     "paint": 40000,
     "underbody": 24000,
     "aero": 26000,
     "seats": 35000,
     "dashGauges": 12000,
-    "zonePanel": 6000
+    "zonePanel": 30000,
+    "bodyKit": 28000
   },
   "classFactors": {
     "entry": 0.14,

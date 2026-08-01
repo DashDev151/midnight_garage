@@ -12,7 +12,18 @@ import {
   type PartFitmentClass,
   type ReputationTier,
   type StaffMember,
+  type ZoneStates,
 } from '@midnight-garage/content'
+import {
+  ALL_ZONE_IDS,
+  BEYOND_REPAIR_METAL,
+  MAX_REPAIRABLE_METAL,
+  applyDerivedBodyBands,
+  bodyPartRepairBillYen,
+  isBodyDerivedPart,
+  severityThresholdForBand,
+  zoneStatesRepairedToBand,
+} from './bodyPipeline'
 import {
   carOriginLabel,
   enforceMaxBillFraction,
@@ -122,6 +133,15 @@ export interface ModelBalanceProbeRow {
    * the time always describe the same plan. Scrap and missing slots are
    * excluded from BOTH sides on purpose: those are replacements (buying a
    * part at the market), a different economic act from bench labour.
+   *
+   * `repairCostYen` also carries the body pipeline's own bill for the three
+   * zone-derived carriers (`bodyPartRepairBillYen`), which `planGroupRepair`
+   * never plans because a derived band is not a repair target. That bill is
+   * money-only by construction - filler, primer, paint, underseal and any
+   * panel a zone needs - since beating and welding cost labour and never yen.
+   * `repairLaborSlots` therefore stays the band-step labour of the on-car and
+   * bench plans alone: the pipeline charges labour per STAGE rather than per
+   * band step, and that is a different unit, not a missing addend.
    */
   repairCostYen: number
   repairLaborSlots: number
@@ -156,15 +176,14 @@ function worstCaseMileageKm(context: SimContext): number {
  * was never built with one - `hasForcedInduction`'s own platform fact, not a
  * per-probe decision.
  *
- * Deliberately NOT `zoneState`. Real generation always rolls one
+ * The car carries a `zoneState` because every real generated car does
  * (`rollZoneStates` + `applyDerivedBodyBands`, auctions.ts/bodyPipeline.ts),
- * which routes `panels`/`paint`/`underbody` through the body pipeline's flat
- * materials cost (`bodyPartRepairBillYen`) instead of this file's generic
- * per-part repair formula (`costToBandYen`, bands.ts) - a different pricing
- * model for those three parts, not a different value on the same one.
- * Synthesising a matching `zoneState` here would move every probe figure
- * that touches them; that is a real design question this file's own numbers
- * must surface, not something a refactor may decide by itself.
+ * and that state is what prices `panels`/`paint`/`underbody`: with it, those
+ * three route through the body pipeline's own bill (`bodyPartRepairBillYen`);
+ * without it they would route through the generic per-part formula
+ * (`costToBandYen`, bands.ts), which is a pricing model no car in the game
+ * uses. `applyDerivedBodyBands` is the single writer of those three bands, so
+ * they are derived here rather than set from `band` directly.
  */
 function buildUniformBandCar(
   model: CarModel,
@@ -197,17 +216,46 @@ function buildUniformBandCar(
       return [partId, { installed }]
     }),
   ) as CarInstance['parts']
-  return {
-    id: carId,
-    modelId: model.id,
-    year,
-    mileageKm,
-    color: 'White',
-    provenanceNote,
-    parts,
-    symptoms: [],
-    apparentBandByPartId: null,
+  return applyDerivedBodyBands(
+    {
+      id: carId,
+      modelId: model.id,
+      year,
+      mileageKm,
+      color: 'White',
+      provenanceNote,
+      parts,
+      symptoms: [],
+      apparentBandByPartId: null,
+      zoneState: uniformZoneStates(band),
+    },
+    model,
+    context,
+  )
+}
+
+/**
+ * Every zone at the severity `band` maps to, so the three derived carriers
+ * read `band` for the same reason a generated car's do. Each axis is clamped
+ * to its own ceiling, which is why the worst expressible car is not uniformly
+ * `scrap`: only `metal` reaches the beyond-repair rung, `surface` tops out at
+ * worn and `finish` at poor, and the chassis has no panel to go past saving
+ * (`deriveUnderbodyBand`). That asymmetry is the live model's, not this
+ * probe's. No `colour` is set, so no zone can disagree with another about one.
+ */
+function uniformZoneStates(band: ConditionBand): ZoneStates {
+  const severity = severityThresholdForBand(band)
+  const states = {} as Record<string, ZoneStates['bonnet']>
+  for (const zoneId of ALL_ZONE_IDS) {
+    states[zoneId] = {
+      metal: Math.min(severity, zoneId === 'chassis' ? MAX_REPAIRABLE_METAL : BEYOND_REPAIR_METAL),
+      surface: Math.min(severity, 2),
+      finish: Math.min(severity, 3),
+      panelMissing: false,
+      primed: false,
+    }
   }
+  return states as ZoneStates
 }
 
 /**
@@ -294,9 +342,16 @@ export function buildRoughProbeCar(model: CarModel, context: SimContext): CarIns
  * and the value always describe the same work: a replace-only consumable
  * (tyres, pads, clutch) has no repair path, so the plan never paid to move it,
  * and a slot already at or above `band` is not part of the plan either.
+ *
+ * The three derived body carriers never have their band written here, because
+ * `applyDerivedBodyBands` is the only writer of it: the zone state underneath
+ * them is repaired to the same target instead and the bands re-derive from it,
+ * which is exactly what the pipeline's own bill (`bodyPartRepairBillYen`, paid
+ * on the cost side) buys.
  */
 function repairRoughProbeCar(
   car: CarInstance,
+  model: CarModel,
   context: SimContext,
   band: ConditionBand,
 ): CarInstance {
@@ -304,12 +359,14 @@ function repairRoughProbeCar(
     ALL_CAR_PART_IDS.map((partId) => {
       const slot = car.parts[partId]
       const installed = slot.installed
+      if (car.zoneState && isBodyDerivedPart(partId)) return [partId, slot]
       if (!installed || !context.partsTaxonomyById[partId]?.repairable) return [partId, slot]
       if (bandIndex(installed.band) >= bandIndex(band)) return [partId, slot]
       return [partId, { ...slot, installed: { ...installed, band } }]
     }),
   ) as CarInstance['parts']
-  return { ...car, parts }
+  const zoneState = car.zoneState ? zoneStatesRepairedToBand(car.zoneState, band) : undefined
+  return applyDerivedBodyBands({ ...car, parts, zoneState }, model, context)
 }
 
 /** The four Law 2/Law 3 closed-form facts for one roster model. */
@@ -428,6 +485,21 @@ export function computeModelBalanceProbe(
     repairCostYen += plan.costYen
     repairLaborSlots += plan.laborSlotsRequired + installLaborSlotsFor(partId, context)
   }
+  // The body pipeline's own money for the three zone-derived carriers, which
+  // neither loop above can plan: their bands are derived, so `planGroupRepair`
+  // skips them by design. This is the same call `carCostToBandYen` makes, and
+  // it is what `repairRoughProbeCar`'s zone repair below is paying for.
+  if (roughCar.zoneState) {
+    for (const partId of ['panels', 'paint', 'underbody'] as const) {
+      repairCostYen += bodyPartRepairBillYen(
+        partId,
+        roughCar.zoneState,
+        effectiveExpectationBand,
+        fitmentClass,
+        context.partsById,
+      )
+    }
+  }
   // The sensible play, end to end through the real value function: buy the
   // rough car at reserve, do exactly the repair above, sell at the resulting
   // guide value.
@@ -444,7 +516,7 @@ export function computeModelBalanceProbe(
   )
   const repairedGuideYen = marketValueYen(
     model,
-    repairRoughProbeCar(roughCar, context, effectiveExpectationBand),
+    repairRoughProbeCar(roughCar, model, context, effectiveExpectationBand),
     100,
     context.partsById,
     context.partsTaxonomyById,
@@ -500,10 +572,14 @@ export interface ModelDonorBalanceProbeRow {
    * (`buildWorstCaseRawCar` softened by `enforceMaxBillFraction` - reused
    * here exactly, not rebuilt differently), the yield of parting out only
    * the parts strictly better than `poor` (the ones actually worth pulling
-   * rather than replacing outright) plus scrapping the shell. The crossover
-   * against that same model's `sensibleFlipMarginYen` (`ModelBalanceProbeRow`)
-   * - the bill-to-clean ratio above which parting out beats the sensible
-   * repair - is measured and DISCLOSED per model in `balanceProbes.test.ts`.
+   * rather than replacing outright) plus scrapping the shell.
+   *
+   * DISCLOSURE ONLY, and never a gate: it is a GROSS yield with no purchase
+   * price deducted, on an all-scrap construction with every zone at one
+   * severity, so setting it against a NET repair margin puts two accounting
+   * bases and two cars that no catalogue can deal side by side. The donor law
+   * is gated where it belongs, on real `generateAuctionCarInstance` lots at
+   * one buy price, net against net (`balanceProbes.test.ts`).
    */
   partedYieldOfWorstCaseYen: number
 }

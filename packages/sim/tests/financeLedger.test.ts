@@ -12,6 +12,8 @@ import {
   type GameState,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
+import { emptyDayActions } from '../src/actions'
+import { advanceDay } from '../src/advanceDay'
 import { weekIndex } from '../src/calendar'
 import { buildSimContext } from '../src/context'
 import { applyBayPurchase } from '../src/facilities'
@@ -21,7 +23,6 @@ import { resolveHireMachineLine } from '../src/jobs'
 import { createInitialGameState } from '../src/newGame'
 import { resolveSetForSale } from '../src/selling'
 import { resolveAttendAuction } from '../src/bidding'
-import { runWorkedExample } from '../src/workedExample'
 import { carLedgerFor } from '../src/carLedger'
 
 /**
@@ -30,7 +31,7 @@ import { carLedgerFor } from '../src/carLedger'
  * A weekly summary is only worth reading if it is COMPLETE, and completeness
  * is not a claim anyone can make by inspection - there are seventeen places
  * cash moves. So it is asserted instead, to the yen, against the shop's own
- * bank balance across a real scripted career: for every week,
+ * bank balance across a seeded career: for every week,
  *
  *     income - (onCars + stock + running + investment) == the week's cash movement
  *
@@ -40,27 +41,51 @@ import { carLedgerFor } from '../src/carLedger'
  */
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY, [], FACILITIES)
-const REPORT = runWorkedExample(CONTEXT)
 
 const DAYS_PER_WEEK = ECONOMY.calendar.daysPerWeek
 
-/** The shop's cash at the end of `day`, or at the last step before it if the
- * day itself moved nothing - the trail is chronological, so the last entry at
- * or before a day is that day's closing balance. */
-function cashAfterDay(day: number): number {
-  let cashYen = REPORT.startingCashYen
-  for (const point of REPORT.cashTrail) {
-    if (point.day > day) break
-    cashYen = point.cashYen
+const NO_ACTIONS = emptyDayActions()
+
+/** A seeded career run forward with no player actions, recording the shop's
+ * cash at every week boundary. The overnight tick is what moves money here -
+ * rent, wages, and anything else the day charges without being asked - which
+ * is exactly the traffic a week's figures have to account for. */
+function runPassiveCareer(days: number): {
+  ledger: Record<string, FinanceWeek>
+  cashByWeekBoundary: number[]
+  startingCashYen: number
+  finalCashYen: number
+} {
+  let state: GameState = createInitialGameState(CONTEXT, 4242)
+  const startingCashYen = state.cashYen
+  const cashByWeekBoundary = [startingCashYen]
+  for (let day = 1; day <= days; day++) {
+    state = advanceDay(state, NO_ACTIONS, state.seed + state.day, CONTEXT).state
+    if (day % DAYS_PER_WEEK === 0) cashByWeekBoundary.push(state.cashYen)
   }
-  return cashYen
+  return {
+    ledger: state.financeLedger ?? {},
+    cashByWeekBoundary,
+    startingCashYen,
+    finalCashYen: state.cashYen,
+  }
 }
 
 describe('every week the cost sheet reports reconciles to the shop cash', () => {
-  const ledger = REPORT.financeLedger ?? {}
+  const CAREER = runPassiveCareer(4 * DAYS_PER_WEEK)
+  const ledger = CAREER.ledger
 
   it('ran long enough to have several weeks to check', () => {
     expect(Object.keys(ledger).length).toBeGreaterThan(1)
+  })
+
+  it('moved real money, so the identity below is not asserted over zeroes', () => {
+    // Rent alone guarantees this, but an idle career that charged nothing
+    // would satisfy every reconciliation below without proving anything.
+    expect(CAREER.finalCashYen).not.toBe(CAREER.startingCashYen)
+    for (const week of Object.values(ledger)) {
+      expect(week.runningYen).toBeGreaterThan(0)
+    }
   })
 
   it.each(Object.keys(ledger).map((key) => Number(key)))(
@@ -68,42 +93,14 @@ describe('every week the cost sheet reports reconciles to the shop cash', () => 
     (weekNumber) => {
       const week = ledger[String(weekNumber)]!
       const movedYen =
-        cashAfterDay(weekNumber * DAYS_PER_WEEK) - cashAfterDay((weekNumber - 1) * DAYS_PER_WEEK)
+        CAREER.cashByWeekBoundary[weekNumber]! - CAREER.cashByWeekBoundary[weekNumber - 1]!
       expect(netCashYen(week)).toBe(movedYen)
     },
   )
 
   it('accounts for the whole career, first yen to last', () => {
     const total = Object.values(ledger).reduce((sum, week) => sum + netCashYen(week), 0)
-    expect(REPORT.startingCashYen + total).toBe(REPORT.finalCashYen)
-  })
-
-  it('books every line to the week the money actually moved', () => {
-    // The same figures again, this time built from the named ledger lines
-    // rather than the bank balance: the accumulator and the document have to
-    // be the same reading of the same career, bucket by bucket.
-    const fromLines: Record<string, FinanceWeek> = {}
-    for (const line of REPORT.cashLines) {
-      const key = String(weekIndex(line.day, ECONOMY))
-      const week = (fromLines[key] ??= {
-        incomeYen: 0,
-        onCarsYen: 0,
-        stockYen: 0,
-        runningYen: 0,
-        investmentYen: 0,
-      })
-      const field = (
-        {
-          income: 'incomeYen',
-          onCars: 'onCarsYen',
-          stock: 'stockYen',
-          running: 'runningYen',
-          investment: 'investmentYen',
-        } as const
-      )[line.bucket]
-      week[field] += Math.abs(line.yen)
-    }
-    expect(fromLines).toEqual(ledger)
+    expect(CAREER.startingCashYen + total).toBe(CAREER.finalCashYen)
   })
 })
 
@@ -186,24 +183,18 @@ describe('the charges that used to leave no record', () => {
     expect(listed.state.financeLedger?.['1']?.runningYen).toBe(0)
   })
 
-  it('logs body-pipeline materials with their amount, in the scripted career', () => {
-    const materials = REPORT.cashLines.filter((line) => line.category === 'materials')
-    expect(materials.length).toBeGreaterThan(0)
-    for (const line of materials) {
-      expect(line.yen).toBeLessThan(0)
-      expect(line.bucket).toBe('onCars')
-    }
-  })
-
-  it('logs what a bench recondition cost, on the day it was charged', () => {
-    const reconditions = REPORT.cashLines.filter((line) =>
-      line.label.startsWith('Bench recondition'),
-    )
-    expect(reconditions.length).toBeGreaterThan(0)
-    for (const line of reconditions) {
-      expect(line.yen).toBeLessThan(0)
-      expect(line.bucket).toBe('stock')
-    }
+  it('logs body-pipeline materials with their amount, against the car', () => {
+    // Filler, primer and paint are bought for one zone on one car, so the
+    // charge is a car cost rather than shop overheads.
+    expect(
+      cashMovementFor({
+        type: 'body-materials-bought',
+        carInstanceId: 'car-1',
+        zoneId: 'bonnet',
+        stage: 'fillAndSand',
+        costYen: 6400,
+      }),
+    ).toEqual({ bucket: 'onCars', amountYen: 6400 })
   })
 })
 

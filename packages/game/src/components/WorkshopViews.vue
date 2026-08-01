@@ -17,7 +17,7 @@ import type { ComponentId, ConditionBand, ZoneState } from '@midnight-garage/con
 import { ComponentIdSchema, titleCaseFromSlug } from '@midnight-garage/content'
 import { computed, ref } from 'vue'
 import { useGameStore, type CarPartRowView } from '../stores/gameStore'
-import { ZONE_LAYERS, zoneSeverityText } from '../utils/zoneSeverity'
+import { ZONE_LAYERS, zoneNeedsPanelTag, zoneSeverityText } from '../utils/zoneSeverity'
 import BandChip from './BandChip.vue'
 import {
   WORKSHOP_VIEW_H,
@@ -155,7 +155,9 @@ interface RegionView {
   clickable: boolean
   /** Zones only; empty for a part or a car with no zone state. */
   layers: LayerView[]
-  panelMissing: boolean
+  /** Zones only; the chip naming a panel that is gone or past saving, `null`
+   * when the zone's own pipeline can still do the work. */
+  needsPanelTag: string | null
   inert: boolean
   ariaLabel: string
 }
@@ -191,7 +193,7 @@ function partRegion(region: Extract<WorkshopRegion, { kind: 'part' }>): RegionVi
     // rectangle reachable, since no other region can cover it.
     clickable: true,
     layers: [],
-    panelMissing: false,
+    needsPanelTag: null,
     inert: false,
     ariaLabel: `${name}: ${band ?? 'empty'}${notes.length > 0 ? `, ${notes.join(', ')}` : ''}`,
   }
@@ -201,7 +203,8 @@ function zoneRegion(region: Extract<WorkshopRegion, { kind: 'zone' }>): RegionVi
   const zone = zoneStates.value?.[region.zoneId] ?? null
   const name = titleCaseFromSlug(region.zoneId)
   const staged = stagedZoneIds.value.has(region.zoneId)
-  const notes = [zone?.panelMissing ? 'panel off' : null, staged ? PLANNED_LABEL : null].filter(
+  const needsPanelTag = zone ? zoneNeedsPanelTag(zone) : null
+  const notes = [needsPanelTag, staged ? PLANNED_LABEL : null].filter(
     (note): note is string => note !== null,
   )
   return {
@@ -219,7 +222,7 @@ function zoneRegion(region: Extract<WorkshopRegion, { kind: 'zone' }>): RegionVi
     staged,
     clickable: zone !== null,
     layers: zone ? layersFor(zone) : [],
-    panelMissing: zone?.panelMissing ?? false,
+    needsPanelTag,
     inert: zone === null,
     ariaLabel: zone
       ? `${name}: ${zoneSeverityText(zone)}${notes.length > 0 ? `, ${notes.join(', ')}` : ''}`
@@ -363,7 +366,9 @@ function onSelect(region: RegionView): void {
               ></span>
             </span>
           </span>
-          <span v-if="region.panelMissing" class="wv-tag wv-tag-alert">panel off</span>
+          <span v-if="region.needsPanelTag" class="wv-tag wv-tag-alert">{{
+            region.needsPanelTag
+          }}</span>
         </template>
 
         <span v-if="region.staged" class="wv-tag wv-tag-planned">{{ PLANNED_LABEL }}</span>

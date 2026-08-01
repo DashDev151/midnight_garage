@@ -358,7 +358,6 @@ The lever is cheap; what is pinned to it is not.
 | the age-monotonicity test, which declined to pin a margin | `auctions.test.ts:609-622` |
 | `buildRoughProbeCar` and every probe derived from it | `balanceProbes.ts:265-278` |
 | the economy approval gate | `economyApprovalGate.test.ts` |
-| the worked example, regenerated | `worked-example-two-cars.md` |
 
 ## Definition of done, layer 1
 

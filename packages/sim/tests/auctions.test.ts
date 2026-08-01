@@ -36,7 +36,7 @@ import { isBodyDerivedPart, PANEL_ZONE_IDS } from '../src/bodyPipeline'
 import { buildSimContext, type SimContext } from '../src/context'
 import { computeDerivedStats } from '../src/derivedStats'
 import { makeCarOrigin } from '../src/provenance'
-import { createRng } from '../src/rng'
+import { createRng, hashStringToSeed } from '../src/rng'
 import { testSpecialty, testToolTiers } from './testFixtures'
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
@@ -1048,6 +1048,17 @@ describe('the damage budget: how rough a generated lot is', () => {
     // `signed / measured survival` rather than authored. Comparing the measured
     // rate against the input would assert the survival fraction is 1, which is
     // exactly what it is not.
+    //
+    // THE SEED IS PER MODEL, and it has to be. A shared `seed * 31 + 7` gave
+    // all 26 models the identical 300 streams, so the effective sample was 300
+    // draws rather than 7800 however many models ran - and mulberry32 advances
+    // its state by a constant, so the symptom roll of every car sat at one
+    // fixed offset into 300 fixed streams. Any change ANYWHERE upstream that
+    // moves the draw count by even one re-samples those same 300 positions and
+    // swings the measured rate several points, which reads as a symptom
+    // regression and is nothing of the kind. Hashing the model into the seed
+    // makes the 7800 cars 7800 independent samples, which is what the
+    // assertion below has always claimed to be measuring.
     const tally: Record<string, { cars: number; symptomatic: number }> = {}
     for (const carModel of CARS) {
       const fitmentClass = fitmentClassForTier(carModel.tier)
@@ -1056,7 +1067,7 @@ describe('the damage budget: how rough a generated lot is', () => {
         const car = generateAuctionCarInstance(
           carModel,
           `rate-${carModel.id}-${seed}`,
-          createRng(seed * 31 + 7),
+          createRng(hashStringToSeed(`rate-${carModel.id}-${seed}`)),
           CONTEXT,
           GAME_YEAR,
         )

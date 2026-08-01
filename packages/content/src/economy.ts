@@ -1786,12 +1786,26 @@ export const EconomyConfigSchema = z.object({
        * flooding the yard with cases needing the body line. `surfaceExtraChance`
        * is the chance a zone's generated surface severity (`max(0, metal - 1)`)
        * is bumped up one further step, capped at 2.
+       *
+       * `zoneBeyondRepairChance` and `zonePanelMissingChance` are the two
+       * escalations past what hand work can pull back, and both are hard-gated
+       * on the car's own history rather than rolled against the world: only a
+       * `rough` or `project` car is eligible at all, and only its most heavily
+       * damaged panel (the zone the damage pattern put at the front of the
+       * severity order) whose metal already sits at the weldable maximum. So a
+       * panel goes past saving on the car whose story says it was hit, never on
+       * the car that merely got old, and at most one panel per car can reach it.
+       * `zonePanelMissingChance` then decides whether that panel is absent
+       * outright rather than ruined in place; both states force a replacement
+       * and neither can be beaten, welded or filled away.
        */
       zoneStates: z.object({
         metalWeightsByTier: ByPartFitmentClassZoneWeightsSchema,
         finishWeightsByTier: ByPartFitmentClassZoneWeightsSchema,
         chassisMetalWeightsByTier: ByPartFitmentClassZoneWeightsSchema,
         surfaceExtraChance: z.number().min(0).max(1),
+        zoneBeyondRepairChance: z.number().min(0).max(1),
+        zonePanelMissingChance: z.number().min(0).max(1),
       }),
     })
     .refine(

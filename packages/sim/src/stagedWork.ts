@@ -111,8 +111,10 @@ const NOOP_PIPELINE_RESULT = (state: GameState): PipelineOpResult => ({
  * (gates weld and the better paint finish); `fullCapability` is tier 3 owned
  * or hired today (hiring always grants the WHOLE line, not just tier 2 - see
  * `docs/design/systems/workshop-rework.md`'s tool-gates section) - gates the best
- * polish floor. */
-function bodyLineCapability(state: GameState): BodyLineCapability {
+ * polish floor. The one reading of the rule: the game store's own
+ * pre-confirm preview calls this rather than restating it, so the preview and
+ * the charge can never gate differently. */
+export function bodyLineCapability(state: GameState): BodyLineCapability {
   return {
     unlocked: hasMachineLineFor('body', state),
     fullCapability: state.toolTiers.body >= 3 || machineHiredToday('body', state),
@@ -201,9 +203,11 @@ function chargeAndApplyPipelineEffect(
 /** One `pipeline-stage` staged action's resolution - one of the six generic
  * stages (strip/prep, beat, weld, fill-and-sand, prime, polish) on one zone.
  * A prerequisite the zone doesn't meet is a silent no-op (the same "nothing
- * to do" idiom `repairJobGate` uses); the weld machine-shop gate logs a
- * `job-blocked` entry, matching every other machine-shop refusal in this
- * codebase. */
+ * to do" idiom `repairJobGate` uses), as is a zone needing a fresh panel
+ * before hand work means anything - the car screen names that state on the
+ * zone itself, so it is never a stage the player could reach and be surprised
+ * by. The weld machine-shop gate logs a `job-blocked` entry, matching every
+ * other machine-shop refusal in this codebase. */
 function resolvePipelineStageAction(
   state: GameState,
   carInstanceId: string,

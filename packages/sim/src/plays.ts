@@ -6,7 +6,7 @@ import {
   type ConditionBand,
   type PartFitmentClass,
 } from '@midnight-garage/content'
-import { carOriginLabel, stockInstanceFor } from './auctions'
+import { carOriginLabel, generateAuctionCarInstance, stockInstanceFor } from './auctions'
 import {
   bandIndex,
   canRepair,
@@ -16,10 +16,17 @@ import {
   usedPartSaleValueYen,
 } from './bands'
 import { buildRoughProbeCar } from './balanceProbes'
+import {
+  applyDerivedBodyBands,
+  bodyPartRepairBillYen,
+  isBodyDerivedPart,
+  zoneStatesRepairedToBand,
+} from './bodyPipeline'
 import type { SimContext } from './context'
 import { installLaborSlotsFor, removeLaborSlotsFor } from './jobs'
 import { marketValueYen, sensibleRepairTargetBand } from './marketValue'
 import { makeCarOrigin } from './provenance'
+import { createRng } from './rng'
 
 /**
  * The four things a player can do with a car they have just bought, priced
@@ -109,6 +116,14 @@ export interface ModelPlayRankingRow {
  * a per-restoration deduped figure this probe does not model. That understates
  * the labour of both repair plays equally, so it moves `yenPerLaborPoint`
  * and never `profitYen`, which is what the ranking is decided on.
+ *
+ * The three zone-derived body carriers are a fourth case, not one of the
+ * three above: their band is derived, so the zone state underneath them is
+ * repaired to the same target and the bands re-derive from it, at the
+ * pipeline's own money (`bodyPartRepairBillYen` - materials and any panel a
+ * zone needs, since beating and welding cost labour and never yen). Their
+ * labour is per STAGE rather than per band step and joins the blocker chains
+ * above as an unpriced understatement shared by both repair plays.
  */
 function restoreToBand(
   car: CarInstance,
@@ -138,6 +153,7 @@ function restoreToBand(
   for (const partId of ALL_CAR_PART_IDS) {
     const entry = context.partsTaxonomyById[partId]
     if (!entry) continue
+    if (car.zoneState && isBodyDerivedPart(partId)) continue // derived - see below
     const installed = parts[partId].installed
     if (!installed) {
       if (!isPartMissing(car, model, partId)) continue // legitimately absent
@@ -171,7 +187,25 @@ function restoreToBand(
     }
     parts[partId] = { installed: { ...installed, band: targetBand } }
   }
-  return { car: { ...car, parts }, costYen, laborPoints }
+
+  let zoneState = car.zoneState
+  if (zoneState) {
+    for (const partId of ['panels', 'paint', 'underbody'] as const) {
+      costYen += bodyPartRepairBillYen(
+        partId,
+        zoneState,
+        targetBand,
+        fitmentClass,
+        context.partsById,
+      )
+    }
+    zoneState = zoneStatesRepairedToBand(zoneState, targetBand)
+  }
+  return {
+    car: applyDerivedBodyBands({ ...car, parts, zoneState }, model, context),
+    costYen,
+    laborPoints,
+  }
 }
 
 /**
@@ -279,19 +313,33 @@ function resultFor(
   }
 }
 
-/** All four plays for one roster model, ranked by what they actually pay. */
-export function computeModelPlayRanking(model: CarModel, context: SimContext): ModelPlayRankingRow {
-  const roughCar = buildRoughProbeCar(model, context)
+/** What a lot costs to take home: its own guide value at the auction reserve,
+ * the one price every play is measured against. Heat-neutral at 100, like
+ * every other closed-form probe. */
+function reservePriceYen(car: CarInstance, model: CarModel, context: SimContext): number {
   const guideYen = marketValueYen(
     model,
-    roughCar,
+    car,
     100,
     context.partsById,
     context.partsTaxonomyById,
     context.economy,
   )
-  const buyPriceYen = Math.round(guideYen * context.economy.AUCTION_RESERVE_PRICE_FRACTION)
+  return Math.round(guideYen * context.economy.AUCTION_RESERVE_PRICE_FRACTION)
+}
 
+/**
+ * All four plays for ONE car at ONE buy price, ranked by what they actually
+ * pay - the measurement itself, with no opinion about where the car came from.
+ * A closed-form probe car and a real generated lot go through this identically,
+ * which is what lets the same ranking be asserted on both.
+ */
+export function computeCarPlayRanking(
+  car: CarInstance,
+  model: CarModel,
+  buyPriceYen: number,
+  context: SimContext,
+): ModelPlayRankingRow {
   const sellAfter = (restored: CarInstance): number =>
     marketValueYen(
       model,
@@ -303,14 +351,14 @@ export function computeModelPlayRanking(model: CarModel, context: SimContext): M
     )
 
   const toExpectation = restoreToBand(
-    roughCar,
+    car,
     model,
     sensibleRepairTargetBand(model, context.economy),
     context,
   )
-  const toMint = restoreToBand(roughCar, model, 'mint', context)
-  const reconditioned = stripAndSell(roughCar, model, true, context)
-  const asFound = stripAndSell(roughCar, model, false, context)
+  const toMint = restoreToBand(car, model, 'mint', context)
+  const reconditioned = stripAndSell(car, model, true, context)
+  const asFound = stripAndSell(car, model, false, context)
 
   const plays: PlayResult[] = [
     resultFor(
@@ -357,9 +405,59 @@ export function computeModelPlayRanking(model: CarModel, context: SimContext): M
   }
 }
 
+/** All four plays for one roster model, on the roughest car generation could
+ * deliver for it (`buildRoughProbeCar`) - the closed-form bound. */
+export function computeModelPlayRanking(model: CarModel, context: SimContext): ModelPlayRankingRow {
+  const roughCar = buildRoughProbeCar(model, context)
+  return computeCarPlayRanking(roughCar, model, reservePriceYen(roughCar, model, context), context)
+}
+
 export function computeRosterPlayRanking(
   models: readonly CarModel[],
   context: SimContext,
 ): ModelPlayRankingRow[] {
   return models.map((model) => computeModelPlayRanking(model, context))
+}
+
+/** One real generated lot's ranking, carrying the seed that produced it so a
+ * failure names the exact car to reproduce. */
+export interface GeneratedLotPlayRankingRow extends ModelPlayRankingRow {
+  seed: number
+}
+
+/**
+ * The four plays on REAL lots: `seedsPerModel` cars per roster model straight
+ * out of `generateAuctionCarInstance`, each with its own rolled history, damage
+ * pattern, symptom, per-slot bands and zone severities, each bought at its own
+ * reserve.
+ *
+ * The closed-form `computeRosterPlayRanking` above measures one constructed
+ * worst-reachable car per model, which bounds the economy; this measures the
+ * cars a player is actually offered, which is what a claim about how the game
+ * plays has to rest on. Both price the plays through the same
+ * `computeCarPlayRanking`, so the two can never disagree about what a play is.
+ */
+export function computeGeneratedLotPlayRanking(
+  models: readonly CarModel[],
+  context: SimContext,
+  seedsPerModel: number,
+  gameYear: number,
+): GeneratedLotPlayRankingRow[] {
+  const rows: GeneratedLotPlayRankingRow[] = []
+  for (const model of models) {
+    for (let seed = 0; seed < seedsPerModel; seed++) {
+      const car = generateAuctionCarInstance(
+        model,
+        `lot-${model.id}-${seed}`,
+        createRng(seed),
+        context,
+        gameYear,
+      )
+      rows.push({
+        ...computeCarPlayRanking(car, model, reservePriceYen(car, model, context), context),
+        seed,
+      })
+    }
+  }
+  return rows
 }

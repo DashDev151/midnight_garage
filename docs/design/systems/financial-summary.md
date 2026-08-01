@@ -24,10 +24,9 @@ in between. The business itself is not reported.
 (`gameState.ts:747-751`), logs the band it reached but not what it cost. **Money leaves the till
 and nothing tells the player.**
 
-**3. The classification law is written down three times and implemented nowhere shared.**
-`CarLedgerSchema` states it (`gameState.ts:46-53`), `workedExample.ts`'s `CashScope` restates it
-(`workedExample.ts:96-100`), and `dayLogFormat.ts:309-311` restates it again for machine hire.
-Three prose copies, three separate hand-maintained mappings.
+**3. The classification law is written down twice and implemented nowhere shared.**
+`CarLedgerSchema` states it (`gameState.ts:46-53`) and `dayLogFormat.ts:309-311` restates it for
+machine hire. Two prose copies, two separate hand-maintained mappings.
 
 **4. `classifyDayReport` is incomplete.** It already carries the right taxonomy as `earnedYen` /
 `onCarsYen` / `billsYen`, and already routes `machine-hired` to bills as a running cost. But
@@ -207,7 +206,7 @@ ledger exactly as it always did.
 | --- | --- |
 | `SAVE_VERSION` 52 to 53, bump only, no migration (directive 19) | `saveCodec.ts` |
 | One additive `GameState` field and its default | `gameState.ts` |
-| The bucket table, authored once, replacing three prose copies | `gameState.ts:46-53`, `workedExample.ts:96-112`, `dayLogFormat.ts:309-311` |
+| The bucket table, authored once, replacing two prose copies | `gameState.ts:46-53`, `dayLogFormat.ts:309-311` |
 | `classifyDayReport` refactored onto the shared table, closing its `default` fall-through | `dayLogFormat.ts:253-344` |
 | Posting calls at the existing charge sites | `bidding.ts`, `selling.ts`, `jobs.ts`, `stagedWork.ts`, `assemblies.ts`, `finances.ts`, `facilities.ts`, `toolLines.ts`, `diagnosis.ts`, `staff.ts` |
 | `weekIndex` gains its second consumer | `calendar.ts:91` |

@@ -38,9 +38,9 @@ describe('resolvePartPriceYen priceBasisPartId defaulting', () => {
     const withoutBasis = resolvePartPriceYen(entry, SHEET)
     const withBasis = resolvePartPriceYen({ ...entry, priceBasisPartId: 'panels' }, SHEET)
     expect(withoutBasis).toBe(withBasis)
-    // The panels reference base (28,000) x the everyday class factor, rounded
+    // The panels reference base (140,000) x the everyday class factor, rounded
     // to the nearest Y100 by `resolvePartPriceYen`.
-    expect(withoutBasis).toBe(Math.round((28_000 * SHEET.classFactors.everyday) / 100) * 100)
+    expect(withoutBasis).toBe(Math.round((140_000 * SHEET.classFactors.everyday) / 100) * 100)
   })
 
   it('a zonePanel-basis entry prices from the new basis, independent of its own carPartId base', () => {
@@ -54,16 +54,66 @@ describe('resolvePartPriceYen priceBasisPartId defaulting', () => {
       },
       SHEET,
     )
-    // The zonePanel reference base (6,000) x everyday class x stock grade x
-    // global - distinct from the panels carPartId base (28,000), which is what
+    // The zonePanel reference base (30,000) x everyday class x stock grade x
+    // global - distinct from the panels carPartId base (140,000), which is what
     // this entry would otherwise have priced from.
-    expect(price).toBe(Math.round((6_000 * SHEET.classFactors.everyday) / 100) * 100)
+    expect(price).toBe(Math.round((30_000 * SHEET.classFactors.everyday) / 100) * 100)
+    // One panel costs less than the whole shell, and the two bases now hold
+    // that ordering with room in it: five zone panels come to 107 per cent of
+    // the shell, which is what a shell being five panels plus a roof, floor,
+    // sills and structure should read as.
     expect(price).toBeLessThan(
       resolvePartPriceYen(
         { id: 'stock-panels', carPartId: 'panels', fitmentClass: 'everyday', grade: 'stock' },
         SHEET,
       ),
     )
+  })
+})
+
+/**
+ * A body kit and a bodyshell are two different purchases, so they price from
+ * two different bases. `baseCostYen.panels` used to carry both, which meant
+ * repricing the shell dragged every kit in the catalogue with it; the kits sit
+ * on `baseCostYen.bodyKit` instead. The two bases have since diverged (the
+ * shell is five times the kit base), so this pins the RESOLVED prices rather
+ * than any relationship between the bases: every price below is what the kit
+ * carried before the split and must keep carrying while only the shell moves.
+ */
+describe('the body-kit price basis', () => {
+  const BODY_KIT_PRICES_YEN: Record<string, number> = {
+    'shitbox-frp-lightweight-panels': 5100,
+    'shitbox-frp-sport-panel-kit': 7800,
+    'shitbox-frp-carbon-panel-kit': 11800,
+    'frp-lightweight-panels': 5800,
+    'frp-sport-panel-kit': 9000,
+    'frp-carbon-panel-kit': 13400,
+    'uncommon-frp-lightweight-panels': 14600,
+    'uncommon-frp-sport-panel-kit': 22400,
+    'uncommon-frp-carbon-panel-kit': 33600,
+    'rare-frp-lightweight-panels': 32800,
+    'rare-frp-sport-panel-kit': 50400,
+    'rare-frp-carbon-panel-kit': 75600,
+  }
+
+  it('prices exactly the twelve body kits, all of them in the aero slot', () => {
+    const kits = PARTS.filter((part) => part.priceBasisPartId === 'bodyKit')
+    expect(kits.map((part) => part.id).sort()).toEqual(Object.keys(BODY_KIT_PRICES_YEN).sort())
+    for (const kit of kits) expect(kit.carPartId, kit.id).toBe('aero')
+  })
+
+  it('leaves the panels basis to the bodyshell alone: no SKU prices from it by name', () => {
+    // A whole-shell `panels` SKU resolves from its own carPartId, so nothing
+    // needs to address `panels` through `priceBasisPartId` at all.
+    expect(
+      PARTS.filter((part) => part.priceBasisPartId === 'panels').map((part) => part.id),
+    ).toEqual([])
+  })
+
+  it('resolves every kit to the price it carried before the split', () => {
+    for (const [id, priceYen] of Object.entries(BODY_KIT_PRICES_YEN)) {
+      expect(PARTS.find((part) => part.id === id)?.priceYen, id).toBe(priceYen)
+    }
   })
 })
 

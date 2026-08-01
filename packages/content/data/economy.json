@@ -616,7 +616,9 @@
         "enthusiast": [65, 25, 8, 2],
         "flagship": [75, 20, 4, 1]
       },
-      "surfaceExtraChance": 0.2
+      "surfaceExtraChance": 0.2,
+      "zoneBeyondRepairChance": 0.18,
+      "zonePanelMissingChance": 0.25
     }
   },
   "reputation": {

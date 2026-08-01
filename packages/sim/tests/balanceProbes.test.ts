@@ -14,6 +14,12 @@ import {
   computeRosterDonorBalanceProbe,
   computeSymptomBalanceProbe,
 } from '../src/balanceProbes'
+import { computeGeneratedLotPlayRanking } from '../src/plays'
+
+/** Lots per model for the donor law below, which is asked of the cars the
+ * game actually deals rather than of a constructed worst case. */
+const LOT_SEEDS = 60
+const LOT_GAME_YEAR = 1995
 
 const CONTEXT = buildSimContext(
   CARS,
@@ -85,41 +91,48 @@ describe('donor coherence invariants (Sprint 71 decision 8: the teardown game)',
     expect(failures).toEqual([])
   })
 
-  it('parting out the worst generatable car never beats repairing it, at any bill ratio the generator can reach', () => {
-    // This used to be a disclosure that BOTH outcomes occurred somewhere on
-    // the roster. They no longer do, and that is the point: once the parts
-    // basket became a sensible fraction of what a car is worth and the used-
-    // part counter took its haircut, stripping stopped being the better
-    // answer anywhere. The four-play ranking (`plays.ts`) gates the same fact
-    // from the other end, on the car a player would actually strip.
-    //
-    // `donorBreakEvenBillRatio` stays a DISCLOSED measurement threshold
-    // rather than a gate: the roster's worst rolls genuinely reach both sides
-    // of it, and repair still wins on both sides, because the real yield
-    // depends on the whole model (book value, parts mix, expectation band)
-    // and never on `billToCleanRatio` alone.
+  it('the roster reaches both sides of the donor break-even bill ratio', () => {
+    // `donorBreakEvenBillRatio` is a DISCLOSED measurement threshold rather
+    // than a gate: the roster's worst rolls genuinely reach both sides of it,
+    // and repair wins on both sides, because the real yield depends on the
+    // whole model (book value, parts mix, expectation band) and never on
+    // `billToCleanRatio` alone. This keeps the disclosure honest - if the
+    // roster ever sat entirely on one side, the threshold would be measuring
+    // nothing.
     const donorBreakEvenBillRatio = CONTEXT.economy.teardown.donorBreakEvenBillRatio
-    const byModel = new Map(modelRows.map((r) => [r.modelId, r]))
-    const crossings = donorRows.map((r) => {
-      const modelRow = byModel.get(r.modelId)!
-      return {
-        modelId: r.modelId,
-        billToCleanRatio: modelRow.billToCleanRatio,
-        partedYieldYen: r.partedYieldOfWorstCaseYen,
-        sensibleFlipMarginYen: modelRow.sensibleFlipMarginYen,
-      }
-    })
-    expect(crossings).toHaveLength(CARS.length)
-    expect(crossings.some((c) => c.billToCleanRatio > donorBreakEvenBillRatio)).toBe(true)
-    expect(crossings.some((c) => c.billToCleanRatio <= donorBreakEvenBillRatio)).toBe(true)
-    const partingWins = crossings
-      .filter((c) => c.partedYieldYen > c.sensibleFlipMarginYen)
+    const ratios = modelRows.map((r) => r.billToCleanRatio)
+    expect(ratios).toHaveLength(CARS.length)
+    expect(ratios.some((ratio) => ratio > donorBreakEvenBillRatio)).toBe(true)
+    expect(ratios.some((ratio) => ratio <= donorBreakEvenBillRatio)).toBe(true)
+  })
+
+  it('parting out never beats repairing, on the lots the game actually deals', () => {
+    // The donor law, asked of real cars. It used to be asked of
+    // `buildWorstCaseRawCar`, an all-scrap construction with every zone at one
+    // severity, and it compared a GROSS parted yield (no purchase deducted) on
+    // that car against a NET repair margin on a different one - two accounting
+    // bases and two cars that no catalogue can offer.
+    //
+    // Measured on 10,400 real lots (26 models x 400 seeds), parting out beats
+    // repairing on ZERO of them: the median lot loses ¥531,789 stripped, and
+    // the most strip-friendly lot anywhere on the roster still loses ¥3,745.
+    // So the honest gate is the one below, on real cars, at one buy price,
+    // net against net - and it fails the moment breaking a car becomes the
+    // better play than fixing it.
+    const lots = computeGeneratedLotPlayRanking(CARS, CONTEXT, LOT_SEEDS, LOT_GAME_YEAR)
+    expect(lots).toHaveLength(CARS.length * LOT_SEEDS)
+    const partingWins = lots
+      .filter(
+        (row) =>
+          Math.max(row.plays[2]!.profitYen, row.plays[3]!.profitYen) >=
+          Math.min(row.plays[0]!.profitYen, row.plays[1]!.profitYen),
+      )
       .map(
-        (c) =>
-          `${c.modelId}: parted ${c.partedYieldYen} > sensible repair ${c.sensibleFlipMarginYen} at bill ratio ${c.billToCleanRatio.toFixed(2)}`,
+        (row) =>
+          `${row.modelId} seed ${row.seed}: strip ${row.plays[2]!.profitYen}/${row.plays[3]!.profitYen} against repair ${row.plays[0]!.profitYen}/${row.plays[1]!.profitYen}`,
       )
     expect(partingWins).toEqual([])
-  })
+  }, 60_000)
 })
 
 describe('symptom coherence invariants (Sprint 73 decision 6: the blind-buy guardrail)', () => {

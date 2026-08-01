@@ -92,18 +92,22 @@ const CarSymptomSchema = z.object({
 
 /**
  * One zone's work-model state (docs/design/systems/workshop-rework.md's model
- * section): `metal` (0 straight to 3 rotten or bent), `surface` (0 ready to 2
- * raw), and `finish` (0 show to 3 flaking or bare - underseal on the chassis
- * zone rather than paint). `panelMissing` is true only while the zone's panel
- * has been removed and not yet replaced (never true for the chassis zone,
- * which has no panel). `colour` is set at the paint stage and carries the
- * car's own colour for that zone; absent until first painted. `primed` is
- * true once the prime stage has run and stays true until the paint stage
- * consumes it or a fresh strip/prep bares the zone again - the readiness gate
- * the paint stage checks, since priming does not itself move `finish`.
+ * section): `metal` (0 straight to 3 rotten or bent, and 4 beyond saving),
+ * `surface` (0 ready to 2 raw), and `finish` (0 show to 3 flaking or bare -
+ * underseal on the chassis zone rather than paint). Metal 4 is the one
+ * severity hand work cannot touch: beat and weld both refuse it and only a
+ * fresh panel clears it, which is why the chassis zone (no panel to fit) is
+ * never written there. `panelMissing` is true only while the zone's panel is
+ * absent (rolled off a heavy history at generation, or removed by the player
+ * and not yet replaced); never true for the chassis zone, which has no panel.
+ * `colour` is set at the paint stage and carries the car's own colour for that
+ * zone; absent until first painted. `primed` is true once the prime stage has
+ * run and stays true until the paint stage consumes it or a fresh strip/prep
+ * bares the zone again - the readiness gate the paint stage checks, since
+ * priming does not itself move `finish`.
  */
 const ZoneStateSchema = z.object({
-  metal: z.number().int().min(0).max(3),
+  metal: z.number().int().min(0).max(4),
   surface: z.number().int().min(0).max(2),
   finish: z.number().int().min(0).max(3),
   panelMissing: z.boolean(),

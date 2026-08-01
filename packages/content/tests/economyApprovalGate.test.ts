@@ -1324,6 +1324,130 @@ import storyMissions from '../data/storyMissions.json'
  * archetype and re-authors its want-line, which claimed it only wanted keis; no target, importance
  * or tier-preference value moves. `partPricing.json` holds: a SKU's price reads its slot, class and
  * grade, never its stat block.
+ *
+ * Re-pinned for `docs/sprints/sprint159.md`, a panel that can be beyond saving. TWO NEW LEVERS,
+ * BOTH **RATIFIED** on the measurements recorded below:
+ *
+ * 1. `partsGeneration.zoneStates.zoneBeyondRepairChance` (NEW) - **0.18**. The chance the panel a
+ *    car's damage pattern hit hardest escalates past weldable, applied only when the car's rolled
+ *    history is `rough` or `project` AND that panel's metal already sits at the weldable maximum,
+ *    so at most one panel per car can ever reach it.
+ * 2. `partsGeneration.zoneStates.zonePanelMissingChance` (NEW) - **0.25**. The chance such a panel
+ *    is absent outright rather than ruined in place.
+ *
+ * No pricing lever moves with them: `partPricing.json`'s `baseCostYen.zonePanel` (6000) and
+ * `baseCostYen.panels` (28000) are untouched, and that file's hash holds. The panel price is what a
+ * later sprint prices against the system this one produces.
+ *
+ * The realised rates the two chances produce, measured over 3000 generated lots per fitment class
+ * against a game year of 1995, as the share of cars carrying at least one such panel: entry 3.67%
+ * beyond repair / 1.20% absent, everyday 1.27% / 0.40%, enthusiast 0.43% / 0.20%, flagship 0.03% /
+ * 0.00%. The gradient is emergent rather than authored: a flagship's culture rarely rolls a heavy
+ * history at all, which is the intended reading (nobody wrecks one and walks away).
+ *
+ * Law 2 was measured, not assumed, because `enforceMaxBillFraction` now sees a panel price in a
+ * generated bill and could have clipped real damage to stay under the ceiling. Same seeds, same
+ * code, both chances at 0 against both at the values above: across all four classes NOT ONE car in
+ * 12000 came out with fewer band steps, and mean band steps per car moved 53.235 -> 53.275 (entry),
+ * 44.534 -> 44.546 (everyday), 38.622 -> 38.626 (enthusiast) and 30.8990 -> 30.8993 (flagship) -
+ * up in every class, because a beyond-repair panel takes the `panels` carrier from `poor` to
+ * `scrap`. Generated body damage got louder, never quieter.
+ *
+ * Re-pinned for `docs/sprints/sprint160.md`, splitting the body-kit price basis. ONE key ENTERS
+ * `partPricing.json` and NO value moves:
+ *
+ * 1. `baseCostYen.bodyKit` (NEW) - **28000**, exactly today's `baseCostYen.panels`. The twelve
+ *    `aero`-slot body-kit SKUs (FRP Lightweight, Sport and Carbon, four fitment classes each)
+ *    repoint their `priceBasisPartId` from `panels` to it. `baseCostYen.panels` was doing two
+ *    unrelated jobs, pricing a bodyshell and pricing a body kit, so raising the shell dragged
+ *    every kit with it. The number is unchanged; only what it means is.
+ *
+ * Every one of the 472 resolved SKU prices is byte-identical before and after, verified by
+ * re-resolving the whole catalogue against both sheets: 0 moved. The twelve kits read entry
+ * 5100/7800/11800, everyday 5800/9000/13400, enthusiast 14600/22400/33600 and flagship
+ * 32800/50400/75600 for street/sport/race in both. `economy.json` is untouched and its hash holds.
+ *
+ * NOT approved and NOT implemented here, recorded because this file is the ledger: the two values
+ * the split unblocks, `baseCostYen.zonePanel` 6000 -> 30000 and `baseCostYen.panels` 28000 ->
+ * 140000, await the maintainer's signature and land in their own change.
+ *
+ * Re-pinned 2026-08-01 for `docs/sprints/sprint162.md` (maintainer approval, in session, both
+ * levers signed by name and value against the measurements in
+ * `docs/design/systems/body-system-analysis.md` Parts 5 and 6). TWO levers, and no third:
+ *
+ * 1. `baseCostYen.zonePanel` 6000 -> **30000**. A replacement panel cost less than the tin of
+ *    filler needed to repair one, so beating a dented wing was never the frugal route on a cheap
+ *    car. The floor is arithmetic: repair beats swap in every salvage state only once
+ *    `0.7 x panel > 1900`, i.e. above about 2714 yen. The ceiling is the rot toll a tier-1 shop
+ *    cannot weld its way out of, which holds under 5 per cent of an entry car's value here and
+ *    reaches 8.8 per cent at twice this value.
+ * 2. `baseCostYen.panels` 28000 -> **140000**, the same 4.667 ratio the sheet already carried, so
+ *    five zone panels come to 107 per cent of the shell they bolt to on all four classes (it ran
+ *    103 to 111 per cent before). Without it the sheet would assert that one bonnet costs more
+ *    than the whole shell.
+ *
+ * `baseCostYen.bodyKit` STAYS at 28000, which is the whole point of the basis split recorded
+ * above: 472 SKUs re-resolved against both sheets, 24 move (the 20 zone panels and the 4 shell
+ * SKUs) and the 12 body kits are byte-identical, still entry 5100/7800/11800, everyday
+ * 5800/9000/13400, enthusiast 14600/22400/33600, flagship 32800/50400/75600. `economy.json` and
+ * `damagePatterns.json` are untouched and their hashes hold.
+ *
+ * Every consequence below was re-measured against the code as it now stands rather than carried
+ * over from the pre-sprint-159 probe:
+ *
+ * - **The lemon threshold barely moves, and only downward.** 26 models x 100 seeds = 2600 real
+ *   generated cars, each priced both ways so the delta is the levers' alone: 7 cars change status,
+ *   0 new lemons and 7 cured. By the factor clause alone (the only clause that reads a price)
+ *   entry 119 -> 118, everyday 49 -> 44, enthusiast 21 -> 16, flagship 1 -> 1. The factor's own
+ *   median delta is -0.0120 / -0.0076 / -0.0054 / -0.0048 by class and its largest absolute move
+ *   anywhere is 0.0555. `costWeightedBandFactor` is read by the lemon rule and by nothing else, so
+ *   this is the whole of that lever's reach into valuation.
+ * - **Generated body damage does not get quieter.** 26 models x 400 seeds = 10400 lots, generated
+ *   under both sheets from the same seeds. Everyday, enthusiast and flagship are byte-identical on
+ *   every car; entry differs on 17 of 2800 and comes out 6 band steps LOUDER in total (9 cars lose
+ *   steps to `enforceMaxBillFraction`, 6 gain them as the refused candidate hands the step to
+ *   another slot). Law 2 therefore brushes the entry class and does not bite it.
+ * - **The whole-body bill stays a sane fraction of the car.** Bill to the class expectation band as
+ *   a share of the car's own `marketValueYen`, median and p90: entry 7.63% -> 7.66% and 30.25% ->
+ *   31.82%, everyday 1.30% -> 1.31% and 2.85% -> 2.86%, enthusiast 0.31% -> 0.31% and 1.07% ->
+ *   1.09%, flagship 0.25% -> 0.25% and 0.41% -> 0.41%. To mint, entry reads 11.18% -> 11.22%
+ *   median and 40.03% -> 40.05% p90. The bill is capped by the repair route, so price cannot
+ *   inflate it: only the 3.36% of entry cars (0.88% everyday, 0.22% enthusiast, 0.00% flagship)
+ *   carrying a panel past saving or absent pay a panel at all.
+ * - **Repair now beats swap on money at every class**, on both representative zone states, by 1040
+ *   to 24290 yen; before, the swap won outright on entry and everyday. Swapping still wins on time
+ *   at tool tier 2 (by 1 point on light damage, 9 on a rotted panel) and at tool tier 3 on a rotted
+ *   panel (6 points); on light damage at tool tier 3 the two routes tie at 9 points. Below tool
+ *   tier 2 a panel past saving still has no repair route at all, so the swap remains the only exit,
+ *   which is the role these values give it.
+ *
+ * What moves as a MECHANICAL CONSEQUENCE, not an independent decision, re-derived from a fresh
+ * `storyMissionProbes.test.ts` run rather than hand-picked: eight formula-derived mission payouts,
+ * each budget cap with its own payout, holding the one-price contract. `wont-strand-her` 125000 ->
+ * 123000, `the-fleet-spare` 483000 -> 481000, `first-proper-car` 686000 -> 684000,
+ * `the-column-clock` 999000 -> 996000, `the-showroom-standard` 703000 -> 701000, `low-and-loud`
+ * 1161000 -> 1159000, `street-power-street-manners` 1497000 -> 1494000, `under-one-fifteen`
+ * 1693000 -> 1690000. Every one falls by 0.17 to 1.60 per cent, because a probe's start car carries
+ * no `zoneState` and so prices its body carriers from the catalogue, which raises the restoration
+ * bill inside `marketValueYen` slightly faster than it raises the repair leg. `four-wheels` (off
+ * the generic formula) and `make-it-pull` are unchanged. The 30-day `advanceDay` golden moves with
+ * the shell weight; the acquisition-to-sale golden holds.
+ *
+ * Also measured and disclosed rather than smoothed over: the three service-job templates carrying a
+ * `panels` task quote that task off the installed stock `panels` SKU, so their payouts rise while
+ * the player's real cost (the body pipeline) does not. Mean payout at `marginMin` over 50 seeds per
+ * shipped model: `small-bodywork-touchup` +32.9% / +28.1% / +49.0% / +83.7% by class,
+ * `put-her-in-a-ditch` +15.9% / +12.7% / +16.8% / +20.0%, `one-off-widebody` +13.5% / +11.9% /
+ * +15.4% / +17.0%. Read the other way this is a defect the lever partly closes: the game used to
+ * quote a few hundred yen of materials for a panel tidy-up whose real fill-and-sand tin costs 1900.
+ * The 1.15x profitability invariant (`serviceJobPayout.test.ts`) holds at the new values.
+ *
+ * NOT closed by these levers, measured rather than assumed: `honda-city-e-aa` still turns a profit
+ * on a strip-as-found play on 15 of 400 real lots (3.75%), best case 7543 yen, against a median
+ * 50958 yen more for repairing the same lot. The count, the best case and the median gap are all
+ * identical before and after; only 10 of the 400 lots see any movement at all, because a strip's
+ * takings never include the body carriers and the buy price barely moves. Closing it needs a
+ * different lever and is left to the maintainer.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -1333,7 +1457,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('67f82042bd36468a5f7adc8d39aeb061d85faee2be5062e835ceeeac7b0e0b5b')
+    ).toBe('696b8acfe1c8efd497a7c1b3070a2219e516e06b6a1de22d933bf8d691e31c5e')
   })
 
   it('damagePatterns.json matches its approved content exactly', () => {
@@ -1355,7 +1479,7 @@ describe('the economy approval gate', () => {
         'class factors, grade factors, the global factor and the overrides map are all ' +
         'approval-gated (CLAUDE.md directive 22). Re-pin this hash ONLY in the same ' +
         'change as the recorded approval of the specific lever and value.',
-    ).toBe('1fa0f99b4fe2c86143cdd0f57ce00a28e6f82057a1fde97635e8e114ecb8fd7f')
+    ).toBe('b1749befe8236fa3f92f78e54cb150843ec3405860d3403e84af04a8aac6698e')
   })
 
   it('mission payouts and budget caps match their approved values exactly', () => {
@@ -1371,15 +1495,15 @@ describe('the economy approval gate', () => {
         '(CLAUDE.md directive 22): re-pin only alongside the recorded approval.',
     ).toEqual({
       'four-wheels': { payoutYen: 142000, budgetCapYen: 142000 },
-      'wont-strand-her': { payoutYen: 125000, budgetCapYen: 125000 },
-      'first-proper-car': { payoutYen: 686000, budgetCapYen: 686000 },
+      'wont-strand-her': { payoutYen: 123000, budgetCapYen: 123000 },
+      'first-proper-car': { payoutYen: 684000, budgetCapYen: 684000 },
       'make-it-pull': { payoutYen: 787000, budgetCapYen: 787000 },
-      'the-column-clock': { payoutYen: 999000, budgetCapYen: 999000 },
-      'low-and-loud': { payoutYen: 1161000, budgetCapYen: 1161000 },
-      'street-power-street-manners': { payoutYen: 1497000, budgetCapYen: 1497000 },
-      'under-one-fifteen': { payoutYen: 1693000, budgetCapYen: 1693000 },
-      'the-fleet-spare': { payoutYen: 483000, budgetCapYen: 483000 },
-      'the-showroom-standard': { payoutYen: 703000, budgetCapYen: 703000 },
+      'the-column-clock': { payoutYen: 996000, budgetCapYen: 996000 },
+      'low-and-loud': { payoutYen: 1159000, budgetCapYen: 1159000 },
+      'street-power-street-manners': { payoutYen: 1494000, budgetCapYen: 1494000 },
+      'under-one-fifteen': { payoutYen: 1690000, budgetCapYen: 1690000 },
+      'the-fleet-spare': { payoutYen: 481000, budgetCapYen: 481000 },
+      'the-showroom-standard': { payoutYen: 701000, budgetCapYen: 701000 },
     })
   })
 })

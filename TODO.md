@@ -305,25 +305,51 @@ pass."
   document is touched, so the design of record and the implementation stop disagreeing on their
   face. No code change: this is a docs correction only.
 
-- [ ] **The balance probes and real generation use two different cost models for the same three
-  parts (found 2026-07-30, while making the probes read live data).** Real generation
-  (`generateAuctionCarInstance`) unconditionally rolls a `zoneState`, and that is what prices
-  `panels`, `paint` and `underbody`, through `bodyPartRepairBillYen`'s flat materials cost. The
-  probe cars in `packages/sim/src/balanceProbes.ts` carry no `zoneState`, so those same three parts
-  price through the generic per-part formula (`costToBandYen`, scaled by catalogue part price)
-  instead.
+- [ ] **The probes now measure the live model, and it says five gates are false (Sprint 160).**
+  The two-cost-models defect is closed: `buildUniformBandCar` carries a `zoneState`, so
+  `panels`/`paint`/`underbody` price through `bodyPartRepairBillYen` on every probe car exactly as
+  they do on every generated one. The probes stopped reacting to the bodyshell price entirely (0 of
+  26 probe bills move when `baseCostYen.panels` goes 28,000 to 140,000, matching 0 of 208 real
+  generated cars; before the re-base it was 26 of 26), which was the point.
 
-  **This is not a missing field, it is two cost models for one thing**, and it predates the
-  probe refactor rather than being caused by it. It matters because these probes are the economy
-  bible's Law 1 to Law 4 guards: to whatever extent the two models disagree, the guards are
-  validating a car the game does not generate.
+  **What the live model then says, and what needs a decision:**
 
-  Verified before stopping: synthesising a `zoneState` on the probes WOULD move `worstBillYen`,
-  `repairCostYen` and `sensibleFlipMarginYen`, and `computeModelBalanceProbe`'s `planGroupRepair`
-  loop would need zone-pipeline-aware repair-cost logic it does not have today, because
-  `planGroupRepair` deliberately skips zone-backed parts. So closing this is a real change to
-  the probes' arithmetic, not a field addition, and every Law figure would need re-deriving.
-  A doc comment in `balanceProbes.ts` flags it at the site.
+  - `balanceProbes.test.ts`, "parting out the worst generatable car never beats repairing it" -
+    fails on `honda-city-e-aa` (parted 29,425 against a sensible repair margin of 16,923) and
+    `nissan-sunny-b12` (30,425 against 17,141). Identical at 28,000 and at 140,000: the shell
+    price is no longer part of this question.
+  - `plays.test.ts`, four failures. Repair-to-mint now out-earns repair-to-expectation on six
+    entry/everyday cars (Wagon R, Carina, Sunny, Alto Works, City Turbo II, Sera) despite
+    `beyondDiscount` 0.4/0.8; the yen-per-labour-point ordering inverts on the two keis above; and
+    the cheapest entry car strips as found for a 5,667 profit against a floor of zero.
+
+  Two mechanisms, both real rather than probe artefacts. **A body restoration is materials-only
+  money** (`panelsRepairBillYen`: beating and welding are labour and never yen), so taking a shell
+  from poor to mint costs a few thousand yen on any car, which is what makes over-restoring pay.
+  And **the Law 2 softening pass has finer granularity on the zone model** (a zone improves one
+  step at a time rather than a whole part), so the probe car lands nearer the ceiling instead of
+  overshooting past it: the rough Honda City's guide falls 37,400 to 34,978 and its buy price with
+  it, which is what lifts stripping above zero.
+
+  Nothing was weakened to make these pass, per the sprint brief. The numbers are a question for the
+  maintainer, not a lever to pull.
+
+  **Superseded in part by Sprint 161**, which fixed the body bill to charge for distance rather than
+  a threshold: both gates above are green again, the four `plays.test.ts` failures resolved on their
+  merits, and the donor invariant was re-based onto real generated lots. What survives is the entry
+  in the next item.
+
+- [ ] **`honda-city-e-aa` still strips as found for a profit on 3.75% of its lots, and the zone
+  panel price does not close it (measured, Sprint 162).** 15 of 400 real lots, best case ¥7,543,
+  against a median ¥50,958 more for repairing the same lot; strip never beats repair on any lot, so
+  this is a wrong SIGN rather than a wrong ranking. `baseCostYen.zonePanel` 6,000 -> 30,000 and
+  `baseCostYen.panels` 28,000 -> 140,000 were measured against it and move it by nothing: the count,
+  the best case and the median gap are all identical before and after, because a strip's takings
+  never include the body carriers (`panels` is `removable: false`, and a zone panel is not a slot)
+  and the buy price moves only on the handful of lots carrying a forced panel. Only 10 of the 400
+  lots see any movement at all. The candidate lever named by Sprint 161 that has NOT been measured
+  is `teardown.usedPartSaleFraction` (0.3). It is approval-gated under directive 22 and nothing was
+  tried, per Sprint 162's own stop rule.
 
 - [ ] **Two roster CSV columns are owed under directive 24, and neither blocks the tuning arc.**
   `rarity` holds 26 of 94: it is a spawn-rate lever, so the missing 68 need signing under

@@ -206,15 +206,34 @@ describe('WorkshopViews', () => {
     const wrapper = mountFor(carId)
 
     const layers = wrapper.get('[data-test="workshop-zone-layers-bonnet"]')
-    // metal 2 of 3, surface 1 of 2, finish 3 of 3 - eight pips, six filled.
-    expect(layers.findAll('.wv-pip')).toHaveLength(8)
+    // metal 2 of 4, surface 1 of 2, finish 3 of 3 - nine pips, six filled.
+    expect(layers.findAll('.wv-pip')).toHaveLength(9)
     expect(layers.findAll('.wv-pip-on')).toHaveLength(6)
 
     const region = wrapper.get('[data-test="workshop-region-zone-bonnet"]')
     expect(region.attributes('aria-label')).toBe(
-      'Bonnet: metal 2 of 3, surface 1 of 2, finish 3 of 3, panel off',
+      'Bonnet: metal 2 of 4, surface 1 of 2, finish 3 of 3, panel off',
     )
     expect(region.text()).toContain('panel off')
+  })
+
+  it('tags a panel ruined past welding differently from one that is simply off the car', () => {
+    // Two states, two words: both force a replacement and both price the same,
+    // but one is a panel you can see and one is a hole.
+    const { game, carId } = grantCar()
+    const car = game.gameState.ownedCars.find((c) => c.id === carId)!
+    car.zoneState = {
+      ...car.zoneState!,
+      bonnet: { metal: 4, surface: 1, finish: 3, panelMissing: false, primed: false },
+    }
+    const wrapper = mountFor(carId)
+
+    const region = wrapper.get('[data-test="workshop-region-zone-bonnet"]')
+    expect(region.text()).toContain('past saving')
+    expect(region.text()).not.toContain('panel off')
+    expect(region.attributes('aria-label')).toBe(
+      'Bonnet: metal 4 of 4, surface 1 of 2, finish 3 of 3, past saving',
+    )
   })
 
   it('renders zone regions inert when the car has no zone state, and clicking one emits nothing', async () => {

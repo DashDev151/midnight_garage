@@ -50,7 +50,7 @@ import {
   sellingChannelCadenceLabel,
   sellingChannelFeeLabel,
 } from '../utils/sellingChannelLabels'
-import { zoneSeverityText } from '../utils/zoneSeverity'
+import { zoneNeedsPanelText, zoneSeverityText } from '../utils/zoneSeverity'
 
 const game = useGameStore()
 const route = useRoute()
@@ -725,6 +725,10 @@ const selectedZone = computed(() => {
     zone: zones[target.zoneId],
     name: titleCaseFromSlug(target.zoneId),
     isPanelZone: target.zoneId !== 'chassis',
+    // Stated once, up front: every stage below is refused while this holds, so
+    // the panel says why rather than leaving a row of dead buttons to explain
+    // itself.
+    needsPanelText: zoneNeedsPanelText(zones[target.zoneId]),
   }
 })
 
@@ -1356,9 +1360,20 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             <HelpHint label="Body zones">
               Panels, paint and underbody all read from the six zones - work a zone's own pipeline
               to move it. Metal is beaten or welded free of charge (it costs labour, never yen);
-              surface and finish need real materials.
+              surface and finish need real materials. Past a certain state the metal is beyond
+              pulling back, and only a fresh panel will do.
             </HelpHint>
           </div>
+
+          <!-- The one thing the player must be told before reading a row of
+               refused stages: this panel is not a repair job any more. -->
+          <p
+            v-if="selectedZone.needsPanelText"
+            class="blocked-reason"
+            :data-test="'zone-needs-panel-' + selectedZone.zoneId"
+          >
+            {{ selectedZone.needsPanelText }}
+          </p>
 
           <div class="panel-actions">
             <button

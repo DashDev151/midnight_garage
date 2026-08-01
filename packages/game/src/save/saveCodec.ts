@@ -630,8 +630,15 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * cannot be reconstructed and are not faked. The version bump alone is still
  * required (Save law) so an old client rejects a v53 save rather than
  * dropping a week's figures on the next write.
+ * v53 -> v54 (a panel can be beyond saving): `ZoneStateSchema.metal` widens
+ * from 0-3 to 0-4, the new top rung meaning a panel past what beating and
+ * welding can pull back. Purely a widened range on an existing required field,
+ * so there is nothing to migrate and no `MIGRATIONS[53]` entry: every pre-v54
+ * zone state is already a valid v54 one. The version bump alone is still
+ * required (Save law) so a v53 client REJECTS a v54 save outright rather than
+ * failing the parse on a metal it has no rung for.
  */
-export const SAVE_VERSION = 53
+export const SAVE_VERSION = 54
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

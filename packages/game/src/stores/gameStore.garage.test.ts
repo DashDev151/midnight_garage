@@ -54,32 +54,40 @@ describe('garage: instant repair and labor', () => {
     // test of completion mechanics rather than of tier-1 throughput.
     for (const line of game.toolLineViews) game.devSetToolTier(line.componentId, 3)
     // 'engine' is now entirely bolt-on or buried - bench-only, so `repair()`
-    // refuses it outright. 'body' is the surface group this on-car completion
-    // mechanism still exercises. Correlated band rolls can occasionally land a
-    // group fully mint even on a "rough" car, so retry grants until the body
-    // group specifically needs work.
+    // refuses it outright. 'interior' is the surface group this on-car
+    // completion mechanism exercises end to end: both its slots are surface
+    // parts and neither is derived from anything. 'body' cannot serve, because
+    // three of its four slots read their band off zone state and `repair()`
+    // deliberately never targets those - a generated car whose panels are past
+    // saving pins that group's band wherever the repair route can reach.
+    // Correlated band rolls can occasionally land a group fully mint even on a
+    // "rough" car, so retry grants until the group specifically needs work.
     let car = game.gameState.ownedCars.at(-1)
-    for (let i = 0; i < 30 && (!car || game.carDetail(car.id)!.groupBands.body === 'mint'); i++) {
+    for (
+      let i = 0;
+      i < 30 && (!car || game.carDetail(car.id)!.groupBands.interior === 'mint');
+      i++
+    ) {
       game.devGrantCar(CARS[0]!.id)
       car = game.gameState.ownedCars.at(-1)!
     }
     if (!car) throw new Error('expected a granted car')
-    expect(game.carDetail(car.id)!.groupBands.body).not.toBe('mint') // generated cars are rough
+    expect(game.carDetail(car.id)!.groupBands.interior).not.toBe('mint') // generated cars are rough
 
     // A dev-granted car lands in parking like any real acquisition - labor
     // only reaches a car in the service bay.
     game.moveCar(car.id, 'service')
-    game.repair(car.id, 'body')
+    game.repair(car.id, 'interior')
 
     // Keep ending days and re-issuing the repair click until the group
     // clears mint or we've clearly exceeded any reasonable career length -
     // a real regression (never finishing) fails loudly instead of hanging.
-    for (let day = 0; day < 20 && game.carDetail(car.id)!.groupBands.body !== 'mint'; day++) {
+    for (let day = 0; day < 20 && game.carDetail(car.id)!.groupBands.interior !== 'mint'; day++) {
       game.endDay()
-      game.repair(car.id, 'body')
+      game.repair(car.id, 'interior')
     }
 
-    expect(game.carDetail(car.id)!.groupBands.body).toBe('mint')
+    expect(game.carDetail(car.id)!.groupBands.interior).toBe('mint')
     // The job is consumed once complete.
     expect(game.carDetail(car.id)!.jobs).toHaveLength(0)
   })

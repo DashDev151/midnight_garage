@@ -230,7 +230,19 @@ describe('advanceDay golden master', () => {
     // and the style catalogue re-author moves every derived style figure the
     // state records alongside it. Re-derived from a real run, twice, to
     // confirm determinism.
-    expect(hashState(finalState)).toBe('808948e0')
+    //
+    // It last moved because a panel can now be beyond saving (sprint159.md):
+    // `rollZoneStates` draws two more values per generated car (the escalation
+    // past weldable, and whether that panel is absent outright), so every
+    // generated board's rng stream shifts from that point on even where neither
+    // roll lands. Re-derived from a real run, twice, to confirm determinism.
+    //
+    // It last moved because a bodyshell is priced as a bodyshell:
+    // `baseCostYen.panels` carries the shell's weight in the cost-weighted band
+    // factor, so raising it re-weights every generated car's condition factor
+    // and every guide value that reads it. No draw was added or removed.
+    // Re-derived from a real run, twice, to confirm determinism.
+    expect(hashState(finalState)).toBe('e254326b')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -382,8 +394,14 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // car's week still has to add up. It moves again with the pattern's reach
     // into the condition roll, alongside the 30-day master and for the same
     // reason as damage patterns themselves: every generated lot's bands are
-    // arranged differently, and this script both buys and prices one.
-    expect(hashState(acquisitionCareer().sold)).toBe('1bb7d3b7')
+    // arranged differently, and this script both buys and prices one. It moves
+    // again for the beyond-saving panel (sprint159.md), alongside the 30-day
+    // master and for the same reason: two more draws per generated car shift
+    // every board's rng stream from the zone roll onward. It moves again for
+    // the distance-priced body bill (sprint161.md), alongside the 30-day
+    // master: every generated car's restoration bill moves, and this script
+    // both buys a car at a guide value and sells one.
+    expect(hashState(acquisitionCareer().sold)).toBe('d280dc4d')
   })
 })
 
