@@ -53,22 +53,28 @@ All development happens in sprints, driven by the roadmap. Sprint docs live in `
 (synthwave pixel art, JDM car culture, hunt-build-sell loop). Solo-dev passion project, ~13-month
 roadmap to a free itch.io launch.
 
-**Current state:** Sprints 00-139 and 143-150 implemented and committed. Two were superseded
+**Current state:** Sprints 00-139 and 143-157 implemented and committed. Two were superseded
 unbuilt and their docs record it (Sprint 100 by Sprint 110's live-room promotion; Sprints 138-139
 by the sale value system). **Three sprints are still live and their docs are the only ones left in
-`docs/sprints/`: 140, 141, 142** (the rest of the tuning arc). The sale value arc past 150 is
-being RE-PLANNED: the listing-channel ruling changed what a channel is, so the old S8/S9 mapping
-is dead and the next sprints are designed once the desirability and listing-channel designs lock.
-The tuning overhaul is BUILT as far as
-137 (`docs/design/systems/tuning-system.md`, arc index `docs/sprints/tuning-arc.md`): condition
+`docs/sprints/`: 140, 141, 142** (the rest of the tuning arc). The tuning overhaul is BUILT as far
+as 137 (`docs/design/systems/tuning-system.md`, arc index `docs/sprints/tuning-arc.md`): condition
 reaches the build, power is a per-car fraction rather than a flat ladder, support ratios drive
-reliability off a per-car `spec.reliabilityBase`, and forced induction returns increase. The sale
-value arc (143 to 155) is BUILT as far as 149 (`docs/design/systems/sale-value-system.md`, plan
-`sale-value-implementation-plan.md`, lever ledger `docs/sprints/sale-value-arc-lever-ledger.md`):
-coherence discounts value and scales parts retention, taste is a per-buyer match rather than a
-weighted mean, a listing goes stale by offers seen rather than days, listed cars occupy a
-purchasable forecourt, rent scales with owned bays, the week has named days, each auction room
-keeps its own opening hours, and listing fees attribute to the car they advertised.
+reliability off a per-car `spec.reliabilityBase`, and forced induction returns increase.
+
+**The sale value arc (143 to 157) is COMPLETE.** Design of record
+`docs/design/systems/sale-value-system.md`, plan `sale-value-implementation-plan.md`, lever
+ledgers `docs/sprints/sale-value-arc-lever-ledger.md` (R3, 38 levers, ratified) and
+`generation-arc-lever-ledger.md` (R4, 30 levers, **awaiting review**). Coherence discounts value
+and scales parts retention; taste is a per-buyer match rather than a weighted mean; a listing goes
+stale by offers seen rather than days; listed cars occupy a purchasable forecourt and rent scales
+with owned bays; the week has named days and each auction room its own hours. Authenticity is
+derived from how stock a car is rather than a frozen roll, and style is a per-car base and ceiling
+that parts close the gap between (`desirability-system.md`). Generation damage is a rolled budget
+scaled by mileage, every lot carries a work guarantee, cars have a rolled history from their
+culture and tier, and a damage pattern decides where the damage lands and which symptom shows
+(`generation-damage.md`). A channel is a buyer base rather than a fee, two of them earned by named
+story events (`listing-channels.md`). And a weekly cost sheet reconciles to the till to the yen
+(`financial-summary.md`).
 
 The **car performance model is LOCKED and validated** to about 2% on blind predictions against
 the maintainer's own driven laps. `docs/design/car-performance/` is the whole of it and its
