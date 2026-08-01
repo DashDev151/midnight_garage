@@ -149,6 +149,10 @@ export function isBodyDerivedPart(carPartId: string): carPartId is DerivedBodyPa
  * generation, which always fills these three slots) synthesises a fresh
  * stock instance rather than leaving the slot empty, since these three parts
  * are always-present value carriers under the new model.
+ *
+ * It writes the BAND and nothing else onto an occupied slot, so whatever SKU
+ * is fitted survives every re-derivation: a carrier holding a body kit keeps
+ * holding it, and its band still comes from the zones.
  */
 export function applyDerivedBodyBands(
   car: CarInstance,
@@ -631,6 +635,43 @@ export function planSwapPanel(zone: ZoneState, panelBand: ConditionBand): Pipeli
     laborUnits: 0,
     materialsCostYen: 0,
   }
+}
+
+/**
+ * The zones each body value carrier's own physical parts occupy: the five
+ * panel zones for `panels`, the chassis zone for `underbody`. `paint` names
+ * none of its own - it is a finish the pipeline lays on rather than a part
+ * that arrives - so changing what is fitted there moves no zone.
+ */
+const CARRIER_ZONE_IDS: Readonly<Record<DerivedBodyPartId, readonly ZoneId[]>> = {
+  panels: PANEL_ZONE_IDS,
+  paint: [],
+  underbody: ['chassis'],
+}
+
+/**
+ * Every zone `carPartId` covers, as `planSwapPanel` leaves it once a fresh
+ * part at `band` is on the car: metal at the fitted part's own band, a sound
+ * surface and a bare, unpainted finish. Fitting a body kit is the same
+ * physical event as swapping one panel, so it takes the same route rather
+ * than a second one of its own, and a re-panelled car owes its paint exactly
+ * as a re-panelled zone does.
+ *
+ * Identity and condition stay orthogonal either side of this: the fitted SKU
+ * says what the car IS, and the band `applyDerivedBodyBands` writes afterwards
+ * still comes from the zones alone, so a dented widebody is a widebody that is
+ * dented.
+ */
+export function refitCarrierZoneStates(
+  zoneStates: ZoneStates,
+  carPartId: DerivedBodyPartId,
+  band: ConditionBand,
+): ZoneStates {
+  let next = zoneStates
+  for (const zoneId of CARRIER_ZONE_IDS[carPartId]) {
+    next = { ...next, [zoneId]: planSwapPanel(next[zoneId], band).zone }
+  }
+  return next
 }
 
 /** Paint's effect: needs the zone primed; the achieved finish is 1 with the

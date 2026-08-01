@@ -22,7 +22,7 @@ import {
   repairLevelForGroup,
   type PartRepairPlan,
 } from './bands'
-import { isBodyDerivedPart } from './bodyPipeline'
+import { applyDerivedBodyBands, isBodyDerivedPart, refitCarrierZoneStates } from './bodyPipeline'
 import { updateCarLedger } from './carLedger'
 import type { SimContext } from './context'
 import { crewEnergySaved, perfectionistCostMultiplier } from './crewSkills'
@@ -149,6 +149,16 @@ interface CarEffect {
  * reinstalling at its real band is correct (forcing mint would let
  * remove+reinstall repair a part for free).
  *
+ * A body value carrier (`panels`/`paint`/`underbody`) is the one address that
+ * takes an install over an OCCUPIED slot. Its slot is never empty - it is
+ * `removable: false` and `applyDerivedBodyBands` keeps a part in it - so its
+ * identity changes by replacement rather than by a remove followed by a fit,
+ * and the part coming off is not harvested (the shell never leaves the car).
+ * The zones that carrier covers are then refitted the way `planSwapPanel`
+ * leaves a swapped panel, and the band re-derives from them, so a fresh kit
+ * arrives on straight metal in bare primerless finish and the car owes its
+ * paint.
+ *
  * Both branches run the result through `pruneCuredCauses` (cure-on-repair):
  * any symptom whose remaining causes all target parts now fitted strictly
  * better than they claim is cured, in whole or in part, the moment the band
@@ -200,20 +210,30 @@ function applyJobToCar(
   }
   const targetPartId = catalogPart.carPartId
   const targetState = car.parts[targetPartId]
-  if (targetState.installed) {
+  const replacesInPlace = isBodyDerivedPart(targetPartId)
+  if (targetState.installed && !replacesInPlace) {
     return { car, partInventory: [...partInventory], blockedByOccupiedSlot: true }
   }
-  return {
-    car: pruneCuredCauses(
+  let fitted: CarInstance = {
+    ...car,
+    parts: {
+      ...car.parts,
+      [targetPartId]: { installed: partInstance },
+    },
+  }
+  const model = context.modelsById[car.modelId]
+  if (replacesInPlace && car.zoneState && model) {
+    fitted = applyDerivedBodyBands(
       {
-        ...car,
-        parts: {
-          ...car.parts,
-          [targetPartId]: { installed: partInstance },
-        },
+        ...fitted,
+        zoneState: refitCarrierZoneStates(car.zoneState, targetPartId, partInstance.band),
       },
+      model,
       context,
-    ),
+    )
+  }
+  return {
+    car: pruneCuredCauses(fitted, context),
     partInventory: partInventory.filter((_, i) => i !== partIndex),
     blockedByOccupiedSlot: false,
   }
@@ -889,7 +909,9 @@ export function naToTurboConversionBlocked(
  * the catalog part's own address to match that exact slot (`partFitsCar`'s
  * optional param). Slot emptiness always resolves from the picked part's OWN
  * catalog address (`part.carPartId`), closing a gap where group-level specs
- * used to check the wrong slot.
+ * used to check the wrong slot. The three body value carriers are the one
+ * exception to emptiness: their slot is never empty, so an install addressed
+ * at one replaces what is fitted there rather than being refused.
  * unconditionally `true` (no per-part check at all), which barely mattered
  * when almost every slot started genuinely empty pre-Sprint-32, but now
  * that every slot starts filled with a stock part by default, a group-level
@@ -917,14 +939,19 @@ export function installFitGate(
   const model = car ? context.modelsById[car.modelId] : undefined
   const partInstance = state.partInventory.find((p) => p.id === spec.partInstanceId)
   const part = partInstance ? context.partsById[partInstance.partId] : undefined
-  const slotEmpty = !!part && !car?.parts[part.carPartId]?.installed
+  const slotTakesPart =
+    !!part &&
+    (!car?.parts[part.carPartId]?.installed ||
+      // A body value carrier's slot is never empty, so it takes an install
+      // over what is already there - see `applyJobToCar`.
+      isBodyDerivedPart(part.carPartId))
   const fits =
     car &&
     model &&
     part &&
     partInstance &&
     partInstance.band !== 'scrap' &&
-    slotEmpty &&
+    slotTakesPart &&
     partFitsCar(part, model, spec.componentId, context.partsTaxonomyById, spec.carPartId)
   if (!fits) {
     return { ok: false, log: [{ type: 'job-blocked', jobId: id, reason: 'part-does-not-fit' }] }

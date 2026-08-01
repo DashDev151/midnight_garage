@@ -96,10 +96,10 @@ describe('the body-kit price basis', () => {
     'rare-frp-carbon-panel-kit': 75600,
   }
 
-  it('prices exactly the twelve body kits, all of them in the aero slot', () => {
+  it('prices exactly the twelve body kits, all of them in the panels slot', () => {
     const kits = PARTS.filter((part) => part.priceBasisPartId === 'bodyKit')
     expect(kits.map((part) => part.id).sort()).toEqual(Object.keys(BODY_KIT_PRICES_YEN).sort())
-    for (const kit of kits) expect(kit.carPartId, kit.id).toBe('aero')
+    for (const kit of kits) expect(kit.carPartId, kit.id).toBe('panels')
   })
 
   it('leaves the panels basis to the bodyshell alone: no SKU prices from it by name', () => {

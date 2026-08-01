@@ -643,18 +643,39 @@ pass."
   it isn't. Needs either a bot-side "is anything missing" check before declaring a car restored,
   or an install-focused fill-the-gap step alongside the existing repair step.
 
-- [ ] **`paint`, `panels` and `underbody` can never read as non-original, so 23 of
-  authenticity's 100 points are unloseable and a resprayed car scores as untouched.** The
-  authenticity derivation (`stocknessOf`, `packages/sim/src/derivedStats.ts`) asks each slot
-  whether its fitted part is `grade: 'stock'`. Those three slots are zone-derived: the body
-  pipeline computes their bands from `zoneState` and fills them with the one stock SKU, and
-  `parts.json` ships no non-stock SKU for any of them (4, 24 and 4 SKUs respectively, every one
-  stock). Their weight is NOT dead - the same column drives authenticity's condition factor,
-  where rough paint and a rusty floor bite correctly and hardest of anything on the list - but
-  originality cannot move there. The fix is a per-zone refinished flag, set when the player does
-  paint or panel work and rolled at generation, read by `stocknessOf` instead of the carrier
-  part's grade. `packages/sim/tests/authenticity.test.ts` pins the limitation and fails the
-  moment a non-stock body SKU is added.
+- [ ] **`paint` can never read as non-original, so 11 of authenticity's 100 points are unloseable
+  and a resprayed car still scores as wearing its factory colour.** The authenticity derivation
+  (`stocknessOf`, `packages/sim/src/derivedStats.ts`) asks each slot whether its fitted part is
+  `grade: 'stock'`, and `parts.json` ships no non-stock `paint` SKU: its twelve finish SKUs were
+  retired when the derived carriers landed. `panels` (11 points) and `underbody` (1) were the same
+  shape and are fixed - Sprint 163 gave both a real aftermarket ladder - so what is left is the
+  colour half alone. The weight is NOT dead either way: the same column drives authenticity's
+  condition factor, where rough paint bites hardest of anything on the list. Two routes, neither
+  chosen: bring the finish ladder back as `paint` SKUs (respray, two-tone, pearl), or a per-zone
+  refinished flag set when the player paints and rolled at generation, read by `stocknessOf`
+  instead of the carrier part's grade. `packages/sim/tests/authenticity.test.ts` pins what is left
+  and fails the moment a non-stock `paint` SKU is added. Wanted, and deliberately deferred: the
+  colour a car wears should read on its originality, and neither route is chosen yet.
+
+- [ ] **A body kit is one-way: nothing sells the factory bodywork back (Sprint 163).** A body
+  value carrier is `removable: false`, so fitting a kit REPLACES what is there and the part coming
+  off is discarded rather than harvested - the shell never lands in the parts bin, which is what
+  that flag has always meant. Every other slot keeps its stock part through a remove-then-fit, so
+  a widebody is currently the only modification in the game a player cannot undo. Two candidate
+  fixes, neither taken: list the stock `panels`/`underbody` SKU in the parts market (it is
+  delisted by `isDelisted`, `PartsMarketScreen.vue`, and now carries a coherent shell price), or
+  harvest the replaced carrier into inventory. The second resells at `usedPartSaleValueYen`, so
+  it is an economy question rather than a UI one.
+
+- [ ] **The `underbody` style ladder does not climb with its grades (surfaced Sprint 163).** Neon
+  underglow is the street rung and the loudest thing on the slot at 8 style points, the
+  skirt-and-splitter kit is the sport rung at the same 8, and the race flat floor is the quietest
+  at 6. Every other style-bearing slot sells showiness up the same ladder it sells capability, and
+  `style.test.ts` guards that; `underbody` is now an explicit exception in it. Either the three
+  values are re-authored to climb (a directive-22 sign-off, since `statModifiers.style` reaches
+  sale value through buyer taste), or the exception is accepted as a real statement that an
+  underside dress ladder measures function rather than volume - in which case the guard's carve-out
+  is the record of that ruling and this entry goes.
 
 - [ ] **`diagnosis.symptomChanceByTier` is coupled to how rough generated cars are, through the Law
   2 veto in `applySymptoms`, so the two must be re-measured together whenever either moves.** See

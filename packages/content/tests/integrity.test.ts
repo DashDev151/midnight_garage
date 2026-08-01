@@ -210,10 +210,9 @@ describe('referential integrity', () => {
 
   /**
    * A forced-induction kit is installable on an NA car via the universal FI
-   * slot, plus at least one underglow kit (now the aero and body kit family
-   * - underglow migrated out of `underbody`, which is a derived body value
-   * carrier with no aftermarket grades of its own). Checked against a real
-   * NA, Piston roster car (no Turbo/Supercharged tag of its own). The
+   * slot, plus at least one underglow kit (on `underbody`, the slot it
+   * actually dresses). Checked against a real NA, Piston roster car (no
+   * Turbo/Supercharged tag of its own). The
    * forced-induction catalog carries one entry per tier with `requiredTags`
    * always `[]`, so "fits" is no longer the discriminating fact; the real
    * remaining fact worth guarding is that a forced-induction and an
@@ -237,7 +236,7 @@ describe('referential integrity', () => {
       (p) => p.carPartId === 'forcedInduction' && p.grade !== 'stock' && fitsNaCar(p),
     )
     const underglowKits = parsedParts.filter(
-      (p) => p.carPartId === 'aero' && /underglow/i.test(p.name) && fitsNaCar(p),
+      (p) => p.carPartId === 'underbody' && /underglow/i.test(p.name) && fitsNaCar(p),
     )
 
     expect(
@@ -285,33 +284,20 @@ describe('referential integrity', () => {
     }
   })
 
-  /** The three derived body value carriers - `panels`/`paint`/`underbody`
-   * carry no aftermarket grades of their own anymore: their bands derive
-   * from zone state, and their old street/sport/race SKUs either retired
-   * outright (the paint finishes) or migrated into the `aero` slot as the
-   * widened "aero and body kit" family (the panel and underbody kits). */
-  const DERIVED_BODY_PART_IDS = ['panels', 'paint', 'underbody'] as const
-
   /**
-   * Every component slot OTHER than the three derived body carriers and
-   * `aero` ships 16 real store SKUs (4 fitment classes x 4 grades) - real,
-   * separately named catalog entries, never a single part with a runtime
-   * price switch. Guards both directions: nothing missing, nothing
-   * accidentally duplicated. Zone-panel SKUs (`zoneId` set) are excluded:
-   * they are additional stock-grade `panels` entries addressed to a specific
-   * zone, on top of this matrix, not a member of it. `panels`/`paint`/
-   * `underbody` and `aero` carry their own, separately-shaped counts below.
+   * Every component slot OTHER than `paint` ships 16 real store SKUs (4
+   * fitment classes x 4 grades) - real, separately named catalog entries,
+   * never a single part with a runtime price switch. Guards both directions:
+   * nothing missing, nothing accidentally duplicated. Zone-panel SKUs
+   * (`zoneId` set) are excluded: they are additional stock-grade `panels`
+   * entries addressed to a specific zone, on top of this matrix, not a member
+   * of it. `paint` carries its own, separately-shaped count below.
    */
   it('every ordinary real car part has exactly 16 catalog SKUs - 4 fitment classes x 4 grades', () => {
     const FITMENT_CLASSES = ['entry', 'everyday', 'enthusiast', 'flagship'] as const
     const nonZonePanelParts = PARTS.filter((p) => p.zoneId === undefined)
     for (const carPartId of CarPartIdSchema.options) {
-      if (
-        carPartId === 'aero' ||
-        (DERIVED_BODY_PART_IDS as readonly string[]).includes(carPartId)
-      ) {
-        continue
-      }
+      if (carPartId === 'paint') continue
       for (const fitmentClass of FITMENT_CLASSES) {
         for (const grade of GradeSchema.options) {
           const candidates = nonZonePanelParts.filter(
@@ -328,59 +314,51 @@ describe('referential integrity', () => {
   })
 
   /**
-   * `panels`/`paint`/`underbody` are derived body value carriers now: each
-   * keeps exactly its one stock SKU per fitment class (the value machinery's
-   * installed reference) and nothing at street/sport/race - a player never
-   * buys an aftermarket grade for a part whose band the zone pipeline
-   * derives.
+   * `paint` is the one slot with no aftermarket ladder: it keeps exactly its
+   * one stock SKU per fitment class (the value machinery's installed
+   * reference) and nothing at street/sport/race, its twelve finish SKUs
+   * having retired outright. `panels` and `underbody` carry a full ladder
+   * again - their band still derives from zone state, but what is FITTED
+   * there is a real choice.
    */
-  it('the three derived body value carriers carry a stock SKU only, one per fitment class, no aftermarket grades', () => {
+  it('the paint carrier carries a stock SKU only, one per fitment class, no aftermarket grades', () => {
     const FITMENT_CLASSES = ['entry', 'everyday', 'enthusiast', 'flagship'] as const
     const nonZonePanelParts = PARTS.filter((p) => p.zoneId === undefined)
-    for (const carPartId of DERIVED_BODY_PART_IDS) {
-      for (const fitmentClass of FITMENT_CLASSES) {
-        const atClass = nonZonePanelParts.filter(
-          (p) => p.carPartId === carPartId && p.fitmentClass === fitmentClass,
-        )
-        expect(
-          atClass.map((p) => p.grade),
-          `${carPartId}/${fitmentClass} should carry exactly one stock SKU and nothing else`,
-        ).toEqual(['stock'])
-      }
+    for (const fitmentClass of FITMENT_CLASSES) {
+      const atClass = nonZonePanelParts.filter(
+        (p) => p.carPartId === 'paint' && p.fitmentClass === fitmentClass,
+      )
+      expect(
+        atClass.map((p) => p.grade),
+        `paint/${fitmentClass} should carry exactly one stock SKU and nothing else`,
+      ).toEqual(['stock'])
     }
   })
 
   /**
-   * `aero` is the widened "aero and body kit" family: its own three
-   * original aftermarket grades PLUS the six migrated panel/underbody kits
-   * (two per grade) now address it too, so each non-stock grade carries 3
-   * SKUs per fitment class instead of 1 - the stock grade is still exactly
-   * 1.
+   * The cosmetic/functional split: `aero` is the PERFORMANCE slot and every
+   * non-stock SKU on it makes real downforce (`aeroFunctional`, read by
+   * `effectiveDownforce`), while the twelve kits that only change how a car
+   * looks sit on the body slot each one actually addresses. Fitting a body
+   * kit therefore cannot displace a wing, which is what it used to do.
    */
-  it('the widened aero slot carries 3 SKUs per non-stock grade (the original plus two migrated kits), 1 stock', () => {
-    const FITMENT_CLASSES = ['entry', 'everyday', 'enthusiast', 'flagship'] as const
-    const nonZonePanelParts = PARTS.filter((p) => p.zoneId === undefined)
-    for (const fitmentClass of FITMENT_CLASSES) {
-      const stockCandidates = nonZonePanelParts.filter(
-        (p) => p.carPartId === 'aero' && p.fitmentClass === fitmentClass && p.grade === 'stock',
-      )
-      expect(stockCandidates.length, `aero/${fitmentClass}/stock`).toBe(1)
-      for (const grade of ['street', 'sport', 'race'] as const) {
-        const candidates = nonZonePanelParts.filter(
-          (p) => p.carPartId === 'aero' && p.fitmentClass === fitmentClass && p.grade === grade,
-        )
-        expect(candidates.length, `aero/${fitmentClass}/${grade}`).toBe(3)
+  it('every non-stock aero SKU is aero-functional, and no body-slot SKU claims to be', () => {
+    for (const part of PARTS) {
+      if (part.carPartId === 'aero') {
+        expect(part.aeroFunctional ?? false, `${part.id}`).toBe(part.grade !== 'stock')
+        continue
       }
+      expect(part.aeroFunctional ?? false, `${part.id}`).toBe(false)
     }
   })
 
   /**
    * Zone panels are additional stock-grade `panels` SKUs, one per (zone x
    * fitment class), on top of the matrix above. The retired paint finishes
-   * (12 entries) are gone outright; the six migrated kits changed slot and
-   * name in place without changing the catalog's total count, so the whole
-   * catalog is the base 29 x 16 = 464, minus the 12 retired paint SKUs, plus
-   * the 5 x 4 = 20 zone panels = 472.
+   * (12 entries) are gone outright; the twelve cosmetic kits changed slot in
+   * place without changing the catalog's total count, so the whole catalog is
+   * the base 29 x 16 = 464, minus the 12 retired paint SKUs, plus the
+   * 5 x 4 = 20 zone panels = 472.
    */
   it('the catalog carries exactly 20 zone-panel SKUs - 5 zones x 4 fitment classes - and 472 entries total', () => {
     const FITMENT_CLASSES = ['entry', 'everyday', 'enthusiast', 'flagship'] as const

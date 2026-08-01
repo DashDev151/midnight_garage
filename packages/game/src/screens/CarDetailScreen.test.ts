@@ -1264,6 +1264,34 @@ describe('CarDetailScreen', () => {
       expect(wrapper.find('[data-test="panel-missing"]').exists()).toBe(true)
       expect(wrapper.find('[data-test="replace-part-dampers"]').exists()).toBe(true)
     })
+
+    it('a body value carrier offers Replace while it is occupied, and never Take it off', async () => {
+      const game = useGameStore()
+      game.devSetToolTier('body', 3)
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      const kit = PARTS.find(
+        (p) => p.carPartId === 'panels' && p.grade === 'sport' && p.fitmentClass === 'entry',
+      )!
+      game.devGrantPart(kit.id)
+      const partInstanceId = game.gameState.partInventory.at(-1)!.id
+
+      const { wrapper } = await mountAt(id)
+      await selectPart(wrapper, 'panels')
+      // The shell is never pulled, so the slot is never empty - Replace stands
+      // in for the remove-then-fit two-step every other slot uses.
+      expect(wrapper.find('[data-test="remove-part-panels"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="replace-part-panels"]').exists()).toBe(true)
+
+      await wrapper.find('[data-test="toggle-bay"]').trigger('click')
+      await wrapper.find('[data-test="replace-part-panels"]').trigger('click')
+      await wrapper.get('[data-test="replace-drawer"] .part-card').trigger('click')
+      expect(game.gameState.ownedCars[0]!.parts.panels.installed?.id).toBe(partInstanceId)
+      // A fresh kit arrives on straight metal in a bare finish, so the car
+      // owes its paint (`refitCarrierZoneStates`, sim/bodyPipeline.ts).
+      expect(game.gameState.ownedCars[0]!.parts.panels.installed?.band).toBe('mint')
+      expect(game.gameState.ownedCars[0]!.parts.paint.installed?.band).toBe('poor')
+    })
   })
 
   describe('assemblies through the panel (Sprint 87 verbs, Sprint 88 surface)', () => {

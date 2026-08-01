@@ -270,29 +270,36 @@ describe('no car carries a stored authenticity roll any more', () => {
 })
 
 /**
- * The known gap this sprint SHIPS WITH, recorded as a test so it cannot be
- * forgotten. `paint`, `panels` and `underbody` are derived from `zoneState`
- * by the body pipeline rather than fitted as parts, and the catalogue ships
- * no non-stock SKU for any of them, so `isStock` is always true there and 23
- * of the 100 points can never be lost to modification: a resprayed car reads
- * as fully original.
+ * A body carrier's BAND is derived from `zoneState`, but what is FITTED there
+ * is a real choice, so a modified body reads as modified. `panels` and
+ * `underbody` carry the cosmetic body kits; `paint` is the one slot with no
+ * aftermarket ladder at all, so 11 of the 100 points are still unloseable and
+ * a resprayed car still reads as wearing its factory colour.
  *
- * Their weight is NOT dead - the same column drives the condition factor,
- * where rough paint and a rusty floor bite correctly. Fixing the originality
- * half is a follow-up (per-zone refinished state), and when it lands this
- * test is what fails and tells whoever lands it to delete this block.
+ * That remaining weight is not dead either way - the same column drives the
+ * condition factor, where rough paint bites correctly. When a paint-finish
+ * ladder ships, this block is what fails and says so.
  */
-describe('the recorded limitation: three body slots cannot yet read as modified', () => {
-  it('ships no non-stock SKU for paint, panels or underbody', () => {
-    for (const carPartId of ['paint', 'panels', 'underbody'] as const) {
+describe('a modified body reads as modified', () => {
+  it('ships an aftermarket ladder for panels and underbody, and none for paint', () => {
+    for (const carPartId of ['panels', 'underbody'] as const) {
       const nonStock = PARTS.filter(
         (part) => part.carPartId === carPartId && part.grade !== 'stock',
       )
-      expect(nonStock, `${carPartId} now has an aftermarket SKU`).toEqual([])
+      expect(nonStock.length, `${carPartId} has no aftermarket SKU`).toBeGreaterThan(0)
     }
+    expect(PARTS.filter((part) => part.carPartId === 'paint' && part.grade !== 'stock')).toEqual([])
   })
 
-  it('leaves 23 of the 100 points currently unloseable', () => {
-    expect(WEIGHT.paint + WEIGHT.panels + WEIGHT.underbody).toBe(23)
+  it('costs a fitted body kit the whole authenticity weight of its slot', () => {
+    expect(authenticityOf(carWith({ panels: 'sport' }))).toBe(100 - WEIGHT.panels)
+    expect(authenticityOf(carWith({ underbody: 'sport' }))).toBe(100 - WEIGHT.underbody)
+    expect(authenticityOf(carWith({ panels: 'race', underbody: 'street' }))).toBe(
+      100 - WEIGHT.panels - WEIGHT.underbody,
+    )
+  })
+
+  it('leaves 11 of the 100 points unloseable while paint carries no ladder', () => {
+    expect(WEIGHT.paint).toBe(11)
   })
 })

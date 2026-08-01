@@ -5,6 +5,7 @@ import {
   ECONOMY,
   PARTS,
   PARTS_TAXONOMY,
+  fitmentClassForTier,
   type Course,
   type Part,
 } from '@midnight-garage/content'
@@ -43,18 +44,22 @@ const SUPRA = CARS.find((c) => c.id === 'toyota-supra-rz-jza80')!
 /** A car with no measured lateral pair at all, so its aero is whatever the
  * model declares and nothing is fitted by measurement behind the test's back. */
 const CIVIC = CARS.find((c) => c.id === 'honda-civic-sir2-eg6')!
+const SUPRA_CLASS = fitmentClassForTier(SUPRA.tier)
 
 const aeroPart = (grade: 'street' | 'sport' | 'race'): Part =>
   PARTS.find((p) => p.carPartId === 'aero' && p.grade === grade && p.aeroFunctional)!
-/** A body-panel SKU sharing the aero slot but doing nothing aerodynamic. */
+/** A cosmetic body kit: it changes what the car looks like, not what it does,
+ * so it lives on the `panels` body slot rather than on `aero`. */
 const BODY_KIT = PARTS.find(
-  (p) => p.carPartId === 'aero' && p.grade === 'sport' && !p.aeroFunctional,
+  (p) => p.carPartId === 'panels' && p.grade === 'sport' && p.fitmentClass === SUPRA_CLASS,
 )!
 
+/** Fits `part` into its own catalogue slot at mint, leaving every other slot
+ * on the mint stock baseline. */
 function carWithAero(part?: Part, modelId: string = SUPRA.id) {
   const car = buildCarInstance({ modelId, parts: mintCarParts() })
   if (part) {
-    car.parts.aero.installed = {
+    car.parts[part.carPartId].installed = {
       id: `fixture-${part.id}`,
       partId: part.id,
       band: 'mint',
@@ -62,6 +67,21 @@ function carWithAero(part?: Part, modelId: string = SUPRA.id) {
     }
   }
   return car
+}
+
+/** The same car with a second SKU fitted on top - the pair this file cares
+ * about is a functional wing plus a cosmetic kit. */
+function alsoFitting(car: ReturnType<typeof carWithAero>, part: Part) {
+  const next = { ...car, parts: { ...car.parts } }
+  next.parts[part.carPartId] = {
+    installed: {
+      id: `fixture-${part.id}`,
+      partId: part.id,
+      band: 'mint',
+      origin: { kind: 'market' as const, day: 1 },
+    },
+  }
+  return next
 }
 
 describe('aeroGripMultiplier', () => {
@@ -111,12 +131,18 @@ describe('effectiveDownforce', () => {
     expect(fitted).toEqual(AERO.byGrade.race)
   })
 
-  it('ignores a body-panel SKU in the same slot - it is not aerodynamic', () => {
-    // The car keeps exactly the aero it came with: a cosmetic kit neither adds
-    // downforce nor removes the factory figure.
-    const fitted = effectiveDownforce(carWithAero(BODY_KIT), SUPRA, CONTEXT.partsById, AERO)
-    expect(fitted.downforceCoeff).toBe(factoryDownforceCoeff(SUPRA, AERO))
-    expect(fitted.dragCdDelta).toBe(0)
+  it('is untouched by a cosmetic body kit, which occupies a body slot of its own', () => {
+    // The kit says what the car looks like and the wing says what it does. They
+    // shared the `aero` slot once, which meant fitting the first silently
+    // returned the car to factory downforce; they are separate addresses now.
+    expect(BODY_KIT.carPartId).toBe('panels')
+    const kitOnly = effectiveDownforce(carWithAero(BODY_KIT), SUPRA, CONTEXT.partsById, AERO)
+    expect(kitOnly.downforceCoeff).toBe(factoryDownforceCoeff(SUPRA, AERO))
+    expect(kitOnly.dragCdDelta).toBe(0)
+    const wingAndKit = alsoFitting(carWithAero(aeroPart('race')), BODY_KIT)
+    expect(effectiveDownforce(wingAndKit, SUPRA, CONTEXT.partsById, AERO)).toEqual(
+      AERO.byGrade.race,
+    )
   })
 
   it('better aero grades make more downforce and cost more drag', () => {
@@ -208,11 +234,19 @@ describe('aero in the lap model', () => {
     expect(time('race')).toBeLessThanOrEqual(time('sport'))
   })
 
-  it('a cosmetic body kit in the aero slot changes no lap time', () => {
+  it('a cosmetic body kit changes no lap time, fitted alone or over a race wing', () => {
     const stock = lapTimeSecondsFor(carWithAero(), SUPRA, CONTEXT, 'misaki')
     const bodyKit = lapTimeSecondsFor(carWithAero(BODY_KIT), SUPRA, CONTEXT, 'misaki')
     expect(stock).not.toBeNull()
     expect(bodyKit).toBe(stock)
+    const wing = lapTimeSecondsFor(carWithAero(aeroPart('race')), SUPRA, CONTEXT, 'misaki')
+    const wingAndKit = lapTimeSecondsFor(
+      alsoFitting(carWithAero(aeroPart('race')), BODY_KIT),
+      SUPRA,
+      CONTEXT,
+      'misaki',
+    )
+    expect(wingAndKit).toBe(wing)
   })
 
   it('a car making downforce reads HIGHER on the handling stat', () => {

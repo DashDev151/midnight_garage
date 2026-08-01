@@ -22,11 +22,12 @@ import {
 const VIEW_IDS: readonly WorkshopViewId[] = ['body', 'engineBay', 'underside']
 
 /**
- * `panels`, `paint` and `underbody` derive their bands from zone state and have
- * no on-car actions of their own, so they are value carriers rather than work
- * targets and get no region at all.
+ * `paint` derives its band from zone state, has no on-car action of its own
+ * and no SKU to fit, so it is a value carrier rather than a work target and
+ * gets no region at all. `panels` and `underbody` derive their bands the same
+ * way but take a fitted body kit, so both do have one.
  */
-const DERIVED_CARRIERS: readonly CarPartId[] = ['panels', 'paint', 'underbody']
+const REGIONLESS_CARRIERS: readonly CarPartId[] = ['paint']
 
 /** Positive-area intersection (a shared edge alone is not an overlap). */
 function overlaps(a: ViewRect, b: ViewRect): boolean {
@@ -113,14 +114,14 @@ describe('workshop view layout', () => {
     }
   })
 
-  it('covers every car part except the three derived carriers', () => {
+  it('covers every car part except paint', () => {
     const expected = PARTS_TAXONOMY.map((entry) => entry.id).filter(
-      (id) => !DERIVED_CARRIERS.includes(id),
+      (id) => !REGIONLESS_CARRIERS.includes(id),
     )
     const covered = allRegions.filter((r) => r.kind === 'part').map((r) => r.partId)
     expect([...covered].sort()).toEqual([...expected].sort())
-    for (const carrier of DERIVED_CARRIERS) {
-      expect(covered, `${carrier} derives from zone state and must have no region`).not.toContain(
+    for (const carrier of REGIONLESS_CARRIERS) {
+      expect(covered, `${carrier} has nothing to fit and must have no region`).not.toContain(
         carrier,
       )
     }

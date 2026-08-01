@@ -58,7 +58,7 @@ const ByPriceBasisIdPriceSchema = ByCarPartIdPriceSchema.extend({
    * of the derived `panels` carPartId's own base. */
   zonePanel: z.number().int().positive().optional(),
   /** The base an aftermarket body-kit SKU prices from. A kit sits in the
-   * `aero` slot and is bought over a counter; the `panels` base prices a
+   * `panels` slot and is bought over a counter; the `panels` base prices a
    * car's bodyshell instead, so the two move independently. */
   bodyKit: z.number().int().positive().optional(),
 })

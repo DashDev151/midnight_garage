@@ -22,6 +22,7 @@ import {
   planPaintStage,
   planPipelineStage,
   planSwapPanel,
+  refitCarrierZoneStates,
   zonePanelPart,
   type BodyLineCapability,
   type PipelineStageEffect,
@@ -568,6 +569,7 @@ export function previewPlannedWork(
   if (!car) return null
   const staged = state.stagedCarWork[carInstanceId] ?? []
   let parts = car.parts
+  let zoneState = car.zoneState
 
   for (const action of staged) {
     if (action.kind === 'repair') {
@@ -616,8 +618,17 @@ export function previewPlannedWork(
       const targetPartId = action.carPartId ?? catalogPart?.carPartId
       if (!targetPartId) continue
       parts = { ...parts, [targetPartId]: { installed: partInstance } }
+      // Fitting a body value carrier refits the zones it covers, so the
+      // projection carries the paint the car will owe rather than showing a
+      // fresh kit over the finish it is about to lose (`applyJobToCar`).
+      if (zoneState && isBodyDerivedPart(targetPartId)) {
+        zoneState = refitCarrierZoneStates(zoneState, targetPartId, partInstance.band)
+      }
     }
   }
 
-  return { ...car, parts }
+  if (zoneState === car.zoneState) return { ...car, parts }
+  const model = context.modelsById[car.modelId]
+  const projected: CarInstance = { ...car, parts, zoneState }
+  return model ? applyDerivedBodyBands(projected, model, context) : projected
 }

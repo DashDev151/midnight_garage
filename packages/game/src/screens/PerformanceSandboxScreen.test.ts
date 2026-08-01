@@ -145,10 +145,10 @@ describe('PerformanceSandboxScreen', () => {
     await click(wrapper, 'set-all-grade-race')
     const build = renderedBuild(wrapper)
     const held = Object.keys(build).filter((id) => build[id] !== 'fine/race')
-    // Panels, paint and underbody have no aftermarket SKU at any grade, so
-    // set-all leaves them where they are rather than fitting something the
-    // catalogue does not have.
-    expect(held.sort()).toEqual(['paint', 'panels', 'underbody'])
+    // Paint is the one slot with no aftermarket SKU at any grade, so set-all
+    // leaves it where it is rather than fitting something the catalogue does
+    // not have.
+    expect(held.sort()).toEqual(['paint'])
     for (const id of held) {
       expect(build[id]).toBe('fine/stock')
       expect(wrapper.find(`[data-test="slot-grade-${id}-race"]`).exists()).toBe(false)

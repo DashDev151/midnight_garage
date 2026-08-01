@@ -279,6 +279,11 @@ export interface CarPartRowView {
    * the shell itself, repaired in place and never pulled. The car-detail
    * screen's "Take it off" control only ever renders when this is true. */
   removable: boolean
+  /** True only for the three body value carriers, whose slot is never empty
+   * and whose fitted part is swapped in place rather than pulled first
+   * (`installFitGate`, sim/jobs.ts). The car-detail screen offers Replace on
+   * them while they are occupied; every other slot has to be emptied first. */
+  replaceInPlace: boolean
   /**
    * True when `band` above is the car's APPARENT band
    * rather than its true one - a still-open symptom targets this part and
@@ -1649,6 +1654,7 @@ export const useGameStore = defineStore('game', () => {
         legitimatelyAbsent: !installed && !missing,
         repairable: isPartRepairable(partId),
         removable: context.value.partsTaxonomyById[partId]?.removable ?? true,
+        replaceInPlace: isBodyDerivedPart(partId),
         uncertain: displayed.uncertain,
       }
     })
@@ -2701,7 +2707,10 @@ export const useGameStore = defineStore('game', () => {
     const model = car ? context.value.modelsById[car.modelId] : undefined
     const componentId = groupForCarPart(carPartId)
     if (!car || !model || !componentId) return []
-    if (car.parts[carPartId].installed) return []
+    // A body value carrier's slot is never empty and its identity changes by
+    // replacement (`installFitGate`, sim/jobs.ts), so it keeps offering
+    // candidates while it is occupied; every other slot must be empty first.
+    if (car.parts[carPartId].installed && !isBodyDerivedPart(carPartId)) return []
     return gameState.value.partInventory.filter((pi) => {
       if (pi.band === 'scrap') return false
       if (!isPartAvailableFor(pi, carId)) return false
@@ -3392,20 +3401,23 @@ export const useGameStore = defineStore('game', () => {
       // drawer can't stage an install that would only fail silently later. When
       // `action.carPartId` is set, also refuse a part whose own catalog address
       // doesn't match that exact slot, or whose exact slot is already occupied.
-      // `slotEmpty` always resolves from the picked part's own catalog address
+      // Occupancy always resolves from the picked part's own catalog address
       // (`part.carPartId`) - most slots start filled with a stock part now, so
       // a group-level stage needs the same real occupied-slot check a per-part
-      // one always had, not just when `action.carPartId` happens to be set.
+      // one always had, not just when `action.carPartId` happens to be set. A
+      // body value carrier is the exception: its slot is never empty, so an
+      // install there replaces what is fitted (`installFitGate`, sim/jobs.ts).
       const model = context.value.modelsById[car.modelId]
       const partInstance = gameState.value.partInventory.find((p) => p.id === action.partInstanceId)
       const part = partInstance ? context.value.partsById[partInstance.partId] : undefined
-      const slotEmpty = !!part && !car.parts[part.carPartId].installed
+      const slotTakesPart =
+        !!part && (!car.parts[part.carPartId].installed || isBodyDerivedPart(part.carPartId))
       if (
         !model ||
         !part ||
         !partInstance ||
         partInstance.band === 'scrap' ||
-        !slotEmpty ||
+        !slotTakesPart ||
         !partFitsCar(
           part,
           model,

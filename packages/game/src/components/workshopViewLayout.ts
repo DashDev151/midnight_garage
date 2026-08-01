@@ -73,13 +73,18 @@ function part(partId: CarPartId, ...rects: readonly ViewRect[]): WorkshopRegion 
 
 /**
  * The three views, keyed by id. Between them the regions cover the six body
- * zones and 26 of the 29 car parts: `panels`, `paint` and `underbody` get no
- * region at all, because they derive from zone state and carry no on-car work
- * (`repairStepFor`, `repairCeilingCaption` and `repairGateReasonFor` all
- * early-return for them). They read as a derived band summary beside the
- * schematic. Work happens on zones. Coverage is asserted against the live
- * `PARTS_TAXONOMY`, so a taxonomy change fails here rather than shipping a
- * part with nowhere to click.
+ * zones and 28 of the 29 car parts: `paint` gets no region at all, because its
+ * band derives from zone state, it carries no on-car work (`repairStepFor`,
+ * `repairCeilingCaption` and `repairGateReasonFor` all early-return for it)
+ * and the catalogue sells nothing to fit there. Repair work on the shell
+ * happens on zones.
+ *
+ * `panels` and `underbody` derive their bands the same way and are still never
+ * repaired directly, but a body kit is fitted at them, so each has a region to
+ * fit it at: the frame the body plan sits inside, and the sills down the
+ * lift's long edges. Coverage is asserted against the live `PARTS_TAXONOMY`,
+ * so a taxonomy change fails here rather than shipping a part with nowhere to
+ * click.
  */
 export const WORKSHOP_VIEWS: Record<WorkshopViewId, WorkshopView> = {
   /**
@@ -101,6 +106,15 @@ export const WORKSHOP_VIEWS: Record<WorkshopViewId, WorkshopView> = {
       part('seats', { x: 180, y: 52, w: 52, h: 76 }),
       zone('boot', { x: 232, y: 52, w: 60, h: 76 }),
       part('aero', { x: 294, y: 30, w: 22, h: 120 }),
+      // The shell as a whole - the outline the plan sits inside, which is
+      // where a body kit changes a car's shape. A frame rather than a
+      // rectangle over the car, so it can never swallow a panel zone's clicks.
+      part(
+        'panels',
+        { x: 10, y: 20, w: 306, h: 10 },
+        { x: 10, y: 30, w: 10, h: 120 },
+        { x: 10, y: 150, w: 306, h: 10 },
+      ),
     ],
   },
 
@@ -159,6 +173,10 @@ export const WORKSHOP_VIEWS: Record<WorkshopViewId, WorkshopView> = {
       zone('chassis', { x: 20, y: 95, w: 280, h: 30 }),
       part('rims', { x: 20, y: 125, w: 140, h: 35 }),
       part('tyres', { x: 160, y: 125, w: 140, h: 35 }),
+      // The sills down each long edge - the underside dress a skirt, splitter
+      // or flat floor is fitted to, kept clear of the chassis zone the
+      // underseal work itself happens on.
+      part('underbody', { x: 0, y: 20, w: 20, h: 140 }, { x: 300, y: 20, w: 20, h: 140 }),
     ],
   },
 }
