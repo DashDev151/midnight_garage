@@ -224,9 +224,11 @@ agreement), `powerRpm`, `peakTorqueNm`, `torqueRpm`, `redlineRpm`, `displacement
 
 ### 3b. The three per-car game constants
 
-**`reliabilityBase`** is what the car reads when everything about it is right. A mint, stock,
-coherently built example scores exactly this and nothing ever scores higher; condition and build
-coherence only take it down (`docs/sprints/sprint_archive/sprint136.md`).
+**`reliabilityBase`** is what the car reads when everything about it is right. A mint, stock
+example scores exactly this and nothing ever scores higher; condition, build coherence and the
+extra power a build makes only take it down (`docs/sprints/sprint_archive/sprint136.md`). A built
+car reads below its base however coherent it is, because the build-intensity term charges for the
+power itself: a fully supported race build measures 83 on the base-100 Carina.
 
 **The scale is 65 to 100 and the axis is age and engineering culture, not price.** An NSX is a
 supercar you can drive to work and a Countach is not, so they sit thirty points apart inside the
@@ -243,9 +245,10 @@ those are the two systems the tuning arc exists to make matter.
 | 72-77 | the 1960s Japanese classics, and the triple-rotor Cosmo |
 | 65-71 | Italy, and a 1965 Mini |
 
-**`styleBase`** (0 to 20) is **authored for all 94 rows and BUILT**: it landed in
-`docs/sprints/sprint_archive/sprint145.md`, `CarModel.spec.styleBase` is a required schema field,
-all 26 shipped cars carry it, and the flat `statFormulas.styleCap` it replaced is retired.
+**`styleBase`** (authored 15 to 88, on a schema band of 0 to 100) is **authored for all 94 rows
+and BUILT**: it landed in `docs/sprints/sprint_archive/sprint145.md`, `CarModel.spec.styleBase`
+is a required schema field, all 26 shipped cars carry it, and the flat `statFormulas.styleCap`
+it replaced is retired.
 `rosterCsvGuard.test.ts` holds every row inside the authored band.
 
 **`aeroCeiling`** (0 to 1) scales what a fitted aero SKU's downforce is worth on a given body, so
@@ -264,7 +267,7 @@ Counts are out of 94.
 | `flavour` | **0** | Deliberate. Ninety-four flavour lines written in one pass would be filler, and the copy bar (`CLAUDE.md`, the game-tone law) does not allow filler. Written per car, by hand, against the "lived in Japan in 1995" test. |
 | `rarity` | 26 | A spawn-rate lever, so it is directive 22 territory as well as directive 24. Needs the full 94 signed. |
 | `styleBase` | **94** | Complete, and built. Section 3b. |
-| `aeroCeiling` | 26 | Section 3b. Still the wrong scope under directive 24, and unsigned. |
+| `aeroCeiling` | **94** | Complete, built and signed. Section 3b. |
 | `stockPowerPs` and the rest of the engine block | 56 | 26 from `cars.json`, 30 from the research sweep. |
 | geometry (`wheelbaseMm`, `dragCd`, `comHeightMm`, tyres) | 26 | Only the shipped cars have been through the spec book. |
 | measured lateral G and braking | 43-46 | The research sweep did not reach every car. |
@@ -520,3 +523,14 @@ is the opposite error and was a plain misnaming: EF3 is the 1.6 Si, so the cheap
   car moved.** `aeroCeiling`, which shared the sentence being corrected, keeps its 26-of-94 status
   and its unsigned mark unchanged. The edit landed in commit `1fb2681`, flagged there for
   ratification rather than assumed; this entry is that ratification.
+
+- **2026-08-02: APPROVED. The `aeroCeiling` entries in sections 3b and 3c, corrected from
+  "authored for the 26 shipped cars only, the wrong scope under directive 24, and unsigned" to
+  "authored for all 94 rows, built and signed".** The 68 missing values were authored against the
+  rubric in `docs/sprints/sprint_archive/sprint140.md`, which also records the classics ruling and
+  the reasoning behind each outlier, and the maintainer ratified all 94 on review of that pass.
+  `midnight-garage-roster.csv` carries a value on every row, range 0.20 to 1.00;
+  `CarModel.spec.aeroCeiling` is a schema-required field authored for all 26 shipped cars; and
+  `rosterCsvGuard.test.ts` now holds the column, proved by mutation. **No rule moved, and the two
+  ends of the ladder are pinned**: the 0.20 floor is the Wagon R's, and the 1.00 club is eight
+  cars. This closes both the directive-24 scope question and the directive-22 signature.

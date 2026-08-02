@@ -78,6 +78,17 @@ export function zoneNeedsPanel(zone: ZoneState): boolean {
   return zone.panelMissing || zone.metal > MAX_REPAIRABLE_METAL
 }
 
+/** The panel zones carrying no paint: stripped back, or wearing a panel that
+ * arrived bare and has not been sprayed since. These are the zones holding
+ * `derivePaintBand` down, and so the ones the style and authenticity readouts
+ * are paying for. A zone with no panel on it is a different fact with its own
+ * words, and is not counted here. */
+export function unpaintedPanelZoneIds(zoneStates: ZoneStates): PanelZoneId[] {
+  return PANEL_ZONE_IDS.filter(
+    (zoneId) => !zoneStates[zoneId].panelMissing && zoneStates[zoneId].finish >= BARE_FINISH,
+  )
+}
+
 /** Zone body score = max(metal, surface); `panels` band is the worst body
  * score across the five panel zones, mapped 0 mint/1 fine/2 worn/3 poor/4
  * scrap - and any missing panel forces `scrap` outright, since an absent

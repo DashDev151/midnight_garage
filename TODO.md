@@ -220,6 +220,17 @@ pass."
 
 ## Open engineering
 
+- [ ] **`docs/carstats/` needs a re-measure: Sprint 166 moved three of the things it measured.**
+  Those five documents are a measurement snapshot, and the sprint they produced changed the code
+  under parts of it. Closed by the sprint, so read as history until re-measured: `handling.md`
+  finding 3 and its `spec.aeroCeiling` row (a fitted aero part added to the factory figure rather
+  than replacing it, so no wing lowers downforce and the winged rows of the bounds table are all
+  larger); `power.md` finding 2 and section 2f's `spec.aspiration` bullet (`hasForcedInduction`
+  reads the aspiration now, and the tag is a display facet); and `reliability.md` finding 4 (the
+  dyno's four figures reconcile). Every other figure in the five is untouched: all 26 shipped cars
+  read exactly what they read before on every stat and every course. Re-measuring is a
+  run-the-numbers pass, not a design question, which is why it sits here rather than in a sprint.
+
 - [ ] **THE TUTORIAL COPY NEEDS A REVIEW PASS: the scripted car is no longer scruffy (maintainer
   note, 2026-07-31, flagged for later and deliberately NOT rewritten at the time).** The expected
   condition band for `entry` cars moved to `fine`, so `tutorialLot.json`'s Wagon R was re-authored
@@ -1171,13 +1182,14 @@ pass."
   `CarModel.spec` plus a tag, the physics reads only `stockPowerPs`, and there is nowhere to
   record a swap at all, since engine identity lives on shared content while `CarInstance`
   carries only parts and condition. Two cars of the same model cannot currently have
-  different engines. Riding with it: aspiration is stored twice and the two are unguarded
-  (`hasForcedInduction` reads the `Turbo`/`Supercharged` tags, never `spec.aspiration`), and
-  a swap changes aspiration, so that duplicate has to be collapsed rather than worked
-  around. Step 1 of the doc's build order (author the engines as content, point
-  `spec.engineCode` at them) is zero behaviour change, independently shippable, and worth
-  doing whether or not swaps are ever built, because it also gives the tuning system the
-  per-engine response character it needs. Four open questions remain: donor car or engines
+  different engines. Riding with it: aspiration is stored twice, on `spec.aspiration` and on
+  the induction tag (`hasForcedInduction` reads the required `spec.aspiration`, and
+  `integrity.test.ts` holds the tag in agreement with it), and a swap changes aspiration, so
+  that duplicate has to be collapsed rather than worked around. Step 1 of the doc's build
+  order (author the engines as content, point `spec.engineCode` at them) is zero behaviour
+  change, independently shippable, and worth doing whether or not swaps are ever built,
+  because it also gives the tuning system the per-engine response character it needs. Four
+  open questions remain: donor car or engines
   bought outright, whether the original lump can be kept and refitted, how many engines get
   authored for v1.0, and whether a swapped engine arrives with a condition of its own.
 

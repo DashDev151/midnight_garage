@@ -1,5 +1,5 @@
-import type { ZoneState } from '@midnight-garage/content'
-import { zoneNeedsPanel } from '@midnight-garage/sim'
+import type { ZoneState, ZoneStates } from '@midnight-garage/content'
+import { unpaintedPanelZoneIds, zoneNeedsPanel } from '@midnight-garage/sim'
 
 /**
  * The three layers of a body zone's work model, worst-last within each:
@@ -39,4 +39,23 @@ export function zoneNeedsPanelText(zone: ZoneState): string | null {
 /** One zone's three severities as a plain readout. */
 export function zoneSeverityText(zone: ZoneState): string {
   return ZONE_LAYERS.map((layer) => `${layer.label} ${zone[layer.id]} of ${layer.max}`).join(', ')
+}
+
+/** The panel count spelled out, so the line below reads as prose rather than
+ * as a figure. A body carries five panel zones and no more. */
+const PANEL_COUNT_WORDS: readonly string[] = ['', 'One', 'Two', 'Three', 'Four', 'Five']
+
+/**
+ * The line a car with unpainted panels carries, or `null` when it has none.
+ * Fitting a body kit leaves every panel it covers bare, so the paint band
+ * drops and takes style and authenticity down with it. Both numbers are
+ * right, and both return when the car is painted; without this line the
+ * player only sees them fall.
+ */
+export function unpaintedPanelsText(zoneStates: ZoneStates): string | null {
+  const count = unpaintedPanelZoneIds(zoneStates).length
+  if (count === 0) return null
+  const word = PANEL_COUNT_WORDS[count] || String(count)
+  const subject = count === 1 ? `${word} panel is` : `${word} panels are`
+  return `${subject} still unpainted. Style and authenticity read low while the car sits like that, and both come back once the paint is on.`
 }

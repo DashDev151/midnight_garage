@@ -252,6 +252,8 @@ describe('the grade shapes from Lever 4, pinned per slot', () => {
   })
 })
 
-// The "no file under packages/sim/src reads spec.aspiration" guard lives in
-// packages/content/tests/retiredIdentifiers.test.ts, the general ledger of
-// every retired identifier, rather than as a one-off copy here.
+// `hasForcedInduction` reads `spec.aspiration` and nothing else; the test that
+// holds it to that, against a model whose induction tag deliberately disagrees,
+// lives beside the function in packages/sim/tests/bands.test.ts. That the two
+// representations agree on every shipped car is
+// packages/content/tests/integrity.test.ts's.

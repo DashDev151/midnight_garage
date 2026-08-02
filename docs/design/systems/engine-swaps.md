@@ -45,26 +45,30 @@ the immutable `CarModel.spec` plus a tag:
 
 Three consequences, all load-bearing:
 
-**The physics reads only `stockPowerPs`.** `formulas.md` section 2 states that
-torque, torque rpm, power rpm, redline and capacity are "Display data; the physics
-does not read them". `engineConfig` and `aspiration` are read by nothing in the
-physics path either.
+**The physics reads `stockPowerPs`, and `aspiration` only through the power a build
+makes.** `formulas.md` section 2 states that torque, torque rpm, power rpm, redline
+and capacity are "Display data; the physics does not read them". `engineConfig` is
+read by nothing in the physics path either; `aspiration` reaches it through
+`hasForcedInduction`, which sets the engine character and so the fraction of stock
+power each tuning part charges.
 
 **There is nowhere to record a swap.** Engine identity lives on `CarModel`, which is
 shared content, and `CarInstance` carries only `parts` and condition. Two cars of
 the same model cannot currently have different engines. **This is a schema question
 before it is a design question.**
 
-**Aspiration is stored twice and the two are unguarded.** `hasForcedInduction` does
-NOT read `spec.aspiration`; it reads tags:
+**Aspiration is stored twice, on `spec.aspiration` and on the induction tag.**
+`hasForcedInduction` reads the required `spec.aspiration` field, which is the single
+source of truth for induction:
 
 ```ts
-return model.tags.includes('Turbo') || model.tags.includes('Supercharged')
+return model.spec.aspiration !== 'NA'
 ```
 
-The schema refinement guards only the tag side. Nothing checks that
-`aspiration: 'turbo'` and the `Turbo` tag agree. A swap changes aspiration, so this
-duplicate has to be collapsed as part of the work rather than worked around.
+The tag is a platform facet for display and matching, and
+`packages/content/tests/integrity.test.ts` holds the two in agreement. A swap changes
+aspiration, so this duplicate has to be collapsed as part of the work rather than
+worked around.
 
 ---
 

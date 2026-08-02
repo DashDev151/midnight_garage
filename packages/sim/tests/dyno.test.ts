@@ -19,6 +19,7 @@ import {
   specificOutputOf,
 } from '../src/derivedStats'
 import {
+  displayedReliabilitySplit,
   dynoJobIdFor,
   dynoOwned,
   dynoReadingFor,
@@ -401,5 +402,85 @@ describe('the reliability split', () => {
     // Even a supported build pays for the power itself; an unsupported one
     // pays that too, independently of what it is short of.
     expect(collapsed.intensityLossPoints).toBeGreaterThan(0)
+  })
+})
+
+/**
+ * The split as the sheet prints it. The underlying identity is exact to about
+ * 1e-14, but whole points are what the player reads, and three roundings taken
+ * one at a time can quietly lose one between them.
+ */
+describe('the displayed reliability split', () => {
+  /** Every slot in the catalogue that makes power, so the build asks the most
+   * of the car that shipped content can ask. */
+  const MAXIMAL_GAIN: Partial<Record<CarPartId, Grade>> = {
+    block: 'race',
+    internals: 'race',
+    headValvetrain: 'race',
+    camsTiming: 'race',
+    intake: 'race',
+    exhaust: 'race',
+    ignitionEcu: 'race',
+    forcedInduction: 'race',
+  }
+  const SHAPES: Partial<Record<CarPartId, Grade>>[] = [{}, BARE_RACE_TURBO, MAXIMAL_GAIN]
+  const BANDS = ['mint', 'fine', 'worn', 'poor', 'scrap'] as const
+
+  it('accounts for the whole base, on every shipped car across every build shape and band', () => {
+    for (const model of CARS) {
+      for (const grades of SHAPES) {
+        for (const band of BANDS) {
+          const car = carWithGrades(model, CONTEXT, grades, band)
+          const reading = dynoReadingFor(
+            car,
+            model,
+            CONTEXT.partsById,
+            CONTEXT.partsTaxonomy,
+            ECONOMY,
+          )
+          const split = displayedReliabilitySplit(reading)
+          expect(
+            reading.reliabilityStat +
+              split.conditionCostPoints +
+              split.coherenceCostPoints +
+              split.powerCostPoints,
+            `${model.id} at ${band}`,
+          ).toBe(reading.reliability.base)
+          // Reconciling is not licence to invent: every figure still stands
+          // within a point of the loss it is reporting.
+          expect(
+            Math.abs(split.conditionCostPoints - reading.reliability.conditionLossPoints),
+            `${model.id} at ${band}: condition`,
+          ).toBeLessThan(1)
+          expect(
+            Math.abs(split.coherenceCostPoints - reading.reliability.coherenceLossPoints),
+            `${model.id} at ${band}: coherence`,
+          ).toBeLessThan(1)
+          expect(
+            Math.abs(split.powerCostPoints - reading.reliability.intensityLossPoints),
+            `${model.id} at ${band}: the power itself`,
+          ).toBeLessThan(1)
+        }
+      }
+    }
+  })
+
+  it('closes the case rounding one at a time missed: a maximal unsupported build at poor', () => {
+    const car = carWithGrades(SILVIA, CONTEXT, MAXIMAL_GAIN, 'poor')
+    const reading = dynoReadingFor(car, SILVIA, CONTEXT.partsById, CONTEXT.partsTaxonomy, ECONOMY)
+    const independently =
+      reading.reliabilityStat +
+      Math.round(reading.reliability.conditionLossPoints) +
+      Math.round(reading.reliability.coherenceLossPoints) +
+      Math.round(reading.reliability.intensityLossPoints)
+    expect(reading.reliability.base).toBe(92)
+    expect(independently).toBe(91)
+    const split = displayedReliabilitySplit(reading)
+    expect(
+      reading.reliabilityStat +
+        split.conditionCostPoints +
+        split.coherenceCostPoints +
+        split.powerCostPoints,
+    ).toBe(92)
   })
 })

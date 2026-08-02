@@ -407,18 +407,21 @@ export function aeroGripMultiplier(v: number, downforceCoeff: number, aero: Aero
 }
 
 /**
- * The aero a car is actually running: a fitted aero-functional SKU provides its
- * grade's downforce and drag, and REPLACES the factory figure (it occupies the
- * same slot - the factory item came off). Anything else, including a cosmetic or
+ * The aero a car is actually running: a fitted aero-functional SKU ADDS its
+ * grade's downforce to whatever the car's own body already makes, and brings
+ * its drag with it. The factory figure is a floor, not something a bolt-on
+ * replaces: a wing replaces the spoiler it sits where, never the underbody and
+ * shape the car was drawn with, so no fitted part can leave a car generating
+ * less grip than it did bare. Anything else, including a cosmetic or
  * body-panel SKU in the aero slot, leaves the car on its own factory downforce
  * at no extra drag, since a published Cd already includes the factory bodywork.
  *
- * The car's own `spec.aeroCeiling` scales what a fitted part's downforce is
- * worth, so the same wing is transformative on a body with real aerodynamic
- * potential and nearly inert on one without. It scales the downforce ONLY: the
- * drag arrives in full whatever the body, which is what makes a wing on the
- * wrong car a straight loss. It never touches the factory figure, so a stock
- * car reads exactly as it is measured.
+ * The car's own `spec.aeroCeiling` scales what the FITTED part adds, so the
+ * same wing is transformative on a body with real aerodynamic potential and
+ * nearly inert on one without. It scales that addition ONLY: the factory floor
+ * is untouched, so a stock car reads exactly as it is measured, and the drag
+ * arrives in full whatever the body, which is what makes a wing on the wrong
+ * car a straight loss rather than a small gain.
  */
 export function effectiveDownforce(
   car: CarInstance,
@@ -432,7 +435,8 @@ export function effectiveDownforce(
     if (part?.aeroFunctional) {
       const graded = aero.byGrade[part.grade]
       return {
-        downforceCoeff: graded.downforceCoeff * model.spec.aeroCeiling,
+        downforceCoeff:
+          factoryDownforceCoeff(model, aero) + graded.downforceCoeff * model.spec.aeroCeiling,
         dragCdDelta: graded.dragCdDelta,
       }
     }

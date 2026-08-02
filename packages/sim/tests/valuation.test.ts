@@ -47,6 +47,7 @@ const model: CarModel = {
     yearTo: 1993,
     curbWeightKg: 1590,
     stockPowerPs: 280,
+    aspiration: 'twin-turbo',
     reliabilityBase: 94,
     styleBase: 74,
     styleCeiling: 95,

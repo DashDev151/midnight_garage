@@ -50,9 +50,10 @@ function deltaFor(car: Parameters<typeof saleReputationDeltaFor>[0], forModel = 
 /**
  * `saleReputationDeltaFor` takes a `model` parameter to decide whether an
  * empty `forcedInduction` slot is a real defect or legitimate absence.
- * `model` is Turbo-tagged (matching every fixture in this file, which
+ * `model` is factory forced (matching every fixture in this file, which
  * always fills the slot anyway); `naModel` is used only by the tests that
- * specifically exercise legitimate absence.
+ * specifically exercise legitimate absence. Both carry a matching induction
+ * tag beside the aspiration `hasForcedInduction` actually reads.
  */
 const model: CarModel = {
   id: 'test-model',
@@ -68,6 +69,7 @@ const model: CarModel = {
     yearTo: 1990,
     curbWeightKg: 1200,
     stockPowerPs: 150,
+    aspiration: 'turbo',
     reliabilityBase: 90,
     styleBase: 20,
     styleCeiling: 80,
@@ -83,6 +85,7 @@ const model: CarModel = {
 const naModel: CarModel = {
   ...model,
   id: 'test-model-na',
+  spec: { ...model.spec, aspiration: 'NA' },
   tags: ['FR', 'NA', 'Piston', '90s', 'JDM'],
 }
 

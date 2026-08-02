@@ -966,6 +966,14 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
       {{ detail.supportReadout.copy }}
     </p>
 
+    <p
+      v-if="!inTransit && detail.unpaintedPanelsNote"
+      class="unpainted-note"
+      data-test="unpainted-panels-note"
+    >
+      {{ detail.unpaintedPanelsNote }}
+    </p>
+
     <section v-if="inTransit" class="arriving-banner" data-test="arriving-banner">
       <h3>Customer job - {{ detail.serviceJob?.customerName }}</h3>
       <p class="svc-desc">"{{ detail.serviceJob?.description }}"</p>
@@ -2367,6 +2375,15 @@ h4 {
 
 .support-readout.listing {
   margin-top: 0;
+}
+
+.unpainted-note {
+  margin: var(--mg-space-2) 0 0;
+  padding: var(--mg-space-2);
+  border: 1px dashed var(--mg-panel-edge);
+  border-radius: var(--mg-radius);
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
 }
 
 .passion-notice {

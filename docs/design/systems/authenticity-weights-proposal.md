@@ -181,27 +181,29 @@ slots, which is a clean read: what a tuner keeps of a car's authenticity is its 
 
 ## 3. Structural findings the maintainer should see before signing
 
-### 3.1 `paint`, `panels` and `underbody` can never be non-stock today
+### 3.1 `paint` can never be non-stock today
 
-`packages/content/data/parts.json` has no aftermarket SKU for any of them. Panels' 20 "zone" SKUs
-(bonnet, boot, roof, left, right, across four rarity prefixes) are all `grade: "stock"`; paint and
-underbody have `stock-paint` and `stock-underbody` and nothing else.
+`packages/content/data/parts.json` has no aftermarket SKU for it at any of the four fitment
+classes: `paint` holds `stock-paint` and its three fitment-class siblings and nothing else.
+`panels` and `underbody` shared this gap when the weights were written and no longer do; both now
+carry a street, sport and race ladder and read as modified correctly.
 
-So **23 of the 100 points can never be lost to modification.** Their weight is not dead: the same
+So **11 of the 100 points can never be lost to modification.** That weight is not dead: the same
 column drives the authenticity condition factor, where it is load-bearing and correct, and rough
 paint, dented panels or a rusty floor should sink a car's authenticity harder than anything else on
 the list. But it does mean the brief's strongest claim, that a resprayed car is a different object,
-**is not currently expressible**: a respray and a replacement wing both read as fully original.
+**is not currently expressible**: a respray reads as fully original.
 
 Fixing that is a content job (a non-stock paint or panel grade, or a `resprayed`/`replaced` flag on
 the fitted part), not a weight change. Flagging it, not solving it.
 
-### 3.2 `aero` carries the whole visible-body signal
+### 3.2 `aero` no longer carries the whole visible-body signal
 
-Because of 3.1, `aero` is the only slot a visible body modification can land on. Its 10 is high for
-what is, in the abstract, a bolt-on. I have still kept it below `paint` and `panels`, because the
-brief's ordering is explicit and the weights should say what is true rather than what today's SKU
-catalogue can express.
+`aero` was the only slot a visible body modification could land on. `panels` (11) and `underbody`
+(1) now carry ladders of their own, so a visible modification lands on three slots and `panels`
+outweighs `aero`. Aero's 10 is high for what is, in the abstract, a bolt-on. I have still kept it
+below `paint` and `panels`, because the brief's ordering is explicit and the weights should say
+what is true rather than what today's SKU catalogue can express.
 
 ### 3.3 `chassis` is `removable: false` but has non-stock SKUs
 

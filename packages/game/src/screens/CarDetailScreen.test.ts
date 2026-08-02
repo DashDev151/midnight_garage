@@ -945,6 +945,65 @@ describe('CarDetailScreen', () => {
     })
   })
 
+  describe('the unpainted-panel note', () => {
+    /** Every zone straight, sound and wearing one colour: a car with nothing
+     * for the note to report. A granted car's zones are rolled, so a test
+     * about what fitting a kit DOES has to start from a known finish. */
+    function paintEveryZone(game: ReturnType<typeof useGameStore>, carId: string): void {
+      const car = game.gameState.ownedCars.find((c) => c.id === carId)!
+      const painted: ZoneState = {
+        metal: 0,
+        surface: 0,
+        finish: 0,
+        panelMissing: false,
+        primed: false,
+        colour: PAINT_COLOURS[0]!.id,
+      }
+      const zones = { ...car.zoneState! }
+      for (const zoneId of Object.keys(zones) as ZoneId[]) zones[zoneId] = { ...painted }
+      car.zoneState = zones
+    }
+
+    it('is silent on a car that is all in colour, and names the cost once a body kit strips it back', async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      game.moveCar(id, 'service')
+      // Fitting body panels is gated on the welder and panel tools, which is
+      // the shop's affair rather than this note's.
+      game.devSetToolTier('body', 2)
+      paintEveryZone(game, id)
+
+      expect(game.carDetail(id)!.unpaintedPanelsNote).toBeNull()
+      const before = await mountAt(id)
+      expect(before.wrapper.find('[data-test="unpainted-panels-note"]').exists()).toBe(false)
+
+      // The real install path, not a hand-written zone state: a kit lands on
+      // `panels`, which routes every zone it covers through the panel swap and
+      // leaves all five of them in bare metal.
+      const model = game.context.modelsById[game.gameState.ownedCars[0]!.modelId]!
+      const kit =
+        game.context.aftermarketPartByCarPartId[fitmentClassForTier(model.tier)].panels?.sport
+      expect(kit).toBeDefined()
+      game.devGrantPart(kit!.id)
+      const granted = game
+        .installablePartsForPart(id, 'panels')
+        .find((pi) => pi.partId === kit!.id)!
+      game.install(id, 'body', granted.id, 'panels')
+
+      expect(game.carDetail(id)!.unpaintedPanelsNote).toContain('Five panels are still unpainted.')
+      // The note explains a drop that has already happened and moves nothing:
+      // the `paint` carrier derives off those bare zones, and it is that band
+      // that drags the style and authenticity condition factors down.
+      expect(game.gameState.ownedCars[0]!.parts.paint.installed!.band).toBe('poor')
+
+      const { wrapper } = await mountAt(id)
+      const note = wrapper.find('[data-test="unpainted-panels-note"]')
+      expect(note.exists()).toBe(true)
+      expect(note.text()).toContain('Style and authenticity read low')
+    })
+  })
+
   describe('Sprint 114: the selling rework (channel picker + want-line)', () => {
     /** The channels a career starts with - the two premium ones are opened by
      * a named story mission (sprint156.md), so a fresh shop cannot see them. */

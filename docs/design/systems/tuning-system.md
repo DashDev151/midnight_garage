@@ -1,22 +1,22 @@
 # The tuning system
 
-**Status: PARTLY IMPLEMENTED. Sprints 134 to 137 are BUILT and their levers are SIGNED; 140 to
-142 are not.** This document is no longer a pure proposal, so read it with the arc index
-`docs/sprints/tuning-arc.md` beside it: that table says what shipped, and **each shipped sprint's
-own doc is authoritative over this document wherever they disagree** (see "Amendments since this
-document was written", below).
+**Status: PARTLY IMPLEMENTED. Sprints 134 to 137 are BUILT and their levers are SIGNED; 140 is
+BUILT; 141 and 142 are not.** This document is no longer a pure proposal, so read it with the arc
+index `docs/sprints/tuning-arc.md` beside it: that table says what shipped, and **each shipped
+sprint's own doc is authoritative over this document wherever they disagree** (see "Amendments
+since this document was written", below).
 
 **What is in the game today:** section 1d's condition-scaled build factors (Sprint 134); the
 proportional, per-engine-character power curve and the per-slot price ladders that replaced the
 flat additive ladder (135); the per-subsystem support ratios, the coherence factor, the
 build-intensity term, and reliability rebuilt off a per-car `spec.reliabilityBase` (136 and its
-three amendments); the increasing forced-induction return curve and its own price ladder (137).
+three amendments); the increasing forced-induction return curve and its own price ladder (137);
+the per-car `spec.aeroCeiling` and the deletion of the additive handling path (140).
 Section 1d's bug is fixed and is no longer live.
 
-**What is still a proposal:** the aero ceiling and the handling deletion (Sprint 140), the dyno
-screen (141), and the grade-sensitivity curves and the condition-curve review (142). Every number
-in those parts remains unapproved; directive 22 applies, so no value may be pulled without the
-maintainer signing that specific lever.
+**What is still a proposal:** the dyno screen (141), and the grade-sensitivity curves and the
+condition-curve review (142). Every number in those parts remains unapproved; directive 22
+applies, so no value may be pulled without the maintainer signing that specific lever.
 
 The design of record for what an aftermarket part does, how a build holds together, and what that
 is worth.
@@ -45,7 +45,9 @@ and this list says where that is.
 coherent build reaches a different *set of buyers*. The maintainer's ruling goes one level deeper:
 *"WHY is there less demand for a stupid build? BECAUSE it is going to blow up. Reliability IS the
 final figure that gets moved by coherence."* So reliability becomes
-`reliabilityCap * (conditionFactor + coherenceFactor - 1)`, and buyer selection then **falls out
+`spec.reliabilityBase * clamp(conditionFactor + coherenceFactor - 1, 0, 1) * intensityFactor`
+(the per-car base is amendment 3b; the intensity factor charges for how much extra power the build
+makes at all, whether or not it is supported), and buyer selection then **falls out
 of the existing valuation path**, because reliability is already 57 per cent of a first-timer's
 taste, 37 per cent of a racer's and zero per cent of a stancer's. Section 7a's outcome is
 delivered; its proposed mechanism is not built. Whether a *premium* exists on top is Sprint 139
@@ -142,16 +144,16 @@ modifier systems, and only one respects condition.
 
 ## 2. What the data model can and cannot express
 
-**Can:** an absolute PS delta; absolute deltas to handling, style, reliability and
-authenticity; multiplicative grip, braking and mass (`physicalModifiers`, product
+**Can:** a per-engine-character fraction of the car's own stock power; an absolute
+style delta; multiplicative grip, braking and mass (`physicalModifiers`, product
 across slots); downforce and drag, but only by being one of three `aeroFunctional`
-grades that replace the car's factory figure outright; a tyre compound tier, but only
+grades, whose downforce is scaled by `spec.aeroCeiling` and added to the car's factory
+figure while their drag arrives unscaled; a tyre compound tier, but only
 through the `tyres` slot's grade.
 
-**Cannot, at all:** proportional power; any torque-curve or rev-range change; gear
-ratios, final drive or redline; weight distribution, wheelbase or centre of mass;
-drivetrain layout or aspiration; **any effect that depends on the car it is fitted
-to.**
+**Cannot, at all:** any torque-curve or rev-range change; gear ratios, final drive or
+redline; weight distribution, wheelbase or centre of mass; drivetrain layout or
+aspiration.
 
 **A trap worth naming:** `redlineRpm`, `peakTorqueNm`, `torqueRpm`, `powerRpm` and
 `displacementCc` all exist on `spec` and **the physics reads none of them**
@@ -279,7 +281,7 @@ absolute PS figure. This alone closes the x4.64 case.
 
 | character | derived from | headroom | why |
 | --- | --- | --- | --- |
-| **Forced** | the induction tag | high | boost is power until fuel, cooling or internals run out |
+| **Forced** | `spec.aspiration` | high | boost is power until fuel, cooling or internals run out |
 | **High-strung NA** | high specific output for capacity | low | a 10,000 rpm B16A left almost nothing on the table |
 | **Lazy NA** | low specific output for capacity | medium | detuned from the factory, and it gives some back |
 
@@ -302,17 +304,19 @@ which is correct. `engineConfig` already carries `rotary-2` and `rotary-3`.
 
 ### 5d. Per-part response
 
-Illustrative, not signed:
+Race-grade fractions, as shipped. **There are two NA columns, not one**: the
+character split in 5b is three-way, and `lazy-na` runs a quarter to a third above
+`high-strung-na` on every slot.
 
-| part | NA | forced | note |
-| --- | ---: | ---: | --- |
-| ignitionEcu | 0.03 | 0.25 | the flagship case: timing versus boost |
-| exhaust | 0.04 | 0.14 | noise versus backpressure and spool |
-| intake | 0.02 | 0.05 | almost nothing either way, correctly |
-| camsTiming | 0.10 | 0.05 | where NA power lives |
-| headValvetrain | 0.08 | 0.06 | porting and valves |
-| block | 0.12 | 0.02 | capacity on NA; an enabler on turbo |
-| forcedInduction | n/a | 0.35 | see 5e |
+| part | high-strung NA | lazy NA | forced | note |
+| --- | ---: | ---: | ---: | --- |
+| ignitionEcu | 0.03 | 0.05 | 0.25 | the flagship case: timing versus boost |
+| exhaust | 0.04 | 0.06 | 0.14 | noise versus backpressure and spool |
+| intake | 0.02 | 0.03 | 0.05 | almost nothing either way, correctly |
+| camsTiming | 0.10 | 0.13 | 0.05 | where NA power lives |
+| headValvetrain | 0.08 | 0.10 | 0.06 | porting and valves |
+| block | 0.12 | 0.15 | 0.02 | capacity on NA; an enabler on turbo |
+| forcedInduction | 0.20 | 0.28 | 0.35 | see 5e. NA is not n/a: a turbo fits a naturally aspirated car, gated only on engine tool tier 3 |
 
 ### 5e. Return curves differ by category
 
@@ -323,7 +327,7 @@ Illustrative, not signed:
 | Cams | roughly linear | more duration, more top end, more lost bottom end |
 | Intake | strongly diminishing | a filter, then a pipe, then nothing |
 | Exhaust | diminishing | cat-back, full system, then titanium saves weight rather than power |
-| ECU | threshold | little on its own; it unlocks what the others can do |
+| ECU | increasing | little at street grade, a quarter of stock power at race on a forced engine (0.038 / 0.138 / 0.25). It unlocks nothing: every fraction is additive and independent of what else is fitted |
 
 **Increasing returns on forced induction is NOT an anti-dominance mechanism. On its own
 it is the opposite**: it creates a new dominant strategy for any player rich enough to
@@ -568,12 +572,12 @@ in `car-performance/README.md` 7b and are re-derived once the whole system is in
 | --- | --- | --- |
 | **power** | **proportional** | section 5 |
 | **handling** | **DELETE the additive path** | a second route to what `physicalModifiers.grip` already does. The schema's own comment warns that "a second path for either would charge one upgrade twice", and this is that |
-| **style** | **keep additive** | taste, not physics. Separately needs a car-level base: `styleCap` is 20, so every stock car scores identically |
+| **style** | **gap-closing, per car** | taste, not physics. A part closes the gap between the car's own `spec.styleBase` and `spec.styleCeiling` rather than adding to a total; the flat `styleCap` of 20 it replaced is retired |
 | **reliability** | **DELETE, derive it** | section 9 |
-| **authenticity** | **keep additive** | each non-original part subtracts. Already correct |
+| **authenticity** | **DELETE, derive it** | a part's `grade` already says whether it is original, so the slot's own authenticity weight carries it and a second per-part number is a duplicate answer |
 
-`StatModifierSchema` goes from five fields to **two** (`style`, `authenticity`), with
-power moving to a proportional field and handling and reliability derived.
+`StatModifierSchema` is **two** fields (`style`, `powerFraction`), with handling,
+reliability and authenticity all derived.
 
 ---
 

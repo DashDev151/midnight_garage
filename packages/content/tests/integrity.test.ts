@@ -39,15 +39,13 @@ describe('referential integrity', () => {
    * `spec.aspiration` and `tags` are two independent representations of the
    * same fact (whether a car is factory forced-induction), and only one of
    * them is actually read by the sim: `hasForcedInduction`
-   * (`packages/sim/src/bands.ts`) reads `tags.includes('Turbo' | 'Supercharged')`
-   * only, never `spec.aspiration` (guarded structurally by
-   * `packages/sim/tests/engineCharacter.test.ts`'s "no file under
-   * packages/sim/src reads spec.aspiration"). `engineCharacterOf` calls
-   * `hasForcedInduction` first, before anything else, so a car whose tags
-   * disagree with its own `spec.aspiration` would silently compute the wrong
-   * engine character - and so the wrong power curve and the wrong support-
-   * ratio demand driver - with nothing catching the drift. All 26 shipped
-   * cars agree today; nothing enforced it before this test.
+   * (`packages/sim/src/bands.ts`) reads `spec.aspiration`, the field the
+   * roster authors for every car it holds. The induction TAG is a platform
+   * facet for display and matching, and a car whose tag disagreed with its own
+   * aspiration would advertise one engine and behave as another, with nothing
+   * else catching the drift. `engineCharacterOf` calls `hasForcedInduction`
+   * first, before anything else, so the fact reaches the power curve and the
+   * support-ratio demand driver too.
    */
   it("every car's tags agree with spec.aspiration: a Turbo or Supercharged tag matches a forced aspiration, and vice versa", () => {
     const parsedCars = CarModelsSchema.parse(cars)

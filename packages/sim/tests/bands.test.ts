@@ -1,4 +1,5 @@
 import {
+  CARS,
   ECONOMY,
   PARTS,
   PARTS_TAXONOMY,
@@ -21,6 +22,7 @@ import {
   costWeightedBandFactor,
   gradesBetween,
   groupCostToMintYen,
+  hasForcedInduction,
   isPartMissing,
   isPartPresent,
   planGroupRepair,
@@ -53,10 +55,11 @@ const TAXONOMY_BY_ID = CONTEXT.partsTaxonomyById
 /**
  * `carCostToMintYen`/`groupCostToMintYen`/`costWeightedBandFactor` take a
  * `model` parameter to decide whether an empty `forcedInduction` slot is a
- * real defect or legitimate absence. `TEST_MODEL` is Turbo-tagged (so a
+ * real defect or legitimate absence. `TEST_MODEL` is factory forced (so a
  * filled-or-missing forcedInduction slot behaves like every other part);
- * `NA_MODEL` drops the tag for the tests that specifically exercise
- * legitimate absence.
+ * `NA_MODEL` is naturally aspirated, for the tests that specifically
+ * exercise legitimate absence. Each carries a matching induction tag beside
+ * the aspiration `hasForcedInduction` actually reads.
  */
 const TEST_MODEL: CarModel = {
   id: 'test-model',
@@ -72,6 +75,7 @@ const TEST_MODEL: CarModel = {
     yearTo: 1990,
     curbWeightKg: 1200,
     stockPowerPs: 150,
+    aspiration: 'turbo',
     reliabilityBase: 90,
     styleBase: 20,
     styleCeiling: 80,
@@ -87,6 +91,7 @@ const TEST_MODEL: CarModel = {
 const NA_MODEL: CarModel = {
   ...TEST_MODEL,
   id: 'test-model-na',
+  spec: { ...TEST_MODEL.spec, aspiration: 'NA' },
   tags: ['FR', 'NA', 'Piston', '90s', 'JDM'],
 }
 
@@ -781,6 +786,49 @@ describe('isPartPresent and presentPartIdsInGroup (an empty forcedInduction slot
     const present = presentPartIdsInGroup(naCar, 'engine', CONTEXT.partIdsByGroup)
     expect(present).not.toContain('forcedInduction')
     expect(present).toEqual(CONTEXT.partIdsByGroup.engine.filter((id) => id !== 'forcedInduction'))
+  })
+})
+
+/**
+ * Induction is written on a car twice, as `spec.aspiration` and as a platform
+ * tag, and exactly one of them is the answer the sim takes. It is the
+ * aspiration: the roster authors that column for every car it holds and leaves
+ * the tag to the rows that have actually been built, so a car imported without
+ * a hand-written tag must still read as the turbo car it is.
+ *
+ * Asserted against models whose two representations deliberately disagree,
+ * which is the only way to tell which one is being read. `integrity.test.ts`
+ * holds the shipped content to agreement, so no real car is ever in this state.
+ */
+describe('hasForcedInduction reads the aspiration, never the tag', () => {
+  it('is true for a forced aspiration wearing an NA tag', () => {
+    for (const aspiration of ['turbo', 'twin-turbo', 'supercharged'] as const) {
+      const model: CarModel = {
+        ...TEST_MODEL,
+        spec: { ...TEST_MODEL.spec, aspiration },
+        tags: ['FR', 'NA', 'Piston', '90s', 'JDM'],
+      }
+      expect(hasForcedInduction(model), aspiration).toBe(true)
+    }
+  })
+
+  it('is false for an NA aspiration wearing a Turbo tag', () => {
+    const model: CarModel = {
+      ...TEST_MODEL,
+      spec: { ...TEST_MODEL.spec, aspiration: 'NA' },
+      tags: ['FR', 'Turbo', 'Piston', '90s', 'JDM'],
+    }
+    expect(hasForcedInduction(model)).toBe(false)
+  })
+
+  it('answers the same for all 26 shipped cars either way it is read, and 16 of them are forced', () => {
+    const forced = CARS.filter((model) => hasForcedInduction(model))
+    for (const model of CARS) {
+      const byTag = model.tags.includes('Turbo') || model.tags.includes('Supercharged')
+      expect(hasForcedInduction(model), model.id).toBe(byTag)
+    }
+    expect(CARS).toHaveLength(26)
+    expect(forced).toHaveLength(16)
   })
 })
 

@@ -23,6 +23,7 @@ const model: CarModel = {
     yearTo: 1981,
     curbWeightKg: 690,
     stockPowerPs: 61,
+    aspiration: 'NA',
     reliabilityBase: 99,
     // The roster's own authored pair for this car: 43 points of headroom
     // between how it looks stock and the best it could ever look.

@@ -16,10 +16,11 @@ this sprint was authorised to move.
 
 **What shipped, and the one thing that did not.** Authenticity is derived exactly as section 3
 states, on the 29 per-slot weights recorded in `authenticity-weights-proposal.md`, and all four
-retirements landed. The gap that ships with it: `paint`, `panels` and `underbody` are
-zone-derived and the catalogue has no non-stock SKU for any of them, so `isStock` is always true
-there and **23 of the 100 points cannot be lost to modification** - a resprayed car still reads
-as fully original. Their weight still drives the condition factor, where it is correct and
+retirements landed. The gap that ships with it: `paint` is zone-derived and the catalogue has no
+non-stock SKU for it at any fitment class, so `isStock` is always true there and **11 of the 100
+points cannot be lost to modification** - a resprayed car still reads as fully original. `panels`
+and `underbody`, which shared this gap, now carry street, sport and race ladders and read as
+modified correctly. Paint's weight still drives the condition factor, where it is correct and
 load-bearing. The fix (per-zone refinished state) is its own follow-up, recorded in `TODO.md`.
 
 **There is no third stat.** An earlier draft proposed rolling the two into a `desirability` dial.
@@ -193,7 +194,7 @@ it is modified, which turns the collector away, so no second mechanism is needed
 | --- | --- | --- | --- |
 | `styleBase`, rescaled | roster CSV | all 94 | **AUTHORED (Sprint 152)**, 15-88, replaces the 4-20 range |
 | `styleCeiling` | roster CSV | all 94 | **AUTHORED (Sprint 152)**, 42-96, preliminary and unsigned |
-| `styleSaturationPoints` | `economy.json` | one value | **IMPLEMENTED (Sprint 152)** at 60, preliminary and unsigned |
+| `styleSaturationPoints` | `economy.json` | one value | **IMPLEMENTED** at 66, preliminary and unsigned |
 | per-slot authenticity weights | `parts-taxonomy.json` | 29 slots | **AUTHORED (Sprint 151)**, preliminary and unsigned |
 | per-operation authenticity cost | machining content | 13 operations baselined | **stand-in figures, need signing** |
 | `CarInstance.authenticityPercent` | `carInstance.ts` | - | **RETIRED (Sprint 151)** |
@@ -228,8 +229,8 @@ against the old scale and should be re-checked against the new one, though not n
    `style-authoring-proposal.md` and shipped as preliminary, reviewed-and-sane values. That
    document's section 6 lists the ten calls to review first, headed by the Z33 at 45 against the
    worked example's own 30.
-2. **Signing `styleSaturationPoints`.** Implemented at 60 against the roughly 82 points fittable
-   across all slots, so a focused build reaches its car's ceiling without needing every part.
+2. **Signing `styleSaturationPoints`.** Implemented at 66 against the 108 points fittable across
+   all slots, so a focused build reaches its car's ceiling without needing every part.
 3. **What the risen stock-style scale does to the sale side.** The unimproved-flip guard now
    fails on `everyday` (margin -0.99 per cent against a -1 per cent bar), `enthusiast` (+0.19)
    and `flagship` (+1.05): a beautiful stock car is genuinely worth more to a buyer who cares
@@ -238,7 +239,7 @@ against the old scale and should be re-checked against the new one, though not n
    implementation one.
 4. **The machining system**, on which the authenticity costs depend. `machiningCost(car)` is wired
    and returns 0 until it exists.
-5. **Originality for `paint`, `panels` and `underbody`**, which cannot currently read as modified
-   at all. See the header and `TODO.md`.
+5. **Originality for `paint`**, which cannot currently read as modified at all. `panels` and
+   `underbody` now can. See the header and `TODO.md`.
 6. **Signing the 29 authenticity weights.** They ship as preliminary defaults, recorded in
    `sprint151.md` as the values implemented rather than approved under directive 22.

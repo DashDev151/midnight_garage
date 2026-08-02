@@ -17,7 +17,7 @@ const TEST_FILE_PATTERN = /\.(test|spec)\.(ts|vue)$/
 interface RetiredIdentifier {
   /** The dotted-path or bare identifier text. Matched at word boundaries (a
    * literal `.` in this text is escaped, never treated as regex "any
-   * character"), so `.aspiration` cannot match inside `carAspiration`. */
+   * character"), so `.retention` cannot match inside `partsRetention`. */
   identifier: string
   /** The sprint that retired it. */
   retiredInSprint: number
@@ -25,9 +25,9 @@ interface RetiredIdentifier {
   reason: string
   /** Package names (from `PACKAGE_NAMES`) this identifier is banned under.
    * Defaults to all three - narrow this only when the retirement is
-   * genuinely package-scoped, as `spec.aspiration` is (a dev-only screen in
-   * `packages/game` legitimately still reads the raw spec field for
-   * display; only sim logic may never read it). */
+   * genuinely package-scoped, i.e. one package still has a legitimate reason
+   * to name the thing (a dev-only screen displaying a raw field, say) while
+   * another must never read it. */
   scopedToPackages?: ReadonlyArray<(typeof PACKAGE_NAMES)[number]>
 }
 
@@ -76,13 +76,6 @@ const RETIRED_IDENTIFIERS: readonly RetiredIdentifier[] = [
     retiredInSprint: 143,
     reason:
       'Authored, schema-validated and test-asserted with zero readers anywhere in gameplay; Sprint 146 re-authors the buyer schema from a clean slate rather than carrying a dead lever forward unexamined.',
-  },
-  {
-    identifier: 'spec.aspiration',
-    retiredInSprint: 135,
-    reason:
-      'A duplicate representation of induction with nothing guarding that it agrees with tags; hasForcedInduction is the one source of truth sim code may read. Folded in from engineCharacter.test.ts rather than left as a second, hand-rolled guard.',
-    scopedToPackages: ['sim'],
   },
   {
     identifier: 'partsRetention',
@@ -255,9 +248,9 @@ describe('the retired-identifier ledger', () => {
     },
   )
 
-  it('.aspiration is matched at a word boundary, not as a substring of carAspiration', () => {
-    const pattern = new RegExp(`\\b${escapeRegExp('spec.aspiration')}\\b`)
-    expect(pattern.test('const carAspiration = 1')).toBe(false)
-    expect(pattern.test('return spec.aspiration')).toBe(true)
+  it('a dotted path is matched at a word boundary, not as a substring of a longer name', () => {
+    const pattern = new RegExp(`\\b${escapeRegExp('statModifiers.power')}\\b`)
+    expect(pattern.test('part.statModifiers.powerFraction.forced')).toBe(false)
+    expect(pattern.test('return part.statModifiers.power')).toBe(true)
   })
 })

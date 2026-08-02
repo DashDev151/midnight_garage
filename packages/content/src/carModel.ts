@@ -104,7 +104,22 @@ export const CarModelSchema = z
             'rotary-3',
           ])
           .optional(),
-        aspiration: z.enum(['NA', 'turbo', 'twin-turbo', 'supercharged']).optional(),
+        /**
+         * How the engine breathes, and the single source of truth the sim
+         * reads for it (`hasForcedInduction`, `packages/sim/src/bands.ts`),
+         * which decides the car's engine character, every power fraction it
+         * charges, and whether an empty `forcedInduction` slot is a defect or
+         * legitimate absence.
+         *
+         * Required, not optional, for the same reason every other per-car
+         * character constant on this schema is: absence would read as `NA`,
+         * and a turbo car silently taking the naturally aspirated fraction
+         * column is a failure nothing else in the game would catch. The
+         * induction tag stays a platform facet beside it; `tags` and this
+         * field are held in agreement by
+         * `packages/content/tests/integrity.test.ts`.
+         */
+        aspiration: z.enum(['NA', 'turbo', 'twin-turbo', 'supercharged']),
         /**
          * What this car is when everything is right: a stock mint example sits
          * exactly here, and nothing the game does ever lifts a car above its own

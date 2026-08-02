@@ -329,3 +329,45 @@ export function dynoReadingFor(
     reliability: reliabilityBreakdownOf(car, model, partsById, partsTaxonomy, economy),
   }
 }
+
+/** The three loss figures as whole points, for a sheet that shows them beside
+ * the stat and the base. */
+export interface ReliabilitySplitPoints {
+  conditionCostPoints: number
+  coherenceCostPoints: number
+  powerCostPoints: number
+}
+
+/**
+ * `ReliabilityBreakdown`'s three losses rounded so that they and the
+ * reliability stat still sum to the car's base exactly. Rounding each one on
+ * its own does not: three independent roundings can shed the best part of two
+ * points between them, and a sheet whose parts read 91 against a stated whole
+ * of 92 asks the player to distrust the arithmetic rather than the build.
+ *
+ * Whole points are handed out by largest remainder, against the points the
+ * ROUNDED stat has actually left to explain. So each figure is its own value
+ * rounded, except that the odd point the roundings disagree over goes to
+ * whichever loss came closest to earning it, ties to the order the sheet lists
+ * them in.
+ */
+export function displayedReliabilitySplit(reading: DynoReading): ReliabilitySplitPoints {
+  const { base, conditionLossPoints, coherenceLossPoints, intensityLossPoints } =
+    reading.reliability
+  const exact = [conditionLossPoints, coherenceLossPoints, intensityLossPoints]
+  const points = exact.map((value) => Math.floor(value))
+  let spare = Math.round(base - reading.reliabilityStat - points[0]! - points[1]! - points[2]!)
+  const closest = exact
+    .map((value, index) => ({ index, remainder: value - Math.floor(value) }))
+    .sort((a, b) => b.remainder - a.remainder || a.index - b.index)
+  for (const entry of closest) {
+    if (spare <= 0) break
+    points[entry.index]! += 1
+    spare -= 1
+  }
+  return {
+    conditionCostPoints: points[0]!,
+    coherenceCostPoints: points[1]!,
+    powerCostPoints: points[2]!,
+  }
+}

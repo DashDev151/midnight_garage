@@ -1,7 +1,27 @@
 # Body system analysis: swap versus repair, the cost of the collapse, and where bodykits go
 
-Status: MEASUREMENT AND ANALYSIS. Nothing here is built. No shipped code, content or lever was
-changed to produce it.
+**Status: SUPERSEDED. Kept for its measurements, not for its conclusions.**
+
+This document is the investigation that produced Sprints 159 to 164, and **the work it argues for
+is now built**. Its measurements are still the record of why each of those sprints happened and are
+worth reading as such. **Its recommendations, its option comparisons and most of its numbers are
+history, and none of it describes the game as it stands.** For what the body does today, read the
+code and `docs/carstats/`.
+
+What changed under it, part by part:
+
+| part | standing |
+| --- | --- |
+| **1**, swap versus repair | **Numbers dead.** `baseCostYen.zonePanel` went 6,000 to 30,000 and `baseCostYen.panels` 28,000 to 140,000, which is the whole point of the section and moves every figure in it. Repair now beats swap on money at every class. |
+| **2**, the cost of the collapse | **Defect fixed.** The bill charged a threshold rather than a distance; it now walks the pipeline's own stage costs, and the split identity it broke holds exactly. |
+| **3**, the four structures | **Decided.** Option D was built: the three body carriers hold a real `partId` while their band still derives from zone state. B and C were rejected on the costs measured here. |
+| **4.1**, the aero slot | **Superseded outright.** The six kits it analyses as misfiled on `aero` were moved to `panels` and `underbody`, which also falsifies the two consequences numbered under it. |
+| **4.4**, `aeroCeiling` | **Corrected in place**, see that section. It is a live schema field now. |
+| **5** and **6**, the price window and its blast radius | **Acted on.** The x5 row was taken and signed. |
+| **7**, the four verdicts on real cars | **Still true as measurements**, and the one real defect it found (over-restoration paying) was fixed. |
+
+The rest of this file is left exactly as it was written, including claims later proved wrong, because
+a superseded analysis edited to look correct stops being a record of what was believed and why.
 
 ## Method
 

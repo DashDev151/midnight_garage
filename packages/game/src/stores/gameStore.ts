@@ -96,6 +96,7 @@ import {
   dynoReadingFor,
   dynoSessionCarId as dynoSessionCarIdCore,
   dynoSessionGateReason as dynoSessionGateReasonCore,
+  displayedReliabilitySplit,
   resolveBuyDyno,
   resolveDynoSession,
   emptyDayActions,
@@ -236,6 +237,7 @@ import { formatYen } from '../utils/formatYen'
 import { offerCopy } from '../utils/offerCopy'
 import { addressesOverlap, hasWorkAddress, stagedActionsCollide } from '../utils/partAddress'
 import { SELLING_CHANNEL_ORDER } from '../utils/sellingChannelLabels'
+import { unpaintedPanelsText } from '../utils/zoneSeverity'
 
 /**
  * Placeholder seed for the eager store init (immediately replaced by
@@ -424,6 +426,15 @@ export interface CarDetail extends DetailedCar {
    * See `supportReadoutFor`.
    */
   supportReadout: { band: 'strained' | 'dangerous'; copy: string } | null
+  /**
+   * The line a car sitting in unpainted panels carries, null when every panel
+   * is in colour (and on a car with no zone state at all). Fitting a body kit
+   * strips every panel it covers back to bare, which drops the `paint` band
+   * and takes style and authenticity with it, so this explains a fall the
+   * player would otherwise watch happen for no stated reason. It reports what
+   * has ALREADY moved and changes no figure. See `unpaintedPanelsText`.
+   */
+  unpaintedPanelsNote: string | null
 }
 
 /** The Finances panel's pre-Confirm preview - null (via
@@ -2003,6 +2014,7 @@ export const useGameStore = defineStore('game', () => {
       symptoms: symptomChecklistForCar(car, apparentViewOf(car), model),
       workupGateReason: ownedWorkupGateReasonCore(gameState.value, carId, context.value),
       supportReadout: supportReadoutFor(car, model),
+      unpaintedPanelsNote: car.zoneState ? unpaintedPanelsText(car.zoneState) : null,
     }
   }
 
@@ -2712,9 +2724,9 @@ export const useGameStore = defineStore('game', () => {
       // the radar chart can never show two different numbers.
       reliability: reading.reliabilityStat,
       reliabilityBase: reading.reliability.base,
-      conditionCostPoints: Math.round(reading.reliability.conditionLossPoints),
-      coherenceCostPoints: Math.round(reading.reliability.coherenceLossPoints),
-      powerCostPoints: Math.round(reading.reliability.intensityLossPoints),
+      // Rounded together rather than one at a time, so the three losses and
+      // the stat always account for the whole base.
+      ...displayedReliabilitySplit(reading),
     }
   })
 

@@ -44,9 +44,9 @@ Every car resolves to `power`, `handling`, `style`, `reliability`, `authenticity
   Each engine derives a character from its specific output and induction: high-strung NA,
   lazy NA, or forced. A parts-only build caps at about x1.43, x1.57 and x1.95 respectively.
 - **Handling** comes from suspension, brakes, tyres and the physics dials.
-- **Style** is a purely additive taste judgement. **Known gap: a stock car scores at most 20
-  of 100**, so most of that axis exists only for bolt-ons and every stock car looks alike to
-  the model.
+- **Style** is a per-car band rather than an additive total. A car has an authored `styleBase`
+  (15 to 88 across the roster) and a `styleCeiling` (42 to 96), a mint stock car reads its base
+  exactly, and fitted parts close the gap between the two.
 - **Authenticity** starts high on an original car and is destroyed by fitting aftermarket.
   It is deliberately anti-correlated with power.
 - **Reliability** is described below.

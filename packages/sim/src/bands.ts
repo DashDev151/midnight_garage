@@ -138,9 +138,16 @@ export function scrapValueYen(
 
 /** True when `model` has forced induction from the factory - the one
  * platform fact that decides whether an empty `forcedInduction` slot is a
- * real defect or legitimate, permanent absence. */
+ * real defect or legitimate, permanent absence, and the fact
+ * `engineCharacterOf` answers first.
+ *
+ * Read from `spec.aspiration`, the car's own induction field, which is
+ * required on every model and authored per car. `NA` is the only naturally
+ * aspirated value the enum carries, so anything else is forced. The
+ * induction TAG is a platform facet for display and matching and never a
+ * second answer to this question. */
 export function hasForcedInduction(model: CarModel): boolean {
-  return model.tags.includes('Turbo') || model.tags.includes('Supercharged')
+  return model.spec.aspiration !== 'NA'
 }
 
 /** True when `partId`'s slot is physically occupied. False for both a

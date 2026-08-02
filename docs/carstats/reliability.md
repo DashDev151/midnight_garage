@@ -401,8 +401,6 @@ What guards each of them:
    - `docs/design/systems/tuning-system.md` gives `reliabilityCap * (conditionFactor +
      coherenceFactor - 1)`. `reliabilityCap` is retired outright and there is no such key in
      `economy.json`; the intensity factor is missing.
-   - `docs/design/systems/sale-value-system-context.md` gives `reliabilityBase *
-     clamp(conditionFactor + coherenceFactor - 1, 0, 1)`. Correct on the base, missing intensity.
    - `docs/design/systems/tuning-system.md` section 2 still lists "absolute deltas to handling,
      style, reliability and authenticity" as something the data model can express.
      `statModifiers.reliability` no longer exists and its name is banned by

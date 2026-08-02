@@ -62,6 +62,7 @@ const model: CarModel = {
     yearTo: 1993,
     curbWeightKg: 1590,
     stockPowerPs: 280,
+    aspiration: 'twin-turbo',
     reliabilityBase: 94,
     styleBase: 74,
     styleCeiling: 95,
@@ -82,12 +83,14 @@ const model: CarModel = {
  * outruns all but the scrap fraction of clean value. */
 const cheapModel: CarModel = { ...model, id: 'test-entry', bookValueYen: 150_000 }
 
-/** An NA-tagged variant of `model` - for the tests that specifically
+/** A naturally aspirated variant of `model` - for the tests that specifically
  * exercise a legitimately-empty `forcedInduction` slot rather than a real
- * defect. */
+ * defect. The aspiration is what `hasForcedInduction` reads; the tag beside it
+ * is kept in step so the fixture states one fact rather than two. */
 const naModel: CarModel = {
   ...model,
   id: 'test-supra-na',
+  spec: { ...model.spec, aspiration: 'NA' },
   tags: ['FR', 'NA', 'Piston', '90s', 'JDM'],
 }
 
