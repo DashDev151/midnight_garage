@@ -241,23 +241,28 @@ Deliberately excluded, with reasons, so nobody adds them by accident:
 to 45, lazy 57 to 60, forced 95 to 130. `TODO.md` forbids the forced rise by name; that is approved
 and the ban is struck in the implementing sprint.
 
-**`TODO.md`'s substantive objection is not fully answered, and it is worth a second look.** That
-entry argues a flat rise in the forced fractions is the wrong lever because it corrects two cars and
-inflates five, and asks for per-engine headroom instead. The ladder here keeps the flat shape, so
-the objection stands on its own terms:
+### The flat-rise ruling (maintainer, 2026-08-02)
+
+`TODO.md` argued that a flat rise in the forced fractions is the wrong lever, because it corrects
+two cars and inflates five, and asked for per-engine headroom instead. **The maintainer has ruled:
+the flat shape ships, and these are the numbers it produces.**
 
 | car | race | race machined |
 | --- | ---: | ---: |
 | Supra RZ (2JZ) | 745 | 842 |
 | Skyline GT-R (RB26) | 644 | 728 |
-| RX-7 FD | 586 | 663 |
-| Impreza WRX STi | 575 | 650 |
-| MR2 SW20 | 561 | 634 |
+| **RX-7 FD** | **586** | **663** |
+| **Impreza WRX STi** | **575** | **650** |
+| **MR2 SW20** | **561** | **634** |
 
-**The 2JZ and the RB26 land where the target wanted them. The other three land above the figures
-that entry rejected.** Whether a 586 PS FD is right is a judgement about the roster rather than
-about the maths, and per-engine headroom is the tool that would separate them. It is not built and
-this ladder does not need it, but the question is real and the numbers above are what it looks like.
+The two cars the target was set on land where it wanted them. **The three in bold land above the
+figures that entry rejected, and that is accepted rather than unresolved.** A 586 PS race-spec FD is
+a serious build and defensible on its own terms.
+
+Per-engine headroom remains the tool that would separate them, and remains unbuilt. It would take
+authoring for all 94 roster rows under directive 24, which is a sprint of its own and not this one.
+**This ruling closes the question rather than deferring it**: the `TODO.md` entry is struck in the
+implementing sprint and does not survive as a live objection.
 
 **The implementing sprint must re-validate the power model** against the lap and performance
 harness, not merely check the arithmetic.

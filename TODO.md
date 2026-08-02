@@ -1164,17 +1164,21 @@ pass."
   the 2JZ are the two deliberately over-engineered iron sixes, which is exactly why tuners chose
   them, and one forced multiplier cannot say so.
 
-  **So machining is where the ceiling is meant to rise, and it has to rise SELECTIVELY.** A flat
-  machining multiplier is the wrong shape: at x2.4 the Supra reads a correct 778 PS and the GT-R
-  672, but the 13B lands at 612, the 3S-GTE at 586 and the EJ20 at 600, all well past what those
-  engines really did. **Raising `powerFraction.forced` to close the gap is therefore explicitly
-  the wrong lever and must not be proposed as the fix**, since it corrects two cars and inflates
-  five. What machining needs is **per-engine headroom**: a block that can be bored, decked and
-  filled has more of it than one that cannot, and that is a property of the engine rather than of
-  the part bolted to it. It is also the mechanism that finally makes the legendary blocks
-  legendary in the game the way they were in life. Decide the shape of that headroom when
-  machining is scoped, and push it high enough that a fully machined 2JZ reads credibly (800 plus)
-  without widening a fraction that applies to everything.
+  **RULED 2026-08-02, and this half of the entry is closed.** The objection above argued that
+  raising `powerFraction.forced` corrects two engines and inflates five, and asked for per-engine
+  headroom instead. **The maintainer ruled for the flat rise and accepted the cars it inflates**,
+  with the figures recorded in `docs/design/systems/machining-performance-table.md`: the Supra
+  reads 745 at race and 842 fully machined and the GT-R 644 and 728, which is what the target was
+  set on, while the FD reads 586, the Impreza 575 and the SW20 561. Those three are accepted rather
+  than left open. **`powerFraction.forced` is no longer forbidden**, and `docs/sprints/sprint168.md`
+  moves it.
+
+  **What survives is the feature, not the objection.** Per-engine headroom is still the mechanism
+  that would make the legendary blocks legendary the way they were in life, and it is still worth
+  building: a block that can be bored, decked and filled has more of it than one that cannot, and
+  that is a property of the engine rather than of the part bolted to it. It needs authoring for all
+  94 roster rows under directive 24, so it is a sprint of its own rather than a condition on
+  machining.
 
 - [ ] **Course-character build variety is deferred out of the tuning system, and it is job
   and copy design rather than physics** (`docs/design/systems/tuning-system.md`, the deferral

@@ -87,9 +87,12 @@ where it pays.
 - The nine authenticity ratings, summing to 48 on a fully machined engine.
 - **The catalogue's per-slot power fractions move on ALL THREE engine characters**, not only on
   forced. Roughly 24 fractions change: high-strung race 43 to 45, lazy 57 to 60, forced 95 to 130.
-  The performance table holds every one. `TODO.md` forbids the forced rise by name; **the maintainer
-  has approved it and that entry must be struck in this sprint** rather than left contradicting the
-  target.
+  The performance table holds every one.
+- **The flat rise ships, and the five cars it inflates are accepted.** `TODO.md` argues the flat
+  shape is the wrong lever and asks for per-engine headroom; the maintainer has ruled against that
+  and the numbers are tabled in the performance table (FD 586, Impreza 575, SW20 561 at race).
+  **That entry is struck in this sprint**, not left as a live objection, and per-engine headroom is
+  its own future sprint rather than a condition on this one.
 
 **Unsigned, to be tabled by the implementation and reported:** the reliability cost per operation,
 and the machining premium on a part's value. Both start small and both are named in the Exit.
