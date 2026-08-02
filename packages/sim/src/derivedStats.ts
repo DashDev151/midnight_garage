@@ -22,7 +22,7 @@ import {
   type BuildFactors,
   type ConditionFactors,
 } from './performance'
-import { supportVerdict, totalGainFractionOf } from './support'
+import { supportVerdict, totalGainFractionOf, usableGripFraction } from './support'
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value))
@@ -337,6 +337,44 @@ export function buildFactors(
   return factors
 }
 
+/** Everything the performance model needs to know about one car's parts: what
+ * condition still delivers, and what the build delivers once the grip it
+ * cannot use has been taken off it. */
+export interface PhysicalFactors {
+  condition: ConditionFactors
+  build: BuildFactors
+}
+
+/**
+ * The ONE assembly of a car's physical factors, and the only place the
+ * chassis-support loss (`usableGripFraction`, support.ts) is ever applied.
+ * `physicalConditionFactors` and `buildFactors` above each answer half of what
+ * a car's parts do; this puts the two together and takes off the share of the
+ * gain the fitted brakes, steering and chassis cannot put down.
+ *
+ * The loss lands on the build's own GRIP factor rather than on any readout,
+ * because `effectiveGrip` is linear in that factor and both the handling stat
+ * and the lap model corner on what it returns. So the number the player reads
+ * and the number the car laps on are the same number, and they cannot be kept
+ * in step by hand because they were never apart.
+ *
+ * Every caller that evaluates a real car goes through here - the derived
+ * stats, the lap model, and the performance sandbox - so a build cannot reach
+ * the physics with the loss missing.
+ */
+export function physicalFactorsFor(
+  car: CarInstance,
+  model: CarModel,
+  partsById: Readonly<Record<string, Part>>,
+  partsTaxonomy: readonly CarPartTaxonomyEntry[],
+  economy: EconomyConfig,
+): PhysicalFactors {
+  const condition = physicalConditionFactors(car, model, partsTaxonomy, economy)
+  const build = buildFactors(car, partsById, economy)
+  const usable = usableGripFraction(car, model, partsById, economy, condition, build)
+  return { condition, build: { ...build, grip: build.grip * usable } }
+}
+
 /**
  * The displacement a car's specific output is measured against: its literal
  * cc, with a rotary's scaled 1.8x (the equivalency factor motorsport bodies
@@ -593,9 +631,11 @@ export function reliabilityBreakdownOf(
  * moves, never as a flat addition on top: `physicalModifiers.grip` already
  * carries the whole of what a suspension upgrade does, and a second additive
  * column would charge one upgrade twice. The grip it reads is `effectiveGrip`, the same
- * quantity the lap model corners on, through the same condition AND build
- * factors the lap runs on, so a car whose grip was measured cannot show a
- * handling number its own lap time disagrees with, worn or built.
+ * quantity the lap model corners on, through the same `physicalFactorsFor` the
+ * lap runs on - which is also where the share of the gain the car's brakes,
+ * steering and chassis cannot put down comes off - so a car whose grip was
+ * measured cannot show a handling number its own lap time disagrees with, worn
+ * or built.
  *
  * Every condition input is `weightedBandFactorForStat` above, self-derived
  * from the taxonomy's own `statWeights` rather than a fixed per-stat
@@ -637,8 +677,13 @@ export function computeDerivedStats(
   )
   const compound = effectiveCompound(instance, model, partsById, grip)
   const downforce = effectiveDownforce(instance, model, partsById, aero)
-  const physical = physicalConditionFactors(instance, model, partsTaxonomy, economy)
-  const build = buildFactors(instance, partsById, economy)
+  const { condition: physical, build } = physicalFactorsFor(
+    instance,
+    model,
+    partsById,
+    partsTaxonomy,
+    economy,
+  )
   const mintHandling =
     gripToDisplay(
       effectiveGrip(model, compound, grip, aero, physical.grip * build.grip),

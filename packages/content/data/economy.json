@@ -208,6 +208,19 @@
       },
       "coherenceExponent": 2.0
     },
+    "chassisSupport": {
+      "lossByGrade": {
+        "stock": 0,
+        "street": 0.1,
+        "sport": 0.2,
+        "race": 0.35
+      },
+      "share": {
+        "brakes": 0.45,
+        "steering": 0.35,
+        "chassis": 0.2
+      }
+    },
     "powerNormalizationCeiling": 300,
     "styleSaturationPoints": 66,
     "grip": {

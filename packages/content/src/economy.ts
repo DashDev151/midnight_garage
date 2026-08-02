@@ -1187,6 +1187,69 @@ export const EconomyConfigSchema = z.object({
        */
       coherenceExponent: z.number().positive(),
     }),
+    /**
+     * The chassis-support model (`packages/sim/src/support.ts`'s
+     * `usableGripFraction`, design `docs/design/systems/chassis-support-measured.md`):
+     * how much of the grip a build GAINED it cannot use, because the parts
+     * that control that grip are below the grade of the parts that made it.
+     *
+     *     required = highest grade among tyres, dampers, springs, antiRollBars, aero
+     *     missing  = sum of `share` over the support slots below `required`
+     *     usable   = factory + gain * (1 - lossByGrade[required] * missing)
+     *
+     * `gain` is measured in EFFECTIVE grip (mechanical grip times the
+     * downforce multiplier at the display curve's own reference speed), so a
+     * wing is charged for the load it puts through the brakes and the steering
+     * rather than exempt from the whole model. It is read against the same car
+     * at its OWN condition band, so letting a car rot never dodges the loss.
+     *
+     * A stock car is untouched by construction and regardless of any value
+     * here: `required` is `stock`, whose loss is pinned at 0, and `gain` is
+     * exactly 0 because a stock build IS its own factory reference. A build
+     * whose gain is NEGATIVE (three shipped cars leave the factory on rubber
+     * better than a street SKU maps to) passes through untouched for the same
+     * reason it must: there is no extra grip to support.
+     */
+    chassisSupport: z.object({
+      /**
+       * How much of the gain becomes unusable when nothing supports it, by the
+       * grade of the parts that made the grip. `stock` is pinned at 0 rather
+       * than authored, so a stock car can never be moved from here.
+       *
+       * At street 0.10 the median car on the roster loses nothing at all and
+       * no car loses more than a point: bolting street dampers to stock brakes
+       * reads as a number that went up. At sport 0.20 the loss is always
+       * visible and never zero. At race 0.35 an unsupported build gives up
+       * around a tenth of its readout and several seconds of a mountain lap,
+       * which is worth going back and fixing. The rise up the ladder is what
+       * the model says out loud: the harder the parts, the more of their gain
+       * a stock chassis cannot put down.
+       */
+      lossByGrade: z.object({
+        stock: z.literal(0),
+        street: z.number().min(0).max(1),
+        sport: z.number().min(0).max(1),
+        race: z.number().min(0).max(1),
+      }),
+      /**
+       * How the shortfall divides across the three purchases that clear it.
+       * The values sum to 1, so an entirely unsupported build carries the
+       * whole of `lossByGrade` and a fully supported one carries none of it.
+       *
+       * `brakes` splits evenly across `brakePadsDiscs` and
+       * `brakeCalipersLines`, so the first brake part bought returns half of
+       * it rather than nothing. `chassis` takes the smallest share because a
+       * chassis SKU already carries its own `physicalModifiers.grip` and earns
+       * a second time that way; an equal split made it worth twice the
+       * steering at the counter. Brakes taking the largest share is also the
+       * sentence the whole model exists to say.
+       */
+      share: z.object({
+        brakes: z.number().min(0).max(1),
+        steering: z.number().min(0).max(1),
+        chassis: z.number().min(0).max(1),
+      }),
+    }),
     /** Soft power ceiling `valuateCarForBuyer` normalizes taste's power term
      * against (was the file-local `POWER_NORMALIZATION_CEILING` constant in
      * valuation.ts). */

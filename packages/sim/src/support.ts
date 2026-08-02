@@ -1,14 +1,25 @@
 import {
   ALL_CAR_PART_IDS,
+  GradeSchema,
   SubsystemSchema,
   type CarInstance,
   type CarModel,
   type CarPartId,
   type EconomyConfig,
+  type Grade,
   type Part,
   type Subsystem,
 } from '@midnight-garage/content'
 import { engineCharacterOf } from './derivedStats'
+import {
+  aeroGripMultiplier,
+  effectiveCompound,
+  effectiveDownforce,
+  effectiveGrip,
+  factoryDownforceCoeff,
+  type BuildFactors,
+  type ConditionFactors,
+} from './performance'
 
 /**
  * The headline support verdict for a build: the lowest of the five
@@ -218,4 +229,121 @@ export function supportVerdict(
         ? 'strained'
         : 'dangerous'
   return { headline, band, subsystem }
+}
+
+/**
+ * The five slots whose fitted grade decides how much cornering grip a build
+ * makes, and therefore how much the rest of the car is asked to cope with.
+ */
+const GRIP_SLOTS: readonly CarPartId[] = ['tyres', 'dampers', 'springs', 'antiRollBars', 'aero']
+
+/** The two slots that share the brake half of the chassis-support shortfall. */
+const BRAKE_SLOTS: readonly CarPartId[] = ['brakePadsDiscs', 'brakeCalipersLines']
+
+/**
+ * Where one slot's fitted SKU sits on the grade ladder, as an index into
+ * `GradeSchema.options`. An empty slot, or one carrying a part id the
+ * catalogue cannot resolve, reads `stock` - the same rule `buildFactors`
+ * follows, so an unknown SKU can never silently move the physics.
+ */
+function gradeRankOf(
+  car: CarInstance,
+  partId: CarPartId,
+  partsById: Readonly<Record<string, Part>>,
+): number {
+  const installed = car.parts[partId].installed
+  const grade: Grade = (installed && partsById[installed.partId]?.grade) || 'stock'
+  return GradeSchema.options.indexOf(grade)
+}
+
+/**
+ * The fraction of the mechanical grip a build makes that it can actually use:
+ * 1 when the parts controlling the grip are up to the grade of the parts that
+ * made it, and less than 1 when they are not. `derivedStats.ts` folds this
+ * into the build's own grip factor, so the handling readout and the lap time
+ * spend one number and cannot contradict each other.
+ *
+ *     required = highest grade fitted across `GRIP_SLOTS`
+ *     missing  = sum of `share` over the support slots below `required`
+ *     usable   = factory + gain * (1 - lossByGrade[required] * missing)
+ *
+ * A steering rack does not create grip, it lets a car use grip it already
+ * has, which is why this is a proportion of what the build GAINED rather than
+ * an amount subtracted from what it makes. A proportion of a bigger gain is
+ * still bigger, so a race build unsupported cannot fall below a supported
+ * sport one: the ladder holds by construction rather than by tuning, which a
+ * flat penalty does not.
+ *
+ * Three properties the arithmetic delivers rather than special-cases:
+ *
+ * - **A stock car is exactly untouched**, twice over. Its `required` grade is
+ *   `stock`, whose loss is pinned at 0, and its gain is 0 because a stock
+ *   build IS the factory reference it is measured against.
+ * - **A downgrade passes through whole.** Three shipped cars leave the
+ *   factory on rubber better than a street SKU maps to, so fitting street
+ *   tyres genuinely makes them worse. Their gain is negative and the early
+ *   return leaves them alone: clamping the gain to zero would erase the
+ *   downgrade, and multiplying a negative gain would let missing support
+ *   IMPROVE the car.
+ * - **Rot is not an exit.** The factory reference is read at the car's OWN
+ *   condition, so a tired car shows the smaller gain a tired car really
+ *   makes, and loses its share of that. Against a mint reference every rough
+ *   car would show no gain at all and dodge the model entirely.
+ *
+ * Gain is measured in EFFECTIVE grip - mechanical grip times the downforce
+ * multiplier at the display curve's own reference speed - and converted back
+ * to mechanical grip on the way out. A wing loads a car at speed and demands
+ * brakes and steering exactly as rubber does; measured mechanically it would
+ * be the single largest handling upgrade in the game and exempt from the
+ * whole model.
+ */
+export function usableGripFraction(
+  car: CarInstance,
+  model: CarModel,
+  partsById: Readonly<Record<string, Part>>,
+  economy: EconomyConfig,
+  condition: ConditionFactors,
+  build: BuildFactors,
+): number {
+  const { grip, aero, chassisSupport } = economy.statFormulas
+
+  let requiredRank = 0
+  for (const slot of GRIP_SLOTS) {
+    requiredRank = Math.max(requiredRank, gradeRankOf(car, slot, partsById))
+  }
+  const lossFraction = chassisSupport.lossByGrade[GradeSchema.options[requiredRank]!]
+  if (lossFraction <= 0) return 1
+
+  const { brakes, steering, chassis } = chassisSupport.share
+  let missingShare = 0
+  for (const slot of BRAKE_SLOTS) {
+    if (gradeRankOf(car, slot, partsById) < requiredRank)
+      missingShare += brakes / BRAKE_SLOTS.length
+  }
+  if (gradeRankOf(car, 'steering', partsById) < requiredRank) missingShare += steering
+  if (gradeRankOf(car, 'chassis', partsById) < requiredRank) missingShare += chassis
+  if (missingShare <= 0) return 1
+
+  const referenceSpeedMs = grip.displayCurve.displayReferenceSpeedKmh / 3.6
+  const effectiveAt = (mu: number, downforceCoeff: number): number =>
+    mu * aeroGripMultiplier(referenceSpeedMs, downforceCoeff * condition.aero, aero)
+
+  const factory = effectiveAt(
+    effectiveGrip(model, model.spec.tyreCompound, grip, aero, condition.grip),
+    factoryDownforceCoeff(model, aero),
+  )
+  const built = effectiveAt(
+    effectiveGrip(
+      model,
+      effectiveCompound(car, model, partsById, grip),
+      grip,
+      aero,
+      condition.grip * build.grip,
+    ),
+    effectiveDownforce(car, model, partsById, aero).downforceCoeff,
+  )
+
+  const gain = built - factory
+  if (!(gain > 0) || !(built > 0)) return 1
+  return Math.max(0, Math.min(1, 1 - (gain * lossFraction * missingShare) / built))
 }

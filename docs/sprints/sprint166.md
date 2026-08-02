@@ -209,12 +209,11 @@ No test was loosened or deleted to make anything pass.
 
 ### Recorded rather than fixed
 
-- **Four roster rows carry no `aspiration`**: the Nissan S-Cargo, Honda NSX-R (NA1), Ferrari F355
-  Berlinetta (6MT) and Toyota 2000GT (MF10). All four are unbuilt, so nothing generates from them
-  and no shipped figure is affected, and all four are naturally aspirated in fact. Left blank
-  deliberately: with the field now required, importing one of those rows fails at the schema rather
-  than silently reading NA, which is the loud failure this sprint wanted. Filling them is a roster
-  edit, not an implementation one.
+- **Four roster rows carried no `aspiration`** and have since been filled: the Nissan S-Cargo,
+  Honda NSX-R (NA1), Ferrari F355 Berlinetta (6MT) and Toyota 2000GT (MF10), all `NA`, all
+  naturally aspirated in fact. All 94 rows now carry a value. The field being required is what
+  surfaced them: importing one would have failed at the schema rather than silently reading NA,
+  which is the loud failure this sprint wanted.
 - **The drag question stays open**, exactly as the sprint tabled it: drag is unscaled here.
 - **`docs/carstats/` needs a re-measure.** Three of its findings are closed by this sprint and one
   of its tables (handling's winged bounds) is now low. Logged in `TODO.md` rather than half-edited,

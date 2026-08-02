@@ -60,6 +60,12 @@ to lose, so the identity survives the clamp.
 variants) give a maximum absolute error of 2.8e-14 on that identity, which is floating-point
 noise and nothing else.
 
+**The four DISPLAYED integers reconcile too.** `displayedReliabilitySplit`
+(`packages/sim/src/dyno.ts`) hands out whole points by largest remainder against what the rounded
+stat leaves to explain, rather than rounding each term on its own. **Measured** over the same
+3,250 combinations: the stat plus its three displayed losses equal the car's base exactly in every
+one, with a worst deviation of 0. See finding 4.
+
 ## In plain language
 
 Reliability is how likely this car is to get you home. It starts at whatever the car was when it
@@ -239,7 +245,7 @@ build moves more energy through the car than stock did and pays for it in propor
 more power it makes, not to how well it is supported.
 
 `engineCharacter` (`engineCharacterOf`) picks which `powerFraction` column every fitted part
-reads. It is `forced` when the MODEL carries a Turbo or Supercharged tag, otherwise
+reads. It is `forced` when the MODEL's `spec.aspiration` is anything but `NA`, otherwise
 `high-strung-na` or `lazy-na` by specific output against
 `statFormulas.engineCharacter.naHighStrungThreshold`. It is a property of the car, resolved once,
 never of the fitted parts.
@@ -396,24 +402,33 @@ What guards each of them:
    under the weakest-link design, but it means a player who buys "some support" without reading
    the dyno sheet can spend a lot of money for no movement at all.
 
-3. **Design docs disagree with the code, in four places.** All four omit the build-intensity term
-   or name a retired symbol:
-   - `docs/design/systems/tuning-system.md` gives `reliabilityCap * (conditionFactor +
-     coherenceFactor - 1)`. `reliabilityCap` is retired outright and there is no such key in
-     `economy.json`; the intensity factor is missing.
-   - `docs/design/systems/tuning-system.md` section 2 still lists "absolute deltas to handling,
-     style, reliability and authenticity" as something the data model can express.
-     `statModifiers.reliability` no longer exists and its name is banned by
+3. **The design docs that disagreed with the code have been corrected.** The question was whether
+   any of them still described a formula the sim does not run. **Read**, all three:
+   - `docs/design/systems/tuning-system.md` now gives `spec.reliabilityBase *
+     clamp(conditionFactor + coherenceFactor - 1, 0, 1) * intensityFactor`, which is the shipped
+     derivation term for term. `reliabilityCap` appears only in its amendment log, recording that
+     the flat ceiling became per car; there is no such key in `economy.json`.
+   - The "absolute deltas to handling, style, reliability and authenticity" line is gone from the
+     same document. `statModifiers.reliability` does not exist and its name is banned by
      `packages/content/tests/retiredIdentifiers.test.ts`.
-   - `docs/design/midnight-garage-roster.md` section 3b says "a mint, stock, coherently built
-     example scores exactly this". A stock mint example does; a **built** one does not, however
-     coherent, because the intensity factor charges for the power itself. Measured: a fully
-     supported race build reads 83 on the base-100 Carina and 65 on the base-80 FD.
+   - `docs/design/midnight-garage-roster.md` section 3b now states that a built car reads below
+     its base however coherent it is, because the build-intensity term charges for the power
+     itself, and cites the Carina figure. **Measured**, unchanged: a fully supported race build
+     reads 83 on the base-100 Carina and 65 on the base-80 FD.
 
-4. **The dyno sheet's four displayed integers need not sum to the base.** `gameStore.ts` rounds
-   the stat and each of the three loss terms independently. Measured on the 180SX (base 92) with
-   a maximal unsupported build at poor: 0 + 42 + 32 + 17 = 91. The underlying unrounded identity
-   is exact; only the display drifts, by up to about 2 points.
+4. **The dyno sheet's four displayed integers always sum to the base.** They did not, when each of
+   the four was rounded on its own: the 180SX (base 92) on a maximal unsupported build at poor
+   carries exact losses of 42.323, 32.197 and 17.480 against a stat of 0, and rounding those three
+   independently gives 0 + 42 + 32 + 17 = **91**. The sheet asked the player to distrust the
+   arithmetic rather than the build.
+
+   `displayedReliabilitySplit` (`packages/sim/src/dyno.ts`) now hands out whole points by largest
+   remainder against what the ROUNDED stat has actually left to explain, so each figure is its own
+   value rounded except for the odd point the roundings disagree over, which goes to whichever loss
+   came closest to earning it. **Measured**: that same 180SX case reads **92**, and over 3,250
+   combinations (26 cars x 5 build shapes x 5 bands x 5 defect variants) the four displayed figures
+   reconcile to the base in every one, with a worst deviation of 0. `gameStore.ts` spreads the
+   result rather than rounding anything itself, so the sheet and the stat cannot drift apart.
 
 5. **The condition mean's denominator is not the same on every car.** It is 31 when the
    `forcedInduction` slot is occupied and 30 on a naturally aspirated car whose slot is
@@ -422,7 +437,8 @@ What guards each of them:
    gives `conditionFactor` 0.985484 with the slot filled and 0.985000 with it empty.
 
 6. **No SKU in the catalogue carries `requiredTags`,** so an aftermarket turbo can be fitted to a
-   naturally aspirated car. `engineCharacterOf` reads the MODEL's tags, so such a car still reads
+   naturally aspirated car. `engineCharacterOf` reads the MODEL's own `spec.aspiration`, so such a
+   car still reads
    `high-strung-na` or `lazy-na`, and the fitted turbo therefore contributes its NA
    `powerFraction` column to power, to cylinder-pressure demand and to build intensity. Whether
    that fit should be possible is a content question, not a reliability one, but the reliability

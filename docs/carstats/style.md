@@ -154,10 +154,23 @@ The band is written onto whatever SKU the slot holds, so identity and condition 
 dented widebody is a widebody that is dented. `panels` and `underbody` both carry a real
 street/sport/race ladder, so both contribute style points as well as scaling it.
 
-**Fitting a body kit temporarily costs style.** `refitCarrierZoneStates` routes a carrier swap
-through `planSwapPanel`, which leaves every covered zone with a bare, unpainted finish. A freshly
-fitted kit therefore reads `poor` on the `paint` carrier until the car is repainted: measured, a
-fully dressed EG6 drops from 92 to 84 while the paint is bare.
+**Fitting a body kit temporarily costs style, and the car now says so.**
+`refitCarrierZoneStates` routes a carrier swap through `planSwapPanel`, which leaves every covered
+zone with a bare, unpainted finish. A freshly fitted kit therefore reads `poor` on the `paint`
+carrier until the car is repainted: **measured**, a fully dressed EG6 drops from 92 to 84 while the
+paint is bare, and a stock EG6 with a mint sport kit reads 47 rather than the 51 the kit's own
+points would give.
+
+The arithmetic is right (the car really is sitting in primer) and what was missing was the notice.
+`unpaintedPanelZoneIds` (`bodyPipeline.ts`) reports the panel zones carrying no paint,
+`unpaintedPanelsText` (`packages/game/src/utils/zoneSeverity.ts`) turns the count into a line, and
+`CarDetailScreen` renders it directly under the radar, where the drop is:
+
+> Five panels are still unpainted. Style and authenticity read low while the car sits like that,
+> and both come back once the paint is on.
+
+No formula changed with it. The same swap costs authenticity a second time in exactly the same
+way; see `authenticity.md` finding F5.
 
 ---
 
@@ -387,20 +400,24 @@ reasoning attached to it is stale in every particular. `packages/sim/tests/style
 the same drift in a comment reading "Now 42 of 88" where the measured figure is 44 of 108, though
 the assertion it sits above still passes with room to spare (0.407 against a 0.55 bar).
 
-### 6. Three design documents disagree with the code about style
+### 6. The design documents that disagreed with the code about style now agree with it
 
-- `docs/design/systems/desirability-system.md` section 5 records `styleSaturationPoints` as
-  "IMPLEMENTED at 60" and section 7 repeats "Implemented at 60 against the roughly 82 points
-  fittable across all slots". Shipped: **66** against **108**.
-- The same document's section 7 lists "Originality for `paint`, `panels` and `underbody`, which
-  cannot currently read as modified at all" as open. `panels` and `underbody` now both carry
-  street/sport/race SKUs and read as modified correctly; only `paint` is still stuck. `TODO.md`'s
-  own entry on this is accurate.
-- `docs/design/midnight-garage-roster.md` describes `styleBase` as "(0 to 20)". The authored range
-  is 15 to 88 and the guard band is 0 to 100.
-- `docs/design/systems/tuning-system.md` section 11 still records style's verdict as "keep
-  additive" and cites `styleCap` at 20. Style is not additive and `styleCap` is retired
-  (`retiredIdentifiers.test.ts` holds the name).
+All four claims this finding recorded have been corrected in the documents themselves. **Read**:
+
+- `docs/design/systems/desirability-system.md` records `styleSaturationPoints` as "**IMPLEMENTED**
+  at 66, preliminary and unsigned" and its outstanding item reads "Implemented at 66 against the
+  108 points fittable across all slots". Shipped: **66** against **108** (**measured**).
+- The same document's outstanding item on originality now names `paint` alone and states that
+  `panels` and `underbody` can read as modified. **Measured**: both carry street/sport/race SKUs;
+  only `paint` has no ladder.
+- `docs/design/midnight-garage-roster.md` now describes `styleBase` as "authored 15 to 88, on a
+  schema band of 0 to 100", which is the authored range and the guard band exactly.
+- `docs/design/systems/tuning-system.md` section 11 now records style's verdict as "gap-closing,
+  per car" and names `styleCap` as retired. Style is not additive and `styleCap` is banned by
+  `retiredIdentifiers.test.ts`.
+
+Finding 5 is the one drift on this stat that is still live, and it is a code comment rather than a
+design document.
 
 ### 7. Fitting a style part can make a car look worse, by two different routes
 
@@ -439,8 +456,10 @@ not.
 **Measured** by running `computeDerivedStats` and `stylePercentOf` over shipped content: the two
 identities on all 26 cars; the 108-point total and the twelve-slot ladder; the 3/4/6 route; the
 overshoot behaviour and the per-band saturation thresholds; every per-slot condition figure; the
-per-car floors and maxima; the paint-band and colour-mismatch costs; the correlations and partial
-correlations across all 94 roster rows and the shipped 26; the CSV-to-`cars.json` agreement.
+per-car floors and maxima; the paint-band and colour-mismatch costs; the bare-panel cost of a
+freshly fitted body kit, taken through `refitCarrierZoneStates` and `applyDerivedBodyBands` rather
+than a hand-written zone state; the correlations and partial correlations across all 94 roster
+rows and the shipped 26; the CSV-to-`cars.json` agreement.
 
 **Read off the source** and not separately re-derived: the derivation order in `stylePercentOf`;
 the zone-to-band derivations in `bodyPipeline.ts`; the schema bounds; the list of files that read

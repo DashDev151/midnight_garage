@@ -223,8 +223,8 @@ describe('the per-car aero ceiling', () => {
     expect(factoryDownforceCoeff(CITY, AERO)).toBeCloseTo(1.0038, 4)
     expect(handlingWith()).toBe(41)
     expect(handlingWith(aeroPart('street'))).toBe(41)
-    expect(handlingWith(aeroPart('sport'))).toBe(43)
-    expect(handlingWith(RACE_WING)).toBe(47)
+    expect(handlingWith(aeroPart('sport'))).toBe(42)
+    expect(handlingWith(RACE_WING)).toBe(45)
   })
 
   /**
@@ -261,9 +261,15 @@ describe('the per-car aero ceiling', () => {
    * the 0.2476 its own body makes; the Wagon R keeps 0.24 of it on top of
    * nothing, and pays the full drag either way.
    *
-   * Which is why the lap goes the way it does: the FD takes five seconds out of
-   * Misaki and the Wagon R LOSES a tenth there and two thirds of a second on the
-   * bayshore. A wing on a kei van is not a small gain, it is a cost.
+   * Which is why the lap goes the way it does: the FD takes two and a half
+   * seconds out of Misaki and the Wagon R LOSES half a second there and a second
+   * on the bayshore. A wing on a kei van is not a small gain, it is a cost.
+   *
+   * Both cars are otherwise stock, so both are also carrying the chassis-support
+   * loss in full: a race wing raises what the brakes, steering and shell have to
+   * cope with, and neither car has any of it. That is what turns the FD's pass
+   * lap - slow switchbacks where downforce buys almost nothing - from a gain into
+   * a cost.
    */
   describe('a wing on a Wagon R against the same wing on an FD', () => {
     const WAGON_R = CARS.find((c) => c.id === 'suzuki-wagon-r-ct21s')!
@@ -291,19 +297,22 @@ describe('the per-car aero ceiling', () => {
     })
 
     it('costs the Wagon R time on every course', () => {
-      expect(shownTimes(WAGON_R, 'misaki')).toEqual({ stock: 148.9, winged: 149 })
-      expect(shownTimes(WAGON_R, 'wangan')).toEqual({ stock: 201, winged: 201.7 })
-      expect(shownTimes(WAGON_R, 'hakone')).toEqual({ stock: 142.9, winged: 143.2 })
-      expect(shownTimes(WAGON_R, 'yatabe')).toEqual({ stock: 36, winged: 36.7 })
+      expect(shownTimes(WAGON_R, 'misaki')).toEqual({ stock: 148.9, winged: 149.4 })
+      expect(shownTimes(WAGON_R, 'wangan')).toEqual({ stock: 201, winged: 202 })
+      expect(shownTimes(WAGON_R, 'hakone')).toEqual({ stock: 142.9, winged: 144.3 })
+      expect(shownTimes(WAGON_R, 'yatabe')).toEqual({ stock: 36, winged: 36.8 })
     })
 
-    it('buys the FD five seconds a lap where the corners are fast', () => {
-      expect(shownTimes(FD, 'misaki')).toEqual({ stock: 106.2, winged: 100.9 })
-      expect(shownTimes(FD, 'wangan')).toEqual({ stock: 134.8, winged: 129.1 })
-      expect(shownTimes(FD, 'hakone')).toEqual({ stock: 113.7, winged: 112.2 })
+    it('buys the FD real time where the corners are fast, and costs it where they are not', () => {
+      expect(shownTimes(FD, 'misaki')).toEqual({ stock: 106.2, winged: 103.8 })
+      expect(shownTimes(FD, 'wangan')).toEqual({ stock: 134.8, winged: 131.6 })
+      // The pass is 11 m switchbacks taken far too slowly for downforce to pay,
+      // and the grip an unsupported build cannot use is charged there all the
+      // same, so a bare wing loses the FD time on the mountain.
+      expect(shownTimes(FD, 'hakone')).toEqual({ stock: 113.7, winged: 115.6 })
       // The standing kilometre has no corners to pay the drag back, so even the
       // FD loses there. Downforce is worth nothing in a straight line.
-      expect(shownTimes(FD, 'yatabe')).toEqual({ stock: 24.3, winged: 24.6 })
+      expect(shownTimes(FD, 'yatabe')).toEqual({ stock: 24.3, winged: 24.8 })
     })
   })
 })

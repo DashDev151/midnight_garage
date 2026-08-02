@@ -1531,6 +1531,64 @@ import storyMissions from '../data/storyMissions.json'
  * reachable from any of these three values, which `packages/sim/tests/dyno.test.ts` pins as
  * strict equality on the car across a session rather than asserting it. `damagePatterns.json`,
  * `partPricing.json` and `storyMissions.json` are untouched, so their pins hold.
+ *
+ * Re-pinned for `docs/sprints/sprint167.md`, grip a build cannot use. ONE new block,
+ * `statFormulas.chassisSupport`, carrying SIX levers, all six APPROVED in that sprint doc's lever
+ * table on the measurements in `docs/design/systems/chassis-support-measured.md`:
+ *
+ * 1. `lossByGrade.street` - **0.10**. The largest value at which the median car on the roster
+ *    loses nothing at all and no car loses more than a point, so bolting street dampers to stock
+ *    brakes reads as a number that went up.
+ * 2. `lossByGrade.sport` - **0.20**. The smallest value that is always visible and never zero,
+ *    without reaching the race band.
+ * 3. `lossByGrade.race` - **0.35**. An unsupported race build gives up around a tenth of its
+ *    readout and several seconds of a mountain lap, and is worth going back and fixing.
+ * 4. `share.brakes` - **0.45**, split evenly across `brakePadsDiscs` and `brakeCalipersLines`.
+ * 5. `share.steering` - **0.35**.
+ * 6. `share.chassis` - **0.20**, the smallest share because a chassis SKU already carries its own
+ *    `physicalModifiers.grip` and earns a second time that way.
+ *
+ * `lossByGrade.stock` is pinned at 0 by the schema (`z.literal(0)`, the same treatment
+ * `support.specByGrade.stock` gets) and is not a lever: it is one of the two structural reasons a
+ * stock car cannot move. The other is that a stock build IS the factory reference its gain is
+ * measured against, so that gain is exactly 0.
+ *
+ * A STOCK CAR IS BYTE-IDENTICAL ON ALL 26 SHIPPED CARS, on grip, on handling and on all four
+ * course laps, asserted directly in `packages/sim/tests/chassisSupport.test.ts` against the same
+ * content with every loss fraction at zero rather than inferred.
+ * `packages/sim/tests/harnessAcceptance.test.ts` passes UNTOUCHED: it holds no `CarInstance` at
+ * all, so it runs on `STOCK_BUILD_FACTORS` and the model is unreachable from it.
+ *
+ * Two rulings in the sprint doc are folded in, and both make the loss LARGER than the
+ * mechanical-only pass the design doc measured. Recorded because the values are the design doc's
+ * and the magnitudes are not:
+ *
+ * - **Gain is measured in EFFECTIVE grip**, mechanical grip times the downforce multiplier at the
+ *   display curve's own reference speed, converted back to mechanical grip on the way out.
+ *   Measured mechanically a race wing raised the bar to race and paid nothing towards it, while
+ *   being worth 17 handling points on an S13.
+ * - **The brake share splits across both brake slots** rather than reading the worse of the two,
+ *   which made the first brake part bought worth exactly nothing.
+ *
+ * Freshly measured across all 26 shipped cars rather than carried over. Handling points lost by an
+ * unsupported build, min/median/max: street 0/0/1, sport 1/3/3, race 11/15/19 (the design doc's
+ * mechanical-only pass read 0/0/1, 1/2/2, 10/11/13). What one support part returns on an
+ * unsupported race build: brake pads alone 3/3/5, both brake slots 5/7/9, steering 4/5/7, chassis
+ * 6/7/9 - none is zero, and a race steering rack is worth 4 to 7 points where it was worth
+ * literally nothing before. The ladder holds: 26 cars x 11 support levels x 2 adjacent pairs = 572
+ * comparisons with 0 violations, tightest step +3 (Suzuki Wagon R, all support at street, street
+ * grip 19 against sport grip 22).
+ *
+ * ONE formula-derived STAT THRESHOLD in `storyMissions.json` moves with it (not gated by this
+ * hash, the same class of mechanical re-derivation as the Sprint 135, 136 and 140 entries above):
+ * `the-column-clock`'s `lapTimeCeiling.maxSeconds`, `ceil1AtTwoPercentSlower` of the freshly
+ * measured probe lap, **125.7 -> 125.8**. Its probe fits street tyres to an AE86 with stock
+ * brakes, steering and chassis, so it now laps a tenth slower and the ceiling derived from it
+ * rises with it. `under-one-fifteen`'s ceiling holds, and so does every taste-match multiplier.
+ *
+ * NOTHING ELSE MOVES: every `payoutYen` and `budgetCapYen` above holds, `damagePatterns.json` and
+ * `partPricing.json` are untouched so their own hashes hold, and BOTH `advanceDay` golden hashes
+ * were re-run and held unchanged, as did `balanceProbes.test.ts` and `valueModelProbes.test.ts`.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -1540,7 +1598,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('a419181b7b9fb9dfcadee78beb049340dbe9c6e971147d56083ef573af14560e')
+    ).toBe('0a3bca64de4eabcfb6611de3ba1bcfebe5c1a6a1f7159e7c9e2a58696b72289a')
   })
 
   it('damagePatterns.json matches its approved content exactly', () => {

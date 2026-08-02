@@ -12,7 +12,6 @@ import {
   type StatBlock,
 } from '@midnight-garage/content'
 import {
-  buildFactors,
   carBlock,
   carOriginLabel,
   computeDerivedStats,
@@ -29,7 +28,7 @@ import {
   mileageRangeForAge,
   normalizedPowerScore,
   partFitsCar,
-  physicalConditionFactors,
+  physicalFactorsFor,
   stockInstanceFor,
   type ConditionFactors,
   type Drivetrain,
@@ -375,9 +374,9 @@ function blockerReason(partId: CarPartId, build: SandboxBuild): string {
  * Everything the screen shows for one build, from the same functions the game
  * calls: `computeDerivedStats` for the five stats, `normalizedPowerScore` for
  * power on the other four's scale, `carBlock` for the physical quantities the
- * lap runs on, `physicalConditionFactors` for the four dials,
- * `lapTimeSecondsFor` per course, `lapBlockers` for why a car cannot run, and
- * `marketValueYen` for what it is worth.
+ * lap runs on, `physicalFactorsFor` for the four condition dials and what the
+ * build usably delivers, `lapTimeSecondsFor` per course, `lapBlockers` for why
+ * a car cannot run, and `marketValueYen` for what it is worth.
  *
  * `mileageKm` and `heatPercent` are the instance and the market the car is
  * PRICED at: both reach `marketValueYen` and nothing else, so neither can move
@@ -395,7 +394,13 @@ export function evaluateBuild(
   const car = buildCarInstance(model, build, mileageKm, context)
 
   const stats = computeDerivedStats(model, car, partsById, partsTaxonomy, economy)
-  const condition = physicalConditionFactors(car, model, partsTaxonomy, economy)
+  const { condition, build: builtFactors } = physicalFactorsFor(
+    car,
+    model,
+    partsById,
+    partsTaxonomy,
+    economy,
+  )
   const block = carBlock(
     model,
     stats.power,
@@ -405,7 +410,7 @@ export function evaluateBuild(
     economy.statFormulas.aero,
     effectiveDownforce(car, model, partsById, economy.statFormulas.aero),
     condition,
-    buildFactors(car, partsById, economy),
+    builtFactors,
   )
 
   const laps: Record<string, number | null> = {}

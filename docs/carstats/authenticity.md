@@ -100,9 +100,9 @@ is the only slot with no aftermarket ladder, and it is missing one at **all four
 `stocknessOf`. For each taxonomy entry with a non-zero authenticity weight:
 
 - **Skip entirely** when the slot is empty AND `isPartMissing` is false. That is exactly one case
-  in shipped content: `forcedInduction` on a car with neither the `Turbo` nor the `Supercharged`
-  tag. The slot leaves BOTH sums, so the denominator becomes 97 rather than 100 and the other
-  slots share the whole scale between them.
+  in shipped content: `forcedInduction` on a car whose `spec.aspiration` is `NA`. The slot leaves
+  BOTH sums, so the denominator becomes 97 rather than 100 and the other slots share the whole
+  scale between them.
 - Otherwise **add the weight to the denominator**, and add it to the numerator only when the
   fitted SKU resolves in the catalogue and its `grade` is exactly `'stock'`.
 
@@ -177,10 +177,10 @@ what is fitted there would move nothing (and nothing can be fitted there anyway:
 
 ### 3.7 The naturally aspirated denominator (per-car)
 
-A car with neither the `Turbo` nor the `Supercharged` tag (`hasForcedInduction` in
-`packages/sim/src/bands.ts`) has its `forcedInduction` slot skipped by both sums, so every other
-slot is worth slightly more. Measured on a shipped NA model against the same swap on a shipped
-turbo model:
+A car whose `spec.aspiration` is `NA` (`hasForcedInduction` in `packages/sim/src/bands.ts`, which
+reads that field and nothing else) has its `forcedInduction` slot skipped by both sums, so every
+other slot is worth slightly more. Measured on a shipped NA model against the same swap on a
+shipped turbo model:
 
 | modification | turbo car (denominator 100) | NA car (denominator 97) |
 | --- | ---: | ---: |
@@ -206,7 +206,8 @@ reaches `chassis`, which the player's own fitting flow cannot (finding F3).
 Generation can also leave a slot MISSING: `missingSlotBaseChance` 0.015, scaled per slot by
 `missingSlotWeightByPart` and by upkeep. Six slots are authored at weight 0 there and can never
 roll missing: `block`, `chassis`, `panels`, `paint`, `underbody` and `forcedInduction` (the last of
-which never enters the missing roll at all, taking its own branch off the model's tags instead).
+which never enters the missing roll at all, taking its own branch off the model's `spec.aspiration`
+instead).
 
 ---
 
@@ -477,33 +478,39 @@ Whether that ordering is intended is a design question, not a bug report. It rea
 purist judging a car (a tired original engine is still THE engine), and it is worth stating because
 the opposite is the intuitive expectation.
 
-### F5. A body kit charges authenticity twice, and the second charge is invisible
+### F5. A body kit charges authenticity twice, and the second charge is now stated
 
 Fitting a body kit onto `panels` runs `refitCarrierZoneStates`, which resets all five panel zones to
-bare, unprimed metal. The `paint` band then derives to `poor`. Measured on a pristine zone-model
-car: **100 before, 83 after a mint sport body kit**, where the 11-point stockness loss alone would
-give 89.
+bare, unprimed metal. The `paint` band then derives to `poor`. **Measured** on a pristine zone-model
+car, through that real swap: **100 before, 83 after a mint sport body kit**, where the 11-point
+stockness loss alone gives 89 (**measured**: stockness is exactly 89.00 either way, so the whole of
+the remaining 6 points is the paint band). Identical on both cars measured, the S13 and the EG6.
 
 The second charge is recoverable (paint the car and `paint` climbs back to mint), and it is
-correct: a car that has just had a kit fitted genuinely is in primer. But nothing in the UI
-connects the two, and a player fitting a kit sees a bigger drop than the slot's weight explains.
+correct: a car that has just had a kit fitted genuinely is in primer. What was wrong was that
+nothing said so. The car now carries a note under its radar naming the unpainted panels and saying
+that style and authenticity both come back with the paint (`unpaintedPanelZoneIds` in
+`bodyPipeline.ts`, `unpaintedPanelsText` in `packages/game/src/utils/zoneSeverity.ts`,
+`CarDetailScreen`). **No formula changed with it**, and this document's figures are unmoved: the
+drop is as large as it ever was, and it is now legible.
 
-### F6. Three design docs are now stale on the body slots, in the same way
+### F6. The three design docs that were stale on the body slots have been corrected
 
-The code has moved and these have not. All three should be read as history:
+The question was whether any document still claimed 23 of the 100 points were unloseable, or that
+`aero` was the only slot a visible modification could land on. **Read**, all three:
 
-1. `docs/design/systems/authenticity-weights-proposal.md` section 3.1: "`paint`, `panels` and
-   `underbody` can never be non-stock today ... **23 of the 100 points can never be lost to
-   modification**." Measured today: `panels` (11) and `underbody` (1) both ship full
-   street/sport/race ladders at all four fitment classes, and both are listed in the parts market
-   (`PartsMarketScreen.vue` delists only the `grade: 'stock'`, non-zone body SKUs). **Eleven points
-   remain unloseable, not 23.**
-2. The same document's section 3.2: "`aero` carries the whole visible-body signal" and "`aero` is
-   the only slot a visible body modification can land on." No longer true. `panels` (11) and
-   `underbody` (1) both land visible body modifications, and `panels` outweighs `aero`.
-3. `docs/design/systems/desirability-system.md`, outstanding item 5: "Originality for `paint`,
-   `panels` and `underbody`, which cannot currently read as modified at all." Only `paint` still
-   cannot.
+1. `docs/design/systems/authenticity-weights-proposal.md` section 3.1 now states that `panels` and
+   `underbody` "shared this gap when the weights were written and no longer do", and concludes
+   "**11 of the 100 points can never be lost to modification**". **Measured**: `paint` is the only
+   slot with no aftermarket ladder, at all four fitment classes, and a fully modified car floors at
+   exactly 11.
+2. The same document's section 3.2 is now headed "`aero` no longer carries the whole visible-body
+   signal" and records that `panels` (11) and `underbody` (1) carry ladders of their own and that
+   `panels` outweighs `aero`.
+3. `docs/design/systems/desirability-system.md`'s outstanding item now reads "Originality for
+   `paint`, which cannot currently read as modified at all. `panels` and `underbody` now can."
+
+F7 is the one place the stale 23 survives, and it is a test comment rather than a design document.
 
 ### F7. A test comment carries the same stale 23
 

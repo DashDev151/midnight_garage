@@ -69,7 +69,7 @@ every taxonomy slot carrying a non-zero `statWeights.power`. Six of the 29 slots
 Total weight 11. Three rules govern the walk:
 
 - **A legitimately absent slot drops out of both sums.** The only one that can be is
-  `forcedInduction` on a car with no `Turbo` or `Supercharged` tag. So the denominator is **11 on
+  `forcedInduction` on a car whose `spec.aspiration` is `NA`. So the denominator is **11 on
   any car with something in the forced-induction slot, and 8 on a factory-NA car with that slot
   empty**. Fitting a turbo to an NA car therefore adds 3 to that car's denominator.
 - **A missing part is worse than a scrap one.** `isPartMissing` (a real defect: a gutted exhaust,
@@ -116,8 +116,11 @@ worse than leaving a scrap turbo in place.
 
 `engineCharacterOf(model, economy)`, in three steps:
 
-1. `hasForcedInduction(model)` is true when `model.tags` contains `Turbo` or `Supercharged`. If so,
-   the character is **`forced`**, full stop. Specific output is never consulted.
+1. `hasForcedInduction(model)` is true when `model.spec.aspiration` is anything other than `NA`.
+   If so, the character is **`forced`**, full stop. Specific output is never consulted.
+   `aspiration` is a required field on `CarModelSchema` and `NA` is the only naturally aspirated
+   value the enum carries, so the answer is schema-guaranteed rather than dependent on a tag being
+   remembered.
 2. Otherwise, if `model.spec.displacementCc` is absent, the character is **`lazy-na`**.
 3. Otherwise `specificOutputOf(model)` is compared against
    `statFormulas.engineCharacter.naHighStrungThreshold` (**80**): at or above is
@@ -127,11 +130,14 @@ worse than leaving a scrap turbo in place.
 `effectiveDisplacementCcOf` multiplies `displacementCc` by **1.8** when `spec.engineConfig` starts
 with `rotary`, and by 1.0 otherwise, so a 13B is measured as roughly 2.35 litres rather than 1.3.
 
-Shipped split (26 cars): 16 `forced`, 5 `high-strung-na`, 5 `lazy-na`.
+Shipped split (**measured**, 26 cars): 16 `forced`, 5 `high-strung-na`, 5 `lazy-na`. The induction
+TAG and `spec.aspiration` agree on all 26 (**measured**: zero disagreements), so the shipped split
+is the same one the tag used to produce.
 
-Full roster (93 rows carrying a power figure, character taken from the CSV's own `aspiration`
-column because `tags` is unauthored on the unbuilt rows): 47 `forced`, 24 `high-strung-na`,
-22 `lazy-na`.
+Full roster, from the CSV's own `aspiration` column, which is now the field the sim reads: **93
+rows carry a power figure** and split 47 `forced`, 24 `high-strung-na`, 22 `lazy-na`. All 94 rows
+carry an `aspiration`; the 94th is the Daihatsu Mira TR-XX (L70), a factory turbo with no
+`stockPowerPs` (finding 5).
 
 **The threshold is a cliff, and the roster is dense around it.** The two closest NA cars either
 side are the VW Golf GTI 16V (Mk2) at 78.05 PS per effective litre (`lazy-na`) and the Mitsubishi
@@ -267,8 +273,11 @@ numbers the model can produce anywhere on the 94-car roster.
   0.65 of its fraction exactly as a street ECU at worn does.
 - **`physicalModifiers`.** Power is deliberately absent from `PhysicalModifierSchema`
   (`packages/content/src/stats.ts`), which names it as one of two dials with exactly one path in.
-- **`spec.aspiration`.** It exists on `CarModel` and is read only by the dev performance sandbox
-  screen, for display. `hasForcedInduction` reads `tags`.
+- **The induction TAGS.** `Turbo` and `Supercharged` on `model.tags` are a platform facet, used for
+  display and matching. `hasForcedInduction` reads `spec.aspiration` and nothing else, so a car
+  whose two representations disagreed would take the column its `aspiration` names. `bands.test.ts`
+  pins that against fixtures whose tag and aspiration deliberately disagree, and
+  `integrity.test.ts` holds the two in agreement on every shipped car.
 - **`spec.quotedPowerPs`.** Optional, carried by four shipped cars, read nowhere outside dev
   sandbox fixtures.
 - **The condition of `block` and `headValvetrain` on the base term.** Both carry
@@ -318,7 +327,7 @@ Other content:
 | `packages/content/data/parts.json` | `statModifiers.powerFraction` | per-SKU, per-character fraction of stock power |
 | `packages/content/data/cars.json` | `spec.stockPowerPs` | the figure everything is a fraction of |
 | `packages/content/data/cars.json` | `spec.displacementCc`, `spec.engineConfig` | the specific-output derivation and the rotary test |
-| `packages/content/data/cars.json` | `tags` (`Turbo`, `Supercharged`) | the only signal that makes a car `forced` |
+| `packages/content/data/cars.json` | `spec.aspiration` | the only signal that makes a car `forced`, and required on every model |
 
 **Not content, and it should be:** the rotary equivalency factor **1.8** is a literal inside
 `effectiveDisplacementCcOf` in `packages/sim/src/derivedStats.ts`.
@@ -331,18 +340,22 @@ Other content:
    rather than in `economy.json`, against engineering law 2 (content law). Every other number the
    character derivation reads is content. It changes six roster cars' engine character if moved.
 
-2. **Induction is carried twice on a `CarModel`, and only one copy reaches power.**
-   `hasForcedInduction` reads `model.tags`; `spec.aspiration` is an optional enum
-   (`NA` / `turbo` / `twin-turbo` / `supercharged`) read only by the dev sandbox screen. They agree
-   on all 26 shipped cars, so nothing is wrong today. The exposure is in the roster:
-   `midnight-garage-roster.csv` authors `aspiration` on all 94 rows and leaves `tags` blank on the
-   68 unbuilt ones. A car brought into `cars.json` from the CSV without a hand-written `Turbo` tag
-   reads NA, takes the NA fraction column on every slot, and nothing fails.
+2. **Induction is carried twice on a `CarModel`, and the copy that reaches power is now the
+   authored one.** The question this finding asked was which of the two representations the sim
+   reads, because they could silently disagree: `hasForcedInduction` used to read `model.tags`
+   while `midnight-garage-roster.csv` authored `aspiration` on all 94 rows and left `tags` blank on
+   the unbuilt ones, so a car imported from the CSV without a hand-written `Turbo` tag would read
+   NA, take the NA fraction column on every slot, and fail nothing. **The answer: it reads
+   `spec.aspiration`**, which is now a REQUIRED field on `CarModelSchema` rather than an optional
+   display facet, and the tag path is gone. The tag is still carried, still used for display and
+   matching, and no longer answers this question. **Measured**: the two agree on all 26 shipped
+   cars, so no shipped figure moved when the source changed. An import missing an `aspiration` now
+   fails at the schema instead of quietly reading NA.
 
-3. **Fitting forced induction never changes engine character.** Because `hasForcedInduction` reads
-   the model's tags, a converted NA car keeps its NA fraction column permanently. **Measured**: a
-   Beat with a race turbo fitted still resolves `high-strung-na`, so the turbo pays 0.20 rather
-   than `forced`'s 0.35. This is deliberate and pinned by
+3. **Fitting forced induction never changes engine character.** The character is a property of the
+   MODEL, read once from `spec.aspiration`, so a converted NA car keeps its NA fraction column
+   permanently. **Measured**: a Beat with a race turbo fitted still resolves `high-strung-na`, so
+   the turbo pays 0.20 rather than `forced`'s 0.35. This is deliberate and pinned by
    `packages/sim/tests/proportionalPower.test.ts`, and it is defensible (the character answers
    "what sort of engine is this", not "what is bolted to it"), but a reader will assume the
    opposite.
@@ -356,28 +369,32 @@ Other content:
 5. **`engineCharacterOf`'s missing-displacement branch is unreachable in shipped content.** All 26
    shipped cars carry `displacementCc`, and `packages/sim/tests/engineCharacter.test.ts` pins that.
    The roster has one row that would reach it: the Daihatsu Mira TR-XX (L70) has no `stockPowerPs`
-   and no `displacementCc`. It is a factory turbo, so in practice `hasForcedInduction` would answer
-   first anyway, provided its `tags` are authored (see finding 2).
+   and no `displacementCc`. It carries `aspiration: turbo`, so `hasForcedInduction` answers first
+   and the branch stays unreached even for that row.
 
 6. **`Math.max(0, power)` cannot fire on shipped content.** The base term alone floors at
    0.5 x `stockPowerPs` and every authored `powerFraction` is non-negative. It is not dead code:
    `PowerFractionSchema` is a bare `z.number()` with no `.nonnegative()`, so the clamp is a live
    guard against a future negative fraction.
 
-7. **Design doc drift, `docs/design/systems/tuning-system.md` section 5d.** The per-part response
-   table shows a single "NA" column where the code has two characters. That column is exactly the
-   shipped `high-strung-na` numbers; `lazy-na` runs 25 to 30 per cent higher across every slot and
-   appears nowhere in the doc. The same table gives `forcedInduction` on NA as "n/a", but every
-   forced-induction SKU carries `requiredTags: []` and real NA fractions (0.04 / 0.09 / 0.20
-   high-strung, 0.056 / 0.126 / 0.28 lazy), and the conversion is a supported action gated only on
-   engine tool tier 3.
+7. **The design doc's per-part response table now matches the code.**
+   `docs/design/systems/tuning-system.md` section 5d used to show a single "NA" column where the
+   code has two characters, and to give `forcedInduction` on NA as "n/a". Both are corrected: the
+   table carries a `high-strung NA` and a `lazy NA` column at the shipped race-grade values, and
+   the forced-induction row states that NA is not n/a and that a turbo fits a naturally aspirated
+   car gated only on engine tool tier 3. **Read** against `parts.json`: every forced-induction SKU
+   carries `requiredTags: []` and real NA fractions (0.04 / 0.09 / 0.20 high-strung, 0.056 / 0.126
+   / 0.28 lazy). The doc's section 5b also now names `spec.aspiration` as what makes a car
+   `forced`, which is what `hasForcedInduction` reads.
 
-8. **Design doc drift, section 5e.** It describes the ECU's return curve as "threshold: little on
-   its own; it unlocks what the others can do". **No unlock exists.** Every fraction is additive
-   and completely independent of what else is fitted. The forced ECU ladder is 0.038 / 0.138 / 0.25,
-   which is steep, not conditional. Section 5b's "Specific output is
-   `stockPowerPs / (displacementCc / 1000)`" is likewise the pre-rotary form; the code divides by
-   effective displacement, which 5c goes on to specify, so the section is only wrong read alone.
+8. **Section 5e's ECU description is corrected; section 5b's specific-output line is still the
+   pre-rotary form.** The claim that the ECU is a "threshold" that "unlocks what the others can do"
+   is gone: 5e now says the ECU curve is increasing, gives the forced ladder as 0.038 / 0.138 /
+   0.25, and states plainly that it unlocks nothing because every fraction is additive and
+   independent of what else is fitted. **No unlock exists in the code**, and that is now what the
+   doc says. What remains is 5b's "Specific output is `stockPowerPs / (displacementCc / 1000)`":
+   the code divides by EFFECTIVE displacement, which 5c goes on to specify, so the section is only
+   wrong read alone.
 
 9. **The 80 PS-per-litre threshold is a hard cliff sitting inside a dense part of the roster.**
    Crossing it moves an NA car's ceiling from x1.57 to x1.43 (factory induction) or x1.85 to x1.63

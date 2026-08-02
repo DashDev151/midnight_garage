@@ -7,7 +7,7 @@ import type {
   Grade,
   TyreCompound,
 } from '@midnight-garage/content'
-import { buildFactors, computeDerivedStats, physicalConditionFactors } from './derivedStats'
+import { computeDerivedStats, physicalFactorsFor } from './derivedStats'
 import { effectiveCompound, effectiveDownforce, lapTime } from './performance'
 import type { SimContext } from './context'
 
@@ -149,8 +149,13 @@ export function lapTimeSecondsFor(
     context.partsById,
     context.economy.statFormulas.aero,
   )
-  const condition = physicalConditionFactors(car, model, context.partsTaxonomy, context.economy)
-  const build = buildFactors(car, context.partsById, context.economy)
+  const { condition, build } = physicalFactorsFor(
+    car,
+    model,
+    context.partsById,
+    context.partsTaxonomy,
+    context.economy,
+  )
   return round1(
     lapTime(model, course, stats.power, compound, context.economy, aeroEffect, condition, build),
   )

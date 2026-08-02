@@ -46,6 +46,21 @@ common mistake:
 how much its condition matters to that stat, **independently of whether a part in that slot can
 contribute anything to it**. That independence is the source of several of the surprises below.
 
+**Support.** Two of the five ask whether the car can cope with what the build makes, about two
+different halves of the car, and both models live in `packages/sim/src/support.ts`:
+
+| model | asks | reaches | how |
+| --- | --- | --- | --- |
+| `supportVerdict` / `coherenceFactorFor` | can the engine's ancillaries take the power it now makes | reliability | five per-subsystem ratios, headline is the weakest link |
+| `usableGripFraction` | can the brakes, steering and shell put down the grip it now makes | handling | one proportion of the grip the build GAINED |
+
+Both are exactly neutral on a stock car by construction, both read a fitted part's GRADE rather
+than its band, and both are proportional to what the build asks rather than flat. They differ in
+where the bill lands, which is worth knowing before reading either: engine support **does not gate
+power** (an unsupported build makes every PS and pays in reliability and at the till), while chassis
+support takes the grip itself away, so the handling readout and the lap time both fall. Nothing in
+either model reaches style or authenticity.
+
 **Per-car spec fields.** `reliabilityBase`, `styleBase`, `styleCeiling` and `aeroCeiling` are
 authored once per car for all 94 roster rows in `midnight-garage-roster.csv`, which is the single
 source of truth. Nothing else may hold a second copy.
@@ -63,20 +78,30 @@ a point back on either. A resprayed car still reads as wearing its factory colou
 deliberately and recorded in `TODO.md`, but the cost is larger than one stat's worth.
 
 **A slot's condition weight and its ability to contribute are set independently, and the mismatches
-are real.** A big brake kit and a race steering rack move handling by exactly zero on all 26 cars
-while both slots carry handling weight. Six slots hand over 38 race-grade style points while
-carrying no style condition weight, so a scrap race exhaust delivers its points in full. `block`
-and `headValvetrain` make power but carry zero power weight. In the other direction, occupying a
-weighted slot puts its band into a denominator whatever the part gives back, so **a part worth zero
-power can cost real power as it wears**.
+are real.** Six slots hand over 38 race-grade style points while carrying no style condition
+weight, so a scrap race exhaust delivers its points in full. `block` and `headValvetrain` make
+power but carry zero power weight. `rims` and `chassis` move handling while carrying no handling
+weight at all. In the other direction, occupying a weighted slot puts its band into a denominator
+whatever the part gives back, so **a part worth zero power can cost real power as it wears**.
 
-**Fitting a body kit charges twice.** The carrier swap leaves every panel zone bare, so the `paint`
-band re-derives to `poor` and drags both the style and authenticity condition factors down on top
-of the stockness loss the kit already costs. Measured: authenticity 100 to 83 where stockness alone
-predicts 89, and style 92 to 84 on a dressed EG6. The two are unconnected in the UI, and the second
-charge is invisible.
+**The brakes-and-steering case is the one that closed.** Both slots carried handling condition
+weight while no SKU in either could contribute a point, which read as an authoring slip. It was
+not: they are SUPPORT. Measured now, on an unsupported race build, both brake slots are worth 5 to
+9 handling points and a race steering rack 4 to 7, on every one of the 26 cars, and the first brake
+part bought is worth 3 to 5 rather than nothing. On a car with nothing else fitted they are still
+worth exactly 0, because there is no gained grip to support. Neither carries a grip modifier and
+neither should.
 
-**Support does not gate power.** An unsupported build makes its full power and becomes unreliable
+**Fitting a body kit charges twice, and the second charge is now stated.** The carrier swap leaves
+every panel zone bare, so the `paint` band re-derives to `poor` and drags both the style and
+authenticity condition factors down on top of the stockness loss the kit already costs. Measured
+through the real swap: authenticity 100 to 83 where stockness alone predicts 89, and style 92 to 84
+on a dressed EG6. The maths was always right and the silence was the defect; the car now carries a
+note under its radar naming the unpainted panels and saying both stats come back with the paint. No
+formula moved, so both figures are unchanged.
+
+**Engine support buys nothing unless it is the weakest link, and it never gates power.** An
+unsupported build makes its full power and becomes unreliable
 instead. Measured twice, independently: a Supra at `dangerous` support makes 632 PS and the
 identical build fully supported makes exactly 632 PS; and on a 180SX, adding six race support parts
 to the wrong subsystems left headline, power and reliability all bit-for-bit unchanged. Only
@@ -96,12 +121,15 @@ PS/tonne is r 0.69 across the shipped cars, `styleCeiling` r 0.77. Most of it is
 speed (the partials fall to 0.16 and 0.30 holding price constant), and real counterexamples exist,
 but on the cars a player actually meets the two axes partly rank together.
 
-**The design docs have drifted from the code in a dozen places**, each recorded as a finding in the
-relevant file. `tuning-system.md` describes style as additive and cites a retired lever, shows one
-NA power column where the code has two, and calls the ECU a threshold that unlocks other parts when
-no unlock exists. `economy.ts`'s own comment on `styleSaturationPoints` describes ten slots and 88
-points against a measured twelve and 108. Where a doc and the code disagreed, these files document
-the code.
+**The design docs have caught up with the code, and two code comments have not.** Every
+design-document drift these files recorded has since been corrected in the document itself:
+`tuning-system.md` now gives style as gap-closing per car, two NA power columns, the ECU as an
+increasing curve that unlocks nothing, the reliability formula with its intensity term, and
+`spec.aspiration` as what makes a car forced; `desirability-system.md` now says 66 against 108; the
+authenticity weights proposal now says 11 unloseable points rather than 23. What is still stale is
+in the source: `economy.ts`'s own comment on `styleSaturationPoints` describes ten slots and 88
+points against a measured twelve and 108, and `valuation.test.ts` still explains an assertion with
+the retired 23. Where a doc and the code disagree, these files document the code.
 
 ## How to use these files
 
