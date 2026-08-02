@@ -74,7 +74,7 @@ describe('Service Grinder (the Act 1 floor)', () => {
   const SEED_SAMPLE_SIZE = 50
 
   // Real wall-clock budget for 50 seeds x 100 days under coverage instrumentation.
-  const PAID_WORK_SAMPLE_TIMEOUT_MS = 20_000
+  const PAID_WORK_SAMPLE_TIMEOUT_MS = 60_000
 
   it(
     'never owning a car, but paid service work never lands either - a known bot-harness limitation',

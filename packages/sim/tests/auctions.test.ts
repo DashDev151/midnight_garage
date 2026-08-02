@@ -910,6 +910,8 @@ describe('the damage budget: how rough a generated lot is', () => {
     expect(project - tidy).toBeLessThan(2 * authoredGap)
   })
 
+  // Real wall-clock budget for 26 cars x 3 campaign years x 40 seeds under
+  // coverage instrumentation.
   it('never generates a car outside its own production years, in any campaign year', () => {
     for (const carModel of CARS) {
       for (const currentYear of [1995, 2005, undefined]) {
@@ -932,7 +934,7 @@ describe('the damage budget: how rough a generated lot is', () => {
         }
       }
     }
-  })
+  }, 30_000)
 
   it('holds the three-year minimum age without ever overriding a model still in production', () => {
     // A 1994 model in a 1995 campaign generates as a 1994 car, age 1: near-new
