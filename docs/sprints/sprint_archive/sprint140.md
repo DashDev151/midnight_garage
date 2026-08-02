@@ -1,10 +1,8 @@
 # Sprint 140: stat simplification, aero ceiling, style base
 
-**Status: PART READY, PART BLOCKED ON AUTHORING, PART ALREADY DONE.** Task 1 moves no economy
-value and can proceed the moment Sprint 135 has shipped. **Task 2 (aeroCeiling) is blocked twice
-over**: the lever is authored for 26 of the 94 roster cars, which directive 24 makes the wrong
-scope, and it is not signed (directive 22). Task 0's `aeroCeiling` half closes the first; the
-maintainer closes the second.
+**Status: BUILT, committed (`338de30`) and SIGNED.** The handling deletion (Task 1) and the aero
+ceiling (Tasks 0 and 2) both landed, and Lever 1's 94 `aeroCeiling` values were ratified on review
+of the authoring pass. Nothing is outstanding.
 
 **Everything below about `styleBase` (Task 0's style half, Lever 2, Task 3, and the
 `styleCap`-retirement half of Task 6) landed early, in `docs/sprints/sprint_archive/sprint145.md`, pulled
@@ -284,10 +282,8 @@ No new lever, no new content value, no sign-off needed.
 - [x] `styleBase` authored to all 94 rows in the roster CSV (Task 0's style half) - `docs/sprints/sprint_archive/sprint145.md`.
 - [x] `aeroCeiling` authored to all 94 rows in the roster CSV (Task 0's remaining half).
 - [x] Lever 2 (`styleBase`) signed and landed - `docs/sprints/sprint_archive/sprint145.md`.
-- [ ] **Lever 1 (`aeroCeiling`) NOT signed.** The 94 values are authored and PRELIMINARY at the
-      maintainer's instruction to produce figures that unblock the sprint. Recorded as
-      authored-and-preliminary in the approval-gate ledger, to be re-recorded as RATIFIED on
-      signature. **This is the one box this sprint cannot tick for itself.**
+- [x] **Lever 1 (`aeroCeiling`) SIGNED.** All 94 values ratified on review of the authoring pass
+      below, and recorded as RATIFIED in the approval-gate ledger.
 - [x] `aeroCeiling` required on the spec schema and authored for all 26 cars.
 - [x] `styleBase` required on the spec schema and authored for all 26 cars - `docs/sprints/sprint_archive/sprint145.md`.
 - [x] `statFormulas.styleCap` removed, not orphaned - `docs/sprints/sprint_archive/sprint145.md`.
@@ -297,11 +293,10 @@ No new lever, no new content value, no sign-off needed.
       `docs/sprints/sprint_archive/sprint145.md`; the `aeroCeiling` share moved nothing).
 - [x] Checks run once each, output shown.
 
-## The `aeroCeiling` authoring pass (68 values, PRELIMINARY)
+## The `aeroCeiling` authoring pass (68 values, SIGNED)
 
-Authored against the rubric above, calibrated on the 26 that already existed, and explicitly
-preliminary: the maintainer asked for figures good enough to unblock the sprint, to be reviewed
-rather than taken as signed. The values live in the roster CSV; what follows is the reasoning for
+Authored against the rubric above, calibrated on the 26 that already existed, and ratified on
+review of the reasoning below. The values live in the roster CSV; what follows is the reasoning for
 the calls the rubric does not make on its own.
 
 **The rule the column is authored to.** `aeroCeiling` asks what a body can be made to DO, which is
@@ -351,10 +346,8 @@ rather than changed.
 
 ## Exit
 
-**Built and ready for review. One thing outstanding and it is the maintainer's: Lever 1's
-signature.** The 94 `aeroCeiling` values are authored and PRELIMINARY, produced on the
-maintainer's instruction to unblock the sprint rather than to close directive 22. Everything else
-is done.
+**Built, signed and closed.** Lever 1's 94 `aeroCeiling` values were ratified on review of the
+authoring pass above, so directive 22 is satisfied and nothing is outstanding.
 
 **The `styleBase` half is not restated here.** It shipped early inside
 `docs/sprints/sprint_archive/sprint145.md` and that doc's Exit is its permanent record.

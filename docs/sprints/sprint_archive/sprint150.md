@@ -1,7 +1,7 @@
 # Sprint 150: the rooms keep their own hours
 
-**Status: READY TO IMPLEMENT.** Three decided changes, no design work outstanding. Every value
-here is already ruled by the maintainer.
+**Status: BUILT and committed** (`106cd09`, 2026-07-31). Three decided changes, no design work
+outstanding. Every value here is already ruled by the maintainer.
 
 **This sprint is deliberately small and is not the old plan's Sprint 150.** The sale-value
 implementation plan's §6 mapped S8 (the buyer flow model) to this number. That mapping is being

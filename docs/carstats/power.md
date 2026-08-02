@@ -1,0 +1,395 @@
+# Power
+
+**What it is.** The engine's output in PS, as the car sits right now. Every other derived stat is a
+0 to 100 score; power is not. It is a real figure in real units, and a stock car in mint condition
+reads exactly the number on its own spec sheet.
+
+**Where it is computed.** `computeDerivedStats` in `packages/sim/src/derivedStats.ts`. Nothing else
+in the codebase derives power, and nothing adjusts it afterwards.
+
+---
+
+## 1. The headline formula
+
+As written, in `computeDerivedStats`:
+
+```text
+powerConditionFraction = weightedBandFactorForStat(car, model, 'power', taxonomy, economy)
+powerConditionScale    = powerConditionFloor + (1 - powerConditionFloor) * powerConditionFraction
+
+power = model.spec.stockPowerPs * powerConditionScale
+
+      + SUM over every installed part of
+            model.spec.stockPowerPs
+          * part.statModifiers.powerFraction[engineCharacter]
+          * bandFactor(installedPart.band)
+
+return Math.round(Math.max(0, power))
+```
+
+`engineCharacter` is `engineCharacterOf(model, economy)`, resolved once per car before the loop and
+shared by every part in it.
+
+**In plain language.** A car makes its factory power, dragged down by how worn its engine parts are,
+plus a percentage of that same factory power for every aftermarket engine part bolted to it. The
+percentage each part is worth depends on what sort of engine it is bolted to, and a worn part
+delivers less of its percentage. Everything is a fraction of the car's own stock output, so the
+same exhaust is worth 20 PS on a Supra and 4 PS on a Beat, and the order you fit things in never
+matters.
+
+---
+
+## 2. Every input
+
+### 2a. `model.spec.stockPowerPs` (per car, `cars.json`)
+
+The single figure the whole formula is denominated in. Both terms are fractions of it, so it sets
+both the floor and the ceiling.
+
+- Shipped roster (26 cars): 55 PS (Suzuki Wagon R CT21S) to 324 PS (Toyota Supra RZ and Toyota
+  Aristo 3.0V).
+- Full 94-car roster (`docs/design/midnight-garage-roster.csv`): 31 PS (Honda Today JW1) to 560 PS
+  (Lexus LFA). One row, the Daihatsu Mira TR-XX (L70), carries no `stockPowerPs` at all.
+
+### 2b. The condition term: `powerConditionFraction` (per part, driven by content weights)
+
+`weightedBandFactorForStat(car, model, 'power', ...)` is a weighted mean of `bandFactor(band)` over
+every taxonomy slot carrying a non-zero `statWeights.power`. Six of the 29 slots do:
+
+| slot | `statWeights.power` |
+| --- | ---: |
+| forcedInduction | 3 |
+| internals | 2 |
+| camsTiming | 2 |
+| ignitionEcu | 2 |
+| intake | 1 |
+| exhaust | 1 |
+| every other slot (23 of them) | 0 |
+
+Total weight 11. Three rules govern the walk:
+
+- **A legitimately absent slot drops out of both sums.** The only one that can be is
+  `forcedInduction` on a car with no `Turbo` or `Supercharged` tag. So the denominator is **11 on
+  any car with something in the forced-induction slot, and 8 on a factory-NA car with that slot
+  empty**. Fitting a turbo to an NA car therefore adds 3 to that car's denominator.
+- **A missing part is worse than a scrap one.** `isPartMissing` (a real defect: a gutted exhaust,
+  a stolen turbo off a factory-turbo car) contributes 0 to the numerator and its full weight to the
+  denominator.
+- **The band read is the true band**, `car.parts[id].installed.band`, never
+  `apparentBandByPartId`.
+
+`bandFactor` is `economy.bands.bandFactors`: mint 1, fine 0.85, worn 0.65, poor 0.4, scrap 0.15.
+
+### 2c. `statFormulas.powerConditionFloor` (global, 0.5)
+
+Maps the 0-to-1 condition mean onto a 0.5-to-1.0 multiplier of stock power. A car whose engine has
+entirely fallen out still makes half its factory figure.
+
+Measured, on a Supra (324 PS stock, forced-induction slot occupied, denominator 11), every
+power-weighted slot moved to one band together:
+
+| every power-weighted slot at | power | multiple of stock |
+| --- | ---: | ---: |
+| mint | 324 PS | x1.0000 |
+| fine | 300 PS | x0.9259 |
+| worn | 267 PS | x0.8241 |
+| poor | 227 PS | x0.7006 |
+| scrap | 186 PS | x0.5741 |
+| all missing | 162 PS | x0.5000 |
+
+Measured, the same Supra with exactly one stock slot dropped to scrap and everything else mint:
+
+| slot dropped to scrap | weight | power | loss |
+| --- | ---: | ---: | ---: |
+| forcedInduction | 3 | 286 PS | 38 PS |
+| internals | 2 | 299 PS | 25 PS |
+| camsTiming | 2 | 299 PS | 25 PS |
+| ignitionEcu | 2 | 299 PS | 25 PS |
+| intake | 1 | 311 PS | 13 PS |
+| exhaust | 1 | 311 PS | 13 PS |
+| block, headValvetrain, or any of the other 21 | 0 | 324 PS | none |
+
+And with the forced-induction slot emptied outright on that same factory-turbo car: **280 PS**,
+worse than leaving a scrap turbo in place.
+
+### 2d. `engineCharacter` (per car, three values)
+
+`engineCharacterOf(model, economy)`, in three steps:
+
+1. `hasForcedInduction(model)` is true when `model.tags` contains `Turbo` or `Supercharged`. If so,
+   the character is **`forced`**, full stop. Specific output is never consulted.
+2. Otherwise, if `model.spec.displacementCc` is absent, the character is **`lazy-na`**.
+3. Otherwise `specificOutputOf(model)` is compared against
+   `statFormulas.engineCharacter.naHighStrungThreshold` (**80**): at or above is
+   **`high-strung-na`**, below is **`lazy-na`**.
+
+`specificOutputOf` is `stockPowerPs / (effectiveDisplacementCc / 1000)`, PS per effective litre.
+`effectiveDisplacementCcOf` multiplies `displacementCc` by **1.8** when `spec.engineConfig` starts
+with `rotary`, and by 1.0 otherwise, so a 13B is measured as roughly 2.35 litres rather than 1.3.
+
+Shipped split (26 cars): 16 `forced`, 5 `high-strung-na`, 5 `lazy-na`.
+
+Full roster (93 rows carrying a power figure, character taken from the CSV's own `aspiration`
+column because `tags` is unauthored on the unbuilt rows): 47 `forced`, 24 `high-strung-na`,
+22 `lazy-na`.
+
+**The threshold is a cliff, and the roster is dense around it.** The two closest NA cars either
+side are the VW Golf GTI 16V (Mk2) at 78.05 PS per effective litre (`lazy-na`) and the Mitsubishi
+Pajero Evolution at 80.07 (`high-strung-na`). Concretely: the AE86 makes 130 PS from 1587 cc, which
+is 81.92, so it is `high-strung-na` and caps at 186 PS. Authoring its stock figure as 126 PS
+instead would put it at 79.4, make it `lazy-na`, and move its ceiling to 204 PS. Four PS of
+authoring, eighteen PS of ceiling.
+
+### 2e. `part.statModifiers.powerFraction[engineCharacter]` (per SKU, `parts.json`)
+
+The aftermarket term. Non-zero on **96 of the 472 shipped SKUs**: eight slots, three aftermarket
+grades, four fitment classes. Zero on every `stock`-grade SKU without exception, and zero on every
+slot outside these eight.
+
+Race-grade fractions, the top of each ladder:
+
+| slot | `high-strung-na` | `lazy-na` | `forced` |
+| --- | ---: | ---: | ---: |
+| block | 0.12 | 0.15 | 0.02 |
+| internals | 0.04 | 0.05 | 0.03 |
+| headValvetrain | 0.08 | 0.10 | 0.06 |
+| camsTiming | 0.10 | 0.13 | 0.05 |
+| intake | 0.02 | 0.03 | 0.05 |
+| exhaust | 0.04 | 0.06 | 0.14 |
+| ignitionEcu | 0.03 | 0.05 | 0.25 |
+| forcedInduction | 0.20 | 0.28 | 0.35 |
+| **sum** | **0.63** | **0.85** | **0.95** |
+
+The full ladders, street / sport / race:
+
+| slot | `high-strung-na` | `lazy-na` | `forced` | ladder shape |
+| --- | --- | --- | --- | --- |
+| block | 0.04 / 0.08 / 0.12 | 0.05 / 0.101 / 0.15 | 0.007 / 0.013 / 0.02 | linear |
+| internals | 0.013 / 0.027 / 0.04 | 0.017 / 0.034 / 0.05 | 0.01 / 0.02 / 0.03 | linear |
+| headValvetrain | 0.036 / 0.06 / 0.08 | 0.045 / 0.075 / 0.10 | 0.027 / 0.045 / 0.06 | mildly diminishing |
+| camsTiming | 0.033 / 0.067 / 0.10 | 0.043 / 0.087 / 0.13 | 0.017 / 0.034 / 0.05 | linear |
+| intake | 0.012 / 0.017 / 0.02 | 0.018 / 0.026 / 0.03 | 0.03 / 0.043 / 0.05 | diminishing |
+| exhaust | 0.02 / 0.032 / 0.04 | 0.03 / 0.048 / 0.06 | 0.07 / 0.112 / 0.14 | diminishing |
+| ignitionEcu | 0.005 / 0.017 / 0.03 | 0.008 / 0.028 / 0.05 | 0.038 / 0.138 / 0.25 | increasing |
+| forcedInduction | 0.04 / 0.09 / 0.20 | 0.056 / 0.126 / 0.28 | 0.07 / 0.158 / 0.35 | increasing |
+
+The ladder shapes are entirely a property of the authored numbers. `computeDerivedStats` reads
+whatever fraction the fitted SKU carries and adds it; there is no curve, threshold or unlock
+anywhere in the code.
+
+The four fitment-class variants of a SKU (`khs-race-ecu`, `shitbox-khs-race-ecu`,
+`uncommon-khs-race-ecu`, `rare-khs-race-ecu`) carry **byte-identical** `powerFraction` objects.
+Class moves price and nothing else.
+
+### 2f. `bandFactor(installedPart.band)` on the aftermarket term (per part)
+
+Each part's own contribution is scaled by its own band, on the same value-side curve as the
+condition mean (mint 1, fine 0.85, worn 0.65, poor 0.4, scrap 0.15). A missing part is skipped by
+the loop entirely, so it contributes nothing rather than something negative.
+
+A part in a **weight-carrying** slot therefore has its band read twice, for two different jobs: once
+as its share of the condition mean that scales the base, and once to scale its own contribution.
+That is not double-charging. The first says how healthy the engine is, the second says how much of
+this specific upgrade survives its own wear. A part in a **zero-weight** slot (`block`,
+`headValvetrain`) has its band read only for the second.
+
+---
+
+## 3. Bounds, measured
+
+### Floor: exactly 0.5 x `stockPowerPs`
+
+Reached by making every power-weighted slot missing. The base term bottoms out at
+`powerConditionFloor` and the aftermarket term cannot go below zero on shipped content.
+
+- Measured, Supra: **162 PS**. Every shipped car's floor is `round(stockPowerPs / 2)`, from 28 PS
+  (Wagon R) to 162 PS (Supra, Aristo).
+- Roster floor: **16 PS** (Honda Today JW1).
+
+### Ceiling: a per-character multiple of `stockPowerPs`
+
+Every one of the eight power-bearing slots at race grade, mint:
+
+| engine character | ceiling with the car's own factory induction | ceiling with a race turbo fitted regardless |
+| --- | ---: | ---: |
+| `high-strung-na` | x1.43 | x1.63 |
+| `lazy-na` | x1.57 | x1.85 |
+| `forced` | x1.95 | x1.95 |
+
+Measured shipped maxima, turbo always fitted: Supra and Aristo **632 PS** each, Chaser / Skyline
+GT-R / Fairlady Z **546 PS**, Impreza WRX STI **488 PS**, Beat **104 PS**, Wagon R **90 PS**. (The
+realised ratios sit a few thousandths off the table above because the result is rounded to whole PS.)
+
+Roster projection from the CSV, with a race turbo fitted: Nissan GT-R Black Edition (R35, 480 PS,
+forced) at **936 PS** and Lexus LFA (560 PS, high-strung NA) at **913 PS** are the two highest
+numbers the model can produce anywhere on the 94-car roster.
+
+**Whole reachable band: 0.5x to 1.95x the car's own stock power.**
+
+---
+
+## 4. Miniscule effects, which still count
+
+- **The smallest non-zero fraction in the catalogue is 0.005**, `khs-street-ecu` on a
+  `high-strung-na` engine. On the lowest-power shipped car (55 PS Wagon R) at scrap band that is
+  **0.0413 PS**, which rounds away entirely.
+- **A cheap part in a weighted slot is a net power loss as soon as it wears.** Measured on the
+  Wagon R (NA, empty forced-induction slot, denominator 8), fitting the street ECU against a stock
+  ECU baseline of 55 PS: mint 55, fine 54, worn 53, poor 51, scrap 49. Its own gain is 0.275 PS at
+  mint, while its band drags a quarter of the condition mean (weight 2 of that car's denominator
+  of 8).
+- **A part with zero power can cost power.** A stock forced-induction SKU carries `powerFraction`
+  0 on all three characters. Dropped into a Beat's empty slot it reads 64 PS at mint (no change)
+  and **57 PS at scrap**, purely by joining the condition denominator at weight 3.
+- **The NA turbo-conversion crossover is `poor`.** Measured on a Beat (64 PS stock, everything else
+  mint) with a race turbo fitted: mint 77, fine 74, worn 69, poor 64, scrap 59. At `poor` the turbo
+  exactly pays back the denominator it added; at `scrap` the converted car makes less than it did
+  before the conversion. Same car with a street turbo: mint 67, fine 65, worn 63, poor 60, scrap 57,
+  so a street turbo on an NA car is under water from `worn` down.
+- **`powerConditionScale` can never exceed 1.** No amount of condition makes a car produce more
+  than its factory figure. The only route above stock is a `powerFraction`.
+
+---
+
+## 5. What does NOT affect power
+
+- **Support ratios, coherence, and the support verdict.** An unsupported build makes its full power
+  and pays for it in reliability alone. **Measured**: a Supra with all eight power slots at race
+  grade and no support upgrade anywhere reads a headline support ratio of 0.6635 (`dangerous`,
+  `torqueTransmission`) and makes **632 PS**. The identical build with every support slot also at
+  race grade reads 1.1109 (`adequate`) and makes **exactly the same 632 PS**. Only reliability
+  moves, 41 against 76.
+- **The other four derived stats.** Power is computed before any of them and reads none of them.
+- **Fitment class, rarity, and price.** Identical `powerFraction` across all four class variants.
+- **`statFormulas.condition.gradeBandFactor`.** The per-grade wear curves (`stock` / `street` /
+  `sport` / `race`) apply only to `physicalModifiers` through `buildFactors`, which drives grip,
+  braking and mass. Power uses the flat `bands.bandFactors` curve, so a race ECU at worn delivers
+  0.65 of its fraction exactly as a street ECU at worn does.
+- **`physicalModifiers`.** Power is deliberately absent from `PhysicalModifierSchema`
+  (`packages/content/src/stats.ts`), which names it as one of two dials with exactly one path in.
+- **`spec.aspiration`.** It exists on `CarModel` and is read only by the dev performance sandbox
+  screen, for display. `hasForcedInduction` reads `tags`.
+- **`spec.quotedPowerPs`.** Optional, carried by four shipped cars, read nowhere outside dev
+  sandbox fixtures.
+- **The condition of `block` and `headValvetrain` on the base term.** Both carry
+  `statWeights.power` 0. Measured: a Supra with a scrap stock block and a scrap stock head reads
+  exactly 324 PS. Their bands still scale their own contributions (a race block reads 330 PS at
+  mint and 325 PS at scrap).
+- **Every slot outside the eight.** No fuel system, cooling, gearbox, clutch, differential,
+  driveline, chassis, damper, spring, anti-roll bar, steering, brake, rim, tyre, panel, paint,
+  underbody, aero, seat or gauge part moves power by any amount.
+- **Mileage, model year, colour, provenance note, symptoms, market heat, reputation, tool tier,
+  crew skills, and the day.** None of them appear anywhere in the derivation.
+- **`apparentBandByPartId`.** Power reads the true band, so hidden damage is already costing power
+  before it has been diagnosed.
+- **`statFormulas.powerNormalizationCeiling` (300).** Not an input. It is how
+  `normalizedPowerScore` (`packages/sim/src/valuation.ts`) puts PS on the same 0-to-1 footing the
+  other four stats reach by dividing by 100, for buyer taste matching. It is uncapped, so a car
+  past 300 PS scores above 1.
+- **Install order.** Every contribution is a fraction of *stock* power, never of current power, so
+  nothing compounds.
+- **A 0-to-100 clamp.** The other four stats are clamped to 100. Power is a PS figure and is only
+  floored at 0.
+
+**Who consumes power** (none of these feed back into it): the radar chart, the dyno readout
+(`packages/sim/src/dyno.ts`), the lap model (`lapModel.ts` passes `stats.power` straight to
+`lapTime`), buyer taste matching via `normalizedPowerScore`, and mission stat-floor requirements
+(`packages/content/src/requirement.ts`).
+
+---
+
+## 6. Where the content levers live
+
+`packages/content/data/economy.json` (maintainer-gated per directive 22; pinned by
+`packages/content/tests/economyApprovalGate.test.ts`):
+
+| key | shipped value | what it does |
+| --- | --- | --- |
+| `bands.bandFactors` | mint 1, fine 0.85, worn 0.65, poor 0.4, scrap 0.15 | the one band curve, used for both the condition mean and each part's own contribution |
+| `statFormulas.powerConditionFloor` | 0.5 | power at zero engine condition, as a fraction of stock |
+| `statFormulas.engineCharacter.naHighStrungThreshold` | 80 | PS per effective litre that splits `lazy-na` from `high-strung-na` |
+| `toolCeilings.naToTurboConversionEngineTier` | 3 | engine tool tier needed to fill an empty forced-induction slot on a factory-NA car (`naToTurboConversionBlocked`, `packages/sim/src/jobs.ts`) |
+
+Other content:
+
+| file | key | what it does |
+| --- | --- | --- |
+| `packages/content/data/parts-taxonomy.json` | `statWeights.power` | which slots' condition scales the base, and by how much |
+| `packages/content/data/parts.json` | `statModifiers.powerFraction` | per-SKU, per-character fraction of stock power |
+| `packages/content/data/cars.json` | `spec.stockPowerPs` | the figure everything is a fraction of |
+| `packages/content/data/cars.json` | `spec.displacementCc`, `spec.engineConfig` | the specific-output derivation and the rotary test |
+| `packages/content/data/cars.json` | `tags` (`Turbo`, `Supercharged`) | the only signal that makes a car `forced` |
+
+**Not content, and it should be:** the rotary equivalency factor **1.8** is a literal inside
+`effectiveDisplacementCcOf` in `packages/sim/src/derivedStats.ts`.
+
+---
+
+## 7. Findings
+
+1. **The rotary equivalency factor is a code literal.** `1.8` sits in `effectiveDisplacementCcOf`
+   rather than in `economy.json`, against engineering law 2 (content law). Every other number the
+   character derivation reads is content. It changes six roster cars' engine character if moved.
+
+2. **Induction is carried twice on a `CarModel`, and only one copy reaches power.**
+   `hasForcedInduction` reads `model.tags`; `spec.aspiration` is an optional enum
+   (`NA` / `turbo` / `twin-turbo` / `supercharged`) read only by the dev sandbox screen. They agree
+   on all 26 shipped cars, so nothing is wrong today. The exposure is in the roster:
+   `midnight-garage-roster.csv` authors `aspiration` on all 94 rows and leaves `tags` blank on the
+   68 unbuilt ones. A car brought into `cars.json` from the CSV without a hand-written `Turbo` tag
+   reads NA, takes the NA fraction column on every slot, and nothing fails.
+
+3. **Fitting forced induction never changes engine character.** Because `hasForcedInduction` reads
+   the model's tags, a converted NA car keeps its NA fraction column permanently. **Measured**: a
+   Beat with a race turbo fitted still resolves `high-strung-na`, so the turbo pays 0.20 rather
+   than `forced`'s 0.35. This is deliberate and pinned by
+   `packages/sim/tests/proportionalPower.test.ts`, and it is defensible (the character answers
+   "what sort of engine is this", not "what is bolted to it"), but a reader will assume the
+   opposite.
+
+4. **`statWeights.power` and `powerFraction` cover different slot sets.** Eight slots make power;
+   six weight the condition mean. `block` and `headValvetrain` make power but their condition never
+   scales the base: a Supra with a scrap stock block and a scrap stock head reads exactly its stock
+   324 PS. Their own contributions are still band-scaled (race block: 330 PS mint, 325 PS scrap).
+   Nothing is broken, but a tuner reading either table alone will get the wrong answer.
+
+5. **`engineCharacterOf`'s missing-displacement branch is unreachable in shipped content.** All 26
+   shipped cars carry `displacementCc`, and `packages/sim/tests/engineCharacter.test.ts` pins that.
+   The roster has one row that would reach it: the Daihatsu Mira TR-XX (L70) has no `stockPowerPs`
+   and no `displacementCc`. It is a factory turbo, so in practice `hasForcedInduction` would answer
+   first anyway, provided its `tags` are authored (see finding 2).
+
+6. **`Math.max(0, power)` cannot fire on shipped content.** The base term alone floors at
+   0.5 x `stockPowerPs` and every authored `powerFraction` is non-negative. It is not dead code:
+   `PowerFractionSchema` is a bare `z.number()` with no `.nonnegative()`, so the clamp is a live
+   guard against a future negative fraction.
+
+7. **Design doc drift, `docs/design/systems/tuning-system.md` section 5d.** The per-part response
+   table shows a single "NA" column where the code has two characters. That column is exactly the
+   shipped `high-strung-na` numbers; `lazy-na` runs 25 to 30 per cent higher across every slot and
+   appears nowhere in the doc. The same table gives `forcedInduction` on NA as "n/a", but every
+   forced-induction SKU carries `requiredTags: []` and real NA fractions (0.04 / 0.09 / 0.20
+   high-strung, 0.056 / 0.126 / 0.28 lazy), and the conversion is a supported action gated only on
+   engine tool tier 3.
+
+8. **Design doc drift, section 5e.** It describes the ECU's return curve as "threshold: little on
+   its own; it unlocks what the others can do". **No unlock exists.** Every fraction is additive
+   and completely independent of what else is fitted. The forced ECU ladder is 0.038 / 0.138 / 0.25,
+   which is steep, not conditional. Section 5b's "Specific output is
+   `stockPowerPs / (displacementCc / 1000)`" is likewise the pre-rotary form; the code divides by
+   effective displacement, which 5c goes on to specify, so the section is only wrong read alone.
+
+9. **The 80 PS-per-litre threshold is a hard cliff sitting inside a dense part of the roster.**
+   Crossing it moves an NA car's ceiling from x1.57 to x1.43 (factory induction) or x1.85 to x1.63
+   (turbo fitted). The Golf GTI 16V is at 78.05 and the Pajero Evolution at 80.07. Authoring the
+   AE86 at 126 PS instead of 130 would flip it from `high-strung-na` to `lazy-na` and move its
+   ceiling from 186 PS to 204 PS. Not a bug, but it means `stockPowerPs` and `displacementCc` are
+   load-bearing on a discontinuity, and a routine correction to either can silently reshape a car's
+   whole tuning ladder.
+
+10. **The forced-induction slot is the single most punishing condition slot in the game.** At
+    weight 3 out of 11 it costs a factory-turbo car 38 PS at scrap and 44 PS if it is missing
+    outright, more than internals, cams and the ECU each cost at 2, and this happens on a stock
+    part with zero `powerFraction`. Combined with rule 2b, filling that slot on an NA car is a
+    permanent 3-point increase to that car's condition denominator, which is why an NA conversion
+    goes under water at `poor`.

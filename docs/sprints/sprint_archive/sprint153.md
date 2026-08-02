@@ -1,6 +1,6 @@
 # Sprint 153: cars stop arriving as wrecks
 
-**Status: READY TO IMPLEMENT.** Design of record:
+**Status: BUILT and committed** (`8826d19`, 2026-07-31). Design of record:
 `docs/design/systems/generation-damage.md`, layer 1. Layers 2 and 3 are Sprints 154 and 155 and
 **must not be pre-empted here**.
 

@@ -1,6 +1,6 @@
 # Sprint 155: what actually happened to it
 
-**Status: READY TO IMPLEMENT.** Design of record:
+**Status: BUILT and committed** (`511fe20`, 2026-08-01). Design of record:
 `docs/design/systems/generation-damage.md`, layer 3. Layers 1 and 2 shipped in Sprints 153 and 154
 and **must not be re-opened**.
 

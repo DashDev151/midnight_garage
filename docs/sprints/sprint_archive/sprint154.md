@@ -1,6 +1,6 @@
 # Sprint 154: a car has a history
 
-**Status: READY TO IMPLEMENT.** Design of record:
+**Status: BUILT and committed** (`ebeae6b`, 2026-07-31). Design of record:
 `docs/design/systems/generation-damage.md`, layer 2. Layer 3 (damage patterns) is Sprint 155 and
 **must not be pre-empted**.
 

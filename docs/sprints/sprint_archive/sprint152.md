@@ -1,8 +1,8 @@
 # Sprint 152: style becomes an axis a car can climb
 
-**Status: READY TO IMPLEMENT.** Design of record: `docs/design/systems/desirability-system.md`
-section 2. Values: `docs/design/systems/style-authoring-proposal.md`, already authored for all 94
-roster rows.
+**Status: BUILT and committed** (`4f75ed0`, 2026-07-31). Design of record:
+`docs/design/systems/desirability-system.md` section 2. Values:
+`docs/design/systems/style-authoring-proposal.md`, already authored for all 94 roster rows.
 
 ## The defect
 

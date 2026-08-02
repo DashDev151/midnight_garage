@@ -1,6 +1,7 @@
 # Sprint 157: what the week cost
 
-**Status: READY TO IMPLEMENT.** Design of record: `docs/design/systems/financial-summary.md`.
+**Status: BUILT and committed** (`ada1da4`, 2026-08-01). Design of record:
+`docs/design/systems/financial-summary.md`.
 
 ## The defect
 

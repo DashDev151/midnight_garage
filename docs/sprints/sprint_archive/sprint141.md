@@ -1,8 +1,9 @@
 # Sprint 141: the dyno screen
 
-**Status: RULED ON AND READY TO BUILD.** Its only dependency is met: Sprint 136 shipped
-2026-07-30, and its support ratios are the thing this screen displays. Eighth of nine in the
-tuning overhaul arc, and the last of it left to build.
+**Status: BUILT, committed (`aac72f3`) and CLOSED.** The maintainer accepted it and ruled that
+judging the screen itself is playtest work rather than a review gate, so nothing here is pending.
+Its only dependency was met: Sprint 136 shipped 2026-07-30, and its support ratios are the thing
+this screen displays. Eighth of nine in the tuning overhaul arc.
 
 Design reference: `docs/design/systems/tuning-system.md` section 14, and GDD 5.4.
 

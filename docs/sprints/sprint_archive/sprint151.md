@@ -1,7 +1,8 @@
 # Sprint 151: authenticity becomes a fact about the car
 
-**Status: READY TO IMPLEMENT.** Design of record: `docs/design/systems/desirability-system.md`
-section 3. Weights: `docs/design/systems/authenticity-weights-proposal.md`.
+**Status: BUILT and committed** (`60639dc`, 2026-07-31). Design of record:
+`docs/design/systems/desirability-system.md` section 3. Weights:
+`docs/design/systems/authenticity-weights-proposal.md`.
 
 ## The defect
 
