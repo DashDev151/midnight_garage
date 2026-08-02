@@ -1,7 +1,7 @@
 # Listing channels: who sees the car
 
 **Status: BUILT (Sprint 156).** Implements the maintainer's ruling of 2026-07-31, recorded in
-`sale-value-system.md` §6. Every value is in `docs/sprints/sprint156.md`'s Exit and in the
+`sale-value-system.md` §6. Every value is in `docs/sprints/sprint_archive/sprint156.md`'s Exit and in the
 economy approval gate's own ledger; the four open questions below are answered at the foot of
 this document.
 

@@ -2,7 +2,7 @@
 
 **Status: ALL THREE LAYERS BUILT (Sprints 153, 154 and 155).** Layer 3's implementation record,
 including the authored pattern weights and the two places the built mechanism differs from the
-sketch below, is `docs/sprints/sprint155.md`'s Exit.
+sketch below, is `docs/sprints/sprint_archive/sprint155.md`'s Exit.
 
 Supersedes the 2026-07-31 draft, which covered only the damage budget.
 

@@ -248,9 +248,12 @@ those are the two systems the tuning arc exists to make matter.
 all 26 shipped cars carry it, and the flat `statFormulas.styleCap` it replaced is retired.
 `rosterCsvGuard.test.ts` holds every row inside the authored band.
 
-**`aeroCeiling`** (0 to 1) is proposed in `docs/sprints/sprint140.md` and is **authored for the 26
-shipped cars only**. Under directive 24 that is the wrong scope, and it wants completing to 94
-before that sprint runs. It is unsigned as well as incomplete.
+**`aeroCeiling`** (0 to 1) scales what a fitted aero SKU's downforce is worth on a given body, so
+the same wing gains an FD several seconds a lap and costs a Wagon R time. It is **authored for all
+94 rows and signed** (`docs/sprints/sprint_archive/sprint140.md`, which holds the rubric, the
+classics ruling and the reasoning behind the outliers). It never touches a car's own factory
+downforce figure and never touches drag. `rosterCsvGuard.test.ts` holds every row inside the
+authored band.
 
 ### 3c. What the CSV is still missing, stated rather than discovered
 

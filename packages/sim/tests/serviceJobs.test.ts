@@ -217,6 +217,9 @@ describe('generateDailyServiceJobOffers', () => {
     expect(generateDailyServiceJobOffers(noModels, 7, createRng(1))).toEqual([])
   })
 
+  // 4000 simulated days, which is what holds the observed shares inside 0.05
+  // of the signed weights; the timeout covers that sweep under coverage
+  // instrumentation.
   it('draws a daily offer count roughly matching the content-tunable bell-curve weights', () => {
     const counts = [0, 0, 0, 0, 0]
     const days = 4000
@@ -229,7 +232,7 @@ describe('generateDailyServiceJobOffers', () => {
       const observed = counts[i]! / days
       expect(Math.abs(observed - weights[i]!)).toBeLessThan(0.05)
     }
-  })
+  }, 30_000)
 
   // A CLAMP: the max observed count at each rung is the assertion, not a distribution match.
   describe('the day-1 pacing ramp (Sprint 52 decision 1)', () => {

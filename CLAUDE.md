@@ -53,15 +53,12 @@ All development happens in sprints, driven by the roadmap. Sprint docs live in `
 (synthwave pixel art, JDM car culture, hunt-build-sell loop). Solo-dev passion project, ~13-month
 roadmap to a free itch.io launch.
 
-**Current state:** Sprints 00-140 and 142-164 implemented and committed. Two were superseded
-unbuilt and their docs record it (Sprint 100 by Sprint 110's live-room promotion; Sprints 138-139
-by the sale value system). **Sprint 141, the dyno screen, is BUILT and awaiting review** (its doc
-is still live in `docs/sprints/`): measurement only, on the maintainer's ruling, with GDD 5.4
-amended to drop the tyre-wear axis outright and defer the boost axis. **Sprint 140 is built but
-its Lever 1 is unsigned:** all 94 `aeroCeiling` values are authored and PRELIMINARY, recorded as
-such in the approval-gate ledger, and get re-recorded as RATIFIED on the maintainer's signature.
+**Current state:** Sprints 00-164 implemented, committed and signed. Two were superseded unbuilt
+and their docs record it (Sprint 100 by Sprint 110's live-room promotion; Sprints 138-139 by the
+sale value system). **`docs/sprints/` holds no live sprint**, which is the invariant: a finished
+sprint moves to `docs/sprints/sprint_archive/`, so whatever remains is what is still open.
 
-The tuning overhaul is otherwise COMPLETE (`docs/design/systems/tuning-system.md`, arc index
+The tuning overhaul is COMPLETE (`docs/design/systems/tuning-system.md`, arc index
 `docs/sprints/tuning-arc.md`): condition reaches the build, power is a per-car fraction rather than
 a flat ladder, support ratios drive reliability off a per-car `spec.reliabilityBase`, forced
 induction returns increase, a part's band curve varies by grade so a race part at `poor` delivers

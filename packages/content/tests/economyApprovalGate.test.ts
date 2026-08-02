@@ -1493,14 +1493,11 @@ import storyMissions from '../data/storyMissions.json'
  * taste match falls with it. Nothing else in the ten missions moves: every other probe is
  * all-stock, cosmetics-only, or engine-only.
  *
- * NOT re-pinned and NOT signed, recorded because this file is the ledger of what moved and why:
- * Sprint 140's `spec.aeroCeiling` (`docs/sprints/sprint140.md`, task 2). NINETY-FOUR values, one
- * per roster row in `docs/design/midnight-garage-roster.csv`, of which the 26 shipped cars carry
- * theirs in `cars.json`. They are **AUTHORED AND PRELIMINARY**: figures good enough to unblock the
- * sprint, offered for review rather than taken as signed, so they hold exactly the standing Sprint
- * 159's two chances held before ratification and must be re-recorded here as RATIFIED once the
- * maintainer signs them. The rubric, the classics ruling and the deliberate calls behind the
- * outliers are in that sprint doc.
+ * NOT re-pinned, recorded because this file is the ledger of what moved and why: Sprint 140's
+ * `spec.aeroCeiling` (`docs/sprints/sprint140.md`, task 2). NINETY-FOUR values, one per roster row
+ * in `docs/design/midnight-garage-roster.csv`, of which the 26 shipped cars carry theirs in
+ * `cars.json`. **RATIFIED** on review of the authoring pass. The rubric, the classics ruling and
+ * the deliberate calls behind the outliers are in that sprint doc.
  *
  * The lever is a 0-to-1 multiplier on what a FITTED aero SKU's downforce is worth on a given body.
  * It never touches the car's own factory figure and never touches drag, so its entire reach is the

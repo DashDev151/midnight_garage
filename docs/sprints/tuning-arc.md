@@ -13,8 +13,9 @@ says so and stops rather than inviting the implementer to make it.
 
 ## The arc at a glance
 
-**Six of the nine are finished and their docs are in `docs/sprints/sprint_archive/`.** 141 and 142
-are built and awaiting review; only 140 is still open. All three are still in `docs/sprints/`.
+**All nine are built or closed. Seven of the docs are in `docs/sprints/sprint_archive/`.** Only 140
+and 141 are still in `docs/sprints/`: 140 because Lever 1 is unsigned, 141 because it is awaiting
+review.
 
 | sprint | what | state | where its doc is |
 | --- | --- | --- | --- |
@@ -24,14 +25,15 @@ are built and awaiting review; only 140 is still open. All three are still in `d
 | **137** | The forced-induction curve and its price ladder | **BUILT** 2026-07-30, plus the signed `camsTiming` amendment | archive |
 | **138** | Measure what coherence did to the money | **CLOSED UNBUILT** 2026-07-30, superseded | archive |
 | **139** | The premium for building well, if there is one | **CLOSED UNBUILT** 2026-07-30, superseded | archive |
-| **140** | Stat simplification, aero ceiling, style base | **PART BUILT**: the whole `styleBase` half landed early inside Sprint 145. `aeroCeiling` and the handling deletion are open | live |
-| **141** | The dyno screen | **BUILT** 2026-08-02, ready for review. Measurement only, on the maintainer's ruling; GDD 5.4 amended | live |
-| **142** | Grade sensitivity and the condition review | **BUILT** 2026-08-01, ready for review. The review left the four dial curves where they are and says why | live |
+| **140** | Stat simplification, aero ceiling, style base | **BUILT** 2026-08-01 (`338de30`) and SIGNED. The `styleBase` half landed early inside Sprint 145; `aeroCeiling` and the handling deletion landed here | archive |
+| **141** | The dyno screen | **BUILT** 2026-08-02 (`aac72f3`) and CLOSED. Measurement only, on the maintainer's ruling; GDD 5.4 amended. Judging the screen itself is playtest work | archive |
+| **142** | Grade sensitivity and the condition review | **BUILT** 2026-08-01 (`cb7769b`), ready for review. The review left the four dial curves where they are and says why | archive |
 
-**What is still unsigned:** 140's aero table (`aeroCeiling` holds 26 of 94 rows, which directive
-24 makes the wrong scope, and the lever itself is unsigned). Nothing in the arc is blocked on
-anything the arc itself still owes it: 140 can run the moment its table is signed. 141's three
-dyno levers and its GDD ruling were signed 2026-08-02 and it is built.
+**Nothing is unsigned.** 140's 94 `aeroCeiling` values were ratified 2026-08-02, which also closes
+the directive-24 scope question since all 94 roster rows carry one. 141's three dyno levers and its
+GDD ruling were signed 2026-08-02, and 142's grade-sensitivity lever 2026-08-01. **All nine sprints
+are built, signed and archived**, and judging the dyno screen in play is playtest work rather than
+a review gate.
 
 ---
 

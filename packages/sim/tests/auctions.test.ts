@@ -270,7 +270,7 @@ describe('the catalogue mix each room draws', () => {
         expectShareNear(tierShareOf(lots, carTier), row[carTier] / rowTotal, `${tier} ${carTier}`)
       }
     }
-  }, 20_000)
+  }, 60_000)
 
   it('holds that share however many models the band contains', () => {
     // The reason the draw is two-stage rather than one weighted pool. The

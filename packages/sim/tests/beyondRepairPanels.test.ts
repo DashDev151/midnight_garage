@@ -244,6 +244,9 @@ describe('generation writes both states, off the history and the pattern', () =>
     }
   })
 
+  // 400 whole generated cars, which costs real time once coverage
+  // instrumentation is in the way - hence the timeout rather than a smaller
+  // sweep. The sample size is what makes the "sometimes" below meaningful.
   it('reaches a real generated lot, and the whole car reads scrap panels when it does', () => {
     const context = contextForcingGrade('project')
     const model: CarModel = CARS.find((car) => car.tier === 'entry')!
@@ -263,7 +266,7 @@ describe('generation writes both states, off the history and the pattern', () =>
       expect(car.parts.panels.installed?.band).toBe('scrap')
     }
     expect(found, 'a yard of project cars should carry some ruined panels').toBeGreaterThan(0)
-  })
+  }, 30_000)
 })
 
 describe('Law 2 sees the panel price and does not go quiet (definition of done 7)', () => {
@@ -275,6 +278,11 @@ describe('Law 2 sees the panel price and does not go quiet (definition of done 7
    * seeds and the same code, with the two chances at zero against the two
    * chances as shipped. Both draw the same rolls, so a car differs between the
    * two runs only where the escalation actually landed.
+   *
+   * Both tests here sweep the whole roster and generate thousands of cars, so
+   * both carry an explicit timeout: under coverage instrumentation the work
+   * runs well past Vitest's default, and the sample sizes are what the
+   * measured bounds below stand on.
    */
   function contextWithChances(beyondRepair: number, panelMissing: number): SimContext {
     const economy: EconomyConfig = {
@@ -360,7 +368,7 @@ describe('Law 2 sees the panel price and does not go quiet (definition of done 7
         `${fitmentClass}: the Law 2 pass is clipping real damage to absorb panel prices - ${report}`,
       ).toBeLessThan(0.01)
     }
-  })
+  }, 30_000)
 
   it('keeps both states rare on every fitment class', () => {
     // Rare and dramatic, not routine: the car that got hit. The gradient across
@@ -393,7 +401,7 @@ describe('Law 2 sees the panel price and does not go quiet (definition of done 7
         0.1,
       )
     }
-  })
+  }, 30_000)
 })
 
 describe('the damage grades this hangs off', () => {

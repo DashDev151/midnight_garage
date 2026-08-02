@@ -10,7 +10,7 @@ says "buyer style targets were authored against the old scale and should be re-c
 the new one". The re-check happened by itself: median stock style rose from 13 to 53 on
 `everyday`, 15 to 64 on `enthusiast` and 17 to 74 on `flagship`, so a mint stock car now clears
 targets that used to be out of reach without work, and the unimproved-flip guard
-(`valueModelProbes.test.ts`) fails on those three tiers. See `docs/sprints/sprint152.md`'s Exit:
+(`valueModelProbes.test.ts`) fails on those three tiers. See `docs/sprints/sprint_archive/sprint152.md`'s Exit:
 the numbers are measured and NOTHING was tuned, because every candidate lever is outside the one
 this sprint was authorised to move.
 
@@ -234,7 +234,7 @@ against the old scale and should be re-checked against the new one, though not n
    fails on `everyday` (margin -0.99 per cent against a -1 per cent bar), `enthusiast` (+0.19)
    and `flagship` (+1.05): a beautiful stock car is genuinely worth more to a buyer who cares
    how it looks, and nothing on the BUY side prices beauty, because `marketValueYen` takes no
-   stats. Measured in `docs/sprints/sprint152.md`; the fix is a lever decision, not an
+   stats. Measured in `docs/sprints/sprint_archive/sprint152.md`; the fix is a lever decision, not an
    implementation one.
 4. **The machining system**, on which the authenticity costs depend. `machiningCost(car)` is wired
    and returns 0 until it exists.

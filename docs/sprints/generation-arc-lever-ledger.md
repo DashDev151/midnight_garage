@@ -32,7 +32,7 @@ section is consequences, not decisions: skip it unless a hash matters to you.
 ## Sprint 153: cars stop arriving as wrecks
 
 `generation-damage.md` layer 1. A rolled damage budget in band steps replaces the bill-chasing
-floor. Sprint doc: `docs/sprints/sprint153.md`. **Signed in session, not under R4.**
+floor. Sprint doc: `docs/sprints/sprint_archive/sprint153.md`. **Signed in session, not under R4.**
 
 | lever | old | new | reason |
 | --- | --- | --- | --- |
@@ -74,7 +74,7 @@ at `fine` the dead-lot rate went 13.67% to 17.17% at premium and 6.00% to 20.83%
 ## Sprint 154: a car has a history
 
 `generation-damage.md` layer 2. Culture and tier pick a care profile; the profile rolls a history;
-the history causes everything else. Sprint doc: `docs/sprints/sprint154.md`. **Under R4.**
+the history causes everything else. Sprint doc: `docs/sprints/sprint_archive/sprint154.md`. **Under R4.**
 
 | lever | old | new | reason |
 | --- | --- | --- | --- |
@@ -105,7 +105,7 @@ is drift-and-kei-heavy. Left alone, per the sprint's own instruction.
 ## Sprint 155: what actually happened to it
 
 `generation-damage.md` layer 3. A damage pattern is a weighting over part slots and nothing else.
-Sprint doc: `docs/sprints/sprint155.md`. **Under R4.**
+Sprint doc: `docs/sprints/sprint_archive/sprint155.md`. **Under R4.**
 
 | lever | old | new | reason |
 | --- | --- | --- | --- |
@@ -141,7 +141,7 @@ Same claim, two numbers. Worth one line from you on which is meant.
 ## Sprint 156: a channel is a buyer base
 
 A channel gains a buyer pool and a reach; two channels lock behind named missions. Sprint doc:
-`docs/sprints/sprint156.md`. **Under R4.**
+`docs/sprints/sprint_archive/sprint156.md`. **Under R4.**
 
 | lever | old | new | reason |
 | --- | --- | --- | --- |

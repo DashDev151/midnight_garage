@@ -192,7 +192,7 @@ Seven slots per car: **Engine, Forced Induction, Drivetrain, Suspension, Brakes,
 ### 5.4 The Tune (simplified dyno - the "3" part of 2.5)
 After a build changes, run a **dyno session** (1 labor slot): a single screen reporting what the build actually is. A pixel-art dyno chart animates the result.
 
-**AMENDED (maintainer ruling, recorded in `docs/sprints/sprint141.md`): dyno v1 is MEASUREMENT ONLY.** No slider, no adjustment, no outcome the player can dial. The session reports engine response character, actual power as built against the car's stock figure, all five support ratios with the shortfall named, and the reliability the build is carrying split between wear and the build itself. It changes nothing: the reliability cost of an incoherent build is applied whether or not a session is ever paid for, so the dyno sells precision rather than the existence of the problem. Tuning features remain a possible later expansion.
+**AMENDED (maintainer ruling, recorded in `docs/sprints/sprint_archive/sprint141.md`): dyno v1 is MEASUREMENT ONLY.** No slider, no adjustment, no outcome the player can dial. The session reports engine response character, actual power as built against the car's stock figure, all five support ratios with the shortfall named, and the reliability the build is carrying split between wear and the build itself. It changes nothing: the reliability cost of an incoherent build is applied whether or not a session is ever paid for, so the dyno sells precision rather than the existence of the problem. Tuning features remain a possible later expansion.
 
 The two axes this section originally named are settled separately:
 

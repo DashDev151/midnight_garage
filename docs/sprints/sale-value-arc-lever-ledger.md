@@ -155,7 +155,7 @@ start.
 ## Sprint 149: the week has a shape
 
 A `calendar.ts` module and a content block naming which day of the week each landmark falls on.
-Design of record: `sale-value-system.md` section 7.2. Sprint doc: `docs/sprints/sprint149.md`.
+Design of record: `sale-value-system.md` section 7.2. Sprint doc: `docs/sprints/sprint_archive/sprint149.md`.
 **Implementation had not reached this sprint as this ledger is written; the Levers section is
 final in the doc, the Exit is not yet filled in.**
 
@@ -177,7 +177,7 @@ row on this page remains provisional under the R3 standing grant until reviewed.
 
 ## Sprint 150: the rooms keep their own hours
 
-Two shape changes and no new yen figure. Sprint doc: `docs/sprints/sprint150.md`. **Signed by
+Two shape changes and no new yen figure. Sprint doc: `docs/sprints/sprint_archive/sprint150.md`. **Signed by
 name and value BEFORE implementation, under directive 22 and NOT under R3 (which had already
 expired).**
 
