@@ -1515,6 +1515,25 @@ import storyMissions from '../data/storyMissions.json'
  * its pinned value regardless, because the stancer buys style rather than handling and the shave
  * is inside the second decimal place the threshold is rounded to. `harnessAcceptance.test.ts`
  * passes untouched: a stock car carries no aero SKU, so there is nothing for a ceiling to scale.
+ *
+ * Re-pinned 2026-08-02 (maintainer approval, in session, all three levers signed by name and
+ * value) for `docs/sprints/sprint141.md`, the dyno screen. ONE new block, `dyno`, and no
+ * second:
+ *
+ * 1. `dyno.hireFeeYen` - 15000. What hiring a portable dyno in costs, on the same day-stamped
+ *    shape a machine line's hire uses.
+ * 2. `dyno.purchasePriceYen` - 750000. Buying one outright, which ends the fee. Break-even is
+ *    50 sessions, so hiring is correct early and owning pays off once a shop dynos most of what
+ *    it builds.
+ * 3. `dyno.minReputationTier` - `known`. The standing a purchase needs, mirroring a tool tier's
+ *    own `minReputationTier`.
+ *
+ * NOTHING ELSE MOVES, and it cannot: a dyno v1 is measurement only. It has no slider, no
+ * adjustment and no outcome, and a completed session's whole effect on state is booking the car
+ * onto the rollers. No stat, band, price, lap time, payout, budget cap or mission threshold is
+ * reachable from any of these three values, which `packages/sim/tests/dyno.test.ts` pins as
+ * strict equality on the car across a session rather than asserting it. `damagePatterns.json`,
+ * `partPricing.json` and `storyMissions.json` are untouched, so their pins hold.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -1524,7 +1543,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('c2390f4896a345cee903360ba4c3c395c6607670c9bfb541a0ca6317af8f83b1')
+    ).toBe('a419181b7b9fb9dfcadee78beb049340dbe9c6e971147d56083ef573af14560e')
   })
 
   it('damagePatterns.json matches its approved content exactly', () => {

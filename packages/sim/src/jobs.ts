@@ -27,6 +27,7 @@ import { updateCarLedger } from './carLedger'
 import type { SimContext } from './context'
 import { crewEnergySaved, perfectionistCostMultiplier } from './crewSkills'
 import { pruneCuredCauses, revealOnRemoval } from './diagnosis'
+import { recordDynoSession } from './dyno'
 import { bookCashMovements } from './financeLedger'
 import { partFitsCar } from './parts'
 import { isCustomerOriginPart } from './provenance'
@@ -278,6 +279,13 @@ function completeReconditionJob(state: GameState, job: Job, context: SimContext)
 export function completeJob(state: GameState, job: Job, context: SimContext): JobCompletionResult {
   if (job.kind === 'recondition-part') {
     return { state: completeReconditionJob(state, job, context), blockedReason: null }
+  }
+
+  // A dyno session books the car onto the rollers and changes nothing else -
+  // no band, no slot, no stat. Handled here, before any of the car-mutating
+  // paths below are reached, because there is nothing for them to do.
+  if (job.kind === 'dyno-session') {
+    return { state: recordDynoSession(state, job), blockedReason: null }
   }
 
   if (job.kind === 'install-part') {

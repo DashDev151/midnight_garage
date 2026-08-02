@@ -95,6 +95,7 @@ export function createInitialGameState(
     inspectionVisit: null,
     storyMissions: [],
     assemblyInventory: [],
+    dyno: { owned: false, hirePaidDay: null, sessionCarId: null },
     venueNameByTier: rollVenueNameByTier(context, seed),
     // Genuinely-optional-key pattern (content gameState.ts): the key exists
     // only on a tutorial career, so bots/probes/tests stay untouched by any

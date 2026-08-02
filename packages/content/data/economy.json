@@ -869,6 +869,11 @@
     },
     "probeAmortisationOps": 40
   },
+  "dyno": {
+    "hireFeeYen": 15000,
+    "purchasePriceYen": 750000,
+    "minReputationTier": "known"
+  },
   "diagnosis": {
     "symptomChanceByTier": {
       "entry": 0.566,

@@ -1,9 +1,8 @@
 # Sprint 141: the dyno screen
 
-**Status: NOT STARTED, AWAITING SIGN-OFF AND ONE MAINTAINER RULING.** Its only dependency is
-met: Sprint 136 shipped 2026-07-30, and its support ratios are the thing this screen displays.
-Nothing but the sign-off and the ruling stands between this doc and implementation. Eighth of
-nine in the tuning overhaul arc.
+**Status: RULED ON AND READY TO BUILD.** Its only dependency is met: Sprint 136 shipped
+2026-07-30, and its support ratios are the thing this screen displays. Eighth of nine in the
+tuning overhaul arc, and the last of it left to build.
 
 Design reference: `docs/design/systems/tuning-system.md` section 14, and GDD 5.4.
 
@@ -66,8 +65,16 @@ canonical documents and CLAUDE.md's rule is to flag it rather than pick a side.
    engine-swaps arc, where aspiration becomes a thing rather than a tag), and ship measurement
    now.
 
-**This doc is written for option 1**, because it is the only one that needs no new mechanic,
-and the tasks below change if another is chosen. **Do not implement until this is settled.**
+### The ruling (maintainer, 2026-08-02): OPTION 1, measurement only
+
+**Dyno v1 is measurement only, with tuning features a possible later expansion.** The tasks below
+were written for this option and stand as written.
+
+The GDD amendment that follows from it, recorded here as its authority: **the tyre-wear axis is
+dropped outright**, because nothing in the game degrades with use and that axis has no time in
+which to operate; **the boost-against-reliability axis is deferred, not dead**, because Sprint 136
+made reliability the output of build coherence, so the axis is real and only the continuous boost
+input is missing.
 
 ## Reuse analysis (directive 16)
 
@@ -92,24 +99,29 @@ and the tasks below change if another is chosen. **Do not implement until this i
 - **A second support derivation, or any recomputation of the numbers Sprint 136 owns.**
 - **A tuning slider that writes a value nothing reads.**
 
-## The levers (UNAPPROVED, directive 22)
+## The levers (APPROVED, directive 22, maintainer 2026-08-02)
 
-### Lever 1: does a dyno session cost money as well as a labour slot?
+**The dyno is a workshop tool**, presented alongside the six existing tool lines and behaving like
+them: hire a portable dyno in per session, or pay once to own one and use it without limit
+thereafter.
 
-Design 18 question 4 leaves this open. **Proposed: yes, a flat fee.** A labour slot is the
-player's own time; a rolling road is somebody else's equipment, and a free measurement makes
-the always-on warning from Sprint 136 pointless because the player would simply dyno
-everything.
+| lever | value |
+| --- | ---: |
+| hire, per session | **15,000 yen** |
+| buy outright | **750,000 yen** |
+| reputation to buy | **`known`** |
 
-**Proposed value: to be set by the maintainer.** It should sit near a day of workshop
-overhead so it reads as a real decision on a cheap car and as noise on an expensive one, but
-**this doc proposes no figure**, because pricing sits under directive 22 and a number
-invented here would be exactly the unlisted lever the directive bans.
+Break-even is 50 sessions, so hiring is correct early and owning pays off once a player dynos most
+of what they build. A session costs a labour slot either way: a labour slot is the player's own
+time, and a free measurement would make Sprint 136's always-on warning pointless because the
+player would simply dyno everything.
 
-### Lever 2: is the dyno a hire or a facility?
-
-**Proposed: a hire, priced per session**, on the same footing as `machineShopAssist`, which
-is basic tool hire and is scoped and priced as such.
+**Structurally separate, visually identical.** `toolLines.json` and
+`machineShopAssist.feeYenByGroup` are both keyed by `ComponentId`, the six part groups. A dyno is
+not a component group and nothing is repaired in it, so adding it to that enum would ripple through
+the parts taxonomy and every repair path to buy nothing. It therefore lives in its own small record
+while **appearing in the menus as one more entry beside the six lines**, bought and hired the same
+way. The player should not be able to tell the difference; only the schema knows.
 
 **It must NOT be the player's own machine shop.** That is design section 4's avenue 3, it is
 what gives tool tier 3 its missing purpose, and it is a separate feature with its own TODO
@@ -185,17 +197,109 @@ different number of PRNG steps and reshuffles every later lot in a seeded catalo
 
 ## Definition of done
 
-- [ ] The GDD 5.4 conflict settled by the maintainer, the decision recorded here, and the GDD
+- [x] The GDD 5.4 conflict settled by the maintainer, the decision recorded here, and the GDD
       amended if option 1 or 3 was chosen.
-- [ ] Levers 1 and 2 signed and recorded.
-- [ ] A dyno session runs through the existing job system, costing one labour slot.
-- [ ] The screen shows character, specific output, actual power, all five ratios, and the
+- [x] Levers 1 and 2 signed and recorded.
+- [x] A dyno session runs through the existing job system, costing one labour slot.
+- [x] The screen shows character, specific output, actual power, all five ratios, and the
       reliability split between condition and coherence.
-- [ ] Displayed numbers provably identical to the sim's.
-- [ ] The Sprint 136 warning, the car's reliability and its price are all unaffected by whether
+- [x] Displayed numbers provably identical to the sim's.
+- [x] The Sprint 136 warning, the car's reliability and its price are all unaffected by whether
       a dyno has been run.
-- [ ] Checks run once each, output shown.
+- [x] Checks run once each, output shown.
 
 ## Exit
 
-_To be completed at the end of the sprint._
+**BUILT 2026-08-02, ready for review.** Option 1 as ruled: measurement only, no slider, no
+adjustment, no outcome the player can dial.
+
+### What landed
+
+**The rolling road is a workshop tool that is not a tool line.** `ToolLinesSchema` and
+`machineShopAssist.feeYenByGroup` are both keyed by `ComponentId` and exhaustive over the six part
+groups, so a dyno cannot go in either without widening the parts taxonomy for nothing. It carries
+its own `economy.json` block (the three signed values) and its own `GameState.dyno` record: an
+`owned` flag, a `hirePaidDay` day stamp (`machineHirePaidDayByGroup`'s shape with one entry instead
+of six), and `sessionCarId`, the car on the rollers. In the menus it is one more entry beside the
+six: a seventh column in the Upgrades tool wall bought with the same button under the same
+reputation gate, and a seventh row in the car page's Machine hire panel with the same In-house and
+Hired today chips. Only the schema knows the difference.
+
+**A session is a job in the existing job system**, built the way `resolveReconditionLabor` is: a
+real `Job` in `state.jobs`, one labour slot spent through `applyAvailableLaborToJob`, completed
+through `completeJob`, logged as `job-created`/`job-completed`. No second job system, and no second
+support derivation: `dynoReadingFor` calls `supportRatios`, `supportVerdict` and
+`computeDerivedStats` and projects what they return.
+
+**The reliability split is one derivation, not two.** `reliabilityBreakdownOf` (derivedStats.ts) is
+extracted from `computeDerivedStats`, which now reads it: the stat and the sheet cannot disagree
+because there is one formula. It returns the car's own `reliabilityBase` plus the three independent
+things taking it below there, and `reliability + conditionLoss + coherenceLoss + intensityLoss`
+equals the base exactly, which is what makes the screen's most useful line honest.
+
+**The equivalency is visible.** `effectiveDisplacementCcOf` is extracted so the rotary's 1.8x and
+the rotary test live in exactly one place; the sheet reports both capacities and says why, so an
+FD owner reads 2.4 litres equivalent rather than a figure that looks wrong.
+
+### One decision the doc left open, and how it was taken
+
+**The reading derives live from the car on the rollers rather than freezing a snapshot.** Task 1
+offered either. Live derivation makes "the display cannot drift" structural (the screen calls the
+sim) instead of asserted, and it avoids persisting a dozen derived numbers. What keeps it honest is
+the framing: one car is on the rollers at a time (the single-nullable-field shape `machineListing`
+and `inspectionVisit` already use), and `advanceDay` takes it off at the day boundary exactly as it
+clears an inspection visit. A session therefore covers the day it was paid for, and a build changed
+while the car is still strapped down reads new numbers, which is what a car sitting on a set of
+rollers should do.
+
+**The hire is day-stamped, not per-operation**, matching a machine line's hire exactly: a second
+session the same day rides the same fee. Break-even against the 750,000 purchase is therefore 50
+days on which the shop dynos anything, rather than 50 sessions.
+
+**Running a session does not navigate.** The row turns into a link to the sheet instead. A
+programmatic push out of the car page races the screen's own "this car is gone, go to the garage"
+watcher, and nothing should yank a player off a car mid-job.
+
+### Tests, with directive 17 cases
+
+New: `packages/sim/tests/dyno.test.ts` (18) and `packages/game/src/stores/gameStore.dyno.test.ts`
+(10) and `packages/game/src/screens/DynoScreen.test.ts` (5). The central one is pinned hardest: on a
+collapsed build (bare race turbo, worn, `dangerous`), the car object across a session is
+`toBe`-identical, and stats, market value and the Sprint 136 warning are all unchanged. The
+coherence cost is charged to a car that has never seen a dyno.
+
+Three existing pins moved, all **case (a)**, none loosened:
+
+1. `advanceDay.test.ts`'s acquisition-to-sale hash, `d280dc4d` -> `4dcee9b0`. A pure shape change,
+   measured rather than assumed: `createInitialGameState` now seeds `dyno`, and this is the one
+   script that starts from a real new career. Strip the key back out of the final state and the
+   hash is exactly `d280dc4d`, so no roll, cash figure or derived stat moved. The 30-day master
+   holds unchanged because it builds its own state literal.
+2. `UpgradesScreen.test.ts`'s tool-wall counts, 6 columns / 18 nodes -> 7 / 19. The sprint
+   deliberately adds a seventh entry; the count is re-asserted alongside a new test that buys the
+   dyno through the wall and checks its reputation gate.
+3. `saveCodec.test.ts`'s six "SAVE_VERSION is current" canaries, 54 -> 55. `GameState` gained
+   `dyno` and `JobKind` gained `dyno-session`; additive and genuinely optional, so a Dexie/version
+   bump and nothing else (directive 19).
+
+`schemas.test.ts`'s economy key list and `economyApprovalGate.test.ts`'s hash are re-pinned in the
+same change as the recorded approval of the three levers, per directive 22.
+
+### Checks
+
+```text
+pnpm typecheck            content Done, sim Done, game Done
+pnpm test --project content   27 files, 581 tests passed
+pnpm test --project sim       81 files, 2100 tests passed
+pnpm test --project game      65 files, 872 tests passed
+```
+
+No part price or bill threshold moved, so the standing auction-demo warning does not apply;
+`pnpm test --project game` was run regardless and the three fixture files pass untouched.
+
+### Outstanding
+
+**The pixel-art rolling road does not exist.** The screen ships the plainest treatment that obeys
+the diegetic law: a printed strip off the shop's own machine, read top to bottom, no gauges and no
+dashboard, in the panel language every other screen uses. Recorded in `TODO.md`. Nothing about the
+numbers changes when the art arrives.

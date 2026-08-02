@@ -18,8 +18,9 @@ import {
   fitmentClassForTier,
   titleCaseFromSlug,
 } from '@midnight-garage/content'
+import type { DynoSessionGateReason } from '@midnight-garage/sim'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import BandChip from '../components/BandChip.vue'
 import HelpHint from '../components/HelpHint.vue'
 import { partSpriteDataUrl } from '../components/partSprites'
@@ -41,6 +42,7 @@ import {
   type NextRepairStepView,
 } from '../stores/gameStore'
 import { MACHINE_LINE_NAMES } from '../utils/dayLogFormat'
+import { DYNO_NAME } from '../utils/dynoLabels'
 import { formatYen, formatYenDelta } from '../utils/formatYen'
 import { LEDGER_LINE_LABELS, formatLedgerLineYen } from '../utils/ledgerLabels'
 import { addressesOverlap, hasWorkAddress } from '../utils/partAddress'
@@ -81,6 +83,40 @@ function hireGateReasonFor(group: ComponentId): string | null {
 
 function onHireMachineLineClick(group: ComponentId): void {
   game.hireMachineLine(group)
+}
+
+/** Each dyno refusal in the same plain words the hire rows use for theirs.
+ * `not-found` carries none: a car that cannot be resolved never renders a
+ * row to explain itself on. */
+const DYNO_GATE_LABELS: Record<NonNullable<DynoSessionGateReason>, string | null> = {
+  'not-in-service-bay': 'Needs to be in a service bay',
+  'no-labour': 'No labour left today',
+  'no-cash': 'Not enough cash',
+  'not-found': null,
+}
+
+/** Why this car cannot go on the rollers right now - null when nothing
+ * refuses it. */
+const dynoGateReason = computed<string | null>(() => {
+  const d = detail.value
+  if (!d) return null
+  const reason = game.dynoSessionGateReason(d.car.id)
+  return reason ? DYNO_GATE_LABELS[reason] : null
+})
+
+/** True while this exact car is the one on the rollers - the row then offers
+ * the sheet rather than another session. */
+const onTheRollers = computed(() => game.dynoSessionCarId === detail.value?.car.id)
+
+/**
+ * Runs the session and stays put - the row itself turns into the link to the
+ * sheet. Nothing is yanked away from a player mid-job, and the reading keeps
+ * until another car takes the rollers or the day ends.
+ */
+function onDynoSessionClick(): void {
+  const d = detail.value
+  if (!d) return
+  game.runDynoSession(d.car.id)
 }
 
 /** The gate reason a staged row shows, or null - `StagedAction`'s own
@@ -1493,6 +1529,37 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               @click="onHireMachineLineClick(group)"
             >
               Hire for the day ({{ formatYen(game.machineLineFeeYen(group)) }})
+            </button>
+          </li>
+          <li class="machine-hire-row" data-test="machine-hire-row-dyno">
+            <span class="machine-hire-name">{{ DYNO_NAME }}</span>
+            <span v-if="game.dynoOwned" class="chip owned" data-test="machine-hire-chip-dyno"
+              >In-house</span
+            >
+            <span
+              v-else-if="game.dynoHiredToday"
+              class="chip hired"
+              data-test="machine-hire-chip-dyno"
+              >Hired today</span
+            >
+            <RouterLink
+              v-if="onTheRollers"
+              :to="{ name: 'dyno' }"
+              class="hire-btn"
+              data-test="dyno-read-sheet"
+              >Read the sheet</RouterLink
+            >
+            <button
+              v-else
+              type="button"
+              class="hire-btn"
+              :disabled="!!dynoGateReason"
+              :title="dynoGateReason ?? undefined"
+              data-test="run-dyno-session"
+              @click="onDynoSessionClick"
+            >
+              Put it on the rollers ({{ game.dynoOwned ? 'no fee' : formatYen(game.dynoHireFeeYen)
+              }}{{ labourSuffix(game.pointsPerLabour) }})
             </button>
           </li>
         </ul>

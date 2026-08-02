@@ -4,13 +4,25 @@ import { CarPartIdSchema, ComponentIdSchema, ConditionBandSchema } from './tags'
 /**
  * Every job is either a group-level repair (climb every non-mint, non-scrap
  * part in the group toward the target band), an install (one catalog part onto
- * one part slot within the group), or a `recondition-part` (the same banded
+ * one part slot within the group), a `recondition-part` (the same banded
  * repair, but climbing a loose `PartInstance` sitting in `partInventory`
- * rather than one installed on a car). A recondition job carries `partInstanceId`
+ * rather than one installed on a car), or a `dyno-session` (a run on the
+ * rolling road). A recondition job carries `partInstanceId`
  * + `targetBand` and its `carInstanceId` holds the loose part's own id (there
  * is no car), so it never resolves against a real car or a service bay.
+ *
+ * A `dyno-session` is the one kind that changes nothing about what it
+ * addresses: it costs labour and books the car onto the rollers, and every
+ * part, band and stat on that car is untouched by completing it. It carries no
+ * `partInstanceId` and no `targetBand`, and its `carInstanceId` is a real car
+ * in a real service bay, so it gates on the bay like any other car job.
  */
-export const JobKindSchema = z.enum(['repair-zone', 'install-part', 'recondition-part'])
+export const JobKindSchema = z.enum([
+  'repair-zone',
+  'install-part',
+  'recondition-part',
+  'dyno-session',
+])
 
 export const JobSchema = z
   .object({

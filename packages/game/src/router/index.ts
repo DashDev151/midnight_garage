@@ -80,6 +80,11 @@ export const router = createRouter({
       component: () => import('../screens/UpgradesScreen.vue'),
     },
     {
+      path: '/dyno',
+      name: 'dyno',
+      component: () => import('../screens/DynoScreen.vue'),
+    },
+    {
       path: '/standing',
       name: 'standing',
       component: () => import('../screens/StandingScreen.vue'),

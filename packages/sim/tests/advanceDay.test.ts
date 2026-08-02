@@ -401,7 +401,16 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // the distance-priced body bill (sprint161.md), alongside the 30-day
     // master: every generated car's restoration bill moves, and this script
     // both buys a car at a guide value and sells one.
-    expect(hashState(acquisitionCareer().sold)).toBe('d280dc4d')
+    //
+    // It moves once more, on its own again, for the rolling road: `GameState`
+    // gained `dyno`, `createInitialGameState` seeds it, and this is the one
+    // script that starts from a real new career rather than a hand-written
+    // literal, which is why the 30-day master above holds unchanged. A pure
+    // SHAPE change, measured rather than assumed: strip the new key back out
+    // of this state and the hash is exactly the previous `d280dc4d`, so no
+    // roll, cash figure or derived stat moved. Nothing here ever could - a
+    // dyno measures and changes nothing.
+    expect(hashState(acquisitionCareer().sold)).toBe('4dcee9b0')
   })
 })
 

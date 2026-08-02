@@ -190,7 +190,14 @@ Seven slots per car: **Engine, Forced Induction, Drivetrain, Suspension, Brakes,
 - **Used parts** are cheaper, findable at meets/scouts, and carry condition risk. Genuine period parts add Authenticity; reproductions don't.
 
 ### 5.4 The Tune (simplified dyno - the "3" part of 2.5)
-After a build changes, run a **dyno session** (1 labor slot): a single screen with 2–3 sliders (e.g., Boost ↔ Reliability, Camber: Grip ↔ Tire wear/Style). A pixel-art dyno chart animates the result. This is where the "between 2 and 3" lands: real tradeoff decisions, zero part-by-part micromanagement.
+After a build changes, run a **dyno session** (1 labor slot): a single screen reporting what the build actually is. A pixel-art dyno chart animates the result.
+
+**AMENDED (maintainer ruling, recorded in `docs/sprints/sprint141.md`): dyno v1 is MEASUREMENT ONLY.** No slider, no adjustment, no outcome the player can dial. The session reports engine response character, actual power as built against the car's stock figure, all five support ratios with the shortfall named, and the reliability the build is carrying split between wear and the build itself. It changes nothing: the reliability cost of an incoherent build is applied whether or not a session is ever paid for, so the dyno sells precision rather than the existence of the problem. Tuning features remain a possible later expansion.
+
+The two axes this section originally named are settled separately:
+
+- **Camber: Grip vs Tyre wear is DROPPED OUTRIGHT.** Nothing in the game degrades with use (`systems/tuning-system.md` section 9: the player never lives with the car, and the condition system has no motion during play), so a slider denominated in wear has no time in which to operate. This half is not resolvable and will not return.
+- **Boost vs Reliability is DEFERRED, not dead.** Sprint 136 made reliability the output of the build's coherence: more boost raises cylinder-pressure demand, the support ratio falls, reliability falls with it, and every buyer weights reliability. The axis is real and both its ends exist. What is missing is the INPUT: power comes from discrete SKUs and there is no continuous boost variable to slide. Its natural home is the engine-swaps arc, where aspiration becomes a thing rather than a tag.
 
 ### 5.5 What We Deliberately Don't Simulate
 Individual gaskets, torque specs, fluid types, per-bolt disassembly. Labor slots + part condition abstract all of it.

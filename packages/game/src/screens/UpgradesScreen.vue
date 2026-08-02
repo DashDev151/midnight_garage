@@ -5,9 +5,17 @@ import { RouterLink } from 'vue-router'
 import HelpHint from '../components/HelpHint.vue'
 import HintTooltip from '../components/HintTooltip.vue'
 import { useGameStore } from '../stores/gameStore'
+import { DYNO_NAME } from '../utils/dynoLabels'
 import { formatYen } from '../utils/formatYen'
 
 const game = useGameStore()
+
+/** The reputation the rolling road still needs, or null once it is met (or
+ * already owned) - the hint-only-when-unmet shape the tool lines' own
+ * `nextTierRepGate` uses. */
+const dynoRepGate = computed(() =>
+  game.dynoPurchaseGateReason === 'reputation' ? game.dynoMinReputationTier : null,
+)
 
 const nextServiceBayPriceYen = computed(() => game.nextBayPrice('service'))
 const nextParkingBayPriceYen = computed(() => game.nextBayPrice('parking'))
@@ -209,7 +217,50 @@ const selectedInfo = computed(() =>
             </li>
           </ul>
         </div>
+
+        <!--
+          The rolling road stands in the wall alongside the six lines and is
+          bought the same way. It is not one of them (a dyno belongs to no part
+          group and repairs nothing), so it carries a single rung rather than a
+          three-tier ladder.
+        -->
+        <div class="tool-column" data-test="dyno-column">
+          <h4>{{ DYNO_NAME }}</h4>
+          <p class="maxed" :class="{ shown: game.dynoOwned }">Fully equipped</p>
+          <ul class="tier-ladder">
+            <li
+              class="tier-node dyno-node"
+              :class="{
+                owned: game.dynoOwned,
+                next: !game.dynoOwned && dynoRepGate === null,
+                gated: !game.dynoOwned && dynoRepGate !== null,
+              }"
+              data-test="dyno-node"
+            >
+              <span class="tier-label">Rollers</span>
+              <span class="tier-name">Chassis dyno &amp; printer</span>
+              <button
+                v-if="!game.dynoOwned"
+                :disabled="game.dynoPurchaseGateReason !== null"
+                data-test="buy-dyno"
+                @click="game.buyDyno()"
+              >
+                {{ formatYen(game.dynoPurchasePriceYen) }}
+              </button>
+              <HintTooltip
+                v-if="dynoRepGate"
+                data-test="gate-tip-dyno"
+                :text="`Your standing isn't there yet - needs ${dynoRepGate} reputation`"
+              />
+            </li>
+          </ul>
+        </div>
       </div>
+
+      <p v-if="!game.dynoOwned" class="dyno-hire-line" data-test="dyno-hire-line">
+        Until you own one, a session on the rollers needs a portable dyno hired in for the day at
+        {{ formatYen(game.dynoHireFeeYen) }}.
+      </p>
 
       <div v-if="selectedLine && selectedInfo" class="tool-info-box" data-test="tool-info-box">
         <h4>{{ selectedLine.componentLabel }} - tier {{ selectedNode?.tier }}</h4>
@@ -353,10 +404,10 @@ h3 {
 .tool-wall {
   display: grid;
   /* `minmax(0, 1fr)` lets the columns actually shrink - a fixed floor across
-     six columns would overflow any container narrower than six times that
+     seven columns would overflow any container narrower than seven times that
      floor, so `overflow-x` alone cannot fix a grid that does not fit by
      construction. */
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: var(--mg-space-3);
   margin: 0 0 var(--mg-space-3);
 }
@@ -447,6 +498,20 @@ h3 {
 .tier-node.selected {
   outline: 2px solid var(--mg-neon-violet);
   outline-offset: 2px;
+}
+
+/* One rung, filling the height the six ladders divide into three, so the
+   rolling road's column squares off against them instead of floating at the
+   top of the wall. */
+.dyno-node {
+  grid-row: 1 / -1;
+  cursor: default;
+}
+
+.dyno-hire-line {
+  margin: 0 0 var(--mg-space-3);
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
 }
 
 .tier-label {

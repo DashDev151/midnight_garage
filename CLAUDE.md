@@ -55,10 +55,11 @@ roadmap to a free itch.io launch.
 
 **Current state:** Sprints 00-140 and 142-164 implemented and committed. Two were superseded
 unbuilt and their docs record it (Sprint 100 by Sprint 110's live-room promotion; Sprints 138-139
-by the sale value system). **One sprint is still live: 141**, the dyno screen, which awaits
-sign-off and one ruling. **Sprint 140 is built but its Lever 1 is unsigned:** all 94
-`aeroCeiling` values are authored and PRELIMINARY, recorded as such in the approval-gate ledger,
-and get re-recorded as RATIFIED on the maintainer's signature.
+by the sale value system). **Sprint 141, the dyno screen, is BUILT and awaiting review** (its doc
+is still live in `docs/sprints/`): measurement only, on the maintainer's ruling, with GDD 5.4
+amended to drop the tyre-wear axis outright and defer the boost axis. **Sprint 140 is built but
+its Lever 1 is unsigned:** all 94 `aeroCeiling` values are authored and PRELIMINARY, recorded as
+such in the approval-gate ledger, and get re-recorded as RATIFIED on the maintainer's signature.
 
 The tuning overhaul is otherwise COMPLETE (`docs/design/systems/tuning-system.md`, arc index
 `docs/sprints/tuning-arc.md`): condition reaches the build, power is a per-car fraction rather than

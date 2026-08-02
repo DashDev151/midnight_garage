@@ -2391,6 +2391,27 @@ export const EconomyConfigSchema = z.object({
     probeAmortisationOps: z.number().int().positive(),
   }),
   /**
+   * The rolling road. A dyno is a workshop tool the shop hires in for the day
+   * or buys outright, priced and gated exactly the way a tool line's tier-2
+   * machine is, and presented alongside the six lines. It is NOT one of them:
+   * nothing is repaired on it and it belongs to no part group, so it carries
+   * its own three values here rather than a seventh column in
+   * `toolLines.json` and `machineShopAssist.feeYenByGroup`, both of which are
+   * keyed by `ComponentId` and exhaustive over the six.
+   *
+   * `hireFeeYen` buys the day's access, the same day-stamped shape a machine
+   * line's hire already uses; `purchasePriceYen` buys it outright and ends the
+   * fee for good; `minReputationTier` is the standing a purchase needs,
+   * mirroring a tool tier's own `minReputationTier`. Nothing measured on the
+   * dyno changes the car, so no value here reaches a stat, a price or a lap
+   * time - these three buy knowledge and nothing else.
+   */
+  dyno: z.object({
+    hireFeeYen: z.number().int().positive(),
+    purchasePriceYen: z.number().int().positive(),
+    minReputationTier: ReputationTierSchema,
+  }),
+  /**
    * The diagnosis knobs. The room prices the symptom, the player prices the
    * cause: a symptomatic car's sheet value is the cause-weighted expectation
    * over every authored cause (`sheetGuideValueYen`, sim/diagnosis.ts) with

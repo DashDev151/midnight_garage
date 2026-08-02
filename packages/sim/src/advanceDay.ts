@@ -458,14 +458,16 @@ export function advanceDay(
   // 10. The day itself passes, and today's labor budget replenishes for the
   // next one. Any inspection visit dies with the day too, unconditionally -
   // minutes spent chasing a lot that sells to someone else overnight are
-  // simply spent, no carry-over negotiation. Scheduled staff reassignments
-  // commit here, after tonight's contract income (step 8), so a switch made
-  // today takes effect tomorrow.
+  // simply spent, no carry-over negotiation. A car comes off the rollers the
+  // same way, for the same reason: the day's dyno was paid for by the day.
+  // Scheduled staff reassignments commit here, after tonight's contract
+  // income (step 8), so a switch made today takes effect tomorrow.
   next = {
     ...next,
     day: next.day + 1,
     energySpentToday: 0,
     inspectionVisit: null,
+    ...(next.dyno ? { dyno: { ...next.dyno, sessionCarId: null } } : {}),
     staff: commitPendingStaffAssignments(next.staff),
   }
 

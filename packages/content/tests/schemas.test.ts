@@ -662,6 +662,7 @@ describe('seed content validates against schemas', () => {
       'teardown',
       'energy',
       'machineShopAssist',
+      'dyno',
       'diagnosis',
       'auctionRoom',
       'staff',

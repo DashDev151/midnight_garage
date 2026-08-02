@@ -235,6 +235,31 @@ export const AssemblyContainerSchema = z.object({
 
 export type AssemblyContainer = z.infer<typeof AssemblyContainerSchema>
 
+/**
+ * The rolling road's whole persisted state. Structurally separate from the six
+ * tool lines because a dyno is not a `ComponentId` - `ToolTiersSchema` and
+ * `machineShopAssist.feeYenByGroup` are both exhaustive over the six part
+ * groups, and nothing is repaired on a dyno - but deliberately the same shape:
+ * `owned` is the ownership half `toolTiers[group] >= 2` answers for a machine
+ * line, and `hirePaidDay` is `machineHirePaidDayByGroup`'s day stamp with one
+ * entry instead of six.
+ *
+ * `sessionCarId` is the car currently strapped to the rollers, or `null` when
+ * the dyno is empty - at most one at a time by construction, the same single
+ * nullable field `machineListing` and `inspectionVisit` use. Its reading is
+ * derived live from that car's current build rather than frozen, which is
+ * exactly right for a car sitting on the rollers: change something and the
+ * numbers change with it. `advanceDay` clears it at the day boundary, so a
+ * session covers the day it was paid for and no longer.
+ */
+export const DynoStateSchema = z.object({
+  owned: z.boolean().default(false),
+  hirePaidDay: z.number().int().positive().nullable().default(null),
+  sessionCarId: z.string().min(1).nullable().default(null),
+})
+
+export type DynoState = z.infer<typeof DynoStateSchema>
+
 export const GameStateSchema = z.object({
   day: z.number().int().min(1),
   seed: z.number().int(),
@@ -510,6 +535,14 @@ export const GameStateSchema = z.object({
   machineHirePaidDayByGroup: z
     .partialRecord(ComponentIdSchema, z.number().int().positive())
     .optional(),
+  /**
+   * The rolling road - owned or not, hired or not, and which car is on it
+   * (see `DynoStateSchema` above). The genuinely-optional-key pattern (like
+   * `machineHirePaidDayByGroup` above), so no existing `GameState` literal
+   * needs touching; readers treat absent as a shop with no dyno, nothing
+   * hired and nothing on the rollers.
+   */
+  dyno: DynoStateSchema.optional(),
 })
 
 /**
@@ -922,6 +955,19 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('machine-hired'),
     componentId: ComponentIdSchema,
+    priceYen: z.number().int().nonnegative(),
+  }),
+  /** A portable dyno was hired in for the day (`resolveHireDyno`, sim/
+   * dyno.ts) - a running cost, treated exactly as a machine line's hire is,
+   * and never posted to the car it happens to measure. */
+  z.object({
+    type: z.literal('dyno-hired'),
+    priceYen: z.number().int().nonnegative(),
+  }),
+  /** A dyno was bought outright (`resolveBuyDyno`, sim/dyno.ts) - shop
+   * investment, the same bucket a tool tier or a bay lands in. */
+  z.object({
+    type: z.literal('dyno-bought'),
     priceYen: z.number().int().nonnegative(),
   }),
   /** `beginInspectionVisit` started a yard visit. */

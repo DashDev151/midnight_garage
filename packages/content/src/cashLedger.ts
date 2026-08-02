@@ -82,6 +82,7 @@ export function cashMovementFor(entry: DayLogEntry): CashMovement | null {
     case 'double-parking-fine':
       return { bucket: 'running', amountYen: entry.amountYen }
     case 'machine-hired':
+    case 'dyno-hired':
       return { bucket: 'running', amountYen: entry.priceYen }
     case 'auction-attended':
       return { bucket: 'running', amountYen: entry.feeYen }
@@ -93,6 +94,7 @@ export function cashMovementFor(entry: DayLogEntry): CashMovement | null {
     // Money out, into the shop itself.
     case 'bay-purchased':
     case 'tool-upgraded':
+    case 'dyno-bought':
     case 'equipment-purchased':
       return { bucket: 'investment', amountYen: entry.priceYen }
 

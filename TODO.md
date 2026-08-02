@@ -1042,8 +1042,27 @@ pass."
   advantage now fades on a curve keyed to its GRADE, so a race damper at `poor` delivers less than
   a street damper at `mint`, and its second half reviewed the four provisional condition-to-physics
   curves and left them exactly where they are, with the reasoning and the measurements in
-  `docs/sprints/sprint142.md`'s Exit. What remains of the tuning arc is 140 (`aeroCeiling` and the
-  handling deletion) and 141, both still in `docs/sprints/`.
+  `docs/sprints/sprint142.md`'s Exit. **Sprint 141 (the dyno screen) is SIGNED AND BUILT**:
+  measurement only, on the maintainer's ruling, with the rolling road a hire-or-own workshop tool
+  and the screen reporting engine character, power as built, all five support ratios and the
+  reliability split, every figure the sim's own. What remains of the tuning arc is 140
+  (`aeroCeiling` and the handling deletion), still in `docs/sprints/`.
+
+- [ ] **The dyno's boost-against-reliability slider is DEFERRED, not dead** (GDD 5.4 as amended by
+  `docs/sprints/sprint141.md`). Sprint 136 made reliability the output of build coherence, so both
+  ends of the axis exist and it is a genuinely good trade: turn it up, make more power, watch
+  cylinder pressure go red and the car become something only a stancer will buy. What is missing is
+  the INPUT - power comes from discrete SKUs and there is no continuous boost variable to slide, so
+  it is a real scope addition rather than a screen. Its natural home is the engine-swaps arc, where
+  aspiration becomes a thing rather than a tag. The GDD's other named axis, camber against tyre
+  wear, is dropped outright and will not return: nothing degrades with use, so it has no time in
+  which to operate.
+
+- [ ] **The rolling road ships on the plainest treatment its own law allows, and the art is
+  outstanding** (`docs/sprints/sprint141.md`, task 2). The dyno screen is a printed strip read top
+  to bottom, in the panel language every other screen uses, because the pixel-art rolling road the
+  art bible's diegetic law asks for does not exist yet. Nothing about the numbers changes when it
+  does; this is a skin over a finished readout.
 
   Blocking decisions, all recorded in the doc. Constraint A (section 17): the
   forced-induction return curve must not ship before the support ratios, because increasing

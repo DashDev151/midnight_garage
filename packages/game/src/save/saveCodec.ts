@@ -637,8 +637,17 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * zone state is already a valid v54 one. The version bump alone is still
  * required (Save law) so a v53 client REJECTS a v54 save outright rather than
  * failing the parse on a metal it has no rung for.
+ * v54 -> v55 (the rolling road): `GameState` gained `dyno` (owned, the day a
+ * hire was last paid, and the car currently on the rollers), and `JobKind`
+ * gained `dyno-session`. Additive and genuinely optional (the
+ * `machineHirePaidDayByGroup` pattern), so this needs NO `MIGRATIONS[54]`
+ * entry: a pre-v55 save decodes with the key absent, which reads as a shop
+ * with no dyno, nothing hired and nothing on the rollers - exactly right,
+ * since none of those could have existed. The version bump alone is still
+ * required (Save law) so an old client rejects a v55 save rather than
+ * dropping the field on the next write.
  */
-export const SAVE_VERSION = 54
+export const SAVE_VERSION = 55
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

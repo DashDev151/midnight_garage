@@ -9,6 +9,7 @@ import {
   PARTS_TAXONOMY,
   SERVICE_JOB_CUSTOMER_NAMES,
   SERVICE_JOB_TYPES,
+  SubsystemSchema,
   TOOL_LINES,
 } from '@midnight-garage/content'
 import type {
@@ -40,6 +41,7 @@ import type {
   ServiceJobTask,
   StagedAction,
   StatBlock,
+  Subsystem,
   ToolTier,
 } from '@midnight-garage/content'
 import {
@@ -88,6 +90,14 @@ import {
   describeOrigin,
   deriveReputationTier,
   displayedBandFor,
+  buyDynoGateReason,
+  dynoHiredToday as dynoHiredTodayCore,
+  dynoOwned as dynoOwnedCore,
+  dynoReadingFor,
+  dynoSessionCarId as dynoSessionCarIdCore,
+  dynoSessionGateReason as dynoSessionGateReasonCore,
+  resolveBuyDyno,
+  resolveDynoSession,
   emptyDayActions,
   engineCharacterOf,
   expectationForCar,
@@ -194,8 +204,10 @@ import {
   worstRepairableBandInGroup,
   type AttendAuctionGateReason,
   type AuctionGrade,
+  type BuyDynoGateReason,
   type CrewSkillContext,
   type DeliverySpeed,
+  type DynoSessionGateReason,
   type HireMachineLineGateReason,
   type InspectionVisitGateReason,
   type LapBoardRow,
@@ -213,6 +225,13 @@ import { computed, ref, shallowRef, watch } from 'vue'
 import { decodeSave, encodeSave } from '../save/saveCodec'
 import { appendSessionEvent, loadSave, writeSave } from '../save/saveDb'
 import { machineLineGateCopy } from '../utils/dayLogFormat'
+import {
+  ENGINE_CHARACTER_LABELS,
+  ENGINE_CHARACTER_NOTES,
+  SUBSYSTEM_LABELS,
+  SUBSYSTEM_MEANINGS,
+  SUPPORT_BAND_LABELS,
+} from '../utils/dynoLabels'
 import { formatYen } from '../utils/formatYen'
 import { offerCopy } from '../utils/offerCopy'
 import { addressesOverlap, hasWorkAddress, stagedActionsCollide } from '../utils/partAddress'
@@ -564,6 +583,58 @@ export interface ToolLineView {
   maxed: boolean
   /** The full 3-rung ladder, for the tool-wall grid. */
   tiers: ToolTierRungView[]
+}
+
+/** One subsystem's row on the dyno sheet - the ratio the sim measured, and
+ * whether it is the weakest link the headline reads. */
+export interface DynoSubsystemRowView {
+  subsystem: Subsystem
+  label: string
+  meaning: string
+  ratio: number
+  weakest: boolean
+}
+
+/**
+ * The whole dyno sheet for the car currently on the rollers. Every figure is
+ * `dynoReadingFor`'s (sim/dyno.ts) unchanged - the store labels and orders
+ * them and computes nothing, so what the screen shows and what the model
+ * returns cannot drift apart.
+ */
+export interface DynoSheetView {
+  carId: string
+  displayName: string
+  /** The engine's response character, and what it means for tuning it. */
+  engineCharacterLabel: string
+  engineCharacterNote: string
+  /** PS per litre of effective displacement, `null` for a model carrying no
+   * displacement figure. */
+  specificOutputPsPerLitre: number | null
+  displacementCc: number | null
+  effectiveDisplacementCc: number | null
+  /** True when the two above differ - a rotary, whose equivalent capacity is
+   * what makes its specific output comparable to a piston engine's. Shown
+   * rather than applied silently. */
+  rotaryEquivalent: boolean
+  stockPowerPs: number
+  powerPs: number
+  /** `powerPs - stockPowerPs`, signed. */
+  powerDeltaPs: number
+  rows: DynoSubsystemRowView[]
+  headlineRatio: number
+  headlineBandLabel: string
+  band: 'adequate' | 'strained' | 'dangerous'
+  /** The named shortfall, in the same words the car's own always-on warning
+   * uses - `null` at `adequate`, where there is no shortfall to name. */
+  shortfallCopy: string | null
+  /** The reliability the build is carrying (the stat itself), the car's own
+   * ceiling, and how the gap between them splits. The three costs and the
+   * reliability sum to the base. */
+  reliability: number
+  reliabilityBase: number
+  conditionCostPoints: number
+  coherenceCostPoints: number
+  powerCostPoints: number
 }
 
 /** A readable job-template name derived from its kebab-case
@@ -2524,6 +2595,128 @@ export const useGameStore = defineStore('game', () => {
   function hireMachineLineGateReason(group: ComponentId): HireMachineLineGateReason | null {
     return hireMachineLineGateReasonCore(gameState.value, group, context.value)
   }
+
+  // --- the rolling road ----------------------------------------------------
+
+  /** Whether the shop owns a dyno outright - the "In-house" chip's own
+   * condition, exactly as `machineLineOwned` is for a tool line. */
+  const dynoOwned = computed(() => dynoOwnedCore(gameState.value))
+
+  /** Whether a dyno has already been hired in today. */
+  const dynoHiredToday = computed(() => dynoHiredTodayCore(gameState.value))
+
+  /** The day's hire fee, and what buying one outright costs. */
+  const dynoHireFeeYen = computed(() => context.value.economy.dyno.hireFeeYen)
+  const dynoPurchasePriceYen = computed(() => context.value.economy.dyno.purchasePriceYen)
+
+  /** The reputation a purchase needs, shown on the tool wall whether or not
+   * it is met - progression bible law 5: every gate is a named real thing. */
+  const dynoMinReputationTier = computed(() => context.value.economy.dyno.minReputationTier)
+
+  /** Why buying a dyno is refused right now, `null` when nothing refuses it. */
+  const dynoPurchaseGateReason = computed<BuyDynoGateReason | null>(() =>
+    buyDynoGateReason(gameState.value, context.value),
+  )
+
+  /** Buys the shop its own dyno - shop investment, and the end of the hire
+   * fee. Returns false on any refusal (the gate already said why). */
+  function buyDyno(): boolean {
+    const result = resolveBuyDyno(gameState.value, context.value)
+    if (!result.applied) return false
+    gameState.value = result.state
+    dayLog.value.push(...result.log)
+    logSessionEvent('buyDyno', {})
+    return true
+  }
+
+  /** Why putting `carInstanceId` on the rollers is refused right now, `null`
+   * when nothing refuses it - the button's proactive "why not" read. */
+  function dynoSessionGateReason(carInstanceId: string): DynoSessionGateReason | null {
+    return dynoSessionGateReasonCore(
+      gameState.value,
+      carInstanceId,
+      laborSlotsRemainingToday.value,
+      context.value,
+    )
+  }
+
+  /**
+   * Runs a dyno session on `carInstanceId` - the day's hire if one is not
+   * already owned or paid for, then one labour slot through the same job
+   * system every other piece of work spends its labour through. The car
+   * itself is untouched; what the session buys is the sheet below.
+   */
+  function runDynoSession(carInstanceId: string): boolean {
+    const result = resolveDynoSession(
+      gameState.value,
+      carInstanceId,
+      laborSlotsRemainingToday.value,
+      context.value,
+    )
+    if (result.laborSlotsUsed === 0) return false
+    gameState.value = result.state
+    dayLog.value.push(...result.log)
+    logSessionEvent('runDynoSession', { carInstanceId })
+    return true
+  }
+
+  /** The car currently on the rollers, or `null` when the dyno is empty. */
+  const dynoSessionCarId = computed(() => dynoSessionCarIdCore(gameState.value))
+
+  /**
+   * The dyno sheet for the car on the rollers, or `null` when nothing is on
+   * them. Every number is `dynoReadingFor`'s, labelled and ordered here and
+   * never recomputed: the support ratios are the sim's, the power is
+   * `computeDerivedStats`'s, and the reliability split is the one the stat
+   * itself is derived from.
+   */
+  const dynoSheet = computed<DynoSheetView | null>(() => {
+    const carId = dynoSessionCarId.value
+    if (!carId) return null
+    const car = findWorkableCar(carId)
+    if (!car) return null
+    const model = context.value.modelsById[car.modelId]
+    if (!model) return null
+    const reading = dynoReadingFor(
+      car,
+      model,
+      context.value.partsById,
+      context.value.partsTaxonomy,
+      context.value.economy,
+    )
+    const readout = supportReadoutFor(car, model)
+    return {
+      carId,
+      displayName: resolveCarDisplayName(model),
+      engineCharacterLabel: ENGINE_CHARACTER_LABELS[reading.engineCharacter],
+      engineCharacterNote: ENGINE_CHARACTER_NOTES[reading.engineCharacter],
+      specificOutputPsPerLitre: reading.specificOutputPsPerLitre,
+      displacementCc: reading.displacementCc,
+      effectiveDisplacementCc: reading.effectiveDisplacementCc,
+      rotaryEquivalent: reading.rotaryEquivalent,
+      stockPowerPs: reading.stockPowerPs,
+      powerPs: reading.powerPs,
+      powerDeltaPs: reading.powerPs - reading.stockPowerPs,
+      rows: SubsystemSchema.options.map((subsystem) => ({
+        subsystem,
+        label: SUBSYSTEM_LABELS[subsystem],
+        meaning: SUBSYSTEM_MEANINGS[subsystem],
+        ratio: reading.ratios[subsystem],
+        weakest: subsystem === reading.verdict.subsystem,
+      })),
+      headlineRatio: reading.verdict.headline,
+      headlineBandLabel: SUPPORT_BAND_LABELS[reading.verdict.band],
+      band: reading.verdict.band,
+      shortfallCopy: readout?.copy ?? null,
+      // The stat itself, straight off `computeDerivedStats`, so the sheet and
+      // the radar chart can never show two different numbers.
+      reliability: reading.reliabilityStat,
+      reliabilityBase: reading.reliability.base,
+      conditionCostPoints: Math.round(reading.reliability.conditionLossPoints),
+      coherenceCostPoints: Math.round(reading.reliability.coherenceLossPoints),
+      powerCostPoints: Math.round(reading.reliability.intensityLossPoints),
+    }
+  })
 
   /** The live auction room's fuse-length preset, persisted across careers -
    * `standard` for any save that predates the setting (the genuinely-
@@ -4716,6 +4909,17 @@ export const useGameStore = defineStore('game', () => {
     machineLineFeeYen,
     hireMachineLineGateReason,
     hireMachineLine,
+    dynoOwned,
+    dynoHiredToday,
+    dynoHireFeeYen,
+    dynoPurchasePriceYen,
+    dynoMinReputationTier,
+    dynoPurchaseGateReason,
+    buyDyno,
+    dynoSessionGateReason,
+    runDynoSession,
+    dynoSessionCarId,
+    dynoSheet,
     stagedActionGateReasonFor,
     stagedWorkGated,
     serviceBaysView,

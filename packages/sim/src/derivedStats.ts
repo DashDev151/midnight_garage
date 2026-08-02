@@ -338,23 +338,37 @@ export function buildFactors(
 }
 
 /**
- * PS per litre of EFFECTIVE displacement - stock power divided by
- * displacement, a rotary's literal cc scaled 1.8x first (the equivalency
- * factor motorsport bodies use for exactly this comparison: a 13B is 1308cc
- * by convention but breathes like roughly 2.6 litres, and without the factor
- * every rotary reads as implausibly high-strung). Exported because the dyno
- * screen displays this figure directly and must not recompute it.
+ * The displacement a car's specific output is measured against: its literal
+ * cc, with a rotary's scaled 1.8x (the equivalency factor motorsport bodies
+ * use for exactly this comparison - a 13B is 1308cc by convention but
+ * breathes like roughly 2.6 litres, and without the factor every rotary reads
+ * as implausibly high-strung). `undefined` when the model carries no
+ * displacement at all.
+ *
+ * Exported so the dyno's readout can SHOW the equivalency rather than have it
+ * applied silently behind a figure the owner of an RX-7 would otherwise read
+ * as wrong. It is the one place the factor and the rotary test live.
+ */
+export function effectiveDisplacementCcOf(model: CarModel): number | undefined {
+  const { displacementCc, engineConfig } = model.spec
+  if (displacementCc === undefined) return undefined
+  const isRotary = engineConfig?.startsWith('rotary') ?? false
+  return displacementCc * (isRotary ? 1.8 : 1.0)
+}
+
+/**
+ * PS per litre of EFFECTIVE displacement (`effectiveDisplacementCcOf` above).
+ * Exported because the dyno screen displays this figure directly and must not
+ * recompute it.
  *
  * `displacementCc` is optional on `spec`; this returns `NaN` when it is
  * absent; `engineCharacterOf` below is the one caller in this codebase and
  * guards the absence itself rather than trusting this return value.
  */
 export function specificOutputOf(model: CarModel): number {
-  const { stockPowerPs, displacementCc, engineConfig } = model.spec
-  if (displacementCc === undefined) return NaN
-  const isRotary = engineConfig?.startsWith('rotary') ?? false
-  const effectiveDisplacementCc = displacementCc * (isRotary ? 1.8 : 1.0)
-  return stockPowerPs / (effectiveDisplacementCc / 1000)
+  const effectiveDisplacementCc = effectiveDisplacementCcOf(model)
+  if (effectiveDisplacementCc === undefined) return NaN
+  return model.spec.stockPowerPs / (effectiveDisplacementCc / 1000)
 }
 
 /**
@@ -481,6 +495,77 @@ export function reliabilityIntensityFactor(
 }
 
 /**
+ * Reliability, and the three independent things that took it below the car's
+ * own `spec.reliabilityBase`. `reliability` here is the whole derivation,
+ * unrounded; `computeDerivedStats` reads exactly this and rounds it, so there
+ * is one reliability formula and the dyno's own readout cannot drift from the
+ * stat every buyer weights.
+ *
+ * The three loss figures are in the same points the stat is in, and the
+ * identity `reliability + conditionLossPoints + coherenceLossPoints +
+ * intensityLossPoints === base` holds exactly, which is what lets a readout
+ * say how much of a poor number is the wear and how much is the build:
+ *
+ *     base - reliability = base * (1 - intensity)                     (the power itself)
+ *                        + base * intensity * (1 - conditionFactor)   (wear)
+ *                        + base * intensity * (1 - coherenceFactor)   (the build)
+ *
+ * `share` handles the one case where those three do not already sum to the
+ * real loss: when the two shortfalls together exceed the whole budget, the
+ * derivation's own clamp floors it at zero, and the two are then scaled by
+ * how much of the budget there actually was to lose. It is exactly 1 whenever
+ * the clamp is not biting, so the unclamped decomposition is untouched.
+ */
+export interface ReliabilityBreakdown {
+  /** The car's own `spec.reliabilityBase` - the ceiling nothing exceeds. */
+  base: number
+  conditionFactor: number
+  coherenceFactor: number
+  intensityFactor: number
+  conditionLossPoints: number
+  coherenceLossPoints: number
+  intensityLossPoints: number
+  /** The unrounded reliability; the stat is this rounded and clamped. */
+  reliability: number
+}
+
+export function reliabilityBreakdownOf(
+  car: CarInstance,
+  model: CarModel,
+  partsById: Readonly<Record<string, Part>>,
+  partsTaxonomy: readonly CarPartTaxonomyEntry[],
+  economy: EconomyConfig,
+): ReliabilityBreakdown {
+  const base = model.spec.reliabilityBase
+  const conditionMean = weightedBandFactorForStat(car, model, 'reliability', partsTaxonomy, economy)
+  const conditionFactor = Math.min(
+    conditionMean,
+    reliabilitySeverityCeiling(car, model, partsTaxonomy, economy),
+  )
+  const coherenceFactor = coherenceFactorFor(
+    supportVerdict(car, model, partsById, economy).headline,
+    economy,
+  )
+  const intensityFactor = reliabilityIntensityFactor(
+    totalGainFractionOf(car, model, partsById, economy),
+    economy,
+  )
+  const budget = clamp(conditionFactor + coherenceFactor - 1, 0, 1)
+  const shortfall = 1 - conditionFactor + (1 - coherenceFactor)
+  const share = shortfall > 0 ? (1 - budget) / shortfall : 0
+  return {
+    base,
+    conditionFactor,
+    coherenceFactor,
+    intensityFactor,
+    conditionLossPoints: base * intensityFactor * (1 - conditionFactor) * share,
+    coherenceLossPoints: base * intensityFactor * (1 - coherenceFactor) * share,
+    intensityLossPoints: base * (1 - intensityFactor),
+    reliability: base * budget * intensityFactor,
+  }
+}
+
+/**
  * Transparent linear formula (GDD 4.2: "no hidden math the player can't
  * reason about"). `partsById` resolves each installed PartInstance's
  * statModifiers from the parts catalog - sim has no data loader of its
@@ -572,46 +657,12 @@ export function computeDerivedStats(
 
   // Reliability is the bounded sum of two independent shortfalls (design
   // section 9): condition (parts wearing out) and coherence (a build
-  // outrunning what it is supported by). `conditionFactor` is the
-  // taxonomy's own weighted mean, capped by the severity ceiling so one
-  // catastrophic part (a seized block, a scrapped gearset) cannot average
-  // away against fourteen good ones. `coherenceFactor` reads the build's own
-  // support verdict; it is 1.0 for a stock or fully-supported build, so
-  // either factor alone reduces the formula to the other exactly. That sum
-  // clamps to [0, 1] and scales the car's own base.
-  //
-  // An OUTER build-intensity factor then scales the result again: even a
-  // properly supported build moves more energy through every part of the
-  // car than stock, so it pays for that in proportion to how much more
-  // power it makes - `reliabilityIntensityFactor` above, structurally
-  // independent of `coherenceFactor` so a supported build is never charged
-  // twice for the same shortfall. `spec.reliabilityBase` therefore stays an
-  // absolute ceiling nothing exceeds, but is no longer a plateau every
-  // gain-making build sits on regardless of how much power it adds - a
-  // stock mint car still sits exactly on it (both extra factors are 1
-  // there), and a car with independent terminal problems still correctly
-  // reads 0.
-  const reliabilityConditionMean = weightedBandFactorForStat(
-    instance,
-    model,
-    'reliability',
-    partsTaxonomy,
-    economy,
-  )
-  const conditionFactor = Math.min(
-    reliabilityConditionMean,
-    reliabilitySeverityCeiling(instance, model, partsTaxonomy, economy),
-  )
-  const coherenceFactor = coherenceFactorFor(
-    supportVerdict(instance, model, partsById, economy).headline,
-    economy,
-  )
-  const totalGainFraction = totalGainFractionOf(instance, model, partsById, economy)
-  const intensityFactor = reliabilityIntensityFactor(totalGainFraction, economy)
-  const reliability =
-    model.spec.reliabilityBase *
-    clamp(conditionFactor + coherenceFactor - 1, 0, 1) *
-    intensityFactor
+  // outrunning what it is supported by), scaled again by an outer
+  // build-intensity factor, all of it derived whole by
+  // `reliabilityBreakdownOf` above - the one implementation, shared with the
+  // dyno's own readout so the two can never disagree about what a car is
+  // carrying or why.
+  const { reliability } = reliabilityBreakdownOf(instance, model, partsById, partsTaxonomy, economy)
 
   // Authenticity takes no per-part modifier at all: it is a fact about which
   // parts are on the car and what state they are in, derived whole by

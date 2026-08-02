@@ -46,6 +46,7 @@ function makeRouter(): Router {
     routes: [
       { path: '/', name: 'garage', component: { render: () => h('div') } },
       { path: '/parts', name: 'parts', component: { render: () => h('div') } },
+      { path: '/dyno', name: 'dyno', component: { render: () => h('div') } },
       { path: '/car/:id', name: 'car', component: CarDetailScreen },
     ],
   })
@@ -2129,6 +2130,41 @@ describe('CarDetailScreen', () => {
       expect(game.cashYen).toBe(cashBefore - ECONOMY.machineShopAssist.feeYenByGroup.suspension)
       expect(wrapper.find('[data-test="machine-hire-chip-suspension"]').text()).toBe('Hired today')
       expect(wrapper.find('[data-test="hire-machine-suspension"]').exists()).toBe(false)
+    })
+
+    it('carries the rolling road as one more row, hired and run the same way', async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      game.moveCar(id, 'service')
+      const cashBefore = game.cashYen
+
+      const { wrapper } = await mountAt(id)
+      const row = wrapper.find('[data-test="machine-hire-row-dyno"]')
+      expect(row.exists()).toBe(true)
+      expect(row.text()).toContain(formatYen(ECONOMY.dyno.hireFeeYen))
+
+      await wrapper.find('[data-test="run-dyno-session"]').trigger('click')
+      await flushPromises()
+
+      expect(game.cashYen).toBe(cashBefore - ECONOMY.dyno.hireFeeYen)
+      expect(game.dynoSessionCarId).toBe(id)
+      expect(wrapper.find('[data-test="machine-hire-chip-dyno"]').text()).toBe('Hired today')
+      // With the car on the rollers the row offers the sheet, not another run.
+      expect(wrapper.find('[data-test="dyno-read-sheet"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="run-dyno-session"]').exists()).toBe(false)
+    })
+
+    it('disables the rolling road for a car that is not in a service bay', async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      game.moveCar(id, 'parking')
+
+      const { wrapper } = await mountAt(id)
+      const button = wrapper.find('[data-test="run-dyno-session"]')
+      expect(button.attributes('disabled')).toBeDefined()
+      expect(button.attributes('title')).toBe('Needs to be in a service bay')
     })
   })
 

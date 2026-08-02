@@ -1,9 +1,10 @@
 import type { ComponentId, ToolTier } from '@midnight-garage/content'
-import { FACILITIES, TOOL_LINES } from '@midnight-garage/content'
+import { ECONOMY, FACILITIES, TOOL_LINES } from '@midnight-garage/content'
 import { mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { useGameStore } from '../stores/gameStore'
+import { formatYen } from '../utils/formatYen'
 import UpgradesScreen from './UpgradesScreen.vue'
 
 const WHEELS_T2 = TOOL_LINES.wheels.tiers[1]!
@@ -45,18 +46,45 @@ describe('UpgradesScreen', () => {
     for (const wrapper of mountedWrappers.splice(0)) wrapper.unmount()
   })
 
-  it('renders the facilities section and all six tool-line ladders', () => {
+  it('renders the facilities section, all six tool-line ladders, and the rolling road beside them', () => {
     const game = useGameStore()
     game.newGame(1)
     const wrapper = mountScreen()
     expect(wrapper.text()).toContain('Facilities')
     expect(wrapper.text()).toContain('Tools')
-    expect(wrapper.findAll('.tool-column')).toHaveLength(6)
-    expect(wrapper.findAll('.tier-node')).toHaveLength(18) // 6 lines x 3 tiers
+    // Six three-rung ladders plus the rolling road's single rung: it stands in
+    // the wall alongside them and is bought the same way, though it belongs to
+    // no part group and repairs nothing.
+    expect(wrapper.findAll('.tool-column')).toHaveLength(7)
+    expect(wrapper.findAll('.tier-node')).toHaveLength(19)
+    expect(wrapper.find('[data-test="dyno-column"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="buy-dyno"]').text()).toBe(
+      formatYen(ECONOMY.dyno.purchasePriceYen),
+    )
+    expect(wrapper.find('[data-test="dyno-hire-line"]').text()).toContain(
+      formatYen(ECONOMY.dyno.hireFeeYen),
+    )
     // A fresh game shows every line at its named tier-1 kit with the next
     // tier offered by name and price - never a raw component id.
     expect(wrapper.text()).toContain(TOOL_LINES.wheels.tiers[0]!.displayName)
     expect(wrapper.text()).toContain(WHEELS_T2.displayName)
+  })
+
+  it('gates the rolling road on reputation, then buys it and drops the hire line', async () => {
+    const game = useGameStore()
+    game.newGame(1)
+    game.devGiveCash(ECONOMY.dyno.purchasePriceYen)
+    const gated = mountScreen()
+    expect(gated.find('[data-test="buy-dyno"]').attributes('disabled')).toBeDefined()
+    expect(gated.find('[data-test="gate-tip-dyno"]').exists()).toBe(true)
+
+    game.devSetReputationTier(ECONOMY.dyno.minReputationTier)
+    const wrapper = mountScreen()
+    await wrapper.get('[data-test="buy-dyno"]').trigger('click')
+    expect(game.dynoOwned).toBe(true)
+    expect(wrapper.find('[data-test="buy-dyno"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="dyno-hire-line"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="dyno-node"]').classes()).toContain('owned')
   })
 
   it('clicking a ladder upgrade buys the next tier and re-renders it as current, once reputation clears the gate', async () => {

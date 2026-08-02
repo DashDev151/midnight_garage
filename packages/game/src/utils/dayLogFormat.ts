@@ -70,14 +70,16 @@ export function describeLogEntry(
       const charge = entry.costYen === undefined ? '' : ` for ${formatYen(entry.costYen)}`
       // A recondition works a loose part on the bench, so it has no car to
       // name - `carInstanceId` holds the part instance for identity only.
-      return entry.kind === 'recondition-part'
-        ? `Bench recondition started${charge}`
-        : `Job started (${entry.kind}) on ${entry.carInstanceId}${charge}`
+      if (entry.kind === 'recondition-part') return `Bench recondition started${charge}`
+      if (entry.kind === 'dyno-session') return `Strapped ${entry.carInstanceId} to the rollers`
+      return `Job started (${entry.kind}) on ${entry.carInstanceId}${charge}`
     }
     case 'job-progress':
       return `Job ${entry.jobId}: +${entry.laborSlotsSpent} labour`
     case 'job-completed':
-      return `Job complete (${entry.kind}) on ${entry.carInstanceId}`
+      return entry.kind === 'dyno-session'
+        ? `Dyno run finished on ${entry.carInstanceId}`
+        : `Job complete (${entry.kind}) on ${entry.carInstanceId}`
     case 'job-blocked':
       return `Job ${entry.jobId} blocked (${entry.reason})`
     case 'labor-overbooked':
@@ -187,6 +189,10 @@ export function describeLogEntry(
       } listed, ${formatYen(entry.priceYen)}`
     case 'machine-hired':
       return `Hired the ${MACHINE_LINE_NAMES[entry.componentId]} for the day (${formatYen(entry.priceYen)})`
+    case 'dyno-hired':
+      return `Hired the rolling road for the day (${formatYen(entry.priceYen)})`
+    case 'dyno-bought':
+      return `Bought a rolling road for ${formatYen(entry.priceYen)}`
     case 'shell-scrapped': {
       const withParts =
         entry.carPartIds.length > 0
