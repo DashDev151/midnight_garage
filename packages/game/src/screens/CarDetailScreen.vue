@@ -13,6 +13,7 @@ import {
   ALL_CAR_PART_IDS,
   ASSEMBLIES,
   ComponentIdSchema,
+  ECONOMY,
   PAINT_COLOURS,
   PARTS_TAXONOMY,
   fitmentClassForTier,
@@ -107,6 +108,12 @@ const dynoGateReason = computed<string | null>(() => {
 /** True while this exact car is the one on the rollers - the row then offers
  * the sheet rather than another session. */
 const onTheRollers = computed(() => game.dynoSessionCarId === detail.value?.car.id)
+
+/** True once the engine line owns the machine-shop tooling - what turns the
+ * bench from a place to look at into a place to work. */
+const machineShopOpen = computed(
+  () => game.gameState.toolTiers.engine >= ECONOMY.machining.minEngineToolTier,
+)
 
 /**
  * Runs the session and stays put - the row itself turns into the link to the
@@ -1569,6 +1576,18 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               Put it on the rollers ({{ game.dynoOwned ? 'no fee' : formatYen(game.dynoHireFeeYen)
               }}{{ labourSuffix(game.pointsPerLabour) }})
             </button>
+          </li>
+          <li class="machine-hire-row" data-test="machine-hire-row-machine-shop">
+            <span class="machine-hire-name">Machine shop</span>
+            <span v-if="machineShopOpen" class="chip owned" data-test="machine-shop-chip"
+              >In-house</span
+            >
+            <RouterLink
+              :to="{ name: 'machine-shop' }"
+              class="hire-btn"
+              data-test="machine-shop-open"
+              >Take a look at the bench</RouterLink
+            >
           </li>
         </ul>
       </section>

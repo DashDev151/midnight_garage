@@ -663,6 +663,7 @@ describe('seed content validates against schemas', () => {
       'energy',
       'machineShopAssist',
       'dyno',
+      'machining',
       'diagnosis',
       'auctionRoom',
       'staff',

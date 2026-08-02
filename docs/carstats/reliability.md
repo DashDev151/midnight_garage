@@ -18,7 +18,9 @@ conditionFactor = min( weightedBandFactorForStat(car, 'reliability'),
 coherenceFactor = min(1, supportVerdict(car).headline / support.thresholds.adequateAtOrAbove)
                   ** support.coherenceExponent
 
-intensityFactor = clamp(1 - support.stressCoefficient * totalGainFractionOf(car), 0, 1)
+intensityFactor = clamp(1 - support.stressCoefficient * totalGainFractionOf(car)
+                          - machining.reliabilityCostPerOperation * machiningOperationCountOf(car),
+                        0, 1)
 
 budget          = clamp(conditionFactor + coherenceFactor - 1, 0, 1)
 
@@ -59,6 +61,14 @@ to lose, so the identity survives the clamp.
 **Measured:** 3,250 combinations (26 shipped cars x 5 build shapes x 5 uniform bands x 5 defect
 variants) give a maximum absolute error of 2.8e-14 on that identity, which is floating-point
 noise and nothing else.
+
+**Re-measured with machining in the intensity term**, over a fresh sweep that varies the machining
+record as well: 1,560 combinations (26 shipped cars x 4 grades x 5 uniform bands x 3 machining
+states, from unmachined through a partial engine to all nine operations) give a maximum absolute
+error of **2.84e-14**, the same order of floating-point noise. **The identity still holds exactly,
+and machining did not need a fourth loss term to make it hold.** It is folded into
+`intensityLossPoints` rather than added beside the three, which is why the dyno's three rows and
+`displayedReliabilitySplit`'s three-element arithmetic were untouched by the whole feature.
 
 **The four DISPLAYED integers reconcile too.** `displayedReliabilitySplit`
 (`packages/sim/src/dyno.ts`) hands out whole points by largest remainder against what the rounded
@@ -218,31 +228,54 @@ support[s] = 1 + stockSupportMargin * (demand[s] - 1) + sum(supportWeights[s][sl
 
 Because the headline is a minimum, **support fitted to a subsystem that was not the weak link
 buys nothing at all.** Measured on the 180SX with a race turbo fitted: the weak link is cylinder
-pressure at 0.6994, and adding a race cooling system, fuel system, clutch, gearbox, driveline and
-differential leaves the headline at 0.6994 and the reliability stat at 52, unchanged. Those six
+pressure at 0.6350, and adding a race cooling system, fuel system, clutch, gearbox, driveline and
+differential leaves the headline at 0.6350 and the reliability stat at 41, unchanged. Those six
 parts are supporting subsystems that were never binding.
 
 **Measured lowest coherence factor reachable** (every gain slot at race, nothing supporting it):
-0.5435 on a forced-induction car (headline 0.6635), 0.5769 on a lazy naturally aspirated car
-(0.6836), 0.6685 on a high-strung naturally aspirated car (0.7359). That build maximises demand
-and leaves torqueTransmission unsupported, so it is the lowest headline the shipped catalogue can
+0.4540 on a forced-induction car (headline 0.6064), 0.5665 on a lazy naturally aspirated car
+(0.6774), 0.6589 on a high-strung naturally aspirated car (0.7306). That build maximises demand
+and leaves the bottom end unsupported, so it is the lowest headline the shipped catalogue can
 construct.
 
 ### 5. The build-intensity factor (`reliabilityIntensityFactor`, per build)
 
 ```text
-intensityFactor = clamp(1 - stressCoefficient * totalGainFraction, 0, 1)
+intensityFactor = clamp(1 - stressCoefficient * totalGainFraction
+                          - reliabilityCostPerOperation * machiningOperationCount, 0, 1)
 ```
 
 `stressCoefficient` is 0.20 (`economy.json`, `statFormulas.support`, global).
 `totalGainFraction` is `totalGainFractionOf`: the sum of every fitted SKU's
 `statModifiers.powerFraction[engineCharacter]` across all 29 slots, reading the fitted GRADE only
-and never the band. It is exactly 0 on a stock car, so the stock-car-reads-its-base identity
-holds by construction.
+and never the band. It is exactly 0 on a stock car.
+
+`machiningOperationCount` is `machiningOperationCountOf` (`packages/sim/src/machining.ts`): how many
+machining operations are recorded across every part on the car, and `reliabilityCostPerOperation` is
+**0.004** (`economy.json`, `machining`, global). It is exactly 0 on an unmachined car, so the
+stock-car-reads-its-base identity still holds by construction, on both terms at once.
 
 This is an OUTER multiplier, structurally separate from coherence: even a perfectly supported
 build moves more energy through the car than stock did and pays for it in proportion to how much
 more power it makes, not to how well it is supported.
+
+**The two subtractions are additive and never compound**, which is what stops the machining charge
+being levied twice. A machining gain deliberately does NOT enter `totalGainFractionOf`: that sum and
+this count describe the same thing, more energy through every part, so charging both would charge
+one engine twice and make the small lever misleading. Measured, on all three engine characters, a
+full nine-operation engine takes exactly **0.036** off the factor whatever else is fitted:
+
+| car | build | intensity | intensity, fully machined | reliability |
+| --- | --- | ---: | ---: | --- |
+| Wagon R (high-strung NA, base 98) | stock | 1.0000 | **0.9640** | 98.00 to 94.47 |
+| Wagon R | race, unsupported | 0.9100 | **0.8740** | 68.64 to 65.92 |
+| City E (lazy NA, base 99) | stock | 1.0000 | **0.9640** | 99.00 to 95.44 |
+| City E | race, unsupported | 0.8800 | **0.8440** | 59.54 to 57.10 |
+| 180SX (forced, base 92) | stock | 1.0000 | **0.9640** | 92.00 to 88.69 |
+| 180SX | race, unsupported | 0.7400 | **0.7040** | 30.91 to 29.40 |
+
+So a fully machined engine costs **3.6 per cent of the car's own base**, and the whole of what
+machining does to reliability lands here. Nothing else in the derivation reads it.
 
 `engineCharacter` (`engineCharacterOf`) picks which `powerFraction` column every fitted part
 reads. It is `forced` when the MODEL's `spec.aspiration` is anything but `NA`, otherwise
@@ -325,6 +358,15 @@ clamp bites.
 - **Repair labour, tools, crew, reputation, the calendar.** Nothing time-based or shop-based
   touches this stat. There is no wear rate and no service interval: condition only changes when
   something in the sim changes a part's band.
+- **WHICH machining operations were done, as opposed to how many.** The intensity term reads a
+  COUNT. Nine operations cost the same 0.036 whichever nine they are, and O-ringing a deck costs
+  exactly as much here as boring a block does, despite one making no power at all. Machining
+  reaches this stat a second way, through coherence, and there the identity of the operation is
+  everything: an operation's own `spec` lifts its slot's support contribution. **Measured** on a
+  fully machined race build, though, coherence did not move at all (0.7697 / 0.6834 / 0.4540 before
+  and after, on the three characters), because at race grade those slots were already supplying
+  their subsystem and the weakest link was elsewhere. Machining support pays when it lands on the
+  weakest link and not otherwise, exactly as bought support does.
 
 ### The thing readers get wrong: an unsupported build makes its full power
 
@@ -339,7 +381,7 @@ There is no support term, no coherence term and no headline anywhere in it. `sup
 imported into `derivedStats.ts` for the reliability derivation alone.
 
 **Measured on the 180SX at mint:** stock 157 PS. With a race turbo fitted and nothing supporting
-it (headline 0.6994, verdict `dangerous`) it makes 212 PS and reads 52 reliability. With every
+it (headline 0.6350, verdict `dangerous`) it makes 236 PS and reads 41 reliability. With every
 gain slot at race and no support at all (headline 0.6635, `dangerous`) it makes 306 PS, 95 per
 cent over stock, and reads 41 reliability.
 
@@ -362,6 +404,7 @@ punished twice (once here, once at the till) and gated nowhere.
 | demand shape | `economy.json` | `statFormulas.support.demandWeights`, `statFormulas.support.demandDrivers` |
 | support shape | `economy.json` | `statFormulas.support.supportWeights`, `statFormulas.support.specByGrade` |
 | build-intensity rate | `economy.json` | `statFormulas.support.stressCoefficient` |
+| machining charge, per operation | `economy.json` | `machining.reliabilityCostPerOperation` (0.004) |
 | per-SKU demand and gain | `packages/content/data/parts.json` | `statModifiers.powerFraction`, `grade` |
 | engine-character split | `economy.json` | `statFormulas.engineCharacter.naHighStrungThreshold` |
 
@@ -398,7 +441,7 @@ What guards each of them:
 
 2. **Support spent on the wrong subsystem is worth nothing.** The headline is a minimum, so six
    race-grade support parts can leave both the headline and the stat bit-for-bit unchanged
-   (measured: 0.6994 and 52 before and after, on the 180SX with a race turbo). This is correct
+   (measured: 0.6350 and 41 before and after, on the 180SX with a race turbo). This is correct
    under the weakest-link design, but it means a player who buys "some support" without reading
    the dyno sheet can spend a lot of money for no movement at all.
 

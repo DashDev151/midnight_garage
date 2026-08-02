@@ -85,6 +85,11 @@ export const router = createRouter({
       component: () => import('../screens/DynoScreen.vue'),
     },
     {
+      path: '/machine-shop',
+      name: 'machine-shop',
+      component: () => import('../screens/MachineShopScreen.vue'),
+    },
+    {
       path: '/standing',
       name: 'standing',
       component: () => import('../screens/StandingScreen.vue'),

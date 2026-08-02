@@ -330,23 +330,26 @@ describe('the per-slot grade ladder', () => {
  * ABOVE parity (`normalized > 1`, a cheaper rung costing MORE per unit of
  * power than race) is exactly the arc's rule-5 defect: a worse rung being a
  * worse buy AND overpriced relative to its own power. That side is bounded
- * tight, just above the measured maximum, so nothing resembling the old
- * 2.89x ECU distortion can land again. The measured maximum across the whole
- * catalogue is 1.335x (`internals/entry/high-strung-na/street`), and 39 of
- * the 288 generated cases sit above parity at all - the ceiling tracks that
- * measured residue directly, not a wide symmetric margin around it.
+ * tight, so nothing resembling the old 2.89x ECU distortion can land again.
+ * The measured maximum across the whole catalogue is **1.137x**
+ * (`block/everyday/lazy-na/street`), and 87 of the 288 generated cases sit
+ * above parity at all.
  * `forcedInduction` carries its own derived-to-track-power ladder, so its 24
  * cases sit at or within rounding noise of parity. `camsTiming` carries its
- * own ladder too: its street rung no longer costs more per unit of power
- * than its race rung, so its 12 `street` cases drop out of the residue
- * entirely rather than merely shrinking. Neither slot's ladder tracks its
- * curve as exactly as `forcedInduction`'s does (`camsTiming`'s curve is
- * linear, its ladder is not, so it clears parity rather than sitting flush
- * against it), which is why it still needs its own asymmetric-bound
- * assertion below rather than a flat-spread one like `forcedInduction`'s
- * acceptance 2a. The measured table is reported via each case's own test
- * name, passing or failing, so the residues stay visible rather than merely
- * passing.
+ * own ladder too. Neither slot's ladder tracks its curve as exactly as
+ * `forcedInduction`'s does (`camsTiming`'s curve is not the shape its ladder
+ * is, so it clears parity rather than sitting flush against it), which is why
+ * it still needs its own asymmetric-bound assertion below rather than a
+ * flat-spread one like `forcedInduction`'s acceptance 2a. The measured table
+ * is reported via each case's own test name, passing or failing, so the
+ * residues stay visible rather than merely passing.
+ *
+ * **The ceiling stays at 1.35 rather than tracking down to the new measured
+ * maximum.** The residue moved because the per-slot power curves were
+ * re-authored for machining, not because the ladders changed; the bound is
+ * what the catalogue may not exceed, and re-pinning it downward on every
+ * curve movement would make it a record of the last change rather than a
+ * limit on the next one.
  */
 describe('the value-per-yen rule: climbing a grade ladder never becomes a dramatically different buy', () => {
   const POWER_BEARING_SLOTS = [
@@ -397,7 +400,7 @@ describe('the value-per-yen rule: climbing a grade ladder never becomes a dramat
     }
   }
 
-  it('the measured maximum is 1.335x, and 39 of the 288 cases sit above parity', () => {
+  it('the measured maximum is 1.137x, and 87 of the 288 cases sit above parity', () => {
     const normalizedValues: number[] = []
     for (const carPartId of POWER_BEARING_SLOTS) {
       for (const fitmentClass of CLASSES) {
@@ -420,8 +423,8 @@ describe('the value-per-yen rule: climbing a grade ladder never becomes a dramat
       }
     }
     expect(normalizedValues.length).toBe(288)
-    expect(Math.max(...normalizedValues)).toBeCloseTo(1.334961, 5)
-    expect(normalizedValues.filter((v) => v > 1).length).toBe(39)
+    expect(Math.max(...normalizedValues)).toBeCloseTo(1.137295, 5)
+    expect(normalizedValues.filter((v) => v > 1).length).toBe(87)
   })
 })
 
@@ -437,10 +440,15 @@ describe('Sprint 137 acceptance 2a: climbing the forcedInduction ladder never im
   const CHARACTERS: readonly EngineCharacter[] = ['high-strung-na', 'lazy-na', 'forced']
   const NON_STOCK_GRADES: readonly Grade[] = ['street', 'sport', 'race']
 
-  // The only spread left once Lever 2 is applied is the round-to-the-nearest-
-  // Y100 `resolvePartPriceYen` performs on top of an exact-tracking ladder -
-  // measured maximum 0.317 per cent (entry/high-strung-na), well inside a
-  // half-percent bound.
+  // The only spread left once the turbo's own column is pinned to its price
+  // ladder's ratios is the round-to-the-nearest-Y100 `resolvePartPriceYen`
+  // performs on top of an exact-tracking ladder - measured maximum 0.297 per
+  // cent (everyday/high-strung-na), well inside a half-percent bound.
+  //
+  // This is the property the whole street/sport allocation is built around.
+  // One `forcedInduction` entry in the pricing sheet serves all three engine
+  // characters, so its power column is the one that has to track the ladder
+  // exactly; the other seven slots absorb the slack.
   const MAX_ROUNDING_SPREAD = 0.005
 
   it('priceYen / powerFraction is flat across street, sport and race, on every fitment class and character', () => {
@@ -471,7 +479,7 @@ describe('Sprint 137 acceptance 2a: climbing the forcedInduction ladder never im
     expect(maxSpread, `measured table:\n${rows.join('\n')}`).toBeLessThan(MAX_ROUNDING_SPREAD)
   })
 
-  it('the measured maximum rounding spread is 0.317 per cent (entry class)', () => {
+  it('the measured maximum rounding spread is 0.297 per cent (everyday class)', () => {
     let maxSpread = 0
     for (const fitmentClass of CLASSES) {
       for (const character of CHARACTERS) {
@@ -489,7 +497,7 @@ describe('Sprint 137 acceptance 2a: climbing the forcedInduction ladder never im
         maxSpread = Math.max(maxSpread, spread)
       }
     }
-    expect(maxSpread).toBeCloseTo(0.0031746, 6)
+    expect(maxSpread).toBeCloseTo(0.0029709, 6)
   })
 })
 
@@ -516,11 +524,15 @@ describe('Sprint 137 acceptance 2a: climbing the forcedInduction ladder never im
  * power-per-yen lead over the next-best slot - per rung, per engine
  * character, per fitment class, never the mere existence of a winner.
  *
- * The ceiling is set just above the measured maximum, in the same spirit as
- * the within-ladder ceiling in the describe block above (1.35, just above its
- * own measured 1.335x): the worst lead anywhere in the catalogue is 18.0 per
- * cent (`forced`/everyday/sport, `exhaust` over `intake`), so 25 per cent
- * gives honest headroom without being toothless.
+ * The worst lead anywhere in the catalogue is **14.1 per cent**
+ * (`high-strung-na`/entry/race, `camsTiming` over `headValvetrain`), so the
+ * 25 per cent ceiling gives honest headroom without being toothless.
+ *
+ * This is the probe the uniform street/sport rescale broke, and it broke it
+ * loudly: a flat power shape laid over the catalogue's bespoke per-slot price
+ * ladders put a street ECU at 2.1 times the power per yen of anything else on
+ * a boosted car. The shipped allocation keeps each slot's own grade shape for
+ * exactly that reason.
  */
 describe('Sprint 137 acceptance 2b: no power-bearing slot dominates its nearest rival at any rung', () => {
   const POWER_BEARING_SLOTS = [
@@ -567,7 +579,7 @@ describe('Sprint 137 acceptance 2b: no power-bearing slot dominates its nearest 
     }
   }
 
-  it('the measured maximum lead is 18.023 per cent (forced/everyday/sport, exhaust over intake)', () => {
+  it('the measured maximum lead is 14.074 per cent (high-strung-na/entry/race, camsTiming over headValvetrain)', () => {
     let maxLead = 0
     let maxLeadLabel = ''
     for (const fitmentClass of CLASSES) {
@@ -584,7 +596,7 @@ describe('Sprint 137 acceptance 2b: no power-bearing slot dominates its nearest 
         }
       }
     }
-    expect(maxLeadLabel).toBe('everyday/forced/sport: exhaust over intake')
-    expect(maxLead).toBeCloseTo(0.180233, 5)
+    expect(maxLeadLabel).toBe('entry/high-strung-na/race: camsTiming over headValvetrain')
+    expect(maxLead).toBeCloseTo(0.140741, 5)
   })
 })

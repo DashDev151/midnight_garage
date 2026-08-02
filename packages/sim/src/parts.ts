@@ -16,6 +16,7 @@ import { scrapValueYen, usedPartSaleValueYen } from './bands'
 import { PARTS_EXPRESS_SURCHARGE_FRACTION, PARTS_STANDARD_DELIVERY_DAYS } from './constants'
 import type { SimContext } from './context'
 import { bookCashMovements } from './financeLedger'
+import { machinedPartPriceYen } from './machining'
 import { isCustomerOriginPart, makeMarketOrigin } from './provenance'
 
 export type DeliverySpeed = 'standard' | 'express'
@@ -285,9 +286,11 @@ export interface SellPartResult {
 /**
  * The teardown game's donor economy: sell a used, non-scrap loose
  * `PartInstance` at `usedPartSaleValueYen` (bands.ts) - its catalogue price
- * scaled by the resale condition curve and the used-part haircut. Instant,
- * no labour - the counterpart to `resolveScrapPart` for a part still worth
- * more than scrap.
+ * plus whatever has been machined into it, scaled by the resale condition
+ * curve and the used-part haircut. Instant, no labour - the counterpart to
+ * `resolveScrapPart` for a part still worth more than scrap. Machining
+ * travels with the part, so a bored block fetches a bored block's money over
+ * the counter and not an ordinary one's.
  *
  * Refused (silent no-op) for a `scrap`-band instance (that's
  * `resolveScrapPart`'s route) and for a customer-owned tagged part while
@@ -307,7 +310,11 @@ export function resolveSellPart(
   const part = context.partsById[instance.partId]
   if (!part) return { state, log: [] }
 
-  const priceYen = usedPartSaleValueYen(part.priceYen, instance.band, context.economy)
+  const priceYen = usedPartSaleValueYen(
+    machinedPartPriceYen(instance, part, context.economy),
+    instance.band,
+    context.economy,
+  )
   const log: DayLogEntry[] = [{ type: 'part-sold', partInstanceId, priceYen }]
   return {
     state: bookCashMovements(

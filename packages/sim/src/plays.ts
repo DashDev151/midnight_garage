@@ -23,6 +23,7 @@ import {
   zoneStatesRepairedToBand,
 } from './bodyPipeline'
 import type { SimContext } from './context'
+import { machinedPartPriceYen } from './machining'
 import { installLaborSlotsFor, removeLaborSlotsFor } from './jobs'
 import { marketValueYen, sensibleRepairTargetBand } from './marketValue'
 import { makeCarOrigin } from './provenance'
@@ -290,7 +291,15 @@ function stripAndSell(
         band = target
       }
     }
-    revenueYen += usedPartSaleValueYen(catalogPart.priceYen, band, context.economy)
+    // Priced off what the part is worth with its machining on it, exactly as
+    // the counter prices it (`resolveSellPart`, parts.ts). The repair planning
+    // above stays on the plain catalogue price: a machined block's
+    // restoration bill is an ordinary block's.
+    revenueYen += usedPartSaleValueYen(
+      machinedPartPriceYen(installed, catalogPart, context.economy),
+      band,
+      context.economy,
+    )
   }
   return { revenueYen, costYen, laborPoints }
 }

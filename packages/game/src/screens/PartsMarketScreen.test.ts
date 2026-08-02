@@ -244,7 +244,7 @@ describe('PartsMarketScreen', () => {
     expect(wrapper.find('.catalog').text()).toContain('no stat change')
   })
 
-  it("shows the percentage of the picked car's own stock power once a vehicle is chosen: 25 per cent on a turbo, 3 per cent on a high-strung NA engine, same race ECU", async () => {
+  it("shows the percentage of the picked car's own stock power once a vehicle is chosen: 33 per cent on a turbo, 3 per cent on a high-strung NA engine, same race ECU", async () => {
     const game = useGameStore()
     game.devGrantCar('nissan-180sx-rps13') // forced induction
     game.devGrantCar('toyota-sprinter-trueno-ae86') // high-strung NA
@@ -252,11 +252,11 @@ describe('PartsMarketScreen', () => {
     const wrapper = await openEcuCatalogue()
 
     await wrapper.find('[data-test="filter-vehicle"]').setValue(turbo!.id)
-    expect(wrapper.find('.catalog').text()).toContain('P+25%')
+    expect(wrapper.find('.catalog').text()).toContain('P+33%')
 
     await wrapper.find('[data-test="filter-vehicle"]').setValue(na!.id)
     expect(wrapper.find('.catalog').text()).toContain('P+3%')
-    expect(wrapper.find('.catalog').text()).not.toContain('P+25%')
+    expect(wrapper.find('.catalog').text()).not.toContain('P+33%')
   })
 
   it('leaves a part with no power fraction alone, picked vehicle or not', async () => {

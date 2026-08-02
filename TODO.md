@@ -1173,6 +1173,15 @@ pass."
   than left open. **`powerFraction.forced` is no longer forbidden**, and `docs/sprints/sprint168.md`
   moves it.
 
+  **The rise landed.** Sprint 168 moved all 96 catalogue fractions to the table. The first attempt
+  made street and sport a uniform rescale of race, which broke four pricing probes (a street ECU at
+  2.1 times the power per yen of anything else on a boosted car); the investigation in
+  `docs/design/systems/turbo-price-blast-radius.md` established that no price ladder can fix that,
+  because one `forcedInduction` sheet entry serves three engine characters. The shipped answer keeps
+  each slot's own grade shape and pins the turbo's column to its ladder's ratios, which fixes it with
+  **no price movement at all**: the four probes measure 1.137 (bound 1.35), 0.641 (0.50), 0.141
+  (0.25) and 0.003 (0.005).
+
   **What survives is the feature, not the objection.** Per-engine headroom is still the mechanism
   that would make the legendary blocks legendary the way they were in life, and it is still worth
   building: a block that can be bored, decked and filled has more of it than one that cannot, and

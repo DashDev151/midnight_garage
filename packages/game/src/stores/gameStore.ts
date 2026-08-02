@@ -129,6 +129,8 @@ import {
   ownedWorkupGateReason as ownedWorkupGateReasonCore,
   machineHiredToday,
   machineLineGroupFor,
+  machiningGateReason as machiningGateReasonCore,
+  machiningReadingFor,
   makeMarketOrigin,
   isServiceJobInTransit,
   isToolTierListed,
@@ -169,6 +171,7 @@ import {
   resolveDeliverMission,
   reserveYen,
   resolveJobLabor,
+  resolveMachiningLabor,
   resolveOwnedWorkup as resolveOwnedWorkupCore,
   resolveReconditionLabor,
   resolveRefitAssembly,
@@ -212,6 +215,8 @@ import {
   type HireMachineLineGateReason,
   type InspectionVisitGateReason,
   type LapBoardRow,
+  type MachiningGateReason,
+  type MachiningReading,
   type MissionGradeReport,
   type NewJobSpec,
   type OwnedWorkupGateReason,
@@ -1883,7 +1888,7 @@ export const useGameStore = defineStore('game', () => {
       economy,
     )
     const retention = retentionFor(coherenceFactor, economy)
-    const premiumYen = installedPartsValueYen(car, context.value.partsById, retention)
+    const premiumYen = installedPartsValueYen(car, context.value.partsById, retention, economy)
     const factor = foundationFactor(car, economy)
     const withheldYen = Math.round(premiumYen * (1 - factor))
     if (withheldYen <= 0) return null
@@ -2728,6 +2733,68 @@ export const useGameStore = defineStore('game', () => {
       // the stat always account for the whole base.
       ...displayedReliabilitySplit(reading),
     }
+  })
+
+  // --- the machine shop ----------------------------------------------------
+
+  /**
+   * Why machining `operationId` onto the part fitted in its own slot on
+   * `carInstanceId` is refused right now, `null` when nothing refuses it - the
+   * button's proactive "why not" read, and the same predicate the resolver
+   * enforces after the click.
+   */
+  function machiningGateReason(
+    carInstanceId: string,
+    operationId: string,
+  ): MachiningGateReason | null {
+    return machiningGateReasonCore(gameState.value, carInstanceId, operationId, context.value)
+  }
+
+  /**
+   * Machines `operationId` onto the part fitted in its slot on
+   * `carInstanceId` - as much of today's remaining labour as the operation
+   * takes, through the same job system every other piece of work spends its
+   * labour through, so an operation that outruns today's pool carries over to
+   * tomorrow. The operation lands on the part only once the job finishes.
+   */
+  function machinePart(carInstanceId: string, operationId: string): boolean {
+    const result = resolveMachiningLabor(
+      gameState.value,
+      carInstanceId,
+      operationId,
+      laborSlotsRemainingToday.value,
+      context.value,
+    )
+    if (result.laborSlotsUsed === 0) return false
+    gameState.value = result.state
+    dayLog.value.push(...result.log)
+    logSessionEvent('machinePart', { carInstanceId, operationId })
+    return true
+  }
+
+  /**
+   * The machine shop's sheet for the car on the ramp, or `null` when the
+   * service bay holds anything other than exactly one car the store can
+   * resolve a model for. A machinist works on the car in the bay, so with the
+   * bay empty (or holding two) there is nothing to quote against. Every figure
+   * is `machiningReadingFor`'s and none is recomputed here.
+   */
+  const machineShopSheet = computed<MachiningReading | null>(() => {
+    const carIds = gameState.value.serviceBayCarIds.filter((id): id is string => id !== null)
+    if (carIds.length !== 1) return null
+    const car = findWorkableCar(carIds[0]!)
+    if (!car) return null
+    const model = context.value.modelsById[car.modelId]
+    if (!model) return null
+    return machiningReadingFor(
+      car,
+      model,
+      gameState.value,
+      context.value.partsById,
+      context.value.partsTaxonomy,
+      context.value.economy,
+      context.value,
+    )
   })
 
   /** The live auction room's fuse-length preset, persisted across careers -
@@ -4932,6 +4999,9 @@ export const useGameStore = defineStore('game', () => {
     runDynoSession,
     dynoSessionCarId,
     dynoSheet,
+    machiningGateReason,
+    machinePart,
+    machineShopSheet,
     stagedActionGateReasonFor,
     stagedWorkGated,
     serviceBaysView,

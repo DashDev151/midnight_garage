@@ -144,18 +144,51 @@ construction.
 
 ### 3.4 The machining term (per-car)
 
-`machiningCost(car)` in the same file. **It returns literal `0` for every car, unconditionally.**
-The body is a `void car` and a `return 0`; the parameter is deliberately unread. Verified by
-reading the source and by measuring it against every shipped car. No machining operation exists to
-apply and `CarInstance` records none, so the term is honestly zero rather than approximated. See
-finding F1.
+`machiningCost(car, partsById, economy)` in the same file. It walks the car's 29 installed parts,
+and for each one whose fitted SKU is `grade: 'stock'` it sums the `authenticityCost` of every
+machining operation recorded on that `PartInstance`.
+
+**Charged on stock-grade parts only.** That is the whole of the rule and it is the interesting half
+of the mechanic. `stocknessOf` above already took a slot's entire weight the moment an aftermarket
+part went into it, so charging machining on top of that would book one loss twice: boring a race
+block does not make that slot less factory than it already is. So a player keeping the car's own
+castings pays in originality for every point of power, and a player who has already fitted
+aftermarket has bought their way out of the conversation.
+
+The nine shipped operations and their ratings, on the design's own 1-to-10 scale (1 to 2 a purist
+shrugs, 4 to 6 a raised eyebrow, 7 to 9 a collector weeps):
+
+| operation | slot | rating |
+| --- | --- | ---: |
+| O-ringing the deck | block | 9 |
+| Bore and hone | block | 8 |
+| Cam regrind | camsTiming | 7 |
+| Port and polish | headValvetrain | 6 |
+| Decking the block | block | 6 |
+| Milling the head | headValvetrain | 5 |
+| Balance and polish | internals | 4 |
+| Shot peening the rods | internals | 2 |
+| Multi-angle valve job | headValvetrain | 1 |
+| **whole engine on its own castings** | | **48** |
+
+Measured, on a shipped car with everything else stock and mint:
+
+| the car's engine | `machiningCost` | authenticity |
+| --- | ---: | ---: |
+| unmachined (every one of the 26 shipped cars) | **0** | 100 |
+| all nine operations on its own original castings | **48** | **52** |
+| all nine on race-grade parts in the same four slots | **0** | 64 |
+
+That last row is the rule doing its work: the 36 points those four slots are worth were already
+gone with the parts, and the machining adds nothing further. See finding F1.
 
 ### 3.5 The rounding and the clamps (global)
 
 `Math.round` (half away from zero on positive values) after `clamp(raw * conditionFactor, 0, 100)`.
-Both clamp arms are currently unreachable: `raw` is `100 * stockness` with `stockness` in `[0, 1]`
-and the machining term at 0, and `conditionFactor` is in `[0, 1]`, so the product already lies in
-`[0, 100]`. See finding F2.
+The upper arm is still unreachable, since `100 * stockness` cannot exceed 100 and `conditionFactor`
+cannot exceed 1. **The lower arm is now live**: the machining term is subtracted from `raw`, so a
+car whose remaining stock slots are worth less than the machining done to them drives `raw` negative
+and the clamp bites. See finding F2.
 
 ### 3.6 The zone model, and the one indirect input
 
@@ -278,15 +311,31 @@ figure, because stockness is 1 and the condition mean is the flat band factor:
 
 ### Ceiling: 100, and it is exactly reachable
 
-An all-stock, all-mint car reads exactly 100 on every one of the 26 shipped models (measured). Both
-factors are 1 and the machining term is 0, so this is an identity rather than a calibration. Nothing
-can exceed it: `stockness` cannot exceed 1 and `conditionFactor` cannot exceed 1.
+An all-stock, all-mint, **unmachined** car reads exactly 100 on every one of the 26 shipped models
+(measured). Both factors are 1 and the machining term is 0, so this is an identity rather than a
+calibration. Nothing can exceed it: `stockness` cannot exceed 1 and `conditionFactor` cannot exceed
+1.
 
-### Practical floor for a fully-modified car: 11
+### Practical floor for a fully-modified car: 11, and it is unchanged by machining
 
 **Fit an aftermarket race SKU to every slot that has one, at mint, and authenticity reads exactly
-11** (measured). Those 11 points are `paint`'s weight, and they cannot be modified away because no
-non-stock `paint` SKU exists at any fitment class.
+11** (re-measured on all 26 shipped cars with machining in the model, still 11 on every one). Those
+11 points are `paint`'s weight, and they cannot be modified away because no non-stock `paint` SKU
+exists at any fitment class.
+
+Machining cannot reach that floor from a fully modified car, because a fully modified car has no
+stock-grade part left to charge. It reaches it from the OTHER direction instead.
+
+### The true floor, now 0, and how to get there
+
+**Measured, on a Supra**: fit a race SKU to every slot that has one EXCEPT the four machinable ones,
+leave those on their original castings, and machine all nine operations into them. Stockness is then
+the four machinable slots' own weight (`block` 18 + `internals` 8 + `headValvetrain` 6 +
+`camsTiming` 4 = **36**), and `raw` is `36 - 48 = -12`. The car reads **0**, at mint.
+
+That is the only route to 0 in shipped content, and it is a deliberate build rather than an
+accident: the player has to keep exactly the four parts that charge and then pay the full 48 for
+them.
 
 The same fully-modified car with condition also dropped, every slot including `paint` (measured):
 
@@ -399,18 +448,39 @@ defaults recorded as implemented rather than approved, which
 
 ## Findings
 
-### F1. The machining term is dead code today, and cannot fire
+### F1. The machining term was dead code and is now the only thing that can drive this stat to 0
 
-`machiningCost(car)` returns literal `0` with its parameter explicitly discarded. `CarInstance`
-records no machining operation and no operation exists to apply, so the term is not merely zero in
-practice, it is unreachable. Confirmed by reading the source and by measuring it against every
-shipped car.
+**Asked:** `machiningCost(car)` returned literal `0` with its parameter explicitly discarded.
+`CarInstance` recorded no machining operation and no operation existed to apply, so the term was not
+merely zero in practice, it was unreachable. `desirability-system.md` section 3 devoted a full table
+to a machining cost scale that no car had ever paid a single point of, and a reader could easily
+take that for live behaviour.
 
-This is deliberate and documented as a seam. It is worth stating plainly anyway, because
-`docs/design/systems/desirability-system.md` section 3 devotes a full table to the machining cost
-scale (a careful freshen at 3, a mild road port at 15, a full boost build at 39) and a reader can
-easily take that for live behaviour. **None of those numbers is in the game.** No car has ever lost
-a single point to machining.
+**Answered: machining is built, and the term is live.** `machiningCost` now walks the car's installed
+parts and sums the ratings of the operations recorded on each one, and it is the only input to this
+stat that is a property of a physical PART rather than of a car or a catalogue SKU. Three things
+about it are worth stating, all measured:
+
+- **It is charged on stock-grade parts only.** Machining an original block costs its operations'
+  full ratings; machining a race block costs nothing at all, because `stocknessOf` already took that
+  slot's whole weight when the race block went in. Measured: the same nine operations cost **48**
+  points on original castings and **0** on race-grade parts in the same four slots.
+- **A fully machined engine on its own castings costs 48 of the car's 100 points**, taking a mint
+  stock car from 100 to **52**. That is the whole character of the feature in one number: real
+  power, taken out of the car's originality rather than out of the player's pocket.
+- **It is still exactly 0 on every unmachined car**, all 26 shipped models measured, so the
+  all-stock-all-mint identity of 100 is untouched.
+
+The design's own worked examples now exist in the game and land where it said they would.
+**Measured** on a Supra against `reputation.concoursSaleMinAuthenticityPercent` (85): a careful
+freshen (multi-angle valve job 1 + balance and polish 4) costs **5** and reads **95**, comfortably
+inside the gate; a full engine costs 48 and reads 52, which is not. The gate was previously a
+threshold no player action could move, and machining is what makes it a choice.
+
+**The record lives on the `PartInstance`, so the cost travels.** Pull a machined block off a car and
+that car is original again; fit it to another and the second car carries the loss.
+**Measured** through the real remove-and-fit path: the donor reads `machiningCost` 0 and the
+receiver reads the operation's own rating.
 
 ### F1a. `paint` still ships no non-stock SKU, so 11 of the 100 points cannot be modified away
 
@@ -437,14 +507,23 @@ This is known, deliberately deferred, and recorded in `TODO.md` with two candida
 grade), neither chosen. `packages/sim/tests/authenticity.test.ts` pins it and fails the moment a
 non-stock `paint` SKU is added.
 
-### F2. Both clamp arms are currently unreachable
+### F2. The upper clamp arm is still unreachable; the lower one is now live
 
-`clamp(raw * conditionFactor, 0, 100)` can never bite. `raw` is `100 * stockness` with the
-machining term at 0, so it lies in `[0, 100]`; `conditionFactor` lies in `[0, 1]`; the product is
-therefore already in range. The upper arm becomes meaningful only if a weight column stops summing
-to its own denominator, and the lower arm only when `machiningCost` starts returning a real number
-large enough to drive `raw` negative (which, on the design's own scale, a full boost build at 39
-would not do by itself). Harmless and correct as defensive code; simply not load-bearing today.
+**Asked:** `clamp(raw * conditionFactor, 0, 100)` could never bite, because `raw` was
+`100 * stockness` with the machining term at 0 and so already in `[0, 100]`. The finding noted that
+the lower arm would only become meaningful when `machiningCost` started returning a real number
+large enough to drive `raw` negative, and guessed that a full boost build at 39 would not do it by
+itself.
+
+**Answered: it does, and by more than the guess allowed for.** The shipped operations sum to 48
+rather than 39, and they are charged only where stockness has NOT already been spent, which is
+exactly the arrangement that makes the two terms collide. **Measured** on a Supra: race SKUs
+everywhere except the four machinable slots, those left on their original castings and fully
+machined, gives stockness 0.36 and `raw = 36 - 48 = -12`. The car reads **0** rather than a negative
+number, and the lower arm is what makes that true.
+
+The upper arm remains unreachable and becomes meaningful only if a weight column stops summing to
+its own denominator.
 
 ### F3. `chassis` carries a live weight the player can never lose, and can never recover
 

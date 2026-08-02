@@ -869,6 +869,18 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     partInstanceId: z.string().min(1),
     band: ConditionBandSchema,
   }),
+  /** One machining operation finished on the part fitted in `carPartId`. The
+   * operation is now on that `PartInstance` for good and travels with it; the
+   * band is untouched, which is why this is its own entry rather than a
+   * `job-completed`. Carries no money: the tooling was the purchase and
+   * labour is the whole of what an operation costs. */
+  z.object({
+    type: z.literal('part-machined'),
+    carInstanceId: z.string().min(1),
+    carPartId: CarPartIdSchema,
+    partInstanceId: z.string().min(1),
+    machiningOperationId: z.string().min(1),
+  }),
   /**
    * Pulled `carPartId`'s installed part into inventory. Removing an
    * aftermarket part reverts the slot to a fresh stock part (still filled);

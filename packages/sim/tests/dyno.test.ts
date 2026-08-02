@@ -39,6 +39,9 @@ const ECONOMY = CONTEXT.economy
 
 const SILVIA = CARS.find((c) => c.id === 'nissan-180sx-rps13')!
 const FD = CARS.find((c) => c.id === 'mazda-rx7-fd3s')!
+/** A naturally aspirated car whose maximal build currently lands where three
+ * independent roundings disagree with the base by a point. */
+const CITY = CARS.find((c) => c.id === 'honda-city-e-aa')!
 
 /** A big turbo on a factory bottom end - the design's own collapsed build,
  * and the one where every figure the dyno reports is worth reading. */
@@ -465,22 +468,27 @@ describe('the displayed reliability split', () => {
     }
   })
 
-  it('closes the case rounding one at a time missed: a maximal unsupported build at poor', () => {
-    const car = carWithGrades(SILVIA, CONTEXT, MAXIMAL_GAIN, 'poor')
-    const reading = dynoReadingFor(car, SILVIA, CONTEXT.partsById, CONTEXT.partsTaxonomy, ECONOMY)
+  it('closes the case rounding one at a time missed: a maximal build on the City E at mint', () => {
+    // WHICH build shows the gap is a property of the power curve rather than
+    // of the arithmetic, so the worked example is a car and a band that
+    // currently disagree under naive rounding, not a fixed one. The guarantee
+    // itself is swept over every car, shape and band above; this is the
+    // readable case behind it.
+    const car = carWithGrades(CITY, CONTEXT, MAXIMAL_GAIN, 'mint')
+    const reading = dynoReadingFor(car, CITY, CONTEXT.partsById, CONTEXT.partsTaxonomy, ECONOMY)
     const independently =
       reading.reliabilityStat +
       Math.round(reading.reliability.conditionLossPoints) +
       Math.round(reading.reliability.coherenceLossPoints) +
       Math.round(reading.reliability.intensityLossPoints)
-    expect(reading.reliability.base).toBe(92)
-    expect(independently).toBe(91)
+    expect(reading.reliability.base).toBe(99)
+    expect(independently).toBe(98)
     const split = displayedReliabilitySplit(reading)
     expect(
       reading.reliabilityStat +
         split.conditionCostPoints +
         split.coherenceCostPoints +
         split.powerCostPoints,
-    ).toBe(92)
+    ).toBe(99)
   })
 })

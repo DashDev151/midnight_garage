@@ -61,6 +61,25 @@ power** (an unsupported build makes every PS and pays in reliability and at the 
 support takes the grip itself away, so the handling readout and the lap time both fall. Nothing in
 either model reaches style or authenticity.
 
+**Machining, the one input that is a property of a physical PART.** Everything else these five read
+is a fact about the car (`stockPowerPs`, `aspiration`, `reliabilityBase`) or about a catalogue SKU
+(`powerFraction`, `grade`, `statModifiers.style`). `PartInstance.machining` is a list of operations
+done to one specific object, and it reaches **three of the five at once**:
+
+| stat | how machining reaches it | where |
+| --- | --- | --- |
+| power | an operation's own `powerFraction[character]`, scaled by `machining.gradeMultiplier` for the grade of the part machined, inside the same per-slot term the fitted SKU's fraction is in | `computeDerivedStats` |
+| authenticity | `machiningCost` sums the operations' ratings, **on stock-grade parts only** | `authenticityPercentOf` |
+| reliability | twice: a flat `reliabilityCostPerOperation` per operation inside the build-intensity factor, and an operation's own `spec` lifting its slot's support contribution | `reliabilityIntensityFactor`, `slotContribution` |
+
+It reaches **neither style nor handling**, and that was verified by measurement rather than assumed:
+on all 26 shipped cars, at stock grade and at race grade, applying all nine operations left both
+stats identical in 52 of 52 cases each.
+
+Because the record lives on the instance rather than on the car's slot, all three effects **travel
+with the part**: pull a machined block off a car and that car is original again, fit it to another
+and the second car carries the power and the loss.
+
 **Per-car spec fields.** `reliabilityBase`, `styleBase`, `styleCeiling` and `aeroCeiling` are
 authored once per car for all 94 roster rows in `midnight-garage-roster.csv`, which is the single
 source of truth. Nothing else may hold a second copy.
@@ -102,8 +121,8 @@ formula moved, so both figures are unchanged.
 
 **Engine support buys nothing unless it is the weakest link, and it never gates power.** An
 unsupported build makes its full power and becomes unreliable
-instead. Measured twice, independently: a Supra at `dangerous` support makes 632 PS and the
-identical build fully supported makes exactly 632 PS; and on a 180SX, adding six race support parts
+instead. Measured twice, independently: a Supra at `dangerous` support makes 745 PS and the
+identical build fully supported makes exactly 745 PS; and on a 180SX, adding six race support parts
 to the wrong subsystems left headline, power and reliability all bit-for-bit unchanged. Only
 reliability moves, and only when the support that moves is the weakest link.
 
@@ -114,6 +133,16 @@ while the mean (0.94 to 0.99 for a single defect) is simply discarded. **It does
 three poor light parts cap identically to one, and repairing them while a heavier part is still
 poor moves the number by exactly zero. A player who fixes three things and sees no change is not
 imagining it.
+
+**Two long-standing dead seams closed together, and one of them made a clamp live.**
+`machiningCost` returned a literal 0 with its parameter explicitly discarded, and authenticity's
+lower clamp arm could never bite because nothing was ever subtracted from `100 * stockness`. Both
+were recorded here as unreachable. Machining filled the first, and the second followed: the nine
+shipped operations sum to 48 authenticity points and are charged only where stockness has NOT
+already been spent, so a car kept on its original castings and fully machined reads `raw = 36 - 48`
+and clamps to **0** (measured, on a Supra). Authenticity's true floor moved from 11 to 0, while the
+fully-modified floor of 11 is unchanged, because a fully modified car has no stock part left to
+charge. **The two floors are reached from opposite directions and neither can reach the other's.**
 
 **Style and performance correlate more than the design intends.** The formula is fully orthogonal
 and reads no performance figure at all, but the authored columns are not: `styleBase` against

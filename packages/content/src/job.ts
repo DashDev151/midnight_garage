@@ -16,12 +16,21 @@ import { CarPartIdSchema, ComponentIdSchema, ConditionBandSchema } from './tags'
  * part, band and stat on that car is untouched by completing it. It carries no
  * `partInstanceId` and no `targetBand`, and its `carInstanceId` is a real car
  * in a real service bay, so it gates on the bay like any other car job.
+ *
+ * A `machine-part` applies one named machining operation
+ * (`machiningOperationId`) to the part fitted in one slot (`carPartId`), on a
+ * real car in a real service bay. It moves no band and swaps no part: it
+ * appends the operation to the fitted `PartInstance`'s own record, which is
+ * why it carries `partInstanceId` as well - the instance the work was quoted
+ * against, so a slot that changed hands mid-job is left alone rather than
+ * machined by accident.
  */
 export const JobKindSchema = z.enum([
   'repair-zone',
   'install-part',
   'recondition-part',
   'dyno-session',
+  'machine-part',
 ])
 
 export const JobSchema = z
@@ -45,6 +54,10 @@ export const JobSchema = z
      * same group.
      */
     carPartId: CarPartIdSchema.optional(),
+    /** Which `economy.machining.operations` entry a `machine-part` job is
+     * doing. The one payload no other kind carries: every other job's effect
+     * is fully described by its kind, its address and its `targetBand`. */
+    machiningOperationId: z.string().min(1).optional(),
     laborSlotsRequired: z.number().int().positive(),
     laborSlotsSpent: z.number().int().nonnegative().default(0),
   })
@@ -60,6 +73,17 @@ export const JobSchema = z
     message: 'recondition-part jobs require targetBand',
     path: ['targetBand'],
   })
+  .refine(
+    (job) =>
+      job.kind !== 'machine-part' ||
+      (job.machiningOperationId !== undefined &&
+        job.carPartId !== undefined &&
+        job.partInstanceId !== undefined),
+    {
+      message: 'machine-part jobs require machiningOperationId, carPartId and partInstanceId',
+      path: ['machiningOperationId'],
+    },
+  )
   .refine((job) => job.laborSlotsSpent <= job.laborSlotsRequired, {
     message: 'laborSlotsSpent cannot exceed laborSlotsRequired',
     path: ['laborSlotsSpent'],

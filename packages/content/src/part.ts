@@ -126,6 +126,21 @@ export const PartInstanceSchema = z.object({
    * that part, never a crash.
    */
   pricePaidYen: z.number().int().nonnegative().optional(),
+  /**
+   * Which machining operations (`economy.machining.operations` ids) have been
+   * applied to this exact instance, appended in the order they were done and
+   * never removed: a bored block is bored. Absent means unmachined, which is
+   * what every part in the game is until a player takes it to the machine
+   * shop.
+   *
+   * It lives on the instance rather than on the car's slot because machining
+   * is a property of the PART. Seventeen production sites rebuild a slot as a
+   * fresh `{ installed }` literal, so a record kept beside `installed` would
+   * be erased by the next repair; a record here survives all of them, and
+   * follows the part off the car, into the bin, onto another car and into a
+   * sale, which is the behaviour the design asks for.
+   */
+  machining: z.array(z.string().min(1)).optional(),
 })
 
 export type Part = z.infer<typeof PartSchema>

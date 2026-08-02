@@ -158,17 +158,25 @@ describe('supportRatios: the two worked support tables, pinned exactly', () => {
     differential: 'race',
   }
 
-  it('a maximal forced-induction build, race grade throughout: headline 1.111, adequate', () => {
+  it('a maximal forced-induction build, race grade throughout: headline 0.985, adequate', () => {
     const car = carWithGrades(FORCED_CAR, CONTEXT, ALL_RACE)
     const ratios = supportRatios(car, FORCED_CAR, CONTEXT.partsById, ECONOMY)
-    expect(ratios.cylinderPressure).toBeCloseTo(1.111, 3)
-    expect(ratios.fuelling).toBeCloseTo(1.111, 3)
-    expect(ratios.heat).toBeCloseTo(1.129, 3)
-    expect(ratios.revs).toBeCloseTo(1.232, 3)
-    expect(ratios.torqueTransmission).toBeCloseTo(1.122, 3)
+    expect(ratios.cylinderPressure).toBeCloseTo(0.985, 3)
+    expect(ratios.fuelling).toBeCloseTo(0.9955, 4)
+    expect(ratios.heat).toBeCloseTo(1.019, 3)
+    expect(ratios.revs).toBeCloseTo(1.204, 3)
+    expect(ratios.torqueTransmission).toBeCloseTo(0.998, 3)
     const verdict = supportVerdict(car, FORCED_CAR, CONTEXT.partsById, ECONOMY)
-    expect(verdict.headline).toBeCloseTo(1.111, 3)
+    expect(verdict.headline).toBeCloseTo(0.985, 3)
+    // Still `adequate`, and comfortably: the knee is 0.90 and
+    // `coherenceFactorFor` caps at 1, so a build reading just under parity is
+    // fully coherent and pays nothing. The headline sits below 1.0 because the
+    // forced ladder asks x2.30 of the car where the supporting slots' own
+    // grades are unchanged, which is the shape a maximal turbo build should
+    // have: everything bought, and the bottom end still the tightest thing on
+    // it.
     expect(verdict.band).toBe('adequate')
+    expect(verdict.subsystem).toBe('cylinderPressure')
   })
 
   /**
@@ -181,16 +189,16 @@ describe('supportRatios: the two worked support tables, pinned exactly', () => {
    * current value a bare race turbo on a stock bottom end reads `dangerous`,
    * which is the verdict this build is supposed to earn.
    */
-  it('a race turbo and nothing else: headline 0.699, dangerous, cylinder pressure named', () => {
+  it('a race turbo and nothing else: headline 0.635, dangerous, cylinder pressure named', () => {
     const car = carWithGrades(FORCED_CAR, CONTEXT, { forcedInduction: 'race' })
     const ratios = supportRatios(car, FORCED_CAR, CONTEXT.partsById, ECONOMY)
-    expect(ratios.cylinderPressure).toBeCloseTo(0.699, 3)
-    expect(ratios.fuelling).toBeCloseTo(0.84, 3)
-    expect(ratios.heat).toBeCloseTo(0.856, 3)
+    expect(ratios.cylinderPressure).toBeCloseTo(0.635, 3)
+    expect(ratios.fuelling).toBeCloseTo(0.791, 3)
+    expect(ratios.heat).toBeCloseTo(0.811, 3)
     expect(ratios.revs).toBeCloseTo(1.0, 3)
-    expect(ratios.torqueTransmission).toBeCloseTo(0.825, 3)
+    expect(ratios.torqueTransmission).toBeCloseTo(0.773, 3)
     const verdict = supportVerdict(car, FORCED_CAR, CONTEXT.partsById, ECONOMY)
-    expect(verdict.headline).toBeCloseTo(0.699, 3)
+    expect(verdict.headline).toBeCloseTo(0.635, 3)
     expect(verdict.band).toBe('dangerous')
     expect(verdict.subsystem).toBe('cylinderPressure')
   })
@@ -208,7 +216,7 @@ describe('supportRatios: fuel does not hold a piston together', () => {
     // adequate here); cylinder pressure has no supporting slot at all, so
     // it stays the named shortfall regardless - the headline is identical
     // to the turbo-alone case above.
-    expect(verdict.headline).toBeCloseTo(0.699, 3)
+    expect(verdict.headline).toBeCloseTo(0.635, 3)
     expect(verdict.band).toBe('dangerous')
     expect(verdict.subsystem).toBe('cylinderPressure')
   })

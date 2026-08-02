@@ -327,6 +327,13 @@ build should reach an effective grip of 1.5 or a little more.
   fuel, ignition, cooling, forced induction, gearbox, clutch, differential, driveline, seats, dash,
   paint: all carry zero handling weight and zero grip weight, and none of their SKUs carries a grip
   modifier. **Measured**: scrapping or removing any of them leaves handling unchanged.
+- **Machining, in every respect.** All four machinable slots (block, internals, head and valvetrain,
+  cams and timing) already carry zero handling weight and zero grip weight, so the operations done to
+  them cannot reach this stat by any route. **Verified rather than assumed**: on all 26 shipped cars,
+  at stock grade and at race grade, applying all nine operations left handling identical in **52 of
+  52 cases**, and `physicalFactorsFor` returns a byte-identical set of factors machined against
+  unmachined on all three engine characters. Machining moves power and nothing else the physics
+  reads.
 - **`spec.styleCeiling`, `spec.reliabilityBase`, `spec.styleBase`.** Different stats entirely.
 - **`spec.aspiration` and the induction tags.** They decide engine character and whether an empty
   forced-induction slot is a defect. Neither reaches this stat.

@@ -111,8 +111,8 @@ describe('reliability model: the full table, pinned', () => {
   it('a fully supported race build, mint now reads strictly below stock on both Carina and FD - the base is a ceiling, not a plateau', () => {
     const carinaRace = stats(carWithGrades(CARINA, CONTEXT, ALL_RACE, 'mint'), CARINA).reliability
     const fdRace = stats(carWithGrades(FD, CONTEXT, ALL_RACE, 'mint'), FD).reliability
-    expect(carinaRace).toBe(83)
-    expect(fdRace).toBe(65)
+    expect(carinaRace).toBe(82)
+    expect(fdRace).toBe(59)
     expect(carinaRace).toBeLessThan(CARINA.spec.reliabilityBase)
     expect(fdRace).toBeLessThan(FD.spec.reliabilityBase)
   })
@@ -154,8 +154,8 @@ describe('reliability model: the full table, pinned', () => {
     maximalNoSupport: RACE_GAIN_ONLY,
   }
   const MINT_EXPECTED: Record<'raceTurboAlone' | 'maximalNoSupport', number> = {
-    raceTurboAlone: 52,
-    maximalNoSupport: 41,
+    raceTurboAlone: 41,
+    maximalNoSupport: 31,
   }
   const GRENADE_EXPECTED: Record<'raceTurboAlone' | 'maximalNoSupport', number> = {
     raceTurboAlone: 0,
@@ -183,7 +183,7 @@ describe('reliability model: the full table, pinned', () => {
    * condition sweep directly reachable by uniformly ageing one real car -
    * the coupling that used to shrink demand as the same part aged, and so
    * lift the headline back up while the sweep was trying to lower it, is
-   * gone. The headline now holds at exactly 0.815 (strained, cylinder
+   * gone. The headline now holds at exactly 0.635 (dangerous, cylinder
    * pressure) at every band; only `conditionFactor` moves. The
    * build-intensity factor (`stressCoefficient`) reads GRADE only, same as
    * support, so it too holds constant across this sweep, and every figure
@@ -191,7 +191,7 @@ describe('reliability model: the full table, pinned', () => {
    */
   it('a race turbo alone, aged uniformly: the headline never moves, only condition does', () => {
     const bands = ['mint', 'fine', 'worn', 'poor', 'scrap'] as const
-    const expected = { mint: 52, fine: 39, worn: 22, poor: 0, scrap: 0 }
+    const expected = { mint: 41, fine: 29, worn: 12, poor: 0, scrap: 0 }
     for (const band of bands) {
       const car = carWithGrades(FORCED_CAR, CONTEXT, HEADLINE_BUILDS.raceTurboAlone, band)
       expect(stats(car).reliability, band).toBe(expected[band])
@@ -303,7 +303,7 @@ describe('reliability model: the base is the ceiling', () => {
  */
 describe('reliability model: the build-intensity factor', () => {
   it('is exactly 1 at zero total gain, asserted directly rather than inferred', () => {
-    expect(reliabilityIntensityFactor(0, ECONOMY)).toBe(1)
+    expect(reliabilityIntensityFactor(0, 0, ECONOMY)).toBe(1)
   })
 
   it('a stock car has exactly zero total gain, all 26 shipped cars', () => {
@@ -317,7 +317,7 @@ describe('reliability model: the build-intensity factor', () => {
     const gains = [0, 0.1, 0.25, 0.5, 0.95, 1, 2, 10, 1000]
     let previous = Infinity
     for (const gain of gains) {
-      const factor = reliabilityIntensityFactor(gain, ECONOMY)
+      const factor = reliabilityIntensityFactor(gain, 0, ECONOMY)
       expect(factor).toBeLessThanOrEqual(previous)
       expect(factor).toBeGreaterThanOrEqual(0)
       expect(factor).toBeLessThanOrEqual(1)
@@ -327,7 +327,7 @@ describe('reliability model: the build-intensity factor', () => {
     // push the factor above 1 - never reachable from real content today,
     // since no fitted part carries a negative `powerFraction`, but the
     // clamp must hold regardless of what a future content change does.
-    expect(reliabilityIntensityFactor(-5, ECONOMY)).toBe(1)
+    expect(reliabilityIntensityFactor(-5, 0, ECONOMY)).toBe(1)
   })
 
   it('reliability itself never rises when total gain rises, all else equal (fixed mint condition and coherence)', () => {
@@ -435,7 +435,7 @@ describe('reliability model: the build-intensity factor', () => {
    * everything the build could plausibly stress, matched to the power mod's
    * own grade, everything else stock.
    */
-  it("the AE86's camsTiming ladder reads 93/85/75 alone and 92/90/88 fully supported (street/sport/race)", () => {
+  it("the AE86's camsTiming ladder reads 93/84/72 alone and 92/89/87 fully supported (street/sport/race)", () => {
     const ae86 = CARS.find((c) => c.id === 'toyota-sprinter-trueno-ae86')!
     const supportSlots: CarPartId[] = [
       'headValvetrain',
@@ -448,8 +448,8 @@ describe('reliability model: the build-intensity factor', () => {
       'driveline',
       'differential',
     ]
-    const aloneExpected = { street: 93, sport: 85, race: 75 }
-    const supportedExpected = { street: 92, sport: 90, race: 88 }
+    const aloneExpected = { street: 93, sport: 84, race: 72 }
+    const supportedExpected = { street: 92, sport: 89, race: 87 }
     for (const grade of ['street', 'sport', 'race'] as const) {
       const aloneCar = carWithGrades(ae86, CONTEXT, { camsTiming: grade }, 'mint')
       expect(stats(aloneCar, ae86).reliability, `alone ${grade}`).toBe(aloneExpected[grade])

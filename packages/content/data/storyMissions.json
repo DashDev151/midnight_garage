@@ -105,7 +105,7 @@
       {
         "kind": "statThreshold",
         "stat": "power",
-        "min": 173
+        "min": 171
       }
     ],
     "budgetCapYen": 787000,
@@ -128,7 +128,7 @@
       {
         "kind": "lapTimeCeiling",
         "courseId": "hakone",
-        "maxSeconds": 125.8
+        "maxSeconds": 125.9
       }
     ],
     "budgetCapYen": 996000,
@@ -213,7 +213,7 @@
       {
         "kind": "statThreshold",
         "stat": "reliability",
-        "min": 74
+        "min": 71
       },
       {
         "kind": "tasteMatch",
@@ -242,7 +242,7 @@
       {
         "kind": "lapTimeCeiling",
         "courseId": "hakone",
-        "maxSeconds": 113.5
+        "maxSeconds": 112.8
       }
     ],
     "budgetCapYen": 1690000,

@@ -887,6 +887,145 @@
     "purchasePriceYen": 750000,
     "minReputationTier": "known"
   },
+  "machining": {
+    "minEngineToolTier": 3,
+    "gradeMultiplier": {
+      "stock": 1,
+      "street": 1,
+      "sport": 1.25,
+      "race": 1.5
+    },
+    "reliabilityCostPerOperation": 0.004,
+    "valuePremiumPerOperation": 0.03,
+    "operations": [
+      {
+        "id": "port-and-polish",
+        "displayName": "Port and polish",
+        "description": "Opens the inlet and exhaust ports out and tidies the casting flash, so the head flows what the rest of the engine is asking for.",
+        "carPartId": "headValvetrain",
+        "powerFraction": {
+          "high-strung-na": 0.011675676,
+          "lazy-na": 0.015065217,
+          "forced": 0.061818182
+        },
+        "spec": 0,
+        "authenticityCost": 6,
+        "labourPoints": 5
+      },
+      {
+        "id": "head-skim",
+        "displayName": "Milling the head",
+        "description": "Skims the head face to raise compression. Worth real power on a naturally aspirated engine, and worth nothing at all once there is boost in the way.",
+        "carPartId": "headValvetrain",
+        "powerFraction": {
+          "high-strung-na": 0.004864865,
+          "lazy-na": 0.006277174,
+          "forced": 0
+        },
+        "spec": 0,
+        "authenticityCost": 5,
+        "labourPoints": 5
+      },
+      {
+        "id": "multi-angle-valve-job",
+        "displayName": "Multi-angle valve job",
+        "description": "Recuts the seats at three angles. The valves seal properly and the air turns the corner without falling over itself.",
+        "carPartId": "headValvetrain",
+        "powerFraction": {
+          "high-strung-na": 0.002918919,
+          "lazy-na": 0.003766304,
+          "forced": 0.010909091
+        },
+        "spec": 0,
+        "authenticityCost": 1,
+        "labourPoints": 5
+      },
+      {
+        "id": "bore-and-hone",
+        "displayName": "Bore and hone",
+        "description": "Bores the cylinders true and hones in the crosshatch the rings need. Comes back straight, and a little bigger than it left the factory.",
+        "carPartId": "block",
+        "powerFraction": {
+          "high-strung-na": 0.016864865,
+          "lazy-na": 0.021913043,
+          "forced": 0.021818182
+        },
+        "spec": 0.15,
+        "authenticityCost": 8,
+        "labourPoints": 5
+      },
+      {
+        "id": "decking",
+        "displayName": "Decking the block",
+        "description": "Machines the deck flat. A head gasket can only seal against what it is given.",
+        "carPartId": "block",
+        "powerFraction": {
+          "high-strung-na": 0.011243243,
+          "lazy-na": 0.014608696,
+          "forced": 0.014545455
+        },
+        "spec": 0.2,
+        "authenticityCost": 6,
+        "labourPoints": 5
+      },
+      {
+        "id": "deck-o-ring",
+        "displayName": "O-ringing the deck",
+        "description": "Cuts a groove around each bore and sets a wire in it, so the gasket stays put when cylinder pressure gets serious. Buys no power at all, and lets the block keep the power it has.",
+        "carPartId": "block",
+        "powerFraction": {
+          "high-strung-na": 0,
+          "lazy-na": 0,
+          "forced": 0
+        },
+        "spec": 0.35,
+        "authenticityCost": 9,
+        "labourPoints": 5
+      },
+      {
+        "id": "balance-and-polish",
+        "displayName": "Balance and polish",
+        "description": "The rotating assembly comes out as one, gets balanced as a set, and the crank's journals and edges are polished. Smoother, and happier high up.",
+        "carPartId": "internals",
+        "powerFraction": {
+          "high-strung-na": 0.008648649,
+          "lazy-na": 0.011413043,
+          "forced": 0.036363636
+        },
+        "spec": 0.2,
+        "authenticityCost": 4,
+        "labourPoints": 5
+      },
+      {
+        "id": "con-rod-peening",
+        "displayName": "Shot peening the rods",
+        "description": "Blasts the rods to put the surface into compression, so they take the hammering for longer. Buys no power; buys the rods.",
+        "carPartId": "internals",
+        "powerFraction": {
+          "high-strung-na": 0,
+          "lazy-na": 0,
+          "forced": 0
+        },
+        "spec": 0.25,
+        "authenticityCost": 2,
+        "labourPoints": 5
+      },
+      {
+        "id": "cam-regrind",
+        "displayName": "Cam regrind",
+        "description": "Regrinds the lobes to a longer profile. More air further up the rev range, and a lumpier idle to live with.",
+        "carPartId": "camsTiming",
+        "powerFraction": {
+          "high-strung-na": 0.023783784,
+          "lazy-na": 0.031956522,
+          "forced": 0.054545455
+        },
+        "spec": 0,
+        "authenticityCost": 7,
+        "labourPoints": 5
+      }
+    ]
+  },
   "diagnosis": {
     "symptomChanceByTier": {
       "entry": 0.566,

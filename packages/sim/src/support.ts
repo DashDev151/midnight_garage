@@ -11,6 +11,7 @@ import {
   type Subsystem,
 } from '@midnight-garage/content'
 import { engineCharacterOf } from './derivedStats'
+import { machiningSpecOf } from './machining'
 import {
   aeroGripMultiplier,
   effectiveCompound,
@@ -44,21 +45,33 @@ interface SlotContribution {
    * already has its own route into reliability, through the condition
    * mean. */
   gain: number
-  /** The grade-only specification this slot supports with. Never
+  /** The specification this slot supports with: what the fitted GRADE gives,
+   * plus what has been machined into the part on top of it. Never
    * band-scaled: specification does not decay, a worn forged conrod is
-   * still stronger than a stock cast one. */
+   * still stronger than a stock cast one, and a wire-ringed deck stays
+   * wire-ringed. Machining belongs to exactly that category, which is why it
+   * adds here rather than anywhere else. */
   spec: number
 }
 
 const ZERO_CONTRIBUTION: SlotContribution = { gain: 0, spec: 0 }
 
 /**
- * One slot's demand and support inputs. Both read the fitted GRADE only,
- * never the band - see `SlotContribution.gain`'s own doc comment for why
- * demand no longer band-scales. A slot the catalogue cannot resolve -
- * empty, or an installed part id the catalogue no longer knows - contributes
- * nothing on either side, matching `buildFactors`'s existing rule that an
- * unknown part id can never silently move anything.
+ * One slot's demand and support inputs. Both read the fitted GRADE, never the
+ * band - see `SlotContribution.gain`'s own doc comment for why demand no
+ * longer band-scales. A slot the catalogue cannot resolve - empty, or an
+ * installed part id the catalogue no longer knows - contributes nothing on
+ * either side, matching `buildFactors`'s existing rule that an unknown part id
+ * can never silently move anything.
+ *
+ * `spec` takes a second source: whatever has been machined into the fitted
+ * part. It is ADDED to the grade's own contribution rather than replacing it,
+ * which is the smallest opening that makes machining reach support at all - a
+ * machined original part still carries grade `stock`, whose `specByGrade` is
+ * 0, so without this the two power-free operations would be literally inert.
+ * `gain` deliberately takes no machining term: the machining charge on
+ * reliability is levied once, on the build-intensity factor
+ * (`reliabilityIntensityFactor`, derivedStats.ts).
  */
 function slotContribution(
   car: CarInstance,
@@ -72,7 +85,8 @@ function slotContribution(
   const part = partsById[installed.partId]
   if (!part) return ZERO_CONTRIBUTION
   const gain = part.statModifiers.powerFraction[engineCharacter]
-  const spec = economy.statFormulas.support.specByGrade[part.grade]
+  const spec =
+    economy.statFormulas.support.specByGrade[part.grade] + machiningSpecOf(installed, economy)
   return { gain, spec }
 }
 
@@ -129,11 +143,12 @@ export function totalGainFractionOf(
  * The factory headroom is `stockSupportMargin * (demand[s] - 1)`,
  * proportional to what the build actually demands rather than a flat
  * constant - a flat headroom would cover proportionally far more of a
- * small naturally-aspirated gain than a large forced-induction one. A
- * stock car sits at exactly 1.0 on every subsystem by construction: every
- * gain is 0, so `demand = 1` everywhere, the margin term is `margin * 0 =
- * 0` regardless of the margin's value, and every spec is 0, so `support =
- * demand = 1` everywhere.
+ * small naturally-aspirated gain than a large forced-induction one. An
+ * unmachined stock car sits at exactly 1.0 on every subsystem by
+ * construction: every gain is 0, so `demand = 1` everywhere, the margin term
+ * is `margin * 0 = 0` regardless of the margin's value, and every spec is 0,
+ * so `support = demand = 1` everywhere. Machining is what can lift a stock
+ * slot's spec off 0, and only where a player has put it.
  *
  * The dual-role convention (design section 6c) is structural here, not
  * merely documented: within one subsystem a slot is a demander or a

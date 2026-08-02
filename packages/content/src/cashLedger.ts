@@ -32,11 +32,13 @@ export interface CashMovement {
  * `describeLogEntry`: a new `DayLogEntry` type is a compile error here rather
  * than a yen that quietly falls out of the week's arithmetic.
  *
- * Two entries need a word. `job-created` carries the whole banded-repair
+ * Three entries need a word. `job-created` carries the whole banded-repair
  * charge for both an on-car repair and a bench recondition, and its `kind` is
  * what separates a car cost from stock. `part-reconditioned` carries no
  * amount on purpose: the recondition was already charged and booked when its
- * job opened, which may have been days earlier.
+ * job opened, which may have been days earlier. `part-machined` moves no
+ * money at any point: the tooling was bought once as shop investment, and an
+ * operation costs labour and nothing else after that.
  */
 export function cashMovementFor(entry: DayLogEntry): CashMovement | null {
   switch (entry.type) {
@@ -113,6 +115,7 @@ export function cashMovementFor(entry: DayLogEntry): CashMovement | null {
     case 'offer-rejected':
     case 'part-delivered':
     case 'part-reconditioned':
+    case 'part-machined':
     case 'part-removed':
     case 'car-moved':
     case 'cars-swapped':

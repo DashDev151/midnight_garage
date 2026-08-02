@@ -125,7 +125,7 @@ export function valueLedgerFor(
   const creditedPremiumYen = Math.round(
     foundationFactor(car, economy) *
       expectation.aftermarketReturn *
-      installedPartsValueYen(car, partsById, retention),
+      installedPartsValueYen(car, partsById, retention, economy),
   )
   if (creditedPremiumYen !== 0) lines.push({ id: 'aftermarket', yen: creditedPremiumYen })
 

@@ -22,6 +22,11 @@ import {
   type BuildFactors,
   type ConditionFactors,
 } from './performance'
+import {
+  appliedOperationsOf,
+  machiningOperationCountOf,
+  machiningPowerFractionOf,
+} from './machining'
 import { supportVerdict, totalGainFractionOf, usableGripFraction } from './support'
 
 function clamp(value: number, min: number, max: number): number {
@@ -138,23 +143,33 @@ export function stocknessOf(
  * machining operation applied to this car, on the design's 1-to-10 scale
  * (1-2 a purist shrugs, 4-6 a raised eyebrow, 7-9 a collector weeps).
  *
- * **Exactly 0 for every car, because the machining system does not exist.**
- * No operation can be applied, so nothing can have been applied, and the term
- * is honestly zero rather than approximated. This is the seam machining will
- * be built against: when operations become real, this function sums their
- * ratings and nothing else in the authenticity pipeline changes. It is a
- * function rather than a literal 0 so that the formula reads as the design
- * states it and the future change lands in one place.
+ * **Charged on STOCK-grade parts only.** Authenticity asks how much of the car
+ * is still what left the factory, and an aftermarket part already lost its
+ * slot's whole weight the moment it was fitted (`stocknessOf` above). Boring a
+ * race block does not make that slot less factory than it already is, and
+ * charging for it would book one loss twice. So machining an original block
+ * costs its operations' full ratings and leaves the slot's remaining
+ * originality intact; machining a race block costs nothing, because that slot
+ * has nothing left to lose.
  *
- * Deliberately NOT a content table: no operation exists to price, and
- * authoring one now would be inventing the system rather than reserving its
- * seat.
+ * A slot the catalogue cannot resolve is not charged, for the same reason
+ * `stocknessOf` does not credit it: an unknown SKU is no evidence either way.
  */
-export function machiningCost(car: CarInstance): number {
-  // Nothing a `CarInstance` carries records machining, so there is nothing
-  // here to sum yet. The parameter is the seam, deliberately unread.
-  void car
-  return 0
+export function machiningCost(
+  car: CarInstance,
+  partsById: Readonly<Record<string, Part>>,
+  economy: EconomyConfig,
+): number {
+  let cost = 0
+  for (const partId of ALL_CAR_PART_IDS) {
+    const installed = car.parts[partId].installed
+    if (!installed) continue
+    if (partsById[installed.partId]?.grade !== 'stock') continue
+    for (const operation of appliedOperationsOf(installed, economy)) {
+      cost += operation.authenticityCost
+    }
+  }
+  return cost
 }
 
 /**
@@ -168,9 +183,9 @@ export function machiningCost(car: CarInstance): number {
  * new tyres, a fresh clutch or a recent radiator, so neither their grade nor
  * their condition should touch this number.
  *
- * **All stock and all mint is exactly 100.** That is the definition of the
- * stat, not a calibration of it: both factors are exactly 1 there and the
- * machining term is 0, so the identity holds by construction.
+ * **All stock, all mint and unmachined is exactly 100.** That is the
+ * definition of the stat, not a calibration of it: both factors are exactly 1
+ * there and the machining term is 0, so the identity holds by construction.
  *
  * Exported because the concours gate (`carCondition.ts`) needs the same
  * figure the radar chart shows, and must never derive its own.
@@ -190,7 +205,7 @@ export function authenticityPercentOf(
     partsTaxonomy,
     economy,
   )
-  const raw = 100 * stockness - machiningCost(car)
+  const raw = 100 * stockness - machiningCost(car, partsById, economy)
   return Math.round(clamp(raw * conditionFactor, 0, 100))
 }
 
@@ -517,19 +532,37 @@ export function coherenceFactorFor(headline: number, economy: EconomyConfig): nu
  * identical flat amount from a supported and an unsupported build alike,
  * collapsing the unsupported case toward an uninteresting floor.
  *
- * Exactly 1 at zero total gain, so a stock car (and a build whose fitted
- * parts carry no `powerFraction` at all) pays nothing here - the
- * stock-car-reads-exactly-its-base identity holds by construction.
+ * Machining lands here too, as `machining.reliabilityCostPerOperation` per
+ * applied operation, and here is the whole of what it costs. A machined engine
+ * runs closer to its limits for the same reason a built one does, so the
+ * charge belongs on the term that already answers "the power itself" rather
+ * than on a fourth loss line the readout has no room for. It is the reason a
+ * machining gain is deliberately kept OUT of `totalGainFraction`: that sum and
+ * this count describe the same energy, and charging both would charge one
+ * engine twice.
+ *
+ * Exactly 1 at zero total gain on an unmachined car, so a stock car (and a
+ * build whose fitted parts carry no `powerFraction` at all) pays nothing here
+ * - the stock-car-reads-exactly-its-base identity holds by construction.
  * Defensively clamped to `[0, 1]` so a future content change to
- * `stressCoefficient` or the power ladder can never push this negative (more
- * reliable than the unmultiplied budget) or leave reliability negative.
+ * `stressCoefficient`, the power ladder or the machining charge can never push
+ * this negative (more reliable than the unmultiplied budget) or leave
+ * reliability negative.
  */
 export function reliabilityIntensityFactor(
   totalGainFraction: number,
+  machiningOperationCount: number,
   economy: EconomyConfig,
 ): number {
   const { stressCoefficient } = economy.statFormulas.support
-  return clamp(1 - stressCoefficient * totalGainFraction, 0, 1)
+  const { reliabilityCostPerOperation } = economy.machining
+  return clamp(
+    1 -
+      stressCoefficient * totalGainFraction -
+      reliabilityCostPerOperation * machiningOperationCount,
+    0,
+    1,
+  )
 }
 
 /**
@@ -586,6 +619,7 @@ export function reliabilityBreakdownOf(
   )
   const intensityFactor = reliabilityIntensityFactor(
     totalGainFractionOf(car, model, partsById, economy),
+    machiningOperationCountOf(car),
     economy,
   )
   const budget = clamp(conditionFactor + coherenceFactor - 1, 0, 1)
@@ -721,8 +755,15 @@ export function computeDerivedStats(
     const part = partsById[installed.partId]
     if (!part) continue
 
+    // One power term per slot, and machining is inside it rather than beside
+    // it: what the fitted SKU gives plus what the metal taken off it gives,
+    // scaled by the one band the one part carries. A second accumulation would
+    // be the second power path the tuning model bans by name.
     const wear = bandFactor(installed.band, economy)
-    power += model.spec.stockPowerPs * part.statModifiers.powerFraction[engineCharacter] * wear
+    const fraction =
+      part.statModifiers.powerFraction[engineCharacter] +
+      machiningPowerFractionOf(installed, part, engineCharacter, economy)
+    power += model.spec.stockPowerPs * fraction * wear
   }
 
   return {

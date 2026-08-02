@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { DAMAGE_PATTERN_IDS } from './damagePattern'
 import { PartFitmentClassSchema } from './partFitment'
 import { UpkeepTierSchema } from './provenance'
+import { PowerFractionSchema } from './stats'
 import {
   CarPartIdSchema,
   ComponentIdSchema,
@@ -551,6 +552,48 @@ const GradeBandCurveSchema = z.object({
   poor: RetainedAdvantageFraction,
   scrap: RetainedAdvantageFraction,
 })
+
+/**
+ * One machining operation: a named job a machine shop quotes, applied to one
+ * engine slot's part and recorded on that part for good.
+ *
+ * `powerFraction` is the SAME shape a fitted SKU carries, per engine
+ * character, so an operation enters the power model through the path a part
+ * already uses rather than a second one. It is the figure for a `stock`-grade
+ * part; `machining.gradeMultiplier` scales it for a better part.
+ *
+ * `spec` is what the operation adds to its slot's support contribution, on
+ * the same scale as `statFormulas.support.specByGrade`. It is added to what
+ * the fitted grade already contributes rather than replacing it, which is the
+ * only thing that lets an operation on a stock part support anything at all
+ * (a machined original part is still `stock`, whose `specByGrade` is 0) and
+ * the only reason the two power-free operations exist.
+ *
+ * `authenticityCost` is the operation's cost in authenticity points on the
+ * desirability model's own 1-to-10 scale: 1 to 2 a purist shrugs, 4 to 6 a
+ * raised eyebrow, 7 to 9 a collector weeps. Charged on STOCK-grade parts only
+ * (`machiningCost`, sim/derivedStats.ts) - an aftermarket part already spent
+ * its slot's whole authenticity weight when it was fitted, so charging
+ * machining on top would book one loss twice.
+ *
+ * `labourPoints` is the whole price of the work. Machining costs no money per
+ * operation: the tooling was the purchase, and time is what a shop spends
+ * after that.
+ */
+const MachiningOperationSchema = z.object({
+  id: z.string().regex(/^[a-z0-9-]+$/, 'ids are kebab-case: lowercase letters, digits, hyphens'),
+  displayName: z.string().min(1),
+  /** What the operation does to the engine, in a sentence the workshop page
+   * shows beside its figures. */
+  description: z.string().min(1),
+  carPartId: CarPartIdSchema,
+  powerFraction: PowerFractionSchema,
+  spec: z.number().nonnegative().default(0),
+  authenticityCost: z.number().nonnegative(),
+  labourPoints: z.number().int().positive(),
+})
+
+export type MachiningOperation = z.infer<typeof MachiningOperationSchema>
 
 /**
  * Designer-tunable economy/auction numbers live here (content law), threaded
@@ -2473,6 +2516,53 @@ export const EconomyConfigSchema = z.object({
     hireFeeYen: z.number().int().positive(),
     purchasePriceYen: z.number().int().positive(),
     minReputationTier: ReputationTierSchema,
+  }),
+  /**
+   * Machining: the third way a part gets better. A repair restores a part to
+   * what it was and fitting aftermarket replaces it with something else;
+   * machining improves the original, and the part stays the car's own. The
+   * record lives on the `PartInstance` (`PartInstanceSchema.machining`), so it
+   * travels with the part between cars and survives every job that rebuilds a
+   * slot.
+   *
+   * `operations` is the whole catalogue, four machinable slots between them:
+   * the engine's own castings, which are the only things a machinist takes
+   * metal off. Every figure an operation carries is a lever and lives here
+   * rather than in code (content law).
+   *
+   * The three cross-cutting levers:
+   *
+   * - `gradeMultiplier` scales an operation's power by the GRADE of the part
+   *   machined, because better surrounding hardware can use more of what
+   *   machining unlocks. It is what keeps a machined part below the next grade
+   *   up, which is what keeps the money ladder meaningful.
+   * - `reliabilityCostPerOperation` is the single reliability charge, folded
+   *   into the build-intensity factor rather than added as a fourth loss term:
+   *   machining IS power, and the intensity term is where power's own cost on
+   *   reliability already lands. A machining gain deliberately does NOT enter
+   *   `totalGainFractionOf`, because that would charge the same energy twice
+   *   and make this lever misleading.
+   * - `valuePremiumPerOperation` is what one operation adds to a part's worth,
+   *   as a fraction of that part's own catalogue price. A machined part is a
+   *   dearer object, on the same axis where a race block already outranks a
+   *   street one; it is never the power that moves the money.
+   *
+   * `minEngineToolTier` is the engine line's rung that owns the means of
+   * production - the tier `toolLines.json` already names "Machine-shop
+   * tooling". Owning it buys the right to spend labour this way; it does not
+   * make the labour free.
+   */
+  machining: z.object({
+    minEngineToolTier: ToolTierSchema,
+    gradeMultiplier: z.object({
+      stock: z.number().nonnegative(),
+      street: z.number().nonnegative(),
+      sport: z.number().nonnegative(),
+      race: z.number().nonnegative(),
+    }),
+    reliabilityCostPerOperation: z.number().min(0).max(1),
+    valuePremiumPerOperation: z.number().min(0),
+    operations: z.array(MachiningOperationSchema).min(1),
   }),
   /**
    * The diagnosis knobs. The room prices the symptom, the player prices the

@@ -94,9 +94,9 @@ function powerOf(model: CarModel, instance: CarInstance): number {
 }
 
 const CAP_BY_CHARACTER: Readonly<Record<EngineCharacter, number>> = {
-  'high-strung-na': 1.43,
-  'lazy-na': 1.57,
-  forced: 1.95,
+  'high-strung-na': 1.45,
+  'lazy-na': 1.6,
+  forced: 2.3,
 }
 
 describe("the ratio property: every car reaches its character's multiple of its own stock power", () => {
@@ -121,20 +121,20 @@ describe('the cap, per character, exactly (Lever 2 summed at race grade, unround
     }, 0)
   }
 
-  it('high-strung NA: x1.43 (no turbo fitted)', () => {
-    expect(1 + sumRaceFractions('high-strung-na', false)).toBeCloseTo(1.43, 6)
+  it('high-strung NA: x1.45 (no turbo fitted)', () => {
+    expect(1 + sumRaceFractions('high-strung-na', false)).toBeCloseTo(1.45, 6)
   })
-  it('lazy NA: x1.57 (no turbo fitted)', () => {
-    expect(1 + sumRaceFractions('lazy-na', false)).toBeCloseTo(1.57, 6)
+  it('lazy NA: x1.60 (no turbo fitted)', () => {
+    expect(1 + sumRaceFractions('lazy-na', false)).toBeCloseTo(1.6, 6)
   })
-  it('forced: x1.95 (its own forced induction included)', () => {
-    expect(1 + sumRaceFractions('forced', true)).toBeCloseTo(1.95, 6)
+  it('forced: x2.30 (its own forced induction included)', () => {
+    expect(1 + sumRaceFractions('forced', true)).toBeCloseTo(2.3, 6)
   })
-  it('high-strung NA with a race turbo bolted on regardless: x1.63', () => {
-    expect(1 + sumRaceFractions('high-strung-na', true)).toBeCloseTo(1.63, 6)
+  it('high-strung NA with a race turbo bolted on regardless: x1.65', () => {
+    expect(1 + sumRaceFractions('high-strung-na', true)).toBeCloseTo(1.65, 6)
   })
-  it('lazy NA with a race turbo bolted on regardless: x1.85', () => {
-    expect(1 + sumRaceFractions('lazy-na', true)).toBeCloseTo(1.85, 6)
+  it('lazy NA with a race turbo bolted on regardless: x1.88', () => {
+    expect(1 + sumRaceFractions('lazy-na', true)).toBeCloseTo(1.88, 6)
   })
 })
 
@@ -145,32 +145,32 @@ describe('the per-car table, pinned (Lever 2, the maximal build)', () => {
   // moved in cars.json or the power formula itself moved - both are real
   // diagnoses, never a reason to loosen this test (directive 17).
   const EXPECTED_MAX_POWER_PS: Readonly<Record<string, number>> = {
-    'honda-city-e-aa': 99,
-    'suzuki-wagon-r-ct21s': 79,
-    'honda-civic-sir2-eg6': 243,
-    'toyota-sprinter-trueno-ae86': 186,
-    'nissan-180sx-rps13': 306,
-    'toyota-chaser-tourer-v-jzx90': 546,
-    'nissan-silvia-ks-s14': 429,
-    'mazda-savanna-rx7-fc3s': 396,
-    'mazda-rx7-fd3s': 497,
-    'toyota-supra-rz-jza80': 632,
-    'toyota-carina-at150': 130,
-    'nissan-sunny-b12': 133,
-    'suzuki-alto-works-ha21s': 125,
-    'honda-beat-pp1': 92,
-    'honda-crx-sir-ef8': 229,
-    'honda-city-turbo-ii-aa': 215,
-    'toyota-sera-exy10': 171,
-    'honda-prelude-si-vtec-bb4': 254,
-    'nissan-silvia-s13': 341,
-    'toyota-mr2-sw20': 476,
-    'nissan-cefiro-a31': 400,
-    'subaru-impreza-wrx-sti-gc8': 488,
-    'nissan-skyline-gtr-bnr32': 546,
-    'nissan-fairlady-z-z32': 546,
-    'toyota-aristo-30v-jzs147': 632,
-    'toyota-mr2-aw11': 287,
+    'honda-city-e-aa': 101,
+    'suzuki-wagon-r-ct21s': 80,
+    'honda-civic-sir2-eg6': 247,
+    'toyota-sprinter-trueno-ae86': 189,
+    'nissan-180sx-rps13': 361,
+    'toyota-chaser-tourer-v-jzx90': 644,
+    'nissan-silvia-ks-s14': 506,
+    'mazda-savanna-rx7-fc3s': 467,
+    'mazda-rx7-fd3s': 587,
+    'toyota-supra-rz-jza80': 745,
+    'toyota-carina-at150': 133,
+    'nissan-sunny-b12': 136,
+    'suzuki-alto-works-ha21s': 147,
+    'honda-beat-pp1': 93,
+    'honda-crx-sir-ef8': 232,
+    'honda-city-turbo-ii-aa': 253,
+    'toyota-sera-exy10': 174,
+    'honda-prelude-si-vtec-bb4': 259,
+    'nissan-silvia-s13': 403,
+    'toyota-mr2-sw20': 561,
+    'nissan-cefiro-a31': 472,
+    'subaru-impreza-wrx-sti-gc8': 575,
+    'nissan-skyline-gtr-bnr32': 644,
+    'nissan-fairlady-z-z32': 644,
+    'toyota-aristo-30v-jzs147': 745,
+    'toyota-mr2-aw11': 338,
   }
 
   it('covers all 26 shipped cars', () => {
@@ -230,8 +230,15 @@ describe('band scaling: a worn SKU contributes bandFactor(worn) of its mint cont
     const basePower = powerAt(null)
     expect(basePower).toBe(supra.spec.stockPowerPs)
 
-    const mintDelta = powerAt('mint') - basePower
-    const wornDelta = powerAt('worn') - basePower
-    expect(wornDelta).toBe(Math.round(mintDelta * ECONOMY.bands.bandFactors.worn))
+    // `computeDerivedStats` accumulates every part's contribution unrounded
+    // and rounds the total once, so the band factor scales the UNROUNDED mint
+    // contribution. Scaling the already-rounded mint delta instead would
+    // insert a second rounding step the formula does not have, and land a
+    // whole PS out whenever the two roundings disagree.
+    const mintContribution = supra.spec.stockPowerPs * raceEcu.statModifiers.powerFraction.forced
+    expect(powerAt('mint') - basePower).toBe(Math.round(mintContribution))
+    expect(powerAt('worn') - basePower).toBe(
+      Math.round(mintContribution * ECONOMY.bands.bandFactors.worn),
+    )
   })
 })

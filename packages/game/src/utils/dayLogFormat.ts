@@ -2,6 +2,7 @@ import type { CashBucket, ComponentId, DayLogEntry } from '@midnight-garage/cont
 import {
   COMPONENT_DISPLAY_NAMES,
   ComponentIdSchema,
+  ECONOMY,
   PARTS,
   TOOL_LINES,
   cashMovementFor,
@@ -18,6 +19,16 @@ const PART_LABELS = new Map(PARTS.map((p) => [p.id, `${p.brand} ${p.name}`]))
 
 function partLabel(partId: string): string {
   return PART_LABELS.get(partId) ?? partId
+}
+
+/** Machining operation id -> the name the shop calls that job; internal ids
+ * (e.g. `bore-and-hone`) never reach the day report. */
+const MACHINING_OPERATION_LABELS = new Map(
+  ECONOMY.machining.operations.map((operation) => [operation.id, operation.displayName]),
+)
+
+function machiningOperationLabel(operationId: string): string {
+  return MACHINING_OPERATION_LABELS.get(operationId) ?? operationId
 }
 
 /** The machine-hire panel's per-group display name: the group's real
@@ -142,6 +153,8 @@ export function describeLogEntry(
       return `Sold a part for ${formatYen(entry.priceYen)}`
     case 'part-reconditioned':
       return `Reconditioned a part to ${entry.band}`
+    case 'part-machined':
+      return `${machiningOperationLabel(entry.machiningOperationId)} finished on ${entry.carInstanceId}`
     case 'part-removed': {
       const base = `Removed ${entry.carPartId} from ${entry.carInstanceId}`
       // Uninstall reveals truth - this removal collapsed one of the car's

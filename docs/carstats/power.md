@@ -21,7 +21,8 @@ power = model.spec.stockPowerPs * powerConditionScale
 
       + SUM over every installed part of
             model.spec.stockPowerPs
-          * part.statModifiers.powerFraction[engineCharacter]
+          * ( part.statModifiers.powerFraction[engineCharacter]
+            + machiningPowerFractionOf(installedPart, part, engineCharacter, economy) )
           * bandFactor(installedPart.band)
 
 return Math.round(Math.max(0, power))
@@ -31,11 +32,15 @@ return Math.round(Math.max(0, power))
 shared by every part in it.
 
 **In plain language.** A car makes its factory power, dragged down by how worn its engine parts are,
-plus a percentage of that same factory power for every aftermarket engine part bolted to it. The
-percentage each part is worth depends on what sort of engine it is bolted to, and a worn part
-delivers less of its percentage. Everything is a fraction of the car's own stock output, so the
-same exhaust is worth 20 PS on a Supra and 4 PS on a Beat, and the order you fit things in never
-matters.
+plus a percentage of that same factory power for every aftermarket engine part bolted to it, plus a
+further percentage for every machining operation done to a part that is on it. The percentage each
+one is worth depends on what sort of engine it is bolted to, and a worn part delivers less of its
+percentage. Everything is a fraction of the car's own stock output, so the same exhaust is worth
+20 PS on a Supra and 4 PS on a Beat, and the order you fit or machine things in never matters.
+
+**There is one power term per slot, and machining is inside it rather than beside it.** A slot
+contributes what its fitted SKU gives plus what has been machined into that SKU, scaled by the one
+band the one part carries. There is no second accumulation and no second power path.
 
 ---
 
@@ -142,9 +147,9 @@ carry an `aspiration`; the 94th is the Daihatsu Mira TR-XX (L70), a factory turb
 **The threshold is a cliff, and the roster is dense around it.** The two closest NA cars either
 side are the VW Golf GTI 16V (Mk2) at 78.05 PS per effective litre (`lazy-na`) and the Mitsubishi
 Pajero Evolution at 80.07 (`high-strung-na`). Concretely: the AE86 makes 130 PS from 1587 cc, which
-is 81.92, so it is `high-strung-na` and caps at 186 PS. Authoring its stock figure as 126 PS
-instead would put it at 79.4, make it `lazy-na`, and move its ceiling to 204 PS. Four PS of
-authoring, eighteen PS of ceiling.
+is 81.92, so it is `high-strung-na` and caps at 189 PS. Authoring its stock figure as 126 PS
+instead would put it at 79.4, make it `lazy-na`, and move its ceiling to 202 PS. Four PS of
+authoring, thirteen PS of ceiling.
 
 ### 2e. `part.statModifiers.powerFraction[engineCharacter]` (per SKU, `parts.json`)
 
@@ -156,28 +161,37 @@ Race-grade fractions, the top of each ladder:
 
 | slot | `high-strung-na` | `lazy-na` | `forced` |
 | --- | ---: | ---: | ---: |
-| block | 0.12 | 0.15 | 0.02 |
-| internals | 0.04 | 0.05 | 0.03 |
-| headValvetrain | 0.08 | 0.10 | 0.06 |
-| camsTiming | 0.10 | 0.13 | 0.05 |
-| intake | 0.02 | 0.03 | 0.05 |
-| exhaust | 0.04 | 0.06 | 0.14 |
-| ignitionEcu | 0.03 | 0.05 | 0.25 |
-| forcedInduction | 0.20 | 0.28 | 0.35 |
-| **sum** | **0.63** | **0.85** | **0.95** |
+| block | 0.13 | 0.16 | 0.04 |
+| internals | 0.04 | 0.05 | 0.04 |
+| headValvetrain | 0.09 | 0.11 | 0.08 |
+| camsTiming | 0.11 | 0.14 | 0.06 |
+| intake | 0.01 | 0.03 | 0.07 |
+| exhaust | 0.04 | 0.06 | 0.18 |
+| ignitionEcu | 0.03 | 0.05 | 0.33 |
+| forcedInduction | 0.20 | 0.28 | 0.50 |
+| **sum** | **0.65** | **0.88** | **1.30** |
 
 The full ladders, street / sport / race:
 
 | slot | `high-strung-na` | `lazy-na` | `forced` | ladder shape |
 | --- | --- | --- | --- | --- |
-| block | 0.04 / 0.08 / 0.12 | 0.05 / 0.101 / 0.15 | 0.007 / 0.013 / 0.02 | linear |
-| internals | 0.013 / 0.027 / 0.04 | 0.017 / 0.034 / 0.05 | 0.01 / 0.02 / 0.03 | linear |
-| headValvetrain | 0.036 / 0.06 / 0.08 | 0.045 / 0.075 / 0.10 | 0.027 / 0.045 / 0.06 | mildly diminishing |
-| camsTiming | 0.033 / 0.067 / 0.10 | 0.043 / 0.087 / 0.13 | 0.017 / 0.034 / 0.05 | linear |
-| intake | 0.012 / 0.017 / 0.02 | 0.018 / 0.026 / 0.03 | 0.03 / 0.043 / 0.05 | diminishing |
-| exhaust | 0.02 / 0.032 / 0.04 | 0.03 / 0.048 / 0.06 | 0.07 / 0.112 / 0.14 | diminishing |
-| ignitionEcu | 0.005 / 0.017 / 0.03 | 0.008 / 0.028 / 0.05 | 0.038 / 0.138 / 0.25 | increasing |
-| forcedInduction | 0.04 / 0.09 / 0.20 | 0.056 / 0.126 / 0.28 | 0.07 / 0.158 / 0.35 | increasing |
+| block | 0.051 / 0.085 / 0.13 | 0.061 / 0.102 / 0.16 | 0.016 / 0.028 / 0.04 | mildly diminishing |
+| internals | 0.016 / 0.026 / 0.04 | 0.02 / 0.032 / 0.05 | 0.016 / 0.028 / 0.04 | mildly diminishing |
+| headValvetrain | 0.037 / 0.065 / 0.09 | 0.043 / 0.079 / 0.11 | 0.041 / 0.064 / 0.08 | mildly diminishing |
+| camsTiming | 0.028 / 0.069 / 0.11 | 0.039 / 0.089 / 0.14 | 0.023 / 0.043 / 0.06 | roughly linear |
+| intake | 0.005 / 0.008 / 0.01 | 0.015 / 0.025 / 0.03 | 0.047 / 0.064 / 0.07 | diminishing |
+| exhaust | 0.018 / 0.031 / 0.04 | 0.025 / 0.046 / 0.06 | 0.101 / 0.153 / 0.18 | diminishing |
+| ignitionEcu | 0.005 / 0.016 / 0.03 | 0.007 / 0.027 / 0.05 | 0.056 / 0.195 / 0.33 | increasing |
+| forcedInduction | 0.04 / 0.09 / 0.20 | 0.056 / 0.126 / 0.28 | 0.10 / 0.225 / 0.50 | increasing |
+
+**Every slot keeps its own grade shape, and that is load-bearing rather than
+decorative.** The catalogue's price ladders are bespoke per slot (the ECU climbs x8.67
+to race, the turbo x6.5, cams x4.5, everything else x3), so a flat power shape laid
+over them puts one part far ahead on power per yen. A uniform rescale was measured and
+rejected for exactly that: it made a street ECU 2.1 times the power per yen of anything
+else on a boosted car. `forcedInduction`'s own column is pinned to its price ladder's
+ratios first, because one sheet entry serves all three characters, and the other seven
+slots absorb the slack (`packages/content/tests/partPricing.test.ts` acceptance 2a).
 
 The ladder shapes are entirely a property of the authored numbers. `computeDerivedStats` reads
 whatever fraction the fitted SKU carries and adds it; there is no curve, threshold or unlock
@@ -187,11 +201,62 @@ The four fitment-class variants of a SKU (`khs-race-ecu`, `shitbox-khs-race-ecu`
 `uncommon-khs-race-ecu`, `rare-khs-race-ecu`) carry **byte-identical** `powerFraction` objects.
 Class moves price and nothing else.
 
-### 2f. `bandFactor(installedPart.band)` on the aftermarket term (per part)
+### 2f. `PartInstance.machining` (per instance, `economy.machining.operations`)
+
+The third input, and the only one that is a property of an INSTANCE rather than of a car or a SKU.
+`machiningPowerFractionOf` (`packages/sim/src/machining.ts`) reads the operation ids recorded on the
+fitted `PartInstance`, sums their `powerFraction[engineCharacter]`, and scales the sum by
+`economy.machining.gradeMultiplier[part.grade]`.
+
+**Nine operations, on four slots.** Every one of them is content, and there is no other route into
+this term:
+
+| operation | slot | `high-strung-na` | `lazy-na` | `forced` |
+| --- | --- | ---: | ---: | ---: |
+| Port and polish | headValvetrain | 0.011676 | 0.015065 | 0.061818 |
+| Milling the head | headValvetrain | 0.004865 | 0.006277 | **0** |
+| Multi-angle valve job | headValvetrain | 0.002919 | 0.003766 | 0.010909 |
+| Bore and hone | block | 0.016865 | 0.021913 | 0.021818 |
+| Decking the block | block | 0.011243 | 0.014609 | 0.014545 |
+| O-ringing the deck | block | **0** | **0** | **0** |
+| Balance and polish | internals | 0.008649 | 0.011413 | 0.036364 |
+| Shot peening the rods | internals | **0** | **0** | **0** |
+| Cam regrind | camsTiming | 0.023784 | 0.031957 | 0.054545 |
+| **whole engine** | | **0.0800** | **0.1050** | **0.2000** |
+
+**The grade multiplier.** `stock` 1.0, `street` 1.0, `sport` 1.25, `race` 1.5. Machining a better
+part is worth more because the surrounding hardware can use more of what it unlocks, and this is the
+only place the fitted grade reaches power other than the SKU's own fraction. So the whole-engine
+figure above is what a fully machined set of ORIGINAL castings gives; on race-grade parts it is
+1.5x that: **0.12 / 0.1575 / 0.30** (measured).
+
+**Three operations carry no power at all on any character**, and one more carries none on `forced`.
+O-ringing the deck and shot peening the rods exist entirely for support; milling the head raises
+static compression, which is what you do instead of running boost rather than as well as it.
+
+**Bounds on this term alone.** Zero on every unmachined part, which is every part in the game until
+a player takes one to the bench. Maximum 0.30 of stock power, reached only by machining all four
+slots at race grade on a `forced` engine.
+
+**What it is worth in PS** (measured, one operation at a time, on the car's own character):
+
+| car | biggest operation | smallest non-zero |
+| --- | --- | --- |
+| Supra RZ (324 PS, forced) | port and polish, **20.03 PS** | multi-angle valve job, 3.53 PS |
+| Wagon R (55 PS, high-strung NA) | cam regrind, **1.31 PS** | multi-angle valve job, 0.16 PS |
+| Beat (64 PS, high-strung NA) | cam regrind, **1.52 PS** | multi-angle valve job, 0.19 PS |
+
+That spread is the feature rather than a calibration failure: machining an aspirated engine's
+internals is worth well under one per cent for a full five-point labour slot, and the player is
+meant to learn to spend the labour where it pays.
+
+### 2g. `bandFactor(installedPart.band)` on the aftermarket and machining terms (per part)
 
 Each part's own contribution is scaled by its own band, on the same value-side curve as the
 condition mean (mint 1, fine 0.85, worn 0.65, poor 0.4, scrap 0.15). A missing part is skipped by
-the loop entirely, so it contributes nothing rather than something negative.
+the loop entirely, so it contributes nothing rather than something negative. Machining rides inside
+that same term, so a machined part that has since worn delivers exactly the same fraction of its
+machined gain as it does of its bought one: one band, one scaling, no second rule.
 
 A part in a **weight-carrying** slot therefore has its band read twice, for two different jobs: once
 as its share of the condition mean that scales the base, and once to scale its own contribution.
@@ -214,23 +279,34 @@ Reached by making every power-weighted slot missing. The base term bottoms out a
 
 ### Ceiling: a per-character multiple of `stockPowerPs`
 
-Every one of the eight power-bearing slots at race grade, mint:
+Every one of the eight power-bearing slots at race grade, mint. **Re-measured with machining in the
+model**: the parts-only figures are unchanged, and the four machined columns are new.
 
-| engine character | ceiling with the car's own factory induction | ceiling with a race turbo fitted regardless |
-| --- | ---: | ---: |
-| `high-strung-na` | x1.43 | x1.63 |
-| `lazy-na` | x1.57 | x1.85 |
-| `forced` | x1.95 | x1.95 |
+| engine character | own induction | own induction, fully machined | race turbo fitted regardless | turbo, fully machined |
+| --- | ---: | ---: | ---: | ---: |
+| `high-strung-na` | x1.45 | **x1.56** | x1.65 | **x1.76** |
+| `lazy-na` | x1.60 | **x1.76** | x1.87 | **x2.03** |
+| `forced` | x2.30 | **x2.60** | x2.30 | **x2.60** |
 
-Measured shipped maxima, turbo always fitted: Supra and Aristo **632 PS** each, Chaser / Skyline
-GT-R / Fairlady Z **546 PS**, Impreza WRX STI **488 PS**, Beat **104 PS**, Wagon R **90 PS**. (The
-realised ratios sit a few thousandths off the table above because the result is rounded to whole PS.)
+Measured shipped maxima, turbo always fitted, unmachined and then fully machined: Supra and Aristo
+**745 to 842 PS** each, Chaser / Skyline GT-R / Fairlady Z **644 to 728**, RX-7 FD **587 to 663**,
+Impreza WRX STI **575 to 650**, MR2 SW20 **561 to 634**, Beat **106 to 113**, Wagon R **91 to 97**.
+(The realised ratios sit a few thousandths off the table above because the result is rounded to
+whole PS, which shows most on the low-power kei cars.)
 
-Roster projection from the CSV, with a race turbo fitted: Nissan GT-R Black Edition (R35, 480 PS,
-forced) at **936 PS** and Lexus LFA (560 PS, high-strung NA) at **913 PS** are the two highest
-numbers the model can produce anywhere on the 94-car roster.
+**The Supra is the car the ladder was set on**, and it reads its authored figures exactly: 324
+stock, 389 stock machined, 454 street, 518 street machined, 583 sport, 664 sport machined, 745
+race, 842 race machined.
 
-**Whole reachable band: 0.5x to 1.95x the car's own stock power.**
+Roster projection from the CSV, with a race turbo fitted and no machining: Nissan GT-R Black Edition
+(R35, 480 PS, forced) at **936 PS** and Lexus LFA (560 PS, high-strung NA) at **913 PS** are the two
+highest numbers the parts model can produce anywhere on the 94-car roster. Those two rows are not in
+`cars.json`, so unlike everything else on this page they are arithmetic rather than a measured run,
+and no machined figure is given for them for that reason.
+
+**Whole reachable band: 0.5x to 2.60x the car's own stock power**, the top reached only by a
+`forced` engine with every power slot at race grade and every one of its four machinable slots fully
+machined.
 
 ---
 
@@ -239,6 +315,11 @@ numbers the model can produce anywhere on the 94-car roster.
 - **The smallest non-zero fraction in the catalogue is 0.005**, `khs-street-ecu` on a
   `high-strung-na` engine. On the lowest-power shipped car (55 PS Wagon R) at scrap band that is
   **0.0413 PS**, which rounds away entirely.
+- **Machining goes smaller still.** The smallest non-zero machining fraction is **0.0029189**, a
+  multi-angle valve job on a `high-strung-na` engine: **0.16 PS** on the Wagon R and **0.19 PS** on
+  the Beat, at mint. Five labour points buys a figure that does not move the readout at all. That is
+  the lesson the operation is there to teach rather than a rounding defect, and it is why the shop
+  page shows PS to a tenth rather than whole.
 - **A cheap part in a weighted slot is a net power loss as soon as it wears.** Measured on the
   Wagon R (NA, empty forced-induction slot, denominator 8), fitting the street ECU against a stock
   ECU baseline of 55 PS: mint 55, fine 54, worn 53, poor 51, scrap 49. Its own gain is 0.275 PS at
@@ -261,10 +342,18 @@ numbers the model can produce anywhere on the 94-car roster.
 
 - **Support ratios, coherence, and the support verdict.** An unsupported build makes its full power
   and pays for it in reliability alone. **Measured**: a Supra with all eight power slots at race
-  grade and no support upgrade anywhere reads a headline support ratio of 0.6635 (`dangerous`,
-  `torqueTransmission`) and makes **632 PS**. The identical build with every support slot also at
-  race grade reads 1.1109 (`adequate`) and makes **exactly the same 632 PS**. Only reliability
-  moves, 41 against 76.
+  grade and no support upgrade anywhere reads a headline support ratio of 0.6064 (`dangerous`) and
+  makes **745 PS**. The identical build with every support slot also at race grade reads 0.9850
+  (`adequate`) and makes **exactly the same 745 PS**. Only reliability moves, 32 against 70.
+
+  **The same pair fully machined**: both make **842 PS**, again identically, at reliability 30
+  against 66. Neither the ladder nor machining changes the relationship: support decides what the
+  power costs, never how much of it there is.
+- **Anything about the machining record other than which operations are on the part.** The order
+  they were done in, when they were done, and which car they were done on are not recorded and
+  could not be read if they were. Two parts carrying the same operations are identical to this
+  stat. **Measured**: applying the nine operations in catalogue order and in reverse gives
+  byte-identical power on all three characters.
 - **The other four derived stats.** Power is computed before any of them and reads none of them.
 - **Fitment class, rarity, and price.** Identical `powerFraction` across all four class variants.
 - **`statFormulas.condition.gradeBandFactor`.** The per-grade wear curves (`stock` / `street` /
@@ -318,6 +407,9 @@ numbers the model can produce anywhere on the 94-car roster.
 | `statFormulas.powerConditionFloor` | 0.5 | power at zero engine condition, as a fraction of stock |
 | `statFormulas.engineCharacter.naHighStrungThreshold` | 80 | PS per effective litre that splits `lazy-na` from `high-strung-na` |
 | `toolCeilings.naToTurboConversionEngineTier` | 3 | engine tool tier needed to fill an empty forced-induction slot on a factory-NA car (`naToTurboConversionBlocked`, `packages/sim/src/jobs.ts`) |
+| `machining.operations[].powerFraction` | see 2f | per operation, per character, the fraction of stock power one machining job is worth on a stock-grade part |
+| `machining.gradeMultiplier` | stock 1, street 1, sport 1.25, race 1.5 | scales every machining fraction by the grade of the part machined |
+| `machining.minEngineToolTier` | 3 | the engine rung that owns the machine-shop tooling, which is what makes any of it reachable |
 
 Other content:
 
@@ -352,13 +444,20 @@ Other content:
    cars, so no shipped figure moved when the source changed. An import missing an `aspiration` now
    fails at the schema instead of quietly reading NA.
 
-3. **Fitting forced induction never changes engine character.** The character is a property of the
-   MODEL, read once from `spec.aspiration`, so a converted NA car keeps its NA fraction column
-   permanently. **Measured**: a Beat with a race turbo fitted still resolves `high-strung-na`, so
-   the turbo pays 0.20 rather than `forced`'s 0.35. This is deliberate and pinned by
-   `packages/sim/tests/proportionalPower.test.ts`, and it is defensible (the character answers
-   "what sort of engine is this", not "what is bolted to it"), but a reader will assume the
+3. **Fitting forced induction never changes engine character, and machining makes that visible.**
+   The character is a property of the MODEL, read once from `spec.aspiration`, so a converted NA car
+   keeps its NA fraction column permanently. **Measured**: a Beat with a race turbo fitted still
+   resolves `high-strung-na`, so the turbo pays 0.20 rather than `forced`'s 0.35. This is deliberate
+   and pinned by `packages/sim/tests/proportionalPower.test.ts`, and it is defensible (the character
+   answers "what sort of engine is this", not "what is bolted to it"), but a reader will assume the
    opposite.
+
+   **Machining inherits the same behaviour and shows it more sharply.** Milling the head is
+   deliberately worth zero on `forced`, because raising static compression is what you do instead of
+   running boost. On a turbocharged Beat it is still worth its `high-strung-na` figure (0.004865,
+   **0.31 PS**, measured), because the character never moved. In life that would be the wrong call
+   on a boosted engine. This predates machining, it is the power model's behaviour rather than
+   machining's, and machining only makes it legible.
 
 4. **`statWeights.power` and `powerFraction` cover different slot sets.** Eight slots make power;
    six weight the condition mean. `block` and `headValvetrain` make power but their condition never
@@ -397,10 +496,10 @@ Other content:
    wrong read alone.
 
 9. **The 80 PS-per-litre threshold is a hard cliff sitting inside a dense part of the roster.**
-   Crossing it moves an NA car's ceiling from x1.57 to x1.43 (factory induction) or x1.85 to x1.63
+   Crossing it moves an NA car's ceiling from x1.60 to x1.45 (factory induction) or x1.87 to x1.65
    (turbo fitted). The Golf GTI 16V is at 78.05 and the Pajero Evolution at 80.07. Authoring the
    AE86 at 126 PS instead of 130 would flip it from `high-strung-na` to `lazy-na` and move its
-   ceiling from 186 PS to 204 PS. Not a bug, but it means `stockPowerPs` and `displacementCc` are
+   ceiling from 189 PS to 202 PS. Not a bug, but it means `stockPowerPs` and `displacementCc` are
    load-bearing on a discontinuity, and a routine correction to either can silently reshape a car's
    whole tuning ladder.
 
@@ -410,3 +509,30 @@ Other content:
     part with zero `powerFraction`. Combined with rule 2b, filling that slot on an NA car is a
     permanent 3-point increase to that car's condition denominator, which is why an NA conversion
     goes under water at `poor`.
+
+11. **Power is now the only stat with a per-INSTANCE input, and the two power-making slots that
+    carry no condition weight are exactly the two machining leans hardest on.** Everything else this
+    stat reads is a fact about the car (`stockPowerPs`, `aspiration`) or about a catalogue SKU
+    (`powerFraction`). Machining is a fact about one physical part, and two identical SKUs on two
+    identical cars can now make different power. Finding 4's mismatch sharpens with it: `block` and
+    `headValvetrain` still carry `statWeights.power` 0, and between them they hold five of the nine
+    operations and, on a `forced` engine, 10.9 of the 20.0 points of machining available. **Measured
+    on a Supra**: a scrap stock block and a scrap stock head still read exactly **324 PS**, while
+    the same two slots machined on their original castings read **359 PS**. The slots that reward
+    the machinist most are the slots whose condition the base term ignores entirely.
+
+12. **The whole per-slot table was re-authored, and the ceiling moved further than anything else in
+    this file.** The race sums including forced induction are now **0.65 / 0.88 / 1.30** against
+    0.63 / 0.85 / 0.95, so a `forced` engine's ceiling went from x1.95 to **x2.30**, which is the
+    largest single movement any of the five stats has taken. The two engines the old cap was
+    measurably low for now land where they should: the 2JZ reads **745 PS** at race against a real
+    built band of 700 to 900, and the RB26 **644** against 600 to 800. Three cars the rise inflates
+    (FD 587, Impreza 575, SW20 561) are accepted rather than unresolved.
+
+    **The street and sport columns are NOT a uniform rescale of race, and that is the load-bearing
+    part.** A uniform rescale was tried first and broke the pricing guards loudly: it put a street
+    ECU at 2.1 times the power per yen of anything else on a boosted car, which is the
+    one-correct-first-purchase defect `partPricing.test.ts` exists to catch. Keeping each slot's own
+    grade shape, with `forcedInduction`'s column pinned to its price ladder's ratios and the other
+    seven absorbing the slack, fixes it with **no price movement at all**: the four probes measure
+    1.137 against a 1.35 bound, 0.641 against 0.50, 0.141 against 0.25, and 0.003 against 0.005.

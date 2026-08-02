@@ -1138,7 +1138,9 @@ describe('the foundation law kills the incoherent-build profit (Sprint 60, law 5
       // Zero premium -> foundationFactor is inert by construction. All-stock
       // parts, so retention multiplies nothing - any value would do; the
       // real ceiling documents what a genuinely stock car reads.
-      expect(installedPartsValueYen(car, PARTS_BY_ID, ECONOMY.valuation.retentionCeiling)).toBe(0)
+      expect(
+        installedPartsValueYen(car, PARTS_BY_ID, ECONOMY.valuation.retentionCeiling, ECONOMY),
+      ).toBe(0)
     }
   })
 })

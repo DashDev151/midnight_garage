@@ -321,6 +321,13 @@ does partly read as a second ranking of the same cars. See Findings.
   what that buyer will pay. A car is never worth more on the buy side for being beautiful.
 - **The concours gate.** It reads authenticity, not style.
 - **`machiningCost`, `coherenceFactor` and the support ratios.** All reliability's concern.
+- **Machining, in every respect.** `PartInstance.machining` reaches power, authenticity and
+  reliability and does not reach this stat at any point: `stylePercentOf` reads a fitted SKU's
+  `statModifiers.style` and the taxonomy's style condition column, and neither knows what has been
+  done to the metal. **Verified rather than assumed**: on all 26 shipped cars, at stock grade and at
+  race grade, applying all nine machining operations left the style stat identical in **52 of 52
+  cases**. Machining a block is a fact about an engine, and nothing about it is visible from
+  outside the car.
 
 ---
 

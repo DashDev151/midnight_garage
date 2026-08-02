@@ -65,6 +65,29 @@ function carWith(
   return carWithGrades(model, CONTEXT, gradesByPartId, band)
 }
 
+/** `car` with `operationIds` recorded on whatever is fitted in `carPartId` -
+ * the state a finished machining job leaves behind. */
+function machinedCar(car: CarInstance, carPartId: CarPartId, operationIds: string[]): CarInstance {
+  const installed = car.parts[carPartId].installed!
+  return {
+    ...car,
+    parts: {
+      ...car.parts,
+      [carPartId]: {
+        ...car.parts[carPartId],
+        installed: { ...installed, machining: [...(installed.machining ?? []), ...operationIds] },
+      },
+    },
+  }
+}
+
+/** One operation's authored authenticity rating, read from content rather
+ * than restated, so this file checks the arithmetic and not a second copy of
+ * the table. */
+function ratingOf(operationId: string): number {
+  return ECONOMY.machining.operations.find((o) => o.id === operationId)!.authenticityCost
+}
+
 describe('the authored authenticity weights', () => {
   it('cover all 29 slots and total exactly 100, so stockness reads as a percentage', () => {
     expect(PARTS_TAXONOMY).toHaveLength(29)
@@ -246,11 +269,46 @@ describe('condition bites on top of originality', () => {
   })
 })
 
-describe('the machining seam', () => {
-  it('costs zero on every car, because no machining operation exists to apply', () => {
+describe('the machining term', () => {
+  it('costs zero on every car nobody has machined, so the all-stock identity is untouched', () => {
     for (const model of CARS) {
-      expect(machiningCost(carWith({}, 'mint', model))).toBe(0)
+      expect(machiningCost(carWith({}, 'mint', model), CONTEXT.partsById, ECONOMY)).toBe(0)
     }
+  })
+
+  it("sums the applied operations' own ratings on the car's own parts", () => {
+    const bored = machinedCar(carWith({}), 'block', ['bore-and-hone', 'decking'])
+    expect(machiningCost(bored, CONTEXT.partsById, ECONOMY)).toBe(
+      ratingOf('bore-and-hone') + ratingOf('decking'),
+    )
+    expect(authenticityOf(bored)).toBe(100 - ratingOf('bore-and-hone') - ratingOf('decking'))
+  })
+
+  it('costs 48 of the 100 points for a full engine on its own original castings', () => {
+    let car = carWith({})
+    for (const operation of ECONOMY.machining.operations) {
+      car = machinedCar(car, operation.carPartId, [operation.id])
+    }
+    expect(machiningCost(car, CONTEXT.partsById, ECONOMY)).toBe(48)
+    expect(authenticityOf(car)).toBe(52)
+  })
+
+  it('charges nothing at all on an aftermarket part, on every grade above stock', () => {
+    for (const grade of ['street', 'sport', 'race'] as const) {
+      const car = machinedCar(carWith({ block: grade }), 'block', [
+        'bore-and-hone',
+        'decking',
+        'deck-o-ring',
+      ])
+      expect(machiningCost(car, CONTEXT.partsById, ECONOMY), grade).toBe(0)
+    }
+  })
+
+  it("charges the full rating for the same three operations on the car's own block", () => {
+    const car = machinedCar(carWith({}), 'block', ['bore-and-hone', 'decking', 'deck-o-ring'])
+    expect(machiningCost(car, CONTEXT.partsById, ECONOMY)).toBe(
+      ratingOf('bore-and-hone') + ratingOf('decking') + ratingOf('deck-o-ring'),
+    )
   })
 })
 

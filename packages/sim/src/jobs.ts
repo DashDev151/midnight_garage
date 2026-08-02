@@ -29,6 +29,7 @@ import { crewEnergySaved, perfectionistCostMultiplier } from './crewSkills'
 import { pruneCuredCauses, revealOnRemoval } from './diagnosis'
 import { recordDynoSession } from './dyno'
 import { bookCashMovements } from './financeLedger'
+import { completeMachiningJob, machiningLogEntryFor } from './machiningJobs'
 import { partFitsCar } from './parts'
 import { isCustomerOriginPart } from './provenance'
 import { updateServiceJobLedger } from './serviceJobLedger'
@@ -269,12 +270,12 @@ function completeReconditionJob(state: GameState, job: Job, context: SimContext)
 }
 
 /**
- * Applies a completed job's effect (group repair, part install, or an
- * in-inventory recondition) to GameState. For a car job the target may be an
- * owned car or a customer car sitting in a service job (the player works both
- * with the same job system); a `recondition-part` job targets a loose
- * inventory part instead. Does not remove the job from state.jobs - the
- * caller owns list bookkeeping.
+ * Applies a completed job's effect (group repair, part install, an
+ * in-inventory recondition, a run on the rollers, or one machining operation)
+ * to GameState. For a car job the target may be an owned car or a customer car
+ * sitting in a service job (the player works both with the same job system); a
+ * `recondition-part` job targets a loose inventory part instead. Does not
+ * remove the job from state.jobs - the caller owns list bookkeeping.
  */
 export function completeJob(state: GameState, job: Job, context: SimContext): JobCompletionResult {
   if (job.kind === 'recondition-part') {
@@ -286,6 +287,13 @@ export function completeJob(state: GameState, job: Job, context: SimContext): Jo
   // paths below are reached, because there is nothing for them to do.
   if (job.kind === 'dyno-session') {
     return { state: recordDynoSession(state, job), blockedReason: null }
+  }
+
+  // Machining writes one operation onto the part fitted in its slot. It moves
+  // no band and swaps no part, so it takes its own path here rather than
+  // `applyJobToCar`'s, which only knows how to do those two things.
+  if (job.kind === 'machine-part') {
+    return { state: completeMachiningJob(state, job, context), blockedReason: null }
   }
 
   if (job.kind === 'install-part') {
@@ -1106,6 +1114,10 @@ export function applyAvailableLaborToJob(
           partInstanceId: updatedJob.partInstanceId!,
           band: updatedJob.targetBand!,
         })
+      } else if (updatedJob.kind === 'machine-part') {
+        // A finished operation names itself, since "engine work completed"
+        // would not tell the player which of nine jobs came back.
+        log.push(machiningLogEntryFor(updatedJob))
       } else {
         log.push({
           type: 'job-completed',

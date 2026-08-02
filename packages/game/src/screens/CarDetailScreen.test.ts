@@ -47,6 +47,7 @@ function makeRouter(): Router {
       { path: '/', name: 'garage', component: { render: () => h('div') } },
       { path: '/parts', name: 'parts', component: { render: () => h('div') } },
       { path: '/dyno', name: 'dyno', component: { render: () => h('div') } },
+      { path: '/machine-shop', name: 'machine-shop', component: { render: () => h('div') } },
       { path: '/car/:id', name: 'car', component: CarDetailScreen },
     ],
   })

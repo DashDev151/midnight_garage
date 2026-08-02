@@ -55,55 +55,70 @@ a lazy one are the honest ceilings; **the forced ceiling of x2.30 is not generos
 ## The parts, per slot
 
 Percentage of the car's own stock power, added by the fitted part. Additive and independent, as
-every part already is. Per-slot figures are rounded to a tenth of a point, so a column can sum a
-tenth away from the exact total the ladder uses: the exact sport totals are 30.0, 40.0 and 80.0.
+every part already is.
 
 On the two NA characters the `forcedInduction` row is a **conversion**, so it sits outside the
 fitted total and outside the ladder. That is the shipped convention rather than a new one:
 `proportionalPower.test.ts` caps an NA character with no turbo fitted (x1.43 and x1.57 today) and
 pins the bolt-on-turbo build as its own separate figure (x1.63 and x1.85).
 
+**The street and sport rows are not a uniform rescale of race, and that is load-bearing.** Each
+slot keeps its own grade shape, because the catalogue's price ladders are bespoke per slot (the ECU
+runs x8.67 to race, the turbo x6.5, cams x4.5, everything else x3) and a flat power shape against a
+bespoke price shape puts one part far ahead on power per yen. An earlier uniform rescale did exactly
+that: it made a street ECU 2.1 times the power per yen of anything else on a boosted car, which is
+the one-correct-first-purchase defect `partPricing.test.ts` exists to catch.
+
+The turbo's own column is pinned to its price ladder's ratios first and the other seven slots absorb
+the slack. **Every race figure, every ladder total, the 101-of-130 shape and both conversion rows
+are exactly as approved**; only street and sport move, by at most 1.1 points on any slot.
+
 ### high-strung-na
 
 | slot | street | sport | race |
 | --- | ---: | ---: | ---: |
-| `forcedInduction` (conversion) | 7.1 | 13.3 | 20.0 |
-| `block` | 4.6 | 8.7 | 13.0 |
-| `camsTiming` | 3.9 | 7.3 | 11.0 |
-| `headValvetrain` | 3.2 | 6.0 | 9.0 |
-| `exhaust` | 1.4 | 2.7 | 4.0 |
-| `internals` | 1.4 | 2.7 | 4.0 |
-| `ignitionEcu` | 1.1 | 2.0 | 3.0 |
-| `intake` | 0.4 | 0.7 | 1.0 |
-| **fitted total, no conversion fitted** | **16.0** | **30.1** | **45.0** |
+| `forcedInduction` (conversion) | 4.0 | 9.0 | 20.0 |
+| `block` | 5.1 | 8.5 | 13.0 |
+| `camsTiming` | 2.8 | 6.9 | 11.0 |
+| `headValvetrain` | 3.7 | 6.5 | 9.0 |
+| `exhaust` | 1.8 | 3.1 | 4.0 |
+| `internals` | 1.6 | 2.6 | 4.0 |
+| `ignitionEcu` | 0.5 | 1.6 | 3.0 |
+| `intake` | 0.5 | 0.8 | 1.0 |
+| **fitted total, no conversion fitted** | **16.0** | **30.0** | **45.0** |
 
 ### lazy-na
 
 | slot | street | sport | race |
 | --- | ---: | ---: | ---: |
-| `forcedInduction` (conversion) | 9.8 | 18.7 | 28.0 |
-| `block` | 5.6 | 10.7 | 16.0 |
-| `camsTiming` | 4.9 | 9.3 | 14.0 |
-| `headValvetrain` | 3.8 | 7.3 | 11.0 |
-| `exhaust` | 2.1 | 4.0 | 6.0 |
-| `internals` | 1.8 | 3.3 | 5.0 |
-| `ignitionEcu` | 1.8 | 3.3 | 5.0 |
-| `intake` | 1.0 | 2.0 | 3.0 |
-| **fitted total, no conversion fitted** | **21.0** | **39.9** | **60.0** |
+| `forcedInduction` (conversion) | 5.6 | 12.6 | 28.0 |
+| `block` | 6.1 | 10.2 | 16.0 |
+| `camsTiming` | 3.9 | 8.9 | 14.0 |
+| `headValvetrain` | 4.3 | 7.9 | 11.0 |
+| `exhaust` | 2.5 | 4.6 | 6.0 |
+| `internals` | 2.0 | 3.2 | 5.0 |
+| `ignitionEcu` | 0.7 | 2.7 | 5.0 |
+| `intake` | 1.5 | 2.5 | 3.0 |
+| **fitted total, no conversion fitted** | **21.0** | **40.0** | **60.0** |
 
 ### forced
 
 | slot | street | sport | race |
 | --- | ---: | ---: | ---: |
-| `forcedInduction` | 15.4 | 30.8 | 50.0 |
-| `ignitionEcu` | 10.2 | 20.3 | 33.0 |
-| `exhaust` | 5.5 | 11.1 | 18.0 |
-| `headValvetrain` | 2.5 | 4.9 | 8.0 |
-| `intake` | 2.2 | 4.3 | 7.0 |
-| `camsTiming` | 1.8 | 3.7 | 6.0 |
-| `internals` | 1.2 | 2.5 | 4.0 |
-| `block` | 1.2 | 2.5 | 4.0 |
-| **fitted total** | **40.0** | **80.1** | **130.0** |
+| `forcedInduction` | 10.0 | 22.5 | 50.0 |
+| `ignitionEcu` | 5.6 | 19.5 | 33.0 |
+| `exhaust` | 10.1 | 15.3 | 18.0 |
+| `headValvetrain` | 4.1 | 6.4 | 8.0 |
+| `intake` | 4.7 | 6.4 | 7.0 |
+| `camsTiming` | 2.3 | 4.3 | 6.0 |
+| `internals` | 1.6 | 2.8 | 4.0 |
+| `block` | 1.6 | 2.8 | 4.0 |
+| **fitted total** | **40.0** | **80.0** | **130.0** |
+
+**Read the forced street column against the race one.** The exhaust gives 10.1 of the 40 at street
+and only 18 of the 130 at race, while the turbo gives 10.0 and then 50. That is the shape of tuning
+a turbo car: bolt-ons first, then the turbo itself is what takes it somewhere. The uniform rescale
+flattened exactly this and broke the guards for it.
 
 **The shape is the point.** A turbo car finds 101 of its 130 points in the turbo, the ECU and the
 exhaust, and almost nothing in the block. An NA car finds its power the opposite way round, in the

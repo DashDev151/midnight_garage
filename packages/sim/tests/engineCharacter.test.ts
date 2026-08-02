@@ -144,44 +144,44 @@ describe('the grade shapes from Lever 4, pinned per slot', () => {
     >
   > = {
     block: {
-      street: { 'high-strung-na': 0.04, 'lazy-na': 0.05, forced: 0.007 },
-      sport: { 'high-strung-na': 0.08, 'lazy-na': 0.101, forced: 0.013 },
-      race: { 'high-strung-na': 0.12, 'lazy-na': 0.15, forced: 0.02 },
+      street: { 'high-strung-na': 0.051, 'lazy-na': 0.061, forced: 0.016 },
+      sport: { 'high-strung-na': 0.085, 'lazy-na': 0.102, forced: 0.028 },
+      race: { 'high-strung-na': 0.13, 'lazy-na': 0.16, forced: 0.04 },
     },
     internals: {
-      street: { 'high-strung-na': 0.013, 'lazy-na': 0.017, forced: 0.01 },
-      sport: { 'high-strung-na': 0.027, 'lazy-na': 0.034, forced: 0.02 },
-      race: { 'high-strung-na': 0.04, 'lazy-na': 0.05, forced: 0.03 },
+      street: { 'high-strung-na': 0.016, 'lazy-na': 0.02, forced: 0.016 },
+      sport: { 'high-strung-na': 0.026, 'lazy-na': 0.032, forced: 0.028 },
+      race: { 'high-strung-na': 0.04, 'lazy-na': 0.05, forced: 0.04 },
     },
     headValvetrain: {
-      street: { 'high-strung-na': 0.036, 'lazy-na': 0.045, forced: 0.027 },
-      sport: { 'high-strung-na': 0.06, 'lazy-na': 0.075, forced: 0.045 },
-      race: { 'high-strung-na': 0.08, 'lazy-na': 0.1, forced: 0.06 },
+      street: { 'high-strung-na': 0.037, 'lazy-na': 0.043, forced: 0.041 },
+      sport: { 'high-strung-na': 0.065, 'lazy-na': 0.079, forced: 0.064 },
+      race: { 'high-strung-na': 0.09, 'lazy-na': 0.11, forced: 0.08 },
     },
     camsTiming: {
-      street: { 'high-strung-na': 0.033, 'lazy-na': 0.043, forced: 0.017 },
-      sport: { 'high-strung-na': 0.067, 'lazy-na': 0.087, forced: 0.034 },
-      race: { 'high-strung-na': 0.1, 'lazy-na': 0.13, forced: 0.05 },
+      street: { 'high-strung-na': 0.028, 'lazy-na': 0.039, forced: 0.023 },
+      sport: { 'high-strung-na': 0.069, 'lazy-na': 0.089, forced: 0.043 },
+      race: { 'high-strung-na': 0.11, 'lazy-na': 0.14, forced: 0.06 },
     },
     intake: {
-      street: { 'high-strung-na': 0.012, 'lazy-na': 0.018, forced: 0.03 },
-      sport: { 'high-strung-na': 0.017, 'lazy-na': 0.026, forced: 0.043 },
-      race: { 'high-strung-na': 0.02, 'lazy-na': 0.03, forced: 0.05 },
+      street: { 'high-strung-na': 0.005, 'lazy-na': 0.015, forced: 0.047 },
+      sport: { 'high-strung-na': 0.008, 'lazy-na': 0.025, forced: 0.064 },
+      race: { 'high-strung-na': 0.01, 'lazy-na': 0.03, forced: 0.07 },
     },
     exhaust: {
-      street: { 'high-strung-na': 0.02, 'lazy-na': 0.03, forced: 0.07 },
-      sport: { 'high-strung-na': 0.032, 'lazy-na': 0.048, forced: 0.112 },
-      race: { 'high-strung-na': 0.04, 'lazy-na': 0.06, forced: 0.14 },
+      street: { 'high-strung-na': 0.018, 'lazy-na': 0.025, forced: 0.101 },
+      sport: { 'high-strung-na': 0.031, 'lazy-na': 0.046, forced: 0.153 },
+      race: { 'high-strung-na': 0.04, 'lazy-na': 0.06, forced: 0.18 },
     },
     ignitionEcu: {
-      street: { 'high-strung-na': 0.005, 'lazy-na': 0.008, forced: 0.038 },
-      sport: { 'high-strung-na': 0.017, 'lazy-na': 0.028, forced: 0.138 },
-      race: { 'high-strung-na': 0.03, 'lazy-na': 0.05, forced: 0.25 },
+      street: { 'high-strung-na': 0.005, 'lazy-na': 0.007, forced: 0.056 },
+      sport: { 'high-strung-na': 0.016, 'lazy-na': 0.027, forced: 0.195 },
+      race: { 'high-strung-na': 0.03, 'lazy-na': 0.05, forced: 0.33 },
     },
     forcedInduction: {
-      street: { 'high-strung-na': 0.04, 'lazy-na': 0.056, forced: 0.07 },
-      sport: { 'high-strung-na': 0.09, 'lazy-na': 0.126, forced: 0.158 },
-      race: { 'high-strung-na': 0.2, 'lazy-na': 0.28, forced: 0.35 },
+      street: { 'high-strung-na': 0.04, 'lazy-na': 0.056, forced: 0.1 },
+      sport: { 'high-strung-na': 0.09, 'lazy-na': 0.126, forced: 0.225 },
+      race: { 'high-strung-na': 0.2, 'lazy-na': 0.28, forced: 0.5 },
     },
   }
 
@@ -199,9 +199,11 @@ describe('the grade shapes from Lever 4, pinned per slot', () => {
   }
 
   /**
-   * forcedInduction is the one increasing power curve in the game - each
-   * step up the ladder delivers strictly more than the step below it.
-   * Asserted as the property, not the three numbers.
+   * forcedInduction climbs on every character - each step up the ladder
+   * delivers strictly more than the step below it. It is not alone in that
+   * (ignitionEcu climbs on both NA characters, camsTiming on lazy-na); what
+   * sets forcedInduction apart is how STEEPLY it climbs late, which the test
+   * below pins. Asserted as the property, not the three numbers.
    */
   it('forcedInduction is INCREASING: each step up the ladder strictly exceeds the step below it, on every character', () => {
     for (const character of CHARACTERS) {
@@ -244,7 +246,7 @@ describe('the grade shapes from Lever 4, pinned per slot', () => {
     }
   })
 
-  it("intake is diminishing (a strictly SMALLER second step than first), unlike forcedInduction's linear shape", () => {
+  it("intake is diminishing (a strictly SMALLER second step than first), unlike forcedInduction's increasing shape", () => {
     const street = fractionOf('intake', 'street', 'high-strung-na')
     const sport = fractionOf('intake', 'sport', 'high-strung-na')
     const race = fractionOf('intake', 'race', 'high-strung-na')

@@ -1589,6 +1589,31 @@ import storyMissions from '../data/storyMissions.json'
  * NOTHING ELSE MOVES: every `payoutYen` and `budgetCapYen` above holds, `damagePatterns.json` and
  * `partPricing.json` are untouched so their own hashes hold, and BOTH `advanceDay` golden hashes
  * were re-run and held unchanged, as did `balanceProbes.test.ts` and `valueModelProbes.test.ts`.
+ *
+ * Re-pinned for the machining block, a new `economy.machining` key holding the
+ * whole of that feature's content (`docs/design/systems/machining-system-design.md`,
+ * numbers in `machining-performance-table.md`). Every figure in it is either signed
+ * in that table or is one of the two values the implementing sprint was asked to
+ * propose:
+ *
+ * - SIGNED: the nine operations' `powerFraction` per engine character (summing to
+ *   the authored machining base of 8.00 / 10.50 / 20.00 per cent), their five `spec`
+ *   contributions, their nine `authenticityCost` ratings (summing to 48 on a fully
+ *   machined engine), the flat 5 `labourPoints`, and `gradeMultiplier`
+ *   (stock 1.0, street 1.0, sport 1.25, race 1.5). `minEngineToolTier` is 3, the rung
+ *   `toolLines.json` already names "Machine-shop tooling".
+ * - PROPOSED, awaiting ratification: `reliabilityCostPerOperation` 0.004 (a fully
+ *   machined nine-operation engine reads 3.6 per cent below its own reliability base,
+ *   levied once through the build-intensity factor and never a second time through
+ *   `totalGainFractionOf`) and `valuePremiumPerOperation` 0.03 (one operation adds
+ *   3 per cent of the part's own catalogue price to what that part is worth). The
+ *   premium was sized against the plays ranking: a full nine-operation engine returns
+ *   Y28 (entry) / Y243 (enthusiast) / Y607 (flagship) per labour point of credited
+ *   premium, against repair-to-expectation's Y146 / Y468 / Y2,082, so machining stays
+ *   below fixing per labour point on every class.
+ *
+ * NOTHING ELSE IN THIS FILE MOVES: no existing lever changed value, `damagePatterns.json`
+ * and `partPricing.json` are untouched, and every mission payout above holds.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -1598,7 +1623,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('0a3bca64de4eabcfb6611de3ba1bcfebe5c1a6a1f7159e7c9e2a58696b72289a')
+    ).toBe('3a1ce95e82c0da1ba8b375c014198307579f1f32003b8bb895aea944361a960f')
   })
 
   it('damagePatterns.json matches its approved content exactly', () => {

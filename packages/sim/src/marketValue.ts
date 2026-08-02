@@ -16,6 +16,7 @@ import {
   repairCeilingForLevel,
 } from './bands'
 import { coherenceFactorFor } from './derivedStats'
+import { machiningPremiumYenOf } from './machining'
 import { supportVerdict } from './support'
 
 /**
@@ -217,18 +218,28 @@ export function retentionFor(coherenceFactor: number, economy: EconomyConfig): n
  * the bill already replaces it at its stock price, so counting any retained
  * value on top would double-count it.
  *
- * A `grade === 'stock'` installed part contributes NOTHING here - stock is
- * the baseline every slot starts from, not an upgrade, so an all-stock-mint
- * car's value is exactly clean value and only street/sport/race aftermarket
- * pushes above book, regardless of `retention`'s value.
+ * An UNMACHINED `grade === 'stock'` installed part contributes NOTHING here -
+ * stock is the baseline every slot starts from, not an upgrade, so an
+ * all-stock-mint car's value is exactly clean value and only street/sport/race
+ * aftermarket pushes above book, regardless of `retention`'s value.
  *
- * Takes no `EconomyConfig`: every lever it used to read is now the caller's
- * `retention` figure alone.
+ * Machining is the one thing that puts a stock part above that baseline, and
+ * it contributes its PREMIUM alone rather than the part's price: the block is
+ * still the block the car came with, and what was added to it is the machine
+ * work. Skipping a stock part outright would make the value ruling inert on
+ * exactly the restoration case machining exists for. On an aftermarket part
+ * the premium rides on top of the catalogue price, since both are real and
+ * neither is the other.
+ *
+ * The premium is what was DONE to the part, never the power it makes - a car
+ * is never worth more because it is faster, and this reaches money through the
+ * part's own price exactly as the part itself does.
  */
 export function installedPartsValueYen(
   car: CarInstance,
   partsById: Readonly<Record<string, Part>>,
   retention: number,
+  economy: EconomyConfig,
 ): number {
   let total = 0
   for (const partId of ALL_CAR_PART_IDS) {
@@ -236,8 +247,10 @@ export function installedPartsValueYen(
     if (!installed) continue
     if (installed.band === 'scrap') continue
     const part = partsById[installed.partId]
-    if (!part || part.grade === 'stock') continue
-    total += part.priceYen * retention
+    if (!part) continue
+    const premiumYen = machiningPremiumYenOf(installed, part, economy)
+    const partValueYen = part.grade === 'stock' ? premiumYen : part.priceYen + premiumYen
+    total += partValueYen * retention
   }
   return Math.round(total)
 }
@@ -323,7 +336,7 @@ export function marketValueYen(
   const stagedValue = Math.round(baseValue * (1 - coherenceDiscount))
 
   const retention = retentionFor(coherenceFactor, economy)
-  const premiumYen = installedPartsValueYen(car, partsById, retention)
+  const premiumYen = installedPartsValueYen(car, partsById, retention, economy)
   const creditedPremiumYen =
     foundationFactor(car, economy) *
     expectationForCar(model, economy).aftermarketReturn *

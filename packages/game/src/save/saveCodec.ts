@@ -646,8 +646,15 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * since none of those could have existed. The version bump alone is still
  * required (Save law) so an old client rejects a v55 save rather than
  * dropping the field on the next write.
+ * v55 -> v56 (the machine shop): `PartInstanceSchema` gained an optional
+ * `machining` record - the machining-operation ids applied to that instance,
+ * absent meaning unmachined. Per directive 19 (no pre-launch save
+ * compatibility), a plain SAVE_VERSION bump with NO `MIGRATIONS[55]` entry and
+ * no legacy branch: a pre-v56 save is wiped rather than converted. The version
+ * bump alone is still required (Save law) so an old client rejects a v56 save
+ * rather than silently dropping what was done to a part.
  */
-export const SAVE_VERSION = 55
+export const SAVE_VERSION = 56
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'
