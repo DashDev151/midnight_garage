@@ -104,13 +104,20 @@ a check that the arithmetic adds up, a check that the model still behaves.
 3. Power: operations read into the same path as a fitted part's `powerFraction`, scaled by the
    grade of the part machined.
 4. Support: an operation's `spec` added to the slot's grade-derived contribution.
-5. `machiningCost(car)`: a walk over installed parts summing applied operations' ratings.
+5. `machiningCost(car)`: a walk over installed parts summing applied operations' ratings,
+   **charged on stock-grade parts only**. An aftermarket part already spent its slot's whole
+   authenticity weight when it was fitted, so charging machining on top books one loss twice.
 6. Reliability: a small per-operation cost.
 7. Value: a machined part is dearer, including when loose. `installedPartsValueYen` skips
    `grade === 'stock'` today, which would make the ruling inert on the restoration case.
 8. The workshop page. Gated on tier 3 and on `mint`. **Shows everything to begin with**: each
    operation's power on this engine's character, its support, its authenticity cost, its labour and
    its reliability cost. Strip back after it has been used, not before.
+
+   **Show the five support ratios, not just an operation's own spec number.** Support only moves the
+   headline when it lifts the weakest subsystem, so an operation bought on a subsystem that was
+   never the constraint changes nothing visible. Without the ratios in view that reads as a bug
+   rather than as the model working.
 9. Raise the catalogue's forced fractions to the authored ladder, and strike the `TODO.md` ban.
 10. Re-validate the power model.
 
@@ -131,7 +138,13 @@ a check that the arithmetic adds up, a check that the model still behaves.
    support verdict, on a stock part, which is the case that is inert without their `spec`.
 8. **`machiningCost` is no longer 0**, and a machined car reads lower authenticity by the summed
    ratings.
-9. **A machined part is worth more**, installed and loose.
+9. **Machining an aftermarket part costs no authenticity**, on any grade above stock, while
+   machining the same part at stock costs its full rating. This is the one that stops the slot being
+   charged twice.
+10. **A machined part is worth more**, installed and loose.
+11. **Test 3's margin is pinned deliberately.** Sport-machined below race holds by 0.05 on
+    high-strung NA, so the test must assert it rather than trust the rule: unlike the stock-machined
+    case, that end of the ladder is tuned rather than structural.
 
 ## To measure and report in the Exit
 
@@ -139,7 +152,17 @@ a check that the arithmetic adds up, a check that the model still behaves.
   describe the same thing.
 - **Machining for resale**: yen per labour point against the alternatives.
 - **Parting out a machined car**: whether it beats selling it whole.
-- **The forced fractions rising**: what it does to lap times and to every existing power pin.
+- **The fractions rising**: what it does to lap times and to every existing power pin, on all three
+  characters.
+- **Machining against buying, per labour point.** `partPricing.test.ts` carries two bounds that
+  exist to stop a single correct first purchase, and **both iterate `PARTS`, so machining passes
+  them without being looked at**. Tooling is a one-time 1,500,000 yen and operations are money-free
+  thereafter, so port and polish at 6.18 per cent on forced is plausibly the dominant first move on
+  every turbo car. **Extend those probes to treat machining as a pseudo-slot** and report where it
+  ranks. This is the exact defect those guards exist for, arriving through the one door they do not
+  watch.
+- **Does machining belong in the plays ranking?** `plays.ts` ranks what a player can do with a car.
+  A machining play is a candidate and its absence should be a decision rather than an oversight.
 
 ## Exit
 

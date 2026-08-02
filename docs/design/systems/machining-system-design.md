@@ -40,8 +40,11 @@ permanently narrows what that part can become.
 **It costs a little reliability.** The mechanism exists so the cost is real on every sale rather
 than only to collectors, but it is deliberately small: a few percentage points at most.
 
-**It costs authenticity**, on the scale already authored: purists shrug at 1-2, raise an eyebrow at
-4-6, and weep at 7-9.
+**It costs authenticity, but only on the car's own parts.** On the scale already authored: purists
+shrug at 1-2, raise an eyebrow at 4-6, weep at 7-9. **A stock-grade part pays; an aftermarket one
+does not**, because that slot's whole weight went the moment the aftermarket part was fitted and
+charging again would book one loss twice. Boring a race block does not make it less factory than it
+already was.
 
 ## How it integrates
 
@@ -77,6 +80,12 @@ while machining stays worth doing, and it is structural rather than tuned.
 aspirated engine is worth under one per cent for a full labour slot. That is the correct answer:
 the player should learn not to do it, and spend the labour somewhere it pays. An operation being
 poor value on one engine and excellent on another is the system working.
+
+**One inherited oddity, so it is not filed as a machining defect.** Fitting forced induction to a
+naturally aspirated car does not change its engine character: a turbocharged Beat stays
+`high-strung-na` forever. So on a converted car, milling still pays its NA power even though the
+engine is now boosted and the operation would in life be the wrong call. That is the power model's
+behaviour rather than machining's, it predates this feature, and machining only makes it visible.
 
 ### Support: the door that has to open
 

@@ -32,8 +32,14 @@ characters without inventing anything: half of forced's +40 street step is +20, 
 | race machined | x1.570 | x1.758 | **x2.600** |
 
 **Machining never skips a grade**, on any character: a machined part always sits below the next
-grade up. That is what keeps the money ladder meaningful while machining stays worth doing, and it
-is structural rather than tuned.
+grade up. That is what keeps the money ladder meaningful while machining stays worth doing.
+
+**It is guaranteed at the bottom and tuned at the top, and the difference matters.** Stock-machined
+below street falls out of the rule for free, since the base is half that very step. Sport-machined
+below race only holds because 1.25 times the base is smaller than the sport-to-race step, and on
+high-strung NA that is **1.400 against 1.450, a margin of 0.05**. It is pinned by test, not
+structural. **Anyone compressing the NA grade steps later must re-check it**, because the property
+is not free up there.
 
 On the Supra RZ (324 PS): stock machined 389, street 454, street machined 518, sport 583, sport
 machined 664, race 745, race machined 842.
@@ -151,13 +157,25 @@ content**, so the small ones are consolidated into the job a machinist would act
 preliminary table where an operation survived it: 1 to 2 a purist shrugs, 4 to 6 a raised eyebrow,
 7 to 9 a collector weeps. It is what `machiningCost(car)` sums.
 
+**It is charged on stock-grade parts only.** Authenticity asks how much of the car is still what
+left the factory, and an aftermarket part already lost its slot's whole weight the moment it was
+fitted. Boring a race block does not make it less factory than it already was, and charging for it
+would book the same loss twice. **So machining an original block costs 8 points and keeps the
+slot's other 18; machining a race block costs nothing, because that slot has nothing left to
+lose.**
+
+This is what makes the restoration route the interesting one. A player keeping the car's own
+castings pays in originality for every point of power. A player who has already fitted aftermarket
+has bought their way out of that conversation.
+
 Only "balance and polish" needed a new rating, because it is a merge: full balance and journal
 polish were both 1, knife-edging was 6, and **4** is the honest reading of a job that includes a
 knife-edged crank a purist would spot.
 
-**A fully machined engine costs 48 of the car's 100 authenticity points.** That is the whole
-character of the feature in one number: real power, taken out of the car's originality rather than
-out of the player's pocket.
+**A fully machined engine on its own original castings costs 48 of the car's 100 authenticity
+points.** That is the whole character of the feature in one number: real power, taken out of the
+car's originality rather than out of the player's pocket. On an already-aftermarket engine the same
+work costs nothing further, because those slots were spent when the parts went in.
 
 Rounded to a hundredth, so the lazy-na column sums to 10.51 against an exact 10.50; the per-slot
 allocation above carries the exact figure.
