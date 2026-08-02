@@ -1023,6 +1023,31 @@ pass."
 
 ## Planned systems (designed, not yet scheduled)
 
+- [ ] **Weight reduction: stripping a car down, and sprung against unsprung mass (maintainer,
+  raised while designing machining, explicitly NOT part of that sprint).** Power-to-weight should
+  be something a player can attack from the weight side rather than only the power side. Four
+  strands, none built:
+  - **Physical stripping.** Remove seats, sound deadening, trim, the spare, and the car gets
+    lighter. The game already models a slot as present or missing (`isPartMissing`), but **missing
+    does not currently mean lighter**: a removed part contributes nothing to condition and nothing
+    to mass either. That gap is the whole feature in miniature.
+  - **Lighter parts.** `physicalModifiers.mass` already exists and already works (a mint race
+    exhaust saves about 0.69 per cent of kerb weight), so the ladder is partly authored. What is
+    missing is coverage and intent rather than mechanism.
+  - **Machining removes metal, so it removes weight.** Knife-edging a crank, lightening a
+    flywheel and skimming a head all take material off. The machining baseline table's own
+    flywheel row ("no change to peak power, faster rev pickup") has no home in a `powerFraction`
+    and is really a mass and inertia entry, which is what surfaced this.
+  - **Sprung against unsprung mass.** A kilo off a wheel is worth more than a kilo off a boot
+    lid, and the performance model currently knows only kerb weight. Whether that distinction
+    earns its complexity is an open question, not a decision.
+
+  **What it collides with, so nobody starts it blind**: the performance model is LOCKED and
+  validated to about 2 per cent, and mass is an input to it, so any change here is a change to
+  calibrated physics rather than to a display. Stripping a car also has to answer to authenticity
+  (a stripped interior is a modified car), to value (an interior-less car is worth less to most
+  buyers and more to a track buyer), and to the sale verdict, which reads missing slots today.
+
 - [ ] **The tuning system is DESIGNED, REVIEWED and PARTIALLY IMPLEMENTED (sprints 135 and 136
   landed), and it is the ACTIVE ARC: sprints are being written for it separately, so it is not a
   parked idea. The design of record is `docs/design/systems/tuning-system.md`.** It is the whole

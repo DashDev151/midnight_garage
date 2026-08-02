@@ -1,10 +1,13 @@
 # Machining: an authenticity-cost baseline
 
-**Status: BASELINE DATA ONLY, supplied by the maintainer on 2026-07-31. Stand-in figures,
-expected to be workshopped. Not signed content: no value in this document may be pulled into
-`economy.json`, mission payouts, or any sim formula without directive-22 sign-off, one lever at a
-time. This document is not the machining system, it is the starting point for designing one; see
-"What this exposes", below.**
+**Status: SUPERSEDED. Historical record only.** This was the preliminary baseline supplied by the
+maintainer on 2026-07-31: stand-in figures for a design that had not been written yet. Both of its
+tables are dead. **The live numbers are `machining-performance-table.md`**, which cut the thirteen
+operations below to nine, split the single NA column into the two engine characters the code
+actually has, and replaced every percentage here. The design of record is
+`machining-system-design.md`. Nothing in this file may be pulled into `economy.json`, mission
+payouts, or any sim formula; it is kept because it is what the design was reasoned from, and
+because the authenticity ratings in the last column are the only place they have been written down.
 
 ## Where this sits
 
