@@ -41,10 +41,13 @@ import {
  * Two kinds of content are deliberately left out of that table and drawn
  * directly inside each room's builder instead: the cars in the alley and
  * on the lift, and the office's pinned cards, photos and certificates.
- * Both stand in for live game data (which cars exist, which cars sold,
- * which techniques are earned) that a screen will eventually drive the
- * real count and identity of - the placeholder count baked in here is a
- * sample, not a placement a future screen should read as authoritative.
+ * The alley and workshop-floor cars are still sample content, standing in
+ * for live game data (which cars are parked, which are for sale) that a
+ * screen has yet to drive. The office's three stamps are no longer a
+ * sample: `buildOfficeScene` takes the real listing, photo and certificate
+ * counts and draws exactly that many, clamped to what each part of the
+ * wall can hold; the five/three/two it used to bake in only survive as its
+ * default for a caller with no counts to give.
  */
 
 export const SCENE_WIDTH = 960
@@ -325,40 +328,156 @@ function buildBodyPaintScene(derelict: boolean): Container {
   return scene
 }
 
-function buildOfficeScene(): Container {
+/** The real counts `buildOfficeScene` stamps up: one card per car listed
+ * for sale, one photo per point of the reputation-derived coverage
+ * `officeDisplay.ts` already computes, one certificate per technique
+ * earned. Never a raw reputation number or a technique's identity - the
+ * office's whole point is reading as those things at a glance rather than
+ * as a readout - so a caller hands over counts only. */
+export interface OfficeSceneCounts {
+  listings: number
+  photos: number
+  certificates: number
+}
+
+/** What `buildOfficeScene` has always sample-drawn: five cards, three
+ * photos (the design doc's own "a new shop has three curling snapshots"),
+ * two certificates. Kept as the default so a caller that has not wired up
+ * real counts yet renders exactly as before. */
+export const DEFAULT_OFFICE_COUNTS: OfficeSceneCounts = {
+  listings: 5,
+  photos: 3,
+  certificates: 2,
+}
+
+/** A rectangle in scene pixels, given by its centre, that a repeatable
+ * stamp is laid out inside. */
+interface StampField {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+/** The corkboard's own footprint, inset so a card's edge never rides over
+ * the wooden lip drawn around the cork - derived from the corkboard's own
+ * placement and template size (`GARAGE_PLACEMENTS`, `garageFixtureSize`)
+ * rather than a second set of numbers, so moving or resizing the corkboard
+ * carries the card field with it. */
+function fieldForOfficeFixture(fixture: GarageFixtureId, margin: number): StampField {
+  const placement = GARAGE_PLACEMENTS.find((p) => p.room === 'office' && p.fixture === fixture)
+  if (!placement) throw new Error(`no office placement for fixture "${fixture}"`)
+  const scale = placement.scale ?? DEFAULT_FIXTURE_SCALE
+  const { width, height } = garageFixtureSize(fixture)
+  return {
+    x: placement.x,
+    y: placement.y,
+    width: width * scale - margin * 2,
+    height: height * scale - margin * 2,
+  }
+}
+
+const CARD_COLUMNS = 4
+const CARD_ROWS = 3
+/** How many index cards the corkboard has room to pin before it is
+ * physically full. Past this, a caller's true listing count keeps growing
+ * (the HTML readout beside the canvas still shows it) but the board itself
+ * stops adding cards rather than overflowing its own frame. */
+export const MAX_LISTING_CARDS = CARD_COLUMNS * CARD_ROWS
+const CARD_FIELD = fieldForOfficeFixture('corkboard', 16)
+
+// The photo wall and the certificate frames pin straight to the painted
+// wall - they have no backing fixture of their own to inset from - so
+// their fields are given directly, chosen to sit inside the office's wall
+// band (below the strip lights, above the floor seam) and clear of every
+// other office fixture: the corkboard to the left, the desk, chair,
+// register and radio further along the room.
+const PHOTO_COLUMNS = 5
+const PHOTO_ROWS = 3
+/** Exactly the legend tier's own photo count (`officeDisplay.ts`'s
+ * `photoCountForReputationTier`), so the wall never runs out of room
+ * before reputation runs out of tiers - no separate cap invented. */
+export const MAX_PHOTO_STAMPS = PHOTO_COLUMNS * PHOTO_ROWS
+const PHOTO_FIELD: StampField = { x: 560, y: 145, width: 160, height: 96 }
+
+const CERTIFICATE_COLUMNS = 4
+const CERTIFICATE_ROWS = 2
+/** More frames than the game has techniques to earn today, so the wall
+ * has headroom for whatever the roster grows to before it is the one
+ * running short. */
+export const MAX_CERTIFICATE_STAMPS = CERTIFICATE_COLUMNS * CERTIFICATE_ROWS
+const CERTIFICATE_FIELD: StampField = { x: 740, y: 145, width: 128, height: 64 }
+
+/** Lays out up to `columns * rows` stamp centres inside `field`, left to
+ * right then top to bottom. `count` is clamped to that capacity first, so
+ * nothing to show draws nothing and more than the field can hold stops at
+ * the same cap every time rather than overflowing or shrinking to fit.
+ * Earlier stamps keep their slot as the count grows - only the next empty
+ * slot in reading order ever gains a new one. Pure arithmetic: no Pixi or
+ * DOM object touches this, so the stamping maths can be tested without a
+ * canvas. */
+function stampPositions(
+  count: number,
+  columns: number,
+  rows: number,
+  field: StampField,
+): [number, number][] {
+  const shown = Math.max(0, Math.min(count, columns * rows))
+  const colStep = field.width / columns
+  const rowStep = field.height / rows
+  const left = field.x - field.width / 2
+  const top = field.y - field.height / 2
+  const positions: [number, number][] = []
+  for (let i = 0; i < shown; i++) {
+    const col = i % columns
+    const row = Math.floor(i / columns)
+    positions.push([
+      Math.round(left + colStep * (col + 0.5)),
+      Math.round(top + rowStep * (row + 0.5)),
+    ])
+  }
+  return positions
+}
+
+/** Where the corkboard's cards land for a given listing count, clamped to
+ * `MAX_LISTING_CARDS`. */
+export function officeCardPositions(count: number): [number, number][] {
+  return stampPositions(count, CARD_COLUMNS, CARD_ROWS, CARD_FIELD)
+}
+
+/** Where the photo wall's snapshots land for a given photo count, clamped
+ * to `MAX_PHOTO_STAMPS`. */
+export function officePhotoPositions(count: number): [number, number][] {
+  return stampPositions(count, PHOTO_COLUMNS, PHOTO_ROWS, PHOTO_FIELD)
+}
+
+/** Where the certificate frames land for a given earned-technique count,
+ * clamped to `MAX_CERTIFICATE_STAMPS`. */
+export function officeCertificatePositions(count: number): [number, number][] {
+  return stampPositions(count, CERTIFICATE_COLUMNS, CERTIFICATE_ROWS, CERTIFICATE_FIELD)
+}
+
+function buildOfficeScene(counts: OfficeSceneCounts = DEFAULT_OFFICE_COUNTS): Container {
   const scene = new Container()
   drawInteriorShell(scene, OFFICE_WALL_HEIGHT)
   drawStripLights(scene)
   for (const placement of placementsFor('office')) placeFixture(scene, placement)
 
-  // The corkboard's cards: a sample pipeline, not a live one. Positions
-  // sit inside the corkboard fixture placed above (centre 200,170 at 4x,
-  // roughly x136-264 y126-214).
-  const cardSpots: [number, number][] = [
-    [160, 175],
-    [200, 168],
-    [240, 178],
-    [175, 205],
-    [225, 208],
-  ]
-  for (const [x, y] of cardSpots) placeFixture(scene, { room: 'office', fixture: 'card', x, y })
+  // The corkboard's cards: one per car currently listed for sale.
+  for (const [x, y] of officeCardPositions(counts.listings)) {
+    placeFixture(scene, { room: 'office', fixture: 'card', x, y })
+  }
 
-  // The photo wall: three curling snapshots - a new shop's starting count,
-  // per the design doc - pinned straight to the wall, no board beneath.
-  const photoSpots: [number, number][] = [
-    [450, 110],
-    [495, 106],
-    [540, 112],
-  ]
-  for (const [x, y] of photoSpots) placeFixture(scene, { room: 'office', fixture: 'photo', x, y })
+  // The photo wall: one snapshot per point of reputation coverage, pinned
+  // straight to the wall, no board beneath.
+  for (const [x, y] of officePhotoPositions(counts.photos)) {
+    placeFixture(scene, { room: 'office', fixture: 'photo', x, y })
+  }
 
-  // The certificates, beside the photos: a sample of two earned techniques.
-  const certificateSpots: [number, number][] = [
-    [620, 108],
-    [665, 112],
-  ]
-  for (const [x, y] of certificateSpots)
+  // The certificates, beside the photos: one per technique earned.
+  for (const [x, y] of officeCertificatePositions(counts.certificates)) {
     placeFixture(scene, { room: 'office', fixture: 'certificate', x, y })
+  }
 
   // The phone, on the desk.
   placeFixture(scene, { room: 'office', fixture: 'phone', x: 455, y: 415 })
@@ -369,8 +488,13 @@ function buildOfficeScene(): Container {
 /** Builds one room's scene. Both variants of a derelict-capable room share
  * `drawInteriorShell` at the same wall height, so calling this twice with
  * the `-open` and `-derelict` ids of the same room produces two scenes
- * with identical architecture and different contents. */
-export function buildGarageRoomScene(id: GarageRoomId): Container {
+ * with identical architecture and different contents. `officeCounts` is
+ * only read for `id === 'office'`; every other room ignores it, and
+ * omitting it renders the office at `DEFAULT_OFFICE_COUNTS`. */
+export function buildGarageRoomScene(
+  id: GarageRoomId,
+  officeCounts?: OfficeSceneCounts,
+): Container {
   switch (id) {
     case 'alley':
       return buildAlleyScene()
@@ -389,6 +513,6 @@ export function buildGarageRoomScene(id: GarageRoomId): Container {
     case 'body-paint-derelict':
       return buildBodyPaintScene(true)
     case 'office':
-      return buildOfficeScene()
+      return buildOfficeScene(officeCounts)
   }
 }

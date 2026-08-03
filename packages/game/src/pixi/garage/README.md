@@ -73,7 +73,8 @@ genuinely interior materials get a new constant:
 - `rooms.ts` - the nine scenes (six rooms, three of them doubled into an
   open and a derelict variant), `GARAGE_PLACEMENTS` (room id, fixture id,
   centre x, centre y - the fixed furniture a screen can hit-test later),
-  and `buildGarageRoomScene(id)` to assemble any one of them.
+  and `buildGarageRoomScene(id, officeCounts?)` to assemble any one of
+  them.
 - `README.md` - this file.
 
 ## How a derelict room relates to its open twin
@@ -108,13 +109,33 @@ walls, the same footprint, different contents.
 The corkboard, the photo wall and the certificates are each drawn as one
 backing (only the corkboard needs one - photos and certificates pin
 straight to the painted wall) plus a repeatable stamp (`card`, `photo`,
-`certificate`). `buildOfficeScene` places a handful of each directly,
-rather than through `GARAGE_PLACEMENTS`, because the real count and
-identity of each is live game data (listings, finished sales, earned
-techniques) that a future screen will drive - the numbers baked in here (5
-cards, 3 photos matching the design doc's "a new shop has three curling
-snapshots", 2 certificates) are a placeholder sample, not a placement a
-screen should treat as authoritative.
+`certificate`). `buildOfficeScene(counts?)` places a handful of each
+directly, rather than through `GARAGE_PLACEMENTS`, because the real count
+of each is live game data - listings, reputation-derived photo coverage,
+earned techniques - that `GarageInteriorScreen.vue` reads and hands in as
+an `OfficeSceneCounts`. Identity is never drawn: every card, photo and
+certificate is the same stamp regardless of which car or technique it
+stands for, so the HTML readout beside the canvas is what carries a
+technique's name or an exact number past what the wall can show at a
+glance.
+
+Each object's stamps lay out in a fixed grid (`officeCardPositions`,
+`officePhotoPositions`, `officeCertificatePositions`, all pure functions of
+a count - no Pixi or DOM involved, so they are unit-tested directly) inside
+a field sized for that object: the corkboard's cards inset from the
+corkboard fixture's own placement and size, the photo wall and certificate
+frames in their own patch of the painted wall clear of every other office
+fixture. Earlier stamps keep their grid slot as a count grows; a caller
+with nothing to show draws nothing at all, no fallback minimum, which is a
+plain empty state (a bare corkboard, a bare wall) rather than a broken one.
+Each field clamps at a maximum - `MAX_LISTING_CARDS` (12),
+`MAX_PHOTO_STAMPS` (15, exactly the top reputation tier's own count),
+`MAX_CERTIFICATE_STAMPS` (8, more than the game has techniques today) -
+past which the true count keeps climbing in the HTML readout while the art
+itself stops adding stamps rather than overflowing its own wall. Calling
+`buildOfficeScene()` with no argument at all still renders the original
+five cards, three photos (matching the design doc's "a new shop has three
+curling snapshots") and two certificates, via `DEFAULT_OFFICE_COUNTS`.
 
 ## Adding a room or a fixture
 

@@ -134,12 +134,23 @@ one.
 
 ### Two gaps found, both flagged rather than patched
 
-**The office canvas still shows placeholder counts.** `buildOfficeScene()` bakes in five cards,
-three photos and two certificates with no parameter to drive real numbers, and the implementing
-agent was told not to modify the art module. **The true counts render as an HTML readout beside the
-canvas**, so the data is right and visible, but the drawn corkboard does not yet grow as you list
-cars and the wall does not fill as reputation rises. That is the whole point of those three objects,
-so it is the first follow-up.
+**The office canvas showed placeholder counts, and this was closed as a follow-up before the sprint
+was reported.** `buildOfficeScene()` now takes counts and stamps that many, with the old fixed
+numbers as the defaults so any caller passing nothing renders as before. The corkboard grows as you
+list cars, the wall fills as reputation rises, and a frame appears per technique earned.
+
+**Capacities**, none of them invented: 12 cards, derived from the corkboard's own drawn footprint
+rather than a second set of numbers, so they follow if the art moves. 15 photos, which is exactly the
+top reputation tier's own count from `officeDisplay.ts`. 8 certificates, deliberate headroom over the
+six techniques that exist. Past a cap the art stops adding stamps while the true figure keeps
+climbing in the readout.
+
+**Zero draws nothing** on the cork and the wall rather than a fallback minimum: a new shop's empty
+board is a normal state, not a broken one.
+
+**The HTML readout is kept**, and it is not redundant. It carries what the art cannot: the exact
+number once past a glance, the reputation tier's NAME (the wall is deliberately non-numeric), and
+which techniques were earned, since every certificate stamp is visually identical.
 
 **`warehouse-derelict` is drawn but unreachable.** The art module ships an open and derelict pair for
 it, while this design says the warehouse has no tool gate. The art is harmless and the design is

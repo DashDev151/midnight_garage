@@ -262,8 +262,8 @@ const CORKBOARD_TEMPLATE = [
 ]
 const CORKBOARD_COLORS: ColorMap = { '0': OUTLINE, b: DOOR, k: CRATE }
 
-// --- Card: one pinned index card, the corkboard's repeatable stamp - one
-// per listed car once a screen wires real listings to it ---
+// --- Card: one pinned index card, the corkboard's repeatable stamp -
+// `rooms.ts`'s buildOfficeScene stamps one per car currently listed ---
 const CARD_TEMPLATE = [
   '00000000',
   '0cccccc0',
@@ -276,7 +276,8 @@ const CARD_TEMPLATE = [
 const CARD_COLORS: ColorMap = { '0': OUTLINE, c: TRIM_LIGHT, h: WALL_SHADE, i: YARD_CAR_COLOURS.a }
 
 // --- Photo: a faded snapshot, a car and its owner pinned beside it - the
-// photo wall's repeatable stamp, one per finished car once it fills in ---
+// photo wall's repeatable stamp, drawn by `rooms.ts`'s buildOfficeScene
+// from the reputation-derived photo count ---
 const PHOTO_TEMPLATE = [
   '000000000',
   '0fffffff0',

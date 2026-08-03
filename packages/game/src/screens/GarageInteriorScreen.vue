@@ -7,6 +7,7 @@ import {
   SCENE_HEIGHT,
   SCENE_WIDTH,
   type GarageRoomId,
+  type OfficeSceneCounts,
 } from '../pixi/garage/rooms'
 import { bodyPaintShopOpen, machineShopOpen } from './garageCapability'
 import { photoCountForReputationTier } from './officeDisplay'
@@ -50,6 +51,19 @@ const currentRoom = ref<SimpleRoom>('alley')
 const machineShopIsOpen = computed(() => machineShopOpen(game.gameState, game.context.economy))
 const bodyPaintIsOpen = computed(() => bodyPaintShopOpen(game.gameState))
 
+const listingCount = computed(() => game.gameState.carsForSale.length)
+const photoCount = computed(() => photoCountForReputationTier(game.reputationTier))
+const certificates = computed(() => game.unlockedTechniqueViews)
+
+/** The office scene's real counts, read from state already computed
+ * elsewhere (directive 16: no second source for any of these three
+ * numbers) rather than anything this screen derives itself. */
+const officeCounts = computed<OfficeSceneCounts>(() => ({
+  listings: listingCount.value,
+  photos: photoCount.value,
+  certificates: certificates.value.length,
+}))
+
 /** The one car a room's "work on it" action can point at without an id of
  * its own to route with (mirrors the machine shop's and the dyno's own
  * "exactly one car in a service bay" reading of the same state). */
@@ -82,7 +96,7 @@ let scene: Container | null = null
 function redraw(): void {
   if (!app) return
   scene?.destroy({ children: true, texture: true })
-  scene = buildGarageRoomScene(sceneIdFor(currentRoom.value))
+  scene = buildGarageRoomScene(sceneIdFor(currentRoom.value), officeCounts.value)
   app.stage.addChild(scene)
 }
 
@@ -98,7 +112,7 @@ onMounted(async () => {
   redraw()
 })
 
-watch([currentRoom, machineShopIsOpen, bodyPaintIsOpen], redraw)
+watch([currentRoom, machineShopIsOpen, bodyPaintIsOpen, officeCounts], redraw)
 
 onUnmounted(() => {
   app?.destroy(true, { children: true, texture: true })
@@ -113,10 +127,6 @@ function goToRoute(name: 'garage' | 'inventory' | 'machine-shop' | 'jobs' | 'cos
 function goToCar(id: string): void {
   void router.push({ name: 'car', params: { id } })
 }
-
-const listingCount = computed(() => game.gameState.carsForSale.length)
-const photoCount = computed(() => photoCountForReputationTier(game.reputationTier))
-const certificates = computed(() => game.unlockedTechniqueViews)
 </script>
 
 <template>
