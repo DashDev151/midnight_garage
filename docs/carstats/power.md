@@ -284,8 +284,8 @@ model**: the parts-only figures are unchanged, and the four machined columns are
 
 | engine character | own induction | own induction, fully machined | race turbo fitted regardless | turbo, fully machined |
 | --- | ---: | ---: | ---: | ---: |
-| `high-strung-na` | x1.45 | **x1.56** | x1.65 | **x1.76** |
-| `lazy-na` | x1.60 | **x1.76** | x1.87 | **x2.03** |
+| `high-strung-na` | x1.45 | **x1.57** | x1.65 | **x1.77** |
+| `lazy-na` | x1.60 | **x1.76** | x1.88 | **x2.04** |
 | `forced` | x2.30 | **x2.60** | x2.30 | **x2.60** |
 
 Measured shipped maxima, turbo always fitted, unmachined and then fully machined: Supra and Aristo
@@ -299,7 +299,7 @@ stock, 389 stock machined, 454 street, 518 street machined, 583 sport, 664 sport
 race, 842 race machined.
 
 Roster projection from the CSV, with a race turbo fitted and no machining: Nissan GT-R Black Edition
-(R35, 480 PS, forced) at **936 PS** and Lexus LFA (560 PS, high-strung NA) at **913 PS** are the two
+(R35, 480 PS, forced) at **1,104 PS** and Lexus LFA (560 PS, high-strung NA) at **924 PS** are the two
 highest numbers the parts model can produce anywhere on the 94-car roster. Those two rows are not in
 `cars.json`, so unlike everything else on this page they are arithmetic rather than a measured run,
 and no machined figure is given for them for that reason.
@@ -371,8 +371,8 @@ machined.
   sandbox fixtures.
 - **The condition of `block` and `headValvetrain` on the base term.** Both carry
   `statWeights.power` 0. Measured: a Supra with a scrap stock block and a scrap stock head reads
-  exactly 324 PS. Their bands still scale their own contributions (a race block reads 330 PS at
-  mint and 325 PS at scrap).
+  exactly 324 PS. Their bands still scale their own contributions (a race block reads 337 PS at
+  mint and 326 PS at scrap).
 - **Every slot outside the eight.** No fuel system, cooling, gearbox, clutch, differential,
   driveline, chassis, damper, spring, anti-roll bar, steering, brake, rim, tyre, panel, paint,
   underbody, aero, seat or gauge part moves power by any amount.
@@ -447,7 +447,7 @@ Other content:
 3. **Fitting forced induction never changes engine character, and machining makes that visible.**
    The character is a property of the MODEL, read once from `spec.aspiration`, so a converted NA car
    keeps its NA fraction column permanently. **Measured**: a Beat with a race turbo fitted still
-   resolves `high-strung-na`, so the turbo pays 0.20 rather than `forced`'s 0.35. This is deliberate
+   resolves `high-strung-na`, so the turbo pays 0.20 rather than `forced`'s 0.50. This is deliberate
    and pinned by `packages/sim/tests/proportionalPower.test.ts`, and it is defensible (the character
    answers "what sort of engine is this", not "what is bolted to it"), but a reader will assume the
    opposite.
@@ -462,7 +462,7 @@ Other content:
 4. **`statWeights.power` and `powerFraction` cover different slot sets.** Eight slots make power;
    six weight the condition mean. `block` and `headValvetrain` make power but their condition never
    scales the base: a Supra with a scrap stock block and a scrap stock head reads exactly its stock
-   324 PS. Their own contributions are still band-scaled (race block: 330 PS mint, 325 PS scrap).
+   324 PS. Their own contributions are still band-scaled (race block: 337 PS mint, 326 PS scrap).
    Nothing is broken, but a tuner reading either table alone will get the wrong answer.
 
 5. **`engineCharacterOf`'s missing-displacement branch is unreachable in shipped content.** All 26
@@ -476,10 +476,13 @@ Other content:
    `PowerFractionSchema` is a bare `z.number()` with no `.nonnegative()`, so the clamp is a live
    guard against a future negative fraction.
 
-7. **The design doc's per-part response table now matches the code.**
+7. **The design doc's per-part response table matches the code, on its second correction.**
    `docs/design/systems/tuning-system.md` section 5d used to show a single "NA" column where the
-   code has two characters, and to give `forcedInduction` on NA as "n/a". Both are corrected: the
-   table carries a `high-strung NA` and a `lazy NA` column at the shipped race-grade values, and
+   code has two characters, and to give `forcedInduction` on NA as "n/a". Both are corrected, and
+   the figures then went stale a second time when Sprint 168 re-authored the catalogue: 5d carried
+   the pre-Sprint-168 race column, ECU forced 0.25 and turbo forced 0.35 against a shipped 0.33 and
+   0.50, with twelve further cells adrift across the three characters. It now carries a
+   `high-strung NA` and a `lazy NA` column at the shipped race-grade values, and
    the forced-induction row states that NA is not n/a and that a turbo fits a naturally aspirated
    car gated only on engine tool tier 3. **Read** against `parts.json`: every forced-induction SKU
    carries `requiredTags: []` and real NA fractions (0.04 / 0.09 / 0.20 high-strung, 0.056 / 0.126
@@ -488,8 +491,8 @@ Other content:
 
 8. **Section 5e's ECU description is corrected; section 5b's specific-output line is still the
    pre-rotary form.** The claim that the ECU is a "threshold" that "unlocks what the others can do"
-   is gone: 5e now says the ECU curve is increasing, gives the forced ladder as 0.038 / 0.138 /
-   0.25, and states plainly that it unlocks nothing because every fraction is additive and
+   is gone: 5e now says the ECU curve is increasing, gives the forced ladder as 0.056 / 0.195 /
+   0.33, and states plainly that it unlocks nothing because every fraction is additive and
    independent of what else is fitted. **No unlock exists in the code**, and that is now what the
    doc says. What remains is 5b's "Specific output is `stockPowerPs / (displacementCc / 1000)`":
    the code divides by EFFECTIVE displacement, which 5c goes on to specify, so the section is only

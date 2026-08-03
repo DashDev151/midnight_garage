@@ -1,10 +1,13 @@
 # The turbo price lever: blast radius and alternatives
 
-**Status: MEASUREMENT, for the maintainer's decision. Nothing was changed.** This closes out Sprint
-168's halted task 9 (`docs/sprints/sprint168.md`, "Task 9: halted, with the numbers"). Every figure
-below was produced by running the shipped code against the shipped content, with the candidate lever
-applied in memory only. No shipped code, content, lever or test was touched, and the probe that
-produced the sim-side figures was deleted.
+**Status: MEASUREMENT, DECIDED. Historical record of how task 9 was closed.** This closed out
+Sprint 168's halted task 9 (`docs/sprints/sprint168.md`, "Task 9: halted, with the numbers"). Every
+figure below was produced by running the shipped code against the shipped content, with the
+candidate lever applied in memory only. No shipped code, content, lever or test was touched at the
+time, and the probe that produced the sim-side figures was deleted. **Option B (Option R,
+redistribute) was taken and shipped in commit `b214520`**: `parts.json` now carries the section 3.3
+table exactly and no price moved. The "today" column throughout describes the pre-`b214520`
+catalogue.
 
 **The question.** Raising the catalogue's power fractions to the authored ladder
 (`machining-performance-table.md`) breaks `partPricing.test.ts`. The proposed fix is raising

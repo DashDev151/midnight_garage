@@ -331,7 +331,9 @@ stock-grade part left to charge. It reaches it from the OTHER direction instead.
 **Measured, on a Supra**: fit a race SKU to every slot that has one EXCEPT the four machinable ones,
 leave those on their original castings, and machine all nine operations into them. Stockness is then
 the four machinable slots' own weight (`block` 18 + `internals` 8 + `headValvetrain` 6 +
-`camsTiming` 4 = **36**), and `raw` is `36 - 48 = -12`. The car reads **0**, at mint.
+`camsTiming` 4 = 36) plus `paint`'s 11, which has no aftermarket SKU at any fitment class and so
+stays stock on any build (**47** in total), and `raw` is `47 - 48 = -1`. The car reads **0**, at
+mint.
 
 That is the only route to 0 in shipped content, and it is a deliberate build rather than an
 accident: the player has to keep exactly the four parts that charge and then pay the full 48 for
@@ -360,7 +362,7 @@ Every weight-carrying slot missing gives stockness 0 and a condition factor of 0
 requires every present part to be `mint` before it reads authenticity at all. With every part mint
 the condition factor is exactly 1, so at the gate authenticity IS stockness: **a concours car may
 give up at most 15 of the 100 authored points.** Consequences, each of them asserted by a shipped
-test in `packages/sim/tests/authenticity.test.ts` (22 tests, all passing):
+test in `packages/sim/tests/authenticity.test.ts` (26 tests, all passing):
 
 - an aftermarket `block` alone (18) fails, at 82,
 - a kit and wheels together (`aero` 10 plus `rims` 7) fail, at 83,
@@ -420,10 +422,14 @@ well: the `paint` condition hit from section 3.6.
 - **`packages/game/src/utils/radar.ts`**, as one of the five radar axes, already on a 0-to-100
   scale.
 - **`packages/game/src/screens/PerformanceSandboxScreen.vue`**, as a stock-versus-current row.
+- **`packages/sim/src/machiningJobs.ts`**, which builds the machine shop's sheet, and
+  **`packages/game/src/screens/MachineShopScreen.vue`**, which renders it beside each operation's
+  own originality charge.
 
 Nothing else. No story mission, requirement or payout reads it: `storyMissions.json` contains no
-mention of authenticity at all, and only `buyers.json` and `parts-taxonomy.json` mention it
-anywhere in `packages/content/data`.
+mention of authenticity at all, and only `buyers.json`, `parts-taxonomy.json` and `economy.json`
+(the concours gate and the nine `authenticityCost` fields) mention it anywhere in
+`packages/content/data`.
 
 ---
 
@@ -519,8 +525,9 @@ itself.
 rather than 39, and they are charged only where stockness has NOT already been spent, which is
 exactly the arrangement that makes the two terms collide. **Measured** on a Supra: race SKUs
 everywhere except the four machinable slots, those left on their original castings and fully
-machined, gives stockness 0.36 and `raw = 36 - 48 = -12`. The car reads **0** rather than a negative
-number, and the lower arm is what makes that true.
+machined, gives stockness 0.47 (`paint` has no aftermarket SKU, so its 11 points stay stock) and
+`raw = 47 - 48 = -1`. The car reads **0** rather than a negative number, and the lower arm is what
+makes that true.
 
 The upper arm remains unreachable and becomes meaningful only if a weight column stops summing to
 its own denominator.

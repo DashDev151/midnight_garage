@@ -99,9 +99,9 @@ than price.
 | tier | rows | min | median | mean | max |
 | --- | --- | --- | --- | --- | --- |
 | flagship | 31 | 65 | 86 | 83.1 | 95 |
-| enthusiast | 26 | 66 | 89 | 86.6 | 97 |
+| enthusiast | 26 | 66 | 88 | 86.6 | 97 |
 | everyday | 19 | 82 | 93 | 92.4 | 98 |
-| entry | 18 | 88 | 97 | 95.1 | 100 |
+| entry | 18 | 88 | 96.5 | 95.1 | 100 |
 
 The extremes: 65 for the Mazda Cosmo Sport 110S and the Lamborghini Countach LP5000 QV, 100 for
 the Toyota Carina AT150 and the Toyota Corolla AE91. The 26 cars currently in `cars.json` span 80
@@ -283,9 +283,9 @@ reads. It is `forced` when the MODEL's `spec.aspiration` is anything but `NA`, o
 `statFormulas.engineCharacter.naHighStrungThreshold`. It is a property of the car, resolved once,
 never of the fitted parts.
 
-**Measured, every gain slot at race:** total gain 0.95 on a forced or lazy-NA car (intensity
-0.81), 0.63 on a high-strung NA car (intensity 0.874). So the intensity term alone costs a
-maximal build between 12.6 and 19 per cent of its base.
+**Measured, every gain slot at race:** total gain 1.30 on a forced car (intensity 0.740), 0.88 on
+a lazy-NA car (intensity 0.824) and 0.65 on a high-strung NA car (intensity 0.870). So the
+intensity term alone costs a maximal build between 13 and 26 per cent of its base.
 
 **Measured:** exactly eight of the 29 slots carry a non-zero `powerFraction` anywhere in the
 shipped catalogue (block, internals, headValvetrain, camsTiming, intake, exhaust, ignitionEcu,
@@ -324,12 +324,12 @@ on that build is negative.
 | stock mint, cooling poor | 0.70 x base | 70 | 64 | 56 |
 | stock mint, cooling scrap | 0.40 x base | 40 | 37 | 32 |
 | every part missing | 0 | 0 | 0 | 0 |
-| fully supported race build, mint | varies | 83 | 75 | 65 |
-| maximal unsupported race build, mint | varies | 48 | 41 | 35 |
+| fully supported race build, mint | varies | 82 | 68 | 59 |
+| maximal unsupported race build, mint | varies | 47 | 31 | 27 |
 | maximal unsupported race build, all scrap | 0 | 0 | 0 | 0 |
 
 Getting to the floor takes both halves at once: condition alone bottoms out at 0.15 of base
-(everything scrap, but present), and coherence alone bottoms out around 0.54, and
+(everything scrap, but present), and coherence alone bottoms out at 0.454, and
 `budget = conditionFactor + coherenceFactor - 1` needs those two to sum below 1.0 before the
 clamp bites.
 
@@ -382,8 +382,8 @@ imported into `derivedStats.ts` for the reliability derivation alone.
 
 **Measured on the 180SX at mint:** stock 157 PS. With a race turbo fitted and nothing supporting
 it (headline 0.6350, verdict `dangerous`) it makes 236 PS and reads 41 reliability. With every
-gain slot at race and no support at all (headline 0.6635, `dangerous`) it makes 306 PS, 95 per
-cent over stock, and reads 41 reliability.
+gain slot at race and no support at all (headline 0.6064, `dangerous`) it makes 361 PS, 130 per
+cent over stock, and reads 31 reliability.
 
 So the game's answer is: **you get the power, and you pay for it in reliability and in what the
 car is worth.** Coherence is the same factor `marketValue.ts` uses for its coherence discount and
@@ -457,18 +457,24 @@ What guards each of them:
    - `docs/design/midnight-garage-roster.md` section 3b now states that a built car reads below
      its base however coherent it is, because the build-intensity term charges for the power
      itself, and cites the Carina figure. **Measured**, unchanged: a fully supported race build
-     reads 83 on the base-100 Carina and 65 on the base-80 FD.
+     reads 82 on the base-100 Carina and 59 on the base-80 FD.
 
 4. **The dyno sheet's four displayed integers always sum to the base.** They did not, when each of
-   the four was rounded on its own: the 180SX (base 92) on a maximal unsupported build at poor
-   carries exact losses of 42.323, 32.197 and 17.480 against a stat of 0, and rounding those three
-   independently gives 0 + 42 + 32 + 17 = **91**. The sheet asked the player to distrust the
+   the four was rounded on its own: the Honda City E (base 99) on a maximal unsupported build at
+   mint carries exact losses of 0, 35.367 and 17.424 against a stat of 46, and rounding those three
+   independently gives 46 + 0 + 35 + 17 = **98**. The sheet asked the player to distrust the
    arithmetic rather than the build.
+
+   **Which car and band show the gap is a property of the power curve rather than of the
+   arithmetic**, so the worked example moves when the catalogue's fractions do. **Measured** on the
+   shipped catalogue, a maximal build disagrees under independent rounding on 18 of the 26 cars at
+   one band or more, and the 180SX this example used to cite is no longer one of them: at poor it
+   carries 35.644, 32.436 and 23.920, which reconciles at 92 either way.
 
    `displayedReliabilitySplit` (`packages/sim/src/dyno.ts`) now hands out whole points by largest
    remainder against what the ROUNDED stat has actually left to explain, so each figure is its own
    value rounded except for the odd point the roundings disagree over, which goes to whichever loss
-   came closest to earning it. **Measured**: that same 180SX case reads **92**, and over 3,250
+   came closest to earning it. **Measured**: that same City E case reads **99**, and over 3,250
    combinations (26 cars x 5 build shapes x 5 bands x 5 defect variants) the four displayed figures
    reconcile to the base in every one, with a worst deviation of 0. `gameStore.ts` spreads the
    result rather than rounding anything itself, so the sheet and the stat cannot drift apart.

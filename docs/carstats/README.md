@@ -22,24 +22,40 @@ move a stat and does not reach that file, it does not move the stat.
 to a given buyer is a match between what they want and what the car is. A stat that no buyer
 weights is decoration.
 
-**Not value.** `marketValueYen` reads **no derived stat at all**. A car is never worth more because
-it is faster. This surprises almost everyone who reads the code for the first time, and it is
-deliberate: performance and price are independent axes, and any change that couples them is a
-design error rather than a feature.
+**Not value, and the distinction is finer than it first looks.** `marketValueYen` reads **no derived
+stat at all**. A car is never worth more *because* it is faster, and any change that couples the two
+is a design error rather than a feature.
+
+**But a fast car is usually worth more, and that is not a contradiction.** Making a car faster means
+fitting better parts, and better parts are worth more money in their own right: `installedPartsValueYen`
+credits what is bolted to the car, quite separately from what it does. So the parts are a **common
+cause** of both, and neither number is reading the other.
+
+That is the shape to hold in mind. **Parts drive power. Parts drive price. Power does not drive
+price.** Machining is the same shape again: a machined part makes more power AND is a dearer part,
+and the value comes from the second fact rather than the first.
 
 ## What they share
 
 **Scale.** Four of the five are integers clamped to 0-100. **Power is the exception**: it is a PS
-figure with no clamp, and it can exceed a car's stock output by nearly double.
+figure with no clamp, and it reaches x2.60 a car's stock output on a fully machined forced engine.
 
 **Condition reaches all five, but by three different routes**, and conflating them is the most
 common mistake:
 
 | route | what it governs | where |
 | --- | --- | --- |
-| `bands.bandFactors` | the value-side curve: mint 1.00, fine 0.85, worn 0.65, poor 0.40, scrap 0.15 | power, style, authenticity, and the condition means of all five |
+| `bands.bandFactors` | the **stat** curve: mint 1.00, fine 0.85, worn 0.65, poor 0.40, scrap 0.15 | power, style, authenticity, and the condition means of all five |
 | `statFormulas.condition.bandFactor` | the four physical dials: grip, braking, driveline, downforce | handling, through the physics |
 | `statFormulas.condition.gradeBandFactor` | what an installed SKU's own `physicalModifiers` still deliver, per part grade | handling only |
+
+**`bands.bandFactors` is not what a part is worth in yen, and the two are easy to confuse.** It
+scales STATS. A part's money value runs on `teardown.resaleBandFactors` (mint 1.00, fine 0.75, worn
+0.55, poor 0.10) times `teardown.usedPartSaleFraction` 0.30, so a mint part sells for 30 per cent of
+its catalogue price and a poor one for 3. **There is no scrap rung**: `usedPartSaleValueYen` returns
+0 for scrap outright, and a scrapped part instead pays `scrapValueYen`, 5 per cent of its STOCK
+replacement price rather than a fraction of its own. So a scrap race turbo is worth 5 per cent of a
+stock turbo, not 15 per cent of a race one.
 
 **Per-slot weights.** Each stat has its own column in `parts-taxonomy.json`'s `statWeights`, and
 `weightedBandFactorForStat` averages a car's part bands using that column. A slot's weight decides

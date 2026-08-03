@@ -548,7 +548,7 @@ describe('Sprint 137 acceptance 2b: no power-bearing slot dominates its nearest 
   const CHARACTERS: readonly EngineCharacter[] = ['high-strung-na', 'lazy-na', 'forced']
   const NON_STOCK_GRADES: readonly Grade[] = ['street', 'sport', 'race']
 
-  // Just above the measured maximum lead of 18.023 per cent, never a wide margin.
+  // A ceiling above the measured maximum lead of 14.074 per cent.
   const MAX_ACCEPTABLE_LEAD = 0.25
 
   function rankedAt(fitmentClass: PartFitmentClass, character: EngineCharacter, grade: Grade) {

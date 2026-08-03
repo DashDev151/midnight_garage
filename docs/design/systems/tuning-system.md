@@ -305,18 +305,18 @@ which is correct. `engineConfig` already carries `rotary-2` and `rotary-3`.
 ### 5d. Per-part response
 
 Race-grade fractions, as shipped. **There are two NA columns, not one**: the
-character split in 5b is three-way, and `lazy-na` runs a quarter to a third above
-`high-strung-na` on every slot.
+character split in 5b is three-way, and `lazy-na` runs above `high-strung-na` on
+every slot.
 
 | part | high-strung NA | lazy NA | forced | note |
 | --- | ---: | ---: | ---: | --- |
-| ignitionEcu | 0.03 | 0.05 | 0.25 | the flagship case: timing versus boost |
-| exhaust | 0.04 | 0.06 | 0.14 | noise versus backpressure and spool |
-| intake | 0.02 | 0.03 | 0.05 | almost nothing either way, correctly |
-| camsTiming | 0.10 | 0.13 | 0.05 | where NA power lives |
-| headValvetrain | 0.08 | 0.10 | 0.06 | porting and valves |
-| block | 0.12 | 0.15 | 0.02 | capacity on NA; an enabler on turbo |
-| forcedInduction | 0.20 | 0.28 | 0.35 | see 5e. NA is not n/a: a turbo fits a naturally aspirated car, gated only on engine tool tier 3 |
+| ignitionEcu | 0.03 | 0.05 | 0.33 | the flagship case: timing versus boost |
+| exhaust | 0.04 | 0.06 | 0.18 | noise versus backpressure and spool |
+| intake | 0.01 | 0.03 | 0.07 | almost nothing either way, correctly |
+| camsTiming | 0.11 | 0.14 | 0.06 | where NA power lives |
+| headValvetrain | 0.09 | 0.11 | 0.08 | porting and valves |
+| block | 0.13 | 0.16 | 0.04 | capacity on NA; an enabler on turbo |
+| forcedInduction | 0.20 | 0.28 | 0.50 | see 5e. NA is not n/a: a turbo fits a naturally aspirated car, gated only on engine tool tier 3 |
 
 ### 5e. Return curves differ by category
 
@@ -327,7 +327,7 @@ character split in 5b is three-way, and `lazy-na` runs a quarter to a third abov
 | Cams | roughly linear | more duration, more top end, more lost bottom end |
 | Intake | strongly diminishing | a filter, then a pipe, then nothing |
 | Exhaust | diminishing | cat-back, full system, then titanium saves weight rather than power |
-| ECU | increasing | little at street grade, a quarter of stock power at race on a forced engine (0.038 / 0.138 / 0.25). It unlocks nothing: every fraction is additive and independent of what else is fitted |
+| ECU | increasing | little at street grade, a third of stock power at race on a forced engine (0.056 / 0.195 / 0.33). It unlocks nothing: every fraction is additive and independent of what else is fitted |
 
 **Increasing returns on forced induction is NOT an anti-dominance mechanism. On its own
 it is the opposite**: it creates a new dominant strategy for any player rich enough to

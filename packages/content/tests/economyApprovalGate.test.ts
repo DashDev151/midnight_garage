@@ -1602,7 +1602,7 @@ import storyMissions from '../data/storyMissions.json'
  *   machined engine), the flat 5 `labourPoints`, and `gradeMultiplier`
  *   (stock 1.0, street 1.0, sport 1.25, race 1.5). `minEngineToolTier` is 3, the rung
  *   `toolLines.json` already names "Machine-shop tooling".
- * - PROPOSED, awaiting ratification: `reliabilityCostPerOperation` 0.004 (a fully
+ * - RATIFIED, pending playtest: `reliabilityCostPerOperation` 0.004 (a fully
  *   machined nine-operation engine reads 3.6 per cent below its own reliability base,
  *   levied once through the build-intensity factor and never a second time through
  *   `totalGainFractionOf`) and `valuePremiumPerOperation` 0.03 (one operation adds
@@ -1610,7 +1610,8 @@ import storyMissions from '../data/storyMissions.json'
  *   premium was sized against the plays ranking: a full nine-operation engine returns
  *   Y28 (entry) / Y243 (enthusiast) / Y607 (flagship) per labour point of credited
  *   premium, against repair-to-expectation's Y146 / Y468 / Y2,082, so machining stays
- *   below fixing per labour point on every class.
+ *   below fixing per labour point on every class. Both are expected to be retuned once
+ *   the mechanic has been played, which is what "pending playtest" records.
  *
  * NOTHING ELSE IN THIS FILE MOVES: no existing lever changed value, `damagePatterns.json`
  * and `partPricing.json` are untouched, and every mission payout above holds.

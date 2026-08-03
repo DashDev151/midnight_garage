@@ -286,7 +286,8 @@ nor a support share.
 
 **The floor is 0 and it is easy to reach.** An all-scrap car reads exactly 0 on every shipped car,
 because the display curve has already clamped to 0 well before the condition fraction is applied.
-Removing the suspension or the tyres outright reads 0 on the weaker cars.
+Removing the suspension outright reads 0 on all 26; removing the tyres alone reads 0 on 5 of them
+(Wagon R, Carina, Sunny B12, Alto Works, City Turbo II).
 
 **The ceiling is 99, and the display curve's own top is now reached.** The best combination in
 shipped content is the FD RX-7 on slicks with a race wing and every support slot at race, all
@@ -361,7 +362,7 @@ build should reach an effective grip of 1.5 or a little more.
 | What a fitted SKU is worth mechanically | `packages/content/data/parts.json` | `physicalModifiers.grip` |
 | Which SKUs are aero-functional | `parts.json` | `aeroFunctional` |
 | Per-car aero potential | `docs/design/midnight-garage-roster.csv` and `packages/content/data/cars.json` | `aeroCeiling` |
-| Per-car measured grip and downforce | roster CSV and `cars.json` | `lateralG97`, `lateralG193`, `downforceCoeff` |
+| Per-car measured grip and downforce | roster CSV and `cars.json` | `lateralG97`, `lateralG193` (`spec.downforceCoeff` is a schema fallback the CSV has no column for and no shipped car sets) |
 | Per-car balance, centre of mass, tyre | roster CSV and `cars.json` | `weightDistributionFront`, `comHeightMm`, `stockTyre`, `tyreCompound` |
 | Who cares about handling and how much | `packages/content/data/buyers.json` | `statTargets.handling` |
 
@@ -433,7 +434,7 @@ build). A scrap or missing STOCK chassis still changes handling by exactly 0 (**
 S14: 39 either way).
 
 **6. Body damage reaches handling, faintly, and only on cars that make downforce.** `panels` and
-`underbody` carry `physicalWeights.aero`, and `bodyPipeline.ts`'s `syncBodyBands` writes the
+`underbody` carry `physicalWeights.aero`, and `bodyPipeline.ts`'s `applyDerivedBodyBands` writes the
 zone-derived bands into `car.parts`, so panel and floor damage scales the downforce coefficient.
 **Measured**: scrapping both is worth 2.07 raw points on the City E, 0.75 on the S14 and exactly 0
 on the eleven cars with no factory downforce.
@@ -443,8 +444,10 @@ cars now pass it: the FD RX-7 at 1.6039 g and the R32 GT-R at 1.6224 g on their 
 clamping `gripToDisplay` at 100. The stat still reads 99 on both, and the balance penalty (0.95 and
 0.88) is the whole of the difference. So the dead range is now the last point rather than the last
 six, and the binding constraint on the top of the scale has moved from the aero ladder to the
-balance term. Both cars pay a penalty larger than the point they are short of, and the two cars with
-the smallest penalty on the roster (Cefiro and Aristo, 0.32) top out at 73 and 76.
+balance term. Neither penalty is as large as the point they are short of: what actually blocks 100
+is the rounding margin, since 100 less 0.95 is 99.05 and 100 less 0.88 is 99.12, and both round to
+99. Only a penalty of half a point or less would leave the last one standing. The two cars with the
+smallest penalty on the roster (Cefiro and Aristo, 0.32) top out at 73 and 76.
 
 **8. The racer buyer's taste target is out of reach for 7 of the 26 cars.** `buyers.json` gives the
 racer a handling target of 0.75, that is 75 points, at importance 0.9. **Measured** best-possible

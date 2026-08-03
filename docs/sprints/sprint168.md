@@ -86,11 +86,12 @@ where it pays.
 - The five `spec` contributions.
 - The nine authenticity ratings, summing to 48 on a fully machined engine.
 - **The catalogue's per-slot power fractions move on ALL THREE engine characters**, not only on
-  forced. Roughly 24 fractions change: high-strung race 43 to 45, lazy 57 to 60, forced 95 to 130.
+  forced. 58 of the 72 slot/grade/character values change, across all 24 slot/grade rows:
+  high-strung race 43 to 45, lazy 57 to 60, forced 95 to 130.
   The performance table holds every one.
 - **The flat rise ships, and the five cars it inflates are accepted.** `TODO.md` argues the flat
   shape is the wrong lever and asks for per-engine headroom; the maintainer has ruled against that
-  and the numbers are tabled in the performance table (FD 586, Impreza 575, SW20 561 at race).
+  and the numbers are tabled in the performance table (FD 587, Impreza 575, SW20 561 at race).
   **That entry is struck in this sprint**, not left as a live objection, and per-engine headroom is
   its own future sprint rather than a condition on this one.
 
@@ -211,15 +212,16 @@ field). The work reuses the one job system: a `Job` with kind `machine-part`, sp
 the same `applyAvailableLaborToJob` a repair does, accruing across days, gating on the same service
 bay. No second job system was built.
 
-### The two unsigned values, proposed
+### The two levers, ratified pending playtest
 
 | lever | value | measured effect |
 | --- | ---: | --- |
 | `machining.reliabilityCostPerOperation` | **0.004** | a fully machined nine-operation engine reads **3.6 per cent** below its own `reliabilityBase`: 98 to 94.5 on a high-strung NA, 92 to 88.7 on a turbo. On a race build the same 0.036 comes off the intensity factor and no more (0.914 to 0.878), so the charge is levied once. |
 | `machining.valuePremiumPerOperation` | **0.03** | one operation adds 3 per cent of that part's own catalogue price. A full nine-operation engine returns **Y28 / Y243 / Y607 per labour point** of credited premium on an entry / enthusiast / flagship car, against repair-to-expectation's **Y146 / Y468 / Y2,082**. Machining stays below fixing per labour point on every class. |
 
-Both start small and both are named here for ratification. Nothing else in `economy.json` moved; the
-approval-gate hash was re-pinned in the same change and the re-pin note records exactly this.
+Both start small, both were tabled here, and both are now ratified pending playtest (see Left open).
+Nothing else in `economy.json` moved; the approval-gate hash was re-pinned in the same change and
+the re-pin note records exactly this.
 
 ### The six measurements
 
@@ -349,7 +351,7 @@ unresolved, per the ruling.
 All five files were brought back into line by re-running the code in this tree, never by hand
 editing, and re-run a second time once the fractions actually moved. `power.md` gains machining as
 input 2f and takes the largest revision of the five: the per-slot ladder tables, the race sums
-(0.65 / 0.88 / 1.30), every ceiling (x1.45 / x1.60 / x2.30, and x1.56 / x1.76 / x2.60 machined), all
+(0.65 / 0.88 / 1.30), every ceiling (x1.45 / x1.60 / x2.30, and x1.57 / x1.76 / x2.60 machined), all
 26 shipped maxima, the support-does-not-gate-power measurement (745 PS at `dangerous` against
 exactly 745 PS fully supported) and the threshold-cliff figures. Its condition-ladder and per-slot
 scrap-loss tables were re-run and hold unchanged, because neither reads `powerFraction`.
@@ -404,8 +406,10 @@ packages (directive 20's carve-out, since this retires a signature and adds a pe
 
 ### Left open
 
-- **The two proposed levers await ratification**: `reliabilityCostPerOperation` 0.004 and
-  `valuePremiumPerOperation` 0.03.
+- **Both levers are RATIFIED pending playtest**: `reliabilityCostPerOperation` 0.004 and
+  `valuePremiumPerOperation` 0.03. They ship as authored and are expected to be retuned once the
+  mechanic has been played, which is what the qualifier records. Nothing about the sprint waits on
+  them.
 - **Machining as a fifth play**, once the plays ranking can read what the shop already owns.
 - **Per-engine headroom**, which is what would separate the legendary blocks from the rest rather
   than one flat multiplier. It needs authoring for all 94 roster rows under directive 24, so it is a

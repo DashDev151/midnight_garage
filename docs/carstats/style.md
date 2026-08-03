@@ -48,8 +48,8 @@ Two authored integers per car, the only per-car inputs style has.
 
 | | authored range across all 94 roster rows | shipped 26 |
 | --- | --- | --- |
-| `styleBase` | 15 (Honda Acty) to 88 (Countach), median 52 | 16 to 82, median 54 |
-| `styleCeiling` | 42 (Acty) to 96 (FD3S), median 84 | 44 to 96, median 90 |
+| `styleBase` | 15 (Honda Acty) to 88 (Countach), median 52.5 | 16 to 82, median 55.5 |
+| `styleCeiling` | 42 (Acty) to 96 (FD3S), median 84.5 | 44 to 96, median 90 |
 | headroom (ceiling minus base) | 4 to 67, median 31 | measured per car below |
 
 Authored in `docs/design/midnight-garage-roster.csv` for all 94 rows and promoted into
@@ -70,8 +70,8 @@ never reach the stancer at any build, and two (Acty, Wagon R) can never reach ev
 ### Per part: `statModifiers.style`
 
 A plain point value on each catalogue SKU in `packages/content/data/parts.json`. **This is the
-only place in the codebase that reads it**; nothing prices off it, nothing else in the sim
-touches it.
+only place in the sim that reads it**; nothing prices off it, and the only other reader anywhere
+is the parts-market badge in `PartsMarketScreen.vue`.
 
 144 SKUs carry a non-zero value, spread across **12 slots** and identical at all four fitment
 classes (`everyday`, `entry`, `enthusiast`, `flagship`). All stock-grade SKUs are 0. No SKU is
@@ -319,6 +319,10 @@ does partly read as a second ranking of the same cars. See Findings.
   `normalizedTasteScore` in `packages/sim/src/valuation.ts`, which divides the stat by 100 and
   matches it against a buyer's own `statTargets.style`, and from there through `tasteSpread` into
   what that buyer will pay. A car is never worth more on the buy side for being beautiful.
+
+  **A dressed car does still fetch more, and that is not a contradiction.** The parts that raised
+  its style are worth money in their own right, and `installedPartsValueYen` credits them whatever
+  they do to the stat. Parts are a common cause of both; the two numbers never read each other.
 - **The concours gate.** It reads authenticity, not style.
 - **`machiningCost`, `coherenceFactor` and the support ratios.** All reliability's concern.
 - **Machining, in every respect.** `PartInstance.machining` reaches power, authenticity and
@@ -470,4 +474,5 @@ rows and the shipped 26; the CSV-to-`cars.json` agreement.
 
 **Read off the source** and not separately re-derived: the derivation order in `stylePercentOf`;
 the zone-to-band derivations in `bodyPipeline.ts`; the schema bounds; the list of files that read
-`statModifiers.style` (verified by search to be exactly one).
+`statModifiers.style` (verified by search to be exactly two: `derivedStats.ts` and
+`PartsMarketScreen.vue`).

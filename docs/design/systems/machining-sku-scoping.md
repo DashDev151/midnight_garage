@@ -3,7 +3,10 @@
 **Status: MEASUREMENT of a model that was then REJECTED. Not live design.** Established from the
 shipped code and content on 2026-08-02; nothing here was ever a proposal. No code, content, lever or
 test was changed to produce it. Every claim cites a file and a symbol, and every claim about the
-code still holds.
+code held against the tree it was written from, which is the tree BEFORE machining was built
+(commit `b214520`). Several of them have since moved with the implementation: `machiningCost` no
+longer returns 0, `PartInstanceSchema` now carries `machining`, `SAVE_VERSION` is 56, and the
+`proportionalPower.test.ts` caps quoted in section 3c are now x1.45 / x1.60 / x2.30 / x1.65 / x1.88.
 
 **What happened to it.** The catalogue cost measured below (864 new SKUs, 472 to 1,336) is why
 machining ships as a property of a `PartInstance` instead. `machining-system-design.md` is the

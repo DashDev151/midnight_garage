@@ -59,8 +59,8 @@ every part already is.
 
 On the two NA characters the `forcedInduction` row is a **conversion**, so it sits outside the
 fitted total and outside the ladder. That is the shipped convention rather than a new one:
-`proportionalPower.test.ts` caps an NA character with no turbo fitted (x1.43 and x1.57 today) and
-pins the bolt-on-turbo build as its own separate figure (x1.63 and x1.85).
+`proportionalPower.test.ts` caps an NA character with no turbo fitted (x1.45 and x1.60) and
+pins the bolt-on-turbo build as its own separate figure (x1.65 and x1.88).
 
 **The street and sport rows are not a uniform rescale of race, and that is load-bearing.** Each
 slot keeps its own grade shape, because the catalogue's price ladders are bespoke per slot (the ECU
@@ -70,8 +70,9 @@ that: it made a street ECU 2.1 times the power per yen of anything else on a boo
 the one-correct-first-purchase defect `partPricing.test.ts` exists to catch.
 
 The turbo's own column is pinned to its price ladder's ratios first and the other seven slots absorb
-the slack. **Every race figure, every ladder total, the 101-of-130 shape and both conversion rows
-are exactly as approved**; only street and sport move, by at most 1.1 points on any slot.
+the slack. **Every race figure, every ladder total and the 101-of-130 shape are exactly as
+approved**; street and sport move, and so do the NA conversion rows, the largest single move being
+8.3 points on the turbo's forced sport figure.
 
 ### high-strung-na
 
@@ -266,12 +267,12 @@ the flat shape ships, and these are the numbers it produces.**
 | --- | ---: | ---: |
 | Supra RZ (2JZ) | 745 | 842 |
 | Skyline GT-R (RB26) | 644 | 728 |
-| **RX-7 FD** | **586** | **663** |
+| **RX-7 FD** | **587** | **663** |
 | **Impreza WRX STi** | **575** | **650** |
 | **MR2 SW20** | **561** | **634** |
 
 The two cars the target was set on land where it wanted them. **The three in bold land above the
-figures that entry rejected, and that is accepted rather than unresolved.** A 586 PS race-spec FD is
+figures that entry rejected, and that is accepted rather than unresolved.** A 587 PS race-spec FD is
 a serious build and defensible on its own terms.
 
 Per-engine headroom remains the tool that would separate them, and remains unbuilt. It would take
