@@ -117,6 +117,7 @@ onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown))
     <h1>Ran When Parked</h1>
     <nav>
       <RouterLink :to="{ name: 'garage' }" data-test="nav-garage">Garage</RouterLink>
+      <RouterLink :to="{ name: 'overworld' }" data-test="nav-world">World</RouterLink>
       <RouterLink :to="{ name: 'jobs' }" data-test="nav-jobs">Phone</RouterLink>
       <RouterLink :to="{ name: 'auctions' }" data-test="nav-auctions">Auctions</RouterLink>
       <RouterLink :to="{ name: 'parts' }" data-test="nav-parts">Parts</RouterLink>

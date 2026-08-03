@@ -96,8 +96,19 @@ the certificates reading earned techniques.
 
 ## Levers (directive 22)
 
-**One, and it must be signed before task D is implemented:** what opening a derelict room costs, and
-what it adds to weekly rent. Every other part of this sprint moves no value.
+**None, after a design decision that removed the one this sprint was going to need.**
+
+A room was going to need a purchase price and a rent consequence. It does not: **a room is derelict
+when the player does not own the tools its work needs.** The machine shop is somebody else's junk
+until the machining capability is owned; the body and paint shop until the body line is. Opening a
+room IS buying the tool, at a price that already exists and was already approved.
+
+That is better than a second purchase for three reasons. It invents no number. It gives the tool
+purchase a face, so buying the body line stops being a line item and becomes a room lighting up. And
+it cannot drift from the gate that actually governs the work, because it reads the same state.
+
+The alley, the workshop floor, the office and the warehouse have no tool gate and are open from day
+one.
 
 ## Deferred
 
@@ -107,4 +118,41 @@ what it adds to weekly rent. Every other part of this sprint moves no value.
 
 ## Exit
 
-_To be completed at the end of the sprint._
+**Built alongside Sprint 173. Typecheck clean; game 927 passing.**
+
+- [x] **Six rooms**, each fronting the screen it holds, switched locally rather than by route change
+      so moving around the garage is not navigation.
+- [x] **Derelict rooms need no new number.** A room is derelict when the player lacks the tools its
+      work needs, read from the existing capability checks: the machine shop against
+      `machining.minEngineToolTier` (ownership only, mirroring `machiningGateReason`, so hiring for
+      the day does not open it), the body and paint shop against `bodyLineCapability` (owned or
+      hired). The alley, workshop floor, warehouse and office have no gate.
+- [x] **The office objects read live data**: the corkboard's cards from `carsForSale`, the
+      certificates from unlocked techniques, the photo count from the reputation tier.
+- [x] **The alley holds parked and for-sale cars as one thing**, which settles the maintainer's
+      objection to three kinds of bay by layout rather than by rule.
+
+### Two gaps found, both flagged rather than patched
+
+**The office canvas still shows placeholder counts.** `buildOfficeScene()` bakes in five cards,
+three photos and two certificates with no parameter to drive real numbers, and the implementing
+agent was told not to modify the art module. **The true counts render as an HTML readout beside the
+canvas**, so the data is right and visible, but the drawn corkboard does not yet grow as you list
+cars and the wall does not fill as reputation rises. That is the whole point of those three objects,
+so it is the first follow-up.
+
+**`warehouse-derelict` is drawn but unreachable.** The art module ships an open and derelict pair for
+it, while this design says the warehouse has no tool gate. The art is harmless and the design is
+what shipped.
+
+### The photo-count scale, which is a judgement call
+
+Photos are `3 x (tier index + 1)`, so unknown 3 through legend 15. Three is the "new shop" number the
+design and the art placeholder already used; the rest is the tier's own rank. **No new threshold was
+invented**, but the shape of that curve is worth a sanity check.
+
+### Not verified
+
+**Nobody has seen a room render.** Whether the corkboard, the photo wall and the certificates read as
+those objects at their placed size, and whether the derelict variants read as abandoned rather than
+merely recoloured, are the two things that need an eye.

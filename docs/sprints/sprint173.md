@@ -125,4 +125,33 @@ modified.
 
 ## Exit
 
-_To be completed at the end of the sprint._
+**Built. Typecheck clean across all three packages; game 927 passing, content 600, sim 2212.**
+
+- [x] **The map.** `OverworldScreen.vue` hosts the 960x540 scene and hit-tests all 14 placements.
+      The routing table lives in `overworldNav.ts` as pure logic, so it is testable without mounting
+      Pixi.
+- [x] **Every destination resolves to a real route**, read from the router rather than guessed:
+      tool hire to `upgrades`, parts shop to `parts`, staff centre to `staff`, the garage to the new
+      interior. **Five locations front the one auction screen** (local yard, regional, premium,
+      collector network, dealer network), because `AuctionTierSchema` already names four of them as
+      tiers and the fifth has no tier of its own.
+- [x] **The bank and the cafe refuse the click** and say so, rather than navigating to an empty page.
+- [x] **The test track**, reached from three locations, each preselecting its own course: the touge
+      to Hakone, the wangan to Wangan, the raceway to Misaki. It offers only cars the player owns and
+      the four shipped courses, and calls the same `lapTimeSecondsFor` and `lapBlockers` the dev
+      sandbox uses. No slot editors, no build codes, no research cars.
+- [x] **The tab bar is untouched.** One tab was added, `World`. Everything else works as before.
+
+**Travel costs nothing**, as designed.
+
+### Not verified
+
+**Nobody has seen the map render.** The haze over the four far corners is flat-alpha rectangles and
+it carries the entire distance cue; whether it reads as depth or as grey boxes stamped on the corners
+is the first thing to look at. The premium auction is not actually drawn smaller, only placed further
+out and hazed, which was an over-cautious call at draw time and is a cheap fix. The local yard's
+chain-link and the highway gantry are the two sprites their author was least confident in.
+
+**There are no mount tests for the Pixi screens.** Mounting a real Pixi `Application` throws from its
+own ticker in this test environment, which is why `PaintPaletteScreen.vue` has no test file either.
+Coverage rests on pure-logic tests plus typecheck.

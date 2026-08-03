@@ -46,6 +46,21 @@ export const router = createRouter({
   routes: [
     { path: '/', name: 'garage', component: () => import('../screens/GarageScreen.vue') },
     {
+      path: '/overworld',
+      name: 'overworld',
+      component: () => import('../screens/OverworldScreen.vue'),
+    },
+    {
+      path: '/garage-interior',
+      name: 'garage-interior',
+      component: () => import('../screens/GarageInteriorScreen.vue'),
+    },
+    {
+      path: '/test-track',
+      name: 'test-track',
+      component: () => import('../screens/TestTrackScreen.vue'),
+    },
+    {
       path: '/menu',
       name: 'menu',
       component: () => import('../screens/MenuScreen.vue'),
