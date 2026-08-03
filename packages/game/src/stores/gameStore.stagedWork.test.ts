@@ -192,7 +192,7 @@ describe('staged repair/install work', () => {
     if (!car) throw new Error('expected a granted car')
     game.moveCar(car.id, 'service')
     // A fresh shop owns nothing at tier 2, so a body group possibly touching
-    // a signature slot (panels/underbody) needs the line hired for today -
+    // a signature slot (panels/paint) needs the line hired for today -
     // the daily-unlock rework's own gate, case (a) an intentional change
     // from the old per-operation fee.
     game.hireMachineLine('body')
@@ -219,7 +219,7 @@ describe('staged repair/install work', () => {
     // deterministically - a random roll might otherwise leave the group's
     // only outstanding work on a non-signature part, or roll seats itself
     // genuinely missing, making the gate never fire. `body`'s own two
-    // signature slots (panels/underbody) no longer serve this purpose: both
+    // signature slots (panels/paint) no longer serve this purpose: both
     // are derived body value carriers now (`bodyPipeline.ts`) and a direct
     // repair-zone job never touches them at all, gated or not. `suspension`'s
     // own signature slots (dampers/springs) don't serve it either: both are
@@ -312,7 +312,7 @@ describe('planned estimate crew effects (Sprint 82 decisions 2 + 5)', () => {
     const car = game.gameState.ownedCars[0]!
     // Deterministic multi-rung body plan: the whole group at poor, climbing to
     // mint, so the base plan is several slots and a discount genuinely bites.
-    for (const partId of ['panels', 'paint', 'underbody', 'aero'] as const) {
+    for (const partId of ['panels', 'paint', 'aero'] as const) {
       const installed = car.parts[partId].installed
       if (installed) car.parts[partId] = { installed: { ...installed, band: 'poor' } }
     }
@@ -357,7 +357,7 @@ describe('planned estimate crew effects (Sprint 82 decisions 2 + 5)', () => {
     const PER = ECONOMY.energy.pointsPerLabour
     const expectedSaved = Math.min(1 * PER, Math.floor(baseSlots / 2), baseSlots - PER)
     expect(withPerf.crewLaborSaved).toBe(expectedSaved)
-    // The staged plan climbs `panels`/`underbody`, both body signature slots,
+    // The staged plan climbs `panels`/`paint`, both body signature slots,
     // but machine access is a gate now, never a fee folded into the plan
     // cost - the whole total is the discountable repair-plan portion.
     const expectedCost = Math.round(baseCost * (1 - ECONOMY.staff.perfectionistPartsDiscount))
@@ -376,7 +376,7 @@ describe('plannedStepFor (Sprint 67 decision 1, playtest item 7)', () => {
     const car = game.gameState.ownedCars[0]!
     // Put the whole body group at `poor`, so a plan to `fine` is unambiguously
     // multi-rung (poor -> worn -> fine) - the exact shape that produced the bug.
-    for (const partId of ['panels', 'paint', 'underbody', 'aero'] as const) {
+    for (const partId of ['panels', 'paint', 'aero'] as const) {
       const installed = car.parts[partId].installed
       if (installed) car.parts[partId] = { installed: { ...installed, band: 'poor' } }
     }
@@ -450,7 +450,7 @@ describe('the honest ledger: machine access is a gate, never a fee, in the plann
    * below mint, deterministically - a random roll might otherwise leave the
    * group's only outstanding work on a non-signature part (or roll seats
    * itself genuinely missing), so the gate would never fire. `body`'s own
-   * two signature slots (panels/underbody) no longer serve this purpose:
+   * two signature slots (panels/paint) no longer serve this purpose:
    * both are derived body value carriers now (`bodyPipeline.ts`) and a
    * direct repair-zone job never touches them at all, gated or not.
    * `suspension`'s own signature slots (dampers/springs) don't serve it

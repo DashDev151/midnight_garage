@@ -17,7 +17,7 @@ import type { ComponentId, ConditionBand, ZoneState } from '@midnight-garage/con
 import { ComponentIdSchema, titleCaseFromSlug } from '@midnight-garage/content'
 import { computed, ref } from 'vue'
 import { useGameStore, type CarPartRowView } from '../stores/gameStore'
-import { ZONE_LAYERS, zoneNeedsPanelTag, zoneSeverityText } from '../utils/zoneSeverity'
+import { zoneLayerReadings, zoneNeedsPanelTag, zoneSeverityText } from '../utils/zoneSeverity'
 import BandChip from './BandChip.vue'
 import {
   WORKSHOP_VIEW_H,
@@ -122,15 +122,12 @@ interface LayerView {
 }
 
 function layersFor(zone: ZoneState): LayerView[] {
-  return ZONE_LAYERS.map((layer) => {
-    const severity = zone[layer.id]
-    return {
-      id: layer.id,
-      tag: layer.tag,
-      severity,
-      pips: Array.from({ length: layer.max }, (_, index) => index < severity),
-    }
-  })
+  return zoneLayerReadings(zone).map((layer) => ({
+    id: layer.id,
+    tag: layer.tag,
+    severity: layer.severity,
+    pips: Array.from({ length: layer.max }, (_, index) => index < layer.severity),
+  }))
 }
 
 // --- The regions of the active view -------------------------------------

@@ -499,7 +499,7 @@
     "tier": 2,
     "tasks": [
       {
-        "requirement": { "kind": "slotCondition", "carPartId": "underbody", "minBand": "fine" },
+        "requirement": { "kind": "slotCondition", "carPartId": "chassis", "minBand": "fine" },
         "minToolTier": 2
       }
     ],
@@ -544,7 +544,7 @@
     "tier": 2,
     "tasks": [
       {
-        "requirement": { "kind": "slotCondition", "carPartId": "underbody", "minBand": "fine" },
+        "requirement": { "kind": "slotCondition", "carPartId": "chassis", "minBand": "fine" },
         "minToolTier": 2
       },
       {

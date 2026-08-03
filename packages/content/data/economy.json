@@ -100,14 +100,7 @@
     "tasteSpread": 0.12,
     "walkAwaySpread": 0.05,
     "foundation": {
-      "parts": [
-        "tyres",
-        "brakePadsDiscs",
-        "brakeCalipersLines",
-        "steering",
-        "chassis",
-        "underbody"
-      ],
+      "parts": ["tyres", "brakePadsDiscs", "brakeCalipersLines", "steering", "chassis"],
       "factorByState": {
         "missing": 0.1,
         "scrap": 0.15,
@@ -497,7 +490,6 @@
       "tyres": 3,
       "panels": 0,
       "paint": 0,
-      "underbody": 0,
       "aero": 3,
       "seats": 3,
       "dashGauges": 1
@@ -653,12 +645,6 @@
         "everyday": [15, 40, 30, 15],
         "enthusiast": [30, 40, 22, 8],
         "flagship": [40, 38, 17, 5]
-      },
-      "chassisMetalWeightsByTier": {
-        "entry": [40, 35, 20, 5],
-        "everyday": [55, 30, 12, 3],
-        "enthusiast": [65, 25, 8, 2],
-        "flagship": [75, 20, 4, 1]
       },
       "surfaceExtraChance": 0.2,
       "zoneBeyondRepairChance": 0.18,
@@ -899,7 +885,7 @@
     },
     "signatureSlotsByGroup": {
       "suspension": ["dampers", "springs"],
-      "body": ["panels", "underbody"],
+      "body": ["panels", "chassis"],
       "interior": ["seats", "dashGauges"]
     },
     "probeAmortisationOps": 40

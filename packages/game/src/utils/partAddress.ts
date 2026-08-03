@@ -45,7 +45,12 @@ export function hasWorkAddress(action: StagedAction): action is AddressedStagedA
   return action.kind === 'repair' || action.kind === 'install'
 }
 
-const PIPELINE_KINDS = ['pipeline-stage', 'pipeline-swap-panel', 'pipeline-paint'] as const
+const PIPELINE_KINDS = [
+  'pipeline-stage',
+  'pipeline-remove-panel',
+  'pipeline-install-panel',
+  'pipeline-paint',
+] as const
 type PipelineStagedAction = Extract<StagedAction, { kind: (typeof PIPELINE_KINDS)[number] }>
 
 function isPipelineAction(action: StagedAction): action is PipelineStagedAction {

@@ -89,9 +89,14 @@ function ratingOf(operationId: string): number {
 }
 
 describe('the authored authenticity weights', () => {
-  it('cover all 29 slots and total exactly 100, so stockness reads as a percentage', () => {
-    expect(PARTS_TAXONOMY).toHaveLength(29)
-    expect(TOTAL_WEIGHT).toBe(100)
+  it('cover all 28 slots and total 99, so stockness reads as a percentage', () => {
+    expect(PARTS_TAXONOMY).toHaveLength(28)
+    // `underbody`'s single authenticity point left with the slot; nothing
+    // replaced it, so the total is one short of the round number rather than
+    // exactly 100. `stocknessOf` divides by the real total present, not by a
+    // hardcoded 100, so an all-stock car still reads exactly 100 per cent
+    // (proved below) - this pin is a sanity count, not the formula's floor.
+    expect(TOTAL_WEIGHT).toBe(99)
   })
 
   it('weights the heart and the skin above everything else, and the consumables at nothing', () => {
@@ -190,14 +195,14 @@ describe('what a modification costs', () => {
 
   it('leaves a tuner exactly the body it did not touch', () => {
     // Every engine, drivetrain, suspension, wheel and interior slot swapped;
-    // paint, panels, aero and underbody untouched.
+    // paint, panels, aero and chassis untouched.
     const gradesByPartId: Partial<Record<CarPartId, Grade>> = {}
     for (const partId of ALL_CAR_PART_IDS) {
       if (partId === 'paint' || partId === 'panels' || partId === 'aero') continue
-      if (partId === 'underbody' || partId === 'chassis') continue
+      if (partId === 'chassis') continue
       gradesByPartId[partId] = 'race'
     }
-    const kept = WEIGHT.paint + WEIGHT.panels + WEIGHT.aero + WEIGHT.underbody + WEIGHT.chassis
+    const kept = WEIGHT.paint + WEIGHT.panels + WEIGHT.aero + WEIGHT.chassis
     expect(authenticityOf(carWith(gradesByPartId))).toBe(kept)
   })
 })
@@ -219,7 +224,7 @@ describe('an empty slot is not an original part', () => {
     }
     const swapped = carWith({ rims: 'race' })
     const strippedStockness = stocknessOf(stripped, TURBO_MODEL, CONTEXT.partsById, PARTS_TAXONOMY)
-    expect(strippedStockness).toBeCloseTo((100 - WEIGHT.rims) / 100, 10)
+    expect(strippedStockness).toBeCloseTo((TOTAL_WEIGHT - WEIGHT.rims) / TOTAL_WEIGHT, 10)
     expect(strippedStockness).toBeCloseTo(
       stocknessOf(swapped, TURBO_MODEL, CONTEXT.partsById, PARTS_TAXONOMY),
       10,
@@ -329,16 +334,16 @@ describe('no car carries a stored authenticity roll any more', () => {
 
 /**
  * A body carrier's BAND is derived from `zoneState`, but what is FITTED there
- * is a real choice, so a modified body reads as modified. `panels`,
- * `underbody` and `paint` all carry a real aftermarket ladder: fitting any of
- * their non-stock grades costs the slot's whole authenticity weight, and
- * refitting the stock grade wins it back. Paint's stock SKU is the car's own
- * factory finish, so the "stock grade" that wins the weight back is
- * specifically a factory-correct respray, not merely any paint job.
+ * is a real choice, so a modified body reads as modified. `panels` and
+ * `paint` both carry a real aftermarket ladder: fitting either of their
+ * non-stock grades costs the slot's whole authenticity weight, and refitting
+ * the stock grade wins it back. Paint's stock SKU is the car's own factory
+ * finish, so the "stock grade" that wins the weight back is specifically a
+ * factory-correct respray, not merely any paint job.
  */
 describe('a modified body reads as modified', () => {
-  it('ships an aftermarket ladder for panels, underbody and paint', () => {
-    for (const carPartId of ['panels', 'underbody', 'paint'] as const) {
+  it('ships an aftermarket ladder for panels and paint', () => {
+    for (const carPartId of ['panels', 'paint'] as const) {
       const nonStock = PARTS.filter(
         (part) => part.carPartId === carPartId && part.grade !== 'stock',
       )
@@ -348,10 +353,9 @@ describe('a modified body reads as modified', () => {
 
   it('costs a fitted body kit or respray the whole authenticity weight of its slot', () => {
     expect(authenticityOf(carWith({ panels: 'sport' }))).toBe(100 - WEIGHT.panels)
-    expect(authenticityOf(carWith({ underbody: 'sport' }))).toBe(100 - WEIGHT.underbody)
     expect(authenticityOf(carWith({ paint: 'street' }))).toBe(100 - WEIGHT.paint)
-    expect(authenticityOf(carWith({ panels: 'race', underbody: 'street' }))).toBe(
-      100 - WEIGHT.panels - WEIGHT.underbody,
+    expect(authenticityOf(carWith({ panels: 'race', paint: 'street' }))).toBe(
+      100 - WEIGHT.panels - WEIGHT.paint,
     )
   })
 

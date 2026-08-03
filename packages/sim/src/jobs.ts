@@ -79,6 +79,21 @@ export function refitLaborSlotsFor(
 }
 
 /**
+ * Whether an install onto `carPartId` replaces whatever already occupies the
+ * slot rather than being refused for it - true for a `removable: false`
+ * taxonomy entry (`chassis`, `panels`, `paint`), whose slot is never
+ * genuinely empty and whose identity therefore changes by replacement.
+ * Every other slot needs to be emptied (`resolveRemovePart`) before a
+ * different part can go in. Distinct from `isBodyDerivedPart`
+ * (bodyPipeline.ts): that answers whether the slot's BAND comes from zone
+ * state, which is true for only two of these three (`chassis` keeps its own
+ * band like any ordinary part).
+ */
+export function replacesOccupiedSlot(carPartId: CarPartId, context: SimContext): boolean {
+  return context.partsTaxonomyById[carPartId]?.removable === false
+}
+
+/**
  * A car the player can work on - either an owned car or a customer's car
  * sitting in an active service job. Both are worked through the same job
  * system, so any job/labor/staging resolver resolves either the same way.
@@ -151,15 +166,17 @@ interface CarEffect {
  * reinstalling at its real band is correct (forcing mint would let
  * remove+reinstall repair a part for free).
  *
- * A body value carrier (`panels`/`paint`/`underbody`) is the one address that
- * takes an install over an OCCUPIED slot. Its slot is never empty - it is
- * `removable: false` and `applyDerivedBodyBands` keeps a part in it - so its
- * identity changes by replacement rather than by a remove followed by a fit,
- * and the part coming off is not harvested (the shell never leaves the car).
- * The zones that carrier covers are then refitted the way `planSwapPanel`
- * leaves a swapped panel, and the band re-derives from them, so a fresh kit
- * arrives on straight metal in bare primerless finish and the car owes its
- * paint.
+ * A `removable: false` slot (`chassis`, `panels`, `paint`) is the one address
+ * that takes an install over an OCCUPIED slot (`replacesOccupiedSlot`). Its
+ * slot is never empty, so its identity changes by replacement rather than by
+ * a remove followed by a fit, and the part coming off is not harvested (the
+ * shell never leaves the car). For the two zone-derived carriers specifically
+ * (`panels`/`paint`), the zones they cover are then refitted the way
+ * `planInstallPanel` leaves a fresh panel, and the band re-derives from them,
+ * so a fresh kit arrives on straight metal in bare primerless finish and the
+ * car owes its paint. `chassis` has no zone to refit - its band is an
+ * ordinary per-part one, so replacing it is nothing more than the identity
+ * swap every install already does.
  *
  * Both branches run the result through `pruneCuredCauses` (cure-on-repair):
  * any symptom whose remaining causes all target parts now fitted strictly
@@ -212,7 +229,7 @@ function applyJobToCar(
   }
   const targetPartId = catalogPart.carPartId
   const targetState = car.parts[targetPartId]
-  const replacesInPlace = isBodyDerivedPart(targetPartId)
+  const replacesInPlace = replacesOccupiedSlot(targetPartId, context)
   if (targetState.installed && !replacesInPlace) {
     return { car, partInventory: [...partInventory], blockedByOccupiedSlot: true }
   }
@@ -224,7 +241,7 @@ function applyJobToCar(
     },
   }
   const model = context.modelsById[car.modelId]
-  if (replacesInPlace && car.zoneState && model) {
+  if (isBodyDerivedPart(targetPartId) && car.zoneState && model) {
     fitted = applyDerivedBodyBands(
       {
         ...fitted,
@@ -799,11 +816,11 @@ export function repairJobGate(
       log: [{ type: 'job-blocked', jobId: jobIdFor(spec), reason: 'bench-only' }],
     }
   }
-  // `panels`/`paint`/`underbody` are derived from zone state on a car that's
-  // on the zone model - a per-part repair addressed at exactly one of them
-  // refuses outright (`bodyPipeline.ts`'s single-writer projection is the
-  // only thing allowed to move their band); the zone's own pipeline stages
-  // are how a player actually improves them.
+  // `panels`/`paint` are derived from zone state on a car that's on the
+  // zone model - a per-part repair addressed at either of them refuses
+  // outright (`bodyPipeline.ts`'s single-writer projection is the only
+  // thing allowed to move their band); the zone's own pipeline stages are
+  // how a player actually improves them.
   if (spec.carPartId && car.zoneState && isBodyDerivedPart(spec.carPartId)) {
     return {
       ok: false,
@@ -925,9 +942,10 @@ export function naToTurboConversionBlocked(
  * the catalog part's own address to match that exact slot (`partFitsCar`'s
  * optional param). Slot emptiness always resolves from the picked part's OWN
  * catalog address (`part.carPartId`), closing a gap where group-level specs
- * used to check the wrong slot. The three body value carriers are the one
- * exception to emptiness: their slot is never empty, so an install addressed
- * at one replaces what is fitted there rather than being refused.
+ * used to check the wrong slot. Every `removable: false` slot
+ * (`replacesOccupiedSlot`) is the one exception to emptiness: its slot is
+ * never empty, so an install addressed at one replaces what is fitted there
+ * rather than being refused.
  * unconditionally `true` (no per-part check at all), which barely mattered
  * when almost every slot started genuinely empty pre-Sprint-32, but now
  * that every slot starts filled with a stock part by default, a group-level
@@ -958,9 +976,9 @@ export function installFitGate(
   const slotTakesPart =
     !!part &&
     (!car?.parts[part.carPartId]?.installed ||
-      // A body value carrier's slot is never empty, so it takes an install
+      // A `removable: false` slot is never empty, so it takes an install
       // over what is already there - see `applyJobToCar`.
-      isBodyDerivedPart(part.carPartId))
+      replacesOccupiedSlot(part.carPartId, context))
   const fits =
     car &&
     model &&

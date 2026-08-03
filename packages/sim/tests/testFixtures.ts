@@ -171,7 +171,6 @@ const BASE_CAR_INSTANCE: Omit<CarInstance, 'parts'> = {
   modelId: 'test-model',
   year: 1990,
   mileageKm: 60_000,
-  color: 'White',
   factoryColour: 'white',
   provenanceNote: '',
   symptoms: [],

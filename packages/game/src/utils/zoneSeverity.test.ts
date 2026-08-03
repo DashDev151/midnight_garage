@@ -39,9 +39,9 @@ describe('unpaintedPanelsText', () => {
     )
   })
 
-  it('spells the count out for the whole body, which is five panels', () => {
+  it('spells the count out for the whole body, which is nine panels', () => {
     expect(unpaintedPanelsText(carWithBarePanels(3))).toContain('Three panels are still unpainted.')
-    expect(unpaintedPanelsText(carWithBarePanels(5))).toContain('Five panels are still unpainted.')
+    expect(unpaintedPanelsText(carWithBarePanels(9))).toContain('Nine panels are still unpainted.')
   })
 
   it('still counts a zone that has been primed, since primer is not paint', () => {
@@ -54,13 +54,5 @@ describe('unpaintedPanelsText', () => {
    * player to paint a hole in the wing would be the wrong instruction. */
   it('says nothing about a zone with no panel on it at all', () => {
     expect(unpaintedPanelsText(carWithBarePanels(2, { panelMissing: true }))).toBeNull()
-  })
-
-  /** The chassis takes underseal rather than paint, and the paint band derives
-   * from the five panel zones alone, so a bare floor is not this line's news. */
-  it('ignores the chassis zone', () => {
-    const states = carWithBarePanels(0)
-    states.chassis = zone({ finish: 3 })
-    expect(unpaintedPanelsText(states)).toBeNull()
   })
 })

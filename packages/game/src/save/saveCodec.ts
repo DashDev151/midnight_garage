@@ -662,8 +662,22 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * `MIGRATIONS[56]` entry and no legacy branch: a pre-v57 save is wiped rather
  * than converted. The version bump alone is still required (Save law) so an
  * old client rejects a v57 save rather than writing a car with no colour.
+ * v57 -> v58 (the body zone model, rebuilt): the zone model moves from six
+ * zones (`bonnet`, `boot`, `left`, `right`, `roof`, `chassis`) to nine
+ * (`bonnet`, `boot`, `left-front`, `left-rear`, `right-front`, `right-rear`,
+ * `front-bumper`, `rear-bumper`, `skirts`), the six metal ones keeping
+ * `metal`/`surface` and the three trim ones losing them outright rather than
+ * reading zero. `CarInstance.color` is deleted (per-zone `colour` is the only
+ * colour a car carries), `underbody` is deleted as both a zone and a car
+ * part, and `chassis` stops being a zone (it remains a normal `body`-group
+ * car part). None of this is backfillable - a pre-v58 save's six-zone shape
+ * has no honest mapping onto nine zones. Per directive 19, a plain
+ * SAVE_VERSION bump with NO `MIGRATIONS[57]` entry and no legacy branch: a
+ * pre-v58 save is wiped rather than converted. The version bump alone is
+ * still required (Save law) so an old client rejects a v58 save rather than
+ * reading a zone shape it has no rungs for.
  */
-export const SAVE_VERSION = 57
+export const SAVE_VERSION = 58
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

@@ -188,14 +188,14 @@ describe('symptom generation (Sprint 73 decision 2)', () => {
       for (const partId of ALL_CAR_PART_IDS) {
         const installed = car.parts[partId].installed
         if (!installed) continue
-        // `panels`/`paint`/`underbody` are derived from zone state
-        // (`bodyPipeline.ts`) and the softening pass never touches metal (it
-        // is money-free, so improving it would never lower the bill) - a
-        // high-metal zone (from the original roll, or a surviving
-        // money-free symptom cause) can pin the derived band below `mint`
-        // PERMANENTLY even once the carrier's own money contribution is
-        // fully exhausted at zero. The real claim for these three is "no
-        // more money left to soften", not "band is mint".
+        // `panels`/`paint` are derived from zone state (`bodyPipeline.ts`)
+        // and the softening pass never touches metal (it is money-free, so
+        // improving it would never lower the bill) - a high-metal zone
+        // (from the original roll, or a surviving money-free symptom cause)
+        // can pin the derived band below `mint` PERMANENTLY even once the
+        // carrier's own money contribution is fully exhausted at zero. The
+        // real claim for these two is "no more money left to soften", not
+        // "band is mint".
         if (car.zoneState && isBodyDerivedPart(partId)) {
           expect(
             hasZoneImproveHeadroom(car.zoneState, partId),

@@ -163,9 +163,9 @@ Engineering laws that all future code must obey:
 
 ## Hard design rules (accessibility & scope)
 
-- **No reflex-based input anywhere** - no QTEs, no timing bars. Everything is decision-paced.
+- **No reflex-based input anywhere** - no QTEs, no timing bars. Everything is decision-paced. This one is absolute and is NOT affected by the driving amendment below.
 - No real-time waiting, energy systems, or monetized timers. Turn-based days: nothing happens while the browser is closed.
-- No driving gameplay - events resolve via pre-run decisions + animated resolution.
+- **No MANDATORY driving (maintainer amendment 2026-08-03, replacing "no driving gameplay").** Nothing may REQUIRE driving to progress: every event still resolves via pre-run decisions plus animated resolution, and a player who never drives can reach the end of the game. **Optional driving, for fun, is allowed**, and a drive mode is planned. The first use is the test track: take a car there and run it through the (locked, calibrated) performance model for a time.
 - Currency is era-authentic yen (¥), everywhere.
 
 ## Commands

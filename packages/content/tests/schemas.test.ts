@@ -92,7 +92,7 @@ describe('seed content validates against schemas', () => {
   })
 
   /**
-   * The 29-part taxonomy replaces hidden-issues.json (archived, not deleted
+   * The 28-part taxonomy replaces hidden-issues.json (archived, not deleted
    * - the paused feature's data). The raw content has no price field -
    * `stockReplacementPriceYenByClass` is derived at content-load time
    * (data.ts) from the resolved parts catalog.
@@ -100,7 +100,7 @@ describe('seed content validates against schemas', () => {
   it('parts-taxonomy.json', () => {
     const result = CarPartTaxonomyContentSchema.safeParse(partsTaxonomy)
     if (!result.success) throw new Error(result.error.message)
-    expect(result.data.length).toBe(29)
+    expect(result.data.length).toBe(28)
   })
 
   it('traits.json', () => {
@@ -393,8 +393,7 @@ describe('seed content validates against schemas', () => {
     // a brand-new car is mint whoever owned it.
     expect(result.data.partsGeneration.wearExposureByMileageKm[0]).toEqual([0, 0])
     // The zone model's own generation weights: per-tier metal/finish severity
-    // tables, the chassis zone's metal table shifted one row kinder per tier,
-    // and the surface-bump chance.
+    // tables and the surface-bump chance.
     expect(result.data.partsGeneration.zoneStates.metalWeightsByTier).toEqual({
       entry: [20, 35, 30, 15],
       everyday: [40, 35, 20, 5],
@@ -406,12 +405,6 @@ describe('seed content validates against schemas', () => {
       everyday: [15, 40, 30, 15],
       enthusiast: [30, 40, 22, 8],
       flagship: [40, 38, 17, 5],
-    })
-    expect(result.data.partsGeneration.zoneStates.chassisMetalWeightsByTier).toEqual({
-      entry: [40, 35, 20, 5],
-      everyday: [55, 30, 12, 3],
-      enthusiast: [65, 25, 8, 2],
-      flagship: [75, 20, 4, 1],
     })
     expect(result.data.partsGeneration.zoneStates.surfaceExtraChance).toBe(0.2)
     expect(result.data.restoration.repairStepFraction).toBe(0.1)
@@ -815,10 +808,10 @@ describe('seed content ids are unique', () => {
     )
   })
 
-  it('parts-taxonomy ids cover exactly the 29 real parts, no duplicates', () => {
+  it('parts-taxonomy ids cover exactly the 28 real parts, no duplicates', () => {
     const ids = CarPartTaxonomyContentSchema.parse(partsTaxonomy).map((p) => p.id)
     expect(new Set(ids).size).toBe(ids.length)
-    expect(ids.length).toBe(29)
+    expect(ids.length).toBe(28)
   })
 
   it('the reputation ladder is strictly ascending and starts at zero (Sprint 69)', () => {

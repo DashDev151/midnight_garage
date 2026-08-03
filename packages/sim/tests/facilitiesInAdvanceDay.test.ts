@@ -55,12 +55,13 @@ const QUIET_DAY = quietFinanceDay()
  * 'worn' band (a real stock part) so the resolved job's effect on it is
  * asserted against a known starting point. `aero` is forced present at
  * 'worn' too, and is the field `createJobs` actually needs: `planGroupRepair`
- * excludes every zone-derived body carrier (panels/paint/underbody) from a
- * car on the zone model, since their band comes from the pipeline's own zone
- * state rather than a direct repair - `aero` is the 'body' group's only
- * OTHER member, and generation's own missing-slot roll can leave it absent,
- * which would otherwise leave the group with nothing `createJobs` can see as
- * repairable regardless of what panels reads. These tests are purely about
+ * excludes every zone-derived body carrier (panels/paint) from a car on the
+ * zone model, since their band comes from the pipeline's own zone state
+ * rather than a direct repair - `aero` and `chassis` are the 'body' group's
+ * other members, and generation's own missing-slot roll can leave aero
+ * absent, which would otherwise leave the group with nothing `createJobs`
+ * can see as repairable regardless of what panels reads. These tests are
+ * purely about
  * the labour gate/timing, not condition - panels is a body signature slot, so
  * the body line is also hired for today, isolating the service-bay/labour
  * concern under test from the separate machine-line gate.

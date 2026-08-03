@@ -1,19 +1,20 @@
 import { z } from 'zod'
 
 /**
- * The eight stages of the body pipeline (docs/design/systems/workshop-rework.md's
+ * The seven stages of the body pipeline (docs/design/systems/workshop-rework.md's
  * pipeline table), in sequence: strip/prep bares a zone to raw finish;
- * metalwork straightens it by hand (`beat`), with the body line (`weld`), or
- * by fitting a real panel (`swapPanel`); `fillAndSand` and `prime` ready a
- * straight zone for colour; `paint` lays the finish (underseal on the
- * chassis zone); `polish` lifts it. Every stage runs through the staged-work
- * machine; only `fillAndSand`/`prime`/`paint`/`polish` consume a material.
+ * metalwork straightens it by hand (`beat`) or with the body line (`weld`) -
+ * both metal-only, refused outright on a trim zone; `fillAndSand` and `prime`
+ * ready a straight zone for colour; `paint` lays the finish; `polish` lifts
+ * it. A fresh panel is not a stage of its own: it is a remove followed by an
+ * install, through the same part-shelf path every other slot uses. Every
+ * stage runs through the staged-work machine; only
+ * `fillAndSand`/`prime`/`paint`/`polish` consume a material.
  */
 export const PipelineStageIdSchema = z.enum([
   'stripPrep',
   'beat',
   'weld',
-  'swapPanel',
   'fillAndSand',
   'prime',
   'paint',

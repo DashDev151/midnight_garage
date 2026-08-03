@@ -36,7 +36,7 @@ const CarPartStateSchema = z.object({
 })
 
 /**
- * All 29 real car parts, keyed by `CarPartId`. Explicit per-part keys (not a
+ * All 28 real car parts, keyed by `CarPartId`. Explicit per-part keys (not a
  * generic `z.record`), matching this codebase's established preference for a
  * missing key to fail validation rather than silently vanish.
  */
@@ -66,7 +66,6 @@ const CarPartsSchema = z.object({
   tyres: CarPartStateSchema,
   panels: CarPartStateSchema,
   paint: CarPartStateSchema,
-  underbody: CarPartStateSchema,
   aero: CarPartStateSchema,
   seats: CarPartStateSchema,
   dashGauges: CarPartStateSchema,
@@ -91,42 +90,63 @@ const CarSymptomSchema = z.object({
 })
 
 /**
- * One zone's work-model state (docs/design/systems/workshop-rework.md's model
- * section): `metal` (0 straight to 3 rotten or bent, and 4 beyond saving),
- * `surface` (0 ready to 2 raw), and `finish` (0 show to 3 flaking or bare -
- * underseal on the chassis zone rather than paint). Metal 4 is the one
- * severity hand work cannot touch: beat and weld both refuse it and only a
- * fresh panel clears it, which is why the chassis zone (no panel to fit) is
- * never written there. `panelMissing` is true only while the zone's panel is
- * absent (rolled off a heavy history at generation, or removed by the player
- * and not yet replaced); never true for the chassis zone, which has no panel.
- * `colour` is set at the paint stage and carries the car's own colour for that
- * zone; absent until first painted. `primed` is true once the prime stage has
- * run and stays true until the paint stage consumes it or a fresh strip/prep
- * bares the zone again - the readiness gate the paint stage checks, since
- * priming does not itself move `finish`.
+ * Fields every zone carries, metal or trim alike: `finish` (0 show to 3
+ * flaking or bare), `panelMissing` (true only while the zone's panel is
+ * absent - rolled off a heavy history at generation, or removed by the
+ * player and not yet replaced), `colour` (set at the paint stage, absent
+ * until first painted), and `primed` (true once the prime stage has run,
+ * staying true until the paint stage consumes it or a fresh strip/prep bares
+ * the zone again - the readiness gate the paint stage checks, since priming
+ * does not itself move `finish`).
  */
-const ZoneStateSchema = z.object({
-  metal: z.number().int().min(0).max(4),
-  surface: z.number().int().min(0).max(2),
+const TRIM_ZONE_FIELDS = {
   finish: z.number().int().min(0).max(3),
   panelMissing: z.boolean(),
   colour: z.string().min(1).optional(),
   primed: z.boolean().default(false),
+}
+
+/**
+ * A metal zone's work-model state (docs/design/systems/workshop-rework.md's
+ * model section): every trim field, plus `metal` (0 straight to 3 rotten or
+ * bent, and 4 beyond saving) and `surface` (0 ready to 2 raw). Metal 4 is
+ * the one severity hand work cannot touch: beat and weld both refuse it and
+ * only a fresh panel clears it.
+ */
+const MetalZoneStateSchema = z.object({
+  metal: z.number().int().min(0).max(4),
+  surface: z.number().int().min(0).max(2),
+  ...TRIM_ZONE_FIELDS,
 })
 
 /**
- * All six zones, keyed by `ZoneId`. Explicit per-zone keys (not a generic
- * `z.record`), matching this codebase's established preference for a missing
- * key to fail validation rather than silently vanish.
+ * A trim zone's work-model state: `metal` and `surface` do not exist here at
+ * all, rather than existing and reading zero - a bumper or a skirt is never
+ * beaten, welded, or filled and sanded, and a caller that tries to read
+ * either field off a trim zone fails to compile instead of silently getting
+ * a straight, sound panel it never actually has.
+ */
+const TrimZoneStateSchema = z.object(TRIM_ZONE_FIELDS)
+
+/**
+ * All nine zones, keyed by `ZoneId`, six metal and three trim. Explicit
+ * per-zone keys (not a generic `z.record`), matching this codebase's
+ * established preference for a missing key to fail validation rather than
+ * silently vanish - and the reason a trim zone's key resolves to
+ * `TrimZoneState` rather than to a union: indexing `zoneState['skirts']`
+ * gives the narrower shape directly, with no runtime check needed to rule
+ * `metal`/`surface` out.
  */
 const ZoneStatesSchema = z.object({
-  bonnet: ZoneStateSchema,
-  boot: ZoneStateSchema,
-  left: ZoneStateSchema,
-  right: ZoneStateSchema,
-  roof: ZoneStateSchema,
-  chassis: ZoneStateSchema,
+  bonnet: MetalZoneStateSchema,
+  boot: MetalZoneStateSchema,
+  'left-front': MetalZoneStateSchema,
+  'left-rear': MetalZoneStateSchema,
+  'right-front': MetalZoneStateSchema,
+  'right-rear': MetalZoneStateSchema,
+  'front-bumper': TrimZoneStateSchema,
+  'rear-bumper': TrimZoneStateSchema,
+  skirts: TrimZoneStateSchema,
 })
 
 export const CarInstanceSchema = z.object({
@@ -134,7 +154,6 @@ export const CarInstanceSchema = z.object({
   modelId: z.string().min(1),
   year: z.number().int(),
   mileageKm: z.number().int().nonnegative(),
-  color: z.string().min(1),
   /**
    * The pool entry (`CarModel.spec.factoryColours`) this specific car left
    * the factory wearing - a single palette id, or two joined with `+` for a
@@ -160,8 +179,9 @@ export const CarInstanceSchema = z.object({
     .nullable()
     .default(null),
   /**
-   * The work model's own resolution: six zones, each carrying metal/surface/
-   * finish severities the derived `panels`/`paint`/`underbody` bands read
+   * The work model's own resolution: nine zones, each carrying the finish
+   * severity the derived `paint` band reads and, on the six metal zones,
+   * metal/surface severities the derived `panels` band reads too
    * (worst-governs). Optional so every existing fixture and save parses
    * unchanged - absent reads as "not yet on the zone model."
    */
@@ -195,7 +215,12 @@ export const CarInstanceSchema = z.object({
 export type CarInstance = z.infer<typeof CarInstanceSchema>
 export type CarPartState = z.infer<typeof CarPartStateSchema>
 export type PartBaseline = z.infer<typeof PartBaselineSchema>
-export type ZoneState = z.infer<typeof ZoneStateSchema>
+export type MetalZoneState = z.infer<typeof MetalZoneStateSchema>
+export type TrimZoneState = z.infer<typeof TrimZoneStateSchema>
+/** Either zone shape - what indexing `ZoneStates` by a generic `ZoneId`
+ * yields. A caller with a specific zone key already gets the narrower shape
+ * directly; this is for a caller that only knows it has SOME zone. */
+export type ZoneState = MetalZoneState | TrimZoneState
 export type ZoneStates = z.infer<typeof ZoneStatesSchema>
 
 /** Every real `CarPartId`, in the same order as `CarPartIdSchema` - the

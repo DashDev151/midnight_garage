@@ -8,6 +8,7 @@ import {
   type CarInstance,
   type CarModel,
   type GameState,
+  type MetalZoneState,
   type Part,
   type PartInstance,
   type ZoneState,
@@ -15,43 +16,67 @@ import {
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import {
+  METAL_ZONE_IDS,
   PANEL_ZONE_IDS,
+  TRIM_ZONE_IDS,
   applyDerivedBodyBands,
   deriveBodyBands,
+  isMetalZoneState,
   refitCarrierZoneStates,
   setZoneCarrierToAtLeastBand,
 } from '../src/bodyPipeline'
 import { buildSimContext } from '../src/context'
-import { completeJob, createJob, installFitGate, resolveRemovePart } from '../src/jobs'
+import {
+  completeJob,
+  createJob,
+  hasMachineLineFor,
+  installFitGate,
+  resolveHireMachineLine,
+  resolveRemovePart,
+} from '../src/jobs'
 import { makeMarketOrigin } from '../src/provenance'
 import { buildCarInstance, mintCarParts, testSpecialty, testToolTiers } from './testFixtures'
 
 /**
- * A body value carrier holds a real SKU (sprint163.md). `panels`, `paint` and
- * `underbody` were the only slots in the game that could hold nothing but the
- * factory item, so a body kit had nowhere to live and 23 of the 100
- * authenticity points could never be lost. What is FITTED there is now a
- * choice; the BAND still derives from zone state and nothing else.
+ * A body value carrier holds a real SKU. `panels` and `paint` are the two
+ * slots in the game whose BAND is derived from `zoneState` rather than
+ * carried directly; what is FITTED there is a real choice, so a body kit
+ * reads as modified. `chassis` sits beside them in the body group and is
+ * also never removable, but its band is a normal per-part one - only its
+ * install is gated the same way, not its band.
  */
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY, [], FACILITIES)
 const MODEL: CarModel = CARS.find((c) => c.id === 'nissan-silvia-s13')!
 const FITMENT_CLASS = fitmentClassForTier(MODEL.tier)
 
-const BODY_KIT: Part = PARTS.find(
-  (p) => p.carPartId === 'panels' && p.grade === 'sport' && p.fitmentClass === FITMENT_CLASS,
+// `panels` no longer has a whole-car aftermarket SKU at all - every non-stock
+// entry now carries a `zoneId` (a bonnet, a bumper, a skirt), and there is no
+// single kit left that replaces the whole slot through the normal install-job
+// path. `paint` is the one derived carrier whose whole-car ladder is
+// untouched by the zone rework, so it is what exercises "install a non-stock
+// SKU onto a `removable: false` slot through the real job pipeline" below;
+// `refitCarrierZoneStates('panels', ...)` itself is still tested directly,
+// as the pure function it is.
+const PAINT_KIT: Part = PARTS.find(
+  (p) => p.carPartId === 'paint' && p.grade === 'sport' && p.fitmentClass === FITMENT_CLASS,
 )!
-const UNDERGLOW: Part = PARTS.find(
-  (p) => p.carPartId === 'underbody' && p.grade === 'street' && p.fitmentClass === FITMENT_CLASS,
+const CHASSIS_KIT: Part = PARTS.find(
+  (p) => p.carPartId === 'chassis' && p.grade === 'street' && p.fitmentClass === FITMENT_CLASS,
 )!
 
-function zone(overrides: Partial<ZoneState> = {}): ZoneState {
+function metalZone(overrides: Partial<MetalZoneState> = {}): MetalZoneState {
   return { metal: 0, surface: 0, finish: 0, panelMissing: false, primed: false, ...overrides }
+}
+
+function trimZone(overrides: Partial<ZoneState> = {}): ZoneState {
+  return { finish: 0, panelMissing: false, primed: false, ...overrides }
 }
 
 function zonesWith(overrides: Partial<Record<string, ZoneState>> = {}): ZoneStates {
   const states = {} as Record<string, ZoneState>
-  for (const zoneId of [...PANEL_ZONE_IDS, 'chassis']) states[zoneId] = zone()
+  for (const zoneId of METAL_ZONE_IDS) states[zoneId] = metalZone()
+  for (const zoneId of TRIM_ZONE_IDS) states[zoneId] = trimZone()
   return { ...states, ...overrides } as ZoneStates
 }
 
@@ -114,11 +139,15 @@ function stateWith(car: CarInstance, inventory: PartInstance[]): GameState {
 
 /** Fits `part` through the real install job the workshop uses, and returns the
  * car it leaves behind. */
-function fitThroughJob(car: CarInstance, part: Part): CarInstance {
+function fitThroughJob(
+  car: CarInstance,
+  part: Part,
+  state: GameState = stateWith(car, []),
+): CarInstance {
   const instance = kitInstance(part)
-  const state = stateWith(car, [instance])
+  const withPart: GameState = { ...state, partInventory: [...state.partInventory, instance] }
   const gate = installFitGate(
-    state,
+    withPart,
     {
       carInstanceId: car.id,
       kind: 'install-part',
@@ -141,7 +170,7 @@ function fitThroughJob(car: CarInstance, part: Part): CarInstance {
     },
     'job-1',
   )
-  const result = completeJob(state, job, CONTEXT)
+  const result = completeJob(withPart, job, CONTEXT)
   expect(result.blockedReason).toBeNull()
   return result.state.ownedCars[0]!
 }
@@ -149,7 +178,7 @@ function fitThroughJob(car: CarInstance, part: Part): CarInstance {
 describe('a body carrier takes a non-stock SKU', () => {
   it('lets the install gate through on an occupied carrier and refuses an occupied ordinary slot', () => {
     const car = carOnZoneModel()
-    const kit = kitInstance(BODY_KIT)
+    const kit = kitInstance(PAINT_KIT)
     const coilovers = PARTS.find(
       (p) => p.carPartId === 'dampers' && p.grade === 'street' && p.fitmentClass === FITMENT_CLASS,
     )!
@@ -178,80 +207,129 @@ describe('a body carrier takes a non-stock SKU', () => {
   })
 
   it('holds the fitted kit and re-derives the band from the zones underneath it', () => {
-    const fitted = fitThroughJob(carOnZoneModel(), BODY_KIT)
-    expect(fitted.parts.panels.installed?.partId).toBe(BODY_KIT.id)
-    expect(fitted.parts.panels.installed?.band).toBe(deriveBodyBands(fitted.zoneState!).panels)
+    const fitted = fitThroughJob(carOnZoneModel(), PAINT_KIT)
+    expect(fitted.parts.paint.installed?.partId).toBe(PAINT_KIT.id)
+    expect(fitted.parts.paint.installed?.band).toBe(deriveBodyBands(fitted.zoneState!).paint)
   })
 })
 
-describe('fitting a kit is a panel swap', () => {
-  it('leaves every zone the carrier covers on fresh metal and a bare finish', () => {
+describe('refitCarrierZoneStates: fitting a panels kit is a fresh panel everywhere', () => {
+  it('leaves every one of the nine zones the carrier covers on a fresh, bare finish', () => {
     const rough = zonesWith({
-      bonnet: zone({ metal: 3, surface: 2, finish: 3 }),
-      left: zone({ metal: 2, surface: 1, finish: 2, colour: 'kaido-blue' }),
-      chassis: zone({ metal: 1, finish: 2 }),
+      bonnet: metalZone({ metal: 3, surface: 2, finish: 3 }),
+      'left-front': metalZone({ metal: 2, surface: 1, finish: 2, colour: 'kaido-blue' }),
+      skirts: trimZone({ finish: 2, colour: 'kaido-blue' }),
     })
-    const fitted = fitThroughJob(carOnZoneModel(rough), BODY_KIT)
+    const refitted = refitCarrierZoneStates(rough, 'panels', 'mint')
     for (const zoneId of PANEL_ZONE_IDS) {
-      const after = fitted.zoneState![zoneId]
-      expect(after.metal, zoneId).toBe(0)
-      expect(after.surface, zoneId).toBe(0)
+      const after = refitted[zoneId]
       expect(after.finish, zoneId).toBe(3)
+      expect(after.panelMissing, zoneId).toBe(false)
       expect(after.colour, zoneId).toBeUndefined()
+      if (isMetalZoneState(after)) {
+        expect(after.metal, zoneId).toBe(0)
+        expect(after.surface, zoneId).toBe(0)
+      }
     }
-    // The chassis is the `underbody` carrier's zone, not the `panels`
-    // carrier's, so a body kit leaves it exactly as it found it.
-    expect(fitted.zoneState!.chassis).toEqual(rough.chassis)
-  })
-
-  it('leaves the car owing its paint: panels read mint, paint reads poor', () => {
-    const fitted = fitThroughJob(carOnZoneModel(), BODY_KIT)
-    expect(fitted.parts.panels.installed?.band).toBe('mint')
-    expect(fitted.parts.paint.installed?.band).toBe('poor')
-  })
-
-  it('sends an underbody kit to the chassis zone and nowhere else', () => {
-    const rough = zonesWith({
-      bonnet: zone({ metal: 2, surface: 1, finish: 2 }),
-      chassis: zone({ metal: 2, finish: 3 }),
-    })
-    const fitted = fitThroughJob(carOnZoneModel(rough), UNDERGLOW)
-    expect(fitted.parts.underbody.installed?.partId).toBe(UNDERGLOW.id)
-    expect(fitted.zoneState!.chassis).toEqual(zone({ finish: 3 }))
-    expect(fitted.zoneState!.bonnet).toEqual(rough.bonnet)
   })
 
   it('refits nothing for a paint SKU, which is a finish rather than a part that arrives', () => {
-    const rough = zonesWith({ bonnet: zone({ metal: 2, surface: 1, finish: 3 }) })
+    const rough = zonesWith({ bonnet: metalZone({ metal: 2, surface: 1, finish: 3 }) })
     expect(refitCarrierZoneStates(rough, 'paint', 'mint')).toEqual(rough)
   })
 })
 
-describe('a dented widebody is a widebody that is dented', () => {
-  it('keeps the fitted kit while the damage drives the band down', () => {
-    const fitted = fitThroughJob(carOnZoneModel(), BODY_KIT)
-    expect(fitted.parts.panels.installed?.band).toBe('mint')
+describe('a resprayed car stays resprayed while the shell around it is dented', () => {
+  it('keeps the fitted paint kit while the damage drives its own band down', () => {
+    const fitted = fitThroughJob(carOnZoneModel(), PAINT_KIT)
+    expect(fitted.parts.paint.installed?.band).toBe('mint')
 
     const dented: CarInstance = {
       ...fitted,
-      zoneState: setZoneCarrierToAtLeastBand(fitted.zoneState!, 'panels', 'poor', 'left'),
+      zoneState: setZoneCarrierToAtLeastBand(fitted.zoneState!, 'paint', 'poor', 'left-front'),
     }
     const settled = applyDerivedBodyBands(dented, MODEL, CONTEXT)
-    expect(settled.parts.panels.installed?.partId).toBe(BODY_KIT.id)
-    expect(settled.parts.panels.installed?.band).toBe('poor')
+    expect(settled.parts.paint.installed?.partId).toBe(PAINT_KIT.id)
+    expect(settled.parts.paint.installed?.band).toBe('poor')
   })
 
   it('survives every re-derivation, however many times the bands settle', () => {
-    let car = fitThroughJob(carOnZoneModel(), BODY_KIT)
+    let car = fitThroughJob(carOnZoneModel(), PAINT_KIT)
     for (let i = 0; i < 5; i++) car = applyDerivedBodyBands(car, MODEL, CONTEXT)
-    expect(car.parts.panels.installed?.partId).toBe(BODY_KIT.id)
+    expect(car.parts.paint.installed?.partId).toBe(PAINT_KIT.id)
   })
 
-  it('never un-fits a kit when the zones are repaired back', () => {
-    const dented = carOnZoneModel(zonesWith({ left: zone({ metal: 3, surface: 2, finish: 3 }) }))
-    const fitted = fitThroughJob(dented, BODY_KIT)
+  it('never un-fits the kit when the zones are repaired back', () => {
+    const dented = carOnZoneModel(
+      zonesWith({ 'left-front': metalZone({ metal: 3, surface: 2, finish: 3 }) }),
+    )
+    const fitted = fitThroughJob(dented, PAINT_KIT)
     const repaired = applyDerivedBodyBands({ ...fitted, zoneState: zonesWith() }, MODEL, CONTEXT)
-    expect(repaired.parts.panels.installed?.partId).toBe(BODY_KIT.id)
-    expect(repaired.parts.panels.installed?.band).toBe('mint')
+    expect(repaired.parts.paint.installed?.partId).toBe(PAINT_KIT.id)
+    expect(repaired.parts.paint.installed?.band).toBe('mint')
+  })
+})
+
+/**
+ * `chassis` is a normal per-part carrier, not zone-derived, but it shares
+ * `panels`'s `removable: false` status and its group's signature-slot
+ * machine gate: fitting a stiffening kit is an install like any other, just
+ * one the body line has to be owned or hired to perform - the same
+ * `removeMachineGateGroup`/`hasMachineLineFor` mechanism assemblies already
+ * use, reused rather than a second gate built for this one slot.
+ */
+describe('the chassis stiffening kits need the body line', () => {
+  it('refuses the install outright when the body line is neither owned nor hired today', () => {
+    const car = carOnZoneModel()
+    const state = stateWith(car, [])
+    const gated: GameState = { ...state, toolTiers: testToolTiers() } // body tier 1, nothing hired
+    const kit = kitInstance(CHASSIS_KIT)
+    const withKit: GameState = { ...gated, partInventory: [kit] }
+    const gate = installFitGate(
+      withKit,
+      {
+        carInstanceId: car.id,
+        kind: 'install-part',
+        componentId: 'body',
+        partInstanceId: kit.id,
+        carPartId: 'chassis',
+        laborSlotsRequired: 0,
+      },
+      CONTEXT,
+    )
+    // The fit gate itself is satisfied (the SKU addresses the right slot);
+    // the machine-line refusal is `completeJob`'s own gate.
+    expect(gate.ok).toBe(true)
+    const job = createJob(
+      {
+        carInstanceId: car.id,
+        kind: 'install-part',
+        componentId: 'body',
+        partInstanceId: kit.id,
+        carPartId: 'chassis',
+        laborSlotsRequired: 0,
+      },
+      'job-chassis',
+    )
+    const result = completeJob(withKit, job, CONTEXT)
+    expect(result.blockedReason).toBe('machine-line')
+    expect(result.state.ownedCars[0]!.parts.chassis.installed?.partId).not.toBe(CHASSIS_KIT.id)
+  })
+
+  it('installs once the body line is hired for the day', () => {
+    const car = carOnZoneModel()
+    const state = stateWith(car, [])
+    const untiered: GameState = { ...state, toolTiers: testToolTiers() }
+    const hired = resolveHireMachineLine(untiered, 'body', CONTEXT)
+    expect(hasMachineLineFor('body', hired.state)).toBe(true)
+    const fitted = fitThroughJob(car, CHASSIS_KIT, hired.state)
+    expect(fitted.parts.chassis.installed?.partId).toBe(CHASSIS_KIT.id)
+  })
+
+  it('installs freely once the body line is owned outright', () => {
+    // `carOnZoneModel`'s state carries `toolTiers: testToolTiers({ body: 3 })`
+    // by default, so the gate never fires here at all.
+    const fitted = fitThroughJob(carOnZoneModel(), CHASSIS_KIT)
+    expect(fitted.parts.chassis.installed?.partId).toBe(CHASSIS_KIT.id)
   })
 })

@@ -21,7 +21,6 @@ describe('GameState / DayLog round-trip', () => {
           modelId: 'honda-city-e-aa',
           year: 1984,
           mileageKm: 128_000,
-          color: 'Sodium Amber',
           factoryColour: 'white',
           provenanceNote: 'one-owner, garage kept, Gunma plates',
           parts: {
@@ -215,14 +214,6 @@ describe('GameState / DayLog round-trip', () => {
                 id: 'p-paint',
                 partId: 'stock-paint',
                 band: 'poor',
-                origin: { kind: 'market', day: 1 },
-              },
-            },
-            underbody: {
-              installed: {
-                id: 'p-underbody',
-                partId: 'stock-underbody',
-                band: 'worn',
                 origin: { kind: 'market', day: 1 },
               },
             },

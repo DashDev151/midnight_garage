@@ -137,7 +137,7 @@ describe('PerformanceSandboxScreen', () => {
     await click(wrapper, 'set-all-state-fine')
 
     const components = wrapper.findAll('[data-test^="component-"]')
-    expect(components.length).toBe(29)
+    expect(components.length).toBe(28)
     for (const component of components) {
       expect(component.find('.strip.condition .seg.on').text()).toBe('fine')
     }
@@ -145,11 +145,13 @@ describe('PerformanceSandboxScreen', () => {
     await click(wrapper, 'set-all-grade-race')
     const build = renderedBuild(wrapper)
     const held = Object.keys(build).filter((id) => build[id] !== 'fine/race')
-    // Every one of the 29 slots carries an aftermarket ladder, so set-all
-    // reaches all of them and holds nothing back. A slot listed here has no
-    // race SKU in the catalogue, which is a content gap rather than a
-    // misbehaving control.
-    expect(held.sort()).toEqual([])
+    // Every aftermarket `panels` SKU now carries a `zoneId` - it fits one body
+    // zone through the pipeline's own install, never the whole-car slot this
+    // sandbox builds (`partFitsCar` refuses a zone-scoped part here by
+    // design) - so `panels` alone holds at whatever grade it already had. A
+    // slot listed here has no whole-car race SKU in the catalogue, which is a
+    // content gap rather than a misbehaving control.
+    expect(held.sort()).toEqual(['panels'])
 
     // Per group, not just globally.
     await click(wrapper, 'group-state-engine-worn')
@@ -169,7 +171,7 @@ describe('PerformanceSandboxScreen', () => {
     }
   })
 
-  it('a build code round-trips the car, the tier and all 29 slots', async () => {
+  it('a build code round-trips the car, the tier and all 28 slots', async () => {
     const wrapper = mountScreen()
 
     // A representative build flow: everything fine, then brakes worn, then street
@@ -186,7 +188,7 @@ describe('PerformanceSandboxScreen', () => {
 
     const code = text(wrapper, 'build-code')
     expect(code.split('|')).toEqual(['v1', IN_GAME_CAR, 'enthusiast', expect.any(String)])
-    expect(code.split('|')[3]).toHaveLength(29)
+    expect(code.split('|')[3]).toHaveLength(28)
 
     const before = renderedBuild(wrapper)
     const laps = text(wrapper, 'hud')

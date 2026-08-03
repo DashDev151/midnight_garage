@@ -1,7 +1,9 @@
 import {
+  MetalZoneIdSchema,
   PanelZoneIdSchema,
   PAINT_COLOURS,
   PAINT_HISTORY_STATES,
+  TrimZoneIdSchema,
   ZoneIdSchema,
   fitmentClassForTier,
   MATERIALS,
@@ -12,6 +14,8 @@ import {
   type DamageGrade,
   type EconomyConfig,
   type Grade,
+  type MetalZoneId,
+  type MetalZoneState,
   type PaintHistoryState,
   type PanelZoneId,
   type Part,
@@ -26,16 +30,34 @@ import { pickWeighted, type Rng } from './rng'
 
 /**
  * The body pipeline's own module (docs/design/systems/workshop-rework.md): zone
- * generation, the worst-governs derivation of the three body value-carrier
- * bands (`panels`/`paint`/`underbody`) from zone state, and the pure
- * per-stage effect a confirmed pipeline action applies to one zone. Pure
- * functions only - no `GameState`, no jobs.ts dependency, so this module
- * never risks a cycle with the orchestration layer (`stagedWork.ts`) that
- * calls it.
+ * generation, the worst-governs derivation of the two body value-carrier
+ * bands (`panels`/`paint`) from zone state, and the pure per-stage effect a
+ * confirmed pipeline action applies to one zone. Pure functions only - no
+ * `GameState`, no jobs.ts dependency, so this module never risks a cycle with
+ * the orchestration layer (`stagedWork.ts`) that calls it.
+ *
+ * Nine zones, two shapes: six metal zones carry `metal`/`surface` on top of
+ * the shared `finish`/`panelMissing`/`colour`/`primed` fields, three trim
+ * zones carry only the shared fields. `chassis` is not a zone at all - it is
+ * a normal car part with its own condition band, repaired and installed like
+ * any other slot.
  */
 
 export const PANEL_ZONE_IDS = PanelZoneIdSchema.options
 export const ALL_ZONE_IDS = ZoneIdSchema.options
+export const METAL_ZONE_IDS = MetalZoneIdSchema.options
+export const TRIM_ZONE_IDS = TrimZoneIdSchema.options
+
+/** Whether `zone` is a metal zone - the one runtime check the two-shape model
+ * still needs, at the boundary where a caller only holds a generic `ZoneState`
+ * (indexed by a `ZoneId` value that came from data, not from a literal key a
+ * type could narrow on). Anywhere a caller already iterates `METAL_ZONE_IDS`
+ * or `TRIM_ZONE_IDS` specifically, indexing `ZoneStates` by that narrower id
+ * type resolves the concrete shape at compile time and this guard is never
+ * needed. */
+export function isMetalZoneState(zone: ZoneState): zone is MetalZoneState {
+  return 'metal' in zone
+}
 
 /** Zone severity (0-4) to `ConditionBand`, the mapping every derived body
  * band uses: 0 mint, 1 fine, 2 worn, 3 poor, 4 scrap. The axis and the band
@@ -75,12 +97,13 @@ export function severityThresholdForBand(targetBand: ConditionBand): number {
 }
 
 /** Whether this zone needs a fresh panel before any hand work on it can mean
- * anything: the panel is gone, or its metal is past what beating and welding
- * can pull back. The one gate `planPipelineStage`, the repair bill and the
- * workshop's own affordances all read, so the three can never disagree about
- * what a beyond-saving panel allows. */
+ * anything: the panel is gone, or (metal zones only) its metal is past what
+ * beating and welding can pull back. A trim zone never fails the second half
+ * - it has no metal to exceed the threshold. The one gate `planPipelineStage`,
+ * the repair bill and the workshop's own affordances all read, so the three
+ * can never disagree about what a beyond-saving panel allows. */
 export function zoneNeedsPanel(zone: ZoneState): boolean {
-  return zone.panelMissing || zone.metal > MAX_REPAIRABLE_METAL
+  return zone.panelMissing || (isMetalZoneState(zone) && zone.metal > MAX_REPAIRABLE_METAL)
 }
 
 /** The panel zones carrying no paint: stripped back, or wearing a panel that
@@ -94,14 +117,15 @@ export function unpaintedPanelZoneIds(zoneStates: ZoneStates): PanelZoneId[] {
   )
 }
 
-/** Zone body score = max(metal, surface); `panels` band is the worst body
- * score across the five panel zones, mapped 0 mint/1 fine/2 worn/3 poor/4
- * scrap - and any missing panel forces `scrap` outright, since an absent
- * panel has no severity to read. */
+/** Zone body score = max(metal, surface) on the six metal zones alone - trim
+ * carries no metal condition to contribute; `panels` band is the worst of
+ * those, mapped 0 mint/1 fine/2 worn/3 poor/4 scrap - and ANY of the nine
+ * zones missing its panel forces `scrap` outright, since an absent panel
+ * (metal or trim) has no severity to read. */
 export function derivePanelsBand(zoneStates: ZoneStates): ConditionBand {
   if (PANEL_ZONE_IDS.some((zoneId) => zoneStates[zoneId].panelMissing)) return 'scrap'
   const worst = Math.max(
-    ...PANEL_ZONE_IDS.map((zoneId) =>
+    ...METAL_ZONE_IDS.map((zoneId) =>
       Math.max(zoneStates[zoneId].metal, zoneStates[zoneId].surface),
     ),
   )
@@ -117,9 +141,9 @@ function factoryColourSet(factoryColour: string): ReadonlySet<string> {
   return new Set(factoryColour.split('+'))
 }
 
-/** `paint` band is the worst finish across the five panel zones, same
- * mapping, stepped one band worse when two or more painted zones disagree on
- * colour (the mismatch penalty) - an unpainted zone (`colour` absent) never
+/** `paint` band is the worst finish across all nine zones, same mapping,
+ * stepped one band worse when two or more painted zones disagree on colour
+ * (the mismatch penalty) - an unpainted zone (`colour` absent) never
  * participates in the disagreement check. The step goes through the same
  * severity/band pair every other derivation uses, so `scrap` is its floor:
  * `bandForSeverity` clamps at the worst rung the ladder expresses, and panels
@@ -147,29 +171,19 @@ export function derivePaintBand(zoneStates: ZoneStates, factoryColour?: string):
   return bandForSeverity(severityThresholdForBand(band) + 1)
 }
 
-/** `underbody` band = max(metal, finish) on the chassis zone alone, same
- * mapping - never mismatch-penalised (a single zone cannot disagree with
- * itself) and never `scrap` (the chassis has no panel to go missing). */
-export function deriveUnderbodyBand(zoneStates: ZoneStates): ConditionBand {
-  const chassis = zoneStates.chassis
-  return bandForSeverity(Math.max(chassis.metal, chassis.finish))
-}
-
 export interface DerivedBodyBands {
   panels: ConditionBand
   paint: ConditionBand
-  underbody: ConditionBand
 }
 
 export function deriveBodyBands(zoneStates: ZoneStates, factoryColour?: string): DerivedBodyBands {
   return {
     panels: derivePanelsBand(zoneStates),
     paint: derivePaintBand(zoneStates, factoryColour),
-    underbody: deriveUnderbodyBand(zoneStates),
   }
 }
 
-const DERIVED_BODY_PART_IDS = ['panels', 'paint', 'underbody'] as const
+const DERIVED_BODY_PART_IDS = ['panels', 'paint'] as const
 export type DerivedBodyPartId = (typeof DERIVED_BODY_PART_IDS)[number]
 
 export function isBodyDerivedPart(carPartId: string): carPartId is DerivedBodyPartId {
@@ -177,16 +191,16 @@ export function isBodyDerivedPart(carPartId: string): carPartId is DerivedBodyPa
 }
 
 /**
- * The SINGLE WRITER: derives `panels`/`paint`/`underbody` from `car.zoneState`
- * and writes the result onto the installed carrier parts. Runs at generation
- * and after every zone mutation; nothing else may write those three bands. A
- * no-op when `car.zoneState` is absent (a car not yet on the zone model - the
+ * The SINGLE WRITER: derives `panels`/`paint` from `car.zoneState` and writes
+ * the result onto the installed carrier parts. Runs at generation and after
+ * every zone mutation; nothing else may write those two bands. A no-op when
+ * `car.zoneState` is absent (a car not yet on the zone model - the
  * pre-wave-2 fixtures and any legacy state), so every existing caller that
  * never sets zone state keeps its band exactly as authored. The rare case of
  * a null `installed` slot on a zone-model car (never produced by real
- * generation, which always fills these three slots) synthesises a fresh
- * stock instance rather than leaving the slot empty, since these three parts
- * are always-present value carriers under the new model.
+ * generation, which always fills these two slots) synthesises a fresh stock
+ * instance rather than leaving the slot empty, since these two parts are
+ * always-present value carriers under the new model.
  *
  * It writes the BAND and nothing else onto an occupied slot, so whatever SKU
  * is fitted survives every re-derivation: a carrier holding a body kit keeps
@@ -252,38 +266,39 @@ function rollSeverity(weights: readonly [number, number, number, number], rng: R
 const BEYOND_REPAIR_GRADES: readonly DamageGrade[] = ['rough', 'project']
 
 /**
- * Rolls a fresh car's six zones (docs/design/systems/workshop-rework.md's generation
- * table): metal and finish roll independently per zone from the tier's own
- * weight tables (the chassis zone rolls metal on the next-kinder tier's row),
- * surface derives from metal with a chance of one extra step. No zone starts
- * with a colour (that is a paint-stage state, never rolled), and only the
- * grade-gated escalation below can start one with a missing panel. Seeded via
- * `rng`, the same stream the rest of generation threads.
+ * Rolls a fresh car's nine zones (docs/design/systems/workshop-rework.md's
+ * generation table): the six metal zones roll `metal`, `surface` and `finish`
+ * independently per zone from the tier's own weight tables; the three trim
+ * zones roll `finish` alone, from the same finish table (a bumper's paint
+ * wears the same way a panel's does; it just has no metal underneath to
+ * rust). No zone starts with a colour (that is a paint-stage state, never
+ * rolled), and only the grade-gated escalation below can start one with a
+ * missing panel. Seeded via `rng`, the same stream the rest of generation
+ * threads.
  *
- * `severityOrder` ARRANGES the five panel zones' rolled severities without
- * changing them: the rolled states are dealt out worst-first along that order,
- * so the caller decides which zones carry the damage the tier tables already
- * decided the car has. Six independent per-zone rolls could not express a
- * collision at all, because `left` and `right` were unrelated and there was no
- * front or rear. It is a pure permutation, which is exactly what a damage
- * pattern is allowed to do: `panels`/`paint` derive from the WORST panel zone,
- * and a worst-of is invariant under permutation, so the derived bands, the
- * repair bill and every Law 2 check see an identical distribution. Only WHERE
- * moves. Defaults to the zones' own order, which is a no-op.
+ * `severityOrder` ARRANGES the nine zones' rolled severities without changing
+ * them: the metal zones' rolled states are dealt out worst-first along the
+ * order's own metal subsequence, and the trim zones' along its trim
+ * subsequence, so the caller decides which zones carry the damage the tier
+ * tables already decided the car has. Dealing the two shapes separately keeps
+ * a metal roll from ever landing on a trim zone (which cannot receive one) -
+ * only WHERE moves, never WHAT. Defaults to the zones' own order, which is a
+ * no-op for both subsequences.
  *
  * `history` is the ONE thing that can take a panel past what hand work can
- * pull back, and it is not a permutation: the lead zone of `severityOrder` (the
- * panel the pattern implicates most, holding the worst severities the tier
- * tables rolled) escalates its metal to `BEYOND_REPAIR_METAL` when the car's
- * history is one of the two heaviest grades, that zone's metal already sits at
- * the weldable maximum, and `zoneBeyondRepairChance` lands. A second roll
- * against `zonePanelMissingChance` then decides whether the panel is absent
- * outright rather than ruined in place. Both rolls are drawn whenever a history
- * is supplied, applied only when the gates hold, so a car's draw sequence does
- * not depend on how it happened to roll. `history` absent means neither state
- * can occur, which is what a caller with no story behind the car wants;
- * `allowPanelMissing` false keeps the panel on the car (a customer's own car
- * never turns up with a panel gone), leaving only the ruined-in-place state.
+ * pull back, and it is not a permutation: the lead METAL zone of
+ * `severityOrder` (the metal panel the pattern implicates most, holding the
+ * worst severities the tier tables rolled) escalates its metal to
+ * `BEYOND_REPAIR_METAL` when the car's history is one of the two heaviest
+ * grades, that zone's metal already sits at the weldable maximum, and
+ * `zoneBeyondRepairChance` lands. A second roll against `zonePanelMissingChance`
+ * then decides whether the panel is absent outright rather than ruined in
+ * place. Both rolls are drawn whenever a history is supplied, applied only
+ * when the gates hold, so a car's draw sequence does not depend on how it
+ * happened to roll. `history` absent means neither state can occur, which is
+ * what a caller with no story behind the car wants; `allowPanelMissing` false
+ * keeps the panel on the car (a customer's own car never turns up with a
+ * panel gone), leaving only the ruined-in-place state.
  *
  * `factoryColour` and `culture`, given TOGETHER, additionally roll the car's
  * whole-car paint state (`applyPaintHistory`) and write the result onto the
@@ -296,7 +311,7 @@ export function rollZoneStates(
   fitmentClass: PartFitmentClass,
   economy: EconomyConfig,
   rng: Rng,
-  severityOrder: readonly PanelZoneId[] = PANEL_ZONE_IDS,
+  severityOrder: readonly ZoneId[] = PANEL_ZONE_IDS,
   history: DamageGrade | null = null,
   allowPanelMissing: boolean = true,
   factoryColour: string | null = null,
@@ -305,32 +320,58 @@ export function rollZoneStates(
   const {
     metalWeightsByTier,
     finishWeightsByTier,
-    chassisMetalWeightsByTier,
     surfaceExtraChance,
     zoneBeyondRepairChance,
     zonePanelMissingChance,
   } = economy.partsGeneration.zoneStates
-  const rollZone = (metalWeights: readonly [number, number, number, number]): ZoneState => {
-    const metal = rollSeverity(metalWeights, rng)
+  const rollMetalZone = (): MetalZoneState => {
+    const metal = rollSeverity(metalWeightsByTier[fitmentClass], rng)
     const finish = rollSeverity(finishWeightsByTier[fitmentClass], rng)
     let surface = Math.max(0, metal - 1)
     if (rng.next() < surfaceExtraChance) surface = Math.min(2, surface + 1)
     return { metal, surface, finish, panelMissing: false, primed: false }
   }
+  const rollTrimZone = () => ({
+    finish: rollSeverity(finishWeightsByTier[fitmentClass], rng),
+    panelMissing: false,
+    primed: false,
+  })
+
   const zoneStates = {} as Record<ZoneId, ZoneState>
   // Rolled first, in the zones' own fixed order so the draw sequence is
-  // unchanged, then dealt out worst-first along `severityOrder`.
-  const rolled = PANEL_ZONE_IDS.map(() => rollZone(metalWeightsByTier[fitmentClass]))
-  rolled.sort((a, b) => b.metal + b.surface + b.finish - (a.metal + a.surface + a.finish))
-  severityOrder.forEach((zoneId, index) => {
-    zoneStates[zoneId] = rolled[index]!
+  // unchanged, then dealt out worst-first along `severityOrder`'s own
+  // subsequence for each shape. A caller may legitimately name only the
+  // zones it has an opinion about (a metal-only order to arrange a purely
+  // mechanical escalation, say) - any zone of either shape `severityOrder`
+  // never mentions is appended in the zones' own natural order, so every
+  // metal and every trim zone always ends up dealt exactly one rolled state,
+  // whatever the caller's order actually lists.
+  const isMetalId = (zoneId: ZoneId): zoneId is MetalZoneId =>
+    (METAL_ZONE_IDS as readonly string[]).includes(zoneId)
+  const metalOrder = [
+    ...severityOrder.filter(isMetalId),
+    ...METAL_ZONE_IDS.filter((zoneId) => !severityOrder.includes(zoneId)),
+  ]
+  const trimOrder = [
+    ...severityOrder.filter((zoneId) => !isMetalId(zoneId)),
+    ...TRIM_ZONE_IDS.filter((zoneId) => !severityOrder.includes(zoneId)),
+  ]
+  const rolledMetal = METAL_ZONE_IDS.map(() => rollMetalZone())
+  rolledMetal.sort((a, b) => b.metal + b.surface + b.finish - (a.metal + a.surface + a.finish))
+  metalOrder.forEach((zoneId, index) => {
+    zoneStates[zoneId] = rolledMetal[index]!
   })
-  zoneStates.chassis = rollZone(chassisMetalWeightsByTier[fitmentClass])
+  const rolledTrim = TRIM_ZONE_IDS.map(() => rollTrimZone())
+  rolledTrim.sort((a, b) => b.finish - a.finish)
+  trimOrder.forEach((zoneId, index) => {
+    zoneStates[zoneId] = rolledTrim[index]!
+  })
+
   if (history !== null) {
     const beyondRepairRoll = rng.next()
     const panelMissingRoll = rng.next()
-    const leadZoneId = severityOrder[0]!
-    const lead = zoneStates[leadZoneId]!
+    const leadZoneId = metalOrder[0]!
+    const lead = zoneStates[leadZoneId] as MetalZoneState
     if (
       BEYOND_REPAIR_GRADES.includes(history) &&
       lead.metal === MAX_REPAIRABLE_METAL &&
@@ -352,7 +393,7 @@ export function rollZoneStates(
 /** The colour each panel zone wears when the car is in its factory scheme: the
  * `factoryColour` pool entry itself for every zone on a single-colour car, or
  * - for a genuine two-tone entry (`a+b`) - the two halves dealt across the
- * five panel zones in their own declared order. Which physical panel takes
+ * nine panel zones in their own declared order. Which physical panel takes
  * which half is deliberately not modelled (the research could not establish
  * the arrangement for most of the seven two-tone roster cars), so this is the
  * simplest deterministic split rather than an authored one: the first half of
@@ -390,7 +431,7 @@ function pickFamilyNeighbour(colour: string, rng: Rng): string {
  * Rolls one of the four named whole-car paint states
  * (docs/design/systems/paint-system-design.md) from the culture's own
  * profile (`economy.partsGeneration.paintHistoryByCulture` ->
- * `paintHistory`) and writes the result onto `zoneStates`' five panel zones.
+ * `paintHistory`) and writes the result onto `zoneStates`'s nine zones.
  * The state is structural, never per-zone independent draws, which is what
  * makes a three-way clown-car mismatch impossible by construction rather than
  * merely unlikely:
@@ -400,7 +441,7 @@ function pickFamilyNeighbour(colour: string, rng: Rng): string {
  * - `resprayed`: one colour, picked uniformly from the 34 excluding the car's
  *   own factory colour(s), on every zone alike.
  * - `mismatchedPanel`: every zone its own reference colour except one
- *   (uniform across the five), which wears a family neighbour of the colour
+ *   (uniform across the nine), which wears a family neighbour of the colour
  *   it should be.
  * - `primedPanel`: every zone its own reference colour except one, which is
  *   left bare (`primed: true`, no colour at all).
@@ -465,19 +506,10 @@ export function generatedPaintGrade(zoneStates: ZoneStates, factoryColour: strin
   return uniform && !factoryColourSet(factoryColour).has(first) ? 'street' : 'stock'
 }
 
-/** The one zone field that actually drives `carPartId`'s MONEY bill - metal
- * is repaired by hand (beat/weld), never priced in yen, so it is never a
- * lever for either the floor top-up or the Law 2 softening pass below, only
- * for the pipeline stages themselves. `panels` money rides on `surface`
- * (fill-and-sand), capped at 2; `paint`/`underbody` money rides on `finish`
- * (prime+paint / prime+underseal), capped at 3. */
-function moneyFieldFor(carPartId: DerivedBodyPartId): { field: 'surface' | 'finish'; cap: number } {
-  return carPartId === 'panels' ? { field: 'surface', cap: 2 } : { field: 'finish', cap: 3 }
-}
-
 /**
- * Whether `carPartId` still has real MONEY headroom to degrade further - any
- * relevant zone's money field (`moneyFieldFor`) still below its cap. The
+ * Whether `carPartId` still has real MONEY headroom to degrade further:
+ * `panels` reads the six metal zones' `surface` (capped at 2, trim carries
+ * none); `paint` reads all nine zones' `finish` (capped at 3). The
  * eligibility check `degradeCandidates` (auctions.ts) uses in place of the
  * generic band-index check for a zone-backed part: the derived BAND can
  * saturate at `poor` from `metal` alone (never touched by the degrade
@@ -488,16 +520,16 @@ export function hasZoneDegradeHeadroom(
   zoneStates: ZoneStates,
   carPartId: DerivedBodyPartId,
 ): boolean {
-  const { field, cap } = moneyFieldFor(carPartId)
-  if (carPartId === 'underbody') return zoneStates.chassis.finish < cap
-  return PANEL_ZONE_IDS.some((zoneId) => zoneStates[zoneId][field] < cap)
+  if (carPartId === 'panels') return METAL_ZONE_IDS.some((zoneId) => zoneStates[zoneId].surface < 2)
+  return PANEL_ZONE_IDS.some((zoneId) => zoneStates[zoneId].finish < 3)
 }
 
 /**
  * The IMPROVE-direction mirror of `hasZoneDegradeHeadroom`: whether
  * `carPartId` still has real MONEY headroom to improve further (a panel
- * needing replacement, or a money field still above 0). The Law 2 softening
- * pass (`enforceMaxBillFraction`) uses this to EXCLUDE an already-exhausted
+ * needing replacement anywhere across the nine zones, or a money field still
+ * above 0 on the zones that carry one). The Law 2 softening pass
+ * (`enforceMaxBillFraction`) uses this to EXCLUDE an already-exhausted
  * zone-backed part from its worst-band computation, not merely from being
  * picked to improve: repairable metal never moves, so a high-metal zone can pin
  * a carrier's derived band below `mint` PERMANENTLY even once its money
@@ -509,61 +541,53 @@ export function hasZoneImproveHeadroom(
   zoneStates: ZoneStates,
   carPartId: DerivedBodyPartId,
 ): boolean {
-  if (carPartId === 'panels' && PANEL_ZONE_IDS.some((zoneId) => zoneNeedsPanel(zoneStates[zoneId])))
-    return true
-  const { field } = moneyFieldFor(carPartId)
-  if (carPartId === 'underbody') return zoneStates.chassis.finish > 0
-  return PANEL_ZONE_IDS.some((zoneId) => zoneStates[zoneId][field] > 0)
+  if (carPartId === 'panels') {
+    if (PANEL_ZONE_IDS.some((zoneId) => zoneNeedsPanel(zoneStates[zoneId]))) return true
+    return METAL_ZONE_IDS.some((zoneId) => zoneStates[zoneId].surface > 0)
+  }
+  return PANEL_ZONE_IDS.some((zoneId) => zoneStates[zoneId].finish > 0)
 }
 
 /**
  * Sets a body-derived carrier's zone state to reach AT LEAST `targetBand` on
- * `panelZoneId` - a symptom's damage (`auctions.ts`'s `applySymptoms`), the one
- * other writer of these three parts' apparent severity besides generation and
+ * `zoneId` - a symptom's damage (`auctions.ts`'s `applySymptoms`), the one
+ * other writer of these two parts' apparent severity besides generation and
  * the pipeline itself. Unlike the money-only degrade/improve helpers above, a
  * symptom is a real, hidden DEFECT (not a money-optimisation move), so it
- * legitimately moves METAL too - a "rust patch" or "panel respray" cause is
- * about the panel's physical state, not what the cheapest fix costs.
+ * legitimately moves METAL too when `carPartId` is `panels` - a "rust patch"
+ * cause is about the panel's physical state, not what the cheapest fix costs.
  *
- * The zone is the CALLER'S choice, drawn from the car's damage pattern
- * (docs/design/systems/generation-damage.md, layer 3). It used to be a fixed
- * `PANEL_ZONE_IDS[0]` to avoid an RNG draw, which put every rust patch and
- * every respray in the game on the bonnet; worst-governs means one zone
- * carrying the damage is enough to drive the whole carrier's derived band, so
- * WHICH zone was free to be arbitrary and is now free to be the one the car's
- * own story implicates. `underbody` ignores the argument: it reads the chassis
- * zone alone, so there is no choice to make.
+ * `zoneId` is the CALLER'S choice, drawn from the car's damage pattern
+ * (docs/design/systems/generation-damage.md, layer 3) - a metal zone for
+ * `panels` (the only shape `metal` exists on), any of the nine for `paint`.
+ * It used to be a fixed `PANEL_ZONE_IDS[0]` to avoid an RNG draw, which put
+ * every rust patch and every respray in the game on the bonnet;
+ * worst-governs means one zone carrying the damage is enough to drive the
+ * whole carrier's derived band, so WHICH zone was free to be arbitrary and is
+ * now free to be the one the car's own story implicates.
  *
- * A no-op if the carrier is already at or worse than `targetBand` on that zone
- * (mirrors the "worse of current or cause" rule every other symptom cause
- * already follows).
+ * A no-op if the carrier is already at or worse than `targetBand` on that
+ * zone (mirrors the "worse of current or cause" rule every other symptom
+ * cause already follows), and a no-op on `panels` if `zoneId` somehow names a
+ * trim zone (never produced by a correct caller, since `panels` damage is
+ * always dealt a metal zone).
  *
  * A symptom never takes a panel past saving, however bad its cause reads: the
  * target severity is clamped to `MAX_REPAIRABLE_METAL`, so the worst a hidden
  * defect can leave is a panel that still beats and welds back. Past that is
  * generation's own grade-gated roll (`rollZoneStates`), which is where the
- * story of a car being hit belongs. The clamp is also what keeps the chassis
- * zone repairable at all: it has no panel to fit, so it must never be written
- * to a severity only a panel can clear.
+ * story of a car being hit belongs.
  */
 export function setZoneCarrierToAtLeastBand(
   zoneStates: ZoneStates,
   carPartId: DerivedBodyPartId,
   targetBand: ConditionBand,
-  panelZoneId: PanelZoneId,
+  zoneId: PanelZoneId,
 ): ZoneStates {
   const targetSeverity = Math.min(MAX_REPAIRABLE_METAL, severityThresholdForBand(targetBand))
-  if (carPartId === 'underbody') {
-    const chassis = zoneStates.chassis
-    if (Math.max(chassis.metal, chassis.finish) >= targetSeverity) return zoneStates
-    return {
-      ...zoneStates,
-      chassis: { ...chassis, finish: Math.max(chassis.finish, targetSeverity) },
-    }
-  }
-  const zoneId = panelZoneId
   const zone = zoneStates[zoneId]
   if (carPartId === 'panels') {
+    if (!isMetalZoneState(zone)) return zoneStates
     if (Math.max(zone.metal, zone.surface) >= targetSeverity) return zoneStates
     return { ...zoneStates, [zoneId]: { ...zone, metal: Math.max(zone.metal, targetSeverity) } }
   }
@@ -572,10 +596,10 @@ export function setZoneCarrierToAtLeastBand(
 }
 
 /**
- * Worsens one panel zone that still has headroom before hitting `carPartId`'s
- * money-relevant field cap (`underbody` reads the chassis zone alone) - the
- * generation damage budget's zone-aware degrade move (`spendDamageBudget`,
- * auctions.ts).
+ * Worsens one zone that still has headroom before hitting `carPartId`'s
+ * money-relevant field cap - the generation damage budget's zone-aware
+ * degrade move (`spendDamageBudget`, auctions.ts). `panels` degrades a metal
+ * zone's `surface`; `paint` degrades any of the nine zones' `finish`.
  *
  * WHICH zone is the caller's to choose, through `chooseZone`, because that is
  * the whole of how a collision becomes expressible: the budget hands it the
@@ -594,33 +618,38 @@ export function degradeZoneCarrierOneStep(
   carPartId: DerivedBodyPartId,
   chooseZone?: (candidates: readonly PanelZoneId[]) => PanelZoneId,
 ): ZoneStates {
-  const { field, cap } = moneyFieldFor(carPartId)
-  if (carPartId === 'underbody') {
-    const chassis = zoneStates.chassis
-    if (chassis.finish >= cap) return zoneStates
-    return { ...zoneStates, chassis: { ...chassis, finish: chassis.finish + 1 } }
+  if (carPartId === 'panels') {
+    const withHeadroom = METAL_ZONE_IDS.filter((zoneId) => zoneStates[zoneId].surface < 2)
+    if (withHeadroom.length === 0) return zoneStates
+    const targetId = chooseZone
+      ? chooseZone(withHeadroom)
+      : withHeadroom.reduce((worst, zoneId) =>
+          zoneStates[zoneId].surface > zoneStates[worst].surface ? zoneId : worst,
+        )
+    const zone = zoneStates[targetId] as MetalZoneState
+    return { ...zoneStates, [targetId]: { ...zone, surface: zone.surface + 1 } }
   }
-  const withHeadroom = PANEL_ZONE_IDS.filter((zoneId) => zoneStates[zoneId][field] < cap)
+  const withHeadroom = PANEL_ZONE_IDS.filter((zoneId) => zoneStates[zoneId].finish < 3)
   if (withHeadroom.length === 0) return zoneStates
   const targetId = chooseZone
     ? chooseZone(withHeadroom)
     : withHeadroom.reduce((worst, zoneId) =>
-        zoneStates[zoneId][field] > zoneStates[worst][field] ? zoneId : worst,
+        zoneStates[zoneId].finish > zoneStates[worst].finish ? zoneId : worst,
       )
   const zone = zoneStates[targetId]
-  return { ...zoneStates, [targetId]: { ...zone, [field]: zone[field] + 1 } }
+  return { ...zoneStates, [targetId]: { ...zone, finish: zone.finish + 1 } }
 }
 
 /**
- * Improves whichever panel zone currently carries the MOST of `carPartId`'s
+ * Improves whichever zone currently carries the MOST of `carPartId`'s
  * money-relevant field - the Law 2 generation-softening pass's zone-aware
  * move (`enforceMaxBillFraction`, auctions.ts). For `panels`, a zone needing a
- * panel is put back on the repairable ladder FIRST (the two scrap-forcing
- * states, and the only path a `panels` bill can carry a real panel-purchase
- * cost), before any field improves, mirroring the general pass improving the
- * single worst part one step at a time. Absent and ruined-past-saving clear
- * together in that one step because they are one fact to the bill: exactly one
- * panel price, charged once, gone once.
+ * panel (any of the nine) is put back on the repairable ladder FIRST (the two
+ * scrap-forcing states, and the only path a `panels` bill can carry a real
+ * panel-purchase cost), before any metal zone's surface improves, mirroring
+ * the general pass improving the single worst part one step at a time.
+ * Absent and ruined-past-saving clear together in that one step because they
+ * are one fact to the bill: exactly one panel price, charged once, gone once.
  */
 export function improveZoneCarrierOneStep(
   zoneStates: ZoneStates,
@@ -630,29 +659,26 @@ export function improveZoneCarrierOneStep(
     const needsPanelId = PANEL_ZONE_IDS.find((zoneId) => zoneNeedsPanel(zoneStates[zoneId]))
     if (needsPanelId) {
       const zone = zoneStates[needsPanelId]
-      return {
-        ...zoneStates,
-        [needsPanelId]: {
-          ...zone,
-          metal: Math.min(zone.metal, MAX_REPAIRABLE_METAL),
-          panelMissing: false,
-        },
-      }
+      const cleared = isMetalZoneState(zone)
+        ? { ...zone, metal: Math.min(zone.metal, MAX_REPAIRABLE_METAL), panelMissing: false }
+        : { ...zone, panelMissing: false }
+      return { ...zoneStates, [needsPanelId]: cleared }
     }
+    const withRoom = METAL_ZONE_IDS.filter((zoneId) => zoneStates[zoneId].surface > 0)
+    if (withRoom.length === 0) return zoneStates
+    const targetId = withRoom.reduce((worst, zoneId) =>
+      zoneStates[zoneId].surface > zoneStates[worst].surface ? zoneId : worst,
+    )
+    const zone = zoneStates[targetId] as MetalZoneState
+    return { ...zoneStates, [targetId]: { ...zone, surface: zone.surface - 1 } }
   }
-  const { field } = moneyFieldFor(carPartId)
-  if (carPartId === 'underbody') {
-    const chassis = zoneStates.chassis
-    if (chassis.finish <= 0) return zoneStates
-    return { ...zoneStates, chassis: { ...chassis, finish: chassis.finish - 1 } }
-  }
-  const withRoom = PANEL_ZONE_IDS.filter((zoneId) => zoneStates[zoneId][field] > 0)
+  const withRoom = PANEL_ZONE_IDS.filter((zoneId) => zoneStates[zoneId].finish > 0)
   if (withRoom.length === 0) return zoneStates
   const targetId = withRoom.reduce((worst, zoneId) =>
-    zoneStates[zoneId][field] > zoneStates[worst][field] ? zoneId : worst,
+    zoneStates[zoneId].finish > zoneStates[worst].finish ? zoneId : worst,
   )
   const zone = zoneStates[targetId]
-  return { ...zoneStates, [targetId]: { ...zone, [field]: zone[field] - 1 } }
+  return { ...zoneStates, [targetId]: { ...zone, finish: zone.finish - 1 } }
 }
 
 function materialCostYen(materialId: string): number {
@@ -666,13 +692,11 @@ const PRIME_COST_YEN = materialCostYen('primer')
 const PAINT_COST_YEN = materialCostYen('paint')
 const PAINT_METALLIC_COST_YEN = materialCostYen('paint-metallic')
 const PAINT_PEARL_COST_YEN = materialCostYen('paint-pearl')
-const UNDERSEAL_COST_YEN = materialCostYen('underseal')
 const POLISH_COST_YEN = materialCostYen('polish')
 
 /** The tin a panel paint job charges, by finish grade - stock and street both
  * lay a solid colour and share one tin; sport (metallic) and race (pearl)
- * each have their own. Irrelevant to the chassis zone, which always charges
- * underseal regardless of grade. */
+ * each have their own. */
 const PAINT_TIN_COST_YEN_BY_GRADE: Readonly<Record<Grade, number>> = {
   stock: PAINT_COST_YEN,
   street: PAINT_COST_YEN,
@@ -704,7 +728,7 @@ export interface PipelineStageEffect {
 
 export interface PipelineStageRefusal {
   ok: false
-  reason: 'prereq' | 'machine-line' | 'needs-panel' | 'wrong-colour'
+  reason: 'prereq' | 'machine-line' | 'needs-panel' | 'wrong-colour' | 'metal-only'
 }
 
 /** Options a stage's own gate reads - both express "the body line's daily
@@ -717,22 +741,73 @@ export interface BodyLineCapability {
   fullCapability: boolean
 }
 
+const METAL_ONLY_STAGE_IDS = ['beat', 'weld', 'fillAndSand'] as const
+type MetalOnlyStageId = (typeof METAL_ONLY_STAGE_IDS)[number]
+type SharedStageId = 'stripPrep' | 'prime' | 'polish'
+
+function isMetalOnlyStage(stage: string): stage is MetalOnlyStageId {
+  return (METAL_ONLY_STAGE_IDS as readonly string[]).includes(stage)
+}
+
 /**
- * The six generic stages' pure effect on one zone (docs/design/
- * workshop-rework.md's pipeline table): strip/prep, beat, weld, fill-and-sand,
- * prime, polish. `swapPanel` and `paint` carry extra player input and have
- * their own functions below.
+ * The three metal-only stages' pure effect on one metal zone
+ * (docs/design/systems/workshop-rework.md's pipeline table): beat and weld
+ * straighten metal, fill-and-sand levels the surface underneath the paint.
+ * Typed on `MetalZoneState`, not `ZoneState` - a trim zone cannot reach this
+ * function at all without going through the runtime shape check the
+ * dispatcher (`planPipelineStage`) performs first, so a caller that already
+ * knows it holds a metal zone (anything indexing by `MetalZoneId`) gets that
+ * guarantee from the type checker instead of a check of its own.
+ *
+ * `weld` now refuses below severity 3: a dent (1-2) is `beat`'s job, and
+ * welding is for rot or a bend at the weldable maximum. That is the one rung
+ * hand work can still pull back before a fresh panel becomes the only route
+ * out, and it is what gives the body line's tier-2 machine a repair only it
+ * can do rather than a merely cheaper way to fix a dent.
+ */
+export function planMetalPipelineStage(
+  stage: MetalOnlyStageId,
+  zone: MetalZoneState,
+  capability: BodyLineCapability,
+): PipelineStageEffect | PipelineStageRefusal {
+  if (zone.panelMissing) return { ok: false, reason: 'needs-panel' }
+  switch (stage) {
+    case 'beat':
+      if (zone.metal > MAX_REPAIRABLE_METAL) return { ok: false, reason: 'needs-panel' }
+      if (zone.metal < 1 || zone.metal > 2) return { ok: false, reason: 'prereq' }
+      return {
+        ok: true,
+        zone: { ...zone, metal: zone.metal - 1 },
+        laborUnits: 1,
+        materialsCostYen: 0,
+      }
+    case 'weld':
+      if (zone.metal > MAX_REPAIRABLE_METAL) return { ok: false, reason: 'needs-panel' }
+      if (zone.metal < MAX_REPAIRABLE_METAL) return { ok: false, reason: 'prereq' }
+      if (!capability.unlocked) return { ok: false, reason: 'machine-line' }
+      return { ok: true, zone: { ...zone, metal: 0 }, laborUnits: 2, materialsCostYen: 0 }
+    case 'fillAndSand':
+      if (zone.metal !== 0 || zone.surface === 0) return { ok: false, reason: 'prereq' }
+      return {
+        ok: true,
+        zone: { ...zone, surface: 0 },
+        laborUnits: 1,
+        materialsCostYen: FILL_AND_SAND_COST_YEN,
+      }
+  }
+}
+
+/**
+ * The three stages shared by both zone shapes: strip/prep, prime, polish -
+ * none of them touch `metal` or `surface`, so a trim zone runs them exactly
+ * as a metal zone does.
  *
  * A zone with no panel on it refuses every stage: there is nothing there to
- * strip, beat, fill or polish. A zone whose metal is past saving refuses only
- * the two metal stages, since the paint on a ruined wing is still real paint
- * and still polishes; the filler and paint chain below is already shut by its
- * own `metal !== 0` prerequisite. Both refuse with `needs-panel`, which names
- * the remedy rather than the obstacle, because that is what the player has to
- * be told.
+ * strip, prime or polish. Refuses with `needs-panel`, which names the remedy
+ * rather than the obstacle, because that is what the player has to be told.
  */
-export function planPipelineStage(
-  stage: Exclude<PipelineStageId, 'swapPanel' | 'paint'>,
+export function planSharedPipelineStage(
+  stage: SharedStageId,
   zone: ZoneState,
   capability: BodyLineCapability,
 ): PipelineStageEffect | PipelineStageRefusal {
@@ -745,36 +820,18 @@ export function planPipelineStage(
         laborUnits: 1,
         materialsCostYen: 0,
       }
-    case 'beat':
-      if (zone.metal > MAX_REPAIRABLE_METAL) return { ok: false, reason: 'needs-panel' }
-      if (zone.metal < 1 || zone.metal > 2) return { ok: false, reason: 'prereq' }
-      return {
-        ok: true,
-        zone: { ...zone, metal: zone.metal - 1 },
-        laborUnits: 1,
-        materialsCostYen: 0,
-      }
-    case 'weld':
-      if (zone.metal > MAX_REPAIRABLE_METAL) return { ok: false, reason: 'needs-panel' }
-      if (zone.metal <= 0) return { ok: false, reason: 'prereq' }
-      if (!capability.unlocked) return { ok: false, reason: 'machine-line' }
-      return { ok: true, zone: { ...zone, metal: 0 }, laborUnits: 2, materialsCostYen: 0 }
-    case 'fillAndSand':
-      if (zone.metal !== 0 || zone.surface === 0) return { ok: false, reason: 'prereq' }
-      return {
-        ok: true,
-        zone: { ...zone, surface: 0 },
-        laborUnits: 1,
-        materialsCostYen: FILL_AND_SAND_COST_YEN,
-      }
-    case 'prime':
-      if (zone.surface !== 0 || zone.primed) return { ok: false, reason: 'prereq' }
+    case 'prime': {
+      // A trim zone has no surface to level in the first place, so its
+      // filler prerequisite is vacuously satisfied - only `primed` gates it.
+      const surfaceReady = !isMetalZoneState(zone) || zone.surface === 0
+      if (!surfaceReady || zone.primed) return { ok: false, reason: 'prereq' }
       return {
         ok: true,
         zone: { ...zone, primed: true },
         laborUnits: 1,
         materialsCostYen: PRIME_COST_YEN,
       }
+    }
     case 'polish': {
       if (zone.finish >= BARE_FINISH) return { ok: false, reason: 'prereq' } // bare - nothing to polish
       const floor = capability.fullCapability ? 0 : 1
@@ -790,51 +847,85 @@ export function planPipelineStage(
   }
 }
 
-/** Swap panel's effect: the zone's metal resets to the fitted panel's own
- * band-implied severity, and - a fresh physical panel - its surface/finish
- * reset too (bare, unprimed sheet metal), so the zone needs the fill-prime-
- * paint chain again regardless of what it looked like before. This is the only
+/**
+ * The six generic (non-paint, non-panel) stages' pure effect on one zone -
+ * the single dispatcher every caller with a runtime-generic `ZoneState`
+ * calls (`stagedWork.ts`'s staged-action resolver, and this module's own
+ * bill-quoting walk). Metal-only stages refuse outright on a trim zone
+ * (`metal-only`) rather than reading a field that is not there; the type
+ * system does the real work inside `planMetalPipelineStage` itself, this is
+ * the one runtime branch that decides which of the two typed planners a
+ * dynamic zone id actually reaches.
+ */
+export function planPipelineStage(
+  stage: Exclude<PipelineStageId, 'paint'>,
+  zone: ZoneState,
+  capability: BodyLineCapability,
+): PipelineStageEffect | PipelineStageRefusal {
+  if (isMetalOnlyStage(stage)) {
+    if (!isMetalZoneState(zone)) return { ok: false, reason: 'metal-only' }
+    return planMetalPipelineStage(stage, zone, capability)
+  }
+  return planSharedPipelineStage(stage, zone, capability)
+}
+
+/**
+ * What a fresh panel at `panelBand` leaves a zone reading: metal at the
+ * fitted part's own band-implied severity (metal zones only) and a sound
+ * surface, or - on a trim zone - just the bare finish/no-metal facts; either
+ * way bare, unpainted and unprimed, so the zone needs the fill-prime-paint
+ * chain again regardless of what it looked like before. This is the only
  * route out of a panel that is gone or past saving, and it clears both
- * outright. It reads the fitted panel honestly rather than clamping it: fitting
- * a `scrap` panel harvested off another shell leaves the zone exactly as
- * beyond saving as the panel is. Never chased (`panelZone: PanelZoneId`, so
- * chassis is excluded at the type level by every caller). Labour is the fitting
- * (bolt-on) class, priced by the caller, not a band-step unit - `laborUnits` is
- * 0 here by convention. */
-export function planSwapPanel(zone: ZoneState, panelBand: ConditionBand): PipelineStageEffect {
-  return {
-    ok: true,
-    zone: {
+ * outright: shape-preserving, so a metal zone in still reads as a metal zone
+ * out. It reads the fitted panel honestly rather than clamping it: fitting a
+ * `scrap` panel harvested off another shell leaves the zone exactly as
+ * beyond saving as the panel is.
+ *
+ * The one function both the STAGED player action (install a panel from the
+ * shelf) and the pure bill-quoting/carrier-refit walks below call - a fresh
+ * panel is one physical fact, quoted or actually fitted through the same
+ * arithmetic either way.
+ */
+export function planInstallPanel(zone: ZoneState, panelBand: ConditionBand): ZoneState {
+  if (isMetalZoneState(zone)) {
+    return {
       metal: severityThresholdForBand(panelBand),
       surface: 0,
       finish: BARE_FINISH,
       panelMissing: false,
       primed: false,
-    },
-    laborUnits: 0,
-    materialsCostYen: 0,
+    }
   }
+  return { finish: BARE_FINISH, panelMissing: false, primed: false }
+}
+
+/** What pulling a zone's panel off leaves behind: missing, and otherwise
+ * exactly as found - the physical panel is not discarded, it is harvested
+ * onto the shelf as a `PartInstance` by the caller (`stagedWork.ts`), the
+ * same shape `resolveRemovePart` uses for every other slot. A missing zone's
+ * other fields go unread everywhere that matters (`zoneNeedsPanel` and
+ * `derivePanelsBand` both key off `panelMissing` alone), so there is nothing
+ * to clear. */
+export function planRemovePanel(zone: ZoneState): ZoneState {
+  return { ...zone, panelMissing: true }
 }
 
 /**
- * The zones each body value carrier's own physical parts occupy: the five
- * panel zones for `panels`, the chassis zone for `underbody`. `paint` names
- * none of its own - it is a finish the pipeline lays on rather than a part
- * that arrives - so changing what is fitted there moves no zone.
+ * The zones each body value carrier's own physical parts occupy: all nine for
+ * `panels`, none for `paint` - it is a finish the pipeline lays on rather
+ * than a part that arrives, so changing what is fitted there moves no zone.
  */
-const CARRIER_ZONE_IDS: Readonly<Record<DerivedBodyPartId, readonly ZoneId[]>> = {
+const CARRIER_ZONE_IDS: Readonly<Record<DerivedBodyPartId, readonly PanelZoneId[]>> = {
   panels: PANEL_ZONE_IDS,
   paint: [],
-  underbody: ['chassis'],
 }
 
 /**
- * Every zone `carPartId` covers, as `planSwapPanel` leaves it once a fresh
- * part at `band` is on the car: metal at the fitted part's own band, a sound
- * surface and a bare, unpainted finish. Fitting a body kit is the same
- * physical event as swapping one panel, so it takes the same route rather
- * than a second one of its own, and a re-panelled car owes its paint exactly
- * as a re-panelled zone does.
+ * Every zone `carPartId` covers, as `planInstallPanel` leaves it once a fresh
+ * part at `band` is on the car. Fitting a body kit is the same physical event
+ * as fitting one fresh panel per zone, so it takes the same route rather than
+ * a second one of its own, and a re-panelled car owes its paint exactly as a
+ * re-panelled zone does.
  *
  * Identity and condition stay orthogonal either side of this: the fitted SKU
  * says what the car IS, and the band `applyDerivedBodyBands` writes afterwards
@@ -848,18 +939,15 @@ export function refitCarrierZoneStates(
 ): ZoneStates {
   let next = zoneStates
   for (const zoneId of CARRIER_ZONE_IDS[carPartId]) {
-    next = { ...next, [zoneId]: planSwapPanel(next[zoneId], band).zone }
+    next = { ...next, [zoneId]: planInstallPanel(next[zoneId], band) }
   }
   return next
 }
 
 /** Paint's effect: needs the zone primed; the achieved finish is 1 with the
  * body line unlocked (owned tier 2, or hired today), else 2 - tier 1 hand
- * tools and rattle cans cap at tidy. Chassis colours as the underseal shade
- * rather than a chosen hue; the material differs (underseal, not paint tin)
- * but the effect shape is identical, and it charges underseal regardless of
- * `grade` - the finish ladder is a `paint` carrier concept, and the chassis
- * has none. A zone with no panel on it has nothing to paint and says so.
+ * tools and rattle cans cap at tidy. A zone with no panel on it has nothing to
+ * paint and says so.
  *
  * `grade` sets which tin the job charges (`PAINT_TIN_COST_YEN_BY_GRADE`) and
  * is the one gate that makes "respray it back and it is original again"
@@ -871,7 +959,6 @@ export function refitCarrierZoneStates(
  * authenticity. */
 export function planPaintStage(
   zone: ZoneState,
-  zoneId: ZoneId,
   colour: string,
   capability: BodyLineCapability,
   grade: Grade,
@@ -879,7 +966,7 @@ export function planPaintStage(
 ): PipelineStageEffect | PipelineStageRefusal {
   if (zone.panelMissing) return { ok: false, reason: 'needs-panel' }
   if (!zone.primed) return { ok: false, reason: 'prereq' }
-  if (zoneId !== 'chassis' && grade === 'stock' && !factoryColourSet(factoryColour).has(colour)) {
+  if (grade === 'stock' && !factoryColourSet(factoryColour).has(colour)) {
     return { ok: false, reason: 'wrong-colour' }
   }
   const finish = capability.unlocked ? 1 : 2
@@ -887,8 +974,7 @@ export function planPaintStage(
     ok: true,
     zone: { ...zone, finish, primed: false, colour },
     laborUnits: 1,
-    materialsCostYen:
-      zoneId === 'chassis' ? UNDERSEAL_COST_YEN : PAINT_TIN_COST_YEN_BY_GRADE[grade],
+    materialsCostYen: PAINT_TIN_COST_YEN_BY_GRADE[grade],
   }
 }
 
@@ -900,16 +986,14 @@ const BILL_CAPABILITY: BodyLineCapability = { unlocked: true, fullCapability: tr
 /**
  * One zone's route through the pipeline: the state the stages leave behind,
  * and their materials money split by the carrier that owns each stage. Filler
- * and a fresh panel are the `panels` carrier's; primer, the tin (paint on a
- * panel, underseal on the chassis) and polish belong to the finish carrier -
- * `paint` on a panel zone, `underbody` on the chassis, which owns its filler
- * too since no other carrier reads that zone.
+ * is `panels`'s (metal zones only); primer, the paint tin and polish belong
+ * to `paint`, on every zone alike.
  */
 interface ZoneRepairRoute {
   zone: ZoneState
   /** True when the only way in was a fresh panel. Its price is the caller's
    * to add: a panel is bought from the catalogue rather than out of a stage's
-   * materials, so `planSwapPanel` charges nothing for it. */
+   * materials, so `planInstallPanel` charges nothing for it. */
   panelFitted: boolean
   fillerYen: number
   finishYen: number
@@ -918,25 +1002,62 @@ interface ZoneRepairRoute {
 /** Metal down to what `targetSeverity` allows, through the stages that
  * actually do it: `beat` walks one rung at a time and `weld` clears the lot.
  * Both cost labour and never yen, so this moves the zone and never the money. */
-function straightenMetal(zone: ZoneState, targetSeverity: number): ZoneState {
+function straightenMetal(zone: MetalZoneState, targetSeverity: number): MetalZoneState {
   let current = zone
   while (current.metal > targetSeverity) {
-    const beat = planPipelineStage('beat', current, BILL_CAPABILITY)
+    const beat = planMetalPipelineStage('beat', current, BILL_CAPABILITY)
     if (beat.ok) {
-      current = beat.zone
+      current = beat.zone as MetalZoneState
       continue
     }
-    const weld = planPipelineStage('weld', current, BILL_CAPABILITY)
+    const weld = planMetalPipelineStage('weld', current, BILL_CAPABILITY)
     if (!weld.ok) break
-    current = weld.zone
+    current = weld.zone as MetalZoneState
   }
   return current
 }
 
+/** The prime-paint-polish chain toward `targetSeverity`'s finish, shared by
+ * both zone shapes since none of the three stages read `metal` or `surface`.
+ * The shade handed in is put straight back rather than invented: a bill
+ * prices the tin and never a chosen colour, so the zone is repainted in
+ * whatever it already wore - a projected respray must not invent the colour
+ * disagreement `derivePaintBand` penalises. Grade `street` here is a plain
+ * solid tin, same price as `stock` and never refused on colour, so a bill
+ * never has to know what grade is actually fitted. */
+function repaintChain(
+  zone: ZoneState,
+  targetSeverity: number,
+): { zone: ZoneState; finishYen: number } {
+  let current = zone
+  let finishYen = 0
+  const needsRepaint = current.finish > targetSeverity && current.finish >= BARE_FINISH
+  if (needsRepaint) {
+    const prime = planSharedPipelineStage('prime', current, BILL_CAPABILITY)
+    if (prime.ok) {
+      current = prime.zone
+      finishYen += prime.materialsCostYen
+    }
+    const paint = planPaintStage(current, current.colour ?? '', BILL_CAPABILITY, 'street', '')
+    if (paint.ok) {
+      current = { ...paint.zone, colour: current.colour }
+      finishYen += paint.materialsCostYen
+    }
+  }
+  while (current.finish > targetSeverity) {
+    const polish = planSharedPipelineStage('polish', current, BILL_CAPABILITY)
+    if (!polish.ok) break
+    current = polish.zone
+    finishYen += polish.materialsCostYen
+  }
+  return { zone: current, finishYen }
+}
+
 /**
- * The stages the pipeline would run to bring one zone to `targetSeverity`, and
- * what their materials cost. It DRIVES `planSwapPanel`, `planPipelineStage`
- * and `planPaintStage` rather than restating their prices, so a quote and the
+ * The stages the pipeline would run to bring one METAL zone to
+ * `targetSeverity`, and what their materials cost. It DRIVES
+ * `planInstallPanel`, `planMetalPipelineStage`/`planSharedPipelineStage` and
+ * `planPaintStage` rather than restating their prices, so a quote and the
  * charge `stagedWork.ts` makes for the same work can never disagree, and so
  * the bill measures a DISTANCE: two zones at different severities above one
  * target walk different numbers of stages and cost different money.
@@ -950,89 +1071,68 @@ function straightenMetal(zone: ZoneState, targetSeverity: number): ZoneState {
  * refuses to go over raw filler and filler refuses to go over unstraightened
  * metal, so a repaint drags a fill along with it even where the target band
  * would have tolerated the surface it found.
- *
- * `surfaceIsTargeted` is true on a panel zone, whose band reads the surface
- * (`derivePanelsBand`), and false on the chassis, whose band reads metal and
- * finish alone (`deriveUnderbodyBand`) - there, filler is levelled only where
- * the primer stage forces it.
  */
-function planZoneRepair(
-  zone: ZoneState,
-  zoneId: ZoneId,
-  targetSeverity: number,
-  surfaceIsTargeted: boolean,
-): ZoneRepairRoute {
+function planMetalZoneRepair(zone: MetalZoneState, targetSeverity: number): ZoneRepairRoute {
   let current = zone
   let panelFitted = false
   let fillerYen = 0
-  let finishYen = 0
-  // A `scrap` target is the worst any axis can express, so nothing is owed.
-  if (targetSeverity >= BEYOND_REPAIR_METAL) {
-    return { zone: current, panelFitted, fillerYen, finishYen }
-  }
-
   if (zoneNeedsPanel(current)) {
-    current = planSwapPanel(current, 'mint').zone
+    current = planInstallPanel(current, 'mint') as MetalZoneState
     panelFitted = true
   }
 
   const needsRepaint = current.finish > targetSeverity && current.finish >= BARE_FINISH
-  const surfaceAboveTarget = surfaceIsTargeted && current.surface > targetSeverity
+  const surfaceAboveTarget = current.surface > targetSeverity
   if (current.surface > 0 && (needsRepaint || surfaceAboveTarget)) {
     current = straightenMetal(current, 0)
-    const fill = planPipelineStage('fillAndSand', current, BILL_CAPABILITY)
+    const fill = planMetalPipelineStage('fillAndSand', current, BILL_CAPABILITY)
     if (fill.ok) {
-      current = fill.zone
+      current = fill.zone as MetalZoneState
       fillerYen += fill.materialsCostYen
     }
   }
 
-  if (needsRepaint) {
-    const prime = planPipelineStage('prime', current, BILL_CAPABILITY)
-    if (prime.ok) {
-      current = prime.zone
-      finishYen += prime.materialsCostYen
-    }
-    // A bill prices the tin and never the shade, so the zone is put back in
-    // whatever colour it already wore: a projected respray must not invent the
-    // colour disagreement `derivePaintBand` penalises. The shade handed to the
-    // stage never survives it. Grade `street` here is a plain solid tin, same
-    // price as `stock` (`PAINT_TIN_COST_YEN_BY_GRADE`) and never refused on
-    // colour, so a bill never has to know what grade is actually fitted.
-    const paint = planPaintStage(
-      current,
-      zoneId,
-      current.colour ?? '',
-      BILL_CAPABILITY,
-      'street',
-      '',
-    )
-    if (paint.ok) {
-      current = { ...paint.zone, colour: current.colour }
-      finishYen += paint.materialsCostYen
-    }
+  const { zone: paintedZone, finishYen } = repaintChain(current, targetSeverity)
+  return {
+    zone: straightenMetal(paintedZone as MetalZoneState, targetSeverity),
+    panelFitted,
+    fillerYen,
+    finishYen,
   }
-
-  while (current.finish > targetSeverity) {
-    const polish = planPipelineStage('polish', current, BILL_CAPABILITY)
-    if (!polish.ok) break
-    current = polish.zone
-    finishYen += polish.materialsCostYen
-  }
-
-  return { zone: straightenMetal(current, targetSeverity), panelFitted, fillerYen, finishYen }
 }
 
-/** Whether `zoneId`'s surface is something a target band actually asks about:
- * `derivePanelsBand` reads it on the five panel zones, `deriveUnderbodyBand`
- * does not read it on the chassis. */
-function surfaceIsTargetedOn(zoneId: ZoneId): boolean {
-  return zoneId !== 'chassis'
+/** The stages the pipeline would run to bring one TRIM zone to
+ * `targetSeverity` - no metal, no surface, no filler: strip/prep, prime,
+ * paint and polish are the whole of it. */
+function planTrimZoneRepair(zone: ZoneState, targetSeverity: number): ZoneRepairRoute {
+  let current = zone
+  let panelFitted = false
+  if (zoneNeedsPanel(current)) {
+    current = planInstallPanel(current, 'mint')
+    panelFitted = true
+  }
+  const { zone: paintedZone, finishYen } = repaintChain(current, targetSeverity)
+  return { zone: paintedZone, panelFitted, fillerYen: 0, finishYen }
 }
 
 /**
- * `panels`' money-only repair bill: the filler each panel zone's own route
- * calls for, plus a fresh zone panel for any zone that needs one
+ * One zone's repair route, dispatched by shape: `planMetalZoneRepair` for the
+ * six metal zones, `planTrimZoneRepair` for the three trim ones. A `scrap`
+ * target is the worst any axis can express, so nothing is owed - checked once
+ * here rather than in each shape's own planner.
+ */
+function planZoneRepair(zone: ZoneState, targetSeverity: number): ZoneRepairRoute {
+  if (targetSeverity >= BEYOND_REPAIR_METAL) {
+    return { zone, panelFitted: false, fillerYen: 0, finishYen: 0 }
+  }
+  return isMetalZoneState(zone)
+    ? planMetalZoneRepair(zone, targetSeverity)
+    : planTrimZoneRepair(zone, targetSeverity)
+}
+
+/**
+ * `panels`' money-only repair bill: the filler each metal zone's own route
+ * calls for, plus a fresh zone panel for any of the nine zones that needs one
  * (`zoneNeedsPanel`). Repairable metal is always free to climb (beat and weld
  * are labour, never yen), so it costs money only where it has gone past
  * saving and a panel is the way out. Both panel-forcing states quote the same
@@ -1049,42 +1149,28 @@ export function panelsRepairBillYen(
   const targetSeverity = severityThresholdForBand(targetBand)
   let total = 0
   for (const zoneId of PANEL_ZONE_IDS) {
-    const route = planZoneRepair(zoneStates[zoneId], zoneId, targetSeverity, true)
+    const route = planZoneRepair(zoneStates[zoneId], targetSeverity)
     total += route.fillerYen
     if (route.panelFitted) total += zonePanelPart(partsById, zoneId, fitmentClass)?.priceYen ?? 0
   }
   return total
 }
 
-/** `paint`'s money-only repair bill: the primer, paint and polish each panel
- * zone's own route calls for. A zone getting a fresh panel is quoted the full
+/** `paint`'s money-only repair bill: the primer, paint and polish each zone's
+ * own route calls for. A zone getting a fresh panel is quoted the full
  * repaint the bare replacement needs, since that is the finish it arrives in. */
 export function paintRepairBillYen(zoneStates: ZoneStates, targetBand: ConditionBand): number {
   const targetSeverity = severityThresholdForBand(targetBand)
   let total = 0
   for (const zoneId of PANEL_ZONE_IDS) {
-    total += planZoneRepair(zoneStates[zoneId], zoneId, targetSeverity, true).finishYen
+    total += planZoneRepair(zoneStates[zoneId], targetSeverity).finishYen
   }
   return total
 }
 
-/** `underbody`'s money-only repair bill: the chassis zone's own route, primer,
- * underseal and polish - plus its filler, which no other carrier reads that
- * zone to charge for, and which the primer stage forces whenever the chassis
- * needs resealing over a rough surface. */
-export function underbodyRepairBillYen(zoneStates: ZoneStates, targetBand: ConditionBand): number {
-  const route = planZoneRepair(
-    zoneStates.chassis,
-    'chassis',
-    severityThresholdForBand(targetBand),
-    surfaceIsTargetedOn('chassis'),
-  )
-  return route.fillerYen + route.finishYen
-}
-
 /**
  * Every zone as the repair route above leaves it at `band` - the state side of
- * the same walk the three bills price, so the money and the car always
+ * the same walk the two bills price, so the money and the car always
  * describe one piece of work. A caller that charges the bill and then applies
  * this is buying exactly what it paid for, and the two halves of a bill split
  * at any intermediate band sum to the whole: repairing to the band and then
@@ -1101,18 +1187,13 @@ export function zoneStatesRepairedToBand(zoneStates: ZoneStates, band: Condition
   const targetSeverity = severityThresholdForBand(band)
   const repaired = {} as Record<string, ZoneState>
   for (const zoneId of ALL_ZONE_IDS) {
-    repaired[zoneId] = planZoneRepair(
-      zoneStates[zoneId],
-      zoneId,
-      targetSeverity,
-      surfaceIsTargetedOn(zoneId),
-    ).zone
+    repaired[zoneId] = planZoneRepair(zoneStates[zoneId], targetSeverity).zone
   }
   return repaired as ZoneStates
 }
 
 /** The one dispatcher `bands.ts`'s whole-car bill functions route
- * `panels`/`paint`/`underbody` through when `car.zoneState` is present. */
+ * `panels`/`paint` through when `car.zoneState` is present. */
 export function bodyPartRepairBillYen(
   carPartId: DerivedBodyPartId,
   zoneStates: ZoneStates,
@@ -1122,6 +1203,5 @@ export function bodyPartRepairBillYen(
 ): number {
   if (carPartId === 'panels')
     return panelsRepairBillYen(zoneStates, targetBand, fitmentClass, partsById)
-  if (carPartId === 'paint') return paintRepairBillYen(zoneStates, targetBand)
-  return underbodyRepairBillYen(zoneStates, targetBand)
+  return paintRepairBillYen(zoneStates, targetBand)
 }

@@ -25,13 +25,19 @@ describe('the damage-pattern content', () => {
     const groups = new Set(PARTS_TAXONOMY.map((entry) => entry.group))
     for (const pattern of DAMAGE_PATTERNS) {
       expect(new Set(Object.keys(pattern.slotWeights.groups))).toEqual(groups)
-      expect(Object.keys(pattern.slotWeights.zones).sort()).toEqual([
-        'bonnet',
-        'boot',
-        'left',
-        'right',
-        'roof',
-      ])
+      expect(Object.keys(pattern.slotWeights.zones).sort()).toEqual(
+        [
+          'bonnet',
+          'boot',
+          'left-front',
+          'left-rear',
+          'right-front',
+          'right-rear',
+          'front-bumper',
+          'rear-bumper',
+          'skirts',
+        ].sort(),
+      )
     }
   })
 
@@ -69,12 +75,12 @@ describe('the damage-pattern content', () => {
         slotWeights: { ...base.slotWeights, groups: withoutEngine },
       }).success,
     ).toBe(false)
-    const withoutRoof = { ...base.slotWeights.zones }
-    delete (withoutRoof as Record<string, unknown>).roof
+    const withoutBonnet = { ...base.slotWeights.zones }
+    delete (withoutBonnet as Record<string, unknown>).bonnet
     expect(
       DamagePatternSchema.safeParse({
         ...base,
-        slotWeights: { ...base.slotWeights, zones: withoutRoof },
+        slotWeights: { ...base.slotWeights, zones: withoutBonnet },
       }).success,
     ).toBe(false)
   })

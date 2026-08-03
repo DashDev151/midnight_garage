@@ -35,7 +35,7 @@ export const DepthClassSchema = z.enum(['surface', 'bolt-on', 'buried'])
 export type DepthClass = z.infer<typeof DepthClassSchema>
 
 /**
- * One entry in the 29-part taxonomy - the fixed structural mapping from a
+ * One entry in the 28-part taxonomy - the fixed structural mapping from a
  * real car part to its group, display name, and repair economics.
  *
  * `statWeights` is `StatWeightsSchema`: not a delta a part applies when
@@ -71,8 +71,8 @@ export const CarPartTaxonomyEntryContentSchema = z.object({
    * `buried` slots are bench-only - see `DepthClassSchema`. */
   depthClass: DepthClassSchema.default('bolt-on'),
   /** Whether this slot can be pulled at all - false for the shell itself
-   * (`chassis`, `paint`, `underbody`), which is repaired in place and never
-   * leaves the car short of scrapping the whole thing. */
+   * (`chassis`, `paint`), which is repaired in place and never leaves the
+   * car short of scrapping the whole thing. */
   removable: z.boolean().default(true),
   /** Every `CarPartId` that must be EMPTY before this slot can be uninstalled
    * or installed (the symmetric blocker rule) - e.g. `clutch` is blocked by

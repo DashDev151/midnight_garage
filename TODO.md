@@ -220,6 +220,35 @@ pass."
 
 ## Open engineering
 
+- [ ] **REGRESSION INTRODUCED BY THE ZONE MODEL: a modified body no longer costs authenticity
+  (found by the implementing agent 2026-08-03, flagged rather than fixed).** Every aftermarket
+  panel SKU now carries a `zoneId` and is fitted through `pipeline-install-panel`, which updates
+  the ZONE's condition. `stocknessOf` reads `car.parts.panels.installed.grade`, which never leaves
+  `stock` because the four remaining carrier SKUs are all stock. **So a car with a full carbon body
+  reads as perfectly original on the `panels` slot, worth 11 of authenticity's 100 points.**
+
+  Before the zone model, `frp-sport-panel-kit` and its siblings were `panels` SKUs fitted to the
+  carrier, so a body kit cost those points. This is a behaviour change, not a pre-existing gap, and
+  it works directly against the project's own stated principle that a body kit is a body part and a
+  modified body loses its authenticity.
+
+  **The root cause is that the `panels` carrier has become vestigial.** It holds exactly four SKUs,
+  all stock, none with a `zoneId`. Every one of the 144 zone-scoped panel SKUs is correctly refused
+  for the whole-car slot by `partFitsCar`. So the carrier can neither be upgraded nor lose its
+  originality, and it has two visible symptoms:
+
+  1. **Authenticity never moves**, as above.
+  2. **The whole-car "Replace" affordance on `CarDetailScreen` is permanently non-functional.** It
+     still renders, but no SKU reachable in ordinary play can satisfy it. The zone pipeline is the
+     only live path to changing a panel. Left in place rather than removed, because whether the
+     carrier should keep a whole-car affordance at all is part of the same decision.
+
+  **The consistent fix is probably to derive the carrier's grade from the fitted zone panels
+  exactly as its BAND already derives from them**, so any non-stock zone panel makes the carrier
+  non-stock. That is a real decision about a core stat with more than one defensible answer (worst
+  governs, any-non-stock, or a `stocknessOf` special case reading zones directly), which is why it
+  was not invented unreviewed. `paint` is unaffected: its whole-car ladder is untouched.
+
 - [ ] **`docs/carstats/` needs a re-measure: Sprint 166 moved three of the things it measured.**
   Those five documents are a measurement snapshot, and the sprint they produced changed the code
   under parts of it. Closed by the sprint, so read as history until re-measured: `handling.md`
@@ -1049,6 +1078,16 @@ pass."
   is still untouched. The lever to decide first is the class ladder, not this fraction.
 
 ## Planned systems (designed, not yet scheduled)
+
+- [ ] **Cosmetic lighting, if it ever earns a slot (underglow cut 2026-08-03).** The Underglow Kit
+  was the `underbody` slot's street SKU, and `underbody` was deleted and merged into `chassis` when
+  the body zone model was rebuilt: once skirts became their own zone and the splitter and flat
+  floor were recognised as duplicates of `aero`'s Lip Kit and Race Aero Kit, underseal and
+  underglow were all that remained, which is not a slot. Underglow is pure style with no home now.
+
+  **If it comes back it needs a reason beyond nostalgia**: a slot of its own, or a place inside
+  `aero` as style-without-downforce, plus a decision about whether it reads at all in a game with
+  no night. It was cut rather than rehoused precisely so that decision gets made deliberately.
 
 - [ ] **Machining as a fifth play in the plays ranking (carried out of Sprint 168).** The ranking
   reads what a car needs and what it is worth, and machining is invisible to it, so a player is

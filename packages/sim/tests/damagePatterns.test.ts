@@ -12,6 +12,7 @@ import {
   type ComponentId,
   type DamagePatternId,
   type EconomyConfig,
+  type MetalZoneId,
   type PanelZoneId,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
@@ -19,12 +20,13 @@ import { generateAuctionCarInstance } from '../src/auctions'
 import { bandIndex } from '../src/bands'
 import {
   isBodyDerivedPart,
+  METAL_ZONE_IDS,
   PANEL_ZONE_IDS,
   rollZoneStates,
   setZoneCarrierToAtLeastBand,
 } from '../src/bodyPipeline'
 import { buildSimContext, type SimContext } from '../src/context'
-import { pickPatternZone, symptomDrawWeight, zoneDamageOrder } from '../src/damagePatterns'
+import { pickPatternZone, symptomDrawWeight } from '../src/damagePatterns'
 import { createRng } from '../src/rng'
 
 /**
@@ -99,17 +101,18 @@ function meanStepsByGroup(cars: readonly CarInstance[]): Record<ComponentId, num
   return totals
 }
 
-/** Mean money-relevant severity (surface + finish) per panel zone, over `cars`. */
-function meanSeverityByZone(cars: readonly CarInstance[]): Record<PanelZoneId, number> {
-  const totals = {} as Record<PanelZoneId, number>
+/** Mean money-relevant severity (surface + finish) per metal zone, over
+ * `cars` - the six metal zones are the only ones carrying `surface`. */
+function meanSeverityByZone(cars: readonly CarInstance[]): Record<MetalZoneId, number> {
+  const totals = {} as Record<MetalZoneId, number>
   for (const car of cars) {
     const zones = car.zoneState
     if (!zones) continue
-    for (const zoneId of PANEL_ZONE_IDS) {
+    for (const zoneId of METAL_ZONE_IDS) {
       totals[zoneId] = (totals[zoneId] ?? 0) + zones[zoneId].surface + zones[zoneId].finish
     }
   }
-  for (const zoneId of PANEL_ZONE_IDS) totals[zoneId] /= cars.length
+  for (const zoneId of METAL_ZONE_IDS) totals[zoneId] /= cars.length
   return totals
 }
 
@@ -171,12 +174,12 @@ describe('a damage pattern decides WHERE the damage is', () => {
 
     // The body zones invert outright, which is the thing six independent zone
     // rolls could not express at all: there was no front and no rear, and
-    // `left` and `right` were unrelated. Measured 3.23 vs 1.68 on the bonnet
-    // and 2.69 vs 1.98 on the boot.
+    // `left` and `right` were unrelated, let alone a rear corner. Measured
+    // 3.16 vs 1.49 on the bonnet and 2.50 vs 1.80 on the left-rear corner.
     const shuntedZones = meanSeverityByZone(shunted)
     const sidewaysZones = meanSeverityByZone(sideways)
     expect(shuntedZones.bonnet / sidewaysZones.bonnet).toBeGreaterThan(1.4)
-    expect(sidewaysZones.boot / shuntedZones.boot).toBeGreaterThan(1.15)
+    expect(sidewaysZones['left-rear'] / shuntedZones['left-rear']).toBeGreaterThan(1.25)
   }, 30_000)
 
   it('grips the mechanical groups at least as hard as it grips the shell', () => {
@@ -357,20 +360,30 @@ describe('the bonnet monopoly is over', () => {
     expect(seen.size).toBe(PANEL_ZONE_IDS.length)
   })
 
-  it('leans a shunted car toward the bonnet and a drifted one toward the boot', () => {
-    const firstZoneShare = (patternId: DamagePatternId, zoneId: PanelZoneId) => {
+  it('leans a shunted car toward the front zones and a drifted one toward the corners', () => {
+    // Read straight off the authored weights - the exact ground truth, with
+    // no sampling noise to margin against.
+    const FRONT_ZONES = ['bonnet', 'left-front', 'right-front', 'front-bumper'] as const
+    const CORNER_ZONES = ['left-front', 'left-rear', 'right-front', 'right-rear'] as const
+    const shareOf = (patternId: DamagePatternId, zoneIds: readonly PanelZoneId[]) => {
       const pattern = DAMAGE_PATTERNS.find((entry) => entry.id === patternId)!
-      const rng = createRng(97)
-      let hits = 0
-      for (let draw = 0; draw < 4000; draw++) {
-        if (zoneDamageOrder(PANEL_ZONE_IDS, pattern, rng)[0] === zoneId) hits += 1
-      }
-      return hits / 4000
+      const total = PANEL_ZONE_IDS.reduce(
+        (sum, zoneId) => sum + pattern.slotWeights.zones[zoneId],
+        0,
+      )
+      const named = zoneIds.reduce((sum, zoneId) => sum + pattern.slotWeights.zones[zoneId], 0)
+      return named / total
     }
-    expect(firstZoneShare('frontal-collision', 'bonnet')).toBeGreaterThan(0.3)
-    expect(firstZoneShare('drifted', 'bonnet')).toBeLessThan(0.15)
-    expect(firstZoneShare('drifted', 'boot')).toBeGreaterThan(0.25)
-    expect(firstZoneShare('frontal-collision', 'boot')).toBeLessThan(0.15)
+    // frontal-collision spends 84 of its 100 points on the front zones
+    // (bonnet, both front corners, the front bumper); drifted spends 43.
+    expect(shareOf('frontal-collision', FRONT_ZONES)).toBeGreaterThan(0.75)
+    expect(shareOf('drifted', FRONT_ZONES)).toBeLessThan(0.5)
+    // ...and the corners invert: drifted spends 60 of its 100 on the four
+    // corners against frontal-collision's 44 - the story six independent
+    // zone rolls could never tell, since there was no corner to land on.
+    expect(shareOf('drifted', CORNER_ZONES)).toBeGreaterThan(
+      shareOf('frontal-collision', CORNER_ZONES),
+    )
   })
 })
 
@@ -392,14 +405,20 @@ describe('arranging the zones is a pure permutation', () => {
         .sort()
         .join('|')
     expect(fingerprint(reversed)).toBe(fingerprint(asIs))
-    expect(reversed.chassis).toEqual(asIs.chassis)
   })
 
   it('deals the worst rolled zone first along the order it is given', () => {
     const severity = (zone: { metal: number; surface: number; finish: number }) =>
       zone.metal + zone.surface + zone.finish
     for (let seed = 0; seed < 40; seed++) {
-      const order: PanelZoneId[] = ['boot', 'roof', 'left', 'right', 'bonnet']
+      const order: MetalZoneId[] = [
+        'boot',
+        'bonnet',
+        'left-front',
+        'left-rear',
+        'right-front',
+        'right-rear',
+      ]
       const zones = rollZoneStates('entry', ECONOMY, createRng(seed), order)
       const dealt = order.map((zoneId) => severity(zones[zoneId]))
       for (let i = 1; i < dealt.length; i++) {

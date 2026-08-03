@@ -245,19 +245,10 @@ describe('the style catalogue spreads across the car', () => {
     expect(topThree, 'the loudest three slots against saturation').toBeLessThan(SATURATION)
   })
 
-  /**
-   * `underbody` is deliberately outside this rule. Its grades ladder how much
-   * the part DOES, not how loud it is: neon underglow is the street rung and
-   * the loudest thing on the slot (8 points), a skirt-and-splitter kit is the
-   * sport rung at the same 8, and a race flat floor is the quietest at 6.
-   * Every other style-bearing slot sells showiness up the same ladder it sells
-   * capability, and the bar below is what keeps it that way.
-   */
   it('keeps race above sport above street in every slot that sells style up its grade ladder', () => {
     const bestByGrade = new Map<string, Map<string, number>>()
     for (const part of PARTS) {
       if (part.fitmentClass !== 'everyday' || !part.statModifiers.style) continue
-      if (part.carPartId === 'underbody') continue
       const slot = bestByGrade.get(part.carPartId) ?? new Map<string, number>()
       slot.set(part.grade, Math.max(slot.get(part.grade) ?? 0, part.statModifiers.style))
       bestByGrade.set(part.carPartId, slot)

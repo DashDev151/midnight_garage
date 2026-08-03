@@ -24,8 +24,8 @@ const VIEW_IDS: readonly WorkshopViewId[] = ['body', 'engineBay', 'underside']
 /**
  * `paint` derives its band from zone state, has no on-car action of its own
  * and no SKU to fit, so it is a value carrier rather than a work target and
- * gets no region at all. `panels` and `underbody` derive their bands the same
- * way but take a fitted body kit, so both do have one.
+ * gets no region at all. `panels` derives its band the same way but takes a
+ * fitted body kit, so it does have one.
  */
 const REGIONLESS_CARRIERS: readonly CarPartId[] = ['paint']
 
@@ -155,11 +155,15 @@ describe('workshop view regionAt', () => {
     const block = regionAt(WORKSHOP_VIEWS.engineBay, 100, 130)
     expect(block?.kind === 'part' ? block.partId : null).toBe('block')
 
-    // The two same-named regions on the underside resolve to different things.
+    // `chassis` carries no zone of its own anymore - the underside resolves
+    // it to a part and nothing else.
     const chassisPart = regionAt(WORKSHOP_VIEWS.underside, 270, 70)
-    expect(chassisPart?.kind).toBe('part')
-    const chassisZone = regionAt(WORKSHOP_VIEWS.underside, 270, 110)
-    expect(chassisZone?.kind).toBe('zone')
+    expect(chassisPart).toEqual({ kind: 'part', partId: 'chassis', rects: expect.anything() })
+
+    // A body-view corner and a trim zone, to prove the nine zones resolve
+    // beyond just the bonnet.
+    const frontBumper = regionAt(WORKSHOP_VIEWS.body, 15, 80)
+    expect(frontBumper).toEqual({ kind: 'zone', zoneId: 'front-bumper', rects: expect.anything() })
   })
 
   it('returns null for bare stage', () => {
@@ -169,8 +173,8 @@ describe('workshop view regionAt', () => {
   })
 
   it('treats a rectangle as half-open, so a shared edge belongs to one region only', () => {
-    // x=98 is the bonnet's right edge and the roof's left edge.
-    const atEdge = regionAt(WORKSHOP_VIEWS.body, 98, 80)
-    expect(atEdge?.kind === 'zone' ? atEdge.zoneId : null).toBe('roof')
+    // x=68 is the right-front corner's right edge and skirts' left edge.
+    const atEdge = regionAt(WORKSHOP_VIEWS.body, 68, 30)
+    expect(atEdge?.kind === 'zone' ? atEdge.zoneId : null).toBe('skirts')
   })
 })

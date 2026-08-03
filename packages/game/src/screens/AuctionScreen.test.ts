@@ -97,7 +97,6 @@ function giveReliableOwnedCar(game: ReturnType<typeof useGameStore>): string {
     modelId: model.id,
     year: 1990,
     mileageKm: 120_000,
-    color: 'White',
     factoryColour: model.spec.factoryColours[0]!,
     provenanceNote: '',
     symptoms: [],

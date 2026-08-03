@@ -623,10 +623,10 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
        * today (`hasMachineLineFor`, sim/jobs.ts) - book the machine-shop
        * hire, or buy the tools. */
       'machine-line',
-      /** `panels`/`paint`/`underbody` bands are derived from zone state (the
-       * body pipeline, sim/bodyPipeline.ts) - a direct repair-zone job
-       * addressed at one of them on a car already on the zone model refuses;
-       * work the zone's pipeline stages instead. */
+      /** `panels`/`paint` bands are derived from zone state (the body
+       * pipeline, sim/bodyPipeline.ts) - a direct repair-zone job addressed
+       * at one of them on a car already on the zone model refuses; work the
+       * zone's pipeline stages instead. */
       'derived-band',
     ]),
   }),

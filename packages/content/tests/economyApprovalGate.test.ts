@@ -1637,6 +1637,72 @@ import storyMissions from '../data/storyMissions.json'
  * every built engine. 800 sits above the roster's fastest stock car (560 PS, the LFA)
  * with room for a fully built motor. No existing value moves, and this field feeds no
  * sim formula, price or payout.
+ *
+ * Re-pinned for the body zone rebuild signed in docs/sprints/sprint172.md: six zones
+ * become nine (`bonnet`/`boot`/`left-front`/`left-rear`/`right-front`/`right-rear`
+ * metal, `front-bumper`/`rear-bumper`/`skirts` trim) and `underbody` is deleted as a
+ * slot, its structural concern folded into `chassis`, which moves from the
+ * `drivetrain` group to `body`. Three files move:
+ *
+ * - `damagePatterns.json`: all five patterns' `slotWeights.zones` re-authored from
+ *   five keys to nine (the schema itself refuses the old five-key shape once
+ *   `ZoneSlotWeightsSchema` moves to nine, so the reshape is mandatory, not
+ *   optional). The sprint doc directs the qualitative shape by name for four of
+ *   the five - `frontal-collision` weights bonnet/left-front/right-front/
+ *   front-bumper heavily and the rear lightly, `drifted` favours the corners and
+ *   the bumpers, `neglected-commuter` favours the horizontals and the lower
+ *   corners, `garaged` stays near-even - and the exact integer weights (and the
+ *   whole of `grenade`, left to authoring judgement: bonnet weighted heavily for
+ *   engine-bay proximity, the rest low and near-even) are this change's own
+ *   authoring within that direction, flagged for review rather than presented as
+ *   a literal maintainer-dictated table.
+ * - `economy.json`: three structural deletions of the now-nonexistent `underbody`
+ *   slot, none of them a value change - `valuation.foundation.parts` drops
+ *   `underbody` (`chassis` alone still names the structural foundation part),
+ *   `partsGeneration.missingSlotWeightByPart.underbody` (was 0, so its removal moves
+ *   nothing) is gone, and `machineShopAssist.signatureSlotsByGroup.body` drops
+ *   `underbody` and gains `chassis` - the sprint doc's own text ("the stiffening kits
+ *   require the body line to install, owned or hired for the day... `hasMachineLineFor`
+ *   already do exactly this for assemblies") names this exact wiring as the whole of
+ *   what makes the stiffening kits need the welder, with no sim code change.
+ * - `partPricing.json`: `baseCostYen.underbody` (24000) removed with the slot; no
+ *   other base, class factor, grade factor or override moves.
+ *
+ * `materials.json` is not gated by this hash (it is not one of the three files this
+ * suite hashes) - its seven approved prices are pinned by `material.test.ts` instead,
+ * per the sprint doc's Levers table (filler 1250, paper 350, primer 650, paint 1400,
+ * paint-metallic 2750, paint-pearl 4150, polish 450, underseal deleted), rescaled so a
+ * full respray holds its per-car total (32000 -> 32100, 0.3 per cent) rather than
+ * rising 80 per cent by the zone count alone.
+ *
+ * No mission payout or budget cap moves: none of the three re-derivation formulas
+ * (`payoutYenFor`, the probe cost, the taste-match ratio) reads a zone weight, a
+ * foundation part list, a signature-slot membership, or the deleted `underbody` base
+ * cost.
+ *
+ * Re-pinned for the same body zone rebuild (docs/sprints/sprint172.md), one
+ * further structural deletion the pin above missed:
+ * `partsGeneration.zoneStates.chassisMetalWeightsByTier` rolled the
+ * now-deleted chassis ZONE's own metal severity, one tier row kinder than the
+ * panel zones' table. Zones are nine now and none of them is named `chassis`
+ * - the shell's condition is a normal per-part band on the `chassis` part
+ * instead, generated the same way every other non-derived slot is, so the
+ * table has no zone left to roll for. Not a value change: the table is gone
+ * because its subject is gone, and nothing reads it. `metalWeightsByTier`,
+ * `finishWeightsByTier`, `surfaceExtraChance`, `zoneBeyondRepairChance` and
+ * `zonePanelMissingChance` are untouched.
+ *
+ * Three formula-derived mission payouts move as a MECHANICAL CONSEQUENCE of
+ * the same body zone rebuild, not an independent decision: `underbody`'s
+ * removal drops each probe's part count from 29 to 28 and moves its
+ * `marketValueYen` purchase proxy, which `storyMissionProbes.test.ts`'s own
+ * `payoutYenFor`/`budgetCapYenFor` rules re-derive against a fresh
+ * measurement, never hand-picked - `wont-strand-her` 123000 -> 124000,
+ * `the-fleet-spare` 481000 -> 482000, `the-column-clock` 996000 -> 997000.
+ * Each budget cap moves with its own payout, holding the one-price contract.
+ * No other mission's probe reads a body-derived slot at a price-relevant
+ * band, so nothing else moves; `economy.json` and `partPricing.json` are
+ * untouched, so their hashes hold.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -1646,7 +1712,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('7c594d96d5ea6bbb244c530bcdac98264839fc095e7e2255f0ed0515f9cfc81d')
+    ).toBe('fab9c9b1b7fd9485c72def3dfd6d59a83be5a455d327b4f7ed3f89806e83459f')
   })
 
   it('damagePatterns.json matches its approved content exactly', () => {
@@ -1656,7 +1722,7 @@ describe('the economy approval gate', () => {
       'damagePatterns.json changed. The slot weights decide where every generated car is ' +
         'damaged and which symptom it presents: re-pin this hash ONLY in the same change as ' +
         'the recorded approval of the specific weighting.',
-    ).toBe('7b0bdc45c9666442702ce1996290d6c33216f8c435247fcbf41e652e58b18c41')
+    ).toBe('6a3936623b3a0be38270b85d71f2e25e976f5eba58b4caf5773526ae221f6cca')
   })
 
   it('partPricing.json matches its approved content exactly', () => {
@@ -1668,7 +1734,7 @@ describe('the economy approval gate', () => {
         'class factors, grade factors, the global factor and the overrides map are all ' +
         'approval-gated (CLAUDE.md directive 22). Re-pin this hash ONLY in the same ' +
         'change as the recorded approval of the specific lever and value.',
-    ).toBe('b1749befe8236fa3f92f78e54cb150843ec3405860d3403e84af04a8aac6698e')
+    ).toBe('c1329be01da7abbf50863960fdf373bbd8067ee677153c9bd6c82ce166226be4')
   })
 
   it('mission payouts and budget caps match their approved values exactly', () => {
@@ -1684,14 +1750,14 @@ describe('the economy approval gate', () => {
         '(CLAUDE.md directive 22): re-pin only alongside the recorded approval.',
     ).toEqual({
       'four-wheels': { payoutYen: 142000, budgetCapYen: 142000 },
-      'wont-strand-her': { payoutYen: 123000, budgetCapYen: 123000 },
+      'wont-strand-her': { payoutYen: 124000, budgetCapYen: 124000 },
       'first-proper-car': { payoutYen: 684000, budgetCapYen: 684000 },
       'make-it-pull': { payoutYen: 787000, budgetCapYen: 787000 },
-      'the-column-clock': { payoutYen: 996000, budgetCapYen: 996000 },
+      'the-column-clock': { payoutYen: 997000, budgetCapYen: 997000 },
       'low-and-loud': { payoutYen: 1159000, budgetCapYen: 1159000 },
       'street-power-street-manners': { payoutYen: 1494000, budgetCapYen: 1494000 },
       'under-one-fifteen': { payoutYen: 1690000, budgetCapYen: 1690000 },
-      'the-fleet-spare': { payoutYen: 481000, budgetCapYen: 481000 },
+      'the-fleet-spare': { payoutYen: 482000, budgetCapYen: 482000 },
       'the-showroom-standard': { payoutYen: 701000, budgetCapYen: 701000 },
     })
   })

@@ -133,13 +133,17 @@ describe('WorkshopViews', () => {
     await wrapper.get('[data-test="workshop-region-zone-bonnet"]').trigger('click')
     expect(wrapper.emitted('select')?.[1]).toEqual([{ kind: 'zone', zoneId: 'bonnet' }])
 
-    // The underside carries `chassis` as BOTH a part and a zone: the payloads
-    // must not collapse into each other.
+    // `chassis` is a plain part now, carrying no zone of its own - clicking it
+    // on the underside emits a part selection and nothing else.
     await openView(wrapper, 'underside')
     await wrapper.get('[data-test="workshop-region-part-chassis"]').trigger('click')
     expect(wrapper.emitted('select')?.[2]).toEqual([{ kind: 'part', partId: 'chassis' }])
-    await wrapper.get('[data-test="workshop-region-zone-chassis"]').trigger('click')
-    expect(wrapper.emitted('select')?.[3]).toEqual([{ kind: 'zone', zoneId: 'chassis' }])
+    expect(wrapper.find('[data-test="workshop-region-zone-chassis"]').exists()).toBe(false)
+
+    // A trim zone (no metal underneath it) still emits a real zone selection.
+    await openView(wrapper, 'body')
+    await wrapper.get('[data-test="workshop-region-zone-front-bumper"]').trigger('click')
+    expect(wrapper.emitted('select')?.[3]).toEqual([{ kind: 'zone', zoneId: 'front-bumper' }])
   })
 
   it('law: no region carries a z-index, in any view', async () => {

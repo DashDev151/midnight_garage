@@ -9,6 +9,7 @@ import {
   type CarModel,
   type DamageGrade,
   type EconomyConfig,
+  type MetalZoneState,
   type PartFitmentClass,
   type ZoneState,
   type ZoneStates,
@@ -19,14 +20,16 @@ import { bandIndex } from '../src/bands'
 import {
   BEYOND_REPAIR_METAL,
   MAX_REPAIRABLE_METAL,
+  METAL_ZONE_IDS,
   PANEL_ZONE_IDS,
+  TRIM_ZONE_IDS,
   bandForSeverity,
   derivePanelsBand,
   hasZoneImproveHeadroom,
   improveZoneCarrierOneStep,
   panelsRepairBillYen,
+  planInstallPanel,
   planPipelineStage,
-  planSwapPanel,
   rollZoneStates,
   setZoneCarrierToAtLeastBand,
   zoneNeedsPanel,
@@ -36,24 +39,29 @@ import { buildSimContext, type SimContext } from '../src/context'
 import { createRng, hashStringToSeed } from '../src/rng'
 
 /**
- * A panel that is beyond saving (docs/sprints/sprint159.md). The `metal` axis
- * grew one rung above weldable, which is what lets `derivePanelsBand` reach
- * `scrap` from severity alone; a panel that is absent outright forces the same
- * band for a different reason. Beat and weld refuse both, `swapPanel` clears
- * both, and the repair bill quotes exactly one panel for either.
+ * A panel that is beyond saving. The `metal` axis grew one rung above
+ * weldable, which is what lets `derivePanelsBand` reach `scrap` from
+ * severity alone; a panel that is absent outright forces the same band for a
+ * different reason. Beat and weld refuse both, a fresh panel clears both,
+ * and the repair bill quotes exactly one panel for either.
  */
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 const GAME_YEAR = 1995
 const FULL_CAPABILITY = { unlocked: true, fullCapability: true }
 
-function zone(overrides: Partial<ZoneState> = {}): ZoneState {
+function zone(overrides: Partial<MetalZoneState> = {}): MetalZoneState {
   return { metal: 0, surface: 0, finish: 0, panelMissing: false, primed: false, ...overrides }
+}
+
+function trimZone(overrides: Partial<ZoneState> = {}): ZoneState {
+  return { finish: 0, panelMissing: false, primed: false, ...overrides }
 }
 
 function zonesWith(overrides: Partial<Record<string, ZoneState>> = {}): ZoneStates {
   const states = {} as Record<string, ZoneState>
-  for (const zoneId of [...PANEL_ZONE_IDS, 'chassis']) states[zoneId] = zone()
+  for (const zoneId of METAL_ZONE_IDS) states[zoneId] = zone()
+  for (const zoneId of TRIM_ZONE_IDS) states[zoneId] = trimZone()
   return { ...states, ...overrides } as ZoneStates
 }
 
@@ -108,12 +116,9 @@ describe('the metal axis reaches one rung above weldable', () => {
     expect(zoneNeedsPanel(missing.bonnet)).toBe(false)
   })
 
-  it('leaves the chassis out of it: the underbody has no panel to fit', () => {
+  it('clamps a symptom aimed at scrap to what hand work can still clear', () => {
     // A symptom is the only writer that could aim a body carrier at `scrap`,
     // and its target severity is clamped to what hand work can still clear.
-    const damaged = setZoneCarrierToAtLeastBand(zonesWith(), 'underbody', 'scrap', 'bonnet')
-    expect(damaged.chassis.metal).toBeLessThanOrEqual(MAX_REPAIRABLE_METAL)
-    expect(damaged.chassis.finish).toBeLessThanOrEqual(MAX_REPAIRABLE_METAL)
     const panels = setZoneCarrierToAtLeastBand(zonesWith(), 'panels', 'scrap', 'bonnet')
     expect(panels.bonnet.metal).toBe(MAX_REPAIRABLE_METAL)
   })
@@ -146,13 +151,15 @@ describe('the repair route is shut, and a panel is the only way out', () => {
   })
 
   it('clears both states outright when a sound panel goes on', () => {
-    const fitted = planSwapPanel(zone({ metal: BEYOND_REPAIR_METAL, panelMissing: true }), 'fine')
-    expect(fitted.ok).toBe(true)
-    expect(fitted.zone.panelMissing).toBe(false)
-    expect(fitted.zone.metal).toBeLessThanOrEqual(MAX_REPAIRABLE_METAL)
-    expect(zoneNeedsPanel(fitted.zone)).toBe(false)
+    const fitted = planInstallPanel(
+      zone({ metal: BEYOND_REPAIR_METAL, panelMissing: true }),
+      'fine',
+    )
+    expect(fitted.panelMissing).toBe(false)
+    expect((fitted as MetalZoneState).metal).toBeLessThanOrEqual(MAX_REPAIRABLE_METAL)
+    expect(zoneNeedsPanel(fitted)).toBe(false)
     // And the zone is workable again the moment it is fitted.
-    expect(planPipelineStage('stripPrep', fitted.zone, FULL_CAPABILITY).ok).toBe(true)
+    expect(planPipelineStage('stripPrep', fitted, FULL_CAPABILITY).ok).toBe(true)
   })
 })
 
@@ -216,7 +223,14 @@ describe('generation writes both states, off the history and the pattern', () =>
   it('puts it on the zone the pattern implicates, and on no more than one', () => {
     let seen = 0
     for (let seed = 0; seed < 600; seed++) {
-      const order = ['boot', 'roof', 'left', 'right', 'bonnet'] as const
+      const order = [
+        'boot',
+        'bonnet',
+        'left-front',
+        'left-rear',
+        'right-front',
+        'right-rear',
+      ] as const
       const states = rollZoneStates('entry', ECONOMY, createRng(seed), order, 'project')
       const needing = PANEL_ZONE_IDS.filter((zoneId) => zoneNeedsPanel(states[zoneId]))
       expect(needing.length).toBeLessThanOrEqual(1)

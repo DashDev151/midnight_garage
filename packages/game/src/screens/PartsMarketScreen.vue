@@ -66,7 +66,6 @@ const CAR_PART_OPTIONS: readonly CarPartId[] = [
   'tyres',
   'panels',
   'paint',
-  'underbody',
   'aero',
   'seats',
   'dashGauges',
@@ -239,13 +238,12 @@ function statSummary(part: Part): string {
   return entries.join(' ')
 }
 
-/** `panels`/`paint`/`underbody`'s own stock SKU stays in the catalogue (the
- * derived value carriers' installed reference - `bodyPipeline.ts`), but the
- * market never lists it again: a zone-panel SKU still carries `carPartId:
- * "panels"` at `grade: "stock"`, so the exclusion is guarded on `zoneId`
- * too, or it would delist the real zone panels alongside the whole-slot
- * reference. */
-const DELISTED_DERIVED_PART_IDS: readonly CarPartId[] = ['panels', 'paint', 'underbody']
+/** `panels`/`paint`'s own stock SKU stays in the catalogue (the derived value
+ * carriers' installed reference - `bodyPipeline.ts`), but the market never
+ * lists it again: a zone-panel SKU still carries `carPartId: "panels"` at
+ * `grade: "stock"`, so the exclusion is guarded on `zoneId` too, or it would
+ * delist the real zone panels alongside the whole-slot reference. */
+const DELISTED_DERIVED_PART_IDS: readonly CarPartId[] = ['panels', 'paint']
 function isDelisted(part: Part): boolean {
   return (
     part.grade === 'stock' &&

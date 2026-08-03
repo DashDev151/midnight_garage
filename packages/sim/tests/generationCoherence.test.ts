@@ -26,8 +26,8 @@ const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 const GAME_YEAR = 1995
 
 /** The worst band on any real installed part - the "how rough is this car".
- * Excludes `panels`/`paint`/`underbody`: those three are derived from zone
- * state (`bodyPipeline.ts`), and the zone roll (docs/design/
+ * Excludes `panels`/`paint`: those two are derived from zone state
+ * (`bodyPipeline.ts`), and the zone roll (docs/design/
  * workshop-rework.md's generation table) is TIER-weighted alone, independent
  * of age or mileage - a deliberate, separate generation axis this wave adds,
  * not a claim the wear-model coherence tests below are about. */
@@ -121,8 +121,8 @@ describe('generated cars are coherent (Sprint 66, item 6a)', () => {
    * car with no miles and perished everything - but that is the tail, not the
    * shape. The original bug this file exists for (a `1995 - 11 km` 180SX with
    * mostly worn parts) is a claim about the typical car, and this measures it
-   * as one: nearly half of barely-driven cars carry nothing ruined at all and
-   * nine in ten carry no more than four ruined slots out of 26.
+   * as one: close to four in ten barely-driven cars carry nothing ruined at
+   * all and nine in ten carry no more than four ruined slots out of 26.
    */
   it('a barely-driven car is typically tidy once every generation stage has run', () => {
     const model = CARS.find((c) => c.id === 'nissan-180sx-rps13')
@@ -158,12 +158,15 @@ describe('generated cars are coherent (Sprint 66, item 6a)', () => {
     //
     // An exact-median bar (`median === 0`) would sit on a knife edge here: it
     // pins the tipping point of a distribution whose zero share is barely over
-    // half, so concentrating damage into a pattern flips it by moving that
-    // share to 0.428 - the same total damage on fewer parts, which is the
+    // a third, so concentrating damage into a pattern flips it by moving that
+    // share to 0.388 - the same total damage on fewer parts, which is the
     // whole point of concentrating it. The shape such a bar stands
     // for is asserted directly instead, and every bar below is measured rather
-    // than relaxed: 0.428 with nothing ruined, median 1, p90 4, mean 1.384 of
-    // the car's 26 ordinary slots.
+    // than relaxed: 0.388 with nothing ruined, median 1, p90 4, mean 1.558 of
+    // the car's 26 ordinary slots - the nine-zone body model spreads the same
+    // damage budget across four more zones than the six-zone one did, which
+    // is why both the none-ruined share and the mean moved slightly against
+    // the figures measured there.
     //
     // The tail thickened by exactly one slot when the damage pattern started
     // offsetting the condition roll, and it is concentration rather than
@@ -171,10 +174,10 @@ describe('generated cars are coherent (Sprint 66, item 6a)', () => {
     // `patternConditionSwingPercent` at 0, these cars carry 29.73 band steps
     // apiece and a p90 of 3; at the shipped 7 they carry 29.98 and a p90 of 4.
     // Same damage, fewer slots, which is what a pattern is for.
-    expect(noneRuined).toBeGreaterThan(0.4)
+    expect(noneRuined).toBeGreaterThan(0.37)
     expect(median).toBeLessThanOrEqual(1)
     expect(p90).toBeLessThanOrEqual(4)
-    expect(mean).toBeLessThan(1.5)
+    expect(mean).toBeLessThan(1.65)
   }, 30_000)
 
   it('still lets neglect bite hard on a thoroughly-used car (the model is scaled, not defanged)', () => {

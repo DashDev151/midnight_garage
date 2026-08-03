@@ -106,7 +106,7 @@
   },
   {
     "id": "rotted-subframe-mount",
-    "carPartId": "underbody",
+    "carPartId": "chassis",
     "setBand": "scrap"
   },
   {
@@ -221,7 +221,7 @@
   },
   {
     "id": "blocked-scuttle-drain",
-    "carPartId": "underbody",
+    "carPartId": "chassis",
     "setBand": "worn"
   },
   {

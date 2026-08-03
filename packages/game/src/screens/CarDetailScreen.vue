@@ -15,14 +15,11 @@ import {
   ASSEMBLIES,
   ComponentIdSchema,
   ECONOMY,
-  PAINT_ALIASES,
-  PAINT_COLOURS,
   PARTS_TAXONOMY,
   fitmentClassForTier,
-  resolvePaintColourName,
   titleCaseFromSlug,
 } from '@midnight-garage/content'
-import type { DynoSessionGateReason } from '@midnight-garage/sim'
+import { isMetalZoneState, type DynoSessionGateReason } from '@midnight-garage/sim'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import BandChip from '../components/BandChip.vue'
@@ -49,7 +46,7 @@ import { MACHINE_LINE_NAMES } from '../utils/dayLogFormat'
 import { DYNO_NAME } from '../utils/dynoLabels'
 import { formatYen, formatYenDelta } from '../utils/formatYen'
 import { LEDGER_LINE_LABELS, formatLedgerLineYen } from '../utils/ledgerLabels'
-import { PAINT_COLOUR_FAMILIES } from '../utils/paintFamilies'
+import { PAINT_COLOUR_FAMILIES, colourTokenDisplayName } from '../utils/paintFamilies'
 import { addressesOverlap, hasWorkAddress } from '../utils/partAddress'
 import {
   SELLING_CHANNEL_LABELS,
@@ -215,10 +212,10 @@ function rowsFor(componentId: ComponentId) {
 // target. -----------------------------------------------------------------
 
 /**
- * What the docked panel is currently showing. A part and a zone are told apart
- * by `kind` rather than by their id, because `chassis` is a legal value of both
- * (the underbody zone and the drivetrain part are different things at the same
- * name) - the views emit the same discriminated shape for exactly that reason.
+ * What the docked panel is currently showing: a part, a body zone, or a
+ * benched assembly member - a part and a zone are told apart by `kind` rather
+ * than by their id, matching the discriminated shape the views themselves
+ * emit.
  */
 type PanelTarget =
   | { kind: 'part'; partId: CarPartId }
@@ -608,7 +605,7 @@ function installGateReasonFor(carPartId: CarPartId): string | null {
  * The per-part on-car repair affordance's own gate reason - `null` when
  * owned, hired for today, or ungated. Per-part repair is bench-only for any
  * non-`surface` slot, so this only ever gates a surface signature slot
- * (panels, underbody, seats, dashGauges).
+ * (panels, seats, dashGauges).
  */
 function repairGateReasonFor(carPartId: CarPartId): string | null {
   const d = detail.value
@@ -683,11 +680,12 @@ function isPipelineStagedAction(
   action: StagedAction,
 ): action is Extract<
   StagedAction,
-  { kind: 'pipeline-stage' | 'pipeline-swap-panel' | 'pipeline-paint' }
+  { kind: 'pipeline-stage' | 'pipeline-remove-panel' | 'pipeline-install-panel' | 'pipeline-paint' }
 > {
   return (
     action.kind === 'pipeline-stage' ||
-    action.kind === 'pipeline-swap-panel' ||
+    action.kind === 'pipeline-remove-panel' ||
+    action.kind === 'pipeline-install-panel' ||
     action.kind === 'pipeline-paint'
   )
 }
@@ -706,13 +704,12 @@ function stagedKeyFor(action: StagedAction): string {
 function stagedActionLabel(action: StagedAction): string {
   if (isPipelineStagedAction(action)) {
     const zoneName = titleCaseFromSlug(action.zoneId)
-    if (action.kind === 'pipeline-swap-panel') return `Swap panel: ${zoneName}`
+    if (action.kind === 'pipeline-remove-panel') return `Remove panel: ${zoneName}`
+    if (action.kind === 'pipeline-install-panel') {
+      return `Install panel (${partInstanceDisplayName(action.partInstanceId)}): ${zoneName}`
+    }
     if (action.kind === 'pipeline-paint') {
-      // The chassis takes underseal rather than a chosen colour, so naming a
-      // tin there would be a fiction.
-      return action.zoneId === 'chassis'
-        ? `Underseal: ${zoneName}`
-        : `Paint (${paintColourName(action.colour)}, ${action.grade}): ${zoneName}`
+      return `Paint (${paintColourName(action.colour)}, ${action.grade}): ${zoneName}`
     }
     return `${PIPELINE_STAGE_LABELS[action.stage] ?? action.stage}: ${zoneName}`
   }
@@ -754,14 +751,18 @@ function onUnstageSummary(action: StagedAction): void {
 // --- Body zones: the panel's zone mode (docs/design/systems/workshop-rework.md) ---
 
 const GENERIC_STAGES = ['stripPrep', 'beat', 'weld', 'fillAndSand', 'prime', 'polish'] as const
+/** The three stages a trim zone never offers - there is no metal underneath a
+ * bumper or a skirt to beat, weld or fill, so these never render there at all
+ * rather than rendering disabled. */
+const METAL_ONLY_STAGES: readonly string[] = ['beat', 'weld', 'fillAndSand']
 
 const zoneState = computed(() => detail.value?.car.zoneState ?? null)
 
 /**
  * The zone the panel is docked on, with everything its mode needs: the live
- * zone state, its display name, and whether it carries a swappable panel.
- * `chassis` does not - there is no panel to unbolt from the underbody, and its
- * finish coat is underseal rather than a chosen colour.
+ * zone state, its display name, and the panel-missing text stated up front.
+ * Every zone carries a swappable panel now, so there is no longer a shape
+ * that opts out of the panel controls the way the chassis zone once did.
  */
 const selectedZone = computed(() => {
   const target = panelTarget.value
@@ -771,7 +772,6 @@ const selectedZone = computed(() => {
     zoneId: target.zoneId,
     zone: zones[target.zoneId],
     name: titleCaseFromSlug(target.zoneId),
-    isPanelZone: target.zoneId !== 'chassis',
     // Stated once, up front: every stage below is refused while this holds, so
     // the panel says why rather than leaving a row of dead buttons to explain
     // itself.
@@ -805,54 +805,29 @@ const paintColourByZone = ref<Record<string, string>>({})
 /** The finish grade armed for each zone - stock, street, sport or race. */
 const paintGradeByZone = ref<Record<string, Grade>>({})
 
-/**
- * The chassis zone's finish coat is underseal, not paint: the sim charges the
- * underseal material for it (`planPaintStage`) and nothing ever reads the
- * shade back, since the paint band derives from the five panel zones alone. So
- * the colour is fixed here rather than offered as a swatch, and the grade -
- * which underseal ignores entirely - is fixed alongside it rather than
- * offered as a choice with nothing to choose.
- */
-const UNDERSEAL_COLOUR = 'underseal'
-const UNDERSEAL_GRADE: Grade = 'stock'
-
-/** The colour the finish stage would lay on this zone: the armed swatch on a
- * panel zone, underseal on the chassis, `null` while no tin is picked. */
+/** The colour the finish stage would lay on this zone: the armed swatch,
+ * `null` while no tin is picked. */
 function paintColourFor(zoneId: ZoneId): string | null {
-  if (zoneId === 'chassis') return UNDERSEAL_COLOUR
   return paintColourByZone.value[zoneId] ?? null
 }
 
-/** The finish grade the stage would lay on this zone: the armed choice on a
- * panel zone, the fixed underseal grade on the chassis, `null` while no
- * finish is picked. */
+/** The finish grade the stage would lay on this zone: the armed choice,
+ * `null` while no finish is picked. */
 function paintGradeFor(zoneId: ZoneId): Grade | null {
-  if (zoneId === 'chassis') return UNDERSEAL_GRADE
   return paintGradeByZone.value[zoneId] ?? null
 }
 
-/** The display name for a colour token - a solid palette id, or a factory
- * two-tone joining two with `+`. Prefers this car's own iconic manufacturer
- * name (`PAINT_ALIASES`, matched on the whole token and the model's `uid`)
- * and falls back to the palette's plain name(s), joined for a two-tone, so an
- * unresearched or unknown id still reads as something rather than
- * vanishing. */
-function colourTokenDisplayName(token: string): string {
-  const uid = detail.value?.model.uid
-  const alias = uid
-    ? PAINT_ALIASES.find((a) => a.colourId === token && a.cars.includes(uid))
-    : undefined
-  if (alias) return resolvePaintColourName(alias)
-  return token
-    .split('+')
-    .map((id) => PAINT_COLOURS.find((c) => c.id === id)?.name ?? id)
-    .join(' and ')
+/** The display name for a colour token on THIS car - `colourTokenDisplayName`
+ * (shared with the auction lot card) prefers this car's own iconic
+ * manufacturer name where one applies. */
+function carColourTokenDisplayName(token: string): string {
+  return colourTokenDisplayName(token, detail.value?.model.uid)
 }
 
 /** A stored colour id as the name on the tin - always a solid id, since a
  * respray lays exactly one colour on one zone. */
 function paintColourName(colourId: string): string {
-  return colourTokenDisplayName(colourId)
+  return carColourTokenDisplayName(colourId)
 }
 
 /** Every palette id this car legitimately wears - one entry, or two for a
@@ -871,7 +846,7 @@ function isFactoryColour(colourId: string): boolean {
 /** What this car left the factory wearing, named in full - the iconic name
  * where one applies, the plain palette name(s) otherwise. */
 const factoryColourCaption = computed<string>(() =>
-  detail.value ? colourTokenDisplayName(detail.value.car.factoryColour) : '',
+  detail.value ? carColourTokenDisplayName(detail.value.car.factoryColour) : '',
 )
 
 /** One grade's own style modifier for this car's fitment class, read from the
@@ -917,8 +892,7 @@ function onStagePaint(zoneId: ZoneId): void {
 }
 
 /** Zone panels sitting in inventory that fit THIS car's own fitment class,
- * for one panel zone - the swap-panel control's own picker. The chassis has no
- * panel to fit, and no catalog entry is addressed to it, so it finds none. */
+ * for one zone - the install control's own picker. */
 function matchingPanelsFor(zoneId: ZoneId): PartInstance[] {
   const d = detail.value
   if (!d) return []
@@ -931,43 +905,64 @@ function matchingPanelsFor(zoneId: ZoneId): PartInstance[] {
   })
 }
 
+/** The zone's current panel coming off, as the live plan Confirm resolves
+ * with - `null` while there is nothing to pull (the zone is already missing
+ * one, or the car has no zone state). */
+function removePanelPreview(zoneId: ZoneId): { costYen: number; laborSlots: number } | null {
+  const d = detail.value
+  if (!d) return null
+  return game.pipelineActionPlan(d.car, { kind: 'pipeline-remove-panel', zoneId })
+}
+
+function onStageRemovePanel(zoneId: ZoneId): void {
+  const d = detail.value
+  if (!d) return
+  game.stageAction(d.car.id, { kind: 'pipeline-remove-panel', zoneId })
+}
+
 /** One candidate panel's own cost and labour, from the same plan Confirm
  * resolves with - `null` when the pick no longer fits. */
-function swapPanelPreview(
+function installPanelPreview(
   zoneId: ZoneId,
   partInstanceId: string,
 ): { costYen: number; laborSlots: number } | null {
   const d = detail.value
-  if (!d || zoneId === 'chassis') return null
-  return game.pipelineActionPlan(d.car, { kind: 'pipeline-swap-panel', zoneId, partInstanceId })
+  if (!d) return null
+  return game.pipelineActionPlan(d.car, { kind: 'pipeline-install-panel', zoneId, partInstanceId })
 }
 
-function onStageSwapPanel(zoneId: ZoneId, partInstanceId: string): void {
+function onStageInstallPanel(zoneId: ZoneId, partInstanceId: string): void {
   const d = detail.value
-  if (!d || !partInstanceId || zoneId === 'chassis') return
-  game.stageAction(d.car.id, { kind: 'pipeline-swap-panel', zoneId, partInstanceId })
+  if (!d || !partInstanceId) return
+  game.stageAction(d.car.id, { kind: 'pipeline-install-panel', zoneId, partInstanceId })
 }
 
-/** The six generic stages for the docked zone, each with the live plan its
- * control reads - one evaluation per stage, not one per binding. */
+/** The zone's own generic stages, each with the live plan its control reads -
+ * one evaluation per stage, not one per binding. All six on a metal zone;
+ * `stripPrep`/`prime`/`polish` alone on a trim zone, which never renders a
+ * beat, weld or fill-and-sand control to refuse in the first place. */
 const zoneStageViews = computed(() => {
   const zone = selectedZone.value
   if (!zone) return []
-  return GENERIC_STAGES.map((stage) => ({
+  const stages = isMetalZoneState(zone.zone)
+    ? GENERIC_STAGES
+    : GENERIC_STAGES.filter((stage) => !METAL_ONLY_STAGES.includes(stage))
+  return stages.map((stage) => ({
     stage,
     label: PIPELINE_STAGE_LABELS[stage] ?? stage,
     plan: genericStagePreview(zone.zoneId, stage),
   }))
 })
 
-/** The panels on hand for the docked zone, as the swap control's own buttons. */
+/** The panels on hand for the docked zone, as the install control's own
+ * buttons - only meaningful while the zone has no panel of its own. */
 const zonePanelOptions = computed(() => {
   const zone = selectedZone.value
-  if (!zone || !zone.isPanelZone) return []
+  if (!zone || !zone.zone.panelMissing) return []
   return matchingPanelsFor(zone.zoneId).map((instance) => ({
     id: instance.id,
     label: `${game.partName(instance.partId)} (${instance.band})`,
-    plan: swapPanelPreview(zone.zoneId, instance.id),
+    plan: installPanelPreview(zone.zoneId, instance.id),
   }))
 })
 
@@ -976,9 +971,15 @@ const zonePaintPlan = computed(() =>
   selectedZone.value ? paintPreview(selectedZone.value.zoneId) : null,
 )
 
+/** The docked zone's own panel coming off, live - only meaningful while the
+ * zone still has one fitted. */
+const zoneRemovePanelPlan = computed(() =>
+  selectedZone.value ? removePanelPreview(selectedZone.value.zoneId) : null,
+)
+
 const armedColourName = computed(() => {
   const zone = selectedZone.value
-  if (!zone || !zone.isPanelZone) return null
+  if (!zone) return null
   const colourId = paintColourByZone.value[zone.zoneId]
   return colourId ? paintColourName(colourId) : null
 })
@@ -1018,7 +1019,7 @@ const PAINT_GRADE_ORIGINALITY: Record<Grade, string> = {
  * off the table rather than staged and then refused. */
 const zoneGradeOptions = computed(() => {
   const zone = selectedZone.value
-  if (!zone || !zone.isPanelZone) return []
+  if (!zone) return []
   return PAINT_GRADES.map((grade) => ({
     grade,
     label: PAINT_GRADE_LABELS[grade],
@@ -1073,7 +1074,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         <p class="sub">
           {{ game.fitmentClassLabel(fitmentClassForTier(detail.model.tier)) }} ·
           {{ detail.car.year }} · {{ detail.car.mileageKm.toLocaleString() }} km ·
-          {{ detail.car.color }}
+          {{ factoryColourCaption }}
         </p>
         <p v-if="detail.car.provenanceNote" class="prov">"{{ detail.car.provenanceNote }}"</p>
         <div v-if="!inTransit && !detail.serviceJob" class="scrap-shell-row">
@@ -1544,10 +1545,11 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               >PANEL OFF</span
             >
             <HelpHint label="Body zones">
-              Panels, paint and underbody all read from the six zones - work a zone's own pipeline
-              to move it. Metal is beaten or welded free of charge (it costs labour, never yen);
-              surface and finish need real materials. Past a certain state the metal is beyond
-              pulling back, and only a fresh panel will do.
+              Panels and paint both read from the nine zones - work a zone's own pipeline to move
+              it. Metal is beaten or welded free of charge (it costs labour, never yen) on the six
+              metal zones; surface and finish need real materials, and the three trim zones (the
+              bumpers and the skirts) never carry metal at all. Past a certain state the metal is
+              beyond pulling back, and only a fresh panel will do.
             </HelpHint>
           </div>
 
@@ -1575,74 +1577,86 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             </button>
           </div>
 
-          <div v-if="selectedZone.isPanelZone" class="panel-actions">
-            <span class="zone-sub">Swap panel</span>
-            <button
-              v-for="option in zonePanelOptions"
-              :key="option.id"
-              type="button"
-              :data-test="'pipeline-swap-panel-' + selectedZone.zoneId + '-' + option.id"
-              @click="onStageSwapPanel(selectedZone.zoneId, option.id)"
-            >
-              {{ option.label + pipelineCostText(option.plan) }}
-            </button>
-            <span
-              v-if="zonePanelOptions.length === 0"
-              class="slot-empty"
-              :data-test="'no-panels-' + selectedZone.zoneId"
-              >No panel for this zone on hand - the parts shop sells them.</span
-            >
+          <div class="panel-actions">
+            <template v-if="!selectedZone.zone.panelMissing">
+              <span class="zone-sub">Panel</span>
+              <button
+                type="button"
+                class="step-up loud"
+                :disabled="!zoneRemovePanelPlan"
+                :data-test="'pipeline-remove-panel-' + selectedZone.zoneId"
+                @click="onStageRemovePanel(selectedZone.zoneId)"
+              >
+                Take it off{{ pipelineCostText(zoneRemovePanelPlan) }}
+              </button>
+            </template>
+            <template v-else>
+              <span class="zone-sub">Install panel</span>
+              <button
+                v-for="option in zonePanelOptions"
+                :key="option.id"
+                type="button"
+                :disabled="!option.plan"
+                :data-test="'pipeline-install-panel-' + selectedZone.zoneId + '-' + option.id"
+                @click="onStageInstallPanel(selectedZone.zoneId, option.id)"
+              >
+                {{ option.label + pipelineCostText(option.plan) }}
+              </button>
+              <span
+                v-if="zonePanelOptions.length === 0"
+                class="slot-empty"
+                :data-test="'no-panels-' + selectedZone.zoneId"
+                >No panel for this zone on hand - the parts shop sells them.</span
+              >
+            </template>
           </div>
 
           <div class="panel-actions paint-actions">
-            <!-- Colour is a small fixed set of tins, so it is a swatch pick.
-                 The chassis gets none: its finish coat is underseal. -->
-            <template v-if="selectedZone.isPanelZone">
-              <span
-                class="zone-sub factory-colour"
-                :data-test="'factory-colour-' + selectedZone.zoneId"
-              >
-                Factory colour: {{ factoryColourCaption }}
-              </span>
-              <span class="zone-sub">Colour</span>
-              <div v-for="family in PAINT_COLOUR_FAMILIES" :key="family.label" class="paint-family">
-                <span class="family-label">{{ family.label }}</span>
-                <div class="paint-swatch-row">
-                  <button
-                    v-for="colour in family.colours"
-                    :key="colour.id"
-                    type="button"
-                    class="paint-swatch"
-                    :class="{
-                      armed: paintColourByZone[selectedZone.zoneId] === colour.id,
-                      factory: isFactoryColour(colour.id),
-                    }"
-                    :style="{ backgroundColor: colour.hex }"
-                    :aria-pressed="paintColourByZone[selectedZone.zoneId] === colour.id"
-                    :aria-label="colour.name"
-                    :data-test="'paint-swatch-' + selectedZone.zoneId + '-' + colour.id"
-                    @click="paintColourByZone[selectedZone.zoneId] = colour.id"
-                  ></button>
-                </div>
+            <!-- Colour is a small fixed set of tins, picked as a swatch. -->
+            <span
+              class="zone-sub factory-colour"
+              :data-test="'factory-colour-' + selectedZone.zoneId"
+            >
+              Factory colour: {{ factoryColourCaption }}
+            </span>
+            <span class="zone-sub">Colour</span>
+            <div v-for="family in PAINT_COLOUR_FAMILIES" :key="family.label" class="paint-family">
+              <span class="family-label">{{ family.label }}</span>
+              <div class="paint-swatch-row">
+                <button
+                  v-for="colour in family.colours"
+                  :key="colour.id"
+                  type="button"
+                  class="paint-swatch"
+                  :class="{
+                    armed: paintColourByZone[selectedZone.zoneId] === colour.id,
+                    factory: isFactoryColour(colour.id),
+                  }"
+                  :style="{ backgroundColor: colour.hex }"
+                  :aria-pressed="paintColourByZone[selectedZone.zoneId] === colour.id"
+                  :aria-label="colour.name"
+                  :data-test="'paint-swatch-' + selectedZone.zoneId + '-' + colour.id"
+                  @click="paintColourByZone[selectedZone.zoneId] = colour.id"
+                ></button>
               </div>
-              <span class="zone-sub" data-test="paint-colour-name">{{
-                armedColourName ?? 'no tin picked yet'
-              }}</span>
+            </div>
+            <span class="zone-sub" data-test="paint-colour-name">{{
+              armedColourName ?? 'no tin picked yet'
+            }}</span>
 
-              <span class="zone-sub">Finish</span>
-              <button
-                v-for="option in zoneGradeOptions"
-                :key="option.grade"
-                type="button"
-                class="step-up loud"
-                :class="{ armed: paintGradeByZone[selectedZone.zoneId] === option.grade }"
-                :disabled="!option.plan"
-                :data-test="'paint-grade-' + selectedZone.zoneId + '-' + option.grade"
-                @click="paintGradeByZone[selectedZone.zoneId] = option.grade"
-              >
-                {{ paintGradeButtonText(option) }}
-              </button>
-            </template>
+            <span class="zone-sub">Finish</span>
+            <button
+              v-for="option in zoneGradeOptions"
+              :key="option.grade"
+              type="button"
+              class="step-up loud"
+              :class="{ armed: paintGradeByZone[selectedZone.zoneId] === option.grade }"
+              :disabled="!option.plan"
+              :data-test="'paint-grade-' + selectedZone.zoneId + '-' + option.grade"
+              @click="paintGradeByZone[selectedZone.zoneId] = option.grade"
+            >
+              {{ paintGradeButtonText(option) }}
+            </button>
             <button
               type="button"
               class="step-up loud"
@@ -1650,9 +1664,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               :data-test="'pipeline-paint-' + selectedZone.zoneId"
               @click="onStagePaint(selectedZone.zoneId)"
             >
-              {{
-                (selectedZone.isPanelZone ? 'Paint' : 'Underseal') + pipelineCostText(zonePaintPlan)
-              }}
+              {{ 'Paint' + pipelineCostText(zonePaintPlan) }}
             </button>
           </div>
         </template>

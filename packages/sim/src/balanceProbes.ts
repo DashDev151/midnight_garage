@@ -12,12 +12,13 @@ import {
   type PartFitmentClass,
   type ReputationTier,
   type StaffMember,
+  type ZoneState,
   type ZoneStates,
 } from '@midnight-garage/content'
 import {
-  ALL_ZONE_IDS,
   BEYOND_REPAIR_METAL,
-  MAX_REPAIRABLE_METAL,
+  METAL_ZONE_IDS,
+  TRIM_ZONE_IDS,
   applyDerivedBodyBands,
   bodyPartRepairBillYen,
   isBodyDerivedPart,
@@ -190,12 +191,12 @@ function worstCaseMileageKm(context: SimContext): number {
  *
  * The car carries a `zoneState` because every real generated car does
  * (`rollZoneStates` + `applyDerivedBodyBands`, auctions.ts/bodyPipeline.ts),
- * and that state is what prices `panels`/`paint`/`underbody`: with it, those
- * three route through the body pipeline's own bill (`bodyPartRepairBillYen`);
- * without it they would route through the generic per-part formula
- * (`costToBandYen`, bands.ts), which is a pricing model no car in the game
- * uses. `applyDerivedBodyBands` is the single writer of those three bands, so
- * they are derived here rather than set from `band` directly.
+ * and that state is what prices `panels`/`paint`: with it, those two route
+ * through the body pipeline's own bill (`bodyPartRepairBillYen`); without it
+ * they would route through the generic per-part formula (`costToBandYen`,
+ * bands.ts), which is a pricing model no car in the game uses.
+ * `applyDerivedBodyBands` is the single writer of those two bands, so they
+ * are derived here rather than set from `band` directly.
  */
 function buildUniformBandCar(
   model: CarModel,
@@ -234,7 +235,6 @@ function buildUniformBandCar(
       modelId: model.id,
       year,
       mileageKm,
-      color: 'White',
       factoryColour: model.spec.factoryColours[0]!,
       provenanceNote,
       parts,
@@ -248,25 +248,24 @@ function buildUniformBandCar(
 }
 
 /**
- * Every zone at the severity `band` maps to, so the three derived carriers
- * read `band` for the same reason a generated car's do. Each axis is clamped
- * to its own ceiling, which is why the worst expressible car is not uniformly
+ * Every zone at the severity `band` maps to, so the two derived carriers read
+ * `band` for the same reason a generated car's do. Each axis is clamped to
+ * its own ceiling, which is why the worst expressible car is not uniformly
  * `scrap`: only `metal` reaches the beyond-repair rung, `surface` tops out at
- * worn and `finish` at poor, and the chassis has no panel to go past saving
- * (`deriveUnderbodyBand`). That asymmetry is the live model's, not this
+ * worn and `finish` at poor. That asymmetry is the live model's, not this
  * probe's. No `colour` is set, so no zone can disagree with another about one.
  */
 function uniformZoneStates(band: ConditionBand): ZoneStates {
   const severity = severityThresholdForBand(band)
-  const states = {} as Record<string, ZoneStates['bonnet']>
-  for (const zoneId of ALL_ZONE_IDS) {
-    states[zoneId] = {
-      metal: Math.min(severity, zoneId === 'chassis' ? MAX_REPAIRABLE_METAL : BEYOND_REPAIR_METAL),
-      surface: Math.min(severity, 2),
-      finish: Math.min(severity, 3),
-      panelMissing: false,
-      primed: false,
-    }
+  const metal = Math.min(severity, BEYOND_REPAIR_METAL)
+  const surface = Math.min(severity, 2)
+  const finish = Math.min(severity, 3)
+  const states = {} as Record<string, ZoneState>
+  for (const zoneId of METAL_ZONE_IDS) {
+    states[zoneId] = { metal, surface, finish, panelMissing: false, primed: false }
+  }
+  for (const zoneId of TRIM_ZONE_IDS) {
+    states[zoneId] = { finish, panelMissing: false, primed: false }
   }
   return states as ZoneStates
 }
@@ -498,12 +497,12 @@ export function computeModelBalanceProbe(
     repairCostYen += plan.costYen
     repairLaborSlots += plan.laborSlotsRequired + installLaborSlotsFor(partId, context)
   }
-  // The body pipeline's own money for the three zone-derived carriers, which
+  // The body pipeline's own money for the two zone-derived carriers, which
   // neither loop above can plan: their bands are derived, so `planGroupRepair`
   // skips them by design. This is the same call `carCostToBandYen` makes, and
   // it is what `repairRoughProbeCar`'s zone repair below is paying for.
   if (roughCar.zoneState) {
-    for (const partId of ['panels', 'paint', 'underbody'] as const) {
+    for (const partId of ['panels', 'paint'] as const) {
       repairCostYen += bodyPartRepairBillYen(
         partId,
         roughCar.zoneState,

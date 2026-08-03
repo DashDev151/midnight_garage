@@ -32,7 +32,7 @@ import {
   rollDamageGrade,
 } from '../src/auctions'
 import { bandIndex, carCostToMintYen } from '../src/bands'
-import { isBodyDerivedPart, PANEL_ZONE_IDS } from '../src/bodyPipeline'
+import { isBodyDerivedPart, isMetalZoneState, PANEL_ZONE_IDS } from '../src/bodyPipeline'
 import { buildSimContext, type SimContext } from '../src/context'
 import { computeDerivedStats } from '../src/derivedStats'
 import { makeCarOrigin } from '../src/provenance'
@@ -588,7 +588,7 @@ describe('generation is mileage-driven: age -> mileage -> condition (Sprint 34)'
   if (!model) throw new Error('fixture car missing from seed content')
 
   /** `poor`/`scrap` share across every filled slot on `instance`, excluding
-   * `panels`/`paint`/`underbody`: this whole describe block is about the
+   * `panels`/`paint`: this whole describe block is about the
    * age -> mileage -> condition chain, and the body pipeline's zone
    * severities (docs/design/systems/workshop-rework.md's generation table) roll from
    * TIER weights alone, independently of age or mileage - a deliberate,
@@ -739,10 +739,9 @@ describe('lot transparency (Sprint 26 decision 10 - no reveal machinery)', () =>
  * until the repair bill reached a fraction of book value with no limit.
  *
  * A "step" here is exactly what `spendDamageBudget` spends: one band on an
- * ordinary part, or one unit of a body zone's money-relevant field (a panel
- * zone's surface or finish, the chassis zone's finish). Metal never counts -
- * it is beaten and welded by hand, never priced in yen, so no degrade step
- * ever moves it.
+ * ordinary part, or one unit of a body zone's money-relevant field (a metal
+ * zone's surface, or any zone's finish). Metal never counts - it is beaten
+ * and welded by hand, never priced in yen, so no degrade step ever moves it.
  */
 describe('the damage budget: how rough a generated lot is', () => {
   const GAME_YEAR = 1995
@@ -757,8 +756,11 @@ describe('the damage budget: how rough a generated lot is', () => {
     }
     const zones = car.zoneState
     if (!zones) return steps
-    for (const zoneId of PANEL_ZONE_IDS) steps += zones[zoneId].surface + zones[zoneId].finish
-    return steps + zones.chassis.finish
+    for (const zoneId of PANEL_ZONE_IDS) {
+      const zone = zones[zoneId]
+      steps += zone.finish + (isMetalZoneState(zone) ? zone.surface : 0)
+    }
+    return steps
   }
 
   function generate(
@@ -789,8 +791,8 @@ describe('the damage budget: how rough a generated lot is', () => {
    * campaign actually generates it at: a 1993 car in 1995, mean mileage about
    * 17,600 km. The retired floor left it with 14.5 of its 29 slots at `poor`
    * on the ~23,500 km sample the sprint measured; the budget leaves 3.8, of
-   * which about 1.8 are the three body carriers reading their own zone
-   * severities rather than anything the budget did.
+   * which some are the two body carriers reading their own zone severities
+   * rather than anything the budget did.
    */
   it('a young, low-mileage Wagon R reads as a tidy car, not a wreck', () => {
     const wagonR = CARS.find((c) => c.id === 'suzuki-wagon-r-ct21s')
@@ -798,10 +800,13 @@ describe('the damage budget: how rough a generated lot is', () => {
     const cars = generate(wagonR, 400, 'wagon-r')
     for (const car of cars) expect(car.year).toBe(1993)
 
-    // Under 3 of the 26 ordinary slots ruined, against the 12.3 the floor
-    // produced. The three body carriers are excluded here: their bands derive
+    // Under 3.4 of the 26 ordinary slots ruined, against the 12.3 the floor
+    // produced. The two body carriers are excluded here: their bands derive
     // from the zone severity tables, a separate authored axis this sprint does
-    // not touch.
+    // not touch - re-measured at 3.23 against the nine-zone model, up from
+    // 3.1 against six, since the zone count moves how much of the damage
+    // budget the body carriers can absorb before it spills onto ordinary
+    // parts.
     const ordinaryPoor =
       cars.reduce((sum, car) => {
         let poor = 0
@@ -812,7 +817,7 @@ describe('the damage budget: how rough a generated lot is', () => {
         }
         return sum + poor
       }, 0) / cars.length
-    expect(ordinaryPoor).toBeLessThan(3.1)
+    expect(ordinaryPoor).toBeLessThan(3.4)
 
     // ...and it is not merely un-ruined, it is presentable: 13.15 of its 29
     // slots sit at `fine` or `mint`, where the retired floor left 4.9 there.

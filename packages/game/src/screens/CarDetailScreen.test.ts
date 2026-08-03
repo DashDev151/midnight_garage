@@ -263,11 +263,25 @@ describe('CarDetailScreen', () => {
     const id = game.gameState.ownedCars[0]!.id
     const car = game.gameState.ownedCars.find((c) => c.id === id)!
     // seats: an installed interior signature slot below mint (on-car per-part
-    // repair is gated, and its removal must never be) - `panels`/`underbody`
+    // repair is gated, and its removal must never be) - `panels`/`paint`
     // no longer serve this purpose, both derived body value carriers now
     // with no on-car repair affordance at all (`bodyPipeline.ts`). dampers:
     // an empty suspension signature slot (installing one is gated).
-    car.parts.seats = { installed: { ...car.parts.seats.installed!, band: 'poor' } }
+    // Generation can legitimately roll seats missing on this car, so a fresh
+    // stock instance stands in rather than asserting non-null on the roll.
+    const model = game.context.modelsById[car.modelId]!
+    const fitmentClass = fitmentClassForTier(model.tier)
+    const seatsInstalled = car.parts.seats.installed
+    car.parts.seats = {
+      installed: seatsInstalled
+        ? { ...seatsInstalled, band: 'poor' }
+        : {
+            id: 'signature-gate-test-seats',
+            partId: game.context.stockPartByCarPartId[fitmentClass].seats.id,
+            band: 'poor',
+            origin: { kind: 'market', day: 1 },
+          },
+    }
     car.parts.dampers = { installed: null }
 
     const suspensionMachine = TOOL_LINES.suspension.tiers[1]!.displayName
@@ -818,7 +832,6 @@ describe('CarDetailScreen', () => {
         'tyres',
         'steering',
         'chassis',
-        'underbody',
       ] as const) {
         const installed = car.parts[partId].installed
         car.parts[partId] = {
@@ -965,7 +978,7 @@ describe('CarDetailScreen', () => {
       car.zoneState = zones
     }
 
-    it('is silent on a car that is all in colour, and names the cost once a body kit strips it back', async () => {
+    it('is silent on a car that is all in colour, and names the cost once a fresh panel arrives bare', async () => {
       const game = useGameStore()
       game.devGrantCar(CARS[0]!.id)
       const id = game.gameState.ownedCars[0]!.id
@@ -979,23 +992,32 @@ describe('CarDetailScreen', () => {
       const before = await mountAt(id)
       expect(before.wrapper.find('[data-test="unpainted-panels-note"]').exists()).toBe(false)
 
-      // The real install path, not a hand-written zone state: a kit lands on
-      // `panels`, which routes every zone it covers through the panel swap and
-      // leaves all five of them in bare metal.
+      // The real remove/install path, not a hand-written zone state: every
+      // aftermarket panel SKU now addresses one zone (`zoneId`), so fitting a
+      // kit is pulling the bonnet's panel and fitting a fresh one, which
+      // leaves exactly that zone in bare metal (`planInstallPanel`,
+      // sim/bodyPipeline.ts) - not the whole shell at once, unlike the
+      // retired whole-car body kit.
+      game.stageAction(id, { kind: 'pipeline-remove-panel', zoneId: 'bonnet' })
+      game.confirmCarWork(id)
       const model = game.context.modelsById[game.gameState.ownedCars[0]!.modelId]!
-      const kit =
-        game.context.aftermarketPartByCarPartId[fitmentClassForTier(model.tier)].panels?.sport
-      expect(kit).toBeDefined()
-      game.devGrantPart(kit!.id)
-      const granted = game
-        .installablePartsForPart(id, 'panels')
-        .find((pi) => pi.partId === kit!.id)!
-      game.install(id, 'body', granted.id, 'panels')
+      const fitmentClass = fitmentClassForTier(model.tier)
+      const kit = PARTS.find(
+        (p) => p.zoneId === 'bonnet' && p.grade === 'sport' && p.fitmentClass === fitmentClass,
+      )!
+      game.devGrantPart(kit.id)
+      const granted = game.gameState.partInventory.find((pi) => pi.partId === kit.id)!
+      game.stageAction(id, {
+        kind: 'pipeline-install-panel',
+        zoneId: 'bonnet',
+        partInstanceId: granted.id,
+      })
+      game.confirmCarWork(id)
 
-      expect(game.carDetail(id)!.unpaintedPanelsNote).toContain('Five panels are still unpainted.')
+      expect(game.carDetail(id)!.unpaintedPanelsNote).toContain('One panel is still unpainted.')
       // The note explains a drop that has already happened and moves nothing:
-      // the `paint` carrier derives off those bare zones, and it is that band
-      // that drags the style and authenticity condition factors down.
+      // the `paint` carrier derives off that one bare zone, and it is that
+      // band that drags the style and authenticity condition factors down.
       expect(game.gameState.ownedCars[0]!.parts.paint.installed!.band).toBe('poor')
 
       const { wrapper } = await mountAt(id)
@@ -1331,11 +1353,17 @@ describe('CarDetailScreen', () => {
       game.devSetToolTier('body', 3)
       game.devGrantCar(CARS[0]!.id)
       const id = game.gameState.ownedCars[0]!.id
+      const originalInstalledId = game.gameState.ownedCars[0]!.parts.panels.installed?.id
+      // Every real aftermarket `panels` SKU now carries a `zoneId` (it fits one
+      // zone through the pipeline's own install, never the whole-car slot -
+      // `partFitsCar` refuses a zone-scoped part here by design), so this is
+      // the whole catalogue's own honest "sport panels" reach: a real part,
+      // for this exact address, that still doesn't fit here.
       const kit = PARTS.find(
         (p) => p.carPartId === 'panels' && p.grade === 'sport' && p.fitmentClass === 'entry',
       )!
+      expect(kit.zoneId).toBeDefined()
       game.devGrantPart(kit.id)
-      const partInstanceId = game.gameState.partInventory.at(-1)!.id
 
       const { wrapper } = await mountAt(id)
       await selectPart(wrapper, 'panels')
@@ -1346,12 +1374,11 @@ describe('CarDetailScreen', () => {
 
       await wrapper.find('[data-test="toggle-bay"]').trigger('click')
       await wrapper.find('[data-test="replace-part-panels"]').trigger('click')
-      await wrapper.get('[data-test="replace-drawer"] .part-card').trigger('click')
-      expect(game.gameState.ownedCars[0]!.parts.panels.installed?.id).toBe(partInstanceId)
-      // A fresh kit arrives on straight metal in a bare finish, so the car
-      // owes its paint (`refitCarrierZoneStates`, sim/bodyPipeline.ts).
-      expect(game.gameState.ownedCars[0]!.parts.panels.installed?.band).toBe('mint')
-      expect(game.gameState.ownedCars[0]!.parts.paint.installed?.band).toBe('poor')
+      const card = wrapper.get('[data-test="replace-drawer"] .part-card')
+      expect(card.classes()).toContain('no-fit')
+      await card.trigger('click')
+      // A no-fit card's click is a no-op - the shell is exactly as generated.
+      expect(game.gameState.ownedCars[0]!.parts.panels.installed?.id).toBe(originalInstalledId)
     })
   })
 
@@ -2149,27 +2176,23 @@ describe('CarDetailScreen', () => {
       ).toBeUndefined()
     })
 
-    it('offers the chassis no swatches and no finish picker - its coat is underseal, not a colour', async () => {
-      const { game, id, wrapper } = await grantAndDock('chassis', PRIMED)
+    it('offers a fitted panel to take off, priced inline, never an install list beside it', async () => {
+      const { game, id, wrapper } = await grantAndDock('bonnet', ROUGH)
 
-      expect(wrapper.get('[data-test="panel-name"]').text()).toBe('Chassis')
-      expect(wrapper.findAll('[data-test^="paint-swatch-"]')).toHaveLength(0)
-      expect(wrapper.findAll('[data-test^="paint-grade-"]')).toHaveLength(0)
-      expect(wrapper.find('[data-test="paint-colour-name"]').exists()).toBe(false)
-      // No panel to unbolt from the underbody either.
-      expect(wrapper.find('[data-test^="pipeline-swap-panel-chassis"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test^="pipeline-install-panel-bonnet-"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="no-panels-bonnet"]').exists()).toBe(false)
+      const remove = wrapper.get('[data-test="pipeline-remove-panel-bonnet"]')
+      expect(remove.attributes('disabled')).toBeUndefined()
+      expect(remove.text()).toContain('Take it off · ')
 
-      // The coat still goes on, with no tin and no finish to pick.
-      const underseal = wrapper.get('[data-test="pipeline-paint-chassis"]')
-      expect(underseal.text()).toContain('Underseal · ')
-      await underseal.trigger('click')
+      await remove.trigger('click')
       expect(game.stagedActionsFor(id)).toEqual([
-        { kind: 'pipeline-paint', zoneId: 'chassis', colour: 'underseal', grade: 'stock' },
+        { kind: 'pipeline-remove-panel', zoneId: 'bonnet' },
       ])
-      expect(wrapper.text()).toContain('Underseal: Chassis')
+      expect(wrapper.text()).toContain('Remove panel: Bonnet')
     })
 
-    it('lists the panels on hand as real buttons and stages the swap from one', async () => {
+    it('lists the panels on hand as real buttons and stages the install from one', async () => {
       const game = useGameStore()
       game.devGrantCar(CARS[0]!.id)
       const id = game.gameState.ownedCars[0]!.id
@@ -2181,23 +2204,73 @@ describe('CarDetailScreen', () => {
       const { wrapper } = await mountAt(id)
       await selectZone(wrapper, 'bonnet')
 
+      // An empty zone offers install only - no "take it off" for nothing there.
+      expect(wrapper.find('[data-test="pipeline-remove-panel-bonnet"]').exists()).toBe(false)
       expect(wrapper.find('[data-test="no-panels-bonnet"]').exists()).toBe(false)
-      const option = wrapper.get(`[data-test="pipeline-swap-panel-bonnet-${partInstanceId}"]`)
+      const option = wrapper.get(`[data-test="pipeline-install-panel-bonnet-${partInstanceId}"]`)
       expect(option.element.tagName).toBe('BUTTON')
       expect(option.text()).toContain(game.partName(panelPart.id))
 
       await option.trigger('click')
       expect(game.stagedActionsFor(id)).toEqual([
-        { kind: 'pipeline-swap-panel', zoneId: 'bonnet', partInstanceId },
+        { kind: 'pipeline-install-panel', zoneId: 'bonnet', partInstanceId },
       ])
-      expect(wrapper.text()).toContain('Swap panel: Bonnet')
+      expect(wrapper.text()).toContain(`Install panel (${game.partName(panelPart.id)}): Bonnet`)
     })
 
     it('says where the panels are when none is on hand, rather than showing an empty control', async () => {
-      const { wrapper } = await grantAndDock('bonnet', ROUGH)
+      const { wrapper } = await grantAndDock('bonnet', { ...ROUGH, panelMissing: true })
       const empty = wrapper.get('[data-test="no-panels-bonnet"]')
       expect(empty.text()).toContain('No panel for this zone on hand')
       expect(empty.text()).toContain('parts shop')
+    })
+
+    it('round-trips a panel through the shelf: remove puts it in inventory, install takes it back off', async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      const inventoryBefore = game.gameState.partInventory.length
+
+      const { wrapper } = await mountAt(id)
+      await selectZone(wrapper, 'bonnet')
+      await wrapper.get('[data-test="pipeline-remove-panel-bonnet"]').trigger('click')
+      await wrapper.get('[data-test="confirm-work"]').trigger('click')
+
+      expect(game.gameState.ownedCars[0]!.zoneState!.bonnet.panelMissing).toBe(true)
+      expect(game.gameState.partInventory.length).toBe(inventoryBefore + 1)
+      const shelved = game.gameState.partInventory.at(-1)!
+
+      await selectZone(wrapper, 'bonnet')
+      await wrapper
+        .get(`[data-test="pipeline-install-panel-bonnet-${shelved.id}"]`)
+        .trigger('click')
+      await wrapper.get('[data-test="confirm-work"]').trigger('click')
+
+      expect(game.gameState.ownedCars[0]!.zoneState!.bonnet.panelMissing).toBe(false)
+      expect(game.gameState.partInventory.some((p) => p.id === shelved.id)).toBe(false)
+    })
+
+    it("a trim zone (bumpers, skirts) offers no metal work - beat, weld and fill-and-sand don't render at all", async () => {
+      const { wrapper } = await grantAndDock('front-bumper', {
+        finish: 2,
+        panelMissing: false,
+        primed: false,
+      })
+
+      expect(wrapper.get('[data-test="panel-name"]').text()).toBe('Front bumper')
+      expect(wrapper.get('[data-test="zone-severity-front-bumper"]').text()).toBe('finish 2 of 3')
+      for (const stage of ['stripPrep', 'prime', 'polish']) {
+        expect(
+          wrapper.find(`[data-test="pipeline-${stage}-front-bumper"]`).exists(),
+          `${stage} control`,
+        ).toBe(true)
+      }
+      for (const stage of ['beat', 'weld', 'fillAndSand']) {
+        expect(
+          wrapper.find(`[data-test="pipeline-${stage}-front-bumper"]`).exists(),
+          `${stage} control must not render on trim`,
+        ).toBe(false)
+      }
     })
 
     it('says a panel is past saving and disables every stage, rather than offering dead buttons', async () => {

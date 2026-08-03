@@ -308,7 +308,7 @@ describe('energyToClimb (Sprint 94: grades x energyPerBandStepByToolTier[tier], 
 describe("planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decision 2; Sprint 44 decision 1: cost derives from the installed part's own price; Sprint 71: surface-only)", () => {
   // body group (the one all-surface group, so on-car repair still applies
   // to every member): panels worn (2 grades), paint poor (3 grades),
-  // underbody scrap (unrepairable - excluded), aero fine (1 grade). No
+  // chassis scrap (unrepairable - excluded), aero fine (1 grade). No
   // non-repairable consumable lives in this group - that exclusion is
   // covered directly by `canRepair`'s own tests above, which every planner
   // (including this one) reuses rather than re-deriving.
@@ -316,7 +316,7 @@ describe("planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decision 2; Spr
     parts: mintCarParts({
       panels: 'worn',
       paint: 'poor',
-      underbody: 'scrap',
+      chassis: 'scrap',
       aero: 'fine',
     }),
   })
@@ -433,7 +433,7 @@ describe("planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decision 2; Spr
       parts: mintCarParts({
         panels: 'scrap',
         paint: 'scrap',
-        underbody: 'scrap',
+        chassis: 'scrap',
         aero: 'scrap',
       }),
     })
@@ -474,7 +474,7 @@ describe('planGroupRepair with benched crew (Sprint 82 decisions 2 + 5)', () => 
   // Same all-surface body group as above: base plan is 6 slots at tool tier 1
   // (panels worn 2 + paint poor 3 + aero fine 1), a known base cost.
   const bodyCar = buildCarInstance({
-    parts: mintCarParts({ panels: 'worn', paint: 'poor', underbody: 'scrap', aero: 'fine' }),
+    parts: mintCarParts({ panels: 'worn', paint: 'poor', chassis: 'scrap', aero: 'fine' }),
   })
   const benchedBody = (skill: number, trait: StaffMember['trait'] = 'night-owl'): StaffMember => ({
     id: 'crew',
@@ -646,7 +646,7 @@ describe('the band ceiling (Sprint 93: tools cap the finish)', () => {
 describe('worstRepairableBandInGroup (Sprint 41 coordinator fix: the group BandPicker floor; Sprint 71: surface-only)', () => {
   it('is the worst REPAIRABLE band, excluding a scrap part that is actually worse', () => {
     const car = buildCarInstance({
-      parts: mintCarParts({ panels: 'worn', underbody: 'scrap' }),
+      parts: mintCarParts({ panels: 'worn', chassis: 'scrap' }),
     })
     // The group's DISPLAY chip would read scrap (worst overall), but the
     // repair picker's floor must be 'worn' - the worst band a repair action
@@ -662,7 +662,7 @@ describe('worstRepairableBandInGroup (Sprint 41 coordinator fix: the group BandP
         panels: 'mint',
         paint: 'mint',
         aero: 'mint',
-        underbody: 'scrap',
+        chassis: 'scrap',
       }),
     })
     expect(

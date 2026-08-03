@@ -39,18 +39,21 @@ const GroupSlotWeightsSchema = z
   .strict()
 
 /**
- * One non-negative draw weight per PANEL zone. The chassis zone is deliberately
- * absent: `underbody` is the only carrier that reads it and it reads that zone
- * alone, so there is never a choice between zones to weight. Weighting it would
- * be authoring a number nothing can ever read.
+ * One non-negative draw weight per zone, all nine - six metal, three trim.
+ * `chassis` is not a zone (it is a normal car part now, taxonomy-grouped
+ * under `body`), so it carries no weight here at all.
  */
 const ZoneSlotWeightsSchema = z
   .object({
     bonnet: z.number().nonnegative(),
     boot: z.number().nonnegative(),
-    left: z.number().nonnegative(),
-    right: z.number().nonnegative(),
-    roof: z.number().nonnegative(),
+    'left-front': z.number().nonnegative(),
+    'left-rear': z.number().nonnegative(),
+    'right-front': z.number().nonnegative(),
+    'right-rear': z.number().nonnegative(),
+    'front-bumper': z.number().nonnegative(),
+    'rear-bumper': z.number().nonnegative(),
+    skirts: z.number().nonnegative(),
   })
   .strict()
 

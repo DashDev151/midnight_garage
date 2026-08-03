@@ -18,8 +18,8 @@ import { PARTS_TAXONOMY } from '../src'
 const REQUIRED_WEIGHTS = ['power', 'reliability', 'authenticity'] as const
 
 describe('StatWeightsSchema completeness (power, reliability and authenticity)', () => {
-  it('covers all 29 taxonomy entries', () => {
-    expect(PARTS_TAXONOMY.length).toBe(29)
+  it('covers all 28 taxonomy entries', () => {
+    expect(PARTS_TAXONOMY.length).toBe(28)
   })
 
   it('every taxonomy entry authors all three required weights explicitly in the raw JSON', () => {

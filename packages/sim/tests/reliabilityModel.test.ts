@@ -23,11 +23,11 @@ const FD = CARS.find((c) => c.id === 'mazda-rx7-fd3s')!
 
 /** Every CarPartId that carries a non-zero `statWeights.reliability` in the
  * taxonomy - read from content, never a hand-written list, matching the
- * severity ceiling's own rule. 21 parts, total weight 31: six chassis/wheels
+ * severity ceiling's own rule. 20 parts, total weight 30: five chassis/wheels
  * parts carry reliability weight ADDITIVE to their existing handling/style
  * weight - tyres, brakeCalipersLines and steering at 2, brakePadsDiscs and
- * springs and underbody at 1 - because a car cannot stop or steer reliably
- * on cords and a weeping brake line either. */
+ * springs at 1 - because a car cannot stop or steer reliably on cords and a
+ * weeping brake line either. */
 const RELIABILITY_WEIGHTED_PARTS: CarPartId[] = PARTS_TAXONOMY.filter(
   (entry) => (entry.statWeights.reliability ?? 0) > 0,
 ).map((entry) => entry.id)
@@ -503,7 +503,7 @@ describe('reliability model: the grenade rule', () => {
    */
   it('a weight-1 part at poor leaves the car strictly more reliable than a weight-3 part at poor', () => {
     const lightPoor = stats(
-      withPartBand(carWithGrades(FORCED_CAR, CONTEXT, {}, 'mint'), 'underbody', 'poor'),
+      withPartBand(carWithGrades(FORCED_CAR, CONTEXT, {}, 'mint'), 'springs', 'poor'),
     ).reliability
     const heavyPoor = stats(
       withPartBand(carWithGrades(FORCED_CAR, CONTEXT, {}, 'mint'), 'cooling', 'poor'),
@@ -734,7 +734,7 @@ describe('reliability model: monotonicity', () => {
  * removed and are asserted with strict equality.
  */
 describe('reliability model: unmoved by the handling retirement', () => {
-  /** The fourteen chassis, wheel, body and interior slots - none of them a
+  /** The thirteen chassis, wheel, body and interior slots - none of them a
    * gain slot, so a mint build of them reads exactly the car's own base and
    * the whole table below is condition alone. */
   const RACE_CHASSIS: Partial<Record<CarPartId, 'race'>> = {
@@ -749,7 +749,6 @@ describe('reliability model: unmoved by the handling retirement', () => {
     brakeCalipersLines: 'race',
     rims: 'race',
     panels: 'race',
-    underbody: 'race',
     aero: 'race',
     seats: 'race',
   }
@@ -776,7 +775,7 @@ describe('reliability model: unmoved by the handling retirement', () => {
       'nissan-fairlady-z-z32': 55,
       'nissan-silvia-ks-s14': 60,
       'nissan-silvia-s13': 60,
-      'nissan-skyline-gtr-bnr32': 58,
+      'nissan-skyline-gtr-bnr32': 59,
       'nissan-sunny-b12': 64,
       'subaru-impreza-wrx-sti-gc8': 56,
       'suzuki-alto-works-ha21s': 59,
@@ -785,7 +784,7 @@ describe('reliability model: unmoved by the handling retirement', () => {
       'toyota-carina-at150': 65,
       'toyota-chaser-tourer-v-jzx90': 61,
       'toyota-mr2-aw11': 60,
-      'toyota-mr2-sw20': 58,
+      'toyota-mr2-sw20': 59,
       'toyota-sera-exy10': 62,
       'toyota-sprinter-trueno-ae86': 61,
       'toyota-supra-rz-jza80': 61,

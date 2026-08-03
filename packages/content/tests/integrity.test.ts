@@ -179,7 +179,7 @@ describe('referential integrity', () => {
    * Catalog validation, not authoring. The catalog carries exactly 4 tiers
    * per component (stock/street/sport/race, 116 entries total) and no
    * `requiredTags` entries (aftermarket parts fit any car for now). This
-   * asserts every one of the 29 `CarPartId`s still has at least one catalog
+   * asserts every one of the 28 `CarPartId`s still has at least one catalog
    * part addressed to it, and that part fits at least one roster car (not
    * just parses) - a vacuous pass now that `requiredTags` is always `[]`,
    * but still real coverage against a `CarPartId` with zero catalog entries
@@ -232,15 +232,13 @@ describe('referential integrity', () => {
 
   /**
    * A forced-induction kit is installable on an NA car via the universal FI
-   * slot, plus at least one underglow kit (on `underbody`, the slot it
-   * actually dresses). Checked against a real NA, Piston roster car (no
-   * Turbo/Supercharged tag of its own). The
-   * forced-induction catalog carries one entry per tier with `requiredTags`
-   * always `[]`, so "fits" is no longer the discriminating fact; the real
-   * remaining fact worth guarding is that a forced-induction and an
-   * underglow kit both still exist in the catalog at all.
+   * slot. Checked against a real NA, Piston roster car (no Turbo/
+   * Supercharged tag of its own). The forced-induction catalog carries one
+   * entry per tier with `requiredTags` always `[]`, so "fits" is no longer
+   * the discriminating fact; the real remaining fact worth guarding is that
+   * a forced-induction kit still exists in the catalog at all.
    */
-  it('at least one forced-induction kit and one underglow kit fit an NA Piston roster car', () => {
+  it('at least one forced-induction kit fits an NA Piston roster car', () => {
     const parsedCars = CarModelsSchema.parse(cars)
     const parsedParts = PartCatalogEntriesSchema.parse(parts)
     const naPistonCar = parsedCars.find(
@@ -257,15 +255,11 @@ describe('referential integrity', () => {
     const forcedInductionKits = parsedParts.filter(
       (p) => p.carPartId === 'forcedInduction' && p.grade !== 'stock' && fitsNaCar(p),
     )
-    const underglowKits = parsedParts.filter(
-      (p) => p.carPartId === 'underbody' && /underglow/i.test(p.name) && fitsNaCar(p),
-    )
 
     expect(
       forcedInductionKits.length,
       'no aftermarket forced-induction kit fits an NA Piston roster car',
     ).toBeGreaterThan(0)
-    expect(underglowKits.length, 'no underglow kit fits an NA Piston roster car').toBeGreaterThan(0)
   })
 
   /**
@@ -311,12 +305,15 @@ describe('referential integrity', () => {
    * grades) - real, separately named catalog entries, never a single part
    * with a runtime price switch. Guards both directions: nothing missing,
    * nothing accidentally duplicated. Zone-panel SKUs (`zoneId` set) are
-   * excluded: they are additional stock-grade `panels` entries addressed to a
-   * specific zone, on top of this matrix, not a member of it. `paint` carries
-   * a full ladder like every other slot: stock is factory-correct, and
-   * street/sport/race are a respray in the car's own colour or another.
+   * excluded: they are additional `panels` entries addressed to a specific
+   * zone, on top of this matrix, not a member of it. `panels` itself only
+   * fills the stock rung of this matrix - its street/sport/race rungs are
+   * entirely zone-addressed now, so nothing non-zone exists there to find.
+   * `paint` still carries a full ladder like every other slot: stock is
+   * factory-correct, and street/sport/race are a respray in the car's own
+   * colour or another.
    */
-  it('every real car part has exactly 16 catalog SKUs - 4 fitment classes x 4 grades', () => {
+  it('every real car part has exactly 16 catalog SKUs - 4 fitment classes x 4 grades - except panels, whose aftermarket rungs are zone-addressed', () => {
     const FITMENT_CLASSES = ['entry', 'everyday', 'enthusiast', 'flagship'] as const
     const nonZonePanelParts = PARTS.filter((p) => p.zoneId === undefined)
     for (const carPartId of CarPartIdSchema.options) {
@@ -326,10 +323,11 @@ describe('referential integrity', () => {
             (p) =>
               p.carPartId === carPartId && p.fitmentClass === fitmentClass && p.grade === grade,
           )
+          const expected = carPartId === 'panels' && grade !== 'stock' ? 0 : 1
           expect(
             candidates.length,
-            `expected exactly 1 SKU for ${carPartId}/${fitmentClass}/${grade}, found ${candidates.length}`,
-          ).toBe(1)
+            `expected exactly ${expected} SKU for ${carPartId}/${fitmentClass}/${grade}, found ${candidates.length}`,
+          ).toBe(expected)
         }
       }
     }
@@ -375,31 +373,60 @@ describe('referential integrity', () => {
   })
 
   /**
-   * Zone panels are additional stock-grade `panels` SKUs, one per (zone x
-   * fitment class), on top of the matrix above. Every one of the 29 real
-   * parts carries its full 16-SKU ladder, so the whole catalog is the base
-   * 29 x 16 = 464, plus the 5 x 4 = 20 zone panels = 484.
+   * Zone panels are `panels` SKUs addressed to one of the nine body zones,
+   * on top of the matrix above (which `panels` only fills at stock). Every
+   * one of the other 27 real parts carries its full 16-SKU ladder, so the
+   * whole catalog is 27 x 16 = 432, plus panels' own 148 (4 whole-car stock
+   * carriers, 36 stock zone panels - one per zone per fitment class - and
+   * 108 aftermarket zone panels - nine zones x three grades x four fitment
+   * classes) = 580.
    */
-  it('the catalog carries exactly 20 zone-panel SKUs - 5 zones x 4 fitment classes - and 484 entries total', () => {
+  it('the catalog carries exactly 36 stock and 108 aftermarket zone-panel SKUs, and 580 entries total', () => {
     const FITMENT_CLASSES = ['entry', 'everyday', 'enthusiast', 'flagship'] as const
+    const zoneIds = [
+      'bonnet',
+      'boot',
+      'left-front',
+      'left-rear',
+      'right-front',
+      'right-rear',
+      'front-bumper',
+      'rear-bumper',
+      'skirts',
+    ] as const
     const zonePanelParts = PARTS.filter((p) => p.zoneId !== undefined)
-    expect(zonePanelParts.length).toBe(20)
-    expect(PARTS.length).toBe(484)
+    const stockZonePanels = zonePanelParts.filter((p) => p.grade === 'stock')
+    const aftermarketZonePanels = zonePanelParts.filter((p) => p.grade !== 'stock')
+    expect(stockZonePanels.length).toBe(36)
+    expect(aftermarketZonePanels.length).toBe(108)
+    expect(PARTS.length).toBe(580)
     for (const part of zonePanelParts) {
       expect(part.carPartId).toBe('panels')
-      expect(part.grade).toBe('stock')
+    }
+    for (const part of stockZonePanels) {
       expect(part.priceBasisPartId).toBe('zonePanel')
     }
-    const zoneIds = ['bonnet', 'boot', 'left', 'right', 'roof'] as const
+    for (const part of aftermarketZonePanels) {
+      expect(part.priceBasisPartId).toBe('bodyKit')
+    }
     for (const zoneId of zoneIds) {
       for (const fitmentClass of FITMENT_CLASSES) {
-        const candidates = zonePanelParts.filter(
+        const stockCandidates = stockZonePanels.filter(
           (p) => p.zoneId === zoneId && p.fitmentClass === fitmentClass,
         )
         expect(
-          candidates.length,
-          `expected exactly 1 zone-panel SKU for ${zoneId}/${fitmentClass}, found ${candidates.length}`,
+          stockCandidates.length,
+          `expected exactly 1 stock zone-panel SKU for ${zoneId}/${fitmentClass}, found ${stockCandidates.length}`,
         ).toBe(1)
+        for (const grade of ['street', 'sport', 'race'] as const) {
+          const aftermarketCandidates = aftermarketZonePanels.filter(
+            (p) => p.zoneId === zoneId && p.fitmentClass === fitmentClass && p.grade === grade,
+          )
+          expect(
+            aftermarketCandidates.length,
+            `expected exactly 1 ${grade} zone-panel SKU for ${zoneId}/${fitmentClass}, found ${aftermarketCandidates.length}`,
+          ).toBe(1)
+        }
       }
     }
   })

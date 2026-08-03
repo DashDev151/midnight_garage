@@ -191,7 +191,7 @@ function restoreToBand(
 
   let zoneState = car.zoneState
   if (zoneState) {
-    for (const partId of ['panels', 'paint', 'underbody'] as const) {
+    for (const partId of ['panels', 'paint'] as const) {
       costYen += bodyPartRepairBillYen(
         partId,
         zoneState,

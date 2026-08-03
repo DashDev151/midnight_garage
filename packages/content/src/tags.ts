@@ -46,7 +46,7 @@ export const ComponentIdSchema = z.enum([
 ])
 
 /**
- * The 29 real car parts, one level below the 6 groups above. Used exclusively
+ * The 28 real car parts, one level below the 6 groups above. Used exclusively
  * by `CarInstance.parts`' keys, the parts catalog's `carPartId` field, and
  * `parts-taxonomy.json` - never by staging/Job/ServiceJobWork, which stay
  * group-addressed.
@@ -82,7 +82,6 @@ export const CarPartIdSchema = z.enum([
   // body
   'panels',
   'paint',
-  'underbody',
   'aero',
   // interior
   'seats',

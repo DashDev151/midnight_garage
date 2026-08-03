@@ -24,10 +24,10 @@ import { buildCarInstance, groupCarParts, testToolTiers } from './testFixtures'
  *
  * `planGroupRepair` excludes every `bolt-on`/`buried` slot from on-car
  * repair (bench-only), so this only measures the SURFACE portion of a
- * restoration - panels/paint/underbody/aero/seats/dashGauges/chassis -
- * not the whole car. The bulk of a real restoration runs through the
- * teardown loop (uninstall -> bench repair -> reinstall) instead, which
- * this file does not measure.
+ * restoration - panels/paint/aero/seats/dashGauges/chassis - not the whole
+ * car. The bulk of a real restoration runs through the teardown loop
+ * (uninstall -> bench repair -> reinstall) instead, which this file does
+ * not measure.
  */
 const CONTEXT = buildSimContext([], PARTS, [], PARTS_TAXONOMY)
 const ALL_GROUPS: readonly ComponentId[] = ComponentIdSchema.options
@@ -117,9 +117,16 @@ describe('restoration pacing anchor (Sprint 33 decision 7; tool tiers since Spri
         interior: 'worn',
       }),
     })
-    const tierOneDays = daysToRestore(car, ALL_TIER_ONE)
-    const tierThreeDays = daysToRestore(car, ALL_TIER_THREE)
-    expect(tierThreeDays).toBeLessThan(tierOneDays)
+    // Raw labour slots, not `daysToRestore`'s ceil-to-a-whole-day figure:
+    // `drivetrain` is now entirely bolt-on/buried (chassis, its one surface
+    // member, moved to `body`), so this fixture's on-car-repairable total
+    // is small enough that both tiers can round to the same day count while
+    // still genuinely differing underneath - which is exactly the claim
+    // this test makes, so it checks the real quantity rather than the
+    // derived one that can hide it.
+    const tierOneSlots = totalRestorationLaborSlots(car, ALL_TIER_ONE)
+    const tierThreeSlots = totalRestorationLaborSlots(car, ALL_TIER_THREE)
+    expect(tierThreeSlots).toBeLessThan(tierOneSlots)
   })
 
   it('a car already mostly mint needs little to no labor', () => {

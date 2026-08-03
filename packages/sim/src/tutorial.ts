@@ -7,9 +7,17 @@ import {
   type CarPartId,
   type ConditionBand,
   type GameState,
+  type ZoneState,
+  type ZoneStates,
 } from '@midnight-garage/content'
 import { carOriginLabel, stockInstanceFor } from './auctions'
 import { hasForcedInduction } from './bands'
+import {
+  applyDerivedBodyBands,
+  METAL_ZONE_IDS,
+  severityThresholdForBand,
+  TRIM_ZONE_IDS,
+} from './bodyPipeline'
 import type { SimContext } from './context'
 import { advanceStoryMissions } from './missions'
 import { makeCarOrigin } from './provenance'
@@ -55,6 +63,32 @@ export function radialOffersGated(state: GameState): boolean {
  */
 export function excludedAuctionModelIds(state: GameState): readonly string[] {
   return tutorialActive(state) ? [TUTORIAL_LOT.modelId] : []
+}
+
+/**
+ * The scripted car's nine zones, all one uniform colour and severity: the
+ * recipe teaches two specific faults (scrap tyres, a buried head tick), never
+ * bodywork, so every zone reads exactly `recipe.baseBand`'s severity and the
+ * recipe's own `color` field - the scripted car's one colour concept now that
+ * `CarInstance.color` is gone, routed here instead of onto the deleted field.
+ */
+function tutorialZoneStates(baseBand: ConditionBand, colour: string): ZoneStates {
+  const severity = severityThresholdForBand(baseBand)
+  const states = {} as Record<string, ZoneState>
+  for (const zoneId of METAL_ZONE_IDS) {
+    states[zoneId] = {
+      metal: severity,
+      surface: Math.min(severity, 2),
+      finish: Math.min(severity, 3),
+      panelMissing: false,
+      primed: false,
+      colour,
+    }
+  }
+  for (const zoneId of TRIM_ZONE_IDS) {
+    states[zoneId] = { finish: Math.min(severity, 3), panelMissing: false, primed: false, colour }
+  }
+  return states as ZoneStates
 }
 
 /**
@@ -115,11 +149,9 @@ export function buildTutorialLot(context: SimContext, day: number): AuctionLot {
     modelId: recipe.modelId,
     year: recipe.year,
     mileageKm: recipe.mileageKm,
-    color: recipe.color,
     // The scripted lot is deterministic under any career seed, so its
-    // factory colour is the model's own first authored pool entry rather
-    // than a roll.
-    factoryColour: model.spec.factoryColours[0]!,
+    // factory colour is the recipe's own authored colour rather than a roll.
+    factoryColour: recipe.color,
     provenanceNote: recipe.provenanceNote,
     parts,
     symptoms: [
@@ -131,13 +163,14 @@ export function buildTutorialLot(context: SimContext, day: number): AuctionLot {
       },
     ],
     apparentBandByPartId,
+    zoneState: tutorialZoneStates(recipe.baseBand, recipe.color),
   }
 
   return {
     id: recipe.lotId,
     tier: recipe.tier,
     modelId: recipe.modelId,
-    car,
+    car: applyDerivedBodyBands(car, model, context),
     bookValueYen: model.bookValueYen,
     expiresOnDay: day,
     turnout: 'thin',

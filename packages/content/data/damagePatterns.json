@@ -11,7 +11,17 @@
         "body": 17,
         "interior": 16
       },
-      "zones": { "bonnet": 20, "boot": 20, "left": 20, "right": 20, "roof": 20 }
+      "zones": {
+        "bonnet": 11,
+        "boot": 11,
+        "left-front": 11,
+        "left-rear": 11,
+        "right-front": 11,
+        "right-rear": 11,
+        "front-bumper": 11,
+        "rear-bumper": 11,
+        "skirts": 12
+      }
     }
   },
   {
@@ -26,7 +36,17 @@
         "body": 14,
         "interior": 6
       },
-      "zones": { "bonnet": 22, "boot": 22, "left": 16, "right": 16, "roof": 24 }
+      "zones": {
+        "bonnet": 18,
+        "boot": 18,
+        "left-front": 12,
+        "left-rear": 14,
+        "right-front": 12,
+        "right-rear": 14,
+        "front-bumper": 4,
+        "rear-bumper": 4,
+        "skirts": 4
+      }
     }
   },
   {
@@ -41,7 +61,17 @@
         "body": 36,
         "interior": 4
       },
-      "zones": { "bonnet": 40, "boot": 10, "left": 22, "right": 22, "roof": 6 }
+      "zones": {
+        "bonnet": 26,
+        "boot": 4,
+        "left-front": 18,
+        "left-rear": 4,
+        "right-front": 18,
+        "right-rear": 4,
+        "front-bumper": 22,
+        "rear-bumper": 2,
+        "skirts": 2
+      }
     }
   },
   {
@@ -56,7 +86,17 @@
         "body": 9,
         "interior": 3
       },
-      "zones": { "bonnet": 8, "boot": 34, "left": 26, "right": 26, "roof": 6 }
+      "zones": {
+        "bonnet": 3,
+        "boot": 3,
+        "left-front": 15,
+        "left-rear": 15,
+        "right-front": 15,
+        "right-rear": 15,
+        "front-bumper": 10,
+        "rear-bumper": 10,
+        "skirts": 14
+      }
     }
   },
   {
@@ -71,7 +111,17 @@
         "body": 6,
         "interior": 4
       },
-      "zones": { "bonnet": 20, "boot": 20, "left": 20, "right": 20, "roof": 20 }
+      "zones": {
+        "bonnet": 40,
+        "boot": 5,
+        "left-front": 15,
+        "left-rear": 5,
+        "right-front": 15,
+        "right-rear": 5,
+        "front-bumper": 5,
+        "rear-bumper": 5,
+        "skirts": 5
+      }
     }
   }
 ]

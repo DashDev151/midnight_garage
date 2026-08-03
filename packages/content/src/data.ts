@@ -146,8 +146,8 @@ export const ECONOMY = EconomyConfigSchema.parse(economyJson)
 
 /**
  * The body pipeline's consumable SKUs (filler, paper, primer, paint,
- * underseal, polish) - charged at point of use into a staged stage's cost
- * line, never pre-stocked.
+ * polish) - charged at point of use into a staged stage's cost line, never
+ * pre-stocked.
  */
 export const MATERIALS = MaterialsSchema.parse(materialsJson)
 

@@ -22,9 +22,11 @@ import {
   applyDerivedBodyBands,
   bandForSeverity,
   isBodyDerivedPart,
+  isMetalZoneState,
+  planInstallPanel,
   planPaintStage,
   planPipelineStage,
-  planSwapPanel,
+  planRemovePanel,
   refitCarrierZoneStates,
   zonePanelPart,
   type BodyLineCapability,
@@ -126,7 +128,7 @@ export function bodyLineCapability(state: GameState): BodyLineCapability {
 }
 
 /** Charges a pipeline effect's materials cost and labour against `state`,
- * writes the zone mutation, and re-derives the three body bands - the
+ * writes the zone mutation, and re-derives the two body bands - the
  * shared second half of every generic-stage and paint-stage resolution.
  * Silently refuses (0 labour, unchanged state) on insufficient labour or
  * cash, the same idiom `chargeRepairWork`/`repairJobGate` use throughout
@@ -292,7 +294,6 @@ function resolvePipelinePaintAction(
   const zone = car.zoneState[action.zoneId]
   const plan = planPaintStage(
     zone,
-    action.zoneId,
     action.colour,
     bodyLineCapability(state),
     action.grade,
@@ -304,10 +305,11 @@ function resolvePipelinePaintAction(
     plan.laborUnits * context.economy.energy.energyPerBandStepByToolTier[repairLevel]
 
   const installed = car.parts.paint.installed
-  const catalogPart =
-    action.zoneId === 'chassis'
-      ? undefined
-      : paintCatalogPartForGrade(context, fitmentClassForTier(model.tier), action.grade)
+  const catalogPart = paintCatalogPartForGrade(
+    context,
+    fitmentClassForTier(model.tier),
+    action.grade,
+  )
   const carWithGrade =
     installed && catalogPart
       ? {
@@ -330,20 +332,109 @@ function resolvePipelinePaintAction(
 }
 
 /**
- * One `pipeline-swap-panel` staged action's resolution: consumes the picked
- * zone-panel `PartInstance` from inventory, fits it (metal from the panel's
- * own band, surface/finish reset - a fresh physical panel), and pushes the
- * zone's OLD panel into inventory at its own pre-swap metal severity (the
- * same harvesting shape `resolveRemovePart` uses elsewhere: a removed panel
- * is never simply discarded). Labour is the fitting (bolt-on) class, not a
- * band-step unit - no separate materials charge, since the new panel's price
- * was already paid at purchase and lands on the car's ledger here, the same
- * moment `completeJob`'s install-part branch posts a part's cost.
+ * Writes `nextCar` back onto whichever list holds `carInstanceId` (an owned
+ * car or a customer's car sitting in an active service job) - the shared
+ * write-back both panel resolvers below use, mirroring the same branch every
+ * other pipeline resolver in this file already runs inline. `null` when the
+ * car is on neither list (already left the shop), which the caller reads as
+ * a refusal.
  */
-function resolvePipelineSwapPanelAction(
+function writeBackCar(
   state: GameState,
   carInstanceId: string,
-  action: Extract<StagedAction, { kind: 'pipeline-swap-panel' }>,
+  nextCar: CarInstance,
+): GameState | null {
+  const ownedIndex = state.ownedCars.findIndex((c) => c.id === carInstanceId)
+  if (ownedIndex !== -1) {
+    const ownedCars = [...state.ownedCars]
+    ownedCars[ownedIndex] = nextCar
+    return { ...state, ownedCars }
+  }
+  const serviceIndex = state.activeServiceJobs.findIndex((sj) => sj.car.id === carInstanceId)
+  if (serviceIndex !== -1) {
+    const activeServiceJobs = [...state.activeServiceJobs]
+    activeServiceJobs[serviceIndex] = { ...activeServiceJobs[serviceIndex]!, car: nextCar }
+    return { ...state, activeServiceJobs }
+  }
+  return null
+}
+
+/**
+ * One `pipeline-remove-panel` staged action's resolution: pulls `zoneId`'s
+ * panel onto the shelf as a fresh `PartInstance` at its own severity, and
+ * marks the zone missing - the same remove-to-inventory shape
+ * `resolveRemovePart` (jobs.ts) uses for every other slot. Labour reads the
+ * flat remove-part action point, the same figure every slot's removal
+ * charges. A no-op on an already-missing zone: there is nothing there to
+ * pull.
+ */
+function resolvePipelineRemovePanelAction(
+  state: GameState,
+  carInstanceId: string,
+  action: Extract<StagedAction, { kind: 'pipeline-remove-panel' }>,
+  context: SimContext,
+  laborAvailable: number,
+): PipelineOpResult {
+  const car = findWorkableCar(state, carInstanceId)
+  if (!car || !car.zoneState) return NOOP_PIPELINE_RESULT(state)
+  const model = context.modelsById[car.modelId]
+  if (!model) return NOOP_PIPELINE_RESULT(state)
+  const zone = car.zoneState[action.zoneId]
+  if (zone.panelMissing) return NOOP_PIPELINE_RESULT(state)
+
+  const laborSlotsRequired = context.economy.energy.actionPoints.removePart
+  if (laborSlotsRequired > laborAvailable) return NOOP_PIPELINE_RESULT(state)
+
+  const fitmentClass = fitmentClassForTier(model.tier)
+  const oldPanelCatalogPart = zonePanelPart(context.partsById, action.zoneId, fitmentClass)
+  const nextCar = applyDerivedBodyBands(
+    { ...car, zoneState: { ...car.zoneState, [action.zoneId]: planRemovePanel(zone) } },
+    model,
+    context,
+  )
+
+  let partInventory = state.partInventory
+  if (oldPanelCatalogPart) {
+    const harvestedBand = isMetalZoneState(zone)
+      ? bandForSeverity(zone.metal)
+      : bandForSeverity(zone.finish)
+    partInventory = [
+      ...partInventory,
+      {
+        id: `panel-${state.day}-${partInventory.length}`,
+        partId: oldPanelCatalogPart.id,
+        band: harvestedBand,
+        origin: makeCarOrigin(car.id, carOriginLabel(model, car.year), state.day),
+      },
+    ]
+  }
+
+  const next = writeBackCar(
+    { ...state, partInventory, energySpentToday: state.energySpentToday + laborSlotsRequired },
+    carInstanceId,
+    nextCar,
+  )
+  if (!next) return NOOP_PIPELINE_RESULT(state)
+  return { state: next, log: [], laborSlotsUsed: laborSlotsRequired }
+}
+
+/**
+ * One `pipeline-install-panel` staged action's resolution: consumes the
+ * picked zone-panel `PartInstance` from inventory and fits it - metal at the
+ * panel's own band on a metal zone, surface/finish reset - exactly what a
+ * fresh physical panel leaves regardless of what stood there before. Needs
+ * the zone missing first (`planRemovePanel` ran, or the zone was never
+ * fitted): a zone still carrying its old panel refuses, matching every other
+ * slot's replace-needs-empty-first rule. Labour is the fitting (bolt-on)
+ * class, not a band-step unit - no separate materials charge, since the new
+ * panel's price was already paid at purchase and lands on the car's ledger
+ * here, the same moment `completeJob`'s install-part branch posts a part's
+ * cost.
+ */
+function resolvePipelineInstallPanelAction(
+  state: GameState,
+  carInstanceId: string,
+  action: Extract<StagedAction, { kind: 'pipeline-install-panel' }>,
   context: SimContext,
   laborAvailable: number,
 ): PipelineOpResult {
@@ -352,6 +443,8 @@ function resolvePipelineSwapPanelAction(
   const model = context.modelsById[car.modelId]
   if (!model) return NOOP_PIPELINE_RESULT(state)
   const fitmentClass = fitmentClassForTier(model.tier)
+  const zone = car.zoneState[action.zoneId]
+  if (!zone.panelMissing) return NOOP_PIPELINE_RESULT(state) // something is already there - remove it first
 
   const newPanelInstance = state.partInventory.find((p) => p.id === action.partInstanceId)
   if (!newPanelInstance) return NOOP_PIPELINE_RESULT(state)
@@ -367,59 +460,34 @@ function resolvePipelineSwapPanelAction(
   const laborSlotsRequired = context.economy.energy.energyByClass['bolt-on']
   if (laborSlotsRequired > laborAvailable) return NOOP_PIPELINE_RESULT(state)
 
-  const zone = car.zoneState[action.zoneId]
-  const plan = planSwapPanel(zone, newPanelInstance.band)
-  const oldPanelCatalogPart = zonePanelPart(context.partsById, action.zoneId, fitmentClass)
-
+  const nextZone = planInstallPanel(zone, newPanelInstance.band)
   const nextCar = applyDerivedBodyBands(
-    { ...car, zoneState: { ...car.zoneState, [action.zoneId]: plan.zone } },
+    { ...car, zoneState: { ...car.zoneState, [action.zoneId]: nextZone } },
     model,
     context,
   )
-
-  let partInventory = state.partInventory.filter((p) => p.id !== action.partInstanceId)
-  if (oldPanelCatalogPart) {
-    partInventory = [
-      ...partInventory,
-      {
-        id: `panel-${state.day}-${partInventory.length}`,
-        partId: oldPanelCatalogPart.id,
-        band: bandForSeverity(zone.metal),
-        origin: makeCarOrigin(car.id, carOriginLabel(model, car.year), state.day),
-      },
-    ]
-  }
+  const partInventory = state.partInventory.filter((p) => p.id !== action.partInstanceId)
 
   const isOwnedCar = state.ownedCars.some((c) => c.id === carInstanceId)
-  const ownedIndex = state.ownedCars.findIndex((c) => c.id === carInstanceId)
-  const serviceIndex = state.activeServiceJobs.findIndex((sj) => sj.car.id === carInstanceId)
-  let next: GameState = {
+  const withInventory: GameState = {
     ...state,
     partInventory,
     energySpentToday: state.energySpentToday + laborSlotsRequired,
   }
-  if (ownedIndex !== -1) {
-    const ownedCars = [...next.ownedCars]
-    ownedCars[ownedIndex] = nextCar
-    next = { ...next, ownedCars }
-  } else if (serviceIndex !== -1) {
-    const activeServiceJobs = [...next.activeServiceJobs]
-    activeServiceJobs[serviceIndex] = { ...activeServiceJobs[serviceIndex]!, car: nextCar }
-    next = { ...next, activeServiceJobs }
-  } else {
-    return NOOP_PIPELINE_RESULT(state)
-  }
+  const next = writeBackCar(withInventory, carInstanceId, nextCar)
+  if (!next) return NOOP_PIPELINE_RESULT(state)
   const pricePaidYen = newPanelInstance.pricePaidYen ?? 0
-  next = isOwnedCar
+  const withLedger = isOwnedCar
     ? updateCarLedger(next, carInstanceId, (ledger) => ({
         ...ledger,
         partsYen: ledger.partsYen + pricePaidYen,
       }))
-    : updateServiceJobLedger(next, state.activeServiceJobs[serviceIndex]?.id ?? '', (ledger) => ({
-        ...ledger,
-        partsYen: ledger.partsYen + pricePaidYen,
-      }))
-  return { state: next, log: [], laborSlotsUsed: laborSlotsRequired }
+    : updateServiceJobLedger(
+        next,
+        state.activeServiceJobs.find((sj) => sj.car.id === carInstanceId)?.id ?? '',
+        (ledger) => ({ ...ledger, partsYen: ledger.partsYen + pricePaidYen }),
+      )
+  return { state: withLedger, log: [], laborSlotsUsed: laborSlotsRequired }
 }
 
 /**
@@ -507,8 +575,21 @@ export function confirmStagedWork(
       remainingLabor -= result.laborSlotsUsed
       continue
     }
-    if (action.kind === 'pipeline-swap-panel') {
-      const result = resolvePipelineSwapPanelAction(
+    if (action.kind === 'pipeline-remove-panel') {
+      const result = resolvePipelineRemovePanelAction(
+        current,
+        carInstanceId,
+        action,
+        context,
+        remainingLabor,
+      )
+      current = result.state
+      log.push(...result.log)
+      remainingLabor -= result.laborSlotsUsed
+      continue
+    }
+    if (action.kind === 'pipeline-install-panel') {
+      const result = resolvePipelineInstallPanelAction(
         current,
         carInstanceId,
         action,
@@ -650,7 +731,8 @@ export function previewPlannedWork(
       }
     } else if (
       action.kind === 'pipeline-stage' ||
-      action.kind === 'pipeline-swap-panel' ||
+      action.kind === 'pipeline-remove-panel' ||
+      action.kind === 'pipeline-install-panel' ||
       action.kind === 'pipeline-paint'
     ) {
       // Not projected: a body-pipeline stage moves zone state, not a band

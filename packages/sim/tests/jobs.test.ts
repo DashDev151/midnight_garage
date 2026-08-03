@@ -185,7 +185,7 @@ describe('completeJob', () => {
     const parts = result.state.ownedCars[0]!.parts
     expect(parts.panels.installed?.band).toBe('mint')
     expect(parts.paint.installed?.band).toBe('mint')
-    expect(parts.underbody.installed?.band).toBe('mint')
+    expect(parts.chassis.installed?.band).toBe('mint')
     expect(parts.aero.installed?.band).toBe('mint')
     // Untouched group.
     expect(parts.block.installed?.band).toBe('worn')
@@ -426,7 +426,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
       expect(result.log.some((e) => e.type === 'job-blocked')).toBe(false)
     })
 
-    it('refuses to create the job at all when the body line is neither owned nor hired today - a signature-slot repair (panels/underbody) is machine-line gated, not fee-charged', () => {
+    it('refuses to create the job at all when the body line is neither owned nor hired today - a signature-slot repair (panels/chassis) is machine-line gated, not fee-charged', () => {
       const result = findOrCreateJob(
         baseState({ toolTiers: testToolTiers(), machineHirePaidDayByGroup: {} }),
         spec,
@@ -1239,9 +1239,9 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
   it('removing a stock part drops it to inventory and leaves the slot genuinely empty', () => {
     // car.parts.aero is a mint-of-condition 'poor' stock part per the
     // module-level fixture's body-group override - a real stock instance,
-    // not aftermarket. `panels`/`paint`/`underbody` are excluded here: they
-    // are derived body value carriers, never removable as a whole slot
-    // (`bodyPipeline.ts`) - `aero` is the body-group part that still is.
+    // not aftermarket. `panels`/`paint`/`chassis` are excluded here: none of
+    // the three is removable as a whole slot (`removable: false` in
+    // `parts-taxonomy.json`) - `aero` is the body-group part that still is.
     const originalInstance = car.parts.aero.installed!
     const state = baseState({ partInventory: [] })
     const result = resolveRemovePart(state, car.id, 'aero', CONTEXT)

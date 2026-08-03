@@ -51,25 +51,40 @@ export const StagedActionSchema = z.discriminatedUnion('kind', [
    * One body-pipeline stage on one zone (docs/design/systems/workshop-rework.md's
    * pipeline table) - strip/prep, beat, weld, fill-and-sand, prime, or
    * polish, the six stages with no extra player input beyond which zone.
-   * Excludes `swapPanel` and `paint`, which need their own extra field below.
+   * Excludes `paint`, which needs its own extra field below. `beat`, `weld`
+   * and `fillAndSand` are metal-only; a trim zone refuses them at the sim
+   * level (`bodyPipeline.ts`), not here - the zone id alone does not say
+   * which shape it addresses.
    */
   z.object({
     kind: z.literal('pipeline-stage'),
-    stage: PipelineStageIdSchema.exclude(['swapPanel', 'paint']),
+    stage: PipelineStageIdSchema.exclude(['paint']),
     zoneId: ZoneIdSchema,
   }),
-  /** Swap a zone's panel for the inventory `PartInstance` at `partInstanceId`
-   * - never the chassis zone, which has no panel. */
+  /**
+   * Pull a zone's current panel onto the shelf as a `PartInstance` and mark
+   * the zone missing - the same remove-to-inventory shape every other slot
+   * uses. A no-op on an already-missing zone: there is nothing there to pull.
+   */
   z.object({
-    kind: z.literal('pipeline-swap-panel'),
+    kind: z.literal('pipeline-remove-panel'),
+    zoneId: PanelZoneIdSchema,
+  }),
+  /**
+   * Fit the inventory `PartInstance` at `partInstanceId` onto `zoneId` - the
+   * install-from-inventory half of the same pair. Needs the zone missing
+   * first: a zone still carrying its old panel is removed before it is
+   * installed over, exactly like every other occupied slot.
+   */
+  z.object({
+    kind: z.literal('pipeline-install-panel'),
     zoneId: PanelZoneIdSchema,
     partInstanceId: z.string().min(1),
   }),
-  /** The paint stage, with the colour chosen for this zone (chassis:
-   * underseal, so `colour` there is the underseal shade, not a chosen hue)
-   * and the finish grade - stock, street, sport or race - which sets the tin
-   * charged and which paint SKU the completed stage installs. Stock is
-   * refused everywhere but the car's own factory colour. */
+  /** The paint stage, with the colour chosen for this zone and the finish
+   * grade - stock, street, sport or race - which sets the tin charged and
+   * which paint SKU the completed stage installs. Stock is refused
+   * everywhere but the car's own factory colour. */
   z.object({
     kind: z.literal('pipeline-paint'),
     zoneId: ZoneIdSchema,

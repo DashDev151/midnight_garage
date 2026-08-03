@@ -294,7 +294,6 @@ export function buildCarInstance(
     modelId: model.id,
     year: model.spec.yearFrom,
     mileageKm,
-    color: 'White',
     factoryColour: model.spec.factoryColours[0]!,
     provenanceNote: '',
     parts,
@@ -456,8 +455,8 @@ export function evaluateBuild(
  * The router runs on memory history with no URL coupling (the game ships in an
  * itch.io iframe where URL routing fights the embedding), so a build is shared
  * as a string that is copied rather than as a link. One character per slot: six
- * condition positions by four tiers is 21 states including missing, so all 29
- * components cost 29 characters.
+ * condition positions by four tiers is 21 states including missing, so all 28
+ * components cost 28 characters.
  */
 const CODE_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_'
 const CODE_VERSION = 'v1'

@@ -14,6 +14,8 @@ import {
   type CarPartTaxonomyEntry,
   type ConditionBand,
   type GameState,
+  type ZoneState,
+  type ZoneStates,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { anchorValueYen, computeBuyoutPriceYen, resolveBuyoutInstant } from '../src/bidding'
@@ -30,7 +32,7 @@ import {
   planGroupRepair,
 } from '../src/bands'
 import { computeRosterBalanceProbe } from '../src/balanceProbes'
-import { ALL_ZONE_IDS, severityThresholdForBand } from '../src/bodyPipeline'
+import { ALL_ZONE_IDS, isMetalZoneState, severityThresholdForBand } from '../src/bodyPipeline'
 import { buildSimContext } from '../src/context'
 import {
   installedPartsValueYen,
@@ -136,40 +138,48 @@ function independentLots(count: number, startSeed: number): AuctionLot[] {
 }
 
 /**
- * The body half of a restoration. `panels`, `paint` and `underbody` are
- * DERIVED bands: `carCostToBandYen` routes them through
- * `bodyPartRepairBillYen`, which reads `car.zoneState` and charges for every
- * zone whose severity still exceeds the target's threshold. Lifting the
- * carrier part's band alone therefore leaves the whole body bill outstanding
- * while the value model credits the lift, so a "restored" car kept charging
- * for damage it no longer had. Clamping every severity to the target's own
- * threshold (`severityThresholdForBand`), clearing `panelMissing` and settling
- * the whole car on one colour is what actually clears that bill: the zone is
- * left exactly at, never above, the band being restored to.
+ * The body half of a restoration. `panels` and `paint` are DERIVED bands:
+ * `carCostToBandYen` routes them through `bodyPartRepairBillYen`, which reads
+ * `car.zoneState` and charges for every zone whose severity still exceeds the
+ * target's threshold. Lifting the carrier part's band alone therefore leaves
+ * the whole body bill outstanding while the value model credits the lift, so
+ * a "restored" car kept charging for damage it no longer had. Clamping every
+ * severity to the target's own threshold (`severityThresholdForBand`),
+ * clearing `panelMissing` and settling the whole car on one colour is what
+ * actually clears that bill: the zone is left exactly at, never above, the
+ * band being restored to.
  */
 function zoneStateRestoredToBand(car: CarInstance, band: ConditionBand): CarInstance['zoneState'] {
   const zoneState = car.zoneState
   if (!zoneState) return zoneState
   const threshold = severityThresholdForBand(band)
-  const restored = { ...zoneState }
+  const restored = {} as Record<string, ZoneState>
   for (const zoneId of ALL_ZONE_IDS) {
     const zone = zoneState[zoneId]
-    restored[zoneId] = {
-      ...zone,
-      metal: Math.min(zone.metal, threshold),
-      // `surface` is a 0-2 scale, so its own maximum is the deepest it can
-      // legitimately sit under a `poor` (threshold 3) target.
-      surface: Math.min(zone.surface, threshold, 2),
-      finish: Math.min(zone.finish, threshold),
-      panelMissing: false,
-      // One colour across the car: two disagreeing painted zones cost
-      // `derivePaintBand` a whole band, which no repair bill ever charges
-      // for, so a restore that left them mismatched would read a band worse
-      // than the bill it just paid.
-      colour: zone.colour === undefined ? undefined : car.color,
-    }
+    // One colour across the car: two disagreeing painted zones cost
+    // `derivePaintBand` a whole band, which no repair bill ever charges
+    // for, so a restore that left them mismatched would read a band worse
+    // than the bill it just paid.
+    const colour = zone.colour === undefined ? undefined : car.factoryColour
+    restored[zoneId] = isMetalZoneState(zone)
+      ? {
+          ...zone,
+          metal: Math.min(zone.metal, threshold),
+          // `surface` is a 0-2 scale, so its own maximum is the deepest it
+          // can legitimately sit under a `poor` (threshold 3) target.
+          surface: Math.min(zone.surface, threshold, 2),
+          finish: Math.min(zone.finish, threshold),
+          panelMissing: false,
+          colour,
+        }
+      : {
+          ...zone,
+          finish: Math.min(zone.finish, threshold),
+          panelMissing: false,
+          colour,
+        }
   }
-  return restored
+  return restored as ZoneStates
 }
 
 /**
@@ -226,9 +236,9 @@ describe('the restore helper this file measures against is itself a real restora
     // The regression this pins: `restoredToBand` used to lift every part's
     // `installed.band` and leave `car.zoneState` untouched, so the body
     // pipeline still charged its whole bill on a car every other probe here
-    // treated as finished. `carCostToBandYen` routes `panels`/`paint`/
-    // `underbody` through `zoneState` whenever it is present, so this is the
-    // one check that catches the two halves disagreeing.
+    // treated as finished. `carCostToBandYen` routes `panels`/`paint` through
+    // `zoneState` whenever it is present, so this is the one check that
+    // catches the two halves disagreeing.
     for (const model of CARS) {
       for (let seed = 0; seed < 8; seed++) {
         const car = generateAuctionCarInstance(
@@ -1022,7 +1032,7 @@ describe('the foundation law kills the incoherent-build profit (Sprint 60, law 5
     const neglectedFoundations = {
       brakePadsDiscs: 'scrap' as const,
       tyres: 'scrap' as const,
-      underbody: 'scrap' as const,
+      chassis: 'scrap' as const,
     }
 
     // The wreck as bought - neglected foundations, stock everywhere else, NO
@@ -1071,7 +1081,7 @@ describe('the foundation law kills the incoherent-build profit (Sprint 60, law 5
     const soundFoundations = {
       brakePadsDiscs: 'worn' as const,
       tyres: 'worn' as const,
-      underbody: 'worn' as const,
+      chassis: 'worn' as const,
     }
     const soundWreck = buildCarInstance({
       modelId: ENTRY_MODEL.id,
@@ -1084,7 +1094,7 @@ describe('the foundation law kills the incoherent-build profit (Sprint 60, law 5
       parts: mintCarParts({
         brakePadsDiscs: 'scrap',
         tyres: 'scrap',
-        underbody: 'scrap',
+        chassis: 'scrap',
       }),
     })
     const soundBuilt: CarInstance = { ...soundWreck, parts: installRaceParts(soundWreck.parts) }

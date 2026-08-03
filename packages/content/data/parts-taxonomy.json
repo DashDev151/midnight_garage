@@ -179,7 +179,7 @@
   },
   {
     "id": "chassis",
-    "group": "drivetrain",
+    "group": "body",
     "displayName": "Chassis",
     "depthClass": "surface",
     "removable": false,
@@ -337,22 +337,6 @@
       "style": 2,
       "reliability": 0,
       "authenticity": 11
-    }
-  },
-  {
-    "id": "underbody",
-    "group": "body",
-    "displayName": "Underbody",
-    "depthClass": "surface",
-    "removable": false,
-    "statWeights": {
-      "power": 0,
-      "style": 2,
-      "reliability": 1,
-      "authenticity": 1
-    },
-    "physicalWeights": {
-      "aero": 1
     }
   },
   {

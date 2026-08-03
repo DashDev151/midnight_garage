@@ -43,6 +43,7 @@ import {
   hasZoneImproveHeadroom,
   improveZoneCarrierOneStep,
   isBodyDerivedPart,
+  METAL_ZONE_IDS,
   PANEL_ZONE_IDS,
   rollZoneStates,
   setZoneCarrierToAtLeastBand,
@@ -60,8 +61,6 @@ import {
 import { cleanValueYen } from './marketValue'
 import { makeCarOrigin } from './provenance'
 import { pickWeighted, type Rng } from './rng'
-
-const COLOR_POOL = ['White', 'Black', 'Silver', 'Gunmetal', 'Red', 'Blue'] as const
 
 /** The flavor blurb pool (`context.provenancePool`) is keyed by both upkeep
  * tier and age band: a blurb has to fit the car it describes (an 11 km car
@@ -196,7 +195,13 @@ function applySymptoms(
                 working.zoneState,
                 cause.carPartId,
                 cause.setBand,
-                pickPatternZone(PANEL_ZONE_IDS, pattern, rng),
+                // `panels` writes metal, which only a metal zone carries;
+                // `paint` is a finish any of the nine zones can take.
+                pickPatternZone(
+                  cause.carPartId === 'panels' ? METAL_ZONE_IDS : PANEL_ZONE_IDS,
+                  pattern,
+                  rng,
+                ),
               ),
             },
             model,
@@ -239,20 +244,20 @@ function applySymptoms(
 
 /**
  * The worst-case number of times a zone-aware step (`degradeZoneCarrierOneStep`
- * or `improveZoneCarrierOneStep`) can move real headroom for the three body
+ * or `improveZoneCarrierOneStep`) can move real headroom for the two body
  * carriers COMBINED, in EITHER direction, before every zone field is at its
- * bound: putting up to 5 panel zones back on the repairable ladder (one step
- * each, whether the panel was gone, past saving, or both) + `panels`' surface (5 zones x 2) +
- * `paint`'s finish (5 zones x 3) + `underbody`'s chassis finish (1 x 3). One
+ * bound: putting up to 9 zones back on the repairable ladder (one step each,
+ * whether the panel was gone, past saving, or both) + `panels`' surface (6
+ * metal zones x 2) + `paint`'s finish (9 zones x 3). One
  * `degradeCandidates`/worst-band selection of a body carrier only ever
  * advances ONE zone one step (never the whole part at once, unlike an
  * ordinary part's `degradeBand`/`climbBand`), so a flat per-part bound would
- * undercount these three parts' true room and could cut the Law 2 softening
+ * undercount these two parts' true room and could cut the Law 2 softening
  * pass short before real, cheap headroom (e.g. an untouched zone's surface)
  * was ever used.
  */
 const MAX_ZONE_STATE_STEPS =
-  PANEL_ZONE_IDS.length + PANEL_ZONE_IDS.length * 2 + PANEL_ZONE_IDS.length * 3 + 3
+  PANEL_ZONE_IDS.length + METAL_ZONE_IDS.length * 2 + PANEL_ZONE_IDS.length * 3
 
 /** Every present, installed part on `car` eligible for one more degrade step
  * under the damage budget's never-to-scrap rule: a part already at `poor`,
@@ -1043,7 +1048,6 @@ export function generateAuctionCarInstance(
     modelId: model.id,
     year,
     mileageKm,
-    color: rng.pick(COLOR_POOL),
     factoryColour,
     // The blurb must fit the car's AGE as well as its upkeep.
     provenanceNote: rng.pick(context.provenancePool[ageBandFor(ageYears)][upkeepTier]),
@@ -1051,11 +1055,11 @@ export function generateAuctionCarInstance(
     symptoms: [],
     apparentBandByPartId: null,
     // The work model's own roll (docs/design/systems/workshop-rework.md) - independent
-    // of the per-part jitter loop above, which still fills panels and
-    // underbody with a stock part (never missing or aftermarket, since those
-    // SKUs are retired/migrated); the projection below immediately overwrites
-    // that jittered band with the real, zone-derived one. `paint` alone in
-    // that loop follows this same zone state's colours rather than a stock
+    // of the per-part jitter loop above, which still fills `panels` with a
+    // stock part (never missing or aftermarket, since those SKUs are
+    // retired/migrated); the projection below immediately overwrites that
+    // jittered band with the real, zone-derived one. `paint` alone in that
+    // loop follows this same zone state's colours rather than a stock
     // default, since its SKU grade is exactly what those colours already say.
     // The zone severities the tier tables rolled, ARRANGED by the pattern:
     // the same damage, on the panels the car's own story implicates. The

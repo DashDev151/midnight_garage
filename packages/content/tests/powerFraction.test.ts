@@ -141,14 +141,14 @@ describe('powerFraction catalogue completeness (Sprint 135)', () => {
   })
 
   /**
-   * The catalogue-wide count, pinned exactly: 484 SKUs total, every one
+   * The catalogue-wide count, pinned exactly: 580 SKUs total, every one
    * carrying `powerFraction`; 96 of them (12 per power-bearing slot, 8
    * slots) carry a real nonzero fraction on at least one character. Guards
    * against silent catalogue drift - a SKU added or removed changes these
    * numbers, which is exactly the signal this pin exists to raise.
    */
-  it('484 SKUs carry powerFraction; exactly 96 carry a nonzero fraction, 12 per power-bearing slot across 8 slots', () => {
-    expect(PARTS.length).toBe(484)
+  it('580 SKUs carry powerFraction; exactly 96 carry a nonzero fraction, 12 per power-bearing slot across 8 slots', () => {
+    expect(PARTS.length).toBe(580)
     expect(PARTS.every((part) => part.statModifiers.powerFraction !== undefined)).toBe(true)
 
     const isNonzero = (part: (typeof PARTS)[number]) =>

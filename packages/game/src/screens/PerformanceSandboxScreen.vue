@@ -45,7 +45,7 @@ const courses = game.context.courses
 
 type TaxonomyEntry = (typeof taxonomy)[number]
 
-/** The 29 components in taxonomy order, split into their six groups in the
+/** The 28 components in taxonomy order, split into their six groups in the
  * order the taxonomy lists them. */
 const groups = (() => {
   const ordered: { id: string; parts: TaxonomyEntry[] }[] = []

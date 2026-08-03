@@ -32,8 +32,8 @@ describe('StatModifierSchema carries only what a part can still change', () => {
     expect(offenders).toEqual([])
   })
 
-  it('every one of the 484 parsed SKUs exposes exactly the two surviving keys', () => {
-    expect(PARTS.length).toBe(484)
+  it('every one of the 580 parsed SKUs exposes exactly the two surviving keys', () => {
+    expect(PARTS.length).toBe(580)
     const shapes = new Set(PARTS.map((part) => Object.keys(part.statModifiers).sort().join(',')))
     expect([...shapes]).toEqual(['powerFraction,style'])
   })

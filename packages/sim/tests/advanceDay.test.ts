@@ -42,7 +42,6 @@ function initialState(): GameState {
         modelId: 'honda-city-e-aa',
         year: 1984,
         mileageKm: 128_000,
-        color: 'Sodium Amber',
         factoryColour: 'white',
         provenanceNote: 'one-owner, garage kept, Gunma plates',
         parts: {
@@ -250,7 +249,7 @@ describe('advanceDay golden master', () => {
     // aftermarket mechanism, so every generated board's rng stream shifts from
     // that point on. Re-derived from a real run, twice, to confirm
     // determinism.
-    expect(hashState(finalState)).toBe('5b1381e0')
+    expect(hashState(finalState)).toBe('5cd79fb0')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -424,7 +423,7 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // factory colour and a whole-car paint history, and the paint slot's own
     // fit reads that roll instead of the generic aftermarket mechanism, so
     // this script's bought and sold car is priced and generated differently.
-    expect(hashState(acquisitionCareer().sold)).toBe('84dcb128')
+    expect(hashState(acquisitionCareer().sold)).toBe('bc01e04e')
   })
 })
 

@@ -125,7 +125,6 @@ function buildProbe(modelId: string, endBand: ConditionBand, aftermarket: Afterm
     modelId,
     year: 1990,
     mileageKm: 120_000,
-    color: 'White',
     factoryColour: model.spec.factoryColours[0]!,
     provenanceNote: '',
     symptoms: [],
@@ -537,7 +536,6 @@ describe('guarantor mission probes (auction-tier unlock rewards)', () => {
       modelId,
       year: 1990,
       mileageKm: 120_000,
-      color: 'White',
       factoryColour: model.spec.factoryColours[0]!,
       provenanceNote: '',
       symptoms: [],
@@ -554,9 +552,9 @@ describe('guarantor mission probes (auction-tier unlock rewards)', () => {
     )
 
     // Fleet duty cares about mechanicals, not trim - every reliability-fed
-    // slot goes to fine; the five purely cosmetic slots stay worn (0 repair
+    // slot goes to fine; the four purely cosmetic slots stay worn (0 repair
     // cost there, and nothing grades them).
-    const WORN_COSMETIC: CarPartId[] = ['paint', 'underbody', 'aero', 'seats', 'dashGauges']
+    const WORN_COSMETIC: CarPartId[] = ['paint', 'aero', 'seats', 'dashGauges']
     const afterParts = { ...stockCarPartsAt(fitmentClass, 'fine') }
     for (const partId of WORN_COSMETIC) {
       afterParts[partId] = { installed: { ...afterParts[partId].installed!, band: 'worn' } }
@@ -601,7 +599,6 @@ describe('guarantor mission probes (auction-tier unlock rewards)', () => {
       modelId,
       year: 1990,
       mileageKm: 120_000,
-      color: 'White',
       factoryColour: model.spec.factoryColours[0]!,
       provenanceNote: '',
       symptoms: [],
@@ -617,12 +614,12 @@ describe('guarantor mission probes (auction-tier unlock rewards)', () => {
       CONTEXT.economy,
     )
 
-    // The showroom body kit: `panels`/`paint`/`underbody` carry no
-    // aftermarket grades any more (they are derived body value carriers -
-    // `bodyPipeline.ts`); the showroom look now comes from the widened aero
-    // slot plus rims and seats, at race grade to clear the style floor (sport
-    // alone falls short once the body trio can no longer stack their own
-    // separate bonuses on top of aero's). A further mechanical polish (4
+    // The showroom body kit: `panels`/`paint` carry no aftermarket grades any
+    // more (they are derived body value carriers - `bodyPipeline.ts`); the
+    // showroom look now comes from the widened aero slot plus rims and seats,
+    // at race grade to clear the style floor (sport alone falls short once
+    // the body pair can no longer stack their own separate bonuses on top of
+    // aero's). A further mechanical polish (4
     // engine-group parts to mint) is a forecourt-honest "we treated her right
     // underneath too", still fine-or-better either way.
     const AFTERMARKET_SWAP: CarPartId[] = ['aero', 'rims', 'seats']
@@ -675,7 +672,7 @@ describe('guarantor mission probes (auction-tier unlock rewards)', () => {
       target.payoutYen,
     )
     // The payout is formula-derived from the honest showroom recipe above
-    // (race aero/rims/seats plus the four minted mechanicals): the three body
+    // (race aero/rims/seats plus the four minted mechanicals): the two body
     // carriers hold no aftermarket grades, so the showroom look rides the
     // widened aero slot and cabin/wheel dress rather than stacking body-part
     // bonuses.
@@ -699,14 +696,13 @@ describe('guarantor mission probes (auction-tier unlock rewards)', () => {
       modelId,
       year: 1990,
       mileageKm: 120_000,
-      color: 'White',
       factoryColour: model.spec.factoryColours[0]!,
       provenanceNote: '',
       symptoms: [],
       apparentBandByPartId: null,
       parts: stockCarPartsAt(fitmentClass, 'worn'),
     }
-    const WORN_COSMETIC: CarPartId[] = ['paint', 'underbody', 'aero', 'seats', 'dashGauges']
+    const WORN_COSMETIC: CarPartId[] = ['paint', 'aero', 'seats', 'dashGauges']
     const afterParts = { ...stockCarPartsAt(fitmentClass, 'fine') }
     for (const partId of WORN_COSMETIC) {
       afterParts[partId] = { installed: { ...afterParts[partId].installed!, band: 'worn' } }
@@ -748,15 +744,14 @@ describe('guarantor mission probes (auction-tier unlock rewards)', () => {
       modelId,
       year: 1990,
       mileageKm: 120_000,
-      color: 'White',
       factoryColour: model.spec.factoryColours[0]!,
       provenanceNote: '',
       symptoms: [],
       apparentBandByPartId: null,
       parts: stockCarPartsAt(fitmentClass, 'worn'),
     }
-    // `panels`/`paint`/`underbody` carry no aftermarket grades any more -
-    // see the satisfiability probe above for the full reasoning; race grade
+    // `panels`/`paint` carry no aftermarket grades any more - see the
+    // satisfiability probe above for the full reasoning; race grade
     // aero/rims/seats clears the style floor here too.
     const AFTERMARKET_SWAP: CarPartId[] = ['aero', 'rims', 'seats']
     const MINT_UPGRADE: CarPartId[] = ['block', 'exhaust', 'fuelSystem', 'clutch']

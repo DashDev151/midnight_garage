@@ -21,6 +21,7 @@ import type { ValueLedgerLineId } from '@midnight-garage/sim'
 import { computed } from 'vue'
 import { formatYen } from '../utils/formatYen'
 import { LEDGER_LINE_LABELS, formatLedgerLineYen } from '../utils/ledgerLabels'
+import { colourTokenDisplayName } from '../utils/paintFamilies'
 import GradeStamp from './GradeStamp.vue'
 import HelpHint from './HelpHint.vue'
 import SymptomChecklist from './SymptomChecklist.vue'
@@ -109,6 +110,10 @@ function ledgerLabelFor(lineId: ValueLedgerLineId): string {
   return LEDGER_LINE_LABELS[lineId]
 }
 
+/** The car's factory colour, named plainly - no iconic-alias lookup here (the
+ * meta line has no model uid to match against), just the palette name(s). */
+const factoryColourLabel = computed(() => colourTokenDisplayName(props.d.lot.car.factoryColour))
+
 /** Turnout badge text: one word of texture, never a numeric gauge. */
 const TURNOUT_LABEL: Record<string, string> = {
   thin: 'Thin turnout',
@@ -132,7 +137,7 @@ const TURNOUT_LABEL: Record<string, string> = {
         >
         <span class="lot-meta">
           {{ d.lot.car.year }} · {{ d.lot.car.mileageKm.toLocaleString() }} km ·
-          {{ d.lot.car.color }}
+          {{ factoryColourLabel }}
         </span>
       </div>
 

@@ -304,14 +304,15 @@ export interface CarPartRowView {
    * per-part repair row and the bench recondition control both hide
    * themselves when this is false; only Replace ever touches the part. */
   repairable: boolean
-  /** False only for chassis/paint/underbody -
+  /** False only for chassis/panels/paint -
    * the shell itself, repaired in place and never pulled. The car-detail
    * screen's "Take it off" control only ever renders when this is true. */
   removable: boolean
-  /** True only for the three body value carriers, whose slot is never empty
-   * and whose fitted part is swapped in place rather than pulled first
-   * (`installFitGate`, sim/jobs.ts). The car-detail screen offers Replace on
-   * them while they are occupied; every other slot has to be emptied first. */
+  /** True only for the two body value carriers (`panels`/`paint`), whose slot
+   * is never empty and whose fitted part is swapped in place rather than
+   * pulled first (`installFitGate`, sim/jobs.ts). The car-detail screen
+   * offers Replace on them while they are occupied; every other slot has to
+   * be emptied first. */
   replaceInPlace: boolean
   /**
    * True when `band` above is the car's APPARENT band
@@ -2070,7 +2071,8 @@ export const useGameStore = defineStore('game', () => {
         total += plan.costYen
       } else if (
         action.kind === 'pipeline-stage' ||
-        action.kind === 'pipeline-swap-panel' ||
+        action.kind === 'pipeline-remove-panel' ||
+        action.kind === 'pipeline-install-panel' ||
         action.kind === 'pipeline-paint'
       ) {
         total += pipelineActionPlan(car, action)?.costYen ?? 0
@@ -2089,19 +2091,24 @@ export const useGameStore = defineStore('game', () => {
    * for the "crew saved N labour" display. */
   /**
    * A staged body-pipeline action's own cost/labour - the same
-   * `planPipelineStage`/`planPaintStage`/`planSwapPanel` calls
-   * `resolvePipelineStageAction`/`resolvePipelinePaintAction`/
-   * `resolvePipelineSwapPanelAction` (sim/stagedWork.ts) resolve with at
-   * Confirm, so this preview and the real charge can never drift apart.
-   * `null` when the car has no zone state, the zone's own prerequisite isn't
-   * met yet, or (swap panel) the picked inventory part no longer fits - the
-   * row then shows no total rather than a wrong one.
+   * `planPipelineStage`/`planPaintStage`/`planInstallPanel`/`planRemovePanel`
+   * calls `resolvePipelineStageAction`/`resolvePipelinePaintAction`/
+   * `resolvePipelineRemovePanelAction`/`resolvePipelineInstallPanelAction`
+   * (sim/stagedWork.ts) resolve with at Confirm, so this preview and the real
+   * charge can never drift apart. `null` when the car has no zone state, the
+   * zone's own prerequisite isn't met yet, the zone already carries (or still
+   * lacks) a panel the action assumes the opposite of, or the picked
+   * inventory part no longer fits - the row then shows no total rather than a
+   * wrong one.
    */
   function pipelineActionPlan(
     car: CarInstance,
     action: Extract<
       StagedAction,
-      { kind: 'pipeline-stage' | 'pipeline-swap-panel' | 'pipeline-paint' }
+      {
+        kind:
+          'pipeline-stage' | 'pipeline-remove-panel' | 'pipeline-install-panel' | 'pipeline-paint'
+      }
     >,
   ): { costYen: number; laborSlots: number } | null {
     if (!car.zoneState) return null
@@ -2115,17 +2122,17 @@ export const useGameStore = defineStore('game', () => {
       return { costYen: plan.materialsCostYen, laborSlots: plan.laborUnits * rate }
     }
     if (action.kind === 'pipeline-paint') {
-      const plan = planPaintStage(
-        zone,
-        action.zoneId,
-        action.colour,
-        capability,
-        action.grade,
-        car.factoryColour,
-      )
+      const plan = planPaintStage(zone, action.colour, capability, action.grade, car.factoryColour)
       if (!plan.ok) return null
       return { costYen: plan.materialsCostYen, laborSlots: plan.laborUnits * rate }
     }
+    if (action.kind === 'pipeline-remove-panel') {
+      if (zone.panelMissing) return null
+      return { costYen: 0, laborSlots: context.value.economy.energy.actionPoints.removePart }
+    }
+    // pipeline-install-panel: needs the zone missing first, and the picked
+    // inventory part to still fit this exact zone and fitment class.
+    if (!zone.panelMissing) return null
     const model = context.value.modelsById[car.modelId]
     const partInstance = gameState.value.partInventory.find((p) => p.id === action.partInstanceId)
     const catalogPart = partInstance ? context.value.partsById[partInstance.partId] : undefined
@@ -2186,7 +2193,8 @@ export const useGameStore = defineStore('game', () => {
     }
     if (
       action.kind === 'pipeline-stage' ||
-      action.kind === 'pipeline-swap-panel' ||
+      action.kind === 'pipeline-remove-panel' ||
+      action.kind === 'pipeline-install-panel' ||
       action.kind === 'pipeline-paint'
     ) {
       return pipelineActionPlan(car, action)?.laborSlots ?? 0
@@ -2225,7 +2233,8 @@ export const useGameStore = defineStore('game', () => {
     if (
       car &&
       (action.kind === 'pipeline-stage' ||
-        action.kind === 'pipeline-swap-panel' ||
+        action.kind === 'pipeline-remove-panel' ||
+        action.kind === 'pipeline-install-panel' ||
         action.kind === 'pipeline-paint')
     ) {
       return pipelineActionPlan(car, action) ?? { costYen: 0, laborSlots: 0 }
@@ -3080,8 +3089,8 @@ export const useGameStore = defineStore('game', () => {
    * or `null` when it isn't. Per-part repair is bench-only for any
    * non-`surface` slot (the sim refuses it before this ever matters), so
    * this only ever gates a surface signature slot (seats, dashGauges - not
-   * `panels`/`underbody` any more, both derived body value carriers now
-   * with no on-car repair affordance at all, `bodyPipeline.ts`) - a bolt-on
+   * `panels`/`paint`, both derived body value carriers with no on-car repair
+   * affordance at all, `bodyPipeline.ts`) - a bolt-on
    * signature slot (dampers, springs) is repaired via the group or the
    * bench, never this per-part affordance. Engine/drivetrain repair is
    * never gated, so this is `null` for them too.
@@ -3800,7 +3809,10 @@ export const useGameStore = defineStore('game', () => {
     carId: string,
     action: Extract<
       StagedAction,
-      { kind: 'pipeline-stage' | 'pipeline-swap-panel' | 'pipeline-paint' }
+      {
+        kind:
+          'pipeline-stage' | 'pipeline-remove-panel' | 'pipeline-install-panel' | 'pipeline-paint'
+      }
     >,
   ): void {
     const remaining = stagedActionsFor(carId).filter((a) => !stagedActionsCollide(a, action))

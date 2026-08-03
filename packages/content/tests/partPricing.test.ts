@@ -59,9 +59,9 @@ describe('resolvePartPriceYen priceBasisPartId defaulting', () => {
     // this entry would otherwise have priced from.
     expect(price).toBe(Math.round((30_000 * SHEET.classFactors.everyday) / 100) * 100)
     // One panel costs less than the whole shell, and the two bases now hold
-    // that ordering with room in it: five zone panels come to 107 per cent of
-    // the shell, which is what a shell being five panels plus a roof, floor,
-    // sills and structure should read as.
+    // that ordering with room in it: nine zone panels come to 193 per cent of
+    // the shell, which is what a shell being nine separately-bought panels
+    // rather than one moulded piece should read as.
     expect(price).toBeLessThan(
       resolvePartPriceYen(
         { id: 'stock-panels', carPartId: 'panels', fitmentClass: 'everyday', grade: 'stock' },
@@ -75,30 +75,29 @@ describe('resolvePartPriceYen priceBasisPartId defaulting', () => {
  * A body kit and a bodyshell are two different purchases, so they price from
  * two different bases. `baseCostYen.panels` used to carry both, which meant
  * repricing the shell dragged every kit in the catalogue with it; the kits sit
- * on `baseCostYen.bodyKit` instead. The two bases have since diverged (the
- * shell is five times the kit base), so this pins the RESOLVED prices rather
- * than any relationship between the bases: every price below is what the kit
- * carried before the split and must keep carrying while only the shell moves.
+ * on `baseCostYen.bodyKit` instead. Aftermarket body kits are zone-addressed
+ * now (nine zones x three grades x four fitment classes = 108 SKUs, replacing
+ * the twelve retired whole-car kits), but price is a function of fitment class
+ * and grade alone, never of which zone - so every zone's kit at a given grade
+ * and class resolves to exactly the price the retired whole-car kit of that
+ * grade and class carried. This pins the RESOLVED prices rather than any
+ * relationship between the bases: neither `baseCostYen.bodyKit` nor any class
+ * or grade factor moved in the split.
  */
 describe('the body-kit price basis', () => {
-  const BODY_KIT_PRICES_YEN: Record<string, number> = {
-    'shitbox-frp-lightweight-panels': 5100,
-    'shitbox-frp-sport-panel-kit': 7800,
-    'shitbox-frp-carbon-panel-kit': 11800,
-    'frp-lightweight-panels': 5800,
-    'frp-sport-panel-kit': 9000,
-    'frp-carbon-panel-kit': 13400,
-    'uncommon-frp-lightweight-panels': 14600,
-    'uncommon-frp-sport-panel-kit': 22400,
-    'uncommon-frp-carbon-panel-kit': 33600,
-    'rare-frp-lightweight-panels': 32800,
-    'rare-frp-sport-panel-kit': 50400,
-    'rare-frp-carbon-panel-kit': 75600,
+  const BODY_KIT_PRICE_YEN_BY_CLASS_AND_GRADE: Record<
+    PartFitmentClass,
+    Record<'street' | 'sport' | 'race', number>
+  > = {
+    entry: { street: 5100, sport: 7800, race: 11800 },
+    everyday: { street: 5800, sport: 9000, race: 13400 },
+    enthusiast: { street: 14600, sport: 22400, race: 33600 },
+    flagship: { street: 32800, sport: 50400, race: 75600 },
   }
 
-  it('prices exactly the twelve body kits, all of them in the panels slot', () => {
+  it('prices exactly the 108 aftermarket zone-panel SKUs, all of them in the panels slot', () => {
     const kits = PARTS.filter((part) => part.priceBasisPartId === 'bodyKit')
-    expect(kits.map((part) => part.id).sort()).toEqual(Object.keys(BODY_KIT_PRICES_YEN).sort())
+    expect(kits.length).toBe(108)
     for (const kit of kits) expect(kit.carPartId, kit.id).toBe('panels')
   })
 
@@ -110,9 +109,13 @@ describe('the body-kit price basis', () => {
     ).toEqual([])
   })
 
-  it('resolves every kit to the price it carried before the split', () => {
-    for (const [id, priceYen] of Object.entries(BODY_KIT_PRICES_YEN)) {
-      expect(PARTS.find((part) => part.id === id)?.priceYen, id).toBe(priceYen)
+  it('resolves every zone kit to the price its grade and fitment class carried before the zone split', () => {
+    const kits = PARTS.filter((part) => part.priceBasisPartId === 'bodyKit')
+    for (const kit of kits) {
+      const grade = kit.grade as 'street' | 'sport' | 'race'
+      expect(kit.priceYen, kit.id).toBe(
+        BODY_KIT_PRICE_YEN_BY_CLASS_AND_GRADE[kit.fitmentClass][grade],
+      )
     }
   })
 })
@@ -122,7 +125,7 @@ describe('the body-kit price basis', () => {
  * examples. A hand-worked example proves the formula; these prove that what the
  * shop actually sells reads correctly after every base, factor and the round to
  * the nearest Y100 have all been applied. The pricing sheet is five knobs and one
- * multiplication, so a lever movement lands on all 484 SKUs at once and a ladder
+ * multiplication, so a lever movement lands on all 580 SKUs at once and a ladder
  * that stopped reading would otherwise be found by a player rather than by CI.
  */
 describe('the resolved parts catalog ladder', () => {

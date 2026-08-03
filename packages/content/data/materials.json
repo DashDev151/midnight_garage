@@ -1,10 +1,9 @@
 [
-  { "id": "filler", "name": "Body filler tin", "priceYen": 1500, "stage": "fillAndSand" },
-  { "id": "paper", "name": "Sanding paper pack", "priceYen": 400, "stage": "fillAndSand" },
-  { "id": "primer", "name": "Primer tin", "priceYen": 1200, "stage": "prime" },
-  { "id": "paint", "name": "Paint tin", "priceYen": 2500, "stage": "paint" },
-  { "id": "paint-metallic", "name": "Metallic paint tin", "priceYen": 5000, "stage": "paint" },
-  { "id": "paint-pearl", "name": "Pearl paint tin", "priceYen": 7500, "stage": "paint" },
-  { "id": "underseal", "name": "Underseal tin", "priceYen": 2000, "stage": "paint" },
-  { "id": "polish", "name": "Polish tin", "priceYen": 800, "stage": "polish" }
+  { "id": "filler", "name": "Body filler tin", "priceYen": 1250, "stage": "fillAndSand" },
+  { "id": "paper", "name": "Sanding paper pack", "priceYen": 350, "stage": "fillAndSand" },
+  { "id": "primer", "name": "Primer tin", "priceYen": 650, "stage": "prime" },
+  { "id": "paint", "name": "Paint tin", "priceYen": 1400, "stage": "paint" },
+  { "id": "paint-metallic", "name": "Metallic paint tin", "priceYen": 2750, "stage": "paint" },
+  { "id": "paint-pearl", "name": "Pearl paint tin", "priceYen": 4150, "stage": "paint" },
+  { "id": "polish", "name": "Polish tin", "priceYen": 450, "stage": "polish" }
 ]
