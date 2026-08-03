@@ -10,6 +10,10 @@ import rosterCsv from '../../../../../docs/design/midnight-garage-roster.csv?raw
  */
 export interface RosterCarColours {
   rosterNo: number
+  /** The roster row's permanent identity - what an iconic-colour alias's
+   * `cars` list actually binds to, since `rosterNo` moves when a car is
+   * inserted ahead of this one. */
+  uid: string
   /** The shipped `cars.json` id, or an empty string on the 68 not yet built. */
   id: string
   displayName: string
@@ -66,6 +70,7 @@ function readRosterCars(): RosterCarColours[] {
     return index
   }
   const rosterNoAt = columnAt('rosterNo')
+  const uidAt = columnAt('uid')
   const idAt = columnAt('id')
   const displayNameAt = columnAt('displayName')
   const poolAt = columnAt('factoryColours')
@@ -75,6 +80,7 @@ function readRosterCars(): RosterCarColours[] {
     .slice(1)
     .map((cells) => ({
       rosterNo: Number(cells[rosterNoAt] ?? ''),
+      uid: cells[uidAt] ?? '',
       id: cells[idAt] ?? '',
       displayName: cells[displayNameAt] ?? '',
       pool: (cells[poolAt] ?? '').split('|').filter((token) => token !== ''),

@@ -11,6 +11,7 @@ import { buildCarInstance, mintCarParts } from './testFixtures'
 
 const model: CarModel = {
   id: 'honda-city-e-aa',
+  uid: 'MG-002',
   displayName: 'Honda City E (AA)',
   brand: 'Honda',
   parodyName: 'Citee E (AA)',

@@ -653,8 +653,17 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * no legacy branch: a pre-v56 save is wiped rather than converted. The version
  * bump alone is still required (Save law) so an old client rejects a v56 save
  * rather than silently dropping what was done to a part.
+ * v56 -> v57 (the paint system): `CarInstanceSchema` gained a REQUIRED
+ * `factoryColour` - the pool entry a car left the factory wearing, which
+ * every zone's originality now reads against. Not additive/optional like the
+ * runs above: a pre-v57 car has no such field at all, and there is no honest
+ * default to backfill (inventing one would silently decide a car's factory
+ * colour). Per directive 19, a plain SAVE_VERSION bump with NO
+ * `MIGRATIONS[56]` entry and no legacy branch: a pre-v57 save is wiped rather
+ * than converted. The version bump alone is still required (Save law) so an
+ * old client rejects a v57 save rather than writing a car with no colour.
  */
-export const SAVE_VERSION = 56
+export const SAVE_VERSION = 57
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

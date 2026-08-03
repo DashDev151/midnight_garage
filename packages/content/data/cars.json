@@ -1,6 +1,7 @@
 [
   {
     "id": "honda-city-e-aa",
+    "uid": "MG-002",
     "displayName": "Honda City E (AA)",
     "brand": "Honda",
     "parodyName": "Citee E (AA)",
@@ -51,6 +52,7 @@
   },
   {
     "id": "suzuki-wagon-r-ct21s",
+    "uid": "MG-008",
     "displayName": "Suzuki Wagon R (CT21S)",
     "brand": "Suzuki",
     "parodyName": "Wagon Q (CT21S)",
@@ -96,6 +98,7 @@
   },
   {
     "id": "honda-civic-sir2-eg6",
+    "uid": "MG-029",
     "displayName": "Honda Civic SiR-II (EG6)",
     "brand": "Honda",
     "parodyName": "Civik SiR-II (EG6)",
@@ -142,6 +145,7 @@
   },
   {
     "id": "toyota-sprinter-trueno-ae86",
+    "uid": "MG-042",
     "displayName": "Toyota Sprinter Trueno (AE86)",
     "brand": "Toyota",
     "parodyName": "Sprinta Truono (AE86)",
@@ -194,6 +198,7 @@
   },
   {
     "id": "nissan-180sx-rps13",
+    "uid": "MG-036",
     "displayName": "Nissan 180SX (RPS13)",
     "brand": "Nissan",
     "parodyName": "180ZX (RPS13)",
@@ -255,6 +260,7 @@
   },
   {
     "id": "toyota-chaser-tourer-v-jzx90",
+    "uid": "MG-041",
     "displayName": "Toyota Chaser Tourer V (JZX90)",
     "brand": "Toyota",
     "parodyName": "Chayser Tourer V (JZX90)",
@@ -314,6 +320,7 @@
   },
   {
     "id": "nissan-silvia-ks-s14",
+    "uid": "MG-048",
     "displayName": "Nissan Silvia K's (S14)",
     "brand": "Nissan",
     "parodyName": "Silvea K's (S14)",
@@ -366,6 +373,7 @@
   },
   {
     "id": "mazda-savanna-rx7-fc3s",
+    "uid": "MG-040",
     "displayName": "Mazda Savanna RX-7 (FC3S)",
     "brand": "Mazda",
     "parodyName": "Sabanna FX-7 (FC3S)",
@@ -418,6 +426,7 @@
   },
   {
     "id": "mazda-rx7-fd3s",
+    "uid": "MG-052",
     "displayName": "Mazda RX-7 (FD3S)",
     "brand": "Mazda",
     "parodyName": "FX-7 (FD3S)",
@@ -470,6 +479,7 @@
   },
   {
     "id": "toyota-supra-rz-jza80",
+    "uid": "MG-075",
     "displayName": "Toyota Supra RZ (JZA80)",
     "brand": "Toyota",
     "parodyName": "Suprema RZ (JZA80)",
@@ -523,6 +533,7 @@
   },
   {
     "id": "toyota-carina-at150",
+    "uid": "MG-010",
     "displayName": "Toyota Carina (AT150)",
     "brand": "Toyota",
     "parodyName": "Carena (AT150)",
@@ -568,6 +579,7 @@
   },
   {
     "id": "nissan-sunny-b12",
+    "uid": "MG-003",
     "displayName": "Nissan Sunny (B12)",
     "brand": "Nissan",
     "parodyName": "Sunnie (B12)",
@@ -612,6 +624,7 @@
   },
   {
     "id": "suzuki-alto-works-ha21s",
+    "uid": "MG-017",
     "displayName": "Suzuki Alto Works (HA21S)",
     "brand": "Suzuki",
     "parodyName": "Alta Works (HA21S)",
@@ -657,6 +670,7 @@
   },
   {
     "id": "honda-beat-pp1",
+    "uid": "MG-026",
     "displayName": "Honda Beat (PP1)",
     "brand": "Honda",
     "parodyName": "Beet (PP1)",
@@ -718,6 +732,7 @@
   },
   {
     "id": "honda-crx-sir-ef8",
+    "uid": "MG-020",
     "displayName": "Honda CR-X SiR (EF8)",
     "brand": "Honda",
     "parodyName": "CR-S SiR (EF8)",
@@ -770,6 +785,7 @@
   },
   {
     "id": "honda-city-turbo-ii-aa",
+    "uid": "MG-012",
     "displayName": "Honda City Turbo II (AA)",
     "brand": "Honda",
     "parodyName": "Citee Turbo II (AA)",
@@ -816,6 +832,7 @@
   },
   {
     "id": "toyota-sera-exy10",
+    "uid": "MG-014",
     "displayName": "Toyota Sera (EXY10)",
     "brand": "Toyota",
     "parodyName": "Serra (EXY10)",
@@ -867,6 +884,7 @@
   },
   {
     "id": "honda-prelude-si-vtec-bb4",
+    "uid": "MG-021",
     "displayName": "Honda Prelude Si VTEC (BB4)",
     "brand": "Honda",
     "parodyName": "Prelood Si-V (BB4)",
@@ -919,6 +937,7 @@
   },
   {
     "id": "nissan-silvia-s13",
+    "uid": "MG-022",
     "displayName": "Nissan Silvia (S13)",
     "brand": "Nissan",
     "parodyName": "Silvea (S13)",
@@ -983,6 +1002,7 @@
   },
   {
     "id": "toyota-mr2-sw20",
+    "uid": "MG-050",
     "displayName": "Toyota MR2 (SW20)",
     "brand": "Toyota",
     "parodyName": "MR-II (SW20)",
@@ -1035,6 +1055,7 @@
   },
   {
     "id": "nissan-cefiro-a31",
+    "uid": "MG-027",
     "displayName": "Nissan Cefiro (A31)",
     "brand": "Nissan",
     "parodyName": "Cefyro (A31)",
@@ -1089,6 +1110,7 @@
   },
   {
     "id": "subaru-impreza-wrx-sti-gc8",
+    "uid": "MG-057",
     "displayName": "Subaru Impreza WRX STI (GC8)",
     "brand": "Subaru",
     "parodyName": "Impressa VRX (GC8)",
@@ -1135,6 +1157,7 @@
   },
   {
     "id": "nissan-skyline-gtr-bnr32",
+    "uid": "MG-077",
     "displayName": "Nissan Skyline GT-R (BNR32)",
     "brand": "Nissan",
     "parodyName": "Skylene GT-N (BNR32)",
@@ -1189,6 +1212,7 @@
   },
   {
     "id": "nissan-fairlady-z-z32",
+    "uid": "MG-058",
     "displayName": "Nissan Fairlady Z (Z32)",
     "brand": "Nissan",
     "parodyName": "Fairlody Z (Z32)",
@@ -1251,6 +1275,7 @@
   },
   {
     "id": "toyota-aristo-30v-jzs147",
+    "uid": "MG-037",
     "displayName": "Toyota Aristo 3.0V (JZS147)",
     "brand": "Toyota",
     "parodyName": "Aresto 3.0V (JZS147)",
@@ -1306,6 +1331,7 @@
   },
   {
     "id": "toyota-mr2-aw11",
+    "uid": "MG-023",
     "displayName": "Toyota MR2 (AW11)",
     "brand": "Toyota",
     "parodyName": "MR-II (AW11)",

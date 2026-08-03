@@ -61,8 +61,24 @@ describe('paintColours.json', () => {
         name: 'Probe',
         shade: 'Probe shade brief.',
         hex,
+        family: 'Reds',
       })
       expect(result.success).toBe(false)
     },
   )
+
+  /**
+   * A family of one has no near neighbour to offer a mismatched or primed
+   * panel, which is the whole reason the field exists - so every family must
+   * clear this floor, not just the grouping as a whole.
+   */
+  it('every family has at least two members', () => {
+    const countByFamily = new Map<string, number>()
+    for (const colour of paintColours) {
+      countByFamily.set(colour.family, (countByFamily.get(colour.family) ?? 0) + 1)
+    }
+    for (const [family, count] of countByFamily) {
+      expect(count, `${family} has only ${count} member(s)`).toBeGreaterThanOrEqual(2)
+    }
+  })
 })

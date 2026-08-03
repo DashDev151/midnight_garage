@@ -225,7 +225,7 @@ function measuredFromFor(row) {
  * (the first token of the display name, which reads `Alfa` rather than `Alfa
  * Romeo` on the one two-word marque; no physics reads it).
  *
- * Placeholders, read by nothing: `chassisCode`, `bookValueYen`, `rarity`,
+ * Placeholders, read by nothing: `uid`, `chassisCode`, `bookValueYen`, `rarity`,
  * `reliabilityBase`, `styleBase`, `styleCeiling`, `culture`, `factoryColours`,
  * and the two parody-name fields, which the
  * sandbox never renders. `bookValueYen` in particular is why the screen shows
@@ -242,6 +242,9 @@ function measuredFromFor(row) {
  * `factoryColours` reaches only the paint review screen's car selector, which
  * reads the roster CSV directly for its own 94-car dropdown rather than this
  * file, so a single flat entry satisfies the schema without inventing a pool.
+ * `uid` is `chassisCode`'s own case: a research entry is not a roster row at
+ * all, so there is no real roster identity to carry, and `unknown` says so
+ * rather than fabricating one that could be mistaken for a genuine car.
  *
  * `aeroCeiling` is the one required per-car constant the sandbox DOES read: it
  * scales what a fitted aero part's downforce is worth, and the sandbox fits
@@ -249,6 +252,7 @@ function measuredFromFor(row) {
  * placeholder, so its aero performs exactly as the grade authors it instead of
  * at a per-car fraction nobody chose.
  */
+const RESEARCH_UID_PLACEHOLDER = 'unknown'
 const RESEARCH_RELIABILITY_BASE_PLACEHOLDER = 85
 const RESEARCH_STYLE_BASE_PLACEHOLDER = 12
 const RESEARCH_STYLE_CEILING_PLACEHOLDER = 12
@@ -266,6 +270,7 @@ function synthesiseModel(row) {
 
   return {
     id: row.id,
+    uid: RESEARCH_UID_PLACEHOLDER,
     displayName,
     brand: displayName.split(' ')[0] ?? displayName,
     parodyName: 'Research entry',

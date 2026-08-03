@@ -295,6 +295,7 @@ export function buildCarInstance(
     year: model.spec.yearFrom,
     mileageKm,
     color: 'White',
+    factoryColour: model.spec.factoryColours[0]!,
     provenanceNote: '',
     parts,
     symptoms: [],

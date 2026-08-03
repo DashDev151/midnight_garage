@@ -1,13 +1,18 @@
 import {
   PanelZoneIdSchema,
+  PAINT_COLOURS,
+  PAINT_HISTORY_STATES,
   ZoneIdSchema,
   fitmentClassForTier,
   MATERIALS,
+  type CarCulture,
   type CarInstance,
   type CarModel,
   type ConditionBand,
   type DamageGrade,
   type EconomyConfig,
+  type Grade,
+  type PaintHistoryState,
   type PanelZoneId,
   type Part,
   type PartFitmentClass,
@@ -17,7 +22,7 @@ import {
   type ZoneStates,
 } from '@midnight-garage/content'
 import type { SimContext } from './context'
-import type { Rng } from './rng'
+import { pickWeighted, type Rng } from './rng'
 
 /**
  * The body pipeline's own module (docs/design/systems/workshop-rework.md): zone
@@ -103,14 +108,30 @@ export function derivePanelsBand(zoneStates: ZoneStates): ConditionBand {
   return bandForSeverity(worst)
 }
 
+/** The colours a car's `factoryColour` pool entry authorises: the entry
+ * itself for a single-colour car, or both halves of an `a+b` two-tone entry.
+ * Shared by the paint stage's stock-grade gate and the paint band's mismatch
+ * exemption, so a two-tone car's legitimate scheme is defined in exactly one
+ * place. */
+function factoryColourSet(factoryColour: string): ReadonlySet<string> {
+  return new Set(factoryColour.split('+'))
+}
+
 /** `paint` band is the worst finish across the five panel zones, same
  * mapping, stepped one band worse when two or more painted zones disagree on
  * colour (the mismatch penalty) - an unpainted zone (`colour` absent) never
  * participates in the disagreement check. The step goes through the same
  * severity/band pair every other derivation uses, so `scrap` is its floor:
  * `bandForSeverity` clamps at the worst rung the ladder expresses, and panels
- * disagreeing about their colour cannot leave a car worse than that. */
-export function derivePaintBand(zoneStates: ZoneStates): ConditionBand {
+ * disagreeing about their colour cannot leave a car worse than that.
+ *
+ * `factoryColour` exempts a genuine factory two-tone: the car's factory
+ * scheme is the SET of colours it legitimately wears (`factoryColourSet`),
+ * and the penalty does not fire while every painted zone's colour is in that
+ * set. A single-colour car's set has one member, so its behaviour is
+ * unchanged; omitting `factoryColour` entirely (existing callers with no car
+ * to read one from) preserves the old any-two-colours-disagree rule exactly. */
+export function derivePaintBand(zoneStates: ZoneStates, factoryColour?: string): ConditionBand {
   const worst = Math.max(...PANEL_ZONE_IDS.map((zoneId) => zoneStates[zoneId].finish))
   const band = bandForSeverity(worst)
   const colours = new Set(
@@ -119,6 +140,10 @@ export function derivePaintBand(zoneStates: ZoneStates): ConditionBand {
     ),
   )
   if (colours.size < 2) return band
+  if (factoryColour) {
+    const allowed = factoryColourSet(factoryColour)
+    if ([...colours].every((colour) => allowed.has(colour))) return band
+  }
   return bandForSeverity(severityThresholdForBand(band) + 1)
 }
 
@@ -136,10 +161,10 @@ export interface DerivedBodyBands {
   underbody: ConditionBand
 }
 
-export function deriveBodyBands(zoneStates: ZoneStates): DerivedBodyBands {
+export function deriveBodyBands(zoneStates: ZoneStates, factoryColour?: string): DerivedBodyBands {
   return {
     panels: derivePanelsBand(zoneStates),
-    paint: derivePaintBand(zoneStates),
+    paint: derivePaintBand(zoneStates, factoryColour),
     underbody: deriveUnderbodyBand(zoneStates),
   }
 }
@@ -175,7 +200,7 @@ export function applyDerivedBodyBands(
   const zoneStates = car.zoneState
   if (!zoneStates) return car
   const fitmentClass = fitmentClassForTier(model.tier)
-  const derived = deriveBodyBands(zoneStates)
+  const derived = deriveBodyBands(zoneStates, car.factoryColour)
   let parts = car.parts
   for (const carPartId of DERIVED_BODY_PART_IDS) {
     const band = derived[carPartId]
@@ -259,6 +284,13 @@ const BEYOND_REPAIR_GRADES: readonly DamageGrade[] = ['rough', 'project']
  * can occur, which is what a caller with no story behind the car wants;
  * `allowPanelMissing` false keeps the panel on the car (a customer's own car
  * never turns up with a panel gone), leaving only the ruined-in-place state.
+ *
+ * `factoryColour` and `culture`, given TOGETHER, additionally roll the car's
+ * whole-car paint state (`applyPaintHistory`) and write the result onto the
+ * returned zones' `colour`/`primed` fields. Either absent (the default) skips
+ * that roll entirely and leaves every zone with no colour at all, exactly the
+ * prior behaviour - so every existing caller with no car to roll a colour for
+ * keeps its draw sequence and its result unchanged.
  */
 export function rollZoneStates(
   fitmentClass: PartFitmentClass,
@@ -267,6 +299,8 @@ export function rollZoneStates(
   severityOrder: readonly PanelZoneId[] = PANEL_ZONE_IDS,
   history: DamageGrade | null = null,
   allowPanelMissing: boolean = true,
+  factoryColour: string | null = null,
+  culture: CarCulture | null = null,
 ): ZoneStates {
   const {
     metalWeightsByTier,
@@ -309,7 +343,126 @@ export function rollZoneStates(
       }
     }
   }
+  if (factoryColour !== null && culture !== null) {
+    return applyPaintHistory(zoneStates as ZoneStates, factoryColour, culture, economy, rng)
+  }
   return zoneStates as ZoneStates
+}
+
+/** The colour each panel zone wears when the car is in its factory scheme: the
+ * `factoryColour` pool entry itself for every zone on a single-colour car, or
+ * - for a genuine two-tone entry (`a+b`) - the two halves dealt across the
+ * five panel zones in their own declared order. Which physical panel takes
+ * which half is deliberately not modelled (the research could not establish
+ * the arrangement for most of the seven two-tone roster cars), so this is the
+ * simplest deterministic split rather than an authored one: the first half of
+ * `PANEL_ZONE_IDS` (by count, rounded up) wears the first colour, the rest the
+ * second. */
+function factoryReferenceColours(factoryColour: string): Record<PanelZoneId, string> {
+  const halves = factoryColour.split('+')
+  if (halves.length === 1) {
+    return Object.fromEntries(PANEL_ZONE_IDS.map((zoneId) => [zoneId, halves[0]!])) as Record<
+      PanelZoneId,
+      string
+    >
+  }
+  const firstHalfCount = Math.ceil(PANEL_ZONE_IDS.length / 2)
+  return Object.fromEntries(
+    PANEL_ZONE_IDS.map((zoneId, index) => [zoneId, halves[index < firstHalfCount ? 0 : 1]!]),
+  ) as Record<PanelZoneId, string>
+}
+
+/** A uniformly picked near neighbour of `colour`, from its own palette family
+ * and excluding itself - the wrong-shade panel a mismatched-panel car wears,
+ * so a badly repainted zone reads as the wrong white rather than a random
+ * colour. Falls back to `colour` itself only if the palette ever shipped a
+ * family of one, which every authored family avoids. */
+function pickFamilyNeighbour(colour: string, rng: Rng): string {
+  const entry = PAINT_COLOURS.find((candidate) => candidate.id === colour)
+  if (!entry) return colour
+  const neighbours = PAINT_COLOURS.filter(
+    (candidate) => candidate.family === entry.family && candidate.id !== colour,
+  )
+  return neighbours.length > 0 ? rng.pick(neighbours).id : colour
+}
+
+/**
+ * Rolls one of the four named whole-car paint states
+ * (docs/design/systems/paint-system-design.md) from the culture's own
+ * profile (`economy.partsGeneration.paintHistoryByCulture` ->
+ * `paintHistory`) and writes the result onto `zoneStates`' five panel zones.
+ * The state is structural, never per-zone independent draws, which is what
+ * makes a three-way clown-car mismatch impossible by construction rather than
+ * merely unlikely:
+ *
+ * - `original`: every zone its own reference colour (`factoryReferenceColours`
+ *   - both halves of a two-tone car's scheme, dealt across zones).
+ * - `resprayed`: one colour, picked uniformly from the 34 excluding the car's
+ *   own factory colour(s), on every zone alike.
+ * - `mismatchedPanel`: every zone its own reference colour except one
+ *   (uniform across the five), which wears a family neighbour of the colour
+ *   it should be.
+ * - `primedPanel`: every zone its own reference colour except one, which is
+ *   left bare (`primed: true`, no colour at all).
+ *
+ * `resprayed` is the only state `generatedPaintGrade` reads back as anything
+ * but stock, so this function never itself decides the paint SKU - it only
+ * ever writes colour and primed state.
+ */
+function applyPaintHistory(
+  zoneStates: ZoneStates,
+  factoryColour: string,
+  culture: CarCulture,
+  economy: EconomyConfig,
+  rng: Rng,
+): ZoneStates {
+  const { paintHistory, paintHistoryByCulture } = economy.partsGeneration
+  const weights = paintHistory[paintHistoryByCulture[culture]]
+  const state: PaintHistoryState = pickWeighted(PAINT_HISTORY_STATES, (s) => weights[s], rng)
+  const reference = factoryReferenceColours(factoryColour)
+
+  if (state === 'resprayed') {
+    const factorySet = factoryColourSet(factoryColour)
+    const respray = rng.pick(PAINT_COLOURS.filter((colour) => !factorySet.has(colour.id))).id
+    let next = zoneStates
+    for (const zoneId of PANEL_ZONE_IDS) {
+      next = { ...next, [zoneId]: { ...next[zoneId], colour: respray } }
+    }
+    return next
+  }
+
+  const affected = rng.pick(PANEL_ZONE_IDS)
+  let next = zoneStates
+  for (const zoneId of PANEL_ZONE_IDS) {
+    if (state !== 'original' && zoneId === affected) continue
+    next = { ...next, [zoneId]: { ...next[zoneId], colour: reference[zoneId] } }
+  }
+  if (state === 'primedPanel') {
+    next = { ...next, [affected]: { ...next[affected], primed: true } }
+  } else if (state === 'mismatchedPanel') {
+    const neighbour = pickFamilyNeighbour(reference[affected]!, rng)
+    next = { ...next, [affected]: { ...next[affected], colour: neighbour } }
+  }
+  return next
+}
+
+/**
+ * Whether generation's rolled zone colours amount to a respray: every panel
+ * zone the SAME colour, and that colour outside the car's own factory set.
+ * `applyPaintHistory`'s `resprayed` state is the only one that paints every
+ * zone alike in a colour that is not the car's own, so this reads that fact
+ * back rather than threading a second value out of the roll - the same
+ * derive-don't-duplicate shape `derivePaintBand` itself uses. Never returns
+ * `sport` or `race`: a resprayed car always arrives at the cheap solid job
+ * (docs/design/systems/paint-system-design.md), and metallic or pearl are
+ * things only the player buys.
+ */
+export function generatedPaintGrade(zoneStates: ZoneStates, factoryColour: string): Grade {
+  const colours = PANEL_ZONE_IDS.map((zoneId) => zoneStates[zoneId].colour)
+  const [first, ...rest] = colours
+  if (first == null) return 'stock'
+  const uniform = rest.every((colour) => colour === first)
+  return uniform && !factoryColourSet(factoryColour).has(first) ? 'street' : 'stock'
 }
 
 /** The one zone field that actually drives `carPartId`'s MONEY bill - metal
@@ -511,8 +664,21 @@ function materialCostYen(materialId: string): number {
 const FILL_AND_SAND_COST_YEN = materialCostYen('filler') + materialCostYen('paper')
 const PRIME_COST_YEN = materialCostYen('primer')
 const PAINT_COST_YEN = materialCostYen('paint')
+const PAINT_METALLIC_COST_YEN = materialCostYen('paint-metallic')
+const PAINT_PEARL_COST_YEN = materialCostYen('paint-pearl')
 const UNDERSEAL_COST_YEN = materialCostYen('underseal')
 const POLISH_COST_YEN = materialCostYen('polish')
+
+/** The tin a panel paint job charges, by finish grade - stock and street both
+ * lay a solid colour and share one tin; sport (metallic) and race (pearl)
+ * each have their own. Irrelevant to the chassis zone, which always charges
+ * underseal regardless of grade. */
+const PAINT_TIN_COST_YEN_BY_GRADE: Readonly<Record<Grade, number>> = {
+  stock: PAINT_COST_YEN,
+  street: PAINT_COST_YEN,
+  sport: PAINT_METALLIC_COST_YEN,
+  race: PAINT_PEARL_COST_YEN,
+}
 
 /** The zone-panel catalog SKU for one zone, at one fitment class - a stock,
  * `zoneId`-carrying entry, priced through the `zonePanel` pricing basis. */
@@ -538,7 +704,7 @@ export interface PipelineStageEffect {
 
 export interface PipelineStageRefusal {
   ok: false
-  reason: 'prereq' | 'machine-line' | 'needs-panel'
+  reason: 'prereq' | 'machine-line' | 'needs-panel' | 'wrong-colour'
 }
 
 /** Options a stage's own gate reads - both express "the body line's daily
@@ -691,22 +857,38 @@ export function refitCarrierZoneStates(
  * body line unlocked (owned tier 2, or hired today), else 2 - tier 1 hand
  * tools and rattle cans cap at tidy. Chassis colours as the underseal shade
  * rather than a chosen hue; the material differs (underseal, not paint tin)
- * but the effect shape is identical. A zone with no panel on it has nothing to
- * paint and says so. */
+ * but the effect shape is identical, and it charges underseal regardless of
+ * `grade` - the finish ladder is a `paint` carrier concept, and the chassis
+ * has none. A zone with no panel on it has nothing to paint and says so.
+ *
+ * `grade` sets which tin the job charges (`PAINT_TIN_COST_YEN_BY_GRADE`) and
+ * is the one gate that makes "respray it back and it is original again"
+ * work: a `stock`-grade job is refused everywhere but the car's own factory
+ * colour (`factoryColourSet`, so a two-tone car may lay either of its two
+ * factory halves) - `stagedWork.ts` reads that refusal to keep a player from
+ * laying a stock-grade job in a colour the car never wore. Street, sport and
+ * race lay any colour, since choosing to respray already spends the car's
+ * authenticity. */
 export function planPaintStage(
   zone: ZoneState,
   zoneId: ZoneId,
   colour: string,
   capability: BodyLineCapability,
+  grade: Grade,
+  factoryColour: string,
 ): PipelineStageEffect | PipelineStageRefusal {
   if (zone.panelMissing) return { ok: false, reason: 'needs-panel' }
   if (!zone.primed) return { ok: false, reason: 'prereq' }
+  if (zoneId !== 'chassis' && grade === 'stock' && !factoryColourSet(factoryColour).has(colour)) {
+    return { ok: false, reason: 'wrong-colour' }
+  }
   const finish = capability.unlocked ? 1 : 2
   return {
     ok: true,
     zone: { ...zone, finish, primed: false, colour },
     laborUnits: 1,
-    materialsCostYen: zoneId === 'chassis' ? UNDERSEAL_COST_YEN : PAINT_COST_YEN,
+    materialsCostYen:
+      zoneId === 'chassis' ? UNDERSEAL_COST_YEN : PAINT_TIN_COST_YEN_BY_GRADE[grade],
   }
 }
 
@@ -814,8 +996,17 @@ function planZoneRepair(
     // A bill prices the tin and never the shade, so the zone is put back in
     // whatever colour it already wore: a projected respray must not invent the
     // colour disagreement `derivePaintBand` penalises. The shade handed to the
-    // stage never survives it.
-    const paint = planPaintStage(current, zoneId, current.colour ?? '', BILL_CAPABILITY)
+    // stage never survives it. Grade `street` here is a plain solid tin, same
+    // price as `stock` (`PAINT_TIN_COST_YEN_BY_GRADE`) and never refused on
+    // colour, so a bill never has to know what grade is actually fitted.
+    const paint = planPaintStage(
+      current,
+      zoneId,
+      current.colour ?? '',
+      BILL_CAPABILITY,
+      'street',
+      '',
+    )
     if (paint.ok) {
       current = { ...paint.zone, colour: current.colour }
       finishYen += paint.materialsCostYen

@@ -46,6 +46,14 @@ function hasSlowerHalf(slower: number | undefined, faster: number | undefined): 
 export const CarModelSchema = z
   .object({
     id: z.string().regex(/^[a-z0-9-]+$/, 'ids are kebab-case: lowercase letters, digits, hyphens'),
+    /**
+     * The roster row's permanent identity, taken straight from the roster
+     * CSV's own `uid` column: assigned once, never reused, never renumbered.
+     * `rosterNo` cannot serve as a stable key because the roster is ordered
+     * by price, so inserting one car renumbers every row below it; `uid` is
+     * what anything outside the CSV binds to instead.
+     */
+    uid: z.string().regex(/^MG-\d{3}$/, 'uid is MG- followed by three digits'),
     displayName: z.string().min(1),
     brand: z.string().min(1),
     parodyName: z.string().min(1),

@@ -66,12 +66,24 @@ import { freshToolTiers } from './toolLines'
 
 const CONSUMABLE_PART_IDS: readonly CarPartId[] = ['tyres', 'brakePadsDiscs', 'clutch']
 
-/** Every body-pipeline material's own flat price, summed once - materials
- * price the same regardless of a car's class (an era-true tin of filler
- * costs the same on a kei or a grand tourer), so they join Law 3's
- * "brake pads vs car price" guard as one more flat consumable cost, exactly
- * like tyres/brakePadsDiscs/clutch. */
-const MATERIALS_COST_YEN = MATERIALS.reduce((sum, material) => sum + material.priceYen, 0)
+/**
+ * The materials one repair charges, summed once - they price the same
+ * regardless of a car's class (an era-true tin of filler costs the same on a
+ * kei or a grand tourer), so they join Law 3's "brake pads vs car price" guard
+ * as one more flat consumable cost, exactly like tyres/brakePadsDiscs/clutch.
+ *
+ * The metallic and pearl tins are excluded, and both reasons are independent.
+ * They are alternatives to the plain tin rather than additions to it, so a
+ * flat sum over all three would charge a car for three paint jobs it never
+ * does. And they are what a player buys to make a car BETTER than it left the
+ * factory: a repair restores a finish, it does not upgrade one, so an upgrade
+ * a car need never buy cannot belong in the guard that asks whether a cheap
+ * car is crushed by the costs it cannot avoid.
+ */
+const FINISH_UPGRADE_MATERIAL_IDS: readonly string[] = ['paint-metallic', 'paint-pearl']
+const MATERIALS_COST_YEN = MATERIALS.filter(
+  (material) => !FINISH_UPGRADE_MATERIAL_IDS.includes(material.id),
+).reduce((sum, material) => sum + material.priceYen, 0)
 
 export interface ModelBalanceProbeRow {
   modelId: string
@@ -223,6 +235,7 @@ function buildUniformBandCar(
       year,
       mileageKm,
       color: 'White',
+      factoryColour: model.spec.factoryColours[0]!,
       provenanceNote,
       parts,
       symptoms: [],

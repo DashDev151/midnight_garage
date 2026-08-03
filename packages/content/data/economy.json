@@ -662,6 +662,27 @@
       "surfaceExtraChance": 0.2,
       "zoneBeyondRepairChance": 0.18,
       "zonePanelMissingChance": 0.25
+    },
+    "paintHistory": {
+      "cherished": { "original": 90, "resprayed": 3, "mismatchedPanel": 5, "primedPanel": 2 },
+      "scene": { "original": 55, "resprayed": 30, "mismatchedPanel": 9, "primedPanel": 6 },
+      "worked": { "original": 70, "resprayed": 6, "mismatchedPanel": 14, "primedPanel": 10 },
+      "mixed": { "original": 75, "resprayed": 12, "mismatchedPanel": 9, "primedPanel": 4 }
+    },
+    "paintHistoryByCulture": {
+      "kei": "worked",
+      "drift": "scene",
+      "wangan": "scene",
+      "kyusha": "cherished",
+      "rotary": "mixed",
+      "touge": "scene",
+      "exotic": "cherished",
+      "kurokan": "scene",
+      "honest-transport": "worked",
+      "rally-bred": "mixed",
+      "touring-car": "cherished",
+      "front-drive-tuner": "scene",
+      "oddball": "mixed"
     }
   },
   "reputation": {

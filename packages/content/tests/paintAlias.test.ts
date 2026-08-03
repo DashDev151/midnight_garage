@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import paintAliases from '../data/paintAliases.json'
 import paintColours from '../data/paintColours.json'
@@ -5,10 +7,59 @@ import { PaintAliasSchema, PaintAliasesSchema } from '../src'
 
 const EM_DASH = String.fromCharCode(0x2014)
 
+/** RFC 4180 fields: quoted values may hold commas, newlines and "" escapes. */
+function parseCsv(text: string): string[][] {
+  const rows: string[][] = []
+  let field = ''
+  let row: string[] = []
+  let quoted = false
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i]
+    if (quoted) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') {
+          field += '"'
+          i++
+        } else quoted = false
+      } else field += ch
+    } else if (ch === '"') quoted = true
+    else if (ch === ',') {
+      row.push(field)
+      field = ''
+    } else if (ch === '\n') {
+      row.push(field)
+      rows.push(row)
+      row = []
+      field = ''
+    } else if (ch !== '\r') field += ch
+  }
+  if (field !== '' || row.length > 0) {
+    row.push(field)
+    rows.push(row)
+  }
+  return rows.filter((r) => r.length > 1)
+}
+
+/** Every uid the roster CSV knows about, read straight from the file so a
+ * typo'd alias binding has something real to fail against. */
+function rosterUids(): Set<string> {
+  const rows = parseCsv(
+    readFileSync(
+      join(__dirname, '..', '..', '..', 'docs', 'design', 'midnight-garage-roster.csv'),
+      'utf8',
+    ),
+  )
+  const header = rows[0]
+  if (!header) throw new Error('roster CSV: file is empty')
+  const uidAt = header.indexOf('uid')
+  return new Set(rows.slice(1).map((row) => row[uidAt] ?? ''))
+}
+
 /**
  * The iconic-colour alias table: schema parse, the 37 researched aliases,
  * unique kebab-case ids, every `colourId` resolving to a real palette entry,
- * every roster number in range, and both names free of the em dash.
+ * every `cars` entry a well-formed uid that actually exists in the roster,
+ * and both names free of the em dash.
  */
 describe('paintAliases.json', () => {
   it('validates against the paint alias schema', () => {
@@ -37,13 +88,20 @@ describe('paintAliases.json', () => {
     }
   })
 
-  it('every cars entry is an integer roster number from 1 to 94', () => {
+  it('every cars entry is a well-formed roster uid', () => {
     for (const alias of paintAliases) {
       expect(alias.cars.length, `${alias.id} has no cars`).toBeGreaterThan(0)
-      for (const rosterNo of alias.cars) {
-        expect(Number.isInteger(rosterNo), `${alias.id} has a non-integer roster number`).toBe(true)
-        expect(rosterNo, `${alias.id} has an out-of-range roster number`).toBeGreaterThanOrEqual(1)
-        expect(rosterNo, `${alias.id} has an out-of-range roster number`).toBeLessThanOrEqual(94)
+      for (const uid of alias.cars) {
+        expect(uid, `${alias.id} has a malformed uid`).toMatch(/^MG-\d{3}$/)
+      }
+    }
+  })
+
+  it('every cars entry names a uid that actually exists in the roster CSV', () => {
+    const uids = rosterUids()
+    for (const alias of paintAliases) {
+      for (const uid of alias.cars) {
+        expect(uids.has(uid), `${alias.id} names uid ${uid}, which is not in the roster`).toBe(true)
       }
     }
   })
@@ -69,7 +127,7 @@ describe('paintAliases.json', () => {
       realName: 'Probe Real',
       parodyName: 'Probe Parody',
       colourId: 'white',
-      cars: [1],
+      cars: ['MG-001'],
     })
     expect(result.success).toBe(false)
   })

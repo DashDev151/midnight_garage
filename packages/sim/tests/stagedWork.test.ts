@@ -285,6 +285,93 @@ describe('confirmStagedWork: pipeline-swap-panel', () => {
   })
 })
 
+describe('confirmStagedWork: pipeline-paint', () => {
+  const primedZone = { metal: 0, surface: 0, finish: 3, panelMissing: false, primed: true }
+  const cleanZone = { metal: 0, surface: 0, finish: 0, panelMissing: false, primed: false }
+
+  function paintCar(): CarInstance {
+    return buildCarInstance({
+      id: 'car-paint-0001',
+      modelId: 'honda-city-e-aa',
+      year: 1984,
+      mileageKm: 100_000,
+      factoryColour: 'white',
+      // honda-city-e-aa is 'entry' tier - the stock paint SKU that fitment
+      // class resolves to.
+      parts: mintCarParts({
+        paint: {
+          id: 'p-paint',
+          partId: CONTEXT.stockPartByCarPartId.entry.paint!.id,
+          band: 'fine',
+          origin: { kind: 'market', day: 1 },
+        },
+      }),
+      zoneState: {
+        bonnet: primedZone,
+        boot: primedZone,
+        left: cleanZone,
+        right: cleanZone,
+        roof: primedZone,
+        chassis: cleanZone,
+      },
+    })
+  }
+
+  it('a sport-grade respray charges the metallic tin and swaps in the sport paint SKU', () => {
+    const zoneCar = paintCar()
+    const state = baseState({
+      ownedCars: [zoneCar],
+      serviceBayCarIds: [zoneCar.id],
+      stagedCarWork: {
+        [zoneCar.id]: [
+          { kind: 'pipeline-paint', zoneId: 'bonnet', colour: 'kaido-blue', grade: 'sport' },
+        ],
+      },
+    })
+    const result = confirmStagedWork(state, zoneCar.id, 10, CONTEXT)
+    expect(state.cashYen - result.state.cashYen).toBe(5000)
+    expect(result.state.ownedCars[0]?.zoneState?.bonnet.colour).toBe('kaido-blue')
+    expect(result.state.ownedCars[0]?.zoneState?.bonnet.primed).toBe(false)
+    const installed = result.state.ownedCars[0]?.parts.paint.installed
+    expect(installed?.partId).toBe(CONTEXT.aftermarketPartByCarPartId.entry.paint!.sport!.id)
+  })
+
+  it('a stock-grade job in the factory colour succeeds and reads back as the stock SKU', () => {
+    const zoneCar = paintCar()
+    const state = baseState({
+      ownedCars: [zoneCar],
+      serviceBayCarIds: [zoneCar.id],
+      stagedCarWork: {
+        [zoneCar.id]: [{ kind: 'pipeline-paint', zoneId: 'boot', colour: 'white', grade: 'stock' }],
+      },
+    })
+    const result = confirmStagedWork(state, zoneCar.id, 10, CONTEXT)
+    expect(state.cashYen - result.state.cashYen).toBe(2500)
+    expect(result.state.ownedCars[0]?.zoneState?.boot.colour).toBe('white')
+    const installed = result.state.ownedCars[0]?.parts.paint.installed
+    expect(installed?.partId).toBe(CONTEXT.stockPartByCarPartId.entry.paint!.id)
+  })
+
+  it('a stock-grade job in any other colour is refused outright: no spend, no zone change', () => {
+    const zoneCar = paintCar()
+    const state = baseState({
+      ownedCars: [zoneCar],
+      serviceBayCarIds: [zoneCar.id],
+      stagedCarWork: {
+        [zoneCar.id]: [
+          { kind: 'pipeline-paint', zoneId: 'roof', colour: 'kaido-blue', grade: 'stock' },
+        ],
+      },
+    })
+    const result = confirmStagedWork(state, zoneCar.id, 10, CONTEXT)
+    expect(result.state.cashYen).toBe(state.cashYen)
+    expect(result.state.ownedCars[0]?.zoneState?.roof).toEqual(primedZone)
+    expect(result.state.ownedCars[0]?.parts.paint.installed?.partId).toBe(
+      CONTEXT.stockPartByCarPartId.entry.paint!.id,
+    )
+  })
+})
+
 describe('previewPlannedWork (Sprint 48)', () => {
   it('projects a planned group repair without spending cash, labor, or creating a job', () => {
     const state = baseState({

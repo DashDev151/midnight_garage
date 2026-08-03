@@ -130,6 +130,70 @@ const CareProfileByCultureSchema = z.object({
   oddball: CareProfileSchema,
 })
 
+/**
+ * The four whole-car paint states `rollZoneStates` (sim/bodyPipeline.ts)
+ * rolls a car into at generation: still wearing its factory colour, resprayed
+ * to something else, one panel a family-neighbour shade, or one panel bare.
+ * Declaration order feeds the cumulative weighted roll and carries no other
+ * meaning.
+ */
+export const PaintHistoryStateSchema = z.enum([
+  'original',
+  'resprayed',
+  'mismatchedPanel',
+  'primedPanel',
+])
+export type PaintHistoryState = z.infer<typeof PaintHistoryStateSchema>
+export const PAINT_HISTORY_STATES = PaintHistoryStateSchema.options
+
+/** One non-negative draw weight per paint-history state, keyed explicitly so
+ * a missing state fails validation rather than silently reading as zero. */
+const PaintHistoryStateWeightsSchema = z.object({
+  original: z.number().nonnegative(),
+  resprayed: z.number().nonnegative(),
+  mismatchedPanel: z.number().nonnegative(),
+  primedPanel: z.number().nonnegative(),
+})
+
+/**
+ * How likely a kind of car is to have kept its factory paint
+ * (docs/design/systems/paint-system-design.md). A separate question from
+ * `CareProfile` (how hard a car was used): the two correlate but are not the
+ * same fact, so a culture can sit in a different place on each ladder.
+ */
+export const PaintHistoryProfileSchema = z.enum(['cherished', 'scene', 'worked', 'mixed'])
+export type PaintHistoryProfile = z.infer<typeof PaintHistoryProfileSchema>
+export const PAINT_HISTORY_PROFILES = PaintHistoryProfileSchema.options
+
+/** One state distribution per paint-history profile, keyed explicitly so a
+ * missing profile fails validation rather than leaving a culture with no
+ * table. */
+const PaintHistoryWeightsSchema = z.object({
+  cherished: PaintHistoryStateWeightsSchema,
+  scene: PaintHistoryStateWeightsSchema,
+  worked: PaintHistoryStateWeightsSchema,
+  mixed: PaintHistoryStateWeightsSchema,
+})
+
+/** Which paint-history profile each culture starts from, keyed explicitly so
+ * a culture added to `CarCultureSchema` without a profile fails validation
+ * rather than silently generating undefined weights. */
+const PaintHistoryByCultureSchema = z.object({
+  kei: PaintHistoryProfileSchema,
+  drift: PaintHistoryProfileSchema,
+  wangan: PaintHistoryProfileSchema,
+  kyusha: PaintHistoryProfileSchema,
+  rotary: PaintHistoryProfileSchema,
+  touge: PaintHistoryProfileSchema,
+  exotic: PaintHistoryProfileSchema,
+  kurokan: PaintHistoryProfileSchema,
+  'honest-transport': PaintHistoryProfileSchema,
+  'rally-bred': PaintHistoryProfileSchema,
+  'touring-car': PaintHistoryProfileSchema,
+  'front-drive-tuner': PaintHistoryProfileSchema,
+  oddball: PaintHistoryProfileSchema,
+})
+
 /** One non-negative multiplier per damage grade, keyed explicitly like every
  * other grade table here. */
 const DamageGradeMultipliersSchema = z.object({
@@ -1968,6 +2032,18 @@ export const EconomyConfigSchema = z.object({
         zoneBeyondRepairChance: z.number().min(0).max(1),
         zonePanelMissingChance: z.number().min(0).max(1),
       }),
+      /**
+       * Which whole-car paint state a generated car rolls into
+       * (docs/design/systems/paint-system-design.md): a separate table from
+       * `damageGrades.careProfileByCulture`, deliberately - that one answers
+       * how hard a car was used, this one answers whether it was repainted,
+       * and the two correlate without being the same fact. `paintHistoryByCulture`
+       * picks the profile a car's own scene tends toward and `paintHistory`
+       * is the state distribution that profile rolls from
+       * (`rollZoneStates`, sim/bodyPipeline.ts).
+       */
+      paintHistory: PaintHistoryWeightsSchema,
+      paintHistoryByCulture: PaintHistoryByCultureSchema,
     })
     .refine(
       (pg) =>
@@ -1977,6 +2053,16 @@ export const EconomyConfigSchema = z.object({
       {
         message:
           'every partsGeneration.damageGrades.careProfiles row must give at least one grade a real share, or a car with that profile has nothing to roll',
+      },
+    )
+    .refine(
+      (pg) =>
+        PAINT_HISTORY_PROFILES.every((profile) =>
+          PAINT_HISTORY_STATES.some((state) => pg.paintHistory[profile][state] > 0),
+        ),
+      {
+        message:
+          'every partsGeneration.paintHistory row must give at least one state a real share, or a car with that profile has nothing to roll',
       },
     )
     .refine(

@@ -60,6 +60,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'assigned',
     model: {
       id: 'porsche-911-turbo-930',
+      uid: 'unknown',
       displayName: 'Porsche 911 Turbo 3.3',
       brand: 'Porsche',
       parodyName: 'Research entry',
@@ -118,6 +119,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'derived',
     model: {
       id: 'honda-civic-type-r-ek9',
+      uid: 'unknown',
       displayName: 'Honda Civic Type R',
       brand: 'Honda',
       parodyName: 'Research entry',
@@ -176,6 +178,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'derived',
     model: {
       id: 'honda-integra-type-r-dc2',
+      uid: 'unknown',
       displayName: 'Acura Integra Type-R',
       brand: 'Acura',
       parodyName: 'Research entry',
@@ -237,6 +240,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'derived',
     model: {
       id: 'toyota-starlet-glanza-v-ep91',
+      uid: 'unknown',
       displayName: 'Toyota Starlet Glanza V',
       brand: 'Toyota',
       parodyName: 'Research entry',
@@ -304,6 +308,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'derived',
     model: {
       id: 'nissan-laurel-c33',
+      uid: 'unknown',
       displayName: 'Nissan Laurel (C33)',
       brand: 'Nissan',
       parodyName: 'Research entry',
@@ -356,6 +361,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'derived',
     model: {
       id: 'toyota-chaser-tourer-v-jzx100',
+      uid: 'unknown',
       displayName: 'Toyota Chaser 2.5 Tourer V',
       brand: 'Toyota',
       parodyName: 'Research entry',
@@ -415,6 +421,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'derived',
     model: {
       id: 'nissan-s-cargo-fhk11',
+      uid: 'unknown',
       displayName: 'Nissan S-Cargo',
       brand: 'Nissan',
       parodyName: 'Research entry',
@@ -471,6 +478,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'derived',
     model: {
       id: 'subaru-alcyone-svx-cxd',
+      uid: 'unknown',
       displayName: 'Subaru SVX',
       brand: 'Subaru',
       parodyName: 'Research entry',
@@ -529,6 +537,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'derived',
     model: {
       id: 'mitsubishi-gto-twin-turbo-z16a',
+      uid: 'unknown',
       displayName: 'Mitsubishi GTO',
       brand: 'Mitsubishi',
       parodyName: 'Research entry',
@@ -587,6 +596,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'derived',
     model: {
       id: 'mitsubishi-starion-a187a',
+      uid: 'unknown',
       displayName: 'Mitsubishi Starion (A187A)',
       brand: 'Mitsubishi',
       parodyName: 'Research entry',
@@ -640,6 +650,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'derived',
     model: {
       id: 'toyota-soarer-jzz30',
+      uid: 'unknown',
       displayName: 'Toyota Soarer 2.5 GT-T',
       brand: 'Toyota',
       parodyName: 'Research entry',
@@ -698,6 +709,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'assigned',
     model: {
       id: 'nissan-fairlady-240zg-hs30',
+      uid: 'unknown',
       displayName: 'Nissan Fairlady 240ZG (HS30)',
       brand: 'Nissan',
       parodyName: 'Research entry',
@@ -750,6 +762,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'assigned',
     model: {
       id: 'datsun-510-bluebird-pl510',
+      uid: 'unknown',
       displayName: 'Datsun 510',
       brand: 'Datsun',
       parodyName: 'Research entry',
@@ -808,6 +821,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'assigned',
     model: {
       id: 'nissan-skyline-2000gt-x-kenmeri-kgc110',
+      uid: 'unknown',
       displayName: 'Nissan Skyline H/T 2000GT-R',
       brand: 'Nissan',
       parodyName: 'Research entry',
@@ -866,6 +880,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'assigned',
     model: {
       id: 'mazda-cosmo-sport-110s-l10a',
+      uid: 'unknown',
       displayName: 'Mazda Cosmo 110S Series II',
       brand: 'Mazda',
       parodyName: 'Research entry',
@@ -919,6 +934,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'assigned',
     model: {
       id: 'mercedes-190e-2-5-16-evo-ii-w201',
+      uid: 'unknown',
       displayName: 'Mercedes-Benz 190E 2.5-16 Evolution II',
       brand: 'Mercedes-Benz',
       parodyName: 'Research entry',
@@ -977,6 +993,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'assigned',
     model: {
       id: 'bmw-m3-e30',
+      uid: 'unknown',
       displayName: 'BMW M3',
       brand: 'BMW',
       parodyName: 'Research entry',
@@ -1035,6 +1052,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'assigned',
     model: {
       id: 'lancia-delta-hf-integrale-evo',
+      uid: 'unknown',
       displayName: 'Lancia Delta HF Integrale Evo',
       brand: 'Lancia',
       parodyName: 'Research entry',
@@ -1093,6 +1111,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'assigned',
     model: {
       id: 'alfa-romeo-75-3-0-v6',
+      uid: 'unknown',
       displayName: 'Alfa Romeo 75 3.0 V6',
       brand: 'Alfa',
       parodyName: 'Research entry',
@@ -1145,6 +1164,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'assigned',
     model: {
       id: 'ferrari-testarossa-f113',
+      uid: 'unknown',
       displayName: 'Ferrari 512 TR',
       brand: 'Ferrari',
       parodyName: 'Research entry',
@@ -1202,6 +1222,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'assigned',
     model: {
       id: 'lamborghini-countach-lp5000-qv',
+      uid: 'unknown',
       displayName: 'Lamborghini Countach LP5000 QV',
       brand: 'Lamborghini',
       parodyName: 'Research entry',
@@ -1260,6 +1281,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'assigned',
     model: {
       id: 'rover-mini-cooper-1-3i',
+      uid: 'unknown',
       displayName: 'MINI Cooper S',
       brand: 'MINI',
       parodyName: 'Research entry',
@@ -1316,6 +1338,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'assigned',
     model: {
       id: 'ferrari-f355-berlinetta-f129',
+      uid: 'unknown',
       displayName: 'Ferrari F355 Berlinetta',
       brand: 'Ferrari',
       parodyName: 'Research entry',
@@ -1374,6 +1397,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'assigned',
     model: {
       id: 'bmw-m3-e36',
+      uid: 'unknown',
       displayName: 'BMW M3',
       brand: 'BMW',
       parodyName: 'Research entry',
@@ -1432,6 +1456,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'assigned',
     model: {
       id: 'ford-escort-rs-cosworth',
+      uid: 'unknown',
       displayName: 'Ford Escort RS Cosworth',
       brand: 'Ford',
       parodyName: 'Research entry',
@@ -1490,6 +1515,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'assigned',
     model: {
       id: 'vw-golf-gti-mk2-16v',
+      uid: 'unknown',
       displayName: 'Volkswagen Golf GTI 16V Mk2',
       brand: 'Volkswagen',
       parodyName: 'Research entry',
@@ -1549,6 +1575,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'derived',
     model: {
       id: 'eunos-cosmo-jc',
+      uid: 'unknown',
       displayName: 'Eunos Cosmo (JC)',
       brand: 'Eunos',
       parodyName: 'Research entry',
@@ -1602,6 +1629,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'derived',
     model: {
       id: 'toyota-celica-gt-four-st205',
+      uid: 'unknown',
       displayName: 'Toyota Celica GT-Four ST205',
       brand: 'Toyota',
       parodyName: 'Research entry',
@@ -1660,6 +1688,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'derived',
     model: {
       id: 'nissan-pulsar-gti-r-rnn14',
+      uid: 'unknown',
       displayName: 'Nissan Pulsar GTI-R',
       brand: 'Nissan',
       parodyName: 'Research entry',
@@ -1718,6 +1747,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'derived',
     model: {
       id: 'mazda-familia-gt-r-bg8z',
+      uid: 'unknown',
       displayName: 'Mazda Familia GT-R (BG8Z)',
       brand: 'Mazda',
       parodyName: 'Research entry',
@@ -1771,6 +1801,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'assigned',
     model: {
       id: 'nissan-350z-z33',
+      uid: 'unknown',
       displayName: 'Nissan Fairlady Z',
       brand: 'Nissan',
       parodyName: 'Research entry',
@@ -1829,6 +1860,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'assigned',
     model: {
       id: 'mazda-rx-8-se3p',
+      uid: 'unknown',
       displayName: 'Mazda RX-8 R3',
       brand: 'Mazda',
       parodyName: 'Research entry',
@@ -1887,6 +1919,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'assigned',
     model: {
       id: 'mitsubishi-lancer-evo-viii-mr-ct9a',
+      uid: 'unknown',
       displayName: 'Mitsubishi Lancer Evolution VIII MR',
       brand: 'Mitsubishi',
       parodyName: 'Research entry',
@@ -1946,6 +1979,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'assigned',
     model: {
       id: 'honda-integra-type-r-dc5',
+      uid: 'unknown',
       displayName: 'Acura RSX Type-S',
       brand: 'Acura',
       parodyName: 'Research entry',
@@ -2004,6 +2038,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'derived',
     model: {
       id: 'daihatsu-copen-l880k',
+      uid: 'unknown',
       displayName: 'Daihatsu Copen (L880K)',
       brand: 'Daihatsu',
       parodyName: 'Research entry',
@@ -2057,6 +2092,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'assigned',
     model: {
       id: 'nissan-gt-r-r35',
+      uid: 'unknown',
       displayName: 'Nissan GT-R Black Edition (R35)',
       brand: 'Nissan',
       parodyName: 'Research entry',
@@ -2116,6 +2152,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'assigned',
     model: {
       id: 'lexus-lfa',
+      uid: 'unknown',
       displayName: 'Lexus LFA',
       brand: 'Lexus',
       parodyName: 'Research entry',
@@ -2174,6 +2211,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'assigned',
     model: {
       id: 'nissan-skyline-gt-r-v-spec-ii-bnr34',
+      uid: 'unknown',
       displayName: 'Nissan Skyline GT-R V-Spec II',
       brand: 'Nissan',
       parodyName: 'Research entry',
@@ -2233,6 +2271,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'assigned',
     model: {
       id: 'honda-nsx-r-na1',
+      uid: 'unknown',
       displayName: 'Honda NSX-R',
       brand: 'Honda',
       parodyName: 'Research entry',
@@ -2291,6 +2330,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'assigned',
     model: {
       id: 'nissan-skyline-gt-r-hakosuka-kpgc10',
+      uid: 'unknown',
       displayName: 'Nissan Skyline 2000GT-R',
       brand: 'Nissan',
       parodyName: 'Research entry',
@@ -2349,6 +2389,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'assigned',
     model: {
       id: 'nissan-fairlady-z432-ps30',
+      uid: 'unknown',
       displayName: 'Nissan Fairlady Z 432',
       brand: 'Nissan',
       parodyName: 'Research entry',
@@ -2407,6 +2448,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'assigned',
     model: {
       id: 'subaru-impreza-22b-sti',
+      uid: 'unknown',
       displayName: 'Subaru Impreza 22B-STi Version',
       brand: 'Subaru',
       parodyName: 'Research entry',
@@ -2465,6 +2507,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'assigned',
     model: {
       id: 'mitsubishi-lancer-evo-vi-tommi-makinen-cp9a',
+      uid: 'unknown',
       displayName: 'Mitsubishi Lancer Evolution VI GSR TM Edition',
       brand: 'Mitsubishi',
       parodyName: 'Research entry',
@@ -2524,6 +2567,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'assigned',
     model: {
       id: 'toyota-2000gt-mf10',
+      uid: 'unknown',
       displayName: 'Toyota 2000GT',
       brand: 'Toyota',
       parodyName: 'Research entry',
@@ -2582,6 +2626,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'assigned',
     model: {
       id: 'mazda-autozam-az-1-pg6sa',
+      uid: 'unknown',
       displayName: 'Autozam AZ-1',
       brand: 'Autozam',
       parodyName: 'Research entry',
@@ -2640,6 +2685,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'assigned',
     model: {
       id: 'mazda-rx-7-spirit-r-fd3s',
+      uid: 'unknown',
       displayName: 'Mazda RX-7 Spirit R (FD3S)',
       brand: 'Mazda',
       parodyName: 'Research entry',
@@ -2693,6 +2739,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'assigned',
     model: {
       id: 'nissan-silvia-spec-r-s15',
+      uid: 'unknown',
       displayName: 'Nissan Silvia Spec-R',
       brand: 'Nissan',
       parodyName: 'Research entry',
@@ -2753,6 +2800,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'derived',
     model: {
       id: 'autech-stagea-260rs-wgnc34',
+      uid: 'unknown',
       displayName: 'Nissan Stagea RS Four V',
       brand: 'Nissan',
       parodyName: 'Research entry',
@@ -2811,6 +2859,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'derived',
     model: {
       id: 'toyota-altezza-rs200-z-edition-sxe10',
+      uid: 'unknown',
       displayName: 'Toyota Altezza RS200 Z Edition',
       brand: 'Toyota',
       parodyName: 'Research entry',
@@ -2869,6 +2918,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'derived',
     model: {
       id: 'honda-s2000-ap1',
+      uid: 'unknown',
       displayName: 'Honda S2000',
       brand: 'Honda',
       parodyName: 'Research entry',
@@ -2929,6 +2979,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'derived',
     model: {
       id: 'daihatsu-mira-tr-xx-l70',
+      uid: 'unknown',
       displayName: 'Daihatsu Mira TR-XX (L70)',
       brand: 'Daihatsu',
       parodyName: 'Research entry',
@@ -2982,6 +3033,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'derived',
     model: {
       id: 'honda-today-jw1',
+      uid: 'unknown',
       displayName: 'Honda Today (JW1)',
       brand: 'Honda',
       parodyName: 'Research entry',
@@ -3034,6 +3086,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'derived',
     model: {
       id: 'subaru-vivio-rx-r-kk4',
+      uid: 'unknown',
       displayName: 'Subaru Vivio RX-R',
       brand: 'Subaru',
       parodyName: 'Research entry',
@@ -3092,6 +3145,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'derived',
     model: {
       id: 'daihatsu-mira-tr-xx-avanzato-r-l502s',
+      uid: 'unknown',
       displayName: 'Daihatsu Mira TR-XX Avanzato R (L502S)',
       brand: 'Daihatsu',
       parodyName: 'Research entry',
@@ -3145,6 +3199,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'derived',
     model: {
       id: 'honda-acty-ha4',
+      uid: 'unknown',
       displayName: 'Honda Acty',
       brand: 'Honda',
       parodyName: 'Research entry',
@@ -3201,6 +3256,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'derived',
     model: {
       id: 'suzuki-cappuccino-ea11r',
+      uid: 'unknown',
       displayName: 'Suzuki Cappuccino (EA11R)',
       brand: 'Suzuki',
       parodyName: 'Research entry',
@@ -3255,6 +3311,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'derived',
     model: {
       id: 'eunos-roadster-na6ce',
+      uid: 'unknown',
       displayName: 'Mazda MX-5 Miata',
       brand: 'Mazda',
       parodyName: 'Research entry',
@@ -3313,6 +3370,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'derived',
     model: {
       id: 'nissan-skyline-gt-r-bcnr33',
+      uid: 'unknown',
       displayName: 'Nissan Skyline GT-R V-Spec',
       brand: 'Nissan',
       parodyName: 'Research entry',
@@ -3372,6 +3430,7 @@ export const SANDBOX_ROSTER: readonly SandboxRosterEntry[] = [
     tierSource: 'derived',
     model: {
       id: 'subaru-impreza-wrx-sti-gdb',
+      uid: 'unknown',
       displayName: 'Subaru IMPREZA WRX STI',
       brand: 'Subaru',
       parodyName: 'Research entry',

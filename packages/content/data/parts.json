@@ -7348,6 +7348,210 @@
     "fitmentClass": "flagship"
   },
   {
+    "id": "nurikabe-solid-respray",
+    "brand": "Nurikabe",
+    "name": "Solid Respray",
+    "carPartId": "paint",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
+      "style": 5
+    },
+    "fitmentClass": "everyday"
+  },
+  {
+    "id": "shitbox-nurikabe-solid-respray",
+    "brand": "Nurikabe",
+    "name": "Solid Respray",
+    "carPartId": "paint",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
+      "style": 5
+    },
+    "fitmentClass": "entry"
+  },
+  {
+    "id": "uncommon-nurikabe-solid-respray",
+    "brand": "Nurikabe",
+    "name": "Solid Respray",
+    "carPartId": "paint",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
+      "style": 5
+    },
+    "fitmentClass": "enthusiast"
+  },
+  {
+    "id": "rare-nurikabe-solid-respray",
+    "brand": "Nurikabe",
+    "name": "Solid Respray",
+    "carPartId": "paint",
+    "grade": "street",
+    "requiredTags": [],
+    "statModifiers": {
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
+      "style": 5
+    },
+    "fitmentClass": "flagship"
+  },
+  {
+    "id": "nurikabe-metallic-respray",
+    "brand": "Nurikabe",
+    "name": "Metallic Respray",
+    "carPartId": "paint",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
+      "style": 10
+    },
+    "fitmentClass": "everyday"
+  },
+  {
+    "id": "shitbox-nurikabe-metallic-respray",
+    "brand": "Nurikabe",
+    "name": "Metallic Respray",
+    "carPartId": "paint",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
+      "style": 10
+    },
+    "fitmentClass": "entry"
+  },
+  {
+    "id": "uncommon-nurikabe-metallic-respray",
+    "brand": "Nurikabe",
+    "name": "Metallic Respray",
+    "carPartId": "paint",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
+      "style": 10
+    },
+    "fitmentClass": "enthusiast"
+  },
+  {
+    "id": "rare-nurikabe-metallic-respray",
+    "brand": "Nurikabe",
+    "name": "Metallic Respray",
+    "carPartId": "paint",
+    "grade": "sport",
+    "requiredTags": [],
+    "statModifiers": {
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
+      "style": 10
+    },
+    "fitmentClass": "flagship"
+  },
+  {
+    "id": "nurikabe-pearl-respray",
+    "brand": "Nurikabe",
+    "name": "Pearl Respray",
+    "carPartId": "paint",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
+      "style": 15
+    },
+    "fitmentClass": "everyday"
+  },
+  {
+    "id": "shitbox-nurikabe-pearl-respray",
+    "brand": "Nurikabe",
+    "name": "Pearl Respray",
+    "carPartId": "paint",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
+      "style": 15
+    },
+    "fitmentClass": "entry"
+  },
+  {
+    "id": "uncommon-nurikabe-pearl-respray",
+    "brand": "Nurikabe",
+    "name": "Pearl Respray",
+    "carPartId": "paint",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
+      "style": 15
+    },
+    "fitmentClass": "enthusiast"
+  },
+  {
+    "id": "rare-nurikabe-pearl-respray",
+    "brand": "Nurikabe",
+    "name": "Pearl Respray",
+    "carPartId": "paint",
+    "grade": "race",
+    "requiredTags": [],
+    "statModifiers": {
+      "powerFraction": {
+        "high-strung-na": 0,
+        "lazy-na": 0,
+        "forced": 0
+      },
+      "style": 15
+    },
+    "fitmentClass": "flagship"
+  },
+  {
     "id": "stock-underbody",
     "brand": "OEM",
     "name": "Stock Underbody",

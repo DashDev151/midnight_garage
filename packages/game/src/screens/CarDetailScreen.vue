@@ -4,6 +4,7 @@ import type {
   CarPartId,
   ComponentId,
   ConditionBand,
+  Grade,
   PartInstance,
   SellingChannelId,
   StagedAction,
@@ -14,9 +15,11 @@ import {
   ASSEMBLIES,
   ComponentIdSchema,
   ECONOMY,
+  PAINT_ALIASES,
   PAINT_COLOURS,
   PARTS_TAXONOMY,
   fitmentClassForTier,
+  resolvePaintColourName,
   titleCaseFromSlug,
 } from '@midnight-garage/content'
 import type { DynoSessionGateReason } from '@midnight-garage/sim'
@@ -46,6 +49,7 @@ import { MACHINE_LINE_NAMES } from '../utils/dayLogFormat'
 import { DYNO_NAME } from '../utils/dynoLabels'
 import { formatYen, formatYenDelta } from '../utils/formatYen'
 import { LEDGER_LINE_LABELS, formatLedgerLineYen } from '../utils/ledgerLabels'
+import { PAINT_COLOUR_FAMILIES } from '../utils/paintFamilies'
 import { addressesOverlap, hasWorkAddress } from '../utils/partAddress'
 import {
   SELLING_CHANNEL_LABELS,
@@ -708,7 +712,7 @@ function stagedActionLabel(action: StagedAction): string {
       // tin there would be a fiction.
       return action.zoneId === 'chassis'
         ? `Underseal: ${zoneName}`
-        : `Paint (${paintColourName(action.colour)}): ${zoneName}`
+        : `Paint (${paintColourName(action.colour)}, ${action.grade}): ${zoneName}`
     }
     return `${PIPELINE_STAGE_LABELS[action.stage] ?? action.stage}: ${zoneName}`
   }
@@ -798,13 +802,19 @@ function onStageGeneric(zoneId: ZoneId, stage: (typeof GENERIC_STAGES)[number]):
  * player input, kept per zone so moving between zones never loses a pick. */
 const paintColourByZone = ref<Record<string, string>>({})
 
+/** The finish grade armed for each zone - stock, street, sport or race. */
+const paintGradeByZone = ref<Record<string, Grade>>({})
+
 /**
  * The chassis zone's finish coat is underseal, not paint: the sim charges the
  * underseal material for it (`planPaintStage`) and nothing ever reads the
  * shade back, since the paint band derives from the five panel zones alone. So
- * the colour is fixed here rather than offered as a swatch.
+ * the colour is fixed here rather than offered as a swatch, and the grade -
+ * which underseal ignores entirely - is fixed alongside it rather than
+ * offered as a choice with nothing to choose.
  */
 const UNDERSEAL_COLOUR = 'underseal'
+const UNDERSEAL_GRADE: Grade = 'stock'
 
 /** The colour the finish stage would lay on this zone: the armed swatch on a
  * panel zone, underseal on the chassis, `null` while no tin is picked. */
@@ -813,24 +823,97 @@ function paintColourFor(zoneId: ZoneId): string | null {
   return paintColourByZone.value[zoneId] ?? null
 }
 
-/** A stored colour id as the name on the tin, falling back to the raw value so
- * an unknown id still reads as something rather than vanishing. */
-function paintColourName(colourId: string): string {
-  return PAINT_COLOURS.find((c) => c.id === colourId)?.name ?? colourId
+/** The finish grade the stage would lay on this zone: the armed choice on a
+ * panel zone, the fixed underseal grade on the chassis, `null` while no
+ * finish is picked. */
+function paintGradeFor(zoneId: ZoneId): Grade | null {
+  if (zoneId === 'chassis') return UNDERSEAL_GRADE
+  return paintGradeByZone.value[zoneId] ?? null
 }
 
-function paintPreview(zoneId: ZoneId): { costYen: number; laborSlots: number } | null {
+/** The display name for a colour token - a solid palette id, or a factory
+ * two-tone joining two with `+`. Prefers this car's own iconic manufacturer
+ * name (`PAINT_ALIASES`, matched on the whole token and the model's `uid`)
+ * and falls back to the palette's plain name(s), joined for a two-tone, so an
+ * unresearched or unknown id still reads as something rather than
+ * vanishing. */
+function colourTokenDisplayName(token: string): string {
+  const uid = detail.value?.model.uid
+  const alias = uid
+    ? PAINT_ALIASES.find((a) => a.colourId === token && a.cars.includes(uid))
+    : undefined
+  if (alias) return resolvePaintColourName(alias)
+  return token
+    .split('+')
+    .map((id) => PAINT_COLOURS.find((c) => c.id === id)?.name ?? id)
+    .join(' and ')
+}
+
+/** A stored colour id as the name on the tin - always a solid id, since a
+ * respray lays exactly one colour on one zone. */
+function paintColourName(colourId: string): string {
+  return colourTokenDisplayName(colourId)
+}
+
+/** Every palette id this car legitimately wears - one entry, or two for a
+ * genuine factory two-tone. */
+const factoryColourIds = computed<string[]>(() =>
+  detail.value ? detail.value.car.factoryColour.split('+') : [],
+)
+
+/** True when `colourId` is (one half of) this car's own factory colour - the
+ * marker every colour listing carries, and the one thing that makes a wrong
+ * colour mean anything. */
+function isFactoryColour(colourId: string): boolean {
+  return factoryColourIds.value.includes(colourId)
+}
+
+/** What this car left the factory wearing, named in full - the iconic name
+ * where one applies, the plain palette name(s) otherwise. */
+const factoryColourCaption = computed<string>(() =>
+  detail.value ? colourTokenDisplayName(detail.value.car.factoryColour) : '',
+)
+
+/** One grade's own style modifier for this car's fitment class, read from the
+ * catalog rather than typed in - the stock SKU for `stock`, the matching
+ * aftermarket SKU otherwise. */
+function paintStyleForGrade(grade: Grade): number {
+  const d = detail.value
+  if (!d) return 0
+  const fitmentClass = fitmentClassForTier(d.model.tier)
+  const part =
+    grade === 'stock'
+      ? game.context.stockPartByCarPartId[fitmentClass]?.paint
+      : game.context.aftermarketPartByCarPartId[fitmentClass]?.paint?.[grade]
+  return part?.statModifiers.style ?? 0
+}
+
+/** One grade's own plan for this zone at the currently armed colour - the
+ * same `pipelineActionPlan` call Confirm resolves with, so a refused
+ * combination (stock grade, wrong colour) shows no total rather than one a
+ * commit would then refuse. `null` while no colour is armed yet. */
+function paintPlanFor(
+  zoneId: ZoneId,
+  grade: Grade,
+): { costYen: number; laborSlots: number } | null {
   const d = detail.value
   const colour = paintColourFor(zoneId)
   if (!d || !colour) return null
-  return game.pipelineActionPlan(d.car, { kind: 'pipeline-paint', zoneId, colour })
+  return game.pipelineActionPlan(d.car, { kind: 'pipeline-paint', zoneId, colour, grade })
+}
+
+function paintPreview(zoneId: ZoneId): { costYen: number; laborSlots: number } | null {
+  const grade = paintGradeFor(zoneId)
+  if (!grade) return null
+  return paintPlanFor(zoneId, grade)
 }
 
 function onStagePaint(zoneId: ZoneId): void {
   const d = detail.value
   const colour = paintColourFor(zoneId)
-  if (!d || !colour) return
-  game.stageAction(d.car.id, { kind: 'pipeline-paint', zoneId, colour })
+  const grade = paintGradeFor(zoneId)
+  if (!d || !colour || !grade) return
+  game.stageAction(d.car.id, { kind: 'pipeline-paint', zoneId, colour, grade })
 }
 
 /** Zone panels sitting in inventory that fit THIS car's own fitment class,
@@ -906,6 +989,55 @@ const armedColourName = computed(() => {
  * is no honest total to state. */
 function pipelineCostText(plan: { costYen: number; laborSlots: number } | null): string {
   return plan ? ` · ${formatYen(plan.costYen)} · ${plan.laborSlots} labour` : ''
+}
+
+/** The finish ladder, cheapest and most original first. */
+const PAINT_GRADES: readonly Grade[] = ['stock', 'street', 'sport', 'race']
+
+const PAINT_GRADE_LABELS: Record<Grade, string> = {
+  stock: 'Factory-correct',
+  street: 'Solid respray',
+  sport: 'Metallic',
+  race: 'Pearl',
+}
+
+/** What each grade does to originality - a fixed fact of the ladder, not a
+ * per-car number: stock is the only grade the sim ever lets land in the
+ * car's own colour, which is what lets it win the slot's authenticity back,
+ * and every other grade is a respray, which always spends it. */
+const PAINT_GRADE_ORIGINALITY: Record<Grade, string> = {
+  stock: 'restores originality',
+  street: 'costs originality',
+  sport: 'costs originality',
+  race: 'costs originality',
+}
+
+/** The four finish buttons for the docked zone, each with its own style
+ * modifier and live plan - `plan` is null (button disabled) for stock grade
+ * once a non-factory colour is armed, which is what keeps that combination
+ * off the table rather than staged and then refused. */
+const zoneGradeOptions = computed(() => {
+  const zone = selectedZone.value
+  if (!zone || !zone.isPanelZone) return []
+  return PAINT_GRADES.map((grade) => ({
+    grade,
+    label: PAINT_GRADE_LABELS[grade],
+    originality: PAINT_GRADE_ORIGINALITY[grade],
+    style: paintStyleForGrade(grade),
+    plan: paintPlanFor(zone.zoneId, grade),
+  }))
+})
+
+/** One finish button's full inline text, in the same loud-price idiom every
+ * other control on this panel uses. */
+function paintGradeButtonText(option: {
+  label: string
+  originality: string
+  style: number
+  plan: { costYen: number; laborSlots: number } | null
+}): string {
+  const styleText = option.style > 0 ? ` · +${option.style} style` : ''
+  return `${option.label} - ${option.originality}${styleText}${pipelineCostText(option.plan)}`
 }
 
 const draggedPartName = computed(() => {
@@ -1462,26 +1594,54 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             >
           </div>
 
-          <div class="panel-actions">
+          <div class="panel-actions paint-actions">
             <!-- Colour is a small fixed set of tins, so it is a swatch pick.
                  The chassis gets none: its finish coat is underseal. -->
             <template v-if="selectedZone.isPanelZone">
+              <span
+                class="zone-sub factory-colour"
+                :data-test="'factory-colour-' + selectedZone.zoneId"
+              >
+                Factory colour: {{ factoryColourCaption }}
+              </span>
               <span class="zone-sub">Colour</span>
-              <button
-                v-for="colour in PAINT_COLOURS"
-                :key="colour.id"
-                type="button"
-                class="paint-swatch"
-                :class="{ armed: paintColourByZone[selectedZone.zoneId] === colour.id }"
-                :style="{ backgroundColor: colour.hex }"
-                :aria-pressed="paintColourByZone[selectedZone.zoneId] === colour.id"
-                :aria-label="colour.name"
-                :data-test="'paint-swatch-' + selectedZone.zoneId + '-' + colour.id"
-                @click="paintColourByZone[selectedZone.zoneId] = colour.id"
-              ></button>
+              <div v-for="family in PAINT_COLOUR_FAMILIES" :key="family.label" class="paint-family">
+                <span class="family-label">{{ family.label }}</span>
+                <div class="paint-swatch-row">
+                  <button
+                    v-for="colour in family.colours"
+                    :key="colour.id"
+                    type="button"
+                    class="paint-swatch"
+                    :class="{
+                      armed: paintColourByZone[selectedZone.zoneId] === colour.id,
+                      factory: isFactoryColour(colour.id),
+                    }"
+                    :style="{ backgroundColor: colour.hex }"
+                    :aria-pressed="paintColourByZone[selectedZone.zoneId] === colour.id"
+                    :aria-label="colour.name"
+                    :data-test="'paint-swatch-' + selectedZone.zoneId + '-' + colour.id"
+                    @click="paintColourByZone[selectedZone.zoneId] = colour.id"
+                  ></button>
+                </div>
+              </div>
               <span class="zone-sub" data-test="paint-colour-name">{{
                 armedColourName ?? 'no tin picked yet'
               }}</span>
+
+              <span class="zone-sub">Finish</span>
+              <button
+                v-for="option in zoneGradeOptions"
+                :key="option.grade"
+                type="button"
+                class="step-up loud"
+                :class="{ armed: paintGradeByZone[selectedZone.zoneId] === option.grade }"
+                :disabled="!option.plan"
+                :data-test="'paint-grade-' + selectedZone.zoneId + '-' + option.grade"
+                @click="paintGradeByZone[selectedZone.zoneId] = option.grade"
+              >
+                {{ paintGradeButtonText(option) }}
+              </button>
             </template>
             <button
               type="button"
@@ -2278,6 +2438,12 @@ h4 {
   font-size: var(--mg-fs-sm);
 }
 
+/* Its own line above the swatch grid rather than wrapped in among the
+   buttons, since it is a statement of fact rather than a control. */
+.factory-colour {
+  flex-basis: 100%;
+}
+
 /* A paint chip. The tin's own colour is the button's face, so this fill is the
    one legitimate literal colour on the screen - it is content data, not
    palette, and it arrives inline from `PAINT_COLOURS`. Square, and it stays
@@ -2297,9 +2463,40 @@ h4 {
   transform: translateY(1px);
 }
 
+/* The one marker that makes a wrong colour mean anything: the swatch(es)
+   this car actually left the factory wearing, two for a genuine two-tone. */
+.paint-swatch.factory {
+  outline: 2px solid var(--mg-neon-violet);
+  outline-offset: 1px;
+}
+
 .paint-swatch:focus-visible {
   outline: none;
   box-shadow: inset 0 0 0 2px var(--mg-neon-cyan);
+}
+
+/* The 34-colour palette read a family at a time, so the grid does not read as
+   one undifferentiated wall of chips. */
+.paint-family {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.family-label {
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+}
+
+.paint-swatch-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+
+.paint-actions .step-up.loud.armed {
+  color: var(--mg-neon-cyan);
+  border-color: var(--mg-neon-cyan);
 }
 
 .finances {

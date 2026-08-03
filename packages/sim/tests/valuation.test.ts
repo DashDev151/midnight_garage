@@ -35,6 +35,7 @@ const racer = BUYERS.find((b) => b.id === 'racer')!
 
 const model: CarModel = {
   id: 'toyota-supra-rz-jza80',
+  uid: 'MG-075',
   displayName: 'Toyota Supra RZ (JZA80)',
   brand: 'Toyota',
   parodyName: 'Suprema RZ (JZA80)',

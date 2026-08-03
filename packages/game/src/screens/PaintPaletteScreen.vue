@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { CARS, PAINT_ALIASES, PAINT_COLOURS } from '@midnight-garage/content'
-import type { PaintColour } from '@midnight-garage/content'
 import { Application, type Container } from 'pixi.js'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
@@ -12,8 +11,8 @@ import {
   buildPaintPreview,
 } from '../pixi/paintPreview'
 import { PAINT_FINISHES, rampFor, type PaintFinish, type Ramp } from '../pixi/paintRamp'
+import { PAINT_COLOUR_FAMILIES } from '../utils/paintFamilies'
 import PaintCarPreview from './dev/PaintCarPreview.vue'
-import { PAINT_FAMILIES } from './dev/paintFamilies'
 import { FACTORY_COLOURS_BASIS_LEGEND, ROSTER_CARS } from './dev/paintRosterCars'
 
 const selectedId = ref('red')
@@ -42,14 +41,7 @@ const tones = computed(() => {
 
 /** The 34-colour swatch grid, grouped by family for browsing the whole
  * palette independent of any one car. */
-const paletteFamilies = computed(() =>
-  PAINT_FAMILIES.map((family) => ({
-    label: family.label,
-    colours: family.ids
-      .map((id) => PAINT_COLOURS.find((c) => c.id === id))
-      .filter((c): c is PaintColour => c !== undefined),
-  })),
-)
+const paletteFamilies = PAINT_COLOUR_FAMILIES
 
 const host = ref<HTMLDivElement | null>(null)
 let app: Application | null = null
@@ -125,18 +117,18 @@ interface PoolEntry {
 /**
  * One pool cell, resolved to what the review screen renders. An alias applies
  * when its `colourId` matches this entry WHOLE, two-tone form included, and
- * its `cars` list includes the car's roster number. Matching the first half
- * alone would put the panda scheme's name on a plain white AE86.
+ * its `cars` list includes the car's `uid`. Matching the first half alone
+ * would put the panda scheme's name on a plain white AE86.
  */
 function buildPoolEntry(
   token: string,
-  rosterNo: number,
+  uid: string,
   finishValue: PaintFinish,
 ): PoolEntry | undefined {
   const [primaryId, secondaryId] = token.split('+')
   const colour = primaryId ? PAINT_COLOURS.find((c) => c.id === primaryId) : undefined
   if (!colour) return undefined
-  const alias = PAINT_ALIASES.find((a) => a.colourId === token && a.cars.includes(rosterNo))
+  const alias = PAINT_ALIASES.find((a) => a.colourId === token && a.cars.includes(uid))
   const secondaryColour = secondaryId ? PAINT_COLOURS.find((c) => c.id === secondaryId) : undefined
   return {
     token,
@@ -154,7 +146,7 @@ const poolEntries = computed<PoolEntry[]>(() => {
   const car = selectedCar.value
   if (!car) return []
   return car.pool
-    .map((token) => buildPoolEntry(token, car.rosterNo, finish.value))
+    .map((token) => buildPoolEntry(token, car.uid, finish.value))
     .filter((entry): entry is PoolEntry => entry !== undefined)
 })
 

@@ -3,6 +3,9 @@ import {
   type CarInstance,
   type DayLogEntry,
   type GameState,
+  type Grade,
+  type Part,
+  type PartFitmentClass,
   type PipelineStageId,
   type StagedAction,
   type ZoneId,
@@ -252,8 +255,29 @@ function resolvePipelineStageAction(
   )
 }
 
-/** One `pipeline-paint` staged action's resolution - needs the zone primed;
- * refuses silently (nothing to do) otherwise. */
+/** The catalog `paint` SKU for `grade` at `fitmentClass` - `stock` reads the
+ * stock index, everything else the aftermarket one, the same two lookup maps
+ * every other slot's fit already reads. `undefined` only if the catalog
+ * genuinely has no entry at that grade, never expected for real content. */
+function paintCatalogPartForGrade(
+  context: SimContext,
+  fitmentClass: PartFitmentClass,
+  grade: Grade,
+): Part | undefined {
+  return grade === 'stock'
+    ? context.stockPartByCarPartId[fitmentClass]?.paint
+    : context.aftermarketPartByCarPartId[fitmentClass]?.paint?.[grade]
+}
+
+/**
+ * One `pipeline-paint` staged action's resolution - needs the zone primed and
+ * refuses silently (nothing to do) otherwise, including the stock-grade
+ * colour gate `planPaintStage` enforces. On success, the `paint` carrier's
+ * installed SKU is swapped to match the completed grade BEFORE the zone
+ * mutation is charged and applied, so `applyDerivedBodyBands`'s single-writer
+ * rule (which preserves whatever SKU is already installed and only rewrites
+ * the band) carries the new one through rather than the old.
+ */
 function resolvePipelinePaintAction(
   state: GameState,
   carInstanceId: string,
@@ -263,16 +287,39 @@ function resolvePipelinePaintAction(
 ): PipelineOpResult {
   const car = findWorkableCar(state, carInstanceId)
   if (!car || !car.zoneState) return NOOP_PIPELINE_RESULT(state)
+  const model = context.modelsById[car.modelId]
+  if (!model) return NOOP_PIPELINE_RESULT(state)
   const zone = car.zoneState[action.zoneId]
-  const plan = planPaintStage(zone, action.zoneId, action.colour, bodyLineCapability(state))
+  const plan = planPaintStage(
+    zone,
+    action.zoneId,
+    action.colour,
+    bodyLineCapability(state),
+    action.grade,
+    car.factoryColour,
+  )
   if (!plan.ok) return NOOP_PIPELINE_RESULT(state)
   const repairLevel = repairLevelForGroup(state.toolTiers, 'body')
   const laborSlotsRequired =
     plan.laborUnits * context.economy.energy.energyPerBandStepByToolTier[repairLevel]
+
+  const installed = car.parts.paint.installed
+  const catalogPart =
+    action.zoneId === 'chassis'
+      ? undefined
+      : paintCatalogPartForGrade(context, fitmentClassForTier(model.tier), action.grade)
+  const carWithGrade =
+    installed && catalogPart
+      ? {
+          ...car,
+          parts: { ...car.parts, paint: { installed: { ...installed, partId: catalogPart.id } } },
+        }
+      : car
+
   return chargeAndApplyPipelineEffect(
     state,
     carInstanceId,
-    car,
+    carWithGrade,
     action.zoneId,
     'paint',
     plan,

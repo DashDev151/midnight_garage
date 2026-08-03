@@ -30,6 +30,9 @@ function round1(value: number): number {
 function referenceCarModel(weightKg: number, powerPs: number): CarModel {
   return {
     id: 'lap-reference-chassis',
+    // Not a roster row: this chassis is never generated as an owned car and
+    // never parsed through CarModelSchema, so no real uid applies to it.
+    uid: 'MG-000',
     displayName: 'Reference chassis',
     brand: 'Reference',
     parodyName: 'Reference chassis',

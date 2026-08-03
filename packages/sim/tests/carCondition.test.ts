@@ -57,6 +57,7 @@ function deltaFor(car: Parameters<typeof saleReputationDeltaFor>[0], forModel = 
  */
 const model: CarModel = {
   id: 'test-model',
+  uid: 'MG-000',
   displayName: 'Test Model',
   brand: 'Test',
   parodyName: 'Test Model',

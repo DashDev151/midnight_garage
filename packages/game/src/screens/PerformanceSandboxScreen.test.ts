@@ -130,7 +130,7 @@ describe('PerformanceSandboxScreen', () => {
     )
   })
 
-  it('set-all reaches every control on both axes, and holds a slot no part fits', async () => {
+  it('set-all reaches every control on both axes, leaving no slot behind', async () => {
     const wrapper = mountScreen()
 
     await click(wrapper, `car-pick-${IN_GAME_CAR}`)
@@ -145,14 +145,11 @@ describe('PerformanceSandboxScreen', () => {
     await click(wrapper, 'set-all-grade-race')
     const build = renderedBuild(wrapper)
     const held = Object.keys(build).filter((id) => build[id] !== 'fine/race')
-    // Paint is the one slot with no aftermarket SKU at any grade, so set-all
-    // leaves it where it is rather than fitting something the catalogue does
-    // not have.
-    expect(held.sort()).toEqual(['paint'])
-    for (const id of held) {
-      expect(build[id]).toBe('fine/stock')
-      expect(wrapper.find(`[data-test="slot-grade-${id}-race"]`).exists()).toBe(false)
-    }
+    // Every one of the 29 slots carries an aftermarket ladder, so set-all
+    // reaches all of them and holds nothing back. A slot listed here has no
+    // race SKU in the catalogue, which is a content gap rather than a
+    // misbehaving control.
+    expect(held.sort()).toEqual([])
 
     // Per group, not just globally.
     await click(wrapper, 'group-state-engine-worn')

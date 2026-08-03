@@ -196,6 +196,7 @@ function buildDemoCarInstance(
     year,
     mileageKm: 60_000,
     color: 'White',
+    factoryColour: model.spec.factoryColours[0]!,
     provenanceNote: '',
     parts,
     symptoms: [

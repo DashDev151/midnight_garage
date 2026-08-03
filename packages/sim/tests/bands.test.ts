@@ -63,6 +63,7 @@ const TAXONOMY_BY_ID = CONTEXT.partsTaxonomyById
  */
 const TEST_MODEL: CarModel = {
   id: 'test-model',
+  uid: 'MG-000',
   displayName: 'Test Model',
   brand: 'Test',
   parodyName: 'Test Model',

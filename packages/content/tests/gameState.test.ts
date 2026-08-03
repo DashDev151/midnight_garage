@@ -22,6 +22,7 @@ describe('GameState / DayLog round-trip', () => {
           year: 1984,
           mileageKm: 128_000,
           color: 'Sodium Amber',
+          factoryColour: 'white',
           provenanceNote: 'one-owner, garage kept, Gunma plates',
           parts: {
             block: {

@@ -122,7 +122,7 @@ describe('the body-kit price basis', () => {
  * examples. A hand-worked example proves the formula; these prove that what the
  * shop actually sells reads correctly after every base, factor and the round to
  * the nearest Y100 have all been applied. The pricing sheet is five knobs and one
- * multiplication, so a lever movement lands on all 472 SKUs at once and a ladder
+ * multiplication, so a lever movement lands on all 484 SKUs at once and a ladder
  * that stopped reading would otherwise be found by a player rather than by CI.
  */
 describe('the resolved parts catalog ladder', () => {

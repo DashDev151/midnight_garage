@@ -28,7 +28,15 @@ export const PaintAliasSchema = z.object({
   colourId: z
     .string()
     .regex(/^[a-z0-9-]+(\+[a-z0-9-]+)?$/, 'a colour is a palette id, or two ids joined by +'),
-  cars: z.array(z.number().int().positive()).min(1),
+  /**
+   * The roster row uid(s) this colour was seen on, never a roster number: the
+   * roster is ordered by price, so inserting one car renumbers every row
+   * below it and would silently move an iconic name onto the wrong car,
+   * while a uid is assigned once and never reused.
+   */
+  cars: z
+    .array(z.string().regex(/^MG-\d{3}$/, 'a car is a roster uid, MG- followed by three digits'))
+    .min(1),
 })
 
 export const PaintAliasesSchema = z.array(PaintAliasSchema).min(1)

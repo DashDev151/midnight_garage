@@ -52,11 +52,18 @@ const QUIET_DAY = quietFinanceDay()
 /**
  * Generation rolls a per-car upkeep tier, so a given seed's panels slot
  * isn't guaranteed to land below mint - forces it to a known repairable
- * 'worn' band (a real stock part) so createJobs below is guaranteed to
- * find something to repair regardless of the roll. These tests are
- * purely about the labor gate/timing, not condition - panels is a body
- * signature slot, so the body line is also hired for today, isolating the
- * service-bay/labour concern under test from the separate machine-line gate.
+ * 'worn' band (a real stock part) so the resolved job's effect on it is
+ * asserted against a known starting point. `aero` is forced present at
+ * 'worn' too, and is the field `createJobs` actually needs: `planGroupRepair`
+ * excludes every zone-derived body carrier (panels/paint/underbody) from a
+ * car on the zone model, since their band comes from the pipeline's own zone
+ * state rather than a direct repair - `aero` is the 'body' group's only
+ * OTHER member, and generation's own missing-slot roll can leave it absent,
+ * which would otherwise leave the group with nothing `createJobs` can see as
+ * repairable regardless of what panels reads. These tests are purely about
+ * the labour gate/timing, not condition - panels is a body signature slot, so
+ * the body line is also hired for today, isolating the service-bay/labour
+ * concern under test from the separate machine-line gate.
  */
 function withWornPanels(state: GameState): GameState {
   const car = state.ownedCars[0]!
@@ -73,6 +80,14 @@ function withWornPanels(state: GameState): GameState {
               id: 'test-panels',
               // honda-city-e-aa (this file's fixture model) is entry tier.
               partId: CONTEXT.stockPartByCarPartId.entry.panels!.id,
+              band: 'worn',
+              origin: { kind: 'market', day: 1 },
+            },
+          },
+          aero: {
+            installed: {
+              id: 'test-aero',
+              partId: CONTEXT.stockPartByCarPartId.entry.aero!.id,
               band: 'worn',
               origin: { kind: 'market', day: 1 },
             },

@@ -359,19 +359,19 @@ describe('the roster CSV is well formed', () => {
    * two of them. The pool is the side that decides.
    */
   it('never binds an iconic name to a car whose pool lacks that colour', () => {
-    const poolsByRosterNo = new Map(
-      roster.map((row) => [row.get('rosterNo'), row.get('factoryColours').split('|')]),
+    const poolsByUid = new Map(
+      roster.map((row) => [row.get('uid'), row.get('factoryColours').split('|')]),
     )
     for (const alias of PAINT_ALIASES) {
-      for (const rosterNo of alias.cars) {
-        const pool = poolsByRosterNo.get(String(rosterNo))
+      for (const uid of alias.cars) {
+        const pool = poolsByUid.get(uid)
         expect(
           pool,
-          `${alias.id} names roster car ${rosterNo}, which is not in the roster`,
+          `${alias.id} names roster car ${uid}, which is not in the roster`,
         ).toBeDefined()
         expect(
           pool,
-          `${alias.id} claims roster car ${rosterNo} carried "${alias.colourId}", but its pool does not`,
+          `${alias.id} claims roster car ${uid} carried "${alias.colourId}", but its pool does not`,
         ).toContain(alias.colourId)
       }
     }
@@ -414,6 +414,14 @@ describe('cars.json agrees with the roster CSV', () => {
       expect(car.parodyBrand, id).toBe(row.get('parodyBrand'))
       expect(car.rarity, id).toBe(row.get('rarity'))
       expect(car.origin, id).toBe(row.get('origin'))
+    }
+  })
+
+  it('carries the roster row uid onto every shipped car', () => {
+    for (const car of shipped) {
+      const id = car.id as string
+      const row = byId.get(id)!
+      expect(car.uid, id).toBe(row.get('uid'))
     }
   })
 

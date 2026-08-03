@@ -120,12 +120,15 @@ describe('a colour disagreement steps the paint band one rung worse', () => {
 })
 
 describe('who the penalty can actually reach', () => {
-  it('never fires on a generated car, because generation paints no zone', () => {
-    // Generation rolls metal, surface and finish and no colour at all, so a
-    // fresh lot cannot disagree with itself. The paint stage is the only
-    // writer of a zone colour, which puts this penalty entirely in the hands
-    // of a player who sprays two panels different shades.
+  it('reads a generated car through its own factoryColour: an honest respray never mismatches, and only the rolled anti-clown states ever cost a band', () => {
+    // Generation now rolls a real colour per zone (paintGeneration.test.ts
+    // covers the roll itself in depth); this file's own concern is that
+    // `derivePaintBand`, fed the car's `factoryColour`, reads every one of
+    // those rolled outcomes correctly - never penalising a car still in its
+    // own colours (single or two-tone) or a uniform respray, and always
+    // penalising the one-zone anti-clown states.
     let cars = 0
+    let sawPenalty = 0
     for (const model of CARS) {
       for (let seed = 0; seed < 20; seed++) {
         const key = `paint-mismatch-${model.id}-${seed}`
@@ -137,12 +140,58 @@ describe('who the penalty can actually reach', () => {
           GAME_YEAR,
         )
         const states = car.zoneState!
-        for (const zoneId of ALL_ZONE_IDS) {
-          expect(states[zoneId].colour, `${model.id} ${zoneId}`).toBeUndefined()
-        }
+        const cleanBand = derivePaintBand(
+          Object.fromEntries(
+            ALL_ZONE_IDS.map((zoneId) => [
+              zoneId,
+              { ...states[zoneId], colour: undefined, primed: false },
+            ]),
+          ) as ZoneStates,
+        )
+        const realBand = derivePaintBand(states, car.factoryColour)
+        expect(bandIndex(realBand), `${model.id} seed ${seed}`).toBeLessThanOrEqual(
+          bandIndex(cleanBand),
+        )
+        if (realBand !== cleanBand) sawPenalty += 1
         cars += 1
       }
     }
     expect(cars).toBeGreaterThan(0)
+    expect(sawPenalty, 'a mismatched or primed panel should turn up somewhere').toBeGreaterThan(0)
+  })
+})
+
+describe('the factory scheme is a set, not an arrangement (two-tone)', () => {
+  const whiteBlack = ['white', 'black', 'white', 'black', 'white']
+
+  it('does not penalise a car whose zones split across its own two factory colours', () => {
+    for (const finish of BAND_BY_FINISH.keys()) {
+      const clean = derivePaintBand(paintedZones(finish))
+      const twoTone = derivePaintBand(paintedZones(finish, whiteBlack), 'white+black')
+      expect(twoTone, `finish ${finish}`).toBe(clean)
+    }
+  })
+
+  it('still penalises the same car once a third colour lands on a zone', () => {
+    const withIntruder = ['white', 'black', 'white', 'black', 'kaido-blue']
+    for (const finish of BAND_BY_FINISH.keys()) {
+      const clean = derivePaintBand(paintedZones(finish))
+      const penalised = derivePaintBand(paintedZones(finish, withIntruder), 'white+black')
+      expect(penalised, `finish ${finish}`).toBe(ONE_RUNG_WORSE[clean])
+    }
+  })
+
+  it("a single-colour car's factory set has one member, so an off-scheme zone still mismatches", () => {
+    const penalised = derivePaintBand(paintedZones(0, ['white', 'kaido-blue']), 'white')
+    expect(penalised).toBe('fine')
+  })
+
+  it('reads a plain single factory colour exactly as before - passing it changes nothing', () => {
+    const oneShade = ['kaido-blue', 'kaido-blue', 'kaido-blue', 'kaido-blue', 'kaido-blue']
+    for (const finish of BAND_BY_FINISH.keys()) {
+      expect(derivePaintBand(paintedZones(finish, oneShade), 'kaido-blue')).toBe(
+        derivePaintBand(paintedZones(finish, oneShade)),
+      )
+    }
   })
 })

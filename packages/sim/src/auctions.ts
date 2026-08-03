@@ -38,6 +38,7 @@ import {
 import {
   applyDerivedBodyBands,
   degradeZoneCarrierOneStep,
+  generatedPaintGrade,
   hasZoneDegradeHeadroom,
   hasZoneImproveHeadroom,
   improveZoneCarrierOneStep,
@@ -699,6 +700,25 @@ function aftermarketInstanceFor(
   return { id: `${idPrefix}-${partId}`, partId: catalogPart.id, band, origin }
 }
 
+/** A specific-grade aftermarket instance, at the SAME rolled `band` - the
+ * paint slot's own fit, which follows the whole-car paint-history roll
+ * (`generatedPaintGrade`) rather than the weighted-grade mechanism
+ * `aftermarketInstanceFor` above uses for every other slot. `null` when the
+ * catalog has no entry at exactly this grade. */
+function aftermarketInstanceAtGrade(
+  partId: CarPartId,
+  band: ReturnType<typeof bandForMigratedCondition>,
+  idPrefix: string,
+  fitmentClass: PartFitmentClass,
+  aftermarketPartByCarPartId: SimContext['aftermarketPartByCarPartId'],
+  grade: Grade,
+  origin: PartOrigin,
+): PartInstance | null {
+  const catalogPart = aftermarketPartByCarPartId[fitmentClass]?.[partId]?.[grade]
+  if (!catalogPart) return null
+  return { id: `${idPrefix}-${partId}`, partId: catalogPart.id, band, origin }
+}
+
 /** The denormalised label a `PartOrigin` carries - `"'95 Corolla"` style,
  * using the model's display name and the instance year, so it still reads
  * correctly after the donor car is sold or scrapped. */
@@ -748,10 +768,20 @@ function patternOffsetByPartId(
  * One 0-100 condition baseline is rolled per car, and each of the 29 real
  * parts jitters around it and takes its damage pattern's own offset
  * (`patternOffsetByPartId`), then buckets into its band via
- * `bandForMigratedCondition`. `forcedInduction` alone follows the model's
- * tag, never the missing-slot roll; every OTHER slot additionally rolls a
- * small, content-tunable chance of coming up MISSING instead of its default
- * stock fill.
+ * `bandForMigratedCondition`. `forcedInduction` follows the model's tag,
+ * never the missing-slot roll, and `paint` follows the whole-car paint-
+ * history roll below instead (`generatedPaintGrade`); every OTHER slot
+ * additionally rolls a small, content-tunable chance of coming up MISSING
+ * instead of its default stock fill.
+ *
+ * The car's own factory colour is rolled once, from the model's
+ * `spec.factoryColours` pool, and feeds `rollZoneStates`'s own paint-history
+ * roll: one of four whole-car states (still factory, resprayed, one
+ * mismatched panel, one bare panel), weighted by the car's culture
+ * (`partsGeneration.paintHistoryByCulture` -> `paintHistory`). The state sets
+ * every panel zone's colour and decides the paint slot's SKU grade - stock
+ * unless the whole car is uniformly resprayed to a colour it did not leave
+ * the factory in, which is always the cheap street job.
  *
  * Generation is a single causal chain: `year -> ageYears -> mileage range ->
  * roll mileage -> condition range -> roll condition baseline -> per-part
@@ -802,11 +832,11 @@ function patternOffsetByPartId(
  * `allowSymptoms` (default true) similarly lets customer-car generation
  * pass false - symptoms only spawn on auction lots.
  *
- * After the missing-slot roll, a non-missing, non-`forcedInduction` slot
- * rolls its history-scaled chance to fit a weighted-grade aftermarket part
- * (`aftermarketInstanceFor`) instead of the default stock one, at the SAME
- * rolled band, capped at `maxAftermarketSlots` per car - this runs for
- * every caller, with no gating parameter.
+ * After the missing-slot roll, a non-missing, non-`forcedInduction`,
+ * non-`paint` slot rolls its history-scaled chance to fit a weighted-grade
+ * aftermarket part (`aftermarketInstanceFor`) instead of the default stock
+ * one, at the SAME rolled band, capped at `maxAftermarketSlots` per car -
+ * this runs for every caller, with no gating parameter.
  */
 export function generateAuctionCarInstance(
   model: CarModel,
@@ -894,6 +924,25 @@ export function generateAuctionCarInstance(
   // How far the car's story moves each slot off that shared baseline.
   const patternOffset = patternOffsetByPartId(carHasForcedInduction, pattern, context)
 
+  // The paint slot's own fit follows the whole-car paint-history roll rather
+  // than the generic per-slot missing/aftermarket mechanism every other slot
+  // below uses, so both are drawn here, ahead of the per-slot loop: the car's
+  // factory colour, then the zone colours/primed state it rolls into
+  // (`rollZoneStates`), then the SKU grade that state implies
+  // (`generatedPaintGrade`).
+  const factoryColour = rng.pick(model.spec.factoryColours)
+  const zoneState = rollZoneStates(
+    fitmentClass,
+    economy,
+    rng,
+    zoneDamageOrder(PANEL_ZONE_IDS, pattern, rng),
+    history,
+    allowMissingSlots,
+    factoryColour,
+    model.spec.culture,
+  )
+  const paintGrade = generatedPaintGrade(zoneState, factoryColour)
+
   const parts = Object.fromEntries(
     ALL_CAR_PART_IDS.map((partId) => {
       const percent = clampCondition(
@@ -912,6 +961,42 @@ export function generateAuctionCarInstance(
               carOrigin,
             )
           : null
+        return [partId, { installed }]
+      }
+
+      // The paint SKU generation fits is exactly what the paint-history roll
+      // above already decided (stock or street, never a randomly weighted
+      // grade), so this slot never draws the generic missing/aftermarket
+      // rolls below - a resprayed car is always the cheap solid job, never a
+      // metallic or pearl one nobody chose to pay for.
+      if (partId === 'paint') {
+        const installed =
+          paintGrade === 'stock'
+            ? stockInstanceFor(
+                partId,
+                band,
+                `${id}-part`,
+                fitmentClass,
+                stockPartByCarPartId,
+                carOrigin,
+              )
+            : (aftermarketInstanceAtGrade(
+                partId,
+                band,
+                `${id}-part`,
+                fitmentClass,
+                context.aftermarketPartByCarPartId,
+                paintGrade,
+                carOrigin,
+              ) ??
+              stockInstanceFor(
+                partId,
+                band,
+                `${id}-part`,
+                fitmentClass,
+                stockPartByCarPartId,
+                carOrigin,
+              ))
         return [partId, { installed }]
       }
 
@@ -959,30 +1044,26 @@ export function generateAuctionCarInstance(
     year,
     mileageKm,
     color: rng.pick(COLOR_POOL),
+    factoryColour,
     // The blurb must fit the car's AGE as well as its upkeep.
     provenanceNote: rng.pick(context.provenancePool[ageBandFor(ageYears)][upkeepTier]),
     parts,
     symptoms: [],
     apparentBandByPartId: null,
     // The work model's own roll (docs/design/systems/workshop-rework.md) - independent
-    // of the per-part jitter loop above, which still fills panels/paint/
+    // of the per-part jitter loop above, which still fills panels and
     // underbody with a stock part (never missing or aftermarket, since those
     // SKUs are retired/migrated); the projection below immediately overwrites
-    // that jittered band with the real, zone-derived one.
+    // that jittered band with the real, zone-derived one. `paint` alone in
+    // that loop follows this same zone state's colours rather than a stock
+    // default, since its SKU grade is exactly what those colours already say.
     // The zone severities the tier tables rolled, ARRANGED by the pattern:
     // the same damage, on the panels the car's own story implicates. The
     // history rides along because it alone decides whether the panel the
     // pattern hit hardest is past saving rather than merely bent, and a
     // customer's own car never turns up with a panel gone, exactly as it never
     // turns up missing an unrelated slot.
-    zoneState: rollZoneStates(
-      fitmentClass,
-      economy,
-      rng,
-      zoneDamageOrder(PANEL_ZONE_IDS, pattern, rng),
-      history,
-      allowMissingSlots,
-    ),
+    zoneState,
     history,
     damagePattern: pattern.id,
   }

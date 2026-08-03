@@ -4,258 +4,258 @@
     "realName": "Bayside Blue (TV2)",
     "parodyName": "Shoreline Blue",
     "colourId": "blue-deep",
-    "cars": [83]
+    "cars": ["MG-083"]
   },
   {
     "id": "midnight-purple",
     "realName": "Midnight Purple (LP2)",
     "parodyName": "Small Hours Purple",
     "colourId": "purple-deep",
-    "cars": [78, 58]
+    "cars": ["MG-078", "MG-058"]
   },
   {
     "id": "midnight-purple-ii",
     "realName": "Midnight Purple II (LV4)",
     "parodyName": "Small Hours Purple II",
     "colourId": "purple-shift-green",
-    "cars": [83]
+    "cars": ["MG-083"]
   },
   {
     "id": "midnight-purple-iii",
     "realName": "Midnight Purple III (LX0)",
     "parodyName": "Small Hours Purple III",
     "colourId": "purple-shift-gold",
-    "cars": [83]
+    "cars": ["MG-083"]
   },
   {
     "id": "gun-grey-metallic",
     "realName": "Gun Grey Metallic (KH2)",
     "parodyName": "Gunsmoke Grey",
     "colourId": "gunmetal",
-    "cars": [77]
+    "cars": ["MG-077"]
   },
   {
     "id": "championship-white",
     "realName": "Championship White (NH-0)",
     "parodyName": "Podium White",
     "colourId": "white-ivory",
-    "cars": [53, 55, 59, 88]
+    "cars": ["MG-053", "MG-055", "MG-059", "MG-088"]
   },
   {
     "id": "blauschwarz-metallic",
     "realName": "Blauschwarz Metallic (199)",
     "parodyName": "Blauschatten Metallic",
     "colourId": "black-blue",
-    "cars": [86]
+    "cars": ["MG-086"]
   },
   {
     "id": "grand-prix-maroon",
     "realName": "Grand Prix Maroon",
     "parodyName": "Paddock Maroon",
     "colourId": "maroon",
-    "cars": [70]
+    "cars": ["MG-070"]
   },
   {
     "id": "grand-prix-white",
     "realName": "Grand Prix White (908)",
     "parodyName": "Paddock White",
     "colourId": "white",
-    "cars": [70, 76, 82]
+    "cars": ["MG-070", "MG-076", "MG-082"]
   },
   {
     "id": "grand-prix-red",
     "realName": "Grand Prix Red",
     "parodyName": "Paddock Red",
     "colourId": "red",
-    "cars": [70]
+    "cars": ["MG-070"]
   },
   {
     "id": "rosso-corsa",
     "realName": "Rosso Corsa (300 / 322)",
     "parodyName": "Rosso Gara",
     "colourId": "red",
-    "cars": [90, 91]
+    "cars": ["MG-090", "MG-091"]
   },
   {
     "id": "giallo-modena",
     "realName": "Giallo Modena (4305)",
     "parodyName": "Giallo Emilia",
     "colourId": "yellow",
-    "cars": [90, 91]
+    "cars": ["MG-090", "MG-091"]
   },
   {
     "id": "tornado-red",
     "realName": "Tornado Red (LY3D)",
     "parodyName": "Gale Red",
     "colourId": "red",
-    "cars": [38]
+    "cars": ["MG-038"]
   },
   {
     "id": "wr-blue-mica",
     "realName": "WR Blue Mica",
     "parodyName": "Stage Blue",
     "colourId": "blue-rally",
-    "cars": [72]
+    "cars": ["MG-072"]
   },
   {
     "id": "sonic-blue-mica",
     "realName": "Sonic Blue Mica",
     "parodyName": "Anniversary Blue",
     "colourId": "blue-deep",
-    "cars": [81]
+    "cars": ["MG-081"]
   },
   {
     "id": "brilliant-blue-tpm",
     "realName": "Brilliant Blue TPM (TV3)",
     "parodyName": "Lustre Blue",
     "colourId": "blue-deep",
-    "cars": [62]
+    "cars": ["MG-062"]
   },
   {
     "id": "strong-blue-metallic",
     "realName": "Strong Blue Metallic (8B6)",
     "parodyName": "Stout Blue",
     "colourId": "blue-rally",
-    "cars": [50]
+    "cars": ["MG-050"]
   },
   {
     "id": "titanium-grey-metallic",
     "realName": "Titanium Grey Metallic",
     "parodyName": "Ingot Grey",
     "colourId": "grey-titanium",
-    "cars": [79]
+    "cars": ["MG-079"]
   },
   {
     "id": "vintage-red",
     "realName": "Vintage Red",
     "parodyName": "Reserve Red",
     "colourId": "red-deep",
-    "cars": [52, 79]
+    "cars": ["MG-052", "MG-079"]
   },
   {
     "id": "montego-blue-mica",
     "realName": "Montego Blue Mica",
     "parodyName": "Estuary Blue",
     "colourId": "blue-deep",
-    "cars": [52]
+    "cars": ["MG-052"]
   },
   {
     "id": "guards-red",
     "realName": "Guards Red (027)",
     "parodyName": "Sentry Red",
     "colourId": "red",
-    "cars": [82]
+    "cars": ["MG-082"]
   },
   {
     "id": "alpine-white-ii",
     "realName": "Alpine White II (218)",
     "parodyName": "Glacier White",
     "colourId": "white",
-    "cars": [64, 68]
+    "cars": ["MG-064", "MG-068"]
   },
   {
     "id": "macao-blue-metallic",
     "realName": "Macao Blue Metallic (250)",
     "parodyName": "Slate Blue",
     "colourId": "blue-violet",
-    "cars": [68]
+    "cars": ["MG-068"]
   },
   {
     "id": "safari-gold",
     "realName": "Safari Gold",
     "parodyName": "Savannah Gold",
     "colourId": "gold-ochre",
-    "cars": [80]
+    "cars": ["MG-080"]
   },
   {
     "id": "new-sight-orange",
     "realName": "New Sight Orange",
     "parodyName": "First Light Orange",
     "colourId": "orange",
-    "cars": [80]
+    "cars": ["MG-080"]
   },
   {
     "id": "cashmere-yellow",
     "realName": "Cashmere Yellow",
     "parodyName": "Chamois Yellow",
     "colourId": "yellow-soft",
-    "cars": [57]
+    "cars": ["MG-057"]
   },
   {
     "id": "lightning-yellow",
     "realName": "Lightning Yellow (EV1)",
     "parodyName": "Flash Yellow",
     "colourId": "yellow",
-    "cars": [58]
+    "cars": ["MG-058"]
   },
   {
     "id": "super-bright-yellow",
     "realName": "Super Bright Yellow (576)",
     "parodyName": "Beacon Yellow",
     "colourId": "yellow",
-    "cars": [50, 51, 75]
+    "cars": ["MG-050", "MG-051", "MG-075"]
   },
   {
     "id": "sunlight-yellow",
     "realName": "Sunlight Yellow (Y-56)",
     "parodyName": "Daylight Yellow",
     "colourId": "yellow",
-    "cars": [53, 55]
+    "cars": ["MG-053", "MG-055"]
   },
   {
     "id": "competition-yellow-mica",
     "realName": "Competition Yellow Mica",
     "parodyName": "Startline Yellow",
     "colourId": "yellow",
-    "cars": [52]
+    "cars": ["MG-052"]
   },
   {
     "id": "milano-red",
     "realName": "Milano Red (R-81)",
     "parodyName": "Verona Red",
     "colourId": "red",
-    "cars": [20, 21, 29, 55, 59]
+    "cars": ["MG-020", "MG-021", "MG-029", "MG-055", "MG-059"]
   },
   {
     "id": "new-formula-red",
     "realName": "New Formula Red",
     "parodyName": "Grid Red",
     "colourId": "red",
-    "cars": [76]
+    "cars": ["MG-076"]
   },
   {
     "id": "passion-red",
     "realName": "Passion Red (solid)",
     "parodyName": "Works Red",
     "colourId": "red",
-    "cars": [60, 65, 67]
+    "cars": ["MG-060", "MG-065", "MG-067"]
   },
   {
     "id": "carnival-yellow",
     "realName": "Carnival Yellow",
     "parodyName": "Fairground Yellow",
     "colourId": "yellow",
-    "cars": [26]
+    "cars": ["MG-026"]
   },
   {
     "id": "skyline-brown",
     "realName": "Skyline Brown",
     "parodyName": "Biscuit Brown",
     "colourId": "brown",
-    "cars": [84]
+    "cars": ["MG-084"]
   },
   {
     "id": "whitest-white",
     "realName": "Whitest White (079)",
     "parodyName": "Arc White",
     "colourId": "white",
-    "cars": [94]
+    "cars": ["MG-094"]
   },
   {
     "id": "high-tech-two-tone",
     "realName": "High-Tech Two-Tone (2T7)",
     "parodyName": "Panda Two-Tone",
     "colourId": "white+black",
-    "cars": [42]
+    "cars": ["MG-042"]
   }
 ]

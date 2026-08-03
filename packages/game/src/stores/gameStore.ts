@@ -2108,7 +2108,14 @@ export const useGameStore = defineStore('game', () => {
       return { costYen: plan.materialsCostYen, laborSlots: plan.laborUnits * rate }
     }
     if (action.kind === 'pipeline-paint') {
-      const plan = planPaintStage(zone, action.zoneId, action.colour, capability)
+      const plan = planPaintStage(
+        zone,
+        action.zoneId,
+        action.colour,
+        capability,
+        action.grade,
+        car.factoryColour,
+      )
       if (!plan.ok) return null
       return { costYen: plan.materialsCostYen, laborSlots: plan.laborUnits * rate }
     }

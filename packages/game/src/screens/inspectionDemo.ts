@@ -105,6 +105,7 @@ function buildDemoCar(symptom: Symptom, trueCauseId: string, context: SimContext
     year: TUTORIAL_LOT.year,
     mileageKm: TUTORIAL_LOT.mileageKm,
     color: TUTORIAL_LOT.color,
+    factoryColour: model.spec.factoryColours[0]!,
     provenanceNote: TUTORIAL_LOT.provenanceNote,
     parts,
     symptoms: [

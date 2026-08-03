@@ -3,204 +3,238 @@
     "id": "white",
     "name": "Plain White",
     "shade": "Flat bright white, no cast.",
-    "hex": "#f2f2ef"
+    "hex": "#f2f2ef",
+    "family": "Whites and silvers"
   },
   {
     "id": "white-ivory",
     "name": "Ivory White",
     "shade": "Off-white with a warm ivory or cream cast; still reads white, never beige.",
-    "hex": "#f0ead8"
+    "hex": "#f0ead8",
+    "family": "Whites and silvers"
   },
   {
     "id": "silver",
     "name": "Bright Silver",
     "shade": "Bright clean light metallic, neutral to faintly cool.",
-    "hex": "#c3c7c9"
+    "hex": "#c3c7c9",
+    "family": "Whites and silvers"
   },
   {
     "id": "silver-warm",
     "name": "Champagne Silver",
     "shade": "Light metallic with a warm champagne or pinkish cast; the name of every member says so.",
-    "hex": "#c9bda9"
+    "hex": "#c9bda9",
+    "family": "Whites and silvers"
   },
   {
     "id": "silver-violet",
     "name": "Violet Silver",
     "shade": "Light-to-mid metallic with a clear violet cast. The entry rests on the colours' own names, not on a heading: every member is called purplish something.",
-    "hex": "#b0a8b4"
+    "hex": "#b0a8b4",
+    "family": "Whites and silvers"
   },
   {
     "id": "grey-mid",
     "name": "Ash Grey",
     "shade": "Pale-to-mid grey, flatter and less lustrous than a silver; neutral to faintly warm.",
-    "hex": "#9a9894"
+    "hex": "#9a9894",
+    "family": "Greys and blacks"
   },
   {
     "id": "grey-titanium",
     "name": "Bronze Grey",
     "shade": "Mid grey metallic with a faint warm bronze cast, deliberately un-flashy.",
-    "hex": "#8a8177"
+    "hex": "#8a8177",
+    "family": "Greys and blacks"
   },
   {
     "id": "gunmetal",
     "name": "Gunmetal",
     "shade": "Dark charcoal metallic with a cool blue cast; near-black in shade, clearly blue-grey in sun.",
-    "hex": "#4a5157"
+    "hex": "#4a5157",
+    "family": "Greys and blacks"
   },
   {
     "id": "black",
     "name": "Black",
     "shade": "Plain black, from flat solid to a fine pearl or metallic flake.",
-    "hex": "#16171a"
+    "hex": "#16171a",
+    "family": "Greys and blacks"
   },
   {
     "id": "black-blue",
     "name": "Blue Black",
     "shade": "Near-black with a deep blue cast; reads black in shade, blue-black in sun.",
-    "hex": "#141a26"
+    "hex": "#141a26",
+    "family": "Greys and blacks"
   },
   {
     "id": "beige",
     "name": "Sand Beige",
     "shade": "Pale-to-mid warm sand; reads beige, never white.",
-    "hex": "#cdbb9c"
+    "hex": "#cdbb9c",
+    "family": "Earths"
   },
   {
     "id": "brown",
     "name": "Warm Brown",
     "shade": "Warm brown, from a soft creamy mid brown to a near-black bronze-brown.",
-    "hex": "#6b4f3a"
+    "hex": "#6b4f3a",
+    "family": "Earths"
   },
   {
     "id": "gold-ochre",
     "name": "Ochre Gold",
     "shade": "Warm ochre-gold metallic, tan-leaning rather than a bright modern gold.",
-    "hex": "#b08d4f"
+    "hex": "#b08d4f",
+    "family": "Earths"
   },
   {
     "id": "red",
     "name": "Bright Red",
     "shade": "Bright saturated red, from neutral to slightly orange-leaning.",
-    "hex": "#c8202a"
+    "hex": "#c8202a",
+    "family": "Reds"
   },
   {
     "id": "red-deep",
     "name": "Deep Red",
     "shade": "Deep rich red, darker and more restrained than a fire-engine red; still unmistakably red.",
-    "hex": "#96181f"
+    "hex": "#96181f",
+    "family": "Reds"
   },
   {
     "id": "maroon",
     "name": "Maroon",
     "shade": "Deep dark red-brown, close to burgundy, near-black in shade.",
-    "hex": "#5c1c26"
+    "hex": "#5c1c26",
+    "family": "Reds"
   },
   {
     "id": "rose-dusk",
     "name": "Dusk Rose",
     "shade": "Muted dusky rose; a pink-brown or pink-red with the saturation taken out.",
-    "hex": "#9d6a70"
+    "hex": "#9d6a70",
+    "family": "Reds"
   },
   {
     "id": "orange",
     "name": "Vivid Orange",
     "shade": "Vivid saturated orange, from yellow-leaning to true orange.",
-    "hex": "#d9601c"
+    "hex": "#d9601c",
+    "family": "Warm brights"
   },
   {
     "id": "yellow",
     "name": "Vivid Yellow",
     "shade": "Vivid saturated yellow, no softening.",
-    "hex": "#e8c21c"
+    "hex": "#e8c21c",
+    "family": "Warm brights"
   },
   {
     "id": "yellow-soft",
     "name": "Soft Yellow",
     "shade": "Warm yellow with the edge off it: creamy, golden or pearl-deep rather than acid.",
-    "hex": "#ddc373"
+    "hex": "#ddc373",
+    "family": "Warm brights"
   },
   {
     "id": "lime",
     "name": "Lime",
     "shade": "Yellow-leaning green, from an acid lime to a pale mint.",
-    "hex": "#a8c443"
+    "hex": "#a8c443",
+    "family": "Greens"
   },
   {
     "id": "green",
     "name": "Grass Green",
     "shade": "Mid true green, neither dark nor muted.",
-    "hex": "#2f8447"
+    "hex": "#2f8447",
+    "family": "Greens"
   },
   {
     "id": "green-sage",
     "name": "Sage Green",
     "shade": "Muted olive or grey-green; the green cast is clear but the colour is not.",
-    "hex": "#75806a"
+    "hex": "#75806a",
+    "family": "Greens"
   },
   {
     "id": "green-dark",
     "name": "Dark Green",
     "shade": "Very dark green, near-black in low light.",
-    "hex": "#1d3a2a"
+    "hex": "#1d3a2a",
+    "family": "Greens"
   },
   {
     "id": "teal",
     "name": "Deep Teal",
     "shade": "Deep blue-green: reads neither blue nor green cleanly.",
-    "hex": "#1f5a5c"
+    "hex": "#1f5a5c",
+    "family": "Blue-greens"
   },
   {
     "id": "cyan",
     "name": "Light Turquoise",
     "shade": "Light turquoise: a blue-green pale enough to read as neither.",
-    "hex": "#7fc0bd"
+    "hex": "#7fc0bd",
+    "family": "Blue-greens"
   },
   {
     "id": "blue-pale",
     "name": "Pale Blue",
     "shade": "Pale sky or ice blue, low saturation.",
-    "hex": "#a8c3d9"
+    "hex": "#a8c3d9",
+    "family": "Blues"
   },
   {
     "id": "blue-rally",
     "name": "Mid Blue",
     "shade": "Bright mid-toned blue, clean and vivid; lighter than a royal blue and nowhere near navy.",
-    "hex": "#2e6fc4"
+    "hex": "#2e6fc4",
+    "family": "Blues"
   },
   {
     "id": "blue-deep",
     "name": "Deep Blue",
     "shade": "Deep saturated blue, rich and lustrous; dark but still plainly blue, not navy.",
-    "hex": "#1c3f8f"
+    "hex": "#1c3f8f",
+    "family": "Blues"
   },
   {
     "id": "blue-navy",
     "name": "Navy",
     "shade": "Very dark blue, near-black in shade.",
-    "hex": "#131f3c"
+    "hex": "#131f3c",
+    "family": "Blues"
   },
   {
     "id": "blue-violet",
     "name": "Violet Blue",
     "shade": "Blue with a clear violet cast; still reads blue.",
-    "hex": "#3a3d80"
+    "hex": "#3a3d80",
+    "family": "Blues"
   },
   {
     "id": "purple-deep",
     "name": "Deep Purple",
     "shade": "Deep purple pearl with pinkish-violet highlights; near-black in low light, unmistakably purple in daylight. Does not colour-shift.",
-    "hex": "#3b1f4a"
+    "hex": "#3b1f4a",
+    "family": "Purples"
   },
   {
     "id": "purple-shift-green",
     "name": "Shifting Purple",
     "shade": "Deep rich purple that shifts with viewing angle: green in direct sun, purple through the mid-angles, bronze at the panel edges.",
-    "hex": "#4a2a55"
+    "hex": "#4a2a55",
+    "family": "Purples"
   },
   {
     "id": "purple-shift-gold",
     "name": "Shifting Purple, Gold",
     "shade": "Lighter and bluer than the above, with a fine gold-bronze flake; reads deep violet or blue-purple with gold highlights depending on the light.",
-    "hex": "#55407a"
+    "hex": "#55407a",
+    "family": "Purples"
   }
 ]

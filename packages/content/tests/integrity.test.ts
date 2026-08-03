@@ -307,19 +307,19 @@ describe('referential integrity', () => {
   })
 
   /**
-   * Every component slot OTHER than `paint` ships 16 real store SKUs (4
-   * fitment classes x 4 grades) - real, separately named catalog entries,
-   * never a single part with a runtime price switch. Guards both directions:
-   * nothing missing, nothing accidentally duplicated. Zone-panel SKUs
-   * (`zoneId` set) are excluded: they are additional stock-grade `panels`
-   * entries addressed to a specific zone, on top of this matrix, not a member
-   * of it. `paint` carries its own, separately-shaped count below.
+   * Every component slot ships 16 real store SKUs (4 fitment classes x 4
+   * grades) - real, separately named catalog entries, never a single part
+   * with a runtime price switch. Guards both directions: nothing missing,
+   * nothing accidentally duplicated. Zone-panel SKUs (`zoneId` set) are
+   * excluded: they are additional stock-grade `panels` entries addressed to a
+   * specific zone, on top of this matrix, not a member of it. `paint` carries
+   * a full ladder like every other slot: stock is factory-correct, and
+   * street/sport/race are a respray in the car's own colour or another.
    */
-  it('every ordinary real car part has exactly 16 catalog SKUs - 4 fitment classes x 4 grades', () => {
+  it('every real car part has exactly 16 catalog SKUs - 4 fitment classes x 4 grades', () => {
     const FITMENT_CLASSES = ['entry', 'everyday', 'enthusiast', 'flagship'] as const
     const nonZonePanelParts = PARTS.filter((p) => p.zoneId === undefined)
     for (const carPartId of CarPartIdSchema.options) {
-      if (carPartId === 'paint') continue
       for (const fitmentClass of FITMENT_CLASSES) {
         for (const grade of GradeSchema.options) {
           const candidates = nonZonePanelParts.filter(
@@ -336,24 +336,24 @@ describe('referential integrity', () => {
   })
 
   /**
-   * `paint` is the one slot with no aftermarket ladder: it keeps exactly its
-   * one stock SKU per fitment class (the value machinery's installed
-   * reference) and nothing at street/sport/race, its twelve finish SKUs
-   * having retired outright. `panels` and `underbody` carry a full ladder
-   * again - their band still derives from zone state, but what is FITTED
-   * there is a real choice.
+   * The three Nurikabe respray grades, pinned to their approved style points
+   * and to costing nothing on power - a respray changes how a car looks, not
+   * how it goes.
    */
-  it('the paint carrier carries a stock SKU only, one per fitment class, no aftermarket grades', () => {
-    const FITMENT_CLASSES = ['entry', 'everyday', 'enthusiast', 'flagship'] as const
-    const nonZonePanelParts = PARTS.filter((p) => p.zoneId === undefined)
-    for (const fitmentClass of FITMENT_CLASSES) {
-      const atClass = nonZonePanelParts.filter(
-        (p) => p.carPartId === 'paint' && p.fitmentClass === fitmentClass,
-      )
-      expect(
-        atClass.map((p) => p.grade),
-        `paint/${fitmentClass} should carry exactly one stock SKU and nothing else`,
-      ).toEqual(['stock'])
+  it('the paint ladder carries the approved style points and no power effect, on every fitment class', () => {
+    const stylePointsByGrade = { street: 5, sport: 10, race: 15 } as const
+    for (const [grade, stylePoints] of Object.entries(stylePointsByGrade)) {
+      const skus = PARTS.filter((p) => p.carPartId === 'paint' && p.grade === grade)
+      expect(skus.length, grade).toBe(4)
+      for (const sku of skus) {
+        expect(sku.brand, sku.id).toBe('Nurikabe')
+        expect(sku.statModifiers.style, sku.id).toBe(stylePoints)
+        expect(sku.statModifiers.powerFraction, sku.id).toEqual({
+          'high-strung-na': 0,
+          'lazy-na': 0,
+          forced: 0,
+        })
+      }
     }
   })
 
@@ -376,17 +376,15 @@ describe('referential integrity', () => {
 
   /**
    * Zone panels are additional stock-grade `panels` SKUs, one per (zone x
-   * fitment class), on top of the matrix above. The retired paint finishes
-   * (12 entries) are gone outright; the twelve cosmetic kits changed slot in
-   * place without changing the catalog's total count, so the whole catalog is
-   * the base 29 x 16 = 464, minus the 12 retired paint SKUs, plus the
-   * 5 x 4 = 20 zone panels = 472.
+   * fitment class), on top of the matrix above. Every one of the 29 real
+   * parts carries its full 16-SKU ladder, so the whole catalog is the base
+   * 29 x 16 = 464, plus the 5 x 4 = 20 zone panels = 484.
    */
-  it('the catalog carries exactly 20 zone-panel SKUs - 5 zones x 4 fitment classes - and 472 entries total', () => {
+  it('the catalog carries exactly 20 zone-panel SKUs - 5 zones x 4 fitment classes - and 484 entries total', () => {
     const FITMENT_CLASSES = ['entry', 'everyday', 'enthusiast', 'flagship'] as const
     const zonePanelParts = PARTS.filter((p) => p.zoneId !== undefined)
     expect(zonePanelParts.length).toBe(20)
-    expect(PARTS.length).toBe(472)
+    expect(PARTS.length).toBe(484)
     for (const part of zonePanelParts) {
       expect(part.carPartId).toBe('panels')
       expect(part.grade).toBe('stock')

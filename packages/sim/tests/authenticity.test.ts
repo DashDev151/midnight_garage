@@ -329,35 +329,34 @@ describe('no car carries a stored authenticity roll any more', () => {
 
 /**
  * A body carrier's BAND is derived from `zoneState`, but what is FITTED there
- * is a real choice, so a modified body reads as modified. `panels` and
- * `underbody` carry the cosmetic body kits; `paint` is the one slot with no
- * aftermarket ladder at all, so 11 of the 100 points are still unloseable and
- * a resprayed car still reads as wearing its factory colour.
- *
- * That remaining weight is not dead either way - the same column drives the
- * condition factor, where rough paint bites correctly. When a paint-finish
- * ladder ships, this block is what fails and says so.
+ * is a real choice, so a modified body reads as modified. `panels`,
+ * `underbody` and `paint` all carry a real aftermarket ladder: fitting any of
+ * their non-stock grades costs the slot's whole authenticity weight, and
+ * refitting the stock grade wins it back. Paint's stock SKU is the car's own
+ * factory finish, so the "stock grade" that wins the weight back is
+ * specifically a factory-correct respray, not merely any paint job.
  */
 describe('a modified body reads as modified', () => {
-  it('ships an aftermarket ladder for panels and underbody, and none for paint', () => {
-    for (const carPartId of ['panels', 'underbody'] as const) {
+  it('ships an aftermarket ladder for panels, underbody and paint', () => {
+    for (const carPartId of ['panels', 'underbody', 'paint'] as const) {
       const nonStock = PARTS.filter(
         (part) => part.carPartId === carPartId && part.grade !== 'stock',
       )
       expect(nonStock.length, `${carPartId} has no aftermarket SKU`).toBeGreaterThan(0)
     }
-    expect(PARTS.filter((part) => part.carPartId === 'paint' && part.grade !== 'stock')).toEqual([])
   })
 
-  it('costs a fitted body kit the whole authenticity weight of its slot', () => {
+  it('costs a fitted body kit or respray the whole authenticity weight of its slot', () => {
     expect(authenticityOf(carWith({ panels: 'sport' }))).toBe(100 - WEIGHT.panels)
     expect(authenticityOf(carWith({ underbody: 'sport' }))).toBe(100 - WEIGHT.underbody)
+    expect(authenticityOf(carWith({ paint: 'street' }))).toBe(100 - WEIGHT.paint)
     expect(authenticityOf(carWith({ panels: 'race', underbody: 'street' }))).toBe(
       100 - WEIGHT.panels - WEIGHT.underbody,
     )
   })
 
-  it('leaves 11 of the 100 points unloseable while paint carries no ladder', () => {
-    expect(WEIGHT.paint).toBe(11)
+  it('wins the 11 points back by refitting the stock (factory-correct) grade', () => {
+    expect(authenticityOf(carWith({ paint: 'race' }))).toBe(100 - WEIGHT.paint)
+    expect(authenticityOf(carWith({ paint: 'stock' }))).toBe(100)
   })
 })

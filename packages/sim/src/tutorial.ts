@@ -116,6 +116,10 @@ export function buildTutorialLot(context: SimContext, day: number): AuctionLot {
     year: recipe.year,
     mileageKm: recipe.mileageKm,
     color: recipe.color,
+    // The scripted lot is deterministic under any career seed, so its
+    // factory colour is the model's own first authored pool entry rather
+    // than a roll.
+    factoryColour: model.spec.factoryColours[0]!,
     provenanceNote: recipe.provenanceNote,
     parts,
     symptoms: [

@@ -43,6 +43,7 @@ function initialState(): GameState {
         year: 1984,
         mileageKm: 128_000,
         color: 'Sodium Amber',
+        factoryColour: 'white',
         provenanceNote: 'one-owner, garage kept, Gunma plates',
         parts: {
           ...groupCarParts({
@@ -242,7 +243,14 @@ describe('advanceDay golden master', () => {
     // factor, so raising it re-weights every generated car's condition factor
     // and every guide value that reads it. No draw was added or removed.
     // Re-derived from a real run, twice, to confirm determinism.
-    expect(hashState(finalState)).toBe('e254326b')
+    //
+    // It last moved for the paint system (sprint170.md): generation now rolls
+    // a factory colour and a whole-car paint history for every car, and the
+    // paint slot's own fit follows that roll instead of the generic per-slot
+    // aftermarket mechanism, so every generated board's rng stream shifts from
+    // that point on. Re-derived from a real run, twice, to confirm
+    // determinism.
+    expect(hashState(finalState)).toBe('5b1381e0')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -410,7 +418,13 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // of this state and the hash is exactly the previous `d280dc4d`, so no
     // roll, cash figure or derived stat moved. Nothing here ever could - a
     // dyno measures and changes nothing.
-    expect(hashState(acquisitionCareer().sold)).toBe('4dcee9b0')
+    //
+    // It moves again for the paint system (sprint170.md), alongside the
+    // 30-day master and for the same reason: every generated lot now rolls a
+    // factory colour and a whole-car paint history, and the paint slot's own
+    // fit reads that roll instead of the generic aftermarket mechanism, so
+    // this script's bought and sold car is priced and generated differently.
+    expect(hashState(acquisitionCareer().sold)).toBe('84dcb128')
   })
 })
 

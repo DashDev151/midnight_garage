@@ -239,7 +239,7 @@ describe('the style catalogue spreads across the car', () => {
     const total = descending.reduce((sum, value) => sum + value, 0)
     const topThree = descending.slice(0, 3).reduce((sum, value) => sum + value, 0)
     // The defect this bar exists for measured 83 per cent in the top three
-    // slots, on 68 points against a saturation of 60. Now 42 of 88.
+    // slots, on 68 points against a saturation of 60. Now 47 of 123.
     expect(topThree / total, `top three of ${total} points`).toBeLessThan(0.55)
     // ...and no three slots can finish a car on their own any more.
     expect(topThree, 'the loudest three slots against saturation').toBeLessThan(SATURATION)
@@ -271,12 +271,12 @@ describe('the style catalogue spreads across the car', () => {
     }
   })
 
-  it('takes three parts to buy half a car of headroom, four for four fifths and six for all of it', () => {
+  it('takes two parts to buy half a car of headroom, four for four fifths and five for all of it', () => {
     // The measurement the flattening is FOR. Best-in-slot parts fitted loudest
     // first, which is the cheapest possible route to a ceiling: anything else a
-    // player does takes more parts than this, never fewer. Twelve slots carry
-    // style and 108 points are on offer against a saturation of 66, so the
-    // route to the ceiling is six of the twelve.
+    // player does takes more parts than this, never fewer. Thirteen slots carry
+    // style and 123 points are on offer against a saturation of 66, so the
+    // route to the ceiling is five of the thirteen.
     const descending = [...bestBySlot().values()].sort((a, b) => b - a)
     const partsToReach = (fraction: number) => {
       let fitted = 0
@@ -286,9 +286,9 @@ describe('the style catalogue spreads across the car', () => {
       }
       return descending.length
     }
-    expect(partsToReach(0.5), 'parts to half the gap').toBe(3)
+    expect(partsToReach(0.5), 'parts to half the gap').toBe(2)
     expect(partsToReach(0.8), 'parts to four fifths of the gap').toBe(4)
-    expect(partsToReach(1), 'parts to the whole gap').toBe(6)
+    expect(partsToReach(1), 'parts to the whole gap').toBe(5)
   })
 })
 

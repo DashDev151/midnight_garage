@@ -6,18 +6,20 @@ describe('materials.json', () => {
   it('validates against the material schema, one entry per consumable SKU', () => {
     const result = MaterialsSchema.safeParse(materials)
     if (!result.success) throw new Error(result.error.message)
-    expect(result.data.length).toBe(6)
-    expect(new Set(result.data.map((m) => m.id)).size).toBe(6)
+    expect(result.data.length).toBe(8)
+    expect(new Set(result.data.map((m) => m.id)).size).toBe(8)
   })
 
   // Prices are signed economy values (pinned exactly, not merely checked positive).
-  it('pins the six material prices exactly', () => {
+  it('pins the eight material prices exactly', () => {
     const priceById = Object.fromEntries(materials.map((m) => [m.id, m.priceYen]))
     expect(priceById).toEqual({
       filler: 1500,
       paper: 400,
       primer: 1200,
       paint: 2500,
+      'paint-metallic': 5000,
+      'paint-pearl': 7500,
       underseal: 2000,
       polish: 800,
     })
@@ -30,6 +32,8 @@ describe('materials.json', () => {
       paper: 'fillAndSand',
       primer: 'prime',
       paint: 'paint',
+      'paint-metallic': 'paint',
+      'paint-pearl': 'paint',
       underseal: 'paint',
       polish: 'polish',
     })

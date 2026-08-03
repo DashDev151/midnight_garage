@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { AssemblyIdSchema } from './assembly'
-import { CarPartIdSchema, ComponentIdSchema, ConditionBandSchema } from './tags'
+import { CarPartIdSchema, ComponentIdSchema, ConditionBandSchema, GradeSchema } from './tags'
 import { PanelZoneIdSchema, ZoneIdSchema } from './zone'
 import { PipelineStageIdSchema } from './material'
 
@@ -66,8 +66,16 @@ export const StagedActionSchema = z.discriminatedUnion('kind', [
     partInstanceId: z.string().min(1),
   }),
   /** The paint stage, with the colour chosen for this zone (chassis:
-   * underseal, so `colour` there is the underseal shade, not a chosen hue). */
-  z.object({ kind: z.literal('pipeline-paint'), zoneId: ZoneIdSchema, colour: z.string().min(1) }),
+   * underseal, so `colour` there is the underseal shade, not a chosen hue)
+   * and the finish grade - stock, street, sport or race - which sets the tin
+   * charged and which paint SKU the completed stage installs. Stock is
+   * refused everywhere but the car's own factory colour. */
+  z.object({
+    kind: z.literal('pipeline-paint'),
+    zoneId: ZoneIdSchema,
+    colour: z.string().min(1),
+    grade: GradeSchema,
+  }),
 ])
 
 export const StagedActionsSchema = z.array(StagedActionSchema)

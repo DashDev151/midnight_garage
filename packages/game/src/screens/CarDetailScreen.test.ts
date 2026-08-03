@@ -1957,6 +1957,18 @@ describe('CarDetailScreen', () => {
       car.zoneState = { ...car.zoneState!, [zoneId]: zone }
     }
 
+    /** Pins the generated car to a known factory colour - a solid palette id,
+     * or two joined with `+` for a two-tone - so a test can control which
+     * colour is "right" without depending on the generation roll. */
+    function setFactoryColour(
+      game: ReturnType<typeof useGameStore>,
+      carId: string,
+      factoryColour: string,
+    ): void {
+      const car = game.gameState.ownedCars.find((c) => c.id === carId)!
+      car.factoryColour = factoryColour
+    }
+
     const ROUGH: ZoneState = {
       metal: 1,
       surface: 1,
@@ -2033,9 +2045,10 @@ describe('CarDetailScreen', () => {
       expect(beat.text()).toBe('Beat')
     })
 
-    it('arms a colour from the swatches and paints the zone with it', async () => {
+    it('arms a colour and a finish from the controls, and paints the zone with both', async () => {
       const { game, id, wrapper } = await grantAndDock('bonnet', PRIMED)
-      const colour = PAINT_COLOURS[0]!
+      setFactoryColour(game, id, 'lime')
+      const colour = PAINT_COLOURS[0]! // 'white' - not this car's factory colour
 
       // Every tin is a real button with the colour's name as its accessible
       // name - the swatch fill alone is never the only reading.
@@ -2055,32 +2068,103 @@ describe('CarDetailScreen', () => {
       ).toBe('true')
       expect(wrapper.get('[data-test="paint-colour-name"]').text()).toBe(colour.name)
 
+      // Stock is refused in a colour this car never wore - the button carries
+      // no plan rather than a click that would land on a refusal.
+      expect(
+        wrapper.get('[data-test="paint-grade-bonnet-stock"]').attributes('disabled'),
+      ).toBeDefined()
+      const street = wrapper.get('[data-test="paint-grade-bonnet-street"]')
+      expect(street.attributes('disabled')).toBeUndefined()
+      await street.trigger('click')
+
       const paint = wrapper.get('[data-test="pipeline-paint-bonnet"]')
       expect(paint.attributes('disabled')).toBeUndefined()
       expect(paint.text()).toContain('Paint · ')
       await paint.trigger('click')
 
       expect(game.stagedActionsFor(id)).toEqual([
-        { kind: 'pipeline-paint', zoneId: 'bonnet', colour: colour.id },
+        { kind: 'pipeline-paint', zoneId: 'bonnet', colour: colour.id, grade: 'street' },
       ])
-      expect(wrapper.text()).toContain(`Paint (${colour.name}): Bonnet`)
+      expect(wrapper.text()).toContain(`Paint (${colour.name}, street): Bonnet`)
     })
 
-    it('offers the chassis no swatches at all - its finish coat is underseal, not a colour', async () => {
+    it('marks the factory colour and names it where the car has an iconic one', async () => {
+      const game = useGameStore()
+      game.devGrantCar('nissan-skyline-gtr-bnr32')
+      const id = game.gameState.ownedCars[0]!.id
+      setZone(game, id, 'bonnet', PRIMED)
+      setFactoryColour(game, id, 'gunmetal')
+      const { wrapper } = await mountAt(id)
+      await selectZone(wrapper, 'bonnet')
+
+      // The marker is on the swatch itself, and only the factory one carries it.
+      expect(wrapper.get('[data-test="paint-swatch-bonnet-gunmetal"]').classes()).toContain(
+        'factory',
+      )
+      expect(wrapper.get('[data-test="paint-swatch-bonnet-white"]').classes()).not.toContain(
+        'factory',
+      )
+      // The BNR32's own gunmetal carries a real manufacturer's name.
+      expect(wrapper.get('[data-test="factory-colour-bonnet"]').text()).toContain(
+        'Gun Grey Metallic (KH2)',
+      )
+
+      // A colour this car never wore: stock is off the table, street is not.
+      await wrapper.get('[data-test="paint-swatch-bonnet-white"]').trigger('click')
+      expect(
+        wrapper.get('[data-test="paint-grade-bonnet-stock"]').attributes('disabled'),
+      ).toBeDefined()
+      expect(
+        wrapper.get('[data-test="paint-grade-bonnet-street"]').attributes('disabled'),
+      ).toBeUndefined()
+
+      // Its own colour: stock is back on the table, and the tin reads by its
+      // iconic name rather than the plain palette one.
+      await wrapper.get('[data-test="paint-swatch-bonnet-gunmetal"]').trigger('click')
+      expect(
+        wrapper.get('[data-test="paint-grade-bonnet-stock"]').attributes('disabled'),
+      ).toBeUndefined()
+      expect(wrapper.get('[data-test="paint-colour-name"]').text()).toBe('Gun Grey Metallic (KH2)')
+    })
+
+    it('handles a two-tone factory colour by marking both halves and naming the whole scheme', async () => {
+      const game = useGameStore()
+      game.devGrantCar('toyota-sprinter-trueno-ae86')
+      const id = game.gameState.ownedCars[0]!.id
+      setZone(game, id, 'bonnet', PRIMED)
+      setFactoryColour(game, id, 'white+black')
+      const { wrapper } = await mountAt(id)
+      await selectZone(wrapper, 'bonnet')
+
+      expect(wrapper.get('[data-test="paint-swatch-bonnet-white"]').classes()).toContain('factory')
+      expect(wrapper.get('[data-test="paint-swatch-bonnet-black"]').classes()).toContain('factory')
+      expect(wrapper.get('[data-test="factory-colour-bonnet"]').text()).toContain(
+        'High-Tech Two-Tone (2T7)',
+      )
+
+      // Either half of the factory scheme legitimately arms the stock grade.
+      await wrapper.get('[data-test="paint-swatch-bonnet-black"]').trigger('click')
+      expect(
+        wrapper.get('[data-test="paint-grade-bonnet-stock"]').attributes('disabled'),
+      ).toBeUndefined()
+    })
+
+    it('offers the chassis no swatches and no finish picker - its coat is underseal, not a colour', async () => {
       const { game, id, wrapper } = await grantAndDock('chassis', PRIMED)
 
       expect(wrapper.get('[data-test="panel-name"]').text()).toBe('Chassis')
       expect(wrapper.findAll('[data-test^="paint-swatch-"]')).toHaveLength(0)
+      expect(wrapper.findAll('[data-test^="paint-grade-"]')).toHaveLength(0)
       expect(wrapper.find('[data-test="paint-colour-name"]').exists()).toBe(false)
       // No panel to unbolt from the underbody either.
       expect(wrapper.find('[data-test^="pipeline-swap-panel-chassis"]').exists()).toBe(false)
 
-      // The coat still goes on, with no tin to pick.
+      // The coat still goes on, with no tin and no finish to pick.
       const underseal = wrapper.get('[data-test="pipeline-paint-chassis"]')
       expect(underseal.text()).toContain('Underseal · ')
       await underseal.trigger('click')
       expect(game.stagedActionsFor(id)).toEqual([
-        { kind: 'pipeline-paint', zoneId: 'chassis', colour: 'underseal' },
+        { kind: 'pipeline-paint', zoneId: 'chassis', colour: 'underseal', grade: 'stock' },
       ])
       expect(wrapper.text()).toContain('Underseal: Chassis')
     })

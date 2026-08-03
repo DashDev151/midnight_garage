@@ -135,6 +135,14 @@ export const CarInstanceSchema = z.object({
   year: z.number().int(),
   mileageKm: z.number().int().nonnegative(),
   color: z.string().min(1),
+  /**
+   * The pool entry (`CarModel.spec.factoryColours`) this specific car left
+   * the factory wearing - a single palette id, or two joined with `+` for a
+   * genuine factory two-tone. Required on every car, hand-authored or
+   * generated: a car's paint has to be SOMETHING before any zone can read as
+   * original or resprayed against it.
+   */
+  factoryColour: z.string().min(1),
   provenanceNote: z.string().default(''),
   parts: CarPartsSchema,
   /** Every symptom this car was generated with (default `[]` - an honest car). */

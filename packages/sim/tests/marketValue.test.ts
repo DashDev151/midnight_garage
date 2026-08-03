@@ -50,6 +50,7 @@ const RETENTION = ECONOMY.valuation.retentionCeiling
 
 const model: CarModel = {
   id: 'toyota-supra-rz-jza80',
+  uid: 'MG-075',
   displayName: 'Toyota Supra RZ (JZA80)',
   brand: 'Toyota',
   parodyName: 'Suprema RZ (JZA80)',

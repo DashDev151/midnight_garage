@@ -1615,6 +1615,17 @@ import storyMissions from '../data/storyMissions.json'
  *
  * NOTHING ELSE IN THIS FILE MOVES: no existing lever changed value, `damagePatterns.json`
  * and `partPricing.json` are untouched, and every mission payout above holds.
+ *
+ * Re-pinned 2026-08-03 (maintainer approval, recorded in docs/sprints/sprint170.md's
+ * Levers section) for the paint system's generation table: `partsGeneration` gains
+ * `paintHistory`, four named profiles (`cherished`/`scene`/`worked`/`mixed`), each a
+ * weighted row over the four whole-car paint states `rollZoneStates` rolls
+ * (original/resprayed/mismatchedPanel/primedPanel) - cherished 90/3/5/2, scene
+ * 55/30/9/6, worked 70/6/14/10, mixed 75/12/9/4 - and `paintHistoryByCulture`, mapping
+ * all 13 cultures onto those profiles exactly as the sprint doc's table states
+ * (kyusha/exotic/touring-car to cherished; drift/front-drive-tuner/touge/kurokan/wangan
+ * to scene; honest-transport/kei to worked; rotary/rally-bred/oddball to mixed). No
+ * existing value moves; both tables are wholly new.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -1624,7 +1635,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('3a1ce95e82c0da1ba8b375c014198307579f1f32003b8bb895aea944361a960f')
+    ).toBe('8d895cf4a38e2e235986e853d96dfa44f802c77000227d59133d61ae630032fd')
   })
 
   it('damagePatterns.json matches its approved content exactly', () => {

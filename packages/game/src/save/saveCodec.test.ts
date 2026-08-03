@@ -346,6 +346,7 @@ describe('saveCodec', () => {
       modelId: 'honda-city-e-aa',
       year: 1984,
       mileageKm: 100_000,
+      factoryColour: 'white',
       color: 'White',
       provenanceNote: '',
       parts: mintParts(),
@@ -452,6 +453,7 @@ describe('saveCodec', () => {
               modelId: 'honda-city-e-aa',
               year: 1984,
               mileageKm: 120_000,
+              factoryColour: 'white',
               color: 'White',
               provenanceNote: '',
               parts: mintParts(),
@@ -488,6 +490,7 @@ describe('saveCodec', () => {
       modelId: 'honda-city-e-aa',
       year: 1984,
       mileageKm: 120_000,
+      factoryColour: 'white',
       color: 'White',
       provenanceNote: '',
       parts: mintParts(),
@@ -630,6 +633,7 @@ describe('saveCodec', () => {
             modelId: 'honda-city-e-aa',
             year: 1984,
             mileageKm: 120_000,
+            factoryColour: 'white',
             color: 'White',
             provenanceNote: '',
             hiddenIssues: [{ issueId: 'rusted-rails', revealed: true }],
@@ -652,6 +656,7 @@ describe('saveCodec', () => {
               modelId: 'honda-city-e-aa',
               year: 1984,
               mileageKm: 120_000,
+              factoryColour: 'white',
               color: 'White',
               provenanceNote: '',
               hiddenIssues: [{ issueId: 'rusted-rails', revealed: false }],
@@ -675,6 +680,7 @@ describe('saveCodec', () => {
               modelId: 'honda-city-e-aa',
               year: 1984,
               mileageKm: 120_000,
+              factoryColour: 'white',
               color: 'White',
               provenanceNote: '',
               hiddenIssues: [{ issueId: 'rusted-rails', revealed: false }],
@@ -732,6 +738,7 @@ describe('saveCodec', () => {
               modelId: 'honda-city-e-aa',
               year: 1984,
               mileageKm: 120_000,
+              factoryColour: 'white',
               color: 'White',
               provenanceNote: '',
               parts: mintParts(),
@@ -766,6 +773,7 @@ describe('saveCodec', () => {
             modelId: 'honda-city-e-aa',
             year: 1984,
             mileageKm: 120_000,
+            factoryColour: 'white',
             color: 'White',
             provenanceNote: '',
             parts: mintParts(),
@@ -815,6 +823,7 @@ describe('saveCodec', () => {
             modelId: 'honda-city-e-aa',
             year: 1984,
             mileageKm: 100_000,
+            factoryColour: 'white',
             color: 'White',
             provenanceNote: '',
             condition: { engine: 50, drivetrain: 50, suspension: 50, body: 50, interior: 50 },
@@ -891,6 +900,7 @@ describe('saveCodec', () => {
           modelId: 'honda-city-e-aa',
           year: 1984,
           mileageKm: 100_000,
+          factoryColour: 'white',
           color: 'White',
           provenanceNote: '',
           parts: mintParts({ dampers: 'worn' }),
@@ -974,7 +984,7 @@ describe('saveCodec', () => {
   })
 
   it('a per-part staged action and job (carPartId set) round-trip exactly under version 17', () => {
-    expect(SAVE_VERSION).toBe(56)
+    expect(SAVE_VERSION).toBe(57)
     const perPart: GameState = GameStateSchema.parse({
       ...fullState,
       jobs: [
@@ -1021,7 +1031,7 @@ describe('saveCodec', () => {
   })
 
   it('a v31 state with an origin-carrying inventory part round-trips the origin exactly', () => {
-    expect(SAVE_VERSION).toBe(56)
+    expect(SAVE_VERSION).toBe(57)
     const withOrigin: GameState = GameStateSchema.parse({
       ...fullState,
       partInventory: [
@@ -1075,6 +1085,7 @@ describe('saveCodec', () => {
             modelId: 'nissan-180sx-rps13',
             year: 1994,
             mileageKm: 140_000,
+            factoryColour: 'white',
             color: 'Black',
             provenanceNote: '',
             components: {
@@ -1129,6 +1140,7 @@ describe('saveCodec', () => {
                 modelId: 'honda-city-e-aa',
                 year: 1984,
                 mileageKm: 120_000,
+                factoryColour: 'white',
                 color: 'White',
                 provenanceNote: '',
                 parts: mintParts(),
@@ -1182,6 +1194,7 @@ describe('saveCodec', () => {
                 modelId: 'honda-city-e-aa',
                 year: 1984,
                 mileageKm: 120_000,
+                factoryColour: 'white',
                 color: 'White',
                 provenanceNote: '',
                 parts: mintParts(),
@@ -1232,6 +1245,7 @@ describe('saveCodec', () => {
                 modelId: 'honda-city-e-aa',
                 year: 1984,
                 mileageKm: 120_000,
+                factoryColour: 'white',
                 color: 'White',
                 provenanceNote: '',
                 parts: mintParts(),
@@ -1276,6 +1290,7 @@ describe('saveCodec', () => {
               modelId: 'honda-city-e-aa',
               year: 1984,
               mileageKm: 120_000,
+              factoryColour: 'white',
               color: 'White',
               provenanceNote: '',
               parts: mintParts(),
@@ -1315,6 +1330,7 @@ describe('saveCodec', () => {
                 modelId: 'honda-city-e-aa',
                 year: 1984,
                 mileageKm: 120_000,
+                factoryColour: 'white',
                 color: 'White',
                 provenanceNote: '',
                 parts: mintParts(),
@@ -1349,6 +1365,7 @@ describe('saveCodec', () => {
               modelId: 'honda-city-e-aa',
               year: 1984,
               mileageKm: 120_000,
+              factoryColour: 'white',
               color: 'White',
               provenanceNote: '',
               parts: mintParts(),
@@ -1457,6 +1474,7 @@ describe('saveCodec', () => {
               modelId: 'nissan-180sx-rps13',
               year: 1994,
               mileageKm: 90_000,
+              factoryColour: 'white',
               color: 'Black',
               provenanceNote: '',
               parts: Object.fromEntries(
@@ -1482,6 +1500,7 @@ describe('saveCodec', () => {
             modelId: 'honda-city-e-aa',
             year: 1984,
             mileageKm: 100_000,
+            factoryColour: 'white',
             color: 'White',
             provenanceNote: '',
             parts: mintParts({
@@ -1600,7 +1619,7 @@ describe('saveCodec', () => {
    * tracks the current value, not this fact.
    */
   it('a techniques and shop-title state round-trips at the current SAVE_VERSION', () => {
-    expect(SAVE_VERSION).toBe(56)
+    expect(SAVE_VERSION).toBe(57)
   })
 
   it('a v24 save with specialty high enough to unlock a technique/title decodes identically either way - nothing new is stored', () => {
@@ -1641,6 +1660,7 @@ describe('saveCodec', () => {
           modelId: 'honda-city-e-aa',
           year: 1984,
           mileageKm: 100_000,
+          factoryColour: 'white',
           color: 'White',
           parts: mintParts(),
         },
@@ -1683,6 +1703,7 @@ describe('saveCodec', () => {
           modelId: 'honda-city-e-aa',
           year: 1984,
           mileageKm: 100_000,
+          factoryColour: 'white',
           color: 'White',
           parts: mintParts(),
         },
@@ -1706,7 +1727,7 @@ describe('saveCodec', () => {
    * a real double-parked car round-trips it exactly.
    */
   it('SAVE_VERSION is current', () => {
-    expect(SAVE_VERSION).toBe(56)
+    expect(SAVE_VERSION).toBe(57)
   })
 
   it('a real pre-v26 save (a v25 envelope with no graceParkingCarId field) decodes with nothing double-parked under v26', () => {
@@ -1739,7 +1760,7 @@ describe('saveCodec', () => {
    * exactly.
    */
   it('SAVE_VERSION is current', () => {
-    expect(SAVE_VERSION).toBe(56)
+    expect(SAVE_VERSION).toBe(57)
   })
 
   it('a real pre-v27 save (a v26 envelope with neither field) decodes with nothing listed or scheduled under v27', () => {
@@ -1786,7 +1807,7 @@ describe('saveCodec', () => {
    * same slot, same band, same everything else.
    */
   it('SAVE_VERSION is current', () => {
-    expect(SAVE_VERSION).toBe(56)
+    expect(SAVE_VERSION).toBe(57)
   })
 
   it("a real pre-v28 save remaps an entry-tier car's everyday-class stock part to its own class sibling SKU", () => {
@@ -1798,6 +1819,7 @@ describe('saveCodec', () => {
           modelId: 'honda-city-e-aa',
           year: 1990,
           mileageKm: 80_000,
+          factoryColour: 'white',
           color: 'Red',
           provenanceNote: '',
           parts: mintParts({
@@ -1855,6 +1877,7 @@ describe('saveCodec', () => {
             modelId: 'toyota-supra-rz-jza80',
             year: 1994,
             mileageKm: 60_000,
+            factoryColour: 'white',
             color: 'White',
             provenanceNote: '',
             parts: mintParts(),
@@ -1951,6 +1974,7 @@ describe('saveCodec', () => {
           modelId: 'honda-city-e-aa',
           year: 1990,
           mileageKm: 80_000,
+          factoryColour: 'white',
           color: 'Red',
           provenanceNote: '',
           parts: mintParts(),
@@ -1973,6 +1997,7 @@ describe('saveCodec', () => {
           modelId: 'honda-city-e-aa',
           year: 1990,
           mileageKm: 12_000,
+          factoryColour: 'white',
           color: 'Red',
           provenanceNote: '',
           parts: mintParts({
@@ -2021,6 +2046,7 @@ describe('saveCodec', () => {
           modelId: 'honda-city-e-aa',
           year: 1990,
           mileageKm: 12_000,
+          factoryColour: 'white',
           color: 'Red',
           provenanceNote: '',
           parts: mintParts({ headValvetrain: stockPartFixture('headValvetrain', 'worn') }),
@@ -2053,6 +2079,7 @@ describe('saveCodec', () => {
           modelId: 'honda-city-e-aa',
           year: 1990,
           mileageKm: 12_000,
+          factoryColour: 'white',
           color: 'Red',
           provenanceNote: '',
           parts: mintParts({ headValvetrain: stockPartFixture('headValvetrain', 'worn') }),
