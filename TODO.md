@@ -1023,6 +1023,14 @@ pass."
 
 ## Planned systems (designed, not yet scheduled)
 
+- [ ] **Machining as a fifth play in the plays ranking (carried out of Sprint 168).** The ranking
+  reads what a car needs and what it is worth, and machining is invisible to it, so a player is
+  never told that boring the block is the best thing they could do to this car today. It cannot be
+  added until the ranking can read what the shop OWNS, because a machining play is only available
+  to a shop with the machine, unlike the four plays that are always possible. Worth checking
+  against playtest evidence before building: a ranking heuristic is worth nothing until it is known
+  whether the current ranking actually misleads.
+
 - [ ] **Weight reduction: stripping a car down, and sprung against unsprung mass (maintainer,
   raised while designing machining, explicitly NOT part of that sprint).** Power-to-weight should
   be something a player can attack from the weight side rather than only the power side. Four
@@ -1442,6 +1450,29 @@ pass."
   teach generation to pick among a grade's kit SKUs so auction lots can wear them.
 
 ## Design decisions awaiting maintainer direction
+
+- [ ] **The 37 parody colour names have not been swept against the copy bar (Sprint 169, deferred
+  to the playtest by maintainer instruction 2026-08-03).** Every one in `paintAliases.json` is a
+  proposal, not a ruling. They are player-facing text on cars a player already loves, so the bar is
+  "worth reading", not "legally distinct". The paint palette dev screen shows the parody and real
+  name together, which is the right way to judge them. Least confident: **Fairground Yellow** and
+  **Biscuit Brown** (both risk being twee), **Chamois Yellow** (garage-correct but obscure), and
+  **Shoreline Blue** for Bayside Blue, which may read as a dodge rather than a parody. `Wangan
+  Blue` is the named alternative there, and the game already uses Wangan as a culture name.
+
+- [ ] **Nobody has seen the paint work render (Sprints 169-170, deferred to the playtest).**
+  Neither the 34 colour ramps, nor the paint stage's new colour-and-finish picker, nor how 34
+  swatches read grouped into nine families. Correctness is established by types and tests only.
+  Two specific things to look at: the **five closest pairs** in the palette, which is where the
+  merge came nearest to failing (`cyan`/`blue-pale`, `beige`/`white-ivory`, `red-deep`/`maroon`,
+  `green-sage`/`grey-mid`, and the three silvers) - if any pair is indistinguishable on a sprite
+  they should merge; and whether the four physical dial curves' PROVISIONAL ramps read at all at
+  the sprite's four tones.
+
+- [ ] **`tierDelta.grand` is unset as factory rubber for the supercars.** Carried out of the
+  tuning arc and never scheduled. It is a per-tier value, not a per-car one, so it does not fall
+  under directive 24's whole-roster rule, but it is an economy lever and needs naming and signing
+  before anyone implements it.
 
 - [ ] **The reputation system wants a fresh look once the sale-value arc lands (maintainer
   instruction, 2026-07-31, raised while ruling on the instant-flip guard).** Settling the guard's
