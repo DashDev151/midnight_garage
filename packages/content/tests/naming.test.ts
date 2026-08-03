@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import cars from '../data/cars.json'
 import lapReferences from '../data/lapReferences.json'
+import paintAliases from '../data/paintAliases.json'
 import parts from '../data/parts.json'
 import personas from '../data/personas.json'
 import serviceJobs from '../data/serviceJobTemplates.json'
@@ -8,14 +9,17 @@ import storyMissions from '../data/storyMissions.json'
 import {
   CarModelsSchema,
   LapReferencesSchema,
+  PaintAliasesSchema,
   PartCatalogEntriesSchema,
   PersonasSchema,
   REAL_BRANDS,
+  REAL_COLOUR_NAMES,
   REAL_MODEL_TOKENS,
   ServiceJobTypesSchema,
   StoryMissionsSchema,
   resolveCarBrand,
   resolveCarDisplayName,
+  resolvePaintColourName,
 } from '../src'
 
 describe('naming layer: parody mode leaks no real-brand strings', () => {
@@ -41,6 +45,35 @@ describe('naming layer: parody mode leaks no real-brand strings', () => {
     for (const model of parsedCars) {
       expect(resolveCarDisplayName(model, 'parody')).not.toBe(resolveCarDisplayName(model, 'real'))
       expect(resolveCarBrand(model, 'parody')).not.toBe(resolveCarBrand(model, 'real'))
+    }
+  })
+
+  /**
+   * The iconic-colour alias table binds a real manufacturer's paint name to a
+   * parody name exactly as a car binds `displayName` to `parodyName`, so it
+   * gets the same leak guard: `REAL_COLOUR_NAMES` joins the tokens checked
+   * here rather than a second, parallel leak test.
+   */
+  it('every paint alias resolves cleanly in parody mode', () => {
+    const parsedAliases = PaintAliasesSchema.parse(paintAliases)
+    const colourTokens = REAL_COLOUR_NAMES.map((t) => t.toLowerCase())
+    for (const alias of parsedAliases) {
+      const parodyName = resolvePaintColourName(alias, 'parody').toLowerCase()
+      for (const token of colourTokens) {
+        expect(
+          parodyName.includes(token),
+          `alias "${alias.id}" parody name "${parodyName}" leaks "${token}"`,
+        ).toBe(false)
+      }
+    }
+  })
+
+  it('parody mode differs from real mode for every paint alias', () => {
+    const parsedAliases = PaintAliasesSchema.parse(paintAliases)
+    for (const alias of parsedAliases) {
+      expect(resolvePaintColourName(alias, 'parody')).not.toBe(
+        resolvePaintColourName(alias, 'real'),
+      )
     }
   })
 

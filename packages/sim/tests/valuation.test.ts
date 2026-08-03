@@ -52,6 +52,7 @@ const model: CarModel = {
     styleBase: 74,
     styleCeiling: 95,
     aeroCeiling: 1,
+    factoryColours: ['white', 'red', 'blue-rally'],
   },
   tier: 'flagship',
   rarity: 'rare',

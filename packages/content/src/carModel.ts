@@ -182,6 +182,30 @@ export const CarModelSchema = z
          * later cannot silently inherit a value nobody chose.
          */
         aeroCeiling: z.number().min(0).max(1),
+        /**
+         * The colours this car actually left the factory wearing, authored
+         * per car for all 94 roster rows from the roster CSV's own
+         * `factoryColours` column. Each entry is a palette id
+         * (`PAINT_COLOURS`, cross-checked in a test rather than imported
+         * here - `data.ts` imports this module, so the reverse import would
+         * cycle) or a factory two-tone joining two ids with `+`. Order is
+         * authored, not incidental: it is the research's own order and the
+         * roster guard compares it exactly.
+         *
+         * Required, not defaulted, on the same footing as `reliabilityBase`,
+         * `styleBase` and `aeroCeiling`: a car added later cannot silently
+         * generate in whatever colour happens to be first in the palette.
+         */
+        factoryColours: z
+          .array(
+            z
+              .string()
+              .regex(
+                /^[a-z0-9-]+(\+[a-z0-9-]+)?$/,
+                'a factory colour is a palette id, or two ids joined by +',
+              ),
+          )
+          .min(1),
         weightDistributionFront: z.number().gte(30).lte(70).optional(),
         wheelbaseMm: z.number().int().positive().optional(),
         comHeightMm: z.number().int().positive().optional(),

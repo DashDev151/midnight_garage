@@ -5,16 +5,16 @@ import { PaintColourSchema, PaintColoursSchema } from '../src'
 const EM_DASH = String.fromCharCode(0x2014)
 
 /**
- * The paint stage's swatch vocabulary: schema parse, the twelve shipped
- * finishes, unique kebab-case ids, and a strictly-formed hex on every entry.
- * No price or stat is asserted because a colour carries neither - the stage's
- * cost lives with its material SKU.
+ * The paint stage's swatch vocabulary: schema parse, the 34 consolidated
+ * factory colours, unique kebab-case ids, a shade brief on every entry, and a
+ * strictly-formed hex on every entry. No price or stat is asserted because a
+ * colour carries neither - the stage's cost lives with its material SKU.
  */
 describe('paintColours.json', () => {
   it('validates against the paint colour schema', () => {
     const result = PaintColoursSchema.safeParse(paintColours)
     if (!result.success) throw new Error(result.error.message)
-    expect(result.data.length).toBe(12)
+    expect(result.data.length).toBe(34)
   })
 
   it('every id is unique', () => {
@@ -41,6 +41,13 @@ describe('paintColours.json', () => {
     }
   })
 
+  it('every shade brief is non-empty and free of the em dash', () => {
+    for (const colour of paintColours) {
+      expect(colour.shade.trim().length, `${colour.id} has an empty shade`).toBeGreaterThan(0)
+      expect(colour.shade.includes(EM_DASH), `${colour.id} carries an em dash`).toBe(false)
+    }
+  })
+
   /**
    * The hex guard checks itself: a malformed colour renders as a broken swatch
    * instead of throwing, so the schema is the only thing standing between bad
@@ -49,7 +56,12 @@ describe('paintColours.json', () => {
   it.each(['1f2b4d', '#1F2B4D', '#1f2b4', '#1f2b4dd', '#1f2b4z', ''])(
     'rejects the malformed hex "%s"',
     (hex) => {
-      const result = PaintColourSchema.safeParse({ id: 'probe', name: 'Probe', hex })
+      const result = PaintColourSchema.safeParse({
+        id: 'probe',
+        name: 'Probe',
+        shade: 'Probe shade brief.',
+        hex,
+      })
       expect(result.success).toBe(false)
     },
   )

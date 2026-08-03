@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import cars from '../data/cars.json'
-import { BUYERS, CAR_CULTURES } from '../src'
+import { BUYERS, CAR_CULTURES, PAINT_ALIASES } from '../src'
 
 /**
  * `docs/design/midnight-garage-roster.csv` is the single source of truth for
@@ -67,6 +67,14 @@ const STYLE_CEILING = 100
 const AERO_FLOOR = 0
 const AERO_CEILING = 1
 const AERO_JOKE_FLOOR = 0.2
+/** One `factoryColours` token: a palette id, or two joined by `+` for a
+ * factory two-tone. Mirrors `CarModelSchema.spec.factoryColours`'s own
+ * regex exactly, so the CSV and the schema can never quietly disagree on
+ * what a valid cell looks like. */
+const FACTORY_COLOUR_TOKEN = /^[a-z0-9-]+(\+[a-z0-9-]+)?$/
+/** How confidently each car's `factoryColours` pool is sourced, from a
+ * manufacturer catalogue down to a thin or provisional guess. */
+const FACTORY_COLOURS_BASES = ['catalogue', 'list', 'partial', 'provisional', 'thin', 'typical']
 
 /**
  * The CSV's `culture` column is written for a human reading a spreadsheet
@@ -321,6 +329,53 @@ describe('the roster CSV is well formed', () => {
       )
     }
   })
+
+  /**
+   * `factoryColours` is a pipe-separated list rather than a scalar, the
+   * first roster column shaped that way, and `factoryColoursBasis` is its
+   * provenance, the same pattern `priceYen`/`priceStatus` already holds.
+   * Every one of the 94 rows carries both, including the three cars that
+   * cannot be honestly authored (they carry `provisional` or `thin` rather
+   * than an invented catalogue).
+   */
+  it('gives every car a factory colour pool and a basis for it', () => {
+    for (const row of roster) {
+      const where = `roster row ${row.get('rosterNo')} (${row.get('variantLabel')})`
+      const cell = row.get('factoryColours')
+      expect(cell, `${where}: factoryColours is blank`).not.toBe('')
+      for (const token of cell.split('|')) {
+        expect(token, `${where}: factoryColours token "${token}"`).toMatch(FACTORY_COLOUR_TOKEN)
+      }
+      expect(FACTORY_COLOURS_BASES, where).toContain(row.get('factoryColoursBasis'))
+    }
+  })
+
+  /**
+   * An iconic name binds a colour to the cars that carried it, so every car it
+   * names must actually have that colour in its authored pool. The two lists
+   * are transcribed from different tables of the same research and can
+   * disagree: Midnight Purple's own table listed four cars "where the window
+   * allows", and the per-car research had already resolved that phrase against
+   * two of them. The pool is the side that decides.
+   */
+  it('never binds an iconic name to a car whose pool lacks that colour', () => {
+    const poolsByRosterNo = new Map(
+      roster.map((row) => [row.get('rosterNo'), row.get('factoryColours').split('|')]),
+    )
+    for (const alias of PAINT_ALIASES) {
+      for (const rosterNo of alias.cars) {
+        const pool = poolsByRosterNo.get(String(rosterNo))
+        expect(
+          pool,
+          `${alias.id} names roster car ${rosterNo}, which is not in the roster`,
+        ).toBeDefined()
+        expect(
+          pool,
+          `${alias.id} claims roster car ${rosterNo} carried "${alias.colourId}", but its pool does not`,
+        ).toContain(alias.colourId)
+      }
+    }
+  })
 })
 
 describe('cars.json agrees with the roster CSV', () => {
@@ -367,6 +422,20 @@ describe('cars.json agrees with the roster CSV', () => {
       const id = car.id as string
       const spec = car.spec as Record<string, unknown>
       expect(spec.culture, `${id}.spec.culture`).toBe(cultureIdFor(byId.get(id)!.get('culture')))
+    }
+  })
+
+  /**
+   * The array's ORDER is authored, not incidental: it is the research's own
+   * order and `spec.factoryColours` must carry it exactly, not merely the
+   * same set of colours.
+   */
+  it('gives every shipped car the factory colour pool the roster authored for it, in order', () => {
+    for (const car of shipped) {
+      const id = car.id as string
+      const spec = car.spec as Record<string, unknown>
+      const authored = byId.get(id)!.get('factoryColours').split('|')
+      expect(spec.factoryColours, `${id}.spec.factoryColours`).toEqual(authored)
     }
   })
 

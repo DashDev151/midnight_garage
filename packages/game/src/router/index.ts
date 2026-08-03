@@ -25,6 +25,11 @@ const devRoutes: RouteRecordRaw[] = import.meta.env.DEV
         name: 'performance-sandbox',
         component: () => import('../screens/PerformanceSandboxScreen.vue'),
       },
+      {
+        path: '/paint-palette',
+        name: 'paint-palette',
+        component: () => import('../screens/PaintPaletteScreen.vue'),
+      },
     ]
   : []
 

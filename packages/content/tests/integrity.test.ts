@@ -15,6 +15,7 @@ import {
   CarPartTaxonomyContentSchema,
   EconomyConfigSchema,
   GradeSchema,
+  PAINT_COLOURS,
   PART_FITMENT_CLASS_DISPLAY_NAMES,
   PartCatalogEntriesSchema,
   PARTS,
@@ -69,6 +70,29 @@ describe('referential integrity', () => {
       }
     }
     expect(offenders).toEqual([])
+  })
+
+  /**
+   * `spec.factoryColours` carries palette ids as plain strings rather than a
+   * typed reference, specifically so `carModel.ts` never imports
+   * `paintColour.ts` (`data.ts` imports `carModel.ts`, so the reverse would
+   * cycle). Nothing at the schema level can catch a typo'd id, so this is
+   * the one place both sides are ever imported together: every id a shipped
+   * car uses, including each half of a factory two-tone, must be a real
+   * member of `PAINT_COLOURS`.
+   */
+  it("every shipped car's factoryColours resolve against the real palette", () => {
+    const parsedCars = CarModelsSchema.parse(cars)
+    const paletteIds = new Set(PAINT_COLOURS.map((colour) => colour.id))
+    for (const car of parsedCars) {
+      for (const entry of car.spec.factoryColours) {
+        for (const id of entry.split('+')) {
+          expect(paletteIds.has(id), `${car.id}: factoryColours entry "${entry}" (${id})`).toBe(
+            true,
+          )
+        }
+      }
+    }
   })
 
   // The tier price bands moved to `rosterCsvGuard.test.ts`, which checks them

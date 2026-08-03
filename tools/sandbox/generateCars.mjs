@@ -226,8 +226,8 @@ function measuredFromFor(row) {
  * Romeo` on the one two-word marque; no physics reads it).
  *
  * Placeholders, read by nothing: `chassisCode`, `bookValueYen`, `rarity`,
- * `reliabilityBase`, `styleBase`, `styleCeiling`, `culture`, and the two
- * parody-name fields, which the
+ * `reliabilityBase`, `styleBase`, `styleCeiling`, `culture`, `factoryColours`,
+ * and the two parody-name fields, which the
  * sandbox never renders. `bookValueYen` in particular is why the screen shows
  * these cars no price at all: pricing a car the game does not sell would be
  * inventing an economy number, and `rarity` reaches only auction placement,
@@ -239,6 +239,9 @@ function measuredFromFor(row) {
  * research entry. `culture` is the same case one step further out: it reaches
  * only auction generation's care profile, which a research entry never enters,
  * and `oddball` is the honest label for a car with no authored scene.
+ * `factoryColours` reaches only the paint review screen's car selector, which
+ * reads the roster CSV directly for its own 94-car dropdown rather than this
+ * file, so a single flat entry satisfies the schema without inventing a pool.
  *
  * `aeroCeiling` is the one required per-car constant the sandbox DOES read: it
  * scales what a fitted aero part's downforce is worth, and the sandbox fits
@@ -251,6 +254,7 @@ const RESEARCH_STYLE_BASE_PLACEHOLDER = 12
 const RESEARCH_STYLE_CEILING_PLACEHOLDER = 12
 const RESEARCH_AERO_CEILING_NEUTRAL = 1
 const RESEARCH_CULTURE_PLACEHOLDER = 'oddball'
+const RESEARCH_FACTORY_COLOURS_PLACEHOLDER = ['white']
 function synthesiseModel(row) {
   const displayName = displayNameFor(row)
   const section = TIER_BY_SECTION[row.sec]
@@ -287,6 +291,7 @@ function synthesiseModel(row) {
       styleBase: RESEARCH_STYLE_BASE_PLACEHOLDER,
       styleCeiling: RESEARCH_STYLE_CEILING_PLACEHOLDER,
       aeroCeiling: RESEARCH_AERO_CEILING_NEUTRAL,
+      factoryColours: RESEARCH_FACTORY_COLOURS_PLACEHOLDER,
       quotedPowerPs: omitNull(row.q),
       powerRpm: omitNull(row.psr),
       peakTorqueNm: omitNull(row.tq),
@@ -354,9 +359,10 @@ const header = `/**
  * section, \`tyreCompound\` from the stock tyre and the build year, and the
  * layout/induction/engine tags from the book's own drivetrain, engine position
  * and aspiration - all of which the physics reads. \`chassisCode\`,
- * \`bookValueYen\`, \`reliabilityBase\`, \`styleBase\`, \`styleCeiling\`, \`culture\` and
- * the parody names are placeholders that nothing reads, which is why the
- * sandbox shows a research entry no price rather than a made-up one.
+ * \`bookValueYen\`, \`reliabilityBase\`, \`styleBase\`, \`styleCeiling\`, \`culture\`,
+ * \`factoryColours\` and the parody names are placeholders that nothing reads,
+ * which is why the sandbox shows a research entry no price rather than a
+ * made-up one.
  * \`aeroCeiling\` is neutral rather than a placeholder: the sandbox does read it,
  * so a research entry runs a fitted aero part at exactly its authored value.
  *

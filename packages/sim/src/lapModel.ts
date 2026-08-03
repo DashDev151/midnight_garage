@@ -62,6 +62,10 @@ function referenceCarModel(weightKg: number, powerPs: number): CarModel {
       // reference chassis runs on its own bodywork alone. Neutral, so the board
       // would read the same if one were ever fitted.
       aeroCeiling: 1,
+      // Read by nothing: a reference chassis is never generated as an owned
+      // car, so no colour is ever shown for it. A single flat entry rather
+      // than an invented pool.
+      factoryColours: ['white'],
       engineConfig: 'I4',
       aspiration: 'NA',
       weightDistributionFront: 53,

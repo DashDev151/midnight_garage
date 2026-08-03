@@ -80,6 +80,7 @@ const TEST_MODEL: CarModel = {
     styleBase: 20,
     styleCeiling: 80,
     aeroCeiling: 1,
+    factoryColours: ['white', 'gunmetal', 'red-deep'],
   },
   tier: 'everyday',
   rarity: 'common',

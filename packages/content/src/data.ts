@@ -11,6 +11,7 @@ import facilitiesJson from '../data/facilities.json'
 import failureModesJson from '../data/failureModes.json'
 import lapReferencesJson from '../data/lapReferences.json'
 import materialsJson from '../data/materials.json'
+import paintAliasesJson from '../data/paintAliases.json'
 import paintColoursJson from '../data/paintColours.json'
 import partPricingJson from '../data/partPricing.json'
 import partsJson from '../data/parts.json'
@@ -46,6 +47,7 @@ import { FacilitiesSchema } from './facilities'
 import { FailureModesSchema, type FailureMode } from './failureMode'
 import { LapReferencesSchema } from './lapReference'
 import { MaterialsSchema } from './material'
+import { PaintAliasesSchema } from './paintAlias'
 import { PaintColoursSchema } from './paintColour'
 import { PartCatalogEntriesSchema, PartsSchema, resolvePartsCatalog } from './part'
 import { PartPricingSheetSchema } from './partPricing'
@@ -154,6 +156,14 @@ export const MATERIALS = MaterialsSchema.parse(materialsJson)
  * offers, carrying no price and no stat effect of its own.
  */
 export const PAINT_COLOURS = PaintColoursSchema.parse(paintColoursJson)
+
+/**
+ * The iconic-colour alias table: manufacturers' names for manufacturers'
+ * colours, bound to a palette colour and to the roster cars that carried it.
+ * Flips through `NAMING_MODE` via `resolvePaintColourName`, exactly as a
+ * car's own `displayName`/`parodyName` flip through `resolveCarDisplayName`.
+ */
+export const PAINT_ALIASES = PaintAliasesSchema.parse(paintAliasesJson)
 export const COMPONENT_DISPLAY_NAMES = ComponentDisplayNamesSchema.parse(componentDisplayNamesJson)
 export const SPECIALTY_COPY = SpecialtyCopySchema.parse(specialtyCopyJson)
 export const TECHNIQUES = TechniquesSchema.parse(techniquesJson)

@@ -20,7 +20,7 @@ function zone(overrides: Partial<ZoneState> = {}): ZoneState {
  * bare. `extra` is applied to those same stripped zones. */
 function carWithBarePanels(count: number, extra: Partial<ZoneState> = {}): ZoneStates {
   const states = {} as Record<string, ZoneState>
-  for (const zoneId of ALL_ZONE_IDS) states[zoneId] = zone({ colour: 'pearl-white' })
+  for (const zoneId of ALL_ZONE_IDS) states[zoneId] = zone({ colour: 'white' })
   for (const zoneId of PANEL_ZONE_IDS.slice(0, count)) {
     states[zoneId] = zone({ finish: 3, ...extra })
   }
