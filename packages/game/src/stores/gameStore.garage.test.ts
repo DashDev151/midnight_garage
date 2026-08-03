@@ -269,3 +269,72 @@ describe('garage: instant part install', () => {
     ).toBe(true)
   })
 })
+
+describe('garage: assembly remove/refit gate on labour, not just structure', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  // Both ops are atomic (`resolveRemoveAssembly`/`resolveRefitAssembly` refuse
+  // outright over budget, never partially completing), so a row that only
+  // checked structure would enable a button whose click then did nothing at
+  // all - the bug this closes.
+
+  it('canRemove is false and the row names the shortfall when today has less labour than removal costs', () => {
+    const game = useGameStore()
+    game.devGrantCar(CARS[0]!.id)
+    const car = game.gameState.ownedCars[0]!
+    game.moveCar(car.id, 'service')
+    // Drain the day's whole labour pool before ever touching the assembly.
+    game.gameState = { ...game.gameState, energySpentToday: game.laborSlotsPerDay }
+
+    const row = game.assemblyRowsFor(car.id).find((r) => r.assemblyId === 'wheelAssembly')!
+    expect(row.onBench).toBe(false)
+    expect(row.removeLabourPoints).toBeGreaterThan(0) // rims + tyres both present
+    expect(row.canRemove).toBe(false)
+    expect(row.blockedReason).toBe(`Needs ${row.removeLabourPoints} labour, only 0 left today`)
+
+    // The button being disabled is only half the fix - the click itself must
+    // still refuse, not silently spend what it cannot afford.
+    expect(game.removeAssembly(car.id, 'wheelAssembly')).toBe(false)
+    expect(game.gameState.ownedCars[0]!.parts.rims.installed).not.toBeNull()
+    expect(game.gameState.ownedCars[0]!.parts.tyres.installed).not.toBeNull()
+  })
+
+  it('canRefit is false and the row names the shortfall when a changed member makes today refuse the refit', () => {
+    const game = useGameStore()
+    // Retry until the granted car's rims start below mint, so there is a real
+    // rung to recondition - a mint rim would leave nothing to change and the
+    // refit would price free by equivalence, proving nothing about labour.
+    // (Rims, not tyres: tyres are a non-repairable consumable and never offer
+    // a recondition step at any band.)
+    let car = game.gameState.ownedCars.at(-1)
+    for (let i = 0; i < 30 && (!car || car.parts.rims.installed!.band === 'mint'); i++) {
+      game.devGrantCar(CARS[0]!.id)
+      car = game.gameState.ownedCars.at(-1)!
+    }
+    if (!car) throw new Error('expected a granted car')
+    game.moveCar(car.id, 'service')
+
+    expect(game.removeAssembly(car.id, 'wheelAssembly')).toBe(true)
+    const container = game.benchContainersFor(car.id).find((c) => c.assemblyId === 'wheelAssembly')!
+    const rimsMember = container.members.find((m) => m.carPartId === 'rims')!
+    expect(rimsMember.reconditionStep).not.toBeNull()
+    // Reconditioning moves the member off its vacated baseline, so refit can
+    // no longer price this member free by equivalence.
+    game.reconditionPart(rimsMember.instance!.id, rimsMember.reconditionStep!.targetBand)
+
+    // Drain the rest of the day's labour before attempting the refit.
+    game.gameState = { ...game.gameState, energySpentToday: game.laborSlotsPerDay }
+
+    const row = game.assemblyRowsFor(car.id).find((r) => r.assemblyId === 'wheelAssembly')!
+    expect(row.onBench).toBe(true)
+    expect(row.refitLabourPoints).toBeGreaterThan(0)
+    expect(row.canRefit).toBe(false)
+    expect(row.blockedReason).toBe(`Needs ${row.refitLabourPoints} labour, only 0 left today`)
+
+    expect(game.refitAssembly(car.id, 'wheelAssembly')).toBe(false)
+    // Still on the bench - the refit never happened.
+    expect(game.benchContainersFor(car.id).some((c) => c.assemblyId === 'wheelAssembly')).toBe(true)
+    const afterCar = game.gameState.ownedCars.find((c) => c.id === car.id)!
+    expect(afterCar.parts.rims.installed).toBeNull()
+  })
+})

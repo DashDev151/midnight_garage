@@ -1509,7 +1509,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               :data-test="'refit-assembly-' + panelAssemblyRow.assemblyId"
               @click="game.refitAssembly(detail.car.id, panelAssemblyRow.assemblyId)"
             >
-              Refit assembly{{ labourSuffix(game.actionPoints.refitAssembly) }}
+              Refit assembly{{ labourSuffix(panelAssemblyRow.refitLabourPoints) }}
             </button>
             <button
               v-else

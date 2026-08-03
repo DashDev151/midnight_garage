@@ -316,13 +316,37 @@ export function resolveRemoveAssembly(
 }
 
 /**
+ * Labour to refit `container` back onto `car`: the operation's own
+ * `energy.actionPoints.refitAssembly` overhead plus every member the
+ * container carries, each charged the same `refitLaborSlotsFor` equivalence
+ * rule a single part uses - free for a member that matches the slot's
+ * vacated baseline, the normal install charge for a changed one. Exported so
+ * the UI can quote the real figure, and gate the refit button on it, before
+ * the player commits - the refit counterpart of `removeAssemblyLaborSlotsFor`,
+ * and the one place `resolveRefitAssembly` itself sizes the operation, so the
+ * quote and the charge can never drift apart.
+ */
+export function refitAssemblyLaborSlotsFor(
+  car: CarInstance,
+  def: AssemblyDef,
+  container: AssemblyContainer,
+  context: SimContext,
+): number {
+  return def.members.reduce((total, member) => {
+    const instance = container.members[member]
+    return instance ? total + refitLaborSlotsFor(car, member, instance, context) : total
+  }, context.economy.energy.actionPoints.refitAssembly)
+}
+
+/**
  * Refit an assembly as a unit (car-level). The operation itself costs
  * `energy.actionPoints.refitAssembly` (0 in shipped content) PLUS
  * per-member charging: a member equal to the slot's
  * `vacatedBaseline` refits at `energy.actionPoints.refitUnchangedMember`
  * (also 0 today, via `refitLaborSlotsFor`), a changed member charges its
  * normal install labour (`installLaborSlotsFor`, reading
- * `economy.energy.energyByClass`). The machine gate applies as on removal -
+ * `economy.energy.energyByClass`) - both through `refitAssemblyLaborSlotsFor`
+ * above. The machine gate applies as on removal -
  * that group's line owned or hired for the day, one hire covering every
  * operation on it for the whole day, remove and refit alike. Each changed
  * member's `pricePaidYen` lands on the bill. The container dissolves back into
@@ -374,12 +398,7 @@ export function resolveRefitAssembly(
     }
   }
 
-  let laborSlotsRequired = context.economy.energy.actionPoints.refitAssembly
-  for (const member of def.members) {
-    const instance = container.members[member]
-    if (!instance) continue
-    laborSlotsRequired += refitLaborSlotsFor(car, member, instance, context)
-  }
+  const laborSlotsRequired = refitAssemblyLaborSlotsFor(car, def, container, context)
   if (laborSlotsRequired > laborAvailable) return fail
 
   const gateGroup = assemblyMachineGateGroup(def, context)

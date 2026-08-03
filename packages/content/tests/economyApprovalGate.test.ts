@@ -1626,6 +1626,17 @@ import storyMissions from '../data/storyMissions.json'
  * (kyusha/exotic/touring-car to cherished; drift/front-drive-tuner/touge/kurokan/wangan
  * to scene; honest-transport/kei to worked; rotary/rally-bred/oddball to mixed). No
  * existing value moves; both tables are wholly new.
+ *
+ * Re-pinned 2026-08-03 (maintainer approval, verbatim: "800ps ceiling") for
+ * `statFormulas.radarPowerCeilingPs` at 800, a DISPLAY scale and a wholly new field.
+ * It exists because the stat radar had been plotting power against a hardcoded 560 in
+ * the game package while labelling the spoke with raw PS, so power was the one axis
+ * whose number could not be compared with its four 0-100 neighbours. The buyer model's
+ * `powerNormalizationCeiling` (300) is deliberately NOT reused for it: that answers
+ * where a buyer stops caring, and at 300 the spoke pegs for nine stock cars and for
+ * every built engine. 800 sits above the roster's fastest stock car (560 PS, the LFA)
+ * with room for a fully built motor. No existing value moves, and this field feeds no
+ * sim formula, price or payout.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -1635,7 +1646,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('8d895cf4a38e2e235986e853d96dfa44f802c77000227d59133d61ae630032fd')
+    ).toBe('7c594d96d5ea6bbb244c530bcdac98264839fc095e7e2255f0ed0515f9cfc81d')
   })
 
   it('damagePatterns.json matches its approved content exactly', () => {

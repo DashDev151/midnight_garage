@@ -1,14 +1,20 @@
 <script setup lang="ts">
 import type { StatBlock } from '@midnight-garage/content'
 import { computed } from 'vue'
+import { useGameStore } from '../stores/gameStore'
 import {
   axisAnchor,
+  axisDisplayValue,
   axisPoint,
   gridPolygonPoints,
   RADAR_AXES,
+  RADAR_LABEL_MAGNITUDE,
   RADAR_RING_MAGNITUDES,
+  radarPad,
   statPolygonPoints,
 } from '../utils/radar'
+
+const game = useGameStore()
 
 const props = withDefaults(defineProps<{ stats: StatBlock; size?: number }>(), { size: 200 })
 
@@ -33,23 +39,31 @@ const spokes = computed(() => {
   })
 })
 
-const polygon = computed(() => statPolygonPoints(props.stats, props.size))
+const polygon = computed(() => statPolygonPoints(props.stats, props.size, game.context.economy))
 
 const labels = computed(() =>
   RADAR_AXES.map((axis, i) => {
     // Just outside the rim. It can sit closer than the old 1.18 because the
     // anchor now pushes the text outward instead of centring it over the edge.
-    const p = axisPoint(i, 1.12, props.size / 2, props.size / 2, props.size / 2)
-    return { axis, x: p.x, y: p.y, anchor: axisAnchor(i), value: props.stats[axis] }
+    const p = axisPoint(i, RADAR_LABEL_MAGNITUDE, props.size / 2, props.size / 2, props.size / 2)
+    return {
+      axis,
+      x: p.x,
+      y: p.y,
+      anchor: axisAnchor(i),
+      value: axisDisplayValue(axis, props.stats, game.context.economy),
+    }
   }),
 )
 
 /**
- * Room for the labels outside the rim. Larger than the old 0.28 because a
- * side-anchored label grows outward by its own width - which is the point, and
- * would otherwise clip at the viewBox edge instead of overlapping the plot.
+ * Room for the labels outside the rim, sized per axis from its own anchor
+ * position and label length (`radarPad`) rather than one flat fraction of
+ * `size` - a side label's own width is a fixed CSS px figure, so a
+ * size-only fraction under-pads a small radar exactly where the longest
+ * label ("authenticity") sits nearest the horizontal.
  */
-const pad = computed(() => props.size * 0.38)
+const pad = computed(() => radarPad(props.size))
 const viewBox = computed(
   () => `${-pad.value} ${-pad.value} ${props.size + pad.value * 2} ${props.size + pad.value * 2}`,
 )

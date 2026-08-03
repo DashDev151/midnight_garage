@@ -222,6 +222,7 @@
       }
     },
     "powerNormalizationCeiling": 300,
+    "radarPowerCeilingPs": 800,
     "styleSaturationPoints": 66,
     "grip": {
       "eraRubberBands": [

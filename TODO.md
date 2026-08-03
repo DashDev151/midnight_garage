@@ -709,6 +709,33 @@ pass."
 
 ## Open balance/economy questions
 
+- [ ] **DEFERRED BUG FIX: nobody in the game wants a powerful car, because buyer power expectation
+  is one frozen global constant (found 2026-08-03, maintainer: "why does every buyer want 300ps.
+  this should scale with the rest of the game").**
+
+  `valuateCarForBuyer` normalises a car's power against `statFormulas.powerNormalizationCeiling`
+  (300 PS) and scores it against each archetype's authored `statTargets.power`, where clearing the
+  target earns full marks and exceeding it earns nothing more. The six archetypes target 0.15 to
+  0.75, so **the most power-hungry buyer in the game, `racer` at 0.75, is fully satisfied by 225
+  PS. The `tuner` at 0.65 is satisfied by 195.**
+
+  **So nothing above 225 PS is worth anything to any buyer, ever.** Nine roster cars exceed that
+  STOCK. The whole power ladder, the forced-induction returns, the machining arc and its roughly
+  750 PS full-race target all terminate in a customer who stopped caring three quarters of the way
+  down the range. A player who builds a 750 PS Supra is paid exactly what one who builds a 225 PS
+  Supra is paid.
+
+  **The fix is NOT to raise the constant.** That moves the wall without removing it, and it changes
+  what every buyer pays for power on every car at once. **The expectation should scale with the
+  game**: as the player gains the ability to build higher-power cars, what customers want grows
+  with them. What that scales against (the player's own best build, reputation, the calendar, the
+  car's own class) is the design question, and it is a design question rather than a lever value,
+  which is why no number is proposed here.
+
+  **The stat radar is unaffected and must stay unaffected.** Its power scale is the separate
+  `statFormulas.radarPowerCeilingPs` (800), a display-only field. A chart and a buyer want opposite
+  things from a ceiling, and conflating them is what produced the original radar bug.
+
 - [ ] **BLOCKING, NEEDS A MAINTAINER LEVER DECISION: the unimproved instant flip became
   profitable on the top two tiers when style became a real number (Sprint 152, 2026-07-31).**
   Nothing was tuned to chase it, because every candidate lever is outside what that sprint was

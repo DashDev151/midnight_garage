@@ -114,6 +114,7 @@ import {
   installLaborSlotsFor,
   isFreeInstallRefit,
   isSellingChannelUnlocked,
+  refitAssemblyLaborSlotsFor,
   refitLaborSlotsFor,
   bayCountsByKind,
   hasForecourtSpace as hasForecourtSpaceCore,
@@ -537,9 +538,10 @@ export interface NextRepairStepView {
  * One assembly's car-level row - remove it as a
  * unit, or refit it once it is on the bench. `blockedReason` is a plain string
  * naming why the relevant action (remove when off the bench, refit when on
- * it) can't run right now - an external blocker still in the way, or the
- * assembly's machinery neither owned nor hired today - phrased the same
- * way `removeBlockedReason` phrases a single-part blocker. Null when nothing
+ * it) can't run right now - an external blocker still in the way, the
+ * assembly's machinery neither owned nor hired today, or today's labour
+ * falling short of what the op actually costs - phrased the same way
+ * `removeBlockedReason` phrases a single-part blocker. Null when nothing
  * blocks it.
  */
 export interface AssemblyRowView {
@@ -553,6 +555,11 @@ export interface AssemblyRowView {
    * overhead plus every member still installed, so the button quotes the
    * real figure rather than a flat one (`removeAssemblyLaborSlotsFor`). */
   removeLabourPoints: number
+  /** Labour the refit would actually cost right now - the operation's own
+   * overhead plus every benched member, each at its own equivalence-or-install
+   * charge, so the button quotes the real figure rather than the flat op
+   * overhead alone (`refitAssemblyLaborSlotsFor`). Zero while off the bench. */
+  refitLabourPoints: number
   blockedReason: string | null
 }
 
@@ -3957,17 +3964,31 @@ export const useGameStore = defineStore('game', () => {
     return context.value.assembliesById[assemblyId]?.displayName ?? assemblyId
   }
 
+  /** The reason a row's own action is short of today's labour - the same
+   * "needs X, only Y left" voice the auction/inspection screens already use
+   * for their own time-budget refusals. */
+  function assemblyLabourShortfallCopy(pointsNeeded: number, laborRemaining: number): string {
+    return `Needs ${pointsNeeded} labour, only ${laborRemaining} left today`
+  }
+
   /**
    * Every assembly's car-level row for one workable car - whether it is on
    * the bench, whether it can be removed or refitted right now, and a plain
-   * "why not" when an external blocker or the assembly's own machinery is
-   * in the way. Empty for an unknown car.
+   * "why not" when an external blocker, the assembly's own machinery, or
+   * today's labour is in the way. Empty for an unknown car.
+   *
+   * `canRefit`/`canRemove` gate on labour as well as structure: both ops are
+   * atomic (`resolveRefitAssembly`/`resolveRemoveAssembly` refuse outright
+   * over budget rather than partially completing), so a button that ignored
+   * labour would enable, refuse silently on click, and look broken - exactly
+   * the bug this reads the sim's own `laborSlotsRequired` to close.
    */
   function assemblyRowsFor(carId: string): AssemblyRowView[] {
     const car = findWorkableCar(carId)
     if (!car) return []
     return context.value.assemblies.map((def) => {
-      const onBench = !!assemblyContainerFor(gameState.value, carId, def.id)
+      const container = assemblyContainerFor(gameState.value, carId, def.id)
+      const onBench = !!container
       const occupiedBlockers = externalBlockersFor(def, context.value).filter(
         (b) => car.parts[b].installed !== null,
       )
@@ -3975,23 +3996,36 @@ export const useGameStore = defineStore('game', () => {
       const gateGroup = assemblyMachineGateGroup(def, context.value)
       const blockingGateGroup =
         gateGroup && !hasMachineLineFor(gateGroup, gameState.value) ? gateGroup : null
+      const hasSomethingToRemove = def.members.some((m) => car.parts[m].installed !== null)
+      const removeLabourPoints = removeAssemblyLaborSlotsFor(car, def, context.value)
+      const refitLabourPoints = container
+        ? refitAssemblyLaborSlotsFor(car, def, container, context.value)
+        : 0
+      // Whichever action this row would actually run - refit on the bench,
+      // remove otherwise - is the one whose labour figure matters here.
+      const relevantLabourPoints = onBench ? refitLabourPoints : removeLabourPoints
+      const laborShort = relevantLabourPoints > laborSlotsRemainingToday.value
       return {
         assemblyId: def.id,
         displayName: def.displayName,
         group: def.group,
         onBench,
-        canRefit: onBench && !structurallyBlocked && !blockingGateGroup,
+        canRefit: onBench && !structurallyBlocked && !blockingGateGroup && !laborShort,
         canRemove:
           !onBench &&
-          def.members.some((m) => car.parts[m].installed !== null) &&
+          hasSomethingToRemove &&
           !structurallyBlocked &&
-          !blockingGateGroup,
-        removeLabourPoints: removeAssemblyLaborSlotsFor(car, def, context.value),
+          !blockingGateGroup &&
+          !laborShort,
+        removeLabourPoints,
+        refitLabourPoints,
         blockedReason: structurallyBlocked
           ? `Take off ${occupiedBlockers.map((b) => carPartLabel(b)).join(', ')} first`
           : blockingGateGroup
             ? machineLineGateCopy(blockingGateGroup)
-            : null,
+            : laborShort && (onBench || hasSomethingToRemove)
+              ? assemblyLabourShortfallCopy(relevantLabourPoints, laborSlotsRemainingToday.value)
+              : null,
       }
     })
   }

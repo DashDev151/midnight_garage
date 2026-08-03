@@ -1,30 +1,71 @@
-import type { StatBlock } from '@midnight-garage/content'
+import { ECONOMY, type StatBlock } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
-import { RADAR_POWER_REFERENCE_PS } from '../constants'
 import {
   axisAnchor,
+  axisDisplayValue,
   axisPoint,
+  estimatedLabelWidth,
   gridPolygonPoints,
   normalizeStats,
   RADAR_AXES,
+  RADAR_LABEL_MAGNITUDE,
   RADAR_RING_MAGNITUDES,
+  radarPad,
   statPolygonPoints,
 } from './radar'
 
 const ZERO: StatBlock = { power: 0, handling: 0, style: 0, reliability: 0, authenticity: 0 }
+const CEILING = ECONOMY.statFormulas.radarPowerCeilingPs
 
 describe('normalizeStats', () => {
   it('maps 0-100 stats onto 0..1 and clamps', () => {
-    const n = normalizeStats({ ...ZERO, handling: 50, style: 100, reliability: 200 })
+    const n = normalizeStats({ ...ZERO, handling: 50, style: 100, reliability: 200 }, ECONOMY)
     expect(n.handling).toBeCloseTo(0.5)
     expect(n.style).toBe(1)
     expect(n.reliability).toBe(1) // clamped, not 2
   })
 
-  it('maps power against the reference ceiling', () => {
-    expect(normalizeStats({ ...ZERO, power: RADAR_POWER_REFERENCE_PS }).power).toBe(1)
-    expect(normalizeStats({ ...ZERO, power: RADAR_POWER_REFERENCE_PS / 2 }).power).toBeCloseTo(0.5)
-    expect(normalizeStats({ ...ZERO, power: RADAR_POWER_REFERENCE_PS * 3 }).power).toBe(1) // clamped
+  /**
+   * Power is the only axis whose raw value is not already 0-100, so it is the
+   * only one that can silently plot on a different scale from its neighbours.
+   * It divides by `radarPowerCeilingPs`, a display scale that sits above the
+   * fastest car the chart will draw. The buyer model's own
+   * `powerNormalizationCeiling` is a different question and is far lower: used
+   * here it pegged the spoke for nine stock cars and every built engine.
+   */
+  it('maps power against the radar display ceiling, not the buyer taste one', () => {
+    expect(CEILING).toBeGreaterThan(ECONOMY.statFormulas.powerNormalizationCeiling)
+    expect(normalizeStats({ ...ZERO, power: CEILING }, ECONOMY).power).toBe(1)
+    expect(normalizeStats({ ...ZERO, power: CEILING / 2 }, ECONOMY).power).toBeCloseTo(0.5)
+    expect(normalizeStats({ ...ZERO, power: CEILING * 3 }, ECONOMY).power).toBe(1) // clamped
+  })
+})
+
+describe('axisDisplayValue', () => {
+  /**
+   * The number printed beside a label. All five read 0-100 so they can be
+   * compared to each other: printing power's raw PS beside four percentages
+   * invites reading 50 PS as "50 out of 100" when it is a sixth of the ceiling.
+   */
+  it('reads every axis on the same 0-100 footing, power included', () => {
+    const stats: StatBlock = {
+      power: CEILING / 2,
+      handling: 40,
+      style: 60,
+      reliability: 80,
+      authenticity: 100,
+    }
+    expect(axisDisplayValue('power', stats, ECONOMY)).toBe(50)
+    expect(axisDisplayValue('handling', stats, ECONOMY)).toBe(40)
+    expect(axisDisplayValue('style', stats, ECONOMY)).toBe(60)
+    expect(axisDisplayValue('reliability', stats, ECONOMY)).toBe(80)
+    expect(axisDisplayValue('authenticity', stats, ECONOMY)).toBe(100)
+  })
+
+  it('never prints raw PS, which is what made power incomparable', () => {
+    const stats: StatBlock = { ...ZERO, power: 50 }
+    expect(axisDisplayValue('power', stats, ECONOMY)).not.toBe(50)
+    expect(axisDisplayValue('power', stats, ECONOMY)).toBe(Math.round((50 / CEILING) * 100))
   })
 })
 
@@ -46,7 +87,7 @@ describe('axisPoint', () => {
 
 describe('statPolygonPoints', () => {
   it('emits one vertex per axis', () => {
-    const pts = statPolygonPoints({ ...ZERO, handling: 40 }, 100).split(' ')
+    const pts = statPolygonPoints({ ...ZERO, handling: 40 }, 100, ECONOMY).split(' ')
     expect(pts).toHaveLength(RADAR_AXES.length)
   })
 
@@ -54,7 +95,7 @@ describe('statPolygonPoints', () => {
     const size = 100
     const center = { x: 50, y: 50 }
     const spread = (block: StatBlock) => {
-      const pts = statPolygonPoints(block, size)
+      const pts = statPolygonPoints(block, size, ECONOMY)
         .split(' ')
         .map((s) => {
           const [x, y] = s.split(',').map(Number)
@@ -128,5 +169,50 @@ describe('the readable radar (Sprint 67 decision 5, playtest item 8)', () => {
     const anchors = RADAR_AXES.map((_, i) => axisAnchor(i))
     expect(anchors).toContain('start')
     expect(anchors).toContain('end')
+  })
+})
+
+describe('radarPad (playtest complaint: the authenticity label clips)', () => {
+  // "authenticity" is the longest axis name and sits nearest the horizontal
+  // (index 4, the same |cos| magnitude as "handling"), where a side-anchored
+  // label commits its whole width to one direction rather than splitting it -
+  // the combination that clips first.
+
+  /** No axis's label, at the given pad, reaches past the padded viewBox edge. */
+  function fitsEveryLabel(size: number, pad: number): boolean {
+    const r = size / 2
+    return RADAR_AXES.every((axis, i) => {
+      const anchor = axisAnchor(i)
+      if (anchor === 'middle') return true
+      const p = axisPoint(i, RADAR_LABEL_MAGNITUDE, r, r, r)
+      const width = estimatedLabelWidth(axis.toUpperCase())
+      const spaceAvailable = anchor === 'end' ? p.x + pad : size - p.x + pad
+      return width <= spaceAvailable
+    })
+  }
+
+  it('fits every label at the sizes the game actually renders (150 on CarDetailScreen, 200 the prop default)', () => {
+    for (const size of [150, 200, 280]) {
+      expect(fitsEveryLabel(size, radarPad(size)), `size ${size}`).toBe(true)
+    }
+  })
+
+  it('the old flat 0.38-of-size padding under-pads a small radar - a fixed-px label does not shrink with size', () => {
+    const size = 150
+    const oldPad = size * 0.38
+    expect(fitsEveryLabel(size, oldPad)).toBe(false)
+    expect(radarPad(size)).toBeGreaterThan(oldPad)
+  })
+
+  it("authenticity is the binding label at the game's own radar size", () => {
+    const size = 150
+    const r = size / 2
+    const authenticityIndex = RADAR_AXES.indexOf('authenticity')
+    const p = axisPoint(authenticityIndex, RADAR_LABEL_MAGNITUDE, r, r, r)
+    const width = estimatedLabelWidth('AUTHENTICITY')
+    // anchor is 'end' here (left of centre) - the space available before
+    // padding is the anchor's own x coordinate.
+    expect(axisAnchor(authenticityIndex)).toBe('end')
+    expect(radarPad(size)).toBeGreaterThanOrEqual(width - p.x)
   })
 })

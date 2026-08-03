@@ -1362,6 +1362,23 @@ export const EconomyConfigSchema = z.object({
      * valuation.ts). */
     powerNormalizationCeiling: z.number().positive(),
     /**
+     * What full marks means on the stat radar's power spoke. **A display
+     * scale, and deliberately NOT `powerNormalizationCeiling` above**, which
+     * answers a different question: the PS past which a BUYER stops caring.
+     * The two are separate because a chart and a buyer want opposite things
+     * from a ceiling. A buyer's is soft and low, so most of the roster can
+     * satisfy someone; a chart's has to sit above the fastest thing it will
+     * ever draw, or every built engine pegs the spoke and the axis stops
+     * saying anything at the end where builds get interesting.
+     *
+     * Sits above the roster's fastest stock car (560 PS) with room for a
+     * fully built engine, so a race motor reads differently from a stock
+     * supercar. Power is the one radar axis whose raw value is not already
+     * 0-100, so without this it is the only spoke that can silently plot on
+     * a different scale from its neighbours.
+     */
+    radarPowerCeilingPs: z.number().positive(),
+    /**
      * How many points of fitted `statModifiers.style` take a car all the way
      * from its own `spec.styleBase` to its own `spec.styleCeiling`
      * (`computeDerivedStats`): `reach = min(1, fitted / styleSaturationPoints)`.
