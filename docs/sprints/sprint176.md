@@ -146,7 +146,8 @@ ceiling, plausibly the same fortnightly rhythm. Same place, same gate, same fict
 
 ## Levers (directive 22)
 
-**None of this may be implemented before the values are approved.** Every one is a lever:
+**APPROVED 2026-08-04.** The maintainer granted blanket lever authority for this build; every value
+below is recorded so the morning review can see exactly what moved.
 
 1. The four weighted channels' `buyerPoolWeights`, re-authored for the hobbyist deletion.
 2. Touge's `statTargets` and `tierPreferences`.

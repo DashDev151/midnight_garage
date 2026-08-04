@@ -141,6 +141,23 @@ So: a tier-3 part shows in the shop with **the tool it needs, named**. A bent sh
 straightenable-by-somebody rather than as scrap. Seeing the widebody you cannot fit yet is what makes
 1,400,000 yen read as a goal rather than a receipt.
 
+## Rulings, maintainer 2026-08-04
+
+**Race grade gates on tier 2, and the early game should not be dealing in race parts.** Approved as
+drawn.
+
+**Race parts you cannot fit can be REMOVED but not INSTALLED.** So a bought car or a stripped donor
+can hand you parts beyond your tools: hoard them for later or sell them. Needs copy that makes the
+refusal read as a shop's honest limit rather than a rule.
+
+**Standing ungates the tool.** A tier-3 machine on its own performs no craft operation. Standing in
+the scene is the key that opens what the machine can do, and the machine is what performs it. Both
+are required and neither substitutes for the other, which keeps the ladder
+`t1 < t1+craft < t2 < t2+craft < t3 < t3+craft` intact.
+
+**The cage's taste shape and the cost of straightening a shell take sane defaults**, tuned after
+play rather than argued now.
+
 ## Open questions
 
 1. **Does gating race grade on tier 2 change the early game too much?** Today any part is fittable
