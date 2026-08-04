@@ -167,6 +167,30 @@ guard the same division by zero rather than being reachable in authored content 
     premium channel (ceiling > 1 + tasteSpread):
         multiplier = (1 - tasteSpread) + (ceiling - (1 - tasteSpread)) * match
 
+### Stage E's power term, and the climbing chain above it
+
+**BUILT (docs/sprints/sprint175.md, scene-standing-arc.md step 0).** `s` for the power stat is
+`normalizedPowerScore = powerPs / statFormulas.powerNormalizationCeiling` (600, raised from 300 -
+the roster's fastest stock car is 560 PS). Every archetype's `target` is still its own authored
+fraction of this ceiling, so raising it moved every buyer's ordinary appetite up together and in
+proportion, without changing which archetype wants the most (racer 0.75 now wants 450 PS, tuner
+0.65 wants 390, touge 0.7 wants 420) - that is deliberate: a shared, fixed ceiling scaling every
+fraction at once is the correct lever for ordinary appetite, and is a *different* lever from what
+governs the top of the market, below.
+
+**The climbing chain governs only the top.** `GameState.powerExpectationChain` (`{ bestPowerPs,
+climbedSteps }`, gameState.ts) tracks the highest power, in PS, any car has ever sold for -
+measured at delivery (`resolveSellViaWalkIn`, selling.ts), never a built-but-unsold figure.
+`currentPowerExpectationBarPs` (valuation.ts) derives the bar `bestPowerPs * (1 -
+powerExpectationChainStepDiscounts[step])` for `step` = 0/1/2 (10/5/1 per cent below best),
+stepping up one delivery at a time as further deliveries clear the current bar without beating the
+best outright, and restarting at step 0 the moment a delivery beats the best. **Nothing reads the
+bar yet** - no archetype's `statTargets.power` moves with it, and `advancePowerExpectationChain`
+(selling.ts) is presently the only thing that writes it. It exists so a later sprint (word-of-mouth
+or scene commissions, §13) can ask "what is the top of the market asking for right now" without
+inventing a second tracking mechanism, and so that question can be answered without ever dragging
+the ordinary buyer described above along with it.
+
 ---
 
 ## 4. Stage F: liquidity, on one normalised clock

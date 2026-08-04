@@ -215,7 +215,8 @@
         "chassis": 0.2
       }
     },
-    "powerNormalizationCeiling": 300,
+    "powerNormalizationCeiling": 600,
+    "powerExpectationChainStepDiscounts": [0.1, 0.05, 0.01],
     "radarPowerCeilingPs": 800,
     "styleSaturationPoints": 66,
     "grip": {

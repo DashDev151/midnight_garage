@@ -1786,6 +1786,46 @@ import storyMissions from '../data/storyMissions.json'
  * same footing every prior retune on this file has used. Neither mission's `payoutYen`/
  * `budgetCapYen` moves, and no other probe's requirement is sensitive to a buyer archetype's own
  * profile.
+ *
+ * Re-pinned for `docs/sprints/sprint175.md` (buyer power expectation), APPROVED 2026-08-04 under
+ * the maintainer's blanket lever authority for this build. Two levers, both named and valued in
+ * the sprint doc:
+ *
+ * 1. `statFormulas.powerNormalizationCeiling` 300 -> 600. Every archetype's `statTargets.power`
+ *    is a fraction of this, so ordinary appetite moves in proportion for everybody at once
+ *    (racer 225 -> 450 PS, tuner 195 -> 390, touge 210 -> 420, daily-drivers 75 -> 150 (`upper`
+ *    165 -> 330), show-crowd 60 -> 120, collector 90 -> 180 (`upper` 150 -> 300)) - no
+ *    archetype's own fraction changes, only the PS a fraction now means. 600 sits just above the
+ *    roster's fastest stock car (560 PS).
+ * 2. `statFormulas.powerExpectationChainStepDiscounts` (NEW) - `[0.10, 0.05, 0.01]`, the climbing
+ *    chain's three steps (10/5/1 per cent below the player's own best-ever delivered power).
+ *    Governs the derived `currentPowerExpectationBarPs` (`valuation.ts`) only; no buyer's own
+ *    `statTargets.power` reads it, and nothing in shipped content consumes the bar yet - built
+ *    and proved for a later sprint (scene-standing-arc.md) to read.
+ *
+ * Measured before/after through `valuateCarForBuyer` against four representative cars (a stock
+ * kei, a mid-power stock enthusiast car, a stock high-power flagship, and a heavily built engine):
+ * the largest single-buyer swing was daily-drivers on the high-power flagship (+2.1 per cent, its
+ * power `upper` now sits at a PS figure the car no longer overshoots as badly) and the largest
+ * drop was racer/touge on the mid-power car (-3.0/-2.1 per cent, their target's PS-equivalent
+ * moved further out of reach for a car that was never built for power); most swings were under
+ * 1.5 per cent in either direction, and the heavily-built car's price against every archetype was
+ * UNCHANGED, because it already fully cleared every archetype's power target under the OLD
+ * ceiling too (raising the ceiling cannot help a car so far past it that both ceilings' targets
+ * were already cleared - closing that gap for a no-upper archetype is exactly what the climbing
+ * chain exists for, and it deliberately ships unconsumed this sprint). No result approached the
+ * magnitude of the game's existing flip-margin tolerances; nothing else in `economy.json` moves.
+ *
+ * `partPricing.json`, `damagePatterns.json` and every mission payout/budget cap are untouched, so
+ * their hashes and the payout pin hold.
+ *
+ * Mechanical consequence, not an independent lever: `street-power-street-manners`'s `tuner`
+ * `tasteMatch.minMultiplier` moves 1.05 -> 1.04, re-derived mechanically from a fresh
+ * `storyMissionProbes.test.ts` run against the same probe build (the raised ceiling reads the same
+ * build's power differently) - never hand-picked, the same footing every prior retune on this file
+ * has used. `payoutYen`/`budgetCapYen` are unchanged, so they are not part of this gate's pinned
+ * object. No other mission's requirement is sensitive to the power ceiling: `first-proper-car`'s
+ * `daily-drivers` match and `low-and-loud`'s `show-crowd` match are both re-measured unchanged.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -1795,7 +1835,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('b7a72d5d113160cae1acd98a112e429e8a41970374223ca476d6898249d8d7c8')
+    ).toBe('a2d5d54190c0e391771519010e0ae68766f3c6e22d2e9daa8dc212cfc206b062')
   })
 
   it('damagePatterns.json matches its approved content exactly', () => {

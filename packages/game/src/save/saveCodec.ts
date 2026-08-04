@@ -698,8 +698,17 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * wiped rather than converted. The version bump alone is still required
  * (Save law) so an old client rejects a v60 save rather than silently
  * reading an offer from a buyer that no longer exists.
+ * v60 -> v61 (the climbing chain): `GameStateSchema` gained
+ * `powerExpectationChain` (docs/sprints/scene-standing-arc.md step 0),
+ * defaulted absent - the normal additive case (like v2/v22/v24/v25/v26): a
+ * pre-v61 save never delivered a car under this mechanic (the concept did
+ * not exist), so absent is exactly the correct backfill, meaning "nobody has
+ * ever delivered a car yet" - true of every pre-v61 career regardless of how
+ * many cars it actually sold, since the chain only started counting from
+ * this version. No `MIGRATIONS[60]` entry needed, but it DOES bump
+ * `SAVE_VERSION` (Save law).
  */
-export const SAVE_VERSION = 60
+export const SAVE_VERSION = 61
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

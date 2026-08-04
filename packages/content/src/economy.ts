@@ -1364,10 +1364,44 @@ export const EconomyConfigSchema = z.object({
         chassis: z.number().min(0).max(1),
       }),
     }),
-    /** Soft power ceiling `valuateCarForBuyer` normalizes taste's power term
+    /**
+     * Soft power ceiling `valuateCarForBuyer` normalizes taste's power term
      * against (was the file-local `POWER_NORMALIZATION_CEILING` constant in
-     * valuation.ts). */
+     * valuation.ts). Every archetype's `statTargets.power.target` is a
+     * fraction of THIS, so raising it moves ordinary appetite for every
+     * buyer at once - it is deliberately NOT how the top of the market
+     * tracks a player's best build; that is `powerExpectationChainStepDiscounts`
+     * below, which moves a separate, unread-by-buyers figure instead.
+     *
+     * 600 sits just above the roster's fastest stock car (560 PS), so a
+     * clearing-house ceiling of 300 (satisfied at 225 PS by the most
+     * power-hungry archetype, `racer` at 0.75) no longer leaves the whole
+     * upper half of the roster - and every built engine - worth nothing to
+     * anybody (docs/sprints/scene-standing-arc.md). Raising it here, rather
+     * than adding a second normalisation path, keeps every archetype's
+     * authored fraction the single source of what "wants a lot of power"
+     * means.
+     */
     powerNormalizationCeiling: z.number().positive(),
+    /**
+     * The climbing chain (docs/sprints/scene-standing-arc.md step 0,
+     * `GameState.powerExpectationChain`): how far below the player's own
+     * best-ever delivered power (in PS, at the moment of sale) the top of
+     * the market currently sits, indexed by how many deliveries have
+     * cleared the current bar since the last personal best.
+     * `currentPowerExpectationBarPs` (sim/valuation.ts) reads step `[0]`
+     * immediately after a new best, then `[1]`, then `[2]` (held there for
+     * any further delivery at the same best), restarting at `[0]` the
+     * instant a delivery beats the best outright.
+     *
+     * Governs the TOP of the market only - it never moves a buyer's own
+     * `statTargets.power`, and nothing in shipped content reads the derived
+     * bar yet. Built and proved here for later work (the scene-standing
+     * arc's commission sprint) to consume; a 700 PS build and a 300 PS
+     * build stay equally worth doing today because ordinary appetite is
+     * `powerNormalizationCeiling` above, untouched by this table.
+     */
+    powerExpectationChainStepDiscounts: z.array(z.number().min(0).max(1)).min(1),
     /**
      * What full marks means on the stat radar's power spoke. **A display
      * scale, and deliberately NOT `powerNormalizationCeiling` above**, which

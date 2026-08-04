@@ -12,6 +12,7 @@ import {
   type GameState,
   type Part,
   type PendingSaleOffer,
+  type PowerExpectationChain,
   type ReputationTier,
   type SellingChannelId,
 } from '@midnight-garage/content'
@@ -21,6 +22,7 @@ import { isMeetDay } from './calendar'
 import { carLedgerFor, deleteCarLedger, updateCarLedger } from './carLedger'
 import { saleQualityFor, saleReputationDeltaFor } from './carCondition'
 import type { SimContext } from './context'
+import { computeDerivedStats } from './derivedStats'
 import { saleRevealLineFor } from './diagnosis'
 import { bookCashMovements } from './financeLedger'
 import {
@@ -34,7 +36,12 @@ import { bumpPlayerSales } from './marketHeat'
 import { bellNormal, type Rng } from './rng'
 import { dissolveAssembliesForCar } from './assemblies'
 import { clearStagedWork } from './stagedWork'
-import { channelBuyerTaste, valuateCarForBuyer, valuateCarForBuyerViaChannel } from './valuation'
+import {
+  channelBuyerTaste,
+  currentPowerExpectationBarPs,
+  valuateCarForBuyer,
+  valuateCarForBuyerViaChannel,
+} from './valuation'
 
 /**
  * The trade network's own "buyer" - a fax to the dealer circle, never a
@@ -937,6 +944,34 @@ export interface SaleResult {
 }
 
 /**
+ * The climbing chain's own state transition (docs/sprints/
+ * scene-standing-arc.md step 0): given the power (in PS) of the car just
+ * delivered, decide the next `GameState.powerExpectationChain`. A delivery
+ * that beats the existing best outright (or the very first delivery ever,
+ * `chain` undefined) is a NEW personal best - the chain restarts at step 0.
+ * A delivery that clears the CURRENT bar (`currentPowerExpectationBarPs`)
+ * without beating the best climbs one step, capped at the table's last row.
+ * A delivery below the current bar changes nothing - the top of the market
+ * only moves when something actually meets or beats what it is already
+ * asking for.
+ */
+export function advancePowerExpectationChain(
+  chain: PowerExpectationChain | undefined,
+  deliveredPowerPs: number,
+  economy: EconomyConfig,
+): PowerExpectationChain {
+  if (!chain || deliveredPowerPs > chain.bestPowerPs) {
+    return { bestPowerPs: deliveredPowerPs, climbedSteps: 0 }
+  }
+  const bar = currentPowerExpectationBarPs(chain, economy)
+  if (bar !== undefined && deliveredPowerPs >= bar) {
+    const steps = economy.statFormulas.powerExpectationChainStepDiscounts
+    return { ...chain, climbedSteps: Math.min(chain.climbedSteps + 1, steps.length - 1) }
+  }
+  return chain
+}
+
+/**
  * Resolve today's live offer on `carInstanceId`, if one exists - the sale
  * mechanics (reputation, market-heat ledger, staged-work cleanup, event
  * log) are this resolver's plumbing; the PRICE comes from consuming
@@ -1021,6 +1056,22 @@ export function resolveSellViaWalkIn(
   // reputation/heat effects apply.
   const saleRevealLine = saleRevealLineFor(car, model, state, context)
 
+  // The climbing chain's own update (docs/sprints/scene-standing-arc.md step
+  // 0): the delivered car's power, exactly as `normalizedPowerScore` reads
+  // it for taste, is this delivery's measurement of "the top of the market".
+  const deliveredPowerPs = computeDerivedStats(
+    model,
+    car,
+    context.partsById,
+    context.partsTaxonomy,
+    context.economy,
+  ).power
+  const powerExpectationChain = advancePowerExpectationChain(
+    state.powerExpectationChain,
+    deliveredPowerPs,
+    context.economy,
+  )
+
   const log: DayLogEntry[] = [
     {
       type: 'car-sold',
@@ -1048,6 +1099,7 @@ export function resolveSellViaWalkIn(
             ownedCars: released.ownedCars.filter((c) => c.id !== carInstanceId),
             carsForSale: released.carsForSale.filter((f) => f.carInstanceId !== carInstanceId),
             pendingOffers: released.pendingOffers.filter((o) => o.carInstanceId !== carInstanceId),
+            powerExpectationChain,
           },
           carInstanceId,
         ),

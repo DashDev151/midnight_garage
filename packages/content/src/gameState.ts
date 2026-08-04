@@ -260,6 +260,33 @@ export const DynoStateSchema = z.object({
 
 export type DynoState = z.infer<typeof DynoStateSchema>
 
+/**
+ * The climbing chain (docs/sprints/scene-standing-arc.md step 0): the top of
+ * the market's power appetite, tracked separately from any buyer's own
+ * `statTargets.power` (`economy.statFormulas.powerNormalizationCeiling`
+ * above governs ordinary appetite; this governs only the moving figure at
+ * the top). `bestPowerPs` is the highest power, in PS, any car has ever sold
+ * for - measured at the moment of delivery (`resolveSellViaWalkIn`,
+ * sim/selling.ts), never a listed or built figure that was never actually
+ * sold. `climbedSteps` indexes
+ * `economy.statFormulas.powerExpectationChainStepDiscounts`: `0` immediately
+ * after a new personal best, incrementing (capped at the table's last step)
+ * each further delivery that clears the CURRENT bar without beating the best
+ * outright; a delivery below the current bar leaves both fields untouched.
+ * `currentPowerExpectationBarPs` (sim/valuation.ts) is the one place this is
+ * read into a PS figure - nothing in shipped content consumes it yet, and no
+ * buyer's own taste target moves with it. The genuinely-optional-key pattern
+ * (like `dyno` above), so no existing `GameState` literal needs touching;
+ * absent means nobody has ever delivered a car, which is exactly true of a
+ * fresh career.
+ */
+export const PowerExpectationChainSchema = z.object({
+  bestPowerPs: z.number().positive(),
+  climbedSteps: z.number().int().nonnegative(),
+})
+
+export type PowerExpectationChain = z.infer<typeof PowerExpectationChainSchema>
+
 export const GameStateSchema = z.object({
   day: z.number().int().min(1),
   seed: z.number().int(),
@@ -567,6 +594,10 @@ export const GameStateSchema = z.object({
    * empty shelf (`state.consumableStock ?? {}`).
    */
   consumableStock: z.record(z.string(), z.number().int().nonnegative()).optional(),
+  /** The climbing chain's own state - see `PowerExpectationChainSchema`
+   * above. The genuinely-optional-key pattern (like `consumableStock`
+   * above); absent on every save until the first car is ever delivered. */
+  powerExpectationChain: PowerExpectationChainSchema.optional(),
 })
 
 /**

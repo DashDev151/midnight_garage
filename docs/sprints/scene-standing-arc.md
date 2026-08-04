@@ -7,8 +7,8 @@ the code on 2026-08-04, so no sprint doc restates them and none can quietly disa
 
 | sprint | what | blocked by |
 | --- | --- | --- |
-| **175** | Buyer power expectation | model settled, **values outstanding** |
-| **176** | The six scenes: buyers and channels | **nothing, except its own power targets** |
+| **175** | Buyer power expectation | **BUILT** - ceiling 300 to 600, climbing chain shipped unconsumed |
+| **176** | The six scenes: buyers and channels | **BUILT** |
 | **177** | Standing moves the band | 176 |
 | **178** | The earn event and the shop ledger | 177 |
 | **179** | Word of mouth, and scene commissions | 178 |
@@ -164,21 +164,25 @@ but it is an unlisted lever and should be authored deliberately rather than defa
 `yuki` by `personaId`. Giving personas an archetype is what lets a mission credit a scene without a
 hand-written tag, and is why the tutorial needs no rewriting.
 
-### The power ceiling, and why it blocks everything
+### The power ceiling, and why it blocked everything - BUILT (sprint175.md)
 
-`statFormulas.powerNormalizationCeiling` is **300 PS** and `normalizedPowerScore` divides by it.
+`statFormulas.powerNormalizationCeiling` was **300 PS** and `normalizedPowerScore` divides by it.
 Against that:
 
-| archetype | power target | satisfied at |
-| --- | ---: | ---: |
-| racer | 0.75 | **225 PS** |
-| tuner | 0.65 | 195 PS |
-| collector | 0.3 (`upper` 0.5) | 90 PS |
+| archetype | power target | was satisfied at | now satisfied at |
+| --- | ---: | ---: | ---: |
+| racer | 0.75 | **225 PS** | **450 PS** |
+| tuner | 0.65 | 195 PS | 390 PS |
+| touge | 0.7 | 210 PS | 420 PS |
+| collector | 0.3 (`upper` 0.5) | 90 PS (`upper` 150) | 180 PS (`upper` 300) |
 
-**Nine roster cars exceed 225 PS in stock form** and a fully built engine clears it twice over. So
-the Racers scene, whose craft operation is power and handling past catalogue, sells into buyers who
-stopped caring three quarters of the way down the range. Sprint 175 exists to fix this before
-anything depends on it.
+**Nine roster cars exceeded 225 PS in stock form** and a fully built engine cleared it twice over,
+so the Racers scene, whose craft operation is power and handling past catalogue, sold into buyers
+who stopped caring three quarters of the way down the range. `powerNormalizationCeiling` moved
+300 to 600 (just above the roster's fastest stock car, 560 PS); no archetype's own fraction moved,
+only the PS a fraction now means. A second mechanism, the climbing chain
+(`GameState.powerExpectationChain`), governs the top of the market above ordinary appetite and
+ships unconsumed - full detail in `docs/sprints/sprint175.md`'s Exit.
 
 ## Rules this arc obeys throughout
 

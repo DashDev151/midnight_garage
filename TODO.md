@@ -773,44 +773,21 @@ pass."
 
 ## Open balance/economy questions
 
-- [ ] **DEFERRED BUG FIX: nobody in the game wants a powerful car, because buyer power expectation
-  is one frozen global constant (found 2026-08-03, maintainer: "why does every buyer want 300ps.
-  this should scale with the rest of the game").**
+- [ ] **REMAINING FROM sprint175.md: inputs 1 and 2 of the maintainer's four-input power-expectation
+  model are still unimplemented.** `docs/sprints/sprint175.md` built inputs 3 (the player's own
+  best build, as a climbing chain) and 4 (per-scene appetite, which already existed as authored
+  relative targets) and raised `statFormulas.powerNormalizationCeiling` 300 to 600 so ordinary
+  appetite means sensible PS numbers again. Two inputs remain open:
 
-  `valuateCarForBuyer` normalises a car's power against `statFormulas.powerNormalizationCeiling`
-  (300 PS) and scores it against each archetype's authored `statTargets.power`, where clearing the
-  target earns full marks and exceeding it earns nothing more. The six archetypes target 0.15 to
-  0.75, so **the most power-hungry buyer in the game, `racer` at 0.75, is fully satisfied by 225
-  PS. The `tuner` at 0.65 is satisfied by 195.**
-
-  **So nothing above 225 PS is worth anything to any buyer, ever.** Nine roster cars exceed that
-  STOCK. The whole power ladder, the forced-induction returns, the machining arc and its roughly
-  750 PS full-race target all terminate in a customer who stopped caring three quarters of the way
-  down the range. A player who builds a 750 PS Supra is paid exactly what one who builds a 225 PS
-  Supra is paid.
-
-  **The fix is NOT to raise the constant.** That moves the wall without removing it, and it changes
-  what every buyer pays for power on every car at once. **The expectation should scale with the
-  game**: as the player gains the ability to build higher-power cars, what customers want grows
-  with them.
-
-  **Maintainer's four inputs on what it should scale against (2026-08-04), none of them settled.**
-  This is deliberately open because it feeds the whole progression spine, not just one constant:
-
-  1. **What the player can reliably BUY.** If the auctions that sell Supras are still shut to them,
-     do not ask for that power band yet. Expectation should follow access.
+  1. **What the player can reliably BUY - car availability times PART availability.** Cars are
+     already access-gated (auction room unlocks); **parts are not gated at all today**, so only
+     half of this input exists even if the car half were wired in. Whether parts get gated at all
+     is its own decision, not a value (`sprint175.md`'s Levers section, item 3).
   2. **Hand-authored jobs**, keyed on something not yet decided.
-  3. **Their own best build so far**, at something like 10 to 15 per cent below it. Good, because it
-     measures what the game has actually shown to be possible and what this player can do. **But it
-     stalls on its own**: if demand only ever trails your best, you are never given a reason to
-     build a bigger one.
-  4. **Buyer type.** Racers should want the most power, then tuners, and so on down. The relative
-     targets already exist and are roughly right; it is the shared CEILING they all normalise
-     against that is wrong.
 
-  **The stat radar is unaffected and must stay unaffected.** Its power scale is the separate
-  `statFormulas.radarPowerCeilingPs` (800), a display-only field. A chart and a buyer want opposite
-  things from a ceiling, and conflating them is what produced the original radar bug.
+  `GameState.powerExpectationChain` and `currentPowerExpectationBarPs` (valuation.ts) exist and are
+  proved by sprint175's tests, but nothing reads them yet - the intended consumer is a later arc
+  sprint (word-of-mouth or scene commissions, `scene-standing-arc.md`).
 
 - [ ] **BLOCKING, NEEDS A MAINTAINER LEVER DECISION: the unimproved instant flip became
   profitable on the top two tiers when style became a real number (Sprint 152, 2026-07-31).**

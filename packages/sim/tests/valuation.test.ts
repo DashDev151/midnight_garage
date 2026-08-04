@@ -349,7 +349,13 @@ describe('Sprint 146: taste is a match, not a mean', () => {
   })
 
   it('an upper bound actively reduces a match: a caged, fully-built engine costs more with a Daily Drivers buyer than the stock car it started from', () => {
-    const cityTurbo = CARS.find((c) => c.id === 'honda-city-turbo-ii-aa')!
+    // A flagship car, not the entry-tier City Turbo II this test used before
+    // sprint175.md: `powerNormalizationCeiling` doubling (300 -> 600) doubled
+    // the PS the daily-drivers upper (0.55) equates to as well (165 -> 330),
+    // and no entry car's plausible full-race build reaches that far. The GT-R
+    // does - stock alone (280 PS) already needs the build to demonstrate
+    // anything.
+    const gtr = CARS.find((c) => c.id === 'nissan-skyline-gtr-bnr32')!
     // The same "maximal forced-induction build, race grade throughout" shape
     // coherenceValuation.test.ts pins as genuinely coherent - reused here so
     // the caged car's reliability loss is the real reliabilityIntensityFactor
@@ -370,18 +376,18 @@ describe('Sprint 146: taste is a match, not a mean', () => {
       driveline: 'race',
       differential: 'race',
     }
-    const stockCar = carWithGrades(cityTurbo, CONTEXT, {}, 'mint')
-    const cagedCar = carWithGrades(cityTurbo, CONTEXT, ALL_RACE_SUPPORTED, 'mint')
+    const stockCar = carWithGrades(gtr, CONTEXT, {}, 'mint')
+    const cagedCar = carWithGrades(gtr, CONTEXT, ALL_RACE_SUPPORTED, 'mint')
 
     const { power: stockPower } = computeDerivedStats(
-      cityTurbo,
+      gtr,
       stockCar,
       CONTEXT.partsById,
       PARTS_TAXONOMY,
       ECONOMY,
     )
     const { power: cagedPower } = computeDerivedStats(
-      cityTurbo,
+      gtr,
       cagedCar,
       CONTEXT.partsById,
       PARTS_TAXONOMY,
@@ -395,7 +401,7 @@ describe('Sprint 146: taste is a match, not a mean', () => {
 
     const stockTaste = channelBuyerTaste(
       dailyDrivers,
-      cityTurbo,
+      gtr,
       stockCar,
       CONTEXT.partsById,
       PARTS_TAXONOMY,
@@ -404,7 +410,7 @@ describe('Sprint 146: taste is a match, not a mean', () => {
     )
     const cagedTaste = channelBuyerTaste(
       dailyDrivers,
-      cityTurbo,
+      gtr,
       cagedCar,
       CONTEXT.partsById,
       PARTS_TAXONOMY,
@@ -463,17 +469,30 @@ describe('Sprint 146: taste is a match, not a mean', () => {
    * The Cappuccino itself (roster uid MG-028) isn't in the shipped
    * `cars.json` subset yet (builtInContent: no in
    * midnight-garage-roster.csv - it's still missing measured performance
-   * figures), so this uses the Honda Beat PP1, a small kei, against the
-   * flagship Supra. Daily Drivers inherited the deleted hobbyist archetype's
-   * demand (scene-standing-arc.md); its own modest power upper (0.55) is
-   * what actively costs the Supra here, the same mechanism the caged-engine
-   * test above isolates.
+   * figures), so this uses the Honda Beat PP1, a small kei, against a Supra.
+   * Daily Drivers inherited the deleted hobbyist archetype's demand
+   * (scene-standing-arc.md); its own modest power upper (0.55) is what
+   * actively costs the Supra here, the same mechanism the caged-engine test
+   * above isolates.
+   *
+   * The Supra carries a modest sport-grade turbo/intake/exhaust/ECU fit,
+   * not the bone-stock car this test used before sprint175.md:
+   * `powerNormalizationCeiling` doubling (300 -> 600) doubled the PS the
+   * daily-drivers upper (0.55) equates to as well (165 -> 330), and the
+   * roster's fastest STOCK car (560 PS) sits above that on purpose - no
+   * shipped car's stock trim alone crosses it any more. A lightly built
+   * Supra still reads as "a fast flagship" and still crosses it.
    */
-  it('a Daily Drivers buyer prefers a small kei car to a fast flagship one', () => {
+  it('a Daily Drivers buyer prefers a small kei car to a fast, built flagship one', () => {
     const beat = CARS.find((c) => c.id === 'honda-beat-pp1')!
     const supra = CARS.find((c) => c.id === 'toyota-supra-rz-jza80')!
     const beatInstance = buildCarInstance({ modelId: beat.id, parts: uniformCarParts('mint') })
-    const supraInstance = buildCarInstance({ modelId: supra.id, parts: uniformCarParts('mint') })
+    const supraInstance = carWithGrades(
+      supra,
+      CONTEXT,
+      { forcedInduction: 'sport', intake: 'sport', exhaust: 'sport', ignitionEcu: 'sport' },
+      'mint',
+    )
 
     const beatTaste = channelBuyerTaste(
       dailyDrivers,

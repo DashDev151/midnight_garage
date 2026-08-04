@@ -218,7 +218,7 @@
       {
         "kind": "tasteMatch",
         "buyerId": "tuner",
-        "minMultiplier": 1.05
+        "minMultiplier": 1.04
       }
     ],
     "budgetCapYen": 1494000,

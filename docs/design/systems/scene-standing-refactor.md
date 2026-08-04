@@ -229,13 +229,21 @@ Kept so the reasons survive the ideas.
 
 ## 13. Build order and touched surfaces
 
-0. **Buyer power expectation** (prerequisite, its own piece before anything else). The shared 300 PS
-   normalisation ceiling saturates every buyer's power target far below what a built engine makes,
-   which makes Racers and Race prep inert. **Raising the constant is the wrong fix**: it moves the
-   wall without removing it. Expectation should scale with what the player can actually build and
-   buy, and the four inputs the maintainer named (access to the cars that make the power, authored
-   briefs, the player's own best build less a margin, and per-scene appetite) are recorded in
-   `TODO.md`. Cheaper to settle on its own than tangled into this refactor.
+0. **Buyer power expectation** (prerequisite, its own piece before anything else). **BUILT**
+   (docs/sprints/sprint175.md). The shared 300 PS normalisation ceiling saturated every buyer's
+   power target far below what a built engine makes, which made Racers and Race prep inert.
+   Raising the constant alone was ruled out early because it drags every archetype's fraction up
+   together, but a fixed ceiling was never the wrong fix on its own - it needed a second mechanism
+   sitting above it. The shipped shape is two parts: `statFormulas.powerNormalizationCeiling`
+   moved 300 to 600 (just above the roster's fastest stock car), so ordinary appetite - still
+   each archetype's own authored fraction - simply means sensible PS numbers again (racer 450,
+   tuner 390, touge 420); and a NEW climbing chain (`GameState.powerExpectationChain`,
+   `currentPowerExpectationBarPs` in `valuation.ts`) tracks the player's own best-ever delivered
+   power and a bar that closes on it (best minus 10 per cent on a new best, minus 5 after one
+   delivery at that bar, minus 1 after another, restarting at minus 10 on the next personal best).
+   The chain governs only the TOP of the market - it changes no archetype's `statTargets.power` -
+   and ships unconsumed this sprint: it is state plus a derived figure, proved and ready for a
+   later sprint (word-of-mouth/scene commissions) to read.
 1. `buyers.json`: delete hobbyist; retune tuner; author touge; rename first-timer → daily drivers,
    stancer → show crowd (data ids and copy).
 2. `economy.json`: rebalance `buyerPoolWeights` for the hobbyist deletion; add touge weights; author

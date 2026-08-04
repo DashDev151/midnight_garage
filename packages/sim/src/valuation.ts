@@ -6,6 +6,7 @@ import type {
   CarPartTaxonomyEntry,
   EconomyConfig,
   Part,
+  PowerExpectationChain,
 } from '@midnight-garage/content'
 import { computeDerivedStats } from './derivedStats'
 import { marketValueYen } from './marketValue'
@@ -52,6 +53,28 @@ function coherenceToleranceFor(buyer: Buyer, economy: EconomyConfig): number {
  */
 export function normalizedPowerScore(powerPs: number, economy: EconomyConfig): number {
   return powerPs / economy.statFormulas.powerNormalizationCeiling
+}
+
+/**
+ * The climbing chain's own derived figure (docs/sprints/scene-standing-arc.md
+ * step 0): how many PS below the player's own best-ever delivered power the
+ * top of the market currently sits, given `GameState.powerExpectationChain`.
+ * `undefined` before anyone has ever delivered a car - there is no "top of
+ * the market" yet to close on. Deliberately separate from
+ * `normalizedPowerScore` above: that function is what every buyer's
+ * ORDINARY appetite reads, this is what governs only the moving figure at
+ * the top, and nothing in shipped content reads this yet
+ * (`advancePowerExpectationChain`, sim/selling.ts, is the only writer).
+ */
+export function currentPowerExpectationBarPs(
+  chain: PowerExpectationChain | undefined,
+  economy: EconomyConfig,
+): number | undefined {
+  if (!chain) return undefined
+  const steps = economy.statFormulas.powerExpectationChainStepDiscounts
+  const stepIndex = Math.min(chain.climbedSteps, steps.length - 1)
+  const discount = steps[stepIndex] ?? 0
+  return chain.bestPowerPs * (1 - discount)
 }
 
 /** A car's five taste stats, already normalized to the same [0, 1] footing

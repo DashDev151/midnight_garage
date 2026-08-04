@@ -380,10 +380,11 @@ machined.
   crew skills, and the day.** None of them appear anywhere in the derivation.
 - **`apparentBandByPartId`.** Power reads the true band, so hidden damage is already costing power
   before it has been diagnosed.
-- **`statFormulas.powerNormalizationCeiling` (300).** Not an input. It is how
+- **`statFormulas.powerNormalizationCeiling` (600).** Not an input. It is how
   `normalizedPowerScore` (`packages/sim/src/valuation.ts`) puts PS on the same 0-to-1 footing the
   other four stats reach by dividing by 100, for buyer taste matching. It is uncapped, so a car
-  past 300 PS scores above 1.
+  past 600 PS scores above 1. Separate from `radarPowerCeilingPs` (800), the stat radar's own
+  display-only scale.
 - **Install order.** Every contribution is a fraction of *stock* power, never of current power, so
   nothing compounds.
 - **A 0-to-100 clamp.** The other four stats are clamped to 100. Power is a PS figure and is only

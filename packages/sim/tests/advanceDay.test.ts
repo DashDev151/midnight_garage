@@ -433,7 +433,15 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // exactly the previous `bc01e04e`, so no roll, cash figure or derived
     // stat moved. Nothing here ever could - this script never buys or uses a
     // tin, so the shelf stays empty from day 1 to the sale.
-    expect(hashState(acquisitionCareer().sold)).toBe('900518b7')
+    //
+    // It moves once more for the climbing chain (sprint175.md): `GameState`
+    // gained `powerExpectationChain`, absent until a car is actually
+    // delivered, and this is the one script that sells one - the 30-day
+    // master above never completes a sale, so it holds unchanged. Not a pure
+    // shape change: the sold car's own measured power becomes the chain's
+    // first recorded `bestPowerPs`, a real figure rather than an
+    // always-empty default. Re-derived from a real run.
+    expect(hashState(acquisitionCareer().sold)).toBe('e523cc30')
   })
 })
 

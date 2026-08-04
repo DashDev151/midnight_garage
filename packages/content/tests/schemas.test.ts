@@ -411,7 +411,7 @@ describe('seed content validates against schemas', () => {
     expect(result.data.marketPressure.HEAT_MIN).toBe(70)
     expect(result.data.marketPressure.HEAT_MAX).toBe(140)
     expect(result.data.marketPressure.LEDGER_DECAY).toBe(0.75)
-    expect(result.data.statFormulas.powerNormalizationCeiling).toBe(300)
+    expect(result.data.statFormulas.powerNormalizationCeiling).toBe(600)
     // The reputation ladder lives in content, calibrated against real play
     // rather than the ~1 rep/day probe bot.
     expect(result.data.reputation.tierThresholds).toEqual({
