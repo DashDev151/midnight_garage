@@ -248,6 +248,35 @@ pass."
   **Craft operations remain additive on top of whatever band the tools reached** (sprint 180), so
   they never substitute for a tier.
 
+  **Suggested stock, anchored on the tool names that already exist.** Each line's tier 3 is already
+  named for what it should unlock, so most of this is authoring rather than inventing:
+
+  | line | tier 3, as already named | unlocks |
+  | --- | --- | --- |
+  | engine | Machine-shop tooling | machining and NA-to-turbo (both already gated here), **engine swaps** |
+  | drivetrain | Driveline rebuild bench and press | **gearbox swaps**, LSD fitting |
+  | suspension | Drive-on alignment lift | **geometry work**: extended lock, custom alignment |
+  | wheels | Laser alignment and balance rig | **aggressive fitment**: extreme offset, stretch |
+  | body | Spray booth and **chassis jig** | **widebody fabrication**, **straightening a bent shell** |
+  | interior | Full trim shop | **roll cage**, full retrim |
+
+  **Two are nearly free.** The chassis jig is the best idea in the list: metal severity 4 currently
+  means beyond saving, replace the panel, and a jig should make a bent shell REPAIRABLE, turning a
+  written-off car into a project only a tier-3 body shop can take. That is a gate on an existing
+  clamp, not a new system. And widebody is a gate on fitting the over-fender SKUs that already ship.
+
+  **NOS is recommended AGAINST.** Its appeal is entirely moment-to-moment - ten seconds, on the
+  straight - and this game has no driving and treats power as a static number. It would be a worse
+  turbo with a better name.
+
+  **Engine swaps are worth it and are not cheap.** A swap changes the car's engine spec, which the
+  locked performance model treats as per-car identity, so it touches that model rather than sitting
+  on top of it. A sprint, not a line item.
+
+  **These should be visible before they are reachable**, the way the garage's derelict rooms are.
+  Seeing the widebody you cannot fit yet is what makes 1.4 million yen read as a goal rather than a
+  receipt.
+
 
 - [ ] **REGRESSION INTRODUCED BY THE ZONE MODEL: a modified body no longer costs authenticity
   (found by the implementing agent 2026-08-03, flagged rather than fixed).** Every aftermarket

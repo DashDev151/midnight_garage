@@ -67,10 +67,23 @@ Same projection. Rooms you move between.
 
 ### The office, object by object
 
-**The sales pipeline is a corkboard.** One index card per car you have listed, pinned. The whole
-pipeline readable at a glance, which is the actual job. Channels are sections or different pins, a
-stale listing is a card gone yellow, an offer is a note stuck to its card. The most 1995 object in
-the room and it needs no explaining.
+**The sales pipeline is a corkboard, and the corkboard IS the sell screen.** One index card per car
+you have listed, pinned. The whole pipeline readable at a glance, which is the actual job. Channels
+are sections or different pins, a stale listing is a card gone yellow, an offer is a note stuck to
+its card. The most 1995 object in the room and it needs no explaining.
+
+**This is where listing lives.** There is no standalone sell screen today: a car is listed from its
+own detail page, one at a time, with no view of the whole pipeline. The corkboard replaces that with
+the view a person actually wants.
+
+**And the fax machine sits beside it.** The dealer network is `sellingChannels.tradeNetwork`, whose
+buyer the code already calls "a fax to the dealer circle": offers three times as often, price around
+plain market value, no taste roll, no matched premium, no forecourt bay needed. **Click the fax, pick
+a car, it is sold.** No buyer to wait for and nothing to negotiate, which is the whole point of it
+and the reason the price is what it is.
+
+That also settles what the `dealer-network` building on the overworld should do: it is a fax, not a
+place you visit, so the map either takes you to the office or stops pretending it is a destination.
 
 *Rejected: the answering machine. The phone is already in the room doing jobs and two message-y
 objects would blur.*
