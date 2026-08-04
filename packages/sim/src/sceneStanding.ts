@@ -1,4 +1,5 @@
 import {
+  BuyerArchetypeSchema,
   FRESH_SCENE_LEDGER,
   SceneStandingStageSchema,
   type BuyerArchetype,
@@ -9,6 +10,8 @@ import {
   type SceneLedgerEntry,
   type SceneStandingStage,
 } from '@midnight-garage/content'
+
+const BUYER_ARCHETYPES = BuyerArchetypeSchema.options
 
 /**
  * A fresh shop's ledger: every scene's delivery history empty. Mirrors
@@ -147,4 +150,70 @@ export function creditSceneDelivery(
     sceneLedger,
     sceneStanding: { ...state.sceneStanding, [scene]: nextStage },
   }
+}
+
+/**
+ * Word of mouth's rolling-window term (docs/sprints/scene-standing-arc.md
+ * step 5): how much of the last `rollingWindowDays`' worth of matched
+ * deliveries, across every scene, went to THIS one. A scene worked
+ * exclusively over the window reaches `rollingWindowShareCap`; a scene
+ * untouched in the window reads a flat 1 (no bonus, never a penalty) - this
+ * is what lets pivoting scenes move the draw within days rather than
+ * requiring a second climb. Linear in recent share: `1 + share * (cap - 1)`.
+ */
+function recentDeliveryShareMultiplier(
+  scene: BuyerArchetype,
+  ledger: SceneLedger,
+  currentDay: number,
+  economy: EconomyConfig,
+): number {
+  const { rollingWindowDays, rollingWindowShareCap } = economy.sceneStandingProgress
+  const recentCountFor = (s: BuyerArchetype): number =>
+    recentSceneLedgerEntries(ledger, s, currentDay, rollingWindowDays).length
+  const totalRecent = BUYER_ARCHETYPES.reduce((sum, s) => sum + recentCountFor(s), 0)
+  if (totalRecent === 0) return 1
+  const share = recentCountFor(scene) / totalRecent
+  return 1 + share * (rollingWindowShareCap - 1)
+}
+
+/**
+ * Word of mouth itself (the Known payload, docs/sprints/scene-standing-arc.md
+ * step 5): how much more of `scene` turns up across every one of the
+ * player's channels right now. A flat 1 (no change at all) below Known;
+ * from Known on, that stage's own multiplier
+ * (`economy.sceneStandingProgress.wordOfMouthMultiplierByStage`) is further
+ * scaled by `recentDeliveryShareMultiplier` above. Applied MULTIPLICATIVELY
+ * on a channel's own authored `buyerPoolWeights` wherever this is read
+ * (`saleCandidates`, sim/selling.ts) - never additive, so a channel that
+ * barely carries a scene still barely carries it, only more than before.
+ */
+export function wordOfMouthMultiplierFor(
+  scene: BuyerArchetype,
+  state: GameState,
+  economy: EconomyConfig,
+): number {
+  const stage = state.sceneStanding[scene]
+  if (stage === 'none') return 1
+  const stageMultiplier = economy.sceneStandingProgress.wordOfMouthMultiplierByStage[stage]
+  return (
+    stageMultiplier *
+    recentDeliveryShareMultiplier(scene, sceneLedgerFor(state), state.day, economy)
+  )
+}
+
+/**
+ * Every scene's word-of-mouth multiplier at once
+ * (`wordOfMouthMultiplierFor` above) - computed once per day's offer draw
+ * (`drawDailyOffers`, sim/selling.ts) rather than once per for-sale car,
+ * since nothing it reads changes within that pass.
+ */
+export function wordOfMouthMultipliers(
+  state: GameState,
+  economy: EconomyConfig,
+): Readonly<Record<BuyerArchetype, number>> {
+  const result = {} as Record<BuyerArchetype, number>
+  for (const scene of BUYER_ARCHETYPES) {
+    result[scene] = wordOfMouthMultiplierFor(scene, state, economy)
+  }
+  return result
 }

@@ -22,6 +22,7 @@ import { bumpLotSupply, updateMarketHeat } from './marketHeat'
 import { advanceStoryMissions } from './missions'
 import { resolveBuyPart, resolvePartDeliveries, resolveScrapPart } from './parts'
 import { createRng } from './rng'
+import { advanceSceneCommissions } from './sceneCommissions'
 import { computeContractIncomeYen } from './serviceBay'
 import { commitPendingStaffAssignments, refreshStaffAds } from './staff'
 import { ensureTutorialLot, radialOffersGated } from './tutorial'
@@ -402,6 +403,15 @@ export function advanceDay(
   const missions = advanceStoryMissions(next, context)
   next = missions.state
   log.push(...missions.log)
+
+  // 7c2. Each scene's commission board (docs/sprints/scene-standing-arc.md
+  // step 6) - a Respected-or-better scene with nothing live gets a fresh
+  // brief, and an unaccepted one sitting past its refresh window is
+  // replaced. Silent like the story-mission tick immediately above: the
+  // player reads the brief appearing, no log entry.
+  const sceneCommissions = advanceSceneCommissions(next, context, rng)
+  next = sceneCommissions.state
+  log.push(...sceneCommissions.log)
 
   // 7d. The weekly job-ad refresh - expired ads drop, then seeded rolls top
   // the board back up to `economy.staff.maxOpenAds`. Fires on the same

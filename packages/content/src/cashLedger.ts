@@ -52,6 +52,8 @@ export function cashMovementFor(entry: DayLogEntry): CashMovement | null {
       return { bucket: 'income', amountYen: entry.payoutYen }
     case 'mission-delivered':
       return { bucket: 'income', amountYen: entry.payoutYen + entry.tipYen }
+    case 'scene-commission-delivered':
+      return { bucket: 'income', amountYen: entry.payoutYen }
     case 'contract-income':
       return { bucket: 'income', amountYen: entry.amountYen }
     case 'part-sold':
@@ -127,6 +129,7 @@ export function cashMovementFor(entry: DayLogEntry): CashMovement | null {
     case 'machine-listed':
     case 'car-workup':
     case 'mission-accepted':
+    case 'scene-commission-accepted':
     case 'staff-ads-refreshed':
     case 'staff-dismissed':
       return null

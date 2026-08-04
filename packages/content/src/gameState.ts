@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { BuyerArchetypeSchema } from './buyer'
 import {
   CarPartIdSchema,
   ComponentIdSchema,
@@ -16,6 +17,7 @@ import { StaffMemberSchema } from './staff'
 import { JobKindSchema, JobSchema } from './job'
 import { AuctionLotSchema, AuctionTierSchema } from './auction'
 import { ForSaleEntrySchema, PendingSaleOfferSchema, SaleChannelSchema } from './sale'
+import { SceneCommissionSchema } from './sceneCommission'
 import { ServiceJobSchema } from './serviceJob'
 import { BayKindSchema } from './facilities'
 import { StagedActionSchema } from './stagedWork'
@@ -383,6 +385,38 @@ export const FRESH_SCENE_LEDGER: SceneLedger = {
   touge: [],
 }
 
+/**
+ * The shop's live commission board, one slot per scene (docs/sprints/
+ * scene-standing-arc.md step 6) - `null` is a scene with no live commission
+ * right now (below Respected, or its last one just delivered), the common
+ * case. Every scene named explicitly, the same idiom `SceneStandingSchema`/
+ * `SceneLedgerSchema` above use, so a silently-absent scene and a
+ * deliberate "nothing live" can never be confused.
+ */
+export const SceneCommissionBoardSchema = z
+  .object({
+    collector: SceneCommissionSchema.nullable(),
+    tuner: SceneCommissionSchema.nullable(),
+    'show-crowd': SceneCommissionSchema.nullable(),
+    racer: SceneCommissionSchema.nullable(),
+    'daily-drivers': SceneCommissionSchema.nullable(),
+    touge: SceneCommissionSchema.nullable(),
+  })
+  .strict()
+
+export type SceneCommissionBoard = z.infer<typeof SceneCommissionBoardSchema>
+
+/** Every scene with no live commission - a fresh shop (or any scene still
+ * below Respected) reads this, mirroring `FRESH_SCENE_STANDING` above. */
+export const FRESH_SCENE_COMMISSIONS: SceneCommissionBoard = {
+  collector: null,
+  tuner: null,
+  'show-crowd': null,
+  racer: null,
+  'daily-drivers': null,
+  touge: null,
+}
+
 export const GameStateSchema = z.object({
   day: z.number().int().min(1),
   seed: z.number().int(),
@@ -708,6 +742,15 @@ export const GameStateSchema = z.object({
    * (`createInitialGameState`).
    */
   sceneLedger: SceneLedgerSchema.optional(),
+  /**
+   * The shop's live commission board - see `SceneCommissionBoardSchema`
+   * above. The genuinely-optional-key pattern (like `sceneLedger` above,
+   * from the same arc): no existing `GameState` literal needs touching, and
+   * readers treat absent as every scene with nothing live
+   * (`sceneCommissionsFor`, sim/sceneCommissions.ts). A fresh career seeds
+   * it to `FRESH_SCENE_COMMISSIONS` explicitly (`createInitialGameState`).
+   */
+  sceneCommissions: SceneCommissionBoardSchema.optional(),
 })
 
 /**
@@ -1204,6 +1247,24 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     tipYen: z.number().int().nonnegative(),
     reputationGained: z.number().int().nonnegative(),
     specialtyGained: z.record(ComponentIdSchema, z.number().int()),
+  }),
+  /** `resolveAcceptSceneCommission` (sim/sceneCommissions.ts) - offered ->
+   * active. No payout figure yet: a commission's price is only known once a
+   * real car is delivered against it. */
+  z.object({
+    type: z.literal('scene-commission-accepted'),
+    scene: BuyerArchetypeSchema,
+  }),
+  /** `resolveDeliverSceneCommission` paid out and credited the scene's
+   * standing exactly as a matched sale does (`creditSceneDelivery`).
+   * `payoutYen` is `economy.sceneCommissions.payoutMultiplier` times the
+   * delivered car's own open-market value for that scene's buyer - never a
+   * flat authored figure. */
+  z.object({
+    type: z.literal('scene-commission-delivered'),
+    scene: BuyerArchetypeSchema,
+    carInstanceId: z.string().min(1),
+    payoutYen: z.number().int().nonnegative(),
   }),
   /** The weekly job-ad refresh posted fresh candidates to the Staff Office
    * board (`count` new ads). Swallowed by the morning report like an

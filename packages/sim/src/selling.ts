@@ -37,7 +37,7 @@ import { marketValueYen } from './marketValue'
 import { bumpPlayerSales } from './marketHeat'
 import { bellNormal, type Rng } from './rng'
 import { dissolveAssembliesForCar } from './assemblies'
-import { creditSceneDelivery } from './sceneStanding'
+import { creditSceneDelivery, wordOfMouthMultipliers } from './sceneStanding'
 import { clearStagedWork } from './stagedWork'
 import {
   currentPowerExpectationBarPs,
@@ -85,23 +85,38 @@ export interface ChannelDrawWeighting {
    * the pool exactly as authored, above 1 crowds the channel's own people in
    * and everyone else out. */
   focusExponent: number
+  /**
+   * Word of mouth (docs/sprints/scene-standing-arc.md step 5): each
+   * archetype's own scene-standing multiplier, applied on TOP of
+   * `buyerPoolWeights` after the focus exponent - never folded into
+   * `buyerPoolWeights` itself, which stays the channel's own authored
+   * character. Absent archetype or absent map both draw at a flat 1 (no
+   * change).
+   */
+  wordOfMouthMultipliers?: Readonly<Partial<Record<BuyerArchetype, number>>>
 }
 
 /**
- * One channel's draw weighting for a career at `reputationTier`. The two
- * halves are content: the pool and the widening are the channel's own, and
- * the exponent is `selling.channelStandingFocusByReputationTier`. Nothing
- * here depends on which channel it is.
+ * One channel's draw weighting for a career at `reputationTier`. Three
+ * things are folded in: the pool and the widening are the channel's own
+ * content, the exponent is `selling.channelStandingFocusByReputationTier`,
+ * and `wordOfMouthMultipliers` is this player's OWN scene standing
+ * (`wordOfMouthMultipliers`, sceneStanding.ts) - optional and defaulted to
+ * empty so every pre-existing 3-argument call site (tests, previews) keeps
+ * compiling and prices with no word of mouth at all, exactly as before this
+ * mechanism existed.
  */
 export function channelDrawWeighting(
   channel: SellingChannelConfig,
   reputationTier: ReputationTier,
   economy: EconomyConfig,
+  wordOfMouthMultipliers: Readonly<Partial<Record<BuyerArchetype, number>>> = {},
 ): ChannelDrawWeighting {
   return {
     ...(channel.buyerPoolWeights ? { buyerPoolWeights: channel.buyerPoolWeights } : {}),
     ...(channel.poolWidening === undefined ? {} : { poolWidening: channel.poolWidening }),
     focusExponent: economy.selling.channelStandingFocusByReputationTier[reputationTier],
+    wordOfMouthMultipliers,
   }
 }
 
@@ -115,12 +130,15 @@ interface PoolCandidate {
 
 /**
  * The candidate buyer pool for a sale, and how strongly each of them turns
- * up. Two multiplied facts: the buyer's own `tierPreferences` weight for
- * this league of car (0 when they have no entry, unless the channel widens
- * past the gate), and the channel's own weight for their archetype, focused
- * by standing. With no `weighting` this is exactly the hard tier gate the
- * auction room applies, with the authored preference weights finally read as
- * probabilities rather than discarded.
+ * up. Multiplied facts: the buyer's own `tierPreferences` weight for this
+ * league of car (0 when they have no entry, unless the channel widens past
+ * the gate), the channel's own authored weight for their archetype (focused
+ * by reputation standing), and that archetype's own word-of-mouth
+ * multiplier (`wordOfMouthMultipliers`, scaling the channel's own character
+ * rather than replacing it - a scene barely carried by a channel is still
+ * barely carried, only more than before). With no `weighting` this is
+ * exactly the hard tier gate the auction room applies, with the authored
+ * preference weights finally read as probabilities rather than discarded.
  */
 function saleCandidates(
   model: CarModel,
@@ -133,7 +151,9 @@ function saleCandidates(
     const tierWeight = stated > 0 ? stated : widening
     if (tierWeight <= 0) return []
     const authored = weighting?.buyerPoolWeights?.[buyer.archetype] ?? 1
-    const channelWeight = weighting === undefined ? 1 : Math.pow(authored, weighting.focusExponent)
+    const wordOfMouth = weighting?.wordOfMouthMultipliers?.[buyer.archetype] ?? 1
+    const channelWeight =
+      weighting === undefined ? 1 : Math.pow(authored, weighting.focusExponent) * wordOfMouth
     const poolWeight = tierWeight * channelWeight
     return poolWeight > 0 ? [{ buyer, poolWeight }] : []
   })
@@ -768,6 +788,7 @@ function drawFlaggedChannelOffer(
   rng: Rng,
   reputationTier: ReputationTier,
   sceneStanding: SceneStanding,
+  wordOfMouth: Readonly<Partial<Record<BuyerArchetype, number>>>,
 ): SaleOffer | undefined {
   if (channel.priceBand) {
     return drawTradeNetworkOffer(car, model, context, heatPercent, channel.priceBand, rng)
@@ -781,7 +802,7 @@ function drawFlaggedChannelOffer(
     channel.matchedOnly === true,
     offersSeen,
     rng,
-    channelDrawWeighting(channel, reputationTier, context.economy),
+    channelDrawWeighting(channel, reputationTier, context.economy, wordOfMouth),
     sceneStanding,
   )
 }
@@ -836,6 +857,7 @@ function drawOfferForChannel(
   day: number,
   reputationTier: ReputationTier,
   sceneStanding: SceneStanding,
+  wordOfMouth: Readonly<Partial<Record<BuyerArchetype, number>>>,
 ): ChannelDraw {
   const channel = context.economy.sellingChannels[entry.channelId]
 
@@ -854,6 +876,7 @@ function drawOfferForChannel(
         rng,
         reputationTier,
         sceneStanding,
+        wordOfMouth,
       ),
       weekendMeetPending: false,
       attempted: true,
@@ -874,6 +897,7 @@ function drawOfferForChannel(
       rng,
       reputationTier,
       sceneStanding,
+      wordOfMouth,
     ),
     attempted: true,
   }
@@ -890,6 +914,10 @@ function drawOfferForChannel(
  * own call-site comment for the full day-cycle reasoning). `carsForSale`
  * entries are pruned to still-owned cars in the same pass, so a sold (or
  * otherwise departed) car's toggle never lingers.
+ *
+ * Word of mouth (docs/sprints/scene-standing-arc.md step 5) is computed
+ * once here, off `state` alone, rather than once per car - nothing it reads
+ * (`sceneStanding`, `sceneLedger`, `day`) changes within this pass.
  */
 export function drawDailyOffers(
   state: GameState,
@@ -902,6 +930,7 @@ export function drawDailyOffers(
   const carsForSale: ForSaleEntry[] = []
   const pendingOffers: PendingSaleOffer[] = []
   const log: DayLogEntry[] = []
+  const wordOfMouth = wordOfMouthMultipliers(state, context.economy)
 
   for (const entry of stillListed) {
     const car = state.ownedCars.find((c) => c.id === entry.carInstanceId)
@@ -922,6 +951,7 @@ export function drawDailyOffers(
       day,
       state.reputationTier,
       state.sceneStanding,
+      wordOfMouth,
     )
     carsForSale.push({
       ...entry,

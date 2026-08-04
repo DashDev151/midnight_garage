@@ -149,7 +149,17 @@
       "enthusiast": 3000000,
       "flagship": 8000000
     },
-    "rollingWindowDays": 14
+    "rollingWindowDays": 14,
+    "wordOfMouthMultiplierByStage": {
+      "known": 1.4,
+      "respected": 1.8,
+      "shop": 2.4
+    },
+    "rollingWindowShareCap": 1.5
+  },
+  "sceneCommissions": {
+    "refreshIntervalDays": 7,
+    "payoutMultiplier": 1.25
   },
   "marketPressure": {
     "WAVE_AMPLITUDE": 12,

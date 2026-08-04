@@ -465,7 +465,18 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // three-delivery Known threshold, so `sceneStanding` itself stays every
     // scene at `none`; only the ledger gains the entry. Re-derived from a
     // real run.
-    expect(hashState(acquisitionCareer().sold)).toBe('9cc0edef')
+    //
+    // It moves once more, on its own again, for word of mouth and scene
+    // commissions (scene-standing-arc.md step 5/6): `GameState` gained
+    // `sceneCommissions`, seeded to every scene with nothing live. A pure
+    // SHAPE change, measured rather than assumed: strip the new key back out
+    // of this state and the hash is exactly the previous `9cc0edef`, so no
+    // roll, cash figure or derived stat moved. Nothing here ever could -
+    // word of mouth reads as a flat 1 for every scene still at `none` (true
+    // throughout this script), and no scene here ever reaches Respected, so
+    // the commission board's own daily tick never draws from the shared rng
+    // stream at all.
+    expect(hashState(acquisitionCareer().sold)).toBe('7e72e421')
   })
 })
 

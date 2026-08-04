@@ -725,8 +725,18 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * delivery under a mechanic that did not exist yet. The version bump alone is
  * still required (Save law) so an old client rejects a v63 save rather than
  * silently dropping a shop's own delivery history.
+ * v63 -> v64 (word of mouth and scene commissions): `GameStateSchema` gained
+ * an optional `sceneCommissions` (docs/sprints/scene-standing-arc.md step 6)
+ * - one live commission slot per scene, `null` when nothing is live. The
+ * same genuinely-optional-key pattern as `sceneLedger`'s own v62 -> v63
+ * entry, so this needs NO `MIGRATIONS[63]` entry: a pre-v64 save decodes
+ * with the key absent, which `sceneCommissionsFor` (sim/
+ * sceneCommissions.ts) reads as every scene with nothing live - exactly
+ * right, since no pre-v64 career could have had a commission generated
+ * under a mechanic that did not exist yet. The version bump alone is still
+ * required (Save law).
  */
-export const SAVE_VERSION = 63
+export const SAVE_VERSION = 64
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

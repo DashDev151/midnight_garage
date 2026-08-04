@@ -107,6 +107,13 @@ const SAMPLES: DayLogEntry[] = [
       interior: 0,
     },
   },
+  { type: 'scene-commission-accepted', scene: 'tuner' },
+  {
+    type: 'scene-commission-delivered',
+    scene: 'tuner',
+    carInstanceId: 'car-1',
+    payoutYen: 900_000,
+  },
   { type: 'staff-ads-refreshed', count: 3 },
   {
     type: 'staff-hired',

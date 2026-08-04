@@ -248,6 +248,10 @@ export function describeLogEntry(
       const withTip = entry.tipYen > 0 ? `${base} + ${formatYen(entry.tipYen)} tip` : base
       return `${withTip}, +${entry.reputationGained} rep`
     }
+    case 'scene-commission-accepted':
+      return `Commission accepted`
+    case 'scene-commission-delivered':
+      return `Commission delivered: ${formatYen(entry.payoutYen)}`
     case 'staff-ads-refreshed':
       return `New calls for the shop: ${entry.count}`
     case 'staff-hired':

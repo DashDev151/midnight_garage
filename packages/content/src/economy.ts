@@ -1123,12 +1123,35 @@ export const EconomyConfigSchema = z.object({
        */
       marqueeBarYenByTier: z.record(PartFitmentClassSchema, z.number().int().positive()),
       /**
-       * How many days of matched-delivery history the future word-of-mouth
-       * draw reads on top of a channel's own authored weights - built and
-       * recorded here, not consumed by anything shipped yet
-       * (`recentSceneLedgerEntries`, sim/sceneStanding.ts).
+       * How many days of matched-delivery history the word-of-mouth draw
+       * reads on top of a channel's own authored weights
+       * (`recentSceneLedgerEntries`, sim/sceneStanding.ts) - the anti-lock-in
+       * term `rollingWindowShareCap` below scales.
        */
       rollingWindowDays: z.number().int().positive(),
+      /**
+       * Word of mouth (the Known payload, docs/sprints/scene-standing-arc.md
+       * step 5): the flat multiplier a scene's own `buyerPoolWeights` draw
+       * across every channel out - MULTIPLICATIVE on the channel's own
+       * authored weight, never additive, so a channel that barely carries a
+       * scene (a Collector at the free ads paper, 0.4) still barely carries
+       * it, only more than before. Below Known the multiplier is a flat 1 -
+       * there is no entry for `none`, and `wordOfMouthMultiplierFor`
+       * (sim/sceneStanding.ts) never looks one up at that stage.
+       */
+      wordOfMouthMultiplierByStage: z.object({
+        known: z.number().positive(),
+        respected: z.number().positive(),
+        shop: z.number().positive(),
+      }),
+      /**
+       * The rolling window's own ceiling: a scene worked exclusively across
+       * `rollingWindowDays` reaches this multiplier on top of
+       * `wordOfMouthMultiplierByStage`; a scene untouched in the window
+       * reads a flat 1 (never a penalty). What makes pivoting scenes take
+       * effect in days rather than a second climb.
+       */
+      rollingWindowShareCap: z.number().positive(),
     })
     .strict()
     .refine((p) => p.knownDeliveries < p.respectedDeliveries, {
@@ -1138,7 +1161,34 @@ export const EconomyConfigSchema = z.object({
       (p) =>
         PartFitmentClassSchema.options.every((tier) => p.marqueeBarYenByTier[tier] !== undefined),
       { message: 'sceneStandingProgress.marqueeBarYenByTier must name every fitment class' },
-    ),
+    )
+    .refine((p) => p.rollingWindowShareCap >= 1, {
+      message:
+        'sceneStandingProgress.rollingWindowShareCap must be >= 1 - the rolling window can only ever raise the draw, never lower it below the stage multiplier',
+    }),
+  /**
+   * Scene commissions (the Respected payload, docs/sprints/
+   * scene-standing-arc.md step 6): a Respected-or-better scene's own
+   * generated brief, read entirely by `sceneCommissions.ts` (sim) -
+   * generation, refresh cadence and payout all live off these two values,
+   * nowhere else.
+   */
+  sceneCommissions: z
+    .object({
+      /** How many days an unaccepted (`offered`) commission sits before it
+       * is replaced by a freshly generated one - "refreshing weekly if
+       * unaccepted". Read as a rolling age check against `postedOnDay`, not
+       * a calendar weekday, so a scene reaching Respected mid-week still
+       * gets its first refresh exactly one cadence later. */
+      refreshIntervalDays: z.number().int().positive(),
+      /** What a completed commission pays against the SAME open-market
+       * valuation an ordinary sale uses (`valuateCarForBuyer`) for the
+       * ACTUAL delivered car - never a flat authored figure, so a
+       * commission can never under- or over-quote a car nobody has chosen
+       * yet. */
+      payoutMultiplier: z.number().positive(),
+    })
+    .strict(),
   /**
    * Repair cost per grade is ONE global fraction of the INSTALLED part's own
    * catalog `priceYen`, never the host car's tier -

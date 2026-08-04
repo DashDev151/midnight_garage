@@ -16,6 +16,8 @@ import {
   freshSceneLedger,
   recentSceneLedgerEntries,
   sceneLedgerFor,
+  wordOfMouthMultiplierFor,
+  wordOfMouthMultipliers,
 } from '../src/sceneStanding'
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
@@ -160,6 +162,113 @@ describe('recentSceneLedgerEntries (the rolling window - recorded, unconsumed th
 
   it('matches the shipped rollingWindowDays lever', () => {
     expect(ECONOMY.sceneStandingProgress.rollingWindowDays).toBe(14)
+  })
+})
+
+describe('wordOfMouthMultiplierFor / wordOfMouthMultipliers (the Known payload, step 5)', () => {
+  const fresh = createInitialGameState(CONTEXT, 1)
+  const { wordOfMouthMultiplierByStage, rollingWindowShareCap, rollingWindowDays } =
+    CONTEXT.economy.sceneStandingProgress
+
+  it('is a flat 1 below Known, whatever the day', () => {
+    expect(wordOfMouthMultiplierFor('tuner', fresh, CONTEXT.economy)).toBe(1)
+  })
+
+  it('matches the shipped per-stage multiplier exactly when nothing is in the recent window', () => {
+    for (const stage of ['known', 'respected', 'shop'] as const) {
+      const state = { ...fresh, sceneStanding: { ...fresh.sceneStanding, tuner: stage } }
+      expect(wordOfMouthMultiplierFor('tuner', state, CONTEXT.economy)).toBeCloseTo(
+        wordOfMouthMultiplierByStage[stage],
+        9,
+      )
+    }
+  })
+
+  it('rises toward the rolling-window cap with recent share, reaches exactly the cap when worked exclusively, and never moves for a delivery outside the window', () => {
+    const known = { ...fresh, sceneStanding: { ...fresh.sceneStanding, tuner: 'known' as const } }
+    const day = 100
+
+    const untouched: GameState = { ...known, day, sceneLedger: freshSceneLedger() }
+    expect(wordOfMouthMultiplierFor('tuner', untouched, CONTEXT.economy)).toBeCloseTo(
+      wordOfMouthMultiplierByStage.known,
+      9,
+    )
+
+    const halfShare: GameState = {
+      ...known,
+      day,
+      sceneLedger: {
+        ...freshSceneLedger(),
+        tuner: [{ carInstanceId: 'a', modelId: MODEL_ID, priceYen: 1, day: day - 1 }],
+        racer: [{ carInstanceId: 'b', modelId: MODEL_ID, priceYen: 1, day: day - 1 }],
+      },
+    }
+    const halfMultiplier = wordOfMouthMultiplierFor('tuner', halfShare, CONTEXT.economy)
+    expect(halfMultiplier).toBeGreaterThan(wordOfMouthMultiplierByStage.known)
+    expect(halfMultiplier).toBeCloseTo(
+      wordOfMouthMultiplierByStage.known * (1 + 0.5 * (rollingWindowShareCap - 1)),
+      6,
+    )
+
+    const exclusive: GameState = {
+      ...known,
+      day,
+      sceneLedger: {
+        ...freshSceneLedger(),
+        tuner: [{ carInstanceId: 'a', modelId: MODEL_ID, priceYen: 1, day: day - 1 }],
+      },
+    }
+    expect(wordOfMouthMultiplierFor('tuner', exclusive, CONTEXT.economy)).toBeCloseTo(
+      wordOfMouthMultiplierByStage.known * rollingWindowShareCap,
+      9,
+    )
+
+    const stale: GameState = {
+      ...known,
+      day,
+      sceneLedger: {
+        ...freshSceneLedger(),
+        tuner: [
+          { carInstanceId: 'a', modelId: MODEL_ID, priceYen: 1, day: day - rollingWindowDays - 1 },
+        ],
+      },
+    }
+    expect(wordOfMouthMultiplierFor('tuner', stale, CONTEXT.economy)).toBeCloseTo(
+      wordOfMouthMultiplierByStage.known,
+      9,
+    )
+  })
+
+  it('pivots within days: switching who was recently delivered to moves the multiplier without the standing STAGE ever regressing', () => {
+    const bothKnown = {
+      ...fresh,
+      sceneStanding: { ...fresh.sceneStanding, tuner: 'known' as const, racer: 'known' as const },
+    }
+    const day = 100
+    const pivotedToRacer: GameState = {
+      ...bothKnown,
+      day,
+      sceneLedger: {
+        ...freshSceneLedger(),
+        racer: [{ carInstanceId: 'a', modelId: MODEL_ID, priceYen: 1, day: day - 1 }],
+      },
+    }
+    expect(pivotedToRacer.sceneStanding.tuner).toBe('known')
+    const tunerMultiplier = wordOfMouthMultiplierFor('tuner', pivotedToRacer, CONTEXT.economy)
+    const racerMultiplier = wordOfMouthMultiplierFor('racer', pivotedToRacer, CONTEXT.economy)
+    expect(tunerMultiplier).toBeCloseTo(wordOfMouthMultiplierByStage.known, 9)
+    expect(racerMultiplier).toBeGreaterThan(tunerMultiplier)
+  })
+
+  it('wordOfMouthMultipliers computes every scene at once, agreeing with the per-scene function', () => {
+    const state = {
+      ...fresh,
+      sceneStanding: { ...fresh.sceneStanding, collector: 'shop' as const },
+    }
+    const all = wordOfMouthMultipliers(state, CONTEXT.economy)
+    for (const scene of Object.keys(all) as BuyerArchetype[]) {
+      expect(all[scene]).toBeCloseTo(wordOfMouthMultiplierFor(scene, state, CONTEXT.economy), 9)
+    }
   })
 })
 

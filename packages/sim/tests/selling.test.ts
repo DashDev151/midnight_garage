@@ -1811,6 +1811,76 @@ describe('a channel is a buyer base (sprint156)', () => {
       expect(tradeOffers.every((o) => o.buyerId === 'trade-network')).toBe(true)
     })
   })
+
+  describe("word of mouth scales a channel's own pool, never inverts it (scene-standing-arc.md step 5)", () => {
+    it('even at the maximum stage multiplier and the full rolling-window cap, a channel cannot out-draw its own best-favoured archetype for its worst-favoured one', () => {
+      // The literal guard: a Collector at The Shop (the highest word-of-mouth
+      // multiplier there is, further scaled to the rolling window's own cap)
+      // in the free ads paper, where collectors are authored at 0.4 and Daily
+      // Drivers at 2.0 - the paper's own widest spread. Multiplicative scaling
+      // can narrow that gap but must never close it: authoring stays the
+      // aiming tool, word of mouth only nudges it.
+      const { freeAdsPaper } = ECONOMY.sellingChannels
+      const { shop } = ECONOMY.sceneStandingProgress.wordOfMouthMultiplierByStage
+      const { rollingWindowShareCap } = ECONOMY.sceneStandingProgress
+      const collectorAtMax = freeAdsPaper.buyerPoolWeights!.collector * shop * rollingWindowShareCap
+      expect(collectorAtMax).toBeLessThan(freeAdsPaper.buyerPoolWeights!['daily-drivers'])
+    })
+
+    it('raises a scene’s own share of the real daily draw once Known, on the channel that already favoured it least, without handing it the channel', () => {
+      const keiCar = tidy(KEI_MODEL)
+      // Racers are the free ads paper's coldest scene (0.2); Known should
+      // still move their share up from wherever it started, without the
+      // paper becoming a racer's magazine.
+      const cold = sweep(keiCar, KEI_MODEL, 'freeAdsPaper', 300)
+      const known = sweep(keiCar, KEI_MODEL, 'freeAdsPaper', 300, {
+        sceneStanding: { ...testSceneStanding(), racer: 'known' },
+      })
+      expect(cold.length).toBeGreaterThan(20)
+      expect(known.length).toBeGreaterThan(20)
+      expect(shareOf(known, ['racer'])).toBeGreaterThan(shareOf(cold, ['racer']))
+      expect(shareOf(known, ['daily-drivers'])).toBeGreaterThan(shareOf(known, ['racer']))
+    })
+
+    it('a Collector at The Shop stage is still rarer in the free ads paper than Daily Drivers are, measured through the real draw', () => {
+      const keiCar = tidy(KEI_MODEL)
+      const offers = sweep(keiCar, KEI_MODEL, 'freeAdsPaper', 400, {
+        sceneStanding: { ...testSceneStanding(), collector: 'shop' },
+      })
+      expect(offers.length).toBeGreaterThan(20)
+      expect(shareOf(offers, ['collector'])).toBeLessThan(shareOf(offers, ['daily-drivers']))
+    })
+
+    it('pivots within days: recent deliveries alone shift the draw, with no second climb', () => {
+      const keiCar = tidy(KEI_MODEL)
+      const known: GameState['sceneStanding'] = { ...testSceneStanding(), touge: 'known' }
+      const untouched = sweep(keiCar, KEI_MODEL, 'freeAdsPaper', 300, { sceneStanding: known })
+      // A fortnight of deliveries to touge alone, ending the day before the
+      // draw - recentSceneLedgerEntries' own inclusive-of-today boundary
+      // means day 14 is the last day still inside a 14-day window measured
+      // from day 15.
+      const pivoted = sweep(keiCar, KEI_MODEL, 'freeAdsPaper', 300, {
+        day: 15,
+        sceneStanding: known,
+        sceneLedger: {
+          collector: [],
+          tuner: [],
+          'show-crowd': [],
+          racer: [],
+          'daily-drivers': [],
+          touge: Array.from({ length: 14 }, (_, i) => ({
+            carInstanceId: `touge-${i}`,
+            modelId: KEI_MODEL.id,
+            priceYen: 100_000,
+            day: i + 1,
+          })),
+        },
+      })
+      expect(untouched.length).toBeGreaterThan(20)
+      expect(pivoted.length).toBeGreaterThan(20)
+      expect(shareOf(pivoted, ['touge'])).toBeGreaterThan(shareOf(untouched, ['touge']))
+    })
+  })
 })
 
 describe('resolveScrapShell (Sprint 71 decision 7: the teardown game, scrap the whole car at once)', () => {

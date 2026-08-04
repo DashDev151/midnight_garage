@@ -1869,6 +1869,34 @@ import storyMissions from '../data/storyMissions.json'
  * No mission payout or budget cap moves: the lever only feeds the NEW scene-standing stage
  * machinery, which nothing in `storyMissionProbes.test.ts` measures. `partPricing.json` and
  * `damagePatterns.json` are untouched, so their hashes and the payout pin hold.
+ *
+ * Re-pinned for `docs/sprints/sprint179.md` (word of mouth, and work that comes to you),
+ * approved under the orchestrator's blanket lever authority for this build. Two new
+ * `sceneStandingProgress` fields plus one new top-level block:
+ *
+ * 1. `sceneStandingProgress.wordOfMouthMultiplierByStage` (NEW) - `known` 1.4, `respected`
+ *    1.8, `shop` 2.4. The flat, per-stage multiplier a scene's own `buyerPoolWeights` draw
+ *    across every channel out, MULTIPLICATIVE on the channel's own authored weight (never
+ *    additive, so a channel that barely carries a scene still barely carries it). Below
+ *    Known the multiplier is a flat 1: there is no `none` entry, and `wordOfMouthMultiplierFor`
+ *    (sim/sceneStanding.ts) never looks one up at that stage.
+ * 2. `sceneStandingProgress.rollingWindowShareCap` (NEW) - 1.5. The rolling window's own
+ *    ceiling: a scene worked exclusively across `rollingWindowDays` reaches this multiplier
+ *    on top of the stage multiplier above; a scene untouched in the window reads a flat 1.
+ *    Linear in recent share of matched deliveries across all scenes:
+ *    `1 + share * (cap - 1)`.
+ * 3. `sceneCommissions` (NEW top-level block) - `refreshIntervalDays` 7, `payoutMultiplier`
+ *    1.25. A Respected-or-better scene's own generated brief: an unaccepted commission is
+ *    replaced after a week (a rolling age check against its own `postedOnDay`, not a
+ *    calendar weekday), and a completed one pays 1.25x whatever the ACTUAL delivered car
+ *    would fetch on the open market for that scene's buyer (`valuateCarForBuyer`) - never a
+ *    flat authored figure, so a commission can never under- or over-quote a car nobody had
+ *    chosen yet.
+ *
+ * No mission payout or budget cap moves: none of the ten probes reads word of mouth or a
+ * generated commission (both are new machinery outside `storyMissionProbes.test.ts`'s
+ * reach), so `partPricing.json` and `damagePatterns.json` are untouched and the payout pin
+ * holds unchanged.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -1878,7 +1906,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('b822e5e10c80a0a4a5d64fad5d09b9ce1307afed7c9c5d0e110a66f953acb195')
+    ).toBe('2cdca89cffc7cddc888e7cfc370e1ed606a497808b35bdd5a687142ec1dfeb8c')
   })
 
   it('damagePatterns.json matches its approved content exactly', () => {

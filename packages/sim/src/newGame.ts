@@ -3,6 +3,7 @@ import { currentGameYear } from './calendar'
 import { refreshCatalogs } from './catalogs'
 import type { SimContext } from './context'
 import { createRng, hashStringToSeed } from './rng'
+import { freshSceneCommissions } from './sceneCommissions'
 import { freshSceneLedger } from './sceneStanding'
 import { freshSpecialty, generateDailyServiceJobOffers } from './serviceJobs'
 import { freshToolTiers } from './toolLines'
@@ -102,6 +103,7 @@ export function createInitialGameState(
     venueNameByTier: rollVenueNameByTier(context, seed),
     sceneStanding: freshSceneStanding(),
     sceneLedger: freshSceneLedger(),
+    sceneCommissions: freshSceneCommissions(),
     // Genuinely-optional-key pattern (content gameState.ts): the key exists
     // only on a tutorial career, so bots/probes/tests stay untouched by any
     // tutorial machinery.
