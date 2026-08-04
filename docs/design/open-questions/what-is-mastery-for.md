@@ -1,7 +1,16 @@
 # What is mastery for?
 
-**An open design question, written up for a second opinion.** Nothing here is decided. The repo is
+**ANSWERED, 2026-08-04.** The design of record is
+`docs/design/systems/scene-standing-refactor.md`: **your shop becomes known in buyer scenes, not car
+parts, and being known changes who walks in, what they will pay, and what you can build.**
+
+This document is kept because the reasoning behind the rejections is what got there, and the
+constraints listed below are still the test any future idea has to pass. The repo is
 <https://github.com/DashDev151/midnight_garage>.
+
+**The answer to the question this page asks**, in its own terms: a player with standing can point at
+the shop ledger, at the actual cars they delivered to a scene, and at a craft operation nobody
+without that standing can perform. Not at a number.
 
 ## The one-line problem
 
