@@ -32,12 +32,31 @@ pricing path changes, and every other scene continues to price exactly as it doe
 | **Respected** | floor to **0.95**, ceiling 1.12 to **1.17** | 1.17 is exactly the magazine and weekend-meet ceiling, so a Respected scene pays magazine money off the shop front |
 | **The Shop** | ceiling to **1.25** | past every channel that exists |
 
-### Three rules that keep it honest
+### The rules that keep it honest
 
-**Anything above 1.12 is matched-only.** A raised ceiling is never reachable by a mismatched car.
-Note this is already half-true by construction: with `low + (ceiling - low) * score`, only a score of
-1.0 reaches the ceiling at all. The rule is about not letting a raised ceiling leak into
-non-matched sales.
+**"Anything above 1.12 is matched-only" is toothless as written, and needs a decision before build.**
+
+MATCHED in the code is `channelBuyerTaste >= 1.0`, a test on the OUTPUT price. Any payment above 1.12
+trivially satisfies it, so the rule enforces nothing. Worse, because standing raises the FLOOR, the
+bar for being matched at all falls as standing rises:
+
+| stage | band | score needed to be "matched" |
+| --- | --- | ---: |
+| none | 0.88 to 1.12 | **0.500** |
+| Known | 0.92 to 1.12 | 0.400 |
+| Respected | 0.95 to 1.17 | 0.227 |
+| The Shop | 0.95 to 1.25 | **0.167** |
+
+**That is a compounding loop the design did not intend**: more standing makes matching easier, and
+matching is what earns standing. And concretely, at The Shop a score-0.6 car - a fairly WRONG car -
+prices at `0.95 + 0.30 x 0.6 = 1.13`, above the old ceiling, which is exactly what the rule was
+written to prevent.
+
+**The fix for both is one change: define matched on the SCORE, not on the price.**
+`normalizedTasteScore >= 0.5` is the score that yields 1.0 at the standard band, so it means the
+same thing at every stage and cannot drift. **This is a lever and a behaviour change**: it also
+governs the two `matchedOnly` channels and `reputation.matchedSaleRepBonus` today, so it must be
+approved rather than assumed.
 
 **Ceilings take the max, never stack.** For that scene's buyers the effective ceiling is
 `max(channelTasteCeiling, sceneStandingCeiling)`. **Stacking would compound**: a Respected scene in
@@ -78,16 +97,22 @@ the first. Say which is which in the report.
 
 ## Levers (directive 22)
 
-**Not approved. Seven values:** the three floors (0.92, 0.95), the two ceilings (1.17, 1.25), and
-whatever thresholds sprint 178 uses to award the stages. All are first-pass in the design and
-explicitly tunable.
+**Not approved:**
+
+1. The floors (0.92 at Known, 0.95 at Respected) and the ceilings (1.17 at Respected, 1.25 at The
+   Shop). First-pass in the design and explicitly tunable.
+2. **The matched definition**, per the analysis above: whether it moves from `taste >= 1.0` to
+   `normalizedTasteScore >= 0.5`. This governs the two `matchedOnly` channels and
+   `matchedSaleRepBonus` today, so it changes live behaviour and is the one decision this sprint
+   cannot start without.
 
 ## Definition of done
 
 1. A scene at Known, Respected or The Shop prices that scene's buyers differently, and no other
    scene moves at all.
 2. Ceilings max, never stack, against channel ceilings.
-3. No raised ceiling is reachable by a mismatched car.
+3. No raised ceiling is reachable by a mismatched car, **and the test for that does not get easier
+   as standing rises**.
 4. An AI bidder is unaffected by player standing.
 5. `pnpm typecheck` clean; the narrowest relevant tests run once.
 

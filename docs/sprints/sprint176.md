@@ -42,6 +42,21 @@ which advert**, so that everything after it has real scenes to stand in.
 reference and the `archetype` field move with them. Save schema is a Dexie version bump and nothing
 else (directive 19).
 
+**The rename has one trap that typecheck will not catch.** `valuation.ts`'s `coherenceToleranceFor`
+hardcodes the strings `'stancer'` and `'tuner'`, AND `economy.valuation.tolerance` keys on them:
+
+```
+{ default: 1.0, stancer: 0.0, tuner: 0.5 }
+```
+
+That value scales the coherence discount in `marketValueYen`. **Typecheck catches the code string;
+nothing catches the JSON key.** Miss it and the Show Crowd silently falls through to `default: 1.0`
+and starts caring about coherence, which is the exact opposite of what a stanced car is about, with
+no error anywhere.
+
+**Rename both, in the same change**, and add a test that every archetype's tolerance resolves to an
+authored value rather than to the default by accident.
+
 ### 2. Delete the hobbyist
 
 Not demoted to an unaffiliated pool: **deleted**. Its demand is inherited by Daily Drivers and the
@@ -99,6 +114,13 @@ ceiling, plausibly the same fortnightly rhythm. Same place, same gate, same fict
 4. The Tuner's retuned importances.
 5. The Collector Network channel: fee, `tasteCeiling`, `matchedOnly`, `buyerPoolWeights`,
    `poolWidening`, rhythm, and whatever gate it inherits.
+6. **`valuation.tolerance` for Touge**, which currently inherits `default: 1.0` by omission.
+   Probably right for a scene that wants a car working together, but it decides how hard an
+   incoherent car is discounted for them and it should be authored, not defaulted.
+
+**Held until sprint 175 settles**, and authored last rather than guessed now: **the power `target`
+on Racers and Touge**. Every other value here is independent of the power model and can be approved
+and built without it.
 
 **A note on measuring them.** Bot careers are directive-21 forbidden, so these get judged by the
 closed-form probes in Vitest and by play, not by simulation.
@@ -110,7 +132,9 @@ closed-form probes in Vitest and by play, not by simulation.
 3. Every weighted channel names all six.
 4. A collector has a channel that favours them.
 5. The tuner-0 / collector-1.0 authenticity split is intact.
-6. `pnpm typecheck` clean; the narrowest relevant tests run once.
+6. **Every archetype's coherence tolerance resolves to an authored value**, none falling through to
+   `default` by accident.
+7. `pnpm typecheck` clean; the narrowest relevant tests run once.
 
 ## Deliberately not here
 

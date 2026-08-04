@@ -8,12 +8,28 @@ the code on 2026-08-04, so no sprint doc restates them and none can quietly disa
 | sprint | what | blocked by |
 | --- | --- | --- |
 | **175** | Buyer power expectation | **a maintainer decision, not yet made** |
-| **176** | The six scenes: buyers and channels | 175 |
+| **176** | The six scenes: buyers and channels | **nothing, except its own power targets** |
 | **177** | Standing moves the band | 176 |
 | **178** | The earn event and the shop ledger | 177 |
 | **179** | Word of mouth, and scene commissions | 178 |
-| **180** | The operation chassis and its six skins | 178 |
+| **180** | The operation chassis and its six skins | 178, **and 175 for race prep's magnitude** |
 | **181** | Teardown of the old specialty system | 179, 180 |
+
+### What actually waits on 175, and what does not
+
+The chain above is looser than it first looks, and routing everything through one unmade decision
+would idle six sprints for no reason.
+
+**Genuinely blocked on 175:** the power `target` on Racers and Touge (sprint 176), and race prep's
+magnitude (sprint 180). Those are the only places the power model is read.
+
+**Not blocked at all:** the renames, the hobbyist deletion and its channel rebalance, the Tuner's
+non-power importances, Show Crowd, the Collector Network channel (all 176); the entire band
+mechanism (177); the earn event and the ledger (178). None of them touch power.
+
+**So 176 ships with its power targets held**, authored last against whatever 175 settles, and 177
+and 178 run behind it. Directive 22 already gates every value, so nothing can be quietly decided by
+building it.
 
 ## Verified current state
 
@@ -121,6 +137,26 @@ requires, already proven in code**, which is what makes sprint 180 feasible at a
   `titleBiasMultiplier` 1.25.
 - `gameState.ts`: the `specialty` record. `StandingScreen.vue` displays it.
 - `specialtyCopy.ts` and `specialtyCopy.json`: per-discipline copy.
+
+### Coherence tolerance is keyed on two archetype names, in code AND in JSON
+
+`valuation.ts`'s `coherenceToleranceFor` **hardcodes two archetype strings**:
+
+```ts
+if (buyer.archetype === 'stancer' && tolerance.stancer !== undefined) return tolerance.stancer
+if (buyer.archetype === 'tuner'   && tolerance.tuner   !== undefined) return tolerance.tuner
+return tolerance.default
+```
+
+and `economy.valuation.tolerance` is `{ default: 1.0, stancer: 0.0, tuner: 0.5 }`. That value scales
+the coherence discount in `marketValueYen`, so a Show Crowd buyer (0.0) does not care at all that a
+car's supports disagree, a Tuner half-cares, and everyone else fully discounts an incoherent car.
+
+**Two consequences for the rename in sprint 176.** Typecheck will catch the code string if
+`archetype` is a typed union; **nothing catches the JSON key**, which would silently fall through to
+`default` and quietly make the Show Crowd start caring about coherence. And **Touge inherits
+`default: 1.0` by omission**, which is probably right for a scene that wants a car working together,
+but it is an unlisted lever and should be authored deliberately rather than defaulted into.
 
 ### Personas carry no archetype
 
