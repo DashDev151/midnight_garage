@@ -99,6 +99,12 @@
       "touge": 1.0
     },
     "tasteSpread": 0.12,
+    "sceneStanding": {
+      "known": { "floor": 0.92 },
+      "respected": { "floor": 0.95, "ceiling": 1.17 },
+      "shop": { "floor": 0.95, "ceiling": 1.25 }
+    },
+    "matchedTasteScoreThreshold": 0.5,
     "walkAwaySpread": 0.05,
     "foundation": {
       "parts": ["tyres", "brakePadsDiscs", "brakeCalipersLines", "steering", "chassis"],

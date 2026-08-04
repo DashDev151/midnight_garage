@@ -5,7 +5,7 @@ import {
   type CarPartId,
   type ComponentId,
 } from '@midnight-garage/content'
-import { channelBuyerTaste } from '@midnight-garage/sim'
+import { channelBuyerTaste, isTasteMatched } from '@midnight-garage/sim'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useGameStore } from './gameStore'
@@ -234,12 +234,13 @@ describe('market: selling', () => {
   })
 
   /**
-   * A MATCHED sale (the buyer's taste for the car clears the listing
-   * channel's own tasteCeiling) surfaces `matchedSale: true` on the receipt.
-   * Finds a genuinely matched real buyer/generated-car pairing via
-   * `channelBuyerTaste` (the same public sim function `resolveSellViaWalkIn`
-   * itself uses) rather than hand-rolling a synthetic fixture, so the test
-   * proves the store's own passthrough against a real sim computation.
+   * A MATCHED sale (the buyer's want is genuinely met by the car - a test on
+   * the taste SCORE, `isTasteMatched`, never on the priced band) surfaces
+   * `matchedSale: true` on the receipt. Finds a genuinely matched real
+   * buyer/generated-car pairing via `isTasteMatched` (the same public sim
+   * function `resolveSellViaWalkIn` itself uses) rather than hand-rolling a
+   * synthetic fixture, so the test proves the store's own passthrough
+   * against a real sim computation.
    */
   it('accepting a matched sale surfaces matchedSale: true on the receipt', () => {
     const game = useGameStore()
@@ -249,16 +250,15 @@ describe('market: selling', () => {
       const car = game.gameState.ownedCars[game.gameState.ownedCars.length - 1]!
       const model = game.context.modelsById[car.modelId]!
       for (const buyer of game.context.buyers) {
-        const taste = channelBuyerTaste(
+        const matched = isTasteMatched(
           buyer,
           model,
           car,
           game.context.partsById,
           game.context.partsTaxonomy,
           game.context.economy,
-          game.context.economy.sellingChannels.weekendMeet.tasteCeiling!,
         )
-        if (taste >= 1) {
+        if (matched) {
           match = { carId: car.id, buyerId: buyer.id }
           break
         }

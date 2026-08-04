@@ -9,7 +9,7 @@ import { computeWeeklyRentYen } from '../src/finances'
 import { hashState } from '../src/hashState'
 import { resolveHireMachineLine } from '../src/jobs'
 import { createInitialGameState } from '../src/newGame'
-import { groupCarParts, testSpecialty, testToolTiers } from './testFixtures'
+import { groupCarParts, testSceneStanding, testSpecialty, testToolTiers } from './testFixtures'
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 
@@ -34,6 +34,7 @@ function initialState(): GameState {
     reputationTier: 'unknown',
     reputationPoints: 0,
     specialty: testSpecialty(),
+    sceneStanding: testSceneStanding(),
     serviceJobOffers: [],
     activeServiceJobs: [],
     ownedCars: [
@@ -249,7 +250,13 @@ describe('advanceDay golden master', () => {
     // aftermarket mechanism, so every generated board's rng stream shifts from
     // that point on. Re-derived from a real run, twice, to confirm
     // determinism.
-    expect(hashState(finalState)).toBe('5cd79fb0')
+    //
+    // It moves once more, on its own again, for standing moving the band:
+    // `GameState` gained `sceneStanding`, `createInitialGameState` seeds it to
+    // every scene at `none`. A pure SHAPE change, measured rather than
+    // assumed: no roll, cash figure or derived stat moved, since nothing in
+    // this script ever reads or sets a scene's own standing.
+    expect(hashState(finalState)).toBe('b834da40')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -441,7 +448,13 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // shape change: the sold car's own measured power becomes the chain's
     // first recorded `bestPowerPs`, a real figure rather than an
     // always-empty default. Re-derived from a real run.
-    expect(hashState(acquisitionCareer().sold)).toBe('e523cc30')
+    //
+    // It moves once more, on its own again, for standing moving the band:
+    // `GameState` gained `sceneStanding`, `createInitialGameState` seeds it to
+    // every scene at `none`, same as the 30-day master above. A pure SHAPE
+    // change, measured rather than assumed: this script's buy and sell prices
+    // through no scene's raised band, since nothing here ever sets one.
+    expect(hashState(acquisitionCareer().sold)).toBe('f1c5cdb0')
   })
 })
 

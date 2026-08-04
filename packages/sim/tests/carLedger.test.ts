@@ -1,7 +1,7 @@
 import type { GameState } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { carLedgerFor, deleteCarLedger, setCarLedger, updateCarLedger } from '../src/carLedger'
-import { testSpecialty, testToolTiers } from './testFixtures'
+import { testSceneStanding, testSpecialty, testToolTiers } from './testFixtures'
 
 function baseState(overrides: Partial<GameState> = {}): GameState {
   return {
@@ -11,6 +11,7 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     reputationTier: 'unknown',
     reputationPoints: 0,
     specialty: testSpecialty(),
+    sceneStanding: testSceneStanding(),
     ownedCars: [],
     partInventory: [],
     staff: [],

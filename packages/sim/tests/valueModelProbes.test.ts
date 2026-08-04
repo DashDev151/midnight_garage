@@ -46,6 +46,7 @@ import { valuateCarForBuyer } from '../src/valuation'
 import {
   buildCarInstance,
   mintCarParts,
+  testSceneStanding,
   testSpecialty,
   testToolTiers,
   uniformCarParts,
@@ -85,6 +86,7 @@ function stateWithLots(lots: AuctionLot[], overrides: Partial<GameState> = {}): 
     reputationTier: 'unknown',
     reputationPoints: 0,
     specialty: testSpecialty(),
+    sceneStanding: testSceneStanding(),
     ownedCars: [],
     partInventory: [],
     staff: [],

@@ -9,7 +9,7 @@ the code on 2026-08-04, so no sprint doc restates them and none can quietly disa
 | --- | --- | --- |
 | **175** | Buyer power expectation | **BUILT** - ceiling 300 to 600, climbing chain shipped unconsumed |
 | **176** | The six scenes: buyers and channels | **BUILT** |
-| **177** | Standing moves the band | 176 |
+| **177** | Standing moves the band | **BUILT** - matched redefined on the score, not the price |
 | **178** | The earn event and the shop ledger | 177 |
 | **179** | Word of mouth, and scene commissions | 178 |
 | **180** | The operation chassis and its six skins | 178, **and 175 for race prep's magnitude** |

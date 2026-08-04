@@ -1826,6 +1826,31 @@ import storyMissions from '../data/storyMissions.json'
  * has used. `payoutYen`/`budgetCapYen` are unchanged, so they are not part of this gate's pinned
  * object. No other mission's requirement is sensitive to the power ceiling: `first-proper-car`'s
  * `daily-drivers` match and `low-and-loud`'s `show-crowd` match are both re-measured unchanged.
+ *
+ * Re-pinned for `docs/sprints/sprint177.md` (standing moves the band), approved under the
+ * orchestrator's blanket lever authority for this build, every value named and recorded in that
+ * sprint doc's Exit. Two new `valuation` levers:
+ *
+ * 1. `valuation.sceneStanding` (NEW) - `known` floor 0.92 (no ceiling); `respected` floor 0.95,
+ *    ceiling 1.17 (exactly the tuner magazine and weekend meet ceiling, so a respected scene
+ *    pays magazine money off the shop front); `shop` floor 0.95, ceiling 1.25 (past every
+ *    channel that exists). Read by `channelTasteMultiplier` (sim/valuation.ts) for one scene's
+ *    buyers only; every other scene's price is unaffected by construction (the lookup is
+ *    per-buyer-archetype). Ceilings take the max against a selling channel's own `tasteCeiling`,
+ *    never stacking.
+ * 2. `valuation.matchedTasteScoreThreshold` (NEW) - 0.5, the score `tasteMatchFor` must clear
+ *    for a sale to count MATCHED. Replaces the old `channelBuyerTaste(...) >= 1` (a test on the
+ *    PRICE, which drifted easier to clear as standing raised the floor) with a test on the
+ *    underlying [0, 1] score, which cannot drift: 0.5 is mathematically the score that prices at
+ *    exactly 1.0 under the standard, no-standing band regardless of `tasteSpread`'s own value.
+ *    Governs the `matchedOnly` gate on `tunerMagazine`/`weekendMeet`/`collectorNetwork` and
+ *    `reputation.matchedSaleRepBonus` alike (`isTasteMatched`, sim/valuation.ts) - both already
+ *    existed and both change definition with this one lever, no code path is new.
+ *
+ * No mission payout or budget cap moves: none of the ten probes reads scene standing (every
+ * probe car is measured at `sceneStanding` absent, i.e. every scene at `none`), and the
+ * matched-threshold change moves a BOOLEAN gate, never a `marketValueYen` input, so
+ * `storyMissionProbes.test.ts` is unaffected and the payout pin holds unchanged.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -1835,7 +1860,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('a2d5d54190c0e391771519010e0ae68766f3c6e22d2e9daa8dc212cfc206b062')
+    ).toBe('ef2782ce46934671d7195928f1d8a76bf399b466343ebf57969d99d57f72a1f1')
   })
 
   it('damagePatterns.json matches its approved content exactly', () => {

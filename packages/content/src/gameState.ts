@@ -287,6 +287,53 @@ export const PowerExpectationChainSchema = z.object({
 
 export type PowerExpectationChain = z.infer<typeof PowerExpectationChainSchema>
 
+/**
+ * How well known the shop is within one buyer scene - the shop's own
+ * reputation with that scene, distinct from a car's fit against a buyer's
+ * own `statTargets`. `none` is a scene that has never heard of the shop;
+ * each later stage moves that scene's own taste band
+ * (`channelTasteMultiplier`, sim/valuation.ts) and nothing else -
+ * `docs/sprints/scene-standing-arc.md` is the design of record for how it
+ * is earned and what else it eventually grants, neither of which is wired
+ * up yet.
+ */
+export const SceneStandingStageSchema = z.enum(['none', 'known', 'respected', 'shop'])
+
+export type SceneStandingStage = z.infer<typeof SceneStandingStageSchema>
+
+/**
+ * The shop's standing in every buyer scene at once, one stage per
+ * `BuyerArchetype` - every scene named explicitly (the same
+ * `BuyerPoolWeightsSchema` idiom, content/src/economy.ts), so a silently
+ * absent scene and a deliberate `none` can never be confused. Defaults every
+ * scene to `none`: a fresh career is unknown everywhere, and a save from
+ * before this field existed reads exactly the same way.
+ */
+export const SceneStandingSchema = z
+  .object({
+    collector: SceneStandingStageSchema,
+    tuner: SceneStandingStageSchema,
+    'show-crowd': SceneStandingStageSchema,
+    racer: SceneStandingStageSchema,
+    'daily-drivers': SceneStandingStageSchema,
+    touge: SceneStandingStageSchema,
+  })
+  .strict()
+
+export type SceneStanding = z.infer<typeof SceneStandingSchema>
+
+/** Every scene at `none` - a fresh shop's standing, and the fallback a
+ * pre-existing save reads once `SceneStandingSchema`'s own default fills it
+ * in. */
+export const FRESH_SCENE_STANDING: SceneStanding = {
+  collector: 'none',
+  tuner: 'none',
+  'show-crowd': 'none',
+  racer: 'none',
+  'daily-drivers': 'none',
+  touge: 'none',
+}
+
 export const GameStateSchema = z.object({
   day: z.number().int().min(1),
   seed: z.number().int(),
@@ -598,6 +645,11 @@ export const GameStateSchema = z.object({
    * above. The genuinely-optional-key pattern (like `consumableStock`
    * above); absent on every save until the first car is ever delivered. */
   powerExpectationChain: PowerExpectationChainSchema.optional(),
+  /** The shop's standing per buyer scene - see `SceneStandingSchema` above.
+   * Defaults every scene to `none`, so a save from before this field
+   * existed reads as a shop nobody has heard of yet, exactly true of every
+   * career before the mechanic existed. */
+  sceneStanding: SceneStandingSchema.default(FRESH_SCENE_STANDING),
 })
 
 /**

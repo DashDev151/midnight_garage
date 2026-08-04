@@ -707,8 +707,15 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * many cars it actually sold, since the chain only started counting from
  * this version. No `MIGRATIONS[60]` entry needed, but it DOES bump
  * `SAVE_VERSION` (Save law).
+ * v61 -> v62 (standing moves the band): `GameStateSchema` gained
+ * `sceneStanding` (docs/sprints/scene-standing-arc.md step 3), one stage per
+ * buyer scene defaulted to `none` - the normal additive case (like
+ * v2/v22/v24/v25/v26/v61): a pre-v62 save never earned any standing (the
+ * concept did not exist), so "unknown in every scene" is exactly the correct
+ * backfill. No `MIGRATIONS[61]` entry needed, but it DOES bump
+ * `SAVE_VERSION` (Save law).
  */
-export const SAVE_VERSION = 61
+export const SAVE_VERSION = 62
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

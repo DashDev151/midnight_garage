@@ -661,6 +661,21 @@ const MachiningOperationSchema = z.object({
 export type MachiningOperation = z.infer<typeof MachiningOperationSchema>
 
 /**
+ * One scene-standing stage's band (`valuation.sceneStanding` below): the
+ * floor `channelTasteMultiplier` (sim/valuation.ts) reads for that scene's
+ * buyers instead of the standard `1 - tasteSpread`, and an optional ceiling
+ * that competes with a selling channel's own `tasteCeiling` by taking the
+ * higher of the two - never stacking. A stage that names no ceiling (the
+ * shipped `known` stage) moves the floor only.
+ */
+const SceneStandingBandSchema = z
+  .object({
+    floor: z.number().min(0).max(1),
+    ceiling: z.number().min(1).optional(),
+  })
+  .strict()
+
+/**
  * Designer-tunable economy/auction numbers live here (content law), threaded
  * through `SimContext` like every other content file.
  */
@@ -936,6 +951,35 @@ export const EconomyConfigSchema = z.object({
        * well a buyer archetype's stat weights fit this car, never whether the
        * car is worth anything (that's `marketValueYen` alone). */
       tasteSpread: z.number().min(0).max(1),
+      /**
+       * Per-scene standing bands (docs/sprints/scene-standing-arc.md): what
+       * each stage moves for that scene's own buyers only, read by
+       * `channelTasteMultiplier` (sim/valuation.ts) and nothing else in the
+       * pricing path. `known` names a floor only; `respected` and `shop`
+       * each raise both the floor and the ceiling, the ceiling always
+       * competing with a channel's own rather than adding to it. The floor
+       * never reaches 1.0 (a specialised car is still someone else's wrong
+       * car); the ceiling only ever climbs, stage over stage.
+       */
+      sceneStanding: z
+        .object({
+          known: SceneStandingBandSchema,
+          respected: SceneStandingBandSchema,
+          shop: SceneStandingBandSchema,
+        })
+        .strict(),
+      /**
+       * The score `tasteMatchFor` must clear for a sale to count as MATCHED
+       * (`isTasteMatched`, sim/valuation.ts) - tested on the underlying
+       * [0, 1] taste score, never on the priced multiplier, so a raised
+       * standing floor can never make the test easier to pass. Exactly the
+       * score that prices at 1.0 under the standard, no-standing band
+       * regardless of `tasteSpread`'s own value (`1 - tasteSpread +
+       * 2 x tasteSpread x score = 1` at `score = 0.5`), so MATCHED means the
+       * same thing at every standing stage. Governs the `matchedOnly`
+       * channel gate and `reputation.matchedSaleRepBonus` alike.
+       */
+      matchedTasteScoreThreshold: z.number().min(0).max(1),
       /**
        * A bot's walk-away target (`bots/buyoutHelpers.ts`'s
        * `walkAwayTargetYen`) is `instanceValue x strategyMultiplier` times a

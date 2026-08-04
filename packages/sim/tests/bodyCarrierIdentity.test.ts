@@ -35,7 +35,13 @@ import {
   resolveRemovePart,
 } from '../src/jobs'
 import { makeMarketOrigin } from '../src/provenance'
-import { buildCarInstance, mintCarParts, testSpecialty, testToolTiers } from './testFixtures'
+import {
+  buildCarInstance,
+  mintCarParts,
+  testSceneStanding,
+  testSpecialty,
+  testToolTiers,
+} from './testFixtures'
 
 /**
  * A body value carrier holds a real SKU. `panels` and `paint` are the two
@@ -103,6 +109,7 @@ function stateWith(car: CarInstance, inventory: PartInstance[]): GameState {
     reputationTier: 'unknown',
     reputationPoints: 0,
     specialty: testSpecialty(),
+    sceneStanding: testSceneStanding(),
     serviceJobOffers: [],
     activeServiceJobs: [],
     ownedCars: [car],

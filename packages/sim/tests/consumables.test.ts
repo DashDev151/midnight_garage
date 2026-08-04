@@ -22,7 +22,7 @@ import {
   stageConsumables,
 } from '../src/consumables'
 import { confirmStagedWork } from '../src/stagedWork'
-import { buildCarInstance, mintCarParts, testToolTiers } from './testFixtures'
+import { buildCarInstance, mintCarParts, testSceneStanding, testToolTiers } from './testFixtures'
 
 const CONTEXT = buildSimContext(CARS, PARTS, [], PARTS_TAXONOMY)
 const TOOL_TIERS = testToolTiers({ body: 2 })
@@ -49,6 +49,7 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     reputationTier: 'unknown',
     reputationPoints: 0,
     specialty: { engine: 0, drivetrain: 0, suspension: 0, wheels: 0, body: 0, interior: 0 },
+    sceneStanding: testSceneStanding(),
     serviceJobOffers: [],
     activeServiceJobs: [],
     ownedCars: [],

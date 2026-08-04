@@ -1,12 +1,15 @@
-import type {
-  Buyer,
-  CarInstance,
-  CarModel,
-  CarPartId,
-  CarPartTaxonomyEntry,
-  EconomyConfig,
-  Part,
-  PowerExpectationChain,
+import {
+  FRESH_SCENE_STANDING,
+  type Buyer,
+  type CarInstance,
+  type CarModel,
+  type CarPartId,
+  type CarPartTaxonomyEntry,
+  type EconomyConfig,
+  type Part,
+  type PowerExpectationChain,
+  type SceneStanding,
+  type SceneStandingStage,
 } from '@midnight-garage/content'
 import { computeDerivedStats } from './derivedStats'
 import { marketValueYen } from './marketValue'
@@ -160,6 +163,32 @@ function normalizedTasteScore(
 }
 
 /**
+ * Whether this buyer's want is genuinely met by this car - MATCHED,
+ * tested on the underlying [0, 1] taste score rather than on any priced
+ * multiplier. This is deliberate: `economy.valuation.matchedTasteScoreThreshold`
+ * is the score that prices at exactly 1.0 under the standard, no-standing
+ * band, so a sale is MATCHED by the same yardstick at every scene-standing
+ * stage. Testing the price instead (the old `channelBuyerTaste(...) >= 1`
+ * definition) drifted as standing rose - a raised floor lowers the score a
+ * mismatched car needs to clear the ceiling, which quietly made MATCHED
+ * easier to earn the more of it a scene already had. Buyer/car-only, so it
+ * never reads a channel or a scene's own standing: what a buyer wants does
+ * not depend on where the car is advertised. Governs the `matchedOnly`
+ * channel gate and `reputation.matchedSaleRepBonus` alike (`selling.ts`).
+ */
+export function isTasteMatched(
+  buyer: Buyer,
+  model: CarModel,
+  instance: CarInstance,
+  partsById: Readonly<Record<string, Part>>,
+  partsTaxonomy: readonly CarPartTaxonomyEntry[],
+  economy: EconomyConfig,
+): boolean {
+  const score = normalizedTasteScore(buyer, model, instance, partsById, partsTaxonomy, economy)
+  return score >= economy.valuation.matchedTasteScoreThreshold
+}
+
+/**
  * Bounded taste multiplier: how well a buyer archetype's stat weights fit
  * this car's derived stats, `[1 - tasteSpread, 1 + tasteSpread]`
  * (economy.json's first-pass `tasteSpread` of 0.12 bounds it to [0.88, 1.12],
@@ -180,16 +209,66 @@ function tasteMultiplier(
   return 1 - spread + 2 * spread * score
 }
 
+/** A fresh shop's scene standing: every scene at `none`, before anything is
+ * threaded in from a save. Mirrors `freshSpecialty`/`freshToolTiers`
+ * (serviceJobs.ts/toolLines.ts) for `createInitialGameState`'s call-site
+ * style, reading the one content-side default rather than a second copy of
+ * the same six-scene shape. */
+export function freshSceneStanding(): SceneStanding {
+  return FRESH_SCENE_STANDING
+}
+
+/**
+ * This buyer's own scene, read from the shop's per-scene standing record -
+ * `'none'` when `sceneStanding` itself is absent, so every caller that
+ * never threads a save's standing through (bidding, and most of the plain
+ * `valuateCarForBuyer` callers) prices exactly as it did before this
+ * mechanism existed.
+ */
+function sceneStandingStageFor(
+  buyer: Buyer,
+  sceneStanding: SceneStanding | undefined,
+): SceneStandingStage {
+  return sceneStanding?.[buyer.archetype] ?? 'none'
+}
+
+/**
+ * What this buyer's scene standing contributes to the channel band right
+ * now: the floor to price from instead of the standard `1 - tasteSpread`,
+ * and a ceiling to compete against the channel's own - `undefined` at
+ * `none`/`known`, which name no ceiling and so never raise one.
+ */
+function sceneStandingBandFor(
+  buyer: Buyer,
+  sceneStanding: SceneStanding | undefined,
+  economy: EconomyConfig,
+): { floor: number; ceiling: number | undefined } {
+  const stage = sceneStandingStageFor(buyer, sceneStanding)
+  if (stage === 'none') return { floor: 1 - economy.valuation.tasteSpread, ceiling: undefined }
+  if (stage === 'known') {
+    return { floor: economy.valuation.sceneStanding.known.floor, ceiling: undefined }
+  }
+  const band = economy.valuation.sceneStanding[stage]
+  return { floor: band.floor, ceiling: band.ceiling }
+}
+
 /**
  * The listing-channel taste band a selling channel realises: `ceiling` is
- * that channel's own `sellingChannels[*].tasteCeiling`. The low
- * end never moves (`1 - tasteSpread`, every channel's honest floor); the top
- * end either CLAMPS the standard `[1-spread, 1+spread]` band (a ceiling at or
- * below `1 + spread` - the shop front, the free ads paper) or REPLACES it (a
- * ceiling above `1 + spread` - the tuner magazine, the weekend meet), so a
- * matched buyer through one of those two can pay a real premium the standard
- * band never reaches. Same `normalizedTasteScore` either way - the channel
- * only changes which range that score lands in.
+ * that channel's own `sellingChannels[*].tasteCeiling`. The low end is
+ * `1 - tasteSpread`, every channel's honest floor, UNLESS this buyer's own
+ * scene standing (`sceneStanding`, absent = every scene at `none`) raises
+ * it - `docs/sprints/scene-standing-arc.md`'s per-scene band, applied here
+ * because this is the one place a taste band is built. A scene's own
+ * ceiling (from `respected` on) competes against the channel's rather than
+ * adding to it (`Math.max` - stacking would compound: a respected scene in
+ * the magazine would otherwise reach past both ceilings combined). Once the
+ * effective ceiling is settled, the shape is unchanged: it either CLAMPS
+ * the standard `[1-spread, 1+spread]` band (an effective ceiling at or below
+ * `1 + spread`) or REPLACES it (above `1 + spread`), so a matched buyer
+ * through a wide-open channel or a well-standing scene can pay a real
+ * premium the standard band never reaches. Same `normalizedTasteScore`
+ * either way - the channel and the scene only change which range that score
+ * lands in.
  */
 function channelTasteMultiplier(
   buyer: Buyer,
@@ -199,15 +278,17 @@ function channelTasteMultiplier(
   partsTaxonomy: readonly CarPartTaxonomyEntry[],
   economy: EconomyConfig,
   ceiling: number,
+  sceneStanding: SceneStanding | undefined,
 ): number {
   const score = normalizedTasteScore(buyer, model, instance, partsById, partsTaxonomy, economy)
-  const spread = economy.valuation.tasteSpread
-  const low = 1 - spread
-  const normalTop = 1 + spread
-  if (ceiling > normalTop) {
-    return low + (ceiling - low) * score
+  const scene = sceneStandingBandFor(buyer, sceneStanding, economy)
+  const low = scene.floor
+  const normalTop = 1 + economy.valuation.tasteSpread
+  const effectiveCeiling = scene.ceiling !== undefined ? Math.max(ceiling, scene.ceiling) : ceiling
+  if (effectiveCeiling > normalTop) {
+    return low + (effectiveCeiling - low) * score
   }
-  return Math.min(low + (normalTop - low) * score, ceiling)
+  return Math.min(low + (normalTop - low) * score, effectiveCeiling)
 }
 
 /**
@@ -245,10 +326,13 @@ export function valuateCarForBuyer(
 /**
  * A buyer's taste multiplier for a car AS ONE LISTING CHANNEL WOULD REALISE
  * IT - `channelTasteMultiplier`'s clamp/extend band, exported so
- * `selling.ts` can both price a channel offer with it and read the same
- * number back to decide MATCHED (`>= 1.0` - the buyer's visible want is met)
- * everywhere that definition is needed: the tuner magazine/weekend meet
- * mismatch gate, and the matched-sale reputation bonus at accept time.
+ * `selling.ts` can both price a channel offer with it and (via `valuation.
+ * isTasteMatched` for the actual MATCHED test) read the same buyer/car pair
+ * for the mismatch gate and the matched-sale reputation bonus. `sceneStanding`
+ * is this PLAYER'S shop's own standing (absent = every scene at `none`,
+ * today's behaviour) - never pass a save's standing into a caller that is
+ * pricing what a rival pays, only into a caller pricing what the player is
+ * offered.
  */
 export function channelBuyerTaste(
   buyer: Buyer,
@@ -258,6 +342,7 @@ export function channelBuyerTaste(
   partsTaxonomy: readonly CarPartTaxonomyEntry[],
   economy: EconomyConfig,
   tasteCeiling: number,
+  sceneStanding?: SceneStanding,
 ): number {
   return channelTasteMultiplier(
     buyer,
@@ -267,6 +352,7 @@ export function channelBuyerTaste(
     partsTaxonomy,
     economy,
     tasteCeiling,
+    sceneStanding,
   )
 }
 
@@ -274,7 +360,8 @@ export function channelBuyerTaste(
  * `valuateCarForBuyer`, but pricing the taste term through one listing
  * channel's own band (`channelBuyerTaste`) instead of the standard
  * `[1-spread, 1+spread]` one - the channel-aware twin every
- * `drawDailyOffers` channel path prices its offer through.
+ * `drawDailyOffers` channel path prices its offer through. `sceneStanding`
+ * carries the same player-only caveat `channelBuyerTaste` above documents.
  */
 export function valuateCarForBuyerViaChannel(
   buyer: Buyer,
@@ -286,6 +373,7 @@ export function valuateCarForBuyerViaChannel(
   heatPercent: number,
   economy: EconomyConfig,
   tasteCeiling: number,
+  sceneStanding?: SceneStanding,
 ): number {
   const value = marketValueYen(
     model,
@@ -304,6 +392,7 @@ export function valuateCarForBuyerViaChannel(
     partsTaxonomy,
     economy,
     tasteCeiling,
+    sceneStanding,
   )
   return Math.round(Math.max(0, value * taste))
 }

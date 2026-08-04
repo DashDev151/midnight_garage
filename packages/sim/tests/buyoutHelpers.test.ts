@@ -6,7 +6,7 @@ import { generateAuctionCatalog } from '../src/auctions'
 import { buildSimContext } from '../src/context'
 import { acquireLot, auctionAcquisitionBudget, walkAwayTargetYen } from '../src/bots/buyoutHelpers'
 import { bellNormal, createRng, hashStringToSeed } from '../src/rng'
-import { testSpecialty, testToolTiers } from './testFixtures'
+import { testSceneStanding, testSpecialty, testToolTiers } from './testFixtures'
 
 // Real PARTS (not []): generation fills every slot with a real stock
 // PartInstance by default - an empty catalog would make every part read
@@ -30,6 +30,7 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     reputationTier: 'unknown',
     reputationPoints: 0,
     specialty: testSpecialty(),
+    sceneStanding: testSceneStanding(),
     ownedCars: [],
     partInventory: [],
     staff: [],

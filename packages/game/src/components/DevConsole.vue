@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import {
+  BuyerArchetypeSchema,
   ReputationTierSchema,
+  SceneStandingStageSchema,
   type BayKind,
+  type BuyerArchetype,
   type ComponentId,
   type ReputationTier,
+  type SceneStandingStage,
   type ToolTier,
 } from '@midnight-garage/content'
 import { ref } from 'vue'
@@ -26,6 +30,10 @@ const toolTierOptions: readonly ToolTier[] = [1, 2, 3]
 const grantBayKind = ref<BayKind>('service')
 const setReputationTier = ref<ReputationTier>('unknown')
 const reputationTiers = ReputationTierSchema.options
+const setSceneStandingScene = ref<BuyerArchetype>(BuyerArchetypeSchema.options[0]!)
+const setSceneStandingStage = ref<SceneStandingStage>('none')
+const sceneStandingScenes = BuyerArchetypeSchema.options
+const sceneStandingStages = SceneStandingStageSchema.options
 
 function warp(): void {
   for (let i = 0; i < warpDays.value; i++) {
@@ -59,6 +67,14 @@ function warp(): void {
       title: {{ game.shopTitleName ?? 'none' }} · techniques:
       <span v-if="game.unlockedTechniqueViews.length === 0">none</span>
       <span v-for="t in game.unlockedTechniqueViews" :key="t.id">{{ t.displayName }}</span>
+    </div>
+
+    <!-- Scene standing is dev-only for now - earning it isn't wired up yet. -->
+    <div class="readout" data-test="scene-standing-readout">
+      standing:
+      <span v-for="line in game.sceneStandingView" :key="line.scene">
+        {{ line.label }} {{ line.stage }}
+      </span>
     </div>
 
     <div class="row">
@@ -121,6 +137,22 @@ function warp(): void {
         <option v-for="t in reputationTiers" :key="t" :value="t">{{ t }}</option>
       </select>
       <button @click="game.devSetReputationTier(setReputationTier)">set reputation</button>
+    </div>
+
+    <div class="row">
+      <select v-model="setSceneStandingScene">
+        <option v-for="scene in sceneStandingScenes" :key="scene" :value="scene">
+          {{ scene }}
+        </option>
+      </select>
+      <select v-model="setSceneStandingStage">
+        <option v-for="stage in sceneStandingStages" :key="stage" :value="stage">
+          {{ stage }}
+        </option>
+      </select>
+      <button @click="game.devSetSceneStanding(setSceneStandingScene, setSceneStandingStage)">
+        set standing
+      </button>
     </div>
 
     <div class="row">

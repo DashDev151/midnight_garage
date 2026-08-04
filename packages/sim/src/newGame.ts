@@ -6,6 +6,7 @@ import { createRng, hashStringToSeed } from './rng'
 import { freshSpecialty, generateDailyServiceJobOffers } from './serviceJobs'
 import { freshToolTiers } from './toolLines'
 import { radialOffersGated } from './tutorial'
+import { freshSceneStanding } from './valuation'
 
 const VENUE_NAME_TIERS: readonly AuctionTier[] = [
   'local-yard',
@@ -98,6 +99,7 @@ export function createInitialGameState(
     dyno: { owned: false, hirePaidDay: null, sessionCarId: null },
     consumableStock: {},
     venueNameByTier: rollVenueNameByTier(context, seed),
+    sceneStanding: freshSceneStanding(),
     // Genuinely-optional-key pattern (content gameState.ts): the key exists
     // only on a tutorial career, so bots/probes/tests stay untouched by any
     // tutorial machinery.

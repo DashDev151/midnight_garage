@@ -6,7 +6,7 @@ import {
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { applyReputationDelta, deriveReputationTier, reputationAtLeast } from '../src/reputation'
-import { testSpecialty, testToolTiers } from './testFixtures'
+import { testSceneStanding, testSpecialty, testToolTiers } from './testFixtures'
 
 describe('reputationAtLeast', () => {
   it('is true when current tier is the same as the minimum', () => {
@@ -67,6 +67,7 @@ describe('applyReputationDelta (Sprint 15)', () => {
       reputationTier: deriveReputationTier(reputationPoints, ECONOMY),
       reputationPoints,
       specialty: testSpecialty(),
+      sceneStanding: testSceneStanding(),
       ownedCars: [],
       partInventory: [],
       staff: [],

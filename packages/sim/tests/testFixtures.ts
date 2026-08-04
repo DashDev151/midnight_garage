@@ -4,6 +4,7 @@ import {
   PARTS,
   PARTS_TAXONOMY,
   fitmentClassForTier,
+  type BuyerArchetype,
   type CarInstance,
   type CarModel,
   type CarPartId,
@@ -13,6 +14,8 @@ import {
   type GameState,
   type Grade,
   type PartInstance,
+  type SceneStanding,
+  type SceneStandingStage,
   type ToolTiers,
 } from '@midnight-garage/content'
 import { expect } from 'vitest'
@@ -63,6 +66,22 @@ export function testSpecialty(
     wheels: 0,
     body: 0,
     interior: 0,
+    ...overrides,
+  }
+}
+
+/** Every scene at `none` unless overridden - same shape as `testSpecialty`
+ * above. */
+export function testSceneStanding(
+  overrides: Partial<Record<BuyerArchetype, SceneStandingStage>> = {},
+): SceneStanding {
+  return {
+    collector: 'none',
+    tuner: 'none',
+    'show-crowd': 'none',
+    racer: 'none',
+    'daily-drivers': 'none',
+    touge: 'none',
     ...overrides,
   }
 }

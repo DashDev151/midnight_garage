@@ -14,6 +14,7 @@ import {
   type PendingSaleOffer,
   type PowerExpectationChain,
   type ReputationTier,
+  type SceneStanding,
   type SellingChannelId,
 } from '@midnight-garage/content'
 import { tierPreferenceWeight } from './bidding'
@@ -37,8 +38,8 @@ import { bellNormal, type Rng } from './rng'
 import { dissolveAssembliesForCar } from './assemblies'
 import { clearStagedWork } from './stagedWork'
 import {
-  channelBuyerTaste,
   currentPowerExpectationBarPs,
+  isTasteMatched,
   valuateCarForBuyer,
   valuateCarForBuyerViaChannel,
 } from './valuation'
@@ -622,17 +623,18 @@ function clampedChance(chance: number): number {
 /**
  * A persona-priced channel draw: the same weighted persona pick
  * `sellViaWalkIn` uses, priced through the channel's own taste band
- * (`channelBuyerTaste` - clamped at `tasteCeiling`). When `matchedOnly` is
- * set, the picked persona's channel taste must additionally clear `>= 1.0`
- * (the car meets that buyer's visible want) before anything is priced - a
+ * (`valuateCarForBuyerViaChannel`, this player's own `sceneStanding` raising
+ * the band for a scene the shop is known in). When `matchedOnly` is set, the
+ * picked persona's want must additionally be MATCHED (`isTasteMatched` - the
+ * buyer/car score test, never the priced band) before anything is priced - a
  * mismatch draws no offer at all, the ad (or the meet) simply drew nobody
  * today, never a hidden penalty. Without it, the wrong crowd for a channel
  * simply never pays above its ceiling; there is no separate no-show roll.
  * Covers shopFront/freeAdsPaper (`matchedOnly` unset) and
- * tunerMagazine/weekendMeet (`matchedOnly` true) with one function, driven
- * entirely by the channel's own content flags. Priced through the Stage F
- * quality draw at this listing's own `offersSeen`, replacing the old flat
- * uniform spread band.
+ * tunerMagazine/weekendMeet/collectorNetwork (`matchedOnly` true) with one
+ * function, driven entirely by the channel's own content flags. Priced
+ * through the Stage F quality draw at this listing's own `offersSeen`,
+ * replacing the old flat uniform spread band.
  */
 function drawPersonaChannelOffer(
   car: CarInstance,
@@ -644,6 +646,7 @@ function drawPersonaChannelOffer(
   offersSeen: number,
   rng: Rng,
   weighting: ChannelDrawWeighting,
+  sceneStanding: SceneStanding,
 ): SaleOffer | undefined {
   const picked = pickWeightedCandidate(
     car,
@@ -659,16 +662,15 @@ function drawPersonaChannelOffer(
   )
   if (!picked) return undefined
   if (matchedOnly) {
-    const taste = channelBuyerTaste(
+    const matched = isTasteMatched(
       picked.buyer,
       model,
       car,
       context.partsById,
       context.partsTaxonomy,
       context.economy,
-      tasteCeiling,
     )
-    if (taste < 1) return undefined
+    if (!matched) return undefined
   }
 
   const value = valuateCarForBuyerViaChannel(
@@ -681,6 +683,7 @@ function drawPersonaChannelOffer(
     heatPercent,
     context.economy,
     tasteCeiling,
+    sceneStanding,
   )
   const quality = drawQualityFraction(offersSeen, context.economy, rng)
   const priceYen = Math.round(value * quality)
@@ -762,6 +765,7 @@ function drawFlaggedChannelOffer(
   offersSeen: number,
   rng: Rng,
   reputationTier: ReputationTier,
+  sceneStanding: SceneStanding,
 ): SaleOffer | undefined {
   if (channel.priceBand) {
     return drawTradeNetworkOffer(car, model, context, heatPercent, channel.priceBand, rng)
@@ -776,6 +780,7 @@ function drawFlaggedChannelOffer(
     offersSeen,
     rng,
     channelDrawWeighting(channel, reputationTier, context.economy),
+    sceneStanding,
   )
 }
 
@@ -828,6 +833,7 @@ function drawOfferForChannel(
   rng: Rng,
   day: number,
   reputationTier: ReputationTier,
+  sceneStanding: SceneStanding,
 ): ChannelDraw {
   const channel = context.economy.sellingChannels[entry.channelId]
 
@@ -845,6 +851,7 @@ function drawOfferForChannel(
         entry.offersSeen,
         rng,
         reputationTier,
+        sceneStanding,
       ),
       weekendMeetPending: false,
       attempted: true,
@@ -864,6 +871,7 @@ function drawOfferForChannel(
       entry.offersSeen,
       rng,
       reputationTier,
+      sceneStanding,
     ),
     attempted: true,
   }
@@ -911,6 +919,7 @@ export function drawDailyOffers(
       rng,
       day,
       state.reputationTier,
+      state.sceneStanding,
     )
     carsForSale.push({
       ...entry,
@@ -995,12 +1004,13 @@ export function resolveSellViaWalkIn(
   const model = context.modelsById[car.modelId]
   if (!model) return { state, log: [] }
 
-  // MATCHED (the same definition `drawDailyOffers`' channel draws use): the
-  // buyer's taste for this car is >= 1.0. `trade-network` (the trade
+  // MATCHED (the same definition `drawDailyOffers`' channel draws use,
+  // `isTasteMatched`): the buyer's want is genuinely met by this car, tested
+  // on the taste SCORE, never on the priced band - a raised standing floor
+  // can never make this easier to clear. `trade-network` (the trade
   // channel's non-persona buyer) never resolves to a real Buyer, so a trade
-  // sale is never matched. The channel's own tasteCeiling decides the band
-  // the taste is read through; a channel with no ceiling (tradeNetwork)
-  // can't match either.
+  // sale is never matched; a channel with no ceiling (tradeNetwork) is the
+  // same tell and is kept as the same gate.
   const listingChannelId = state.carsForSale.find(
     (f) => f.carInstanceId === carInstanceId,
   )?.channelId
@@ -1010,15 +1020,7 @@ export function resolveSellViaWalkIn(
     : undefined
   const matched =
     buyer !== undefined && tasteCeiling !== undefined
-      ? channelBuyerTaste(
-          buyer,
-          model,
-          car,
-          context.partsById,
-          context.partsTaxonomy,
-          context.economy,
-          tasteCeiling,
-        ) >= 1
+      ? isTasteMatched(buyer, model, car, context.partsById, context.partsTaxonomy, context.economy)
       : false
   const matchedBonus = matched ? context.economy.reputation.matchedSaleRepBonus : 0
 

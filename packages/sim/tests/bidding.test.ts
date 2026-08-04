@@ -21,7 +21,7 @@ import {
 import { generateAuctionCatalog } from '../src/auctions'
 import { buildSimContext, type SimContext } from '../src/context'
 import { createRng } from '../src/rng'
-import { testSpecialty, testToolTiers } from './testFixtures'
+import { testSceneStanding, testSpecialty, testToolTiers } from './testFixtures'
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 /** A context with no interested buyers at all - forces `anchorValueYen`
@@ -56,6 +56,7 @@ function stateWithLots(lots: AuctionLot[], overrides: Partial<GameState> = {}): 
     reputationTier: 'unknown',
     reputationPoints: 0,
     specialty: testSpecialty(),
+    sceneStanding: testSceneStanding(),
     ownedCars: [],
     partInventory: [],
     staff: [],

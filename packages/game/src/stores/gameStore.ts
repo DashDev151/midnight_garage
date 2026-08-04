@@ -1,5 +1,6 @@
 import {
   BUYERS,
+  BuyerArchetypeSchema,
   CARS,
   COMPONENT_DISPLAY_NAMES,
   ComponentIdSchema,
@@ -18,6 +19,7 @@ import type {
   AuctionTier,
   BayKind,
   Buyer,
+  BuyerArchetype,
   CarInstance,
   CarLedger,
   CarModel,
@@ -38,6 +40,7 @@ import type {
   PartInstance,
   ReputationTier,
   RequirementSpec,
+  SceneStandingStage,
   SellingChannelId,
   ServiceJob,
   ServiceJobTask,
@@ -3447,6 +3450,23 @@ export const useGameStore = defineStore('game', () => {
   )
 
   /**
+   * The shop's standing in every buyer scene, dev-console-only (the same
+   * "one debug exception" `specialtyView` above is) - earning it is not
+   * built yet, so this is the only place a career's standing can currently
+   * be read at all. `label` reads a representative buyer's own
+   * `displayName` for that archetype rather than the raw scene id.
+   */
+  const sceneStandingView = computed<
+    { scene: BuyerArchetype; label: string; stage: SceneStandingStage }[]
+  >(() =>
+    BuyerArchetypeSchema.options.map((scene) => ({
+      scene,
+      label: BUYERS.find((b) => b.archetype === scene)?.displayName ?? scene,
+      stage: gameState.value.sceneStanding[scene],
+    })),
+  )
+
+  /**
    * The shop's derived title copy ("the engine house"), or null
    * below `titleThresholdPoints` - plain text alongside reputation
    * (`GarageScreen.vue`), never a meter. Pure function of `specialty`; can
@@ -4986,6 +5006,20 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
+  /**
+   * Jump one scene straight to a standing stage, bypassing however many
+   * matched deliveries it would normally take to earn - dev/test only.
+   * Earning it (docs/sprints/scene-standing-arc.md) has nothing to hook yet,
+   * so this is the one way a career can currently reach
+   * `known`/`respected`/`shop` at all.
+   */
+  function devSetSceneStanding(scene: BuyerArchetype, stage: SceneStandingStage): void {
+    gameState.value = {
+      ...gameState.value,
+      sceneStanding: { ...gameState.value.sceneStanding, [scene]: stage },
+    }
+  }
+
   // --- guided tutorial ---
 
   /** Whether the guided tutorial overlay is live for this career. Read-only:
@@ -5246,5 +5280,7 @@ export const useGameStore = defineStore('game', () => {
     devSetToolTier,
     devGrantBay,
     devSetReputationTier,
+    sceneStandingView,
+    devSetSceneStanding,
   }
 })

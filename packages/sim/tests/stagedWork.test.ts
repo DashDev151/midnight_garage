@@ -22,6 +22,7 @@ import {
   buildCarInstance,
   groupCarParts,
   mintCarParts,
+  testSceneStanding,
   testSpecialty,
   testToolTiers,
 } from './testFixtures'
@@ -87,6 +88,7 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     reputationTier: 'unknown',
     reputationPoints: 0,
     specialty: testSpecialty(),
+    sceneStanding: testSceneStanding(),
     serviceJobOffers: [],
     activeServiceJobs: [],
     ownedCars: [car],

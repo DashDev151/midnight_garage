@@ -983,7 +983,7 @@ describe('saveCodec', () => {
   })
 
   it('a per-part staged action and job (carPartId set) round-trip exactly under version 17', () => {
-    expect(SAVE_VERSION).toBe(61)
+    expect(SAVE_VERSION).toBe(62)
     const perPart: GameState = GameStateSchema.parse({
       ...fullState,
       jobs: [
@@ -1030,7 +1030,7 @@ describe('saveCodec', () => {
   })
 
   it('a v31 state with an origin-carrying inventory part round-trips the origin exactly', () => {
-    expect(SAVE_VERSION).toBe(61)
+    expect(SAVE_VERSION).toBe(62)
     const withOrigin: GameState = GameStateSchema.parse({
       ...fullState,
       partInventory: [
@@ -1618,7 +1618,7 @@ describe('saveCodec', () => {
    * tracks the current value, not this fact.
    */
   it('a techniques and shop-title state round-trips at the current SAVE_VERSION', () => {
-    expect(SAVE_VERSION).toBe(61)
+    expect(SAVE_VERSION).toBe(62)
   })
 
   it('a v24 save with specialty high enough to unlock a technique/title decodes identically either way - nothing new is stored', () => {
@@ -1726,7 +1726,7 @@ describe('saveCodec', () => {
    * a real double-parked car round-trips it exactly.
    */
   it('SAVE_VERSION is current', () => {
-    expect(SAVE_VERSION).toBe(61)
+    expect(SAVE_VERSION).toBe(62)
   })
 
   it('a real pre-v26 save (a v25 envelope with no graceParkingCarId field) decodes with nothing double-parked under v26', () => {
@@ -1759,7 +1759,7 @@ describe('saveCodec', () => {
    * exactly.
    */
   it('SAVE_VERSION is current', () => {
-    expect(SAVE_VERSION).toBe(61)
+    expect(SAVE_VERSION).toBe(62)
   })
 
   it('a real pre-v27 save (a v26 envelope with neither field) decodes with nothing listed or scheduled under v27', () => {
@@ -1806,7 +1806,7 @@ describe('saveCodec', () => {
    * same slot, same band, same everything else.
    */
   it('SAVE_VERSION is current', () => {
-    expect(SAVE_VERSION).toBe(61)
+    expect(SAVE_VERSION).toBe(62)
   })
 
   it("a real pre-v28 save remaps an entry-tier car's everyday-class stock part to its own class sibling SKU", () => {
@@ -2197,5 +2197,46 @@ describe('saveCodec', () => {
     const decoded = decodeSave(encodeSave(withAttendance))
     expect(decoded).toEqual(withAttendance)
     expect(decoded.attendanceFeePaidDayByTier).toEqual({ regional: 12, premium: 12 })
+  })
+
+  /**
+   * v61 -> v62 (standing moves the band): `GameStateSchema` gained
+   * `sceneStanding`, defaulted to every scene at `none`. The pure additive
+   * case (the `specialty` default-object pattern): a real pre-v62 save with
+   * no `sceneStanding` field at all still decodes with every scene unknown -
+   * exactly right, since no career could have earned any yet - and a v62
+   * state with real standing round-trips it exactly.
+   */
+  it('a real pre-v62 save (no sceneStanding field) decodes with every scene at none', () => {
+    const preV62State: Record<string, unknown> = { ...fullState }
+    delete preV62State.sceneStanding
+    const preV62 = { version: 61, gameState: preV62State }
+    const code = 'MGSAVE1.' + btoa(JSON.stringify(preV62))
+    const decoded = decodeSave(code)
+    expect(decoded.sceneStanding).toEqual({
+      collector: 'none',
+      tuner: 'none',
+      'show-crowd': 'none',
+      racer: 'none',
+      'daily-drivers': 'none',
+      touge: 'none',
+    })
+  })
+
+  it('a v62 state with real standing round-trips sceneStanding exactly', () => {
+    const withStanding: GameState = GameStateSchema.parse({
+      ...fullState,
+      sceneStanding: {
+        collector: 'shop',
+        tuner: 'respected',
+        'show-crowd': 'known',
+        racer: 'none',
+        'daily-drivers': 'none',
+        touge: 'known',
+      },
+    })
+    const decoded = decodeSave(encodeSave(withStanding))
+    expect(decoded).toEqual(withStanding)
+    expect(decoded.sceneStanding).toEqual(withStanding.sceneStanding)
   })
 })
