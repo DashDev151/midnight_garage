@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ComponentId } from '@midnight-garage/content'
 import { computed } from 'vue'
+import { RouterLink } from 'vue-router'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen, formatYenDelta } from '../utils/formatYen'
 
@@ -28,6 +29,12 @@ const specialtyLines = computed(() => {
     .filter(([, delta]) => delta !== 0)
     .map(([group, delta]) => `${game.componentLabel(group)} +${delta}`)
 })
+
+/** Dismiss on the way out to the Costs tab - otherwise this modal is still
+ * sitting open, on top of that screen, when the router lands there. */
+function goToCostSheet(): void {
+  game.dismissMissionResult()
+}
 </script>
 
 <template>
@@ -60,6 +67,18 @@ const specialtyLines = computed(() => {
           <dd>{{ specialtyLines.join(', ') }}</dd>
         </div>
       </dl>
+
+      <p class="cost-note">
+        That profit is the car's own number: buy price and repairs, nothing else. Rent, machine hire
+        and delivery surcharges are billed to the shop, not the car, so they still come out of the
+        till somewhere.
+        <RouterLink
+          :to="{ name: 'costs' }"
+          data-test="mission-result-costs-link"
+          @click="goToCostSheet"
+          >See what the week cost.</RouterLink
+        >
+      </p>
 
       <button
         class="primary"
@@ -125,6 +144,18 @@ h3 {
 .numbers dd {
   margin: 0;
   color: var(--mg-text);
+}
+
+.cost-note {
+  margin: 0 0 var(--mg-space-4);
+  padding-top: var(--mg-space-3);
+  border-top: var(--mg-border);
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+}
+
+.cost-note a {
+  color: var(--mg-neon-cyan);
 }
 
 .up {

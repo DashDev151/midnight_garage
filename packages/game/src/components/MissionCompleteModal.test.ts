@@ -1,4 +1,4 @@
-import { mount, type VueWrapper } from '@vue/test-utils'
+import { mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { useGameStore } from '../stores/gameStore'
@@ -22,7 +22,9 @@ describe('MissionCompleteModal', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
   it('renders nothing when there is no result', () => {
-    const wrapper = track(mount(MissionCompleteModal))
+    const wrapper = track(
+      mount(MissionCompleteModal, { global: { stubs: { RouterLink: RouterLinkStub } } }),
+    )
     expect(wrapper.find('[data-test="mission-complete-modal"]').exists()).toBe(false)
   })
 
@@ -44,7 +46,9 @@ describe('MissionCompleteModal', () => {
       },
       profitYen: 50_000,
     }
-    const wrapper = track(mount(MissionCompleteModal))
+    const wrapper = track(
+      mount(MissionCompleteModal, { global: { stubs: { RouterLink: RouterLinkStub } } }),
+    )
     expect(wrapper.find('[data-test="mission-complete-modal"]').exists()).toBe(true)
     expect(wrapper.text()).toContain('Test Customer')
     expect(wrapper.text()).toContain('Exactly what I asked for.')
@@ -73,7 +77,9 @@ describe('MissionCompleteModal', () => {
       },
       profitYen: 100_000,
     }
-    const wrapper = track(mount(MissionCompleteModal))
+    const wrapper = track(
+      mount(MissionCompleteModal, { global: { stubs: { RouterLink: RouterLinkStub } } }),
+    )
     const tipEl = wrapper.find('[data-test="mission-result-tip"]')
     expect(tipEl.exists()).toBe(true)
     expect(tipEl.text()).toContain('200,000')
@@ -97,7 +103,9 @@ describe('MissionCompleteModal', () => {
       },
       profitYen: 20_000,
     }
-    const wrapper = track(mount(MissionCompleteModal))
+    const wrapper = track(
+      mount(MissionCompleteModal, { global: { stubs: { RouterLink: RouterLinkStub } } }),
+    )
     expect(wrapper.text()).not.toContain('Specialty')
   })
 
@@ -119,8 +127,38 @@ describe('MissionCompleteModal', () => {
       },
       profitYen: 20_000,
     }
-    const wrapper = track(mount(MissionCompleteModal))
+    const wrapper = track(
+      mount(MissionCompleteModal, { global: { stubs: { RouterLink: RouterLinkStub } } }),
+    )
     await wrapper.find('[data-test="mission-result-continue"]').trigger('click')
+    expect(game.lastMissionResult).toBeNull()
+  })
+
+  it('steers to the cost sheet, explaining the gap between profit and cash, and dismisses on the way', async () => {
+    const game = useGameStore()
+    game.lastMissionResult = {
+      personaName: 'Test Customer',
+      copy: 'Thanks.',
+      payoutYen: 142_000,
+      tipYen: 0,
+      reputationGained: 10,
+      specialtyGained: {
+        engine: 10,
+        drivetrain: 0,
+        suspension: 0,
+        wheels: 0,
+        body: 0,
+        interior: 0,
+      },
+      profitYen: 26_300,
+    }
+    const wrapper = track(
+      mount(MissionCompleteModal, { global: { stubs: { RouterLink: RouterLinkStub } } }),
+    )
+    const link = wrapper.find('[data-test="mission-result-costs-link"]')
+    expect(link.exists()).toBe(true)
+    expect(wrapper.text()).toContain('billed to the shop, not the car')
+    await link.trigger('click')
     expect(game.lastMissionResult).toBeNull()
   })
 
@@ -143,7 +181,9 @@ describe('MissionCompleteModal', () => {
         },
         profitYen: 10_600,
       }
-      const wrapper = track(mount(MissionCompleteModal))
+      const wrapper = track(
+        mount(MissionCompleteModal, { global: { stubs: { RouterLink: RouterLinkStub } } }),
+      )
       const profitEl = wrapper.find('[data-test="mission-result-profit"]')
       expect(profitEl.exists()).toBe(true)
       expect(profitEl.classes()).toContain('up')
@@ -168,7 +208,9 @@ describe('MissionCompleteModal', () => {
         },
         profitYen: -25_000,
       }
-      const wrapper = track(mount(MissionCompleteModal))
+      const wrapper = track(
+        mount(MissionCompleteModal, { global: { stubs: { RouterLink: RouterLinkStub } } }),
+      )
       const profitEl = wrapper.find('[data-test="mission-result-profit"]')
       expect(profitEl.classes()).toContain('down')
       expect(profitEl.text()).toBe('-¥25,000')

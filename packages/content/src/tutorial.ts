@@ -37,6 +37,13 @@ import { CarPartIdSchema, ConditionBandSchema } from './tags'
  *   exists - mirrors the bench swap-candidate rule (`showWhen` only).
  * - `partOnOrder`: a pending part order addressed to `carPartId` exists - the
  *   "your tyres are coming, End Day" waiting moment (`showWhen` only).
+ * - `partInCart`: a catalogue part addressed to `carPartId` sits in the cart
+ *   (added, not yet bought) - fitting the scripted car same as
+ *   `partInInventory`. The shop-trip beat between "add it to the cart" and
+ *   "checkout" (`showWhen`/`hideWhen`).
+ * - `partRemoved`: the scripted car's `carPartId` slot has no installed part
+ *   (removed to the bench or inventory, and not a legitimately-empty slot) -
+ *   a teardown checklist's per-item ticked state.
  * - `scriptedCarWhole`: the owned scripted car has no missing part (every slot
  *   installed or legitimately absent, `isPartMissing`) - the reassembly step's
  *   completion, so the machine can never march a part-missing car to delivery.
@@ -64,6 +71,8 @@ const TutorialBaseConditionSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('assemblyOnBench'), assemblyId: AssemblyIdSchema }),
   z.object({ kind: z.literal('partInInventory'), carPartId: CarPartIdSchema }),
   z.object({ kind: z.literal('partOnOrder'), carPartId: CarPartIdSchema }),
+  z.object({ kind: z.literal('partInCart'), carPartId: CarPartIdSchema }),
+  z.object({ kind: z.literal('partRemoved'), carPartId: CarPartIdSchema }),
   z.object({ kind: z.literal('scriptedCarWhole') }),
   z.object({
     kind: z.literal('benchMemberBandAtLeast'),
@@ -109,6 +118,12 @@ export const TutorialLineSchema = z.object({
    * and not yet retired. */
   hideWhen: TutorialConditionSchema.optional(),
   anchorTestId: z.union([z.string().min(1), z.array(z.string().min(1)).min(1)]).optional(),
+  /** A live checklist rendered under this line: one entry per `carPartId`,
+   * ticked off as `partRemoved` becomes true for it. Renders and retires with
+   * the line's own `showWhen`/`hideWhen` - a teardown beat's named components,
+   * checked off one at a time as each actually comes off, instead of a static
+   * list read once and forgotten. */
+  checklist: z.array(CarPartIdSchema).min(1).optional(),
 })
 
 export type TutorialLine = z.infer<typeof TutorialLineSchema>

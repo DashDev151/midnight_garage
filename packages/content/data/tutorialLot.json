@@ -4,22 +4,45 @@
   "carId": "tutorial-lot-car",
   "tier": "local-yard",
   "modelId": "suzuki-wagon-r-ct21s",
-  "year": 1994,
+  "year": 1993,
   "mileageKm": 96000,
   "color": "Silver",
   "provenanceNote": "daily driver, honest wear",
   "baseBand": "fine",
   "partOverrides": [
-    { "carPartId": "tyres", "band": "scrap" },
-    { "carPartId": "headValvetrain", "band": "poor" },
-    { "carPartId": "clutch", "band": "worn" },
-    { "carPartId": "brakePadsDiscs", "band": "worn" },
-    { "carPartId": "dampers", "band": "worn" },
-    { "carPartId": "exhaust", "band": "worn" }
+    {
+      "carPartId": "tyres",
+      "band": "scrap"
+    },
+    {
+      "carPartId": "headValvetrain",
+      "band": "poor"
+    },
+    {
+      "carPartId": "clutch",
+      "band": "worn"
+    },
+    {
+      "carPartId": "brakePadsDiscs",
+      "band": "worn"
+    },
+    {
+      "carPartId": "dampers",
+      "band": "worn"
+    },
+    {
+      "carPartId": "exhaust",
+      "band": "worn"
+    }
   ],
   "symptom": {
-    "symptomId": "tick-at-idle",
-    "trueCauseId": "lifter-tick",
-    "apparent": [{ "carPartId": "headValvetrain", "band": "fine" }]
+    "symptomId": "overheats-in-traffic",
+    "trueCauseId": "early-head-gasket",
+    "apparent": [
+      {
+        "carPartId": "headValvetrain",
+        "band": "fine"
+      }
+    ]
   }
 }

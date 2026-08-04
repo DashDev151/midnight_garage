@@ -12,7 +12,9 @@
         "text": "The tabs along the top are your world: the office phone where work finds you, the auction rooms, the parts shop. We will visit each one when it matters."
       }
     ],
-    "completion": { "kind": "acknowledged" }
+    "completion": {
+      "kind": "acknowledged"
+    }
   },
   {
     "id": "accept",
@@ -32,7 +34,9 @@
         "text": "Accept the job when you are ready."
       }
     ],
-    "completion": { "kind": "missionActive" }
+    "completion": {
+      "kind": "missionActive"
+    }
   },
   {
     "id": "find",
@@ -49,7 +53,7 @@
       },
       {
         "speaker": "instruction",
-        "text": "There is a {model} on the block that could be just right for her. Nothing glamorous, but read its sheet: it lists an engine tick, and the room can only price that noise at the odds. Prove which tick it is and you know something the price does not; if it is the cheap one, that is a bargain wearing a scary label."
+        "text": "There is a {model} on the block that could be just right for her. Nothing glamorous, but read her sheet: she runs hot in traffic. The room can only price that at the odds, and the odds on a hot engine run from a morning's work to a scrapped car. Prove which it is and you know something the price does not."
       },
       {
         "speaker": "instruction",
@@ -57,21 +61,36 @@
       },
       {
         "speaker": "instruction",
-        "text": "Ears first, tools second. Rev it gently and listen: valve gear keeps time, light and regular. Anything deeper, we worry about later. Five minutes.",
-        "showWhen": { "kind": "inspectionVisitActive" },
-        "hideWhen": { "kind": "testRun", "testId": "revs-and-listen" },
-        "anchorTestId": "run-test-tutorial-lot-0-revs-and-listen"
+        "text": "Cheapest test first. Cap off the header tank, run her up to temperature and watch the water. If combustion is getting past into the coolant you will see it come up as bubbles. Ten minutes.",
+        "showWhen": {
+          "kind": "inspectionVisitActive"
+        },
+        "hideWhen": {
+          "kind": "testRun",
+          "testId": "coolant-check"
+        },
+        "anchorTestId": "run-test-tutorial-lot-0-coolant-check"
       },
       {
         "speaker": "instruction",
-        "text": "A tidy tick, up top. Now the stethoscope on the cam cover: fifteen minutes, and we'll know exactly which bit of the valve gear is talking.",
-        "showWhen": { "kind": "testRun", "testId": "revs-and-listen" },
-        "anchorTestId": "run-test-tutorial-lot-0-stethoscope"
+        "text": "Bubbles, steady as you like. That is combustion pushing into the water, and it is one of two things: a head gasket on its way out, or a crack in the block itself. One is a day with the head off. The other is a scrapped engine and a wasted trip. Compression test, and let us find out which.",
+        "showWhen": {
+          "kind": "testRun",
+          "testId": "coolant-check"
+        },
+        "anchorTestId": "run-test-tutorial-lot-0-compression-test"
       }
     ],
     "completion": {
       "kind": "anyOf",
-      "of": [{ "kind": "lotInspected" }, { "kind": "scriptedCarOwned" }]
+      "of": [
+        {
+          "kind": "lotInspected"
+        },
+        {
+          "kind": "scriptedCarOwned"
+        }
+      ]
     },
     "panelPosition": "bottom-right"
   },
@@ -82,14 +101,16 @@
     "lines": [
       {
         "speaker": "instruction",
-        "text": "Just lifters: the cheap kind of tick, the kind a quiet afternoon and a set of shims can cure. The room is still scared of it, and their fear is our discount."
+        "text": "Even compression across every pot, and the oil clean on the stick. Not the block, then: a head gasket on its way out and nothing worse. A day's work and a gasket set. The room heard a hot engine and priced it like scrap, and their fear is our discount."
       },
       {
         "speaker": "instruction",
         "text": "Take a seat. It's a quiet morning and nobody else came for her: bid the reserve, the least the seller will take, and let the clock run out. Winning slowly still counts as winning."
       }
     ],
-    "completion": { "kind": "scriptedCarOwned" }
+    "completion": {
+      "kind": "scriptedCarOwned"
+    }
   },
   {
     "id": "bay",
@@ -98,14 +119,16 @@
     "lines": [
       {
         "speaker": "yuki",
-        "text": "Oh, that one! I know she's scruffy, but look at her. There's a good little car under all that dirt, I can feel it from here."
+        "text": "Oh, that one! I know she's had a hard life, but look at her. There's a good little car under all those miles, I can feel it from here."
       },
       {
         "speaker": "instruction",
         "text": "The {model} is yours, and she is sitting in parking looking sorry for herself. Tools only reach a car in the service bay: drag her across (or open her and press Move to service bay) and let us get a proper look."
       }
     ],
-    "completion": { "kind": "scriptedCarInServiceBay" },
+    "completion": {
+      "kind": "scriptedCarInServiceBay"
+    },
     "panelPosition": "right"
   },
   {
@@ -125,42 +148,103 @@
       {
         "speaker": "instruction",
         "text": "Start at the ground. Her tyres are scrap, and scrap tyres fail a roadworthy all on their own. Tyres come off with the wheels: press Remove assembly (an assembly costs the same labour as pulling its parts one at a time, and the figure is on the button), and the wheels land on the bench below.",
-        "hideWhen": { "kind": "assemblyOnBench", "assemblyId": "wheelAssembly" }
+        "hideWhen": {
+          "kind": "assemblyOnBench",
+          "assemblyId": "wheelAssembly"
+        }
       },
       {
         "speaker": "instruction",
-        "text": "Fresh tyres, then. In the Parts tab, open Wheels & tyres and pick Tyres, and set the fits filter to her {model}: the shop will only show what fits her. Press Add to cart on the plain stock tyres (sport rubber is lovely, and entirely not in her budget), then Checkout; standard delivery lands tomorrow morning. Go express, just this once. That surcharge is usually the price of planning badly; today it's the price of not making Yuki wait on my timetable.",
-        "showWhen": { "kind": "assemblyOnBench", "assemblyId": "wheelAssembly" },
+        "text": "Fresh tyres, then. In the Parts tab, open Wheels & tyres and pick Tyres. Set the fits this vehicle dropdown to her {model} and the shop shows only what fits her; press Add to cart on the plain stock tyres. Sport rubber is lovely, and entirely not in her budget.",
+        "showWhen": {
+          "kind": "assemblyOnBench",
+          "assemblyId": "wheelAssembly"
+        },
         "hideWhen": {
           "kind": "anyOf",
           "of": [
-            { "kind": "partOnOrder", "carPartId": "tyres" },
-            { "kind": "partInInventory", "carPartId": "tyres" },
-            { "kind": "benchMemberBandAtLeast", "carPartId": "tyres", "band": "fine" }
+            {
+              "kind": "partInCart",
+              "carPartId": "tyres"
+            },
+            {
+              "kind": "partOnOrder",
+              "carPartId": "tyres"
+            },
+            {
+              "kind": "partInInventory",
+              "carPartId": "tyres"
+            },
+            {
+              "kind": "benchMemberBandAtLeast",
+              "carPartId": "tyres",
+              "band": "fine"
+            }
           ]
         },
-        "anchorTestId": ["catalog-part-tyres", "hero-wheels", "nav-parts"]
+        "anchorTestId": ["filter-vehicle", "catalog-part-tyres", "hero-wheels", "nav-parts"]
+      },
+      {
+        "speaker": "instruction",
+        "text": "In the cart, tick Express delivery and press Checkout to place the order. Standard lands tomorrow morning; express costs a surcharge but she gets her car today. That surcharge is usually the price of planning badly; today it's the price of not making Yuki wait on my timetable.",
+        "showWhen": {
+          "kind": "partInCart",
+          "carPartId": "tyres"
+        },
+        "hideWhen": {
+          "kind": "anyOf",
+          "of": [
+            {
+              "kind": "partOnOrder",
+              "carPartId": "tyres"
+            },
+            {
+              "kind": "partInInventory",
+              "carPartId": "tyres"
+            },
+            {
+              "kind": "benchMemberBandAtLeast",
+              "carPartId": "tyres",
+              "band": "fine"
+            }
+          ]
+        },
+        "anchorTestId": ["delivery-express", "checkout", "nav-parts"]
       },
       {
         "speaker": "instruction",
         "text": "Tyres ordered. Nothing more we can do tonight, and that is fine: press End Day, and they will be on the shelf with the morning.",
-        "showWhen": { "kind": "partOnOrder", "carPartId": "tyres" },
+        "showWhen": {
+          "kind": "partOnOrder",
+          "carPartId": "tyres"
+        },
         "anchorTestId": "end-day"
       },
       {
         "speaker": "instruction",
         "text": "There they are: four fresh tyres. Pressing them onto rims is machine work, and we do not own the machine yet: under Machine hire, take the Tyre machine & balancer for the day. One price, and it presses everything you bring it until closing; one day we will buy our own and stop renting. Then click the Tyres block on the bench, press Replace, and pick the fresh stock tyres from your parts.",
-        "showWhen": { "kind": "partInInventory", "carPartId": "tyres" },
+        "showWhen": {
+          "kind": "partInInventory",
+          "carPartId": "tyres"
+        },
         "anchorTestId": "bench-member-tyres"
       },
       {
         "speaker": "instruction",
         "text": "Fresh rubber on. Press Refit assembly and the wheels go back on, better than she has had in years.",
-        "showWhen": { "kind": "benchMemberBandAtLeast", "carPartId": "tyres", "band": "fine" },
+        "showWhen": {
+          "kind": "benchMemberBandAtLeast",
+          "carPartId": "tyres",
+          "band": "fine"
+        },
         "anchorTestId": "refit-assembly-wheelAssembly"
       }
     ],
-    "completion": { "kind": "partBandAtLeast", "carPartId": "tyres", "band": "fine" },
+    "completion": {
+      "kind": "partBandAtLeast",
+      "carPartId": "tyres",
+      "band": "fine"
+    },
     "panelPosition": "right"
   },
   {
@@ -170,13 +254,20 @@
     "lines": [
       {
         "speaker": "instruction",
-        "text": "Now for that tick, and this one is proper surgery. It lives in the {part}, deep in the engine, and the engine will not come out with the Intake, the Exhaust and the Cooling bolted on around it. Click each of those three in the Engine bay view and press Take it off; the button tells you what each one takes off the labour bar, and they wait safely in your inventory.",
-        "hideWhen": { "kind": "assemblyOnBench", "assemblyId": "engineAssembly" }
+        "text": "Now for that gasket, and this one is proper surgery. It lives in the {part}, deep in the engine, and the engine will not come out with these three still bolted on. Click each in the Engine bay view and press Take it off; they wait safely in your inventory.",
+        "hideWhen": {
+          "kind": "assemblyOnBench",
+          "assemblyId": "engineAssembly"
+        },
+        "checklist": ["intake", "exhaust", "cooling"]
       },
       {
         "speaker": "instruction",
         "text": "With those three off, the engine is ready to come out, and an engine does not come out by hand. Under Machine hire, take the Engine crane & stand for the day: yours until closing, out and back in on the one hire. Then click the engine and press Remove assembly.",
-        "hideWhen": { "kind": "assemblyOnBench", "assemblyId": "engineAssembly" }
+        "hideWhen": {
+          "kind": "assemblyOnBench",
+          "assemblyId": "engineAssembly"
+        }
       },
       {
         "speaker": "yuki",
@@ -185,7 +276,10 @@
       {
         "speaker": "instruction",
         "text": "Engine out. Click the Head on the bench and press the Repair button; one rung, poor to worn, is all her inspection asks, and the price and labour are written on it. Then press Refit assembly: the crane is already paid for today, so the way back in is free.",
-        "showWhen": { "kind": "assemblyOnBench", "assemblyId": "engineAssembly" },
+        "showWhen": {
+          "kind": "assemblyOnBench",
+          "assemblyId": "engineAssembly"
+        },
         "anchorTestId": "bench-member-headValvetrain"
       },
       {
@@ -193,7 +287,11 @@
         "text": "The repair and the refit are where most of the labour goes, though every part you unbolt takes its own small bite; strip a car to the shell and you have spent the best part of a day on spanners alone. If the bar runs dry, press End Day for a fresh one tomorrow; just remember the crane hire only lasts the day, so finishing while it is paid for is the tidy way."
       }
     ],
-    "completion": { "kind": "partBandAtLeast", "carPartId": "headValvetrain", "band": "worn" },
+    "completion": {
+      "kind": "partBandAtLeast",
+      "carPartId": "headValvetrain",
+      "band": "worn"
+    },
     "panelPosition": "right"
   },
   {
@@ -206,7 +304,9 @@
         "text": "Nearly home; the Intake, the Exhaust and the Cooling are still on your shelf. Click each empty slot in the Engine bay, press Replace and pick the part you took off, then press Confirm. Putting back exactly what came off costs nothing, and she is not roadworthy until she is whole."
       }
     ],
-    "completion": { "kind": "scriptedCarWhole" },
+    "completion": {
+      "kind": "scriptedCarWhole"
+    },
     "panelPosition": "right"
   },
   {
@@ -220,7 +320,9 @@
         "anchorTestId": ["mission-deliver", "mission-grade"]
       }
     ],
-    "completion": { "kind": "missionDelivered" }
+    "completion": {
+      "kind": "missionDelivered"
+    }
   },
   {
     "id": "done",
@@ -229,9 +331,11 @@
     "lines": [
       {
         "speaker": "instruction",
-        "text": "That is the walkthrough done, and your first happy customer on the road. From tomorrow the phone starts ringing; do good work and the town will find its way to your door."
+        "text": "That is the walkthrough done, and your first happy customer on the road. From here it is yours to run. The phone rings most mornings with work you can take or leave. When you want a car of your own to fix and sell on, the local yard is the cheap end of the market and it is where everyone starts. And keep half an eye on what the week costs: hired tools and rushed parts come out of the till whether a car pays or not. The day you would rather own the crane than keep hiring it is the day the shop starts working for you."
       }
     ],
-    "completion": { "kind": "never" }
+    "completion": {
+      "kind": "never"
+    }
   }
 ]

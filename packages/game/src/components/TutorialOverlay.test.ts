@@ -150,7 +150,7 @@ describe('TutorialOverlay', () => {
     expect(wrapper.find('[data-test="tutorial-got-it"]').exists()).toBe(false)
   })
 
-  it('accept completes on mission accept; ears-first reveals during the yard visit, then stethoscope after revs-and-listen runs', async () => {
+  it('accept completes on mission accept; the coolant check reveals during the yard visit, then the compression test after it runs', async () => {
     const game = useGameStore()
     game.newGame(3)
     game.acknowledgeTutorialStep('welcome')
@@ -163,33 +163,33 @@ describe('TutorialOverlay', () => {
     const localVenue = game.gameState.venueNameByTier?.['local-yard']
     expect(localVenue).toBeTruthy()
     expect(wrapper.text()).toContain(localVenue!)
-    expect(wrapper.text()).not.toContain('Ears first, tools second')
+    expect(wrapper.text()).not.toContain('Cheapest test first')
 
     game.gameState = { ...game.gameState, inspectionVisit: { tier: LOT.tier, minutesLeft: 60 } }
     await nextTick()
-    expect(wrapper.text()).toContain('Ears first, tools second')
-    expect(wrapper.text()).not.toContain('A tidy tick, up top')
+    expect(wrapper.text()).toContain('Cheapest test first')
+    expect(wrapper.text()).not.toContain('Bubbles, steady as you like')
 
-    // The stethoscope line only takes over once revs-and-listen is in
+    // The compression-test line only takes over once the coolant check is in
     // runTestIds; the ears-first line retires the moment it does.
-    game.gameState = runTestOnScriptedLot(game.gameState, 'revs-and-listen')
+    game.gameState = runTestOnScriptedLot(game.gameState, 'coolant-check')
     await nextTick()
-    expect(wrapper.text()).toContain('A tidy tick, up top')
-    expect(wrapper.text()).not.toContain('Ears first, tools second')
+    expect(wrapper.text()).toContain('Bubbles, steady as you like')
+    expect(wrapper.text()).not.toContain('Cheapest test first')
   })
 
-  it('spotlights the stethoscope test button once revs-and-listen has run, not the auctions tab fallback', async () => {
+  it('spotlights the compression-test button once the coolant check has run, not the auctions tab fallback', async () => {
     const game = useGameStore()
     game.newGame(4)
     game.acknowledgeTutorialStep('welcome')
     game.acceptMission(LOT.missionId)
     game.gameState = { ...game.gameState, inspectionVisit: { tier: LOT.tier, minutesLeft: 60 } }
 
-    const revsAnchor = addAnchor('run-test-tutorial-lot-0-revs-and-listen')
+    const coolantAnchor = addAnchor('run-test-tutorial-lot-0-coolant-check')
     const navAuctions = addAnchor('nav-auctions')
 
-    // Stands in for SymptomChecklist's real stethoscope button: absent from
-    // the DOM until revs-and-listen is actually in runTestIds, so it mounts
+    // Stands in for SymptomChecklist's real compression-test button: absent from
+    // the DOM until the coolant check is actually in runTestIds, so it mounts
     // in the very same reactive flush that retires the ears-first line -
     // unlike `addAnchor`'s statically pre-existing elements, this exercises
     // the DOM-mutation timing the real button goes through.
@@ -199,10 +199,12 @@ describe('TutorialOverlay', () => {
         const store = useGameStore()
         const visible = computed(() => {
           const lot = store.gameState.activeAuctionLots.find((l) => l.id === LOT.lotId)
-          return !!lot?.car.symptoms[0]?.runTestIds.includes('revs-and-listen')
+          return !!lot?.car.symptoms[0]?.runTestIds.includes('coolant-check')
         })
         return () =>
-          visible.value ? h('button', { 'data-test': 'run-test-tutorial-lot-0-stethoscope' }) : null
+          visible.value
+            ? h('button', { 'data-test': 'run-test-tutorial-lot-0-compression-test' })
+            : null
       },
     })
 
@@ -210,20 +212,20 @@ describe('TutorialOverlay', () => {
     // later in the tree than this app-level overlay.
     render()
     await nextTick()
-    expect(revsAnchor.classList.contains('tutorial-spotlight')).toBe(true)
+    expect(coolantAnchor.classList.contains('tutorial-spotlight')).toBe(true)
 
     const stubWrapper = mount(StethoscopeStub, { attachTo: document.body })
     wrappers.push(stubWrapper)
     await nextTick()
 
-    game.gameState = runTestOnScriptedLot(game.gameState, 'revs-and-listen')
+    game.gameState = runTestOnScriptedLot(game.gameState, 'coolant-check')
     await nextTick()
 
-    const stethoscopeEl = document.querySelector(
-      '[data-test="run-test-tutorial-lot-0-stethoscope"]',
+    const compressionEl = document.querySelector(
+      '[data-test="run-test-tutorial-lot-0-compression-test"]',
     )
-    expect(stethoscopeEl).not.toBeNull()
-    expect(stethoscopeEl!.classList.contains('tutorial-spotlight')).toBe(true)
+    expect(compressionEl).not.toBeNull()
+    expect(compressionEl!.classList.contains('tutorial-spotlight')).toBe(true)
     expect(navAuctions.classList.contains('tutorial-spotlight')).toBe(false)
   })
 
@@ -237,7 +239,7 @@ describe('TutorialOverlay', () => {
     await nextTick()
 
     expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 5 of 10')
-    expect(wrapper.find('[data-test="tutorial-yuki"]').text()).toContain('under all that dirt')
+    expect(wrapper.find('[data-test="tutorial-yuki"]').text()).toContain('under all those miles')
     expect(wrapper.text()).toContain('drag her across')
 
     game.gameState = scriptedCarIntoBay(game.gameState)
@@ -277,11 +279,27 @@ describe('TutorialOverlay', () => {
     expect(dimmed[0]!.text()).toContain('Open her from the bay')
     expect(dimmed[0]!.text()).not.toContain('Add to cart')
 
-    // A pending standard-delivery order addressed to tyres reveals the
-    // "press End Day" waiting line.
     const tyrePart = PARTS.find((p) => p.carPartId === 'tyres' && p.fitmentClass === 'entry')!
+
+    // The fits-vehicle dropdown and Add to cart are taught before the cart is
+    // touched; the express/checkout line waits until something is actually in it.
+    expect(wrapper.text()).toContain('fits this vehicle dropdown')
+    expect(wrapper.text()).not.toContain('tick Express delivery')
+
+    // Adding the tyre to the cart swaps the shop line for the cart-actions
+    // line, and the spotlight follows it there.
+    const expressAnchor = addAnchor('delivery-express')
+    game.gameState = { ...game.gameState, cartPartIds: [tyrePart.id] }
+    await nextTick()
+    expect(wrapper.text()).not.toContain('fits this vehicle dropdown')
+    expect(wrapper.text()).toContain('tick Express delivery')
+    expect(expressAnchor.classList.contains('tutorial-spotlight')).toBe(true)
+
+    // A pending standard-delivery order addressed to tyres reveals the
+    // "press End Day" waiting line, and the cart has cleared (checkout ran).
     game.gameState = {
       ...game.gameState,
+      cartPartIds: [],
       pendingPartOrders: [
         {
           id: 'order-1',
@@ -347,7 +365,7 @@ describe('TutorialOverlay', () => {
     game.gameState = ownScriptedCarWithBands(game.gameState, { tyres: 'mint' })
     await nextTick()
     const engineText = wrapper.text()
-    expect(engineText).toContain('Now for that tick')
+    expect(engineText).toContain('Now for that gasket')
     expect(engineText).toContain('Head')
     expect(engineText).not.toContain('{part}')
 
@@ -360,6 +378,47 @@ describe('TutorialOverlay', () => {
     await nextTick()
     expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 9 of 10')
     expect(wrapper.text()).toContain('press Show them the car')
+  })
+
+  it('ticks off the teardown checklist as each named component comes off, and retires it with the bench', async () => {
+    const game = useGameStore()
+    game.newGame(15)
+    game.acknowledgeTutorialStep('welcome')
+    game.acceptMission(LOT.missionId)
+    game.gameState = scriptedCarIntoBay(ownScriptedCarWithBands(game.gameState, { tyres: 'mint' }))
+    const wrapper = render()
+    await nextTick()
+
+    expect(wrapper.text()).toContain('Now for that gasket')
+    const checklistItems = wrapper.findAll('[data-test^="tutorial-checklist-item-"]')
+    expect(checklistItems).toHaveLength(3)
+    expect(checklistItems.some((item) => item.classes().includes('is-done'))).toBe(false)
+
+    // Pulling the intake off the scripted car ticks its item alone.
+    game.gameState = {
+      ...game.gameState,
+      ownedCars: game.gameState.ownedCars.map((c) =>
+        c.id === LOT.carId ? { ...c, parts: { ...c.parts, intake: { installed: null } } } : c,
+      ),
+    }
+    await nextTick()
+    expect(wrapper.find('[data-test="tutorial-checklist-item-intake"]').classes()).toContain(
+      'is-done',
+    )
+    expect(wrapper.find('[data-test="tutorial-checklist-item-exhaust"]').classes()).not.toContain(
+      'is-done',
+    )
+
+    // Once the assembly reaches the bench the teardown line (and its
+    // checklist) retires for the crane-hire line.
+    game.gameState = {
+      ...game.gameState,
+      assemblyInventory: [
+        { id: 'bench-2', assemblyId: 'engineAssembly', members: {}, sourceCarId: LOT.carId },
+      ],
+    }
+    await nextTick()
+    expect(wrapper.find('[data-test="tutorial-checklist"]').exists()).toBe(false)
   })
 
   it('holds on the reassemble step while a part is missing, and releases once the car is whole', async () => {

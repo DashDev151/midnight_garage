@@ -24,6 +24,7 @@ import {
   fitmentClassForTier,
   resolveCarDisplayName,
   type CarInstance,
+  type CarPartId,
   type TutorialBaseCondition,
   type TutorialCondition,
   type TutorialStep,
@@ -136,6 +137,20 @@ function baseConditionMet(cond: TutorialBaseCondition, stepId: string): boolean 
         (order) =>
           carPartIdByPartId.get(order.partId) === cond.carPartId && fitsScriptedCar(order.partId),
       )
+    case 'partInCart':
+      // Sits in the cart, addressed to this slot and fitting the scripted car
+      // - added but not yet bought, the beat between "add to cart" and
+      // "checkout".
+      return game.gameState.cartPartIds.some(
+        (partId) => carPartIdByPartId.get(partId) === cond.carPartId && fitsScriptedCar(partId),
+      )
+    case 'partRemoved': {
+      // The slot is empty on the scripted car itself (not merely "not yet at
+      // a band") - a teardown checklist's per-item ticked state.
+      const owned = game.gameState.ownedCars.find((c) => c.id === recipe.carId)
+      if (!owned || !model) return false
+      return isPartMissing(owned, model, cond.carPartId)
+    }
     case 'scriptedCarWhole': {
       // No slot missing (installed, or legitimately absent like the NA turbo
       // slot) - the reassembly gate, so the machine can never march a
@@ -252,6 +267,13 @@ watch(
 function isDimmed(idx: number): boolean {
   if (latestBatch.value.has(idx)) return false
   return visibleEntries.value.some((e) => latestBatch.value.has(e.idx))
+}
+
+/** A checklist item's ticked state: the scripted car's `carPartId` slot has
+ * been removed - reuses the same `partRemoved` predicate any `showWhen`/
+ * `hideWhen` reads, rather than a second implementation of "is it off yet". */
+function isChecklistItemDone(carPartId: CarPartId): boolean {
+  return baseConditionMet({ kind: 'partRemoved', carPartId }, currentStep.value?.id ?? '')
 }
 
 const stepNumber = computed(() => {
@@ -443,6 +465,17 @@ const confirmingSkip = ref(false)
       >
         <span v-if="line.speaker === 'yuki'" class="tutorial-speaker">Yuki</span>
         <span class="tutorial-text">{{ interpolate(line.text) }}</span>
+        <ul v-if="line.checklist" class="tutorial-checklist" data-test="tutorial-checklist">
+          <li
+            v-for="carPartId in line.checklist"
+            :key="carPartId"
+            class="tutorial-checklist-item"
+            :class="{ 'is-done': isChecklistItemDone(carPartId) }"
+            :data-test="'tutorial-checklist-item-' + carPartId"
+          >
+            {{ game.carPartLabel(carPartId) }}
+          </li>
+        </ul>
       </li>
     </ol>
 
@@ -589,6 +622,41 @@ const confirmingSkip = ref(false)
 .tutorial-line.is-dim {
   opacity: 0.62;
 }
+/* The teardown checklist: one row per component, ticked off live as
+ * `partRemoved` fires for it - a strikethrough and a filled marker, never a
+ * decorative glyph. */
+.tutorial-checklist {
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.tutorial-checklist-item {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.82rem;
+  color: #dfe6ff;
+}
+.tutorial-checklist-item::before {
+  content: '';
+  flex: 0 0 auto;
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 2px;
+  border: 1px solid rgba(127, 208, 255, 0.6);
+  background: transparent;
+}
+.tutorial-checklist-item.is-done {
+  color: #9aa4c8;
+  text-decoration: line-through;
+}
+.tutorial-checklist-item.is-done::before {
+  background: var(--mg-success, #4ade80);
+  border-color: var(--mg-success, #4ade80);
+}
 .tutorial-line.is-yuki {
   padding: 0.45rem 0.6rem;
   border-left: 2px solid #ff8ad4;
@@ -685,16 +753,27 @@ const confirmingSkip = ref(false)
   outline: 2px solid #7fd0ff !important;
   outline-offset: 2px;
   border-radius: 0.3rem;
-  box-shadow: 0 0 0 4px rgba(127, 208, 255, 0.25) !important;
-  animation: tutorial-spotlight-pulse 1.8s ease-in-out infinite;
+  /* Deliberately without !important: that would freeze the property at this
+     value and the keyframe animation below would never take visual effect
+     (an !important declaration in a normal rule wins over an animation on
+     the same property in every browser). The outline above stays the
+     guaranteed-visible marker; this halo is the slow, subtle breathing
+     effect that draws the eye to it. */
+  box-shadow: 0 0 0 4px rgba(127, 208, 255, 0.2);
+  animation: tutorial-spotlight-pulse 2.6s ease-in-out infinite;
 }
 @keyframes tutorial-spotlight-pulse {
   0%,
   100% {
-    box-shadow: 0 0 0 4px rgba(127, 208, 255, 0.22);
+    box-shadow: 0 0 0 4px rgba(127, 208, 255, 0.16);
   }
   50% {
-    box-shadow: 0 0 0 7px rgba(127, 208, 255, 0.12);
+    box-shadow: 0 0 0 6px rgba(127, 208, 255, 0.3);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tutorial-spotlight {
+    animation: none;
   }
 }
 </style>
