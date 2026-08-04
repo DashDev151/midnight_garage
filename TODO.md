@@ -1580,6 +1580,35 @@ pass."
 
 ## Design decisions awaiting maintainer direction
 
+- [ ] **Why can the player not just plug a scanner in? The game has no answer and needs one
+  (maintainer 2026-08-04).** Every diagnostic test in the game is physical and pre-electronic:
+  revs-and-listen, the stethoscope, a coolant check, a compression test, oil pressure, a rag over
+  the tailpipe. That is a 1980s workshop, and the setting is not.
+
+  **"It is 1995" does not cover it.** OBD2 was mandatory in the US from 1996 and Japan ran JOBD from
+  the early 2000s, and **47 of the 94 roster cars are still in production in 1996 or later**, with
+  five running to 2010: the R35, the LFA, the RX-8, the Copen, the Z33. A shop working on a 2009 GT-R
+  that reads faults by ear is not period-authentic, it is an anachronism pointing the wrong way.
+
+  **Three candidate justifications, none yet chosen:**
+
+  1. **Cost and access.** A factory scan tool in period was dealer equipment, expensive and often
+     marque-specific. A backstreet shop genuinely worked by ear and gauge. True, and it explains
+     day one, but it does not survive the player becoming a well-equipped shop.
+  2. **The generic reader is nearly useless.** A cheap code reader gives a code, not a cause: a
+     misfire code names the cylinder and tells you nothing about why. That is honest and it protects
+     the mechanic, since diagnosis is about narrowing causes rather than reading a number.
+  3. **Make it a tool, which is the strongest answer.** A diagnostic scanner as an engine-line tool
+     purchase that narrows the candidate list on cars new enough to carry a port, and does nothing
+     at all on the older half of the roster. That turns the anachronism into a mechanic: **the era
+     of the car decides whether your best equipment can help you**, which is a genuinely good reason
+     to own both a stethoscope and a scanner, and it gives the tool ladder something else worth
+     buying.
+
+  Option 3 also earns its keep against the roster's own spread rather than fighting it, and would
+  pair with the decade the game is meant to move through.
+
+
 - [ ] **The 37 parody colour names have not been swept against the copy bar (Sprint 169, deferred
   to the playtest by maintainer instruction 2026-08-03).** Every one in `paintAliases.json` is a
   proposal, not a ruling. They are player-facing text on cars a player already loves, so the bar is
