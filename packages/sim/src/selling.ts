@@ -1,5 +1,6 @@
 import {
   ALL_CAR_PART_IDS,
+  fitmentClassForTier,
   type Buyer,
   type BuyerArchetype,
   type CarInstance,
@@ -36,6 +37,7 @@ import { marketValueYen } from './marketValue'
 import { bumpPlayerSales } from './marketHeat'
 import { bellNormal, type Rng } from './rng'
 import { dissolveAssembliesForCar } from './assemblies'
+import { creditSceneDelivery } from './sceneStanding'
 import { clearStagedWork } from './stagedWork'
 import {
   currentPowerExpectationBarPs,
@@ -1074,6 +1076,27 @@ export function resolveSellViaWalkIn(
     context.economy,
   )
 
+  // Scene standing's own earn event (docs/sprints/scene-standing-arc.md step
+  // 4): a MATCHED sale credits the buyer's own archetype - never a tag, and
+  // never reachable through `tradeNetwork` since `matched` is already false
+  // whenever there is no real `Buyer`/`tasteCeiling` (the trade's own
+  // non-persona buyer, above).
+  const releasedWithStanding =
+    matched && buyer !== undefined
+      ? creditSceneDelivery(
+          released,
+          buyer.archetype,
+          {
+            carInstanceId,
+            modelId: car.modelId,
+            priceYen: offer.priceYen,
+            day: state.day,
+            fitmentClass: fitmentClassForTier(model.tier),
+          },
+          context.economy,
+        )
+      : released
+
   const log: DayLogEntry[] = [
     {
       type: 'car-sold',
@@ -1096,11 +1119,15 @@ export function resolveSellViaWalkIn(
       bumpPlayerSales(
         deleteCarLedger(
           {
-            ...released,
-            cashYen: released.cashYen + offer.priceYen,
-            ownedCars: released.ownedCars.filter((c) => c.id !== carInstanceId),
-            carsForSale: released.carsForSale.filter((f) => f.carInstanceId !== carInstanceId),
-            pendingOffers: released.pendingOffers.filter((o) => o.carInstanceId !== carInstanceId),
+            ...releasedWithStanding,
+            cashYen: releasedWithStanding.cashYen + offer.priceYen,
+            ownedCars: releasedWithStanding.ownedCars.filter((c) => c.id !== carInstanceId),
+            carsForSale: releasedWithStanding.carsForSale.filter(
+              (f) => f.carInstanceId !== carInstanceId,
+            ),
+            pendingOffers: releasedWithStanding.pendingOffers.filter(
+              (o) => o.carInstanceId !== carInstanceId,
+            ),
             powerExpectationChain,
           },
           carInstanceId,

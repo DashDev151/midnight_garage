@@ -983,7 +983,7 @@ describe('saveCodec', () => {
   })
 
   it('a per-part staged action and job (carPartId set) round-trip exactly under version 17', () => {
-    expect(SAVE_VERSION).toBe(62)
+    expect(SAVE_VERSION).toBe(63)
     const perPart: GameState = GameStateSchema.parse({
       ...fullState,
       jobs: [
@@ -1030,7 +1030,7 @@ describe('saveCodec', () => {
   })
 
   it('a v31 state with an origin-carrying inventory part round-trips the origin exactly', () => {
-    expect(SAVE_VERSION).toBe(62)
+    expect(SAVE_VERSION).toBe(63)
     const withOrigin: GameState = GameStateSchema.parse({
       ...fullState,
       partInventory: [
@@ -1618,7 +1618,7 @@ describe('saveCodec', () => {
    * tracks the current value, not this fact.
    */
   it('a techniques and shop-title state round-trips at the current SAVE_VERSION', () => {
-    expect(SAVE_VERSION).toBe(62)
+    expect(SAVE_VERSION).toBe(63)
   })
 
   it('a v24 save with specialty high enough to unlock a technique/title decodes identically either way - nothing new is stored', () => {
@@ -1726,7 +1726,7 @@ describe('saveCodec', () => {
    * a real double-parked car round-trips it exactly.
    */
   it('SAVE_VERSION is current', () => {
-    expect(SAVE_VERSION).toBe(62)
+    expect(SAVE_VERSION).toBe(63)
   })
 
   it('a real pre-v26 save (a v25 envelope with no graceParkingCarId field) decodes with nothing double-parked under v26', () => {
@@ -1759,7 +1759,7 @@ describe('saveCodec', () => {
    * exactly.
    */
   it('SAVE_VERSION is current', () => {
-    expect(SAVE_VERSION).toBe(62)
+    expect(SAVE_VERSION).toBe(63)
   })
 
   it('a real pre-v27 save (a v26 envelope with neither field) decodes with nothing listed or scheduled under v27', () => {
@@ -1806,7 +1806,7 @@ describe('saveCodec', () => {
    * same slot, same band, same everything else.
    */
   it('SAVE_VERSION is current', () => {
-    expect(SAVE_VERSION).toBe(62)
+    expect(SAVE_VERSION).toBe(63)
   })
 
   it("a real pre-v28 save remaps an entry-tier car's everyday-class stock part to its own class sibling SKU", () => {
@@ -2238,5 +2238,36 @@ describe('saveCodec', () => {
     const decoded = decodeSave(encodeSave(withStanding))
     expect(decoded).toEqual(withStanding)
     expect(decoded.sceneStanding).toEqual(withStanding.sceneStanding)
+  })
+
+  /**
+   * v62 -> v63 (the earn event and the shop ledger): `GameState` gained an
+   * optional `sceneLedger`. The pure additive case (the genuinely-optional-
+   * key pattern): every other test in this file already proves the absent
+   * case round-trips (none of them set this field), so this is the one test
+   * for the present case.
+   */
+  it('a v63 state round-trips sceneLedger exactly', () => {
+    const withLedger: GameState = GameStateSchema.parse({
+      ...fullState,
+      sceneLedger: {
+        collector: [],
+        tuner: [
+          {
+            carInstanceId: 'car-0001',
+            modelId: 'honda-civic-sir2-eg6',
+            priceYen: 900_000,
+            day: 12,
+          },
+        ],
+        'show-crowd': [],
+        racer: [],
+        'daily-drivers': [],
+        touge: [],
+      },
+    })
+    const decoded = decodeSave(encodeSave(withLedger))
+    expect(decoded).toEqual(withLedger)
+    expect(decoded.sceneLedger?.tuner).toEqual(withLedger.sceneLedger?.tuner)
   })
 })

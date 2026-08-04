@@ -2,36 +2,43 @@
   {
     "id": "yuki",
     "name": "Yuki",
-    "intro": "Student. Bus pass expired, patience with it."
+    "intro": "Student. Bus pass expired, patience with it.",
+    "archetype": "daily-drivers"
   },
   {
     "id": "okada",
     "name": "Okada-san",
-    "intro": "A parent who reads the classifieds twice."
+    "intro": "A parent who reads the classifieds twice.",
+    "archetype": "daily-drivers"
   },
   {
     "id": "gen",
     "name": "Gen",
-    "intro": "Runs a tuning shop two towns over. Hears things."
+    "intro": "Runs a tuning shop two towns over. Hears things.",
+    "archetype": "tuner"
   },
   {
     "id": "daisuke",
     "name": "Daisuke",
-    "intro": "Parks sideways. On purpose."
+    "intro": "Parks sideways. On purpose.",
+    "archetype": "show-crowd"
   },
   {
     "id": "kaori",
     "name": "Kaori",
-    "intro": "Writes the timed columns in the magazine you read."
+    "intro": "Writes the timed columns in the magazine you read.",
+    "archetype": "touge"
   },
   {
     "id": "numata",
     "name": "Numata",
-    "intro": "Runs thirty taxis. Knows every driver by first name, and pays on the day."
+    "intro": "Runs thirty taxis. Knows every driver by first name, and pays on the day.",
+    "archetype": "daily-drivers"
   },
   {
     "id": "ishida",
     "name": "Ishida",
-    "intro": "Thirty years selling cars, and still walks the lot every morning like it's day one."
+    "intro": "Thirty years selling cars, and still walks the lot every morning like it's day one.",
+    "archetype": "show-crowd"
   }
 ]

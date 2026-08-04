@@ -3,16 +3,20 @@ import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import ProgressBar from '../components/ProgressBar.vue'
 import { useGameStore } from '../stores/gameStore'
+import { formatYen } from '../utils/formatYen'
 
 /**
  * The one place the shop's granular
  * standing lives - exact reputation points with the named next tier, all six
- * specialty disciplines with their points and named tier-4 technique, and the
- * derived shop title. Progression bible law 4 permits these exact numbers and
- * progress bars on THIS view only. Everywhere else stays meter-free - nothing
- * follows the player around, nothing pops up mid-job. Pure renderer over
- * `game.standingView` - no local logic, no new state; the bars are a
- * re-presentation of numbers that view already carried.
+ * specialty disciplines with their points and named tier-4 technique, the
+ * derived shop title, and every scene's ledger. Progression bible law 4
+ * permits exact numbers and progress bars for reputation and specialty on
+ * THIS view only; the scenes panel is a different law again - a scene's
+ * stage is stated in words, never a bar, and its car list is a receipt (the
+ * price a real delivery sold for), not a progress readout. Everywhere else
+ * stays meter-free - nothing follows the player around, nothing pops up
+ * mid-job. Pure renderer over `game.standingView` - no local logic, no new
+ * state.
  */
 const game = useGameStore()
 
@@ -88,6 +92,35 @@ const standing = computed(() => game.standingView)
               {{ row.technique.displayName }} unlocks at {{ row.technique.thresholdPoints }} pts.
             </span>
           </p>
+        </li>
+      </ul>
+    </section>
+
+    <section class="panel" data-test="scenes-panel">
+      <h3>Scenes</h3>
+      <p class="hint">
+        A scene remembers the cars you built for it. No score, no bar - just the work.
+      </p>
+      <ul class="scenes">
+        <li
+          v-for="scene in standing.scenes"
+          :key="scene.scene"
+          class="scene"
+          :data-test="'scene-' + scene.scene"
+        >
+          <div class="scene-head">
+            <span class="scene-name">{{ scene.label }}</span>
+            <span class="scene-stage" :data-test="'scene-stage-' + scene.scene">{{
+              scene.stageCopy
+            }}</span>
+          </div>
+          <p v-if="scene.cars.length === 0" class="scene-empty">Nothing delivered here yet.</p>
+          <ul v-else class="scene-cars" :data-test="'scene-cars-' + scene.scene">
+            <li v-for="car in scene.cars" :key="car.carInstanceId" class="scene-car">
+              <span class="scene-car-name">{{ car.carLabel }}</span>
+              <span class="scene-car-price">{{ formatYen(car.priceYen) }}</span>
+            </li>
+          </ul>
         </li>
       </ul>
     </section>
@@ -183,5 +216,60 @@ h3 {
 
 .technique.earned {
   color: var(--mg-success);
+}
+
+.scenes {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: var(--mg-space-2);
+}
+
+.scene {
+  border-top: var(--mg-border);
+  padding-top: var(--mg-space-2);
+}
+
+.scene-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--mg-space-2);
+}
+
+.scene-name {
+  color: var(--mg-text);
+}
+
+.scene-stage {
+  color: var(--mg-neon-cyan);
+  font-size: var(--mg-fs-sm);
+  text-align: right;
+}
+
+.scene-empty {
+  margin: var(--mg-space-1) 0 0;
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+}
+
+.scene-cars {
+  list-style: none;
+  padding: 0;
+  margin: var(--mg-space-1) 0 0;
+  display: grid;
+  gap: 2px;
+}
+
+.scene-car {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--mg-fs-sm);
+  color: var(--mg-text-dim);
+}
+
+.scene-car-price {
+  color: var(--mg-yen);
 }
 </style>

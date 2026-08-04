@@ -454,7 +454,18 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // every scene at `none`, same as the 30-day master above. A pure SHAPE
     // change, measured rather than assumed: this script's buy and sell prices
     // through no scene's raised band, since nothing here ever sets one.
-    expect(hashState(acquisitionCareer().sold)).toBe('f1c5cdb0')
+    //
+    // It moves once more, on its own again, for the earn event
+    // (scene-standing-arc.md step 4): this is the one script that actually
+    // completes a MATCHED sale, so `GameState` gaining `sceneLedger` is NOT a
+    // pure shape change here (unlike the 30-day master above, which never
+    // completes a sale and holds unchanged) - the sold car (a Toyota Carina,
+    // day 4) genuinely credits the `daily-drivers` scene with a real ledger
+    // entry at its real sale price. One delivery does not clear the
+    // three-delivery Known threshold, so `sceneStanding` itself stays every
+    // scene at `none`; only the ledger gains the entry. Re-derived from a
+    // real run.
+    expect(hashState(acquisitionCareer().sold)).toBe('9cc0edef')
   })
 })
 

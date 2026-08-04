@@ -334,6 +334,55 @@ export const FRESH_SCENE_STANDING: SceneStanding = {
   touge: 'none',
 }
 
+/**
+ * One matched delivery to a scene, as `GameState.sceneLedger` records it
+ * permanently (docs/sprints/scene-standing-arc.md step 4) - the car, the
+ * scene it counted for, the price, and the day, so the player's own read is
+ * "I built those" rather than a number. `modelId` is a snapshot because the
+ * delivered car itself leaves `ownedCars` in the same step this is recorded
+ * (a sale or a mission hand-over), the same reasoning every other
+ * `DayLogEntry` that names a departed car's model already carries
+ * (`shell-scrapped`, `lot-bought-out`).
+ */
+export const SceneLedgerEntrySchema = z.object({
+  carInstanceId: z.string().min(1),
+  modelId: z.string().min(1),
+  priceYen: z.number().int().nonnegative(),
+  day: z.number().int().positive(),
+})
+
+export type SceneLedgerEntry = z.infer<typeof SceneLedgerEntrySchema>
+
+/**
+ * The shop's whole delivery history, one array per scene - every scene named
+ * explicitly (the same idiom `SceneStandingSchema` above uses), never
+ * pruned: standing never decays, so neither does the record of how it was
+ * earned. `creditSceneDelivery` (sim/sceneStanding.ts) is the only writer.
+ */
+export const SceneLedgerSchema = z
+  .object({
+    collector: z.array(SceneLedgerEntrySchema),
+    tuner: z.array(SceneLedgerEntrySchema),
+    'show-crowd': z.array(SceneLedgerEntrySchema),
+    racer: z.array(SceneLedgerEntrySchema),
+    'daily-drivers': z.array(SceneLedgerEntrySchema),
+    touge: z.array(SceneLedgerEntrySchema),
+  })
+  .strict()
+
+export type SceneLedger = z.infer<typeof SceneLedgerSchema>
+
+/** Every scene's ledger empty - a fresh shop has delivered nothing anywhere
+ * yet, mirroring `FRESH_SCENE_STANDING` above. */
+export const FRESH_SCENE_LEDGER: SceneLedger = {
+  collector: [],
+  tuner: [],
+  'show-crowd': [],
+  racer: [],
+  'daily-drivers': [],
+  touge: [],
+}
+
 export const GameStateSchema = z.object({
   day: z.number().int().min(1),
   seed: z.number().int(),
@@ -650,6 +699,15 @@ export const GameStateSchema = z.object({
    * existed reads as a shop nobody has heard of yet, exactly true of every
    * career before the mechanic existed. */
   sceneStanding: SceneStandingSchema.default(FRESH_SCENE_STANDING),
+  /**
+   * The shop ledger - see `SceneLedgerSchema` above. The genuinely-optional-
+   * key pattern (like `powerExpectationChain` above, from the same arc): no
+   * existing `GameState` literal needs touching, and readers treat absent as
+   * every scene's ledger empty (`sceneLedgerFor`, sim/sceneStanding.ts). A
+   * fresh career seeds it to `FRESH_SCENE_LEDGER` explicitly
+   * (`createInitialGameState`).
+   */
+  sceneLedger: SceneLedgerSchema.optional(),
 })
 
 /**

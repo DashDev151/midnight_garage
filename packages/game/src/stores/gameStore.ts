@@ -201,6 +201,7 @@ import {
   resolveSetForSale,
   roomLedgerFor,
   runDiagnosticTest as runDiagnosticTestCore,
+  sceneLedgerFor,
   scrapValueYen,
   selectBoardRows,
   sendInspectorGateReason as sendInspectorGateReasonCore,
@@ -253,6 +254,7 @@ import {
 import { formatYen } from '../utils/formatYen'
 import { offerCopy } from '../utils/offerCopy'
 import { addressesOverlap, hasWorkAddress, stagedActionsCollide } from '../utils/partAddress'
+import { SCENE_STANDING_STAGE_COPY } from '../utils/sceneStandingLabels'
 import { SELLING_CHANNEL_ORDER } from '../utils/sellingChannelLabels'
 import { unpaintedPanelsText } from '../utils/zoneSeverity'
 
@@ -762,13 +764,38 @@ export interface StandingSpecialtyView {
   technique: { displayName: string; thresholdPoints: number; unlocked: boolean } | null
 }
 
+/** One car on a scene's ledger row - the deed itself, not a running count. */
+export interface StandingSceneCarView {
+  carInstanceId: string
+  carLabel: string
+  priceYen: number
+  day: number
+}
+
+/**
+ * One scene's row on the Standing screen - its stage stated in words and the
+ * real cars delivered there, newest first. Deed counts and price bars decide
+ * the stage underneath (`creditSceneDelivery`, sim/sceneStanding.ts); this
+ * view never carries either number, only the stage word and the list itself
+ * - the ledger is a history, not a bar.
+ */
+export interface StandingSceneRowView {
+  scene: BuyerArchetype
+  label: string
+  stage: SceneStandingStage
+  stageCopy: string
+  cars: StandingSceneCarView[]
+}
+
 /** Everything the Standing screen renders - granular
- * reputation, all six specialty disciplines, and the derived shop title. Pure
- * function of existing state (no new persisted field). */
+ * reputation, all six specialty disciplines, the derived shop title, and
+ * every scene's ledger row. Pure function of existing state (no new
+ * persisted field). */
 export interface StandingView {
   reputation: StandingReputationView
   specialties: StandingSpecialtyView[]
   shopTitleName: string | null
+  scenes: StandingSceneRowView[]
 }
 
 /**
@@ -3450,11 +3477,10 @@ export const useGameStore = defineStore('game', () => {
   )
 
   /**
-   * The shop's standing in every buyer scene, dev-console-only (the same
-   * "one debug exception" `specialtyView` above is) - earning it is not
-   * built yet, so this is the only place a career's standing can currently
-   * be read at all. `label` reads a representative buyer's own
-   * `displayName` for that archetype rather than the raw scene id.
+   * The shop's standing in every buyer scene - the dev console's own quick
+   * readout, and what `standingView.scenes` below builds its player-facing
+   * rows from. `label` reads a representative buyer's own `displayName` for
+   * that archetype rather than the raw scene id.
    */
   const sceneStandingView = computed<
     { scene: BuyerArchetype; label: string; stage: SceneStandingStage }[]
@@ -3516,6 +3542,24 @@ export const useGameStore = defineStore('game', () => {
           : null,
       }
     })
+    const ledger = sceneLedgerFor(gameState.value)
+    const scenes: StandingSceneRowView[] = sceneStandingView.value.map((row) => ({
+      scene: row.scene,
+      label: row.label,
+      stage: row.stage,
+      stageCopy: SCENE_STANDING_STAGE_COPY[row.stage],
+      cars: [...ledger[row.scene]]
+        .sort((a, b) => b.day - a.day)
+        .map((entry) => ({
+          carInstanceId: entry.carInstanceId,
+          carLabel: (() => {
+            const model = context.value.modelsById[entry.modelId]
+            return model ? resolveCarDisplayName(model) : entry.modelId
+          })(),
+          priceYen: entry.priceYen,
+          day: entry.day,
+        })),
+    }))
     return {
       reputation: {
         tier: gameState.value.reputationTier,
@@ -3524,6 +3568,7 @@ export const useGameStore = defineStore('game', () => {
       },
       specialties,
       shopTitleName: shopTitleName.value,
+      scenes,
     }
   })
 

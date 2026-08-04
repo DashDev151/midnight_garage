@@ -239,6 +239,7 @@ fails that test outright, rather than silently drifting).
 | `auctionRoom.*` | `economy.json` | The live auction room: fuse clock, clearing draws, turnout bands, bid rungs, and the reaction chances (the reserve is NOT here: it is the single `AUCTION_RESERVE_PRICE_FRACTION`, sprint150.md) (rows added 2026-07-22 for blocks landed with their sprints' recorded mandates; `staff.*` and `machineShopAssist`-family keys remain the known table gap awaiting the standing ruling) |
 | `auctionGrading.overallRatioSteps` | `economy.json` | The four-stamp sheet's OVERALL grade (apparent restoration bill over book value, stepped; maintainer-locked design, Sprint 112's doc is the approval record) |
 | `sellingChannels.*` and `reputation.matchedSaleRepBonus` | `economy.json` | The listing channels' fees, cadences, taste ceilings, and the trade-network price band, plus the matched-sale word-of-mouth term (values maintainer-locked in session; `docs/sprints/sprint_archive/sprint114.md`'s lever table is the approval record) |
+| `sceneStandingProgress.knownDeliveries`/`respectedDeliveries`/`marqueeBarYenByTier`/`rollingWindowDays` | `economy.json` | Scene-standing stage advancement (out of this bible's scope, listed for completeness) - the deed counts and marquee price bar `creditSceneDelivery` (`packages/sim/src/sceneStanding.ts`) reads to move `GameState.sceneStanding`, and the delivery-history window the future word-of-mouth draw will read |
 
 **Derived** (never edit directly; edit the anchor that feeds them):
 

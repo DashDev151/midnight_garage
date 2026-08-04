@@ -1851,6 +1851,24 @@ import storyMissions from '../data/storyMissions.json'
  * probe car is measured at `sceneStanding` absent, i.e. every scene at `none`), and the
  * matched-threshold change moves a BOOLEAN gate, never a `marketValueYen` input, so
  * `storyMissionProbes.test.ts` is unaffected and the payout pin holds unchanged.
+ *
+ * Re-pinned for `docs/sprints/sprint178.md` (the earn event and the shop ledger), approved
+ * under the orchestrator's blanket lever authority for this build, every value named and
+ * recorded in that sprint doc's Exit. One new top-level block:
+ *
+ * `sceneStandingProgress` (NEW) - `knownDeliveries` 3, `respectedDeliveries` 10,
+ * `marqueeBarYenByTier` (entry 500000, everyday 1200000, enthusiast 3000000,
+ * flagship 8000000 - a marquee Daily Drivers car and a marquee Collector car are not the same
+ * money), `rollingWindowDays` 14. Read only by `creditSceneDelivery`
+ * (sim/sceneStanding.ts), the one place a matched sale or a delivered story mission turns
+ * into a scene-standing stage change; nothing else in the pricing or valuation path reads it.
+ * The Shop stage additionally requires the scene already at (or newly reaching, on the same
+ * delivery) Respected - `respectedDeliveries` can never be cleared by a single delivery, so a
+ * scene can never vault from `none` straight to The Shop regardless of price.
+ *
+ * No mission payout or budget cap moves: the lever only feeds the NEW scene-standing stage
+ * machinery, which nothing in `storyMissionProbes.test.ts` measures. `partPricing.json` and
+ * `damagePatterns.json` are untouched, so their hashes and the payout pin hold.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -1860,7 +1878,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('ef2782ce46934671d7195928f1d8a76bf399b466343ebf57969d99d57f72a1f1')
+    ).toBe('b822e5e10c80a0a4a5d64fad5d09b9ce1307afed7c9c5d0e110a66f953acb195')
   })
 
   it('damagePatterns.json matches its approved content exactly', () => {

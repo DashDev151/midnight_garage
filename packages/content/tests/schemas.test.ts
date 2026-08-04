@@ -654,6 +654,7 @@ describe('seed content validates against schemas', () => {
       'auction',
       'restoration',
       'valuation',
+      'sceneStandingProgress',
       'marketPressure',
       'statFormulas',
       'supportReadout',

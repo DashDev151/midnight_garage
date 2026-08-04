@@ -714,8 +714,19 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * concept did not exist), so "unknown in every scene" is exactly the correct
  * backfill. No `MIGRATIONS[61]` entry needed, but it DOES bump
  * `SAVE_VERSION` (Save law).
+ * v62 -> v63 (the earn event and the shop ledger): `GameStateSchema` gained
+ * an optional `sceneLedger` (docs/sprints/scene-standing-arc.md step 4) - the
+ * permanent per-scene delivery history (car, scene, price, day) a matched
+ * sale or a delivered story mission appends to. Additive and genuinely
+ * optional (the `powerExpectationChain`/`dyno` pattern), so this needs NO
+ * `MIGRATIONS[62]` entry: a pre-v63 save decodes with the key absent, which
+ * `sceneLedgerFor` (sim/sceneStanding.ts) reads as every scene's ledger
+ * empty - exactly right, since no pre-v63 career could have earned a credited
+ * delivery under a mechanic that did not exist yet. The version bump alone is
+ * still required (Save law) so an old client rejects a v63 save rather than
+ * silently dropping a shop's own delivery history.
  */
-export const SAVE_VERSION = 62
+export const SAVE_VERSION = 63
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

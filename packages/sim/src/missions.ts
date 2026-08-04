@@ -1,9 +1,10 @@
-import type {
-  DayLogEntry,
-  GameState,
-  RequirementSpec,
-  StoryMission,
-  StoryMissionRecord,
+import {
+  fitmentClassForTier,
+  type DayLogEntry,
+  type GameState,
+  type RequirementSpec,
+  type StoryMission,
+  type StoryMissionRecord,
 } from '@midnight-garage/content'
 import { applyReputationDelta } from './reputation'
 import { carLedgerFor, deleteCarLedger } from './carLedger'
@@ -15,6 +16,7 @@ import { bookCashMovements } from './financeLedger'
 import { lapTimeSecondsFor } from './lapModel'
 import { evaluateRequirement, type RequirementResult } from './requirements'
 import { createRng, hashStringToSeed } from './rng'
+import { creditSceneDelivery } from './sceneStanding'
 import { applySpecialtyDelta } from './serviceJobs'
 import { dissolveAssembliesForCar } from './assemblies'
 import { clearStagedWork } from './stagedWork'
@@ -221,10 +223,33 @@ export function resolveDeliverMission(
     mission.reputationReward,
   )
 
-  const storyMissions = withSpecialty.storyMissions.map((r) =>
+  const totalPayoutYen = mission.payoutYen + tipYen
+
+  // Scene standing's second earn path (docs/sprints/scene-standing-arc.md
+  // step 4): a delivered mission credits its own customer's scene, read off
+  // the persona `mission.personaId` links to - never `specialtyGroups`,
+  // which stays only as the old system's own hand-written tag until it is
+  // torn down. `persona` is always resolvable against real content; the
+  // guard is defensive, matching every other content lookup in this file.
+  const persona = context.personasById[mission.personaId]
+  const withScene = persona
+    ? creditSceneDelivery(
+        withSpecialty,
+        persona.archetype,
+        {
+          carInstanceId,
+          modelId: car.modelId,
+          priceYen: totalPayoutYen,
+          day: state.day,
+          fitmentClass: model ? fitmentClassForTier(model.tier) : undefined,
+        },
+        context.economy,
+      )
+    : withSpecialty
+
+  const storyMissions = withScene.storyMissions.map((r) =>
     r.missionId === missionId ? { ...r, status: 'delivered' as const } : r,
   )
-  const totalPayoutYen = mission.payoutYen + tipYen
 
   const log: DayLogEntry[] = [
     {
@@ -240,9 +265,9 @@ export function resolveDeliverMission(
   const deliveredState = bookCashMovements(
     deleteCarLedger(
       {
-        ...withSpecialty,
-        cashYen: withSpecialty.cashYen + totalPayoutYen,
-        ownedCars: withSpecialty.ownedCars.filter((c) => c.id !== carInstanceId),
+        ...withScene,
+        cashYen: withScene.cashYen + totalPayoutYen,
+        ownedCars: withScene.ownedCars.filter((c) => c.id !== carInstanceId),
         storyMissions,
       },
       carInstanceId,

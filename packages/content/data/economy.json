@@ -140,6 +140,17 @@
       }
     }
   },
+  "sceneStandingProgress": {
+    "knownDeliveries": 3,
+    "respectedDeliveries": 10,
+    "marqueeBarYenByTier": {
+      "entry": 500000,
+      "everyday": 1200000,
+      "enthusiast": 3000000,
+      "flagship": 8000000
+    },
+    "rollingWindowDays": 14
+  },
   "marketPressure": {
     "WAVE_AMPLITUDE": 12,
     "WAVE_PERIOD_WEEKS": 24,

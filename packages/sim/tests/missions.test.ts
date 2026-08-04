@@ -527,3 +527,49 @@ describe('story missions (Sprint 76)', () => {
     })
   })
 })
+
+describe('scene standing crediting via the real tutorial mission (scene-standing-arc.md step 4)', () => {
+  // Real shipped content, not the synthetic test missions above: proves the
+  // credit comes from `four-wheels`' own persona (yuki -> daily-drivers),
+  // never from `specialtyGroups` - the mission is hand-tagged `["body"]` for
+  // a tyre-and-engine job, exactly the crediting bug this arc kills, and
+  // that tag must have no bearing on which scene gets credited.
+  const REAL_CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
+
+  it("delivering four-wheels credits Yuki's own scene (daily-drivers), with no tag involved", () => {
+    const car = buildCarInstance({
+      id: 'tutorial-car',
+      modelId: CIVIC.id,
+      parts: uniformCarParts('worn'),
+    })
+    const active: StoryMissionRecord = {
+      missionId: 'four-wheels',
+      status: 'active',
+      acceptedOnDay: 1,
+    }
+    const state: GameState = {
+      ...createInitialGameState(REAL_CONTEXT, 1),
+      day: 5,
+      ownedCars: [car],
+      storyMissions: [active],
+    }
+    const result = resolveDeliverMission(state, 'four-wheels', car.id, REAL_CONTEXT)
+
+    expect(result.state.ownedCars.some((c) => c.id === car.id)).toBe(false)
+    expect(result.state.sceneLedger?.['daily-drivers']).toEqual([
+      {
+        carInstanceId: car.id,
+        modelId: CIVIC.id,
+        priceYen: REAL_CONTEXT.storyMissionsById['four-wheels']!.payoutYen,
+        day: 5,
+      },
+    ])
+    // The mission's own legacy tag still says "body" - proof the credit
+    // above never read it.
+    expect(REAL_CONTEXT.storyMissionsById['four-wheels']!.specialtyGroups).toEqual(['body'])
+    // One mission credits exactly one scene; every other scene is untouched.
+    for (const [scene, stage] of Object.entries(result.state.sceneStanding)) {
+      if (scene !== 'daily-drivers') expect(stage).toBe('none')
+    }
+  })
+})

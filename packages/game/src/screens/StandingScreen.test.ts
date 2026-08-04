@@ -149,4 +149,64 @@ describe('StandingScreen (Sprint 62 item 17)', () => {
       }
     })
   })
+
+  describe('scenes panel (scene-standing-arc.md step 4)', () => {
+    it('lists all six scenes with their stage stated in words, never a number', () => {
+      const game = useGameStore()
+      game.newGame(1)
+      const wrapper = mountScreen()
+
+      const scenes = ['collector', 'tuner', 'show-crowd', 'racer', 'daily-drivers', 'touge']
+      for (const scene of scenes) {
+        const stage = wrapper.find(`[data-test="scene-stage-${scene}"]`)
+        expect(stage.exists()).toBe(true)
+        // A fresh shop is unknown everywhere - the words, not a "0", say so.
+        expect(stage.text().length).toBeGreaterThan(0)
+        expect(stage.text()).not.toMatch(/\d/)
+      }
+    })
+
+    it('shows a scene with no deliveries as empty, not a zero', () => {
+      const game = useGameStore()
+      game.newGame(1)
+      const wrapper = mountScreen()
+      expect(wrapper.find('[data-test="scene-daily-drivers"]').text()).toContain(
+        'Nothing delivered here yet.',
+      )
+    })
+
+    it('lists a real delivered car under its own scene, and no other scene', () => {
+      const game = useGameStore()
+      game.newGame(1)
+      game.gameState = {
+        ...game.gameState,
+        sceneStanding: { ...game.gameState.sceneStanding, 'daily-drivers': 'known' },
+        sceneLedger: {
+          collector: [],
+          tuner: [],
+          'show-crowd': [],
+          racer: [],
+          'daily-drivers': [
+            {
+              carInstanceId: 'car-1',
+              modelId: 'honda-civic-sir2-eg6',
+              priceYen: 250_000,
+              day: 4,
+            },
+          ],
+          touge: [],
+        },
+      }
+      const wrapper = mountScreen()
+
+      const dailyDrivers = wrapper.find('[data-test="scene-cars-daily-drivers"]')
+      expect(dailyDrivers.exists()).toBe(true)
+      expect(dailyDrivers.text()).toContain('¥250,000')
+      // Filterable by scene: the same car never leaks into another scene's list.
+      expect(wrapper.find('[data-test="scene-cars-tuner"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="scene-tuner"]').text()).toContain(
+        'Nothing delivered here yet.',
+      )
+    })
+  })
 })

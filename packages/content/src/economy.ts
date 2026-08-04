@@ -1096,6 +1096,50 @@ export const EconomyConfigSchema = z.object({
       message: 'valuation.retentionFloor must be <= valuation.retentionCeiling',
     }),
   /**
+   * Earning scene standing (docs/sprints/scene-standing-arc.md step 4):
+   * `creditSceneDelivery` (sim/sceneStanding.ts) is the one place a delivery
+   * (a matched market sale, or a delivered story mission crediting its
+   * persona's own scene) turns into a stage change - nowhere else moves
+   * `GameState.sceneStanding` or appends to `GameState.sceneLedger`. Deeds
+   * are a plain cumulative count per scene, never reset: standing never
+   * decays, so neither does the tally that earned it.
+   */
+  sceneStandingProgress: z
+    .object({
+      /** Total matched deliveries to a scene, ever, that reach Known. */
+      knownDeliveries: z.number().int().positive(),
+      /** Total matched deliveries, ever, that reach Respected - strictly
+       * above `knownDeliveries`, enforced below. */
+      respectedDeliveries: z.number().int().positive(),
+      /**
+       * The marquee price bar The Shop needs, one per fitment class (a
+       * car's fitment class IS its roster tier, `fitmentClassForTier`) -
+       * a marquee Daily Drivers car and a marquee Collector car are not the
+       * same money. A matched delivery at or above this bar reaches The
+       * Shop only once that scene has ALSO cleared `respectedDeliveries`:
+       * a single expensive sale can never vault a scene from nothing to
+       * the top, because `respectedDeliveries` cannot be cleared by one
+       * delivery either.
+       */
+      marqueeBarYenByTier: z.record(PartFitmentClassSchema, z.number().int().positive()),
+      /**
+       * How many days of matched-delivery history the future word-of-mouth
+       * draw reads on top of a channel's own authored weights - built and
+       * recorded here, not consumed by anything shipped yet
+       * (`recentSceneLedgerEntries`, sim/sceneStanding.ts).
+       */
+      rollingWindowDays: z.number().int().positive(),
+    })
+    .strict()
+    .refine((p) => p.knownDeliveries < p.respectedDeliveries, {
+      message: 'sceneStandingProgress.knownDeliveries must be strictly below respectedDeliveries',
+    })
+    .refine(
+      (p) =>
+        PartFitmentClassSchema.options.every((tier) => p.marqueeBarYenByTier[tier] !== undefined),
+      { message: 'sceneStandingProgress.marqueeBarYenByTier must name every fitment class' },
+    ),
+  /**
    * Repair cost per grade is ONE global fraction of the INSTALLED part's own
    * catalog `priceYen`, never the host car's tier -
    * `round(repairStepFraction * catalogPart.priceYen)`. Every repair-cost

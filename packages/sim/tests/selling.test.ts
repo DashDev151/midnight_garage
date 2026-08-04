@@ -1228,6 +1228,17 @@ describe('resolveSellViaWalkIn (Sprint 31: resolves today’s pre-rolled offer)'
       expect(matchedResult.state.reputationPoints).toBeGreaterThanOrEqual(
         CONTEXT.economy.reputation.matchedSaleRepBonus,
       )
+      // Scene standing's own earn event (scene-standing-arc.md step 4): the
+      // buyer's own archetype (`collector`) gets the ledger entry, with no
+      // tag anywhere - the buyer IS the scene.
+      expect(matchedResult.state.sceneLedger?.collector).toEqual([
+        {
+          carInstanceId: matchedCar.id,
+          modelId: model.id,
+          priceYen: 900_000,
+          day: matchedState.day,
+        },
+      ])
     })
 
     it('never fires below taste 1.0', () => {
@@ -1250,9 +1261,11 @@ describe('resolveSellViaWalkIn (Sprint 31: resolves today’s pre-rolled offer)'
         buildSimContext(CARS, PARTS, [...BUYERS, authenticityBuyer], PARTS_TAXONOMY),
       )
       expect(result.log[0]).not.toHaveProperty('matchedSale')
+      // No scene credited either - an unmatched sale earns nothing.
+      expect(result.state.sceneLedger).toBeUndefined()
     })
 
-    it('never fires through the trade network (no real persona behind the offer)', () => {
+    it('never fires through the trade network (no real persona behind the offer), and credits no scene standing at all', () => {
       const state = stateWithOffer(car, 900_000, 'trade-network', {
         carsForSale: [
           {
@@ -1265,6 +1278,10 @@ describe('resolveSellViaWalkIn (Sprint 31: resolves today’s pre-rolled offer)'
       })
       const result = resolveSellViaWalkIn(state, car.id, CONTEXT)
       expect(result.log[0]).not.toHaveProperty('matchedSale')
+      // The trade's own non-persona buyer can never be a scene - the ledger
+      // and every scene's stage stay exactly as they started.
+      expect(result.state.sceneLedger).toBeUndefined()
+      expect(result.state.sceneStanding).toEqual(state.sceneStanding)
     })
   })
 })

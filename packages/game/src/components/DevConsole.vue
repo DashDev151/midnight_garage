@@ -69,7 +69,8 @@ function warp(): void {
       <span v-for="t in game.unlockedTechniqueViews" :key="t.id">{{ t.displayName }}</span>
     </div>
 
-    <!-- Scene standing is dev-only for now - earning it isn't wired up yet. -->
+    <!-- Scene standing's own player-facing home is the Standing screen's
+         scenes panel; this quick readout stays for setting it by hand. -->
     <div class="readout" data-test="scene-standing-readout">
       standing:
       <span v-for="line in game.sceneStandingView" :key="line.scene">
