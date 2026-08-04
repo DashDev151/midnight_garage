@@ -7,7 +7,7 @@ the code on 2026-08-04, so no sprint doc restates them and none can quietly disa
 
 | sprint | what | blocked by |
 | --- | --- | --- |
-| **175** | Buyer power expectation | **a maintainer decision, not yet made** |
+| **175** | Buyer power expectation | model settled, **values outstanding** |
 | **176** | The six scenes: buyers and channels | **nothing, except its own power targets** |
 | **177** | Standing moves the band | 176 |
 | **178** | The earn event and the shop ledger | 177 |

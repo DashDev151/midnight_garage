@@ -3,7 +3,8 @@
 **Arc:** `docs/sprints/scene-standing-arc.md`. This is step 0, the prerequisite.
 **Design of record:** `docs/design/systems/scene-standing-refactor.md`, section 13 step 0.
 
-**BLOCKED. This sprint cannot be implemented until the maintainer settles the model below.** It is
+**Model settled 2026-08-04; values not yet approved.** The shape is below under "The model"; what
+remains is a lever table and the parts-gating question. It is
 written now because everything after it depends on the answer, and because the shape of the decision
 is clearer written down than argued from memory.
 
@@ -59,8 +60,38 @@ restated here because they are the substance of the decision:
    targets already exist and are roughly right; it is the shared ceiling they all normalise against
    that is wrong.
 
-**Nothing is proposed here.** A number invented at implementation time is exactly what directive 22
-exists to prevent, and this one reaches every buyer, every car and every sale.
+## The model, as the maintainer described it 2026-08-04
+
+Not yet a lever table, but the shape is settled.
+
+**Input 4 builds itself.** Per-scene appetite already exists as authored relative targets and is
+roughly right. Racers want most, then Tuners, down the list.
+
+**Input 1 is car availability times PART availability.** Access to the cars that can make the power,
+multiplied by access to the parts that make it. **Parts are not gated at all today**, and the
+maintainer has flagged that as worth considering: without it, only the car half of the gate exists.
+
+**Input 3 becomes a climbing chain, and this is the piece that stops it stalling.** Demand does not
+merely trail the player's best build; it closes on it:
+
+| the player has | the ceiling of demand sits at |
+| --- | --- |
+| a new personal best | best **minus 10 per cent** |
+| delivered at that bar once | best **minus 5 per cent** |
+| delivered again | best **minus 1 per cent** |
+| a NEW personal best | the chain restarts from minus 10 |
+
+So there is always something asking for slightly more than has been proven, and beating it resets
+the pressure. That answers the objection the maintainer raised against best-minus-a-margin on its
+own, which was that demand trailing you forever never asks you to go further.
+
+**This governs the UPPER BOUND only, and that is the important constraint.** Most customers ask for
+far less: the chain decides how high the top of the market reaches, not what the whole market wants.
+**A player must be able to have a 700 PS build and a 300 PS build worth doing at the same time**, and
+a model that drags every buyer up behind the ceiling would destroy that.
+
+**Nothing is proposed here as a number.** A value invented at implementation time is exactly what
+directive 22 exists to prevent, and this one reaches every buyer, every car and every sale.
 
 ## What implementation would touch, once decided
 
@@ -80,13 +111,22 @@ Sprint 171 precisely because a chart and a buyer want opposite things from one. 
 1. A buyer's power appetite can exceed 225 PS.
 2. Building a genuinely powerful car is worth more to somebody than building a moderately powerful
    one.
-3. The model is written into `desirability-system.md` or the sale-value design, not only into code.
-4. The radar's own ceiling is untouched.
+3. **A 700 PS build and a 300 PS build are both worth doing at the same time.** The chain moves the
+   top of the market, not the whole of it.
+4. Beating the current bar visibly raises it, and a new personal best restarts the climb.
+5. The model is written into `desirability-system.md` or the sale-value design, not only into code.
+6. The radar's own ceiling is untouched.
 
 ## Levers (directive 22)
 
-**Every value in this sprint is a lever and none is approved.** It cannot start.
+**The model is approved; the numbers are not.** Outstanding:
+
+1. The chain's steps (10, 5, 1 per cent) and whether it is per-scene or one shop-wide ceiling.
+2. How access converts into appetite: what "the rooms that sell Supras are shut" actually multiplies.
+3. **Whether parts get gated at all**, which is a new mechanic rather than a value and needs its own
+   decision. Without it only the car half of input 1 exists.
+4. How far below the ceiling the ordinary customer sits, which is what protects the 300 PS build.
 
 ## Exit
 
-_Blocked pending a maintainer decision._
+_Not started. Model settled, values outstanding._

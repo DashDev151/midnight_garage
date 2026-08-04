@@ -220,6 +220,24 @@ pass."
 
 ## Open engineering
 
+- [ ] **THE TOOL LADDER HAS A DEAD RUNG: tier 2 and tier 3 both reach mint (found 2026-08-04).**
+  `economy.repairBandCeilingByTier` is `{1: "fine", 2: "mint", 3: "mint"}`, so **tier 3 buys no
+  quality over tier 2**. Everything tier 3 adds is elsewhere: labour per band step
+  (`energyPerBandStepByToolTier` 5 / 4 / 3) and two capability unlocks (NA-to-turbo conversion via
+  `toolCeilings.naToTurboConversionEngineTier`, and machining via `machining.minEngineToolTier`).
+
+  **This blocks a ruling the scene-standing arc needs.** The maintainer's intended ladder is
+  `tier 1 < tier 1 + craft < tier 2 < tier 2 + craft < tier 3 < tier 3 + craft`, and that cannot
+  exist while two rungs tie on reach. Sprint 180's craft operations are additive on top of whatever
+  band the tools reached, which is the right shape, but it only produces a real ladder if the tools
+  themselves make one.
+
+  **Not a value tweak.** Either the bands stretch (a fourth band above mint, or tier 2 stopping
+  short of it), or tier 3's claim moves off reach entirely and onto something else it alone can do.
+  Both are design decisions, and both touch the progression bible's Capability pillar, which owns
+  ceilings.
+
+
 - [ ] **REGRESSION INTRODUCED BY THE ZONE MODEL: a modified body no longer costs authenticity
   (found by the implementing agent 2026-08-03, flagged rather than fixed).** Every aftermarket
   panel SKU now carries a `zoneId` and is fitted through `pipeline-install-panel`, which updates

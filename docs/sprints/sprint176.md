@@ -94,6 +94,21 @@ hashiriya belongs in flavour copy only.
 Touge needs `buyerPoolWeights` authored into **every** weighted channel. The design's guidance:
 weekend meet and magazine plausibly warm, free ads cold.
 
+### 6. Split the magazine and the meet by character
+
+They currently read as the same crowd twice. **The magazine is performance press; the meet is about
+being seen.** Racers should top the magazine and the Show Crowd should dominate the meet, with
+tuners strong in print and middling in the car park.
+
+### 7. Decide what the dealer network is
+
+**There is no dealer network channel and never was.** `economy.json`'s `dealers` is the auction
+room's AI bidder count; the `dealer-network` building on the overworld routes to the auctions screen
+and names no tier of its own. So it is a building with nothing behind it.
+
+Either give it a selling channel as the Collector Network gets one, or accept it as an auction venue
+and leave it. **Cheap either way, but decide rather than leave it ambiguous.**
+
 ### 5. Give the Collectors somewhere to sell
 
 Collectors have **no favoured selling channel**: 1.0 at the shop front, 0.15 in the magazine, 0.3 at

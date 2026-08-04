@@ -65,9 +65,24 @@ head-on with the clamp, but they raise a real question: **can an operation let a
 what tier-3 tools would give?** If it can, the tool ladder is undercut, and Capability's exclusive
 claim on throughput and ceilings, which the bible keeps, is broken by the back door.
 
-**Establish the answer first and write it down.** The likely shape: an operation extends the
-condition-ceiling system rather than bypassing it, so it adds on top of whatever band the tools
-actually reached.
+**The maintainer's ruling, 2026-08-04: no, and the ladder must read**
+
+```
+tier 1  <  tier 1 + craft  <  tier 2  <  tier 2 + craft  <  tier 3  <  tier 3 + craft
+```
+
+**An operation adds on top of whatever band the tools actually reached.** It never substitutes for a
+tier. Standing makes your tools go further; it never replaces them, and Capability keeps its
+exclusive claim on ceilings.
+
+**But that ladder cannot be built today, and this is a blocker rather than a caveat.**
+`economy.repairBandCeilingByTier` is `{1: "fine", 2: "mint", 3: "mint"}`: **tier 2 already reaches
+mint and tier 3 adds no quality at all.** Everything tier 3 buys is elsewhere, in labour per band
+step (5 / 4 / 3) and two unlocks (NA-to-turbo, machining). Two rungs of the intended six tie.
+
+**The tool ladder needs its own investigation and fix before this sprint can build**, carried in
+`TODO.md`. Either the bands stretch, or tier 2 stops short of mint, or tier 3's claim moves off
+reach entirely. All three are design decisions touching the progression bible's Capability pillar.
 
 Second, smaller: **the derived-stat normalisation.** Stats are 0-100 and several are weighted means
 over part bands. "Past catalogue" has to mean something precise in that arithmetic rather than
