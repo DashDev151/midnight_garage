@@ -27,10 +27,10 @@
     "archetype": "tuner",
     "displayName": "Tuner",
     "statTargets": {
-      "power": { "target": 0.65, "importance": 0.9 },
-      "handling": { "target": 0.55, "importance": 0.6 },
-      "style": { "target": 0.45, "importance": 0.4 },
-      "reliability": { "target": 0.45, "importance": 0.4 },
+      "power": { "target": 0.65, "importance": 0.6 },
+      "handling": { "target": 0.55, "importance": 0.7 },
+      "style": { "target": 0.45, "importance": 0.6 },
+      "reliability": { "target": 0.45, "importance": 0.6 },
       "authenticity": { "target": 0, "importance": 0 }
     },
     "tierPreferences": [
@@ -50,9 +50,9 @@
     "wantLine": "Wants the numbers, not the story. Power pays; provenance is for other people."
   },
   {
-    "id": "stancer",
-    "archetype": "stancer",
-    "displayName": "Shakotan",
+    "id": "show-crowd",
+    "archetype": "show-crowd",
+    "displayName": "Show Crowd",
     "statTargets": {
       "power": { "target": 0.2, "importance": 0.1 },
       "handling": { "target": 0.1, "importance": 0.05 },
@@ -104,9 +104,9 @@
     "wantLine": "Checks where the weight sits and how it turns in. Paint does not lap."
   },
   {
-    "id": "first-timer",
-    "archetype": "first-timer",
-    "displayName": "First-timer",
+    "id": "daily-drivers",
+    "archetype": "daily-drivers",
+    "displayName": "Daily Drivers",
     "statTargets": {
       "power": { "target": 0.25, "upper": 0.55, "importance": 0.3 },
       "handling": { "target": 0.3, "importance": 0.2 },
@@ -127,26 +127,30 @@
     "wantLine": "Needs it to start every cold morning without eating the budget. A service history beats a spoiler."
   },
   {
-    "id": "hobbyist",
-    "archetype": "hobbyist",
-    "displayName": "Hobbyist",
+    "id": "touge",
+    "archetype": "touge",
+    "displayName": "Touge",
     "statTargets": {
-      "power": { "target": 0.15, "upper": 0.5, "importance": 0.4 },
-      "handling": { "target": 0.5, "importance": 0.7 },
-      "style": { "target": 0.55, "importance": 0.8 },
-      "reliability": { "target": 0.6, "importance": 0.6 },
-      "authenticity": { "target": 0.6, "importance": 0.5 }
+      "power": { "target": 0.7, "importance": 0.6 },
+      "handling": { "target": 0.75, "importance": 1 },
+      "style": { "target": 0.3, "importance": 0.2 },
+      "reliability": { "target": 0.6, "importance": 0.5 },
+      "authenticity": { "target": 0, "importance": 0 }
     },
     "tierPreferences": [
       {
-        "tier": "entry",
-        "weight": 1
+        "tier": "enthusiast",
+        "weight": 0.8
       },
       {
         "tier": "everyday",
         "weight": 0.6
+      },
+      {
+        "tier": "entry",
+        "weight": 0.3
       }
     ],
-    "wantLine": "Wants a small, light car that still drives the way it was built to: tidy on its feet, nothing shouting. A big turbo does not impress him; it worries him, because that is not what the car was for."
+    "wantLine": "Wants to know how it turns in, not how fast it leaves a corner. A car that won't commit to the apex is no good on the pass."
   }
 ]

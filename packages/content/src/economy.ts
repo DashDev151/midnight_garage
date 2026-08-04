@@ -451,7 +451,7 @@ const ByCarRarityMultiplierSchema = z.object({
 })
 
 /**
- * The five listing channels a for-sale car can be listed on - the id a
+ * The six listing channels a for-sale car can be listed on - the id a
  * `ForSaleEntry` (sale.ts) carries and `sellingChannels` below is keyed by.
  */
 export const SellingChannelIdSchema = z.enum([
@@ -460,6 +460,7 @@ export const SellingChannelIdSchema = z.enum([
   'tunerMagazine',
   'tradeNetwork',
   'weekendMeet',
+  'collectorNetwork',
 ])
 
 export type SellingChannelId = z.infer<typeof SellingChannelIdSchema>
@@ -477,10 +478,10 @@ export type SellingChannelId = z.infer<typeof SellingChannelIdSchema>
 const BuyerPoolWeightsSchema = z.object({
   collector: z.number().nonnegative(),
   tuner: z.number().nonnegative(),
-  stancer: z.number().nonnegative(),
+  'show-crowd': z.number().nonnegative(),
   racer: z.number().nonnegative(),
-  'first-timer': z.number().nonnegative(),
-  hobbyist: z.number().nonnegative(),
+  'daily-drivers': z.number().nonnegative(),
+  touge: z.number().nonnegative(),
 })
 
 /**
@@ -556,8 +557,8 @@ const SellingChannelSchema = z
   )
 
 /**
- * The five listing channels (directive 22 lever list). `matchedSaleRepBonus`
- * (the sixth locked lever) lives beside `cleanSaleBonus`/`concoursSaleBonus`
+ * The six listing channels (directive 22 lever list). `matchedSaleRepBonus`
+ * (a further locked lever) lives beside `cleanSaleBonus`/`concoursSaleBonus`
  * in `EconomyConfigSchema`'s own `reputation` block below, not here - it is
  * a sale-quality bonus family member, not a channel property.
  */
@@ -567,6 +568,7 @@ const SellingChannelsSchema = z.object({
   tunerMagazine: SellingChannelSchema,
   tradeNetwork: SellingChannelSchema,
   weekendMeet: SellingChannelSchema,
+  collectorNetwork: SellingChannelSchema,
 })
 
 /**
@@ -914,13 +916,19 @@ export const EconomyConfigSchema = z.object({
        * `coherenceTolerance` parameter defaults to it) - the market's own
        * view, not an accident. Only `valuateCarForBuyer` and
        * `valuateCarForBuyerViaChannel` read a named archetype's override; an
-       * archetype with no entry here falls back to `default`.
+       * archetype with no entry here falls back to `default` deliberately
+       * (collector, racer, daily-drivers) - `coherenceToleranceFor`
+       * (sim/valuation.ts) is the one place that reads these keys, and
+       * `coherenceValuation.test.ts`'s authored-value guard asserts every
+       * archetype resolves to a value named here rather than falling through
+       * by accident.
        */
       tolerance: z
         .object({
           default: z.number().min(0).max(1),
-          stancer: z.number().min(0).max(1).optional(),
+          'show-crowd': z.number().min(0).max(1).optional(),
           tuner: z.number().min(0).max(1).optional(),
+          touge: z.number().min(0).max(1).optional(),
         })
         .strict(),
       /** Buyer-taste spread: `valuateCarForBuyer` bounds its taste multiplier

@@ -1720,6 +1720,72 @@ import storyMissions from '../data/storyMissions.json'
  *   day stops meaning anything.
  *
  * NOTHING ELSE MOVES: no payout, no price, no repair or valuation formula.
+ *
+ * Re-pinned for `docs/sprints/sprint176.md` (the six scenes: buyers and channels), APPROVED
+ * 2026-08-04 under the maintainer's blanket lever authority for this build. Six lever groups, all
+ * named and valued in the sprint doc's own lever list:
+ *
+ * 1. Renames, no value moved: the buyer archetype (and `Buyer.id`) `stancer` -> `show-crowd` and
+ *    `first-timer` -> `daily-drivers` in `buyers.json`; the same two strings in every
+ *    `sellingChannels[*].buyerPoolWeights` key and in `valuation.tolerance`. THE TRAP:
+ *    `valuation.ts`'s `coherenceToleranceFor` hardcodes the archetype string AND
+ *    `economy.valuation.tolerance` keys on the same string in two places typecheck cannot
+ *    cross-check - both were renamed together in the same change (`show-crowd`, kept as
+ *    `tolerance['show-crowd']` at its unmoved 0.0), and `coherenceValuation.test.ts` gained a new
+ *    guard that asserts every one of the six archetypes resolves to an authored tolerance rather
+ *    than falling through to `default` by accident.
+ * 2. Hobbyist DELETED outright (not renamed, not demoted to an unaffiliated pool) - added to
+ *    `retiredIdentifiers.test.ts` in the same change. Its demand (1.4 in the free ads paper, 0.8 at
+ *    the weekend meet) is inherited by daily-drivers and the broadened tuner, which is why lever 3
+ *    below re-authors all four previously-weighted channels rather than merely dropping a key.
+ * 3. `sellingChannels[*].buyerPoolWeights` re-authored on all four existing weighted channels, over
+ *    collector / tuner / show-crowd / racer / daily-drivers / touge:
+ *    shopFront 1 / 1 / 1 / 1 / 1 / 1 (unchanged - flat, nobody favoured);
+ *    freeAdsPaper 0.4 / 0.7 / 0.5 / 0.2 / 2.0 / 0.3 (tuner and daily-drivers up from 0.5/1.6);
+ *    tunerMagazine 0.2 / 1.6 / 0.3 / 1.8 / 0.05 / 1.4 (collector down from 0.15, racer up from 1.4 -
+ *    racer now tops the magazine outright, the performance-press half of the magazine/meet split);
+ *    weekendMeet 0.3 / 1.5 / 2.2 / 0.4 / 0.4 / 1.0 (show-crowd up from 1.8 to 2.2 and now the single
+ *    highest weight on any persona channel - the meet is where the scene is seen - tuner up from
+ *    1.2, daily-drivers up from 0.1). Tuners stay strong in both split channels by design, never
+ *    falling below touge in either.
+ * 4. A sixth selling channel, NEW: `collectorNetwork`, hung off the Collector Network building that
+ *    already exists as a reputation-gated buying-side auction tier (fortnightly, 70 per cent
+ *    flagship) - same place, same fiction, so collectors finally have a channel that favours them
+ *    (their best weight anywhere else was 1.0 at the shop front). `feeYen` 20000, `tasteCeiling`
+ *    1.20 (the highest of any channel), `matchedOnly` true, `poolWidening` 0.3, `requiresForecourt`
+ *    true, `buyerPoolWeights` collector 3.0 / tuner 0.2 / show-crowd 0.1 / racer 0.2 /
+ *    daily-drivers 0.05 / touge 0.1 - collector-heavy by a wide margin, the only channel where
+ *    collector is not the trailing weight. Cadence: `oneDrawNextEndDay`, the weekend meet's own
+ *    shape, reused rather than inventing a genuine fortnightly scheduler the channel schema does
+ *    not support - mechanically this ties the guaranteed draw to `calendar.meetDayOfWeek`, the same
+ *    single day the weekend meet itself resolves on, not a separate biweekly landmark. No unlocking
+ *    mission names `collectorNetwork` (none names the buying-side `collector-network` auction tier
+ *    either, in this content), so the channel is open from day one like the shop front, not gated by
+ *    reputation as the fiction implies - a real gap between the story and the mechanism, left as
+ *    found rather than invented for this content-only sprint.
+ * 5. Tuner retune, importances only, targets untouched: power 0.9 -> 0.6, handling 0.6 -> 0.7,
+ *    style 0.4 -> 0.6, reliability 0.4 -> 0.6. Authenticity importance stays exactly 0 - the
+ *    tuner-0/collector-1.0 authenticity split is the sharpest authored distinction in `buyers.json`
+ *    and this retune does not touch it.
+ * 6. Touge, NEW archetype, the handling-biased twin of the power-biased racer: handling target 0.75
+ *    importance 1.0, power target 0.7 importance 0.6 (provisional - sprint 175 revisits buyer power
+ *    expectation and this target is authored now only so the archetype ships complete),
+ *    style target 0.3 importance 0.2, reliability target 0.6 importance 0.5, authenticity target 0
+ *    importance 0. `tierPreferences` enthusiast 0.8, everyday 0.6, entry 0.3. `valuation.tolerance.
+ *    touge` 1.0, authored explicitly rather than left to inherit `default` by omission. Weighted
+ *    into every persona channel (lever 3's freeAdsPaper/tunerMagazine/weekendMeet figures above)
+ *    plus the new collectorNetwork channel (lever 4): cold in the classifieds (0.3), warm in the
+ *    magazine (1.4) and at the meet (1.0), per the sprint doc's own guidance.
+ *
+ * Mechanical consequence, not an independent lever: `storyMissions.json`'s two renamed `tasteMatch`
+ * `buyerId` fields (`first-proper-car` -> `daily-drivers`, `low-and-loud` -> `show-crowd`) carry
+ * their `minMultiplier` UNCHANGED (1.08, 1.09) - neither archetype's `statTargets` moved, only the
+ * id. `street-power-street-manners`'s `tuner` `minMultiplier` DOES move, 1.06 -> 1.05, re-derived
+ * mechanically from a fresh `storyMissionProbes.test.ts` run against the same probe build (the
+ * tuner's own retuned importances read the same build's stats differently), never hand-picked, the
+ * same footing every prior retune on this file has used. Neither mission's `payoutYen`/
+ * `budgetCapYen` moves, and no other probe's requirement is sensitive to a buyer archetype's own
+ * profile.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -1729,7 +1795,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('45a9f30da2f3da53d760de3759a7e6406731c1455a38bffa7242afa4d923878b')
+    ).toBe('b7a72d5d113160cae1acd98a112e429e8a41970374223ca476d6898249d8d7c8')
   })
 
   it('damagePatterns.json matches its approved content exactly', () => {

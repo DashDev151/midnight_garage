@@ -94,8 +94,9 @@
     "retentionCeiling": 1.1,
     "tolerance": {
       "default": 1.0,
-      "stancer": 0.0,
-      "tuner": 0.5
+      "show-crowd": 0.0,
+      "tuner": 0.5,
+      "touge": 1.0
     },
     "tasteSpread": 0.12,
     "walkAwaySpread": 0.05,
@@ -742,10 +743,10 @@
       "buyerPoolWeights": {
         "collector": 1,
         "tuner": 1,
-        "stancer": 1,
+        "show-crowd": 1,
         "racer": 1,
-        "first-timer": 1,
-        "hobbyist": 1
+        "daily-drivers": 1,
+        "touge": 1
       },
       "poolWidening": 0.35,
       "requiresForecourt": true
@@ -761,11 +762,11 @@
       "tasteCeiling": 1.05,
       "buyerPoolWeights": {
         "collector": 0.4,
-        "tuner": 0.5,
-        "stancer": 0.5,
+        "tuner": 0.7,
+        "show-crowd": 0.5,
         "racer": 0.2,
-        "first-timer": 1.6,
-        "hobbyist": 1.4
+        "daily-drivers": 2.0,
+        "touge": 0.3
       },
       "poolWidening": 0.5,
       "requiresForecourt": true
@@ -776,12 +777,12 @@
       "tasteCeiling": 1.17,
       "matchedOnly": true,
       "buyerPoolWeights": {
-        "collector": 0.15,
-        "tuner": 1.8,
-        "stancer": 0.6,
-        "racer": 1.4,
-        "first-timer": 0.05,
-        "hobbyist": 0.05
+        "collector": 0.2,
+        "tuner": 1.6,
+        "show-crowd": 0.3,
+        "racer": 1.8,
+        "daily-drivers": 0.05,
+        "touge": 1.4
       },
       "poolWidening": 0.25,
       "requiresForecourt": true
@@ -802,13 +803,29 @@
       "matchedOnly": true,
       "buyerPoolWeights": {
         "collector": 0.3,
-        "tuner": 1.2,
-        "stancer": 1.8,
-        "racer": 0.5,
-        "first-timer": 0.1,
-        "hobbyist": 0.8
+        "tuner": 1.5,
+        "show-crowd": 2.2,
+        "racer": 0.4,
+        "daily-drivers": 0.4,
+        "touge": 1.0
       },
       "poolWidening": 0.4,
+      "requiresForecourt": true
+    },
+    "collectorNetwork": {
+      "feeYen": 20000,
+      "oneDrawNextEndDay": true,
+      "tasteCeiling": 1.2,
+      "matchedOnly": true,
+      "buyerPoolWeights": {
+        "collector": 3.0,
+        "tuner": 0.2,
+        "show-crowd": 0.1,
+        "racer": 0.2,
+        "daily-drivers": 0.05,
+        "touge": 0.1
+      },
+      "poolWidening": 0.3,
       "requiresForecourt": true
     }
   },

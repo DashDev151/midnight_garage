@@ -4,10 +4,10 @@ import { CarTierSchema } from './tags'
 export const BuyerArchetypeSchema = z.enum([
   'collector',
   'tuner',
-  'stancer',
+  'show-crowd',
   'racer',
-  'first-timer',
-  'hobbyist',
+  'daily-drivers',
+  'touge',
 ])
 
 /** Taste by market position: which league of car this archetype turns up for.
@@ -25,10 +25,10 @@ const TierPreferenceSchema = z.object({
  * exceeding it, which is what lets a specialised car reach a perfect match
  * instead of a generalist one always sitting closer to the middle. `upper`,
  * when present, is the point past which the car starts actively working
- * against the buyer (a caged race car putting off a first-timer, a built
- * engine putting off a collector); absent, there is no ceiling on this stat.
- * `importance` weights how much this stat counts toward the overall match;
- * 0 means the buyer genuinely does not look at it.
+ * against the buyer (a caged race car putting off a Daily Drivers buyer, a
+ * built engine putting off a collector); absent, there is no ceiling on this
+ * stat. `importance` weights how much this stat counts toward the overall
+ * match; 0 means the buyer genuinely does not look at it.
  */
 const StatTasteSchema = z.object({
   target: z.number(),

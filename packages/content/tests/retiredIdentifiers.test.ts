@@ -191,6 +191,24 @@ const RETIRED_IDENTIFIERS: readonly RetiredIdentifier[] = [
     reason:
       'A flat 20,000 regardless of how much yard the player owned, so a bought bay was free to hold forever and capacity was a pure ratchet. Replaced by economy.rent (baseWeeklyYen plus a per-kind perBayWeeklyYen rate) and computeWeeklyRentYen (finances.ts), which sums base plus every owned bay of every kind - sized so day 1 is unchanged at exactly 20,000.',
   },
+  {
+    identifier: 'first-timer',
+    retiredInSprint: 176,
+    reason:
+      'Renamed to daily-drivers, no value moved. "First-timer" read as condescending to somebody who just wants a good cheap car; the archetype is a budget-commuter buyer, not a novice.',
+  },
+  {
+    identifier: 'stancer',
+    retiredInSprint: 176,
+    reason:
+      'Renamed to show-crowd, no value moved. Broad English rather than one style tribe: shakotan, kaido racer, VIP, grachan and bosozoku styling all live in flavour copy, never in system vocabulary.',
+  },
+  {
+    identifier: 'hobbyist',
+    retiredInSprint: 176,
+    reason:
+      'Deleted outright, not renamed or demoted to an unaffiliated pool - the second archetype this codebase has retired for naming a market segment rather than a role (see the kei-specialist entry above, which named hobbyist as its own replacement). Its demand is inherited by daily-drivers and the broadened tuner; the buyerPoolWeights it held (1.4 in the free ads paper, 0.8 at the weekend meet) were re-authored across all four weighted channels rather than left as a gap.',
+  },
 ]
 
 function escapeRegExp(text: string): string {

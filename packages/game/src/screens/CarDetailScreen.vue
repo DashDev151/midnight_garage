@@ -451,9 +451,10 @@ function channelDisabledReason(id: SellingChannelId): string | null {
 }
 
 /** List (or re-list) the car on the armed channel - re-listing on a
- * different channel pays that channel's fee again (the sim's own rule);
- * `weekendMeet` re-charges even on the SAME channel, since its one
- * guaranteed draw is spent the moment it resolves. */
+ * different channel pays that channel's fee again (the sim's own rule); a
+ * one-draw channel (`weekendMeet`, `collectorNetwork`) re-charges even on the
+ * SAME channel, since its one guaranteed draw is spent the moment it
+ * resolves. */
 function listOnSelectedChannel(): void {
   const d = detail.value
   if (!d) return

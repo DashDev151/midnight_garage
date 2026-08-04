@@ -685,8 +685,21 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * bought a tin. The version bump alone is still required (Save law) so an
  * old client rejects a v59 save rather than silently dropping what was on
  * the shelf.
+ * v59 -> v60 (the six scenes): two buyer archetypes are renamed (their old
+ * ids are banned by name in `retiredIdentifiers.test.ts`, not repeated
+ * here), a third is deleted outright, and a fourth (`touge`) is added;
+ * `SellingChannelId` gains `collectorNetwork`. Every `PendingSaleOffer.buyerId`
+ * and `ForSaleEntry.channelId` in a save is still a plain string/enum value
+ * the schema itself accepts unchanged, but a pre-v60 save can carry a
+ * `buyerId` naming an archetype that no longer exists in content, which
+ * resolves to no real buyer at all rather than the car's actual pending
+ * offer. Per directive 19, a plain SAVE_VERSION bump with NO
+ * `MIGRATIONS[59]` entry and no legacy-compat branch: a pre-v60 save is
+ * wiped rather than converted. The version bump alone is still required
+ * (Save law) so an old client rejects a v60 save rather than silently
+ * reading an offer from a buyer that no longer exists.
  */
-export const SAVE_VERSION = 59
+export const SAVE_VERSION = 60
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

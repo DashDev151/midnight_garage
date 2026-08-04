@@ -533,7 +533,7 @@ describe('advanceDay: the daily offer draw and acceptance (Sprint 31)', () => {
           weekendMeetPending: false,
         },
       ],
-      pendingOffers: [{ carInstanceId: 'car-0001', buyerId: 'first-timer', priceYen: 400_000 }],
+      pendingOffers: [{ carInstanceId: 'car-0001', buyerId: 'daily-drivers', priceYen: 400_000 }],
     }
     const cashBefore = state.cashYen
     const { state: next, log } = advanceDay(
@@ -554,7 +554,7 @@ describe('advanceDay: the daily offer draw and acceptance (Sprint 31)', () => {
       ...initialState(),
       day: 10,
       carsForSale: [], // not (re-)marked for sale, so nothing replaces the stale offer below
-      pendingOffers: [{ carInstanceId: 'car-0001', buyerId: 'first-timer', priceYen: 400_000 }],
+      pendingOffers: [{ carInstanceId: 'car-0001', buyerId: 'daily-drivers', priceYen: 400_000 }],
     }
     const { state: next } = advanceDay(state, noActions, state.seed + state.day, CONTEXT)
     expect(next.pendingOffers.some((o) => o.carInstanceId === 'car-0001')).toBe(false)

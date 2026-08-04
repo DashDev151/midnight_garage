@@ -292,11 +292,11 @@ describe('the roster CSV is well formed', () => {
       if (!buyer) throw new Error(`no buyer named ${id}`)
       return buyer.statTargets.style.target * 100
     }
-    const stancer = targetOf('stancer')
+    const showCrowd = targetOf('show-crowd')
     const tuner = targetOf('tuner')
 
-    it('lets 23 of the 94 satisfy the stancer stock, none of them entry tier', () => {
-      const satisfy = roster.filter((r) => r.num('styleBase') >= stancer)
+    it('lets 23 of the 94 satisfy the Show Crowd stock, none of them entry tier', () => {
+      const satisfy = roster.filter((r) => r.num('styleBase') >= showCrowd)
       expect(satisfy).toHaveLength(23)
       expect(satisfy.filter((r) => r.get('tier') === 'entry')).toHaveLength(0)
       // A beautiful car straight out of the box is a late-game purchase: all
@@ -313,8 +313,8 @@ describe('the roster CSV is well formed', () => {
       expect(unreachable.sort()).toEqual(['Honda Acty (HA4 Truck)', 'Suzuki Wagon R (CT21S)'])
     })
 
-    it('leaves seven cars unable to reach the stancer at any build, all of them entry', () => {
-      const unreachable = roster.filter((r) => r.num('styleCeiling') < stancer)
+    it('leaves seven cars unable to reach the Show Crowd at any build, all of them entry', () => {
+      const unreachable = roster.filter((r) => r.num('styleCeiling') < showCrowd)
       expect(unreachable).toHaveLength(7)
       expect(unreachable.every((r) => r.get('tier') === 'entry')).toBe(true)
     })

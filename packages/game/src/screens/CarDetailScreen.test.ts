@@ -1029,8 +1029,16 @@ describe('CarDetailScreen', () => {
 
   describe('Sprint 114: the selling rework (channel picker + want-line)', () => {
     /** The channels a career starts with - the two premium ones are opened by
-     * a named story mission (sprint156.md), so a fresh shop cannot see them. */
-    const DAY_ONE_CHANNEL_IDS = ['shopFront', 'freeAdsPaper', 'tradeNetwork'] as const
+     * a named story mission (sprint156.md), so a fresh shop cannot see them.
+     * `collectorNetwork` names no unlocking mission of its own (no mission in
+     * this content names `collector-network` on the buying side either), so
+     * it is open from day one along with the others rather than gated. */
+    const DAY_ONE_CHANNEL_IDS = [
+      'shopFront',
+      'freeAdsPaper',
+      'tradeNetwork',
+      'collectorNetwork',
+    ] as const
 
     it('renders the day-one channel options with real fee text, defaulting the armed choice to shopFront', async () => {
       const game = useGameStore()
@@ -1063,7 +1071,7 @@ describe('CarDetailScreen', () => {
         'Everyone who walks past',
       )
       expect(wrapper.find('[data-test="channel-option-freeAdsPaper"]').text()).toContain(
-        'First-timer',
+        'Daily Drivers',
       )
       const trade = wrapper.find('[data-test="channel-option-tradeNetwork"]')
       expect(trade.find('[data-test="channel-audience"]').exists()).toBe(false)
@@ -1170,13 +1178,13 @@ describe('CarDetailScreen', () => {
             weekendMeetPending: false,
           },
         ],
-        pendingOffers: [{ carInstanceId: id, buyerId: 'first-timer', priceYen: 400_000 }],
+        pendingOffers: [{ carInstanceId: id, buyerId: 'daily-drivers', priceYen: 400_000 }],
       }
       const { wrapper } = await mountAt(id)
 
       const wantLine = wrapper.find('[data-test="offer-want-line"]')
       expect(wantLine.exists()).toBe(true)
-      expect(wantLine.text()).toContain('First-timer')
+      expect(wantLine.text()).toContain('Daily Drivers')
       expect(wantLine.text()).toContain(
         'Needs it to start every cold morning without eating the budget. A service history beats a spoiler.',
       )

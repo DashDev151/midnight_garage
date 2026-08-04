@@ -30,9 +30,10 @@ const TEST_TRACK_IDS = new Set([
 
 /** The tab-bar screens a map click also reaches - these mark their own
  * navigation `from: 'overworld'` so the screen's back control can tell a
- * map arrival from a tab arrival apart (`mapBack.ts`). The garage is
- * deliberately absent: nothing else routes to `garage-interior`, so it
- * carries no such flag. */
+ * map arrival from a tab arrival apart (`mapBack.ts`). The garage and dealer
+ * network are deliberately absent: both route to `garage-interior`, which
+ * carries no such flag - its back control is unconditional regardless of
+ * which building sent the player there. */
 const OVERWORLD_FLAGGED_ROUTES: Record<string, string> = {
   'tool-hire': 'upgrades',
   'parts-shop': 'parts',
@@ -40,7 +41,6 @@ const OVERWORLD_FLAGGED_ROUTES: Record<string, string> = {
   'staff-centre': 'staff',
   'regional-auction': 'auctions',
   'premium-auction': 'auctions',
-  'dealer-network': 'auctions',
   'collector-network': 'auctions',
 }
 
@@ -102,6 +102,7 @@ describe('overworldNav', () => {
   it('every remaining location routes to a real, named screen', () => {
     const expected: Record<string, string> = {
       garage: 'garage-interior',
+      'dealer-network': 'garage-interior',
       ...OVERWORLD_FLAGGED_ROUTES,
     }
     // The cafe drops out alongside the inert bank and the four track venues:
@@ -114,7 +115,7 @@ describe('overworldNav', () => {
       const destination = destinationFor(id)
       expect(destination.kind).toBe('route')
       if (destination.kind === 'route') {
-        // `toMatchObject` rather than `toEqual`: the eight tab-reachable
+        // `toMatchObject` rather than `toEqual`: the seven tab-reachable
         // destinations also carry a `from: 'overworld'` query (checked in
         // its own test below), which this test isn't about.
         expect(destination.to).toMatchObject({ name: expected[id] })
@@ -132,9 +133,12 @@ describe('overworldNav', () => {
     }
   })
 
-  it('the garage carries no `from` flag - nothing else routes to garage-interior, so its back control is unconditional', () => {
-    const destination = destinationFor('garage')
-    expect(destination).toEqual({ kind: 'route', to: { name: 'garage-interior' } })
+  it('the garage and dealer network carry no `from` flag - both route to garage-interior, so its back control is unconditional', () => {
+    expect(destinationFor('garage')).toEqual({ kind: 'route', to: { name: 'garage-interior' } })
+    expect(destinationFor('dealer-network')).toEqual({
+      kind: 'route',
+      to: { name: 'garage-interior' },
+    })
   })
 
   it('finds the location under a point at its own placement centre', () => {

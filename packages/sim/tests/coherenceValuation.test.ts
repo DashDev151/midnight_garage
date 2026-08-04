@@ -5,6 +5,7 @@ import {
   PARTS,
   PARTS_TAXONOMY,
   type Buyer,
+  type BuyerArchetype,
   type CarInstance,
   type CarPartId,
 } from '@midnight-garage/content'
@@ -171,7 +172,7 @@ describe('Stage C: the coherence discount on the whole car, at the market defaul
   })
 })
 
-describe('the tolerance ruling: the stancer is exempt, the tuner is halved, against a first-timer', () => {
+describe('the tolerance ruling: the Show Crowd is exempt, the tuner is halved, against a Daily Drivers buyer', () => {
   // Identical statTargets on all three, differing only by archetype, and
   // every target trivially cleared (0) at importance 1 regardless of what
   // the car actually measures - so the match, and therefore
@@ -186,24 +187,24 @@ describe('the tolerance ruling: the stancer is exempt, the tuner is halved, agai
     reliability: { target: 0, importance: 1 },
     authenticity: { target: 0, importance: 1 },
   }
-  const stancerBuyer: Buyer = {
-    id: 'test-stancer',
-    archetype: 'stancer',
-    displayName: 'Test Stancer',
+  const showCrowdBuyer: Buyer = {
+    id: 'test-show-crowd',
+    archetype: 'show-crowd',
+    displayName: 'Test Show Crowd',
     statTargets: trivialTargets,
     tierPreferences: [],
     wantLine: 'test',
   }
-  const tunerBuyer: Buyer = { ...stancerBuyer, id: 'test-tuner', archetype: 'tuner' }
-  // 'first-timer' carries no override in valuation.tolerance, so it reads
+  const tunerBuyer: Buyer = { ...showCrowdBuyer, id: 'test-tuner', archetype: 'tuner' }
+  // 'daily-drivers' carries no override in valuation.tolerance, so it reads
   // the same `default` (1.0) every buyer-agnostic caller uses.
-  const firstTimerBuyer: Buyer = {
-    ...stancerBuyer,
-    id: 'test-first-timer',
-    archetype: 'first-timer',
+  const dailyDriversBuyer: Buyer = {
+    ...showCrowdBuyer,
+    id: 'test-daily-drivers',
+    archetype: 'daily-drivers',
   }
 
-  it('stancer > tuner > first-timer, on the same incoherent car, taste held constant', () => {
+  it('show-crowd > tuner > daily-drivers, on the same incoherent car, taste held constant', () => {
     const car = carWithGrades(FLAGSHIP_CAR, CONTEXT, { forcedInduction: 'race' }, 'mint')
     const verdict = supportVerdict(car, FLAGSHIP_CAR, CONTEXT.partsById, ECONOMY)
     expect(verdict.band).not.toBe('adequate') // sanity: there is a discount to feel here at all
@@ -220,14 +221,14 @@ describe('the tolerance ruling: the stancer is exempt, the tuner is halved, agai
         ECONOMY,
       )
 
-    const stancerValue = valueFor(stancerBuyer)
+    const showCrowdValue = valueFor(showCrowdBuyer)
     const tunerValue = valueFor(tunerBuyer)
-    const firstTimerValue = valueFor(firstTimerBuyer)
+    const dailyDriversValue = valueFor(dailyDriversBuyer)
 
-    expect(ECONOMY.valuation.tolerance.stancer).toBe(0)
+    expect(ECONOMY.valuation.tolerance['show-crowd']).toBe(0)
     expect(ECONOMY.valuation.tolerance.tuner).toBe(0.5)
-    expect(stancerValue).toBeGreaterThan(tunerValue)
-    expect(tunerValue).toBeGreaterThan(firstTimerValue)
+    expect(showCrowdValue).toBeGreaterThan(tunerValue)
+    expect(tunerValue).toBeGreaterThan(dailyDriversValue)
   })
 
   it('all three agree exactly on a stock car - there is no discount for tolerance to differ on', () => {
@@ -243,7 +244,92 @@ describe('the tolerance ruling: the stancer is exempt, the tuner is halved, agai
         100,
         ECONOMY,
       )
-    expect(valueFor(stancerBuyer)).toBe(valueFor(tunerBuyer))
-    expect(valueFor(tunerBuyer)).toBe(valueFor(firstTimerBuyer))
+    expect(valueFor(showCrowdBuyer)).toBe(valueFor(tunerBuyer))
+    expect(valueFor(tunerBuyer)).toBe(valueFor(dailyDriversBuyer))
+  })
+})
+
+/**
+ * The rename trap (scene-standing-arc.md): `coherenceToleranceFor`
+ * (valuation.ts) hardcodes archetype strings and `economy.valuation.tolerance`
+ * keys on the same strings, in two separate places that typecheck cannot
+ * cross-check against each other - a renamed archetype whose branch string
+ * and JSON key drift apart falls through to `default` silently, with no
+ * error anywhere. This locks down, for all SIX shipped archetypes at once,
+ * exactly which tolerance each one resolves to, so a future rename that
+ * breaks this resolution fails here rather than shipping quietly.
+ *
+ * Isolates tolerance from taste the same way the describe block above does
+ * (trivial statTargets, so tasteMultiplier is the constant `1 + tasteSpread`
+ * regardless of archetype), then reconstructs the expected value by calling
+ * `marketValueYen` directly with the EXPECTED tolerance and comparing against
+ * `valuateCarForBuyer`'s real, buyer-driven result - if `coherenceToleranceFor`
+ * ever resolved the wrong tolerance for an archetype, the two would diverge.
+ */
+describe('every archetype resolves to an authored tolerance, never the default by accident', () => {
+  const trivialTargets = {
+    power: { target: 0, importance: 1 },
+    handling: { target: 0, importance: 1 },
+    style: { target: 0, importance: 1 },
+    reliability: { target: 0, importance: 1 },
+    authenticity: { target: 0, importance: 1 },
+  }
+
+  // Two archetypes carry no explicit key in economy.json's tolerance object
+  // at all - falling through to `default` is deliberate for them
+  // (collector, racer, daily-drivers), not an accident. show-crowd, tuner and
+  // touge are each authored explicitly.
+  const EXPECTED_TOLERANCE: Record<BuyerArchetype, number> = {
+    collector: ECONOMY.valuation.tolerance.default,
+    tuner: ECONOMY.valuation.tolerance.tuner!,
+    'show-crowd': ECONOMY.valuation.tolerance['show-crowd']!,
+    racer: ECONOMY.valuation.tolerance.default,
+    'daily-drivers': ECONOMY.valuation.tolerance.default,
+    touge: ECONOMY.valuation.tolerance.touge!,
+  }
+
+  it.each(Object.entries(EXPECTED_TOLERANCE) as [BuyerArchetype, number][])(
+    '%s resolves to its authored tolerance (%f) exactly',
+    (archetype, expectedTolerance) => {
+      const car = carWithGrades(FLAGSHIP_CAR, CONTEXT, { forcedInduction: 'race' }, 'mint')
+      const buyer: Buyer = {
+        id: `test-${archetype}`,
+        archetype,
+        displayName: 'Test',
+        statTargets: trivialTargets,
+        tierPreferences: [],
+        wantLine: 'test',
+      }
+      const actual = valuateCarForBuyer(
+        buyer,
+        FLAGSHIP_CAR,
+        car,
+        CONTEXT.partsById,
+        PARTS_TAXONOMY,
+        CONTEXT.partsTaxonomyById,
+        100,
+        ECONOMY,
+      )
+      const expectedBaseValue = marketValueYen(
+        FLAGSHIP_CAR,
+        car,
+        100,
+        CONTEXT.partsById,
+        CONTEXT.partsTaxonomyById,
+        ECONOMY,
+        expectedTolerance,
+      )
+      // Trivial targets clear every stat's shortfall to zero regardless of
+      // archetype, so the taste match is always 1 and the multiplier is
+      // always the ceiling `1 + tasteSpread` - the same constant for every
+      // archetype, isolating tolerance as the only remaining variable.
+      const tasteMultiplier = 1 + ECONOMY.valuation.tasteSpread
+      expect(actual).toBe(Math.round(expectedBaseValue * tasteMultiplier))
+    },
+  )
+
+  it('every real shipped buyer is covered - no archetype in BUYERS is missing from this guard', () => {
+    const shippedArchetypes = new Set(BUYERS.map((b) => b.archetype))
+    expect(new Set(Object.keys(EXPECTED_TOLERANCE))).toEqual(shippedArchetypes)
   })
 })

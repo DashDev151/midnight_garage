@@ -6,7 +6,7 @@ import { formatYen } from './formatYen'
 type SellingChannelConfig = EconomyConfig['sellingChannels'][SellingChannelId]
 
 /**
- * Player-facing names for the five listing channels. The camelCase id
+ * Player-facing names for the six listing channels. The camelCase id
  * ("freeAdsPaper") is a schema identifier, never copy - any screen that
  * shows a channel to the player renders it through this map, mirroring
  * `AUCTION_TIER_LABELS`'s own precedent.
@@ -17,6 +17,7 @@ export const SELLING_CHANNEL_LABELS: Record<SellingChannelId, string> = {
   tunerMagazine: 'Tuner magazine',
   tradeNetwork: 'Trade network',
   weekendMeet: 'Weekend meet',
+  collectorNetwork: 'Collector network',
 }
 
 /** The channel picker's own fixed display order - shop front first (the
@@ -27,6 +28,7 @@ export const SELLING_CHANNEL_ORDER: readonly SellingChannelId[] = [
   'tunerMagazine',
   'tradeNetwork',
   'weekendMeet',
+  'collectorNetwork',
 ]
 
 /** "Free" or "X yen per listing" - the channel's own fee, read straight

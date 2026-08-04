@@ -20,14 +20,26 @@ function clamp(value: number, min: number, max: number): number {
  * Stage C's per-buyer tolerance (the tolerance ruling, sprint144.md): reads
  * `economy.valuation.tolerance` for this buyer's own archetype, falling back
  * to `default` for the archetypes the design leaves unnamed (collector,
- * racer, first-timer). Only `valuateCarForBuyer` and
+ * racer, daily-drivers). Only `valuateCarForBuyer` and
  * `valuateCarForBuyerViaChannel` call this - every other `marketValueYen`
  * caller is buyer-agnostic and uses the function's own default of 1.0.
+ *
+ * Every named branch here must have a matching key in
+ * `economy.valuation.tolerance` (`EconomyConfigSchema`'s own `.strict()`
+ * tolerance object) - a renamed archetype whose branch string and JSON key
+ * drift apart falls through to `default` with no error anywhere, which is
+ * exactly the wrong answer for a scene like the Show Crowd, built to ignore
+ * the coherence discount entirely. `coherenceValuation.test.ts`'s
+ * authored-value guard iterates every archetype and asserts none resolves to
+ * `default` by accident.
  */
 function coherenceToleranceFor(buyer: Buyer, economy: EconomyConfig): number {
   const { tolerance } = economy.valuation
-  if (buyer.archetype === 'stancer' && tolerance.stancer !== undefined) return tolerance.stancer
+  if (buyer.archetype === 'show-crowd' && tolerance['show-crowd'] !== undefined) {
+    return tolerance['show-crowd']
+  }
   if (buyer.archetype === 'tuner' && tolerance.tuner !== undefined) return tolerance.tuner
+  if (buyer.archetype === 'touge' && tolerance.touge !== undefined) return tolerance.touge
   return tolerance.default
 }
 

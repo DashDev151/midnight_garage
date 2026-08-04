@@ -294,7 +294,7 @@ describe('story mission satisfiability probes (Sprint 78 decision 1)', () => {
     assertPassesAndPriceLocked('wont-strand-her', afterCar, probeCostYen)
   })
 
-  it('first-proper-car: a civic-eg6 repaired to fine, all stock, clears the reliability floor and the first-timer taste match', () => {
+  it('first-proper-car: a civic-eg6 repaired to fine, all stock, clears the reliability floor and the daily-drivers taste match', () => {
     const { model, afterCar, probeCostYen } = buildProbe('honda-civic-sir2-eg6', 'fine')
     const stats = computeDerivedStats(
       model,
@@ -303,7 +303,7 @@ describe('story mission satisfiability probes (Sprint 78 decision 1)', () => {
       CONTEXT.partsTaxonomy,
       CONTEXT.economy,
     )
-    const buyer = BUYERS.find((b) => b.id === 'first-timer')!
+    const buyer = BUYERS.find((b) => b.id === 'daily-drivers')!
     const value = marketValueYen(
       model,
       afterCar,
@@ -324,7 +324,7 @@ describe('story mission satisfiability probes (Sprint 78 decision 1)', () => {
     )
     const target = mission('first-proper-car')
     expect(statThresholdMin(target, 'reliability')).toBe(floor90(stats.reliability))
-    expect(tasteMatchMultiplier(target, 'first-timer')).toBe(round2At97Percent(valuated / value))
+    expect(tasteMatchMultiplier(target, 'daily-drivers')).toBe(round2At97Percent(valuated / value))
     assertPassesAndPriceLocked('first-proper-car', afterCar, probeCostYen)
   })
 
@@ -373,7 +373,7 @@ describe('story mission satisfiability probes (Sprint 78 decision 1)', () => {
     assertPassesAndPriceLocked('the-column-clock', afterCar, probeCostYen)
   })
 
-  it('low-and-loud: a silvia-s14 built to mint with sport aero/rims and street seats clears the style floor and the stancer taste match', () => {
+  it('low-and-loud: a silvia-s14 built to mint with sport aero/rims and street seats clears the style floor and the show-crowd taste match', () => {
     const fitmentClass = fitmentClassForTier(
       CARS.find((c) => c.id === 'nissan-silvia-ks-s14')!.tier,
     )
@@ -394,7 +394,7 @@ describe('story mission satisfiability probes (Sprint 78 decision 1)', () => {
       CONTEXT.partsTaxonomy,
       CONTEXT.economy,
     )
-    const buyer = BUYERS.find((b) => b.id === 'stancer')!
+    const buyer = BUYERS.find((b) => b.id === 'show-crowd')!
     const value = marketValueYen(
       model,
       afterCar,
@@ -415,7 +415,7 @@ describe('story mission satisfiability probes (Sprint 78 decision 1)', () => {
     )
     const target = mission('low-and-loud')
     expect(statThresholdMin(target, 'style')).toBe(floor90(stats.style))
-    expect(tasteMatchMultiplier(target, 'stancer')).toBe(round2At97Percent(valuated / value))
+    expect(tasteMatchMultiplier(target, 'show-crowd')).toBe(round2At97Percent(valuated / value))
     assertPassesAndPriceLocked('low-and-loud', afterCar, probeCostYen)
   })
 

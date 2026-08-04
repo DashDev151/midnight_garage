@@ -441,16 +441,18 @@ function resolveOffersSeenForNewListing(
  * anyway. A no-op for a car not owned.
  *
  * Re-listing on a DIFFERENT channel pays that channel's fee again. Re-listing
- * on the SAME channel is an idempotent no-op, except `weekendMeet`: that
- * channel's one guaranteed draw is spent the moment it resolves
- * (`weekendMeetPending`), so listing on it again - even unchanged - is the
- * "attend again" flow and re-charges the fee for one more draw. Insufficient
- * cash refuses quietly (no log entry), the same silent gate-reason idiom
- * every other cash-gated resolver in this codebase uses.
+ * on the SAME channel is an idempotent no-op, except a channel carrying
+ * `oneDrawNextEndDay` (`weekendMeet`, `collectorNetwork`): that channel's one
+ * guaranteed draw is spent the moment it resolves (`weekendMeetPending`, the
+ * field's own name predating the second channel that now shares its shape),
+ * so listing on it again - even unchanged - is the "attend again" flow and
+ * re-charges the fee for one more draw. Insufficient cash refuses quietly (no
+ * log entry), the same silent gate-reason idiom every other cash-gated
+ * resolver in this codebase uses.
  *
- * Every re-list (a channel switch, or `weekendMeet`'s attend-again) carries
- * the OLD entry's `offersSeen` forward at `relistRecovery` rather than
- * resetting it to fresh (`resolveOffersSeenForNewListing` above) - the
+ * Every re-list (a channel switch, or a one-draw channel's attend-again)
+ * carries the OLD entry's `offersSeen` forward at `relistRecovery` rather
+ * than resetting it to fresh (`resolveOffersSeenForNewListing` above) - the
  * exploit this sprint closes: switching channels used to refresh a listing
  * for free.
  *
@@ -475,6 +477,7 @@ export function resolveSetForSale(
   if (!owned) return { state, log: [] }
   const existing = state.carsForSale.find((f) => f.carInstanceId === carInstanceId)
   const onForecourt = state.forecourtCarIds.includes(carInstanceId)
+  const channel = context.economy.sellingChannels[channelId]
 
   if (!forSale) {
     if (!existing) return { state, log: [] }
@@ -494,7 +497,7 @@ export function resolveSetForSale(
     }
   }
 
-  if (existing && existing.channelId === channelId && channelId !== 'weekendMeet') {
+  if (existing && existing.channelId === channelId && !channel.oneDrawNextEndDay) {
     return { state, log: [] }
   }
 
@@ -504,7 +507,6 @@ export function resolveSetForSale(
   // that is not open yet.
   if (!isSellingChannelUnlocked(state, context, channelId)) return { state, log: [] }
 
-  const channel = context.economy.sellingChannels[channelId]
   const feeYen = channel.feeYen
   if (state.cashYen < feeYen) return { state, log: [] }
 
@@ -533,7 +535,7 @@ export function resolveSetForSale(
     carInstanceId,
     offersSeen: resolveOffersSeenForNewListing(existing, context.economy),
     channelId,
-    weekendMeetPending: channelId === 'weekendMeet',
+    weekendMeetPending: channel.oneDrawNextEndDay === true,
   }
   const listedState: GameState = {
     ...placedState,
@@ -709,9 +711,10 @@ function drawTradeNetworkOffer(
 
 interface ChannelDraw {
   offer?: SaleOffer
-  /** Present only for `weekendMeet` - whether its one-shot flag is still
-   * owed after this draw. Always `false` the moment a draw runs, hit or
-   * miss (the meet is spent either way). */
+  /** Present only for a channel carrying `oneDrawNextEndDay` (`weekendMeet`,
+   * `collectorNetwork`) - whether its one-shot flag is still owed after this
+   * draw. Always `false` the moment a draw runs, hit or miss (the guaranteed
+   * draw is spent either way). */
   weekendMeetPending?: boolean
   /**
    * Whether a buyer genuinely showed up today - `offersSeen` increments
@@ -792,14 +795,18 @@ function cadenceChanceFor(
  * One listed car's channel-aware offer draw for the day about to begin -
  * reads the listing's own `channelId` only to look up its content
  * (`context.economy.sellingChannels`), never to branch on it.
- * `oneDrawNextEndDay` channels (`weekendMeet`) get their guaranteed single
- * draw, gated on BOTH `weekendMeetPending` and `calendar.isMeetDay(day, ...)`
- * (sprint149.md: the meet has a real day now, not whichever day happens to
- * be the next End Day after listing) - staleness does not gate it (it is
- * not a chance roll at all), but the draw still prices through this
- * listing's own `offersSeen`. A car listed on a non-meet day simply stays
- * pending until the meet's day arrives. Every other channel's daily chance
- * is `offerChanceFor` multiplied by `stalenessFor(entry.offersSeen)`
+ * `oneDrawNextEndDay` channels (`weekendMeet`, `collectorNetwork`) get their
+ * guaranteed single draw, gated on BOTH `weekendMeetPending` and
+ * `calendar.isMeetDay(day, ...)` - the meet has one real day on the calendar,
+ * not whichever day happens to be the next End Day after listing - so BOTH
+ * one-draw channels currently share that same weekly day; the Collector
+ * Network's advertised fortnightly rhythm is a fiction the schema has no
+ * separate cadence shape for yet, not a second calendar landmark. Staleness
+ * does not gate the draw (it is not a chance roll at all), but it still
+ * prices through this listing's own `offersSeen`. A car listed on a non-meet
+ * day simply stays pending until the meet's day arrives. Every other
+ * channel's daily chance is `offerChanceFor` multiplied by
+ * `stalenessFor(entry.offersSeen)`
  * (Stage F: staleness multiplies the chance, it never replaces it); CLEARING
  * that roll is what `attempted` means (see `ChannelDraw` above) - a car
  * whose own chance is low clears it rarely, so its clock advances rarely,

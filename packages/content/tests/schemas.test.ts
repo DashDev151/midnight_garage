@@ -454,7 +454,7 @@ describe('seed content validates against schemas', () => {
       qualitySpread: 0.04,
       relistRecovery: 0.7,
     })
-    // The five listing channels (directive 22 lever list). A channel is a
+    // The six listing channels (directive 22 lever list). A channel is a
     // buyer base first: `buyerPoolWeights` decides who walks in and
     // `poolWidening` how far past the tier gate the channel reaches, and only
     // then does `tasteCeiling` decide how much headroom whoever arrived has.
@@ -462,9 +462,9 @@ describe('seed content validates against schemas', () => {
     // never above value) and the widest on the reach axis (a flat pool, so
     // nobody is favoured, plus the widening that puts everyone in it); the
     // trade network trades both axes for a fixed, near-value band and has no
-    // persona at all; the tuner magazine and weekend meet are the only two
-    // channels whose ceiling clears 1.0, both matched-persona-only, and their
-    // pools point at different halves of the scene.
+    // persona at all; the tuner magazine, weekend meet and collector network
+    // are the three channels whose ceiling clears 1.0, all matched-persona-
+    // only, and their pools each point at a different corner of the scene.
     expect(result.data.reputation.matchedSaleRepBonus).toBe(1)
     expect(result.data.sellingChannels.shopFront).toEqual({
       feeYen: 0,
@@ -473,10 +473,10 @@ describe('seed content validates against schemas', () => {
       buyerPoolWeights: {
         collector: 1,
         tuner: 1,
-        stancer: 1,
+        'show-crowd': 1,
         racer: 1,
-        'first-timer': 1,
-        hobbyist: 1,
+        'daily-drivers': 1,
+        touge: 1,
       },
       poolWidening: 0.35,
       requiresForecourt: true,
@@ -492,11 +492,11 @@ describe('seed content validates against schemas', () => {
       tasteCeiling: 1.05,
       buyerPoolWeights: {
         collector: 0.4,
-        tuner: 0.5,
-        stancer: 0.5,
+        tuner: 0.7,
+        'show-crowd': 0.5,
         racer: 0.2,
-        'first-timer': 1.6,
-        hobbyist: 1.4,
+        'daily-drivers': 2.0,
+        touge: 0.3,
       },
       poolWidening: 0.5,
       requiresForecourt: true,
@@ -507,12 +507,12 @@ describe('seed content validates against schemas', () => {
       tasteCeiling: 1.17,
       matchedOnly: true,
       buyerPoolWeights: {
-        collector: 0.15,
-        tuner: 1.8,
-        stancer: 0.6,
-        racer: 1.4,
-        'first-timer': 0.05,
-        hobbyist: 0.05,
+        collector: 0.2,
+        tuner: 1.6,
+        'show-crowd': 0.3,
+        racer: 1.8,
+        'daily-drivers': 0.05,
+        touge: 1.4,
       },
       poolWidening: 0.25,
       requiresForecourt: true,
@@ -530,13 +530,29 @@ describe('seed content validates against schemas', () => {
       matchedOnly: true,
       buyerPoolWeights: {
         collector: 0.3,
-        tuner: 1.2,
-        stancer: 1.8,
-        racer: 0.5,
-        'first-timer': 0.1,
-        hobbyist: 0.8,
+        tuner: 1.5,
+        'show-crowd': 2.2,
+        racer: 0.4,
+        'daily-drivers': 0.4,
+        touge: 1.0,
       },
       poolWidening: 0.4,
+      requiresForecourt: true,
+    })
+    expect(result.data.sellingChannels.collectorNetwork).toEqual({
+      feeYen: 20_000,
+      oneDrawNextEndDay: true,
+      tasteCeiling: 1.2,
+      matchedOnly: true,
+      buyerPoolWeights: {
+        collector: 3.0,
+        tuner: 0.2,
+        'show-crowd': 0.1,
+        racer: 0.2,
+        'daily-drivers': 0.05,
+        touge: 0.1,
+      },
+      poolWidening: 0.3,
       requiresForecourt: true,
     })
     // Standing sharpens a channel's own pool rather than opening a door: the
@@ -780,8 +796,14 @@ describe('seed content ids are unique', () => {
    * rework's authored copy. Pinned literally, not merely checked non-empty,
    * since this is orchestrator-personal copy.
    */
-  it('buyer want-lines match the sprint114.md authored copy exactly', () => {
-    const SPRINT_114_ARCHETYPES = new Set(['collector', 'tuner', 'stancer', 'racer', 'first-timer'])
+  it('buyer want-lines match the sprint114.md authored copy exactly (ids renamed, copy unmoved)', () => {
+    const SPRINT_114_ARCHETYPES = new Set([
+      'collector',
+      'tuner',
+      'show-crowd',
+      'racer',
+      'daily-drivers',
+    ])
     const wantLineById = Object.fromEntries(
       BuyersSchema.parse(buyers)
         .filter((b) => SPRINT_114_ARCHETYPES.has(b.id))
@@ -791,22 +813,24 @@ describe('seed content ids are unique', () => {
       collector:
         'Asks who owned it before you, and who before that. Originality is the price of entry; everything else is small talk.',
       tuner: 'Wants the numbers, not the story. Power pays; provenance is for other people.',
-      stancer: 'Crouches at the arches before saying hello. If it sits right, the rest is detail.',
+      'show-crowd':
+        'Crouches at the arches before saying hello. If it sits right, the rest is detail.',
       racer: 'Checks where the weight sits and how it turns in. Paint does not lap.',
-      'first-timer':
+      'daily-drivers':
         'Needs it to start every cold morning without eating the budget. A service history beats a spoiler.',
     })
   })
 
   /**
-   * The hobbyist's want-line is fresh copy authored for its own
-   * archetype, pinned separately from the sprint114.md transplant above
-   * rather than folded into it.
+   * Touge's want-line is fresh copy authored for its own archetype, pinned
+   * separately from the sprint114.md transplant above rather than folded
+   * into it - the same treatment the deleted hobbyist archetype's want-line
+   * once had.
    */
-  it('the hobbyist want-line matches its authored copy exactly', () => {
-    const hobbyist = BuyersSchema.parse(buyers).find((b) => b.id === 'hobbyist')
-    expect(hobbyist?.wantLine).toBe(
-      'Wants a small, light car that still drives the way it was built to: tidy on its feet, nothing shouting. A big turbo does not impress him; it worries him, because that is not what the car was for.',
+  it('the Touge want-line matches its authored copy exactly', () => {
+    const touge = BuyersSchema.parse(buyers).find((b) => b.id === 'touge')
+    expect(touge?.wantLine).toBe(
+      "Wants to know how it turns in, not how fast it leaves a corner. A car that won't commit to the apex is no good on the pass.",
     )
   })
 

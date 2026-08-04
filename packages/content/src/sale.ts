@@ -24,10 +24,13 @@ export const SaleChannelSchema = z.enum(['walk-in-offer'])
  * forward at `economy.liquidity.relistRecovery` rather than resetting it:
  * the plate and the advertisement are the same, so switching channels alone
  * cannot refresh a listing for free (`resolveSetForSale`).
- * `weekendMeetPending` is that one channel's own one-shot state: true
- * whenever (re-)listed on `weekendMeet`, consumed (set false) the moment
+ * `weekendMeetPending` is a one-shot channel's own state (any channel
+ * carrying `oneDrawNextEndDay` - `weekendMeet`, `collectorNetwork`): true
+ * whenever (re-)listed on one of them, consumed (set false) the moment
  * `drawDailyOffers` resolves that listing's single guaranteed draw, hit or
- * miss; always false for every other channel.
+ * miss; always false for every other channel. The field kept its original
+ * name rather than a generic one - it is a persisted save field, and
+ * renaming it would cost a save-schema touch for zero player value.
  */
 export const ForSaleEntrySchema = z.object({
   carInstanceId: z.string().min(1),

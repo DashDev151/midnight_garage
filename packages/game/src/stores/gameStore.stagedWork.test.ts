@@ -268,7 +268,7 @@ describe('staged repair/install work', () => {
           weekendMeetPending: false,
         },
       ],
-      pendingOffers: [{ carInstanceId: carId, buyerId: 'first-timer', priceYen: 300_000 }],
+      pendingOffers: [{ carInstanceId: carId, buyerId: 'daily-drivers', priceYen: 300_000 }],
     }
     game.acceptOffer(carId)
 

@@ -185,4 +185,129 @@ closed-form probes in Vitest and by play, not by simulation.
 
 ## Exit
 
-_To be completed at the end of the sprint._
+**Implemented.** All six definition-of-done items hold:
+
+1. Six archetypes ship in `buyers.json`: Collector, Tuner, Show Crowd (`show-crowd`, was `stancer`),
+   Racer, Daily Drivers (`daily-drivers`, was `first-timer`), Touge (new).
+2. Hobbyist deleted outright (id, archetype, schema entry, every `buyerPoolWeights` key). Zero
+   references left in `packages/*/src`, enforced by three new `retiredIdentifiers.test.ts` entries
+   (`first-timer`, `stancer`, `hobbyist`, all retired this sprint).
+3. All four previously-weighted channels (`shopFront`, `freeAdsPaper`, `tunerMagazine`,
+   `weekendMeet`) name all six archetypes; the new `collectorNetwork` channel does too.
+   `tradeNetwork` stays persona-less, untouched.
+4. Collectors have a channel that favours them: `collectorNetwork`, `buyerPoolWeights.collector`
+   3.0, the highest weight of any archetype on any channel.
+5. The tuner-0/collector-1.0 authenticity split is untouched (tuner importance stays exactly 0,
+   collector stays exactly 1.0) - only the tuner's power/handling/style/reliability importances
+   moved.
+6. Every archetype's coherence tolerance resolves to an authored value: `coherenceToleranceFor`
+   (valuation.ts) and `economy.valuation.tolerance` were renamed together in the same change (the
+   trap the arc named), and a new guard describe block in `coherenceValuation.test.ts` iterates all
+   six archetypes, reconstructing each one's expected value via `marketValueYen` directly and
+   comparing against `valuateCarForBuyer`'s real result - it would fail if the two definitions ever
+   drifted apart again.
+7. `pnpm typecheck` clean across content/sim/game. All three Vitest projects run once, full green:
+   content 610/610, sim 2234/2234, game 948/948.
+
+**The tolerance trap was checked specifically**, per the sprint's own instruction: both the code
+string in `coherenceToleranceFor` and the JSON key in `economy.valuation.tolerance` were renamed in
+the same change, `touge` was added to both explicitly, and the new authored-value guard test locks
+the whole mapping down so a future rename that repeats this mistake fails a fast, narrow test
+instead of shipping silently.
+
+**Beyond the lever list, two things needed fixing for the Collector Network channel to actually
+function, not just parse:**
+
+- `ForSaleEntry.weekendMeetPending` (and the matching logic in `resolveSetForSale`/
+  `drawOfferForChannel`, `selling.ts`) was hardcoded to `channelId === 'weekendMeet'`. Generalised to
+  read `channel.oneDrawNextEndDay` instead, so the new channel's one guaranteed draw actually arms
+  and resolves. The field keeps its original name (a persisted save field; renaming it would be a
+  save-schema churn for zero player value).
+- Sprint 173 routed the `dealer-network` overworld building to the auctions screen. Per the arc's own
+  correction (section 7 of this doc), dealer network is `sellingChannels.tradeNetwork`, a selling
+  channel, not an auction tier. Re-routed to the garage's alley (`garage-interior`, no `room` query -
+  the screen already defaults there), the same target the garage building itself uses, since that is
+  where a listed car actually sits and there is no standalone sell screen. `overworldNav.test.ts`
+  updated to match.
+
+**Numbers set, recorded for the morning review (every one from the sprint doc's own approved lever
+list, transcribed verbatim into `economy.json`/`buyers.json`; none invented):**
+
+- Rename: `stancer` -> `show-crowd` (displayName "Show Crowd", was "Shakotan"), `first-timer` ->
+  `daily-drivers` (displayName "Daily Drivers", was "First-timer"). No `statTargets`,
+  `tierPreferences` or `wantLine` content moved for either.
+- `valuation.tolerance`: `show-crowd` 0.0 (unmoved value, renamed key), `tuner` 0.5 (unchanged),
+  `touge` 1.0 (new, authored explicitly rather than left to inherit `default`).
+- Tuner importances: power 0.9 -> 0.6, handling 0.6 -> 0.7, style 0.4 -> 0.6, reliability 0.4 -> 0.6.
+  Targets and authenticity (target 0, importance 0) untouched.
+- Touge (new): handling target 0.75 importance 1.0; power target 0.7 importance 0.6 (provisional,
+  per the sprint doc, pending sprint 175); style target 0.3 importance 0.2; reliability target 0.6
+  importance 0.5; authenticity target 0 importance 0. `tierPreferences` enthusiast 0.8, everyday 0.6,
+  entry 0.3.
+- `buyerPoolWeights` re-authored on `shopFront`/`freeAdsPaper`/`tunerMagazine`/`weekendMeet` and
+  authored fresh on `collectorNetwork`, exactly per the sprint doc's approved table (collector /
+  tuner / show-crowd / racer / daily-drivers / touge): shopFront 1/1/1/1/1/1; freeAdsPaper
+  0.4/0.7/0.5/0.2/2.0/0.3; tunerMagazine 0.2/1.6/0.3/1.8/0.05/1.4; weekendMeet
+  0.3/1.5/2.2/0.4/0.4/1.0; collectorNetwork 3.0/0.2/0.1/0.2/0.05/0.1.
+- `collectorNetwork`: `feeYen` 20000, `tasteCeiling` 1.20, `matchedOnly` true, `poolWidening` 0.3,
+  `requiresForecourt` true, `oneDrawNextEndDay` true (the weekend meet's shape, reused - see the
+  decision note below).
+- `SAVE_VERSION` 59 -> 60 (Dexie/save-schema bump only, no migration, no golden-save test, per
+  directive 19 - the rename/deletion touches persisted `buyerId`/`channelId` string values).
+- Mechanical, not independent levers: `storyMissions.json`'s `first-proper-car` and `low-and-loud`
+  `tasteMatch.buyerId` fields renamed with their `minMultiplier` unchanged (1.08, 1.09 - neither
+  archetype's targets moved). `street-power-street-manners`'s tuner `minMultiplier` re-derived from
+  a fresh probe run (the tuner's own retune changed the measured ratio): 1.06 -> 1.05.
+
+**Decisions the sprint doc left open, made here, flagged for review:**
+
+1. **Naming convention for the two renamed/new multi-word archetype ids**: kebab-case
+   (`daily-drivers`, `show-crowd`), matching the existing `Buyer.id` regex
+   (`/^[a-z0-9-]+$/`, kebab-case enforced) and the precedent `first-timer` already set. The sprint
+   doc's own lever table used camelCase headers (`showCrowd`, `dailyDrivers`) for table-column
+   brevity; I read that as informal table typesetting rather than a normative id, since camelCase
+   would fail the `id` field's own regex. `touge` and `collectorNetwork` are unambiguous either way
+   (single word / matches the channel id convention, which IS camelCase, e.g. `tunerMagazine`).
+2. **The Collector Network channel's gate**: authored OPEN from day one, not reputation-gated,
+   despite the design's "reputation-gated members' club" framing. Mechanically verified: no story
+   mission in this content names `unlocksAuctionTier: "collector-network"` either, so the buying-side
+   tier the fiction describes is *also* unreached by any mission today - "whatever gate it inherits"
+   (the lever list's own words) inherits nothing, because there is nothing to inherit. Authoring a
+   new story mission to gate it was outside this sprint's scope (content-only, no new mission
+   content named or approved). Flag for the maintainer: either author an unlocking mission in a
+   future sprint, or treat "open from day one, high fee, matched-only" as the real gate.
+3. **`oneDrawNextEndDay` mechanically ties BOTH one-draw channels to the identical single weekly day**
+   (`calendar.meetDayOfWeek`, via `isMeetDay`). The Collector Network's "fortnightly" framing is
+   fiction the schema does not mechanically enforce - building a real biweekly cadence would have
+   meant inventing a new scheduler, which the sprint doc explicitly said not to do. Recorded as a
+   real, not cosmetic, simplification.
+4. **A genuinely surprising measured consequence, not a bug**: with the Show Crowd's weekend-meet
+   weight raised to 2.2, the Show Crowd is now the meet's most-likely buyer for almost any car,
+   including ones it does not actually want (a stock kei, style far under its target). For that kei,
+   the weekend meet now prices LOWEST of the four day-one-comparable channels (¥224,894), below even
+   the free shop front (¥230,000) - the free ads paper stays the standout at ¥241,500. This is a
+   direct, correctly-measured consequence of the approved weights, not a defect; `selling.test.ts`
+   was rewritten to assert the new, verified relationship rather than the old one.
+5. **The Touge want-line** (new copy, Vimes voice): "Wants to know how it turns in, not how fast it
+   leaves a corner. A car that won't commit to the apex is no good on the pass."
+
+**Failing tests diagnosed (directive 17) - all case (a), stale assertions the intentional content
+change made wrong, none were regressions:**
+
+- `coherenceValuation.test.ts`'s tolerance-ruling block referenced the old ids directly; renamed in
+  place, values unchanged.
+- `selling.test.ts`: three real failures against a fresh run - (i) `listedOn`'s helper threw on a
+  test's own synthetic, never-shipped channel id (fixed with optional chaining, not a content
+  question); (ii) the "weekend meet is best-priced for a kei" test's premise no longer holds (see
+  decision 4 above) - rewritten to assert what is now true, measured against the same real code path
+  the old test used, never hand-picked; (iii) several id-list assertions (`likelyBuyerIds`,
+  `keiInterested`) recomputed from the buyers who genuinely state an `entry`-tier preference under
+  the new archetype set (`daily-drivers`, `touge`).
+- `storyMissionProbes.test.ts`: `street-power-street-manners`'s pinned `tuner` `minMultiplier`
+  (1.06) no longer matched a fresh measurement (1.05) after the tuner's retune - re-pinned to the
+  freshly measured value, per this file's own established methodology.
+- `economyApprovalGate.test.ts`: the `economy.json` content hash changed as expected; re-pinned in
+  the same change as this Exit, alongside the new ledger entry recording every lever above.
+
+**Not touched, deliberately, per "Deliberately not here":** no standing, no stages, no band, no
+ledger, no drift archetype, no change to how taste is computed.

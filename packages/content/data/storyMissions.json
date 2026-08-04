@@ -76,7 +76,7 @@
     "requirements": [
       {
         "kind": "tasteMatch",
-        "buyerId": "first-timer",
+        "buyerId": "daily-drivers",
         "minMultiplier": 1.08
       },
       {
@@ -178,7 +178,7 @@
     "requirements": [
       {
         "kind": "tasteMatch",
-        "buyerId": "stancer",
+        "buyerId": "show-crowd",
         "minMultiplier": 1.09
       },
       {
@@ -218,7 +218,7 @@
       {
         "kind": "tasteMatch",
         "buyerId": "tuner",
-        "minMultiplier": 1.06
+        "minMultiplier": 1.05
       }
     ],
     "budgetCapYen": 1494000,

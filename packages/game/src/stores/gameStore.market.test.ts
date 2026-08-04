@@ -144,7 +144,7 @@ describe('market: selling', () => {
           weekendMeetPending: false,
         },
       ],
-      pendingOffers: [{ carInstanceId: carId, buyerId: 'first-timer', priceYen: 500_000 }],
+      pendingOffers: [{ carInstanceId: carId, buyerId: 'daily-drivers', priceYen: 500_000 }],
     }
 
     expect(game.rejectOffer(carId)).toBe(true)
@@ -304,7 +304,7 @@ describe('market: selling', () => {
           weekendMeetPending: false,
         },
       ],
-      pendingOffers: [{ carInstanceId: carId, buyerId: 'first-timer', priceYen: 500_000 }],
+      pendingOffers: [{ carInstanceId: carId, buyerId: 'daily-drivers', priceYen: 500_000 }],
       carLedgers: {},
     }
 
@@ -328,7 +328,7 @@ describe('market: selling', () => {
           weekendMeetPending: false,
         },
       ],
-      pendingOffers: [{ carInstanceId: carId, buyerId: 'first-timer', priceYen: 500_000 }],
+      pendingOffers: [{ carInstanceId: carId, buyerId: 'daily-drivers', priceYen: 500_000 }],
     }
 
     expect(game.acceptOffer(carId)).toBe(true)
@@ -352,7 +352,7 @@ describe('market: selling', () => {
           weekendMeetPending: false,
         },
       ],
-      pendingOffers: [{ carInstanceId: carId, buyerId: 'first-timer', priceYen: 500_000 }],
+      pendingOffers: [{ carInstanceId: carId, buyerId: 'daily-drivers', priceYen: 500_000 }],
     }
     expect(game.offerFor(carId)?.priceYen).toBe(500_000)
 

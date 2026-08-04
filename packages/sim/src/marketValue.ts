@@ -307,7 +307,7 @@ export function foundationFactor(car: CarInstance, economy: EconomyConfig): numb
  * accident. Every buyer-agnostic caller (the auction anchor, diagnosis
  * pricing, the balance probes, taste-blind exits) gets this default and is
  * correct; only `valuateCarForBuyer` and `valuateCarForBuyerViaChannel` pass
- * a buyer's own tolerance (the stancer ignores the discount entirely, the
+ * a buyer's own tolerance (the Show Crowd ignores the discount entirely, the
  * tuner halves it), read from `economy.valuation.tolerance`.
  *
  * Every other price (the auction anchor, walk-in offers, listing asking

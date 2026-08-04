@@ -745,7 +745,7 @@ function listedOn(
       carInstanceId: car.id,
       offersSeen: 0,
       channelId,
-      weekendMeetPending: channelId === 'weekendMeet',
+      weekendMeetPending: CONTEXT.economy.sellingChannels[channelId]?.oneDrawNextEndDay === true,
       ...overrides,
     },
   ]
@@ -887,7 +887,7 @@ describe('drawDailyOffers (Sprint 31 decision 2; channels, Sprint 114)', () => {
      */
     const inauthenticityAverseBuyer = {
       id: 'entry-authenticity-only',
-      archetype: 'first-timer' as const,
+      archetype: 'daily-drivers' as const,
       displayName: 'Entry Authenticity Only',
       statTargets: {
         power: { target: 0, importance: 0 },
@@ -1321,6 +1321,7 @@ describe('ceiling clamps (Sprint 114): honest, per the lever table', () => {
       'freeAdsPaper',
       'tunerMagazine',
       'weekendMeet',
+      'collectorNetwork',
     ] as const) {
       const ceiling = ECONOMY.sellingChannels[channelId].tasteCeiling!
       const taste = channelBuyerTaste(
@@ -1372,7 +1373,8 @@ describe('a channel is a buyer base (sprint156)', () => {
     seedCount = 200,
     stateOverrides: Partial<GameState> = {},
   ): { buyerId: string; priceYen: number }[] {
-    const day = channelId === 'weekendMeet' ? MEET_DAY : 1
+    const oneDraw = CONTEXT.economy.sellingChannels[channelId].oneDrawNextEndDay === true
+    const day = oneDraw ? MEET_DAY : 1
     const base = stateWithCar(target, {
       day,
       carsForSale: [
@@ -1380,7 +1382,7 @@ describe('a channel is a buyer base (sprint156)', () => {
           carInstanceId: target.id,
           offersSeen: 0,
           channelId,
-          weekendMeetPending: channelId === 'weekendMeet',
+          weekendMeetPending: oneDraw,
         },
       ],
       ...stateOverrides,
@@ -1460,7 +1462,9 @@ describe('a channel is a buyer base (sprint156)', () => {
       expect(shareOf(magazineOffers, ['tuner', 'racer'])).toBeGreaterThan(
         shareOf(meetOffers, ['tuner', 'racer']),
       )
-      expect(shareOf(meetOffers, ['stancer'])).toBeGreaterThan(shareOf(magazineOffers, ['stancer']))
+      expect(shareOf(meetOffers, ['show-crowd'])).toBeGreaterThan(
+        shareOf(magazineOffers, ['show-crowd']),
+      )
     })
   })
 
@@ -1473,7 +1477,7 @@ describe('a channel is a buyer base (sprint156)', () => {
       const keiInterested = CONTEXT.buyers
         .filter((b) => b.tierPreferences.some((p) => p.tier === KEI_MODEL.tier && p.weight > 0))
         .map((b) => b.id)
-      expect(keiInterested).toEqual(expect.arrayContaining(['first-timer', 'hobbyist']))
+      expect(keiInterested).toEqual(expect.arrayContaining(['daily-drivers', 'touge']))
       const paperOffers = sweep(keiCar, KEI_MODEL, 'freeAdsPaper')
       const shopOffers = sweep(keiCar, KEI_MODEL, 'shopFront')
       expect(paperOffers.length).toBeGreaterThan(20)
@@ -1502,15 +1506,27 @@ describe('a channel is a buyer base (sprint156)', () => {
       ).toBe(true)
     })
 
-    it('the weekend meet is the best-priced channel of the five once it opens, and the hobbyist is who it brings', () => {
+    /**
+     * The Show Crowd's own meet weight rose to 2.2 (the single highest weight
+     * on any persona channel), which makes the Show Crowd the meet's likely
+     * buyer for almost any car, including a boring stock kei it does not
+     * actually want (style far under its target). So the meet, once unlocked,
+     * no longer dominates for this tier - the free ads paper does, and stays
+     * the best-priced of the four even once the meet opens. Measured, not
+     * assumed: daily-drivers 230,000 (shopFront) / 241,500 (freeAdsPaper),
+     * racer 229,562 (tunerMagazine), show-crowd 224,894 (weekendMeet).
+     */
+    it('the free ads paper stays the best-priced channel of the four even once the weekend meet opens', () => {
       const quotes = (['shopFront', 'freeAdsPaper', 'tunerMagazine', 'weekendMeet'] as const).map(
         (channelId) => ({ channelId, ...channelQuote(keiCar, KEI_MODEL, channelId) }),
       )
+      const paper = quotes.find((q) => q.channelId === 'freeAdsPaper')!
       const meet = quotes.find((q) => q.channelId === 'weekendMeet')!
-      expect(meet.buyerId).toBe('hobbyist')
+      expect(paper.buyerId).toBe('daily-drivers')
+      expect(meet.buyerId).toBe('show-crowd')
       for (const quote of quotes) {
-        if (quote.channelId === 'weekendMeet') continue
-        expect(meet.priceYen, `${quote.channelId}`).toBeGreaterThan(quote.priceYen)
+        if (quote.channelId === 'freeAdsPaper') continue
+        expect(paper.priceYen, `${quote.channelId}`).toBeGreaterThan(quote.priceYen)
       }
     })
 
@@ -1535,14 +1551,15 @@ describe('a channel is a buyer base (sprint156)', () => {
       expect(ECONOMY.sellingChannels.freeAdsPaper.feeYen).toBeLessThan(
         ECONOMY.sellingChannels.tunerMagazine.feeYen,
       )
-      // And the magazine's own authoring says who it is for: the two practical
-      // archetypes a kei sells to are the bottom of its pool and the top of
-      // the paper's.
+      // And the magazine's own authoring says who it is for: Daily Drivers,
+      // the practical archetype a kei sells to (hobbyist's deleted demand
+      // inherited it), sits at the bottom of its pool and the top of the
+      // paper's. Touge also has an entry-tier interest, but is a magazine
+      // scene by nature (handling press), not a paper one, so it does not
+      // share this direction and is deliberately not asserted here.
       const magazine = ECONOMY.sellingChannels.tunerMagazine.buyerPoolWeights!
       const paper = ECONOMY.sellingChannels.freeAdsPaper.buyerPoolWeights!
-      for (const archetype of ['first-timer', 'hobbyist'] as const) {
-        expect(magazine[archetype]).toBeLessThan(paper[archetype])
-      }
+      expect(magazine['daily-drivers']).toBeLessThan(paper['daily-drivers'])
     })
   })
 
@@ -1707,16 +1724,16 @@ describe('a channel is a buyer base (sprint156)', () => {
     }
 
     it('without it, only archetypes that state an interest in the tier can be drawn', () => {
-      expect(likelyBuyerIds({ focusExponent: 1 })).toEqual(['first-timer', 'hobbyist'])
+      expect(likelyBuyerIds({ focusExponent: 1 })).toEqual(['daily-drivers', 'touge'])
     })
 
     it('with it, the rest of the market can be reached too', () => {
       expect(likelyBuyerIds({ focusExponent: 1, poolWidening: 0.25 })).toEqual([
         'collector',
-        'first-timer',
-        'hobbyist',
+        'daily-drivers',
         'racer',
-        'stancer',
+        'show-crowd',
+        'touge',
         'tuner',
       ])
     })
@@ -1739,9 +1756,9 @@ describe('a channel is a buyer base (sprint156)', () => {
       })
       expect(unknown.length).toBeGreaterThan(20)
       expect(legend.length).toBeGreaterThan(20)
-      // The meet's own top-weighted archetype is the stancer (1.8); standing
+      // The meet's own top-weighted archetype is the Show Crowd (2.2); standing
       // sharpens the pool toward it rather than opening anything new.
-      expect(shareOf(legend, ['stancer'])).toBeGreaterThan(shareOf(unknown, ['stancer']))
+      expect(shareOf(legend, ['show-crowd'])).toBeGreaterThan(shareOf(unknown, ['show-crowd']))
     })
 
     it('is exactly 1 at unknown, so a new career draws every pool as authored', () => {
@@ -1750,7 +1767,7 @@ describe('a channel is a buyer base (sprint156)', () => {
   })
 
   describe('the trade network keeps its reason to exist', () => {
-    it('is the only channel that needs no forecourt slot, and the fastest of the five', () => {
+    it('is the only channel that needs no forecourt slot, and the fastest of the six', () => {
       const channels = ECONOMY.sellingChannels
       const noForecourt = Object.entries(channels)
         .filter(([, c]) => !c.requiresForecourt)
@@ -1855,14 +1872,14 @@ describe('reputation side effects (Sprint 15; re-based on bands, Sprint 26; Spri
   it('accepting an offer on a lemon logs the applied loss, not the nominal penalty (Sprint 24 fix 3)', () => {
     // A player at 2 points selling a lemon (nominal -5) only has 2 to
     // lose - `applyReputationDelta` floors at 0.
-    const state = stateWithOffer(lemonCar, 300_000, 'first-timer', { reputationPoints: 2 })
+    const state = stateWithOffer(lemonCar, 300_000, 'daily-drivers', { reputationPoints: 2 })
     const result = resolveSellViaWalkIn(state, lemonCar.id, CONTEXT)
     expect(result.state.reputationPoints).toBe(0)
     expect(result.log[0]).toMatchObject({ reputationDelta: -2, saleQuality: 'lemon' })
   })
 
   it('accepting an offer on a lemon already at zero reputation has nothing left to lose, so logs no reputationDelta', () => {
-    const state = stateWithOffer(lemonCar, 300_000, 'first-timer') // reputationPoints: 0
+    const state = stateWithOffer(lemonCar, 300_000, 'daily-drivers') // reputationPoints: 0
     const result = resolveSellViaWalkIn(state, lemonCar.id, CONTEXT)
     expect(result.state.reputationPoints).toBe(0)
     expect(result.log[0]).not.toHaveProperty('reputationDelta')
