@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { DamagePatternIdSchema } from './damagePattern'
 import { DamageGradeSchema } from './economy'
 import { PartInstanceSchema } from './part'
-import { CarPartIdSchema, ConditionBandSchema } from './tags'
+import { CarPartIdSchema, ConditionBandSchema, GradeSchema } from './tags'
 
 /**
  * One real car part's condition state. The part occupying the slot - stock
@@ -94,16 +94,26 @@ const CarSymptomSchema = z.object({
  * flaking or bare), `panelMissing` (true only while the zone's panel is
  * absent - rolled off a heavy history at generation, or removed by the
  * player and not yet replaced), `colour` (set at the paint stage, absent
- * until first painted), and `primed` (true once the prime stage has run,
+ * until first painted), `primed` (true once the prime stage has run,
  * staying true until the paint stage consumes it or a fresh strip/prep bares
  * the zone again - the readiness gate the paint stage checks, since priming
- * does not itself move `finish`).
+ * does not itself move `finish`), and `panelGrade` (the grade of the physical
+ * panel currently occupying the zone - a bonnet, a bumper, a skirt - set
+ * whenever a real panel is fitted (`bodyPipeline.ts`'s `planInstallPanel`).
+ * Absent reads as `stock`: generation and the whole-car carrier refit path
+ * both only ever fit a stock panel, so a zone nobody has touched through the
+ * per-zone install pipeline is always this. Meaningless while `panelMissing`
+ * is true - a missing panel has no grade to report, and nothing reads this
+ * field without checking `panelMissing` first - so it is left stale rather
+ * than cleared on removal, the same choice already made for every other
+ * field a missing zone carries.
  */
 const TRIM_ZONE_FIELDS = {
   finish: z.number().int().min(0).max(3),
   panelMissing: z.boolean(),
   colour: z.string().min(1).optional(),
   primed: z.boolean().default(false),
+  panelGrade: GradeSchema.optional(),
 }
 
 /**

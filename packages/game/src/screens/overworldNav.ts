@@ -15,12 +15,16 @@ import { OVERWORLD_PLACEMENTS } from '../pixi/overworld/overworldMap'
  */
 
 export type OverworldDestination =
-  { kind: 'route'; to: RouteLocationRaw } | { kind: 'inert'; message: string }
+  | { kind: 'route'; to: RouteLocationRaw }
+  | { kind: 'inert'; message: string }
+  /** Somewhere you do a thing rather than somewhere you go. The cafe is the
+   * only one: you buy the crew a round and walk back out, so sending the
+   * player to a screen for it would be a page they immediately leave. */
+  | { kind: 'action'; action: 'buy-coffee' }
 
 /** Why a building that is not open yet stays shut, in the shop's own dry
  * voice - never a blank page, never an apology. */
 const INERT_MESSAGE_BY_LOCATION: Partial<Record<OverworldLocationId, string>> = {
-  cafe: "Shut. Whatever's meant to happen in there, it hasn't started yet.",
   bank: "Not open for business. Whatever's behind that glass, it isn't loans.",
 }
 
@@ -67,6 +71,7 @@ const ROUTE_BY_LOCATION: Partial<Record<OverworldLocationId, RouteLocationRaw>> 
 /** What clicking `id` does: navigate, or refuse with a short reason. Every
  * one of the fifteen locations resolves to exactly one of these two. */
 export function destinationFor(id: OverworldLocationId): OverworldDestination {
+  if (id === 'cafe') return { kind: 'action', action: 'buy-coffee' }
   if (INERT_LOCATIONS.includes(id)) {
     return { kind: 'inert', message: INERT_MESSAGE_BY_LOCATION[id] ?? 'Not open yet.' }
   }

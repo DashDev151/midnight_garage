@@ -478,7 +478,10 @@ function resolvePipelineRemovePanelAction(
  * class, not a band-step unit - no separate materials charge, since the new
  * panel's price was already paid at purchase and lands on the car's ledger
  * here, the same moment `completeJob`'s install-part branch posts a part's
- * cost.
+ * cost. Also records the fitted SKU's own grade onto the zone
+ * (`planInstallPanel`'s `grade` argument), which is what lets the car read as
+ * modified the moment a non-stock panel goes on - the zone, not the whole-car
+ * carrier, is now the truth about which panel is actually fitted.
  */
 function resolvePipelineInstallPanelAction(
   state: GameState,
@@ -509,7 +512,7 @@ function resolvePipelineInstallPanelAction(
   const laborSlotsRequired = context.economy.energy.energyByClass['bolt-on']
   if (laborSlotsRequired > laborAvailable) return NOOP_PIPELINE_RESULT(state)
 
-  const nextZone = planInstallPanel(zone, newPanelInstance.band)
+  const nextZone = planInstallPanel(zone, newPanelInstance.band, newPanelCatalogPart.grade)
   const nextCar = applyDerivedBodyBands(
     { ...car, zoneState: { ...car.zoneState, [action.zoneId]: nextZone } },
     model,

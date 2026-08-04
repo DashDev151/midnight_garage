@@ -98,10 +98,15 @@ function bodyRepairEnergy(tier: 1 | 2 | 3): number {
   ).laborSlotsRequired
 }
 
-describe('Sprint 94 energy-bar calibration (day-1 unchanged; tools + staff loosen)', () => {
-  it('a fresh solo tier-1 shop starts with the day-1-unchanged base pool (old PLAYER_BASE_LABOR_SLOTS x pointsPerLabour = 6 x 10)', () => {
+describe('energy-bar calibration (a day holds more than it used to; tools + staff loosen further)', () => {
+  /**
+   * The base pool was raised from 6 labour slots to 8 because a day ran out
+   * too soon to finish anything satisfying. Every labour COST is untouched:
+   * only the pool grew, so the same work simply fits.
+   */
+  it('a fresh solo tier-1 shop starts on the base pool of 8 labour slots', () => {
     expect(energyMax(stateWithStaff([]), ECONOMY)).toBe(basePoolPoints)
-    expect(basePoolPoints).toBe(6 * pointsPerLabour)
+    expect(basePoolPoints).toBe(8 * pointsPerLabour)
     // The labour retune halves tier 1's per-band-step cost (case (a), an
     // intentional pacing change): a band step now costs half a labour slot,
     // not a whole one.
@@ -141,12 +146,14 @@ describe('Sprint 94 energy-bar calibration (day-1 unchanged; tools + staff loose
     const lateThroughput = lateDaily / EPG[3]
 
     const ratio = lateThroughput / day1Throughput
-    // The honest day-1 -> late-game loosening curve, pinned as assertions (not a
-    // console disclosure - sim has no DOM/node lib). The labour retune (case
-    // (a), an intentional pacing change) moves day-1 to 12 grades/day; late
-    // game (tier-3 + a full 2-slot bench) is 140/3.
-    expect(day1Throughput).toBe(12)
-    expect(lateThroughput).toBe(140 / 3)
+    // The honest day-1 to late-game loosening curve, pinned as assertions (not
+    // a console disclosure - sim has no DOM/node lib). Raising the base pool to
+    // 8 slots lifts BOTH ends by the same 20 points, so day 1 climbs 16 grades
+    // and the late game 160/3, and the gap between them narrows slightly rather
+    // than widening: a bigger starting day is worth proportionally more to a
+    // shop that has nothing else.
+    expect(day1Throughput).toBe(16)
+    expect(lateThroughput).toBe(160 / 3)
     // The gate: the loosening is real (late game genuinely out-works day 1) but
     // not absurd (an order of magnitude is the sane ceiling for this arc).
     expect(ratio).toBeGreaterThan(1)

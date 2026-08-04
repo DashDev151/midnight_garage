@@ -228,6 +228,8 @@ export function describeLogEntry(
       return `Hired the rolling road for the day (${formatYen(entry.priceYen)})`
     case 'dyno-bought':
       return `Bought a rolling road for ${formatYen(entry.priceYen)}`
+    case 'coffee-bought':
+      return `Coffee round for the crew: +${entry.labourPoints} labour (${formatYen(entry.priceYen)})`
     case 'shell-scrapped': {
       const withParts =
         entry.carPartIds.length > 0

@@ -5,14 +5,18 @@ import { useRouter } from 'vue-router'
 import { OVERWORLD_LOCATION_LABELS, type OverworldLocationId } from '../pixi/overworld/buildings'
 import { buildOverworldScene, SCENE_HEIGHT, SCENE_WIDTH } from '../pixi/overworld/overworldMap'
 import { HOVER_OUTLINE } from '../pixi/overworld/overworldPalette'
+import { useGameStore } from '../stores/gameStore'
 import { boundsFor, destinationFor, locationAt } from './overworldNav'
 
 /**
  * The map you travel on: a Pixi host rendering the 960x540 overworld scene,
  * with its fifteen locations hit-tested on click. A real destination is
  * plain navigation and nothing else changes - no labour, no time, no day
- * advance. The two inert buildings (the cafe, the bank) refuse the click and
- * say so instead of navigating anywhere.
+ * advance. The bank is drawn but not open, and refuses the click with a
+ * reason rather than navigating to an empty page. The cafe is neither: it is
+ * somewhere you DO a thing, so clicking it buys the crew a round on the spot
+ * and leaves you on the map, since a screen you would immediately walk back
+ * out of is not worth having.
  *
  * Follows `PaintPaletteScreen.vue`'s own Pixi lifecycle: an `Application`
  * created on mount, torn down on unmount. The scene itself never changes
@@ -23,6 +27,7 @@ import { boundsFor, destinationFor, locationAt } from './overworldNav'
  */
 
 const router = useRouter()
+const game = useGameStore()
 const host = ref<HTMLDivElement | null>(null)
 const refusalNote = ref<string | null>(null)
 const hoveredLocationId = ref<OverworldLocationId | null>(null)
@@ -49,12 +54,37 @@ function drawHoverOutline(id: OverworldLocationId | null): void {
     .stroke({ width: 2, color: HOVER_OUTLINE })
 }
 
+/** What the cafe says back, whether or not it served you. Each refusal names
+ * the real reason: the round is once a day, there is nothing to buy back on a
+ * full pool, and cash is cash. */
+function coffeeNote(): string {
+  const priceYen = game.coffeePriceYen
+  switch (game.coffeeGateReason) {
+    case 'day-limit':
+      return 'You have had your round today. Any more and nobody does any work.'
+    case 'pool-full':
+      return 'Nothing to buy back yet. Come and see us when the day has worn you down a bit.'
+    case 'no-cash':
+      return `A round is ${priceYen.toLocaleString()} yen and the till says otherwise.`
+    default:
+      return `Coffee all round, ${priceYen.toLocaleString()} yen. Back to it.`
+  }
+}
+
 function onCanvasClick(event: MouseEvent): void {
   const id = locationAt(event.offsetX, event.offsetY)
   if (!id) return
   const destination = destinationFor(id)
   if (destination.kind === 'inert') {
     refusalNote.value = destination.message
+    return
+  }
+  if (destination.kind === 'action') {
+    // The note is read BEFORE the purchase, so a successful round reports the
+    // price that was actually charged rather than what the next one would cost.
+    const note = coffeeNote()
+    game.buyCoffee()
+    refusalNote.value = note
     return
   }
   refusalNote.value = null

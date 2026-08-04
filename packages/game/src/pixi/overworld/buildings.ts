@@ -78,7 +78,7 @@ export type OverworldLocationId =
 
 /** Locations that are drawn but have no destination screen: shuttered,
  * dark-windowed, closed for now rather than a broken link. */
-export const INERT_LOCATIONS: readonly OverworldLocationId[] = ['cafe', 'bank']
+export const INERT_LOCATIONS: readonly OverworldLocationId[] = ['bank']
 
 // --- The garage: home, the hero building, roller door facing the viewer ---
 const GARAGE_TEMPLATE = [

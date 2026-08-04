@@ -848,7 +848,7 @@
   },
   "energy": {
     "pointsPerLabour": 10,
-    "basePoolPoints": 60,
+    "basePoolPoints": 80,
     "energyPerBandStepByToolTier": {
       "1": 5,
       "2": 4,
@@ -873,6 +873,12 @@
       "workup": 10,
       "inspectionVisit": 10
     }
+  },
+  "cafe": {
+    "coffeeLabourPoints": 20,
+    "coffeeBasePriceYen": 1000,
+    "coffeePerStaffYen": 1000,
+    "maxPurchasesPerDay": 1
   },
   "machineShopAssist": {
     "feeYenByGroup": {

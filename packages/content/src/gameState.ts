@@ -544,6 +544,19 @@ export const GameStateSchema = z.object({
    */
   dyno: DynoStateSchema.optional(),
   /**
+   * How many coffee rounds have been bought at the cafe today
+   * (`resolveBuyCoffee`, sim/cafe.ts), and which day that count is for - the
+   * count reads as zero the moment `day` no longer matches `state.day`, the
+   * same day-stamp idiom `dyno.hirePaidDay`/`machineHirePaidDayByGroup` use
+   * for a once-a-day charge, generalised to a counted daily cap
+   * (`economy.cafe.maxPurchasesPerDay`). The genuinely-optional-key pattern
+   * (like `machineHirePaidDayByGroup` above), so no existing `GameState`
+   * literal needs touching; readers treat absent as no coffee bought yet.
+   */
+  cafeCoffeesBoughtToday: z
+    .object({ day: z.number().int().positive(), count: z.number().int().positive() })
+    .optional(),
+  /**
    * Consumable tins on the shelf, counted in USES rather than tins: a map of
    * consumable key to how many uses remain (docs/design/systems/
    * consumables-as-stock.md). Filler, paper, primer and polish key off their
@@ -1012,6 +1025,15 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('dyno-bought'),
     priceYen: z.number().int().nonnegative(),
+  }),
+  /** A coffee round was bought at the cafe (`resolveBuyCoffee`, sim/cafe.ts) -
+   * a running cost, the same bucket a machine hire or a dyno hire lands in.
+   * `labourPoints` is what the round actually restored, which can read below
+   * `economy.cafe.coffeeLabourPoints` when less than that was still spent. */
+  z.object({
+    type: z.literal('coffee-bought'),
+    priceYen: z.number().int().nonnegative(),
+    labourPoints: z.number().int().nonnegative(),
   }),
   /** `beginInspectionVisit` started a yard visit. */
   z.object({

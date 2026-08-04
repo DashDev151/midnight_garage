@@ -133,6 +133,26 @@ export function derivePanelsBand(zoneStates: ZoneStates): ConditionBand {
   return bandForSeverity(worst)
 }
 
+/**
+ * The originality counterpart to `derivePanelsBand` above: whether every one
+ * of the nine zones still wears its original panel - present (not
+ * `panelMissing`) and never fitted with anything but a stock-grade one
+ * (`panelGrade` absent reads as stock, see `TRIM_ZONE_FIELDS`'s own comment).
+ * Worst-governs, the same rule the band already applies to condition: one
+ * aftermarket panel, anywhere, makes the whole carrier non-original, exactly
+ * as one gone panel is enough to force `scrap` above. This is what
+ * `stocknessOf` (`derivedStats.ts`) reads instead of the carrier SKU's own
+ * grade - every non-stock panel SKU is zone-scoped and can never reach
+ * `car.parts.panels.installed.partId`, so that field never moves and cannot
+ * answer this question any more.
+ */
+export function panelsAreAllStock(zoneStates: ZoneStates): boolean {
+  return PANEL_ZONE_IDS.every((zoneId) => {
+    const zone = zoneStates[zoneId]
+    return !zone.panelMissing && (zone.panelGrade ?? 'stock') === 'stock'
+  })
+}
+
 /** The colours a car's `factoryColour` pool entry authorises: the entry
  * itself for a single-colour car, or both halves of an `a+b` two-tone entry.
  * Shared by the paint stage's stock-grade gate and the paint band's mismatch
@@ -908,12 +928,27 @@ export function planPipelineStage(
  * `scrap` panel harvested off another shell leaves the zone exactly as
  * beyond saving as the panel is.
  *
+ * `grade` records the fitted panel's own catalog grade onto the zone
+ * (`panelGrade` - see `TRIM_ZONE_FIELDS`'s own comment), which is what lets
+ * `panelsAreAllStock` above answer originality without ever reading the
+ * whole-car carrier's own SKU. Defaults to `stock` because every caller below
+ * except the live install action (`stagedWork.ts`'s
+ * `resolvePipelineInstallPanelAction`, which passes the player's actual
+ * fitted grade) fits a stock replacement panel: generation's own refit,
+ * the whole-car carrier refit (`refitCarrierZoneStates`, reachable only with
+ * the stock carrier SKU - every non-stock one is zone-scoped and refused
+ * there), and every repair-bill projection below.
+ *
  * The one function both the STAGED player action (install a panel from the
  * shelf) and the pure bill-quoting/carrier-refit walks below call - a fresh
  * panel is one physical fact, quoted or actually fitted through the same
  * arithmetic either way.
  */
-export function planInstallPanel(zone: ZoneState, panelBand: ConditionBand): ZoneState {
+export function planInstallPanel(
+  zone: ZoneState,
+  panelBand: ConditionBand,
+  grade: Grade = 'stock',
+): ZoneState {
   if (isMetalZoneState(zone)) {
     return {
       metal: severityThresholdForBand(panelBand),
@@ -921,9 +956,10 @@ export function planInstallPanel(zone: ZoneState, panelBand: ConditionBand): Zon
       finish: BARE_FINISH,
       panelMissing: false,
       primed: false,
+      panelGrade: grade,
     }
   }
-  return { finish: BARE_FINISH, panelMissing: false, primed: false }
+  return { finish: BARE_FINISH, panelMissing: false, primed: false, panelGrade: grade }
 }
 
 /** What pulling a zone's panel off leaves behind: missing, and otherwise

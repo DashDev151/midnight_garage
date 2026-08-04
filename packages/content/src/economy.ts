@@ -2488,9 +2488,10 @@ export const EconomyConfigSchema = z.object({
      * this. Display divides nothing: the point value the sim holds is the number
      * the player reads. */
     pointsPerLabour: z.number().int().positive(),
-    /** The solo shop's daily labour pool in points (`energyMax`'s base term) -
-     * the old `PLAYER_BASE_LABOR_SLOTS` x `pointsPerLabour`, so day-1 is
-     * unchanged. Benched staff add on top; the pool refills fully each day. */
+    /** The solo shop's daily labour pool in points (`energyMax`'s base term).
+     * Benched staff add on top; the pool refills fully each day, and a coffee
+     * round (`economy.cafe`) can add a little back mid-day without waiting
+     * for that refill. */
     basePoolPoints: z.number().int().positive(),
     /** Repair energy per band step climbed, by the group's tool tier (the
      * tool-tier speed axis, now on the bar). A repair costs `steps x
@@ -2536,6 +2537,32 @@ export const EconomyConfigSchema = z.object({
         inspectionVisit: z.number().int().nonnegative(),
       })
       .strict(),
+  }),
+  /**
+   * The cafe across the street: a coffee round buys labour back today for
+   * cash instead of waiting for tomorrow's refill (`resolveBuyCoffee`,
+   * sim/cafe.ts). It only refunds points already spent, so it never lifts
+   * the pool's own ceiling (`energyMax`, laborSlots.ts) and never advances
+   * the day. Capped at `maxPurchasesPerDay` - unlimited coffee would be
+   * unlimited labour for money, which would erase the day's own limit
+   * rather than merely loosen it the way a tool tier or a bench member does.
+   */
+  cafe: z.object({
+    /** Labour points one round restores, on the same energy-point scale
+     * every other labour figure uses. `resolveBuyCoffee` restores at most
+     * what is actually still spent today, so this can never push the pool
+     * above its own maximum. */
+    coffeeLabourPoints: z.number().int().positive(),
+    /** The flat part of the round's price - what a solo player with no crew
+     * would pay. */
+    coffeeBasePriceYen: z.number().int().nonnegative(),
+    /** Added once per staff member on the payroll (`state.staff.length`,
+     * bench or contract alike, the same headcount `applyWeeklyRentAndWages`
+     * pays a wage to): the round buys for the whole crew, not just whoever
+     * is on shift today. */
+    coffeePerStaffYen: z.number().int().nonnegative(),
+    /** How many rounds the cafe will sell in one day. */
+    maxPurchasesPerDay: z.number().int().positive(),
   }),
   /**
    * The machine-shop assist. Until the player owns the relevant tier-2

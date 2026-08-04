@@ -12,6 +12,7 @@ import {
   type StatBlock,
 } from '@midnight-garage/content'
 import { bandFactor, hasForcedInduction, isPartMissing, isPartPresent } from './bands'
+import { panelsAreAllStock } from './bodyPipeline'
 import {
   balanceOf,
   effectiveCompound,
@@ -109,6 +110,27 @@ function weightedBandFactorForStat(
  * for it. A slot the catalogue cannot resolve counts as not stock for the
  * same reason - an unknown SKU is not evidence of originality.
  *
+ * **`panels` is the one exception**, on a car that has a `zoneState` (the
+ * zone model - see `bodyPipeline.ts`): every non-stock panel SKU is
+ * zone-scoped and can never reach `car.parts.panels.installed.partId` (the
+ * whole-car carrier slot only ever accepts a stock SKU, `partFitsCar`
+ * refuses the rest), so that field can never answer "is this stock" for a
+ * zone-model car. `panelsAreAllStock` reads the zones directly instead -
+ * worst-governs, the same rule `derivePanelsBand` already uses for the
+ * carrier's condition: any single aftermarket panel drops the WHOLE slot's
+ * contribution to zero, same as an aftermarket carrier SKU would on every
+ * other slot.
+ *
+ * **Damage does not enter this.** A dented original wing is still the wing the
+ * car left the factory with: damaged, not replaced. An all-original car that
+ * has been kicked about reads perfectly authentic and poor on condition, which
+ * is exactly how the trade talks about one. Its damage is already charged
+ * twice over elsewhere, through style (panels and paint carry the style
+ * condition weight between them) and through value (`marketValueYen` subtracts
+ * the repair bill at a premium), so charging it here as well would be a third
+ * penalty for one fact. Missing and aftermarket are the two things that make a
+ * body less original, and both are handled above.
+ *
  * The one slot that drops out of BOTH sums is a legitimately absent one (an
  * NA car's `forcedInduction`), exactly as it does in `weightedBandFactor`
  * above: a car that never had a turbo is not missing one. On such a car the
@@ -132,6 +154,10 @@ export function stocknessOf(
     const installed = car.parts[entry.id].installed
     if (!installed && !isPartMissing(car, model, entry.id)) continue // legitimately absent
     totalWeight += weight
+    if (entry.id === 'panels' && car.zoneState) {
+      if (installed && panelsAreAllStock(car.zoneState)) stockWeight += weight
+      continue
+    }
     if (installed && partsById[installed.partId]?.grade === 'stock') stockWeight += weight
   }
   return totalWeight > 0 ? stockWeight / totalWeight : 1

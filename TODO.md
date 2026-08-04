@@ -757,9 +757,21 @@ pass."
   **The fix is NOT to raise the constant.** That moves the wall without removing it, and it changes
   what every buyer pays for power on every car at once. **The expectation should scale with the
   game**: as the player gains the ability to build higher-power cars, what customers want grows
-  with them. What that scales against (the player's own best build, reputation, the calendar, the
-  car's own class) is the design question, and it is a design question rather than a lever value,
-  which is why no number is proposed here.
+  with them.
+
+  **Maintainer's four inputs on what it should scale against (2026-08-04), none of them settled.**
+  This is deliberately open because it feeds the whole progression spine, not just one constant:
+
+  1. **What the player can reliably BUY.** If the auctions that sell Supras are still shut to them,
+     do not ask for that power band yet. Expectation should follow access.
+  2. **Hand-authored jobs**, keyed on something not yet decided.
+  3. **Their own best build so far**, at something like 10 to 15 per cent below it. Good, because it
+     measures what the game has actually shown to be possible and what this player can do. **But it
+     stalls on its own**: if demand only ever trails your best, you are never given a reason to
+     build a bigger one.
+  4. **Buyer type.** Racers should want the most power, then tuners, and so on down. The relative
+     targets already exist and are roughly right; it is the shared CEILING they all normalise
+     against that is wrong.
 
   **The stat radar is unaffected and must stay unaffected.** Its power scale is the separate
   `statFormulas.radarPowerCeilingPs` (800), a display-only field. A chart and a buyer want opposite
@@ -1078,6 +1090,22 @@ pass."
   is still untouched. The lever to decide first is the class ladder, not this fraction.
 
 ## Planned systems (designed, not yet scheduled)
+
+- [ ] **Bank loans: wanted, unplanned, and outside v1.0 until that changes (maintainer 2026-08-04).**
+  The bank stands on the overworld map already, drawn and inert. What it is for is settled in
+  principle: **take out a loan, pay it back with interest.**
+
+  It is deferred because it is a genuine new mechanic rather than a re-presentation of an existing
+  one, so it is a real exception to the v1.0 feature freeze and should be taken deliberately.
+  It also changes the shape of the early game outright: starting cash stops being a constraint and
+  becomes a choice, and a player gains the ability to dig a hole they cannot climb out of, which
+  wants designing rather than discovering.
+
+- [ ] **The 37 parody colour names are unswept, and that is fine for now (maintainer 2026-08-04:
+  "proper copy sweep comes much later").** They ship as proposals. The paint palette dev screen
+  shows each parody name beside its real one, which is the right way to judge them when the time
+  comes. Least confident: Fairground Yellow, Biscuit Brown, Chamois Yellow, and Shoreline Blue for
+  Bayside Blue.
 
 - [ ] **Cosmetic lighting, if it ever earns a slot (underglow cut 2026-08-03).** The Underglow Kit
   was the `underbody` slot's street SKU, and `underbody` was deleted and merged into `chassis` when

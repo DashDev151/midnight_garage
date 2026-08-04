@@ -574,8 +574,9 @@ describe('seed content validates against schemas', () => {
     if (!result.success) return
     // The x10 scale keeps every labour quantity an integer (no floats in sim).
     expect(result.data.energy.pointsPerLabour).toBe(10)
-    // Day-1 pool = old PLAYER_BASE_LABOR_SLOTS (6) x pointsPerLabour.
-    expect(result.data.energy.basePoolPoints).toBe(60)
+    // The day's pool, raised from 6 labour slots to 8 because a day ran out
+    // too soon to finish anything satisfying. Every labour COST is untouched.
+    expect(result.data.energy.basePoolPoints).toBe(80)
     // Tier reduces a repair's per-band-step cost, non-increasing up the tiers.
     // The labour retune (case (a), an intentional cost change, not a stale
     // expectation) sets tier 1/2/3 to 5/4/3.
@@ -590,8 +591,8 @@ describe('seed content validates against schemas', () => {
     // Every physical action's labour figure lives in this one map; zero means
     // the action is free, a raised figure gates and spends. The two knowledge
     // actions carry the old one-labour cost (10) on their own keys. Pulling a
-    // part costs 2 points, so stripping a whole car is just under a solo day's
-    // pool (60) and price is no longer the only brake on a teardown.
+    // part costs 2 points, so stripping a whole car sits comfortably inside a
+    // solo day's pool (80) and price is no longer the only brake on a teardown.
     expect(result.data.energy.actionPoints).toEqual({
       removePart: 2,
       removeAssembly: 0,
@@ -661,6 +662,7 @@ describe('seed content validates against schemas', () => {
       'auctionRoom',
       'staff',
       'auctionGrading',
+      'cafe',
     ].sort()
     expect(Object.keys(economy).sort()).toEqual(expectedTopLevelKeys)
   })

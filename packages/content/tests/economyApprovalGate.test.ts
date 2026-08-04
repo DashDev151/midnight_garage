@@ -1703,6 +1703,23 @@ import storyMissions from '../data/storyMissions.json'
  * No other mission's probe reads a body-derived slot at a price-relevant
  * band, so nothing else moves; `economy.json` and `partPricing.json` are
  * untouched, so their hashes hold.
+ *
+ * Re-pinned 2026-08-04 (maintainer approval, verbatim: "Lets keep the labour costs set, but
+ * increase the labour starting pool to 80", and for the cafe "Adds back a little labour lets say
+ * 20, but costs yen ... maybe make it like, 1000 yen to start with. Scaling up with another 1000
+ * for every staff member on staff. (buy coffee for the crew)"). Two changes, both wholly additive
+ * or a single named value:
+ *
+ * - `energy.basePoolPoints` 60 to 80. **No labour COST moves**: every per-action, per-band-step
+ *   and per-class figure in `energy` is byte-identical. A day simply holds more, because it ran
+ *   out too soon to finish anything satisfying.
+ * - A new `cafe` block: `coffeeLabourPoints` 20, `coffeeBasePriceYen` 1000, `coffeePerStaffYen`
+ *   1000, `maxPurchasesPerDay` 1. A round of coffee hands back labour already spent today for
+ *   cash, never lifting the pool's own ceiling and never advancing the day. The daily cap is the
+ *   one value not named by the maintainer: without it, cash converts into unlimited labour and the
+ *   day stops meaning anything.
+ *
+ * NOTHING ELSE MOVES: no payout, no price, no repair or valuation formula.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -1712,7 +1729,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('fab9c9b1b7fd9485c72def3dfd6d59a83be5a455d327b4f7ed3f89806e83459f')
+    ).toBe('45a9f30da2f3da53d760de3759a7e6406731c1455a38bffa7242afa4d923878b')
   })
 
   it('damagePatterns.json matches its approved content exactly', () => {

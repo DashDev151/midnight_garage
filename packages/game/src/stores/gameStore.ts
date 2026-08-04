@@ -122,6 +122,8 @@ import {
   bayCountsByKind,
   hasForecourtSpace as hasForecourtSpaceCore,
   hasParkingSpace,
+  buyCoffeeGateReason as buyCoffeeGateReasonCore,
+  coffeePriceYen as coffeePriceYenCore,
   hireMachineLineGateReason as hireMachineLineGateReasonCore,
   inspectionVisitGateReason as inspectionVisitGateReasonCore,
   isAuctionTierOpen as isAuctionTierOpenCore,
@@ -146,6 +148,7 @@ import {
   ownsMachineForGroup,
   removeAssemblyLaborSlotsFor,
   removeBlockReason,
+  resolveBuyCoffee,
   resolveHireMachineLine,
   retentionFor,
   signatureGroupFor,
@@ -4259,6 +4262,30 @@ export const useGameStore = defineStore('game', () => {
     return true
   }
 
+  // --- the cafe across the street ------------------------------------------
+
+  /** What a round costs today: the base price plus one more for every member
+   * of the crew, because you are buying for the whole shop. */
+  const coffeePriceYen = computed(() => coffeePriceYenCore(gameState.value, context.value))
+
+  /** Why the cafe would refuse a round right now, or null when it would not -
+   * the map reads this to say WHY rather than just failing silently. */
+  const coffeeGateReason = computed(() => buyCoffeeGateReasonCore(gameState.value, context.value))
+
+  /**
+   * Buys the crew a round: cash out, labour back, the same day. Returns false
+   * on any refusal (already bought today, nothing spent to buy back, or not
+   * enough cash) and changes nothing, the same shape `hireMachineLine` uses.
+   */
+  function buyCoffee(): boolean {
+    const result = resolveBuyCoffee(gameState.value, context.value)
+    if (!result.applied) return false
+    gameState.value = result.state
+    dayLog.value.push(...result.log)
+    logSessionEvent('buyCoffee', { priceYen: coffeePriceYen.value })
+    return true
+  }
+
   /**
    * Settles the live auction room's hammer win: the sim's own purchase path
    * at whatever price the room actually closed at - cash out, car in, the
@@ -5091,6 +5118,9 @@ export const useGameStore = defineStore('game', () => {
     machineLineFeeYen,
     hireMachineLineGateReason,
     hireMachineLine,
+    buyCoffee,
+    coffeePriceYen,
+    coffeeGateReason,
     dynoOwned,
     dynoHiredToday,
     dynoHireFeeYen,
