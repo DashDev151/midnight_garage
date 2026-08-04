@@ -40,7 +40,7 @@ export const TYRE = '#221f1f'
 // neighbourhood: cosy pitched roofs for the shops immediately around the
 // garage, cool slate for the two civic buildings, teal-grey corrugation for
 // the industrial cluster, sandy canopies for the open-air auction lots. Four
-// zones instead of fourteen one-off roofs is what keeps the roll-up palette
+// zones instead of fifteen one-off roofs is what keeps the roll-up palette
 // tight while still giving the map districts that read apart.
 export const ROOF_COSY_LIGHT = '#c96a44'
 export const ROOF_COSY_SHADE = '#8a4128'
@@ -62,6 +62,12 @@ export const HAZE_TINT = '#9fb0c2'
 // glow on every building.
 export const ACCENT_MAGENTA = '#ea4f9c'
 export const ACCENT_TEAL = '#2fd0c4'
+
+// The hover cue: a flat, hard-edged blue with no equivalent among the
+// buildings' own colours, so it never reads as part of the scene itself -
+// purely an interaction mark the screen draws on top, not part of the
+// environment palette the rest of this file counts toward.
+export const HOVER_OUTLINE = '#4fb3ff'
 
 /**
  * Real paint colours, used where a real colour fits rather than inventing a

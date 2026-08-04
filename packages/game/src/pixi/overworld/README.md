@@ -10,7 +10,7 @@ made" below for what that means for its reliability.
 Elevated three-quarter, top-down oblique: the Stardew Valley and Pokemon
 lineage. You see a building's roof and a little of its front face, never a
 45-degree cube - this is explicitly **not** isometric. Every building here
-follows one of two roof recipes to keep that read consistent across fourteen
+follows one of two roof recipes to keep that read consistent across fifteen
 otherwise unrelated drawings:
 
 - **Gable**: a ridge line down the centre, a lit pitch to one side, a shaded
@@ -35,7 +35,7 @@ consumes this scene may apply a further integer zoom (x2, x3), never a
 fractional one.
 
 The scene canvas is **960x540**, a maintainer-approved exception to the
-usual 640x360 stage: this map holds fourteen locations plus a dense centre,
+usual 640x360 stage: this map holds fifteen locations plus a dense centre,
 and 640x360 cannot fit that without the buildings collapsing below the 16px
 grid. 960x540 still scales cleanly to 1920x1080 at 2x, so the integer-only
 rule holds.
@@ -69,7 +69,7 @@ The full environment palette (structure and terrain tones, counting each
 reused name once) comes to a little under thirty colours, plus the reused
 `PAINT_COLOURS` entries. The art bible caps a single screen's environment
 palette at 24-32; this is a much larger scene than that guideline was
-written for (fourteen locations across 960x540 rather than one 640x360
+written for (fifteen locations across 960x540 rather than one 640x360
 screen), so the count runs close to the top of that range rather than
 comfortably inside it. It was not padded - every colour above earns its keep
 by marking a district (cosy shops, civic buildings, industrial yard,
@@ -81,9 +81,10 @@ open-air lots) or a material a neighbour doesn't share.
   exists.
 - `buildings.ts` - one indexed template per location, a colour map per
   template, and `buildLocationSprite`/`overworldLocationSize` to render one
-  and measure it. `OVERWORLD_LOCATION_IDS` lists all fourteen ids;
-  `INERT_LOCATIONS` flags the two that are drawn but go nowhere yet (the
-  cafe and the bank).
+  and measure it. `OVERWORLD_LOCATION_IDS` lists all fifteen ids;
+  `OVERWORLD_LOCATION_LABELS` is the display name shown when a location is
+  hovered; `INERT_LOCATIONS` flags the two that are drawn but go nowhere yet
+  (the cafe and the bank).
 - `overworldMap.ts` - the 960x540 scene: ground, water, the road network,
   a treeline, every building placed, and a distance haze over the four far
   corners. Exports `OVERWORLD_PLACEMENTS` (id, x, y - x and y are each
@@ -124,6 +125,6 @@ checked by script against the literal file contents, not just the draft.
 
 What that check cannot catch: actual colour harmony on screen, whether the
 haze overlay reads as distance rather than as a grey smear, and whether the
-960x540 composition holds together as a whole rather than as fourteen
+960x540 composition holds together as a whole rather than as fifteen
 individually-reasonable pieces. Treat this as a solid first pass a sighted
 review should still walk through before it ships past placeholder status.

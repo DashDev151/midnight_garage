@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
 import type { StaffMemberCardView } from '../stores/staffStore'
+import { mapBackTarget } from './mapBack'
 import { useStaffStore } from '../stores/staffStore'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
@@ -18,6 +19,12 @@ const staff = useStaffStore()
 // The game store carries the labour-point scale so the crew-labour display can
 // show what a member adds to the day's pool (points), not raw slots.
 const game = useGameStore()
+const route = useRoute()
+
+/** The tab bar reaches this screen too, with no `from` flag - the back
+ * control then falls back to the garage exactly as it always has
+ * (`mapBack.ts`). */
+const backTarget = computed(() => mapBackTarget(route.query.from, { name: 'garage' }))
 
 const view = computed(() => staff.staffOfficeView)
 
@@ -59,7 +66,7 @@ function toggleAssignment(member: StaffMemberCardView): void {
 
 <template>
   <section class="staff-office" data-test="staff-office">
-    <RouterLink :to="{ name: 'garage' }" class="back">&lt; Garage</RouterLink>
+    <RouterLink :to="backTarget" class="back">&lt; Back</RouterLink>
     <h2>Staff Office</h2>
 
     <section class="panel" data-test="roster-panel">

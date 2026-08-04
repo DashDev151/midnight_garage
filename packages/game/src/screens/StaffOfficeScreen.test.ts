@@ -2,6 +2,7 @@ import { mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
 import { ECONOMY, type StaffAd, type StaffMember } from '@midnight-garage/content'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { createMemoryHistory, createRouter } from 'vue-router'
 import { useGameStore } from '../stores/gameStore'
 import StaffOfficeScreen from './StaffOfficeScreen.vue'
 
@@ -11,7 +12,14 @@ import StaffOfficeScreen from './StaffOfficeScreen.vue'
 const mountedWrappers: VueWrapper[] = []
 
 function mountScreen() {
-  const wrapper = mount(StaffOfficeScreen, { global: { stubs: { RouterLink: RouterLinkStub } } })
+  // A real (if routeless) router so `useRoute()` resolves - the screen reads
+  // `route.query.from` for its back control (`mapBack.ts`) - while
+  // `RouterLinkStub` keeps every `<RouterLink>` a plain, inspectable stub as
+  // this file always tested them.
+  const router = createRouter({ history: createMemoryHistory(), routes: [] })
+  const wrapper = mount(StaffOfficeScreen, {
+    global: { plugins: [router], stubs: { RouterLink: RouterLinkStub } },
+  })
   mountedWrappers.push(wrapper)
   return wrapper
 }

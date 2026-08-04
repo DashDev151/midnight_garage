@@ -1,12 +1,18 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
 import HelpHint from '../components/HelpHint.vue'
 import ServiceTaskList from '../components/ServiceTaskList.vue'
+import { mapBackTarget } from './mapBack'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
 
 const game = useGameStore()
+const route = useRoute()
+
+/** Reached from the tab bar (Phone; no `from` flag - falls back to the
+ * garage) or from the office room in the garage interior (`mapBack.ts`). */
+const backTarget = computed(() => mapBackTarget(route.query.from, { name: 'garage' }))
 
 const hasOffers = computed(() => game.serviceJobOfferViews.length > 0)
 
@@ -87,7 +93,7 @@ function offerCountdownLabel(expiresOnDay: number): string {
 
 <template>
   <section class="jobs">
-    <RouterLink :to="{ name: 'garage' }" class="back">&lt; Garage</RouterLink>
+    <RouterLink :to="backTarget" class="back">&lt; Back</RouterLink>
     <header class="head">
       <h2>
         The phone

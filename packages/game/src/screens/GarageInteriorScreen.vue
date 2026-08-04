@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Application, type Container } from 'pixi.js'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import {
   buildGarageRoomScene,
   SCENE_HEIGHT,
@@ -29,6 +29,12 @@ import { useGameStore } from '../stores/gameStore'
  * day-one), so this screen only ever renders `warehouse-open` and never
  * `warehouse-derelict` - a real gap between the art and the design rather
  * than a silent workaround.
+ *
+ * A room action's own sub-screen (inventory, the machine shop, the phone,
+ * the books, a car on the bench) carries the launching room in its own
+ * navigation (`goToRoute`/`goToCar`), so that sub-screen's back control can
+ * return here on the same room rather than always landing on the alley -
+ * `roomIdFromQuery` is the read side of that round trip.
  */
 
 type SimpleRoom =
@@ -44,9 +50,21 @@ const ROOMS: readonly { id: SimpleRoom; label: string }[] = [
 ]
 
 const game = useGameStore()
+const route = useRoute()
 const router = useRouter()
 
-const currentRoom = ref<SimpleRoom>('alley')
+/** The room a sub-screen's own back control asked to return to
+ * (`mapBack.ts`'s `mapBackTarget`), read straight off the query - a
+ * starting point only, falling back to the alley when the query is missing
+ * or names no real room. */
+function roomIdFromQuery(): SimpleRoom {
+  const requested = route.query.room
+  const wanted = typeof requested === 'string' ? requested : undefined
+  const match = ROOMS.find((room) => room.id === wanted)
+  return match?.id ?? 'alley'
+}
+
+const currentRoom = ref<SimpleRoom>(roomIdFromQuery())
 
 const machineShopIsOpen = computed(() => machineShopOpen(game.gameState, game.context.economy))
 const bodyPaintIsOpen = computed(() => bodyPaintShopOpen(game.gameState))
@@ -120,12 +138,19 @@ onUnmounted(() => {
   scene = null
 })
 
+/** The bays screen has no back control of its own to mark (it is the tab
+ * bar's home already), so only the four sub-screens carry the room a
+ * back-of-theirs should return to (`mapBack.ts`'s `mapBackTarget`). */
 function goToRoute(name: 'garage' | 'inventory' | 'machine-shop' | 'jobs' | 'costs'): void {
-  void router.push({ name })
+  if (name === 'garage') {
+    void router.push({ name })
+    return
+  }
+  void router.push({ name, query: { from: currentRoom.value } })
 }
 
 function goToCar(id: string): void {
-  void router.push({ name: 'car', params: { id } })
+  void router.push({ name: 'car', params: { id }, query: { from: currentRoom.value } })
 }
 </script>
 

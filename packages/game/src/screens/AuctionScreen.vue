@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { AUCTION_TIER_COPY, type AuctionTier } from '@midnight-garage/content'
 import { dayOfWeekName } from '@midnight-garage/sim'
 import AuctionLotCard from '../components/AuctionLotCard.vue'
+import { mapBackTarget } from './mapBack'
 import { useGameStore, type LotDetail } from '../stores/gameStore'
 import { AUCTION_TIER_LABELS, venueLabelFor } from '../utils/auctionTierLabels'
 import { formatYen } from '../utils/formatYen'
@@ -21,7 +22,13 @@ function lockedTierCopyFor(tier: AuctionTier): string {
 }
 
 const game = useGameStore()
+const route = useRoute()
 const router = useRouter()
+
+/** The tab bar reaches this screen too, with no `from` flag - the back
+ * control then falls back to the garage exactly as it always has
+ * (`mapBack.ts`). */
+const backTarget = computed(() => mapBackTarget(route.query.from, { name: 'garage' }))
 
 const GATE_REASON_LABEL: Record<string, string> = {
   // Labour is a continuous bar now, not integer slots.
@@ -210,7 +217,7 @@ function nextOpenPhraseFor(tier: AuctionTier): string {
 
 <template>
   <section class="auctions">
-    <RouterLink :to="{ name: 'garage' }" class="back">&lt; Garage</RouterLink>
+    <RouterLink :to="backTarget" class="back">&lt; Back</RouterLink>
     <header class="head">
       <h2>Auctions</h2>
     </header>

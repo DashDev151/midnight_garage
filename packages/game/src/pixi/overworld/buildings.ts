@@ -43,8 +43,8 @@ import {
  * right, widening from the ridge cap to the eave) for the cosier shops and
  * the garage, and a flat parapet roof for the more institutional or
  * industrial buildings. Reusing one vocabulary of parts - roof, eave,
- * fascia, wall, window, door, kerb - is what keeps fourteen locations
- * reading as one place instead of fourteen unrelated drawings.
+ * fascia, wall, window, door, kerb - is what keeps fifteen locations
+ * reading as one place instead of fifteen unrelated drawings.
  *
  * Shared index characters (a building's own colour map decides what each
  * one actually renders as, so the same letter can be a ridge cap on one
@@ -74,6 +74,7 @@ export type OverworldLocationId =
   | 'dealer-network'
   | 'collector-network'
   | 'international-raceway'
+  | 'drag-strip'
 
 /** Locations that are drawn but have no destination screen: shuttered,
  * dark-windowed, closed for now rather than a broken link. */
@@ -814,6 +815,53 @@ const HIGHWAY_WANGAN_COLORS: ColorMap = {
   p: WALL_SHADE,
 }
 
+// --- Drag strip: bottom left, on the outskirts of the big city - a straight
+// tarmac lane with a chequered start line near one end and a timing gantry
+// planted at the other. A standing kilometre reads as the strip itself, not
+// as a building, so this template carries no roof at all. ---
+const DRAG_STRIP_TEMPLATE = [
+  '................................................................................0000000000000000',
+  '................................................................................0nnnnnnnnnnnnnn0',
+  '................................................................................0ngnnnnnnnnnngn0',
+  '..................................................................................p..........p..',
+  '..................................................................................p..........p..',
+  '..................................................................................p..........p..',
+  '..................................................................................p..........p..',
+  '..................................................................................p..........p..',
+  '..................................................................................p..........p..',
+  '..................................................................................p..........p..',
+  'kkkkkk0lkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk..p..........p..',
+  'rrrrrrl0rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr..p..........p..',
+  'rrrrrr0lrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr..p..........p..',
+  'rrrrrrl0rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr..p..........p..',
+  'rrrrrr0lrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr..p..........p..',
+  'rrrrrrl0rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr..p..........p..',
+  'rrrrrr0lrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr..p..........p..',
+  'rrrrrrl0rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr..p..........p..',
+  'rrrrrr0lrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr..p..........p..',
+  'rrrrrrl0rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr..p..........p..',
+  'rrrrrr0lrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr..p..........p..',
+  'kkkkkkl0kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk..p..........p..',
+  '..................................................................................p..........p..',
+  '..................................................................................p..........p..',
+  '..................................................................................p..........p..',
+  '..................................................................................p..........p..',
+  '..................................................................................p..........p..',
+  '..................................................................................p..........p..',
+  '.................................................................................000........000.',
+  '................................................................................................',
+]
+
+const DRAG_STRIP_COLORS: ColorMap = {
+  '0': OUTLINE,
+  g: GLASS_LIT,
+  k: KERB,
+  l: TRIM_LIGHT,
+  n: SIGN_BOARD,
+  p: WALL_SHADE,
+  r: ROAD,
+}
+
 /** Canvas size derived from the template itself, so it can never drift from
  * the art. */
 function sizeOf(template: readonly string[]): { width: number; height: number } {
@@ -868,9 +916,10 @@ const BUILDING_ART: Record<OverworldLocationId, BuildingArt> = {
     template: INTERNATIONAL_RACEWAY_TEMPLATE,
     colors: INTERNATIONAL_RACEWAY_COLORS,
   },
+  'drag-strip': { template: DRAG_STRIP_TEMPLATE, colors: DRAG_STRIP_COLORS },
 }
 
-/** All fourteen location ids, in the order they appear in the design table. */
+/** All fifteen location ids, in the order they appear in the design table. */
 export const OVERWORLD_LOCATION_IDS: readonly OverworldLocationId[] = [
   'garage',
   'cafe',
@@ -886,7 +935,28 @@ export const OVERWORLD_LOCATION_IDS: readonly OverworldLocationId[] = [
   'dealer-network',
   'collector-network',
   'international-raceway',
+  'drag-strip',
 ]
+
+/** The name shown when a location is hovered - what a player standing in
+ * front of it would call it, not the internal id. */
+export const OVERWORLD_LOCATION_LABELS: Readonly<Record<OverworldLocationId, string>> = {
+  garage: 'Garage',
+  cafe: 'Cafe',
+  'tool-hire': 'Tool hire',
+  'parts-shop': 'Parts shop',
+  'local-yard': 'Local yard',
+  'staff-centre': 'Staff centre',
+  bank: 'Bank',
+  'mountains-touge': 'The touge',
+  'regional-auction': 'Regional auction',
+  'highway-wangan': 'The wangan',
+  'premium-auction': 'Premium auction',
+  'dealer-network': 'Dealer network',
+  'collector-network': 'Collector network',
+  'international-raceway': 'International raceway',
+  'drag-strip': 'Drag strip',
+}
 
 /** A location's canvas size in scene pixels, before any integer zoom the
  * consuming screen applies to the whole map. */

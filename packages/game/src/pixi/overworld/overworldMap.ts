@@ -40,6 +40,9 @@ export const SCENE_HEIGHT = 540
  *   dealer network 110,450 -> 112,448 (+2x,-2y)
  *   collector network 200,480 -> 208,480 (+8x, the one tie broken upward)
  *   international raceway 60,380 -> 64,384 (+4x,+4y)
+ *   drag strip 160,416 (new, already grid-aligned, no nudge needed - its
+ *   96x32 bounds sit clear of the raceway, the dealer network and the
+ *   collector network on every side)
  *
  * No two locations' bounds overlap once these are applied.
  */
@@ -64,6 +67,7 @@ export const OVERWORLD_PLACEMENTS: readonly OverworldPlacement[] = [
   { id: 'dealer-network', x: 112, y: 448 },
   { id: 'collector-network', x: 208, y: 480 },
   { id: 'international-raceway', x: 64, y: 384 },
+  { id: 'drag-strip', x: 160, y: 416 },
 ]
 
 // The paved centre: a plaza the immediate cluster fronts onto, wide enough

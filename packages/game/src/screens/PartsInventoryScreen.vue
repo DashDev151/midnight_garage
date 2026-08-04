@@ -1,12 +1,20 @@
 <script setup lang="ts">
-import { RouterLink } from 'vue-router'
+import { computed } from 'vue'
+import { RouterLink, useRoute } from 'vue-router'
 import HelpHint from '../components/HelpHint.vue'
 import PartsInventoryPanel from '../components/PartsInventoryPanel.vue'
+import { mapBackTarget } from './mapBack'
+
+const route = useRoute()
+
+/** Reached from the tab bar (no `from` flag - falls back to the garage) or
+ * from the warehouse room in the garage interior (`mapBack.ts`). */
+const backTarget = computed(() => mapBackTarget(route.query.from, { name: 'garage' }))
 </script>
 
 <template>
   <section class="inventory">
-    <RouterLink :to="{ name: 'garage' }" class="back">&lt; Garage</RouterLink>
+    <RouterLink :to="backTarget" class="back">&lt; Back</RouterLink>
     <h2>
       Parts inventory
       <HelpHint label="Parts inventory">

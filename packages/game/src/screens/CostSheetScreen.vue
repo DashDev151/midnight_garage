@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
 import { formatYen, formatYenDelta } from '../utils/formatYen'
+import { mapBackTarget } from './mapBack'
 import { useGameStore } from '../stores/gameStore'
 
 /**
@@ -13,13 +14,18 @@ import { useGameStore } from '../stores/gameStore'
  * derivation over the sim's own accumulator; nothing here totals anything.
  */
 const game = useGameStore()
+const route = useRoute()
+
+/** Reached from the tab bar (no `from` flag - falls back to the garage) or
+ * from the office room in the garage interior (`mapBack.ts`). */
+const backTarget = computed(() => mapBackTarget(route.query.from, { name: 'garage' }))
 
 const weeks = computed(() => game.costSheetView.weeks)
 </script>
 
 <template>
   <section class="costs">
-    <RouterLink :to="{ name: 'garage' }" class="back">&lt; Garage</RouterLink>
+    <RouterLink :to="backTarget" class="back">&lt; Back</RouterLink>
     <h2>What the week cost</h2>
     <p class="lead">
       The shop's own sheets, a week to a page. Rent, wages and machine hire keep the doors open;

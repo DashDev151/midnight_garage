@@ -7,14 +7,21 @@ import {
 } from '@midnight-garage/content'
 import type { MachiningGateReason } from '@midnight-garage/sim'
 import { computed } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
 import HelpHint from '../components/HelpHint.vue'
+import { mapBackTarget } from './mapBack'
 import { useGameStore } from '../stores/gameStore'
 import { SUBSYSTEM_LABELS, SUBSYSTEM_MEANINGS } from '../utils/dynoLabels'
 
 const game = useGameStore()
+const route = useRoute()
 
 const sheet = computed(() => game.machineShopSheet)
+
+/** Only reached with no car on the ramp yet from the machine-shop room in
+ * the garage interior (no tab bar entry exists) - once a car is on the
+ * ramp, `sheet` takes over and this is unused (`mapBack.ts`). */
+const backTarget = computed(() => mapBackTarget(route.query.from, { name: 'garage' }))
 
 /** The car on the ramp, by the name the player knows it as. */
 const carName = computed(() => {
@@ -120,8 +127,8 @@ function onMachineClick(operationId: string): void {
       data-test="machine-shop-back"
       >&lt; Back to the car</RouterLink
     >
-    <RouterLink v-else :to="{ name: 'garage' }" class="back" data-test="machine-shop-back"
-      >&lt; Garage</RouterLink
+    <RouterLink v-else :to="backTarget" class="back" data-test="machine-shop-back"
+      >&lt; Back</RouterLink
     >
 
     <header class="head">

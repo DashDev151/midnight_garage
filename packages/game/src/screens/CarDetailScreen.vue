@@ -55,6 +55,7 @@ import {
   sellingChannelFeeLabel,
 } from '../utils/sellingChannelLabels'
 import { zoneNeedsPanelText, zoneSeverityText } from '../utils/zoneSeverity'
+import { mapBackTarget } from './mapBack'
 
 const game = useGameStore()
 const route = useRoute()
@@ -62,6 +63,13 @@ const router = useRouter()
 
 const carId = computed(() => String(route.params.id))
 const detail = computed(() => game.carDetail(carId.value))
+
+/** This screen has many entry points (a bay slot, a service-job link, the
+ * machine shop and dyno's own "back to the car" links...) and all of them
+ * fall back to the garage exactly as this always has. Only the workshop
+ * floor and body-paint room actions in the garage interior mark themselves,
+ * so only those two return here rather than to the bays (`mapBack.ts`). */
+const backTarget = computed(() => mapBackTarget(route.query.from, { name: 'garage' }))
 
 /** The radar rides top-right of the hero header at a
  * smaller size than the default. */
@@ -1066,7 +1074,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
 <template>
   <section v-if="detail" class="detail">
-    <RouterLink :to="{ name: 'garage' }" class="back">&lt; Garage</RouterLink>
+    <RouterLink :to="backTarget" class="back">&lt; Back</RouterLink>
 
     <div class="detail-hero">
       <div class="hero-info">

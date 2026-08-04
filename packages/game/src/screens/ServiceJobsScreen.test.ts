@@ -2,6 +2,7 @@ import { ALL_CAR_PART_IDS, CARS } from '@midnight-garage/content'
 import { mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { createMemoryHistory, createRouter } from 'vue-router'
 import { useGameStore } from '../stores/gameStore'
 import ServiceJobsScreen from './ServiceJobsScreen.vue'
 
@@ -11,7 +12,14 @@ import ServiceJobsScreen from './ServiceJobsScreen.vue'
 const mountedWrappers: VueWrapper[] = []
 
 function mountScreen() {
-  const wrapper = mount(ServiceJobsScreen, { global: { stubs: { RouterLink: RouterLinkStub } } })
+  // A real (if routeless) router so `useRoute()` resolves - the screen reads
+  // `route.query.from` for its back control (`mapBack.ts`) - while
+  // `RouterLinkStub` keeps every `<RouterLink>` a plain, inspectable stub as
+  // this file always tested them.
+  const router = createRouter({ history: createMemoryHistory(), routes: [] })
+  const wrapper = mount(ServiceJobsScreen, {
+    global: { plugins: [router], stubs: { RouterLink: RouterLinkStub } },
+  })
   mountedWrappers.push(wrapper)
   return wrapper
 }

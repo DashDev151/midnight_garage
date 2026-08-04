@@ -20,14 +20,21 @@ import {
   PartFitmentClassSchema,
 } from '@midnight-garage/content'
 import { computed, ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
 import GradeChip from '../components/GradeChip.vue'
 import { groupSpriteId, partSpriteDataUrl } from '../components/partSprites'
 import RotaryMarker from '../components/RotaryMarker.vue'
+import { mapBackTarget } from './mapBack'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
 
 const game = useGameStore()
+const route = useRoute()
+
+/** The tab bar reaches this screen too, with no `from` flag - the back
+ * control then falls back to the garage exactly as it always has
+ * (`mapBack.ts`). */
+const backTarget = computed(() => mapBackTarget(route.query.from, { name: 'garage' }))
 
 /** The plain class slicer's options, in a stable order (cheapest to priciest)
  * rather than object-key order. */
@@ -315,7 +322,7 @@ function onBuyPaint(): void {
 
 <template>
   <section class="parts">
-    <RouterLink :to="{ name: 'garage' }" class="back">&lt; Garage</RouterLink>
+    <RouterLink :to="backTarget" class="back">&lt; Back</RouterLink>
     <header class="head">
       <h2>Parts market</h2>
     </header>

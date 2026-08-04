@@ -1,14 +1,21 @@
 <script setup lang="ts">
 import type { ComponentId, ToolTier } from '@midnight-garage/content'
 import { computed, ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
 import HelpHint from '../components/HelpHint.vue'
 import HintTooltip from '../components/HintTooltip.vue'
+import { mapBackTarget } from './mapBack'
 import { useGameStore } from '../stores/gameStore'
 import { DYNO_NAME } from '../utils/dynoLabels'
 import { formatYen } from '../utils/formatYen'
 
 const game = useGameStore()
+const route = useRoute()
+
+/** The tab bar reaches this screen too, with no `from` flag - the back
+ * control then falls back to the garage exactly as it always has
+ * (`mapBack.ts`). */
+const backTarget = computed(() => mapBackTarget(route.query.from, { name: 'garage' }))
 
 /** The reputation the rolling road still needs, or null once it is met (or
  * already owned) - the hint-only-when-unmet shape the tool lines' own
@@ -54,7 +61,7 @@ const selectedInfo = computed(() =>
 
 <template>
   <section class="upgrades">
-    <RouterLink :to="{ name: 'garage' }" class="back">&lt; Garage</RouterLink>
+    <RouterLink :to="backTarget" class="back">&lt; Back</RouterLink>
     <header class="head">
       <h2>
         Upgrades
