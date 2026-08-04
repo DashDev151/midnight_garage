@@ -1,0 +1,8 @@
+[
+  { "finish": "solid", "size": "small", "usesPerTin": 3, "priceYen": 4200 },
+  { "finish": "solid", "size": "large", "usesPerTin": 9, "priceYen": 11350 },
+  { "finish": "metallic", "size": "small", "usesPerTin": 3, "priceYen": 8250 },
+  { "finish": "metallic", "size": "large", "usesPerTin": 9, "priceYen": 22300 },
+  { "finish": "pearl", "size": "small", "usesPerTin": 3, "priceYen": 12450 },
+  { "finish": "pearl", "size": "large", "usesPerTin": 9, "priceYen": 33600 }
+]

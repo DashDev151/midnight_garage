@@ -399,11 +399,14 @@ describe('confirmStagedWork: pipeline-paint', () => {
     })
   }
 
-  it('a sport-grade respray charges the metallic tin and swaps in the sport paint SKU', () => {
+  it('a sport-grade respray draws one use of the metallic tin in that colour, spends no cash, and swaps in the sport paint SKU', () => {
     const zoneCar = paintCar()
     const state = baseState({
       ownedCars: [zoneCar],
       serviceBayCarIds: [zoneCar.id],
+      // One use of metallic kaido-blue on the shelf - exactly enough for
+      // this one zone.
+      consumableStock: { 'paint:metallic:kaido-blue': 1 },
       stagedCarWork: {
         [zoneCar.id]: [
           { kind: 'pipeline-paint', zoneId: 'bonnet', colour: 'kaido-blue', grade: 'sport' },
@@ -411,24 +414,29 @@ describe('confirmStagedWork: pipeline-paint', () => {
       },
     })
     const result = confirmStagedWork(state, zoneCar.id, 10, CONTEXT)
-    expect(state.cashYen - result.state.cashYen).toBe(2750)
+    // The tin was already paid for when it was bought - confirming the
+    // stage spends stock, not cash.
+    expect(result.state.cashYen).toBe(state.cashYen)
+    expect(result.state.consumableStock?.['paint:metallic:kaido-blue']).toBe(0)
     expect(result.state.ownedCars[0]?.zoneState?.bonnet.colour).toBe('kaido-blue')
     expect(result.state.ownedCars[0]?.zoneState?.bonnet.primed).toBe(false)
     const installed = result.state.ownedCars[0]?.parts.paint.installed
     expect(installed?.partId).toBe(CONTEXT.aftermarketPartByCarPartId.entry.paint!.sport!.id)
   })
 
-  it('a stock-grade job in the factory colour succeeds and reads back as the stock SKU', () => {
+  it('a stock-grade job in the factory colour draws the solid tin in that colour and reads back as the stock SKU', () => {
     const zoneCar = paintCar()
     const state = baseState({
       ownedCars: [zoneCar],
       serviceBayCarIds: [zoneCar.id],
+      consumableStock: { 'paint:solid:white': 1 },
       stagedCarWork: {
         [zoneCar.id]: [{ kind: 'pipeline-paint', zoneId: 'boot', colour: 'white', grade: 'stock' }],
       },
     })
     const result = confirmStagedWork(state, zoneCar.id, 10, CONTEXT)
-    expect(state.cashYen - result.state.cashYen).toBe(1400)
+    expect(result.state.cashYen).toBe(state.cashYen)
+    expect(result.state.consumableStock?.['paint:solid:white']).toBe(0)
     expect(result.state.ownedCars[0]?.zoneState?.boot.colour).toBe('white')
     const installed = result.state.ownedCars[0]?.parts.paint.installed
     expect(installed?.partId).toBe(CONTEXT.stockPartByCarPartId.entry.paint!.id)
@@ -439,6 +447,8 @@ describe('confirmStagedWork: pipeline-paint', () => {
     const state = baseState({
       ownedCars: [zoneCar],
       serviceBayCarIds: [zoneCar.id],
+      // Refused on colour before stock is ever read, so the shelf is
+      // deliberately left bare here.
       stagedCarWork: {
         [zoneCar.id]: [
           { kind: 'pipeline-paint', zoneId: 'front-bumper', colour: 'kaido-blue', grade: 'stock' },
@@ -451,6 +461,33 @@ describe('confirmStagedWork: pipeline-paint', () => {
     expect(result.state.ownedCars[0]?.parts.paint.installed?.partId).toBe(
       CONTEXT.stockPartByCarPartId.entry.paint!.id,
     )
+  })
+
+  it('refuses a paint stage with no tin of that colour on the shelf, spending nothing and changing nothing', () => {
+    const zoneCar = paintCar()
+    const state = baseState({
+      ownedCars: [zoneCar],
+      serviceBayCarIds: [zoneCar.id],
+      // The shelf holds the wrong colour entirely - not a shortfall, an
+      // absence.
+      consumableStock: { 'paint:metallic:white': 5 },
+      stagedCarWork: {
+        [zoneCar.id]: [
+          { kind: 'pipeline-paint', zoneId: 'bonnet', colour: 'kaido-blue', grade: 'sport' },
+        ],
+      },
+    })
+    const result = confirmStagedWork(state, zoneCar.id, 10, CONTEXT)
+    expect(result.state.cashYen).toBe(state.cashYen)
+    expect(result.state.consumableStock).toEqual(state.consumableStock)
+    expect(result.state.ownedCars[0]?.zoneState?.bonnet.colour).toBeUndefined()
+    expect(result.log).toEqual([
+      {
+        type: 'job-blocked',
+        jobId: 'pipeline-car-paint-0001-paint-bonnet',
+        reason: 'out-of-stock',
+      },
+    ])
   })
 })
 

@@ -423,7 +423,17 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // factory colour and a whole-car paint history, and the paint slot's own
     // fit reads that roll instead of the generic aftermarket mechanism, so
     // this script's bought and sold car is priced and generated differently.
-    expect(hashState(acquisitionCareer().sold)).toBe('bc01e04e')
+    //
+    // It moves once more, on its own again, for consumables as stock:
+    // `GameState` gained `consumableStock`, `createInitialGameState` seeds it
+    // to `{}`, and this is the one script that starts from a real new career
+    // rather than a hand-written literal, which is why the 30-day master
+    // above holds unchanged. A pure SHAPE change, measured rather than
+    // assumed: strip the new key back out of this state and the hash is
+    // exactly the previous `bc01e04e`, so no roll, cash figure or derived
+    // stat moved. Nothing here ever could - this script never buys or uses a
+    // tin, so the shelf stays empty from day 1 to the sale.
+    expect(hashState(acquisitionCareer().sold)).toBe('900518b7')
   })
 })
 

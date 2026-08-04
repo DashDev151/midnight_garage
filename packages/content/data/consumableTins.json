@@ -1,0 +1,6 @@
+[
+  { "id": "filler", "name": "Body filler tin", "usesPerTin": 4, "priceYen": 5000 },
+  { "id": "paper", "name": "Sanding paper pack", "usesPerTin": 4, "priceYen": 1400 },
+  { "id": "primer", "name": "Primer tin", "usesPerTin": 9, "priceYen": 5850 },
+  { "id": "polish", "name": "Polish tin", "usesPerTin": 9, "priceYen": 4050 }
+]

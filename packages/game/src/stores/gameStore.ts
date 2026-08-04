@@ -32,6 +32,8 @@ import type {
   Job,
   MachineListing,
   Part,
+  PaintFinish,
+  PaintTinSize,
   PartFitmentClass,
   PartInstance,
   ReputationTier,
@@ -39,6 +41,7 @@ import type {
   SellingChannelId,
   ServiceJob,
   ServiceJobTask,
+  SimpleConsumableId,
   StagedAction,
   StatBlock,
   Subsystem,
@@ -168,6 +171,8 @@ import {
   resolveRejectServiceJobOffer,
   resolveAttendAuction as resolveAttendAuctionCore,
   resolveBuyoutInstant,
+  resolveBuyConsumableTin,
+  resolveBuyPaintTin,
   resolveBuyPart,
   resolveDeliverMission,
   reserveYen,
@@ -2100,6 +2105,16 @@ export const useGameStore = defineStore('game', () => {
    * lacks) a panel the action assumes the opposite of, or the picked
    * inventory part no longer fits - the row then shows no total rather than a
    * wrong one.
+   *
+   * Deliberately NOT gated on shelf stock: staging is free planning, exactly
+   * like a staged repair is never gated on cash on hand - only Confirm checks
+   * whether the shelf can actually cover it
+   * (`resolvePipelineStageAction`/`resolvePipelinePaintAction`,
+   * sim/stagedWork.ts), refusing and logging that one action if not.
+   *
+   * `costYen` is always the CASH Confirm will actually charge, which for a
+   * materials-consuming stage is 0: the tin was paid for when it was bought,
+   * not when it is drawn down.
    */
   function pipelineActionPlan(
     car: CarInstance,
@@ -2119,12 +2134,12 @@ export const useGameStore = defineStore('game', () => {
     if (action.kind === 'pipeline-stage') {
       const plan = planPipelineStage(action.stage, zone, capability)
       if (!plan.ok) return null
-      return { costYen: plan.materialsCostYen, laborSlots: plan.laborUnits * rate }
+      return { costYen: 0, laborSlots: plan.laborUnits * rate }
     }
     if (action.kind === 'pipeline-paint') {
       const plan = planPaintStage(zone, action.colour, capability, action.grade, car.factoryColour)
       if (!plan.ok) return null
-      return { costYen: plan.materialsCostYen, laborSlots: plan.laborUnits * rate }
+      return { costYen: 0, laborSlots: plan.laborUnits * rate }
     }
     if (action.kind === 'pipeline-remove-panel') {
       if (zone.panelMissing) return null
@@ -4358,6 +4373,41 @@ export const useGameStore = defineStore('game', () => {
   const pendingPartOrders = computed(() => gameState.value.pendingPartOrders)
 
   /**
+   * The shelf: consumable tins on hand, counted in uses rather than tins, by
+   * `GameState.consumableStock` key - the plain id for filler/paper/primer/
+   * polish, `paintStockKey(finish, colour)` for paint. `{}` for a shop that
+   * has never bought a tin (the field is genuinely optional).
+   */
+  const consumableStock = computed<Record<string, number>>(
+    () => gameState.value.consumableStock ?? {},
+  )
+
+  /**
+   * Buys one tin of a simple (non-paint) consumable - filler, paper, primer
+   * or polish - crediting its whole `usesPerTin` to the shelf at once and
+   * charging its flat tin price. Mirrors `buyPart`'s own instant-buy shape.
+   */
+  function buyConsumableTin(id: SimpleConsumableId): boolean {
+    const result = resolveBuyConsumableTin(gameState.value, id, context.value)
+    if (result.log.length === 0) return false
+    gameState.value = result.state
+    dayLog.value.push(...result.log)
+    return true
+  }
+
+  /**
+   * Buys one paint tin of `finish`/`size`, mixed to `colour` - the one
+   * consumable purchase that also names a colour.
+   */
+  function buyPaintTin(finish: PaintFinish, size: PaintTinSize, colour: string): boolean {
+    const result = resolveBuyPaintTin(gameState.value, finish, size, colour, context.value)
+    if (result.log.length === 0) return false
+    gameState.value = result.state
+    dayLog.value.push(...result.log)
+    return true
+  }
+
+  /**
    * Accept a service-job offer - instant. The customer's car arrives in the
    * shop (parking) the moment this is called, not "next day" - needs a free
    * parking space to take delivery.
@@ -5128,6 +5178,9 @@ export const useGameStore = defineStore('game', () => {
     removeFromCart,
     checkoutCart,
     pendingPartOrders,
+    consumableStock,
+    buyConsumableTin,
+    buyPaintTin,
     acceptOffer,
     rejectOffer,
     setForSale,

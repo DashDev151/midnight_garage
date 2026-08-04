@@ -3,6 +3,7 @@ import auctionTierCopyJson from '../data/auctionTierCopy.json'
 import buyersJson from '../data/buyers.json'
 import carsJson from '../data/cars.json'
 import componentDisplayNamesJson from '../data/componentDisplayNames.json'
+import consumableTinsJson from '../data/consumableTins.json'
 import coursesJson from '../data/courses.json'
 import damagePatternsJson from '../data/damagePatterns.json'
 import diagnosticTestsJson from '../data/diagnosticTests.json'
@@ -13,6 +14,7 @@ import lapReferencesJson from '../data/lapReferences.json'
 import materialsJson from '../data/materials.json'
 import paintAliasesJson from '../data/paintAliases.json'
 import paintColoursJson from '../data/paintColours.json'
+import paintTinsJson from '../data/paintTins.json'
 import partPricingJson from '../data/partPricing.json'
 import partsJson from '../data/parts.json'
 import partsTaxonomyJson from '../data/parts-taxonomy.json'
@@ -40,6 +42,7 @@ import {
   type CarPartTaxonomyEntry,
 } from './carPart'
 import { ComponentDisplayNamesSchema } from './componentDisplayName'
+import { ConsumableTinsSchema, PaintTinsSchema } from './consumable'
 import { CoursesSchema } from './course'
 import { DiagnosticTestsSchema } from './diagnosticTest'
 import { EconomyConfigSchema } from './economy'
@@ -156,6 +159,18 @@ export const MATERIALS = MaterialsSchema.parse(materialsJson)
  * offers, carrying no price and no stat effect of its own.
  */
 export const PAINT_COLOURS = PaintColoursSchema.parse(paintColoursJson)
+
+/**
+ * The four one-size consumable tins the parts shop sells (filler, paper,
+ * primer, polish) - docs/design/systems/consumables-as-stock.md.
+ */
+export const CONSUMABLE_TINS = ConsumableTinsSchema.parse(consumableTinsJson)
+
+/**
+ * The six paint products the parts shop sells (three finishes times two
+ * sizes) - the colour is chosen at the point of purchase, not carried here.
+ */
+export const PAINT_TINS = PaintTinsSchema.parse(paintTinsJson)
 
 /**
  * The iconic-colour alias table: manufacturers' names for manufacturers'

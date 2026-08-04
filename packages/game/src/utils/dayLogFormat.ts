@@ -1,8 +1,10 @@
 import type { CashBucket, ComponentId, DayLogEntry } from '@midnight-garage/content'
 import {
   COMPONENT_DISPLAY_NAMES,
+  CONSUMABLE_TINS,
   ComponentIdSchema,
   ECONOMY,
+  PAINT_COLOURS,
   PARTS,
   TOOL_LINES,
   cashMovementFor,
@@ -29,6 +31,24 @@ const MACHINING_OPERATION_LABELS = new Map(
 
 function machiningOperationLabel(operationId: string): string {
   return MACHINING_OPERATION_LABELS.get(operationId) ?? operationId
+}
+
+/** Simple consumable id -> its tin's shelf name; internal ids read straight
+ * through if the catalogue is ever missing an entry. */
+const CONSUMABLE_TIN_NAMES = new Map<string, string>(CONSUMABLE_TINS.map((t) => [t.id, t.name]))
+
+const PAINT_COLOUR_NAMES = new Map(PAINT_COLOURS.map((c) => [c.id, c.name]))
+
+/** A `GameState.consumableStock` key -> its shelf label - a plain tin name
+ * for filler/paper/primer/polish, or "<finish> paint (<colour>)" for a
+ * `paint:<finish>:<colour>` key. */
+function consumableLabel(consumableKey: string): string {
+  if (consumableKey.startsWith('paint:')) {
+    const [, finish, colour] = consumableKey.split(':')
+    const colourName = colour ? (PAINT_COLOUR_NAMES.get(colour) ?? colour) : consumableKey
+    return `${finish} paint (${colourName})`
+  }
+  return CONSUMABLE_TIN_NAMES.get(consumableKey) ?? consumableKey
 }
 
 /** The machine-hire panel's per-group display name: the group's real
@@ -139,8 +159,10 @@ export function describeLogEntry(
     }
     case 'car-listed':
       return `Advertising for ${entry.carInstanceId} (${SELLING_CHANNEL_LABELS[entry.channelId]}): ${formatYen(entry.feeYen)}`
-    case 'body-materials-bought':
-      return `Body materials, ${entry.stage} on the ${entry.zoneId}: ${formatYen(entry.costYen)}`
+    case 'body-materials-used':
+      return `Materials drawn, ${entry.stage} on the ${entry.zoneId}: ${formatYen(entry.costYen)}`
+    case 'consumable-bought':
+      return `Bought ${consumableLabel(entry.consumableKey)} for ${formatYen(entry.priceYen)}`
     case 'part-bought':
       return `Bought ${partLabel(entry.partId)} for ${formatYen(entry.priceYen)}`
     case 'part-ordered':

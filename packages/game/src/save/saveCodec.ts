@@ -676,8 +676,17 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * pre-v58 save is wiped rather than converted. The version bump alone is
  * still required (Save law) so an old client rejects a v58 save rather than
  * reading a zone shape it has no rungs for.
+ * v58 -> v59 (consumables as stock): `GameState` gained an optional
+ * `consumableStock` map (filler, paper, primer, polish and every paint
+ * colour/finish combination bought so far, counted in uses). Additive and
+ * genuinely optional (the `dyno`/`assemblyInventory` pattern), so this needs
+ * NO `MIGRATIONS[58]` entry: a pre-v59 save decodes with the key absent,
+ * which reads as an empty shelf - exactly right, since a pre-v59 career never
+ * bought a tin. The version bump alone is still required (Save law) so an
+ * old client rejects a v59 save rather than silently dropping what was on
+ * the shelf.
  */
-export const SAVE_VERSION = 58
+export const SAVE_VERSION = 59
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

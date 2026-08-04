@@ -360,7 +360,7 @@ describe('classifyDayReport', () => {
 })
 
 describe('the cash movements that used to leave no trace', () => {
-  it('names the auction admission, the listing fee, the body materials and the bench recondition', () => {
+  it('names the auction admission, the listing fee, the materials drawn and the bench recondition', () => {
     expect(describeLogEntry({ type: 'auction-attended', tier: 'regional', feeYen: 3_000 })).toBe(
       'Paid in at the regional rooms: ¥3,000',
     )
@@ -374,13 +374,13 @@ describe('the cash movements that used to leave no trace', () => {
     ).toBe('Advertising for car-1 (Free ads paper): ¥1,500')
     expect(
       describeLogEntry({
-        type: 'body-materials-bought',
+        type: 'body-materials-used',
         carInstanceId: 'car-1',
         zoneId: 'bonnet',
         stage: 'prime',
         costYen: 3_200,
       }),
-    ).toBe('Body materials, prime on the bonnet: ¥3,200')
+    ).toBe('Materials drawn, prime on the bonnet: ¥3,200')
     expect(
       describeLogEntry({
         type: 'job-created',
@@ -390,6 +390,25 @@ describe('the cash movements that used to leave no trace', () => {
         costYen: 12_400,
       }),
     ).toBe('Bench recondition started for ¥12,400')
+  })
+
+  it('names a bought consumable tin, plain and paint alike', () => {
+    expect(
+      describeLogEntry({
+        type: 'consumable-bought',
+        consumableKey: 'primer',
+        usesAdded: 9,
+        priceYen: 5_850,
+      }),
+    ).toBe('Bought Primer tin for ¥5,850')
+    expect(
+      describeLogEntry({
+        type: 'consumable-bought',
+        consumableKey: 'paint:solid:white',
+        usesAdded: 9,
+        priceYen: 11_350,
+      }),
+    ).toBe('Bought solid paint (Plain White) for ¥11,350')
   })
 
   it('shows what a repair cost the moment the job opens', () => {
@@ -408,20 +427,24 @@ describe('the cash movements that used to leave no trace', () => {
     const view = classifyDayReport([
       { type: 'auction-attended', tier: 'regional', feeYen: 3_000 },
       { type: 'car-listed', carInstanceId: 'car-1', channelId: 'freeAdsPaper', feeYen: 1_500 },
+      // Moneyless now that the tin is paid for at purchase, not at the
+      // stage - still a notable line, but no longer a money line.
       {
-        type: 'body-materials-bought',
+        type: 'body-materials-used',
         carInstanceId: 'car-1',
         zoneId: 'bonnet',
         stage: 'paint',
         costYen: 3_200,
       },
+      { type: 'consumable-bought', consumableKey: 'primer', usesAdded: 9, priceYen: 5_850 },
       { type: 'bay-purchased', kind: 'parking', priceYen: 400_000 },
       { type: 'part-bought', partId: 'x', partInstanceId: 'p1', priceYen: 20_000 },
     ])
     // Admission and the bay are the shop's own costs; the listing fee, the
-    // materials and the part are all spent towards cars.
+    // bought tin and the part are all spent towards cars and stock alike
+    // (the report's own three-line split folds stock into onCars).
     expect(view.money.billsYen).toBe(3_000 + 400_000)
-    expect(view.money.onCarsYen).toBe(1_500 + 3_200 + 20_000)
+    expect(view.money.onCarsYen).toBe(1_500 + 5_850 + 20_000)
     expect(view.money.earnedYen).toBe(0)
   })
 })

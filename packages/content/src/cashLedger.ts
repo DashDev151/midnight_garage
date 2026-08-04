@@ -32,13 +32,16 @@ export interface CashMovement {
  * `describeLogEntry`: a new `DayLogEntry` type is a compile error here rather
  * than a yen that quietly falls out of the week's arithmetic.
  *
- * Three entries need a word. `job-created` carries the whole banded-repair
+ * Four entries need a word. `job-created` carries the whole banded-repair
  * charge for both an on-car repair and a bench recondition, and its `kind` is
  * what separates a car cost from stock. `part-reconditioned` carries no
  * amount on purpose: the recondition was already charged and booked when its
  * job opened, which may have been days earlier. `part-machined` moves no
  * money at any point: the tooling was bought once as shop investment, and an
- * operation costs labour and nothing else after that.
+ * operation costs labour and nothing else after that. `body-materials-used`
+ * likewise moves no money at the moment it fires: the tin it draws from was
+ * paid for when it was bought (`consumable-bought`, which DOES move money),
+ * so drawing it down a second time would double-charge the same yen.
  */
 export function cashMovementFor(entry: DayLogEntry): CashMovement | null {
   switch (entry.type) {
@@ -62,8 +65,6 @@ export function cashMovementFor(entry: DayLogEntry): CashMovement | null {
       return { bucket: 'onCars', amountYen: entry.priceYen }
     case 'car-listed':
       return { bucket: 'onCars', amountYen: entry.feeYen }
-    case 'body-materials-bought':
-      return { bucket: 'onCars', amountYen: entry.costYen }
     case 'job-created':
       if (entry.costYen === undefined) return null
       return {
@@ -74,6 +75,7 @@ export function cashMovementFor(entry: DayLogEntry): CashMovement | null {
     // Money out, on stock that is nobody's car yet.
     case 'part-bought':
     case 'part-ordered':
+    case 'consumable-bought':
       return { bucket: 'stock', amountYen: entry.priceYen }
 
     // Money out, on keeping the doors open. Rent and wages are stored as
@@ -117,6 +119,7 @@ export function cashMovementFor(entry: DayLogEntry): CashMovement | null {
     case 'part-reconditioned':
     case 'part-machined':
     case 'part-removed':
+    case 'body-materials-used':
     case 'car-moved':
     case 'cars-swapped':
     case 'acquisition-blocked':

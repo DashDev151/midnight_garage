@@ -1,6 +1,24 @@
 # Consumables you buy and keep
 
-**Status: DESIGN, unsigned.** Nothing here is built. Raised in the playtest of 2026-08-03.
+**Status: BUILT, 2026-08-04.** Raised in the playtest of 2026-08-03 and implemented as designed.
+Every price below is what shipped.
+
+**Verified: the per-car economy did not move.** A full solid respray is 12,600 as three small tins,
+exactly what nine per-use charges cost before, or 11,350 as one large, which is the bulk discount the
+player chose to take.
+
+**One consequence worth knowing.** A single-panel job now costs 4,200 up front rather than 1,400,
+because you buy a tin rather than a squirt. Two uses stay on the shelf, so nothing is lost, but cash
+leaves earlier. That is stock working as intended and not a price rise.
+
+**Stock counts USES, not tins**, which is why a small and a large tin of the same colour merge on the
+shelf: once bought, they are the same paint. Size only decides how many uses a purchase adds and what
+it costs.
+
+**The staged-job question is answered: staging stays free.** A stage can be planned with no stock at
+all, exactly as a repair can be staged with no cash. Confirm is where it is checked, and an action
+short of materials refuses on its own while the rest of the batch resolves. That is the same
+treatment an under-laboured repair already gets, so it needed no new rule.
 
 ## The complaint, and it is right
 

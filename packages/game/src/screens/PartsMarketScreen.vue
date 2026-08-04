@@ -4,12 +4,18 @@ import type {
   ComponentId,
   EngineCharacter,
   Grade,
+  PaintFinish,
+  PaintTinSize,
   Part,
   PartFitmentClass,
+  SimpleConsumableId,
 } from '@midnight-garage/content'
 import {
+  CONSUMABLE_TINS,
+  PAINT_COLOURS,
+  PAINT_TINS,
   fitmentClassForTier,
-  MATERIALS,
+  paintStockKey,
   PART_FITMENT_CLASS_DISPLAY_NAMES,
   PartFitmentClassSchema,
 } from '@midnight-garage/content'
@@ -279,6 +285,32 @@ const lastCheckoutResult = ref<{ boughtCount: number; remainingCount: number } |
 function onCheckout(): void {
   lastCheckoutResult.value = game.checkoutCart(deliverySpeed.value)
 }
+
+/** The shelf count for one simple (non-paint) consumable - `0` for a shop
+ * that has never bought that tin. */
+function consumableStockCount(id: SimpleConsumableId): number {
+  return game.consumableStock[id] ?? 0
+}
+
+/** The paint shop's own three armed choices: finish, size and colour -
+ * together they pick one of the six catalogue tins and one shelf key. */
+const paintFinish = ref<PaintFinish>('solid')
+const paintSize = ref<PaintTinSize>('small')
+const paintColourId = ref<string>(PAINT_COLOURS[0]!.id)
+
+const selectedPaintTin = computed(() =>
+  PAINT_TINS.find((t) => t.finish === paintFinish.value && t.size === paintSize.value),
+)
+
+/** The shelf count in exactly the armed finish and colour - a tin of a
+ * different finish or a different colour never counts toward this. */
+const selectedPaintStock = computed(
+  () => game.consumableStock[paintStockKey(paintFinish.value, paintColourId.value)] ?? 0,
+)
+
+function onBuyPaint(): void {
+  game.buyPaintTin(paintFinish.value, paintSize.value, paintColourId.value)
+}
 </script>
 
 <template>
@@ -321,23 +353,70 @@ function onCheckout(): void {
             Browse everything
           </button>
 
-          <section class="materials-shelf" data-test="materials-shelf">
-            <h3>Body pipeline materials</h3>
+          <section class="materials-shelf" data-test="consumables-shelf">
+            <h3>Consumables</h3>
             <p class="materials-note">
-              Charged into a stage's own cost line the moment you work it - never bought or stocked
-              ahead of time.
+              Buy a tin and it goes on the shelf. A pipeline stage draws from what is there, one use
+              at a time, and refuses when it runs out.
             </p>
             <ul class="materials-list">
               <li
-                v-for="material in MATERIALS"
-                :key="material.id"
+                v-for="tin in CONSUMABLE_TINS"
+                :key="tin.id"
                 class="materials-row"
-                :data-test="'material-' + material.id"
+                :data-test="'consumable-' + tin.id"
               >
-                <span class="materials-name">{{ material.name }}</span>
-                <span class="materials-price">{{ formatYen(material.priceYen) }}</span>
+                <span class="materials-name">{{ tin.name }}</span>
+                <span class="consumables-stock" :data-test="'consumable-stock-' + tin.id">
+                  {{ consumableStockCount(tin.id) }} on the shelf
+                </span>
+                <span class="materials-price">{{ formatYen(tin.priceYen) }}</span>
+                <button
+                  :data-test="'buy-consumable-' + tin.id"
+                  :disabled="game.cashYen < tin.priceYen"
+                  @click="game.buyConsumableTin(tin.id)"
+                >
+                  Buy
+                </button>
               </li>
             </ul>
+
+            <div class="paint-shop" data-test="paint-shop">
+              <h4>Paint</h4>
+              <p class="materials-note">
+                A tin is mixed to one colour. Buying paint means buying a colour, so a mismatched or
+                factory respray is a consequence of what is on the shelf, not a menu choice.
+              </p>
+              <div class="paint-shop-controls">
+                <select v-model="paintFinish" data-test="paint-finish">
+                  <option value="solid">Solid</option>
+                  <option value="metallic">Metallic</option>
+                  <option value="pearl">Pearl</option>
+                </select>
+                <select v-model="paintSize" data-test="paint-size">
+                  <option value="small">Small (3 zones)</option>
+                  <option value="large">Large (9 zones)</option>
+                </select>
+                <select v-model="paintColourId" data-test="paint-colour">
+                  <option v-for="colour in PAINT_COLOURS" :key="colour.id" :value="colour.id">
+                    {{ colour.name }}
+                  </option>
+                </select>
+                <span v-if="selectedPaintTin" class="materials-price">{{
+                  formatYen(selectedPaintTin.priceYen)
+                }}</span>
+                <button
+                  data-test="buy-paint"
+                  :disabled="!selectedPaintTin || game.cashYen < selectedPaintTin.priceYen"
+                  @click="onBuyPaint"
+                >
+                  Buy tin
+                </button>
+              </div>
+              <p class="consumables-stock" data-test="paint-stock-selected">
+                {{ selectedPaintStock }} on the shelf in this colour and finish
+              </p>
+            </div>
           </section>
         </template>
 
@@ -628,6 +707,79 @@ h3 {
   text-decoration: underline;
   cursor: pointer;
   padding: 0;
+}
+
+.materials-shelf {
+  margin-top: var(--mg-space-4);
+}
+
+.materials-note {
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+  margin: 0 0 var(--mg-space-2);
+}
+
+.materials-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--mg-space-3);
+  display: grid;
+  gap: var(--mg-space-2);
+}
+
+.materials-row {
+  display: flex;
+  align-items: center;
+  gap: var(--mg-space-3);
+  background: var(--mg-panel);
+  border: var(--mg-border);
+  border-radius: var(--mg-radius);
+  padding: var(--mg-space-2) var(--mg-space-3);
+}
+
+.materials-name {
+  flex: 1;
+  color: var(--mg-neon-cyan);
+}
+
+.consumables-stock {
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+}
+
+.materials-price {
+  color: var(--mg-yen);
+  font-size: var(--mg-fs-sm);
+}
+
+.paint-shop {
+  background: var(--mg-panel);
+  border: var(--mg-border);
+  border-radius: var(--mg-radius);
+  padding: var(--mg-space-3);
+}
+
+.paint-shop h4 {
+  color: var(--mg-neon-violet);
+  font-size: var(--mg-fs-md);
+  margin: 0 0 var(--mg-space-2);
+}
+
+.paint-shop-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--mg-space-2);
+  flex-wrap: wrap;
+}
+
+.paint-shop-controls select {
+  background: var(--mg-night-deep);
+  color: var(--mg-text);
+  border: var(--mg-border);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-family: inherit;
+  font-size: var(--mg-fs-sm);
 }
 
 .breadcrumb {

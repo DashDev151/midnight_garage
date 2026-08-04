@@ -183,24 +183,36 @@ describe('the charges that used to leave no record', () => {
     expect(listed.state.financeLedger?.['1']?.runningYen).toBe(0)
   })
 
-  it('logs body-pipeline materials with their amount, against the car', () => {
-    // Filler, primer and paint are bought for one zone on one car, so the
-    // charge is a car cost rather than shop overheads.
+  it('logs a bought consumable tin with its amount, as stock rather than a car cost', () => {
+    // A tin belongs to the shelf, not any one car, until a pipeline stage
+    // draws it down - the same bucket a bought catalogue part uses.
     expect(
       cashMovementFor({
-        type: 'body-materials-bought',
-        carInstanceId: 'car-1',
-        zoneId: 'bonnet',
-        stage: 'fillAndSand',
-        costYen: 6400,
+        type: 'consumable-bought',
+        consumableKey: 'primer',
+        usesAdded: 9,
+        priceYen: 5850,
       }),
-    ).toEqual({ bucket: 'onCars', amountYen: 6400 })
+    ).toEqual({ bucket: 'stock', amountYen: 5850 })
   })
 })
 
 describe('the classification itself', () => {
   it('leaves a moneyless entry alone rather than booking a zero', () => {
     const entry: DayLogEntry = { type: 'car-workup', carInstanceId: 'car-1' }
+    expect(cashMovementFor(entry)).toBeNull()
+    const base = createInitialGameState(CONTEXT, 5)
+    expect(bookCashMovements(base, [entry], ECONOMY)).toBe(base)
+  })
+
+  it('reads body-pipeline materials as moneyless: the tin was paid for at the shop, not at the stage', () => {
+    const entry: DayLogEntry = {
+      type: 'body-materials-used',
+      carInstanceId: 'car-1',
+      zoneId: 'bonnet',
+      stage: 'fillAndSand',
+      costYen: 6400,
+    }
     expect(cashMovementFor(entry)).toBeNull()
     const base = createInitialGameState(CONTEXT, 5)
     expect(bookCashMovements(base, [entry], ECONOMY)).toBe(base)

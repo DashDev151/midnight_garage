@@ -16,6 +16,7 @@ import {
   type Grade,
   type MetalZoneId,
   type MetalZoneState,
+  type PaintFinish,
   type PaintHistoryState,
   type PanelZoneId,
   type Part,
@@ -704,6 +705,18 @@ const PAINT_TIN_COST_YEN_BY_GRADE: Readonly<Record<Grade, number>> = {
   race: PAINT_PEARL_COST_YEN,
 }
 
+/** The finish a paint grade lays - stock and street both lay a plain solid
+ * colour, sport lays metallic, race lays pearl. The same grouping
+ * `PAINT_TIN_COST_YEN_BY_GRADE` above prices; `consumables.ts` reads this to
+ * turn a staged paint action's grade into the shelf key it draws from, so a
+ * grade can never mean two different finishes to the two modules. */
+export const PAINT_FINISH_BY_GRADE: Readonly<Record<Grade, PaintFinish>> = {
+  stock: 'solid',
+  street: 'solid',
+  sport: 'metallic',
+  race: 'pearl',
+}
+
 /** The zone-panel catalog SKU for one zone, at one fitment class - a stock,
  * `zoneId`-carrying entry, priced through the `zonePanel` pricing basis. */
 export function zonePanelPart(
@@ -728,7 +741,21 @@ export interface PipelineStageEffect {
 
 export interface PipelineStageRefusal {
   ok: false
-  reason: 'prereq' | 'machine-line' | 'needs-panel' | 'wrong-colour' | 'metal-only'
+  reason:
+    | 'prereq'
+    | 'machine-line'
+    | 'needs-panel'
+    | 'wrong-colour'
+    | 'metal-only'
+    /** The shelf does not hold enough of a consumable this stage needs
+     * (`stagedWork.ts`'s live stock gate, ahead of `chargeAndApplyPipelineEffect`
+     * - never returned by this module's own zone/capability planners, which
+     * know nothing about the shelf). */
+    | 'out-of-stock'
+  /** Which `GameState.consumableStock` key is short - set only when `reason`
+   * is `'out-of-stock'`, so a refusal names the tin rather than just the
+   * fact of running out. */
+  missingConsumable?: string
 }
 
 /** Options a stage's own gate reads - both express "the body line's daily

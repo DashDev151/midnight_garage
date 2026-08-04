@@ -543,6 +543,17 @@ export const GameStateSchema = z.object({
    * hired and nothing on the rollers.
    */
   dyno: DynoStateSchema.optional(),
+  /**
+   * Consumable tins on the shelf, counted in USES rather than tins: a map of
+   * consumable key to how many uses remain (docs/design/systems/
+   * consumables-as-stock.md). Filler, paper, primer and polish key off their
+   * own plain id; paint keys off `paintStockKey(finish, colour)`, since a tin
+   * is mixed to one colour and two tins of a different colour are not the
+   * same tin. The genuinely-optional-key pattern (like `dyno` above), so no
+   * existing `GameState` literal needs touching; readers treat absent as an
+   * empty shelf (`state.consumableStock ?? {}`).
+   */
+  consumableStock: z.record(z.string(), z.number().int().nonnegative()).optional(),
 })
 
 /**
@@ -628,6 +639,11 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
        * at one of them on a car already on the zone model refuses; work the
        * zone's pipeline stages instead. */
       'derived-band',
+      /** A body-pipeline stage's consumable (filler, paper, primer, polish,
+       * or the exact paint colour and finish it needs) is not on the shelf
+       * in enough quantity - buy more from the parts shop's consumables
+       * section (`hasStockFor`, sim/consumables.ts). */
+      'out-of-stock',
     ]),
   }),
   z.object({
@@ -802,17 +818,32 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     channelId: SellingChannelIdSchema,
     feeYen: z.number().int().positive(),
   }),
-  /** Materials bought for one body-pipeline stage on one zone
+  /** Materials drawn off the shelf for one body-pipeline stage on one zone
    * (`confirmStagedWork`, sim/stagedWork.ts) - filler, primer, paint and the
-   * rest, charged the moment the stage is confirmed. A car cost, and already
+   * rest, drawn down from stock the moment the stage is confirmed. Carries
+   * no cash movement of its own (`cashMovementFor` reads it as moneyless):
+   * the tin was already paid for when it was bought (`consumable-bought`
+   * below), so this only records the VALUE of what the car used, already
    * posted to that car's `repairYen`. Emitted only when the stage actually
-   * costs something. */
+   * draws something. */
   z.object({
-    type: z.literal('body-materials-bought'),
+    type: z.literal('body-materials-used'),
     carInstanceId: z.string().min(1),
     zoneId: ZoneIdSchema,
     stage: PipelineStageIdSchema,
     costYen: z.number().int().positive(),
+  }),
+  /** One consumable tin bought and put on the shelf (`resolveBuyConsumableTin`/
+   * `resolveBuyPaintTin`, sim/consumables.ts) - filler, paper, primer, polish,
+   * or a sized paint tin mixed to a colour. `consumableKey` is the exact
+   * `GameState.consumableStock` key the purchase credits. Money out, on stock
+   * nobody's car yet (the same bucket `part-bought` uses): the shelf, not any
+   * one car, is what a tin belongs to until a pipeline stage draws it down. */
+  z.object({
+    type: z.literal('consumable-bought'),
+    consumableKey: z.string().min(1),
+    usesAdded: z.number().int().positive(),
+    priceYen: z.number().int().positive(),
   }),
   /** The whole car scrapped at once, shell and all - `carPartIds` lists
    * every slot that was still installed and went down with it (an empty

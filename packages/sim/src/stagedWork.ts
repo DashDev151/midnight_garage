@@ -35,6 +35,13 @@ import {
 import { carOriginLabel } from './auctions'
 import { updateCarLedger } from './carLedger'
 import type { SimContext } from './context'
+import {
+  consumeStock,
+  hasStockFor,
+  paintConsumableRequirement,
+  stageConsumables,
+  type ConsumableRequirement,
+} from './consumables'
 import { bookCashMovements } from './financeLedger'
 import {
   findWorkableCar,
@@ -127,12 +134,18 @@ export function bodyLineCapability(state: GameState): BodyLineCapability {
   }
 }
 
-/** Charges a pipeline effect's materials cost and labour against `state`,
- * writes the zone mutation, and re-derives the two body bands - the
- * shared second half of every generic-stage and paint-stage resolution.
- * Silently refuses (0 labour, unchanged state) on insufficient labour or
- * cash, the same idiom `chargeRepairWork`/`repairJobGate` use throughout
- * this codebase. */
+/** Charges a pipeline effect's labour against `state`, draws its consumable
+ * requirements off the shelf, writes the zone mutation, and re-derives the
+ * two body bands - the shared second half of every generic-stage and
+ * paint-stage resolution. Silently refuses (0 labour, unchanged state) on
+ * insufficient labour or shelf stock, the same idiom
+ * `chargeRepairWork`/`repairJobGate` use throughout this codebase for an
+ * unaffordable resource - the caller already checked stock once to decide
+ * whether to log a `job-blocked` refusal, so this is a defensive repeat
+ * rather than the only gate. No cash moves here: the tin was already paid
+ * for when it was bought (`resolveBuyConsumableTin`/`resolveBuyPaintTin`),
+ * so a stage drawing it down a second time would double-charge the same
+ * yen. */
 function chargeAndApplyPipelineEffect(
   state: GameState,
   carInstanceId: string,
@@ -143,9 +156,10 @@ function chargeAndApplyPipelineEffect(
   laborSlotsRequired: number,
   laborAvailable: number,
   context: SimContext,
+  requirements: readonly ConsumableRequirement[],
 ): PipelineOpResult {
   if (laborSlotsRequired > laborAvailable) return NOOP_PIPELINE_RESULT(state)
-  if (state.cashYen < effect.materialsCostYen) return NOOP_PIPELINE_RESULT(state)
+  if (!hasStockFor(state.consumableStock ?? {}, requirements)) return NOOP_PIPELINE_RESULT(state)
   const model = context.modelsById[car.modelId]
   if (!model || !car.zoneState) return NOOP_PIPELINE_RESULT(state)
 
@@ -162,7 +176,7 @@ function chargeAndApplyPipelineEffect(
   const serviceIndex = state.activeServiceJobs.findIndex((sj) => sj.car.id === carInstanceId)
   let next: GameState = {
     ...state,
-    cashYen: state.cashYen - effect.materialsCostYen,
+    consumableStock: consumeStock(state.consumableStock ?? {}, requirements),
     energySpentToday: state.energySpentToday + laborSlotsRequired,
   }
   if (ownedIndex !== -1) {
@@ -185,13 +199,15 @@ function chargeAndApplyPipelineEffect(
         ...ledger,
         repairYen: ledger.repairYen + effect.materialsCostYen,
       }))
-  // Filler, primer and paint are bought for this zone on this car, so the
-  // charge is a car cost and reads as one on the day it is made.
+  // Filler, primer and paint were bought for the shelf, not this car, so
+  // this records the VALUE this zone on this car drew down rather than a
+  // fresh charge - no cash moves a second time (`cashMovementFor` reads
+  // `body-materials-used` as moneyless).
   const log: DayLogEntry[] =
     effect.materialsCostYen > 0
       ? [
           {
-            type: 'body-materials-bought',
+            type: 'body-materials-used',
             carInstanceId,
             zoneId,
             stage,
@@ -212,8 +228,8 @@ function chargeAndApplyPipelineEffect(
  * to do" idiom `repairJobGate` uses), as is a zone needing a fresh panel
  * before hand work means anything - the car screen names that state on the
  * zone itself, so it is never a stage the player could reach and be surprised
- * by. The weld machine-shop gate logs a `job-blocked` entry, matching every
- * other machine-shop refusal in this codebase. */
+ * by. The weld machine-shop gate and an empty shelf both log a `job-blocked`
+ * entry, matching every other machine-shop refusal in this codebase. */
 function resolvePipelineStageAction(
   state: GameState,
   carInstanceId: string,
@@ -241,6 +257,20 @@ function resolvePipelineStageAction(
     }
     return NOOP_PIPELINE_RESULT(state)
   }
+  const requirements = stageConsumables(action.stage)
+  if (!hasStockFor(state.consumableStock ?? {}, requirements)) {
+    return {
+      state,
+      log: [
+        {
+          type: 'job-blocked',
+          jobId: `pipeline-${carInstanceId}-${action.stage}-${action.zoneId}`,
+          reason: 'out-of-stock',
+        },
+      ],
+      laborSlotsUsed: 0,
+    }
+  }
   const repairLevel = repairLevelForGroup(state.toolTiers, 'body')
   const laborSlotsRequired =
     plan.laborUnits * context.economy.energy.energyPerBandStepByToolTier[repairLevel]
@@ -254,6 +284,7 @@ function resolvePipelineStageAction(
     laborSlotsRequired,
     laborAvailable,
     context,
+    requirements,
   )
 }
 
@@ -274,11 +305,14 @@ function paintCatalogPartForGrade(
 /**
  * One `pipeline-paint` staged action's resolution - needs the zone primed and
  * refuses silently (nothing to do) otherwise, including the stock-grade
- * colour gate `planPaintStage` enforces. On success, the `paint` carrier's
- * installed SKU is swapped to match the completed grade BEFORE the zone
- * mutation is charged and applied, so `applyDerivedBodyBands`'s single-writer
- * rule (which preserves whatever SKU is already installed and only rewrites
- * the band) carries the new one through rather than the old.
+ * colour gate `planPaintStage` enforces. A shelf short of that exact tin
+ * (finish and colour together) logs a `job-blocked` entry instead, the same
+ * treatment `resolvePipelineStageAction` gives the generic stages. On
+ * success, the `paint` carrier's installed SKU is swapped to match the
+ * completed grade BEFORE the zone mutation is charged and applied, so
+ * `applyDerivedBodyBands`'s single-writer rule (which preserves whatever SKU
+ * is already installed and only rewrites the band) carries the new one
+ * through rather than the old.
  */
 function resolvePipelinePaintAction(
   state: GameState,
@@ -300,6 +334,20 @@ function resolvePipelinePaintAction(
     car.factoryColour,
   )
   if (!plan.ok) return NOOP_PIPELINE_RESULT(state)
+  const requirements = [paintConsumableRequirement(action.grade, action.colour)]
+  if (!hasStockFor(state.consumableStock ?? {}, requirements)) {
+    return {
+      state,
+      log: [
+        {
+          type: 'job-blocked',
+          jobId: `pipeline-${carInstanceId}-paint-${action.zoneId}`,
+          reason: 'out-of-stock',
+        },
+      ],
+      laborSlotsUsed: 0,
+    }
+  }
   const repairLevel = repairLevelForGroup(state.toolTiers, 'body')
   const laborSlotsRequired =
     plan.laborUnits * context.economy.energy.energyPerBandStepByToolTier[repairLevel]
@@ -328,6 +376,7 @@ function resolvePipelinePaintAction(
     laborSlotsRequired,
     laborAvailable,
     context,
+    requirements,
   )
 }
 
