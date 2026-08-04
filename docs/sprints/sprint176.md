@@ -97,17 +97,42 @@ weekend meet and magazine plausibly warm, free ads cold.
 ### 6. Split the magazine and the meet by character
 
 They currently read as the same crowd twice. **The magazine is performance press; the meet is about
-being seen.** Racers should top the magazine and the Show Crowd should dominate the meet, with
-tuners strong in print and middling in the car park.
+being seen.** Racers top the magazine; the Show Crowd dominates the meet. **Tuners stay strong in
+both** - they are the biggest scene in the game and should not fall below Touge anywhere.
 
-### 7. Decide what the dealer network is
+| | collector | tuner | showCrowd | racer | dailyDrivers | touge |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| tunerMagazine | 0.2 | 1.6 | 0.3 | **1.8** | 0.05 | 1.4 |
+| weekendMeet | 0.3 | **1.5** | **2.2** | 0.4 | 0.4 | 1.0 |
 
-**There is no dealer network channel and never was.** `economy.json`'s `dealers` is the auction
-room's AI bidder count; the `dealer-network` building on the overworld routes to the auctions screen
-and names no tier of its own. So it is a building with nothing behind it.
+Weights are relative **within a channel only**: 1.8 in the magazine and 1.8 at the meet are not
+comparable quantities.
 
-Either give it a selling channel as the Collector Network gets one, or accept it as an auction venue
-and leave it. **Cheap either way, but decide rather than leave it ambiguous.**
+### 7. The dealer network already exists, and the map points at the wrong thing
+
+**Correction to an earlier claim in this arc.** The dealer network is not missing: it is
+`sellingChannels.tradeNetwork`, and `selling.ts` describes its buyer as **"a fax to the dealer
+circle, never a named persona"**. It is fully implemented and does exactly what it should:
+
+| | |
+| --- | --- |
+| `offerChanceFactor` **3** | offers arrive three times as often. Fast |
+| `priceBand` 0.95 to 1.02 | uniform around plain `marketValueYen` |
+| **no taste roll at all** | so no matched premium, ever |
+| `requiresForecourt` **false** | it does not even occupy a bay |
+
+**Sell quickly, from nowhere, and forgo the 1.12 to 1.17 a matched buyer would have paid.** That is
+the reduced price, and it is the reason the channel exists.
+
+**The error is in the map.** Sprint 173 routed the `dealer-network` building to the **auctions**
+screen, on the reasoning that it names no auction tier of its own. True, and beside the point: it
+names a SELLING channel. That routing is wrong and should be corrected.
+
+**What it should point at is a genuine open question**, because a fax is not a place. Listing happens
+per car on `CarDetailScreen` and there is no standalone sell screen, so the honest options are the
+alley (where cars waiting and for sale actually sit), an informational stop that explains what the
+trade pays, or removing it from the map as somewhere you never physically go. **Decide rather than
+default.**
 
 ### 5. Give the Collectors somewhere to sell
 

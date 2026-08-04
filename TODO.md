@@ -232,10 +232,21 @@ pass."
   band the tools reached, which is the right shape, but it only produces a real ladder if the tools
   themselves make one.
 
-  **Not a value tweak.** Either the bands stretch (a fourth band above mint, or tier 2 stopping
-  short of it), or tier 3's claim moves off reach entirely and onto something else it alone can do.
-  Both are design decisions, and both touch the progression bible's Capability pillar, which owns
-  ceilings.
+  **The maintainer's answer, 2026-08-04: tier 3's claim moves off reach entirely.** Tier 3 is the
+  tier that unlocks **the cool non-standard work** rather than a better finish. Two of those already
+  exist and are already tier-3 gated: **NA-to-turbo conversion** and **machining**. The rest is a
+  content question and a good one: **engine swaps, drift suspension, lift kits, NOS, widebody, and
+  underglow** (which was cut in the zone-model sprint precisely because it had no home, and this is
+  the home).
+
+  **So the ladder is two-dimensional, not one.** Reach goes `tier 1 < tier 2 = tier 3`; capability
+  goes `tier 1 = tier 2 < tier 3`. That is coherent and it is why the rung is not actually dead: it
+  is differentiated by what it can DO, not by how well it finishes. **What still needs doing is
+  making that explicit and stocking it**, because at present tier 3 offers exactly two unlocks and
+  reads thin next to the jump from tier 1 to tier 2.
+
+  **Craft operations remain additive on top of whatever band the tools reached** (sprint 180), so
+  they never substitute for a tier.
 
 
 - [ ] **REGRESSION INTRODUCED BY THE ZONE MODEL: a modified body no longer costs authenticity
