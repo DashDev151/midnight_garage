@@ -352,6 +352,7 @@ export function advanceDay(
       next.toolTiers,
       next.reputationTier,
       next.specialty,
+      next.sceneStanding,
     )
     if (freshServiceJobOffers.length > 0) {
       next = {

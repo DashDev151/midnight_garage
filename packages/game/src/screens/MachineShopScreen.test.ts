@@ -125,7 +125,7 @@ describe('MachineShopScreen', () => {
     const wrapper = mountScreen()
     const button = wrapper.find('[data-test="machine-shop-do-bore-and-hone"]')
     expect(button.attributes('disabled')).toBeDefined()
-    expect(button.attributes('title')).toContain('tooling')
+    expect(button.attributes('title')).toContain('tier 3')
   })
 
   it('refuses a worn block outright, whatever the tooling', () => {

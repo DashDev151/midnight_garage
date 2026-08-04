@@ -694,6 +694,7 @@
     "id": "full-blueprint-build",
     "tier": 4,
     "requiresTechnique": "blueprint-building",
+    "requiresOperationId": "blueprint-building",
     "tasks": [
       {
         "requirement": { "kind": "slotCondition", "carPartId": "block", "minBand": "mint" },
@@ -759,6 +760,7 @@
     "id": "corner-weighted-setup",
     "tier": 4,
     "requiresTechnique": "corner-weighting",
+    "requiresOperationId": "corner-weighting",
     "tasks": [
       {
         "requirement": { "kind": "slotCondition", "carPartId": "steering", "minBand": "mint" },
@@ -793,6 +795,7 @@
     "id": "show-fitment-program",
     "tier": 4,
     "requiresTechnique": "show-fitment",
+    "requiresOperationId": "show-fitment",
     "tasks": [
       {
         "requirement": {
@@ -874,6 +877,82 @@
     "flavorPool": [
       "Want a proper bespoke interior, race seats, gauges done right.",
       "Build me a cabin like no other, one-off trim, top to bottom."
+    ]
+  },
+  {
+    "id": "race-prep-job",
+    "tier": 4,
+    "requiresOperationId": "race-prep",
+    "tasks": [
+      {
+        "requirement": {
+          "kind": "slotCondition",
+          "carPartId": "dampers",
+          "minBand": "mint",
+          "minGrade": "sport"
+        },
+        "minToolTier": 3
+      },
+      {
+        "requirement": {
+          "kind": "slotCondition",
+          "carPartId": "brakeCalipersLines",
+          "minBand": "fine"
+        },
+        "minToolTier": 2
+      }
+    ],
+    "deadlineDays": 8,
+    "baseReputation": 28,
+    "flavorPool": [
+      "Want it properly prepped for the circuit, dampers sorted, brakes that will not fade lap three.",
+      "Give it a proper race prep, front to back. I am not babying it round the paddock."
+    ]
+  },
+  {
+    "id": "period-correct-restoration-job",
+    "tier": 4,
+    "requiresOperationId": "period-correct-restoration",
+    "tasks": [
+      {
+        "requirement": { "kind": "slotCondition", "carPartId": "block", "minBand": "mint" },
+        "minToolTier": 3
+      },
+      {
+        "requirement": {
+          "kind": "slotCondition",
+          "carPartId": "headValvetrain",
+          "minBand": "mint"
+        },
+        "minToolTier": 3
+      }
+    ],
+    "deadlineDays": 10,
+    "baseReputation": 30,
+    "flavorPool": [
+      "Bring the motor back to exactly how it left the factory, nothing fancy, just correct.",
+      "Want a proper period-correct rebuild. It has to look and run like it never left 1995."
+    ]
+  },
+  {
+    "id": "sorting-job",
+    "tier": 4,
+    "requiresOperationId": "sorting",
+    "tasks": [
+      {
+        "requirement": { "kind": "slotCondition", "carPartId": "differential", "minBand": "mint" },
+        "minToolTier": 3
+      },
+      {
+        "requirement": { "kind": "slotCondition", "carPartId": "clutch", "minBand": "fine" },
+        "minToolTier": 2
+      }
+    ],
+    "deadlineDays": 8,
+    "baseReputation": 26,
+    "flavorPool": [
+      "Just want it properly sorted. I drive this thing every day, it has to be dependable.",
+      "Sort the diff and the box out properly. No more surprises on the morning commute."
     ]
   }
 ]

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { BuyerArchetypeSchema } from './buyer'
 import { DAMAGE_PATTERN_IDS } from './damagePattern'
 import { PartFitmentClassSchema } from './partFitment'
 import { UpkeepTierSchema } from './provenance'
@@ -619,8 +620,12 @@ const GradeBandCurveSchema = z.object({
 })
 
 /**
- * One machining operation: a named job a machine shop quotes, applied to one
- * engine slot's part and recorded on that part for good.
+ * One operation: a named craft a shop quotes, applied to one slot's part and
+ * recorded on that part for good. Machining's original four engine-only
+ * entries and the six scene-gated crafts (`docs/design/systems/scene-
+ * standing-refactor.md` section 6) are one catalogue and one shape - the
+ * generalisation is exactly the five fields below, added alongside the four
+ * machining already had.
  *
  * `powerFraction` is the SAME shape a fitted SKU carries, per engine
  * character, so an operation enters the power model through the path a part
@@ -641,14 +646,46 @@ const GradeBandCurveSchema = z.object({
  * its slot's whole authenticity weight when it was fitted, so charging
  * machining on top would book one loss twice.
  *
- * `labourPoints` is the whole price of the work. Machining costs no money per
- * operation: the tooling was the purchase, and time is what a shop spends
- * after that.
+ * `labourPoints` is the whole price of the work. Every operation costs no
+ * money at all: the tooling (and, for a scene operation, the standing) was
+ * the purchase, and time is what a shop spends after that.
+ *
+ * `scene` is which buyer archetype's Shop-stage standing ALSO gates this
+ * operation, on top of the tool tier every operation already needs
+ * (`craftOperationCapabilityGateReason`, sim/machiningJobs.ts) - absent for
+ * the four original engine operations, which gate on tool tier alone.
+ *
+ * `handlingFraction` is handling's counterpart to `powerFraction`: the
+ * fraction of the car's own mint handling this operation adds on top of
+ * whatever the fitted part's own grade and band already give. Handling has
+ * no per-part accumulation of its own the way power does, so this is summed
+ * separately in `computeDerivedStats` rather than folded into a catalogue
+ * value.
+ *
+ * `style` is style's counterpart: raw points on the same scale as
+ * `StatModifierSchema.style`, added to a fitted part's own style points
+ * before the combined total is band-scaled exactly as the catalogue figure
+ * already is. Never grade-scaled, matching `stylePercentOf`'s own rule that
+ * style never reads grade.
+ *
+ * `reliabilityConditionBonus` is reliability's counterpart, but it lands on
+ * the CONDITION term rather than the coherence one `spec` already reaches -
+ * this is what lets a merely-worn part read closer to what a mint one would
+ * give, which is a different claim from a well-supported BUILD reading
+ * better than an unsupported one. Never band- or grade-scaled: a properly
+ * sorted subsystem does not un-sort itself as it wears.
+ *
+ * `coherenceSupported` says whether this operation's own power and handling
+ * fractions are scaled by the car's own coherence factor
+ * (`coherenceFactorFor`, sim/derivedStats.ts) before they apply - a build
+ * that fights itself gets less out of the operation than one that does not.
+ * Defaults false: every other operation's fraction applies in full
+ * regardless of how well the rest of the car hangs together.
  */
 const MachiningOperationSchema = z.object({
   id: z.string().regex(/^[a-z0-9-]+$/, 'ids are kebab-case: lowercase letters, digits, hyphens'),
   displayName: z.string().min(1),
-  /** What the operation does to the engine, in a sentence the workshop page
+  /** What the operation does to the car, in a sentence the workshop page
    * shows beside its figures. */
   description: z.string().min(1),
   carPartId: CarPartIdSchema,
@@ -656,6 +693,11 @@ const MachiningOperationSchema = z.object({
   spec: z.number().nonnegative().default(0),
   authenticityCost: z.number().nonnegative(),
   labourPoints: z.number().int().positive(),
+  scene: BuyerArchetypeSchema.optional(),
+  handlingFraction: z.number().default(0),
+  style: z.number().default(0),
+  reliabilityConditionBonus: z.number().min(0).default(0),
+  coherenceSupported: z.boolean().default(false),
 })
 
 export type MachiningOperation = z.infer<typeof MachiningOperationSchema>
@@ -2857,9 +2899,18 @@ export const EconomyConfigSchema = z.object({
    * production - the tier `toolLines.json` already names "Machine-shop
    * tooling". Owning it buys the right to spend labour this way; it does not
    * make the labour free.
+   *
+   * `craftOperationToolTier` is the SAME idea for every operation whose own
+   * `scene` gates it: standing ungates the tool, but the tool itself is
+   * still tier 3 of whichever line the operation's `carPartId` belongs to
+   * (`docs/design/systems/tier-three-unlocks.md`'s ruling). Kept separate
+   * from `minEngineToolTier` rather than reusing it, because the four
+   * original operations are engine-specific while a scene operation's line
+   * is read off its own `carPartId` and can be any of the six.
    */
   machining: z.object({
     minEngineToolTier: ToolTierSchema,
+    craftOperationToolTier: ToolTierSchema,
     gradeMultiplier: z.object({
       stock: z.number().nonnegative(),
       street: z.number().nonnegative(),

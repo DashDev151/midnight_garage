@@ -56,7 +56,8 @@ const CHARACTER_NOTE: Readonly<Record<string, string>> = {
 const REFUSALS: Readonly<Record<MachiningGateReason, string>> = {
   'not-found': 'No car on the ramp.',
   'not-in-service-bay': 'It has to be in the service bay.',
-  'tool-tier': 'Needs the machine-shop tooling on the engine line.',
+  'tool-tier': 'Needs tier 3 of the tool line this job uses.',
+  'scene-standing': 'Needs that scene at the Shop stage first. See your standing.',
   'unknown-operation': 'Not a job this shop does.',
   'slot-empty': 'Nothing fitted to work on.',
   'not-mint': 'Rebuild it to mint first. Nobody bores a worn block.',

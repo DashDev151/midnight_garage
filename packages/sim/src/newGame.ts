@@ -129,6 +129,7 @@ export function createInitialGameState(
         base.toolTiers,
         base.reputationTier,
         base.specialty,
+        base.sceneStanding,
       )
   return {
     ...base,

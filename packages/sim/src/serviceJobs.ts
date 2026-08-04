@@ -9,6 +9,7 @@ import type {
   Grade,
   Part,
   ReputationTier,
+  SceneStanding,
   ServiceJob,
   ServiceJobTask,
   ServiceJobType,
@@ -19,6 +20,7 @@ import { ComponentIdSchema, fitmentClassForTier } from '@midnight-garage/content
 import { dissolveAssembliesForCar } from './assemblies'
 import { carOriginLabel, generateAuctionCarInstance, stockInstanceFor } from './auctions'
 import { bandsBelowExcludingScrap, planPartRepair } from './bands'
+import { craftOperationCapabilityGateReason } from './machiningJobs'
 import { applyReputationDelta, reputationAtLeast } from './reputation'
 import {
   GRADE_REPUTATION_MULTIPLIER,
@@ -37,6 +39,7 @@ import type { Rng } from './rng'
 import { deleteServiceJobLedger, serviceJobLedgerFor } from './serviceJobLedger'
 import { clearStagedWork } from './stagedWork'
 import { freshToolTiers } from './toolLines'
+import { freshSceneStanding } from './valuation'
 
 /** A placeholder ledger for `isServiceTaskDone`'s call into
  * `evaluateRequirement` - `slotCondition` never reads `ledger`/`day`, but
@@ -183,6 +186,51 @@ function unlockedTechniquesFor(
  * from `state.specialty` + the technique catalog; nothing is stored. */
 export function unlockedTechniques(state: GameState, context: SimContext): Technique[] {
   return unlockedTechniquesFor(state.specialty, context)
+}
+
+/**
+ * Whether an operation's own capability is unlocked - a thin boolean wrapper
+ * over `craftOperationCapabilityGateReason` for the one caller here that only
+ * wants a yes/no, not which of the two reasons refused it.
+ */
+function isCraftOperationUnlocked(
+  operationId: string,
+  toolTiers: ToolTiers,
+  sceneStanding: SceneStanding,
+  context: SimContext,
+): boolean {
+  const operation = context.economy.machining.operations.find((o) => o.id === operationId)
+  if (!operation) return false
+  return craftOperationCapabilityGateReason(operation, toolTiers, sceneStanding, context) === null
+}
+
+/**
+ * Whether `template`'s signature gate (`requiresTechnique` and/or
+ * `requiresOperationId`) is satisfied right now. A template naming neither is
+ * never signature-gated and always passes. A template naming one or both is
+ * offerable the moment ANY named route is met - the old technique and the
+ * new operation are two routes to the same craft, not two separate
+ * requirements to clear at once (`generateDailyServiceJobOffers`'s own doc
+ * comment). Shared with `resolveAcceptServiceJob`'s live re-check so the two
+ * can never disagree about which templates are actually reachable.
+ */
+function signatureGateSatisfied(
+  template: ServiceJobType,
+  unlockedTechniqueIds: ReadonlySet<string>,
+  toolTiers: ToolTiers,
+  sceneStanding: SceneStanding,
+  context: SimContext,
+): boolean {
+  const hasGate = Boolean(template.requiresTechnique) || Boolean(template.requiresOperationId)
+  if (!hasGate) return true
+  const techniqueOk = Boolean(
+    template.requiresTechnique && unlockedTechniqueIds.has(template.requiresTechnique),
+  )
+  const operationOk = Boolean(
+    template.requiresOperationId &&
+    isCraftOperationUnlocked(template.requiresOperationId, toolTiers, sceneStanding, context),
+  )
+  return techniqueOk || operationOk
 }
 
 /** The one group every task in `tasks` belongs to, or null when they span
@@ -567,13 +615,20 @@ export function forceTasksOutstanding(
  * the pool entirely unless its technique is unlocked
  * (`specialty[technique.componentId] >= technique.thresholdPoints`) - an
  * unknown/unresolvable technique id fails CLOSED (never offered), a content
- * bug should never accidentally expose a locked signature job. The shop's
- * derived title line (`titleGroupFor`), once earned, gets its own offer-
- * selection weight further multiplied by `titleBiasMultiplier`. A picked
- * signature template's flavor draws from its own `flavorPool` PLUS the
- * technique's `unlockLogLine` folded in as one more candidate line (never a
- * separate stateful announcement) - unless the in-lane premium's
- * `specialtyCopy` swap applies instead, same as any other template.
+ * bug should never accidentally expose a locked signature job. A template's
+ * `requiresOperationId` is the other route to the same gate: unlocked once
+ * that operation's own capability (a scene's Shop-stage standing plus tier 3
+ * of its tool line, `craftOperationCapabilityGateReason`) is met. A template
+ * carrying both is offered the moment EITHER gate is met - the old technique
+ * and the new operation are two routes to the same craft, never two separate
+ * requirements - and a template carrying neither is never signature-gated at
+ * all, exactly as before this generalisation. The shop's derived title line
+ * (`titleGroupFor`), once earned, gets its own offer-selection weight further
+ * multiplied by `titleBiasMultiplier`. A picked signature template's flavor
+ * draws from its own `flavorPool` PLUS the technique's `unlockLogLine` folded
+ * in as one more candidate line (never a separate stateful announcement) -
+ * unless the in-lane premium's `specialtyCopy` swap applies instead, same as
+ * any other template.
  */
 export function generateDailyServiceJobOffers(
   context: SimContext,
@@ -583,6 +638,7 @@ export function generateDailyServiceJobOffers(
   toolTiers: ToolTiers = freshToolTiers(),
   reputationTier: ReputationTier = 'legend',
   specialty: Record<ComponentId, number> = freshSpecialty(),
+  sceneStanding: SceneStanding = freshSceneStanding(),
 ): ServiceJob[] {
   const eligibleModels = context.models.filter((model) => model.spec.yearFrom <= currentYear)
   const tierEligibleTemplates = context.serviceJobTypes.filter((template) =>
@@ -592,9 +648,8 @@ export function generateDailyServiceJobOffers(
     isTemplateOfferable(template.tasks, toolTiers, context),
   )
   const unlockedTechniqueIds = new Set(unlockedTechniquesFor(specialty, context).map((t) => t.id))
-  const eligibleTemplates = toolReadyTemplates.filter(
-    (template) =>
-      !template.requiresTechnique || unlockedTechniqueIds.has(template.requiresTechnique),
+  const eligibleTemplates = toolReadyTemplates.filter((template) =>
+    signatureGateSatisfied(template, unlockedTechniqueIds, toolTiers, sceneStanding, context),
   )
   if (
     eligibleTemplates.length === 0 ||
@@ -714,10 +769,12 @@ export function resolveRejectServiceJobOffer(
  * since the deficit is re-checked live here rather than stamped at
  * generation time.
  *
- * A signature template's `requiresTechnique` is re-checked live here too
- * (reason `'technique'`) - defensive, since generation already excludes an
- * unmet-technique template, but specialty could in principle have dropped
- * between generation and accept (or the offer is stale).
+ * A signature template's gate is re-checked live here too (reason
+ * `'technique'`, covering either route - `requiresTechnique` or
+ * `requiresOperationId`) - defensive, since generation already excludes a
+ * template whose gate is unmet, but specialty or scene standing could in
+ * principle have dropped between generation and accept (or the offer is
+ * stale).
  */
 export function resolveAcceptServiceJob(
   state: GameState,
@@ -734,13 +791,15 @@ export function resolveAcceptServiceJob(
     }
   }
   const offerTemplate = context.serviceJobTypes.find((t) => t.id === offer.typeId)
-  const requiredTechnique = offerTemplate?.requiresTechnique
-    ? context.techniques.find((t) => t.id === offerTemplate.requiresTechnique)
-    : undefined
   if (
-    offerTemplate?.requiresTechnique &&
-    (!requiredTechnique ||
-      state.specialty[requiredTechnique.componentId] < requiredTechnique.thresholdPoints)
+    offerTemplate &&
+    !signatureGateSatisfied(
+      offerTemplate,
+      new Set(unlockedTechniquesFor(state.specialty, context).map((t) => t.id)),
+      state.toolTiers,
+      state.sceneStanding,
+      context,
+    )
   ) {
     return {
       state,

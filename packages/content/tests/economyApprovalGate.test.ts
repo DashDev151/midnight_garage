@@ -1897,6 +1897,59 @@ import storyMissions from '../data/storyMissions.json'
  * generated commission (both are new machinery outside `storyMissionProbes.test.ts`'s
  * reach), so `partPricing.json` and `damagePatterns.json` are untouched and the payout pin
  * holds unchanged.
+ *
+ * Re-pinned for `docs/sprints/sprint180.md` (the operation chassis generalised, and six
+ * scenes authored onto it), approved under the orchestrator's blanket lever authority for
+ * this build, every value named and recorded in that sprint doc's Exit.
+ *
+ * One new field in the existing `machining` block: `craftOperationToolTier` (NEW) - 3.
+ * Every scene operation's tool gate, on top of the standing gate, regardless of which of
+ * the six tool lines its own `carPartId` belongs to. Kept separate from the four original
+ * operations' own `minEngineToolTier` (unchanged, still 3) because a scene operation's line
+ * is read off its own slot and can be any of the six, where the original four are always
+ * engine.
+ *
+ * Six new entries in `machining.operations`, sharing the existing nine's exact shape plus
+ * five new optional fields the schema now carries (`scene`, `handlingFraction`, `style`,
+ * `reliabilityConditionBonus`, `coherenceSupported` - all absent/default-false on the
+ * original nine, so their own figures and every existing test against them are untouched).
+ * Every one of the six needs its scene at the Shop stage AND `craftOperationToolTier` of its
+ * own line - standing ungates the tool, the tool is what performs it, and neither
+ * substitutes for the other. Magnitude is calibrated to roughly one grade step on the axis
+ * each operation writes, read from the catalogue's own grade ladders; labour (5 points) and
+ * money (none) are anchored to the four original operations' own figures, so all ten sit on
+ * one scale:
+ *
+ * - `race-prep` (Racers, `dampers`, suspension line): `powerFraction` 0.0065/0.0085/0.0065
+ *   (half the average engine-slot grade step, split with handling), `handlingFraction` 0.005
+ *   (half a dampers grade step, +0.01 per step measured from the catalogue),
+ *   `authenticityCost` 3, `coherenceSupported` true - its own power and handling both scale
+ *   by the car's coherence factor (`coherenceFactorFor`), so an incoherent build gets less.
+ * - `corner-weighting` (Touge, `springs`, suspension line): `handlingFraction` 0.01 (one full
+ *   springs grade step, no power share since it forgoes the axis race prep splits with),
+ *   `authenticityCost` 2.
+ * - `blueprint-building` (Tuners, `internals`, engine line): `powerFraction`
+ *   0.013/0.017/0.013 (one full internals grade step, averaged across its three catalogue
+ *   transitions), `authenticityCost` 1 - the reduced-originality-cost operation the design
+ *   names, well below the internals slot's existing 2/4 machining costs.
+ * - `show-fitment` (Show Crowd, `rims`, wheels line): `style` 5 (one full rims grade step,
+ *   averaged: +6/+4/+4 across the three catalogue transitions), `authenticityCost` 3.
+ * - `period-correct-restoration` (Collectors, `block`, engine line): `spec` 0.25 (mid-range
+ *   of the block slot's existing 0.15-0.35 spec-carrying operations - no directly comparable
+ *   grade ladder for spec, so anchored to the existing range instead), `authenticityCost` 1 -
+ *   the other reduced-originality-cost operation, well below the block slot's existing
+ *   6/8/9 machining costs.
+ * - `sorting` (Daily Drivers, `differential`, drivetrain line): `reliabilityConditionBonus`
+ *   0.15 (the mint-to-fine band step, `economy.bands.bandFactors`), applied as a flat
+ *   car-level addition to reliability's own condition factor rather than diluted through
+ *   the weighted mean by `differential`'s own small taxonomy weight, `authenticityCost` 2.
+ *
+ * No mission payout or budget cap moves: none of the ten probes ever applies a scene
+ * operation to a probe car, so `partPricing.json` and `damagePatterns.json` are untouched
+ * and the payout pin holds unchanged. `serviceJobTemplates.json` also moves in this same
+ * change (three existing signature templates gain `requiresOperationId` as a second, OR'd
+ * route to their existing gate; three new templates are the other three operations' own
+ * matching job) but carries no separate approval hash of its own.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -1906,7 +1959,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('2cdca89cffc7cddc888e7cfc370e1ed606a497808b35bdd5a687142ec1dfeb8c')
+    ).toBe('1c3abdfa1b6cb450270df49510097df6e24ab398f5d4c9318a5f649e1fc4f253')
   })
 
   it('damagePatterns.json matches its approved content exactly', () => {

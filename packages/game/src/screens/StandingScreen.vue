@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { CARS, type BuyerArchetype } from '@midnight-garage/content'
+import type { MissionGradeReport } from '@midnight-garage/sim'
+import { computed, reactive } from 'vue'
 import { RouterLink } from 'vue-router'
 import ProgressBar from '../components/ProgressBar.vue'
 import { useGameStore } from '../stores/gameStore'
@@ -21,6 +23,47 @@ import { formatYen } from '../utils/formatYen'
 const game = useGameStore()
 
 const standing = computed(() => game.standingView)
+
+/** Every owned car, by the name the player knows it as - the commission
+ * delivery picker's own option list. */
+const ownedCars = computed(() =>
+  game.gameState.ownedCars.map((car) => ({
+    id: car.id,
+    label: CARS.find((model) => model.id === car.modelId)?.displayName ?? car.modelId,
+  })),
+)
+
+/** The car picked for each scene's commission delivery, and the last "check
+ * fit" result against it - both local UI state, reset once a delivery lands. */
+const selectedCarByScene = reactive<Record<string, string>>({})
+const gradeResultByScene = reactive<Record<string, MissionGradeReport | null>>({})
+
+function checkCommissionFit(scene: BuyerArchetype): void {
+  const carId = selectedCarByScene[scene]
+  if (!carId) return
+  gradeResultByScene[scene] = game.gradeSceneCommission(scene, carId)
+}
+
+function deliverCommission(scene: BuyerArchetype): void {
+  const carId = selectedCarByScene[scene]
+  if (!carId) return
+  if (game.deliverSceneCommission(scene, carId)) {
+    gradeResultByScene[scene] = null
+    selectedCarByScene[scene] = ''
+  }
+}
+
+/** The last "check fit" result's lines for one scene, or an empty list
+ * before any check has run - keeps the template free of a non-null
+ * assertion the Vue template compiler here does not parse. */
+function commissionLines(scene: BuyerArchetype) {
+  return gradeResultByScene[scene]?.lines ?? []
+}
+
+const OPERATION_GATE_COPY: Readonly<Record<'tool-tier' | 'scene-standing', string>> = {
+  'tool-tier': 'Needs tier 3 of the tool line this operation uses.',
+  'scene-standing': 'Needs this scene at the Shop stage.',
+}
 </script>
 
 <template>
@@ -121,6 +164,89 @@ const standing = computed(() => game.standingView)
               <span class="scene-car-price">{{ formatYen(car.priceYen) }}</span>
             </li>
           </ul>
+
+          <div
+            v-if="scene.commission"
+            class="commission"
+            :data-test="'scene-commission-' + scene.scene"
+          >
+            <p class="commission-brief">
+              <strong>{{ scene.commission.customerName }}</strong
+              >: "{{ scene.commission.requestCopy }}"
+            </p>
+            <button
+              v-if="scene.commission.status === 'offered'"
+              type="button"
+              class="commission-btn"
+              :data-test="'scene-commission-accept-' + scene.scene"
+              @click="game.acceptSceneCommission(scene.scene)"
+            >
+              Accept
+            </button>
+            <template v-else>
+              <div class="commission-delivery">
+                <select
+                  v-model="selectedCarByScene[scene.scene]"
+                  class="commission-select"
+                  :data-test="'scene-commission-car-' + scene.scene"
+                >
+                  <option value="" disabled>Pick a car</option>
+                  <option v-for="car in ownedCars" :key="car.id" :value="car.id">
+                    {{ car.label }}
+                  </option>
+                </select>
+                <button
+                  type="button"
+                  class="commission-btn"
+                  :disabled="!selectedCarByScene[scene.scene]"
+                  @click="checkCommissionFit(scene.scene)"
+                >
+                  Check fit
+                </button>
+                <button
+                  type="button"
+                  class="commission-btn"
+                  :disabled="!gradeResultByScene[scene.scene]?.pass"
+                  :data-test="'scene-commission-deliver-' + scene.scene"
+                  @click="deliverCommission(scene.scene)"
+                >
+                  Deliver
+                </button>
+              </div>
+              <ul
+                v-if="gradeResultByScene[scene.scene]"
+                class="commission-lines"
+                :data-test="'scene-commission-lines-' + scene.scene"
+              >
+                <li
+                  v-for="(line, i) in commissionLines(scene.scene)"
+                  :key="i"
+                  :class="{ pass: line.pass }"
+                >
+                  {{ line.label }}: {{ line.actual }} (needs {{ line.required }})
+                </li>
+              </ul>
+            </template>
+          </div>
+
+          <div
+            v-if="scene.operation"
+            class="operation"
+            :data-test="'scene-operation-' + scene.scene"
+          >
+            <p class="operation-name">{{ scene.operation.displayName }}</p>
+            <p class="operation-note">{{ scene.operation.description }}</p>
+            <p v-if="scene.operation.gateReason" class="operation-locked">
+              {{ OPERATION_GATE_COPY[scene.operation.gateReason] }}
+            </p>
+            <p
+              v-else
+              class="operation-unlocked"
+              :data-test="'scene-operation-unlocked-' + scene.scene"
+            >
+              Unlocked. Put the car in the service bay and open the Machine Shop to do it.
+            </p>
+          </div>
         </li>
       </ul>
     </section>
@@ -271,5 +397,79 @@ h3 {
 
 .scene-car-price {
   color: var(--mg-yen);
+}
+
+.commission,
+.operation {
+  margin-top: var(--mg-space-2);
+  padding-top: var(--mg-space-2);
+  border-top: var(--mg-border);
+}
+
+.commission-brief {
+  margin: 0 0 var(--mg-space-1);
+  font-size: var(--mg-fs-sm);
+}
+
+.commission-delivery {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mg-space-1);
+}
+
+.commission-select {
+  background: var(--mg-bg);
+  border: var(--mg-border);
+  border-radius: var(--mg-radius);
+  color: var(--mg-text);
+  font: inherit;
+  font-size: var(--mg-fs-sm);
+  padding: var(--mg-space-1);
+}
+
+.commission-btn {
+  background: transparent;
+  border: var(--mg-border);
+  border-radius: var(--mg-radius);
+  color: var(--mg-neon-cyan);
+  font: inherit;
+  font-size: var(--mg-fs-sm);
+  padding: var(--mg-space-1) var(--mg-space-2);
+  cursor: pointer;
+}
+
+.commission-btn:disabled {
+  color: var(--mg-text-dim);
+  cursor: not-allowed;
+}
+
+.commission-lines {
+  list-style: none;
+  margin: var(--mg-space-1) 0 0;
+  padding: 0;
+  font-size: var(--mg-fs-sm);
+  color: var(--mg-yen);
+}
+
+.commission-lines .pass {
+  color: var(--mg-success);
+}
+
+.operation-name {
+  margin: 0;
+  color: var(--mg-neon-cyan);
+}
+
+.operation-note,
+.operation-locked,
+.operation-unlocked {
+  margin: var(--mg-space-1) 0 0;
+  font-size: var(--mg-fs-sm);
+  color: var(--mg-text-dim);
+}
+
+.operation-unlocked {
+  color: var(--mg-success);
 }
 </style>

@@ -16,13 +16,21 @@ import {
  * and fitting aftermarket replaces it with something else; machining improves
  * the original, and the part stays the car's own.
  *
+ * The catalogue (`economy.machining.operations`) holds two families on one
+ * shape: the original four engine-only operations, gated on tool tier alone,
+ * and the six scene operations (`docs/design/systems/scene-standing-
+ * refactor.md` section 6), each also gated on a scene's Shop-stage standing
+ * (`scene`, checked in `machiningJobs.ts`). Both read and write through
+ * exactly the same functions below - one chassis, not two.
+ *
  * Every figure here is content (`economy.machining`); this file is the
  * arithmetic that spends it. The derivations that consume it are the ones a
  * fitted part already goes through - `computeDerivedStats` for power,
- * `slotContribution` for support, `authenticityPercentOf` for originality,
- * `reliabilityBreakdownOf` for reliability and `installedPartsValueYen` for
- * money - so machining enters each model through the path a part uses rather
- * than a second one beside it.
+ * handling and style, `slotContribution` for support,
+ * `authenticityPercentOf` for originality, `reliabilityBreakdownOf` for
+ * reliability's condition and coherence terms, and `installedPartsValueYen`
+ * for money - so an operation enters each model through the path a part uses
+ * rather than a second one beside it.
  *
  * The workshop half (the gate, the job, the resolver) is `machiningJobs.ts`.
  * This half reads state and never changes it, which is what lets the stat
@@ -85,6 +93,12 @@ export function appliedOperationsOf(
  * surrounding hardware can use more of what machining unlocks, which is what
  * keeps a machined part below the next grade up.
  *
+ * `coherenceFactor` (default 1, i.e. no reduction) further scales any applied
+ * operation whose own `coherenceSupported` is set - a scene craft that trades
+ * on how well the rest of the build hangs together, so it gives up less on a
+ * build that fights itself. Every other operation ignores it entirely, which
+ * is what the default preserves for every caller that has not computed one.
+ *
  * Read by `computeDerivedStats` inside the same per-slot term a fitted part's
  * own `powerFraction` is read in, and band-scaled with it - one power path,
  * and a worn machined part delivers what a worn part delivers.
@@ -97,13 +111,97 @@ export function machiningPowerFractionOf(
   part: Part | undefined,
   character: EngineCharacter,
   economy: EconomyConfig,
+  coherenceFactor = 1,
 ): number {
   const operations = appliedOperationsOf(instance, economy)
   if (operations.length === 0 || !part) return 0
   const gradeMultiplier = economy.machining.gradeMultiplier[part.grade]
   let fraction = 0
-  for (const operation of operations) fraction += operation.powerFraction[character]
+  for (const operation of operations) {
+    fraction +=
+      operation.powerFraction[character] * (operation.coherenceSupported ? coherenceFactor : 1)
+  }
   return fraction * gradeMultiplier
+}
+
+/**
+ * Handling's counterpart to `machiningPowerFractionOf` above: the extra
+ * fraction of the car's own MINT handling the operations on `instance` add,
+ * scaled by the same grade multiplier and the same optional coherence factor.
+ * Handling has no per-part accumulation of its own the way power does - every
+ * fitted part reaches it through `physicalModifiers.grip` inside one whole-car
+ * build factor - so `computeDerivedStats` sums this per slot itself rather
+ * than folding it into an existing loop.
+ *
+ * Exactly 0 for an unmachined part or one carrying no `handlingFraction`
+ * operation, so a car with no scene craft applied reads its handling
+ * untouched.
+ */
+export function machiningHandlingFractionOf(
+  instance: PartInstance | null | undefined,
+  part: Part | undefined,
+  economy: EconomyConfig,
+  coherenceFactor = 1,
+): number {
+  const operations = appliedOperationsOf(instance, economy)
+  if (operations.length === 0 || !part) return 0
+  const gradeMultiplier = economy.machining.gradeMultiplier[part.grade]
+  let fraction = 0
+  for (const operation of operations) {
+    fraction += operation.handlingFraction * (operation.coherenceSupported ? coherenceFactor : 1)
+  }
+  return fraction * gradeMultiplier
+}
+
+/**
+ * Style's counterpart: the raw style points the operations on `instance` add,
+ * on the same scale `Part.statModifiers.style` already uses. Never grade- or
+ * coherence-scaled - style reads neither for a catalogue part either
+ * (`stylePercentOf`), so an operation does not start reading either just
+ * because it lives on the same catalogue as power's operations do. The
+ * caller folds this into the fitted part's own style points before applying
+ * the slot's band factor, exactly as it already does for the catalogue
+ * figure.
+ *
+ * Exactly 0 for an unmachined part, so an untouched car's style is unchanged.
+ */
+export function machiningStylePointsOf(
+  instance: PartInstance | null | undefined,
+  economy: EconomyConfig,
+): number {
+  let points = 0
+  for (const operation of appliedOperationsOf(instance, economy)) points += operation.style
+  return points
+}
+
+/**
+ * Reliability's counterpart, but summed over the WHOLE CAR rather than one
+ * slot: the flat addition to reliability's own condition factor every
+ * applied `reliabilityConditionBonus` operation grants
+ * (`reliabilityBreakdownOf`, derivedStats.ts). Never band- or grade-scaled -
+ * a properly sorted subsystem does not un-sort itself as it wears - and
+ * deliberately NOT routed through the per-slot weighted mean the way a
+ * catalogue part's own condition weight is: a sorted slot's own taxonomy
+ * weight is small next to the car's total reliability weight, so diluting
+ * the bonus through that mean would make it nearly invisible. The bonus is
+ * authored on the SAME scale as a whole band step
+ * (`economy.bands.bandFactors`) and lands on the car's condition factor
+ * directly instead.
+ *
+ * Exactly 0 for a car with no such operation applied anywhere, so an
+ * unsorted car's reliability is unchanged.
+ */
+export function machiningReliabilityConditionBonusOf(
+  car: CarInstance,
+  economy: EconomyConfig,
+): number {
+  let bonus = 0
+  for (const partId of ALL_CAR_PART_IDS) {
+    for (const operation of appliedOperationsOf(car.parts[partId].installed, economy)) {
+      bonus += operation.reliabilityConditionBonus
+    }
+  }
+  return bonus
 }
 
 /**

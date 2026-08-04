@@ -109,6 +109,7 @@ import {
   engineCharacterOf,
   expectationForCar,
   coherenceFactorFor,
+  craftOperationCapabilityGateReason,
   externalBlockersFor,
   forecourtOccupancy,
   foundationFactor,
@@ -173,7 +174,10 @@ import {
   reputationForFailure,
   requirementLabel,
   resolveAcceptMission,
+  resolveAcceptSceneCommission,
   resolveAcceptServiceJob,
+  resolveDeliverSceneCommission,
+  gradeSceneCommissionCar,
   resolveRejectServiceJobOffer,
   resolveAttendAuction as resolveAttendAuctionCore,
   resolveBuyoutInstant,
@@ -201,6 +205,7 @@ import {
   resolveSetForSale,
   roomLedgerFor,
   runDiagnosticTest as runDiagnosticTestCore,
+  sceneCommissionsFor,
   sceneLedgerFor,
   scrapValueYen,
   selectBoardRows,
@@ -772,6 +777,26 @@ export interface StandingSceneCarView {
   day: number
 }
 
+/** A scene's live commission, offered or accepted - the customer's own want
+ * line verbatim, never a second summary of it. */
+export interface StandingSceneCommissionView {
+  customerName: string
+  requestCopy: string
+  status: 'offered' | 'active'
+}
+
+/** A scene's craft operation, once it exists in the catalogue at all - shown
+ * whether or not it is unlocked yet, so a scene short of Shop names what it
+ * is working toward. `gateReason` is `null` once both the scene's standing
+ * and the tool tier its `carPartId` needs are met; performing it still needs
+ * the car in the service bay, which stays the Machine Shop's own affordance. */
+export interface StandingSceneOperationView {
+  id: string
+  displayName: string
+  description: string
+  gateReason: 'tool-tier' | 'scene-standing' | null
+}
+
 /**
  * One scene's row on the Standing screen - its stage stated in words and the
  * real cars delivered there, newest first. Deed counts and price bars decide
@@ -785,6 +810,8 @@ export interface StandingSceneRowView {
   stage: SceneStandingStage
   stageCopy: string
   cars: StandingSceneCarView[]
+  commission: StandingSceneCommissionView | null
+  operation: StandingSceneOperationView | null
 }
 
 /** Everything the Standing screen renders - granular
@@ -3543,23 +3570,50 @@ export const useGameStore = defineStore('game', () => {
       }
     })
     const ledger = sceneLedgerFor(gameState.value)
-    const scenes: StandingSceneRowView[] = sceneStandingView.value.map((row) => ({
-      scene: row.scene,
-      label: row.label,
-      stage: row.stage,
-      stageCopy: SCENE_STANDING_STAGE_COPY[row.stage],
-      cars: [...ledger[row.scene]]
-        .sort((a, b) => b.day - a.day)
-        .map((entry) => ({
-          carInstanceId: entry.carInstanceId,
-          carLabel: (() => {
-            const model = context.value.modelsById[entry.modelId]
-            return model ? resolveCarDisplayName(model) : entry.modelId
-          })(),
-          priceYen: entry.priceYen,
-          day: entry.day,
-        })),
-    }))
+    const commissionBoard = sceneCommissionsFor(gameState.value)
+    const scenes: StandingSceneRowView[] = sceneStandingView.value.map((row) => {
+      const commission = commissionBoard[row.scene]
+      const operation = context.value.economy.machining.operations.find(
+        (o) => o.scene === row.scene,
+      )
+      return {
+        scene: row.scene,
+        label: row.label,
+        stage: row.stage,
+        stageCopy: SCENE_STANDING_STAGE_COPY[row.stage],
+        cars: [...ledger[row.scene]]
+          .sort((a, b) => b.day - a.day)
+          .map((entry) => ({
+            carInstanceId: entry.carInstanceId,
+            carLabel: (() => {
+              const model = context.value.modelsById[entry.modelId]
+              return model ? resolveCarDisplayName(model) : entry.modelId
+            })(),
+            priceYen: entry.priceYen,
+            day: entry.day,
+          })),
+        commission: commission
+          ? {
+              customerName: commission.customerName,
+              requestCopy: commission.requestCopy,
+              status: commission.status,
+            }
+          : null,
+        operation: operation
+          ? {
+              id: operation.id,
+              displayName: operation.displayName,
+              description: operation.description,
+              gateReason: craftOperationCapabilityGateReason(
+                operation,
+                gameState.value.toolTiers,
+                gameState.value.sceneStanding,
+                context.value,
+              ),
+            }
+          : null,
+      }
+    })
     return {
       reputation: {
         tier: gameState.value.reputationTier,
@@ -4603,6 +4657,40 @@ export const useGameStore = defineStore('game', () => {
     lastMissionResult.value = null
   }
 
+  /** Accept the scene's currently offered commission - instant, offered ->
+   * active. A no-op (returns false) when nothing is offered for that scene. */
+  function acceptSceneCommission(scene: BuyerArchetype): boolean {
+    const result = resolveAcceptSceneCommission(gameState.value, scene)
+    if (result.log.length === 0) return false
+    gameState.value = result.state
+    dayLog.value.push(...result.log)
+    logSessionEvent('acceptSceneCommission', { scene })
+    return true
+  }
+
+  /** "Does this car meet the brief" - free, repeatable, no state change.
+   * Mirrors `gradeMission`'s own contract for a story mission. */
+  function gradeSceneCommission(scene: BuyerArchetype, carInstanceId: string): MissionGradeReport {
+    return gradeSceneCommissionCar(gameState.value, scene, carInstanceId, context.value)
+  }
+
+  /** Hand the car over against the scene's active commission - requires
+   * `gradeSceneCommission` to already pass; `resolveDeliverSceneCommission`
+   * itself re-grades and refuses regardless. */
+  function deliverSceneCommission(scene: BuyerArchetype, carInstanceId: string): boolean {
+    const result = resolveDeliverSceneCommission(
+      gameState.value,
+      scene,
+      carInstanceId,
+      context.value,
+    )
+    if (result.log.length === 0) return false
+    gameState.value = result.state
+    dayLog.value.push(...result.log)
+    logSessionEvent('deliverSceneCommission', { scene, carInstanceId })
+    return true
+  }
+
   // --- staff ---
   // The persisted staff data stays in `GameState`; the staff store reads and
   // writes it through this store's exposed `gameState`, `dayLog`, `context`,
@@ -5301,6 +5389,9 @@ export const useGameStore = defineStore('game', () => {
     acceptMission,
     gradeMission,
     deliverMission,
+    acceptSceneCommission,
+    gradeSceneCommission,
+    deliverSceneCommission,
     lapBoardRowsFor,
     lastJobResult,
     dismissJobResult,

@@ -208,7 +208,7 @@ export function describeLogEntry(
           : entry.reason === 'no-forecourt-space'
             ? 'no forecourt slot free - every one is already showing a car'
             : entry.reason === 'technique'
-              ? 'needs a technique not yet unlocked'
+              ? 'needs a craft this shop has not unlocked yet'
               : 'needs a tool upgrade'
       return `${entry.kind} blocked - ${reasonText}`
     }

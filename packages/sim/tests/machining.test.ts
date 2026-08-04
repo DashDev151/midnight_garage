@@ -45,7 +45,12 @@ import { buildCarInstance, mintCarParts, testToolTiers, type CarPartOverride } f
  */
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY, [], FACILITIES)
-const { operations } = ECONOMY.machining
+// This file is about the four original engine-only operations specifically
+// (the ladder, the support-only pair, the gate, the workshop flow). The
+// catalogue they live in (`economy.machining.operations`) is now shared with
+// the six scene-gated craft operations (`scene` set on every one of them,
+// absent on these nine), which are their own concern with their own tests.
+const operations = ECONOMY.machining.operations.filter((o) => o.scene === undefined)
 const OPERATION_IDS = operations.map((o) => o.id)
 
 /** One model per engine character, so every ladder assertion below is

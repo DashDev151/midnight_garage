@@ -948,6 +948,7 @@
   },
   "machining": {
     "minEngineToolTier": 3,
+    "craftOperationToolTier": 3,
     "gradeMultiplier": {
       "stock": 1,
       "street": 1,
@@ -1082,6 +1083,101 @@
         "spec": 0,
         "authenticityCost": 7,
         "labourPoints": 5
+      },
+      {
+        "id": "race-prep",
+        "displayName": "Race prep",
+        "description": "Corner-weights the geometry and remaps the chassis and engine together for the circuit, so the car gives up more than either job would alone. A build that already hangs together makes the most of it.",
+        "carPartId": "dampers",
+        "powerFraction": {
+          "high-strung-na": 0.0065,
+          "lazy-na": 0.0085,
+          "forced": 0.0065
+        },
+        "spec": 0,
+        "authenticityCost": 3,
+        "labourPoints": 5,
+        "scene": "racer",
+        "handlingFraction": 0.005,
+        "coherenceSupported": true
+      },
+      {
+        "id": "corner-weighting",
+        "displayName": "Corner weighting",
+        "description": "Sets the ride height and spring perches on the scales, corner by corner, until the car turns in exactly the same on both locks.",
+        "carPartId": "springs",
+        "powerFraction": {
+          "high-strung-na": 0,
+          "lazy-na": 0,
+          "forced": 0
+        },
+        "spec": 0,
+        "authenticityCost": 2,
+        "labourPoints": 5,
+        "scene": "touge",
+        "handlingFraction": 0.01
+      },
+      {
+        "id": "blueprint-building",
+        "displayName": "Blueprint building",
+        "description": "Matches every internal to the same weight and clearance, the way the factory manual describes and the production line never had time for.",
+        "carPartId": "internals",
+        "powerFraction": {
+          "high-strung-na": 0.013,
+          "lazy-na": 0.017,
+          "forced": 0.013
+        },
+        "spec": 0,
+        "authenticityCost": 1,
+        "labourPoints": 5,
+        "scene": "tuner"
+      },
+      {
+        "id": "show-fitment",
+        "displayName": "Show fitment",
+        "description": "Rolls the fenders, sets the offset and stretches the tyre until it sits exactly where the crowd at the meet stops to look.",
+        "carPartId": "rims",
+        "powerFraction": {
+          "high-strung-na": 0,
+          "lazy-na": 0,
+          "forced": 0
+        },
+        "spec": 0,
+        "authenticityCost": 3,
+        "labourPoints": 5,
+        "scene": "show-crowd",
+        "style": 5
+      },
+      {
+        "id": "period-correct-restoration",
+        "displayName": "Period-correct restoration",
+        "description": "Rebuilds the bottom end to exactly the tolerances it left the factory with, using the techniques a period specialist would have used, not a modern shortcut.",
+        "carPartId": "block",
+        "powerFraction": {
+          "high-strung-na": 0,
+          "lazy-na": 0,
+          "forced": 0
+        },
+        "spec": 0.25,
+        "authenticityCost": 1,
+        "labourPoints": 5,
+        "scene": "collector"
+      },
+      {
+        "id": "sorting",
+        "displayName": "Sorting",
+        "description": "Sets the diff preload and backlash up properly and chases every last rattle out, so a well-worn car runs tighter than its mileage says it should.",
+        "carPartId": "differential",
+        "powerFraction": {
+          "high-strung-na": 0,
+          "lazy-na": 0,
+          "forced": 0
+        },
+        "spec": 0,
+        "authenticityCost": 2,
+        "labourPoints": 5,
+        "scene": "daily-drivers",
+        "reliabilityConditionBonus": 0.15
       }
     ]
   },

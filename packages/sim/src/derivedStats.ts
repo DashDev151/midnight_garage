@@ -25,8 +25,11 @@ import {
 } from './performance'
 import {
   appliedOperationsOf,
+  machiningHandlingFractionOf,
   machiningOperationCountOf,
   machiningPowerFractionOf,
+  machiningReliabilityConditionBonusOf,
+  machiningStylePointsOf,
 } from './machining'
 import { supportVerdict, totalGainFractionOf, usableGripFraction } from './support'
 
@@ -252,7 +255,11 @@ export function authenticityPercentOf(
  *
  * Each part's points are scaled by its own band before they are summed, the
  * same way `buildFactors` scales a `physicalModifier`: a scrap bodykit is a
- * bad bodykit, and it buys less of the gap than a mint one.
+ * bad bodykit, and it buys less of the gap than a mint one. A slot's own
+ * operation points (`machiningStylePointsOf`) join the fitted part's own
+ * points before that same band scaling, so a show-fitment operation on a worn
+ * wheel buys less than one on a mint wheel, exactly as the catalogue points
+ * beside it already do.
  *
  * `conditionFactor` multiplies the WHOLE result, not just the base, so a
  * rough car does not look good however it is dressed and a poor-condition
@@ -272,7 +279,8 @@ export function stylePercentOf(
     if (!installed) continue
     const part = partsById[installed.partId]
     if (!part) continue
-    fitted += part.statModifiers.style * bandFactor(installed.band, economy)
+    const points = part.statModifiers.style + machiningStylePointsOf(installed, economy)
+    fitted += points * bandFactor(installed.band, economy)
   }
   const reach = Math.min(1, fitted / economy.statFormulas.styleSaturationPoints)
   const raw = styleBase + (styleCeiling - styleBase) * reach
@@ -612,6 +620,13 @@ export function reliabilityIntensityFactor(
  * derivation's own clamp floors it at zero, and the two are then scaled by
  * how much of the budget there actually was to lose. It is exactly 1 whenever
  * the clamp is not biting, so the unclamped decomposition is untouched.
+ *
+ * A sorting-type operation's `reliabilityConditionBonus`
+ * (`machiningReliabilityConditionBonusOf`) is added to the raw condition mean
+ * before the severity ceiling clamps it - a properly sorted car reads closer
+ * to what its own condition band would give a mint example, but a genuinely
+ * ruined part elsewhere still holds the whole car back exactly as it always
+ * has.
  */
 export interface ReliabilityBreakdown {
   /** The car's own `spec.reliabilityBase` - the ceiling nothing exceeds. */
@@ -635,8 +650,9 @@ export function reliabilityBreakdownOf(
 ): ReliabilityBreakdown {
   const base = model.spec.reliabilityBase
   const conditionMean = weightedBandFactorForStat(car, model, 'reliability', partsTaxonomy, economy)
+  const sortingBonus = machiningReliabilityConditionBonusOf(car, economy)
   const conditionFactor = Math.min(
-    conditionMean,
+    conditionMean + sortingBonus,
     reliabilitySeverityCeiling(car, model, partsTaxonomy, economy),
   )
   const coherenceFactor = coherenceFactorFor(
@@ -716,6 +732,16 @@ export function computeDerivedStats(
 ): StatBlock {
   const { powerConditionFloor, grip, aero } = economy.statFormulas
 
+  // Read once and threaded into every coherence-supported operation below
+  // (currently power and handling) rather than recomputed per part - the
+  // same support verdict `reliabilityBreakdownOf` derives its own coherence
+  // factor from further down, so a build that fights itself gets less out of
+  // a coherence-supported operation everywhere that operation reaches.
+  const coherenceFactor = coherenceFactorFor(
+    supportVerdict(instance, model, partsById, economy).headline,
+    economy,
+  )
+
   const powerConditionFraction = weightedBandFactorForStat(
     instance,
     model,
@@ -752,7 +778,10 @@ export function computeDerivedStats(
       aero,
     ) -
     grip.balance.weight * Math.abs(balanceOf(model, grip))
-  const handling = mintHandling * handlingFraction
+  // A scene operation's own handling fraction is a further, separate
+  // addition on top of this (`handlingBoost`, accumulated in the per-part
+  // loop below) - handling past catalogue, not a replacement for it.
+  let handling = mintHandling * handlingFraction
 
   // Style takes no per-part addition at all: an installed part closes part of
   // the gap between the car's own base and its own ceiling rather than adding
@@ -788,8 +817,19 @@ export function computeDerivedStats(
     const wear = bandFactor(installed.band, economy)
     const fraction =
       part.statModifiers.powerFraction[engineCharacter] +
-      machiningPowerFractionOf(installed, part, engineCharacter, economy)
+      machiningPowerFractionOf(installed, part, engineCharacter, economy, coherenceFactor)
     power += model.spec.stockPowerPs * fraction * wear
+
+    // Handling's own past-catalogue addition, on the same slot loop: a scene
+    // operation's `handlingFraction` is a fraction of the car's own MINT
+    // handling, wear- and grade-scaled exactly like the power term above.
+    const handlingFractionFromOps = machiningHandlingFractionOf(
+      installed,
+      part,
+      economy,
+      coherenceFactor,
+    )
+    handling += mintHandling * handlingFractionFromOps * wear
   }
 
   return {

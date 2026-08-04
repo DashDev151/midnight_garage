@@ -10,7 +10,9 @@ import type {
   Job,
   MachiningOperation,
   Part,
+  SceneStanding,
   Subsystem,
+  ToolTiers,
 } from '@midnight-garage/content'
 import { bandFactor } from './bands'
 import type { SimContext } from './context'
@@ -52,10 +54,43 @@ export type MachiningGateReason =
   | 'not-found'
   | 'not-in-service-bay'
   | 'tool-tier'
+  | 'scene-standing'
   | 'unknown-operation'
   | 'slot-empty'
   | 'not-mint'
   | 'already-applied'
+
+/**
+ * The capability gate one operation needs regardless of any specific car:
+ * the tool tier of the line its own `carPartId` belongs to, and, for a scene
+ * operation, that scene already at the Shop stage
+ * (`docs/design/systems/scene-standing-refactor.md` section 6 - "standing
+ * ungates the tool", never the other way round). The one check both the
+ * machine shop (`machiningGateReason` below, car-specific) and the
+ * service-job board (`isCraftOperationUnlocked`, serviceJobs.ts) share, so a
+ * signature job can never be offered ahead of what the shop's own cars could
+ * actually get.
+ *
+ * The four original engine operations carry no `scene` and gate on
+ * `minEngineToolTier` alone, exactly as before this generalisation. A scene
+ * operation gates on `craftOperationToolTier` instead - always 3, per the
+ * ladder ruling that an operation must never let a lower tier out-reach a
+ * bare tier 3 shop.
+ */
+export function craftOperationCapabilityGateReason(
+  operation: MachiningOperation,
+  toolTiers: ToolTiers,
+  sceneStanding: SceneStanding,
+  context: SimContext,
+): 'tool-tier' | 'scene-standing' | null {
+  const group = context.partsTaxonomyById[operation.carPartId].group
+  const requiredTier = operation.scene
+    ? context.economy.machining.craftOperationToolTier
+    : context.economy.machining.minEngineToolTier
+  if (toolTiers[group] < requiredTier) return 'tool-tier'
+  if (operation.scene && sceneStanding[operation.scene] !== 'shop') return 'scene-standing'
+  return null
+}
 
 /**
  * Why machining `operationId` onto whatever is fitted in its own slot on
@@ -63,11 +98,14 @@ export type MachiningGateReason =
  * one predicate: the UI shows the same reason before the click that the
  * resolver enforces after it.
  *
- * `tool-tier` is the whole of the money gate. The engine line's top rung
- * (`economy.machining.minEngineToolTier`, already named "Machine-shop tooling"
- * in `toolLines.json`) is what buys the means of production; once it is owned,
- * an operation costs labour and nothing else. Owning it also clears the
- * buried-slot machine gate by construction, since that asks only for tier 2.
+ * `tool-tier`/`scene-standing` are the whole of the capability gate
+ * (`craftOperationCapabilityGateReason` above). For the four original engine
+ * operations that gate is tool tier alone, exactly as before: the engine
+ * line's top rung (`economy.machining.minEngineToolTier`, already named
+ * "Machine-shop tooling" in `toolLines.json`) is what buys the means of
+ * production; once it is owned, an operation costs labour and nothing else.
+ * Owning it also clears the buried-slot machine gate by construction, since
+ * that asks only for tier 2.
  *
  * `not-mint` is the design's own rule: you do not bore a worn block, you
  * rebuild it first.
@@ -81,9 +119,15 @@ export function machiningGateReason(
   const car = findWorkableCar(state, carInstanceId)
   if (!car) return 'not-found'
   if (!state.serviceBayCarIds.includes(carInstanceId)) return 'not-in-service-bay'
-  if (state.toolTiers.engine < context.economy.machining.minEngineToolTier) return 'tool-tier'
   const operation = context.economy.machining.operations.find((o) => o.id === operationId)
   if (!operation) return 'unknown-operation'
+  const capabilityReason = craftOperationCapabilityGateReason(
+    operation,
+    state.toolTiers,
+    state.sceneStanding,
+    context,
+  )
+  if (capabilityReason) return capabilityReason
   const installed = car.parts[operation.carPartId].installed
   if (!installed) return 'slot-empty'
   if (installed.band !== 'mint') return 'not-mint'
