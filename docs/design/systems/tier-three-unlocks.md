@@ -1,4 +1,4 @@
-# Tier 3: where the interesting work lives
+# The tool ladder: three rungs, three claims
 
 **Status: DESIGN, unsigned.** Nothing here is built. Raised 2026-08-04 out of the scene-standing
 arc, when the tool ladder turned out to have a rung that bought nothing.
@@ -15,15 +15,35 @@ So the maintainer's intended ladder cannot exist as a single scale:
 tier 1  <  tier 1 + craft  <  tier 2  <  tier 2 + craft  <  tier 3  <  tier 3 + craft
 ```
 
-**The resolution: tier 3 stops claiming reach and claims capability.** The ladder is two-dimensional
-and that is fine:
+**The resolution, maintainer 2026-08-04: every rung gets its own claim.**
 
-| | |
-| --- | --- |
-| **Reach** (how good a finish) | tier 1 < tier 2 = tier 3 |
-| **Capability** (what work is possible) | tier 1 = tier 2 < **tier 3** |
+| tier | reach | parts it can fit | capability |
+| --- | --- | --- | --- |
+| **1** | fine | stock, street, **sport** | ordinary work, just slower |
+| **2** | **mint** | **+ race** | do it properly |
+| **3** | mint | + race | **work nobody else in town can do** |
 
-**Tier 3 is where the cool non-standard work lives.** Not a better finish: different work.
+**Grade gates on tool tier, and that is one small table rather than per-part authoring.** Every SKU
+already carries a `grade`, so the whole rule is:
+
+```
+{ stock: 1, street: 1, sport: 1, race: 2 }
+```
+
+No 600-part sweep, no new field on a SKU, and it cannot drift because it reads the grade that
+already decides everything else about a part.
+
+**It also creates a progression nobody had to design.** The cheap tool lines gate the cheap thrills:
+suspension tier 2 is 250,000 and wheels 350,000, so race handling parts arrive early, while engine is
+600,000 and drivetrain 900,000, so race power arrives late. **A player naturally builds a car that
+turns before one that pulls**, which is the right order and falls straight out of prices that already
+ship.
+
+**No conflict with the first law.** Tier 1 of every line is owned from day one and basic work stays
+possible in every discipline. Fitting a race differential was never basic work.
+
+**Tier 3 is then where the cool non-standard work lives.** Not a better finish, and not better parts:
+different work.
 
 ## The tool lines already named their own answer
 
@@ -33,7 +53,7 @@ this is authoring rather than inventing.
 | line | tier 3, as it already ships | price | unlocks |
 | --- | --- | ---: | --- |
 | **engine** | Machine-shop tooling | 1,500,000 | machining, NA-to-turbo. **Already stocked** |
-| **drivetrain** | Driveline rebuild bench and press | 1,800,000 | race-grade gearbox and differential work |
+| **drivetrain** | Driveline rebuild bench and press | 1,800,000 | custom ratios, dog-box conversion |
 | **suspension** | Drive-on alignment lift | 400,000 | geometry: extended lock, custom alignment |
 | **wheels** | Laser alignment and balance rig | 350,000 | aggressive fitment: extreme offset, stretch |
 | **body** | Spray booth and **chassis jig** | 1,400,000 | **straightening a bent shell**, widebody fabrication, underglow |
@@ -85,9 +105,12 @@ The one genuinely new part in this design, and the one with the most interesting
 
 ### Drivetrain: the race driveline
 
-Race-grade gearbox and differential work needs the press. **This is a behaviour change**, not just an
-addition: today any part is fittable the moment it is affordable, so gating race parts stops a
-player skipping straight to them.
+Covered by the grade rule above rather than by anything bespoke: race gearboxes and differentials
+need the press because **all** race parts need their line at tier 2.
+
+What is left for drivetrain tier 3 specifically is the work rather than the parts: **custom ratios
+and dog-box conversion**, which is also a scene craft operation and therefore wants both the tool and
+the standing.
 
 ### Suspension and wheels: geometry and fitment
 
@@ -120,13 +143,15 @@ straightenable-by-somebody rather than as scrap. Seeing the widebody you cannot 
 
 ## Open questions
 
-1. **Does gating race-grade drivetrain parts change the early game too much?** Today any part is
-   fittable when affordable. This is the only item here that takes something away.
+1. **Does gating race grade on tier 2 change the early game too much?** Today any part is fittable
+   the moment it is affordable. This is the only thing in the design that takes something away, and
+   it takes it away across every line at once rather than just the drivetrain.
 2. **Do craft operations need the tool AND the standing?** Coherent, and it makes both ladders matter,
    but it is a ruling.
 3. **The roll cage's taste shape.** How much it helps Racers and Touge, how much it hurts Daily
    Drivers.
 4. **What saving a severity-4 shell costs**, and whether generation changes now that such a car is
    worth buying.
-5. **Should tier 2 get capability unlocks too**, or is capability strictly a tier-3 claim? As drawn,
-   tier 2's whole claim is reaching mint.
+5. **Does gating race grade on tier 2 need a grace period?** A player who buys a car with race parts
+   already fitted, or pulls race parts from a donor, holds parts they cannot yet fit. Selling them is
+   the obvious answer and is probably enough, but it should be a decision rather than a discovery.
