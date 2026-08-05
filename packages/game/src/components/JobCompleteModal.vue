@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { ComponentId } from '@midnight-garage/content'
 import { computed } from 'vue'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen, formatYenDelta } from '../utils/formatYen'
@@ -7,16 +6,6 @@ import { formatYen, formatYenDelta } from '../utils/formatYen'
 const game = useGameStore()
 
 const result = computed(() => game.lastJobResult)
-
-/** One line per group the job's tasks actually touched - the
- * untouched groups (0) stay silent. */
-const specialtyLines = computed(() => {
-  const r = result.value
-  if (!r) return []
-  return (Object.entries(r.specialtyGained) as [ComponentId, number][])
-    .filter(([, delta]) => delta !== 0)
-    .map(([group, delta]) => `${game.componentLabel(group)} ${delta >= 0 ? '+' : ''}${delta}`)
-})
 
 /**
  * One flavor line, varying by outcome - no garage-name templating (no such
@@ -69,10 +58,6 @@ const flavorLine = computed(() => {
           <dd :class="result.reputationDelta >= 0 ? 'up' : 'down'">
             {{ formatYenDelta(result.reputationDelta).replace('¥', '') }}
           </dd>
-        </div>
-        <div v-if="specialtyLines.length">
-          <dt>Specialty</dt>
-          <dd>{{ specialtyLines.join(', ') }}</dd>
         </div>
         <div v-if="result.daysSpent !== undefined">
           <dt>Days on the job</dt>

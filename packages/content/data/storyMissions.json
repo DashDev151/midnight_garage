@@ -16,7 +16,6 @@
     "tipTriggerFraction": 0.15,
     "lapTipTriggerFraction": 0.03,
     "reputationReward": 15,
-    "specialtyGroups": ["body"],
     "deliveredCopy": "It starts. You have no idea what that means to me.",
     "overdeliveredCopy": "It starts AND the radio works? You're wasted on this town."
   },
@@ -39,7 +38,6 @@
     "tipTriggerFraction": 0.15,
     "lapTipTriggerFraction": 0.03,
     "reputationReward": 20,
-    "specialtyGroups": ["engine"],
     "deliveredCopy": "I'll sleep now, I think. Thank you.",
     "overdeliveredCopy": "You checked things I didn't know cars had. I'm telling the whole neighbourhood."
   },
@@ -62,7 +60,6 @@
     "tipTriggerFraction": 0.15,
     "lapTipTriggerFraction": 0.03,
     "reputationReward": 22,
-    "specialtyGroups": ["engine"],
     "deliveredCopy": "She'll outlast three of my drivers. Come by {venue} on Thursday; tell the desk Numata stands for you.",
     "overdeliveredCopy": "Outlast three of my drivers? Give her a month, she'll outlast the fleet.",
     "unlocksAuctionTier": "regional"
@@ -91,7 +88,6 @@
     "tipTriggerFraction": 0.15,
     "lapTipTriggerFraction": 0.03,
     "reputationReward": 25,
-    "specialtyGroups": ["interior", "engine"],
     "deliveredCopy": "It's exactly what I meant and I never said what I meant.",
     "overdeliveredCopy": "My dad asked to drive it. My DAD."
   },
@@ -114,7 +110,6 @@
     "tipTriggerFraction": 0.15,
     "lapTipTriggerFraction": 0.03,
     "reputationReward": 30,
-    "specialtyGroups": ["engine"],
     "deliveredCopy": "Clean work. It goes like it should.",
     "overdeliveredCopy": "You went past the brief. I respect that. So does the dyno."
   },
@@ -137,7 +132,6 @@
     "tipTriggerFraction": 0.15,
     "lapTipTriggerFraction": 0.03,
     "reputationReward": 35,
-    "specialtyGroups": ["engine", "suspension"],
     "deliveredCopy": "Under the mark. The column runs next week; your name's in the last line.",
     "overdeliveredCopy": "WELL under. That's a headline, not a footnote."
   },
@@ -164,7 +158,6 @@
     "tipTriggerFraction": 0.15,
     "lapTipTriggerFraction": 0.03,
     "reputationReward": 38,
-    "specialtyGroups": ["body", "interior"],
     "deliveredCopy": "It'll photograph beautifully. Come to {venue}; the book at the door will have your name where mine used to be.",
     "overdeliveredCopy": "I didn't even need the photograph. She sold herself the moment she rolled onto the lot.",
     "unlocksAuctionTier": "premium"
@@ -193,7 +186,6 @@
     "tipTriggerFraction": 0.15,
     "lapTipTriggerFraction": 0.03,
     "reputationReward": 40,
-    "specialtyGroups": ["body", "wheels"],
     "deliveredCopy": "That stance. That's the one. We park up at the bay-side PA on Sunday nights. Bring something worth looking at and I'll tell them whose work it is.",
     "overdeliveredCopy": "People will stop walking when they see this. That's the whole point.",
     "unlocksSellingChannel": "weekendMeet"
@@ -227,7 +219,6 @@
     "tipTriggerFraction": 0.15,
     "lapTipTriggerFraction": 0.03,
     "reputationReward": 50,
-    "specialtyGroups": ["engine", "drivetrain"],
     "deliveredCopy": "Power AND manners. That's the hard one, and you did it. There's an editor at one of the tuning monthlies who still owes me a favour. Expect a phone call.",
     "overdeliveredCopy": "It made the number and then it just... idled. Beautiful.",
     "unlocksSellingChannel": "tunerMagazine"
@@ -251,7 +242,6 @@
     "tipTriggerFraction": 0.15,
     "lapTipTriggerFraction": 0.03,
     "reputationReward": 60,
-    "specialtyGroups": ["engine", "suspension"],
     "deliveredCopy": "That's the time. That's the story. Go read your own name.",
     "overdeliveredCopy": "You didn't beat the time, you erased it. Front page."
   }

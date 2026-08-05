@@ -54,23 +54,7 @@ export function testToolTiers(overrides: Partial<ToolTiers> = {}): ToolTiers {
   }
 }
 
-/** A full six-line `specialty` map, every line at 0 (a fresh shop's
- * floor) unless overridden - same shape as `testToolTiers` above. */
-export function testSpecialty(
-  overrides: Partial<Record<ComponentId, number>> = {},
-): Record<ComponentId, number> {
-  return {
-    engine: 0,
-    drivetrain: 0,
-    suspension: 0,
-    wheels: 0,
-    body: 0,
-    interior: 0,
-    ...overrides,
-  }
-}
-
-/** Every scene at `none` unless overridden - same shape as `testSpecialty`
+/** Every scene at `none` unless overridden - same shape as `testToolTiers`
  * above. */
 export function testSceneStanding(
   overrides: Partial<Record<BuyerArchetype, SceneStandingStage>> = {},

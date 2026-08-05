@@ -9,7 +9,7 @@ import { computeWeeklyRentYen } from '../src/finances'
 import { hashState } from '../src/hashState'
 import { resolveHireMachineLine } from '../src/jobs'
 import { createInitialGameState } from '../src/newGame'
-import { groupCarParts, testSceneStanding, testSpecialty, testToolTiers } from './testFixtures'
+import { groupCarParts, testSceneStanding, testToolTiers } from './testFixtures'
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 
@@ -33,7 +33,6 @@ function initialState(): GameState {
     cashYen: 1_200_000,
     reputationTier: 'unknown',
     reputationPoints: 0,
-    specialty: testSpecialty(),
     sceneStanding: testSceneStanding(),
     serviceJobOffers: [],
     activeServiceJobs: [],
@@ -256,7 +255,18 @@ describe('advanceDay golden master', () => {
     // every scene at `none`. A pure SHAPE change, measured rather than
     // assumed: no roll, cash figure or derived stat moved, since nothing in
     // this script ever reads or sets a scene's own standing.
-    expect(hashState(finalState)).toBe('b834da40')
+    //
+    // It moves once more, on its own again, for the teardown of the old
+    // specialty system: `GameState` loses `specialty` outright. A pure SHAPE
+    // change, measured rather than assumed: this script never accepts or
+    // completes a service job or a mission, so specialty held all-zero for
+    // its whole 30 days under the old code too, which made the retired
+    // offer-selection bias mathematically a no-op the whole way through
+    // (`pickServiceJobTemplate`'s weighted roll and the replacement
+    // `rng.pick` both reduce to `Math.floor(rng.next() * length)` at equal
+    // weight) - no roll, cash figure or derived stat moved, only the key
+    // disappearing from the state this hash serializes.
+    expect(hashState(finalState)).toBe('3364130f')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -476,7 +486,14 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // throughout this script), and no scene here ever reaches Respected, so
     // the commission board's own daily tick never draws from the shared rng
     // stream at all.
-    expect(hashState(acquisitionCareer().sold)).toBe('7e72e421')
+    //
+    // It moves once more, on its own again, for the teardown of the old
+    // specialty system: `GameState` loses `specialty` outright, same reason
+    // and same shape-only conclusion as the 30-day master above - this
+    // script never accepts or completes a service job either, so the retired
+    // offer-selection bias was already a no-op throughout. No roll, cash
+    // figure or derived stat moved.
+    expect(hashState(acquisitionCareer().sold)).toBe('fc5e5928')
   })
 })
 

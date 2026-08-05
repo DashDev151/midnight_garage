@@ -1,7 +1,7 @@
 import { ECONOMY, type GameState, type StaffMember } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { energyMax } from '../src/laborSlots'
-import { testSceneStanding, testSpecialty, testToolTiers } from './testFixtures'
+import { testSceneStanding, testToolTiers } from './testFixtures'
 
 // The daily labour pool is energy POINTS, not integer slots -
 // `basePoolPoints` for a solo shop, plus each benched member's
@@ -17,7 +17,6 @@ function baseState(staff: StaffMember[]): GameState {
     cashYen: 0,
     reputationTier: 'unknown',
     reputationPoints: 0,
-    specialty: testSpecialty(),
     sceneStanding: testSceneStanding(),
     serviceJobOffers: [],
     activeServiceJobs: [],

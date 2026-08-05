@@ -427,22 +427,6 @@ export const GameStateSchema = z.object({
   /** Accrued reputation points; `reputationTier` derives from this via
    * `applyReputationDelta`. */
   reputationPoints: z.number().int().nonnegative().default(0),
-  /**
-   * Specialty (progression bible's horizontal axis): per-discipline word of
-   * mouth, earned from completed service-job work in that group
-   * (`resolveServiceJob`, serviceJobs.ts). Reputation gates BREADTH;
-   * specialty gates DEPTH (offer bias, in-lane payout premium) - never the
-   * same reward twice (bible law 3). Defaults all-zero for any save that
-   * never earned any.
-   */
-  specialty: z.record(ComponentIdSchema, z.number().int().nonnegative()).default({
-    engine: 0,
-    drivetrain: 0,
-    suspension: 0,
-    wheels: 0,
-    body: 0,
-    interior: 0,
-  }),
   ownedCars: z.array(CarInstanceSchema).default([]),
   partInventory: z.array(PartInstanceSchema).default([]),
   staff: z.array(StaffMemberSchema).default([]),
@@ -912,10 +896,6 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
      */
     repairCostYen: z.number().int().nonnegative(),
     partsCostYen: z.number().int().nonnegative(),
-    /** Per-group specialty earned, split evenly across every distinct group
-     * the job's tasks touched (`applySpecialtyDelta`) - untouched groups
-     * are 0, not omitted. */
-    specialtyGained: z.record(ComponentIdSchema, z.number().int()),
     /** `payoutYen - repairCostYen - partsCostYen`. */
     netProfitYen: z.number().int(),
     /** Days between acceptance and this completion, for the feedback modal. */
@@ -929,7 +909,6 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
      * on a failure - honesty cuts both ways. */
     repairCostYen: z.number().int().nonnegative(),
     partsCostYen: z.number().int().nonnegative(),
-    specialtyGained: z.record(ComponentIdSchema, z.number().int()),
     /** Always `<= 0`: `-repairCostYen - partsCostYen` (no payout on a failure). */
     netProfitYen: z.number().int(),
   }),
@@ -1159,14 +1138,15 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
      * car. No money spent, the win is forfeited rather than the purchase
      * failing loudly. `tool-tier`: a service-job accept refused because at
      * least one task's `minToolTier` exceeds the line's current tier.
-     * `technique`: a signature template's `requiresTechnique` is no longer
-     * unlocked at accept time (specialty dropped, or the offer is stale) -
-     * the technique-gated twin of `tool-tier`. `no-forecourt-space`
+     * `operation`: a signature template's `requiresOperationId` is no longer
+     * unlocked at accept time (the scene dropped below Shop, the tool line
+     * dropped below tier 3, or the offer is stale) - the capability-gated
+     * twin of `tool-tier`. `no-forecourt-space`
      * (sprint148.md, `kind: 'listing'` only): every forecourt slot already
      * holds a car - the forecourt half of `no-space`, kept as its own reason
      * because the fix is different (sell or delist something, not buy more
      * real capacity). */
-    reason: z.enum(['no-space', 'tool-tier', 'technique', 'no-forecourt-space']),
+    reason: z.enum(['no-space', 'tool-tier', 'operation', 'no-forecourt-space']),
   }),
   /** Kept for old-log decode compatibility (the buy-equipment action itself
    * is retired; `tool-upgraded` below is its replacement). */
@@ -1239,14 +1219,13 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     missionId: z.string().min(1),
   }),
   /** `resolveDeliverMission` paid out (+ tip, if earned) and applied the
-   * reputation/specialty reward. */
+   * reputation reward. */
   z.object({
     type: z.literal('mission-delivered'),
     missionId: z.string().min(1),
     payoutYen: z.number().int().nonnegative(),
     tipYen: z.number().int().nonnegative(),
     reputationGained: z.number().int().nonnegative(),
-    specialtyGained: z.record(ComponentIdSchema, z.number().int()),
   }),
   /** `resolveAcceptSceneCommission` (sim/sceneCommissions.ts) - offered ->
    * active. No payout figure yet: a commission's price is only known once a

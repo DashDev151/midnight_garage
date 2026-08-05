@@ -18,10 +18,9 @@ ability points, level-up ceremonies) is out, no matter how standard it is in the
 | Term | Meaning |
 |---|---|
 | **Reputation** | The vertical axis: general standing. The existing 5-tier ladder (unknown, local, known, respected, legend) and its points. Code: `reputationTier` / `reputationPoints`. |
-| **Specialty** | The horizontal axis: per-discipline word of mouth, keyed by the six component groups (engine, drivetrain, suspension, wheels, body, interior). Code: `specialty`. |
+| **Specialty** | The horizontal axis (redefined, fourth amendment): standing within a buyer scene (collector, tuner, show crowd, racer, daily drivers, touge), earned by matched deliveries to it, expressed as clientele behaviour and craft operations. Code: `sceneStanding` / `sceneLedger`. |
 | **Tool line / tool tier** | One always-owned, named tool ladder per component group, tiers 1-3. Never "equipment ownership". |
-| **Technique** | A named, real-world craft unlocked by specialty (e.g. corner weighting). Access, never a stat. |
-| **Shop title** | The derived name your shop earns when one specialty leads above threshold ("the engine house"). |
+| **Craft operation** | A named, real-world act performed on a car (e.g. corner weighting) that a scene's Shop-stage standing, plus tier 3 of the tool line it uses, unlocks. Additive capability; never a stat, a rate, a cost or an access change. Code: `economy.machining.operations`' scene-scoped entries. |
 
 **Banned vocabulary** in design docs, code identifiers, and player-facing copy: XP, skill points,
 levels/leveling (of the player), mastery meter, prestige, renown, perk, talent tree. (The code
@@ -32,7 +31,7 @@ name `reputationTier` predates this and stays; do not rename code symbols to cha
 | Pillar | Gates (allowed) | May NEVER gate |
 |---|---|---|
 | **Reputation** (vertical) | BREADTH: auction tiers, job reputation-tiers, clientele quality, facility expansion, tool-tier purchases (tiers 2/3 only, alongside cash - Sprint 43 amendment, 2026-07-13) | which disciplines you can work in; anything speed-related |
-| **Specialty** (horizontal) | DEPTH: specialty offer mix, in-lane premium pay, techniques, shop title | repair speed; repair cost; whether basic work is possible |
+| **Specialty** (horizontal) | DEPTH: which scene's clientele walks in more often (word of mouth), scene commissions, craft operations, and how well a delivered car is finished | repair speed; repair cost; whether basic work is possible; how much a car sells for |
 | **Cash** | Capability purchases (tool tiers, bays, staff), parts, cars | reputation or specialty directly (money never buys standing) |
 | **Capability** (tools, bays, staff) | THROUGHPUT: labor efficiency, parallelism; CEILINGS: involved/fabrication work | offer quality or pay rates (that is specialty's job) |
 
@@ -173,3 +172,42 @@ name `reputationTier` predates this and stays; do not rename code symbols to cha
   belongs where it is gated). The maintainer overruled it after using the screen - *"The standing
   page is fine, don't move it to upgrades."* It stays at `/standing` with its own nav entry.
   Recorded here so no future sprint re-litigates a decision already made by the person using it.
+- 2026-08-05: **The horizontal axis is redefined (fourth amendment, the scene-standing arc,
+  Sprints 175-181, design of record `docs/design/systems/scene-standing-refactor.md`).** The old
+  Specialty - a point track keyed on the six component groups, earned from service-job work,
+  spending as an offer-selection bias, an in-lane payout premium and a derived shop title - is
+  deleted outright, not migrated (directive 19: there were no players and no old saves to protect).
+  Five points, spending the approval this arc asked for:
+  - **Specialty is now standing within a buyer scene** (collector, tuner, show crowd, racer, daily
+    drivers, touge), earned by a matched delivery to it - a sale at or above that buyer's own taste,
+    or a completed scene commission. Expressed as clientele behaviour (word of mouth raises a
+    scene's draw weight across every selling channel; standing raises that scene's own taste band)
+    and as craft operations, never as a number the player is shown. The vocabulary table's
+    `Specialty`/`Craft operation` rows above are current; `Technique` and `Shop title` are retired
+    along with the mechanism, not renamed - the shop-title feature is gone with no replacement built
+    in this arc, an open question for whoever next wants a scene-keyed name on the wall.
+  - **Result quality is specialty's domain, restated precisely.** Rate, cost and access remain
+    forbidden to it - not how fast, not how cheap, not whether - only how well: a craft operation
+    writes real state onto the car (power/handling/style past catalogue, reliability past its
+    condition band, reduced authenticity cost), and that state is what a buyer or a taste-matched
+    channel pays for.
+  - **Value never reads performance, now stated at the precision the refactor needed:** value never
+    reads *stats* at all; stats route through taste only. `marketValueYen` stayed exactly as stat-
+    blind through this arc as it was before it - the six laws' Litmus 3 ("no reward double-dips")
+    is what the old in-lane premium violated by letting specialty pay the seller directly, which is
+    exactly the design flaw this arc closed.
+  - **Nothing basic is ever locked, unchanged.** Every craft operation is additive capability - nothing
+    existing is gated behind one, and a shop with no scene standing anywhere still does every ordinary
+    job the game has.
+  - **Banned vocabulary, unchanged and complied with.** The system says scene, standing, stage, deed,
+    ledger, operation; none of the words this bible already bans, and none of the retired terms
+    (specialty-as-component-group, technique, shop title), appear in the surviving design, code or
+    copy.
+  The six craft operations survive the teardown by name where the old techniques already named the
+  same craft (`blueprint-building`, `corner-weighting`, `show-fitment`); the other three retired
+  techniques (`dog-box-conversion`, `one-off-fabrication`, `bespoke-trim`) had no scene-operation
+  successor authored for them in the arc's six, so their own signature service-job templates
+  (`dog-box-conversion-job`, `one-off-widebody`, `bespoke-cabin-build`) are deleted with them rather
+  than left ungated - an ungated tier-4 signature job would have been a silent value change directive
+  22 does not permit, and a permanently unreachable one would have been exactly the "quietly keeps
+  working/quietly keeps failing" fragment the teardown exists to avoid.

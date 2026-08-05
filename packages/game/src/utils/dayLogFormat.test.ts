@@ -60,14 +60,6 @@ const SAMPLES: DayLogEntry[] = [
     reputationGained: 4,
     repairCostYen: 8_000,
     partsCostYen: 0,
-    specialtyGained: {
-      engine: 4,
-      drivetrain: 0,
-      suspension: 0,
-      wheels: 0,
-      body: 0,
-      interior: 0,
-    },
     netProfitYen: 34_000,
   },
   {
@@ -76,14 +68,6 @@ const SAMPLES: DayLogEntry[] = [
     reputationLost: 3,
     repairCostYen: 5_000,
     partsCostYen: 0,
-    specialtyGained: {
-      engine: 0,
-      drivetrain: 0,
-      suspension: -3,
-      wheels: 0,
-      body: 0,
-      interior: 0,
-    },
     netProfitYen: -5_000,
   },
   // Kept for old-log decode compatibility.
@@ -98,14 +82,6 @@ const SAMPLES: DayLogEntry[] = [
     payoutYen: 200_000,
     tipYen: 0,
     reputationGained: 20,
-    specialtyGained: {
-      engine: 20,
-      drivetrain: 0,
-      suspension: 0,
-      wheels: 0,
-      body: 0,
-      interior: 0,
-    },
   },
   { type: 'scene-commission-accepted', scene: 'tuner' },
   {
@@ -303,14 +279,6 @@ describe('describeLogEntry', () => {
       payoutYen: 500_000,
       tipYen: 100_000,
       reputationGained: 30,
-      specialtyGained: {
-        engine: 15,
-        drivetrain: 15,
-        suspension: 0,
-        wheels: 0,
-        body: 0,
-        interior: 0,
-      },
     })
     expect(line).toBe('Mission delivered: ¥500,000 + ¥100,000 tip, +30 rep')
   })
@@ -322,14 +290,6 @@ describe('describeLogEntry', () => {
       payoutYen: 200_000,
       tipYen: 0,
       reputationGained: 20,
-      specialtyGained: {
-        engine: 20,
-        drivetrain: 0,
-        suspension: 0,
-        wheels: 0,
-        body: 0,
-        interior: 0,
-      },
     })
     expect(line).toBe('Mission delivered: ¥200,000, +20 rep')
     expect(line).not.toContain('tip')

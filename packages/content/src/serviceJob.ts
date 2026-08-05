@@ -62,19 +62,11 @@ export const ServiceJobTypeSchema = z.object({
    * grade, if this template has any install tasks - `reputationForCompletion`,
    * serviceJobs.ts). */
   baseReputation: z.number().int().nonnegative(),
-  /** A signature template's gate - the id of the `Technique` (techniques.json)
-   * that must be unlocked before this template can ever be offered or accepted.
-   * Absent for every ordinary template. */
-  requiresTechnique: z.string().min(1).optional(),
   /**
-   * The other route to the same signature gate: the id of an
-   * `economy.machining.operations` entry whose own capability (a scene's
-   * Shop-stage standing plus tier 3 of the relevant tool line) must be
-   * unlocked before this template can be offered or accepted. A template
-   * carrying both this and `requiresTechnique` is offerable the moment
-   * EITHER gate is met - the old technique and the new operation are two
-   * routes to the same craft, not two separate requirements. Absent for
-   * every template that isn't a scene operation's matching job.
+   * A signature template's gate: the id of an `economy.machining.operations`
+   * entry whose own capability (a scene's Shop-stage standing plus tier 3 of
+   * the relevant tool line) must be unlocked before this template can be
+   * offered or accepted. Absent for every ordinary template.
    */
   requiresOperationId: z.string().min(1).optional(),
 })

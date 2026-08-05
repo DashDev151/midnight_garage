@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { investorStrategy } from '../../src/bots/investor'
 import { buildSimContext } from '../../src/context'
 import { createRng } from '../../src/rng'
-import { buildCarInstance, testSceneStanding, testSpecialty, testToolTiers } from '../testFixtures'
+import { buildCarInstance, testSceneStanding, testToolTiers } from '../testFixtures'
 
 // Real CARS/PARTS/PARTS_TAXONOMY: the fix under test (partFitsCar against a
 // specific empty CarPartId) needs the real catalog's actual price ordering -
@@ -32,7 +32,6 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     cashYen: 1_000_000,
     reputationTier: 'unknown',
     reputationPoints: 0,
-    specialty: testSpecialty(),
     sceneStanding: testSceneStanding(),
     serviceJobOffers: [],
     activeServiceJobs: [],

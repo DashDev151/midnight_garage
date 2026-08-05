@@ -865,14 +865,6 @@
     "2": "mint",
     "3": "mint"
   },
-  "specialty": {
-    "biasFactor": 0.5,
-    "softcapPoints": 100,
-    "premiumThresholdPoints": 40,
-    "inLanePremium": 1.15,
-    "titleThresholdPoints": 80,
-    "titleBiasMultiplier": 1.25
-  },
   "machineListings": {
     "minGapDays": 4,
     "maxGapDays": 8,

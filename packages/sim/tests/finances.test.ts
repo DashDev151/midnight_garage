@@ -1,7 +1,7 @@
 import { ECONOMY, type GameState, type StaffMember } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { applyWeeklyRentAndWages, computeWeeklyRentYen } from '../src/finances'
-import { testSceneStanding, testSpecialty, testToolTiers } from './testFixtures'
+import { testSceneStanding, testToolTiers } from './testFixtures'
 
 /** The opening (day-1) bay counts, mirroring `FACILITIES.*.startCount` -
  * same figures `stateOnDay`'s fixture below places a fresh career at. */
@@ -25,7 +25,6 @@ function stateOnDay(day: number, staff: StaffMember[] = []): GameState {
     cashYen: 1_000_000,
     reputationTier: 'unknown',
     reputationPoints: 0,
-    specialty: testSpecialty(),
     sceneStanding: testSceneStanding(),
     serviceJobOffers: [],
     activeServiceJobs: [],

@@ -7,7 +7,6 @@ import {
   PARTS_TAXONOMY,
   SERVICE_JOB_CUSTOMER_NAMES,
   SERVICE_JOB_TYPES,
-  SPECIALTY_COPY,
   TOOL_LINES,
   type ServiceJob,
 } from '@midnight-garage/content'
@@ -296,32 +295,5 @@ describe('service jobs in the store', () => {
     game.endDay()
     expect(game.carDetail(carId)?.serviceJob?.arrivesOnDay).toBeNull()
     expect(game.stageAction(carId, { kind: 'repair', componentId, targetBand: 'mint' })).toBe(true)
-  })
-
-  /**
-   * The store threads `gameState.specialty` through to
-   * `advanceDay` (and so to fresh offer generation) purely by passing the
-   * whole `GameState` object - no dedicated wiring code, so this is an
-   * end-to-end proof the pipeline actually works through the real store,
-   * not just the sim function tested directly in `serviceJobs.test.ts`.
-   */
-  it('a fresh offer generated while a specialty dominates and clears the threshold draws its flavor from the word-of-mouth copy pool', () => {
-    const game = useGameStore()
-    game.newGame(1)
-    // The radial-offer gate would keep the
-    // End Day loop below offerless forever on a tutorial career - skip first.
-    game.skipTutorial()
-    game.gameState = {
-      ...game.gameState,
-      specialty: { engine: 100, drivetrain: 0, suspension: 0, wheels: 0, body: 0, interior: 0 },
-    }
-    let sawSpecialtyCopy = false
-    for (let i = 0; i < 100 && !sawSpecialtyCopy; i++) {
-      game.endDay()
-      sawSpecialtyCopy = game.serviceJobOffers.some((o) =>
-        SPECIALTY_COPY.engine.lines.includes(o.description),
-      )
-    }
-    expect(sawSpecialtyCopy).toBe(true)
   })
 })

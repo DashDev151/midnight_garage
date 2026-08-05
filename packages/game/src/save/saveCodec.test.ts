@@ -147,17 +147,6 @@ const FRESH_TOOL_TIERS = {
   interior: 1,
 }
 
-/** A fresh shop's specialty - what every pre-v24 save (which
- * never earned any) migrates to, and what a new game starts at. */
-const FRESH_SPECIALTY = {
-  engine: 0,
-  drivetrain: 0,
-  suspension: 0,
-  wheels: 0,
-  body: 0,
-  interior: 0,
-}
-
 const fullState: GameState = GameStateSchema.parse({
   day: 42,
   seed: 7,
@@ -983,7 +972,7 @@ describe('saveCodec', () => {
   })
 
   it('a per-part staged action and job (carPartId set) round-trip exactly under version 17', () => {
-    expect(SAVE_VERSION).toBe(64)
+    expect(SAVE_VERSION).toBe(65)
     const perPart: GameState = GameStateSchema.parse({
       ...fullState,
       jobs: [
@@ -1030,7 +1019,7 @@ describe('saveCodec', () => {
   })
 
   it('a v31 state with an origin-carrying inventory part round-trips the origin exactly', () => {
-    expect(SAVE_VERSION).toBe(64)
+    expect(SAVE_VERSION).toBe(65)
     const withOrigin: GameState = GameStateSchema.parse({
       ...fullState,
       partInventory: [
@@ -1578,59 +1567,6 @@ describe('saveCodec', () => {
   })
 
   /**
-   * v23 -> v24 (specialty): `GameStateSchema` gained `specialty`,
-   * the progression bible's horizontal axis - the normal additive case (like
-   * v2/v22), so it needs NO `MIGRATIONS[23]` entry, but it DOES bump
-   * `SAVE_VERSION` (Save law). These two tests are its regression coverage:
-   * a real pre-v24 (v23 envelope) save with no `specialty` field at all
-   * still decodes cleanly under v24 (all-zero, exactly what "never earned
-   * any" means), and a v24 state carrying real specialty values round-trips
-   * them exactly.
-   */
-  it('a real pre-v24 save (a v23 envelope with no specialty field) decodes all-zero under v24', () => {
-    const stateWithoutSpecialty: Record<string, unknown> = { ...fullState }
-    delete stateWithoutSpecialty.specialty
-    const preV24 = { version: 23, gameState: stateWithoutSpecialty }
-    const code = 'MGSAVE1.' + btoa(JSON.stringify(preV24))
-    const decoded = decodeSave(code)
-    expect(decoded.specialty).toEqual(FRESH_SPECIALTY)
-  })
-
-  it('a v24 state with real specialty values round-trips them exactly', () => {
-    const withSpecialty: GameState = GameStateSchema.parse({
-      ...fullState,
-      specialty: { ...FRESH_SPECIALTY, engine: 120, body: 40 },
-    })
-    const decoded = decodeSave(encodeSave(withSpecialty))
-    expect(decoded).toEqual(withSpecialty)
-    expect(decoded.specialty.engine).toBe(120)
-    expect(decoded.specialty.body).toBe(40)
-    expect(decoded.specialty.drivetrain).toBe(0)
-  })
-
-  /**
-   * Techniques and the derived shop title need no save bump of their own:
-   * both are pure functions of `state.specialty` (already persisted since
-   * v24) plus the technique catalog (content, not save data) - nothing new
-   * is ever stored, so a v24 save carrying high specialty decodes
-   * identically whether or not a technique/title derives from it.
-   * `SAVE_VERSION` has since moved on for unrelated reasons; this canary
-   * tracks the current value, not this fact.
-   */
-  it('a techniques and shop-title state round-trips at the current SAVE_VERSION', () => {
-    expect(SAVE_VERSION).toBe(64)
-  })
-
-  it('a v24 save with specialty high enough to unlock a technique/title decodes identically either way - nothing new is stored', () => {
-    const withHighSpecialty: GameState = GameStateSchema.parse({
-      ...fullState,
-      specialty: { ...FRESH_SPECIALTY, engine: 150 },
-    })
-    const decoded = decodeSave(encodeSave(withHighSpecialty))
-    expect(decoded).toEqual(withHighSpecialty)
-  })
-
-  /**
    * v24 -> v25 (the flip ledger): `GameStateSchema` gained
    * `carLedgers` (default `{}`) and `PartInstanceSchema` gained an optional
    * `pricePaidYen` - the normal additive case (like v2/v22/v24), so it needs
@@ -1726,7 +1662,7 @@ describe('saveCodec', () => {
    * a real double-parked car round-trips it exactly.
    */
   it('SAVE_VERSION is current', () => {
-    expect(SAVE_VERSION).toBe(64)
+    expect(SAVE_VERSION).toBe(65)
   })
 
   it('a real pre-v26 save (a v25 envelope with no graceParkingCarId field) decodes with nothing double-parked under v26', () => {
@@ -1759,7 +1695,7 @@ describe('saveCodec', () => {
    * exactly.
    */
   it('SAVE_VERSION is current', () => {
-    expect(SAVE_VERSION).toBe(64)
+    expect(SAVE_VERSION).toBe(65)
   })
 
   it('a real pre-v27 save (a v26 envelope with neither field) decodes with nothing listed or scheduled under v27', () => {
@@ -1806,7 +1742,7 @@ describe('saveCodec', () => {
    * same slot, same band, same everything else.
    */
   it('SAVE_VERSION is current', () => {
-    expect(SAVE_VERSION).toBe(64)
+    expect(SAVE_VERSION).toBe(65)
   })
 
   it("a real pre-v28 save remaps an entry-tier car's everyday-class stock part to its own class sibling SKU", () => {
@@ -2202,7 +2138,7 @@ describe('saveCodec', () => {
   /**
    * v61 -> v62 (standing moves the band): `GameStateSchema` gained
    * `sceneStanding`, defaulted to every scene at `none`. The pure additive
-   * case (the `specialty` default-object pattern): a real pre-v62 save with
+   * case (the `toolTiers` default-object pattern): a real pre-v62 save with
    * no `sceneStanding` field at all still decodes with every scene unknown -
    * exactly right, since no career could have earned any yet - and a v62
    * state with real standing round-trips it exactly.
@@ -2300,5 +2236,23 @@ describe('saveCodec', () => {
     const decoded = decodeSave(encodeSave(withCommissions))
     expect(decoded).toEqual(withCommissions)
     expect(decoded.sceneCommissions?.tuner).toEqual(withCommissions.sceneCommissions?.tuner)
+  })
+
+  /**
+   * v64 -> v65 (teardown of the old specialty system): `GameStateSchema`
+   * loses `specialty` outright. Per directive 19, a plain SAVE_VERSION bump
+   * with no migration and no legacy-compat branch: a pre-v65 save carrying
+   * the old field simply has it stripped, the same as any other field
+   * `GameStateSchema` no longer declares.
+   */
+  it('a real pre-v65 save (a v64 envelope carrying the old specialty field) decodes with it dropped', () => {
+    const preV65State: Record<string, unknown> = {
+      ...fullState,
+      specialty: { engine: 120, drivetrain: 0, suspension: 0, wheels: 0, body: 0, interior: 0 },
+    }
+    const preV65 = { version: 64, gameState: preV65State }
+    const code = 'MGSAVE1.' + btoa(JSON.stringify(preV65))
+    const decoded = decodeSave(code)
+    expect(decoded).not.toHaveProperty('specialty')
   })
 })

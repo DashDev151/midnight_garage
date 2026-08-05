@@ -34,13 +34,7 @@ import {
 } from '../src/jobs'
 import { makeCarOrigin, makeMarketOrigin } from '../src/provenance'
 import { deriveServiceJobPayoutYen, serviceJobCostBreakdown } from '../src/serviceJobs'
-import {
-  buildCarInstance,
-  mintCarParts,
-  testSceneStanding,
-  testSpecialty,
-  testToolTiers,
-} from './testFixtures'
+import { buildCarInstance, mintCarParts, testSceneStanding, testToolTiers } from './testFixtures'
 
 const CONTEXT = buildSimContext(
   CARS,
@@ -77,7 +71,6 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     cashYen: 1_000_000,
     reputationTier: 'unknown',
     reputationPoints: 0,
-    specialty: testSpecialty(),
     sceneStanding: testSceneStanding(),
     serviceJobOffers: [],
     activeServiceJobs: [],

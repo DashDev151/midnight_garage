@@ -22,11 +22,9 @@ import personasJson from '../data/personas.json'
 import provenanceJson from '../data/provenance.json'
 import serviceJobCustomerNamesJson from '../data/serviceJobCustomerNames.json'
 import serviceJobTemplatesJson from '../data/serviceJobTemplates.json'
-import specialtyCopyJson from '../data/specialtyCopy.json'
 import staffCandidatesJson from '../data/staffCandidates.json'
 import storyMissionsJson from '../data/storyMissions.json'
 import symptomsJson from '../data/symptoms.json'
-import techniquesJson from '../data/techniques.json'
 import toolLinesJson from '../data/toolLines.json'
 import traitsJson from '../data/traits.json'
 import tutorialLotJson from '../data/tutorialLot.json'
@@ -59,12 +57,10 @@ import type { CarPartId } from './tags'
 import { PersonasSchema } from './persona'
 import { ProvenancePoolSchema } from './provenance'
 import { ServiceJobCustomerNamesSchema, ServiceJobTypesSchema } from './serviceJob'
-import { SpecialtyCopySchema } from './specialtyCopy'
 import { StoryMissionsSchema, type StoryMission } from './storyMission'
 import { DamagePatternsSchema } from './damagePattern'
 import { resolveSymptomCauses, SymptomsContentSchema, SymptomsSchema } from './symptom'
 import { StaffCandidatePoolSchema, TraitDefinitionsSchema } from './staff'
-import { TechniquesSchema } from './techniques'
 import { ToolLinesSchema } from './toolLines'
 import { TutorialLotRecipeSchema, TutorialStepsSchema } from './tutorial'
 import { VenueNamesSchema } from './venueNames'
@@ -180,8 +176,6 @@ export const PAINT_TINS = PaintTinsSchema.parse(paintTinsJson)
  */
 export const PAINT_ALIASES = PaintAliasesSchema.parse(paintAliasesJson)
 export const COMPONENT_DISPLAY_NAMES = ComponentDisplayNamesSchema.parse(componentDisplayNamesJson)
-export const SPECIALTY_COPY = SpecialtyCopySchema.parse(specialtyCopyJson)
-export const TECHNIQUES = TechniquesSchema.parse(techniquesJson)
 
 /**
  * The car-history flavour pool (`CarInstance.provenanceNote`).

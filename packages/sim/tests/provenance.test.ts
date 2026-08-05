@@ -22,13 +22,7 @@ import {
 } from '../src/provenance'
 import { createRng } from '../src/rng'
 import { resolveServiceJob } from '../src/serviceJobs'
-import {
-  buildCarInstance,
-  mintCarParts,
-  testSceneStanding,
-  testSpecialty,
-  testToolTiers,
-} from './testFixtures'
+import { buildCarInstance, mintCarParts, testSceneStanding, testToolTiers } from './testFixtures'
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 
@@ -39,7 +33,6 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     cashYen: 1_000_000,
     reputationTier: 'unknown',
     reputationPoints: 0,
-    specialty: testSpecialty(),
     sceneStanding: testSceneStanding(),
     ownedCars: [],
     partInventory: [],

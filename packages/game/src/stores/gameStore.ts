@@ -212,12 +212,10 @@ import {
   sendInspectorGateReason as sendInspectorGateReasonCore,
   settleAuctionHammer as settleAuctionHammerCore,
   settleAuctionLotLost as settleAuctionLotLostCore,
-  shopTitle,
   supportVerdict,
   swapCars as swapCarsCore,
   toolDeficitSummary,
   unlockedAuctionTiers as unlockedAuctionTiersCore,
-  unlockedTechniques,
   upgradeHintFor,
   usedPartSaleValueYen,
   valuateCarForBuyer,
@@ -759,16 +757,6 @@ export interface StandingReputationView {
   nextTier: { tier: ReputationTier; threshold: number } | null
 }
 
-/** One discipline's row on the Standing screen - its points and
- * the named tier-4 technique it earns (shown whether or not it's unlocked,
- * progression bible law 5: every unlock is a named real thing). */
-export interface StandingSpecialtyView {
-  componentId: ComponentId
-  componentLabel: string
-  points: number
-  technique: { displayName: string; thresholdPoints: number; unlocked: boolean } | null
-}
-
 /** One car on a scene's ledger row - the deed itself, not a running count. */
 export interface StandingSceneCarView {
   carInstanceId: string
@@ -815,13 +803,10 @@ export interface StandingSceneRowView {
 }
 
 /** Everything the Standing screen renders - granular
- * reputation, all six specialty disciplines, the derived shop title, and
- * every scene's ledger row. Pure function of existing state (no new
- * persisted field). */
+ * reputation and every scene's ledger row. Pure function of existing state
+ * (no new persisted field). */
 export interface StandingView {
   reputation: StandingReputationView
-  specialties: StandingSpecialtyView[]
-  shopTitleName: string | null
   scenes: StandingSceneRowView[]
 }
 
@@ -959,7 +944,6 @@ export interface MissionResultView {
   payoutYen: number
   tipYen: number
   reputationGained: number
-  specialtyGained: Record<ComponentId, number>
   /**
    * `payoutYen` minus the delivered car's ledger total (purchase + repairs +
    * parts, `carLedgerFor` - the same figure CarDetail's finances panel
@@ -1017,9 +1001,6 @@ export interface ServiceJobResultView {
   /** `payoutYen - repairCostYen - partsCostYen` - always <= 0 on failure
    * (no payout, sunk cost only). */
   netProfitYen: number
-  /** Per-group specialty earned or lost, split evenly across every group
-   * the job's tasks touched - untouched groups are 0, not omitted. */
-  specialtyGained: Record<ComponentId, number>
   /** Days between acceptance and this resolution. */
   daysSpent?: number
   /** Display strings ("<brand> <name>") for every
@@ -3486,23 +3467,6 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
-  // --- specialty ---
-
-  /**
-   * The six per-discipline specialty counters, dev-console-only (progression
-   * bible law 4: no player-facing meter - this is the ONE debug exception).
-   * Real players never see this; the actual surface is offer mix and copy.
-   */
-  const specialtyView = computed<
-    { componentId: ComponentId; componentLabel: string; points: number }[]
-  >(() =>
-    REAL_COMPONENT_GROUPS.map((componentId) => ({
-      componentId,
-      componentLabel: componentLabel(componentId),
-      points: gameState.value.specialty[componentId],
-    })),
-  )
-
   /**
    * The shop's standing in every buyer scene - the dev console's own quick
    * readout, and what `standingView.scenes` below builds its player-facing
@@ -3520,32 +3484,9 @@ export const useGameStore = defineStore('game', () => {
   )
 
   /**
-   * The shop's derived title copy ("the engine house"), or null
-   * below `titleThresholdPoints` - plain text alongside reputation
-   * (`GarageScreen.vue`), never a meter. Pure function of `specialty`; can
-   * shift the moment another line overtakes, no ceremony, no lock-in.
-   */
-  const shopTitleName = computed<string | null>(() => {
-    const group = shopTitle(gameState.value, context.value)
-    return group ? context.value.specialtyCopy[group].titleName : null
-  })
-
-  /** The techniques the shop has unlocked right now - dev-
-   * console-only, same "one sanctioned debug exception" as `specialtyView`. */
-  const unlockedTechniqueViews = computed<{ id: string; displayName: string }[]>(() =>
-    unlockedTechniques(gameState.value, context.value).map((t) => ({
-      id: t.id,
-      displayName: t.displayName,
-    })),
-  )
-
-  /**
-   * The Standing screen's whole payload - granular
-   * reputation (points + the named next tier), all six specialty disciplines
-   * (points + their named technique), and the shop title. Progression bible
-   * law 4 permits these exact numbers on this ONE
-   * dedicated view; every other surface stays meter-free. Pure derivation, no
-   * new state.
+   * The Standing screen's whole payload - granular reputation (points + the
+   * named next tier) and every scene's ledger row. Pure derivation, no new
+   * state.
    */
   const standingView = computed<StandingView>(() => {
     const points = gameState.value.reputationPoints
@@ -3553,22 +3494,6 @@ export const useGameStore = defineStore('game', () => {
       Object.entries(context.value.economy.reputation.tierThresholds) as [ReputationTier, number][]
     ).sort((a, b) => a[1] - b[1])
     const nextEntry = orderedTiers.find(([, threshold]) => threshold > points)
-    const specialties: StandingSpecialtyView[] = REAL_COMPONENT_GROUPS.map((componentId) => {
-      const technique = context.value.techniques.find((t) => t.componentId === componentId)
-      const disciplinePoints = gameState.value.specialty[componentId]
-      return {
-        componentId,
-        componentLabel: componentLabel(componentId),
-        points: disciplinePoints,
-        technique: technique
-          ? {
-              displayName: technique.displayName,
-              thresholdPoints: technique.thresholdPoints,
-              unlocked: disciplinePoints >= technique.thresholdPoints,
-            }
-          : null,
-      }
-    })
     const ledger = sceneLedgerFor(gameState.value)
     const commissionBoard = sceneCommissionsFor(gameState.value)
     const scenes: StandingSceneRowView[] = sceneStandingView.value.map((row) => {
@@ -3620,8 +3545,6 @@ export const useGameStore = defineStore('game', () => {
         points,
         nextTier: nextEntry ? { tier: nextEntry[0], threshold: nextEntry[1] } : null,
       },
-      specialties,
-      shopTitleName: shopTitleName.value,
       scenes,
     }
   })
@@ -4645,7 +4568,6 @@ export const useGameStore = defineStore('game', () => {
         payoutYen: entry.payoutYen,
         tipYen: entry.tipYen,
         reputationGained: entry.reputationGained,
-        specialtyGained: entry.specialtyGained,
         profitYen: entry.payoutYen - totalSpentYen,
       }
     }
@@ -4771,7 +4693,6 @@ export const useGameStore = defineStore('game', () => {
         repairCostYen: entry.repairCostYen,
         partsCostYen: entry.partsCostYen,
         netProfitYen: entry.netProfitYen,
-        specialtyGained: entry.specialtyGained,
         daysSpent: entry.daysSpent,
         returnedParts,
       }
@@ -4785,7 +4706,6 @@ export const useGameStore = defineStore('game', () => {
         repairCostYen: entry.repairCostYen,
         partsCostYen: entry.partsCostYen,
         netProfitYen: entry.netProfitYen,
-        specialtyGained: entry.specialtyGained,
         returnedParts,
       }
     }
@@ -5330,9 +5250,6 @@ export const useGameStore = defineStore('game', () => {
     toolTierInfo,
     upgradeToolLine,
     machineListingView,
-    specialtyView,
-    shopTitleName,
-    unlockedTechniqueViews,
     standingView,
     costSheetView,
     repair,

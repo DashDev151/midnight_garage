@@ -1,7 +1,6 @@
 import { z } from 'zod'
 import { AuctionTierSchema } from './auction'
 import { SellingChannelIdSchema } from './economy'
-import { ComponentIdSchema } from './tags'
 import { RequirementSpecSchema } from './requirement'
 
 /**
@@ -41,9 +40,6 @@ export const StoryMissionSchema = z.object({
    * just clearing the bar. Kept tighter than the stat-threshold default. */
   lapTipTriggerFraction: z.number().min(0).max(1).default(0.03),
   reputationReward: z.number().int().nonnegative(),
-  /** The specialty groups `reputationReward` splits across on delivery
-   * (`applySpecialtyDelta`). */
-  specialtyGroups: z.array(ComponentIdSchema).min(1),
   deliveredCopy: z.string().min(1),
   overdeliveredCopy: z.string().min(1),
   /**

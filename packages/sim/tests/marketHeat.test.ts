@@ -9,7 +9,7 @@ import {
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '../src/context'
 import { bumpLotSupply, bumpPlayerSales, updateMarketHeat } from '../src/marketHeat'
-import { testSceneStanding, testSpecialty, testToolTiers } from './testFixtures'
+import { testSceneStanding, testToolTiers } from './testFixtures'
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 const { HEAT_MIN, HEAT_MAX } = CONTEXT.economy.marketPressure
@@ -30,7 +30,6 @@ function stateOnDay(
     cashYen: 0,
     reputationTier: 'unknown',
     reputationPoints: 0,
-    specialty: testSpecialty(),
     sceneStanding: testSceneStanding(),
     serviceJobOffers: [],
     activeServiceJobs: [],

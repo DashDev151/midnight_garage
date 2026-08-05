@@ -159,41 +159,6 @@ def render_days_to_tier_section(df: pl.DataFrame) -> list[str]:
     return lines
 
 
-def render_specialty_section(df: pl.DataFrame) -> list[str]:
-    """Sprint 38 (specialty axis), informational only - no invariant reads
-    this yet. Day-100 top-specialty group (most common across seeds) and its
-    median point value per strategy, from `specialtyTopGroup`/
-    `specialtyTopPoints` (exportCareers.ts) - exists so the arc-end balance
-    pass can see whether the offer-bias/in-lane-premium mechanics actually
-    produce real specialization, not to gate anything yet."""
-    lines = [
-        "## Specialty (Sprint 38, informational)",
-        "",
-        "Day-100 top specialty group (most common across seeds) and its median point "
-        "value, per strategy. `engine`/0 means the strategy never earned any (the "
-        "argmax default).",
-        "",
-        "| Strategy | Most common top group | Points (median) |",
-        "|---|---|---|",
-    ]
-    if "specialtyTopGroup" not in df.columns or df.height == 0:
-        lines.append("| *(no specialty data in this run)* | - | - |")
-        lines.append("")
-        return lines
-
-    day100 = df.filter(pl.col("day") == 100)
-    for strategy in sorted(day100["strategy"].unique().to_list()):
-        rows = day100.filter(pl.col("strategy") == strategy)
-        if rows.height == 0:
-            continue
-        modes = rows["specialtyTopGroup"].mode().sort().to_list()
-        top_group = modes[0] if modes else "-"
-        points_median = rows["specialtyTopPoints"].median()
-        lines.append(f"| {strategy} | {top_group} | {points_median:.1f} |")
-    lines.append("")
-    return lines
-
-
 def render_coherence_section(coherence: pl.DataFrame) -> list[str]:
     """Sprint 55 (economy-bible.md law 4): the closed-form Law 1/Law 2/Law 3
     facts, per roster model - `computeRosterCoherence` (sim) derives every
@@ -447,7 +412,6 @@ def render_markdown(
     auction_section: list[str],
     acquisitions_section: list[str],
     days_to_tier_section: list[str],
-    specialty_section: list[str],
     coherence_section: list[str],
     diagnosis_disclosure_section: list[str],
     donor_coherence_section: list[str],
@@ -472,7 +436,6 @@ def render_markdown(
         )
     lines.append("")
     lines.extend(days_to_tier_section)
-    lines.extend(specialty_section)
     lines.extend(coherence_section)
     lines.extend(diagnosis_disclosure_section)
     lines.extend(symptom_coherence_section)
@@ -504,7 +467,6 @@ def main(argv: list[str] | None = None) -> int:
     auction_section = render_auction_section(summarize_auction_wins(auction_wins))
     acquisitions_section = render_acquisitions_section(summarize_acquisitions(acquisitions))
     days_to_tier_section = render_days_to_tier_section(df)
-    specialty_section = render_specialty_section(df)
     coherence_section = render_coherence_section(coherence)
     diagnosis_disclosure_section = render_diagnosis_disclosure()
     donor_coherence_section = render_donor_coherence_section(
@@ -520,7 +482,6 @@ def main(argv: list[str] | None = None) -> int:
         auction_section,
         acquisitions_section,
         days_to_tier_section,
-        specialty_section,
         coherence_section,
         diagnosis_disclosure_section,
         donor_coherence_section,

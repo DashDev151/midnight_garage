@@ -19,11 +19,9 @@ import type {
   Persona,
   ProvenancePool,
   ServiceJobType,
-  SpecialtyCopy,
   StaffCandidatePool,
   StoryMission,
   Symptom,
-  Technique,
   ToolLine,
   ToolLines,
   VenueNames,
@@ -37,11 +35,9 @@ import {
   LAP_REFERENCES,
   PERSONAS,
   PROVENANCE_POOL,
-  SPECIALTY_COPY,
   STAFF_CANDIDATES,
   STORY_MISSIONS,
   SYMPTOMS,
-  TECHNIQUES,
   TOOL_LINES,
   VENUE_NAMES,
 } from '@midnight-garage/content'
@@ -109,13 +105,6 @@ export interface SimContext {
   /** Convenience lookup for one line - `toolLines[componentId]`, named. */
   toolLineFor(componentId: ComponentId): ToolLine
   economy: EconomyConfig
-  /** The word-of-mouth flavor pool a generated offer draws from instead of
-   * its template's own `flavorPool` when the in-lane specialty premium
-   * applies (`serviceJobs.ts`). */
-  specialtyCopy: SpecialtyCopy
-  /** The named-craft catalog gating signature templates
-   * (`unlockedTechniques`/`requiresUnmetTechnique`, serviceJobs.ts). */
-  techniques: readonly Technique[]
   /** The car-history flavour pool (`CarInstance.provenanceNote`) -
    * `auctions.ts` reads it from here. */
   provenancePool: ProvenancePool
@@ -235,8 +224,6 @@ export function buildSimContext(
   serviceJobCustomerNames: readonly string[] = [],
   toolLines: ToolLines = TOOL_LINES,
   economy: EconomyConfig = ECONOMY,
-  specialtyCopy: SpecialtyCopy = SPECIALTY_COPY,
-  techniques: readonly Technique[] = TECHNIQUES,
   provenancePool: ProvenancePool = PROVENANCE_POOL,
   symptoms: readonly Symptom[] = SYMPTOMS,
   diagnosticTests: readonly DiagnosticTest[] = DIAGNOSTIC_TESTS,
@@ -280,8 +267,6 @@ export function buildSimContext(
     toolLines,
     toolLineFor: (componentId) => toolLines[componentId],
     economy,
-    specialtyCopy,
-    techniques,
     provenancePool,
     symptoms,
     symptomsById: indexById(symptoms),

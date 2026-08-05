@@ -351,7 +351,6 @@ export function advanceDay(
       currentGameYear(next.reputationTier),
       next.toolTiers,
       next.reputationTier,
-      next.specialty,
       next.sceneStanding,
     )
     if (freshServiceJobOffers.length > 0) {

@@ -48,7 +48,6 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     cashYen: 5_000_000,
     reputationTier: 'unknown',
     reputationPoints: 0,
-    specialty: { engine: 0, drivetrain: 0, suspension: 0, wheels: 0, body: 0, interior: 0 },
     sceneStanding: testSceneStanding(),
     serviceJobOffers: [],
     activeServiceJobs: [],

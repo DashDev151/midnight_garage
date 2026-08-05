@@ -81,8 +81,6 @@ const COLUMNS = [
   { name: 'reputationTier', type: 'string' },
   { name: 'reputationPoints', type: 'int64' },
   { name: 'equipmentOwnedCount', type: 'int64' },
-  { name: 'specialtyTopGroup', type: 'string' },
-  { name: 'specialtyTopPoints', type: 'int64' },
 ] as const
 
 /** One successful auction acquisition, by channel - every bot career's
@@ -215,8 +213,6 @@ function main(): void {
             snapshot.reputationTier,
             snapshot.reputationPoints,
             snapshot.equipmentOwnedCount,
-            snapshot.specialtyTopGroup,
-            snapshot.specialtyTopPoints,
           ].join(','),
         )
       }

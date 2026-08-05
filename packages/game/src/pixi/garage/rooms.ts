@@ -330,10 +330,10 @@ function buildBodyPaintScene(derelict: boolean): Container {
 
 /** The real counts `buildOfficeScene` stamps up: one card per car listed
  * for sale, one photo per point of the reputation-derived coverage
- * `officeDisplay.ts` already computes, one certificate per technique
- * earned. Never a raw reputation number or a technique's identity - the
- * office's whole point is reading as those things at a glance rather than
- * as a readout - so a caller hands over counts only. */
+ * `officeDisplay.ts` already computes, one certificate per craft operation
+ * the shop possesses. Never a raw reputation number or an operation's
+ * identity - the office's whole point is reading as those things at a
+ * glance rather than as a readout - so a caller hands over counts only. */
 export interface OfficeSceneCounts {
   listings: number
   photos: number
@@ -402,8 +402,8 @@ const PHOTO_FIELD: StampField = { x: 560, y: 145, width: 160, height: 96 }
 
 const CERTIFICATE_COLUMNS = 4
 const CERTIFICATE_ROWS = 2
-/** More frames than the game has techniques to earn today, so the wall
- * has headroom for whatever the roster grows to before it is the one
+/** More frames than the game has craft operations to earn today, so the
+ * wall has headroom for whatever the roster grows to before it is the one
  * running short. */
 export const MAX_CERTIFICATE_STAMPS = CERTIFICATE_COLUMNS * CERTIFICATE_ROWS
 const CERTIFICATE_FIELD: StampField = { x: 740, y: 145, width: 128, height: 64 }
@@ -451,7 +451,7 @@ export function officePhotoPositions(count: number): [number, number][] {
   return stampPositions(count, PHOTO_COLUMNS, PHOTO_ROWS, PHOTO_FIELD)
 }
 
-/** Where the certificate frames land for a given earned-technique count,
+/** Where the certificate frames land for a given unlocked-operation count,
  * clamped to `MAX_CERTIFICATE_STAMPS`. */
 export function officeCertificatePositions(count: number): [number, number][] {
   return stampPositions(count, CERTIFICATE_COLUMNS, CERTIFICATE_ROWS, CERTIFICATE_FIELD)
@@ -474,7 +474,7 @@ function buildOfficeScene(counts: OfficeSceneCounts = DEFAULT_OFFICE_COUNTS): Co
     placeFixture(scene, { room: 'office', fixture: 'photo', x, y })
   }
 
-  // The certificates, beside the photos: one per technique earned.
+  // The certificates, beside the photos: one per craft operation earned.
   for (const [x, y] of officeCertificatePositions(counts.certificates)) {
     placeFixture(scene, { room: 'office', fixture: 'certificate', x, y })
   }

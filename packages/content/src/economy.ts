@@ -2600,27 +2600,6 @@ export const EconomyConfigSchema = z.object({
       },
     ),
   /**
-   * The specialty axis's tunables (progression bible's horizontal axis -
-   * per-discipline word of mouth). `biasFactor`/`softcapPoints` shape the
-   * offer-selection weight (`1 + biasFactor * min(1, specialty[group] /
-   * softcapPoints)`, `pickServiceJobTemplate`, serviceJobs.ts);
-   * `premiumThresholdPoints`/`inLanePremium` gate and size the in-lane payout
-   * premium (`deriveServiceJobPayoutYen`'s margin roll, same file).
-   * `titleThresholdPoints`/`titleBiasMultiplier`: the derived shop title
-   * (`shopTitle`) requires the top specialty group to clear
-   * `titleThresholdPoints`; once it does, that group's offer-selection weight
-   * is ADDITIONALLY multiplied by `titleBiasMultiplier` - a title is both a
-   * name and a real pull on what walks in the door.
-   */
-  specialty: z.object({
-    biasFactor: z.number().nonnegative(),
-    softcapPoints: z.number().positive(),
-    premiumThresholdPoints: z.number().nonnegative(),
-    inLanePremium: z.number().positive(),
-    titleThresholdPoints: z.number().nonnegative(),
-    titleBiasMultiplier: z.number().positive(),
-  }),
-  /**
    * The used-machinery classifieds cadence. Reputation still gates which
    * tool tiers are ELIGIBLE (per-tier thresholds, unchanged); a listing is
    * what makes an eligible tier actually PURCHASABLE, one machine at a time.

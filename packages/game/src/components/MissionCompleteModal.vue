@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { ComponentId } from '@midnight-garage/content'
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useGameStore } from '../stores/gameStore'
@@ -18,17 +17,6 @@ import { formatYen, formatYenDelta } from '../utils/formatYen'
 const game = useGameStore()
 
 const result = computed(() => game.lastMissionResult)
-
-/** One line per group `reputationReward` actually split across - the
- * untouched groups (0) stay silent, same convention as `JobCompleteModal`'s
- * own `specialtyLines`. */
-const specialtyLines = computed(() => {
-  const r = result.value
-  if (!r) return []
-  return (Object.entries(r.specialtyGained) as [ComponentId, number][])
-    .filter(([, delta]) => delta !== 0)
-    .map(([group, delta]) => `${game.componentLabel(group)} +${delta}`)
-})
 
 /** Dismiss on the way out to the Costs tab - otherwise this modal is still
  * sitting open, on top of that screen, when the router lands there. */
@@ -61,10 +49,6 @@ function goToCostSheet(): void {
         <div>
           <dt>Reputation</dt>
           <dd class="up">+{{ result.reputationGained }}</dd>
-        </div>
-        <div v-if="specialtyLines.length">
-          <dt>Specialty</dt>
-          <dd>{{ specialtyLines.join(', ') }}</dd>
         </div>
       </dl>
 

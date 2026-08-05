@@ -693,7 +693,6 @@
   {
     "id": "full-blueprint-build",
     "tier": 4,
-    "requiresTechnique": "blueprint-building",
     "requiresOperationId": "blueprint-building",
     "tasks": [
       {
@@ -726,40 +725,8 @@
     ]
   },
   {
-    "id": "dog-box-conversion-job",
-    "tier": 4,
-    "requiresTechnique": "dog-box-conversion",
-    "tasks": [
-      {
-        "requirement": {
-          "kind": "slotCondition",
-          "carPartId": "gearbox",
-          "minBand": "fine",
-          "minGrade": "race"
-        },
-        "minToolTier": 3
-      },
-      {
-        "requirement": {
-          "kind": "slotCondition",
-          "carPartId": "clutch",
-          "minBand": "fine",
-          "minGrade": "race"
-        },
-        "minToolTier": 2
-      }
-    ],
-    "deadlineDays": 8,
-    "baseReputation": 30,
-    "flavorPool": [
-      "Want a proper dog-box in it, quick shifts, no babying the clutch.",
-      "Build me a dog-box setup, quick enough for the zero-yon."
-    ]
-  },
-  {
     "id": "corner-weighted-setup",
     "tier": 4,
-    "requiresTechnique": "corner-weighting",
     "requiresOperationId": "corner-weighting",
     "tasks": [
       {
@@ -794,7 +761,6 @@
   {
     "id": "show-fitment-program",
     "tier": 4,
-    "requiresTechnique": "show-fitment",
     "requiresOperationId": "show-fitment",
     "tasks": [
       {
@@ -821,62 +787,6 @@
     "flavorPool": [
       "Want a proper show fitment, flush, no rub, tyres stretched just right.",
       "I want the crouch-and-stare at the next meet. Flush, no rub."
-    ]
-  },
-  {
-    "id": "one-off-widebody",
-    "tier": 4,
-    "requiresTechnique": "one-off-fabrication",
-    "tasks": [
-      {
-        "requirement": { "kind": "slotCondition", "carPartId": "panels", "minBand": "mint" },
-        "minToolTier": 3
-      },
-      {
-        "requirement": {
-          "kind": "slotCondition",
-          "carPartId": "aero",
-          "minBand": "fine",
-          "minGrade": "race"
-        },
-        "minToolTier": 3
-      },
-      {
-        "requirement": { "kind": "slotCondition", "carPartId": "paint", "minBand": "mint" },
-        "minToolTier": 3
-      }
-    ],
-    "deadlineDays": 10,
-    "baseReputation": 34,
-    "flavorPool": [
-      "Want a proper one-off widebody, fabricated, not a bolt-on kit.",
-      "Build me something nobody else has, one-off panels, done right."
-    ]
-  },
-  {
-    "id": "bespoke-cabin-build",
-    "tier": 4,
-    "requiresTechnique": "bespoke-trim",
-    "tasks": [
-      {
-        "requirement": {
-          "kind": "slotCondition",
-          "carPartId": "seats",
-          "minBand": "fine",
-          "minGrade": "race"
-        },
-        "minToolTier": 2
-      },
-      {
-        "requirement": { "kind": "slotCondition", "carPartId": "dashGauges", "minBand": "mint" },
-        "minToolTier": 2
-      }
-    ],
-    "deadlineDays": 8,
-    "baseReputation": 28,
-    "flavorPool": [
-      "Want a proper bespoke interior, race seats, gauges done right.",
-      "Build me a cabin like no other, one-off trim, top to bottom."
     ]
   },
   {

@@ -1,16 +1,9 @@
-import type {
-  AuctionTier,
-  ComponentId,
-  GameState,
-  CarTier,
-  ReputationTier,
-} from '@midnight-garage/content'
+import type { AuctionTier, GameState, CarTier, ReputationTier } from '@midnight-garage/content'
 import type { DayActions } from '../actions'
 import { advanceDay } from '../advanceDay'
 import type { SimContext } from '../context'
 import { createInitialGameState } from '../newGame'
 import { createRng, type Rng } from '../rng'
-import { topSpecialtyGroup } from '../serviceJobs'
 import { valuateCarForBuyer } from '../valuation'
 
 export type BotStrategy = (state: GameState, context: SimContext, rng: Rng) => DayActions
@@ -29,10 +22,6 @@ export interface CareerSnapshot {
    * sum of all six lines' tiers minus 6 (0 for a fresh, never-upgraded
    * shop). */
   equipmentOwnedCount: number
-  /** The group the bot is most known for right now and its point value -
-   * `engine`/0 for a bot that has never earned any (the argmax default). */
-  specialtyTopGroup: ComponentId
-  specialtyTopPoints: number
 }
 
 /**
@@ -170,7 +159,6 @@ export function runCareer(
       return sum + (model?.bookValueYen ?? 0)
     }, 0)
 
-    const specialtyTop = topSpecialtyGroup(state.specialty)
     snapshots.push({
       day,
       cashYen: state.cashYen,
@@ -179,8 +167,6 @@ export function runCareer(
       reputationTier: state.reputationTier,
       reputationPoints: state.reputationPoints,
       equipmentOwnedCount: Object.values(state.toolTiers).reduce((sum, tier) => sum + tier, 0) - 6,
-      specialtyTopGroup: specialtyTop,
-      specialtyTopPoints: state.specialty[specialtyTop],
     })
   }
 

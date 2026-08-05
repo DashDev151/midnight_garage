@@ -222,8 +222,6 @@ const CONTEXT = buildSimContext(
   undefined,
   undefined,
   undefined,
-  undefined,
-  undefined,
   [
     TEST_SYMPTOM,
     MULTI_PART_SYMPTOM,

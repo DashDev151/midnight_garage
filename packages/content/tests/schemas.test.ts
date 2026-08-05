@@ -668,7 +668,6 @@ describe('seed content validates against schemas', () => {
       'sellingChannels',
       'toolCeilings',
       'repairBandCeilingByTier',
-      'specialty',
       'machineListings',
       'coherence',
       'teardown',

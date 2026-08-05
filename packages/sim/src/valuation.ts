@@ -210,10 +210,9 @@ function tasteMultiplier(
 }
 
 /** A fresh shop's scene standing: every scene at `none`, before anything is
- * threaded in from a save. Mirrors `freshSpecialty`/`freshToolTiers`
- * (serviceJobs.ts/toolLines.ts) for `createInitialGameState`'s call-site
- * style, reading the one content-side default rather than a second copy of
- * the same six-scene shape. */
+ * threaded in from a save. Mirrors `freshToolTiers` (toolLines.ts) for
+ * `createInitialGameState`'s call-site style, reading the one content-side
+ * default rather than a second copy of the same six-scene shape. */
 export function freshSceneStanding(): SceneStanding {
   return FRESH_SCENE_STANDING
 }

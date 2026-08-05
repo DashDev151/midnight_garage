@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import personas from '../data/personas.json'
 import storyMissions from '../data/storyMissions.json'
-import { ComponentIdSchema, PersonasSchema, StoryMissionsSchema, type StoryMission } from '../src'
+import { PersonasSchema, StoryMissionsSchema, type StoryMission } from '../src'
 
 /**
  * The campaign's content guards: schema parse, id uniqueness, ascending
- * gate order (the strictly linear campaign), valid specialty groups, and
+ * gate order (the strictly linear campaign), and
  * non-empty copy fields. Parses the raw authored JSON directly (not
  * `STORY_MISSIONS` from `src/data.ts`), since that export mirrors
  * `budgetCapYen` into an extra `requirements` entry at load - this file is
@@ -48,17 +48,6 @@ describe('story mission/persona content (Sprint 76)', () => {
         `mission "${mission.id}"'s gate (${mission.gateReputationPoints}) is below the previous mission's (${previousGate})`,
       ).toBeGreaterThanOrEqual(previousGate)
       previousGate = mission.gateReputationPoints
-    }
-  })
-
-  it('every specialtyGroups entry is a real ComponentId', () => {
-    for (const mission of PARSED_MISSIONS) {
-      for (const group of mission.specialtyGroups) {
-        expect(
-          ComponentIdSchema.safeParse(group).success,
-          `mission "${mission.id}" names unknown specialty group "${group}"`,
-        ).toBe(true)
-      }
     }
   })
 

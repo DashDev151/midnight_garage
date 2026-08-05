@@ -9,8 +9,7 @@ export const AgeBandSchema = z.enum(['young', 'middling', 'old'])
 export const UpkeepTierSchema = z.enum(['neglected', 'average', 'cherished'])
 
 /** At least 2 lines per cell for real variety (same floor as every other
- * flavour-line pool in this codebase - `specialtyCopy.ts`, a template's own
- * `flavorPool`). */
+ * flavour-line pool in this codebase - a template's own `flavorPool`). */
 export const ProvenanceLinesSchema = z.array(z.string().min(1)).min(2)
 
 export const ProvenancePoolSchema = z.record(

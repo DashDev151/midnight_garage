@@ -37,14 +37,6 @@ describe('JobCompleteModal', () => {
       repairCostYen: 8_000,
       partsCostYen: 0,
       netProfitYen: 42_000,
-      specialtyGained: {
-        engine: 0,
-        drivetrain: 0,
-        suspension: 6,
-        wheels: 0,
-        body: 0,
-        interior: 0,
-      },
       returnedParts: [],
     }
     const wrapper = track(mount(JobCompleteModal))
@@ -54,8 +46,6 @@ describe('JobCompleteModal', () => {
     const netProfitEl = wrapper.find('[data-test="job-result-net-profit"]')
     expect(netProfitEl.text()).toContain('42,000')
     expect(netProfitEl.classes()).toContain('up')
-    // The specialty gain renders with a real group name, not a raw id.
-    expect(wrapper.text()).toContain('Suspension')
   })
 
   it('shows sunk cost (a negative net profit) for a failed job - honesty cuts both ways', () => {
@@ -69,14 +59,6 @@ describe('JobCompleteModal', () => {
       repairCostYen: 5_000,
       partsCostYen: 0,
       netProfitYen: -5_000,
-      specialtyGained: {
-        engine: 0,
-        drivetrain: 0,
-        suspension: -4,
-        wheels: 0,
-        body: 0,
-        interior: 0,
-      },
       returnedParts: [],
     }
     const wrapper = track(mount(JobCompleteModal))
@@ -96,14 +78,6 @@ describe('JobCompleteModal', () => {
       repairCostYen: 0,
       partsCostYen: 0,
       netProfitYen: 20_000,
-      specialtyGained: {
-        engine: 0,
-        drivetrain: 0,
-        suspension: 3,
-        wheels: 0,
-        body: 0,
-        interior: 0,
-      },
       returnedParts: [],
     }
     const wrapper = track(mount(JobCompleteModal))
@@ -125,14 +99,6 @@ describe('JobCompleteModal', () => {
       repairCostYen: 8_000,
       partsCostYen: 0,
       netProfitYen: 42_000,
-      specialtyGained: {
-        engine: 0,
-        drivetrain: 0,
-        suspension: 6,
-        wheels: 0,
-        body: 0,
-        interior: 0,
-      },
       returnedParts: ['Tanuki Street Coilovers', 'KHS Stock ECU'],
     }
     const wrapper = track(mount(JobCompleteModal))
@@ -153,14 +119,6 @@ describe('JobCompleteModal', () => {
       repairCostYen: 8_000,
       partsCostYen: 0,
       netProfitYen: 42_000,
-      specialtyGained: {
-        engine: 0,
-        drivetrain: 0,
-        suspension: 6,
-        wheels: 0,
-        body: 0,
-        interior: 0,
-      },
       returnedParts: [],
     }
     const wrapper = track(mount(JobCompleteModal))

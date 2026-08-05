@@ -32,7 +32,7 @@ import {
 } from '../src/dyno'
 import { marketValueYen } from '../src/marketValue'
 import { supportRatios, supportVerdict } from '../src/support'
-import { carWithGrades, testSceneStanding, testSpecialty, testToolTiers } from './testFixtures'
+import { carWithGrades, testSceneStanding, testToolTiers } from './testFixtures'
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 const ECONOMY = CONTEXT.economy
@@ -54,7 +54,6 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     cashYen: 1_000_000,
     reputationTier: 'known',
     reputationPoints: 0,
-    specialty: testSpecialty(),
     sceneStanding: testSceneStanding(),
     ownedCars: [],
     partInventory: [],

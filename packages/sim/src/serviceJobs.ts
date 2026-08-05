@@ -13,10 +13,9 @@ import type {
   ServiceJob,
   ServiceJobTask,
   ServiceJobType,
-  Technique,
   ToolTiers,
 } from '@midnight-garage/content'
-import { ComponentIdSchema, fitmentClassForTier } from '@midnight-garage/content'
+import { fitmentClassForTier } from '@midnight-garage/content'
 import { dissolveAssembliesForCar } from './assemblies'
 import { carOriginLabel, generateAuctionCarInstance, stockInstanceFor } from './auctions'
 import { bandsBelowExcludingScrap, planPartRepair } from './bands'
@@ -126,72 +125,10 @@ export function upgradeHintFor(
   return nextTier ? `needs ${nextTier.displayName}` : null
 }
 
-/** All six groups at zero - a fresh shop has no word of mouth yet,
- * mirrors `freshToolTiers`. */
-export function freshSpecialty(): Record<ComponentId, number> {
-  return { engine: 0, drivetrain: 0, suspension: 0, wheels: 0, body: 0, interior: 0 }
-}
-
-/**
- * The group the shop is most known for right now: the highest `specialty`
- * value, ties broken by `ComponentIdSchema`'s declared order (engine,
- * drivetrain, suspension, wheels, body, interior). The loop only overwrites
- * on a strict improvement, so the first group at the max value wins ties.
- * Always returns a real group, even at all-zero (defaults to `engine`);
- * callers gate on `specialty[top]` meeting a threshold.
- */
-export function topSpecialtyGroup(specialty: Record<ComponentId, number>): ComponentId {
-  let best = ComponentIdSchema.options[0]!
-  let bestPoints = specialty[best]
-  for (const group of ComponentIdSchema.options) {
-    const points = specialty[group]
-    if (points > bestPoints) {
-      best = group
-      bestPoints = points
-    }
-  }
-  return best
-}
-
-/**
- * The shop's derived title - the top specialty group, once it clears
- * `titleThresholdPoints`; `null` below it. Pure function of `specialty`
- * (no state of its own), reusing `topSpecialtyGroup`'s own tie-break.
- */
-function titleGroupFor(
-  specialty: Record<ComponentId, number>,
-  context: SimContext,
-): ComponentId | null {
-  const top = topSpecialtyGroup(specialty)
-  return specialty[top] >= context.economy.specialty.titleThresholdPoints ? top : null
-}
-
-/** The shop's current title line, derived entirely from `state.specialty` -
- * `null` below `titleThresholdPoints`. No stored state; can shift the moment
- * another line overtakes. */
-export function shopTitle(state: GameState, context: SimContext): ComponentId | null {
-  return titleGroupFor(state.specialty, context)
-}
-
-/** Every technique whose threshold `specialty` has cleared - the private
- * engine both `unlockedTechniques` and offer generation share. */
-function unlockedTechniquesFor(
-  specialty: Record<ComponentId, number>,
-  context: SimContext,
-): Technique[] {
-  return context.techniques.filter((t) => specialty[t.componentId] >= t.thresholdPoints)
-}
-
-/** Every technique the shop has unlocked right now - pure, derives entirely
- * from `state.specialty` + the technique catalog; nothing is stored. */
-export function unlockedTechniques(state: GameState, context: SimContext): Technique[] {
-  return unlockedTechniquesFor(state.specialty, context)
-}
-
 /**
  * Whether an operation's own capability is unlocked - a thin boolean wrapper
  * over `craftOperationCapabilityGateReason` for the one caller here that only
- * wants a yes/no, not which of the two reasons refused it.
+ * wants a yes/no, not which reason refused it.
  */
 function isCraftOperationUnlocked(
   operationId: string,
@@ -205,99 +142,19 @@ function isCraftOperationUnlocked(
 }
 
 /**
- * Whether `template`'s signature gate (`requiresTechnique` and/or
- * `requiresOperationId`) is satisfied right now. A template naming neither is
- * never signature-gated and always passes. A template naming one or both is
- * offerable the moment ANY named route is met - the old technique and the
- * new operation are two routes to the same craft, not two separate
- * requirements to clear at once (`generateDailyServiceJobOffers`'s own doc
- * comment). Shared with `resolveAcceptServiceJob`'s live re-check so the two
- * can never disagree about which templates are actually reachable.
+ * Whether `template`'s signature gate (`requiresOperationId`) is satisfied
+ * right now. A template naming no operation is never signature-gated and
+ * always passes. Shared with `resolveAcceptServiceJob`'s live re-check so the
+ * two can never disagree about which templates are actually reachable.
  */
 function signatureGateSatisfied(
   template: ServiceJobType,
-  unlockedTechniqueIds: ReadonlySet<string>,
   toolTiers: ToolTiers,
   sceneStanding: SceneStanding,
   context: SimContext,
 ): boolean {
-  const hasGate = Boolean(template.requiresTechnique) || Boolean(template.requiresOperationId)
-  if (!hasGate) return true
-  const techniqueOk = Boolean(
-    template.requiresTechnique && unlockedTechniqueIds.has(template.requiresTechnique),
-  )
-  const operationOk = Boolean(
-    template.requiresOperationId &&
-    isCraftOperationUnlocked(template.requiresOperationId, toolTiers, sceneStanding, context),
-  )
-  return techniqueOk || operationOk
-}
-
-/** The one group every task in `tasks` belongs to, or null when they span
- * more than one (the in-lane premium and specialty-copy flavor swap only
- * ever apply to a single-discipline template). */
-function singleTaskGroup(
-  tasks: readonly ServiceJobTask[],
-  context: SimContext,
-): ComponentId | null {
-  const groups = new Set(
-    tasks.map((task) => taskGroup(task, context)).filter((g): g is ComponentId => g !== undefined),
-  )
-  return groups.size === 1 ? [...groups][0]! : null
-}
-
-/**
- * The offer-bias formula: `1 + biasFactor * min(1, specialty[group] /
- * softcapPoints)`, where `group` is the template's FIRST task's group
- * (deterministic, no judgment needed for a multi-group template - the weight
- * only needs to bias SELECTION, not decide "the" discipline). A template
- * addressing an unknown/missing group weights at the neutral 1 (no bias).
- *
- * When `titleGroup` is non-null and matches, the whole weight is
- * ADDITIONALLY multiplied by `titleBiasMultiplier` - a shop title is a real
- * pull on what walks in the door, stacked on top of the bias formula.
- * `titleGroup` defaults to `null` (no title effect), which is also exactly
- * what a zero-specialty shop derives.
- */
-function templateWeight(
-  template: ServiceJobType,
-  specialty: Record<ComponentId, number>,
-  context: SimContext,
-  titleGroup: ComponentId | null = null,
-): number {
-  const firstTask = template.tasks[0]
-  const group = firstTask ? taskGroup(firstTask, context) : undefined
-  if (!group) return 1
-  const { biasFactor, softcapPoints, titleBiasMultiplier } = context.economy.specialty
-  const base = 1 + biasFactor * Math.min(1, specialty[group] / softcapPoints)
-  return group === titleGroup ? base * titleBiasMultiplier : base
-}
-
-/**
- * Picks one template from `templates`, weighted by `templateWeight` - a
- * high-specialty line's own templates are drawn more often, but bias never
- * excludes anything (every weight is >= 1). Uses EXACTLY one `rng.next()`
- * draw via cumulative weights, the same single-draw shape `rng.pick` itself
- * uses.
- */
-export function pickServiceJobTemplate(
-  templates: readonly ServiceJobType[],
-  specialty: Record<ComponentId, number>,
-  context: SimContext,
-  rng: Rng,
-  titleGroup: ComponentId | null = null,
-): ServiceJobType {
-  const weights = templates.map((template) =>
-    templateWeight(template, specialty, context, titleGroup),
-  )
-  const total = weights.reduce((sum, w) => sum + w, 0)
-  const roll = rng.next() * total
-  let cumulative = 0
-  for (let i = 0; i < templates.length; i++) {
-    cumulative += weights[i]!
-    if (roll < cumulative) return templates[i]!
-  }
-  return templates[templates.length - 1]!
+  if (!template.requiresOperationId) return true
+  return isCraftOperationUnlocked(template.requiresOperationId, toolTiers, sceneStanding, context)
 }
 
 /** Sorted-median of a non-empty yen list, rounded to the nearest yen - the
@@ -602,33 +459,12 @@ export function forceTasksOutstanding(
  * excludes still-unreleased models and clamps the rolled car's year, same
  * as auction generation.
  *
- * `specialty` (default: a fresh shop's all-zero) biases WHICH template gets
- * picked (`pickServiceJobTemplate`) and, for a template that stays wholly
- * within the shop's top specialty line and clears `premiumThresholdPoints`,
- * multiplies the margin roll by `inLanePremium` and swaps the offer's
- * flavor line for `context.specialtyCopy`'s word-of-mouth pool - the one
- * place specialty is ever surfaced (bible law 4: no meters). At all-zero
- * specialty every template weighs equally and the premium condition can
- * never hold (0 never clears the threshold).
- *
- * A `requiresTechnique` template (a signature template) is excluded from
- * the pool entirely unless its technique is unlocked
- * (`specialty[technique.componentId] >= technique.thresholdPoints`) - an
- * unknown/unresolvable technique id fails CLOSED (never offered), a content
- * bug should never accidentally expose a locked signature job. A template's
- * `requiresOperationId` is the other route to the same gate: unlocked once
- * that operation's own capability (a scene's Shop-stage standing plus tier 3
- * of its tool line, `craftOperationCapabilityGateReason`) is met. A template
- * carrying both is offered the moment EITHER gate is met - the old technique
- * and the new operation are two routes to the same craft, never two separate
- * requirements - and a template carrying neither is never signature-gated at
- * all, exactly as before this generalisation. The shop's derived title line
- * (`titleGroupFor`), once earned, gets its own offer-selection weight further
- * multiplied by `titleBiasMultiplier`. A picked signature template's flavor
- * draws from its own `flavorPool` PLUS the technique's `unlockLogLine` folded
- * in as one more candidate line (never a separate stateful announcement) -
- * unless the in-lane premium's `specialtyCopy` swap applies instead, same as
- * any other template.
+ * A `requiresOperationId` template (a signature template) is excluded from
+ * the pool entirely unless that operation's own capability (a scene's
+ * Shop-stage standing plus tier 3 of its tool line,
+ * `craftOperationCapabilityGateReason`) is met; a template carrying no
+ * `requiresOperationId` is never signature-gated at all. Every eligible
+ * template is drawn uniformly - no discipline is favoured over another.
  */
 export function generateDailyServiceJobOffers(
   context: SimContext,
@@ -637,7 +473,6 @@ export function generateDailyServiceJobOffers(
   currentYear: number = Infinity,
   toolTiers: ToolTiers = freshToolTiers(),
   reputationTier: ReputationTier = 'legend',
-  specialty: Record<ComponentId, number> = freshSpecialty(),
   sceneStanding: SceneStanding = freshSceneStanding(),
 ): ServiceJob[] {
   const eligibleModels = context.models.filter((model) => model.spec.yearFrom <= currentYear)
@@ -647,9 +482,8 @@ export function generateDailyServiceJobOffers(
   const toolReadyTemplates = tierEligibleTemplates.filter((template) =>
     isTemplateOfferable(template.tasks, toolTiers, context),
   )
-  const unlockedTechniqueIds = new Set(unlockedTechniquesFor(specialty, context).map((t) => t.id))
   const eligibleTemplates = toolReadyTemplates.filter((template) =>
-    signatureGateSatisfied(template, unlockedTechniqueIds, toolTiers, sceneStanding, context),
+    signatureGateSatisfied(template, toolTiers, sceneStanding, context),
   )
   if (
     eligibleTemplates.length === 0 ||
@@ -659,8 +493,6 @@ export function generateDailyServiceJobOffers(
     return []
   }
 
-  const topGroup = topSpecialtyGroup(specialty)
-  const titleGroup = titleGroupFor(specialty, context)
   const [minLifetimeDays, maxLifetimeDays] = context.economy.serviceJobs.offerLifetimeDaysRange
   const rawCount = sampleDailyOfferCount(context.economy.serviceJobs.dailyOfferCountWeights, rng)
   const count = Math.min(
@@ -669,7 +501,7 @@ export function generateDailyServiceJobOffers(
   )
   const offers: ServiceJob[] = []
   for (let i = 0; i < count; i++) {
-    const template = pickServiceJobTemplate(eligibleTemplates, specialty, context, rng, titleGroup)
+    const template = rng.pick(eligibleTemplates)
     const model = rng.pick(eligibleModels)
     // A customer's car never rolls a random missing slot
     // (`allowMissingSlots: false`) - `forceTasksOutstanding` below is the
@@ -690,22 +522,13 @@ export function generateDailyServiceJobOffers(
     // every task genuinely outstanding before pricing the job off it, so
     // the payout (and the job itself) never prices in vacuous "work".
     const car = forceTasksOutstanding(rolledCar, template.tasks, context, rng, day)
-    const inLane =
-      singleTaskGroup(template.tasks, context) === topGroup &&
-      specialty[topGroup] >= context.economy.specialty.premiumThresholdPoints
-    const margin = rollMargin(context, rng) * (inLane ? context.economy.specialty.inLanePremium : 1)
+    const margin = rollMargin(context, rng)
     const payoutYen = deriveServiceJobPayoutYen(template.tasks, car, model, context, margin)
-    const technique = template.requiresTechnique
-      ? context.techniques.find((t) => t.id === template.requiresTechnique)
-      : undefined
-    const flavorPool = technique
-      ? [...template.flavorPool, technique.unlockLogLine]
-      : template.flavorPool
     offers.push({
       id: `svc-${day}-${i}`,
       typeId: template.id,
       customerName: rng.pick(context.serviceJobCustomerNames),
-      description: inLane ? rng.pick(context.specialtyCopy[topGroup].lines) : rng.pick(flavorPool),
+      description: rng.pick(template.flavorPool),
       tasks: template.tasks,
       car,
       payoutYen,
@@ -770,11 +593,9 @@ export function resolveRejectServiceJobOffer(
  * generation time.
  *
  * A signature template's gate is re-checked live here too (reason
- * `'technique'`, covering either route - `requiresTechnique` or
- * `requiresOperationId`) - defensive, since generation already excludes a
- * template whose gate is unmet, but specialty or scene standing could in
- * principle have dropped between generation and accept (or the offer is
- * stale).
+ * `'operation'`) - defensive, since generation already excludes a template
+ * whose gate is unmet, but scene standing or tool tier could in principle
+ * have dropped between generation and accept (or the offer is stale).
  */
 export function resolveAcceptServiceJob(
   state: GameState,
@@ -793,17 +614,11 @@ export function resolveAcceptServiceJob(
   const offerTemplate = context.serviceJobTypes.find((t) => t.id === offer.typeId)
   if (
     offerTemplate &&
-    !signatureGateSatisfied(
-      offerTemplate,
-      new Set(unlockedTechniquesFor(state.specialty, context).map((t) => t.id)),
-      state.toolTiers,
-      state.sceneStanding,
-      context,
-    )
+    !signatureGateSatisfied(offerTemplate, state.toolTiers, state.sceneStanding, context)
   ) {
     return {
       state,
-      log: [{ type: 'acquisition-blocked', kind: 'service-accept', reason: 'technique' }],
+      log: [{ type: 'acquisition-blocked', kind: 'service-accept', reason: 'operation' }],
     }
   }
   if (!hasAcquisitionSpace(state)) {
@@ -946,49 +761,6 @@ function highestInstalledGrade(parts: readonly Part[]): Grade | null {
   return best
 }
 
-/** Every DISTINCT group among `tasks` - the specialty earn split's basis: a
- * multi-group job's reputation-shaped delta is divided evenly across every
- * discipline it actually touched. */
-function distinctTaskGroups(tasks: readonly ServiceJobTask[], context: SimContext): ComponentId[] {
-  const groups = new Set<ComponentId>()
-  for (const task of tasks) {
-    const group = taskGroup(task, context)
-    if (group) groups.add(group)
-  }
-  return [...groups]
-}
-
-export interface SpecialtyDeltaResult {
-  state: GameState
-  /** Per-group delta actually applied - all 6 groups present, 0 for any
-   * group `totalDelta` didn't touch (surfaced in the completion report,
-   * `service-job-completed`/`-failed`'s `specialtyGained`). */
-  deltas: Record<ComponentId, number>
-}
-
-/**
- * Splits `totalDelta` evenly across `groups` and applies it to
- * `state.specialty`, clamped at 0 per group - the specialty twin of
- * `applyReputationDelta`'s own floor. A no-op when `groups` is empty (every
- * task addressed an unknown part - never happens for real content, but this
- * stays a pure, total function regardless).
- */
-export function applySpecialtyDelta(
-  state: GameState,
-  groups: readonly ComponentId[],
-  totalDelta: number,
-): SpecialtyDeltaResult {
-  const deltas = freshSpecialty()
-  if (groups.length === 0) return { state, deltas }
-  const perGroup = Math.round(totalDelta / groups.length)
-  const specialty = { ...state.specialty }
-  for (const group of groups) {
-    specialty[group] = Math.max(0, specialty[group] + perGroup)
-    deltas[group] = perGroup
-  }
-  return { state: { ...state, specialty }, deltas }
-}
-
 /**
  * Resolve one active service job by handing the car back to its customer. The
  * single source of truth for job resolution, shared by the player's immediate
@@ -1088,11 +860,6 @@ export function resolveServiceJob(
     )
     const acceptedOnDay = job.dueOnDay === null ? null : job.dueOnDay - job.deadlineDays
     const withReputation = applyReputationDelta(releasedState, reputationGained, context.economy)
-    const { state: withSpecialty, deltas: specialtyGained } = applySpecialtyDelta(
-      withReputation,
-      distinctTaskGroups(job.tasks, context),
-      reputationGained,
-    )
     // Only the payout moves cash here: the repair and parts figures below are
     // what was already spent (and already booked) on the customer's car.
     const log: DayLogEntry[] = [
@@ -1103,7 +870,6 @@ export function resolveServiceJob(
         reputationGained,
         repairCostYen: ledger.repairYen,
         partsCostYen: ledger.partsYen,
-        specialtyGained,
         netProfitYen: job.payoutYen - ledger.repairYen - ledger.partsYen,
         ...(acceptedOnDay !== null ? { daysSpent: releasedState.day - acceptedOnDay } : {}),
       },
@@ -1112,8 +878,8 @@ export function resolveServiceJob(
     return {
       state: bookCashMovements(
         {
-          ...withSpecialty,
-          cashYen: withSpecialty.cashYen + job.payoutYen,
+          ...withReputation,
+          cashYen: withReputation.cashYen + job.payoutYen,
           activeServiceJobs,
           jobs,
           partInventory,
@@ -1128,14 +894,9 @@ export function resolveServiceJob(
 
   const penalty = reputationForFailure(job.baseReputation)
   const withReputation = applyReputationDelta(releasedState, -penalty, context.economy)
-  const { state: withSpecialty, deltas: specialtyGained } = applySpecialtyDelta(
-    withReputation,
-    distinctTaskGroups(job.tasks, context),
-    -penalty,
-  )
   const reputationLost = releasedState.reputationPoints - withReputation.reputationPoints
   return {
-    state: { ...withSpecialty, activeServiceJobs, jobs, partInventory },
+    state: { ...withReputation, activeServiceJobs, jobs, partInventory },
     log: [
       {
         type: 'service-job-failed',
@@ -1143,7 +904,6 @@ export function resolveServiceJob(
         reputationLost,
         repairCostYen: ledger.repairYen,
         partsCostYen: ledger.partsYen,
-        specialtyGained,
         netProfitYen: -ledger.repairYen - ledger.partsYen,
       },
       ...returnedPartsLog,

@@ -23,13 +23,7 @@ import { resolveRemovePart } from '../src/jobs'
 import { resolveScrapPart } from '../src/parts'
 import { makeMarketOrigin } from '../src/provenance'
 import { resolveScrapShell } from '../src/selling'
-import {
-  buildCarInstance,
-  mintCarParts,
-  testSceneStanding,
-  testSpecialty,
-  testToolTiers,
-} from './testFixtures'
+import { buildCarInstance, mintCarParts, testSceneStanding, testToolTiers } from './testFixtures'
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY, [], FACILITIES)
 
@@ -61,7 +55,6 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     cashYen: 1_000_000,
     reputationTier: 'unknown',
     reputationPoints: 0,
-    specialty: testSpecialty(),
     sceneStanding: testSceneStanding(),
     serviceJobOffers: [],
     activeServiceJobs: [],

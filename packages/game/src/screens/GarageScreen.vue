@@ -73,10 +73,7 @@ const draggedCarName = computed(() => {
         <dt>Reputation</dt>
         <dd data-test="reputation-value">
           <RouterLink :to="{ name: 'standing' }" class="standing-link" data-test="standing-link">
-            {{ game.reputationTier
-            }}<span v-if="game.shopTitleName" data-test="shop-title">
-              , known as "{{ game.shopTitleName }}"</span
-            ></RouterLink
+            {{ game.reputationTier }}</RouterLink
           >
         </dd>
       </div>

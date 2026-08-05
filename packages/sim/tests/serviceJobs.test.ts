@@ -6,7 +6,6 @@ import {
   PARTS_TAXONOMY,
   SERVICE_JOB_CUSTOMER_NAMES,
   SERVICE_JOB_TYPES,
-  TECHNIQUES,
   type CarInstance,
   type CarPartId,
   type GameState,
@@ -30,12 +29,10 @@ import { createRng } from '../src/rng'
 import {
   deriveServiceJobPayoutYen,
   forceTasksOutstanding,
-  freshSpecialty,
   generateDailyServiceJobOffers,
   isServiceJobInTransit,
   isServiceTaskDone,
   isServiceWorkDone,
-  pickServiceJobTemplate,
   reputationForCompletion,
   reputationForFailure,
   resolveAcceptServiceJob,
@@ -44,18 +41,14 @@ import {
   resolveServiceJobArrivals,
   serviceJobCostBreakdown,
   isTemplateOfferable,
-  shopTitle,
-  taskGroup,
   toolDeficitSummary,
-  topSpecialtyGroup,
-  unlockedTechniques,
   upgradeHintFor,
 } from '../src/serviceJobs'
 import {
   buildCarInstance,
   mintCarParts,
   quietFinanceDay,
-  testSpecialty,
+  testSceneStanding,
   testToolTiers,
 } from './testFixtures'
 
@@ -1194,284 +1187,7 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
   })
 })
 
-describe('specialty (Sprint 38, the progression bible horizontal axis)', () => {
-  describe('earning, split evenly across every distinct task group', () => {
-    it("completion splits reputationGained across put-her-in-a-ditch's three groups (body/suspension/wheels), and the log entry's specialtyGained matches", () => {
-      const job = activeJob(mixedType, { parts: mintCarParts({ panels: 'fine', dampers: 'fine' }) })
-      const { state: next, outcome, log } = resolveServiceJob(stateWith(job), job.id, CONTEXT)
-      expect(outcome).toBe('paid')
-      const perGroup = Math.round(next.reputationPoints / 3)
-      expect(next.specialty.body).toBe(perGroup)
-      expect(next.specialty.suspension).toBe(perGroup)
-      expect(next.specialty.wheels).toBe(perGroup)
-      // Untouched groups are never affected.
-      expect(next.specialty.engine).toBe(0)
-      expect(next.specialty.drivetrain).toBe(0)
-      expect(next.specialty.interior).toBe(0)
-      expect(log[0]).toMatchObject({
-        specialtyGained: {
-          body: perGroup,
-          suspension: perGroup,
-          wheels: perGroup,
-          engine: 0,
-          drivetrain: 0,
-          interior: 0,
-        },
-      })
-    })
-
-    it('failure splits the penalty across the same three groups, subtracting from whatever specialty was already there', () => {
-      const job = activeJob(mixedType, { parts: mintCarParts({ panels: 'poor' }) }) // undone -> failed
-      const starting = testSpecialty({ body: 50, suspension: 50, wheels: 50 })
-      const {
-        state: next,
-        outcome,
-        log,
-      } = resolveServiceJob(stateWith(job, { specialty: starting }), job.id, CONTEXT)
-      expect(outcome).toBe('failed')
-      const penalty = reputationForFailure(job.baseReputation)
-      const perGroup = Math.round(penalty / 3)
-      expect(next.specialty.body).toBe(50 - perGroup)
-      expect(next.specialty.suspension).toBe(50 - perGroup)
-      expect(next.specialty.wheels).toBe(50 - perGroup)
-      expect(next.specialty.engine).toBe(0) // untouched group, unaffected either way
-      expect(log[0]).toMatchObject({
-        specialtyGained: { body: -perGroup, suspension: -perGroup, wheels: -perGroup, engine: 0 },
-      })
-    })
-
-    it("the per-group floor clamps at 0, mirroring applyReputationDelta's own clamp", () => {
-      const job = activeJob(mixedType, { parts: mintCarParts({ panels: 'poor' }) })
-      const { state: next } = resolveServiceJob(stateWith(job), job.id, CONTEXT) // starts all-zero
-      expect(next.specialty.body).toBe(0)
-      expect(next.specialty.suspension).toBe(0)
-      expect(next.specialty.wheels).toBe(0)
-    })
-  })
-
-  describe('topSpecialtyGroup', () => {
-    it('defaults to engine (first in declared order) at all-zero', () => {
-      expect(topSpecialtyGroup(freshSpecialty())).toBe('engine')
-    })
-
-    it('picks the strict max, breaking ties by declared order (engine, drivetrain, suspension, wheels, body, interior)', () => {
-      expect(topSpecialtyGroup(testSpecialty({ wheels: 30, body: 50 }))).toBe('body')
-      // A tie between suspension and wheels: suspension declared first, wins.
-      expect(topSpecialtyGroup(testSpecialty({ suspension: 40, wheels: 40 }))).toBe('suspension')
-    })
-  })
-
-  describe('pickServiceJobTemplate, the offer bias', () => {
-    it('at all-zero specialty is mathematically identical to a plain rng.pick (same single draw, same mapping)', () => {
-      const candidates = SERVICE_JOB_TYPES.filter((t) => t.tier === 1)
-      for (let seed = 1; seed <= 50; seed++) {
-        const picked = pickServiceJobTemplate(
-          candidates,
-          freshSpecialty(),
-          CONTEXT,
-          createRng(seed),
-        )
-        const expected = createRng(seed).pick(candidates)
-        expect(picked.id).toBe(expected.id)
-      }
-    })
-
-    it('measurably favors the top specialty line: engine-primary templates draw more often at high engine specialty (> 1.2x, a conservative bound)', () => {
-      const candidates = SERVICE_JOB_TYPES.filter((t) => t.tier === 1)
-      const isEnginePrimary = (t: ServiceJobType) => taskGroup(t.tasks[0]!, CONTEXT) === 'engine'
-      const N = 2000
-      let zeroCount = 0
-      let highCount = 0
-      for (let seed = 1; seed <= N; seed++) {
-        if (
-          isEnginePrimary(
-            pickServiceJobTemplate(candidates, freshSpecialty(), CONTEXT, createRng(seed)),
-          )
-        ) {
-          zeroCount++
-        }
-        if (
-          isEnginePrimary(
-            pickServiceJobTemplate(
-              candidates,
-              testSpecialty({ engine: 100 }),
-              CONTEXT,
-              createRng(seed),
-            ),
-          )
-        ) {
-          highCount++
-        }
-      }
-      expect(zeroCount).toBeGreaterThan(0) // sanity: engine templates are actually in the tier-1 pool
-      expect(highCount / zeroCount).toBeGreaterThan(1.2)
-    })
-
-    it('never excludes anything: every template still weighs >= 1 regardless of specialty', () => {
-      const candidates = SERVICE_JOB_TYPES.filter((t) => t.tier === 1)
-      const isEnginePrimary = (t: ServiceJobType) => taskGroup(t.tasks[0]!, CONTEXT) === 'engine'
-      const picked = new Set<ServiceJobType>()
-      for (let seed = 1; seed <= 500; seed++) {
-        picked.add(
-          pickServiceJobTemplate(
-            candidates,
-            testSpecialty({ engine: 100 }),
-            CONTEXT,
-            createRng(seed),
-          ),
-        )
-      }
-      // A non-engine tier-1 template must still appear sometimes - bias
-      // reweights, it never zeroes anything out.
-      expect([...picked].some((t) => !isEnginePrimary(t))).toBe(true)
-    })
-  })
-
-  describe('the in-lane payout premium and specialty-copy flavor swap', () => {
-    /** A context whose only candidate template is `templateId` - eliminates
-     * template-choice randomness entirely (a 1-candidate pool always picks
-     * that candidate, see the pickServiceJobTemplate unit test above), so
-     * every other rng draw (model, car generation) stays byte-identical
-     * across two runs and only the margin/description can differ. */
-    function singleTemplateContext(templateId: string) {
-      const only = SERVICE_JOB_TYPES.filter((t) => t.id === templateId)
-      return buildSimContext(
-        CARS,
-        PARTS,
-        BUYERS,
-        PARTS_TAXONOMY,
-        only,
-        FACILITIES,
-        SERVICE_JOB_CUSTOMER_NAMES,
-      )
-    }
-
-    it('multiplies payout and swaps the flavor line when the offer stays wholly in the top line, above threshold (single-group template)', () => {
-      // cooling-system-service: engine-only (repair cooling), tier 1.
-      const context = singleTemplateContext('cooling-system-service')
-      let sawHigherPayout = false
-      for (let day = 1; day <= 30; day++) {
-        const zero = generateDailyServiceJobOffers(
-          context,
-          day,
-          createRng(day),
-          Infinity,
-          testToolTiers(),
-          'legend',
-          freshSpecialty(),
-        )
-        const high = generateDailyServiceJobOffers(
-          context,
-          day,
-          createRng(day),
-          Infinity,
-          testToolTiers(),
-          'legend',
-          testSpecialty({ engine: 100 }),
-        )
-        expect(high.length).toBe(zero.length) // the count roll is unaffected by specialty
-        for (let i = 0; i < zero.length; i++) {
-          expect(context.specialtyCopy.engine.lines).toContain(high[i]!.description)
-          // Some rolled cars already have a fine+ cooling part (nothing to
-          // charge, payout floors at the flat calloutFeeYen either way) -
-          // the premium has nothing to multiply on those days, so only
-          // assert strictly-higher where there was real cost to begin with.
-          if (zero[i]!.payoutYen > context.economy.serviceJobs.calloutFeeYen) {
-            expect(high[i]!.payoutYen).toBeGreaterThan(zero[i]!.payoutYen)
-            sawHigherPayout = true
-          }
-        }
-      }
-      expect(sawHigherPayout).toBe(true) // sanity: this seed range actually rolled real cost
-    })
-
-    it('does not apply below premiumThresholdPoints', () => {
-      const context = singleTemplateContext('cooling-system-service')
-      const belowThreshold = context.economy.specialty.premiumThresholdPoints - 1
-      let compared = false
-      for (let day = 1; day <= 30; day++) {
-        const zero = generateDailyServiceJobOffers(
-          context,
-          day,
-          createRng(day),
-          Infinity,
-          testToolTiers(),
-          'legend',
-          freshSpecialty(),
-        )
-        const justUnder = generateDailyServiceJobOffers(
-          context,
-          day,
-          createRng(day),
-          Infinity,
-          testToolTiers(),
-          'legend',
-          testSpecialty({ engine: belowThreshold }),
-        )
-        for (let i = 0; i < zero.length; i++) {
-          expect(justUnder[i]!.payoutYen).toBe(zero[i]!.payoutYen)
-          compared = true
-        }
-      }
-      expect(compared).toBe(true)
-    })
-
-    it('does not apply to a template spanning more than one group, even with that specialty maxed', () => {
-      // put-her-in-a-ditch: body + suspension + wheels - never "in lane" for
-      // any single specialty, however high. Its repair tasks are minToolTier
-      // 2 in both touched groups, so the tool-tier ceiling must be met or
-      // the offer rule excludes it entirely.
-      const context = singleTemplateContext('put-her-in-a-ditch')
-      const readyTiers = testToolTiers({ body: 2, suspension: 2 })
-      let compared = false
-      for (let day = 1; day <= 30; day++) {
-        const zero = generateDailyServiceJobOffers(
-          context,
-          day,
-          createRng(day),
-          Infinity,
-          readyTiers,
-          'legend',
-          freshSpecialty(),
-        )
-        const high = generateDailyServiceJobOffers(
-          context,
-          day,
-          createRng(day),
-          Infinity,
-          readyTiers,
-          'legend',
-          testSpecialty({ body: 100 }),
-        )
-        for (let i = 0; i < zero.length; i++) {
-          expect(high[i]!.payoutYen).toBe(zero[i]!.payoutYen)
-          compared = true
-        }
-      }
-      expect(compared).toBe(true)
-    })
-  })
-
-  describe('zero-specialty regression: byte-identical to pre-Sprint-38 behavior', () => {
-    it('generateDailyServiceJobOffers with all-zero specialty produces the identical sequence as omitting the parameter (its default)', () => {
-      for (let seed = 1; seed <= 20; seed++) {
-        const withDefault = generateDailyServiceJobOffers(CONTEXT, seed, createRng(seed))
-        const explicitZero = generateDailyServiceJobOffers(
-          CONTEXT,
-          seed,
-          createRng(seed),
-          Infinity,
-          testToolTiers(),
-          'legend',
-          freshSpecialty(),
-        )
-        expect(explicitZero).toEqual(withDefault)
-      }
-    })
-  })
-})
-
-describe('techniques and the derived shop title (Sprint 39)', () => {
+describe('the signature gate: requiresOperationId only, offer generation and accept', () => {
   /** A context whose only candidate template is the one real signature
    * template under test - eliminates template-choice randomness (a
    * 1-candidate offerable pool always picks it). */
@@ -1488,153 +1204,119 @@ describe('techniques and the derived shop title (Sprint 39)', () => {
     )
   }
 
-  describe('requiresTechnique gates offer generation and accept', () => {
-    // full-blueprint-build: engine-only, requiresTechnique blueprint-building
-    // (threshold 120), every task minToolTier 3.
-    const READY_TIERS = testToolTiers({ engine: 3 })
+  // race-prep-job: requiresOperationId race-prep (scene racer, dampers ->
+  // suspension line), every task minToolTier 2 or 3 - every line at tier 3
+  // clears both the task-tool-tier gate and the operation's own gate at once.
+  const READY_TIERS = testToolTiers({
+    engine: 3,
+    drivetrain: 3,
+    suspension: 3,
+    wheels: 3,
+    body: 3,
+    interior: 3,
+  })
 
-    it('is never offered below the technique threshold, and is offered once it clears', () => {
-      const context = singleSignatureContext('full-blueprint-build')
-      let sawOfferAbove = false
-      for (let day = 1; day <= 100; day++) {
-        const below = generateDailyServiceJobOffers(
-          context,
-          day,
-          createRng(day),
-          Infinity,
-          READY_TIERS,
-          'legend',
-          testSpecialty({ engine: 119 }),
-        )
-        expect(below).toEqual([])
-        const above = generateDailyServiceJobOffers(
-          context,
-          day,
-          createRng(day),
-          Infinity,
-          READY_TIERS,
-          'legend',
-          testSpecialty({ engine: 120 }),
-        )
-        if (above.length > 0) sawOfferAbove = true
-      }
-      expect(sawOfferAbove).toBe(true)
-    })
-
-    it('a template whose requiresTechnique points to an unknown id is never offered (fails closed)', () => {
-      const brokenTemplate: ServiceJobType = {
-        ...SERVICE_JOB_TYPES.find((t) => t.id === 'full-blueprint-build')!,
-        id: 'broken-signature',
-        requiresTechnique: 'does-not-exist',
-      }
-      const context = buildSimContext(
-        CARS,
-        PARTS,
-        BUYERS,
-        PARTS_TAXONOMY,
-        [brokenTemplate],
-        FACILITIES,
-        SERVICE_JOB_CUSTOMER_NAMES,
+  it("is never offered until the operation's own capability gate (tool tier and scene standing) is fully met, and is offered once it is", () => {
+    const context = singleSignatureContext('race-prep-job')
+    let sawOfferAbove = false
+    for (let day = 1; day <= 100; day++) {
+      const below = generateDailyServiceJobOffers(
+        context,
+        day,
+        createRng(day),
+        Infinity,
+        READY_TIERS,
+        'legend',
+        testSceneStanding(),
       )
-      for (let day = 1; day <= 30; day++) {
-        const offers = generateDailyServiceJobOffers(
-          context,
-          day,
-          createRng(day),
-          Infinity,
-          READY_TIERS,
-          'legend',
-          testSpecialty({ engine: 999 }),
-        )
-        expect(offers).toEqual([])
-      }
-    })
-
-    it("accept refuses (reason 'technique') below the threshold, even for an already-generated offer", () => {
-      const context = singleSignatureContext('full-blueprint-build')
-      const template = SERVICE_JOB_TYPES.find((t) => t.id === 'full-blueprint-build')!
-      const offer = { ...activeJob(template), dueOnDay: null }
-      const state = {
-        ...createInitialGameState(context, 1),
-        toolTiers: READY_TIERS,
-        specialty: testSpecialty({ engine: 50 }),
-        serviceJobOffers: [offer],
-      }
-      const result = resolveAcceptServiceJob(state, offer.id, context)
-      expect(result.state.activeServiceJobs).toHaveLength(0)
-      expect(result.log).toEqual([
-        { type: 'acquisition-blocked', kind: 'service-accept', reason: 'technique' },
-      ])
-    })
-
-    it('accepts once specialty clears the threshold', () => {
-      const context = singleSignatureContext('full-blueprint-build')
-      const template = SERVICE_JOB_TYPES.find((t) => t.id === 'full-blueprint-build')!
-      const offer = { ...activeJob(template), dueOnDay: null }
-      const state = {
-        ...createInitialGameState(context, 1),
-        toolTiers: READY_TIERS,
-        specialty: testSpecialty({ engine: 120 }),
-        serviceJobOffers: [offer],
-      }
-      const result = resolveAcceptServiceJob(state, offer.id, context)
-      expect(result.state.activeServiceJobs).toHaveLength(1)
-    })
+      expect(below).toEqual([])
+      const above = generateDailyServiceJobOffers(
+        context,
+        day,
+        createRng(day),
+        Infinity,
+        READY_TIERS,
+        'legend',
+        testSceneStanding({ racer: 'shop' }),
+      )
+      if (above.length > 0) sawOfferAbove = true
+    }
+    expect(sawOfferAbove).toBe(true)
   })
 
-  describe('shopTitle', () => {
-    it('is null below titleThresholdPoints', () => {
-      const state = {
-        ...createInitialGameState(CONTEXT, 1),
-        specialty: testSpecialty({ engine: 79 }),
-      }
-      expect(shopTitle(state, CONTEXT)).toBeNull()
-    })
-
-    it('is the top group once it clears the threshold', () => {
-      const state = {
-        ...createInitialGameState(CONTEXT, 1),
-        specialty: testSpecialty({ engine: 80 }),
-      }
-      expect(shopTitle(state, CONTEXT)).toBe('engine')
-    })
-
-    it('ties break by declared group order, same as topSpecialtyGroup', () => {
-      const state = {
-        ...createInitialGameState(CONTEXT, 1),
-        specialty: testSpecialty({ suspension: 90, wheels: 90 }),
-      }
-      expect(shopTitle(state, CONTEXT)).toBe('suspension')
-    })
-
-    it('overtaking another line flips the title to the new top group', () => {
-      const before = {
-        ...createInitialGameState(CONTEXT, 1),
-        specialty: testSpecialty({ engine: 90 }),
-      }
-      expect(shopTitle(before, CONTEXT)).toBe('engine')
-      const after = { ...before, specialty: testSpecialty({ engine: 90, body: 100 }) }
-      expect(shopTitle(after, CONTEXT)).toBe('body')
-    })
+  it('a template whose requiresOperationId points to an unknown id is never offered (fails closed)', () => {
+    const brokenTemplate: ServiceJobType = {
+      ...SERVICE_JOB_TYPES.find((t) => t.id === 'race-prep-job')!,
+      id: 'broken-signature',
+      requiresOperationId: 'does-not-exist',
+    }
+    const context = buildSimContext(
+      CARS,
+      PARTS,
+      BUYERS,
+      PARTS_TAXONOMY,
+      [brokenTemplate],
+      FACILITIES,
+      SERVICE_JOB_CUSTOMER_NAMES,
+    )
+    for (let day = 1; day <= 30; day++) {
+      const offers = generateDailyServiceJobOffers(
+        context,
+        day,
+        createRng(day),
+        Infinity,
+        READY_TIERS,
+        'legend',
+        testSceneStanding({ racer: 'shop' }),
+      )
+      expect(offers).toEqual([])
+    }
   })
 
-  describe('unlockedTechniques', () => {
-    it('is empty at all-zero specialty', () => {
-      const state = { ...createInitialGameState(CONTEXT, 1), specialty: freshSpecialty() }
-      expect(unlockedTechniques(state, CONTEXT)).toEqual([])
-    })
+  it("accept refuses (reason 'operation') while the gate is unmet, even for an already-generated offer", () => {
+    const context = singleSignatureContext('race-prep-job')
+    const template = SERVICE_JOB_TYPES.find((t) => t.id === 'race-prep-job')!
+    const offer = { ...activeJob(template), dueOnDay: null }
+    const state = {
+      ...createInitialGameState(context, 1),
+      toolTiers: READY_TIERS,
+      sceneStanding: testSceneStanding(),
+      serviceJobOffers: [offer],
+    }
+    const result = resolveAcceptServiceJob(state, offer.id, context)
+    expect(result.state.activeServiceJobs).toHaveLength(0)
+    expect(result.log).toEqual([
+      { type: 'acquisition-blocked', kind: 'service-accept', reason: 'operation' },
+    ])
+  })
 
-    it('includes exactly the techniques whose threshold is cleared, nothing more', () => {
-      const state = {
-        ...createInitialGameState(CONTEXT, 1),
-        specialty: testSpecialty({ engine: 120, drivetrain: 50 }),
-      }
-      expect(unlockedTechniques(state, CONTEXT).map((t) => t.id)).toEqual(['blueprint-building'])
-    })
+  it("accepts once the operation's own capability gate is fully met", () => {
+    const context = singleSignatureContext('race-prep-job')
+    const template = SERVICE_JOB_TYPES.find((t) => t.id === 'race-prep-job')!
+    const offer = { ...activeJob(template), dueOnDay: null }
+    const state = {
+      ...createInitialGameState(context, 1),
+      toolTiers: READY_TIERS,
+      sceneStanding: testSceneStanding({ racer: 'shop' }),
+      serviceJobOffers: [offer],
+    }
+    const result = resolveAcceptServiceJob(state, offer.id, context)
+    expect(result.state.activeServiceJobs).toHaveLength(1)
+  })
 
-    it('reflects the real technique catalog', () => {
-      expect(TECHNIQUES.length).toBe(6)
-    })
+  it('a template naming no requiresOperationId is never signature-gated at all', () => {
+    // small-bodywork-touchup carries no requiresOperationId - it must be
+    // offerable at the shop's fresh, all-'none' starting standing.
+    const offers = generateDailyServiceJobOffers(
+      singleSignatureContext('small-bodywork-touchup'),
+      7,
+      createRng(1),
+      Infinity,
+      testToolTiers(),
+      'legend',
+      testSceneStanding(),
+    )
+    expect(offers.length).toBeGreaterThan(0)
   })
 })
 

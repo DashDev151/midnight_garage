@@ -17,7 +17,7 @@ import {
   resolveSellPart,
 } from '../src/parts'
 import { makeCarOrigin, makeMarketOrigin } from '../src/provenance'
-import { buildCarInstance, testSceneStanding, testSpecialty, testToolTiers } from './testFixtures'
+import { buildCarInstance, testSceneStanding, testToolTiers } from './testFixtures'
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 const CHEAPEST = [...PARTS].sort((a, b) => a.priceYen - b.priceYen)[0]!
@@ -32,7 +32,6 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     cashYen: 10_000_000,
     reputationTier: 'unknown',
     reputationPoints: 0,
-    specialty: testSpecialty(),
     sceneStanding: testSceneStanding(),
     ownedCars: [],
     partInventory: [],

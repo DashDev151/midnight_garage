@@ -291,7 +291,7 @@ const PHOTO_TEMPLATE = [
 ]
 const PHOTO_COLORS: ColorMap = { '0': DOOR, f: HAZE_TINT, g: EAVE, p: OUTLINE, s: OUTLINE }
 
-// --- Certificate: a framed technique, the wall's third repeatable stamp ---
+// --- Certificate: a framed craft operation, the wall's third repeatable stamp ---
 const CERTIFICATE_TEMPLATE = [
   '0bbbbbbbb0',
   '0bccccccb0',

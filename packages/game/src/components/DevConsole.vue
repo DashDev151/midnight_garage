@@ -54,21 +54,6 @@ function warp(): void {
       {{ game.reputationTier }}
     </div>
 
-    <!-- Specialty is a dev-only readout; no player-facing meter. -->
-    <div class="readout" data-test="specialty-readout">
-      specialty:
-      <span v-for="line in game.specialtyView" :key="line.componentId">
-        {{ line.componentLabel }} {{ line.points }}
-      </span>
-    </div>
-
-    <!-- Techniques + the derived title - dev-only. -->
-    <div class="readout" data-test="techniques-readout">
-      title: {{ game.shopTitleName ?? 'none' }} · techniques:
-      <span v-if="game.unlockedTechniqueViews.length === 0">none</span>
-      <span v-for="t in game.unlockedTechniqueViews" :key="t.id">{{ t.displayName }}</span>
-    </div>
-
     <!-- Scene standing's own player-facing home is the Standing screen's
          scenes panel; this quick readout stays for setting it by hand. -->
     <div class="readout" data-test="scene-standing-readout">

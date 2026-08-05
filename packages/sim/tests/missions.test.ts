@@ -20,7 +20,7 @@ import {
   resolveDeliverMission,
 } from '../src/missions'
 import { createInitialGameState } from '../src/newGame'
-import { buildCarInstance, testSpecialty, uniformCarParts } from './testFixtures'
+import { buildCarInstance, uniformCarParts } from './testFixtures'
 
 const CIVIC = CARS.find((c) => c.id === 'honda-civic-sir2-eg6')!
 
@@ -67,7 +67,6 @@ function buildMission(overrides: Partial<StoryMission> = {}): StoryMission {
     tipTriggerFraction: 0.15,
     lapTipTriggerFraction: 0.03,
     reputationReward: 20,
-    specialtyGroups: ['engine'],
     deliveredCopy: 'Delivered A.',
     overdeliveredCopy: 'Overdelivered A.',
     ...overrides,
@@ -90,7 +89,6 @@ const MISSION_B = buildMission({
   payoutYen: 500_000,
   tipFraction: 0.2,
   reputationReward: 30,
-  specialtyGroups: ['engine', 'drivetrain'],
 })
 
 function contextWithMissions(storyMissions: StoryMission[]): SimContext {
@@ -107,8 +105,6 @@ function contextWithMissions(storyMissions: StoryMission[]): SimContext {
     undefined,
     undefined,
     undefined,
-    undefined,
-    undefined,
     storyMissions,
   )
 }
@@ -116,7 +112,7 @@ function contextWithMissions(storyMissions: StoryMission[]): SimContext {
 const CONTEXT = contextWithMissions([MISSION_A, MISSION_B])
 
 function baseState(overrides: Partial<GameState> = {}): GameState {
-  return { ...createInitialGameState(CONTEXT, 1), specialty: testSpecialty(), ...overrides }
+  return { ...createInitialGameState(CONTEXT, 1), ...overrides }
 }
 
 describe('story missions (Sprint 76)', () => {
@@ -335,7 +331,7 @@ describe('story missions (Sprint 76)', () => {
       return baseState({ day: 5, ownedCars: [car], storyMissions: [active] })
     }
 
-    it('delivers a passing mission: pays out, removes the car, applies reputation + specialty, marks delivered', () => {
+    it('delivers a passing mission: pays out, removes the car, applies reputation, marks delivered', () => {
       const car = buildCarInstance({
         id: 'car-a',
         modelId: CIVIC.id,
@@ -349,9 +345,6 @@ describe('story missions (Sprint 76)', () => {
       expect(result.state.reputationPoints).toBe(
         state.reputationPoints + MISSION_A.reputationReward,
       )
-      expect(result.state.specialty.engine).toBe(
-        state.specialty.engine + MISSION_A.reputationReward,
-      )
       expect(result.state.storyMissions).toEqual([
         { missionId: 'test-mission-a', status: 'delivered', acceptedOnDay: 1 },
       ])
@@ -362,14 +355,6 @@ describe('story missions (Sprint 76)', () => {
           payoutYen: MISSION_A.payoutYen,
           tipYen: 0,
           reputationGained: MISSION_A.reputationReward,
-          specialtyGained: {
-            engine: MISSION_A.reputationReward,
-            drivetrain: 0,
-            suspension: 0,
-            wheels: 0,
-            body: 0,
-            interior: 0,
-          },
         },
       ])
     })
@@ -530,10 +515,11 @@ describe('story missions (Sprint 76)', () => {
 
 describe('scene standing crediting via the real tutorial mission (scene-standing-arc.md step 4)', () => {
   // Real shipped content, not the synthetic test missions above: proves the
-  // credit comes from `four-wheels`' own persona (yuki -> daily-drivers),
-  // never from `specialtyGroups` - the mission is hand-tagged `["body"]` for
-  // a tyre-and-engine job, exactly the crediting bug this arc kills, and
-  // that tag must have no bearing on which scene gets credited.
+  // credit comes from `four-wheels`' own persona (yuki -> daily-drivers).
+  // There is no hand-written discipline tag left to disagree with the work
+  // at all - the crediting-bug class this arc killed structurally, not by
+  // patch (the old `specialtyGroups` field, which hand-tagged this exact
+  // tyre-and-engine job `["body"]`, is gone from the schema entirely).
   const REAL_CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 
   it("delivering four-wheels credits Yuki's own scene (daily-drivers), with no tag involved", () => {
@@ -564,9 +550,6 @@ describe('scene standing crediting via the real tutorial mission (scene-standing
         day: 5,
       },
     ])
-    // The mission's own legacy tag still says "body" - proof the credit
-    // above never read it.
-    expect(REAL_CONTEXT.storyMissionsById['four-wheels']!.specialtyGroups).toEqual(['body'])
     // One mission credits exactly one scene; every other scene is untouched.
     for (const [scene, stage] of Object.entries(result.state.sceneStanding)) {
       if (scene !== 'daily-drivers') expect(stage).toBe('none')

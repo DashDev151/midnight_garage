@@ -1950,6 +1950,15 @@ import storyMissions from '../data/storyMissions.json'
  * change (three existing signature templates gain `requiresOperationId` as a second, OR'd
  * route to their existing gate; three new templates are the other three operations' own
  * matching job) but carries no separate approval hash of its own.
+ *
+ * Re-pinned for the teardown of the old specialty system (docs/design/systems/
+ * scene-standing-refactor.md, the arc's last sprint): the whole `specialty` block -
+ * `biasFactor` 0.5, `softcapPoints` 100, `premiumThresholdPoints` 40, `inLanePremium` 1.15,
+ * `titleThresholdPoints` 80, `titleBiasMultiplier` 1.25 - is deleted outright, not moved.
+ * No value changes: this removes levers rather than retuning any, approved under the
+ * orchestrator's blanket lever authority for this build (a deletion-only sprint moves no
+ * value by construction). No mission payout or budget cap moves, and `partPricing.json`/
+ * `damagePatterns.json` are untouched.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -1959,7 +1968,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('1c3abdfa1b6cb450270df49510097df6e24ab398f5d4c9318a5f649e1fc4f253')
+    ).toBe('955e7f275f32e103b5b54f797330e1350d59cf67368233dbde238befb3fc4b1a')
   })
 
   it('damagePatterns.json matches its approved content exactly', () => {

@@ -735,8 +735,19 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * right, since no pre-v64 career could have had a commission generated
  * under a mechanic that did not exist yet. The version bump alone is still
  * required (Save law).
+ * v64 -> v65 (teardown of the old specialty system): `GameStateSchema` loses
+ * `specialty`, the component-group word-of-mouth counter (`specialty` and
+ * its six techniques are replaced outright by scene standing, already
+ * shipped in v61-v64). Per directive 19, a plain SAVE_VERSION bump with NO
+ * `MIGRATIONS[64]` entry and no legacy-compat branch: `GameStateSchema`
+ * simply no longer declares the field, so `z.object`'s own unknown-key
+ * stripping drops it from a pre-v65 save with nothing to reconstruct - the
+ * old counter was never player-visible (progression bible law 4 kept it
+ * dev-console-only) and nothing downstream ever reads it again. The version
+ * bump alone is still required (Save law) so an old client rejects a v65
+ * save rather than reading a shape it no longer understands.
  */
-export const SAVE_VERSION = 64
+export const SAVE_VERSION = 65
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

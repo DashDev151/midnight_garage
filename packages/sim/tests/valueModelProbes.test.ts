@@ -47,7 +47,6 @@ import {
   buildCarInstance,
   mintCarParts,
   testSceneStanding,
-  testSpecialty,
   testToolTiers,
   uniformCarParts,
 } from './testFixtures'
@@ -85,7 +84,6 @@ function stateWithLots(lots: AuctionLot[], overrides: Partial<GameState> = {}): 
     cashYen: 10_000_000,
     reputationTier: 'unknown',
     reputationPoints: 0,
-    specialty: testSpecialty(),
     sceneStanding: testSceneStanding(),
     ownedCars: [],
     partInventory: [],

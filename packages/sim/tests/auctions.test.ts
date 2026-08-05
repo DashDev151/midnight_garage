@@ -37,7 +37,7 @@ import { buildSimContext, type SimContext } from '../src/context'
 import { computeDerivedStats } from '../src/derivedStats'
 import { makeCarOrigin } from '../src/provenance'
 import { createRng, hashStringToSeed } from '../src/rng'
-import { testSceneStanding, testSpecialty, testToolTiers } from './testFixtures'
+import { testSceneStanding, testToolTiers } from './testFixtures'
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 
@@ -92,7 +92,6 @@ function stateWithLots(
     cashYen,
     reputationTier: 'unknown',
     reputationPoints: 0,
-    specialty: testSpecialty(),
     sceneStanding: testSceneStanding(),
     ownedCars: [],
     partInventory: [],

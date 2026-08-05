@@ -46,7 +46,6 @@ import {
   carWithGrades,
   mintCarParts,
   testSceneStanding,
-  testSpecialty,
   testToolTiers,
   uniformCarParts,
 } from './testFixtures'
@@ -225,7 +224,6 @@ function stateWithCar(car: CarInstance, overrides: Partial<GameState> = {}): Gam
     cashYen: 0,
     reputationTier: 'unknown',
     reputationPoints: 0,
-    specialty: testSpecialty(),
     sceneStanding: testSceneStanding(),
     ownedCars: [car],
     partInventory: [],

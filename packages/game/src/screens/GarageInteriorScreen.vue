@@ -71,7 +71,18 @@ const bodyPaintIsOpen = computed(() => bodyPaintShopOpen(game.gameState))
 
 const listingCount = computed(() => game.gameState.carsForSale.length)
 const photoCount = computed(() => photoCountForReputationTier(game.reputationTier))
-const certificates = computed(() => game.unlockedTechniqueViews)
+/** Every craft operation the shop actually possesses right now - a scene's
+ * own operation counts once its gate (Shop-stage standing plus tier 3 of
+ * the tool line it uses) is fully met. Reads `standingView.scenes`, the
+ * same derivation the Standing screen itself shows, rather than a second
+ * source for the same fact. */
+const unlockedOperations = computed(() =>
+  game.standingView.scenes
+    .map((scene) => scene.operation)
+    .filter(
+      (operation): operation is NonNullable<typeof operation> => operation?.gateReason === null,
+    ),
+)
 
 /** The office scene's real counts, read from state already computed
  * elsewhere (directive 16: no second source for any of these three
@@ -79,7 +90,7 @@ const certificates = computed(() => game.unlockedTechniqueViews)
 const officeCounts = computed<OfficeSceneCounts>(() => ({
   listings: listingCount.value,
   photos: photoCount.value,
-  certificates: certificates.value.length,
+  certificates: unlockedOperations.value.length,
 }))
 
 /** The one car a room's "work on it" action can point at without an id of
@@ -276,8 +287,8 @@ function goToCar(id: string): void {
           <div>
             <dt>Certificates</dt>
             <dd data-test="office-certificate-count">
-              <span v-if="certificates.length === 0">none earned yet</span>
-              <span v-else>{{ certificates.map((t) => t.displayName).join(', ') }}</span>
+              <span v-if="unlockedOperations.length === 0">none earned yet</span>
+              <span v-else>{{ unlockedOperations.map((op) => op.displayName).join(', ') }}</span>
             </dd>
           </div>
         </dl>

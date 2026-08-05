@@ -5,7 +5,7 @@ import type { SimContext } from './context'
 import { createRng, hashStringToSeed } from './rng'
 import { freshSceneCommissions } from './sceneCommissions'
 import { freshSceneLedger } from './sceneStanding'
-import { freshSpecialty, generateDailyServiceJobOffers } from './serviceJobs'
+import { generateDailyServiceJobOffers } from './serviceJobs'
 import { freshToolTiers } from './toolLines'
 import { radialOffersGated } from './tutorial'
 import { freshSceneStanding } from './valuation'
@@ -65,7 +65,6 @@ export function createInitialGameState(
     cashYen: context.economy.STARTING_CASH_YEN,
     reputationTier: 'unknown',
     reputationPoints: 0,
-    specialty: freshSpecialty(),
     ownedCars: [],
     partInventory: [],
     staff: [],
@@ -128,7 +127,6 @@ export function createInitialGameState(
         currentGameYear(base.reputationTier),
         base.toolTiers,
         base.reputationTier,
-        base.specialty,
         base.sceneStanding,
       )
   return {

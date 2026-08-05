@@ -38,7 +38,6 @@ import {
   groupCarParts,
   mintCarParts,
   testSceneStanding,
-  testSpecialty,
   testToolTiers,
 } from './testFixtures'
 
@@ -101,7 +100,6 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     cashYen: 1_000_000,
     reputationTier: 'unknown',
     reputationPoints: 0,
-    specialty: testSpecialty(),
     sceneStanding: testSceneStanding(),
     serviceJobOffers: [],
     activeServiceJobs: [],
@@ -1910,8 +1908,6 @@ describe('resolveRemovePart wiring to revealOnRemoval (Sprint 74 decision 4): th
     PARTS,
     [],
     PARTS_TAXONOMY,
-    undefined,
-    undefined,
     undefined,
     undefined,
     undefined,

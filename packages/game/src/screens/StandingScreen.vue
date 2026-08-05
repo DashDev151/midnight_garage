@@ -9,16 +9,14 @@ import { formatYen } from '../utils/formatYen'
 
 /**
  * The one place the shop's granular
- * standing lives - exact reputation points with the named next tier, all six
- * specialty disciplines with their points and named tier-4 technique, the
- * derived shop title, and every scene's ledger. Progression bible law 4
- * permits exact numbers and progress bars for reputation and specialty on
- * THIS view only; the scenes panel is a different law again - a scene's
- * stage is stated in words, never a bar, and its car list is a receipt (the
- * price a real delivery sold for), not a progress readout. Everywhere else
- * stays meter-free - nothing follows the player around, nothing pops up
- * mid-job. Pure renderer over `game.standingView` - no local logic, no new
- * state.
+ * standing lives - exact reputation points with the named next tier, and
+ * every scene's ledger. Progression bible law 4 permits exact numbers and a
+ * progress bar for reputation on THIS view only; the scenes panel is a
+ * different law again - a scene's stage is stated in words, never a bar, and
+ * its car list is a receipt (the price a real delivery sold for), not a
+ * progress readout. Everywhere else stays meter-free - nothing follows the
+ * player around, nothing pops up mid-job. Pure renderer over
+ * `game.standingView` - no local logic, no new state.
  */
 const game = useGameStore()
 
@@ -97,46 +95,6 @@ const OPERATION_GATE_COPY: Readonly<Record<'tool-tier' | 'scene-standing', strin
       <p v-else class="next" data-test="rep-next">
         You've reached the top of the ladder. Nowhere higher to climb.
       </p>
-      <p v-if="standing.shopTitleName" class="title-line" data-test="shop-title">
-        Around the ward they call your shop "{{ standing.shopTitleName }}".
-      </p>
-      <p v-else class="title-line">
-        Do enough work in one discipline and the ward will start giving your shop a name.
-      </p>
-    </section>
-
-    <section class="panel" data-test="specialty-panel">
-      <h3>Specialty</h3>
-      <p class="hint">
-        Every job builds your standing in the disciplines it touches. Clear a discipline's threshold
-        and you earn its signature craft.
-      </p>
-      <ul class="disciplines">
-        <li
-          v-for="row in standing.specialties"
-          :key="row.componentId"
-          class="discipline"
-          :data-test="'specialty-' + row.componentId"
-        >
-          <div class="discipline-head">
-            <span class="discipline-name">{{ row.componentLabel }}</span>
-            <span class="discipline-points">{{ row.points }} pts</span>
-          </div>
-          <ProgressBar
-            :value="row.points"
-            :max="row.technique?.thresholdPoints ?? null"
-            :complete="row.technique?.unlocked ?? false"
-            :caption="row.technique ? `to ${row.technique.displayName}` : undefined"
-            :data-test="'specialty-bar-' + row.componentId"
-          />
-          <p v-if="row.technique" class="technique" :class="{ earned: row.technique.unlocked }">
-            <span v-if="row.technique.unlocked"> Earned: {{ row.technique.displayName }}. </span>
-            <span v-else>
-              {{ row.technique.displayName }} unlocks at {{ row.technique.thresholdPoints }} pts.
-            </span>
-          </p>
-        </li>
-      </ul>
     </section>
 
     <section class="panel" data-test="scenes-panel">
@@ -293,8 +251,7 @@ h3 {
   color: var(--mg-neon-cyan);
 }
 
-.next,
-.title-line {
+.next {
   margin: var(--mg-space-1) 0 0;
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
@@ -304,44 +261,6 @@ h3 {
   margin: 0 0 var(--mg-space-3);
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
-}
-
-.disciplines {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  gap: var(--mg-space-2);
-}
-
-.discipline {
-  border-top: var(--mg-border);
-  padding-top: var(--mg-space-2);
-}
-
-.discipline-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-}
-
-.discipline-name {
-  color: var(--mg-text);
-}
-
-.discipline-points {
-  color: var(--mg-yen);
-  font-size: var(--mg-fs-sm);
-}
-
-.technique {
-  margin: 2px 0 0;
-  color: var(--mg-text-dim);
-  font-size: var(--mg-fs-sm);
-}
-
-.technique.earned {
-  color: var(--mg-success);
 }
 
 .scenes {

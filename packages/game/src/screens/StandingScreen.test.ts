@@ -46,40 +46,6 @@ describe('StandingScreen (Sprint 62 item 17)', () => {
     expect(wrapper.find('[data-test="rep-next"]').text().toLowerCase()).toContain('top')
   })
 
-  it('lists all six specialty disciplines with points and a named technique', () => {
-    const game = useGameStore()
-    game.newGame(1)
-    const wrapper = mountScreen()
-
-    const groups = ['engine', 'drivetrain', 'suspension', 'wheels', 'body', 'interior']
-    for (const group of groups) {
-      const row = wrapper.find(`[data-test="specialty-${group}"]`)
-      expect(row.exists()).toBe(true)
-      // Named technique shown even when locked (progression bible law 5).
-      expect(row.text()).toContain('unlocks at 120 pts')
-    }
-    // The discipline display names render (not raw ids).
-    expect(wrapper.text()).toContain(game.componentLabel('engine'))
-    // Banned progression-bible vocabulary never appears in the copy.
-    const text = wrapper.text().toLowerCase()
-    for (const banned of ['xp', 'mastery', 'level', 'prestige']) {
-      expect(text).not.toContain(banned)
-    }
-  })
-
-  it('shows an earned technique as earned once the discipline clears the threshold', () => {
-    const game = useGameStore()
-    game.newGame(1)
-    game.gameState = {
-      ...game.gameState,
-      specialty: { ...game.gameState.specialty, engine: 130 },
-    }
-    const wrapper = mountScreen()
-    const engineRow = wrapper.find('[data-test="specialty-engine"]')
-    expect(engineRow.text()).toContain('Earned')
-    expect(engineRow.find('.technique.earned').exists()).toBe(true)
-  })
-
   describe('progress bars (Sprint 69, playtest item 24)', () => {
     it("shows reputation as points against the NEXT tier's real threshold", () => {
       const game = useGameStore()
@@ -109,34 +75,6 @@ describe('StandingScreen (Sprint 62 item 17)', () => {
       expect(bar.text()).toContain('top of the ladder')
       // No "N / M" against a threshold that does not exist.
       expect(bar.find('[data-test="progress-readout"]').text()).not.toContain('/')
-    })
-
-    it('shows one bar per discipline, against its technique threshold', () => {
-      const game = useGameStore()
-      game.newGame(1)
-      game.gameState = { ...game.gameState, specialty: { ...game.gameState.specialty, engine: 19 } }
-      const wrapper = mountScreen()
-
-      expect(wrapper.findAll('[data-test^="specialty-bar-"]')).toHaveLength(6)
-      const engine = wrapper.find('[data-test="specialty-bar-engine"]')
-      // The canonical readout format, literally: "19/120 to next level".
-      expect(engine.find('[data-test="progress-readout"]').text()).toBe('19 / 120')
-    })
-
-    it('marks a cleared discipline complete and fills its bar', () => {
-      const game = useGameStore()
-      game.newGame(1)
-      game.gameState = {
-        ...game.gameState,
-        specialty: { ...game.gameState.specialty, engine: 130 },
-      }
-      const wrapper = mountScreen()
-
-      const engine = wrapper.find('[data-test="specialty-bar-engine"]')
-      expect(engine.find('.rail.complete').exists()).toBe(true)
-      expect(engine.find('[data-test="progress-fill"]').attributes('style')).toContain(
-        'width: 100%',
-      )
     })
 
     it('the bars introduce no banned progression vocabulary', () => {
