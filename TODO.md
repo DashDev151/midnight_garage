@@ -658,6 +658,105 @@ pass."
   silly and do very little. One number per car expresses it, and it is what stops every car in
   the game eventually becoming a GT3 car. It is step 8 of that doc's build order, so check
   whether the tuning sprints already cover it before scoping it separately.
+- [ ] **INVESTIGATE: after sprint 184 nothing in the game can ever lower reputation (maintainer,
+  2026-08-05, accepted for now).** The fifth amendment to `progression-bible.md` makes reputation
+  monotonic: a disappointed buyer pays nothing rather than taking anything away. The maintainer took
+  the fully-monotonic reading deliberately, over the alternative that kept a penalty for breaking an
+  accepted commitment. **The consequence, recorded so it is not discovered by accident: there is no
+  longer any act a player can commit that costs reputation.** The lemon penalty
+  (`reputation.lemonSalePenalty`, -8) goes with the lemon predicate, and
+  `SERVICE_JOB_FAILURE_REP_MULTIPLIER` (2x the job's base for handing a job back unfinished or
+  overdue) goes with it under the same reading.
+
+  This is strictly compliant with law 6 (no decay, no upkeep treadmill) and it removes the only
+  downward pressure the progression system had. **What needs establishing in play is whether the
+  ladder still has any tension without it**: whether a player who accepts every job and finishes
+  none is meaningfully worse off, and whether "reputation only ever rises" reads as generous or as
+  weightless. The alternative already drafted, if it turns out to be wanted, is in
+  `docs/sprints/sprint184.md`: sales never fall because the buyer chose the car, but breaking a
+  commitment the player accepted still does.
+
+- [ ] **Selling channels need a systematic unlock ladder; on day one only the shop floor should be
+  open (maintainer, 2026-08-05).** Today `isSellingChannelUnlocked` (`sim/selling.ts`) opens every
+  channel that no story mission claims, so a channel is available unless something takes it away.
+  Two missions claim two channels (`low-and-loud` opens `weekendMeet`, `street-power-street-manners`
+  opens `tunerMagazine`), which leaves `freeAdsPaper`, `tradeNetwork` and - the one that prompted
+  this - **`collectorNetwork` open from the first day**, despite the design framing it as a
+  members' club. Sprint 176 recorded that as a deliberate decision at the time; the maintainer has
+  now reversed it.
+
+  **What is wanted is a real ladder rather than more per-channel exceptions**: the shop floor open
+  at the start, everything else earned, and the rule stated once. Whether the earning is by
+  reputation tier, by story mission, by scene standing, or a mix, is the open question - scene
+  standing is the obvious candidate for the Collector Network specifically, since it is a
+  crowd-specific channel and standing is now the crowd-specific ladder. Note the current
+  implementation's inversion is deliberate and documented (a channel is open unless claimed, so
+  Law 1's floor lives in content); reversing it means the default becomes closed and every open
+  channel names what opens it.
+
+- [ ] **INVESTIGATE: touge should read MECHANICAL grip and racer EFFECTIVE grip (maintainer,
+  2026-08-05, deferred as out of scope).** Handling is one number today: effective lateral g at
+  200 km/h, downforce included (`gripToDisplay`, `statFormulas.grip.displayCurve`). That is a
+  circuit metric. A touge car never sees 200 km/h and cannot use downforce in a second-gear
+  hairpin, so a wing currently pays the touge crowd exactly as it pays a racer, which is wrong in
+  the fiction and makes the two archetypes read as one ranked ladder rather than two different
+  wants.
+
+  **Both quantities already exist**: `gripToDisplay` takes the downforce coefficient as a separate
+  argument, so passing zero yields the mechanical-only figure. The work is deciding whether this
+  becomes a second derived stat, a per-buyer flag naming which figure that archetype reads, or
+  something else, and then what it does to every handling target.
+
+  **The measurement that prompted it, decomposed. Silvia S14, mint, only the named slots moving
+  grade** (effective lateral g at the display curve's 200 km/h reference):
+
+  | grade | mechanical grip only | + matched support | + aero | all 29 slots |
+  | --- | --- | --- | --- | --- |
+  | stock | 0.94 | 0.94 | 0.94 | 0.94 |
+  | street | 0.96 | 0.98 | 1.00 | 1.00 |
+  | sport | 1.00 | 1.05 | 1.12 | 1.12 |
+  | race | 1.14 | 1.31 | 1.56 | 1.56 |
+
+  Three findings, and the first two are the spacing problem:
+
+  1. **The mechanical grip parts are nearly inert below race.** All four of `tyres`, `dampers`,
+     `springs` and `antiRollBars` at street grade buy **0.02 g**; at sport, 0.06 g; only at race
+     do they buy 0.20 g.
+  2. **Aero is the largest single contributor and it sits inside `GRIP_SLOTS`.** One race aero
+     part on an otherwise stock car reads **1.05 g** against a stock 0.94, so +0.11 g from a
+     single part - more than all four mechanical grip parts deliver at sport grade (+0.06 g).
+     (Fitting race brakes, steering and chassis alongside it reaches 1.17 g, but that is five race
+     parts, not one.) Its contribution scales with what the car already has: added to a full race
+     mechanical-plus-support build it is worth **0.25 g** of the 0.44 g step from sport to race.
+  3. **`chassisSupport` amplifies rather than gates.** Its loss is a fraction of the GAIN
+     (`lossByGrade` 0 / 0.10 / 0.20 / 0.35), so at street unsupported-versus-supported is 0.98
+     against 1.00 and at race it is 1.29 against 1.56. Support is nearly free to ignore below race
+     and decisive at race, which is correct by construction but leaves the lower rungs with no
+     decision in them.
+
+  **Measured mechanical ceiling: 1.31 g** for this car (every mechanical grip slot plus support at
+  race, no aero), which confirms the ~1.25 figure the tuning notes carry.
+
+  Against that, the touge handling target of 0.75 asks for **1.32 g**, which is why no car short of
+  a full race build with aero satisfies it. (The tuner's handling target is 0.55, or 1.10 g; 0.70 is
+  its IMPORTANCE, which is what makes handling its champion stat rather than power.) **Lowering the
+  targets is the separate, cheaper half** and does not need this investigation.
+
+  **Re-spacing the grade ladder is the other half, and the maintainer set its constraints
+  (2026-08-05):**
+
+  1. **The physics calibration is not touched, at all.** `computeGrip`, `aeroGripMultiplier`, the
+     display curve, the lap model and every car's measured `lateralG97`/`lateralG193` were measured
+     against the Forza physics engine and stay exactly as they are. What moves is the per-SKU
+     `physicalModifiers.grip` authoring from Sprint 130, which CLAUDE.md already records as
+     PROVISIONAL: what a street damper delivers is a design choice, not a measurement.
+  2. **The race total does not move.** 1.56 g on the S14 is the ceiling and it stays.
+  3. **Street and sport rise**, so the ladder is not flat until race.
+  4. **Aero is re-calibrated against the new street and sport values**, so it stays proportionate
+     rather than dominating the ladder.
+
+  A directive 22 lever sweep across the suspension and aero catalogue; every value needs signing
+  by name.
 - [ ] **`chassis` sits in the `drivetrain` component group (pre-existing taxonomy), surfaced
   by Sprint 93's repair-ceiling caption.** A chassis repair now reads "The Transmission bench
   reaches mint", which is nonsensical (you weld/straighten a chassis, you do not press it on a

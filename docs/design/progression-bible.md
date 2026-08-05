@@ -106,13 +106,22 @@ name `reputationTier` predates this and stays; do not rename code symbols to cha
   per law 1): a tool-tier purchase now mirrors the facilities gate exactly (`minReputationTier`
   alongside `upgradePriceYen`), the same coarse-banding pattern bays already used. The original
   cash-only rationale is kept here as history, not as the current rule.
-- **Specialist vs generalist:** emergent, via opportunity cost and the shop title's soft bias.
-  Both are valid; neither is punished.
-- **Specialty earns from work performed** (service jobs in v1; sale attribution is an open design
-  question parked in TODO.md, and until the game can attribute a sale to the disciplines the
-  player actually improved, sales must NOT feed specialty).
-- **Techniques are access only.** No technique may modify speed, cost, or quality math.
-- **The shop title is derived, never stored ceremony.** It can shift when another line overtakes.
+- **Specialist vs generalist:** emergent, via opportunity cost. Both are valid; neither is
+  punished. *(The shop title's soft bias, named here originally, is retired: see below.)*
+- ~~**Specialty earns from work performed**~~ **RETIRED by the fourth amendment (2026-08-05).**
+  Standing is earned by a matched delivery to a scene, which is a sale, so the old
+  "sales must NOT feed specialty" rule is inverted rather than narrowed. The TODO entry it parked
+  its open question in is closed by that amendment.
+- ~~**Techniques are access only.**~~ **RETIRED by the fourth amendment.** Techniques are gone; a
+  craft operation deliberately DOES write quality onto the car, which is the whole of what the
+  horizontal axis now buys.
+- ~~**The shop title is derived, never stored ceremony.**~~ **RETIRED OUTRIGHT (maintainer,
+  2026-08-05): dropped entirely, with no replacement and none wanted.** The old title derived a
+  name from your strongest component group ("the engine house", "the chassis works"). The
+  maintainer's ruling when offered a scene-keyed successor: *the title does not change ever,
+  carried by the standing screen alone, for now.* The shop's identity is what the Standing screen
+  shows, and nothing names it on the wall. **This closes the open question the fourth amendment
+  left**; do not re-propose a title.
 
 ## Anti-patterns (each of these has already burned us once)
 
@@ -211,3 +220,43 @@ name `reputationTier` predates this and stays; do not rename code symbols to cha
   than left ungated - an ungated tier-4 signature job would have been a silent value change directive
   22 does not permit, and a permanently unreachable one would have been exactly the "quietly keeps
   working/quietly keeps failing" fragment the teardown exists to avoid.
+- 2026-08-05: **What EARNS reputation is redefined (fifth amendment, maintainer-approved,
+  implemented `docs/sprints/sprint184.md`).** The vertical axis keeps every gate it already has;
+  only the earning changes. It previously read the car's condition bands at the moment of sale
+  (a lemon predicate, a clean bonus, a concours bonus), plus a flat matched bonus, plus service
+  jobs and missions. **No stat and no condition predicate feeds reputation any longer.** Five
+  points:
+  - **Reputation reads the buyer's own verdict on the car they were sold, and nothing else.** Two
+    rungs: **Satisfied**, the buyer's champion stat cleared, and **Delighted**, every stat that
+    buyer cares about cleared. Selling a rough show car to the Show Crowd is honest work and pays,
+    because their reliability importance is exactly 0 and they never asked; selling the same car to
+    a Daily Driver pays nothing, because reliability is the only thing they came for. That is the
+    whole rule.
+  - **Authenticity is out, and concours with it.** Concours was the game's only +4 and required 85
+    per cent authenticity, which **no built car can reach** (an aftermarket block alone costs 18 of
+    the 100 points). A tuner, show or racing shop was structurally capped at the +2 rate however
+    good its work was. Satisfied and Delighted are reachable by every play style, which is the
+    point.
+  - **Reputation only ever rises.** A disappointed buyer pays nothing; they never take anything
+    away. This strengthens law 6 (no decay, no upkeep treadmill) rather than bending it, and it
+    retires the lemon penalty along with the lemon predicate.
+  - **Sales are rebalanced against service jobs.** A clean sale currently pays 2 while a tier-4
+    service job with a race part pays up to 75, so the reputation ladder is a service business that
+    happens to gate a car business. **A good car sale must out-earn a standard service job.** The
+    specific values are listed in the sprint doc under directive 22.
+  - **Law 3 is not violated, and this is the argument.** Reputation and scene standing now read
+    overlapping INPUTS (both look at the finished car against its buyer) but grant different
+    REWARDS, which is what law 3 actually forbids: reputation buys **breadth** (auction rooms, tool
+    tiers, bays, job tiers, and the campaign calendar itself), standing buys **quality of demand**
+    (who walks in, that scene's taste band, commissions, craft operations). Neither pays the other's
+    currency.
+
+  **The rejected alternative is recorded so it is not re-proposed: reputation must NOT read the
+  work performed.** It was the more attractive design on its face (reputation as craftsmanship,
+  standing as fit) and it does not survive measurement. Condition multiplies style, reliability and
+  authenticity, so **restoring a car IS how its taste score rises**: across 400 generated cars, 94
+  per cent matched at least one scene untouched and 100 per cent matched after nothing but a
+  restoration to mint, with the average car going from 3.89 to 5.15 scenes of six. "Did the work"
+  and "made it fit" are the same action, so a reputation that read work would be scene standing
+  measured a second time under another name, which is precisely the double-dip law 3 exists to
+  stop.

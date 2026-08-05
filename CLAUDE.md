@@ -53,10 +53,12 @@ All development happens in sprints, driven by the roadmap. Sprint docs live in `
 (synthwave pixel art, JDM car culture, hunt-build-sell loop). Solo-dev passion project, ~13-month
 roadmap to a free itch.io launch.
 
-**Current state:** Sprints 00-164 implemented, committed and signed. Two were superseded unbuilt
+**Current state:** Sprints 00-181 implemented, committed and signed. Two were superseded unbuilt
 and their docs record it (Sprint 100 by Sprint 110's live-room promotion; Sprints 138-139 by the
-sale value system). **`docs/sprints/` holds no live sprint**, which is the invariant: a finished
-sprint moves to `docs/sprints/sprint_archive/`, so whatever remains is what is still open.
+sale value system). **Sprints 182-184 are PLANNED and unbuilt** (the buyer-taste rework): a buyer
+learns to say no, the scene-standing ladder is retuned against it, and reputation stops reading
+condition. **`docs/sprints/` holds only planned or live sprints**, which is the invariant: a
+finished sprint moves to `docs/sprints/sprint_archive/`, so whatever remains is what is still open.
 
 The tuning overhaul is COMPLETE (`docs/design/systems/tuning-system.md`, arc index
 `docs/sprints/tuning-arc.md`): condition reaches the build, power is a per-car fraction rather than

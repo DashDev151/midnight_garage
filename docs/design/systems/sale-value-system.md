@@ -167,6 +167,58 @@ guard the same division by zero rather than being reachable in authored content 
     premium channel (ceiling > 1 + tasteSpread):
         multiplier = (1 - tasteSpread) + (ceiling - (1 - tasteSpread)) * match
 
+### AMENDMENT (v5, maintainer-approved 2026-08-05): the gate, and culture
+
+The formula above is unchanged. **Two things now wrap it**, because measurement showed it could
+not discriminate at all.
+
+**What was measured.** Across 400 real generated auction cars, **94 per cent matched at least one
+scene with no work done to them whatsoever**, and the average car matched 3.89 of the six scenes.
+Restored to mint with stock parts, that reached 100 per cent and 5.15 of six. A bone-stock mint
+Supra RZ scored a perfect 1.00 with the Show Crowd **and** a perfect 1.00 with Daily Drivers
+simultaneously; a race-built GT-R with 644 PS and no authenticity left matched Daily Drivers at
+0.67; a show car with reliability 40 matched both Daily Drivers and Racers. The cause is
+structural rather than a bad number: **a weighted average can never disqualify anything.** Missing
+a target costs a proportional slice of one stat's importance, and every buyer has two or three
+stats they do not care about, which a clean stock car clears for free. A car could fail everything
+its buyer came for and keep two thirds of its marks.
+
+**1. The champion stat GATES the match.**
+
+    champion = the stat with the highest importance for this buyer
+    if score[champion] < target[champion]: NOT MATCHED, whatever else the car scores
+
+One gate per buyer, and it is the stat they are known for: authenticity for the Collector,
+reliability for Daily Drivers, style for the Show Crowd, power for the Racer and the Tuner,
+handling for Touge. This is what makes an average capable of saying no.
+
+**2. Culture multiplies the result.**
+
+    final = match * cultureAffinity[buyer][car.spec.culture]
+
+`spec.culture` already exists on every car in all thirteen values and was previously read only by
+damage generation. **Affinity is never zero**: a Tuner will occasionally want a built-up oddball,
+and a first car is sometimes an S13. But a Collector looking at an `honest-transport` Carina is at
+0.20, so only an otherwise perfect car could clear the bar, which is the intended shape. The
+authored table is `docs/design/buyer-culture-affinity.csv`, 13 cultures x 6 buyers, and the same
+number also weights the channel draw so culture changes who turns up as well as who buys.
+
+**Why multiplicative rather than a sixth averaged term:** measured, an averaged culture term at
+importance 1.0 still leaves the Carina at 0.50 against a Collector. Averaging dilutes; it never
+disqualifies. This is the same finding as the gate, from the other direction.
+
+**3. The targets were recalibrated**, because several sat below where a stock car already lands.
+Show Crowd style 0.65 to **0.85** (measured: 0 of 26 cars arrive qualifying, 17 can build to it).
+Touge power 0.70 to **0.4667**, the 280 PS gentlemen's agreement, since 420 PS is absurd for a
+mountain pass. Touge handling 0.75 to **0.50**: 0.75 is 1.32 g, which requires race aero, so the
+old target gated touge behind a full race build. The Tuner's champion moves from handling to power,
+which fixes both their reachability and the fact that their own copy sells them as a power scene.
+The Collector's power `upper` is **deleted**: every route to power already costs authenticity, so
+capping it double-charged, and it also penalised a numbers-matching car for the power it left the
+factory with.
+
+**Every one of those levers is listed by name and value in `docs/sprints/sprint182.md`.**
+
 ### Stage E's power term, and the climbing chain above it
 
 **BUILT (docs/sprints/sprint175.md, scene-standing-arc.md step 0).** `s` for the power stat is
@@ -250,11 +302,21 @@ looks-versus-truth theme rendered into the reputation rules:
 
 ### Concours means original
 
-**Concours** requires mint condition, high coherence **and high authenticity**. A mint,
-coherent, **modified** car earns a **magazine feature** instead, which is the period-correct
-honour and carries the **`magazineFeatureMultiplier`**. That single split closes concours
-semantics, the value-boost placeholder, and the "should `retentionCeiling` exceed 1.10" question.
-It should not.
+> **RETIRED (maintainer, 2026-08-05), and the magazine feature with it. Superseded by the
+> reputation rework in `docs/sprints/sprint184.md`.** Concours was the only +4 in the game and it
+> required 85 per cent authenticity, which **no built car can ever reach**: an aftermarket block
+> alone costs 18 of the 100 authenticity points. So a tuner shop, a show shop and a racing shop
+> were all permanently capped at the +2 clean rate no matter how good their work was, and only a
+> restorer could earn the top rung. The maintainer's ruling is that **no stat feeds reputation at
+> all**, authenticity least of all, so the whole predicate goes rather than being re-tuned.
+>
+> **What replaces it: Satisfied and Delighted.** Satisfied is the buyer's champion stat cleared;
+> Delighted is every stat that buyer cares about cleared. Both are reachable by every play style,
+> which concours never was. The magazine feature was never built (no `magazineFeature` identifier
+> exists anywhere in `packages/`) and is retired here rather than carried as a design nobody
+> implemented.
+>
+> The paragraph below is kept only so the naming ruling it carries stays findable.
 
 **Do not call this "provenance".** The word is already taken twice over in the codebase, by
 `packages/content/src/provenance.ts` (flavour history lines) and `packages/sim/src/provenance.ts`
