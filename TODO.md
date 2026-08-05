@@ -658,6 +658,43 @@ pass."
   silly and do very little. One number per car expresses it, and it is what stops every car in
   the game eventually becoming a GT3 car. It is step 8 of that doc's build order, so check
   whether the tuning sprints already cover it before scoping it separately.
+- [ ] **A shipped car's physics spec cannot be changed without re-running the calibration harness,
+  and the tool that feeds cars.json is BROKEN (both found 2026-08-05).** Two findings from one
+  attempted two-field fix, recorded together because they are the same chain.
+
+  **1. `scripts/importSpecBook.cjs` throws and has done for some time.** It fails with `spec key
+  outside the known order: culture`. Its `SPEC_KEY_ORDER` predates every field added since the
+  physics import landed: `culture`, `yearTo`, `reliabilityBase`, `styleBase`, `styleCeiling`,
+  `aeroCeiling`, `factoryColours`. So `carSpecBookGuard.test.ts` instructs the reader to *"re-run
+  `node scripts/importSpecBook.cjs` rather than editing cars.json by hand"* and that command
+  cannot run. Either bring the key order up to date, or retire the importer and say plainly that
+  the spec book and `cars.json` are hand-synced.
+
+  **2. A car's physical figures exist in FOUR places, and two of them feed the locked calibration.**
+
+      roster CSV  ->  car-spec-book.html  ->  cars.json
+                  ->  lapsim-data.json    ->  lapsim-report.cjs  ->  harnessReferenceTimes.json
+
+  `lapsim-data.json` carries its own copy of every car. `harnessAcceptance.test.ts` asserts the
+  shipped model reproduces the harness to 0.2 s, and its own doc comment is explicit that a failure
+  means the PORT has drifted and *"the fix is in `performance.ts`, never in the tolerance"* - the
+  harness is the reference implementation, validated against real driven laps. **So changing a
+  shipped car's `dragCd` or `topSpeedKmh` in `cars.json` alone makes that car fail its own
+  acceptance test**, and landing such a change honestly means updating the harness data and
+  regenerating its reference times too.
+
+  **The live instance of this, deliberately left divergent.** The maintainer ruled 2026-08-05 that
+  the game assumes no legal limiters ever existed, so the three kei governor figures are wrong.
+  Two of the three (Cappuccino, AZ-1) are not yet in `cars.json`, so their corrected figures sit in
+  the roster and will flow in when they are authored. **The Suzuki Wagon R IS shipped**, so its
+  roster row now reads `topSpeedKmh` 151 / `dragCd` 0.38 while `cars.json` still reads 140 / 0.36.
+  Syncing it was tried and reverted: it moved the car's Hakone lap to 143.00 s against a harness
+  reference of 142.8 s, failing by 0.0015 s over tolerance, and also invalidated a pinned Wagon R
+  figure in `aero.test.ts`. **That divergence is recorded rather than fixed**, on the same footing
+  as the 13 known tier disagreements, and it belongs to whichever pass re-validates the
+  performance model. The 280 PS gentlemen's-agreement question below is the same class of work and
+  should be done in the same pass.
+
 - [ ] **INVESTIGATE: after sprint 184 nothing in the game can ever lower reputation (maintainer,
   2026-08-05, accepted for now).** The fifth amendment to `progression-bible.md` makes reputation
   monotonic: a disappointed buyer pays nothing rather than taking anything away. The maintainer took
