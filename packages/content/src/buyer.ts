@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { CarTierSchema } from './tags'
+import { CarCultureSchema, CarTierSchema } from './tags'
 
 export const BuyerArchetypeSchema = z.enum([
   'collector',
@@ -17,6 +17,32 @@ const TierPreferenceSchema = z.object({
   tier: CarTierSchema,
   weight: z.number().min(0),
 })
+
+/** Taste by car culture (docs/design/buyer-culture-affinity.csv): the same
+ * shape as `TierPreferenceSchema`, but exhaustive rather than sparse - see
+ * `CulturePreferencesSchema` below for why. */
+const CulturePreferenceSchema = z.object({
+  culture: CarCultureSchema,
+  weight: z.number().min(0),
+})
+
+const CULTURE_COUNT = CarCultureSchema.options.length
+
+/**
+ * Every buyer's per-culture affinity, one entry per `CarCulture` with no
+ * default: an unauthored culture failing validation is the point, because a
+ * silent fallback to 1.0 would make that buyer invisibly culture-blind (the
+ * Stage E v5 amendment, sale-value-system.md). `.length` fixes the entry
+ * count at exactly thirteen and the `.refine` below checks the cultures
+ * named are thirteen DISTINCT ones - together they rule out both a missing
+ * culture and a duplicate standing in for it.
+ */
+const CulturePreferencesSchema = z
+  .array(CulturePreferenceSchema)
+  .length(CULTURE_COUNT)
+  .refine((prefs) => new Set(prefs.map((p) => p.culture)).size === CULTURE_COUNT, {
+    message: `culturePreferences must name each of the ${CULTURE_COUNT} car cultures exactly once`,
+  })
 
 /**
  * One derived stat's fit for a buyer archetype: taste is a match, not a
@@ -53,6 +79,7 @@ export const BuyerSchema = z
     displayName: z.string().min(1),
     statTargets: TasteProfileSchema,
     tierPreferences: z.array(TierPreferenceSchema).default([]),
+    culturePreferences: CulturePreferencesSchema,
     /**
      * One authored line naming this archetype's want, shown alongside an
      * offer so the want IS the read (design doc `selling-rework.md` section

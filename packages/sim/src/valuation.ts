@@ -10,6 +10,7 @@ import {
   type PowerExpectationChain,
   type SceneStanding,
   type SceneStandingStage,
+  type StatKey,
 } from '@midnight-garage/content'
 import { computeDerivedStats } from './derivedStats'
 import { marketValueYen } from './marketValue'
@@ -138,10 +139,46 @@ export function tasteMatchFor(targets: Buyer['statTargets'], scoreByStat: StatSc
 }
 
 /**
+ * The single stat this buyer cares about MOST - the highest `importance` in
+ * `Buyer.statTargets` - the stat they are known for: authenticity for the
+ * Collector, reliability for Daily Drivers, style for the Show Crowd, power
+ * for the Racer and the Tuner, handling for Touge. Read by both the champion
+ * gate below and `sceneCommissions.ts`'s commission generator, so a
+ * commission and the gate can never ask different questions of the same
+ * buyer. Ties resolve to the first stat in `STAT_KEYS`; no shipped archetype
+ * currently ties for its own highest importance.
+ */
+export function championStatFor(buyer: Buyer): StatKey {
+  return STAT_KEYS.reduce((best, key) =>
+    buyer.statTargets[key].importance > buyer.statTargets[best].importance ? key : best,
+  )
+}
+
+/**
+ * This buyer's affinity for `model.spec.culture` (Stage E v5 amendment,
+ * sale-value-system.md; authored in `docs/design/buyer-culture-affinity.csv`).
+ * Every buyer names all thirteen `CarCulture` values with no default
+ * (`BuyerSchema.culturePreferences`), so this always resolves to an authored
+ * number for valid content - the fallback of 1 (culture-blind) only guards
+ * against content that has not been validated.
+ */
+export function cultureAffinityFor(buyer: Buyer, model: CarModel): number {
+  return buyer.culturePreferences.find((pref) => pref.culture === model.spec.culture)?.weight ?? 1
+}
+
+/**
  * How well this car satisfies a buyer archetype's taste, normalized to
- * [0, 1] via `tasteMatchFor` above. The shared input every taste band below
- * maps onto its own range - stats never touch `marketValueYen` itself, only
- * who pays a bit more.
+ * [0, 1]. The shared input every taste band below maps onto its own range -
+ * stats never touch `marketValueYen` itself, only who pays a bit more.
+ *
+ * Two things wrap the plain `tasteMatchFor` average (Stage E v5 amendment):
+ * the champion gate zeroes the whole match when the buyer's own signature
+ * stat falls short of its target, whatever else the car scores, and culture
+ * then multiplies what is left. A weighted average alone can never
+ * disqualify anything - every buyer has stats it does not care about, which
+ * a clean stock car clears for free - so the gate is what lets a buyer
+ * refuse a car outright, and culture is what makes an otherwise-qualifying
+ * car still the wrong one for this buyer's own scene.
  */
 function normalizedTasteScore(
   buyer: Buyer,
@@ -159,7 +196,10 @@ function normalizedTasteScore(
     reliability: stats.reliability / 100,
     authenticity: stats.authenticity / 100,
   }
-  return tasteMatchFor(buyer.statTargets, scoreByStat)
+  const champion = championStatFor(buyer)
+  if (scoreByStat[champion] < buyer.statTargets[champion].target) return 0
+  const match = tasteMatchFor(buyer.statTargets, scoreByStat)
+  return match * cultureAffinityFor(buyer, model)
 }
 
 /**

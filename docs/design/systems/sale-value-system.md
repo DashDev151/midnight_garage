@@ -208,8 +208,16 @@ importance 1.0 still leaves the Carina at 0.50 against a Collector. Averaging di
 disqualifies. This is the same finding as the gate, from the other direction.
 
 **3. The targets were recalibrated**, because several sat below where a stock car already lands.
-Show Crowd style 0.65 to **0.85** (measured: 0 of 26 cars arrive qualifying, 17 can build to it).
-Touge power 0.70 to **0.4667**, the 280 PS gentlemen's agreement, since 420 PS is absurd for a
+Show Crowd style 0.65 to **0.82** (corrected from an initial 0.85, maintainer 2026-08-05: measured
+across the full 94-row roster rather than the shipped 26, `styleCeiling` carries a dense ten-car
+cluster sitting at exactly 84 - NSX-R, E30 M3, E36 M3, Kenmeri GT-R, 240ZG, Evo VI, AZ-1, Eunos
+Roadster, Glanza V, Golf GTI - and a bar one point above that cluster was the worst possible
+placement, locking all ten out on principle rather than any real gap. Reachability by bar: 0.82
+gives 67/94, 0.84 gives 61/94, 0.85 gives 51/94, 0.88 gives 43/94. At 0.82 only two roster cars
+arrive already qualifying on `styleBase` alone - Countach at 88, F355 at 84 - so a build is still
+required on 92 of 94, and the 84-cluster now carries two points of headroom instead of sitting
+knife-edge on condition). Touge power 0.70 to **0.4667**, the 280 PS gentlemen's agreement, since
+420 PS is absurd for a
 mountain pass. Touge handling 0.75 to **0.50**: 0.75 is 1.32 g, which requires race aero, so the
 old target gated touge behind a full race build. The Tuner's champion moves from handling to power,
 which fixes both their reachability and the fact that their own copy sells them as a power scene.

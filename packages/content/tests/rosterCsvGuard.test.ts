@@ -295,15 +295,24 @@ describe('the roster CSV is well formed', () => {
     const showCrowd = targetOf('show-crowd')
     const tuner = targetOf('tuner')
 
-    it('lets 23 of the 94 satisfy the Show Crowd stock, none of them entry tier', () => {
+    it('lets four of the 94 satisfy the Show Crowd stock, none of them entry tier', () => {
+      // The target sits at 0.82 rather than one point above the roster's
+      // dense ten-car cluster at styleCeiling 84, which would lock all ten
+      // out on principle rather than any real gap. Four cars clear 82 on
+      // styleBase alone; a beautiful car straight out of the box is still a
+      // rare, high-end purchase, not a free ride at any price point.
       const satisfy = roster.filter((r) => r.num('styleBase') >= showCrowd)
-      expect(satisfy).toHaveLength(23)
-      expect(satisfy.filter((r) => r.get('tier') === 'entry')).toHaveLength(0)
-      // A beautiful car straight out of the box is a late-game purchase: all
-      // but the AZ-1 cost 850,000 yen or more.
-      expect(
-        satisfy.filter((r) => r.num('priceYen') < 850_000).map((r) => r.get('variantLabel')),
-      ).toEqual(['Autozam AZ-1 (PG6SA)'])
+      expect(satisfy.map((r) => r.get('variantLabel')).sort()).toEqual(
+        [
+          "Mazda RX-7 Type R (FD3S, '92)",
+          'Mazda RX-7 Spirit R Type A (FD3S)',
+          'Ferrari F355 Berlinetta (6MT)',
+          'Lamborghini Countach LP5000 QV',
+        ].sort(),
+      )
+      expect(satisfy.map((r) => r.get('tier')).sort()).toEqual(
+        ['enthusiast', 'flagship', 'flagship', 'flagship'].sort(),
+      )
     })
 
     it('leaves exactly two cars unable to reach the tuner at any build', () => {
@@ -313,10 +322,16 @@ describe('the roster CSV is well formed', () => {
       expect(unreachable.sort()).toEqual(['Honda Acty (HA4 Truck)', 'Suzuki Wagon R (CT21S)'])
     })
 
-    it('leaves seven cars unable to reach the Show Crowd at any build, all of them entry', () => {
+    it('leaves 27 cars unable to reach the Show Crowd at any build, across every tier', () => {
+      // The five roster style-ceiling raises (sprint182.md) lift the cars
+      // authored as show cars; they do not touch the 89 that were never
+      // meant to be one, several of them flagship exotics whose headroom was
+      // authored against the old 0.65 bar rather than the corrected 0.82 one.
       const unreachable = roster.filter((r) => r.num('styleCeiling') < showCrowd)
-      expect(unreachable).toHaveLength(7)
-      expect(unreachable.every((r) => r.get('tier') === 'entry')).toBe(true)
+      expect(unreachable).toHaveLength(27)
+      expect(new Set(unreachable.map((r) => r.get('tier')))).toEqual(
+        new Set(['entry', 'everyday', 'enthusiast', 'flagship']),
+      )
     })
   })
 

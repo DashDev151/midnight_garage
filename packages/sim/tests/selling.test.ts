@@ -45,6 +45,7 @@ import {
   buildCarInstance,
   carWithGrades,
   mintCarParts,
+  neutralCulturePreferences,
   testSceneStanding,
   testToolTiers,
   uniformCarParts,
@@ -861,7 +862,24 @@ describe('drawDailyOffers (Sprint 31 decision 2; channels, Sprint 114)', () => {
     })
 
     it('can actually produce a real offer while the flag is still owed, on the meet day', () => {
-      const state = { ...stateWithCar(car), day: MEET_DAY, carsForSale: listedOn('weekendMeet') }
+      // The plain fixture `car` (one worn block, otherwise stock) now fails
+      // every buyer's champion gate or culture affinity for weekendMeet's
+      // matchedOnly bar - unmatchable is the sprint182.md point. A genuinely
+      // matched car is needed to prove the "guaranteed draw" mechanism can
+      // still produce a real offer: this build clears the Show Crowd's
+      // champion (style) comfortably, and the car's own touge culture still
+      // carries a real affinity (0.65) for that buyer.
+      const matchedCar = carWithGrades(
+        model,
+        CONTEXT,
+        { aero: 'race', rims: 'race', seats: 'race', dashGauges: 'race', exhaust: 'race' },
+        'mint',
+      )
+      const state = {
+        ...stateWithCar(matchedCar),
+        day: MEET_DAY,
+        carsForSale: listedOn('weekendMeet'),
+      }
       let found = false
       for (let seed = 0; seed < 40 && !found; seed++) {
         const result = drawDailyOffers(state, CONTEXT, createRng(seed), MEET_DAY)
@@ -897,6 +915,7 @@ describe('drawDailyOffers (Sprint 31 decision 2; channels, Sprint 114)', () => {
         authenticity: { target: 1, importance: 1 },
       },
       tierPreferences: [{ tier: 'entry' as const, weight: 1 }],
+      culturePreferences: neutralCulturePreferences(),
       wantLine: 'synthetic fixture buyer - no authored copy needed',
     }
     const mismatchContext = buildSimContext(
@@ -1198,6 +1217,7 @@ describe('resolveSellViaWalkIn (Sprint 31: resolves today’s pre-rolled offer)'
         authenticity: { target: 1, importance: 1 },
       },
       tierPreferences: [{ tier: 'everyday' as const, weight: 1 }],
+      culturePreferences: neutralCulturePreferences(),
       wantLine: 'synthetic fixture buyer - no authored copy needed',
     }
     const matchedCar: CarInstance = authenticCar()
@@ -1299,6 +1319,7 @@ describe('ceiling clamps (Sprint 114): honest, per the lever table', () => {
       authenticity: { target: 1, importance: 1 },
     },
     tierPreferences: [],
+    culturePreferences: neutralCulturePreferences(),
     wantLine: 'synthetic fixture buyer - no authored copy needed',
   }
   const perfectFitCar: CarInstance = authenticCar()
@@ -1375,6 +1396,43 @@ describe('a channel is a buyer base (sprint156)', () => {
    * slots at four times what they cost). */
   function tidy(forModel: CarModel): CarInstance {
     return carWithGrades(forModel, CONTEXT, {})
+  }
+
+  /**
+   * A Silvia genuinely wanted by two different buyers. A stock car (`tidy`)
+   * is unmatchable by anybody now (sprint182.md's champion gate), so the
+   * channel-comparison tests below need a build that clears more than one
+   * buyer's own champion: full race engine work clears the Tuner's power
+   * target (390 PS), the same pass at the style-bearing slots clears the
+   * Show Crowd's, and the S13's own drift culture sits at 0.90+ affinity for
+   * both, so neither gate is a near thing.
+   */
+  function builtStyleCar(): CarInstance {
+    return carWithGrades(
+      STYLE_MODEL,
+      CONTEXT,
+      {
+        block: 'race',
+        internals: 'race',
+        headValvetrain: 'race',
+        camsTiming: 'race',
+        intake: 'race',
+        exhaust: 'race',
+        fuelSystem: 'race',
+        ignitionEcu: 'race',
+        cooling: 'race',
+        forcedInduction: 'race',
+        gearbox: 'race',
+        clutch: 'race',
+        driveline: 'race',
+        differential: 'race',
+        aero: 'race',
+        rims: 'race',
+        seats: 'race',
+        dashGauges: 'race',
+      },
+      'mint',
+    )
   }
 
   const MEET_DAY = ECONOMY.calendar.meetDayOfWeek
@@ -1460,7 +1518,7 @@ describe('a channel is a buyer base (sprint156)', () => {
   }
 
   describe('the magazine and the meet are two buyer bases, not one with two invoices', () => {
-    const styleCar = tidy(STYLE_MODEL)
+    const styleCar = builtStyleCar()
 
     it('brings a different person, and therefore a different price, on the same car', () => {
       const magazine = channelQuote(styleCar, STYLE_MODEL, 'tunerMagazine')
@@ -1695,6 +1753,7 @@ describe('a channel is a buyer base (sprint156)', () => {
           authenticity: { target: 0, importance: 0 },
         },
         tierPreferences: [{ tier: model!.tier, weight }],
+        culturePreferences: neutralCulturePreferences(),
         wantLine: 'synthetic fixture buyer - no authored copy needed',
       }
     }
@@ -1765,7 +1824,7 @@ describe('a channel is a buyer base (sprint156)', () => {
 
   describe('standing improves who walks through an open door', () => {
     it("a legend's weekend meet draws its own crowd more reliably than an unknown's", () => {
-      const styleCar = tidy(STYLE_MODEL)
+      const styleCar = builtStyleCar()
       const unknown = sweep(styleCar, STYLE_MODEL, 'weekendMeet', 200)
       const legend = sweep(styleCar, STYLE_MODEL, 'weekendMeet', 200, {
         reputationTier: 'legend',

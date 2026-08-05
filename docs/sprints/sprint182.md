@@ -69,7 +69,7 @@ there is exactly one copy.
 
 | buyer | field | from | to |
 | --- | --- | --- | --- |
-| show-crowd | `statTargets.style.target` | 0.65 | **0.85** |
+| show-crowd | `statTargets.style.target` | 0.65 | **0.82** |
 | touge | `statTargets.power.target` | 0.70 | **0.4667** |
 | touge | `statTargets.handling.target` | 0.75 | **0.50** |
 | touge | `statTargets.power.upper` | absent | **0.55** |
@@ -83,9 +83,19 @@ there is exactly one copy.
 `tuner.statTargets.power.target` stays at **0.65 (390 PS)**, which becomes their gate once the
 importance change makes power their champion.
 
+**AMENDMENT (maintainer, 2026-08-05): 0.85 corrected to 0.82.** The implementation report's own
+finding - reachability by bar, measured across the full 94-row roster, not the shipped 26 - showed
+0.85 was the worst possible placement: `styleCeiling` has a dense ten-car cluster sitting at exactly
+84 (NSX-R, E30 M3, E36 M3, Kenmeri GT-R, 240ZG, Evo VI, AZ-1, Eunos Roadster, Glanza V, Golf GTI), and
+a bar one point above that cluster locks all ten out on principle rather than on any real gap.
+Reachability by bar: 0.82 gives 67/94, 0.84 gives 61/94, 0.85 gives 51/94, 0.88 gives 43/94. At 0.82
+only two roster cars arrive already qualifying on `styleBase` alone (Countach at 88, F355 at 84), so
+a build is still required on 92 of 94, and the 84-cluster now carries two points of headroom rather
+than sitting knife-edge on condition.
+
 ### Roster style ceilings (`docs/design/midnight-garage-roster.csv`, then `cars.json`)
 
-Raised so the new Show Crowd bar of 0.85 is reachable by cars whose whole appeal is how they look:
+Raised so the new Show Crowd bar of 0.82 is reachable by cars whose whole appeal is how they look:
 
 | car | `styleCeiling` from | to |
 | --- | --- | --- |
@@ -174,4 +184,90 @@ measurement, so it cannot ship unnoticed.
 
 ## Exit
 
-*(Filled on completion.)*
+**Implemented.** `culturePreferences` added to `BuyerSchema` (an exhaustive array, `.length(13)` plus
+a distinctness `.refine`, so a missing or duplicated culture fails validation rather than defaulting
+to 1.0); all six buyers authored verbatim from `buyer-culture-affinity.csv`. `championStatFor` moved
+from `sceneCommissions.ts` into `valuation.ts` and is now the one implementation both the commission
+generator and the gate read. The gate and the culture multiplier are folded into
+`normalizedTasteScore` in the ruled order (champion shortfall zeroes the match, then culture
+multiplies what is left); `cultureAffinityFor` also weights `saleCandidates` in `selling.ts`, the
+same table's second use. All ten buyer stat-target changes and all five roster style-ceiling changes
+applied exactly as tabled. `pnpm typecheck` clean, `npx eslint .` clean, all three Vitest projects
+green in one run each (content 610/610, sim 2310/2310, game 945/945). Not committed - awaiting
+review.
+
+### The measurement (`tasteMatchGradient.test.ts`)
+
+400 real generated auction lots (cycling the 26 shipped models, one seed per lot), measured at
+arrival, restored to mint with stock parts, and built to sport grade, against the **corrected 0.82**
+target. Percentage matching at least one scene: **3.8% arrival, 49.8% restored, 100.0% built** -
+directionally the same shape the design measurement reports (roughly 9/37/89%), close enough given a
+different sampling scheme (cycling every shipped model rather than whatever draw the design's own
+probe used) and no attempt made to match it exactly, since the test asserts a gradient with real
+margins rather than pinning a number. Mean scenes matched of six: 0.04 -> 0.57 -> 1.96. The Collector
+does not follow the same rising shape on its own (19.3% at restored, back to 0% once sport-built)
+because a sport build spends authenticity the Collector's champion needs - understood and expected,
+not asserted per-scene, only in aggregate.
+
+**0.82 vs the original 0.85, re-measured rather than assumed identical:** at the aggregate,
+400-lot level the difference is negligible - arrival unchanged (3.8%), restored moves from 49.8% to
+49.8% in the rounded headline but the Show Crowd's OWN line moves from 0.0% to 4.0% at that stage,
+and built stays at 100.0% either way (Show Crowd's own line holds at 80.8% under both bars, since a
+sport build's style headroom already clears both comfortably for the cars that reach it at all). The
+maintainer's framing was exactly right: 0.82 mainly changes WHICH cars the Show Crowd will consider,
+not the population-level gradient, because Show Crowd's champion is one gate of six and the other
+five dominate the aggregate.
+
+### The price effect (measured, not committed as a test)
+
+Required finding, not optional. Measured across the same 400 lots, comparing each car's best-buyer
+valuation under the OLD mechanism (`tasteMatchFor` alone, no gate, no culture - still exported and
+callable unchanged) against the NEW one (`valuateCarForBuyer`, gate + culture folded in), at the
+corrected 0.82:
+
+| stage | old mean | new mean | mean ratio | median ratio | lots priced lower / higher / same |
+| --- | ---: | ---: | ---: | ---: | --- |
+| arrival | Y772,003 | Y646,816 | 0.838 | 0.845 | 396 / 0 / 4 |
+| restored (stock mint) | Y1,011,002 | Y911,992 | 0.902 | 0.882 | 354 / 0 / 46 |
+| built (sport) | Y1,816,136 | Y1,783,496 | 0.982 | 0.991 | 245 / 0 / 155 |
+
+Effectively unchanged from the 0.85 measurement (0.833/0.901/0.982 there vs 0.838/0.902/0.982 here) -
+**the price effect is not materially sensitive to this specific correction.** The finding as first
+reported stands: **a broad price fall, sharpest on an as-arrived lot (mean -16.2%) and shrinking but
+still real once built (mean -1.8%).** Structurally, price can only fall or hold under the folded
+formula, never rise: the gate can only zero a match and every authored culture affinity is <= 1.0, so
+`new_match <= old_match` always - zero cars priced higher at any stage confirms this is the formula's
+guaranteed shape, not a sampling artefact. This is the shop front's own no-`matchedOnly`-gate
+consequence the RULED section named in advance; it has not been assessed against the standing ladder
+or the wider economy here, per the sprint's own scope (that is Sprint 183's subject once this is
+measured). Flagged for review rather than absorbed quietly, exactly as directive 22 and the sprint's
+own definition of done require.
+
+### Tests changed under directive 17
+
+All case (a) - the sprint's own approved target/gate changes made the old assertion stale; none were
+case (b) (a caught regression). `advanceDay.test.ts`'s acquisition-sale golden hash moved because the
+rolled lot (reliability 51) now fails daily-drivers' champion gate and prices at the unmatched floor
+instead of a taste premium - re-derived and re-pinned with a documentary paragraph in the file's own
+convention. `sceneCommissions.test.ts` updated for the tuner's champion moving to power. Four
+`selling.test.ts` fixtures needed strengthened builds (a stock car is now unmatchable by anyone) to
+keep testing the mechanism they were written for rather than degenerating into "everything hits the
+floor, so the numbers happen to agree." Two `valuation.test.ts` Silvia fixtures needed more style
+parts to genuinely clear the raised Show Crowd bar, including one case (the "exceeding a target
+earns nothing" test) that was passing for the wrong reason - both builds landed below the new
+champion target and were being equalised by the gate rather than by the mean formula's own clamp.
+`storyMissions.json`'s three `tasteMatch.minMultiplier` fields are mechanically re-derived via the
+test file's own unchanged formula (`0.97 x measured ratio`, rounded to 2dp) against the new buyer
+targets, not picked.
+
+`rosterCsvGuard.test.ts`'s two Show Crowd counts are re-measured facts about the already-authored
+roster, first against 0.85 and then again against the corrected 0.82 (23 satisfying stock -> 1 at
+0.85 -> **4** at 0.82; seven roster-wide unreachable -> 43 at 0.85 -> **27** at 0.82, at neither bar
+confined to entry tier). **The 0.82 satisfying-stock count is 4, not the 2 the amendment's own
+reasoning named** (Countach at 88 and F355 at 84) - the roster CSV's own `styleBase` column also
+clears 82 on the Mazda RX-7 Type R (FD3S, '92) at exactly 82 and the RX-7 Spirit R Type A (FD3S) at
+83, both missed by the two-car figure. Reported rather than silently reconciled, per this task's own
+instruction to measure honestly rather than adjust to fit; the roster-wide unreachable count (27) and
+every ceiling-reachability figure (67/94, 61/94, 51/94, 43/94 at bars 82/84/85/88) were independently
+re-derived from the CSV and match the amendment's own numbers exactly, so this is a narrow
+undercount in the worked example, not a disagreement about the underlying data.

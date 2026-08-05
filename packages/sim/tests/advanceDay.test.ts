@@ -493,7 +493,19 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // script never accepts or completes a service job either, so the retired
     // offer-selection bias was already a no-op throughout. No roll, cash
     // figure or derived stat moved.
-    expect(hashState(acquisitionCareer().sold)).toBe('fc5e5928')
+    //
+    // It moves once more, on its own again, for the champion gate
+    // (sprint182.md): the acquisition roll and the lot itself are bit-for-bit
+    // unchanged (same Toyota Carina, same day 2 win, the same daily-drivers
+    // buyer still finds the day-4 listing), so this is not a shape change.
+    // The lot arrives rough (reliability 51, style 9, authenticity 49,
+    // measured), well under daily-drivers' own champion target of 75, so the
+    // gate now zeroes the match: the shop front carries no `matchedOnly`
+    // gate, so the sale still completes, but at the unmatched floor price
+    // rather than a taste premium, and `sceneLedger` gains no entry where it
+    // used to. Exactly the "the gate now reaches PRICE" consequence the
+    // Stage E v5 amendment calls out by name. Re-derived from a real run.
+    expect(hashState(acquisitionCareer().sold)).toBe('1c01c120')
   })
 })
 

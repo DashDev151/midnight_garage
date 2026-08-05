@@ -179,14 +179,14 @@ describe('Sprint 146: taste is a match, not a mean', () => {
   const silvia = CARS.find((c) => c.id === 'nissan-silvia-s13')!
 
   /**
-   * The Show Crowd's only real target is style (0.65, importance 1.00);
+   * The Show Crowd's champion is style (target 0.82, importance 1.00);
    * power and handling barely count (importance 0.10/0.05) and reliability/
-   * authenticity are ignored outright (importance 0). This build clears
-   * style comfortably (0.71) while genuinely being loud (a race aero kit
-   * and forged wheels), no longer original (a kit, the wheels and the seats
-   * are all somebody else's, and the seats are past their best) and
-   * unreliable (a worn valvetrain and cooling system) - the archetype's
-   * "loud, low, unreliable car" made concrete.
+   * authenticity are ignored outright (importance 0). This build pushes
+   * style to 91 - comfortably past the champion gate, not merely the old
+   * mean's target - while genuinely being loud (a race aero kit, forged
+   * wheels, a race dash and header), no longer original (every one of those
+   * slots is somebody else's) and unreliable (a worn valvetrain and cooling
+   * system) - the archetype's "loud, low, unreliable car" made concrete.
    */
   function buildLoudLowUnreliableSilvia(): CarInstance {
     return buildCarInstance({
@@ -207,7 +207,19 @@ describe('Sprint 146: taste is a match, not a mean', () => {
         seats: {
           id: 'x-seats',
           partId: 'zashiki-race-buckets',
-          band: 'poor',
+          band: 'mint',
+          origin: { kind: 'market', day: 1 },
+        },
+        dashGauges: {
+          id: 'x-dash',
+          partId: 'sokudo-digital-race-dash',
+          band: 'mint',
+          origin: { kind: 'market', day: 1 },
+        },
+        exhaust: {
+          id: 'x-exhaust',
+          partId: 'suzaku-race-header-kit',
+          band: 'mint',
           origin: { kind: 'market', day: 1 },
         },
         headValvetrain: 'poor',
@@ -227,7 +239,7 @@ describe('Sprint 146: taste is a match, not a mean', () => {
       PARTS_TAXONOMY,
       ECONOMY,
     )
-    expect(stats.style).toBeGreaterThanOrEqual(65)
+    expect(stats.style).toBeGreaterThanOrEqual(showCrowd.statTargets.style.target * 100)
     // Modified enough to have given up any claim to being original: it fails
     // the concours gate outright. It does not go lower because three body
     // slots have no aftermarket SKU to fit, so 23 of the 100 authenticity
@@ -261,6 +273,10 @@ describe('Sprint 146: taste is a match, not a mean', () => {
   })
 
   it('exceeding a target earns nothing: a bigger style excess prices identically to a smaller one', () => {
+    // Both builds must genuinely clear the champion gate (style >= 0.82) for
+    // this to test the mean formula's own "exceeding earns nothing" clamp
+    // rather than the gate itself: two cars gated to zero would also price
+    // identically, but for the wrong reason.
     const atTarget = buildCarInstance({
       modelId: silvia.id,
       parts: mintCarParts({
@@ -276,10 +292,22 @@ describe('Sprint 146: taste is a match, not a mean', () => {
           band: 'mint',
           origin: { kind: 'market', day: 1 },
         },
+        seats: {
+          id: 'x-seats',
+          partId: 'zashiki-race-buckets',
+          band: 'mint',
+          origin: { kind: 'market', day: 1 },
+        },
+        exhaust: {
+          id: 'x-exhaust',
+          partId: 'suzaku-race-header-kit',
+          band: 'mint',
+          origin: { kind: 'market', day: 1 },
+        },
       }),
     })
     // The same build plus one more style-bearing slot, and deliberately a
-    // slot that carries NOTHING else: a race dash is 11 style points with no
+    // slot that carries NOTHING else: a race dash is style points with no
     // power fraction and no physical modifier at all, so the only thing
     // separating these two cars is how far each has closed its own style gap.
     // (Style is no longer additive, so "more excess" cannot be manufactured
@@ -297,6 +325,18 @@ describe('Sprint 146: taste is a match, not a mean', () => {
         rims: {
           id: 'x-rims',
           partId: 'ronin-race-forged',
+          band: 'mint',
+          origin: { kind: 'market', day: 1 },
+        },
+        seats: {
+          id: 'x-seats',
+          partId: 'zashiki-race-buckets',
+          band: 'mint',
+          origin: { kind: 'market', day: 1 },
+        },
+        exhaust: {
+          id: 'x-exhaust',
+          partId: 'suzaku-race-header-kit',
           band: 'mint',
           origin: { kind: 'market', day: 1 },
         },
@@ -323,7 +363,8 @@ describe('Sprint 146: taste is a match, not a mean', () => {
       PARTS_TAXONOMY,
       ECONOMY,
     )
-    expect(atTargetStats.style).toBeGreaterThanOrEqual(65) // clears the Show Crowd's target...
+    // ...clears the Show Crowd's champion gate...
+    expect(atTargetStats.style).toBeGreaterThanOrEqual(showCrowd.statTargets.style.target * 100)
     expect(overStats.style).toBeGreaterThan(atTargetStats.style) // ...this build clears it by more...
 
     const tasteAtTarget = channelBuyerTaste(

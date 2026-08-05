@@ -1,9 +1,11 @@
 import {
   ALL_CAR_PART_IDS,
+  CAR_CULTURES,
   ECONOMY,
   PARTS,
   PARTS_TAXONOMY,
   fitmentClassForTier,
+  type Buyer,
   type BuyerArchetype,
   type CarInstance,
   type CarModel,
@@ -52,6 +54,14 @@ export function testToolTiers(overrides: Partial<ToolTiers> = {}): ToolTiers {
     interior: 1,
     ...overrides,
   }
+}
+
+/** Every `CarCulture` at weight 1 (culture-blind): the `culturePreferences`
+ * a synthetic fixture buyer needs to satisfy `BuyerSchema` when the test it
+ * serves is not about culture at all - a flat 1 multiplies every match by
+ * exactly 1, so it introduces no confound. */
+export function neutralCulturePreferences(): Buyer['culturePreferences'] {
+  return CAR_CULTURES.map((culture) => ({ culture, weight: 1 }))
 }
 
 /** Every scene at `none` unless overridden - same shape as `testToolTiers`

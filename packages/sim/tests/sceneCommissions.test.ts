@@ -82,7 +82,7 @@ describe('advanceSceneCommissions (the Respected payload, step 6)', () => {
 
   it.each([
     ['collector', 'authenticity'],
-    ['tuner', 'handling'],
+    ['tuner', 'power'],
     ['show-crowd', 'style'],
     ['racer', 'power'],
     ['daily-drivers', 'reliability'],
@@ -96,13 +96,16 @@ describe('advanceSceneCommissions (the Respected payload, step 6)', () => {
     },
   )
 
-  it('racers and touge ask for power somewhere in the brief; every other scene never mentions it at all', () => {
+  it('racer, tuner and touge ask for power somewhere in the brief; every other scene never mentions it at all', () => {
+    // The tuner's own champion moved to power (sprint182.md's importance
+    // change), so its brief now names power as its sole requirement rather
+    // than through the power-hungry chain path racer and touge use.
     for (const scene of BuyerArchetypeSchema.options) {
       const { commission } = commissionFor(scene)
       const mentionsPower = commission.requirements.some(
         (r) => r.kind === 'statThreshold' && r.stat === 'power',
       )
-      expect(mentionsPower, scene).toBe(scene === 'racer' || scene === 'touge')
+      expect(mentionsPower, scene).toBe(scene === 'racer' || scene === 'touge' || scene === 'tuner')
     }
   })
 

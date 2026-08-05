@@ -4,8 +4,8 @@
     "archetype": "collector",
     "displayName": "Collector",
     "statTargets": {
-      "power": { "target": 0.3, "upper": 0.5, "importance": 0.15 },
-      "handling": { "target": 0.3, "importance": 0.15 },
+      "power": { "target": 0.3, "importance": 0.15 },
+      "handling": { "target": 0.25, "importance": 0.15 },
       "style": { "target": 0.5, "importance": 0.4 },
       "reliability": { "target": 0.6, "importance": 0.3 },
       "authenticity": { "target": 0.9, "importance": 1 }
@@ -20,6 +20,21 @@
         "weight": 0.3
       }
     ],
+    "culturePreferences": [
+      { "culture": "kei", "weight": 0.4 },
+      { "culture": "drift", "weight": 0.25 },
+      { "culture": "wangan", "weight": 0.45 },
+      { "culture": "kyusha", "weight": 1.0 },
+      { "culture": "rotary", "weight": 0.8 },
+      { "culture": "touge", "weight": 0.35 },
+      { "culture": "exotic", "weight": 1.0 },
+      { "culture": "kurokan", "weight": 0.85 },
+      { "culture": "honest-transport", "weight": 0.2 },
+      { "culture": "rally-bred", "weight": 0.6 },
+      { "culture": "touring-car", "weight": 0.55 },
+      { "culture": "front-drive-tuner", "weight": 0.25 },
+      { "culture": "oddball", "weight": 0.85 }
+    ],
     "wantLine": "Asks who owned it before you, and who before that. Originality is the price of entry; everything else is small talk."
   },
   {
@@ -27,8 +42,8 @@
     "archetype": "tuner",
     "displayName": "Tuner",
     "statTargets": {
-      "power": { "target": 0.65, "importance": 0.6 },
-      "handling": { "target": 0.55, "importance": 0.7 },
+      "power": { "target": 0.65, "importance": 0.8 },
+      "handling": { "target": 0.45, "importance": 0.7 },
       "style": { "target": 0.45, "importance": 0.6 },
       "reliability": { "target": 0.45, "importance": 0.6 },
       "authenticity": { "target": 0, "importance": 0 }
@@ -47,6 +62,21 @@
         "weight": 0.4
       }
     ],
+    "culturePreferences": [
+      { "culture": "kei", "weight": 0.45 },
+      { "culture": "drift", "weight": 0.95 },
+      { "culture": "wangan", "weight": 1.0 },
+      { "culture": "kyusha", "weight": 0.35 },
+      { "culture": "rotary", "weight": 0.9 },
+      { "culture": "touge", "weight": 0.85 },
+      { "culture": "exotic", "weight": 0.6 },
+      { "culture": "kurokan", "weight": 0.4 },
+      { "culture": "honest-transport", "weight": 0.3 },
+      { "culture": "rally-bred", "weight": 0.85 },
+      { "culture": "touring-car", "weight": 0.7 },
+      { "culture": "front-drive-tuner", "weight": 0.85 },
+      { "culture": "oddball", "weight": 0.5 }
+    ],
     "wantLine": "Wants the numbers, not the story. Power pays; provenance is for other people."
   },
   {
@@ -56,7 +86,7 @@
     "statTargets": {
       "power": { "target": 0.2, "importance": 0.1 },
       "handling": { "target": 0.1, "importance": 0.05 },
-      "style": { "target": 0.65, "importance": 1 },
+      "style": { "target": 0.82, "importance": 1 },
       "reliability": { "target": 0, "importance": 0 },
       "authenticity": { "target": 0, "importance": 0 }
     },
@@ -74,6 +104,21 @@
         "weight": 0.3
       }
     ],
+    "culturePreferences": [
+      { "culture": "kei", "weight": 0.7 },
+      { "culture": "drift", "weight": 1.0 },
+      { "culture": "wangan", "weight": 0.9 },
+      { "culture": "kyusha", "weight": 0.65 },
+      { "culture": "rotary", "weight": 0.85 },
+      { "culture": "touge", "weight": 0.65 },
+      { "culture": "exotic", "weight": 0.9 },
+      { "culture": "kurokan", "weight": 0.6 },
+      { "culture": "honest-transport", "weight": 0.3 },
+      { "culture": "rally-bred", "weight": 0.55 },
+      { "culture": "touring-car", "weight": 0.6 },
+      { "culture": "front-drive-tuner", "weight": 0.7 },
+      { "culture": "oddball", "weight": 0.75 }
+    ],
     "wantLine": "Crouches at the arches before saying hello. If it sits right, the rest is detail."
   },
   {
@@ -82,7 +127,7 @@
     "displayName": "Racer",
     "statTargets": {
       "power": { "target": 0.75, "importance": 1 },
-      "handling": { "target": 0.75, "importance": 0.9 },
+      "handling": { "target": 0.6, "importance": 0.9 },
       "style": { "target": 0.1, "importance": 0.05 },
       "reliability": { "target": 0.6, "importance": 0.6 },
       "authenticity": { "target": 0, "importance": 0 }
@@ -101,6 +146,21 @@
         "weight": 0.3
       }
     ],
+    "culturePreferences": [
+      { "culture": "kei", "weight": 0.35 },
+      { "culture": "drift", "weight": 0.6 },
+      { "culture": "wangan", "weight": 0.8 },
+      { "culture": "kyusha", "weight": 0.2 },
+      { "culture": "rotary", "weight": 0.85 },
+      { "culture": "touge", "weight": 0.9 },
+      { "culture": "exotic", "weight": 0.7 },
+      { "culture": "kurokan", "weight": 0.2 },
+      { "culture": "honest-transport", "weight": 0.3 },
+      { "culture": "rally-bred", "weight": 0.95 },
+      { "culture": "touring-car", "weight": 1.0 },
+      { "culture": "front-drive-tuner", "weight": 0.7 },
+      { "culture": "oddball", "weight": 0.35 }
+    ],
     "wantLine": "Checks where the weight sits and how it turns in. Paint does not lap."
   },
   {
@@ -109,7 +169,7 @@
     "displayName": "Daily Drivers",
     "statTargets": {
       "power": { "target": 0.25, "upper": 0.55, "importance": 0.3 },
-      "handling": { "target": 0.3, "importance": 0.2 },
+      "handling": { "target": 0.25, "importance": 0.2 },
       "style": { "target": 0.2, "importance": 0.15 },
       "reliability": { "target": 0.75, "importance": 1 },
       "authenticity": { "target": 0.5, "importance": 0.2 }
@@ -124,6 +184,21 @@
         "weight": 0.6
       }
     ],
+    "culturePreferences": [
+      { "culture": "kei", "weight": 0.95 },
+      { "culture": "drift", "weight": 0.3 },
+      { "culture": "wangan", "weight": 0.25 },
+      { "culture": "kyusha", "weight": 0.15 },
+      { "culture": "rotary", "weight": 0.3 },
+      { "culture": "touge", "weight": 0.4 },
+      { "culture": "exotic", "weight": 0.15 },
+      { "culture": "kurokan", "weight": 0.55 },
+      { "culture": "honest-transport", "weight": 1.0 },
+      { "culture": "rally-bred", "weight": 0.45 },
+      { "culture": "touring-car", "weight": 0.6 },
+      { "culture": "front-drive-tuner", "weight": 0.8 },
+      { "culture": "oddball", "weight": 0.5 }
+    ],
     "wantLine": "Needs it to start every cold morning without eating the budget. A service history beats a spoiler."
   },
   {
@@ -131,8 +206,8 @@
     "archetype": "touge",
     "displayName": "Touge",
     "statTargets": {
-      "power": { "target": 0.7, "importance": 0.6 },
-      "handling": { "target": 0.75, "importance": 1 },
+      "power": { "target": 0.4667, "upper": 0.55, "importance": 0.6 },
+      "handling": { "target": 0.5, "importance": 1 },
       "style": { "target": 0.3, "importance": 0.2 },
       "reliability": { "target": 0.6, "importance": 0.5 },
       "authenticity": { "target": 0, "importance": 0 }
@@ -150,6 +225,21 @@
         "tier": "entry",
         "weight": 0.3
       }
+    ],
+    "culturePreferences": [
+      { "culture": "kei", "weight": 0.5 },
+      { "culture": "drift", "weight": 0.95 },
+      { "culture": "wangan", "weight": 0.55 },
+      { "culture": "kyusha", "weight": 0.4 },
+      { "culture": "rotary", "weight": 0.85 },
+      { "culture": "touge", "weight": 1.0 },
+      { "culture": "exotic", "weight": 0.35 },
+      { "culture": "kurokan", "weight": 0.3 },
+      { "culture": "honest-transport", "weight": 0.25 },
+      { "culture": "rally-bred", "weight": 0.75 },
+      { "culture": "touring-car", "weight": 0.7 },
+      { "culture": "front-drive-tuner", "weight": 0.8 },
+      { "culture": "oddball", "weight": 0.4 }
     ],
     "wantLine": "Wants to know how it turns in, not how fast it leaves a corner. A car that won't commit to the apex is no good on the pass."
   }

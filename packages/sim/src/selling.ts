@@ -40,6 +40,7 @@ import { dissolveAssembliesForCar } from './assemblies'
 import { creditSceneDelivery, wordOfMouthMultipliers } from './sceneStanding'
 import { clearStagedWork } from './stagedWork'
 import {
+  cultureAffinityFor,
   currentPowerExpectationBarPs,
   isTasteMatched,
   valuateCarForBuyer,
@@ -132,13 +133,16 @@ interface PoolCandidate {
  * The candidate buyer pool for a sale, and how strongly each of them turns
  * up. Multiplied facts: the buyer's own `tierPreferences` weight for this
  * league of car (0 when they have no entry, unless the channel widens past
- * the gate), the channel's own authored weight for their archetype (focused
- * by reputation standing), and that archetype's own word-of-mouth
- * multiplier (`wordOfMouthMultipliers`, scaling the channel's own character
- * rather than replacing it - a scene barely carried by a channel is still
- * barely carried, only more than before). With no `weighting` this is
- * exactly the hard tier gate the auction room applies, with the authored
- * preference weights finally read as probabilities rather than discarded.
+ * the gate), their affinity for this car's `spec.culture`
+ * (`cultureAffinityFor`, valuation.ts - the same number the taste match
+ * reads, so culture changes who turns up as well as who buys), the
+ * channel's own authored weight for their archetype (focused by reputation
+ * standing), and that archetype's own word-of-mouth multiplier
+ * (`wordOfMouthMultipliers`, scaling the channel's own character rather than
+ * replacing it - a scene barely carried by a channel is still barely
+ * carried, only more than before). With no `weighting` this is exactly the
+ * hard tier gate the auction room applies, with the authored preference
+ * weights finally read as probabilities rather than discarded.
  */
 function saleCandidates(
   model: CarModel,
@@ -150,11 +154,12 @@ function saleCandidates(
     const stated = tierPreferenceWeight(buyer, model)
     const tierWeight = stated > 0 ? stated : widening
     if (tierWeight <= 0) return []
+    const culture = cultureAffinityFor(buyer, model)
     const authored = weighting?.buyerPoolWeights?.[buyer.archetype] ?? 1
     const wordOfMouth = weighting?.wordOfMouthMultipliers?.[buyer.archetype] ?? 1
     const channelWeight =
       weighting === undefined ? 1 : Math.pow(authored, weighting.focusExponent) * wordOfMouth
-    const poolWeight = tierWeight * channelWeight
+    const poolWeight = tierWeight * culture * channelWeight
     return poolWeight > 0 ? [{ buyer, poolWeight }] : []
   })
 }

@@ -23,7 +23,7 @@ import { evaluateRequirement } from './requirements'
 import type { Rng } from './rng'
 import { creditSceneDelivery } from './sceneStanding'
 import { clearStagedWork } from './stagedWork'
-import { currentPowerExpectationBarPs, valuateCarForBuyer } from './valuation'
+import { championStatFor, currentPowerExpectationBarPs, valuateCarForBuyer } from './valuation'
 
 export interface SceneCommissionResolution {
   state: GameState
@@ -51,23 +51,6 @@ export function sceneCommissionsFor(state: GameState): SceneCommissionBoard {
  * stage keeps every grant a lower stage earned, so a scene that has gone
  * on to earn its craft operation still gets briefs too. */
 const RESPECTED_OR_ABOVE: ReadonlySet<SceneStandingStage> = new Set(['respected', 'shop'])
-
-const STAT_KEYS: readonly StatKey[] = ['power', 'handling', 'style', 'reliability', 'authenticity']
-
-/**
- * The single stat this scene's own buyer cares about MOST - the highest
- * `importance` in `Buyer.statTargets` - so a generated commission always
- * asks for the one thing that buyer is actually known for (a Collector
- * commission asks for authenticity, a Touge one asks for handling), read
- * straight off the same authored source the buyer's own valuation uses.
- * Ties resolve to the first stat in `STAT_KEYS`; no two shipped archetypes
- * currently tie for their own highest importance.
- */
-function championStatFor(buyer: Buyer): StatKey {
-  return STAT_KEYS.reduce((best, key) =>
-    buyer.statTargets[key].importance > buyer.statTargets[best].importance ? key : best,
-  )
-}
 
 /**
  * The two scenes whose commissions read the climbing power-expectation

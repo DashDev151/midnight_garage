@@ -21,7 +21,7 @@ import {
 } from '../src/marketValue'
 import { supportVerdict } from '../src/support'
 import { valuateCarForBuyer } from '../src/valuation'
-import { carWithGrades } from './testFixtures'
+import { carWithGrades, neutralCulturePreferences } from './testFixtures'
 
 /**
  * Stage C (the coherence discount) and Stage D (coherence-scaled retention)
@@ -193,6 +193,7 @@ describe('the tolerance ruling: the Show Crowd is exempt, the tuner is halved, a
     displayName: 'Test Show Crowd',
     statTargets: trivialTargets,
     tierPreferences: [],
+    culturePreferences: neutralCulturePreferences(),
     wantLine: 'test',
   }
   const tunerBuyer: Buyer = { ...showCrowdBuyer, id: 'test-tuner', archetype: 'tuner' }
@@ -298,6 +299,7 @@ describe('every archetype resolves to an authored tolerance, never the default b
         displayName: 'Test',
         statTargets: trivialTargets,
         tierPreferences: [],
+        culturePreferences: neutralCulturePreferences(),
         wantLine: 'test',
       }
       const actual = valuateCarForBuyer(

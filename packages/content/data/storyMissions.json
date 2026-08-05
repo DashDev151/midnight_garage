@@ -74,7 +74,7 @@
       {
         "kind": "tasteMatch",
         "buyerId": "daily-drivers",
-        "minMultiplier": 1.08
+        "minMultiplier": 0.94
       },
       {
         "kind": "statThreshold",
@@ -172,7 +172,7 @@
       {
         "kind": "tasteMatch",
         "buyerId": "show-crowd",
-        "minMultiplier": 1.09
+        "minMultiplier": 0.85
       },
       {
         "kind": "statThreshold",
@@ -210,7 +210,7 @@
       {
         "kind": "tasteMatch",
         "buyerId": "tuner",
-        "minMultiplier": 1.04
+        "minMultiplier": 0.85
       }
     ],
     "budgetCapYen": 1494000,
