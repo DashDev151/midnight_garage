@@ -9,7 +9,7 @@ import type {
 } from '@midnight-garage/content'
 import { carCostToBandYen, carCostToMintYen } from './bands'
 import type { SimContext } from './context'
-import { coherenceFactorFor } from './derivedStats'
+import { coherenceFactorForCar } from './derivedStats'
 import { apparentViewOf, sheetGuideValueYen } from './diagnosis'
 import {
   cleanValueYen,
@@ -18,7 +18,6 @@ import {
   installedPartsValueYen,
   retentionFor,
 } from './marketValue'
-import { supportVerdict } from './support'
 
 /**
  * The value ledger: every price the game shows decomposes into these ordered,
@@ -43,7 +42,7 @@ export interface ValueLedger {
  * Decomposes `marketValueYen` into its ledger lines, built from the same
  * atoms the value formula itself consumes (`cleanValueYen`,
  * `carCostToBandYen`/`carCostToMintYen`, `expectationForCar`,
- * `coherenceFactorFor`/`supportVerdict`, `retentionFor`,
+ * `coherenceFactorForCar`, `retentionFor`,
  * `installedPartsValueYen`, `foundationFactor`) - never a second value
  * computation. The base-term lines are rounded as telescoping differences of
  * the formula's own cumulative checkpoints, mirroring its expression order
@@ -112,10 +111,7 @@ export function valueLedgerFor(
   // (this function has no buyer to read one from - see the doc comment
   // above). `previousRounded` is exactly `marketValueYen`'s own `baseValue`
   // at this point, so this checkpoint reproduces its `stagedValue` exactly.
-  const coherenceFactor = coherenceFactorFor(
-    supportVerdict(car, model, partsById, economy).headline,
-    economy,
-  )
+  const coherenceFactor = coherenceFactorForCar(car, model, partsById, economy)
   const coherenceDiscount = economy.valuation.coherenceDiscountWeight * (1 - coherenceFactor)
   if (coherenceDiscount > 0) {
     pushCheckpoint('coherence', previousRounded * (1 - coherenceDiscount))

@@ -63,6 +63,7 @@ import {
   sellingChannelFeeLabel,
 } from '../utils/sellingChannelLabels'
 import { zoneNeedsPanelText, zoneSeverityText } from '../utils/zoneSeverity'
+import { machineShopOpen as machineShopOpenFor } from './garageCapability'
 import { mapBackTarget } from './mapBack'
 
 const game = useGameStore()
@@ -127,10 +128,9 @@ const dynoGateReason = computed<string | null>(() => {
 const onTheRollers = computed(() => game.dynoSessionCarId === detail.value?.car.id)
 
 /** True once the engine line owns the machine-shop tooling - what turns the
- * bench from a place to look at into a place to work. */
-const machineShopOpen = computed(
-  () => game.gameState.toolTiers.engine >= ECONOMY.machining.minEngineToolTier,
-)
+ * bench from a place to look at into a place to work. The same read the garage
+ * map itself renders the room derelict on (`garageCapability.ts`). */
+const machineShopOpen = computed(() => machineShopOpenFor(game.gameState, ECONOMY))
 
 /**
  * Runs the session and stays put - the row itself turns into the link to the

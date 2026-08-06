@@ -234,6 +234,29 @@ export function machiningReliabilityConditionBonusOf(
 }
 
 /**
+ * What one operation costs in authenticity on `part`: its own authored rating
+ * on a STOCK-grade part, and nothing on anything else.
+ *
+ * Authenticity asks how much of the car is still what left the factory, and an
+ * aftermarket part already lost its slot's whole weight the moment it was
+ * fitted (`stocknessOf`, derivedStats.ts). Boring a race block does not make
+ * that slot less factory than it already is, and charging for it would book one
+ * loss twice. A slot the catalogue cannot resolve is not charged either: an
+ * unknown SKU is not a stock part, and is no evidence of originality to take
+ * away.
+ *
+ * The one rule behind the car's own sheet (`machiningCost`) and both previews
+ * of it (the machine shop's quote and the car's setup offers), so what a room
+ * quotes and what the stat charges can never disagree.
+ */
+export function machiningAuthenticityCostOf(
+  operation: MachiningOperation,
+  part: Part | undefined,
+): number {
+  return part?.grade === 'stock' ? operation.authenticityCost : 0
+}
+
+/**
  * What the machining on `instance` adds to its slot's support contribution,
  * on `specByGrade`'s own scale. Added to what the fitted grade already
  * contributes rather than replacing it: the support model keeps reading grade,

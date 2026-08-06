@@ -85,6 +85,19 @@ export interface BuyPartResult {
 }
 
 /**
+ * What one part costs bought express: its sticker price plus
+ * `PARTS_EXPRESS_SURCHARGE_FRACTION`, rounded.
+ *
+ * Rounded PER PART, because that is how the charge lands: `resolveBuyPart`
+ * below runs once per line-unit, so a cart total that scales the standard
+ * subtotal instead would quote a figure the till never charges. Any preview of
+ * an express spend sums this, one call per unit.
+ */
+export function expressPriceYen(part: Part): number {
+  return Math.round(part.priceYen * (1 + PARTS_EXPRESS_SURCHARGE_FRACTION))
+}
+
+/**
  * The buy-part resolver, split by delivery speed. Express pays a surcharge
  * and lands in inventory the moment it's bought - installable immediately.
  * Standard pays sticker price and creates a `PendingPartOrder` instead; the
@@ -136,7 +149,7 @@ export function resolveBuyPart(
     }
   }
 
-  const priceYen = Math.round(part.priceYen * (1 + PARTS_EXPRESS_SURCHARGE_FRACTION))
+  const priceYen = expressPriceYen(part)
   if (state.cashYen < priceYen) return { state, log: [] }
 
   const partInstance: PartInstance = {

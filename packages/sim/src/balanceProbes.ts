@@ -52,6 +52,7 @@ import {
 import { createInitialGameState } from './newGame'
 import { makeCarOrigin } from './provenance'
 import { createRng } from './rng'
+import { scrapShellPriceYen } from './selling'
 import { freshToolTiers } from './toolLines'
 
 /**
@@ -644,7 +645,7 @@ export function computeDonorBalanceProbe(
     ),
   )
 
-  const shellScrapYen = Math.round(model.bookValueYen * context.economy.bands.scrapValueFraction)
+  const shellScrapYen = scrapShellPriceYen(model, context.economy)
 
   let partedYieldYen = shellScrapYen
   let stripLaborSlots = 0

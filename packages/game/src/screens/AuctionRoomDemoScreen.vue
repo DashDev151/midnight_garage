@@ -9,6 +9,7 @@ import {
   playerEstimateYen,
   roomLedgerFor,
   runDiagnosticTest,
+  symptomTested,
 } from '@midnight-garage/sim'
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { RouterLink } from 'vue-router'
@@ -186,7 +187,7 @@ function takeSeat(entry: DemoLobbyEntry): void {
     playerNumberYen,
     verdict: verdictFor(entry.roomReadYen, playerNumberYen),
     trueValueYen: entry.trueValueYen,
-    inspected: lot.car.symptoms.some((symptom) => symptom.runTestIds.length > 0),
+    inspected: lot.car.symptoms.some(symptomTested),
   }
   currentEntry.value = entry
   currentLearned.value = learned

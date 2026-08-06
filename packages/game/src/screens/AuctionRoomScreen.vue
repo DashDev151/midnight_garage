@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { resolveCarDisplayName, TUTORIAL_LOT, type FusePreset } from '@midnight-garage/content'
-import { playerEstimateYen, sheetGuideValueYen } from '@midnight-garage/sim'
+import { playerEstimateYen, sheetGuideValueYen, symptomTested } from '@midnight-garage/sim'
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AuctionRoomFloor from '../components/AuctionRoomFloor.vue'
@@ -122,7 +122,7 @@ function buildRoom(): Room | null {
     {
       playerNumberYen,
       verdict: verdictFor(roomReadYen, playerNumberYen),
-      inspected: lot.car.symptoms.some((symptom) => symptom.runTestIds.length > 0),
+      inspected: lot.car.symptoms.some(symptomTested),
     },
     config,
   )

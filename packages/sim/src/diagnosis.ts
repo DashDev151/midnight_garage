@@ -45,6 +45,36 @@ export function apparentViewOf(car: CarInstance): CarInstance {
   return { ...car, parts }
 }
 
+/**
+ * Whether a symptom is down to one answer: a single remaining candidate cause
+ * (or, defensively, none - a symptom pruned that far is cured and leaves the
+ * car entirely, `pruneCuredCauses`). The KNOWLEDGE question, and the one every
+ * "nothing left to narrow" read in the sim asks: a resolved symptom prices at
+ * its exact true value with no averaging, needs no further test, and hides no
+ * band behind a "?".
+ *
+ * Not the same question as `symptomTested` below. A symptom can be tested and
+ * still open (a narrowing test that left two causes standing), and the two
+ * reads are wanted in different places for that reason.
+ */
+export function symptomResolved(carSymptom: CarSymptom): boolean {
+  return carSymptom.remainingCauseIds.length <= 1
+}
+
+/**
+ * Whether any diagnostic test has been run against a symptom - the BEHAVIOUR
+ * question, and the only narrowing a lot's symptom can ever have had (the
+ * workup and reveal-on-removal are owned-car routes).
+ *
+ * The auction room reads this to decide whether the floor saw the player under
+ * the car, which is a fact about what they did rather than about what they
+ * learned: the room reacts to the behaviour, never to the player's own number,
+ * so nothing about the car leaks through it.
+ */
+export function symptomTested(carSymptom: CarSymptom): boolean {
+  return carSymptom.runTestIds.length > 0
+}
+
 /** Every one of a symptom's own causes, unfiltered - the room's cause set,
  * which knows nothing about the player's own narrowing knowledge. */
 function allCauses(_carSymptom: CarSymptom, symptom: Symptom): readonly Cause[] {
@@ -223,7 +253,7 @@ export function displayedBandFor(
     if (!symptom) return false
     const targetsThisPart = symptom.causes.some((cause) => cause.carPartId === partId)
     if (!targetsThisPart) return false
-    if (carSymptom.remainingCauseIds.length <= 1) return false // symptom fully resolved
+    if (symptomResolved(carSymptom)) return false
     return symptom.causes.some(
       (cause) => cause.carPartId === partId && carSymptom.remainingCauseIds.includes(cause.id),
     )
@@ -301,7 +331,7 @@ export function revealOnRemoval(
   if (car.symptoms.length === 0) return { car, revealedCauseId: null }
   let revealedCauseId: string | null = null
   const symptoms = car.symptoms.map((carSymptom) => {
-    if (carSymptom.remainingCauseIds.length <= 1) return carSymptom // already resolved
+    if (symptomResolved(carSymptom)) return carSymptom
     const symptom = context.symptomsById[carSymptom.symptomId]
     if (!symptom) return carSymptom
     const trueCause = symptom.causes.find((cause) => cause.id === carSymptom.trueCauseId)
@@ -533,7 +563,7 @@ function searchOptimalRoute(
   symptom: Symptom,
   minutesForTestId: (testId: string) => number,
 ): OptimalRoute | null {
-  if (carSymptom.remainingCauseIds.length <= 1) return { minutes: 0, nextTestId: null }
+  if (symptomResolved(carSymptom)) return { minutes: 0, nextTestId: null }
   const available = availableTestIdsFor(carSymptom, symptom).filter(
     (testId) => !carSymptom.runTestIds.includes(testId),
   )
@@ -712,7 +742,7 @@ function firstInspectionStep(
 ): { symptomIndex: number; testId: string; minutes: number } | null {
   for (let symptomIndex = 0; symptomIndex < lot.car.symptoms.length; symptomIndex++) {
     const carSymptom = lot.car.symptoms[symptomIndex]!
-    if (carSymptom.remainingCauseIds.length <= 1) continue
+    if (symptomResolved(carSymptom)) continue
     const symptom = context.symptomsById[carSymptom.symptomId]
     if (!symptom) continue
     const testId = bestNextTestId(carSymptom, symptom, context)
@@ -756,7 +786,7 @@ export function sendInspectorGateReason(
   if (!visit) return 'no-visit'
   if (visit.tier !== lot.tier) return 'wrong-tier'
   if (lot.car.symptoms.length === 0) return 'no-symptoms'
-  if (lot.car.symptoms.every((s) => s.remainingCauseIds.length <= 1)) return 'already-resolved'
+  if (lot.car.symptoms.every(symptomResolved)) return 'already-resolved'
   const step = firstInspectionStep(lot, context)
   if (!step || visit.minutesLeft < step.minutes) return 'not-enough-minutes'
   return null
@@ -836,7 +866,7 @@ export function ownedWorkupGateReason(
   const car = state.ownedCars.find((c) => c.id === carInstanceId)
   if (!car) return 'not-found'
   if (car.symptoms.length === 0) return 'no-symptoms'
-  if (car.symptoms.every((s) => s.remainingCauseIds.length <= 1)) return 'already-resolved'
+  if (car.symptoms.every(symptomResolved)) return 'already-resolved'
   const freeEnergy = energyMax(state, context.economy) - state.energySpentToday
   if (freeEnergy < context.economy.energy.actionPoints.workup) return 'no-labor-slot'
   return null
@@ -880,7 +910,7 @@ export function resolveOwnedWorkup(
 
 /**
  * The organic teacher: the one-line reveal a sale gains when the sold car
- * still carries an unresolved symptom (`remainingCauseIds.length > 1`) -
+ * still carries an unresolved symptom (`symptomResolved` above) -
  * `undefined` for an honest car, or one already fully resolved by a
  * test/workup/reveal-on-removal (nothing left to teach). Picks the first
  * such symptom (array order, deterministic) if the car happens to carry
@@ -898,7 +928,7 @@ export function saleRevealLineFor(
   state: GameState,
   context: SimContext,
 ): string | undefined {
-  const carSymptom = car.symptoms.find((s) => s.remainingCauseIds.length > 1)
+  const carSymptom = car.symptoms.find((s) => !symptomResolved(s))
   if (!carSymptom) return undefined
   const symptom = context.symptomsById[carSymptom.symptomId]
   if (!symptom) return undefined

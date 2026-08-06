@@ -12,6 +12,7 @@ import {
   type ZoneId,
   type ZoneState,
 } from '@midnight-garage/content'
+import { foundationWithheldYen } from '@midnight-garage/sim'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -783,6 +784,12 @@ describe('CarDetailScreen', () => {
       const warning = game.carDetail(id)!.foundationWarning
       expect(warning).not.toBeNull()
       expect(warning!.withheldYen).toBeGreaterThan(0)
+      // The panel computes no yen figure of its own: it quotes sim's own
+      // withheld term, which `sim/tests/foundationWithheld.test.ts` holds to
+      // the exact delta a sound foundation makes to `marketValueYen`.
+      const model = CARS.find((c) => c.id === car.modelId)!
+      const partsById = Object.fromEntries(PARTS.map((part) => [part.id, part]))
+      expect(warning!.withheldYen).toBe(foundationWithheldYen(model, car, partsById, ECONOMY))
 
       const { wrapper } = await mountAt(id)
       const el = wrapper.find('[data-test="foundation-warning"]')

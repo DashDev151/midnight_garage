@@ -14,7 +14,12 @@ import {
 } from '@midnight-garage/content'
 import { bandFactor } from './bands'
 import type { SimContext } from './context'
-import { machiningOf, machiningOperationById, machiningOperationsForSlot } from './machining'
+import {
+  machiningAuthenticityCostOf,
+  machiningOf,
+  machiningOperationById,
+  machiningOperationsForSlot,
+} from './machining'
 import {
   applyAvailableLaborToJob,
   findWorkableCar,
@@ -540,7 +545,7 @@ function offerRowFor(
     operation,
     powerFractionByCharacter,
     spec: operation.spec,
-    authenticityCost: part.grade === 'stock' ? operation.authenticityCost : 0,
+    authenticityCost: machiningAuthenticityCostOf(operation, part),
     labourPoints: operation.labourPoints,
     reliabilityCost: economy.machining.reliabilityCostPerOperation,
     applied: applied.includes(operation.id),
@@ -560,9 +565,9 @@ export interface FittedMachiningOfferRow {
   /** The style points it adds, on the fitted part's own scale. Never
    * grade-scaled, matching how style reads a catalogue part. */
   stylePoints: number
-  /** What it costs in authenticity - the operation's own rating on a stock
-   * part, and zero on an aftermarket one, because that part has nothing left
-   * to lose. */
+  /** What it costs in authenticity (`machiningAuthenticityCostOf`) - the
+   * operation's own rating on a stock part, and zero on anything else,
+   * including a slot whose SKU the catalogue cannot resolve. */
   authenticityCost: number
   labourPoints: number
   /** The share of the car's own reliability base this operation takes, as a
@@ -602,7 +607,7 @@ export function fittedMachiningOffersFor(
     operation,
     handlingFraction: operation.handlingFraction * gradeMultiplier,
     stylePoints: operation.style,
-    authenticityCost: !part || part.grade === 'stock' ? operation.authenticityCost : 0,
+    authenticityCost: machiningAuthenticityCostOf(operation, part),
     labourPoints: operation.labourPoints,
     reliabilityCost: economy.machining.reliabilityCostPerOperation,
     applied: applied.includes(operation.id),

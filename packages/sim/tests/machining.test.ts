@@ -19,8 +19,13 @@ import {
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '../src/context'
 import { computeDerivedStats, engineCharacterOf, machiningCost } from '../src/derivedStats'
-import { machiningOf, machiningPremiumYenOf } from '../src/machining'
-import { machiningGateReason, resolveMachiningLabor } from '../src/machiningJobs'
+import { machiningAuthenticityCostOf, machiningOf, machiningPremiumYenOf } from '../src/machining'
+import {
+  fittedMachiningOffersFor,
+  machiningGateReason,
+  machiningReadingFor,
+  resolveMachiningLabor,
+} from '../src/machiningJobs'
 import { installedPartsValueYen, retentionFor } from '../src/marketValue'
 import { resolveJobLabor, resolveReconditionLabor } from '../src/jobs'
 import { resolvePlaceOnStation, resolveTakeFromStation } from '../src/parts'
@@ -662,5 +667,94 @@ describe('machining travels with the part', () => {
     expect(machiningCost(receiver, CONTEXT.partsById, ECONOMY)).toBe(
       operationById('bore-and-hone').authenticityCost,
     )
+  })
+})
+
+/**
+ * The authenticity charge is a fact about the part's grade, and every surface
+ * that quotes it reads the same function (`machiningAuthenticityCostOf`): the
+ * car's own sheet, the machine shop's quote for the part on the machine, and
+ * the car's own setup offers. A preview that decided it for itself is exactly
+ * how the three came to disagree about a SKU the catalogue cannot resolve.
+ */
+describe('the authenticity charge, one rule and three quotes', () => {
+  // The whole slot catalogue, scene operations included - the machine shop
+  // quotes every loose-part operation the block has, so the sheet has to be
+  // checked against all of them rather than this file's engine-only subset.
+  const BLOCK_OPERATIONS = ECONOMY.machining.operations.filter(
+    (o) => o.carPartId === 'block' && o.performedOn === 'loose-part',
+  )
+
+  it('charges a stock part its full rating, an aftermarket part nothing, and an unknown SKU nothing', () => {
+    const model = MODEL_BY_CHARACTER.forced
+    const stockSku = skuFor(model, 'block', 'stock')
+    const raceSku = skuFor(model, 'block', 'race')
+    for (const operation of BLOCK_OPERATIONS) {
+      expect(machiningAuthenticityCostOf(operation, stockSku)).toBe(operation.authenticityCost)
+      expect(machiningAuthenticityCostOf(operation, raceSku)).toBe(0)
+      // An unknown SKU is not a stock part: there is no originality on record
+      // to take away, so nothing is charged.
+      expect(machiningAuthenticityCostOf(operation, undefined)).toBe(0)
+    }
+  })
+
+  it("the machine shop's quote for the part on the machine is what the car is then charged", () => {
+    const { state, blockId } = shopWithLooseBlock('toyota-supra-rz-jza80', 3)
+    const reading = machiningReadingFor(state, CONTEXT)!
+    expect(reading.partInstanceId).toBe(blockId)
+    for (const offer of reading.offers) {
+      expect(offer.authenticityCost, offer.operation.id).toBe(
+        machiningAuthenticityCostOf(offer.operation, reading.part),
+      )
+    }
+
+    const model = MODEL_BY_CHARACTER.forced
+    const quotedYen = reading.offers.reduce((sum, offer) => sum + offer.authenticityCost, 0)
+    const stockCar = machinedCar(
+      ladderCar(model, 'stock', false),
+      'block',
+      BLOCK_OPERATIONS.map((o) => o.id),
+    )
+    expect(machiningCost(stockCar, CONTEXT.partsById, ECONOMY)).toBe(quotedYen)
+
+    // The same operations on a race block cost the slot nothing: it had no
+    // originality left to lose.
+    const raceCar = machinedCar(
+      ladderCar(model, 'race', false),
+      'block',
+      BLOCK_OPERATIONS.map((o) => o.id),
+    )
+    expect(machiningCost(raceCar, CONTEXT.partsById, ECONOMY)).toBe(0)
+  })
+
+  it('a setup offer on a slot holding a SKU the catalogue cannot resolve charges nothing', () => {
+    const model = MODEL_BY_CHARACTER.forced
+    const base = stockCarFor(model, 'car-unknown-rims-0001')
+    const car: CarInstance = {
+      ...base,
+      parts: {
+        ...base.parts,
+        rims: {
+          installed: {
+            id: 'pi-unknown-rims',
+            partId: 'no-such-sku',
+            band: 'mint',
+            origin: { kind: 'market', day: 1 },
+          },
+        },
+      },
+    }
+    const state = {
+      ...createInitialGameState(CONTEXT, 1),
+      ownedCars: [car],
+      serviceBayCarIds: [car.id],
+      toolTiers: testToolTiers({ wheels: 3 }),
+    }
+    const offers = fittedMachiningOffersFor(state, car.id, 'rims', CONTEXT)
+    expect(offers.length).toBeGreaterThan(0)
+    for (const offer of offers) {
+      expect(offer.authenticityCost, offer.operation.id).toBe(0)
+      expect(offer.operation.authenticityCost, 'the rating itself is non-zero').toBeGreaterThan(0)
+    }
   })
 })

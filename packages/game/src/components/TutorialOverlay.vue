@@ -29,7 +29,7 @@ import {
   type TutorialCondition,
   type TutorialStep,
 } from '@midnight-garage/content'
-import { bandIndex, isPartMissing } from '@midnight-garage/sim'
+import { bandIndex, isPartMissing, symptomResolved } from '@midnight-garage/sim'
 import { useGameStore } from '../stores/gameStore'
 import { useUiStore } from '../stores/uiStore'
 import { formatYen } from '../utils/formatYen'
@@ -102,7 +102,7 @@ function baseConditionMet(cond: TutorialBaseCondition, stepId: string): boolean 
       return game.gameState.ownedCars.some((c) => c.id === recipe.carId)
     case 'lotInspected': {
       const s = scriptedCar.value?.symptoms[0]
-      return !!s && s.remainingCauseIds.length <= 1
+      return !!s && symptomResolved(s)
     }
     case 'partBandAtLeast': {
       const owned = game.gameState.ownedCars.find((c) => c.id === recipe.carId)

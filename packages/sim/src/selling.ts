@@ -1187,11 +1187,26 @@ export interface ScrapShellResult {
 }
 
 /**
+ * What scrapping a whole shell pays: `model.bookValueYen` at
+ * `economy.bands.scrapValueFraction`, the same "pennies on the yen" rate a
+ * single scrapped part fetches (`scrapValueYen`, bands.ts). Flat, and blind to
+ * what is still bolted to the car - a stripped shell and a loaded one weigh the
+ * same at the yard.
+ *
+ * The one figure behind the resolver below, the control's own price tag before
+ * the player commits, and both teardown probes, so what the screen promises and
+ * what the till receives are the same number.
+ */
+export function scrapShellPriceYen(model: CarModel, economy: EconomyConfig): number {
+  return Math.round(model.bookValueYen * economy.bands.scrapValueFraction)
+}
+
+/**
  * Scrap the whole car at once, shell and all - the end-of-the-line donor move
  * once a car is stripped down (or not worth stripping further). Pays
- * `model.bookValueYen * economy.bands.scrapValueFraction` regardless of
- * what's still installed, removes the car and every part still on it, frees
- * its bay/grace slot, clears any staged work, and deletes its ledger entry.
+ * `scrapShellPriceYen` above regardless of what's still installed, removes the
+ * car and every part still on it, frees its bay/grace slot, clears any staged
+ * work, and deletes its ledger entry.
  *
  * Labour is `energy.actionPoints.scrapShell` (0 in shipped content), gated on
  * `laborAvailable` when raised and spent into `energySpentToday`.
@@ -1209,7 +1224,7 @@ export function resolveScrapShell(
   const laborSlotsUsed = context.economy.energy.actionPoints.scrapShell
   if (laborSlotsUsed > laborAvailable) return { state, log: [] }
 
-  const priceYen = Math.round(model.bookValueYen * context.economy.bands.scrapValueFraction)
+  const priceYen = scrapShellPriceYen(model, context.economy)
   const carPartIds = ALL_CAR_PART_IDS.filter((id) => car.parts[id].installed !== null)
 
   const clearedState = dissolveAssembliesForCar(

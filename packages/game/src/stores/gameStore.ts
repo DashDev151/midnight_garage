@@ -108,16 +108,14 @@ import {
   emptyDayActions,
   engineCharacterOf,
   expectationForCar,
-  coherenceFactorFor,
   craftOperationCapabilityGateReason,
   externalBlockersFor,
   forecourtOccupancy,
-  foundationFactor,
+  foundationWithheldYen,
   generateAuctionCarInstance,
   gradeMissionCar,
   groupCostToMintYen,
   hasMachineLineFor,
-  installedPartsValueYen,
   installLaborSlotsFor,
   isFreeInstallRefit,
   isSellingChannelUnlocked,
@@ -156,7 +154,6 @@ import {
   removeBlockReason,
   resolveBuyCoffee,
   resolveHireMachineLine,
-  retentionFor,
   signatureGroupFor,
   nextBayMinReputationTier,
   nextBayPriceYen,
@@ -174,7 +171,7 @@ import {
   reconditionQuote,
   repairCeilingForLevel,
   repairLevelForGroup,
-  PARTS_EXPRESS_SURCHARGE_FRACTION,
+  expressPriceYen,
   requirementLabel,
   resolveAcceptMission,
   resolveAcceptSceneCommission,
@@ -213,6 +210,7 @@ import {
   runDiagnosticTest as runDiagnosticTestCore,
   sceneCommissionsFor,
   sceneLedgerFor,
+  scrapShellPriceYen,
   scrapValueYen,
   selectBoardRows,
   sendInspectorGateReason as sendInspectorGateReasonCore,
@@ -220,6 +218,8 @@ import {
   settleAuctionLotLost as settleAuctionLotLostCore,
   stationHoldingPart,
   supportVerdict,
+  symptomResolved,
+  symptomTested,
   swapCars as swapCarsCore,
   toolDeficitSummary,
   unlockedAuctionTiers as unlockedAuctionTiersCore,
@@ -1095,8 +1095,8 @@ export interface LotDetail {
    * is the FORK: only tests the routed tree currently offers
    * (`availableTestIdsFor`) that haven't run yet - a locked test is
    * invisible, not disabled, until its parent unlocks it. Both are `[]` once
-   * the symptom is fully resolved (`remainingCauseIds.length <= 1` -
-   * nothing left to narrow). `symptomIndex` is what `runDiagnosticTest`
+   * the symptom is fully resolved (`symptomResolved` - nothing left to
+   * narrow). `symptomIndex` is what `runDiagnosticTest`
    * addresses this symptom by.
    */
   symptoms: {
@@ -1113,11 +1113,12 @@ export interface LotDetail {
     }[]
   }[]
   /**
-   * The player's own honest estimate, once they've
-   * learned something about this lot (any test run, or any symptom
-   * resolved by any other route) - null beforehand, so the UI only shows
-   * "your estimate" once there is genuinely a player-side estimate to show,
-   * never a number identical to the guide before any knowledge exists.
+   * The player's own honest estimate, once they have run a test on this lot
+   * (`symptomTested`) - null beforehand, so the UI only shows "your estimate"
+   * once there is genuinely a player-side estimate to show, never a number
+   * identical to the guide before any knowledge exists. A test is the only
+   * thing that ever narrows a LOT's causes; the workup and reveal-on-removal
+   * are owned-car routes and cannot reach one.
    */
   playerEstimateYen: number | null
   /** This lot's backstop close day (the duration roll) - a lot
@@ -1470,7 +1471,7 @@ export const useGameStore = defineStore('game', () => {
     return car.symptoms.flatMap((carSymptom, symptomIndex) => {
       const symptom = context.value.symptomsById[carSymptom.symptomId]
       if (!symptom) return []
-      const resolved = carSymptom.remainingCauseIds.length <= 1
+      const resolved = symptomResolved(carSymptom)
       const availableTestIds = new Set(availableTestIdsFor(carSymptom, symptom))
       const trail = carSymptom.runTestIds.flatMap((testId) => {
         const testApplication = symptom.tests.find((test) => test.testId === testId)
@@ -1946,23 +1947,17 @@ export const useGameStore = defineStore('game', () => {
    * car (economy-bible.md law 5) - the failing foundational parts and the
    * aftermarket-premium yen they
    * withhold, or null when the foundation is sound OR the car carries no
-   * premium to withhold. Reads the same `foundationFactor`/
-   * `installedPartsValueYen`/`retentionFor` the value formula itself uses, so
-   * what the panel says and what the price does can never disagree.
+   * premium to withhold. The yen figure is sim's own `foundationWithheldYen`,
+   * which is the value formula's own premium term read at a sound foundation
+   * and at this car's, so what the panel says and what the price does can
+   * never disagree.
    */
   function foundationWarningFor(
     car: CarInstance,
     model: CarModel,
   ): { failingParts: string[]; withheldYen: number } | null {
     const economy = context.value.economy
-    const coherenceFactor = coherenceFactorFor(
-      supportVerdict(car, model, context.value.partsById, economy).headline,
-      economy,
-    )
-    const retention = retentionFor(coherenceFactor, economy)
-    const premiumYen = installedPartsValueYen(car, context.value.partsById, retention, economy)
-    const factor = foundationFactor(car, economy)
-    const withheldYen = Math.round(premiumYen * (1 - factor))
+    const withheldYen = foundationWithheldYen(model, car, context.value.partsById, economy)
     if (withheldYen <= 0) return null
     const { parts, factorByState } = economy.valuation.foundation
     const failingParts = parts
@@ -2597,9 +2592,7 @@ export const useGameStore = defineStore('game', () => {
       expiresOnDay: lot.expiresOnDay,
       daysLeft: lot.expiresOnDay - gameState.value.day,
       symptoms: symptomChecklistForCar(lot.car, apparentCar, model),
-      playerEstimateYen: lot.car.symptoms.some(
-        (s) => s.runTestIds.length > 0 || s.remainingCauseIds.length <= 1,
-      )
+      playerEstimateYen: lot.car.symptoms.some(symptomTested)
         ? Math.round(playerEstimateYen(lot.car, model, gameState.value, context.value))
         : null,
     }
@@ -4509,9 +4502,12 @@ export const useGameStore = defineStore('game', () => {
     cartItems.value.reduce((sum, item) => sum + item.subtotalYen, 0),
   )
 
-  /** Cart total including the express surcharge, for the checkout screen's two-option display. */
+  /** Cart total including the express surcharge, for the checkout screen's
+   * two-option display. Priced per part (`expressPriceYen`), the way checkout
+   * itself charges it - one `resolveBuyPart` call per line-unit - so the quote
+   * and the till agree to the yen rather than to the rounding. */
   const cartExpressTotalYen = computed<number>(() =>
-    Math.round(cartStandardTotalYen.value * (1 + PARTS_EXPRESS_SURCHARGE_FRACTION)),
+    cartItems.value.reduce((sum, item) => sum + expressPriceYen(item.part) * item.quantity, 0),
   )
 
   /**
@@ -4921,7 +4917,7 @@ export const useGameStore = defineStore('game', () => {
     const car = findWorkableCar(carId)
     const model = car ? context.value.modelsById[car.modelId] : undefined
     if (!model) return 0
-    return Math.round(model.bookValueYen * context.value.economy.bands.scrapValueFraction)
+    return scrapShellPriceYen(model, context.value.economy)
   }
 
   /**

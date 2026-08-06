@@ -25,6 +25,7 @@ import {
 } from './performance'
 import {
   appliedOperationsOf,
+  machiningAuthenticityCostOf,
   machiningHandlingFractionOf,
   machiningOperationCountOf,
   machiningPowerFractionOf,
@@ -172,17 +173,13 @@ export function stocknessOf(
  * machining operation applied to this car, on the design's 1-to-10 scale
  * (1-2 a purist shrugs, 4-6 a raised eyebrow, 7-9 a collector weeps).
  *
- * **Charged on STOCK-grade parts only.** Authenticity asks how much of the car
- * is still what left the factory, and an aftermarket part already lost its
- * slot's whole weight the moment it was fitted (`stocknessOf` above). Boring a
- * race block does not make that slot less factory than it already is, and
- * charging for it would book one loss twice. So machining an original block
- * costs its operations' full ratings and leaves the slot's remaining
- * originality intact; machining a race block costs nothing, because that slot
- * has nothing left to lose.
- *
- * A slot the catalogue cannot resolve is not charged, for the same reason
- * `stocknessOf` does not credit it: an unknown SKU is no evidence either way.
+ * **Charged on STOCK-grade parts only**, and never on a slot the catalogue
+ * cannot resolve - `machiningAuthenticityCostOf` (machining.ts) is the whole of
+ * that rule, shared with the machine shop's own quotes so a room and this sheet
+ * can never price the same cut differently. Machining an original block costs
+ * its operations' full ratings and leaves the slot's remaining originality
+ * intact; machining a race block costs nothing, because that slot has nothing
+ * left to lose.
  */
 export function machiningCost(
   car: CarInstance,
@@ -193,9 +190,9 @@ export function machiningCost(
   for (const partId of ALL_CAR_PART_IDS) {
     const installed = car.parts[partId].installed
     if (!installed) continue
-    if (partsById[installed.partId]?.grade !== 'stock') continue
+    const part = partsById[installed.partId]
     for (const operation of appliedOperationsOf(installed, economy)) {
-      cost += operation.authenticityCost
+      cost += machiningAuthenticityCostOf(operation, part)
     }
   }
   return cost
@@ -555,6 +552,25 @@ export function coherenceFactorFor(headline: number, economy: EconomyConfig): nu
 }
 
 /**
+ * One car's own coherence factor: `coherenceFactorFor` above, read off that
+ * build's own headline support ratio (`supportVerdict`, support.ts).
+ *
+ * The one place a build's coherence is derived from a car. Reliability's
+ * breakdown, every coherence-supported operation, Stage C's value discount and
+ * Stage D's parts retention all scale on this single figure, so it is read once
+ * here rather than spelled out at each of them - a build cannot be one thing to
+ * the dyno and another to the price.
+ */
+export function coherenceFactorForCar(
+  car: CarInstance,
+  model: CarModel,
+  partsById: Readonly<Record<string, Part>>,
+  economy: EconomyConfig,
+): number {
+  return coherenceFactorFor(supportVerdict(car, model, partsById, economy).headline, economy)
+}
+
+/**
  * The build-intensity factor: an OUTER multiplier on the
  * condition-plus-coherence budget, structurally independent of
  * `coherenceFactor` above - even a fully and properly supported build moves
@@ -655,10 +671,7 @@ export function reliabilityBreakdownOf(
     conditionMean + sortingBonus,
     reliabilitySeverityCeiling(car, model, partsTaxonomy, economy),
   )
-  const coherenceFactor = coherenceFactorFor(
-    supportVerdict(car, model, partsById, economy).headline,
-    economy,
-  )
+  const coherenceFactor = coherenceFactorForCar(car, model, partsById, economy)
   const intensityFactor = reliabilityIntensityFactor(
     totalGainFractionOf(car, model, partsById, economy),
     machiningOperationCountOf(car),
@@ -737,10 +750,7 @@ export function computeDerivedStats(
   // same support verdict `reliabilityBreakdownOf` derives its own coherence
   // factor from further down, so a build that fights itself gets less out of
   // a coherence-supported operation everywhere that operation reaches.
-  const coherenceFactor = coherenceFactorFor(
-    supportVerdict(instance, model, partsById, economy).headline,
-    economy,
-  )
+  const coherenceFactor = coherenceFactorForCar(instance, model, partsById, economy)
 
   const powerConditionFraction = weightedBandFactorForStat(
     instance,

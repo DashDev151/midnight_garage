@@ -15,9 +15,8 @@ import {
   clampRepairTarget,
   repairCeilingForLevel,
 } from './bands'
-import { coherenceFactorFor } from './derivedStats'
+import { coherenceFactorForCar } from './derivedStats'
 import { machiningPremiumYenOf } from './machining'
-import { supportVerdict } from './support'
 
 /**
  * The taste-free "what is this car worth" answer, shared by every price in
@@ -277,6 +276,64 @@ export function foundationFactor(car: CarInstance, economy: EconomyConfig): numb
   return worst
 }
 
+/** Both halves of Stage D's contribution to a car's price. */
+interface PremiumCredit {
+  /** The yen the installed-parts premium adds to market value at this car's
+   * own foundation factor - the term `marketValueYen` sums. */
+  creditedYen: number
+  /** The yen a failing foundation holds back: what the same premium would
+   * credit with the foundations sound (factor 1), less `creditedYen`. Exactly
+   * the amount `marketValueYen` gains when the foundations are put right and
+   * nothing else about the car changes. Zero on a sound foundation, and zero
+   * on a car carrying no premium to withhold. */
+  withheldYen: number
+}
+
+/**
+ * Stage D priced once: the installed-parts premium
+ * (`installedPartsValueYen` at the coherence-driven retention curve), scaled
+ * by the tier's own `aftermarketReturn`, then gated by law 5's
+ * `foundationFactor`. The credited and withheld halves come out of the same
+ * arithmetic, so a warning that quotes the second can never overstate what
+ * fixing the foundations returns through the first.
+ *
+ * `soundYen` is that same product at a foundation factor of 1 - the top of
+ * the factor's range, since `factorByState` reads 1 at `worn` and above - so
+ * the two figures are one expression read at two foundation factors rather
+ * than two expressions that have to be kept in step.
+ */
+function premiumCredit(
+  model: CarModel,
+  car: CarInstance,
+  partsById: Readonly<Record<string, Part>>,
+  economy: EconomyConfig,
+  coherenceFactor: number,
+): PremiumCredit {
+  const retention = retentionFor(coherenceFactor, economy)
+  const premiumYen = installedPartsValueYen(car, partsById, retention, economy)
+  const { aftermarketReturn } = expectationForCar(model, economy)
+  const creditedYen = Math.round(foundationFactor(car, economy) * aftermarketReturn * premiumYen)
+  const soundYen = Math.round(1 * aftermarketReturn * premiumYen)
+  return { creditedYen, withheldYen: soundYen - creditedYen }
+}
+
+/**
+ * The yen a failing foundation withholds from this car's price (law 5) - what
+ * the aftermarket premium would credit with the foundations sound, less what
+ * it credits at the car's actual `foundationFactor`. The player-facing
+ * foundation warning quotes this figure, and it is the same `premiumCredit`
+ * term `marketValueYen` sums, so the warning and the price cannot disagree.
+ */
+export function foundationWithheldYen(
+  model: CarModel,
+  car: CarInstance,
+  partsById: Readonly<Record<string, Part>>,
+  economy: EconomyConfig,
+): number {
+  const coherenceFactor = coherenceFactorForCar(car, model, partsById, economy)
+  return premiumCredit(model, car, partsById, economy, coherenceFactor).withheldYen
+}
+
 /**
  * The single shared value answer: `stagedValue + foundationFactor x
  * aftermarketReturn x installedPartsValueYen`.
@@ -290,8 +347,9 @@ export function foundationFactor(car: CarInstance, economy: EconomyConfig): numb
  * coherenceTolerance`, zero on a stock or fully-coherent build since
  * `coherenceFactor` is 1 there.
  *
- * The aftermarket premium (Stage D) is `installedPartsValueYen`, itself
- * scaled by the coherence-driven retention curve (`retentionFor`), then
+ * The aftermarket premium (Stage D) is `premiumCredit` above:
+ * `installedPartsValueYen`, itself scaled by the coherence-driven retention
+ * curve (`retentionFor`), then
  * scaled again by `foundationFactor` (law 5: a buyer withholds what they'd
  * pay for the extras until the car's foundations - brakes, tyres, steering,
  * chassis, rust - are sound; the base term is untouched, so fixing a failed
@@ -327,19 +385,10 @@ export function marketValueYen(
     instanceBaseValueYen(model, car, heatPercent, partsById, partsTaxonomyById, economy),
   )
 
-  const coherenceFactor = coherenceFactorFor(
-    supportVerdict(car, model, partsById, economy).headline,
-    economy,
-  )
+  const coherenceFactor = coherenceFactorForCar(car, model, partsById, economy)
   const coherenceDiscount =
     economy.valuation.coherenceDiscountWeight * (1 - coherenceFactor) * coherenceTolerance
   const stagedValue = Math.round(baseValue * (1 - coherenceDiscount))
 
-  const retention = retentionFor(coherenceFactor, economy)
-  const premiumYen = installedPartsValueYen(car, partsById, retention, economy)
-  const creditedPremiumYen =
-    foundationFactor(car, economy) *
-    expectationForCar(model, economy).aftermarketReturn *
-    premiumYen
-  return stagedValue + Math.round(creditedPremiumYen)
+  return stagedValue + premiumCredit(model, car, partsById, economy, coherenceFactor).creditedYen
 }

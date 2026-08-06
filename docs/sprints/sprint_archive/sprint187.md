@@ -1,6 +1,6 @@
 # Sprint 187: the workbench, and the machine shop stops being a list
 
-**Status: IMPLEMENTED, ready for review. Not yet committed.**
+**Status: COMPLETE.** Committed as `9a05566`, pre-push gate passed.
 
 Design of record: `docs/design/systems/the-workbench.md`.
 
@@ -251,8 +251,9 @@ fitment check; the new routing does.
 
 Diff: 63 files, 2510 insertions, 1289 deletions.
 
-**The pre-push gate has not run**, because nothing is committed yet. It is the sprint's real gate
-(directive 20) and its output belongs here; this Exit is completed when the push runs it.
+**The pre-push gate passed** on the push of `9a05566` (typecheck, lint, format, coverage-gated
+suite). Coverage measured statements 88.22, branches 80.22, functions 90.86, lines 91.74, against
+thresholds of 80 / 65 / 78 / 82.
 
 ### Deferred out of this sprint
 

@@ -28,6 +28,7 @@ import { installLaborSlotsFor, removeLaborSlotsFor } from './jobs'
 import { marketValueYen, sensibleRepairTargetBand } from './marketValue'
 import { makeCarOrigin } from './provenance'
 import { createRng } from './rng'
+import { scrapShellPriceYen } from './selling'
 
 /**
  * The four things a player can do with a car they have just bought, priced
@@ -262,7 +263,7 @@ function stripAndSell(
   recondition: boolean,
   context: SimContext,
 ): { revenueYen: number; costYen: number; laborPoints: number } {
-  let revenueYen = Math.round(model.bookValueYen * context.economy.bands.scrapValueFraction)
+  let revenueYen = scrapShellPriceYen(model, context.economy)
   let costYen = 0
   let laborPoints = 0
   for (const partId of ALL_CAR_PART_IDS) {

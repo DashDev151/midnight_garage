@@ -1,11 +1,14 @@
-import { PARTS } from '@midnight-garage/content'
+import { PARTS, type Part } from '@midnight-garage/content'
+import { expressPriceYen } from '@midnight-garage/sim'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { decodeSave, encodeSave } from '../save/saveCodec'
 import { useGameStore } from './gameStore'
 
-const cheapest = [...PARTS].sort((a, b) => a.priceYen - b.priceYen)[0]!
-const secondCheapest = [...PARTS].sort((a, b) => a.priceYen - b.priceYen)[1]!
+const byPrice = [...PARTS].sort((a, b) => a.priceYen - b.priceYen)
+const cheapest = byPrice[0]!
+const secondCheapest = byPrice[1]!
+const thirdCheapest = byPrice[2]!
 
 describe('the parts-market cart (Sprint 14)', () => {
   beforeEach(() => setActivePinia(createPinia()))
@@ -93,6 +96,35 @@ describe('the parts-market cart (Sprint 14)', () => {
     expect(game.cashYen).toBe(cashBefore - expectedTotal)
     expect(game.gameState.partInventory).toHaveLength(1)
     expect(game.gameState.pendingPartOrders).toHaveLength(0)
+  })
+
+  /**
+   * The quote and the till are the same arithmetic on a cart of several
+   * different parts at several quantities, not just on the one-item cart where
+   * every way of rounding coincides. Checkout charges `expressPriceYen` once
+   * per line-unit, so the total has to be built the same way.
+   */
+  it('the express quote equals what a multi-part, multi-quantity cart actually costs', () => {
+    const game = useGameStore()
+    const lines: readonly (readonly [Part, number])[] = [
+      [cheapest, 3],
+      [secondCheapest, 2],
+      [thirdCheapest, 1],
+    ]
+    for (const [part, quantity] of lines) {
+      for (let i = 0; i < quantity; i++) game.addToCart(part.id)
+    }
+    const perPartTotal = lines.reduce(
+      (sum, [part, quantity]) => sum + expressPriceYen(part) * quantity,
+      0,
+    )
+    expect(game.cartExpressTotalYen).toBe(perPartTotal)
+
+    const cashBefore = game.cashYen
+    const result = game.checkoutCart('express')
+    expect(result).toEqual({ boughtCount: 6, remainingCount: 0 })
+    expect(game.cashYen).toBe(cashBefore - perPartTotal)
+    expect(game.gameState.partInventory).toHaveLength(6)
   })
 
   it('checkoutCart leaves unaffordable items in the cart rather than failing all-or-nothing', () => {
