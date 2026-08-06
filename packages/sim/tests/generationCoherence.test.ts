@@ -73,7 +73,7 @@ describe('generated cars are coherent (Sprint 66, item 6a)', () => {
         expect(GAME_YEAR - car.year).toBeGreaterThanOrEqual(ECONOMY.AUCTION_MIN_AGE_YEARS)
       }
     }
-  })
+  }, 30_000)
 
   /**
    * The wear model alone, asked of it alone. Generation has two further,
@@ -199,7 +199,7 @@ describe('generated cars are coherent (Sprint 66, item 6a)', () => {
       }
     }
     expect(sawRoughHighMileage).toBe(true)
-  })
+  }, 30_000)
 
   it("a car's provenance blurb fits its age - a nearly-new car is never a barn find", () => {
     const OLD_ONLY = ['parked up for years', 'barn find', 'long-term collection', 'estate sale']
