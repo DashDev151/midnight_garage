@@ -212,34 +212,34 @@ describe('staged repair/install work', () => {
     expect(game.dayLog.some((e) => e.type === 'job-blocked')).toBe(false)
   })
 
-  it('confirmCarWork refuses to complete a staged interior repair when the interior line is neither owned nor hired today', () => {
+  it('confirmCarWork refuses to complete a staged body repair when the body line is neither owned nor hired today', () => {
     const game = useGameStore()
-    // Force seats (an interior signature slot, `depthClass: 'surface'` so
-    // an on-car repair-zone job actually reaches it) below mint,
-    // deterministically - a random roll might otherwise leave the group's
-    // only outstanding work on a non-signature part, or roll seats itself
-    // genuinely missing, making the gate never fire. `body`'s own two
-    // signature slots (panels/paint) no longer serve this purpose: both
-    // are derived body value carriers now (`bodyPipeline.ts`) and a direct
-    // repair-zone job never touches them at all, gated or not. `suspension`'s
-    // own signature slots (dampers/springs) don't serve it either: both are
-    // `bolt-on` (bench-only), never an on-car repair-zone candidate to begin
-    // with.
+    // Force the chassis (a body signature slot) below mint deterministically -
+    // a random roll might otherwise leave the group's only outstanding work
+    // somewhere the gate never fires. The chassis is the one signature slot an
+    // on-car repair-zone job still reaches: every removable part is bench work
+    // now, and `panels`/`paint` are derived body value carriers a direct
+    // repair-zone job never touches at all (`bodyPipeline.ts`).
     let carId: string | null = null
     for (let i = 0; i < 30 && !carId; i++) {
       game.devGrantCar(CARS[0]!.id)
       const car = game.gameState.ownedCars.at(-1)!
-      const installed = car.parts.seats.installed
+      const installed = car.parts.chassis.installed
       if (installed) {
-        car.parts.seats = { installed: { ...installed, band: 'poor' } }
+        car.parts.chassis = { installed: { ...installed, band: 'poor' } }
         carId = car.id
       }
     }
-    if (!carId) throw new Error('expected a granted car with seats present within 30 tries')
+    if (!carId) throw new Error('expected a granted car with a chassis present within 30 tries')
     game.moveCar(carId, 'service')
     const cashBefore = game.cashYen
 
-    game.stageAction(carId, { kind: 'repair', componentId: 'interior', targetBand: 'fine' })
+    game.stageAction(carId, {
+      kind: 'repair',
+      componentId: 'body',
+      targetBand: 'fine',
+      carPartId: 'chassis',
+    })
     game.confirmCarWork(carId)
 
     expect(game.stagedActionsFor(carId)).toEqual([])
@@ -376,7 +376,9 @@ describe('plannedStepFor (Sprint 67 decision 1, playtest item 7)', () => {
     const car = game.gameState.ownedCars[0]!
     // Put the whole body group at `poor`, so a plan to `fine` is unambiguously
     // multi-rung (poor -> worn -> fine) - the exact shape that produced the bug.
-    for (const partId of ['panels', 'paint', 'aero'] as const) {
+    // The chassis carries the plan: `aero` is removable and so bench work, and
+    // `panels`/`paint` read their band off zone state.
+    for (const partId of ['panels', 'paint', 'chassis'] as const) {
       const installed = car.parts[partId].installed
       if (installed) car.parts[partId] = { installed: { ...installed, band: 'poor' } }
     }
@@ -445,55 +447,52 @@ describe('plannedStepFor (Sprint 67 decision 1, playtest item 7)', () => {
 describe('the honest ledger: machine access is a gate, never a fee, in the planned totals', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
-  /** Grants a car with seats (an interior signature slot, `depthClass:
-   * 'surface'` so an on-car repair-zone job actually reaches it) forced
-   * below mint, deterministically - a random roll might otherwise leave the
-   * group's only outstanding work on a non-signature part (or roll seats
-   * itself genuinely missing), so the gate would never fire. `body`'s own
-   * two signature slots (panels/paint) no longer serve this purpose:
-   * both are derived body value carriers now (`bodyPipeline.ts`) and a
-   * direct repair-zone job never touches them at all, gated or not.
-   * `suspension`'s own signature slots (dampers/springs) don't serve it
-   * either: both are `bolt-on` (bench-only), never an on-car repair-zone
-   * candidate to begin with. */
-  function grantCarNeedingInteriorSignatureRepair(): string {
+  /** Grants a car with the chassis (a body signature slot) forced below mint,
+   * deterministically - a random roll might otherwise leave the group's only
+   * outstanding work somewhere the gate never fires. The chassis is the one
+   * signature slot an on-car repair-zone job still reaches: every removable
+   * part is bench work now (so `seats`, `dashGauges`, `dampers` and `springs`
+   * are never on-car repair candidates), and `panels`/`paint` are derived body
+   * value carriers a direct repair-zone job never touches at all
+   * (`bodyPipeline.ts`), gated or not. */
+  function grantCarNeedingBodySignatureRepair(): string {
     const game = useGameStore()
     for (let i = 0; i < 30; i++) {
       game.devGrantCar(CARS[0]!.id)
       const car = game.gameState.ownedCars.at(-1)!
-      const installed = car.parts.seats.installed
+      const installed = car.parts.chassis.installed
       if (installed) {
-        car.parts.seats = { installed: { ...installed, band: 'poor' } }
+        car.parts.chassis = { installed: { ...installed, band: 'poor' } }
         game.moveCar(car.id, 'service')
         return car.id
       }
     }
-    throw new Error('expected a granted car with seats present within 30 tries')
+    throw new Error('expected a granted car with a chassis present within 30 tries')
   }
 
-  it('an on-car repair of an interior signature slot (seats) is plan cost only in the row and the estimate - no machine-shop fee folded in', () => {
+  it('an on-car repair of a body signature slot (chassis) is plan cost only in the row and the estimate - no machine-shop fee folded in', () => {
     const game = useGameStore()
-    const carId = grantCarNeedingInteriorSignatureRepair()
+    const carId = grantCarNeedingBodySignatureRepair()
     game.stageAction(carId, {
       kind: 'repair',
-      componentId: 'interior',
+      componentId: 'body',
       targetBand: 'fine',
-      carPartId: 'seats',
+      carPartId: 'chassis',
     })
 
-    const row = game.plannedStepFor(carId, 'interior', 'seats')!
+    const row = game.plannedStepFor(carId, 'body', 'chassis')!
     const estimate = game.carDetail(carId)!.plannedEstimate!
     expect(row.costYen).toBe(estimate.plannedRepairCostYen)
   })
 
-  it('is refused at Confirm without the interior line hired or owned, leaving cash untouched and the job open, blocked', () => {
+  it('is refused at Confirm without the body line hired or owned, leaving cash untouched and the job open, blocked', () => {
     const game = useGameStore()
-    const carId = grantCarNeedingInteriorSignatureRepair()
+    const carId = grantCarNeedingBodySignatureRepair()
     game.stageAction(carId, {
       kind: 'repair',
-      componentId: 'interior',
+      componentId: 'body',
       targetBand: 'fine',
-      carPartId: 'seats',
+      carPartId: 'chassis',
     })
     const cashBefore = game.cashYen
 
@@ -505,18 +504,18 @@ describe('the honest ledger: machine access is a gate, never a fee, in the plann
     )
   })
 
-  it('charges exactly the plan cost once the interior line is hired for the day - the estimate and the Confirm charge agree', () => {
+  it('charges exactly the plan cost once the body line is hired for the day - the estimate and the Confirm charge agree', () => {
     const game = useGameStore()
-    const carId = grantCarNeedingInteriorSignatureRepair()
+    const carId = grantCarNeedingBodySignatureRepair()
     game.stageAction(carId, {
       kind: 'repair',
-      componentId: 'interior',
+      componentId: 'body',
       targetBand: 'fine',
-      carPartId: 'seats',
+      carPartId: 'chassis',
     })
     const estimate = game.carDetail(carId)!.plannedEstimate!
 
-    game.hireMachineLine('interior')
+    game.hireMachineLine('body')
     const cashAfterHire = game.cashYen
     game.confirmCarWork(carId)
 

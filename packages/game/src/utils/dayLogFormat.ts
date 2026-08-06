@@ -174,7 +174,7 @@ export function describeLogEntry(
     case 'part-reconditioned':
       return `Reconditioned a part to ${entry.band}`
     case 'part-machined':
-      return `${machiningOperationLabel(entry.machiningOperationId)} finished on ${entry.carInstanceId}`
+      return `${machiningOperationLabel(entry.machiningOperationId)} finished on the ${entry.carPartId}`
     case 'part-removed': {
       const base = `Removed ${entry.carPartId} from ${entry.carInstanceId}`
       // Uninstall reveals truth - this removal collapsed one of the car's

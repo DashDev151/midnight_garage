@@ -53,41 +53,35 @@ describe('garage: instant repair and labor', () => {
     // keeps its old all-equipment pacing (the fastest repair level), staying a
     // test of completion mechanics rather than of tier-1 throughput.
     for (const line of game.toolLineViews) game.devSetToolTier(line.componentId, 3)
-    // 'engine' is now entirely bolt-on or buried - bench-only, so `repair()`
-    // refuses it outright. 'interior' is the surface group this on-car
-    // completion mechanism exercises end to end: both its slots are surface
-    // parts and neither is derived from anything. 'body' cannot serve, because
-    // three of its four slots read their band off zone state and `repair()`
-    // deliberately never targets those - a generated car whose panels are past
-    // saving pins that group's band wherever the repair route can reach.
-    // Correlated band rolls can occasionally land a group fully mint even on a
-    // "rough" car, so retry grants until the group specifically needs work.
+    // Every removable part is bench work now, so `repair()` refuses all of
+    // them: the chassis is the one slot an on-car repair still climbs (it
+    // never comes off, and unlike panels/paint its band is its own rather than
+    // derived from zone state). Correlated band rolls can occasionally land it
+    // mint even on a "rough" car, so retry grants until it needs work.
+    const chassisBand = (carId: string) =>
+      game.gameState.ownedCars.find((c) => c.id === carId)?.parts.chassis.installed?.band
     let car = game.gameState.ownedCars.at(-1)
-    for (
-      let i = 0;
-      i < 30 && (!car || game.carDetail(car.id)!.groupBands.interior === 'mint');
-      i++
-    ) {
+    for (let i = 0; i < 30 && (!car || chassisBand(car.id) === 'mint'); i++) {
       game.devGrantCar(CARS[0]!.id)
       car = game.gameState.ownedCars.at(-1)!
     }
     if (!car) throw new Error('expected a granted car')
-    expect(game.carDetail(car.id)!.groupBands.interior).not.toBe('mint') // generated cars are rough
+    expect(chassisBand(car.id)).not.toBe('mint') // generated cars are rough
 
     // A dev-granted car lands in parking like any real acquisition - labor
     // only reaches a car in the service bay.
     game.moveCar(car.id, 'service')
-    game.repair(car.id, 'interior')
+    game.repair(car.id, 'body', 'mint', 'chassis')
 
-    // Keep ending days and re-issuing the repair click until the group
+    // Keep ending days and re-issuing the repair click until the chassis
     // clears mint or we've clearly exceeded any reasonable career length -
     // a real regression (never finishing) fails loudly instead of hanging.
-    for (let day = 0; day < 20 && game.carDetail(car.id)!.groupBands.interior !== 'mint'; day++) {
+    for (let day = 0; day < 20 && chassisBand(car.id) !== 'mint'; day++) {
       game.endDay()
-      game.repair(car.id, 'interior')
+      game.repair(car.id, 'body', 'mint', 'chassis')
     }
 
-    expect(game.carDetail(car.id)!.groupBands.interior).toBe('mint')
+    expect(chassisBand(car.id)).toBe('mint')
     // The job is consumed once complete.
     expect(game.carDetail(car.id)!.jobs).toHaveLength(0)
   })
@@ -317,10 +311,16 @@ describe('garage: assembly remove/refit gate on labour, not just structure', () 
     expect(game.removeAssembly(car.id, 'wheelAssembly')).toBe(true)
     const container = game.benchContainersFor(car.id).find((c) => c.assemblyId === 'wheelAssembly')!
     const rimsMember = container.members.find((m) => m.carPartId === 'rims')!
-    expect(rimsMember.reconditionStep).not.toBeNull()
-    // Reconditioning moves the member off its vacated baseline, so refit can
-    // no longer price this member free by equivalence.
-    game.reconditionPart(rimsMember.instance!.id, rimsMember.reconditionStep!.targetBand)
+    const rimsId = rimsMember.instance!.id
+    // A stand is not a bench: the member comes out into the warehouse, goes on
+    // the workshop floor's bench, is worked there, and goes back into the
+    // assembly. Reconditioning moves it off its vacated baseline, so the refit
+    // can no longer price this member free by equivalence.
+    expect(game.removeAssemblyMember(container.id, 'rims')).toBe(true)
+    game.gameState = { ...game.gameState, workbenchPartId: rimsId }
+    game.reconditionPart(rimsId, game.nextReconditionStep(rimsId)!.targetBand)
+    game.gameState = { ...game.gameState, workbenchPartId: null }
+    expect(game.swapAssemblyMember(container.id, 'rims', rimsId)).toBe(true)
 
     // Drain the rest of the day's labour before attempting the refit.
     game.gameState = { ...game.gameState, energySpentToday: game.laborSlotsPerDay }

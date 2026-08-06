@@ -310,6 +310,8 @@ describe('GameState / DayLog round-trip', () => {
       nextMachineListingDay: null,
       serviceJobLedgers: {},
       inspectionVisit: null,
+      workbenchPartId: null,
+      machinePartId: null,
       storyMissions: [],
       staffAds: [],
     }

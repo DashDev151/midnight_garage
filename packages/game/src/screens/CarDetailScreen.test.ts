@@ -149,8 +149,8 @@ function untaggedPartFor(carPartId: string) {
 }
 
 /** The rows in `componentId` an on-car per-part repair step exists for -
- * a repairable SURFACE part below mint (bolt-on/buried parts are
- * bench-only, so they never grow an on-car repair button). */
+ * a repairable, below-mint part that never comes off (every removable part is
+ * bench work, so none of them grows an on-car repair button). */
 function repairableSurfaceRows(
   game: ReturnType<typeof useGameStore>,
   carId: string,
@@ -167,7 +167,7 @@ function repairableSurfaceRows(
       // so its stage button never renders. This gate is tier-aware: at tier 2/3
       // a below-mint part still steps.
       game.nextRepairStep(carId, componentId, row.partId) !== null &&
-      PARTS_TAXONOMY.find((e) => e.id === row.partId)?.depthClass === 'surface',
+      PARTS_TAXONOMY.find((e) => e.id === row.partId)?.removable === false,
   )
 }
 
@@ -262,22 +262,20 @@ describe('CarDetailScreen', () => {
     game.devGrantCar(CARS[0]!.id) // honda-city-e-aa, an entry-tier car at tier-1 tools
     const id = game.gameState.ownedCars[0]!.id
     const car = game.gameState.ownedCars.find((c) => c.id === id)!
-    // seats: an installed interior signature slot below mint (on-car per-part
-    // repair is gated, and its removal must never be) - `panels`/`paint`
-    // no longer serve this purpose, both derived body value carriers now
-    // with no on-car repair affordance at all (`bodyPipeline.ts`). dampers:
-    // an empty suspension signature slot (installing one is gated).
-    // Generation can legitimately roll seats missing on this car, so a fresh
-    // stock instance stands in rather than asserting non-null on the roll.
+    // chassis: an installed body signature slot below mint, and the one
+    // signature slot an on-car per-part repair still reaches (every removable
+    // part is bench work now, and `panels`/`paint` are derived body value
+    // carriers with no on-car repair affordance at all, `bodyPipeline.ts`).
+    // dampers: an empty suspension signature slot (installing one is gated).
     const model = game.context.modelsById[car.modelId]!
     const fitmentClass = fitmentClassForTier(model.tier)
-    const seatsInstalled = car.parts.seats.installed
-    car.parts.seats = {
-      installed: seatsInstalled
-        ? { ...seatsInstalled, band: 'poor' }
+    const chassisInstalled = car.parts.chassis.installed
+    car.parts.chassis = {
+      installed: chassisInstalled
+        ? { ...chassisInstalled, band: 'poor' }
         : {
-            id: 'signature-gate-test-seats',
-            partId: game.context.stockPartByCarPartId[fitmentClass].seats.id,
+            id: 'signature-gate-test-chassis',
+            partId: game.context.stockPartByCarPartId[fitmentClass].chassis.id,
             band: 'poor',
             origin: { kind: 'market', day: 1 },
           },
@@ -285,7 +283,7 @@ describe('CarDetailScreen', () => {
     car.parts.dampers = { installed: null }
 
     const suspensionMachine = TOOL_LINES.suspension.tiers[1]!.displayName
-    const interiorMachine = TOOL_LINES.interior.tiers[1]!.displayName
+    const bodyMachine = TOOL_LINES.body.tiers[1]!.displayName
 
     const { wrapper } = await mountAt(id)
 
@@ -299,20 +297,20 @@ describe('CarDetailScreen', () => {
     // On-car per-part repair of a signature slot: gate reason present; the SAME
     // installed slot's removal shows nothing (removal is never gated for
     // these groups).
-    await selectPart(wrapper, 'seats')
-    const repairCap = wrapper.find('[data-test="assist-fee-repair-seats"]')
+    await selectPart(wrapper, 'chassis')
+    const repairCap = wrapper.find('[data-test="assist-fee-repair-chassis"]')
     expect(repairCap.exists()).toBe(true)
-    expect(repairCap.text()).toContain(interiorMachine)
-    expect(wrapper.find('[data-test="assist-fee-seats"]').exists()).toBe(false)
+    expect(repairCap.text()).toContain(bodyMachine)
+    expect(wrapper.find('[data-test="assist-fee-chassis"]').exists()).toBe(false)
 
     // Owning the tier-2 machines drops both previews.
     game.devSetToolTier('suspension', 2)
-    game.devSetToolTier('interior', 2)
+    game.devSetToolTier('body', 2)
     const owned = await mountAt(id)
     await selectPart(owned.wrapper, 'dampers')
     expect(owned.wrapper.find('[data-test="assist-fee-dampers"]').exists()).toBe(false)
-    await selectPart(owned.wrapper, 'seats')
-    expect(owned.wrapper.find('[data-test="assist-fee-repair-seats"]').exists()).toBe(false)
+    await selectPart(owned.wrapper, 'chassis')
+    expect(owned.wrapper.find('[data-test="assist-fee-repair-chassis"]').exists()).toBe(false)
   })
 
   it('also hides the machine-line gate reason once the line is hired for the day, still at tier 1 (not owned)', async () => {
@@ -320,18 +318,18 @@ describe('CarDetailScreen', () => {
     game.devGrantCar(CARS[0]!.id)
     const id = game.gameState.ownedCars[0]!.id
     const car = game.gameState.ownedCars.find((c) => c.id === id)!
-    car.parts.seats = { installed: { ...car.parts.seats.installed!, band: 'poor' } }
+    car.parts.chassis = { installed: { ...car.parts.chassis.installed!, band: 'poor' } }
     car.parts.dampers = { installed: null }
     game.gameState = {
       ...game.gameState,
-      machineHirePaidDayByGroup: { suspension: game.gameState.day, interior: game.gameState.day },
+      machineHirePaidDayByGroup: { suspension: game.gameState.day, body: game.gameState.day },
     }
 
     const { wrapper } = await mountAt(id)
     await selectPart(wrapper, 'dampers')
     expect(wrapper.find('[data-test="assist-fee-dampers"]').exists()).toBe(false)
-    await selectPart(wrapper, 'seats')
-    expect(wrapper.find('[data-test="assist-fee-repair-seats"]').exists()).toBe(false)
+    await selectPart(wrapper, 'chassis')
+    expect(wrapper.find('[data-test="assist-fee-repair-chassis"]').exists()).toBe(false)
   })
 
   /**
@@ -345,24 +343,25 @@ describe('CarDetailScreen', () => {
     game.devGrantCar(CARS[0]!.id) // honda-city-e-aa, an entry-tier car at tier-1 tools
     const id = game.gameState.ownedCars[0]!.id
     const car = game.gameState.ownedCars.find((c) => c.id === id)!
-    // seats: an installed, repairable interior SURFACE slot below mint - the
-    // on-car repair "+" (and this ceiling caption) applies. `panels` no
-    // longer serves this purpose: it is a derived body value carrier now
-    // with no on-car repair affordance at all (`bodyPipeline.ts`).
-    car.parts.seats = { installed: { ...car.parts.seats.installed!, band: 'worn' } }
-    const interiorMachine = TOOL_LINES.interior.tiers[1]!.displayName
+    // chassis: an installed, repairable slot below mint that never comes off -
+    // the on-car repair "+" (and this ceiling caption) applies. `seats` no
+    // longer serves this purpose (it is removable, so it is bench work), and
+    // neither does `panels`: a derived body value carrier with no on-car
+    // repair affordance at all (`bodyPipeline.ts`).
+    car.parts.chassis = { installed: { ...car.parts.chassis.installed!, band: 'worn' } }
+    const bodyMachine = TOOL_LINES.body.tiers[1]!.displayName
 
     const { wrapper } = await mountAt(id)
-    await selectPart(wrapper, 'seats')
-    const cap = wrapper.find('[data-test="repair-ceiling-seats"]')
+    await selectPart(wrapper, 'chassis')
+    const cap = wrapper.find('[data-test="repair-ceiling-chassis"]')
     expect(cap.exists()).toBe(true)
-    expect(cap.text()).toBe(`Your tools finish at fine. The ${interiorMachine} reaches mint.`)
+    expect(cap.text()).toBe(`Your tools finish at fine. The ${bodyMachine} reaches mint.`)
 
     // Owning the tier-2 machine lifts the ceiling to mint - the caption drops.
-    game.devSetToolTier('interior', 2)
+    game.devSetToolTier('body', 2)
     const owned = await mountAt(id)
-    await selectPart(owned.wrapper, 'seats')
-    expect(owned.wrapper.find('[data-test="repair-ceiling-seats"]').exists()).toBe(false)
+    await selectPart(owned.wrapper, 'chassis')
+    expect(owned.wrapper.find('[data-test="repair-ceiling-chassis"]').exists()).toBe(false)
   })
 
   it('a view tab only navigates; a region click docks that part in the action panel (Sprint 88 decision 1)', async () => {
@@ -461,6 +460,35 @@ describe('CarDetailScreen', () => {
     expect(button.attributes('disabled')).toBeUndefined()
     expect(button.text()).toContain('Repair')
     expect(button.attributes('title')).not.toContain('Needs')
+  })
+
+  /**
+   * Storage stops doing work and so does the car screen: a part that comes off
+   * is put right at the workshop floor's bench, so only the carriers that never
+   * come off (the chassis and the two body carriers) keep an on-car repair
+   * affordance at all. The dash is removable and pinned below mint here, and
+   * still offers nothing but the pull.
+   */
+  it('a removable part below mint offers no on-car repair - only the way off the car', async () => {
+    const game = useGameStore()
+    game.devGrantCar(CARS[0]!.id)
+    const id = game.gameState.ownedCars[0]!.id
+    const car = game.gameState.ownedCars[0]!
+    const fitted = car.parts.dashGauges.installed!
+    game.gameState = {
+      ...game.gameState,
+      ownedCars: [
+        {
+          ...car,
+          parts: { ...car.parts, dashGauges: { installed: { ...fitted, band: 'worn' } } },
+        },
+      ],
+    }
+
+    const { wrapper } = await mountAt(id)
+    await selectPart(wrapper, 'dashGauges')
+    expect(wrapper.find('[data-test="stage-repair-part-dashGauges"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="remove-part-dashGauges"]').exists()).toBe(true)
   })
 
   describe('click-per-rung repair (Sprint 48, per-part since Sprint 88)', () => {
@@ -1538,12 +1566,14 @@ describe('CarDetailScreen', () => {
       expect(wrapper.find('[data-test="bench-remove-tyres"]').exists()).toBe(true)
     })
 
-    it('a member with a recondition step never shows the empty-state, even with nothing to fit', async () => {
+    it('a below-mint member on a stand offers no repair of its own: that work happens at the bench', async () => {
       const game = useGameStore()
       game.devGrantCar(CARS[0]!.id)
       const id = game.gameState.ownedCars[0]!.id
-      // Pin rims below mint so the benched member offers a recondition step;
-      // the inventory holds no replacement rims either way.
+      // Pin rims below mint - a stand is not a bench, so even a member with a
+      // rung left to climb offers no recondition here; it comes out into the
+      // warehouse and goes onto the workshop floor first. The inventory holds
+      // no replacement rims either way, so the empty-state guidance stands.
       const car = game.gameState.ownedCars[0]!
       car.parts.rims = { installed: { ...car.parts.rims.installed!, band: 'worn' } }
 
@@ -1554,8 +1584,8 @@ describe('CarDetailScreen', () => {
       await wrapper.find('[data-test="bench-member-rims"]').trigger('click')
       await flushPromises()
 
-      expect(wrapper.find('[data-test="bench-recondition-rims"]').exists()).toBe(true)
-      expect(wrapper.find('[data-test="bench-empty-rims"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="bench-recondition-rims"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="bench-empty-rims"]').exists()).toBe(true)
     })
   })
 
@@ -2429,6 +2459,121 @@ describe('CarDetailScreen', () => {
 
       expect(wrapper.find('[data-test="staged-gate-suspension"]').exists()).toBe(false)
       expect(wrapper.find('[data-test="confirm-work"]').attributes('disabled')).toBeUndefined()
+    })
+  })
+
+  /**
+   * Setup work: corner weighting on the springs and show fitment on the rims.
+   * Neither can be judged with the part off the car, so the car's own screen is
+   * where they are offered and the machine shop never sees them.
+   */
+  describe('setup work on the car', () => {
+    /** A granted car rolled into a service bay, with `carPartId` fitted mint so
+     * the only thing left to refuse is the tools or the standing. */
+    function carReadyForSetup(game: ReturnType<typeof useGameStore>, carPartId: CarPartId): string {
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      game.moveCar(id, 'service')
+      const car = game.gameState.ownedCars.find((c) => c.id === id)!
+      const fitted = car.parts[carPartId].installed!
+      game.gameState = {
+        ...game.gameState,
+        ownedCars: [
+          {
+            ...car,
+            parts: { ...car.parts, [carPartId]: { installed: { ...fitted, band: 'mint' } } },
+          },
+        ],
+      }
+      return id
+    }
+
+    function withTouge(game: ReturnType<typeof useGameStore>, suspensionTier: 1 | 2 | 3): void {
+      game.gameState = {
+        ...game.gameState,
+        toolTiers: { ...game.gameState.toolTiers, suspension: suspensionTier },
+        sceneStanding: { ...game.gameState.sceneStanding, touge: 'shop' },
+      }
+    }
+
+    it('offers corner weighting on the springs and show fitment on the rims, each on its own slot', async () => {
+      const game = useGameStore()
+      const id = carReadyForSetup(game, 'springs')
+      withTouge(game, 3)
+
+      const { wrapper } = await mountAt(id)
+      await selectPart(wrapper, 'springs')
+      expect(wrapper.find('[data-test="setup-offer-corner-weighting"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="setup-offer-show-fitment"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="setup-figures-corner-weighting"]').text()).toContain(
+        '5 labour',
+      )
+
+      await selectPart(wrapper, 'rims')
+      expect(wrapper.find('[data-test="setup-offer-show-fitment"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="setup-offer-corner-weighting"]').exists()).toBe(false)
+
+      // A slot with no setup work says nothing about it at all.
+      await selectPart(wrapper, 'dampers')
+      expect(wrapper.find('[data-test="setup-offer-corner-weighting"]').exists()).toBe(false)
+    })
+
+    it('does the work on click, writing it onto the part fitted to the car', async () => {
+      const game = useGameStore()
+      const id = carReadyForSetup(game, 'springs')
+      withTouge(game, 3)
+
+      const { wrapper } = await mountAt(id)
+      await selectPart(wrapper, 'springs')
+      const cashBefore = game.gameState.cashYen
+      await wrapper.find('[data-test="setup-do-corner-weighting"]').trigger('click')
+      await flushPromises()
+
+      const car = game.gameState.ownedCars.find((c) => c.id === id)!
+      expect(car.parts.springs.installed!.machining).toEqual(['corner-weighting'])
+      expect(game.gameState.cashYen, 'labour, and no money at all').toBe(cashBefore)
+      expect(wrapper.find('[data-test="setup-do-corner-weighting"]').text()).toBe('Done')
+    })
+
+    it('answers to the suspension line rather than the engine, and says why it refuses', async () => {
+      const game = useGameStore()
+      const id = carReadyForSetup(game, 'springs')
+      withTouge(game, 2)
+      game.gameState = {
+        ...game.gameState,
+        toolTiers: { ...game.gameState.toolTiers, engine: 3 },
+      }
+
+      const { wrapper } = await mountAt(id)
+      await selectPart(wrapper, 'springs')
+      const button = wrapper.find('[data-test="setup-do-corner-weighting"]')
+      expect(button.attributes('disabled')).toBeDefined()
+      expect(wrapper.find('[data-test="setup-refusal-corner-weighting"]').text()).toContain(
+        'tier 3',
+      )
+    })
+
+    it('refuses without the standing, and refuses a car sitting in parking', async () => {
+      const game = useGameStore()
+      const id = carReadyForSetup(game, 'springs')
+      game.gameState = {
+        ...game.gameState,
+        toolTiers: { ...game.gameState.toolTiers, suspension: 3 },
+      }
+
+      const noStanding = await mountAt(id)
+      await selectPart(noStanding.wrapper, 'springs')
+      expect(noStanding.wrapper.find('[data-test="setup-refusal-corner-weighting"]').text()).toBe(
+        'Needs that scene at the Shop stage first. See your standing.',
+      )
+
+      withTouge(game, 3)
+      game.moveCar(id, 'parking')
+      const parked = await mountAt(id)
+      await selectPart(parked.wrapper, 'springs')
+      expect(parked.wrapper.find('[data-test="setup-refusal-corner-weighting"]').text()).toBe(
+        'Roll it into a service bay first - this is done to the whole car.',
+      )
     })
   })
 })

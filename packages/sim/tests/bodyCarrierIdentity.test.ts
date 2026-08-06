@@ -132,6 +132,8 @@ function stateWith(car: CarInstance, inventory: PartInstance[]): GameState {
     nextMachineListingDay: null,
     serviceJobLedgers: {},
     inspectionVisit: null,
+    workbenchPartId: null,
+    machinePartId: null,
     storyMissions: [],
     machineHirePaidDayByGroup: {},
   }

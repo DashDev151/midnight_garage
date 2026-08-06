@@ -137,6 +137,8 @@ import {
   isPartMissing,
   lapTimeSecondsFor,
   ownedWorkupGateReason as ownedWorkupGateReasonCore,
+  fittedMachiningGateReason as fittedMachiningGateReasonCore,
+  fittedMachiningOffersFor,
   machineHiredToday,
   machineLineGroupFor,
   machiningGateReason as machiningGateReasonCore,
@@ -161,6 +163,8 @@ import {
   nextToolTierRepGate,
   parkingOccupancy,
   partFitsCar,
+  partIdOnStation,
+  placeOnStationGateReason,
   planGroupRepair,
   planPaintStage,
   planPipelineStage,
@@ -185,8 +189,11 @@ import {
   resolveBuyPart,
   resolveDeliverMission,
   reserveYen,
+  resolveFittedMachiningLabor,
   resolveJobLabor,
   resolveMachiningLabor,
+  resolvePlaceOnStation,
+  resolveTakeFromStation,
   resolveOwnedWorkup as resolveOwnedWorkupCore,
   resolveReconditionLabor,
   resolveRefitAssembly,
@@ -211,6 +218,7 @@ import {
   sendInspectorGateReason as sendInspectorGateReasonCore,
   settleAuctionHammer as settleAuctionHammerCore,
   settleAuctionLotLost as settleAuctionLotLostCore,
+  stationHoldingPart,
   supportVerdict,
   swapCars as swapCarsCore,
   toolDeficitSummary,
@@ -227,6 +235,8 @@ import {
   type CrewSkillContext,
   type DeliverySpeed,
   type DynoSessionGateReason,
+  type FittedMachiningGateReason,
+  type FittedMachiningOfferRow,
   type HireMachineLineGateReason,
   type InspectionVisitGateReason,
   type LapBoardRow,
@@ -240,6 +250,7 @@ import {
   type SimContext,
   type TurnoutBand,
   type ValueLedger,
+  type WorkStation,
 } from '@midnight-garage/sim'
 import { defineStore } from 'pinia'
 import { computed, ref, shallowRef, watch } from 'vue'
@@ -579,8 +590,10 @@ export interface AssemblyRowView {
   blockedReason: string | null
 }
 
-/** One member slot of a benched assembly container - reconditioned
- * or swapped on the bench. */
+/** One member slot of a benched assembly container - a stand holds an
+ * assembly for its members to be swapped, never for repair: a member is
+ * repaired by pulling it into the warehouse and carrying it to the workshop
+ * floor's bench, like any other loose part. */
 export interface BenchMemberView {
   carPartId: CarPartId
   displayName: string
@@ -588,10 +601,6 @@ export interface BenchMemberView {
   instance: PartInstance | null
   band: ConditionBand | null
   partName: string | null
-  repairable: boolean
-  /** The next single-rung recondition step for this member, or null when
-   * there is nothing to recondition (empty, mint, scrap, or non-repairable). */
-  reconditionStep: NextRepairStepView | null
   /** Why fitting a part into this member slot is gated right now (only ever
    * set for the `tyres` member, needing the wheels line owned or hired
    * today), or null when nothing gates it. */
@@ -1750,13 +1759,24 @@ export const useGameStore = defineStore('game', () => {
     // for it either.
     if (car.zoneState && isBodyDerivedPart(carPartId)) return null
     const entry = context.value.partsTaxonomyById[carPartId]
-    // Surface only: this caption rides the on-car per-part repair "+" affordance,
-    // which exists solely for surface slots (bolt-on/buried parts are bench-only,
-    // never grow an on-car repair button). The bench recondition caps at fine too
-    // but is a separate control, out of this caption's placement.
-    if (!entry || entry.depthClass !== 'surface') return null
+    // Fixed carriers only: this caption rides the on-car per-part repair "+"
+    // affordance, which exists solely for a part that never comes off (every
+    // removable part is bench-only and never grows an on-car repair button).
+    // The bench recondition caps at fine too but is a separate control, out of
+    // this caption's placement.
+    if (!entry || entry.removable) return null
     const { band } = displayedBandFor(car, carPartId, context.value)
     if (!band || !canRepair(band, entry) || bandIndex(band) >= bandIndex('mint')) return null
+    return repairCeilingSentence(componentId)
+  }
+
+  /**
+   * The one sentence naming the tier-2 machine that lifts a group's repair
+   * ceiling from fine to mint, or null once that group already reaches mint.
+   * Shared by the on-car caption above and the bench's own
+   * (`benchRepairCeilingCaption`), so the two rooms never word it differently.
+   */
+  function repairCeilingSentence(componentId: ComponentId): string | null {
     const ceiling = repairCeilingForLevel(
       gameState.value.toolTiers[componentId],
       context.value.economy,
@@ -2814,29 +2834,30 @@ export const useGameStore = defineStore('game', () => {
   // --- the machine shop ----------------------------------------------------
 
   /**
-   * Why machining `operationId` onto the part fitted in its own slot on
-   * `carInstanceId` is refused right now, `null` when nothing refuses it - the
-   * button's proactive "why not" read, and the same predicate the resolver
-   * enforces after the click.
+   * Why machining `operationId` onto the loose part `partInstanceId` is
+   * refused right now, `null` when nothing refuses it - the button's proactive
+   * "why not" read, and the same predicate the resolver enforces after the
+   * click.
    */
   function machiningGateReason(
-    carInstanceId: string,
+    partInstanceId: string,
     operationId: string,
   ): MachiningGateReason | null {
-    return machiningGateReasonCore(gameState.value, carInstanceId, operationId, context.value)
+    return machiningGateReasonCore(gameState.value, partInstanceId, operationId, context.value)
   }
 
   /**
-   * Machines `operationId` onto the part fitted in its slot on
-   * `carInstanceId` - as much of today's remaining labour as the operation
-   * takes, through the same job system every other piece of work spends its
-   * labour through, so an operation that outruns today's pool carries over to
-   * tomorrow. The operation lands on the part only once the job finishes.
+   * Machines `operationId` onto the loose part `partInstanceId` - as much of
+   * today's remaining labour as the operation takes, through the same job
+   * system every other piece of work spends its labour through, so an
+   * operation that outruns today's pool carries over to tomorrow. The
+   * operation lands on the part only once the job finishes, and travels with
+   * it onto whatever car it is fitted to.
    */
-  function machinePart(carInstanceId: string, operationId: string): boolean {
+  function machinePart(partInstanceId: string, operationId: string): boolean {
     const result = resolveMachiningLabor(
       gameState.value,
-      carInstanceId,
+      partInstanceId,
       operationId,
       laborSlotsRemainingToday.value,
       context.value,
@@ -2844,34 +2865,142 @@ export const useGameStore = defineStore('game', () => {
     if (result.laborSlotsUsed === 0) return false
     gameState.value = result.state
     dayLog.value.push(...result.log)
-    logSessionEvent('machinePart', { carInstanceId, operationId })
+    logSessionEvent('machinePart', { partInstanceId, operationId })
     return true
   }
 
   /**
-   * The machine shop's sheet for the car on the ramp, or `null` when the
-   * service bay holds anything other than exactly one car the store can
-   * resolve a model for. A machinist works on the car in the bay, so with the
-   * bay empty (or holding two) there is nothing to quote against. Every figure
-   * is `machiningReadingFor`'s and none is recomputed here.
+   * The machine shop's sheet for the part on the machine, or `null` when the
+   * machine is empty. Every figure is `machiningReadingFor`'s and none is
+   * recomputed here.
    */
-  const machineShopSheet = computed<MachiningReading | null>(() => {
-    const carIds = gameState.value.serviceBayCarIds.filter((id): id is string => id !== null)
-    if (carIds.length !== 1) return null
-    const car = findWorkableCar(carIds[0]!)
-    if (!car) return null
-    const model = context.value.modelsById[car.modelId]
-    if (!model) return null
-    return machiningReadingFor(
-      car,
-      model,
+  const machineShopSheet = computed<MachiningReading | null>(() =>
+    machiningReadingFor(gameState.value, context.value),
+  )
+
+  // --- setup work, done on the car -----------------------------------------
+
+  /**
+   * Every setup operation one of the car's own slots offers - the two jobs
+   * that can only be judged with the car assembled, so they never appear in
+   * the machine shop. Empty for every other slot.
+   */
+  function fittedMachiningOffers(
+    carId: string,
+    carPartId: CarPartId,
+  ): readonly FittedMachiningOfferRow[] {
+    return fittedMachiningOffersFor(gameState.value, carId, carPartId, context.value)
+  }
+
+  /**
+   * Why setting `operationId` up on this car is refused right now, `null` when
+   * nothing refuses it - the button's proactive "why not" read, and the same
+   * predicate the resolver enforces after the click.
+   */
+  function fittedMachiningGateReason(
+    carId: string,
+    operationId: string,
+  ): FittedMachiningGateReason | null {
+    return fittedMachiningGateReasonCore(gameState.value, carId, operationId, context.value)
+  }
+
+  /**
+   * Sets `operationId` up on the car, spending as much of today's remaining
+   * labour as it takes through the same job system every other piece of work
+   * uses. The operation lands on the part fitted in its own slot once the job
+   * finishes, and stays with that part if it later comes off.
+   */
+  function machineFittedPart(carId: string, operationId: string): boolean {
+    const result = resolveFittedMachiningLabor(
       gameState.value,
-      context.value.partsById,
-      context.value.partsTaxonomy,
-      context.value.economy,
+      carId,
+      operationId,
+      laborSlotsRemainingToday.value,
       context.value,
     )
-  })
+    if (result.laborSlotsUsed === 0) return false
+    gameState.value = result.state
+    dayLog.value.push(...result.log)
+    logSessionEvent('machineFittedPart', { carId, operationId })
+    return true
+  }
+
+  // --- the two work stations -----------------------------------------------
+
+  /**
+   * The part on `station` paired with its catalogue entry, or `null` when the
+   * station is clear (or holds a part the catalogue cannot resolve) - what the
+   * workshop floor and the machine shop each open on.
+   */
+  function stationPart(station: WorkStation): StageablePartView | null {
+    const partInstanceId = partIdOnStation(gameState.value, station)
+    if (!partInstanceId) return null
+    const instance = gameState.value.partInventory.find((p) => p.id === partInstanceId)
+    const part = instance ? context.value.partsById[instance.partId] : undefined
+    return instance && part ? { instance, part } : null
+  }
+
+  /**
+   * Every warehouse part that can be carried to `station` right now - the
+   * room's own fetch-it-out-of-the-warehouse picker, reading the sim's gate
+   * (`placeOnStationGateReason`) rather than a second eligibility rule. A part
+   * on the OTHER station is not on this list: it has to be taken back first.
+   */
+  function partsForStation(station: WorkStation): StageablePartView[] {
+    const entries: StageablePartView[] = []
+    for (const instance of gameState.value.partInventory) {
+      if (placeOnStationGateReason(gameState.value, station, instance.id) !== null) continue
+      const part = context.value.partsById[instance.partId]
+      if (part) entries.push({ instance, part })
+    }
+    return entries
+  }
+
+  /**
+   * Carry one warehouse part to `station`. Free and instant - no labour, no
+   * cash, no day passes - because the cost is the walk rather than a number.
+   * Returns false on a refusal, which changes nothing.
+   */
+  function placeOnStation(station: WorkStation, partInstanceId: string): boolean {
+    if (placeOnStationGateReason(gameState.value, station, partInstanceId) !== null) return false
+    gameState.value = resolvePlaceOnStation(gameState.value, station, partInstanceId)
+    logSessionEvent('placeOnStation', { station, partInstanceId })
+    return true
+  }
+
+  /** Carry whatever is on `station` back to the warehouse - the mirror of
+   * `placeOnStation`, and free in the same way. False when the station is
+   * already clear. */
+  function takeFromStation(station: WorkStation): boolean {
+    if (partIdOnStation(gameState.value, station) === null) return false
+    gameState.value = resolveTakeFromStation(gameState.value, station)
+    logSessionEvent('takeFromStation', { station })
+    return true
+  }
+
+  /** Which station `partInstanceId` is out on, or `null` when it is sitting in
+   * the warehouse - the whereabouts marker the inventory list shows, so a part
+   * that is being worked on can still be found. */
+  function stationForPart(partInstanceId: string): WorkStation | null {
+    return stationHoldingPart(gameState.value, partInstanceId)
+  }
+
+  /**
+   * The legibility caption for the part on the bench when the group's own
+   * tools cannot finish it past fine, naming the tier-2 machine that reaches
+   * mint - the loose-part twin of `repairCeilingCaption`'s on-car caption, and
+   * sharing its one sentence. Null from tier 2 up, for a part already at mint,
+   * and for one no repair can touch (scrap, or a replace-only consumable).
+   */
+  function benchRepairCeilingCaption(partInstanceId: string): string | null {
+    const instance = gameState.value.partInventory.find((p) => p.id === partInstanceId)
+    const part = instance ? context.value.partsById[instance.partId] : undefined
+    const entry = part ? context.value.partsTaxonomyById[part.carPartId] : undefined
+    if (!instance || !entry) return null
+    if (!canRepair(instance.band, entry) || bandIndex(instance.band) >= bandIndex('mint'))
+      return null
+    return repairCeilingSentence(entry.group)
+  }
 
   /** The live auction room's fuse-length preset, persisted across careers -
    * `standard` for any save that predates the setting (the genuinely-
@@ -3139,20 +3268,20 @@ export const useGameStore = defineStore('game', () => {
 
   /**
    * The reason an on-car per-part REPAIR of `carPartId` is gated right now,
-   * or `null` when it isn't. Per-part repair is bench-only for any
-   * non-`surface` slot (the sim refuses it before this ever matters), so
-   * this only ever gates a surface signature slot (seats, dashGauges - not
-   * `panels`/`paint`, both derived body value carriers with no on-car repair
-   * affordance at all, `bodyPipeline.ts`) - a bolt-on
-   * signature slot (dampers, springs) is repaired via the group or the
-   * bench, never this per-part affordance. Engine/drivetrain repair is
-   * never gated, so this is `null` for them too.
+   * or `null` when it isn't. Per-part repair is bench-only for every
+   * removable slot (the sim refuses it before this ever matters), so this only
+   * ever gates a fixed body carrier - and `panels`/`paint` are derived value
+   * carriers with no on-car repair affordance at all (`bodyPipeline.ts`),
+   * which leaves the chassis. A removable signature slot (seats, dashGauges,
+   * dampers, springs) is repaired at the bench, and its own machine line is
+   * asked for when the repaired part goes back on (`installGateReasonFor`).
+   * Engine/drivetrain repair is never gated, so this is `null` for them too.
    */
   function repairGateReasonFor(carId: string, carPartId: CarPartId): string | null {
     const car = findWorkableCar(carId)
     if (!car) return null
     if (car.zoneState && isBodyDerivedPart(carPartId)) return null
-    if (context.value.partsTaxonomyById[carPartId]?.depthClass !== 'surface') return null
+    if (context.value.partsTaxonomyById[carPartId]?.removable !== false) return null
     return installGateReasonFor(carId, carPartId)
   }
 
@@ -4099,22 +4228,6 @@ export const useGameStore = defineStore('game', () => {
     })
   }
 
-  /** The next single-rung recondition step for a benched member - reads the
-   * band off the instance directly (a container member is not in
-   * `partInventory`, so `nextReconditionStep` can't find it) and prices it
-   * through the same `reconditionQuote`, which does find container members. */
-  function benchMemberReconditionStep(instance: PartInstance): NextRepairStepView | null {
-    if (instance.band === 'mint') return null
-    const nextRung = climbBand(instance.band, 1)
-    const quote = reconditionQuoteFor(instance.id, nextRung)
-    if (!quote) return null
-    return {
-      targetBand: nextRung,
-      costYen: quote.costYen,
-      laborSlotsRequired: quote.laborSlotsRequired,
-    }
-  }
-
   /**
    * The gate reason fitting a part into `carPartId`'s bench slot needs right
    * now (only ever the wheels line, for the `tyres` member), or null when
@@ -4147,11 +4260,6 @@ export const useGameStore = defineStore('game', () => {
               instance,
               band: instance ? instance.band : null,
               partName: instance ? partName(instance.partId) : null,
-              repairable:
-                instance !== null &&
-                instance.band !== 'scrap' &&
-                (taxonomyEntry?.repairable ?? true),
-              reconditionStep: instance ? benchMemberReconditionStep(instance) : null,
               swapGateReason: benchSwapGateReasonFor(carPartId),
             }
           }),
@@ -5227,6 +5335,15 @@ export const useGameStore = defineStore('game', () => {
     machiningGateReason,
     machinePart,
     machineShopSheet,
+    fittedMachiningOffers,
+    fittedMachiningGateReason,
+    machineFittedPart,
+    stationPart,
+    partsForStation,
+    placeOnStation,
+    takeFromStation,
+    stationForPart,
+    benchRepairCeilingCaption,
     stagedActionGateReasonFor,
     stagedWorkGated,
     serviceBaysView,

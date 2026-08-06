@@ -53,18 +53,17 @@ const QUIET_DAY = quietFinanceDay()
  * Generation rolls a per-car upkeep tier, so a given seed's panels slot
  * isn't guaranteed to land below mint - forces it to a known repairable
  * 'worn' band (a real stock part) so the resolved job's effect on it is
- * asserted against a known starting point. `aero` is forced present at
- * 'worn' too, and is the field `createJobs` actually needs: `planGroupRepair`
- * excludes every zone-derived body carrier (panels/paint) from a car on the
- * zone model, since their band comes from the pipeline's own zone state
- * rather than a direct repair - `aero` and `chassis` are the 'body' group's
- * other members, and generation's own missing-slot roll can leave aero
- * absent, which would otherwise leave the group with nothing `createJobs`
- * can see as repairable regardless of what panels reads. These tests are
- * purely about
- * the labour gate/timing, not condition - panels is a body signature slot, so
- * the body line is also hired for today, isolating the service-bay/labour
- * concern under test from the separate machine-line gate.
+ * asserted against a known starting point. `chassis` is forced to 'worn' too,
+ * and is the field `createJobs` actually needs: `planGroupRepair` excludes
+ * every zone-derived body carrier (panels/paint) from a car on the zone model,
+ * since their band comes from the pipeline's own zone state rather than a
+ * direct repair, and it excludes every REMOVABLE part (`aero`), which is
+ * repaired at the bench rather than on the car. The chassis is the body
+ * group's one remaining on-car repair, so it is what leaves the group with
+ * something to plan. These tests are purely about the labour gate/timing, not
+ * condition - the chassis is a body signature slot, so the body line is also
+ * hired for today, isolating the service-bay/labour concern under test from
+ * the separate machine-line gate.
  */
 function withWornPanels(state: GameState): GameState {
   const car = state.ownedCars[0]!
@@ -85,10 +84,10 @@ function withWornPanels(state: GameState): GameState {
               origin: { kind: 'market', day: 1 },
             },
           },
-          aero: {
+          chassis: {
             installed: {
-              id: 'test-aero',
-              partId: CONTEXT.stockPartByCarPartId.entry.aero!.id,
+              id: 'test-chassis',
+              partId: CONTEXT.stockPartByCarPartId.entry.chassis!.id,
               band: 'worn',
               origin: { kind: 'market', day: 1 },
             },

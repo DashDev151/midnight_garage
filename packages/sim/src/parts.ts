@@ -264,15 +264,17 @@ export function resolveScrapPart(
   const priceYen = scrapValueYen(taxonomyEntry, context.economy, part.fitmentClass)
   const log: DayLogEntry[] = [{ type: 'part-scrapped', partInstanceId, priceYen }]
   return {
-    state: bookCashMovements(
-      {
-        ...state,
-        cashYen: state.cashYen + priceYen,
-        partInventory: state.partInventory.filter((p) => p.id !== partInstanceId),
-        energySpentToday: state.energySpentToday + laborSlotsUsed,
-      },
-      log,
-      context.economy,
+    state: reconcileStations(
+      bookCashMovements(
+        {
+          ...state,
+          cashYen: state.cashYen + priceYen,
+          partInventory: state.partInventory.filter((p) => p.id !== partInstanceId),
+          energySpentToday: state.energySpentToday + laborSlotsUsed,
+        },
+        log,
+        context.economy,
+      ),
     ),
     log,
   }
@@ -317,15 +319,121 @@ export function resolveSellPart(
   )
   const log: DayLogEntry[] = [{ type: 'part-sold', partInstanceId, priceYen }]
   return {
-    state: bookCashMovements(
-      {
-        ...state,
-        cashYen: state.cashYen + priceYen,
-        partInventory: state.partInventory.filter((p) => p.id !== partInstanceId),
-      },
-      log,
-      context.economy,
+    state: reconcileStations(
+      bookCashMovements(
+        {
+          ...state,
+          cashYen: state.cashYen + priceYen,
+          partInventory: state.partInventory.filter((p) => p.id !== partInstanceId),
+        },
+        log,
+        context.economy,
+      ),
     ),
     log,
+  }
+}
+
+// --- the two work stations -------------------------------------------------
+
+/**
+ * The two places a part is worked on, one room each: the bench on the workshop
+ * floor, where a part is repaired, and the machine in the machine shop, where
+ * it is machined. The warehouse (`GameState.partInventory`) holds parts and
+ * does no work, so every piece of part-level work reads one of these.
+ */
+export type WorkStation = 'workbench' | 'machine'
+
+/** The part on `station`, or `null` when it is clear. */
+export function partIdOnStation(state: GameState, station: WorkStation): string | null {
+  return station === 'workbench' ? state.workbenchPartId : state.machinePartId
+}
+
+/** The station `partInstanceId` is currently sitting on, or `null` when it is
+ * on neither - the "a part is never on both stations" fact, on the read side. */
+export function stationHoldingPart(state: GameState, partInstanceId: string): WorkStation | null {
+  if (state.workbenchPartId === partInstanceId) return 'workbench'
+  if (state.machinePartId === partInstanceId) return 'machine'
+  return null
+}
+
+function withStation(
+  state: GameState,
+  station: WorkStation,
+  partInstanceId: string | null,
+): GameState {
+  return station === 'workbench'
+    ? { ...state, workbenchPartId: partInstanceId }
+    : { ...state, machinePartId: partInstanceId }
+}
+
+export type PlaceOnStationGateReason =
+  /** No such part in the warehouse - installed on a car, sold, or never there. */
+  | 'not-found'
+  /** Something is already on this station, and each holds one part. */
+  | 'station-occupied'
+  /** The part is on the other station; take it back before carrying it here. */
+  | 'on-other-station'
+
+/**
+ * Why `partInstanceId` cannot be carried to `station` right now, or `null` when
+ * nothing refuses it. The one predicate: the UI shows the same reason before the
+ * click that `resolvePlaceOnStation` enforces after it. A part already on THIS
+ * station is not refused - carrying it where it already is is a no-op, not an
+ * error.
+ */
+export function placeOnStationGateReason(
+  state: GameState,
+  station: WorkStation,
+  partInstanceId: string,
+): PlaceOnStationGateReason | null {
+  if (!state.partInventory.some((p) => p.id === partInstanceId)) return 'not-found'
+  const held = stationHoldingPart(state, partInstanceId)
+  if (held === station) return null
+  if (held) return 'on-other-station'
+  return partIdOnStation(state, station) === null ? null : 'station-occupied'
+}
+
+/**
+ * Carry one warehouse part to `station`. Free and instant: no labour, no cash,
+ * no day passes and nothing is logged, because the cost is the walk rather than
+ * a number. Any refusal (`placeOnStationGateReason`) is a silent no-op with the
+ * same state reference back.
+ */
+export function resolvePlaceOnStation(
+  state: GameState,
+  station: WorkStation,
+  partInstanceId: string,
+): GameState {
+  if (placeOnStationGateReason(state, station, partInstanceId)) return state
+  return withStation(state, station, partInstanceId)
+}
+
+/** Carry whatever is on `station` back to the warehouse - the mirror of
+ * `resolvePlaceOnStation`, and free in the same way. A clear station is a
+ * no-op. The part never left `partInventory`, so nothing but the station moves. */
+export function resolveTakeFromStation(state: GameState, station: WorkStation): GameState {
+  return partIdOnStation(state, station) === null ? state : withStation(state, station, null)
+}
+
+/**
+ * Clears any station whose part is no longer in the warehouse - a part sold,
+ * scrapped, fitted to a car, taken into an assembly, consumed by a body stage,
+ * or returned to a customer at close-out leaves the station it was on. Called
+ * at every site that removes from `partInventory`, so a station can never point
+ * at a part that is not there and block the next one from being carried in. A
+ * no-op (same state reference) when both stations are already honest, which is
+ * every call but the handful that matter.
+ */
+export function reconcileStations(state: GameState): GameState {
+  const gone = (partInstanceId: string | null): boolean =>
+    partInstanceId !== null && !state.partInventory.some((p) => p.id === partInstanceId)
+  const workbenchGone = gone(state.workbenchPartId)
+  const machineGone = gone(state.machinePartId)
+  if (!workbenchGone && !machineGone) return state
+  return {
+    ...state,
+    workbenchPartId: workbenchGone ? null : state.workbenchPartId,
+    machinePartId: machineGone ? null : state.machinePartId,
   }
 }

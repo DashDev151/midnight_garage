@@ -30,10 +30,10 @@ import { useGameStore } from '../stores/gameStore'
  * `warehouse-derelict` - a real gap between the art and the design rather
  * than a silent workaround.
  *
- * A room action's own sub-screen (inventory, the machine shop, the phone,
- * the books, a car on the bench) carries the launching room in its own
- * navigation (`goToRoute`/`goToCar`), so that sub-screen's back control can
- * return here on the same room rather than always landing on the alley -
+ * A room action's own sub-screen (inventory, the workbench, the machine shop,
+ * the phone, the books, a car in the bay) carries the launching room in its
+ * own navigation (`goToRoute`/`goToCar`), so that sub-screen's back control
+ * can return here on the same room rather than always landing on the alley -
  * `roomIdFromQuery` is the read side of that round trip.
  */
 
@@ -150,9 +150,11 @@ onUnmounted(() => {
 })
 
 /** The bays screen has no back control of its own to mark (it is the tab
- * bar's home already), so only the four sub-screens carry the room a
+ * bar's home already), so only the room sub-screens carry the room a
  * back-of-theirs should return to (`mapBack.ts`'s `mapBackTarget`). */
-function goToRoute(name: 'garage' | 'inventory' | 'machine-shop' | 'jobs' | 'costs'): void {
+function goToRoute(
+  name: 'garage' | 'inventory' | 'workshop-floor' | 'machine-shop' | 'jobs' | 'costs',
+): void {
   if (name === 'garage') {
     void router.push({ name })
     return
@@ -209,8 +211,8 @@ function goToCar(id: string): void {
       </template>
 
       <template v-else-if="currentRoom === 'workshop-floor'">
-        <button type="button" data-test="workshop-bays" @click="goToRoute('garage')">
-          Open the bays
+        <button type="button" data-test="workshop-floor-enter" @click="goToRoute('workshop-floor')">
+          Open the workbench
         </button>
         <button
           v-if="soloServiceBayCarId"
@@ -218,7 +220,7 @@ function goToCar(id: string): void {
           data-test="workshop-car"
           @click="goToCar(soloServiceBayCarId)"
         >
-          Open the car on the bench
+          Open the car in the bay
         </button>
         <p v-else class="hint">Bring a car into a service bay to open it directly from here.</p>
       </template>

@@ -120,29 +120,26 @@ describe('tool lines in the store (Sprint 36)', () => {
     const car = game.gameState.ownedCars[0]!
     game.moveCar(car.id, 'service')
 
-    // 'wheels' (brakePadsDiscs/brakeCalipersLines/rims/tyres) is
-    // entirely bolt-on/buried - bench-only, refused on-car regardless of
-    // tool tier - so it can no longer prove an ABSENCE of a tier gate.
-    // 'body' no longer proves it either: `panels`/`underbody` are derived
-    // body value carriers now (`bodyPipeline.ts`) and a direct repair-zone
-    // job never touches them, so the group's own displayed band can stay
-    // short of `fine` even once its one remaining repairable member
-    // (`aero`) is fully repaired. 'interior' (seats/dashGauges, both
-    // `depthClass: 'surface'`) stays fully on-car-repairable and exercises
+    // Every REMOVABLE part is bench work now, so most groups are refused
+    // on-car whatever the tool tier and can no longer prove an ABSENCE of a
+    // tier gate. `panels`/`paint` cannot prove it either: both are derived
+    // body value carriers (`bodyPipeline.ts`) a direct repair-zone job never
+    // touches. That leaves the chassis, addressed per part, which exercises
     // the exact same claim. A tier-1 repair finishes at fine, so target
     // fine - the reachable ceiling. The claim under test is unchanged: no
-    // OWNERSHIP gate exists, a fine repair just proceeds at tier 1.
-    // Interior possibly touches a signature slot (seats/dashGauges), which
-    // needs the line hired for today - a separate, intentional machine-line
-    // gate, not the ownership gate this test is about.
-    game.hireMachineLine('interior')
-    game.repair(car.id, 'interior', 'fine')
+    // OWNERSHIP gate exists, a fine repair just proceeds at tier 1. The
+    // chassis is a body signature slot, which needs the line hired for today
+    // - a separate, intentional machine-line gate, not the ownership gate
+    // this test is about.
+    game.hireMachineLine('body')
+    game.repair(car.id, 'body', 'fine', 'chassis')
     // A single day's labor may be enough to finish the job outright (in
     // which case it's already gone from the in-progress list) - either an
     // open job or a completed repair proves no gate refused it.
     const detail = game.carDetail(car.id)
-    const jobOpened = detail?.jobs.some((j) => j.componentId === 'interior') ?? false
-    const jobFinished = detail?.groupBands.interior === 'fine'
+    const jobOpened = detail?.jobs.some((j) => j.componentId === 'body') ?? false
+    const chassisBand = game.gameState.ownedCars[0]!.parts.chassis.installed?.band
+    const jobFinished = chassisBand === 'fine' || chassisBand === 'mint'
     expect(jobOpened || jobFinished).toBe(true)
   })
 })

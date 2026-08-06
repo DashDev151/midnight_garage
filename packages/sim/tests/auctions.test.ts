@@ -122,6 +122,8 @@ function stateWithLots(
     nextMachineListingDay: null,
     serviceJobLedgers: {},
     inspectionVisit: null,
+    workbenchPartId: null,
+    machinePartId: null,
     storyMissions: [],
   }
 }

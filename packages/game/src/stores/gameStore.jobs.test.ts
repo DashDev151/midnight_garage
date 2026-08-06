@@ -49,30 +49,40 @@ function findUnfinishedOffer(game: ReturnType<typeof useGameStore>): ServiceJob 
 }
 
 /**
- * A still-genuinely-unfinished offer whose repair the work loop below can
- * actually perform (same "already satisfied by chance" caveat as
- * `findUnfinishedOffer`), narrowed to a band-only task - the task shape is
- * `requirement`-based, so "repair-shaped" means "no `minGrade`".
+ * A still-genuinely-unfinished offer EVERY task of which the work loop below
+ * can actually perform (same "already satisfied by chance" caveat as
+ * `findUnfinishedOffer`), and at least one of them repair-shaped - the task
+ * shape is `requirement`-based, so "repair-shaped" means "no `minGrade`".
  *
- * The loop only knows the simple on-car group `repair()` verb, so the slot has
- * to be one that verb accepts, and two rules exclude a slot from it. A
- * bolt-on or buried part is bench-only (it needs the separate
- * remove/recondition/reinstall flow), which the surface-depth filter covers. A
- * body value carrier (`panels`/`paint`/`underbody`) has its band DERIVED from
- * the car's zone state, so direct repair refuses it however shallow it sits;
- * that work goes through the zone pipeline's own staged stages. Both flows are
- * real and tested elsewhere - they are simply not what this completion-and-
- * payout test drives.
+ * The loop knows three verbs: buy-and-install for a graded task, the on-car
+ * group `repair()` for a band-only task on a part that never comes off, and the
+ * bench route (pull it, carry it to the workshop floor, recondition it, refit
+ * it) for a band-only task on a removable one. `panels` and `paint` are out
+ * either way: their band is DERIVED from the car's zone state, so direct repair
+ * refuses them and that work goes through the zone pipeline's own staged
+ * stages, which is real and tested elsewhere but not what this
+ * completion-and-payout test drives.
  */
+function loopCanFinishTask(job: ServiceJob, task: ServiceJob['tasks'][number]): boolean {
+  if (task.requirement.minGrade) return true // the buy-and-install path
+  const carPartId = task.requirement.carPartId
+  const entry = context.partsTaxonomyById[carPartId]
+  if (!entry || !entry.repairable) return false
+  if (job.car.zoneState && isBodyDerivedPart(carPartId)) return false
+  if (entry.removable === false) return true // repaired in place
+  // Bench work: the loop can pull it and put it back only if nothing sits on
+  // top of it and it is not worked as part of an assembly.
+  return (
+    entry.blockedBy.length === 0 && !context.assemblies.some((a) => a.members.includes(carPartId))
+  )
+}
+
 function findUnfinishedRepairOffer(game: ReturnType<typeof useGameStore>): ServiceJob | undefined {
   return game.serviceJobOffers.find(
     (o) =>
-      o.tasks.some(
-        (t) =>
-          !t.requirement.minGrade &&
-          context.partsTaxonomyById[t.requirement.carPartId]?.depthClass === 'surface' &&
-          !(o.car.zoneState && isBodyDerivedPart(t.requirement.carPartId)),
-      ) && o.tasks.some((t) => !isServiceTaskDone(o.car, t, context)),
+      o.tasks.every((t) => loopCanFinishTask(o, t)) &&
+      o.tasks.some((t) => !t.requirement.minGrade) &&
+      o.tasks.some((t) => !isServiceTaskDone(o.car, t, context)),
   )
 }
 
@@ -162,7 +172,28 @@ describe('service jobs in the store', () => {
         const componentId = game.groupForCarPart(carPartId)
         if (!componentId) continue
         if (!minGrade) {
-          game.repair(carId, componentId)
+          if (context.partsTaxonomyById[carPartId]?.removable === false) {
+            game.repair(carId, componentId)
+          } else {
+            // Every removable part is bench work: pull it into the warehouse,
+            // carry it to the workshop floor, climb it a rung at a time, and
+            // put it back on the car.
+            game.removePart(carId, carPartId)
+            const loose = game.gameState.partInventory.at(-1)
+            if (loose) {
+              game.gameState = { ...game.gameState, workbenchPartId: loose.id }
+              for (let rung = 0; rung < 4; rung++) {
+                const step = game.nextReconditionStep(loose.id)
+                if (!step) break
+                const before = game.gameState.partInventory.find((p) => p.id === loose.id)?.band
+                game.reconditionPart(loose.id, step.targetBand)
+                const after = game.gameState.partInventory.find((p) => p.id === loose.id)?.band
+                if (after === before) break // out of labour today
+              }
+              game.gameState = { ...game.gameState, workbenchPartId: null }
+              game.install(carId, componentId, loose.id, carPartId)
+            }
+          }
         } else {
           // At least minGrade, not exactly - the catalog doesn't guarantee
           // an exact-grade option for every part (isServiceTaskDone itself

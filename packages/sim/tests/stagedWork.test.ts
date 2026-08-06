@@ -40,9 +40,9 @@ const car: CarInstance = buildCarInstance({
   year: 1984,
   mileageKm: 100_000,
   parts: {
-    // 'interior' (surface, still on-car-repairable) joins the fixture -
-    // 'engine' is bench-only, so the two-staged-actions test below needs
-    // a second on-car-repairable group to spill labor onto.
+    // The body group is the whole of what an on-car repair can still address
+    // (every removable part is bench work), so the two-staged-actions test
+    // below spills labour from one body carrier onto another.
     ...groupCarParts({ body: 'poor', engine: 'worn', suspension: 'worn', interior: 'poor' }),
     // Every slot defaults to a filled stock part, so the staged-install
     // test below needs a genuinely empty target slot (a group-level
@@ -67,6 +67,23 @@ function planFor(groupId: 'body' | 'engine' | 'suspension' | 'interior') {
     CONTEXT.partsTaxonomyById,
     CONTEXT.economy.restoration.repairStepFraction,
     CONTEXT.economy.energy.energyPerBandStepByToolTier,
+  )
+}
+
+/** The same plan narrowed to one body carrier, for the per-part staged
+ * addresses the shared-budget test below uses. */
+function planForBodyPart(carPartId: 'panels' | 'chassis') {
+  return planGroupRepair(
+    car,
+    'body',
+    'mint',
+    TOOL_TIERS,
+    CONTEXT.partIdsByGroup,
+    CONTEXT.partsById,
+    CONTEXT.partsTaxonomyById,
+    CONTEXT.economy.restoration.repairStepFraction,
+    CONTEXT.economy.energy.energyPerBandStepByToolTier,
+    carPartId,
   )
 }
 
@@ -116,6 +133,8 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     nextMachineListingDay: null,
     serviceJobLedgers: {},
     inspectionVisit: null,
+    workbenchPartId: null,
+    machinePartId: null,
     storyMissions: [],
     ...overrides,
   }
@@ -170,27 +189,28 @@ describe('confirmStagedWork', () => {
   })
 
   it('shares one labor budget across multiple staged actions, in staged order', () => {
-    const bodyPlan = planFor('body')
-    const interiorPlan = planFor('interior')
-    // Enough for body (staged first) to complete fully, plus exactly 1 slot
-    // spillover for interior (staged second) - a real, continuable partial
-    // job. 'interior' is used here since engine is bench-only.
-    const offeredLabor = bodyPlan.laborSlotsRequired + 1
+    const panelsPlan = planForBodyPart('panels')
+    const chassisPlan = planForBodyPart('chassis')
+    // Enough for the panels repair (staged first) to complete fully, plus
+    // exactly 1 slot spillover for the chassis (staged second) - a real,
+    // continuable partial job. Both are fixed body carriers, which is the
+    // whole of what an on-car repair addresses now.
+    const offeredLabor = panelsPlan.laborSlotsRequired + 1
     const state = baseState({
       stagedCarWork: {
         [car.id]: [
-          { kind: 'repair', componentId: 'body', targetBand: 'mint' },
-          { kind: 'repair', componentId: 'interior', targetBand: 'mint' },
+          { kind: 'repair', componentId: 'body', carPartId: 'panels', targetBand: 'mint' },
+          { kind: 'repair', componentId: 'body', carPartId: 'chassis', targetBand: 'mint' },
         ],
       },
     })
     const result = confirmStagedWork(state, car.id, offeredLabor, CONTEXT)
     expect(result.state.ownedCars[0]?.parts.panels.installed?.band).toBe('mint')
-    expect(result.state.ownedCars[0]?.parts.seats.installed?.band).toBe('poor') // not yet repaired
-    const interiorJob = result.state.jobs.find((j) => j.componentId === 'interior')
-    expect(interiorJob).toBeDefined()
-    expect(interiorJob?.laborSlotsSpent).toBe(1)
-    expect(interiorJob?.laborSlotsRequired).toBe(interiorPlan.laborSlotsRequired)
+    expect(result.state.ownedCars[0]?.parts.chassis.installed?.band).toBe('poor') // not yet repaired
+    const chassisJob = result.state.jobs.find((j) => j.carPartId === 'chassis')
+    expect(chassisJob).toBeDefined()
+    expect(chassisJob?.laborSlotsSpent).toBe(1)
+    expect(chassisJob?.laborSlotsRequired).toBe(chassisPlan.laborSlotsRequired)
   })
 
   it('the affordability gate still refuses a staged repair at confirm time (Sprint 36: the only gate left)', () => {

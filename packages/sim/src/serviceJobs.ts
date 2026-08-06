@@ -30,7 +30,7 @@ import type { SimContext } from './context'
 import { assignToShop, hasAcquisitionSpace, releaseCarFromShop } from './facilities'
 import { bookCashMovements } from './financeLedger'
 import { installLaborSlotsFor } from './jobs'
-import { gradeAtLeast, partFitsCar } from './parts'
+import { gradeAtLeast, partFitsCar, reconcileStations } from './parts'
 import { makeCarOrigin, partsOriginatingFromCar } from './provenance'
 import { evaluateRequirement } from './requirements'
 import type { Rng } from './rng'
@@ -875,16 +875,20 @@ export function resolveServiceJob(
       ...returnedPartsLog,
     ]
     return {
-      state: bookCashMovements(
-        {
-          ...withReputation,
-          cashYen: withReputation.cashYen + job.payoutYen,
-          activeServiceJobs,
-          jobs,
-          partInventory,
-        },
-        log,
-        context.economy,
+      // The customer's parts have left the warehouse with their car, so any
+      // station holding one of them is now clear.
+      state: reconcileStations(
+        bookCashMovements(
+          {
+            ...withReputation,
+            cashYen: withReputation.cashYen + job.payoutYen,
+            activeServiceJobs,
+            jobs,
+            partInventory,
+          },
+          log,
+          context.economy,
+        ),
       ),
       log,
       outcome: 'paid',
@@ -892,7 +896,7 @@ export function resolveServiceJob(
   }
 
   return {
-    state: { ...releasedState, activeServiceJobs, jobs, partInventory },
+    state: reconcileStations({ ...releasedState, activeServiceJobs, jobs, partInventory }),
     log: [
       {
         type: 'service-job-failed',

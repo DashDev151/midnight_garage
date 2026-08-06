@@ -18,12 +18,14 @@ import { CarPartIdSchema, ComponentIdSchema, ConditionBandSchema } from './tags'
  * in a real service bay, so it gates on the bay like any other car job.
  *
  * A `machine-part` applies one named machining operation
- * (`machiningOperationId`) to the part fitted in one slot (`carPartId`), on a
- * real car in a real service bay. It moves no band and swaps no part: it
- * appends the operation to the fitted `PartInstance`'s own record, which is
- * why it carries `partInstanceId` as well - the instance the work was quoted
- * against, so a slot that changed hands mid-job is left alone rather than
- * machined by accident.
+ * (`machiningOperationId`) to a loose `PartInstance` on the machine in the
+ * machine shop. It moves no band and swaps no part: it appends the operation
+ * to that instance's own record, and the work travels with the part back onto
+ * whatever car it is fitted to. `carPartId` is the slot the part addresses,
+ * which is what says a port-and-polish belongs to a head and not a gearbox;
+ * `carInstanceId` holds the loose part's own id, the same way a
+ * `recondition-part` job's does, so neither resolves against a car or a
+ * service bay.
  */
 export const JobKindSchema = z.enum([
   'repair-zone',

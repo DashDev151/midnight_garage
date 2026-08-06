@@ -105,6 +105,8 @@ function initialState(): GameState {
     nextMachineListingDay: null,
     serviceJobLedgers: {},
     inspectionVisit: null,
+    workbenchPartId: null,
+    machinePartId: null,
     storyMissions: [],
     // An empty bench (no assemblies pulled) - matches
     // `createInitialGameState`'s own seed, so the golden reflects the live shape.
@@ -272,7 +274,12 @@ describe('advanceDay golden master', () => {
     // Every auction catalogue this script draws now picks from a larger pool,
     // so the lots differ from day one and the whole career diverges. Nothing
     // in the sim moved. Re-derived from a real run.
-    expect(hashState(finalState)).toBe('ee5c1e12')
+    //
+    // It moves again for the workbench: `GameState` gains the two work
+    // stations this hash serialises, and on-car repair narrows to the parts
+    // that never come off, so any scripted repair of a removable part is now
+    // bench work. Re-derived from a real run.
+    expect(hashState(finalState)).toBe('c70b0e37')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -516,7 +523,11 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // shipped roster grows from 26 cars to 48, so the acquisition roll draws
     // from a larger pool and the career diverges from its first catalogue.
     // Nothing in the sim moved. Re-derived from a real run.
-    expect(hashState(acquisitionCareer().sold)).toBe('bfb58e22')
+    //
+    // It moves again for the workbench, on the same terms as the golden
+    // master above: `GameState` gains the two work stations this hash
+    // serialises. Re-derived from a real run.
+    expect(hashState(acquisitionCareer().sold)).toBe('7897fba8')
   })
 })
 

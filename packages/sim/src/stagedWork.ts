@@ -52,6 +52,7 @@ import {
   refitLaborSlotsFor,
   resolveJobLabor,
 } from './jobs'
+import { reconcileStations } from './parts'
 import { makeCarOrigin } from './provenance'
 import { updateServiceJobLedger } from './serviceJobLedger'
 
@@ -521,11 +522,13 @@ function resolvePipelineInstallPanelAction(
   const partInventory = state.partInventory.filter((p) => p.id !== action.partInstanceId)
 
   const isOwnedCar = state.ownedCars.some((c) => c.id === carInstanceId)
-  const withInventory: GameState = {
+  // The panel has left the warehouse for the zone, so whichever station it was
+  // on is now clear.
+  const withInventory: GameState = reconcileStations({
     ...state,
     partInventory,
     energySpentToday: state.energySpentToday + laborSlotsRequired,
-  }
+  })
   const next = writeBackCar(withInventory, carInstanceId, nextCar)
   if (!next) return NOOP_PIPELINE_RESULT(state)
   const pricePaidYen = newPanelInstance.pricePaidYen ?? 0

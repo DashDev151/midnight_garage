@@ -20,6 +20,7 @@ import {
   installLaborSlotsFor,
   machineAssistFeeYen,
   naToTurboConversionBlocked,
+  reconditionGateReason,
   reconditionQuote,
   refitLaborSlotsFor,
   removeBlockReason,
@@ -32,6 +33,7 @@ import {
 } from '../src/jobs'
 import { planGroupRepair } from '../src/bands'
 import { buildSimContext } from '../src/context'
+import { resolvePlaceOnStation } from '../src/parts'
 import { makeCarOrigin, makeMarketOrigin } from '../src/provenance'
 import {
   buildCarInstance,
@@ -130,6 +132,8 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     nextMachineListingDay: null,
     serviceJobLedgers: {},
     inspectionVisit: null,
+    workbenchPartId: null,
+    machinePartId: null,
     storyMissions: [],
     machineHirePaidDayByGroup: { ...ALL_LINES_HIRED_DAY_1 },
     ...overrides,
@@ -382,7 +386,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
     expect(second.state.jobs).toHaveLength(1)
   })
 
-  it('a different component on the same car gets its own job', () => {
+  it('a different address on the same car gets its own job', () => {
     const first = findOrCreateJob(
       baseState(),
       {
@@ -397,10 +401,13 @@ describe('findOrCreateJob (Sprint 11)', () => {
     const second = findOrCreateJob(
       first.state,
       {
-        // 'interior' is used here since engine is entirely bench-only now.
+        // The chassis, addressed per part: every removable slot is bench work
+        // now, so the body group's fixed carriers are the whole of what an
+        // on-car repair job can still address.
         carInstanceId: car.id,
         kind: 'repair-zone',
-        componentId: 'interior',
+        componentId: 'body',
+        carPartId: 'chassis',
         targetBand: 'fine',
         laborSlotsRequired: 2,
       },
@@ -493,10 +500,10 @@ describe('findOrCreateJob (Sprint 11)', () => {
     it('Sprint 42: repairYen accumulates across a second repair job on the same car', () => {
       const first = findOrCreateJob(baseState(), spec, CONTEXT)
       const afterFirstRepairYen = first.state.carLedgers[car.id]!.repairYen
-      // A different group's own job is independent (one open job per
-      // component at a time, not one per car) - both charges land on the
+      // A different address's own job is independent (one open job per
+      // address at a time, not one per car) - both charges land on the
       // same car's ledger.
-      const secondSpec = { ...spec, componentId: 'interior' as const, laborSlotsRequired: 2 }
+      const secondSpec = { ...spec, carPartId: 'chassis' as const, laborSlotsRequired: 2 }
       const second = findOrCreateJob(first.state, secondSpec, CONTEXT)
       expect(second.state.carLedgers[car.id]!.repairYen).toBeGreaterThan(afterFirstRepairYen)
     })
@@ -1777,7 +1784,10 @@ describe('the equivalence-priced labour model (Sprint 79 decision 1, maintainer 
 
     const pulledRims = afterBoth.partInventory.find((p) => p.id === originalRims.id)!
     expect(pulledRims.band).toBe('worn')
-    const repair = resolveReconditionLabor(afterBoth, pulledRims.id, 'fine', Infinity, CONTEXT)
+    // Storage does no work: the rims are carried to the bench before anything
+    // is done to them. Free and instant, so nothing about the total moves.
+    const onBench = resolvePlaceOnStation(afterBoth, 'workbench', pulledRims.id)
+    const repair = resolveReconditionLabor(onBench, pulledRims.id, 'fine', Infinity, CONTEXT)
     expect(repair.laborSlotsUsed).toBeGreaterThan(0)
     const repairedRims = repair.state.partInventory.find((p) => p.id === originalRims.id)!
     expect(repairedRims.band).toBe('fine') // no longer matches the 'worn' vacated baseline
@@ -2044,8 +2054,35 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
     })
   }
 
+  /** The loose part in the warehouse AND on the bench, which is where repair
+   * happens. Carrying it there is free and instant, so nothing about the
+   * economy these tests measure moves with it. */
+  function benchState(overrides: Partial<GameState> = {}): GameState {
+    return baseState({
+      ownedCars: [],
+      partInventory: [loosePart],
+      workbenchPartId: loosePart.id,
+      ...overrides,
+    })
+  }
+
+  it('refuses a part still in the warehouse: storage holds parts, the bench does the work', () => {
+    const inStorage = baseState({ ownedCars: [], partInventory: [loosePart] })
+    expect(reconditionGateReason(inStorage, loosePart.id)).toBe('not-on-workbench')
+    expect(reconditionQuote(inStorage, loosePart.id, 'fine', CONTEXT)).toBeNull()
+    const refused = resolveReconditionLabor(inStorage, loosePart.id, 'fine', 60, CONTEXT)
+    expect(refused.state).toBe(inStorage)
+    expect(refused.laborSlotsUsed).toBe(0)
+    // On the bench, the identical call goes through.
+    const onBench = resolvePlaceOnStation(inStorage, 'workbench', loosePart.id)
+    expect(reconditionGateReason(onBench, loosePart.id)).toBeNull()
+    expect(
+      resolveReconditionLabor(onBench, loosePart.id, 'fine', 60, CONTEXT).laborSlotsUsed,
+    ).toBeGreaterThan(0)
+  })
+
   it('the recondition quote matches the on-car per-part repair plan for the identical part, exactly - Sprint 44: one shared formula, no car-dependent factor to isolate from', () => {
-    const invState = baseState({ ownedCars: [], partInventory: [loosePart] })
+    const invState = benchState()
     const quote = reconditionQuote(invState, loosePart.id, 'fine', CONTEXT)!
     expect(quote).not.toBeNull()
 
@@ -2068,7 +2105,7 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
   })
 
   it("Sprint 42: a bench recondition adds its full repair charge to the loose instance's pricePaidYen, not any car ledger", () => {
-    const invState = baseState({ ownedCars: [], partInventory: [loosePart] })
+    const invState = benchState()
     const quote = reconditionQuote(invState, loosePart.id, 'fine', CONTEXT)!
     // Offer a full day's energy so the energy-sized recondition completes.
     const result = resolveReconditionLabor(invState, loosePart.id, 'fine', 60, CONTEXT)
@@ -2085,7 +2122,11 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
       id: 'pi-recon-priced',
       pricePaidYen: 20_000,
     }
-    const invState = baseState({ ownedCars: [], partInventory: [alreadyPriced] })
+    const invState = baseState({
+      ownedCars: [],
+      partInventory: [alreadyPriced],
+      workbenchPartId: alreadyPriced.id,
+    })
     const quote = reconditionQuote(invState, alreadyPriced.id, 'fine', CONTEXT)!
     const result = resolveReconditionLabor(invState, alreadyPriced.id, 'fine', 10, CONTEXT)
     const reconditioned = result.state.partInventory.find((p) => p.id === alreadyPriced.id)
@@ -2142,7 +2183,7 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
     // same starting band) to mint - the SAME repairStepFraction, priced off
     // the SAME instance's own catalog price, since there is no car-dependent
     // factor left to differ by.
-    const invState = baseState({ ownedCars: [], partInventory: [loosePart] })
+    const invState = benchState()
     const benchPlan = planGroupRepair(
       carWithPoorPanels(),
       'body',
@@ -2174,18 +2215,9 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
 
   it('is sized by the same tool tier as on-car repair (no cheaper or slower bench path) - Sprint 36', () => {
     // poor -> fine is 2 grades: 2 slots at tier 1, 1 slot at tier 3, both paths.
-    const t1Quote = reconditionQuote(
-      baseState({ ownedCars: [], partInventory: [loosePart] }),
-      loosePart.id,
-      'fine',
-      CONTEXT,
-    )!
+    const t1Quote = reconditionQuote(benchState(), loosePart.id, 'fine', CONTEXT)!
     const t3Quote = reconditionQuote(
-      baseState({
-        ownedCars: [],
-        partInventory: [loosePart],
-        toolTiers: testToolTiers({ body: 3 }),
-      }),
+      benchState({ toolTiers: testToolTiers({ body: 3 }) }),
       loosePart.id,
       'fine',
       CONTEXT,
@@ -2222,7 +2254,11 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
       band: 'worn',
       origin: makeMarketOrigin(1),
     }
-    const state = baseState({ ownedCars: [], partInventory: [wornTyres] })
+    const state = baseState({
+      ownedCars: [],
+      partInventory: [wornTyres],
+      workbenchPartId: wornTyres.id,
+    })
 
     expect(reconditionQuote(state, wornTyres.id, 'mint', CONTEXT)).toBeNull()
 

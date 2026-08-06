@@ -114,7 +114,6 @@ function onSelect(partInstanceId: string): void {
         :part="entry.part"
         :fits="entry.fits"
         :no-fit-reason="entry.noFitReason"
-        :show-recondition="false"
         @select="onSelect"
       />
     </ul>

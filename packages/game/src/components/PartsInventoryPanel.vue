@@ -4,13 +4,15 @@ import PartCard from './PartCard.vue'
 import { useGameStore } from '../stores/gameStore'
 
 /**
- * The owned-parts pick list - every part not currently staged
- * anywhere, draggable onto a car's component drop zones.
- * Shared, unmodified, between the standalone inventory screen and the panel
- * embedded on `CarDetailScreen.vue`: picking a part here (the click-fallback
- * "move…" toggle) persists across navigation via the shared drag session, so
- * starting a pick on the standalone screen and placing it on a car page away
- * works for free - no extra wiring needed for that to work.
+ * The warehouse list: every owned part not currently planned onto a car,
+ * draggable onto a car's component drop zones. Storage lists, holds and hands
+ * over; no work is started from here, so a part out on the workshop floor's
+ * bench or on the machine is still listed and simply says where it is
+ * (`PartCard.vue`).
+ *
+ * Picking a part here (the click-fallback "move…" toggle) persists across
+ * navigation via the shared drag session, so starting a pick on the inventory
+ * screen and placing it on a car page away works for free.
  */
 const game = useGameStore()
 </script>

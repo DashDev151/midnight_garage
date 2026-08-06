@@ -399,9 +399,11 @@ export interface GroupRepairPlan {
  * `onlyPartId`, when set, restricts the plan to that one part; a tool line
  * still covers the whole group, so a per-part repair doesn't get its own tier.
  *
- * A `bolt-on`/`buried` part is bench-only and excluded from on-car
- * candidates here; bench recondition (`resolveReconditionLabor`) is
- * unaffected, since a pulled part still repairs off the car.
+ * A REMOVABLE part is bench-only and excluded from on-car candidates here: it
+ * comes off, goes to the warehouse, and is repaired on the workshop floor's
+ * bench (`resolveReconditionLabor`). Only the three fixed body carriers
+ * (`chassis`, `panels`, `paint`) are repaired in place, because they never
+ * come off.
  *
  * The optional `crew` context applies the benched crew's live effects to a
  * non-empty plan: the speed discount cuts `laborSlotsRequired`, and a
@@ -446,7 +448,7 @@ export function planGroupRepair(
     const installed = car.parts[partId].installed!
     const entry = partsTaxonomyById[partId]
     if (!entry) continue
-    if (entry.depthClass !== 'surface') continue // bench-only - see doc comment above
+    if (entry.removable) continue // bench-only - see doc comment above
     const catalogPart = partsById[installed.partId]
     if (!catalogPart) continue
     const plan = planPartRepair(
@@ -474,11 +476,13 @@ export function planGroupRepair(
 
 /**
  * The worst REPAIRABLE, sub-mint, on-car present-part band within `groupId`
- * - the group "Repair all" control's own floor. Distinct from the group's
- * worst-band DISPLAY chip, which correctly includes scrap/non-repairable/
- * bench-only parts as real information; feeding THAT into the picker would
- * offer a dead repair target that silently no-ops. Null when nothing in the
- * group is both repairable and below mint.
+ * - the group "Repair all" control's own floor, and so scoped to what can
+ * actually be repaired on the car: the fixed body carriers, never a removable
+ * part (which is bench work, `planGroupRepair` above). Distinct from the
+ * group's worst-band DISPLAY chip, which correctly includes scrap,
+ * non-repairable and bench-only parts as real information; feeding THAT into
+ * the picker would offer a dead repair target that silently no-ops. Null when
+ * nothing in the group is both repairable and below mint.
  */
 export function worstRepairableBandInGroup(
   car: CarInstance,
@@ -491,7 +495,7 @@ export function worstRepairableBandInGroup(
     if (car.zoneState && isBodyDerivedPart(partId)) continue // derived - never a repair target
     const installed = car.parts[partId].installed!
     const entry = partsTaxonomyById[partId]
-    if (!entry || entry.depthClass !== 'surface' || !canRepair(installed.band, entry)) continue
+    if (!entry || entry.removable || !canRepair(installed.band, entry)) continue
     if (bandIndex(installed.band) >= bandIndex('mint')) continue
     if (worst === null || bandIndex(installed.band) < bandIndex(worst)) worst = installed.band
   }

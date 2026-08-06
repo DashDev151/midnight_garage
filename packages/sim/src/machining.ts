@@ -56,13 +56,42 @@ export function machiningCountOf(instance: PartInstance | null | undefined): num
   return machiningOf(instance).length
 }
 
-/** The operations the machine shop offers for one slot, in catalogue order.
- * Empty for the twenty-five slots a machinist never touches. */
+/**
+ * Where an operation is performed, which is also what it is addressed by: a
+ * `loose-part` operation is quoted against one `PartInstance` on the machine,
+ * a `fitted-part` one against a slot on an assembled car.
+ */
+export type MachiningVenue = MachiningOperation['performedOn']
+
+/**
+ * One operation by id, or `undefined` when the catalogue does not hold it -
+ * the one lookup, so an unresolvable id is refused rather than defaulted at
+ * each call site. `venue` narrows it to the operations performed there, which
+ * is what stops a room quoting work it does not do: the machine shop cannot
+ * resolve a corner weight, and the car cannot resolve a bore.
+ */
+export function machiningOperationById(
+  operationId: string | undefined,
+  economy: EconomyConfig,
+  venue?: MachiningVenue,
+): MachiningOperation | undefined {
+  if (!operationId) return undefined
+  return economy.machining.operations.find(
+    (operation) =>
+      operation.id === operationId && (venue === undefined || operation.performedOn === venue),
+  )
+}
+
+/** The operations performed at `venue` on one slot, in catalogue order. Empty
+ * for a slot that venue never touches. */
 export function machiningOperationsForSlot(
   carPartId: CarPartId,
   economy: EconomyConfig,
+  venue: MachiningVenue,
 ): readonly MachiningOperation[] {
-  return economy.machining.operations.filter((operation) => operation.carPartId === carPartId)
+  return economy.machining.operations.filter(
+    (operation) => operation.carPartId === carPartId && operation.performedOn === venue,
+  )
 }
 
 /** The four slots that hold the engine's own castings, which are the only

@@ -746,8 +746,18 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * dev-console-only) and nothing downstream ever reads it again. The version
  * bump alone is still required (Save law) so an old client rejects a v65
  * save rather than reading a shape it no longer understands.
+ * v65 -> v66 (the workbench and the machine): `GameStateSchema` gains
+ * `workbenchPartId` and `machinePartId`, the two work stations a part is
+ * carried to before it can be repaired or machined, and the `part-machined`
+ * day-log entry drops its `carInstanceId` (machining now addresses a loose
+ * part, never a car). Per directive 19, a plain SAVE_VERSION bump with NO
+ * `MIGRATIONS[65]` entry and no legacy-compat branch: both new fields default
+ * to `null` (both stations clear, which is where a career resumes anyway), and
+ * the day log is session-scoped and never persisted. The version bump alone is
+ * still required (Save law) so an old client rejects a v66 save rather than
+ * silently stripping the stations and leaving work with nowhere to happen.
  */
-export const SAVE_VERSION = 65
+export const SAVE_VERSION = 66
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

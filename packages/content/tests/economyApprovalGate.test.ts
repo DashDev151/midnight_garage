@@ -2024,6 +2024,17 @@ import storyMissions from '../data/storyMissions.json'
  * the first three rungs now cost about 50 cars and the last about 75. A whole campaign is 98 sales
  * for a shop that knows its buyers and 195 for one that does not, which is the spread the taste
  * rework exists to create. No other lever moves.
+ *
+ * Re-pinned for `machining.operations[].performedOn`, a NEW defaulted enum
+ * (`loose-part` or `fitted-part`) carried on `corner-weighting` and `show-fitment` as
+ * `fitted-part`. Every other operation is absent from the diff and takes the schema default.
+ * It is a structural fact rather than a tunable: no price, payout, labour figure or formula
+ * moves, and the field says only where an operation physically happens. Those two are setup
+ * work and can only be judged with the car assembled (scales under a whole car; how the wheels
+ * sit in the arches), so they are addressed by car and slot and offered on the car's own
+ * screen, while the other thirteen are addressed by a loose part and offered at the machine.
+ * No mission payout or budget cap moves, and `partPricing.json` / `damagePatterns.json` are
+ * untouched, so their hashes and the payout pin hold unchanged.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -2033,7 +2044,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('c65fa8e2a64cd0d158383130aed591982885b109de02dd8137abb9951ae3283b')
+    ).toBe('44611f2bd60835e7ede7d3a550bb84c04dedd23255f764c46cd0366a4c98d4d6')
   })
 
   it('damagePatterns.json matches its approved content exactly', () => {

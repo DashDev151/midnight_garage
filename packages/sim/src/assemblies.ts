@@ -19,9 +19,10 @@ import {
   refitLaborSlotsFor,
   removeLaborSlotsFor,
   removeMachineGateGroup,
+  writeCarBack,
   type MachineGateGroup,
 } from './jobs'
-import { partFitsCar } from './parts'
+import { partFitsCar, reconcileStations } from './parts'
 import { updateServiceJobLedger } from './serviceJobLedger'
 
 /**
@@ -145,24 +146,6 @@ export function benchSwapGateGroup(memberSlot: CarPartId): ComponentId | null {
  * it can't be removed again until refit dissolves this container. */
 function containerIdFor(carInstanceId: string, assemblyId: AssemblyId): string {
   return `assembly-${carInstanceId}-${assemblyId}`
-}
-
-/** Writes `car` back into whichever population holds it (owned or a customer
- * service job) - the shared bookkeeping `resolveRemovePart` inlines twice. */
-function writeCarBack(state: GameState, carInstanceId: string, car: CarInstance): GameState {
-  const ownedIndex = state.ownedCars.findIndex((c) => c.id === carInstanceId)
-  if (ownedIndex !== -1) {
-    const ownedCars = [...state.ownedCars]
-    ownedCars[ownedIndex] = car
-    return { ...state, ownedCars }
-  }
-  const serviceIndex = state.activeServiceJobs.findIndex((sj) => sj.car.id === carInstanceId)
-  if (serviceIndex !== -1) {
-    const activeServiceJobs = [...state.activeServiceJobs]
-    activeServiceJobs[serviceIndex] = { ...activeServiceJobs[serviceIndex]!, car }
-    return { ...state, activeServiceJobs }
-  }
-  return state
 }
 
 /** Posts `yen` to `partsYen` on the car's ledger (owned) or its service job's
@@ -479,12 +462,14 @@ export function resolveSwapAssemblyMember(
   }
   let partInventory = state.partInventory.filter((p) => p.id !== newPartInstanceId)
   if (displaced) partInventory = [...partInventory, displaced]
-  const next: GameState = {
+  // The fitted part has left the warehouse for the assembly, so whichever
+  // station it was on is now clear.
+  const next: GameState = reconcileStations({
     ...state,
     assemblyInventory: nextContainers,
     partInventory,
     energySpentToday: state.energySpentToday + laborSlotsUsed,
-  }
+  })
   return { state: next, log: [], ok: true }
 }
 
@@ -575,12 +560,14 @@ export function resolveBuildAssembly(
   const partInventory = state.partInventory.filter((p) => !takenIds.includes(p.id))
   const container: AssemblyContainer = { id: containerId, assemblyId, members, sourceCarId: null }
   return {
-    state: {
+    // Every member has left the warehouse for the new assembly, so any station
+    // holding one of them is now clear.
+    state: reconcileStations({
       ...state,
       partInventory,
       assemblyInventory: [...containers(state), container],
       energySpentToday: state.energySpentToday + laborSlotsUsed,
-    },
+    }),
     log: [],
     ok: true,
   }

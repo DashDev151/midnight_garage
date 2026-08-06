@@ -1,4 +1,5 @@
-import { ALL_CAR_PART_IDS, ECONOMY, type ConditionBand } from '@midnight-garage/content'
+import { ECONOMY, PARTS, type ConditionBand, type PartInstance } from '@midnight-garage/content'
+import { makeMarketOrigin } from '@midnight-garage/sim'
 import { mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -7,12 +8,11 @@ import { useGameStore } from '../stores/gameStore'
 import MachineShopScreen from './MachineShopScreen.vue'
 
 /**
- * The machine shop shows EVERYTHING to begin with: every operation, what it is
- * worth on THIS engine's character, what it costs in originality, labour and
- * reliability, and the five support ratios beside it. That last one is not
- * decoration - an operation bought on a subsystem that was never the weakest
- * changes nothing visible, and without the ratios in view that reads as a bug
- * rather than as the model working.
+ * The machine shop opens on a PART, not on a car: what is on the machine, what
+ * has already been done to it, and every operation the shop would quote for it
+ * with its full price in support, originality, labour and reliability. A part
+ * off the car has no engine of its own, so power is quoted per engine
+ * character rather than as one PS figure.
  */
 
 const mountedWrappers: VueWrapper[] = []
@@ -32,30 +32,31 @@ function mountScreen() {
 
 type Store = ReturnType<typeof useGameStore>
 
+const BLOCK_PART = PARTS.find((part) => part.carPartId === 'block')!
+
 /**
- * Grants a turbo car, brings its engine to mint (nobody machines a worn
- * block, so a granted car straight off the block is refused on that alone),
- * puts it on the ramp, and sets the engine line to `engineTier` so the bench
- * is either open or shut.
+ * Puts a loose block in the warehouse and carries it to the machine, at
+ * `band` (nobody machines a worn block, so the band is what one refusal test
+ * turns on) and with the engine line at `engineTier` so the shop is either
+ * open or shut.
  */
-function carOnTheRamp(game: Store, engineTier: 1 | 2 | 3, band: ConditionBand = 'mint'): string {
-  game.devGrantCar('toyota-supra-rz-jza80')
-  const car = game.gameState.ownedCars[game.gameState.ownedCars.length - 1]!
-  game.moveCar(car.id, 'service')
-  const parts = { ...car.parts }
-  for (const partId of ALL_CAR_PART_IDS) {
-    const installed = parts[partId].installed
-    if (installed) parts[partId] = { ...parts[partId], installed: { ...installed, band } }
+function blockOnTheMachine(game: Store, engineTier: 1 | 2 | 3, band: ConditionBand = 'mint') {
+  const instance: PartInstance = {
+    id: 'pi-loose-block',
+    partId: BLOCK_PART.id,
+    band,
+    origin: makeMarketOrigin(1),
   }
   game.gameState = {
     ...game.gameState,
-    ownedCars: game.gameState.ownedCars.map((owned) =>
-      owned.id === car.id ? { ...owned, parts, symptoms: [] } : owned,
-    ),
+    partInventory: [...game.gameState.partInventory, instance],
+    machinePartId: instance.id,
     toolTiers: { ...game.gameState.toolTiers, engine: engineTier },
   }
-  return car.id
+  return instance.id
 }
+
+const BLOCK_OPERATIONS = ECONOMY.machining.operations.filter((o) => o.carPartId === 'block')
 
 describe('MachineShopScreen', () => {
   beforeEach(() => setActivePinia(createPinia()))
@@ -63,65 +64,107 @@ describe('MachineShopScreen', () => {
     for (const wrapper of mountedWrappers.splice(0)) wrapper.unmount()
   })
 
-  it('says the bench is empty when no car is on the ramp', () => {
+  it('says the machine is empty when nothing is on it, and needs no car anywhere', () => {
     const game = useGameStore()
     game.newGame(1)
+    expect(game.gameState.serviceBayCarIds.filter((id) => id !== null)).toHaveLength(0)
     const wrapper = mountScreen()
-    expect(wrapper.find('[data-test="machine-shop-empty"]').exists()).toBe(true)
-    expect(wrapper.find('[data-test="machine-shop-support"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="station-empty-machine"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="machine-shop-part"]').exists()).toBe(false)
   })
 
-  it('lists every operation the shop does, on all four machinable slots', () => {
+  it('offers every warehouse part to carry over, and puts the picked one on the machine', async () => {
     const game = useGameStore()
     game.newGame(1)
-    carOnTheRamp(game, 3)
+    game.devGrantPart(BLOCK_PART.id)
+    const partInstanceId = game.gameState.partInventory.at(-1)!.id
+
     const wrapper = mountScreen()
-    for (const operation of ECONOMY.machining.operations) {
+    await wrapper.find(`[data-test="station-place-machine-${partInstanceId}"]`).trigger('click')
+    await wrapper.vm.$nextTick()
+
+    expect(game.gameState.machinePartId).toBe(partInstanceId)
+    expect(wrapper.find('[data-test="machine-shop-part"]').exists()).toBe(true)
+  })
+
+  it('carries the part back to the warehouse, leaving it owned and the machine clear', async () => {
+    const game = useGameStore()
+    game.newGame(1)
+    const partInstanceId = blockOnTheMachine(game, 3)
+
+    const wrapper = mountScreen()
+    await wrapper.find('[data-test="station-take-machine"]').trigger('click')
+    await wrapper.vm.$nextTick()
+
+    expect(game.gameState.machinePartId).toBeNull()
+    expect(game.gameState.partInventory.some((p) => p.id === partInstanceId)).toBe(true)
+    expect(wrapper.find('[data-test="machine-shop-part"]').exists()).toBe(false)
+  })
+
+  it('lists every operation the shop does on the part that is actually on the machine', () => {
+    const game = useGameStore()
+    game.newGame(1)
+    blockOnTheMachine(game, 3)
+    const wrapper = mountScreen()
+    expect(wrapper.find('[data-test="machine-shop-part"]').exists()).toBe(true)
+    for (const operation of BLOCK_OPERATIONS) {
       expect(
         wrapper.find(`[data-test="machine-shop-offer-${operation.id}"]`).exists(),
         operation.id,
       ).toBe(true)
     }
-    for (const slot of ['block', 'internals', 'headValvetrain', 'camsTiming']) {
-      expect(wrapper.find(`[data-test="machine-shop-slot-${slot}"]`).exists(), slot).toBe(true)
-    }
-  })
-
-  it('shows the five support ratios and flags the weakest', () => {
-    const game = useGameStore()
-    game.newGame(1)
-    carOnTheRamp(game, 3)
-    const wrapper = mountScreen()
-    for (const subsystem of [
-      'cylinderPressure',
-      'fuelling',
-      'heat',
-      'revs',
-      'torqueTransmission',
-    ]) {
+    // Operations belonging to another slot are not on this sheet - the machine
+    // holds one part, not a car's worth of slots.
+    for (const operation of ECONOMY.machining.operations.filter((o) => o.carPartId !== 'block')) {
       expect(
-        wrapper.find(`[data-test="machine-shop-ratio-${subsystem}"]`).exists(),
-        subsystem,
-      ).toBe(true)
+        wrapper.find(`[data-test="machine-shop-offer-${operation.id}"]`).exists(),
+        operation.id,
+      ).toBe(false)
     }
-    expect(wrapper.find('[data-test="machine-shop-weakest"]').exists()).toBe(true)
   })
 
-  it("shows an operation's power on this engine's own character, not a bare fraction", () => {
+  it('never offers the two setup jobs, which are judged with the car assembled', () => {
     const game = useGameStore()
     game.newGame(1)
-    carOnTheRamp(game, 3)
+    const springs = PARTS.find((part) => part.carPartId === 'springs')!
+    const instance: PartInstance = {
+      id: 'pi-loose-springs',
+      partId: springs.id,
+      band: 'mint',
+      origin: makeMarketOrigin(1),
+    }
+    game.gameState = {
+      ...game.gameState,
+      partInventory: [...game.gameState.partInventory, instance],
+      machinePartId: instance.id,
+      toolTiers: { ...game.gameState.toolTiers, suspension: 3, engine: 3 },
+      sceneStanding: { ...game.gameState.sceneStanding, touge: 'shop' },
+    }
+
     const wrapper = mountScreen()
-    // Port and polish is the biggest single operation on a boosted engine and
-    // the figure a player should meet first.
-    const text = wrapper.find('[data-test="machine-shop-power-port-and-polish"]').text()
-    expect(text).toMatch(/\+\d+\.\d PS/)
+    // The springs are on the machine and the shop has the line and the
+    // standing; corner weighting is still not a job this room does.
+    expect(wrapper.find('[data-test="machine-shop-part"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="machine-shop-offer-corner-weighting"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="machine-shop-offer-show-fitment"]').exists()).toBe(false)
+    // And it says so rather than leaving an empty list to be read as a bug.
+    expect(wrapper.find('[data-test="machine-shop-no-offers"]').exists()).toBe(true)
+  })
+
+  it("quotes an operation's power per engine character, since the part is off the car", () => {
+    const game = useGameStore()
+    game.newGame(1)
+    blockOnTheMachine(game, 3)
+    const wrapper = mountScreen()
+    const text = wrapper.find(`[data-test="machine-shop-power-${BLOCK_OPERATIONS[0]!.id}"]`).text()
+    expect(text).toContain('boosted')
+    expect(text).toMatch(/\+\d+\.\d\d per cent/)
   })
 
   it('refuses the work until the engine line owns the tooling, and says so', () => {
     const game = useGameStore()
     game.newGame(1)
-    carOnTheRamp(game, 2)
+    blockOnTheMachine(game, 2)
     const wrapper = mountScreen()
     const button = wrapper.find('[data-test="machine-shop-do-bore-and-hone"]')
     expect(button.attributes('disabled')).toBeDefined()
@@ -131,7 +174,7 @@ describe('MachineShopScreen', () => {
   it('refuses a worn block outright, whatever the tooling', () => {
     const game = useGameStore()
     game.newGame(1)
-    carOnTheRamp(game, 3, 'worn')
+    blockOnTheMachine(game, 3, 'worn')
     const wrapper = mountScreen()
     const button = wrapper.find('[data-test="machine-shop-do-bore-and-hone"]')
     expect(button.attributes('disabled')).toBeDefined()
@@ -141,13 +184,13 @@ describe('MachineShopScreen', () => {
   it('does the work on click and reports it as done afterwards', async () => {
     const game = useGameStore()
     game.newGame(1)
-    carOnTheRamp(game, 3)
+    const partInstanceId = blockOnTheMachine(game, 3)
     const wrapper = mountScreen()
     await wrapper.find('[data-test="machine-shop-do-bore-and-hone"]').trigger('click')
     await wrapper.vm.$nextTick()
 
-    const car = game.gameState.ownedCars[game.gameState.ownedCars.length - 1]!
-    expect(car.parts.block.installed?.machining).toEqual(['bore-and-hone'])
+    const worked = game.gameState.partInventory.find((p) => p.id === partInstanceId)!
+    expect(worked.machining).toEqual(['bore-and-hone'])
     expect(wrapper.find('[data-test="machine-shop-applied"]').text()).toContain('Bore and hone')
     expect(wrapper.find('[data-test="machine-shop-do-bore-and-hone"]').text()).toBe('Done')
   })
@@ -155,7 +198,7 @@ describe('MachineShopScreen', () => {
   it('charges labour and no money at all', async () => {
     const game = useGameStore()
     game.newGame(1)
-    carOnTheRamp(game, 3)
+    blockOnTheMachine(game, 3)
     const cashBefore = game.gameState.cashYen
     const spentBefore = game.gameState.energySpentToday
     const wrapper = mountScreen()

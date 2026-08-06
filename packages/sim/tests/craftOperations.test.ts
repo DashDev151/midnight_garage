@@ -20,7 +20,14 @@ import {
   machiningOf,
   machiningPowerFractionOf,
 } from '../src/machining'
-import { craftOperationCapabilityGateReason, machiningGateReason } from '../src/machiningJobs'
+import {
+  craftOperationCapabilityGateReason,
+  fittedMachiningGateReason,
+  fittedMachiningOffersFor,
+  machiningGateReason,
+  machiningReadingFor,
+  resolveFittedMachiningLabor,
+} from '../src/machiningJobs'
 import { installedPartsValueYen, retentionFor } from '../src/marketValue'
 import { createInitialGameState } from '../src/newGame'
 import { buildCarInstance, mintCarParts, testSceneStanding, testToolTiers } from './testFixtures'
@@ -185,11 +192,21 @@ describe('the gate: standing AND tool, both required', () => {
     })
   }
 
-  it('the same reasons surface through the car-specific gate the workshop actually uses', () => {
+  it('the same reasons surface through the part-specific gate the workshop actually uses', () => {
     const operation = SCENE_OPERATIONS[0]!
     const group = groupOf(operation)
-    const { state, car } = shopWith(testToolTiers({ [group]: 1 }))
-    expect(machiningGateReason(state, car.id, operation.id, CONTEXT)).toBe('tool-tier')
+    const { state } = shopWith(testToolTiers({ [group]: 1 }))
+    // The machine shop works a loose part, so the gate is asked about one
+    // sitting on the machine rather than about a car.
+    const sku = CONTEXT.stockPartByCarPartId[fitmentClassForTier(MODEL.tier)][operation.carPartId]!
+    const instance = {
+      id: 'pi-craft-part',
+      partId: sku.id,
+      band: 'mint' as const,
+      origin: { kind: 'market' as const, day: 1 },
+    }
+    const onMachine = { ...state, partInventory: [instance], machinePartId: instance.id }
+    expect(machiningGateReason(onMachine, instance.id, operation.id, CONTEXT)).toBe('tool-tier')
   })
 })
 
@@ -269,6 +286,197 @@ describe('sorting: reliability past what the condition band implies', () => {
     const sorted = withOperationApplied(worn, sorting)
     const after = computeDerivedStats(MODEL, sorted, CONTEXT.partsById, PARTS_TAXONOMY, ECONOMY)
     expect(after.reliability).toBeGreaterThan(before.reliability)
+  })
+})
+
+/**
+ * Setup work: the two operations that can only be judged with the car
+ * assembled, so they are addressed by car and slot rather than by a part on the
+ * machine. One mechanism, two address kinds - what changes is where the work
+ * happens and what it is quoted against, never what it costs or what it does.
+ */
+describe('setup work is done on the car, not at the machine', () => {
+  const SETUP_IDS = ['corner-weighting', 'show-fitment'] as const
+
+  it('is exactly those two operations, and every other one is done with the part off', () => {
+    const fitted = ECONOMY.machining.operations.filter((o) => o.performedOn === 'fitted-part')
+    expect(fitted.map((o) => o.id).sort()).toEqual([...SETUP_IDS].sort())
+    for (const operation of ECONOMY.machining.operations) {
+      if ((SETUP_IDS as readonly string[]).includes(operation.id)) continue
+      expect(operation.performedOn, operation.id).toBe('loose-part')
+    }
+  })
+
+  for (const operationId of SETUP_IDS) {
+    const operation = SCENE_OPERATIONS.find((o) => o.id === operationId)!
+    const group = groupOf(operation)
+
+    it(`${operationId}: the machine shop will not quote it, whatever is on the machine`, () => {
+      const { state } = shopWith(
+        testToolTiers({ [group]: 3, engine: 3 }),
+        testSceneStanding({ [operation.scene]: 'shop' }),
+      )
+      const sku =
+        CONTEXT.stockPartByCarPartId[fitmentClassForTier(MODEL.tier)][operation.carPartId]!
+      const instance = {
+        id: 'pi-setup-part',
+        partId: sku.id,
+        band: 'mint' as const,
+        origin: { kind: 'market' as const, day: 1 },
+      }
+      const onMachine = { ...state, partInventory: [instance], machinePartId: instance.id }
+      // Not a cut this room makes: the part is the right one and the tools are
+      // there, and the machine still refuses it.
+      expect(machiningGateReason(onMachine, instance.id, operationId, CONTEXT)).toBe(
+        'unknown-operation',
+      )
+      expect(
+        machiningReadingFor(onMachine, CONTEXT)!.offers.map((o) => o.operation.id),
+      ).not.toContain(operationId)
+    })
+
+    it(`${operationId}: answers to its own tool line, never the engine's`, () => {
+      const { car, state } = shopWith(
+        testToolTiers({ [group]: 3, engine: 1 }),
+        testSceneStanding({ [operation.scene]: 'shop' }),
+      )
+      expect(fittedMachiningGateReason(state, car.id, operationId, CONTEXT)).toBeNull()
+
+      const noLine = shopWith(
+        testToolTiers({ [group]: 2, engine: 3 }),
+        testSceneStanding({ [operation.scene]: 'shop' }),
+      )
+      expect(fittedMachiningGateReason(noLine.state, noLine.car.id, operationId, CONTEXT)).toBe(
+        'tool-tier',
+      )
+    })
+
+    it(`${operationId}: needs the scene, the car in a bay, and something fitted in the slot`, () => {
+      const tiers = testToolTiers({ [group]: 3 })
+      const { car, state } = shopWith(tiers, testSceneStanding())
+      expect(fittedMachiningGateReason(state, car.id, operationId, CONTEXT)).toBe('scene-standing')
+
+      const standing = testSceneStanding({ [operation.scene]: 'shop' })
+      const parked = shopWith(tiers, standing)
+      expect(
+        fittedMachiningGateReason(
+          { ...parked.state, serviceBayCarIds: [], parkingCarIds: [parked.car.id] },
+          parked.car.id,
+          operationId,
+          CONTEXT,
+        ),
+      ).toBe('not-in-service-bay')
+
+      const empty = shopWith(tiers, standing)
+      const stripped: CarInstance = {
+        ...empty.car,
+        parts: { ...empty.car.parts, [operation.carPartId]: { installed: null } },
+      }
+      expect(
+        fittedMachiningGateReason(
+          { ...empty.state, ownedCars: [stripped] },
+          stripped.id,
+          operationId,
+          CONTEXT,
+        ),
+      ).toBe('slot-empty')
+
+      const worn = shopWith(tiers, standing)
+      const tired: CarInstance = {
+        ...worn.car,
+        parts: mintCarParts({ [operation.carPartId]: 'worn' }),
+      }
+      expect(
+        fittedMachiningGateReason(
+          { ...worn.state, ownedCars: [tired] },
+          tired.id,
+          operationId,
+          CONTEXT,
+        ),
+      ).toBe('not-mint')
+
+      expect(fittedMachiningGateReason(state, 'no-such-car', operationId, CONTEXT)).toBe('no-car')
+    })
+
+    it(`${operationId}: lands on the fitted part, and will not be done twice`, () => {
+      const { car, state } = shopWith(
+        testToolTiers({ [group]: 3 }),
+        testSceneStanding({ [operation.scene]: 'shop' }),
+      )
+      const before = computeDerivedStats(MODEL, car, CONTEXT.partsById, PARTS_TAXONOMY, ECONOMY)
+      const done = resolveFittedMachiningLabor(state, car.id, operationId, 600, CONTEXT)
+      expect(done.laborSlotsUsed).toBe(operation.labourPoints)
+      expect(done.state.cashYen, 'setup work costs labour and no money').toBe(state.cashYen)
+      expect(done.state.jobs, 'the job opened, finished and closed').toHaveLength(0)
+      expect(done.log.some((entry) => entry.type === 'part-machined')).toBe(true)
+
+      const worked = done.state.ownedCars[0]!
+      expect(machiningOf(worked.parts[operation.carPartId].installed)).toEqual([operationId])
+      const after = computeDerivedStats(MODEL, worked, CONTEXT.partsById, PARTS_TAXONOMY, ECONOMY)
+      expect(
+        after.handling !== before.handling || after.style !== before.style,
+        `${operationId} moved nothing on the car`,
+      ).toBe(true)
+      expect(machiningCost(worked, CONTEXT.partsById, ECONOMY)).toBe(operation.authenticityCost)
+
+      expect(fittedMachiningGateReason(done.state, car.id, operationId, CONTEXT)).toBe(
+        'already-applied',
+      )
+      const again = resolveFittedMachiningLabor(done.state, car.id, operationId, 600, CONTEXT)
+      expect(again.laborSlotsUsed).toBe(0)
+    })
+
+    it(`${operationId}: a car out of the bay stalls the work rather than losing it`, () => {
+      const { car, state } = shopWith(
+        testToolTiers({ [group]: 3 }),
+        testSceneStanding({ [operation.scene]: 'shop' }),
+      )
+      // One point in, then the car rolls out: the job stays open, spends
+      // nothing, and finishes when the car comes back.
+      const started = resolveFittedMachiningLabor(state, car.id, operationId, 1, CONTEXT)
+      expect(started.laborSlotsUsed).toBe(1)
+      expect(started.state.jobs).toHaveLength(1)
+      const parked = {
+        ...started.state,
+        serviceBayCarIds: [],
+        parkingCarIds: [car.id],
+      }
+      const stalled = resolveFittedMachiningLabor(parked, car.id, operationId, 600, CONTEXT)
+      expect(stalled.laborSlotsUsed).toBe(0)
+      expect(stalled.log.some((entry) => entry.type === 'job-blocked')).toBe(true)
+      expect(machiningOf(stalled.state.ownedCars[0]!.parts[operation.carPartId].installed)).toEqual(
+        [],
+      )
+
+      const finished = resolveFittedMachiningLabor(started.state, car.id, operationId, 600, CONTEXT)
+      expect(
+        machiningOf(finished.state.ownedCars[0]!.parts[operation.carPartId].installed),
+      ).toEqual([operationId])
+    })
+  }
+
+  it('offers each one only on its own slot, priced with what it costs and what it gives', () => {
+    const { car, state } = shopWith(
+      testToolTiers({ suspension: 3, wheels: 3 }),
+      testSceneStanding({ touge: 'shop', 'show-crowd': 'shop' }),
+    )
+    const springs = fittedMachiningOffersFor(state, car.id, 'springs', CONTEXT)
+    expect(springs.map((o) => o.operation.id)).toEqual(['corner-weighting'])
+    expect(springs[0]!.handlingFraction).toBeGreaterThan(0)
+    expect(springs[0]!.stylePoints).toBe(0)
+    expect(springs[0]!.authenticityCost).toBe(2)
+    expect(springs[0]!.labourPoints).toBe(5)
+    expect(springs[0]!.gateReason).toBeNull()
+
+    const rims = fittedMachiningOffersFor(state, car.id, 'rims', CONTEXT)
+    expect(rims.map((o) => o.operation.id)).toEqual(['show-fitment'])
+    expect(rims[0]!.stylePoints).toBe(5)
+    expect(rims[0]!.handlingFraction).toBe(0)
+
+    // Every other slot has nothing to set up, including the ones the machine
+    // shop works.
+    expect(fittedMachiningOffersFor(state, car.id, 'block', CONTEXT)).toEqual([])
+    expect(fittedMachiningOffersFor(state, car.id, 'dampers', CONTEXT)).toEqual([])
   })
 })
 

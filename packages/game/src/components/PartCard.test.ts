@@ -135,9 +135,9 @@ describe('PartCard (Sprint 24 fix 5; scrap + rotary marker in Sprint 28)', () =>
     })
   })
 
-  describe('customer-owned parts + in-inventory recondition (Sprint 35)', () => {
-    /** Put one below-mint inventory part into the store so the recondition
-     * quote (which reads gameState.partInventory) resolves, and return it. */
+  describe('customer-owned parts, and where a part is', () => {
+    /** Put one inventory part into the store at `band`, in the warehouse and
+     * on no station. */
     function grantInventoryPart(band: ConditionBand) {
       const game = useGameStore()
       game.devGrantPart(part.id)
@@ -200,88 +200,33 @@ describe('PartCard (Sprint 24 fix 5; scrap + rotary marker in Sprint 28)', () =>
       expect(wrapper.find(`[data-test="scrap-part-${customerScrap.id}"]`).exists()).toBe(false)
     })
 
-    it('offers an enabled recondition control on a below-mint part at tier 1 - no tooling gate exists (Sprint 36)', () => {
-      const { instance: worn } = grantInventoryPart('worn') // nothing upgraded
-      const wrapper = mountCard({ props: { instance: worn, part } })
-      const button = wrapper.find(`[data-test="recondition-part-${worn.id}"]`)
-      expect(button.exists()).toBe(true)
-      expect(button.attributes('disabled')).toBeUndefined()
-    })
-
-    it("disables the recondition control once today's labor is spent (the labor gate stays)", () => {
-      const { game, instance: worn } = grantInventoryPart('worn')
-      game.gameState = { ...game.gameState, energySpentToday: 99 }
-      const wrapper = mountCard({ props: { instance: worn, part } })
-      expect(
-        wrapper.find(`[data-test="recondition-part-${worn.id}"]`).attributes('disabled'),
-      ).toBeDefined()
-    })
-
-    it('omits the recondition control on a mint part (nothing to climb)', () => {
-      const { instance: mint } = grantInventoryPart('mint')
-      const wrapper = mountCard({ props: { instance: mint, part } })
-      expect(wrapper.find(`[data-test="recondition-part-${mint.id}"]`).exists()).toBe(false)
-    })
-
-    it('suppresses the recondition control when show-recondition is false (the Replace drawer)', () => {
+    /**
+     * Storage lists, holds and hands over; it does no work. A card offers no
+     * repair of its own wherever it is rendered - the workshop floor's bench
+     * is the only place a loose part is put right.
+     */
+    it('offers no repair control at all, even on a below-mint part', () => {
       const { instance: worn } = grantInventoryPart('worn')
-      const wrapper = mountCard({
-        props: { instance: worn, part, showRecondition: false },
-      })
+      const wrapper = mountCard({ props: { instance: worn, part } })
       expect(wrapper.find(`[data-test="recondition-part-${worn.id}"]`).exists()).toBe(false)
     })
 
-    /**
-     * Recondition is click-per-rung, same as an on-car
-     * repair - one click climbs exactly one band, priced/labored off the
-     * real next-rung quote, never straight to mint in a single click.
-     */
-    it('clicking Recondition climbs the loose part exactly one band through the store', async () => {
+    it('marks a part out on the bench, and a part on the machine, by where it is', () => {
       const { game, instance: worn } = grantInventoryPart('worn')
+
+      game.gameState = { ...game.gameState, workbenchPartId: worn.id }
+      const onBench = mountCard({ props: { instance: worn, part } })
+      expect(onBench.find(`[data-test="part-station-${worn.id}"]`).text()).toBe('on the bench')
+
+      game.gameState = { ...game.gameState, workbenchPartId: null, machinePartId: worn.id }
+      const onMachine = mountCard({ props: { instance: worn, part } })
+      expect(onMachine.find(`[data-test="part-station-${worn.id}"]`).text()).toBe('on the machine')
+    })
+
+    it('leaves a part sitting in the warehouse unmarked', () => {
+      const { instance: worn } = grantInventoryPart('worn')
       const wrapper = mountCard({ props: { instance: worn, part } })
-
-      await wrapper.find(`[data-test="recondition-part-${worn.id}"]`).trigger('click')
-
-      expect(game.gameState.partInventory[0]?.band).toBe('fine')
-    })
-
-    it('clicking Recondition repeatedly climbs one rung at a time until mint', async () => {
-      const { game, instance: poor } = grantInventoryPart('poor')
-      // A bench recondition finishes at fine at
-      // tier 1; reaching mint needs the group's tier-2 machine owned. `dampers`
-      // is a suspension part, so own that line's tier-2 machine to climb the
-      // whole way to mint - the rung-at-a-time behaviour this test asserts.
-      game.devSetToolTier('suspension', 2)
-      const wrapper = mountCard({ props: { instance: poor, part } })
-
-      await wrapper.find(`[data-test="recondition-part-${poor.id}"]`).trigger('click')
-      expect(game.gameState.partInventory[0]?.band).toBe('worn')
-
-      await wrapper.vm.$nextTick()
-      await wrapper.find(`[data-test="recondition-part-${poor.id}"]`).trigger('click')
-      expect(game.gameState.partInventory[0]?.band).toBe('fine')
-
-      await wrapper.vm.$nextTick()
-      await wrapper.find(`[data-test="recondition-part-${poor.id}"]`).trigger('click')
-      expect(game.gameState.partInventory[0]?.band).toBe('mint')
-    })
-
-    /**
-     * Tyres/brakePadsDiscs/clutch are replace-only -
-     * the recondition control never renders for one, even below mint,
-     * mirroring how it never renders for scrap (there's simply nothing to
-     * fix on the bench either way).
-     */
-    it('omits the recondition control entirely for a non-repairable part (tyres)', () => {
-      const tyrePart = PARTS.find((p) => p.carPartId === 'tyres' && p.grade === 'stock')!
-      const game = useGameStore()
-      game.devGrantPart(tyrePart.id)
-      const granted = game.gameState.partInventory[0]!
-      const wornTyres: PartInstance = { ...granted, band: 'worn' }
-      game.gameState = { ...game.gameState, partInventory: [wornTyres] }
-
-      const wrapper = mountCard({ props: { instance: wornTyres, part: tyrePart } })
-      expect(wrapper.find(`[data-test="recondition-part-${wornTyres.id}"]`).exists()).toBe(false)
+      expect(wrapper.find(`[data-test="part-station-${worn.id}"]`).exists()).toBe(false)
     })
   })
 })

@@ -5,6 +5,7 @@ import type {
   ComponentId,
   ConditionBand,
   Grade,
+  Job,
   PartInstance,
   SellingChannelId,
   StagedAction,
@@ -19,7 +20,12 @@ import {
   fitmentClassForTier,
   titleCaseFromSlug,
 } from '@midnight-garage/content'
-import { isMetalZoneState, type DynoSessionGateReason } from '@midnight-garage/sim'
+import {
+  isMetalZoneState,
+  type DynoSessionGateReason,
+  type FittedMachiningGateReason,
+  type FittedMachiningOfferRow,
+} from '@midnight-garage/sim'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import BandChip from '../components/BandChip.vue'
@@ -46,8 +52,10 @@ import { MACHINE_LINE_NAMES } from '../utils/dayLogFormat'
 import { DYNO_NAME } from '../utils/dynoLabels'
 import { formatYen, formatYenDelta } from '../utils/formatYen'
 import { LEDGER_LINE_LABELS, formatLedgerLineYen } from '../utils/ledgerLabels'
+import { SETUP_REFUSALS } from '../utils/machiningRefusals'
 import { PAINT_COLOUR_FAMILIES, colourTokenDisplayName } from '../utils/paintFamilies'
 import { addressesOverlap, hasWorkAddress } from '../utils/partAddress'
+import { repairStepText } from '../utils/repairStepLabels'
 import {
   SELLING_CHANNEL_LABELS,
   sellingChannelAudienceLabel,
@@ -349,13 +357,6 @@ function nextPartStepOrFallback(componentId: ComponentId, carPartId: CarPartId) 
   )
 }
 
-/** The action button's full inline text - the labour figure is an integer
- * point value, shown as `Repair to fine · ¥9,600 · 20 labour`. The price and
- * labour are loud, never hover-only. */
-function repairStepText(step: NextRepairStepView): string {
-  return `Repair to ${step.targetBand} · ${formatYen(step.costYen)} · ${step.laborSlotsRequired} labour`
-}
-
 /**
  * An uncertain part's repair-step preview is a range, so
  * the tooltip never leaks the true band. Ordinary rows get the same loud text
@@ -401,7 +402,33 @@ function continueJob(componentId: ComponentId, carPartId?: CarPartId): void {
   const job = jobFor(componentId, carPartId)
   if (!d || !job) return
   if (job.kind === 'repair-zone') game.repair(d.car.id, componentId, 'mint', carPartId)
-  else if (job.partInstanceId) game.install(d.car.id, componentId, job.partInstanceId, carPartId)
+  else if (job.kind === 'machine-part' && job.machiningOperationId) {
+    game.machineFittedPart(d.car.id, job.machiningOperationId)
+  } else if (job.partInstanceId) game.install(d.car.id, componentId, job.partInstanceId, carPartId)
+}
+
+/** What the Continue control names, so a half-finished setup is never offered
+ * as an install. Empty when nothing is open at this address. */
+function continueLabelAt(componentId: ComponentId, carPartId?: CarPartId): string {
+  const job = jobFor(componentId, carPartId)
+  if (!job) return ''
+  if (job.kind === 'repair-zone') return 'Continue repair'
+  return job.kind === 'machine-part' ? 'Continue setup' : 'Continue install'
+}
+
+/** One open job as the Work list reads it: what is being done, where, and how
+ * far in. */
+function jobLine(job: Job): string {
+  const target = job.carPartId
+    ? game.carPartLabel(job.carPartId)
+    : game.componentLabel(job.componentId)
+  const what =
+    job.kind === 'repair-zone'
+      ? `repair ${target}`
+      : job.kind === 'machine-part'
+        ? `set up ${target}`
+        : 'install part'
+  return `${what} · ${job.laborSlotsSpent}/${job.laborSlotsRequired} labour`
 }
 
 /** Move this car between parking and the service bay - instant, free. */
@@ -626,25 +653,52 @@ function repairCeilingCaptionFor(componentId: ComponentId, carPartId: CarPartId)
   return d ? game.repairCeilingCaption(d.car.id, componentId, carPartId) : null
 }
 
+// --- Setup work (docs/design/systems/the-workbench.md, "The exceptions") ---
+
+/**
+ * The setup operations the selected slot offers: corner weighting on the
+ * springs, show fitment on the rims. Neither can be judged with the part off
+ * the car, so they are done here rather than in the machine shop, and each
+ * answers to its own tool line rather than to the engine's. Empty on every
+ * other slot, so the block only appears where there is something to do.
+ */
+const setupOffers = computed<readonly FittedMachiningOfferRow[]>(() => {
+  const d = detail.value
+  const partId = selectedPartId.value
+  return d && partId ? game.fittedMachiningOffers(d.car.id, partId) : []
+})
+
+function setupRefusal(reason: FittedMachiningGateReason | null): string | null {
+  return reason ? SETUP_REFUSALS[reason] : null
+}
+
+/** One setup operation's whole trade on a line, in the same loud-figure idiom
+ * every other control on this panel uses. */
+function setupFigures(offer: FittedMachiningOfferRow): string {
+  const figures: string[] = []
+  if (offer.handlingFraction > 0) {
+    figures.push(`Handling +${(offer.handlingFraction * 100).toFixed(1)} per cent`)
+  }
+  if (offer.stylePoints > 0) figures.push(`Style +${offer.stylePoints}`)
+  figures.push(
+    `Originality ${offer.authenticityCost > 0 ? '-' + offer.authenticityCost : 'nothing'}`,
+  )
+  figures.push(`Reliability -${(offer.reliabilityCost * 100).toFixed(1)} per cent`)
+  figures.push(`${offer.labourPoints} labour`)
+  return figures.join(' · ')
+}
+
+function onSetupClick(operationId: string): void {
+  const d = detail.value
+  if (d) game.machineFittedPart(d.car.id, operationId)
+}
+
 // --- Bench work ---
 
 function benchSwapCandidates(carPartId: CarPartId) {
   return game.stageableParts.filter(
     (sp) => sp.part.carPartId === carPartId && sp.instance.band !== 'scrap',
   )
-}
-
-function onBenchRecondition(member: BenchMemberView): void {
-  if (member.instance && member.reconditionStep) {
-    game.reconditionPart(member.instance.id, member.reconditionStep.targetBand)
-  }
-}
-
-/** Whether the bench recondition button renders for this member - mirrors the
- * button's own inline `v-if` (kept literal there so the template narrows
- * `reconditionStep` to non-null); the dead-end branch inverts this. */
-function benchOffersRecondition(member: BenchMemberView): boolean {
-  return member.repairable && member.reconditionStep !== null
 }
 
 /** Whether a benched member is below serviceable (worn or worse, or the slot
@@ -1308,11 +1362,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                   :data-test="'repair-part-' + selectedRow.partId"
                   @click="continueJob(selectedGroup, selectedRow.partId)"
                 >
-                  {{
-                    jobFor(selectedGroup, selectedRow.partId)?.kind === 'repair-zone'
-                      ? 'Continue repair'
-                      : 'Continue install'
-                  }}
+                  {{ continueLabelAt(selectedGroup, selectedRow.partId) }}
                 </button>
                 <span class="slot-empty">working…</span>
               </template>
@@ -1441,22 +1491,11 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             </template>
           </div>
 
-          <!-- A benched member's own actions (recondition / swap). -->
+          <!-- A benched member's own actions. A stand holds an assembly for
+               its members to be swapped; putting one right is bench work,
+               which means pulling it into the warehouse and carrying it to
+               the workshop floor. -->
           <div v-else-if="selectedBench" class="panel-actions">
-            <template
-              v-if="selectedBench.member.repairable && selectedBench.member.reconditionStep"
-            >
-              <button
-                type="button"
-                class="step-up loud"
-                :disabled="game.laborSlotsRemainingToday <= 0"
-                :data-test="'bench-recondition-' + selectedBench.member.carPartId"
-                :title="repairStepText(selectedBench.member.reconditionStep)"
-                @click="onBenchRecondition(selectedBench.member)"
-              >
-                {{ repairStepText(selectedBench.member.reconditionStep) }}
-              </button>
-            </template>
             <!-- Fitting goes through the same pick-from-your-parts drawer an
                  on-car Replace uses; selection lands in this member slot. -->
             <button
@@ -1481,12 +1520,11 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             >
               Take it off{{ labourSuffix(game.actionPoints.benchRemoveMember) }}
             </button>
-            <!-- Never a silent dead end - when nothing to recondition and
-                 nothing on hand to fit, state the situation; the player
-                 navigates the parts market themselves. -->
+            <!-- Never a silent dead end - when a tired member has nothing on
+                 hand to replace it, state the situation; the player navigates
+                 the parts market themselves. -->
             <span
               v-if="
-                !benchOffersRecondition(selectedBench.member) &&
                 benchSwapCandidates(selectedBench.member.carPartId).length === 0 &&
                 benchMemberBelowFine(selectedBench.member)
               "
@@ -1502,6 +1540,44 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               :data-test="'bench-swap-gate-' + selectedBench.member.carPartId"
               >{{ selectedBench.member.swapGateReason }}</span
             >
+          </div>
+
+          <!-- Setup work: the operations that can only be judged with the car
+               assembled, so they live on the car's own screen rather than in
+               the machine shop, and answer to their own tool line. -->
+          <div v-if="setupOffers.length > 0" class="panel-actions setup-actions">
+            <span class="zone-sub">Setup</span>
+            <div
+              v-for="setup in setupOffers"
+              :key="setup.operation.id"
+              class="setup-offer"
+              :data-test="'setup-offer-' + setup.operation.id"
+            >
+              <div class="setup-head">
+                <span class="setup-name">{{ setup.operation.displayName }}</span>
+                <button
+                  type="button"
+                  class="step-up loud"
+                  :disabled="!!setup.gateReason"
+                  :title="setupRefusal(setup.gateReason) ?? undefined"
+                  :data-test="'setup-do-' + setup.operation.id"
+                  @click="onSetupClick(setup.operation.id)"
+                >
+                  {{ setup.applied ? 'Done' : 'Set it up' }}
+                </button>
+              </div>
+              <p class="setup-note">{{ setup.operation.description }}</p>
+              <p class="setup-figures" :data-test="'setup-figures-' + setup.operation.id">
+                {{ setupFigures(setup) }}
+              </p>
+              <p
+                v-if="setupRefusal(setup.gateReason)"
+                class="blocked-reason"
+                :data-test="'setup-refusal-' + setup.operation.id"
+              >
+                {{ setupRefusal(setup.gateReason) }}
+              </p>
+            </div>
           </div>
 
           <!-- The shared assembly Remove/Refit action, when the target belongs
@@ -2043,18 +2119,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         <div v-if="detail.jobs.length" class="job-group">
           <h4>In progress</h4>
           <ul>
-            <li v-for="job in detail.jobs" :key="job.id">
-              {{
-                job.kind === 'repair-zone'
-                  ? 'repair ' +
-                    (job.carPartId
-                      ? game.carPartLabel(job.carPartId)
-                      : game.componentLabel(job.componentId))
-                  : 'install part'
-              }}
-              ·
-              {{ job.laborSlotsSpent }}/{{ job.laborSlotsRequired }} labour
-            </li>
+            <li v-for="job in detail.jobs" :key="job.id">{{ jobLine(job) }}</li>
           </ul>
         </div>
 
@@ -2406,6 +2471,38 @@ h4 {
 .panel-actions.assembly-action {
   border-top: var(--mg-border);
   padding-top: var(--mg-space-2);
+}
+
+/* Setup work reads as a short list of jobs rather than a row of controls, so
+   it stacks: each offer carries its own name, description and figures. */
+.panel-actions.setup-actions {
+  flex-direction: column;
+  align-items: stretch;
+  border-top: var(--mg-border);
+  padding-top: var(--mg-space-2);
+}
+
+.setup-offer {
+  display: grid;
+  gap: 2px;
+}
+
+.setup-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--mg-space-2);
+}
+
+.setup-name {
+  color: var(--mg-neon-cyan);
+}
+
+.setup-note,
+.setup-figures {
+  margin: 0;
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
 }
 
 .replace-btn.active-target {

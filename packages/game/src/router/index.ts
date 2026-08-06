@@ -105,6 +105,11 @@ export const router = createRouter({
       component: () => import('../screens/DynoScreen.vue'),
     },
     {
+      path: '/workshop-floor',
+      name: 'workshop-floor',
+      component: () => import('../screens/WorkshopFloorScreen.vue'),
+    },
+    {
       path: '/machine-shop',
       name: 'machine-shop',
       component: () => import('../screens/MachineShopScreen.vue'),

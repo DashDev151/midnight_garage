@@ -600,6 +600,25 @@ export const GameStateSchema = z.object({
    * overnight are simply spent, no carry-over negotiation.
    */
   inspectionVisit: InspectionVisitSchema.nullable().default(null),
+  /**
+   * The part on the bench on the workshop floor - a `PartInstance.id` into
+   * `partInventory`, or `null` when the bench is clear. One part at a time,
+   * and repair is refused for any part that is not the one sitting here
+   * (`reconditionGateReason`, sim/jobs.ts). Carrying a part to the bench and
+   * taking it back are free and instant, so this holds no fee and no day
+   * stamp; a part that leaves inventory for any reason clears the station it
+   * was on (`reconcileStations`, sim/parts.ts). At most one live at a time by
+   * construction, the same single nullable field `machineListing` and
+   * `inspectionVisit` above use.
+   */
+  workbenchPartId: z.string().min(1).nullable().default(null),
+  /**
+   * The part on the machine in the machine shop - the machining counterpart
+   * to `workbenchPartId` above, in every respect but the room and the work.
+   * A separate station rather than a share of one limit: a block can be on
+   * the machine while a damper is on the bench, and no part is ever on both.
+   */
+  machinePartId: z.string().min(1).nullable().default(null),
   /** The hand-authored campaign's live progress, one record per mission
    * that has ever left `locked` - see `StoryMissionRecordSchema` above. */
   storyMissions: z.array(StoryMissionRecordSchema).default([]),
@@ -802,9 +821,11 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
        * including the player's own (closes the close-out escape gap flagged
        * in TODO.md). */
       'not-your-part',
-      /** A `bolt-on`/`buried` part is bench-only - an on-car repair-zone job
-       * addressed at one exact non-surface slot is refused
-       * (`repairJobGate`); it must come off the car first. */
+      /** A removable part is bench-only - an on-car repair-zone job addressed
+       * at one exact removable slot is refused (`repairJobGate`); it must come
+       * off the car and go on the workshop floor's bench first. Only the three
+       * fixed body carriers (`chassis`, `panels`, `paint`) are repaired in
+       * place. */
       'bench-only',
       /** The symmetric blocker rule - a slot with anything still installed
        * in its `blockedBy` list refuses install just as it refuses
@@ -1082,14 +1103,15 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     partInstanceId: z.string().min(1),
     band: ConditionBandSchema,
   }),
-  /** One machining operation finished on the part fitted in `carPartId`. The
-   * operation is now on that `PartInstance` for good and travels with it; the
-   * band is untouched, which is why this is its own entry rather than a
-   * `job-completed`. Carries no money: the tooling was the purchase and
+  /** One machining operation finished on the loose part that was on the
+   * machine. The operation is now on that `PartInstance` for good and travels
+   * with it back onto whatever car it is fitted to; the band is untouched,
+   * which is why this is its own entry rather than a `job-completed`. Names no
+   * car: machining addresses a part off the car, and `carPartId` is the slot
+   * that part addresses. Carries no money: the tooling was the purchase and
    * labour is the whole of what an operation costs. */
   z.object({
     type: z.literal('part-machined'),
-    carInstanceId: z.string().min(1),
     carPartId: CarPartIdSchema,
     partInstanceId: z.string().min(1),
     machiningOperationId: z.string().min(1),

@@ -104,8 +104,8 @@ export interface ModelPlayRankingRow {
  *
  * - A repairable part below the target climbs at
  *   `restoration.repairStepFraction` per band step, costing
- *   `energyPerBandStepByToolTier[1]` per step. A bolt-on or buried slot is
- *   bench work, so it additionally pays to come off and go back on.
+ *   `energyPerBandStepByToolTier[1]` per step. A removable part is bench work,
+ *   so it additionally pays to come off and go back on.
  * - A part with no repair path (scrap, or a replace-only consumable below
  *   `fine`) is replaced outright at its class's stock price and comes back
  *   mint, paying removal plus install labour.
@@ -183,7 +183,10 @@ function restoreToBand(
     )
     costYen += plan.costYen
     laborPoints += plan.laborSlotsRequired
-    if (entry.depthClass !== 'surface') {
+    // Every repair of a removable part is bench work: it comes off, it is
+    // worked on the workshop floor, and it goes back on. Only the three fixed
+    // body carriers are repaired in place and pay no routing at all.
+    if (entry.removable) {
       laborPoints += removeLaborSlotsFor(partId, context) + installLaborSlotsFor(partId, context)
     }
     parts[partId] = { installed: { ...installed, band: targetBand } }

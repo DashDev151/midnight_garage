@@ -972,7 +972,7 @@ describe('saveCodec', () => {
   })
 
   it('a per-part staged action and job (carPartId set) round-trip exactly under version 17', () => {
-    expect(SAVE_VERSION).toBe(65)
+    expect(SAVE_VERSION).toBe(66)
     const perPart: GameState = GameStateSchema.parse({
       ...fullState,
       jobs: [
@@ -1019,7 +1019,7 @@ describe('saveCodec', () => {
   })
 
   it('a v31 state with an origin-carrying inventory part round-trips the origin exactly', () => {
-    expect(SAVE_VERSION).toBe(65)
+    expect(SAVE_VERSION).toBe(66)
     const withOrigin: GameState = GameStateSchema.parse({
       ...fullState,
       partInventory: [
@@ -1662,7 +1662,7 @@ describe('saveCodec', () => {
    * a real double-parked car round-trips it exactly.
    */
   it('SAVE_VERSION is current', () => {
-    expect(SAVE_VERSION).toBe(65)
+    expect(SAVE_VERSION).toBe(66)
   })
 
   it('a real pre-v26 save (a v25 envelope with no graceParkingCarId field) decodes with nothing double-parked under v26', () => {
@@ -1695,7 +1695,7 @@ describe('saveCodec', () => {
    * exactly.
    */
   it('SAVE_VERSION is current', () => {
-    expect(SAVE_VERSION).toBe(65)
+    expect(SAVE_VERSION).toBe(66)
   })
 
   it('a real pre-v27 save (a v26 envelope with neither field) decodes with nothing listed or scheduled under v27', () => {
@@ -1742,7 +1742,7 @@ describe('saveCodec', () => {
    * same slot, same band, same everything else.
    */
   it('SAVE_VERSION is current', () => {
-    expect(SAVE_VERSION).toBe(65)
+    expect(SAVE_VERSION).toBe(66)
   })
 
   it("a real pre-v28 save remaps an entry-tier car's everyday-class stock part to its own class sibling SKU", () => {

@@ -14,6 +14,7 @@ import {
   type EngineCharacter,
   type Grade,
   type MachiningOperation,
+  type PartInstance,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '../src/context'
@@ -22,11 +23,7 @@ import { machiningOf, machiningPremiumYenOf } from '../src/machining'
 import { machiningGateReason, resolveMachiningLabor } from '../src/machiningJobs'
 import { installedPartsValueYen, retentionFor } from '../src/marketValue'
 import { resolveJobLabor, resolveReconditionLabor } from '../src/jobs'
-import {
-  resolveRefitAssembly,
-  resolveRemoveAssembly,
-  resolveRemoveAssemblyMember,
-} from '../src/assemblies'
+import { resolvePlaceOnStation, resolveTakeFromStation } from '../src/parts'
 import { supportRatios, supportVerdict } from '../src/support'
 import { createInitialGameState } from '../src/newGame'
 import { buildCarInstance, mintCarParts, testToolTiers, type CarPartOverride } from './testFixtures'
@@ -468,46 +465,41 @@ function stockCarFor(
   return buildCarInstance({ id, modelId: model.id, parts: mintCarParts(overrides) })
 }
 
+interface LooseBlockOptions {
+  band?: ConditionBand
+  /** Leave the block in the warehouse instead of carrying it to the machine. */
+  onMachine?: boolean
+}
+
 /**
- * A new game with a car granted, put in the service bay, and the engine line
- * at whatever tier the test needs.
- *
- * `openBlock` empties the three slots the taxonomy says sit on top of the
- * block (`intake`, `exhaust`, `cooling`), so a removal test can reach it
- * through the real `resolveRemovePart` rather than around it.
+ * A shop with one loose block in the warehouse and, unless the test says
+ * otherwise, that block already on the machine. This is the whole of the setup
+ * a machining test needs: an operation addresses a PART, so there is no car, no
+ * service bay and no ramp anywhere in it.
  */
-function shopWith(modelId: string, engineTier: 1 | 2 | 3, openBlock = false) {
+function shopWithLooseBlock(
+  modelId: string,
+  engineTier: 1 | 2 | 3,
+  options: LooseBlockOptions = {},
+) {
   const state = createInitialGameState(CONTEXT, 1)
   const model = CARS.find((c) => c.id === modelId)!
-  const car = stockCarFor(model, 'car-test-0001', openBlock ? ENGINE_COVER_SLOTS : [])
+  const blockSku = CONTEXT.stockPartByCarPartId[fitmentClassForTier(model.tier)].block!
+  const block: PartInstance = {
+    id: 'pi-loose-block',
+    partId: blockSku.id,
+    band: options.band ?? 'mint',
+    origin: { kind: 'market', day: 1 },
+  }
   return {
     model,
-    car,
+    blockId: block.id,
     state: {
       ...state,
       cashYen: 5_000_000,
-      ownedCars: [car],
-      serviceBayCarIds: [car.id],
-      parkingCarIds: [],
-      forecourtCarIds: [],
-      graceParkingCarId: null,
+      partInventory: [block],
+      machinePartId: options.onMachine === false ? null : block.id,
       toolTiers: testToolTiers({ engine: engineTier }),
-    },
-  }
-}
-
-/** `car` with `carPartId`'s fitted part worn down, so a repair has something
- * to climb. Bands are the one thing a unit test has to set by hand; the
- * machining record below is always written by the real resolver. */
-function wornInSlot(car: CarInstance, carPartId: CarPartId, band: ConditionBand): CarInstance {
-  return {
-    ...car,
-    parts: {
-      ...car.parts,
-      [carPartId]: {
-        ...car.parts[carPartId],
-        installed: { ...car.parts[carPartId].installed!, band },
-      },
     },
   }
 }
@@ -521,172 +513,152 @@ describe('the gate', () => {
     )
     expect(belowTooling.length).toBeGreaterThan(0)
     for (const tier of belowTooling) {
-      const { state, car } = shopWith('toyota-supra-rz-jza80', tier)
-      expect(machiningGateReason(state, car.id, 'bore-and-hone', CONTEXT), `tier ${tier}`).toBe(
+      const { state, blockId } = shopWithLooseBlock('toyota-supra-rz-jza80', tier)
+      expect(machiningGateReason(state, blockId, 'bore-and-hone', CONTEXT), `tier ${tier}`).toBe(
         'tool-tier',
       )
     }
   })
 
   it('allows it at the tooling tier', () => {
-    const { state, car } = shopWith('toyota-supra-rz-jza80', ECONOMY.machining.minEngineToolTier)
-    expect(machiningGateReason(state, car.id, 'bore-and-hone', CONTEXT)).toBeNull()
+    const { state, blockId } = shopWithLooseBlock(
+      'toyota-supra-rz-jza80',
+      ECONOMY.machining.minEngineToolTier,
+    )
+    expect(machiningGateReason(state, blockId, 'bore-and-hone', CONTEXT)).toBeNull()
   })
 
   it('refuses every band below mint', () => {
     for (const band of ['scrap', 'poor', 'worn', 'fine'] as const) {
-      const { state, car } = shopWith('toyota-supra-rz-jza80', 3)
-      const worn: CarInstance = {
-        ...car,
-        parts: {
-          ...car.parts,
-          block: { installed: { ...car.parts.block.installed!, band } },
-        },
-      }
-      const withWorn = { ...state, ownedCars: [worn] }
-      expect(machiningGateReason(withWorn, worn.id, 'bore-and-hone', CONTEXT), band).toBe(
-        'not-mint',
-      )
+      const { state, blockId } = shopWithLooseBlock('toyota-supra-rz-jza80', 3, { band })
+      expect(machiningGateReason(state, blockId, 'bore-and-hone', CONTEXT), band).toBe('not-mint')
     }
   })
 
-  it('refuses a car that is not in the service bay, and one it has never heard of', () => {
-    const { state, car } = shopWith('toyota-supra-rz-jza80', 3)
-    expect(
-      machiningGateReason({ ...state, serviceBayCarIds: [] }, car.id, 'bore-and-hone', CONTEXT),
-    ).toBe('not-in-service-bay')
-    expect(machiningGateReason(state, 'no-such-car', 'bore-and-hone', CONTEXT)).toBe('not-found')
+  it('refuses a part still in the warehouse, and one it has never heard of', () => {
+    const { state, blockId } = shopWithLooseBlock('toyota-supra-rz-jza80', 3, { onMachine: false })
+    expect(machiningGateReason(state, blockId, 'bore-and-hone', CONTEXT)).toBe('not-on-machine')
+    expect(machiningGateReason(state, 'no-such-part', 'bore-and-hone', CONTEXT)).toBe('not-found')
+  })
+
+  it('refuses an operation that belongs to another slot', () => {
+    const { state, blockId } = shopWithLooseBlock('toyota-supra-rz-jza80', 3)
+    const elsewhere = operations.find((o) => o.carPartId !== 'block')!
+    expect(machiningGateReason(state, blockId, elsewhere.id, CONTEXT)).toBe('wrong-slot')
   })
 
   it('refuses an operation already on the part', () => {
-    const { state, car } = shopWith('toyota-supra-rz-jza80', 3)
-    const done = machinedCar(car, 'block', ['bore-and-hone'])
-    expect(
-      machiningGateReason({ ...state, ownedCars: [done] }, done.id, 'bore-and-hone', CONTEXT),
-    ).toBe('already-applied')
+    const { state, blockId } = shopWithLooseBlock('toyota-supra-rz-jza80', 3)
+    const done = resolveMachiningLabor(state, blockId, 'bore-and-hone', 60, CONTEXT).state
+    expect(machiningGateReason(done, blockId, 'bore-and-hone', CONTEXT)).toBe('already-applied')
   })
 })
 
 describe('doing the work', () => {
-  it('spends the authored labour and writes the operation onto the fitted part', () => {
-    const { state, car } = shopWith('toyota-supra-rz-jza80', 3)
-    const result = resolveMachiningLabor(state, car.id, 'bore-and-hone', 60, CONTEXT)
+  it('spends the authored labour and writes the operation onto the loose part', () => {
+    const { state, blockId } = shopWithLooseBlock('toyota-supra-rz-jza80', 3)
+    const result = resolveMachiningLabor(state, blockId, 'bore-and-hone', 60, CONTEXT)
     expect(result.laborSlotsUsed).toBe(operationById('bore-and-hone').labourPoints)
-    expect(machiningOf(result.state.ownedCars[0]!.parts.block.installed)).toEqual(['bore-and-hone'])
+    expect(machiningOf(result.state.partInventory[0])).toEqual(['bore-and-hone'])
     expect(result.log.some((entry) => entry.type === 'part-machined')).toBe(true)
     expect(result.state.jobs).toHaveLength(0)
   })
 
   it('costs no money at all', () => {
-    const { state, car } = shopWith('toyota-supra-rz-jza80', 3)
-    const result = resolveMachiningLabor(state, car.id, 'bore-and-hone', 60, CONTEXT)
+    const { state, blockId } = shopWithLooseBlock('toyota-supra-rz-jza80', 3)
+    const result = resolveMachiningLabor(state, blockId, 'bore-and-hone', 60, CONTEXT)
     expect(result.state.cashYen).toBe(state.cashYen)
   })
 
   it('carries across days rather than needing a whole operation of labour at once', () => {
-    const { state, car } = shopWith('toyota-supra-rz-jza80', 3)
-    const partial = resolveMachiningLabor(state, car.id, 'bore-and-hone', 2, CONTEXT)
+    const { state, blockId } = shopWithLooseBlock('toyota-supra-rz-jza80', 3)
+    const partial = resolveMachiningLabor(state, blockId, 'bore-and-hone', 2, CONTEXT)
     expect(partial.laborSlotsUsed).toBe(2)
-    expect(machiningOf(partial.state.ownedCars[0]!.parts.block.installed)).toEqual([])
-    const finished = resolveMachiningLabor(partial.state, car.id, 'bore-and-hone', 60, CONTEXT)
-    expect(machiningOf(finished.state.ownedCars[0]!.parts.block.installed)).toEqual([
-      'bore-and-hone',
-    ])
+    expect(machiningOf(partial.state.partInventory[0])).toEqual([])
+    const finished = resolveMachiningLabor(partial.state, blockId, 'bore-and-hone', 60, CONTEXT)
+    expect(machiningOf(finished.state.partInventory[0])).toEqual(['bore-and-hone'])
   })
 
   it('refuses silently when the gate refuses, spending nothing', () => {
-    const { state, car } = shopWith('toyota-supra-rz-jza80', 1)
-    const result = resolveMachiningLabor(state, car.id, 'bore-and-hone', 60, CONTEXT)
+    const { state, blockId } = shopWithLooseBlock('toyota-supra-rz-jza80', 1)
+    const result = resolveMachiningLabor(state, blockId, 'bore-and-hone', 60, CONTEXT)
     expect(result.laborSlotsUsed).toBe(0)
     expect(result.state).toBe(state)
   })
 })
 
 /**
- * The failure the `PartInstance` choice exists to prevent. Seventeen
- * production sites rebuild a car's slot as a fresh `{ installed }` literal; a
- * record kept beside `installed` would be erased by the next piece of work.
+ * The failure the `PartInstance` choice exists to prevent. Production sites
+ * rebuild a part's home as a fresh literal all over the sim; a record kept
+ * beside the instance would be erased by the next piece of work.
  *
- * Driven through the REAL repair path for an engine part rather than a
- * constructed state, because a constructed state is exactly what would not
- * have caught it. The four machinable slots are all buried, and a buried part
- * is bench-only (`planGroupRepair` skips every non-surface slot by name), so
- * its real repair is: pull it, recondition it loose, put it back. That round
- * trip drives three of the seventeen sites - `resolveRemovePart`'s
- * `{ installed: null, vacatedBaseline }`, `updateLoosePart`'s instance
- * rewrite, and `applyJobToCar`'s `{ installed: partInstance }`.
+ * Driven through the REAL bench path rather than a constructed state, because a
+ * constructed state is exactly what would not have caught it: the machined
+ * block is worn down, carried from the machine to the bench, and reconditioned
+ * there, which drives `updateLoosePart`'s own instance rewrite.
  */
 describe('machining survives a repair', () => {
-  it('is still on the block after the engine comes out, is reconditioned and goes back', () => {
-    const { state, car } = shopWith('toyota-supra-rz-jza80', 3, true)
-    const machined = resolveMachiningLabor(state, car.id, 'bore-and-hone', 60, CONTEXT).state
-    const blockId = machined.ownedCars[0]!.parts.block.installed!.id
-    const worn = { ...machined, ownedCars: [wornInSlot(machined.ownedCars[0]!, 'block', 'worn')] }
+  it('is still on the block after it is worn down and reconditioned at the bench', () => {
+    const { state, blockId } = shopWithLooseBlock('toyota-supra-rz-jza80', 3)
+    const machined = resolveMachiningLabor(state, blockId, 'bore-and-hone', 60, CONTEXT).state
 
-    const pulled = resolveRemoveAssembly(worn, car.id, 'engineAssembly', CONTEXT)
-    expect(pulled.ok, 'the engine came out').toBe(true)
-    const container = pulled.state.assemblyInventory![0]!
-    expect(machiningOf(container.members.block)).toEqual(['bore-and-hone'])
-
-    const reconditioned = resolveReconditionLabor(pulled.state, blockId, 'mint', 600, CONTEXT)
-    const benched = reconditioned.state.assemblyInventory![0]!.members.block!
+    // Bands are the one thing a unit test sets by hand; the machining record is
+    // always written by the real resolver above.
+    const worn = {
+      ...machined,
+      partInventory: machined.partInventory.map((p) =>
+        p.id === blockId ? { ...p, band: 'worn' as const } : p,
+      ),
+    }
+    const onBench = resolvePlaceOnStation(
+      resolveTakeFromStation(worn, 'machine'),
+      'workbench',
+      blockId,
+    )
+    const reconditioned = resolveReconditionLabor(onBench, blockId, 'mint', 600, CONTEXT)
+    const benched = reconditioned.state.partInventory.find((p) => p.id === blockId)!
     expect(benched.band, 'the bench repair actually climbed the band').toBe('mint')
     expect(machiningOf(benched)).toEqual(['bore-and-hone'])
-
-    const refitted = resolveRefitAssembly(reconditioned.state, container.id, CONTEXT)
-    expect(refitted.ok, 'the engine went back in').toBe(true)
-    const block = refitted.state.ownedCars[0]!.parts.block.installed!
-    expect(block.band).toBe('mint')
-    expect(machiningOf(block)).toEqual(['bore-and-hone'])
   })
 })
 
 /**
- * The travel ruling, through the real remove-and-fit path. A machined block
- * removed and fitted to another car is still machined.
+ * The travel ruling, through the real fit path. A block machined off the car
+ * carries its work, and its authenticity cost, onto whatever car it goes on.
  */
 describe('machining travels with the part', () => {
-  it('comes off one car and goes onto another still machined', () => {
-    const { state, car, model } = shopWith('toyota-supra-rz-jza80', 3, true)
-    const machined = resolveMachiningLabor(state, car.id, 'bore-and-hone', 60, CONTEXT).state
+  it('goes onto a car still machined, and takes its originality cost with it', () => {
+    const { state, model, blockId } = shopWithLooseBlock('toyota-supra-rz-jza80', 3)
+    const machined = resolveMachiningLabor(state, blockId, 'bore-and-hone', 60, CONTEXT).state
 
-    // A second car of the same model, with the block slot and everything on
-    // top of it empty, so the machined block has somewhere to go.
+    // A car with the block slot and everything on top of it empty, so the
+    // machined block has somewhere to go.
     const target = stockCarFor(model, 'car-target-0002', ['block', ...ENGINE_COVER_SLOTS])
-    const twoCars = {
+    const untouched = stockCarFor(model, 'car-stock-0003')
+    const withCar = {
       ...machined,
-      ownedCars: [...machined.ownedCars, target],
-      serviceBayCarIds: [car.id, target.id],
+      ownedCars: [target, untouched],
+      serviceBayCarIds: [target.id],
     }
 
-    // The four engine slots come off as one unit, so the block reaches the
-    // parts bin by being pulled out of its own container on the bench.
-    const pulled = resolveRemoveAssembly(twoCars, car.id, 'engineAssembly', CONTEXT)
-    expect(pulled.ok, 'the engine came out').toBe(true)
-    const containerId = pulled.state.assemblyInventory![0]!.id
-    const binned = resolveRemoveAssemblyMember(pulled.state, containerId, 'block', CONTEXT)
-    expect(binned.ok, 'the block reached the parts bin').toBe(true)
-    const loose = binned.state.partInventory.find((p) => machiningOf(p).includes('bore-and-hone'))
-    expect(loose, 'and it was still machined when it got there').toBeDefined()
-
     const fitted = resolveJobLabor(
-      binned.state,
+      withCar,
       {
         carInstanceId: target.id,
         kind: 'install-part',
         componentId: 'engine',
-        partInstanceId: loose!.id,
+        partInstanceId: blockId,
         laborSlotsRequired: 6,
       },
       600,
       CONTEXT,
     )
-    const donor = fitted.state.ownedCars.find((c) => c.id === car.id)!
     const receiver = fitted.state.ownedCars.find((c) => c.id === target.id)!
+    const stock = fitted.state.ownedCars.find((c) => c.id === untouched.id)!
     expect(machiningOf(receiver.parts.block.installed)).toEqual(['bore-and-hone'])
-    // And the authenticity cost travels with it: the car that lost the block
-    // is original again, the car that gained it is not.
-    expect(machiningCost(donor, CONTEXT.partsById, ECONOMY)).toBe(0)
+    // Fitting it also cleared the machine: the part is on a car now.
+    expect(fitted.state.machinePartId).toBeNull()
+    expect(machiningCost(stock, CONTEXT.partsById, ECONOMY)).toBe(0)
     expect(machiningCost(receiver, CONTEXT.partsById, ECONOMY)).toBe(
       operationById('bore-and-hone').authenticityCost,
     )

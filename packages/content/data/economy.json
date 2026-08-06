@@ -1194,7 +1194,8 @@
         "authenticityCost": 2,
         "labourPoints": 5,
         "scene": "touge",
-        "handlingFraction": 0.01
+        "handlingFraction": 0.01,
+        "performedOn": "fitted-part"
       },
       {
         "id": "blueprint-building",
@@ -1225,7 +1226,8 @@
         "authenticityCost": 3,
         "labourPoints": 5,
         "scene": "show-crowd",
-        "style": 5
+        "style": 5,
+        "performedOn": "fitted-part"
       },
       {
         "id": "period-correct-restoration",

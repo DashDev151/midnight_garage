@@ -4,6 +4,7 @@ import { computed } from 'vue'
 import { useDraggable } from '../composables/useDragAndDrop'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
+import { WORK_STATION_WHERE } from '../utils/workStationLabels'
 import BandChip from './BandChip.vue'
 import RotaryMarker from './RotaryMarker.vue'
 
@@ -29,13 +30,6 @@ const props = withDefaults(
      */
     fits?: boolean
     /**
-     * Whether to offer the in-inventory recondition control.
-     * Defaults to true - the browse inventory is the place to recondition a
-     * part. The `ReplaceDrawer` passes false: it's a focused install picker,
-     * not the place to also kick off bench work.
-     */
-    showRecondition?: boolean
-    /**
      * Overrides the generic "doesn't fit here" hint when `fits`
      * is false for a specific, actionable reason (e.g. the one own-car
      * capability ceiling - NA-to-turbo conversion needs a higher engine tool
@@ -43,7 +37,7 @@ const props = withDefaults(
      */
     noFitReason?: string | null
   }>(),
-  { fits: true, showRecondition: true, noFitReason: null },
+  { fits: true, noFitReason: null },
 )
 
 const emit = defineEmits<{
@@ -88,25 +82,15 @@ const isCustomerOwned = computed(() => game.isCustomerOwnedPart(props.instance))
 const originCaption = computed(() => game.describePartOrigin(props.instance))
 
 /**
- * Tyres/brakePadsDiscs/clutch are replace-only - a
- * non-repairable part can't be bench-reconditioned any more than it can be
- * repaired on a car (`isPartRepairable` reads the same taxonomy flag
- * `canRepair` does, bands.ts).
+ * Where this part is when it is not sitting in the warehouse: out on the
+ * workshop floor's bench, or on the machine in the machine shop. It is still
+ * owned and still listed here, it simply is not worked on from a storage
+ * list - the room it is in does that.
  */
-const isRepairable = computed(() => game.isPartRepairable(props.part.carPartId))
-
-/**
- * The click-per-rung bench recondition step - climbs exactly one
- * band per click, priced/labored off the real recondition quote for that
- * next rung (never a hardcoded guess). Null when there is nothing left to
- * recondition (already mint, scrap, or non-repairable).
- */
-const nextStep = computed(() =>
-  props.showRecondition && !isScrap.value && isRepairable.value
-    ? game.nextReconditionStep(props.instance.id)
-    : null,
-)
-const reconditionDisabled = computed(() => !nextStep.value || game.laborSlotsRemainingToday <= 0)
+const stationWhere = computed(() => {
+  const station = game.stationForPart(props.instance.id)
+  return station ? WORK_STATION_WHERE[station] : null
+})
 
 function onCardClick(): void {
   if (isScrap.value || !props.fits) return
@@ -121,12 +105,6 @@ function onScrapClick(): void {
 function onSellClick(): void {
   if (isCustomerOwned.value) return
   game.sellPart(props.instance.id)
-}
-
-function onReconditionClick(): void {
-  const step = nextStep.value
-  if (!step) return
-  game.reconditionPart(props.instance.id, step.targetBand)
 }
 
 // A scrap card never drags (it can never be installed anywhere) - these
@@ -172,30 +150,14 @@ function onPointerUp(event: PointerEvent): void {
         <span v-if="isCustomerOwned" class="owner-chip" :data-test="'customer-owned-' + instance.id"
           >customer's part</span
         >
+        <span v-if="stationWhere" class="station-chip" :data-test="'part-station-' + instance.id">{{
+          stationWhere
+        }}</span>
       </span>
       <span v-if="isScrap" class="scrap-hint">scrap - can't be installed anywhere</span>
       <span v-else-if="!fits" class="no-fit-hint">{{ noFitReason ?? "doesn't fit here" }}</span>
     </div>
     <div class="part-actions">
-      <template v-if="nextStep">
-        <div class="recondition-step">
-          <button
-            type="button"
-            class="recondition-handle step-up"
-            :disabled="reconditionDisabled"
-            :data-test="'recondition-part-' + instance.id"
-            :aria-label="'Recondition to ' + nextStep.targetBand"
-            :title="'Recondition to ' + nextStep.targetBand"
-            @click.stop="onReconditionClick"
-          >
-            +
-          </button>
-          <span class="step-cost"
-            >&rarr; {{ nextStep.targetBand }} &middot; {{ formatYen(nextStep.costYen) }} &middot;
-            {{ nextStep.laborSlotsRequired }} labour</span
-          >
-        </div>
-      </template>
       <template v-if="isScrap">
         <span
           v-if="isCustomerOwned"
@@ -325,6 +287,20 @@ function onPointerUp(event: PointerEvent): void {
   text-transform: none;
 }
 
+/* The whereabouts tag for a part out of storage, in the same chip vocabulary
+   as the customer-owned tag beside it, cyan to read as "in hand" rather than
+   as someone else's. */
+.station-chip {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: var(--mg-radius);
+  border: var(--mg-border);
+  border-color: var(--mg-neon-cyan);
+  color: var(--mg-neon-cyan);
+  font-size: var(--mg-fs-sm);
+  text-transform: none;
+}
+
 .part-actions {
   flex: none;
   display: flex;
@@ -335,8 +311,7 @@ function onPointerUp(event: PointerEvent): void {
 
 .grab-handle,
 .scrap-handle,
-.sell-handle,
-.recondition-handle {
+.sell-handle {
   flex: none;
   background: var(--mg-panel);
   color: var(--mg-text-dim);
@@ -358,38 +333,6 @@ function onPointerUp(event: PointerEvent): void {
 .sell-handle {
   color: var(--mg-yen);
   border-color: var(--mg-neon-cyan);
-}
-
-.recondition-handle {
-  color: var(--mg-neon-cyan);
-  border-color: var(--mg-neon-cyan);
-  cursor: pointer;
-}
-
-.recondition-handle:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
-
-/* The bench recondition control matches the car page's
-   repair rows - a compact `+` button with the cost as a quiet caption, never
-   a sentence in the button. */
-.recondition-step {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--mg-space-1);
-}
-
-.recondition-handle.step-up {
-  min-width: 28px;
-  padding: 2px 8px;
-  font-size: var(--mg-fs-md);
-  line-height: 1;
-}
-
-.step-cost {
-  color: var(--mg-text-dim);
-  font-size: var(--mg-fs-sm);
 }
 
 .locked-reason {

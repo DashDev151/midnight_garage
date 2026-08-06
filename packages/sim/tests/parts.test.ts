@@ -11,10 +11,16 @@ import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '../src/context'
 import { PARTS_EXPRESS_SURCHARGE_FRACTION, PARTS_STANDARD_DELIVERY_DAYS } from '../src/constants'
 import {
+  partIdOnStation,
+  placeOnStationGateReason,
+  reconcileStations,
   resolveBuyPart,
   resolvePartDeliveries,
+  resolvePlaceOnStation,
   resolveScrapPart,
   resolveSellPart,
+  resolveTakeFromStation,
+  stationHoldingPart,
 } from '../src/parts'
 import { makeCarOrigin, makeMarketOrigin } from '../src/provenance'
 import { buildCarInstance, testSceneStanding, testToolTiers } from './testFixtures'
@@ -62,6 +68,8 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     nextMachineListingDay: null,
     serviceJobLedgers: {},
     inspectionVisit: null,
+    workbenchPartId: null,
+    machinePartId: null,
     storyMissions: [],
     ...overrides,
   }
@@ -345,5 +353,104 @@ describe('resolveSellPart (Sprint 71 decision 6: the teardown game donor economy
     const result = resolveSellPart(state, customerUsed.id, CONTEXT)
     expect(result.state).toBe(state)
     expect(result.log).toEqual([])
+  })
+})
+
+describe('the two work stations: the bench on the workshop floor and the machine', () => {
+  const looseA: PartInstance = {
+    id: 'pi-station-a',
+    partId: CHEAPEST.id,
+    band: 'worn',
+    origin: makeMarketOrigin(1),
+  }
+  const looseB: PartInstance = { ...looseA, id: 'pi-station-b' }
+
+  for (const station of ['workbench', 'machine'] as const) {
+    it(`${station}: carries a part out of the warehouse and back, free and instant`, () => {
+      const state = baseState({ partInventory: [looseA] })
+      const placed = resolvePlaceOnStation(state, station, looseA.id)
+      expect(partIdOnStation(placed, station)).toBe(looseA.id)
+      // The part never left the warehouse, and nothing was spent to walk it
+      // across the shop.
+      expect(placed.partInventory).toEqual(state.partInventory)
+      expect(placed.cashYen).toBe(state.cashYen)
+      expect(placed.energySpentToday).toBe(state.energySpentToday)
+
+      const taken = resolveTakeFromStation(placed, station)
+      expect(partIdOnStation(taken, station)).toBeNull()
+      expect(taken.partInventory).toEqual(state.partInventory)
+      // Taking from a clear station is a no-op rather than an error.
+      expect(resolveTakeFromStation(taken, station)).toBe(taken)
+    })
+
+    it(`${station}: holds one part, and refuses a second while it is occupied`, () => {
+      const state = resolvePlaceOnStation(
+        baseState({ partInventory: [looseA, looseB] }),
+        station,
+        looseA.id,
+      )
+      expect(placeOnStationGateReason(state, station, looseB.id)).toBe('station-occupied')
+      expect(resolvePlaceOnStation(state, station, looseB.id)).toBe(state)
+      // Carrying the part that is already there is a no-op, not a refusal.
+      expect(placeOnStationGateReason(state, station, looseA.id)).toBeNull()
+    })
+
+    it(`${station}: refuses a part that is not in the warehouse`, () => {
+      const state = baseState({ partInventory: [looseA] })
+      expect(placeOnStationGateReason(state, station, 'pi-nowhere')).toBe('not-found')
+      expect(resolvePlaceOnStation(state, station, 'pi-nowhere')).toBe(state)
+    })
+  }
+
+  it('a part is never on both stations at once, and each station is its own limit', () => {
+    const onBench = resolvePlaceOnStation(
+      baseState({ partInventory: [looseA, looseB] }),
+      'workbench',
+      looseA.id,
+    )
+    expect(placeOnStationGateReason(onBench, 'machine', looseA.id)).toBe('on-other-station')
+    expect(resolvePlaceOnStation(onBench, 'machine', looseA.id)).toBe(onBench)
+    expect(stationHoldingPart(onBench, looseA.id)).toBe('workbench')
+
+    // A different part goes on the machine happily: two rooms, two stations.
+    const both = resolvePlaceOnStation(onBench, 'machine', looseB.id)
+    expect(partIdOnStation(both, 'workbench')).toBe(looseA.id)
+    expect(partIdOnStation(both, 'machine')).toBe(looseB.id)
+    expect(stationHoldingPart(both, looseB.id)).toBe('machine')
+  })
+
+  it('a part sold off the bench clears the bench', () => {
+    const state = resolvePlaceOnStation(
+      baseState({ partInventory: [looseA] }),
+      'workbench',
+      looseA.id,
+    )
+    const sold = resolveSellPart(state, looseA.id, CONTEXT)
+    expect(sold.state.partInventory).toEqual([])
+    expect(sold.state.workbenchPartId).toBeNull()
+  })
+
+  it('a part scrapped off the machine clears the machine', () => {
+    const scrapPart: PartInstance = { ...looseA, id: 'pi-station-scrap', band: 'scrap' }
+    const state = resolvePlaceOnStation(
+      baseState({ partInventory: [scrapPart] }),
+      'machine',
+      scrapPart.id,
+    )
+    const scrapped = resolveScrapPart(state, scrapPart.id, CONTEXT)
+    expect(scrapped.state.partInventory).toEqual([])
+    expect(scrapped.state.machinePartId).toBeNull()
+  })
+
+  it('reconcileStations leaves an honest pair of stations alone, by reference', () => {
+    const state = resolvePlaceOnStation(
+      baseState({ partInventory: [looseA] }),
+      'workbench',
+      looseA.id,
+    )
+    expect(reconcileStations(state)).toBe(state)
+    // And clears a station whose part has gone, whatever took it away.
+    const gone = reconcileStations({ ...state, partInventory: [] })
+    expect(gone.workbenchPartId).toBeNull()
   })
 })

@@ -47,6 +47,23 @@ describe('PartsInventoryScreen', () => {
     expect(wrapper.findAll('.part-card')).toHaveLength(2)
   })
 
+  /**
+   * A part out on a station is still owned, so the warehouse still lists it -
+   * it just says where it is, so the player can go and find it. Storage lists
+   * and hands over; it never offers the work itself.
+   */
+  it('keeps a part that is out on the bench listed, marked with where it is', () => {
+    const game = useGameStore()
+    game.devGrantPart(PARTS[0]!.id)
+    const partInstanceId = game.gameState.partInventory[0]!.id
+    game.gameState = { ...game.gameState, workbenchPartId: partInstanceId }
+
+    const wrapper = mountScreen()
+    expect(wrapper.findAll('.part-card')).toHaveLength(1)
+    expect(wrapper.find(`[data-test="part-station-${partInstanceId}"]`).text()).toBe('on the bench')
+    expect(wrapper.find(`[data-test="recondition-part-${partInstanceId}"]`).exists()).toBe(false)
+  })
+
   it('omits a part currently staged on a car - the same set CarDetailScreen uses (decision 3)', () => {
     const game = useGameStore()
     // devGrantCar() with no id defaults to the first roster model

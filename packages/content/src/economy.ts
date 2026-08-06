@@ -696,6 +696,17 @@ const MachiningOperationSchema = z.object({
   style: z.number().default(0),
   reliabilityConditionBonus: z.number().min(0).default(0),
   coherenceSupported: z.boolean().default(false),
+  /**
+   * Where the operation physically happens, which decides what it is
+   * addressed by. A `loose-part` operation is done to the part on its own,
+   * off the car and on the machine in the machine shop, so it addresses one
+   * `PartInstance` in the warehouse. A `fitted-part` operation cannot be
+   * judged with the part off (a corner weight is read off scales under an
+   * assembled car; wheel fitment is how the wheels sit in the arches), so it
+   * addresses a slot on a car that is in a service bay and writes onto
+   * whatever is installed there.
+   */
+  performedOn: z.enum(['loose-part', 'fitted-part']).default('loose-part'),
 })
 
 export type MachiningOperation = z.infer<typeof MachiningOperationSchema>

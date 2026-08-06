@@ -447,12 +447,12 @@ export function computeModelBalanceProbe(
   // already sits at or below fine is untouched - the clamp is a no-op there.
   const effectiveExpectationBand = sensibleRepairTargetBand(model, context.economy)
   const roughCar = buildRoughProbeCar(model, context)
-  // `planGroupRepair` (bands.ts) covers surface-slot candidates only:
-  // bolt-on/buried repair moved to the bench, off the on-car plan this sum
+  // `planGroupRepair` (bands.ts) covers on-car candidates only: every
+  // removable part is repaired at the bench, off the on-car plan this sum
   // reads. `repairRoughProbeCar`'s value-side lift is gated on `repairable`,
-  // not `depthClass`, so it still credits the full car - so the loop below
-  // separately prices every non-surface repairable part's own bench-repair
-  // cost.
+  // not on where the work happens, so it still credits the full car - so the
+  // loop below separately prices every removable repairable part's own
+  // bench-repair cost.
   let repairCostYen = 0
   let repairLaborSlots = 0
   for (const groupId of ComponentIdSchema.options) {
@@ -476,13 +476,13 @@ export function computeModelBalanceProbe(
   // slot it repairs.
   for (const partId of ALL_CAR_PART_IDS) {
     const entry = context.partsTaxonomyById[partId]
-    if (!entry || entry.depthClass === 'surface') continue
+    if (!entry || !entry.removable) continue
     const installed = roughCar.parts[partId].installed
     if (!installed || !canRepair(installed.band, entry)) continue
     const catalogPart = context.partsById[installed.partId]
     if (!catalogPart) continue
     // Repair level 1 (worst-case tooling): matches the fresh-shop assumption
-    // `freshToolTiers()` already applies to the surface loop above, and
+    // `freshToolTiers()` already applies to the on-car loop above, and
     // `planPartRepair`'s `costYen` is repair-level-independent regardless.
     const plan = planPartRepair(
       installed.band,

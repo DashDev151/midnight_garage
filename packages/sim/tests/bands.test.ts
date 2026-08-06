@@ -305,10 +305,11 @@ describe('energyToClimb (Sprint 94: grades x energyPerBandStepByToolTier[tier], 
   })
 })
 
-describe("planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decision 2; Sprint 44 decision 1: cost derives from the installed part's own price; Sprint 71: surface-only)", () => {
-  // body group (the one all-surface group, so on-car repair still applies
-  // to every member): panels worn (2 grades), paint poor (3 grades),
-  // chassis scrap (unrepairable - excluded), aero fine (1 grade). No
+describe("planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decision 2; Sprint 44 decision 1: cost derives from the installed part's own price; on-car repair is the fixed carriers only)", () => {
+  // body group (the one group with fixed carriers in it, so on-car repair
+  // still has something to plan): panels worn (2 grades), paint poor (3
+  // grades), chassis scrap (unrepairable - excluded), aero fine (1 grade, but
+  // REMOVABLE, so it is bench work and excluded from the on-car plan). No
   // non-repairable consumable lives in this group - that exclusion is
   // covered directly by `canRepair`'s own tests above, which every planner
   // (including this one) reuses rather than re-deriving.
@@ -321,7 +322,7 @@ describe("planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decision 2; Spr
     }),
   })
 
-  it('sums labor slots and yen across every non-mint, non-scrap, repairable present part, and excludes mint/scrap parts from partIds', () => {
+  it('sums labor slots and yen across every non-mint, non-scrap, repairable present part, and excludes mint/scrap/removable parts from partIds', () => {
     const plan = planGroupRepair(
       bodyCar,
       'body',
@@ -335,12 +336,13 @@ describe("planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decision 2; Spr
     )
     const panelsPrice = installedPriceYen(bodyCar, 'panels')
     const paintPrice = installedPriceYen(bodyCar, 'paint')
-    const aeroPrice = installedPriceYen(bodyCar, 'aero')
 
-    expect(plan.partIds).toEqual(['panels', 'paint', 'aero'])
-    expect(plan.costYen).toBe(2 * panelsPrice + 3 * paintPrice + 1 * aeroPrice)
+    // aero is repairable and a whole grade below mint, and is still excluded:
+    // it comes off, so it is repaired at the bench, never on the car.
+    expect(plan.partIds).toEqual(['panels', 'paint'])
+    expect(plan.costYen).toBe(2 * panelsPrice + 3 * paintPrice)
     // Tool line at tier 1 -> repair level 1: each grade costs EPG[1] energy.
-    expect(plan.laborSlotsRequired).toBe((2 + 3 + 1) * EPG[1])
+    expect(plan.laborSlotsRequired).toBe((2 + 3) * EPG[1])
   })
 
   it('scales costYen by repairStepFraction, rounded per part, without changing laborSlotsRequired or partIds', () => {
@@ -368,11 +370,8 @@ describe("planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decision 2; Spr
     )
     const panelsPrice = installedPriceYen(bodyCar, 'panels')
     const paintPrice = installedPriceYen(bodyCar, 'paint')
-    const aeroPrice = installedPriceYen(bodyCar, 'aero')
     const expectedScaledCost =
-      Math.round(2 * panelsPrice * 0.35) +
-      Math.round(3 * paintPrice * 0.35) +
-      Math.round(1 * aeroPrice * 0.35)
+      Math.round(2 * panelsPrice * 0.35) + Math.round(3 * paintPrice * 0.35)
 
     expect(scaled.costYen).toBe(expectedScaledCost)
     expect(scaled.costYen).toBeLessThan(unscaled.costYen)
@@ -408,7 +407,7 @@ describe("planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decision 2; Spr
     expect(level3Plan.partIds).toEqual(level1Plan.partIds)
     // Tier 3: each grade costs EPG[3] energy - strictly cheaper than tier 1, and
     // now a genuine fraction (no ceil rounding it up to a whole slot per part).
-    expect(level3Plan.laborSlotsRequired).toBe((2 + 3 + 1) * EPG[3])
+    expect(level3Plan.laborSlotsRequired).toBe((2 + 3) * EPG[3])
     expect(level3Plan.laborSlotsRequired).toBeLessThan(level1Plan.laborSlotsRequired)
   })
 
@@ -471,8 +470,9 @@ describe("planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decision 2; Spr
 })
 
 describe('planGroupRepair with benched crew (Sprint 82 decisions 2 + 5)', () => {
-  // Same all-surface body group as above: base plan is 6 slots at tool tier 1
-  // (panels worn 2 + paint poor 3 + aero fine 1), a known base cost.
+  // Same body group as above: base plan is 5 grades at tool tier 1 (panels
+  // worn 2 + paint poor 3; aero is removable and so bench work), a known base
+  // cost.
   const bodyCar = buildCarInstance({
     parts: mintCarParts({ panels: 'worn', paint: 'poor', chassis: 'scrap', aero: 'fine' }),
   })
@@ -504,12 +504,12 @@ describe('planGroupRepair with benched crew (Sprint 82 decisions 2 + 5)', () => 
   it('cuts the plan labour by the crew speed discount and leaves cost untouched without a perfectionist', () => {
     const base = planBody()
     const withCrew = planBody({ staff: [benchedBody(5)], economy: ECONOMY })
-    // Base plan is (2+3+1) grades at tier 1 = 6 x EPG[1] energy. Body skill 5 ->
+    // Base plan is (2+3) grades at tier 1 = 5 x EPG[1] energy. Body skill 5 ->
     // curve[5] = 2 labour saved = 2 x PER energy, but crewEnergySaved never
     // saves more than half the base energy - the labour retune (case (a),
     // an intentional pacing change) halved EPG[1], so that half-of-base
     // floor, not the raw skill saving, is what actually binds here.
-    const baseEnergy = (2 + 3 + 1) * EPG[1]
+    const baseEnergy = (2 + 3) * EPG[1]
     const saved = Math.min(2 * PER, Math.floor(baseEnergy / 2), baseEnergy - PER)
     expect(base.laborSlotsRequired).toBe(baseEnergy)
     expect(withCrew.laborSlotsRequired).toBe(baseEnergy - saved)
@@ -519,14 +519,14 @@ describe('planGroupRepair with benched crew (Sprint 82 decisions 2 + 5)', () => 
 
   it('applies no speed discount for a low crew skill', () => {
     const withCrew = planBody({ staff: [benchedBody(2)], economy: ECONOMY })
-    expect(withCrew.laborSlotsRequired).toBe((2 + 3 + 1) * EPG[1])
+    expect(withCrew.laborSlotsRequired).toBe((2 + 3) * EPG[1])
   })
 
   it('a benched perfectionist trims one saved labour and discounts repair cash cost', () => {
     const base = planBody()
     const withPerf = planBody({ staff: [benchedBody(5, 'perfectionist')], economy: ECONOMY })
     // Saved 2 - 1 (perfectionist) = 1 labour = 1 x PER, so base - 1 x PER.
-    expect(withPerf.laborSlotsRequired).toBe((2 + 3 + 1) * EPG[1] - 1 * PER)
+    expect(withPerf.laborSlotsRequired).toBe((2 + 3) * EPG[1] - 1 * PER)
     expect(withPerf.costYen).toBe(
       Math.round(base.costYen * (1 - ECONOMY.staff.perfectionistPartsDiscount)),
     )
@@ -589,14 +589,15 @@ describe('the band ceiling (Sprint 93: tools cap the finish)', () => {
     )
     const panelsPrice = installedPriceYen(bodyCar, 'panels')
     const paintPrice = installedPriceYen(bodyCar, 'paint')
-    // Capped to fine: panels worn->fine (1 grade), paint poor->fine (2 grades);
-    // aero is already fine, so it has nothing to climb toward fine and drops out.
+    // Capped to fine: panels worn->fine (1 grade), paint poor->fine (2 grades).
+    // aero is removable, so it is bench work and never in an on-car plan at
+    // either ceiling.
     expect(capped.partIds).toEqual(['panels', 'paint'])
     expect(capped.costYen).toBe(1 * panelsPrice + 2 * paintPrice)
     expect(capped.laborSlotsRequired).toBe((1 + 2) * EPG[1])
-    // The unbounded band-math (no ceiling passed) still climbs every part one
-    // further grade to mint AND lifts the already-fine aero - strictly more work.
-    expect(uncapped.partIds).toEqual(['panels', 'paint', 'aero'])
+    // The unbounded band-math (no ceiling passed) still climbs both parts one
+    // further grade to mint - strictly more work.
+    expect(uncapped.partIds).toEqual(['panels', 'paint'])
     expect(uncapped.costYen).toBeGreaterThan(capped.costYen)
     expect(uncapped.laborSlotsRequired).toBeGreaterThan(capped.laborSlotsRequired)
   })

@@ -95,6 +95,8 @@ export function createInitialGameState(
     nextMachineListingDay: null,
     serviceJobLedgers: {},
     inspectionVisit: null,
+    workbenchPartId: null,
+    machinePartId: null,
     storyMissions: [],
     assemblyInventory: [],
     dyno: { owned: false, hirePaidDay: null, sessionCarId: null },
