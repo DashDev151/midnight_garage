@@ -708,6 +708,61 @@ pass."
   physics against. `harnessAcceptance.test.ts` names all three explicitly, in a list checked in
   both directions. They join the fixture when they join the spec book and the harness runs again.
 
+- [ ] **The story-mission set is meant to roughly double, and most of the new ones are unlock
+  events (maintainer sketch, 2026-08-06).** Ten missions ship today, paying 335 reputation between
+  them. Against the rebalanced ladder (0 / 140 / 450 / 1150 / 2900) that is 11.5 per cent of a whole
+  campaign and carries a player about three quarters of the way to `known`, which is the intended
+  shape: missions are the early spine and then stop mattering. **The ladder was sized expecting this
+  list to grow**, so adding these does not want a re-tune on its own.
+
+  The sketch, unplanned and unscoped, recorded so it is not lost:
+
+  - the tutorial story (exists)
+  - **free ads unlock**, deliberately very early: *"fix up an Acty for a newspaper stand"*
+  - regional auction unlock (exists)
+  - premium auction unlock (exists)
+  - weekend meets unlock (exists, `low-and-loud`)
+  - tuner magazine unlock (exists, `street-power-street-manners`)
+  - **dealer network unlock**
+  - **collector network unlock**
+  - **gaisha unlock**, which is the Import Broker and is what the five held-back gaisha cars wait on
+  - **a handful of authored specific build requests, for worldbuilding rather than for unlocking
+    anything**
+
+  Note how many are CHANNEL unlocks: that is the same list the selling-channel ladder entry above
+  asks for, so the two should be scoped together rather than separately. Each new mission is copy
+  written to the "lived in Japan in 1995" bar, and its `reputationReward` is a directive 22 lever.
+
+- [ ] **Authenticity is measurably the weakest of the five stats, and it just lost its only direct
+  payoff (measured 2026-08-06).** Two figures, both taken against shipped content:
+
+  | stat | share of buyer attention | weighted by the money those buyers move |
+  | --- | ---: | ---: |
+  | handling | 23.9% | 25.1% |
+  | power | 23.5% | 24.6% |
+  | reliability | 23.9% | 22.1% |
+  | style | 19.1% | 20.3% |
+  | **authenticity** | **9.6%** | **7.9%** |
+
+  Only two of six buyers care at all: the Collector, whose champion it is, and Daily Drivers at
+  importance 0.2. Every other stat is wanted by five or six.
+
+  **Weighting by money makes it worse rather than better, which is the counterintuitive part.** The
+  natural defence is that collectors are few but rich. Measured, the Collector is the
+  second-CHEAPEST buyer in the game at a mean 1,832,917 yen against the Show Crowd's 2,496,932,
+  because a Collector can only take a STOCK car (any build destroys the authenticity their gate
+  reads) and the stock roster skews cheap, while the built-car scenes take the expensive metal.
+
+  **And sprint 184 removed its compensation.** Concours was the one place authenticity paid the
+  player directly, independent of who was buying; it now reaches them only through one archetype's
+  taste. So a stat with its own design doc, its own derivation and a sprint arc behind it is doing
+  under a tenth of the work.
+
+  It is also the only stat that is effectively BINARY: 100 while stock, collapsing the moment
+  anything is fitted. The other four move continuously with build quality, so a player can trade
+  against them; authenticity you either keep or spend. Worth a look after the current arc, and the
+  likely question is whether the Collector's market should reach further up the price ladder.
+
 - [ ] **Age overrides care in generation, so a surviving classic can arrive as a wreck (maintainer,
   2026-08-06).** Their words on the reasoning that produced it: *"this logic is naive. how many hard
   driven poorly taken care of 2000GTs do you think there is?"*

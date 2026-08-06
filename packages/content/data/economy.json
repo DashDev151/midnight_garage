@@ -72,10 +72,22 @@
     },
     "turnoutBandWeights": [0.2, 0.45, 0.35],
     "cadenceByTier": {
-      "local-yard": { "openDaysOfWeek": [1, 3, 5, 7], "weeksBetween": 1 },
-      "regional": { "openDaysOfWeek": [2, 4], "weeksBetween": 1 },
-      "premium": { "openDaysOfWeek": [6], "weeksBetween": 1 },
-      "collector-network": { "openDaysOfWeek": [6, 7], "weeksBetween": 2 }
+      "local-yard": {
+        "openDaysOfWeek": [1, 3, 5, 7],
+        "weeksBetween": 1
+      },
+      "regional": {
+        "openDaysOfWeek": [2, 4],
+        "weeksBetween": 1
+      },
+      "premium": {
+        "openDaysOfWeek": [6],
+        "weeksBetween": 1
+      },
+      "collector-network": {
+        "openDaysOfWeek": [6, 7],
+        "weeksBetween": 2
+      }
     }
   },
   "restoration": {
@@ -100,9 +112,18 @@
     },
     "tasteSpread": 0.12,
     "sceneStanding": {
-      "known": { "floor": 0.92, "ceiling": 1.08 },
-      "respected": { "floor": 0.95, "ceiling": 1.17 },
-      "shop": { "floor": 0.95, "ceiling": 1.25 }
+      "known": {
+        "floor": 0.92,
+        "ceiling": 1.08
+      },
+      "respected": {
+        "floor": 0.95,
+        "ceiling": 1.17
+      },
+      "shop": {
+        "floor": 0.95,
+        "ceiling": 1.25
+      }
     },
     "matchedTasteScoreThreshold": 0.5,
     "walkAwaySpread": 0.05,
@@ -209,11 +230,23 @@
         "torqueTransmission": 0.9
       },
       "demandDrivers": {
-        "cylinderPressure": { "kind": "slot", "slot": "forcedInduction" },
-        "fuelling": { "kind": "total" },
-        "heat": { "kind": "total" },
-        "revs": { "kind": "slot", "slot": "camsTiming" },
-        "torqueTransmission": { "kind": "total" }
+        "cylinderPressure": {
+          "kind": "slot",
+          "slot": "forcedInduction"
+        },
+        "fuelling": {
+          "kind": "total"
+        },
+        "heat": {
+          "kind": "total"
+        },
+        "revs": {
+          "kind": "slot",
+          "slot": "camsTiming"
+        },
+        "torqueTransmission": {
+          "kind": "total"
+        }
       },
       "supportWeights": {
         "cylinderPressure": {
@@ -359,7 +392,7 @@
       }
     },
     "aero": {
-      "downforceK": 0.000062,
+      "downforceK": 6.2e-5,
       "maxGripMultiplier": 2.5,
       "byGrade": {
         "stock": {
@@ -588,11 +621,36 @@
     "patternConditionSwingPercent": 7,
     "damageGrades": {
       "careProfiles": {
-        "cherished": { "tidy": 70, "used": 25, "rough": 5, "project": 0 },
-        "enthusiast": { "tidy": 50, "used": 35, "rough": 13, "project": 2 },
-        "mixed": { "tidy": 45, "used": 35, "rough": 15, "project": 5 },
-        "hammered": { "tidy": 25, "used": 35, "rough": 30, "project": 10 },
-        "worked": { "tidy": 20, "used": 35, "rough": 33, "project": 12 }
+        "cherished": {
+          "tidy": 70,
+          "used": 25,
+          "rough": 5,
+          "project": 0
+        },
+        "enthusiast": {
+          "tidy": 50,
+          "used": 35,
+          "rough": 13,
+          "project": 2
+        },
+        "mixed": {
+          "tidy": 45,
+          "used": 35,
+          "rough": 15,
+          "project": 5
+        },
+        "hammered": {
+          "tidy": 25,
+          "used": 35,
+          "rough": 30,
+          "project": 10
+        },
+        "worked": {
+          "tidy": 20,
+          "used": 35,
+          "rough": 33,
+          "project": 12
+        }
       },
       "careProfileByCulture": {
         "kei": "worked",
@@ -694,10 +752,30 @@
       "zonePanelMissingChance": 0.25
     },
     "paintHistory": {
-      "cherished": { "original": 90, "resprayed": 3, "mismatchedPanel": 5, "primedPanel": 2 },
-      "scene": { "original": 55, "resprayed": 30, "mismatchedPanel": 9, "primedPanel": 6 },
-      "worked": { "original": 70, "resprayed": 6, "mismatchedPanel": 14, "primedPanel": 10 },
-      "mixed": { "original": 75, "resprayed": 12, "mismatchedPanel": 9, "primedPanel": 4 }
+      "cherished": {
+        "original": 90,
+        "resprayed": 3,
+        "mismatchedPanel": 5,
+        "primedPanel": 2
+      },
+      "scene": {
+        "original": 55,
+        "resprayed": 30,
+        "mismatchedPanel": 9,
+        "primedPanel": 6
+      },
+      "worked": {
+        "original": 70,
+        "resprayed": 6,
+        "mismatchedPanel": 14,
+        "primedPanel": 10
+      },
+      "mixed": {
+        "original": 75,
+        "resprayed": 12,
+        "mismatchedPanel": 9,
+        "primedPanel": 4
+      }
     },
     "paintHistoryByCulture": {
       "kei": "worked",
@@ -718,10 +796,10 @@
   "reputation": {
     "tierThresholds": {
       "unknown": 0,
-      "local": 60,
-      "known": 200,
-      "respected": 500,
-      "legend": 1400
+      "local": 140,
+      "known": 450,
+      "respected": 1150,
+      "legend": 2900
     },
     "satisfiedSaleBonus": 15,
     "delightedSaleBonus": 30

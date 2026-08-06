@@ -416,10 +416,10 @@ describe('seed content validates against schemas', () => {
     // rather than the ~1 rep/day probe bot.
     expect(result.data.reputation.tierThresholds).toEqual({
       unknown: 0,
-      local: 60,
-      known: 200,
-      respected: 500,
-      legend: 1400,
+      local: 140,
+      known: 450,
+      respected: 1150,
+      legend: 2900,
     })
     // What a sale pays into the ladder (sprint184.md): the buyer's own
     // verdict, and nothing else. Satisfied clears the top of the tier-2

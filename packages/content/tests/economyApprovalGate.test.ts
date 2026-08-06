@@ -2014,6 +2014,16 @@ import storyMissions from '../data/storyMissions.json'
  * 1.0/1.15/1.35/1.6. No mission payout or budget cap moves: reputation is not a price, no
  * probe in `storyMissionProbes.test.ts` reads it, and `partPricing.json` /
  * `damagePatterns.json` are untouched, so their hashes and the payout pin hold unchanged.
+ *
+ * APPROVED 2026-08-06: `reputation.tierThresholds` from 0 / 60 / 200 / 500 / 1400 to
+ * **0 / 140 / 450 / 1150 / 2900**. Sprint 184 measured the earn rate after its own rebalance and
+ * found the ladder needed no correction for pacing (a mixed shop earned 23.5 points per bundle
+ * before and 23.0 after), but the SCALE was wrong independently of it: the first three rungs cost
+ * 19 cars against 34 for the last, so a career reached `local` in four sales. The rung-by-rung
+ * shape is deliberately kept back-loaded, each gap about 2.2x the one before, and only stretched:
+ * the first three rungs now cost about 50 cars and the last about 75. A whole campaign is 98 sales
+ * for a shop that knows its buyers and 195 for one that does not, which is the spread the taste
+ * rework exists to create. No other lever moves.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -2023,7 +2033,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('2634e12c2660b6f8fb54977b0bbba04c90f9ffacf4a48330048629443ed220ee')
+    ).toBe('c65fa8e2a64cd0d158383130aed591982885b109de02dd8137abb9951ae3283b')
   })
 
   it('damagePatterns.json matches its approved content exactly', () => {
