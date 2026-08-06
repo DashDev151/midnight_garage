@@ -11,7 +11,10 @@ import { computed } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import HelpHint from '../components/HelpHint.vue'
 import WorkStationTray from '../components/WorkStationTray.vue'
+import { formatYen } from '../utils/formatYen'
+import { formatAuthenticityCost, formatReliabilityCost } from '../utils/machiningFigures'
 import { MACHINE_SHOP_REFUSALS } from '../utils/machiningRefusals'
+import { machineShopMachinery, type MachineShopMachine } from './machineShopEquipment'
 import { mapBackTarget } from './mapBack'
 import { useGameStore } from '../stores/gameStore'
 
@@ -20,11 +23,19 @@ import { useGameStore } from '../stores/gameStore'
  * and every operation the shop would quote for it. No car is needed and none
  * is consulted - a block is carried here out of the warehouse and carried back
  * when the cutting is done.
+ *
+ * The room is always open. What decides whether a cut can be made is the
+ * machinery standing in it, one piece per tool line, which the room lists at
+ * the bottom rather than hiding behind a locked door.
  */
 const game = useGameStore()
 const route = useRoute()
 
 const sheet = computed(() => game.machineShopSheet)
+
+/** The room's own equipment, present or absent, every name and figure read
+ * from content (`machineShopEquipment.ts`). */
+const machinery = computed(() => machineShopMachinery(game.gameState, game.context))
 
 const backTarget = computed(() => mapBackTarget(route.query.from, { name: 'garage' }))
 
@@ -68,14 +79,6 @@ function formatSpec(value: number): string {
   return value > 0 ? `+${value.toFixed(2)}` : 'none'
 }
 
-function formatAuthenticity(value: number): string {
-  return value > 0 ? `-${value}` : 'nothing'
-}
-
-function formatReliability(value: number): string {
-  return `-${(value * 100).toFixed(1)} per cent`
-}
-
 function appliedNames(
   applied: readonly string[],
   offers: readonly { operation: MachiningOperation }[],
@@ -83,6 +86,15 @@ function appliedNames(
   return applied
     .map((id) => offers.find((offer) => offer.operation.id === id)?.operation.displayName ?? id)
     .join(', ')
+}
+
+/** What an absent machine would cost, and the standing the trade wants before
+ * it will sell you one. */
+function priceLine(machine: MachineShopMachine): string {
+  const price = `${formatYen(machine.priceYen)} when one is listed`
+  return machine.minReputationTier
+    ? `${price}, and ${machine.minReputationTier} standing before anyone will sell it to you.`
+    : `${price}.`
 }
 
 function onMachineClick(operationId: string): void {
@@ -149,14 +161,56 @@ function onMachineClick(operationId: string): void {
             </li>
             <li>Support {{ formatSpec(offer.spec) }}</li>
             <li :data-test="'machine-shop-auth-' + offer.operation.id">
-              Originality {{ formatAuthenticity(offer.authenticityCost) }}
+              Originality {{ formatAuthenticityCost(offer.authenticityCost) }}
             </li>
-            <li>Reliability {{ formatReliability(offer.reliabilityCost) }}</li>
+            <li>Reliability {{ formatReliabilityCost(offer.reliabilityCost) }}</li>
             <li>Labour {{ offer.labourPoints }} points</li>
           </ul>
           <p v-if="offer.gateReason" class="offer-refusal">{{ refusal(offer.gateReason) }}</p>
         </li>
       </ul>
+    </section>
+
+    <!-- The room, listed as what it holds. Each line of work that gets done
+         at a machine has one, and a line whose machine is missing says what
+         the machine costs rather than shutting the room. -->
+    <section class="panel" data-test="machine-shop-machinery">
+      <h3>Machinery</h3>
+      <ul class="machines">
+        <li
+          v-for="machine in machinery"
+          :key="machine.componentId"
+          class="machine"
+          :class="{ absent: !machine.present }"
+          :data-test="'machine-shop-machine-' + machine.componentId"
+        >
+          <div class="machine-head">
+            <span class="machine-name">{{ machine.displayName }}</span>
+            <span
+              class="chip"
+              :class="machine.present ? 'owned' : 'absent'"
+              :data-test="'machine-shop-machine-state-' + machine.componentId"
+              >{{ machine.present ? 'In-house' : 'Not here' }}</span
+            >
+          </div>
+          <p class="machine-note">Works on {{ machine.worksOn.join(', ') }}.</p>
+          <p
+            v-if="!machine.present"
+            class="machine-price"
+            :data-test="'machine-shop-machine-price-' + machine.componentId"
+          >
+            {{ priceLine(machine) }}
+          </p>
+        </li>
+      </ul>
+      <p class="machinery-note">
+        Used machinery comes up in the classifieds, one machine at a time.
+        <RouterLink
+          :to="{ name: 'upgrades', query: { from: 'machine-shop' } }"
+          data-test="machine-shop-to-upgrades"
+          >See what is listed.</RouterLink
+        >
+      </p>
     </section>
   </section>
 </template>
@@ -206,10 +260,69 @@ h3 {
 }
 
 .offers,
-.figures {
+.figures,
+.machines {
   list-style: none;
   margin: 0;
   padding: 0;
+}
+
+/* The room's own equipment, read as a short inventory rather than a row of
+   controls: nothing here is bought from this screen. */
+.machines {
+  display: grid;
+  gap: var(--mg-space-2);
+}
+
+.machine.absent {
+  opacity: 0.7;
+}
+
+.machine-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--mg-space-2);
+}
+
+.machine-name {
+  color: var(--mg-neon-cyan);
+}
+
+.chip {
+  border: var(--mg-border);
+  border-radius: var(--mg-radius);
+  padding: 0 var(--mg-space-1);
+  font-size: var(--mg-fs-sm);
+  white-space: nowrap;
+}
+
+.chip.owned {
+  color: var(--mg-success);
+}
+
+.chip.absent {
+  color: var(--mg-text-dim);
+}
+
+.machine-note,
+.machine-price {
+  margin: 2px 0 0;
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+}
+
+.machine-price {
+  color: var(--mg-yen);
+}
+
+.machinery-note {
+  margin: var(--mg-space-3) 0 0;
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+}
+
+.machinery-note a {
+  color: var(--mg-neon-violet);
 }
 
 .offer {

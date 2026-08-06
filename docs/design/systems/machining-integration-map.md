@@ -15,6 +15,11 @@ stale.
 (maintainer, 2026-07-31, unsigned stand-in figures) and the `machiningCost` contract in
 `desirability-system.md` section 3.
 
+**Those per-operation authenticity ratings are superseded.** The shipped costs are fractional
+`authenticityCost` values in `economy.json` under `machining.operations`, roughly an eighth of the
+integers quoted here, so every worked authenticity figure below belongs to the investigation rather
+than to the game. The contract itself survives; only the magnitudes moved.
+
 ---
 
 ## 0. The problem in one table
@@ -49,25 +54,22 @@ the money was spent.** The seam that exists (`machiningCost`) covers exactly one
 | Test reference | `packages/sim/tests/authenticity.test.ts:252` asserts it returns 0 for an all-mint car |
 | Consumed as | `raw = 100 * stockness - machiningCost(car)`, then `round(clamp(raw * conditionFactor, 0, 100))` |
 
-**The contract, verbatim from `desirability-system.md` section 3 ("The cost mapping"):**
+**The contract, from `desirability-system.md` section 3 ("The cost mapping"):**
 
-> The stand-in mapping: an operation's 1-to-10 rating IS its cost in authenticity points, summed
-> over every operation applied to the car.
->
->     machiningCost(car) = sum of the authenticity rating of every operation applied
+    machiningCost(car) = sum of the authenticityCost of every operation applied
 
 Three properties of that contract that bind the design:
 
 | property | consequence |
 | --- | --- |
 | It takes `CarInstance`, not `PartInstance` | the whole record must be reachable from the car. A loose machined part in `partInventory` is not summed by anything |
-| It is a **flat sum**, subtracted before the condition multiply | a full boost build costs 39 points off a base of 100 x stockness. It is not scaled by slot weight, by car, or by how much gain the operation bought |
-| It is subtracted, not multiplied | the lower clamp arm in `authenticityPercentOf` becomes live for the first time once this returns a real number (`docs/carstats/authenticity.md` finding F2) |
+| It is a **flat sum**, subtracted before the condition multiply | the whole catalogue of operations costs under seven points off a base of 100 x stockness. It is not scaled by slot weight, by car, or by how much gain the operation bought |
+| It is subtracted, not multiplied | it is the only term that can pull `authenticityPercentOf`'s raw figure below `100 x stockness` |
 
 **What is awkward.** The contract is car-scoped and the operations are part-scoped. A block that is
-bored, decked and O-ringed, then pulled off the car and sold, takes 23 authenticity points with it
-if the record lives on the part, and leaves them behind if the record lives on the car. Nothing in
-the contract says which.
+bored, decked and O-ringed, then pulled off the car and sold, takes its 2.6 authenticity points with
+it if the record lives on the part, and leaves them behind if the record lives on the car. Nothing
+in the contract says which.
 
 ---
 
@@ -591,18 +593,17 @@ if taken, the pre-purchase inspection routes need some way to smell it."* A mach
 auction lot is strictly harder than that, because machining is invisible: `apparentViewOf`
 (`diagnosis.ts:37`) swaps bands, and there is no band to swap.
 
-### 11d. The concours gate becomes reachable and then loseable
+### 11d. The bar authenticity answers to, and what machining spends against it
 
-`economy.json` `reputation.concoursSaleMinAuthenticityPercent` is 85, read by
-`saleReputationDeltaFor` (`packages/sim/src/carCondition.ts`) via the exported
-`authenticityPercentOf`. With every part mint the condition factor is exactly 1, so at the gate
-authenticity IS stockness: **a concours car may give up at most 15 of the 100 authored points**
-(`docs/carstats/authenticity.md` section 5).
+`reputation.concoursSaleMinAuthenticityPercent` and the `carCondition.ts` gate that read it are both
+retired: reputation reads whether the buyer got what they came for rather than what condition the
+car is in. What authenticity answers to instead is the collector's own taste, where it is the
+champion stat: target 0.90 at importance 1.00 in `buyers.json`. **So the bar is 90, and there are
+ten points to spend against it.**
 
-On the stand-in scale, a "careful freshen" (valve job 1 + full balance 1 + journal polish 1) costs 3
-and holds concours. A "mild road port" costs 15 and lands exactly on the boundary. A full boost
-build costs 39 and does not. That threshold is currently gating on a number no player can influence;
-machining is what makes it a choice, and the three worked examples land on both sides of it.
+Machining spends a fraction of them. Every operation in the catalogue applied to one stock mint car
+costs under seven points, so a fully machined numbers-matching car still clears the bar. That is
+what makes the bar something a player can work with rather than a wall.
 
 ### 11e. Part provenance and the free-refit rule
 
@@ -628,9 +629,10 @@ failure.
 `tuner` and `racer` weight it 0.00. `tasteSpread` is 0.12.
 
 So machining's authenticity cost reaches money **only through the collector**, and only within a
-+/-12 per cent band. On the stand-in scale a full boost build costs 39 points, which takes a mint
-stock car from 100 to 61 and puts the collector's 0.90 target out of reach entirely. **The
-authenticity half of machining is a collector-only mechanic** with the current buyer table.
++/-12 per cent band. Every operation in the catalogue costs under seven points, taking a mint stock
+car from 100 to 93 and leaving the collector's 0.90 target intact. **The authenticity half of
+machining is a collector-only mechanic** with the current buyer table, and on the shipped values it
+is a price the collector can absorb rather than a disqualification.
 
 ### 11h. Aspiration, character, and the operation that is only meaningful on a turbo
 

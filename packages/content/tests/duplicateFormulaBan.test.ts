@@ -141,11 +141,16 @@ const RULES: readonly DuplicateFormulaRule[] = [
     roots: SIM_AND_GAME,
   },
   {
-    // Which garage rooms render derelict is read off the same tool state the
-    // work itself gates on, in one place, rather than per screen.
-    rule: 'whether the machine shop is open (`machineShopOpen`, garageCapability.ts)',
-    allowedFiles: ['garageCapability.ts'],
-    markers: ['toolTiers.engine', 'minEngineToolTier'],
+    // Whether a tool line can run a machining operation is decided per
+    // operation, on that operation's own line. Reading a tool tier against the
+    // machining tier constant is a call site deciding it for itself, which is
+    // how one line's tier ends up standing for every line's: the machine
+    // shop's equipment list and the garage room's derelict scene both ask
+    // sim's gate instead. Displaying an answer already returned by it
+    // (`gateReason`, `present`) is fine anywhere.
+    rule: 'whether a tool line can run a machining operation (`craftOperationCapabilityGateReason`, machiningJobs.ts)',
+    allowedFiles: ['machiningJobs.ts'],
+    markers: [/machining\.(minEngineToolTier|craftOperationToolTier)/, /toolTiers[.[]/],
     roots: SIM_AND_GAME,
   },
 ]

@@ -15,7 +15,6 @@ import {
   ALL_CAR_PART_IDS,
   ASSEMBLIES,
   ComponentIdSchema,
-  ECONOMY,
   PARTS_TAXONOMY,
   fitmentClassForTier,
   titleCaseFromSlug,
@@ -52,6 +51,7 @@ import { MACHINE_LINE_NAMES } from '../utils/dayLogFormat'
 import { DYNO_NAME } from '../utils/dynoLabels'
 import { formatYen, formatYenDelta } from '../utils/formatYen'
 import { LEDGER_LINE_LABELS, formatLedgerLineYen } from '../utils/ledgerLabels'
+import { formatAuthenticityCost, formatReliabilityCost } from '../utils/machiningFigures'
 import { SETUP_REFUSALS } from '../utils/machiningRefusals'
 import { PAINT_COLOUR_FAMILIES, colourTokenDisplayName } from '../utils/paintFamilies'
 import { addressesOverlap, hasWorkAddress } from '../utils/partAddress'
@@ -63,7 +63,6 @@ import {
   sellingChannelFeeLabel,
 } from '../utils/sellingChannelLabels'
 import { zoneNeedsPanelText, zoneSeverityText } from '../utils/zoneSeverity'
-import { machineShopOpen as machineShopOpenFor } from './garageCapability'
 import { mapBackTarget } from './mapBack'
 
 const game = useGameStore()
@@ -126,11 +125,6 @@ const dynoGateReason = computed<string | null>(() => {
 /** True while this exact car is the one on the rollers - the row then offers
  * the sheet rather than another session. */
 const onTheRollers = computed(() => game.dynoSessionCarId === detail.value?.car.id)
-
-/** True once the engine line owns the machine-shop tooling - what turns the
- * bench from a place to look at into a place to work. The same read the garage
- * map itself renders the room derelict on (`garageCapability.ts`). */
-const machineShopOpen = computed(() => machineShopOpenFor(game.gameState, ECONOMY))
 
 /**
  * Runs the session and stays put - the row itself turns into the link to the
@@ -673,17 +667,17 @@ function setupRefusal(reason: FittedMachiningGateReason | null): string | null {
 }
 
 /** One setup operation's whole trade on a line, in the same loud-figure idiom
- * every other control on this panel uses. */
+ * every other control on this panel uses. Originality and reliability read
+ * through the machine shop's own wording (`machiningFigures.ts`), so the same
+ * cost is never stated two ways. */
 function setupFigures(offer: FittedMachiningOfferRow): string {
   const figures: string[] = []
   if (offer.handlingFraction > 0) {
     figures.push(`Handling +${(offer.handlingFraction * 100).toFixed(1)} per cent`)
   }
   if (offer.stylePoints > 0) figures.push(`Style +${offer.stylePoints}`)
-  figures.push(
-    `Originality ${offer.authenticityCost > 0 ? '-' + offer.authenticityCost : 'nothing'}`,
-  )
-  figures.push(`Reliability -${(offer.reliabilityCost * 100).toFixed(1)} per cent`)
+  figures.push(`Originality ${formatAuthenticityCost(offer.authenticityCost)}`)
+  figures.push(`Reliability ${formatReliabilityCost(offer.reliabilityCost)}`)
   figures.push(`${offer.labourPoints} labour`)
   return figures.join(' · ')
 }
@@ -1832,11 +1826,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               }}{{ labourSuffix(game.pointsPerLabour) }})
             </button>
           </li>
+          <!-- The machine shop is a room, not a machine: there is nothing
+               here to hire and nothing to own, so this row is the door and
+               carries no ownership chip. What machinery the room holds is
+               listed in the room itself. -->
           <li class="machine-hire-row" data-test="machine-hire-row-machine-shop">
             <span class="machine-hire-name">Machine shop</span>
-            <span v-if="machineShopOpen" class="chip owned" data-test="machine-shop-chip"
-              >In-house</span
-            >
             <RouterLink
               :to="{ name: 'machine-shop' }"
               class="hire-btn"

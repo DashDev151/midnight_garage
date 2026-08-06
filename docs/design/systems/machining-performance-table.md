@@ -158,40 +158,46 @@ content**, so the small ones are consolidated into the job a machinist would act
 
 | # | operation | slot | hs-na | lazy-na | forced | spec | auth |
 | --- | --- | --- | ---: | ---: | ---: | ---: | ---: |
-| 1 | Port and polish | `headValvetrain` | 1.17 | 1.51 | **6.18** | - | 6 |
-| 2 | Milling / skimming | `headValvetrain` | 0.49 | 0.63 | **0.00** | - | 5 |
-| 3 | Multi-angle valve job | `headValvetrain` | 0.29 | 0.38 | 1.09 | - | 1 |
-| 4 | Bore and hone | `block` | 1.69 | 2.19 | 2.18 | 0.15 | 8 |
-| 5 | Decking | `block` | 1.12 | 1.46 | 1.46 | 0.20 | 6 |
-| 6 | O-ring the deck | `block` | **0** | **0** | **0** | 0.35 | 9 |
-| 7 | Balance and polish | `internals` | 0.86 | 1.14 | 3.64 | 0.20 | 4 |
-| 8 | Con-rod shot peening | `internals` | **0** | **0** | **0** | 0.25 | 2 |
-| 9 | Cam regrind | `camsTiming` | 2.38 | 3.20 | **5.45** | - | 7 |
-| | **total on a stock engine** | | **8.00** | **10.50** | **20.00** | | **48** |
+| 1 | Port and polish | `headValvetrain` | 1.17 | 1.51 | **6.18** | - | 0.70 |
+| 2 | Milling / skimming | `headValvetrain` | 0.49 | 0.63 | **0.00** | - | 0.60 |
+| 3 | Multi-angle valve job | `headValvetrain` | 0.29 | 0.38 | 1.09 | - | 0.10 |
+| 4 | Bore and hone | `block` | 1.69 | 2.19 | 2.18 | 0.15 | 0.90 |
+| 5 | Decking | `block` | 1.12 | 1.46 | 1.46 | 0.20 | 0.70 |
+| 6 | O-ring the deck | `block` | **0** | **0** | **0** | 0.35 | 1.00 |
+| 7 | Balance and polish | `internals` | 0.86 | 1.14 | 3.64 | 0.20 | 0.50 |
+| 8 | Con-rod shot peening | `internals` | **0** | **0** | **0** | 0.25 | 0.25 |
+| 9 | Cam regrind | `camsTiming` | 2.38 | 3.20 | **5.45** | - | 0.80 |
+| | **total on a stock engine** | | **8.00** | **10.50** | **20.00** | | **5.55** |
 
-**The authenticity column** is the maintainer's own scale, carried over unchanged from the
-preliminary table where an operation survived it: 1 to 2 a purist shrugs, 4 to 6 a raised eyebrow,
-7 to 9 a collector weeps. It is what `machiningCost(car)` sums.
+**The authenticity column is a copy for reading alongside the power figures. The values live in
+`economy.json` under `machining.operations[].authenticityCost`**, which is the single source, and
+`machiningCost(car)` sums them. The six operations added outside the engine (`race-prep`,
+`corner-weighting`, `show-fitment`, `sorting`, `blueprint-building`, `period-correct-restoration`)
+carry their own costs there and are not in this table, which is the engine machine shop's.
+
+The ordering is the argument: the operations a restoration shop performs on a numbers-matching
+engine sit at the cheap end, and the ones that prepare a block for boost sit at the dear end.
 
 **It is charged on stock-grade parts only.** Authenticity asks how much of the car is still what
 left the factory, and an aftermarket part already lost its slot's whole weight the moment it was
 fitted. Boring a race block does not make it less factory than it already was, and charging for it
-would book the same loss twice. **So machining an original block costs 8 points and keeps the
-slot's other 18; machining a race block costs nothing, because that slot has nothing left to
-lose.**
+would book the same loss twice. **So machining an original block costs well under a point per
+operation against the slot's own 18.18; machining a race block costs nothing, because that slot has
+nothing left to lose.**
 
 This is what makes the restoration route the interesting one. A player keeping the car's own
 castings pays in originality for every point of power. A player who has already fitted aftermarket
 has bought their way out of that conversation.
 
-Only "balance and polish" needed a new rating, because it is a merge: full balance and journal
-polish were both 1, knife-edging was 6, and **4** is the honest reading of a job that includes a
-knife-edged crank a purist would spot.
+"Balance and polish" is a merge of three jobs, and it is rated for the knife-edged crank a purist
+would spot rather than for the balancing, which nobody would.
 
-**A fully machined engine on its own original castings costs 48 of the car's 100 authenticity
-points.** That is the whole character of the feature in one number: real power, taken out of the
-car's originality rather than out of the player's pocket. On an already-aftermarket engine the same
-work costs nothing further, because those slots were spent when the parts went in.
+**A fully machined engine on its own original castings costs 5.55 of the car's 100 authenticity
+points, taking a stock mint car to 94.** That is the character of the feature in one number: the
+originality it takes is real and small, because the parts are still the car's own. **Machining the
+whole block costs 2.6 against the 18.18 that binning it for a race block costs**, which is the
+relationship the mechanic exists to express. On an already-aftermarket engine the same work costs
+nothing further, because those slots were spent when the parts went in.
 
 Rounded to a hundredth, so the lazy-na column sums to 10.51 against an exact 10.50; the per-slot
 allocation above carries the exact figure.

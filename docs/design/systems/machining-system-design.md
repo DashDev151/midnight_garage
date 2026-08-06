@@ -40,11 +40,13 @@ permanently narrows what that part can become.
 **It costs a little reliability.** The mechanism exists so the cost is real on every sale rather
 than only to collectors, but it is deliberately small: a few percentage points at most.
 
-**It costs authenticity, but only on the car's own parts.** On the scale already authored: purists
-shrug at 1-2, raise an eyebrow at 4-6, weep at 7-9. **A stock-grade part pays; an aftermarket one
-does not**, because that slot's whole weight went the moment the aftermarket part was fitted and
-charging again would book one loss twice. Boring a race block does not make it less factory than it
-already was.
+**It costs authenticity, but only on the car's own parts, and it costs little.** Each operation's
+charge is its `authenticityCost` in `economy.json` under `machining.operations`, and the values are
+authored so that machining a part always costs less originality than replacing it: a fully machined
+engine on its own castings gives up a few points of the hundred, where an aftermarket block gives
+up 18.18 on its own. **A stock-grade part pays; an aftermarket one does not**, because that slot's
+whole weight went the moment the aftermarket part was fitted and charging again would book one loss
+twice. Boring a race block does not make it less factory than it already was.
 
 ## How it integrates
 

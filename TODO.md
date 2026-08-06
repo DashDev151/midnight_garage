@@ -220,6 +220,69 @@ pass."
 
 ## Open engineering
 
+- [ ] **EVERY RENDERED ROOM IN THE GARAGE IS DECORATION (maintainer, 2026-08-06).** Their words:
+  *"you have already drawn placeholder art for it. That does nothing right now. Note it for later.
+  Goes for ALL rendered screens in the garage. They do nothing."*
+
+  `GarageInteriorScreen` draws six rooms and `packages/game/src/pixi/garage/rooms.ts` carries nine
+  scenes, and the art is a backdrop in every one of them. Nothing in a room is clickable as an
+  object: each room offers a panel of text buttons that route elsewhere, and the workshop floor's
+  cars are hardcoded sample content (`rooms.ts`) rather than live state. `warehouse-derelict` art
+  ships and is never rendered at all.
+
+  **This is a whole-garage question, not a per-room one**, and it wants deciding once: whether a
+  room's art becomes the interface (click the machine, click the car on the ramp, click the shelf)
+  or stays a backdrop behind a text panel. Every room sprint until then should assume the answer is
+  coming and avoid building UI that would be thrown away by it.
+
+- [ ] **THE MACHINE SHOP IS A ROOM, NOT A GATE, AND THE CODE HAS IT BACKWARDS (maintainer,
+  2026-08-06).** Their framing, which is the whole of the fix: *"the tool shop is not just a
+  magical concept, it's a room. That's it. What's IN the room is what is important. Each tool line
+  should correspond with a physical piece of equipment. It's this equipment that gets unlocked at
+  tier 3, not the room."*
+
+  Today `machineShopOpen` (`packages/game/src/screens/garageCapability.ts`) gates ENTRY to the whole
+  room on `toolTiers.engine >= machining.minEngineToolTier`, and `GarageInteriorScreen` renders the
+  room derelict below that. That is a game-side invention with no counterpart in sim: sim already
+  gates each OPERATION on that operation's own line
+  (`craftOperationCapabilityGateReason`, `machiningJobs.ts`). The room gate duplicates the real gate
+  and then narrows it wrongly.
+
+  **The symptom that exposed it**: after the workbench sprint the machine shop holds `race-prep`
+  (dampers, suspension) and `sorting` (differential, drivetrain), so a player at suspension tier 3
+  and engine tier 2 cannot enter a room to do work they are fully qualified for.
+
+  **The model to build instead.** The room is always enterable. What it contains is a set of
+  machines, one per tool line, each present or absent according to that line's tier. An empty
+  machine shop is a room with nothing in it, not a locked door. Sim needs no change: it is already
+  right.
+
+  **Two equipment concepts already exist and must not be conflated**: tier 2 is the group's
+  machine (`machineShopAssist`, the signature-op and buried-removal gate, hireable by the day), and
+  tier 3 is the machining capability. Both are per line. Whether they are one machine at two states
+  or two machines is part of this design.
+
+  **Read `docs/design/systems/tier-three-unlocks.md` first**: it already rules that tier 3 claims
+  capability rather than reach, and this is the same ruling arriving from the other direction.
+  `garageCapability.test.ts` currently pins `machineShopOpen` to sim's gate for the engine line
+  only, and says in the test that it is deliberately not answering this question.
+
+- [ ] **Four independent implementations of repair-or-replace cost, and consolidating them is a real
+  refactor (maintainer, 2026-08-06: "okay. real refactoring needed").** The rule is: walk the parts,
+  `canRepair` ? `planPartRepair` : `stockReplacementPriceYenByClass`, accumulate cost and labour.
+  It is written at `bands.ts` (`carCostToBandYen`, `groupCostToMintYen`), `plays.ts:161/170/175`,
+  `balanceProbes.ts:431/487` and `serviceJobs.ts:270`.
+
+  **They currently agree, and nothing asserts that they do**, which is the failure mode sprint 188
+  was written for. It was deliberately left out of that sprint because it is not a copy deletion:
+  three of the four are whole-car planners that also account labour, fit fresh parts and mutate a
+  car, and **they disagree on labour on purpose** (`bands.ts` adds none, `serviceJobs.ts` adds
+  install labour, `plays.ts` adds remove plus install). So the shared thing is the per-part
+  decision and the two price atoms, not the loop around them.
+
+  **No guard rule was added for it**, precisely so it would not drag an unscoped refactor into a
+  consolidation sprint. Add one in the same change that lands the shared function.
+
 - [ ] **`rollingWindowShareCap` (1.5) rewards having sold anything, not concentration (recorded by
   sprint186.md, deliberately not fixed there).** The word-of-mouth share term is
   `1 + share * (cap - 1)` where `share` is this scene's recent matched deliveries over every

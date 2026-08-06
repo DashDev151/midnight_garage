@@ -284,19 +284,23 @@ describe('the machining term', () => {
     expect(machiningCost(bored, CONTEXT.partsById, ECONOMY)).toBe(
       ratingOf('bore-and-hone') + ratingOf('decking'),
     )
-    expect(authenticityOf(bored)).toBe(100 - ratingOf('bore-and-hone') - ratingOf('decking'))
+    // The ratings are fractions of a point, so the readout is the rounded
+    // percentage rather than the raw subtraction.
+    expect(authenticityOf(bored)).toBe(
+      Math.round(100 - ratingOf('bore-and-hone') - ratingOf('decking')),
+    )
   })
 
-  it('costs 48 of the 100 points for a full engine on its own original castings', () => {
+  it('costs 6 of the 100 points for a full engine on its own original castings', () => {
     let car = carWith({})
-    // The four original engine-only operations specifically - the catalogue
-    // also carries the six scene-gated craft operations now, each on its own
-    // `scene` and its own, separately-tested authenticity cost.
+    // The nine tool-gated operations specifically - the catalogue also carries
+    // the six scene-gated craft operations now, each on its own `scene` and its
+    // own, separately-tested authenticity cost.
     for (const operation of ECONOMY.machining.operations.filter((o) => o.scene === undefined)) {
       car = machinedCar(car, operation.carPartId, [operation.id])
     }
-    expect(machiningCost(car, CONTEXT.partsById, ECONOMY)).toBe(48)
-    expect(authenticityOf(car)).toBe(52)
+    expect(machiningCost(car, CONTEXT.partsById, ECONOMY)).toBeCloseTo(5.55, 10)
+    expect(authenticityOf(car)).toBe(94)
   })
 
   it('charges nothing at all on an aftermarket part, on every grade above stock', () => {

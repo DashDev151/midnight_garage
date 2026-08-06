@@ -2582,5 +2582,49 @@ describe('CarDetailScreen', () => {
         'Roll it into a service bay first - this is done to the whole car.',
       )
     })
+
+    /** Swaps the SKU in the springs slot, leaving its condition alone - what
+     * decides whether the cut has any originality to take. */
+    function fitSprings(game: ReturnType<typeof useGameStore>, id: string, partId: string): void {
+      game.gameState = {
+        ...game.gameState,
+        ownedCars: game.gameState.ownedCars.map((car) =>
+          car.id === id
+            ? {
+                ...car,
+                parts: {
+                  ...car.parts,
+                  springs: { installed: { ...car.parts.springs.installed!, partId } },
+                },
+              }
+            : car,
+        ),
+      }
+    }
+
+    it('states the originality cost as the fraction it is, and as nothing where there is none', async () => {
+      const game = useGameStore()
+      const id = carReadyForSetup(game, 'springs')
+      withTouge(game, 3)
+      const operation = ECONOMY.machining.operations.find((o) => o.id === 'corner-weighting')!
+      expect(operation.authenticityCost, 'the cut costs a fraction of a point').toBeGreaterThan(0)
+
+      fitSprings(game, id, PARTS.find((p) => p.carPartId === 'springs' && p.grade === 'stock')!.id)
+      const onStock = await mountAt(id)
+      await selectPart(onStock.wrapper, 'springs')
+      expect(onStock.wrapper.find('[data-test="setup-figures-corner-weighting"]').text()).toContain(
+        `Originality -${operation.authenticityCost}`,
+      )
+
+      // An aftermarket slot spent its originality the moment the part went on,
+      // so the cut takes nothing more - and says nothing rather than showing a
+      // penalty of zero.
+      fitSprings(game, id, PARTS.find((p) => p.carPartId === 'springs' && p.grade === 'race')!.id)
+      const onAftermarket = await mountAt(id)
+      await selectPart(onAftermarket.wrapper, 'springs')
+      expect(
+        onAftermarket.wrapper.find('[data-test="setup-figures-corner-weighting"]').text(),
+      ).toContain('Originality nothing')
+    })
   })
 })

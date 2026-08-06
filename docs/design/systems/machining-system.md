@@ -6,8 +6,12 @@ tables are dead. **The live numbers are `machining-performance-table.md`**, whic
 operations below to nine, split the single NA column into the two engine characters the code
 actually has, and replaced every percentage here. The design of record is
 `machining-system-design.md`. Nothing in this file may be pulled into `economy.json`, mission
-payouts, or any sim formula; it is kept because it is what the design was reasoned from, and
-because the authenticity ratings in the last column are the only place they have been written down.
+payouts, or any sim formula; it is kept because it is what the design was reasoned from.
+
+**The authenticity column below is dead with the rest of it.** The shipped per-operation costs are
+`authenticityCost` in `packages/content/data/economy.json` under `machining.operations`, and they
+are fractions of a point rather than integers. Read nothing about a car's originality off this
+page.
 
 ## Where this sits
 
@@ -51,8 +55,8 @@ total enabled gain is divided across components by how much each one enables it.
 \*\* Milling is usually skipped on turbo builds, because higher static compression limits how much
 boost can be run.
 
-**Authenticity scale, the maintainer's own wording:** 1-2 = purist shrugs, 4-6 = raised eyebrow,
-7-9 = collector weeps.
+**The preliminary authenticity scale, in the maintainer's own wording:** 1-2 = purist shrugs,
+4-6 = raised eyebrow, 7-9 = collector weeps. It describes the column above and nothing that ships.
 
 ## Why this exists
 

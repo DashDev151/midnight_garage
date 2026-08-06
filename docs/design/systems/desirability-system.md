@@ -118,15 +118,15 @@ re-addable later if a genuine-versus-repro distinction earns its place.
 ### Machining: performance without betrayal
 
 Machining modifies the original part rather than replacing it, so it costs far less authenticity
-than fitting an aftermarket one. Each operation carries a cost on a 1-to-10 scale (**1-2 a purist
-shrugs, 4-6 a raised eyebrow, 7-9 a collector weeps**), baselined in the machining table recorded
-alongside this document.
+than fitting an aftermarket one. Each operation carries its own `authenticityCost`, authored in
+`packages/content/data/economy.json` under `machining.operations`. That is the only place those
+values live and the only place to read them.
 
-The important property, and it is not an accident: the cheap operations (valve job 1, full balance
-1, journal polish 1, rod peening 2) are exactly what a restoration shop does to a numbers-matching
-engine, while the expensive ones (cam regrind 7, bore and hone 8, O-ringing 9) are boost
-preparation. **So a restorer can make a car genuinely quicker without losing authenticity, and a
-tuner pays for going further.** That satisfies the standing constraint:
+The important property, and it is not an accident: the cheapest operations on the list are exactly
+what a restoration shop does to a numbers-matching engine, `period-correct-restoration` costs
+nothing at all because putting a part back to factory specification takes no originality away, and
+the dearest are boost preparation. **So a restorer can make a car genuinely quicker without losing
+authenticity, and a tuner pays for going further.** That satisfies the standing constraint:
 
 > we should not make it Too easy for players to rely solely on authenticity. But at the same time
 > we should not make it impossible to have a car that is both a well performing and authentic.
@@ -138,30 +138,23 @@ out of the physical facts, with no balancing rule bolted on.
 **RULED 2026-07-31: authenticity is built against the stand-in machining costs**, not held back
 until the machining system exists.
 
-**The stand-in mapping: an operation's 1-to-10 rating IS its cost in authenticity points**, summed
-over every operation applied to the car.
+**The mapping: an operation's `authenticityCost` IS its cost in authenticity points**, summed over
+every operation applied to the car, and charged only where the part it was applied to is still
+`grade: 'stock'`.
 
-    machiningCost(car) = sum of the authenticity rating of every operation applied
+    machiningCost(car) = sum of the authenticityCost of every operation applied
 
-The scale falls out sensibly on real builds:
+**The charge is deliberately small against the 100-point stat**, because the whole character of
+machining is that the car keeps its own parts. Applying every operation in the catalogue to one
+stock mint car costs under seven points, so a fully machined numbers-matching engine still clears
+the collector's authenticity target of 0.90. Fitting an aftermarket block instead costs that slot's
+entire weight, 18.18 points on its own.
 
-| build | operations | cost |
-| --- | --- | ---: |
-| a careful freshen | valve job 1 + full balance 1 + journal polish 1 | **3** |
-| a mild road port | the above + port and polish 6 + deck 6 | **15** |
-| a full boost build | the above + bore 8 + O-ring 9 + cam regrind 7 | **39** |
-
-So a numbers-matching engine that has been blueprinted is still essentially authentic, and one
-built for boost has given up most of it, which is exactly the intent.
-
-**This term contributes zero until machining ships**, because no operation can be applied. That is
-honest rather than awkward: authenticity is fully correct today for every car that has never been
-machined, which is every car, and the term switches on when machining does. It is specified now so
-that machining is built against a defined contract instead of inventing one later.
+That ordering is the point rather than a side effect: **work done to preserve an original part must
+never cost more originality than throwing the part away**, and the values are authored to hold it.
 
 **`machineShopAssist` is not the machining system.** It is a daily hire fee gating whether buried
-or signature work can be done at all. The operations above do not exist as actions, and the
-baseline table is the start of that design rather than a lever table for a shipping system.
+or signature work can be done at all.
 
 ---
 
@@ -196,7 +189,7 @@ it is modified, which turns the collector away, so no second mechanism is needed
 | `styleCeiling` | roster CSV | all 94 | **AUTHORED (Sprint 152)**, 42-96, preliminary and unsigned |
 | `styleSaturationPoints` | `economy.json` | one value | **IMPLEMENTED** at 66, preliminary and unsigned |
 | per-slot authenticity weights | `parts-taxonomy.json` | 29 slots | **AUTHORED (Sprint 151)**, preliminary and unsigned |
-| per-operation authenticity cost | machining content | 13 operations baselined | **stand-in figures, need signing** |
+| per-operation `authenticityCost` | `economy.json`, `machining.operations` | 15 operations | **AUTHORED**, and hashed by the economy approval gate |
 | `CarInstance.authenticityPercent` | `carInstance.ts` | - | **RETIRED (Sprint 151)** |
 | `statModifiers.authenticity` | `stats.ts`, `parts.json` | 472 SKUs | **RETIRED (Sprint 151)** |
 | `genuinePeriod` | `carInstance.ts`, `part.ts` | - | **RETIRED (Sprint 151)** |
@@ -244,8 +237,8 @@ against the old scale and should be re-checked against the new one, though not n
    how it looks, and nothing on the BUY side prices beauty, because `marketValueYen` takes no
    stats. Measured in `docs/sprints/sprint_archive/sprint152.md`; the fix is a lever decision, not an
    implementation one.
-4. **The machining system**, on which the authenticity costs depend. `machiningCost(car)` is wired
-   and returns 0 until it exists.
+4. **Signing the fifteen per-operation `authenticityCost` values.** Machining ships and
+   `machiningCost(car)` sums them; the values live in `economy.json` under `machining.operations`.
 5. **Originality for `paint`**, which cannot currently read as modified at all. `panels` and
    `underbody` now can. See the header and `TODO.md`.
 6. **Signing the 29 authenticity weights.** They ship as preliminary defaults, recorded in

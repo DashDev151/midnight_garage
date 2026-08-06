@@ -15,6 +15,15 @@ it.
 > concours gate" describes a mechanism that no longer exists, and is left in place because the
 > arithmetic it worked through is what proved the gate was unreachable in the first place. The
 > archetype names in section 7 (`hobbyist`, `first-timer`, `stancer`) also predate their renaming.
+>
+> **Also superseded: the machining charge, which the paragraph above still vouches for.** The
+> per-operation `authenticityCost` values in `packages/content/data/economy.json` under
+> `machining.operations` were rescaled to a fraction of the integers tabulated in section 3.4, and
+> six operations outside the engine were added. **Read the current values from the content, never
+> from this file.** Nothing else moved with them: the formula, the stockness rule, the condition
+> factor and the taste readers are all as described. The passages this reaches, each marked where it
+> sits: section 3.4's rating table and its measured rows, section 5's route to a floor of 0, and
+> findings F1 and F2. This document is a measurement snapshot and is preserved as one.
 
 ---
 
@@ -163,8 +172,12 @@ block does not make that slot less factory than it already is. So a player keepi
 castings pays in originality for every point of power, and a player who has already fitted
 aftermarket has bought their way out of the conversation.
 
-The nine shipped operations and their ratings, on the design's own 1-to-10 scale (1 to 2 a purist
-shrugs, 4 to 6 a raised eyebrow, 7 to 9 a collector weeps):
+**Superseded snapshot from here to the end of this section.** These ratings were rescaled and six
+more operations were added; the current values are `authenticityCost` in `economy.json` under
+`machining.operations`. The rule above, and the mechanism, are unchanged.
+
+The nine operations measured, and their ratings on the design's own 1-to-10 scale of the time (1 to
+2 a purist shrugs, 4 to 6 a raised eyebrow, 7 to 9 a collector weeps):
 
 | operation | slot | rating |
 | --- | --- | ---: |
@@ -336,6 +349,9 @@ stock-grade part left to charge. It reaches it from the OTHER direction instead.
 
 ### The true floor, now 0, and how to get there
 
+**Superseded snapshot: this route depended on the pre-rescale ratings and no longer reaches 0.** See
+the note at the head of this file.
+
 **Measured, on a Supra**: fit a race SKU to every slot that has one EXCEPT the four machinable ones,
 leave those on their original castings, and machine all nine operations into them. Stockness is then
 the four machinable slots' own weight (`block` 18 + `internals` 8 + `headValvetrain` 6 +
@@ -437,7 +453,7 @@ well: the `paint` condition hit from section 3.6.
 
 Nothing else. No story mission, requirement or payout reads it: `storyMissions.json` contains no
 mention of authenticity at all, and only `buyers.json`, `parts-taxonomy.json` and `economy.json`
-(the concours gate and the nine `authenticityCost` fields) mention it anywhere in
+(the `authenticityCost` fields, one per machining operation) mention it anywhere in
 `packages/content/data`.
 
 ---
@@ -464,6 +480,11 @@ defaults recorded as implemented rather than approved, which
 ## Findings
 
 ### F1. The machining term was dead code and is now the only thing that can drive this stat to 0
+
+**Superseded snapshot: every magnitude in this finding predates the rescale of the per-operation
+`authenticityCost` values**, and the conclusion in its heading no longer holds. See the note at the
+head of this file. The rule the finding establishes, that the charge falls on stock-grade parts only
+and travels with the `PartInstance`, is unchanged.
 
 **Asked:** `machiningCost(car)` returned literal `0` with its parameter explicitly discarded.
 `CarInstance` recorded no machining operation and no operation existed to apply, so the term was not
@@ -523,6 +544,11 @@ grade), neither chosen. `packages/sim/tests/authenticity.test.ts` pins it and fa
 non-stock `paint` SKU is added.
 
 ### F2. The upper clamp arm is still unreachable; the lower one is now live
+
+**Superseded snapshot: the rescale took the lower arm back out of reach.** The four machinable slots
+are worth 36 and `paint`'s 11 can never be modified away, so the smallest base a machined car can
+present is 47 against a machining charge that no longer reaches seven. See the note at the head of
+this file.
 
 **Asked:** `clamp(raw * conditionFactor, 0, 100)` could never bite, because `raw` was
 `100 * stockness` with the machining term at 0 and so already in `[0, 100]`. The finding noted that

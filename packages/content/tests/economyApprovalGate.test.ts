@@ -2035,6 +2035,34 @@ import storyMissions from '../data/storyMissions.json'
  * screen, while the other thirteen are addressed by a loose part and offered at the machine.
  * No mission payout or budget cap moves, and `partPricing.json` / `damagePatterns.json` are
  * untouched, so their hashes and the payout pin hold unchanged.
+ *
+ * Re-pinned for the machining authenticity scale, approved as a RULE rather than as a list of
+ * numbers: a player can fully machine a collector car and still clear the Collector's gate. The
+ * fifteen `machining.operations[].authenticityCost` ratings are the only values that move, every
+ * one scaled by about 0.117 so the authored ordering is untouched - `deck-o-ring` 9 -> 1.0,
+ * `bore-and-hone` 8 -> 0.9, `cam-regrind` 7 -> 0.8, `port-and-polish` 6 -> 0.7, `decking` 6 ->
+ * 0.7, `head-skim` 5 -> 0.6, `balance-and-polish` 4 -> 0.5, `race-prep` 3 -> 0.35,
+ * `show-fitment` 3 -> 0.35, `con-rod-peening` 2 -> 0.25, `corner-weighting` 2 -> 0.25, `sorting`
+ * 2 -> 0.25, `multi-angle-valve-job` 1 -> 0.1, `blueprint-building` 1 -> 0.1, and
+ * `period-correct-restoration` 1 -> 0.
+ *
+ * The total falls 60 -> 6.85 against a budget of exactly 10: authenticity is the Collector's
+ * champion stat at target 0.90, so an original car starts at 100 and every operation on it put
+ * together has to fit inside those ten points. At the old ratings a fully machined original car
+ * read 40 and a machine-shop-only one 52, so the one buyer the work exists for was the one buyer
+ * it disqualified you from, and machining a block cost more originality (24 points) than throwing
+ * the block away for a race replacement (18.18). The restoration goes to zero rather than
+ * negative because it returns a part to factory specification and the schema forbids a negative
+ * cost. Measured through the real path on a stock mint Toyota 2000GT: all fifteen operations read
+ * authenticity 93, the nine tool-gated ones 94, and both sell to a Collector
+ * (`packages/sim/tests/machining.test.ts`).
+ *
+ * `machining.valuePremiumPerOperation` (0.03) and `reliabilityCostPerOperation` (0.004) DO NOT
+ * MOVE and carry no approval here. The premium is tabled for a number of its own; the reliability
+ * charge was re-measured rather than retuned, and the same fully machined 2000GT reads reliability
+ * 73 against the Collector's 60 target. No mission payout or budget cap moves (no probe machines
+ * anything), and `partPricing.json` / `damagePatterns.json` are untouched, so their hashes and the
+ * payout pin hold unchanged.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -2044,7 +2072,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('44611f2bd60835e7ede7d3a550bb84c04dedd23255f764c46cd0366a4c98d4d6')
+    ).toBe('feed2942ad1211eba5e177479d98c890cce7509168f11122631ff364b56fde37')
   })
 
   it('damagePatterns.json matches its approved content exactly', () => {

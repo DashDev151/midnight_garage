@@ -1048,7 +1048,7 @@
           "forced": 0.061818182
         },
         "spec": 0,
-        "authenticityCost": 6,
+        "authenticityCost": 0.7,
         "labourPoints": 5
       },
       {
@@ -1062,7 +1062,7 @@
           "forced": 0
         },
         "spec": 0,
-        "authenticityCost": 5,
+        "authenticityCost": 0.6,
         "labourPoints": 5
       },
       {
@@ -1076,7 +1076,7 @@
           "forced": 0.010909091
         },
         "spec": 0,
-        "authenticityCost": 1,
+        "authenticityCost": 0.1,
         "labourPoints": 5
       },
       {
@@ -1090,7 +1090,7 @@
           "forced": 0.021818182
         },
         "spec": 0.15,
-        "authenticityCost": 8,
+        "authenticityCost": 0.9,
         "labourPoints": 5
       },
       {
@@ -1104,7 +1104,7 @@
           "forced": 0.014545455
         },
         "spec": 0.2,
-        "authenticityCost": 6,
+        "authenticityCost": 0.7,
         "labourPoints": 5
       },
       {
@@ -1118,7 +1118,7 @@
           "forced": 0
         },
         "spec": 0.35,
-        "authenticityCost": 9,
+        "authenticityCost": 1.0,
         "labourPoints": 5
       },
       {
@@ -1132,7 +1132,7 @@
           "forced": 0.036363636
         },
         "spec": 0.2,
-        "authenticityCost": 4,
+        "authenticityCost": 0.5,
         "labourPoints": 5
       },
       {
@@ -1146,7 +1146,7 @@
           "forced": 0
         },
         "spec": 0.25,
-        "authenticityCost": 2,
+        "authenticityCost": 0.25,
         "labourPoints": 5
       },
       {
@@ -1160,7 +1160,7 @@
           "forced": 0.054545455
         },
         "spec": 0,
-        "authenticityCost": 7,
+        "authenticityCost": 0.8,
         "labourPoints": 5
       },
       {
@@ -1174,7 +1174,7 @@
           "forced": 0.0065
         },
         "spec": 0,
-        "authenticityCost": 3,
+        "authenticityCost": 0.35,
         "labourPoints": 5,
         "scene": "racer",
         "handlingFraction": 0.005,
@@ -1191,7 +1191,7 @@
           "forced": 0
         },
         "spec": 0,
-        "authenticityCost": 2,
+        "authenticityCost": 0.25,
         "labourPoints": 5,
         "scene": "touge",
         "handlingFraction": 0.01,
@@ -1208,7 +1208,7 @@
           "forced": 0.013
         },
         "spec": 0,
-        "authenticityCost": 1,
+        "authenticityCost": 0.1,
         "labourPoints": 5,
         "scene": "tuner"
       },
@@ -1223,7 +1223,7 @@
           "forced": 0
         },
         "spec": 0,
-        "authenticityCost": 3,
+        "authenticityCost": 0.35,
         "labourPoints": 5,
         "scene": "show-crowd",
         "style": 5,
@@ -1240,7 +1240,7 @@
           "forced": 0
         },
         "spec": 0.25,
-        "authenticityCost": 1,
+        "authenticityCost": 0,
         "labourPoints": 5,
         "scene": "collector"
       },
@@ -1255,7 +1255,7 @@
           "forced": 0
         },
         "spec": 0,
-        "authenticityCost": 2,
+        "authenticityCost": 0.25,
         "labourPoints": 5,
         "scene": "daily-drivers",
         "reliabilityConditionBonus": 0.15

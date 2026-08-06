@@ -170,8 +170,10 @@ export function stocknessOf(
 /**
  * The machining term of the authenticity formula
  * (desirability-system.md section 3): the summed authenticity cost of every
- * machining operation applied to this car, on the design's 1-to-10 scale
- * (1-2 a purist shrugs, 4-6 a raised eyebrow, 7-9 a collector weeps).
+ * machining operation applied to this car. The ratings are fractions of an
+ * authenticity point, ordered so a deeper cut costs more originality than a
+ * lighter one and sized so the whole catalogue applied to a single original
+ * car still leaves it inside a collector's tolerance.
  *
  * **Charged on STOCK-grade parts only**, and never on a slot the catalogue
  * cannot resolve - `machiningAuthenticityCostOf` (machining.ts) is the whole of

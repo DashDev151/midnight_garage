@@ -7,6 +7,9 @@ code held against the tree it was written from, which is the tree BEFORE machini
 (commit `b214520`). Several of them have since moved with the implementation: `machiningCost` no
 longer returns 0, `PartInstanceSchema` now carries `machining`, `SAVE_VERSION` is 56, and the
 `proportionalPower.test.ts` caps quoted in section 3c are now x1.45 / x1.60 / x2.30 / x1.65 / x1.88.
+**The per-operation authenticity ratings this file computes from are superseded too**: the shipped
+costs are fractional `authenticityCost` values in `economy.json` under `machining.operations`, so
+every authenticity figure below is arithmetic on a scale the game no longer uses.
 
 **What happened to it.** The catalogue cost measured below (864 new SKUs, 472 to 1,336) is why
 machining ships as a property of a `PartInstance` instead. `machining-system-design.md` is the
@@ -253,7 +256,7 @@ the car would pay the slot weight through `stocknessOf` and the operation rating
 
 ### 4c. The numbers this produces
 
-Against a base of 100 x stockness, with the table's stand-in ratings:
+Against a base of 100 x stockness, with the table's stand-in ratings, none of which ship:
 
 | build | operations | cost |
 | --- | --- | --- |
@@ -261,15 +264,13 @@ Against a base of 100 x stockness, with the table's stand-in ratings:
 | bored, decked, O-ringed stock block | 8 + 6 + 9 | **23** |
 | every one of the 13 operations | 6+1+5+5+8+6+9+1+2+1+6+4+7 | **61** |
 
-`reputation.concoursSaleMinAuthenticityPercent` is 85, so a concours car may give up at most 15 points
-(`machining-integration-map.md` 11d). The freshen holds concours; the boost-prepped block does not.
-
-**One ordering worth flagging to the maintainer**: a bored, decked and O-ringed original block costs
-23 authenticity points, while simply fitting a race block costs the `block` weight of 18. So on the
-table's own ratings the boost trio costs MORE originality than replacing the block. That is the
-table saying what it says (O-ringing alone is rated 9, "a collector weeps"), not a modelling error,
-but it is the opposite of the framing in `machining-system.md`'s "why this exists" section, which
-puts boring "in the middle but much closer to the authentic end".
+**The ordering those figures exposed is what the shipped values fixed.** On that scale a bored,
+decked and O-ringed original block cost 23 authenticity points while fitting a race block cost the
+`block` slot's weight of 18.18, so work done to preserve the original part was priced above
+destroying it. The `authenticityCost` values in `economy.json` put the same three operations at 2.6
+against the race block's unchanged 18.18, and the whole shipped catalogue of operations at under
+seven points, which is the relationship `machining-system.md`'s "why this exists" section always
+described: boring sits "in the middle but much closer to the authentic end".
 
 ### 4d. What the new-SKU model does NOT solve
 

@@ -18,7 +18,12 @@ import {
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '../src/context'
-import { computeDerivedStats, engineCharacterOf, machiningCost } from '../src/derivedStats'
+import {
+  authenticityPercentOf,
+  computeDerivedStats,
+  engineCharacterOf,
+  machiningCost,
+} from '../src/derivedStats'
 import { machiningAuthenticityCostOf, machiningOf, machiningPremiumYenOf } from '../src/machining'
 import {
   fittedMachiningOffersFor,
@@ -30,6 +35,7 @@ import { installedPartsValueYen, retentionFor } from '../src/marketValue'
 import { resolveJobLabor, resolveReconditionLabor } from '../src/jobs'
 import { resolvePlaceOnStation, resolveTakeFromStation } from '../src/parts'
 import { supportRatios, supportVerdict } from '../src/support'
+import { championStatFor, saleOutcomeFor } from '../src/valuation'
 import { createInitialGameState } from '../src/newGame'
 import { buildCarInstance, mintCarParts, testToolTiers, type CarPartOverride } from './testFixtures'
 
@@ -178,8 +184,8 @@ describe('the operations catalogue', () => {
     expect(total('forced')).toBeCloseTo(0.2, 6)
   })
 
-  it('sums to 48 authenticity points on a fully machined engine', () => {
-    expect(operations.reduce((sum, o) => sum + o.authenticityCost, 0)).toBe(48)
+  it('sums to 5.55 authenticity points on a fully machined engine', () => {
+    expect(operations.reduce((sum, o) => sum + o.authenticityCost, 0)).toBeCloseTo(5.55, 10)
   })
 
   it('leaves the two support-only operations with no power on any character', () => {
@@ -756,5 +762,81 @@ describe('the authenticity charge, one rule and three quotes', () => {
       expect(offer.authenticityCost, offer.operation.id).toBe(0)
       expect(offer.operation.authenticityCost, 'the rating itself is non-zero').toBeGreaterThan(0)
     }
+  })
+})
+
+/**
+ * The spec the authenticity scale is sized to: machining is how a collector car
+ * gains without losing its originality, so a player can apply every operation
+ * the catalogue offers to one and still sell it to a Collector.
+ *
+ * Authenticity is the Collector's champion stat, so their target is the whole
+ * budget: an original car starts at 100 and the gate sits at 90, which leaves
+ * ten points for every operation on the car put together. Measured through the
+ * real path rather than by re-summing the table - the same `machiningCost`
+ * the radar reads, the same `saleOutcomeFor` a sale reads.
+ */
+describe("a fully machined collector car still clears the Collector's gate", () => {
+  const COLLECTOR = BUYERS.find((buyer) => buyer.archetype === 'collector')!
+  /** A rare flagship kyusha: the Collector's own top culture weight, and the
+   * kind of car the work exists for. */
+  const MODEL = CARS.find((car) => car.id === 'toyota-2000gt-mf10')!
+  const ALL_OPERATIONS = ECONOMY.machining.operations
+  /** The nine that need only the tooling. The other six each need a scene at
+   * the Shop stage as well, so this is the reach of a shop that has bought its
+   * machines and earned no standing at all. */
+  const TOOLING_ONLY = operations
+
+  function machinedWith(applied: readonly MachiningOperation[]): CarInstance {
+    let car = stockCarFor(MODEL, 'car-collector-0001')
+    for (const operation of applied) car = machinedCar(car, operation.carPartId, [operation.id])
+    return car
+  }
+
+  function authenticityOf(car: CarInstance): number {
+    return authenticityPercentOf(car, MODEL, CONTEXT.partsById, PARTS_TAXONOMY, ECONOMY)
+  }
+
+  function sellTo(car: CarInstance) {
+    return saleOutcomeFor(COLLECTOR, MODEL, car, CONTEXT.partsById, PARTS_TAXONOMY, ECONOMY)
+  }
+
+  it('is the right buyer and the right car to measure it on', () => {
+    expect(championStatFor(COLLECTOR)).toBe('authenticity')
+    expect(COLLECTOR.statTargets.authenticity.target).toBe(0.9)
+    expect(MODEL.tier).toBe('flagship')
+    // The control: untouched, the car is perfectly original and sells.
+    const untouched = stockCarFor(MODEL, 'car-collector-0001')
+    expect(authenticityOf(untouched)).toBe(100)
+    expect(sellTo(untouched)).not.toBe('nothing')
+  })
+
+  it('sells after every one of the fifteen operations', () => {
+    const car = machinedWith(ALL_OPERATIONS)
+    expect(ALL_OPERATIONS).toHaveLength(15)
+    expect(machiningCost(car, CONTEXT.partsById, ECONOMY)).toBeCloseTo(6.85, 10)
+    expect(authenticityOf(car)).toBe(93)
+    expect(sellTo(car)).not.toBe('nothing')
+  })
+
+  it('sells after the nine the tooling alone can do', () => {
+    const car = machinedWith(TOOLING_ONLY)
+    expect(TOOLING_ONLY).toHaveLength(9)
+    expect(machiningCost(car, CONTEXT.partsById, ECONOMY)).toBeCloseTo(5.55, 10)
+    expect(authenticityOf(car)).toBe(94)
+    expect(sellTo(car)).not.toBe('nothing')
+  })
+
+  it('leaves the same car above the Collector reliability target too', () => {
+    const car = machinedWith(ALL_OPERATIONS)
+    const stats = computeDerivedStats(MODEL, car, CONTEXT.partsById, PARTS_TAXONOMY, ECONOMY)
+    expect(stats.reliability).toBe(73)
+    expect(stats.reliability / 100).toBeGreaterThanOrEqual(COLLECTOR.statTargets.reliability.target)
+  })
+
+  it('costs the machining budget nothing to restore a part to factory specification', () => {
+    const restored = ALL_OPERATIONS.find((o) => o.id === 'period-correct-restoration')!
+    expect(restored.authenticityCost).toBe(0)
+    expect(authenticityOf(machinedWith([restored]))).toBe(100)
   })
 })

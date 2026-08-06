@@ -637,12 +637,13 @@ const GradeBandCurveSchema = z.object({
  * (a machined original part is still `stock`, whose `specByGrade` is 0) and
  * the only reason the two power-free operations exist.
  *
- * `authenticityCost` is the operation's cost in authenticity points on the
- * desirability model's own 1-to-10 scale: 1 to 2 a purist shrugs, 4 to 6 a
- * raised eyebrow, 7 to 9 a collector weeps. Charged on STOCK-grade parts only
- * (`machiningCost`, sim/derivedStats.ts) - an aftermarket part already spent
- * its slot's whole authenticity weight when it was fitted, so charging
- * machining on top would book one loss twice.
+ * `authenticityCost` is the operation's cost in authenticity points: a
+ * fraction of a point each, ordered so a deeper cut costs more originality
+ * than a lighter one, and sized against the Collector's own 90-point gate so
+ * a car carrying every operation still clears it. Charged on STOCK-grade
+ * parts only (`machiningCost`, sim/derivedStats.ts) - an aftermarket part
+ * already spent its slot's whole authenticity weight when it was fitted, so
+ * charging machining on top would book one loss twice.
  *
  * `labourPoints` is the whole price of the work. Every operation costs no
  * money at all: the tooling (and, for a scene operation, the standing) was

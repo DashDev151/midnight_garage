@@ -464,7 +464,7 @@ describe('setup work is done on the car, not at the machine', () => {
     expect(springs.map((o) => o.operation.id)).toEqual(['corner-weighting'])
     expect(springs[0]!.handlingFraction).toBeGreaterThan(0)
     expect(springs[0]!.stylePoints).toBe(0)
-    expect(springs[0]!.authenticityCost).toBe(2)
+    expect(springs[0]!.authenticityCost).toBe(0.25)
     expect(springs[0]!.labourPoints).toBe(5)
     expect(springs[0]!.gateReason).toBeNull()
 

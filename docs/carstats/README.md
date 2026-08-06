@@ -160,6 +160,13 @@ and clamps to **0** (measured, on a Supra). Authenticity's true floor moved from
 fully-modified floor of 11 is unchanged, because a fully modified car has no stock part left to
 charge. **The two floors are reached from opposite directions and neither can reach the other's.**
 
+**Superseded, and marked rather than rewritten because this folder is a measurement snapshot.** The
+per-operation `authenticityCost` values were rescaled after that was measured, and six operations
+outside the engine joined them; the whole set now costs under seven points. So the machining route
+no longer drives the stat anywhere near 0 and the lower clamp arm is out of reach again. The seam
+itself is exactly as described. Current values: `economy.json` under `machining.operations`, and the
+note at the head of [authenticity.md](authenticity.md).
+
 **Style and performance correlate more than the design intends.** The formula is fully orthogonal
 and reads no performance figure at all, but the authored columns are not: `styleBase` against
 PS/tonne is r 0.69 across the shipped cars, `styleCeiling` r 0.77. Most of it is price rather than

@@ -9,7 +9,8 @@ import {
   type GarageRoomId,
   type OfficeSceneCounts,
 } from '../pixi/garage/rooms'
-import { bodyPaintShopOpen, machineShopOpen } from './garageCapability'
+import { bodyPaintShopOpen } from './garageCapability'
+import { machineShopHasMachinery } from './machineShopEquipment'
 import { photoCountForReputationTier } from './officeDisplay'
 import { useGameStore } from '../stores/gameStore'
 
@@ -22,7 +23,12 @@ import { useGameStore } from '../stores/gameStore'
  * A room's own art comes straight from `pixi/garage/rooms.ts`
  * (`buildGarageRoomScene`), untouched: this screen only decides WHICH of
  * its nine scene ids to render (the `-open` or `-derelict` twin, for the
- * two rooms that gate on a tool) and what each room's own action leads to.
+ * two rooms that ship a pair) and what each room's own action leads to.
+ *
+ * Every room is enterable. The machine shop's derelict twin says the room
+ * holds no machining equipment yet (`machineShopEquipment.ts`), never that
+ * the door is shut: an operation answers to the tool line it uses, one line
+ * at a time, and that gate lives in sim on the operation itself.
  *
  * The warehouse ships an `-open`/`-derelict` pair in the art module, but
  * the design gives it no tool gate at all (parts inventory has always been
@@ -66,7 +72,9 @@ function roomIdFromQuery(): SimpleRoom {
 
 const currentRoom = ref<SimpleRoom>(roomIdFromQuery())
 
-const machineShopIsOpen = computed(() => machineShopOpen(game.gameState, game.context.economy))
+/** Whether the machine shop has any machinery standing in it - what its two
+ * scenes tell apart. The room itself is always enterable. */
+const machineShopEquipped = computed(() => machineShopHasMachinery(game.gameState, game.context))
 const bodyPaintIsOpen = computed(() => bodyPaintShopOpen(game.gameState))
 
 const listingCount = computed(() => game.gameState.carsForSale.length)
@@ -110,7 +118,7 @@ function sceneIdFor(room: SimpleRoom): GarageRoomId {
     case 'warehouse':
       return 'warehouse-open'
     case 'machine-shop':
-      return machineShopIsOpen.value ? 'machine-shop-open' : 'machine-shop-derelict'
+      return machineShopEquipped.value ? 'machine-shop-open' : 'machine-shop-derelict'
     case 'body-paint':
       return bodyPaintIsOpen.value ? 'body-paint-open' : 'body-paint-derelict'
     case 'office':
@@ -141,7 +149,7 @@ onMounted(async () => {
   redraw()
 })
 
-watch([currentRoom, machineShopIsOpen, bodyPaintIsOpen, officeCounts], redraw)
+watch([currentRoom, machineShopEquipped, bodyPaintIsOpen, officeCounts], redraw)
 
 onUnmounted(() => {
   app?.destroy(true, { children: true, texture: true })
@@ -185,13 +193,6 @@ function goToCar(id: string): void {
       >
         {{ room.label }}
         <span
-          v-if="room.id === 'machine-shop' && !machineShopIsOpen"
-          class="derelict-flag"
-          data-test="room-tab-machine-shop-derelict-flag"
-        >
-          derelict
-        </span>
-        <span
           v-if="room.id === 'body-paint' && !bodyPaintIsOpen"
           class="derelict-flag"
           data-test="room-tab-body-paint-derelict-flag"
@@ -232,17 +233,11 @@ function goToCar(id: string): void {
       </template>
 
       <template v-else-if="currentRoom === 'machine-shop'">
-        <button
-          v-if="machineShopIsOpen"
-          type="button"
-          data-test="machine-shop-enter"
-          @click="goToRoute('machine-shop')"
-        >
+        <button type="button" data-test="machine-shop-enter" @click="goToRoute('machine-shop')">
           Open the machine shop
         </button>
-        <p v-else class="refusal" data-test="machine-shop-refusal">
-          Somebody's old lathe under thirty years of dust. Not going near it without the
-          machine-shop tooling.
+        <p v-if="!machineShopEquipped" class="hint" data-test="machine-shop-empty-hint">
+          Nothing in here but a bench and the dust. The bench lists what a machine would cost.
         </p>
       </template>
 
