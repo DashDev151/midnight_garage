@@ -74,6 +74,10 @@ function warp(): void {
     </div>
 
     <div class="row">
+      <button data-test="dev-refill-labour" @click="game.devRefillLabour()">refill labour</button>
+    </div>
+
+    <div class="row">
       <select v-model="grantModelId">
         <option value="">random model</option>
         <option v-for="m in game.modelsCatalog" :key="m.id" :value="m.id">

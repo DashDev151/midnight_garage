@@ -4956,6 +4956,14 @@ export const useGameStore = defineStore('game', () => {
     gameState.value = { ...gameState.value, cashYen: gameState.value.cashYen + amountYen }
   }
 
+  /** Hand the day's whole labour bar back without ending the day, so a long
+   * build can be walked through in one sitting. Clears what has been spent
+   * rather than raising the pool, so the bar refills to whatever this shop's
+   * tools and bench actually earn it. */
+  function devRefillLabour(): void {
+    gameState.value = { ...gameState.value, energySpentToday: 0 }
+  }
+
   /** Spawn a rough auction-grade car of the given model (random if omitted) into the garage. */
   function devGrantCar(modelId?: string): void {
     const models = context.value.models
@@ -5325,6 +5333,7 @@ export const useGameStore = defineStore('game', () => {
     importSaveCode,
     newGame,
     devGiveCash,
+    devRefillLabour,
     devGrantCar,
     devGrantPart,
     devSetToolTier,
