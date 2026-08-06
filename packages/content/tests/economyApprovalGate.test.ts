@@ -1959,6 +1959,31 @@ import storyMissions from '../data/storyMissions.json'
  * orchestrator's blanket lever authority for this build (a deletion-only sprint moves no
  * value by construction). No mission payout or budget cap moves, and `partPricing.json`/
  * `damagePatterns.json` are untouched.
+ *
+ * Re-pinned for `docs/sprints/sprint186.md` (the standing ladder, retuned and re-spaced),
+ * every value named and signed in that sprint doc's lever tables before implementation.
+ * Two lever blocks move, both answering the same measurement:
+ *
+ * 1. `sceneStandingProgress.knownDeliveries` / `respectedDeliveries` change SHAPE, from one
+ *    flat count each to one count per scene, keyed by `BuyerArchetype` exactly as
+ *    `marqueeBarYenByTier` is keyed by fitment class. From a flat 3 / 10 to: collector 2/8,
+ *    tuner 3/9, show-crowd 6/17, racer 3/8, daily-drivers 4/11, touge 4/13. The scenes' own
+ *    best match rates run 30.8% to 75.5%, so the flat pair priced Respected at 14 cars of
+ *    deliberate work for the Show Crowd and 33 for a Collector; the per-scene counts hold it
+ *    to a measured 23 to 27 with a mean of 24.8. Read only by `nextSceneStandingStage`
+ *    (sim/sceneStanding.ts), which now indexes both maps by the scene it is already given.
+ * 2. `valuation.sceneStanding.known` gains `ceiling` 1.08, a field its two siblings already
+ *    carry. Measured across all six scenes, `none` and `known` previously realised the same
+ *    yen to the yen: Known named a floor only, and the shop front's own 1.0 ceiling clamped
+ *    both stages to the same number. 1.08 sits below `1 + tasteSpread` (1.12), so Known takes
+ *    the existing CLAMP branch of `channelTasteMultiplier` where `respected` and `shop` take
+ *    the REPLACE branch, and no arithmetic changes. The four shop-front rungs now read
+ *    1.00 / 1.08 / 1.14 to 1.17 / 1.18 to 1.25 and are four distinct values.
+ *
+ * No mission payout or budget cap moves: no probe in `storyMissionProbes.test.ts` reads scene
+ * standing (every probe car is priced at `sceneStanding` absent, i.e. every scene at `none`),
+ * and the delivery thresholds feed only the stage machinery. `partPricing.json` and
+ * `damagePatterns.json` are untouched, so their hashes and the payout pin hold unchanged.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -1968,7 +1993,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('955e7f275f32e103b5b54f797330e1350d59cf67368233dbde238befb3fc4b1a')
+    ).toBe('d7546531c06ece3c8e7d5f89f296320030075fd4961709a0cfa79f62ec965642')
   })
 
   it('damagePatterns.json matches its approved content exactly', () => {

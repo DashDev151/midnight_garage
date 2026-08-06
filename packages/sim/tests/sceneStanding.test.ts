@@ -74,29 +74,46 @@ describe('creditSceneDelivery (scene-standing-arc.md step 4)', () => {
     expect(result.sceneStanding.collector).toBe('none')
   })
 
-  it('reaches Known at exactly knownDeliveries matched deliveries, not one short', () => {
+  it("reaches Known at exactly that scene's own knownDeliveries, not one short", () => {
     const { knownDeliveries } = CONTEXT.economy.sceneStandingProgress
-    const almost = deliverN(fresh, 'tuner', knownDeliveries - 1, 100_000)
+    const almost = deliverN(fresh, 'tuner', knownDeliveries.tuner - 1, 100_000)
     expect(almost.sceneStanding.tuner).toBe('none')
-    const there = deliverN(fresh, 'tuner', knownDeliveries, 100_000)
+    const there = deliverN(fresh, 'tuner', knownDeliveries.tuner, 100_000)
     expect(there.sceneStanding.tuner).toBe('known')
   })
 
-  it('reaches Respected at exactly respectedDeliveries, never before', () => {
+  it("reaches Respected at exactly that scene's own respectedDeliveries, never before", () => {
     const { respectedDeliveries } = CONTEXT.economy.sceneStandingProgress
-    const almost = deliverN(fresh, 'racer', respectedDeliveries - 1, 100_000)
+    const almost = deliverN(fresh, 'racer', respectedDeliveries.racer - 1, 100_000)
     expect(almost.sceneStanding.racer).toBe('known')
-    const there = deliverN(fresh, 'racer', respectedDeliveries, 100_000)
+    const there = deliverN(fresh, 'racer', respectedDeliveries.racer, 100_000)
     expect(there.sceneStanding.racer).toBe('respected')
+  })
+
+  it("reads each scene's own thresholds, so one delivery count buys different standing in different scenes", () => {
+    // The point of the per-scene maps (sprint186.md): the scenes' match rates
+    // differ by more than a factor of two, so the same tally cannot mean the
+    // same thing everywhere. Collector asks for the fewest deliveries of the
+    // six and Show Crowd the most, so a run of deliveries that has already
+    // made a shop Respected among Collectors leaves it merely Known among the
+    // Show Crowd.
+    const { knownDeliveries, respectedDeliveries } = CONTEXT.economy.sceneStandingProgress
+    expect(knownDeliveries.collector).toBeLessThan(knownDeliveries['show-crowd'])
+    expect(respectedDeliveries.collector).toBeLessThan(respectedDeliveries['show-crowd'])
+
+    const n = respectedDeliveries.collector
+    expect(deliverN(fresh, 'collector', n, 100_000).sceneStanding.collector).toBe('respected')
+    expect(deliverN(fresh, 'show-crowd', n, 100_000).sceneStanding['show-crowd']).toBe('known')
   })
 
   it('never reaches The Shop below Respected, however far above the marquee bar the price sits', () => {
     const { knownDeliveries, marqueeBarYenByTier } = CONTEXT.economy.sceneStandingProgress
     const model = CONTEXT.modelsById[MODEL_ID]!
     const marqueeBarYen = marqueeBarYenByTier[fitmentClassForTier(model.tier)]
-    // Only `knownDeliveries` deliveries - Respected (10) is not yet cleared -
-    // each priced at twice the marquee bar, which must not matter yet.
-    const state = deliverN(fresh, 'collector', knownDeliveries, marqueeBarYen * 2)
+    // Only the Collector's own `knownDeliveries` deliveries - its Respected
+    // threshold is not yet cleared - each priced at twice the marquee bar,
+    // which must not matter yet.
+    const state = deliverN(fresh, 'collector', knownDeliveries.collector, marqueeBarYen * 2)
     expect(state.sceneStanding.collector).toBe('known')
   })
 
@@ -104,7 +121,7 @@ describe('creditSceneDelivery (scene-standing-arc.md step 4)', () => {
     const { respectedDeliveries, marqueeBarYenByTier } = CONTEXT.economy.sceneStandingProgress
     const model = CONTEXT.modelsById[MODEL_ID]!
     const marqueeBarYen = marqueeBarYenByTier[fitmentClassForTier(model.tier)]
-    const state = deliverN(fresh, 'show-crowd', respectedDeliveries, marqueeBarYen)
+    const state = deliverN(fresh, 'show-crowd', respectedDeliveries['show-crowd'], marqueeBarYen)
     expect(state.sceneStanding['show-crowd']).toBe('shop')
 
     // The same marquee price, alone, from a scene that has never heard of the
@@ -127,7 +144,7 @@ describe('creditSceneDelivery (scene-standing-arc.md step 4)', () => {
 
   it('never regresses a stage once earned, even when a later delivery is cheap', () => {
     const { respectedDeliveries } = CONTEXT.economy.sceneStandingProgress
-    const respected = deliverN(fresh, 'touge', respectedDeliveries, 100_000)
+    const respected = deliverN(fresh, 'touge', respectedDeliveries.touge, 100_000)
     expect(respected.sceneStanding.touge).toBe('respected')
     const afterCheapSale = creditSceneDelivery(
       respected,

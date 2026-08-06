@@ -220,6 +220,21 @@ pass."
 
 ## Open engineering
 
+- [ ] **`rollingWindowShareCap` (1.5) rewards having sold anything, not concentration (recorded by
+  sprint186.md, deliberately not fixed there).** The word-of-mouth share term is
+  `1 + share * (cap - 1)` where `share` is this scene's recent matched deliveries over every
+  scene's, so a single matched delivery with nothing else inside the 14-day window takes the FULL
+  cap. Since sprint 182 made a matched delivery genuinely rare (arrival-stage match rates now 0.0%
+  to 4.5% per scene), the diluting case (a second scene also landing a matched sale in the same
+  fortnight) is the unusual one, and a number meant to price deliberate single-scene focus now
+  prices having sold at all.
+
+  **This needs a mechanism, not a value**, which is why sprint 186 retuned the thresholds around it
+  and left it alone: a smaller cap would only shrink a reward that is still being handed out for
+  the wrong thing. The shape that would fix it is a minimum-delivery floor before the share term
+  engages at all, so the cap prices sustained concentration rather than a single sale. That is a
+  design question for the maintainer, not a retune.
+
 - [ ] **THE TOOL LADDER HAS A DEAD RUNG: tier 2 and tier 3 both reach mint (found 2026-08-04).**
   `economy.repairBandCeilingByTier` is `{1: "fine", 2: "mint", 3: "mint"}`, so **tier 3 buys no
   quality over tier 2**. Everything tier 3 adds is elsewhere: labour per band step

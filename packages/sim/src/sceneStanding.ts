@@ -63,10 +63,13 @@ function higherStage(a: SceneStandingStage, b: SceneStandingStage): SceneStandin
 /**
  * The next scene-standing stage given the CURRENT stage and the scene's
  * whole delivery count AFTER this delivery is appended - deeds tallied and
- * compared against `economy.sceneStandingProgress`'s thresholds, because
- * everything is a tally underneath (docs/sprints/scene-standing-arc.md).
- * Monotonic (`higherStage`): a stage never regresses, so a quiet scene keeps
- * every stage it already earned.
+ * compared against `economy.sceneStandingProgress`'s thresholds for THIS
+ * scene, because everything is a tally underneath
+ * (docs/sprints/scene-standing-arc.md) and a scene the market rarely matches
+ * asks for fewer deliveries than one it matches easily, so the same rung
+ * costs comparable WORK everywhere (sprint186.md). Monotonic
+ * (`higherStage`): a stage never regresses, so a quiet scene keeps every
+ * stage it already earned.
  *
  * The Shop needs the scene ALREADY at (or newly reaching, on this same
  * delivery) Respected, on top of `deliveryPriceYen` clearing that fitment
@@ -78,6 +81,7 @@ function higherStage(a: SceneStandingStage, b: SceneStandingStage): SceneStandin
  * `none` straight to The Shop in one sale regardless of price.
  */
 function nextSceneStandingStage(
+  scene: BuyerArchetype,
   currentStage: SceneStandingStage,
   totalDeliveries: number,
   deliveryPriceYen: number,
@@ -86,8 +90,8 @@ function nextSceneStandingStage(
 ): SceneStandingStage {
   const progress = economy.sceneStandingProgress
   let countStage: SceneStandingStage = 'none'
-  if (totalDeliveries >= progress.respectedDeliveries) countStage = 'respected'
-  else if (totalDeliveries >= progress.knownDeliveries) countStage = 'known'
+  if (totalDeliveries >= progress.respectedDeliveries[scene]) countStage = 'respected'
+  else if (totalDeliveries >= progress.knownDeliveries[scene]) countStage = 'known'
 
   let stage = higherStage(currentStage, countStage)
   const marqueeBarYen = fitmentClass ? progress.marqueeBarYenByTier[fitmentClass] : undefined
@@ -139,6 +143,7 @@ export function creditSceneDelivery(
   const entriesForScene = [...ledger[scene], entry]
   const sceneLedger: SceneLedger = { ...ledger, [scene]: entriesForScene }
   const nextStage = nextSceneStandingStage(
+    scene,
     state.sceneStanding[scene],
     entriesForScene.length,
     details.priceYen,

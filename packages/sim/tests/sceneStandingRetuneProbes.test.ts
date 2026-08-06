@@ -59,8 +59,8 @@ function buyerFor(scene: BuyerArchetype): Buyer {
   return BUYERS.find((b) => b.archetype === scene)!
 }
 
-/** Every shipped model, once each - the 26-car roster sprint182.md itself
- * measured against. */
+/** Every shipped model, once each - whatever `cars.json` currently carries,
+ * never a pinned roster size. */
 const SHIPPED_MODELS = CARS
 
 /** 400 generated auction lots, cycling the shipped roster exactly as
@@ -248,8 +248,10 @@ interface ThresholdRow {
   bestMatchRate: number
   bestLevel: BuildLevel
   reachableRosterFraction: number
-  carsFor3: number | null
-  carsFor10: number | null
+  knownThreshold: number
+  respectedThreshold: number
+  carsForKnown: number | null
+  carsForRespected: number | null
 }
 
 /**
@@ -282,41 +284,62 @@ const THRESHOLD_ROWS: ThresholdRow[] = SCENES.map((scene) => {
     bestMatchRate: best.rate,
     bestLevel: best.level,
     reachableRosterFraction,
-    carsFor3: carsFor(knownDeliveries),
-    carsFor10: carsFor(respectedDeliveries),
+    knownThreshold: knownDeliveries[scene],
+    respectedThreshold: respectedDeliveries[scene],
+    carsForKnown: carsFor(knownDeliveries[scene]),
+    carsForRespected: carsFor(respectedDeliveries[scene]),
   }
 })
 
-describe('Item 2: what knownDeliveries (3) and respectedDeliveries (10) now mean in cars', () => {
-  it('reports the derived car counts per scene', () => {
-    console.log('\n=== ITEM 2: cars needed for Known (3) / Respected (10), by scene ===')
+describe("Item 2: what each scene's own knownDeliveries / respectedDeliveries mean in cars", () => {
+  it('reports the derived car counts per scene, and the spread the per-scene thresholds are there to close', () => {
+    console.log('\n=== ITEM 2: cars needed for Known / Respected, by scene ===')
     console.log(
-      'scene | best rate (best of the 5 measured builds) | reachable-at-all (roster) | cars for 3 | cars for 10',
+      'scene | best rate (best of the 5 measured builds) | reachable-at-all (roster) | known thr -> cars | respected thr -> cars',
     )
     for (const row of THRESHOLD_ROWS) {
       console.log(
         `${row.scene.padEnd(14)} | ${pct(row.bestMatchRate).padEnd(6)} via ${row.bestLevel.padEnd(
           8,
-        )} | ${pct(row.reachableRosterFraction).padEnd(25)} | ${row.carsFor3 ?? 'IMPOSSIBLE'} | ${
-          row.carsFor10 ?? 'IMPOSSIBLE'
-        }`,
+        )} | ${pct(row.reachableRosterFraction).padEnd(25)} | ${String(row.knownThreshold).padEnd(
+          3,
+        )} -> ${String(row.carsForKnown ?? 'IMPOSSIBLE').padEnd(11)} | ${String(
+          row.respectedThreshold,
+        ).padEnd(3)} -> ${row.carsForRespected ?? 'IMPOSSIBLE'}`,
       )
     }
+    const respectedCounts = THRESHOLD_ROWS.map((r) => r.carsForRespected).filter(
+      (n): n is number => n !== null,
+    )
+    const knownCounts = THRESHOLD_ROWS.map((r) => r.carsForKnown).filter(
+      (n): n is number => n !== null,
+    )
+    const mean = (xs: number[]): number => xs.reduce((a, b) => a + b, 0) / xs.length
+    console.log(
+      `cars to Known:     span ${Math.min(...knownCounts)} to ${Math.max(
+        ...knownCounts,
+      )}, mean ${mean(knownCounts).toFixed(1)}`,
+    )
+    console.log(
+      `cars to Respected: span ${Math.min(...respectedCounts)} to ${Math.max(
+        ...respectedCounts,
+      )}, mean ${mean(respectedCounts).toFixed(1)}`,
+    )
   })
 
   it('a scene reachable by at least one build can never report an impossible car count', () => {
     for (const row of THRESHOLD_ROWS) {
       if (row.reachableRosterFraction > 0) {
-        expect(row.carsFor3).not.toBeNull()
-        expect(row.carsFor10).not.toBeNull()
+        expect(row.carsForKnown).not.toBeNull()
+        expect(row.carsForRespected).not.toBeNull()
       }
     }
   })
 
-  it('the cars-for-10 figure is never smaller than the cars-for-3 figure (monotonic in the threshold)', () => {
+  it("the cars-to-Respected figure is never smaller than the cars-to-Known figure (monotonic in that scene's own thresholds)", () => {
     for (const row of THRESHOLD_ROWS) {
-      if (row.carsFor3 !== null && row.carsFor10 !== null) {
-        expect(row.carsFor10).toBeGreaterThanOrEqual(row.carsFor3)
+      if (row.carsForKnown !== null && row.carsForRespected !== null) {
+        expect(row.carsForRespected).toBeGreaterThanOrEqual(row.carsForKnown)
       }
     }
   })
@@ -355,10 +378,10 @@ const SHOP_JOINT_ROWS: ShopJointRow[] = SCENES.map((scene) => {
   return { scene, qualifyingCount }
 })
 
-describe("Item 3: the Shop stage's joint condition (matched AND clears the price bar), per scene, 26 shipped cars", () => {
+describe("Item 3: the Shop stage's joint condition (matched AND clears the price bar), per scene, across the shipped roster", () => {
   it('reports how many shipped cars can BOTH match and clear the bar, at the best of five build levels', () => {
     console.log(
-      '\n=== ITEM 3: shipped cars that can jointly match + clear the marquee bar (of 26) ===',
+      `\n=== ITEM 3: shipped cars that can jointly match + clear the marquee bar (of ${SHIPPED_MODELS.length}) ===`,
     )
     console.log(
       "(the price used is `valuateCarForBuyer` - this buyer's own uncapped valuation, a CEILING on the real sale price: an actual walk-in offer is priced through a channel band and a quality-draw fraction that can only price it LOWER, so this measures whether the joint condition is reachable at all, not that a real sale would clear it.)",
@@ -372,7 +395,7 @@ describe("Item 3: the Shop stage's joint condition (matched AND clears the price
     }
   })
 
-  it('every scene reports a count within [0, 26]', () => {
+  it('every scene reports a count within [0, the shipped roster size]', () => {
     for (const row of SHOP_JOINT_ROWS) {
       expect(row.qualifyingCount).toBeGreaterThanOrEqual(0)
       expect(row.qualifyingCount).toBeLessThanOrEqual(SHIPPED_MODELS.length)
@@ -455,58 +478,80 @@ describe('Item 4: rollingWindowShareCap (1.5) - how concentrated deliveries can 
 // Item 5: standing's per-stage effect on a REALISED sale price, in yen.
 // ---------------------------------------------------------------------------
 
-interface StandingPriceRow {
-  scene: BuyerArchetype
-  modelId: string | null
-  priceByStage: Record<'none' | 'known' | 'respected' | 'shop', number> | null
-  partsBillNoiseYen: number | null
-}
+type Stage = 'none' | 'known' | 'respected' | 'shop'
+const STAGES: readonly Stage[] = ['none', 'known', 'respected', 'shop']
 
-const STANDING_PRICE_ROWS: StandingPriceRow[] = SCENES.map((scene) => {
+/**
+ * One scene's exemplar: the shipped model with the highest culture affinity
+ * for that buyer among those whose scene-targeted build is genuinely MATCHED
+ * - a real, matched car, not a hypothetical one, so the price effect measured
+ * is the one the gate actually leaves standing to move. Absent only for a
+ * scene no shipped car can match at all.
+ */
+const EXEMPLAR_BY_SCENE: Partial<Record<BuyerArchetype, { model: CarModel; car: CarInstance }>> = {}
+for (const scene of SCENES) {
   const buyer = buyerFor(scene)
-  // The exemplar: the shipped model with the highest culture affinity for
-  // this buyer among those whose scene-targeted build is genuinely MATCHED -
-  // a real, matched car, not a hypothetical one, so the price effect
-  // measured is the one the gate actually leaves standing to move.
   const candidates = SHIPPED_MODELS.filter((model) =>
     matches(scene, model, sceneTargetedBuild(model, scene)),
   )
-  if (candidates.length === 0) {
-    return { scene, modelId: null, priceByStage: null, partsBillNoiseYen: null }
-  }
+  if (candidates.length === 0) continue
   const model = candidates.reduce((best, m) =>
     (buyer.culturePreferences.find((p) => p.culture === m.spec.culture)?.weight ?? 0) >
     (buyer.culturePreferences.find((p) => p.culture === best.spec.culture)?.weight ?? 0)
       ? m
       : best,
   )
-  const targetedCar = sceneTargetedBuild(model, scene)
-  const stockCar = stockMint(model)
+  EXEMPLAR_BY_SCENE[scene] = { model, car: sceneTargetedBuild(model, scene) }
+}
 
-  const priceAt = (stage: 'none' | 'known' | 'respected' | 'shop'): number =>
-    valuateCarForBuyerViaChannel(
-      buyer,
-      model,
-      targetedCar,
-      CONTEXT.partsById,
-      CONTEXT.partsTaxonomy,
-      CONTEXT.partsTaxonomyById,
-      100,
-      ECONOMY,
-      SHOP_FRONT_CEILING,
-      testSceneStanding(stage === 'none' ? {} : { [scene]: stage }),
-    )
+/** That scene's exemplar priced through a channel of the given taste ceiling,
+ * with only the scene under test standing anywhere. */
+function exemplarPriceYen(scene: BuyerArchetype, channelCeiling: number, stage: Stage): number {
+  const { model, car } = EXEMPLAR_BY_SCENE[scene]!
+  return valuateCarForBuyerViaChannel(
+    buyerFor(scene),
+    model,
+    car,
+    CONTEXT.partsById,
+    CONTEXT.partsTaxonomy,
+    CONTEXT.partsTaxonomyById,
+    100,
+    ECONOMY,
+    channelCeiling,
+    testSceneStanding(stage === 'none' ? {} : { [scene]: stage }),
+  )
+}
 
+interface StandingPriceRow {
+  scene: BuyerArchetype
+  modelId: string | null
+  priceByStage: Record<Stage, number> | null
+  partsBillNoiseYen: number | null
+}
+
+const STANDING_PRICE_ROWS: StandingPriceRow[] = SCENES.map((scene) => {
+  const exemplar = EXEMPLAR_BY_SCENE[scene]
+  if (!exemplar) {
+    return { scene, modelId: null, priceByStage: null, partsBillNoiseYen: null }
+  }
+  const { model, car } = exemplar
   const priceByStage = {
-    none: priceAt('none'),
-    known: priceAt('known'),
-    respected: priceAt('respected'),
-    shop: priceAt('shop'),
+    none: exemplarPriceYen(scene, SHOP_FRONT_CEILING, 'none'),
+    known: exemplarPriceYen(scene, SHOP_FRONT_CEILING, 'known'),
+    respected: exemplarPriceYen(scene, SHOP_FRONT_CEILING, 'respected'),
+    shop: exemplarPriceYen(scene, SHOP_FRONT_CEILING, 'shop'),
   }
 
   const partsBillNoiseYen =
-    marketValueYen(model, targetedCar, 100, CONTEXT.partsById, CONTEXT.partsTaxonomyById, ECONOMY) -
-    marketValueYen(model, stockCar, 100, CONTEXT.partsById, CONTEXT.partsTaxonomyById, ECONOMY)
+    marketValueYen(model, car, 100, CONTEXT.partsById, CONTEXT.partsTaxonomyById, ECONOMY) -
+    marketValueYen(
+      model,
+      stockMint(model),
+      100,
+      CONTEXT.partsById,
+      CONTEXT.partsTaxonomyById,
+      ECONOMY,
+    )
 
   return { scene, modelId: model.id, priceByStage, partsBillNoiseYen }
 })
@@ -533,18 +578,36 @@ describe('Item 5: standing per-stage effect on a REALISED sale price - visible a
     }
   })
 
-  it('standing never LOWERS the realised price as it climbs the ladder, on a fixed matched build (monotonic by construction)', () => {
+  it('every rung on the ladder is worth STRICTLY more than the one below it, on a fixed matched build', () => {
     // sceneStandingBandFor only ever raises the floor and/or the ceiling as
-    // stage climbs (economy.valuation.sceneStanding: known 0.92 floor;
-    // respected 0.95/1.17; shop 0.95/1.25) - never lowers either, so this is
-    // a structural property of the band table, not a coincidence of the
-    // exemplar chosen.
+    // the stage climbs (economy.valuation.sceneStanding: known 0.92/1.08;
+    // respected 0.95/1.17; shop 0.95/1.25), so the ordering itself is
+    // structural. The STRICTNESS is what sprint186.md bought: with the shop
+    // front's own 1.0 ceiling, `none` clamps to exactly 1.0 for any matched
+    // car (score >= 0.5), while `known` prices from a 0.92 floor against a
+    // 1.08 ceiling and so clears 1.0 at every score the gate lets through.
+    // Before the ceiling existed, `known` clamped to the channel's 1.0 too
+    // and this rung paid nothing at all.
     for (const row of STANDING_PRICE_ROWS) {
       if (!row.priceByStage) continue
       const { none, known, respected, shop } = row.priceByStage
-      expect(known).toBeGreaterThanOrEqual(none)
-      expect(respected).toBeGreaterThanOrEqual(known)
-      expect(shop).toBeGreaterThanOrEqual(respected)
+      expect(known).toBeGreaterThan(none)
+      expect(respected).toBeGreaterThan(known)
+      expect(shop).toBeGreaterThan(respected)
+    }
+  })
+
+  it('reports the four rungs as plain multiples of the no-standing price, which is what the ladder is meant to read as', () => {
+    console.log('\n=== ITEM 5b: shop-front price ladder, as a multiple of `none` ===')
+    for (const row of STANDING_PRICE_ROWS) {
+      if (!row.priceByStage) continue
+      const { none, known, respected, shop } = row.priceByStage
+      const rung = (x: number): string => (x / none).toFixed(3)
+      console.log(
+        `${row.scene.padEnd(14)} | none ${rung(none)} | known ${rung(known)} | respected ${rung(
+          respected,
+        )} | shop ${rung(shop)}`,
+      )
     }
   })
 })
@@ -631,14 +694,17 @@ describe('Item 6: what the gate touches beyond the matched predicate', () => {
 
   it("word of mouth is inert (flat 1x) until Known, which item 2's own car counts now gate - reported, not re-derived", () => {
     console.log('\n=== ITEM 6b: word-of-mouth dormancy window, per scene (from item 2) ===')
+    const fresh = createInitialGameState(CONTEXT, 1)
     for (const row of THRESHOLD_ROWS) {
       console.log(
         `${row.scene.padEnd(14)} | word of mouth stays at 1x for approximately ${
-          row.carsFor3 ?? 'an unreachable number of'
+          row.carsForKnown ?? 'an unreachable number of'
         } delivered cars before Known's own ${ECONOMY.sceneStandingProgress.wordOfMouthMultiplierByStage.known}x can even begin`,
       )
+      // The dormancy itself, not just its length: a scene nobody has
+      // delivered to draws exactly as it always did.
+      expect(wordOfMouthMultiplierFor(row.scene, fresh, ECONOMY)).toBe(1)
     }
-    expect(ECONOMY.sceneStandingProgress.knownDeliveries).toBe(knownDeliveries)
   })
 
   it('the Racer scene commission CAN demand strictly more power than the plain taste gate once the power-expectation chain has climbed - a pre-existing interaction, unaffected by 182, worth naming', () => {
@@ -662,5 +728,92 @@ describe('Item 6: what the gate touches beyond the matched predicate', () => {
     // ask the same thing at the START of a career, before the chain climbs.
     expect(climbedBar).toBeDefined()
     expect(climbedBar!).toBeGreaterThan(ordinaryPs)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Item 7: how far up the channel list each standing stage still reaches.
+// ---------------------------------------------------------------------------
+
+/** Every channel that prices through a taste band at all, cheapest ceiling
+ * first - `tradeNetwork` is excluded by the data, since it prices from a flat
+ * `priceBand` and never reads taste. */
+const TASTE_CEILING_CHANNELS = Object.entries(ECONOMY.sellingChannels)
+  .flatMap(([id, channel]) =>
+    channel.tasteCeiling === undefined ? [] : [{ id, ceiling: channel.tasteCeiling }],
+  )
+  .sort((a, b) => a.ceiling - b.ceiling)
+
+describe("Item 7: where each standing stage's own ceiling still beats the channel's", () => {
+  it('reports, per channel and per stage, what a matched exemplar realises as a multiple of the same car with no standing', () => {
+    console.log(
+      '\n=== ITEM 7: standing x channel, price as a multiple of the no-standing price ===',
+    )
+    console.log(
+      "A stage's ceiling competes with the channel's own via Math.max, so it only lifts the " +
+        'ceiling on channels whose own is lower. Its FLOOR, however, applies on every channel, ' +
+        'which is why a stage can still pay a little where its ceiling is inert.',
+    )
+    for (const { id, ceiling } of TASTE_CEILING_CHANNELS) {
+      const cells = SCENES.flatMap((scene) => {
+        if (!EXEMPLAR_BY_SCENE[scene]) return []
+        const none = exemplarPriceYen(scene, ceiling, 'none')
+        return [
+          STAGES.filter((s) => s !== 'none')
+            .map((stage) => exemplarPriceYen(scene, ceiling, stage) / none)
+            .map((x) => x.toFixed(3))
+            .join(' / '),
+        ]
+      })
+      console.log(`${id.padEnd(17)} (ceiling ${ceiling.toFixed(2)}) known/respected/shop:`)
+      SCENES.filter((scene) => EXEMPLAR_BY_SCENE[scene]).forEach((scene, i) => {
+        console.log(`    ${scene.padEnd(14)} ${cells[i]}`)
+      })
+    }
+  })
+
+  it("Known's 1.08 ceiling lifts only the channels whose own ceiling is below it, and its floor is what pays everywhere else", () => {
+    // The limit sprint186.md records, measured rather than assumed. On the
+    // shop front (1.00) and the free ads paper (1.05), Known's own 1.08 is
+    // the binding ceiling and the rung is worth a real premium. On the
+    // magazine, the meet (both 1.17) and the collector network (1.20),
+    // Math.max keeps the channel's own ceiling, so the rung's CEILING buys
+    // nothing at all there - only its raised floor (0.92 against the standard
+    // 0.88) still moves the price, and by less.
+    const knownCeiling = ECONOMY.valuation.sceneStanding.known.ceiling!
+    const liftByChannel = TASTE_CEILING_CHANNELS.map(({ id, ceiling }) => {
+      const lifts = SCENES.flatMap((scene) => {
+        if (!EXEMPLAR_BY_SCENE[scene]) return []
+        const none = exemplarPriceYen(scene, ceiling, 'none')
+        return [exemplarPriceYen(scene, ceiling, 'known') / none - 1]
+      })
+      return { id, ceiling, meanLift: lifts.reduce((a, b) => a + b, 0) / lifts.length }
+    })
+    console.log('\n=== ITEM 7b: what the Known rung is worth, per channel (mean over scenes) ===')
+    for (const row of liftByChannel) {
+      console.log(
+        `${row.id.padEnd(17)} | channel ceiling ${row.ceiling.toFixed(2)} | Known ${
+          row.ceiling < knownCeiling ? 'RAISES the ceiling  ' : 'ceiling INERT (floor only)'
+        } | mean gain ${pct(row.meanLift)}`,
+      )
+    }
+    // Averaged over the exemplars, Known is worth something on every
+    // channel, and worth strictly more where its ceiling actually binds than
+    // where only its floor does. Per scene it can be worth exactly nothing on
+    // the three premium channels: an exemplar scoring a perfect 1.0 prices at
+    // the channel's own ceiling either way, since the floor is what the score
+    // walks up FROM.
+    const binding = liftByChannel.filter((r) => r.ceiling < knownCeiling)
+    const inert = liftByChannel.filter((r) => r.ceiling >= knownCeiling)
+    expect(binding.map((r) => r.id).sort()).toEqual(['freeAdsPaper', 'shopFront'])
+    expect(inert.map((r) => r.id).sort()).toEqual([
+      'collectorNetwork',
+      'tunerMagazine',
+      'weekendMeet',
+    ])
+    for (const row of liftByChannel) expect(row.meanLift).toBeGreaterThan(0)
+    expect(Math.min(...binding.map((r) => r.meanLift))).toBeGreaterThan(
+      Math.max(...inert.map((r) => r.meanLift)),
+    )
   })
 })

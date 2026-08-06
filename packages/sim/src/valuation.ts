@@ -275,7 +275,8 @@ function sceneStandingStageFor(
  * What this buyer's scene standing contributes to the channel band right
  * now: the floor to price from instead of the standard `1 - tasteSpread`,
  * and a ceiling to compete against the channel's own - `undefined` at
- * `none`/`known`, which name no ceiling and so never raise one.
+ * `none`, which is the absence of standing rather than a band, and at any
+ * authored stage that names no ceiling of its own.
  */
 function sceneStandingBandFor(
   buyer: Buyer,
@@ -284,9 +285,6 @@ function sceneStandingBandFor(
 ): { floor: number; ceiling: number | undefined } {
   const stage = sceneStandingStageFor(buyer, sceneStanding)
   if (stage === 'none') return { floor: 1 - economy.valuation.tasteSpread, ceiling: undefined }
-  if (stage === 'known') {
-    return { floor: economy.valuation.sceneStanding.known.floor, ceiling: undefined }
-  }
   const band = economy.valuation.sceneStanding[stage]
   return { floor: band.floor, ceiling: band.ceiling }
 }
@@ -298,7 +296,7 @@ function sceneStandingBandFor(
  * scene standing (`sceneStanding`, absent = every scene at `none`) raises
  * it - `docs/sprints/scene-standing-arc.md`'s per-scene band, applied here
  * because this is the one place a taste band is built. A scene's own
- * ceiling (from `respected` on) competes against the channel's rather than
+ * ceiling (from `known` on) competes against the channel's rather than
  * adding to it (`Math.max` - stacking would compound: a respected scene in
  * the magazine would otherwise reach past both ceilings combined). Once the
  * effective ceiling is settled, the shape is unchanged: it either CLAMPS

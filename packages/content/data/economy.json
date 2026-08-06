@@ -100,7 +100,7 @@
     },
     "tasteSpread": 0.12,
     "sceneStanding": {
-      "known": { "floor": 0.92 },
+      "known": { "floor": 0.92, "ceiling": 1.08 },
       "respected": { "floor": 0.95, "ceiling": 1.17 },
       "shop": { "floor": 0.95, "ceiling": 1.25 }
     },
@@ -141,8 +141,22 @@
     }
   },
   "sceneStandingProgress": {
-    "knownDeliveries": 3,
-    "respectedDeliveries": 10,
+    "knownDeliveries": {
+      "collector": 2,
+      "tuner": 3,
+      "show-crowd": 6,
+      "racer": 3,
+      "daily-drivers": 4,
+      "touge": 4
+    },
+    "respectedDeliveries": {
+      "collector": 8,
+      "tuner": 9,
+      "show-crowd": 17,
+      "racer": 8,
+      "daily-drivers": 11,
+      "touge": 13
+    },
     "marqueeBarYenByTier": {
       "entry": 500000,
       "everyday": 1200000,

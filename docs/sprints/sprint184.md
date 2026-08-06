@@ -72,22 +72,53 @@ implement it without a fresh ruling.
 
 ## Levers (directive 22)
 
-**Values not proposed yet, deliberately.** The direction is signed ("a good car sale should
-out-earn a standard service job") and the specific numbers are not, because they should be set
-against the measured frequency of a satisfied sale, which sprint 183 produces. Every lever that
-will move, by name:
+The direction is signed: *"lower the rep gain via service jobs, and raise the rep gain via car
+sales. a full, good car sale should gain more rep than a standard service job."* These are the
+values that carry it. **A standard service job is tier 2, which pays 9 to 14 today**, and that is
+the bar a good sale has to clear.
 
-- `economy.reputation.satisfiedSaleBonus` (new)
-- `economy.reputation.delightedSaleBonus` (new)
-- `serviceJobTemplates.json` `baseReputation` across all 38 templates (currently 4 to 6, 9 to 14,
-  15 to 20, 26 to 34 by tier)
-- `GRADE_REPUTATION_MULTIPLIER` (constants.ts, currently stock 1.0 to race 2.2)
-- `SERVICE_JOB_FAILURE_REP_MULTIPLIER` (currently 2), subject to the decision above
-- `economy.reputation.tierThresholds` (0 / 60 / 200 / 500 / 1400), which must move if the earn rate
-  moves, or the whole campaign's pacing shifts silently
+### New
 
-**Deleted levers are listed in the reuse analysis above** and their removal is part of the same
-signed change.
+| lever | value | reasoning |
+| --- | ---: | --- |
+| `reputation.satisfiedSaleBonus` | **15** | clears the top of the tier-2 band, so any sale that pleased its buyer beats a standard job |
+| `reputation.delightedSaleBonus` | **30** | beats a tier-3 job (15 to 20) outright, and is reachable by every play style, which concours never was |
+
+### Reduced: service jobs come down on EVERY rung
+
+Maintainer ruling: *"service jobs are giving too much rep across the board. Reel it in on all
+rungs."* So the fix is not the top rung alone; `baseReputation` halves across all 38 templates and
+the grade multiplier comes down with it.
+
+| tier | `baseReputation` from | to |
+| --- | --- | --- |
+| 1 | 4 to 6 | **2 to 3** |
+| 2 | 9 to 14 | **5 to 7** |
+| 3 | 15 to 20 | **8 to 10** |
+| 4 | 26 to 34 | **13 to 17** |
+
+| lever | from | to |
+| --- | --- | --- |
+| `GRADE_REPUTATION_MULTIPLIER` | stock 1.0 / street 1.3 / sport 1.7 / race **2.2** | 1.0 / 1.15 / 1.35 / **1.6** |
+
+**What that does to the shape.** The best job in the game, tier 4 with a race part, falls from
+**75 to 27**. A standard tier-2 job falls from 9-14 to 5-7. Against a satisfied sale at 15 and a
+delighted one at 30, selling a car well now beats every service job including the best one, and
+beats a standard job by roughly three times. The service board becomes the steady trickle it should
+be rather than the main road to legend.
+
+### Deleted with the mechanism
+
+`cleanSaleMinBand`, `cleanSaleBonus`, `concoursSaleMinAuthenticityPercent`, `concoursSaleBonus`,
+`lemonSalePenalty`, `lemonMaxAverageBandFactor`, `matchedSaleRepBonus`, and
+`SERVICE_JOB_FAILURE_REP_MULTIPLIER` (which the monotonic ruling retires).
+
+### Re-derived, not chosen
+
+`reputation.tierThresholds` (0 / 60 / 200 / 500 / 1400). Raising a sale from 2 to 15 changes the
+earn rate substantially, so the ladder must be re-derived against the new rate or the whole
+campaign's pacing shifts silently. **This is the one value that cannot be set in advance**: it is
+measured after the rest lands, tabled, and signed before it moves.
 
 ## Definition of done
 

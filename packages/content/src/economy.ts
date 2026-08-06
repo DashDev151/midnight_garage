@@ -707,8 +707,8 @@ export type MachiningOperation = z.infer<typeof MachiningOperationSchema>
  * floor `channelTasteMultiplier` (sim/valuation.ts) reads for that scene's
  * buyers instead of the standard `1 - tasteSpread`, and an optional ceiling
  * that competes with a selling channel's own `tasteCeiling` by taking the
- * higher of the two - never stacking. A stage that names no ceiling (the
- * shipped `known` stage) moves the floor only.
+ * higher of the two - never stacking. A stage that names no ceiling moves
+ * the floor only; every shipped stage names one.
  */
 const SceneStandingBandSchema = z
   .object({
@@ -997,11 +997,12 @@ export const EconomyConfigSchema = z.object({
        * Per-scene standing bands (docs/sprints/scene-standing-arc.md): what
        * each stage moves for that scene's own buyers only, read by
        * `channelTasteMultiplier` (sim/valuation.ts) and nothing else in the
-       * pricing path. `known` names a floor only; `respected` and `shop`
-       * each raise both the floor and the ceiling, the ceiling always
-       * competing with a channel's own rather than adding to it. The floor
-       * never reaches 1.0 (a specialised car is still someone else's wrong
-       * car); the ceiling only ever climbs, stage over stage.
+       * pricing path. All three stages raise both the floor and the ceiling,
+       * the ceiling always competing with a channel's own rather than adding
+       * to it. The floor never reaches 1.0 (a specialised car is still
+       * someone else's wrong car); the ceiling only ever climbs, stage over
+       * stage. `known`'s 1.08 sits below `1 + tasteSpread`, so it CLAMPS the
+       * standard band where `respected` and `shop` replace it outright.
        */
       sceneStanding: z
         .object({
@@ -1148,11 +1149,19 @@ export const EconomyConfigSchema = z.object({
    */
   sceneStandingProgress: z
     .object({
-      /** Total matched deliveries to a scene, ever, that reach Known. */
-      knownDeliveries: z.number().int().positive(),
-      /** Total matched deliveries, ever, that reach Respected - strictly
-       * above `knownDeliveries`, enforced below. */
-      respectedDeliveries: z.number().int().positive(),
+      /**
+       * Total matched deliveries to a scene, ever, that reach Known - one
+       * count per scene, keyed exactly as `marqueeBarYenByTier` below is
+       * keyed by fitment class. Per-scene because the scenes' own match
+       * rates differ by more than a factor of two, so a single shared count
+       * would price the same rung at six different amounts of work
+       * (sprint186.md).
+       */
+      knownDeliveries: z.record(BuyerArchetypeSchema, z.number().int().positive()),
+      /** Total matched deliveries, ever, that reach Respected - per scene for
+       * the same reason, and strictly above that same scene's own
+       * `knownDeliveries`, enforced below. */
+      respectedDeliveries: z.record(BuyerArchetypeSchema, z.number().int().positive()),
       /**
        * The marquee price bar The Shop needs, one per fitment class (a
        * car's fitment class IS its roster tier, `fitmentClassForTier`) -
@@ -1196,9 +1205,16 @@ export const EconomyConfigSchema = z.object({
       rollingWindowShareCap: z.number().positive(),
     })
     .strict()
-    .refine((p) => p.knownDeliveries < p.respectedDeliveries, {
-      message: 'sceneStandingProgress.knownDeliveries must be strictly below respectedDeliveries',
-    })
+    .refine(
+      (p) =>
+        BuyerArchetypeSchema.options.every(
+          (scene) => p.knownDeliveries[scene] < p.respectedDeliveries[scene],
+        ),
+      {
+        message:
+          'sceneStandingProgress.knownDeliveries must be strictly below respectedDeliveries for every scene',
+      },
+    )
     .refine(
       (p) =>
         PartFitmentClassSchema.options.every((tier) => p.marqueeBarYenByTier[tier] !== undefined),
