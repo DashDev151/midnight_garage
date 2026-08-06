@@ -27,7 +27,7 @@ import {
  * Every one of the 85 vetted cars, at stock and mint, must reproduce the lap
  * harness's own time for it on all four courses. That is the same oracle the
  * shipped physics is held to (`packages/sim/tests/harnessAcceptance.test.ts`),
- * and here it holds the GENERATOR honest as well: 59 of the 85 are models
+ * and here it holds the GENERATOR honest as well: 40 of the 85 are models
  * `tools/sandbox/generateCars.mjs` synthesises from the spec book, and a
  * synthesised model that is wrong says so in its stock lap time.
  *
@@ -95,11 +95,11 @@ const context = buildSimContext(
 const cars = sandboxCars(context)
 
 describe('the generated sandbox roster', () => {
-  it('carries all 85 spec-book cars, 26 from content and 59 synthesised', () => {
+  it('carries all 85 spec-book cars, 45 from content and 40 synthesised', () => {
     expect(SANDBOX_ROSTER.length).toBe(85)
     expect(cars.length).toBe(85)
-    expect(cars.filter((car) => car.inGame).length).toBe(26)
-    expect(cars.filter((car) => !car.inGame).length).toBe(59)
+    expect(cars.filter((car) => car.inGame).length).toBe(45)
+    expect(cars.filter((car) => !car.inGame).length).toBe(40)
     // Every in-game entry resolves to the real content model, never a copy.
     for (const entry of SANDBOX_ROSTER) {
       if (entry.inGame) expect(entry.model).toBeUndefined()

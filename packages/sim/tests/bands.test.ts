@@ -823,14 +823,14 @@ describe('hasForcedInduction reads the aspiration, never the tag', () => {
     expect(hasForcedInduction(model)).toBe(false)
   })
 
-  it('answers the same for all 26 shipped cars either way it is read, and 16 of them are forced', () => {
+  it('answers the same for every shipped car either way it is read, and 26 of them are forced', () => {
     const forced = CARS.filter((model) => hasForcedInduction(model))
     for (const model of CARS) {
       const byTag = model.tags.includes('Turbo') || model.tags.includes('Supercharged')
       expect(hasForcedInduction(model), model.id).toBe(byTag)
     }
-    expect(CARS).toHaveLength(26)
-    expect(forced).toHaveLength(16)
+    expect(CARS).toHaveLength(48)
+    expect(forced).toHaveLength(26)
   })
 })
 

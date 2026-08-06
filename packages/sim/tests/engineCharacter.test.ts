@@ -12,41 +12,65 @@ import { engineCharacterOf, specificOutputOf } from '../src/derivedStats'
  * mechanism has.
  */
 
-/** One row per shipped car, hand-derived from `spec.stockPowerPs` and
+/** One row per shipped car, derived from `spec.stockPowerPs` and
  * `spec.displacementCc` (rotary cars scaled 1.8x first) against the signed
- * 80.0 threshold - `docs/sprints/sprint_archive/sprint135.md` lever 1's own table for the
- * ten NA cars; the sixteen forced-induction cars all read `forced` outright. */
+ * 80.0 threshold; every forced-induction car reads `forced` outright without
+ * reaching the threshold at all. A car joining the roster earns its row here
+ * from the same two spec fields, so this table grows with the roster and never
+ * needs re-deriving for the cars already in it. */
 const EXPECTED_CHARACTER: Readonly<Record<string, EngineCharacter>> = {
+  'honda-today-jw1': 'lazy-na',
   'honda-city-e-aa': 'lazy-na',
-  'suzuki-wagon-r-ct21s': 'high-strung-na',
-  'honda-civic-sir2-eg6': 'high-strung-na',
-  'toyota-sprinter-trueno-ae86': 'high-strung-na',
-  'nissan-180sx-rps13': 'forced',
-  'toyota-chaser-tourer-v-jzx90': 'forced',
-  'nissan-silvia-ks-s14': 'forced',
-  'mazda-savanna-rx7-fc3s': 'forced',
-  'mazda-rx7-fd3s': 'forced',
-  'toyota-supra-rz-jza80': 'forced',
-  'toyota-carina-at150': 'lazy-na',
   'nissan-sunny-b12': 'lazy-na',
-  'suzuki-alto-works-ha21s': 'forced',
-  'honda-beat-pp1': 'high-strung-na',
-  'honda-crx-sir-ef8': 'high-strung-na',
+  'honda-acty-ha4': 'lazy-na',
+  'toyota-corolla-15-se-ae91': 'lazy-na',
+  'suzuki-wagon-r-ct21s': 'high-strung-na',
+  'toyota-carina-at150': 'lazy-na',
+  'daihatsu-mira-tr-xx-l70': 'forced',
   'honda-city-turbo-ii-aa': 'forced',
+  'nissan-s-cargo-fhk11': 'lazy-na',
   'toyota-sera-exy10': 'lazy-na',
+  'suzuki-jimny-ja11': 'forced',
+  'suzuki-alto-works-ha21s': 'forced',
+  'eunos-roadster-na6ce': 'lazy-na',
+  'honda-crx-sir-ef8': 'high-strung-na',
   'honda-prelude-si-vtec-bb4': 'lazy-na',
   'nissan-silvia-s13': 'forced',
-  'toyota-mr2-sw20': 'forced',
-  'nissan-cefiro-a31': 'forced',
-  'subaru-impreza-wrx-sti-gc8': 'forced',
-  'nissan-skyline-gtr-bnr32': 'forced',
-  'nissan-fairlady-z-z32': 'forced',
-  'toyota-aristo-30v-jzs147': 'forced',
   'toyota-mr2-aw11': 'forced',
+  'honda-beat-pp1': 'high-strung-na',
+  'nissan-cefiro-a31': 'forced',
+  'suzuki-cappuccino-ea11r': 'forced',
+  'honda-civic-sir2-eg6': 'high-strung-na',
+  'toyota-starlet-glanza-v-ep91': 'forced',
+  'datsun-510-bluebird-pl510': 'lazy-na',
+  'toyota-land-cruiser-70-lj71': 'forced',
+  'mazda-autozam-az-1-pg6sa': 'forced',
+  'nissan-180sx-rps13': 'forced',
+  'toyota-aristo-30v-jzs147': 'forced',
+  'mazda-savanna-rx7-fc3s': 'forced',
+  'toyota-chaser-tourer-v-jzx90': 'forced',
+  'toyota-sprinter-trueno-ae86': 'high-strung-na',
+  'nissan-silvia-ks-s14': 'forced',
+  'toyota-mr2-sw20': 'forced',
+  'toyota-celica-gt-four-st205': 'forced',
+  'mazda-rx7-fd3s': 'forced',
+  'honda-civic-type-r-ek9': 'high-strung-na',
+  'honda-integra-type-r-dc2': 'high-strung-na',
+  'subaru-impreza-wrx-sti-gc8': 'forced',
+  'nissan-fairlady-z-z32': 'forced',
+  'mitsubishi-gto-twin-turbo-z16a': 'forced',
+  'toyota-supra-rz-jza80': 'forced',
+  'honda-s2000-ap1': 'high-strung-na',
+  'nissan-skyline-gtr-bnr32': 'forced',
+  'subaru-impreza-22b-sti': 'forced',
+  'nissan-skyline-gt-r-v-spec-ii-bnr34': 'forced',
+  'nissan-skyline-gt-r-hakosuka-kpgc10': 'high-strung-na',
+  'honda-nsx-r-na1': 'high-strung-na',
+  'toyota-2000gt-mf10': 'lazy-na',
 }
 
 describe('engineCharacterOf pins every shipped car (Sprint 135 lever 1)', () => {
-  it('covers all 26 shipped cars, no more, no fewer', () => {
+  it('covers every shipped car, no more, no fewer', () => {
     expect(Object.keys(EXPECTED_CHARACTER).sort()).toEqual(CARS.map((c) => c.id).sort())
   })
 

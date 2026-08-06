@@ -18,6 +18,8 @@
     "test:coverage": "vitest run --coverage",
     "balance:run": "pnpm --filter @midnight-garage/sim balance:run",
     "sandbox:cars": "node tools/sandbox/generateCars.mjs && vitest run packages/game/src/screens/dev/sandboxCars.test.ts",
+    "content:cars": "node scripts/generateCars.cjs",
+    "content:harness-times": "node scripts/generateHarnessReferenceTimes.cjs",
     "docs:failure-map": "node scripts/generateFailureMap.cjs",
     "prepare": "husky"
   },

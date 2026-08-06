@@ -1,69 +1,75 @@
 {
-  "toyota-supra-rz-jza80": {
-    "Hakone": 112.9,
-    "Wangan": 134.6,
-    "Misaki": 106,
-    "Yatabe": 24
+  "honda-today-jw1": {
+    "Hakone": 145.7,
+    "Wangan": 197.6,
+    "Misaki": 146.7,
+    "Yatabe": 38.8
   },
-  "mazda-rx7-fd3s": {
-    "Hakone": 113.6,
-    "Wangan": 134.8,
-    "Misaki": 106.1,
-    "Yatabe": 24.3
+  "honda-city-e-aa": {
+    "Hakone": 131.7,
+    "Wangan": 195.9,
+    "Misaki": 143.7,
+    "Yatabe": 34.9
   },
-  "nissan-skyline-gtr-bnr32": {
-    "Hakone": 114,
-    "Wangan": 135.6,
-    "Misaki": 107.1,
-    "Yatabe": 24.1
+  "nissan-sunny-b12": {
+    "Hakone": 133.8,
+    "Wangan": 170.4,
+    "Misaki": 129.3,
+    "Yatabe": 32.3
   },
-  "toyota-mr2-sw20": {
-    "Hakone": 115.2,
-    "Wangan": 138.5,
-    "Misaki": 108.7,
-    "Yatabe": 24.9
+  "honda-acty-ha4": {
+    "Hakone": 144.1,
+    "Wangan": 237.7,
+    "Misaki": 174.3,
+    "Yatabe": 42.5
   },
-  "subaru-impreza-wrx-sti-gc8": {
-    "Hakone": 114,
-    "Wangan": 141,
-    "Misaki": 109.7,
-    "Yatabe": 24.1
+  "suzuki-wagon-r-ct21s": {
+    "Hakone": 142.9,
+    "Wangan": 192.8,
+    "Misaki": 143.3,
+    "Yatabe": 36.1
   },
-  "nissan-fairlady-z-z32": {
-    "Hakone": 115.7,
-    "Wangan": 138.9,
-    "Misaki": 109.1,
-    "Yatabe": 25.1
+  "toyota-carina-at150": {
+    "Hakone": 135.2,
+    "Wangan": 181.4,
+    "Misaki": 135.4,
+    "Yatabe": 33.2
   },
-  "nissan-silvia-ks-s14": {
-    "Hakone": 117.9,
-    "Wangan": 139.1,
-    "Misaki": 109.6,
-    "Yatabe": 26.4
+  "daihatsu-mira-tr-xx-l70": {
+    "Hakone": 142.1,
+    "Wangan": 189,
+    "Misaki": 141.3,
+    "Yatabe": 34.6
   },
-  "toyota-chaser-tourer-v-jzx90": {
-    "Hakone": 118.1,
-    "Wangan": 141.2,
-    "Misaki": 111.1,
-    "Yatabe": 25.3
+  "honda-city-turbo-ii-aa": {
+    "Hakone": 128.4,
+    "Wangan": 166.5,
+    "Misaki": 126.5,
+    "Yatabe": 29
   },
-  "toyota-aristo-30v-jzs147": {
-    "Hakone": 118.5,
-    "Wangan": 141.5,
-    "Misaki": 111.8,
-    "Yatabe": 25
+  "nissan-s-cargo-fhk11": {
+    "Hakone": 138.2,
+    "Wangan": 201.9,
+    "Misaki": 147.5,
+    "Yatabe": 38.7
   },
-  "mazda-savanna-rx7-fc3s": {
-    "Hakone": 119.5,
-    "Wangan": 141.8,
-    "Misaki": 111.8,
-    "Yatabe": 26.5
+  "toyota-sera-exy10": {
+    "Hakone": 126.4,
+    "Wangan": 158.4,
+    "Misaki": 120.3,
+    "Yatabe": 31.4
   },
-  "nissan-silvia-s13": {
-    "Hakone": 120.2,
-    "Wangan": 142.5,
-    "Misaki": 112.3,
-    "Yatabe": 26.4
+  "suzuki-alto-works-ha21s": {
+    "Hakone": 133.2,
+    "Wangan": 187.9,
+    "Misaki": 139.3,
+    "Yatabe": 32.3
+  },
+  "eunos-roadster-na6ce": {
+    "Hakone": 125.5,
+    "Wangan": 155.4,
+    "Misaki": 119.1,
+    "Yatabe": 29.8
   },
   "honda-crx-sir-ef8": {
     "Hakone": 120.1,
@@ -77,47 +83,17 @@
     "Misaki": 113.6,
     "Yatabe": 27.8
   },
+  "nissan-silvia-s13": {
+    "Hakone": 120.2,
+    "Wangan": 142.5,
+    "Misaki": 112.3,
+    "Yatabe": 26.4
+  },
   "toyota-mr2-aw11": {
     "Hakone": 122.5,
     "Wangan": 147.1,
     "Misaki": 114.6,
     "Yatabe": 27.4
-  },
-  "honda-civic-sir2-eg6": {
-    "Hakone": 122.2,
-    "Wangan": 150,
-    "Misaki": 116.3,
-    "Yatabe": 26.9
-  },
-  "nissan-cefiro-a31": {
-    "Hakone": 123.5,
-    "Wangan": 149,
-    "Misaki": 116.4,
-    "Yatabe": 27.2
-  },
-  "nissan-180sx-rps13": {
-    "Hakone": 126.3,
-    "Wangan": 151.3,
-    "Misaki": 117.7,
-    "Yatabe": 29.3
-  },
-  "toyota-sprinter-trueno-ae86": {
-    "Hakone": 125,
-    "Wangan": 155.2,
-    "Misaki": 119,
-    "Yatabe": 29.7
-  },
-  "toyota-sera-exy10": {
-    "Hakone": 126.4,
-    "Wangan": 158.4,
-    "Misaki": 120.3,
-    "Yatabe": 31.4
-  },
-  "honda-city-turbo-ii-aa": {
-    "Hakone": 128.4,
-    "Wangan": 166.5,
-    "Misaki": 126.5,
-    "Yatabe": 29
   },
   "honda-beat-pp1": {
     "Hakone": 128.6,
@@ -125,34 +101,172 @@
     "Misaki": 124.9,
     "Yatabe": 33
   },
-  "nissan-sunny-b12": {
-    "Hakone": 133.8,
-    "Wangan": 170.4,
-    "Misaki": 129.3,
-    "Yatabe": 32.3
+  "nissan-cefiro-a31": {
+    "Hakone": 123.5,
+    "Wangan": 149,
+    "Misaki": 116.4,
+    "Yatabe": 27.2
   },
-  "toyota-carina-at150": {
-    "Hakone": 135.2,
-    "Wangan": 181.4,
-    "Misaki": 135.4,
+  "suzuki-cappuccino-ea11r": {
+    "Hakone": 133.6,
+    "Wangan": 166.8,
+    "Misaki": 127,
     "Yatabe": 33.2
   },
-  "suzuki-alto-works-ha21s": {
-    "Hakone": 133.2,
-    "Wangan": 187.9,
-    "Misaki": 139.3,
-    "Yatabe": 32.3
+  "honda-civic-sir2-eg6": {
+    "Hakone": 122.2,
+    "Wangan": 150,
+    "Misaki": 116.3,
+    "Yatabe": 26.9
   },
-  "honda-city-e-aa": {
-    "Hakone": 131.7,
-    "Wangan": 195.9,
-    "Misaki": 143.7,
-    "Yatabe": 34.9
+  "toyota-starlet-glanza-v-ep91": {
+    "Hakone": 122.4,
+    "Wangan": 147.7,
+    "Misaki": 114.4,
+    "Yatabe": 28.5
   },
-  "suzuki-wagon-r-ct21s": {
-    "Hakone": 142.8,
-    "Wangan": 201,
-    "Misaki": 148.8,
-    "Yatabe": 36
+  "datsun-510-bluebird-pl510": {
+    "Hakone": 139,
+    "Wangan": 176.5,
+    "Misaki": 134.4,
+    "Yatabe": 33.8
+  },
+  "mazda-autozam-az-1-pg6sa": {
+    "Hakone": 125.7,
+    "Wangan": 158.7,
+    "Misaki": 120.3,
+    "Yatabe": 30.8
+  },
+  "nissan-180sx-rps13": {
+    "Hakone": 126.3,
+    "Wangan": 151.3,
+    "Misaki": 117.7,
+    "Yatabe": 29.3
+  },
+  "toyota-aristo-30v-jzs147": {
+    "Hakone": 118.5,
+    "Wangan": 141.5,
+    "Misaki": 111.8,
+    "Yatabe": 25
+  },
+  "mazda-savanna-rx7-fc3s": {
+    "Hakone": 119.5,
+    "Wangan": 141.8,
+    "Misaki": 111.8,
+    "Yatabe": 26.5
+  },
+  "toyota-chaser-tourer-v-jzx90": {
+    "Hakone": 118.1,
+    "Wangan": 141.2,
+    "Misaki": 111.1,
+    "Yatabe": 25.3
+  },
+  "toyota-sprinter-trueno-ae86": {
+    "Hakone": 125,
+    "Wangan": 155.2,
+    "Misaki": 119,
+    "Yatabe": 29.7
+  },
+  "nissan-silvia-ks-s14": {
+    "Hakone": 117.9,
+    "Wangan": 139.1,
+    "Misaki": 109.6,
+    "Yatabe": 26.4
+  },
+  "toyota-mr2-sw20": {
+    "Hakone": 115.2,
+    "Wangan": 138.5,
+    "Misaki": 108.7,
+    "Yatabe": 24.9
+  },
+  "toyota-celica-gt-four-st205": {
+    "Hakone": 119.1,
+    "Wangan": 143.2,
+    "Misaki": 112.2,
+    "Yatabe": 26.1
+  },
+  "mazda-rx7-fd3s": {
+    "Hakone": 113.6,
+    "Wangan": 134.8,
+    "Misaki": 106.1,
+    "Yatabe": 24.3
+  },
+  "honda-civic-type-r-ek9": {
+    "Hakone": 119.3,
+    "Wangan": 142.9,
+    "Misaki": 112.2,
+    "Yatabe": 26.1
+  },
+  "honda-integra-type-r-dc2": {
+    "Hakone": 115.8,
+    "Wangan": 138.5,
+    "Misaki": 109,
+    "Yatabe": 25.4
+  },
+  "subaru-impreza-wrx-sti-gc8": {
+    "Hakone": 114,
+    "Wangan": 141,
+    "Misaki": 109.7,
+    "Yatabe": 24.1
+  },
+  "nissan-fairlady-z-z32": {
+    "Hakone": 115.7,
+    "Wangan": 138.9,
+    "Misaki": 109.1,
+    "Yatabe": 25.1
+  },
+  "mitsubishi-gto-twin-turbo-z16a": {
+    "Hakone": 115.7,
+    "Wangan": 138.3,
+    "Misaki": 108.8,
+    "Yatabe": 25
+  },
+  "toyota-supra-rz-jza80": {
+    "Hakone": 112.9,
+    "Wangan": 134.6,
+    "Misaki": 106,
+    "Yatabe": 24
+  },
+  "honda-s2000-ap1": {
+    "Hakone": 116.1,
+    "Wangan": 138,
+    "Misaki": 108.7,
+    "Yatabe": 25.7
+  },
+  "nissan-skyline-gtr-bnr32": {
+    "Hakone": 114,
+    "Wangan": 135.6,
+    "Misaki": 107.1,
+    "Yatabe": 24.1
+  },
+  "subaru-impreza-22b-sti": {
+    "Hakone": 111.4,
+    "Wangan": 133.3,
+    "Misaki": 105,
+    "Yatabe": 24.1
+  },
+  "nissan-skyline-gt-r-v-spec-ii-bnr34": {
+    "Hakone": 110.9,
+    "Wangan": 131.4,
+    "Misaki": 104.2,
+    "Yatabe": 22.7
+  },
+  "nissan-skyline-gt-r-hakosuka-kpgc10": {
+    "Hakone": 125.4,
+    "Wangan": 153.3,
+    "Misaki": 119,
+    "Yatabe": 27.5
+  },
+  "honda-nsx-r-na1": {
+    "Hakone": 105.3,
+    "Wangan": 125.5,
+    "Misaki": 98.5,
+    "Yatabe": 23.4
+  },
+  "toyota-2000gt-mf10": {
+    "Hakone": 127.9,
+    "Wangan": 151.8,
+    "Misaki": 119.3,
+    "Yatabe": 28.8
   }
 }

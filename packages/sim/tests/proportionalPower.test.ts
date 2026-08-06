@@ -171,9 +171,31 @@ describe('the per-car table, pinned (Lever 2, the maximal build)', () => {
     'nissan-fairlady-z-z32': 644,
     'toyota-aristo-30v-jzs147': 745,
     'toyota-mr2-aw11': 338,
+    'honda-today-jw1': 61,
+    'honda-acty-ha4': 61,
+    'toyota-corolla-15-se-ae91': 136,
+    'daihatsu-mira-tr-xx-l70': 120,
+    'nissan-s-cargo-fhk11': 117,
+    'suzuki-jimny-ja11': 127,
+    'eunos-roadster-na6ce': 208,
+    'suzuki-cappuccino-ea11r': 147,
+    'toyota-starlet-glanza-v-ep91': 311,
+    'datsun-510-bluebird-pl510': 155,
+    'toyota-land-cruiser-70-lj71': 209,
+    'mazda-autozam-az-1-pg6sa': 147,
+    'toyota-celica-gt-four-st205': 596,
+    'honda-civic-type-r-ek9': 268,
+    'honda-integra-type-r-dc2': 287,
+    'mitsubishi-gto-twin-turbo-z16a': 745,
+    'honda-s2000-ap1': 363,
+    'subaru-impreza-22b-sti': 644,
+    'nissan-skyline-gt-r-v-spec-ii-bnr34': 656,
+    'nissan-skyline-gt-r-hakosuka-kpgc10': 235,
+    'honda-nsx-r-na1': 406,
+    'toyota-2000gt-mf10': 243,
   }
 
-  it('covers all 26 shipped cars', () => {
+  it('covers every shipped car', () => {
     expect(Object.keys(EXPECTED_MAX_POWER_PS).sort()).toEqual(CARS.map((c) => c.id).sort())
   })
 

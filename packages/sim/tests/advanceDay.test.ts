@@ -266,7 +266,13 @@ describe('advanceDay golden master', () => {
     // `rng.pick` both reduce to `Math.floor(rng.next() * length)` at equal
     // weight) - no roll, cash figure or derived stat moved, only the key
     // disappearing from the state this hash serializes.
-    expect(hashState(finalState)).toBe('3364130f')
+    //
+    // It moves once more for a CONTENT change rather than a code one: the
+    // shipped roster grows from 26 cars to 48, generated from the roster CSV.
+    // Every auction catalogue this script draws now picks from a larger pool,
+    // so the lots differ from day one and the whole career diverges. Nothing
+    // in the sim moved. Re-derived from a real run.
+    expect(hashState(finalState)).toBe('ee5c1e12')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -505,7 +511,12 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // rather than a taste premium, and `sceneLedger` gains no entry where it
     // used to. Exactly the "the gate now reaches PRICE" consequence the
     // Stage E v5 amendment calls out by name. Re-derived from a real run.
-    expect(hashState(acquisitionCareer().sold)).toBe('1c01c120')
+    //
+    // It moves once more for a CONTENT change rather than a code one: the
+    // shipped roster grows from 26 cars to 48, so the acquisition roll draws
+    // from a larger pool and the career diverges from its first catalogue.
+    // Nothing in the sim moved. Re-derived from a real run.
+    expect(hashState(acquisitionCareer().sold)).toBe('bfb58e22')
   })
 })
 

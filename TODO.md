@@ -439,8 +439,11 @@ pass."
 - [ ] **Apply the roster's tier assignments to `cars.json`: 13 of the 26 shipped cars are on the
   wrong tier.** The roster CSV is the single source of truth and `midnight-garage-roster.md`
   section 5 lists every disagreement with content.
-  **`rosterCsvGuard.test.ts` now pins those 13 as an exact set**, so a fourteenth fails and so does
-  fixing one without recording it. The list and the constant go together when this lands.
+  **DONE as a side effect of Sprint 185**: `cars.json` is generated from the roster CSV, so every
+  shipped car now carries the roster's tier by construction and the pinned list of 13 came out with
+  the guard that held it. What the entry below still describes - the six tier-keyed tables that move
+  with it, and the two things that ride along - happened in that same generation and wants reading
+  as landed rather than pending.
 
   **Sequencing worth deciding before Sprint 135 runs, because it is nearly free then and expensive
   later:** Sprint 135 already re-derives every price and valuation pin in the repo. The tier change
@@ -635,13 +638,13 @@ pass."
   mass factor in the physics port, so the constant that normalised it has no consumer. It was NOT
   deleted with the other superseded pace levers because it was not on the approved lever list, and
   no lever moves unlisted. It wants signing off in whichever pass next touches the pace block.
-- [ ] **Two dead fields on `spec`, both surfaced by the Sprint 127 import, neither swept in
-  silently.** `zeroToHundredS` has no consumer anywhere in `packages/`: nothing reads it, and the
-  measured `zeroTo97S` now supersedes it as a calibration figure. Delete it or give it a display,
-  but do not leave it as data nobody reads. `estimatedFields` is now stale on several cars: it
-  still lists `fr` or `cd` as estimated where the value that landed is a panel reading, and the
-  spec book's own `est` list disagrees with ours on seven cars. Copy it from the book in whatever
-  pass decides the first one.
+- [ ] **`spec.estimatedFields` is stale on several cars.** It still lists `fr` or `cd` as estimated
+  where the value that landed is a panel reading. The roster's column is now copied straight from
+  the spec book's own `est` list wherever the roster cell was blank, so the two agree on the newly
+  built cars; the already-shipped ones still carry the older hand-written list. Fix them in the
+  roster CSV and re-run `node scripts/generateCars.cjs`.
+  (`zeroToHundredS`, the other half of this entry, was retired in Sprint 185: the generator does
+  not emit it and the schema field is now unused by content.)
 - [ ] **There is still no aero grade above `race`, and the headroom for it was opened
   deliberately** (`docs/design/systems/tuning-system.md` section 12, which records the gap;
   the acceptance target for the missing rung is in `docs/design/car-performance/README.md` 7g).
@@ -658,42 +661,60 @@ pass."
   silly and do very little. One number per car expresses it, and it is what stops every car in
   the game eventually becoming a GT3 car. It is step 8 of that doc's build order, so check
   whether the tuning sprints already cover it before scoping it separately.
-- [ ] **A shipped car's physics spec cannot be changed without re-running the calibration harness,
-  and the tool that feeds cars.json is BROKEN (both found 2026-08-05).** Two findings from one
-  attempted two-field fix, recorded together because they are the same chain.
+- [ ] **Sprint 185 built the roster-to-content lineage; four things it surfaced are still open.**
+  `scripts/importSpecBook.cjs` and `carSpecBookGuard.test.ts` are gone. `cars.json` is generated
+  from the roster CSV by `scripts/generateCars.cjs` and guarded by
+  `packages/content/tests/carsGeneratedFromRoster.test.ts`; `harnessReferenceTimes.json` is
+  generated from the harness's own `lapsim-data.json` by
+  `scripts/generateHarnessReferenceTimes.cjs`. What remains:
 
-  **1. `scripts/importSpecBook.cjs` throws and has done for some time.** It fails with `spec key
-  outside the known order: culture`. Its `SPEC_KEY_ORDER` predates every field added since the
-  physics import landed: `culture`, `yearTo`, `reliabilityBase`, `styleBase`, `styleCeiling`,
-  `aeroCeiling`, `factoryColours`. So `carSpecBookGuard.test.ts` instructs the reader to *"re-run
-  `node scripts/importSpecBook.cjs` rather than editing cars.json by hand"* and that command
-  cannot run. Either bring the key order up to date, or retire the importer and say plainly that
-  the spec book and `cars.json` are hand-synced.
+  **1. The Wagon R divergence, still deliberate.** The roster row reads `topSpeedKmh` 151 /
+  `dragCd` 0.38 (no legal limiters ever existed) and `cars.json` reads 140 / 0.36, because syncing
+  it moves the car's Hakone lap 0.0015 s outside the acceptance tolerance. Both the generator and
+  the guard carry a NAMED exemption for exactly this one car and exactly these two fields; the
+  entries come out together in the pass that re-validates the performance model, alongside the
+  280 PS gentlemen's-agreement question below.
 
-  **2. A car's physical figures exist in FOUR places, and two of them feed the locked calibration.**
+  **2. Four gaisha cars are authored but held back.** BMW M3 (E36), Lancia Delta HF Integrale Evo,
+  Ferrari F355 Berlinetta and Lamborghini Countach LP5000 QV are complete roster rows with ids,
+  tags, parody names and reconciled physics, but `builtInContent` is `no`. GDD 4.5 sources a gaisha
+  only through the (unbuilt) Import Broker, and nothing in the sim reads `origin` yet, so shipping
+  them today would put them in ordinary auction catalogues.
+  `auctions.test.ts`'s own tripwire says so by name. They ship by flipping one column each once
+  the Import Broker lands, or sooner if the maintainer rules that a gaisha may appear at auction.
 
-      roster CSV  ->  car-spec-book.html  ->  cars.json
-                  ->  lapsim-data.json    ->  lapsim-report.cjs  ->  harnessReferenceTimes.json
+  **3. The VW Golf GTI 16V (Mk2) is held back for one missing string.** Its roster row is complete
+  except `parodyName`; the approved parody brand is VeeDub and the spec book's own id
+  `vw-golf-gti-mk2-16v` is waiting for it. It is also gaisha, so item 2 covers it too.
 
-  `lapsim-data.json` carries its own copy of every car. `harnessAcceptance.test.ts` asserts the
-  shipped model reproduces the harness to 0.2 s, and its own doc comment is explicit that a failure
-  means the PORT has drifted and *"the fix is in `performance.ts`, never in the tolerance"* - the
-  harness is the reference implementation, validated against real driven laps. **So changing a
-  shipped car's `dragCd` or `topSpeedKmh` in `cars.json` alone makes that car fail its own
-  acceptance test**, and landing such a change honestly means updating the harness data and
-  regenerating its reference times too.
+  **4. Three shipped cars have no harness reference at all.** The Toyota Corolla AE91, the Suzuki
+  Jimny JA11 and the Toyota Land Cruiser 70 LJ71 have no spec-book entry, so the calibration
+  harness has never computed a lap for them and there is no known answer to check the shipped
+  physics against. `harnessAcceptance.test.ts` names all three explicitly, in a list checked in
+  both directions. They join the fixture when they join the spec book and the harness runs again.
 
-  **The live instance of this, deliberately left divergent.** The maintainer ruled 2026-08-05 that
-  the game assumes no legal limiters ever existed, so the three kei governor figures are wrong.
-  Two of the three (Cappuccino, AZ-1) are not yet in `cars.json`, so their corrected figures sit in
-  the roster and will flow in when they are authored. **The Suzuki Wagon R IS shipped**, so its
-  roster row now reads `topSpeedKmh` 151 / `dragCd` 0.38 while `cars.json` still reads 140 / 0.36.
-  Syncing it was tried and reverted: it moved the car's Hakone lap to 143.00 s against a harness
-  reference of 142.8 s, failing by 0.0015 s over tolerance, and also invalidated a pinned Wagon R
-  figure in `aero.test.ts`. **That divergence is recorded rather than fixed**, on the same footing
-  as the 13 known tier disagreements, and it belongs to whichever pass re-validates the
-  performance model. The 280 PS gentlemen's-agreement question below is the same class of work and
-  should be done in the same pass.
+- [ ] **Age overrides care in generation, so a surviving classic can arrive as a wreck (maintainer,
+  2026-08-06).** Their words on the reasoning that produced it: *"this logic is naive. how many hard
+  driven poorly taken care of 2000GTs do you think there is?"*
+
+  Found when the 53-car roster put two genuine classics into the flagship pool: a 1969 Toyota 2000GT
+  and a 1970 Skyline Hakosuka. The collector network draws 70 per cent of its lots from that pool,
+  and its project-grade rate went ABOVE premium's, 26.6 against 24.6 per cent, inverting a gradient
+  the design leans on.
+
+  **The care profile is not the problem: `careProfileByCulture` already reads `kyusha: cherished`.**
+  The problem is that damage scales with age and mileage hard enough to outrun it, so a thirty-year-
+  old car generates rough whatever its profile says. That is backwards for exactly this class of
+  car: **a 2000GT that survived to 1995 survived BECAUSE somebody looked after it.** Survivorship is
+  the whole reason a 1969 car is still on the road, and the model currently has it the other way up.
+
+  **What is suspended meanwhile**: `auctions.test.ts`'s "the project-grade rate falls from the local
+  yard to the collector network" no longer asserts the premium-over-collector rung. The other two
+  rungs still hold and are still asserted, and the test carries a comment pointing here. Restore it
+  in the same change that fixes the model.
+
+  Any fix moves `partsGeneration.damageGrades` or the mileage curve, so the values need signing
+  under directive 22 by name.
 
 - [ ] **INVESTIGATE: after sprint 184 nothing in the game can ever lower reputation (maintainer,
   2026-08-05, accepted for now).** The fifth amendment to `progression-bible.md` makes reputation

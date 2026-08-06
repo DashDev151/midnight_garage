@@ -217,41 +217,63 @@ describe('reliability model: the base is the ceiling', () => {
    * `supportRatios.test.ts`'s own stock-identity test asserts the same
    * property one layer down, on the raw ratios.
    */
-  it('a stock mint car reads exactly its own spec.reliabilityBase, all 26 shipped cars', () => {
+  it('a stock mint car reads exactly its own spec.reliabilityBase, every shipped car', () => {
     for (const model of CARS) {
       const car = carWithGrades(model, CONTEXT, {}, 'mint')
       expect(stats(car, model).reliability, model.id).toBe(model.spec.reliabilityBase)
     }
   })
 
-  it('the 26 authored bases match Lever 7 exactly', () => {
+  it('every authored base matches Lever 7 exactly', () => {
     const LEVER_7: Record<string, number> = {
       'toyota-carina-at150': 100,
+      'toyota-corolla-15-se-ae91': 100,
       'honda-city-e-aa': 99,
       'nissan-sunny-b12': 98,
       'suzuki-wagon-r-ct21s': 98,
+      'toyota-land-cruiser-70-lj71': 98,
+      'honda-acty-ha4': 97,
       'honda-civic-sir2-eg6': 97,
+      'honda-today-jw1': 97,
+      'eunos-roadster-na6ce': 96,
+      'honda-civic-type-r-ek9': 96,
       'honda-crx-sir-ef8': 96,
-      'toyota-sera-exy10': 95,
+      'honda-integra-type-r-dc2': 96,
+      'suzuki-jimny-ja11': 96,
+      'honda-nsx-r-na1': 95,
       'honda-prelude-si-vtec-bb4': 95,
+      'honda-s2000-ap1': 95,
       'toyota-aristo-30v-jzs147': 95,
-      'toyota-supra-rz-jza80': 94,
+      'toyota-sera-exy10': 95,
       'toyota-chaser-tourer-v-jzx90': 94,
       'toyota-sprinter-trueno-ae86': 94,
+      'toyota-supra-rz-jza80': 94,
       'nissan-cefiro-a31': 93,
+      'nissan-s-cargo-fhk11': 93,
       'toyota-mr2-aw11': 93,
-      'nissan-silvia-s13': 92,
+      'toyota-starlet-glanza-v-ep91': 93,
       'nissan-180sx-rps13': 92,
       'nissan-silvia-ks-s14': 92,
-      'suzuki-alto-works-ha21s': 91,
+      'nissan-silvia-s13': 92,
       'honda-beat-pp1': 91,
-      'toyota-mr2-sw20': 90,
+      'nissan-skyline-gt-r-v-spec-ii-bnr34': 91,
+      'suzuki-alto-works-ha21s': 91,
+      'daihatsu-mira-tr-xx-l70': 90,
       'nissan-skyline-gtr-bnr32': 90,
+      'suzuki-cappuccino-ea11r': 90,
+      'toyota-mr2-sw20': 90,
+      'toyota-celica-gt-four-st205': 89,
       'honda-city-turbo-ii-aa': 88,
+      'subaru-impreza-22b-sti': 86,
       'subaru-impreza-wrx-sti-gc8': 86,
+      'mazda-autozam-az-1-pg6sa': 85,
       'nissan-fairlady-z-z32': 84,
+      'mitsubishi-gto-twin-turbo-z16a': 83,
+      'datsun-510-bluebird-pl510': 82,
       'mazda-savanna-rx7-fc3s': 82,
       'mazda-rx7-fd3s': 80,
+      'toyota-2000gt-mf10': 78,
+      'nissan-skyline-gt-r-hakosuka-kpgc10': 73,
     }
     expect(Object.keys(LEVER_7).sort()).toEqual(CARS.map((c) => c.id).sort())
     for (const model of CARS) {
@@ -264,9 +286,9 @@ describe('reliability model: the base is the ceiling', () => {
    * that fits any gain part - `ALL_RACE` fits at least one gain slot on
    * every shipped car (every car has `camsTiming`, `intake`, `exhaust` at
    * minimum), so `totalGainFractionOf` is strictly positive and
-   * `reliabilityIntensityFactor` strictly below 1 on all 26.
+   * `reliabilityIntensityFactor` strictly below 1 on every one of them.
    */
-  it('a fully supported race build now reads strictly below stock on every car that fits any gain part, all 26 shipped cars', () => {
+  it('a fully supported race build now reads strictly below stock on every car that fits any gain part, every shipped car', () => {
     for (const model of CARS) {
       const stockCar = carWithGrades(model, CONTEXT, {}, 'mint')
       const raceCar = carWithGrades(model, CONTEXT, ALL_RACE, 'mint')
@@ -306,7 +328,7 @@ describe('reliability model: the build-intensity factor', () => {
     expect(reliabilityIntensityFactor(0, 0, ECONOMY)).toBe(1)
   })
 
-  it('a stock car has exactly zero total gain, all 26 shipped cars', () => {
+  it('a stock car has exactly zero total gain, every shipped car', () => {
     for (const model of CARS) {
       const car = carWithGrades(model, CONTEXT, {}, 'mint')
       expect(totalGainFractionOf(car, model, CONTEXT.partsById, ECONOMY), model.id).toBe(0)
@@ -549,7 +571,7 @@ describe('reliability model: a missing part vs a legitimately absent one', () =>
     )
   })
 
-  it('a legitimately absent forced-induction slot never trips the ceiling; a missing one on a turbo car does, all 26 cars', () => {
+  it('a legitimately absent forced-induction slot never trips the ceiling; a missing one on a turbo car does, every shipped car', () => {
     const fiWeight = PARTS_TAXONOMY.find((entry) => entry.id === 'forcedInduction')!.statWeights
       .reliability!
     const capFraction = ceilingCapFraction(fiWeight, 'scrap')
@@ -616,39 +638,61 @@ describe('reliability model: the floor', () => {
    * `computeDerivedStats` already clamps `reliability` to `[0, 100]` before
    * returning it, so a bare `toBeGreaterThanOrEqual(0)` here can never fail
    * regardless of the formula underneath. This pins the actual, falsifiable
-   * measurement across all 26 cars instead. At the current
-   * `stockSupportMargin`, every one of the 26 floors at exactly 0; at a
+   * measurement across every shipped car instead. At the current
+   * `stockSupportMargin`, every one of them floors at exactly 0; at a
    * higher margin the build's headline sits just above the `dangerous` line
    * on most cars, so five - the roster's smallest total gain fraction -
    * would round up to 1 rather than 0.
    */
-  it('a maximal-gain, zero-support, all-scrap build is pinned per car, all 26', () => {
+  it('a maximal-gain, zero-support, all-scrap build is pinned per car, every shipped car', () => {
     const EXPECTED: Record<string, number> = {
+      'daihatsu-mira-tr-xx-l70': 0,
+      'datsun-510-bluebird-pl510': 0,
+      'eunos-roadster-na6ce': 0,
+      'honda-acty-ha4': 0,
       'honda-beat-pp1': 0,
       'honda-city-e-aa': 0,
       'honda-city-turbo-ii-aa': 0,
       'honda-civic-sir2-eg6': 0,
+      'honda-civic-type-r-ek9': 0,
       'honda-crx-sir-ef8': 0,
+      'honda-integra-type-r-dc2': 0,
+      'honda-nsx-r-na1': 0,
       'honda-prelude-si-vtec-bb4': 0,
+      'honda-s2000-ap1': 0,
+      'honda-today-jw1': 0,
+      'mazda-autozam-az-1-pg6sa': 0,
       'mazda-rx7-fd3s': 0,
       'mazda-savanna-rx7-fc3s': 0,
+      'mitsubishi-gto-twin-turbo-z16a': 0,
       'nissan-180sx-rps13': 0,
       'nissan-cefiro-a31': 0,
       'nissan-fairlady-z-z32': 0,
+      'nissan-s-cargo-fhk11': 0,
       'nissan-silvia-ks-s14': 0,
       'nissan-silvia-s13': 0,
+      'nissan-skyline-gt-r-hakosuka-kpgc10': 0,
+      'nissan-skyline-gt-r-v-spec-ii-bnr34': 0,
       'nissan-skyline-gtr-bnr32': 0,
       'nissan-sunny-b12': 0,
+      'subaru-impreza-22b-sti': 0,
       'subaru-impreza-wrx-sti-gc8': 0,
       'suzuki-alto-works-ha21s': 0,
+      'suzuki-cappuccino-ea11r': 0,
+      'suzuki-jimny-ja11': 0,
       'suzuki-wagon-r-ct21s': 0,
+      'toyota-2000gt-mf10': 0,
       'toyota-aristo-30v-jzs147': 0,
       'toyota-carina-at150': 0,
+      'toyota-celica-gt-four-st205': 0,
       'toyota-chaser-tourer-v-jzx90': 0,
+      'toyota-corolla-15-se-ae91': 0,
+      'toyota-land-cruiser-70-lj71': 0,
       'toyota-mr2-aw11': 0,
       'toyota-mr2-sw20': 0,
       'toyota-sera-exy10': 0,
       'toyota-sprinter-trueno-ae86': 0,
+      'toyota-starlet-glanza-v-ep91': 0,
       'toyota-supra-rz-jza80': 0,
     }
     expect(Object.keys(EXPECTED).sort()).toEqual(CARS.map((c) => c.id).sort())
@@ -753,40 +797,62 @@ describe('reliability model: unmoved by the handling retirement', () => {
     seats: 'race',
   }
 
-  it("at mint reads exactly the car's own base, all 26 shipped cars", () => {
+  it("at mint reads exactly the car's own base, every shipped car", () => {
     for (const model of CARS) {
       const car = carWithGrades(model, CONTEXT, RACE_CHASSIS, 'mint')
       expect(stats(car, model).reliability, model.id).toBe(model.spec.reliabilityBase)
     }
   })
 
-  it('at worn reads the same 26 figures it read before, strict equality', () => {
+  it('at worn reads a pinned figure per car, strict equality', () => {
     const WORN_EXPECTED: Record<string, number> = {
+      'daihatsu-mira-tr-xx-l70': 59,
+      'datsun-510-bluebird-pl510': 53,
+      'eunos-roadster-na6ce': 62,
+      'honda-acty-ha4': 63,
       'honda-beat-pp1': 59,
       'honda-city-e-aa': 64,
       'honda-city-turbo-ii-aa': 57,
       'honda-civic-sir2-eg6': 63,
+      'honda-civic-type-r-ek9': 62,
       'honda-crx-sir-ef8': 62,
+      'honda-integra-type-r-dc2': 62,
+      'honda-nsx-r-na1': 62,
       'honda-prelude-si-vtec-bb4': 62,
+      'honda-s2000-ap1': 62,
+      'honda-today-jw1': 63,
+      'mazda-autozam-az-1-pg6sa': 55,
       'mazda-rx7-fd3s': 52,
       'mazda-savanna-rx7-fc3s': 53,
+      'mitsubishi-gto-twin-turbo-z16a': 54,
       'nissan-180sx-rps13': 60,
       'nissan-cefiro-a31': 60,
       'nissan-fairlady-z-z32': 55,
+      'nissan-s-cargo-fhk11': 60,
       'nissan-silvia-ks-s14': 60,
       'nissan-silvia-s13': 60,
+      'nissan-skyline-gt-r-hakosuka-kpgc10': 47,
+      'nissan-skyline-gt-r-v-spec-ii-bnr34': 59,
       'nissan-skyline-gtr-bnr32': 59,
       'nissan-sunny-b12': 64,
+      'subaru-impreza-22b-sti': 56,
       'subaru-impreza-wrx-sti-gc8': 56,
       'suzuki-alto-works-ha21s': 59,
+      'suzuki-cappuccino-ea11r': 59,
+      'suzuki-jimny-ja11': 62,
       'suzuki-wagon-r-ct21s': 64,
+      'toyota-2000gt-mf10': 51,
       'toyota-aristo-30v-jzs147': 62,
       'toyota-carina-at150': 65,
+      'toyota-celica-gt-four-st205': 58,
       'toyota-chaser-tourer-v-jzx90': 61,
+      'toyota-corolla-15-se-ae91': 65,
+      'toyota-land-cruiser-70-lj71': 64,
       'toyota-mr2-aw11': 60,
       'toyota-mr2-sw20': 59,
       'toyota-sera-exy10': 62,
       'toyota-sprinter-trueno-ae86': 61,
+      'toyota-starlet-glanza-v-ep91': 60,
       'toyota-supra-rz-jza80': 61,
     }
     expect(Object.keys(WORN_EXPECTED).sort()).toEqual(CARS.map((c) => c.id).sort())

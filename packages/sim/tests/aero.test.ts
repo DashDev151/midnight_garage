@@ -297,10 +297,10 @@ describe('the per-car aero ceiling', () => {
     })
 
     it('costs the Wagon R time on every course', () => {
-      expect(shownTimes(WAGON_R, 'misaki')).toEqual({ stock: 148.9, winged: 149.4 })
-      expect(shownTimes(WAGON_R, 'wangan')).toEqual({ stock: 201, winged: 202 })
-      expect(shownTimes(WAGON_R, 'hakone')).toEqual({ stock: 142.9, winged: 144.3 })
-      expect(shownTimes(WAGON_R, 'yatabe')).toEqual({ stock: 36, winged: 36.8 })
+      expect(shownTimes(WAGON_R, 'misaki')).toEqual({ stock: 143.4, winged: 149.4 })
+      expect(shownTimes(WAGON_R, 'wangan')).toEqual({ stock: 192.8, winged: 202.1 })
+      expect(shownTimes(WAGON_R, 'hakone')).toEqual({ stock: 143, winged: 144.4 })
+      expect(shownTimes(WAGON_R, 'yatabe')).toEqual({ stock: 36.1, winged: 37 })
     })
 
     it('buys the FD real time where the corners are fast, and costs it where they are not', () => {

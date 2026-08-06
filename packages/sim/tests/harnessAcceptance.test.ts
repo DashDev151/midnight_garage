@@ -20,6 +20,29 @@ import HARNESS_TIMES from './harnessReferenceTimes.json'
 
 const TOLERANCE_SECONDS = 0.2
 
+/**
+ * THE SHIPPED CARS THE HARNESS HAS NEVER RUN, named one by one.
+ *
+ * A car reaches this fixture through the spec book: `lapsim-report.cjs` reads
+ * the book's `CARS` array, walks a lap for every entry it finds and writes the
+ * times to `lapsim-data.json`, which `scripts/generateHarnessReferenceTimes.cjs`
+ * filters down to the shipped set. These three have no spec-book entry at all,
+ * so the harness has never computed a time for them and there is no known
+ * answer here to check against. Their figures are manufacturer research
+ * (`docs/design/reference/roster-research-provenance.csv`), not panel readings.
+ *
+ * They are listed rather than derived, and the list is checked in both
+ * directions below, so a car cannot fall out of the fixture unnoticed and a
+ * name cannot rot here after the car it excuses is gone. They enter the fixture
+ * in the pass that adds them to the book and re-runs the harness, which TODO.md
+ * holds beside the performance re-validation.
+ */
+const NEVER_RUN_BY_THE_HARNESS: ReadonlySet<string> = new Set([
+  'toyota-corolla-15-se-ae91',
+  'suzuki-jimny-ja11',
+  'toyota-land-cruiser-70-lj71',
+])
+
 /** The fixture's course names, in the order it lists them, to the shipped ids. */
 const COURSE_ID_BY_HARNESS_NAME: Readonly<Record<string, string>> = {
   Hakone: 'hakone',
@@ -37,8 +60,12 @@ function courseById(id: string): Course {
 const REFERENCE = HARNESS_TIMES as Readonly<Record<string, Record<string, number>>>
 
 describe('the shipped model reproduces the calibration harness', () => {
-  it('covers every shipped car and every shipped course', () => {
-    expect(Object.keys(REFERENCE).sort()).toEqual(CARS.map((c) => c.id).sort())
+  it('covers every shipped car the harness has run, and every shipped course', () => {
+    expect(Object.keys(REFERENCE).sort()).toEqual(
+      CARS.map((c) => c.id)
+        .filter((id) => !NEVER_RUN_BY_THE_HARNESS.has(id))
+        .sort(),
+    )
     expect(
       Object.keys(COURSE_ID_BY_HARNESS_NAME)
         .map((n) => COURSE_ID_BY_HARNESS_NAME[n])
@@ -46,7 +73,12 @@ describe('the shipped model reproduces the calibration harness', () => {
     ).toEqual(COURSES.map((c) => c.id).sort())
   })
 
-  for (const model of CARS) {
+  it('excuses only cars that actually ship', () => {
+    const stale = [...NEVER_RUN_BY_THE_HARNESS].filter((id) => !CARS.some((c) => c.id === id))
+    expect(stale, 'a named exemption no longer names a shipped car').toEqual([])
+  })
+
+  for (const model of CARS.filter((c) => !NEVER_RUN_BY_THE_HARNESS.has(c.id))) {
     const expected = REFERENCE[model.id]
     it(`${model.displayName} matches the harness on all four courses`, () => {
       expect(expected).toBeDefined()

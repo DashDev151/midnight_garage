@@ -25,18 +25,18 @@ import { mileageFactor } from '../src/marketValue'
  * (`computeDonorBalanceProbe`'s doc comment: "a clean, all-mint example of
  * this model... valued whole through the real marketValueYen"), built via the
  * real generation-grade `stockInstanceFor`, for every roster model - so this
- * reuses the existing probe rather than hand-building 26 car instances.
+ * reuses the existing probe rather than hand-building a car instance per model.
  */
 describe('stock-car valuation invariant (Sprint 144 acceptance gate)', () => {
   const context = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 
-  it('has the full 26-car shipped roster to guard', () => {
-    expect(CARS.length).toBe(26)
+  it('has the full 48-car shipped roster to guard', () => {
+    expect(CARS.length).toBe(48)
   })
 
   it('every shipped car with no aftermarket parts values at exactly bookValueYen x mileageFactor(0) - Stage C and Stage D touch nothing here', () => {
     const rows = computeRosterDonorBalanceProbe(CARS, context)
-    expect(rows).toHaveLength(26)
+    expect(rows).toHaveLength(48)
     const modelsById = Object.fromEntries(CARS.map((car) => [car.id, car]))
     for (const row of rows) {
       const model = modelsById[row.modelId]!

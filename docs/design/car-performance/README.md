@@ -12,10 +12,26 @@ working notes the calibration arc produced; those are in `archive/` and are hist
 | `README.md` (this file) | the canonical document: what the model is, what it eats, how accurate it is, and what is still missing |
 | `formulas.md` | the exact maths, every formula and constant |
 | `forza-telemetry.md` | the measurement protocol and the source of record for captured data |
-| `car-spec-book.html` | the per-car data itself, 85 cars, browsable |
+| `car-spec-book.html` | the EVIDENCE ARCHIVE, 85 cars, browsable - see the note below |
 | `lapsim/` | the calibration harness that runs the model, plus its dashboard |
 | `data/` | the raw source scrape the spec book was built from |
 | `archive/` | the arc's working notes, superseded by this document |
+
+## The spec book is evidence, not the place a figure is decided
+
+**`car-spec-book.html` is no longer authoritative for what the game ships.** It keeps the job it is
+actually good at: its 85 `fz` records are verbatim Forza panel captures, they are the measurement
+behind every figure the model was fitted to, and they stay canon. The lap harness still reads the
+book's `CARS` array, which is why the file must not be reformatted or edited casually.
+
+What the file LOST is its role as the place a human types a number. **A car's adopted figures now
+live in `docs/design/midnight-garage-roster.csv`**, which is the single source of truth for the
+whole 94-car roster, and `packages/content/data/cars.json` is generated from it by
+`scripts/generateCars.cjs`. The book's own adopted-figure columns are history: no tool reads them,
+nothing is copied out of them, and a value changed there reaches nothing.
+
+The importer that used to copy book to content is gone, and so is the guard that pinned the two
+together. `packages/content/tests/carsGeneratedFromRoster.test.ts` guards the real lineage instead.
 
 ---
 
@@ -331,9 +347,11 @@ stale. The route is gated on `import.meta.env.DEV` and is absent from a producti
 pnpm sandbox:cars
 ```
 
-regenerates the 59 synthesised research models from `car-spec-book.html` and re-runs their
-acceptance against the harness. Only needed when the spec book changes; the 26 in-game cars come
-from content directly and need nothing.
+regenerates the synthesised research models from `car-spec-book.html` and re-runs the whole 85-car
+acceptance against the harness. Needed when the spec book changes AND when a car joins `cars.json`,
+because a car that ships stops being a research entry: the sandbox reads its real model instead, and
+the acceptance run then measures the shipped figures against the harness rather than a synthesised
+copy of them.
 
 **The two are not redundant.** The harness is the oracle: it fits the constants and it is what the
 sandbox's own acceptance test measures against. The sandbox cannot fit anything and is not evidence
