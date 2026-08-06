@@ -557,12 +557,10 @@ const SellingChannelSchema = z
     },
   )
 
-/**
- * The six listing channels (directive 22 lever list). `matchedSaleRepBonus`
- * (a further locked lever) lives beside `cleanSaleBonus`/`concoursSaleBonus`
- * in `EconomyConfigSchema`'s own `reputation` block below, not here - it is
- * a sale-quality bonus family member, not a channel property.
- */
+/** The six listing channels (directive 22 lever list). A channel decides who
+ * sees a car and how much headroom whoever arrives has; what a sale pays in
+ * reputation is not a channel property and lives in the `reputation` block
+ * below. */
 const SellingChannelsSchema = z.object({
   shopFront: SellingChannelSchema,
   freeAdsPaper: SellingChannelSchema,
@@ -1020,7 +1018,9 @@ export const EconomyConfigSchema = z.object({
        * regardless of `tasteSpread`'s own value (`1 - tasteSpread +
        * 2 x tasteSpread x score = 1` at `score = 0.5`), so MATCHED means the
        * same thing at every standing stage. Governs the `matchedOnly`
-       * channel gate and `reputation.matchedSaleRepBonus` alike.
+       * channel gate and the scene-standing delivery credit alike. What a
+       * sale pays in REPUTATION is a separate question and reads
+       * `saleOutcomeFor` (sim/valuation.ts), never this.
        */
       matchedTasteScoreThreshold: z.number().min(0).max(1),
       /**
@@ -2342,14 +2342,14 @@ export const EconomyConfigSchema = z.object({
       },
     ),
   /**
-   * Two reachable quality tiers, both earned. Clean requires only that no
-   * part sits below the band bar; concours additionally requires the car's
-   * DERIVED authenticity (`computeDerivedStats`, sim/derivedStats.ts) to
-   * clear its own bar. That number used to be a stored roll no player could
-   * move; it is now originality times condition, so concours means an
-   * unmodified car in genuinely excellent order. Lemon's penalty and
-   * thresholds (`LEMON_MAX_AVERAGE_CONDITION` etc.) live in
-   * `sim/constants.ts`.
+   * The vertical axis: the ladder, and what a sale pays into it.
+   *
+   * Reputation reads the buyer's own verdict on the car they were sold and
+   * nothing else (progression bible, fifth amendment): two rungs, both earned
+   * by reading the buyer rather than by polishing the car. Every condition and
+   * authenticity predicate that used to sit here is gone with the mechanism.
+   * Nothing in the game lowers reputation, so both values are nonnegative by
+   * schema as well as by intent.
    */
   reputation: z
     .object({
@@ -2368,6 +2368,12 @@ export const EconomyConfigSchema = z.object({
        * Must be monotonic and start at 0 - a ladder that goes down, or that a
        * fresh shop does not start at the bottom of, is a bug, not a tuning
        * choice.
+       *
+       * AWAITING RE-DERIVATION. These five numbers were set against an earn
+       * rate that no longer exists: a sale now pays 15 or 30 where it paid 2,
+       * and every service job pays half what it did.
+       * `docs/sprints/sprint184.md` tables the measured new rate and a
+       * recommendation; the values move only once approved (directive 22).
        */
       tierThresholds: z
         .object({
@@ -2381,37 +2387,18 @@ export const EconomyConfigSchema = z.object({
           message:
             'reputation.tierThresholds must be strictly ascending (each rung genuinely harder than the last)',
         }),
-      /** Every part's band must be at or above this to count as a clean sale -
-       * a floor per part ("seven great parts can't hide one neglected one"). */
-      cleanSaleMinBand: z.enum(['scrap', 'poor', 'worn', 'fine', 'mint']),
-      cleanSaleBonus: z.number().int().nonnegative(),
-      /** Concours also requires the car's derived authenticity to clear this
-       * bar - on top of, not instead of, the clean band bar. Since
-       * authenticity is originality times condition, and concours already
-       * demands every part mint, in practice this is a bar on how much of the
-       * car is still the parts it left the factory with. */
-      concoursSaleMinAuthenticityPercent: z.number().int().min(0).max(100),
-      /** Concours bonus; replaces (does not stack with) cleanSaleBonus. */
-      concoursSaleBonus: z.number().int().nonnegative(),
-      /** Word-of-mouth term for a MATCHED sale (the car fits the buyer's
-       * visible want) - stacks on top of any clean/concours bonus rather than
-       * replacing it, since it rewards a different thing (reading the buyer,
-       * not the car's own condition). Revealed only in sale-close copy, never
-       * as an ambient number (progression bible law 4). */
-      matchedSaleRepBonus: z.number().int().nonnegative(),
-      /** Reputation docked for selling a lemon - a mechanically unsound car,
-       * caught either by a single present part at `scrap`/missing or by the
-       * car's cost-weighted band factor sitting at or below
-       * `lemonMaxAverageBandFactor` below. A positive number; the delta applied
-       * is its negation, so selling a lemon is a real setback worth several
-       * clean sales. */
-      lemonSalePenalty: z.number().positive(),
-      /** The cost-weighted band-factor bar (a 0-1 fraction) at or below which a
-       * sale counts as a lemon regardless of any single part - set above
-       * `bands.bandFactors.poor` so "every part poor" reliably reads as a lemon,
-       * yet below `worn` so an otherwise-sound car with one worn part stays
-       * neutral. */
-      lemonMaxAverageBandFactor: z.number().min(0).max(1),
+      /** SATISFIED: the buyer's champion stat - the one thing they are known
+       * for (`championStatFor`, sim/valuation.ts) - cleared its target. Set
+       * above the top of the tier-2 service band, so any sale that pleased its
+       * buyer out-earns a standard job. Revealed only in sale-close copy,
+       * never as an ambient number (progression bible law 4). */
+      satisfiedSaleBonus: z.number().int().nonnegative(),
+      /** DELIGHTED: every stat that buyer cares about at all (non-zero
+       * importance) cleared its target - the top rung, replacing (never
+       * stacking with) `satisfiedSaleBonus`. Reachable by every play style,
+       * which is the point: the concours bonus it replaces demanded 85 per
+       * cent authenticity and no built car could ever reach it. */
+      delightedSaleBonus: z.number().int().nonnegative(),
     })
     .strict(),
   /**

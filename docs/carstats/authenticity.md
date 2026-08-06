@@ -8,6 +8,14 @@ Every figure below marked **measured** was produced by running the shipped sim a
 content. Figures marked **read** were taken off the source or the content JSON without executing
 it.
 
+> **Partly superseded, 2026-08-06.** The progression bible's fifth amendment
+> (`docs/sprints/sprint184.md`) deleted the concours gate outright: reputation no longer reads
+> authenticity, a condition band, or any derived stat. Everything below about the FORMULA, the
+> weights, the machining charge and the taste readers is still accurate; every passage about "the
+> concours gate" describes a mechanism that no longer exists, and is left in place because the
+> arithmetic it worked through is what proved the gate was unreachable in the first place. The
+> archetype names in section 7 (`hobbyist`, `first-timer`, `stancer`) also predate their renaming.
+
 ---
 
 ## 1. The headline formula
@@ -417,8 +425,9 @@ well: the `paint` condition hit from section 3.6.
   meaning they are wholly indifferent to it. The taste match then scales price within
   `[1 - tasteSpread, 1 + tasteSpread]`, `tasteSpread` being 0.12, or within a listing channel's own
   band.
-- **`packages/sim/src/carCondition.ts`**, as the concours gate on `saleReputationDeltaFor`. It calls
-  the exported `authenticityPercentOf` rather than deriving its own figure.
+- ~~**`packages/sim/src/carCondition.ts`**, as the concours gate.~~ **Gone 2026-08-06** with the
+  module: reputation reads the buyer's verdict, not the car. Authenticity's only remaining route to
+  the player's pocket is buyer taste and the coherence term in `marketValueYen`.
 - **`packages/game/src/utils/radar.ts`**, as one of the five radar axes, already on a 0-to-100
   scale.
 - **`packages/game/src/screens/PerformanceSandboxScreen.vue`**, as a stock-versus-current row.
@@ -439,7 +448,7 @@ mention of authenticity at all, and only `buyers.json`, `parts-taxonomy.json` an
 | --- | --- | --- |
 | the 29 per-slot weights | `packages/content/data/parts-taxonomy.json` | `statWeights.authenticity` |
 | the condition curve | `packages/content/data/economy.json` | `bands.bandFactors` |
-| the concours gate | `packages/content/data/economy.json` | `reputation.concoursSaleMinAuthenticityPercent` |
+| ~~the concours gate~~ (retired 2026-08-06) | - | - |
 | how much taste can move a price | `packages/content/data/economy.json` | `valuation.tasteSpread` |
 | who cares, and how much | `packages/content/data/buyers.json` | `statTargets.authenticity` |
 | how modified a generated car arrives | `packages/content/data/economy.json` | `partsGeneration.aftermarketChance`, `partsGeneration.maxAftermarketSlots`, `partsGeneration.aftermarketGradeWeights`, `partsGeneration.damageGrades.aftermarketChanceMultiplierByGrade` |

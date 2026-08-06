@@ -945,6 +945,26 @@ pass."
 
 ## Open balance/economy questions
 
+- [ ] **Does the reputation ladder still have tension now that nothing can lower it?** RULED and
+  built 2026-08-06 (`docs/sprints/sprint184.md`, progression bible fifth amendment): reputation is
+  fully monotonic. A disappointed buyer pays nothing rather than taking anything away, the lemon
+  penalty is gone with the lemon predicate, and `SERVICE_JOB_FAILURE_REP_MULTIPLIER` went with it,
+  so **handing a customer's car back unfinished now earns nothing rather than costing anything.**
+  The consequence was accepted deliberately, not discovered: **there is no longer any act a player
+  can commit that costs reputation.** Strictly compliant with progression law 6 (no decay, no
+  upkeep treadmill), and it removes the only downward pressure the progression system had. Two
+  questions for play, not for arithmetic: whether the ladder still reads as something you can fail
+  at, and whether monotonic reputation reads as generous or as weightless. The alternative is
+  designed and deliberately not built - **(b) sales never fall because the buyer chose the car, but
+  breaking a commitment you accepted still does** - and needs a fresh ruling before anyone
+  implements it.
+
+- [ ] **`reputation.tierThresholds` (0 / 60 / 200 / 500 / 1400) awaits a signed re-derivation.**
+  The same sprint changed the earn rate substantially in both directions at once (a sale went from
+  2 points to 15 or 30; every service job halved), so the ladder was deliberately left alone rather
+  than guessed. `docs/sprints/sprint184.md`'s Exit tables the measured new rate per act and
+  recommends a set; nothing moves until those five numbers are approved by name (directive 22).
+
 - [ ] **REMAINING FROM sprint175.md: inputs 1 and 2 of the maintainer's four-input power-expectation
   model are still unimplemented.** `docs/sprints/sprint175.md` built inputs 3 (the player's own
   best build, as a climbing chain) and 4 (per-scene appetite, which already existed as authored

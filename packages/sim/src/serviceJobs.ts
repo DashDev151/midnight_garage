@@ -24,7 +24,6 @@ import { applyReputationDelta, reputationAtLeast } from './reputation'
 import {
   GRADE_REPUTATION_MULTIPLIER,
   SERVICE_JOB_ARRIVAL_DELAY_DAYS,
-  SERVICE_JOB_FAILURE_REP_MULTIPLIER,
   SERVICE_JOB_TIER_MIN_REPUTATION,
 } from './constants'
 import type { SimContext } from './context'
@@ -715,11 +714,6 @@ export function reputationForCompletion(baseReputation: number, grade: Grade | n
   return Math.round(baseReputation * multiplier)
 }
 
-/** Reputation lost when a job is failed (handed back unfinished / overdue). */
-export function reputationForFailure(baseReputation: number): number {
-  return Math.round(baseReputation * SERVICE_JOB_FAILURE_REP_MULTIPLIER)
-}
-
 /**
  * `'in-transit'`: the job's customer car hasn't actually arrived yet -
  * `resolveServiceJob`'s own defense-in-depth guard, mirroring
@@ -766,8 +760,13 @@ function highestInstalledGrade(parts: readonly Part[]): Grade | null {
  * single source of truth for job resolution, shared by the player's immediate
  * "Complete Job" click and advanceDay's deadline backstop:
  *  - work done  -> pay the fixed payout + grant reputation (grade-scaled),
- *  - work undone -> no pay + reputation penalty.
+ *  - work undone -> no pay, and no reputation either way.
  * Either way the customer's car leaves and any leftover jobs on it are dropped.
+ *
+ * Reputation only ever rises (progression bible, fifth amendment): a job
+ * handed back unfinished, or one the deadline caught, earns nothing rather
+ * than costing anything. The lost payout and the sunk repair and parts bills
+ * are the whole of what a failure costs.
  * advanceDay is never what *decides* a player's job is done - this is.
  *
  * Close-out reconciliation: every path a job ends by (paid here on a
@@ -892,16 +891,12 @@ export function resolveServiceJob(
     }
   }
 
-  const penalty = reputationForFailure(job.baseReputation)
-  const withReputation = applyReputationDelta(releasedState, -penalty, context.economy)
-  const reputationLost = releasedState.reputationPoints - withReputation.reputationPoints
   return {
-    state: { ...withReputation, activeServiceJobs, jobs, partInventory },
+    state: { ...releasedState, activeServiceJobs, jobs, partInventory },
     log: [
       {
         type: 'service-job-failed',
         jobId: job.id,
-        reputationLost,
         repairCostYen: ledger.repairYen,
         partsCostYen: ledger.partsYen,
         netProfitYen: -ledger.repairYen - ledger.partsYen,

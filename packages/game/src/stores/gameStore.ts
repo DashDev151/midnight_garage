@@ -171,7 +171,6 @@ import {
   repairCeilingForLevel,
   repairLevelForGroup,
   PARTS_EXPRESS_SURCHARGE_FRACTION,
-  reputationForFailure,
   requirementLabel,
   resolveAcceptMission,
   resolveAcceptSceneCommission,
@@ -880,8 +879,6 @@ export interface ServiceJobView {
   baseReputation: number
   /** True once every task has actually been done on the car. */
   workDone: boolean
-  /** Reputation lost if this job is failed (handed back unfinished / overdue). */
-  failureReputationPenalty: number
   /** Days remaining before the deadline auto-resolves it (null if somehow unset). */
   daysLeft: number | null
   /** Set while the customer's car hasn't arrived yet; null once it has. */
@@ -989,7 +986,8 @@ export interface ServiceJobResultView {
    * built from real part names, never the raw camelCase id. */
   taskLabels: string[]
   payoutYen: number
-  /** Positive for a paid job, negative (or zero) for a failed one. */
+  /** Positive for a paid job, always 0 for a failed one - a failure costs the
+   * payout and the sunk bills, never reputation. */
   reputationDelta: number
   /**
    * What the player actually paid, read from the job's own
@@ -2448,7 +2446,6 @@ export const useGameStore = defineStore('game', () => {
       payoutYen: job.payoutYen,
       baseReputation: job.baseReputation,
       workDone: isServiceWorkDone(job, context.value),
-      failureReputationPenalty: reputationForFailure(job.baseReputation),
       daysLeft: job.dueOnDay === null ? null : job.dueOnDay - gameState.value.day,
       arrivesOnDay: job.arrivesOnDay,
       inTransit: isServiceJobInTransit(job, gameState.value.day),
@@ -4702,7 +4699,7 @@ export const useGameStore = defineStore('game', () => {
         customerName: job.customerName,
         taskLabels: job.tasks.map(taskLabel),
         payoutYen: 0,
-        reputationDelta: -entry.reputationLost,
+        reputationDelta: 0,
         repairCostYen: entry.repairCostYen,
         partsCostYen: entry.partsCostYen,
         netProfitYen: entry.netProfitYen,

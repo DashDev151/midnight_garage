@@ -18,22 +18,20 @@ export const SERVICE_JOB_TIER_MIN_REPUTATION: Readonly<Record<ServiceJobTier, Re
 }
 
 /**
- * Reputation penalty for a failed job (handed back unfinished, or the deadline
- * passed with the work undone), as a multiple of the job's base reputation -
- * failing stings more than completing rewards at the stock rate.
- */
-export const SERVICE_JOB_FAILURE_REP_MULTIPLIER = 2
-
-/**
  * Reputation multiplier by installed part grade: a pricier, higher-grade
  * part earns more reputation for a part-install service job (and costs
  * the player more profit) - repair-only jobs use the stock/1.0 rate.
+ *
+ * The gradient is deliberately shallow. A race build out-earns a stock one by
+ * 60 per cent, which is a real difference without letting the best job on the
+ * board out-earn selling a car well: the service board is the steady trickle,
+ * and the shop's own cars are the road to legend.
  */
 export const GRADE_REPUTATION_MULTIPLIER: Readonly<Record<Grade, number>> = {
   stock: 1.0,
-  street: 1.3,
-  sport: 1.7,
-  race: 2.2,
+  street: 1.15,
+  sport: 1.35,
+  race: 1.6,
 }
 
 /**

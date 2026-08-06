@@ -204,6 +204,72 @@ const RETIRED_IDENTIFIERS: readonly RetiredIdentifier[] = [
       'Renamed to show-crowd, no value moved. Broad English rather than one style tribe: shakotan, kaido racer, VIP, grachan and bosozoku styling all live in flavour copy, never in system vocabulary.',
   },
   {
+    identifier: 'saleReputationDeltaFor',
+    retiredInSprint: 184,
+    reason:
+      "The lemon/clean/concours predicate: reputation read the car's condition bands at the moment of sale and called that craftsmanship. Replaced by saleOutcomeFor (sim/valuation.ts), which reads whether the person who bought the car got what they came for and nothing else. Selling a rough show car to the Show Crowd is honest work and pays; selling the same car to a Daily Driver pays nothing. Its whole module (carCondition.ts) went with it.",
+  },
+  {
+    identifier: 'saleQualityFor',
+    retiredInSprint: 184,
+    reason:
+      "Derived which of the condition predicate's four outcomes had fired, for the day-report copy. The outcome is now decided directly by saleOutcomeFor and logged as itself, so nothing has to reverse-engineer a verdict out of a point value.",
+  },
+  {
+    identifier: 'cleanSaleMinBand',
+    retiredInSprint: 184,
+    reason:
+      'The per-part band floor a "clean" sale demanded. Reputation no longer reads a condition band at all: what the buyer wanted is the whole question.',
+  },
+  {
+    identifier: 'cleanSaleBonus',
+    retiredInSprint: 184,
+    reason:
+      'A clean sale paid 2 while a tier-4 service job with a race part paid up to 75, so the ladder to legend was a service business that happened to gate a car business. Replaced by reputation.satisfiedSaleBonus (15), which clears the top of the tier-2 service band.',
+  },
+  {
+    identifier: 'concoursSaleMinAuthenticityPercent',
+    retiredInSprint: 184,
+    reason:
+      'An 85-of-100 authenticity bar no built car could ever reach - an aftermarket block alone costs 18 of those points, a kit and wheels together 17 - so a tuner, show or racing shop was structurally capped below the top rate however good its work was.',
+  },
+  {
+    identifier: 'concoursSaleBonus',
+    retiredInSprint: 184,
+    reason:
+      "The game's only +4, gated behind the unreachable authenticity bar above. Replaced by reputation.delightedSaleBonus (30, every stat the buyer cares about cleared), which every play style can reach.",
+  },
+  {
+    identifier: 'lemonSalePenalty',
+    retiredInSprint: 184,
+    reason:
+      'Reputation only ever rises now (progression bible, fifth amendment): a disappointed buyer pays nothing rather than taking anything away. Strengthens law 6 rather than bending it.',
+  },
+  {
+    identifier: 'lemonMaxAverageBandFactor',
+    retiredInSprint: 184,
+    reason:
+      'The cost-weighted band-factor bar that triggered the penalty above. It dies with the penalty and with the whole idea that a condition figure says anything about the shop that sold the car.',
+  },
+  {
+    identifier: 'matchedSaleRepBonus',
+    retiredInSprint: 184,
+    reason:
+      'A flat +1 stacked on top of a condition verdict. Absorbed rather than deleted: reading the buyer IS the reputation event now, so a separate bonus for having done it would be the same fact paid twice. The MATCHED test itself (isTasteMatched) is untouched and still governs the matchedOnly channel gate and the scene-standing delivery credit.',
+  },
+  {
+    identifier: 'SERVICE_JOB_FAILURE_REP_MULTIPLIER',
+    retiredInSprint: 184,
+    reason:
+      'Docked twice the job base for handing a job back unfinished or overdue. Retired by the monotonic ruling: a failed job now earns nothing rather than costing anything, and the forfeited payout plus the sunk repair and parts bills are the whole of what a failure costs.',
+  },
+  {
+    identifier: 'reputationForFailure',
+    retiredInSprint: 184,
+    reason:
+      'The helper that applied the multiplier above, and the ServiceJobView.failureReputationPenalty and service-job-failed reputationLost fields that surfaced it. Nothing replaced them: there is no number to show for a cost that no longer exists.',
+  },
+  {
     identifier: 'hobbyist',
     retiredInSprint: 176,
     reason:

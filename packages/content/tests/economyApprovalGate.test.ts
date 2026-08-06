@@ -1984,6 +1984,36 @@ import storyMissions from '../data/storyMissions.json'
  * standing (every probe car is priced at `sceneStanding` absent, i.e. every scene at `none`),
  * and the delivery thresholds feed only the stage machinery. `partPricing.json` and
  * `damagePatterns.json` are untouched, so their hashes and the payout pin hold unchanged.
+ *
+ * Re-pinned for `docs/sprints/sprint184.md` (reputation reads the buyer's verdict, not the
+ * car's condition bands), every value named and signed in that sprint doc's lever tables
+ * before implementation. The whole of the `reputation` block below `tierThresholds` is
+ * REPLACED rather than retuned:
+ *
+ * 1. DELETED with the mechanism they served - `cleanSaleMinBand` "fine", `cleanSaleBonus` 2,
+ *    `concoursSaleMinAuthenticityPercent` 85, `concoursSaleBonus` 4, `lemonSalePenalty` 8,
+ *    `lemonMaxAverageBandFactor` 0.45, and `matchedSaleRepBonus` 1. The first six were the
+ *    lemon/clean/concours condition predicate, which read the car rather than the buyer and
+ *    whose only +4 rung demanded 85 of the taxonomy's 100 authenticity points - unreachable
+ *    for any built car, since an aftermarket block alone costs 18. The seventh is absorbed:
+ *    reading the buyer IS the reputation event now rather than a bonus stacked on a
+ *    condition verdict.
+ * 2. NEW - `satisfiedSaleBonus` 15 (the buyer's champion stat cleared its target) and
+ *    `delightedSaleBonus` 30 (every stat they care about cleared). 15 clears the top of the
+ *    tier-2 service band so any sale that pleased its buyer out-earns a standard job; 30
+ *    beats the best job on the board outright and is reachable by every play style.
+ * 3. `tierThresholds` DELIBERATELY DOES NOT MOVE. Raising a sale from 2 to 15 while halving
+ *    every service job changes the earn rate substantially in both directions, so the ladder
+ *    is re-derived against the measured new rate and signed separately rather than guessed
+ *    inside this change. That measurement is tabled in the sprint doc's Exit.
+ *
+ * `serviceJobTemplates.json` moves in the same change and carries no approval hash of its
+ * own: `baseReputation` halves on all 38 templates (tier 1 from 4-6 to 2-3, tier 2 from 9-14
+ * to 5-7, tier 3 from 15-20 to 8-10, tier 4 from 26-34 to 13-17), alongside
+ * `GRADE_REPUTATION_MULTIPLIER` (sim/constants.ts) coming down from 1.0/1.3/1.7/2.2 to
+ * 1.0/1.15/1.35/1.6. No mission payout or budget cap moves: reputation is not a price, no
+ * probe in `storyMissionProbes.test.ts` reads it, and `partPricing.json` /
+ * `damagePatterns.json` are untouched, so their hashes and the payout pin hold unchanged.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -1993,7 +2023,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('d7546531c06ece3c8e7d5f89f296320030075fd4961709a0cfa79f62ec965642')
+    ).toBe('2634e12c2660b6f8fb54977b0bbba04c90f9ffacf4a48330048629443ed220ee')
   })
 
   it('damagePatterns.json matches its approved content exactly', () => {

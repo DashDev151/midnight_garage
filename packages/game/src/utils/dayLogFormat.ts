@@ -143,12 +143,10 @@ export function describeLogEntry(
         entry.profitYen !== undefined ? `${base}, profit ${formatYenDelta(entry.profitYen)}` : base
       const withQuality = (() => {
         switch (entry.saleQuality) {
-          case 'concours':
-            return `${withProfit} - sold as a concours example, reputation +${entry.reputationDelta}`
-          case 'clean':
-            return `${withProfit} - sold as a clean example, reputation +${entry.reputationDelta}`
-          case 'lemon':
-            return `${withProfit} - sold as a lemon, reputation ${entry.reputationDelta}`
+          case 'delighted':
+            return `${withProfit} - the buyer got everything they came for, reputation +${entry.reputationDelta}`
+          case 'satisfied':
+            return `${withProfit} - the buyer got what they came for, reputation +${entry.reputationDelta}`
           default:
             return withProfit
         }
@@ -192,7 +190,7 @@ export function describeLogEntry(
     case 'service-job-completed':
       return `Service job paid ${formatYen(entry.payoutYen)} (+${entry.reputationGained} rep), profit ${formatYenDelta(entry.netProfitYen)}`
     case 'service-job-failed':
-      return `Service job failed (-${entry.reputationLost} rep), sunk ${formatYen(entry.repairCostYen + entry.partsCostYen)}`
+      return `Service job handed back unfinished, sunk ${formatYen(entry.repairCostYen + entry.partsCostYen)}`
     case 'service-parts-returned':
       return `Returned with the car: ${entry.parts.join(', ')}`
     case 'car-moved':

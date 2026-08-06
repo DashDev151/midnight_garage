@@ -228,7 +228,7 @@ fails that test outright, rather than silently drifting).
 | `supportReadout.shortfallCopy`/`framingByBand` | `economy.json` | The support-ratio warning's copy (`packages/game/src/stores/gameStore.ts`'s `supportReadoutFor`) - qualitative only, no yen and no other number |
 | `bands.bandFactors`, `bands.migrationThresholds`, `bands.scrapValueFraction` | `economy.json` | The condition-band model and its save-migration mapping |
 | `partsGeneration.*` including `maxBillFraction` (Law 2) | `economy.json` | Car generation (`auctions.ts`'s `generateAuctionCarInstance`/`enforceMaxBillFraction`) |
-| `reputation.*` | `economy.json` | Clean/concours sale-quality bars and bonuses |
+| `reputation.tierThresholds`/`satisfiedSaleBonus`/`delightedSaleBonus` | `economy.json` | The reputation ladder, and what a sale pays into it: the buyer's own verdict on the car they were handed (`saleOutcomeFor`, sim/valuation.ts), never a condition band. Out of this bible's scope (progression is the progression bible's), listed for completeness. The six condition-predicate levers and `matchedSaleRepBonus` retired 2026-08-06, see the Amendment log |
 | `serviceJobs.marginMin`/`marginMax`/`laborRateYen`/`calloutFeeYen`/`dailyOfferCountWeights`/`offerCountCapByDay` | `economy.json` | Service-job payout derivation (Law 4's payout-sanity check) |
 | `selling.*` including `offerSpread` | `economy.json` | Walk-in sale offers |
 | `toolCeilings.*`, `specialty.*`, `machineListings.*` | `economy.json` | Progression-bible mechanics (out of this bible's scope, listed for completeness) |
@@ -238,7 +238,7 @@ fails that test outright, rather than silently drifting).
 | `lapModel.C`/`ratioExp`/`gripMult`/`courseId`/`courseName` | `economy.json` | The reference-lap requirement's pure time formula (`lapModel.ts`'s `lapTimeSecondsFor`) and the reference board's own model-computed rows |
 | `auctionRoom.*` | `economy.json` | The live auction room: fuse clock, clearing draws, turnout bands, bid rungs, and the reaction chances (the reserve is NOT here: it is the single `AUCTION_RESERVE_PRICE_FRACTION`, sprint150.md) (rows added 2026-07-22 for blocks landed with their sprints' recorded mandates; `staff.*` and `machineShopAssist`-family keys remain the known table gap awaiting the standing ruling) |
 | `auctionGrading.overallRatioSteps` | `economy.json` | The four-stamp sheet's OVERALL grade (apparent restoration bill over book value, stepped; maintainer-locked design, Sprint 112's doc is the approval record) |
-| `sellingChannels.*` and `reputation.matchedSaleRepBonus` | `economy.json` | The listing channels' fees, cadences, taste ceilings, and the trade-network price band, plus the matched-sale word-of-mouth term (values maintainer-locked in session; `docs/sprints/sprint_archive/sprint114.md`'s lever table is the approval record) |
+| `sellingChannels.*` | `economy.json` | The listing channels' fees, cadences, taste ceilings, and the trade-network price band (values maintainer-locked in session; `docs/sprints/sprint_archive/sprint114.md`'s lever table is the approval record). The matched-sale word-of-mouth term that used to sit in this row retired 2026-08-06, see the Amendment log |
 | `sceneStandingProgress.knownDeliveries`/`respectedDeliveries`/`marqueeBarYenByTier`/`rollingWindowDays`/`wordOfMouthMultiplierByStage`/`rollingWindowShareCap` | `economy.json` | Scene-standing stage advancement and word of mouth (out of this bible's scope, listed for completeness) - the deed counts and marquee price bar `creditSceneDelivery` (`packages/sim/src/sceneStanding.ts`) reads to move `GameState.sceneStanding`, and the rolling delivery window and its multipliers `wordOfMouthMultipliers` (same file) reads to bias `sellingChannels.*.buyerPoolWeights` per scene (`packages/sim/src/selling.ts`'s `saleCandidates`) |
 | `sceneCommissions.refreshIntervalDays`/`payoutMultiplier` | `economy.json` | The Respected-stage generated brief (out of this bible's scope, listed for completeness) - how often an unaccepted commission is replaced, and what multiple of the delivered car's own open-market value it pays (`packages/sim/src/sceneCommissions.ts`) |
 
@@ -290,6 +290,21 @@ This closes Law 4: every anchor is named, every derived number is a live functio
 maintainer or CI run can catch a coherence drift before a playtest does.
 
 ## Amendment log
+
+- 2026-08-06: **The `reputation` anchor row rebuilt: reputation stops reading the car's condition
+  and starts reading the buyer.** Authority is the progression bible's fifth amendment
+  (2026-08-05), implemented in `docs/sprints/sprint184.md`, whose lever tables carry the approval
+  for every value; **no law in THIS bible changed** and no price, payout or valuation lever moved.
+  What moved is the anchor inventory's own accuracy: seven `reputation.*` levers are gone
+  (`cleanSaleMinBand`, `cleanSaleBonus`, `concoursSaleMinAuthenticityPercent`, `concoursSaleBonus`,
+  `lemonSalePenalty`, `lemonMaxAverageBandFactor`, `matchedSaleRepBonus`) and two are new
+  (`satisfiedSaleBonus` 15, `delightedSaleBonus` 30). One knock-on worth naming here because this
+  bible's Law 1 family cares about it: **authenticity lost its only economic consumer.** The
+  concours gate was the one place a car's derived authenticity bought the player anything directly;
+  authenticity now reaches the player exclusively through buyer taste and through
+  `marketValueYen`'s own coherence term, which is where the sale-value system always intended it to
+  live. `reputation.tierThresholds` deliberately did NOT move and awaits a signed re-derivation
+  against the new earn rate; the measurement is tabled in that sprint doc's Exit.
 
 - 2026-07-31: **The anchor inventory's `valuation` row corrected to reality, by explicit maintainer
   approval ("fix it to align with reality").** It still named two levers that no longer exist.

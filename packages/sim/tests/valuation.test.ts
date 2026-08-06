@@ -240,11 +240,11 @@ describe('Sprint 146: taste is a match, not a mean', () => {
       ECONOMY,
     )
     expect(stats.style).toBeGreaterThanOrEqual(showCrowd.statTargets.style.target * 100)
-    // Modified enough to have given up any claim to being original: it fails
-    // the concours gate outright. It does not go lower because three body
-    // slots have no aftermarket SKU to fit, so 23 of the 100 authenticity
-    // points are currently unreachable by modification.
-    expect(stats.authenticity).toBeLessThan(ECONOMY.reputation.concoursSaleMinAuthenticityPercent)
+    // Modified enough to have given up any claim to being original: it misses
+    // the Collector's own authenticity target outright. It does not go lower
+    // because three body slots have no aftermarket SKU to fit, so 23 of the
+    // 100 authenticity points are currently unreachable by modification.
+    expect(stats.authenticity).toBeLessThan(collector.statTargets.authenticity.target * 100)
     expect(stats.reliability).toBeLessThan(80)
 
     const value = marketValueYen(

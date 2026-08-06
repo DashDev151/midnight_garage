@@ -421,16 +421,12 @@ describe('seed content validates against schemas', () => {
       respected: 500,
       legend: 1400,
     })
-    expect(result.data.reputation.cleanSaleMinBand).toBe('fine')
-    expect(result.data.reputation.cleanSaleBonus).toBe(2)
-    expect(result.data.reputation.concoursSaleMinAuthenticityPercent).toBe(85)
-    expect(result.data.reputation.concoursSaleBonus).toBe(4)
-    // The lemon penalty and its cost-weighted trigger bar live in content
-    // (not sim constants). The penalty is sharp enough that one lemon sale
-    // undoes several clean ones; the band-factor bar sits above poor's own
-    // factor so an all-poor car reliably reads as a lemon.
-    expect(result.data.reputation.lemonSalePenalty).toBe(8)
-    expect(result.data.reputation.lemonMaxAverageBandFactor).toBe(0.45)
+    // What a sale pays into the ladder (sprint184.md): the buyer's own
+    // verdict, and nothing else. Satisfied clears the top of the tier-2
+    // service band (5 to 7 base) so any sale that pleased its buyer beats a
+    // standard job; delighted beats the best job in the game outright.
+    expect(result.data.reputation.satisfiedSaleBonus).toBe(15)
+    expect(result.data.reputation.delightedSaleBonus).toBe(30)
 
     expect(result.data.bands.bandFactors.mint).toBe(1.0)
     expect(result.data.bands.bandFactors.scrap).toBe(0.15)
@@ -465,7 +461,6 @@ describe('seed content validates against schemas', () => {
     // persona at all; the tuner magazine, weekend meet and collector network
     // are the three channels whose ceiling clears 1.0, all matched-persona-
     // only, and their pools each point at a different corner of the scene.
-    expect(result.data.reputation.matchedSaleRepBonus).toBe(1)
     expect(result.data.sellingChannels.shopFront).toEqual({
       feeYen: 0,
       offerChanceFactor: 0.7,

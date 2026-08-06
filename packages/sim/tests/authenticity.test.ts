@@ -162,18 +162,16 @@ describe('what a modification costs', () => {
     expect(authenticityOf(car)).toBe(100)
   })
 
-  it('drops a block swap alone to 82, below the concours gate of 85', () => {
+  it('drops a block swap alone to 82 - the single dearest thing you can do to a car on this axis', () => {
     const car = carWith({ block: 'race' })
     expect(authenticityOf(car)).toBe(100 - WEIGHT.block)
     expect(authenticityOf(car)).toBe(82)
-    expect(authenticityOf(car)).toBeLessThan(ECONOMY.reputation.concoursSaleMinAuthenticityPercent)
   })
 
-  it('drops a kit-and-wheels build to 83, also below the concours gate', () => {
+  it('drops a kit-and-wheels build to 83', () => {
     const car = carWith({ aero: 'race', rims: 'race' })
     expect(authenticityOf(car)).toBe(100 - WEIGHT.aero - WEIGHT.rims)
     expect(authenticityOf(car)).toBe(83)
-    expect(authenticityOf(car)).toBeLessThan(ECONOMY.reputation.concoursSaleMinAuthenticityPercent)
   })
 
   it('drops a full engine swap with its ancillaries to 58', () => {

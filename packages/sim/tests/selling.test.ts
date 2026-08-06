@@ -1195,7 +1195,7 @@ describe('resolveSellViaWalkIn (Sprint 31: resolves today’s pre-rolled offer)'
     })
   })
 
-  describe('the matched-sale word-of-mouth bonus (Sprint 114)', () => {
+  describe('the matched-sale word-of-mouth flag and its scene credit (Sprint 114)', () => {
     // A synthetic buyer that cares only about authenticity (target 1,
     // importance 1; every other stat importance 0): an all-stock, all-mint
     // car reads authenticity exactly 100 by construction (unlike
@@ -1223,7 +1223,7 @@ describe('resolveSellViaWalkIn (Sprint 31: resolves today’s pre-rolled offer)'
     const matchedCar: CarInstance = authenticCar()
     const mismatchedCar: CarInstance = modifiedCar()
 
-    it('fires (stacks a reputation point on top) exactly when the buyer taste was >= 1.0', () => {
+    it('fires (and credits the scene) exactly when the buyer taste was >= 1.0', () => {
       expect(
         channelBuyerTaste(
           authenticityBuyer,
@@ -1243,8 +1243,10 @@ describe('resolveSellViaWalkIn (Sprint 31: resolves today’s pre-rolled offer)'
         buildSimContext(CARS, PARTS, [...BUYERS, authenticityBuyer], PARTS_TAXONOMY),
       )
       expect(matchedResult.log[0]).toMatchObject({ matchedSale: true })
-      expect(matchedResult.state.reputationPoints).toBeGreaterThanOrEqual(
-        CONTEXT.economy.reputation.matchedSaleRepBonus,
+      // This buyer cares about exactly one stat and the car clears it, so
+      // every stat they care about is cleared: Delighted, the top rung.
+      expect(matchedResult.state.reputationPoints).toBe(
+        CONTEXT.economy.reputation.delightedSaleBonus,
       )
       // Scene standing's own earn event (scene-standing-arc.md step 4): the
       // buyer's own archetype (`collector`) gets the ledger entry, with no
@@ -1998,49 +2000,47 @@ describe('resolveScrapShell (Sprint 71 decision 7: the teardown game, scrap the 
   })
 })
 
-describe('reputation side effects (Sprint 15; re-based on bands, Sprint 26; Sprint 31: via an accepted offer)', () => {
-  const qualityCar: CarInstance = buildCarInstance({
+describe('reputation side effects (Sprint 15; re-based on the buyer verdict, Sprint 184)', () => {
+  const authenticMintCar: CarInstance = buildCarInstance({
     modelId: car.modelId,
     parts: uniformCarParts('mint'),
   })
-  const lemonCar: CarInstance = buildCarInstance({
+  const roughCar: CarInstance = buildCarInstance({
     modelId: car.modelId,
     parts: uniformCarParts('poor'),
   })
 
-  it('accepting an offer on a quality car grants reputation immediately', () => {
-    const state = stateWithOffer(qualityCar, 1_000_000, 'collector')
-    const result = resolveSellViaWalkIn(state, qualityCar.id, CONTEXT)
-    expect(result.state.reputationPoints).toBeGreaterThan(0)
-    expect(result.log[0]).toMatchObject({ reputationDelta: result.state.reputationPoints })
+  it("accepting an offer pays the satisfied bonus when the buyer's champion stat cleared", () => {
+    // All-stock and all-mint reads authenticity exactly 100, which clears the
+    // Collector's own 0.9 authenticity target - the one stat they are known
+    // for. A stock Civic misses their power target, so this is Satisfied
+    // rather than Delighted.
+    const state = stateWithOffer(authenticMintCar, 1_000_000, 'collector')
+    const result = resolveSellViaWalkIn(state, authenticMintCar.id, CONTEXT)
+    expect(result.state.reputationPoints).toBe(ECONOMY.reputation.satisfiedSaleBonus)
+    expect(result.log[0]).toMatchObject({
+      reputationDelta: ECONOMY.reputation.satisfiedSaleBonus,
+      saleQuality: 'satisfied',
+    })
   })
 
-  it('accepting an offer on a lemon logs the applied loss, not the nominal penalty (Sprint 24 fix 3)', () => {
-    // A player at 2 points selling a lemon (nominal -5) only has 2 to
-    // lose - `applyReputationDelta` floors at 0.
-    const state = stateWithOffer(lemonCar, 300_000, 'daily-drivers', { reputationPoints: 2 })
-    const result = resolveSellViaWalkIn(state, lemonCar.id, CONTEXT)
-    expect(result.state.reputationPoints).toBe(0)
-    expect(result.log[0]).toMatchObject({ reputationDelta: -2, saleQuality: 'lemon' })
-  })
-
-  it('accepting an offer on a lemon already at zero reputation has nothing left to lose, so logs no reputationDelta', () => {
-    const state = stateWithOffer(lemonCar, 300_000, 'daily-drivers') // reputationPoints: 0
-    const result = resolveSellViaWalkIn(state, lemonCar.id, CONTEXT)
-    expect(result.state.reputationPoints).toBe(0)
+  it('a buyer who did not get what they came for pays nothing, and takes nothing away', () => {
+    // Daily Drivers came for reliability (target 0.75, importance 1) and an
+    // all-poor car has none of it. Reputation only ever rises, so a shop
+    // sitting on 40 points still has 40 afterwards.
+    const state = stateWithOffer(roughCar, 300_000, 'daily-drivers', { reputationPoints: 40 })
+    const result = resolveSellViaWalkIn(state, roughCar.id, CONTEXT)
+    expect(result.state.reputationPoints).toBe(40)
     expect(result.log[0]).not.toHaveProperty('reputationDelta')
+    expect(result.log[0]).not.toHaveProperty('saleQuality')
   })
 
-  it('accepting an offer on an ordinary car carries no reputationDelta field', () => {
+  it('a trade-network sale pays no reputation at all - nobody was behind the offer to be pleased', () => {
     // 'trade-network' resolves to no real Buyer (TRADE_NETWORK_BUYER_ID,
-    // selling.ts), so the matched-sale bonus structurally cannot fire here
-    // regardless of taste - the fixture car (one worn part, otherwise mint)
-    // is deliberately unremarkable enough to clear condition-based
-    // reputation too - a real archetype is no longer a safe choice for
-    // "definitely unmatched" here, since the taste-match formula reads this
-    // car as a reasonable fit for most of them.
-    const state = stateWithOffer(car, 900_000, 'trade-network')
-    const result = resolveSellViaWalkIn(state, car.id, CONTEXT)
+    // selling.ts), so there is no verdict to read however good the car is.
+    const state = stateWithOffer(authenticMintCar, 900_000, 'trade-network')
+    const result = resolveSellViaWalkIn(state, authenticMintCar.id, CONTEXT)
+    expect(result.state.reputationPoints).toBe(0)
     expect(result.log[0]).not.toHaveProperty('reputationDelta')
   })
 })

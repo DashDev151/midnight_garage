@@ -1,11 +1,16 @@
 import {
   ECONOMY,
   ReputationTierSchema,
+  SERVICE_JOB_TYPES,
+  STORY_MISSIONS,
   type GameState,
+  type Grade,
   type ReputationTier,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { applyReputationDelta, deriveReputationTier, reputationAtLeast } from '../src/reputation'
+import { saleReputationBonusFor } from '../src/selling'
+import { reputationForCompletion } from '../src/serviceJobs'
 import { testSceneStanding, testToolTiers } from './testFixtures'
 
 describe('reputationAtLeast', () => {
@@ -106,17 +111,58 @@ describe('applyReputationDelta (Sprint 15)', () => {
     expect(next.reputationTier).toBe(deriveReputationTier(20, ECONOMY))
   })
 
-  it('clamps a negative delta at zero rather than going negative', () => {
-    const next = applyReputationDelta(stateWith(3), -10, ECONOMY)
-    expect(next.reputationPoints).toBe(0)
-    expect(next.reputationTier).toBe('unknown')
-  })
-
   it('crossing a tier threshold updates reputationTier, not just reputationPoints', () => {
     const justBelow = stateWith(ECONOMY.reputation.tierThresholds.known - 1)
     expect(justBelow.reputationTier).toBe('local')
     const next = applyReputationDelta(justBelow, 1, ECONOMY)
     expect(next.reputationPoints).toBe(ECONOMY.reputation.tierThresholds.known)
     expect(next.reputationTier).toBe('known')
+  })
+
+  it('the zero floor survives as a guard, though nothing in the game reaches it any more', () => {
+    // Kept defensive rather than trusted: every live caller now passes a
+    // nonnegative delta (the three blocks below), so this branch is
+    // unreachable through play.
+    const next = applyReputationDelta(stateWith(3), -10, ECONOMY)
+    expect(next.reputationPoints).toBe(0)
+    expect(next.reputationTier).toBe('unknown')
+  })
+})
+
+/**
+ * Reputation only ever rises (progression bible, fifth amendment). There are
+ * exactly three things in the game that write it, and this asserts each one
+ * can only ever add, over the real shipped content rather than a fixture.
+ * The behavioural halves live where the resolvers do: a sale to a buyer who
+ * did not get what they came for (`selling.test.ts`) and a job handed back
+ * unfinished (`serviceJobs.test.ts`) both leave the point total untouched.
+ */
+describe('nothing in the game lowers reputation', () => {
+  const GRADES: readonly Grade[] = ['stock', 'street', 'sport', 'race']
+
+  it('a sale pays a nonnegative bonus for every possible outcome, including no outcome at all', () => {
+    for (const outcome of ['satisfied', 'delighted', 'nothing'] as const) {
+      expect(saleReputationBonusFor(outcome, ECONOMY)).toBeGreaterThanOrEqual(0)
+    }
+    // And the two rungs are ordered, so pleasing a buyer more never pays less.
+    expect(saleReputationBonusFor('delighted', ECONOMY)).toBeGreaterThan(
+      saleReputationBonusFor('satisfied', ECONOMY),
+    )
+    expect(saleReputationBonusFor('nothing', ECONOMY)).toBe(0)
+  })
+
+  it('every service-job template on the board can only add, at every part grade', () => {
+    for (const template of SERVICE_JOB_TYPES) {
+      expect(template.baseReputation).toBeGreaterThan(0)
+      for (const grade of GRADES) {
+        expect(reputationForCompletion(template.baseReputation, grade)).toBeGreaterThan(0)
+      }
+    }
+  })
+
+  it('every shipped story mission pays a nonnegative reward', () => {
+    for (const mission of STORY_MISSIONS) {
+      expect(mission.reputationReward).toBeGreaterThanOrEqual(0)
+    }
   })
 })

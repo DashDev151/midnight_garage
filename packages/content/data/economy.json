@@ -723,13 +723,8 @@
       "respected": 500,
       "legend": 1400
     },
-    "cleanSaleMinBand": "fine",
-    "cleanSaleBonus": 2,
-    "concoursSaleMinAuthenticityPercent": 85,
-    "concoursSaleBonus": 4,
-    "matchedSaleRepBonus": 1,
-    "lemonSalePenalty": 8,
-    "lemonMaxAverageBandFactor": 0.45
+    "satisfiedSaleBonus": 15,
+    "delightedSaleBonus": 30
   },
   "serviceJobs": {
     "marginMin": 1.18,

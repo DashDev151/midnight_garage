@@ -65,7 +65,6 @@ const SAMPLES: DayLogEntry[] = [
   {
     type: 'service-job-failed',
     jobId: 'svc-2',
-    reputationLost: 3,
     repairCostYen: 5_000,
     partsCostYen: 0,
     netProfitYen: -5_000,
@@ -214,11 +213,23 @@ describe('describeLogEntry', () => {
       channel: 'walk-in-offer',
       priceYen: 900_000,
       profitYen: 40_000,
-      reputationDelta: 3,
-      saleQuality: 'clean',
+      reputationDelta: 15,
+      saleQuality: 'satisfied',
     })
     expect(line).toContain('profit +¥40,000')
-    expect(line).toContain('sold as a clean example, reputation +3')
+    expect(line).toContain('the buyer got what they came for, reputation +15')
+  })
+
+  it('the two outcomes read differently, and neither names a condition band', () => {
+    const delighted = describeLogEntry({
+      type: 'car-sold',
+      carInstanceId: 'car-1',
+      channel: 'walk-in-offer',
+      priceYen: 900_000,
+      reputationDelta: 30,
+      saleQuality: 'delighted',
+    })
+    expect(delighted).toContain('the buyer got everything they came for, reputation +30')
   })
 
   it('a sale with a saleRevealLine appends it after the quality clause, one line, no popup', () => {
@@ -227,11 +238,11 @@ describe('describeLogEntry', () => {
       carInstanceId: 'car-1',
       channel: 'walk-in-offer',
       priceYen: 900_000,
-      reputationDelta: 3,
-      saleQuality: 'clean',
+      reputationDelta: 15,
+      saleQuality: 'satisfied',
       saleRevealLine: 'The buyer had it looked over: Valve seals. They did well out of you.',
     })
-    expect(line).toContain('sold as a clean example, reputation +3')
+    expect(line).toContain('the buyer got what they came for, reputation +15')
     expect(line).toContain('The buyer had it looked over: Valve seals. They did well out of you.')
   })
 

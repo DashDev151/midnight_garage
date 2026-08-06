@@ -34,7 +34,6 @@ import {
   isServiceTaskDone,
   isServiceWorkDone,
   reputationForCompletion,
-  reputationForFailure,
   resolveAcceptServiceJob,
   resolveRejectServiceJobOffer,
   resolveServiceJob,
@@ -743,9 +742,9 @@ describe('reputation helpers', () => {
     expect(reputationForCompletion(3, 'race')).toBeGreaterThan(reputationForCompletion(3, 'sport'))
   })
 
-  it('failure costs reputation, scaled by the job base', () => {
-    expect(reputationForFailure(3)).toBeGreaterThan(0)
-    expect(reputationForFailure(3)).toBeGreaterThan(reputationForFailure(1))
+  it('the grade gradient is real but no longer runs away: race pays 1.6x stock, not 2.2x', () => {
+    expect(reputationForCompletion(10, 'race')).toBe(16)
+    expect(reputationForCompletion(10, 'street')).toBe(12)
   })
 })
 
@@ -782,7 +781,7 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
     })
   })
 
-  it('fails (no pay, reputation penalty) when at least one task is not done', () => {
+  it('fails (no pay, and no reputation either way) when at least one task is not done', () => {
     const job = activeJob(twoRepairType, {
       parts: mintCarParts({ dampers: 'mint', springs: 'worn' }),
     })
@@ -792,16 +791,14 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
     const { state: next, outcome, log } = resolveServiceJob(state, job.id, CONTEXT)
     expect(outcome).toBe('failed')
     expect(next.cashYen).toBe(cashBefore) // no pay
-    expect(next.reputationPoints).toBe(50 - reputationForFailure(job.baseReputation))
+    // Reputation only ever rises (progression bible, fifth amendment): the
+    // forfeited payout and the sunk bills are the whole of what a failure
+    // costs.
+    expect(next.reputationPoints).toBe(50)
+    expect(next.reputationTier).toBe(state.reputationTier)
     expect(next.activeServiceJobs).toHaveLength(0) // car still leaves
     expect(log[0]).toMatchObject({ type: 'service-job-failed' })
-  })
-
-  it('clamps the reputation penalty at zero', () => {
-    const job = activeJob(twoRepairType, { parts: mintCarParts({ dampers: 'worn' }) })
-    const state = stateWith(job) // reputationPoints starts at 0
-    const { state: next } = resolveServiceJob(state, job.id, CONTEXT)
-    expect(next.reputationPoints).toBe(0)
+    expect(log[0]).not.toHaveProperty('reputationLost')
   })
 
   it('is a no-op for an unknown job id', () => {
@@ -1553,7 +1550,7 @@ describe('service jobs in advanceDay', () => {
     const failBefore = failState.cashYen
     const failed = advanceDay(failState, DayActionsSchema.parse({}), 8, CONTEXT).state
     expect(failed.cashYen).toBe(failBefore) // no pay
-    expect(failed.reputationPoints).toBe(50 - reputationForFailure(undone.baseReputation))
+    expect(failed.reputationPoints).toBe(50) // and no reputation cost either
     expect(failed.activeServiceJobs).toHaveLength(0)
   })
 

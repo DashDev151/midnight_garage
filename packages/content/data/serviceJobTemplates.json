@@ -9,7 +9,7 @@
       }
     ],
     "deadlineDays": 4,
-    "baseReputation": 4,
+    "baseReputation": 2,
     "flavorPool": [
       "Running hot in traffic. I need the cooling fixed before it strands me somewhere.",
       "Temp gauge creeps up on every hill. Needs a cooling once-over."
@@ -25,7 +25,7 @@
       }
     ],
     "deadlineDays": 4,
-    "baseReputation": 5,
+    "baseReputation": 3,
     "flavorPool": [
       "Hard to start some mornings, and it stutters on the highway. Check the electrics.",
       "Three goes to start it this morning, then it coughed at me on the expressway. Look at the ignition."
@@ -41,7 +41,7 @@
       }
     ],
     "deadlineDays": 4,
-    "baseReputation": 5,
+    "baseReputation": 3,
     "flavorPool": [
       "Engine's rough at idle and the timing feels off. Give it a proper refresh.",
       "Runs rough some mornings, like the timing's slipped. I'd rather catch it before it gets worse."
@@ -57,7 +57,7 @@
       }
     ],
     "deadlineDays": 3,
-    "baseReputation": 4,
+    "baseReputation": 2,
     "flavorPool": [
       "Hesitates under load and struggles to start cold. Ran it dry on the expressway once already this year.",
       "Feels starved of fuel on hard acceleration. Give the fuel system a once-over."
@@ -81,7 +81,7 @@
       }
     ],
     "deadlineDays": 5,
-    "baseReputation": 10,
+    "baseReputation": 5,
     "flavorPool": [
       "Valves are getting noisy and the timing's due. Freshen up the top end.",
       "Ticking from up top, and it's lost some pep since a run up the pass last month."
@@ -101,7 +101,7 @@
       }
     ],
     "deadlineDays": 6,
-    "baseReputation": 16,
+    "baseReputation": 8,
     "flavorPool": [
       "Want the head properly built, ported if you can manage it. Reliability for the boost I'm running.",
       "Stock head can't flow enough for what I want out of this engine. Build me a proper one."
@@ -122,7 +122,7 @@
       }
     ],
     "deadlineDays": 6,
-    "baseReputation": 32,
+    "baseReputation": 16,
     "flavorPool": [
       "Street turbo's not enough. I want a serious race setup, no compromises.",
       "Money's no object, get me the biggest turbo kit you can fit."
@@ -143,7 +143,7 @@
       }
     ],
     "deadlineDays": 8,
-    "baseReputation": 30,
+    "baseReputation": 15,
     "flavorPool": [
       "The hill by my house wins every morning. I'd like to start winning.",
       "My mate's got boost and has become unbearable. Level the field."
@@ -173,7 +173,7 @@
       }
     ],
     "deadlineDays": 8,
-    "baseReputation": 28,
+    "baseReputation": 14,
     "flavorPool": [
       "Want a proper built motor. Internals and head both need the upgrade treatment.",
       "Stock bottom end and head won't hold the power I'm after. Build it up.",
@@ -190,7 +190,7 @@
       }
     ],
     "deadlineDays": 4,
-    "baseReputation": 5,
+    "baseReputation": 3,
     "flavorPool": [
       "Clunking from underneath on every gear change, loud enough the neighbour asked about it.",
       "Something's knocking in the drivetrain when I pull away. Give it a look."
@@ -211,7 +211,7 @@
       }
     ],
     "deadlineDays": 5,
-    "baseReputation": 10,
+    "baseReputation": 5,
     "flavorPool": [
       "Clutch is slipping under load. Fit me a proper one.",
       "Pedal feels wrong and it's losing bite. It needs a clutch, I think."
@@ -232,7 +232,7 @@
       }
     ],
     "deadlineDays": 6,
-    "baseReputation": 18,
+    "baseReputation": 9,
     "flavorPool": [
       "Stock gearbox can't take the abuse anymore. Build me a proper one.",
       "Second's gone crunchy and third's thinking about it. Build me a box that takes a beating."
@@ -253,7 +253,7 @@
       }
     ],
     "deadlineDays": 6,
-    "baseReputation": 16,
+    "baseReputation": 8,
     "flavorPool": [
       "Power's just spinning one wheel. Fit me a limited-slip differential.",
       "Need better traction out of corners. A proper diff should do it."
@@ -274,7 +274,7 @@
       }
     ],
     "deadlineDays": 3,
-    "baseReputation": 4,
+    "baseReputation": 2,
     "flavorPool": [
       "Pads are down to metal and it's squealing badly. Shaken's coming up; I'd like the brakes done before then.",
       "Pedal's soft and it's grinding on stops. Needs fresh pads."
@@ -295,7 +295,7 @@
       }
     ],
     "deadlineDays": 4,
-    "baseReputation": 6,
+    "baseReputation": 3,
     "flavorPool": [
       "Fit some coilovers for me, I want it lower and sharper.",
       "It leans like a ferry through the interchange. Something adjustable, please.",
@@ -316,7 +316,7 @@
       }
     ],
     "deadlineDays": 5,
-    "baseReputation": 11,
+    "baseReputation": 6,
     "flavorPool": [
       "Ride's gone soft and wallowy, and it's sagging on one corner. Freshen up the suspension.",
       "Bouncing over every bump these days. Dampers and springs both need attention."
@@ -345,7 +345,7 @@
       }
     ],
     "deadlineDays": 5,
-    "baseReputation": 12,
+    "baseReputation": 6,
     "flavorPool": [
       "Brakes are getting spongy and the pads are shot. Give the whole system an overhaul.",
       "I'd like the whole braking system gone through properly. Pads, callipers, all of it."
@@ -369,7 +369,7 @@
       }
     ],
     "deadlineDays": 6,
-    "baseReputation": 18,
+    "baseReputation": 9,
     "flavorPool": [
       "Want it properly aligned and set up for the touge, sharp turn-in, no wander.",
       "Steering's vague and it rolls too much through corners. I want it set up properly this time."
@@ -390,7 +390,7 @@
       }
     ],
     "deadlineDays": 3,
-    "baseReputation": 4,
+    "baseReputation": 2,
     "flavorPool": [
       "There's a vibration once it's up to speed. Balance, probably. Could you have a look at the tyres?",
       "Tyres are worn unevenly and it pulls a little. Give them a proper fit and balance."
@@ -420,7 +420,7 @@
       }
     ],
     "deadlineDays": 4,
-    "baseReputation": 6,
+    "baseReputation": 3,
     "flavorPool": [
       "Tyres are bald and the pads squeal on every stop. Shaken's next month; I need both done before then.",
       "Feels like I'm driving on ice, and the pedal grinds now too.",
@@ -442,7 +442,7 @@
       }
     ],
     "deadlineDays": 4,
-    "baseReputation": 9,
+    "baseReputation": 5,
     "flavorPool": [
       "The rims look like they came free with something. Fit ones that belong.",
       "Stock rims look tired. Fit me something better."
@@ -472,7 +472,7 @@
       }
     ],
     "deadlineDays": 5,
-    "baseReputation": 15,
+    "baseReputation": 8,
     "flavorPool": [
       "Want a proper staggered setup, wider out back for the power I'm putting down.",
       "Looking for a staggered fitment, front and rear sized right, fresh rubber all round."
@@ -488,7 +488,7 @@
       }
     ],
     "deadlineDays": 4,
-    "baseReputation": 6,
+    "baseReputation": 3,
     "flavorPool": [
       "Picked up a dent and some scrapes on the panel. Can you tidy it up?",
       "The dent's from the supermarket. The scratches I'm not explaining. Tidy the panel."
@@ -504,7 +504,7 @@
       }
     ],
     "deadlineDays": 6,
-    "baseReputation": 12,
+    "baseReputation": 6,
     "flavorPool": [
       "Rust's spreading underneath and it's getting worse each winter. I want it stopped before it goes structural.",
       "Underneath's looking rough, surface rust everywhere. Needs a proper derust."
@@ -533,7 +533,7 @@
       }
     ],
     "deadlineDays": 6,
-    "baseReputation": 14,
+    "baseReputation": 7,
     "flavorPool": [
       "Long story. Slid off into a ditch last week, panel's dented, suspension's knocked out of shape, and I shredded a tyre. Whatever it needs, please.",
       "Rough night out there. Bent the panel, the ride's all over the place now, and I need a fresh tyre fitted."
@@ -562,7 +562,7 @@
       }
     ],
     "deadlineDays": 6,
-    "baseReputation": 12,
+    "baseReputation": 6,
     "flavorPool": [
       "Shaken's coming up. Underbody, brakes, and the exhaust all need to pass inspection.",
       "Need it road-legal for the shaken: rust underneath, worn pads, and a rattly exhaust."
@@ -578,7 +578,7 @@
       }
     ],
     "deadlineDays": 7,
-    "baseReputation": 20,
+    "baseReputation": 10,
     "flavorPool": [
       "Paint's faded and chipped all over. Give it a proper respray.",
       "The bonnet's gone chalky and the roof's worse. Paint it properly, top to bottom."
@@ -599,7 +599,7 @@
       }
     ],
     "deadlineDays": 7,
-    "baseReputation": 26,
+    "baseReputation": 13,
     "flavorPool": [
       "Want a proper aero kit fitted, lip, sideskirts, the works, built to hold together at speed.",
       "Looking for real aero, not just for looks. Fit it right."
@@ -615,7 +615,7 @@
       }
     ],
     "deadlineDays": 3,
-    "baseReputation": 4,
+    "baseReputation": 2,
     "flavorPool": [
       "Gauge cluster's flickering and a couple of lights don't work. Give the cabin a once-over.",
       "Dash lights are inconsistent and one gauge sticks. Could you go through the cabin?"
@@ -631,7 +631,7 @@
       }
     ],
     "deadlineDays": 5,
-    "baseReputation": 10,
+    "baseReputation": 5,
     "flavorPool": [
       "Seats are cracked and the bolster's torn. Get them retrimmed.",
       "Driver's seat is falling apart at the seams. Needs a proper retrim."
@@ -651,7 +651,7 @@
       }
     ],
     "deadlineDays": 6,
-    "baseReputation": 16,
+    "baseReputation": 8,
     "flavorPool": [
       "Seats are falling apart and the gauge cluster's looking tired. Retrim the interior.",
       "The foam's given up on my side and the dash rattles over every expressway join. I'd like the cabin done properly."
@@ -684,7 +684,7 @@
       }
     ],
     "deadlineDays": 10,
-    "baseReputation": 32,
+    "baseReputation": 16,
     "flavorPool": [
       "Want this thing brought back to life: engine, paint, interior, wheels, all of it.",
       "Full restoration, spare no detail. The motor, the paint, the seats, and fresh wheels."
@@ -718,7 +718,7 @@
       }
     ],
     "deadlineDays": 10,
-    "baseReputation": 34,
+    "baseReputation": 17,
     "flavorPool": [
       "Build me a motor that revs to nine, fully blueprinted, no shortcuts.",
       "Want a proper blueprinted engine, built to hold together at the redline."
@@ -752,7 +752,7 @@
       }
     ],
     "deadlineDays": 8,
-    "baseReputation": 28,
+    "baseReputation": 14,
     "flavorPool": [
       "Want it corner-weighted properly for the touge, balanced front to back.",
       "Set it up corner-weighted, sharp turn-in, no surprises mid-corner."
@@ -783,7 +783,7 @@
       }
     ],
     "deadlineDays": 7,
-    "baseReputation": 26,
+    "baseReputation": 13,
     "flavorPool": [
       "Want a proper show fitment, flush, no rub, tyres stretched just right.",
       "I want the crouch-and-stare at the next meet. Flush, no rub."
@@ -813,7 +813,7 @@
       }
     ],
     "deadlineDays": 8,
-    "baseReputation": 28,
+    "baseReputation": 14,
     "flavorPool": [
       "Want it properly prepped for the circuit, dampers sorted, brakes that will not fade lap three.",
       "Give it a proper race prep, front to back. I am not babying it round the paddock."
@@ -838,7 +838,7 @@
       }
     ],
     "deadlineDays": 10,
-    "baseReputation": 30,
+    "baseReputation": 15,
     "flavorPool": [
       "Bring the motor back to exactly how it left the factory, nothing fancy, just correct.",
       "Want a proper period-correct rebuild. It has to look and run like it never left 1995."
@@ -859,7 +859,7 @@
       }
     ],
     "deadlineDays": 8,
-    "baseReputation": 26,
+    "baseReputation": 13,
     "flavorPool": [
       "Just want it properly sorted. I drive this thing every day, it has to be dependable.",
       "Sort the diff and the box out properly. No more surprises on the morning commute."

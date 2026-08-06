@@ -53,11 +53,11 @@ const flavorLine = computed(() => {
             {{ formatYenDelta(result.netProfitYen) }}
           </dd>
         </div>
-        <div>
+        <!-- A failed job earns nothing rather than costing anything, so there
+             is no reputation news to report on one. -->
+        <div v-if="result.reputationDelta > 0">
           <dt>Reputation</dt>
-          <dd :class="result.reputationDelta >= 0 ? 'up' : 'down'">
-            {{ formatYenDelta(result.reputationDelta).replace('¥', '') }}
-          </dd>
+          <dd class="up">{{ formatYenDelta(result.reputationDelta).replace('¥', '') }}</dd>
         </div>
         <div v-if="result.daysSpent !== undefined">
           <dt>Days on the job</dt>

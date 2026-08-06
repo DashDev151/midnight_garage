@@ -901,10 +901,13 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     /** Days between acceptance and this completion, for the feedback modal. */
     daysSpent: z.number().int().nonnegative().optional(),
   }),
+  /** A job handed back unfinished, or one the deadline caught. Carries no
+   * reputation figure: a failure costs the payout and whatever was already
+   * spent, and nothing else, because nothing in the game lowers reputation
+   * (progression bible, fifth amendment). */
   z.object({
     type: z.literal('service-job-failed'),
     jobId: z.string().min(1),
-    reputationLost: z.number().int().nonnegative(),
     /** Sunk cost: the same real spend a completed job reports, shown even
      * on a failure - honesty cuts both ways. */
     repairCostYen: z.number().int().nonnegative(),
@@ -956,13 +959,14 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     carInstanceId: z.string().min(1),
     channel: SaleChannelSchema,
     priceYen: z.number().int().nonnegative(),
-    /** Set when the sale earned or cost reputation (the quality/lemon
-     * rule); absent for a reputation-neutral plain sale. */
-    reputationDelta: z.number().int().optional(),
-    /** Which of the quality/lemon outcomes fired (the clean/concours split)
-     * - set exactly when `reputationDelta` is, lets the day report name the
-     * bonus instead of just its point value. */
-    saleQuality: z.enum(['lemon', 'clean', 'concours']).optional(),
+    /** Set when the sale earned reputation; absent when the buyer did not get
+     * what they came for and the sale paid nothing. Never negative - nothing
+     * in the game lowers reputation (progression bible, fifth amendment). */
+    reputationDelta: z.number().int().nonnegative().optional(),
+    /** The buyer's own verdict on the car they were handed (`saleOutcomeFor`,
+     * sim/valuation.ts) - set exactly when `reputationDelta` is, so the day
+     * report can name what pleased them instead of quoting a point value. */
+    saleQuality: z.enum(['satisfied', 'delighted']).optional(),
     /** `priceYen` minus the sold car's ledger (purchase + repairs + parts) -
      * set only when that car's `purchaseYen` was known. Absent for an
      * unknown-purchase car (never fabricated). */
@@ -975,11 +979,13 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
      */
     saleRevealLine: z.string().min(1).optional(),
     /**
-     * True when the buyer's taste for this car was >= 1.0 (the car met that
-     * buyer's visible want) and `reputation.matchedSaleRepBonus` therefore
-     * stacked into this sale's reputation delta - the word-of-mouth term,
-     * revealed only in sale-close copy (progression bible law 4). Absent
-     * for an unmatched sale, never emitted as `false`.
+     * True when this car genuinely met the buyer's want (`isTasteMatched`,
+     * sim/valuation.ts) and the sale therefore credited that buyer's scene
+     * standing - the word-of-mouth term, revealed only in sale-close copy
+     * (progression bible law 4). A separate question from `saleQuality`, which
+     * is what the sale paid in REPUTATION; a car can please its buyer without
+     * clearing the whole taste score their scene is earned on. Absent for an
+     * unmatched sale, never emitted as `false`.
      */
     matchedSale: z.literal(true).optional(),
   }),

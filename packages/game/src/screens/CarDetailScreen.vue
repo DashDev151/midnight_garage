@@ -1209,9 +1209,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             {{
               detail.serviceJob.workDone
                 ? 'Work done - hand it back from the Phone tab to get paid.'
-                : 'Work unfinished - completing now forfeits the job (−' +
-                  detail.serviceJob.failureReputationPenalty +
-                  ' rep). Complete or Give Up from the Phone tab.'
+                : 'Work unfinished - handing it back now forfeits the payout. Complete or Give Up from the Phone tab.'
             }}
           </span>
         </div>

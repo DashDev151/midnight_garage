@@ -216,7 +216,7 @@ export function machiningCost(
  * definition of the stat, not a calibration of it: both factors are exactly 1
  * there and the machining term is 0, so the identity holds by construction.
  *
- * Exported because the concours gate (`carCondition.ts`) needs the same
+ * Exported because the machining preview (`machiningJobs.ts`) needs the same
  * figure the radar chart shows, and must never derive its own.
  */
 export function authenticityPercentOf(

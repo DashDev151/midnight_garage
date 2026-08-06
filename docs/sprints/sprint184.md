@@ -1,6 +1,7 @@
 # Sprint 184: the customer decides whether you did well
 
-**Status: PLANNED. Nothing implemented. Blocked on sprint 182.**
+**Status: IMPLEMENTED, ready for review. One value deliberately left unmoved and tabled for
+signature: `reputation.tierThresholds` (see the Exit).**
 
 Design of record: `docs/design/progression-bible.md`, fifth amendment (2026-08-05).
 
@@ -140,4 +141,173 @@ measured after the rest lands, tabled, and signed before it moves.
 
 ## Exit
 
-*(Filled on completion.)*
+Everything in the Levers section above landed at the signed values. `pnpm typecheck` clean (the
+directive-20 carve-out applies: this retires seven economy fields and five exported symbols),
+`npx eslint .` clean, all three Vitest projects green: **content 610/610, sim 2458/2458, game
+946/946**.
+
+### What was built
+
+**One new predicate.** `saleOutcomeFor(buyer, model, car, ...)` in `packages/sim/src/valuation.ts`,
+returning `satisfied` / `delighted` / `nothing`. Satisfied is the buyer's champion stat clearing its
+target, read through the same `championStatFor` the taste gate uses rather than a second copy;
+delighted is every stat with non-zero importance clearing its target. It shares the normalised score
+vector with `normalizedTasteScore` (a small extracted `normalizedStatScores`), so a buyer's verdict
+and the price they pay can never be computed off two different numbers.
+
+**One module deleted outright**, not migrated (directive 19). `packages/sim/src/carCondition.ts` held
+only `saleReputationDeltaFor` and `saleQualityFor`, so the whole file and its `index.ts` export are
+gone, along with `packages/sim/tests/carCondition.test.ts`. The only assertion in that test file with
+independent value (the forced-induction missing-vs-absent distinction) was already covered whole by
+`bands.test.ts`.
+
+**Reputation is now fully monotonic.** `SERVICE_JOB_FAILURE_REP_MULTIPLIER` and
+`reputationForFailure` are gone, and the failure branch of `resolveServiceJob` no longer calls
+`applyReputationDelta` at all. Three consequential shape changes the brief did not anticipate, all
+made because leaving them would have shipped a field that structurally reads 0 forever:
+
+- `service-job-failed`'s `reputationLost` field is retired from the day-log schema (it could only
+  ever be 0),
+- `ServiceJobView.failureReputationPenalty` is retired from the store, and the car page's copy now
+  reads *"handing it back now forfeits the payout"* rather than naming a rep figure,
+- `JobCompleteModal.vue`'s Reputation row renders only when there is reputation to report, so a
+  failed job no longer shows a green `+0`.
+
+`applyReputationDelta`'s zero floor SURVIVES as a defensive guard and is still tested, with a comment
+and a test name saying plainly that nothing in the game reaches it any more.
+
+**Copy.** The `car-sold` entry keeps its shape; `saleQuality`'s enum goes `lemon|clean|concours` to
+`satisfied|delighted` and the day log reads *"the buyer got what they came for"* /
+*"the buyer got everything they came for"*. No player-facing string anywhere says concours or lemon.
+`matchedSale` is untouched and still means the scene-standing delivery credit, which is a different
+question from what the sale paid in reputation; both facts now sit on the entry without pretending to
+be one.
+
+**Guards.** Eleven entries added to `retiredIdentifiers.test.ts` (the seven economy fields plus
+`saleReputationDeltaFor`, `saleQualityFor`, `SERVICE_JOB_FAILURE_REP_MULTIPLIER` and
+`reputationForFailure`), and the economy hash re-pinned with its own ledger entry. **No Dexie or
+`SAVE_VERSION` bump is needed**: nothing here touches `GameStateSchema`, since the day log is not
+persisted.
+
+### Tests changed, with the directive 17 case for each
+
+Every one was case (a), a stale assertion of behaviour this sprint intentionally changed. **None was
+case (b), and no test was loosened.**
+
+| test | case | what changed |
+| --- | --- | --- |
+| `carCondition.test.ts` (whole file) | (a) | The predicate it tested no longer exists. Deleted rather than rewritten; its one independently-valuable assertion was already duplicated in `bands.test.ts`. |
+| `selling.test.ts` "reputation side effects" (4 tests to 3) | (a) | The lemon tests asserted a penalty that is now forbidden. Replaced with: a champion-clearing sale pays `satisfiedSaleBonus` and logs `saleQuality: 'satisfied'`; a buyer who missed out pays nothing AND takes nothing (a shop on 40 points still has 40); a trade sale pays nothing because nobody was behind the offer. |
+| `selling.test.ts` matched-sale block | (a) | Asserted `>= matchedSaleRepBonus`. Now asserts the exact `delightedSaleBonus`, since that fixture's buyer cares about exactly one stat and the car clears it. The scene-credit half of the block is untouched. |
+| `serviceJobs.test.ts` "failure costs reputation" | (a) | Replaced with the grade-gradient assertion at the new multipliers (race 1.6x, street 1.15x), which is the fact that survived. |
+| `serviceJobs.test.ts` failure + deadline-backstop tests | (a) | Were `50 - reputationForFailure(...)`; now assert the total is still exactly 50 and that no `reputationLost` field is emitted. |
+| `schemas.test.ts` reputation block | (a) | Six deleted fields out, `satisfiedSaleBonus` 15 and `delightedSaleBonus` 30 in. |
+| `authenticity.test.ts` (2 tests) | (a) | Both asserted a real number (82 and 83) AND that it fell below the concours bar. The numbers stay; the dead bar reference goes. |
+| `valuation.test.ts` Show Crowd smoke test | (a) | Same shape. The "modified enough to have given up its originality" assertion now reads against the Collector's own authored authenticity target instead of the retired 85 bar, which is the live expression of the same idea. |
+| `dayLogFormat.test.ts` (3 tests) | (a) | New vocabulary and new point values; one test added so both outcome strings are covered. |
+| `commentHygieneGuard.test.ts` | **(b)** | The one genuine catch: three comments I wrote carried process narrative ("sprint 184", "the maintainer"), which directive 10 bans. The comments were rewritten to describe current behaviour; the guard was not touched. |
+
+**Added:** `packages/sim/tests/saleOutcome.test.ts` (7 tests) for the predicate itself, including the
+definition of done stated as a test (a rough show car reads `delighted` to the Show Crowd and
+`nothing` to a Daily Driver, same car, same instant) and the builder-reaches-the-top-rung proof (a
+fully race-built Silvia reads `delighted` to the Tuner at authenticity well under the old 85 bar).
+Added to `reputation.test.ts`: a three-part guard that every reputation-writing path in the game is
+nonnegative over the real shipped content.
+
+### THE MEASUREMENT: `reputation.tierThresholds` is NOT moved, and here is why
+
+Method: closed-form, in the style of `sceneStandingRetuneProbes.test.ts` (sprint183). Real
+`saleOutcomeFor` / `valuateCarForBuyer` calls against the **48 shipped models** at five build levels
+(stock mint, uniform street, sport, race, and a scene-targeted build) plus **400 generated auction
+lots**. No bot career, no RNG-driven selling simulation (directive 21). The probe was run once and
+removed; every figure below is reproducible from the same harness sprint 183 committed.
+
+**1. Reputation income per act, measured.**
+
+| act | rep |
+| --- | ---: |
+| Satisfied sale | **15** |
+| Delighted sale | **30** |
+| A sale, weighted by who actually turns up: unrestored lot flipped as bought | **0.4** |
+| ... restored to mint, stock | **7.1** |
+| ... sport build | **13.2** |
+| ... race build | **17.1** |
+| ... scene-targeted build | **15.7** |
+| A sale where the player picks the buyer (a matched-only channel), restored | **22.5** |
+| ... built for a scene | **24.4 to 26.3** |
+| Service job, tier 1 | 2.5 mean (2 to 3 base; up to 5 with a race part) |
+| Service job, tier 2 | 5.7 mean (5 to 7; up to 11) |
+| Service job, tier 3 | 8.6 mean (8 to 10; up to 16) |
+| Service job, tier 4 | 14.5 mean (13 to 17; up to 27) |
+| All ten story missions, once each | 335 total (15 to 60 each) |
+
+The draw-weighted column is the honest middle: it weights each scene by
+`tierPreference x cultureAffinity x valuation`, which is exactly `pickWeightedCandidate`'s own
+distribution. **Flipping a car with no work done pays 0.4** - the core-loop law survives the change
+intact.
+
+**2. What the current ladder costs, in acts, before and after.**
+
+| rung | cars, old rate (~2.5/sale) | cars, new (built, draw-weighted 17.1) | cars, new (built + right channel, 26.3) | jobs, old | jobs, new |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `local` 60 | 24 | 3.5 | 2.3 | 12 | 24 |
+| `known` 200 | 80 | 12 | 7.6 | 24 | 49 |
+| `respected` 500 | 200 | 29 | 19 | 42 | 84 |
+| `legend` 1400 | 560 | 82 | 53 | 73 | 146 |
+
+(Job counts use the mean base of the highest tier unlocked at that rung, cumulative.)
+
+**3. The finding, and the recommendation: LEAVE ALL FIVE NUMBERS WHERE THEY ARE.**
+
+Take a shop that sells one car for every one and a half jobs it turns around, doing real work on
+both:
+
+- **old**: 2.5 + 1.5 x 14.0 = **23.5 points per bundle**
+- **new**: 13.2 + 1.5 x 6.5 = **23.0 points per bundle**
+
+(Working, so the numbers can be checked rather than taken: the sale term is the sport-build
+draw-weighted figure from table 1. The job term is the mean of the tier-1-to-3 means available to a
+mid-game shop - 11.2 old, 5.6 new, the halving - times a modest grade uplift for the install jobs
+among them, larger under the old 2.2x race multiplier than under the new 1.6x.)
+
+**Within 2 per cent.** The gain on the sale side (+10.7) almost exactly cancels the loss on the
+service side (-11.3), so a balanced shop's wall-clock pacing to every rung is unchanged. What moved
+is who climbs:
+
+| play style | speed vs before |
+| --- | ---: |
+| Sales-led (1 sale : 0.5 jobs) | **1.7x faster** |
+| Balanced (1 : 1.5) | **unchanged** |
+| Service-led (1 : 4) | **1.5x slower** |
+
+That is precisely the redistribution the sprint was for, achieved without touching the ladder. The
+service road to legend roughly doubled (73 jobs to 146) and the sales road shortened about tenfold
+(560 cars to 53-82), so the two are now within a factor of two of each other instead of a factor of
+eight apart in the wrong direction. **Moving the thresholds now would be a second, uncalled-for
+change to a pacing figure the first change did not disturb.**
+
+**4. The one thing worth a separate decision, which this measurement does NOT force.** The ladder is
+back-loaded and always has been: the gaps are 60 / 140 / 300 / **900**, so the last rung alone is
+**64 per cent of the whole ladder** - 34 deliberately-sold cars for that one rung, against 19 for
+all three rungs before it put together. That shape predates this sprint and is untouched by it. If it is worth
+flattening, the coherent version is **0 / 90 / 260 / 560 / 1100** - gaps of 90 / 170 / 300 / 540,
+each about 1.8x the last instead of today's 2.3x / 2.1x / 3.0x, dropping the last rung to 49 per
+cent of the ladder and legend to about 42 deliberate cars. It also raises the story missions' share
+of the total from 24 to 30 per cent, which is the main argument against it. **Tabled as a question,
+not proposed as a fix**; nothing in this sprint's arithmetic says the current numbers are wrong.
+
+### Open questions this sprint raises
+
+1. **`saleOutcomeFor` reads `target` only, never `upper`.** Daily Drivers and Touge both author a
+   power `upper` of 0.55 ("too much car"), which the taste PRICE honours and reputation now does not:
+   a 400 PS commuter still reads `delighted` to a Daily Driver if it clears every target. This is
+   exactly what the brief and the bible's fifth amendment specify ("every stat that buyer cares
+   about cleared"), so it is built as written and flagged rather than quietly extended.
+2. **Culture affinity is deliberately not read.** A buyer whose scene barely cares for a car's
+   culture still pays full reputation if the car clears their targets. Culture governs who turns up
+   and what they pay; whether the person standing in front of the car got what they wanted is a
+   different question. Named here so it is a decision rather than an omission.
+3. **Authenticity lost its only direct economic consumer.** The concours gate was the one place a
+   car's derived authenticity bought the player something on its own; it now reaches the player only
+   through buyer taste and the coherence term in `marketValueYen`. Recorded in the economy bible's
+   amendment log.

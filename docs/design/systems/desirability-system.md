@@ -210,13 +210,20 @@ already authored and already ratified.
 
 ## 6. Consequences
 
-**`concoursSaleMinAuthenticityPercent` (85) becomes reachable.** It currently gates a reputation
-bonus on a number no player can influence. Once authenticity is derived, concours is something a
-player builds toward and that threshold becomes load-bearing.
+**~~`concoursSaleMinAuthenticityPercent` (85) becomes reachable.~~ SUPERSEDED 2026-08-06** by the
+progression bible's fifth amendment (`docs/sprints/sprint184.md`). It never did become reachable:
+measured after authenticity was derived, an aftermarket block alone costs 18 of the taxonomy's 100
+points and a kit with wheels costs 17, so a bar of 85 disqualified every built car by construction
+and a tuner, show or racing shop was capped below the top rate however good its work was. The whole
+condition predicate is deleted rather than retuned: reputation now reads whether the buyer got what
+they came for (`saleOutcomeFor`, sim/valuation.ts). **Authenticity keeps every other reader** -
+buyer taste, the coherence term in `marketValueYen`, and the radar chart - it simply no longer buys
+a reputation bonus of its own.
 
-**Concours and the magazine feature split** (`sale-value-system.md` §5): concours needs mint
-condition, high coherence AND high authenticity; a mint, coherent, **modified** car earns a
-magazine feature instead. Neither exists in code.
+**~~Concours and the magazine feature split.~~ Retired with the same amendment.** Neither ever
+existed in code, and the split they were meant to express (an original car and a built one are
+different kinds of good) is now expressed by which buyer is pleased rather than by two named
+awards.
 
 **Every stock car's style rises**, because the base rescales. Buyer style targets were authored
 against the old scale and should be re-checked against the new one, though not necessarily moved.

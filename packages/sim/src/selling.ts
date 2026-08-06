@@ -22,7 +22,6 @@ import { tierPreferenceWeight } from './bidding'
 import { applyReputationDelta } from './reputation'
 import { isMeetDay } from './calendar'
 import { carLedgerFor, deleteCarLedger, updateCarLedger } from './carLedger'
-import { saleQualityFor, saleReputationDeltaFor } from './carCondition'
 import type { SimContext } from './context'
 import { computeDerivedStats } from './derivedStats'
 import { saleRevealLineFor } from './diagnosis'
@@ -43,17 +42,19 @@ import {
   cultureAffinityFor,
   currentPowerExpectationBarPs,
   isTasteMatched,
+  saleOutcomeFor,
   valuateCarForBuyer,
   valuateCarForBuyerViaChannel,
+  type SaleOutcome,
 } from './valuation'
 
 /**
  * The trade network's own "buyer" - a fax to the dealer circle, never a
  * named persona (`sellingChannels.tradeNetwork` has no taste roll and no
- * `buyerPoolWeights`). Not a real `Buyer.id`, so a matched-sale lookup
- * against `context.buyers` naturally finds nobody and never fires the
- * matched bonus for this channel - the trade pays wholesale, not word of
- * mouth.
+ * `buyerPoolWeights`). Not a real `Buyer.id`, so a buyer lookup against
+ * `context.buyers` naturally finds nobody, and a channel with nobody behind
+ * it has no verdict to give: a trade sale earns neither reputation nor scene
+ * standing. The trade pays wholesale, not word of mouth.
  */
 const TRADE_NETWORK_BUYER_ID = 'trade-network'
 
@@ -1018,6 +1019,18 @@ export function advancePowerExpectationChain(
 }
 
 /**
+ * What one sale outcome pays in reputation (progression bible, fifth
+ * amendment). Never negative and never zero-by-subtraction: a buyer who did
+ * not get what they came for simply pays nothing, and nothing in the game
+ * takes reputation away.
+ */
+export function saleReputationBonusFor(outcome: SaleOutcome, economy: EconomyConfig): number {
+  if (outcome === 'delighted') return economy.reputation.delightedSaleBonus
+  if (outcome === 'satisfied') return economy.reputation.satisfiedSaleBonus
+  return 0
+}
+
+/**
  * Resolve today's live offer on `carInstanceId`, if one exists - the sale
  * mechanics (reputation, market-heat ledger, staged-work cleanup, event
  * log) are this resolver's plumbing; the PRICE comes from consuming
@@ -1059,27 +1072,24 @@ export function resolveSellViaWalkIn(
     buyer !== undefined && tasteCeiling !== undefined
       ? isTasteMatched(buyer, model, car, context.partsById, context.partsTaxonomy, context.economy)
       : false
-  const matchedBonus = matched ? context.economy.reputation.matchedSaleRepBonus : 0
 
-  const conditionDelta = saleReputationDeltaFor(
-    car,
-    model,
-    context.partsById,
-    context.partsTaxonomy,
-    context.partsTaxonomyById,
-    context.economy,
-  )
-  const nominalDelta = conditionDelta + matchedBonus
+  // Reputation reads the buyer's own verdict on the car they were sold, and
+  // nothing else (progression bible, fifth amendment): no condition band, no
+  // authenticity, no derived stat read directly. No real buyer behind the
+  // offer means nobody to be pleased or disappointed, which is the trade
+  // network's whole character - it pays cash and says nothing about you.
+  const saleOutcome: SaleOutcome =
+    buyer === undefined
+      ? 'nothing'
+      : saleOutcomeFor(buyer, model, car, context.partsById, context.partsTaxonomy, context.economy)
+  const reputationDelta = saleReputationBonusFor(saleOutcome, context.economy)
   const clearedState = dissolveAssembliesForCar(
     clearStagedWork(releaseCarFromShop(state, carInstanceId), carInstanceId),
     carInstanceId,
   )
-  const released = applyReputationDelta(clearedState, nominalDelta, context.economy)
-  // Log what actually happened, not the nominal delta - `applyReputationDelta`
-  // floors `reputationPoints` at 0, so a player at 2 points selling a lemon
-  // (nominal -5) only ever loses 2, not 5. The logged number is the real,
-  // applied one.
-  const appliedDelta = released.reputationPoints - clearedState.reputationPoints
+  // The applied delta always equals the nominal one now: reputation only ever
+  // rises, so `applyReputationDelta`'s zero floor can never bind on a sale.
+  const released = applyReputationDelta(clearedState, reputationDelta, context.economy)
 
   // Realised profit against the ledger recorded since acquisition - only when
   // the purchase price itself is known.
@@ -1139,14 +1149,9 @@ export function resolveSellViaWalkIn(
       channel: 'walk-in-offer',
       priceYen: offer.priceYen,
       ...(profitYen !== undefined ? { profitYen } : {}),
-      ...(appliedDelta !== 0
-        ? {
-            reputationDelta: appliedDelta,
-            saleQuality: saleQualityFor(conditionDelta, context.economy) ?? undefined,
-          }
-        : {}),
+      ...(saleOutcome === 'nothing' ? {} : { reputationDelta, saleQuality: saleOutcome }),
       ...(saleRevealLine !== undefined ? { saleRevealLine } : {}),
-      ...(matchedBonus > 0 ? { matchedSale: true as const } : {}),
+      ...(matched ? { matchedSale: true as const } : {}),
     },
   ]
   return {

@@ -87,6 +87,10 @@ export function currentPowerExpectationBarPs(
  * against. */
 type StatScoreByKey = Record<(typeof STAT_KEYS)[number], number>
 
+/** The buyer's own verdict on the car they were handed, and the whole of what
+ * a sale pays reputation for (`saleOutcomeFor` below). */
+export type SaleOutcome = 'satisfied' | 'delighted' | 'nothing'
+
 /**
  * The Stage E match formula in isolation (sale-value-system.md S3 Stage E,
  * amended sprint146.md), pure over an already-normalized score vector: a
@@ -167,6 +171,83 @@ export function cultureAffinityFor(buyer: Buyer, model: CarModel): number {
 }
 
 /**
+ * This car's five taste stats on the [0, 1] footing `Buyer.statTargets` is
+ * authored on - `normalizedPowerScore` for power, `/ 100` for the other four.
+ * The one place that normalisation happens, shared by the taste score below
+ * and by `saleOutcomeFor`, so a buyer's verdict on a car and the price they
+ * pay for it can never be computed from two different score vectors.
+ */
+function normalizedStatScores(
+  model: CarModel,
+  instance: CarInstance,
+  partsById: Readonly<Record<string, Part>>,
+  partsTaxonomy: readonly CarPartTaxonomyEntry[],
+  economy: EconomyConfig,
+): StatScoreByKey {
+  const stats = computeDerivedStats(model, instance, partsById, partsTaxonomy, economy)
+  return {
+    power: normalizedPowerScore(stats.power, economy),
+    handling: stats.handling / 100,
+    style: stats.style / 100,
+    reliability: stats.reliability / 100,
+    authenticity: stats.authenticity / 100,
+  }
+}
+
+/**
+ * What the person who bought this car got out of it (progression bible, fifth
+ * amendment): `satisfied` when the buyer's champion stat cleared its target,
+ * `delighted` when EVERY stat they care about did, `nothing` otherwise. The
+ * whole of what reputation now reads at a sale.
+ *
+ * Satisfied deliberately asks exactly the question the champion gate inside
+ * `normalizedTasteScore` already asks - the stat this buyer is known for,
+ * `championStatFor` - so the sale that pleases a buyer and the sale that
+ * qualifies for their taste band are testing the same fact rather than two
+ * definitions of "good enough" that can drift apart.
+ *
+ * A stat at importance 0 is one the buyer never asked about, so it can never
+ * hold a sale back: selling a rough-engined show car to the Show Crowd is
+ * honest work and reads `delighted` when their style target is met, while the
+ * same car sold to a Daily Driver reads `nothing`, because reliability is the
+ * only thing they came for. Culture affinity is deliberately NOT read here:
+ * it prices who turns up and what they pay, not whether the person standing
+ * in front of the car got what they wanted.
+ */
+export function saleOutcomeFor(
+  buyer: Buyer,
+  model: CarModel,
+  instance: CarInstance,
+  partsById: Readonly<Record<string, Part>>,
+  partsTaxonomy: readonly CarPartTaxonomyEntry[],
+  economy: EconomyConfig,
+): SaleOutcome {
+  const scoreByStat = normalizedStatScores(model, instance, partsById, partsTaxonomy, economy)
+  const meetsTarget = (key: StatKey): boolean => scoreByStat[key] >= buyer.statTargets[key].target
+  /**
+   * Within the band, not merely above its floor. `upper` is the point past
+   * which a buyer starts actively losing interest (`tasteMatchFor` charges a
+   * shortfall for overshooting it), so a car that has blown through it has not
+   * given that buyer what they wanted however far it cleared the target. Daily
+   * Drivers and Touge both author a power `upper`, and without this a 400 PS
+   * commuter reads as the ideal daily driver.
+   */
+  const isRight = (key: StatKey): boolean => {
+    const { upper } = buyer.statTargets[key]
+    return meetsTarget(key) && (upper === undefined || scoreByStat[key] <= upper)
+  }
+  /**
+   * The champion gate asks only whether they got the thing they came for, so it
+   * reads the target alone: a buyer is still SATISFIED by a car that overdoes
+   * their signature stat. Being DELIGHTED is the stricter claim, and that is
+   * where overshooting counts against the car.
+   */
+  if (!meetsTarget(championStatFor(buyer))) return 'nothing'
+  const wanted = STAT_KEYS.filter((key) => buyer.statTargets[key].importance > 0)
+  return wanted.every(isRight) ? 'delighted' : 'satisfied'
+}
+
+/**
  * How well this car satisfies a buyer archetype's taste, normalized to
  * [0, 1]. The shared input every taste band below maps onto its own range -
  * stats never touch `marketValueYen` itself, only who pays a bit more.
@@ -188,14 +269,7 @@ function normalizedTasteScore(
   partsTaxonomy: readonly CarPartTaxonomyEntry[],
   economy: EconomyConfig,
 ): number {
-  const stats = computeDerivedStats(model, instance, partsById, partsTaxonomy, economy)
-  const scoreByStat: StatScoreByKey = {
-    power: normalizedPowerScore(stats.power, economy),
-    handling: stats.handling / 100,
-    style: stats.style / 100,
-    reliability: stats.reliability / 100,
-    authenticity: stats.authenticity / 100,
-  }
+  const scoreByStat = normalizedStatScores(model, instance, partsById, partsTaxonomy, economy)
   const champion = championStatFor(buyer)
   if (scoreByStat[champion] < buyer.statTargets[champion].target) return 0
   const match = tasteMatchFor(buyer.statTargets, scoreByStat)
@@ -214,7 +288,9 @@ function normalizedTasteScore(
  * easier to earn the more of it a scene already had. Buyer/car-only, so it
  * never reads a channel or a scene's own standing: what a buyer wants does
  * not depend on where the car is advertised. Governs the `matchedOnly`
- * channel gate and `reputation.matchedSaleRepBonus` alike (`selling.ts`).
+ * channel gate and the scene-standing delivery credit alike (`selling.ts`).
+ * Reputation is a separate, stricter-in-one-direction question and reads
+ * `saleOutcomeFor` above, never this.
  */
 export function isTasteMatched(
   buyer: Buyer,
