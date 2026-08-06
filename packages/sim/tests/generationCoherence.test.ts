@@ -73,7 +73,7 @@ describe('generated cars are coherent (Sprint 66, item 6a)', () => {
         expect(GAME_YEAR - car.year).toBeGreaterThanOrEqual(ECONOMY.AUCTION_MIN_AGE_YEARS)
       }
     }
-  }, 30_000)
+  })
 
   /**
    * The wear model alone, asked of it alone. Generation has two further,
@@ -178,7 +178,7 @@ describe('generated cars are coherent (Sprint 66, item 6a)', () => {
     expect(median).toBeLessThanOrEqual(1)
     expect(p90).toBeLessThanOrEqual(4)
     expect(mean).toBeLessThan(1.65)
-  }, 30_000)
+  })
 
   it('still lets neglect bite hard on a thoroughly-used car (the model is scaled, not defanged)', () => {
     // Across the whole roster and a wide seed sweep, high-mileage cars must
@@ -199,7 +199,7 @@ describe('generated cars are coherent (Sprint 66, item 6a)', () => {
       }
     }
     expect(sawRoughHighMileage).toBe(true)
-  }, 30_000)
+  })
 
   it("a car's provenance blurb fits its age - a nearly-new car is never a barn find", () => {
     const OLD_ONLY = ['parked up for years', 'barn find', 'long-term collection', 'estate sale']

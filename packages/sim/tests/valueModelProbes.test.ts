@@ -846,7 +846,7 @@ describe('the scrap-value floor never binds on a generated lot (Sprint 54 decisi
         expect(unclampedValueYen).toBeGreaterThanOrEqual(floorYen)
       }
     }
-  }, 30_000)
+  })
 })
 
 /**
@@ -983,7 +983,6 @@ describe('unimproved-flip probe (the instant-flip guard)', () => {
       // said it should be, and it sits five times inside this bound.
       expect(marginMedian).toBeLessThan(0.1)
     },
-    30_000,
   )
 })
 
