@@ -17,7 +17,9 @@ import {
   channelArrivalOddsFor,
   computeDerivedStats,
   createInitialGameState,
+  currentGameYear,
   foundationWithheldYen,
+  generatedYearRangeFor,
   marketValueYen,
   moveCar,
   resolveBuyoutInstant,
@@ -30,17 +32,21 @@ import {
   BENCH_CAR_ID,
   benchCarInstance,
   benchGameState,
+  benchYearRange,
   carSpecFrom,
   defaultCarSpec,
+  defaultMileageKm,
   defaultShopSpec,
   generatedBenchCar,
   skusForSlot,
+  type BenchShopSpec,
 } from './economyBench'
 import {
   acquisitionPanelFor,
   buyerRowsFor,
   channelRowsFor,
   costSheetFor,
+  mileageNoteFor,
   openingBlockFor,
 } from './economyBenchReadout'
 import { runBenchAction } from './economyBenchActions'
@@ -93,9 +99,11 @@ function normallyAcquiredState(car: ReturnType<typeof generatedBenchCar>, day: n
   return moveCar(bought, car.id, 'service', context.economy).state
 }
 
+const shopSpec = defaultShopSpec(context)
+
 describe('the economy bench state builder', () => {
   it('round-trips a real generated lot: read into a spec and rebuilt is the same car', () => {
-    const generated = generatedBenchCar(model, 7, 1, context)
+    const generated = generatedBenchCar(model, 7, shopSpec, context)
     const rebuilt = benchCarInstance(carSpecFrom(generated), model, context)
 
     // `history` and `damagePattern` are provenance the bench spec does not
@@ -116,8 +124,8 @@ describe('the economy bench state builder', () => {
   })
 
   it('THE GUARD: a bench-built car and a normally-built car produce identical figures', () => {
-    const generated = generatedBenchCar(model, 11, 1, context)
     const shop = defaultShopSpec(context)
+    const generated = generatedBenchCar(model, 11, shop, context)
 
     const benchState = benchGameState(
       shop,
@@ -182,8 +190,8 @@ describe('the economy bench state builder', () => {
   })
 
   it('THE GUARD: the same repair on both states leaves the same car and the same price', () => {
-    const generated = generatedBenchCar(model, 11, 1, context)
     const shop = defaultShopSpec(context)
+    const generated = generatedBenchCar(model, 11, shop, context)
     const benchState = benchGameState(
       shop,
       benchCarInstance(carSpecFrom(generated), model, context),
@@ -241,7 +249,7 @@ describe('the economy bench state builder', () => {
   })
 
   it('seats the bench car in a service bay, so work is not refused for want of one', () => {
-    const spec = defaultCarSpec(model, context)
+    const spec = defaultCarSpec(model, shopSpec, context)
     const state = benchGameState(
       defaultShopSpec(context),
       benchCarInstance(spec, model, context),
@@ -258,8 +266,85 @@ describe('the economy bench state builder', () => {
   })
 })
 
+describe("the economy bench's campaign year", () => {
+  const legendShop: BenchShopSpec = { ...shopSpec, reputationTier: 'legend' }
+
+  it('bounds the year control by the generator own window at this shop tier', () => {
+    for (const shop of [shopSpec, legendShop]) {
+      for (const candidate of context.models) {
+        expect(benchYearRange(candidate, shop, context)).toEqual(
+          generatedYearRangeFor(candidate, currentGameYear(shop.reputationTier), context.economy),
+        )
+      }
+    }
+  })
+
+  it('rolls a generated lot at the shop own tier, not at the career opening year', () => {
+    // The model whose window the higher tier widens most, so the difference the
+    // roll can express is as large as the roster offers.
+    const widening = (candidate: CarModel): number =>
+      benchYearRange(candidate, legendShop, context)[1] -
+      benchYearRange(candidate, shopSpec, context)[1]
+    const widest = [...context.models].sort((a, b) => widening(b) - widening(a))[0]!
+    expect(widening(widest)).toBeGreaterThan(0)
+
+    const youngestAtOpening = benchYearRange(widest, shopSpec, context)[1]
+    const youngestAtLegend = benchYearRange(widest, legendShop, context)[1]
+    const years = Array.from(
+      { length: 60 },
+      (_, seed) => generatedBenchCar(widest, seed + 1, legendShop, context).year,
+    )
+
+    // Every roll inside the tier's own window, and at least one of them above
+    // the year an opening-tier campaign could ever have produced.
+    for (const year of years) {
+      expect(year).toBeGreaterThanOrEqual(widest.spec.yearFrom)
+      expect(year).toBeLessThanOrEqual(youngestAtLegend)
+    }
+    expect(Math.max(...years)).toBeGreaterThan(youngestAtOpening)
+  })
+
+  it('starts the mileage control from the campaign year, so a later one means an older car', () => {
+    // Age 2 at the opening tier, so both readings sit on the rising part of the
+    // curve rather than against its cap.
+    const year = currentGameYear(shopSpec.reputationTier) - 2
+    expect(defaultMileageKm(year, legendShop, context)).toBeGreaterThan(
+      defaultMileageKm(year, shopSpec, context),
+    )
+  })
+
+  it('starts a hand-built car on a year the generator would allow', () => {
+    for (const shop of [shopSpec, legendShop]) {
+      for (const candidate of context.models) {
+        const spec = defaultCarSpec(candidate, shop, context)
+        const [oldest, youngest] = benchYearRange(candidate, shop, context)
+        expect(spec.year).toBeGreaterThanOrEqual(oldest)
+        expect(spec.year).toBeLessThanOrEqual(youngest)
+      }
+    }
+  })
+})
+
+describe("the economy bench's mileage note", () => {
+  it('reads the multiplier and the curve off the economy rather than restating them', () => {
+    const note = mileageNoteFor(0, context.economy)
+    expect(note.curve).toEqual(context.economy.valuation.mileageFactorCurve)
+    expect(note.factor).toBe(context.economy.valuation.mileageFactorCurve[0]![1])
+    expect(note.minAgeYears).toBe(context.economy.AUCTION_MIN_AGE_YEARS)
+  })
+
+  it('names the mileage the curve crosses 1.0, and whether a fresh lot sits below it', () => {
+    const note = mileageNoteFor(0, context.economy)
+    expect(note.neutralKm).not.toBeNull()
+    // Below the crossing point mileage adds value; above it, takes it away.
+    expect(mileageNoteFor(note.neutralKm! - 1, context.economy).factor).toBeGreaterThan(1)
+    expect(mileageNoteFor(note.neutralKm! + 1, context.economy).factor).toBeLessThan(1)
+    expect(note.youngestLotAddsValue).toBe(note.youngestLotRangeKm[1] < note.neutralKm!)
+  })
+})
+
 describe('the economy bench readout', () => {
-  const spec = defaultCarSpec(model, context)
+  const spec = defaultCarSpec(model, shopSpec, context)
   const car = benchCarInstance(spec, model, context)
   const state = benchGameState(defaultShopSpec(context), car, context)
   const benchCar = state.ownedCars.find((c) => c.id === BENCH_CAR_ID)!
@@ -373,7 +458,7 @@ describe('the economy bench readout', () => {
 })
 
 describe('the economy bench actions', () => {
-  const spec = defaultCarSpec(model, context)
+  const spec = defaultCarSpec(model, shopSpec, context)
   const state = benchGameState(
     defaultShopSpec(context),
     benchCarInstance(spec, model, context),

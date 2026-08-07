@@ -22,6 +22,7 @@ import {
   createInitialGameState,
   currentGameYear,
   generateAuctionCarInstance,
+  generatedYearRangeFor,
   hasForcedInduction,
   createRng,
   makeCarOrigin,
@@ -158,25 +159,53 @@ export function stockBuild(model: CarModel, context: SimContext): BenchBuild {
 }
 
 /**
- * The mileage a car's control starts at: the midpoint of the range generation
- * would roll for a car of this age, off `economy.json`'s own curves. Mileage
- * belongs to one instance rather than to the model, so this is only where the
- * control begins.
+ * The campaign year a shop at this reputation tier is living in. The calendar
+ * moves with reputation, so the generator's year window and every age-driven
+ * curve read this rather than the career's opening year.
  */
-export function defaultMileageKm(model: CarModel, context: SimContext): number {
-  const ageYears = Math.max(0, currentGameYear('unknown') - model.spec.yearFrom)
+export function benchCampaignYear(shop: BenchShopSpec): number {
+  return currentGameYear(shop.reputationTier)
+}
+
+/**
+ * The `[oldest, youngest]` model years the generator would allow this car in
+ * this shop's campaign - sim's own window (`generatedYearRangeFor`), which is
+ * what bounds the bench's year control.
+ */
+export function benchYearRange(
+  model: CarModel,
+  shop: BenchShopSpec,
+  context: SimContext,
+): [number, number] {
+  return generatedYearRangeFor(model, benchCampaignYear(shop), context.economy)
+}
+
+/**
+ * The mileage a car's control starts at: the midpoint of the range generation
+ * would roll for a car of `year` in this shop's campaign, off `economy.json`'s
+ * own curves. Mileage belongs to one instance rather than to the model, so this
+ * is only where the control begins.
+ */
+export function defaultMileageKm(year: number, shop: BenchShopSpec, context: SimContext): number {
+  const ageYears = Math.max(0, benchCampaignYear(shop) - year)
   const [min, max] = mileageRangeForAge(ageYears, context.economy)
   return Math.round((min + max) / 2)
 }
 
 /** A clean, stock, mint car of `model` - the bench's hand-build starting
- * point. */
-export function defaultCarSpec(model: CarModel, context: SimContext): BenchCarSpec {
+ * point. The oldest year the generator would allow it, and the mileage a car
+ * of that age carries in this shop's campaign. */
+export function defaultCarSpec(
+  model: CarModel,
+  shop: BenchShopSpec,
+  context: SimContext,
+): BenchCarSpec {
   const factoryColour = model.spec.factoryColours[0] ?? 'white'
+  const year = benchYearRange(model, shop, context)[0]
   return {
     modelId: model.id,
-    year: model.spec.yearFrom,
-    mileageKm: defaultMileageKm(model, context),
+    year,
+    mileageKm: defaultMileageKm(year, shop, context),
     factoryColour,
     provenanceNote: '',
     build: stockBuild(model, context),
@@ -310,13 +339,15 @@ export function benchGameState(
  * A REAL generated lot car for `model`, through the same
  * `generateAuctionCarInstance` every auction lot comes out of - the common
  * case, since hand-setting 28 slots and nine zones is not how a realistic car
- * arises. The instance is re-identified as the bench car; nothing else about
- * it is touched.
+ * arises. It rolls at the shop's own campaign year and day, which is what every
+ * live call site passes, so a lot on the bench is the lot that shop's board
+ * would carry. The instance is re-identified as the bench car; nothing else
+ * about it is touched.
  */
 export function generatedBenchCar(
   model: CarModel,
   seed: number,
-  day: number,
+  shop: BenchShopSpec,
   context: SimContext,
 ): CarInstance {
   const rolled = generateAuctionCarInstance(
@@ -324,9 +355,9 @@ export function generatedBenchCar(
     BENCH_CAR_ID,
     createRng(seed),
     context,
-    currentGameYear('unknown'),
+    benchCampaignYear(shop),
     true,
-    day,
+    shop.day,
   )
   return { ...rolled, id: BENCH_CAR_ID }
 }

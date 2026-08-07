@@ -19,7 +19,7 @@ import {
   type ZoneId,
 } from '@midnight-garage/content'
 import { ALL_CAR_PART_IDS } from '@midnight-garage/content'
-import { computed, ref, shallowRef } from 'vue'
+import { computed, ref, shallowRef, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen, formatYenDelta } from '../utils/formatYen'
@@ -27,8 +27,10 @@ import { SELLING_CHANNEL_LABELS } from '../utils/sellingChannelLabels'
 import {
   BENCH_CAR_ID,
   BENCH_ZONE_IDS,
+  benchCampaignYear,
   benchCarInstance,
   benchGameState,
+  benchYearRange,
   carSpecFrom,
   defaultCarSpec,
   defaultShopSpec,
@@ -45,6 +47,7 @@ import {
   channelRowsFor,
   costSheetFor,
   heatPercentFor,
+  mileageNoteFor,
   openingBlockFor,
 } from './dev/economyBenchReadout'
 import {
@@ -70,8 +73,10 @@ const FINISHES = [0, 1, 2, 3]
 const modelId = ref(context.value.models[0]?.id ?? '')
 const model = computed(() => context.value.modelsById[modelId.value])
 
-const carSpec = ref<BenchCarSpec>(defaultCarSpec(context.value.models[0]!, context.value))
 const shopSpec = ref<BenchShopSpec>(defaultShopSpec(context.value))
+const carSpec = ref<BenchCarSpec>(
+  defaultCarSpec(context.value.models[0]!, shopSpec.value, context.value),
+)
 const generatorSeed = ref(1)
 
 // The bench's own world. `shallowRef`: a GameState is replaced wholesale by
@@ -85,6 +90,30 @@ const state = shallowRef(
 )
 const log = ref<BenchLogLine[]>([])
 const entries = shallowRef<DayLogEntry[]>([])
+
+/**
+ * Whether the builder has been edited since the world below it was built.
+ *
+ * The readouts describe the built world, so without this an edited mileage box
+ * would sit beside the previous car's price with nothing on screen saying which
+ * car the figures belong to - the one failure a measuring instrument cannot
+ * have. The panel is MARKED rather than rebuilt on every keystroke because a
+ * rebuild throws the car and the running log away: the log's premise is a
+ * measured delta across an action, and a stray touch of an input would discard
+ * a whole session's work and every part fitted in it.
+ *
+ * Set synchronously, so a function that edits the spec and then rebuilds
+ * (picking a model, loading a lot, resetting) ends on a clean panel rather than
+ * having its own edit flagged after the fact.
+ */
+const dirty = ref(false)
+watch(
+  [carSpec, shopSpec],
+  () => {
+    dirty.value = true
+  },
+  { deep: true, flush: 'sync' },
+)
 
 const car = computed(() => state.value.ownedCars.find((c) => c.id === BENCH_CAR_ID))
 
@@ -112,13 +141,14 @@ function rebuild(): void {
   )
   log.value = []
   entries.value = []
+  dirty.value = false
 }
 
 function pickModel(id: string): void {
   modelId.value = id
   const chosen = context.value.modelsById[id]
   if (!chosen) return
-  carSpec.value = defaultCarSpec(chosen, context.value)
+  carSpec.value = defaultCarSpec(chosen, shopSpec.value, context.value)
   rebuild()
 }
 
@@ -127,7 +157,7 @@ function pickModel(id: string): void {
 function loadGeneratedLot(): void {
   const chosen = model.value
   if (!chosen) return
-  const rolled = generatedBenchCar(chosen, generatorSeed.value, shopSpec.value.day, context.value)
+  const rolled = generatedBenchCar(chosen, generatorSeed.value, shopSpec.value, context.value)
   carSpec.value = carSpecFrom(rolled)
   rebuild()
 }
@@ -143,11 +173,37 @@ function readCarBackIn(): void {
 function resetSpec(): void {
   const chosen = model.value
   if (!chosen) return
-  carSpec.value = defaultCarSpec(chosen, context.value)
+  carSpec.value = defaultCarSpec(chosen, shopSpec.value, context.value)
   rebuild()
 }
 
 // --- the builder's own controls -------------------------------------------
+
+/** The oldest and youngest years the generator would allow this car in this
+ * shop's campaign - sim's own window (`generatedYearRangeFor`), which bounds
+ * the year control rather than being read a second time here. */
+const yearRange = computed<[number, number]>(() =>
+  model.value
+    ? benchYearRange(model.value, shopSpec.value, context.value)
+    : [carSpec.value.year, carSpec.value.year],
+)
+
+function clampYear(year: number): number {
+  const [oldest, youngest] = yearRange.value
+  if (!Number.isFinite(year)) return oldest
+  return Math.min(youngest, Math.max(oldest, Math.round(year)))
+}
+
+/** Clamps a typed year into the production window and writes the clamped
+ * figure back into the box, so the control can never show a car the generator
+ * could not produce. The year is flavour and reaches no price, so nothing else
+ * moves with it. */
+function setYear(event: Event): void {
+  const input = event.target as HTMLInputElement
+  const year = clampYear(Number(input.value))
+  carSpec.value = { ...carSpec.value, year }
+  input.value = String(year)
+}
 
 function setSlotSku(partId: CarPartId, skuId: string): void {
   const slot = carSpec.value.build[partId]
@@ -246,6 +302,10 @@ function setToolTier(group: ComponentId, tier: string): void {
 
 function setReputationTier(tier: string): void {
   shopSpec.value = { ...shopSpec.value, reputationTier: tier as ReputationTier }
+  // The campaign year moves with reputation, and the youngest year the
+  // generator allows moves with it, so a year already set can fall outside the
+  // new window.
+  carSpec.value = { ...carSpec.value, year: clampYear(carSpec.value.year) }
 }
 
 function toggleShopOwned(shopId: string): void {
@@ -259,6 +319,12 @@ function toggleShopOwned(shopId: string): void {
 }
 
 // --- the panels ------------------------------------------------------------
+
+/** What mileage alone is doing to the price, and the curve behind it. */
+const mileage = computed(() => mileageNoteFor(carSpec.value.mileageKm, context.value.economy))
+/** The year the calendar stands at for this shop, which the generator's year
+ * window and every age-driven curve read. */
+const campaignYear = computed(() => benchCampaignYear(shopSpec.value))
 
 const opening = computed(() =>
   car.value && model.value
@@ -369,17 +435,56 @@ const slotsInRepairGroup = computed(() => context.value.partIdsByGroup[repairGro
         </label>
         <label>
           Mileage km
-          <input v-model.number="carSpec.mileageKm" type="number" min="0" step="5000" />
+          <input
+            v-model.number="carSpec.mileageKm"
+            data-test="bench-mileage"
+            type="number"
+            min="0"
+            step="5000"
+          />
         </label>
         <label>
           Year
-          <input v-model.number="carSpec.year" type="number" />
+          <input
+            :value="carSpec.year"
+            data-test="bench-year"
+            type="number"
+            :min="yearRange[0]"
+            :max="yearRange[1]"
+            @change="setYear"
+          />
         </label>
         <button type="button" data-test="bench-rebuild" @click="rebuild">Rebuild</button>
         <button type="button" data-test="bench-reset-spec" @click="resetSpec">
           Reset to stock and mint
         </button>
       </div>
+
+      <p v-if="dirty" class="warn" data-test="bench-stale">
+        The builder has been edited since this car was built. Every figure below still describes the
+        car on the bench, not the settings above it. Press Rebuild to build the car you have typed,
+        which starts a new car and clears the running log.
+      </p>
+
+      <p class="dim" data-test="bench-mileage-note">
+        Mileage multiplier at this figure: x{{ mileage.factor.toFixed(3) }}.
+        <template v-if="mileage.neutralKm !== null">
+          The curve passes 1.00 at {{ mileage.neutralKm.toLocaleString('en-US') }} km, so mileage
+          below that ADDS value and mileage above it takes value away.
+        </template>
+        The breakpoints, from economy.json:
+        <span v-for="(point, i) in mileage.curve" :key="point[0]">
+          <template v-if="i > 0">, </template>{{ point[0].toLocaleString('en-US') }} km x{{
+            point[1].toFixed(2)
+          }}</span
+        >. The first figure is flat all the way down to zero and the last is flat above itself.
+      </p>
+      <p v-if="mileage.youngestLotAddsValue" class="dim" data-test="bench-fresh-lot-note">
+        The youngest lot generation will ever produce is {{ mileage.minAgeYears }} years old and
+        rolls {{ mileage.youngestLotRangeKm[0].toLocaleString('en-US') }} to
+        {{ mileage.youngestLotRangeKm[1].toLocaleString('en-US') }} km, all of it below that
+        crossing point. A large share of generated lots therefore sit where mileage is adding value.
+      </p>
 
       <div class="row">
         <label>
@@ -394,6 +499,12 @@ const slotsInRepairGroup = computed(() => context.value.partIdsByGroup[repairGro
         </button>
         <span class="dim">A generated lot is the common case; hand-building 28 slots is not.</span>
       </div>
+      <p class="dim" data-test="bench-generated-note">
+        A lot rolls at campaign year {{ campaignYear }}, the year this shop's reputation tier ({{
+          shopSpec.reputationTier
+        }}) puts the calendar at. Both the generator's year window and its age-driven mileage curve
+        read it: a later campaign year admits younger cars.
+      </p>
 
       <div class="row">
         <label>
@@ -570,7 +681,11 @@ const slotsInRepairGroup = computed(() => context.value.partIdsByGroup[repairGro
         </label>
         <label>
           Reputation
-          <select :value="shopSpec.reputationTier" @change="setReputationTier(inputValue($event))">
+          <select
+            data-test="bench-shop-reputation"
+            :value="shopSpec.reputationTier"
+            @change="setReputationTier(inputValue($event))"
+          >
             <option v-for="t in REPUTATION_TIERS" :key="t" :value="t">{{ t }}</option>
           </select>
         </label>
@@ -613,7 +728,7 @@ const slotsInRepairGroup = computed(() => context.value.partIdsByGroup[repairGro
     </details>
 
     <!-- 2. THE OPENING BLOCK ------------------------------------------ -->
-    <details v-if="opening" open class="panel">
+    <details v-if="opening" open class="panel" :class="{ stale: dirty }">
       <summary>2. The opening block</summary>
       <p class="total" data-test="bench-total">
         Market value now: <strong>{{ formatYen(opening.totalYen) }}</strong>
@@ -870,7 +985,7 @@ const slotsInRepairGroup = computed(() => context.value.partIdsByGroup[repairGro
     </details>
 
     <!-- 4. THE SALE --------------------------------------------------- -->
-    <details open class="panel">
+    <details open class="panel" :class="{ stale: dirty }">
       <summary>4. The sale</summary>
       <table class="grid">
         <thead>
@@ -940,7 +1055,7 @@ const slotsInRepairGroup = computed(() => context.value.partIdsByGroup[repairGro
     </details>
 
     <!-- 5. THE ACQUISITION -------------------------------------------- -->
-    <details v-if="acquisition" open class="panel">
+    <details v-if="acquisition" open class="panel" :class="{ stale: dirty }">
       <summary>5. Buying this car</summary>
       <p data-test="bench-room-read">
         The room's read of the car: {{ formatYen(acquisition.roomReadYen) }}. Reserve (where the
@@ -982,7 +1097,7 @@ const slotsInRepairGroup = computed(() => context.value.partIdsByGroup[repairGro
     </details>
 
     <!-- 6. THE COST SIDE ---------------------------------------------- -->
-    <details open class="panel">
+    <details open class="panel" :class="{ stale: dirty }">
       <summary>6. The cost side</summary>
       <table class="grid">
         <thead>
@@ -1079,6 +1194,12 @@ const slotsInRepairGroup = computed(() => context.value.partIdsByGroup[repairGro
 .panel > summary {
   color: var(--mg-neon-violet);
   cursor: pointer;
+}
+
+/* A readout describing a car the builder no longer matches: still true about
+   the car on the bench, and visibly not an answer about what is typed above. */
+.panel.stale {
+  opacity: 0.5;
 }
 
 .row {

@@ -8,6 +8,7 @@ import {
   type CashBucket,
   type ConditionBand,
   type DayLogEntry,
+  type EconomyConfig,
   type GameState,
   type SellingChannelId,
   type StatKey,
@@ -24,6 +25,8 @@ import {
   isOnScrapFloor,
   isSellingChannelUnlocked,
   marketValueYen,
+  mileageFactor,
+  mileageRangeForAge,
   normalizedTasteScore,
   restorationValueLinesFor,
   roomClearingRangeFor,
@@ -56,6 +59,42 @@ import { describeLogEntry } from '../../utils/dayLogFormat'
  * ledger has never moved. */
 export function heatPercentFor(state: GameState, model: CarModel): number {
   return state.marketHeat[model.id] ?? 100
+}
+
+/** What mileage on its own is doing to this car's price. */
+export interface BenchMileageNote {
+  /** `mileageFactor` at this mileage. Above 1.0 mileage is ADDING value; below
+   * it, taking value away. */
+  factor: number
+  /** `economy.json`'s own breakpoints, rendered rather than restated, so the
+   * note cannot disagree with the curve it describes. */
+  curve: readonly (readonly [number, number])[]
+  /** The breakpoint sitting at exactly 1.0, if the curve has one: the mileage
+   * the curve crosses from adding value to taking it away. */
+  neutralKm: number | null
+  /** The youngest a generated lot is ever allowed to be. */
+  minAgeYears: number
+  /** The mileage range generation rolls for a lot of exactly that age - the
+   * lowest-mileage lot the board can ever carry. */
+  youngestLotRangeKm: readonly [number, number]
+  /** True when even the top of that range sits below the crossing point, so
+   * every freshly generated lot is on the value-adding side of the curve
+   * whatever it rolls. */
+  youngestLotAddsValue: boolean
+}
+
+export function mileageNoteFor(mileageKm: number, economy: EconomyConfig): BenchMileageNote {
+  const curve = economy.valuation.mileageFactorCurve
+  const neutralKm = curve.find(([, factor]) => factor === 1)?.[0] ?? null
+  const youngestLotRangeKm = mileageRangeForAge(economy.AUCTION_MIN_AGE_YEARS, economy)
+  return {
+    factor: mileageFactor(mileageKm, economy),
+    curve,
+    neutralKm,
+    minAgeYears: economy.AUCTION_MIN_AGE_YEARS,
+    youngestLotRangeKm,
+    youngestLotAddsValue: neutralKm !== null && youngestLotRangeKm[1] < neutralKm,
+  }
 }
 
 /** What the whole car is worth right now: the one figure every delta on the

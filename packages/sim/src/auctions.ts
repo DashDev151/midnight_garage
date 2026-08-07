@@ -843,6 +843,32 @@ function patternOffsetByPartId(
  * one, at the SAME rolled band, capped at `maxAftermarketSlots` per car -
  * this runs for every caller, with no gating parameter.
  */
+/**
+ * The `[oldest, youngest]` model years a generated car of this model can carry
+ * in a campaign at `currentYear` - the whole of the rule, and the only place it
+ * is written.
+ *
+ * The window is the car's own production run, so a Hakosuka built 1969 to 1972
+ * can never turn up on a 1977 plate. Two clamps narrow the top of it and
+ * neither can ever open it: a current-model-year car doesn't reach a backyard
+ * auction, so the newest year is at least `AUCTION_MIN_AGE_YEARS` old; and
+ * `yearFrom` wins outright if that pushes the window shut, because a car cannot
+ * predate its own model. A 1994 model in a 1995 campaign therefore still
+ * generates as a 1994 car, age 1 - near-new cars are supposed to exist. An
+ * infinite `currentYear` means no campaign is known, and only the production
+ * run applies.
+ */
+export function generatedYearRangeFor(
+  model: CarModel,
+  currentYear: number,
+  economy: EconomyConfig,
+): [number, number] {
+  const youngestAllowedYear = Number.isFinite(currentYear)
+    ? Math.min(model.spec.yearTo, currentYear - economy.AUCTION_MIN_AGE_YEARS)
+    : model.spec.yearTo
+  return [model.spec.yearFrom, Math.max(model.spec.yearFrom, youngestAllowedYear)]
+}
+
 export function generateAuctionCarInstance(
   model: CarModel,
   id: string,
@@ -855,18 +881,8 @@ export function generateAuctionCarInstance(
 ): CarInstance {
   const { economy, stockPartByCarPartId } = context
   const fitmentClass = fitmentClassForTier(model.tier)
-  // The model year is drawn inside the car's own production window, so a
-  // Hakosuka built 1969 to 1972 can never turn up on a 1977 plate. Two clamps
-  // narrow the top of that window and neither can ever open it: a
-  // current-model-year car doesn't reach a backyard auction, so the newest
-  // year is at least `AUCTION_MIN_AGE_YEARS` old; and `yearFrom` wins outright
-  // if that pushes the window shut, because a car cannot predate its own
-  // model. A 1994 model in a 1995 campaign therefore still generates as a 1994
-  // car, age 1 - near-new cars are supposed to exist.
-  const youngestAllowedYear = Number.isFinite(currentYear)
-    ? Math.min(model.spec.yearTo, currentYear - economy.AUCTION_MIN_AGE_YEARS)
-    : model.spec.yearTo
-  const year = rng.int(model.spec.yearFrom, Math.max(model.spec.yearFrom, youngestAllowedYear))
+  const [oldestYear, youngestYear] = generatedYearRangeFor(model, currentYear, economy)
+  const year = rng.int(oldestYear, youngestYear)
   const ageYears = Number.isFinite(currentYear)
     ? Math.max(0, currentYear - year)
     : DEFAULT_CONDITION_AGE_YEARS_WHEN_UNBOUNDED
