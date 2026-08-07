@@ -6616,10 +6616,10 @@
     "fitmentClass": "flagship"
   },
   {
-    "id": "stock-panels",
+    "id": "stock-bodywork",
     "brand": "OEM",
-    "name": "Stock Panels",
-    "carPartId": "panels",
+    "name": "Stock Bodywork",
+    "carPartId": "bodywork",
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
@@ -6633,10 +6633,10 @@
     "fitmentClass": "everyday"
   },
   {
-    "id": "shitbox-stock-panels",
+    "id": "shitbox-stock-bodywork",
     "brand": "OEM",
-    "name": "Stock Panels",
-    "carPartId": "panels",
+    "name": "Stock Bodywork",
+    "carPartId": "bodywork",
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
@@ -6650,10 +6650,10 @@
     "fitmentClass": "entry"
   },
   {
-    "id": "uncommon-stock-panels",
+    "id": "uncommon-stock-bodywork",
     "brand": "OEM",
-    "name": "Stock Panels",
-    "carPartId": "panels",
+    "name": "Stock Bodywork",
+    "carPartId": "bodywork",
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
@@ -6667,10 +6667,10 @@
     "fitmentClass": "enthusiast"
   },
   {
-    "id": "rare-stock-panels",
+    "id": "rare-stock-bodywork",
     "brand": "OEM",
-    "name": "Stock Panels",
-    "carPartId": "panels",
+    "name": "Stock Bodywork",
+    "carPartId": "bodywork",
     "grade": "stock",
     "requiredTags": [],
     "statModifiers": {
@@ -6687,7 +6687,7 @@
     "id": "zone-panel-bonnet",
     "brand": "OEM",
     "name": "Bonnet panel",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "zonePanel",
     "zoneId": "bonnet",
     "grade": "stock",
@@ -6706,7 +6706,7 @@
     "id": "shitbox-zone-panel-bonnet",
     "brand": "OEM",
     "name": "Bonnet panel",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "zonePanel",
     "zoneId": "bonnet",
     "grade": "stock",
@@ -6725,7 +6725,7 @@
     "id": "uncommon-zone-panel-bonnet",
     "brand": "OEM",
     "name": "Bonnet panel",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "zonePanel",
     "zoneId": "bonnet",
     "grade": "stock",
@@ -6744,7 +6744,7 @@
     "id": "rare-zone-panel-bonnet",
     "brand": "OEM",
     "name": "Bonnet panel",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "zonePanel",
     "zoneId": "bonnet",
     "grade": "stock",
@@ -6763,7 +6763,7 @@
     "id": "zone-panel-boot",
     "brand": "OEM",
     "name": "Boot lid",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "zonePanel",
     "zoneId": "boot",
     "grade": "stock",
@@ -6782,7 +6782,7 @@
     "id": "shitbox-zone-panel-boot",
     "brand": "OEM",
     "name": "Boot lid",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "zonePanel",
     "zoneId": "boot",
     "grade": "stock",
@@ -6801,7 +6801,7 @@
     "id": "uncommon-zone-panel-boot",
     "brand": "OEM",
     "name": "Boot lid",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "zonePanel",
     "zoneId": "boot",
     "grade": "stock",
@@ -6820,7 +6820,7 @@
     "id": "rare-zone-panel-boot",
     "brand": "OEM",
     "name": "Boot lid",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "zonePanel",
     "zoneId": "boot",
     "grade": "stock",
@@ -6839,7 +6839,7 @@
     "id": "zone-panel-left-front",
     "brand": "OEM",
     "name": "Left front wing",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "zonePanel",
     "zoneId": "left-front",
     "grade": "stock",
@@ -6858,7 +6858,7 @@
     "id": "shitbox-zone-panel-left-front",
     "brand": "OEM",
     "name": "Left front wing",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "zonePanel",
     "zoneId": "left-front",
     "grade": "stock",
@@ -6877,7 +6877,7 @@
     "id": "uncommon-zone-panel-left-front",
     "brand": "OEM",
     "name": "Left front wing",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "zonePanel",
     "zoneId": "left-front",
     "grade": "stock",
@@ -6896,7 +6896,7 @@
     "id": "rare-zone-panel-left-front",
     "brand": "OEM",
     "name": "Left front wing",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "zonePanel",
     "zoneId": "left-front",
     "grade": "stock",
@@ -6915,7 +6915,7 @@
     "id": "zone-panel-left-rear",
     "brand": "OEM",
     "name": "Left rear quarter panel",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "zonePanel",
     "zoneId": "left-rear",
     "grade": "stock",
@@ -6934,7 +6934,7 @@
     "id": "shitbox-zone-panel-left-rear",
     "brand": "OEM",
     "name": "Left rear quarter panel",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "zonePanel",
     "zoneId": "left-rear",
     "grade": "stock",
@@ -6953,7 +6953,7 @@
     "id": "uncommon-zone-panel-left-rear",
     "brand": "OEM",
     "name": "Left rear quarter panel",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "zonePanel",
     "zoneId": "left-rear",
     "grade": "stock",
@@ -6972,7 +6972,7 @@
     "id": "rare-zone-panel-left-rear",
     "brand": "OEM",
     "name": "Left rear quarter panel",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "zonePanel",
     "zoneId": "left-rear",
     "grade": "stock",
@@ -6991,7 +6991,7 @@
     "id": "zone-panel-right-front",
     "brand": "OEM",
     "name": "Right front wing",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "zonePanel",
     "zoneId": "right-front",
     "grade": "stock",
@@ -7010,7 +7010,7 @@
     "id": "shitbox-zone-panel-right-front",
     "brand": "OEM",
     "name": "Right front wing",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "zonePanel",
     "zoneId": "right-front",
     "grade": "stock",
@@ -7029,7 +7029,7 @@
     "id": "uncommon-zone-panel-right-front",
     "brand": "OEM",
     "name": "Right front wing",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "zonePanel",
     "zoneId": "right-front",
     "grade": "stock",
@@ -7048,7 +7048,7 @@
     "id": "rare-zone-panel-right-front",
     "brand": "OEM",
     "name": "Right front wing",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "zonePanel",
     "zoneId": "right-front",
     "grade": "stock",
@@ -7067,7 +7067,7 @@
     "id": "zone-panel-right-rear",
     "brand": "OEM",
     "name": "Right rear quarter panel",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "zonePanel",
     "zoneId": "right-rear",
     "grade": "stock",
@@ -7086,7 +7086,7 @@
     "id": "shitbox-zone-panel-right-rear",
     "brand": "OEM",
     "name": "Right rear quarter panel",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "zonePanel",
     "zoneId": "right-rear",
     "grade": "stock",
@@ -7105,7 +7105,7 @@
     "id": "uncommon-zone-panel-right-rear",
     "brand": "OEM",
     "name": "Right rear quarter panel",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "zonePanel",
     "zoneId": "right-rear",
     "grade": "stock",
@@ -7124,7 +7124,7 @@
     "id": "rare-zone-panel-right-rear",
     "brand": "OEM",
     "name": "Right rear quarter panel",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "zonePanel",
     "zoneId": "right-rear",
     "grade": "stock",
@@ -7143,7 +7143,7 @@
     "id": "zone-panel-front-bumper",
     "brand": "OEM",
     "name": "Front bumper",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "zonePanel",
     "zoneId": "front-bumper",
     "grade": "stock",
@@ -7162,7 +7162,7 @@
     "id": "shitbox-zone-panel-front-bumper",
     "brand": "OEM",
     "name": "Front bumper",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "zonePanel",
     "zoneId": "front-bumper",
     "grade": "stock",
@@ -7181,7 +7181,7 @@
     "id": "uncommon-zone-panel-front-bumper",
     "brand": "OEM",
     "name": "Front bumper",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "zonePanel",
     "zoneId": "front-bumper",
     "grade": "stock",
@@ -7200,7 +7200,7 @@
     "id": "rare-zone-panel-front-bumper",
     "brand": "OEM",
     "name": "Front bumper",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "zonePanel",
     "zoneId": "front-bumper",
     "grade": "stock",
@@ -7219,7 +7219,7 @@
     "id": "zone-panel-rear-bumper",
     "brand": "OEM",
     "name": "Rear bumper",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "zonePanel",
     "zoneId": "rear-bumper",
     "grade": "stock",
@@ -7238,7 +7238,7 @@
     "id": "shitbox-zone-panel-rear-bumper",
     "brand": "OEM",
     "name": "Rear bumper",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "zonePanel",
     "zoneId": "rear-bumper",
     "grade": "stock",
@@ -7257,7 +7257,7 @@
     "id": "uncommon-zone-panel-rear-bumper",
     "brand": "OEM",
     "name": "Rear bumper",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "zonePanel",
     "zoneId": "rear-bumper",
     "grade": "stock",
@@ -7276,7 +7276,7 @@
     "id": "rare-zone-panel-rear-bumper",
     "brand": "OEM",
     "name": "Rear bumper",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "zonePanel",
     "zoneId": "rear-bumper",
     "grade": "stock",
@@ -7295,7 +7295,7 @@
     "id": "zone-panel-skirts",
     "brand": "OEM",
     "name": "Side skirts",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "zonePanel",
     "zoneId": "skirts",
     "grade": "stock",
@@ -7314,7 +7314,7 @@
     "id": "shitbox-zone-panel-skirts",
     "brand": "OEM",
     "name": "Side skirts",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "zonePanel",
     "zoneId": "skirts",
     "grade": "stock",
@@ -7333,7 +7333,7 @@
     "id": "uncommon-zone-panel-skirts",
     "brand": "OEM",
     "name": "Side skirts",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "zonePanel",
     "zoneId": "skirts",
     "grade": "stock",
@@ -7352,7 +7352,7 @@
     "id": "rare-zone-panel-skirts",
     "brand": "OEM",
     "name": "Side skirts",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "zonePanel",
     "zoneId": "skirts",
     "grade": "stock",
@@ -7371,7 +7371,7 @@
     "id": "frp-replica-bonnet",
     "brand": "FRP",
     "name": "Replica Bonnet",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "bonnet",
     "grade": "street",
@@ -7390,7 +7390,7 @@
     "id": "shitbox-frp-replica-bonnet",
     "brand": "FRP",
     "name": "Replica Bonnet",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "bonnet",
     "grade": "street",
@@ -7409,7 +7409,7 @@
     "id": "uncommon-frp-replica-bonnet",
     "brand": "FRP",
     "name": "Replica Bonnet",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "bonnet",
     "grade": "street",
@@ -7428,7 +7428,7 @@
     "id": "rare-frp-replica-bonnet",
     "brand": "FRP",
     "name": "Replica Bonnet",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "bonnet",
     "grade": "street",
@@ -7447,7 +7447,7 @@
     "id": "frp-vented-bonnet",
     "brand": "FRP",
     "name": "Vented Bonnet",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "bonnet",
     "grade": "sport",
@@ -7466,7 +7466,7 @@
     "id": "shitbox-frp-vented-bonnet",
     "brand": "FRP",
     "name": "Vented Bonnet",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "bonnet",
     "grade": "sport",
@@ -7485,7 +7485,7 @@
     "id": "uncommon-frp-vented-bonnet",
     "brand": "FRP",
     "name": "Vented Bonnet",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "bonnet",
     "grade": "sport",
@@ -7504,7 +7504,7 @@
     "id": "rare-frp-vented-bonnet",
     "brand": "FRP",
     "name": "Vented Bonnet",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "bonnet",
     "grade": "sport",
@@ -7523,7 +7523,7 @@
     "id": "frp-carbon-bonnet",
     "brand": "FRP",
     "name": "Carbon Bonnet",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "bonnet",
     "grade": "race",
@@ -7535,6 +7535,9 @@
         "forced": 0
       },
       "style": 12
+    },
+    "physicalModifiers": {
+      "mass": 0.975
     },
     "fitmentClass": "everyday"
   },
@@ -7542,7 +7545,7 @@
     "id": "shitbox-frp-carbon-bonnet",
     "brand": "FRP",
     "name": "Carbon Bonnet",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "bonnet",
     "grade": "race",
@@ -7554,6 +7557,9 @@
         "forced": 0
       },
       "style": 12
+    },
+    "physicalModifiers": {
+      "mass": 0.975
     },
     "fitmentClass": "entry"
   },
@@ -7561,7 +7567,7 @@
     "id": "uncommon-frp-carbon-bonnet",
     "brand": "FRP",
     "name": "Carbon Bonnet",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "bonnet",
     "grade": "race",
@@ -7573,6 +7579,9 @@
         "forced": 0
       },
       "style": 12
+    },
+    "physicalModifiers": {
+      "mass": 0.975
     },
     "fitmentClass": "enthusiast"
   },
@@ -7580,7 +7589,7 @@
     "id": "rare-frp-carbon-bonnet",
     "brand": "FRP",
     "name": "Carbon Bonnet",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "bonnet",
     "grade": "race",
@@ -7593,13 +7602,16 @@
       },
       "style": 12
     },
+    "physicalModifiers": {
+      "mass": 0.975
+    },
     "fitmentClass": "flagship"
   },
   {
     "id": "frp-replica-boot",
     "brand": "FRP",
     "name": "Replica Boot Lid",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "boot",
     "grade": "street",
@@ -7618,7 +7630,7 @@
     "id": "shitbox-frp-replica-boot",
     "brand": "FRP",
     "name": "Replica Boot Lid",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "boot",
     "grade": "street",
@@ -7637,7 +7649,7 @@
     "id": "uncommon-frp-replica-boot",
     "brand": "FRP",
     "name": "Replica Boot Lid",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "boot",
     "grade": "street",
@@ -7656,7 +7668,7 @@
     "id": "rare-frp-replica-boot",
     "brand": "FRP",
     "name": "Replica Boot Lid",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "boot",
     "grade": "street",
@@ -7675,7 +7687,7 @@
     "id": "frp-ducktail-boot",
     "brand": "FRP",
     "name": "Ducktail Boot Lid",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "boot",
     "grade": "sport",
@@ -7694,7 +7706,7 @@
     "id": "shitbox-frp-ducktail-boot",
     "brand": "FRP",
     "name": "Ducktail Boot Lid",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "boot",
     "grade": "sport",
@@ -7713,7 +7725,7 @@
     "id": "uncommon-frp-ducktail-boot",
     "brand": "FRP",
     "name": "Ducktail Boot Lid",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "boot",
     "grade": "sport",
@@ -7732,7 +7744,7 @@
     "id": "rare-frp-ducktail-boot",
     "brand": "FRP",
     "name": "Ducktail Boot Lid",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "boot",
     "grade": "sport",
@@ -7751,7 +7763,7 @@
     "id": "frp-carbon-boot",
     "brand": "FRP",
     "name": "Carbon Boot Lid",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "boot",
     "grade": "race",
@@ -7763,6 +7775,9 @@
         "forced": 0
       },
       "style": 12
+    },
+    "physicalModifiers": {
+      "mass": 0.975
     },
     "fitmentClass": "everyday"
   },
@@ -7770,7 +7785,7 @@
     "id": "shitbox-frp-carbon-boot",
     "brand": "FRP",
     "name": "Carbon Boot Lid",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "boot",
     "grade": "race",
@@ -7782,6 +7797,9 @@
         "forced": 0
       },
       "style": 12
+    },
+    "physicalModifiers": {
+      "mass": 0.975
     },
     "fitmentClass": "entry"
   },
@@ -7789,7 +7807,7 @@
     "id": "uncommon-frp-carbon-boot",
     "brand": "FRP",
     "name": "Carbon Boot Lid",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "boot",
     "grade": "race",
@@ -7801,6 +7819,9 @@
         "forced": 0
       },
       "style": 12
+    },
+    "physicalModifiers": {
+      "mass": 0.975
     },
     "fitmentClass": "enthusiast"
   },
@@ -7808,7 +7829,7 @@
     "id": "rare-frp-carbon-boot",
     "brand": "FRP",
     "name": "Carbon Boot Lid",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "boot",
     "grade": "race",
@@ -7821,13 +7842,16 @@
       },
       "style": 12
     },
+    "physicalModifiers": {
+      "mass": 0.975
+    },
     "fitmentClass": "flagship"
   },
   {
     "id": "frp-replica-left-front",
     "brand": "FRP",
     "name": "Replica Left Front Wing",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "left-front",
     "grade": "street",
@@ -7846,7 +7870,7 @@
     "id": "shitbox-frp-replica-left-front",
     "brand": "FRP",
     "name": "Replica Left Front Wing",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "left-front",
     "grade": "street",
@@ -7865,7 +7889,7 @@
     "id": "uncommon-frp-replica-left-front",
     "brand": "FRP",
     "name": "Replica Left Front Wing",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "left-front",
     "grade": "street",
@@ -7884,7 +7908,7 @@
     "id": "rare-frp-replica-left-front",
     "brand": "FRP",
     "name": "Replica Left Front Wing",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "left-front",
     "grade": "street",
@@ -7903,7 +7927,7 @@
     "id": "frp-over-fender-left-front",
     "brand": "FRP",
     "name": "Left Front Over-Fender",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "left-front",
     "grade": "sport",
@@ -7922,7 +7946,7 @@
     "id": "shitbox-frp-over-fender-left-front",
     "brand": "FRP",
     "name": "Left Front Over-Fender",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "left-front",
     "grade": "sport",
@@ -7941,7 +7965,7 @@
     "id": "uncommon-frp-over-fender-left-front",
     "brand": "FRP",
     "name": "Left Front Over-Fender",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "left-front",
     "grade": "sport",
@@ -7960,7 +7984,7 @@
     "id": "rare-frp-over-fender-left-front",
     "brand": "FRP",
     "name": "Left Front Over-Fender",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "left-front",
     "grade": "sport",
@@ -7979,7 +8003,7 @@
     "id": "frp-carbon-over-fender-left-front",
     "brand": "FRP",
     "name": "Carbon Left Front Over-Fender",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "left-front",
     "grade": "race",
@@ -7991,6 +8015,9 @@
         "forced": 0
       },
       "style": 12
+    },
+    "physicalModifiers": {
+      "mass": 0.975
     },
     "fitmentClass": "everyday"
   },
@@ -7998,7 +8025,7 @@
     "id": "shitbox-frp-carbon-over-fender-left-front",
     "brand": "FRP",
     "name": "Carbon Left Front Over-Fender",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "left-front",
     "grade": "race",
@@ -8010,6 +8037,9 @@
         "forced": 0
       },
       "style": 12
+    },
+    "physicalModifiers": {
+      "mass": 0.975
     },
     "fitmentClass": "entry"
   },
@@ -8017,7 +8047,7 @@
     "id": "uncommon-frp-carbon-over-fender-left-front",
     "brand": "FRP",
     "name": "Carbon Left Front Over-Fender",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "left-front",
     "grade": "race",
@@ -8029,6 +8059,9 @@
         "forced": 0
       },
       "style": 12
+    },
+    "physicalModifiers": {
+      "mass": 0.975
     },
     "fitmentClass": "enthusiast"
   },
@@ -8036,7 +8069,7 @@
     "id": "rare-frp-carbon-over-fender-left-front",
     "brand": "FRP",
     "name": "Carbon Left Front Over-Fender",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "left-front",
     "grade": "race",
@@ -8049,13 +8082,16 @@
       },
       "style": 12
     },
+    "physicalModifiers": {
+      "mass": 0.975
+    },
     "fitmentClass": "flagship"
   },
   {
     "id": "frp-replica-left-rear",
     "brand": "FRP",
     "name": "Replica Left Rear Quarter Panel",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "left-rear",
     "grade": "street",
@@ -8074,7 +8110,7 @@
     "id": "shitbox-frp-replica-left-rear",
     "brand": "FRP",
     "name": "Replica Left Rear Quarter Panel",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "left-rear",
     "grade": "street",
@@ -8093,7 +8129,7 @@
     "id": "uncommon-frp-replica-left-rear",
     "brand": "FRP",
     "name": "Replica Left Rear Quarter Panel",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "left-rear",
     "grade": "street",
@@ -8112,7 +8148,7 @@
     "id": "rare-frp-replica-left-rear",
     "brand": "FRP",
     "name": "Replica Left Rear Quarter Panel",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "left-rear",
     "grade": "street",
@@ -8131,7 +8167,7 @@
     "id": "frp-over-fender-left-rear",
     "brand": "FRP",
     "name": "Left Rear Over-Fender",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "left-rear",
     "grade": "sport",
@@ -8150,7 +8186,7 @@
     "id": "shitbox-frp-over-fender-left-rear",
     "brand": "FRP",
     "name": "Left Rear Over-Fender",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "left-rear",
     "grade": "sport",
@@ -8169,7 +8205,7 @@
     "id": "uncommon-frp-over-fender-left-rear",
     "brand": "FRP",
     "name": "Left Rear Over-Fender",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "left-rear",
     "grade": "sport",
@@ -8188,7 +8224,7 @@
     "id": "rare-frp-over-fender-left-rear",
     "brand": "FRP",
     "name": "Left Rear Over-Fender",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "left-rear",
     "grade": "sport",
@@ -8207,7 +8243,7 @@
     "id": "frp-carbon-over-fender-left-rear",
     "brand": "FRP",
     "name": "Carbon Left Rear Over-Fender",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "left-rear",
     "grade": "race",
@@ -8219,6 +8255,9 @@
         "forced": 0
       },
       "style": 12
+    },
+    "physicalModifiers": {
+      "mass": 0.975
     },
     "fitmentClass": "everyday"
   },
@@ -8226,7 +8265,7 @@
     "id": "shitbox-frp-carbon-over-fender-left-rear",
     "brand": "FRP",
     "name": "Carbon Left Rear Over-Fender",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "left-rear",
     "grade": "race",
@@ -8238,6 +8277,9 @@
         "forced": 0
       },
       "style": 12
+    },
+    "physicalModifiers": {
+      "mass": 0.975
     },
     "fitmentClass": "entry"
   },
@@ -8245,7 +8287,7 @@
     "id": "uncommon-frp-carbon-over-fender-left-rear",
     "brand": "FRP",
     "name": "Carbon Left Rear Over-Fender",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "left-rear",
     "grade": "race",
@@ -8257,6 +8299,9 @@
         "forced": 0
       },
       "style": 12
+    },
+    "physicalModifiers": {
+      "mass": 0.975
     },
     "fitmentClass": "enthusiast"
   },
@@ -8264,7 +8309,7 @@
     "id": "rare-frp-carbon-over-fender-left-rear",
     "brand": "FRP",
     "name": "Carbon Left Rear Over-Fender",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "left-rear",
     "grade": "race",
@@ -8277,13 +8322,16 @@
       },
       "style": 12
     },
+    "physicalModifiers": {
+      "mass": 0.975
+    },
     "fitmentClass": "flagship"
   },
   {
     "id": "frp-replica-right-front",
     "brand": "FRP",
     "name": "Replica Right Front Wing",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "right-front",
     "grade": "street",
@@ -8302,7 +8350,7 @@
     "id": "shitbox-frp-replica-right-front",
     "brand": "FRP",
     "name": "Replica Right Front Wing",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "right-front",
     "grade": "street",
@@ -8321,7 +8369,7 @@
     "id": "uncommon-frp-replica-right-front",
     "brand": "FRP",
     "name": "Replica Right Front Wing",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "right-front",
     "grade": "street",
@@ -8340,7 +8388,7 @@
     "id": "rare-frp-replica-right-front",
     "brand": "FRP",
     "name": "Replica Right Front Wing",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "right-front",
     "grade": "street",
@@ -8359,7 +8407,7 @@
     "id": "frp-over-fender-right-front",
     "brand": "FRP",
     "name": "Right Front Over-Fender",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "right-front",
     "grade": "sport",
@@ -8378,7 +8426,7 @@
     "id": "shitbox-frp-over-fender-right-front",
     "brand": "FRP",
     "name": "Right Front Over-Fender",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "right-front",
     "grade": "sport",
@@ -8397,7 +8445,7 @@
     "id": "uncommon-frp-over-fender-right-front",
     "brand": "FRP",
     "name": "Right Front Over-Fender",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "right-front",
     "grade": "sport",
@@ -8416,7 +8464,7 @@
     "id": "rare-frp-over-fender-right-front",
     "brand": "FRP",
     "name": "Right Front Over-Fender",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "right-front",
     "grade": "sport",
@@ -8435,7 +8483,7 @@
     "id": "frp-carbon-over-fender-right-front",
     "brand": "FRP",
     "name": "Carbon Right Front Over-Fender",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "right-front",
     "grade": "race",
@@ -8447,6 +8495,9 @@
         "forced": 0
       },
       "style": 12
+    },
+    "physicalModifiers": {
+      "mass": 0.975
     },
     "fitmentClass": "everyday"
   },
@@ -8454,7 +8505,7 @@
     "id": "shitbox-frp-carbon-over-fender-right-front",
     "brand": "FRP",
     "name": "Carbon Right Front Over-Fender",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "right-front",
     "grade": "race",
@@ -8466,6 +8517,9 @@
         "forced": 0
       },
       "style": 12
+    },
+    "physicalModifiers": {
+      "mass": 0.975
     },
     "fitmentClass": "entry"
   },
@@ -8473,7 +8527,7 @@
     "id": "uncommon-frp-carbon-over-fender-right-front",
     "brand": "FRP",
     "name": "Carbon Right Front Over-Fender",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "right-front",
     "grade": "race",
@@ -8485,6 +8539,9 @@
         "forced": 0
       },
       "style": 12
+    },
+    "physicalModifiers": {
+      "mass": 0.975
     },
     "fitmentClass": "enthusiast"
   },
@@ -8492,7 +8549,7 @@
     "id": "rare-frp-carbon-over-fender-right-front",
     "brand": "FRP",
     "name": "Carbon Right Front Over-Fender",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "right-front",
     "grade": "race",
@@ -8505,13 +8562,16 @@
       },
       "style": 12
     },
+    "physicalModifiers": {
+      "mass": 0.975
+    },
     "fitmentClass": "flagship"
   },
   {
     "id": "frp-replica-right-rear",
     "brand": "FRP",
     "name": "Replica Right Rear Quarter Panel",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "right-rear",
     "grade": "street",
@@ -8530,7 +8590,7 @@
     "id": "shitbox-frp-replica-right-rear",
     "brand": "FRP",
     "name": "Replica Right Rear Quarter Panel",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "right-rear",
     "grade": "street",
@@ -8549,7 +8609,7 @@
     "id": "uncommon-frp-replica-right-rear",
     "brand": "FRP",
     "name": "Replica Right Rear Quarter Panel",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "right-rear",
     "grade": "street",
@@ -8568,7 +8628,7 @@
     "id": "rare-frp-replica-right-rear",
     "brand": "FRP",
     "name": "Replica Right Rear Quarter Panel",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "right-rear",
     "grade": "street",
@@ -8587,7 +8647,7 @@
     "id": "frp-over-fender-right-rear",
     "brand": "FRP",
     "name": "Right Rear Over-Fender",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "right-rear",
     "grade": "sport",
@@ -8606,7 +8666,7 @@
     "id": "shitbox-frp-over-fender-right-rear",
     "brand": "FRP",
     "name": "Right Rear Over-Fender",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "right-rear",
     "grade": "sport",
@@ -8625,7 +8685,7 @@
     "id": "uncommon-frp-over-fender-right-rear",
     "brand": "FRP",
     "name": "Right Rear Over-Fender",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "right-rear",
     "grade": "sport",
@@ -8644,7 +8704,7 @@
     "id": "rare-frp-over-fender-right-rear",
     "brand": "FRP",
     "name": "Right Rear Over-Fender",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "right-rear",
     "grade": "sport",
@@ -8663,7 +8723,7 @@
     "id": "frp-carbon-over-fender-right-rear",
     "brand": "FRP",
     "name": "Carbon Right Rear Over-Fender",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "right-rear",
     "grade": "race",
@@ -8675,6 +8735,9 @@
         "forced": 0
       },
       "style": 12
+    },
+    "physicalModifiers": {
+      "mass": 0.975
     },
     "fitmentClass": "everyday"
   },
@@ -8682,7 +8745,7 @@
     "id": "shitbox-frp-carbon-over-fender-right-rear",
     "brand": "FRP",
     "name": "Carbon Right Rear Over-Fender",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "right-rear",
     "grade": "race",
@@ -8694,6 +8757,9 @@
         "forced": 0
       },
       "style": 12
+    },
+    "physicalModifiers": {
+      "mass": 0.975
     },
     "fitmentClass": "entry"
   },
@@ -8701,7 +8767,7 @@
     "id": "uncommon-frp-carbon-over-fender-right-rear",
     "brand": "FRP",
     "name": "Carbon Right Rear Over-Fender",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "right-rear",
     "grade": "race",
@@ -8713,6 +8779,9 @@
         "forced": 0
       },
       "style": 12
+    },
+    "physicalModifiers": {
+      "mass": 0.975
     },
     "fitmentClass": "enthusiast"
   },
@@ -8720,7 +8789,7 @@
     "id": "rare-frp-carbon-over-fender-right-rear",
     "brand": "FRP",
     "name": "Carbon Right Rear Over-Fender",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "right-rear",
     "grade": "race",
@@ -8733,13 +8802,16 @@
       },
       "style": 12
     },
+    "physicalModifiers": {
+      "mass": 0.975
+    },
     "fitmentClass": "flagship"
   },
   {
     "id": "frp-replica-front-bumper",
     "brand": "FRP",
     "name": "Replica Front Bumper",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "front-bumper",
     "grade": "street",
@@ -8758,7 +8830,7 @@
     "id": "shitbox-frp-replica-front-bumper",
     "brand": "FRP",
     "name": "Replica Front Bumper",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "front-bumper",
     "grade": "street",
@@ -8777,7 +8849,7 @@
     "id": "uncommon-frp-replica-front-bumper",
     "brand": "FRP",
     "name": "Replica Front Bumper",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "front-bumper",
     "grade": "street",
@@ -8796,7 +8868,7 @@
     "id": "rare-frp-replica-front-bumper",
     "brand": "FRP",
     "name": "Replica Front Bumper",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "front-bumper",
     "grade": "street",
@@ -8815,7 +8887,7 @@
     "id": "frp-front-bumper-kit",
     "brand": "FRP",
     "name": "Front Bumper Kit",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "front-bumper",
     "grade": "sport",
@@ -8834,7 +8906,7 @@
     "id": "shitbox-frp-front-bumper-kit",
     "brand": "FRP",
     "name": "Front Bumper Kit",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "front-bumper",
     "grade": "sport",
@@ -8853,7 +8925,7 @@
     "id": "uncommon-frp-front-bumper-kit",
     "brand": "FRP",
     "name": "Front Bumper Kit",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "front-bumper",
     "grade": "sport",
@@ -8872,7 +8944,7 @@
     "id": "rare-frp-front-bumper-kit",
     "brand": "FRP",
     "name": "Front Bumper Kit",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "front-bumper",
     "grade": "sport",
@@ -8891,7 +8963,7 @@
     "id": "frp-carbon-front-bumper",
     "brand": "FRP",
     "name": "Carbon Front Bumper",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "front-bumper",
     "grade": "race",
@@ -8903,6 +8975,9 @@
         "forced": 0
       },
       "style": 12
+    },
+    "physicalModifiers": {
+      "mass": 0.975
     },
     "fitmentClass": "everyday"
   },
@@ -8910,7 +8985,7 @@
     "id": "shitbox-frp-carbon-front-bumper",
     "brand": "FRP",
     "name": "Carbon Front Bumper",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "front-bumper",
     "grade": "race",
@@ -8922,6 +8997,9 @@
         "forced": 0
       },
       "style": 12
+    },
+    "physicalModifiers": {
+      "mass": 0.975
     },
     "fitmentClass": "entry"
   },
@@ -8929,7 +9007,7 @@
     "id": "uncommon-frp-carbon-front-bumper",
     "brand": "FRP",
     "name": "Carbon Front Bumper",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "front-bumper",
     "grade": "race",
@@ -8941,6 +9019,9 @@
         "forced": 0
       },
       "style": 12
+    },
+    "physicalModifiers": {
+      "mass": 0.975
     },
     "fitmentClass": "enthusiast"
   },
@@ -8948,7 +9029,7 @@
     "id": "rare-frp-carbon-front-bumper",
     "brand": "FRP",
     "name": "Carbon Front Bumper",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "front-bumper",
     "grade": "race",
@@ -8961,13 +9042,16 @@
       },
       "style": 12
     },
+    "physicalModifiers": {
+      "mass": 0.975
+    },
     "fitmentClass": "flagship"
   },
   {
     "id": "frp-replica-rear-bumper",
     "brand": "FRP",
     "name": "Replica Rear Bumper",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "rear-bumper",
     "grade": "street",
@@ -8986,7 +9070,7 @@
     "id": "shitbox-frp-replica-rear-bumper",
     "brand": "FRP",
     "name": "Replica Rear Bumper",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "rear-bumper",
     "grade": "street",
@@ -9005,7 +9089,7 @@
     "id": "uncommon-frp-replica-rear-bumper",
     "brand": "FRP",
     "name": "Replica Rear Bumper",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "rear-bumper",
     "grade": "street",
@@ -9024,7 +9108,7 @@
     "id": "rare-frp-replica-rear-bumper",
     "brand": "FRP",
     "name": "Replica Rear Bumper",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "rear-bumper",
     "grade": "street",
@@ -9043,7 +9127,7 @@
     "id": "frp-rear-bumper-kit",
     "brand": "FRP",
     "name": "Rear Bumper Kit",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "rear-bumper",
     "grade": "sport",
@@ -9062,7 +9146,7 @@
     "id": "shitbox-frp-rear-bumper-kit",
     "brand": "FRP",
     "name": "Rear Bumper Kit",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "rear-bumper",
     "grade": "sport",
@@ -9081,7 +9165,7 @@
     "id": "uncommon-frp-rear-bumper-kit",
     "brand": "FRP",
     "name": "Rear Bumper Kit",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "rear-bumper",
     "grade": "sport",
@@ -9100,7 +9184,7 @@
     "id": "rare-frp-rear-bumper-kit",
     "brand": "FRP",
     "name": "Rear Bumper Kit",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "rear-bumper",
     "grade": "sport",
@@ -9119,7 +9203,7 @@
     "id": "frp-carbon-rear-bumper",
     "brand": "FRP",
     "name": "Carbon Rear Bumper",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "rear-bumper",
     "grade": "race",
@@ -9131,6 +9215,9 @@
         "forced": 0
       },
       "style": 12
+    },
+    "physicalModifiers": {
+      "mass": 0.975
     },
     "fitmentClass": "everyday"
   },
@@ -9138,7 +9225,7 @@
     "id": "shitbox-frp-carbon-rear-bumper",
     "brand": "FRP",
     "name": "Carbon Rear Bumper",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "rear-bumper",
     "grade": "race",
@@ -9150,6 +9237,9 @@
         "forced": 0
       },
       "style": 12
+    },
+    "physicalModifiers": {
+      "mass": 0.975
     },
     "fitmentClass": "entry"
   },
@@ -9157,7 +9247,7 @@
     "id": "uncommon-frp-carbon-rear-bumper",
     "brand": "FRP",
     "name": "Carbon Rear Bumper",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "rear-bumper",
     "grade": "race",
@@ -9169,6 +9259,9 @@
         "forced": 0
       },
       "style": 12
+    },
+    "physicalModifiers": {
+      "mass": 0.975
     },
     "fitmentClass": "enthusiast"
   },
@@ -9176,7 +9269,7 @@
     "id": "rare-frp-carbon-rear-bumper",
     "brand": "FRP",
     "name": "Carbon Rear Bumper",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "rear-bumper",
     "grade": "race",
@@ -9189,13 +9282,16 @@
       },
       "style": 12
     },
+    "physicalModifiers": {
+      "mass": 0.975
+    },
     "fitmentClass": "flagship"
   },
   {
     "id": "frp-replica-skirts",
     "brand": "FRP",
     "name": "Replica Side Skirts",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "skirts",
     "grade": "street",
@@ -9214,7 +9310,7 @@
     "id": "shitbox-frp-replica-skirts",
     "brand": "FRP",
     "name": "Replica Side Skirts",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "skirts",
     "grade": "street",
@@ -9233,7 +9329,7 @@
     "id": "uncommon-frp-replica-skirts",
     "brand": "FRP",
     "name": "Replica Side Skirts",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "skirts",
     "grade": "street",
@@ -9252,7 +9348,7 @@
     "id": "rare-frp-replica-skirts",
     "brand": "FRP",
     "name": "Replica Side Skirts",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "skirts",
     "grade": "street",
@@ -9271,7 +9367,7 @@
     "id": "frp-skirt-kit",
     "brand": "FRP",
     "name": "Side Skirt Kit",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "skirts",
     "grade": "sport",
@@ -9290,7 +9386,7 @@
     "id": "shitbox-frp-skirt-kit",
     "brand": "FRP",
     "name": "Side Skirt Kit",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "skirts",
     "grade": "sport",
@@ -9309,7 +9405,7 @@
     "id": "uncommon-frp-skirt-kit",
     "brand": "FRP",
     "name": "Side Skirt Kit",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "skirts",
     "grade": "sport",
@@ -9328,7 +9424,7 @@
     "id": "rare-frp-skirt-kit",
     "brand": "FRP",
     "name": "Side Skirt Kit",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "skirts",
     "grade": "sport",
@@ -9347,7 +9443,7 @@
     "id": "frp-carbon-skirts",
     "brand": "FRP",
     "name": "Carbon Side Skirts",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "skirts",
     "grade": "race",
@@ -9359,6 +9455,9 @@
         "forced": 0
       },
       "style": 12
+    },
+    "physicalModifiers": {
+      "mass": 0.975
     },
     "fitmentClass": "everyday"
   },
@@ -9366,7 +9465,7 @@
     "id": "shitbox-frp-carbon-skirts",
     "brand": "FRP",
     "name": "Carbon Side Skirts",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "skirts",
     "grade": "race",
@@ -9378,6 +9477,9 @@
         "forced": 0
       },
       "style": 12
+    },
+    "physicalModifiers": {
+      "mass": 0.975
     },
     "fitmentClass": "entry"
   },
@@ -9385,7 +9487,7 @@
     "id": "uncommon-frp-carbon-skirts",
     "brand": "FRP",
     "name": "Carbon Side Skirts",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "skirts",
     "grade": "race",
@@ -9398,13 +9500,16 @@
       },
       "style": 12
     },
+    "physicalModifiers": {
+      "mass": 0.975
+    },
     "fitmentClass": "enthusiast"
   },
   {
     "id": "rare-frp-carbon-skirts",
     "brand": "FRP",
     "name": "Carbon Side Skirts",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "priceBasisPartId": "bodyKit",
     "zoneId": "skirts",
     "grade": "race",
@@ -9416,6 +9521,9 @@
         "forced": 0
       },
       "style": 12
+    },
+    "physicalModifiers": {
+      "mass": 0.975
     },
     "fitmentClass": "flagship"
   },

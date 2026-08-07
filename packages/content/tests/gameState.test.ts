@@ -201,10 +201,10 @@ describe('GameState / DayLog round-trip', () => {
                 origin: { kind: 'market', day: 1 },
               },
             },
-            panels: {
+            bodywork: {
               installed: {
-                id: 'p-panels',
-                partId: 'stock-panels',
+                id: 'p-bodywork',
+                partId: 'stock-bodywork',
                 band: 'poor',
                 origin: { kind: 'market', day: 1 },
               },

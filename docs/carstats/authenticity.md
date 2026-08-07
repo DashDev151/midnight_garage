@@ -78,7 +78,7 @@ All 29 slots carry the key and the column sums to exactly **100** (measured; als
 | slot | weight | has a non-stock SKU? |
 | --- | ---: | --- |
 | `block` | 18 | yes |
-| `panels` | 11 | yes |
+| `bodywork` | 11 | yes |
 | `paint` | 11 | **no** |
 | `aero` | 10 | yes |
 | `internals` | 8 | yes |
@@ -213,16 +213,16 @@ and the clamp bites. See finding F2.
 
 ### 3.6 The zone model, and the one indirect input
 
-`panels`, `paint` and `underbody` are body value carriers. On a car with `zoneState`,
+`bodywork`, `paint` and `underbody` are body value carriers. On a car with `zoneState`,
 `applyDerivedBodyBands` (`packages/sim/src/bodyPipeline.ts`) is the single writer of their BAND,
 derived from the six zones. It writes the band and nothing else, so whatever SKU is fitted survives
 every re-derivation.
 
-That gives authenticity one genuinely indirect input. Fitting a body kit to `panels` runs
+That gives authenticity one genuinely indirect input. Fitting a body kit to `bodywork` runs
 `refitCarrierZoneStates`, which puts all five panel zones through `planSwapPanel`: metal resets to
 the fitted kit's own band, surface resets to 0, and finish resets to `BARE_FINISH` (3). The `paint`
 band then re-derives off that worst finish and lands on `poor`. **So a body kit costs authenticity
-twice**: the 11 stockness points of `panels`, plus a condition hit on `paint` until the car is
+twice**: the 11 stockness points of `bodywork`, plus a condition hit on `paint` until the car is
 painted again. Measured on a pristine zone-model car: 100 before, **83** after a mint sport body
 kit, not the 89 the stockness loss alone would give.
 
@@ -239,7 +239,7 @@ shipped turbo model:
 | modification | turbo car (denominator 100) | NA car (denominator 97) |
 | --- | ---: | ---: |
 | aftermarket `block` | 82 | 81 |
-| aftermarket `panels` | 89 | 89 |
+| aftermarket `bodywork` | 89 | 89 |
 | aftermarket `aero` | 90 | 90 |
 | aftermarket `rims` | 93 | 93 |
 
@@ -259,7 +259,7 @@ reaches `chassis`, which the player's own fitting flow cannot (finding F3).
 
 Generation can also leave a slot MISSING: `missingSlotBaseChance` 0.015, scaled per slot by
 `missingSlotWeightByPart` and by upkeep. Six slots are authored at weight 0 there and can never
-roll missing: `block`, `chassis`, `panels`, `paint`, `underbody` and `forcedInduction` (the last of
+roll missing: `block`, `chassis`, `bodywork`, `paint`, `underbody` and `forcedInduction` (the last of
 which never enters the missing roll at all, taking its own branch off the model's `spec.aspiration`
 instead).
 
@@ -275,7 +275,7 @@ class, every other slot mint and stock unless stated.
 | slot | authenticity |
 | --- | ---: |
 | `block` | 82 |
-| `panels` | 89 |
+| `bodywork` | 89 |
 | `aero` | 90 |
 | `internals` | 92 |
 | `rims` | 93 |
@@ -296,7 +296,7 @@ is the whole of finding F1a in one number.
 
 Every slot stock, one slot dropped to `scrap`:
 
-`block` 85, `panels` 91, `paint` 91, `aero` 92, `internals` 93, `rims` 94, `headValvetrain` 95,
+`block` 85, `bodywork` 91, `paint` 91, `aero` 92, `internals` 93, `rims` 94, `headValvetrain` 95,
 `gearbox` 95, `camsTiming` 97, `seats` 97, `forcedInduction` 97, `springs` 98, each weight-1 slot
 99, each weight-0 slot 100.
 
@@ -309,7 +309,7 @@ originality.
 
 Both charges land at once, since a missing part is neither original nor in any condition:
 
-`block` 67, `panels` 79, `paint` 79, `aero` 81, `internals` 85, `rims` 86, `headValvetrain` 88,
+`block` 67, `bodywork` 79, `paint` 79, `aero` 81, `internals` 85, `rims` 86, `headValvetrain` 88,
 `gearbox` 88, `camsTiming` 92, `seats` 92, `forcedInduction` 94, `springs` 96, each weight-1 slot
 98, each weight-0 slot 100.
 
@@ -535,7 +535,7 @@ The consequences, all measured:
   to this stat.
 
 The weight is NOT dead: the same column drives the condition factor, where `paint` at `scrap` costs
-9 points (measured, 91 against 100), tied with `panels` as the heaviest condition hit on the list.
+9 points (measured, 91 against 100), tied with `bodywork` as the heaviest condition hit on the list.
 The originality half alone is what cannot fire.
 
 This is known, deliberately deferred, and recorded in `TODO.md` with two candidate routes (a
@@ -573,7 +573,7 @@ its own denominator.
 neither route into the slot:
 
 - `applyJobToCar` (`packages/sim/src/jobs.ts`) refuses an install onto an occupied slot unless the
-  target is one of `panels`/`paint`/`underbody`, and
+  target is one of `bodywork`/`paint`/`underbody`, and
 - `removeBlockReason` refuses removal outright on a `removable: false` entry.
 
 The chassis slot is never empty (generation fills it, and `missingSlotWeightByPart.chassis` is 0,
@@ -601,7 +601,7 @@ the opposite is the intuitive expectation.
 
 ### F5. A body kit charges authenticity twice, and the second charge is now stated
 
-Fitting a body kit onto `panels` runs `refitCarrierZoneStates`, which resets all five panel zones to
+Fitting a body kit onto `bodywork` runs `refitCarrierZoneStates`, which resets all five panel zones to
 bare, unprimed metal. The `paint` band then derives to `poor`. **Measured** on a pristine zone-model
 car, through that real swap: **100 before, 83 after a mint sport body kit**, where the 11-point
 stockness loss alone gives 89 (**measured**: stockness is exactly 89.00 either way, so the whole of
@@ -620,16 +620,16 @@ drop is as large as it ever was, and it is now legible.
 The question was whether any document still claimed 23 of the 100 points were unloseable, or that
 `aero` was the only slot a visible modification could land on. **Read**, all three:
 
-1. `docs/design/systems/authenticity-weights-proposal.md` section 3.1 now states that `panels` and
+1. `docs/design/systems/authenticity-weights-proposal.md` section 3.1 now states that `bodywork` and
    `underbody` "shared this gap when the weights were written and no longer do", and concludes
    "**11 of the 100 points can never be lost to modification**". **Measured**: `paint` is the only
    slot with no aftermarket ladder, at all four fitment classes, and a fully modified car floors at
    exactly 11.
 2. The same document's section 3.2 is now headed "`aero` no longer carries the whole visible-body
-   signal" and records that `panels` (11) and `underbody` (1) carry ladders of their own and that
-   `panels` outweighs `aero`.
+   signal" and records that `bodywork` (11) and `underbody` (1) carry ladders of their own and that
+   `bodywork` outweighs `aero`.
 3. `docs/design/systems/desirability-system.md`'s outstanding item now reads "Originality for
-   `paint`, which cannot currently read as modified at all. `panels` and `underbody` now can."
+   `paint`, which cannot currently read as modified at all. `bodywork` and `underbody` now can."
 
 F7 is the one place the stale 23 survives, and it is a test comment rather than a design document.
 

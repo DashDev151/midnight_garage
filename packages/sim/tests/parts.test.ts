@@ -270,7 +270,7 @@ describe('resolveScrapPart (Sprint 26 decision 6; Sprint 35 customer-owned lock)
       description: 'Bodywork needs sorting.',
       tasks: [
         {
-          requirement: { kind: 'slotCondition', carPartId: 'panels', minBand: 'fine' },
+          requirement: { kind: 'slotCondition', carPartId: 'bodywork', minBand: 'fine' },
           minToolTier: 1,
         },
       ],
@@ -333,7 +333,7 @@ describe('resolveSellPart (Sprint 71 decision 6: the teardown game donor economy
       description: 'Bodywork needs sorting.',
       tasks: [
         {
-          requirement: { kind: 'slotCondition', carPartId: 'panels', minBand: 'fine' },
+          requirement: { kind: 'slotCondition', carPartId: 'bodywork', minBand: 'fine' },
           minToolTier: 1,
         },
       ],

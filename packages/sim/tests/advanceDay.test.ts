@@ -169,7 +169,7 @@ function scriptedActionsForDay(day: number): DayActions {
  * Instant machine hires the scripted career fronts before a day's actions
  * queue - mirrors the store's own `hireMachineLine` wrapper (an immediate
  * action, not a `DayActions` entry, same as `attendAuction`). Day 1's body
- * repair climbs panels/underbody (body's signature slots) and day 3's
+ * repair climbs bodywork/underbody (body's signature slots) and day 3's
  * install targets dampers (a suspension signature slot), so both lines need
  * hiring for the day before the machine-gated work can proceed.
  */
@@ -241,7 +241,7 @@ describe('advanceDay golden master', () => {
     // roll lands. Re-derived from a real run, twice, to confirm determinism.
     //
     // It last moved because a bodyshell is priced as a bodyshell:
-    // `baseCostYen.panels` carries the shell's weight in the cost-weighted band
+    // `baseCostYen.bodywork` carries the shell's weight in the cost-weighted band
     // factor, so raising it re-weights every generated car's condition factor
     // and every guide value that reads it. No draw was added or removed.
     // Re-derived from a real run, twice, to confirm determinism.
@@ -283,7 +283,15 @@ describe('advanceDay golden master', () => {
     //
     // And again for the shops: `GameState` gains `toolShopsOwned`, which this
     // hash serialises. Re-derived from a real run.
-    expect(hashState(finalState)).toBe('2610e4d1')
+    //
+    // It moves once more, on its own again, for the summary body slot being
+    // renamed `bodywork`: every car's `parts` map carries the new key and
+    // `hashState` sorts keys, so both the key text and its position in the
+    // serialisation move. A pure NAME change, measured rather than assumed:
+    // rename `bodywork` back to `panels` throughout this state and the hash is
+    // exactly the previous `2610e4d1`, so no roll, cash figure or derived stat
+    // moved. Re-derived from a real run.
+    expect(hashState(finalState)).toBe('b656e85d')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -295,7 +303,7 @@ describe('advanceDay golden master', () => {
   it('the repair-zone job completes and restores the body group to fine', () => {
     const finalState = runCareer(3)
     const car = finalState.ownedCars[0]
-    expect(car?.parts.panels.installed?.band).toBe('fine')
+    expect(car?.parts.bodywork.installed?.band).toBe('fine')
     expect(car?.parts.aero.installed?.band).toBe('fine')
   })
 
@@ -534,7 +542,12 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     //
     // And again for the shops, on the same terms: `GameState` gains
     // `toolShopsOwned`. Re-derived from a real run.
-    expect(hashState(acquisitionCareer().sold)).toBe('618988ca')
+    //
+    // It moves once more, on the same terms as the golden master above, for
+    // the summary body slot being renamed `bodywork`: rename it back to
+    // `panels` throughout this state and the hash is exactly the previous
+    // `618988ca`, so nothing but the key name moved.
+    expect(hashState(acquisitionCareer().sold)).toBe('c7a0c3be')
   })
 })
 

@@ -160,7 +160,7 @@ describe('tool lines in the store (Sprint 36)', () => {
 
     // Every REMOVABLE part is bench work now, so most groups are refused
     // on-car whatever the tool tier and can no longer prove an ABSENCE of a
-    // tier gate. `panels`/`paint` cannot prove it either: both are derived
+    // tier gate. `bodywork`/`paint` cannot prove it either: both are derived
     // body value carriers (`bodyPipeline.ts`) a direct repair-zone job never
     // touches. That leaves the chassis, addressed per part, which exercises
     // the exact same claim. A tier-1 repair finishes at fine, so target

@@ -39,7 +39,7 @@ const ByCarPartIdPriceSchema = z.object({
   brakeCalipersLines: z.number().int().positive(),
   rims: z.number().int().positive(),
   tyres: z.number().int().positive(),
-  panels: z.number().int().positive(),
+  bodywork: z.number().int().positive(),
   paint: z.number().int().positive(),
   aero: z.number().int().positive(),
   seats: z.number().int().positive(),
@@ -54,10 +54,10 @@ const ByCarPartIdPriceSchema = z.object({
  */
 const ByPriceBasisIdPriceSchema = ByCarPartIdPriceSchema.extend({
   /** The stock, everyday-class base a zone-panel SKU prices from, independent
-   * of the derived `panels` carPartId's own base. */
+   * of the derived `bodywork` carPartId's own base. */
   zonePanel: z.number().int().positive().optional(),
   /** The base an aftermarket body-kit SKU prices from. A kit sits in the
-   * `panels` slot and is bought over a counter; the `panels` base prices a
+   * `bodywork` slot and is bought over a counter; the `bodywork` base prices a
    * car's bodyshell instead, so the two move independently. */
   bodyKit: z.number().int().positive().optional(),
 })
@@ -115,7 +115,7 @@ const ByCarPartIdGradeFactorsSchema = z.object({
   brakeCalipersLines: ByGradeFactorSchema.optional(),
   rims: ByGradeFactorSchema.optional(),
   tyres: ByGradeFactorSchema.optional(),
-  panels: ByGradeFactorSchema.optional(),
+  bodywork: ByGradeFactorSchema.optional(),
   paint: ByGradeFactorSchema.optional(),
   aero: ByGradeFactorSchema.optional(),
   seats: ByGradeFactorSchema.optional(),

@@ -21,7 +21,7 @@ const CLASSES: readonly PartFitmentClass[] = ['entry', 'everyday', 'enthusiast',
  * its own `carPartId` otherwise - the same rule `resolvePartPriceYen` applies.
  * The ladder assertions below group by this rather than by `carPartId`, because
  * two SKUs in the same slot can legitimately price from different bases (a
- * zone-panel SKU against a whole-panel one) and comparing across those would be
+ * zone-panel SKU against a whole-shell one) and comparing across those would be
  * comparing different ladders. */
 function basisOf(part: Part): string {
   return part.priceBasisPartId ?? part.carPartId
@@ -30,15 +30,15 @@ function basisOf(part: Part): string {
 describe('resolvePartPriceYen priceBasisPartId defaulting', () => {
   it('an entry without priceBasisPartId prices identically to the same entry with it set explicitly to its own carPartId', () => {
     const entry = {
-      id: 'stock-panels',
-      carPartId: 'panels' as const,
+      id: 'stock-bodywork',
+      carPartId: 'bodywork' as const,
       fitmentClass: 'everyday' as const,
       grade: 'stock' as const,
     }
     const withoutBasis = resolvePartPriceYen(entry, SHEET)
-    const withBasis = resolvePartPriceYen({ ...entry, priceBasisPartId: 'panels' }, SHEET)
+    const withBasis = resolvePartPriceYen({ ...entry, priceBasisPartId: 'bodywork' }, SHEET)
     expect(withoutBasis).toBe(withBasis)
-    // The panels reference base (140,000) x the everyday class factor, rounded
+    // The bodywork reference base (140,000) x the everyday class factor, rounded
     // to the nearest Y100 by `resolvePartPriceYen`.
     expect(withoutBasis).toBe(Math.round((140_000 * SHEET.classFactors.everyday) / 100) * 100)
   })
@@ -47,7 +47,7 @@ describe('resolvePartPriceYen priceBasisPartId defaulting', () => {
     const price = resolvePartPriceYen(
       {
         id: 'zone-panel-bonnet',
-        carPartId: 'panels' as const,
+        carPartId: 'bodywork' as const,
         fitmentClass: 'everyday' as const,
         grade: 'stock' as const,
         priceBasisPartId: 'zonePanel',
@@ -55,8 +55,8 @@ describe('resolvePartPriceYen priceBasisPartId defaulting', () => {
       SHEET,
     )
     // The zonePanel reference base (30,000) x everyday class x stock grade x
-    // global - distinct from the panels carPartId base (140,000), which is what
-    // this entry would otherwise have priced from.
+    // global - distinct from the bodywork carPartId base (140,000), which is
+    // what this entry would otherwise have priced from.
     expect(price).toBe(Math.round((30_000 * SHEET.classFactors.everyday) / 100) * 100)
     // One panel costs less than the whole shell, and the two bases now hold
     // that ordering with room in it: nine zone panels come to 193 per cent of
@@ -64,7 +64,7 @@ describe('resolvePartPriceYen priceBasisPartId defaulting', () => {
     // rather than one moulded piece should read as.
     expect(price).toBeLessThan(
       resolvePartPriceYen(
-        { id: 'stock-panels', carPartId: 'panels', fitmentClass: 'everyday', grade: 'stock' },
+        { id: 'stock-bodywork', carPartId: 'bodywork', fitmentClass: 'everyday', grade: 'stock' },
         SHEET,
       ),
     )
@@ -73,7 +73,7 @@ describe('resolvePartPriceYen priceBasisPartId defaulting', () => {
 
 /**
  * A body kit and a bodyshell are two different purchases, so they price from
- * two different bases. `baseCostYen.panels` used to carry both, which meant
+ * two different bases. `baseCostYen.bodywork` used to carry both, which meant
  * repricing the shell dragged every kit in the catalogue with it; the kits sit
  * on `baseCostYen.bodyKit` instead. Aftermarket body kits are zone-addressed
  * now (nine zones x three grades x four fitment classes = 108 SKUs, replacing
@@ -95,17 +95,17 @@ describe('the body-kit price basis', () => {
     flagship: { street: 32800, sport: 50400, race: 75600 },
   }
 
-  it('prices exactly the 108 aftermarket zone-panel SKUs, all of them in the panels slot', () => {
+  it('prices exactly the 108 aftermarket zone-panel SKUs, all of them in the bodywork slot', () => {
     const kits = PARTS.filter((part) => part.priceBasisPartId === 'bodyKit')
     expect(kits.length).toBe(108)
-    for (const kit of kits) expect(kit.carPartId, kit.id).toBe('panels')
+    for (const kit of kits) expect(kit.carPartId, kit.id).toBe('bodywork')
   })
 
-  it('leaves the panels basis to the bodyshell alone: no SKU prices from it by name', () => {
-    // A whole-shell `panels` SKU resolves from its own carPartId, so nothing
-    // needs to address `panels` through `priceBasisPartId` at all.
+  it('leaves the bodywork basis to the bodyshell alone: no SKU prices from it by name', () => {
+    // A whole-shell `bodywork` SKU resolves from its own carPartId, so nothing
+    // needs to address `bodywork` through `priceBasisPartId` at all.
     expect(
-      PARTS.filter((part) => part.priceBasisPartId === 'panels').map((part) => part.id),
+      PARTS.filter((part) => part.priceBasisPartId === 'bodywork').map((part) => part.id),
     ).toEqual([])
   })
 

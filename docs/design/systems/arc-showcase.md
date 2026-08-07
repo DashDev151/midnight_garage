@@ -57,7 +57,7 @@ car may give up at most 15 points of originality. The prices, per slot:
 | slot | authenticity points | still concours alone? |
 | --- | --- | --- |
 | `block` | 18 | NO |
-| `panels` | 11 | yes |
+| `bodywork` | 11 | yes |
 | `paint` | 11 | yes |
 | `aero` | 10 | yes |
 | `internals` | 8 | yes |
@@ -226,7 +226,7 @@ Generation seed 108. Nissan Silvia (S13), 1990, 35,895 km, history `rough`, patt
 | `brakeCalipersLines` | suspension | worn | stock |
 | `rims` | wheels | worn | stock |
 | `tyres` | wheels | fine | stock |
-| `panels` | body | poor | stock |
+| `bodywork` | body | poor | stock |
 | `paint` | body | poor | stock |
 | `underbody` | body | poor | stock |
 | `aero` | body | poor | race |
@@ -282,7 +282,7 @@ Generation seed 1. Nissan Silvia (S13), 1991, 12,117 km, history `rough`, patter
 | `brakeCalipersLines` | suspension | fine | stock |
 | `rims` | wheels | poor | stock |
 | `tyres` | wheels | worn | stock |
-| `panels` | body | poor | stock |
+| `bodywork` | body | poor | stock |
 | `paint` | body | poor | stock |
 | `underbody` | body | worn | stock |
 | `aero` | body | worn | stock |
@@ -436,7 +436,7 @@ This tier's `aftermarketReturn` is 0.3 and its `beyondDiscount`
 What a day-one shop could not reach: ¥8,800 of the original
 ¥27,540 bill was still outstanding at listing.
 ¥8,800 of that is body-zone work, which is priced off the zone
-table rather than off a part's band, so it can be outstanding even when `panels`, `paint` and
+table rather than off a part's band, so it can be outstanding even when `bodywork`, `paint` and
 `underbody` all read at the expected band. The rest sits on these slots:
 
 | slot | band left at | why |
@@ -473,7 +473,7 @@ This tier's `aftermarketReturn` is 0.6 and its `beyondDiscount`
 What a day-one shop could not reach: ¥61,460 of the original
 ¥115,640 bill was still outstanding at listing.
 ¥0 of that is body-zone work, which is priced off the zone
-table rather than off a part's band, so it can be outstanding even when `panels`, `paint` and
+table rather than off a part's band, so it can be outstanding even when `bodywork`, `paint` and
 `underbody` all read at the expected band. The rest sits on these slots:
 
 | slot | band left at | why |

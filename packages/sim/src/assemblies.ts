@@ -16,12 +16,11 @@ import { revealOnRemoval } from './diagnosis'
 import {
   findWorkableCar,
   hasMachineLineFor,
+  machineGateGroupFor,
   partCapabilityRequirement,
   refitLaborSlotsFor,
   removeLaborSlotsFor,
-  removeMachineGateGroup,
   writeCarBack,
-  type MachineGateGroup,
 } from './jobs'
 import { partFitsCar, reconcileStations } from './parts'
 import { updateServiceJobLedger } from './serviceJobLedger'
@@ -112,34 +111,22 @@ function memberFitsCar(
 
 /**
  * The machine-gate group an assembly's remove/refit op needs owned or hired
- * for the day, or null when its members are not machine-gated at all -
- * structural only, independent of ownership or hire (the same shape
- * `removeMachineGateGroup` has for a single slot). Every shipped assembly
+ * for the day, or null when none of its members gates a removal - structural
+ * only, independent of ownership or hire, and the same
+ * `machineGateGroupFor` answer a single slot gets. Every shipped assembly
  * names at most one group: `engineAssembly` engine, `gearboxAssembly`
- * drivetrain, `wheelAssembly` none (rims/tyres are not machine-gated). The
- * gate applies identically to remove and refit.
+ * drivetrain, `wheelAssembly` none (a rim gates nothing and a tyre gates only
+ * its own bench fit). The gate applies identically to remove and refit.
  */
 export function assemblyMachineGateGroup(
   def: AssemblyDef,
   context: SimContext,
-): MachineGateGroup | null {
+): ComponentId | null {
   for (const member of def.members) {
-    const group = removeMachineGateGroup(member, context)
+    const group = machineGateGroupFor(member, 'remove', context)
     if (group) return group
   }
   return null
-}
-
-/**
- * The machine-gate group fitting a part into `memberSlot` on the bench needs
- * owned or hired for the day - `wheels` for a tyre-into-assembly op, null for
- * every other member (mounting is free). Structural only, independent of
- * ownership or hire; deliberately separate from `removeMachineGateGroup`,
- * which stays engine/drivetrain-only. Dismounting a member is never gated -
- * only fitting one.
- */
-export function benchSwapGateGroup(memberSlot: CarPartId): ComponentId | null {
-  return memberSlot === 'tyres' ? 'wheels' : null
 }
 
 /** The deterministic id of the one container a given (car, assembly) can have
@@ -437,8 +424,9 @@ export interface AssemblyMemberMoveResult {
  * `newPartInstanceId` from the parts bin into the member slot, and the displaced
  * member (if any) back to the bin. Labour is `energy.actionPoints.benchFitMember`
  * (0 in shipped content), gated on `laborAvailable` when raised. A
- * tyre-into-assembly op needs the wheels line owned or hired for the day
- * (`benchSwapGateGroup`); every other member swap is ungated by that.
+ * tyre-into-assembly op needs the wheels line owned or hired for the day (the
+ * `bench-fit` half of the slot's `machineGate`); every other member swap is
+ * ungated by that.
  * Refuses if the container/part is missing, the part does not address this
  * member slot, the part is scrap, the machine gate is unmet, or (for a
  * container pulled off a car) the part's fitment class does not match that
@@ -491,7 +479,7 @@ export function resolveSwapAssemblyMember(
   const laborSlotsUsed = context.economy.energy.actionPoints.benchFitMember
   if (laborSlotsUsed > laborAvailable) return fail
 
-  const gateGroup = benchSwapGateGroup(memberSlot)
+  const gateGroup = machineGateGroupFor(memberSlot, 'bench-fit', context)
   if (gateGroup && !hasMachineLineFor(gateGroup, state, context)) return fail
 
   const displaced = container.members[memberSlot] ?? null

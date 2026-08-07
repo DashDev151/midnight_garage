@@ -286,7 +286,7 @@ describe('CarDetailScreen', () => {
     const car = game.gameState.ownedCars.find((c) => c.id === id)!
     // chassis: an installed body signature slot below mint, and the one
     // signature slot an on-car per-part repair still reaches (every removable
-    // part is bench work now, and `panels`/`paint` are derived body value
+    // part is bench work now, and `bodywork`/`paint` are derived body value
     // carriers with no on-car repair affordance at all, `bodyPipeline.ts`).
     // dampers: an empty suspension signature slot (installing one is gated).
     const model = game.context.modelsById[car.modelId]!
@@ -370,7 +370,7 @@ describe('CarDetailScreen', () => {
     // chassis: an installed, repairable slot below mint that never comes off -
     // the on-car repair "+" (and this ceiling caption) applies. `seats` no
     // longer serves this purpose (it is removable, so it is bench work), and
-    // neither does `panels`: a derived body value carrier with no on-car
+    // neither does `bodywork`: a derived body value carrier with no on-car
     // repair affordance at all (`bodyPipeline.ts`).
     car.parts.chassis = { installed: { ...car.parts.chassis.installed!, band: 'worn' } }
     const bodyMachine = TOOL_LINES.body.tiers[1]!.displayName
@@ -642,7 +642,7 @@ describe('CarDetailScreen', () => {
       const game = useGameStore()
       const id = grantCarNeedingRepair(game, 'body')
       const row = bodyRepairRow(game, id)
-      // The rolled row may land on a body signature slot (panels/underbody) -
+      // The rolled row may land on a body signature slot (bodywork/underbody) -
       // hire the line so only the labour-overrun concern under test can
       // possibly disable Confirm.
       game.hireMachineLine('body')
@@ -1420,32 +1420,32 @@ describe('CarDetailScreen', () => {
       grantShopFor(game, 'body')
       game.devGrantCar(CARS[0]!.id)
       const id = game.gameState.ownedCars[0]!.id
-      const originalInstalledId = game.gameState.ownedCars[0]!.parts.panels.installed?.id
-      // Every real aftermarket `panels` SKU now carries a `zoneId` (it fits one
-      // zone through the pipeline's own install, never the whole-car slot -
+      const originalInstalledId = game.gameState.ownedCars[0]!.parts.bodywork.installed?.id
+      // Every real aftermarket `bodywork` SKU now carries a `zoneId` (it fits
+      // one zone through the pipeline's own install, never the whole-car slot -
       // `partFitsCar` refuses a zone-scoped part here by design), so this is
       // the whole catalogue's own honest "sport panels" reach: a real part,
       // for this exact address, that still doesn't fit here.
       const kit = PARTS.find(
-        (p) => p.carPartId === 'panels' && p.grade === 'sport' && p.fitmentClass === 'entry',
+        (p) => p.carPartId === 'bodywork' && p.grade === 'sport' && p.fitmentClass === 'entry',
       )!
       expect(kit.zoneId).toBeDefined()
       game.devGrantPart(kit.id)
 
       const { wrapper } = await mountAt(id)
-      await selectPart(wrapper, 'panels')
+      await selectPart(wrapper, 'bodywork')
       // The shell is never pulled, so the slot is never empty - Replace stands
       // in for the remove-then-fit two-step every other slot uses.
-      expect(wrapper.find('[data-test="remove-part-panels"]').exists()).toBe(false)
-      expect(wrapper.find('[data-test="replace-part-panels"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="remove-part-bodywork"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="replace-part-bodywork"]').exists()).toBe(true)
 
       await wrapper.find('[data-test="toggle-bay"]').trigger('click')
-      await wrapper.find('[data-test="replace-part-panels"]').trigger('click')
+      await wrapper.find('[data-test="replace-part-bodywork"]').trigger('click')
       const card = wrapper.get('[data-test="replace-drawer"] .part-card')
       expect(card.classes()).toContain('no-fit')
       await card.trigger('click')
       // A no-fit card's click is a no-op - the shell is exactly as generated.
-      expect(game.gameState.ownedCars[0]!.parts.panels.installed?.id).toBe(originalInstalledId)
+      expect(game.gameState.ownedCars[0]!.parts.bodywork.installed?.id).toBe(originalInstalledId)
     })
 
     /**
@@ -2185,7 +2185,7 @@ describe('CarDetailScreen', () => {
       const game = useGameStore()
       game.devGrantCar(CARS[0]!.id)
       const id = game.gameState.ownedCars[0]!.id
-      expect(game.nextPartStepRange(id, 'body', 'panels')).toBeNull()
+      expect(game.nextPartStepRange(id, 'body', 'bodywork')).toBeNull()
     })
 
     it('Full workup is disabled with a reason once no labour slot remains today', async () => {

@@ -195,10 +195,10 @@ function applySymptoms(
                 working.zoneState,
                 cause.carPartId,
                 cause.setBand,
-                // `panels` writes metal, which only a metal zone carries;
+                // `bodywork` writes metal, which only a metal zone carries;
                 // `paint` is a finish any of the nine zones can take.
                 pickPatternZone(
-                  cause.carPartId === 'panels' ? METAL_ZONE_IDS : PANEL_ZONE_IDS,
+                  cause.carPartId === 'bodywork' ? METAL_ZONE_IDS : PANEL_ZONE_IDS,
                   pattern,
                   rng,
                 ),
@@ -247,7 +247,7 @@ function applySymptoms(
  * or `improveZoneCarrierOneStep`) can move real headroom for the two body
  * carriers COMBINED, in EITHER direction, before every zone field is at its
  * bound: putting up to 9 zones back on the repairable ladder (one step each,
- * whether the panel was gone, past saving, or both) + `panels`' surface (6
+ * whether the panel was gone, past saving, or both) + `bodywork`'s surface (6
  * metal zones x 2) + `paint`'s finish (9 zones x 3). One
  * `degradeCandidates`/worst-band selection of a body carrier only ever
  * advances ONE zone one step (never the whole part at once, unlike an
@@ -1055,7 +1055,7 @@ export function generateAuctionCarInstance(
     symptoms: [],
     apparentBandByPartId: null,
     // The work model's own roll (docs/design/systems/workshop-rework.md) - independent
-    // of the per-part jitter loop above, which still fills `panels` with a
+    // of the per-part jitter loop above, which still fills `bodywork` with a
     // stock part (never missing or aftermarket, since those SKUs are
     // retired/migrated); the projection below immediately overwrites that
     // jittered band with the real, zone-derived one. `paint` alone in that

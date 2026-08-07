@@ -64,7 +64,7 @@ const CarPartsSchema = z.object({
   brakeCalipersLines: CarPartStateSchema,
   rims: CarPartStateSchema,
   tyres: CarPartStateSchema,
-  panels: CarPartStateSchema,
+  bodywork: CarPartStateSchema,
   paint: CarPartStateSchema,
   aero: CarPartStateSchema,
   seats: CarPartStateSchema,
@@ -191,7 +191,7 @@ export const CarInstanceSchema = z.object({
   /**
    * The work model's own resolution: nine zones, each carrying the finish
    * severity the derived `paint` band reads and, on the six metal zones,
-   * metal/surface severities the derived `panels` band reads too
+   * metal/surface severities the derived `bodywork` band reads too
    * (worst-governs). Optional so every existing fixture and save parses
    * unchanged - absent reads as "not yet on the zone model."
    */

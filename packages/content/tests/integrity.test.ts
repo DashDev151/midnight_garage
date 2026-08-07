@@ -284,9 +284,9 @@ describe('referential integrity', () => {
    * the way two independently authored numbers could; this guards the
    * derivation wiring itself (a refactor that breaks the link between
    * `PARTS` and `PARTS_TAXONOMY` would still be caught here). Zone-panel SKUs
-   * are excluded: they are stock-grade `panels` entries that deliberately
+   * are excluded: they are stock-grade `bodywork` entries that deliberately
    * price from the independent `zonePanel` basis via `priceBasisPartId`, not
-   * from the `panels` taxonomy's own stock-replacement price.
+   * from the `bodywork` taxonomy's own stock-replacement price.
    */
   it("every stock-grade catalog part's resolved price matches its taxonomy entry's per-class stock-replacement price", () => {
     for (const part of PARTS) {
@@ -305,15 +305,15 @@ describe('referential integrity', () => {
    * grades) - real, separately named catalog entries, never a single part
    * with a runtime price switch. Guards both directions: nothing missing,
    * nothing accidentally duplicated. Zone-panel SKUs (`zoneId` set) are
-   * excluded: they are additional `panels` entries addressed to a specific
-   * zone, on top of this matrix, not a member of it. `panels` itself only
+   * excluded: they are additional `bodywork` entries addressed to a specific
+   * zone, on top of this matrix, not a member of it. `bodywork` itself only
    * fills the stock rung of this matrix - its street/sport/race rungs are
    * entirely zone-addressed now, so nothing non-zone exists there to find.
    * `paint` still carries a full ladder like every other slot: stock is
    * factory-correct, and street/sport/race are a respray in the car's own
    * colour or another.
    */
-  it('every real car part has exactly 16 catalog SKUs - 4 fitment classes x 4 grades - except panels, whose aftermarket rungs are zone-addressed', () => {
+  it('every real car part has exactly 16 catalog SKUs - 4 fitment classes x 4 grades - except bodywork, whose aftermarket rungs are zone-addressed', () => {
     const FITMENT_CLASSES = ['entry', 'everyday', 'enthusiast', 'flagship'] as const
     const nonZonePanelParts = PARTS.filter((p) => p.zoneId === undefined)
     for (const carPartId of CarPartIdSchema.options) {
@@ -323,7 +323,7 @@ describe('referential integrity', () => {
             (p) =>
               p.carPartId === carPartId && p.fitmentClass === fitmentClass && p.grade === grade,
           )
-          const expected = carPartId === 'panels' && grade !== 'stock' ? 0 : 1
+          const expected = carPartId === 'bodywork' && grade !== 'stock' ? 0 : 1
           expect(
             candidates.length,
             `expected exactly ${expected} SKU for ${carPartId}/${fitmentClass}/${grade}, found ${candidates.length}`,
@@ -373,10 +373,10 @@ describe('referential integrity', () => {
   })
 
   /**
-   * Zone panels are `panels` SKUs addressed to one of the nine body zones,
-   * on top of the matrix above (which `panels` only fills at stock). Every
+   * Zone panels are `bodywork` SKUs addressed to one of the nine body zones,
+   * on top of the matrix above (which `bodywork` only fills at stock). Every
    * one of the other 27 real parts carries its full 16-SKU ladder, so the
-   * whole catalog is 27 x 16 = 432, plus panels' own 148 (4 whole-car stock
+   * whole catalog is 27 x 16 = 432, plus bodywork's own 148 (4 whole-car stock
    * carriers, 36 stock zone panels - one per zone per fitment class - and
    * 108 aftermarket zone panels - nine zones x three grades x four fitment
    * classes) = 580.
@@ -401,7 +401,7 @@ describe('referential integrity', () => {
     expect(aftermarketZonePanels.length).toBe(108)
     expect(PARTS.length).toBe(580)
     for (const part of zonePanelParts) {
-      expect(part.carPartId).toBe('panels')
+      expect(part.carPartId).toBe('bodywork')
     }
     for (const part of stockZonePanels) {
       expect(part.priceBasisPartId).toBe('zonePanel')

@@ -132,7 +132,7 @@ The 21 weight-carrying slots (`packages/content/data/parts-taxonomy.json`, per p
 | 2 | block, internals, headValvetrain, gearbox, chassis, steering, brakeCalipersLines, tyres |
 | 1 | camsTiming, intake, exhaust, fuelSystem, ignitionEcu, forcedInduction, clutch, differential, driveline, springs, brakePadsDiscs, underbody |
 
-Total weight 31. The eight slots at zero (dampers, antiRollBars, rims, panels, paint, aero,
+Total weight 31. The eight slots at zero (dampers, antiRollBars, rims, bodywork, paint, aero,
 seats, dashGauges) cannot move reliability by any amount, in any band, ever.
 
 **Measured, single part moved off mint on a base-100 car with all 31 weight present** (unrounded
@@ -347,7 +347,7 @@ clamp bites.
 - **`physicalModifiers`** (grip, braking, mass) and the four `condition.bandFactor` dial curves.
   Those are the performance model; nothing in them reaches reliability.
 - **`statModifiers.style`** and the whole style and authenticity pipeline.
-- **The eight zero-weight slots**: dampers, antiRollBars, rims, panels, paint, aero, seats,
+- **The eight zero-weight slots**: dampers, antiRollBars, rims, bodywork, paint, aero, seats,
   dashGauges. A scrap bodykit, scrap paint, scrap wheels or a scrap dashboard move this number by
   exactly nothing.
 - **`support.thresholds.strainedAtOrAbove`** (0.75). It picks warning copy and the verdict's band

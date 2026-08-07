@@ -509,7 +509,7 @@ maintainer or CI run can catch a coherence drift before a playtest does.
 - 2026-07-23: **The body-zone workshop model, and `the-showroom-standard`'s payout bumped
   to match its re-derived recipe** (Sprint 119, the workshop rework phase 1b; levers signed
   in `docs/sprints/sprint_archive/sprint119.md`'s lever table). Body condition is now generated and worked
-  as six zones (metal/surface/finish); `panels`/`paint`/`underbody` bands DERIVE from zone
+  as six zones (metal/surface/finish); `bodywork`/`paint`/`underbody` bands DERIVE from zone
   state (worst-governs) and are priced money-only through the pipeline (materials +
   replacement panels, never labour, per the maintainer's L9 ruling). New anchors: the six
   `materials.json` prices and `baseCostYen.zonePanel` (6,000), both first-pass tuning bait;

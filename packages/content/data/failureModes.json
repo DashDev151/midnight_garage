@@ -196,7 +196,7 @@
   },
   {
     "id": "panel-respray",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "setBand": "worn"
   },
   {
@@ -206,7 +206,7 @@
   },
   {
     "id": "rust-patch",
-    "carPartId": "panels",
+    "carPartId": "bodywork",
     "setBand": "poor"
   },
   {

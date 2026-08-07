@@ -10,13 +10,11 @@ import {
   type ConditionBand,
   type Grade,
   type Part,
-  type ZoneState,
-  type ZoneStates,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
-import { METAL_ZONE_IDS, TRIM_ZONE_IDS, zonePanelStylePoints } from '../src/bodyPipeline'
+import { zonePanelStylePoints } from '../src/bodyPipeline'
 import { computeDerivedStats } from '../src/derivedStats'
-import { buildCarInstance, mintCarParts, uniformCarParts } from './testFixtures'
+import { buildCarInstance, mintCarParts, uniformCarParts, zonePanelsAtGrade } from './testFixtures'
 import type { CarPartOverride } from './testFixtures'
 
 /**
@@ -58,26 +56,9 @@ function bestStylePartsFor(model: CarModel): Part[] {
   return [...bestBySlot.values()]
 }
 
-/** All nine zones present and clean, each wearing a panel of `grade` - what a
- * player who has fitted a full kit through the panel pipeline is looking at.
- * `stock` is the untouched car every other fixture in this file implies. */
-function panelsAtGrade(grade: Grade): ZoneStates {
-  const states = {} as Record<string, ZoneState>
-  for (const zoneId of METAL_ZONE_IDS) {
-    states[zoneId] = {
-      metal: 0,
-      surface: 0,
-      finish: 0,
-      panelMissing: false,
-      primed: false,
-      panelGrade: grade,
-    }
-  }
-  for (const zoneId of TRIM_ZONE_IDS) {
-    states[zoneId] = { finish: 0, panelMissing: false, primed: false, panelGrade: grade }
-  }
-  return states as ZoneStates
-}
+/** The shared nine-zones-at-one-grade fixture (`testFixtures.ts`), under this
+ * file's own shorter name. */
+const panelsAtGrade = zonePanelsAtGrade
 
 function carWithParts(
   model: CarModel,
@@ -119,8 +100,8 @@ describe("the two ends of a car's own range", () => {
   })
 
   /** A build a player can actually make: the best SKU in every installable
-   * style-bearing slot, plus a full race widebody fitted the only way a
-   * widebody is fitted, zone by zone. */
+   * style-bearing slot, plus a full set of race body panels fitted the only
+   * way they are fitted, zone by zone. */
   it('a fully dressed mint car scores exactly its own styleCeiling, on every shipped car', () => {
     for (const model of CARS) {
       const dressed = carWithParts(model, bestStylePartsFor(model), 'mint', 'race')
@@ -323,18 +304,19 @@ describe('the style catalogue spreads across the car', () => {
 
 /**
  * The 144 zone-scoped panel SKUs carry authored style points (street 5, sport
- * 9, race 12) and, until the panels slot was read off the zones, none of them
- * could ever reach a car: `partFitsCar` refuses a `zoneId` SKU, so a fitted
- * widebody moved nothing but authenticity and the paint band, downwards.
+ * 9, race 12) and, until the bodywork slot was read off the zones, none of them
+ * could ever reach a car: `partFitsCar` refuses a `zoneId` SKU, so a fitted set
+ * of race body panels moved nothing but authenticity and the paint band,
+ * downwards.
  *
  * The body is ONE slot, and it pays like one. The nine zones contribute their
  * mean, so a car wearing one grade all round delivers exactly the points that
  * grade's panel is authored with, and a pair of over-fenders delivers two
- * ninths of it. Nine zones each paying in full would put a race widebody at
- * 108 points against a saturation of 66 - a single purchase that finishes the
- * stat and makes every other style part on that car worth nothing.
+ * ninths of it. Nine zones each paying in full would put a full set of race
+ * body panels at 108 points against a saturation of 66 - a single purchase that
+ * finishes the stat and makes every other style part on that car worth nothing.
  */
-describe("a widebody reaches style, at one slot's worth", () => {
+describe("a set of body panels reaches style, at one slot's worth", () => {
   const panelled = (model: CarModel, grade: Grade) =>
     buildCarInstance({ modelId: model.id, parts: mintCarParts(), zoneState: panelsAtGrade(grade) })
 
@@ -348,7 +330,7 @@ describe("a widebody reaches style, at one slot's worth", () => {
     return Math.round(styleBase + (styleCeiling - styleBase) * Math.min(1, points / SATURATION))
   }
 
-  it("pays the panels slot its own grade's authored points, no more", () => {
+  it("pays the bodywork slot its own grade's authored points, no more", () => {
     for (const grade of ['street', 'sport', 'race'] as const) {
       expect(zonePanelStylePoints(panelsAtGrade(grade), PARTS_BY_ID, 'everyday')).toBe(
         panelStyleFor(grade),
@@ -360,7 +342,7 @@ describe("a widebody reaches style, at one slot's worth", () => {
   /**
    * The three measured figures on a mint Civic SiR-II (styleBase 45,
    * styleCeiling 92, saturation 66): stock 45, a full street kit 49, a full
-   * carbon widebody 54. A race wing alone is 18 points, so the loudest body in
+   * carbon set 54. A race wing alone is 18 points, so the loudest body in
    * the catalogue is worth two thirds of one - loud, and not the whole car.
    */
   it('walks a Civic from 45 stock to 49 in street panels to 54 in carbon', () => {

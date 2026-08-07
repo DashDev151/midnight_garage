@@ -389,7 +389,7 @@ describe('the bonnet monopoly is over', () => {
 
 describe('arranging the zones is a pure permutation', () => {
   it('carries exactly the severities the tier tables rolled, on different zones', () => {
-    // The property that makes this safe to do at all: `panels` and `paint`
+    // The property that makes this safe to do at all: `bodywork` and `paint`
     // derive from the WORST panel zone, and a worst-of is invariant under
     // permutation. So the derived bands, the repair bill and every Law 2 check
     // see an identical car; only which panel carries what moves.

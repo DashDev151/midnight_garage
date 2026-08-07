@@ -42,7 +42,7 @@ const ByCarPartIdWeightSchema = z.object({
   brakeCalipersLines: z.number().nonnegative(),
   rims: z.number().nonnegative(),
   tyres: z.number().nonnegative(),
-  panels: z.number().nonnegative(),
+  bodywork: z.number().nonnegative(),
   paint: z.number().nonnegative(),
   aero: z.number().nonnegative(),
   seats: z.number().nonnegative(),
@@ -2802,25 +2802,20 @@ export const EconomyConfigSchema = z.object({
   }),
   /**
    * The machine-shop assist. Until the player owns the relevant tier-2
-   * machine, a BURIED engine/drivetrain operation (remove OR install, the
-   * same `removeMachineGateGroup` predicate) is still workable at a cash fee
-   * instead of a hard wall - `feeYenByGroup[group]`, posted to the car's
-   * ledger through the existing repair-cost path so service-job billing and
-   * mission budget caps see it. Ownership removes the fee (buys margin), it
-   * never gates capability. `probeAmortisationOps` is the operation count the
+   * machine, a machine-gated operation is still workable at a cash fee instead
+   * of a hard wall - `feeYenByGroup[group]`, posted to the car's ledger
+   * through the existing repair-cost path so service-job billing and mission
+   * budget caps see it. Ownership removes the fee (buys margin), it never
+   * gates capability. `probeAmortisationOps` is the operation count the
    * coherence probe amortises the machine's own `upgradePriceYen` over: each
    * fee must be > 0 and strictly cheaper per operation than owning the
    * machine at that volume. The tier-2/3 purchase gates (price, reputation,
    * listing) are untouched.
    *
    * Uniform tool access: every one of the six groups carries a fee, so tool
-   * access is rent-or-own uniformly. Suspension, body, and interior - which
-   * otherwise gate nothing on the player's own car - each also carry a
-   * `signatureSlotsByGroup` entry naming the slots whose heavy op (repair or
-   * install/replace) needs their tier-2 machine (`signatureOpFeeYen`,
-   * sim/jobs.ts). Engine/drivetrain keep their buried-slot gate and wheels
-   * its tyre-fit gate, unchanged, so those three groups are deliberately
-   * absent from `signatureSlotsByGroup`.
+   * access is rent-or-own uniformly. WHICH operations each line gates is a
+   * fact about the slot and lives on the taxonomy row that owns it
+   * (`machineGate`, content/src/carPart.ts), not here.
    */
   machineShopAssist: z.object({
     feeYenByGroup: z.object({
@@ -2830,32 +2825,19 @@ export const EconomyConfigSchema = z.object({
        * (fit/repair dampers or springs) without owning it. */
       suspension: z.number().int().positive(),
       /** The per-tyre-operation fitting charge a shop without the tier-2
-       * tyre machine pays to swap a tyre onto (or off) the rims on the bench
-       * - a 1995 tyre-shop fitting fee. Unlike the engine/drivetrain fees
-       * (which gate buried removal AND install of those groups' assemblies),
-       * this one applies ONLY to a tyre-into-assembly bench op, never to
-       * removing or refitting the whole wheel assembly. */
+       * tyre machine pays to mount a tyre onto the rims on the bench - a 1995
+       * tyre-shop fitting fee. Unlike the engine/drivetrain fees (which gate
+       * buried removal AND install of those groups' assemblies), this one
+       * applies ONLY to a tyre-into-assembly bench fit, never to dismounting
+       * one and never to removing or refitting the whole wheel assembly. */
       wheels: z.number().int().positive(),
       /** The MIG welder & panel tools' per-job fee for the body signature op
-       * (weld/panel repair or replace of panels or chassis). */
+       * (weld/panel repair or replace of bodywork or chassis). */
       body: z.number().int().positive(),
       /** The upholstery & trim bench's per-job fee for the interior
        * signature op (retrim of seats or dash & gauges). */
       interior: z.number().int().positive(),
     }),
-    /**
-     * Per group, the slots whose signature heavy op needs that group's
-     * tier-2 machine - the named-slot gate for the three groups (suspension,
-     * body, interior) that lack one otherwise. `signatureOpFeeYen`
-     * (sim/jobs.ts) charges `feeYenByGroup[group]` on a repair or
-     * install/replace that touches one of these slots unless the group's
-     * tier-2 is owned (removal stays free; a non-listed light bolt-on slot in
-     * the same group is never charged). A PARTIAL map by design:
-     * engine/drivetrain gate on buried depth (`removeMachineGateGroup`) and
-     * wheels on the tyre bench op (`benchSwapGateGroup`), so they name no
-     * slots here - this predicate must never fire for them.
-     */
-    signatureSlotsByGroup: z.partialRecord(ComponentIdSchema, z.array(CarPartIdSchema).min(1)),
     probeAmortisationOps: z.number().int().positive(),
   }),
   /**

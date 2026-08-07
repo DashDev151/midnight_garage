@@ -15,6 +15,7 @@ import {
   clampRepairTarget,
   repairCeilingForLevel,
 } from './bands'
+import { zonePanelValueYen } from './bodyPipeline'
 import { coherenceFactorForCar } from './derivedStats'
 import { machiningPremiumYenOf } from './machining'
 
@@ -233,6 +234,25 @@ export function retentionFor(coherenceFactor: number, economy: EconomyConfig): n
  * The premium is what was DONE to the part, never the power it makes - a car
  * is never worth more because it is faster, and this reaches money through the
  * part's own price exactly as the part itself does.
+ *
+ * **`bodywork` is read off the car's nine zones rather than off its carrier
+ * SKU**, on a car that has a `zoneState` - the same exception `stylePercentOf`
+ * and `buildFactors` (derivedStats.ts) make, for the same reason: every panel
+ * SKU is zone-scoped and reaches a car through `zoneState[zoneId].panelGrade`,
+ * never through `car.parts.bodywork.installed.partId`, so the carrier's own
+ * (always stock) SKU cannot answer what a body kit cost. `zonePanelValueYen`
+ * (bodyPipeline.ts) sums the nine, and the sum joins the total on exactly the
+ * terms every other fitted part does - the same retention, and then the same
+ * foundation and `aftermarketReturn` scaling in `premiumCredit` below. The
+ * carrier's own catalogue price is not added beside it: a carrier is always
+ * stock, and stock is worth nothing here.
+ *
+ * The panels are priced at the CARRIER'S fitment class, which is the car's
+ * own: `applyDerivedBodyBands` fills that slot from
+ * `stockPartByCarPartId[fitmentClassForTier(model.tier)]`, the slot is
+ * `removable: false` so nothing else can ever get into it, and a player buys
+ * panels for the car in front of them. So this needs no `CarModel` to ask a
+ * question the car already answers.
  */
 export function installedPartsValueYen(
   car: CarInstance,
@@ -248,8 +268,12 @@ export function installedPartsValueYen(
     const part = partsById[installed.partId]
     if (!part) continue
     const premiumYen = machiningPremiumYenOf(installed, part, economy)
-    const partValueYen = part.grade === 'stock' ? premiumYen : part.priceYen + premiumYen
-    total += partValueYen * retention
+    const catalogueYen = part.grade === 'stock' ? 0 : part.priceYen
+    const zonePanelYen =
+      partId === 'bodywork' && car.zoneState
+        ? zonePanelValueYen(car.zoneState, partsById, part.fitmentClass)
+        : 0
+    total += (catalogueYen + zonePanelYen + premiumYen) * retention
   }
   return Math.round(total)
 }

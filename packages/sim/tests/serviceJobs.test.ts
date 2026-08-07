@@ -66,13 +66,13 @@ const CONTEXT = buildSimContext(
 /** Real templates from the content set, referenced by id so a future content
  * edit that changes their SHAPE (not just flavor text) fails these tests
  * loudly instead of silently drifting. */
-const singleRepairType = findType('small-bodywork-touchup') // tasks: [repair panels -> fine]
+const singleRepairType = findType('small-bodywork-touchup') // tasks: [repair bodywork -> fine]
 const installType = findType('coilover-install') // tasks: [install dampers >= street]
 /** tasks: [repair dampers -> fine, repair springs -> fine], tier 2 - the
  * real content's two-repair-task template, so tests needing two
  * independently band-settable repair tasks exercise real content. */
 const twoRepairType = findType('suspension-refresh') // tasks: [repair dampers, repair springs]
-const mixedType = findType('put-her-in-a-ditch') // tasks: [repair panels, repair dampers, install tyres]
+const mixedType = findType('put-her-in-a-ditch') // tasks: [repair bodywork, repair dampers, install tyres]
 const twoInstallType = findType('engine-internals-rebuild') // tasks: [install internals, install headValvetrain]
 
 function findType(id: string): ServiceJobType {
@@ -543,10 +543,10 @@ describe('serviceJobCostBreakdown / deriveServiceJobPayoutYen (Sprint 29 decisio
   })
 
   it("a repair task charges banded-steps cost, derived from the installed instance's own catalog price (Sprint 44), proportional to how far the part is from target", () => {
-    const car = buildCarInstance({ parts: mintCarParts({ panels: 'poor' }) })
+    const car = buildCarInstance({ parts: mintCarParts({ bodywork: 'poor' }) })
     const model = CARS[0]! // honda-city-e-aa
     const breakdown = serviceJobCostBreakdown(singleRepairType.tasks, car, model, CONTEXT)
-    const installedPartId = car.parts.panels.installed!.partId
+    const installedPartId = car.parts.bodywork.installed!.partId
     const priceYen = CONTEXT.partsById[installedPartId]!.priceYen
     const { repairStepFraction } = CONTEXT.economy.restoration
     // poor -> fine is 2 grades (poor, worn, fine order: poor < worn < fine).
@@ -555,21 +555,21 @@ describe('serviceJobCostBreakdown / deriveServiceJobPayoutYen (Sprint 29 decisio
   })
 
   it('a band-only task on a scrap part now prices a replacement (unrepairable, but no longer "already done")', () => {
-    const car = buildCarInstance({ parts: mintCarParts({ panels: 'scrap' }) })
+    const car = buildCarInstance({ parts: mintCarParts({ bodywork: 'scrap' }) })
     const model = CARS[0]!
     const breakdown = serviceJobCostBreakdown(singleRepairType.tasks, car, model, CONTEXT)
     expect(breakdown.taskCostYen).toBeGreaterThan(0)
-    // 'panels' is a SURFACE slot: installLaborSlotsFor is 0 for that depth
+    // 'bodywork' is a SURFACE slot: installLaborSlotsFor is 0 for that depth
     // class, so only the cash side changes here.
     expect(breakdown.laborSlots).toBe(0)
   })
 
   it('a band-only task on a missing (empty) slot now prices a replacement too - same treatment as scrap', () => {
-    const car = buildCarInstance({ parts: mintCarParts({ panels: null }) })
+    const car = buildCarInstance({ parts: mintCarParts({ bodywork: null }) })
     const model = CARS[0]!
     const breakdown = serviceJobCostBreakdown(singleRepairType.tasks, car, model, CONTEXT)
     expect(breakdown.taskCostYen).toBeGreaterThan(0)
-    // 'panels' is a SURFACE slot: installLaborSlotsFor is 0 for that depth
+    // 'bodywork' is a SURFACE slot: installLaborSlotsFor is 0 for that depth
     // class, so only the cash side changes here.
     expect(breakdown.laborSlots).toBe(0)
   })
@@ -583,7 +583,7 @@ describe('serviceJobCostBreakdown / deriveServiceJobPayoutYen (Sprint 29 decisio
   })
 
   it('a higher margin roll yields a strictly higher payout for the same tasks/car', () => {
-    const car = buildCarInstance({ parts: mintCarParts({ panels: 'poor' }) })
+    const car = buildCarInstance({ parts: mintCarParts({ bodywork: 'poor' }) })
     const model = CARS[0]!
     const low = deriveServiceJobPayoutYen(singleRepairType.tasks, car, model, CONTEXT, 1.2)
     const high = deriveServiceJobPayoutYen(singleRepairType.tasks, car, model, CONTEXT, 1.45)
@@ -721,7 +721,7 @@ describe('isServiceTaskDone / isServiceWorkDone (Sprint 29 multi-task, per-part)
     const streetTyres = catalogPartFor('tyres', (p) => p.grade === 'street')
     const done = activeJob(mixedType, {
       parts: mintCarParts({
-        panels: 'fine',
+        bodywork: 'fine',
         dampers: 'fine',
         tyres: partInstance(streetTyres.id),
       }),
@@ -731,7 +731,7 @@ describe('isServiceTaskDone / isServiceWorkDone (Sprint 29 multi-task, per-part)
     // put-her-in-a-ditch's install task only requires a `stock`+ tyre, so a
     // MISSING tyres slot (not merely a stock one) exercises "not done yet".
     const missingInstall = activeJob(mixedType, {
-      parts: mintCarParts({ panels: 'fine', dampers: 'fine', tyres: null }),
+      parts: mintCarParts({ bodywork: 'fine', dampers: 'fine', tyres: null }),
     })
     expect(isServiceWorkDone(missingInstall, CONTEXT)).toBe(false)
   })

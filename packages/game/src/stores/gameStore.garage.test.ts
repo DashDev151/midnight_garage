@@ -55,7 +55,7 @@ describe('garage: instant repair and labor', () => {
     for (const shop of game.toolShopViews) game.devSetToolShopOwned(shop.id, true)
     // Every removable part is bench work now, so `repair()` refuses all of
     // them: the chassis is the one slot an on-car repair still climbs (it
-    // never comes off, and unlike panels/paint its band is its own rather than
+    // never comes off, and unlike bodywork/paint its band is its own rather than
     // derived from zone state). Correlated band rolls can occasionally land it
     // mint even on a "rough" car, so retry grants until it needs work.
     const chassisBand = (carId: string) =>

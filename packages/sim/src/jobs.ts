@@ -7,6 +7,7 @@ import {
   type DayLogEntry,
   type GameState,
   type Job,
+  type MachineGateOperation,
   type Part,
   type PartInstance,
   type ToolLevel,
@@ -85,7 +86,7 @@ export function refitLaborSlotsFor(
 /**
  * Whether an install onto `carPartId` replaces whatever already occupies the
  * slot rather than being refused for it - true for a `removable: false`
- * taxonomy entry (`chassis`, `panels`, `paint`), whose slot is never
+ * taxonomy entry (`chassis`, `bodywork`, `paint`), whose slot is never
  * genuinely empty and whose identity therefore changes by replacement.
  * Every other slot needs to be emptied (`resolveRemovePart`) before a
  * different part can go in. Distinct from `isBodyDerivedPart`
@@ -207,12 +208,12 @@ interface CarEffect {
  * reinstalling at its real band is correct (forcing mint would let
  * remove+reinstall repair a part for free).
  *
- * A `removable: false` slot (`chassis`, `panels`, `paint`) is the one address
+ * A `removable: false` slot (`chassis`, `bodywork`, `paint`) is the one address
  * that takes an install over an OCCUPIED slot (`replacesOccupiedSlot`). Its
  * slot is never empty, so its identity changes by replacement rather than by
  * a remove followed by a fit, and the part coming off is not harvested (the
  * shell never leaves the car). For the two zone-derived carriers specifically
- * (`panels`/`paint`), the zones they cover are then refitted the way
+ * (`bodywork`/`paint`), the zones they cover are then refitted the way
  * `planInstallPanel` leaves a fresh panel, and the band re-derives from them,
  * so a fresh kit arrives on straight metal in bare primerless finish and the
  * car owes its paint. `chassis` has no zone to refit - its band is an
@@ -361,7 +362,7 @@ export function completeJob(state: GameState, job: Job, context: SimContext): Jo
     // blocked install leaves the car and the job untouched, exactly like
     // the occupied-slot block below.
     const carPartId = installTargetCarPartId(state, job, context)
-    const machineGroup = carPartId ? machineLineGroupFor(carPartId, context) : null
+    const machineGroup = carPartId ? machineGateGroupFor(carPartId, 'install', context) : null
     if (machineGroup && !hasMachineLineFor(machineGroup, state, context)) {
       return { state, blockedReason: 'machine-line' }
     }
@@ -438,49 +439,28 @@ export function occupiedBlockers(
 }
 
 /**
- * The two component groups whose buried slots need a tier-2 machine (or the
- * group's line hired for the day) - the engine crane and the transmission
- * bench.
+ * The tool line whose tier-2 machine gates `operation` on `carPartId`, or
+ * `null` when that operation on that slot needs no machine at all. The one
+ * predicate every machine gate in the game asks, structural only and
+ * independent of ownership or hire (`hasMachineLineFor` below answers that
+ * half).
+ *
+ * Both halves of the answer come off the slot's own taxonomy row: which
+ * operations it gates is `machineGate`, and the line is the row's own `group`.
+ * So a buried engine slot names the engine line for an install and a removal,
+ * a signature slot names its line for an install and a repair but never for
+ * pulling the old one off, and `tyres` names the wheels line for a bench fit
+ * and nothing else. Exported so the UI can pre-empt exactly the gate the
+ * resolvers apply.
  */
-export type MachineGateGroup = 'engine' | 'drivetrain'
-
-/**
- * The tool line (and its tier-2 machine) a buried slot in that group needs -
- * `null` for a surface/bolt-on slot, or any group other than engine/drivetrain
- * (no machine gate exists elsewhere). Exported so the UI can pre-empt the same
- * gate `resolveRemovePart`/`completeJob` uses.
- */
-export function removeMachineGateGroup(
+export function machineGateGroupFor(
   carPartId: CarPartId,
+  operation: MachineGateOperation,
   context: SimContext,
-): MachineGateGroup | null {
+): ComponentId | null {
   const entry = context.partsTaxonomyById[carPartId]
-  if (!entry || entry.depthClass !== 'buried') return null
-  return entry.group === 'engine' || entry.group === 'drivetrain' ? entry.group : null
-}
-
-/**
- * The group whose signature heavy op (a repair or install/replace of one of
- * `economy.machineShopAssist.signatureSlotsByGroup[group]`) `carPartId` is,
- * or `null` when it names no signature slot - structural only, independent
- * of ownership or hire. The suspension/body/interior analogue of
- * `removeMachineGateGroup`'s engine/drivetrain buried-slot check.
- */
-export function signatureGroupFor(carPartId: CarPartId, context: SimContext): ComponentId | null {
-  const group = context.partsTaxonomyById[carPartId]?.group
-  if (!group) return null
-  const signatureSlots = context.economy.machineShopAssist.signatureSlotsByGroup[group]
-  return signatureSlots && signatureSlots.includes(carPartId) ? group : null
-}
-
-/**
- * The single group, if any, whose machinery gates a REMOVE or
- * INSTALL/REPLACE of `carPartId` - a buried engine/drivetrain slot or a
- * suspension/body/interior signature slot. `null` for everything else. A
- * carPartId is gated by at most one group.
- */
-export function machineLineGroupFor(carPartId: CarPartId, context: SimContext): ComponentId | null {
-  return removeMachineGateGroup(carPartId, context) ?? signatureGroupFor(carPartId, context)
+  if (!entry || !entry.machineGate.includes(operation)) return null
+  return entry.group
 }
 
 /**
@@ -519,12 +499,12 @@ export function hasMachineLineFor(
 }
 
 /**
- * The cash fee a machine-gated operation (remove or install) on `carPartId`
- * would cost without owning the tier-2 machine -
+ * The cash fee a REMOVAL-gated operation on `carPartId` would cost without
+ * owning the tier-2 machine -
  * `economy.machineShopAssist.feeYenByGroup[group]` for a buried
- * engine/drivetrain slot, or 0 when no machine gate applies or the machine
- * is already owned. No longer charged per operation - the group's daily
- * hire (`resolveHireMachineLine`) replaced that - kept as the
+ * engine/drivetrain slot, or 0 when nothing gates a removal there or the
+ * machine is already owned. No longer charged per operation - the group's
+ * daily hire (`resolveHireMachineLine`) replaced that - kept as the
  * ownership-only signal the amortisation probes and the hire panel's
  * pricing read.
  */
@@ -533,23 +513,23 @@ export function machineAssistFeeYen(
   state: GameState,
   context: SimContext,
 ): number {
-  const group = removeMachineGateGroup(carPartId, context)
+  const group = machineGateGroupFor(carPartId, 'remove', context)
   if (!group || ownsMachineForGroup(group, state, context)) return 0
   return context.economy.machineShopAssist.feeYenByGroup[group]
 }
 
 /**
- * The machine-shop fee a group's signature heavy op would cost without
- * owning that group's tier-2 machine, or 0 otherwise - the
- * suspension/body/interior analogue of `machineAssistFeeYen`. No longer
- * charged per operation; kept for the same reasons.
+ * The machine-shop fee a REPAIR-gated heavy op would cost without owning that
+ * group's tier-2 machine, or 0 otherwise - the suspension/body/interior
+ * analogue of `machineAssistFeeYen`. No longer charged per operation; kept for
+ * the same reasons.
  */
 export function signatureOpFeeYen(
   carPartId: CarPartId,
   state: GameState,
   context: SimContext,
 ): number {
-  const group = signatureGroupFor(carPartId, context)
+  const group = machineGateGroupFor(carPartId, 'repair', context)
   if (!group || ownsMachineForGroup(group, state, context)) return 0
   return context.economy.machineShopAssist.feeYenByGroup[group]
 }
@@ -698,9 +678,9 @@ export function resolveRemovePart(
   const laborSlotsUsed = removeLaborSlotsFor(carPartId, context)
   if (laborSlotsUsed > laborAvailable) return { state, log: [], laborSlotsUsed: 0 }
 
-  // Buried engine/drivetrain removal needs that group's machinery - owned
-  // outright, or hired for today (`resolveHireMachineLine`).
-  const machineGroup = removeMachineGateGroup(carPartId, context)
+  // A removal-gated slot (a buried engine/drivetrain one) needs that group's
+  // machinery - owned outright, or hired for today (`resolveHireMachineLine`).
+  const machineGroup = machineGateGroupFor(carPartId, 'remove', context)
   if (machineGroup && !hasMachineLineFor(machineGroup, state, context)) {
     return { state, log: [], laborSlotsUsed: 0 }
   }
@@ -796,7 +776,7 @@ export function removeBlockReason(
   if (!entry || !entry.removable) return { kind: 'not-removable' }
   const blockedBy = occupiedBlockers(car, carPartId, context)
   if (blockedBy.length > 0) return { kind: 'blocked-by', blockedBy }
-  const machineGroup = removeMachineGateGroup(carPartId, context)
+  const machineGroup = machineGateGroupFor(carPartId, 'remove', context)
   if (machineGroup && !hasMachineLineFor(machineGroup, state, context)) {
     return { kind: 'machine-line', group: machineGroup }
   }
@@ -875,7 +855,7 @@ export function repairJobGate(
       log: [{ type: 'job-blocked', jobId: jobIdFor(spec), reason: 'bench-only' }],
     }
   }
-  // `panels`/`paint` are derived from zone state on a car that's on the
+  // `bodywork`/`paint` are derived from zone state on a car that's on the
   // zone model - a per-part repair addressed at either of them refuses
   // outright (`bodyPipeline.ts`'s single-writer projection is the only
   // thing allowed to move their band); the zone's own pipeline stages are
@@ -931,12 +911,12 @@ export function repairJobGate(
     }
   }
 
-  // A repair that climbs a suspension/body/interior signature slot needs
-  // that group's machinery - owned outright, or hired for today
-  // (`resolveHireMachineLine`). Engine/drivetrain/wheels have no signature
-  // slots, so their repairs are never gated here.
+  // A repair that climbs a repair-gated slot (the suspension/body/interior
+  // signature slots) needs that group's machinery - owned outright, or hired
+  // for today (`resolveHireMachineLine`). No engine, drivetrain or wheels slot
+  // gates a repair, so those groups' repairs are never gated here.
   const needsMachineLine = plan.partIds.some(
-    (partId) => signatureGroupFor(partId, context) !== null,
+    (partId) => machineGateGroupFor(partId, 'repair', context) !== null,
   )
   if (needsMachineLine && !hasMachineLineFor(spec.componentId, state, context)) {
     return {
@@ -1043,7 +1023,7 @@ function gradeRequirement(part: Part, context: SimContext): ToolRequirement | nu
  *
  * A part declares no requirement of its own: each rule derives its (group,
  * level) pair from what the SKU already carries (`grade`, `carPartId`) and
- * from the car's own state. A widebody rule - sport and race zone panels
+ * from the car's own state. A body-panel rule - sport and race zone panels
  * asking the body line for 3 - is one more entry here between the two below,
  * derived from `part.zoneId` and `part.grade`, once its level is signed.
  *

@@ -57,7 +57,7 @@ function findUnfinishedOffer(game: ReturnType<typeof useGameStore>): ServiceJob 
  * The loop knows three verbs: buy-and-install for a graded task, the on-car
  * group `repair()` for a band-only task on a part that never comes off, and the
  * bench route (pull it, carry it to the workshop floor, recondition it, refit
- * it) for a band-only task on a removable one. `panels` and `paint` are out
+ * it) for a band-only task on a removable one. `bodywork` and `paint` are out
  * either way: their band is DERIVED from the car's zone state, so direct repair
  * refuses them and that work goes through the zone pipeline's own staged
  * stages, which is real and tested elsewhere but not what this

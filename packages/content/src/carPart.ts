@@ -35,6 +35,20 @@ export const DepthClassSchema = z.enum(['surface', 'bolt-on', 'buried'])
 export type DepthClass = z.infer<typeof DepthClassSchema>
 
 /**
+ * One operation a slot's tool line can gate: `install` is a part going ONTO a
+ * car, `remove` one coming off it, `repair` heavy work climbing an installed
+ * part's band in place, and `bench-fit` a member being mounted into an
+ * assembly on the workbench. Four distinct sites, because a line that is
+ * needed at one is not automatically needed at another: an engine crane lifts
+ * the block in and out of the car but has no part in bolting a piston to it on
+ * the bench, and a tyre machine is the whole of mounting rubber on a rim while
+ * the car it belongs to is untouched.
+ */
+export const MachineGateOperationSchema = z.enum(['install', 'remove', 'repair', 'bench-fit'])
+
+export type MachineGateOperation = z.infer<typeof MachineGateOperationSchema>
+
+/**
  * One entry in the 28-part taxonomy - the fixed structural mapping from a
  * real car part to its group, display name, and repair economics.
  *
@@ -80,6 +94,27 @@ export const CarPartTaxonomyEntryContentSchema = z.object({
    * slots block nothing. */
   blockedBy: z.array(CarPartIdSchema).default([]),
   statWeights: StatWeightsSchema,
+  /**
+   * Which operations on this slot need a tier-2 machine owned outright or
+   * hired for the day (`machineGateGroupFor` + `hasMachineLineFor`,
+   * sim/jobs.ts). The line is always the slot's own `group`, already on this
+   * row, so it is not restated here; this field says only WHICH operations it
+   * gates. Empty by default: most slots are spanners and a jack.
+   *
+   * Three shapes ship, and the difference between them is what the machine is
+   * actually for:
+   * - a buried engine or drivetrain slot gates `install` and `remove`. The
+   *   crane and the transmission bench are how the part gets into and out of
+   *   the car; once it is out, work on it needs neither.
+   * - a signature slot (`dampers`, `springs`, `bodywork`, `chassis`, `seats`,
+   *   `dashGauges`) gates `install` and `repair`. The two-post lift, the MIG
+   *   welder and the trim bench are what DO the heavy work; unbolting the old
+   *   one is just spanners, so removal stays free.
+   * - `tyres` gates `bench-fit` alone. Mounting rubber onto a rim is the tyre
+   *   machine's whole job; levering a dead tyre off is not, and the wheels
+   *   line has no say over the car itself.
+   */
+  machineGate: z.array(MachineGateOperationSchema).default([]),
   /** This part's pull on each physical dial of the performance model - see
    * `PhysicalWeightsSchema`. Omitted on the parts that move no dial, which
    * resolves to zero weight everywhere. */

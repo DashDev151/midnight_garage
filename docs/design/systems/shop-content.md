@@ -31,7 +31,7 @@ They differ only in how they derive the pair.
 
 **So the part declares nothing. A rule table derives `(group, level)` from what a part already
 carries.** Grade, `carPartId`, `zoneId` and the car's own state are enough for every rule anyone has
-proposed. The grade rule then costs zero rows, widebody costs zero rows, and there is one refusal
+proposed. The grade rule then costs zero rows, the body-panel rule costs zero rows, and there is one refusal
 type instead of five.
 
 ### The shape
@@ -48,7 +48,7 @@ It composes the rules in order and returns the first that binds:
 | --- | --- | --- |
 | grade ladder (signed 2026-08-04, unbuilt) | `part.grade` | that part's own line at the table's level |
 | NA to turbo (built, bespoke today) | `carPartId === 'forcedInduction'` and the car is factory-NA | engine at 3 |
-| widebody (proposed below) | `part.zoneId != null` and `part.grade` above a threshold | body at 3 |
+| body panels (proposed below) | `part.zoneId != null` and `part.grade` above a threshold | body at 3 |
 
 The existing bespoke checks collapse into it. Nothing new is expressible that was not expressible
 before; five mechanisms become one.
@@ -63,7 +63,7 @@ There are **three** install paths, and only one of them runs `installFitGate`:
 | `resolveSwapAssemblyMember` (`assemblies.ts:428`) | bench members, including tyres | fitment class, slot, scrap, the wheels tyre gate |
 | `resolvePipelineInstallPanelAction` (`stagedWork.ts:489`) | **all 144 zone panels** | zoneId and fitment class. **No capability gate of any kind** |
 
-**A gate wired only into `installFitGate` misses widebody entirely**, because a zone panel never
+**A gate wired only into `installFitGate` misses the body panels entirely**, because a zone panel never
 goes near it. All three need the one check.
 
 Two further constraints, both load-bearing:
@@ -98,7 +98,7 @@ stocked. **No content proposed.**
 
 ## Part 3: the body and trim shop
 
-### 3a. Widebody is not missing content, it is a broken feature
+### 3a. Sport and race body panels are not missing content, they are a broken feature
 
 **The over-fenders already ship.** 144 zone-scoped panel SKUs, four grades across nine zones and
 four fitment classes, with authored style points: street 5, sport 9, race 12. Real names, real
@@ -107,27 +107,27 @@ prices, real art direction.
 **Their style points can never reach a car.** The chain, every link measured:
 
 1. `partFitsCar` refuses any SKU carrying a `zoneId` outright (`parts.ts:74`).
-2. The only non-zone `panels` SKUs are four stock carriers with `style: 0`.
+2. The only non-zone `bodywork` SKUs are four stock carriers with `style: 0`.
 3. `stylePercentOf` sums `car.parts[partId].installed` only (`derivedStats.ts:276`).
 4. The panel install path writes to `car.zoneState[zoneId]` and never to
-   `car.parts.panels.installed` (`stagedWork.ts:518`), recording only `panelGrade`.
+   `car.parts.bodywork.installed` (`stagedWork.ts:518`), recording only `panelGrade`.
 5. `bodyPipeline.ts:145` states it outright: *"every non-stock panel SKU is zone-scoped and can never
-   reach `car.parts.panels.installed.partId`"*.
+   reach `car.parts.bodywork.installed.partId`"*.
 
-**So fitting a full carbon widebody today does exactly two things: it forfeits the `panels` slot's
+**So fitting a full carbon set today does exactly two things: it forfeits the `bodywork` slot's
 11 authenticity points, and it drops the paint band until resprayed.** All cost, no gain. The style
 the SKUs were authored with is unreachable.
 
 **And a test is passing on a build the game cannot produce.** `style.test.ts:38` picks the
 highest-style SKU per `carPartId` **without filtering `zoneId`** and force-installs it, so the
 "a fully dressed mint car scores exactly its own `styleCeiling`" assertion holds on a car no player
-can build. `docs/carstats/style.md:84` lists the panels ladder as live for the same reason.
+can build. `docs/carstats/style.md:84` lists the bodywork ladder as live for the same reason.
 
 **The proposal: make zone panel grade reach style.** `stylePercentOf` already walks the car; it
 gains a term summing the nine zones' `panelGrade` against the same authored ladder. No new SKU, no
 new slot, no new schema field, and the 144 SKUs stop being decoration.
 
-**Then gate it.** Sport and race zone panels require **body at level 3**. That is the widebody
+**Then gate it.** Sport and race zone panels require **body at level 3**. That is the body-panel
 unlock, it costs zero authoring rows, and it uses the gate from Part 1 at the exact path that has no
 gate today.
 
@@ -168,7 +168,7 @@ That is what a jig should fix, and it is a real rescue rather than a discount: t
 would be the only thing in the game that can repair a scrap chassis.
 
 **Open, and it decides whether this is real: can a chassis actually generate at `scrap`?** If it
-cannot, this dies with 3b and the body shop rests on widebody alone. Establish before proposing.
+cannot, this dies with 3b and the body shop rests on the body panels alone. Establish before proposing.
 
 ### 3d. The roll cage
 
@@ -274,7 +274,7 @@ Recorded as open rather than filled with something that sounds plausible.
 | item | shop | status | cost |
 | --- | --- | --- | --- |
 | the capability gate | all | **step one, nothing works without it** | sim + 3 wiring sites + a UI shape change |
-| widebody reaches style | body and trim | **strongest item, fixes a live defect** | one term in `stylePercentOf`, zero rows |
+| body panels reach style | body and trim | **strongest item, fixes a live defect** | one term in `stylePercentOf`, zero rows |
 | the grade rule | all | signed 2026-08-04, unbuilt | one content table, zero rows |
 | roll cage | body and trim | needs one `buyers.json` lever to be a real decision | one SKU family plus an `upper` |
 | chassis jig, as designed | body and trim | **cut** | n/a |

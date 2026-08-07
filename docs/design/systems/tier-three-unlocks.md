@@ -70,7 +70,7 @@ this is authoring rather than inventing.
 | **drivetrain** | Driveline rebuild bench and press | 1,800,000 | custom ratios, dog-box conversion |
 | **suspension** | Drive-on alignment lift | 400,000 | geometry: extended lock, custom alignment |
 | **wheels** | Laser alignment and balance rig | 350,000 | aggressive fitment: extreme offset, stretch |
-| **body** | Spray booth and **chassis jig** | 1,400,000 | **straightening a bent shell**, widebody fabrication, underglow |
+| **body** | Spray booth and **chassis jig** | 1,400,000 | **straightening a bent shell**, race body panel fabrication, underglow |
 | **interior** | Full trim shop | 700,000 | roll cage, full retrim |
 
 ## The thing that has to be built first
@@ -101,9 +101,9 @@ nobody else in town can do.
 It is a gate on a clamp that already exists (`clampRepairTarget`, `repairCeilingForLevel`), not a new
 system.
 
-### Body: widebody, and underglow
+### Body: sport and race body panels, and underglow
 
-**Widebody is a gate on fitting, not a new part.** Over-fenders already ship as sport and race panel
+**Fitting them is a gate, not a new part.** Over-fenders already ship as sport and race panel
 SKUs on all four corners from the zone-model work. Tier 3 gates fitting them.
 
 **Underglow returns here.** It was cut when `underbody` was deleted, precisely because it had no
@@ -152,7 +152,7 @@ named real thing, and the tool wall already shows the reputation a purchase need
 is met.
 
 So: a tier-3 part shows in the shop with **the tool it needs, named**. A bent shell shows as
-straightenable-by-somebody rather than as scrap. Seeing the widebody you cannot fit yet is what makes
+straightenable-by-somebody rather than as scrap. Seeing the race panels you cannot fit yet is what makes
 1,400,000 yen read as a goal rather than a receipt.
 
 ## Rulings, maintainer 2026-08-04

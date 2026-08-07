@@ -37,7 +37,7 @@ The design intent (ontology, laws, review notes) lives in `failure-map.md`; this
 | tired-bushes | antiRollBars | worn | clunk-over-bumps (42) |
 | blown-dampers | dampers | poor | clunk-over-bumps (33) |
 | steering-play | steering | poor | clunk-over-bumps (15) |
-| rotted-subframe-mount | underbody | scrap | clunk-over-bumps (10) |
+| rotted-subframe-mount | chassis | scrap | clunk-over-bumps (10) |
 | glazed-pads | brakePadsDiscs | worn | pulls-under-braking (55) |
 | seized-calliper | brakeCalipersLines | poor | pulls-under-braking (45) |
 | fan-switch | ignitionEcu | worn | overheats-in-traffic (38) |
@@ -55,12 +55,12 @@ The design intent (ontology, laws, review notes) lives in `failure-map.md`; this
 | perished-spring-seats | springs | fine | sagging-spring (15) |
 | broken-spring | springs | poor | sagging-spring (22) |
 | rotted-strut-turret | chassis | scrap | sagging-spring (13) |
-| panel-respray | panels | worn | quarter-panel-filler (45) |
+| panel-respray | bodywork | worn | quarter-panel-filler (45) |
 | tired-lacquer | paint | fine | quarter-panel-filler (15) |
-| rust-patch | panels | poor | quarter-panel-filler (25) |
+| rust-patch | bodywork | poor | quarter-panel-filler (25) |
 | structural-rail-repair | chassis | scrap | quarter-panel-filler (15) |
 | heater-matrix-weep | cooling | worn | damp-passenger-footwell (38) |
-| blocked-scuttle-drain | underbody | worn | damp-passenger-footwell (20) |
+| blocked-scuttle-drain | chassis | worn | damp-passenger-footwell (20) |
 | perished-grommet | chassis | poor | damp-passenger-footwell (14) |
 | split-sunroof-drain | dashGauges | poor | damp-passenger-footwell (10) |
 | rotten-bulkhead-seam | chassis | scrap | damp-passenger-footwell (18) |
@@ -289,7 +289,7 @@ flowchart TD
   S3["Steering play<br/>steering POOR · odds 15"]:::mid
   S4["Tired bushes<br/>antiRollBars WORN · odds 42"]:::mild
   S5["Blown dampers<br/>dampers POOR · odds 33"]:::mid
-  S6["Rotted subframe mount<br/>underbody SCRAP · odds 10"]:::grenade
+  S6["Rotted subframe mount<br/>chassis SCRAP · odds 10"]:::grenade
   S0 -->|"Rock and listen<br/>positive · 5m"| S1
   S0 -->|"Rock and listen<br/>negative · 5m"| S2
   S1 -->|"Steering linkage check<br/>positive · 10m"| S3
@@ -474,8 +474,8 @@ flowchart TD
   S1["Panel respray<br/>Tired lacquer"]:::state
   S2["Rust patch<br/>Structural rail repair"]:::state
   S3["Tired lacquer<br/>paint FINE · odds 15"]:::gem
-  S4["Panel respray<br/>panels WORN · odds 45"]:::mild
-  S5["Rust patch<br/>panels POOR · odds 25"]:::mid
+  S4["Panel respray<br/>bodywork WORN · odds 45"]:::mild
+  S5["Rust patch<br/>bodywork POOR · odds 25"]:::mid
   S6["Structural rail repair<br/>chassis SCRAP · odds 15"]:::grenade
   S0 -->|"Sight down the panel<br/>positive · 5m"| S1
   S0 -->|"Sight down the panel<br/>negative · 5m"| S2
@@ -509,7 +509,7 @@ flowchart TD
   S2["Blocked scuttle drain<br/>Rotten bulkhead seam"]:::state
   S3["Heater matrix weep<br/>cooling WORN · odds 38"]:::mild
   S4["Perished grommet<br/>Split sunroof drain"]:::state
-  S5["Blocked scuttle drain<br/>underbody WORN · odds 20"]:::mild
+  S5["Blocked scuttle drain<br/>chassis WORN · odds 20"]:::mild
   S6["Rotten bulkhead seam<br/>chassis SCRAP · odds 18"]:::grenade
   S7["Split sunroof drain<br/>dashGauges POOR · odds 10"]:::mid
   S8["Perished grommet<br/>chassis POOR · odds 14"]:::mid

@@ -20,7 +20,7 @@ at all:
 | part | group | removable | today |
 | --- | --- | --- | --- |
 | chassis | body | **no** | on-car |
-| panels | body | **no** | on-car, via the zone model |
+| bodywork | body | **no** | on-car, via the zone model |
 | paint | body | **no** | on-car, via the zone model |
 | aero | body | yes | on-car |
 | seats | interior | yes | on-car |
@@ -50,7 +50,7 @@ it, and moving three parts in.**
 
 ## RULINGS (maintainer, 2026-08-06)
 
-1. **Panels and paint stay as they are.** Body work remains the deliberate exception alongside the
+1. **Bodywork and paint stay as they are.** Body work remains the deliberate exception alongside the
    chassis. The nine zones do not become removable items and the body pipeline is untouched.
 2. **Each station holds ONE part at a time.** Not purchasable, not expandable. Multiple benches are
    a good idea and explicitly deferred, not rejected.
@@ -99,7 +99,7 @@ only that repair was not anywhere at all.
 - **Setup work.** Corner weighting is scales under an assembled car; show fitment is how the wheels
   sit in the arches. Neither can be judged with the part off. These belong on the car's own screen,
   not at a bench (`sprint187.md`).
-- **Panels and paint: OPEN, and the biggest question here.** Both are `removable: false` carriers
+- **Bodywork and paint: OPEN, and the biggest question here.** Both are `removable: false` carriers
   repaired per zone by the body pipeline. Making body work a bench discipline means making the nine
   zones removable items, which is a far larger change than the rest of this design and reaches into
   the body system, the zone state shape and the one-way body-kit problem already in `TODO.md`.

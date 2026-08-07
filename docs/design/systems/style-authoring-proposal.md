@@ -336,7 +336,7 @@ factory already fitted the arches.
 | Mazda RX-7 (FD3S) | enthusiast | 82 | 96 | 14 |
 | Mazda RX-7 Spirit R Type A (FD3S) | flagship | 83 | 96 | 13 |
 
-The FD is the roster's one car that is both beautiful stock and improved by a widebody, which is
+The FD is the roster's one car that is both beautiful stock and improved by race body panels, which is
 why it holds a high base and a 96 ceiling at the same time.
 
 ---

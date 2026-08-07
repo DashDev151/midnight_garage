@@ -21,8 +21,11 @@ import {
   type SceneStandingStage,
   type ToolLevels,
   type ToolTiers,
+  type ZoneState,
+  type ZoneStates,
 } from '@midnight-garage/content'
 import { expect } from 'vitest'
+import { METAL_ZONE_IDS, TRIM_ZONE_IDS } from '../src/bodyPipeline'
 import { isPayday, isRentDay } from '../src/calendar'
 import type { SimContext } from '../src/context'
 
@@ -190,6 +193,31 @@ export function groupCarParts(
     if (band) overrides[entry.id] = band
   }
   return mintCarParts(overrides)
+}
+
+/**
+ * All nine zones present and clean, each wearing a panel of `grade` - what a
+ * player who has fitted a full set of body panels through the panel pipeline
+ * is looking at. `stock` is the untouched car every non-zone fixture here
+ * implies. The six metal zones carry `metal`/`surface` on top of the shared
+ * fields; the three trim zones carry only the shared ones.
+ */
+export function zonePanelsAtGrade(grade: Grade): ZoneStates {
+  const states = {} as Record<string, ZoneState>
+  for (const zoneId of METAL_ZONE_IDS) {
+    states[zoneId] = {
+      metal: 0,
+      surface: 0,
+      finish: 0,
+      panelMissing: false,
+      primed: false,
+      panelGrade: grade,
+    }
+  }
+  for (const zoneId of TRIM_ZONE_IDS) {
+    states[zoneId] = { finish: 0, panelMissing: false, primed: false, panelGrade: grade }
+  }
+  return states as ZoneStates
 }
 
 /**

@@ -18,14 +18,15 @@ this sprint was authorised to move.
 states, on the 29 per-slot weights recorded in `authenticity-weights-proposal.md`, and all four
 retirements landed. The gap that ships with it: `paint` is zone-derived and the catalogue has no
 non-stock SKU for it at any fitment class, so `isStock` is always true there and **11 of the 100
-points cannot be lost to modification** - a resprayed car still reads as fully original. `panels`
+points cannot be lost to modification** - a resprayed car still reads as fully original. `bodywork`
 and `underbody`, which shared this gap, now carry street, sport and race ladders and read as
 modified correctly. Paint's weight still drives the condition factor, where it is correct and
 load-bearing. The fix (per-zone refinished state) is its own follow-up, recorded in `TODO.md`.
 
 **There is no third stat.** An earlier draft proposed rolling the two into a `desirability` dial.
 **RULED 2026-07-31: deleted as a concept.** Buyers score authenticity and style separately, which
-is the only way a concours 2000GT and a widebody 350Z can be different cars to different people.
+is the only way a concours 2000GT and a 350Z on race body panels can be different cars to different
+people.
 A rollup would have had nothing to do that the two stats do not already do better.
 
 ---
@@ -239,7 +240,7 @@ against the old scale and should be re-checked against the new one, though not n
    implementation one.
 4. **Signing the fifteen per-operation `authenticityCost` values.** Machining ships and
    `machiningCost(car)` sums them; the values live in `economy.json` under `machining.operations`.
-5. **Originality for `paint`**, which cannot currently read as modified at all. `panels` and
+5. **Originality for `paint`**, which cannot currently read as modified at all. `bodywork` and
    `underbody` now can. See the header and `TODO.md`.
 6. **Signing the 29 authenticity weights.** They ship as preliminary defaults, recorded in
    `sprint151.md` as the values implemented rather than approved under directive 22.

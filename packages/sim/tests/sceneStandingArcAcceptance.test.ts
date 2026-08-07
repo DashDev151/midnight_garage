@@ -64,7 +64,7 @@ const TOUGE_BUYER = BUYERS.find((b) => b.archetype === 'touge')!
 
 // Pure-style slots (parts-taxonomy.json: style weight > 0, handling weight 0)
 // and pure-handling slots (handling weight > 0, style weight 0).
-const STYLE_SLOTS: readonly CarPartId[] = ['rims', 'panels', 'paint', 'seats', 'dashGauges']
+const STYLE_SLOTS: readonly CarPartId[] = ['rims', 'bodywork', 'paint', 'seats', 'dashGauges']
 const HANDLING_SLOTS: readonly CarPartId[] = [
   'dampers',
   'springs',

@@ -410,7 +410,7 @@ export interface GroupRepairPlan {
  * A REMOVABLE part is bench-only and excluded from on-car candidates here: it
  * comes off, goes to the warehouse, and is repaired on the workshop floor's
  * bench (`resolveReconditionLabor`). Only the three fixed body carriers
- * (`chassis`, `panels`, `paint`) are repaired in place, because they never
+ * (`chassis`, `bodywork`, `paint`) are repaired in place, because they never
  * come off.
  *
  * The optional `crew` context applies the benched crew's live effects to a

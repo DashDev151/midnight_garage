@@ -2099,6 +2099,24 @@ import toolShops from '../data/toolShops.json'
  * all 580 SKUs. No other value in `economy.json` moves, and `partPricing.json` /
  * `damagePatterns.json` / `toolLines.json` / `toolShops.json` are untouched, so their hashes
  * and the payout pin hold unchanged.
+ *
+ * Re-pinned for the `panels` -> `bodywork` rename (`docs/sprints/sprint192.md`, ruling 1). NO
+ * VALUE MOVES: the summary body slot is renamed everywhere it is addressed, so `economy.json`'s
+ * `partsGeneration.missingSlotWeightByPart.panels` becomes `.bodywork` at the same 0 and
+ * `machineShopAssist.signatureSlotsByGroup.body` reads `["bodywork", "chassis"]` for
+ * `["panels", "chassis"]`; `partPricing.json`'s `baseCostYen.panels` becomes
+ * `baseCostYen.bodywork` at the same 140000. Both hashes move because a KEY moved, not a number.
+ * `damagePatterns.json`, `toolLines.json` and `toolShops.json` are untouched, so their hashes
+ * and the payout pin hold unchanged.
+ *
+ * Re-pinned again for the machine-gate collapse (`docs/sprints/sprint192.md`, ruling 4). NO
+ * VALUE MOVES and nothing is deleted: `machineShopAssist.signatureSlotsByGroup` leaves
+ * `economy.json` for `parts-taxonomy.json`, where the identical facts are carried by the
+ * `machineGate` field on the six rows that used to be named here (`dampers`, `springs`,
+ * `bodywork`, `chassis`, `seats`, `dashGauges`, each `["install", "repair"]`). Which operations
+ * a line gates is a fact about the SLOT, so it now lives on the slot. Every fee in
+ * `feeYenByGroup` is unchanged and so is `probeAmortisationOps`; the hash moves only because a
+ * key left the file.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -2108,7 +2126,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('aa1a643c13b322d1fe1c903b37784ca579eaca960d4ebd76721f9d56e8509f48')
+    ).toBe('2ba6e11c01c83f018e50b1e2f0892cf2cb932f87f8411ee2aeff387b8c1927aa')
   })
 
   it('damagePatterns.json matches its approved content exactly', () => {
@@ -2130,7 +2148,7 @@ describe('the economy approval gate', () => {
         'class factors, grade factors, the global factor and the overrides map are all ' +
         'approval-gated (CLAUDE.md directive 22). Re-pin this hash ONLY in the same ' +
         'change as the recorded approval of the specific lever and value.',
-    ).toBe('c1329be01da7abbf50863960fdf373bbd8067ee677153c9bd6c82ce166226be4')
+    ).toBe('27b1b29d6273e8ff07d3986559890bf851bbf5afbc5e3cf44bf3ea598472f675')
   })
 
   it('toolLines.json matches its approved content exactly', () => {

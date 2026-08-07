@@ -483,7 +483,7 @@
     "tier": 1,
     "tasks": [
       {
-        "requirement": { "kind": "slotCondition", "carPartId": "panels", "minBand": "fine" },
+        "requirement": { "kind": "slotCondition", "carPartId": "bodywork", "minBand": "fine" },
         "minToolTier": 1
       }
     ],
@@ -515,7 +515,7 @@
     "tier": 2,
     "tasks": [
       {
-        "requirement": { "kind": "slotCondition", "carPartId": "panels", "minBand": "fine" },
+        "requirement": { "kind": "slotCondition", "carPartId": "bodywork", "minBand": "fine" },
         "minToolTier": 2
       },
       {

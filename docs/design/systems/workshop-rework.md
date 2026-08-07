@@ -52,7 +52,7 @@ input is banned (GDD hard rule).
 ## Value integration (stated precisely)
 
 Zones are the WORK model's resolution; bands stay the VALUE model's resolution. The
-`panels`/`paint`/`underbody` parts survive as value carriers whose bands DERIVE from zone
+`bodywork`/`paint`/`underbody` parts survive as value carriers whose bands DERIVE from zone
 states (worst-governs, the foundation law's philosophy). The base-value half of the economy
 (bands, bills, Laws 1-4) is structurally untouched, with one implementation obligation: the
 body parts' repair-bill functions must price "what the pipeline costs to raise the derived

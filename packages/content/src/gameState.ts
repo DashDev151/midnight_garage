@@ -847,7 +847,7 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
       /** A removable part is bench-only - an on-car repair-zone job addressed
        * at one exact removable slot is refused (`repairJobGate`); it must come
        * off the car and go on the workshop floor's bench first. Only the three
-       * fixed body carriers (`chassis`, `panels`, `paint`) are repaired in
+       * fixed body carriers (`chassis`, `bodywork`, `paint`) are repaired in
        * place. */
       'bench-only',
       /** The symmetric blocker rule - a slot with anything still installed
@@ -859,7 +859,7 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
        * today (`hasMachineLineFor`, sim/jobs.ts) - book the machine-shop
        * hire, or buy the tools. */
       'machine-line',
-      /** `panels`/`paint` bands are derived from zone state (the body
+      /** `bodywork`/`paint` bands are derived from zone state (the body
        * pipeline, sim/bodyPipeline.ts) - a direct repair-zone job addressed
        * at one of them on a car already on the zone model refuses; work the
        * zone's pipeline stages instead. */

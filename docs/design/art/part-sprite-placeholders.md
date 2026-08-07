@@ -9,7 +9,7 @@ maintainer's bar is explicit: "make something nice". This spec is how.
 ## System rules (binding on every sprite)
 
 1. **Grid and scale.** Standard parts: 24x16 authored pixels. Large units (block,
-   gearbox, chassis, panels, underbody, the three assembly composites): 32x22. Rendered
+   gearbox, chassis, bodywork, underbody, the three assembly composites): 32x22. Rendered
    at 4x, nearest-neighbour, no anti-aliasing anywhere.
 2. **Palette.** Five indexed colours only, taken from the live UI tokens so sprites sit
    inside the panels they render on: outline `#101113` (night-deep), dark `#26272b`
@@ -56,7 +56,7 @@ brakeCalipersLines = calliper block with a braided line looping to a banjo fitti
 **Wheels:** rims = face-on five-spoke with a centre cap; tyres = face-on tread ring,
 empty centre (the rim shows through the hole when composited in the wheel assembly).
 
-**Body:** panels = door skin with handle recess and a swage line (large grid); paint =
+**Body:** bodywork = door skin with handle recess and a swage line (large grid); paint =
 the same door skin with a masked diagonal sheen band of `3` (surface, not a tool);
 underbody = floor pan with ribs and a transmission tunnel (large grid); aero = side
 profile wing on two stands.

@@ -635,7 +635,7 @@ function installGateReasonFor(carPartId: CarPartId): string | null {
  * The per-part on-car repair affordance's own gate reason - `null` when
  * owned, hired for today, or ungated. Per-part repair is bench-only for any
  * non-`surface` slot, so this only ever gates a surface signature slot
- * (panels, seats, dashGauges).
+ * (bodywork, seats, dashGauges).
  */
 function repairGateReasonFor(carPartId: CarPartId): string | null {
   const d = detail.value
@@ -1423,7 +1423,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               >
 
               <!-- Replace needs an empty slot, except on a shell carrier
-                   (chassis, panels, paint), whose slot is never empty and
+                   (chassis, bodywork, paint), whose slot is never empty and
                    whose part is swapped in place. A scrap one is past repair,
                    so this is the only way out of it. -->
               <template v-if="!selectedRow.installedPartName || selectedRow.replaceInPlace">
@@ -1623,7 +1623,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               >PANEL OFF</span
             >
             <HelpHint label="Body zones">
-              Panels and paint both read from the nine zones - work a zone's own pipeline to move
+              Bodywork and paint both read from the nine zones - work a zone's own pipeline to move
               it. Metal is beaten or welded free of charge (it costs labour, never yen) on the six
               metal zones; surface and finish need real materials, and the three trim zones (the
               bumpers and the skirts) never carry metal at all. Past a certain state the metal is

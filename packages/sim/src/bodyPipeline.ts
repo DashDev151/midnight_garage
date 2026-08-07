@@ -32,7 +32,7 @@ import { pickWeighted, type Rng } from './rng'
 /**
  * The body pipeline's own module (docs/design/systems/workshop-rework.md): zone
  * generation, the worst-governs derivation of the two body value-carrier
- * bands (`panels`/`paint`) from zone state, and the pure per-stage effect a
+ * bands (`bodywork`/`paint`) from zone state, and the pure per-stage effect a
  * confirmed pipeline action applies to one zone. Pure functions only - no
  * `GameState`, no jobs.ts dependency, so this module never risks a cycle with
  * the orchestration layer (`stagedWork.ts`) that calls it.
@@ -74,7 +74,7 @@ const SEVERITY_BAND_ORDER: readonly ConditionBand[] = ['mint', 'fine', 'worn', '
 export const MAX_REPAIRABLE_METAL = 3
 
 /** The metal severity meaning the panel is past saving - one rung above
- * weldable, and the reason `derivePanelsBand` can return `scrap` at all. */
+ * weldable, and the reason `deriveBodyworkBand` can return `scrap` at all. */
 export const BEYOND_REPAIR_METAL = 4
 
 /** The finish a bare, unpainted zone reads, and the finish axis's own
@@ -119,11 +119,11 @@ export function unpaintedPanelZoneIds(zoneStates: ZoneStates): PanelZoneId[] {
 }
 
 /** Zone body score = max(metal, surface) on the six metal zones alone - trim
- * carries no metal condition to contribute; `panels` band is the worst of
+ * carries no metal condition to contribute; `bodywork` band is the worst of
  * those, mapped 0 mint/1 fine/2 worn/3 poor/4 scrap - and ANY of the nine
  * zones missing its panel forces `scrap` outright, since an absent panel
  * (metal or trim) has no severity to read. */
-export function derivePanelsBand(zoneStates: ZoneStates): ConditionBand {
+export function deriveBodyworkBand(zoneStates: ZoneStates): ConditionBand {
   if (PANEL_ZONE_IDS.some((zoneId) => zoneStates[zoneId].panelMissing)) return 'scrap'
   const worst = Math.max(
     ...METAL_ZONE_IDS.map((zoneId) =>
@@ -134,7 +134,7 @@ export function derivePanelsBand(zoneStates: ZoneStates): ConditionBand {
 }
 
 /**
- * The originality counterpart to `derivePanelsBand` above: whether every one
+ * The originality counterpart to `deriveBodyworkBand` above: whether every one
  * of the nine zones still wears its original panel - present (not
  * `panelMissing`) and never fitted with anything but a stock-grade one
  * (`panelGrade` absent reads as stock, see `TRIM_ZONE_FIELDS`'s own comment).
@@ -143,7 +143,7 @@ export function derivePanelsBand(zoneStates: ZoneStates): ConditionBand {
  * as one gone panel is enough to force `scrap` above. This is what
  * `stocknessOf` (`derivedStats.ts`) reads instead of the carrier SKU's own
  * grade - every non-stock panel SKU is zone-scoped and can never reach
- * `car.parts.panels.installed.partId`, so that field never moves and cannot
+ * `car.parts.bodywork.installed.partId`, so that field never moves and cannot
  * answer this question any more.
  */
 export function panelsAreAllStock(zoneStates: ZoneStates): boolean {
@@ -193,18 +193,18 @@ export function derivePaintBand(zoneStates: ZoneStates, factoryColour?: string):
 }
 
 export interface DerivedBodyBands {
-  panels: ConditionBand
+  bodywork: ConditionBand
   paint: ConditionBand
 }
 
 export function deriveBodyBands(zoneStates: ZoneStates, factoryColour?: string): DerivedBodyBands {
   return {
-    panels: derivePanelsBand(zoneStates),
+    bodywork: deriveBodyworkBand(zoneStates),
     paint: derivePaintBand(zoneStates, factoryColour),
   }
 }
 
-const DERIVED_BODY_PART_IDS = ['panels', 'paint'] as const
+const DERIVED_BODY_PART_IDS = ['bodywork', 'paint'] as const
 export type DerivedBodyPartId = (typeof DERIVED_BODY_PART_IDS)[number]
 
 export function isBodyDerivedPart(carPartId: string): carPartId is DerivedBodyPartId {
@@ -212,7 +212,7 @@ export function isBodyDerivedPart(carPartId: string): carPartId is DerivedBodyPa
 }
 
 /**
- * The SINGLE WRITER: derives `panels`/`paint` from `car.zoneState` and writes
+ * The SINGLE WRITER: derives `bodywork`/`paint` from `car.zoneState` and writes
  * the result onto the installed carrier parts. Runs at generation and after
  * every zone mutation; nothing else may write those two bands. A no-op when
  * `car.zoneState` is absent (a car not yet on the zone model - the
@@ -529,7 +529,7 @@ export function generatedPaintGrade(zoneStates: ZoneStates, factoryColour: strin
 
 /**
  * Whether `carPartId` still has real MONEY headroom to degrade further:
- * `panels` reads the six metal zones' `surface` (capped at 2, trim carries
+ * `bodywork` reads the six metal zones' `surface` (capped at 2, trim carries
  * none); `paint` reads all nine zones' `finish` (capped at 3). The
  * eligibility check `degradeCandidates` (auctions.ts) uses in place of the
  * generic band-index check for a zone-backed part: the derived BAND can
@@ -541,7 +541,8 @@ export function hasZoneDegradeHeadroom(
   zoneStates: ZoneStates,
   carPartId: DerivedBodyPartId,
 ): boolean {
-  if (carPartId === 'panels') return METAL_ZONE_IDS.some((zoneId) => zoneStates[zoneId].surface < 2)
+  if (carPartId === 'bodywork')
+    return METAL_ZONE_IDS.some((zoneId) => zoneStates[zoneId].surface < 2)
   return PANEL_ZONE_IDS.some((zoneId) => zoneStates[zoneId].finish < 3)
 }
 
@@ -562,7 +563,7 @@ export function hasZoneImproveHeadroom(
   zoneStates: ZoneStates,
   carPartId: DerivedBodyPartId,
 ): boolean {
-  if (carPartId === 'panels') {
+  if (carPartId === 'bodywork') {
     if (PANEL_ZONE_IDS.some((zoneId) => zoneNeedsPanel(zoneStates[zoneId]))) return true
     return METAL_ZONE_IDS.some((zoneId) => zoneStates[zoneId].surface > 0)
   }
@@ -575,12 +576,12 @@ export function hasZoneImproveHeadroom(
  * other writer of these two parts' apparent severity besides generation and
  * the pipeline itself. Unlike the money-only degrade/improve helpers above, a
  * symptom is a real, hidden DEFECT (not a money-optimisation move), so it
- * legitimately moves METAL too when `carPartId` is `panels` - a "rust patch"
+ * legitimately moves METAL too when `carPartId` is `bodywork` - a "rust patch"
  * cause is about the panel's physical state, not what the cheapest fix costs.
  *
  * `zoneId` is the CALLER'S choice, drawn from the car's damage pattern
  * (docs/design/systems/generation-damage.md, layer 3) - a metal zone for
- * `panels` (the only shape `metal` exists on), any of the nine for `paint`.
+ * `bodywork` (the only shape `metal` exists on), any of the nine for `paint`.
  * It used to be a fixed `PANEL_ZONE_IDS[0]` to avoid an RNG draw, which put
  * every rust patch and every respray in the game on the bonnet;
  * worst-governs means one zone carrying the damage is enough to drive the
@@ -589,8 +590,8 @@ export function hasZoneImproveHeadroom(
  *
  * A no-op if the carrier is already at or worse than `targetBand` on that
  * zone (mirrors the "worse of current or cause" rule every other symptom
- * cause already follows), and a no-op on `panels` if `zoneId` somehow names a
- * trim zone (never produced by a correct caller, since `panels` damage is
+ * cause already follows), and a no-op on `bodywork` if `zoneId` somehow names a
+ * trim zone (never produced by a correct caller, since `bodywork` damage is
  * always dealt a metal zone).
  *
  * A symptom never takes a panel past saving, however bad its cause reads: the
@@ -607,7 +608,7 @@ export function setZoneCarrierToAtLeastBand(
 ): ZoneStates {
   const targetSeverity = Math.min(MAX_REPAIRABLE_METAL, severityThresholdForBand(targetBand))
   const zone = zoneStates[zoneId]
-  if (carPartId === 'panels') {
+  if (carPartId === 'bodywork') {
     if (!isMetalZoneState(zone)) return zoneStates
     if (Math.max(zone.metal, zone.surface) >= targetSeverity) return zoneStates
     return { ...zoneStates, [zoneId]: { ...zone, metal: Math.max(zone.metal, targetSeverity) } }
@@ -619,7 +620,7 @@ export function setZoneCarrierToAtLeastBand(
 /**
  * Worsens one zone that still has headroom before hitting `carPartId`'s
  * money-relevant field cap - the generation damage budget's zone-aware
- * degrade move (`spendDamageBudget`, auctions.ts). `panels` degrades a metal
+ * degrade move (`spendDamageBudget`, auctions.ts). `bodywork` degrades a metal
  * zone's `surface`; `paint` degrades any of the nine zones' `finish`.
  *
  * WHICH zone is the caller's to choose, through `chooseZone`, because that is
@@ -629,7 +630,7 @@ export function setZoneCarrierToAtLeastBand(
  * the zone with the least headroom left, which deepens one zone before starting
  * another and is the right default for a caller with no story to tell.
  *
- * A no-op once every relevant zone is already capped: `panels` never reaches
+ * A no-op once every relevant zone is already capped: `bodywork` never reaches
  * `scrap` this way - that needs a panel gone or ruined past saving, two
  * separate and more drastic states this helper never touches, matching
  * `degradeBand`'s own never-forced-to-scrap contract.
@@ -639,7 +640,7 @@ export function degradeZoneCarrierOneStep(
   carPartId: DerivedBodyPartId,
   chooseZone?: (candidates: readonly PanelZoneId[]) => PanelZoneId,
 ): ZoneStates {
-  if (carPartId === 'panels') {
+  if (carPartId === 'bodywork') {
     const withHeadroom = METAL_ZONE_IDS.filter((zoneId) => zoneStates[zoneId].surface < 2)
     if (withHeadroom.length === 0) return zoneStates
     const targetId = chooseZone
@@ -664,9 +665,9 @@ export function degradeZoneCarrierOneStep(
 /**
  * Improves whichever zone currently carries the MOST of `carPartId`'s
  * money-relevant field - the Law 2 generation-softening pass's zone-aware
- * move (`enforceMaxBillFraction`, auctions.ts). For `panels`, a zone needing a
+ * move (`enforceMaxBillFraction`, auctions.ts). For `bodywork`, a zone needing a
  * panel (any of the nine) is put back on the repairable ladder FIRST (the two
- * scrap-forcing states, and the only path a `panels` bill can carry a real
+ * scrap-forcing states, and the only path a `bodywork` bill can carry a real
  * panel-purchase cost), before any metal zone's surface improves, mirroring
  * the general pass improving the single worst part one step at a time.
  * Absent and ruined-past-saving clear together in that one step because they
@@ -676,7 +677,7 @@ export function improveZoneCarrierOneStep(
   zoneStates: ZoneStates,
   carPartId: DerivedBodyPartId,
 ): ZoneStates {
-  if (carPartId === 'panels') {
+  if (carPartId === 'bodywork') {
     const needsPanelId = PANEL_ZONE_IDS.find((zoneId) => zoneNeedsPanel(zoneStates[zoneId]))
     if (needsPanelId) {
       const zone = zoneStates[needsPanelId]
@@ -752,7 +753,35 @@ export function zonePanelPart(
 }
 
 /**
- * The style points the panels SLOT delivers on a car on the zone model: the
+ * Every AFTERMARKET panel a car's nine zones are actually wearing, as the
+ * catalogue SKU each zone's `panelGrade` names at `fitmentClass`. The one walk
+ * the three zone-panel terms below share, so what the body looks like, what it
+ * is worth and what it weighs can never disagree about what is fitted.
+ *
+ * Two zones contribute nothing and are skipped here rather than in each
+ * caller: one whose panel is GONE (there is no panel there to read), and one
+ * still wearing STOCK (`panelGrade` absent reads as stock, see
+ * `TRIM_ZONE_FIELDS`) - stock is the baseline every zone starts from, never an
+ * upgrade. So an untouched car costs no catalogue lookups at all.
+ */
+export function fittedZonePanels(
+  zoneStates: ZoneStates,
+  partsById: Readonly<Record<string, Part>>,
+  fitmentClass: PartFitmentClass,
+): Part[] {
+  const fitted: Part[] = []
+  for (const zoneId of PANEL_ZONE_IDS) {
+    const zone = zoneStates[zoneId]
+    const grade = zone.panelGrade ?? 'stock'
+    if (zone.panelMissing || grade === 'stock') continue
+    const part = zonePanelPart(partsById, zoneId, fitmentClass, grade)
+    if (part) fitted.push(part)
+  }
+  return fitted
+}
+
+/**
+ * The style points the bodywork SLOT delivers on a car on the zone model: the
  * MEAN of its nine zones' own fitted SKUs, read off the catalogue's authored
  * ladder rather than any second table. A car wearing one grade all round
  * therefore delivers exactly the points that grade's panel is authored with,
@@ -761,13 +790,9 @@ export function zonePanelPart(
  * a partial kit is a partial statement.
  *
  * That is what keeps the body one slot among many. Nine zones each paying in
- * full would put a race widebody at nine times the loudest single part in the
- * catalogue, past `styleSaturationPoints` on its own, and every other style
+ * full would put a full set of race body panels at nine times the loudest
+ * single part in the catalogue, past `styleSaturationPoints` on its own, and every other style
  * part on that car would be worth exactly nothing.
- *
- * A zone whose panel is gone contributes nothing: there is no panel there to
- * look at. `panelGrade` absent reads as stock (see `TRIM_ZONE_FIELDS`), which
- * carries no style, so an untouched car pays for no catalogue lookups at all.
  */
 export function zonePanelStylePoints(
   zoneStates: ZoneStates,
@@ -775,11 +800,66 @@ export function zonePanelStylePoints(
   fitmentClass: PartFitmentClass,
 ): number {
   let total = 0
-  for (const zoneId of PANEL_ZONE_IDS) {
-    const zone = zoneStates[zoneId]
-    const grade = zone.panelGrade ?? 'stock'
-    if (zone.panelMissing || grade === 'stock') continue
-    total += zonePanelPart(partsById, zoneId, fitmentClass, grade)?.statModifiers.style ?? 0
+  for (const part of fittedZonePanels(zoneStates, partsById, fitmentClass)) {
+    total += part.statModifiers.style
+  }
+  return total / PANEL_ZONE_IDS.length
+}
+
+/**
+ * The catalogue yen a car's fitted body panels represent: the SUM of the nine
+ * zones' own aftermarket SKU prices, which is what
+ * `installedPartsValueYen` (marketValue.ts) credits them at, discounted there
+ * by coherence retention and the tier's `aftermarketReturn` exactly as every
+ * other fitted part is.
+ *
+ * A SUM here where style takes a mean, and the two are not in tension: style
+ * is one statement a whole car makes, and the body is one slot making it, so
+ * nine zones share one slot's worth. Money is not shared. Nine carbon panels
+ * are nine purchases at nine prices, and a player who has done the whole shell
+ * has spent nine times what one who did the bonnet has. A mean would price
+ * eight of those purchases at zero.
+ *
+ * Nothing here is charged twice. A panel's `pricePaidYen` posts to the car's
+ * `partsYen` LEDGER when it is fitted, which is what the car has cost its
+ * owner, never what it is worth to a buyer. And the restoration bill only ever
+ * quotes a STOCK panel, and only for a zone that needs one at all
+ * (`bodyworkRepairBillYen`), so a fitted carbon bonnet's catalogue price
+ * appears in no other term.
+ */
+export function zonePanelValueYen(
+  zoneStates: ZoneStates,
+  partsById: Readonly<Record<string, Part>>,
+  fitmentClass: PartFitmentClass,
+): number {
+  let total = 0
+  for (const part of fittedZonePanels(zoneStates, partsById, fitmentClass)) {
+    total += part.priceYen
+  }
+  return total
+}
+
+/**
+ * The mass multiplier a car's fitted body panels deliver - the MEAN across all
+ * nine zones of each zone's own SKU `physicalModifiers.mass`, with a stock or
+ * absent panel reading 1.0 (it saves nothing).
+ *
+ * The mean is right here for the physical reason style's is: the nine zones
+ * are ONE shell between them, and the figure authored on a panel SKU is what a
+ * whole set of that grade saves, not what one panel does. So a full carbon set
+ * reads the authored 0.975 and the four corners alone read about 0.989 -
+ * roughly 30 kg off a 1,200 kg car for the full set, which is what carbon
+ * panels really weigh against steel.
+ */
+export function zonePanelMassFactor(
+  zoneStates: ZoneStates,
+  partsById: Readonly<Record<string, Part>>,
+  fitmentClass: PartFitmentClass,
+): number {
+  const fitted = fittedZonePanels(zoneStates, partsById, fitmentClass)
+  let total = PANEL_ZONE_IDS.length - fitted.length
+  for (const part of fitted) {
+    total += part.physicalModifiers.mass
   }
   return total / PANEL_ZONE_IDS.length
 }
@@ -1001,7 +1081,7 @@ export function planInstallPanel(
  * onto the shelf as a `PartInstance` by the caller (`stagedWork.ts`), the
  * same shape `resolveRemovePart` uses for every other slot. A missing zone's
  * other fields go unread everywhere that matters (`zoneNeedsPanel` and
- * `derivePanelsBand` both key off `panelMissing` alone), so there is nothing
+ * `deriveBodyworkBand` both key off `panelMissing` alone), so there is nothing
  * to clear. */
 export function planRemovePanel(zone: ZoneState): ZoneState {
   return { ...zone, panelMissing: true }
@@ -1009,11 +1089,11 @@ export function planRemovePanel(zone: ZoneState): ZoneState {
 
 /**
  * The zones each body value carrier's own physical parts occupy: all nine for
- * `panels`, none for `paint` - it is a finish the pipeline lays on rather
+ * `bodywork`, none for `paint` - it is a finish the pipeline lays on rather
  * than a part that arrives, so changing what is fitted there moves no zone.
  */
 const CARRIER_ZONE_IDS: Readonly<Record<DerivedBodyPartId, readonly PanelZoneId[]>> = {
-  panels: PANEL_ZONE_IDS,
+  bodywork: PANEL_ZONE_IDS,
   paint: [],
 }
 
@@ -1026,8 +1106,8 @@ const CARRIER_ZONE_IDS: Readonly<Record<DerivedBodyPartId, readonly PanelZoneId[
  *
  * Identity and condition stay orthogonal either side of this: the fitted SKU
  * says what the car IS, and the band `applyDerivedBodyBands` writes afterwards
- * still comes from the zones alone, so a dented widebody is a widebody that is
- * dented.
+ * still comes from the zones alone, so a dented set of sport body panels is
+ * still a set of sport body panels.
  */
 export function refitCarrierZoneStates(
   zoneStates: ZoneStates,
@@ -1083,7 +1163,7 @@ const BILL_CAPABILITY: BodyLineCapability = { unlocked: true, fullCapability: tr
 /**
  * One zone's route through the pipeline: the state the stages leave behind,
  * and their materials money split by the carrier that owns each stage. Filler
- * is `panels`'s (metal zones only); primer, the paint tin and polish belong
+ * is `bodywork`'s (metal zones only); primer, the paint tin and polish belong
  * to `paint`, on every zone alike.
  */
 interface ZoneRepairRoute {
@@ -1228,7 +1308,7 @@ function planZoneRepair(zone: ZoneState, targetSeverity: number): ZoneRepairRout
 }
 
 /**
- * `panels`' money-only repair bill: the filler each metal zone's own route
+ * `bodywork`'s money-only repair bill: the filler each metal zone's own route
  * calls for, plus a fresh zone panel for any of the nine zones that needs one
  * (`zoneNeedsPanel`). Repairable metal is always free to climb (beat and weld
  * are labour, never yen), so it costs money only where it has gone past
@@ -1237,7 +1317,7 @@ function planZoneRepair(zone: ZoneState, targetSeverity: number): ZoneRepairRout
  * welding cost the same to put right, and the fresh panel arrives with its own
  * sound surface, so neither also pays for filler.
  */
-export function panelsRepairBillYen(
+export function bodyworkRepairBillYen(
   zoneStates: ZoneStates,
   targetBand: ConditionBand,
   fitmentClass: PartFitmentClass,
@@ -1290,7 +1370,7 @@ export function zoneStatesRepairedToBand(zoneStates: ZoneStates, band: Condition
 }
 
 /** The one dispatcher `bands.ts`'s whole-car bill functions route
- * `panels`/`paint` through when `car.zoneState` is present. */
+ * `bodywork`/`paint` through when `car.zoneState` is present. */
 export function bodyPartRepairBillYen(
   carPartId: DerivedBodyPartId,
   zoneStates: ZoneStates,
@@ -1298,7 +1378,7 @@ export function bodyPartRepairBillYen(
   fitmentClass: PartFitmentClass,
   partsById: Readonly<Record<string, Part>>,
 ): number {
-  if (carPartId === 'panels')
-    return panelsRepairBillYen(zoneStates, targetBand, fitmentClass, partsById)
+  if (carPartId === 'bodywork')
+    return bodyworkRepairBillYen(zoneStates, targetBand, fitmentClass, partsById)
   return paintRepairBillYen(zoneStates, targetBand)
 }

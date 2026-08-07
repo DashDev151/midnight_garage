@@ -24,7 +24,7 @@ const VIEW_IDS: readonly WorkshopViewId[] = ['body', 'engineBay', 'underside']
 /**
  * `paint` derives its band from zone state, has no on-car action of its own
  * and no SKU to fit, so it is a value carrier rather than a work target and
- * gets no region at all. `panels` derives its band the same way but takes a
+ * gets no region at all. `bodywork` derives its band the same way but takes a
  * fitted body kit, so it does have one.
  */
 const REGIONLESS_CARRIERS: readonly CarPartId[] = ['paint']

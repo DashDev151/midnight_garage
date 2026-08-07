@@ -220,6 +220,29 @@ pass."
 
 ## Open engineering
 
+- [ ] **THE RACE PARTS SHOP: scarcity as the gate, not tools (maintainer, 2026-08-07).** Their idea,
+  recorded in their words: *"We remove all race parts from the normal parts shop, and create a new
+  race specific shop. But a flaky one. Not every part is available for purchase every day, and not
+  in unlimited quantities. We have a new race block that just came in, we only have two, so you
+  better decide if you want one now, might be months before we get another shipment. This also fits
+  in world: you don't go to your local back alley automotive parts store to buy bargain bin spark
+  plugs AND full GT3 grade carbon parts. Different people sell these. So stock, street, sport parts
+  available from day 1, race parts when you unlock the race shop."*
+
+  **Why this matters beyond flavour: scarcity is a better gate on race parts than a tool tier is.**
+  The signed grade rule (race needs its line at rung 2) is the current answer and stays; this would
+  sit on top of it and carry most of the weight. A part you cannot get is a decision. A part you can
+  buy but not fit is only a message.
+
+  Mechanisms that already exist and would carry it: the classifieds listing window
+  (`machineListing`, a gap of 4 to 8 days and a 3-day window) is exactly the "one thing at a time,
+  sometimes" shape, and it now handles both tool rungs and shops through a `kind` discriminated
+  union. Unlocking the vendor is a story mission, which is the shape the channel unlocks already
+  use.
+
+  Open when it is picked up: whether stock is per-SKU or per-shipment, whether a missed part returns
+  at the same price, and whether the race shop is a room, a phone call or a place on the map.
+
 - [ ] **The pre-push gate flaked once and could not be diagnosed.** On the tool-ladder push it
   reported `Test Files 1 failed (205), Tests 2 failed (4207)` and the hook's output was truncated
   before the failure block, so the file was never named. Two subsequent full `pnpm test:coverage`
@@ -338,9 +361,9 @@ pass."
   **The maintainer's answer, 2026-08-04: tier 3's claim moves off reach entirely.** Tier 3 is the
   tier that unlocks **the cool non-standard work** rather than a better finish. Two of those already
   exist and are already tier-3 gated: **NA-to-turbo conversion** and **machining**. The rest is a
-  content question and a good one: **engine swaps, drift suspension, lift kits, NOS, widebody, and
-  underglow** (which was cut in the zone-model sprint precisely because it had no home, and this is
-  the home).
+  content question and a good one: **engine swaps, drift suspension, lift kits, NOS, race body
+  panels, and underglow** (which was cut in the zone-model sprint precisely because it had no home,
+  and this is the home).
 
   **So the ladder is two-dimensional, not one.** Reach goes `tier 1 < tier 2 = tier 3`; capability
   goes `tier 1 = tier 2 < tier 3`. That is coherent and it is why the rung is not actually dead: it
@@ -361,16 +384,16 @@ pass."
 - [ ] **REGRESSION INTRODUCED BY THE ZONE MODEL: a modified body no longer costs authenticity
   (found by the implementing agent 2026-08-03, flagged rather than fixed).** Every aftermarket
   panel SKU now carries a `zoneId` and is fitted through `pipeline-install-panel`, which updates
-  the ZONE's condition. `stocknessOf` reads `car.parts.panels.installed.grade`, which never leaves
+  the ZONE's condition. `stocknessOf` reads `car.parts.bodywork.installed.grade`, which never leaves
   `stock` because the four remaining carrier SKUs are all stock. **So a car with a full carbon body
-  reads as perfectly original on the `panels` slot, worth 11 of authenticity's 100 points.**
+  reads as perfectly original on the `bodywork` slot, worth 11 of authenticity's 100 points.**
 
-  Before the zone model, `frp-sport-panel-kit` and its siblings were `panels` SKUs fitted to the
+  Before the zone model, `frp-sport-panel-kit` and its siblings were `bodywork` SKUs fitted to the
   carrier, so a body kit cost those points. This is a behaviour change, not a pre-existing gap, and
   it works directly against the project's own stated principle that a body kit is a body part and a
   modified body loses its authenticity.
 
-  **The root cause is that the `panels` carrier has become vestigial.** It holds exactly four SKUs,
+  **The root cause is that the `bodywork` carrier has become vestigial.** It holds exactly four SKUs,
   all stock, none with a `zoneId`. Every one of the 144 zone-scoped panel SKUs is correctly refused
   for the whole-car slot by `partFitsCar`. So the carrier can neither be upgraded nor lose its
   originality, and it has two visible symptoms:
@@ -387,11 +410,11 @@ pass."
   governs, any-non-stock, or a `stocknessOf` special case reading zones directly), which is why it
   was not invented unreviewed. `paint` is unaffected: its whole-car ladder is untouched.
 
-- [ ] **GENERATION FITS ZONE-SCOPED PANELS INTO THE WHOLE-CAR `panels` CARRIER: about 5 per cent of
+- [ ] **GENERATION FITS ZONE-SCOPED PANELS INTO THE WHOLE-CAR `bodywork` CARRIER: about 5 per cent of
   lots are born wearing a part that cannot exist there (measured Sprint 191, flagged rather than
   fixed).** `indexAftermarketPartsByCarPartId` (`sim/context.ts`) indexes every non-stock SKU by
   `carPartId` WITHOUT excluding `zoneId` SKUs, which its sibling `indexStockPartsByCarPartId` does
-  exclude, so `aftermarketPartByCarPartId[class].panels` resolves to whichever zone panel happens
+  exclude, so `aftermarketPartByCarPartId[class].bodywork` resolves to whichever zone panel happens
   to come last in the file (a skirt kit, in shipped content). The generation aftermarket roll then
   fits it into the carrier slot. Measured on 600 generated lots: **32 of them**, e.g.
   `nissan-silvia-ks-s14` wearing `uncommon-frp-skirt-kit` as its whole body. `partFitsCar` refuses
@@ -402,7 +425,7 @@ pass."
   carrier falls back to the stock SKU, whose catalogue price is many times a skirt kit's, so the
   restoration bill and market value move on those cars, and the golden hashes with them. It wants
   its own change with the re-derivation done honestly. Sprint 191 closed the visible half only:
-  `stylePercentOf` now reads the panels slot off the zones on a zone-model car, so those cars no
+  `stylePercentOf` now reads the bodywork slot off the zones on a zone-model car, so those cars no
   longer collect style points from a body they are not wearing.
 
 - [ ] **`docs/carstats/` needs a re-measure: Sprint 166 moved three of the things it measured.**
@@ -503,9 +526,9 @@ pass."
 
 - [ ] **The probes now measure the live model, and it says five gates are false (Sprint 160).**
   The two-cost-models defect is closed: `buildUniformBandCar` carries a `zoneState`, so
-  `panels`/`paint`/`underbody` price through `bodyPartRepairBillYen` on every probe car exactly as
+  `bodywork`/`paint`/`underbody` price through `bodyPartRepairBillYen` on every probe car exactly as
   they do on every generated one. The probes stopped reacting to the bodyshell price entirely (0 of
-  26 probe bills move when `baseCostYen.panels` goes 28,000 to 140,000, matching 0 of 208 real
+  26 probe bills move when `baseCostYen.bodywork` goes 28,000 to 140,000, matching 0 of 208 real
   generated cars; before the re-base it was 26 of 26), which was the point.
 
   **What the live model then says, and what needs a decision:**
@@ -520,7 +543,7 @@ pass."
     the cheapest entry car strips as found for a 5,667 profit against a floor of zero.
 
   Two mechanisms, both real rather than probe artefacts. **A body restoration is materials-only
-  money** (`panelsRepairBillYen`: beating and welding are labour and never yen), so taking a shell
+  money** (`bodyworkRepairBillYen`: beating and welding are labour and never yen), so taking a shell
   from poor to mint costs a few thousand yen on any car, which is what makes over-restoring pay.
   And **the Law 2 softening pass has finer granularity on the zone model** (a zone improves one
   step at a time rather than a whole part), so the probe car lands nearer the ceiling instead of
@@ -539,9 +562,9 @@ pass."
   panel price does not close it (measured, Sprint 162).** 15 of 400 real lots, best case ¥7,543,
   against a median ¥50,958 more for repairing the same lot; strip never beats repair on any lot, so
   this is a wrong SIGN rather than a wrong ranking. `baseCostYen.zonePanel` 6,000 -> 30,000 and
-  `baseCostYen.panels` 28,000 -> 140,000 were measured against it and move it by nothing: the count,
+  `baseCostYen.bodywork` 28,000 -> 140,000 were measured against it and move it by nothing: the count,
   the best case and the median gap are all identical before and after, because a strip's takings
-  never include the body carriers (`panels` is `removable: false`, and a zone panel is not a slot)
+  never include the body carriers (`bodywork` is `removable: false`, and a zone panel is not a slot)
   and the buy price moves only on the handful of lots carrying a forced panel. Only 10 of the 400
   lots see any movement at all. The candidate lever named by Sprint 161 that has NOT been measured
   is `teardown.usedPartSaleFraction` (0.3). It is approval-gated under directive 22 and nothing was
@@ -1055,7 +1078,7 @@ pass."
   and a resprayed car still scores as wearing its factory colour.** The authenticity derivation
   (`stocknessOf`, `packages/sim/src/derivedStats.ts`) asks each slot whether its fitted part is
   `grade: 'stock'`, and `parts.json` ships no non-stock `paint` SKU: its twelve finish SKUs were
-  retired when the derived carriers landed. `panels` (11 points) and `underbody` (1) were the same
+  retired when the derived carriers landed. `bodywork` (11 points) and `underbody` (1) were the same
   shape and are fixed - Sprint 163 gave both a real aftermarket ladder - so what is left is the
   colour half alone. The weight is NOT dead either way: the same column drives authenticity's
   condition factor, where rough paint bites hardest of anything on the list. Two routes, neither
@@ -1069,8 +1092,8 @@ pass."
   value carrier is `removable: false`, so fitting a kit REPLACES what is there and the part coming
   off is discarded rather than harvested - the shell never lands in the parts bin, which is what
   that flag has always meant. Every other slot keeps its stock part through a remove-then-fit, so
-  a widebody is currently the only modification in the game a player cannot undo. Two candidate
-  fixes, neither taken: list the stock `panels`/`underbody` SKU in the parts market (it is
+  a set of body panels is currently the only modification in the game a player cannot undo. Two
+  candidate fixes, neither taken: list the stock `bodywork`/`underbody` SKU in the parts market (it is
   delisted by `isDelisted`, `PartsMarketScreen.vue`, and now carries a coherent shell price), or
   harvest the replaced carrier into inventory. The second resells at `usedPartSaleValueYen`, so
   it is an economy question rather than a UI one.

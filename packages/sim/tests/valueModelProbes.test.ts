@@ -141,7 +141,7 @@ function independentLots(count: number, startSeed: number): AuctionLot[] {
 }
 
 /**
- * The body half of a restoration. `panels` and `paint` are DERIVED bands:
+ * The body half of a restoration. `bodywork` and `paint` are DERIVED bands:
  * `carCostToBandYen` routes them through `bodyPartRepairBillYen`, which reads
  * `car.zoneState` and charges for every zone whose severity still exceeds the
  * target's threshold. Lifting the carrier part's band alone therefore leaves
@@ -239,7 +239,7 @@ describe('the restore helper this file measures against is itself a real restora
     // The regression this pins: `restoredToBand` used to lift every part's
     // `installed.band` and leave `car.zoneState` untouched, so the body
     // pipeline still charged its whole bill on a car every other probe here
-    // treated as finished. `carCostToBandYen` routes `panels`/`paint` through
+    // treated as finished. `carCostToBandYen` routes `bodywork`/`paint` through
     // `zoneState` whenever it is present, so this is the one check that
     // catches the two halves disagreeing.
     for (const model of CARS) {

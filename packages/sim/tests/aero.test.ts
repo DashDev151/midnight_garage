@@ -49,9 +49,9 @@ const SUPRA_CLASS = fitmentClassForTier(SUPRA.tier)
 const aeroPart = (grade: 'street' | 'sport' | 'race'): Part =>
   PARTS.find((p) => p.carPartId === 'aero' && p.grade === grade && p.aeroFunctional)!
 /** A cosmetic body kit: it changes what the car looks like, not what it does,
- * so it lives on the `panels` body slot rather than on `aero`. */
+ * so it lives on the `bodywork` body slot rather than on `aero`. */
 const BODY_KIT = PARTS.find(
-  (p) => p.carPartId === 'panels' && p.grade === 'sport' && p.fitmentClass === SUPRA_CLASS,
+  (p) => p.carPartId === 'bodywork' && p.grade === 'sport' && p.fitmentClass === SUPRA_CLASS,
 )!
 
 /** Fits `part` into its own catalogue slot at mint, leaving every other slot
@@ -139,7 +139,7 @@ describe('effectiveDownforce', () => {
     // The kit says what the car looks like and the wing says what it does. They
     // shared the `aero` slot once, which meant fitting the first silently
     // returned the car to factory downforce; they are separate addresses now.
-    expect(BODY_KIT.carPartId).toBe('panels')
+    expect(BODY_KIT.carPartId).toBe('bodywork')
     const kitOnly = effectiveDownforce(carWithAero(BODY_KIT), SUPRA, CONTEXT.partsById, AERO)
     expect(kitOnly.downforceCoeff).toBe(factoryDownforceCoeff(SUPRA, AERO))
     expect(kitOnly.dragCdDelta).toBe(0)

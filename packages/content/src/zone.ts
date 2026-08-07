@@ -29,7 +29,7 @@ export type TrimZoneId = z.infer<typeof TrimZoneIdSchema>
 /**
  * Every zone a car's zone state is keyed by, metal and trim together - the
  * work model's own addressing granularity for metal/surface/finish, one
- * level below the derived `panels`/`paint` parts the value model still
+ * level below the derived `bodywork`/`paint` parts the value model still
  * reads. `chassis` is not a zone: it is a normal car part, grouped with the
  * rest of the body in `parts-taxonomy.json`, repaired like any other part
  * rather than through the zone pipeline.

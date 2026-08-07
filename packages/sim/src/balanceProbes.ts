@@ -192,7 +192,7 @@ function worstCaseMileageKm(context: SimContext): number {
  *
  * The car carries a `zoneState` because every real generated car does
  * (`rollZoneStates` + `applyDerivedBodyBands`, auctions.ts/bodyPipeline.ts),
- * and that state is what prices `panels`/`paint`: with it, those two route
+ * and that state is what prices `bodywork`/`paint`: with it, those two route
  * through the body pipeline's own bill (`bodyPartRepairBillYen`); without it
  * they would route through the generic per-part formula (`costToBandYen`,
  * bands.ts), which is a pricing model no car in the game uses.
@@ -503,7 +503,7 @@ export function computeModelBalanceProbe(
   // skips them by design. This is the same call `carCostToBandYen` makes, and
   // it is what `repairRoughProbeCar`'s zone repair below is paying for.
   if (roughCar.zoneState) {
-    for (const partId of ['panels', 'paint'] as const) {
+    for (const partId of ['bodywork', 'paint'] as const) {
       repairCostYen += bodyPartRepairBillYen(
         partId,
         roughCar.zoneState,

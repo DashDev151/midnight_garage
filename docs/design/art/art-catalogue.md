@@ -175,7 +175,7 @@ what was built; the rest stand.
   regions, the bay read from above with the front of the car at screen-left), and Underside
   (14 regions on the lift: suspension and brakes, the drivetrain run, the chassis zone, rims
   and tyres). 32 regions in total, covering the six body zones and 26 of the 29 car parts:
-  `panels`, `paint` and `underbody` get no region because they derive from zone state and
+  `bodywork`, `paint` and `underbody` get no region because they derive from zone state and
   carry no on-car work. `chassis` deliberately appears twice on the underside, once as the
   drivetrain part and once as the body zone. Every rectangle in a view is disjoint from every
   other rectangle in that view whoever owns it, and there is no z-order: the art may imply

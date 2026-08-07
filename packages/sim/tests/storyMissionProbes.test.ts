@@ -614,7 +614,7 @@ describe('guarantor mission probes (auction-tier unlock rewards)', () => {
       CONTEXT.economy,
     )
 
-    // The showroom body kit: `panels`/`paint` carry no aftermarket grades any
+    // The showroom body kit: `bodywork`/`paint` carry no aftermarket grades any
     // more (they are derived body value carriers - `bodyPipeline.ts`); the
     // showroom look now comes from the widened aero slot plus rims and seats,
     // at race grade to clear the style floor (sport alone falls short once
@@ -750,7 +750,7 @@ describe('guarantor mission probes (auction-tier unlock rewards)', () => {
       apparentBandByPartId: null,
       parts: stockCarPartsAt(fitmentClass, 'worn'),
     }
-    // `panels`/`paint` carry no aftermarket grades any more - see the
+    // `bodywork`/`paint` carry no aftermarket grades any more - see the
     // satisfiability probe above for the full reasoning; race grade
     // aero/rims/seats clears the style floor here too.
     const AFTERMARKET_SWAP: CarPartId[] = ['aero', 'rims', 'seats']
@@ -926,25 +926,27 @@ describe('machine-shop assist coherence (Sprint 85 decision 6)', () => {
   })
 
   /**
-   * The three groups with a signature-op gate. `signatureOpFeeYen` charges
-   * the group's fee on a signature slot at tier 1 and 0 once the tier-2
-   * machine is owned, and never fires for a non-signature (light bolt-on)
-   * slot in the same group - the no-over-gating check. It is also 0 for
-   * the engine/drivetrain/wheels slots, which keep their own separate
-   * gates (`machineAssistFeeYen`/`assemblyMachineGateGroup`/
-   * `benchSwapGateGroup`), proving the new predicate never leaks into - or
-   * double-charges - the three pre-existing gates.
+   * The three groups whose slots gate a REPAIR. `signatureOpFeeYen` charges
+   * the group's fee on one of those slots at tier 1 and 0 once the tier-2
+   * machine is owned, and never fires for a light bolt-on slot in the same
+   * group - the no-over-gating check. It is also 0 for the
+   * engine/drivetrain/wheels slots, whose own `machineGate` names other
+   * operations entirely (`install`/`remove` on a buried slot, `bench-fit` on a
+   * tyre), proving the repair predicate never leaks into - or double-charges -
+   * the other three gate sites.
    */
-  it('the three new signature-op gates charge at tier 1, are free at tier 2, and never over-gate light or pre-existing-gate work', () => {
-    const { feeYenByGroup, signatureSlotsByGroup } = CONTEXT.economy.machineShopAssist
+  it('the repair-gated slots charge at tier 1, are free at tier 2, and never over-gate light or otherwise-gated work', () => {
+    const { feeYenByGroup } = CONTEXT.economy.machineShopAssist
     const groups = ['suspension', 'body', 'interior'] as const
     for (const group of groups) {
       const tier2State = {
         ...TIER1_STATE,
         toolTiers: { ...TIER1_STATE.toolTiers, [group]: 2 },
       }
-      const slots = signatureSlotsByGroup[group]!
-      expect(slots.length, `${group} must name signature slots`).toBeGreaterThan(0)
+      const slots = Object.values(CONTEXT.partsTaxonomyById)
+        .filter((entry) => entry.group === group && entry.machineGate.includes('repair'))
+        .map((entry) => entry.id)
+      expect(slots.length, `${group} must name repair-gated slots`).toBeGreaterThan(0)
       for (const slot of slots) {
         expect(signatureOpFeeYen(slot, TIER1_STATE, CONTEXT), `${slot} gated at tier 1`).toBe(
           feeYenByGroup[group],
@@ -952,20 +954,20 @@ describe('machine-shop assist coherence (Sprint 85 decision 6)', () => {
         expect(signatureOpFeeYen(slot, tier2State, CONTEXT), `${slot} free once owned`).toBe(0)
       }
     }
-    // Light bolt-on work in these groups is not a signature slot - no fee (no
+    // Light bolt-on work in these groups gates no repair - no fee (no
     // over-gating). anti-roll bars and steering (suspension), aero (body).
     for (const light of ['antiRollBars', 'steering', 'aero'] as CarPartId[]) {
       expect(
         signatureOpFeeYen(light, TIER1_STATE, CONTEXT),
-        `${light} is light bolt-on work, never a signature op`,
+        `${light} is light bolt-on work, never a repair-gated op`,
       ).toBe(0)
     }
-    // The three pre-existing gates keep their own predicates - the new signature
-    // gate never fires for an engine/drivetrain buried slot or a tyre.
+    // The other three gate sites keep their own operations - a repair is never
+    // gated on an engine/drivetrain buried slot or on a tyre.
     for (const existing of ['camsTiming', 'gearbox', 'tyres'] as CarPartId[]) {
       expect(
         signatureOpFeeYen(existing, TIER1_STATE, CONTEXT),
-        `${existing} keeps its own gate, not the new signature predicate`,
+        `${existing} gates its own operations, never a repair`,
       ).toBe(0)
     }
   })

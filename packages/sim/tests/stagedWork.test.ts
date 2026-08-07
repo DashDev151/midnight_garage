@@ -75,7 +75,7 @@ function planFor(groupId: 'body' | 'engine' | 'suspension' | 'interior') {
 
 /** The same plan narrowed to one body carrier, for the per-part staged
  * addresses the shared-budget test below uses. */
-function planForBodyPart(carPartId: 'panels' | 'chassis') {
+function planForBodyPart(carPartId: 'bodywork' | 'chassis') {
   return planGroupRepair(
     car,
     'body',
@@ -172,7 +172,7 @@ describe('confirmStagedWork', () => {
       stagedCarWork: { [car.id]: [{ kind: 'repair', componentId: 'body', targetBand: 'mint' }] },
     })
     const result = confirmStagedWork(state, car.id, plan.laborSlotsRequired, CONTEXT)
-    expect(result.state.ownedCars[0]?.parts.panels.installed?.band).toBe('mint')
+    expect(result.state.ownedCars[0]?.parts.bodywork.installed?.band).toBe('mint')
     expect(result.state.ownedCars[0]?.parts.aero.installed?.band).toBe('mint')
     expect(result.log.some((e) => e.type === 'job-completed')).toBe(true)
   })
@@ -193,23 +193,23 @@ describe('confirmStagedWork', () => {
   })
 
   it('shares one labor budget across multiple staged actions, in staged order', () => {
-    const panelsPlan = planForBodyPart('panels')
+    const bodyworkPlan = planForBodyPart('bodywork')
     const chassisPlan = planForBodyPart('chassis')
-    // Enough for the panels repair (staged first) to complete fully, plus
+    // Enough for the bodywork repair (staged first) to complete fully, plus
     // exactly 1 slot spillover for the chassis (staged second) - a real,
     // continuable partial job. Both are fixed body carriers, which is the
     // whole of what an on-car repair addresses now.
-    const offeredLabor = panelsPlan.laborSlotsRequired + 1
+    const offeredLabor = bodyworkPlan.laborSlotsRequired + 1
     const state = baseState({
       stagedCarWork: {
         [car.id]: [
-          { kind: 'repair', componentId: 'body', carPartId: 'panels', targetBand: 'mint' },
+          { kind: 'repair', componentId: 'body', carPartId: 'bodywork', targetBand: 'mint' },
           { kind: 'repair', componentId: 'body', carPartId: 'chassis', targetBand: 'mint' },
         ],
       },
     })
     const result = confirmStagedWork(state, car.id, offeredLabor, CONTEXT)
-    expect(result.state.ownedCars[0]?.parts.panels.installed?.band).toBe('mint')
+    expect(result.state.ownedCars[0]?.parts.bodywork.installed?.band).toBe('mint')
     expect(result.state.ownedCars[0]?.parts.chassis.installed?.band).toBe('poor') // not yet repaired
     const chassisJob = result.state.jobs.find((j) => j.carPartId === 'chassis')
     expect(chassisJob).toBeDefined()
@@ -223,7 +223,7 @@ describe('confirmStagedWork', () => {
       stagedCarWork: { [car.id]: [{ kind: 'repair', componentId: 'body', targetBand: 'mint' }] },
     })
     const result = confirmStagedWork(state, car.id, 3, CONTEXT)
-    expect(result.state.ownedCars[0]?.parts.panels.installed?.band).toBe('poor') // unchanged
+    expect(result.state.ownedCars[0]?.parts.bodywork.installed?.band).toBe('poor') // unchanged
     expect(result.state.jobs).toHaveLength(0)
   })
 
@@ -258,7 +258,7 @@ function cleanZoneStates(overrides: Partial<Record<string, ZoneState>> = {}): Zo
 }
 
 describe('confirmStagedWork: pipeline-remove-panel / pipeline-install-panel', () => {
-  it('removing then installing harvests the old panel and fits the new one, re-projecting the derived panels band', () => {
+  it('removing then installing harvests the old panel and fits the new one, re-projecting the derived bodywork band', () => {
     // Every zone starts clean except a damaged bonnet (metal severity 2, the
     // 'worn' rung) - the pre-removal state the old panel is harvested at.
     const zoneState = cleanZoneStates({
@@ -272,10 +272,10 @@ describe('confirmStagedWork: pipeline-remove-panel / pipeline-install-panel', ()
       modelId: 'honda-city-e-aa',
       year: 1984,
       mileageKm: 100_000,
-      // Pre-work panels band starts deliberately wrong ('poor') so the
+      // Pre-work bodywork band starts deliberately wrong ('poor') so the
       // post-confirm assertion proves the derived band was re-projected from
       // zone state, not merely left at whatever the fixture set.
-      parts: mintCarParts({ panels: 'poor' }),
+      parts: mintCarParts({ bodywork: 'poor' }),
       zoneState,
     })
     const newBonnetPanel: PartInstance = {
@@ -302,20 +302,20 @@ describe('confirmStagedWork: pipeline-remove-panel / pipeline-install-panel', ()
 
     // ...and the OLD panel is harvested into inventory in its place, at the
     // band its pre-removal metal severity (2) maps to ('worn'), addressing
-    // the panels slot for the bonnet zone, with a car-kind origin.
+    // the bodywork slot for the bonnet zone, with a car-kind origin.
     const harvested = result.state.partInventory.find((p) => p.partId === bonnetPanelPart.id)
     expect(harvested).toBeDefined()
     expect(harvested?.band).toBe('worn')
     expect(harvested?.origin.kind).toBe('car')
     const harvestedCatalogPart = CONTEXT.partsById[harvested!.partId]
     expect(harvestedCatalogPart?.zoneId).toBe('bonnet')
-    expect(harvestedCatalogPart?.carPartId).toBe('panels')
+    expect(harvestedCatalogPart?.carPartId).toBe('bodywork')
 
     // The zone's metal clears to the installed mint panel's band (severity
-    // 0), and the derived panels band re-projects from a now-clean bonnet
+    // 0), and the derived bodywork band re-projects from a now-clean bonnet
     // plus the already-clean remaining zones.
     expect(result.state.ownedCars[0]?.zoneState?.bonnet.metal).toBe(0)
-    expect(result.state.ownedCars[0]?.parts.panels.installed?.band).toBe('mint')
+    expect(result.state.ownedCars[0]?.parts.bodywork.installed?.band).toBe('mint')
   })
 
   it('installing into an already-empty zone needs no remove step first', () => {
@@ -328,7 +328,7 @@ describe('confirmStagedWork: pipeline-remove-panel / pipeline-install-panel', ()
       modelId: 'honda-city-e-aa',
       year: 1984,
       mileageKm: 100_000,
-      parts: mintCarParts({ panels: 'scrap' }),
+      parts: mintCarParts({ bodywork: 'scrap' }),
       zoneState,
     })
     const newBootPanel: PartInstance = {
@@ -353,7 +353,7 @@ describe('confirmStagedWork: pipeline-remove-panel / pipeline-install-panel', ()
     expect(result.state.partInventory).toHaveLength(0)
     expect(result.state.ownedCars[0]?.zoneState?.boot.panelMissing).toBe(false)
     expect(result.state.ownedCars[0]?.zoneState?.boot.metal).toBe(0)
-    expect(result.state.ownedCars[0]?.parts.panels.installed?.band).toBe('mint')
+    expect(result.state.ownedCars[0]?.parts.bodywork.installed?.band).toBe('mint')
   })
 
   it('a remove on an already-missing zone, or an install on an already-occupied one, is a silent no-op', () => {
@@ -648,24 +648,24 @@ describe('previewPlannedWork (Sprint 48)', () => {
       stagedCarWork: { [car.id]: [{ kind: 'repair', componentId: 'body', targetBand: 'mint' }] },
     })
     const preview = previewPlannedWork(state, car.id, CONTEXT)
-    expect(preview?.parts.panels.installed?.band).toBe('mint')
+    expect(preview?.parts.bodywork.installed?.band).toBe('mint')
     expect(preview?.parts.aero.installed?.band).toBe('mint')
     // Nothing in state itself changed - this is a pure projection.
     expect(state.cashYen).toBe(5_000_000)
     expect(state.jobs).toHaveLength(0)
-    expect(state.ownedCars[0]?.parts.panels.installed?.band).toBe('poor')
+    expect(state.ownedCars[0]?.parts.bodywork.installed?.band).toBe('poor')
   })
 
   it('projects a planned per-part repair, leaving sibling parts in the group untouched', () => {
     const state = baseState({
       stagedCarWork: {
         [car.id]: [
-          { kind: 'repair', componentId: 'body', targetBand: 'mint', carPartId: 'panels' },
+          { kind: 'repair', componentId: 'body', targetBand: 'mint', carPartId: 'bodywork' },
         ],
       },
     })
     const preview = previewPlannedWork(state, car.id, CONTEXT)
-    expect(preview?.parts.panels.installed?.band).toBe('mint')
+    expect(preview?.parts.bodywork.installed?.band).toBe('mint')
     expect(preview?.parts.aero.installed?.band).toBe('poor') // untouched - not the addressed part
   })
 
@@ -691,14 +691,14 @@ describe('previewPlannedWork (Sprint 48)', () => {
       },
     })
     const preview = previewPlannedWork(state, car.id, CONTEXT)
-    expect(preview?.parts.panels.installed?.band).toBe('fine')
+    expect(preview?.parts.bodywork.installed?.band).toBe('fine')
     expect(preview?.parts.dampers.installed?.id).toBe(sparePart.id)
   })
 
   it('is a no-op projection (returns the real car unchanged) for a car with nothing planned', () => {
     const state = baseState()
     const preview = previewPlannedWork(state, car.id, CONTEXT)
-    expect(preview?.parts.panels.installed?.band).toBe('poor')
+    expect(preview?.parts.bodywork.installed?.band).toBe('poor')
   })
 
   it('returns null for an unknown car', () => {

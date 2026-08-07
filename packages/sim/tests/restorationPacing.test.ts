@@ -24,7 +24,7 @@ import { buildCarInstance, groupCarParts, testToolLevels } from './testFixtures'
  *
  * `planGroupRepair` excludes every `bolt-on`/`buried` slot from on-car
  * repair (bench-only), so this only measures the SURFACE portion of a
- * restoration - panels/paint/aero/seats/dashGauges/chassis - not the whole
+ * restoration - bodywork/paint/aero/seats/dashGauges/chassis - not the whole
  * car. The bulk of a real restoration runs through the teardown loop
  * (uninstall -> bench repair -> reinstall) instead, which this file does
  * not measure.

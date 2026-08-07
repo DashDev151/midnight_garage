@@ -458,7 +458,7 @@ const TEMPLATES: Record<PartSpriteId, PixelTemplate> = {
     '.......031111110........',
     '........0000000.........',
   ],
-  panels: [
+  bodywork: [
     '................................',
     '................................',
     '....000000000000000000000000....',
@@ -662,7 +662,7 @@ const GROUP_SPRITE_ID: Readonly<Record<ComponentId, PartSpriteId>> = {
   drivetrain: 'gearboxAssembly',
   wheels: 'wheelAssembly',
   suspension: 'dampers',
-  body: 'panels',
+  body: 'bodywork',
   interior: 'seats',
 }
 

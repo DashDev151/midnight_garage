@@ -24,10 +24,10 @@ import {
   PANEL_ZONE_IDS,
   TRIM_ZONE_IDS,
   bandForSeverity,
-  derivePanelsBand,
+  deriveBodyworkBand,
   hasZoneImproveHeadroom,
   improveZoneCarrierOneStep,
-  panelsRepairBillYen,
+  bodyworkRepairBillYen,
   planInstallPanel,
   planPipelineStage,
   rollZoneStates,
@@ -40,7 +40,7 @@ import { createRng, hashStringToSeed } from '../src/rng'
 
 /**
  * A panel that is beyond saving. The `metal` axis grew one rung above
- * weldable, which is what lets `derivePanelsBand` reach `scrap` from
+ * weldable, which is what lets `deriveBodyworkBand` reach `scrap` from
  * severity alone; a panel that is absent outright forces the same band for a
  * different reason. Beat and weld refuse both, a fresh panel clears both,
  * and the repair bill quotes exactly one panel for either.
@@ -98,20 +98,20 @@ function contextForcingGrade(grade: DamageGrade): SimContext {
 }
 
 describe('the metal axis reaches one rung above weldable', () => {
-  it('maps that rung to scrap, so the panels band needs no forcing condition of its own', () => {
+  it('maps that rung to scrap, so the bodywork band needs no forcing condition of its own', () => {
     expect(bandForSeverity(MAX_REPAIRABLE_METAL)).toBe('poor')
     expect(bandForSeverity(BEYOND_REPAIR_METAL)).toBe('scrap')
-    expect(derivePanelsBand(zonesWith({ bonnet: zone({ metal: MAX_REPAIRABLE_METAL }) }))).toBe(
+    expect(deriveBodyworkBand(zonesWith({ bonnet: zone({ metal: MAX_REPAIRABLE_METAL }) }))).toBe(
       'poor',
     )
-    expect(derivePanelsBand(zonesWith({ bonnet: zone({ metal: BEYOND_REPAIR_METAL }) }))).toBe(
+    expect(deriveBodyworkBand(zonesWith({ bonnet: zone({ metal: BEYOND_REPAIR_METAL }) }))).toBe(
       'scrap',
     )
   })
 
   it('still forces scrap for an absent panel, which is a different fact from a ruined one', () => {
     const missing = zonesWith({ boot: zone({ metal: 0, panelMissing: true }) })
-    expect(derivePanelsBand(missing)).toBe('scrap')
+    expect(deriveBodyworkBand(missing)).toBe('scrap')
     expect(zoneNeedsPanel(missing.boot)).toBe(true)
     expect(zoneNeedsPanel(missing.bonnet)).toBe(false)
   })
@@ -119,8 +119,8 @@ describe('the metal axis reaches one rung above weldable', () => {
   it('clamps a symptom aimed at scrap to what hand work can still clear', () => {
     // A symptom is the only writer that could aim a body carrier at `scrap`,
     // and its target severity is clamped to what hand work can still clear.
-    const panels = setZoneCarrierToAtLeastBand(zonesWith(), 'panels', 'scrap', 'bonnet')
-    expect(panels.bonnet.metal).toBe(MAX_REPAIRABLE_METAL)
+    const bodywork = setZoneCarrierToAtLeastBand(zonesWith(), 'bodywork', 'scrap', 'bonnet')
+    expect(bodywork.bonnet.metal).toBe(MAX_REPAIRABLE_METAL)
   })
 })
 
@@ -168,7 +168,7 @@ describe('the bill quotes the panel for both states, once', () => {
   const panelPrice = zonePanelPart(CONTEXT.partsById, 'bonnet', fitmentClass)!.priceYen
 
   const billFor = (states: ZoneStates) =>
-    panelsRepairBillYen(states, 'mint', fitmentClass, CONTEXT.partsById)
+    bodyworkRepairBillYen(states, 'mint', fitmentClass, CONTEXT.partsById)
 
   it('charges the same one panel whether it is ruined in place or gone', () => {
     expect(billFor(zonesWith({ bonnet: zone({ metal: BEYOND_REPAIR_METAL }) }))).toBe(panelPrice)
@@ -192,11 +192,11 @@ describe('the bill quotes the panel for both states, once', () => {
     const states = zonesWith({
       bonnet: zone({ metal: BEYOND_REPAIR_METAL, panelMissing: true }),
     })
-    expect(hasZoneImproveHeadroom(states, 'panels')).toBe(true)
-    const improved = improveZoneCarrierOneStep(states, 'panels')
+    expect(hasZoneImproveHeadroom(states, 'bodywork')).toBe(true)
+    const improved = improveZoneCarrierOneStep(states, 'bodywork')
     expect(zoneNeedsPanel(improved.bonnet)).toBe(false)
     expect(billFor(improved)).toBe(0)
-    expect(derivePanelsBand(improved)).not.toBe('scrap')
+    expect(deriveBodyworkBand(improved)).not.toBe('scrap')
   })
 })
 
@@ -261,7 +261,7 @@ describe('generation writes both states, off the history and the pattern', () =>
   // 400 whole generated cars, which costs real time once coverage
   // instrumentation is in the way - hence the timeout rather than a smaller
   // sweep. The sample size is what makes the "sometimes" below meaningful.
-  it('reaches a real generated lot, and the whole car reads scrap panels when it does', () => {
+  it('reaches a real generated lot, and the whole car reads scrap bodywork when it does', () => {
     const context = contextForcingGrade('project')
     const model: CarModel = CARS.find((car) => car.tier === 'entry')!
     let found = 0
@@ -276,8 +276,8 @@ describe('generation writes both states, off the history and the pattern', () =>
       const states = car.zoneState!
       if (!PANEL_ZONE_IDS.some((zoneId) => zoneNeedsPanel(states[zoneId]))) continue
       found += 1
-      expect(derivePanelsBand(states)).toBe('scrap')
-      expect(car.parts.panels.installed?.band).toBe('scrap')
+      expect(deriveBodyworkBand(states)).toBe('scrap')
+      expect(car.parts.bodywork.installed?.band).toBe('scrap')
     }
     expect(found, 'a yard of project cars should carry some ruined panels').toBeGreaterThan(0)
   }, 30_000)

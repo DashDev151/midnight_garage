@@ -107,8 +107,8 @@ describe('EndDayButton', () => {
       // is satisfied for real through the normal rule, not a stubbed flag.
       const job = game.gameState.activeServiceJobs.find((j) => j.id === offer.id)
       if (!job) throw new Error('expected the accepted job to be active')
-      const band = job.car.parts.panels.installed?.band
-      if (!band) throw new Error('expected the rolled car to have panels fitted')
+      const band = job.car.parts.bodywork.installed?.band
+      if (!band) throw new Error('expected the rolled car to have bodywork fitted')
       game.gameState = {
         ...game.gameState,
         activeServiceJobs: game.gameState.activeServiceJobs.map((j) =>
@@ -119,7 +119,7 @@ describe('EndDayButton', () => {
                   {
                     requirement: {
                       kind: 'slotCondition' as const,
-                      carPartId: 'panels' as const,
+                      carPartId: 'bodywork' as const,
                       minBand: band,
                     },
                     minToolTier: 1 as const,

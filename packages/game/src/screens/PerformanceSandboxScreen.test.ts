@@ -145,13 +145,13 @@ describe('PerformanceSandboxScreen', () => {
     await click(wrapper, 'set-all-grade-race')
     const build = renderedBuild(wrapper)
     const held = Object.keys(build).filter((id) => build[id] !== 'fine/race')
-    // Every aftermarket `panels` SKU now carries a `zoneId` - it fits one body
-    // zone through the pipeline's own install, never the whole-car slot this
-    // sandbox builds (`partFitsCar` refuses a zone-scoped part here by
-    // design) - so `panels` alone holds at whatever grade it already had. A
+    // Every aftermarket `bodywork` SKU now carries a `zoneId` - it fits one
+    // body zone through the pipeline's own install, never the whole-car slot
+    // this sandbox builds (`partFitsCar` refuses a zone-scoped part here by
+    // design) - so `bodywork` alone holds at whatever grade it already had. A
     // slot listed here has no whole-car race SKU in the catalogue, which is a
     // content gap rather than a misbehaving control.
-    expect(held.sort()).toEqual(['panels'])
+    expect(held.sort()).toEqual(['bodywork'])
 
     // Per group, not just globally.
     await click(wrapper, 'group-state-engine-worn')

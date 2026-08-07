@@ -157,7 +157,7 @@ describe('symptom generation (Sprint 73 decision 2)', () => {
       )
       // A cause on a zone-derived body part can add ZERO money cost by two
       // routes, and the money-driven Law 2 veto then correctly has nothing
-      // to drop. First, `panels`' money bill rides on `surface` alone -
+      // to drop. First, `bodywork`'s money bill rides on `surface` alone -
       // `metal` is repaired by hand and never priced in yen - so damage
       // routed through metal (the real content's "quarter-panel-filler"
       // symptom: `panel-respray`, `rust-patch`) is free. Second,
@@ -188,7 +188,7 @@ describe('symptom generation (Sprint 73 decision 2)', () => {
       for (const partId of ALL_CAR_PART_IDS) {
         const installed = car.parts[partId].installed
         if (!installed) continue
-        // `panels`/`paint` are derived from zone state (`bodyPipeline.ts`)
+        // `bodywork`/`paint` are derived from zone state (`bodyPipeline.ts`)
         // and the softening pass never touches metal (it is money-free, so
         // improving it would never lower the bill) - a high-metal zone
         // (from the original roll, or a surviving money-free symptom cause)

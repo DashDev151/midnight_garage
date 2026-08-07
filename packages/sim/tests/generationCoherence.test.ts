@@ -26,7 +26,7 @@ const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 const GAME_YEAR = 1995
 
 /** The worst band on any real installed part - the "how rough is this car".
- * Excludes `panels`/`paint`: those two are derived from zone state
+ * Excludes `bodywork`/`paint`: those two are derived from zone state
  * (`bodyPipeline.ts`), and the zone roll (docs/design/
  * workshop-rework.md's generation table) is TIER-weighted alone, independent
  * of age or mileage - a deliberate, separate generation axis this wave adds,

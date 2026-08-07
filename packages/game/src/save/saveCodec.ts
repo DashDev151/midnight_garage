@@ -765,8 +765,15 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * branch: `toolShopsOwned` defaults to empty, and a pre-v67 save carrying a
  * tier-3 line or an undiscriminated listing simply fails to parse rather than
  * being reshaped.
+ * v67 -> v68 (the summary body slot is Bodywork): the `panels` car part is
+ * renamed `bodywork` across `CarPartIdSchema`, `CarPartsSchema` and every
+ * catalogue and economy table keyed by it. Per directive 19, a plain
+ * SAVE_VERSION bump with NO `MIGRATIONS[67]` entry and no legacy-compat
+ * branch: a pre-v68 save carries a `panels` key `CarPartsSchema` no longer
+ * declares and a required `bodywork` key it does not carry, so it fails to
+ * parse rather than being reshaped.
  */
-export const SAVE_VERSION = 67
+export const SAVE_VERSION = 68
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'
@@ -943,7 +950,7 @@ const OLD_GROUP_TO_NEW_PARTS: Record<string, readonly string[]> = {
   suspension: ['dampers', 'springs', 'antiRollBars', 'steering'],
   brakes: ['brakePadsDiscs', 'brakeCalipersLines'],
   wheels: ['rims', 'tyres'],
-  body: ['panels', 'paint', 'underbody'],
+  body: ['bodywork', 'paint', 'underbody'],
   interior: ['seats', 'dashGauges'],
 }
 
@@ -1135,7 +1142,7 @@ const GROUP_TO_REPRESENTATIVE_PART: Record<string, string> = {
   drivetrain: 'gearbox',
   suspension: 'dampers',
   wheels: 'tyres',
-  body: 'panels',
+  body: 'bodywork',
   interior: 'seats',
 }
 

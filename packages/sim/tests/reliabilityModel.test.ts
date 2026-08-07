@@ -792,7 +792,7 @@ describe('reliability model: unmoved by the handling retirement', () => {
     brakePadsDiscs: 'race',
     brakeCalipersLines: 'race',
     rims: 'race',
-    panels: 'race',
+    bodywork: 'race',
     aero: 'race',
     seats: 'race',
   }

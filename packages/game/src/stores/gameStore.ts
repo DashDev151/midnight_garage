@@ -73,7 +73,6 @@ import {
   advanceDay,
   bandIndex,
   benchedMemberWithTrait,
-  benchSwapGateGroup,
   beginInspectionVisit as beginInspectionVisitCore,
   canRepair,
   climbBand,
@@ -137,8 +136,8 @@ import {
   ownedWorkupGateReason as ownedWorkupGateReasonCore,
   fittedMachiningGateReason as fittedMachiningGateReasonCore,
   fittedMachiningOffersFor,
+  machineGateGroupFor,
   machineHiredToday,
-  machineLineGroupFor,
   machiningGateReason as machiningGateReasonCore,
   machinedPartPriceYen,
   machiningReadingFor,
@@ -157,7 +156,6 @@ import {
   replacesOccupiedSlot,
   resolveBuyCoffee,
   resolveHireMachineLine,
-  signatureGroupFor,
   nextBayMinReputationTier,
   nextBayPriceYen,
   nextToolTierRepGate,
@@ -338,11 +336,11 @@ export interface CarPartRowView {
    * per-part repair row and the bench recondition control both hide
    * themselves when this is false; only Replace ever touches the part. */
   repairable: boolean
-  /** False only for chassis/panels/paint -
+  /** False only for chassis/bodywork/paint -
    * the shell itself, repaired in place and never pulled. The car-detail
    * screen's "Take it off" control only ever renders when this is true. */
   removable: boolean
-  /** True for the three shell carriers (`chassis`/`panels`/`paint`), whose
+  /** True for the three shell carriers (`chassis`/`bodywork`/`paint`), whose
    * slot is never empty and whose fitted part is swapped in place rather
    * than pulled first (`replacesOccupiedSlot`, sim/jobs.ts). The car-detail
    * screen offers Replace on them while they are occupied; every other slot
@@ -2412,7 +2410,9 @@ export const useGameStore = defineStore('game', () => {
         context.value.economy.energy.energyPerBandStepByToolTier,
         action.carPartId,
       )
-      const needsLine = plan.partIds.some((id) => signatureGroupFor(id, context.value) !== null)
+      const needsLine = plan.partIds.some(
+        (id) => machineGateGroupFor(id, 'repair', context.value) !== null,
+      )
       return needsLine && !hasMachineLineFor(action.componentId, gameState.value, context.value)
         ? action.componentId
         : null
@@ -2422,7 +2422,7 @@ export const useGameStore = defineStore('game', () => {
       const catalogPart = partInstance ? context.value.partsById[partInstance.partId] : undefined
       const targetPartId = action.carPartId ?? catalogPart?.carPartId
       if (!targetPartId) return null
-      const group = machineLineGroupFor(targetPartId, context.value)
+      const group = machineGateGroupFor(targetPartId, 'install', context.value)
       return group && !hasMachineLineFor(group, gameState.value, context.value) ? group : null
     }
     return null
@@ -3305,15 +3305,15 @@ export const useGameStore = defineStore('game', () => {
 
   /**
    * The reason an INSTALL/REPLACE of `carPartId` is gated right now, or
-   * `null` when it isn't - a buried engine/drivetrain slot or a
-   * suspension/body/interior signature slot whose line is neither owned nor
-   * hired for today (`machineLineGroupFor` + `hasMachineLineFor`). Drives
-   * the install/replace affordance's disabled state and caption.
+   * `null` when it isn't - a slot whose `machineGate` names `install` and
+   * whose line is neither owned nor hired for today (`machineGateGroupFor` +
+   * `hasMachineLineFor`). Drives the install/replace affordance's disabled
+   * state and caption.
    */
   function installGateReasonFor(carId: string, carPartId: CarPartId): string | null {
     const car = findWorkableCar(carId)
     if (!car) return null
-    const group = machineLineGroupFor(carPartId, context.value)
+    const group = machineGateGroupFor(carPartId, 'install', context.value)
     if (!group || hasMachineLineFor(group, gameState.value, context.value)) return null
     return machineLineGateCopy(group)
   }
@@ -3322,7 +3322,7 @@ export const useGameStore = defineStore('game', () => {
    * The reason an on-car per-part REPAIR of `carPartId` is gated right now,
    * or `null` when it isn't. Per-part repair is bench-only for every
    * removable slot (the sim refuses it before this ever matters), so this only
-   * ever gates a fixed body carrier - and `panels`/`paint` are derived value
+   * ever gates a fixed body carrier - and `bodywork`/`paint` are derived value
    * carriers with no on-car repair affordance at all (`bodyPipeline.ts`),
    * which leaves the chassis. A removable signature slot (seats, dashGauges,
    * dampers, springs) is repaired at the bench, and its own machine line is
@@ -4361,7 +4361,7 @@ export const useGameStore = defineStore('game', () => {
    * `ReplaceDrawer`'s bench-mode picker, so both read the same gate.
    */
   function benchSwapGateReasonFor(carPartId: CarPartId): string | null {
-    const group = benchSwapGateGroup(carPartId)
+    const group = machineGateGroupFor(carPartId, 'bench-fit', context.value)
     return group && !hasMachineLineFor(group, gameState.value, context.value)
       ? machineLineGateCopy(group)
       : null

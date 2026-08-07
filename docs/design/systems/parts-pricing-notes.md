@@ -46,7 +46,7 @@ than merely untouched:
   gauge, sport a pair, race a trio plus housing.
 
 The remaining bases (block, internals, headValvetrain, camsTiming, fuelSystem, cooling,
-gearbox, clutch, driveline, chassis, antiRollBars, steering, tyres, panels, paint, underbody,
+gearbox, clutch, driveline, chassis, antiRollBars, steering, tyres, bodywork, paint, underbody,
 seats, zonePanel) have **no period anchor in either research file**: the sweep never reached
 engine hard parts, clutches, tyres or bodywork. They are internally coherent as they stand, so
 they were left alone rather than adjusted on guesswork. **If a second sweep is ever

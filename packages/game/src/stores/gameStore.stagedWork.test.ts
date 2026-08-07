@@ -192,7 +192,7 @@ describe('staged repair/install work', () => {
     if (!car) throw new Error('expected a granted car')
     game.moveCar(car.id, 'service')
     // A fresh shop owns nothing at tier 2, so a body group possibly touching
-    // a signature slot (panels/paint) needs the line hired for today -
+    // a signature slot (bodywork/paint) needs the line hired for today -
     // the daily-unlock rework's own gate, case (a) an intentional change
     // from the old per-operation fee.
     game.hireMachineLine('body')
@@ -218,7 +218,7 @@ describe('staged repair/install work', () => {
     // a random roll might otherwise leave the group's only outstanding work
     // somewhere the gate never fires. The chassis is the one signature slot an
     // on-car repair-zone job still reaches: every removable part is bench work
-    // now, and `panels`/`paint` are derived body value carriers a direct
+    // now, and `bodywork`/`paint` are derived body value carriers a direct
     // repair-zone job never touches at all (`bodyPipeline.ts`).
     let carId: string | null = null
     for (let i = 0; i < 30 && !carId; i++) {
@@ -312,7 +312,7 @@ describe('planned estimate crew effects (Sprint 82 decisions 2 + 5)', () => {
     const car = game.gameState.ownedCars[0]!
     // Deterministic multi-rung body plan: the whole group at poor, climbing to
     // mint, so the base plan is several slots and a discount genuinely bites.
-    for (const partId of ['panels', 'paint', 'aero'] as const) {
+    for (const partId of ['bodywork', 'paint', 'aero'] as const) {
       const installed = car.parts[partId].installed
       if (installed) car.parts[partId] = { installed: { ...installed, band: 'poor' } }
     }
@@ -357,7 +357,7 @@ describe('planned estimate crew effects (Sprint 82 decisions 2 + 5)', () => {
     const PER = ECONOMY.energy.pointsPerLabour
     const expectedSaved = Math.min(1 * PER, Math.floor(baseSlots / 2), baseSlots - PER)
     expect(withPerf.crewLaborSaved).toBe(expectedSaved)
-    // The staged plan climbs `panels`/`paint`, both body signature slots,
+    // The staged plan climbs `bodywork`/`paint`, both body signature slots,
     // but machine access is a gate now, never a fee folded into the plan
     // cost - the whole total is the discountable repair-plan portion.
     const expectedCost = Math.round(baseCost * (1 - ECONOMY.staff.perfectionistPartsDiscount))
@@ -377,8 +377,8 @@ describe('plannedStepFor (Sprint 67 decision 1, playtest item 7)', () => {
     // Put the whole body group at `poor`, so a plan to `fine` is unambiguously
     // multi-rung (poor -> worn -> fine) - the exact shape that produced the bug.
     // The chassis carries the plan: `aero` is removable and so bench work, and
-    // `panels`/`paint` read their band off zone state.
-    for (const partId of ['panels', 'paint', 'chassis'] as const) {
+    // `bodywork`/`paint` read their band off zone state.
+    for (const partId of ['bodywork', 'paint', 'chassis'] as const) {
       const installed = car.parts[partId].installed
       if (installed) car.parts[partId] = { installed: { ...installed, band: 'poor' } }
     }
@@ -452,7 +452,7 @@ describe('the honest ledger: machine access is a gate, never a fee, in the plann
    * outstanding work somewhere the gate never fires. The chassis is the one
    * signature slot an on-car repair-zone job still reaches: every removable
    * part is bench work now (so `seats`, `dashGauges`, `dampers` and `springs`
-   * are never on-car repair candidates), and `panels`/`paint` are derived body
+   * are never on-car repair candidates), and `bodywork`/`paint` are derived body
    * value carriers a direct repair-zone job never touches at all
    * (`bodyPipeline.ts`), gated or not. */
   function grantCarNeedingBodySignatureRepair(): string {

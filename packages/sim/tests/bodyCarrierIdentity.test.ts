@@ -44,7 +44,7 @@ import {
 } from './testFixtures'
 
 /**
- * A body value carrier holds a real SKU. `panels` and `paint` are the two
+ * A body value carrier holds a real SKU. `bodywork` and `paint` are the two
  * slots in the game whose BAND is derived from `zoneState` rather than
  * carried directly; what is FITTED there is a real choice, so a body kit
  * reads as modified. `chassis` sits beside them in the body group and is
@@ -56,13 +56,13 @@ const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY, [], FACILIT
 const MODEL: CarModel = CARS.find((c) => c.id === 'nissan-silvia-s13')!
 const FITMENT_CLASS = fitmentClassForTier(MODEL.tier)
 
-// `panels` no longer has a whole-car aftermarket SKU at all - every non-stock
+// `bodywork` no longer has a whole-car aftermarket SKU at all - every non-stock
 // entry now carries a `zoneId` (a bonnet, a bumper, a skirt), and there is no
 // single kit left that replaces the whole slot through the normal install-job
 // path. `paint` is the one derived carrier whose whole-car ladder is
 // untouched by the zone rework, so it is what exercises "install a non-stock
 // SKU onto a `removable: false` slot through the real job pipeline" below;
-// `refitCarrierZoneStates('panels', ...)` itself is still tested directly,
+// `refitCarrierZoneStates('bodywork', ...)` itself is still tested directly,
 // as the pure function it is.
 const PAINT_KIT: Part = PARTS.find(
   (p) => p.carPartId === 'paint' && p.grade === 'sport' && p.fitmentClass === FITMENT_CLASS,
@@ -209,10 +209,10 @@ describe('a body carrier takes a non-stock SKU', () => {
   it('keeps the carrier unremovable, so the shell never lands in the parts bin', () => {
     const car = carOnZoneModel()
     const state = stateWith(car, [])
-    const result = resolveRemovePart(state, car.id, 'panels', CONTEXT)
+    const result = resolveRemovePart(state, car.id, 'bodywork', CONTEXT)
     expect(result.laborSlotsUsed).toBe(0)
     expect(result.state.partInventory).toEqual([])
-    expect(result.state.ownedCars[0]!.parts.panels.installed).not.toBeNull()
+    expect(result.state.ownedCars[0]!.parts.bodywork.installed).not.toBeNull()
   })
 
   it('holds the fitted kit and re-derives the band from the zones underneath it', () => {
@@ -222,14 +222,14 @@ describe('a body carrier takes a non-stock SKU', () => {
   })
 })
 
-describe('refitCarrierZoneStates: fitting a panels kit is a fresh panel everywhere', () => {
+describe('refitCarrierZoneStates: fitting a bodywork kit is a fresh panel everywhere', () => {
   it('leaves every one of the nine zones the carrier covers on a fresh, bare finish', () => {
     const rough = zonesWith({
       bonnet: metalZone({ metal: 3, surface: 2, finish: 3 }),
       'left-front': metalZone({ metal: 2, surface: 1, finish: 2, colour: 'kaido-blue' }),
       skirts: trimZone({ finish: 2, colour: 'kaido-blue' }),
     })
-    const refitted = refitCarrierZoneStates(rough, 'panels', 'mint')
+    const refitted = refitCarrierZoneStates(rough, 'bodywork', 'mint')
     for (const zoneId of PANEL_ZONE_IDS) {
       const after = refitted[zoneId]
       expect(after.finish, zoneId).toBe(3)
@@ -281,7 +281,7 @@ describe('a resprayed car stays resprayed while the shell around it is dented', 
 
 /**
  * `chassis` is a normal per-part carrier, not zone-derived, but it shares
- * `panels`'s `removable: false` status and its group's signature-slot
+ * `bodywork`'s `removable: false` status and its group's signature-slot
  * machine gate: fitting a stiffening kit is an install like any other, just
  * one the body line has to be owned or hired to perform - the same
  * `removeMachineGateGroup`/`hasMachineLineFor` mechanism assemblies already

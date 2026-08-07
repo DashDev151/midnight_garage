@@ -81,7 +81,7 @@ negative, though the schema (`z.number().default(0)`) would allow it.
 | --- | ---: | ---: | ---: | ---: | ---: |
 | `aero` | 7 | 13 | 18 | 18 | 2 |
 | `rims` | 6 | 10 | 14 | 14 | 3 |
-| `panels` | 5 | 9 | 12 | 12 | 2 |
+| `bodywork` | 5 | 9 | 12 | 12 | 2 |
 | `seats` | 4 | 7 | 10 | 10 | 2 |
 | `dampers` | 4 | 6 | 8 | 8 | 0 |
 | `dashGauges` | 3 | 5 | 8 | 8 | 1 |
@@ -119,7 +119,7 @@ weight 14, so each slot controls a fixed share of the entire number:
 | slot | weight | share of style controlled | style on a mint stock EG6 (base 45) if this slot goes scrap | if it goes missing |
 | --- | ---: | ---: | ---: | ---: |
 | `rims` | 3 | 21.4% | 37 | 35 |
-| `panels` | 2 | 14.3% | 40 | 39 |
+| `bodywork` | 2 | 14.3% | 40 | 39 |
 | `paint` | 2 | 14.3% | 40 | 39 |
 | `underbody` | 2 | 14.3% | 40 | 39 |
 | `aero` | 2 | 14.3% | 40 | 39 |
@@ -136,11 +136,11 @@ A uniformly worn stock car reads its base times the band factor exactly (measure
 
 ### The body carriers, and the one route the colour a car wears reaches style
 
-`panels`, `paint` and `underbody` are `removable: false` value carriers. On a car with
+`bodywork`, `paint` and `underbody` are `removable: false` value carriers. On a car with
 `zoneState`, `applyDerivedBodyBands` (`packages/sim/src/bodyPipeline.ts`) is the single writer of
 their bands, and derives them from zone state rather than from anything the slot holds:
 
-- **`panels` band** is the worst of `max(metal, surface)` across the five panel zones, and `scrap`
+- **`bodywork` band** is the worst of `max(metal, surface)` across the five panel zones, and `scrap`
   outright if any panel is missing.
 - **`paint` band** is the worst `finish` across the five panel zones, **stepped one band worse when
   two or more painted zones disagree on colour**. This is the only route the colour a car wears
@@ -151,7 +151,7 @@ their bands, and derives them from zone state rather than from anything the slot
   `scrap`.
 
 The band is written onto whatever SKU the slot holds, so identity and condition stay orthogonal: a
-dented widebody is a widebody that is dented. `panels` and `underbody` both carry a real
+dented set of sport body panels is still a set of sport body panels. `bodywork` and `underbody` both carry a real
 street/sport/race ladder, so both contribute style points as well as scaling it.
 
 **Fitting a body kit temporarily costs style, and the car now says so.**
@@ -192,7 +192,7 @@ Everything in this section was measured by running `computeDerivedStats` over sh
   is unreachable from content, because the highest `styleCeiling` authored anywhere on the 94-row
   roster is 96.
 - **Lowest reachable style on any shipped car: 1** (Honda City E, Wagon R, Carina). Zero is
-  unreachable, because three of the seven style-weighted slots (`panels`, `paint`, `underbody`)
+  unreachable, because three of the seven style-weighted slots (`bodywork`, `paint`, `underbody`)
   are `removable: false` and so can never fall below scrap's 0.15. The worst achievable
   `conditionFactor` is `(2 + 2 + 2) x 0.15 / 14`, which is 0.0643.
 - Per-car floors run 1 to 5 and per-car maxima are each car's own `styleCeiling` exactly, on all
@@ -208,7 +208,7 @@ fewer):
 | --- | ---: | ---: | ---: |
 | aero (race) | 18 | 18 | 27% |
 | + rims (race) | 14 | 32 | 48% |
-| + panels (race) | 12 | 44 | **67%** |
+| + bodywork (race) | 12 | 44 | **67%** |
 | + seats (race) | 10 | 54 | **82%** |
 | + the first 8-point slot | 8 | 62 | 94% |
 | + the second 8-point slot | 8 | 70 | **100%** |
@@ -246,7 +246,7 @@ while the minimal six-part 70-point kit drops to 0.902 at fine and 0.689 at worn
 are a buffer against condition, not against the ceiling.
 
 **The overshoot is not free.** Every extra style part costs money, costs authenticity through
-`statWeights.authenticity` (rims 7, panels 11, aero 10, seats 4, underbody 1, dashGauges 1), and,
+`statWeights.authenticity` (rims 7, bodywork 11, aero 10, seats 4, underbody 1, dashGauges 1), and,
 on a rough car, actively lowers style: a bigger kit occupies more style-weighted slots, so more of
 `conditionFactor` is dragged down while `reach` is already capped. Measured on the EG6 at scrap
 across the fitted parts, the twelve-part kit reads **15** and the six-part kit reads **17**.
@@ -406,7 +406,7 @@ a best-in-slot ladder from 18 (`aero`) down to 4 (`intake`)", and "three parts b
 headroom, five buy four fifths, and the last of it takes seven."
 
 Measured: **twelve** slots, **108** points, and **three, four and six** parts. The ladder gained
-`panels` (12) and `underbody` (8) after that comment was written. The value 66 is correct; the
+`bodywork` (12) and `underbody` (8) after that comment was written. The value 66 is correct; the
 reasoning attached to it is stale in every particular. `packages/sim/tests/style.test.ts` carries
 the same drift in a comment reading "Now 42 of 88" where the measured figure is 44 of 108, though
 the assertion it sits above still passes with room to spare (0.407 against a 0.55 bar).
@@ -419,7 +419,7 @@ All four claims this finding recorded have been corrected in the documents thems
   at 66, preliminary and unsigned" and its outstanding item reads "Implemented at 66 against the
   108 points fittable across all slots". Shipped: **66** against **108** (**measured**).
 - The same document's outstanding item on originality now names `paint` alone and states that
-  `panels` and `underbody` can read as modified. **Measured**: both carry street/sport/race SKUs;
+  `bodywork` and `underbody` can read as modified. **Measured**: both carry street/sport/race SKUs;
   only `paint` has no ladder.
 - `docs/design/midnight-garage-roster.md` now describes `styleBase` as "authored 15 to 88, on a
   schema band of 0 to 100", which is the authored range and the guard band exactly.
@@ -449,7 +449,7 @@ the UI has no way to explain why from the number alone.
 
 The clamp is `[0, 100]` and neither end is reachable from shipped content. The highest
 `styleCeiling` authored on any of the 94 roster rows is 96, so 97 to 100 is dead range. At the
-other end, `panels`, `paint` and `underbody` are `removable: false`, so `conditionFactor` bottoms
+other end, `bodywork`, `paint` and `underbody` are `removable: false`, so `conditionFactor` bottoms
 out at 0.0643 and the lowest style measured on any shipped car is 1.
 
 ### 9. `statWeights.style` defaults to 0, unlike its neighbours

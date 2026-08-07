@@ -33,7 +33,7 @@ drops out of both sums, so its total is 97.
 | --- | ---: | --- |
 | `block` | **18** | Numbers matching. The stamped block is the car's identity, and a swapped one is close to disqualifying. |
 | `paint` | **11** | Original paint cannot be put back. A resprayed car is a different object to a purist. |
-| `panels` | **11** | Original steel. Replaced wings and a filled quarter show up under a torch forever. |
+| `bodywork` | **11** | Original steel. Replaced wings and a filled quarter show up under a torch forever. |
 | `internals` | **8** | Forged rods and pistons mean the engine is no longer the one the car left the factory with. |
 
 ### Significant (35 of 100 across seven slots)
@@ -87,7 +87,7 @@ and a furred radiator say nothing about whether a car is the car it claims to be
 ### Copy-paste list
 
 ```
-block 18   paint 11   panels 11   aero 10   internals 8   rims 7
+block 18   paint 11   bodywork 11   aero 10   internals 8   rims 7
 headValvetrain 6   gearbox 6   camsTiming 4   seats 4   forcedInduction 3
 springs 2
 steering 1   chassis 1   differential 1   dampers 1   brakeCalipersLines 1
@@ -173,7 +173,7 @@ collector, while sitting 18 to 25 points above the swapped car. See section 3.4 
 
 ### For reference: a full tuner build with the body left alone
 
-Every engine, drivetrain, suspension, wheel and interior slot non-stock; `paint`, `panels`, `aero`
+Every engine, drivetrain, suspension, wheel and interior slot non-stock; `paint`, `bodywork`, `aero`
 and `underbody` untouched. Lost 67, **stockness 0.33**. The 33 points left are exactly the four body
 slots, which is a clean read: what a tuner keeps of a car's authenticity is its skin.
 
@@ -185,7 +185,7 @@ slots, which is a clean read: what a tuner keeps of a car's authenticity is its 
 
 `packages/content/data/parts.json` has no aftermarket SKU for it at any of the four fitment
 classes: `paint` holds `stock-paint` and its three fitment-class siblings and nothing else.
-`panels` and `underbody` shared this gap when the weights were written and no longer do; both now
+`bodywork` and `underbody` shared this gap when the weights were written and no longer do; both now
 carry a street, sport and race ladder and read as modified correctly.
 
 So **11 of the 100 points can never be lost to modification.** That weight is not dead: the same
@@ -199,10 +199,10 @@ the fitted part), not a weight change. Flagging it, not solving it.
 
 ### 3.2 `aero` no longer carries the whole visible-body signal
 
-`aero` was the only slot a visible body modification could land on. `panels` (11) and `underbody`
-(1) now carry ladders of their own, so a visible modification lands on three slots and `panels`
+`aero` was the only slot a visible body modification could land on. `bodywork` (11) and `underbody`
+(1) now carry ladders of their own, so a visible modification lands on three slots and `bodywork`
 outweighs `aero`. Aero's 10 is high for what is, in the abstract, a bolt-on. I have still kept it
-below `paint` and `panels`, because the brief's ordering is explicit and the weights should say
+below `paint` and `bodywork`, because the brief's ordering is explicit and the weights should say
 what is true rather than what today's SKU catalogue can express.
 
 ### 3.3 `chassis` is `removable: false` but has non-stock SKUs

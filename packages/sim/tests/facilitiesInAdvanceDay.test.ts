@@ -50,12 +50,12 @@ const noActions = DayActionsSchema.parse({})
 const QUIET_DAY = quietFinanceDay()
 
 /**
- * Generation rolls a per-car upkeep tier, so a given seed's panels slot
+ * Generation rolls a per-car upkeep tier, so a given seed's bodywork slot
  * isn't guaranteed to land below mint - forces it to a known repairable
  * 'worn' band (a real stock part) so the resolved job's effect on it is
  * asserted against a known starting point. `chassis` is forced to 'worn' too,
  * and is the field `createJobs` actually needs: `planGroupRepair` excludes
- * every zone-derived body carrier (panels/paint) from a car on the zone model,
+ * every zone-derived body carrier (bodywork/paint) from a car on the zone model,
  * since their band comes from the pipeline's own zone state rather than a
  * direct repair, and it excludes every REMOVABLE part (`aero`), which is
  * repaired at the bench rather than on the car. The chassis is the body
@@ -65,7 +65,7 @@ const QUIET_DAY = quietFinanceDay()
  * hired for today, isolating the service-bay/labour concern under test from
  * the separate machine-line gate.
  */
-function withWornPanels(state: GameState): GameState {
+function withWornBodywork(state: GameState): GameState {
   const car = state.ownedCars[0]!
   return {
     ...state,
@@ -75,11 +75,11 @@ function withWornPanels(state: GameState): GameState {
         ...car,
         parts: {
           ...car.parts,
-          panels: {
+          bodywork: {
             installed: {
-              id: 'test-panels',
+              id: 'test-bodywork',
               // honda-city-e-aa (this file's fixture model) is entry tier.
-              partId: CONTEXT.stockPartByCarPartId.entry.panels!.id,
+              partId: CONTEXT.stockPartByCarPartId.entry.bodywork!.id,
               band: 'worn',
               origin: { kind: 'market', day: 1 },
             },
@@ -103,7 +103,7 @@ describe('labor is gated by service-bay membership', () => {
   it('a job on a parked car makes no progress and is logged blocked', () => {
     const { state } = stateWithLot(1)
     // Win the lot first (parking starts open) to get an owned car, untouched by any move.
-    const won = withWornPanels(
+    const won = withWornBodywork(
       advanceDay(
         state,
         { ...noActions, buyoutLots: [{ lotId: state.activeAuctionLots[0]!.id }] },
@@ -138,7 +138,7 @@ describe('labor is gated by service-bay membership', () => {
 
   it('moving the car in first lets the same-day job receive labor', () => {
     const { state } = stateWithLot(1)
-    const won = withWornPanels(
+    const won = withWornBodywork(
       advanceDay(
         state,
         { ...noActions, buyoutLots: [{ lotId: state.activeAuctionLots[0]!.id }] },
@@ -164,7 +164,7 @@ describe('labor is gated by service-bay membership', () => {
     }
     const { state: next } = advanceDay(won, actions, 2, CONTEXT)
     expect(next.jobs).toHaveLength(0) // completed and removed same day
-    expect(next.ownedCars[0]?.parts.panels.installed?.band).toBe('fine')
+    expect(next.ownedCars[0]?.parts.bodywork.installed?.band).toBe('fine')
   })
 })
 

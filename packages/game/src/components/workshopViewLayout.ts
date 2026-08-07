@@ -78,7 +78,7 @@ function part(partId: CarPartId, ...rects: readonly ViewRect[]): WorkshopRegion 
  * and the catalogue sells nothing to fit there. Repair work on the shell
  * happens on zones.
  *
- * `panels` derives its band the same way and is still never repaired
+ * `bodywork` derives its band the same way and is still never repaired
  * directly, but a body kit is fitted at it, so it still has a region to fit
  * one at: the frame the body plan sits inside. Coverage is asserted against
  * the live `PARTS_TAXONOMY`, so a taxonomy change fails here rather than
@@ -126,7 +126,7 @@ export const WORKSHOP_VIEWS: Record<WorkshopViewId, WorkshopView> = {
       // rectangle over the car, so it can never swallow a zone's clicks, and
       // left open on the right, where `aero` closes it instead.
       part(
-        'panels',
+        'bodywork',
         { x: 0, y: 10, w: 320, h: 10 },
         { x: 0, y: 20, w: 10, h: 140 },
         { x: 0, y: 160, w: 320, h: 10 },

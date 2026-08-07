@@ -13,7 +13,7 @@ import {
   type StatBlock,
 } from '@midnight-garage/content'
 import { bandFactor, hasForcedInduction, isPartMissing, isPartPresent } from './bands'
-import { panelsAreAllStock, zonePanelStylePoints } from './bodyPipeline'
+import { panelsAreAllStock, zonePanelMassFactor, zonePanelStylePoints } from './bodyPipeline'
 import {
   balanceOf,
   effectiveCompound,
@@ -115,13 +115,13 @@ function weightedBandFactorForStat(
  * for it. A slot the catalogue cannot resolve counts as not stock for the
  * same reason - an unknown SKU is not evidence of originality.
  *
- * **`panels` is the one exception**, on a car that has a `zoneState` (the
+ * **`bodywork` is the one exception**, on a car that has a `zoneState` (the
  * zone model - see `bodyPipeline.ts`): every non-stock panel SKU is
- * zone-scoped and can never reach `car.parts.panels.installed.partId` (the
+ * zone-scoped and can never reach `car.parts.bodywork.installed.partId` (the
  * whole-car carrier slot only ever accepts a stock SKU, `partFitsCar`
  * refuses the rest), so that field can never answer "is this stock" for a
  * zone-model car. `panelsAreAllStock` reads the zones directly instead -
- * worst-governs, the same rule `derivePanelsBand` already uses for the
+ * worst-governs, the same rule `deriveBodyworkBand` already uses for the
  * carrier's condition: any single aftermarket panel drops the WHOLE slot's
  * contribution to zero, same as an aftermarket carrier SKU would on every
  * other slot.
@@ -130,7 +130,7 @@ function weightedBandFactorForStat(
  * car left the factory with: damaged, not replaced. An all-original car that
  * has been kicked about reads perfectly authentic and poor on condition, which
  * is exactly how the trade talks about one. Its damage is already charged
- * twice over elsewhere, through style (panels and paint carry the style
+ * twice over elsewhere, through style (bodywork and paint carry the style
  * condition weight between them) and through value (`marketValueYen` subtracts
  * the repair bill at a premium), so charging it here as well would be a third
  * penalty for one fact. Missing and aftermarket are the two things that make a
@@ -159,7 +159,7 @@ export function stocknessOf(
     const installed = car.parts[entry.id].installed
     if (!installed && !isPartMissing(car, model, entry.id)) continue // legitimately absent
     totalWeight += weight
-    if (entry.id === 'panels' && car.zoneState) {
+    if (entry.id === 'bodywork' && car.zoneState) {
       if (installed && panelsAreAllStock(car.zoneState)) stockWeight += weight
       continue
     }
@@ -265,15 +265,15 @@ export function authenticityPercentOf(
  * rough car does not look good however it is dressed and a poor-condition
  * maxed-out build always reads below a mint one.
  *
- * **`panels` is the one slot read off the car rather than off its carrier
+ * **`bodywork` is the one slot read off the car rather than off its carrier
  * SKU**, on a car that has a `zoneState` - the same exception `stocknessOf`
  * already makes for the same reason. Every non-stock panel SKU is zone-scoped
  * and reaches a car through `zoneState[zoneId].panelGrade`, never through
- * `car.parts.panels.installed.partId`, so the carrier's own SKU cannot answer
+ * `car.parts.bodywork.installed.partId`, so the carrier's own SKU cannot answer
  * what the body looks like. `zonePanelStylePoints` (bodyPipeline.ts) answers
  * it from the nine zones instead, and the points still scale by the carrier's
- * own band, which is the worst of those same zones: a widebody with a bent
- * wing is a bent widebody.
+ * own band, which is the worst of those same zones: sport body panels with a
+ * bent wing among them are bent sport body panels.
  */
 export function stylePercentOf(
   car: CarInstance,
@@ -290,10 +290,10 @@ export function stylePercentOf(
     const part = partsById[installed.partId]
     if (!part) continue
     const zonePoints =
-      partId === 'panels' && car.zoneState
+      partId === 'bodywork' && car.zoneState
         ? zonePanelStylePoints(car.zoneState, partsById, fitmentClassForTier(model.tier))
         : 0
-    const carrierPoints = partId === 'panels' && car.zoneState ? 0 : part.statModifiers.style
+    const carrierPoints = partId === 'bodywork' && car.zoneState ? 0 : part.statModifiers.style
     const points = carrierPoints + zonePoints + machiningStylePointsOf(installed, economy)
     fitted += points * bandFactor(installed.band, economy)
   }
@@ -376,9 +376,17 @@ export function physicalConditionFactors(
  * of them fitted gets only that one's share.
  *
  * A slot the catalog cannot resolve contributes nothing rather than defaulting
- * to something, so an unknown part id can never silently move the physics; a
- * grade that cannot be read falls back to the `stock` row for the same reason,
- * so nothing unresolvable ever takes the sharper race curve.
+ * to something, so an unknown part id can never silently move the physics.
+ *
+ * **`bodywork`'s MASS is read off the car's nine zones rather than off its
+ * carrier SKU**, on a car that has a `zoneState` - the same exception
+ * `stylePercentOf` above makes, for the same reason: every panel SKU is
+ * zone-scoped and reaches a car through `zoneState[zoneId].panelGrade`, never
+ * through `car.parts.bodywork.installed.partId`, so the carrier cannot answer
+ * what the body is made of. `zonePanelMassFactor` (bodyPipeline.ts) answers it
+ * from the nine, and the carrier's own band and (stock) grade still choose the
+ * wear row, so a set of carbon panels on a battered shell delivers less of its
+ * saving than the same set on a clean one.
  */
 export function buildFactors(
   car: CarInstance,
@@ -391,12 +399,16 @@ export function buildFactors(
     const installed = car.parts[partId].installed
     if (!installed) continue
     const part = partsById[installed.partId]
-    const modifiers = part?.physicalModifiers
-    if (!modifiers) continue
-    const wear = curves[part?.grade ?? 'stock'][installed.band]
+    if (!part) continue
+    const modifiers = part.physicalModifiers
+    const wear = curves[part.grade][installed.band]
+    const mass =
+      partId === 'bodywork' && car.zoneState
+        ? zonePanelMassFactor(car.zoneState, partsById, part.fitmentClass)
+        : modifiers.mass
     factors.grip *= 1 + (modifiers.grip - 1) * wear
     factors.braking *= 1 + (modifiers.braking - 1) * wear
-    factors.mass *= 1 + (modifiers.mass - 1) * wear
+    factors.mass *= 1 + (mass - 1) * wear
   }
   return factors
 }

@@ -80,7 +80,7 @@ export const CarPartIdSchema = z.enum([
   'rims',
   'tyres',
   // body
-  'panels',
+  'bodywork',
   'paint',
   'aero',
   // interior

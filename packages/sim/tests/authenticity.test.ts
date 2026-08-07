@@ -102,7 +102,7 @@ describe('the authored authenticity weights', () => {
   it('weights the heart and the skin above everything else, and the consumables at nothing', () => {
     expect(WEIGHT.block).toBe(18)
     expect(WEIGHT.paint).toBe(11)
-    expect(WEIGHT.panels).toBe(11)
+    expect(WEIGHT.bodywork).toBe(11)
     expect(WEIGHT.aero).toBe(10)
     expect(WEIGHT.internals).toBe(8)
     expect(WEIGHT.rims).toBe(7)
@@ -193,14 +193,14 @@ describe('what a modification costs', () => {
 
   it('leaves a tuner exactly the body it did not touch', () => {
     // Every engine, drivetrain, suspension, wheel and interior slot swapped;
-    // paint, panels, aero and chassis untouched.
+    // paint, bodywork, aero and chassis untouched.
     const gradesByPartId: Partial<Record<CarPartId, Grade>> = {}
     for (const partId of ALL_CAR_PART_IDS) {
-      if (partId === 'paint' || partId === 'panels' || partId === 'aero') continue
+      if (partId === 'paint' || partId === 'bodywork' || partId === 'aero') continue
       if (partId === 'chassis') continue
       gradesByPartId[partId] = 'race'
     }
-    const kept = WEIGHT.paint + WEIGHT.panels + WEIGHT.aero + WEIGHT.chassis
+    const kept = WEIGHT.paint + WEIGHT.bodywork + WEIGHT.aero + WEIGHT.chassis
     expect(authenticityOf(carWith(gradesByPartId))).toBe(kept)
   })
 })
@@ -339,7 +339,7 @@ describe('no car carries a stored authenticity roll any more', () => {
 
 /**
  * A body carrier's BAND is derived from `zoneState`, but what is FITTED there
- * is a real choice, so a modified body reads as modified. `panels` and
+ * is a real choice, so a modified body reads as modified. `bodywork` and
  * `paint` both carry a real aftermarket ladder: fitting either of their
  * non-stock grades costs the slot's whole authenticity weight, and refitting
  * the stock grade wins it back. Paint's stock SKU is the car's own factory
@@ -347,8 +347,8 @@ describe('no car carries a stored authenticity roll any more', () => {
  * factory-correct respray, not merely any paint job.
  */
 describe('a modified body reads as modified', () => {
-  it('ships an aftermarket ladder for panels and paint', () => {
-    for (const carPartId of ['panels', 'paint'] as const) {
+  it('ships an aftermarket ladder for bodywork and paint', () => {
+    for (const carPartId of ['bodywork', 'paint'] as const) {
       const nonStock = PARTS.filter(
         (part) => part.carPartId === carPartId && part.grade !== 'stock',
       )
@@ -357,10 +357,10 @@ describe('a modified body reads as modified', () => {
   })
 
   it('costs a fitted body kit or respray the whole authenticity weight of its slot', () => {
-    expect(authenticityOf(carWith({ panels: 'sport' }))).toBe(100 - WEIGHT.panels)
+    expect(authenticityOf(carWith({ bodywork: 'sport' }))).toBe(100 - WEIGHT.bodywork)
     expect(authenticityOf(carWith({ paint: 'street' }))).toBe(100 - WEIGHT.paint)
-    expect(authenticityOf(carWith({ panels: 'race', paint: 'street' }))).toBe(
-      100 - WEIGHT.panels - WEIGHT.paint,
+    expect(authenticityOf(carWith({ bodywork: 'race', paint: 'street' }))).toBe(
+      100 - WEIGHT.bodywork - WEIGHT.paint,
     )
   })
 

@@ -125,7 +125,7 @@ of its own advantage than a mint street one.
 | Fitted aero-functional SKU | per part | `statFormulas.aero.byGrade` | Downforce coefficient 0 / 0.10 / 0.40 / 1.20 for stock / street / sport / race, **added to** the factory figure: `factoryDownforceCoeff + byGrade[grade].downforceCoeff * spec.aeroCeiling`. A cosmetic SKU in the aero slot leaves the factory figure alone. |
 | `spec.aeroCeiling` | per car | `cars.json` and the roster CSV, required, 0 to 1 | Scales what a FITTED part ADDS, never the factory floor and never the drag. Authored for all 94 roster rows; range 0.20 to 1.00 on both the roster and the 26 shipped cars. **Measured**: a race wing takes the Wagon R (ceiling 0.20, no factory downforce) from a coefficient of 0 to 0.24, and the FD (ceiling 1.00, factory 0.2476) from 0.2476 to 1.4476. |
 | Drag, `dragCdDelta` | per part | `statFormulas.aero.byGrade` | 0 / 0.01 / 0.04 / 0.09 by grade, **unscaled by the ceiling** and arriving in full on every car. It is what makes a wing on a body that cannot use it a straight loss on a lap; it never reaches the handling readout. |
-| `physical.aero` (condition) | per band | `statFormulas.condition.bandFactor.aero` | Weighted mean over `physicalWeights.aero`: aero 3, panels 1, underbody 1 (total 5). Curve: mint 1.00, fine 0.98, worn 0.93, poor 0.84, scrap 0.68. **Measured**: scrap panels and underbody together cost 2.07 raw points on the City E, 0.75 on the S14 and exactly 0 on the eleven cars with no downforce at all. |
+| `physical.aero` (condition) | per band | `statFormulas.condition.bandFactor.aero` | Weighted mean over `physicalWeights.aero`: aero 3, bodywork 1, underbody 1 (total 5). Curve: mint 1.00, fine 0.98, worn 0.93, poor 0.84, scrap 0.68. **Measured**: scrap bodywork and underbody together cost 2.07 raw points on the City E, 0.75 on the S14 and exactly 0 on the eleven cars with no downforce at all. |
 | `aero.downforceK`, `displayReferenceSpeedKmh` | global | `economy.json` | 6.2e-05 and 200 km/h, so the multiplier is `1 + 0.19136 * coeff` at the readout's reference speed. **Measured**: one unit of downforce coefficient is worth 19.1 per cent more grip on the readout. |
 | `aero.maxGripMultiplier` | global | `economy.json`, 2.5 | Caps the multiplier. **Measured**: it would need a coefficient of 7.84 at the reference speed and the largest reachable anywhere in shipped content is 1.5388, so it never binds on the handling readout. |
 
@@ -253,7 +253,7 @@ Nissan Silvia K's S14, every other slot mint stock, base handling 39:
 | aero | 35 | 33 |
 | brakePadsDiscs | 36 | 36 |
 | brakeCalipersLines | 36 | 36 |
-| panels | 38 | 37 |
+| bodywork | 38 | 37 |
 | underbody | 38 | 37 |
 | chassis | 39 | 39 |
 | gearbox, paint, seats, block | 39 | 39 |
@@ -433,7 +433,7 @@ it carries 0.20 of the support shortfall on top (**measured**: +6 to +9 on an un
 build). A scrap or missing STOCK chassis still changes handling by exactly 0 (**measured** on the
 S14: 39 either way).
 
-**6. Body damage reaches handling, faintly, and only on cars that make downforce.** `panels` and
+**6. Body damage reaches handling, faintly, and only on cars that make downforce.** `bodywork` and
 `underbody` carry `physicalWeights.aero`, and `bodyPipeline.ts`'s `applyDerivedBodyBands` writes the
 zone-derived bands into `car.parts`, so panel and floor damage scales the downforce coefficient.
 **Measured**: scrapping both is worth 2.07 raw points on the City E, 0.75 on the S14 and exactly 0

@@ -47,8 +47,8 @@ import {
   findWorkableCar,
   hasMachineLineFor,
   installLaborSlotsFor,
+  machineGateGroupFor,
   machineHiredToday,
-  machineLineGroupFor,
   partCapabilityRequirement,
   refitLaborSlotsFor,
   resolveJobLabor,
@@ -106,7 +106,7 @@ export function isFreeInstallRefit(
   const targetPartId = action.carPartId ?? catalogPart?.carPartId
   if (!car || !partInstance || !targetPartId) return false
   if (refitLaborSlotsFor(car, targetPartId, partInstance, context) > 0) return false
-  const group = machineLineGroupFor(targetPartId, context)
+  const group = machineGateGroupFor(targetPartId, 'install', context)
   return !group || hasMachineLineFor(group, state, context)
 }
 

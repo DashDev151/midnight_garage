@@ -17,7 +17,6 @@ import {
 import { describe, expect, it } from 'vitest'
 import {
   assemblyMachineGateGroup,
-  benchSwapGateGroup,
   dissolveAssembliesForCar,
   externalBlockersFor,
   resolveBuildAssembly,
@@ -30,7 +29,7 @@ import { buildSimContext } from '../src/context'
 import {
   findLoosePart,
   machineAssistFeeYen,
-  removeMachineGateGroup,
+  machineGateGroupFor,
   resolveReconditionLabor,
 } from '../src/jobs'
 import { resolvePlaceOnStation, resolveTakeFromStation } from '../src/parts'
@@ -209,16 +208,28 @@ describe('assembly definitions and derived gates', () => {
     expect(assemblyMachineGateGroup(def('wheelAssembly'), CONTEXT)).toBeNull()
   })
 
-  it('benchSwapGateGroup names the wheels line for a tyre swap only, distinct from the buried-slot gate', () => {
-    expect(benchSwapGateGroup('tyres')).toBe('wheels')
-    expect(benchSwapGateGroup('rims')).toBeNull()
-    // The wheels gate is NOT the buried-slot machine gate: machineAssistFeeYen('tyres') stays 0.
+  it('the tyre gate names the wheels line for a bench fit and for nothing else', () => {
+    expect(machineGateGroupFor('tyres', 'bench-fit', CONTEXT)).toBe('wheels')
+    expect(machineGateGroupFor('rims', 'bench-fit', CONTEXT)).toBeNull()
+    // Mounting rubber is the only thing the tyre machine gates: the car's own
+    // slot is untouched, dismounting is free, and the fee stays 0.
+    expect(machineGateGroupFor('tyres', 'install', CONTEXT)).toBeNull()
+    expect(machineGateGroupFor('tyres', 'remove', CONTEXT)).toBeNull()
+    expect(machineGateGroupFor('tyres', 'repair', CONTEXT)).toBeNull()
     expect(machineAssistFeeYen('tyres', baseState(), CONTEXT)).toBe(0)
   })
 
-  it('the engine assembly gate names the same group a buried camsTiming fit needs', () => {
+  it('no buried slot gates a bench fit - the crane lifts the engine, it does not build it', () => {
+    for (const member of ['block', 'internals', 'headValvetrain', 'camsTiming', 'gearbox', 'clutch']
+      .concat(['rims'])
+      .map((id) => id as CarPartId)) {
+      expect(machineGateGroupFor(member, 'bench-fit', CONTEXT), member).toBeNull()
+    }
+  })
+
+  it('the engine assembly gate names the same group a buried camsTiming removal needs', () => {
     expect(assemblyMachineGateGroup(def('engineAssembly'), CONTEXT)).toBe(
-      removeMachineGateGroup('camsTiming', CONTEXT),
+      machineGateGroupFor('camsTiming', 'remove', CONTEXT),
     )
   })
 })

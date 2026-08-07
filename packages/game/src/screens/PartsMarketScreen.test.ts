@@ -64,7 +64,7 @@ describe('PartsMarketScreen', () => {
   it('"Browse everything" shows the full flat catalog, minus the delisted derived-part stock references', async () => {
     const { wrapper } = await mountScreen()
     await wrapper.find('[data-test="browse-everything"]').trigger('click')
-    // `panels`/`paint`'s own stock SKU (one per fitment class, 2 x 4 = 8)
+    // `bodywork`/`paint`'s own stock SKU (one per fitment class, 2 x 4 = 8)
     // stays in the catalogue as the derived value carriers' installed
     // reference (`bodyPipeline.ts`) but is never listed for sale - the
     // market never lists them again (docs/sprints/sprint_archive/sprint119.md's SKU
