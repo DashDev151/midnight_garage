@@ -180,12 +180,13 @@ describe('EconomyBenchScreen', () => {
     expect(text(wrapper, 'bench-generated-note')).toContain(top)
   })
 
-  it('says where mileage stops adding value', () => {
+  it('says where mileage starts taking value away', () => {
     const wrapper = mountScreen()
     const note = text(wrapper, 'bench-mileage-note')
-    const neutralKm = ECONOMY.valuation.mileageFactorCurve.find(([, factor]) => factor === 1)![0]
+    const flatBand = ECONOMY.valuation.mileageFactorCurve.filter(([, factor]) => factor === 1)
+    const discountFromKm = flatBand[flatBand.length - 1]![0]
     expect(note).toContain(ECONOMY.valuation.mileageFactorCurve[0]![0].toLocaleString('en-US'))
-    expect(note).toContain(`passes 1.00 at ${neutralKm.toLocaleString('en-US')} km`)
+    expect(note).toContain(`flat at 1.00 up to ${discountFromKm.toLocaleString('en-US')} km`)
     expect(text(wrapper, 'bench-fresh-lot-note')).toContain(String(ECONOMY.AUCTION_MIN_AGE_YEARS))
   })
 })

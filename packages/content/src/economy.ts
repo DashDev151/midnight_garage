@@ -588,6 +588,22 @@ export const CurveSchema = z
   })
 
 /**
+ * A curve whose y is a WEAR multiplier on a car's own book value: the share of
+ * that value the car still carries at each point along the axis. The ceiling
+ * of 1 is the whole constraint, and it is what makes this a wear curve rather
+ * than a generic one. Wear only ever subtracts, so a car that has done less of
+ * it is worth up to book and never more; a breakpoint above 1 would price the
+ * car above the guide its book value already is, which is a claim about
+ * desirability rather than about wear, arriving through the wrong axis. Heat,
+ * scene standing and a buyer's own taste are where a car earns more than book.
+ * The same ban `PhysicalModifierSchema.mass` carries, for the same reason: a
+ * dial that can only take away must not be able to give.
+ */
+const WearFactorCurveSchema = CurveSchema.refine((points) => points.every((p) => p[1] <= 1), {
+  message: 'a wear factor can never exceed 1: wear subtracts value, it never adds any',
+})
+
+/**
  * One physical dial's condition curve: the fraction of that dial a car still
  * delivers at each band. Mint is 1.0 by construction, so a car in good order
  * runs on its measured figures exactly.
@@ -933,10 +949,13 @@ export const EconomyConfigSchema = z.object({
    */
   valuation: z
     .object({
-      /** `[mileageKm, factor]` breakpoints - a small low-mileage bonus
-       * flattening to 1.0, then falling off with mileage, clamped to the
-       * first/last factor outside the breakpoint range. */
-      mileageFactorCurve: CurveSchema,
+      /** `[mileageKm, factor]` breakpoints - flat at 1.0 across the low-
+       * mileage band, then falling off with mileage, clamped to the
+       * first/last factor outside the breakpoint range. A `WearFactorCurve`,
+       * so no breakpoint may exceed 1.0: mileage on a car can only subtract
+       * value, and a car that has covered little of it subtracts less rather
+       * than gaining anything. */
+      mileageFactorCurve: WearFactorCurveSchema,
       /**
        * economy-bible.md law 1: the deduction rate for the restoration bill
        * BELOW the car's tier expectation band - yen of guide value gained per

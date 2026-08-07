@@ -220,6 +220,29 @@ pass."
 
 ## Open engineering
 
+- [ ] **MILEAGE IS INERT BELOW 60,000 KM, and that was accepted knowingly as a quick fix
+  (maintainer, 2026-08-07).** Their words: *"We implement this fix. We note it in TODO to be fixed
+  better later. This is a quick and dirty, but implement it."*
+
+  The curve was flattened to 1.0 across 0 to 60,000 km because it used to peak at **1.05**, which
+  meant a low-mileage car was worth **more than book**, and *"mileage on a car can never ADD value.
+  Low mileage can only subtract less."* Flattening the top was the smallest correct fix: it moved
+  only cars that were being given something and left the tuned high-mileage end untouched.
+
+  **What it costs: an 8,000 km car and a 55,000 km car now price identically.** At the opening
+  campaign year that is roughly three quarters of the auction board with no mileage signal at all,
+  falling to about a third by the late game.
+
+  **What a better answer would do**: keep book value as the ceiling, and still let genuinely low
+  mileage be worth something, by declining gently across the band rather than sitting flat. The
+  shape considered and set aside was 1.00 at 30,000 km falling to about 0.95 at 60,000 before
+  rejoining the current curve. It was set aside because it reaches further down the population,
+  cutting every car between 30,000 and 60,000 that the flat version spares, and that is a bigger
+  economy move than the defect warranted at the time.
+
+  Whatever replaces it, the schema now refuses a multiplier above 1.0, so the original defect cannot
+  return.
+
 - [ ] **THE RACE PARTS SHOP: scarcity as the gate, not tools (maintainer, 2026-08-07).** Their idea,
   recorded in their words: *"We remove all race parts from the normal parts shop, and create a new
   race specific shop. But a flaky one. Not every part is available for purchase every day, and not

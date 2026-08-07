@@ -2117,6 +2117,40 @@ import toolShops from '../data/toolShops.json'
  * a line gates is a fact about the SLOT, so it now lives on the slot. Every fee in
  * `feeYenByGroup` is unchanged and so is `probeAmortisationOps`; the hash moves only because a
  * key left the file.
+ *
+ * Re-pinned for the ruling that mileage on a car can never ADD value and low mileage can only
+ * subtract less, signed by the maintainer 2026-08-07 by name and value before implementation
+ * (`docs/sprints/sprint195.md`). ONE value moves: `valuation.mileageFactorCurve`'s first
+ * breakpoint, `[30000, 1.05]` -> `[30000, 1.00]`. The 60,000 km breakpoint was already 1.00 and
+ * the 120,000 and 180,000 km breakpoints are untouched, so the multiplier is now flat at 1.00
+ * across the whole 0 to 60,000 km range (`interpolateCurve` clamps flat below the first
+ * breakpoint) and the tuned high-mileage fall-off resumes above it exactly as before. Nothing
+ * above 60,000 km changes value at all, which is the point of this shape rather than of dividing
+ * the whole curve by 1.05: the correction lands only on cars that were being given something.
+ *
+ * The defect was expressible, not just authored: `mileageFactorCurve` took the generic
+ * `CurveSchema`, which allowed any non-negative multiplier. It now takes `WearFactorCurveSchema`,
+ * the same schema-level ban `PhysicalModifierSchema.mass` already carries, so no breakpoint on a
+ * wear axis can exceed 1.0 and this value cannot come back.
+ *
+ * What follows mechanically, not as a second decision: a car under 60,000 km loses the 4.76 per
+ * cent it was being given, so its clean value and everything derived from it move with the curve.
+ * Measured rather than assumed, and the blast radius is small because almost every pinned fixture
+ * in the suite sits at or above the 60,000 km neutral point already: exactly one pin moves, the
+ * `advanceDay` acquisition-and-sale golden hash, whose scripted career buys a low-mileage Carina
+ * and sells it. The 30-day golden master, every valuation and generation probe, every mission
+ * payout and budget cap and every mission stat threshold hold unchanged (the mission probes build
+ * their cars at 120,000 km, which is on the untouched part of the curve).
+ *
+ * The second-order effect is real but marginal, and was measured rather than predicted:
+ * `enforceMaxBillFraction` sizes the Law 2 bill cap off `cleanValueYen`, so a car under 60,000 km
+ * now carries a cap 4.76 per cent lower and the softening pass has slightly more to do. Generating
+ * 5,760 cars across the whole roster at three campaign years under each curve, from identical
+ * seeds, 13 come out with different bands (0.23 per cent), every one of them under 60,000 km and
+ * all but one on the two cheapest models in the game (`honda-today-jw1`, `honda-city-e-aa`), where
+ * a bill cap sized off a very small clean value is what binds. Net across those 13 cars the bands
+ * move 24 steps better against 12 worse: they arrive marginally softer, as the tighter cap
+ * intends, with the damage budget respending part of what the softening frees.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -2126,7 +2160,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('2ba6e11c01c83f018e50b1e2f0892cf2cb932f87f8411ee2aeff387b8c1927aa')
+    ).toBe('2a95a55bf715273c96d64ed8710205893aed7d5ad8614a7086a3a6b5b227ab3d')
   })
 
   it('damagePatterns.json matches its approved content exactly', () => {

@@ -543,11 +543,22 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // And again for the shops, on the same terms: `GameState` gains
     // `toolShopsOwned`. Re-derived from a real run.
     //
-    // It moves once more, on the same terms as the golden master above, for
-    // the summary body slot being renamed `bodywork`: rename it back to
-    // `panels` throughout this state and the hash is exactly the previous
-    // `618988ca`, so nothing but the key name moved.
-    expect(hashState(acquisitionCareer().sold)).toBe('c7a0c3be')
+    // It moves once more, on its own again, for mileage losing its ability to
+    // ADD value: `valuation.mileageFactorCurve`'s first breakpoint drops from
+    // 1.05 to 1.00, so the multiplier is flat at 1.00 from 0 to 60,000 km and
+    // a car below that figure is no longer worth more than its book value.
+    // The 30-day master above holds unchanged (it never completes a sale);
+    // this script buys and sells a 21,744 km Wagon R, which is exactly the
+    // car the change is about. Measured against the previous curve from the
+    // same seed: the lot is bit-for-bit identical (same `lot-1-local-yard-0`,
+    // same model, same year, same mileage, same 28 bands, still bought on day
+    // 1), so nothing generation rolls moved. What moves is price and what
+    // follows from it - the buyout falls 195834 to 184334 and the offer
+    // accepted falls 164458 to 157575, and the first offer the car draws now
+    // arrives on day 10 rather than day 3: the sale path reads the car's own
+    // price, so the day an offer lands moves with it. Re-derived from a real
+    // run.
+    expect(hashState(acquisitionCareer().sold)).toBe('7118cd29')
   })
 })
 

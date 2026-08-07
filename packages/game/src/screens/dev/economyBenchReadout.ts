@@ -63,37 +63,39 @@ export function heatPercentFor(state: GameState, model: CarModel): number {
 
 /** What mileage on its own is doing to this car's price. */
 export interface BenchMileageNote {
-  /** `mileageFactor` at this mileage. Above 1.0 mileage is ADDING value; below
-   * it, taking value away. */
+  /** `mileageFactor` at this mileage. At 1.0 mileage is taking nothing away;
+   * below it, that is the share of book value the mileage has cost. */
   factor: number
   /** `economy.json`'s own breakpoints, rendered rather than restated, so the
    * note cannot disagree with the curve it describes. */
   curve: readonly (readonly [number, number])[]
-  /** The breakpoint sitting at exactly 1.0, if the curve has one: the mileage
-   * the curve crosses from adding value to taking it away. */
-  neutralKm: number | null
+  /** The highest breakpoint still sitting at exactly 1.0: the top of the flat
+   * band, and the mileage the curve starts discounting above. Null if the
+   * curve never touches 1.0. */
+  discountFromKm: number | null
   /** The youngest a generated lot is ever allowed to be. */
   minAgeYears: number
   /** The mileage range generation rolls for a lot of exactly that age - the
    * lowest-mileage lot the board can ever carry. */
   youngestLotRangeKm: readonly [number, number]
-  /** True when even the top of that range sits below the crossing point, so
-   * every freshly generated lot is on the value-adding side of the curve
-   * whatever it rolls. */
-  youngestLotAddsValue: boolean
+  /** True when even the top of that range sits inside the flat band, so every
+   * freshly generated lot of that age prices at full book whatever mileage it
+   * rolls. */
+  youngestLotUndiscounted: boolean
 }
 
 export function mileageNoteFor(mileageKm: number, economy: EconomyConfig): BenchMileageNote {
   const curve = economy.valuation.mileageFactorCurve
-  const neutralKm = curve.find(([, factor]) => factor === 1)?.[0] ?? null
+  const flatBand = curve.filter(([, factor]) => factor === 1)
+  const discountFromKm = flatBand[flatBand.length - 1]?.[0] ?? null
   const youngestLotRangeKm = mileageRangeForAge(economy.AUCTION_MIN_AGE_YEARS, economy)
   return {
     factor: mileageFactor(mileageKm, economy),
     curve,
-    neutralKm,
+    discountFromKm,
     minAgeYears: economy.AUCTION_MIN_AGE_YEARS,
     youngestLotRangeKm,
-    youngestLotAddsValue: neutralKm !== null && youngestLotRangeKm[1] < neutralKm,
+    youngestLotUndiscounted: discountFromKm !== null && youngestLotRangeKm[1] <= discountFromKm,
   }
 }
 

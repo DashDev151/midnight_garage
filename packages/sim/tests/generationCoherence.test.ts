@@ -1,17 +1,21 @@
 import {
   ALL_CAR_PART_IDS,
+  AuctionTierSchema,
   BUYERS,
   CARS,
   ECONOMY,
   PARTS,
   PARTS_TAXONOMY,
+  ReputationTierSchema,
   type CarInstance,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
-import { generateAuctionCarInstance, wearExposure } from '../src/auctions'
+import { generateAuctionCarInstance, generateAuctionCatalog, wearExposure } from '../src/auctions'
 import { bandIndex } from '../src/bands'
 import { isBodyDerivedPart } from '../src/bodyPipeline'
+import { currentGameYear } from '../src/calendar'
 import { buildSimContext } from '../src/context'
+import { mileageFactor } from '../src/marketValue'
 import { createRng } from '../src/rng'
 
 /**
@@ -39,6 +43,32 @@ function worstBand(car: CarInstance): string {
     if (band && bandIndex(band) < bandIndex(worst as never)) worst = band
   }
   return worst
+}
+
+const REPUTATION_TIERS = ReputationTierSchema.options
+
+/**
+ * The mileage of every lot four full room catalogues put on the board at one
+ * campaign year, sampled over many seeds. Drawn through `generateAuctionCatalog`
+ * rather than by sweeping the roster evenly, because what a player sees is the
+ * room's own two-stage draw: a price band from the room's appetite, then a car
+ * within it by scarcity.
+ */
+function catalogueMileages(year: number): number[] {
+  const mileages: number[] = []
+  for (const tier of AuctionTierSchema.options) {
+    for (let seed = 0; seed < 25; seed++) {
+      for (const lot of generateAuctionCatalog(CARS, tier, 1, 10, createRng(seed), CONTEXT, year)) {
+        mileages.push(lot.car.mileageKm)
+      }
+    }
+  }
+  return mileages
+}
+
+/** The share of a sample whose mileage multiplier is at or above `factor`. */
+function shareAtOrAbove(mileages: readonly number[], factor: number): number {
+  return mileages.filter((km) => mileageFactor(km, ECONOMY) >= factor).length / mileages.length
 }
 
 describe('wearExposure (Sprint 66)', () => {
@@ -199,6 +229,36 @@ describe('generated cars are coherent (Sprint 66, item 6a)', () => {
       }
     }
     expect(sawRoughHighMileage).toBe(true)
+  })
+
+  /**
+   * Mileage subtracts value or leaves it alone; it never adds any. The curve
+   * says so at every point, and this says so about the cars a player is
+   * actually offered: 1,000 lots per campaign year, drawn by the four rooms
+   * themselves at the year each reputation tier puts the calendar at.
+   *
+   * The zero is the fact worth pinning. The flat-band shares beside it are
+   * measured rather than chosen, and deliberately barred loosely: they move
+   * with the roster and the rooms' appetites, while a single lot priced above
+   * book would be the defect coming back. As shipped: 0.734 of the day-one
+   * board carries no mileage discount at all, falling to 0.398 by 2003 as the
+   * year window admits younger cars against an older calendar. That the flat
+   * band is most of the opening board is the known cost of a flat band, not a
+   * surprise - an 8,000 km car and a 55,000 km car price identically.
+   */
+  it('mileage never adds value to a lot a room actually offers, at any campaign year', () => {
+    const shares = REPUTATION_TIERS.map((tier) => {
+      const mileages = catalogueMileages(currentGameYear(tier))
+      expect(mileages.length).toBeGreaterThan(500)
+      expect(
+        mileages.filter((km) => mileageFactor(km, ECONOMY) > 1).length,
+        `a lot at campaign year ${currentGameYear(tier)} priced above its own book value on mileage`,
+      ).toBe(0)
+      return shareAtOrAbove(mileages, 1)
+    })
+
+    expect(shares[0]!).toBeGreaterThan(0.6)
+    expect(shares[shares.length - 1]!).toBeLessThan(shares[0]! - 0.2)
   })
 
   it("a car's provenance blurb fits its age - a nearly-new car is never a barn find", () => {

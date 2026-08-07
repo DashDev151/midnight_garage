@@ -333,13 +333,13 @@ describe("the economy bench's mileage note", () => {
     expect(note.minAgeYears).toBe(context.economy.AUCTION_MIN_AGE_YEARS)
   })
 
-  it('names the mileage the curve crosses 1.0, and whether a fresh lot sits below it', () => {
+  it('names the top of the flat band, and whether a fresh lot sits inside it', () => {
     const note = mileageNoteFor(0, context.economy)
-    expect(note.neutralKm).not.toBeNull()
-    // Below the crossing point mileage adds value; above it, takes it away.
-    expect(mileageNoteFor(note.neutralKm! - 1, context.economy).factor).toBeGreaterThan(1)
-    expect(mileageNoteFor(note.neutralKm! + 1, context.economy).factor).toBeLessThan(1)
-    expect(note.youngestLotAddsValue).toBe(note.youngestLotRangeKm[1] < note.neutralKm!)
+    expect(note.discountFromKm).not.toBeNull()
+    // Inside the flat band mileage takes nothing away; above it, it discounts.
+    expect(mileageNoteFor(note.discountFromKm! - 1, context.economy).factor).toBe(1)
+    expect(mileageNoteFor(note.discountFromKm! + 1, context.economy).factor).toBeLessThan(1)
+    expect(note.youngestLotUndiscounted).toBe(note.youngestLotRangeKm[1] <= note.discountFromKm!)
   })
 })
 

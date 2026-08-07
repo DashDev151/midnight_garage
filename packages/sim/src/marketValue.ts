@@ -57,8 +57,9 @@ function interpolateCurve(breakpoints: readonly (readonly [number, number])[], x
 }
 
 /** Mileage discounts clean value along `economy.json`'s
- * `valuation.mileageFactorCurve` - a small low-mileage bonus that flattens
- * to 1.0, then falls off with mileage. */
+ * `valuation.mileageFactorCurve` - flat at 1.0 across the low-mileage band,
+ * then falling off with mileage. It never returns more than 1: mileage can
+ * only take value away, and a little of it takes less away than a lot. */
 export function mileageFactor(mileageKm: number, economy: EconomyConfig): number {
   return interpolateCurve(economy.valuation.mileageFactorCurve, mileageKm)
 }

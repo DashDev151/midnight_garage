@@ -285,7 +285,9 @@ describe('seed content validates against schemas', () => {
     }
     expect(result.data.valuation.tasteSpread).toBe(0.12)
     // Mileage curve inside clean value - car age no longer factors into
-    // value at all, only mileage does.
+    // value at all, only mileage does. Flat at 1.0 across the low-mileage
+    // band: mileage takes value away or leaves it alone, never adds any.
+    expect(result.data.valuation.mileageFactorCurve[0]).toEqual([30000, 1.0])
     expect(result.data.valuation.mileageFactorCurve[1]).toEqual([60000, 1.0])
     // economy-bible.md law 1: ONE slope, always above 1, plus the same
     // small scrap-value backstop floor (bands.scrapValueFraction,
@@ -592,6 +594,30 @@ describe('seed content validates against schemas', () => {
       poor: 0.1,
     })
     expect(result.data.teardown.donorBreakEvenBillRatio).toBe(0.45)
+  })
+
+  /**
+   * The mileage curve is a wear axis, and a wear axis has a ceiling of 1: it
+   * says how much of a car's book value survives the distance it has covered,
+   * so it can subtract or leave alone and never add. The schema is what
+   * enforces that, not care in authoring, which is why a raised breakpoint is
+   * asserted to fail rather than only assumed not to be written.
+   */
+  it('refuses a mileage multiplier above 1.0', () => {
+    const raised = {
+      ...economy,
+      valuation: {
+        ...economy.valuation,
+        mileageFactorCurve: [
+          [30000, 1.05],
+          [60000, 1],
+          [120000, 0.85],
+          [180000, 0.75],
+        ],
+      },
+    }
+    expect(EconomyConfigSchema.safeParse(raised).success).toBe(false)
+    expect(EconomyConfigSchema.safeParse(economy).success).toBe(true)
   })
 
   it('parses the Sprint 94 energy-bar knobs (the continuous daily labour bar)', () => {

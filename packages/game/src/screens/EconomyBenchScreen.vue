@@ -468,9 +468,10 @@ const slotsInRepairGroup = computed(() => context.value.partIdsByGroup[repairGro
 
       <p class="dim" data-test="bench-mileage-note">
         Mileage multiplier at this figure: x{{ mileage.factor.toFixed(3) }}.
-        <template v-if="mileage.neutralKm !== null">
-          The curve passes 1.00 at {{ mileage.neutralKm.toLocaleString('en-US') }} km, so mileage
-          below that ADDS value and mileage above it takes value away.
+        <template v-if="mileage.discountFromKm !== null">
+          The curve is flat at 1.00 up to {{ mileage.discountFromKm.toLocaleString('en-US') }} km
+          and falls away above it, so mileage never adds value: a car below that figure has had
+          nothing taken off rather than something added on.
         </template>
         The breakpoints, from economy.json:
         <span v-for="(point, i) in mileage.curve" :key="point[0]">
@@ -479,11 +480,12 @@ const slotsInRepairGroup = computed(() => context.value.partIdsByGroup[repairGro
           }}</span
         >. The first figure is flat all the way down to zero and the last is flat above itself.
       </p>
-      <p v-if="mileage.youngestLotAddsValue" class="dim" data-test="bench-fresh-lot-note">
+      <p v-if="mileage.youngestLotUndiscounted" class="dim" data-test="bench-fresh-lot-note">
         The youngest lot generation will ever produce is {{ mileage.minAgeYears }} years old and
         rolls {{ mileage.youngestLotRangeKm[0].toLocaleString('en-US') }} to
-        {{ mileage.youngestLotRangeKm[1].toLocaleString('en-US') }} km, all of it below that
-        crossing point. A large share of generated lots therefore sit where mileage is adding value.
+        {{ mileage.youngestLotRangeKm[1].toLocaleString('en-US') }} km, all of it inside the flat
+        band. A large share of generated lots therefore carry no mileage discount at all, and price
+        the same whether they have covered 8,000 km or 55,000.
       </p>
 
       <div class="row">
