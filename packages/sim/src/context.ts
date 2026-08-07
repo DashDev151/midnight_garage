@@ -24,6 +24,7 @@ import type {
   Symptom,
   ToolLine,
   ToolLines,
+  ToolShop,
   VenueNames,
 } from '@midnight-garage/content'
 import {
@@ -39,6 +40,7 @@ import {
   STORY_MISSIONS,
   SYMPTOMS,
   TOOL_LINES,
+  TOOL_SHOPS,
   VENUE_NAMES,
 } from '@midnight-garage/content'
 
@@ -104,6 +106,12 @@ export interface SimContext {
   toolLines: ToolLines
   /** Convenience lookup for one line - `toolLines[componentId]`, named. */
   toolLineFor(componentId: ComponentId): ToolLine
+  /** The shops at the top of the ladder, in their declared order. */
+  toolShops: readonly ToolShop[]
+  toolShopsById: Readonly<Record<string, ToolShop>>
+  /** The one shop covering each line - derived once, since content guarantees
+   * exactly one shop per line. */
+  toolShopByGroup: Readonly<Record<ComponentId, ToolShop>>
   economy: EconomyConfig
   /** The car-history flavour pool (`CarInstance.provenanceNote`) -
    * `auctions.ts` reads it from here. */
@@ -161,6 +169,18 @@ function groupPartIdsByGroup(
     ;(result[entry.group] ??= []).push(entry.id)
   }
   return result as Record<ComponentId, readonly CarPartId[]>
+}
+
+/** Each line's covering shop, flattened out of the shops' own `covers` lists.
+ * Content guarantees every line appears exactly once, so this is total. */
+function indexToolShopsByGroup(shops: readonly ToolShop[]): Record<ComponentId, ToolShop> {
+  const result: Record<string, ToolShop> = {}
+  for (const shop of shops) {
+    for (const componentId of shop.covers) {
+      result[componentId] = shop
+    }
+  }
+  return result as Record<ComponentId, ToolShop>
 }
 
 const FITMENT_CLASSES: readonly PartFitmentClass[] = ['entry', 'everyday', 'enthusiast', 'flagship']
@@ -235,6 +255,7 @@ export function buildSimContext(
   venueNames: VenueNames = VENUE_NAMES,
   courses: readonly Course[] = COURSES,
   damagePatterns: readonly DamagePattern[] = DAMAGE_PATTERNS,
+  toolShops: readonly ToolShop[] = TOOL_SHOPS,
 ): SimContext {
   const sortedStoryMissions = [...storyMissions].sort(
     (a, b) => a.gateReputationPoints - b.gateReputationPoints,
@@ -266,6 +287,9 @@ export function buildSimContext(
     facilities,
     toolLines,
     toolLineFor: (componentId) => toolLines[componentId],
+    toolShops,
+    toolShopsById: indexById(toolShops),
+    toolShopByGroup: indexToolShopsByGroup(toolShops),
     economy,
     provenancePool,
     symptoms,

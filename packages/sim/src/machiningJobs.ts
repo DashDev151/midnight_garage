@@ -9,8 +9,7 @@ import {
   type MachiningOperation,
   type Part,
   type PartInstance,
-  type SceneStanding,
-  type ToolTiers,
+  type ToolLevels,
 } from '@midnight-garage/content'
 import { bandFactor } from './bands'
 import type { SimContext } from './context'
@@ -26,6 +25,7 @@ import {
   writeCarBack,
   type LaborApplicationResult,
 } from './jobs'
+import { toolLevelsFor } from './toolLines'
 
 /**
  * Where an operation is chosen, paid for in labour, and written onto the metal
@@ -86,7 +86,6 @@ export type MachiningGateReason =
   /** In the warehouse, but not on the machine. Carry it to the machine shop. */
   | 'not-on-machine'
   | 'tool-tier'
-  | 'scene-standing'
   /** Not a cut this shop makes: no such operation, or one that is only done
    * with the part fitted to a car. */
   | 'unknown-operation'
@@ -114,40 +113,34 @@ export type FittedMachiningGateReason =
    * does with the part off. */
   | 'unknown-operation'
   | 'tool-tier'
-  | 'scene-standing'
   | 'not-mint'
   | 'already-applied'
 
 /**
- * The capability gate one operation needs regardless of any specific car:
- * the tool tier of the line its own `carPartId` belongs to, and, for a scene
- * operation, that scene already at the Shop stage
- * (`docs/design/systems/scene-standing-refactor.md` section 6 - "standing
- * ungates the tool", never the other way round). The one check both the
- * machine shop (`machiningGateReason` below, part-specific) and the
+ * The capability gate one operation needs regardless of any specific car: the
+ * tool LEVEL of the line its own `carPartId` belongs to, and nothing else.
+ * Tools are bought with money and the market decides whether the work was
+ * worth doing, so no standing anywhere gates an operation. The one check both
+ * the machine shop (`machiningGateReason` below, part-specific) and the
  * service-job board (`isCraftOperationUnlocked`, serviceJobs.ts) share, so a
- * signature job can never be offered ahead of what the shop's own cars could
+ * signature job can never be offered ahead of what the garage's own cars could
  * actually get.
  *
- * The four original engine operations carry no `scene` and gate on
- * `minEngineToolTier` alone, exactly as before this generalisation. A scene
- * operation gates on `craftOperationToolTier` instead - always 3, per the
- * ladder ruling that an operation must never let a lower tier out-reach a
- * bare tier 3 shop.
+ * The four original engine operations gate on `minEngineToolTier`; an
+ * operation carrying a `scene` gates on `craftOperationToolTier` instead,
+ * read against its own line. Both sit at level 3, which is the shop covering
+ * that line.
  */
 export function craftOperationCapabilityGateReason(
   operation: MachiningOperation,
-  toolTiers: ToolTiers,
-  sceneStanding: SceneStanding,
+  toolLevels: ToolLevels,
   context: SimContext,
-): 'tool-tier' | 'scene-standing' | null {
+): 'tool-tier' | null {
   const group = context.partsTaxonomyById[operation.carPartId].group
-  const requiredTier = operation.scene
+  const requiredLevel = operation.scene
     ? context.economy.machining.craftOperationToolTier
     : context.economy.machining.minEngineToolTier
-  if (toolTiers[group] < requiredTier) return 'tool-tier'
-  if (operation.scene && sceneStanding[operation.scene] !== 'shop') return 'scene-standing'
-  return null
+  return toolLevels[group] < requiredLevel ? 'tool-tier' : null
 }
 
 /** The slot the loose `partInstanceId` addresses, resolved through its own
@@ -177,12 +170,10 @@ function slotOfLoosePart(state: GameState, partInstanceId: string, context: SimC
  * `wrong-slot` keeps an operation on its own metal: `operation.carPartId` has
  * to be the slot the part itself addresses.
  *
- * `tool-tier`/`scene-standing` are the whole of the capability gate
- * (`craftOperationCapabilityGateReason` above). For the four original engine
- * operations that gate is tool tier alone: the engine line's top rung
- * (`economy.machining.minEngineToolTier`, already named "Machine-shop tooling"
- * in `toolLines.json`) is what buys the means of production; once it is owned,
- * an operation costs labour and nothing else.
+ * `tool-tier` is the whole of the capability gate
+ * (`craftOperationCapabilityGateReason` above): the machine shop is what buys
+ * the means of production, and once it is owned an operation costs labour and
+ * nothing else.
  *
  * `not-mint` is the design's own rule: you do not bore a worn block, you
  * rebuild it first.
@@ -201,8 +192,7 @@ export function machiningGateReason(
   if (state.machinePartId !== partInstanceId) return 'not-on-machine'
   const capabilityReason = craftOperationCapabilityGateReason(
     operation,
-    state.toolTiers,
-    state.sceneStanding,
+    toolLevelsFor(state, context),
     context,
   )
   if (capabilityReason) return capabilityReason
@@ -223,9 +213,9 @@ export function machiningGateReason(
  * a `fitted-part` operation resolves here, so asking the car for a bore reads
  * as `unknown-operation`.
  *
- * `tool-tier`/`scene-standing`, `not-mint` and `already-applied` are the same
- * checks the machine shop makes, read off the installed part rather than the
- * loose one. The tool gate is the operation's OWN line
+ * `tool-tier`, `not-mint` and `already-applied` are the same checks the
+ * machine shop makes, read off the installed part rather than the loose one.
+ * The tool gate is the operation's OWN line
  * (`craftOperationCapabilityGateReason`): corner weighting answers to
  * suspension and show fitment to wheels, neither to the engine.
  */
@@ -244,8 +234,7 @@ export function fittedMachiningGateReason(
   if (!installed) return 'slot-empty'
   const capabilityReason = craftOperationCapabilityGateReason(
     operation,
-    state.toolTiers,
-    state.sceneStanding,
+    toolLevelsFor(state, context),
     context,
   )
   if (capabilityReason) return capabilityReason

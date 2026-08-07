@@ -2,108 +2,78 @@
   "engine": {
     "tiers": [
       {
-        "displayName": "Hand tools & timing kit",
+        "displayName": "Spanner roll and a borrowed timing light",
         "upgradePriceYen": 0
       },
       {
         "displayName": "Engine crane & stand",
         "upgradePriceYen": 600000,
         "minReputationTier": "local"
-      },
-      {
-        "displayName": "Machine-shop tooling",
-        "upgradePriceYen": 1500000,
-        "minReputationTier": "known"
       }
     ]
   },
   "drivetrain": {
     "tiers": [
       {
-        "displayName": "Driveline hand tools",
+        "displayName": "Breaker bar and a milk crate",
         "upgradePriceYen": 0
       },
       {
         "displayName": "Transmission bench",
         "upgradePriceYen": 900000,
         "minReputationTier": "local"
-      },
-      {
-        "displayName": "Driveline rebuild bench & press",
-        "upgradePriceYen": 1800000,
-        "minReputationTier": "known"
       }
     ]
   },
   "suspension": {
     "tiers": [
       {
-        "displayName": "Trolley jack & axle stands",
+        "displayName": "Trolley jack and four axle stands",
         "upgradePriceYen": 0
       },
       {
         "displayName": "Two-post lift",
         "upgradePriceYen": 250000,
         "minReputationTier": "local"
-      },
-      {
-        "displayName": "Drive-on alignment lift",
-        "upgradePriceYen": 400000,
-        "minReputationTier": "known"
       }
     ]
   },
   "wheels": {
     "tiers": [
       {
-        "displayName": "Tyre levers & bubble balancer",
+        "displayName": "Tyre levers and a bubble balancer",
         "upgradePriceYen": 0
       },
       {
         "displayName": "Tyre machine & balancer",
         "upgradePriceYen": 150000,
         "minReputationTier": "local"
-      },
-      {
-        "displayName": "Laser alignment & balance rig",
-        "upgradePriceYen": 350000,
-        "minReputationTier": "known"
       }
     ]
   },
   "body": {
     "tiers": [
       {
-        "displayName": "Filler, sandpaper & rattle cans",
+        "displayName": "Filler, wet-and-dry and rattle cans",
         "upgradePriceYen": 0
       },
       {
         "displayName": "MIG welder & panel tools",
         "upgradePriceYen": 700000,
         "minReputationTier": "local"
-      },
-      {
-        "displayName": "Spray booth & chassis jig",
-        "upgradePriceYen": 1400000,
-        "minReputationTier": "known"
       }
     ]
   },
   "interior": {
     "tiers": [
       {
-        "displayName": "Hand stitching & trim tools",
+        "displayName": "Needle, thread and a trim wedge",
         "upgradePriceYen": 0
       },
       {
         "displayName": "Upholstery & trim bench",
         "upgradePriceYen": 350000,
         "minReputationTier": "local"
-      },
-      {
-        "displayName": "Full trim shop",
-        "upgradePriceYen": 700000,
-        "minReputationTier": "known"
       }
     ]
   }

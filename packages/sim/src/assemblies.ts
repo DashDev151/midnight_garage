@@ -239,7 +239,7 @@ export function resolveRemoveAssembly(
   if (laborSlotsUsed > laborAvailable) return fail
 
   const gateGroup = assemblyMachineGateGroup(def, context)
-  if (gateGroup && !hasMachineLineFor(gateGroup, state)) return fail
+  if (gateGroup && !hasMachineLineFor(gateGroup, state, context)) return fail
 
   const isOwned = state.ownedCars.some((c) => c.id === carInstanceId)
   const members: AssemblyContainer['members'] = {}
@@ -385,7 +385,7 @@ export function resolveRefitAssembly(
   if (laborSlotsRequired > laborAvailable) return fail
 
   const gateGroup = assemblyMachineGateGroup(def, context)
-  if (gateGroup && !hasMachineLineFor(gateGroup, state)) return fail
+  if (gateGroup && !hasMachineLineFor(gateGroup, state, context)) return fail
 
   let parts = { ...car.parts }
   let partsCostYen = 0
@@ -452,7 +452,7 @@ export function resolveSwapAssemblyMember(
   if (laborSlotsUsed > laborAvailable) return fail
 
   const gateGroup = benchSwapGateGroup(memberSlot)
-  if (gateGroup && !hasMachineLineFor(gateGroup, state)) return fail
+  if (gateGroup && !hasMachineLineFor(gateGroup, state, context)) return fail
 
   const displaced = container.members[memberSlot] ?? null
   const nextContainers = [...containers]

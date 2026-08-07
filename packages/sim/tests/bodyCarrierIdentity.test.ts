@@ -35,7 +35,13 @@ import {
   resolveRemovePart,
 } from '../src/jobs'
 import { makeMarketOrigin } from '../src/provenance'
-import { buildCarInstance, mintCarParts, testSceneStanding, testToolTiers } from './testFixtures'
+import {
+  buildCarInstance,
+  mintCarParts,
+  testSceneStanding,
+  testToolShopsOwned,
+  testToolTiers,
+} from './testFixtures'
 
 /**
  * A body value carrier holds a real SKU. `panels` and `paint` are the two
@@ -122,12 +128,13 @@ function stateWith(car: CarInstance, inventory: PartInstance[]): GameState {
     forecourtCarIds: [null, null],
     graceParkingCarId: null,
     energySpentToday: 0,
-    toolTiers: testToolTiers({ body: 3 }),
+    toolTiers: testToolTiers({ body: 2 }),
     pendingPartOrders: [],
     cartPartIds: [],
     stagedCarWork: {},
     marketLedger: { lotSupply: {}, playerSales: {} },
     carLedgers: {},
+    toolShopsOwned: testToolShopsOwned('body'),
     machineListing: null,
     nextMachineListingDay: null,
     serviceJobLedgers: {},
@@ -284,7 +291,7 @@ describe('the chassis stiffening kits need the body line', () => {
   it('refuses the install outright when the body line is neither owned nor hired today', () => {
     const car = carOnZoneModel()
     const state = stateWith(car, [])
-    const gated: GameState = { ...state, toolTiers: testToolTiers() } // body tier 1, nothing hired
+    const gated: GameState = { ...state, toolTiers: testToolTiers(), toolShopsOwned: [] } // body tier 1, nothing hired
     const kit = kitInstance(CHASSIS_KIT)
     const withKit: GameState = { ...gated, partInventory: [kit] }
     const gate = installFitGate(
@@ -321,16 +328,16 @@ describe('the chassis stiffening kits need the body line', () => {
   it('installs once the body line is hired for the day', () => {
     const car = carOnZoneModel()
     const state = stateWith(car, [])
-    const untiered: GameState = { ...state, toolTiers: testToolTiers() }
+    const untiered: GameState = { ...state, toolTiers: testToolTiers(), toolShopsOwned: [] }
     const hired = resolveHireMachineLine(untiered, 'body', CONTEXT)
-    expect(hasMachineLineFor('body', hired.state)).toBe(true)
+    expect(hasMachineLineFor('body', hired.state, CONTEXT)).toBe(true)
     const fitted = fitThroughJob(car, CHASSIS_KIT, hired.state)
     expect(fitted.parts.chassis.installed?.partId).toBe(CHASSIS_KIT.id)
   })
 
   it('installs freely once the body line is owned outright', () => {
-    // `carOnZoneModel`'s state carries `toolTiers: testToolTiers({ body: 3 })`
-    // by default, so the gate never fires here at all.
+    // `carOnZoneModel`'s state owns the shop covering the body line by
+    // default, so the gate never fires here at all.
     const fitted = fitThroughJob(carOnZoneModel(), CHASSIS_KIT)
     expect(fitted.parts.chassis.installed?.partId).toBe(CHASSIS_KIT.id)
   })

@@ -88,10 +88,17 @@ function appliedNames(
     .join(', ')
 }
 
-/** What an absent machine would cost, and the standing the trade wants before
- * it will sell you one. */
+/** Which purchase puts this bench on the floor. Named on every row, present or
+ * absent, because the room fills up from more than one of them. */
+function shopLine(machine: MachineShopMachine): string {
+  return `Comes in with the ${machine.shopName}.`
+}
+
+/** What an absent bench would cost, and the standing the trade wants before it
+ * will sell you one. The price is the whole shop's: nobody sells the bench on
+ * its own. */
 function priceLine(machine: MachineShopMachine): string {
-  const price = `${formatYen(machine.priceYen)} when one is listed`
+  const price = `${formatYen(machine.priceYen)} when the ${machine.shopName} is listed`
   return machine.minReputationTier
     ? `${price}, and ${machine.minReputationTier} standing before anyone will sell it to you.`
     : `${price}.`
@@ -172,10 +179,14 @@ function onMachineClick(operationId: string): void {
     </section>
 
     <!-- The room, listed as what it holds. Each line of work that gets done
-         at a machine has one, and a line whose machine is missing says what
-         the machine costs rather than shutting the room. -->
+         at a machine has a bench here, named for its line and for the shop
+         that brings it, and a bench that is missing says what the shop costs
+         rather than shutting the room. -->
     <section class="panel" data-test="machine-shop-machinery">
       <h3>Machinery</h3>
+      <p class="machinery-intro" data-test="machine-shop-machinery-intro">
+        The benches in here did not all arrive together. Each one says which shop brought it.
+      </p>
       <ul class="machines">
         <li
           v-for="machine in machinery"
@@ -193,6 +204,9 @@ function onMachineClick(operationId: string): void {
               >{{ machine.present ? 'In-house' : 'Not here' }}</span
             >
           </div>
+          <p class="machine-note" :data-test="'machine-shop-machine-shop-' + machine.componentId">
+            {{ shopLine(machine) }}
+          </p>
           <p class="machine-note">Works on {{ machine.worksOn.join(', ') }}.</p>
           <p
             v-if="!machine.present"
@@ -204,7 +218,7 @@ function onMachineClick(operationId: string): void {
         </li>
       </ul>
       <p class="machinery-note">
-        Used machinery comes up in the classifieds, one machine at a time.
+        A shop comes up in the classifieds whole, one at a time.
         <RouterLink
           :to="{ name: 'upgrades', query: { from: 'machine-shop' } }"
           data-test="machine-shop-to-upgrades"
@@ -305,10 +319,15 @@ h3 {
 }
 
 .machine-note,
-.machine-price {
+.machine-price,
+.machinery-intro {
   margin: 2px 0 0;
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
+}
+
+.machinery-intro {
+  margin: 0 0 var(--mg-space-2);
 }
 
 .machine-price {

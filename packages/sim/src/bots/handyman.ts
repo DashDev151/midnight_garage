@@ -68,7 +68,7 @@ export function handymanStrategy(state: GameState, context: SimContext, rng: Rng
   // investment priority. One upgrade per day: buying everything at once
   // would strand the bot broke on tools with nothing left to run the shop.
   const linesByNextTierPrice = ComponentIdSchema.options
-    .filter((id) => state.toolTiers[id] < 3)
+    .filter((id) => state.toolTiers[id] < 2)
     .sort(
       (a, b) =>
         context.toolLines[a].tiers[state.toolTiers[a]]!.upgradePriceYen -

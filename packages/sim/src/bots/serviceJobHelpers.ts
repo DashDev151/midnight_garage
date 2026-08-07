@@ -2,6 +2,7 @@ import type { GameState, Job, ServiceJob, ServiceJobTask } from '@midnight-garag
 import type { DayActions } from '../actions'
 import { planGroupRepair } from '../bands'
 import type { SimContext } from '../context'
+import { toolLevelsFor } from '../toolLines'
 import { installLaborSlotsFor } from '../jobs'
 import { gradeAtLeast, partFitsCar } from '../parts'
 import { isServiceTaskDone, serviceJobCostBreakdown } from '../serviceJobs'
@@ -120,7 +121,7 @@ export function queueServiceJobTasks(
         car,
         group,
         minBand,
-        state.toolTiers,
+        toolLevelsFor(state, context),
         context.partIdsByGroup,
         context.partsById,
         context.partsTaxonomyById,

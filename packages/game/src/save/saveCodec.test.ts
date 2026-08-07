@@ -972,7 +972,7 @@ describe('saveCodec', () => {
   })
 
   it('a per-part staged action and job (carPartId set) round-trip exactly under version 17', () => {
-    expect(SAVE_VERSION).toBe(66)
+    expect(SAVE_VERSION).toBe(67)
     const perPart: GameState = GameStateSchema.parse({
       ...fullState,
       jobs: [
@@ -1019,7 +1019,7 @@ describe('saveCodec', () => {
   })
 
   it('a v31 state with an origin-carrying inventory part round-trips the origin exactly', () => {
-    expect(SAVE_VERSION).toBe(66)
+    expect(SAVE_VERSION).toBe(67)
     const withOrigin: GameState = GameStateSchema.parse({
       ...fullState,
       partInventory: [
@@ -1532,16 +1532,16 @@ describe('saveCodec', () => {
       return 'MGSAVE1.' + btoa(JSON.stringify(preV23))
     }
 
-    it('a v22 save owning engine-crane + tire-machine decodes to engine 3, wheels 2, rest 1', () => {
+    it('a v22 save owning engine-crane + tire-machine decodes to engine 2, wheels 2, rest 1', () => {
       const decoded = decodeSave(v22SaveOwning(['engine-crane', 'tire-machine']))
-      expect(decoded.toolTiers).toEqual({ ...FRESH_TOOL_TIERS, engine: 3, wheels: 2 })
+      expect(decoded.toolTiers).toEqual({ ...FRESH_TOOL_TIERS, engine: 2, wheels: 2 })
       // The legacy field is gone, not defaulted - the schema has no such key.
       expect(decoded).not.toHaveProperty('ownedEquipmentIds')
     })
 
-    it('two machines covering the same group take the max level (brake-lathe 2 + suspension-press 3 -> suspension 3)', () => {
+    it('two machines covering the same group take the max rung (brake-lathe + suspension-press -> suspension 2)', () => {
       const decoded = decodeSave(v22SaveOwning(['brake-lathe', 'suspension-press']))
-      expect(decoded.toolTiers).toEqual({ ...FRESH_TOOL_TIERS, suspension: 3 })
+      expect(decoded.toolTiers).toEqual({ ...FRESH_TOOL_TIERS, suspension: 2 })
     })
 
     it('an unknown legacy equipment id is ignored, not an error', () => {
@@ -1554,15 +1554,15 @@ describe('saveCodec', () => {
       expect(decoded.toolTiers).toEqual(FRESH_TOOL_TIERS)
     })
 
-    it('a fresh v23 state round-trips its toolTiers exactly (non-default tiers included)', () => {
+    it('a fresh v23 state round-trips its toolTiers exactly (non-default rungs included)', () => {
       const withUpgrades: GameState = GameStateSchema.parse({
         ...fullState,
-        toolTiers: { ...FRESH_TOOL_TIERS, engine: 2, interior: 3 },
+        toolTiers: { ...FRESH_TOOL_TIERS, engine: 2, interior: 2 },
       })
       const decoded = decodeSave(encodeSave(withUpgrades))
       expect(decoded).toEqual(withUpgrades)
       expect(decoded.toolTiers.engine).toBe(2)
-      expect(decoded.toolTiers.interior).toBe(3)
+      expect(decoded.toolTiers.interior).toBe(2)
     })
   })
 
@@ -1662,7 +1662,7 @@ describe('saveCodec', () => {
    * a real double-parked car round-trips it exactly.
    */
   it('SAVE_VERSION is current', () => {
-    expect(SAVE_VERSION).toBe(66)
+    expect(SAVE_VERSION).toBe(67)
   })
 
   it('a real pre-v26 save (a v25 envelope with no graceParkingCarId field) decodes with nothing double-parked under v26', () => {
@@ -1695,7 +1695,7 @@ describe('saveCodec', () => {
    * exactly.
    */
   it('SAVE_VERSION is current', () => {
-    expect(SAVE_VERSION).toBe(66)
+    expect(SAVE_VERSION).toBe(67)
   })
 
   it('a real pre-v27 save (a v26 envelope with neither field) decodes with nothing listed or scheduled under v27', () => {
@@ -1713,6 +1713,7 @@ describe('saveCodec', () => {
     const withListing: GameState = GameStateSchema.parse({
       ...fullState,
       machineListing: {
+        kind: 'tool-tier',
         componentId: 'wheels',
         tier: 2,
         priceYen: 250_000,
@@ -1723,9 +1724,32 @@ describe('saveCodec', () => {
     })
     const decoded = decodeSave(encodeSave(withListing))
     expect(decoded.machineListing).toEqual({
+      kind: 'tool-tier',
       componentId: 'wheels',
       tier: 2,
       priceYen: 250_000,
+      postedOnDay: 10,
+      expiresOnDay: 13,
+    })
+  })
+
+  it('a shop listing round-trips through the same field', () => {
+    const withShopListing: GameState = GameStateSchema.parse({
+      ...fullState,
+      machineListing: {
+        kind: 'tool-shop',
+        shopId: 'machine-shop',
+        priceYen: 3_500_000,
+        postedOnDay: 10,
+        expiresOnDay: 13,
+      },
+      nextMachineListingDay: null,
+    })
+    const decoded = decodeSave(encodeSave(withShopListing))
+    expect(decoded.machineListing).toEqual({
+      kind: 'tool-shop',
+      shopId: 'machine-shop',
+      priceYen: 3_500_000,
       postedOnDay: 10,
       expiresOnDay: 13,
     })
@@ -1742,7 +1766,7 @@ describe('saveCodec', () => {
    * same slot, same band, same everything else.
    */
   it('SAVE_VERSION is current', () => {
-    expect(SAVE_VERSION).toBe(66)
+    expect(SAVE_VERSION).toBe(67)
   })
 
   it("a real pre-v28 save remaps an entry-tier car's everyday-class stock part to its own class sibling SKU", () => {

@@ -4,6 +4,8 @@ import damagePatterns from '../data/damagePatterns.json'
 import economy from '../data/economy.json'
 import partPricing from '../data/partPricing.json'
 import storyMissions from '../data/storyMissions.json'
+import toolLines from '../data/toolLines.json'
+import toolShops from '../data/toolShops.json'
 
 /**
  * Economy levers are approval-gated (CLAUDE.md directive 22): every value in
@@ -2063,6 +2065,28 @@ import storyMissions from '../data/storyMissions.json'
  * 73 against the Collector's 60 target. No mission payout or budget cap moves (no probe machines
  * anything), and `partPricing.json` / `damagePatterns.json` are untouched, so their hashes and the
  * payout pin hold unchanged.
+ *
+ * PINNED FOR THE FIRST TIME: `toolLines.json` and `toolShops.json` join this gate. The tool
+ * ladder was never hashed at all, so every rung price, every shop price and every reputation
+ * floor on it has always sat outside directive 22 and could have moved without turning the
+ * suite red. Adding a guard moves no value and needs no approval of its own; it only makes a
+ * future silent move impossible.
+ *
+ * The pin therefore locks in values approved elsewhere, listed here by name and value so the
+ * gate carries its own ledger from the start:
+ *
+ * - `toolLines.json`, two rungs per line. Tier 1 is owned from day one on all six lines, so it
+ *   costs 0 and carries no reputation floor. Tier 2 costs engine 600000, drivetrain 900000,
+ *   suspension 250000, wheels 150000, body 700000, interior 350000, each gated at `local`.
+ * - `toolShops.json`, the three shops above the rungs, each gated at `known`: `machine-shop`
+ *   3500000 covering engine, `chassis-shop` 2500000 covering suspension, wheels and drivetrain,
+ *   and `body-and-trim-shop` 1500000 covering body and interior. 7500000 buys the whole top of
+ *   the ladder, and every line is covered by exactly one shop.
+ *
+ * Both files carry display names beside their numbers, so a pure copy edit to a tool or shop
+ * name re-pins here too. That is the price of one hash per file rather than one per field, and
+ * it is worth paying: a hash that covered only the numbers would have to be told which fields
+ * those are, and the next field added would silently fall outside it.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -2095,6 +2119,27 @@ describe('the economy approval gate', () => {
         'approval-gated (CLAUDE.md directive 22). Re-pin this hash ONLY in the same ' +
         'change as the recorded approval of the specific lever and value.',
     ).toBe('c1329be01da7abbf50863960fdf373bbd8067ee677153c9bd6c82ce166226be4')
+  })
+
+  it('toolLines.json matches its approved content exactly', () => {
+    const hash = createHash('sha256').update(JSON.stringify(toolLines)).digest('hex')
+    expect(
+      hash,
+      'toolLines.json changed. Every rung price and every reputation floor on the tool ' +
+        'ladder is approval-gated (CLAUDE.md directive 22): re-pin this hash ONLY in the ' +
+        'same change as the recorded approval of the specific lever and value.',
+    ).toBe('45d1a197010690748358f43dd2370d364b1de5bc78334e73b2ff164be4e17188')
+  })
+
+  it('toolShops.json matches its approved content exactly', () => {
+    const hash = createHash('sha256').update(JSON.stringify(toolShops)).digest('hex')
+    expect(
+      hash,
+      'toolShops.json changed. A shop is the top of the tool ladder and the largest single ' +
+        'purchase in the game, so its price, its reputation floor and the lines it covers ' +
+        'are all approval-gated (CLAUDE.md directive 22): re-pin this hash ONLY in the same ' +
+        'change as the recorded approval of the specific lever and value.',
+    ).toBe('30d0c86da80b5f11df1eeb3eedff514630580d65c6f4e5ca4d60b40d4a122abd')
   })
 
   it('mission payouts and budget caps match their approved values exactly', () => {

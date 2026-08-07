@@ -33,7 +33,13 @@ import { machiningGateReason, resolveMachiningLabor } from '../src/machiningJobs
 import { installedPartsValueYen, marketValueYen, retentionFor } from '../src/marketValue'
 import { createInitialGameState } from '../src/newGame'
 import { resolvePlaceOnStation, resolveTakeFromStation } from '../src/parts'
-import { buildCarInstance, mintCarParts, testToolTiers, type CarPartOverride } from './testFixtures'
+import {
+  buildCarInstance,
+  mintCarParts,
+  testToolShopsOwned,
+  testToolTiers,
+  type CarPartOverride,
+} from './testFixtures'
 
 /**
  * The route a part takes to be worked on, walked end to end: off the car, into
@@ -88,7 +94,11 @@ function stockCar(
 
 /** A shop holding exactly `car`, in a service bay, with money and tools enough
  * that nothing below refuses for want of either. */
-function shopWith(car: CarInstance, toolTiers = testToolTiers({ engine: 3 })): GameState {
+function shopWith(
+  car: CarInstance,
+  toolShopsOwned = testToolShopsOwned('engine'),
+  toolTiers = testToolTiers(),
+): GameState {
   return {
     ...createInitialGameState(CONTEXT, 1),
     cashYen: 5_000_000,
@@ -97,6 +107,7 @@ function shopWith(car: CarInstance, toolTiers = testToolTiers({ engine: 3 })): G
     parkingCarIds: [],
     forecourtCarIds: [],
     graceParkingCarId: null,
+    toolShopsOwned,
     toolTiers,
   }
 }
@@ -191,7 +202,7 @@ describe('the machine shop route: car, warehouse, machine, warehouse, car', () =
 describe('the workshop floor route: car, warehouse, bench, warehouse, car', () => {
   it('carries the steering out, rebuilds it, puts it back, and the band climbed on the car', () => {
     const car = stockCar(MODEL, 'car-sequence-0002', [], { steering: 'poor' })
-    const before = shopWith(car, testToolTiers({ suspension: 2 }))
+    const before = shopWith(car, [], testToolTiers({ suspension: 2 }))
     const steeringId = car.parts.steering.installed!.id
 
     const pulled = resolveRemovePart(before, car.id, 'steering', CONTEXT, 600)

@@ -15,6 +15,7 @@ import { energyMax } from '../laborSlots'
 import type { Rng } from '../rng'
 import { decideSale } from './sellingHelpers'
 import { isServiceWorkDone, toolDeficitSummary } from '../serviceJobs'
+import { toolLevelsFor } from '../toolLines'
 import {
   expectedProfitPerLaborSlot,
   MIN_PROFIT_PER_LABOR_SLOT_YEN,
@@ -249,7 +250,7 @@ export function competentPolicyStrategy(
       const offer = state.serviceJobOffers.find(
         (o) =>
           expectedProfitPerLaborSlot(o, context) >= MIN_PROFIT_PER_LABOR_SLOT_YEN &&
-          toolDeficitSummary(o.tasks, state.toolTiers, context).maxDeficit === 0,
+          toolDeficitSummary(o.tasks, toolLevelsFor(state, context), context).maxDeficit === 0,
       )
       if (offer) actions.acceptServiceJobs.push({ offerId: offer.id })
     }

@@ -9,7 +9,8 @@ import {
   type EconomyConfig,
   type Part,
   type PartFitmentClass,
-  type ToolTiers,
+  type ToolLevel,
+  type ToolLevels,
 } from '@midnight-garage/content'
 import { bodyPartRepairBillYen, isBodyDerivedPart } from './bodyPipeline'
 import { crewEnergySaved, perfectionistCostMultiplier, type CrewSkillContext } from './crewSkills'
@@ -301,10 +302,11 @@ export function costWeightedBandFactor(
   return totalWeight > 0 ? weightedSum / totalWeight : 1
 }
 
-/** The group's tool-line TIER is the repair level - exactly 1, 2, or 3,
- * never an open multiplier. */
-export function repairLevelForGroup(toolTiers: ToolTiers, groupId: ComponentId): 1 | 2 | 3 {
-  return toolTiers[groupId]
+/** The group's tool LEVEL is the repair level - exactly 1, 2, or 3, never an
+ * open multiplier. `toolLevelsFor` (toolLines.ts) is what turns the rungs and
+ * shops owned into these levels. */
+export function repairLevelForGroup(toolLevels: ToolLevels, groupId: ComponentId): ToolLevel {
+  return toolLevels[groupId]
 }
 
 /** The labour ENERGY a repair of `grades` band steps costs at `repairLevel`:
@@ -313,7 +315,7 @@ export function repairLevelForGroup(toolTiers: ToolTiers, groupId: ComponentId):
  * slot. */
 export function energyToClimb(
   grades: number,
-  repairLevel: 1 | 2 | 3,
+  repairLevel: ToolLevel,
   energyPerBandStepByToolTier: EconomyConfig['energy']['energyPerBandStepByToolTier'],
 ): number {
   if (grades <= 0) return 0
@@ -324,7 +326,7 @@ export function energyToClimb(
  * REPAIR only; buying and fitting a mint replacement part is untouched at
  * every tier. */
 export function repairCeilingForLevel(
-  repairLevel: 1 | 2 | 3,
+  repairLevel: ToolLevel,
   economy: EconomyConfig,
 ): ConditionBand {
   return economy.repairBandCeilingByTier[repairLevel]
@@ -364,7 +366,7 @@ export interface PartRepairPlan {
 export function planPartRepair(
   band: ConditionBand,
   targetBand: ConditionBand,
-  repairLevel: 1 | 2 | 3,
+  repairLevel: ToolLevel,
   taxonomyEntry: CarPartTaxonomyEntry,
   partPriceYen: number,
   repairStepFraction: number,
@@ -418,7 +420,7 @@ export function planGroupRepair(
   car: CarInstance,
   groupId: ComponentId,
   targetBand: ConditionBand,
-  toolTiers: ToolTiers,
+  toolLevels: ToolLevels,
   partIdsByGroup: Readonly<Record<ComponentId, readonly CarPartId[]>>,
   partsById: Readonly<Record<string, Part>>,
   partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
@@ -428,7 +430,7 @@ export function planGroupRepair(
   crew?: CrewSkillContext,
   repairBandCeilingByTier?: EconomyConfig['repairBandCeilingByTier'],
 ): GroupRepairPlan {
-  const repairLevel = repairLevelForGroup(toolTiers, groupId)
+  const repairLevel = repairLevelForGroup(toolLevels, groupId)
   const effectiveTarget = repairBandCeilingByTier
     ? clampRepairTarget(targetBand, repairBandCeilingByTier[repairLevel])
     : targetBand

@@ -9,6 +9,7 @@ import {
   repairLevelForGroup,
 } from '../bands'
 import type { SimContext } from '../context'
+import { toolLevelsFor } from '../toolLines'
 
 /**
  * Shared bot-side helpers for the banded parts model's group-level
@@ -77,7 +78,8 @@ export function queueGroupRepair(
   context: SimContext,
   laborBudget: number,
 ): number {
-  // Repair only climbs to the group's own tool-tier ceiling, so target the
+  const toolLevels = toolLevelsFor(state, context)
+  // Repair only climbs to the group's own tool-level ceiling, so target the
   // clamped band (fine at tier-1, mint once the tier-2 machine is owned)
   // rather than an unconditional `mint`. This keeps the sizing plan, the
   // queued spec, and the eventual `repairJobGate` all agreeing on the same
@@ -85,13 +87,13 @@ export function queueGroupRepair(
   // at a tier-1 group and waste the action.
   const targetBand = clampRepairTarget(
     'mint',
-    repairCeilingForLevel(repairLevelForGroup(state.toolTiers, groupId), context.economy),
+    repairCeilingForLevel(repairLevelForGroup(toolLevels, groupId), context.economy),
   )
   const plan = planGroupRepair(
     car,
     groupId,
     targetBand,
-    state.toolTiers,
+    toolLevels,
     context.partIdsByGroup,
     context.partsById,
     context.partsTaxonomyById,

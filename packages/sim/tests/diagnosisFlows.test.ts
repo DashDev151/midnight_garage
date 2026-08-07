@@ -2,6 +2,7 @@ import {
   ALL_CAR_PART_IDS,
   BUYERS,
   CARS,
+  ComponentIdSchema,
   PARTS,
   PARTS_TAXONOMY,
   type AuctionLot,
@@ -27,6 +28,7 @@ import { resolveScrapShell } from '../src/selling'
 import {
   buildCarInstance,
   mintCarParts,
+  testToolShopsOwned,
   testToolTiers,
   uniformCarParts,
   type CarPartOverride,
@@ -80,16 +82,18 @@ function affectedPartId(trueCauseId: NonStarterCauseId): CarPartId {
   return NON_STARTER!.causes.find((c) => c.id === trueCauseId)!.carPartId
 }
 
-/** Every removable slot's own tool-tier gate cleared - the donor flow
- * strips the whole car, not just what today's tool tiers allow. */
+/** Every removable slot's own tool gate cleared - the donor flow strips the
+ * whole car, not just what today's tools allow: every rung at 2 and every
+ * shop owned. */
 const HIGH_TOOL_TIERS = testToolTiers({
-  engine: 3,
-  drivetrain: 3,
-  suspension: 3,
-  wheels: 3,
-  body: 3,
-  interior: 3,
+  engine: 2,
+  drivetrain: 2,
+  suspension: 2,
+  wheels: 2,
+  body: 2,
+  interior: 2,
 })
+const ALL_TOOL_SHOPS = testToolShopsOwned(...ComponentIdSchema.options)
 
 function ownedState(car: CarInstance, cashYen: number): GameState {
   return {
@@ -98,6 +102,7 @@ function ownedState(car: CarInstance, cashYen: number): GameState {
     cashYen,
     activeAuctionLots: [],
     toolTiers: HIGH_TOOL_TIERS,
+    toolShopsOwned: ALL_TOOL_SHOPS,
   }
 }
 

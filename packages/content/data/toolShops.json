@@ -1,0 +1,23 @@
+[
+  {
+    "id": "machine-shop",
+    "displayName": "Machine shop",
+    "covers": ["engine"],
+    "upgradePriceYen": 3500000,
+    "minReputationTier": "known"
+  },
+  {
+    "id": "chassis-shop",
+    "displayName": "Chassis shop",
+    "covers": ["suspension", "wheels", "drivetrain"],
+    "upgradePriceYen": 2500000,
+    "minReputationTier": "known"
+  },
+  {
+    "id": "body-and-trim-shop",
+    "displayName": "Body and trim shop",
+    "covers": ["body", "interior"],
+    "upgradePriceYen": 1500000,
+    "minReputationTier": "known"
+  }
+]

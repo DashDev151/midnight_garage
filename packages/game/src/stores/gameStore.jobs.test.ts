@@ -139,10 +139,10 @@ describe('service jobs in the store', () => {
   it('doing the repair work then clicking Complete pays out immediately and gains reputation', () => {
     const game = useGameStore()
     game.newGame(1)
-    // Max every tool line so the work loop below keeps its all-equipment
-    // pacing (fastest repair level) inside the 20-day cap - this test is about
+    // Own every shop so the work loop below keeps its all-equipment pacing
+    // (fastest repair level) inside the 20-day cap - this test is about
     // completion plus payout, not tier-1 throughput.
-    for (const line of game.toolLineViews) game.devSetToolTier(line.componentId, 3)
+    for (const shop of game.toolShopViews) game.devSetToolShopOwned(shop.id, true)
     warpToRepairOffer(game)
     const offer = findUnfinishedRepairOffer(game)
     if (!offer) throw new Error('expected a repair-touching offer on the board')

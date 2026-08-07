@@ -1,7 +1,7 @@
 import {
   ECONOMY,
   PARTS,
-  TOOL_LINES,
+  TOOL_SHOPS,
   type CarPartId,
   type ComponentId,
   type ConditionBand,
@@ -40,6 +40,12 @@ function mountScreen() {
 
 type Store = ReturnType<typeof useGameStore>
 
+/** The id of the shop covering one line, read from real content so no test
+ * hard-codes a coverage assumption. */
+function shopIdFor(game: Store, componentId: ComponentId): string {
+  return game.toolShopViews.find((shop) => shop.covers.includes(componentId))!.id
+}
+
 const BLOCK_PART = PARTS.find((part) => part.carPartId === 'block')!
 
 /**
@@ -48,7 +54,7 @@ const BLOCK_PART = PARTS.find((part) => part.carPartId === 'block')!
  * turns on) and with the engine line at `engineTier` so the shop is either
  * open or shut.
  */
-function blockOnTheMachine(game: Store, engineTier: 1 | 2 | 3, band: ConditionBand = 'mint') {
+function blockOnTheMachine(game: Store, engineLevel: 1 | 2 | 3, band: ConditionBand = 'mint') {
   const instance: PartInstance = {
     id: 'pi-loose-block',
     partId: BLOCK_PART.id,
@@ -59,21 +65,18 @@ function blockOnTheMachine(game: Store, engineTier: 1 | 2 | 3, band: ConditionBa
     ...game.gameState,
     partInventory: [...game.gameState.partInventory, instance],
     machinePartId: instance.id,
-    toolTiers: { ...game.gameState.toolTiers, engine: engineTier },
+    toolTiers: { ...game.gameState.toolTiers, engine: engineLevel === 3 ? 2 : engineLevel },
+    toolShopsOwned: engineLevel >= 3 ? [shopIdFor(game, 'engine')] : [],
   }
   return instance.id
 }
 
 const BLOCK_OPERATIONS = ECONOMY.machining.operations.filter((o) => o.carPartId === 'block')
 
-/** Puts a mint loose part for `carPartId` on the machine and leaves every tool
- * line exactly where the caller set it - the shape the two other-line
- * operations are proved on, where the engine line is deliberately short. */
-function partOnTheMachine(
-  game: Store,
-  carPartId: CarPartId,
-  toolTiers: Partial<Record<ComponentId, 1 | 2 | 3>>,
-) {
+/** Puts a mint loose part for `carPartId` on the machine and owns exactly the
+ * shops covering `atLevelThree` - the shape the two other-line operations are
+ * proved on, where the engine line is deliberately short. */
+function partOnTheMachine(game: Store, carPartId: CarPartId, atLevelThree: ComponentId[]) {
   const part = PARTS.find((p) => p.carPartId === carPartId)!
   const instance: PartInstance = {
     id: `pi-loose-${carPartId}`,
@@ -85,7 +88,7 @@ function partOnTheMachine(
     ...game.gameState,
     partInventory: [...game.gameState.partInventory, instance],
     machinePartId: instance.id,
-    toolTiers: { ...game.gameState.toolTiers, ...toolTiers },
+    toolShopsOwned: [...new Set(atLevelThree.map((group) => shopIdFor(game, group)))],
   }
   return instance.id
 }
@@ -169,13 +172,12 @@ describe('MachineShopScreen', () => {
       ...game.gameState,
       partInventory: [...game.gameState.partInventory, instance],
       machinePartId: instance.id,
-      toolTiers: { ...game.gameState.toolTiers, suspension: 3, engine: 3 },
-      sceneStanding: { ...game.gameState.sceneStanding, touge: 'shop' },
+      toolShopsOwned: [...new Set([shopIdFor(game, 'suspension'), shopIdFor(game, 'engine')])],
     }
 
     const wrapper = mountScreen()
-    // The springs are on the machine and the shop has the line and the
-    // standing; corner weighting is still not a job this room does.
+    // The springs are on the machine and the garage owns every shop that could
+    // matter; corner weighting is still not a job this room does.
     expect(wrapper.find('[data-test="machine-shop-part"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="machine-shop-offer-corner-weighting"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="machine-shop-offer-show-fitment"]').exists()).toBe(false)
@@ -212,14 +214,14 @@ describe('MachineShopScreen', () => {
     )
   })
 
-  it('refuses the work until the engine line owns the tooling, and says so', () => {
+  it('refuses the work until the machine shop is owned, and says so', () => {
     const game = useGameStore()
     game.newGame(1)
     blockOnTheMachine(game, 2)
     const wrapper = mountScreen()
     const button = wrapper.find('[data-test="machine-shop-do-bore-and-hone"]')
     expect(button.attributes('disabled')).toBeDefined()
-    expect(button.attributes('title')).toContain('tier 3')
+    expect(button.attributes('title')).toContain('shop')
   })
 
   it('refuses a worn block outright, whatever the tooling', () => {
@@ -263,14 +265,10 @@ describe('MachineShopScreen', () => {
    * own tool line and to nothing else, so an engine line short of the tooling
    * is not an opinion about dampers or a differential.
    */
-  it('does the damper work on suspension tier 3, with the engine line still at 2', async () => {
+  it('does the damper work on the shop covering suspension, with the engine line short', async () => {
     const game = useGameStore()
     game.newGame(1)
-    const partInstanceId = partOnTheMachine(game, 'dampers', { suspension: 3, engine: 2 })
-    game.gameState = {
-      ...game.gameState,
-      sceneStanding: { ...game.gameState.sceneStanding, racer: 'shop' },
-    }
+    const partInstanceId = partOnTheMachine(game, 'dampers', ['suspension'])
 
     const wrapper = mountScreen()
     const button = wrapper.find('[data-test="machine-shop-do-race-prep"]')
@@ -283,14 +281,10 @@ describe('MachineShopScreen', () => {
     ])
   })
 
-  it('does the differential work on drivetrain tier 3, with the engine line still at 2', async () => {
+  it('does the differential work on the shop covering drivetrain, with the engine line short', async () => {
     const game = useGameStore()
     game.newGame(1)
-    const partInstanceId = partOnTheMachine(game, 'differential', { drivetrain: 3, engine: 2 })
-    game.gameState = {
-      ...game.gameState,
-      sceneStanding: { ...game.gameState.sceneStanding, 'daily-drivers': 'shop' },
-    }
+    const partInstanceId = partOnTheMachine(game, 'differential', ['drivetrain'])
 
     const wrapper = mountScreen()
     const button = wrapper.find('[data-test="machine-shop-do-sorting"]')
@@ -310,8 +304,10 @@ describe('MachineShopScreen', () => {
     for (const componentId of ['engine', 'drivetrain', 'suspension'] as const) {
       const row = wrapper.find(`[data-test="machine-shop-machine-${componentId}"]`)
       expect(row.exists(), componentId).toBe(true)
-      expect(row.text()).toContain(TOOL_LINES[componentId].tiers[2]!.displayName)
-      expect(row.text()).toContain(TOOL_LINES[componentId].tiers[2]!.minReputationTier)
+      const shop = TOOL_SHOPS.find((s) => s.covers.includes(componentId))!
+      expect(row.text()).toContain(game.componentLabel(componentId))
+      expect(row.text()).toContain(shop.displayName)
+      expect(row.text()).toContain(shop.minReputationTier)
     }
     // The three lines with no work done at a machine hold no machine either.
     for (const componentId of ['wheels', 'body', 'interior'] as const) {
@@ -322,18 +318,63 @@ describe('MachineShopScreen', () => {
     }
   })
 
+  /**
+   * The room and the shops are different axes. Every loose-part job in the
+   * building happens here, so the room holds benches bought under more than one
+   * name, and each row has to say which one brought it rather than leaving a
+   * player to assume the room's own.
+   */
+  it('says which shop brings each bench, including the ones the room is not named after', () => {
+    const game = useGameStore()
+    game.newGame(1)
+    const wrapper = mountScreen()
+    const engineShop = TOOL_SHOPS.find((s) => s.covers.includes('engine'))!
+    const chassisShop = TOOL_SHOPS.find((s) => s.covers.includes('suspension'))!
+    expect(chassisShop.id).not.toBe(engineShop.id)
+
+    expect(wrapper.find('[data-test="machine-shop-machine-shop-engine"]').text()).toBe(
+      `Comes in with the ${engineShop.displayName}.`,
+    )
+    for (const componentId of ['suspension', 'drivetrain'] as const) {
+      expect(
+        wrapper.find(`[data-test="machine-shop-machine-shop-${componentId}"]`).text(),
+        componentId,
+      ).toBe(`Comes in with the ${chassisShop.displayName}.`)
+    }
+    // And the room says up front that it fills from more than one purchase.
+    expect(wrapper.find('[data-test="machine-shop-machinery-intro"]').text()).toContain(
+      'did not all arrive together',
+    )
+  })
+
+  it('buying the chassis shop lights up its benches here and leaves the engine bench alone', async () => {
+    const game = useGameStore()
+    game.newGame(1)
+    const wrapper = mountScreen()
+    game.gameState = { ...game.gameState, toolShopsOwned: [shopIdFor(game, 'suspension')] }
+    await wrapper.vm.$nextTick()
+
+    for (const componentId of ['suspension', 'drivetrain'] as const) {
+      expect(
+        wrapper.find(`[data-test="machine-shop-machine-state-${componentId}"]`).text(),
+        componentId,
+      ).toBe('In-house')
+    }
+    expect(wrapper.find('[data-test="machine-shop-machine-state-engine"]').text()).toBe('Not here')
+  })
+
   it('shows a bought machine as in-house and drops its price line', async () => {
     const game = useGameStore()
     game.newGame(1)
     const wrapper = mountScreen()
     expect(wrapper.find('[data-test="machine-shop-machine-state-engine"]').text()).toBe('Not here')
 
-    game.gameState = { ...game.gameState, toolTiers: { ...game.gameState.toolTiers, engine: 3 } }
+    game.gameState = { ...game.gameState, toolShopsOwned: [shopIdFor(game, 'engine')] }
     await wrapper.vm.$nextTick()
 
     expect(wrapper.find('[data-test="machine-shop-machine-state-engine"]').text()).toBe('In-house')
     expect(wrapper.find('[data-test="machine-shop-machine-price-engine"]').exists()).toBe(false)
-    // Buying the engine tooling puts nothing on the drivetrain's floor.
+    // Buying the machine shop puts nothing on the drivetrain's floor.
     expect(wrapper.find('[data-test="machine-shop-machine-state-drivetrain"]').text()).toBe(
       'Not here',
     )

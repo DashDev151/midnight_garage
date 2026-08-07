@@ -26,6 +26,7 @@ import staffCandidatesJson from '../data/staffCandidates.json'
 import storyMissionsJson from '../data/storyMissions.json'
 import symptomsJson from '../data/symptoms.json'
 import toolLinesJson from '../data/toolLines.json'
+import toolShopsJson from '../data/toolShops.json'
 import traitsJson from '../data/traits.json'
 import tutorialLotJson from '../data/tutorialLot.json'
 import tutorialStepsJson from '../data/tutorialSteps.json'
@@ -61,7 +62,7 @@ import { StoryMissionsSchema, type StoryMission } from './storyMission'
 import { DamagePatternsSchema } from './damagePattern'
 import { resolveSymptomCauses, SymptomsContentSchema, SymptomsSchema } from './symptom'
 import { StaffCandidatePoolSchema, TraitDefinitionsSchema } from './staff'
-import { ToolLinesSchema } from './toolLines'
+import { ToolLinesSchema, ToolShopsSchema } from './toolLines'
 import { TutorialLotRecipeSchema, TutorialStepsSchema } from './tutorial'
 import { VenueNamesSchema } from './venueNames'
 
@@ -141,6 +142,13 @@ export const SERVICE_JOB_CUSTOMER_NAMES = ServiceJobCustomerNamesSchema.parse(
 )
 export const FACILITIES = FacilitiesSchema.parse(facilitiesJson)
 export const TOOL_LINES = ToolLinesSchema.parse(toolLinesJson)
+
+/**
+ * The three shops at the top of the tool ladder, each covering the lines named
+ * in its own `covers` - the level-3 half of what `TOOL_LINES` carries rungs 1
+ * and 2 of.
+ */
+export const TOOL_SHOPS = ToolShopsSchema.parse(toolShopsJson)
 export const ECONOMY = EconomyConfigSchema.parse(economyJson)
 
 /**

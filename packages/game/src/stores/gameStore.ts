@@ -140,9 +140,12 @@ import {
   machineHiredToday,
   machineLineGroupFor,
   machiningGateReason as machiningGateReasonCore,
+  machinedPartPriceYen,
   machiningReadingFor,
   makeMarketOrigin,
   isServiceJobInTransit,
+  applyToolShopPurchase,
+  isToolShopListed,
   isToolTierListed,
   isServiceTaskDone,
   isServiceWorkDone,
@@ -222,6 +225,9 @@ import {
   symptomTested,
   swapCars as swapCarsCore,
   toolDeficitSummary,
+  toolLevelsFor,
+  toolShopForGroup,
+  toolShopRepGate,
   unlockedAuctionTiers as unlockedAuctionTiersCore,
   upgradeHintFor,
   usedPartSaleValueYen,
@@ -521,8 +527,7 @@ export interface ShopCarView {
   hasOffer: boolean
 }
 
-/** One tool line's ladder state, for the Upgrades screen. */
-/** One rung of a tool line's 3-node ladder (the tool wall). */
+/** One rung of a tool line's ladder (the tool wall). */
 export interface ToolTierRungView {
   tier: ToolTier
   displayName: string
@@ -542,14 +547,32 @@ export interface ToolTierRungView {
 
 /** The one live used-machinery classifieds listing,
  * surfaced for the Upgrades screen - null when nothing's on offer this
- * week ("nothing in the classifieds this week" empty state). */
+ * week ("nothing in the classifieds this week" empty state). The paper
+ * advertises either one line's rung or a whole shop, so `tier` is null for a
+ * shop and `componentLabel` then names every line it covers. */
 export interface MachineListingView {
-  componentId: ComponentId
+  kind: 'tool-tier' | 'tool-shop'
   componentLabel: string
-  tier: ToolTier
+  tier: ToolTier | null
   displayName: string
   priceYen: number
   daysLeft: number
+}
+
+/** One shop at the top of the tool ladder, for the Upgrades screen - the
+ * same shape a rung offers, for one purchase covering several lines. */
+export interface ToolShopView {
+  id: string
+  displayName: string
+  /** The lines it covers, in display words. */
+  coversLabels: string[]
+  covers: ComponentId[]
+  owned: boolean
+  priceYen: number
+  /** The reputation still needed, or null once met (or once owned). */
+  repGate: ReputationTier | null
+  /** True only while a live classifieds listing advertises this exact shop. */
+  isListed: boolean
 }
 
 /** One click-per-rung repair step, priced/labored off the real
@@ -629,7 +652,7 @@ export interface ToolLineView {
    * (mirrors `nextBayReputationGate`'s hint-only-when-unmet shape). */
   nextTierRepGate: ReputationTier | null
   maxed: boolean
-  /** The full 3-rung ladder, for the tool-wall grid. */
+  /** The line's own rungs, for the tool-wall grid. */
   tiers: ToolTierRungView[]
 }
 
@@ -706,8 +729,8 @@ export interface ToolTierInfo {
    * (assuming no other group is deficient, same one-tier-away rule
    * `isTemplateOfferable` uses). */
   unlocksJobTemplateNames: string[]
-  /** True only for engine tier 3 - the one real own-car capability ceiling
-   * (`toolCeilings.naToTurboConversionEngineTier`). */
+  /** True only for the engine line at the level that owns the one real
+   * own-car capability ceiling (`toolCeilings.naToTurboConversionEngineTier`). */
   unlocksNaToTurboConversion: boolean
   /** The speed effect every tier has, in plain words (the labour
    * ENERGY a repair costs per band step at this tier,
@@ -1193,6 +1216,11 @@ export const useGameStore = defineStore('game', () => {
     ),
   )
   const gameState = ref<GameState>(createInitialGameState(context.value, DEFAULT_SEED))
+  /** What each line actually works at right now: its own rung, or 3 once the
+   * shop covering it is owned. Every capability read in this store goes through
+   * this rather than `toolTiers`, so a rung and a shop are one ladder here
+   * exactly as they are in the sim. */
+  const toolLevels = computed(() => toolLevelsFor(gameState.value, context.value))
   const dayLog = ref<DayLogEntry[]>([])
   // Monotonic counter for dev-granted content ids (dev-only, so non-deterministic is fine).
   const grantCounter = ref(0)
@@ -1263,7 +1291,7 @@ export const useGameStore = defineStore('game', () => {
     gameState.value.serviceJobOffers.map((offer) => {
       const model = context.value.modelsById[offer.car.modelId]
       const canAccept =
-        toolDeficitSummary(offer.tasks, gameState.value.toolTiers, context.value).maxDeficit === 0
+        toolDeficitSummary(offer.tasks, toolLevels.value, context.value).maxDeficit === 0
       return {
         id: offer.id,
         customerName: offer.customerName,
@@ -1277,7 +1305,7 @@ export const useGameStore = defineStore('game', () => {
         canAccept,
         upgradeHint: canAccept
           ? undefined
-          : (upgradeHintFor(offer.tasks, gameState.value.toolTiers, context.value) ?? undefined),
+          : (upgradeHintFor(offer.tasks, toolLevels.value, context.value) ?? undefined),
       }
     }),
   )
@@ -1632,7 +1660,7 @@ export const useGameStore = defineStore('game', () => {
     // part (Replace), never gated here; `repairCeilingCaption` names the machine
     // that lifts the ceiling.
     const repairCeiling = repairCeilingForLevel(
-      gameState.value.toolTiers[componentId],
+      toolLevels.value[componentId],
       context.value.economy,
     )
     if (bandIndex(nextRung) > bandIndex(repairCeiling)) return null
@@ -1642,7 +1670,7 @@ export const useGameStore = defineStore('game', () => {
         car,
         componentId,
         target,
-        gameState.value.toolTiers,
+        toolLevels.value,
         context.value.partIdsByGroup,
         context.value.partsById,
         context.value.partsTaxonomyById,
@@ -1778,10 +1806,7 @@ export const useGameStore = defineStore('game', () => {
    * (`benchRepairCeilingCaption`), so the two rooms never word it differently.
    */
   function repairCeilingSentence(componentId: ComponentId): string | null {
-    const ceiling = repairCeilingForLevel(
-      gameState.value.toolTiers[componentId],
-      context.value.economy,
-    )
+    const ceiling = repairCeilingForLevel(toolLevels.value[componentId], context.value.economy)
     if (bandIndex(ceiling) >= bandIndex('mint')) return null // tier-2+ has no repair cap
     const tier2 = TOOL_LINES[componentId].tiers[1]
     if (!tier2) return null
@@ -2182,9 +2207,9 @@ export const useGameStore = defineStore('game', () => {
   ): { costYen: number; laborSlots: number } | null {
     if (!car.zoneState) return null
     const zone = car.zoneState[action.zoneId]
-    const repairLevel = repairLevelForGroup(gameState.value.toolTiers, 'body')
+    const repairLevel = repairLevelForGroup(toolLevels.value, 'body')
     const rate = context.value.economy.energy.energyPerBandStepByToolTier[repairLevel]
-    const capability = bodyLineCapability(gameState.value)
+    const capability = bodyLineCapability(gameState.value, context.value)
     if (action.kind === 'pipeline-stage') {
       const plan = planPipelineStage(action.stage, zone, capability)
       if (!plan.ok) return null
@@ -2238,7 +2263,7 @@ export const useGameStore = defineStore('game', () => {
         car,
         action.componentId,
         action.targetBand,
-        gameState.value.toolTiers,
+        toolLevels.value,
         context.value.partIdsByGroup,
         context.value.partsById,
         context.value.partsTaxonomyById,
@@ -2339,7 +2364,7 @@ export const useGameStore = defineStore('game', () => {
       car,
       action.componentId,
       action.targetBand,
-      gameState.value.toolTiers,
+      toolLevels.value,
       context.value.partIdsByGroup,
       context.value.partsById,
       context.value.partsTaxonomyById,
@@ -2377,7 +2402,7 @@ export const useGameStore = defineStore('game', () => {
         car,
         action.componentId,
         action.targetBand,
-        gameState.value.toolTiers,
+        toolLevels.value,
         context.value.partIdsByGroup,
         context.value.partsById,
         context.value.partsTaxonomyById,
@@ -2386,7 +2411,7 @@ export const useGameStore = defineStore('game', () => {
         action.carPartId,
       )
       const needsLine = plan.partIds.some((id) => signatureGroupFor(id, context.value) !== null)
-      return needsLine && !hasMachineLineFor(action.componentId, gameState.value)
+      return needsLine && !hasMachineLineFor(action.componentId, gameState.value, context.value)
         ? action.componentId
         : null
     }
@@ -2396,7 +2421,7 @@ export const useGameStore = defineStore('game', () => {
       const targetPartId = action.carPartId ?? catalogPart?.carPartId
       if (!targetPartId) return null
       const group = machineLineGroupFor(targetPartId, context.value)
-      return group && !hasMachineLineFor(group, gameState.value) ? group : null
+      return group && !hasMachineLineFor(group, gameState.value, context.value) ? group : null
     }
     return null
   }
@@ -2670,7 +2695,7 @@ export const useGameStore = defineStore('game', () => {
   /** Whether `group`'s tier-2 machine is owned outright - the "In-house"
    * chip's own condition. */
   function machineLineOwned(group: ComponentId): boolean {
-    return ownsMachineForGroup(group, gameState.value)
+    return ownsMachineForGroup(group, gameState.value, context.value)
   }
 
   /** Whether `group`'s daily hire has already been paid today - the "Hired
@@ -2682,7 +2707,7 @@ export const useGameStore = defineStore('game', () => {
   /** Whether `group`'s line is usable right now for every operation - owned
    * outright, or hired for today. */
   function machineLineAvailable(group: ComponentId): boolean {
-    return hasMachineLineFor(group, gameState.value)
+    return hasMachineLineFor(group, gameState.value, context.value)
   }
 
   /** The hire panel's own price tag for `group` - `economy.machineShopAssist
@@ -3206,17 +3231,19 @@ export const useGameStore = defineStore('game', () => {
    * are all blocked for this slot right now - just the one own-car
    * capability ceiling (NA-to-turbo conversion), the same check
    * `installFitGate` enforces sim-side. Null when nothing is blocked, so the
-   * Replace drawer can dim every candidate with a specific "Needs <tier>"
-   * reason instead of the generic "doesn't fit here" hint.
+   * Replace drawer can dim every candidate with a specific "Needs <the thing>"
+   * reason instead of the generic "doesn't fit here" hint. The thing named is
+   * whatever actually lifts the engine line to the required level: one of its
+   * own rungs, or the shop above them.
    */
   function installBlockedReason(carId: string, carPartId: CarPartId): string | null {
     const car = findWorkableCar(carId)
     const model = car ? context.value.modelsById[car.modelId] : undefined
     if (!model) return null
     if (!naToTurboConversionBlocked(carPartId, model, gameState.value, context.value)) return null
-    const requiredTier = context.value.economy.toolCeilings.naToTurboConversionEngineTier
-    const tierName = context.value.toolLines.engine.tiers[requiredTier - 1]!.displayName
-    return `Needs ${tierName}`
+    const requiredLevel = context.value.economy.toolCeilings.naToTurboConversionEngineTier
+    const rung = context.value.toolLines.engine.tiers[requiredLevel - 1]
+    return `Needs ${rung ? rung.displayName : toolShopForGroup('engine', context.value).displayName}`
   }
 
   /**
@@ -3255,7 +3282,7 @@ export const useGameStore = defineStore('game', () => {
     const car = findWorkableCar(carId)
     if (!car) return null
     const group = machineLineGroupFor(carPartId, context.value)
-    if (!group || hasMachineLineFor(group, gameState.value)) return null
+    if (!group || hasMachineLineFor(group, gameState.value, context.value)) return null
     return machineLineGateCopy(group)
   }
 
@@ -3508,7 +3535,7 @@ export const useGameStore = defineStore('game', () => {
     REAL_COMPONENT_GROUPS.map((componentId) => {
       const line = context.value.toolLines[componentId]
       const currentTier = gameState.value.toolTiers[componentId]
-      const nextTier = currentTier < 3 ? line.tiers[currentTier] : undefined
+      const nextTier = line.tiers[currentTier]
       return {
         componentId,
         componentLabel: componentLabel(componentId),
@@ -3517,7 +3544,7 @@ export const useGameStore = defineStore('game', () => {
         nextTierName: nextTier?.displayName ?? null,
         nextTierPriceYen: nextTier?.upgradePriceYen ?? null,
         nextTierRepGate: nextToolTierRepGate(gameState.value, componentId, context.value),
-        maxed: currentTier >= 3,
+        maxed: currentTier >= line.tiers.length,
         tiers: line.tiers.map((rung, i) => ({
           tier: (i + 1) as ToolTier,
           displayName: rung.displayName,
@@ -3538,16 +3565,81 @@ export const useGameStore = defineStore('game', () => {
   const machineListingView = computed<MachineListingView | null>(() => {
     const listing: MachineListing | null = gameState.value.machineListing
     if (!listing) return null
+    const daysLeft = Math.max(0, listing.expiresOnDay - gameState.value.day)
+    if (listing.kind === 'tool-shop') {
+      const shop = context.value.toolShopsById[listing.shopId]
+      return {
+        kind: 'tool-shop',
+        componentLabel: (shop?.covers ?? []).map(componentLabel).join(', '),
+        tier: null,
+        displayName: shop?.displayName ?? listing.shopId,
+        priceYen: listing.priceYen,
+        daysLeft,
+      }
+    }
     return {
-      componentId: listing.componentId,
+      kind: 'tool-tier',
       componentLabel: componentLabel(listing.componentId),
       tier: listing.tier,
       displayName:
         context.value.toolLines[listing.componentId].tiers[listing.tier - 1]!.displayName,
       priceYen: listing.priceYen,
-      daysLeft: Math.max(0, listing.expiresOnDay - gameState.value.day),
+      daysLeft,
     }
   })
+
+  /** The three shops at the top of the ladder, with what each covers and
+   * whether it can be bought right now - the shop twin of `toolLineViews`. */
+  const toolShopViews = computed<ToolShopView[]>(() =>
+    context.value.toolShops.map((shop) => ({
+      id: shop.id,
+      displayName: shop.displayName,
+      coversLabels: shop.covers.map(componentLabel),
+      covers: [...shop.covers],
+      owned: gameState.value.toolShopsOwned.includes(shop.id),
+      priceYen: shop.upgradePriceYen,
+      repGate: toolShopRepGate(gameState.value, shop),
+      isListed: isToolShopListed(gameState.value, shop.id),
+    })),
+  )
+
+  /**
+   * What owning `shopId` unlocks, derived live from the real catalogue: the
+   * job templates every line it covers would reach at level 3, the NA-to-turbo
+   * ceiling when it covers the engine line, and the repair speed level 3 buys.
+   */
+  function toolShopInfo(shopId: string): ToolTierInfo {
+    const shop = context.value.toolShopsById[shopId]
+    const covers = shop?.covers ?? []
+    const unlocksJobTemplateNames = SERVICE_JOB_TYPES.filter((template) =>
+      template.tasks.some((task) => {
+        const group = context.value.partsTaxonomyById[task.requirement.carPartId]?.group
+        return group !== undefined && covers.includes(group) && task.minToolTier === 3
+      }),
+    ).map((template) => humanizeTemplateId(template.id))
+    return {
+      unlocksJobTemplateNames,
+      unlocksNaToTurboConversion:
+        covers.includes('engine') &&
+        context.value.economy.toolCeilings.naToTurboConversionEngineTier === 3,
+      laborSlotsPerGradeText: `Repair work costs ${context.value.economy.energy.energyPerBandStepByToolTier[3]} labour per grade on the lines it covers`,
+      rentalFeeText: null,
+    }
+  }
+
+  /**
+   * Buy one shop outright - instant, usable the same day, and refused (false,
+   * nothing spent) when reputation, cash or the classifieds do not allow it.
+   * The rung purchase's twin (`upgradeToolLine`).
+   */
+  function buyToolShop(shopId: string): boolean {
+    const result = applyToolShopPurchase(gameState.value, shopId, context.value)
+    if (!result.applied) return false
+    gameState.value = result.state
+    dayLog.value.push(...result.log)
+    logSessionEvent('buyToolShop', { shopId })
+    return true
+  }
 
   /**
    * What reaching `tier` of `componentId`'s
@@ -3650,8 +3742,7 @@ export const useGameStore = defineStore('game', () => {
               description: operation.description,
               gateReason: craftOperationCapabilityGateReason(
                 operation,
-                gameState.value.toolTiers,
-                gameState.value.sceneStanding,
+                toolLevels.value,
                 context.value,
               ),
             }
@@ -3736,7 +3827,7 @@ export const useGameStore = defineStore('game', () => {
       car,
       componentId,
       targetBand,
-      gameState.value.toolTiers,
+      toolLevels.value,
       context.value.partIdsByGroup,
       context.value.partsById,
       context.value.partsTaxonomyById,
@@ -4186,7 +4277,9 @@ export const useGameStore = defineStore('game', () => {
       const structurallyBlocked = occupiedBlockers.length > 0
       const gateGroup = assemblyMachineGateGroup(def, context.value)
       const blockingGateGroup =
-        gateGroup && !hasMachineLineFor(gateGroup, gameState.value) ? gateGroup : null
+        gateGroup && !hasMachineLineFor(gateGroup, gameState.value, context.value)
+          ? gateGroup
+          : null
       const hasSomethingToRemove = def.members.some((m) => car.parts[m].installed !== null)
       const removeLabourPoints = removeAssemblyLaborSlotsFor(car, def, context.value)
       const refitLabourPoints = container
@@ -4229,7 +4322,9 @@ export const useGameStore = defineStore('game', () => {
    */
   function benchSwapGateReasonFor(carPartId: CarPartId): string | null {
     const group = benchSwapGateGroup(carPartId)
-    return group && !hasMachineLineFor(group, gameState.value) ? machineLineGateCopy(group) : null
+    return group && !hasMachineLineFor(group, gameState.value, context.value)
+      ? machineLineGateCopy(group)
+      : null
   }
 
   /** Every assembly container currently on the bench for one car, each with its
@@ -4301,17 +4396,22 @@ export const useGameStore = defineStore('game', () => {
   /**
    * The yen a
    * non-scrap `PartInstance` would fetch sold used right now - the "Sell"
-   * button's own price tag, mirroring `resolveSellPart`'s (sim/parts.ts)
-   * internal formula so the UI shows the real number before the player
-   * commits. Returns 0 for an unknown instance or a scrap one (that's
-   * `scrapValueForPart`'s route instead).
+   * button's own price tag, reading the same `machinedPartPriceYen` basis
+   * `resolveSellPart` (sim/parts.ts) pays out on, so a machined part is quoted
+   * at a machined part's money rather than a plain one's. Returns 0 for an
+   * unknown instance or a scrap one (that's `scrapValueForPart`'s route
+   * instead).
    */
   function sellValueForPart(partInstanceId: string): number {
     const instance = gameState.value.partInventory.find((p) => p.id === partInstanceId)
     if (!instance || instance.band === 'scrap') return 0
     const part = context.value.partsById[instance.partId]
     if (!part) return 0
-    return usedPartSaleValueYen(part.priceYen, instance.band, context.value.economy)
+    return usedPartSaleValueYen(
+      machinedPartPriceYen(instance, part, context.value.economy),
+      instance.band,
+      context.value.economy,
+    )
   }
 
   /**
@@ -5120,6 +5220,19 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
+  /** Own or disown one shop directly, bypassing price and the classifieds -
+   * dev/test only, the shop twin of `devSetToolTier`. */
+  function devSetToolShopOwned(shopId: string, owned: boolean): void {
+    const already = gameState.value.toolShopsOwned.includes(shopId)
+    if (already === owned) return
+    gameState.value = {
+      ...gameState.value,
+      toolShopsOwned: owned
+        ? [...gameState.value.toolShopsOwned, shopId]
+        : gameState.value.toolShopsOwned.filter((id) => id !== shopId),
+    }
+  }
+
   /** Add one more bay of this kind for free, bypassing price/reputation - dev/test only.
    * A no-op once the kind's ladder is already maxed (nothing to add). */
   function devGrantBay(kind: BayKind): void {
@@ -5367,6 +5480,9 @@ export const useGameStore = defineStore('game', () => {
     toolLineViews,
     toolTierInfo,
     upgradeToolLine,
+    toolShopViews,
+    toolShopInfo,
+    buyToolShop,
     machineListingView,
     standingView,
     costSheetView,
@@ -5450,6 +5566,7 @@ export const useGameStore = defineStore('game', () => {
     devGrantCar,
     devGrantPart,
     devSetToolTier,
+    devSetToolShopOwned,
     devGrantBay,
     devSetReputationTier,
     sceneStandingView,

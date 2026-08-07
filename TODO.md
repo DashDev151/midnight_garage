@@ -220,6 +220,17 @@ pass."
 
 ## Open engineering
 
+- [ ] **Should a tool purchase need reputation at all? (maintainer, 2026-08-07, deferred by them.)**
+  Ruling the same day: tools are gated by money and never by scene standing, *"anyone can buy a
+  tool. Doesn't mean you are good with it. The market decides."* Every tier 2 additionally requires
+  `local` reputation and every tier 3 requires `known` (`toolLines.json`), which is overall
+  reputation rather than scene standing, so it survived the ruling. Their instruction: *"keep normal
+  rep gate for now, add note to investigate later."*
+
+  The question when it is picked up: a reputation floor on a purchase is pacing, not fiction. A
+  shop with the cash and no name can buy a lift in the real world. If the floor goes, tool pacing
+  rests entirely on price and on the classifieds listing window, and both would want re-checking.
+
 - [ ] **EVERY RENDERED ROOM IN THE GARAGE IS DECORATION (maintainer, 2026-08-06).** Their words:
   *"you have already drawn placeholder art for it. That does nothing right now. Note it for later.
   Goes for ALL rendered screens in the garage. They do nothing."*

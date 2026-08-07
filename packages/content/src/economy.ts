@@ -11,7 +11,7 @@ import {
   ReputationTierSchema,
   TyreCompoundSchema,
 } from './tags'
-import { ToolTierSchema } from './toolLines'
+import { ToolLevelSchema } from './toolLines'
 
 /** One non-negative weight per `CarPartId`, keyed explicitly (not
  * `z.record`) so a missing key fails validation instead of silently
@@ -620,10 +620,9 @@ const GradeBandCurveSchema = z.object({
 /**
  * One operation: a named craft a shop quotes, applied to one slot's part and
  * recorded on that part for good. Machining's original four engine-only
- * entries and the six scene-gated crafts (`docs/design/systems/scene-
- * standing-refactor.md` section 6) are one catalogue and one shape - the
- * generalisation is exactly the five fields below, added alongside the four
- * machining already had.
+ * entries and the six scene-associated crafts are one catalogue and one
+ * shape - the generalisation is exactly the five fields below, added
+ * alongside the four machining already had.
  *
  * `powerFraction` is the SAME shape a fitted SKU carries, per engine
  * character, so an operation enters the power model through the path a part
@@ -646,13 +645,16 @@ const GradeBandCurveSchema = z.object({
  * charging machining on top would book one loss twice.
  *
  * `labourPoints` is the whole price of the work. Every operation costs no
- * money at all: the tooling (and, for a scene operation, the standing) was
- * the purchase, and time is what a shop spends after that.
+ * money at all: the tooling was the purchase, and time is what a shop spends
+ * after that.
  *
- * `scene` is which buyer archetype's Shop-stage standing ALSO gates this
- * operation, on top of the tool tier every operation already needs
- * (`craftOperationCapabilityGateReason`, sim/machiningJobs.ts) - absent for
- * the four original engine operations, which gate on tool tier alone.
+ * `scene` is which buyer archetype cares about this operation - the
+ * association the Standing screen reads to show a scene the craft that speaks
+ * to it, and which of the two tool-level thresholds
+ * (`machining.craftOperationToolTier` rather than `minEngineToolTier`) the
+ * capability gate compares against. It gates NOTHING about standing: an
+ * operation is unlocked by tools alone. Absent for the four original engine
+ * operations.
  *
  * `handlingFraction` is handling's counterpart to `powerFraction`: the
  * fraction of the car's own mint handling this operation adds on top of
@@ -2571,12 +2573,14 @@ export const EconomyConfigSchema = z.object({
    * line). Converting a factory-NA car to forced induction (fitting the
    * FIRST turbo/supercharger into a legitimately-empty slot,
    * `hasForcedInduction(model) === false`) is fabrication work, gated behind
-   * this engine tool tier - a car that already carries a forced-induction
-   * part swaps freely at any tier; only the first conversion is gated
-   * (`jobs.ts`'s `naToTurboConversionBlocked`).
+   * this engine tool LEVEL - a car that already carries a forced-induction
+   * part swaps freely at any level; only the first conversion is gated
+   * (`jobs.ts`'s `naToTurboConversionBlocked`). At level 3 that means owning
+   * the shop covering the engine line, since level 3 is a shop rather than a
+   * rung.
    */
   toolCeilings: z.object({
-    naToTurboConversionEngineTier: ToolTierSchema,
+    naToTurboConversionEngineTier: ToolLevelSchema,
   }),
   /**
    * Tools cap the finish: the best condition band a REPAIR can reach at each
@@ -2889,22 +2893,22 @@ export const EconomyConfigSchema = z.object({
    *   dearer object, on the same axis where a race block already outranks a
    *   street one; it is never the power that moves the money.
    *
-   * `minEngineToolTier` is the engine line's rung that owns the means of
-   * production - the tier `toolLines.json` already names "Machine-shop
-   * tooling". Owning it buys the right to spend labour this way; it does not
-   * make the labour free.
+   * `minEngineToolTier` is the engine line's LEVEL that owns the means of
+   * production. At level 3 that is the shop covering the engine line. Owning
+   * it buys the right to spend labour this way; it does not make the labour
+   * free.
    *
-   * `craftOperationToolTier` is the SAME idea for every operation whose own
-   * `scene` gates it: standing ungates the tool, but the tool itself is
-   * still tier 3 of whichever line the operation's `carPartId` belongs to
-   * (`docs/design/systems/tier-three-unlocks.md`'s ruling). Kept separate
-   * from `minEngineToolTier` rather than reusing it, because the four
-   * original operations are engine-specific while a scene operation's line
-   * is read off its own `carPartId` and can be any of the six.
+   * `craftOperationToolTier` is the SAME idea for every operation carrying a
+   * `scene`, read against whichever line the operation's `carPartId` belongs
+   * to. Kept separate from `minEngineToolTier` rather than reusing it, because
+   * the four original operations are engine-specific while a scene operation's
+   * line is read off its own `carPartId` and can be any of the six. Nothing
+   * about an operation gates on scene STANDING: tools are bought with money,
+   * and the market decides whether the work was worth doing.
    */
   machining: z.object({
-    minEngineToolTier: ToolTierSchema,
-    craftOperationToolTier: ToolTierSchema,
+    minEngineToolTier: ToolLevelSchema,
+    craftOperationToolTier: ToolLevelSchema,
     gradeMultiplier: z.object({
       stock: z.number().nonnegative(),
       street: z.number().nonnegative(),

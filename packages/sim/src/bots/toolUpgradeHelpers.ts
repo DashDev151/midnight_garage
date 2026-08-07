@@ -20,14 +20,14 @@ export function toolUpgradeBudget(): ToolUpgradeBudget {
 
 /**
  * The shared "should this bot buy the next tier of this line" decision.
- * Queues the line's next tier iff the line is below 3 AND the bot can
+ * Queues the line's next rung iff the line is below its top rung AND the bot can
  * cover `upgradePriceYen * cashBufferMultiplier` from its current cash
  * (the same headroom style every bot already applies to its other spends).
  * Never a prerequisite for working: repair is always possible at the
  * current tier, so callers proceed with their work whether or not this
  * queues anything.
  *
- * Deliberately NO bot-side reputation check: tiers 2/3 gate on reputation
+ * Deliberately NO bot-side reputation check: tier 2 gates on reputation
  * (`applyToolUpgrade`/`nextToolTierRepGate`, toolLines.ts), but a bot
  * below the gate still queues the upgrade, and the resolver silently
  * refuses it - the same no-op contract an unaffordable upgrade already
@@ -49,7 +49,7 @@ export function considerToolUpgrade(
   if (budget.queuedComponentIds.has(componentId)) return true
 
   const currentTier = state.toolTiers[componentId]
-  if (currentTier >= 3) return false
+  if (currentTier >= 2) return false
   const nextTier = context.toolLines[componentId].tiers[currentTier]!
   if (state.cashYen < nextTier.upgradePriceYen * cashBufferMultiplier) return false
 

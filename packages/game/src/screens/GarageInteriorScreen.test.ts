@@ -5,6 +5,13 @@ import { h } from 'vue'
 import { createMemoryHistory, createRouter, type RouteRecordRaw } from 'vue-router'
 import { useGameStore } from '../stores/gameStore'
 import GarageInteriorScreen from './GarageInteriorScreen.vue'
+import type { ComponentId } from '@midnight-garage/content'
+
+/** The id of the shop covering one line, read from real content so no test
+ * hard-codes a coverage assumption. */
+function shopIdFor(game: ReturnType<typeof useGameStore>, componentId: ComponentId): string {
+  return game.toolShopViews.find((shop) => shop.covers.includes(componentId))!.id
+}
 
 /**
  * The garage interior's own decisions: which room a tab shows, which of the
@@ -120,7 +127,7 @@ describe('GarageInteriorScreen', () => {
     // tooling is a shop with a machine in it.
     game.gameState = {
       ...game.gameState,
-      toolTiers: { ...game.gameState.toolTiers, drivetrain: 3 },
+      toolShopsOwned: [shopIdFor(game, 'drivetrain')],
     }
     await flushPromises()
     expect(lastScene()).toBe('machine-shop-open')
@@ -136,7 +143,7 @@ describe('GarageInteriorScreen', () => {
 
     game.gameState = {
       ...game.gameState,
-      toolTiers: { ...game.gameState.toolTiers, suspension: 3 },
+      toolShopsOwned: [shopIdFor(game, 'suspension')],
     }
     await flushPromises()
     expect(wrapper.find('[data-test="machine-shop-empty-hint"]').exists()).toBe(false)

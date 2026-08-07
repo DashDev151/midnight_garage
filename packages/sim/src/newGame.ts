@@ -6,7 +6,7 @@ import { createRng, hashStringToSeed } from './rng'
 import { freshSceneCommissions } from './sceneCommissions'
 import { freshSceneLedger } from './sceneStanding'
 import { generateDailyServiceJobOffers } from './serviceJobs'
-import { freshToolTiers } from './toolLines'
+import { freshToolTiers, toolLevelsFor } from './toolLines'
 import { radialOffersGated } from './tutorial'
 import { freshSceneStanding } from './valuation'
 
@@ -86,6 +86,7 @@ export function createInitialGameState(
     graceParkingCarId: null,
     energySpentToday: 0,
     toolTiers: freshToolTiers(),
+    toolShopsOwned: [],
     pendingPartOrders: [],
     cartPartIds: [],
     stagedCarWork: {},
@@ -127,9 +128,8 @@ export function createInitialGameState(
         base.day,
         rng,
         currentGameYear(base.reputationTier),
-        base.toolTiers,
+        toolLevelsFor(base, context),
         base.reputationTier,
-        base.sceneStanding,
       )
   return {
     ...base,

@@ -9,8 +9,7 @@ import type { FittedMachiningGateReason, MachiningGateReason } from '@midnight-g
  * the car can never explain the same gate two different ways.
  */
 
-const TOOL_TIER = 'Needs tier 3 of the tool line this job uses.'
-const SCENE_STANDING = 'Needs that scene at the Shop stage first. See your standing.'
+const TOOL_TIER = 'Needs the shop that covers the tool line this job uses.'
 const ALREADY_APPLIED = 'Already done, and it does not un-do.'
 
 /** The machine shop's own refusals, about the part sitting on the machine. */
@@ -18,7 +17,6 @@ export const MACHINE_SHOP_REFUSALS: Readonly<Record<MachiningGateReason, string>
   'not-found': 'Nothing on the machine.',
   'not-on-machine': 'Not on the machine. Carry it over from the warehouse first.',
   'tool-tier': TOOL_TIER,
-  'scene-standing': SCENE_STANDING,
   'unknown-operation': 'Not a job this shop does.',
   'wrong-slot': 'That cut is meant for a different part.',
   'not-mint': 'Rebuild it to mint first. Nobody bores a worn block.',
@@ -37,7 +35,6 @@ export const SETUP_REFUSALS: Readonly<Record<FittedMachiningGateReason, string |
   'slot-empty': 'Nothing fitted there to set up.',
   'unknown-operation': 'Not a job done on the car.',
   'tool-tier': TOOL_TIER,
-  'scene-standing': SCENE_STANDING,
   'not-mint': 'Get the part to mint first. There is no point setting up worn hardware.',
   'already-applied': ALREADY_APPLIED,
 }

@@ -39,7 +39,7 @@ import {
   buildCarInstance,
   groupCarParts,
   mintCarParts,
-  testToolTiers,
+  testToolLevels,
   uniformCarParts,
 } from './testFixtures'
 
@@ -267,18 +267,18 @@ describe('scrapValueYen (Sprint 26 decision 6: pennies on the yen)', () => {
   })
 })
 
-describe('repairLevelForGroup (Sprint 26 decision 7; tier-sourced since Sprint 36)', () => {
+describe('repairLevelForGroup', () => {
   it('is 1 for a fresh (all tier-1) shop - the base hand-tools floor', () => {
-    expect(repairLevelForGroup(testToolTiers(), 'engine')).toBe(1)
+    expect(repairLevelForGroup(testToolLevels(), 'engine')).toBe(1)
   })
 
-  it('is exactly the tool line tier: 2 at tier 2, 3 at tier 3', () => {
-    expect(repairLevelForGroup(testToolTiers({ engine: 3 }), 'engine')).toBe(3)
-    expect(repairLevelForGroup(testToolTiers({ wheels: 2 }), 'wheels')).toBe(2)
+  it('is exactly the line level: 2 at tier 2, 3 once the covering shop is owned', () => {
+    expect(repairLevelForGroup(testToolLevels({ engine: 3 }), 'engine')).toBe(3)
+    expect(repairLevelForGroup(testToolLevels({ wheels: 2 }), 'wheels')).toBe(2)
   })
 
   it('reads only the requested group - an upgraded engine line never speeds up wheels', () => {
-    expect(repairLevelForGroup(testToolTiers({ engine: 3 }), 'wheels')).toBe(1)
+    expect(repairLevelForGroup(testToolLevels({ engine: 3 }), 'wheels')).toBe(1)
   })
 })
 
@@ -327,7 +327,7 @@ describe("planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decision 2; Spr
       bodyCar,
       'body',
       'mint',
-      testToolTiers(),
+      testToolLevels(),
       CONTEXT.partIdsByGroup,
       CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
@@ -350,7 +350,7 @@ describe("planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decision 2; Spr
       bodyCar,
       'body',
       'mint',
-      testToolTiers(),
+      testToolLevels(),
       CONTEXT.partIdsByGroup,
       CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
@@ -361,7 +361,7 @@ describe("planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decision 2; Spr
       bodyCar,
       'body',
       'mint',
-      testToolTiers(),
+      testToolLevels(),
       CONTEXT.partIdsByGroup,
       CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
@@ -384,7 +384,7 @@ describe("planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decision 2; Spr
       bodyCar,
       'body',
       'mint',
-      testToolTiers(),
+      testToolLevels(),
       CONTEXT.partIdsByGroup,
       CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
@@ -395,7 +395,7 @@ describe("planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decision 2; Spr
       bodyCar,
       'body',
       'mint',
-      testToolTiers({ body: 3 }),
+      testToolLevels({ body: 3 }),
       CONTEXT.partIdsByGroup,
       CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
@@ -417,7 +417,7 @@ describe("planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decision 2; Spr
       mintCar,
       'body',
       'mint',
-      testToolTiers(),
+      testToolLevels(),
       CONTEXT.partIdsByGroup,
       CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
@@ -440,7 +440,7 @@ describe("planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decision 2; Spr
       deadGroupCar,
       'body',
       'mint',
-      testToolTiers(),
+      testToolLevels(),
       CONTEXT.partIdsByGroup,
       CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
@@ -458,7 +458,7 @@ describe("planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decision 2; Spr
       suspensionCar,
       'suspension',
       'mint',
-      testToolTiers(),
+      testToolLevels(),
       CONTEXT.partIdsByGroup,
       CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
@@ -491,7 +491,7 @@ describe('planGroupRepair with benched crew (Sprint 82 decisions 2 + 5)', () => 
       bodyCar,
       'body',
       'mint',
-      testToolTiers(),
+      testToolLevels(),
       CONTEXT.partIdsByGroup,
       CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
@@ -549,10 +549,17 @@ describe('the band ceiling (Sprint 93: tools cap the finish)', () => {
     parts: mintCarParts({ panels: 'worn', paint: 'poor', aero: 'fine' }),
   })
 
-  it('repairCeilingForLevel reads the content knob: tier-1 caps at fine, tier-2/3 reach mint', () => {
+  it('repairCeilingForLevel reads the content knob: tier-1 caps at fine, level 2 and 3 reach mint', () => {
     expect(repairCeilingForLevel(1, ECONOMY)).toBe('fine')
     expect(repairCeilingForLevel(2, ECONOMY)).toBe('mint')
     expect(repairCeilingForLevel(3, ECONOMY)).toBe('mint')
+  })
+
+  it('a shop buys no repair reach at all - level 3 finishes exactly where the top rung already did', () => {
+    // Level 3 is a shop rather than a rung, and a shop was never sold as extra
+    // repair ceiling. Stated as an equality so retuning either entry alone
+    // trips this rather than silently handing a shop a reach it never had.
+    expect(repairCeilingForLevel(3, ECONOMY)).toBe(repairCeilingForLevel(2, ECONOMY))
   })
 
   it('clampRepairTarget lowers an above-ceiling target and leaves an at/below one alone', () => {
@@ -566,7 +573,7 @@ describe('the band ceiling (Sprint 93: tools cap the finish)', () => {
       bodyCar,
       'body',
       'mint',
-      testToolTiers(),
+      testToolLevels(),
       CONTEXT.partIdsByGroup,
       CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
@@ -580,7 +587,7 @@ describe('the band ceiling (Sprint 93: tools cap the finish)', () => {
       bodyCar,
       'body',
       'mint',
-      testToolTiers(),
+      testToolLevels(),
       CONTEXT.partIdsByGroup,
       CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
@@ -603,7 +610,7 @@ describe('the band ceiling (Sprint 93: tools cap the finish)', () => {
   })
 
   it('a tier-2 group repair toward mint is unclamped - the tier-2 ceiling IS mint', () => {
-    const t2 = testToolTiers({ body: 2 })
+    const t2 = testToolLevels({ body: 2 })
     const withCeiling = planGroupRepair(
       bodyCar,
       'body',

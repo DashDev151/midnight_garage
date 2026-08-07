@@ -166,7 +166,10 @@ export function runCareer(
       netWorthEstimateYen: state.cashYen + carsBookValue,
       reputationTier: state.reputationTier,
       reputationPoints: state.reputationPoints,
-      equipmentOwnedCount: Object.values(state.toolTiers).reduce((sum, tier) => sum + tier, 0) - 6,
+      equipmentOwnedCount:
+        Object.values(state.toolTiers).reduce((sum, tier) => sum + tier, 0) -
+        6 +
+        state.toolShopsOwned.length,
     })
   }
 

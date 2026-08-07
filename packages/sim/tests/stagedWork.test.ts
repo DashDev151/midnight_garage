@@ -23,6 +23,7 @@ import {
   groupCarParts,
   mintCarParts,
   testSceneStanding,
+  testToolShopsOwned,
   testToolTiers,
 } from './testFixtures'
 
@@ -30,9 +31,11 @@ import {
 // the real catalog, so an install spec needs both to resolve.
 const CONTEXT = buildSimContext(CARS, PARTS, [], PARTS_TAXONOMY)
 
-/** A mixed-tier shop (body at 2, engine at 3) so the plans these tests
- * derive exercise real tier-sized labor, not just the tier-1 floor. */
-const TOOL_TIERS = testToolTiers({ body: 2, engine: 3, interior: 2 })
+/** A mixed-rung shop (body and interior at tier 2) with the machine shop
+ * owned, so the plans these tests derive exercise real level-sized labour
+ * rather than just the tier-1 floor. */
+const TOOL_TIERS = testToolTiers({ body: 2, interior: 2 })
+const TOOL_SHOPS_OWNED = testToolShopsOwned('engine')
 
 const car: CarInstance = buildCarInstance({
   id: 'car-0001',
@@ -129,6 +132,7 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     stagedCarWork: {},
     marketLedger: { lotSupply: {}, playerSales: {} },
     carLedgers: {},
+    toolShopsOwned: TOOL_SHOPS_OWNED,
     machineListing: null,
     nextMachineListingDay: null,
     serviceJobLedgers: {},

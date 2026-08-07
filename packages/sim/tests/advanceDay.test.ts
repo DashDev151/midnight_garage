@@ -101,6 +101,7 @@ function initialState(): GameState {
     stagedCarWork: {},
     marketLedger: { lotSupply: {}, playerSales: {} },
     carLedgers: {},
+    toolShopsOwned: [],
     machineListing: null,
     nextMachineListingDay: null,
     serviceJobLedgers: {},
@@ -279,7 +280,10 @@ describe('advanceDay golden master', () => {
     // stations this hash serialises, and on-car repair narrows to the parts
     // that never come off, so any scripted repair of a removable part is now
     // bench work. Re-derived from a real run.
-    expect(hashState(finalState)).toBe('c70b0e37')
+    //
+    // And again for the shops: `GameState` gains `toolShopsOwned`, which this
+    // hash serialises. Re-derived from a real run.
+    expect(hashState(finalState)).toBe('2610e4d1')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -527,7 +531,10 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // It moves again for the workbench, on the same terms as the golden
     // master above: `GameState` gains the two work stations this hash
     // serialises. Re-derived from a real run.
-    expect(hashState(acquisitionCareer().sold)).toBe('7897fba8')
+    //
+    // And again for the shops, on the same terms: `GameState` gains
+    // `toolShopsOwned`. Re-derived from a real run.
+    expect(hashState(acquisitionCareer().sold)).toBe('618988ca')
   })
 })
 

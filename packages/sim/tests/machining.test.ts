@@ -37,7 +37,13 @@ import { resolvePlaceOnStation, resolveTakeFromStation } from '../src/parts'
 import { supportRatios, supportVerdict } from '../src/support'
 import { championStatFor, saleOutcomeFor } from '../src/valuation'
 import { createInitialGameState } from '../src/newGame'
-import { buildCarInstance, mintCarParts, testToolTiers, type CarPartOverride } from './testFixtures'
+import {
+  buildCarInstance,
+  mintCarParts,
+  testToolShopsOwned,
+  testToolTiers,
+  type CarPartOverride,
+} from './testFixtures'
 
 /**
  * Machining: the third way a part gets better. This file is the mechanism's
@@ -490,7 +496,7 @@ interface LooseBlockOptions {
  */
 function shopWithLooseBlock(
   modelId: string,
-  engineTier: 1 | 2 | 3,
+  engineLevel: 1 | 2 | 3,
   options: LooseBlockOptions = {},
 ) {
   const state = createInitialGameState(CONTEXT, 1)
@@ -510,7 +516,8 @@ function shopWithLooseBlock(
       cashYen: 5_000_000,
       partInventory: [block],
       machinePartId: options.onMachine === false ? null : block.id,
-      toolTiers: testToolTiers({ engine: engineTier }),
+      toolTiers: testToolTiers({ engine: engineLevel === 3 ? 2 : engineLevel }),
+      toolShopsOwned: engineLevel >= 3 ? testToolShopsOwned('engine') : [],
     },
   }
 }
@@ -754,7 +761,7 @@ describe('the authenticity charge, one rule and three quotes', () => {
       ...createInitialGameState(CONTEXT, 1),
       ownedCars: [car],
       serviceBayCarIds: [car.id],
-      toolTiers: testToolTiers({ wheels: 3 }),
+      toolShopsOwned: testToolShopsOwned('wheels'),
     }
     const offers = fittedMachiningOffersFor(state, car.id, 'rims', CONTEXT)
     expect(offers.length).toBeGreaterThan(0)

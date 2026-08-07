@@ -10,6 +10,7 @@ import parts from '../data/parts.json'
 import partsTaxonomy from '../data/parts-taxonomy.json'
 import provenance from '../data/provenance.json'
 import toolLines from '../data/toolLines.json'
+import toolShops from '../data/toolShops.json'
 import traits from '../data/traits.json'
 import venueNames from '../data/venueNames.json'
 import {
@@ -26,6 +27,7 @@ import {
   PartPricingSheetSchema,
   ProvenancePoolSchema,
   ToolLinesSchema,
+  ToolShopsSchema,
   TraitDefinitionsSchema,
   TraitIdSchema,
   UpkeepTierSchema,
@@ -121,13 +123,26 @@ describe('seed content validates against schemas', () => {
     expect(Object.keys(result.data).sort()).toEqual([...ComponentIdSchema.options].sort())
     for (const id of ComponentIdSchema.options) {
       const line = result.data[id]
-      // Exactly 3 tiers per line.
-      expect(line.tiers).toHaveLength(3)
+      // Exactly 2 rungs per line - above them there are no rungs, only shops.
+      expect(line.tiers).toHaveLength(2)
       // Tier 1 is owned from the start - price 0.
       expect(line.tiers[0]!.upgradePriceYen).toBe(0)
       // Upgrade prices strictly ascend within the line.
       expect(line.tiers[1]!.upgradePriceYen).toBeGreaterThan(line.tiers[0]!.upgradePriceYen)
-      expect(line.tiers[2]!.upgradePriceYen).toBeGreaterThan(line.tiers[1]!.upgradePriceYen)
+    }
+  })
+
+  /** The three shops at the top of the ladder, one purchase each. */
+  it('toolShops.json', () => {
+    const result = ToolShopsSchema.safeParse(toolShops)
+    if (!result.success) throw new Error(result.error.message)
+    // Every line covered by exactly one shop - the invariant that makes
+    // "the shop covering this line" a single answer.
+    const covered = result.data.flatMap((shop) => shop.covers)
+    expect(covered.sort()).toEqual([...ComponentIdSchema.options].sort())
+    for (const shop of result.data) {
+      expect(shop.upgradePriceYen).toBeGreaterThan(0)
+      expect(shop.displayName.length).toBeGreaterThan(0)
     }
   })
 

@@ -122,21 +122,35 @@ export type CarLedger = z.infer<typeof CarLedgerSchema>
 
 /**
  * The one live used-machinery classified listing, if any - reputation gates
- * which tool tiers are ELIGIBLE, but only a listing for this exact
- * `componentId`+`tier` makes it actually PURCHASABLE (`applyToolUpgrade`,
- * toolLines.ts). `priceYen` is captured at listing time (the tier's own
- * `upgradePriceYen`, which never changes mid-career, but locking it here
+ * which rungs and shops are ELIGIBLE, but only a listing for this exact thing
+ * makes it actually PURCHASABLE (`applyToolUpgrade`/`applyToolShopPurchase`,
+ * toolLines.ts). `priceYen` is captured at listing time (the rung's or shop's
+ * own `upgradePriceYen`, which never changes mid-career, but locking it here
  * keeps the listing self-contained). At most one live at a time by
  * construction (`GameState.machineListing` is a single nullable field, never
  * a list).
+ *
+ * Two things can be advertised, because the ladder has two kinds of purchase
+ * on it: a line's own rung, and a whole shop covering several lines at level
+ * 3. One listing mechanic serves both.
  */
-export const MachineListingSchema = z.object({
-  componentId: ComponentIdSchema,
-  tier: ToolTierSchema,
-  priceYen: z.number().int().nonnegative(),
-  postedOnDay: z.number().int().positive(),
-  expiresOnDay: z.number().int().positive(),
-})
+export const MachineListingSchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('tool-tier'),
+    componentId: ComponentIdSchema,
+    tier: ToolTierSchema,
+    priceYen: z.number().int().nonnegative(),
+    postedOnDay: z.number().int().positive(),
+    expiresOnDay: z.number().int().positive(),
+  }),
+  z.object({
+    kind: z.literal('tool-shop'),
+    shopId: z.string().min(1),
+    priceYen: z.number().int().nonnegative(),
+    postedOnDay: z.number().int().positive(),
+    expiresOnDay: z.number().int().positive(),
+  }),
+])
 
 export type MachineListing = z.infer<typeof MachineListingSchema>
 
@@ -518,12 +532,18 @@ export const GameStateSchema = z.object({
    */
   energySpentToday: z.number().int().nonnegative().default(0),
   /**
-   * The shop's current tier per tool line. Tier IS the repair level
-   * (`bands.ts`'s `repairLevelForGroup`); all six lines start at 1. Not
-   * defaulted: the v22 -> v23 save migration reconstructs it from a legacy
+   * The shop's current rung per tool line, 1 or 2. All six lines start at 1.
+   * Not defaulted: the v22 -> v23 save migration reconstructs it from a legacy
    * save's owned machines (see `saveCodec.ts`).
    */
   toolTiers: ToolTiersSchema,
+  /**
+   * The shops owned, by `toolShops.json` id - the top of the tool ladder. A
+   * shop covers several lines at once and lifts every line it covers to level
+   * 3 (`toolLevelsFor`, sim/toolLines.ts), which is what the repair level, an
+   * operation's capability gate and a service task's `minToolTier` all read.
+   */
+  toolShopsOwned: z.array(z.string().min(1)).default([]),
   /**
    * Standard-delivery part purchases in transit - resolved by advanceDay's
    * day-boundary tick once `arrivesOnDay` is reached, the same "due today
@@ -1190,11 +1210,24 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     toTier: ToolTierSchema,
     priceYen: z.number().int().nonnegative(),
   }),
+  /** A shop at the top of the tool ladder was bought (`applyToolShopPurchase`,
+   * sim/toolLines.ts) - shop investment, exactly as a rung is. */
+  z.object({
+    type: z.literal('tool-shop-purchased'),
+    shopId: z.string().min(1),
+    priceYen: z.number().int().nonnegative(),
+  }),
   /** A fresh used-machinery classified listing went live today. */
   z.object({
     type: z.literal('machine-listed'),
     componentId: ComponentIdSchema,
     tier: ToolTierSchema,
+    priceYen: z.number().int().nonnegative(),
+  }),
+  /** Today's classifieds advertised a whole shop rather than a single rung. */
+  z.object({
+    type: z.literal('tool-shop-listed'),
+    shopId: z.string().min(1),
     priceYen: z.number().int().nonnegative(),
   }),
   /** A machine group's daily hire fee was paid (`resolveHireMachineLine`,

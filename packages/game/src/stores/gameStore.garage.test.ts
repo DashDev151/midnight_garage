@@ -49,10 +49,10 @@ describe('garage: instant repair and labor', () => {
 
   it('repairing completes and lifts the group to mint, possibly over several days', () => {
     const game = useGameStore()
-    // No ownership gate exists anymore - max every line's tier so this test
-    // keeps its old all-equipment pacing (the fastest repair level), staying a
-    // test of completion mechanics rather than of tier-1 throughput.
-    for (const line of game.toolLineViews) game.devSetToolTier(line.componentId, 3)
+    // No ownership gate exists anymore - own every shop so this test keeps its
+    // old all-equipment pacing (the fastest repair level), staying a test of
+    // completion mechanics rather than of tier-1 throughput.
+    for (const shop of game.toolShopViews) game.devSetToolShopOwned(shop.id, true)
     // Every removable part is bench work now, so `repair()` refuses all of
     // them: the chassis is the one slot an on-car repair still climbs (it
     // never comes off, and unlike panels/paint its band is its own rather than

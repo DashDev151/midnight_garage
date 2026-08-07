@@ -93,6 +93,7 @@ function stateWithLots(lots: AuctionLot[], overrides: Partial<GameState> = {}): 
     marketHeat: {},
     marketLedger: { lotSupply: {}, playerSales: {} },
     carLedgers: {},
+    toolShopsOwned: [],
     machineListing: null,
     nextMachineListingDay: null,
     activeAuctionLots: lots,

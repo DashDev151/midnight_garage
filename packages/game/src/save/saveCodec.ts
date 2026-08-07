@@ -756,8 +756,17 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * the day log is session-scoped and never persisted. The version bump alone is
  * still required (Save law) so an old client rejects a v66 save rather than
  * silently stripping the stations and leaving work with nowhere to happen.
+ * v66 -> v67 (three shops replace the six tier-3 rungs): a tool line now
+ * carries two rungs rather than three (`ToolTierSchema` is 1 or 2), and
+ * `GameStateSchema` gains `toolShopsOwned`, the shops bought at the top of the
+ * ladder. `MachineListingSchema` becomes a discriminated union, since the
+ * classifieds advertise either a rung or a whole shop. Per directive 19, a
+ * plain SAVE_VERSION bump with NO `MIGRATIONS[66]` entry and no legacy-compat
+ * branch: `toolShopsOwned` defaults to empty, and a pre-v67 save carrying a
+ * tier-3 line or an undiscriminated listing simply fails to parse rather than
+ * being reshaped.
  */
-export const SAVE_VERSION = 66
+export const SAVE_VERSION = 67
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'
@@ -1329,19 +1338,21 @@ function migrateV20ToV21(gameState: unknown): unknown {
 
 /**
  * v22 -> v23: the frozen legacy map from a retired equipment id
- * to the tool line it covered and the tier its `repairLevel` granted. A
+ * to the tool line it covered and the rung its `repairLevel` granted. A
  * historical fact about the pre-v23 equipment catalog, hardcoded inline
  * (the `GROUP_TO_REPRESENTATIVE_PART` pattern) since `equipment.json` no
- * longer exists to derive it from.
+ * longer exists to derive it from. Every legacy machine maps to the top rung a
+ * tool line now carries; above that rung there are no rungs, only shops, and a
+ * shop is bought rather than reconstructed.
  */
 const LEGACY_EQUIPMENT_TO_TOOL_TIER: Record<string, { group: string; level: number }> = {
   'tire-machine': { group: 'wheels', level: 2 },
   'brake-lathe': { group: 'suspension', level: 2 },
-  'suspension-press': { group: 'suspension', level: 3 },
+  'suspension-press': { group: 'suspension', level: 2 },
   'upholstery-bench': { group: 'interior', level: 2 },
   welder: { group: 'body', level: 2 },
   'transmission-bench': { group: 'drivetrain', level: 2 },
-  'engine-crane': { group: 'engine', level: 3 },
+  'engine-crane': { group: 'engine', level: 2 },
 }
 
 /**

@@ -34,6 +34,7 @@ import { completeMachiningJob, machiningLogEntryFor } from './machiningJobs'
 import { partFitsCar, reconcileStations } from './parts'
 import { isCustomerOriginPart } from './provenance'
 import { updateServiceJobLedger } from './serviceJobLedger'
+import { toolLevelsFor } from './toolLines'
 
 /**
  * Labour (energy points) to pull one slot's part off a car: one flat figure,
@@ -359,7 +360,7 @@ export function completeJob(state: GameState, job: Job, context: SimContext): Jo
     // the occupied-slot block below.
     const carPartId = installTargetCarPartId(state, job, context)
     const machineGroup = carPartId ? machineLineGroupFor(carPartId, context) : null
-    if (machineGroup && !hasMachineLineFor(machineGroup, state)) {
+    if (machineGroup && !hasMachineLineFor(machineGroup, state, context)) {
       return { state, blockedReason: 'machine-line' }
     }
   }
@@ -481,12 +482,18 @@ export function machineLineGroupFor(carPartId: CarPartId, context: SimContext): 
 }
 
 /**
- * Whether `group`'s tier-2 machine is owned outright - the ownership half of
+ * Whether `group`'s machinery is owned outright - the ownership half of
  * "owned or hired today", extracted once so the fee helpers below, the hire
- * gate, and the hire resolver never diverge on what counts as owned.
+ * gate, and the hire resolver never diverge on what counts as owned. Read off
+ * the line's LEVEL, so the shop covering a line owns its machinery just as the
+ * tier-2 rung does.
  */
-export function ownsMachineForGroup(group: ComponentId, state: GameState): boolean {
-  return state.toolTiers[group] >= 2
+export function ownsMachineForGroup(
+  group: ComponentId,
+  state: GameState,
+  context: SimContext,
+): boolean {
+  return toolLevelsFor(state, context)[group] >= 2
 }
 
 /** Whether `group`'s daily hire (`resolveHireMachineLine`) has already been
@@ -501,8 +508,12 @@ export function machineHiredToday(group: ComponentId, state: GameState): boolean
  * (signature repair, buried removal, buried/signature install) checks
  * before it proceeds.
  */
-export function hasMachineLineFor(group: ComponentId, state: GameState): boolean {
-  return ownsMachineForGroup(group, state) || machineHiredToday(group, state)
+export function hasMachineLineFor(
+  group: ComponentId,
+  state: GameState,
+  context: SimContext,
+): boolean {
+  return ownsMachineForGroup(group, state, context) || machineHiredToday(group, state)
 }
 
 /**
@@ -521,7 +532,7 @@ export function machineAssistFeeYen(
   context: SimContext,
 ): number {
   const group = removeMachineGateGroup(carPartId, context)
-  if (!group || ownsMachineForGroup(group, state)) return 0
+  if (!group || ownsMachineForGroup(group, state, context)) return 0
   return context.economy.machineShopAssist.feeYenByGroup[group]
 }
 
@@ -537,7 +548,7 @@ export function signatureOpFeeYen(
   context: SimContext,
 ): number {
   const group = signatureGroupFor(carPartId, context)
-  if (!group || ownsMachineForGroup(group, state)) return 0
+  if (!group || ownsMachineForGroup(group, state, context)) return 0
   return context.economy.machineShopAssist.feeYenByGroup[group]
 }
 
@@ -566,7 +577,7 @@ export function hireMachineLineGateReason(
   group: ComponentId,
   context: SimContext,
 ): HireMachineLineGateReason | null {
-  if (ownsMachineForGroup(group, state)) return null
+  if (ownsMachineForGroup(group, state, context)) return null
   const feeYen = context.economy.machineShopAssist.feeYenByGroup[group]
   if (feeYen <= 0) return null
   if (machineHiredToday(group, state)) return null
@@ -594,7 +605,7 @@ export function resolveHireMachineLine(
   group: ComponentId,
   context: SimContext,
 ): HireMachineLineResult {
-  if (ownsMachineForGroup(group, state)) return { state, log: [], outcome: 'hired' }
+  if (ownsMachineForGroup(group, state, context)) return { state, log: [], outcome: 'hired' }
   const feeYen = context.economy.machineShopAssist.feeYenByGroup[group]
   if (feeYen <= 0) return { state, log: [], outcome: 'hired' }
   if (machineHiredToday(group, state)) return { state, log: [], outcome: 'hired' }
@@ -688,7 +699,7 @@ export function resolveRemovePart(
   // Buried engine/drivetrain removal needs that group's machinery - owned
   // outright, or hired for today (`resolveHireMachineLine`).
   const machineGroup = removeMachineGateGroup(carPartId, context)
-  if (machineGroup && !hasMachineLineFor(machineGroup, state)) {
+  if (machineGroup && !hasMachineLineFor(machineGroup, state, context)) {
     return { state, log: [], laborSlotsUsed: 0 }
   }
 
@@ -784,7 +795,7 @@ export function removeBlockReason(
   const blockedBy = occupiedBlockers(car, carPartId, context)
   if (blockedBy.length > 0) return { kind: 'blocked-by', blockedBy }
   const machineGroup = removeMachineGateGroup(carPartId, context)
-  if (machineGroup && !hasMachineLineFor(machineGroup, state)) {
+  if (machineGroup && !hasMachineLineFor(machineGroup, state, context)) {
     return { kind: 'machine-line', group: machineGroup }
   }
   return null
@@ -871,15 +882,16 @@ export function repairJobGate(
       log: [{ type: 'job-blocked', jobId: jobIdFor(spec), reason: 'derived-band' }],
     }
   }
-  // A REPAIR climbs a part only to the group's tool-tier ceiling
-  // (`economy.repairBandCeilingByTier`) - tier-1 caps at fine; mint needs the
+  // A REPAIR climbs a part only to the group's tool-level ceiling
+  // (`economy.repairBandCeilingByTier`) - level-1 caps at fine; mint needs the
   // group's tier-2 machine owned. Jobs targeting bands above the ceiling are
   // refused with a `tool-tier` reason (the UI already renders this) rather
-  // than silently clamped. Mint is still reachable at any tier via BUYING a
+  // than silently clamped. Mint is still reachable at any level via BUYING a
   // mint replacement and fitting it (install, never gated); owning tier-2
   // only lets you REPAIR the existing part to mint (cheaper).
+  const toolLevels = toolLevelsFor(state, context)
   const repairCeiling = repairCeilingForLevel(
-    repairLevelForGroup(state.toolTiers, spec.componentId),
+    repairLevelForGroup(toolLevels, spec.componentId),
     context.economy,
   )
   if (bandIndex(spec.targetBand) > bandIndex(repairCeiling)) {
@@ -895,7 +907,7 @@ export function repairJobGate(
     car,
     spec.componentId,
     spec.targetBand,
-    state.toolTiers,
+    toolLevels,
     context.partIdsByGroup,
     context.partsById,
     context.partsTaxonomyById,
@@ -917,7 +929,7 @@ export function repairJobGate(
   const needsMachineLine = plan.partIds.some(
     (partId) => signatureGroupFor(partId, context) !== null,
   )
-  if (needsMachineLine && !hasMachineLineFor(spec.componentId, state)) {
+  if (needsMachineLine && !hasMachineLineFor(spec.componentId, state, context)) {
     return {
       ok: false,
       log: [{ type: 'job-blocked', jobId: jobIdFor(spec), reason: 'machine-line' }],
@@ -955,11 +967,12 @@ export type InstallFitGate = { ok: true } | { ok: false; log: DayLogEntry[] }
  * The one own-car capability ceiling (progression bible's bolt-on vs built
  * line). Converting a factory-NA car to forced induction - fitting the FIRST
  * turbo/supercharger into a legitimately-empty slot - is fabrication work,
- * gated behind `economy.toolCeilings.naToTurboConversionEngineTier`. A car
- * that already carries forced induction (factory or from a previous
- * conversion) swaps freely at any tier; only the first conversion is gated.
- * Exported so the UI can pre-empt the same refusal `installFitGate` below
- * enforces, one source of truth for both.
+ * gated behind `economy.toolCeilings.naToTurboConversionEngineTier`, read
+ * against the engine line's LEVEL - at 3 that means owning the shop covering
+ * the engine line. A car that already carries forced induction (factory or
+ * from a previous conversion) swaps freely at any level; only the first
+ * conversion is gated. Exported so the UI can pre-empt the same refusal
+ * `installFitGate` below enforces, one source of truth for both.
  */
 export function naToTurboConversionBlocked(
   carPartId: CarPartId,
@@ -968,7 +981,10 @@ export function naToTurboConversionBlocked(
   context: SimContext,
 ): boolean {
   if (carPartId !== 'forcedInduction' || hasForcedInduction(model)) return false
-  return state.toolTiers.engine < context.economy.toolCeilings.naToTurboConversionEngineTier
+  return (
+    toolLevelsFor(state, context).engine <
+    context.economy.toolCeilings.naToTurboConversionEngineTier
+  )
 }
 
 /**
@@ -1334,8 +1350,8 @@ function planReconditionPart(
   const taxonomyEntry = catalogPart ? context.partsTaxonomyById[catalogPart.carPartId] : undefined
   const group = taxonomyEntry?.group
   if (!catalogPart || !taxonomyEntry || !group) return null
-  const repairLevel = repairLevelForGroup(state.toolTiers, group)
-  // A bench recondition climbs only to the group's tool-tier ceiling. A
+  const repairLevel = repairLevelForGroup(toolLevelsFor(state, context), group)
+  // A bench recondition climbs only to the group's tool-level ceiling. A
   // "sweep to a band" clamps rather than refuses - a tier-1 recondition of a
   // worn part toward mint repairs it as far as it can (to fine) and the
   // created job carries that clamped band, so mint by REPAIR needs the tier-2

@@ -55,6 +55,7 @@ import {
 import { reconcileStations } from './parts'
 import { makeCarOrigin } from './provenance'
 import { updateServiceJobLedger } from './serviceJobLedger'
+import { toolLevelsFor } from './toolLines'
 
 /**
  * Drops a car's staged-work entry, wherever it stands - called by every
@@ -105,7 +106,7 @@ export function isFreeInstallRefit(
   if (!car || !partInstance || !targetPartId) return false
   if (refitLaborSlotsFor(car, targetPartId, partInstance, context) > 0) return false
   const group = machineLineGroupFor(targetPartId, context)
-  return !group || hasMachineLineFor(group, state)
+  return !group || hasMachineLineFor(group, state, context)
 }
 
 interface PipelineOpResult {
@@ -122,16 +123,17 @@ const NOOP_PIPELINE_RESULT = (state: GameState): PipelineOpResult => ({
 
 /** The body group's own capability reading for today (`bodyPipeline.ts`'s
  * `BodyLineCapability`): `unlocked` is tier 2 owned or the line hired today
- * (gates weld and the better paint finish); `fullCapability` is tier 3 owned
- * or hired today (hiring always grants the WHOLE line, not just tier 2 - see
+ * (gates weld and the better paint finish); `fullCapability` is level 3 (the
+ * shop covering the body line) or the line hired today (hiring always grants
+ * the WHOLE line, not just tier 2 - see
  * `docs/design/systems/workshop-rework.md`'s tool-gates section) - gates the best
  * polish floor. The one reading of the rule: the game store's own
  * pre-confirm preview calls this rather than restating it, so the preview and
  * the charge can never gate differently. */
-export function bodyLineCapability(state: GameState): BodyLineCapability {
+export function bodyLineCapability(state: GameState, context: SimContext): BodyLineCapability {
   return {
-    unlocked: hasMachineLineFor('body', state),
-    fullCapability: state.toolTiers.body >= 3 || machineHiredToday('body', state),
+    unlocked: hasMachineLineFor('body', state, context),
+    fullCapability: toolLevelsFor(state, context).body >= 3 || machineHiredToday('body', state),
   }
 }
 
@@ -241,7 +243,7 @@ function resolvePipelineStageAction(
   const car = findWorkableCar(state, carInstanceId)
   if (!car || !car.zoneState) return NOOP_PIPELINE_RESULT(state)
   const zone = car.zoneState[action.zoneId]
-  const plan = planPipelineStage(action.stage, zone, bodyLineCapability(state))
+  const plan = planPipelineStage(action.stage, zone, bodyLineCapability(state, context))
   if (!plan.ok) {
     if (plan.reason === 'machine-line') {
       return {
@@ -272,7 +274,7 @@ function resolvePipelineStageAction(
       laborSlotsUsed: 0,
     }
   }
-  const repairLevel = repairLevelForGroup(state.toolTiers, 'body')
+  const repairLevel = repairLevelForGroup(toolLevelsFor(state, context), 'body')
   const laborSlotsRequired =
     plan.laborUnits * context.economy.energy.energyPerBandStepByToolTier[repairLevel]
   return chargeAndApplyPipelineEffect(
@@ -330,7 +332,7 @@ function resolvePipelinePaintAction(
   const plan = planPaintStage(
     zone,
     action.colour,
-    bodyLineCapability(state),
+    bodyLineCapability(state, context),
     action.grade,
     car.factoryColour,
   )
@@ -349,7 +351,7 @@ function resolvePipelinePaintAction(
       laborSlotsUsed: 0,
     }
   }
-  const repairLevel = repairLevelForGroup(state.toolTiers, 'body')
+  const repairLevel = repairLevelForGroup(toolLevelsFor(state, context), 'body')
   const laborSlotsRequired =
     plan.laborUnits * context.economy.energy.energyPerBandStepByToolTier[repairLevel]
 
@@ -676,7 +678,7 @@ export function confirmStagedWork(
         car,
         action.componentId,
         action.targetBand,
-        current.toolTiers,
+        toolLevelsFor(current, context),
         context.partIdsByGroup,
         context.partsById,
         context.partsTaxonomyById,

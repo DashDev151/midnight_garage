@@ -1,7 +1,21 @@
 # The tool ladder: three rungs, three claims
 
-**Status: DESIGN, unsigned.** Nothing here is built. Raised 2026-08-04 out of the scene-standing
+**Status: DESIGN, unsigned, and PARTLY SUPERSEDED.** Raised 2026-08-04 out of the scene-standing
 arc, when the tool ladder turned out to have a rung that bought nothing.
+
+> **Superseded, 2026-08-07 (sprint190.md).** Two things in this document are dead.
+>
+> 1. **"Standing ungates the tool. A tier-3 machine on its own performs no craft operation. Both
+>    are required and neither substitutes for the other."** Reversed. Tools are gated by money and
+>    never by standing: *"Anyone can buy a tool. Doesn't mean you are good with it. The market
+>    decides."* No operation anywhere reads scene standing. `operation.scene` survives as the
+>    association naming which buyer archetype cares about a craft, and gates nothing.
+> 2. **Tier 3 as a per-line rung.** The six tier-3 rungs are retired and replaced by three shops
+>    (machine, chassis, body and trim), each bought once and covering several lines at level 3
+>    together. A tool line now carries two rungs. `sprint190.md` carries the signed prices.
+>
+> Everything else here - the grade rule, the content table, the analysis of what each rung is
+> worth - still reads as written, with "tier 3" meaning "the shop covering that line".
 
 ## The problem it solves
 

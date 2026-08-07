@@ -202,6 +202,14 @@ function bodyRepairRow(game: ReturnType<typeof useGameStore>, carId: string) {
   return repairableSurfaceRows(game, carId, 'body')[0]!
 }
 
+/** Owns the shop covering `componentId` - what puts that line at the level
+ * a level-3 capability needs, read from real content rather than a
+ * hard-coded shop id. */
+function grantShopFor(game: ReturnType<typeof useGameStore>, componentId: ComponentId): void {
+  const shop = game.toolShopViews.find((s) => s.covers.includes(componentId))!
+  game.devSetToolShopOwned(shop.id, true)
+}
+
 describe('CarDetailScreen', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
@@ -396,7 +404,7 @@ describe('CarDetailScreen', () => {
 
   it('staging a per-part repair, then Confirm, actually creates and labours the job - settling one rung up, not mint', async () => {
     const game = useGameStore()
-    for (const line of game.toolLineViews) game.devSetToolTier(line.componentId, 3)
+    for (const shop of game.toolShopViews) game.devSetToolShopOwned(shop.id, true)
     const id = grantCarNeedingRepair(game, 'body')
     const row = bodyRepairRow(game, id)
     const { wrapper } = await mountAt(id)
@@ -722,7 +730,7 @@ describe('CarDetailScreen', () => {
 
     it('repairing the car updates repairs and total spent immediately', async () => {
       const game = useGameStore()
-      for (const line of game.toolLineViews) game.devSetToolTier(line.componentId, 3)
+      for (const shop of game.toolShopViews) game.devSetToolShopOwned(shop.id, true)
       const id = grantCarNeedingRepair(game, 'body')
       const row = bodyRepairRow(game, id)
 
@@ -1317,7 +1325,7 @@ describe('CarDetailScreen', () => {
 
     it('an empty forced-induction slot on an NA car reads "no turbo (NA)" and, once engine tooling is upgraded, fitting a turbo kit installs it', async () => {
       const game = useGameStore()
-      game.devSetToolTier('engine', 3)
+      grantShopFor(game, 'engine')
       game.devGrantCar(CARS[0]!.id)
       const id = game.gameState.ownedCars[0]!.id
       // forcedInduction is blockedBy 'intake' - it must come off first, or
@@ -1344,7 +1352,7 @@ describe('CarDetailScreen', () => {
       expect(game.gameState.ownedCars[0]!.parts.forcedInduction.installed?.id).toBe(partInstanceId)
     })
 
-    it('a fresh (engine tier 1) shop cannot convert an NA car to forced induction: the turbo kit is dimmed with "Needs Machine-shop tooling"', async () => {
+    it('a garage without the machine shop cannot convert an NA car to forced induction: the turbo kit is dimmed with the shop it needs', async () => {
       const game = useGameStore()
       game.devGrantCar(CARS[0]!.id)
       const id = game.gameState.ownedCars[0]!.id
@@ -1359,7 +1367,8 @@ describe('CarDetailScreen', () => {
       await selectPart(wrapper, 'forcedInduction')
       await wrapper.find('[data-test="replace-part-forcedInduction"]').trigger('click')
 
-      expect(wrapper.text()).toContain('Needs Machine-shop tooling')
+      const machineShop = game.toolShopViews.find((s) => s.covers.includes('engine'))!
+      expect(wrapper.text()).toContain(`Needs ${machineShop.displayName}`)
       await wrapper.find('.part-card').trigger('click')
       expect(wrapper.text()).not.toContain('planned:')
       expect(game.gameState.ownedCars[0]!.parts.forcedInduction.installed?.id).not.toBe(
@@ -1393,7 +1402,7 @@ describe('CarDetailScreen', () => {
 
     it('a body value carrier offers Replace while it is occupied, and never Take it off', async () => {
       const game = useGameStore()
-      game.devSetToolTier('body', 3)
+      grantShopFor(game, 'body')
       game.devGrantCar(CARS[0]!.id)
       const id = game.gameState.ownedCars[0]!.id
       const originalInstalledId = game.gameState.ownedCars[0]!.parts.panels.installed?.id
@@ -2495,18 +2504,17 @@ describe('CarDetailScreen', () => {
       return id
     }
 
-    function withTouge(game: ReturnType<typeof useGameStore>, suspensionTier: 1 | 2 | 3): void {
-      game.gameState = {
-        ...game.gameState,
-        toolTiers: { ...game.gameState.toolTiers, suspension: suspensionTier },
-        sceneStanding: { ...game.gameState.sceneStanding, touge: 'shop' },
-      }
+    /** The chassis shop owned, which is what puts the suspension line at the
+     * level corner weighting needs. Scene standing is deliberately left where
+     * a fresh career puts it: no operation reads it. */
+    function withChassisShop(game: ReturnType<typeof useGameStore>): void {
+      grantShopFor(game, 'suspension')
     }
 
     it('offers corner weighting on the springs and show fitment on the rims, each on its own slot', async () => {
       const game = useGameStore()
       const id = carReadyForSetup(game, 'springs')
-      withTouge(game, 3)
+      withChassisShop(game)
 
       const { wrapper } = await mountAt(id)
       await selectPart(wrapper, 'springs')
@@ -2528,7 +2536,7 @@ describe('CarDetailScreen', () => {
     it('does the work on click, writing it onto the part fitted to the car', async () => {
       const game = useGameStore()
       const id = carReadyForSetup(game, 'springs')
-      withTouge(game, 3)
+      withChassisShop(game)
 
       const { wrapper } = await mountAt(id)
       await selectPart(wrapper, 'springs')
@@ -2545,36 +2553,27 @@ describe('CarDetailScreen', () => {
     it('answers to the suspension line rather than the engine, and says why it refuses', async () => {
       const game = useGameStore()
       const id = carReadyForSetup(game, 'springs')
-      withTouge(game, 2)
-      game.gameState = {
-        ...game.gameState,
-        toolTiers: { ...game.gameState.toolTiers, engine: 3 },
-      }
+      grantShopFor(game, 'engine')
 
       const { wrapper } = await mountAt(id)
       await selectPart(wrapper, 'springs')
       const button = wrapper.find('[data-test="setup-do-corner-weighting"]')
       expect(button.attributes('disabled')).toBeDefined()
-      expect(wrapper.find('[data-test="setup-refusal-corner-weighting"]').text()).toContain(
-        'tier 3',
-      )
+      expect(wrapper.find('[data-test="setup-refusal-corner-weighting"]').text()).toContain('shop')
     })
 
-    it('refuses without the standing, and refuses a car sitting in parking', async () => {
+    it('is offered with every scene at none, and refuses a car sitting in parking', async () => {
       const game = useGameStore()
       const id = carReadyForSetup(game, 'springs')
-      game.gameState = {
-        ...game.gameState,
-        toolTiers: { ...game.gameState.toolTiers, suspension: 3 },
-      }
+      withChassisShop(game)
+      expect(game.gameState.sceneStanding.touge, 'nothing was ever earned').toBe('none')
 
       const noStanding = await mountAt(id)
       await selectPart(noStanding.wrapper, 'springs')
-      expect(noStanding.wrapper.find('[data-test="setup-refusal-corner-weighting"]').text()).toBe(
-        'Needs that scene at the Shop stage first. See your standing.',
+      expect(noStanding.wrapper.find('[data-test="setup-refusal-corner-weighting"]').exists()).toBe(
+        false,
       )
 
-      withTouge(game, 3)
       game.moveCar(id, 'parking')
       const parked = await mountAt(id)
       await selectPart(parked.wrapper, 'springs')
@@ -2605,7 +2604,7 @@ describe('CarDetailScreen', () => {
     it('states the originality cost as the fraction it is, and as nothing where there is none', async () => {
       const game = useGameStore()
       const id = carReadyForSetup(game, 'springs')
-      withTouge(game, 3)
+      withChassisShop(game)
       const operation = ECONOMY.machining.operations.find((o) => o.id === 'corner-weighting')!
       expect(operation.authenticityCost, 'the cut costs a fraction of a point').toBeGreaterThan(0)
 

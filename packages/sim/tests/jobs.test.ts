@@ -40,6 +40,8 @@ import {
   groupCarParts,
   mintCarParts,
   testSceneStanding,
+  testToolLevels,
+  testToolShopsOwned,
   testToolTiers,
 } from './testFixtures'
 
@@ -128,6 +130,7 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     stagedCarWork: {},
     marketLedger: { lotSupply: {}, playerSales: {} },
     carLedgers: {},
+    toolShopsOwned: [],
     machineListing: null,
     nextMachineListingDay: null,
     serviceJobLedgers: {},
@@ -682,7 +685,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
       const unlocked = baseState({
         ownedCars: [naCar],
         partInventory: [turboInstance],
-        toolTiers: testToolTiers({ engine: 3 }),
+        toolShopsOwned: testToolShopsOwned('engine'),
       })
       const allowed = findOrCreateJob(unlocked, spec, CONTEXT)
       expect(allowed.job).not.toBeNull()
@@ -863,13 +866,13 @@ describe('findOrCreateJob (Sprint 11)', () => {
         carPartId: 'forcedInduction' as const,
         laborSlotsRequired: 1,
       }
-      // Tier 3 so this isolates the blocker gate from the NA-to-turbo
-      // conversion gate (already its own test above).
+      // The machine shop owned, so this isolates the blocker gate from the
+      // NA-to-turbo conversion gate (already its own test above).
       const blocked = findOrCreateJob(
         baseState({
           ownedCars: [naCar],
           partInventory: [turboInstance],
-          toolTiers: testToolTiers({ engine: 3 }),
+          toolShopsOwned: testToolShopsOwned('engine'),
         }),
         spec,
         CONTEXT,
@@ -891,7 +894,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
         baseState({
           ownedCars: [clearedIntakeCar],
           partInventory: [turboInstance],
-          toolTiers: testToolTiers({ engine: 3 }),
+          toolShopsOwned: testToolShopsOwned('engine'),
         }),
         spec,
         CONTEXT,
@@ -1565,26 +1568,35 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
       toolTiers: testToolTiers({ engine: 1 }),
       machineHirePaidDayByGroup: {},
     })
-    expect(hasMachineLineFor('engine', notOwnedNotHired)).toBe(false)
+    expect(hasMachineLineFor('engine', notOwnedNotHired, CONTEXT)).toBe(false)
 
     const hiredToday = baseState({
       toolTiers: testToolTiers({ engine: 1 }),
       machineHirePaidDayByGroup: { engine: 1 },
     })
-    expect(hasMachineLineFor('engine', hiredToday)).toBe(true)
+    expect(hasMachineLineFor('engine', hiredToday, CONTEXT)).toBe(true)
 
     const hiredYesterday = baseState({
       day: 2,
       toolTiers: testToolTiers({ engine: 1 }),
       machineHirePaidDayByGroup: { engine: 1 },
     })
-    expect(hasMachineLineFor('engine', hiredYesterday)).toBe(false)
+    expect(hasMachineLineFor('engine', hiredYesterday, CONTEXT)).toBe(false)
 
     const owned = baseState({
       toolTiers: testToolTiers({ engine: 2 }),
       machineHirePaidDayByGroup: {},
     })
-    expect(hasMachineLineFor('engine', owned)).toBe(true)
+    expect(hasMachineLineFor('engine', owned, CONTEXT)).toBe(true)
+
+    // The shop covering a line owns its machinery too, whatever the rung
+    // beneath it says.
+    const shopOwned = baseState({
+      toolTiers: testToolTiers({ engine: 1 }),
+      toolShopsOwned: testToolShopsOwned('engine'),
+      machineHirePaidDayByGroup: {},
+    })
+    expect(hasMachineLineFor('engine', shopOwned, CONTEXT)).toBe(true)
   })
 
   it('a removal gates on the shipped removePart figure: refused with nothing left today, charged when the labour is there', () => {
@@ -2217,7 +2229,7 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
     // poor -> fine is 2 grades: 2 slots at tier 1, 1 slot at tier 3, both paths.
     const t1Quote = reconditionQuote(benchState(), loosePart.id, 'fine', CONTEXT)!
     const t3Quote = reconditionQuote(
-      benchState({ toolTiers: testToolTiers({ body: 3 }) }),
+      benchState({ toolShopsOwned: testToolShopsOwned('body') }),
       loosePart.id,
       'fine',
       CONTEXT,
@@ -2233,7 +2245,7 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
       carWithPoorPanels(),
       'body',
       'fine',
-      testToolTiers({ body: 3 }),
+      testToolLevels({ body: 3 }),
       CONTEXT.partIdsByGroup,
       CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,

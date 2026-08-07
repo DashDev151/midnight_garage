@@ -1,6 +1,7 @@
 import {
   BUYERS,
   CARS,
+  ComponentIdSchema,
   FACILITIES,
   PARTS,
   PARTS_TAXONOMY,
@@ -47,7 +48,8 @@ import {
   buildCarInstance,
   mintCarParts,
   quietFinanceDay,
-  testSceneStanding,
+  testToolLevels,
+  testToolShopsOwned,
   testToolTiers,
 } from './testFixtures'
 
@@ -424,8 +426,8 @@ describe('the Sprint 36 offer rule, re-asserted against Sprint 37 real content',
     expect(isTemplateOfferable(twoGroupsOneTier, testToolTiers(), CONTEXT)).toBe(false)
 
     // The deficit clears (and the hint disappears) once the line is upgraded.
-    expect(isTemplateOfferable(oneGroupTwoTiers, testToolTiers({ body: 3 }), CONTEXT)).toBe(true)
-    expect(upgradeHintFor(oneGroupOneTier, testToolTiers({ body: 2 }), CONTEXT)).toBeNull()
+    expect(isTemplateOfferable(oneGroupTwoTiers, testToolLevels({ body: 3 }), CONTEXT)).toBe(true)
+    expect(upgradeHintFor(oneGroupOneTier, testToolLevels({ body: 2 }), CONTEXT)).toBeNull()
   })
 })
 
@@ -1201,10 +1203,10 @@ describe('the signature gate: requiresOperationId only, offer generation and acc
     )
   }
 
-  // race-prep-job: requiresOperationId race-prep (scene racer, dampers ->
-  // suspension line), every task minToolTier 2 or 3 - every line at tier 3
-  // clears both the task-tool-tier gate and the operation's own gate at once.
-  const READY_TIERS = testToolTiers({
+  // race-prep-job: requiresOperationId race-prep (dampers -> suspension line),
+  // every task minToolTier 2 or 3 - every line at level 3 clears both the
+  // task-tool gate and the operation's own gate at once.
+  const READY_LEVELS = testToolLevels({
     engine: 3,
     drivetrain: 3,
     suspension: 3,
@@ -1212,9 +1214,23 @@ describe('the signature gate: requiresOperationId only, offer generation and acc
     body: 3,
     interior: 3,
   })
+  /** Every rung at 2 and every shop owned - the `GameState` twin of
+   * `READY_LEVELS` above. */
+  const READY_TIERS = testToolTiers({
+    engine: 2,
+    drivetrain: 2,
+    suspension: 2,
+    wheels: 2,
+    body: 2,
+    interior: 2,
+  })
+  const ALL_SHOPS = testToolShopsOwned(...ComponentIdSchema.options)
 
-  it("is never offered until the operation's own capability gate (tool tier and scene standing) is fully met, and is offered once it is", () => {
+  it("is never offered until the operation's own tool gate is met, and is offered once it is - scene standing never enters it", () => {
     const context = singleSignatureContext('race-prep-job')
+    // The operation answers to the suspension line; every other line is
+    // already at 3, so this isolates the one line that gates it.
+    const shortOfTheShop = { ...READY_LEVELS, suspension: 2 as const }
     let sawOfferAbove = false
     for (let day = 1; day <= 100; day++) {
       const below = generateDailyServiceJobOffers(
@@ -1222,9 +1238,8 @@ describe('the signature gate: requiresOperationId only, offer generation and acc
         day,
         createRng(day),
         Infinity,
-        READY_TIERS,
+        shortOfTheShop,
         'legend',
-        testSceneStanding(),
       )
       expect(below).toEqual([])
       const above = generateDailyServiceJobOffers(
@@ -1232,9 +1247,8 @@ describe('the signature gate: requiresOperationId only, offer generation and acc
         day,
         createRng(day),
         Infinity,
-        READY_TIERS,
+        READY_LEVELS,
         'legend',
-        testSceneStanding({ racer: 'shop' }),
       )
       if (above.length > 0) sawOfferAbove = true
     }
@@ -1262,9 +1276,8 @@ describe('the signature gate: requiresOperationId only, offer generation and acc
         day,
         createRng(day),
         Infinity,
-        READY_TIERS,
+        READY_LEVELS,
         'legend',
-        testSceneStanding({ racer: 'shop' }),
       )
       expect(offers).toEqual([])
     }
@@ -1274,44 +1287,48 @@ describe('the signature gate: requiresOperationId only, offer generation and acc
     const context = singleSignatureContext('race-prep-job')
     const template = SERVICE_JOB_TYPES.find((t) => t.id === 'race-prep-job')!
     const offer = { ...activeJob(template), dueOnDay: null }
+    // Every shop but the one covering the operation's own suspension line,
+    // so the task-tool gate passes and only the operation gate refuses.
     const state = {
       ...createInitialGameState(context, 1),
       toolTiers: READY_TIERS,
-      sceneStanding: testSceneStanding(),
+      toolShopsOwned: ALL_SHOPS.filter(
+        (id: string) => !testToolShopsOwned('suspension').includes(id),
+      ),
       serviceJobOffers: [offer],
     }
     const result = resolveAcceptServiceJob(state, offer.id, context)
     expect(result.state.activeServiceJobs).toHaveLength(0)
     expect(result.log).toEqual([
-      { type: 'acquisition-blocked', kind: 'service-accept', reason: 'operation' },
+      { type: 'acquisition-blocked', kind: 'service-accept', reason: 'tool-tier' },
     ])
   })
 
-  it("accepts once the operation's own capability gate is fully met", () => {
+  it("accepts once the operation's own capability gate is met, with every scene still at none", () => {
     const context = singleSignatureContext('race-prep-job')
     const template = SERVICE_JOB_TYPES.find((t) => t.id === 'race-prep-job')!
     const offer = { ...activeJob(template), dueOnDay: null }
     const state = {
       ...createInitialGameState(context, 1),
       toolTiers: READY_TIERS,
-      sceneStanding: testSceneStanding({ racer: 'shop' }),
+      toolShopsOwned: ALL_SHOPS,
       serviceJobOffers: [offer],
     }
+    expect(state.sceneStanding.racer).toBe('none')
     const result = resolveAcceptServiceJob(state, offer.id, context)
     expect(result.state.activeServiceJobs).toHaveLength(1)
   })
 
   it('a template naming no requiresOperationId is never signature-gated at all', () => {
     // small-bodywork-touchup carries no requiresOperationId - it must be
-    // offerable at the shop's fresh, all-'none' starting standing.
+    // offerable to a garage with nothing but its day-one hand tools.
     const offers = generateDailyServiceJobOffers(
       singleSignatureContext('small-bodywork-touchup'),
       7,
       createRng(1),
       Infinity,
-      testToolTiers(),
+      testToolLevels(),
       'legend',
-      testSceneStanding(),
     )
     expect(offers.length).toBeGreaterThan(0)
   })

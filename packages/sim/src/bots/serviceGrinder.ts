@@ -5,6 +5,7 @@ import type { SimContext } from '../context'
 import { considerToolUpgrade, toolUpgradeBudget } from './toolUpgradeHelpers'
 import { energyMax } from '../laborSlots'
 import { isServiceWorkDone, taskToolDeficit, toolDeficitSummary } from '../serviceJobs'
+import { toolLevelsFor } from '../toolLines'
 import {
   expectedProfitPerLaborSlot,
   MIN_PROFIT_PER_LABOR_SLOT_YEN,
@@ -30,7 +31,7 @@ function largestDeficitGroup(
   let best: ComponentId | null = null
   let bestDeficit = 0
   for (const task of offer.tasks) {
-    const deficit = taskToolDeficit(task, state.toolTiers, context)
+    const deficit = taskToolDeficit(task, toolLevelsFor(state, context), context)
     if (deficit <= bestDeficit) continue
     const group = context.partsTaxonomyById[task.requirement.carPartId]?.group
     if (!group) continue
@@ -106,7 +107,8 @@ export function serviceGrinderStrategy(state: GameState, context: SimContext): D
   if (laborBudget > 0 && bayBudget.free > 0) {
     for (const offer of state.serviceJobOffers) {
       if (expectedProfitPerLaborSlot(offer, context) < MIN_PROFIT_PER_LABOR_SLOT_YEN) continue
-      let canAcceptNow = toolDeficitSummary(offer.tasks, state.toolTiers, context).maxDeficit === 0
+      let canAcceptNow =
+        toolDeficitSummary(offer.tasks, toolLevelsFor(state, context), context).maxDeficit === 0
       if (!canAcceptNow) {
         const group = largestDeficitGroup(offer, state, context)
         if (group) {

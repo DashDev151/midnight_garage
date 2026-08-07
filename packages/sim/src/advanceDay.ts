@@ -4,7 +4,7 @@ import { resolveBuyoutInstant } from './bidding'
 import { currentGameYear, isEndOfWeek } from './calendar'
 import { generateDailyAuctionArrivals } from './catalogs'
 import type { SimContext } from './context'
-import { applyToolUpgrades, rollMachineListings } from './toolLines'
+import { applyToolUpgrades, rollMachineListings, toolLevelsFor } from './toolLines'
 import { applyWeeklyRentAndWages } from './finances'
 import { applyBayPurchases, applyMoves, resolveGraceParking } from './facilities'
 import { bookCashMovements } from './financeLedger'
@@ -349,9 +349,8 @@ export function advanceDay(
       next.day + 1,
       rng,
       currentGameYear(next.reputationTier),
-      next.toolTiers,
+      toolLevelsFor(next, context),
       next.reputationTier,
-      next.sceneStanding,
     )
     if (freshServiceJobOffers.length > 0) {
       next = {

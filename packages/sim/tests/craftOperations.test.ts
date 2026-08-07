@@ -30,16 +30,21 @@ import {
 } from '../src/machiningJobs'
 import { installedPartsValueYen, retentionFor } from '../src/marketValue'
 import { createInitialGameState } from '../src/newGame'
-import { buildCarInstance, mintCarParts, testSceneStanding, testToolTiers } from './testFixtures'
+import {
+  buildCarInstance,
+  mintCarParts,
+  testToolLevels,
+  testToolShopsOwned,
+  testToolTiers,
+} from './testFixtures'
 
 /**
  * The six scene operations: one chassis (`machining.ts`, generalised) and six
- * authored parameter sets (`docs/design/systems/scene-standing-refactor.md`
- * section 6). This file checks the three claims specific to them - the
- * standing-and-tool gate, the tier ladder it must never let a lower tier
- * defeat, and that value still follows the metal through the one existing
- * pricing path - rather than restating what `machining.test.ts` already
- * covers for the chassis itself.
+ * authored parameter sets. This file checks the three claims specific to them -
+ * the tool gate, the ladder it must never let a lower level defeat, and that
+ * value still follows the metal through the one existing pricing path - rather
+ * than restating what `machining.test.ts` already covers for the chassis
+ * itself.
  */
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY, SERVICE_JOB_TYPES, FACILITIES)
@@ -54,8 +59,9 @@ function groupOf(operation: MachiningOperation): ComponentId {
 }
 
 /** A fresh career with one stock, all-mint car in the service bay - the one
- * fixture every gate and workshop test below is measured on. */
-function shopWith(toolTiers = testToolTiers(), sceneStanding = testSceneStanding()) {
+ * fixture every gate and workshop test below is measured on. Scene standing is
+ * left at the new-career floor throughout, because no operation reads it. */
+function shopWith(toolShopsOwned: string[] = [], toolTiers = testToolTiers()) {
   const car = buildCarInstance({ id: 'craft-car-0001', modelId: MODEL.id })
   const state = {
     ...createInitialGameState(CONTEXT, 1),
@@ -66,7 +72,7 @@ function shopWith(toolTiers = testToolTiers(), sceneStanding = testSceneStanding
     forecourtCarIds: [],
     graceParkingCarId: null,
     toolTiers,
-    sceneStanding,
+    toolShopsOwned,
   }
   return { car, state }
 }
@@ -155,47 +161,33 @@ describe('the six scene operations', () => {
   })
 })
 
-describe('the gate: standing AND tool, both required', () => {
+describe('the gate: tools, and nothing else', () => {
   for (const operation of SCENE_OPERATIONS) {
     const group = groupOf(operation)
 
-    it(`${operation.id}: refuses below tier 3 of ${group}, even at Shop standing`, () => {
-      for (const tier of [1, 2] as const) {
+    it(`${operation.id}: refuses below level 3 of ${group}`, () => {
+      for (const level of [1, 2] as const) {
         const reason = craftOperationCapabilityGateReason(
           operation,
-          testToolTiers({ [group]: tier }),
-          testSceneStanding({ [operation.scene]: 'shop' }),
+          testToolLevels({ [group]: level }),
           CONTEXT,
         )
-        expect(reason, `${operation.id} at tier ${tier}`).toBe('tool-tier')
+        expect(reason, `${operation.id} at level ${level}`).toBe('tool-tier')
       }
     })
 
-    it(`${operation.id}: refuses at tier 3 without Shop standing`, () => {
-      const reason = craftOperationCapabilityGateReason(
-        operation,
-        testToolTiers({ [group]: 3 }),
-        testSceneStanding(),
-        CONTEXT,
-      )
-      expect(reason).toBe('scene-standing')
-    })
-
-    it(`${operation.id}: unlocks only once both are met`, () => {
-      const reason = craftOperationCapabilityGateReason(
-        operation,
-        testToolTiers({ [group]: 3 }),
-        testSceneStanding({ [operation.scene]: 'shop' }),
-        CONTEXT,
-      )
-      expect(reason).toBeNull()
+    it(`${operation.id}: unlocks on the tools alone, with the scene still at none`, () => {
+      const { state } = shopWith(testToolShopsOwned(group))
+      expect(state.sceneStanding[operation.scene], 'the scene is untouched').toBe('none')
+      expect(
+        craftOperationCapabilityGateReason(operation, testToolLevels({ [group]: 3 }), CONTEXT),
+      ).toBeNull()
     })
   }
 
   it('the same reasons surface through the part-specific gate the workshop actually uses', () => {
     const operation = SCENE_OPERATIONS[0]!
-    const group = groupOf(operation)
-    const { state } = shopWith(testToolTiers({ [group]: 1 }))
+    const { state } = shopWith()
     // The machine shop works a loose part, so the gate is asked about one
     // sitting on the machine rather than about a car.
     const sku = CONTEXT.stockPartByCarPartId[fitmentClassForTier(MODEL.tier)][operation.carPartId]!
@@ -210,27 +202,26 @@ describe('the gate: standing AND tool, both required', () => {
   })
 })
 
-describe('the tier ladder: an operation never lets a lower tier out-reach tier 3', () => {
-  it('a tier-1 or tier-2 shop can never possess any scene operation at all', () => {
+describe('the ladder: an operation never lets a lower level out-reach level 3', () => {
+  it('a line still on its own rungs can never possess any scene operation at all', () => {
     // The gate above already proves this per operation; restated as the
-    // ladder claim itself - the set of operations reachable below tier 3 is
-    // empty, on every line, regardless of standing.
+    // ladder claim itself - the set of operations reachable below level 3 is
+    // empty, on every line.
     for (const operation of SCENE_OPERATIONS) {
       const group = groupOf(operation)
-      for (const tier of [1, 2] as const) {
+      for (const level of [1, 2] as const) {
         const reachable =
           craftOperationCapabilityGateReason(
             operation,
-            testToolTiers({ [group]: tier }),
-            testSceneStanding({ [operation.scene]: 'shop' }),
+            testToolLevels({ [group]: level }),
             CONTEXT,
           ) === null
-        expect(reachable, `${operation.id} at tier ${tier}`).toBe(false)
+        expect(reachable, `${operation.id} at level ${level}`).toBe(false)
       }
     }
   })
 
-  it('a bare tier-3 shop (no operation applied) still beats what a tier-1 or tier-2 shop can reach, on the stat each operation writes', () => {
+  it('a shop with no operation applied still beats what a rung-only line can reach, on the stat each operation writes', () => {
     // Even setting the gate aside, the raw magnitude a lower tier COULD
     // reach (nothing, since it cannot apply the operation) is naturally
     // below what tier 3 reaches once it can - checked directly on the
@@ -312,10 +303,7 @@ describe('setup work is done on the car, not at the machine', () => {
     const group = groupOf(operation)
 
     it(`${operationId}: the machine shop will not quote it, whatever is on the machine`, () => {
-      const { state } = shopWith(
-        testToolTiers({ [group]: 3, engine: 3 }),
-        testSceneStanding({ [operation.scene]: 'shop' }),
-      )
+      const { state } = shopWith(testToolShopsOwned(group, 'engine'))
       const sku =
         CONTEXT.stockPartByCarPartId[fitmentClassForTier(MODEL.tier)][operation.carPartId]!
       const instance = {
@@ -336,28 +324,23 @@ describe('setup work is done on the car, not at the machine', () => {
     })
 
     it(`${operationId}: answers to its own tool line, never the engine's`, () => {
-      const { car, state } = shopWith(
-        testToolTiers({ [group]: 3, engine: 1 }),
-        testSceneStanding({ [operation.scene]: 'shop' }),
-      )
+      const { car, state } = shopWith(testToolShopsOwned(group))
       expect(fittedMachiningGateReason(state, car.id, operationId, CONTEXT)).toBeNull()
 
-      const noLine = shopWith(
-        testToolTiers({ [group]: 2, engine: 3 }),
-        testSceneStanding({ [operation.scene]: 'shop' }),
-      )
+      const noLine = shopWith(testToolShopsOwned('engine'), testToolTiers({ [group]: 2 }))
       expect(fittedMachiningGateReason(noLine.state, noLine.car.id, operationId, CONTEXT)).toBe(
         'tool-tier',
       )
     })
 
-    it(`${operationId}: needs the scene, the car in a bay, and something fitted in the slot`, () => {
-      const tiers = testToolTiers({ [group]: 3 })
-      const { car, state } = shopWith(tiers, testSceneStanding())
-      expect(fittedMachiningGateReason(state, car.id, operationId, CONTEXT)).toBe('scene-standing')
+    it(`${operationId}: needs the tools, the car in a bay, and something fitted in the slot`, () => {
+      const shops = testToolShopsOwned(group)
+      const bare = shopWith()
+      expect(fittedMachiningGateReason(bare.state, bare.car.id, operationId, CONTEXT)).toBe(
+        'tool-tier',
+      )
 
-      const standing = testSceneStanding({ [operation.scene]: 'shop' })
-      const parked = shopWith(tiers, standing)
+      const parked = shopWith(shops)
       expect(
         fittedMachiningGateReason(
           { ...parked.state, serviceBayCarIds: [], parkingCarIds: [parked.car.id] },
@@ -367,7 +350,7 @@ describe('setup work is done on the car, not at the machine', () => {
         ),
       ).toBe('not-in-service-bay')
 
-      const empty = shopWith(tiers, standing)
+      const empty = shopWith(shops)
       const stripped: CarInstance = {
         ...empty.car,
         parts: { ...empty.car.parts, [operation.carPartId]: { installed: null } },
@@ -381,7 +364,7 @@ describe('setup work is done on the car, not at the machine', () => {
         ),
       ).toBe('slot-empty')
 
-      const worn = shopWith(tiers, standing)
+      const worn = shopWith(shops)
       const tired: CarInstance = {
         ...worn.car,
         parts: mintCarParts({ [operation.carPartId]: 'worn' }),
@@ -395,14 +378,13 @@ describe('setup work is done on the car, not at the machine', () => {
         ),
       ).toBe('not-mint')
 
-      expect(fittedMachiningGateReason(state, 'no-such-car', operationId, CONTEXT)).toBe('no-car')
+      expect(fittedMachiningGateReason(parked.state, 'no-such-car', operationId, CONTEXT)).toBe(
+        'no-car',
+      )
     })
 
     it(`${operationId}: lands on the fitted part, and will not be done twice`, () => {
-      const { car, state } = shopWith(
-        testToolTiers({ [group]: 3 }),
-        testSceneStanding({ [operation.scene]: 'shop' }),
-      )
+      const { car, state } = shopWith(testToolShopsOwned(group))
       const before = computeDerivedStats(MODEL, car, CONTEXT.partsById, PARTS_TAXONOMY, ECONOMY)
       const done = resolveFittedMachiningLabor(state, car.id, operationId, 600, CONTEXT)
       expect(done.laborSlotsUsed).toBe(operation.labourPoints)
@@ -427,10 +409,7 @@ describe('setup work is done on the car, not at the machine', () => {
     })
 
     it(`${operationId}: a car out of the bay stalls the work rather than losing it`, () => {
-      const { car, state } = shopWith(
-        testToolTiers({ [group]: 3 }),
-        testSceneStanding({ [operation.scene]: 'shop' }),
-      )
+      const { car, state } = shopWith(testToolShopsOwned(group))
       // One point in, then the car rolls out: the job stays open, spends
       // nothing, and finishes when the car comes back.
       const started = resolveFittedMachiningLabor(state, car.id, operationId, 1, CONTEXT)
@@ -456,10 +435,7 @@ describe('setup work is done on the car, not at the machine', () => {
   }
 
   it('offers each one only on its own slot, priced with what it costs and what it gives', () => {
-    const { car, state } = shopWith(
-      testToolTiers({ suspension: 3, wheels: 3 }),
-      testSceneStanding({ touge: 'shop', 'show-crowd': 'shop' }),
-    )
+    const { car, state } = shopWith(testToolShopsOwned('suspension', 'wheels'))
     const springs = fittedMachiningOffersFor(state, car.id, 'springs', CONTEXT)
     expect(springs.map((o) => o.operation.id)).toEqual(['corner-weighting'])
     expect(springs[0]!.handlingFraction).toBeGreaterThan(0)

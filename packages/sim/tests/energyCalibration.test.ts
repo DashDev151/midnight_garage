@@ -9,7 +9,13 @@ import { describe, expect, it } from 'vitest'
 import { planGroupRepair } from '../src/bands'
 import { buildSimContext } from '../src/context'
 import { energyMax } from '../src/laborSlots'
-import { buildCarInstance, groupCarParts, testSceneStanding, testToolTiers } from './testFixtures'
+import {
+  buildCarInstance,
+  groupCarParts,
+  testSceneStanding,
+  testToolLevels,
+  testToolTiers,
+} from './testFixtures'
 
 /**
  * A calibration probe, closed-form (no bots, no RNG) - the honest check
@@ -62,6 +68,7 @@ function stateWithStaff(staff: StaffMember[]): GameState {
     cartPartIds: [],
     stagedCarWork: {},
     carLedgers: {},
+    toolShopsOwned: [],
     machineListing: null,
     nextMachineListingDay: null,
     serviceJobLedgers: {},
@@ -91,7 +98,7 @@ function bodyRepairEnergy(tier: 1 | 2 | 3): number {
     car,
     'body',
     'fine',
-    testToolTiers({ body: tier }),
+    testToolLevels({ body: tier }),
     CONTEXT.partIdsByGroup,
     CONTEXT.partsById,
     CONTEXT.partsTaxonomyById,

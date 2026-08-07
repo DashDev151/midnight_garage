@@ -9,11 +9,10 @@ import type {
   Grade,
   Part,
   ReputationTier,
-  SceneStanding,
   ServiceJob,
   ServiceJobTask,
   ServiceJobType,
-  ToolTiers,
+  ToolLevels,
 } from '@midnight-garage/content'
 import { fitmentClassForTier } from '@midnight-garage/content'
 import { dissolveAssembliesForCar } from './assemblies'
@@ -36,8 +35,7 @@ import { evaluateRequirement } from './requirements'
 import type { Rng } from './rng'
 import { deleteServiceJobLedger, serviceJobLedgerFor } from './serviceJobLedger'
 import { clearStagedWork } from './stagedWork'
-import { freshToolTiers } from './toolLines'
-import { freshSceneStanding } from './valuation'
+import { freshToolLevels, toolLevelsFor } from './toolLines'
 
 /** A placeholder ledger for `isServiceTaskDone`'s call into
  * `evaluateRequirement` - `slotCondition` never reads `ledger`/`day`, but
@@ -50,18 +48,18 @@ const EMPTY_LEDGER: CarLedger = {
 }
 
 /**
- * How many tiers short the shop's tool line is of `task.minToolTier` -
- * `max(0, minToolTier - toolTiers[group])`. 0 means the task's capability
+ * How many levels short the garage's tool line is of `task.minToolTier` -
+ * `max(0, minToolTier - toolLevels[group])`. 0 means the task's capability
  * ceiling is met.
  */
 export function taskToolDeficit(
   task: ServiceJobTask,
-  toolTiers: ToolTiers,
+  toolLevels: ToolLevels,
   context: SimContext,
 ): number {
   const group = context.partsTaxonomyById[task.requirement.carPartId]?.group
   if (!group) return 0
-  return Math.max(0, task.minToolTier - toolTiers[group])
+  return Math.max(0, task.minToolTier - toolLevels[group])
 }
 
 export interface ToolDeficitSummary {
@@ -71,18 +69,18 @@ export interface ToolDeficitSummary {
   deficientGroups: ComponentId[]
 }
 
-/** The whole task list's tool-tier deficits, summarized once for the offer
+/** The whole task list's tool-level deficits, summarized once for the offer
  * rule, the accept gate, the store's `canAccept`/`upgradeHint`, and the
  * bots' own accept decisions - one computation, four callers. */
 export function toolDeficitSummary(
   tasks: readonly ServiceJobTask[],
-  toolTiers: ToolTiers,
+  toolLevels: ToolLevels,
   context: SimContext,
 ): ToolDeficitSummary {
   let maxDeficit = 0
   const deficientGroups: ComponentId[] = []
   for (const task of tasks) {
-    const deficit = taskToolDeficit(task, toolTiers, context)
+    const deficit = taskToolDeficit(task, toolLevels, context)
     if (deficit === 0) continue
     if (deficit > maxDeficit) maxDeficit = deficit
     const group = context.partsTaxonomyById[task.requirement.carPartId]?.group
@@ -92,36 +90,39 @@ export function toolDeficitSummary(
 }
 
 /**
- * A template is OFFERABLE iff its max tool-tier deficit is <= 1 AND at most
- * ONE distinct group is deficient - "one upgrade away," never two tiers or
+ * A template is OFFERABLE iff its max tool-level deficit is <= 1 AND at most
+ * ONE distinct group is deficient - "one upgrade away," never two levels or
  * two lines out. Affordability is NOT checked: cash is the player's lever
  * and fluctuates daily.
  */
 export function isTemplateOfferable(
   tasks: readonly ServiceJobTask[],
-  toolTiers: ToolTiers,
+  toolLevels: ToolLevels,
   context: SimContext,
 ): boolean {
-  const { maxDeficit, deficientGroups } = toolDeficitSummary(tasks, toolTiers, context)
+  const { maxDeficit, deficientGroups } = toolDeficitSummary(tasks, toolLevels, context)
   return maxDeficit <= 1 && deficientGroups.length <= 1
 }
 
 /**
  * The UPGRADE-HINT string an offer with a deficit carries:
- * "needs <that group's next tier displayName>". Null when there is no
- * deficit. Derived live against the current tiers, so it clears itself the
- * moment the upgrade lands, rather than being stamped stale onto the offer.
+ * "needs <the next thing that would close it>" - that group's next rung while
+ * one is left, and otherwise the shop covering the group, since above the top
+ * rung a shop is the only thing that lifts a line. Null when there is no
+ * deficit. Derived live against the current levels, so it clears itself the
+ * moment the purchase lands, rather than being stamped stale onto the offer.
  */
 export function upgradeHintFor(
   tasks: readonly ServiceJobTask[],
-  toolTiers: ToolTiers,
+  toolLevels: ToolLevels,
   context: SimContext,
 ): string | null {
-  const { deficientGroups } = toolDeficitSummary(tasks, toolTiers, context)
+  const { deficientGroups } = toolDeficitSummary(tasks, toolLevels, context)
   const group = deficientGroups[0]
   if (!group) return null
-  const nextTier = context.toolLines[group].tiers[toolTiers[group]]
-  return nextTier ? `needs ${nextTier.displayName}` : null
+  const nextTier = context.toolLines[group].tiers[toolLevels[group]]
+  const name = nextTier ? nextTier.displayName : context.toolShopByGroup[group].displayName
+  return `needs ${name}`
 }
 
 /**
@@ -131,13 +132,12 @@ export function upgradeHintFor(
  */
 function isCraftOperationUnlocked(
   operationId: string,
-  toolTiers: ToolTiers,
-  sceneStanding: SceneStanding,
+  toolLevels: ToolLevels,
   context: SimContext,
 ): boolean {
   const operation = context.economy.machining.operations.find((o) => o.id === operationId)
   if (!operation) return false
-  return craftOperationCapabilityGateReason(operation, toolTiers, sceneStanding, context) === null
+  return craftOperationCapabilityGateReason(operation, toolLevels, context) === null
 }
 
 /**
@@ -148,12 +148,11 @@ function isCraftOperationUnlocked(
  */
 function signatureGateSatisfied(
   template: ServiceJobType,
-  toolTiers: ToolTiers,
-  sceneStanding: SceneStanding,
+  toolLevels: ToolLevels,
   context: SimContext,
 ): boolean {
   if (!template.requiresOperationId) return true
-  return isCraftOperationUnlocked(template.requiresOperationId, toolTiers, sceneStanding, context)
+  return isCraftOperationUnlocked(template.requiresOperationId, toolLevels, context)
 }
 
 /** Sorted-median of a non-empty yen list, rounded to the nearest yen - the
@@ -450,17 +449,17 @@ export function forceTasksOutstanding(
  * board lifetime is rolled uniformly per offer from
  * `economy.serviceJobs.offerLifetimeDaysRange`. `reputationTier` (default
  * `'legend'` = unrestricted) gates which template TIERS are even in the
- * candidate pool; within that pool, `toolTiers` (default: a fresh shop's
+ * candidate pool; within that pool, `toolLevels` (default: a fresh garage's
  * all-1) drives the offer rule (`isTemplateOfferable`): a template at most
- * one tool-tier upgrade away in at most one line is offerable - shown as an
+ * one tool-level upgrade away in at most one line is offerable - shown as an
  * upgrade-hint offer when a deficit exists - and anything further out is
  * not generated at all. `currentYear` (default Infinity = unrestricted)
  * excludes still-unreleased models and clamps the rolled car's year, same
  * as auction generation.
  *
  * A `requiresOperationId` template (a signature template) is excluded from
- * the pool entirely unless that operation's own capability (a scene's
- * Shop-stage standing plus tier 3 of its tool line,
+ * the pool entirely unless that operation's own capability (level 3 of its
+ * tool line, which is the shop covering it,
  * `craftOperationCapabilityGateReason`) is met; a template carrying no
  * `requiresOperationId` is never signature-gated at all. Every eligible
  * template is drawn uniformly - no discipline is favoured over another.
@@ -470,19 +469,18 @@ export function generateDailyServiceJobOffers(
   day: number,
   rng: Rng,
   currentYear: number = Infinity,
-  toolTiers: ToolTiers = freshToolTiers(),
+  toolLevels: ToolLevels = freshToolLevels(),
   reputationTier: ReputationTier = 'legend',
-  sceneStanding: SceneStanding = freshSceneStanding(),
 ): ServiceJob[] {
   const eligibleModels = context.models.filter((model) => model.spec.yearFrom <= currentYear)
   const tierEligibleTemplates = context.serviceJobTypes.filter((template) =>
     reputationAtLeast(reputationTier, SERVICE_JOB_TIER_MIN_REPUTATION[template.tier]),
   )
   const toolReadyTemplates = tierEligibleTemplates.filter((template) =>
-    isTemplateOfferable(template.tasks, toolTiers, context),
+    isTemplateOfferable(template.tasks, toolLevels, context),
   )
   const eligibleTemplates = toolReadyTemplates.filter((template) =>
-    signatureGateSatisfied(template, toolTiers, sceneStanding, context),
+    signatureGateSatisfied(template, toolLevels, context),
   )
   if (
     eligibleTemplates.length === 0 ||
@@ -585,16 +583,15 @@ export function resolveRejectServiceJobOffer(
  * bot batch loop (one queued accept per call, matching every other instant
  * resolver's shape).
  *
- * An offer with any tool-tier deficit (a task whose `minToolTier` exceeds
- * the line's current tier) is refused - it was generated as an
+ * An offer with any tool-level deficit (a task whose `minToolTier` exceeds
+ * the line's current level) is refused - it was generated as an
  * upgrade-hint offer and becomes acceptable the moment the upgrade lands,
  * since the deficit is re-checked live here rather than stamped at
  * generation time.
  *
  * A signature template's gate is re-checked live here too (reason
  * `'operation'`) - defensive, since generation already excludes a template
- * whose gate is unmet, but scene standing or tool tier could in principle
- * have dropped between generation and accept (or the offer is stale).
+ * whose gate is unmet, but the offer could be stale.
  */
 export function resolveAcceptServiceJob(
   state: GameState,
@@ -604,17 +601,15 @@ export function resolveAcceptServiceJob(
   const offer = state.serviceJobOffers.find((o) => o.id === offerId)
   if (!offer) return { state, log: [] }
 
-  if (toolDeficitSummary(offer.tasks, state.toolTiers, context).maxDeficit > 0) {
+  const toolLevels = toolLevelsFor(state, context)
+  if (toolDeficitSummary(offer.tasks, toolLevels, context).maxDeficit > 0) {
     return {
       state,
       log: [{ type: 'acquisition-blocked', kind: 'service-accept', reason: 'tool-tier' }],
     }
   }
   const offerTemplate = context.serviceJobTypes.find((t) => t.id === offer.typeId)
-  if (
-    offerTemplate &&
-    !signatureGateSatisfied(offerTemplate, state.toolTiers, state.sceneStanding, context)
-  ) {
+  if (offerTemplate && !signatureGateSatisfied(offerTemplate, toolLevels, context)) {
     return {
       state,
       log: [{ type: 'acquisition-blocked', kind: 'service-accept', reason: 'operation' }],

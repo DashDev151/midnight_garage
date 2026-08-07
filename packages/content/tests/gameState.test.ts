@@ -306,6 +306,7 @@ describe('GameState / DayLog round-trip', () => {
           listingFeesYen: 0,
         },
       },
+      toolShopsOwned: [],
       machineListing: null,
       nextMachineListingDay: null,
       serviceJobLedgers: {},

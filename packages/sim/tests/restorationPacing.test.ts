@@ -4,12 +4,12 @@ import {
   PARTS_TAXONOMY,
   type CarInstance,
   type ComponentId,
-  type ToolTiers,
+  type ToolLevels,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { planGroupRepair } from '../src/bands'
 import { buildSimContext } from '../src/context'
-import { buildCarInstance, groupCarParts, testToolTiers } from './testFixtures'
+import { buildCarInstance, groupCarParts, testToolLevels } from './testFixtures'
 
 /**
  * A real, content-driven anchor for "how many days does a full
@@ -32,8 +32,8 @@ import { buildCarInstance, groupCarParts, testToolTiers } from './testFixtures'
 const CONTEXT = buildSimContext([], PARTS, [], PARTS_TAXONOMY)
 const ALL_GROUPS: readonly ComponentId[] = ComponentIdSchema.options
 
-const ALL_TIER_ONE = testToolTiers()
-const ALL_TIER_THREE = testToolTiers({
+const ALL_TIER_ONE = testToolLevels()
+const ALL_TIER_THREE = testToolLevels({
   engine: 3,
   drivetrain: 3,
   suspension: 3,
@@ -44,14 +44,14 @@ const ALL_TIER_THREE = testToolTiers({
 
 /** Total labour ENERGY to bring every present part in every group to
  * mint. */
-function totalRestorationLaborSlots(car: CarInstance, toolTiers: ToolTiers): number {
+function totalRestorationLaborSlots(car: CarInstance, toolLevels: ToolLevels): number {
   let total = 0
   for (const group of ALL_GROUPS) {
     total += planGroupRepair(
       car,
       group,
       'mint',
-      toolTiers,
+      toolLevels,
       CONTEXT.partIdsByGroup,
       CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
@@ -65,9 +65,9 @@ function totalRestorationLaborSlots(car: CarInstance, toolTiers: ToolTiers): num
 // The daily budget is a solo shop's energy pool (`basePoolPoints`), and
 // the total above is energy, so days-to-restore stays a stable pacing
 // anchor.
-function daysToRestore(car: CarInstance, toolTiers: ToolTiers = ALL_TIER_ONE): number {
+function daysToRestore(car: CarInstance, toolLevels: ToolLevels = ALL_TIER_ONE): number {
   return Math.ceil(
-    totalRestorationLaborSlots(car, toolTiers) / CONTEXT.economy.energy.basePoolPoints,
+    totalRestorationLaborSlots(car, toolLevels) / CONTEXT.economy.energy.basePoolPoints,
   )
 }
 

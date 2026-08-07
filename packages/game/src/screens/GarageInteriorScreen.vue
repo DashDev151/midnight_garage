@@ -75,7 +75,7 @@ const currentRoom = ref<SimpleRoom>(roomIdFromQuery())
 /** Whether the machine shop has any machinery standing in it - what its two
  * scenes tell apart. The room itself is always enterable. */
 const machineShopEquipped = computed(() => machineShopHasMachinery(game.gameState, game.context))
-const bodyPaintIsOpen = computed(() => bodyPaintShopOpen(game.gameState))
+const bodyPaintIsOpen = computed(() => bodyPaintShopOpen(game.gameState, game.context))
 
 const listingCount = computed(() => game.gameState.carsForSale.length)
 const photoCount = computed(() => photoCountForReputationTier(game.reputationTier))

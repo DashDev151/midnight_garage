@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { CarInstanceSchema } from './carInstance'
 import { SlotConditionRequirementSchema } from './requirement'
-import { ToolTierSchema } from './toolLines'
+import { ToolLevelSchema } from './toolLines'
 
 /**
  * One task within a service-job template. What the customer's car must end
@@ -10,11 +10,11 @@ import { ToolTierSchema } from './toolLines'
  * (sim). Any route that leaves the car in the required state satisfies it:
  * repair-and-refit, buy-new, or a donor-pulled part all count equally.
  *
- * `minToolTier` is the tool tier this task's group needs before the work can
- * be offered without a hint or accepted at all - the capability ceiling.
- * Defaults to 1 (no ceiling). Stays on the task wrapper, not inside the
- * requirement - it gates OFFERABILITY (`taskToolDeficit`), not the end state
- * itself.
+ * `minToolTier` is the tool LEVEL this task's group needs before the work can
+ * be offered without a hint or accepted at all - the capability ceiling, met
+ * by a rung at 1 and 2 and by the covering shop at 3. Defaults to 1 (no
+ * ceiling). Stays on the task wrapper, not inside the requirement - it gates
+ * OFFERABILITY (`taskToolDeficit`), not the end state itself.
  *
  * `requirement` is pinned to `SlotConditionRequirementSchema` specifically,
  * not the full `RequirementSpec` union - a service-job task only ever
@@ -26,7 +26,7 @@ import { ToolTierSchema } from './toolLines'
  */
 export const ServiceJobTaskSchema = z.object({
   requirement: SlotConditionRequirementSchema,
-  minToolTier: ToolTierSchema.default(1),
+  minToolTier: ToolLevelSchema.default(1),
 })
 
 export const ServiceJobTasksSchema = z.array(ServiceJobTaskSchema).min(1)

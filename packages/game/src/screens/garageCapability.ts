@@ -1,5 +1,5 @@
 import type { GameState } from '@midnight-garage/content'
-import { bodyLineCapability } from '@midnight-garage/sim'
+import { bodyLineCapability, type SimContext } from '@midnight-garage/sim'
 
 /**
  * Whether the body and paint shop renders derelict: a room is somebody else's
@@ -15,6 +15,6 @@ import { bodyLineCapability } from '@midnight-garage/sim'
  * The machine shop has no room gate of its own: it is always enterable, and
  * what it holds is equipment per tool line (`machineShopEquipment.ts`).
  */
-export function bodyPaintShopOpen(gameState: GameState): boolean {
-  return bodyLineCapability(gameState).unlocked
+export function bodyPaintShopOpen(gameState: GameState, context: SimContext): boolean {
+  return bodyLineCapability(gameState, context).unlocked
 }

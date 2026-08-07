@@ -19,13 +19,13 @@ describe('garage room capability gates', () => {
   it('the body and paint shop stays derelict until the body line is owned', () => {
     const game = useGameStore()
     game.newGame(1)
-    expect(bodyPaintShopOpen(game.gameState)).toBe(false)
+    expect(bodyPaintShopOpen(game.gameState, game.context)).toBe(false)
 
     game.gameState = {
       ...game.gameState,
       toolTiers: { ...game.gameState.toolTiers, body: 2 },
     }
-    expect(bodyPaintShopOpen(game.gameState)).toBe(true)
+    expect(bodyPaintShopOpen(game.gameState, game.context)).toBe(true)
   })
 
   it('hiring the body line for the day opens the body and paint shop too (owned OR hired, per the real gate)', () => {
@@ -35,6 +35,6 @@ describe('garage room capability gates', () => {
       ...game.gameState,
       machineHirePaidDayByGroup: { body: game.gameState.day },
     }
-    expect(bodyPaintShopOpen(game.gameState)).toBe(true)
+    expect(bodyPaintShopOpen(game.gameState, game.context)).toBe(true)
   })
 })

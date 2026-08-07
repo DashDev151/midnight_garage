@@ -4,6 +4,7 @@ import {
   ECONOMY,
   PARTS,
   PARTS_TAXONOMY,
+  TOOL_SHOPS,
   fitmentClassForTier,
   type Buyer,
   type BuyerArchetype,
@@ -18,6 +19,7 @@ import {
   type PartInstance,
   type SceneStanding,
   type SceneStandingStage,
+  type ToolLevels,
   type ToolTiers,
 } from '@midnight-garage/content'
 import { expect } from 'vitest'
@@ -54,6 +56,25 @@ export function testToolTiers(overrides: Partial<ToolTiers> = {}): ToolTiers {
     interior: 1,
     ...overrides,
   }
+}
+
+/** A full six-line `toolLevels` map, every line at 1 unless overridden - what
+ * a function taking levels rather than a whole `GameState` is handed. Level 3
+ * here is what owning the covering shop produces. */
+export function testToolLevels(overrides: Partial<ToolLevels> = {}): ToolLevels {
+  return { ...testToolTiers(), ...overrides }
+}
+
+/**
+ * The `toolShopsOwned` list that puts every named line at level 3 - the shops
+ * covering those lines, deduplicated, read from real content so a test never
+ * hard-codes a shop id or a coverage assumption. Empty for no arguments, which
+ * is the new-game floor.
+ */
+export function testToolShopsOwned(...groups: readonly ComponentId[]): string[] {
+  return [
+    ...new Set(groups.map((group) => TOOL_SHOPS.find((shop) => shop.covers.includes(group))!.id)),
+  ]
 }
 
 /** Every `CarCulture` at weight 1 (culture-blind): the `culturePreferences`

@@ -1,31 +1,45 @@
 import {
+  COMPONENT_DISPLAY_NAMES,
   ComponentIdSchema,
+  componentDisplayName,
   type ComponentId,
   type GameState,
   type ReputationTier,
 } from '@midnight-garage/content'
-import { craftOperationCapabilityGateReason, type SimContext } from '@midnight-garage/sim'
+import {
+  craftOperationCapabilityGateReason,
+  toolLevelsFor,
+  toolShopForGroup,
+  type SimContext,
+} from '@midnight-garage/sim'
 
 /**
  * What the machine shop physically holds. The room is a room: what matters is
  * the equipment standing in it, one piece per tool line whose work is done at
- * a machine, present or absent by whether that line owns its top rung.
+ * a machine, present or absent by whether the shop covering that line is
+ * owned.
+ *
+ * Rooms and shops are different axes, so a machine is identified by the LINE it
+ * serves and carries the name of the shop that brought it. The room takes every
+ * loose-part job in the building, which is why the bench for dampers and the
+ * bench for a differential stand here under a shop name that is not the room's
+ * own.
  *
  * Presence is sim's own per-operation gate
  * (`craftOperationCapabilityGateReason`), asked of that line's own operations,
- * so the room can never disagree with what the bench will actually accept. A
- * line whose operations are refused on tool tier has no machine in the room;
- * anything else an operation is refused on (a scene's standing) is a machine
- * that is there and idle.
+ * so the room can never disagree with what the bench will actually accept.
  */
 export interface MachineShopMachine {
   componentId: ComponentId
-  /** The top rung's own name, from `toolLines.json`. */
+  /** The line this bench serves, in the same words the Upgrades wall uses. */
   displayName: string
+  /** The shop that brings this bench, from `toolShops.json` - not always the
+   * shop the room is named after. */
+  shopName: string
   present: boolean
-  /** What buying that rung costs. */
+  /** What buying that shop costs. */
   priceYen: number
-  /** The standing the rung needs before it can be bought, or `null` when it
+  /** The standing the shop needs before it can be bought, or `null` when it
    * needs none. */
   minReputationTier: ReputationTier | null
   /** The slots this machine takes work on, in the taxonomy's own words. */
@@ -45,28 +59,24 @@ export function machineShopMachinery(
   const looseOperations = context.economy.machining.operations.filter(
     (operation) => operation.performedOn === 'loose-part',
   )
+  const toolLevels = toolLevelsFor(state, context)
   const machinery: MachineShopMachine[] = []
   for (const componentId of ComponentIdSchema.options) {
     const operations = looseOperations.filter(
       (operation) => context.partsTaxonomyById[operation.carPartId].group === componentId,
     )
     if (operations.length === 0) continue
-    const { tiers } = context.toolLineFor(componentId)
-    const rung = tiers[tiers.length - 1]!
+    const shop = toolShopForGroup(componentId, context)
     machinery.push({
       componentId,
-      displayName: rung.displayName,
+      displayName: componentDisplayName(componentId, COMPONENT_DISPLAY_NAMES),
+      shopName: shop.displayName,
       present: operations.some(
         (operation) =>
-          craftOperationCapabilityGateReason(
-            operation,
-            state.toolTiers,
-            state.sceneStanding,
-            context,
-          ) !== 'tool-tier',
+          craftOperationCapabilityGateReason(operation, toolLevels, context) !== 'tool-tier',
       ),
-      priceYen: rung.upgradePriceYen,
-      minReputationTier: rung.minReputationTier ?? null,
+      priceYen: shop.upgradePriceYen,
+      minReputationTier: shop.minReputationTier,
       worksOn: [
         ...new Set(
           operations.map((operation) => context.partsTaxonomyById[operation.carPartId].displayName),

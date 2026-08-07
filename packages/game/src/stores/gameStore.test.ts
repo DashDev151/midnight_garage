@@ -2,6 +2,7 @@ import {
   ECONOMY,
   FACILITIES,
   GameStateSchema,
+  PARTS,
   ReputationTierSchema,
 } from '@midnight-garage/content'
 import { createPinia, setActivePinia } from 'pinia'
@@ -121,6 +122,34 @@ describe('useGameStore', () => {
       expect(game.reputationTier).toBe(tier)
       expect(game.reputationPoints).toBe(ECONOMY.reputation.tierThresholds[tier])
     }
+  })
+
+  /**
+   * The counter quotes what the counter pays: `resolveSellPart` (sim/parts.ts)
+   * prices a loose part off `machinedPartPriceYen`, so the button's own figure
+   * has to read the same basis rather than the bare catalogue price.
+   */
+  it('sellValueForPart quotes the machining premium the sale actually pays out', () => {
+    const game = useGameStore()
+    game.newGame(1)
+    const blockSku = PARTS.find((part) => part.carPartId === 'block' && part.grade === 'stock')!
+    game.devGrantPart(blockSku.id)
+    const instanceId = game.gameState.partInventory.at(-1)!.id
+
+    const plainQuote = game.sellValueForPart(instanceId)
+    game.gameState = {
+      ...game.gameState,
+      partInventory: game.gameState.partInventory.map((part) =>
+        part.id === instanceId ? { ...part, machining: ['bore-and-hone', 'decking'] } : part,
+      ),
+    }
+    const machinedQuote = game.sellValueForPart(instanceId)
+    expect(machinedQuote).toBeGreaterThan(plainQuote)
+
+    // And it is exactly what the sale pays, to the yen.
+    const cashBefore = game.cashYen
+    expect(game.sellPart(instanceId)).toBe(true)
+    expect(game.cashYen - cashBefore).toBe(machinedQuote)
   })
 
   it('resolveModelName returns a display name for a known model', () => {

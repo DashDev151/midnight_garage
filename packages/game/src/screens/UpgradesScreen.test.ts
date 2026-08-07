@@ -1,5 +1,6 @@
 import type { ComponentId, ToolTier } from '@midnight-garage/content'
-import { ECONOMY, FACILITIES, TOOL_LINES } from '@midnight-garage/content'
+import { ECONOMY, FACILITIES, TOOL_LINES, TOOL_SHOPS } from '@midnight-garage/content'
+import { toolLevelsFor } from '@midnight-garage/sim'
 import { mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -9,6 +10,7 @@ import { formatYen } from '../utils/formatYen'
 import UpgradesScreen from './UpgradesScreen.vue'
 
 const WHEELS_T2 = TOOL_LINES.wheels.tiers[1]!
+const CHASSIS_SHOP = TOOL_SHOPS.find((shop) => shop.covers.includes('drivetrain'))!
 
 // Track every mounted
 // wrapper and unmount it after each test, so a component left mounted from a
@@ -39,8 +41,24 @@ function listingFor(
   game.gameState = {
     ...game.gameState,
     machineListing: {
+      kind: 'tool-tier',
       componentId,
       tier,
+      priceYen: 1,
+      postedOnDay: game.gameState.day,
+      expiresOnDay: game.gameState.day + 3,
+    },
+  }
+}
+
+/** The shop half of `listingFor`: the paper advertises a whole shop under the
+ * same one-listing-at-a-time rule a rung is advertised under. */
+function shopListingFor(game: ReturnType<typeof useGameStore>, shopId: string) {
+  game.gameState = {
+    ...game.gameState,
+    machineListing: {
+      kind: 'tool-shop',
+      shopId,
       priceYen: 1,
       postedOnDay: game.gameState.day,
       expiresOnDay: game.gameState.day + 3,
@@ -60,11 +78,28 @@ describe('UpgradesScreen', () => {
     const wrapper = mountScreen()
     expect(wrapper.text()).toContain('Facilities')
     expect(wrapper.text()).toContain('Tools')
-    // Six three-rung ladders plus the rolling road's single rung: it stands in
+    // Six two-rung ladders plus the rolling road's single rung: it stands in
     // the wall alongside them and is bought the same way, though it belongs to
     // no part group and repairs nothing.
     expect(wrapper.findAll('.tool-column')).toHaveLength(7)
-    expect(wrapper.findAll('.tier-node')).toHaveLength(19)
+    expect(wrapper.findAll('.tier-node')).toHaveLength(13)
+    // Exactly two rungs on every one of the six lines - the third is not a
+    // rung any more, it is a shop.
+    for (const componentId of [
+      'engine',
+      'drivetrain',
+      'suspension',
+      'wheels',
+      'body',
+      'interior',
+    ]) {
+      expect(wrapper.find(`[data-test="tier-node-${componentId}-2"]`).exists(), componentId).toBe(
+        true,
+      )
+      expect(wrapper.find(`[data-test="tier-node-${componentId}-3"]`).exists(), componentId).toBe(
+        false,
+      )
+    }
     expect(wrapper.find('[data-test="dyno-column"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="buy-dyno"]').text()).toBe(
       formatYen(ECONOMY.dyno.purchasePriceYen),
@@ -130,13 +165,136 @@ describe('UpgradesScreen', () => {
     expect(game.gameState.toolTiers.wheels).toBe(2)
   })
 
-  it('a maxed line shows Fully equipped and no rung offers an upgrade button', () => {
+  it('a line with both rungs bought says so and offers no further upgrade button', () => {
     const game = useGameStore()
     game.newGame(1)
-    game.devSetToolTier('wheels', 3)
+    game.devSetToolTier('wheels', 2)
     const wrapper = mountScreen()
     expect(wrapper.find('[data-test="upgrade-tool-wheels"]').exists()).toBe(false)
-    expect(wrapper.text()).toContain('Fully equipped')
+    // "Both rungs owned", not "fully equipped": the shop above the ladder is
+    // still to buy, and the column's own footer names it.
+    expect(wrapper.text()).toContain('Both rungs owned')
+    expect(wrapper.find('[data-test="line-shop-wheels"]').text()).toContain(
+      `Topped by the ${CHASSIS_SHOP.displayName}`,
+    )
+  })
+
+  describe('the shops at the top of the ladder', () => {
+    it('renders one card per shop, naming every line it covers', () => {
+      const game = useGameStore()
+      game.newGame(1)
+      const wrapper = mountScreen()
+      expect(wrapper.findAll('.shop-card')).toHaveLength(TOOL_SHOPS.length)
+      expect(TOOL_SHOPS).toHaveLength(3)
+      for (const shop of TOOL_SHOPS) {
+        const card = wrapper.get(`[data-test="tool-shop-${shop.id}"]`)
+        expect(card.text()).toContain(shop.displayName)
+        expect(card.text()).toContain(formatYen(shop.upgradePriceYen))
+        // The coverage is spelled out on the card, so a player never has to
+        // deduce which lines one purchase lifts.
+        const covers = wrapper.get(`[data-test="tool-shop-covers-${shop.id}"]`).text()
+        for (const componentId of shop.covers) {
+          expect(covers, componentId).toContain(game.componentLabel(componentId))
+        }
+      }
+      // And the wall reads back the other way: every line's column names the
+      // shop that tops it out.
+      expect(wrapper.get('[data-test="line-shop-suspension"]').text()).toContain(
+        CHASSIS_SHOP.displayName,
+      )
+    })
+
+    it('is gated on standing first, then on a live listing, with the reason in a tooltip each time', async () => {
+      const game = useGameStore()
+      game.newGame(1)
+      game.devGiveCash(999_999_999)
+      const wrapper = mountScreen()
+      const button = wrapper.get(`[data-test="buy-tool-shop-${CHASSIS_SHOP.id}"]`)
+      expect((button.element as HTMLButtonElement).disabled).toBe(true)
+      expect(wrapper.get(`[data-test="gate-tip-shop-${CHASSIS_SHOP.id}"]`).text()).toContain(
+        `needs ${CHASSIS_SHOP.minReputationTier} reputation`,
+      )
+
+      game.devSetReputationTier(CHASSIS_SHOP.minReputationTier)
+      await wrapper.vm.$nextTick()
+      expect(
+        (wrapper.get(`[data-test="buy-tool-shop-${CHASSIS_SHOP.id}"]`).element as HTMLButtonElement)
+          .disabled,
+      ).toBe(true)
+      expect(wrapper.find(`[data-test="gate-tip-shop-${CHASSIS_SHOP.id}"]`).exists()).toBe(false)
+      expect(wrapper.find(`[data-test="needs-listing-shop-${CHASSIS_SHOP.id}"]`).exists()).toBe(
+        true,
+      )
+
+      shopListingFor(game, CHASSIS_SHOP.id)
+      await wrapper.vm.$nextTick()
+      expect(wrapper.find(`[data-test="shop-listed-${CHASSIS_SHOP.id}"]`).exists()).toBe(true)
+      expect(
+        (wrapper.get(`[data-test="buy-tool-shop-${CHASSIS_SHOP.id}"]`).element as HTMLButtonElement)
+          .disabled,
+      ).toBe(false)
+    })
+
+    /**
+     * The whole point of a shop: one purchase, several lines. Levels are read
+     * through sim's own `toolLevelsFor` rather than off the rungs, because a
+     * shop moves no rung - it is the ladder's top, not a third step on it.
+     */
+    it('buying one takes every line it covers to top capability at once, and no line it does not', async () => {
+      const game = useGameStore()
+      game.newGame(1)
+      game.devGiveCash(CHASSIS_SHOP.upgradePriceYen)
+      game.devSetReputationTier(CHASSIS_SHOP.minReputationTier)
+      shopListingFor(game, CHASSIS_SHOP.id)
+      const wrapper = mountScreen()
+
+      await wrapper.get(`[data-test="buy-tool-shop-${CHASSIS_SHOP.id}"]`).trigger('click')
+
+      expect(game.gameState.toolShopsOwned).toContain(CHASSIS_SHOP.id)
+      const levels = toolLevelsFor(game.gameState, game.context)
+      for (const componentId of CHASSIS_SHOP.covers) {
+        expect(levels[componentId], componentId).toBe(3)
+        // Bought whole: not one of those lines climbed a rung to get there.
+        expect(game.gameState.toolTiers[componentId], componentId).toBe(1)
+        expect(wrapper.get(`[data-test="line-shop-${componentId}"]`).text()).toContain(
+          `${CHASSIS_SHOP.displayName}, in-house`,
+        )
+      }
+      for (const componentId of ['engine', 'body', 'interior'] as const) {
+        expect(levels[componentId], componentId).toBe(1)
+      }
+      expect(wrapper.find(`[data-test="tool-shop-owned-${CHASSIS_SHOP.id}"]`).text()).toBe(
+        'Fitted out',
+      )
+      expect(wrapper.find(`[data-test="buy-tool-shop-${CHASSIS_SHOP.id}"]`).exists()).toBe(false)
+    })
+
+    it('opens the info box on the shop, headed by what it covers', async () => {
+      const game = useGameStore()
+      game.newGame(1)
+      const wrapper = mountScreen()
+      await wrapper.get(`[data-test="tool-shop-${CHASSIS_SHOP.id}"]`).trigger('click')
+      const box = wrapper.get('[data-test="tool-info-box"]')
+      expect(box.text()).toContain(CHASSIS_SHOP.displayName)
+      expect(box.text()).toContain('covers')
+      expect(box.text()).toContain('labour per grade')
+      // Same toggle the rungs have.
+      await wrapper.get(`[data-test="tool-shop-${CHASSIS_SHOP.id}"]`).trigger('click')
+      expect(wrapper.find('[data-test="tool-info-box"]').exists()).toBe(false)
+    })
+
+    it('advertises a listed shop by name rather than as a tier', () => {
+      const game = useGameStore()
+      game.newGame(1)
+      shopListingFor(game, CHASSIS_SHOP.id)
+      const wrapper = mountScreen()
+      const card = wrapper.get('[data-test="machine-listing"]')
+      expect(card.text()).toContain(CHASSIS_SHOP.displayName)
+      expect(card.text()).not.toContain('Tier')
+      for (const componentId of CHASSIS_SHOP.covers) {
+        expect(card.text(), componentId).toContain(game.componentLabel(componentId))
+      }
+    })
   })
 
   describe('the tool-wall info box (Sprint 43)', () => {
@@ -149,12 +307,19 @@ describe('UpgradesScreen', () => {
       const game = useGameStore()
       game.newGame(1)
       const wrapper = mountScreen()
-      await wrapper.get('[data-test="tier-node-engine-3"]').trigger('click')
+      await wrapper.get('[data-test="tier-node-engine-2"]').trigger('click')
       const box = wrapper.get('[data-test="tool-info-box"]')
-      // Engine tier 3 is the one real own-car capability ceiling.
-      expect(box.text()).toContain('NA-to-turbo conversion')
-      await wrapper.get('[data-test="tier-node-engine-3"]').trigger('click')
+      expect(box.text()).toContain('labour per grade')
+      await wrapper.get('[data-test="tier-node-engine-2"]').trigger('click')
       expect(wrapper.find('[data-test="tool-info-box"]').exists()).toBe(false)
+    })
+
+    it('the NA-to-turbo conversion belongs to the shop covering the engine line, not to a rung', () => {
+      const game = useGameStore()
+      game.newGame(1)
+      const shop = game.toolShopViews.find((s) => s.covers.includes('engine'))!
+      expect(game.toolShopInfo(shop.id).unlocksNaToTurboConversion).toBe(true)
+      expect(game.toolTierInfo('engine', 2).unlocksNaToTurboConversion).toBe(false)
     })
 
     /**

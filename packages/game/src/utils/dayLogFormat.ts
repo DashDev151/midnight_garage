@@ -7,6 +7,7 @@ import {
   PAINT_COLOURS,
   PARTS,
   TOOL_LINES,
+  TOOL_SHOPS,
   cashMovementFor,
   componentDisplayName,
   titleCaseFromSlug,
@@ -31,6 +32,14 @@ const MACHINING_OPERATION_LABELS = new Map(
 
 function machiningOperationLabel(operationId: string): string {
   return MACHINING_OPERATION_LABELS.get(operationId) ?? operationId
+}
+
+/** Shop id -> the name it is offered under, lower-cased so it reads inside a
+ * sentence; the raw id reads through if content ever loses the entry. */
+const TOOL_SHOP_NAMES = new Map(TOOL_SHOPS.map((shop) => [shop.id, shop.displayName.toLowerCase()]))
+
+function toolShopName(shopId: string): string {
+  return TOOL_SHOP_NAMES.get(shopId) ?? shopId
 }
 
 /** Simple consumable id -> its tin's shelf name; internal ids read straight
@@ -216,10 +225,14 @@ export function describeLogEntry(
       return `Upgraded ${componentDisplayName(entry.componentId, COMPONENT_DISPLAY_NAMES)} to ${
         TOOL_LINES[entry.componentId].tiers[entry.toTier - 1]!.displayName
       } for ${formatYen(entry.priceYen)}`
+    case 'tool-shop-purchased':
+      return `Fitted out the ${toolShopName(entry.shopId)} for ${formatYen(entry.priceYen)}`
     case 'machine-listed':
       return `Classifieds: ${
         TOOL_LINES[entry.componentId].tiers[entry.tier - 1]!.displayName
       } listed, ${formatYen(entry.priceYen)}`
+    case 'tool-shop-listed':
+      return `Classifieds: a whole ${toolShopName(entry.shopId)} listed, ${formatYen(entry.priceYen)}`
     case 'machine-hired':
       return `Hired the ${MACHINE_LINE_NAMES[entry.componentId]} for the day (${formatYen(entry.priceYen)})`
     case 'dyno-hired':
