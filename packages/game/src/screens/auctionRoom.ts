@@ -1,5 +1,12 @@
-import type { AuctionRoomConfig, EconomyConfig } from '@midnight-garage/content'
-import { createRng, hashStringToSeed } from '@midnight-garage/sim'
+import {
+  clearingFractionFor,
+  createRng,
+  hashStringToSeed,
+  roomClearingYen,
+  roomReserveYen,
+  type RoomConfig,
+  type TurnoutKey,
+} from '@midnight-garage/sim'
 import { formatYen } from '../utils/formatYen'
 
 /**
@@ -33,30 +40,14 @@ import { formatYen } from '../utils/formatYen'
  * once-per-room latch, a snipe count, or a gap requirement) is part of the
  * arming, spelled out per reaction where it fires; every other draw on the
  * unarmed path is untouched; an unarmed room draws exactly as before.
- */
-
-/**
- * The tuning a room is seated with: the `economy.auctionRoom` block plus the
- * one number that is NOT authored there, the seller's floor.
  *
- * There used to be two: `AUCTION_RESERVE_PRICE_FRACTION` (0.6), which prices
- * the reserve printed on every auction card, and a room-local copy of the
- * same idea at 0.55, which the room actually opened at. One idea, two
- * numbers, five points apart, so the board opened below the reserve the card
- * advertised. sprint150.md retired the room's own copy under the ruling "set
- * the reserve to 0.6 everywhere": the fraction is now authored once, at the
- * top level, and folded in here by `roomConfigFrom`.
+ * **The room's PRICING is not here.** The reserve, the clearing draw, the
+ * clearing cap and the rung ladder are economy and live in sim
+ * (`roomReserveYen`, `clearingFractionFor`, `roomClearingYen`,
+ * `incrementYenFor`, all bidding.ts), which this module calls. What is left
+ * here is the theatre: the dealers, the fuse, the delays and the six
+ * reactions, none of which any other price in the game reads.
  */
-export type RoomConfig = AuctionRoomConfig & { reserveFraction: number }
-export type TurnoutKey = keyof RoomConfig['turnout']
-
-/** The one place a `RoomConfig` is assembled from content - every screen that
- * seats a room (the production floor, the tuning demo, the lobby cards) goes
- * through this, so no caller can pair the room tuning with a second opinion
- * about the reserve. */
-export function roomConfigFrom(economy: EconomyConfig): RoomConfig {
-  return { ...economy.auctionRoom, reserveFraction: economy.AUCTION_RESERVE_PRICE_FRACTION }
-}
 
 export type RoomStatus = 'open' | 'won' | 'lost' | 'no-sale'
 
@@ -187,25 +178,6 @@ function clamp01(value: number): number {
 }
 
 /**
- * The one clearing fraction the room draws up front: two draws off the stream,
- * u then t. A cold room (u under the bargain chance) clears somewhere between
- * the reserve fraction and the turnout floor; a normal room clears within the
- * turnout band. Exported so a test can pin the draw with a stubbed stream.
- */
-export function clearingFractionFor(
-  stream: { next: () => number },
-  key: TurnoutKey,
-  config: RoomConfig,
-): number {
-  const turnout = config.turnout[key]
-  const u = stream.next()
-  const t = stream.next()
-  return u < config.bargainChance
-    ? config.reserveFraction + t * (turnout.clearMin - config.reserveFraction)
-    : turnout.clearMin + t * (turnout.clearMax - turnout.clearMin)
-}
-
-/**
  * Seats a live room from an entry and the numbers the bidder learned by
  * looking closely. One seeded stream (from `seed`) drives everything; the
  * draw order is law: the clearing fraction first (u then t); then, for every
@@ -263,9 +235,9 @@ export function enterRoom(
   const stream = createRng(hashStringToSeed(seed))
   const turnout = config.turnout[entry.key]
   const value = entry.roomReadYen
-  const reserveYen = Math.round(value * config.reserveFraction)
+  const reserveYen = roomReserveYen(value, config)
   const fraction = clearingFractionFor(stream, entry.key, config)
-  const clearingYen = Math.max(reserveYen, Math.round(value * fraction))
+  const clearingYen = roomClearingYen(value, fraction, config)
   const dealers = DEALER_NAMES.slice(0, turnout.dealers).map((name) => ({ name, active: true }))
   const room: Room = {
     key: entry.key,
@@ -761,11 +733,4 @@ export function dealersInRoom(room: Room): number {
 /** The rung the bidder's next bid lands on: the reserve unopened, else one up. */
 export function nextRungYen(room: Room): number {
   return room.leader === null ? room.reserveYen : room.boardYen + room.incrementYen
-}
-
-/** The bid step for a room reading at `roomReadYen`: the coarse step at or
- * above `stepThresholdYen`, the fine one below it - shared by every caller
- * that seats a room off a live read, so the rung size is derived once. */
-export function incrementYenFor(roomReadYen: number, config: RoomConfig): number {
-  return roomReadYen < config.stepThresholdYen ? config.stepBelowYen : config.stepAboveYen
 }

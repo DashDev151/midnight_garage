@@ -1,8 +1,8 @@
-import { playerEstimateYen } from '@midnight-garage/sim'
+import { incrementYenFor, playerEstimateYen, roomConfigFrom } from '@midnight-garage/sim'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useGameStore } from '../stores/gameStore'
-import { enterRoom, incrementYenFor, roomConfigFrom } from './auctionRoom'
+import { enterRoom } from './auctionRoom'
 import {
   buildDemoLobby,
   demoRoomSeed,

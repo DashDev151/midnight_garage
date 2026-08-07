@@ -7,6 +7,7 @@ import {
   computeAuctionGrade,
   inspectionVisitGateReason,
   playerEstimateYen,
+  roomConfigFrom,
   roomLedgerFor,
   runDiagnosticTest,
   symptomTested,
@@ -17,15 +18,7 @@ import AuctionRoomFloor from '../components/AuctionRoomFloor.vue'
 import AuctionLotCard, { type AuctionLotCardView } from '../components/AuctionLotCard.vue'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
-import {
-  armReaction,
-  enterRoom,
-  letGo,
-  playerBid,
-  roomConfigFrom,
-  tick,
-  type Room,
-} from './auctionRoom'
+import { armReaction, enterRoom, letGo, playerBid, tick, type Room } from './auctionRoom'
 import {
   DEMO_BANKROLL_YEN,
   buildDemoLobby,

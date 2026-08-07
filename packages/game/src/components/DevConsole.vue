@@ -162,6 +162,12 @@ function warp(): void {
     <div class="row">
       <button @click="router.push({ name: 'paint-palette' })">paint palette</button>
     </div>
+
+    <div class="row">
+      <button data-test="dev-open-economy-bench" @click="router.push({ name: 'economy-bench' })">
+        economy bench
+      </button>
+    </div>
   </aside>
 </template>
 

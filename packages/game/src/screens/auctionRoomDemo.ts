@@ -14,19 +14,16 @@ import {
 import {
   carOriginLabel,
   hasForcedInduction,
+  incrementYenFor,
   makeCarOrigin,
   playerEstimateYen,
+  roomConfigFrom,
   sheetGuideValueYen,
   stockInstanceFor,
   type SimContext,
-} from '@midnight-garage/sim'
-import {
-  incrementYenFor,
-  roomConfigFrom,
-  type Learned,
-  type RoomVerdict,
   type TurnoutKey,
-} from './auctionRoom'
+} from '@midnight-garage/sim'
+import { type Learned, type RoomVerdict } from './auctionRoom'
 
 /**
  * The dev-only tuning bench for the live auction room (AuctionRoomDemoScreen.vue):

@@ -1,22 +1,25 @@
-import { createRng, hashStringToSeed } from '@midnight-garage/sim'
+import {
+  clearingFractionFor,
+  createRng,
+  hashStringToSeed,
+  roomConfigFrom,
+  type RoomConfig,
+} from '@midnight-garage/sim'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
 import {
   armReaction,
-  clearingFractionFor,
   dealersInRoom,
   enterRoom,
   letGo,
   nextRungYen,
   playerBid,
-  roomConfigFrom,
   tick,
   type Dealer,
   type Learned,
   type Room,
-  type RoomConfig,
 } from './auctionRoom'
 import {
   buildDemoLobby,

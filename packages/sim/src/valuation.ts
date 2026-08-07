@@ -261,7 +261,7 @@ export function saleOutcomeFor(
  * refuse a car outright, and culture is what makes an otherwise-qualifying
  * car still the wrong one for this buyer's own scene.
  */
-function normalizedTasteScore(
+export function normalizedTasteScore(
   buyer: Buyer,
   model: CarModel,
   instance: CarInstance,

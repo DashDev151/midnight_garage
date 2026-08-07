@@ -23,6 +23,9 @@ export default defineConfig({
         'packages/game/src/screens/AuctionRoomDemoScreen.vue',
         // Dev-only console, tree-shaken out of the production bundle.
         'packages/game/src/components/DevConsole.vue',
+        // Dev-route economy bench (dev console only), not real game UI; its
+        // state builder, readout and action modules all stay covered.
+        'packages/game/src/screens/EconomyBenchScreen.vue',
         // Deliberately a thin, minimal Dexie wrapper (Sprint 07) so tests
         // don't need fake-indexeddb - logic worth testing lives in saveCodec.ts.
         'packages/game/src/save/saveDb.ts',

@@ -56,7 +56,7 @@ import {
  * it has no verdict to give: a trade sale earns neither reputation nor scene
  * standing. The trade pays wholesale, not word of mouth.
  */
-const TRADE_NETWORK_BUYER_ID = 'trade-network'
+export const TRADE_NETWORK_BUYER_ID = 'trade-network'
 
 /** One listing channel's own content shape - the same indexed-type idiom
  * `sellingChannelLabels.ts` (game) already uses, since `SellingChannelSchema`
@@ -906,6 +906,208 @@ function drawOfferForChannel(
       wordOfMouth,
     ),
     attempted: true,
+  }
+}
+
+/** One buyer's own odds through a channel today - every field a pure read of
+ * the same terms `drawOfferForChannel` above rolls against. */
+export interface BuyerArrivalOdds {
+  buyerId: string
+  /** How strongly this archetype turns up for this car through this channel:
+   * their `tierPreferences` weight for its league (or the channel's
+   * `poolWidening` where they state none), times their culture affinity,
+   * times the channel's own authored weight raised to the standing focus
+   * exponent, times their scene's word of mouth. */
+  poolWeight: number
+  /** What this buyer values the car at - the size bias in the draw, and NOT
+   * what they would offer for it (a channel prices its own draw through its
+   * taste ceiling and the quality curve). */
+  valuationYen: number
+  /** `valuationYen * poolWeight`: this buyer's tickets in the hat. */
+  drawWeight: number
+  /** This buyer's share of the hat. */
+  shareOfDraw: number
+  /** P(the day's draw clears AND this buyer is the one it brings). */
+  arrivalChance: number
+  /** P(that visit also leaves an offer). Equal to `arrivalChance` except on a
+   * `matchedOnly` channel this buyer's taste does not match, where it is 0:
+   * they came, they counted against the listing, and they left nothing. */
+  offerChance: number
+  /** Whether this buyer's taste matches the car (`isTasteMatched`). Only a
+   * `matchedOnly` channel gates on it. */
+  tasteMatched: boolean
+}
+
+/** A channel's own odds for one car on one day. */
+export interface ChannelArrivalOdds {
+  channelId: SellingChannelId
+  /**
+   * P_draw: the chance the day's roll clears and somebody comes to look. It
+   * is also exactly the chance this listing's `offersSeen` advances today,
+   * since clearing the roll is what `attempted` means - and it stays true
+   * when nobody in the pool wants this league of car, which is a visit that
+   * counts and leaves nothing.
+   */
+  arrivalChance: number
+  /** P(an offer is actually priced today) - the buyers' own `offerChance`
+   * summed. Below `arrivalChance` on a `matchedOnly` channel, and on a car no
+   * archetype the channel reaches has any interest in. */
+  offerChance: number
+  /** The hat's total weight. Zero with candidates present means every one of
+   * them values the car at nothing and the pick falls back to a uniform draw
+   * over the same candidates. */
+  totalDrawWeight: number
+  /** Whether that uniform fallback is what `shareOfDraw` reports. */
+  uniformFallback: boolean
+  buyers: BuyerArrivalOdds[]
+  /** The id an offer is attributed to on a channel with no buyer pool at all
+   * (`tradeNetwork` is a fax to the dealer circle, never a named persona).
+   * Undefined on every persona channel. */
+  nonBuyerOfferId?: string
+}
+
+/** What to ask the odds about, where the listing's own answer is not the
+ * question: an unlisted car, a channel it is not on, or a different day. */
+export interface ArrivalOddsOverrides {
+  /** Defaults to this car's live listing entry, or 0 when it has none. */
+  offersSeen?: number
+  /** The day the draw runs on - only a one-draw channel reads it (the meet
+   * has a real day on the calendar). Defaults to `state.day`. */
+  day?: number
+  /** Defaults to this model's own market heat. */
+  heatPercent?: number
+  /** Whether a one-draw channel still owes its guaranteed draw. Defaults to
+   * the live entry's flag when the car is listed on THIS channel, and to true
+   * otherwise (what listing on it now would set). */
+  weekendMeetPending?: boolean
+}
+
+/**
+ * The closed form behind `drawOfferForChannel` above: who a channel can bring
+ * to this car today, and with what probability, with no roll taken. Reads the
+ * same content, the same weights and the same chance terms the live draw does,
+ * so a preview and the roll can never describe different odds.
+ *
+ * **This is a SINGLE-DAY probability and nothing else.** It cannot be raised
+ * to a power for a week: staleness keys off `offersSeen`, which advances only
+ * on a day the roll clears, so the listing's own chance changes underneath a
+ * multi-day question. Across days this is a Markov chain on `offersSeen`, with
+ * this expression as its one-step transition - still exact, but iterated
+ * rather than repeated. A caller showing a figure must say which it is showing.
+ *
+ * The branches are the live draw's own:
+ * - The four standard channels roll a cadence chance against
+ *   `offerChanceFor x stalenessFor`.
+ * - `weekendMeet` and `collectorNetwork` are the one guaranteed draw, gated on
+ *   the meet's own day and on the draw still being owed. Rarity, heat and
+ *   staleness gate nothing there, though the draw is still PRICED through the
+ *   listing's `offersSeen`.
+ * - `tradeNetwork` has no buyer pool at all: it prices off plain market value
+ *   and attributes the offer to `nonBuyerOfferId`, so `buyers` is empty.
+ *
+ * `offersSeen` defaults to this car's live listing entry whatever channel it
+ * sits on. That is the entry's face value: a real re-list onto a DIFFERENT
+ * channel would carry it forward at `liquidity.relistRecovery` instead, so ask
+ * about another channel by passing `offersSeen` rather than trusting the
+ * default.
+ */
+export function channelArrivalOddsFor(
+  car: CarInstance,
+  model: CarModel,
+  channelId: SellingChannelId,
+  state: GameState,
+  context: SimContext,
+  overrides: ArrivalOddsOverrides = {},
+): ChannelArrivalOdds {
+  const { economy } = context
+  const channel = economy.sellingChannels[channelId]
+  const entry = state.carsForSale.find((f) => f.carInstanceId === car.id)
+  const offersSeen = overrides.offersSeen ?? entry?.offersSeen ?? 0
+  const day = overrides.day ?? state.day
+  const heatPercent = overrides.heatPercent ?? state.marketHeat[model.id] ?? 100
+  const weekendMeetPending =
+    overrides.weekendMeetPending ??
+    (entry?.channelId === channelId ? entry.weekendMeetPending === true : true)
+
+  const arrivalChance = channel.oneDrawNextEndDay
+    ? weekendMeetPending && isMeetDay(day, economy)
+      ? 1
+      : 0
+    : cadenceChanceFor(
+        channel,
+        model,
+        offerChanceFor(model, heatPercent, economy) * stalenessFor(offersSeen, economy),
+      )
+
+  if (channel.priceBand) {
+    return {
+      channelId,
+      arrivalChance,
+      offerChance: arrivalChance,
+      totalDrawWeight: 0,
+      uniformFallback: false,
+      buyers: [],
+      nonBuyerOfferId: TRADE_NETWORK_BUYER_ID,
+    }
+  }
+
+  const weighting = channelDrawWeighting(
+    channel,
+    state.reputationTier,
+    economy,
+    wordOfMouthMultipliers(state, economy),
+  )
+  const candidates = saleCandidates(model, context.buyers, weighting).map((candidate) => {
+    const valuationYen = valuateCarForBuyer(
+      candidate.buyer,
+      model,
+      car,
+      context.partsById,
+      context.partsTaxonomy,
+      context.partsTaxonomyById,
+      heatPercent,
+      economy,
+    )
+    return { ...candidate, valuationYen, drawWeight: valuationYen * candidate.poolWeight }
+  })
+  const totalDrawWeight = candidates.reduce((sum, candidate) => sum + candidate.drawWeight, 0)
+  const uniformFallback = totalDrawWeight <= 0 && candidates.length > 0
+  const matchedOnly = channel.matchedOnly === true
+
+  const buyers = candidates.map((candidate) => {
+    const shareOfDraw = uniformFallback
+      ? 1 / candidates.length
+      : totalDrawWeight > 0
+        ? candidate.drawWeight / totalDrawWeight
+        : 0
+    const tasteMatched = isTasteMatched(
+      candidate.buyer,
+      model,
+      car,
+      context.partsById,
+      context.partsTaxonomy,
+      economy,
+    )
+    const buyerArrivalChance = arrivalChance * shareOfDraw
+    return {
+      buyerId: candidate.buyer.id,
+      poolWeight: candidate.poolWeight,
+      valuationYen: candidate.valuationYen,
+      drawWeight: candidate.drawWeight,
+      shareOfDraw,
+      arrivalChance: buyerArrivalChance,
+      offerChance: matchedOnly && !tasteMatched ? 0 : buyerArrivalChance,
+      tasteMatched,
+    }
+  })
+
+  return {
+    channelId,
+    arrivalChance,
+    offerChance: buyers.reduce((sum, buyer) => sum + buyer.offerChance, 0),
+    totalDrawWeight,
+    uniformFallback,
+    buyers,
   }
 }
 

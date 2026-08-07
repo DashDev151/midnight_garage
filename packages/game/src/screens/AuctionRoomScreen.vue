@@ -1,23 +1,20 @@
 <script setup lang="ts">
 import { resolveCarDisplayName, TUTORIAL_LOT, type FusePreset } from '@midnight-garage/content'
-import { playerEstimateYen, sheetGuideValueYen, symptomTested } from '@midnight-garage/sim'
+import {
+  incrementYenFor,
+  playerEstimateYen,
+  roomConfigFrom,
+  sheetGuideValueYen,
+  symptomTested,
+  type RoomConfig,
+  type TurnoutKey,
+} from '@midnight-garage/sim'
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AuctionRoomFloor from '../components/AuctionRoomFloor.vue'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
-import {
-  enterRoom,
-  incrementYenFor,
-  letGo,
-  nextRungYen,
-  playerBid,
-  roomConfigFrom,
-  tick,
-  type Room,
-  type RoomConfig,
-  type TurnoutKey,
-} from './auctionRoom'
+import { enterRoom, letGo, nextRungYen, playerBid, tick, type Room } from './auctionRoom'
 import { verdictFor } from './auctionRoomDemo'
 
 /**

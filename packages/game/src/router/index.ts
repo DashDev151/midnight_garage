@@ -30,6 +30,11 @@ const devRoutes: RouteRecordRaw[] = import.meta.env.DEV
         name: 'paint-palette',
         component: () => import('../screens/PaintPaletteScreen.vue'),
       },
+      {
+        path: '/economy-bench',
+        name: 'economy-bench',
+        component: () => import('../screens/EconomyBenchScreen.vue'),
+      },
     ]
   : []
 

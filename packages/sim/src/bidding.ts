@@ -1,5 +1,6 @@
 import type {
   AuctionLot,
+  AuctionRoomConfig,
   AuctionTier,
   Buyer,
   CarInstance,
@@ -119,9 +120,22 @@ export function anchorValueYen(lot: AuctionLot, state: GameState, context: SimCo
  * with a static per-model constant.
  */
 export function reserveYen(lot: AuctionLot, state: GameState, context: SimContext): number {
-  return Math.round(
-    anchorValueYen(lot, state, context) * context.economy.AUCTION_RESERVE_PRICE_FRACTION,
+  return auctionReserveYen(
+    anchorValueYen(lot, state, context),
+    context.economy.AUCTION_RESERVE_PRICE_FRACTION,
   )
+}
+
+/**
+ * The seller's floor under a read of `guideValueYen`, at `reserveFraction`.
+ * The one rounding of that product in the codebase: the reserve printed on an
+ * auction card, the price a live room opens at, and every closed-form probe's
+ * buy price are this expression read through whichever carrier holds the
+ * fraction (`economy.AUCTION_RESERVE_PRICE_FRACTION` directly, or a seated
+ * room's `RoomConfig.reserveFraction`, which `roomConfigFrom` fills from it).
+ */
+export function auctionReserveYen(guideValueYen: number, reserveFraction: number): number {
+  return Math.round(guideValueYen * reserveFraction)
 }
 
 /**
@@ -154,8 +168,129 @@ export function computeBuyoutPriceYen(
   state: GameState,
   context: SimContext,
 ): number {
-  const anchor = anchorValueYen(lot, state, context)
-  return Math.round(anchor * context.economy.AUCTION_BUYOUT_PREMIUM)
+  return buyoutPriceYen(anchorValueYen(lot, state, context), context.economy)
+}
+
+/**
+ * The instant-buyout price for a read of `guideValueYen`: that read at
+ * `AUCTION_BUYOUT_PREMIUM`.
+ *
+ * At the shipped tuning the premium is 1.0, so a buyout costs exactly the
+ * guide value and carries no premium at all, while a live room's own clearing
+ * bands sit between 0.70 and 0.95 of the same read (`roomClearingRangeFor`
+ * below), with one lot in twenty drawn below that into the reserve's own
+ * range. The desk and the room therefore price the same lot differently by
+ * construction, not by an accident of rounding.
+ */
+export function buyoutPriceYen(guideValueYen: number, economy: EconomyConfig): number {
+  return Math.round(guideValueYen * economy.AUCTION_BUYOUT_PREMIUM)
+}
+
+/**
+ * The tuning a live auction room is seated with: the `economy.auctionRoom`
+ * block plus the one number that is NOT authored there, the seller's floor.
+ *
+ * There used to be two: `AUCTION_RESERVE_PRICE_FRACTION`, which prices the
+ * reserve printed on every auction card, and a room-local copy of the same
+ * idea five points below it, which the room actually opened at. One idea, two
+ * numbers, so the board opened below the reserve the card advertised. The
+ * fraction is now authored once, at the top level, and folded in here by
+ * `roomConfigFrom`.
+ */
+export type RoomConfig = AuctionRoomConfig & { reserveFraction: number }
+
+/** One of the three authored turnout bands a room can be seated at. */
+export type TurnoutKey = keyof RoomConfig['turnout']
+
+/** The one place a `RoomConfig` is assembled from content - every screen that
+ * seats a room (the production floor, the tuning demo, the lobby cards) goes
+ * through this, so no caller can pair the room tuning with a second opinion
+ * about the reserve. */
+export function roomConfigFrom(economy: EconomyConfig): RoomConfig {
+  return { ...economy.auctionRoom, reserveFraction: economy.AUCTION_RESERVE_PRICE_FRACTION }
+}
+
+/** Where a seated room opens: the seller's floor under a lot reading at
+ * `roomReadYen`, at the room's own carrier of the one reserve fraction. */
+export function roomReserveYen(roomReadYen: number, config: RoomConfig): number {
+  return auctionReserveYen(roomReadYen, config.reserveFraction)
+}
+
+/**
+ * The one clearing fraction a room draws up front: two draws off `stream`, u
+ * then t. A cold room (u under the bargain chance) clears somewhere between
+ * the reserve fraction and the turnout floor; a normal room clears within the
+ * turnout band. Takes the stream rather than a seed so the live room can draw
+ * it from the single seeded stream it was entered with, in its own draw order,
+ * and so a test can pin the draw with a stubbed stream.
+ */
+export function clearingFractionFor(
+  stream: { next: () => number },
+  key: TurnoutKey,
+  config: RoomConfig,
+): number {
+  const turnout = config.turnout[key]
+  const u = stream.next()
+  const t = stream.next()
+  return u < config.bargainChance
+    ? config.reserveFraction + t * (turnout.clearMin - config.reserveFraction)
+    : turnout.clearMin + t * (turnout.clearMax - turnout.clearMin)
+}
+
+/**
+ * The most a room will pay for a lot reading at `roomReadYen`, given the
+ * fraction it drew: never below the reserve, since that is where bidding
+ * opens and a floor the room has already met is not a cap it can sit under.
+ */
+export function roomClearingYen(
+  roomReadYen: number,
+  clearingFraction: number,
+  config: RoomConfig,
+): number {
+  return Math.max(roomReserveYen(roomReadYen, config), Math.round(roomReadYen * clearingFraction))
+}
+
+/** The range a room's clearing price is drawn from, in yen, before any live
+ * reaction inside the room moves it. */
+export interface RoomClearingRange {
+  /** The lowest the room can clear at: the reserve, which is both where the
+   * board opens and the bottom of the cold-room branch. */
+  floorYen: number
+  /** The bottom of this turnout's own band. A cold room clears in
+   * `[floorYen, bandMinYen)`; every other room clears at or above it. */
+  bandMinYen: number
+  /** The top of this turnout's own band, and the most the room pays. */
+  bandMaxYen: number
+  /** The chance the room is cold and clears below `bandMinYen`. */
+  bargainChance: number
+}
+
+/**
+ * What a room seated at `key` will pay for a lot reading at `roomReadYen`,
+ * as the range the draw actually spans rather than a single figure the
+ * two-piece distribution does not have. The same arithmetic
+ * `clearingFractionFor` and `roomClearingYen` perform, read at the ends of
+ * both branches instead of at a drawn fraction.
+ */
+export function roomClearingRangeFor(
+  roomReadYen: number,
+  key: TurnoutKey,
+  config: RoomConfig,
+): RoomClearingRange {
+  const turnout = config.turnout[key]
+  return {
+    floorYen: roomClearingYen(roomReadYen, config.reserveFraction, config),
+    bandMinYen: roomClearingYen(roomReadYen, turnout.clearMin, config),
+    bandMaxYen: roomClearingYen(roomReadYen, turnout.clearMax, config),
+    bargainChance: config.bargainChance,
+  }
+}
+
+/** The bid step for a room reading at `roomReadYen`: the coarse step at or
+ * above `stepThresholdYen`, the fine one below it - shared by every caller
+ * that seats a room off a live read, so the rung size is derived once. */
+export function incrementYenFor(roomReadYen: number, config: RoomConfig): number {
+  return roomReadYen < config.stepThresholdYen ? config.stepBelowYen : config.stepAboveYen
 }
 
 export interface AcquisitionResult {

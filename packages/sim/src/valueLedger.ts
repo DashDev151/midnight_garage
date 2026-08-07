@@ -7,7 +7,8 @@ import type {
   GameState,
   Part,
 } from '@midnight-garage/content'
-import { carCostToBandYen, carCostToMintYen } from './bands'
+import { carCostToBandBreakdown, carCostToBandYen, carCostToMintYen } from './bands'
+import type { ZoneBillLine } from './bodyPipeline'
 import type { SimContext } from './context'
 import { coherenceFactorForCar } from './derivedStats'
 import { apparentViewOf, sheetGuideValueYen } from './diagnosis'
@@ -126,6 +127,96 @@ export function valueLedgerFor(
   if (creditedPremiumYen !== 0) lines.push({ id: 'aftermarket', yen: creditedPremiumYen })
 
   return { lines, totalYen: previousRounded + creditedPremiumYen }
+}
+
+/** One slot's own share of the ledger's 'wear' and 'polish' lines. */
+export interface RestorationValueLine {
+  partId: CarPartId
+  /** What bringing this slot to mint costs in work - `carCostToBandBreakdown`
+   * at `'mint'`, unscaled. */
+  billYen: number
+  /** The part of that bill still below the tier's expectation band, charged at
+   * `marketRepairDiscount`. */
+  belowBandBillYen: number
+  /** The rest of it, above the expectation band, charged at the tier's own
+   * `beyondDiscount`. */
+  aboveBandBillYen: number
+  /** What this slot's condition costs the car's price, negative: the two halves
+   * at their own discounts. */
+  valueYen: number
+  /** Where the money falls across the nine body zones - present only for the
+   * two body value carriers on a car carrying `zoneState`. */
+  zones?: ZoneBillLine[]
+}
+
+/** The restoration bill's effect on price, slot by slot. */
+export interface RestorationValueBreakdown {
+  lines: RestorationValueLine[]
+  /** The lines' `valueYen` summed. Equal to the ledger's 'wear' plus 'polish'
+   * lines up to the rounding those two telescoping checkpoints apply. */
+  totalValueYen: number
+  /** The lines' `billYen` summed, exactly `carCostToMintYen`. */
+  totalBillYen: number
+}
+
+/**
+ * `valueLedgerFor`'s 'wear' and 'polish' lines, unsummed: what each slot's own
+ * condition costs the car's price.
+ *
+ * The decomposition is exact because the bill is a literal sum over slots
+ * (`carCostToBandBreakdown`) and both discounts above it are band-independent,
+ * so each half scales every line identically - the licence
+ * `carCostToBandBreakdown`'s own contract grants. The split point is the tier's
+ * expectation band (`expectationForCar`), the same one `instanceBaseValueYen`
+ * splits at, so a slot's line and the whole-car figure can never disagree about
+ * which side of the band a yen of work falls on.
+ *
+ * Rounding is the only difference from the ledger: this rounds each line, while
+ * the ledger rounds two telescoping cumulative checkpoints, so the sums agree
+ * to within a yen or two rather than exactly. Nothing here is a second value
+ * computation - both halves come out of the same two `carCostToBandBreakdown`
+ * reads the ledger's own totals come out of.
+ */
+export function restorationValueLinesFor(
+  car: CarInstance,
+  model: CarModel,
+  partsById: Readonly<Record<string, Part>>,
+  partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
+  economy: EconomyConfig,
+): RestorationValueBreakdown {
+  const { marketRepairDiscount } = economy.valuation
+  const expectation = expectationForCar(model, economy)
+  const toMint = carCostToBandBreakdown(car, model, partsById, partsTaxonomyById, economy, 'mint')
+  const toBand = carCostToBandBreakdown(
+    car,
+    model,
+    partsById,
+    partsTaxonomyById,
+    economy,
+    expectation.band,
+  )
+  const belowByPartId = new Map(toBand.lines.map((line) => [line.partId, line.yen]))
+
+  const lines = toMint.lines.map((line) => {
+    const belowBandBillYen = belowByPartId.get(line.partId) ?? 0
+    const aboveBandBillYen = line.yen - belowBandBillYen
+    return {
+      partId: line.partId,
+      billYen: line.yen,
+      belowBandBillYen,
+      aboveBandBillYen,
+      valueYen: -Math.round(
+        marketRepairDiscount * belowBandBillYen + expectation.beyondDiscount * aboveBandBillYen,
+      ),
+      ...(line.zones ? { zones: line.zones } : {}),
+    }
+  })
+
+  return {
+    lines,
+    totalValueYen: lines.reduce((sum, line) => sum + line.valueYen, 0),
+    totalBillYen: toMint.totalYen,
+  }
 }
 
 /**

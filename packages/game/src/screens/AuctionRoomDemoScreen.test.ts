@@ -1,19 +1,12 @@
 import type { GameState } from '@midnight-garage/content'
-import { playerEstimateYen, runDiagnosticTest } from '@midnight-garage/sim'
+import { playerEstimateYen, roomConfigFrom, runDiagnosticTest } from '@midnight-garage/sim'
 import { mount, RouterLinkStub, type DOMWrapper, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
-import {
-  enterRoom,
-  nextRungYen,
-  roomConfigFrom,
-  tick,
-  type Learned,
-  type Room,
-} from './auctionRoom'
+import { enterRoom, nextRungYen, tick, type Learned, type Room } from './auctionRoom'
 import {
   buildDemoLobby,
   DEMO_BANKROLL_YEN,

@@ -153,6 +153,43 @@ const RULES: readonly DuplicateFormulaRule[] = [
     markers: [/machining\.(minEngineToolTier|craftOperationToolTier)/, /toolTiers[.[]/],
     roots: SIM_AND_GAME,
   },
+  {
+    // Where a live room opens. The reserve fraction reaches a seated room
+    // through `RoomConfig.reserveFraction` alone, so a file reaching for that
+    // field is a file pricing the floor for itself; the room machine
+    // (`packages/game/src/screens/auctionRoom.ts`) calls `roomReserveYen`.
+    rule: 'where a live auction room opens (`roomReserveYen`, bidding.ts)',
+    allowedFiles: ['bidding.ts'],
+    markers: ['reserveFraction'],
+    roots: SIM_AND_GAME,
+  },
+  {
+    // The most a room will pay: one two-piece draw over the turnout band, with
+    // `bargainChance` deciding the cold branch. The chance has no other
+    // reader, so holding it is re-deriving the clearing price.
+    rule: 'the most a live auction room will pay (`clearingFractionFor`/`roomClearingYen`, bidding.ts)',
+    allowedFiles: ['bidding.ts'],
+    markers: ['bargainChance'],
+    roots: SIM_AND_GAME,
+  },
+  {
+    // The rung ladder: which bid step a read bids on. Displaying a room's own
+    // `incrementYen` is fine anywhere; choosing the step off the threshold is
+    // the decision.
+    rule: "a room's bid step (`incrementYenFor`, bidding.ts)",
+    allowedFiles: ['bidding.ts'],
+    markers: ['stepThresholdYen'],
+    roots: SIM_AND_GAME,
+  },
+  {
+    // The desk's price for a lot, as opposed to the room's. Naming the
+    // constant in prose (the bot strategies all do) is not pricing anything;
+    // reading it off the economy is.
+    rule: 'the instant-buyout price (`buyoutPriceYen`, bidding.ts)',
+    allowedFiles: ['bidding.ts'],
+    markers: [/economy\.AUCTION_BUYOUT_PREMIUM/],
+    roots: SIM_AND_GAME,
+  },
 ]
 
 function markerLine(lines: readonly string[], marker: FormulaMarker): number {

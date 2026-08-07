@@ -1307,42 +1307,73 @@ function planZoneRepair(zone: ZoneState, targetSeverity: number): ZoneRepairRout
     : planTrimZoneRepair(zone, targetSeverity)
 }
 
+/** One zone's own share of a body carrier's money-only repair bill. */
+export interface ZoneBillLine {
+  zoneId: PanelZoneId
+  yen: number
+}
+
+/** The zone lines summed - the whole-bill form every existing caller reads. */
+function sumZoneBill(lines: readonly ZoneBillLine[]): number {
+  let total = 0
+  for (const line of lines) total += line.yen
+  return total
+}
+
 /**
- * `bodywork`'s money-only repair bill: the filler each metal zone's own route
- * calls for, plus a fresh zone panel for any of the nine zones that needs one
- * (`zoneNeedsPanel`). Repairable metal is always free to climb (beat and weld
- * are labour, never yen), so it costs money only where it has gone past
- * saving and a panel is the way out. Both panel-forcing states quote the same
- * one price and quote it once: a panel that is gone and a panel ruined past
- * welding cost the same to put right, and the fresh panel arrives with its own
- * sound surface, so neither also pays for filler.
+ * `bodywork`'s money-only repair bill, per zone: the filler each metal zone's
+ * own route calls for, plus a fresh zone panel for any of the nine zones that
+ * needs one (`zoneNeedsPanel`). Repairable metal is always free to climb (beat
+ * and weld are labour, never yen), so it costs money only where it has gone
+ * past saving and a panel is the way out. Both panel-forcing states quote the
+ * same one price and quote it once: a panel that is gone and a panel ruined
+ * past welding cost the same to put right, and the fresh panel arrives with
+ * its own sound surface, so neither also pays for filler.
  */
+export function bodyworkRepairBillByZoneYen(
+  zoneStates: ZoneStates,
+  targetBand: ConditionBand,
+  fitmentClass: PartFitmentClass,
+  partsById: Readonly<Record<string, Part>>,
+): ZoneBillLine[] {
+  const targetSeverity = severityThresholdForBand(targetBand)
+  return PANEL_ZONE_IDS.map((zoneId) => {
+    const route = planZoneRepair(zoneStates[zoneId], targetSeverity)
+    const panelYen = route.panelFitted
+      ? (zonePanelPart(partsById, zoneId, fitmentClass)?.priceYen ?? 0)
+      : 0
+    return { zoneId, yen: route.fillerYen + panelYen }
+  })
+}
+
+/** `paint`'s money-only repair bill, per zone: the primer, paint and polish
+ * each zone's own route calls for. A zone getting a fresh panel is quoted the
+ * full repaint the bare replacement needs, since that is the finish it arrives
+ * in. */
+export function paintRepairBillByZoneYen(
+  zoneStates: ZoneStates,
+  targetBand: ConditionBand,
+): ZoneBillLine[] {
+  const targetSeverity = severityThresholdForBand(targetBand)
+  return PANEL_ZONE_IDS.map((zoneId) => ({
+    zoneId,
+    yen: planZoneRepair(zoneStates[zoneId], targetSeverity).finishYen,
+  }))
+}
+
+/** `bodywork`'s money-only repair bill: its zone lines, summed. */
 export function bodyworkRepairBillYen(
   zoneStates: ZoneStates,
   targetBand: ConditionBand,
   fitmentClass: PartFitmentClass,
   partsById: Readonly<Record<string, Part>>,
 ): number {
-  const targetSeverity = severityThresholdForBand(targetBand)
-  let total = 0
-  for (const zoneId of PANEL_ZONE_IDS) {
-    const route = planZoneRepair(zoneStates[zoneId], targetSeverity)
-    total += route.fillerYen
-    if (route.panelFitted) total += zonePanelPart(partsById, zoneId, fitmentClass)?.priceYen ?? 0
-  }
-  return total
+  return sumZoneBill(bodyworkRepairBillByZoneYen(zoneStates, targetBand, fitmentClass, partsById))
 }
 
-/** `paint`'s money-only repair bill: the primer, paint and polish each zone's
- * own route calls for. A zone getting a fresh panel is quoted the full
- * repaint the bare replacement needs, since that is the finish it arrives in. */
+/** `paint`'s money-only repair bill: its zone lines, summed. */
 export function paintRepairBillYen(zoneStates: ZoneStates, targetBand: ConditionBand): number {
-  const targetSeverity = severityThresholdForBand(targetBand)
-  let total = 0
-  for (const zoneId of PANEL_ZONE_IDS) {
-    total += planZoneRepair(zoneStates[zoneId], targetSeverity).finishYen
-  }
-  return total
+  return sumZoneBill(paintRepairBillByZoneYen(zoneStates, targetBand))
 }
 
 /**
@@ -1378,7 +1409,21 @@ export function bodyPartRepairBillYen(
   fitmentClass: PartFitmentClass,
   partsById: Readonly<Record<string, Part>>,
 ): number {
+  return sumZoneBill(
+    bodyPartRepairBillByZoneYen(carPartId, zoneStates, targetBand, fitmentClass, partsById),
+  )
+}
+
+/** `bodyPartRepairBillYen` unsummed - the same nine zone lines it adds up, for
+ * a caller that has to show where a body carrier's bill actually falls. */
+export function bodyPartRepairBillByZoneYen(
+  carPartId: DerivedBodyPartId,
+  zoneStates: ZoneStates,
+  targetBand: ConditionBand,
+  fitmentClass: PartFitmentClass,
+  partsById: Readonly<Record<string, Part>>,
+): ZoneBillLine[] {
   if (carPartId === 'bodywork')
-    return bodyworkRepairBillYen(zoneStates, targetBand, fitmentClass, partsById)
-  return paintRepairBillYen(zoneStates, targetBand)
+    return bodyworkRepairBillByZoneYen(zoneStates, targetBand, fitmentClass, partsById)
+  return paintRepairBillByZoneYen(zoneStates, targetBand)
 }

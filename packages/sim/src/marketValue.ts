@@ -127,6 +127,29 @@ function instanceBaseValueYen(
   partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
   economy: EconomyConfig,
 ): number {
+  const { rawYen, backstopFloorYen } = instanceBaseTerms(
+    model,
+    car,
+    heatPercent,
+    partsById,
+    partsTaxonomyById,
+    economy,
+  )
+  return Math.max(backstopFloorYen, rawYen)
+}
+
+/** Stage B's two competing figures, before the `Math.max` between them: what
+ * the restoration bill leaves of clean value, and the backstop floor under
+ * it. Read as a pair by `isOnScrapFloor` below, which is the one question
+ * their ORDER answers. */
+function instanceBaseTerms(
+  model: CarModel,
+  car: CarInstance,
+  heatPercent: number,
+  partsById: Readonly<Record<string, Part>>,
+  partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
+  economy: EconomyConfig,
+): { rawYen: number; backstopFloorYen: number } {
   const { marketRepairDiscount } = economy.valuation
   const cleanValue = cleanValueYen(model.bookValueYen, car.mileageKm, heatPercent, economy)
 
@@ -142,10 +165,45 @@ function instanceBaseValueYen(
   )
   const billAboveYen = billToMintYen - billBelowYen
 
-  const backstopFloor = economy.bands.scrapValueFraction * cleanValue
-  const raw =
-    cleanValue - marketRepairDiscount * billBelowYen - expectation.beyondDiscount * billAboveYen
-  return Math.max(backstopFloor, raw)
+  return {
+    backstopFloorYen: economy.bands.scrapValueFraction * cleanValue,
+    rawYen:
+      cleanValue - marketRepairDiscount * billBelowYen - expectation.beyondDiscount * billAboveYen,
+  }
+}
+
+/**
+ * Whether this car's price is pinned to Stage B's backstop floor rather than
+ * derived from its own restoration bill: the bill has driven the raw formula
+ * below the scrap-value fraction of clean value, so `Math.max` returns the
+ * floor and the bill stops reaching the price at all.
+ *
+ * On such a car every counterfactual is fictional. Repairing a slot moves the
+ * bill but not the price, so a per-slot line, a repair's own value delta, and
+ * anything read off them describe arithmetic the car is no longer being priced
+ * by. A caller showing those figures has to say so instead of printing them.
+ *
+ * A generated lot never reaches here: the generation-time bill guard (Law 2,
+ * auctions.ts) caps a rolled car's bill well short of it. A car stripped or
+ * wrecked in play can.
+ */
+export function isOnScrapFloor(
+  model: CarModel,
+  car: CarInstance,
+  heatPercent: number,
+  partsById: Readonly<Record<string, Part>>,
+  partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
+  economy: EconomyConfig,
+): boolean {
+  const { rawYen, backstopFloorYen } = instanceBaseTerms(
+    model,
+    car,
+    heatPercent,
+    partsById,
+    partsTaxonomyById,
+    economy,
+  )
+  return backstopFloorYen > rawYen
 }
 
 /**

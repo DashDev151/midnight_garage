@@ -12,7 +12,12 @@ import {
   type ToolLevel,
   type ToolLevels,
 } from '@midnight-garage/content'
-import { bodyPartRepairBillYen, isBodyDerivedPart } from './bodyPipeline'
+import {
+  bodyPartRepairBillByZoneYen,
+  bodyPartRepairBillYen,
+  isBodyDerivedPart,
+  type ZoneBillLine,
+} from './bodyPipeline'
 import { crewEnergySaved, perfectionistCostMultiplier, type CrewSkillContext } from './crewSkills'
 
 /** The banded parts model's core math - band ordering, climbing, repair
@@ -192,6 +197,60 @@ export function carCostToMintYen(
   return carCostToBandYen(car, model, partsById, partsTaxonomyById, economy, 'mint')
 }
 
+/**
+ * What bringing ONE slot of `car` up to `targetBand` costs - the atom the
+ * whole-car bill sums and the per-slot breakdown reports unsummed, so the two
+ * can never answer differently for the same slot.
+ *
+ * Null when the slot is not a line on the bill at all: an installed SKU the
+ * catalogue cannot resolve, or a legitimately empty slot (forced induction on
+ * a naturally aspirated car). Both contribute nothing, which is why the sum
+ * reads a null as zero.
+ */
+function partCostToBandYen(
+  car: CarInstance,
+  model: CarModel,
+  partId: CarPartId,
+  entry: CarPartTaxonomyEntry,
+  partsById: Readonly<Record<string, Part>>,
+  economy: EconomyConfig,
+  targetBand: ConditionBand,
+  carFitmentClass: PartFitmentClass,
+): number | null {
+  // A body value carrier on the zone model prices through the pipeline
+  // (materials + panels, money only - labour is never priced in yen): the
+  // generic per-part formula below never sees it.
+  if (car.zoneState && isBodyDerivedPart(partId)) {
+    return bodyPartRepairBillYen(partId, car.zoneState, targetBand, carFitmentClass, partsById)
+  }
+  const installed = car.parts[partId].installed
+  if (installed) {
+    const catalogPart = partsById[installed.partId]
+    if (!catalogPart) return null
+    return costToBandYen(
+      installed.band,
+      targetBand,
+      entry,
+      catalogPart.priceYen,
+      economy.restoration.repairStepFraction,
+      catalogPart.fitmentClass,
+    )
+  }
+  if (isPartMissing(car, model, partId)) {
+    return entry.stockReplacementPriceYenByClass[carFitmentClass]
+  }
+  return null
+}
+
+/** Every slot of `car` that carries a taxonomy entry, in the car's own key
+ * order - the one walk the whole-car bill and its breakdown share. */
+function billablePartIds(
+  car: CarInstance,
+  partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
+): CarPartId[] {
+  return (Object.keys(car.parts) as CarPartId[]).filter((partId) => partsTaxonomyById[partId])
+}
+
 /** The whole-car form of `costToBandYen`: what it costs to bring every part
  * of `car` up to `targetBand`. `carCostToMintYen` is this at `'mint'`. */
 export function carCostToBandYen(
@@ -202,36 +261,88 @@ export function carCostToBandYen(
   economy: EconomyConfig,
   targetBand: ConditionBand,
 ): number {
-  const { repairStepFraction } = economy.restoration
   const carFitmentClass = fitmentClassForTier(model.tier)
   let total = 0
-  for (const partId of Object.keys(car.parts) as CarPartId[]) {
-    const entry = partsTaxonomyById[partId]
-    if (!entry) continue
-    // A body value carrier on the zone model prices through the pipeline
-    // (materials + panels, money only - labour is never priced in yen): the
-    // generic per-part formula below never sees it.
-    if (car.zoneState && isBodyDerivedPart(partId)) {
-      total += bodyPartRepairBillYen(partId, car.zoneState, targetBand, carFitmentClass, partsById)
-      continue
-    }
-    const installed = car.parts[partId].installed
-    if (installed) {
-      const catalogPart = partsById[installed.partId]
-      if (!catalogPart) continue
-      total += costToBandYen(
-        installed.band,
+  for (const partId of billablePartIds(car, partsTaxonomyById)) {
+    total +=
+      partCostToBandYen(
+        car,
+        model,
+        partId,
+        partsTaxonomyById[partId]!,
+        partsById,
+        economy,
         targetBand,
-        entry,
-        catalogPart.priceYen,
-        repairStepFraction,
-        catalogPart.fitmentClass,
-      )
-    } else if (isPartMissing(car, model, partId)) {
-      total += entry.stockReplacementPriceYenByClass[carFitmentClass]
-    }
+        carFitmentClass,
+      ) ?? 0
   }
   return total
+}
+
+/** One slot's own share of the whole-car restoration bill. */
+export interface CarBillLine {
+  partId: CarPartId
+  /** What bringing this slot to the target costs. Zero for a slot already at
+   * or above it. */
+  yen: number
+  /** Where the money falls across the nine body zones - present only for the
+   * two body value carriers (`bodywork`, `paint`) on a car carrying
+   * `zoneState`, and summing to `yen`. */
+  zones?: ZoneBillLine[]
+}
+
+/** The restoration bill, slot by slot, with the total it sums to. */
+export interface CarBillBreakdown {
+  lines: CarBillLine[]
+  totalYen: number
+}
+
+/**
+ * `carCostToBandYen` unsummed: the same bill, slot by slot, and per zone for
+ * the two body carriers. `totalYen` and the line sum both equal
+ * `carCostToBandYen` for the same car and target, exactly, because both walk
+ * the same slots through the same `partCostToBandYen` atom
+ * (`tests/carBillBreakdown.test.ts` holds them equal per roster model).
+ *
+ * The bill is a literal sum over slots, and every multiplier the value formula
+ * applies to it (`marketRepairDiscount`, the tier's `beyondDiscount`) is
+ * band-independent, so it scales each line identically: a caller may scale
+ * these lines to show what one slot's condition costs the car's price. Scaling
+ * the lines and then summing can differ from scaling the sum by a fraction of
+ * a yen, since a discount is not exactly representable in binary; the lines
+ * themselves are exact.
+ */
+export function carCostToBandBreakdown(
+  car: CarInstance,
+  model: CarModel,
+  partsById: Readonly<Record<string, Part>>,
+  partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
+  economy: EconomyConfig,
+  targetBand: ConditionBand,
+): CarBillBreakdown {
+  const carFitmentClass = fitmentClassForTier(model.tier)
+  const lines: CarBillLine[] = []
+  let totalYen = 0
+  for (const partId of billablePartIds(car, partsTaxonomyById)) {
+    const yen = partCostToBandYen(
+      car,
+      model,
+      partId,
+      partsTaxonomyById[partId]!,
+      partsById,
+      economy,
+      targetBand,
+      carFitmentClass,
+    )
+    if (yen === null) continue
+    const zones =
+      car.zoneState && isBodyDerivedPart(partId)
+        ? bodyPartRepairBillByZoneYen(partId, car.zoneState, targetBand, carFitmentClass, partsById)
+        : undefined
+    lines.push({ partId, yen, ...(zones ? { zones } : {}) })
+    totalYen += yen
+  }
+  return { lines, totalYen }
 }
 
 /** Sum of `costToMintYen` across one group only - what a group-level repair
