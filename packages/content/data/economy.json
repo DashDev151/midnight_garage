@@ -945,7 +945,13 @@
     }
   },
   "toolCeilings": {
-    "naToTurboConversionEngineTier": 3
+    "naToTurboConversionEngineTier": 3,
+    "installGradeToolLevel": {
+      "stock": 1,
+      "street": 1,
+      "sport": 1,
+      "race": 2
+    }
   },
   "repairBandCeilingByTier": {
     "1": "fine",

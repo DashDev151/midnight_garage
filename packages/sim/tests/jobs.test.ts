@@ -17,9 +17,11 @@ import {
   createJob,
   findOrCreateJob,
   hasMachineLineFor,
+  installFitGate,
   installLaborSlotsFor,
   machineAssistFeeYen,
   naToTurboConversionBlocked,
+  partCapabilityRequirement,
   reconditionGateReason,
   reconditionQuote,
   refitLaborSlotsFor,
@@ -575,11 +577,17 @@ describe('findOrCreateJob (Sprint 11)', () => {
       expect(result.log).toEqual([])
     })
 
-    it('refuses silently when the group has nothing left to repair (already fully mint)', () => {
+    it('refuses with a reason when the group has nothing left to repair (already fully mint), never an empty log', () => {
       const mintCar = buildCarInstance({ id: car.id, modelId: car.modelId })
       const result = findOrCreateJob(baseState({ ownedCars: [mintCar] }), spec, CONTEXT)
       expect(result.job).toBeNull()
-      expect(result.log).toEqual([])
+      expect(result.log).toEqual([
+        {
+          type: 'job-blocked',
+          jobId: 'job-car-0001-repair-zone-body',
+          reason: 'nothing-to-repair',
+        },
+      ])
     })
 
     it('install-part job creation charges nothing here (the part itself is bought separately)', () => {
@@ -904,6 +912,95 @@ describe('findOrCreateJob (Sprint 11)', () => {
   })
 })
 
+/**
+ * The grade rule: a SKU's own grade asks its own tool line for
+ * `economy.toolCeilings.installGradeToolLevel[grade]` before it can be fitted.
+ * It costs no authoring rows, because `grade` is already on every SKU, and it
+ * is checked on INSTALL only - a race part that arrived on a bought car or
+ * came off a stripped donor is still yours to pull, keep and sell.
+ */
+describe('the capability gate: the grade ladder', () => {
+  const raceDamper = CONTEXT.aftermarketPartByCarPartId.entry.dampers.race!
+  const sportDamper = CONTEXT.aftermarketPartByCarPartId.entry.dampers.sport!
+
+  function damperInstance(partId: string): PartInstance {
+    return { id: 'pi-damper', partId, band: 'mint', origin: makeMarketOrigin(1) }
+  }
+
+  function installGateFor(instance: PartInstance, suspensionTier: 1 | 2) {
+    return installFitGate(
+      baseState({
+        partInventory: [instance],
+        toolTiers: testToolTiers({ suspension: suspensionTier }),
+      }),
+      {
+        carInstanceId: car.id,
+        kind: 'install-part',
+        componentId: 'suspension',
+        partInstanceId: instance.id,
+        carPartId: 'dampers',
+        laborSlotsRequired: 1,
+      },
+      CONTEXT,
+    )
+  }
+
+  it('is exactly the four signed levels', () => {
+    expect(CONTEXT.economy.toolCeilings.installGradeToolLevel).toEqual({
+      stock: 1,
+      street: 1,
+      sport: 1,
+      race: 2,
+    })
+  })
+
+  it("refuses a race part on a line at rung 1 (reason 'tool-tier') and fits it at rung 2", () => {
+    const instance = damperInstance(raceDamper.id)
+    expect(installGateFor(instance, 1)).toEqual({
+      ok: false,
+      log: [
+        {
+          type: 'job-blocked',
+          jobId: 'job-car-0001-install-part-suspension-dampers',
+          reason: 'tool-tier',
+        },
+      ],
+    })
+    expect(installGateFor(instance, 2)).toEqual({ ok: true })
+  })
+
+  it('leaves everything below race fitting at the level every line starts on', () => {
+    expect(installGateFor(damperInstance(sportDamper.id), 1)).toEqual({ ok: true })
+    const stockDamper = CONTEXT.stockPartByCarPartId.entry.dampers
+    expect(installGateFor(damperInstance(stockDamper.id), 1)).toEqual({ ok: true })
+  })
+
+  it('names the line and the level it wants, so the refusal can say which tool', () => {
+    const state = baseState({ toolTiers: testToolTiers({ suspension: 1 }) })
+    expect(partCapabilityRequirement(raceDamper, car, state, CONTEXT)).toEqual({
+      group: 'suspension',
+      level: 2,
+    })
+    expect(partCapabilityRequirement(sportDamper, car, state, CONTEXT)).toBeNull()
+  })
+
+  it('gates fitting a race part, never pulling one off', () => {
+    const fitted: CarInstance = {
+      ...car,
+      parts: { ...car.parts, dampers: { installed: damperInstance(raceDamper.id) } },
+    }
+    const state = baseState({
+      ownedCars: [fitted],
+      toolTiers: testToolTiers({ suspension: 1 }),
+    })
+    // The same shop that cannot fit it can still take it off and sell it.
+    expect(partCapabilityRequirement(raceDamper, fitted, state, CONTEXT)).not.toBeNull()
+    const removed = resolveRemovePart(state, fitted.id, 'dampers', CONTEXT)
+    expect(removed.state.ownedCars[0]?.parts.dampers.installed).toBeNull()
+    expect(removed.state.partInventory.some((p) => p.id === 'pi-damper')).toBe(true)
+  })
+})
+
 describe('repairJobGate (Sprint 26 real cost; Sprint 36: no ownership gate)', () => {
   it('passes install-part specs through untouched', () => {
     const state = baseState()
@@ -921,7 +1018,7 @@ describe('repairJobGate (Sprint 26 real cost; Sprint 36: no ownership gate)', ()
     expect(gate).toEqual({ ok: true, state })
   })
 
-  it('refuses when every part in the target group is scrap - nothing repairable', () => {
+  it("refuses when every part in the target group is scrap, reason 'beyond-repair' - a shell past saving wants replacing, and says so", () => {
     const scrapCar = buildCarInstance({
       id: car.id,
       modelId: car.modelId,
@@ -933,12 +1030,52 @@ describe('repairJobGate (Sprint 26 real cost; Sprint 36: no ownership gate)', ()
         carInstanceId: car.id,
         kind: 'repair-zone',
         componentId: 'body',
-        targetBand: 'mint',
+        carPartId: 'chassis',
+        targetBand: 'fine',
         laborSlotsRequired: 1,
       },
       CONTEXT,
     )
-    expect(gate.ok).toBe(false)
+    expect(gate).toEqual({
+      ok: false,
+      log: [
+        {
+          type: 'job-blocked',
+          jobId: 'job-car-0001-repair-zone-body-chassis',
+          reason: 'beyond-repair',
+        },
+      ],
+    })
+  })
+
+  it("refuses a group with nothing left below the target, reason 'nothing-to-repair' - distinct from a group that is past saving", () => {
+    const mintCar = buildCarInstance({
+      id: car.id,
+      modelId: car.modelId,
+      parts: mintCarParts(),
+    })
+    const gate = repairJobGate(
+      baseState({ ownedCars: [mintCar] }),
+      {
+        carInstanceId: car.id,
+        kind: 'repair-zone',
+        componentId: 'body',
+        carPartId: 'chassis',
+        targetBand: 'fine',
+        laborSlotsRequired: 1,
+      },
+      CONTEXT,
+    )
+    expect(gate).toEqual({
+      ok: false,
+      log: [
+        {
+          type: 'job-blocked',
+          jobId: 'job-car-0001-repair-zone-body-chassis',
+          reason: 'nothing-to-repair',
+        },
+      ],
+    })
   })
 
   it("refuses an on-car repair-zone job addressed at a bolt-on/buried part, reason 'bench-only'", () => {

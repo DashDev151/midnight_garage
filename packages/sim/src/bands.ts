@@ -391,6 +391,12 @@ export interface GroupRepairPlan {
    * anything already at or above `targetBand`. Empty means there is nothing
    * to repair in this group right now. */
   partIds: CarPartId[]
+  /** In-scope parts a repair can never move at all: scrap, or a taxonomy
+   * entry that is replaced rather than repaired. A part that is simply
+   * already at or above `targetBand` appears in neither list, which is what
+   * separates "past saving" from "nothing left to do" for a caller that has
+   * to explain an empty `partIds`. */
+  unrepairablePartIds: CarPartId[]
 }
 
 /**
@@ -437,6 +443,7 @@ export function planGroupRepair(
   let laborSlotsRequired = 0
   let costYen = 0
   const partIds: CarPartId[] = []
+  const unrepairablePartIds: CarPartId[] = []
   const candidateIds = presentPartIdsInGroup(car, groupId, partIdsByGroup).filter(
     (partId) => !onlyPartId || partId === onlyPartId,
   )
@@ -451,6 +458,13 @@ export function planGroupRepair(
     const entry = partsTaxonomyById[partId]
     if (!entry) continue
     if (entry.removable) continue // bench-only - see doc comment above
+    // Past saving, and named as such: a scrap or replace-only part sizes to a
+    // zero plan below exactly as an already-good one does, and only this
+    // split tells the two apart.
+    if (!canRepair(installed.band, entry)) {
+      unrepairablePartIds.push(partId)
+      continue
+    }
     const catalogPart = partsById[installed.partId]
     if (!catalogPart) continue
     const plan = planPartRepair(
@@ -473,7 +487,7 @@ export function planGroupRepair(
     laborSlotsRequired -= crewEnergySaved(laborSlotsRequired, groupId, crew.staff, crew.economy)
     costYen = Math.round(costYen * perfectionistCostMultiplier(crew.staff, crew.economy))
   }
-  return { laborSlotsRequired, costYen, partIds }
+  return { laborSlotsRequired, costYen, partIds, unrepairablePartIds }
 }
 
 /**

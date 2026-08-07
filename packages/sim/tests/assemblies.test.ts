@@ -627,6 +627,89 @@ describe('the fitment law applies at the bench, not only on the car', () => {
   })
 })
 
+/**
+ * The bench is an install path, so it answers to the same capability gate the
+ * car does (`partCapabilityRequirement`, jobs.ts) - otherwise a race part a
+ * shop cannot fit could simply be mounted into an assembly and carried on.
+ * It is also the one refusal at the bench that says why.
+ */
+describe('the capability gate applies at the bench', () => {
+  const raceRims = CONTEXT.aftermarketPartByCarPartId.entry.rims.race!
+
+  function raceRimInstance(id: string): PartInstance {
+    return { id, partId: raceRims.id, band: 'mint', origin: makeMarketOrigin(1) }
+  }
+
+  it('refuses a race member into a container pulled off a car while the line is at rung 1, and says so', () => {
+    const car = wheelsWornCar()
+    const rim = raceRimInstance('pi-race-rim')
+    const state = baseState({
+      ownedCars: [car],
+      partInventory: [rim],
+      serviceBayCarIds: [car.id],
+      toolTiers: testToolTiers({ wheels: 1 }),
+    })
+    const off = resolveRemoveAssembly(state, car.id, 'wheelAssembly', CONTEXT)
+    const container = off.state.assemblyInventory![0]!
+    const swap = resolveSwapAssemblyMember(off.state, container.id, 'rims', rim.id, CONTEXT)
+    expect(swap.ok).toBe(false)
+    expect(swap.state).toBe(off.state)
+    expect(swap.log).toEqual([
+      { type: 'job-blocked', jobId: `bench-${container.id}-rims`, reason: 'tool-tier' },
+    ])
+  })
+
+  it('fits the same member once the line stands at rung 2', () => {
+    const car = wheelsWornCar()
+    const rim = raceRimInstance('pi-race-rim-2')
+    const state = baseState({
+      ownedCars: [car],
+      partInventory: [rim],
+      serviceBayCarIds: [car.id],
+      toolTiers: testToolTiers({ wheels: 2 }),
+    })
+    const off = resolveRemoveAssembly(state, car.id, 'wheelAssembly', CONTEXT)
+    const container = off.state.assemblyInventory![0]!
+    const swap = resolveSwapAssemblyMember(off.state, container.id, 'rims', rim.id, CONTEXT)
+    expect(swap.ok).toBe(true)
+    expect(swap.state.assemblyInventory![0]!.members.rims!.id).toBe(rim.id)
+  })
+
+  it('catches a bench-built assembly on its way onto a car, which is where its members first meet one', () => {
+    const rim = raceRimInstance('pi-race-rim-3')
+    const tyre = newTyre('pi-tyre-with-race-rim')
+    const car = buildCarInstance({
+      id: 'car-bare-race-rims',
+      modelId: 'honda-city-e-aa',
+      parts: mintCarParts({ rims: null, tyres: null }),
+    })
+    const state = baseState({
+      ownedCars: [car],
+      partInventory: [rim, tyre],
+      serviceBayCarIds: [car.id],
+      toolTiers: testToolTiers({ wheels: 1 }),
+    })
+    const built = resolveBuildAssembly(
+      state,
+      'wheelAssembly',
+      { rims: rim.id, tyres: tyre.id },
+      CONTEXT,
+    )
+    expect(built.ok).toBe(true)
+    const container = built.state.assemblyInventory![0]!
+    const refit = resolveRefitAssembly(built.state, container.id, CONTEXT, Infinity, car.id)
+    expect(refit.ok).toBe(false)
+    expect(refit.log).toEqual([
+      {
+        type: 'job-blocked',
+        jobId: `assembly-refit-${container.id}-rims`,
+        reason: 'tool-tier',
+      },
+    ])
+    expect(refit.state.ownedCars[0]!.parts.rims.installed).toBeNull()
+  })
+})
+
 describe('a standard tyre/brake service job payout always covers its task cost', () => {
   // The bread-and-butter tyre/brake service templates. The wheels machine
   // hire fee never lands on a single job's margin - it's a running cost, the

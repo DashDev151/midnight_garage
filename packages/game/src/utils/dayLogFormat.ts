@@ -80,6 +80,30 @@ export function machineLineGateCopy(group: ComponentId): string {
   return `Needs the ${MACHINE_LINE_NAMES[group]} for today. Hire it for the day, or buy your own.`
 }
 
+type JobBlockedReason = Extract<DayLogEntry, { type: 'job-blocked' }>['reason']
+
+/**
+ * What each refusal reason reads as in the day report - a plain sentence
+ * naming what stopped the work and, where there is one, the way round it.
+ * The sim's reasons are internal tokens and no player ever sees one. Keyed
+ * exhaustively, so a new reason is a compile error here rather than a token
+ * leaking onto the screen.
+ */
+const JOB_BLOCKED_REASON_COPY: Record<JobBlockedReason, string> = {
+  'slot-occupied': 'that slot was already filled by the time the work came round.',
+  'not-in-service-bay': 'the car has to be in a service bay before anyone can work on it.',
+  'part-does-not-fit': 'that part does not fit this car.',
+  'tool-tier': 'the shop has not got the tools for that yet.',
+  'not-your-part': "that part came off a customer's car and goes back on it.",
+  'bench-only': 'that part comes off and goes on the bench before it can be put right.',
+  'blocked-by': 'something has to come off first to reach it.',
+  'machine-line': 'the machinery for that line is neither owned nor hired today.',
+  'derived-band': 'bodywork goes through the panel stages, not a straight repair.',
+  'out-of-stock': 'the shelf is short of what that stage needs.',
+  'beyond-repair': 'it is past saving. Fit a replacement instead.',
+  'nothing-to-repair': 'nothing there was below the band you asked for.',
+}
+
 /** `count noun` with an `s` on the noun unless the count is exactly 1 - the
  * one place count copy is pluralised, so "1 lots" can never come back.
  * Handles only regular `-s` plurals, which is every count noun the day report uses. */
@@ -121,7 +145,7 @@ export function describeLogEntry(
         ? `Dyno run finished on ${entry.carInstanceId}`
         : `Job complete (${entry.kind}) on ${entry.carInstanceId}`
     case 'job-blocked':
-      return `Job ${entry.jobId} blocked (${entry.reason})`
+      return `Work stopped: ${JOB_BLOCKED_REASON_COPY[entry.reason]}`
     case 'labor-overbooked':
       return `Labour overbooked: wanted ${entry.requestedSlots}, had ${entry.availableSlots}`
     case 'contract-income':

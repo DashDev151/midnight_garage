@@ -7,7 +7,9 @@ import {
   type DayLogEntry,
   type GameState,
   type Job,
+  type Part,
   type PartInstance,
+  type ToolLevel,
 } from '@midnight-garage/content'
 import type { NewJobSpec } from './actions'
 import {
@@ -844,8 +846,10 @@ function chargeRepairWork(
  * hired for today.
  *
  * Repair-zone charges the real yen cost of the work from `planGroupRepair`'s
- * `costYen`, nothing else. A group with nothing left to repair (all parts at
- * or above target, or scrap) refuses quietly. `install-part` is a no-op here
+ * `costYen`, nothing else. A group with nothing left to repair refuses with a
+ * reason, `beyond-repair` when something in it is past saving and
+ * `nothing-to-repair` when it is simply already good enough - the screen has
+ * to be able to say which. `install-part` is a no-op here
  * (charges only the part itself, bought separately). Shared by the player's
  * instant `findOrCreateJob` path and advanceDay's bot batch job-creation.
  */
@@ -917,9 +921,14 @@ export function repairJobGate(
     { staff: state.staff, economy: context.economy },
   )
   if (plan.partIds.length === 0) {
-    // Nothing repairable is below the target band right now (all mint
-    // already, or every part in the group is scrap) - a silent no-op.
-    return { ok: false, log: [] }
+    // Nothing climbs, and the two ways that happens want different answers
+    // from the player: something here is past saving and wants replacing
+    // (`beyond-repair`), or the work was already done (`nothing-to-repair`).
+    const reason = plan.unrepairablePartIds.length > 0 ? 'beyond-repair' : 'nothing-to-repair'
+    return {
+      ok: false,
+      log: [{ type: 'job-blocked', jobId: jobIdFor(spec), reason }],
+    }
   }
 
   // A repair that climbs a suspension/body/interior signature slot needs
@@ -963,16 +972,106 @@ export function repairJobGate(
 
 export type InstallFitGate = { ok: true } | { ok: false; log: DayLogEntry[] }
 
+/** One tool line standing at one level - what fitting a given part asks of the
+ * shop, and what the refusal names. */
+export interface ToolRequirement {
+  group: ComponentId
+  level: ToolLevel
+}
+
+/** Whether the shop's lines currently stand high enough for `requirement`.
+ * Capability is read off the LEVEL alone (`toolLevelsFor`, so a rung and the
+ * shop above it are one ladder); a day's machine hire buys the machinery for
+ * an operation, never a line's capability, so it is deliberately not consulted
+ * here. */
+function meetsToolRequirement(
+  requirement: ToolRequirement,
+  state: GameState,
+  context: SimContext,
+): boolean {
+  return toolLevelsFor(state, context)[requirement.group] >= requirement.level
+}
+
 /**
- * The one own-car capability ceiling (progression bible's bolt-on vs built
- * line). Converting a factory-NA car to forced induction - fitting the FIRST
- * turbo/supercharger into a legitimately-empty slot - is fabrication work,
- * gated behind `economy.toolCeilings.naToTurboConversionEngineTier`, read
- * against the engine line's LEVEL - at 3 that means owning the shop covering
- * the engine line. A car that already carries forced induction (factory or
- * from a previous conversion) swaps freely at any level; only the first
- * conversion is gated. Exported so the UI can pre-empt the same refusal
- * `installFitGate` below enforces, one source of truth for both.
+ * The NA-to-turbo rule, structurally: what fitting `carPartId` onto `model`
+ * asks of the engine line, or `null` when the rule does not apply. Converting
+ * a factory-NA car to forced induction - fitting the FIRST turbo/supercharger
+ * into a legitimately-empty slot - is fabrication work, gated behind
+ * `economy.toolCeilings.naToTurboConversionEngineTier`; at 3 that means owning
+ * the shop covering the engine line. A car that already carries forced
+ * induction (factory) swaps freely at any level.
+ */
+function naToTurboRequirement(
+  carPartId: CarPartId,
+  model: CarModel,
+  context: SimContext,
+): ToolRequirement | null {
+  if (carPartId !== 'forcedInduction' || hasForcedInduction(model)) return null
+  return {
+    group: 'engine',
+    level: context.economy.toolCeilings.naToTurboConversionEngineTier,
+  }
+}
+
+/**
+ * The grade rule, structurally: a SKU's own grade asks its own line for
+ * `economy.toolCeilings.installGradeToolLevel[grade]`. The part declares
+ * nothing - `grade` and `carPartId` are already on all 580 SKUs, so this costs
+ * no authoring rows. `null` only for a `carPartId` the taxonomy cannot
+ * resolve, matching every other taxonomy lookup's own defensive fallback.
+ */
+function gradeRequirement(part: Part, context: SimContext): ToolRequirement | null {
+  const group = context.partsTaxonomyById[part.carPartId]?.group
+  if (!group) return null
+  return { group, level: context.economy.toolCeilings.installGradeToolLevel[part.grade] }
+}
+
+/**
+ * The one capability gate on INSTALLING a part: the requirement that refuses
+ * `part` onto `car` right now, or `null` when the shop can fit it. Every
+ * install path runs this - the ordinary slot path (`installFitGate` below,
+ * which bots call directly), the bench (`resolveSwapAssemblyMember` and the
+ * foreign-car half of `resolveRefitAssembly`, assemblies.ts) and the nine body
+ * zones (`resolvePipelineInstallPanelAction`, stagedWork.ts) - so there is one
+ * answer rather than one per path.
+ *
+ * The rules compose in order and the first UNMET one is returned, so the
+ * refusal names the requirement that actually binds. Every rule names the
+ * part's own line, so a stricter rule earlier in the list can never hide a
+ * looser one later: NA-to-turbo asks the engine line for 3, above anything the
+ * grade ladder asks of it.
+ *
+ * A part declares no requirement of its own: each rule derives its (group,
+ * level) pair from what the SKU already carries (`grade`, `carPartId`) and
+ * from the car's own state. A widebody rule - sport and race zone panels
+ * asking the body line for 3 - is one more entry here between the two below,
+ * derived from `part.zoneId` and `part.grade`, once its level is signed.
+ *
+ * Only INSTALL is gated. Removal runs none of this, so a race part that
+ * arrived on a bought car or came off a stripped donor can still be pulled,
+ * kept and sold by a shop that could not have fitted it.
+ */
+export function partCapabilityRequirement(
+  part: Part,
+  car: CarInstance,
+  state: GameState,
+  context: SimContext,
+): ToolRequirement | null {
+  const model = context.modelsById[car.modelId]
+  const rules = [
+    model ? naToTurboRequirement(part.carPartId, model, context) : null,
+    gradeRequirement(part, context),
+  ]
+  for (const requirement of rules) {
+    if (requirement && !meetsToolRequirement(requirement, state, context)) return requirement
+  }
+  return null
+}
+
+/**
+ * Whether the NA-to-turbo conversion rule refuses this fit right now - the
+ * one rule above, read as a yes/no. Exported so the UI can pre-empt the same
+ * refusal `installFitGate` below enforces, one source of truth for both.
  */
 export function naToTurboConversionBlocked(
   carPartId: CarPartId,
@@ -980,11 +1079,8 @@ export function naToTurboConversionBlocked(
   state: GameState,
   context: SimContext,
 ): boolean {
-  if (carPartId !== 'forcedInduction' || hasForcedInduction(model)) return false
-  return (
-    toolLevelsFor(state, context).engine <
-    context.economy.toolCeilings.naToTurboConversionEngineTier
-  )
+  const requirement = naToTurboRequirement(carPartId, model, context)
+  return requirement !== null && !meetsToolRequirement(requirement, state, context)
 }
 
 /**
@@ -1058,9 +1154,9 @@ export function installFitGate(
   if (owningJob && owningJob.car.id !== spec.carInstanceId) {
     return { ok: false, log: [{ type: 'job-blocked', jobId: id, reason: 'not-your-part' }] }
   }
-  // model and part are both guaranteed defined here (part of the `fits`
+  // car and part are both guaranteed defined here (part of the `fits`
   // conjunction above) - TS doesn't narrow through the boolean variable.
-  if (naToTurboConversionBlocked(part!.carPartId, model!, state, context)) {
+  if (partCapabilityRequirement(part!, car!, state, context)) {
     return { ok: false, log: [{ type: 'job-blocked', jobId: id, reason: 'tool-tier' }] }
   }
   // Install requires every `blockedBy` slot for the TARGET address empty,

@@ -33,35 +33,43 @@ const game = useGameStore()
 const componentId = computed(() => game.groupForCarPart(props.carPartId))
 
 /**
- * When set, every candidate in this drawer is dimmed with this specific
- * reason instead of the generic "doesn't fit here" hint, since the block
- * isn't about any one part's fit, it's the slot itself not being buildable
- * yet. A bench-mode drawer (fitting a benched assembly member) reads the
- * member's own machine-shop gate (only ever the wheel machinery, for tyres);
- * an on-car drawer reads the NA-to-turbo capability ceiling instead - the
- * two gates never overlap, since an assembly member never has an on-car
- * Replace affordance of its own.
+ * The whole slot's own machine-shop gate, which no single part can get round -
+ * only ever set in bench mode (fitting a benched assembly member, where the
+ * wheel machinery gates a tyre swap). An on-car drawer has no slot-wide gate:
+ * every capability refusal it can hit is a fact about the part, and is read
+ * per part below.
  */
-const blockedReason = computed(() =>
-  props.benchContainerId
-    ? game.benchSwapGateReasonFor(props.carPartId)
-    : game.installBlockedReason(props.carId, props.carPartId),
+const slotBlockedReason = computed(() =>
+  props.benchContainerId ? game.benchSwapGateReasonFor(props.carPartId) : null,
 )
 
-/** Every stageable part addressed to this exact slot, each flagged with
- * whether it actually fits this specific car (platform tags) and excluding
- * scrap (never installable anywhere). */
+/**
+ * Every stageable part addressed to this exact slot, each flagged with
+ * whether it can go on right now and, when it cannot, why. Excludes scrap
+ * (never installable anywhere).
+ *
+ * Two refusals, and they are different facts. A part that FITS but wants a
+ * tool line the shop has not got names that tool: it is on hand, it is
+ * reachable, and the sentence is an advert for what would fit it. A part that
+ * will never fit this car names nothing, because no purchase changes it.
+ * They sort in that order too - installable first, then the tool-gated, then
+ * the ones this car has no use for - so the list reads as what you can do,
+ * what you could do, and what you cannot.
+ */
 const entries = computed(() => {
   const fitting = new Set(
     game.installablePartsForPart(props.carId, props.carPartId).map((p) => p.id),
   )
+  const rank = (fits: boolean, reason: string | null): number => (fits ? 0 : reason ? 1 : 2)
   return game.stageableParts
     .filter((entry) => entry.part.carPartId === props.carPartId && entry.instance.band !== 'scrap')
-    .map((entry) => ({
-      ...entry,
-      fits: fitting.has(entry.instance.id) && !blockedReason.value,
-      noFitReason: blockedReason.value,
-    }))
+    .map((entry) => {
+      const noFitReason =
+        slotBlockedReason.value ?? game.installToolGateReasonFor(props.carId, entry.part.id)
+      const fits = fitting.has(entry.instance.id) && !noFitReason
+      return { ...entry, fits, noFitReason, rank: rank(fits, noFitReason) }
+    })
+    .sort((a, b) => a.rank - b.rank)
 })
 
 function onSelect(partInstanceId: string): void {

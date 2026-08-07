@@ -1,5 +1,6 @@
 import {
   ALL_CAR_PART_IDS,
+  fitmentClassForTier,
   PhysicalDialSchema,
   type CarInstance,
   type CarModel,
@@ -12,7 +13,7 @@ import {
   type StatBlock,
 } from '@midnight-garage/content'
 import { bandFactor, hasForcedInduction, isPartMissing, isPartPresent } from './bands'
-import { panelsAreAllStock } from './bodyPipeline'
+import { panelsAreAllStock, zonePanelStylePoints } from './bodyPipeline'
 import {
   balanceOf,
   effectiveCompound,
@@ -263,6 +264,16 @@ export function authenticityPercentOf(
  * `conditionFactor` multiplies the WHOLE result, not just the base, so a
  * rough car does not look good however it is dressed and a poor-condition
  * maxed-out build always reads below a mint one.
+ *
+ * **`panels` is the one slot read off the car rather than off its carrier
+ * SKU**, on a car that has a `zoneState` - the same exception `stocknessOf`
+ * already makes for the same reason. Every non-stock panel SKU is zone-scoped
+ * and reaches a car through `zoneState[zoneId].panelGrade`, never through
+ * `car.parts.panels.installed.partId`, so the carrier's own SKU cannot answer
+ * what the body looks like. `zonePanelStylePoints` (bodyPipeline.ts) answers
+ * it from the nine zones instead, and the points still scale by the carrier's
+ * own band, which is the worst of those same zones: a widebody with a bent
+ * wing is a bent widebody.
  */
 export function stylePercentOf(
   car: CarInstance,
@@ -278,7 +289,12 @@ export function stylePercentOf(
     if (!installed) continue
     const part = partsById[installed.partId]
     if (!part) continue
-    const points = part.statModifiers.style + machiningStylePointsOf(installed, economy)
+    const zonePoints =
+      partId === 'panels' && car.zoneState
+        ? zonePanelStylePoints(car.zoneState, partsById, fitmentClassForTier(model.tier))
+        : 0
+    const carrierPoints = partId === 'panels' && car.zoneState ? 0 : part.statModifiers.style
+    const points = carrierPoints + zonePoints + machiningStylePointsOf(installed, economy)
     fitted += points * bandFactor(installed.band, economy)
   }
   const reach = Math.min(1, fitted / economy.statFormulas.styleSaturationPoints)

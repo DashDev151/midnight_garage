@@ -220,6 +220,20 @@ pass."
 
 ## Open engineering
 
+- [ ] **The pre-push gate flaked once and could not be diagnosed.** On the tool-ladder push it
+  reported `Test Files 1 failed (205), Tests 2 failed (4207)` and the hook's output was truncated
+  before the failure block, so the file was never named. Two subsequent full `pnpm test:coverage`
+  runs passed clean at 4207, and the push then went through.
+
+  **Nothing was changed to make it pass**, which is the only reason this is a note rather than a
+  fix: re-running until green is not a diagnosis. The suspicion is a timeout under load (the suite
+  runs about 350 seconds, and `packages/sim/vitest.config.ts` already carries a raised
+  `testTimeout` from when the roster doubled), but that is a guess.
+
+  If it recurs, capture the failure block before anything else: `pnpm test:coverage` piped through
+  a filter that keeps `FAIL` and the assertion lines, rather than the tail, which is what lost it
+  the first time.
+
 - [ ] **Should a tool purchase need reputation at all? (maintainer, 2026-08-07, deferred by them.)**
   Ruling the same day: tools are gated by money and never by scene standing, *"anyone can buy a
   tool. Doesn't mean you are good with it. The market decides."* Every tier 2 additionally requires
@@ -372,6 +386,24 @@ pass."
   non-stock. That is a real decision about a core stat with more than one defensible answer (worst
   governs, any-non-stock, or a `stocknessOf` special case reading zones directly), which is why it
   was not invented unreviewed. `paint` is unaffected: its whole-car ladder is untouched.
+
+- [ ] **GENERATION FITS ZONE-SCOPED PANELS INTO THE WHOLE-CAR `panels` CARRIER: about 5 per cent of
+  lots are born wearing a part that cannot exist there (measured Sprint 191, flagged rather than
+  fixed).** `indexAftermarketPartsByCarPartId` (`sim/context.ts`) indexes every non-stock SKU by
+  `carPartId` WITHOUT excluding `zoneId` SKUs, which its sibling `indexStockPartsByCarPartId` does
+  exclude, so `aftermarketPartByCarPartId[class].panels` resolves to whichever zone panel happens
+  to come last in the file (a skirt kit, in shipped content). The generation aftermarket roll then
+  fits it into the carrier slot. Measured on 600 generated lots: **32 of them**, e.g.
+  `nissan-silvia-ks-s14` wearing `uncommon-frp-skirt-kit` as its whole body. `partFitsCar` refuses
+  the same SKU on every path a player can take, so this is generation-only.
+
+  **The one-line fix is obvious** (exclude `part.zoneId != null` from that index, exactly as the
+  stock index does) **and it moves sim output**, which is why it was not taken in Sprint 191: the
+  carrier falls back to the stock SKU, whose catalogue price is many times a skirt kit's, so the
+  restoration bill and market value move on those cars, and the golden hashes with them. It wants
+  its own change with the re-derivation done honestly. Sprint 191 closed the visible half only:
+  `stylePercentOf` now reads the panels slot off the zones on a zone-model car, so those cars no
+  longer collect style points from a body they are not wearing.
 
 - [ ] **`docs/carstats/` needs a re-measure: Sprint 166 moved three of the things it measured.**
   Those five documents are a measurement snapshot, and the sprint they produced changed the code

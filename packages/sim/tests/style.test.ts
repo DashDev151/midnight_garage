@@ -8,9 +8,13 @@ import {
   type CarModel,
   type CarPartId,
   type ConditionBand,
+  type Grade,
   type Part,
+  type ZoneState,
+  type ZoneStates,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
+import { METAL_ZONE_IDS, TRIM_ZONE_IDS, zonePanelStylePoints } from '../src/bodyPipeline'
 import { computeDerivedStats } from '../src/derivedStats'
 import { buildCarInstance, mintCarParts, uniformCarParts } from './testFixtures'
 import type { CarPartOverride } from './testFixtures'
@@ -31,15 +35,20 @@ const SATURATION = ECONOMY.statFormulas.styleSaturationPoints
 
 const PARTS_BY_ID: Record<string, Part> = Object.fromEntries(PARTS.map((p) => [p.id, p]))
 
-/** Every style-bearing slot, and the highest-style SKU in each at a given
- * fitment class - resolved from the catalogue itself rather than a
- * hand-listed set of SKU ids, so an added or repriced part cannot leave this
- * file asserting against a build the game can no longer make. */
+/** Every style-bearing slot a part can actually be INSTALLED into, and the
+ * highest-style SKU in each at a given fitment class - resolved from the
+ * catalogue itself rather than a hand-listed set of SKU ids, so an added or
+ * repriced part cannot leave this file asserting against a build the game can
+ * no longer make. Zone-scoped panels are excluded because they are not
+ * installable parts at all: `partFitsCar` refuses any SKU carrying a `zoneId`,
+ * and a panel reaches a car through its zone (`panelsAtGrade` below), which is
+ * where this file exercises them. */
 function bestStylePartsFor(model: CarModel): Part[] {
   const fitmentClass = fitmentClassForTier(model.tier)
   const bestBySlot = new Map<string, Part>()
   for (const part of PARTS) {
     if (part.fitmentClass !== fitmentClass) continue
+    if (part.zoneId != null) continue
     if (!part.statModifiers.style) continue
     const held = bestBySlot.get(part.carPartId)
     if (!held || part.statModifiers.style > held.statModifiers.style) {
@@ -49,10 +58,32 @@ function bestStylePartsFor(model: CarModel): Part[] {
   return [...bestBySlot.values()]
 }
 
+/** All nine zones present and clean, each wearing a panel of `grade` - what a
+ * player who has fitted a full kit through the panel pipeline is looking at.
+ * `stock` is the untouched car every other fixture in this file implies. */
+function panelsAtGrade(grade: Grade): ZoneStates {
+  const states = {} as Record<string, ZoneState>
+  for (const zoneId of METAL_ZONE_IDS) {
+    states[zoneId] = {
+      metal: 0,
+      surface: 0,
+      finish: 0,
+      panelMissing: false,
+      primed: false,
+      panelGrade: grade,
+    }
+  }
+  for (const zoneId of TRIM_ZONE_IDS) {
+    states[zoneId] = { finish: 0, panelMissing: false, primed: false, panelGrade: grade }
+  }
+  return states as ZoneStates
+}
+
 function carWithParts(
   model: CarModel,
   parts: readonly Part[],
   band: ConditionBand = 'mint',
+  panelGrade?: Grade,
 ): CarInstance {
   const overrides: Partial<Record<CarPartId, CarPartOverride>> = {}
   for (const part of parts) {
@@ -63,7 +94,11 @@ function carWithParts(
       origin: { kind: 'market', day: 1 },
     }
   }
-  return buildCarInstance({ modelId: model.id, parts: mintCarParts(overrides) })
+  return buildCarInstance({
+    modelId: model.id,
+    parts: mintCarParts(overrides),
+    ...(panelGrade ? { zoneState: panelsAtGrade(panelGrade) } : {}),
+  })
 }
 
 function styleOf(model: CarModel, instance: CarInstance): number {
@@ -83,18 +118,21 @@ describe("the two ends of a car's own range", () => {
     }
   })
 
+  /** A build a player can actually make: the best SKU in every installable
+   * style-bearing slot, plus a full race widebody fitted the only way a
+   * widebody is fitted, zone by zone. */
   it('a fully dressed mint car scores exactly its own styleCeiling, on every shipped car', () => {
     for (const model of CARS) {
-      const dressed = carWithParts(model, bestStylePartsFor(model))
+      const dressed = carWithParts(model, bestStylePartsFor(model), 'mint', 'race')
       expect(styleOf(model, dressed), model.id).toBe(model.spec.styleCeiling)
     }
   })
 
   /**
-   * Saturation, not a cap on the sum: the best part in every style-bearing
-   * slot totals 88 points against a saturation of 66, so the last 22 buy
-   * nothing. Fitting a strict subset that already clears 66 must land on the
-   * same ceiling as fitting everything.
+   * Saturation, not a cap on the sum: the best part in every installable
+   * style-bearing slot totals 103 points against a saturation of 66, so the
+   * last 37 buy nothing. Fitting a strict subset that already clears 66 must
+   * land on the same ceiling as fitting everything.
    */
   it('fitting more style parts past saturation changes nothing', () => {
     const all = bestStylePartsFor(eg6)
@@ -239,7 +277,7 @@ describe('the style catalogue spreads across the car', () => {
     const total = descending.reduce((sum, value) => sum + value, 0)
     const topThree = descending.slice(0, 3).reduce((sum, value) => sum + value, 0)
     // The defect this bar exists for measured 83 per cent in the top three
-    // slots, on 68 points against a saturation of 60. Now 47 of 123.
+    // slots, on 68 points against a saturation of 60. Now 47 of 115.
     expect(topThree / total, `top three of ${total} points`).toBeLessThan(0.55)
     // ...and no three slots can finish a car on their own any more.
     expect(topThree, 'the loudest three slots against saturation').toBeLessThan(SATURATION)
@@ -265,9 +303,9 @@ describe('the style catalogue spreads across the car', () => {
   it('takes two parts to buy half a car of headroom, four for four fifths and five for all of it', () => {
     // The measurement the flattening is FOR. Best-in-slot parts fitted loudest
     // first, which is the cheapest possible route to a ceiling: anything else a
-    // player does takes more parts than this, never fewer. Thirteen slots carry
-    // style and 123 points are on offer against a saturation of 66, so the
-    // route to the ceiling is five of the thirteen.
+    // player does takes more parts than this, never fewer. Twelve slots carry
+    // style and 115 points are on offer against a saturation of 66, so the
+    // route to the ceiling is five of the twelve.
     const descending = [...bestBySlot().values()].sort((a, b) => b - a)
     const partsToReach = (fraction: number) => {
       let fitted = 0
@@ -280,6 +318,80 @@ describe('the style catalogue spreads across the car', () => {
     expect(partsToReach(0.5), 'parts to half the gap').toBe(2)
     expect(partsToReach(0.8), 'parts to four fifths of the gap').toBe(4)
     expect(partsToReach(1), 'parts to the whole gap').toBe(5)
+  })
+})
+
+/**
+ * The 144 zone-scoped panel SKUs carry authored style points (street 5, sport
+ * 9, race 12) and, until the panels slot was read off the zones, none of them
+ * could ever reach a car: `partFitsCar` refuses a `zoneId` SKU, so a fitted
+ * widebody moved nothing but authenticity and the paint band, downwards.
+ *
+ * The body is ONE slot, and it pays like one. The nine zones contribute their
+ * mean, so a car wearing one grade all round delivers exactly the points that
+ * grade's panel is authored with, and a pair of over-fenders delivers two
+ * ninths of it. Nine zones each paying in full would put a race widebody at
+ * 108 points against a saturation of 66 - a single purchase that finishes the
+ * stat and makes every other style part on that car worth nothing.
+ */
+describe("a widebody reaches style, at one slot's worth", () => {
+  const panelled = (model: CarModel, grade: Grade) =>
+    buildCarInstance({ modelId: model.id, parts: mintCarParts(), zoneState: panelsAtGrade(grade) })
+
+  /** The authored ladder, read off the SKUs rather than restated here. */
+  const panelStyleFor = (grade: Grade) =>
+    PARTS.find((p) => p.zoneId === 'boot' && p.fitmentClass === 'everyday' && p.grade === grade)!
+      .statModifiers.style
+
+  const styleAfter = (points: number) => {
+    const { styleBase, styleCeiling } = eg6.spec
+    return Math.round(styleBase + (styleCeiling - styleBase) * Math.min(1, points / SATURATION))
+  }
+
+  it("pays the panels slot its own grade's authored points, no more", () => {
+    for (const grade of ['street', 'sport', 'race'] as const) {
+      expect(zonePanelStylePoints(panelsAtGrade(grade), PARTS_BY_ID, 'everyday')).toBe(
+        panelStyleFor(grade),
+      )
+    }
+    expect(zonePanelStylePoints(panelsAtGrade('stock'), PARTS_BY_ID, 'everyday')).toBe(0)
+  })
+
+  /**
+   * The three measured figures on a mint Civic SiR-II (styleBase 45,
+   * styleCeiling 92, saturation 66): stock 45, a full street kit 49, a full
+   * carbon widebody 54. A race wing alone is 18 points, so the loudest body in
+   * the catalogue is worth two thirds of one - loud, and not the whole car.
+   */
+  it('walks a Civic from 45 stock to 49 in street panels to 54 in carbon', () => {
+    expect(styleOf(eg6, panelled(eg6, 'stock'))).toBe(45)
+    expect(styleOf(eg6, panelled(eg6, 'street'))).toBe(styleAfter(5))
+    expect(styleOf(eg6, panelled(eg6, 'street'))).toBe(49)
+    expect(styleOf(eg6, panelled(eg6, 'race'))).toBe(styleAfter(12))
+    expect(styleOf(eg6, panelled(eg6, 'race'))).toBe(54)
+  })
+
+  it('pays a partial kit its share of the body', () => {
+    const twoCorners = {
+      ...panelsAtGrade('stock'),
+      'left-front': { ...panelsAtGrade('race')['left-front'] },
+      'right-front': { ...panelsAtGrade('race')['right-front'] },
+    }
+    expect(zonePanelStylePoints(twoCorners, PARTS_BY_ID, 'everyday')).toBeCloseTo(
+      (2 * panelStyleFor('race')) / 9,
+      6,
+    )
+  })
+
+  it('pays nothing for a zone whose panel is gone', () => {
+    const missingBonnet = {
+      ...panelsAtGrade('race'),
+      bonnet: { ...panelsAtGrade('race').bonnet, panelMissing: true },
+    }
+    expect(zonePanelStylePoints(missingBonnet, PARTS_BY_ID, 'everyday')).toBeCloseTo(
+      (8 * panelStyleFor('race')) / 9,
+      6,
+    )
   })
 })
 

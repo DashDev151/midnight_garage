@@ -1,4 +1,4 @@
-import { PARTS } from '@midnight-garage/content'
+import { PARTS, TOOL_LINES, fitmentClassForTier } from '@midnight-garage/content'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -300,5 +300,40 @@ describe('PartsMarketScreen', () => {
     expect((wrapper.find('[data-test="filter-class"]').element as HTMLSelectElement).value).toBe(
       option!.fitmentClass,
     )
+  })
+
+  /**
+   * A race part is buyable by anyone and fittable by nobody below the second
+   * rung, so the shelf says which tool it wants before the money moves. Like
+   * the power figure beside it, the answer depends on the car, so it is only
+   * offered once a vehicle is picked.
+   */
+  it('names the tool a race part still wants, at the till, once a vehicle is picked', async () => {
+    const game = useGameStore()
+    game.devGrantCar('nissan-180sx-rps13')
+    const car = game.gameState.ownedCars[0]!
+    const fitmentClass = fitmentClassForTier(game.context.modelsById[car.modelId]!.tier)
+    const damperOfGrade = (grade: string) =>
+      PARTS.find(
+        (p) => p.carPartId === 'dampers' && p.grade === grade && p.fitmentClass === fitmentClass,
+      )!
+    const raceDamper = damperOfGrade('race')
+    const streetDamper = damperOfGrade('street')
+
+    const { wrapper } = await mountScreen()
+    await wrapper.find('[data-test="hero-suspension"]').trigger('click')
+    await wrapper.find('[data-test="catalog-part-dampers"]').trigger('click')
+    expect(wrapper.find(`[data-test="tool-gate-${raceDamper.id}"]`).exists()).toBe(false)
+
+    await wrapper.find('[data-test="filter-vehicle"]').setValue(car.id)
+    expect(wrapper.get(`[data-test="tool-gate-${raceDamper.id}"]`).text()).toBe(
+      `Needs ${TOOL_LINES.suspension.tiers[1]!.displayName} to fit it`,
+    )
+    // Everything below race is fittable on the rung every line starts on.
+    expect(wrapper.find(`[data-test="tool-gate-${streetDamper.id}"]`).exists()).toBe(false)
+
+    game.devSetToolTier('suspension', 2)
+    await flushPromises()
+    expect(wrapper.find(`[data-test="tool-gate-${raceDamper.id}"]`).exists()).toBe(false)
   })
 })

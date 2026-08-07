@@ -393,6 +393,133 @@ describe('confirmStagedWork: pipeline-remove-panel / pipeline-install-panel', ()
     expect(result.state.ownedCars[0]?.zoneState?.boot.panelMissing).toBe(true)
     expect(result.state.ownedCars[0]?.zoneState?.bonnet.metal).toBe(0)
   })
+
+  /**
+   * The nine zones are an install path like any other, and until now the only
+   * one with no capability gate at all - a race over-fender could go on a
+   * shop with nothing but hand tools.
+   */
+  it('refuses a race panel while the body line is at rung 1, and says why', () => {
+    const racePanel = zonePanelPart(CONTEXT.partsById, 'boot', 'entry', 'race')!
+    const zoneCar: CarInstance = buildCarInstance({
+      id: 'car-0005',
+      modelId: 'honda-city-e-aa',
+      parts: mintCarParts(),
+      zoneState: cleanZoneStates({
+        boot: { metal: 0, surface: 0, finish: 0, panelMissing: true, primed: false },
+      }),
+    })
+    const panelInstance: PartInstance = {
+      id: 'pi-race-boot',
+      partId: racePanel.id,
+      band: 'mint',
+      origin: { kind: 'market', day: 1 },
+    }
+    const staged = {
+      [zoneCar.id]: [
+        {
+          kind: 'pipeline-install-panel' as const,
+          zoneId: 'boot' as const,
+          partInstanceId: panelInstance.id,
+        },
+      ],
+    }
+    const blocked = confirmStagedWork(
+      baseState({
+        ownedCars: [zoneCar],
+        serviceBayCarIds: [zoneCar.id],
+        partInventory: [panelInstance],
+        stagedCarWork: staged,
+        toolTiers: testToolTiers({ body: 1 }),
+      }),
+      zoneCar.id,
+      10,
+      CONTEXT,
+    )
+    expect(blocked.log).toEqual([
+      {
+        type: 'job-blocked',
+        jobId: `pipeline-${zoneCar.id}-install-panel-boot`,
+        reason: 'tool-tier',
+      },
+    ])
+    expect(blocked.state.ownedCars[0]?.zoneState?.boot.panelMissing).toBe(true)
+    expect(blocked.state.partInventory).toEqual([panelInstance])
+
+    const allowed = confirmStagedWork(
+      baseState({
+        ownedCars: [zoneCar],
+        serviceBayCarIds: [zoneCar.id],
+        partInventory: [panelInstance],
+        stagedCarWork: staged,
+        toolTiers: testToolTiers({ body: 2 }),
+      }),
+      zoneCar.id,
+      10,
+      CONTEXT,
+    )
+    expect(allowed.log).toEqual([])
+    expect(allowed.state.ownedCars[0]?.zoneState?.boot.panelMissing).toBe(false)
+    expect(allowed.state.ownedCars[0]?.zoneState?.boot.panelGrade).toBe('race')
+  })
+})
+
+/**
+ * Confirm resolves through the sim's own gates, so a staged action that
+ * cannot happen comes back with the gate's reason rather than disappearing.
+ * `confirmStagedWork` used to skip building a spec at all when the group had
+ * nothing to climb, which swallowed exactly the two refusals a player most
+ * needs to read.
+ */
+describe('confirmStagedWork lets repairJobGate answer for an empty plan', () => {
+  it("reports 'beyond-repair' for a group whose only work is past saving", () => {
+    const scrapChassisCar: CarInstance = buildCarInstance({
+      id: 'car-scrap-chassis',
+      modelId: 'honda-city-e-aa',
+      parts: mintCarParts({ chassis: 'scrap' }),
+    })
+    const state = baseState({
+      ownedCars: [scrapChassisCar],
+      serviceBayCarIds: [scrapChassisCar.id],
+      stagedCarWork: {
+        [scrapChassisCar.id]: [{ kind: 'repair', componentId: 'body', targetBand: 'mint' }],
+      },
+    })
+    const result = confirmStagedWork(state, scrapChassisCar.id, 20, CONTEXT)
+    expect(result.log).toEqual([
+      {
+        type: 'job-blocked',
+        jobId: `job-${scrapChassisCar.id}-repair-zone-body`,
+        reason: 'beyond-repair',
+      },
+    ])
+    expect(result.state.jobs).toEqual([])
+    expect(result.state.cashYen).toBe(state.cashYen)
+  })
+
+  it("reports 'nothing-to-repair' for a group that is already there", () => {
+    const mintCar: CarInstance = buildCarInstance({
+      id: 'car-all-mint',
+      modelId: 'honda-city-e-aa',
+      parts: mintCarParts(),
+    })
+    const state = baseState({
+      ownedCars: [mintCar],
+      serviceBayCarIds: [mintCar.id],
+      stagedCarWork: {
+        [mintCar.id]: [{ kind: 'repair', componentId: 'body', targetBand: 'mint' }],
+      },
+    })
+    const result = confirmStagedWork(state, mintCar.id, 20, CONTEXT)
+    expect(result.log).toEqual([
+      {
+        type: 'job-blocked',
+        jobId: `job-${mintCar.id}-repair-zone-body`,
+        reason: 'nothing-to-repair',
+      },
+    ])
+    expect(result.state.jobs).toEqual([])
+  })
 })
 
 describe('confirmStagedWork: pipeline-paint', () => {

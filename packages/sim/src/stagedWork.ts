@@ -49,6 +49,7 @@ import {
   installLaborSlotsFor,
   machineHiredToday,
   machineLineGroupFor,
+  partCapabilityRequirement,
   refitLaborSlotsFor,
   resolveJobLabor,
 } from './jobs'
@@ -512,6 +513,23 @@ function resolvePipelineInstallPanelAction(
     return NOOP_PIPELINE_RESULT(state)
   }
 
+  // A zone panel is a fitted part like any other, so the one capability gate
+  // applies here exactly as it does on the car and at the bench - the only
+  // refusal on this path that says why.
+  if (partCapabilityRequirement(newPanelCatalogPart, car, state, context)) {
+    return {
+      state,
+      log: [
+        {
+          type: 'job-blocked',
+          jobId: `pipeline-${carInstanceId}-install-panel-${action.zoneId}`,
+          reason: 'tool-tier',
+        },
+      ],
+      laborSlotsUsed: 0,
+    }
+  }
+
   const laborSlotsRequired = context.economy.energy.energyByClass['bolt-on']
   if (laborSlotsRequired > laborAvailable) return NOOP_PIPELINE_RESULT(state)
 
@@ -563,9 +581,11 @@ function resolvePipelineInstallPanelAction(
  * A staged `repair` sizes its `NewJobSpec.laborSlotsRequired` via
  * `planGroupRepair` (bands.ts) - every non-mint, non-scrap part in the
  * group climbing toward the staged `targetBand`, at the group's own repair
- * level. A group with nothing left to repair (already there, or every
- * part scrap) simply produces no spec - the same "nothing to do" no-op
- * `repairJobGate` itself falls back on.
+ * level. A group with nothing left to repair (already there, or every part
+ * past saving) still produces a spec: `repairJobGate` re-plans the same group
+ * and is the single authority on refusing it, so the player gets its
+ * `beyond-repair` / `nothing-to-repair` reason in the day report rather than
+ * a staged action that vanishes without a word.
  *
  * `action.carPartId`, when set, passes straight through to the built
  * `NewJobSpec` (and into `planGroupRepair`'s `onlyPartId`) - a per-part
@@ -672,7 +692,7 @@ export function confirmStagedWork(
       continue
     }
 
-    let spec: NewJobSpec | null = null
+    let spec: NewJobSpec | null
     if (action.kind === 'repair') {
       const plan = planGroupRepair(
         car,
@@ -689,15 +709,18 @@ export function confirmStagedWork(
         // discount, matching the store's Confirm-total preview.
         { staff: current.staff, economy: context.economy },
       )
-      if (plan.partIds.length > 0) {
-        spec = {
-          carInstanceId,
-          kind: 'repair-zone',
-          componentId: action.componentId,
-          targetBand: action.targetBand,
-          carPartId: action.carPartId,
-          laborSlotsRequired: plan.laborSlotsRequired,
-        }
+      // A plan with nothing to climb still builds a spec, so `repairJobGate`
+      // is the one authority on whether the work happens and the one voice
+      // that says why not: it re-plans the same group and refuses with
+      // `beyond-repair` or `nothing-to-repair`, which a skip here would
+      // swallow. The spec's labour is the plan's own, zero in that case.
+      spec = {
+        carInstanceId,
+        kind: 'repair-zone',
+        componentId: action.componentId,
+        targetBand: action.targetBand,
+        carPartId: action.carPartId,
+        laborSlotsRequired: plan.laborSlotsRequired,
       }
     } else {
       // Labor sizes off the TARGET slot's own depth class - the picked

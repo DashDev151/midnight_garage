@@ -151,10 +151,10 @@ import {
   isServiceWorkDone,
   marketValueYen,
   moveCarToSlot as moveCarToSlotCore,
-  naToTurboConversionBlocked,
   ownsMachineForGroup,
   removeAssemblyLaborSlotsFor,
   removeBlockReason,
+  replacesOccupiedSlot,
   resolveBuyCoffee,
   resolveHireMachineLine,
   signatureGroupFor,
@@ -162,6 +162,7 @@ import {
   nextBayPriceYen,
   nextToolTierRepGate,
   parkingOccupancy,
+  partCapabilityRequirement,
   partFitsCar,
   partIdOnStation,
   placeOnStationGateReason,
@@ -254,6 +255,7 @@ import {
   type SendInspectorGateReason,
   type ServiceJobOutcome,
   type SimContext,
+  type ToolRequirement,
   type TurnoutBand,
   type ValueLedger,
   type WorkStation,
@@ -340,11 +342,11 @@ export interface CarPartRowView {
    * the shell itself, repaired in place and never pulled. The car-detail
    * screen's "Take it off" control only ever renders when this is true. */
   removable: boolean
-  /** True only for the two body value carriers (`panels`/`paint`), whose slot
-   * is never empty and whose fitted part is swapped in place rather than
-   * pulled first (`installFitGate`, sim/jobs.ts). The car-detail screen
-   * offers Replace on them while they are occupied; every other slot has to
-   * be emptied first. */
+  /** True for the three shell carriers (`chassis`/`panels`/`paint`), whose
+   * slot is never empty and whose fitted part is swapped in place rather
+   * than pulled first (`replacesOccupiedSlot`, sim/jobs.ts). The car-detail
+   * screen offers Replace on them while they are occupied; every other slot
+   * has to be emptied first. */
   replaceInPlace: boolean
   /**
    * True when `band` above is the car's APPARENT band
@@ -1849,7 +1851,7 @@ export const useGameStore = defineStore('game', () => {
         legitimatelyAbsent: !installed && !missing,
         repairable: isPartRepairable(partId),
         removable: context.value.partsTaxonomyById[partId]?.removable ?? true,
-        replaceInPlace: isBodyDerivedPart(partId),
+        replaceInPlace: replacesOccupiedSlot(partId, context.value),
         uncertain: displayed.uncertain,
       }
     })
@@ -3139,8 +3141,9 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Parts in inventory that fit an EMPTY slot within the given group -
-   * a group-level install still resolves
+   * Parts in inventory that fit an EMPTY slot within the given group AND that
+   * the shop's tool lines can actually fit today
+   * (`partCapabilityRequirement`) - a group-level install still resolves
    * to whichever specific `CarPartId` in that group is actually empty and
    * the picked catalog part addresses. A scrap `PartInstance` never fits
    * anywhere.
@@ -3192,7 +3195,9 @@ export const useGameStore = defineStore('game', () => {
       if (pi.band === 'scrap') return false
       if (!isPartAvailableFor(pi, carId)) return false
       const part = context.value.partsById[pi.partId]
-      return part ? partFitsCar(part, model, componentId, context.value.partsTaxonomyById) : false
+      if (!part) return false
+      if (!partFitsCar(part, model, componentId, context.value.partsTaxonomyById)) return false
+      return partCapabilityRequirement(part, car, gameState.value, context.value) === null
     })
   }
 
@@ -3206,44 +3211,71 @@ export const useGameStore = defineStore('game', () => {
    * comment, sim/jobs.ts). Deliberately does NOT gate on `fitted`: the whole
    * point of a per-part Replace on the one conditional slot
    * (`forcedInduction` on an NA car) is fitting a kit that isn't there yet.
+   *
+   * A part the shop's tool lines cannot fit today
+   * (`partCapabilityRequirement`) is excluded here too, so the click path and
+   * the drag path refuse the same set the sim would; the picker still SHOWS
+   * such a part, named with the tool it wants
+   * (`installToolGateReasonFor` below).
    */
   function installablePartsForPart(carId: string, carPartId: CarPartId): PartInstance[] {
     const car = findWorkableCar(carId)
     const model = car ? context.value.modelsById[car.modelId] : undefined
     const componentId = groupForCarPart(carPartId)
     if (!car || !model || !componentId) return []
-    // A body value carrier's slot is never empty and its identity changes by
-    // replacement (`installFitGate`, sim/jobs.ts), so it keeps offering
+    // A shell carrier's slot is never empty and its identity changes by
+    // replacement (`replacesOccupiedSlot`, sim/jobs.ts), so it keeps offering
     // candidates while it is occupied; every other slot must be empty first.
-    if (car.parts[carPartId].installed && !isBodyDerivedPart(carPartId)) return []
+    if (car.parts[carPartId].installed && !replacesOccupiedSlot(carPartId, context.value)) return []
     return gameState.value.partInventory.filter((pi) => {
       if (pi.band === 'scrap') return false
       if (!isPartAvailableFor(pi, carId)) return false
       const part = context.value.partsById[pi.partId]
-      return part
-        ? partFitsCar(part, model, componentId, context.value.partsTaxonomyById, carPartId)
-        : false
+      if (!part) return false
+      if (!partFitsCar(part, model, componentId, context.value.partsTaxonomyById, carPartId)) {
+        return false
+      }
+      return partCapabilityRequirement(part, car, gameState.value, context.value) === null
     })
   }
 
   /**
-   * The human-readable reason `installablePartsForPart`'s results
-   * are all blocked for this slot right now - just the one own-car
-   * capability ceiling (NA-to-turbo conversion), the same check
-   * `installFitGate` enforces sim-side. Null when nothing is blocked, so the
-   * Replace drawer can dim every candidate with a specific "Needs <the thing>"
-   * reason instead of the generic "doesn't fit here" hint. The thing named is
-   * whatever actually lifts the engine line to the required level: one of its
-   * own rungs, or the shop above them.
+   * What a tool requirement is called on the shop floor: the line's own rung
+   * at that level, or the shop covering the line when the rungs do not reach
+   * that high. A line carries two rungs and the shop sits above them, so a
+   * requirement for level 3 always names a shop and never a tier number.
    */
-  function installBlockedReason(carId: string, carPartId: CarPartId): string | null {
+  function toolRequirementName(requirement: ToolRequirement): string {
+    const rung = context.value.toolLines[requirement.group].tiers[requirement.level - 1]
+    return rung ? rung.displayName : toolShopForGroup(requirement.group, context.value).displayName
+  }
+
+  /**
+   * The tool this catalogue part wants before it could go onto this car,
+   * named, or `null` when the shop can already fit it. Reads the sim's own
+   * install gate (`partCapabilityRequirement`), so the picker, the parts
+   * market and the sim can never disagree about which parts are reachable.
+   *
+   * A part that will never fit this car (wrong slot, wrong platform, wrong
+   * class) returns `null` too: no tool changes that, and naming one would
+   * advertise a shop that would not help.
+   */
+  function installToolGateReasonFor(carId: string, partId: string): string | null {
     const car = findWorkableCar(carId)
     const model = car ? context.value.modelsById[car.modelId] : undefined
-    if (!model) return null
-    if (!naToTurboConversionBlocked(carPartId, model, gameState.value, context.value)) return null
-    const requiredLevel = context.value.economy.toolCeilings.naToTurboConversionEngineTier
-    const rung = context.value.toolLines.engine.tiers[requiredLevel - 1]
-    return `Needs ${rung ? rung.displayName : toolShopForGroup('engine', context.value).displayName}`
+    const part = context.value.partsById[partId]
+    const componentId = part ? groupForCarPart(part.carPartId) : undefined
+    if (!car || !model || !part || !componentId) return null
+    const fits = partFitsCar(
+      part,
+      model,
+      componentId,
+      context.value.partsTaxonomyById,
+      part.carPartId,
+    )
+    if (!fits) return null
+    const requirement = partCapabilityRequirement(part, car, gameState.value, context.value)
+    return requirement ? `Needs ${toolRequirementName(requirement)}` : null
   }
 
   /**
@@ -3839,7 +3871,9 @@ export const useGameStore = defineStore('game', () => {
       // the job and its charge stay consistent.
       crewCtx(),
     )
-    if (plan.partIds.length === 0) return
+    // An empty plan is not short-circuited here: `repairJobGate` is the one
+    // authority on whether there is anything to repair, and it answers with a
+    // reason the screen can show rather than a silent no-op.
     const spec: NewJobSpec = {
       carInstanceId: carId,
       kind: 'repair-zone',
@@ -3980,13 +4014,15 @@ export const useGameStore = defineStore('game', () => {
       // (`part.carPartId`) - most slots start filled with a stock part now, so
       // a group-level stage needs the same real occupied-slot check a per-part
       // one always had, not just when `action.carPartId` happens to be set. A
-      // body value carrier is the exception: its slot is never empty, so an
-      // install there replaces what is fitted (`installFitGate`, sim/jobs.ts).
+      // shell carrier is the exception: its slot is never empty, so an install
+      // there replaces what is fitted (`replacesOccupiedSlot`, sim/jobs.ts).
       const model = context.value.modelsById[car.modelId]
       const partInstance = gameState.value.partInventory.find((p) => p.id === action.partInstanceId)
       const part = partInstance ? context.value.partsById[partInstance.partId] : undefined
       const slotTakesPart =
-        !!part && (!car.parts[part.carPartId].installed || isBodyDerivedPart(part.carPartId))
+        !!part &&
+        (!car.parts[part.carPartId].installed ||
+          replacesOccupiedSlot(part.carPartId, context.value))
       if (
         !model ||
         !part ||
@@ -4000,10 +4036,10 @@ export const useGameStore = defineStore('game', () => {
           context.value.partsTaxonomyById,
           action.carPartId,
         ) ||
-        // The one own-car capability ceiling (NA-to-turbo conversion) - mirrors
-        // `installFitGate`'s own check, same reason a stage-then-silently-fail-
-        // at-Confirm bug can't happen here either.
-        naToTurboConversionBlocked(part.carPartId, model, gameState.value, context.value)
+        // The one capability gate (`partCapabilityRequirement`, sim/jobs.ts) -
+        // mirrors `installFitGate`'s own check, same reason a
+        // stage-then-silently-fail-at-Confirm bug can't happen here either.
+        partCapabilityRequirement(part, car, gameState.value, context.value) !== null
       ) {
         return false
       }
@@ -4190,9 +4226,12 @@ export const useGameStore = defineStore('game', () => {
       context.value,
       laborSlotsRemainingToday.value,
     )
+    // A refusal that names its reason still reports it - the capability gate
+    // is the one that does, and a silently dropped log would leave the player
+    // with a button that does nothing.
+    dayLog.value.push(...result.log)
     if (!result.ok) return false
     gameState.value = result.state
-    dayLog.value.push(...result.log)
     logSessionEvent('refitAssembly', { carId, assemblyId })
     return true
   }
@@ -4215,9 +4254,10 @@ export const useGameStore = defineStore('game', () => {
       context.value,
       laborSlotsRemainingToday.value,
     )
+    // As in `refitAssembly` above: a refusal carrying a reason reports it.
+    dayLog.value.push(...result.log)
     if (!result.ok) return false
     gameState.value = result.state
-    dayLog.value.push(...result.log)
     logSessionEvent('swapAssemblyMember', { containerId, memberSlot, partInstanceId })
     return true
   }
@@ -5417,7 +5457,7 @@ export const useGameStore = defineStore('game', () => {
     resolveSendInspector,
     installablePartsFor,
     installablePartsForPart,
-    installBlockedReason,
+    installToolGateReasonFor,
     removeBlockedReason,
     installGateReasonFor,
     repairGateReasonFor,

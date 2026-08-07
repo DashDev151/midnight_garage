@@ -737,17 +737,51 @@ export const PAINT_FINISH_BY_GRADE: Readonly<Record<Grade, PaintFinish>> = {
   race: 'pearl',
 }
 
-/** The zone-panel catalog SKU for one zone, at one fitment class - a stock,
- * `zoneId`-carrying entry, priced through the `zonePanel` pricing basis. */
+/** The zone-panel catalog SKU for one zone, at one fitment class and grade -
+ * a `zoneId`-carrying entry, the stock one (priced through the `zonePanel`
+ * pricing basis) unless another grade is asked for. */
 export function zonePanelPart(
   partsById: Readonly<Record<string, Part>>,
   zoneId: ZoneId,
   fitmentClass: PartFitmentClass,
+  grade: Grade = 'stock',
 ): Part | undefined {
   return Object.values(partsById).find(
-    (part) =>
-      part.zoneId === zoneId && part.fitmentClass === fitmentClass && part.grade === 'stock',
+    (part) => part.zoneId === zoneId && part.fitmentClass === fitmentClass && part.grade === grade,
   )
+}
+
+/**
+ * The style points the panels SLOT delivers on a car on the zone model: the
+ * MEAN of its nine zones' own fitted SKUs, read off the catalogue's authored
+ * ladder rather than any second table. A car wearing one grade all round
+ * therefore delivers exactly the points that grade's panel is authored with,
+ * the same one figure every other slot contributes from its one fitted part,
+ * and a car wearing over-fenders on two corners delivers two ninths of it -
+ * a partial kit is a partial statement.
+ *
+ * That is what keeps the body one slot among many. Nine zones each paying in
+ * full would put a race widebody at nine times the loudest single part in the
+ * catalogue, past `styleSaturationPoints` on its own, and every other style
+ * part on that car would be worth exactly nothing.
+ *
+ * A zone whose panel is gone contributes nothing: there is no panel there to
+ * look at. `panelGrade` absent reads as stock (see `TRIM_ZONE_FIELDS`), which
+ * carries no style, so an untouched car pays for no catalogue lookups at all.
+ */
+export function zonePanelStylePoints(
+  zoneStates: ZoneStates,
+  partsById: Readonly<Record<string, Part>>,
+  fitmentClass: PartFitmentClass,
+): number {
+  let total = 0
+  for (const zoneId of PANEL_ZONE_IDS) {
+    const zone = zoneStates[zoneId]
+    const grade = zone.panelGrade ?? 'stock'
+    if (zone.panelMissing || grade === 'stock') continue
+    total += zonePanelPart(partsById, zoneId, fitmentClass, grade)?.statModifiers.style ?? 0
+  }
+  return total / PANEL_ZONE_IDS.length
 }
 
 export interface PipelineStageEffect {

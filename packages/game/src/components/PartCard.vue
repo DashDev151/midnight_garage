@@ -126,6 +126,7 @@ function onPointerUp(event: PointerEvent): void {
 <template>
   <li
     class="part-card"
+    :data-test="'part-card-' + instance.id"
     :class="{
       dragging: draggable.isDragging.value,
       picked: draggable.isPicked.value,

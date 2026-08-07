@@ -831,10 +831,13 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
       /** The sim's own install-fit check refused a part/component/model
        * mismatch, independent of the UI's filter. */
       'part-does-not-fit',
-      /** The one own-car capability ceiling - converting a factory-NA car
-       * to forced induction needs `economy.json`'s
-       * `toolCeilings.naToTurboConversionEngineTier` (same vocabulary as the
-       * service-job accept refusal below). */
+      /** The shop's own lines do not stand high enough to fit this part:
+       * its grade asks its own line for
+       * `economy.json`'s `toolCeilings.installGradeToolLevel[grade]`, and a
+       * factory-NA car's first forced-induction unit asks the engine line for
+       * `toolCeilings.naToTurboConversionEngineTier`. One gate
+       * (`jobs.ts`'s `partCapabilityRequirement`) across every install path,
+       * same vocabulary as the service-job accept refusal below. */
       'tool-tier',
       /** A customer-owned tagged part can only be reinstalled onto the same
        * customer's car it was pulled from - never a different car,
@@ -866,6 +869,17 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
        * in enough quantity - buy more from the parts shop's consumables
        * section (`hasStockFor`, sim/consumables.ts). */
       'out-of-stock',
+      /** Everything the repair addressed is past saving - scrap, or a part
+       * that is replaced rather than repaired - so no band can climb
+       * (`planGroupRepair`'s `unrepairablePartIds`, sim/bands.ts). Fitting a
+       * replacement is the way out; a scrap chassis is the case that shows
+       * it, since the shell never comes off. */
+      'beyond-repair',
+      /** Nothing the repair addressed is below its target band: the work was
+       * already done, or the parts were already good enough. The empty-handed
+       * twin of `beyond-repair`, and the only one of the two that means
+       * nothing is wrong. */
+      'nothing-to-repair',
     ]),
   }),
   z.object({

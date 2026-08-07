@@ -2569,18 +2569,34 @@ export const EconomyConfigSchema = z.object({
    */
   sellingChannels: SellingChannelsSchema,
   /**
-   * The one own-car capability ceiling (progression bible's bolt-on vs built
-   * line). Converting a factory-NA car to forced induction (fitting the
-   * FIRST turbo/supercharger into a legitimately-empty slot,
-   * `hasForcedInduction(model) === false`) is fabrication work, gated behind
-   * this engine tool LEVEL - a car that already carries a forced-induction
-   * part swaps freely at any level; only the first conversion is gated
-   * (`jobs.ts`'s `naToTurboConversionBlocked`). At level 3 that means owning
-   * the shop covering the engine line, since level 3 is a shop rather than a
-   * rung.
+   * The own-car capability ceilings (progression bible's bolt-on vs built
+   * line), both read by the one install gate `jobs.ts`'s
+   * `partCapabilityRequirement` composes.
+   *
+   * `naToTurboConversionEngineTier`: converting a factory-NA car to forced
+   * induction (fitting the FIRST turbo/supercharger into a legitimately-empty
+   * slot, `hasForcedInduction(model) === false`) is fabrication work, gated
+   * behind this engine tool LEVEL - a car that already carries a
+   * forced-induction part swaps freely at any level; only the first conversion
+   * is gated (`jobs.ts`'s `naToTurboConversionBlocked`). At level 3 that means
+   * owning the shop covering the engine line, since level 3 is a shop rather
+   * than a rung.
+   *
+   * `installGradeToolLevel`: the tool LEVEL a part's own line must stand at
+   * before that grade can be INSTALLED at all, read off the SKU's `grade` and
+   * applied to the line its `carPartId` belongs to. Race parts need their line
+   * at rung 2; everything below race fits at the level every line starts on.
+   * Removal is deliberately ungated by this, so a race part that came in on a
+   * bought car or off a stripped donor can still be pulled, kept and sold.
    */
   toolCeilings: z.object({
     naToTurboConversionEngineTier: ToolLevelSchema,
+    installGradeToolLevel: z.object({
+      stock: ToolLevelSchema,
+      street: ToolLevelSchema,
+      sport: ToolLevelSchema,
+      race: ToolLevelSchema,
+    }),
   }),
   /**
    * Tools cap the finish: the best condition band a REPAIR can reach at each

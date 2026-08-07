@@ -232,6 +232,20 @@ function powerPercent(part: Part): number | null {
 }
 
 /**
+ * The tool this SKU would want before it could go onto the selected car,
+ * named, or `null` when the shop can already fit it. Scoped to the "fits this
+ * vehicle" picker for the same reason `powerPercent` is: the answer depends on
+ * the car, and a catalogue with no car in view has nothing true to say about
+ * it. Said here rather than after delivery, so a part that needs a shop the
+ * garage has not got is a decision at the till instead of a surprise on the
+ * bench.
+ */
+function toolGateReason(part: Part): string | null {
+  const carId = selectedVehicle.value?.id
+  return carId ? game.installToolGateReasonFor(carId, part.id) : null
+}
+
+/**
  * Reliability and authenticity are both absent from this badge deliberately.
  * Reliability is not a per-part delta at all any more: a part does not add
  * reliability, the build supports its own output or it does not
@@ -526,6 +540,16 @@ function onBuyPaint(): void {
                     "
                   >
                     {{ fitsAnyOwnedCar(part) ? 'fits a car you own' : "doesn't fit a car you own" }}
+                  </span>
+                  <!-- Only ever shown with a car in the "fits this vehicle"
+                       picker, since the tool a part wants is a fact about
+                       fitting it to a particular car. -->
+                  <span
+                    v-if="toolGateReason(part)"
+                    class="part-tool-gate"
+                    :data-test="'tool-gate-' + part.id"
+                  >
+                    {{ toolGateReason(part) }} to fit it
                   </span>
                 </div>
               </div>
@@ -951,6 +975,13 @@ h3 {
    a distinct muted violet, legible against the panel. */
 .part-fit:not(.fit) {
   color: var(--mg-neon-violet);
+}
+
+/* The tool a part still wants, in the same pink the car screen dims an
+   unreachable part with - a wall to buy your way past, not a fit problem. */
+.part-tool-gate {
+  color: var(--mg-neon-pink);
+  font-size: var(--mg-fs-sm);
 }
 
 .part-buy {

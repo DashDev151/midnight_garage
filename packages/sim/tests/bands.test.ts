@@ -424,10 +424,15 @@ describe("planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decision 2; Spr
       1,
       EPG,
     )
-    expect(plan).toEqual({ laborSlotsRequired: 0, costYen: 0, partIds: [] })
+    expect(plan).toEqual({
+      laborSlotsRequired: 0,
+      costYen: 0,
+      partIds: [],
+      unrepairablePartIds: [],
+    })
   })
 
-  it('returns an empty plan when the group has repairable parts but every one is scrap', () => {
+  it('returns an empty plan when the group has repairable parts but every one is scrap, naming them as past saving', () => {
     const deadGroupCar = buildCarInstance({
       parts: mintCarParts({
         panels: 'scrap',
@@ -447,7 +452,14 @@ describe("planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decision 2; Spr
       1,
       EPG,
     )
-    expect(plan).toEqual({ laborSlotsRequired: 0, costYen: 0, partIds: [] })
+    // The empty `partIds` is the same either way; only this second list tells
+    // a caller that the group is past saving rather than already good.
+    expect(plan).toEqual({
+      laborSlotsRequired: 0,
+      costYen: 0,
+      partIds: [],
+      unrepairablePartIds: ['chassis', 'panels', 'paint'],
+    })
   })
 
   it('returns an empty plan for a bolt-on/buried group - bench-only (Sprint 71)', () => {
@@ -465,7 +477,14 @@ describe("planGroupRepair (Sprint 26 decisions 5+7+13; Sprint 41 decision 2; Spr
       1,
       EPG,
     )
-    expect(plan).toEqual({ laborSlotsRequired: 0, costYen: 0, partIds: [] })
+    // Bench-only parts are out of scope entirely, so they are not "past
+    // saving" either - they are simply not this planner's work.
+    expect(plan).toEqual({
+      laborSlotsRequired: 0,
+      costYen: 0,
+      partIds: [],
+      unrepairablePartIds: [],
+    })
   })
 })
 

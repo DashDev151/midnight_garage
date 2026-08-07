@@ -1422,9 +1422,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                 >{{ repairCeilingCaptionFor(selectedGroup, selectedRow.partId) }}</span
               >
 
-              <!-- Replace needs an empty slot, except on a body value
-                   carrier, whose slot is never empty and whose part is
-                   swapped in place. -->
+              <!-- Replace needs an empty slot, except on a shell carrier
+                   (chassis, panels, paint), whose slot is never empty and
+                   whose part is swapped in place. A scrap one is past repair,
+                   so this is the only way out of it. -->
               <template v-if="!selectedRow.installedPartName || selectedRow.replaceInPlace">
                 <button
                   type="button"

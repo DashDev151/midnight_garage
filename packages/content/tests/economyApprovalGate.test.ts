@@ -2087,6 +2087,18 @@ import toolShops from '../data/toolShops.json'
  * name re-pins here too. That is the price of one hash per file rather than one per field, and
  * it is worth paying: a hash that covered only the numbers would have to be told which fields
  * those are, and the next field added would silently fall outside it.
+ *
+ * Re-pinned for the grade rule, signed by the maintainer 2026-08-04 and recorded in
+ * `docs/sprints/sprint191.md` ("Already signed and still unbuilt"): one new key,
+ * `toolCeilings.installGradeToolLevel`, at exactly the signed values
+ * `{ stock: 1, street: 1, sport: 1, race: 2 }`. A part's own grade is what asks its own tool
+ * line for a level before it can be INSTALLED, so a race part needs that line at rung 2 and
+ * everything below race fits at the level every line starts on. Removal is deliberately
+ * ungated by it, so a race part that arrived on a bought car or came off a stripped donor can
+ * still be pulled, kept and sold. It costs zero authoring rows, because `grade` is already on
+ * all 580 SKUs. No other value in `economy.json` moves, and `partPricing.json` /
+ * `damagePatterns.json` / `toolLines.json` / `toolShops.json` are untouched, so their hashes
+ * and the payout pin hold unchanged.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -2096,7 +2108,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('feed2942ad1211eba5e177479d98c890cce7509168f11122631ff364b56fde37')
+    ).toBe('aa1a643c13b322d1fe1c903b37784ca579eaca960d4ebd76721f9d56e8509f48')
   })
 
   it('damagePatterns.json matches its approved content exactly', () => {

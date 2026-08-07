@@ -202,6 +202,19 @@ function bodyRepairRow(game: ReturnType<typeof useGameStore>, carId: string) {
   return repairableSurfaceRows(game, carId, 'body')[0]!
 }
 
+/**
+ * Drops this car's chassis to `scrap` and puts a fresh shell of the car's own
+ * fitment class in the parts bin. Returns that instance's id.
+ */
+function scrapChassisWithSpare(game: ReturnType<typeof useGameStore>, carId: string): string {
+  const car = game.gameState.ownedCars.find((c) => c.id === carId)!
+  car.parts.chassis = { installed: { ...car.parts.chassis.installed!, band: 'scrap' } }
+  const model = game.context.modelsById[car.modelId]!
+  const spare = game.context.stockPartByCarPartId[fitmentClassForTier(model.tier)].chassis
+  game.devGrantPart(spare.id)
+  return game.gameState.partInventory.at(-1)!.id
+}
+
 /** Owns the shop covering `componentId` - what puts that line at the level
  * a level-3 capability needs, read from real content rather than a
  * hard-coded shop id. */
@@ -262,11 +275,11 @@ describe('CarDetailScreen', () => {
   /**
    * The machine-line gate reason is previewed exactly where the operation is
    * gated - the install/replace and on-car per-part repair of a suspension/
-   * body/interior signature slot - and never on a removal (removal is free
-   * for these groups). Owning the tier-2 machine, or hiring the line for
-   * today, both clear the preview - access is a gate now, never a fee.
+   * body/interior signature slot. Owning the tier-2 machine, or hiring the
+   * line for today, both clear the preview - access is a gate now, never a
+   * fee.
    */
-  it('previews the machine-line gate reason on repair/install of a signature slot at tier 1, never on removal, and hides it once owned or hired', async () => {
+  it('previews the machine-line gate reason on repair/install of a signature slot at tier 1, and hides it once owned or hired', async () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id) // honda-city-e-aa, an entry-tier car at tier-1 tools
     const id = game.gameState.ownedCars[0]!.id
@@ -303,16 +316,17 @@ describe('CarDetailScreen', () => {
     expect(installCap.exists()).toBe(true)
     expect(installCap.text()).toContain(suspensionMachine)
 
-    // On-car per-part repair of a signature slot: gate reason present; the SAME
-    // installed slot's removal shows nothing (removal is never gated for
-    // these groups).
+    // On-car per-part repair of a signature slot: gate reason present. The
+    // shell never comes off, so there is no removal here to gate at all - and
+    // the Replace it does offer wants the same line.
     await selectPart(wrapper, 'chassis')
     const repairCap = wrapper.find('[data-test="assist-fee-repair-chassis"]')
     expect(repairCap.exists()).toBe(true)
     expect(repairCap.text()).toContain(bodyMachine)
-    expect(wrapper.find('[data-test="assist-fee-chassis"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="remove-part-chassis"]').exists()).toBe(false)
+    expect(wrapper.get('[data-test="assist-fee-chassis"]').text()).toContain(bodyMachine)
 
-    // Owning the tier-2 machines drops both previews.
+    // Owning the tier-2 machines drops every preview.
     game.devSetToolTier('suspension', 2)
     game.devSetToolTier('body', 2)
     const owned = await mountAt(id)
@@ -320,6 +334,7 @@ describe('CarDetailScreen', () => {
     expect(owned.wrapper.find('[data-test="assist-fee-dampers"]').exists()).toBe(false)
     await selectPart(owned.wrapper, 'chassis')
     expect(owned.wrapper.find('[data-test="assist-fee-repair-chassis"]').exists()).toBe(false)
+    expect(owned.wrapper.find('[data-test="assist-fee-chassis"]').exists()).toBe(false)
   })
 
   it('also hides the machine-line gate reason once the line is hired for the day, still at tier 1 (not owned)', async () => {
@@ -1432,6 +1447,86 @@ describe('CarDetailScreen', () => {
       // A no-fit card's click is a no-op - the shell is exactly as generated.
       expect(game.gameState.ownedCars[0]!.parts.panels.installed?.id).toBe(originalInstalledId)
     })
+
+    /**
+     * A chassis at `scrap` is a state the generator really produces (four
+     * authored failure modes set it outright). It never comes off and it can
+     * never be repaired, so Replace is the only way out of it - and the sim
+     * has always permitted that install (`replacesOccupiedSlot`).
+     */
+    it('a scrap chassis offers Replace and nothing else, with the body line named', async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      scrapChassisWithSpare(game, id)
+
+      const { wrapper } = await mountAt(id)
+      await selectPart(wrapper, 'chassis')
+      // Nothing to repair and no ceiling caption at scrap: without Replace the
+      // row is a band chip over an empty action list.
+      expect(wrapper.find('[data-test="stage-repair-part-chassis"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="repair-ceiling-chassis"]').exists()).toBe(false)
+      // The shell is never pulled, so there is no Take it off either.
+      expect(wrapper.find('[data-test="remove-part-chassis"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="replace-part-chassis"]').exists()).toBe(true)
+      expect(wrapper.get('[data-test="assist-fee-chassis"]').text()).toContain(
+        TOOL_LINES.body.tiers[1]!.displayName,
+      )
+    })
+
+    it('a shop without the body line cannot swap a scrap chassis: Confirm stays shut, and the sim refuses it too', async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      scrapChassisWithSpare(game, id)
+
+      const { wrapper } = await mountAt(id)
+      await wrapper.get('[data-test="toggle-bay"]').trigger('click')
+      await selectPart(wrapper, 'chassis')
+      await wrapper.get('[data-test="replace-part-chassis"]').trigger('click')
+      await wrapper.get('[data-test="replace-drawer"] .part-card').trigger('click')
+      await flushPromises()
+
+      // The swap plans, and the lever the plan hangs on is shut.
+      expect(wrapper.get('[data-test="confirm-work"]').attributes('disabled')).toBeDefined()
+      expect(game.gameState.ownedCars[0]!.parts.chassis.installed!.band).toBe('scrap')
+
+      // The refusal is the sim's, not the screen's: driving Confirm directly
+      // leaves the shell alone and logs the line it wants.
+      game.confirmCarWork(id)
+      expect(game.gameState.ownedCars[0]!.parts.chassis.installed!.band).toBe('scrap')
+      expect(game.dayLog.some((e) => e.type === 'job-blocked' && e.reason === 'machine-line')).toBe(
+        true,
+      )
+    })
+
+    it('with the body line, a scrap chassis is replaced in place and reliability recovers', async () => {
+      const game = useGameStore()
+      grantShopFor(game, 'body')
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      const spareInstanceId = scrapChassisWithSpare(game, id)
+      const reliabilityAtScrap = game.carDetail(id)!.stats.reliability
+
+      const { wrapper } = await mountAt(id)
+      await wrapper.get('[data-test="toggle-bay"]').trigger('click')
+      await selectPart(wrapper, 'chassis')
+      // The line is covered, so nothing is dimmed and no gate caption shows.
+      expect(wrapper.find('[data-test="assist-fee-chassis"]').exists()).toBe(false)
+      await wrapper.get('[data-test="replace-part-chassis"]').trigger('click')
+      const card = wrapper.get('[data-test="replace-drawer"] .part-card')
+      expect(card.classes()).not.toContain('no-fit')
+      await card.trigger('click')
+      await wrapper.get('[data-test="confirm-work"]').trigger('click')
+      await flushPromises()
+
+      const chassis = game.gameState.ownedCars[0]!.parts.chassis.installed!
+      expect(chassis.id).toBe(spareInstanceId)
+      expect(chassis.band).toBe('mint')
+      // The old shell is not harvested - it never left the car.
+      expect(game.gameState.partInventory.some((pi) => pi.id === spareInstanceId)).toBe(false)
+      expect(game.carDetail(id)!.stats.reliability).toBeGreaterThan(reliabilityAtScrap)
+    })
   })
 
   describe('assemblies through the panel (Sprint 87 verbs, Sprint 88 surface)', () => {
@@ -1692,6 +1787,110 @@ describe('CarDetailScreen', () => {
       await wrapper.find('[data-test="replace-part-dampers"]').trigger('click')
       expect(wrapper.find(`[data-test="pick-part-${goodInstanceId}"]`).exists()).toBe(true)
       expect(wrapper.find('[data-test="pick-part-scrap-instance"]').exists()).toBe(false)
+    })
+
+    /**
+     * Two refusals, told apart. A race part is on hand, fits the car, and only
+     * wants a tool line the shop has not climbed yet, so the drawer keeps it in
+     * view and names that tool. A part of the wrong fitment class can never go
+     * on whatever is bought, so it names nothing.
+     */
+    describe('a part the shop cannot fit yet', () => {
+      /** The entry-class race damper - the one SKU the signed grade ladder
+       * puts above a fresh shop's suspension line. */
+      const raceCoilovers = PARTS.find(
+        (p) => p.carPartId === 'dampers' && p.grade === 'race' && p.fitmentClass === 'entry',
+      )!
+
+      /** Grants a car with its dampers slot open and the race coilovers on the
+       * shelf, returning the car and that instance. */
+      function shopWithRaceCoilovers(game: ReturnType<typeof useGameStore>) {
+        game.devGrantCar(CARS[0]!.id)
+        const carId = game.gameState.ownedCars[0]!.id
+        game.devGrantPart(raceCoilovers.id)
+        const partInstanceId = game.gameState.partInventory.at(-1)!.id
+        game.removePart(carId, 'dampers')
+        return { carId, partInstanceId }
+      }
+
+      it('renders in the picker, refused, naming the rung that would fit it', async () => {
+        const game = useGameStore()
+        const { carId, partInstanceId } = shopWithRaceCoilovers(game)
+
+        const { wrapper } = await mountAt(carId)
+        await selectPart(wrapper, 'dampers')
+        await wrapper.get('[data-test="replace-part-dampers"]').trigger('click')
+
+        const card = wrapper.get(`[data-test="part-card-${partInstanceId}"]`)
+        expect(card.classes()).toContain('no-fit')
+        expect(card.text()).toContain(`Needs ${TOOL_LINES.suspension.tiers[1]!.displayName}`)
+
+        await card.trigger('click')
+        expect(wrapper.text()).not.toContain('planned:')
+      })
+
+      it('fits once the suspension line stands on the rung it named', async () => {
+        const game = useGameStore()
+        const { carId, partInstanceId } = shopWithRaceCoilovers(game)
+        game.devSetToolTier('suspension', 2)
+
+        const { wrapper } = await mountAt(carId)
+        await selectPart(wrapper, 'dampers')
+        await wrapper.get('[data-test="replace-part-dampers"]').trigger('click')
+
+        const card = wrapper.get(`[data-test="part-card-${partInstanceId}"]`)
+        expect(card.classes()).not.toContain('no-fit')
+        expect(card.text()).not.toContain('Needs')
+
+        await card.trigger('click')
+        expect(wrapper.text()).toContain('planned:')
+      })
+
+      it('refuses the drag exactly as it refuses the click', async () => {
+        const game = useGameStore()
+        const { carId, partInstanceId } = shopWithRaceCoilovers(game)
+
+        const { wrapper } = await mountAt(carId)
+        await selectPart(wrapper, 'dampers')
+        await wrapper.get('[data-test="replace-part-dampers"]').trigger('click')
+        await dragPast(wrapper, `[data-test="pick-part-${partInstanceId}"]`)
+        await dropOn(wrapper, '[data-test="replace-part-dampers"]')
+
+        expect(wrapper.text()).not.toContain('planned:')
+        expect(game.stagedActionsFor(carId)).toEqual([])
+      })
+
+      it('names no tool for a part that will never fit, and sorts it below the ones that could', async () => {
+        const game = useGameStore()
+        // Granted before the fitting parts, so DOM order can only be the
+        // drawer's own ranking rather than the order they arrived in.
+        const wrongClass = PARTS.find(
+          (p) => p.carPartId === 'dampers' && p.grade === 'race' && p.fitmentClass === 'flagship',
+        )!
+        game.devGrantPart(wrongClass.id)
+        const wrongInstanceId = game.gameState.partInventory.at(-1)!.id
+        const { carId, partInstanceId } = shopWithRaceCoilovers(game)
+        // `removePart` above dropped the car's own stock damper on the shelf:
+        // the one candidate here that goes straight back on.
+        const stockInstanceId = game.gameState.partInventory.at(-1)!.id
+
+        const { wrapper } = await mountAt(carId)
+        await selectPart(wrapper, 'dampers')
+        await wrapper.get('[data-test="replace-part-dampers"]').trigger('click')
+
+        const wrongCard = wrapper.get(`[data-test="part-card-${wrongInstanceId}"]`)
+        expect(wrongCard.classes()).toContain('no-fit')
+        expect(wrongCard.text()).toContain("doesn't fit here")
+        expect(wrongCard.text()).not.toContain('Needs')
+
+        expect(
+          wrapper.findAll('[data-test^="part-card-"]').map((c) => c.attributes('data-test')),
+        ).toEqual([
+          `part-card-${stockInstanceId}`,
+          `part-card-${partInstanceId}`,
+          `part-card-${wrongInstanceId}`,
+        ])
+      })
     })
 
     it('Confirm actually installs the staged part onto its exact slot and removes it from inventory', async () => {

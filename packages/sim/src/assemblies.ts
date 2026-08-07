@@ -16,6 +16,7 @@ import { revealOnRemoval } from './diagnosis'
 import {
   findWorkableCar,
   hasMachineLineFor,
+  partCapabilityRequirement,
   refitLaborSlotsFor,
   removeLaborSlotsFor,
   removeMachineGateGroup,
@@ -342,10 +343,15 @@ export function refitAssemblyLaborSlotsFor(
  * fitment-checked here (`memberFitsCar`) whenever that is true; refitting
  * straight back onto `container.sourceCarId` re-checks nothing, since every
  * member either never left that car or was already fitment-checked against
- * it by `resolveSwapAssemblyMember`. Refuses if the car is gone, an external
+ * it by `resolveSwapAssemblyMember`. That same foreign-car path is where a
+ * member first reaches a car, so the one capability gate
+ * (`partCapabilityRequirement`, jobs.ts) is checked there too, and says why
+ * (a `job-blocked` `tool-tier` entry); refitting onto the source car re-proves
+ * nothing, since every member either never left it or was gated on the way
+ * into the container. Refuses if the car is gone, an external
  * blocker is occupied, a target slot is already full, a foreign-car member
- * does not fit, the machine gate is unmet, or the total labour exceeds
- * `laborAvailable` (the op is atomic).
+ * does not fit or is beyond the shop's lines, the machine gate is unmet, or
+ * the total labour exceeds `laborAvailable` (the op is atomic).
  */
 export function resolveRefitAssembly(
   state: GameState,
@@ -378,6 +384,20 @@ export function resolveRefitAssembly(
       const instance = container.members[member]
       const catalogPart = instance && context.partsById[instance.partId]
       if (catalogPart && !memberFitsCar(catalogPart, car, member, context)) return fail
+      if (catalogPart && partCapabilityRequirement(catalogPart, car, state, context)) {
+        return {
+          state,
+          log: [
+            {
+              type: 'job-blocked',
+              jobId: `assembly-refit-${containerId}-${member}`,
+              reason: 'tool-tier',
+            },
+          ],
+          laborSlotsUsed: 0,
+          ok: false,
+        }
+      }
     }
   }
 
@@ -418,12 +438,19 @@ export interface AssemblyMemberMoveResult {
  * member (if any) back to the bin. Labour is `energy.actionPoints.benchFitMember`
  * (0 in shipped content), gated on `laborAvailable` when raised. A
  * tyre-into-assembly op needs the wheels line owned or hired for the day
- * (`benchSwapGateGroup`); every other member swap is ungated.
+ * (`benchSwapGateGroup`); every other member swap is ungated by that.
  * Refuses if the container/part is missing, the part does not address this
  * member slot, the part is scrap, the machine gate is unmet, or (for a
  * container pulled off a car) the part's fitment class does not match that
  * car's (`memberFitsCar`) - the fitment law applies at the bench, not only
  * on the car.
+ *
+ * The bench is an install path, so the one capability gate
+ * (`partCapabilityRequirement`, jobs.ts) applies here exactly as it does on
+ * the car, and is the only refusal here that says why (a `job-blocked`
+ * `tool-tier` entry). A container built on the bench from bin parts has no car
+ * to check against; those members are gated when the assembly goes onto one
+ * (`resolveRefitAssembly`).
  */
 export function resolveSwapAssemblyMember(
   state: GameState,
@@ -447,6 +474,19 @@ export function resolveSwapAssemblyMember(
   if (container.sourceCarId) {
     const sourceCar = findWorkableCar(state, container.sourceCarId)
     if (!sourceCar || !memberFitsCar(catalogPart, sourceCar, memberSlot, context)) return fail
+    if (partCapabilityRequirement(catalogPart, sourceCar, state, context)) {
+      return {
+        state,
+        log: [
+          {
+            type: 'job-blocked',
+            jobId: `bench-${containerId}-${memberSlot}`,
+            reason: 'tool-tier',
+          },
+        ],
+        ok: false,
+      }
+    }
   }
   const laborSlotsUsed = context.economy.energy.actionPoints.benchFitMember
   if (laborSlotsUsed > laborAvailable) return fail
