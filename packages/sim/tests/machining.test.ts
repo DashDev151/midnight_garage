@@ -59,12 +59,15 @@ import {
  */
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY, [], FACILITIES)
-// This file is about the four original engine-only operations specifically
+// This file is about the nine original engine-only operations specifically
 // (the ladder, the support-only pair, the gate, the workshop flow). The
-// catalogue they live in (`economy.machining.operations`) is now shared with
-// the six scene-gated craft operations (`scene` set on every one of them,
-// absent on these nine), which are their own concern with their own tests.
-const operations = ECONOMY.machining.operations.filter((o) => o.scene === undefined)
+// catalogue they live in (`economy.machining.operations`) is shared with the
+// six scene craft operations and with the setup work done on an assembled
+// car, so the nine are selected by what distinguishes them: no `scene`, and
+// performed on a part off the car.
+const operations = ECONOMY.machining.operations.filter(
+  (o) => o.scene === undefined && o.performedOn === 'loose-part',
+)
 const OPERATION_IDS = operations.map((o) => o.id)
 
 /** One model per engine character, so every ladder assertion below is
@@ -789,10 +792,10 @@ describe("a fully machined collector car still clears the Collector's gate", () 
    * kind of car the work exists for. */
   const MODEL = CARS.find((car) => car.id === 'toyota-2000gt-mf10')!
   const ALL_OPERATIONS = ECONOMY.machining.operations
-  /** The nine that need only the tooling. The other six each need a scene at
-   * the Shop stage as well, so this is the reach of a shop that has bought its
-   * machines and earned no standing at all. */
-  const TOOLING_ONLY = operations
+  /** The nine done at the machine on the engine's own castings, which is the
+   * reach of a shop that has bought its machines and taken no car apart for
+   * setup work. */
+  const MACHINE_SHOP_ONLY = operations
 
   function machinedWith(applied: readonly MachiningOperation[]): CarInstance {
     let car = stockCarFor(MODEL, 'car-collector-0001')
@@ -818,17 +821,17 @@ describe("a fully machined collector car still clears the Collector's gate", () 
     expect(sellTo(untouched)).not.toBe('nothing')
   })
 
-  it('sells after every one of the fifteen operations', () => {
+  it('sells after every one of the sixteen operations', () => {
     const car = machinedWith(ALL_OPERATIONS)
-    expect(ALL_OPERATIONS).toHaveLength(15)
-    expect(machiningCost(car, CONTEXT.partsById, ECONOMY)).toBeCloseTo(6.85, 10)
+    expect(ALL_OPERATIONS).toHaveLength(16)
+    expect(machiningCost(car, CONTEXT.partsById, ECONOMY)).toBeCloseTo(7.15, 10)
     expect(authenticityOf(car)).toBe(93)
     expect(sellTo(car)).not.toBe('nothing')
   })
 
-  it('sells after the nine the tooling alone can do', () => {
-    const car = machinedWith(TOOLING_ONLY)
-    expect(TOOLING_ONLY).toHaveLength(9)
+  it('sells after the nine done at the machine', () => {
+    const car = machinedWith(MACHINE_SHOP_ONLY)
+    expect(MACHINE_SHOP_ONLY).toHaveLength(9)
     expect(machiningCost(car, CONTEXT.partsById, ECONOMY)).toBeCloseTo(5.55, 10)
     expect(authenticityOf(car)).toBe(94)
     expect(sellTo(car)).not.toBe('nothing')

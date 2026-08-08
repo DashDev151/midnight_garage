@@ -14,7 +14,12 @@ import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '../src/context'
 import { computeDerivedStats } from '../src/derivedStats'
 import { marketValueYen } from '../src/marketValue'
-import { channelBuyerTaste, tasteMatchFor, valuateCarForBuyer } from '../src/valuation'
+import {
+  channelBuyerTaste,
+  saleOutcomeFor,
+  tasteMatchFor,
+  valuateCarForBuyer,
+} from '../src/valuation'
 import { buildCarInstance, carWithGrades, mintCarParts, uniformCarParts } from './testFixtures'
 
 const PARTS_BY_ID = Object.fromEntries(PARTS.map((p) => [p.id, p]))
@@ -459,6 +464,83 @@ describe('Sprint 146: taste is a match, not a mean', () => {
       ceiling,
     )
     expect(cagedTaste).toBeLessThan(stockTaste)
+  })
+
+  /**
+   * Handling's own Daily Drivers ceiling, and the two claims that together
+   * make it a real decision rather than an inert number.
+   *
+   * The lever only works if it is unreachable by accident and reachable on
+   * purpose. The handling display curve puts 55 at the top of stock grip, so
+   * the ceiling sits at 0.60: no shipped car's well-sorted standard trim
+   * crosses it, and a genuine handling build does. Both halves are measured
+   * across the whole shipped roster rather than pinned on one exemplar,
+   * because "no car reaches it" is exactly the failure this test exists to
+   * catch.
+   */
+  describe('the Daily Drivers handling ceiling', () => {
+    const handlingUpper = dailyDrivers.statTargets.handling.upper!
+
+    /** Race suspension, rubber and wing - the aero SKU delivers only what the
+     * car's own `spec.aeroCeiling` allows, so this is one build shape rather
+     * than a per-car hand-tune. */
+    const HANDLING_BUILD: Partial<Record<CarPartId, 'race'>> = {
+      dampers: 'race',
+      springs: 'race',
+      antiRollBars: 'race',
+      tyres: 'race',
+      aero: 'race',
+    }
+
+    function handlingOf(carModel: CarModel, instance: CarInstance): number {
+      return computeDerivedStats(carModel, instance, CONTEXT.partsById, PARTS_TAXONOMY, ECONOMY)
+        .handling
+    }
+
+    it('sits above every shipped car in mint stock trim, so a sorted standard car never trips it', () => {
+      for (const carModel of CARS) {
+        const stock = carWithGrades(carModel, CONTEXT, {}, 'mint')
+        expect(handlingOf(carModel, stock) / 100, carModel.id).toBeLessThanOrEqual(handlingUpper)
+      }
+    })
+
+    it('is crossed by a real handling build on a substantial share of the roster', () => {
+      const crossing = CARS.filter(
+        (carModel) =>
+          handlingOf(carModel, carWithGrades(carModel, CONTEXT, HANDLING_BUILD, 'mint')) / 100 >
+          handlingUpper,
+      )
+      // A third of the roster is the floor, not the measurement: what this
+      // guards is that the ceiling stays reachable, never that a particular
+      // count of cars reaches it.
+      expect(crossing.length, `${crossing.length} of ${CARS.length} cross it`).toBeGreaterThan(
+        CARS.length / 3,
+      )
+    })
+
+    it('costs the car both taste and the delight of the buyer once it is crossed', () => {
+      const s13Stock = carWithGrades(silvia, CONTEXT, {}, 'mint')
+      const s13Built = carWithGrades(silvia, CONTEXT, HANDLING_BUILD, 'mint')
+      expect(handlingOf(silvia, s13Stock) / 100).toBeLessThanOrEqual(handlingUpper)
+      expect(handlingOf(silvia, s13Built) / 100).toBeGreaterThan(handlingUpper)
+
+      const taste = (instance: CarInstance) =>
+        channelBuyerTaste(
+          dailyDrivers,
+          silvia,
+          instance,
+          PARTS_BY_ID,
+          PARTS_TAXONOMY,
+          ECONOMY,
+          ceiling,
+        )
+      expect(taste(s13Built)).toBeLessThan(taste(s13Stock))
+
+      const outcome = (instance: CarInstance) =>
+        saleOutcomeFor(dailyDrivers, silvia, instance, PARTS_BY_ID, PARTS_TAXONOMY, ECONOMY)
+      expect(outcome(s13Stock)).toBe('delighted')
+      expect(outcome(s13Built)).toBe('satisfied')
+    })
   })
 
   it('a specialised car beats a generalist one for the buyer it was built for, and loses for the buyer it was not', () => {

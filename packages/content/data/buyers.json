@@ -169,7 +169,7 @@
     "displayName": "Daily Drivers",
     "statTargets": {
       "power": { "target": 0.25, "upper": 0.55, "importance": 0.3 },
-      "handling": { "target": 0.25, "importance": 0.2 },
+      "handling": { "target": 0.25, "upper": 0.6, "importance": 0.2 },
       "style": { "target": 0.2, "importance": 0.15 },
       "reliability": { "target": 0.75, "importance": 1 },
       "authenticity": { "target": 0.5, "importance": 0.2 }

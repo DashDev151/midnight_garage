@@ -1,6 +1,6 @@
 # Sprint 197: four numbers, and a cage that is a decision
 
-**Status: PLANNED. Levers signed 2026-08-08 before implementation.**
+**Status: IMPLEMENTED, ready for review.** Levers signed before implementation.
 
 Four values that have been blocking work, decided together because they were measured together.
 
@@ -117,4 +117,88 @@ is exercised by power today; `valuePremiumPerOperation` is already read by
 
 ## Exit
 
-*(Filled on completion.)*
+All four signed values landed. Nothing else in any content file moved.
+
+### The `upper` is live, and 0.60 was the right number for a measurable reason
+
+Measured across all 48 shipped cars through `computeDerivedStats`, `normalizedTasteScore` and
+`saleOutcomeFor`:
+
+| | result |
+| --- | --- |
+| **stock, mint, all stock parts** | **0 of 48 cross 0.60.** Highest is the NSX-R at 56, then the 22B at 45 |
+| **built** (race dampers, springs, anti-roll bars, tyres, aero scaled by each car's own ceiling) | **24 of 48 cross it**, from 61 to 94 |
+| of those 24, against a daily-drivers buyer | **20 fall from `delighted` to `satisfied`** |
+| taste cost | 0.3 to 9.2 per cent |
+
+**This confirms the choice of 0.60 over 0.55 exactly, and by measurement rather than by argument:
+0.55 would have tripped the NSX-R on a bone-stock car**, which is the outcome the number was chosen
+to avoid.
+
+The taste penalty is modest, capped at about 10.8 per cent of the match. **The real teeth are the
+binary loss of `delighted`**, which halves what the sale pays in reputation, 30 to 15. So a cage is
+now a decision about who you are building for, which is what the lever existed to make possible.
+
+Kept as a permanent test in `valuation.test.ts`: the ceiling clears every shipped car's stock trim,
+is crossed by a real build on more than a third of the roster, and costs an S13 both taste and
+delight once crossed.
+
+### Underglow
+
+An operation on `chassis`, `performedOn: 'fitted-part'`, no `scene`. Its copy:
+
+> Runs neon tubes along the sills and under the bumpers, wired in off the ignition. Buys nothing on
+> the road and everything in a car park at midnight.
+
+**It gates on the body and trim shop for free, verified rather than assumed.**
+`craftOperationCapabilityGateReason` reads `partsTaxonomyById['chassis'].group`, which is `body`, and
+requires level 3 there. Carrying no scene it takes the `minEngineToolTier` branch rather than
+`craftOperationToolTier`, but both are 3, so the requirement is identical. Proven in both directions:
+body shop owned gives `null`, engine shop owned with body at rung 2 gives `tool-tier`.
+
+It appears on the car's own screen beside corner weighting and show fitment, and the machine shop
+refuses it as `unknown-operation`, both covered by tests.
+
+### One pin moved, and that is measured too
+
+`economy.json` hash only. **No value pin and no golden master moved**, which was checked rather than
+assumed: every site quoting a machining premium reads the constant from content, and no scripted
+career, mission probe or golden-master run machines anything, so `valuePremiumPerOperation` 0.03 to
+0.08 left the suite green. No sale-outcome or reputation pin moved either, because no fixture builds
+a car over 0.60 handling.
+
+`buyers.json` is not hashed anywhere, so its change is recorded in the same ledger rather than
+pinned.
+
+### Five stale tests, one root cause
+
+All case (a), none a regression, and all five were the same mistake: **`scene === undefined` was
+being used as a proxy for "an engine machining operation"**, and underglow breaks that proxy by
+having no scene while being fitted-part work.
+
+Tightened to `scene === undefined && performedOn === 'loose-part'`, which is what those tests always
+meant. The same stale filter was fixed in `machiningPowerModel.test.ts`, which was passing only
+because underglow happens to carry zero power.
+
+One test was renamed rather than just fixed: "sells after the nine the tooling alone can do" became
+"the nine done at the machine", because since the tool ladder rework every operation unlocks on
+tooling alone and the old name no longer distinguished anything.
+
+### Evidence
+
+| check | result |
+| --- | --- |
+| `pnpm typecheck` | clean, all three projects |
+| `pnpm test --project content` | 626 passed |
+| `pnpm test --project sim` | 2,799 passed |
+| `pnpm test --project game` | 1,036 passed |
+| `npx eslint` / `prettier --check` | clean |
+| content value diff | the four signed values, plus `labourPoints: 5` on the new operation, which the schema requires and every other operation carries |
+
+### Still open
+
+**The cage SKU itself.** This sprint authored the lever that makes it a decision rather than a free
+upgrade. The part is content and follows.
+
+**The array's name.** `economy.machining.operations` now holds three things that are not machining:
+corner weighting, show fitment and underglow. Recorded in `TODO.md`.

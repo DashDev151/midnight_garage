@@ -48,13 +48,15 @@ import { buildCarInstance, mintCarParts, type CarPartOverride } from './testFixt
  */
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY, [], FACILITIES)
-// This file is about the four original engine-only operations and the power
-// model specifically. `economy.machining.operations` is now shared with the
-// six scene-gated craft operations (`scene` set on every one of them, absent
-// on these nine), two of which happen to share a `POWER_SLOTS` slot
-// (`internals`, `block`) - scoped out here so this file keeps measuring
-// exactly what it always measured.
-const operations = ECONOMY.machining.operations.filter((o) => o.scene === undefined)
+// This file is about the nine original engine-only operations and the power
+// model specifically. `economy.machining.operations` is shared with the six
+// scene craft operations (two of which happen to share a `POWER_SLOTS` slot,
+// `internals` and `block`) and with the setup work done on an assembled car,
+// so the nine are selected by what distinguishes them: no `scene`, and
+// performed on a part off the car.
+const operations = ECONOMY.machining.operations.filter(
+  (o) => o.scene === undefined && o.performedOn === 'loose-part',
+)
 const OPERATION_IDS = operations.map((o) => o.id)
 
 const MACHINABLE_SLOTS: readonly CarPartId[] = [

@@ -126,10 +126,10 @@ export type FittedMachiningGateReason =
  * signature job can never be offered ahead of what the garage's own cars could
  * actually get.
  *
- * The four original engine operations gate on `minEngineToolTier`; an
- * operation carrying a `scene` gates on `craftOperationToolTier` instead,
- * read against its own line. Both sit at level 3, which is the shop covering
- * that line.
+ * An operation carrying a `scene` gates on `craftOperationToolTier`; every
+ * other one gates on `minEngineToolTier`. Both sit at level 3, and both are
+ * read against the operation's own line, so which of the two applies changes
+ * nothing about what is required while they agree.
  */
 export function craftOperationCapabilityGateReason(
   operation: MachiningOperation,

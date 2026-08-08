@@ -2678,9 +2678,10 @@ describe('CarDetailScreen', () => {
   })
 
   /**
-   * Setup work: corner weighting on the springs and show fitment on the rims.
-   * Neither can be judged with the part off the car, so the car's own screen is
-   * where they are offered and the machine shop never sees them.
+   * Setup work: corner weighting on the springs, show fitment on the rims and
+   * underglow on the chassis. None can be judged with the part off the car, so
+   * the car's own screen is where they are offered and the machine shop never
+   * sees them.
    */
   describe('setup work on the car', () => {
     /** A granted car rolled into a service bay, with `carPartId` fitted mint so
@@ -2730,6 +2731,32 @@ describe('CarDetailScreen', () => {
       // A slot with no setup work says nothing about it at all.
       await selectPart(wrapper, 'dampers')
       expect(wrapper.find('[data-test="setup-offer-corner-weighting"]').exists()).toBe(false)
+    })
+
+    it('offers underglow on the chassis, and answers to the body line', async () => {
+      const game = useGameStore()
+      const id = carReadyForSetup(game, 'chassis')
+      grantShopFor(game, 'engine')
+
+      const refused = await mountAt(id)
+      await selectPart(refused.wrapper, 'chassis')
+      expect(refused.wrapper.find('[data-test="setup-offer-underglow"]').exists()).toBe(true)
+      expect(
+        refused.wrapper.find('[data-test="setup-do-underglow"]').attributes('disabled'),
+      ).toBeDefined()
+
+      grantShopFor(game, 'body')
+      const allowed = await mountAt(id)
+      await selectPart(allowed.wrapper, 'chassis')
+      expect(allowed.wrapper.find('[data-test="setup-refusal-underglow"]').exists()).toBe(false)
+      expect(allowed.wrapper.find('[data-test="setup-figures-underglow"]').text()).toContain(
+        'Style +6',
+      )
+      await allowed.wrapper.find('[data-test="setup-do-underglow"]').trigger('click')
+      await flushPromises()
+      expect(
+        game.gameState.ownedCars.find((c) => c.id === id)!.parts.chassis.installed!.machining,
+      ).toEqual(['underglow'])
     })
 
     it('does the work on click, writing it onto the part fitted to the car', async () => {

@@ -1036,7 +1036,7 @@
       "race": 1.5
     },
     "reliabilityCostPerOperation": 0.004,
-    "valuePremiumPerOperation": 0.03,
+    "valuePremiumPerOperation": 0.08,
     "operations": [
       {
         "id": "port-and-polish",
@@ -1260,6 +1260,22 @@
         "labourPoints": 5,
         "scene": "daily-drivers",
         "reliabilityConditionBonus": 0.15
+      },
+      {
+        "id": "underglow",
+        "displayName": "Underglow",
+        "description": "Runs neon tubes along the sills and under the bumpers, wired in off the ignition. Buys nothing on the road and everything in a car park at midnight.",
+        "carPartId": "chassis",
+        "powerFraction": {
+          "high-strung-na": 0,
+          "lazy-na": 0,
+          "forced": 0
+        },
+        "spec": 0,
+        "authenticityCost": 0.3,
+        "labourPoints": 5,
+        "style": 6,
+        "performedOn": "fitted-part"
       }
     ]
   },

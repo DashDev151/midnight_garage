@@ -291,6 +291,16 @@ pass."
   shop with the cash and no name can buy a lift in the real world. If the floor goes, tool pacing
   rests entirely on price and on the classifieds listing window, and both would want re-checking.
 
+- [ ] **`economy.machining.operations` has outgrown its name.** It now holds three entries that are
+  not machining: **corner weighting** (scales under an assembled car), **show fitment** (rolling
+  arches and stretching tyres) and **underglow** (neon tubes wired off the ignition). All three are
+  `performedOn: 'fitted-part'`, done on a built car rather than at a machine, and they appear on the
+  car's own screen rather than in the machine shop.
+
+  The array is really "operations a shop can perform", and machining is one kind. Renaming it
+  touches the schema, the content block, the approval hash, and every reader; it is churn on its
+  own and belongs in whatever change next has reason to be in that block.
+
 - [ ] **THE ART IS THE INTERFACE. CONFIRMED AS THE GOAL (maintainer, 2026-08-08).** Ruled on the
   description below: a room stops being a backdrop with a menu beside it and becomes the thing you
   operate. Click the lathe to machine, click the car on the ramp to open it, click the shelf to

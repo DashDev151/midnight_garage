@@ -293,10 +293,12 @@ describe('the machining term', () => {
 
   it('costs 6 of the 100 points for a full engine on its own original castings', () => {
     let car = carWith({})
-    // The nine tool-gated operations specifically - the catalogue also carries
-    // the six scene-gated craft operations now, each on its own `scene` and its
-    // own, separately-tested authenticity cost.
-    for (const operation of ECONOMY.machining.operations.filter((o) => o.scene === undefined)) {
+    // The nine engine operations specifically - the catalogue also carries the
+    // six scene craft operations and the setup work done on an assembled car,
+    // each with its own, separately-tested authenticity cost.
+    for (const operation of ECONOMY.machining.operations.filter(
+      (o) => o.scene === undefined && o.performedOn === 'loose-part',
+    )) {
       car = machinedCar(car, operation.carPartId, [operation.id])
     }
     expect(machiningCost(car, CONTEXT.partsById, ECONOMY)).toBeCloseTo(5.55, 10)

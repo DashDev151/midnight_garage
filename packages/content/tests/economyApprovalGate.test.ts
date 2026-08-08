@@ -2151,6 +2151,44 @@ import toolShops from '../data/toolShops.json'
  * a bill cap sized off a very small clean value is what binds. Net across those 13 cars the bands
  * move 24 steps better against 12 worse: they arrive marginally softer, as the tighter cap
  * intends, with the damage budget respending part of what the softening frees.
+ *
+ * Re-pinned for four levers signed by name and value before implementation, three of them in
+ * `economy.json` and one in `buyers.json`.
+ *
+ * 1. `machining.valuePremiumPerOperation` 0.03 -> **0.08**. Measured on flagship engine parts, a
+ *    fully machined block (4 operations) goes from +12 to +32 per cent of the part's price, and
+ *    the whole engine set (11 operations) from 31,590 to 84,240 yen, which is 1,532 yen per labour
+ *    point against 574. At 0.03 a full engine's machining returned less than a day of a solo
+ *    shop's labour is worth, and the authenticity rescale recorded above had already taken away
+ *    most of machining's downside, so this lever was left carrying the whole question of whether
+ *    the work is worth choosing.
+ * 2. `machining.operations` gains a sixteenth entry, `underglow`: `chassis`, `performedOn`
+ *    `fitted-part`, `style` **6**, `authenticityCost` **0.3**, `labourPoints` 5 (the figure every
+ *    other operation carries) and no scene, no power, no spec and no handling. Against the
+ *    authored ladder where a race wing is 18 and `show-fitment` gives 5, six sits just above show
+ *    fitment because it is more visible and well under a wing because a wing is a functional
+ *    statement; 0.3 sits between `corner-weighting` (0.25) and `show-fitment` (0.35), a lighter
+ *    kit than rolled arches and plainly not how the car left the factory. It needs no gate of its
+ *    own: `craftOperationCapabilityGateReason` reads the required line off the operation's own
+ *    `carPartId`, and `chassis` is a `body` part, so it answers to the body and trim shop.
+ * 3. `buyers.json` daily-drivers `statTargets.handling.upper`, previously unauthored, is now
+ *    **0.60**. It carries no hash of its own and is recorded here because this file is the ledger
+ *    of what moved and why. Without an `upper` no buyer can read a cage at all: buyers read the
+ *    five derived stats rather than parts, `PhysicalModifierSchema.mass` forbids a mass penalty,
+ *    and a cage costs about one authenticity point, so a cage was a strict upgrade. 0.60 rather
+ *    than 0.55 because the handling display curve puts 55 at 1.10 g, the top of stock, and at 0.55
+ *    the ceiling would trip on a well-sorted standard car. Touge deliberately gets none, since
+ *    handling is their champion stat. Measured over the whole shipped roster: 0 of 48 cars cross
+ *    0.60 in mint stock trim (the highest is the NSX-R at 56), and 24 of 48 cross it on race
+ *    dampers, springs, anti-roll bars, tyres and aero within the car's own ceiling. Of those 24,
+ *    20 fall from `delighted` to `satisfied` with a daily-drivers buyer, halving what the sale
+ *    pays in reputation (30 -> 15), and the taste match falls between 0.3 and 9.2 per cent.
+ *
+ * No mission payout, budget cap or mission stat threshold moves, and no value pin moves either:
+ * `valuePremiumPerOperation` is read from content at every site that quotes a machining premium,
+ * no scripted career or mission probe machines anything, and every `advanceDay` golden hash holds
+ * unchanged against a fresh run. `partPricing.json`, `damagePatterns.json`, `toolLines.json` and
+ * `toolShops.json` are untouched, so their hashes and the payout pin hold unchanged.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -2160,7 +2198,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('2a95a55bf715273c96d64ed8710205893aed7d5ad8614a7086a3a6b5b227ab3d')
+    ).toBe('f4fb46e5b1693e8bfb89a6d10b05237367e21d5900286c4b2a3f5ebba1a1671f')
   })
 
   it('damagePatterns.json matches its approved content exactly', () => {

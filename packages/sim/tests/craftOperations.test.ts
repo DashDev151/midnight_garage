@@ -281,15 +281,18 @@ describe('sorting: reliability past what the condition band implies', () => {
 })
 
 /**
- * Setup work: the two operations that can only be judged with the car
- * assembled, so they are addressed by car and slot rather than by a part on the
- * machine. One mechanism, two address kinds - what changes is where the work
- * happens and what it is quoted against, never what it costs or what it does.
+ * Setup work: the operations that can only be judged with the car assembled,
+ * so they are addressed by car and slot rather than by a part on the machine.
+ * One mechanism, two address kinds - what changes is where the work happens
+ * and what it is quoted against, never what it costs or what it does.
+ *
+ * Underglow is the one that carries no `scene`, so it is read from the whole
+ * catalogue below rather than from `SCENE_OPERATIONS`.
  */
 describe('setup work is done on the car, not at the machine', () => {
-  const SETUP_IDS = ['corner-weighting', 'show-fitment'] as const
+  const SETUP_IDS = ['corner-weighting', 'show-fitment', 'underglow'] as const
 
-  it('is exactly those two operations, and every other one is done with the part off', () => {
+  it('is exactly those three operations, and every other one is done with the part off', () => {
     const fitted = ECONOMY.machining.operations.filter((o) => o.performedOn === 'fitted-part')
     expect(fitted.map((o) => o.id).sort()).toEqual([...SETUP_IDS].sort())
     for (const operation of ECONOMY.machining.operations) {
@@ -299,7 +302,7 @@ describe('setup work is done on the car, not at the machine', () => {
   })
 
   for (const operationId of SETUP_IDS) {
-    const operation = SCENE_OPERATIONS.find((o) => o.id === operationId)!
+    const operation = ECONOMY.machining.operations.find((o) => o.id === operationId)!
     const group = groupOf(operation)
 
     it(`${operationId}: the machine shop will not quote it, whatever is on the machine`, () => {
@@ -435,7 +438,7 @@ describe('setup work is done on the car, not at the machine', () => {
   }
 
   it('offers each one only on its own slot, priced with what it costs and what it gives', () => {
-    const { car, state } = shopWith(testToolShopsOwned('suspension', 'wheels'))
+    const { car, state } = shopWith(testToolShopsOwned('suspension', 'wheels', 'body'))
     const springs = fittedMachiningOffersFor(state, car.id, 'springs', CONTEXT)
     expect(springs.map((o) => o.operation.id)).toEqual(['corner-weighting'])
     expect(springs[0]!.handlingFraction).toBeGreaterThan(0)
@@ -448,6 +451,15 @@ describe('setup work is done on the car, not at the machine', () => {
     expect(rims.map((o) => o.operation.id)).toEqual(['show-fitment'])
     expect(rims[0]!.stylePoints).toBe(5)
     expect(rims[0]!.handlingFraction).toBe(0)
+
+    // Underglow answers to the body line, because `chassis` is a body part -
+    // the same derivation every other operation's gate uses.
+    const chassis = fittedMachiningOffersFor(state, car.id, 'chassis', CONTEXT)
+    expect(chassis.map((o) => o.operation.id)).toEqual(['underglow'])
+    expect(chassis[0]!.stylePoints).toBe(6)
+    expect(chassis[0]!.handlingFraction).toBe(0)
+    expect(chassis[0]!.authenticityCost).toBe(0.3)
+    expect(chassis[0]!.gateReason).toBeNull()
 
     // Every other slot has nothing to set up, including the ones the machine
     // shop works.
