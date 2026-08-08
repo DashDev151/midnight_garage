@@ -291,7 +291,15 @@ describe('advanceDay golden master', () => {
     // rename `bodywork` back to `panels` throughout this state and the hash is
     // exactly the previous `2610e4d1`, so no roll, cash figure or derived stat
     // moved. Re-derived from a real run.
-    expect(hashState(finalState)).toBe('b656e85d')
+    //
+    // It moves once more for the auction age floor doing what its name says:
+    // a room's eligible pool now drops every model whose production window
+    // has not yet cleared `AUCTION_MIN_AGE_YEARS`, so at this script's 1995
+    // campaign eleven models leave the pool and every catalogue it draws
+    // differs from day one. Only the boards moved: this career never bids,
+    // and the cash assertion below still reconciles to the same closed-form
+    // figure it did before. Re-derived from a real run.
+    expect(hashState(finalState)).toBe('8e9b10d8')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -558,7 +566,19 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // arrives on day 10 rather than day 3: the sale path reads the car's own
     // price, so the day an offer lands moves with it. Re-derived from a real
     // run.
-    expect(hashState(acquisitionCareer().sold)).toBe('7118cd29')
+    //
+    // It moves once more, alongside the 30-day master, for the auction age
+    // floor doing what its name says: a room's eligible pool now drops every
+    // model whose production window has not yet cleared
+    // `AUCTION_MIN_AGE_YEARS`, so the opening board differs and this script
+    // buys a different car. Measured from the same seed: `lot-1-local-yard-0`
+    // was a 21,744 km 1993 Wagon R at a 184,334 buyout, sold to daily-drivers
+    // for 157,575 on an offer that arrived on day 10; it is now a 40,799 km
+    // 1991 Toyota Corolla 1.5 SE at a 147,301 buyout, sold to the same buyer
+    // for 124,021 on an offer that arrived on day 5. The Wagon R's window
+    // opens in 1993, which a 1995 campaign cannot yet put three years behind
+    // it. Re-derived from a real run.
+    expect(hashState(acquisitionCareer().sold)).toBe('8689e249')
   })
 })
 

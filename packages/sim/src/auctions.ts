@@ -853,10 +853,17 @@ function patternOffsetByPartId(
  * neither can ever open it: a current-model-year car doesn't reach a backyard
  * auction, so the newest year is at least `AUCTION_MIN_AGE_YEARS` old; and
  * `yearFrom` wins outright if that pushes the window shut, because a car cannot
- * predate its own model. A 1994 model in a 1995 campaign therefore still
- * generates as a 1994 car, age 1 - near-new cars are supposed to exist. An
- * infinite `currentYear` means no campaign is known, and only the production
- * run applies.
+ * predate its own model. An infinite `currentYear` means no campaign is known,
+ * and only the production run applies.
+ *
+ * That `yearFrom` clamp is unreachable from an auction catalogue, whose own
+ * eligibility filter (`generateAuctionCatalog`) already drops every model too
+ * new to satisfy the floor. It binds for the callers that generate a car
+ * without that filter and must still produce one: a service-job customer's car
+ * (`serviceJobs.ts`), which admits any model already released, and the
+ * whole-roster sweeps behind the play-ranking probe (`plays.ts`) and the
+ * economy bench. A 1994 model in a 1995 campaign generates as a 1994 car there,
+ * age 1, which is why the clamp stays.
  */
 export function generatedYearRangeFor(
   model: CarModel,
@@ -1301,9 +1308,13 @@ function pickModelByRarity(
  * within that band by scarcity (`rollCarTier`, `pickModelByRarity`). A model
  * the room never offers (`canAppearAtAuctionTier`) is out of the pool
  * entirely. `currentYear` (default Infinity = unrestricted) also excludes any
- * model whose `yearFrom` postdates the in-game calendar, so a still-unreleased
- * model can't appear at auction (GDD 2.2). Each lot's own duration is rolled
- * independently off its model's rarity.
+ * model that cannot yet produce a car the age floor allows: a model is out of
+ * the pool until its `yearFrom` is at least `AUCTION_MIN_AGE_YEARS` behind the
+ * in-game calendar, so a still-unreleased model can't appear at auction (GDD
+ * 2.2) and neither can a current-model-year one. Every model this filter keeps
+ * therefore satisfies `generatedYearRangeFor`'s upper clamp outright, so no lot
+ * a room offers is ever younger than the floor. Each lot's own duration is
+ * rolled independently off its model's rarity.
  *
  * `excludedModelIds` (default none) drops the named models from the
  * eligible pool before any draw - its one current use keeps the scripted
@@ -1323,7 +1334,7 @@ export function generateAuctionCatalog(
   const eligible = models.filter(
     (model) =>
       canAppearAtAuctionTier(model, tier, economy) &&
-      model.spec.yearFrom <= currentYear &&
+      model.spec.yearFrom <= currentYear - economy.AUCTION_MIN_AGE_YEARS &&
       !excludedModelIds.includes(model.id),
   )
   if (eligible.length === 0) return []

@@ -547,16 +547,19 @@ h3 {
   min-height: 2.4em;
 }
 
-.maxed {
-  /* Always occupies its line, hidden when the column isn't maxed - otherwise
-     a maxed column's ladder starts lower than its neighbours' and the whole
-     wall re-staggers. Same reserve-the-space instinct as the h4 above. */
+/* Inside the tool wall the label always occupies its line and only becomes
+   visible once the column is maxed - otherwise a maxed column's ladder starts
+   lower than its neighbours' and the whole wall re-staggers. Same
+   reserve-the-space instinct as the h4 above. Scoped to the wall, because a
+   facilities card renders its label only when the bay type is maxed and so
+   has nothing to reserve or hide. */
+.tool-column > .maxed {
   min-height: 1.4em;
   margin: 0 0 var(--mg-space-1);
   visibility: hidden;
 }
 
-.maxed.shown {
+.tool-column > .maxed.shown {
   visibility: visible;
 }
 
@@ -681,8 +684,9 @@ h3 {
   font-size: var(--mg-fs-sm);
 }
 
-/* Deliberately not `.maxed`: that class is the tool wall's reserved,
-   visibility-toggled slot, and a shop's owned state is always shown. */
+/* A shop's owned state, in the same success colour a maxed line's label
+   carries. Its own class because a shop card sits outside the tool wall and so
+   takes none of the wall's line-reserving layout. */
 .shop-fitted {
   color: var(--mg-success);
   font-size: var(--mg-fs-sm);

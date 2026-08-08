@@ -217,7 +217,10 @@ function indexAftermarketPartsByCarPartId(
   for (const fitmentClass of FITMENT_CLASSES) {
     const byCarPartId: Record<string, Partial<Record<Grade, Part>>> = {}
     for (const part of parts) {
-      if (part.grade !== 'stock' && part.fitmentClass === fitmentClass) {
+      // Per-zone replacement panels address a single body zone, never the
+      // whole slot, so they are excluded here exactly as they are from the
+      // stock index above.
+      if (part.grade !== 'stock' && part.fitmentClass === fitmentClass && part.zoneId == null) {
         ;(byCarPartId[part.carPartId] ??= {})[part.grade] = part
       }
     }

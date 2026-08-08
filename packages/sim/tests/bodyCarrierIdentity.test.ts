@@ -25,6 +25,7 @@ import {
   refitCarrierZoneStates,
   setZoneCarrierToAtLeastBand,
 } from '../src/bodyPipeline'
+import { generateAuctionCarInstance } from '../src/auctions'
 import { buildSimContext } from '../src/context'
 import {
   completeJob,
@@ -35,6 +36,7 @@ import {
   resolveRemovePart,
 } from '../src/jobs'
 import { makeMarketOrigin } from '../src/provenance'
+import { createRng } from '../src/rng'
 import {
   buildCarInstance,
   mintCarParts,
@@ -219,6 +221,30 @@ describe('a body carrier takes a non-stock SKU', () => {
     const fitted = fitThroughJob(carOnZoneModel(), PAINT_KIT)
     expect(fitted.parts.paint.installed?.partId).toBe(PAINT_KIT.id)
     expect(fitted.parts.paint.installed?.band).toBe(deriveBodyBands(fitted.zoneState!).paint)
+  })
+})
+
+describe('the bodywork carrier is never filled with a single-zone panel', () => {
+  it('offers no zone panel as a whole-slot aftermarket entry in any fitment class', () => {
+    for (const byCarPartId of Object.values(CONTEXT.aftermarketPartByCarPartId)) {
+      for (const [carPartId, byGrade] of Object.entries(byCarPartId)) {
+        for (const part of Object.values(byGrade)) {
+          expect(part.zoneId, `${carPartId} -> ${part.id}`).toBeUndefined()
+        }
+      }
+    }
+  })
+
+  it('never generates a car wearing a zone panel as its bodyshell', () => {
+    for (const model of CARS) {
+      for (let seed = 1; seed <= 25; seed++) {
+        const car = generateAuctionCarInstance(model, `body-${seed}`, createRng(seed), CONTEXT)
+        const fitted = car.parts.bodywork.installed
+        if (!fitted) continue
+        const part = CONTEXT.partsById[fitted.partId]
+        expect(part?.zoneId, `${model.id} seed ${seed}: ${fitted.partId}`).toBeUndefined()
+      }
+    }
   })
 })
 

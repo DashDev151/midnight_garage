@@ -291,6 +291,52 @@ pass."
   shop with the cash and no name can buy a lift in the real world. If the floor goes, tool pacing
   rests entirely on price and on the classifieds listing window, and both would want re-checking.
 
+- [ ] **THE ART IS THE INTERFACE. CONFIRMED AS THE GOAL (maintainer, 2026-08-08).** Ruled on the
+  description below: a room stops being a backdrop with a menu beside it and becomes the thing you
+  operate. Click the lathe to machine, click the car on the ramp to open it, click the shelf to
+  reach your parts.
+
+  **This binds every future room sprint.** Any text panel built between now and then is work that
+  this decision throws away, so a room sprint should either build toward it or build as little
+  chrome as it can get away with.
+
+  **The mechanism already exists one screen away and needs no new art plumbing.**
+  `OverworldScreen.vue` hit-tests raw DOM `click` and `pointermove` against placement boxes through
+  `overworldNav.ts`'s `locationAt(x, y)`, with a hover highlight drawn as a `Graphics` overlay
+  outside the built scene, and a three-way `route | inert | action` result so a refusal can say why.
+  `GARAGE_PLACEMENTS` already stores fixture centres and `garageFixtureSize` already gives sizes;
+  `rooms.ts`'s own module doc calls them "the things a screen would hit-test against later".
+
+  So the shape is a `garageRoomNav.ts` mirroring `overworldNav.ts`. What does NOT exist: any
+  interactivity in the Pixi layer at all (zero matches for `eventMode`, `interactive`, `hitArea`,
+  `pointerdown` across `packages/game/src/pixi`), and any live state in a room's art (the workshop
+  floor's cars are hardcoded sample content).
+
+- [ ] **A ROUGH CAR SHOULD BE ROUGH IN A WAY THAT MAKES SENSE, NOT UNIFORMLY ROUGH (maintainer,
+  2026-08-08).** Their words: *"To an extent but not perfectly. You won't have scrap internals and a
+  mint block. You won't have perfect dampers and junk springs. What is broken should make logical
+  sense together. Also should not have all or 95 per cent of slots at the same quality likely, need
+  variation."*
+
+  **Measured today: 5.9 per cent of generated lots arrive with 25 or more of 28 slots at poor or
+  scrap**, and a real seed reproduces a car with 26 of 28 at `poor` and nothing else anywhere. The
+  cause is structural rather than tuned: `poor` spans a 25-point condition window and `worn` spans
+  30, so once `conditionBaseline + jitter` lands inside one window every slot buckets identically,
+  and `spendDamageBudget` then drops roughly ten more by one band each.
+
+  **Two properties are wanted and the generator has neither:**
+  1. **Correlation within a subsystem.** Internals and block should move together; dampers and
+     springs should move together. Today every slot's jitter is drawn independently
+     (`rng.int(jitterMin, jitterMax)` per slot in `generateAuctionCarInstance`), so nothing ties a
+     subsystem to itself.
+  2. **Variation across the car.** A flat wall of one band should be rare rather than routine. The
+     zero-sum `patternConditionSwingPercent` (plus or minus 7) is the only spreading force and it is
+     far too small against a 25-point band window.
+
+  The damage pattern already knows which area of the car was hurt (`patternOffsetByPartId`), so the
+  correlation half has somewhere honest to hang. Any fix moves `partsGeneration` levers and needs
+  them signed by name under directive 22.
+
 - [ ] **EVERY RENDERED ROOM IN THE GARAGE IS DECORATION (maintainer, 2026-08-06).** Their words:
   *"you have already drawn placeholder art for it. That does nothing right now. Note it for later.
   Goes for ALL rendered screens in the garage. They do nothing."*

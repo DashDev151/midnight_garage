@@ -567,7 +567,10 @@ describe('currentYear clamp - the rolling chronology (Sprint 10 item 6)', () => 
     expect(lots).toHaveLength(0)
   })
 
-  it('generateAuctionCatalog includes that same model once the calendar reaches its release year', () => {
+  it('generateAuctionCatalog still excludes it on its release year itself', () => {
+    // A room deals in cars at least `AUCTION_MIN_AGE_YEARS` old, so a model is
+    // out of the pool until its window can produce one: on 2005 the newest a
+    // 2005 model can be is brand new.
     const lots = generateAuctionCatalog(
       [FUTURE_MODEL],
       'local-yard',
@@ -577,9 +580,23 @@ describe('currentYear clamp - the rolling chronology (Sprint 10 item 6)', () => 
       CONTEXT,
       2005,
     )
+    expect(lots).toHaveLength(0)
+  })
+
+  it('generateAuctionCatalog includes it once the calendar has cleared the age floor', () => {
+    const openingYear = 2005 + ECONOMY.AUCTION_MIN_AGE_YEARS
+    const lots = generateAuctionCatalog(
+      [FUTURE_MODEL],
+      'local-yard',
+      7,
+      5,
+      createRng(1),
+      CONTEXT,
+      openingYear,
+    )
     expect(lots.length).toBeGreaterThan(0)
     for (const lot of lots) {
-      expect(lot.car.year).toBeLessThanOrEqual(2005)
+      expect(openingYear - lot.car.year).toBeGreaterThanOrEqual(ECONOMY.AUCTION_MIN_AGE_YEARS)
     }
   })
 

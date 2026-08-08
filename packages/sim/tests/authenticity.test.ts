@@ -21,7 +21,7 @@ import {
   machiningCost,
   stocknessOf,
 } from '../src/derivedStats'
-import { carWithGrades } from './testFixtures'
+import { carWithGrades, zonePanelsAtGrade } from './testFixtures'
 
 /**
  * Authenticity is
@@ -339,12 +339,16 @@ describe('no car carries a stored authenticity roll any more', () => {
 
 /**
  * A body carrier's BAND is derived from `zoneState`, but what is FITTED there
- * is a real choice, so a modified body reads as modified. `bodywork` and
- * `paint` both carry a real aftermarket ladder: fitting either of their
- * non-stock grades costs the slot's whole authenticity weight, and refitting
- * the stock grade wins it back. Paint's stock SKU is the car's own factory
- * finish, so the "stock grade" that wins the weight back is specifically a
- * factory-correct respray, not merely any paint job.
+ * is a real choice, so a modified body reads as modified. The two carriers
+ * reach that verdict by different routes, because their aftermarket ladders
+ * are fitted differently: every non-stock `bodywork` SKU is a single-zone
+ * panel, so a body kit arrives panel by panel and `stocknessOf` reads the
+ * zones rather than the carrier's own SKU; `paint` keeps a whole-slot ladder
+ * and is read from the fitted SKU's grade. Either way the slot's whole
+ * authenticity weight goes, and refitting stock wins it back. Paint's stock
+ * SKU is the car's own factory finish, so the "stock grade" that wins the
+ * weight back is specifically a factory-correct respray, not merely any paint
+ * job.
  */
 describe('a modified body reads as modified', () => {
   it('ships an aftermarket ladder for bodywork and paint', () => {
@@ -357,11 +361,19 @@ describe('a modified body reads as modified', () => {
   })
 
   it('costs a fitted body kit or respray the whole authenticity weight of its slot', () => {
-    expect(authenticityOf(carWith({ bodywork: 'sport' }))).toBe(100 - WEIGHT.bodywork)
+    const kitted: CarInstance = { ...carWith({}), zoneState: zonePanelsAtGrade('sport') }
+    expect(authenticityOf(kitted)).toBe(100 - WEIGHT.bodywork)
     expect(authenticityOf(carWith({ paint: 'street' }))).toBe(100 - WEIGHT.paint)
-    expect(authenticityOf(carWith({ bodywork: 'race', paint: 'street' }))).toBe(
-      100 - WEIGHT.bodywork - WEIGHT.paint,
-    )
+    const kittedAndResprayed: CarInstance = {
+      ...carWith({ paint: 'street' }),
+      zoneState: zonePanelsAtGrade('race'),
+    }
+    expect(authenticityOf(kittedAndResprayed)).toBe(100 - WEIGHT.bodywork - WEIGHT.paint)
+  })
+
+  it('wins the bodywork weight back once every zone wears a stock panel again', () => {
+    const restored: CarInstance = { ...carWith({}), zoneState: zonePanelsAtGrade('stock') }
+    expect(authenticityOf(restored)).toBe(100)
   })
 
   it('wins the 11 points back by refitting the stock (factory-correct) grade', () => {

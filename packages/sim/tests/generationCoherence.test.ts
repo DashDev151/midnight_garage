@@ -106,6 +106,49 @@ describe('generated cars are coherent (Sprint 66, item 6a)', () => {
   })
 
   /**
+   * The same floor, on the cars a room actually OFFERS, which is where a
+   * player meets it. `AUCTION_MIN_AGE_YEARS` promises that a current-model-year
+   * car does not turn up at a backyard auction, and the catalogue's own
+   * eligibility filter is what keeps that promise: a model whose production
+   * window has not yet cleared the floor is out of the pool entirely, so the
+   * `yearFrom` clamp in `generatedYearRangeFor` is never reached from here and
+   * the exception the sweep above allows for cannot arise.
+   *
+   * Drawn through `generateAuctionCatalog`, the real two-stage draw, at every
+   * campaign year the calendar can sit at. The top rooms are the ones that need
+   * it: they deal in the newest, priciest metal, so they are where a
+   * delivery-mileage car would surface.
+   */
+  it('never offers a lot younger than AUCTION_MIN_AGE_YEARS, at any campaign year', () => {
+    for (const reputationTier of REPUTATION_TIERS) {
+      const year = currentGameYear(reputationTier)
+      for (const tier of AuctionTierSchema.options) {
+        let lots = 0
+        for (let seed = 0; seed < 25; seed++) {
+          for (const lot of generateAuctionCatalog(
+            CARS,
+            tier,
+            1,
+            10,
+            createRng(seed),
+            CONTEXT,
+            year,
+          )) {
+            lots++
+            expect(
+              year - lot.car.year,
+              `${tier} offered a ${year - lot.car.year}-year-old ${lot.modelId} in a ${year} campaign`,
+            ).toBeGreaterThanOrEqual(ECONOMY.AUCTION_MIN_AGE_YEARS)
+          }
+        }
+        // A room that quietly stopped filling its board would pass the bar
+        // above on an empty sample.
+        expect(lots, `${tier} put nothing on the board at ${year}`).toBe(250)
+      }
+    }
+  })
+
+  /**
    * The wear model alone, asked of it alone. Generation has two further,
    * deliberate damage stages after it, and neither is a claim about mileage:
    * a symptom's cause sets its part to the worse of its current band and the

@@ -13,9 +13,11 @@ import {
 import { describe, expect, it } from 'vitest'
 import { emptyDayActions } from '../src/actions'
 import { advanceDay } from '../src/advanceDay'
+import { generateAuctionCatalog } from '../src/auctions'
 import { buildSimContext } from '../src/context'
 import { createInitialGameState } from '../src/newGame'
-import { installTutorial } from '../src/tutorial'
+import { createRng } from '../src/rng'
+import { excludedAuctionModelIds, installTutorial } from '../src/tutorial'
 
 const CONTEXT = buildSimContext(
   CARS,
@@ -143,24 +145,45 @@ describe('the tutorial-model auction exclusion (Sprint 95 decision 5)', () => {
     }
   })
 
-  it('the same seeds do roll the tutorial model when no tutorial is active (the exclusion does real work)', () => {
-    let rolled = 0
-    for (let seed = 1; seed <= 30; seed++) {
-      const state = createInitialGameState(CONTEXT, seed)
-      rolled += state.activeAuctionLots.filter((l) => l.modelId === TUTORIAL_LOT.modelId).length
+  /**
+   * The exclusion does real work, measured at the one campaign year that can
+   * show it. A room only offers a model whose production window has cleared
+   * `AUCTION_MIN_AGE_YEARS`, and the scripted Wagon R's window opens in 1993,
+   * so at the tutorial's own 1995 campaign no room offers one whatever the
+   * exclusion list says. 1997 is the first campaign year that would, which
+   * makes it the only year the two can be told apart. Drawn through
+   * `generateAuctionCatalog`, the exact function `catalogs.ts` hands the list
+   * to.
+   */
+  it('keeps the tutorial model out of a catalogue that would otherwise roll it', () => {
+    const ELIGIBLE_YEAR = 1997
+    const rollsOfTutorialModel = (excludedModelIds: readonly string[]) => {
+      let count = 0
+      for (let seed = 1; seed <= 30; seed++) {
+        const lots = generateAuctionCatalog(
+          CARS,
+          'local-yard',
+          1,
+          10,
+          createRng(seed),
+          CONTEXT,
+          ELIGIBLE_YEAR,
+          excludedModelIds,
+        )
+        count += lots.filter((lot) => lot.modelId === TUTORIAL_LOT.modelId).length
+      }
+      return count
     }
-    expect(rolled).toBeGreaterThan(0)
+    expect(rollsOfTutorialModel([])).toBeGreaterThan(0)
+    expect(rollsOfTutorialModel([TUTORIAL_LOT.modelId])).toBe(0)
   })
 
-  it('after a skip the model spawns freely again', () => {
+  it('stops excluding the model the moment the tutorial ends', () => {
     const career = newTutorialCareer(1)
-    expect(unscriptedTutorialModelLots(career)).toEqual([])
-    let state: GameState = { ...career, tutorialStatus: 'skipped' }
-    let respawned = false
-    for (let day = 0; day < 40 && !respawned; day++) {
-      state = endDay(state)
-      respawned = unscriptedTutorialModelLots(state).length > 0
-    }
-    expect(respawned).toBe(true)
+    expect(excludedAuctionModelIds(career)).toEqual([TUTORIAL_LOT.modelId])
+    const skipped: GameState = { ...career, tutorialStatus: 'skipped' }
+    const done: GameState = { ...career, tutorialStatus: 'done' }
+    expect(excludedAuctionModelIds(skipped)).toEqual([])
+    expect(excludedAuctionModelIds(done)).toEqual([])
   })
 })
