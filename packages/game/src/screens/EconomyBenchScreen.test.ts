@@ -2,14 +2,19 @@ import {
   CARS,
   COURSES,
   ECONOMY,
+  PAINT_COLOURS,
   ReputationTierSchema,
   StatKeySchema,
+  ZoneIdSchema,
   type CarInstance,
   type CarModel,
   type GameState,
 } from '@midnight-garage/content'
 import {
+  BEYOND_REPAIR_METAL,
+  MAX_REPAIRABLE_METAL,
   currentGameYear,
+  factoryColourSet,
   generatedYearRangeFor,
   mileageRangeForAge,
   type SimContext,
@@ -25,8 +30,9 @@ import {
   defaultShopSpec,
 } from './dev/economyBench'
 import { bandPricedChannelsFor, statsPanelFor } from './dev/economyBenchReadout'
+import { benchPreviewFor, benchValueSummaryFor } from './dev/economyBenchPreview'
 import { useGameStore } from '../stores/gameStore'
-import { formatYen } from '../utils/formatYen'
+import { formatYen, formatYenDelta } from '../utils/formatYen'
 
 /**
  * The bench is a reading instrument, so these assert against what it RENDERED:
@@ -322,5 +328,231 @@ describe('EconomyBenchScreen', () => {
     expect(wrapper.find('[data-test="bench-draw-offers"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="bench-accept-offer"]').attributes('disabled')).toBeDefined()
     expect(text(wrapper, 'bench-pending-offer')).toContain('No live offer')
+  })
+})
+
+describe("EconomyBenchScreen's pinned preview", () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+  })
+  afterEach(() => {
+    for (const wrapper of mountedWrappers.splice(0)) wrapper.unmount()
+  })
+
+  /** Every group of digits in a rendered sentence. */
+  function figuresIn(sentence: string): string[] {
+    return sentence.match(/\d[\d,]*(\.\d+)?/g) ?? []
+  }
+
+  it('prices the car on the bench before anything is edited, and says so', () => {
+    const wrapper = mountScreen()
+    const live = benchValueSummaryFor(benchDefaultCar(), benchModel(), benchState(), benchContext())
+
+    expect(text(wrapper, 'preview-value-now')).toBe(formatYen(live.valueYen))
+    expect(wrapper.find('[data-test="preview-value-pending"]').exists()).toBe(false)
+    expect(text(wrapper, 'preview-clean-note')).toContain('Nothing is built until Rebuild')
+    // No purchase price is recorded on a car the bench simply seated.
+    expect(text(wrapper, 'preview-profit')).toContain('No purchase price is recorded')
+    expect(figuresIn(text(wrapper, 'preview-profit'))).toEqual([])
+  })
+
+  it('THE GUARD: a previewed figure is exactly what a rebuild then produces', async () => {
+    const wrapper = mountScreen()
+    await type(wrapper, 'bench-mileage', 250_000)
+
+    const previewed = text(wrapper, 'preview-value-pending')
+    expect(previewed).toMatch(/¥[\d,]+/)
+
+    await click(wrapper, 'bench-rebuild')
+
+    // The car really was rebuilt from that spec, and it is worth what the panel
+    // said it would be. A preview that could differ from the rebuild would be a
+    // second implementation of the price.
+    expect(wrapper.find('[data-test="preview-value-pending"]').exists()).toBe(false)
+    expect(text(wrapper, 'preview-value-now')).toBe(previewed)
+    expect(text(wrapper, 'bench-total')).toContain(previewed)
+  })
+
+  it('quotes no figure of its own in the value sentence', async () => {
+    const context = benchContext()
+    const model = benchModel()
+    const shop = defaultShopSpec(context)
+    const live = benchValueSummaryFor(benchDefaultCar(), model, benchState(), context)
+    const pending = benchPreviewFor(
+      { ...defaultCarSpec(model, shop, context), mileageKm: 250_000 },
+      shop,
+      model,
+      context,
+    )
+    const allowed = [
+      live.valueYen,
+      pending.summary.valueYen,
+      pending.summary.valueYen - live.valueYen,
+    ].map((yen) => Math.abs(Math.round(yen)).toLocaleString('en-US'))
+
+    const wrapper = mountScreen()
+    await type(wrapper, 'bench-mileage', 250_000)
+
+    const sentence = text(wrapper, 'preview-value')
+    expect(figuresIn(sentence).length).toBe(3)
+    for (const figure of figuresIn(sentence)) {
+      expect(allowed, `"${figure}" in the value sentence is the screen's own figure`).toContain(
+        figure,
+      )
+    }
+  })
+
+  it('shows which ledger line moved, and leaves the unmoved ones below it', async () => {
+    const wrapper = mountScreen()
+    await type(wrapper, 'bench-mileage', 250_000)
+
+    const context = benchContext()
+    const model = benchModel()
+    const shop = defaultShopSpec(context)
+    const pending = benchPreviewFor(
+      { ...defaultCarSpec(model, shop, context), mileageKm: 250_000 },
+      shop,
+      model,
+      context,
+    )
+    const live = benchValueSummaryFor(benchDefaultCar(), model, benchState(), context)
+
+    const mileageBefore = live.lines.find((line) => line.id === 'mileage')?.yen ?? 0
+    const mileageAfter = pending.summary.lines.find((line) => line.id === 'mileage')?.yen ?? 0
+    expect(mileageAfter).not.toBe(mileageBefore)
+
+    const row = text(wrapper, 'preview-why-mileage')
+    expect(row).toContain(formatYenDelta(mileageBefore))
+    expect(row).toContain(formatYenDelta(mileageAfter))
+    expect(row).toContain(formatYenDelta(mileageAfter - mileageBefore))
+
+    // Book value cannot move with mileage, and its row is still there saying so.
+    const bookYen = live.lines.find((line) => line.id === 'book')?.yen ?? 0
+    expect(text(wrapper, 'preview-why-book')).toBe(
+      `book${formatYenDelta(bookYen)}${formatYenDelta(bookYen)}¥0`,
+    )
+  })
+
+  it('measures the pending build the same way an action is measured', async () => {
+    const wrapper = mountScreen()
+    await type(wrapper, 'bench-mileage', 250_000)
+
+    for (const stat of StatKeySchema.options) {
+      expect(wrapper.find(`[data-test="preview-stat-${stat}"]`).exists()).toBe(true)
+    }
+    for (const course of COURSES) {
+      expect(wrapper.find(`[data-test="preview-lap-${course.id}"]`).exists()).toBe(true)
+    }
+    // Mileage reaches no stat and no lap, so every one of them reads as unmoved.
+    for (const stat of StatKeySchema.options) {
+      expect(text(wrapper, `preview-stat-${stat}`).split(/\s+/).pop()).toBe('-')
+    }
+    for (const course of COURSES) {
+      expect(text(wrapper, `preview-lap-${course.id}`).split(/\s+/).pop()).toBe('-')
+    }
+  })
+
+  it('measures profit once a purchase price is recorded, and says so before then', async () => {
+    const wrapper = mountScreen()
+    await type(wrapper, 'bench-purchase', 400_000)
+
+    // Pending only: the car on the bench still has no recorded purchase.
+    expect(text(wrapper, 'preview-profit')).toContain('records no purchase price')
+
+    await click(wrapper, 'bench-rebuild')
+
+    const context = benchContext()
+    const model = benchModel()
+    const shop = { ...defaultShopSpec(context), purchaseYen: 400_000 }
+    const built = benchPreviewFor(defaultCarSpec(model, shop, context), shop, model, context)
+    expect(built.summary.profitAtValueYen).not.toBeNull()
+    expect(text(wrapper, 'preview-profit')).toContain(
+      formatYen(built.summary.profitAtValueYen ?? 0),
+    )
+  })
+
+  it('leaves the running log and the car alone while a change is pending', async () => {
+    const wrapper = mountScreen()
+    await click(wrapper, 'bench-remove')
+    const total = text(wrapper, 'bench-total')
+
+    await type(wrapper, 'bench-mileage', 250_000)
+
+    expect(wrapper.find('[data-test="log-line-0"]').exists()).toBe(true)
+    expect(text(wrapper, 'bench-total')).toBe(total)
+    expect(text(wrapper, 'preview-note')).toContain('Nothing has been built')
+  })
+})
+
+describe("EconomyBenchScreen's zone table", () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+  })
+  afterEach(() => {
+    for (const wrapper of mountedWrappers.splice(0)) wrapper.unmount()
+  })
+
+  it('says which way the three severities run, and that they are a chain', () => {
+    const wrapper = mountScreen()
+    const axis = text(wrapper, 'zone-axis-note')
+    expect(axis).toContain('Lower is better')
+    expect(axis).toContain(String(BEYOND_REPAIR_METAL))
+
+    const chain = text(wrapper, 'zone-chain-note')
+    expect(chain).toContain(String(MAX_REPAIRABLE_METAL))
+    expect(chain).toContain('refuses until')
+    // The two axes that carry no metal at all.
+    expect(chain).toContain('trim zones')
+  })
+
+  it('offers the palette rather than a text box, and marks the factory set', () => {
+    const wrapper = mountScreen()
+    const select = wrapper.find('[data-test="zone-colour-bonnet"]')
+    expect(select.element.tagName).toBe('SELECT')
+
+    const context = benchContext()
+    const model = benchModel()
+    const factory = factoryColourSet(
+      defaultCarSpec(model, defaultShopSpec(context), context).factoryColour,
+    )
+    expect(factory.size).toBeGreaterThan(0)
+
+    const options = select.findAll('option')
+    const values = options.map((option) => option.attributes('value') ?? '')
+    // Every offer is a real palette id, or the empty one meaning bare.
+    for (const value of values) {
+      if (value === '') continue
+      expect(PAINT_COLOURS.some((colour) => colour.id === value)).toBe(true)
+    }
+    for (const colour of PAINT_COLOURS) {
+      expect(values).toContain(colour.id)
+    }
+    for (const option of options) {
+      const value = option.attributes('value') ?? ''
+      if (value === '') continue
+      expect(option.text().includes('(factory)')).toBe(factory.has(value))
+    }
+  })
+
+  it('deals a factory two-tone across the zones rather than writing the joined token', async () => {
+    const twoTone = CARS.find((car) => car.spec.factoryColours[0]?.includes('+'))
+    expect(twoTone, 'no roster car ships a two-tone as its first factory colour').toBeDefined()
+    const halves = twoTone!.spec.factoryColours[0]!.split('+')
+
+    const wrapper = mountScreen()
+    await wrapper.find('[data-test="bench-model"]').setValue(twoTone!.id)
+
+    const worn = new Set<string>()
+    for (const zoneId of ZoneIdSchema.options) {
+      const value = (
+        wrapper.find(`[data-test="zone-colour-${zoneId}"]`).element as HTMLSelectElement
+      ).value
+      // The joined token is not a colour any tin holds, so no zone may wear it.
+      expect(value).not.toContain('+')
+      expect(PAINT_COLOURS.some((colour) => colour.id === value)).toBe(true)
+      worn.add(value)
+    }
+    expect([...worn].sort()).toEqual([...halves].sort())
+    expect(text(wrapper, 'zone-two-tone-note')).toContain('two palette ids joined')
   })
 })

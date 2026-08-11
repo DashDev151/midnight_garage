@@ -20,6 +20,7 @@ import {
   titleCaseFromSlug,
 } from '@midnight-garage/content'
 import {
+  factoryColourSet,
   isMetalZoneState,
   type DynoSessionGateReason,
   type FittedMachiningGateReason,
@@ -888,16 +889,17 @@ function paintColourName(colourId: string): string {
 }
 
 /** Every palette id this car legitimately wears - one entry, or two for a
- * genuine factory two-tone. */
-const factoryColourIds = computed<string[]>(() =>
-  detail.value ? detail.value.car.factoryColour.split('+') : [],
+ * genuine factory two-tone. The paint stage's own set (`factoryColourSet`),
+ * which is what decides whether a stock-grade job is refused. */
+const factoryColourIds = computed<ReadonlySet<string>>(() =>
+  detail.value ? factoryColourSet(detail.value.car.factoryColour) : new Set<string>(),
 )
 
 /** True when `colourId` is (one half of) this car's own factory colour - the
  * marker every colour listing carries, and the one thing that makes a wrong
  * colour mean anything. */
 function isFactoryColour(colourId: string): boolean {
-  return factoryColourIds.value.includes(colourId)
+  return factoryColourIds.value.has(colourId)
 }
 
 /** What this car left the factory wearing, named in full - the iconic name

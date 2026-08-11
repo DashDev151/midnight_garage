@@ -31,6 +31,7 @@ import {
   lapBlockers,
   marketValueYen,
   moveCar,
+  realisedProfitYen,
   resolveBuyoutInstant,
   valuateCarForBuyer,
   valuateCarForBuyerViaChannel,
@@ -64,6 +65,7 @@ import {
   statsPanelFor,
 } from './economyBenchReadout'
 import { runBenchAction } from './economyBenchActions'
+import { benchPreviewFor, buildDeltaFor, ledgerDiffRows } from './economyBenchPreview'
 import { evaluateCarInstance } from './sandboxModel'
 import { formatYen } from '../../utils/formatYen'
 
@@ -901,5 +903,116 @@ describe('the economy bench channel-realised price', () => {
         [],
       )
     }
+  })
+})
+
+describe("the economy bench's preview", () => {
+  const shop: BenchShopSpec = { ...defaultShopSpec(context), purchaseYen: 400_000 }
+  const spec = defaultCarSpec(model, shop, context)
+  const worn = { ...spec, mileageKm: spec.mileageKm + 150_000 }
+
+  it('prices a pending spec through the same functions the bench car goes through', () => {
+    const preview = benchPreviewFor(worn, shop, model, context)
+    expect(preview.summary.valueYen).toBe(
+      marketValueYen(
+        model,
+        preview.car,
+        100,
+        context.partsById,
+        context.partsTaxonomyById,
+        context.economy,
+      ),
+    )
+    // The same figure the opening block prints for a car actually built from
+    // that spec, so the panel and the block below it cannot disagree.
+    const built = benchGameState(shop, preview.car, context)
+    expect(preview.summary.valueYen).toBe(
+      openingBlockFor(preview.car, model, built, context).totalYen,
+    )
+    expect(preview.summary.lines).toEqual(
+      valueLedgerFor(
+        preview.car,
+        model,
+        100,
+        context.partsById,
+        context.partsTaxonomyById,
+        context.economy,
+      ).lines,
+    )
+    expect(preview.summary.foundationWithheldYen).toBe(
+      foundationWithheldYen(model, preview.car, context.partsById, context.economy),
+    )
+  })
+
+  it('measures profit with the same function a sale realises one with', () => {
+    const preview = benchPreviewFor(spec, shop, model, context)
+    expect(preview.summary.ledger.purchaseYen).toBe(400_000)
+    expect(preview.summary.profitAtValueYen).toBe(
+      realisedProfitYen(preview.summary.valueYen, preview.summary.ledger),
+    )
+    // No recorded purchase is not a profit of nothing, and the bench reports it
+    // as the sim does: not at all.
+    const unrecorded = benchPreviewFor(spec, { ...shop, purchaseYen: null }, model, context)
+    expect(unrecorded.summary.ledger.purchaseYen).toBeNull()
+    expect(unrecorded.summary.profitAtValueYen).toBeNull()
+  })
+
+  it('names which ledger lines moved, and their deltas sum to the value delta', () => {
+    const before = benchPreviewFor(spec, shop, model, context).summary
+    const after = benchPreviewFor(worn, shop, model, context).summary
+    const rows = ledgerDiffRows(before, after)
+
+    const moved = rows.filter((row) => row.deltaYen !== 0)
+    expect(moved.length).toBeGreaterThan(0)
+    // Mileage is the only thing that changed, so it is the line that moved and
+    // book value is untouched by it.
+    expect(moved.map((row) => row.id)).toContain('mileage')
+    expect(rows.find((row) => row.id === 'book')?.deltaYen).toBe(0)
+    // The moved lines come first, which is what makes the reason readable.
+    expect(rows.slice(0, moved.length)).toEqual(moved)
+    expect(rows.reduce((sum, row) => sum + row.deltaYen, 0)).toBe(after.valueYen - before.valueYen)
+  })
+
+  it('reads an absent ledger line as an adjustment of nothing, not as a gap', () => {
+    // Heat is only carried when it is not neutral, so a heat move puts a line
+    // on one side of the diff and not the other.
+    const before = benchPreviewFor(spec, shop, model, context).summary
+    const after = benchPreviewFor(spec, { ...shop, heatPercent: 130 }, model, context).summary
+    expect(before.lines.some((line) => line.id === 'heat')).toBe(false)
+    expect(after.lines.some((line) => line.id === 'heat')).toBe(true)
+
+    const heatRow = ledgerDiffRows(before, after).find((row) => row.id === 'heat')
+    expect(heatRow?.beforeYen).toBe(0)
+    expect(heatRow?.afterYen).toBe(after.lines.find((line) => line.id === 'heat')?.yen)
+  })
+
+  it('measures the build the same way the running log does', () => {
+    const stripped = {
+      ...spec,
+      build: { ...spec.build, tyres: { ...spec.build.tyres, band: 'scrap' as const } },
+    }
+    const live = benchCarInstance(spec, model, context)
+    const pending = benchPreviewFor(stripped, shop, model, context)
+    const delta = buildDeltaFor(live, pending.car, model, context)
+
+    const was = evaluateCarInstance(model, live, context)
+    const now = evaluateCarInstance(model, pending.car, context)
+    for (const stat of StatKeySchema.options) {
+      expect(delta.statDeltas[stat]).toBe(now.stats[stat] - was.stats[stat])
+    }
+    for (const course of context.courses) {
+      expect(delta.laps[course.id]?.beforeS).toBe(was.laps[course.id] ?? null)
+      expect(delta.laps[course.id]?.afterS).toBe(now.laps[course.id] ?? null)
+    }
+  })
+
+  it('leaves the world it previewed alone', () => {
+    // The whole reason this is a preview and not a rebuild: a session's car,
+    // till and ledger survive a builder edit.
+    const car = benchCarInstance(spec, model, context)
+    const state = benchGameState(shop, car, context)
+    const snapshot = JSON.stringify(state)
+    benchPreviewFor(worn, { ...shop, cashYen: 1 }, model, context)
+    expect(JSON.stringify(state)).toBe(snapshot)
   })
 })

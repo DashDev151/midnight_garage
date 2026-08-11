@@ -155,10 +155,10 @@ export function panelsAreAllStock(zoneStates: ZoneStates): boolean {
 
 /** The colours a car's `factoryColour` pool entry authorises: the entry
  * itself for a single-colour car, or both halves of an `a+b` two-tone entry.
- * Shared by the paint stage's stock-grade gate and the paint band's mismatch
- * exemption, so a two-tone car's legitimate scheme is defined in exactly one
- * place. */
-function factoryColourSet(factoryColour: string): ReadonlySet<string> {
+ * Shared by the paint stage's stock-grade gate, the paint band's mismatch
+ * exemption and every screen marking which swatches a car legitimately wears,
+ * so a two-tone car's legitimate scheme is defined in exactly one place. */
+export function factoryColourSet(factoryColour: string): ReadonlySet<string> {
   return new Set(factoryColour.split('+'))
 }
 
@@ -419,8 +419,10 @@ export function rollZoneStates(
  * the arrangement for most of the seven two-tone roster cars), so this is the
  * simplest deterministic split rather than an authored one: the first half of
  * `PANEL_ZONE_IDS` (by count, rounded up) wears the first colour, the rest the
- * second. */
-function factoryReferenceColours(factoryColour: string): Record<PanelZoneId, string> {
+ * second. Exported so anything BUILDING a car in its factory scheme deals the
+ * halves the way generation does, rather than writing the joined token into a
+ * zone, which is not a palette colour and which the paint stage would refuse. */
+export function factoryReferenceColours(factoryColour: string): Record<PanelZoneId, string> {
   const halves = factoryColour.split('+')
   if (halves.length === 1) {
     return Object.fromEntries(PANEL_ZONE_IDS.map((zoneId) => [zoneId, halves[0]!])) as Record<

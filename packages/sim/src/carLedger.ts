@@ -42,6 +42,23 @@ export function updateCarLedger(
   return setCarLedger(state, carInstanceId, update(carLedgerFor(state, carInstanceId)))
 }
 
+/**
+ * What a sale at `priceYen` realises against everything the books say the car
+ * cost: the price less the purchase, the repairs, the parts fitted and the
+ * listing fees. Null when the purchase price itself was never recorded, which
+ * is a different thing from a purchase of nothing and is why no profit is
+ * reported for such a car rather than one measured against zero.
+ *
+ * Machine-shop hire and every other shared overhead are absent by
+ * construction: they never reach a car's ledger at all.
+ */
+export function realisedProfitYen(priceYen: number, ledger: CarLedger): number | null {
+  if (ledger.purchaseYen === null) return null
+  return (
+    priceYen - (ledger.purchaseYen + ledger.repairYen + ledger.partsYen + ledger.listingFeesYen)
+  )
+}
+
 /** Drops `carInstanceId`'s ledger entry - every car-exit path (currently
  * only a sale; see `selling.ts`'s `resolveSellViaWalkIn`) cleans up after
  * itself so a ledger never outlives the car it describes. A no-op when

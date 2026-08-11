@@ -248,7 +248,7 @@ export function benchActionLabel(
 }
 
 /** `after` minus `before` for each of the five stats. */
-function statDeltasBetween(before: StatBlock, after: StatBlock): StatBlock {
+export function statDeltasBetween(before: StatBlock, after: StatBlock): StatBlock {
   return {
     power: after.power - before.power,
     handling: after.handling - before.handling,
@@ -260,7 +260,7 @@ function statDeltasBetween(before: StatBlock, after: StatBlock): StatBlock {
 
 /** Each course's own pair of measured times, and the difference where both
  * sides could be run. */
-function lapMeasurementsBetween(
+export function lapMeasurementsBetween(
   before: Record<string, number | null>,
   after: Record<string, number | null>,
 ): Record<string, BenchLapMeasurement> {

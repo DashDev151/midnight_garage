@@ -13,6 +13,7 @@ import {
   type SceneStanding,
   type ToolTiers,
   type ZoneId,
+  type ZoneState,
   type ZoneStates,
 } from '@midnight-garage/content'
 import {
@@ -21,6 +22,7 @@ import {
   carOriginLabel,
   createInitialGameState,
   currentGameYear,
+  factoryReferenceColours,
   generateAuctionCarInstance,
   generatedYearRangeFor,
   hasForcedInduction,
@@ -129,24 +131,24 @@ export interface BenchShopSpec {
 
 /**
  * A zone table with nothing wrong with it: straight metal, ready surface, show
- * finish, every panel present and wearing the car's own factory colour. The
+ * finish, every panel present and wearing the car's own factory scheme. The
  * state a hand-built bench car starts from, so every point it later loses is
  * visibly the build's own doing.
+ *
+ * The scheme is dealt across the zones by `factoryReferenceColours`, the same
+ * function generation's own `original` paint state uses. A `factoryColour` pool
+ * entry can be a two-tone `a+b` token, which is not a palette colour: written
+ * straight onto a zone it would leave every panel wearing a shade the paint
+ * stage refuses to lay at stock grade.
  */
 export function cleanZoneStates(factoryColour: string): ZoneStates {
-  const trim = { finish: 0, panelMissing: false, primed: false, colour: factoryColour }
-  const metal = { metal: 0, surface: 0, ...trim }
-  return {
-    bonnet: { ...metal },
-    boot: { ...metal },
-    'left-front': { ...metal },
-    'left-rear': { ...metal },
-    'right-front': { ...metal },
-    'right-rear': { ...metal },
-    'front-bumper': { ...trim },
-    'rear-bumper': { ...trim },
-    skirts: { ...trim },
+  const reference = factoryReferenceColours(factoryColour)
+  const zones = {} as Record<ZoneId, ZoneState>
+  for (const zoneId of BENCH_ZONE_IDS) {
+    const shared = { finish: 0, panelMissing: false, primed: false, colour: reference[zoneId] }
+    zones[zoneId] = isMetalZone(zoneId) ? { metal: 0, surface: 0, ...shared } : shared
   }
+  return zones as ZoneStates
 }
 
 /**

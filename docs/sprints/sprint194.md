@@ -317,14 +317,56 @@ That is consistent with the champion gate's intent, that a car should need work 
 it. But **burning staleness for a structurally impossible sale is a trap rather than a gradient**,
 and one seed is not a measurement. The bench is now the instrument that can settle it.
 
+### The pinned preview, and two things the builder was lying about
+
+Used again, the bench was found to be a black box for a BUILDER edit: an edit set the dirty flag and
+showed nothing, because Rebuild is destructive (it replaces the car, resets the till and clears the
+log) and so could not be run on a keystroke.
+
+**The answer is a preview, not an auto-rebuild.** `economyBenchPreview.ts` builds a THROWAWAY
+`CarInstance` and `GameState` from the pending spec through `benchCarInstance`/`benchGameState`, the
+same pair Rebuild itself calls, and prices it through `valueLedgerFor`. Nothing about the session
+moves. A pinned panel above the builder carries it: the value now, the value as typed and the
+change; the realised profit either side where a purchase is recorded; a diff of the two ledger line
+sets as the WHY; and the five stat deltas and four lap deltas, measured by the log's own
+`statDeltasBetween`/`lapMeasurementsBetween` rather than a second pair.
+
+**Measured cost: 1.18 ms for the value preview and 1.85 ms for the build delta**, about 3 ms per
+keystroke, so nothing is debounced.
+
+`realisedProfitYen` was extracted out of `resolveSellViaWalkIn` into `carLedger.ts` and the resolver
+now calls it: profit on the bench is the sale's own definition rather than a second copy of it.
+
+**Two builder defects the work exposed, both prose or shape rather than arithmetic:**
+
+- **A zone colour was a free text box.** Colour is a palette id, and a stock-grade respray is refused
+  with `wrong-colour` outside the car's factory set, so the box accepted values the game rejects. It
+  is now a picker over `PAINT_COLOURS`, grouped by the same families the paint dev screen reads, with
+  the car's own factory colours marked. `factoryColourSet` is exported from `bodyPipeline.ts` and now
+  answers that question for the bench AND for `CarDetailScreen.vue`, which had its own copy of the
+  split.
+- **A hand-built car wore its two-tone token as a colour.** `cleanZoneStates` wrote `factoryColour`
+  straight onto all nine zones, so a car whose first pool entry is `a+b` wore a shade no tin holds
+  and no stock respray could lay. It now deals the halves through `factoryReferenceColours`, exactly
+  as generation's own `original` paint state does.
+
+**And the zone table now says which way its axes run**: lower is better on all three, and the chain
+(beat and weld, then filler, then primer, then paint, then polish) with each stage's own refusal,
+read out of `bodyPipeline.ts` and quoting `MAX_REPAIRABLE_METAL`/`BEYOND_REPAIR_METAL` rather than
+typed rungs.
+
+The standing prose precedent held again: the preview's value sentence is asserted by regex to quote
+exactly three figures and each of them to be one sim answered for that car, and the guard proper is
+that a previewed figure equals what the same spec produces after a Rebuild.
+
 ### Evidence
 
 | check | result |
 | --- | --- |
 | `pnpm typecheck` | clean, all three projects |
-| `pnpm test --project content` | 625 passed |
-| `pnpm test --project sim` | 2785 passed |
-| `pnpm test --project game` | 1024 passed |
+| `pnpm test --project content` | 626 passed |
+| `pnpm test --project sim` | 2801 passed |
+| `pnpm test --project game` | 1075 passed |
 | `npx eslint` / `prettier --check` | clean |
 | `packages/content/data/` diff | empty |
 

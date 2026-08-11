@@ -15,16 +15,19 @@ import {
   type ReputationTier,
   type SceneStandingStage,
   type SellingChannelId,
+  type StatBlock,
   type StatKey,
   type ToolTier,
   type TrimZoneState,
   type ZoneId,
 } from '@midnight-garage/content'
-import { ALL_CAR_PART_IDS } from '@midnight-garage/content'
+import { ALL_CAR_PART_IDS, PAINT_COLOURS } from '@midnight-garage/content'
+import { BEYOND_REPAIR_METAL, MAX_REPAIRABLE_METAL, factoryColourSet } from '@midnight-garage/sim'
 import { computed, ref, shallowRef, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen, formatYenDelta } from '../utils/formatYen'
+import { colourTokenDisplayName, PAINT_COLOUR_FAMILIES } from '../utils/paintFamilies'
 import { SELLING_CHANNEL_LABELS } from '../utils/sellingChannelLabels'
 import {
   BENCH_CAR_ID,
@@ -61,8 +64,15 @@ import {
   labourRemaining,
   runBenchAction,
   type BenchAction,
+  type BenchLapMeasurement,
   type BenchLogLine,
 } from './dev/economyBenchActions'
+import {
+  benchPreviewFor,
+  benchValueSummaryFor,
+  buildDeltaFor,
+  ledgerDiffRows,
+} from './dev/economyBenchPreview'
 
 const game = useGameStore()
 const context = computed(() => game.context)
@@ -74,9 +84,17 @@ const REPUTATION_TIERS = ReputationTierSchema.options
 const SCENES = BuyerArchetypeSchema.options
 const STAGES = SceneStandingStageSchema.options
 const TOOL_TIERS: readonly ToolTier[] = [1, 2]
-const METAL_SEVERITIES = [0, 1, 2, 3, 4]
+/** The metal axis's own rungs, from straight to past saving - the pipeline's
+ * own maximum, so the control cannot offer a severity the pipeline has no
+ * meaning for. */
+const METAL_SEVERITIES = Array.from({ length: BEYOND_REPAIR_METAL + 1 }, (_, rung) => rung)
 const SURFACE_SEVERITIES = [0, 1, 2]
 const FINISHES = [0, 1, 2, 3]
+/** The worst rung the surface and finish axes express, read off the same
+ * option lists the two controls offer, so the note above the table and the
+ * dropdowns inside it cannot disagree. */
+const WORST_SURFACE = SURFACE_SEVERITIES[SURFACE_SEVERITIES.length - 1]!
+const BARE_FINISH = FINISHES[FINISHES.length - 1]!
 
 const modelId = ref(context.value.models[0]?.id ?? '')
 const model = computed(() => context.value.modelsById[modelId.value])
@@ -266,6 +284,26 @@ function setZoneColour(zoneId: ZoneId, colour: string): void {
   patchZone(zoneId, { colour: colour === '' ? undefined : colour })
 }
 
+/** Every palette id this car legitimately wears: one, or both halves of a
+ * factory two-tone. The paint stage's own set, which is what decides whether a
+ * stock-grade respray is refused. */
+const factoryColours = computed(() => factoryColourSet(carSpec.value.factoryColour))
+
+/** This car's factory scheme in words, its own iconic name where one applies
+ * and both halves of a two-tone named. */
+const factoryColourCaption = computed(() =>
+  colourTokenDisplayName(carSpec.value.factoryColour, model.value?.uid),
+)
+
+/** True when a zone holds a colour the palette does not contain. Nothing the
+ * game produces does, but a spec read off an older car might, and a picker that
+ * silently displayed its first swatch instead would be showing a colour the
+ * zone is not wearing. */
+function unknownZoneColour(zoneId: ZoneId): boolean {
+  const colour = carSpec.value.zones[zoneId].colour
+  return colour !== undefined && !PAINT_COLOURS.some((entry) => entry.id === colour)
+}
+
 function setZonePanelGrade(zoneId: ZoneId, grade: string): void {
   patchZone(zoneId, { panelGrade: grade === '' ? undefined : (grade as Grade) })
 }
@@ -341,6 +379,97 @@ function toggleShopOwned(shopId: string): void {
       : [...owned, shopId],
   }
 }
+
+// --- the preview -----------------------------------------------------------
+
+/**
+ * THE STICKY PANEL: what the car on the bench is worth, and what the settings
+ * as typed would be worth instead.
+ *
+ * The preview builds a THROWAWAY car and world out of the pending spec and
+ * prices it through the same functions the bench car goes through, so a
+ * previewed figure is what Rebuild produces rather than a forecast of it.
+ * Nothing about the session moves: the car, the till and the running log are
+ * all untouched, which is why this is a preview and not an auto-rebuild.
+ */
+const liveSummary = computed(() =>
+  car.value && model.value
+    ? benchValueSummaryFor(car.value, model.value, state.value, context.value)
+    : null,
+)
+const pending = computed(() =>
+  dirty.value && model.value
+    ? benchPreviewFor(carSpec.value, shopSpec.value, model.value, context.value)
+    : null,
+)
+/** Which ledger lines the pending spec moves - the WHY, as a difference of two
+ * line sets rather than any calculation of the screen's own. */
+const pendingLedgerRows = computed(() =>
+  liveSummary.value && pending.value
+    ? ledgerDiffRows(liveSummary.value, pending.value.summary)
+    : [],
+)
+/** What the pending spec does to the car itself, measured exactly as the
+ * running log measures an action. */
+const pendingBuild = computed(() =>
+  car.value && model.value && pending.value
+    ? buildDeltaFor(car.value, pending.value.car, model.value, context.value)
+    : null,
+)
+/** What the pending spec does to the headline price. Null while nothing is
+ * pending. */
+const pendingValueDeltaYen = computed(() =>
+  liveSummary.value && pending.value
+    ? pending.value.summary.valueYen - liveSummary.value.valueYen
+    : null,
+)
+/**
+ * The profit line's five honest cases, resolved here rather than in the
+ * template so every figure the sentence prints is already known to exist. A
+ * purchase price can be typed in or cleared while a change is pending, and
+ * either side of it having no recorded purchase is a different statement from a
+ * profit of nothing.
+ */
+type PreviewProfitLine =
+  | { kind: 'unmeasured' }
+  | { kind: 'live'; beforeYen: number }
+  | { kind: 'moved'; beforeYen: number; afterYen: number; deltaYen: number }
+  | { kind: 'appeared'; afterYen: number }
+  | { kind: 'vanished'; beforeYen: number }
+
+const previewProfit = computed<PreviewProfitLine | null>(() => {
+  const live = liveSummary.value
+  if (!live) return null
+  const beforeYen = live.profitAtValueYen
+  if (!pending.value) {
+    return beforeYen === null ? { kind: 'unmeasured' } : { kind: 'live', beforeYen }
+  }
+  const afterYen = pending.value.summary.profitAtValueYen
+  if (beforeYen === null) {
+    return afterYen === null ? { kind: 'unmeasured' } : { kind: 'appeared', afterYen }
+  }
+  if (afterYen === null) return { kind: 'vanished', beforeYen }
+  return { kind: 'moved', beforeYen, afterYen, deltaYen: afterYen - beforeYen }
+})
+
+/**
+ * What a failing foundation holds back either side of the pending change, and
+ * null while it holds back the same figure.
+ *
+ * It is exact by construction and it is the usual reason the aftermarket line
+ * moves, so it is stated beside the table rather than added into it: it is not
+ * a ledger line and must not be read as one.
+ */
+const pendingFoundation = computed(() => {
+  const live = liveSummary.value
+  const next = pending.value
+  if (!live || !next) return null
+  if (next.summary.foundationWithheldYen === live.foundationWithheldYen) return null
+  return {
+    beforeYen: live.foundationWithheldYen,
+    afterYen: next.summary.foundationWithheldYen,
+  }
+})
 
 // --- the panels ------------------------------------------------------------
 
@@ -456,16 +585,16 @@ function lapText(courseId: string): string {
  * A line with no measurement at all says so in its own word, since a dash there
  * would claim the action left the stat where it was.
  */
-function statDeltaText(line: BenchLogLine, stat: StatKey): string {
-  if (!line.statDeltas) return 'car gone'
-  const delta = line.statDeltas[stat]
+function statDeltaText(statDeltas: StatBlock | null, stat: StatKey): string {
+  if (!statDeltas) return 'car gone'
+  const delta = statDeltas[stat]
   if (Math.abs(delta) < 0.05) return '-'
   return `${delta > 0 ? '+' : ''}${delta.toFixed(1)}`
 }
 
-/** The chosen course's own measured delta on one line, in seconds. */
-function lapDeltaText(line: BenchLogLine): string {
-  const lap = line.laps[logCourseId.value]
+/** One course's own measured delta, in seconds. */
+function lapDeltaText(laps: Record<string, BenchLapMeasurement>, courseId: string): string {
+  const lap = laps[courseId]
   if (!lap) return 'car gone'
   if (lap.deltaS === null) {
     // A car that could not be driven has no time, so there is nothing for the
@@ -530,6 +659,128 @@ const slotsInRepairGroup = computed(() => context.value.partIdsByGroup[repairGro
       Economy bench. Dev only, nothing here is saved, and nothing here affects your career. Every
       figure is a sim function's own answer; the screen computes none of them.
     </p>
+
+    <!-- THE PINNED PREVIEW -------------------------------------------- -->
+    <div v-if="liveSummary" class="pinned" data-test="bench-preview">
+      <p class="total" data-test="preview-value">
+        <template v-if="pending && pendingValueDeltaYen !== null">
+          Worth <span data-test="preview-value-now">{{ formatYen(liveSummary.valueYen) }}</span> on
+          the bench and
+          <span data-test="preview-value-pending">{{ formatYen(pending.summary.valueYen) }}</span>
+          as typed, a change of
+          <strong
+            :class="{ up: pendingValueDeltaYen > 0, down: pendingValueDeltaYen < 0 }"
+            data-test="preview-value-delta"
+            >{{ formatYenDelta(pendingValueDeltaYen) }}</strong
+          >.
+        </template>
+        <template v-else>
+          Worth
+          <strong data-test="preview-value-now">{{ formatYen(liveSummary.valueYen) }}</strong
+          >. The builder matches the car on the bench.
+        </template>
+      </p>
+
+      <p v-if="previewProfit" data-test="preview-profit">
+        <template v-if="previewProfit.kind === 'unmeasured'">
+          No purchase price is recorded, so no profit is measured against one. Set Bought for in the
+          shop panel.
+        </template>
+        <template v-else-if="previewProfit.kind === 'live'">
+          At that price the books realise
+          <strong>{{ formatYen(previewProfit.beforeYen) }}</strong
+          >.
+        </template>
+        <template v-else-if="previewProfit.kind === 'moved'">
+          At that price the books realise {{ formatYen(previewProfit.beforeYen) }} on the bench and
+          {{ formatYen(previewProfit.afterYen) }} as typed, a change of
+          <strong
+            :class="{ up: previewProfit.deltaYen > 0, down: previewProfit.deltaYen < 0 }"
+            data-test="preview-profit-delta"
+            >{{ formatYenDelta(previewProfit.deltaYen) }}</strong
+          >.
+        </template>
+        <template v-else-if="previewProfit.kind === 'appeared'">
+          The bench car records no purchase price, so it measures no profit. As typed the books
+          would realise <strong>{{ formatYen(previewProfit.afterYen) }}</strong
+          >.
+        </template>
+        <template v-else>
+          At that price the books realise
+          <strong>{{ formatYen(previewProfit.beforeYen) }}</strong> on the bench. As typed there is
+          no purchase price at all, so nothing would be measured against it.
+        </template>
+      </p>
+      <p class="dim" data-test="preview-profit-note">
+        Profit here is that market value less everything the books say this car has cost, which is
+        the sim's own realised profit asked of a hypothetical sale at exactly market value. A real
+        sale is a buyer's own price through a channel, in section 4, so this is a yardstick and not
+        a forecast. Neither figure carries machine-shop hire or rent, by the design law that keeps
+        both off a car's ledger.
+      </p>
+
+      <template v-if="pending">
+        <table class="grid">
+          <thead>
+            <tr>
+              <th>which ledger line moved</th>
+              <th class="num">on the bench</th>
+              <th class="num">as typed</th>
+              <th class="num">change</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="row in pendingLedgerRows"
+              :key="row.id"
+              :data-test="'preview-why-' + row.id"
+              :class="{ dim: row.deltaYen === 0 }"
+            >
+              <td>{{ row.id }}</td>
+              <td class="num">{{ formatYenDelta(row.beforeYen) }}</td>
+              <td class="num">{{ formatYenDelta(row.afterYen) }}</td>
+              <td class="num" :class="{ up: row.deltaYen > 0, down: row.deltaYen < 0 }">
+                {{ formatYenDelta(row.deltaYen) }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="dim" data-test="preview-why-note">
+          The sim's own ledger, either side of the change, moved lines first. A line a ledger does
+          not carry is an adjustment of nothing rather than a gap: heat is absent at neutral heat,
+          floor while the scrap backstop does not bind, coherence on a build it does not discount
+          and aftermarket on a car carrying no credited premium.
+        </p>
+        <p v-if="pendingFoundation" class="dim" data-test="preview-foundation">
+          A failing foundation holds back {{ formatYen(pendingFoundation.beforeYen) }} of premium on
+          the bench and {{ formatYen(pendingFoundation.afterYen) }} as typed. That is not a ledger
+          line and is not in the table above: it is usually why the aftermarket line moved.
+        </p>
+
+        <p v-if="pendingBuild" class="preview-build" data-test="preview-build">
+          <span v-for="stat in STAT_KEYS" :key="stat" :data-test="'preview-stat-' + stat">
+            {{ stat.slice(0, 4) }} {{ statDeltaText(pendingBuild.statDeltas, stat) }}
+          </span>
+          <span
+            v-for="course in context.courses"
+            :key="course.id"
+            :data-test="'preview-lap-' + course.id"
+          >
+            {{ course.name }} {{ lapDeltaText(pendingBuild.laps, course.id) }}
+          </span>
+        </p>
+
+        <p class="dim" data-test="preview-note">
+          Nothing has been built. Every figure below this panel still describes the car on the
+          bench, and the running log and the till are untouched. Rebuild builds what you have typed,
+          which starts a new car and clears the log.
+        </p>
+      </template>
+      <p v-else class="dim" data-test="preview-clean-note">
+        Change anything in the builder and this panel prices it: what it would be worth instead,
+        what the change is, and which ledger lines moved. Nothing is built until Rebuild.
+      </p>
+    </div>
 
     <!-- 1. THE STATE BUILDER ------------------------------------------ -->
     <details open class="panel">
@@ -705,6 +956,22 @@ const slotsInRepairGroup = computed(() => context.value.partIdsByGroup[repairGro
 
     <details class="panel">
       <summary>1b. The nine zones</summary>
+      <p class="dim" data-test="zone-axis-note">
+        Lower is better on all three severities, and zero is the state the work is trying to reach.
+        Metal runs 0, straight, to {{ BEYOND_REPAIR_METAL }}, past saving. Surface runs 0, sound, to
+        {{ WORST_SURFACE }}, rough enough to need filling. Finish runs 0, a show finish, to
+        {{ BARE_FINISH }}, bare with no paint on it at all.
+      </p>
+      <p class="dim" data-test="zone-chain-note">
+        They are a chain, and each stage refuses until the one before it is done. Beat pulls metal
+        back a rung at a time from 1 or 2; weld clears {{ MAX_REPAIRABLE_METAL }} outright and needs
+        the body line; at {{ BEYOND_REPAIR_METAL }} hand work refuses altogether and only a fresh
+        panel gets the zone back. Filler refuses until metal is at zero. Primer refuses until the
+        surface is at zero. Paint refuses until the zone is primed, and spends the primer laying the
+        colour. Polish refuses on a bare zone, and then steps the finish down one rung at a time. A
+        zone with its panel gone refuses every stage there is. The three trim zones carry no metal
+        and no surface at all, so their chain starts at primer.
+      </p>
       <table class="grid">
         <thead>
           <tr>
@@ -764,11 +1031,25 @@ const slotsInRepairGroup = computed(() => context.value.partIdsByGroup[repairGro
               />
             </td>
             <td>
-              <input
+              <select
                 :value="carSpec.zones[zoneId].colour ?? ''"
-                size="10"
+                :data-test="'zone-colour-' + zoneId"
                 @change="setZoneColour(zoneId, inputValue($event))"
-              />
+              >
+                <option value="">(bare, no colour)</option>
+                <option v-if="unknownZoneColour(zoneId)" :value="carSpec.zones[zoneId].colour">
+                  {{ carSpec.zones[zoneId].colour }} (not a palette colour)
+                </option>
+                <optgroup
+                  v-for="family in PAINT_COLOUR_FAMILIES"
+                  :key="family.label"
+                  :label="family.label"
+                >
+                  <option v-for="colour in family.colours" :key="colour.id" :value="colour.id">
+                    {{ colour.name }}{{ factoryColours.has(colour.id) ? ' (factory)' : '' }}
+                  </option>
+                </optgroup>
+              </select>
             </td>
             <td>
               <select
@@ -784,6 +1065,19 @@ const slotsInRepairGroup = computed(() => context.value.partIdsByGroup[repairGro
           </tr>
         </tbody>
       </table>
+      <p class="dim" data-test="zone-colour-note">
+        A colour is a palette id and never free text. The ones marked factory are this car's own
+        scheme, {{ factoryColourCaption }}, and that is what decides whether a respray is legal: the
+        paint stage refuses a stock-grade job in any other colour, and street, sport and race lay
+        one only by spending the car's authenticity. Two painted zones disagreeing on colour step
+        the paint band one worse, unless both colours are in that factory set.
+      </p>
+      <p class="dim" data-test="zone-two-tone-note">
+        A factory two-tone is two palette ids joined, never a colour of its own. A clean build deals
+        the halves across the nine zones exactly as generation's own factory state does, so no zone
+        ever wears the joined token, which is a shade no tin holds and which the paint stage would
+        refuse.
+      </p>
     </details>
 
     <details class="panel">
@@ -1235,9 +1529,11 @@ const slotsInRepairGroup = computed(() => context.value.partIdsByGroup[repairGro
               class="num"
               :data-test="'log-' + i + '-' + stat"
             >
-              {{ statDeltaText(line, stat) }}
+              {{ statDeltaText(line.statDeltas, stat) }}
             </td>
-            <td class="num" :data-test="'log-' + i + '-lap'">{{ lapDeltaText(line) }}</td>
+            <td class="num" :data-test="'log-' + i + '-lap'">
+              {{ lapDeltaText(line.laps, logCourseId) }}
+            </td>
             <td class="num">{{ formatYenDelta(line.cashDeltaYen) }}</td>
             <td class="num">{{ line.labourSpent }}</td>
             <td>
@@ -1684,6 +1980,34 @@ const slotsInRepairGroup = computed(() => context.value.partIdsByGroup[repairGro
 .panel > summary {
   color: var(--mg-neon-violet);
   cursor: pointer;
+}
+
+/* The one readout that has to stay legible while the builder is scrolled: the
+   whole point of the panel is watching a figure move as a control changes, so
+   it rides at the top of the viewport rather than sitting above the fold. */
+.pinned {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--mg-panel);
+  border: var(--mg-border);
+  border-radius: var(--mg-radius);
+  padding: var(--mg-space-1) var(--mg-space-3);
+  margin-bottom: var(--mg-space-2);
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.pinned p {
+  margin: var(--mg-space-1) 0;
+}
+
+.preview-build {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mg-space-2);
+  color: var(--mg-text-dim);
+  font-variant-numeric: tabular-nums;
 }
 
 /* A readout describing a car the builder no longer matches: still true about

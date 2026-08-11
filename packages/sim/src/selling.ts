@@ -21,7 +21,7 @@ import {
 import { tierPreferenceWeight } from './bidding'
 import { applyReputationDelta } from './reputation'
 import { isMeetDay } from './calendar'
-import { carLedgerFor, deleteCarLedger, updateCarLedger } from './carLedger'
+import { carLedgerFor, deleteCarLedger, realisedProfitYen, updateCarLedger } from './carLedger'
 import type { SimContext } from './context'
 import { computeDerivedStats } from './derivedStats'
 import { saleRevealLineFor } from './diagnosis'
@@ -1341,11 +1341,7 @@ export function resolveSellViaWalkIn(
   // Realised profit against the ledger recorded since acquisition - only when
   // the purchase price itself is known.
   const ledger = carLedgerFor(state, carInstanceId)
-  const profitYen =
-    ledger.purchaseYen === null
-      ? undefined
-      : offer.priceYen -
-        (ledger.purchaseYen + ledger.repairYen + ledger.partsYen + ledger.listingFeesYen)
+  const profitYen = realisedProfitYen(offer.priceYen, ledger)
 
   // Computed against the original, pre-sale `state`/`car` - the same snapshot
   // every other figure above reads from, before this sale's own
@@ -1395,7 +1391,7 @@ export function resolveSellViaWalkIn(
       carInstanceId,
       channel: 'walk-in-offer',
       priceYen: offer.priceYen,
-      ...(profitYen !== undefined ? { profitYen } : {}),
+      ...(profitYen !== null ? { profitYen } : {}),
       ...(saleOutcome === 'nothing' ? {} : { reputationDelta, saleQuality: saleOutcome }),
       ...(saleRevealLine !== undefined ? { saleRevealLine } : {}),
       ...(matched ? { matchedSale: true as const } : {}),
