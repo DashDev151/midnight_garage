@@ -72,6 +72,7 @@ import {
   benchValueSummaryFor,
   buildDeltaFor,
   ledgerDiffRows,
+  type BenchValueSummary,
 } from './dev/economyBenchPreview'
 
 const game = useGameStore()
@@ -409,6 +410,12 @@ const pendingLedgerRows = computed(() =>
     ? ledgerDiffRows(liveSummary.value, pending.value.summary)
     : [],
 )
+/** The lines that moved, which is the answer, and the ones that did not, which
+ * is the evidence that they did not. */
+const movedLedgerRows = computed(() => pendingLedgerRows.value.filter((row) => row.deltaYen !== 0))
+const unmovedLedgerRows = computed(() =>
+  pendingLedgerRows.value.filter((row) => row.deltaYen === 0),
+)
 /** What the pending spec does to the car itself, measured exactly as the
  * running log measures an action. */
 const pendingBuild = computed(() =>
@@ -416,49 +423,86 @@ const pendingBuild = computed(() =>
     ? buildDeltaFor(car.value, pending.value.car, model.value, context.value)
     : null,
 )
-/** What the pending spec does to the headline price. Null while nothing is
- * pending. */
-const pendingValueDeltaYen = computed(() =>
-  liveSummary.value && pending.value
-    ? pending.value.summary.valueYen - liveSummary.value.valueYen
-    : null,
-)
 /**
- * The profit line's five honest cases, resolved here rather than in the
- * template so every figure the sentence prints is already known to exist. A
- * purchase price can be typed in or cleared while a change is pending, and
- * either side of it having no recorded purchase is a different statement from a
- * profit of nothing.
+ * THE THREE FIGURES: what this car has cost, what it is worth, and the
+ * difference. Each is read off the bench's own world and, while the builder is
+ * dirty, off the throwaway world the pending spec builds, so a change is a
+ * subtraction of two sim answers and never a figure of the screen's own.
+ *
+ * A null is a figure the sim declines to state rather than a zero: with no
+ * purchase price recorded there is no book cost, and so no profit measured
+ * against one. Either side of a pending change can be null on its own, since a
+ * purchase price can be typed in or cleared while a change is pending.
  */
-type PreviewProfitLine =
-  | { kind: 'unmeasured' }
-  | { kind: 'live'; beforeYen: number }
-  | { kind: 'moved'; beforeYen: number; afterYen: number; deltaYen: number }
-  | { kind: 'appeared'; afterYen: number }
-  | { kind: 'vanished'; beforeYen: number }
+interface HeadlineFigure {
+  key: 'cost' | 'value' | 'profit'
+  label: string
+  /** The caveat this figure genuinely carries, on the label's own tooltip. */
+  note: string
+  nowYen: number | null
+  pendingYen: number | null
+  deltaYen: number | null
+}
 
-const previewProfit = computed<PreviewProfitLine | null>(() => {
+const COST_NOTE =
+  "Everything this car's own ledger says it has cost: the purchase price, repair charges, parts fitted and listing fees. Machine-shop hire and rent never reach a car's ledger, so neither is in it. With no purchase price recorded there is no book cost at all, and the figure reads as a dash rather than a zero."
+const VALUE_NOTE =
+  "The value ledger's own total, which is marketValueYen to the yen. It is what the market says the car is worth, not what anyone would offer for it: a real offer is a buyer's own price through a channel, in section 4."
+const PROFIT_NOTE =
+  "Market value less book cost, which is the sim's own realised profit asked of a hypothetical sale at exactly market value. A yardstick, not a forecast. Neither figure carries machine-shop hire or rent."
+const REBUILT_NOTE =
+  "What Rebuild would produce from the settings as typed. A rebuild starts a new car, so its ledger opens at the purchase price alone and carries none of this session's repairs, parts or fees."
+const PURCHASE_NOTE =
+  'What the books say this car cost, which is what a sale reports its profit against. Leave it empty and the sim reports no profit at all rather than inventing one. The bench does not pay it: the till is the Cash box in the shop panel.'
+const LEDGER_DIFF_NOTE =
+  "The sim's own value ledger, either side of the change. A line a ledger does not carry is an adjustment of nothing rather than a gap: heat is absent at neutral heat, floor while the scrap backstop does not bind, coherence on a build it does not discount, and aftermarket on a car carrying no credited premium."
+const FOUNDATION_NOTE =
+  'What a failing foundation holds back, either side of the change. It is exact by construction and it is usually why the aftermarket line moved, but it is not a ledger line and must not be added to them.'
+
+const headline = computed<HeadlineFigure[]>(() => {
   const live = liveSummary.value
-  if (!live) return null
-  const beforeYen = live.profitAtValueYen
-  if (!pending.value) {
-    return beforeYen === null ? { kind: 'unmeasured' } : { kind: 'live', beforeYen }
+  if (!live) return []
+  const next = pending.value?.summary ?? null
+  const figure = (
+    key: HeadlineFigure['key'],
+    label: string,
+    note: string,
+    read: (summary: BenchValueSummary) => number | null,
+  ): HeadlineFigure => {
+    const nowYen = read(live)
+    const pendingYen = next ? read(next) : null
+    return {
+      key,
+      label,
+      note,
+      nowYen,
+      pendingYen,
+      deltaYen: nowYen !== null && pendingYen !== null ? pendingYen - nowYen : null,
+    }
   }
-  const afterYen = pending.value.summary.profitAtValueYen
-  if (beforeYen === null) {
-    return afterYen === null ? { kind: 'unmeasured' } : { kind: 'appeared', afterYen }
-  }
-  if (afterYen === null) return { kind: 'vanished', beforeYen }
-  return { kind: 'moved', beforeYen, afterYen, deltaYen: afterYen - beforeYen }
+  return [
+    figure('cost', 'Cost (books)', COST_NOTE, (summary) => summary.bookCostYen),
+    figure('value', 'Value (market)', VALUE_NOTE, (summary) => summary.valueYen),
+    figure('profit', 'Profit (vs book cost)', PROFIT_NOTE, (summary) => summary.profitAtValueYen),
+  ]
 })
+
+/** A figure the sim states, or the dash it prints where the sim states none. */
+function yenOrDash(yen: number | null): string {
+  return yen === null ? '-' : formatYen(yen)
+}
+
+function yenDeltaOrDash(yen: number | null): string {
+  return yen === null ? '-' : formatYenDelta(yen)
+}
 
 /**
  * What a failing foundation holds back either side of the pending change, and
  * null while it holds back the same figure.
  *
  * It is exact by construction and it is the usual reason the aftermarket line
- * moves, so it is stated beside the table rather than added into it: it is not
- * a ledger line and must not be read as one.
+ * moves, so it is stated beside the moved lines rather than among them: it is
+ * not a ledger line and must not be read as one.
  */
 const pendingFoundation = computed(() => {
   const live = liveSummary.value
@@ -662,102 +706,82 @@ const slotsInRepairGroup = computed(() => context.value.partIdsByGroup[repairGro
 
     <!-- THE PINNED PREVIEW -------------------------------------------- -->
     <div v-if="liveSummary" class="pinned" data-test="bench-preview">
-      <p class="total" data-test="preview-value">
-        <template v-if="pending && pendingValueDeltaYen !== null">
-          Worth <span data-test="preview-value-now">{{ formatYen(liveSummary.valueYen) }}</span> on
-          the bench and
-          <span data-test="preview-value-pending">{{ formatYen(pending.summary.valueYen) }}</span>
-          as typed, a change of
-          <strong
-            :class="{ up: pendingValueDeltaYen > 0, down: pendingValueDeltaYen < 0 }"
-            data-test="preview-value-delta"
-            >{{ formatYenDelta(pendingValueDeltaYen) }}</strong
-          >.
-        </template>
-        <template v-else>
-          Worth
-          <strong data-test="preview-value-now">{{ formatYen(liveSummary.valueYen) }}</strong
-          >. The builder matches the car on the bench.
-        </template>
-      </p>
-
-      <p v-if="previewProfit" data-test="preview-profit">
-        <template v-if="previewProfit.kind === 'unmeasured'">
-          No purchase price is recorded, so no profit is measured against one. Set Bought for in the
-          shop panel.
-        </template>
-        <template v-else-if="previewProfit.kind === 'live'">
-          At that price the books realise
-          <strong>{{ formatYen(previewProfit.beforeYen) }}</strong
-          >.
-        </template>
-        <template v-else-if="previewProfit.kind === 'moved'">
-          At that price the books realise {{ formatYen(previewProfit.beforeYen) }} on the bench and
-          {{ formatYen(previewProfit.afterYen) }} as typed, a change of
-          <strong
-            :class="{ up: previewProfit.deltaYen > 0, down: previewProfit.deltaYen < 0 }"
-            data-test="preview-profit-delta"
-            >{{ formatYenDelta(previewProfit.deltaYen) }}</strong
-          >.
-        </template>
-        <template v-else-if="previewProfit.kind === 'appeared'">
-          The bench car records no purchase price, so it measures no profit. As typed the books
-          would realise <strong>{{ formatYen(previewProfit.afterYen) }}</strong
-          >.
-        </template>
-        <template v-else>
-          At that price the books realise
-          <strong>{{ formatYen(previewProfit.beforeYen) }}</strong> on the bench. As typed there is
-          no purchase price at all, so nothing would be measured against it.
-        </template>
-      </p>
-      <p class="dim" data-test="preview-profit-note">
-        Profit here is that market value less everything the books say this car has cost, which is
-        the sim's own realised profit asked of a hypothetical sale at exactly market value. A real
-        sale is a buyer's own price through a channel, in section 4, so this is a yardstick and not
-        a forecast. Neither figure carries machine-shop hire or rent, by the design law that keeps
-        both off a car's ledger.
-      </p>
+      <div class="figures">
+        <div
+          v-for="figure in headline"
+          :key="figure.key"
+          class="figure"
+          :data-test="'preview-' + figure.key"
+        >
+          <span class="cap" :title="figure.note">{{ figure.label }}</span>
+          <strong class="big" :data-test="'preview-' + figure.key + '-now'">
+            {{ yenOrDash(figure.nowYen) }}
+          </strong>
+          <span v-if="pending" class="pending">
+            <span class="k" :title="REBUILT_NOTE">if rebuilt</span>
+            <span class="v" :data-test="'preview-' + figure.key + '-pending'">
+              {{ yenOrDash(figure.pendingYen) }}
+            </span>
+            <span class="k">change</span>
+            <span
+              class="v"
+              :class="{ up: (figure.deltaYen ?? 0) > 0, down: (figure.deltaYen ?? 0) < 0 }"
+              :data-test="'preview-' + figure.key + '-delta'"
+            >
+              {{ yenDeltaOrDash(figure.deltaYen) }}
+            </span>
+          </span>
+          <span v-if="figure.key === 'cost'" class="books">
+            <label :title="PURCHASE_NOTE">
+              bought for
+              <input
+                :value="shopSpec.purchaseYen ?? ''"
+                data-test="bench-purchase"
+                type="number"
+                step="10000"
+                @change="setPurchaseYen(inputValue($event))"
+              />
+            </label>
+            <button
+              type="button"
+              data-test="bench-take-desk-price"
+              :disabled="!acquisition"
+              @click="takeDeskPrice"
+            >
+              desk price
+            </button>
+          </span>
+        </div>
+      </div>
 
       <template v-if="pending">
-        <table class="grid">
-          <thead>
-            <tr>
-              <th>which ledger line moved</th>
-              <th class="num">on the bench</th>
-              <th class="num">as typed</th>
-              <th class="num">change</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="row in pendingLedgerRows"
-              :key="row.id"
-              :data-test="'preview-why-' + row.id"
-              :class="{ dim: row.deltaYen === 0 }"
+        <p class="moved" data-test="preview-why">
+          <span class="cap" :title="LEDGER_DIFF_NOTE">moved</span>
+          <span
+            v-for="row in movedLedgerRows"
+            :key="row.id"
+            class="chip"
+            :data-test="'preview-why-' + row.id"
+          >
+            {{ row.id }}
+            <strong :class="{ up: row.deltaYen > 0, down: row.deltaYen < 0 }">{{
+              formatYenDelta(row.deltaYen)
+            }}</strong>
+            <span class="dim"
+              >({{ formatYenDelta(row.beforeYen) }} to {{ formatYenDelta(row.afterYen) }})</span
             >
-              <td>{{ row.id }}</td>
-              <td class="num">{{ formatYenDelta(row.beforeYen) }}</td>
-              <td class="num">{{ formatYenDelta(row.afterYen) }}</td>
-              <td class="num" :class="{ up: row.deltaYen > 0, down: row.deltaYen < 0 }">
-                {{ formatYenDelta(row.deltaYen) }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <p class="dim" data-test="preview-why-note">
-          The sim's own ledger, either side of the change, moved lines first. A line a ledger does
-          not carry is an adjustment of nothing rather than a gap: heat is absent at neutral heat,
-          floor while the scrap backstop does not bind, coherence on a build it does not discount
-          and aftermarket on a car carrying no credited premium.
+          </span>
+          <span v-if="movedLedgerRows.length === 0" class="dim">no ledger line</span>
         </p>
-        <p v-if="pendingFoundation" class="dim" data-test="preview-foundation">
-          A failing foundation holds back {{ formatYen(pendingFoundation.beforeYen) }} of premium on
-          the bench and {{ formatYen(pendingFoundation.afterYen) }} as typed. That is not a ledger
-          line and is not in the table above: it is usually why the aftermarket line moved.
+        <p v-if="pendingFoundation" class="moved" data-test="preview-foundation">
+          <span class="cap" :title="FOUNDATION_NOTE">foundation withheld, not a ledger line</span>
+          <span class="chip">
+            {{ formatYen(pendingFoundation.beforeYen) }} to
+            {{ formatYen(pendingFoundation.afterYen) }}
+          </span>
         </p>
 
-        <p v-if="pendingBuild" class="preview-build" data-test="preview-build">
+        <p v-if="pendingBuild" class="moved dim" data-test="preview-build">
           <span v-for="stat in STAT_KEYS" :key="stat" :data-test="'preview-stat-' + stat">
             {{ stat.slice(0, 4) }} {{ statDeltaText(pendingBuild.statDeltas, stat) }}
           </span>
@@ -770,16 +794,23 @@ const slotsInRepairGroup = computed(() => context.value.partIdsByGroup[repairGro
           </span>
         </p>
 
-        <p class="dim" data-test="preview-note">
-          Nothing has been built. Every figure below this panel still describes the car on the
-          bench, and the running log and the till are untouched. Rebuild builds what you have typed,
-          which starts a new car and clears the log.
-        </p>
+        <details class="rest">
+          <summary>lines that did not move</summary>
+          <p class="moved">
+            <span
+              v-for="row in unmovedLedgerRows"
+              :key="row.id"
+              class="chip dim"
+              :data-test="'preview-why-' + row.id"
+            >
+              {{ row.id }} {{ formatYenDelta(row.deltaYen) }} ({{
+                formatYenDelta(row.beforeYen)
+              }}
+              to {{ formatYenDelta(row.afterYen) }})
+            </span>
+          </p>
+        </details>
       </template>
-      <p v-else class="dim" data-test="preview-clean-note">
-        Change anything in the builder and this panel prices it: what it would be worth instead,
-        what the change is, and which ledger lines moved. Nothing is built until Rebuild.
-      </p>
     </div>
 
     <!-- 1. THE STATE BUILDER ------------------------------------------ -->
@@ -1102,31 +1133,6 @@ const slotsInRepairGroup = computed(() => context.value.partIdsByGroup[repairGro
         <button type="button" data-test="bench-apply-shop" @click="rebuild">
           Apply and rebuild
         </button>
-      </div>
-      <div class="row">
-        <label>
-          Bought for
-          <input
-            :value="shopSpec.purchaseYen ?? ''"
-            data-test="bench-purchase"
-            type="number"
-            step="10000"
-            @change="setPurchaseYen(inputValue($event))"
-          />
-        </label>
-        <button
-          type="button"
-          data-test="bench-take-desk-price"
-          :disabled="!acquisition"
-          @click="takeDeskPrice"
-        >
-          Take the desk's price
-        </button>
-        <span class="dim">
-          What the books say this car cost, which is what a sale reports its profit against. Leave
-          it empty and the sim reports no profit at all rather than inventing one. The bench does
-          not pay it: the till is the Cash box above.
-        </span>
       </div>
       <div class="row wrap">
         <label v-for="scene in SCENES" :key="scene" class="inline">
@@ -2002,12 +2008,78 @@ const slotsInRepairGroup = computed(() => context.value.partIdsByGroup[repairGro
   margin: var(--mg-space-1) 0;
 }
 
-.preview-build {
+/* The three money figures, side by side and the same size, so cost, value and
+   profit are one glance rather than three. */
+.figures {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--mg-space-3);
+  align-items: start;
+}
+
+.figure {
+  display: flex;
+  flex-direction: column;
+}
+
+.figure .cap {
+  color: var(--mg-text-dim);
+}
+
+.figure .big {
+  font-size: var(--mg-fs-lg);
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The pending pair under each figure: a caption column and a figure column, so
+   the three cells line their numbers up with each other. */
+.figure .pending {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0 var(--mg-space-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.figure .pending .k {
+  color: var(--mg-text-dim);
+}
+
+.figure .pending .v {
+  text-align: right;
+}
+
+.books {
+  display: flex;
+  align-items: center;
+  gap: var(--mg-space-1);
+  margin-top: var(--mg-space-1);
+}
+
+.books input {
+  max-width: 110px;
+}
+
+/* One wrapping row of what moved, rather than a table of mostly nothing. */
+.moved {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--mg-space-2);
-  color: var(--mg-text-dim);
+  align-items: baseline;
+  gap: 0 var(--mg-space-2);
   font-variant-numeric: tabular-nums;
+}
+
+.moved .cap {
+  color: var(--mg-text-dim);
+}
+
+.moved .chip {
+  white-space: nowrap;
+}
+
+.rest > summary {
+  color: var(--mg-text-dim);
+  cursor: pointer;
 }
 
 /* A readout describing a car the builder no longer matches: still true about

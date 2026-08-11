@@ -359,14 +359,85 @@ The standing prose precedent held again: the preview's value sentence is asserte
 exactly three figures and each of them to be one sim answered for that car, and the guard proper is
 that a previewed figure equals what the same spec produces after a Rebuild.
 
+### The pinned bar carries numbers, and the prose that was in it lives here
+
+Used a third time, the pinned panel was found to be spending the most valuable real estate on the
+screen on about eighty words of caveat and definition. The maintainer's requirement, in their own
+words: *"I need to see ON SCREEN how what I am doing affects the COST / VALUE / PROFIT."*
+
+**The bar is now three figures and the reasons they moved.** Left to right, equal weight, one glance:
+
+    Cost (books)          Value (market)        Profit (vs book cost)
+    ¥400,000              ¥1,830,000            +¥1,430,000
+    if rebuilt ¥400,000   if rebuilt ¥1,910,000 if rebuilt +¥1,510,000
+    change            ¥0  change      +¥80,000  change        +¥80,000
+    [bought for ____] [desk price]
+
+    moved   mileage -¥80,000 (-¥12,000 to -¥92,000)   coherence ...
+    > lines that did not move
+
+The two "if rebuilt" rows appear only while the builder is dirty. Below the figures sit the moved
+ledger lines as one wrapping row of chips (each carrying its delta, and its before and after), the
+foundation-withheld pair when it changes, the stat and lap deltas, and a collapsible holding the
+lines that did not move.
+
+**Cost is new on this panel and it is the point of the rework.** It comes from `bookCostYen`, added
+to `carLedger.ts` beside `realisedProfitYen`, which now calls it: purchase plus repairs plus parts
+fitted plus listing fees, or null when no purchase was recorded. One basis, so profit is value less
+cost to the yen by construction rather than by coincidence, and a screen test asserts exactly that
+against the three rendered figures. No behaviour changed anywhere: it is the same sum, named.
+
+**It also makes a basis shift visible that the old panel hid.** A rebuild starts a new car, so the
+pending world's ledger opens at the purchase price alone and carries none of the session's repairs,
+parts or fees. The old panel showed only profit, which silently absorbed that reset; the cost figure
+now moves in plain sight beside it, and the "if rebuilt" caption carries the reason on its tooltip.
+
+**No purchase price recorded** is a state, not a sentence. Cost and profit each read a dash rather
+than a zero, independently on each side of a pending change, and the "bought for" box and the "desk
+price" button moved out of the shop panel into the cost cell, so the one input those two figures
+need is where they are.
+
+**The three paragraphs that were deleted, in full, so nothing is lost:**
+
+1. The missing-purchase sentence: *"No purchase price is recorded, so no profit is measured against
+   one. Set Bought for in the shop panel."* Now the dashed cost and profit figures with the input
+   beside them.
+2. The profit definition: *"Profit here is that market value less everything the books say this car
+   has cost, which is the sim's own realised profit asked of a hypothetical sale at exactly market
+   value. A real sale is a buyer's own price through a channel, in section 4, so this is a yardstick
+   and not a forecast. Neither figure carries machine-shop hire or rent, by the design law that keeps
+   both off a car's ledger."* Now a `title` on the "Profit (vs book cost)" label, and recorded here.
+3. The panel-behaviour explainer: *"Change anything in the builder and this panel prices it: what it
+   would be worth instead, what the change is, and which ledger lines moved. Nothing is built until
+   Rebuild."* Deleted outright: a working panel demonstrates it, and section 1's own stale warning
+   already says what a rebuild does.
+
+Two further paragraphs became tooltips on the labels they belonged to rather than standing prose:
+the ledger-diff note (*"a line a ledger does not carry is an adjustment of nothing rather than a
+gap"*) and the foundation-withheld note. The foundation row keeps its exact claim in four words on
+screen, "foundation withheld, not a ledger line", with the rest on the tooltip. The
+"nothing has been built" note went too: it repeated section 1's stale warning verbatim in substance.
+
+**The honesty rule is unchanged and the labels carry it**: "Profit (vs book cost)" says what the
+figure is measured against, "Value (market)" says whose price it is, and every caveat that is
+genuinely load-bearing is a tooltip away rather than deleted.
+
+Four prose guard assertions were retargeted, all case (a), the implementation having changed what is
+correct to display: the clean-state test now asserts the dashed figures and the in-bar input rather
+than the deleted sentence; the profit test asserts the dashed and measured figures on both sides of a
+pending change rather than two phrases; the unmoved-line test asserts the chip's contents and its
+place in the collapsible rather than a table row's exact concatenated text; and the pending test
+reads section 1's stale warning rather than the deleted panel note. The value-sentence guard (exactly
+three figures, each one sim's) needed no change and still passes against the new layout.
+
 ### Evidence
 
 | check | result |
 | --- | --- |
 | `pnpm typecheck` | clean, all three projects |
 | `pnpm test --project content` | 626 passed |
-| `pnpm test --project sim` | 2801 passed |
-| `pnpm test --project game` | 1075 passed |
+| `pnpm test --project sim` | 2804 passed |
+| `pnpm test --project game` | 1076 passed |
 | `npx eslint` / `prettier --check` | clean |
 | `packages/content/data/` diff | empty |
 

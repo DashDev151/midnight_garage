@@ -43,20 +43,27 @@ export function updateCarLedger(
 }
 
 /**
- * What a sale at `priceYen` realises against everything the books say the car
- * cost: the price less the purchase, the repairs, the parts fitted and the
- * listing fees. Null when the purchase price itself was never recorded, which
- * is a different thing from a purchase of nothing and is why no profit is
- * reported for such a car rather than one measured against zero.
+ * Everything the books say this car has cost: the purchase, the repairs, the
+ * parts fitted and the listing fees. Null when the purchase price itself was
+ * never recorded, which is a different thing from a purchase of nothing and is
+ * why such a car reports no cost rather than one measured from zero.
  *
  * Machine-shop hire and every other shared overhead are absent by
  * construction: they never reach a car's ledger at all.
  */
-export function realisedProfitYen(priceYen: number, ledger: CarLedger): number | null {
+export function bookCostYen(ledger: CarLedger): number | null {
   if (ledger.purchaseYen === null) return null
-  return (
-    priceYen - (ledger.purchaseYen + ledger.repairYen + ledger.partsYen + ledger.listingFeesYen)
-  )
+  return ledger.purchaseYen + ledger.repairYen + ledger.partsYen + ledger.listingFeesYen
+}
+
+/**
+ * What a sale at `priceYen` realises against that book cost: the price less
+ * everything on the ledger. Null on the same terms, so a price and a profit
+ * are always measured against the one cost figure rather than two.
+ */
+export function realisedProfitYen(priceYen: number, ledger: CarLedger): number | null {
+  const costYen = bookCostYen(ledger)
+  return costYen === null ? null : priceYen - costYen
 }
 
 /** Drops `carInstanceId`'s ledger entry - every car-exit path (currently

@@ -6,6 +6,7 @@ import type {
   StatBlock,
 } from '@midnight-garage/content'
 import {
+  bookCostYen,
   carLedgerFor,
   foundationWithheldYen,
   realisedProfitYen,
@@ -56,6 +57,12 @@ export interface BenchValueSummary {
   /** The books on this car: purchase, repairs, parts fitted, listing fees. */
   ledger: CarLedger
   /**
+   * `bookCostYen`: everything those books say the car has cost. Null when no
+   * purchase price is recorded, which is the same condition that leaves the
+   * profit unmeasured, since it is the basis the profit is taken against.
+   */
+  bookCostYen: number | null
+  /**
    * `realisedProfitYen` at this car's own market value: the sim's own realised
    * profit, asked the hypothetical question "if it sold for exactly what the
    * market says it is worth". Null when no purchase price is recorded, which is
@@ -85,6 +92,7 @@ export function benchValueSummaryFor(
     lines: ledger.lines,
     foundationWithheldYen: foundationWithheldYen(model, car, partsById, economy),
     ledger: carLedger,
+    bookCostYen: bookCostYen(carLedger),
     profitAtValueYen: realisedProfitYen(ledger.totalYen, carLedger),
   }
 }

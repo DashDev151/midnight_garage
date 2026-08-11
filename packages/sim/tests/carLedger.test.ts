@@ -1,6 +1,13 @@
 import type { GameState } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
-import { carLedgerFor, deleteCarLedger, setCarLedger, updateCarLedger } from '../src/carLedger'
+import {
+  bookCostYen,
+  carLedgerFor,
+  deleteCarLedger,
+  realisedProfitYen,
+  setCarLedger,
+  updateCarLedger,
+} from '../src/carLedger'
 import { testSceneStanding, testToolTiers } from './testFixtures'
 
 function baseState(overrides: Partial<GameState> = {}): GameState {
@@ -132,5 +139,35 @@ describe('setCarLedger / updateCarLedger / deleteCarLedger (Sprint 42)', () => {
   it('deleteCarLedger is a no-op (same reference) when there is nothing to remove', () => {
     const state = baseState()
     expect(deleteCarLedger(state, 'car-1')).toBe(state)
+  })
+})
+
+describe('bookCostYen', () => {
+  it('sums the purchase, the repairs, the parts fitted and the listing fees', () => {
+    expect(
+      bookCostYen({
+        purchaseYen: 900_000,
+        repairYen: 40_000,
+        partsYen: 25_000,
+        listingFeesYen: 5_000,
+      }),
+    ).toBe(970_000)
+  })
+
+  it('reports no cost at all when no purchase price was recorded', () => {
+    expect(
+      bookCostYen({ purchaseYen: null, repairYen: 40_000, partsYen: 0, listingFeesYen: 0 }),
+    ).toBeNull()
+  })
+
+  it('is the one basis a realised profit is measured against', () => {
+    const ledger = {
+      purchaseYen: 900_000,
+      repairYen: 40_000,
+      partsYen: 25_000,
+      listingFeesYen: 5_000,
+    }
+    expect(realisedProfitYen(1_200_000, ledger)).toBe(1_200_000 - bookCostYen(ledger)!)
+    expect(realisedProfitYen(1_200_000, { ...ledger, purchaseYen: null })).toBeNull()
   })
 })

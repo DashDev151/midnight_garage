@@ -349,11 +349,34 @@ describe("EconomyBenchScreen's pinned preview", () => {
     const live = benchValueSummaryFor(benchDefaultCar(), benchModel(), benchState(), benchContext())
 
     expect(text(wrapper, 'preview-value-now')).toBe(formatYen(live.valueYen))
-    expect(wrapper.find('[data-test="preview-value-pending"]').exists()).toBe(false)
-    expect(text(wrapper, 'preview-clean-note')).toContain('Nothing is built until Rebuild')
-    // No purchase price is recorded on a car the bench simply seated.
-    expect(text(wrapper, 'preview-profit')).toContain('No purchase price is recorded')
+    // Nothing is pending, so no cell carries an "if rebuilt" figure at all.
+    for (const key of ['cost', 'value', 'profit']) {
+      expect(wrapper.find(`[data-test="preview-${key}-pending"]`).exists()).toBe(false)
+    }
+    // No purchase price is recorded on a car the bench simply seated, so there
+    // is no book cost and no profit measured against one. Both read as a dash
+    // rather than a zero, and neither cell prints a figure of any kind.
+    expect(text(wrapper, 'preview-cost-now')).toBe('-')
+    expect(text(wrapper, 'preview-profit-now')).toBe('-')
+    expect(figuresIn(text(wrapper, 'preview-cost'))).toEqual([])
     expect(figuresIn(text(wrapper, 'preview-profit'))).toEqual([])
+    // And the one input that would measure them is in the bar itself.
+    expect(wrapper.find('[data-test="preview-cost"] [data-test="bench-purchase"]').exists()).toBe(
+      true,
+    )
+  })
+
+  it('keeps the three figures to one arithmetic: value less cost is the profit', async () => {
+    const wrapper = mountScreen()
+    await type(wrapper, 'bench-purchase', 400_000)
+    await click(wrapper, 'bench-rebuild')
+
+    // The yen sign and the thousands separators come off; a leading minus stays.
+    const yen = (testId: string): number => Number(text(wrapper, testId).replace(/[^\d-]/g, ''))
+
+    // The bar's own claim, which is the whole of what the labels promise: the
+    // profit is the value less the book cost, to the yen.
+    expect(yen('preview-value-now') - yen('preview-cost-now')).toBe(yen('preview-profit-now'))
   })
 
   it('THE GUARD: a previewed figure is exactly what a rebuild then produces', async () => {
@@ -425,12 +448,18 @@ describe("EconomyBenchScreen's pinned preview", () => {
     expect(row).toContain(formatYenDelta(mileageBefore))
     expect(row).toContain(formatYenDelta(mileageAfter))
     expect(row).toContain(formatYenDelta(mileageAfter - mileageBefore))
+    // The moved line is in the row that is always on screen.
+    expect(
+      wrapper.find('[data-test="preview-why"] [data-test="preview-why-mileage"]').exists(),
+    ).toBe(true)
 
-    // Book value cannot move with mileage, and its row is still there saying so.
+    // Book value cannot move with mileage, and it is still there saying so,
+    // below the fold with the rest of the lines that did not move.
     const bookYen = live.lines.find((line) => line.id === 'book')?.yen ?? 0
-    expect(text(wrapper, 'preview-why-book')).toBe(
-      `book${formatYenDelta(bookYen)}${formatYenDelta(bookYen)}¥0`,
-    )
+    const book = text(wrapper, 'preview-why-book')
+    expect(book).toContain(formatYenDelta(bookYen))
+    expect(book).toContain('¥0')
+    expect(wrapper.find('details.rest [data-test="preview-why-book"]').exists()).toBe(true)
   })
 
   it('measures the pending build the same way an action is measured', async () => {
@@ -452,23 +481,32 @@ describe("EconomyBenchScreen's pinned preview", () => {
     }
   })
 
-  it('measures profit once a purchase price is recorded, and says so before then', async () => {
+  it('measures profit once a purchase price is recorded, and dashes it before then', async () => {
     const wrapper = mountScreen()
     await type(wrapper, 'bench-purchase', 400_000)
-
-    // Pending only: the car on the bench still has no recorded purchase.
-    expect(text(wrapper, 'preview-profit')).toContain('records no purchase price')
-
-    await click(wrapper, 'bench-rebuild')
 
     const context = benchContext()
     const model = benchModel()
     const shop = { ...defaultShopSpec(context), purchaseYen: 400_000 }
     const built = benchPreviewFor(defaultCarSpec(model, shop, context), shop, model, context)
+    expect(built.summary.bookCostYen).toBe(400_000)
     expect(built.summary.profitAtValueYen).not.toBeNull()
-    expect(text(wrapper, 'preview-profit')).toContain(
+
+    // Pending only: the car on the bench still has no recorded purchase, so its
+    // own cost and profit stay dashed and neither change can be measured.
+    expect(text(wrapper, 'preview-cost-now')).toBe('-')
+    expect(text(wrapper, 'preview-profit-now')).toBe('-')
+    expect(text(wrapper, 'preview-cost-pending')).toBe(formatYen(400_000))
+    expect(text(wrapper, 'preview-profit-pending')).toBe(
       formatYen(built.summary.profitAtValueYen ?? 0),
     )
+    expect(text(wrapper, 'preview-cost-delta')).toBe('-')
+    expect(text(wrapper, 'preview-profit-delta')).toBe('-')
+
+    await click(wrapper, 'bench-rebuild')
+
+    expect(text(wrapper, 'preview-cost-now')).toBe(formatYen(400_000))
+    expect(text(wrapper, 'preview-profit-now')).toBe(formatYen(built.summary.profitAtValueYen ?? 0))
   })
 
   it('leaves the running log and the car alone while a change is pending', async () => {
@@ -480,7 +518,7 @@ describe("EconomyBenchScreen's pinned preview", () => {
 
     expect(wrapper.find('[data-test="log-line-0"]').exists()).toBe(true)
     expect(text(wrapper, 'bench-total')).toBe(total)
-    expect(text(wrapper, 'preview-note')).toContain('Nothing has been built')
+    expect(text(wrapper, 'bench-stale')).toContain('not the settings above it')
   })
 })
 
