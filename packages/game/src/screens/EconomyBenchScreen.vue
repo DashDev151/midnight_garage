@@ -5,6 +5,7 @@ import {
   ConditionBandSchema,
   ReputationTierSchema,
   SceneStandingStageSchema,
+  StatKeySchema,
   type BuyerArchetype,
   type CarPartId,
   type ComponentId,
@@ -14,6 +15,7 @@ import {
   type ReputationTier,
   type SceneStandingStage,
   type SellingChannelId,
+  type StatKey,
   type ToolTier,
   type TrimZoneState,
   type ZoneId,
@@ -43,12 +45,17 @@ import {
 } from './dev/economyBench'
 import {
   acquisitionPanelFor,
+  bandPricedChannelsFor,
   buyerRowsFor,
+  channelPricePanelFor,
   channelRowsFor,
   costSheetFor,
   heatPercentFor,
+  listingOffersSeenFor,
   mileageNoteFor,
   openingBlockFor,
+  pendingOfferFor,
+  statsPanelFor,
 } from './dev/economyBenchReadout'
 import {
   labourRemaining,
@@ -62,6 +69,7 @@ const context = computed(() => game.context)
 
 const BANDS = ConditionBandSchema.options
 const GROUPS = ComponentIdSchema.options
+const STAT_KEYS = StatKeySchema.options
 const REPUTATION_TIERS = ReputationTierSchema.options
 const SCENES = BuyerArchetypeSchema.options
 const STAGES = SceneStandingStageSchema.options
@@ -308,6 +316,22 @@ function setReputationTier(tier: string): void {
   carSpec.value = { ...carSpec.value, year: clampYear(carSpec.value.year) }
 }
 
+/** An empty box means no recorded purchase, which is a different thing from a
+ * purchase of nothing. */
+function setPurchaseYen(raw: string): void {
+  const purchaseYen = raw.trim() === '' ? null : Math.round(Number(raw))
+  if (purchaseYen !== null && !Number.isFinite(purchaseYen)) return
+  shopSpec.value = { ...shopSpec.value, purchaseYen }
+}
+
+/** Records the acquisition at the desk's own instant price for this car, which
+ * is a figure already on the screen and already the sim's. */
+function takeDeskPrice(): void {
+  const panel = acquisition.value
+  if (!panel) return
+  shopSpec.value = { ...shopSpec.value, purchaseYen: panel.buyoutYen }
+}
+
 function toggleShopOwned(shopId: string): void {
   const owned = shopSpec.value.toolShopsOwned
   shopSpec.value = {
@@ -331,6 +355,11 @@ const opening = computed(() =>
     ? openingBlockFor(car.value, model.value, state.value, context.value)
     : null,
 )
+/** What the car IS: the five stats, the four laps, and whether the build hangs
+ * together. */
+const stats = computed(() =>
+  car.value && model.value ? statsPanelFor(car.value, model.value, context.value) : null,
+)
 const buyers = computed(() =>
   car.value && model.value ? buyerRowsFor(car.value, model.value, state.value, context.value) : [],
 )
@@ -338,6 +367,37 @@ const channels = computed(() =>
   car.value && model.value
     ? channelRowsFor(car.value, model.value, state.value, context.value)
     : [],
+)
+/** The staleness term behind every arrival chance in the channel table. */
+const offersSeen = computed(() => listingOffersSeenFor(state.value, BENCH_CAR_ID))
+/**
+ * ONE channel at a time, chosen, rather than a buyer-by-channel matrix.
+ * Seven buyers by six channels is forty-two prices and no reader can hold
+ * that; one column against a chosen channel is the same information asked one
+ * question at a time, and flipping the selector is what makes the scene
+ * standing dials visible, since the column moves and the buyer table does not.
+ */
+const priceChannelId = ref<SellingChannelId>('shopFront')
+const channelPrices = computed(() =>
+  car.value && model.value
+    ? channelPricePanelFor(car.value, model.value, priceChannelId.value, state.value, context.value)
+    : null,
+)
+/** The channels with no buyer pool at all, which appear in no per-buyer table
+ * and would otherwise have no price on the screen. */
+const bandChannels = computed(() =>
+  car.value && model.value
+    ? bandPricedChannelsFor(car.value, model.value, state.value, context.value)
+    : [],
+)
+/** Today's drawn offer, if the draw brought one. */
+const pendingOffer = computed(() => pendingOfferFor(state.value, BENCH_CAR_ID, context.value))
+/** What the sale did, kept on the log line that closed it - the car itself is
+ * gone by then, so nothing else on the screen can still answer for it. */
+const lastSale = computed(() => [...log.value].reverse().find((line) => line.sale)?.sale ?? null)
+/** The channels whose odds are a calendar fact rather than a daily cadence. */
+const oneDrawChannels = computed(() =>
+  channels.value.filter((row) => row.oneDraw).map((row) => SELLING_CHANNEL_LABELS[row.channelId]),
 )
 const acquisition = computed(() =>
   car.value && model.value
@@ -349,7 +409,11 @@ const costs = computed(() =>
 )
 const labourLeft = computed(() => labourRemaining(state.value, context.value))
 const labourSpentOnLog = computed(() => log.value.reduce((sum, line) => sum + line.labourSpent, 0))
-const runningTotalYen = computed(() => log.value.reduce((sum, line) => sum + line.deltaYen, 0))
+/** A line whose car left the bench has no measured delta at all, so it is not
+ * in the sum rather than being counted as a zero. */
+const runningTotalYen = computed(() =>
+  log.value.reduce((sum, line) => sum + (line.deltaYen ?? 0), 0),
+)
 const yenPerLabourPoint = computed(() =>
   labourSpentOnLog.value > 0 ? runningTotalYen.value / labourSpentOnLog.value : null,
 )
@@ -376,6 +440,43 @@ function resetBaseline(): void {
   log.value = []
 }
 
+/** This car's time on one course, or the word for a car that cannot be driven
+ * at all. `lapTimeSecondsFor` returns nothing in that case, and a blank cell
+ * would read as a model that had failed rather than a car that cannot run. */
+function lapText(courseId: string): string {
+  const seconds = stats.value?.evaluation.laps[courseId]
+  return seconds == null ? 'blocked' : `${seconds.toFixed(2)}s`
+}
+
+/**
+ * A measured stat delta, or a dash where the action moved that stat not at
+ * all. A column of dashes with one figure in it is the point: a reader scans
+ * for the one that moved.
+ *
+ * A line with no measurement at all says so in its own word, since a dash there
+ * would claim the action left the stat where it was.
+ */
+function statDeltaText(line: BenchLogLine, stat: StatKey): string {
+  if (!line.statDeltas) return 'car gone'
+  const delta = line.statDeltas[stat]
+  if (Math.abs(delta) < 0.05) return '-'
+  return `${delta > 0 ? '+' : ''}${delta.toFixed(1)}`
+}
+
+/** The chosen course's own measured delta on one line, in seconds. */
+function lapDeltaText(line: BenchLogLine): string {
+  const lap = line.laps[logCourseId.value]
+  if (!lap) return 'car gone'
+  if (lap.deltaS === null) {
+    // A car that could not be driven has no time, so there is nothing for the
+    // other side to be measured against.
+    if (lap.beforeS === null && lap.afterS === null) return 'blocked'
+    return lap.beforeS === null ? 'now runs' : 'no longer runs'
+  }
+  if (Math.abs(lap.deltaS) < 0.005) return '-'
+  return `${lap.deltaS > 0 ? '+' : ''}${lap.deltaS.toFixed(2)}s`
+}
+
 const buySkuId = ref('')
 const fitInstanceId = ref('')
 // A slot in no assembly, so the two controls open on something that actually
@@ -399,6 +500,15 @@ function runRepair(): void {
 const machineOperationId = ref('')
 const hireGroup = ref<ComponentId>('engine')
 const listChannelId = ref<SellingChannelId>('shopFront')
+/** The seed the offer draw runs at, so a draw can be repeated exactly. */
+const offerSeed = ref(1)
+/**
+ * Which course's lap delta the log shows. All four are measured and stored on
+ * every line, so changing this re-reads measurements already taken rather than
+ * recomputing anything - and a line measured on a car that has since been sold
+ * still answers for the course it was measured on.
+ */
+const logCourseId = ref(context.value.courses[0]?.id ?? '')
 
 const buyableSkus = computed(() => {
   const chosen = model.value
@@ -467,7 +577,8 @@ const slotsInRepairGroup = computed(() => context.value.partIdsByGroup[repairGro
       </p>
 
       <p class="dim" data-test="bench-mileage-note">
-        Mileage multiplier at this figure: x{{ mileage.factor.toFixed(3) }}.
+        Mileage multiplier at the figure in the box above, which is the builder's and not
+        necessarily the car's: x{{ mileage.factor.toFixed(3) }}.
         <template v-if="mileage.discountFromKm !== null">
           The curve is flat at 1.00 up to {{ mileage.discountFromKm.toLocaleString('en-US') }} km
           and falls away above it, so mileage never adds value: a car below that figure has had
@@ -478,14 +589,17 @@ const slotsInRepairGroup = computed(() => context.value.partIdsByGroup[repairGro
           <template v-if="i > 0">, </template>{{ point[0].toLocaleString('en-US') }} km x{{
             point[1].toFixed(2)
           }}</span
-        >. The first figure is flat all the way down to zero and the last is flat above itself.
+        >. The first figure is flat all the way down to zero, the last is flat above itself, and
+        between two of them the multiplier runs straight from one to the next.
       </p>
       <p v-if="mileage.youngestLotUndiscounted" class="dim" data-test="bench-fresh-lot-note">
         The youngest lot generation will ever produce is {{ mileage.minAgeYears }} years old and
         rolls {{ mileage.youngestLotRangeKm[0].toLocaleString('en-US') }} to
         {{ mileage.youngestLotRangeKm[1].toLocaleString('en-US') }} km, all of it inside the flat
-        band. A large share of generated lots therefore carry no mileage discount at all, and price
-        the same whether they have covered 8,000 km or 55,000.
+        band. A lot of that age therefore carries no mileage discount whatever it rolls: it prices
+        the same at {{ mileage.youngestLotRangeKm[0].toLocaleString('en-US') }} km as at
+        {{ mileage.youngestLotRangeKm[1].toLocaleString('en-US') }}. Older lots roll higher ranges
+        and are discounted normally.
       </p>
 
       <div class="row">
@@ -695,6 +809,31 @@ const slotsInRepairGroup = computed(() => context.value.partIdsByGroup[repairGro
           Apply and rebuild
         </button>
       </div>
+      <div class="row">
+        <label>
+          Bought for
+          <input
+            :value="shopSpec.purchaseYen ?? ''"
+            data-test="bench-purchase"
+            type="number"
+            step="10000"
+            @change="setPurchaseYen(inputValue($event))"
+          />
+        </label>
+        <button
+          type="button"
+          data-test="bench-take-desk-price"
+          :disabled="!acquisition"
+          @click="takeDeskPrice"
+        >
+          Take the desk's price
+        </button>
+        <span class="dim">
+          What the books say this car cost, which is what a sale reports its profit against. Leave
+          it empty and the sim reports no profit at all rather than inventing one. The bench does
+          not pay it: the till is the Cash box above.
+        </span>
+      </div>
       <div class="row wrap">
         <label v-for="scene in SCENES" :key="scene" class="inline">
           {{ scene }}
@@ -784,24 +923,104 @@ const slotsInRepairGroup = computed(() => context.value.partIdsByGroup[repairGro
         </thead>
         <tbody>
           <template v-for="line in opening.restoration.lines" :key="line.partId">
-            <tr v-if="line.billYen !== 0" :data-test="'bill-' + line.partId">
-              <td>{{ context.partsTaxonomyById[line.partId]?.displayName ?? line.partId }}</td>
-              <td class="num">{{ formatYen(line.billYen) }}</td>
-              <td class="num">{{ formatYen(line.belowBandBillYen) }}</td>
-              <td class="num">{{ formatYen(line.aboveBandBillYen) }}</td>
-              <td class="num">
-                <span v-if="opening.onScrapFloor" class="dim">n/a</span>
-                <span v-else>{{ formatYenDelta(line.valueYen) }}</span>
-              </td>
-            </tr>
-            <tr v-for="zone in line.zones ?? []" :key="line.partId + zone.zoneId" class="sub">
-              <td>{{ line.partId }} / {{ zone.zoneId }}</td>
-              <td class="num">{{ formatYen(zone.yen) }}</td>
-              <td colspan="3"></td>
-            </tr>
+            <template v-if="line.billYen !== 0">
+              <tr :data-test="'bill-' + line.partId">
+                <td>{{ context.partsTaxonomyById[line.partId]?.displayName ?? line.partId }}</td>
+                <td class="num">{{ formatYen(line.billYen) }}</td>
+                <td class="num">{{ formatYen(line.belowBandBillYen) }}</td>
+                <td class="num">{{ formatYen(line.aboveBandBillYen) }}</td>
+                <td class="num">
+                  <span v-if="opening.onScrapFloor" class="dim">n/a</span>
+                  <span v-else>{{ formatYenDelta(line.valueYen) }}</span>
+                </td>
+              </tr>
+              <!-- Where a body carrier's own bill falls, so these are inside
+                   the line above rather than beside it: adding a zone row to
+                   the bill column would count the same work twice. -->
+              <tr
+                v-for="zone in (line.zones ?? []).filter((z) => z.yen !== 0)"
+                :key="line.partId + zone.zoneId"
+                class="sub"
+              >
+                <td>{{ line.partId }} / {{ zone.zoneId }}</td>
+                <td class="num">{{ formatYen(zone.yen) }}</td>
+                <td colspan="3"></td>
+              </tr>
+            </template>
           </template>
         </tbody>
       </table>
+    </details>
+
+    <!-- 2b. THE CAR AS BUILT ------------------------------------------ -->
+    <details v-if="stats" open class="panel" :class="{ stale: dirty }">
+      <summary>2b. The car as built</summary>
+      <table class="grid">
+        <thead>
+          <tr>
+            <th>stat</th>
+            <th class="num">now</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="stat in STAT_KEYS" :key="stat" :data-test="'stat-' + stat">
+            <td>{{ stat }}</td>
+            <td class="num">{{ stats.evaluation.stats[stat].toFixed(1) }}</td>
+          </tr>
+          <tr data-test="stat-power-score">
+            <td>power, on the other four's own scale</td>
+            <td class="num">{{ stats.evaluation.powerScore.toFixed(1) }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="dim">
+        Power is in PS and the other four are out of 100, so the last row is power read on their
+        scale. A buyer's champion gate is tested against these, and the sale panel below shows which
+        of them cleared it.
+      </p>
+
+      <p data-test="bench-support">
+        Support: <strong>{{ stats.support.band }}</strong> at
+        {{ stats.support.headline.toFixed(3) }}, set by
+        <strong>{{ stats.support.subsystem }}</strong> - the worst of the five subsystems, which is
+        the whole of what the verdict reads. Coherence factor:
+        <strong>{{ stats.coherenceFactor.toFixed(3) }}</strong
+        >.
+      </p>
+      <p class="dim">
+        The coherence factor is what that support ratio is worth in money: it discounts the car's
+        value and scales how much of a fitted part's price the car keeps. At 1 the build is
+        supported at or above adequate, which is the baseline and never a bonus, so a coherent build
+        loses nothing here rather than earning something.
+      </p>
+
+      <table class="grid">
+        <thead>
+          <tr>
+            <th>course</th>
+            <th class="num">lap</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="course in context.courses" :key="course.id" :data-test="'lap-' + course.id">
+            <td>{{ course.name }}</td>
+            <td class="num" :class="{ dim: lapText(course.id) === 'blocked' }">
+              {{ lapText(course.id) }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <p v-if="stats.evaluation.blockers.length > 0" class="warn" data-test="bench-lap-blockers">
+        This car cannot be driven, so every lap above reads blocked rather than being a model that
+        has failed:
+        <span v-for="(blocker, i) in stats.evaluation.blockers" :key="blocker.partId">
+          <template v-if="i > 0">, </template>{{ blocker.displayName }} ({{ blocker.reason }})</span
+        >. Fit or repair those slots and the times come back.
+      </p>
+      <p v-else class="dim" data-test="bench-lap-note">
+        Nothing is stopping the car being driven, so every course above has a time. A slot that
+        disables the car, left empty or at scrap, blanks all four at once.
+      </p>
     </details>
 
     <!-- 3. THE RUNNING LOG -------------------------------------------- -->
@@ -947,14 +1166,54 @@ const slotsInRepairGroup = computed(() => context.value.partIdsByGroup[repairGro
           </button>
           <button type="button" @click="run({ kind: 'delist' })">Delist</button>
         </span>
+
+        <span class="group">
+          <label>seed <input v-model.number="offerSeed" type="number" min="1" size="4" /></label>
+          <button
+            type="button"
+            data-test="bench-draw-offers"
+            @click="run({ kind: 'draw-offers', seed: offerSeed })"
+          >
+            Draw the day's offers
+          </button>
+          <button
+            type="button"
+            data-test="bench-accept-offer"
+            :disabled="!pendingOffer"
+            @click="run({ kind: 'accept-offer' })"
+          >
+            Take the offer
+          </button>
+        </span>
+
+        <span class="group">
+          <button type="button" data-test="bench-settle-week" @click="run({ kind: 'settle-week' })">
+            Run the weekly market update
+          </button>
+        </span>
       </div>
 
+      <div class="row">
+        <label>
+          Lap column
+          <select v-model="logCourseId" data-test="bench-log-course">
+            <option v-for="course in context.courses" :key="course.id" :value="course.id">
+              {{ course.name }}
+            </option>
+          </select>
+        </label>
+        <span class="dim">
+          All four courses are measured on every line; this picks which one the column shows.
+        </span>
+      </div>
       <table class="grid">
         <thead>
           <tr>
             <th>#</th>
             <th>action</th>
             <th class="num">value delta</th>
+            <th v-for="stat in STAT_KEYS" :key="stat" class="num">{{ stat.slice(0, 4) }}</th>
+            <th class="num">lap</th>
             <th class="num">cash</th>
             <th class="num">labour</th>
             <th>what the sim said</th>
@@ -964,9 +1223,21 @@ const slotsInRepairGroup = computed(() => context.value.partIdsByGroup[repairGro
           <tr v-for="(line, i) in log" :key="i" :data-test="'log-line-' + i">
             <td>{{ i + 1 }}</td>
             <td>{{ line.label }}</td>
-            <td class="num" :class="{ up: line.deltaYen > 0, down: line.deltaYen < 0 }">
-              {{ formatYenDelta(line.deltaYen) }}
+            <td
+              class="num"
+              :class="{ up: (line.deltaYen ?? 0) > 0, down: (line.deltaYen ?? 0) < 0 }"
+            >
+              {{ line.deltaYen === null ? 'car gone' : formatYenDelta(line.deltaYen) }}
             </td>
+            <td
+              v-for="stat in STAT_KEYS"
+              :key="stat"
+              class="num"
+              :data-test="'log-' + i + '-' + stat"
+            >
+              {{ statDeltaText(line, stat) }}
+            </td>
+            <td class="num" :data-test="'log-' + i + '-lap'">{{ lapDeltaText(line) }}</td>
             <td class="num">{{ formatYenDelta(line.cashDeltaYen) }}</td>
             <td class="num">{{ line.labourSpent }}</td>
             <td>
@@ -975,14 +1246,23 @@ const slotsInRepairGroup = computed(() => context.value.partIdsByGroup[repairGro
             </td>
           </tr>
           <tr v-if="log.length === 0">
-            <td colspan="6" class="dim">Nothing done yet.</td>
+            <td colspan="11" class="dim">Nothing done yet.</td>
           </tr>
         </tbody>
       </table>
       <p class="dim">
-        Every delta is market value after minus market value before: exact by construction, with
-        nothing attributed. A job that outruns today's labour stays open - refill the pool and press
-        the same button again to carry it on, exactly as the workshop floor does.
+        Every column is the same measurement: the figure after minus the figure before. Value is
+        market value, the five middle columns are the derived stats (power in PS, the rest out of
+        100), and the lap is seconds on the chosen course, where a faster car reads negative.
+        Nothing is attributed and nothing is modelled. A dash is a figure the action did not move; a
+        lap reading blocked is a car that cannot be driven at all, which is the slot list in section
+        2b and not a broken model. A job that outruns today's labour stays open - refill the pool
+        and press the same button again to carry it on, exactly as the workshop floor does.
+      </p>
+      <p class="dim" data-test="bench-car-gone-note">
+        A sale takes the car off the bench, so its line has no after to measure and reads car gone
+        in every measured column rather than counting the whole car as a loss. What the sale itself
+        did is in section 4.
       </p>
     </details>
 
@@ -997,7 +1277,7 @@ const slotsInRepairGroup = computed(() => context.value.partIdsByGroup[repairGro
             <th>gate</th>
             <th class="num">taste</th>
             <th>outcome</th>
-            <th class="num">would pay</th>
+            <th class="num">values it at</th>
           </tr>
         </thead>
         <tbody>
@@ -1014,8 +1294,106 @@ const slotsInRepairGroup = computed(() => context.value.partIdsByGroup[repairGro
         </tbody>
       </table>
       <p class="dim">
-        Each price is that buyer's own valuation at their OWN coherence tolerance. The value ledger
-        cannot answer this: it takes no tolerance parameter, so it always reads the market's.
+        Each price is what this buyer thinks the car is worth: market value at their OWN coherence
+        tolerance, times the standard taste band. The value ledger cannot answer it, because it
+        takes no tolerance parameter and so always reads the market's.
+      </p>
+      <p class="dim" data-test="bench-buyer-gate-note">
+        A failing gate is the buyer's signature stat missing its target. That zeroes their taste
+        score and the sale reads as pleasing nobody, which is the whole of what reputation reads at
+        a sale. It does NOT refuse the sale: on a channel that is not matched-only they still turn
+        up and still price the car, at the bottom of the taste band. What a failed gate costs is the
+        reputation and the premium, not the deal.
+      </p>
+      <p class="dim" data-test="bench-buyer-price-caveat">
+        It is NOT the offer they would make. A real offer is priced through the listing channel's
+        own taste ceiling and this shop's scene standing, both of which can pay well above this
+        band, and neither of which is in this column. The channel-realised price is the next table.
+      </p>
+
+      <div class="row">
+        <label>
+          Priced through
+          <select v-model="priceChannelId" data-test="bench-price-channel">
+            <option v-for="row in channels" :key="row.channelId" :value="row.channelId">
+              {{ SELLING_CHANNEL_LABELS[row.channelId] }}
+            </option>
+          </select>
+        </label>
+        <span v-if="channelPrices" class="dim">
+          <template v-if="channelPrices.tasteCeiling !== null">
+            Taste ceiling {{ channelPrices.tasteCeiling.toFixed(2) }}.
+          </template>
+          {{ channelPrices.matchedOnly ? 'Matched buyers only.' : 'Prices anyone it brings.' }}
+        </span>
+      </div>
+      <table v-if="channelPrices" class="grid">
+        <thead>
+          <tr>
+            <th>buyer</th>
+            <th class="num">taste through this channel</th>
+            <th class="num">it would pay</th>
+            <th class="num">standard band</th>
+            <th class="num">share of the draw</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-for="row in channelPrices.rows"
+            :key="row.buyerId"
+            :data-test="'channel-price-' + row.buyerId"
+          >
+            <td>{{ row.displayName }}</td>
+            <td class="num">{{ row.channelTaste.toFixed(3) }}</td>
+            <td class="num">
+              <span v-if="row.wouldBePriced">{{ formatYen(row.channelPriceYen) }}</span>
+              <span v-else class="dim">refused, taste does not match</span>
+            </td>
+            <td class="num">{{ formatYen(row.standardPriceYen) }}</td>
+            <td class="num">
+              <span v-if="row.shareOfDraw === null" class="dim">not in this pool</span>
+              <span v-else>{{ (row.shareOfDraw * 100).toFixed(1) }}%</span>
+            </td>
+          </tr>
+          <tr v-if="channelPrices.rows.length === 0">
+            <td colspan="5" class="dim">
+              This channel has no buyer pool at all: it prices off a flat band, shown below.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <p v-if="channelPrices" class="dim" data-test="bench-channel-price-note">
+        This is where the six scene-standing dials land. The taste column is the channel's own
+        ceiling and this shop's standing with that buyer's scene, together; move a standing and this
+        table moves while the one above it does not. An arriving offer is this price times a quality
+        fraction that averages {{ channelPrices.qualityMeanFraction.toFixed(3) }} at
+        {{ channelPrices.offersSeen }} offers seen, so a fresh listing realises most of it and a
+        stale one less.
+      </p>
+      <table v-if="bandChannels.length > 0" class="grid">
+        <thead>
+          <tr>
+            <th>no buyer pool</th>
+            <th class="num">pays at least</th>
+            <th class="num">at most</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-for="range in bandChannels"
+            :key="range.channelId"
+            :data-test="'band-channel-' + range.channelId"
+          >
+            <td>{{ SELLING_CHANNEL_LABELS[range.channelId] }}</td>
+            <td class="num">{{ formatYen(range.minYen) }}</td>
+            <td class="num">{{ formatYen(range.maxYen) }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <p v-if="bandChannels.length > 0" class="dim" data-test="bench-band-channel-note">
+        A channel with no buyer pool has no persona to please and no taste to match: it pays a flat
+        fraction of plain market value, uniformly between those two figures, and says nothing about
+        you afterwards. That is why it is in no table above.
       </p>
 
       <table class="grid">
@@ -1043,6 +1421,14 @@ const slotsInRepairGroup = computed(() => context.value.partIdsByGroup[repairGro
         week: staleness keys off offers seen, which only advances on a day the roll clears, so the
         listing's own chance moves underneath a multi-day question.
       </p>
+      <p class="dim" data-test="bench-channel-basis">
+        Read at day {{ state.day }} and at {{ offersSeen }} offers seen, which is this car's own
+        listing entry, or zero while it is not listed.
+        <template v-if="oneDrawChannels.length > 0">
+          {{ oneDrawChannels.join(' and ') }} draw once on their own day rather than rolling every
+          day, so a zero against one of them is today's calendar and not a channel that never comes.
+        </template>
+      </p>
       <p
         v-for="row in channels.filter((c) => c.burnsTicksForNothing)"
         :key="'trap-' + row.channelId"
@@ -1054,6 +1440,95 @@ const slotsInRepairGroup = computed(() => context.value.partIdsByGroup[repairGro
         taste does not match and nobody it reaches matches. It can never pay, and it charges the
         listing for saying so.
       </p>
+
+      <p data-test="bench-pending-offer">
+        <template v-if="pendingOffer">
+          Live offer today: <strong>{{ formatYen(pendingOffer.priceYen) }}</strong> from
+          {{ pendingOffer.displayName }}. Take it with the button in the running log.
+        </template>
+        <template v-else>
+          No live offer. List the car, then draw the day's offers in the running log: the draw is
+          the real one the day boundary runs, at a seed you choose, so a miss is a miss and the
+          listing ages by it.
+        </template>
+      </p>
+
+      <template v-if="lastSale">
+        <p class="total" data-test="bench-sale-price">
+          Sold for <strong>{{ formatYen(lastSale.priceYen) }}</strong
+          >.
+          <template v-if="lastSale.profitYen !== null">
+            Realised profit: <strong>{{ formatYenDelta(lastSale.profitYen) }}</strong
+            >.
+          </template>
+          <template v-else>
+            No realised profit is reported: this car's purchase price was never recorded, so there
+            is nothing to measure one against. Set Bought for in the shop panel and rebuild.
+          </template>
+        </p>
+        <table class="grid">
+          <thead>
+            <tr>
+              <th>what the sale moved</th>
+              <th class="num">before</th>
+              <th class="num">after</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr data-test="sale-reputation">
+              <td>Reputation points (+{{ lastSale.reputationDelta }} for this sale)</td>
+              <td class="num">{{ lastSale.reputationPointsBefore }}</td>
+              <td class="num">{{ lastSale.reputationPointsAfter }}</td>
+            </tr>
+            <tr data-test="sale-tier">
+              <td>Reputation tier</td>
+              <td class="num">{{ lastSale.reputationTierBefore }}</td>
+              <td class="num">{{ lastSale.reputationTierAfter }}</td>
+            </tr>
+            <tr data-test="sale-heat">
+              <td>This model's market heat</td>
+              <td class="num">{{ lastSale.heatPercentBefore }}%</td>
+              <td class="num">{{ lastSale.heatPercentAfter }}%</td>
+            </tr>
+            <tr data-test="sale-player-sales">
+              <td>Copies of this model you have sold</td>
+              <td class="num">{{ lastSale.playerSalesBefore }}</td>
+              <td class="num">{{ lastSale.playerSalesAfter }}</td>
+            </tr>
+            <tr
+              v-for="scene in lastSale.sceneChanges"
+              :key="scene.archetype"
+              :data-test="'sale-scene-' + scene.archetype"
+            >
+              <td>Standing with {{ scene.archetype }}</td>
+              <td class="num">{{ scene.before }}</td>
+              <td class="num">{{ scene.after }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="dim" data-test="bench-sale-ledger">
+          The profit is the sim's own, taken against this car's ledger at the moment of sale: bought
+          for
+          {{
+            lastSale.ledger.purchaseYen === null
+              ? 'an unrecorded figure'
+              : formatYen(lastSale.ledger.purchaseYen)
+          }}, repairs {{ formatYen(lastSale.ledger.repairYen) }}, parts fitted
+          {{ formatYen(lastSale.ledger.partsYen) }}, listing fees
+          {{ formatYen(lastSale.ledger.listingFeesYen) }}. Machine-shop hire is not in it, by the
+          same design law that keeps it off the ledger, and neither is rent.
+        </p>
+        <p class="dim" data-test="bench-sale-heat-note">
+          A sale does not move market heat on the day. It bumps the sales counter above, and the
+          weekly market update is what reads that counter and moves heat with it - press that button
+          in the running log to see the move. Reputation only ever rises, and a buyer who did not
+          get what they came for simply pays nothing.
+        </p>
+        <p v-if="lastSale.matchedSale" class="dim" data-test="bench-sale-matched">
+          The car genuinely met the buyer's want, so the sale credited their scene. An unmatched
+          sale pays cash and no standing.
+        </p>
+      </template>
     </details>
 
     <!-- 5. THE ACQUISITION -------------------------------------------- -->
@@ -1089,18 +1564,26 @@ const slotsInRepairGroup = computed(() => context.value.partIdsByGroup[repairGro
           </tr>
         </tbody>
       </table>
-      <p class="dim">
+      <p class="dim" data-test="bench-room-note">
         Floor, band, ceiling - not a single most-likely figure, which this two-piece distribution
-        does not have. Note what the two columns say against each other: the desk charges the guide
-        value itself, carrying no premium over it at the shipped tuning, while a room clears
-        somewhere below that same read. Buying out therefore runs well above the floor price, by
-        construction rather than by accident.
+        does not have. A cold room clears below the band, down as far as the floor; the odds of that
+        are the room's own and are not shown here. Note the desk against the room:
+        <template v-if="acquisition.buyoutAboveRoomRead">
+          the desk charges a premium over the room's read of the car,
+        </template>
+        <template v-else> the desk charges the room's read of the car itself, </template>
+        while the room clears somewhere below that same read. Buying out therefore runs well above
+        the floor price, by construction rather than by accident.
       </p>
     </details>
 
     <!-- 6. THE COST SIDE ---------------------------------------------- -->
     <details open class="panel" :class="{ stale: dirty }">
       <summary>6. The cost side</summary>
+      <p v-if="!car" class="warn" data-test="bench-car-sold-note">
+        The car has been sold and its ledger went with it, so the table below reads empty. The sale
+        took its own snapshot of that ledger, and it is in section 4.
+      </p>
       <table class="grid">
         <thead>
           <tr>
@@ -1143,8 +1626,8 @@ const slotsInRepairGroup = computed(() => context.value.partIdsByGroup[repairGro
           </tr>
         </thead>
         <tbody>
-          <tr v-for="line in costs.unattributed" :key="line.type" :data-test="'spend-' + line.type">
-            <td>{{ line.label }}{{ line.count > 1 ? ` (x${line.count})` : '' }}</td>
+          <tr v-for="(line, i) in costs.unattributed" :key="i" :data-test="'spend-' + line.type">
+            <td>{{ line.label }}</td>
             <td>{{ line.bucket }}</td>
             <td class="num">{{ formatYen(line.yen) }}</td>
           </tr>
@@ -1155,9 +1638,14 @@ const slotsInRepairGroup = computed(() => context.value.partIdsByGroup[repairGro
       </table>
       <p class="dim">
         Machine-shop hire sits here rather than on the car, by design law: one day's hire pulls four
-        engines, so charging it to a single car would be a fiction. Parts land here the moment they
-        are paid for and only join the car's ledger if and when they are fitted. Rent and wages are
-        excluded outright: a fixed overhead is never charged against one play's profitability.
+        engines, so charging it to a single car would be a fiction. Rent and wages are excluded
+        outright: a fixed overhead is never charged against one play's profitability.
+      </p>
+      <p class="dim" data-test="bench-cost-overlap">
+        The two tables are not disjoint and must not be added together. A part is charged to the
+        till when it is bought and stays on its line here for good; fitting it later adds its price
+        to the car's own Parts fitted above without removing anything below, so the same yen sits in
+        both, answering two different questions about it.
       </p>
       <p class="dim" data-test="bench-heat">
         This model's market heat right now: {{ model ? heatPercentFor(state, model) : 100 }}%.

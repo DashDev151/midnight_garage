@@ -253,6 +253,51 @@ provenance when rebuilding from a spec, and neither reaches any price; and `tyre
 `wheelAssembly` member so `resolveRemovePart` correctly refuses it, which is now its own passing
 test.
 
+### Four gaps closed after first use, and what closing them found
+
+The bench was used, found to be misleading in two places and silent in four, and both were fixed.
+**Its failure mode is prose, not numbers**: every bug found in it has been a correct figure beside a
+label saying something else, and none was visible to 32 passing tests, because no test read a
+sentence against the value next to it. That is now a standing precedent, applied three times: a
+sentence's numerals must each be a figure sim answered for that exact car, asserted by regex.
+
+**The sale.** The bench could list a car and never take an offer, so realised profit, the reputation
+delta and the heat move were unreachable. Three actions now drive the real path: `drawDailyOffers`
+at a typed seed, `resolveSellViaWalkIn` (the garage's own sale button), and a weekly settle.
+
+Two findings fell out of building it:
+
+- **A sale moves no heat on the day.** The resolver bumps a counter; heat only moves when
+  `updateMarketHeat` reads it at the week boundary. Hence the settle button, and prose saying so
+  rather than a zero left to be misread.
+- **The bench could not report a profit at all**, because a seated car has no `purchaseYen` and sim
+  rightly never fabricates one. A "Bought for" control writes it through `setCarLedger`, the same
+  primitive every acquisition uses. Left empty it stays null and the screen says why.
+
+**Stats and lap times.** Absent entirely, so half the open questions could not be asked on it.
+`evaluateBuild` split cleanly into `evaluateCarInstance`, shared with the performance sandbox rather
+than written twice, plus `supportVerdict` and `coherenceFactorForCar`, which neither screen had.
+`lapBlockers` sits beside the laps, because `lapTimeSecondsFor` returns null on a car with a scrap
+critical part and a bare blank reads as a broken model.
+
+**Stat and lap deltas in the running log**, measured the same way the yen already was. This is the
+one that answers "is this rung worth its money". Five stat columns always visible with a dash where
+nothing moved, and one lap column against a selected course, all four measured and stored so the
+selector re-reads rather than recomputes. **A sale has no after**, so its deltas are null rather than
+zero and the row reads `car gone`.
+
+**The channel-realised price.** The buyer table showed the standard taste band, not
+`valuateCarForBuyerViaChannel`, **so the six scene-standing dials were moving nothing visible.** One
+channel at a time from a selector, because seven buyers by six channels is forty-two prices nobody
+holds, and flipping the selector is what makes the dials legible. The test that proves the point:
+raising all six standings to `shop` moves the channel-price column and leaves the buyer table
+byte-identical.
+
+The trade network needed one new pure sim readout, `channelPriceBandRangeFor`, because it has no
+buyer pool and the alternative was arithmetic in the screen, which the governing rule forbids. Same
+precedent as `restorationValueLinesFor`: when the bench needs a number, it goes into sim where it
+can be tested.
+
 ### What sim could not answer, and still cannot
 
 - **A per-buyer value ledger does not exist.** `valueLedgerFor` takes no `coherenceTolerance`, so

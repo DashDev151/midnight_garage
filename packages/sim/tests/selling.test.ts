@@ -21,6 +21,7 @@ import { marketValueYen } from '../src/marketValue'
 import {
   bestFitBuyer,
   channelDrawWeighting,
+  channelPriceBandRangeFor,
   drawDailyOffers,
   isSellingChannelUnlocked,
   likelyChannelBuyer,
@@ -821,6 +822,29 @@ describe('drawDailyOffers (Sprint 31 decision 2; channels, Sprint 114)', () => {
       const a = drawDailyOffers(state, CONTEXT, createRng(3), state.day)
       const b = drawDailyOffers(state, CONTEXT, createRng(3), state.day)
       expect(a.state.pendingOffers).toEqual(b.state.pendingOffers)
+    })
+
+    it('reports the band as the two ends of the draw it actually takes', () => {
+      const range = channelPriceBandRangeFor(car, model, 'tradeNetwork', 100, CONTEXT)!
+      expect(range.channelId).toBe('tradeNetwork')
+      expect(range.minYen).toBeLessThan(range.maxYen)
+
+      // Every offer this channel can produce sits inside the reported range,
+      // which is the whole claim the two figures make.
+      let drawn = 0
+      for (let seed = 0; seed < 60; seed++) {
+        const offer = drawDailyOffers(state, CONTEXT, createRng(seed), state.day).state
+          .pendingOffers[0]
+        if (!offer) continue
+        drawn += 1
+        expect(offer.priceYen).toBeGreaterThanOrEqual(range.minYen)
+        expect(offer.priceYen).toBeLessThanOrEqual(range.maxYen)
+      }
+      expect(drawn).toBeGreaterThan(0)
+    })
+
+    it('has no band to report on a channel that prices through taste', () => {
+      expect(channelPriceBandRangeFor(car, model, 'shopFront', 100, CONTEXT)).toBeNull()
     })
   })
 

@@ -1,9 +1,32 @@
-import { CARS, ECONOMY, ReputationTierSchema } from '@midnight-garage/content'
-import { currentGameYear, generatedYearRangeFor } from '@midnight-garage/sim'
+import {
+  CARS,
+  COURSES,
+  ECONOMY,
+  ReputationTierSchema,
+  StatKeySchema,
+  type CarInstance,
+  type CarModel,
+  type GameState,
+} from '@midnight-garage/content'
+import {
+  currentGameYear,
+  generatedYearRangeFor,
+  mileageRangeForAge,
+  type SimContext,
+} from '@midnight-garage/sim'
 import { mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import EconomyBenchScreen from './EconomyBenchScreen.vue'
+import {
+  benchCarInstance,
+  benchGameState,
+  defaultCarSpec,
+  defaultShopSpec,
+} from './dev/economyBench'
+import { bandPricedChannelsFor, statsPanelFor } from './dev/economyBenchReadout'
+import { useGameStore } from '../stores/gameStore'
+import { formatYen } from '../utils/formatYen'
 
 /**
  * The bench is a reading instrument, so these assert against what it RENDERED:
@@ -50,6 +73,24 @@ async function type(wrapper: VueWrapper, testId: string, value: number): Promise
   await el.trigger('input')
   await el.trigger('change')
   return el.element as HTMLInputElement
+}
+
+/** The same context, the same car and the same world the screen opens on, so a
+ * figure recomputed here is a figure about the car actually on the bench. */
+function benchContext(): SimContext {
+  return useGameStore().context
+}
+function benchModel(): CarModel {
+  return benchContext().models[0]!
+}
+function benchDefaultCar(): CarInstance {
+  const context = benchContext()
+  const model = benchModel()
+  return benchCarInstance(defaultCarSpec(model, defaultShopSpec(context), context), model, context)
+}
+function benchState(): GameState {
+  const context = benchContext()
+  return benchGameState(defaultShopSpec(context), benchDefaultCar(), context)
 }
 
 describe('EconomyBenchScreen', () => {
@@ -188,5 +229,98 @@ describe('EconomyBenchScreen', () => {
     expect(note).toContain(ECONOMY.valuation.mileageFactorCurve[0]![0].toLocaleString('en-US'))
     expect(note).toContain(`flat at 1.00 up to ${discountFromKm.toLocaleString('en-US')} km`)
     expect(text(wrapper, 'bench-fresh-lot-note')).toContain(String(ECONOMY.AUCTION_MIN_AGE_YEARS))
+  })
+
+  it('quotes no figure of its own in the fresh-lot note', () => {
+    // The note used to name a mileage range in prose beside the range it
+    // rendered, and the two disagreed. Every number in the sentence has to be
+    // one the sim answered.
+    const wrapper = mountScreen()
+    const [min, max] = mileageRangeForAge(ECONOMY.AUCTION_MIN_AGE_YEARS, ECONOMY)
+    const allowed = [
+      String(ECONOMY.AUCTION_MIN_AGE_YEARS),
+      min.toLocaleString('en-US'),
+      max.toLocaleString('en-US'),
+    ]
+    const note = text(wrapper, 'bench-fresh-lot-note')
+    expect(note).toContain(min.toLocaleString('en-US'))
+    expect(note).toContain(max.toLocaleString('en-US'))
+    for (const figure of note.match(/[\d][\d,]*/g) ?? []) {
+      expect(allowed, `"${figure}" in the fresh-lot note is the screen's own figure`).toContain(
+        figure,
+      )
+    }
+  })
+
+  it('says that a buyer valuation is not the offer a channel would make', () => {
+    const wrapper = mountScreen()
+    expect(text(wrapper, 'bench-buyer-price-caveat')).toContain('scene standing')
+    // The staleness and calendar terms behind the odds, which a bare percentage
+    // hides.
+    expect(text(wrapper, 'bench-channel-basis')).toContain('offers seen')
+  })
+
+  it('shows the five stats, the four laps and the support verdict behind them', () => {
+    const wrapper = mountScreen()
+    for (const stat of StatKeySchema.options) {
+      expect(wrapper.find(`[data-test="stat-${stat}"]`).exists()).toBe(true)
+    }
+    expect(wrapper.findAll('[data-test^="lap-"]')).toHaveLength(COURSES.length)
+    expect(text(wrapper, 'bench-support')).toMatch(/adequate|strained|dangerous/)
+  })
+
+  it('quotes no figure of its own in the support verdict', () => {
+    // The bug this screen keeps producing is a correct number beside a sentence
+    // that says something else, so every figure in the sentence has to be one
+    // the sim answered about this exact car.
+    const wrapper = mountScreen()
+    const panel = statsPanelFor(benchDefaultCar(), benchModel(), benchContext())
+    const allowed = [panel.support.headline.toFixed(3), panel.coherenceFactor.toFixed(3)]
+
+    const sentence = text(wrapper, 'bench-support')
+    expect(sentence).toContain(allowed[0])
+    expect(sentence).toContain(allowed[1])
+    for (const figure of sentence.match(/\d[\d,]*(\.\d+)?/g) ?? []) {
+      expect(allowed, `"${figure}" in the support verdict is the screen's own figure`).toContain(
+        figure,
+      )
+    }
+  })
+
+  it('quotes no figure of its own in the no-pool channel table', () => {
+    const wrapper = mountScreen()
+    const context = benchContext()
+    const ranges = bandPricedChannelsFor(benchDefaultCar(), benchModel(), benchState(), context)
+    expect(ranges.length).toBeGreaterThan(0)
+    for (const range of ranges) {
+      const row = text(wrapper, `band-channel-${range.channelId}`)
+      expect(row).toContain(formatYen(range.minYen))
+      expect(row).toContain(formatYen(range.maxYen))
+    }
+  })
+
+  it('measures every stat and a lap on each action, beside the yen', async () => {
+    const wrapper = mountScreen()
+    await click(wrapper, 'bench-remove')
+    for (const stat of StatKeySchema.options) {
+      expect(wrapper.find(`[data-test="log-0-${stat}"]`).exists()).toBe(true)
+    }
+    expect(wrapper.find('[data-test="log-0-lap"]').exists()).toBe(true)
+    // Pulling a part cannot leave all five stats where they were.
+    const moved = StatKeySchema.options.filter((stat) => text(wrapper, `log-0-${stat}`) !== '-')
+    expect(moved.length).toBeGreaterThan(0)
+  })
+
+  it('prices the buyers through a chosen channel, not only through the standard band', () => {
+    const wrapper = mountScreen()
+    expect(wrapper.findAll('[data-test^="channel-price-"]').length).toBeGreaterThan(0)
+    expect(text(wrapper, 'bench-channel-price-note')).toContain('scene-standing dials')
+  })
+
+  it('offers the real draw and refuses to take an offer that does not exist', () => {
+    const wrapper = mountScreen()
+    expect(wrapper.find('[data-test="bench-draw-offers"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="bench-accept-offer"]').attributes('disabled')).toBeDefined()
+    expect(text(wrapper, 'bench-pending-offer')).toContain('No live offer')
   })
 })

@@ -419,6 +419,51 @@ function drawQualityFraction(offersSeen: number, economy: EconomyConfig, rng: Rn
   return Math.max(economy.liquidity.qualityFloor, Math.min(1, raw))
 }
 
+/** The two ends of a no-persona channel's uniform price band for one car. */
+export interface ChannelPriceBandRange {
+  channelId: SellingChannelId
+  /** The least this channel will ever offer for this car. */
+  minYen: number
+  /** The most it will ever offer. */
+  maxYen: number
+}
+
+/**
+ * What a channel carrying a `priceBand` rather than a `tasteCeiling` pays for
+ * one car, as the two ends of the uniform draw `drawTradeNetworkOffer` below
+ * takes: the band's own fractions of plain `marketValueYen`, which are exactly
+ * that draw's extremes (its lowest roll returns the first, its highest the
+ * second). Null for every persona channel, which prices through taste and a
+ * quality curve instead and has no fixed range at all.
+ *
+ * The reason such a channel needs its own reader: it has no buyer pool, so it
+ * never appears in a per-buyer valuation table, and without this it is the one
+ * channel whose price is invisible.
+ */
+export function channelPriceBandRangeFor(
+  car: CarInstance,
+  model: CarModel,
+  channelId: SellingChannelId,
+  heatPercent: number,
+  context: SimContext,
+): ChannelPriceBandRange | null {
+  const priceBand = context.economy.sellingChannels[channelId].priceBand
+  if (!priceBand) return null
+  const value = marketValueYen(
+    model,
+    car,
+    heatPercent,
+    context.partsById,
+    context.partsTaxonomyById,
+    context.economy,
+  )
+  return {
+    channelId,
+    minYen: Math.round(value * priceBand.min),
+    maxYen: Math.round(value * priceBand.max),
+  }
+}
+
 export interface SetForSaleResult {
   state: GameState
   log: DayLogEntry[]

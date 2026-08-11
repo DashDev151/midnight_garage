@@ -30,6 +30,7 @@ import {
   mileageRangeForAge,
   moveCar,
   partFitsCar,
+  setCarLedger,
   type SimContext,
 } from '@midnight-garage/sim'
 
@@ -114,6 +115,16 @@ export interface BenchShopSpec {
   toolShopsOwned: readonly string[]
   /** This model's own market heat, in per cent; 100 is neutral. */
   heatPercent: number
+  /**
+   * What the shop's books say this car cost. Null leaves the ledger with no
+   * purchase at all, which is what a car the bench simply seated has: the sim
+   * then reports no realised profit on a sale rather than fabricating one.
+   *
+   * The bench never PAYS this - the till is whatever `cashYen` says. It is the
+   * acquisition record a real car arrives with, so that a sale can be measured
+   * against something.
+   */
+  purchaseYen: number | null
 }
 
 /**
@@ -302,6 +313,7 @@ export function defaultShopSpec(context: SimContext): BenchShopSpec {
     toolTiers: fresh.toolTiers,
     toolShopsOwned: [],
     heatPercent: 100,
+    purchaseYen: null,
   }
 }
 
@@ -314,6 +326,12 @@ export function defaultShopSpec(context: SimContext): BenchShopSpec {
  * won. The day-1 auction board `createInitialGameState` seeds is left alone
  * rather than cleared: it costs nothing, and clearing it would be the bench
  * deciding what a career looks like.
+ *
+ * A stated purchase price is written through `setCarLedger`, the same primitive
+ * every acquisition path records one with, so a sale has something to report a
+ * realised profit against. Left null, the ledger carries no purchase and the
+ * sale reports none rather than fabricating one. The bench never PAYS it: the
+ * till is whatever the cash control says.
  */
 export function benchGameState(
   shop: BenchShopSpec,
@@ -332,7 +350,14 @@ export function benchGameState(
     marketHeat: { ...base.marketHeat, [car.modelId]: shop.heatPercent },
     ownedCars: [car],
   }
-  return moveCar(assignToShop(seated, car.id), car.id, 'service', context.economy).state
+  const placed = moveCar(assignToShop(seated, car.id), car.id, 'service', context.economy).state
+  if (shop.purchaseYen === null) return placed
+  return setCarLedger(placed, car.id, {
+    purchaseYen: shop.purchaseYen,
+    repairYen: 0,
+    partsYen: 0,
+    listingFeesYen: 0,
+  })
 }
 
 /**

@@ -347,7 +347,13 @@ export interface CarValue {
   currentYen: number | null
 }
 
-export interface Evaluation {
+/**
+ * Everything a built car reads on the physics side, for any screen holding a
+ * `CarInstance` - the sandbox's builds and the economy bench's real cars alike.
+ * Nothing here needs a sandbox build, which is what lets one evaluator serve
+ * both rather than each screen growing its own readout.
+ */
+export interface CarEvaluation {
   stats: StatBlock
   /** `stats.power` on the 0 to 100 scale the other four stats already read on:
    * the sim's own `normalizedPowerScore`, as a percentage. Uncapped, so a car
@@ -357,12 +363,26 @@ export interface Evaluation {
   conditionFactors: ConditionFactors
   /** Seconds per course, or null on a course this build cannot run. */
   laps: Record<string, number | null>
-  /** Empty when the car can run. */
+  /** Empty when the car can run. Every course reads null while this is not:
+   * a blank lap column is this list, not a broken model. */
   blockers: Blocker[]
+}
+
+export interface Evaluation extends CarEvaluation {
   value: CarValue
 }
 
-/** Why a slot is stopping the car, in the words the state warrants. */
+/** Why a slot is stopping the car, in the words the state warrants - the same
+ * three cases `lapBlockers` itself tests, in its order. */
+function blockerReasonFor(car: CarInstance, partId: CarPartId): string {
+  const installed = car.parts[partId].installed
+  if (!installed) return 'nothing fitted'
+  if (installed.band === 'scrap') return 'scrap'
+  return 'no catalogue part fits this slot'
+}
+
+/** Why a slot is stopping a SANDBOX build, which knows what the build asked
+ * for as well as what the car ended up with. */
 function blockerReason(partId: CarPartId, build: SandboxBuild): string {
   const slot = build[partId]
   if (isMissing(slot)) return 'nothing fitted'
@@ -371,27 +391,21 @@ function blockerReason(partId: CarPartId, build: SandboxBuild): string {
 }
 
 /**
- * Everything the screen shows for one build, from the same functions the game
+ * Everything a screen shows for one car, from the same functions the game
  * calls: `computeDerivedStats` for the five stats, `normalizedPowerScore` for
  * power on the other four's scale, `carBlock` for the physical quantities the
  * lap runs on, `physicalFactorsFor` for the four condition dials and what the
- * build usably delivers, `lapTimeSecondsFor` per course, `lapBlockers` for why
- * a car cannot run, and `marketValueYen` for what it is worth.
+ * build usably delivers, `lapTimeSecondsFor` per course, and `lapBlockers` for
+ * why a car cannot run.
  *
- * `mileageKm` and `heatPercent` are the instance and the market the car is
- * PRICED at: both reach `marketValueYen` and nothing else, so neither can move
- * a stat, a physical figure or a lap time.
+ * Nothing here is priced, so nothing here reads mileage or market heat.
  */
-export function evaluateBuild(
+export function evaluateCarInstance(
   model: CarModel,
-  build: SandboxBuild,
-  priceable: boolean,
-  mileageKm: number,
-  heatPercent: number,
+  car: CarInstance,
   context: SimContext,
-): Evaluation {
+): CarEvaluation {
   const { economy, partsById, partsTaxonomy, partsTaxonomyById } = context
-  const car = buildCarInstance(model, build, mileageKm, context)
 
   const stats = computeDerivedStats(model, car, partsById, partsTaxonomy, economy)
   const { condition, build: builtFactors } = physicalFactorsFor(
@@ -421,14 +435,8 @@ export function evaluateBuild(
   const blockers: Blocker[] = lapBlockers(car, context).map((partId) => ({
     partId,
     displayName: partsTaxonomyById[partId].displayName,
-    reason: blockerReason(partId, build),
+    reason: blockerReasonFor(car, partId),
   }))
-
-  const stockMint = buildCarInstance(model, defaultBuild(model), mileageKm, context)
-  const valueOf = (instance: CarInstance): number | null =>
-    priceable
-      ? marketValueYen(model, instance, heatPercent, partsById, partsTaxonomyById, economy)
-      : null
 
   return {
     stats,
@@ -445,6 +453,42 @@ export function evaluateBuild(
     conditionFactors: condition,
     laps,
     blockers,
+  }
+}
+
+/**
+ * `evaluateCarInstance` for a sandbox build, plus what the car is worth.
+ *
+ * `mileageKm` and `heatPercent` are the instance and the market the car is
+ * PRICED at: both reach `marketValueYen` and nothing else, so neither can move
+ * a stat, a physical figure or a lap time.
+ */
+export function evaluateBuild(
+  model: CarModel,
+  build: SandboxBuild,
+  priceable: boolean,
+  mileageKm: number,
+  heatPercent: number,
+  context: SimContext,
+): Evaluation {
+  const { economy, partsById, partsTaxonomyById } = context
+  const car = buildCarInstance(model, build, mileageKm, context)
+  const evaluation = evaluateCarInstance(model, car, context)
+
+  const stockMint = buildCarInstance(model, defaultBuild(model), mileageKm, context)
+  const valueOf = (instance: CarInstance): number | null =>
+    priceable
+      ? marketValueYen(model, instance, heatPercent, partsById, partsTaxonomyById, economy)
+      : null
+
+  return {
+    ...evaluation,
+    // The build knows what was ASKED of a slot, which the finished car cannot
+    // always tell you: a grade with no catalogue part reads as an empty slot.
+    blockers: evaluation.blockers.map((blocker) => ({
+      ...blocker,
+      reason: blockerReason(blocker.partId, build),
+    })),
     value: { stockMintYen: valueOf(stockMint), currentYen: valueOf(car) },
   }
 }
