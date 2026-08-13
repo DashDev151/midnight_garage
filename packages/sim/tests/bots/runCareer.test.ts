@@ -74,7 +74,7 @@ describe('Service Grinder (the Act 1 floor)', () => {
   const SEED_SAMPLE_SIZE = 50
 
   // Real wall-clock budget for 50 seeds x 100 days under coverage instrumentation.
-  const PAID_WORK_SAMPLE_TIMEOUT_MS = 60_000
+  const PAID_WORK_SAMPLE_TIMEOUT_MS = 150_000
 
   it(
     'never owning a car, while hand work at the machine-less rate lets service payouts land',
@@ -106,8 +106,12 @@ describe('Cautious Restorer (Sprint 19c reputation-bootstrap fix)', () => {
   // rarely finishes a full restoration or upgrades a tool tier.
   const SEED_SAMPLE_SIZE = 200
 
-  // Real wall-clock budget for 200 seeds x 100 days under coverage instrumentation.
-  const BOOTSTRAP_SAMPLE_TIMEOUT_MS = 70_000
+  // Real wall-clock budget for 200 seeds x 100 days under coverage
+  // instrumentation, sized for bots that now complete hand work at the
+  // machine-less labour rate instead of wedging early (careers simulate
+  // several times more activity than the wedged ones these budgets were
+  // first measured on).
+  const BOOTSTRAP_SAMPLE_TIMEOUT_MS = 180_000
 
   // A fair, non-lowballing bidder clears auction reserve on a real minority
   // of local-yard lots, so the bootstrap rate is a minority, not a majority.
@@ -150,7 +154,7 @@ describe('Competent Policy (Sprint 23 invariant 3 probe: days-to-local)', () => 
   const SEED_SAMPLE_SIZE = 100
 
   // Real wall-clock budget for 100 seeds x 100 days under coverage instrumentation.
-  const REPUTATION_SAMPLE_TIMEOUT_MS = 30_000
+  const REPUTATION_SAMPLE_TIMEOUT_MS = 120_000
 
   it(
     'enough 100-day careers reach `local` for days-to-`local` to be measurable at all',
@@ -198,7 +202,7 @@ describe('Competent Policy (Sprint 23 invariant 3 probe: days-to-local)', () => 
 
 describe('Handyman / Investor (Sprint 13 payback-curve pair)', () => {
   // Real wall-clock budget for 30 seeds x 100 days under coverage instrumentation.
-  const TOOL_LOCKOUT_SAMPLE_TIMEOUT_MS = 20_000
+  const TOOL_LOCKOUT_SAMPLE_TIMEOUT_MS = 50_000
 
   it(
     'Handyman no longer upgrades any tool line (reputation-gated tiers, Sprint 43); Investor still never does',
@@ -225,7 +229,7 @@ describe('Handyman / Investor (Sprint 13 payback-curve pair)', () => {
 const TELEMETRY_SEED_COUNT = 30
 
 // Real wall-clock budget for 30 seeds x 100 days under coverage instrumentation.
-const TELEMETRY_SAMPLE_TIMEOUT_MS = 20_000
+const TELEMETRY_SAMPLE_TIMEOUT_MS = 50_000
 
 function aggregateCareers(strategy: BotStrategy, seedCount: number) {
   let acquisitions: ReturnType<typeof runCareer>['acquisitions'] = []
