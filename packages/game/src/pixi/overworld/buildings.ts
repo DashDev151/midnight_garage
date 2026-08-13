@@ -77,8 +77,10 @@ export type OverworldLocationId =
   | 'drag-strip'
 
 /** Locations that are drawn but have no destination screen: shuttered,
- * dark-windowed, closed for now rather than a broken link. */
-export const INERT_LOCATIONS: readonly OverworldLocationId[] = ['bank']
+ * dark-windowed, closed for now rather than a broken link. The dealer
+ * network is a fax circle, not a walk-in trade - its building refuses the
+ * click with its own line (`overworldNav.ts`). */
+export const INERT_LOCATIONS: readonly OverworldLocationId[] = ['bank', 'dealer-network']
 
 // --- The garage: home, the hero building, roller door facing the viewer ---
 const GARAGE_TEMPLATE = [

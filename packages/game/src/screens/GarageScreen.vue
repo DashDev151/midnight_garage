@@ -1,13 +1,84 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { RouterLink } from 'vue-router'
+import { computed, ref, watch } from 'vue'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import HelpHint from '../components/HelpHint.vue'
+import MachineShopPanel from '../components/MachineShopPanel.vue'
 import ShopSlot from '../components/ShopSlot.vue'
+import WorkbenchPanel from '../components/WorkbenchPanel.vue'
 import { useDragSession } from '../composables/useDragAndDrop'
 import { useGameStore, type ShopCarView } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
+import { bodyPaintShopOpen } from './garageCapability'
+import { machineShopHasMachinery } from './machineShopEquipment'
 
 const game = useGameStore()
+const route = useRoute()
+const router = useRouter()
+
+/**
+ * The work stations live on this screen: the garage is one building, and the
+ * bench, the machine and the spray booth are things standing in it, not rooms
+ * behind a second screen. Clicking a station opens its panel in place; the
+ * workbench and machine panels are the full station views
+ * (`WorkbenchPanel.vue` / `MachineShopPanel.vue`), and body and paint is a
+ * door to the car in the bay, since that work is done on the whole car.
+ */
+type StationId = 'workbench' | 'machine' | 'body-paint'
+
+/** The station another screen asked to land on (`open=workbench|machine`), so
+ * a door elsewhere in the app can open the right panel here directly. */
+function stationFromQuery(): StationId | null {
+  const open = route.query.open
+  return open === 'workbench' || open === 'machine' ? open : null
+}
+
+const openStation = ref<StationId | null>(stationFromQuery())
+
+watch(
+  () => route.query.open,
+  () => {
+    const wanted = stationFromQuery()
+    if (wanted) openStation.value = wanted
+  },
+)
+
+function toggleStation(station: StationId): void {
+  openStation.value = openStation.value === station ? null : station
+}
+
+/** Whether any machining bench actually stands in the machine shop - absent
+ * machinery reads as derelict, never as a shut door. */
+const machineShopEquipped = computed(() => machineShopHasMachinery(game.gameState, game.context))
+const bodyPaintIsOpen = computed(() => bodyPaintShopOpen(game.gameState, game.context))
+
+const benchHeld = computed(() => game.stationPart('workbench'))
+const machineHeld = computed(() => game.stationPart('machine'))
+
+const workbenchStatus = computed(() =>
+  benchHeld.value
+    ? `${game.carPartLabel(benchHeld.value.part.carPartId)}, ${benchHeld.value.instance.band}`
+    : 'empty',
+)
+
+const machineStatus = computed(() => {
+  if (!machineShopEquipped.value) return 'derelict'
+  const held = machineHeld.value
+  return held ? `${game.carPartLabel(held.part.carPartId)}, ${held.instance.band}` : 'empty'
+})
+
+const bodyPaintStatus = computed(() => (bodyPaintIsOpen.value ? 'open' : 'derelict'))
+
+/** The one car the body and paint entry can point at without an id of its own
+ * to route with: exactly one car in a service bay. */
+const soloServiceBayCarId = computed<string | null>(() => {
+  const ids = game.gameState.serviceBayCarIds.filter((id): id is string => id !== null)
+  return ids.length === 1 ? ids[0]! : null
+})
+
+function goToBodyPaintCar(): void {
+  const id = soloServiceBayCarId.value
+  if (id) void router.push({ name: 'car', params: { id } })
+}
 
 const occupiedServiceCars = computed(() =>
   game.serviceBaysView.filter((s): s is ShopCarView => s !== null),
@@ -109,6 +180,85 @@ const draggedCarName = computed(() => {
           @drop="onDropOnBaySlot(i, $event)"
         />
       </ul>
+    </section>
+
+    <section class="stations" data-test="stations">
+      <h3>
+        Work stations
+        <HelpHint label="Work stations">
+          Where a part gets worked on. The bench puts a part right, the machine shop cuts metal off
+          a healthy one, and the body and paint shop works on the whole car. Click a station to open
+          it.
+        </HelpHint>
+      </h3>
+      <ul class="station-list">
+        <li>
+          <button
+            type="button"
+            class="station"
+            :class="{ active: openStation === 'workbench' }"
+            data-test="station-open-workbench"
+            @click="toggleStation('workbench')"
+          >
+            <span class="station-name">Workbench</span>
+            <span class="station-status" data-test="station-status-workbench">{{
+              workbenchStatus
+            }}</span>
+          </button>
+        </li>
+        <li>
+          <button
+            type="button"
+            class="station"
+            :class="{ active: openStation === 'machine', derelict: !machineShopEquipped }"
+            data-test="station-open-machine"
+            @click="toggleStation('machine')"
+          >
+            <span class="station-name">Machine shop</span>
+            <span class="station-status" data-test="station-status-machine">{{
+              machineStatus
+            }}</span>
+          </button>
+        </li>
+        <li>
+          <button
+            type="button"
+            class="station"
+            :class="{ active: openStation === 'body-paint', derelict: !bodyPaintIsOpen }"
+            data-test="station-open-body-paint"
+            @click="toggleStation('body-paint')"
+          >
+            <span class="station-name">Body and paint</span>
+            <span class="station-status" data-test="station-status-body-paint">{{
+              bodyPaintStatus
+            }}</span>
+          </button>
+        </li>
+      </ul>
+
+      <div v-if="openStation" class="station-panel" data-test="station-panel">
+        <WorkbenchPanel v-if="openStation === 'workbench'" />
+        <MachineShopPanel v-else-if="openStation === 'machine'" />
+        <div v-else class="body-paint-entry" data-test="body-paint-entry">
+          <template v-if="bodyPaintIsOpen">
+            <button
+              v-if="soloServiceBayCarId"
+              type="button"
+              data-test="body-paint-enter"
+              @click="goToBodyPaintCar"
+            >
+              Work the body and paint
+            </button>
+            <p v-else class="hint" data-test="body-paint-hint">
+              Bring a car into a service bay first.
+            </p>
+          </template>
+          <p v-else class="refusal" data-test="body-paint-refusal">
+            A dead spray booth and someone else's panels. Needs the body line before any of it is
+            yours to use.
+          </p>
+        </div>
+      </div>
     </section>
 
     <section class="parking">
@@ -297,6 +447,65 @@ button:disabled {
      against its fixed height, rather than reading as a wide letterbox. */
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: var(--mg-space-3);
+}
+
+.station-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--mg-space-3);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--mg-space-3);
+}
+
+/* A station is a door: the whole card is the click target, styled like the
+   slots around it rather than like a form control. */
+.station {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--mg-space-1);
+  min-height: 56px;
+  background: var(--mg-panel);
+  border: var(--mg-border);
+  border-radius: var(--mg-radius);
+  padding: var(--mg-space-3);
+  font-size: var(--mg-fs-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.station .station-name {
+  color: var(--mg-neon-cyan);
+}
+
+.station.active {
+  border-color: var(--mg-neon-violet);
+}
+
+.station.active .station-name {
+  color: var(--mg-neon-violet);
+}
+
+.station-status {
+  color: var(--mg-text-dim);
+  text-transform: none;
+}
+
+.station.derelict .station-status {
+  color: var(--mg-danger);
+}
+
+.station-panel {
+  margin: 0 0 var(--mg-space-4);
+}
+
+.body-paint-entry .hint,
+.body-paint-entry .refusal {
+  margin: 0;
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
 }
 
 .forecourt-list {

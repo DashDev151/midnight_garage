@@ -29,12 +29,9 @@ import { formatYen } from '../utils/formatYen'
 import CarDetailScreen from './CarDetailScreen.vue'
 
 /**
- * The Components list, its drill-down and its condition filter are gone - the
- * workshop views plus the docked info/action panel are the single repair
- * surface, for parts and body zones alike. Every test that drove an earlier
- * surface was re-targeted here under directive 17 case (a) (the surface was
- * intentionally replaced), preserving the behavioural assertions: repair
- * staging, the replace flow, remove gating, and the confirm totals.
+ * The workshop views plus the docked info/action panel are the single repair
+ * surface, for parts and body zones alike: repair staging, the replace flow,
+ * remove gating, and the confirm totals all live here.
  */
 
 // A minimal router so useRoute/useRouter resolve; garage/parts are stub
@@ -48,7 +45,6 @@ function makeRouter(): Router {
       { path: '/', name: 'garage', component: { render: () => h('div') } },
       { path: '/parts', name: 'parts', component: { render: () => h('div') } },
       { path: '/dyno', name: 'dyno', component: { render: () => h('div') } },
-      { path: '/machine-shop', name: 'machine-shop', component: { render: () => h('div') } },
       { path: '/car/:id', name: 'car', component: CarDetailScreen },
     ],
   })

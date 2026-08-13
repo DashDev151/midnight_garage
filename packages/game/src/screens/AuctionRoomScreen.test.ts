@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 import {
+  buildTutorialLot,
   createRng,
   generateAuctionCatalog,
   playerEstimateYen,
@@ -284,6 +285,9 @@ describe('AuctionRoomScreen', () => {
   it('the tutorial quiet room rolls no dealers: bidding the reserve and letting the fuse run wins honestly', async () => {
     const game = useGameStore()
     game.newGame(3)
+    // A new career does not seed the scripted lot (open play); the quiet
+    // room keys off the lot itself, so seat it explicitly.
+    seatLot(game, buildTutorialLot(game.context, game.gameState.day))
     expect(game.gameState.activeAuctionLots.some((l) => l.id === TUTORIAL_LOT.lotId)).toBe(true)
 
     const { wrapper } = await mountRoom(TUTORIAL_LOT.lotId)

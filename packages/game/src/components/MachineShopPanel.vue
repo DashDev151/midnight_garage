@@ -8,36 +8,32 @@ import {
 } from '@midnight-garage/content'
 import type { MachiningGateReason, MachiningOfferRow } from '@midnight-garage/sim'
 import { computed } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
-import HelpHint from '../components/HelpHint.vue'
-import WorkStationTray from '../components/WorkStationTray.vue'
+import { RouterLink } from 'vue-router'
+import HelpHint from './HelpHint.vue'
+import WorkStationTray from './WorkStationTray.vue'
 import { formatYen } from '../utils/formatYen'
 import { formatAuthenticityCost, formatReliabilityCost } from '../utils/machiningFigures'
 import { MACHINE_SHOP_REFUSALS } from '../utils/machiningRefusals'
-import { machineShopMachinery, type MachineShopMachine } from './machineShopEquipment'
-import { mapBackTarget } from './mapBack'
+import { machineShopMachinery, type MachineShopMachine } from '../screens/machineShopEquipment'
 import { useGameStore } from '../stores/gameStore'
 
 /**
- * The machine shop opens on a PART, not on a car: whatever is on the machine,
- * and every operation the shop would quote for it. No car is needed and none
- * is consulted - a block is carried here out of the warehouse and carried back
- * when the cutting is done.
+ * The machine shop, opened in place on the garage screen. It opens on a PART,
+ * not on a car: whatever is on the machine, and every operation the shop would
+ * quote for it. No car is needed and none is consulted - a block is carried
+ * here out of the warehouse and carried back when the cutting is done.
  *
- * The room is always open. What decides whether a cut can be made is the
- * machinery standing in it, one piece per tool line, which the room lists at
+ * The station is always open. What decides whether a cut can be made is the
+ * machinery standing in it, one piece per tool line, which the panel lists at
  * the bottom rather than hiding behind a locked door.
  */
 const game = useGameStore()
-const route = useRoute()
 
 const sheet = computed(() => game.machineShopSheet)
 
-/** The room's own equipment, present or absent, every name and figure read
+/** The station's own equipment, present or absent, every name and figure read
  * from content (`machineShopEquipment.ts`). */
 const machinery = computed(() => machineShopMachinery(game.gameState, game.context))
-
-const backTarget = computed(() => mapBackTarget(route.query.from, { name: 'garage' }))
 
 /** The taxonomy's own name for each slot, so the shop calls a block a block
  * and the internal id never reaches the bench. */
@@ -89,7 +85,7 @@ function appliedNames(
 }
 
 /** Which purchase puts this bench on the floor. Named on every row, present or
- * absent, because the room fills up from more than one of them. */
+ * absent, because the station fills up from more than one of them. */
 function shopLine(machine: MachineShopMachine): string {
   return `Comes in with the ${machine.shopName}.`
 }
@@ -111,24 +107,22 @@ function onMachineClick(operationId: string): void {
 </script>
 
 <template>
-  <section class="machine-shop">
-    <RouterLink :to="backTarget" class="back" data-test="machine-shop-back">&lt; Back</RouterLink>
-
+  <section class="machine-shop-panel" data-test="machine-shop-panel">
     <header class="head">
-      <h2>
+      <h4>
         Machine shop
         <HelpHint label="Machine shop">
           Repairing a part puts it back the way it was. Buying one replaces it with something else.
           This takes metal off the part you already have, and the part stays the car's own. It costs
           no money once the tooling is bought, it costs labour, and every cut is permanent.
         </HelpHint>
-      </h2>
+      </h4>
     </header>
 
     <WorkStationTray station="machine" />
 
     <section v-if="sheet" class="panel" data-test="machine-shop-part">
-      <h3>{{ slotLabel(sheet.carPartId) }}</h3>
+      <h5>{{ slotLabel(sheet.carPartId) }}</h5>
       <p class="figure" data-test="machine-shop-fitted">
         {{ sheet.part.brand }} {{ sheet.part.name }}, {{ sheet.part.grade }} grade,
         {{ sheet.band }}.
@@ -178,12 +172,12 @@ function onMachineClick(operationId: string): void {
       </ul>
     </section>
 
-    <!-- The room, listed as what it holds. Each line of work that gets done
+    <!-- The station, listed as what it holds. Each line of work that gets done
          at a machine has a bench here, named for its line and for the shop
          that brings it, and a bench that is missing says what the shop costs
-         rather than shutting the room. -->
+         rather than shutting the station. -->
     <section class="panel" data-test="machine-shop-machinery">
-      <h3>Machinery</h3>
+      <h5>Machinery</h5>
       <p class="machinery-intro" data-test="machine-shop-machinery-intro">
         The benches in here did not all arrive together. Each one says which shop brought it.
       </p>
@@ -219,9 +213,7 @@ function onMachineClick(operationId: string): void {
       </ul>
       <p class="machinery-note">
         A shop comes up in the classifieds whole, one at a time.
-        <RouterLink
-          :to="{ name: 'upgrades', query: { from: 'machine-shop' } }"
-          data-test="machine-shop-to-upgrades"
+        <RouterLink :to="{ name: 'upgrades' }" data-test="machine-shop-to-upgrades"
           >See what is listed.</RouterLink
         >
       </p>
@@ -230,31 +222,25 @@ function onMachineClick(operationId: string): void {
 </template>
 
 <style scoped>
-.machine-shop {
+.machine-shop-panel {
   max-width: 640px;
 }
 
-.back {
-  color: var(--mg-text-dim);
-  text-decoration: none;
-  font-size: var(--mg-fs-sm);
-}
-
 .head {
-  margin: var(--mg-space-2) 0 var(--mg-space-3);
+  margin: 0 0 var(--mg-space-3);
 }
 
-h2 {
+h4 {
   display: flex;
   align-items: center;
   color: var(--mg-neon-violet);
-  font-size: var(--mg-fs-lg);
+  font-size: var(--mg-fs-md);
   margin: 0;
 }
 
-h3 {
+h5 {
   color: var(--mg-neon-violet);
-  font-size: var(--mg-fs-md);
+  font-size: var(--mg-fs-sm);
   margin: 0 0 var(--mg-space-2);
 }
 
@@ -281,8 +267,8 @@ h3 {
   padding: 0;
 }
 
-/* The room's own equipment, read as a short inventory rather than a row of
-   controls: nothing here is bought from this screen. */
+/* The station's own equipment, read as a short inventory rather than a row of
+   controls: nothing here is bought from this panel. */
 .machines {
   display: grid;
   gap: var(--mg-space-2);

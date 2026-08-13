@@ -24,12 +24,9 @@ function mountScreen() {
   return wrapper
 }
 
-/** A fresh career's board is Yuki-only while the tutorial runs, so every test
- * exercising the radial board skips the walkthrough first - the gate lifts at
- * the next generation point, hence the bounded End Day loop. Yuki's mission
- * itself survives a skip, so the mission tests below are unaffected. */
+/** End days until the board carries an offer, bounded. A new career seeds a
+ * day-1 batch, so this usually returns without ending a day. */
 function warpToOffers(game: ReturnType<typeof useGameStore>) {
-  game.skipTutorial()
   for (let i = 0; i < 20 && game.serviceJobOffers.length === 0; i++) game.endDay()
 }
 
@@ -86,12 +83,7 @@ describe('ServiceJobsScreen', () => {
     for (const wrapper of mountedWrappers.splice(0)) wrapper.unmount()
   })
 
-  /**
-   * This used to pin day-1 offers. A fresh tutorial career now deliberately
-   * opens Yuki-only, so the correct behaviour is offers rendering once the
-   * gate lifts - the offers themselves are obtained legitimately post-skip.
-   */
-  it('shows the job board with offers on it once the tutorial gate lifts', () => {
+  it('shows the job board with offers on it', () => {
     const game = useGameStore()
     game.newGame(1)
     warpToOffers(game)
@@ -231,8 +223,6 @@ describe('ServiceJobsScreen', () => {
   it('shows a fitment-class chip on each offer card', () => {
     const game = useGameStore()
     game.newGame(1)
-    // Day-1 offers are gated on a tutorial career now, so the offer is obtained
-    // post-skip instead.
     warpToOffers(game)
     const offer = game.serviceJobOfferViews[0]
     if (!offer) throw new Error('expected an offer on the board')
@@ -246,19 +236,16 @@ describe('ServiceJobsScreen', () => {
   })
 
   /**
-   * A fresh career now pins Yuki's `four-wheels` mission on day 1 - `newGame`
-   * runs `installTutorial`, which offers the gate-0 mission through the
-   * ordinary story-mission machine so the guided tutorial's very first beat has
-   * a card to point at. (A raw `createInitialGameState`, used by bots/probes,
-   * still seeds no mission; only the player-career path installs the tutorial.)
+   * A new career is open play: no tutorial is installed, so no
+   * mission is pre-pinned on day 1. `four-wheels` arrives through the ordinary
+   * story-mission machine at the first End Day, covered by the test below.
    */
-  it('pins Yuki’s mission on day 1 for a fresh tutorial career', () => {
+  it('pins no mission on day 1 of a new career', () => {
     const game = useGameStore()
     game.newGame(1)
-    expect(game.storyMissionOfferView).not.toBeNull()
-    expect(game.storyMissionOfferView!.id).toBe('four-wheels')
+    expect(game.storyMissionOfferView).toBeNull()
     const wrapper = mountScreen()
-    expect(wrapper.find('[data-test="mission-accept"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="mission-accept"]').exists()).toBe(false)
   })
 
   it('shows the pinned story-mission card once the first mission clears its gate', () => {

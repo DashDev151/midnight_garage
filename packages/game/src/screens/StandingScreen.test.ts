@@ -3,6 +3,7 @@ import { ECONOMY } from '@midnight-garage/content'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { useGameStore } from '../stores/gameStore'
+import { photoCountForReputationTier } from './officeDisplay'
 import StandingScreen from './StandingScreen.vue'
 
 // Track every mounted
@@ -145,6 +146,31 @@ describe('StandingScreen (Sprint 62 item 17)', () => {
       expect(wrapper.find('[data-test="scene-tuner"]').text()).toContain(
         'Nothing delivered here yet.',
       )
+    })
+  })
+
+  describe('office wall', () => {
+    it('pins up the photo count for the current reputation tier', () => {
+      const game = useGameStore()
+      game.newGame(1)
+      game.devSetReputationTier('local')
+      const wrapper = mountScreen()
+
+      // The photo wall is the diegetic reputation display: the count comes
+      // from officeDisplay's own scaling of the tier, never a number this
+      // test hardcodes.
+      expect(wrapper.find('[data-test="office-photo-count"]').text()).toBe(
+        `${photoCountForReputationTier('local')} photographs pinned up, local reputation`,
+      )
+    })
+
+    it('shows an empty corkboard and no certificates for a fresh shop', () => {
+      const game = useGameStore()
+      game.newGame(1)
+      const wrapper = mountScreen()
+
+      expect(wrapper.find('[data-test="office-card-count"]').text()).toBe('0 cars listed')
+      expect(wrapper.find('[data-test="office-certificate-count"]').text()).toBe('none earned yet')
     })
   })
 })

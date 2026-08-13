@@ -56,11 +56,6 @@ export const router = createRouter({
       component: () => import('../screens/OverworldScreen.vue'),
     },
     {
-      path: '/garage-interior',
-      name: 'garage-interior',
-      component: () => import('../screens/GarageInteriorScreen.vue'),
-    },
-    {
       path: '/test-track',
       name: 'test-track',
       component: () => import('../screens/TestTrackScreen.vue'),
@@ -108,16 +103,6 @@ export const router = createRouter({
       path: '/dyno',
       name: 'dyno',
       component: () => import('../screens/DynoScreen.vue'),
-    },
-    {
-      path: '/workshop-floor',
-      name: 'workshop-floor',
-      component: () => import('../screens/WorkshopFloorScreen.vue'),
-    },
-    {
-      path: '/machine-shop',
-      name: 'machine-shop',
-      component: () => import('../screens/MachineShopScreen.vue'),
     },
     {
       path: '/standing',

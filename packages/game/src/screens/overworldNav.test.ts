@@ -10,7 +10,9 @@ import { destinationFor, locationAt } from './overworldNav'
 
 /**
  * Every one of the fifteen overworld locations resolves to somewhere real:
- * an existing route for most, a refusal for the bank (drawn but not open),
+ * an existing route for most, a refusal for the inert buildings (the bank,
+ * drawn but not open, and the dealer network, a fax circle with nothing
+ * inside for a walk-in),
  * an action for the cafe (you buy a round and stay on the map), and the test
  * track on its own fixed course, no picker, for the four track venues. `locationAt` is the
  * click side of the same contract - a point inside a location's own
@@ -30,10 +32,9 @@ const TEST_TRACK_IDS = new Set([
 
 /** The tab-bar screens a map click also reaches - these mark their own
  * navigation `from: 'overworld'` so the screen's back control can tell a
- * map arrival from a tab arrival apart (`mapBack.ts`). The garage and dealer
- * network are deliberately absent: both route to `garage-interior`, which
- * carries no such flag - its back control is unconditional regardless of
- * which building sent the player there. */
+ * map arrival from a tab arrival apart (`mapBack.ts`). The garage is
+ * deliberately absent: it is the tab bar's home screen, with no back
+ * control to flag for. */
 const OVERWORLD_FLAGGED_ROUTES: Record<string, string> = {
   'tool-hire': 'upgrades',
   'parts-shop': 'parts',
@@ -50,7 +51,7 @@ describe('overworldNav', () => {
     for (const id of OVERWORLD_LOCATION_IDS) expect(() => destinationFor(id)).not.toThrow()
   })
 
-  it('the bank refuses the click instead of navigating, and says why', () => {
+  it('an inert building refuses the click instead of navigating, and says why', () => {
     for (const id of OVERWORLD_LOCATION_IDS.filter((locationId) => INERT_IDS.has(locationId))) {
       const destination = destinationFor(id)
       expect(destination.kind).toBe('inert')
@@ -101,8 +102,7 @@ describe('overworldNav', () => {
 
   it('every remaining location routes to a real, named screen', () => {
     const expected: Record<string, string> = {
-      garage: 'garage-interior',
-      'dealer-network': 'garage-interior',
+      garage: 'garage',
       ...OVERWORLD_FLAGGED_ROUTES,
     }
     // The cafe drops out alongside the inert bank and the four track venues:
@@ -133,11 +133,17 @@ describe('overworldNav', () => {
     }
   })
 
-  it('the garage and dealer network carry no `from` flag - both route to garage-interior, so its back control is unconditional', () => {
-    expect(destinationFor('garage')).toEqual({ kind: 'route', to: { name: 'garage-interior' } })
+  it('the garage building leads straight to the garage screen, with no `from` flag to carry', () => {
+    expect(destinationFor('garage')).toEqual({ kind: 'route', to: { name: 'garage' } })
+  })
+
+  /** The dealer network is `sellingChannels.tradeNetwork`, a fax circle
+   * rather than a walk-in trade - the building refuses the click with its
+   * own line. */
+  it('the dealer network refuses a walk-in with its own line', () => {
     expect(destinationFor('dealer-network')).toEqual({
-      kind: 'route',
-      to: { name: 'garage-interior' },
+      kind: 'inert',
+      message: 'Dealer to dealer only. Nothing on the block for a walk-in.',
     })
   })
 

@@ -9,7 +9,7 @@ import {
 import { makeCarOrigin, makeMarketOrigin } from '@midnight-garage/sim'
 import { mount, type ComponentMountingOptions, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { clearDragSession } from '../composables/useDragAndDrop'
 import { useGameStore } from '../stores/gameStore'
 import PartCard from './PartCard.vue'
@@ -99,15 +99,105 @@ describe('PartCard (Sprint 24 fix 5; scrap + rotary marker in Sprint 28)', () =>
       expect(wrapper.emitted('select')).toBeUndefined()
     })
 
-    it('clicking "Scrap it" sells it for real cash and removes it from inventory', async () => {
+    it('clicking "Scrap it" twice (arm, then confirm) sells it for real cash and removes it from inventory', async () => {
       const { game, scrapInstance } = grantScrapInstance()
       const cashBefore = game.cashYen
       const wrapper = mountCard({ props: { instance: scrapInstance, part } })
+      const scrapButton = wrapper.find(`[data-test="scrap-part-${scrapInstance.id}"]`)
 
-      await wrapper.find(`[data-test="scrap-part-${scrapInstance.id}"]`).trigger('click')
+      await scrapButton.trigger('click')
+      expect(game.gameState.partInventory).toHaveLength(1)
+      expect(game.cashYen).toBe(cashBefore)
+      expect(scrapButton.text()).toMatch(/^Scrap for ¥[\d,]+\?/)
+
+      await scrapButton.trigger('click')
+      expect(game.gameState.partInventory).toHaveLength(0)
+      expect(game.cashYen).toBeGreaterThan(cashBefore)
+    })
+  })
+
+  describe('the Sell arm-then-confirm guard', () => {
+    /** One player-owned mint part in the store, so the card renders the Sell
+     * handle and a sale actually moves inventory and cash. */
+    function grantSellablePart() {
+      const game = useGameStore()
+      game.devGrantPart(part.id)
+      return { game, sellable: game.gameState.partInventory[0]! }
+    }
+
+    it('a single click arms the button instead of selling', async () => {
+      const { game, sellable } = grantSellablePart()
+      const cashBefore = game.cashYen
+      const wrapper = mountCard({ props: { instance: sellable, part } })
+      const sellButton = wrapper.find(`[data-test="sell-part-${sellable.id}"]`)
+
+      expect(sellButton.text()).toMatch(/^Sell \(¥[\d,]+\)$/)
+      await sellButton.trigger('click')
+
+      expect(game.gameState.partInventory).toHaveLength(1)
+      expect(game.cashYen).toBe(cashBefore)
+      expect(sellButton.text()).toMatch(/^Sell for ¥[\d,]+\?$/)
+      expect(sellButton.classes()).toContain('armed')
+    })
+
+    it('a second click while armed sells', async () => {
+      const { game, sellable } = grantSellablePart()
+      const cashBefore = game.cashYen
+      const wrapper = mountCard({ props: { instance: sellable, part } })
+      const sellButton = wrapper.find(`[data-test="sell-part-${sellable.id}"]`)
+
+      await sellButton.trigger('click')
+      await sellButton.trigger('click')
 
       expect(game.gameState.partInventory).toHaveLength(0)
       expect(game.cashYen).toBeGreaterThan(cashBefore)
+    })
+
+    it('the pointer leaving the card disarms, so the next click arms again rather than selling', async () => {
+      const { game, sellable } = grantSellablePart()
+      const wrapper = mountCard({ props: { instance: sellable, part } })
+      const sellButton = wrapper.find(`[data-test="sell-part-${sellable.id}"]`)
+
+      await sellButton.trigger('click')
+      await wrapper.find('.part-card').trigger('pointerleave')
+      expect(sellButton.classes()).not.toContain('armed')
+
+      await sellButton.trigger('click')
+      expect(game.gameState.partInventory).toHaveLength(1)
+      expect(sellButton.classes()).toContain('armed')
+    })
+
+    it('any other card action disarms (the pick toggle here)', async () => {
+      const { game, sellable } = grantSellablePart()
+      const wrapper = mountCard({ props: { instance: sellable, part } })
+      const sellButton = wrapper.find(`[data-test="sell-part-${sellable.id}"]`)
+
+      await sellButton.trigger('click')
+      await wrapper.find(`[data-test="pick-part-${sellable.id}"]`).trigger('click')
+
+      expect(sellButton.classes()).not.toContain('armed')
+      expect(game.gameState.partInventory).toHaveLength(1)
+    })
+
+    it('the arm stands down on its own after the timeout', async () => {
+      vi.useFakeTimers()
+      try {
+        const { game, sellable } = grantSellablePart()
+        const wrapper = mountCard({ props: { instance: sellable, part } })
+        const sellButton = wrapper.find(`[data-test="sell-part-${sellable.id}"]`)
+
+        await sellButton.trigger('click')
+        expect(sellButton.classes()).toContain('armed')
+
+        vi.advanceTimersByTime(4000)
+        await wrapper.vm.$nextTick()
+
+        expect(sellButton.classes()).not.toContain('armed')
+        await sellButton.trigger('click')
+        expect(game.gameState.partInventory).toHaveLength(1)
+      } finally {
+        vi.useRealTimers()
+      }
     })
   })
 

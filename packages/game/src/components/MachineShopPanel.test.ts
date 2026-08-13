@@ -11,9 +11,8 @@ import { makeMarketOrigin } from '@midnight-garage/sim'
 import { mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { createMemoryHistory, createRouter } from 'vue-router'
 import { useGameStore } from '../stores/gameStore'
-import MachineShopScreen from './MachineShopScreen.vue'
+import MachineShopPanel from './MachineShopPanel.vue'
 
 /**
  * The machine shop opens on a PART, not on a car: what is on the machine, what
@@ -25,14 +24,12 @@ import MachineShopScreen from './MachineShopScreen.vue'
 
 const mountedWrappers: VueWrapper[] = []
 
-function mountScreen() {
-  // A real (if routeless) router so `useRoute()` resolves - the screen reads
-  // `route.query.from` for its back control (`mapBack.ts`) - while
-  // `RouterLinkStub` keeps every `<RouterLink>` a plain, inspectable stub as
-  // this file always tested them.
-  const router = createRouter({ history: createMemoryHistory(), routes: [] })
-  const wrapper = mount(MachineShopScreen, {
-    global: { plugins: [router], stubs: { RouterLink: RouterLinkStub } },
+function mountPanel() {
+  // The panel reads no route of its own (it renders in place on the garage
+  // screen), so only `RouterLinkStub` is needed to keep every `<RouterLink>`
+  // a plain, inspectable stub as this file always tested them.
+  const wrapper = mount(MachineShopPanel, {
+    global: { stubs: { RouterLink: RouterLinkStub } },
   })
   mountedWrappers.push(wrapper)
   return wrapper
@@ -93,7 +90,7 @@ function partOnTheMachine(game: Store, carPartId: CarPartId, atLevelThree: Compo
   return instance.id
 }
 
-describe('MachineShopScreen', () => {
+describe('MachineShopPanel', () => {
   beforeEach(() => setActivePinia(createPinia()))
   afterEach(() => {
     for (const wrapper of mountedWrappers.splice(0)) wrapper.unmount()
@@ -103,7 +100,7 @@ describe('MachineShopScreen', () => {
     const game = useGameStore()
     game.newGame(1)
     expect(game.gameState.serviceBayCarIds.filter((id) => id !== null)).toHaveLength(0)
-    const wrapper = mountScreen()
+    const wrapper = mountPanel()
     expect(wrapper.find('[data-test="station-empty-machine"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="machine-shop-part"]').exists()).toBe(false)
   })
@@ -114,7 +111,7 @@ describe('MachineShopScreen', () => {
     game.devGrantPart(BLOCK_PART.id)
     const partInstanceId = game.gameState.partInventory.at(-1)!.id
 
-    const wrapper = mountScreen()
+    const wrapper = mountPanel()
     await wrapper.find(`[data-test="station-place-machine-${partInstanceId}"]`).trigger('click')
     await wrapper.vm.$nextTick()
 
@@ -127,7 +124,7 @@ describe('MachineShopScreen', () => {
     game.newGame(1)
     const partInstanceId = blockOnTheMachine(game, 3)
 
-    const wrapper = mountScreen()
+    const wrapper = mountPanel()
     await wrapper.find('[data-test="station-take-machine"]').trigger('click')
     await wrapper.vm.$nextTick()
 
@@ -140,7 +137,7 @@ describe('MachineShopScreen', () => {
     const game = useGameStore()
     game.newGame(1)
     blockOnTheMachine(game, 3)
-    const wrapper = mountScreen()
+    const wrapper = mountPanel()
     expect(wrapper.find('[data-test="machine-shop-part"]').exists()).toBe(true)
     for (const operation of BLOCK_OPERATIONS) {
       expect(
@@ -175,7 +172,7 @@ describe('MachineShopScreen', () => {
       toolShopsOwned: [...new Set([shopIdFor(game, 'suspension'), shopIdFor(game, 'engine')])],
     }
 
-    const wrapper = mountScreen()
+    const wrapper = mountPanel()
     // The springs are on the machine and the garage owns every shop that could
     // matter; corner weighting is still not a job this room does.
     expect(wrapper.find('[data-test="machine-shop-part"]').exists()).toBe(true)
@@ -189,7 +186,7 @@ describe('MachineShopScreen', () => {
     const game = useGameStore()
     game.newGame(1)
     blockOnTheMachine(game, 3)
-    const wrapper = mountScreen()
+    const wrapper = mountPanel()
     const text = wrapper.find(`[data-test="machine-shop-power-${BLOCK_OPERATIONS[0]!.id}"]`).text()
     expect(text).toContain('boosted')
     expect(text).toMatch(/\+\d+\.\d\d per cent/)
@@ -199,7 +196,7 @@ describe('MachineShopScreen', () => {
     const game = useGameStore()
     game.newGame(1)
     blockOnTheMachine(game, 3)
-    const wrapper = mountScreen()
+    const wrapper = mountPanel()
 
     // Costs are fractions of an authenticity point, so the sheet has to carry
     // the fraction rather than rounding it away, and an operation that takes
@@ -218,27 +215,30 @@ describe('MachineShopScreen', () => {
     const game = useGameStore()
     game.newGame(1)
     blockOnTheMachine(game, 2)
-    const wrapper = mountScreen()
+    const wrapper = mountPanel()
     const button = wrapper.find('[data-test="machine-shop-do-bore-and-hone"]')
     expect(button.attributes('disabled')).toBeDefined()
     expect(button.attributes('title')).toContain('shop')
   })
 
-  it('refuses a worn block outright, whatever the tooling', () => {
+  it('refuses a worn block outright, whatever the tooling, and points at the workbench', () => {
     const game = useGameStore()
     game.newGame(1)
     blockOnTheMachine(game, 3, 'worn')
-    const wrapper = mountScreen()
+    const wrapper = mountPanel()
     const button = wrapper.find('[data-test="machine-shop-do-bore-and-hone"]')
     expect(button.attributes('disabled')).toBeDefined()
-    expect(button.attributes('title')).toContain('Rebuild it to mint first')
+    // The refusal names the right station in plain language: the machine
+    // wants a healthy part, and reconditioning happens on the workbench.
+    expect(button.attributes('title')).toContain('healthy part')
+    expect(button.attributes('title')).toContain('workbench')
   })
 
   it('does the work on click and reports it as done afterwards', async () => {
     const game = useGameStore()
     game.newGame(1)
     const partInstanceId = blockOnTheMachine(game, 3)
-    const wrapper = mountScreen()
+    const wrapper = mountPanel()
     await wrapper.find('[data-test="machine-shop-do-bore-and-hone"]').trigger('click')
     await wrapper.vm.$nextTick()
 
@@ -254,7 +254,7 @@ describe('MachineShopScreen', () => {
     blockOnTheMachine(game, 3)
     const cashBefore = game.gameState.cashYen
     const spentBefore = game.gameState.energySpentToday
-    const wrapper = mountScreen()
+    const wrapper = mountPanel()
     await wrapper.find('[data-test="machine-shop-do-bore-and-hone"]').trigger('click')
     expect(game.gameState.cashYen).toBe(cashBefore)
     expect(game.gameState.energySpentToday).toBeGreaterThan(spentBefore)
@@ -270,7 +270,7 @@ describe('MachineShopScreen', () => {
     game.newGame(1)
     const partInstanceId = partOnTheMachine(game, 'dampers', ['suspension'])
 
-    const wrapper = mountScreen()
+    const wrapper = mountPanel()
     const button = wrapper.find('[data-test="machine-shop-do-race-prep"]')
     expect(button.attributes('disabled')).toBeUndefined()
     await button.trigger('click')
@@ -286,7 +286,7 @@ describe('MachineShopScreen', () => {
     game.newGame(1)
     const partInstanceId = partOnTheMachine(game, 'differential', ['drivetrain'])
 
-    const wrapper = mountScreen()
+    const wrapper = mountPanel()
     const button = wrapper.find('[data-test="machine-shop-do-sorting"]')
     expect(button.attributes('disabled')).toBeUndefined()
     await button.trigger('click')
@@ -300,7 +300,7 @@ describe('MachineShopScreen', () => {
   it('lists the three machines the room can hold, named and priced from content', () => {
     const game = useGameStore()
     game.newGame(1)
-    const wrapper = mountScreen()
+    const wrapper = mountPanel()
     for (const componentId of ['engine', 'drivetrain', 'suspension'] as const) {
       const row = wrapper.find(`[data-test="machine-shop-machine-${componentId}"]`)
       expect(row.exists(), componentId).toBe(true)
@@ -327,7 +327,7 @@ describe('MachineShopScreen', () => {
   it('says which shop brings each bench, including the ones the room is not named after', () => {
     const game = useGameStore()
     game.newGame(1)
-    const wrapper = mountScreen()
+    const wrapper = mountPanel()
     const engineShop = TOOL_SHOPS.find((s) => s.covers.includes('engine'))!
     const chassisShop = TOOL_SHOPS.find((s) => s.covers.includes('suspension'))!
     expect(chassisShop.id).not.toBe(engineShop.id)
@@ -350,7 +350,7 @@ describe('MachineShopScreen', () => {
   it('buying the chassis shop lights up its benches here and leaves the engine bench alone', async () => {
     const game = useGameStore()
     game.newGame(1)
-    const wrapper = mountScreen()
+    const wrapper = mountPanel()
     game.gameState = { ...game.gameState, toolShopsOwned: [shopIdFor(game, 'suspension')] }
     await wrapper.vm.$nextTick()
 
@@ -366,7 +366,7 @@ describe('MachineShopScreen', () => {
   it('shows a bought machine as in-house and drops its price line', async () => {
     const game = useGameStore()
     game.newGame(1)
-    const wrapper = mountScreen()
+    const wrapper = mountPanel()
     expect(wrapper.find('[data-test="machine-shop-machine-state-engine"]').text()).toBe('Not here')
 
     game.gameState = { ...game.gameState, toolShopsOwned: [shopIdFor(game, 'engine')] }

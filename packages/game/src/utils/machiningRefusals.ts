@@ -19,7 +19,7 @@ export const MACHINE_SHOP_REFUSALS: Readonly<Record<MachiningGateReason, string>
   'tool-tier': TOOL_TIER,
   'unknown-operation': 'Not a job this shop does.',
   'wrong-slot': 'That cut is meant for a different part.',
-  'not-mint': 'Rebuild it to mint first. Nobody bores a worn block.',
+  'not-mint': 'The machine wants a healthy part. Recondition it on the workbench first.',
   'already-applied': ALREADY_APPLIED,
 }
 

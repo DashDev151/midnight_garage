@@ -74,10 +74,8 @@ const carId = computed(() => String(route.params.id))
 const detail = computed(() => game.carDetail(carId.value))
 
 /** This screen has many entry points (a bay slot, a service-job link, the
- * machine shop and dyno's own "back to the car" links...) and all of them
- * fall back to the garage exactly as this always has. Only the workshop
- * floor and body-paint room actions in the garage interior mark themselves,
- * so only those two return here rather than to the bays (`mapBack.ts`). */
+ * dyno's own "back to the car" link...) and all of them fall back to the
+ * garage exactly as this always has (`mapBack.ts`). */
 const backTarget = computed(() => mapBackTarget(route.query.from, { name: 'garage' }))
 
 /** The radar rides top-right of the hero header at a
@@ -1829,14 +1827,15 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               }}{{ labourSuffix(game.pointsPerLabour) }})
             </button>
           </li>
-          <!-- The machine shop is a room, not a machine: there is nothing
-               here to hire and nothing to own, so this row is the door and
-               carries no ownership chip. What machinery the room holds is
-               listed in the room itself. -->
+          <!-- The machine shop is a station in the garage, not a machine:
+               there is nothing here to hire and nothing to own, so this row
+               is the door and carries no ownership chip. What machinery the
+               station holds is listed in its own panel, which this link
+               opens directly. -->
           <li class="machine-hire-row" data-test="machine-hire-row-machine-shop">
             <span class="machine-hire-name">Machine shop</span>
             <RouterLink
-              :to="{ name: 'machine-shop' }"
+              :to="{ name: 'garage', query: { open: 'machine' } }"
               class="hire-btn"
               data-test="machine-shop-open"
               >Take a look at the bench</RouterLink

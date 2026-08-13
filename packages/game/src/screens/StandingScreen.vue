@@ -6,6 +6,7 @@ import { RouterLink } from 'vue-router'
 import ProgressBar from '../components/ProgressBar.vue'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
+import { photoCountForReputationTier } from './officeDisplay'
 
 /**
  * The one place the shop's granular
@@ -57,6 +58,22 @@ function deliverCommission(scene: BuyerArchetype): void {
 function commissionLines(scene: BuyerArchetype) {
   return gradeResultByScene[scene]?.lines ?? []
 }
+
+/** The office wall's three diegetic readouts: the photo wall stands in for
+ * reputation (`officeDisplay.ts` scales the snapshot count off the tier the
+ * game already carries), the corkboard note counts the live listings, and
+ * the certificates are the craft operations the shop actually possesses.
+ * All three read state computed elsewhere - no second source for any of
+ * these numbers. */
+const listingCount = computed(() => game.gameState.carsForSale.length)
+const photoCount = computed(() => photoCountForReputationTier(game.reputationTier))
+const unlockedOperations = computed(() =>
+  standing.value.scenes
+    .map((scene) => scene.operation)
+    .filter(
+      (operation): operation is NonNullable<typeof operation> => operation?.gateReason === null,
+    ),
+)
 
 const OPERATION_GATE_COPY: Readonly<Record<'tool-tier' | 'scene-standing', string>> = {
   'tool-tier': 'Needs tier 3 of the tool line this operation uses.',
@@ -207,6 +224,31 @@ const OPERATION_GATE_COPY: Readonly<Record<'tool-tier' | 'scene-standing', strin
           </div>
         </li>
       </ul>
+    </section>
+
+    <section class="panel" data-test="office-wall-panel">
+      <h3>Office wall</h3>
+      <dl class="office-readouts">
+        <div>
+          <dt>Photo wall</dt>
+          <dd data-test="office-photo-count">
+            {{ photoCount }} photographs pinned up, {{ game.reputationTier }} reputation
+          </dd>
+        </div>
+        <div>
+          <dt>Corkboard</dt>
+          <dd data-test="office-card-count">
+            {{ listingCount }} car{{ listingCount === 1 ? '' : 's' }} listed
+          </dd>
+        </div>
+        <div>
+          <dt>Certificates</dt>
+          <dd data-test="office-certificate-count">
+            <span v-if="unlockedOperations.length === 0">none earned yet</span>
+            <span v-else>{{ unlockedOperations.map((op) => op.displayName).join(', ') }}</span>
+          </dd>
+        </div>
+      </dl>
     </section>
   </section>
 </template>
@@ -390,5 +432,24 @@ h3 {
 
 .operation-unlocked {
   color: var(--mg-success);
+}
+
+.office-readouts {
+  display: grid;
+  gap: var(--mg-space-1);
+  margin: 0;
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+}
+
+.office-readouts dt {
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.office-readouts dd {
+  margin: 0 0 var(--mg-space-1);
+  color: var(--mg-text);
 }
 </style>

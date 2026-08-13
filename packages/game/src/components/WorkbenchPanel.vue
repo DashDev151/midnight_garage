@@ -1,23 +1,19 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
-import HelpHint from '../components/HelpHint.vue'
-import WorkStationTray from '../components/WorkStationTray.vue'
+import HelpHint from './HelpHint.vue'
+import WorkStationTray from './WorkStationTray.vue'
 import { useGameStore } from '../stores/gameStore'
 import { repairStepText } from '../utils/repairStepLabels'
-import { mapBackTarget } from './mapBack'
-import { benchIdleReason, type BenchIdleReason } from './workshopFloor'
+import { benchIdleReason, type BenchIdleReason } from '../screens/workshopFloor'
 
 /**
- * The workshop floor: one bench, one part on it, and the rung of repair that
- * part is next owed. Nothing gates the room itself - putting a part right is
- * the basic work of the shop and the bench is open from the first day; only
- * the group's own tool tier decides how far a rung climbs.
+ * The workbench, opened in place on the garage screen: one bench, one part on
+ * it, and the rung of repair that part is next owed. Nothing gates the bench
+ * itself - putting a part right is the basic work of the shop and the bench is
+ * open from the first day; only the group's own tool tier decides how far a
+ * rung climbs.
  */
 const game = useGameStore()
-const route = useRoute()
-
-const backTarget = computed(() => mapBackTarget(route.query.from, { name: 'garage' }))
 
 const bench = computed(() => game.stationPart('workbench'))
 
@@ -57,24 +53,22 @@ function onRepairClick(): void {
 </script>
 
 <template>
-  <section class="workshop-floor">
-    <RouterLink :to="backTarget" class="back" data-test="workshop-floor-back">&lt; Back</RouterLink>
-
+  <section class="workbench-panel" data-test="workbench-panel">
     <header class="head">
-      <h2>
-        Workshop floor
-        <HelpHint label="Workshop floor">
+      <h4>
+        Workbench
+        <HelpHint label="Workbench">
           The bench is where a part is put right. Take it off the car, fetch it out of the
           warehouse, and work it here. One part at a time, and it goes back into the warehouse when
           you are done with it.
         </HelpHint>
-      </h2>
+      </h4>
     </header>
 
     <WorkStationTray station="workbench" />
 
     <section v-if="bench" class="panel" data-test="workshop-floor-part">
-      <h3>{{ game.carPartLabel(bench.part.carPartId) }}</h3>
+      <h5>{{ game.carPartLabel(bench.part.carPartId) }}</h5>
       <p class="figure" data-test="workshop-floor-fitted">
         {{ bench.part.brand }} {{ bench.part.name }}, {{ bench.part.grade }} grade,
         {{ bench.instance.band }}.
@@ -104,31 +98,25 @@ function onRepairClick(): void {
 </template>
 
 <style scoped>
-.workshop-floor {
+.workbench-panel {
   max-width: 640px;
 }
 
-.back {
-  color: var(--mg-text-dim);
-  text-decoration: none;
-  font-size: var(--mg-fs-sm);
-}
-
 .head {
-  margin: var(--mg-space-2) 0 var(--mg-space-3);
+  margin: 0 0 var(--mg-space-3);
 }
 
-h2 {
+h4 {
   display: flex;
   align-items: center;
   color: var(--mg-neon-violet);
-  font-size: var(--mg-fs-lg);
+  font-size: var(--mg-fs-md);
   margin: 0;
 }
 
-h3 {
+h5 {
   color: var(--mg-neon-violet);
-  font-size: var(--mg-fs-md);
+  font-size: var(--mg-fs-sm);
   margin: 0 0 var(--mg-space-2);
   text-transform: capitalize;
 }

@@ -3,28 +3,26 @@ import { makeMarketOrigin } from '@midnight-garage/sim'
 import { mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { createMemoryHistory, createRouter } from 'vue-router'
 import { clearDragSession } from '../composables/useDragAndDrop'
 import { useGameStore } from '../stores/gameStore'
-import WorkshopFloorScreen from './WorkshopFloorScreen.vue'
-import { benchIdleReason } from './workshopFloor'
+import { benchIdleReason } from '../screens/workshopFloor'
+import WorkbenchPanel from './WorkbenchPanel.vue'
 
 /**
- * The workshop floor opens on the bench: one part, the rung of repair it is
- * next owed, and the control that does it. Nothing gates the room - putting a
+ * The workbench panel opens on the bench: one part, the rung of repair it is
+ * next owed, and the control that does it. Nothing gates the bench - putting a
  * part right is the shop's basic work - so the only refusals it ever states
  * are about the part itself or the tools that finish it.
  */
 
 const mountedWrappers: VueWrapper[] = []
 
-function mountScreen() {
-  // A real (if routeless) router so `useRoute()` resolves - the screen reads
-  // `route.query.from` for its back control (`mapBack.ts`) - while
-  // `RouterLinkStub` keeps every `<RouterLink>` a plain, inspectable stub.
-  const router = createRouter({ history: createMemoryHistory(), routes: [] })
-  const wrapper = mount(WorkshopFloorScreen, {
-    global: { plugins: [router], stubs: { RouterLink: RouterLinkStub } },
+function mountPanel() {
+  // The panel reads no route of its own (it renders in place on the garage
+  // screen), so only `RouterLinkStub` is needed to keep every `<RouterLink>`
+  // a plain, inspectable stub.
+  const wrapper = mount(WorkbenchPanel, {
+    global: { stubs: { RouterLink: RouterLinkStub } },
   })
   mountedWrappers.push(wrapper)
   return wrapper
@@ -52,7 +50,7 @@ function loosePart(game: Store, partId: string, band: ConditionBand, onBench: bo
   return instance.id
 }
 
-describe('WorkshopFloorScreen', () => {
+describe('WorkbenchPanel', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     clearDragSession()
@@ -64,7 +62,7 @@ describe('WorkshopFloorScreen', () => {
   it('says the bench is empty when nothing is on it', () => {
     const game = useGameStore()
     game.newGame(1)
-    const wrapper = mountScreen()
+    const wrapper = mountPanel()
     expect(wrapper.find('[data-test="station-empty-workbench"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="workshop-floor-part"]').exists()).toBe(false)
   })
@@ -74,7 +72,7 @@ describe('WorkshopFloorScreen', () => {
     game.newGame(1)
     const partInstanceId = loosePart(game, DAMPER_PART.id, 'worn', false)
 
-    const wrapper = mountScreen()
+    const wrapper = mountPanel()
     await wrapper.find(`[data-test="station-place-workbench-${partInstanceId}"]`).trigger('click')
     await wrapper.vm.$nextTick()
 
@@ -87,7 +85,7 @@ describe('WorkshopFloorScreen', () => {
     game.newGame(1)
     const partInstanceId = loosePart(game, DAMPER_PART.id, 'worn', true)
 
-    const wrapper = mountScreen()
+    const wrapper = mountPanel()
     await wrapper.find('[data-test="station-take-workbench"]').trigger('click')
     await wrapper.vm.$nextTick()
 
@@ -102,7 +100,7 @@ describe('WorkshopFloorScreen', () => {
     const partInstanceId = loosePart(game, DAMPER_PART.id, 'worn', false)
     game.gameState = { ...game.gameState, machinePartId: partInstanceId }
 
-    const wrapper = mountScreen()
+    const wrapper = mountPanel()
     expect(wrapper.find(`[data-test="station-place-workbench-${partInstanceId}"]`).exists()).toBe(
       false,
     )
@@ -116,7 +114,7 @@ describe('WorkshopFloorScreen', () => {
     const partInstanceId = loosePart(game, DAMPER_PART.id, 'poor', true)
     game.devSetToolTier('suspension', 2)
 
-    const wrapper = mountScreen()
+    const wrapper = mountPanel()
     await wrapper.find('[data-test="workshop-floor-repair"]').trigger('click')
     expect(game.gameState.partInventory.find((p) => p.id === partInstanceId)!.band).toBe('worn')
 
@@ -131,7 +129,7 @@ describe('WorkshopFloorScreen', () => {
     loosePart(game, DAMPER_PART.id, 'worn', true)
     game.gameState = { ...game.gameState, energySpentToday: game.laborSlotsPerDay }
 
-    const wrapper = mountScreen()
+    const wrapper = mountPanel()
     const button = wrapper.find('[data-test="workshop-floor-repair"]')
     expect(button.attributes('disabled')).toBeDefined()
     expect(button.attributes('title')).toContain('No labour left today')
@@ -142,7 +140,7 @@ describe('WorkshopFloorScreen', () => {
     game.newGame(1) // nothing upgraded, so suspension repairs cap at fine
     loosePart(game, DAMPER_PART.id, 'fine', true)
 
-    const wrapper = mountScreen()
+    const wrapper = mountPanel()
     expect(wrapper.find('[data-test="workshop-floor-repair"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="workshop-floor-ceiling"]').text()).toContain('reaches mint')
   })
@@ -152,13 +150,13 @@ describe('WorkshopFloorScreen', () => {
     game.newGame(1)
     loosePart(game, DAMPER_PART.id, 'mint', true)
 
-    const mint = mountScreen()
+    const mint = mountPanel()
     expect(mint.find('[data-test="workshop-floor-repair"]').exists()).toBe(false)
     expect(mint.find('[data-test="workshop-floor-idle"]').text()).toContain('Nothing left to put')
 
     const tyreId = loosePart(game, TYRE_PART.id, 'worn', false)
     game.gameState = { ...game.gameState, workbenchPartId: tyreId }
-    const tyres = mountScreen()
+    const tyres = mountPanel()
     expect(tyres.find('[data-test="workshop-floor-repair"]').exists()).toBe(false)
     expect(tyres.find('[data-test="workshop-floor-idle"]').text()).toContain(
       'replaced, not repaired',

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Part, PartInstance } from '@midnight-garage/content'
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useDraggable } from '../composables/useDragAndDrop'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
@@ -92,19 +92,71 @@ const stationWhere = computed(() => {
   return station ? WORK_STATION_WHERE[station] : null
 })
 
+/**
+ * Two-step guard on the cash-out buttons. Selling pays about 30% of
+ * catalogue, so a single misclick would cost 70% of a just-bought part;
+ * the first click arms the button (its label becomes a priced
+ * question), and only a second click while armed executes. The arm stands
+ * down when the pointer leaves the card, on any other card action (select,
+ * pick, drag), or after a short timeout.
+ */
+const ARM_TIMEOUT_MS = 4000
+const armedAction = ref<'sell' | 'scrap' | null>(null)
+let disarmTimer: ReturnType<typeof setTimeout> | null = null
+
+function disarm(): void {
+  armedAction.value = null
+  if (disarmTimer !== null) {
+    clearTimeout(disarmTimer)
+    disarmTimer = null
+  }
+}
+onBeforeUnmount(disarm)
+watch(draggable.isDragging, (dragging) => {
+  if (dragging) disarm()
+})
+
+function armOrRun(action: 'sell' | 'scrap', run: () => void): void {
+  if (armedAction.value === action) {
+    disarm()
+    run()
+    return
+  }
+  disarm()
+  armedAction.value = action
+  disarmTimer = setTimeout(disarm, ARM_TIMEOUT_MS)
+}
+
+const sellLabel = computed(() =>
+  armedAction.value === 'sell'
+    ? `Sell for ${formatYen(sellValueYen.value)}?`
+    : `Sell (${formatYen(sellValueYen.value)})`,
+)
+const scrapLabel = computed(() =>
+  armedAction.value === 'scrap'
+    ? `Scrap for ${formatYen(scrapValueYen.value)}?${scrapLabourSuffix.value}`
+    : `Scrap it (${formatYen(scrapValueYen.value)})${scrapLabourSuffix.value}`,
+)
+
 function onCardClick(): void {
+  disarm()
   if (isScrap.value || !props.fits) return
   emit('select', props.instance.id)
 }
 
+function onPickClick(): void {
+  disarm()
+  draggable.togglePick()
+}
+
 function onScrapClick(): void {
   if (isCustomerOwned.value) return
-  game.scrapPart(props.instance.id)
+  armOrRun('scrap', () => game.scrapPart(props.instance.id))
 }
 
 function onSellClick(): void {
   if (isCustomerOwned.value) return
-  game.sellPart(props.instance.id)
+  armOrRun('sell', () => game.sellPart(props.instance.id))
 }
 
 // A scrap card never drags (it can never be installed anywhere) - these
@@ -137,6 +189,7 @@ function onPointerUp(event: PointerEvent): void {
     @pointerdown="onPointerDown"
     @pointermove="onPointerMove"
     @pointerup="onPointerUp"
+    @pointerleave="disarm"
     @click="onCardClick"
   >
     <div class="part-info">
@@ -170,10 +223,11 @@ function onPointerUp(event: PointerEvent): void {
           v-else
           type="button"
           class="scrap-handle"
+          :class="{ armed: armedAction === 'scrap' }"
           :data-test="'scrap-part-' + instance.id"
           @click.stop="onScrapClick"
         >
-          Scrap it ({{ formatYen(scrapValueYen) }}){{ scrapLabourSuffix }}
+          {{ scrapLabel }}
         </button>
       </template>
       <template v-else>
@@ -184,17 +238,18 @@ function onPointerUp(event: PointerEvent): void {
           v-else
           type="button"
           class="sell-handle"
+          :class="{ armed: armedAction === 'sell' }"
           :data-test="'sell-part-' + instance.id"
           @click.stop="onSellClick"
         >
-          Sell ({{ formatYen(sellValueYen) }})
+          {{ sellLabel }}
         </button>
         <button
           type="button"
           class="grab-handle"
           :aria-pressed="draggable.isPicked.value"
           :data-test="'pick-part-' + instance.id"
-          @click.stop="draggable.togglePick"
+          @click.stop="onPickClick"
         >
           {{ draggable.isPicked.value ? 'cancel' : 'move…' }}
         </button>
@@ -334,6 +389,20 @@ function onPointerUp(event: PointerEvent): void {
 .sell-handle {
   color: var(--mg-yen);
   border-color: var(--mg-neon-cyan);
+}
+
+/* The armed (click-again-to-confirm) state: the button fills with its own
+   accent so the state change is unmistakable before the second click. */
+.scrap-handle.armed {
+  background: var(--mg-neon-pink);
+  border-color: var(--mg-neon-pink);
+  color: var(--mg-panel);
+}
+
+.sell-handle.armed {
+  background: var(--mg-neon-cyan);
+  border-color: var(--mg-neon-cyan);
+  color: var(--mg-panel);
 }
 
 .locked-reason {

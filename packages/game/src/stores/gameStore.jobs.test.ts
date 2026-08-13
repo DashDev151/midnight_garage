@@ -86,18 +86,13 @@ function findUnfinishedRepairOffer(game: ReturnType<typeof useGameStore>): Servi
   )
 }
 
-/** End days until `findUnfinishedOffer` finds something, bounded. A fresh
- * career's board is Yuki-only while the tutorial runs, so both warps skip the
- * walkthrough first. The gate lifts at the next generation point, which the End
- * Day loop then reaches. */
+/** End days until `findUnfinishedOffer` finds something, bounded. */
 function warpToUnfinishedOffer(game: ReturnType<typeof useGameStore>) {
-  game.skipTutorial()
   for (let i = 0; i < 20 && !findUnfinishedOffer(game); i++) game.endDay()
 }
 
 /** End days until `findUnfinishedRepairOffer` finds something, bounded. */
 function warpToRepairOffer(game: ReturnType<typeof useGameStore>) {
-  game.skipTutorial()
   for (let i = 0; i < 60 && !findUnfinishedRepairOffer(game); i++) game.endDay()
 }
 
@@ -105,18 +100,12 @@ describe('service jobs in the store', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
   /**
-   * This used to pin day-1 offers. A fresh tutorial career now deliberately
-   * opens Yuki-only, so the correct behaviour is a gated day 1 and offers
-   * resuming once the walkthrough is skipped. The original guarantee lives on
-   * for non-tutorial careers in the sim's own tests
-   * (`packages/sim/tests/tutorialIsolation.test.ts`).
+   * A new career opens in open play (no tutorial career), so the
+   * normal day-1 job batch is on the board from the start.
    */
-  it('the board is Yuki-only on day 1 of a tutorial career; skipping brings offers back', () => {
+  it('the board carries the normal job batch on day 1 of a new career', () => {
     const game = useGameStore()
     game.newGame(1)
-    expect(game.serviceJobOffers.length).toBe(0)
-    game.skipTutorial()
-    for (let i = 0; i < 20 && game.serviceJobOffers.length === 0; i++) game.endDay()
     expect(game.serviceJobOffers.length).toBeGreaterThan(0)
   })
 

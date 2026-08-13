@@ -8,10 +8,9 @@ import { OVERWORLD_PLACEMENTS } from '../pixi/overworld/overworldMap'
 
 /**
  * Where clicking each overworld location actually goes. Every real
- * destination is a route that already exists in `router/index.ts` (the two
- * new ones this feature adds - `garage-interior` and `test-track` - are
- * added there alongside it, never guessed here); the two inert locations
- * refuse the click instead of navigating anywhere.
+ * destination is a route that already exists in `router/index.ts`, never
+ * guessed here; the inert locations refuse the click instead of navigating
+ * anywhere.
  */
 
 export type OverworldDestination =
@@ -26,6 +25,11 @@ export type OverworldDestination =
  * voice - never a blank page, never an apology. */
 const INERT_MESSAGE_BY_LOCATION: Partial<Record<OverworldLocationId, string>> = {
   bank: "Not open for business. Whatever's behind that glass, it isn't loans.",
+  // The dealer network is `sellingChannels.tradeNetwork`, a fax to the dealer
+  // circle rather than a place a buyer or a lot turns up (`selling.ts`'s own
+  // doc comment on `TRADE_NETWORK_BUYER_ID`) - there is nothing inside the
+  // building for a walk-in to do.
+  'dealer-network': 'Dealer to dealer only. Nothing on the block for a walk-in.',
 }
 
 /** The four overworld locations that each lead to their own course on the
@@ -42,37 +46,24 @@ const TEST_TRACK_COURSE_BY_LOCATION: Partial<Record<OverworldLocationId, string>
 }
 
 /** Every other location's real, already-existing route. The garage leads
- * into the room-based interior rather than straight to the bays screen, so
- * the six rooms - including the ones the bays screen never touches, like
- * the warehouse and the office - are actually reachable from the map. The
- * four auction-tier buildings (local yard, regional, premium, collector
- * network) front the one auctions screen: the game has a single `auctions`
- * route covering every tier already.
+ * straight to the garage screen: it is the whole building, bays and work
+ * stations alike. The four auction-tier buildings (local yard, regional,
+ * premium, collector network) front the one auctions screen: the game has a
+ * single `auctions` route covering every tier already.
  *
- * Dealer network is NOT an auction tier - it is `sellingChannels.tradeNetwork`,
- * a fax to the dealer circle rather than a place a buyer or a lot turns up
- * (`selling.ts`'s own doc comment on `TRADE_NETWORK_BUYER_ID`). It fronts the
- * garage's alley instead, the same target (and the same unflagged, always-
- * map-returning back control) as the garage building itself, since that room
- * is where a listed car actually sits - there is no standalone sell screen to
- * point it at, and a fax is not a place to route dedicated art at.
- *
- * Every one of these except the garage and dealer network also sits on the
- * persistent tab bar, so its own screen's back control cannot always return
- * to the map - the `from: 'overworld'` query flag is how that screen tells
- * the two apart (`mapBack.ts`'s `mapBackTarget`). The garage and dealer
- * network carry no such flag: both route to `garage-interior`, whose back
- * control returns to the map unconditionally regardless of which building
- * sent the player there. */
+ * Every one of these except the garage also sits on the persistent tab bar,
+ * so its own screen's back control cannot always return to the map - the
+ * `from: 'overworld'` query flag is how that screen tells the two apart
+ * (`mapBack.ts`'s `mapBackTarget`). The garage carries no such flag: it is
+ * the tab bar's home screen and has no back control at all. */
 const ROUTE_BY_LOCATION: Partial<Record<OverworldLocationId, RouteLocationRaw>> = {
-  garage: { name: 'garage-interior' },
+  garage: { name: 'garage' },
   'tool-hire': { name: 'upgrades', query: { from: 'overworld' } },
   'parts-shop': { name: 'parts', query: { from: 'overworld' } },
   'local-yard': { name: 'auctions', query: { from: 'overworld' } },
   'staff-centre': { name: 'staff', query: { from: 'overworld' } },
   'regional-auction': { name: 'auctions', query: { from: 'overworld' } },
   'premium-auction': { name: 'auctions', query: { from: 'overworld' } },
-  'dealer-network': { name: 'garage-interior' },
   'collector-network': { name: 'auctions', query: { from: 'overworld' } },
 }
 

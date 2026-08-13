@@ -1,7 +1,10 @@
-import { CARS } from '@midnight-garage/content'
+import { CARS, PARTS, type PartInstance } from '@midnight-garage/content'
+import { makeMarketOrigin } from '@midnight-garage/sim'
 import { mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { h } from 'vue'
+import { createMemoryHistory, createRouter } from 'vue-router'
 import { clearDragSession } from '../composables/useDragAndDrop'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
@@ -12,10 +15,24 @@ import GarageScreen from './GarageScreen.vue'
 // prior test cannot leak its store's pinia into the next (see App/CarDetailScreen).
 const mountedWrappers: VueWrapper[] = []
 
-function mountScreen() {
-  // Relies on the active pinia from beforeEach; RouterLink is stubbed since
-  // these tests don't exercise navigation, only rendering.
-  const wrapper = mount(GarageScreen, { global: { stubs: { RouterLink: RouterLinkStub } } })
+/** A minimal real router: the screen reads `route.query.open` for the
+ * station deep link and pushes to the car screen from the body and paint
+ * entry, so `useRoute`/`useRouter` have to resolve. `RouterLinkStub` still
+ * keeps every `<RouterLink>` a plain, inspectable stub. */
+function makeRouter() {
+  return createRouter({
+    history: createMemoryHistory(),
+    routes: [
+      { path: '/', name: 'garage', component: { render: () => h('div') } },
+      { path: '/car/:id', name: 'car', component: { render: () => h('div') } },
+    ],
+  })
+}
+
+function mountScreen(router = makeRouter()) {
+  const wrapper = mount(GarageScreen, {
+    global: { plugins: [router], stubs: { RouterLink: RouterLinkStub } },
+  })
   mountedWrappers.push(wrapper)
   return wrapper
 }
@@ -272,6 +289,112 @@ describe('GarageScreen', () => {
         expect(game.parkingView.some((c) => c?.carId === carB!.id)).toBe(true)
         expect(game.serviceBaysView.every((s) => s === null)).toBe(true)
       })
+    })
+  })
+
+  describe('work stations (the garage is one building)', () => {
+    /** Puts one loose part in the warehouse and on the bench, at `band`. */
+    function partOnBench(game: ReturnType<typeof useGameStore>, band: PartInstance['band']) {
+      const part = PARTS.find((p) => p.carPartId === 'dampers')!
+      const instance: PartInstance = {
+        id: 'pi-bench-dampers',
+        partId: part.id,
+        band,
+        origin: makeMarketOrigin(1),
+      }
+      game.gameState = {
+        ...game.gameState,
+        partInventory: [...game.gameState.partInventory, instance],
+        workbenchPartId: instance.id,
+      }
+    }
+
+    it('lists the three stations with live status: empty bench, derelict machine shop and body shop on a fresh game', () => {
+      const game = useGameStore()
+      game.newGame(1)
+      const wrapper = mountScreen()
+      expect(wrapper.get('[data-test="station-status-workbench"]').text()).toBe('empty')
+      expect(wrapper.get('[data-test="station-status-machine"]').text()).toBe('derelict')
+      expect(wrapper.get('[data-test="station-status-body-paint"]').text()).toBe('derelict')
+    })
+
+    it('names the part on the bench and its band in the workbench status', () => {
+      const game = useGameStore()
+      game.newGame(1)
+      partOnBench(game, 'worn')
+      const wrapper = mountScreen()
+      const status = wrapper.get('[data-test="station-status-workbench"]').text()
+      expect(status).toContain(game.carPartLabel('dampers'))
+      expect(status).toContain('worn')
+    })
+
+    it('clicking the workbench opens the bench panel in place, and clicking again closes it', async () => {
+      const game = useGameStore()
+      game.newGame(1)
+      const wrapper = mountScreen()
+      expect(wrapper.find('[data-test="workbench-panel"]').exists()).toBe(false)
+
+      await wrapper.get('[data-test="station-open-workbench"]').trigger('click')
+      expect(wrapper.find('[data-test="workbench-panel"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="station-tray-workbench"]').exists()).toBe(true)
+
+      await wrapper.get('[data-test="station-open-workbench"]').trigger('click')
+      expect(wrapper.find('[data-test="workbench-panel"]').exists()).toBe(false)
+    })
+
+    it('clicking the machine shop opens the machine panel in place, machinery list and all', async () => {
+      const game = useGameStore()
+      game.newGame(1)
+      const wrapper = mountScreen()
+
+      await wrapper.get('[data-test="station-open-machine"]').trigger('click')
+      expect(wrapper.find('[data-test="machine-shop-panel"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="machine-shop-machinery"]').exists()).toBe(true)
+    })
+
+    it('arriving with `open=machine` in the query opens the machine panel directly (the car screen door)', async () => {
+      const game = useGameStore()
+      game.newGame(1)
+      const router = makeRouter()
+      await router.push({ name: 'garage', query: { open: 'machine' } })
+      const wrapper = mountScreen(router)
+      expect(wrapper.find('[data-test="machine-shop-panel"]').exists()).toBe(true)
+    })
+
+    it('a derelict body and paint shop refuses with the spray-booth line', async () => {
+      const game = useGameStore()
+      game.newGame(1)
+      const wrapper = mountScreen()
+
+      await wrapper.get('[data-test="station-open-body-paint"]').trigger('click')
+      expect(wrapper.get('[data-test="body-paint-refusal"]').text()).toBe(
+        "A dead spray booth and someone else's panels. Needs the body line before any of it is yours to use.",
+      )
+    })
+
+    it('an open body and paint shop with one car in a service bay opens that car; with none it asks for one', async () => {
+      const game = useGameStore()
+      game.newGame(1)
+      game.devSetToolTier('body', 2)
+      const router = makeRouter()
+      const wrapper = mountScreen(router)
+
+      await wrapper.get('[data-test="station-open-body-paint"]').trigger('click')
+      expect(wrapper.find('[data-test="body-paint-refusal"]').exists()).toBe(false)
+      expect(wrapper.get('[data-test="body-paint-hint"]').text()).toContain('service bay')
+
+      game.devGrantCar(CARS[0]!.id)
+      const carId = game.gameState.ownedCars[0]!.id
+      game.moveCar(carId, 'service')
+      await wrapper.vm.$nextTick()
+
+      await wrapper.get('[data-test="body-paint-enter"]').trigger('click')
+      // The push is async; wait for the router to settle before reading it.
+      await router.isReady()
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      const route = router.currentRoute.value
+      expect(route.name).toBe('car')
+      expect(route.params.id).toBe(carId)
     })
   })
 

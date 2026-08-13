@@ -1,4 +1,5 @@
 import { PARTS, STORY_MISSIONS, TUTORIAL_LOT, type GameState } from '@midnight-garage/content'
+import { createInitialGameState, installTutorial } from '@midnight-garage/sim'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -14,6 +15,16 @@ vi.mock('vue-router', () => ({ useRoute: () => ({ name: 'jobs' }) }))
 
 const LOT = TUTORIAL_LOT
 const FOUR_WHEELS = STORY_MISSIONS.find((m) => m.id === LOT.missionId)!
+
+/** A tutorial career, built explicitly from the sim's own primitives - the
+ * production `newGame` starts in open play, so the overlay's
+ * fixtures construct the tutorial state themselves. */
+function newTutorialGame(game: ReturnType<typeof useGameStore>, seed: number): void {
+  game.gameState = installTutorial(
+    createInitialGameState(game.context, seed, { tutorial: true }),
+    game.context,
+  )
+}
 
 function ownScriptedCarWithBands(
   state: GameState,
@@ -120,7 +131,7 @@ describe('TutorialOverlay', () => {
 
   it('opens on step 1 of 10 (welcome) with the Got it button for a fresh tutorial career', async () => {
     const game = useGameStore()
-    game.newGame(1)
+    newTutorialGame(game, 1)
     const wrapper = render()
     await nextTick()
 
@@ -134,7 +145,7 @@ describe('TutorialOverlay', () => {
 
   it('Got it advances to accept, persists the acknowledgement, and interpolates the payout', async () => {
     const game = useGameStore()
-    game.newGame(2)
+    newTutorialGame(game, 2)
     const wrapper = render()
     await nextTick()
 
@@ -152,7 +163,7 @@ describe('TutorialOverlay', () => {
 
   it('accept completes on mission accept; the coolant check reveals during the yard visit, then the compression test after it runs', async () => {
     const game = useGameStore()
-    game.newGame(3)
+    newTutorialGame(game, 3)
     game.acknowledgeTutorialStep('welcome')
     game.acceptMission(LOT.missionId)
     const wrapper = render()
@@ -180,7 +191,7 @@ describe('TutorialOverlay', () => {
 
   it('spotlights the compression-test button once the coolant check has run, not the auctions tab fallback', async () => {
     const game = useGameStore()
-    game.newGame(4)
+    newTutorialGame(game, 4)
     game.acknowledgeTutorialStep('welcome')
     game.acceptMission(LOT.missionId)
     game.gameState = { ...game.gameState, inspectionVisit: { tier: LOT.tier, minutesLeft: 60 } }
@@ -231,7 +242,7 @@ describe('TutorialOverlay', () => {
 
   it('bid completes once the car is owned; bay completes once it reaches a service slot', async () => {
     const game = useGameStore()
-    game.newGame(5)
+    newTutorialGame(game, 5)
     game.acknowledgeTutorialStep('welcome')
     game.acceptMission(LOT.missionId)
     game.gameState = ownScriptedCarWithBands(game.gameState, {})
@@ -249,7 +260,7 @@ describe('TutorialOverlay', () => {
 
   it('walks wheel then engine then deliver as the work lands, revealing bench sub-state lines', async () => {
     const game = useGameStore()
-    game.newGame(6)
+    newTutorialGame(game, 6)
     game.acknowledgeTutorialStep('welcome')
     game.acceptMission(LOT.missionId)
     game.gameState = scriptedCarIntoBay(ownScriptedCarWithBands(game.gameState, {}))
@@ -382,7 +393,7 @@ describe('TutorialOverlay', () => {
 
   it('ticks off the teardown checklist as each named component comes off, and retires it with the bench', async () => {
     const game = useGameStore()
-    game.newGame(15)
+    newTutorialGame(game, 15)
     game.acknowledgeTutorialStep('welcome')
     game.acceptMission(LOT.missionId)
     game.gameState = scriptedCarIntoBay(ownScriptedCarWithBands(game.gameState, { tyres: 'mint' }))
@@ -423,7 +434,7 @@ describe('TutorialOverlay', () => {
 
   it('holds on the reassemble step while a part is missing, and releases once the car is whole', async () => {
     const game = useGameStore()
-    game.newGame(12)
+    newTutorialGame(game, 12)
     game.acknowledgeTutorialStep('welcome')
     game.acceptMission(LOT.missionId)
     const whole = scriptedCarIntoBay(
@@ -451,7 +462,7 @@ describe('TutorialOverlay', () => {
 
   it('spotlights the last visible anchored line, following the wheel beat onto the bench', async () => {
     const game = useGameStore()
-    game.newGame(7)
+    newTutorialGame(game, 7)
     game.acknowledgeTutorialStep('welcome')
     game.acceptMission(LOT.missionId)
     game.gameState = scriptedCarIntoBay(ownScriptedCarWithBands(game.gameState, {}))
@@ -503,7 +514,7 @@ describe('TutorialOverlay', () => {
 
   it('spotlights nothing on the anchorless welcome step, not even the garage nav fallback', async () => {
     const game = useGameStore()
-    game.newGame(8)
+    newTutorialGame(game, 8)
     // The welcome step carries no anchorTestId at all (item 1 hotfix - nothing
     // for the player to do yet) - the spotlight must stay off, not fall back
     // to a nav tab that happens to be present.
@@ -517,7 +528,7 @@ describe('TutorialOverlay', () => {
 
   it('falls back to the nav tab when a REAL anchored step is absent from the DOM', async () => {
     const game = useGameStore()
-    game.newGame(14)
+    newTutorialGame(game, 14)
     // Advance past welcome onto `accept`, whose own anchor (`mission-accept`)
     // is not in the DOM here, so the spotlight lands on the jobs tab instead -
     // the fallback mechanism itself, exercised on a step that still anchors.
@@ -531,7 +542,7 @@ describe('TutorialOverlay', () => {
 
   it('shows the terminal sign-off after delivery and finishes cleanly', async () => {
     const game = useGameStore()
-    game.newGame(9)
+    newTutorialGame(game, 9)
     game.acceptMission(LOT.missionId)
     // Mark the mission delivered and clear the (now-handed-over) car.
     const s = game.gameState
@@ -557,7 +568,7 @@ describe('TutorialOverlay', () => {
 
   it('skips permanently on confirm, leaving the mission in place', async () => {
     const game = useGameStore()
-    game.newGame(10)
+    newTutorialGame(game, 10)
     const wrapper = render()
     await nextTick()
 
@@ -574,7 +585,7 @@ describe('TutorialOverlay', () => {
 
   it('drags by the header and pins the box at the dragged viewport position', async () => {
     const game = useGameStore()
-    game.newGame(11)
+    newTutorialGame(game, 11)
     const wrapper = render()
     await nextTick()
 
@@ -596,7 +607,7 @@ describe('TutorialOverlay', () => {
 
   it('applies the find step panelPosition hint, and reverts once the next step has none', async () => {
     const game = useGameStore()
-    game.newGame(13)
+    newTutorialGame(game, 13)
     game.acknowledgeTutorialStep('welcome')
     game.acceptMission(LOT.missionId)
     const wrapper = render()

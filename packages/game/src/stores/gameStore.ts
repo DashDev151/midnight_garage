@@ -89,7 +89,6 @@ import {
   confirmStagedWork,
   createInitialGameState,
   createRng,
-  installTutorial,
   dayOfWeekName,
   weekIndex,
   describeOrigin,
@@ -5122,19 +5121,11 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /** Start a fresh career. Defaults to a random seed so players don't all get the same run.
-   * Every new career is a tutorial career - `installTutorial` marks
-   * it active, offers Yuki's mission on day 1, and seeds the scripted Local Yard
-   * lot (a bot/probe career built straight from `createInitialGameState` never
-   * does, so those stay tutorial-free). The tutorial intent is
-   * passed to `createInitialGameState` itself, because the day-1 board is
-   * generated inside it - the Yuki-only job board and the tutorial-model
-   * auction exclusion are generation gates, and the flag has to exist before
-   * that generation runs, not after (`installTutorial` runs too late for it). */
+   * A new career is open play from day 1: no tutorial career is installed, and
+   * every sim gate reads the absence of `tutorialStatus` as inactive, so the
+   * day-1 auction board, job batch and mission offers are the normal ones. */
   function newGame(seed: number = randomSeed()): void {
-    gameState.value = installTutorial(
-      createInitialGameState(context.value, seed, { tutorial: true }),
-      context.value,
-    )
+    gameState.value = createInitialGameState(context.value, seed)
     dayLog.value = []
     lastDayReport.value = null
     reportVisible.value = false

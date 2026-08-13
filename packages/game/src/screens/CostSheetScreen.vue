@@ -16,8 +16,9 @@ import { useGameStore } from '../stores/gameStore'
 const game = useGameStore()
 const route = useRoute()
 
-/** Reached from the tab bar (no `from` flag - falls back to the garage) or
- * from the office room in the garage interior (`mapBack.ts`). */
+/** The tab bar reaches this screen too, with no `from` flag - the back
+ * control then falls back to the garage exactly as it always has
+ * (`mapBack.ts`). */
 const backTarget = computed(() => mapBackTarget(route.query.from, { name: 'garage' }))
 
 const weeks = computed(() => game.costSheetView.weeks)

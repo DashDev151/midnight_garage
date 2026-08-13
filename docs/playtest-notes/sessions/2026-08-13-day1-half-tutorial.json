@@ -1,0 +1,213 @@
+[
+  {
+    "day": 1,
+    "type": "acknowledgeTutorialStep",
+    "payload": {
+      "stepId": "welcome"
+    },
+    "timestamp": 1786616908748,
+    "id": 1
+  },
+  {
+    "day": 1,
+    "type": "acceptMission",
+    "payload": {
+      "missionId": "four-wheels"
+    },
+    "timestamp": 1786616912988,
+    "id": 2
+  },
+  {
+    "day": 1,
+    "type": "beginInspectionVisit",
+    "payload": {
+      "tier": "local-yard"
+    },
+    "timestamp": 1786616929252,
+    "id": 3
+  },
+  {
+    "day": 1,
+    "type": "runDiagnosticTest",
+    "payload": {
+      "lotId": "tutorial-lot",
+      "symptomIndex": 0,
+      "testId": "coolant-check"
+    },
+    "timestamp": 1786616936647,
+    "id": 4
+  },
+  {
+    "day": 1,
+    "type": "runDiagnosticTest",
+    "payload": {
+      "lotId": "tutorial-lot",
+      "symptomIndex": 0,
+      "testId": "compression-test"
+    },
+    "timestamp": 1786616939966,
+    "id": 5
+  },
+  {
+    "day": 1,
+    "type": "settleAuctionHammer",
+    "payload": {
+      "lotId": "tutorial-lot",
+      "priceYen": 114122
+    },
+    "timestamp": 1786616950046,
+    "id": 6
+  },
+  {
+    "day": 1,
+    "type": "moveCarToSlot",
+    "payload": {
+      "carId": "tutorial-lot-car",
+      "to": "service",
+      "slotIndex": 0
+    },
+    "timestamp": 1786616955906,
+    "id": 7
+  },
+  {
+    "day": 1,
+    "type": "removeAssembly",
+    "payload": {
+      "carId": "tutorial-lot-car",
+      "assemblyId": "wheelAssembly"
+    },
+    "timestamp": 1786616965395,
+    "id": 8
+  },
+  {
+    "day": 1,
+    "type": "removeAssemblyMember",
+    "payload": {
+      "containerId": "assembly-tutorial-lot-car-wheelAssembly",
+      "memberSlot": "tyres"
+    },
+    "timestamp": 1786616970532,
+    "id": 9
+  },
+  {
+    "day": 1,
+    "type": "checkoutCart",
+    "payload": {
+      "deliverySpeed": "express",
+      "boughtCount": 1,
+      "remainingCount": 0
+    },
+    "timestamp": 1786616996047,
+    "id": 10
+  },
+  {
+    "day": 1,
+    "type": "sellPart",
+    "payload": {
+      "partInstanceId": "part-1-1"
+    },
+    "timestamp": 1786617008015,
+    "id": 11
+  },
+  {
+    "day": 1,
+    "type": "checkoutCart",
+    "payload": {
+      "deliverySpeed": "express",
+      "boughtCount": 1,
+      "remainingCount": 0
+    },
+    "timestamp": 1786617026058,
+    "id": 12
+  },
+  {
+    "day": 1,
+    "type": "swapAssemblyMember",
+    "payload": {
+      "containerId": "assembly-tutorial-lot-car-wheelAssembly",
+      "memberSlot": "tyres",
+      "partInstanceId": "part-1-1"
+    },
+    "timestamp": 1786617039535,
+    "id": 13
+  },
+  {
+    "day": 1,
+    "type": "refitAssembly",
+    "payload": {
+      "carId": "tutorial-lot-car",
+      "assemblyId": "wheelAssembly"
+    },
+    "timestamp": 1786617042596,
+    "id": 14
+  },
+  {
+    "day": 1,
+    "type": "removePart",
+    "payload": {
+      "carId": "tutorial-lot-car",
+      "carPartId": "cooling"
+    },
+    "timestamp": 1786617055233,
+    "id": 15
+  },
+  {
+    "day": 1,
+    "type": "removePart",
+    "payload": {
+      "carId": "tutorial-lot-car",
+      "carPartId": "exhaust"
+    },
+    "timestamp": 1786617058191,
+    "id": 16
+  },
+  {
+    "day": 1,
+    "type": "removePart",
+    "payload": {
+      "carId": "tutorial-lot-car",
+      "carPartId": "intake"
+    },
+    "timestamp": 1786617063811,
+    "id": 17
+  },
+  {
+    "day": 1,
+    "type": "removeAssembly",
+    "payload": {
+      "carId": "tutorial-lot-car",
+      "assemblyId": "engineAssembly"
+    },
+    "timestamp": 1786617071448,
+    "id": 18
+  },
+  {
+    "day": 1,
+    "type": "removeAssemblyMember",
+    "payload": {
+      "containerId": "assembly-tutorial-lot-car-engineAssembly",
+      "memberSlot": "headValvetrain"
+    },
+    "timestamp": 1786617079471,
+    "id": 19
+  },
+  {
+    "day": 1,
+    "type": "placeOnStation",
+    "payload": {
+      "station": "machine",
+      "partInstanceId": "tutorial-lot-car-part-headValvetrain"
+    },
+    "timestamp": 1786617117204,
+    "id": 20
+  },
+  {
+    "day": 1,
+    "type": "takeFromStation",
+    "payload": {
+      "station": "machine"
+    },
+    "timestamp": 1786617120867,
+    "id": 21
+  }
+]

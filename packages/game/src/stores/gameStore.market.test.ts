@@ -1,11 +1,23 @@
 import {
+  BUYERS,
   CARS,
+  ECONOMY,
+  FACILITIES,
   fitmentClassForTier,
   PARTS,
+  PARTS_TAXONOMY,
+  SERVICE_JOB_CUSTOMER_NAMES,
+  SERVICE_JOB_TYPES,
+  TOOL_LINES,
   type CarPartId,
   type ComponentId,
 } from '@midnight-garage/content'
-import { channelBuyerTaste, isTasteMatched } from '@midnight-garage/sim'
+import {
+  buildSimContext,
+  buildTutorialLot,
+  channelBuyerTaste,
+  isTasteMatched,
+} from '@midnight-garage/sim'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useGameStore } from './gameStore'
@@ -20,14 +32,31 @@ function warpToCatalog(game: ReturnType<typeof useGameStore>) {
 describe('market: auctions', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
-  it('the scripted tutorial lot sorts to the top of its tier', () => {
+  it('a scripted lot sorts to the top of its tier', () => {
     const game = useGameStore()
     game.newGame(1)
+    // A new career does not seed the scripted lot (open play), so build it
+    // explicitly and append it AFTER the day-1 random batch - raw
+    // state order has it last, and the view must still put it first.
+    const context = buildSimContext(
+      CARS,
+      PARTS,
+      BUYERS,
+      PARTS_TAXONOMY,
+      SERVICE_JOB_TYPES,
+      FACILITIES,
+      SERVICE_JOB_CUSTOMER_NAMES,
+      TOOL_LINES,
+      ECONOMY,
+    )
+    const scripted = buildTutorialLot(context, game.gameState.day)
+    game.gameState = {
+      ...game.gameState,
+      activeAuctionLots: [...game.gameState.activeAuctionLots, scripted],
+    }
     const local = game.auctionLotsByTier.find((g) => g.tier === 'local-yard')
     expect(local, 'day 1 always stocks the local yard').toBeDefined()
-    // The scripted lot is injected AFTER the day-1 random batch, so raw state
-    // order has it last - the view must put the walkthrough's subject first.
-    expect(local!.lots[0]!.id).toBe('tutorial-lot')
+    expect(local!.lots[0]!.id).toBe(scripted.id)
     expect(local!.lots.length).toBeGreaterThan(1)
   })
 
