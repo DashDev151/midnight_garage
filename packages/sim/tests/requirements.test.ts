@@ -323,7 +323,7 @@ describe('evaluateRequirement', () => {
       expect(result.pass).toBe(true)
     })
 
-    it('fails when at least one slot is missing', () => {
+    it('fails when at least one slot is missing, naming the part as missing', () => {
       const car = buildCarInstance({
         modelId: MODEL.id,
         parts: uniformCarParts('mint'),
@@ -337,10 +337,10 @@ describe('evaluateRequirement', () => {
         CONTEXT,
       )
       expect(result.pass).toBe(false)
-      expect(result.actual).toContain('1 slot')
+      expect(result.actual).toBe('Block missing')
     })
 
-    it('fails when at least one slot is below worn (poor or scrap)', () => {
+    it('fails when at least one slot is below worn, naming the slot', () => {
       const car = buildCarInstance({ modelId: MODEL.id, parts: uniformCarParts('worn') })
       const withOnePoor = {
         ...car,
@@ -360,6 +360,62 @@ describe('evaluateRequirement', () => {
         CONTEXT,
       )
       expect(result.pass).toBe(false)
+      expect(result.actual).toBe('Tyres below worn')
+    })
+
+    it('names the worst band first when several slots fail', () => {
+      const base = uniformCarParts('worn')
+      const car = buildCarInstance({
+        modelId: MODEL.id,
+        parts: {
+          ...base,
+          intake: {
+            ...base.intake,
+            installed: { ...base.intake.installed!, band: 'poor' as const },
+          },
+          paint: {
+            ...base.paint,
+            installed: { ...base.paint.installed!, band: 'scrap' as const },
+          },
+        },
+      })
+      const result = evaluateRequirement({ kind: 'roadworthy' }, car, EMPTY_LEDGER, 1, CONTEXT)
+      expect(result.pass).toBe(false)
+      expect(result.actual).toBe('Paint, Intake below worn')
+    })
+
+    it('caps the named slots and counts the rest when many fail', () => {
+      const base = uniformCarParts('worn')
+      const poorSlots = ['intake', 'exhaust', 'tyres', 'paint', 'seats'] as const
+      const parts = { ...base }
+      for (const partId of poorSlots) {
+        parts[partId] = {
+          ...base[partId],
+          installed: { ...base[partId].installed!, band: 'poor' as const },
+        }
+      }
+      const car = buildCarInstance({ modelId: MODEL.id, parts })
+      const result = evaluateRequirement({ kind: 'roadworthy' }, car, EMPTY_LEDGER, 1, CONTEXT)
+      expect(result.pass).toBe(false)
+      expect(result.actual).toBe('Intake, Exhaust, Tyres and 2 more below worn')
+    })
+
+    it('reports missing and below-band slots as separate groups, missing first', () => {
+      const base = uniformCarParts('worn')
+      const car = buildCarInstance({
+        modelId: MODEL.id,
+        parts: {
+          ...base,
+          block: { installed: null },
+          tyres: {
+            ...base.tyres,
+            installed: { ...base.tyres.installed!, band: 'poor' as const },
+          },
+        },
+      })
+      const result = evaluateRequirement({ kind: 'roadworthy' }, car, EMPTY_LEDGER, 1, CONTEXT)
+      expect(result.pass).toBe(false)
+      expect(result.actual).toBe('Block missing; Tyres below worn')
     })
   })
 
@@ -440,7 +496,7 @@ describe('evaluateRequirement', () => {
         CONTEXT,
       )
       expect(result.pass).toBe(false)
-      expect(result.actual).toContain('1 slot')
+      expect(result.actual).toBe('Tyres below fine')
     })
 
     it('fails when at least one slot is missing', () => {
@@ -454,6 +510,7 @@ describe('evaluateRequirement', () => {
         CONTEXT,
       )
       expect(result.pass).toBe(false)
+      expect(result.actual).toBe('Block missing')
     })
 
     // A legitimately-empty forcedInduction slot on an NA car never counts,

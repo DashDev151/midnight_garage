@@ -98,7 +98,6 @@ function initialState(): GameState {
     toolTiers: testToolTiers(),
     pendingPartOrders: [],
     cartPartIds: [],
-    stagedCarWork: {},
     marketLedger: { lotSupply: {}, playerSales: {} },
     carLedgers: {},
     toolShopsOwned: [],
@@ -299,7 +298,15 @@ describe('advanceDay golden master', () => {
     // differs from day one. Only the boards moved: this career never bids,
     // and the cash assertion below still reconciles to the same closed-form
     // figure it did before. Re-derived from a real run.
-    expect(hashState(finalState)).toBe('8e9b10d8')
+    //
+    // It moves once more for the work becoming direct: `GameState` loses
+    // `stagedCarWork` outright. A pure SHAPE change,
+    // measured rather than assumed: this script never leaves work staged
+    // and unconfirmed between actions (every repair/install it drives
+    // already resolved the same day), so the field held `{}` for its whole
+    // 30 days under the old code too - only the key disappearing from the
+    // state this hash serialises. Re-derived from a real run.
+    expect(hashState(finalState)).toBe('c7b12217')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -578,7 +585,13 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // for 124,021 on an offer that arrived on day 5. The Wagon R's window
     // opens in 1993, which a 1995 campaign cannot yet put three years behind
     // it. Re-derived from a real run.
-    expect(hashState(acquisitionCareer().sold)).toBe('8689e249')
+    //
+    // It moves once more, alongside the 30-day master, for the work becoming
+    // direct: `GameState` loses `stagedCarWork`. A pure SHAPE
+    // change - this script never leaves work staged and unconfirmed either,
+    // so only the key disappearing from the serialised state moves the hash.
+    // Re-derived from a real run.
+    expect(hashState(acquisitionCareer().sold)).toBe('59fc8620')
   })
 })
 

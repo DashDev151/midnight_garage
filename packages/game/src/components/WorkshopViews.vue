@@ -50,10 +50,6 @@ const MISSING_LABEL = 'missing'
 /** The one legitimately-empty slot in the game, worded as the car-detail
  * screen already words it rather than as a second phrasing of the same fact. */
 const ABSENT_LABEL = 'no turbo (NA)'
-/** Work lined up but not yet confirmed. The player never sees the word
- * "staged" anywhere on the car screen - the whole surface says "planned" - and
- * the views are part of that surface. */
-const PLANNED_LABEL = 'planned'
 const NO_ZONE_DATA_LABEL = 'no readings'
 
 const VIEWS = Object.values(WORKSHOP_VIEWS)
@@ -91,24 +87,6 @@ const rowsById = computed(() => {
  * rather than throwing on a lookup into nothing.
  */
 const zoneStates = computed(() => detail.value?.car.zoneState ?? null)
-
-/** Part ids and zone ids with work already staged on them - read off the
- * car's own staged list by address, so no staged-work shape is re-encoded. */
-const stagedPartIds = computed(() => {
-  const ids = new Set<string>()
-  for (const action of detail.value?.stagedActions ?? []) {
-    if ('carPartId' in action && action.carPartId) ids.add(action.carPartId)
-  }
-  return ids
-})
-
-const stagedZoneIds = computed(() => {
-  const ids = new Set<string>()
-  for (const action of detail.value?.stagedActions ?? []) {
-    if ('zoneId' in action) ids.add(action.zoneId)
-  }
-  return ids
-})
 
 // --- Zone severity ------------------------------------------------------
 
@@ -148,7 +126,6 @@ interface RegionView {
   missing: boolean
   absent: boolean
   uncertain: boolean
-  staged: boolean
   clickable: boolean
   /** Zones only; empty for a part or a car with no zone state. */
   layers: LayerView[]
@@ -165,12 +142,9 @@ function partRegion(region: Extract<WorkshopRegion, { kind: 'part' }>): RegionVi
   const band = row?.band ?? null
   const missing = row?.missing ?? false
   const absent = row?.legitimatelyAbsent ?? false
-  const staged = stagedPartIds.value.has(region.partId)
-  const notes = [
-    missing ? MISSING_LABEL : null,
-    absent ? ABSENT_LABEL : null,
-    staged ? PLANNED_LABEL : null,
-  ].filter((note): note is string => note !== null)
+  const notes = [missing ? MISSING_LABEL : null, absent ? ABSENT_LABEL : null].filter(
+    (note): note is string => note !== null,
+  )
   return {
     kind: 'part',
     slug: region.partId,
@@ -183,7 +157,6 @@ function partRegion(region: Extract<WorkshopRegion, { kind: 'part' }>): RegionVi
     missing,
     absent,
     uncertain: row?.uncertain ?? false,
-    staged,
     // A part with nothing in its slot is still a work target - fitting one is
     // the work. An empty or removed slot must therefore stay clickable, and
     // nothing here may un-click it; the disjoint region map keeps its
@@ -199,11 +172,8 @@ function partRegion(region: Extract<WorkshopRegion, { kind: 'part' }>): RegionVi
 function zoneRegion(region: Extract<WorkshopRegion, { kind: 'zone' }>): RegionView {
   const zone = zoneStates.value?.[region.zoneId] ?? null
   const name = titleCaseFromSlug(region.zoneId)
-  const staged = stagedZoneIds.value.has(region.zoneId)
   const needsPanelTag = zone ? zoneNeedsPanelTag(zone) : null
-  const notes = [needsPanelTag, staged ? PLANNED_LABEL : null].filter(
-    (note): note is string => note !== null,
-  )
+  const notes = [needsPanelTag].filter((note): note is string => note !== null)
   return {
     kind: 'zone',
     slug: region.zoneId,
@@ -216,7 +186,6 @@ function zoneRegion(region: Extract<WorkshopRegion, { kind: 'zone' }>): RegionVi
     missing: false,
     absent: false,
     uncertain: false,
-    staged,
     clickable: zone !== null,
     layers: zone ? layersFor(zone) : [],
     needsPanelTag,
@@ -283,7 +252,6 @@ function regionClasses(region: RegionView): Record<string, boolean> {
     'wv-zone': region.kind === 'zone',
     'wv-missing': region.missing,
     'wv-absent': region.absent,
-    'wv-planned': region.staged,
   }
 }
 
@@ -367,8 +335,6 @@ function onSelect(region: RegionView): void {
             region.needsPanelTag
           }}</span>
         </template>
-
-        <span v-if="region.staged" class="wv-tag wv-tag-planned">{{ PLANNED_LABEL }}</span>
       </button>
     </div>
   </div>
@@ -505,10 +471,6 @@ function onSelect(region: RegionView): void {
   border-color: var(--mg-danger);
 }
 
-.wv-planned {
-  border-color: var(--mg-neon-cyan);
-}
-
 /* Legitimately empty (the NA car's turbo slot): still a real click target,
    just nothing to shout about. */
 .wv-absent .wv-name {
@@ -530,10 +492,6 @@ function onSelect(region: RegionView): void {
 
 .wv-tag-alert {
   color: var(--mg-danger);
-}
-
-.wv-tag-planned {
-  color: var(--mg-neon-cyan);
 }
 
 .wv-uncertain {

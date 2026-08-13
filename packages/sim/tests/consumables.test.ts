@@ -5,7 +5,11 @@ import {
   PARTS_TAXONOMY,
   paintStockKey,
   type CarInstance,
+  type DayLogEntry,
   type GameState,
+  type Grade,
+  type PipelineStageId,
+  type ZoneId,
   type ZoneState,
   type ZoneStates,
 } from '@midnight-garage/content'
@@ -21,8 +25,62 @@ import {
   resolveBuyPaintTin,
   stageConsumables,
 } from '../src/consumables'
-import { confirmStagedWork } from '../src/stagedWork'
+import { resolvePipelinePaintAction, resolvePipelineStageAction } from '../src/pipelineActions'
 import { buildCarInstance, mintCarParts, testSceneStanding, testToolTiers } from './testFixtures'
+
+/** Resolves one generic pipeline stage on each zone in turn, against a
+ * single shared labour budget - threads state and remaining labour through
+ * exactly as clicking each zone's stage button in turn would. */
+function resolveStagesInTurn(
+  state: GameState,
+  carId: string,
+  stages: readonly { zoneId: ZoneId; stage: Exclude<PipelineStageId, 'paint'> }[],
+  laborAvailable: number,
+): { state: GameState; log: DayLogEntry[] } {
+  let current = state
+  let remaining = laborAvailable
+  const log: DayLogEntry[] = []
+  for (const { zoneId, stage } of stages) {
+    const result = resolvePipelineStageAction(
+      current,
+      carId,
+      { kind: 'pipeline-stage', stage, zoneId },
+      CONTEXT,
+      remaining,
+    )
+    current = result.state
+    remaining -= result.laborSlotsUsed
+    log.push(...result.log)
+  }
+  return { state: current, log }
+}
+
+/** The paint-stage analogue of `resolveStagesInTurn`. */
+function resolvePaintInTurn(
+  state: GameState,
+  carId: string,
+  zoneIds: readonly ZoneId[],
+  colour: string,
+  grade: Grade,
+  laborAvailable: number,
+): { state: GameState; log: DayLogEntry[] } {
+  let current = state
+  let remaining = laborAvailable
+  const log: DayLogEntry[] = []
+  for (const zoneId of zoneIds) {
+    const result = resolvePipelinePaintAction(
+      current,
+      carId,
+      { kind: 'pipeline-paint', zoneId, colour, grade },
+      CONTEXT,
+      remaining,
+    )
+    current = result.state
+    remaining -= result.laborSlotsUsed
+    log.push(...result.log)
+  }
+  return { state: current, log }
+}
 
 const CONTEXT = buildSimContext(CARS, PARTS, [], PARTS_TAXONOMY)
 const TOOL_TIERS = testToolTiers({ body: 2 })
@@ -71,7 +129,6 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     toolTiers: TOOL_TIERS,
     pendingPartOrders: [],
     cartPartIds: [],
-    stagedCarWork: {},
     marketLedger: { lotSupply: {}, playerSales: {} },
     carLedgers: {},
     toolShopsOwned: [],
@@ -140,11 +197,14 @@ describe('a stage refuses when its consumable is out, naming what is missing', (
     const state = baseState({
       ownedCars: [car],
       serviceBayCarIds: [car.id],
-      stagedCarWork: {
-        [car.id]: [{ kind: 'pipeline-stage', stage: 'fillAndSand', zoneId: 'bonnet' }],
-      },
     })
-    const result = confirmStagedWork(state, car.id, 10, CONTEXT)
+    const result = resolvePipelineStageAction(
+      state,
+      car.id,
+      { kind: 'pipeline-stage', stage: 'fillAndSand', zoneId: 'bonnet' },
+      CONTEXT,
+      10,
+    )
     expect(result.state.cashYen).toBe(state.cashYen)
     expect(result.state.ownedCars[0]?.zoneState?.bonnet.surface).toBe(1) // untouched
     expect(result.log).toEqual([
@@ -180,15 +240,17 @@ describe('a stage refuses when its consumable is out, naming what is missing', (
       ...paper.state,
       ownedCars: [car],
       serviceBayCarIds: [car.id],
-      stagedCarWork: {
-        [car.id]: [
-          { kind: 'pipeline-stage', stage: 'fillAndSand', zoneId: 'bonnet' },
-          { kind: 'pipeline-stage', stage: 'fillAndSand', zoneId: 'boot' },
-          { kind: 'pipeline-stage', stage: 'fillAndSand', zoneId: 'left-front' },
-        ],
-      },
     }
-    const result = confirmStagedWork(state, car.id, 60, CONTEXT)
+    const result = resolveStagesInTurn(
+      state,
+      car.id,
+      [
+        { zoneId: 'bonnet', stage: 'fillAndSand' },
+        { zoneId: 'boot', stage: 'fillAndSand' },
+        { zoneId: 'left-front', stage: 'fillAndSand' },
+      ],
+      60,
+    )
     expect(result.state.ownedCars[0]?.zoneState?.bonnet.surface).toBe(0)
     expect(result.state.ownedCars[0]?.zoneState?.boot.surface).toBe(0)
     expect(result.state.ownedCars[0]?.zoneState?.['left-front'].surface).toBe(0)
@@ -279,18 +341,7 @@ describe('the full-respray total holds against the old per-use charge', () => {
     expect(spentBuyingTins).toBe(12_600)
     expect(state.consumableStock).toEqual({ [paintStockKey('solid', 'blue-rally')]: 9 })
 
-    state = {
-      ...state,
-      stagedCarWork: {
-        [car.id]: PAINT_ZONE_IDS.map((zoneId) => ({
-          kind: 'pipeline-paint' as const,
-          zoneId,
-          colour: 'blue-rally',
-          grade: 'street' as const,
-        })),
-      },
-    }
-    const result = confirmStagedWork(state, car.id, 200, CONTEXT)
+    const result = resolvePaintInTurn(state, car.id, PAINT_ZONE_IDS, 'blue-rally', 'street', 200)
     for (const zoneId of PAINT_ZONE_IDS) {
       expect(result.state.ownedCars[0]?.zoneState?.[zoneId].colour).toBe('blue-rally')
     }
@@ -307,19 +358,15 @@ describe('the full-respray total holds against the old per-use charge', () => {
     expect(spentBuyingTin).toBe(11_350)
     expect(12_600 - spentBuyingTin).toBe(1_250)
 
-    const staged: GameState = {
-      ...bought.state,
-      stagedCarWork: {
-        [car.id]: PAINT_ZONE_IDS.map((zoneId) => ({
-          kind: 'pipeline-paint' as const,
-          zoneId,
-          colour: 'blue-rally',
-          grade: 'street' as const,
-        })),
-      },
-    }
-    const result = confirmStagedWork(staged, car.id, 200, CONTEXT)
-    expect(result.state.cashYen).toBe(staged.cashYen)
+    const result = resolvePaintInTurn(
+      bought.state,
+      car.id,
+      PAINT_ZONE_IDS,
+      'blue-rally',
+      'street',
+      200,
+    )
+    expect(result.state.cashYen).toBe(bought.state.cashYen)
     expect(result.state.consumableStock).toEqual({ [paintStockKey('solid', 'blue-rally')]: 0 })
   })
 })

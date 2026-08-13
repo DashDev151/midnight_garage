@@ -1,5 +1,6 @@
 import type { ZoneState, ZoneStates } from '@midnight-garage/content'
 import { isMetalZoneState, unpaintedPanelZoneIds, zoneNeedsPanel } from '@midnight-garage/sim'
+import { colourTokenDisplayName } from './paintFamilies'
 
 /**
  * The three layers a METAL zone's work model carries, worst-last within each:
@@ -86,6 +87,66 @@ const PANEL_COUNT_WORDS: readonly string[] = [
   'Eight',
   'Nine',
 ]
+
+/** Plain words for `metal` (0-4), worst last - the ladder every metal zone's
+ * panel walks: hand work (beat, weld) reaches `2`; `3` needs the tier-2 body
+ * machine; `4` is beyond pulling back at all, and only a fresh panel clears
+ * it. Distinct vocabulary from a part's condition band (poor/worn/fine/mint)
+ * on purpose - a zone's severities are a different scale entirely. */
+const METAL_CONDITION_TEXT: readonly string[] = [
+  'straight',
+  'a few dings',
+  'dented',
+  'badly dented',
+  'beyond straightening - needs a fresh panel',
+]
+
+/** Plain words for `surface` (0-2), worst last. */
+const SURFACE_CONDITION_TEXT: readonly string[] = ['clean', 'surface rust', 'rusted through']
+
+/** Plain words for `finish` (0-3), worst last. */
+const FINISH_CONDITION_TEXT: readonly string[] = [
+  'flawless',
+  'faded',
+  'chipped and faded',
+  'bare metal, no finish left',
+]
+
+/** The zone's metal state in plain words, or `null` on a trim zone (a
+ * bumper or the skirts carry no metal severity to read). D3's per-zone
+ * condition panel reads this directly - no jargon band, no raw number. */
+export function metalConditionText(zone: ZoneState): string | null {
+  return isMetalZoneState(zone) ? (METAL_CONDITION_TEXT[zone.metal] ?? null) : null
+}
+
+/** The zone's surface (rust) state in plain words, or `null` on a trim
+ * zone. */
+export function surfaceConditionText(zone: ZoneState): string | null {
+  return isMetalZoneState(zone) ? (SURFACE_CONDITION_TEXT[zone.surface] ?? null) : null
+}
+
+/** The zone's paint finish in plain words - every zone, metal or trim,
+ * carries a finish. */
+export function finishConditionText(zone: ZoneState): string {
+  return FINISH_CONDITION_TEXT[zone.finish] ?? 'unknown'
+}
+
+/**
+ * What's actually on the zone right now, in one sentence fragment: the panel
+ * missing outranks everything else (there is no colour to read off nothing),
+ * a colour names itself (this car's own iconic name where one applies, via
+ * `colourTokenDisplayName`), primer with no colour yet says so, and bare
+ * metal with neither says that. This is the line that would have caught the
+ * refit-paint bug at a glance - a panel that came back bare after a refit
+ * that should have kept its colour reads as "bare metal, unpainted" here
+ * instead of silently matching the surrounding panels.
+ */
+export function paintStateText(zone: ZoneState, carUid?: string): string {
+  if (zone.panelMissing) return 'panel is off'
+  if (zone.colour) return colourTokenDisplayName(zone.colour, carUid)
+  if (zone.primed) return 'primed, no colour yet'
+  return 'bare metal, unpainted'
+}
 
 /**
  * The line a car with unpainted panels carries, or `null` when it has none.

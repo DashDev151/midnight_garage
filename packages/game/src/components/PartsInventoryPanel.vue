@@ -19,13 +19,13 @@ const game = useGameStore()
 
 <template>
   <div class="inventory-panel">
-    <p v-if="game.stageableParts.length === 0" class="empty">
+    <p v-if="game.pickableParts.length === 0" class="empty">
       No unplanned parts on hand - visit the
       <RouterLink :to="{ name: 'parts' }">parts market</RouterLink>.
     </p>
     <ul v-else class="parts-list">
       <PartCard
-        v-for="entry in game.stageableParts"
+        v-for="entry in game.pickableParts"
         :key="entry.instance.id"
         :instance="entry.instance"
         :part="entry.part"

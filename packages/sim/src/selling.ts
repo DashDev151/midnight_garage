@@ -37,7 +37,6 @@ import { bumpPlayerSales } from './marketHeat'
 import { bellNormal, type Rng } from './rng'
 import { dissolveAssembliesForCar } from './assemblies'
 import { creditSceneDelivery, wordOfMouthMultipliers } from './sceneStanding'
-import { clearStagedWork } from './stagedWork'
 import {
   cultureAffinityFor,
   currentPowerExpectationBarPs,
@@ -1331,7 +1330,7 @@ export function resolveSellViaWalkIn(
       : saleOutcomeFor(buyer, model, car, context.partsById, context.partsTaxonomy, context.economy)
   const reputationDelta = saleReputationBonusFor(saleOutcome, context.economy)
   const clearedState = dissolveAssembliesForCar(
-    clearStagedWork(releaseCarFromShop(state, carInstanceId), carInstanceId),
+    releaseCarFromShop(state, carInstanceId),
     carInstanceId,
   )
   // The applied delta always equals the nominal one now: reputation only ever
@@ -1471,7 +1470,7 @@ export function resolveScrapShell(
   const carPartIds = ALL_CAR_PART_IDS.filter((id) => car.parts[id].installed !== null)
 
   const clearedState = dissolveAssembliesForCar(
-    clearStagedWork(releaseCarFromShop(state, carInstanceId), carInstanceId),
+    releaseCarFromShop(state, carInstanceId),
     carInstanceId,
   )
 

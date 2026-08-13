@@ -249,7 +249,6 @@ function stateWithCar(car: CarInstance, overrides: Partial<GameState> = {}): Gam
     toolTiers: testToolTiers(),
     pendingPartOrders: [],
     cartPartIds: [],
-    stagedCarWork: {},
     marketLedger: { lotSupply: {}, playerSales: {} },
     carLedgers: {},
     toolShopsOwned: [],
@@ -1115,14 +1114,6 @@ describe('resolveSellViaWalkIn (Sprint 31: resolves today’s pre-rolled offer)'
     const result = resolveSellViaWalkIn(state, car.id, CONTEXT)
     expect(result.state).toBe(state)
     expect(result.log).toEqual([])
-  })
-
-  it('drops the car’s staged work (Sprint 18) so it never outlives the departed car', () => {
-    const state = stateWithOffer(car, 900_000, 'tuner', {
-      stagedCarWork: { [car.id]: [{ kind: 'repair', componentId: 'engine', targetBand: 'mint' }] },
-    })
-    const result = resolveSellViaWalkIn(state, car.id, CONTEXT)
-    expect(result.state.stagedCarWork[car.id]).toBeUndefined()
   })
 
   describe('Sprint 42: profitYen + ledger cleanup', () => {
@@ -2009,14 +2000,6 @@ describe('resolveScrapShell (Sprint 71 decision 7: the teardown game, scrap the 
     expect(carPartIds).not.toContain('dampers')
     expect(carPartIds).not.toContain('seats')
     expect(carPartIds).toContain('block') // untouched slot, still on the stripped shell
-  })
-
-  it('drops the car’s staged work so it never outlives the scrapped shell', () => {
-    const state = stateWithCar(car, {
-      stagedCarWork: { [car.id]: [{ kind: 'repair', componentId: 'engine', targetBand: 'mint' }] },
-    })
-    const result = resolveScrapShell(state, car.id, CONTEXT)
-    expect(result.state.stagedCarWork[car.id]).toBeUndefined()
   })
 
   it('is a no-op for a car not owned', () => {

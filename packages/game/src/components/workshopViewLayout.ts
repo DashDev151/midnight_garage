@@ -74,7 +74,7 @@ function part(partId: CarPartId, ...rects: readonly ViewRect[]): WorkshopRegion 
  * The three views, keyed by id. Between them the regions cover the nine body
  * zones and 27 of the 28 car parts: `paint` gets no region at all, because its
  * band derives from zone state, it carries no on-car work (`repairStepFor`,
- * `repairCeilingCaption` and `repairGateReasonFor` all early-return for it)
+ * `repairCeilingCaption` and `repairMachineNoteFor` all early-return for it)
  * and the catalogue sells nothing to fit there. Repair work on the shell
  * happens on zones.
  *

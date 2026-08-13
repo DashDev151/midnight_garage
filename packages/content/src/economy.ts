@@ -2857,6 +2857,12 @@ export const EconomyConfigSchema = z.object({
        * signature op (retrim of seats or dash & gauges). */
       interior: z.number().int().positive(),
     }),
+    /** How many times the base labour a machine-gated operation costs when the
+     * group's machine is neither owned (tier 2+) nor hired today. The gate is a
+     * rate, never a wall: every gated op stays possible at tier 1, just slower,
+     * exactly the bench-recondition philosophy. Hire buys the multiplier back
+     * to 1 for the day, which is the game's cash-versus-labour trade. */
+    machinelessLaborMultiplier: z.number().int().positive(),
     probeAmortisationOps: z.number().int().positive(),
   }),
   /**

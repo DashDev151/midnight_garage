@@ -89,7 +89,6 @@ export function createInitialGameState(
     toolShopsOwned: [],
     pendingPartOrders: [],
     cartPartIds: [],
-    stagedCarWork: {},
     carLedgers: {},
     financeLedger: {},
     machineListing: null,

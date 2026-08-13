@@ -9,15 +9,14 @@ import {
   type ZoneStates,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
-import { planGroupRepair } from '../src/bands'
 import { METAL_ZONE_IDS, TRIM_ZONE_IDS, zonePanelPart } from '../src/bodyPipeline'
 import { buildSimContext } from '../src/context'
+import { isFreeInstallRefit } from '../src/jobs'
 import {
-  clearStagedWork,
-  confirmStagedWork,
-  isFreeInstallRefit,
-  previewPlannedWork,
-} from '../src/stagedWork'
+  resolvePipelineInstallPanelAction,
+  resolvePipelinePaintAction,
+  resolvePipelineRemovePanelAction,
+} from '../src/pipelineActions'
 import {
   buildCarInstance,
   groupCarParts,
@@ -43,52 +42,10 @@ const car: CarInstance = buildCarInstance({
   year: 1984,
   mileageKm: 100_000,
   parts: {
-    // The body group is the whole of what an on-car repair can still address
-    // (every removable part is bench work), so the two-staged-actions test
-    // below spills labour from one body carrier onto another.
     ...groupCarParts({ body: 'poor', engine: 'worn', suspension: 'worn', interior: 'poor' }),
-    // Every slot defaults to a filled stock part, so the staged-install
-    // test below needs a genuinely empty target slot (a group-level
-    // install into an already-occupied slot is refused by installFitGate)
-    // - dampers is the suspension-group part it installs onto.
     dampers: { installed: null },
   },
 })
-
-/** Real labor-slot plans for this fixture car, computed the same way
- * `confirmStagedWork` itself does - tests assert against these rather than
- * a hand-guessed number, so a `parts-taxonomy.json`/tool-line retune can't
- * silently desync the fixture from the assertions. */
-function planFor(groupId: 'body' | 'engine' | 'suspension' | 'interior') {
-  return planGroupRepair(
-    car,
-    groupId,
-    'mint',
-    TOOL_TIERS,
-    CONTEXT.partIdsByGroup,
-    CONTEXT.partsById,
-    CONTEXT.partsTaxonomyById,
-    CONTEXT.economy.restoration.repairStepFraction,
-    CONTEXT.economy.energy.energyPerBandStepByToolTier,
-  )
-}
-
-/** The same plan narrowed to one body carrier, for the per-part staged
- * addresses the shared-budget test below uses. */
-function planForBodyPart(carPartId: 'bodywork' | 'chassis') {
-  return planGroupRepair(
-    car,
-    'body',
-    'mint',
-    TOOL_TIERS,
-    CONTEXT.partIdsByGroup,
-    CONTEXT.partsById,
-    CONTEXT.partsTaxonomyById,
-    CONTEXT.economy.restoration.repairStepFraction,
-    CONTEXT.economy.energy.energyPerBandStepByToolTier,
-    carPartId,
-  )
-}
 
 // `car` (honda-city-e-aa) is 'entry' tier - the fitment-class gate
 // refuses a mismatched-class spare part.
@@ -129,7 +86,6 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     toolTiers: TOOL_TIERS,
     pendingPartOrders: [],
     cartPartIds: [],
-    stagedCarWork: {},
     marketLedger: { lotSupply: {}, playerSales: {} },
     carLedgers: {},
     toolShopsOwned: TOOL_SHOPS_OWNED,
@@ -144,106 +100,6 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
   }
 }
 
-describe('clearStagedWork', () => {
-  it('drops the given car’s staged entry, leaving others untouched', () => {
-    const state = baseState({
-      stagedCarWork: {
-        [car.id]: [{ kind: 'repair', componentId: 'body', targetBand: 'mint' }],
-        'other-car': [{ kind: 'repair', componentId: 'engine', targetBand: 'mint' }],
-      },
-    })
-    const next = clearStagedWork(state, car.id)
-    expect(next.stagedCarWork[car.id]).toBeUndefined()
-    expect(next.stagedCarWork['other-car']).toEqual([
-      { kind: 'repair', componentId: 'engine', targetBand: 'mint' },
-    ])
-  })
-
-  it('is a no-op (same reference) when the car has no staged entry', () => {
-    const state = baseState()
-    expect(clearStagedWork(state, car.id)).toBe(state)
-  })
-})
-
-describe('confirmStagedWork', () => {
-  it('resolves a single staged repair through the normal job/labor machinery', () => {
-    const plan = planFor('body')
-    const state = baseState({
-      stagedCarWork: { [car.id]: [{ kind: 'repair', componentId: 'body', targetBand: 'mint' }] },
-    })
-    const result = confirmStagedWork(state, car.id, plan.laborSlotsRequired, CONTEXT)
-    expect(result.state.ownedCars[0]?.parts.bodywork.installed?.band).toBe('mint')
-    expect(result.state.ownedCars[0]?.parts.aero.installed?.band).toBe('mint')
-    expect(result.log.some((e) => e.type === 'job-completed')).toBe(true)
-  })
-
-  it('resolves a staged install for the exact part instance staged', () => {
-    const state = baseState({
-      // dampers is a suspension signature slot - the install needs the line
-      // hired for the day (suspension is tier 1 in this file's TOOL_TIERS).
-      machineHirePaidDayByGroup: { suspension: 1 },
-      stagedCarWork: {
-        [car.id]: [{ kind: 'install', componentId: 'suspension', partInstanceId: sparePart.id }],
-      },
-    })
-    // Offer a full day's energy so the install completes.
-    const result = confirmStagedWork(state, car.id, 60, CONTEXT)
-    expect(result.state.ownedCars[0]?.parts.dampers.installed?.id).toBe(sparePart.id)
-    expect(result.state.partInventory).toHaveLength(0)
-  })
-
-  it('shares one labor budget across multiple staged actions, in staged order', () => {
-    const bodyworkPlan = planForBodyPart('bodywork')
-    const chassisPlan = planForBodyPart('chassis')
-    // Enough for the bodywork repair (staged first) to complete fully, plus
-    // exactly 1 slot spillover for the chassis (staged second) - a real,
-    // continuable partial job. Both are fixed body carriers, which is the
-    // whole of what an on-car repair addresses now.
-    const offeredLabor = bodyworkPlan.laborSlotsRequired + 1
-    const state = baseState({
-      stagedCarWork: {
-        [car.id]: [
-          { kind: 'repair', componentId: 'body', carPartId: 'bodywork', targetBand: 'mint' },
-          { kind: 'repair', componentId: 'body', carPartId: 'chassis', targetBand: 'mint' },
-        ],
-      },
-    })
-    const result = confirmStagedWork(state, car.id, offeredLabor, CONTEXT)
-    expect(result.state.ownedCars[0]?.parts.bodywork.installed?.band).toBe('mint')
-    expect(result.state.ownedCars[0]?.parts.chassis.installed?.band).toBe('poor') // not yet repaired
-    const chassisJob = result.state.jobs.find((j) => j.carPartId === 'chassis')
-    expect(chassisJob).toBeDefined()
-    expect(chassisJob?.laborSlotsSpent).toBe(1)
-    expect(chassisJob?.laborSlotsRequired).toBe(chassisPlan.laborSlotsRequired)
-  })
-
-  it('the affordability gate still refuses a staged repair at confirm time (Sprint 36: the only gate left)', () => {
-    const state = baseState({
-      cashYen: 0, // can't cover consumables + the repair's real cost
-      stagedCarWork: { [car.id]: [{ kind: 'repair', componentId: 'body', targetBand: 'mint' }] },
-    })
-    const result = confirmStagedWork(state, car.id, 3, CONTEXT)
-    expect(result.state.ownedCars[0]?.parts.bodywork.installed?.band).toBe('poor') // unchanged
-    expect(result.state.jobs).toHaveLength(0)
-  })
-
-  it('clears the staged list unconditionally, even when an action only partially labors', () => {
-    const state = baseState({
-      stagedCarWork: { [car.id]: [{ kind: 'repair', componentId: 'body', targetBand: 'mint' }] },
-    })
-    const result = confirmStagedWork(state, car.id, 1, CONTEXT) // less than the real plan needs
-    expect(result.state.stagedCarWork[car.id]).toBeUndefined()
-    expect(result.state.jobs[0]?.laborSlotsSpent).toBe(1) // left behind, continuable
-  })
-
-  it('is a no-op for a car with no staged entry', () => {
-    const state = baseState()
-    const result = confirmStagedWork(state, car.id, 5, CONTEXT)
-    expect(result.state).toBe(state)
-    expect(result.log).toEqual([])
-  })
-})
-
 /** All nine zones clean (mint, unprimed, present) - the shared starting point
  * every zoneState fixture below overrides from. */
 function cleanZoneStates(overrides: Partial<Record<string, ZoneState>> = {}): ZoneStates {
@@ -257,7 +113,7 @@ function cleanZoneStates(overrides: Partial<Record<string, ZoneState>> = {}): Zo
   return { ...states, ...overrides } as ZoneStates
 }
 
-describe('confirmStagedWork: pipeline-remove-panel / pipeline-install-panel', () => {
+describe('resolvePipelineRemovePanelAction / resolvePipelineInstallPanelAction', () => {
   it('removing then installing harvests the old panel and fits the new one, re-projecting the derived bodywork band', () => {
     // Every zone starts clean except a damaged bonnet (metal severity 2, the
     // 'worn' rung) - the pre-removal state the old panel is harvested at.
@@ -273,7 +129,7 @@ describe('confirmStagedWork: pipeline-remove-panel / pipeline-install-panel', ()
       year: 1984,
       mileageKm: 100_000,
       // Pre-work bodywork band starts deliberately wrong ('poor') so the
-      // post-confirm assertion proves the derived band was re-projected from
+      // post-resolve assertion proves the derived band was re-projected from
       // zone state, not merely left at whatever the fixture set.
       parts: mintCarParts({ bodywork: 'poor' }),
       zoneState,
@@ -288,14 +144,21 @@ describe('confirmStagedWork: pipeline-remove-panel / pipeline-install-panel', ()
       ownedCars: [zoneCar],
       serviceBayCarIds: [zoneCar.id],
       partInventory: [newBonnetPanel],
-      stagedCarWork: {
-        [zoneCar.id]: [
-          { kind: 'pipeline-remove-panel', zoneId: 'bonnet' },
-          { kind: 'pipeline-install-panel', zoneId: 'bonnet', partInstanceId: newBonnetPanel.id },
-        ],
-      },
     })
-    const result = confirmStagedWork(state, zoneCar.id, 10, CONTEXT)
+    const removed = resolvePipelineRemovePanelAction(
+      state,
+      zoneCar.id,
+      { kind: 'pipeline-remove-panel', zoneId: 'bonnet' },
+      CONTEXT,
+      10,
+    )
+    const result = resolvePipelineInstallPanelAction(
+      removed.state,
+      zoneCar.id,
+      { kind: 'pipeline-install-panel', zoneId: 'bonnet', partInstanceId: newBonnetPanel.id },
+      CONTEXT,
+      10,
+    )
 
     // The new panel is consumed from inventory...
     expect(result.state.partInventory.some((p) => p.id === newBonnetPanel.id)).toBe(false)
@@ -316,6 +179,57 @@ describe('confirmStagedWork: pipeline-remove-panel / pipeline-install-panel', ()
     // plus the already-clean remaining zones.
     expect(result.state.ownedCars[0]?.zoneState?.bonnet.metal).toBe(0)
     expect(result.state.ownedCars[0]?.parts.bodywork.installed?.band).toBe('mint')
+  })
+
+  it('a panel removed and refitted unchanged keeps its paint; a bought panel installs bare (Sprint 202)', () => {
+    // The bonnet starts painted and straight: finish 1 (fine paint), a colour,
+    // sound metal. Pulling it and putting the SAME instance back must restore
+    // exactly that paint state; only new or repaired panels owe a respray.
+    const zoneState = cleanZoneStates({
+      bonnet: {
+        metal: 0,
+        surface: 0,
+        finish: 1,
+        panelMissing: false,
+        primed: false,
+        colour: 'red',
+      },
+    })
+    const zoneCar: CarInstance = buildCarInstance({
+      id: 'car-0002',
+      modelId: 'honda-city-e-aa',
+      year: 1984,
+      mileageKm: 100_000,
+      parts: mintCarParts(),
+      zoneState,
+    })
+    const state = baseState({
+      ownedCars: [zoneCar],
+      serviceBayCarIds: [zoneCar.id],
+    })
+    const removed = resolvePipelineRemovePanelAction(
+      state,
+      zoneCar.id,
+      { kind: 'pipeline-remove-panel', zoneId: 'bonnet' },
+      CONTEXT,
+      10,
+    )
+    const harvested = removed.state.partInventory.find((p) => p.origin.kind === 'car')
+    expect(harvested?.panelState).toEqual({ finish: 1, primed: false, colour: 'red', surface: 0 })
+
+    const refitted = resolvePipelineInstallPanelAction(
+      removed.state,
+      zoneCar.id,
+      { kind: 'pipeline-install-panel', zoneId: 'bonnet', partInstanceId: harvested!.id },
+      CONTEXT,
+      100,
+    )
+    const bonnet = refitted.state.ownedCars[0]?.zoneState?.bonnet
+    expect(bonnet?.finish).toBe(1)
+    expect(bonnet?.colour).toBe('red')
+    expect(bonnet?.primed).toBe(false)
+    // The paint carrier does not read poor: the refit restored the finish.
+    expect(refitted.state.ownedCars[0]?.parts.paint.installed?.band).not.toBe('poor')
   })
 
   it('installing into an already-empty zone needs no remove step first', () => {
@@ -341,13 +255,14 @@ describe('confirmStagedWork: pipeline-remove-panel / pipeline-install-panel', ()
       ownedCars: [zoneCar],
       serviceBayCarIds: [zoneCar.id],
       partInventory: [newBootPanel],
-      stagedCarWork: {
-        [zoneCar.id]: [
-          { kind: 'pipeline-install-panel', zoneId: 'boot', partInstanceId: newBootPanel.id },
-        ],
-      },
     })
-    const result = confirmStagedWork(state, zoneCar.id, 10, CONTEXT)
+    const result = resolvePipelineInstallPanelAction(
+      state,
+      zoneCar.id,
+      { kind: 'pipeline-install-panel', zoneId: 'boot', partInstanceId: newBootPanel.id },
+      CONTEXT,
+      10,
+    )
     expect(result.state.partInventory.some((p) => p.id === newBootPanel.id)).toBe(false)
     // Nothing was there to harvest, so nothing new landed in inventory.
     expect(result.state.partInventory).toHaveLength(0)
@@ -379,14 +294,21 @@ describe('confirmStagedWork: pipeline-remove-panel / pipeline-install-panel', ()
       ownedCars: [zoneCar],
       serviceBayCarIds: [zoneCar.id],
       partInventory: [sparePanel],
-      stagedCarWork: {
-        [zoneCar.id]: [
-          { kind: 'pipeline-remove-panel', zoneId: 'boot' }, // already missing
-          { kind: 'pipeline-install-panel', zoneId: 'bonnet', partInstanceId: sparePanel.id }, // already occupied
-        ],
-      },
     })
-    const result = confirmStagedWork(state, zoneCar.id, 10, CONTEXT)
+    const removedNoop = resolvePipelineRemovePanelAction(
+      state,
+      zoneCar.id,
+      { kind: 'pipeline-remove-panel', zoneId: 'boot' }, // already missing
+      CONTEXT,
+      10,
+    )
+    const result = resolvePipelineInstallPanelAction(
+      removedNoop.state,
+      zoneCar.id,
+      { kind: 'pipeline-install-panel', zoneId: 'bonnet', partInstanceId: sparePanel.id }, // already occupied
+      CONTEXT,
+      10,
+    )
     // Neither action moved anything: the spare panel is still sitting loose,
     // the bonnet's original panel is still fitted, and boot is still missing.
     expect(result.state.partInventory).toEqual([sparePanel])
@@ -415,26 +337,22 @@ describe('confirmStagedWork: pipeline-remove-panel / pipeline-install-panel', ()
       band: 'mint',
       origin: { kind: 'market', day: 1 },
     }
-    const staged = {
-      [zoneCar.id]: [
-        {
-          kind: 'pipeline-install-panel' as const,
-          zoneId: 'boot' as const,
-          partInstanceId: panelInstance.id,
-        },
-      ],
+    const action = {
+      kind: 'pipeline-install-panel' as const,
+      zoneId: 'boot' as const,
+      partInstanceId: panelInstance.id,
     }
-    const blocked = confirmStagedWork(
+    const blocked = resolvePipelineInstallPanelAction(
       baseState({
         ownedCars: [zoneCar],
         serviceBayCarIds: [zoneCar.id],
         partInventory: [panelInstance],
-        stagedCarWork: staged,
         toolTiers: testToolTiers({ body: 1 }),
       }),
       zoneCar.id,
-      10,
+      action,
       CONTEXT,
+      10,
     )
     expect(blocked.log).toEqual([
       {
@@ -446,17 +364,17 @@ describe('confirmStagedWork: pipeline-remove-panel / pipeline-install-panel', ()
     expect(blocked.state.ownedCars[0]?.zoneState?.boot.panelMissing).toBe(true)
     expect(blocked.state.partInventory).toEqual([panelInstance])
 
-    const allowed = confirmStagedWork(
+    const allowed = resolvePipelineInstallPanelAction(
       baseState({
         ownedCars: [zoneCar],
         serviceBayCarIds: [zoneCar.id],
         partInventory: [panelInstance],
-        stagedCarWork: staged,
         toolTiers: testToolTiers({ body: 2 }),
       }),
       zoneCar.id,
-      10,
+      action,
       CONTEXT,
+      10,
     )
     expect(allowed.log).toEqual([])
     expect(allowed.state.ownedCars[0]?.zoneState?.boot.panelMissing).toBe(false)
@@ -464,65 +382,7 @@ describe('confirmStagedWork: pipeline-remove-panel / pipeline-install-panel', ()
   })
 })
 
-/**
- * Confirm resolves through the sim's own gates, so a staged action that
- * cannot happen comes back with the gate's reason rather than disappearing.
- * `confirmStagedWork` used to skip building a spec at all when the group had
- * nothing to climb, which swallowed exactly the two refusals a player most
- * needs to read.
- */
-describe('confirmStagedWork lets repairJobGate answer for an empty plan', () => {
-  it("reports 'beyond-repair' for a group whose only work is past saving", () => {
-    const scrapChassisCar: CarInstance = buildCarInstance({
-      id: 'car-scrap-chassis',
-      modelId: 'honda-city-e-aa',
-      parts: mintCarParts({ chassis: 'scrap' }),
-    })
-    const state = baseState({
-      ownedCars: [scrapChassisCar],
-      serviceBayCarIds: [scrapChassisCar.id],
-      stagedCarWork: {
-        [scrapChassisCar.id]: [{ kind: 'repair', componentId: 'body', targetBand: 'mint' }],
-      },
-    })
-    const result = confirmStagedWork(state, scrapChassisCar.id, 20, CONTEXT)
-    expect(result.log).toEqual([
-      {
-        type: 'job-blocked',
-        jobId: `job-${scrapChassisCar.id}-repair-zone-body`,
-        reason: 'beyond-repair',
-      },
-    ])
-    expect(result.state.jobs).toEqual([])
-    expect(result.state.cashYen).toBe(state.cashYen)
-  })
-
-  it("reports 'nothing-to-repair' for a group that is already there", () => {
-    const mintCar: CarInstance = buildCarInstance({
-      id: 'car-all-mint',
-      modelId: 'honda-city-e-aa',
-      parts: mintCarParts(),
-    })
-    const state = baseState({
-      ownedCars: [mintCar],
-      serviceBayCarIds: [mintCar.id],
-      stagedCarWork: {
-        [mintCar.id]: [{ kind: 'repair', componentId: 'body', targetBand: 'mint' }],
-      },
-    })
-    const result = confirmStagedWork(state, mintCar.id, 20, CONTEXT)
-    expect(result.log).toEqual([
-      {
-        type: 'job-blocked',
-        jobId: `job-${mintCar.id}-repair-zone-body`,
-        reason: 'nothing-to-repair',
-      },
-    ])
-    expect(result.state.jobs).toEqual([])
-  })
-})
-
-describe('confirmStagedWork: pipeline-paint', () => {
+describe('resolvePipelinePaintAction', () => {
   const primed = { finish: 3, panelMissing: false, primed: true }
 
   function paintCar(): CarInstance {
@@ -558,14 +418,15 @@ describe('confirmStagedWork: pipeline-paint', () => {
       // One use of metallic kaido-blue on the shelf - exactly enough for
       // this one zone.
       consumableStock: { 'paint:metallic:kaido-blue': 1 },
-      stagedCarWork: {
-        [zoneCar.id]: [
-          { kind: 'pipeline-paint', zoneId: 'bonnet', colour: 'kaido-blue', grade: 'sport' },
-        ],
-      },
     })
-    const result = confirmStagedWork(state, zoneCar.id, 10, CONTEXT)
-    // The tin was already paid for when it was bought - confirming the
+    const result = resolvePipelinePaintAction(
+      state,
+      zoneCar.id,
+      { kind: 'pipeline-paint', zoneId: 'bonnet', colour: 'kaido-blue', grade: 'sport' },
+      CONTEXT,
+      10,
+    )
+    // The tin was already paid for when it was bought - resolving the
     // stage spends stock, not cash.
     expect(result.state.cashYen).toBe(state.cashYen)
     expect(result.state.consumableStock?.['paint:metallic:kaido-blue']).toBe(0)
@@ -581,11 +442,14 @@ describe('confirmStagedWork: pipeline-paint', () => {
       ownedCars: [zoneCar],
       serviceBayCarIds: [zoneCar.id],
       consumableStock: { 'paint:solid:white': 1 },
-      stagedCarWork: {
-        [zoneCar.id]: [{ kind: 'pipeline-paint', zoneId: 'boot', colour: 'white', grade: 'stock' }],
-      },
     })
-    const result = confirmStagedWork(state, zoneCar.id, 10, CONTEXT)
+    const result = resolvePipelinePaintAction(
+      state,
+      zoneCar.id,
+      { kind: 'pipeline-paint', zoneId: 'boot', colour: 'white', grade: 'stock' },
+      CONTEXT,
+      10,
+    )
     expect(result.state.cashYen).toBe(state.cashYen)
     expect(result.state.consumableStock?.['paint:solid:white']).toBe(0)
     expect(result.state.ownedCars[0]?.zoneState?.boot.colour).toBe('white')
@@ -600,13 +464,14 @@ describe('confirmStagedWork: pipeline-paint', () => {
       serviceBayCarIds: [zoneCar.id],
       // Refused on colour before stock is ever read, so the shelf is
       // deliberately left bare here.
-      stagedCarWork: {
-        [zoneCar.id]: [
-          { kind: 'pipeline-paint', zoneId: 'front-bumper', colour: 'kaido-blue', grade: 'stock' },
-        ],
-      },
     })
-    const result = confirmStagedWork(state, zoneCar.id, 10, CONTEXT)
+    const result = resolvePipelinePaintAction(
+      state,
+      zoneCar.id,
+      { kind: 'pipeline-paint', zoneId: 'front-bumper', colour: 'kaido-blue', grade: 'stock' },
+      CONTEXT,
+      10,
+    )
     expect(result.state.cashYen).toBe(state.cashYen)
     expect(result.state.ownedCars[0]?.zoneState?.['front-bumper']).toEqual(primed)
     expect(result.state.ownedCars[0]?.parts.paint.installed?.partId).toBe(
@@ -622,13 +487,14 @@ describe('confirmStagedWork: pipeline-paint', () => {
       // The shelf holds the wrong colour entirely - not a shortfall, an
       // absence.
       consumableStock: { 'paint:metallic:white': 5 },
-      stagedCarWork: {
-        [zoneCar.id]: [
-          { kind: 'pipeline-paint', zoneId: 'bonnet', colour: 'kaido-blue', grade: 'sport' },
-        ],
-      },
     })
-    const result = confirmStagedWork(state, zoneCar.id, 10, CONTEXT)
+    const result = resolvePipelinePaintAction(
+      state,
+      zoneCar.id,
+      { kind: 'pipeline-paint', zoneId: 'bonnet', colour: 'kaido-blue', grade: 'sport' },
+      CONTEXT,
+      10,
+    )
     expect(result.state.cashYen).toBe(state.cashYen)
     expect(result.state.consumableStock).toEqual(state.consumableStock)
     expect(result.state.ownedCars[0]?.zoneState?.bonnet.colour).toBeUndefined()
@@ -639,71 +505,6 @@ describe('confirmStagedWork: pipeline-paint', () => {
         reason: 'out-of-stock',
       },
     ])
-  })
-})
-
-describe('previewPlannedWork (Sprint 48)', () => {
-  it('projects a planned group repair without spending cash, labor, or creating a job', () => {
-    const state = baseState({
-      stagedCarWork: { [car.id]: [{ kind: 'repair', componentId: 'body', targetBand: 'mint' }] },
-    })
-    const preview = previewPlannedWork(state, car.id, CONTEXT)
-    expect(preview?.parts.bodywork.installed?.band).toBe('mint')
-    expect(preview?.parts.aero.installed?.band).toBe('mint')
-    // Nothing in state itself changed - this is a pure projection.
-    expect(state.cashYen).toBe(5_000_000)
-    expect(state.jobs).toHaveLength(0)
-    expect(state.ownedCars[0]?.parts.bodywork.installed?.band).toBe('poor')
-  })
-
-  it('projects a planned per-part repair, leaving sibling parts in the group untouched', () => {
-    const state = baseState({
-      stagedCarWork: {
-        [car.id]: [
-          { kind: 'repair', componentId: 'body', targetBand: 'mint', carPartId: 'bodywork' },
-        ],
-      },
-    })
-    const preview = previewPlannedWork(state, car.id, CONTEXT)
-    expect(preview?.parts.bodywork.installed?.band).toBe('mint')
-    expect(preview?.parts.aero.installed?.band).toBe('poor') // untouched - not the addressed part
-  })
-
-  it('projects a planned install onto the addressed slot', () => {
-    const state = baseState({
-      stagedCarWork: {
-        [car.id]: [{ kind: 'install', componentId: 'suspension', partInstanceId: sparePart.id }],
-      },
-    })
-    const preview = previewPlannedWork(state, car.id, CONTEXT)
-    expect(preview?.parts.dampers.installed?.id).toBe(sparePart.id)
-    // The real inventory is untouched - a preview never mutates state.
-    expect(state.partInventory).toHaveLength(1)
-  })
-
-  it('projects multiple staged actions together, in order', () => {
-    const state = baseState({
-      stagedCarWork: {
-        [car.id]: [
-          { kind: 'repair', componentId: 'body', targetBand: 'fine' },
-          { kind: 'install', componentId: 'suspension', partInstanceId: sparePart.id },
-        ],
-      },
-    })
-    const preview = previewPlannedWork(state, car.id, CONTEXT)
-    expect(preview?.parts.bodywork.installed?.band).toBe('fine')
-    expect(preview?.parts.dampers.installed?.id).toBe(sparePart.id)
-  })
-
-  it('is a no-op projection (returns the real car unchanged) for a car with nothing planned', () => {
-    const state = baseState()
-    const preview = previewPlannedWork(state, car.id, CONTEXT)
-    expect(preview?.parts.bodywork.installed?.band).toBe('poor')
-  })
-
-  it('returns null for an unknown car', () => {
-    const state = baseState()
-    expect(previewPlannedWork(state, 'no-such-car', CONTEXT)).toBeNull()
   })
 })
 

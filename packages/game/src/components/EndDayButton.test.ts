@@ -1,4 +1,4 @@
-import { CARS, PARTS } from '@midnight-garage/content'
+import { PARTS } from '@midnight-garage/content'
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -18,6 +18,54 @@ function track<T extends VueWrapper>(wrapper: T): T {
 afterEach(() => {
   for (const wrapper of mountedWrappers.splice(0)) wrapper.unmount()
 })
+
+/**
+ * Puts a real accepted service job into the "work is genuinely done, still
+ * on the ramp" state - the second warning source alongside the cart, used to
+ * prove the stack shows more than one line at once.
+ */
+function finishJobAwaitingHandback(game: ReturnType<typeof useGameStore>): string {
+  game.newGame(1)
+  // The radial-offer gate keeps a tutorial career's board Yuki-only, so
+  // the offer is obtained legitimately post-skip. The gate lifts at the
+  // next generation point.
+  game.skipTutorial()
+  for (let i = 0; i < 20 && game.serviceJobOffers.length === 0; i++) game.endDay()
+  const offer = game.serviceJobOffers[0]
+  if (!offer) throw new Error('expected an offer on the board')
+  game.acceptServiceJob(offer.id)
+  game.endDay() // the customer's car arrives
+
+  // Force the job's work genuinely done, rather than hoping a rolled car
+  // happens to satisfy its own tasks (it does not - measured). The target
+  // band is set to the band the part ALREADY has, so `isServiceTaskDone`
+  // is satisfied for real through the normal rule, not a stubbed flag.
+  const job = game.gameState.activeServiceJobs.find((j) => j.id === offer.id)
+  if (!job) throw new Error('expected the accepted job to be active')
+  const band = job.car.parts.bodywork.installed?.band
+  if (!band) throw new Error('expected the rolled car to have bodywork fitted')
+  game.gameState = {
+    ...game.gameState,
+    activeServiceJobs: game.gameState.activeServiceJobs.map((j) =>
+      j.id === offer.id
+        ? {
+            ...j,
+            tasks: [
+              {
+                requirement: {
+                  kind: 'slotCondition' as const,
+                  carPartId: 'bodywork' as const,
+                  minBand: band,
+                },
+                minToolTier: 1 as const,
+              },
+            ],
+          }
+        : j,
+    ),
+  }
+  return offer.id
+}
 
 describe('EndDayButton', () => {
   beforeEach(() => setActivePinia(createPinia()))
@@ -72,65 +120,11 @@ describe('EndDayButton', () => {
   })
 
   describe('the warning stack', () => {
-    it('warns about planned work that was never confirmed, and does not end the day', async () => {
-      const game = useGameStore()
-      game.devGrantCar(CARS[0]!.id)
-      const carId = game.gameState.ownedCars[0]!.id
-      game.stageAction(carId, { kind: 'repair', componentId: 'body', targetBand: 'mint' })
-      const dayBefore = game.gameState.day
-      const wrapper = track(mount(EndDayButton))
-
-      await wrapper.find('[data-test="end-day"]').trigger('click')
-
-      const warnings = wrapper.find('[data-test="end-day-warnings"]')
-      expect(warnings.exists()).toBe(true)
-      expect(warnings.text()).toContain("haven't confirmed it")
-      expect(game.gameState.day).toBe(dayBefore)
-    })
-
     it('warns about a finished job nobody handed back', async () => {
       const game = useGameStore()
-      game.newGame(1)
-      // The radial-offer gate keeps a tutorial career's board Yuki-only, so
-      // the offer is obtained legitimately post-skip. The gate lifts at the
-      // next generation point.
-      game.skipTutorial()
-      for (let i = 0; i < 20 && game.serviceJobOffers.length === 0; i++) game.endDay()
-      const offer = game.serviceJobOffers[0]
-      if (!offer) throw new Error('expected an offer on the board')
-      game.acceptServiceJob(offer.id)
-      game.endDay() // the customer's car arrives
-
-      // Force the job's work genuinely done, rather than hoping a rolled car
-      // happens to satisfy its own tasks (it does not - measured). The target
-      // band is set to the band the part ALREADY has, so `isServiceTaskDone`
-      // is satisfied for real through the normal rule, not a stubbed flag.
-      const job = game.gameState.activeServiceJobs.find((j) => j.id === offer.id)
-      if (!job) throw new Error('expected the accepted job to be active')
-      const band = job.car.parts.bodywork.installed?.band
-      if (!band) throw new Error('expected the rolled car to have bodywork fitted')
-      game.gameState = {
-        ...game.gameState,
-        activeServiceJobs: game.gameState.activeServiceJobs.map((j) =>
-          j.id === offer.id
-            ? {
-                ...j,
-                tasks: [
-                  {
-                    requirement: {
-                      kind: 'slotCondition' as const,
-                      carPartId: 'bodywork' as const,
-                      minBand: band,
-                    },
-                    minToolTier: 1 as const,
-                  },
-                ],
-              }
-            : j,
-        ),
-      }
+      const offerId = finishJobAwaitingHandback(game)
       // The state really is "finished, still on the ramp" - asserted, not assumed.
-      expect(game.finishedJobsAwaitingHandback.map((j) => j.id)).toContain(offer.id)
+      expect(game.finishedJobsAwaitingHandback.map((j) => j.id)).toContain(offerId)
 
       const wrapper = track(mount(EndDayButton))
       await wrapper.find('[data-test="end-day"]').trigger('click')
@@ -139,9 +133,7 @@ describe('EndDayButton', () => {
 
     it('stacks every warning into ONE panel rather than a modal each', async () => {
       const game = useGameStore()
-      game.devGrantCar(CARS[0]!.id)
-      const carId = game.gameState.ownedCars[0]!.id
-      game.stageAction(carId, { kind: 'repair', componentId: 'body', targetBand: 'mint' })
+      finishJobAwaitingHandback(game)
       game.addToCart(PARTS[0]!.id)
       const wrapper = track(mount(EndDayButton))
 
@@ -153,9 +145,7 @@ describe('EndDayButton', () => {
 
     it('warns but never blocks - confirming still ends the day', async () => {
       const game = useGameStore()
-      game.devGrantCar(CARS[0]!.id)
-      const carId = game.gameState.ownedCars[0]!.id
-      game.stageAction(carId, { kind: 'repair', componentId: 'body', targetBand: 'mint' })
+      finishJobAwaitingHandback(game)
       const dayBefore = game.gameState.day
       const wrapper = track(mount(EndDayButton))
 

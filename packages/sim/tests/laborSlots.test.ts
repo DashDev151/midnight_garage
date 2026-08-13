@@ -40,7 +40,6 @@ function baseState(staff: StaffMember[]): GameState {
     toolTiers: testToolTiers(),
     pendingPartOrders: [],
     cartPartIds: [],
-    stagedCarWork: {},
     marketLedger: { lotSupply: {}, playerSales: {} },
     carLedgers: {},
     toolShopsOwned: [],

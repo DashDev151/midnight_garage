@@ -5,14 +5,20 @@ import { PanelZoneIdSchema, ZoneIdSchema } from './zone'
 import { PipelineStageIdSchema } from './material'
 
 /**
- * One piece of work the player intends to do on a car but hasn't committed to
- * yet - staged freely, at zero cost, until Confirm resolves the whole list at
- * once through the existing job/labor system. Mirrors `ServiceJobWorkSchema`'s
- * repair/install split, but carries the specific `partInstanceId` for an
- * install stage (the drag gesture onto a component row *is* the part choice).
+ * One unit of work the player asks for - repair, install, or one of the
+ * four body-pipeline ops - resolved the moment it's clicked, against
+ * today's remaining labour, through the immediate resolvers in
+ * sim/jobs.ts and sim/pipelineActions.ts. There is no staging or Confirm
+ * step anywhere in this game: this type exists purely as the shared
+ * parameter shape those resolvers (and the store functions that call them)
+ * take, so a work-address lookup, a cost preview, and the actual resolution
+ * all describe "which action" the same way. Mirrors
+ * `ServiceJobWorkSchema`'s repair/install split, but carries the specific
+ * `partInstanceId` for an install (the drag gesture onto a component row
+ * *is* the part choice).
  *
- * A repair stage has `targetBand` - the player chooses how far to climb, not
- * always mint; Confirm climbs every non-mint, non-scrap part in the group
+ * A repair action has `targetBand` - the player chooses how far to climb, not
+ * always mint; resolution climbs every non-mint, non-scrap part in the group
  * toward it, labor allowing.
  *
  * Both kinds gain an optional `carPartId` - the per-part address added
@@ -92,7 +98,5 @@ export const StagedActionSchema = z.discriminatedUnion('kind', [
     grade: GradeSchema,
   }),
 ])
-
-export const StagedActionsSchema = z.array(StagedActionSchema)
 
 export type StagedAction = z.infer<typeof StagedActionSchema>

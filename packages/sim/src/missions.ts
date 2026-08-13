@@ -18,7 +18,6 @@ import { evaluateRequirement, type RequirementResult } from './requirements'
 import { createRng, hashStringToSeed } from './rng'
 import { creditSceneDelivery } from './sceneStanding'
 import { dissolveAssembliesForCar } from './assemblies'
-import { clearStagedWork } from './stagedWork'
 
 export interface MissionResolution {
   state: GameState
@@ -207,7 +206,7 @@ export function resolveDeliverMission(
   }
 
   const clearedState = dissolveAssembliesForCar(
-    clearStagedWork(releaseCarFromShop(state, carInstanceId), carInstanceId),
+    releaseCarFromShop(state, carInstanceId),
     carInstanceId,
   )
   const withReputation = applyReputationDelta(

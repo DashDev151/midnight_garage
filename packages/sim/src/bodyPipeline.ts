@@ -21,6 +21,7 @@ import {
   type PanelZoneId,
   type Part,
   type PartFitmentClass,
+  type PartInstance,
   type PipelineStageId,
   type ZoneId,
   type ZoneState,
@@ -1064,18 +1065,26 @@ export function planInstallPanel(
   zone: ZoneState,
   panelBand: ConditionBand,
   grade: Grade = 'stock',
+  captured?: PartInstance['panelState'],
 ): ZoneState {
   if (isMetalZoneState(zone)) {
     return {
       metal: severityThresholdForBand(panelBand),
-      surface: 0,
-      finish: BARE_FINISH,
+      surface: captured?.surface ?? 0,
+      finish: captured?.finish ?? BARE_FINISH,
       panelMissing: false,
-      primed: false,
+      primed: captured?.primed ?? false,
+      ...(captured?.colour ? { colour: captured.colour } : {}),
       panelGrade: grade,
     }
   }
-  return { finish: BARE_FINISH, panelMissing: false, primed: false, panelGrade: grade }
+  return {
+    finish: captured?.finish ?? BARE_FINISH,
+    panelMissing: false,
+    primed: captured?.primed ?? false,
+    ...(captured?.colour ? { colour: captured.colour } : {}),
+    panelGrade: grade,
+  }
 }
 
 /** What pulling a zone's panel off leaves behind: missing, and otherwise

@@ -95,7 +95,6 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     toolTiers: testToolTiers(),
     pendingPartOrders: [],
     cartPartIds: [],
-    stagedCarWork: {},
     marketLedger: { lotSupply: {}, playerSales: {} },
     carLedgers: {},
     toolShopsOwned: [],
@@ -365,7 +364,9 @@ describe('worked example: the tyre change (binding total)', () => {
     }
   })
 
-  it('fitting a tyre on the bench refuses without the wheels line owned or hired today, and proceeds once hired', () => {
+  it('fitting a tyre on the bench without the wheels line costs the machine-less labour rate; hired, it costs base labour', () => {
+    const multiplier = CONTEXT.economy.machineShopAssist.machinelessLaborMultiplier
+    const benchFit = CONTEXT.economy.energy.actionPoints.benchFitMember
     const car = wheelsWornCar()
     const tyre = newTyre('pi-tyre-gate')
     const ungated = baseState({
@@ -377,20 +378,15 @@ describe('worked example: the tyre change (binding total)', () => {
     })
     const off = resolveRemoveAssembly(ungated, car.id, 'wheelAssembly', CONTEXT)
     const container = off.state.assemblyInventory![0]!
-    const blockedSwap = resolveSwapAssemblyMember(
-      off.state,
-      container.id,
-      'tyres',
-      tyre.id,
-      CONTEXT,
-    )
-    expect(blockedSwap.ok).toBe(false)
-    expect(blockedSwap.state).toBe(off.state)
+    const byHand = resolveSwapAssemblyMember(off.state, container.id, 'tyres', tyre.id, CONTEXT)
+    expect(byHand.ok).toBe(true)
+    expect(byHand.state.assemblyInventory![0]!.members.tyres!.id).toBe(tyre.id)
+    expect(byHand.state.energySpentToday - off.state.energySpentToday).toBe(benchFit * multiplier)
 
     const hired = { ...off.state, machineHirePaidDayByGroup: { wheels: off.state.day } }
     const swap = resolveSwapAssemblyMember(hired, container.id, 'tyres', tyre.id, CONTEXT)
     expect(swap.ok).toBe(true)
-    expect(swap.state.assemblyInventory![0]!.members.tyres!.id).toBe(tyre.id)
+    expect(swap.state.energySpentToday - hired.energySpentToday).toBe(benchFit)
   })
 })
 
@@ -439,7 +435,8 @@ describe('worked example: worn internals (binding total)', () => {
     }
   })
 
-  it('refuses remove and refit alike without the engine line owned or hired today, and proceeds once hired', () => {
+  it('remove and refit both proceed without the engine line at the machine-less labour rate; hired, both run at base labour', () => {
+    const multiplier = CONTEXT.economy.machineShopAssist.machinelessLaborMultiplier
     const internals: PartInstance = {
       id: 'pi-internals-gate',
       partId: CONTEXT.stockPartByCarPartId.entry!.internals!.id,
@@ -458,23 +455,26 @@ describe('worked example: worn internals (binding total)', () => {
       machineHirePaidDayByGroup: {},
     })
 
-    // Remove refuses without the line.
-    const blockedOff = resolveRemoveAssembly(ungated, car.id, 'engineAssembly', CONTEXT)
-    expect(blockedOff.ok).toBe(false)
-    expect(blockedOff.state).toBe(ungated)
+    // By hand: the pull proceeds at the multiplied labour rate.
+    const removeBase = 4 * CONTEXT.economy.energy.actionPoints.removePart
+    const byHandOff = resolveRemoveAssembly(ungated, car.id, 'engineAssembly', CONTEXT)
+    expect(byHandOff.ok).toBe(true)
+    expect(byHandOff.laborSlotsUsed).toBe(removeBase * multiplier)
 
-    // Hired for the day: remove proceeds.
+    // Hired for the day: the same pull at base labour.
     const hired = { ...ungated, machineHirePaidDayByGroup: { engine: ungated.day } }
     const off = resolveRemoveAssembly(hired, car.id, 'engineAssembly', CONTEXT)
     expect(off.ok).toBe(true)
+    expect(off.laborSlotsUsed).toBe(removeBase)
     const container = off.state.assemblyInventory![0]!
 
-    // Refit checks the same gate independently against whatever state it's
-    // given - refuses if that state's hire record is stripped away...
+    // Refit prices the same way against whatever state it is given: the
+    // stripped-hire state pays the multiplier, the still-hired one does not.
+    // Every member matches its vacatedBaseline here, so base refit labour is
+    // the assembly overhead alone (0 at shipped tuning) and both run free.
     const strippedHire = { ...off.state, machineHirePaidDayByGroup: {} }
-    expect(resolveRefitAssembly(strippedHire, container.id, CONTEXT).ok).toBe(false)
-
-    // ...and proceeds against the real, still-hired state.
+    const byHandOn = resolveRefitAssembly(strippedHire, container.id, CONTEXT)
+    expect(byHandOn.ok).toBe(true)
     const on = resolveRefitAssembly(off.state, container.id, CONTEXT)
     expect(on.ok).toBe(true)
     expect(on.state.ownedCars[0]!.parts.internals.installed!.id).toBe(internals.id)

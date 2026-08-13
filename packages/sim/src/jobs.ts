@@ -10,6 +10,7 @@ import {
   type MachineGateOperation,
   type Part,
   type PartInstance,
+  type StagedAction,
   type ToolLevel,
 } from '@midnight-garage/content'
 import type { NewJobSpec } from './actions'
@@ -81,6 +82,32 @@ export function refitLaborSlotsFor(
     return context.economy.energy.actionPoints.refitUnchangedMember
   }
   return installLaborSlotsFor(carPartId, context)
+}
+
+/**
+ * Whether installing `action` onto `carInstanceId` right now would resolve
+ * for FREE - zero labour (the picked instance matches the target slot's own
+ * vacated baseline exactly, the equivalence refit `refitLaborSlotsFor` prices
+ * free) - independent of whether it's also machine-shop gated (a zero-labour
+ * refit is free at the machine-less multiplier too, since zero times any
+ * multiplier is still zero). Every install in this game resolves instantly
+ * on click; this only tells a caller whether that click would spend
+ * anything, so the UI can render a free refit's button without a cost
+ * figure. `false` for an unresolvable car/part/slot - the caller's own fit
+ * gate has already refused those before this ever runs.
+ */
+export function isFreeInstallRefit(
+  state: GameState,
+  carInstanceId: string,
+  action: Extract<StagedAction, { kind: 'install' }>,
+  context: SimContext,
+): boolean {
+  const car = findWorkableCar(state, carInstanceId)
+  const partInstance = state.partInventory.find((p) => p.id === action.partInstanceId)
+  const catalogPart = partInstance ? context.partsById[partInstance.partId] : undefined
+  const targetPartId = action.carPartId ?? catalogPart?.carPartId
+  if (!car || !partInstance || !targetPartId) return false
+  return refitLaborSlotsFor(car, targetPartId, partInstance, context) === 0
 }
 
 /**
@@ -176,13 +203,14 @@ export function isPartLevelJob(job: Job, context: SimContext): boolean {
 export interface JobCompletionResult {
   state: GameState
   /**
-   * Non-null when a completed install-part job could not actually apply:
-   * its target slot was already occupied ('slot-occupied'), or its group's
-   * machine line is neither owned nor hired today ('machine-line'). The
+   * Non-null when a completed install-part job could not actually apply
+   * because its target slot was already occupied ('slot-occupied'). The
    * caller logs a job-blocked event with this reason and leaves the job
-   * open to retry.
+   * open to retry. A missing machine line no longer blocks completion: the
+   * job's labour was sized at the machine-less rate when it was created
+   * (`machineLaborMultiplier` in `findOrCreateJob`).
    */
-  blockedReason: 'slot-occupied' | 'machine-line' | null
+  blockedReason: 'slot-occupied' | null
 }
 
 interface CarEffect {
@@ -325,7 +353,15 @@ function completeReconditionJob(state: GameState, job: Job, context: SimContext)
   ) {
     return state
   }
-  return updateLoosePart(state, job.partInstanceId, (inst) => ({ ...inst, band: targetBand }))
+  // Reconditioning a harvested body panel is metal work, and metal work ruins
+  // paint: the captured zone paint state is stripped, so the panel goes back
+  // on bare and honestly owes a respray. An untouched panel keeps its
+  // `panelState` and its paint (see `PartInstanceSchema.panelState`).
+  return updateLoosePart(state, job.partInstanceId, (inst) => {
+    const next = { ...inst, band: targetBand }
+    delete next.panelState
+    return next
+  })
 }
 
 /**
@@ -353,19 +389,6 @@ export function completeJob(state: GameState, job: Job, context: SimContext): Jo
   // `applyJobToCar`'s, which only knows how to do those two things.
   if (job.kind === 'machine-part') {
     return { state: completeMachiningJob(state, job, context), blockedReason: null }
-  }
-
-  if (job.kind === 'install-part') {
-    // A buried engine/drivetrain fit or a suspension/body/interior
-    // signature fit needs that group's machinery - owned outright, or
-    // hired for today. Checked before the part ever touches the car, so a
-    // blocked install leaves the car and the job untouched, exactly like
-    // the occupied-slot block below.
-    const carPartId = installTargetCarPartId(state, job, context)
-    const machineGroup = carPartId ? machineGateGroupFor(carPartId, 'install', context) : null
-    if (machineGroup && !hasMachineLineFor(machineGroup, state, context)) {
-      return { state, blockedReason: 'machine-line' }
-    }
   }
 
   const ownedIndex = state.ownedCars.findIndex((c) => c.id === job.carInstanceId)
@@ -499,6 +522,25 @@ export function hasMachineLineFor(
 }
 
 /**
+ * The labour rate a machine-gated operation pays: 1 with the group's machine
+ * (owned tier 2+, or hired today), `machineShopAssist.machinelessLaborMultiplier`
+ * without it. The machine gate is a RATE, never a wall: every gated operation
+ * stays possible at tier 1, just slower, the same philosophy the bench
+ * recondition path states outright. Hiring the line buys the day's work back
+ * to base rate, which is the cash-versus-labour trade. `group` may be null
+ * (the op is not gated at all) for callers passing `machineGateGroupFor`'s
+ * answer straight through.
+ */
+export function machineLaborMultiplier(
+  group: ComponentId | null,
+  state: GameState,
+  context: SimContext,
+): number {
+  if (!group || hasMachineLineFor(group, state, context)) return 1
+  return context.economy.machineShopAssist.machinelessLaborMultiplier
+}
+
+/**
  * The cash fee a REMOVAL-gated operation on `carPartId` would cost without
  * owning the tier-2 machine -
  * `economy.machineShopAssist.feeYenByGroup[group]` for a buried
@@ -535,14 +577,33 @@ export function signatureOpFeeYen(
 }
 
 /**
- * The catalog carPartId an install-part `job` targets, resolved from the
- * part still sitting in `state.partInventory` at this point - shared by the
- * machine-shop install gate and the ledger's parts-cost lookup.
+ * The machine group a new job's labour rate is priced against, or null when
+ * the job is ungated. An install reads its target slot's install gate; a
+ * per-part repair reads that slot's repair gate; a group-level repair counts
+ * as gated when ANY slot in the group gates a repair (the signature slots:
+ * chassis and bodywork, dampers and springs, seats and dash), since a group
+ * climb that touches them is the overwhelmingly common case. Bench
+ * reconditioning and machining are deliberately not priced here: the bench is
+ * ungated by design, and machining has its own physical machine requirement.
  */
-function installTargetCarPartId(state: GameState, job: Job, context: SimContext): CarPartId | null {
-  const partId = state.partInventory.find((p) => p.id === job.partInstanceId)?.partId
-  const carPartId = partId ? context.partsById[partId]?.carPartId : undefined
-  return carPartId ?? null
+function jobMachineGroup(
+  state: GameState,
+  spec: NewJobSpec,
+  context: SimContext,
+): ComponentId | null {
+  if (spec.kind === 'install-part') {
+    const partId = state.partInventory.find((p) => p.id === spec.partInstanceId)?.partId
+    const carPartId = partId ? context.partsById[partId]?.carPartId : undefined
+    return carPartId ? machineGateGroupFor(carPartId, 'install', context) : null
+  }
+  if (spec.kind === 'repair-zone') {
+    if (spec.carPartId) return machineGateGroupFor(spec.carPartId, 'repair', context)
+    const gated = (context.partIdsByGroup[spec.componentId] ?? []).some(
+      (partId) => machineGateGroupFor(partId, 'repair', context) !== null,
+    )
+    return gated ? spec.componentId : null
+  }
+  return null
 }
 
 export type HireMachineLineGateReason = 'no-cash'
@@ -675,15 +736,13 @@ export function resolveRemovePart(
   if (occupiedBlockers(car, carPartId, context).length > 0) {
     return { state, log: [], laborSlotsUsed: 0 }
   }
-  const laborSlotsUsed = removeLaborSlotsFor(carPartId, context)
-  if (laborSlotsUsed > laborAvailable) return { state, log: [], laborSlotsUsed: 0 }
-
-  // A removal-gated slot (a buried engine/drivetrain one) needs that group's
-  // machinery - owned outright, or hired for today (`resolveHireMachineLine`).
+  // A removal-gated slot (a buried engine/drivetrain one) works at base rate
+  // with that group's machinery (owned outright, or hired for today) and at
+  // the machine-less multiplier without it - slower by hand, never refused.
   const machineGroup = machineGateGroupFor(carPartId, 'remove', context)
-  if (machineGroup && !hasMachineLineFor(machineGroup, state, context)) {
-    return { state, log: [], laborSlotsUsed: 0 }
-  }
+  const laborSlotsUsed =
+    removeLaborSlotsFor(carPartId, context) * machineLaborMultiplier(machineGroup, state, context)
+  if (laborSlotsUsed > laborAvailable) return { state, log: [], laborSlotsUsed: 0 }
 
   // Removal empties the slot and stamps the removed instance's identity as
   // `vacatedBaseline` - a matching refit later is free logistics, anything
@@ -750,9 +809,7 @@ export function resolveRemovePart(
 }
 
 export type RemoveBlockReason =
-  | { kind: 'not-removable' }
-  | { kind: 'blocked-by'; blockedBy: CarPartId[] }
-  | { kind: 'machine-line'; group: ComponentId }
+  { kind: 'not-removable' } | { kind: 'blocked-by'; blockedBy: CarPartId[] }
 
 /**
  * The pure "why can't this come off" predicate - what the UI queries
@@ -762,24 +819,21 @@ export type RemoveBlockReason =
  * structural blocks it (it may still be refused for insufficient labor, or
  * simply already removed).
  *
- * A buried engine/drivetrain slot without the tier-2 machine owned or hired
- * for today is blocked here (`machine-line`) - book the machine-shop hire,
- * or buy the tools.
+ * A missing machine line no longer blocks anything here: a gated removal
+ * without the machine proceeds at the machine-less labour multiplier
+ * (`machineLaborMultiplier`), so the cost shows on the button instead of a
+ * refusal.
  */
 export function removeBlockReason(
   car: CarInstance,
   carPartId: CarPartId,
-  state: GameState,
+  _state: GameState,
   context: SimContext,
 ): RemoveBlockReason | null {
   const entry = context.partsTaxonomyById[carPartId]
   if (!entry || !entry.removable) return { kind: 'not-removable' }
   const blockedBy = occupiedBlockers(car, carPartId, context)
   if (blockedBy.length > 0) return { kind: 'blocked-by', blockedBy }
-  const machineGroup = machineGateGroupFor(carPartId, 'remove', context)
-  if (machineGroup && !hasMachineLineFor(machineGroup, state, context)) {
-    return { kind: 'machine-line', group: machineGroup }
-  }
   return null
 }
 
@@ -911,19 +965,6 @@ export function repairJobGate(
     }
   }
 
-  // A repair that climbs a repair-gated slot (the suspension/body/interior
-  // signature slots) needs that group's machinery - owned outright, or hired
-  // for today (`resolveHireMachineLine`). No engine, drivetrain or wheels slot
-  // gates a repair, so those groups' repairs are never gated here.
-  const needsMachineLine = plan.partIds.some(
-    (partId) => machineGateGroupFor(partId, 'repair', context) !== null,
-  )
-  if (needsMachineLine && !hasMachineLineFor(spec.componentId, state, context)) {
-    return {
-      ok: false,
-      log: [{ type: 'job-blocked', jobId: jobIdFor(spec), reason: 'machine-line' }],
-    }
-  }
   const charged = chargeRepairWork(state, plan.costYen)
   // Can't afford the work right now - a silent refusal, matching every
   // other can't-afford-it gate in this codebase.
@@ -1174,7 +1215,16 @@ export function findOrCreateJob(
   const gate = repairJobGate(state, spec, context)
   if (!gate.ok) return { state, job: null, log: gate.log }
 
-  const job = createJob(spec, id)
+  // A machine-gated job created without the group's machine is sized at the
+  // machine-less labour rate, fixed at creation: the work was started by
+  // hand, and hiring the machine tomorrow does not speed the half-stripped
+  // engine already on the floor. With the machine (owned or hired today) the
+  // spec's base labour stands.
+  const multiplier = machineLaborMultiplier(jobMachineGroup(state, spec, context), state, context)
+  const job = createJob(
+    multiplier === 1 ? spec : { ...spec, laborSlotsRequired: spec.laborSlotsRequired * multiplier },
+    id,
+  )
   const totalCostYen = state.cashYen - gate.state.cashYen || undefined
   const log: DayLogEntry[] = [
     {

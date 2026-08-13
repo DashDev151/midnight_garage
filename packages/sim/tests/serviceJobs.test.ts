@@ -842,30 +842,6 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
     expect(resolved.outcome).toBe('paid')
   })
 
-  it('drops the car’s staged work whether the job pays or fails', () => {
-    const paidJob = activeJob(twoRepairType, {
-      parts: mintCarParts({ dampers: 'mint', springs: 'mint' }),
-    })
-    const paidState = stateWith(paidJob, {
-      stagedCarWork: {
-        [paidJob.car.id]: [{ kind: 'repair', componentId: 'body', targetBand: 'mint' }],
-      },
-    })
-    const paid = resolveServiceJob(paidState, paidJob.id, CONTEXT)
-    expect(paid.outcome).toBe('paid')
-    expect(paid.state.stagedCarWork[paidJob.car.id]).toBeUndefined()
-
-    const failedJob = activeJob(twoRepairType, { parts: mintCarParts({ dampers: 'worn' }) })
-    const failedState = stateWith(failedJob, {
-      stagedCarWork: {
-        [failedJob.car.id]: [{ kind: 'repair', componentId: 'body', targetBand: 'mint' }],
-      },
-    })
-    const failed = resolveServiceJob(failedState, failedJob.id, CONTEXT)
-    expect(failed.outcome).toBe('failed')
-    expect(failed.state.stagedCarWork[failedJob.car.id]).toBeUndefined()
-  })
-
   // Reconciliation reads a part's own `origin` (`partsOriginatingFromCar`):
   // a customer's pulled parts leave at close-out; anyone else's don't.
   describe('close-out reconciliation of customer-owned parts (Sprint 35 decision 5)', () => {
@@ -1569,23 +1545,6 @@ describe('service jobs in advanceDay', () => {
     expect(failed.cashYen).toBe(failBefore) // no pay
     expect(failed.reputationPoints).toBe(50) // and no reputation cost either
     expect(failed.activeServiceJobs).toHaveLength(0)
-  })
-
-  it('the deadline backstop drops staged work too - the same resolver, not a second path', () => {
-    const undone = activeJob(twoRepairType, { parts: mintCarParts({ dampers: 'worn' }) })
-    const state = {
-      ...createInitialGameState(CONTEXT, 1),
-      day: 8,
-      activeServiceJobs: [undone],
-      stagedCarWork: {
-        [undone.car.id]: [
-          { kind: 'repair' as const, componentId: 'body' as const, targetBand: 'mint' as const },
-        ],
-      },
-    }
-    const { state: next } = advanceDay(state, DayActionsSchema.parse({}), 8, CONTEXT)
-    expect(next.activeServiceJobs).toHaveLength(0)
-    expect(next.stagedCarWork[undone.car.id]).toBeUndefined()
   })
 
   it('stale offers expire', () => {

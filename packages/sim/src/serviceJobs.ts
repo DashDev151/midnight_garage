@@ -34,7 +34,6 @@ import { makeCarOrigin, partsOriginatingFromCar } from './provenance'
 import { evaluateRequirement } from './requirements'
 import type { Rng } from './rng'
 import { deleteServiceJobLedger, serviceJobLedgerFor } from './serviceJobLedger'
-import { clearStagedWork } from './stagedWork'
 import { freshToolLevels, toolLevelsFor } from './toolLines'
 
 /** A placeholder ledger for `isServiceTaskDone`'s call into
@@ -802,10 +801,7 @@ export function resolveServiceJob(
   // member drops to the parts bin, so the `partsOriginatingFromCar`
   // reconciliation below returns the customer's benched members with their car.
   const releasedState = deleteServiceJobLedger(
-    dissolveAssembliesForCar(
-      clearStagedWork(releaseCarFromShop(state, job.car.id), job.car.id),
-      job.car.id,
-    ),
+    dissolveAssembliesForCar(releaseCarFromShop(state, job.car.id), job.car.id),
     job.id,
   )
   const activeServiceJobs = releasedState.activeServiceJobs.filter((sj) => sj.id !== jobId)

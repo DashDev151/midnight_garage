@@ -1,7 +1,13 @@
 import { type ZoneState, type ZoneStates } from '@midnight-garage/content'
 import { ALL_ZONE_IDS, PANEL_ZONE_IDS } from '@midnight-garage/sim'
 import { describe, expect, it } from 'vitest'
-import { unpaintedPanelsText } from './zoneSeverity'
+import {
+  finishConditionText,
+  metalConditionText,
+  paintStateText,
+  surfaceConditionText,
+  unpaintedPanelsText,
+} from './zoneSeverity'
 
 /**
  * The line a car in bare panels carries. Fitting a body kit strips every panel
@@ -54,5 +60,54 @@ describe('unpaintedPanelsText', () => {
    * player to paint a hole in the wing would be the wrong instruction. */
   it('says nothing about a zone with no panel on it at all', () => {
     expect(unpaintedPanelsText(carWithBarePanels(2, { panelMissing: true }))).toBeNull()
+  })
+})
+
+/**
+ * The car screen's per-zone condition panel reads these four functions
+ * directly - plain words only, never a raw severity number or a part
+ * condition band (poor/worn/fine/mint mean something different on a zone).
+ */
+describe('the plain-word zone condition readouts', () => {
+  it('metalConditionText walks the ladder from straight to needing a fresh panel, and is null on a trim zone', () => {
+    expect(metalConditionText(zone({ metal: 0 }))).toBe('straight')
+    expect(metalConditionText(zone({ metal: 4 }))).toBe(
+      'beyond straightening - needs a fresh panel',
+    )
+    const trim: ZoneState = { finish: 0, panelMissing: false, primed: false }
+    expect(metalConditionText(trim)).toBeNull()
+  })
+
+  it('surfaceConditionText walks clean to rusted through, and is null on a trim zone', () => {
+    expect(surfaceConditionText(zone({ surface: 0 }))).toBe('clean')
+    expect(surfaceConditionText(zone({ surface: 2 }))).toBe('rusted through')
+    const trim: ZoneState = { finish: 0, panelMissing: false, primed: false }
+    expect(surfaceConditionText(trim)).toBeNull()
+  })
+
+  it('finishConditionText walks flawless to bare metal, on every zone shape', () => {
+    expect(finishConditionText(zone({ finish: 0 }))).toBe('flawless')
+    expect(finishConditionText(zone({ finish: 3 }))).toBe('bare metal, no finish left')
+    const trim: ZoneState = { finish: 1, panelMissing: false, primed: false }
+    expect(finishConditionText(trim)).toBe('faded')
+  })
+
+  it('paintStateText reads panel-off, colour, primed-no-colour and bare-unpainted as four distinct facts', () => {
+    expect(paintStateText(zone({ panelMissing: true }))).toBe('panel is off')
+    expect(paintStateText(zone({ colour: 'white' }))).toBe('Plain White')
+    expect(paintStateText(zone({ colour: 'red' }))).toBe('Bright Red')
+    expect(paintStateText(zone({ primed: true }))).toBe('primed, no colour yet')
+    expect(paintStateText(zone())).toBe('bare metal, unpainted')
+  })
+
+  it('paintStateText is exactly what would have caught the refit-paint bug: a bare panel reads bare, not silently blended in', () => {
+    // A panel taken off and refitted UNCHANGED keeps its finish/colour - this
+    // is the "before" case the bug produced instead (a bought or repaired
+    // panel legitimately comes back bare, and must read that way).
+    const refittedUnchanged = zone({ finish: 1, colour: 'red' })
+    const boughtOrRepaired = zone() // no colour, not primed
+    expect(paintStateText(refittedUnchanged)).toBe('Bright Red')
+    expect(paintStateText(boughtOrRepaired)).toBe('bare metal, unpainted')
+    expect(paintStateText(refittedUnchanged)).not.toBe(paintStateText(boughtOrRepaired))
   })
 })

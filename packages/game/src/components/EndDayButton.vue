@@ -32,13 +32,6 @@ const warnings = computed<string[]>(() => {
     list.push(`The ${job.customerName} job is finished - hand the car back before you close up?`)
   }
 
-  const unconfirmed = game.carsWithUnconfirmedWork.length
-  if (unconfirmed > 0) {
-    list.push(
-      `You've planned work on ${pluralise(unconfirmed, 'car')} but haven't confirmed it - it won't start.`,
-    )
-  }
-
   return list
 })
 

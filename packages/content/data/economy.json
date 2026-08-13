@@ -1019,6 +1019,7 @@
       "body": 14000,
       "interior": 7000
     },
+    "machinelessLaborMultiplier": 3,
     "probeAmortisationOps": 40
   },
   "dyno": {

@@ -1,3 +1,4 @@
+import type { CashBucket } from '@midnight-garage/content'
 import type { Table } from 'dexie'
 
 /**
@@ -35,13 +36,40 @@ export interface SessionEvent {
   timestamp: number
 }
 
-/** The two tables the wrapper drives, the surface the functions below use. */
+/**
+ * The daily ledger stream - one row per cash movement, append-only,
+ * beside `sessionEvents`. Each row is a day-log entry's money as
+ * `cashMovementFor` (the single cash-classification law, content/cashLedger.ts)
+ * classified it at the moment the entry was pushed: `bucket` is one of the five
+ * cost-sheet lines, `amountYen` a magnitude (the bucket says which way the
+ * money went), `entryType` the `DayLogEntry` type that carried it. `timestamp`
+ * is wall-clock, exactly as `SessionEvent`'s.
+ */
+export interface LedgerEvent {
+  id?: number
+  day: number
+  bucket: CashBucket
+  amountYen: number
+  entryType: string
+  timestamp: number
+}
+
+/** A single key/value row - currently only the career identifier lives here. */
+interface MetaRow {
+  key: string
+  value: string
+}
+
+/** The tables the wrapper drives, the surface the functions below use. */
 interface SaveDb {
   saves: Table<SaveRow, string>
   sessionEvents: Table<SessionEvent, number>
+  ledgerEvents: Table<LedgerEvent, number>
+  meta: Table<MetaRow, string>
 }
 
 const SLOT = 'current'
+const CAREER_ID_KEY = 'careerId'
 
 let dbPromise: Promise<SaveDb | undefined> | undefined
 
@@ -57,14 +85,22 @@ function getDb(): Promise<SaveDb | undefined> {
       class SaveDatabase extends Dexie {
         saves!: Table<SaveRow, string>
         sessionEvents!: Table<SessionEvent, number>
+        ledgerEvents!: Table<LedgerEvent, number>
+        meta!: Table<MetaRow, string>
 
         constructor() {
           super('midnight-garage')
           this.version(1).stores({ saves: 'slot' })
           // IndexedDB versioning, not GameState's SAVE_VERSION - no save
-          // migration, no golden-save changes; this table is independent of
+          // migration, no golden-save changes; these tables are independent of
           // save content.
           this.version(2).stores({ saves: 'slot', sessionEvents: '++id, day, type' })
+          this.version(3).stores({
+            saves: 'slot',
+            sessionEvents: '++id, day, type',
+            ledgerEvents: '++id, day, bucket',
+            meta: 'key',
+          })
         }
       }
       return new SaveDatabase()
@@ -143,5 +179,73 @@ export async function clearSessionEvents(): Promise<void> {
     await database.sessionEvents.clear()
   } catch {
     // ignore
+  }
+}
+
+/** Fire-and-forget, exactly as `appendSessionEvent`: a lost ledger row must
+ * never break play. */
+export async function appendLedgerEvent(event: LedgerEvent): Promise<void> {
+  const database = await getDb()
+  if (!database) return
+  try {
+    await database.ledgerEvents.add(event)
+  } catch {
+    // Telemetry is best-effort; a storage failure must never break gameplay.
+  }
+}
+
+export async function loadLedgerEvents(): Promise<LedgerEvent[]> {
+  const database = await getDb()
+  if (!database) return []
+  try {
+    return await database.ledgerEvents.toArray()
+  } catch {
+    return []
+  }
+}
+
+export async function clearLedgerEvents(): Promise<void> {
+  const database = await getDb()
+  if (!database) return
+  try {
+    await database.ledgerEvents.clear()
+  } catch {
+    // ignore
+  }
+}
+
+/** A fresh career identifier - wall-clock plus a random tail, unique enough to
+ * tell one export bundle's career from another. Game layer, never read by the
+ * sim, so non-deterministic is fine (the `grantCounter` precedent). */
+function newCareerId(): string {
+  return `career-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+}
+
+/** Stamps a brand-new career identifier, replacing any existing one - called
+ * (fire-and-forget) from `newGame()` so each career's export bundle carries its
+ * own id. Returns the id it stamped, `undefined` where IndexedDB is absent. */
+export async function stampNewCareerId(): Promise<string | undefined> {
+  const database = await getDb()
+  if (!database) return undefined
+  try {
+    const id = newCareerId()
+    await database.meta.put({ key: CAREER_ID_KEY, value: id })
+    return id
+  } catch {
+    return undefined
+  }
+}
+
+/** The stored career identifier, stamping one first if none exists yet (a
+ * career begun before the stamp existed) - the export bundle's own read. */
+export async function ensureCareerId(): Promise<string | undefined> {
+  const database = await getDb()
+  if (!database) return undefined
+  try {
+    const row = await database.meta.get(CAREER_ID_KEY)
+    if (row) return row.value
+    return await stampNewCareerId()
+  } catch {
+    return undefined
   }
 }

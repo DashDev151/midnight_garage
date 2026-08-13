@@ -35,6 +35,13 @@ now owns both.
 Not single tasks - revisit when related work comes up, don't treat either as resolved by "checks
 pass."
 
+- [ ] **Labour needs to become more valuable (maintainer note, 2026-08-13).** Surplus labour
+  currently makes "one more End Day click" the answer to everything, so the cash-versus-labour
+  choice created by the Sprint 202 machine-gate conversion (machine-less work at a labour
+  premium, hire buys it back) has no teeth yet: a player with empty days always chooses labour.
+  Give the player real reasons to prefer spending cash - things competing for the same day's
+  points, or days that are expensive to spend. Design conversation, no sprint attached.
+
 - [ ] **SUPERSEDED AS A TASK by the economy overhaul brief
   (`docs/reviews/economy-overhaul-brief.md`), workstream A.** The harness is not rewritten: it is
   replaced by scripted deterministic golden careers, which have no decision policy and so cannot

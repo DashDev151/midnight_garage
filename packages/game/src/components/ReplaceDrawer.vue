@@ -33,18 +33,18 @@ const game = useGameStore()
 const componentId = computed(() => game.groupForCarPart(props.carPartId))
 
 /**
- * The whole slot's own machine-shop gate, which no single part can get round -
- * only ever set in bench mode (fitting a benched assembly member, where the
- * wheel machinery gates a tyre swap). An on-car drawer has no slot-wide gate:
- * every capability refusal it can hit is a fact about the part, and is read
- * per part below.
+ * The bench-fit machine-labour disclosure - only ever set in bench mode
+ * (fitting a benched assembly member, where the wheel machinery gates a tyre
+ * swap), and never blocking: a bench swap always works, just slower by hand
+ * without the line. Shown once at the drawer header rather than per row,
+ * since it's the same figure for every part in this slot.
  */
-const slotBlockedReason = computed(() =>
-  props.benchContainerId ? game.benchSwapGateReasonFor(props.carPartId) : null,
+const benchMachineNote = computed(() =>
+  props.benchContainerId ? game.benchSwapMachineNoteFor(props.carPartId) : '',
 )
 
 /**
- * Every stageable part addressed to this exact slot, each flagged with
+ * Every pickable part addressed to this exact slot, each flagged with
  * whether it can go on right now and, when it cannot, why. Excludes scrap
  * (never installable anywhere).
  *
@@ -54,18 +54,18 @@ const slotBlockedReason = computed(() =>
  * will never fit this car names nothing, because no purchase changes it.
  * They sort in that order too - installable first, then the tool-gated, then
  * the ones this car has no use for - so the list reads as what you can do,
- * what you could do, and what you cannot.
+ * what you could do, and what you cannot. A machine-gated bench-fit is never
+ * a non-fit reason at all - it's disclosed once above instead, not per row.
  */
 const entries = computed(() => {
   const fitting = new Set(
     game.installablePartsForPart(props.carId, props.carPartId).map((p) => p.id),
   )
   const rank = (fits: boolean, reason: string | null): number => (fits ? 0 : reason ? 1 : 2)
-  return game.stageableParts
+  return game.pickableParts
     .filter((entry) => entry.part.carPartId === props.carPartId && entry.instance.band !== 'scrap')
     .map((entry) => {
-      const noFitReason =
-        slotBlockedReason.value ?? game.installToolGateReasonFor(props.carId, entry.part.id)
+      const noFitReason = game.installToolGateReasonFor(props.carId, entry.part.id)
       const fits = fitting.has(entry.instance.id) && !noFitReason
       return { ...entry, fits, noFitReason, rank: rank(fits, noFitReason) }
     })
@@ -79,12 +79,7 @@ function onSelect(partInstanceId: string): void {
     return
   }
   if (!componentId.value) return
-  game.stageAction(props.carId, {
-    kind: 'install',
-    componentId: componentId.value,
-    carPartId: props.carPartId,
-    partInstanceId,
-  })
+  game.install(props.carId, componentId.value, partInstanceId, props.carPartId)
   emit('close')
 }
 </script>
@@ -109,6 +104,9 @@ function onSelect(partInstanceId: string): void {
       </button>
     </header>
     <p class="count">{{ entries.length }} part{{ entries.length === 1 ? '' : 's' }} on hand</p>
+    <p v-if="benchMachineNote" class="bench-machine-note" data-test="bench-machine-note">
+      {{ benchMachineNote }}
+    </p>
     <!-- The link lands on the market already filtered to this exact slot
          (the ?slot deep link), not the market root. -->
     <p v-if="entries.length === 0" class="empty">
@@ -197,6 +195,12 @@ function onSelect(partInstanceId: string): void {
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
   margin: 0;
+}
+
+.bench-machine-note {
+  color: var(--mg-neon-cyan);
+  font-size: var(--mg-fs-sm);
+  margin: 0 0 var(--mg-space-3);
 }
 
 .parts-list {

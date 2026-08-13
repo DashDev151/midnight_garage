@@ -135,8 +135,12 @@ export const useStaffStore = defineStore('staff', () => {
     const result = resolveHireStaff(game.gameState, candidateId, game.context)
     if (result.log.length === 0) return false
     game.gameState = result.state
-    game.dayLog.push(...result.log)
-    game.logSessionEvent('hireStaff', { candidateId })
+    game.pushDayLog(result.log)
+    const hired = result.log.find((e) => e.type === 'staff-hired')
+    game.logSessionEvent('hireStaff', {
+      candidateId,
+      ...(hired?.type === 'staff-hired' ? { introFeeYen: hired.introFeeYen } : {}),
+    })
     return true
   }
 
@@ -146,7 +150,7 @@ export const useStaffStore = defineStore('staff', () => {
     const result = resolveDismissStaff(game.gameState, staffId)
     if (result.log.length === 0) return false
     game.gameState = result.state
-    game.dayLog.push(...result.log)
+    game.pushDayLog(result.log)
     game.logSessionEvent('dismissStaff', { staffId })
     return true
   }

@@ -15,8 +15,8 @@ import type { SimContext } from './context'
 import { revealOnRemoval } from './diagnosis'
 import {
   findWorkableCar,
-  hasMachineLineFor,
   machineGateGroupFor,
+  machineLaborMultiplier,
   partCapabilityRequirement,
   refitLaborSlotsFor,
   removeLaborSlotsFor,
@@ -223,11 +223,13 @@ export function resolveRemoveAssembly(
   if (anyMemberBusy(state, carInstanceId, def, context)) return fail
   if (occupiedExternalBlockers(car, def, context).length > 0) return fail
 
-  const laborSlotsUsed = removeAssemblyLaborSlotsFor(car, def, context)
-  if (laborSlotsUsed > laborAvailable) return fail
-
+  // Without the group's machine the pull still happens, at the machine-less
+  // labour rate - the gate is a rate, never a wall (`machineLaborMultiplier`).
   const gateGroup = assemblyMachineGateGroup(def, context)
-  if (gateGroup && !hasMachineLineFor(gateGroup, state, context)) return fail
+  const laborSlotsUsed =
+    removeAssemblyLaborSlotsFor(car, def, context) *
+    machineLaborMultiplier(gateGroup, state, context)
+  if (laborSlotsUsed > laborAvailable) return fail
 
   const isOwned = state.ownedCars.some((c) => c.id === carInstanceId)
   const members: AssemblyContainer['members'] = {}
@@ -388,11 +390,13 @@ export function resolveRefitAssembly(
     }
   }
 
-  const laborSlotsRequired = refitAssemblyLaborSlotsFor(car, def, container, context)
-  if (laborSlotsRequired > laborAvailable) return fail
-
+  // Machine-less refits proceed at the multiplied labour rate, never refused
+  // (`machineLaborMultiplier`).
   const gateGroup = assemblyMachineGateGroup(def, context)
-  if (gateGroup && !hasMachineLineFor(gateGroup, state, context)) return fail
+  const laborSlotsRequired =
+    refitAssemblyLaborSlotsFor(car, def, container, context) *
+    machineLaborMultiplier(gateGroup, state, context)
+  if (laborSlotsRequired > laborAvailable) return fail
 
   let parts = { ...car.parts }
   let partsCostYen = 0
@@ -476,11 +480,13 @@ export function resolveSwapAssemblyMember(
       }
     }
   }
-  const laborSlotsUsed = context.economy.energy.actionPoints.benchFitMember
-  if (laborSlotsUsed > laborAvailable) return fail
-
+  // A gated bench fit (tyres onto rims) without the wheels machine costs the
+  // machine-less labour rate instead of being refused (`machineLaborMultiplier`).
   const gateGroup = machineGateGroupFor(memberSlot, 'bench-fit', context)
-  if (gateGroup && !hasMachineLineFor(gateGroup, state, context)) return fail
+  const laborSlotsUsed =
+    context.economy.energy.actionPoints.benchFitMember *
+    machineLaborMultiplier(gateGroup, state, context)
+  if (laborSlotsUsed > laborAvailable) return fail
 
   const displaced = container.members[memberSlot] ?? null
   const nextContainers = [...containers]

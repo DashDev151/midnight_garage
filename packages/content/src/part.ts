@@ -141,6 +141,23 @@ export const PartInstanceSchema = z.object({
    * sale, which is the behaviour the design asks for.
    */
   machining: z.array(z.string().min(1)).optional(),
+  /**
+   * The zone paint state a harvested body panel carried at the moment it was
+   * pulled (finish, colour, primed, and surface for a metal zone), restored
+   * verbatim when this same instance is fitted again: a panel removed and
+   * refitted unchanged keeps its paint. Absent on every other part, on a
+   * bought panel (arrives bare and needs paint), and stripped by a bench
+   * recondition (metal work ruins paint), so only a genuinely untouched
+   * panel round-trips its finish.
+   */
+  panelState: z
+    .object({
+      finish: z.number().int().min(0).max(3),
+      surface: z.number().int().min(0).max(2).optional(),
+      colour: z.string().min(1).optional(),
+      primed: z.boolean(),
+    })
+    .optional(),
 })
 
 export type Part = z.infer<typeof PartSchema>

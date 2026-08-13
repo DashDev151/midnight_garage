@@ -129,7 +129,6 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     toolTiers: testToolTiers(),
     pendingPartOrders: [],
     cartPartIds: [],
-    stagedCarWork: {},
     marketLedger: { lotSupply: {}, playerSales: {} },
     carLedgers: {},
     toolShopsOwned: [],
@@ -341,7 +340,7 @@ describe('completeJob', () => {
     expect(result.state.partInventory).toHaveLength(1)
   })
 
-  it('an install-part job addressed at a machine-line-gated slot is blocked (not applied) when the line is neither owned nor hired today', () => {
+  it('an install-part job at a machine-gated slot completes without the line: the gate is a labour rate at creation, never a completion wall', () => {
     const job: Job = {
       id: 'job-gated',
       carInstanceId: car.id,
@@ -352,10 +351,11 @@ describe('completeJob', () => {
       laborSlotsSpent: 1,
     }
     const result = completeJob(baseState({ machineHirePaidDayByGroup: {} }), job, CONTEXT)
-    expect(result.blockedReason).toBe('machine-line')
-    // Nothing moved: the car and the inventory are both untouched.
-    expect(result.state.ownedCars[0]?.parts.dampers.installed).toBeNull()
-    expect(result.state.partInventory).toHaveLength(1)
+    expect(result.blockedReason).toBeNull()
+    // The part went on: machine-less work is slower (priced at creation via
+    // machineLaborMultiplier), not refused.
+    expect(result.state.ownedCars[0]?.parts.dampers.installed?.id).toBe(sparePart.id)
+    expect(result.state.partInventory).toHaveLength(0)
   })
 })
 
@@ -438,20 +438,18 @@ describe('findOrCreateJob (Sprint 11)', () => {
       expect(result.log.some((e) => e.type === 'job-blocked')).toBe(false)
     })
 
-    it('refuses to create the job at all when the body line is neither owned nor hired today - a signature-slot repair (bodywork/chassis) is machine-line gated, not fee-charged', () => {
+    it('creates the job at the machine-less labour rate when the body line is neither owned nor hired today: signature-slot work is slower by hand, never refused', () => {
+      const multiplier = CONTEXT.economy.machineShopAssist.machinelessLaborMultiplier
       const result = findOrCreateJob(
         baseState({ toolTiers: testToolTiers(), machineHirePaidDayByGroup: {} }),
         spec,
         CONTEXT,
       )
-      expect(result.job).toBeNull()
-      expect(result.log).toEqual([
-        {
-          type: 'job-blocked',
-          jobId: `job-${car.id}-repair-zone-body`,
-          reason: 'machine-line',
-        },
-      ])
+      expect(result.job).not.toBeNull()
+      expect(result.job!.laborSlotsRequired).toBe(spec.laborSlotsRequired * multiplier)
+      // With the line hired, the same spec is sized at base labour.
+      const hired = findOrCreateJob(baseState({ toolTiers: testToolTiers() }), spec, CONTEXT)
+      expect(hired.job!.laborSlotsRequired).toBe(spec.laborSlotsRequired)
     })
 
     it("charges exactly the group's real (tier-scaled) repair cost, deducted from cash - no consumables fee and no per-operation assist fee (the body line's hire is a separate, once-a-day charge, not part of this repair's own price)", () => {
@@ -1610,7 +1608,7 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     expect(machineAssistFeeYen('gearbox', tierTwo, CONTEXT)).toBe(0)
   })
 
-  it('installing a buried ENGINE-group part is blocked without the engine line owned or hired today, and completes with no assist fee once it is (either way)', () => {
+  it('installing a buried ENGINE-group part without the engine line completes at the machine-less labour rate; hired or owned it completes at base labour, no fee either way', () => {
     const stockCams = CONTEXT.stockPartByCarPartId.entry!.camsTiming!
     const newCams: PartInstance = {
       id: 'pi-new-cams',
@@ -1632,8 +1630,10 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
       laborSlotsRequired: installLaborSlotsFor('camsTiming', CONTEXT),
     }
 
-    // Tier 1, engine neither owned nor hired today: the install labours
-    // fully but does not complete - blocked, not fee-charged.
+    // Tier 1, engine neither owned nor hired today: the install completes by
+    // hand at the machine-less labour rate - slower, never refused, and no
+    // cash moves.
+    const multiplier = CONTEXT.economy.machineShopAssist.machinelessLaborMultiplier
     const ungatedState = baseState({
       ownedCars: [carReady],
       partInventory: [newCams],
@@ -1642,12 +1642,10 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
       machineHirePaidDayByGroup: {},
     })
     const cashBefore = ungatedState.cashYen
-    const blocked = resolveJobLabor(ungatedState, spec, Infinity, CONTEXT)
-    expect(blocked.state.ownedCars[0]?.parts.camsTiming.installed).toBeNull()
-    expect(blocked.state.cashYen).toBe(cashBefore)
-    expect(blocked.log.some((e) => e.type === 'job-blocked' && e.reason === 'machine-line')).toBe(
-      true,
-    )
+    const byHand = resolveJobLabor(ungatedState, spec, Infinity, CONTEXT)
+    expect(byHand.state.ownedCars[0]?.parts.camsTiming.installed?.id).toBe(newCams.id)
+    expect(byHand.state.cashYen).toBe(cashBefore)
+    expect(byHand.state.energySpentToday).toBe(spec.laborSlotsRequired * multiplier)
 
     // Tier 1, engine hired for today: completes, no fee anywhere - cash only
     // ever moves for the part itself (paid at purchase, not here).
@@ -1662,6 +1660,7 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     expect(hiredInstall.state.ownedCars[0]?.parts.camsTiming.installed?.id).toBe(newCams.id)
     expect(hiredInstall.state.cashYen).toBe(hiredState.cashYen)
     expect(hiredInstall.state.carLedgers[car.id]?.repairYen).toBe(0)
+    expect(hiredInstall.state.energySpentToday).toBe(spec.laborSlotsRequired)
 
     // Tier 2 (owned outright): completes, no fee, same as hired.
     const ownedState = baseState({

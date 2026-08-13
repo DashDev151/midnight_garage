@@ -2189,6 +2189,21 @@ import toolShops from '../data/toolShops.json'
  * no scripted career or mission probe machines anything, and every `advanceDay` golden hash holds
  * unchanged against a fresh run. `partPricing.json`, `damagePatterns.json`, `toolLines.json` and
  * `toolShops.json` are untouched, so their hashes and the payout pin hold unchanged.
+ *
+ * Re-pinned 2026-08-13 for the machine-gate conversion (Sprint 202 task E), the first change
+ * under behaviour-first governance (directive 22 as amended the same day: the maintainer signs
+ * the design shape and validates by playtest; the value is chosen and recorded here, never
+ * ratified as a raw number). ONE key is added, `machineShopAssist.machinelessLaborMultiplier`
+ * = 3, and no existing value moves. What it means: the machine gate becomes a labour RATE
+ * instead of a wall; every machine-gated operation is possible at tool tier 1 with the group's
+ * machine neither owned nor hired, at three times the base labour, and hire (fees unchanged)
+ * buys the day back to base rate. The felt behaviour, measured over the 2026-08-13 recorded
+ * session's work pattern: the teardown by hand fits inside one 80-point day (56 points), the
+ * full strip-and-rebuild entirely by hand spreads over three to four working days (281 points)
+ * instead of costing Y109,000 of hire, and hiring buys back about two thirds of the labour
+ * (94 points). Pinned by `packages/sim/tests/machineGateConversion.test.ts`; the maintainer's
+ * ruling, verbatim in substance: "make this a currency conversion problem: we stop charging
+ * yen and charge labour instead."
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -2198,7 +2213,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('f4fb46e5b1693e8bfb89a6d10b05237367e21d5900286c4b2a3f5ebba1a1671f')
+    ).toBe('017f955c6c10ef3d120820dc66f74ff2e7ec72dce095254486449f0356456aca')
   })
 
   it('damagePatterns.json matches its approved content exactly', () => {

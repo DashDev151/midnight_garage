@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { loadSessionEvents } from '../save/saveDb'
+import { ensureCareerId, loadLedgerEvents, loadSessionEvents } from '../save/saveDb'
 import { useGameStore } from '../stores/gameStore'
 
 const game = useGameStore()
@@ -27,21 +27,33 @@ function importCode(): void {
   if (result.ok) importText.value = ''
 }
 
-/** Session log v0 - capture only. No download pattern exists elsewhere to reuse
- * (the save export above copies to the clipboard); this is the small standard
- * Blob + object-URL + anchor-click helper, kept local here until a second
- * consumer needs it.
+/** Session export - capture only. Bundles the action stream and the per-day
+ * cash ledger under a career identifier and the export day, so an offline pass
+ * can tell one career's play from another's. No download pattern exists
+ * elsewhere to reuse (the save export above copies to the clipboard); this is
+ * the small standard Blob + object-URL + anchor-click helper, kept local here
+ * until a second consumer needs it.
  */
 async function exportSessionLog(): Promise<void> {
-  const events = await loadSessionEvents()
-  const blob = new Blob([JSON.stringify(events, null, 2)], { type: 'application/json' })
+  const [career, actions, ledger] = await Promise.all([
+    ensureCareerId(),
+    loadSessionEvents(),
+    loadLedgerEvents(),
+  ])
+  const bundle = {
+    career: career ?? 'unknown-career',
+    exportedOnDay: game.day,
+    actions,
+    ledger,
+  }
+  const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const anchor = document.createElement('a')
   anchor.href = url
   anchor.download = `midnight-garage-session-day${game.day}.json`
   anchor.click()
   URL.revokeObjectURL(url)
-  status.value = `Exported ${events.length} session event(s).`
+  status.value = `Exported ${actions.length} action(s) and ${ledger.length} ledger event(s).`
 }
 </script>
 

@@ -39,7 +39,7 @@ describe('PartsInventoryScreen', () => {
     expect(wrapper.text()).toContain('No unplanned parts on hand')
   })
 
-  it('lists every owned part not currently staged anywhere', () => {
+  it('lists every owned part', () => {
     const game = useGameStore()
     game.devGrantPart(PARTS[0]!.id)
     game.devGrantPart(PARTS[1]!.id)
@@ -64,30 +64,35 @@ describe('PartsInventoryScreen', () => {
     expect(wrapper.find(`[data-test="recondition-part-${partInstanceId}"]`).exists()).toBe(false)
   })
 
-  it('omits a part currently staged on a car - the same set CarDetailScreen uses (decision 3)', () => {
+  it('drops a part from the list the instant it is fitted onto a car - installs are direct, nothing sits in between (Sprint 202)', () => {
     const game = useGameStore()
-    // devGrantCar() with no id defaults to the first roster model
-    // (honda-city-e-aa, 'entry' tier) - the staged part must match.
-    const entryPart = PARTS.find((p) => p.fitmentClass === 'entry')!
-    game.devGrantPart(entryPart.id)
-    const partInstanceId = game.gameState.partInventory[0]!.id
     game.devGrantCar()
     const carId = game.gameState.ownedCars[0]!.id
-    // Every slot starts filled with a stock part by default -
-    // empty this one directly (not via removePart, which would drop a
-    // second, still-unstaged part into inventory) so the staged install
-    // actually has somewhere to land.
+    // dampers is a plain suspension slot with no blockedBy dependents (the
+    // same fixture proven safe elsewhere in this codebase's real-resolver
+    // tests) - `entry` fitment matches devGrantCar()'s default model
+    // (honda-city-e-aa).
+    const fitting = PARTS.find(
+      (p) => p.carPartId === 'dampers' && p.grade !== 'stock' && p.fitmentClass === 'entry',
+    )!
+    game.devGrantPart(fitting.id)
+    const partInstanceId = game.gameState.partInventory[0]!.id
+    // Empty the slot directly (not via removePart, which would drop a
+    // second part into inventory) so the install actually has somewhere to
+    // land.
     const car = game.gameState.ownedCars[0]!
-    const carPartId = entryPart.carPartId
     game.gameState = {
       ...game.gameState,
-      ownedCars: [{ ...car, parts: { ...car.parts, [carPartId]: { installed: null } } }],
+      ownedCars: [{ ...car, parts: { ...car.parts, dampers: { installed: null } } }],
     }
-    game.stageAction(carId, {
-      kind: 'install',
-      componentId: game.groupForCarPart(entryPart.carPartId)!,
-      partInstanceId,
-    })
+    // Labour only actually applies (and the job completes) once the car is
+    // in a service bay - unlike the old staging path, a direct install runs
+    // through the real job/labour system immediately. dampers is a
+    // suspension signature slot: hire the line so the install completes at
+    // base rate rather than the machine-less multiplier.
+    game.moveCar(carId, 'service')
+    game.hireMachineLine('suspension')
+    game.install(carId, 'suspension', partInstanceId)
 
     const wrapper = mountScreen()
     expect(wrapper.findAll('.part-card')).toHaveLength(0)

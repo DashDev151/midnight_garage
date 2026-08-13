@@ -58,7 +58,6 @@ function stateOnDay(
     toolTiers: testToolTiers(),
     pendingPartOrders: [],
     cartPartIds: [],
-    stagedCarWork: {},
     serviceJobLedgers: {},
     inspectionVisit: null,
     workbenchPartId: null,

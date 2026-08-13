@@ -772,8 +772,18 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * branch: a pre-v68 save carries a `panels` key `CarPartsSchema` no longer
  * declares and a required `bodywork` key it does not carry, so it fails to
  * parse rather than being reshaped.
+ * v68 -> v69 (the work is direct): staging is gone. Every repair/install/
+ * pipeline action resolves the instant it's clicked, so `GameStateSchema` no
+ * longer carries `stagedCarWork` - nothing is ever mid-plan across a
+ * save/load boundary any more. Per directive 19, a plain
+ * SAVE_VERSION bump with NO `MIGRATIONS[68]` entry and no legacy-compat
+ * branch: `z.object`'s own unknown-key stripping drops a pre-v69 save's
+ * `stagedCarWork` with nothing to reconstruct - any work it named was never
+ * charged or applied, so there is nothing to replay. The version bump alone
+ * is still required (Save law) so an old client rejects a v69 save rather
+ * than reading a shape it no longer understands.
  */
-export const SAVE_VERSION = 68
+export const SAVE_VERSION = 69
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

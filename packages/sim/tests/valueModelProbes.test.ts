@@ -112,7 +112,6 @@ function stateWithLots(lots: AuctionLot[], overrides: Partial<GameState> = {}): 
     toolTiers: testToolTiers(),
     pendingPartOrders: [],
     cartPartIds: [],
-    stagedCarWork: {},
     serviceJobLedgers: {},
     inspectionVisit: null,
     workbenchPartId: null,

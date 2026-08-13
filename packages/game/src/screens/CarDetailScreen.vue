@@ -3,12 +3,10 @@ import type {
   AssemblyId,
   CarPartId,
   ComponentId,
-  ConditionBand,
   Grade,
   Job,
   PartInstance,
   SellingChannelId,
-  StagedAction,
   ZoneId,
 } from '@midnight-garage/content'
 import {
@@ -55,7 +53,7 @@ import { LEDGER_LINE_LABELS, formatLedgerLineYen } from '../utils/ledgerLabels'
 import { formatAuthenticityCost, formatReliabilityCost } from '../utils/machiningFigures'
 import { SETUP_REFUSALS } from '../utils/machiningRefusals'
 import { PAINT_COLOUR_FAMILIES, colourTokenDisplayName } from '../utils/paintFamilies'
-import { addressesOverlap, hasWorkAddress } from '../utils/partAddress'
+import { addressesOverlap } from '../utils/partAddress'
 import { repairStepText } from '../utils/repairStepLabels'
 import {
   SELLING_CHANNEL_LABELS,
@@ -63,7 +61,14 @@ import {
   sellingChannelCadenceLabel,
   sellingChannelFeeLabel,
 } from '../utils/sellingChannelLabels'
-import { zoneNeedsPanelText, zoneSeverityText } from '../utils/zoneSeverity'
+import {
+  finishConditionText,
+  metalConditionText,
+  paintStateText,
+  surfaceConditionText,
+  zoneNeedsPanelText,
+  zoneSeverityText,
+} from '../utils/zoneSeverity'
 import { mapBackTarget } from './mapBack'
 
 const game = useGameStore()
@@ -135,26 +140,6 @@ function onDynoSessionClick(): void {
   if (!d) return
   game.runDynoSession(d.car.id)
 }
-
-/** The gate reason a staged row shows, or null - `StagedAction`'s own
- * flavour of `removeBlockedReasonFor`/`installGateReasonFor` above. */
-function stagedActionGateReasonFor(action: StagedAction): string | null {
-  const d = detail.value
-  return d ? game.stagedActionGateReasonFor(d.car.id, action) : null
-}
-
-/** Whether Confirm should stay disabled because some staged action needs a
- * machinery neither owned nor hired today - explains itself via the
- * per-row gate reason rather than failing silently. */
-const stagedWorkGated = computed(() => {
-  const d = detail.value
-  return d ? game.stagedWorkGated(d.car.id) : false
-})
-
-/** Whether the planned work needs more labour than is left today. */
-const plannedLaborOverToday = computed(
-  () => (detail.value?.plannedEstimate?.plannedLaborSlots ?? 0) > game.laborSlotsRemainingToday,
-)
 
 const inTransit = computed(() => detail.value?.serviceJob?.inTransit ?? false)
 
@@ -375,12 +360,6 @@ function partStepTitle(componentId: ComponentId, row: CarPartRowView): string {
   return repairStepText(nextPartStepOrFallback(componentId, row.partId))
 }
 
-/** The currently planned target band, for the planned `BandChip`. */
-function stagedTargetBand(componentId: ComponentId, carPartId?: CarPartId): ConditionBand | null {
-  const staged = stagedFor(componentId, carPartId)
-  return staged?.kind === 'repair' ? staged.targetBand : null
-}
-
 /** The open job at this exact address. */
 function jobFor(componentId: ComponentId, carPartId?: CarPartId) {
   return detail.value?.jobs.find((j) => j.componentId === componentId && j.carPartId === carPartId)
@@ -497,48 +476,18 @@ const totalSpentYen = computed(() => {
   )
 })
 
-// --- Staging, replace, remove ---
+// --- Replace, remove ---
 
-function stagedFor(componentId: ComponentId, carPartId?: CarPartId): StagedAction | undefined {
-  return detail.value?.stagedActions.find(
-    (a) => hasWorkAddress(a) && a.componentId === componentId && a.carPartId === carPartId,
-  )
-}
-
-function isStagedRepair(componentId: ComponentId, carPartId?: CarPartId): boolean {
-  return stagedFor(componentId, carPartId)?.kind === 'repair'
-}
-
-function partInstanceDisplayName(partInstanceId: string): string {
-  const pi = game.gameState.partInventory.find((p) => p.id === partInstanceId)
-  return pi ? game.partName(pi.partId) : partInstanceId
-}
-
-function stagedInstallName(componentId: ComponentId, carPartId?: CarPartId): string | undefined {
-  const staged = stagedFor(componentId, carPartId)
-  return staged?.kind === 'install' ? partInstanceDisplayName(staged.partInstanceId) : undefined
-}
-
-/** The yen/slots attribution for the install staged at this address, or '' -
- * a template-safe wrapper (`vue-eslint-parser` rejects a `!` assertion inside a
- * template expression). */
-function stagedInstallAttribution(componentId: ComponentId, carPartId?: CarPartId): string {
-  const staged = stagedFor(componentId, carPartId)
-  return staged ? attributionText(staged) : ''
-}
-
-/** The per-part click-per-rung repair - each click plans one more
- * band, re-staging at the new target. */
-function advancePartRepair(componentId: ComponentId, carPartId: CarPartId): void {
+/** The per-part click-per-rung repair - each click repairs one more band,
+ * instantly, through the same `repair` resolver the plain group button
+ * uses. A rung that outruns today's labour leaves an ordinary continuable
+ * `Job`, picked up by the `addressBusy`/`continueJob` branch above the next
+ * time this row renders. */
+function onRepairStepClick(componentId: ComponentId, carPartId: CarPartId): void {
   const d = detail.value
   const step = nextPartStep(componentId, carPartId)
   if (!d || !step) return
-  game.stageAction(d.car.id, {
-    kind: 'repair',
-    componentId,
-    targetBand: step.targetBand,
-    carPartId,
-  })
+  game.repair(d.car.id, componentId, step.targetBand, carPartId)
 }
 
 /** Which part's Replace drawer is open right now, if any. */
@@ -569,12 +518,12 @@ function acceptsInstall(carPartId: CarPartId, partInstanceId: string): boolean {
   if (activeReplacePart.value !== carPartId) return false
   const componentId = game.groupForCarPart(carPartId)
   if (!componentId || addressBusy(componentId, carPartId)) return false
-  if (game.isPartStagedAnywhere(partInstanceId)) return false
   return game.installablePartsForPart(d.car.id, carPartId).some((p) => p.id === partInstanceId)
 }
 
 /** One drop zone per real part, built once so each keeps its own persistent
- * pointer-tracking state. */
+ * pointer-tracking state. Drop resolves the install instantly, the same
+ * `install` resolver the Replace drawer's click uses. */
 const dropZones = Object.fromEntries(
   ALL_CAR_PART_IDS.map((carPartId) => [
     carPartId,
@@ -584,7 +533,7 @@ const dropZones = Object.fromEntries(
         const d = detail.value
         const componentId = game.groupForCarPart(carPartId)
         if (d && componentId) {
-          game.stageAction(d.car.id, { kind: 'install', componentId, carPartId, partInstanceId })
+          game.install(d.car.id, componentId, partInstanceId, carPartId)
         }
         activeReplacePart.value = null
       },
@@ -620,25 +569,35 @@ function removeBlockedReasonFor(carPartId: CarPartId): string | null {
   return d ? game.removeBlockedReason(d.car.id, carPartId) : null
 }
 
-/**
- * The install/replace affordance's own gate reason - `null` when owned,
- * hired for today, or ungated. Covers a buried engine/drivetrain slot and a
- * suspension/body/interior signature slot alike.
- */
-function installGateReasonFor(carPartId: CarPartId): string | null {
+/** The Remove affordance's own machine-labour disclosure - `''` when
+ * ungated or the machine is already owned/hired. Never blocking:
+ * a machine-gated slot always comes off, just slower by hand. */
+function removeMachineNoteFor(carPartId: CarPartId): string {
   const d = detail.value
-  return d ? game.installGateReasonFor(d.car.id, carPartId) : null
+  return d ? game.removeMachineNoteFor(d.car.id, carPartId) : ''
 }
 
 /**
- * The per-part on-car repair affordance's own gate reason - `null` when
- * owned, hired for today, or ungated. Per-part repair is bench-only for any
- * non-`surface` slot, so this only ever gates a surface signature slot
- * (bodywork, seats, dashGauges).
+ * The install/replace affordance's own machine-labour disclosure - `''`
+ * when owned, hired for today, or ungated. Covers a buried engine/drivetrain
+ * slot and a suspension/body/interior signature slot alike. Never blocking:
+ * the affordance always works, this just names what it
+ * costs by hand and what hiring the line would buy back.
  */
-function repairGateReasonFor(carPartId: CarPartId): string | null {
+function installMachineNoteFor(carPartId: CarPartId): string {
   const d = detail.value
-  return d ? game.repairGateReasonFor(d.car.id, carPartId) : null
+  return d ? game.installMachineNoteFor(d.car.id, carPartId) : ''
+}
+
+/**
+ * The per-part on-car repair affordance's own machine-labour disclosure -
+ * `''` when owned, hired for today, or ungated. Per-part repair is
+ * bench-only for any non-`surface` slot, so this only ever fires for a
+ * surface signature slot (bodywork, seats, dashGauges).
+ */
+function repairMachineNoteFor(carPartId: CarPartId): string {
+  const d = detail.value
+  return d ? game.repairMachineNoteFor(d.car.id, carPartId) : ''
 }
 /** The tier-1 repair-ceiling caption for this part's group, or null. */
 function repairCeilingCaptionFor(componentId: ComponentId, carPartId: CarPartId): string | null {
@@ -689,7 +648,7 @@ function onSetupClick(operationId: string): void {
 // --- Bench work ---
 
 function benchSwapCandidates(carPartId: CarPartId) {
-  return game.stageableParts.filter(
+  return game.pickableParts.filter(
     (sp) => sp.part.carPartId === carPartId && sp.instance.band !== 'scrap',
   )
 }
@@ -716,13 +675,6 @@ function benchShopLabel(carPartId: CarPartId): string {
     .join(' ')
 }
 
-// --- Confirm + the per-action attribution ---
-
-function onConfirm(): void {
-  const d = detail.value
-  if (d) game.confirmCarWork(d.car.id)
-}
-
 const PIPELINE_STAGE_LABELS: Record<string, string> = {
   stripPrep: 'Strip & prep',
   beat: 'Beat',
@@ -730,78 +682,6 @@ const PIPELINE_STAGE_LABELS: Record<string, string> = {
   fillAndSand: 'Fill & sand',
   prime: 'Prime',
   polish: 'Polish',
-}
-
-function isPipelineStagedAction(
-  action: StagedAction,
-): action is Extract<
-  StagedAction,
-  { kind: 'pipeline-stage' | 'pipeline-remove-panel' | 'pipeline-install-panel' | 'pipeline-paint' }
-> {
-  return (
-    action.kind === 'pipeline-stage' ||
-    action.kind === 'pipeline-remove-panel' ||
-    action.kind === 'pipeline-install-panel' ||
-    action.kind === 'pipeline-paint'
-  )
-}
-
-/** A stable per-action key for `v-for`/`data-test`. */
-function stagedKeyFor(action: StagedAction): string {
-  if (isPipelineStagedAction(action)) {
-    return action.kind === 'pipeline-stage'
-      ? `${action.kind}:${action.zoneId}:${action.stage}`
-      : `${action.kind}:${action.zoneId}`
-  }
-  if (!hasWorkAddress(action)) return `${action.kind}:${action.assemblyId}`
-  return action.carPartId ? `${action.componentId}:${action.carPartId}` : action.componentId
-}
-
-function stagedActionLabel(action: StagedAction): string {
-  if (isPipelineStagedAction(action)) {
-    const zoneName = titleCaseFromSlug(action.zoneId)
-    if (action.kind === 'pipeline-remove-panel') return `Remove panel: ${zoneName}`
-    if (action.kind === 'pipeline-install-panel') {
-      return `Install panel (${partInstanceDisplayName(action.partInstanceId)}): ${zoneName}`
-    }
-    if (action.kind === 'pipeline-paint') {
-      return `Paint (${paintColourName(action.colour)}, ${action.grade}): ${zoneName}`
-    }
-    return `${PIPELINE_STAGE_LABELS[action.stage] ?? action.stage}: ${zoneName}`
-  }
-  if (!hasWorkAddress(action)) {
-    const name = game.assemblyLabel(action.assemblyId)
-    return action.kind === 'remove-assembly'
-      ? `Remove assembly: ${name}`
-      : `Refit assembly: ${name}`
-  }
-  const targetLabel = action.carPartId
-    ? game.carPartLabel(action.carPartId)
-    : game.componentLabel(action.componentId)
-  return action.kind === 'repair'
-    ? `Repair ${targetLabel} to ${action.targetBand}`
-    : `Install ${partInstanceDisplayName(action.partInstanceId)} → ${targetLabel}`
-}
-
-/** This staged item's own yen and labour (an
- * integer point value). `Refit · free` for an equivalence install (0
- * labour); a repair its price and labour. */
-function attributionText(action: StagedAction): string {
-  const a = game.plannedActionAttribution(carId.value, action)
-  if (action.kind === 'repair') return `${formatYen(a.costYen)} · ${a.laborSlots} labour`
-  if (action.kind === 'install')
-    return a.laborSlots === 0 ? 'Refit · free' : `Fit · ${a.laborSlots} labour`
-  if (isPipelineStagedAction(action)) return `${formatYen(a.costYen)} · ${a.laborSlots} labour`
-  return 'free'
-}
-
-function onUnstageSummary(action: StagedAction): void {
-  const d = detail.value
-  if (!d) return
-  if (isPipelineStagedAction(action)) game.unstagePipelineAction(d.car.id, action)
-  else if (hasWorkAddress(action))
-    game.unstageAction(d.car.id, action.componentId, action.carPartId)
-  else game.unstageAssemblyAction(d.car.id, action.kind, action.assemblyId)
 }
 
 // --- Body zones: the panel's zone mode (docs/design/systems/workshop-rework.md) ---
@@ -813,6 +693,52 @@ const GENERIC_STAGES = ['stripPrep', 'beat', 'weld', 'fillAndSand', 'prime', 'po
 const METAL_ONLY_STAGES: readonly string[] = ['beat', 'weld', 'fillAndSand']
 
 const zoneState = computed(() => detail.value?.car.zoneState ?? null)
+
+/**
+ * The readable per-zone condition panel, all nine zones at once, plain
+ * words only - a zone's metal, finish and paint are visible without opening
+ * it first, so the whole car reads in one glance instead of nine separate
+ * clicks.
+ */
+const ZONE_ORDER: readonly ZoneId[] = [
+  'bonnet',
+  'boot',
+  'left-front',
+  'left-rear',
+  'right-front',
+  'right-rear',
+  'front-bumper',
+  'rear-bumper',
+  'skirts',
+]
+
+interface ZoneConditionRow {
+  zoneId: ZoneId
+  name: string
+  /** `null` on a trim zone (front/rear bumper, skirts) - no metal to read. */
+  metal: string | null
+  /** `null` on a trim zone. */
+  surface: string | null
+  finish: string
+  paint: string
+}
+
+const zoneConditionRows = computed<ZoneConditionRow[]>(() => {
+  const zones = zoneState.value
+  if (!zones) return []
+  const uid = detail.value?.model.uid
+  return ZONE_ORDER.map((zoneId) => {
+    const zone = zones[zoneId]
+    return {
+      zoneId,
+      name: titleCaseFromSlug(zoneId),
+      metal: metalConditionText(zone),
+      surface: surfaceConditionText(zone),
+      finish: finishConditionText(zone),
+      paint: paintStateText(zone, uid),
+    }
+  })
+})
 
 /**
  * The zone the panel is docked on, with everything its mode needs: the live
@@ -837,8 +763,8 @@ const selectedZone = computed(() => {
 
 /** One generic stage's live preview for one zone - `null` when its
  * prerequisite isn't met yet (the button shows disabled with no total),
- * straight from `pipelineActionPlan` (the exact function Confirm resolves
- * with), never a re-derived client-side gate. */
+ * straight from `pipelineActionPlan`, the exact function the click below
+ * resolves with, never a re-derived client-side gate. */
 function genericStagePreview(
   zoneId: ZoneId,
   stage: (typeof GENERIC_STAGES)[number],
@@ -848,10 +774,10 @@ function genericStagePreview(
   return game.pipelineActionPlan(d.car, { kind: 'pipeline-stage', stage, zoneId })
 }
 
-function onStageGeneric(zoneId: ZoneId, stage: (typeof GENERIC_STAGES)[number]): void {
+function onGenericStageClick(zoneId: ZoneId, stage: (typeof GENERIC_STAGES)[number]): void {
   const d = detail.value
   if (!d) return
-  game.stageAction(d.car.id, { kind: 'pipeline-stage', stage, zoneId })
+  game.pipelineStage(d.car.id, zoneId, stage)
 }
 
 /** The swatch armed for each zone, by paint-colour id - the paint stage's own
@@ -940,12 +866,12 @@ function paintPreview(zoneId: ZoneId): { costYen: number; laborSlots: number } |
   return paintPlanFor(zoneId, grade)
 }
 
-function onStagePaint(zoneId: ZoneId): void {
+function onPaintClick(zoneId: ZoneId): void {
   const d = detail.value
   const colour = paintColourFor(zoneId)
   const grade = paintGradeFor(zoneId)
   if (!d || !colour || !grade) return
-  game.stageAction(d.car.id, { kind: 'pipeline-paint', zoneId, colour, grade })
+  game.paintZone(d.car.id, zoneId, colour, grade)
 }
 
 /** Zone panels sitting in inventory that fit THIS car's own fitment class,
@@ -971,10 +897,10 @@ function removePanelPreview(zoneId: ZoneId): { costYen: number; laborSlots: numb
   return game.pipelineActionPlan(d.car, { kind: 'pipeline-remove-panel', zoneId })
 }
 
-function onStageRemovePanel(zoneId: ZoneId): void {
+function onRemovePanelClick(zoneId: ZoneId): void {
   const d = detail.value
   if (!d) return
-  game.stageAction(d.car.id, { kind: 'pipeline-remove-panel', zoneId })
+  game.removePanel(d.car.id, zoneId)
 }
 
 /** One candidate panel's own cost and labour, from the same plan Confirm
@@ -988,10 +914,10 @@ function installPanelPreview(
   return game.pipelineActionPlan(d.car, { kind: 'pipeline-install-panel', zoneId, partInstanceId })
 }
 
-function onStageInstallPanel(zoneId: ZoneId, partInstanceId: string): void {
+function onInstallPanelClick(zoneId: ZoneId, partInstanceId: string): void {
   const d = detail.value
   if (!d || !partInstanceId) return
-  game.stageAction(d.car.id, { kind: 'pipeline-install-panel', zoneId, partInstanceId })
+  game.installPanel(d.car.id, zoneId, partInstanceId)
 }
 
 /** The zone's own generic stages, each with the live plan its control reads -
@@ -1267,6 +1193,47 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
            (if any), then the docked info/action panel every region feeds. -->
       <WorkshopViews :car-id="detail.car.id" @select="onWorkshopSelect" />
 
+      <!-- D3: every zone's condition, read at a glance rather than by
+           opening it. Plain words only - no jargon band, no raw severity
+           number - so a bare panel after a refit reads as "bare metal,
+           unpainted" right here instead of needing nine separate clicks to
+           notice. -->
+      <section
+        v-if="zoneConditionRows.length > 0"
+        class="zone-condition-panel"
+        data-test="zone-condition-panel"
+      >
+        <h4>
+          Body condition
+          <HelpHint label="Body condition">
+            Every panel's own state, plain and at a glance - metal, surface and finish where a zone
+            carries them, and what colour (if any) is actually on it right now.
+          </HelpHint>
+        </h4>
+        <ul class="zone-condition-list">
+          <li
+            v-for="row in zoneConditionRows"
+            :key="row.zoneId"
+            class="zone-condition-row"
+            :data-test="'zone-condition-' + row.zoneId"
+          >
+            <span class="zone-condition-name">{{ row.name }}</span>
+            <span class="zone-condition-facts">
+              <span v-if="row.metal" :data-test="'zone-condition-metal-' + row.zoneId"
+                >Metal: {{ row.metal }}</span
+              >
+              <span v-if="row.surface" :data-test="'zone-condition-surface-' + row.zoneId"
+                >Surface: {{ row.surface }}</span
+              >
+              <span :data-test="'zone-condition-finish-' + row.zoneId"
+                >Finish: {{ row.finish }}</span
+              >
+              <span :data-test="'zone-condition-paint-' + row.zoneId">Paint: {{ row.paint }}</span>
+            </span>
+          </li>
+        </ul>
+      </section>
+
       <section
         v-if="game.benchContainersFor(detail.car.id).length > 0"
         class="bench-strip"
@@ -1364,50 +1331,25 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             </template>
 
             <template v-else>
-              <!-- The plan preview and clear control persist whenever a repair
-                   is staged, even once the plan has reached the mint ceiling
-                   and no further rung remains to stage. -->
-              <template
-                v-if="
-                  nextPartStep(selectedGroup, selectedRow.partId) ||
-                  isStagedRepair(selectedGroup, selectedRow.partId)
-                "
-              >
-                <span
-                  v-if="isStagedRepair(selectedGroup, selectedRow.partId)"
-                  class="plan-preview"
-                  data-test="panel-plan-preview"
-                >
-                  <BandChip :band="selectedRow.band" />
-                  <span class="plan-arrow" aria-hidden="true">&rarr;</span>
-                  <BandChip :band="stagedTargetBand(selectedGroup, selectedRow.partId)" />
-                </span>
+              <!-- Repairs one band the moment it's clicked; a rung that
+                   outruns today's labour leaves an ordinary continuable job,
+                   picked up by the "working…" branch above the next time this
+                   row renders. -->
+              <template v-if="nextPartStep(selectedGroup, selectedRow.partId)">
                 <button
-                  v-if="nextPartStep(selectedGroup, selectedRow.partId)"
                   type="button"
                   class="step-up loud"
-                  :data-test="'stage-repair-part-' + selectedRow.partId"
+                  :data-test="'repair-part-' + selectedRow.partId"
                   :title="partStepTitle(selectedGroup, selectedRow)"
-                  @click="advancePartRepair(selectedGroup, selectedRow.partId)"
+                  @click="onRepairStepClick(selectedGroup, selectedRow.partId)"
                 >
                   {{ repairStepText(nextPartStepOrFallback(selectedGroup, selectedRow.partId)) }}
                 </button>
-                <button
-                  v-if="isStagedRepair(selectedGroup, selectedRow.partId)"
-                  type="button"
-                  class="clear-plan"
-                  :data-test="'unstage-repair-part-' + selectedRow.partId"
-                  aria-label="Clear planned repair"
-                  title="Clear planned repair"
-                  @click="game.unstageAction(detail.car.id, selectedGroup, selectedRow.partId)"
-                >
-                  &times;
-                </button>
                 <span
-                  v-if="repairGateReasonFor(selectedRow.partId)"
+                  v-if="repairMachineNoteFor(selectedRow.partId)"
                   class="blocked-reason"
                   :data-test="'assist-fee-repair-' + selectedRow.partId"
-                  >{{ repairGateReasonFor(selectedRow.partId) }}</span
+                  >{{ repairMachineNoteFor(selectedRow.partId) }}</span
                 >
               </template>
 
@@ -1425,7 +1367,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               <!-- Replace needs an empty slot, except on a shell carrier
                    (chassis, bodywork, paint), whose slot is never empty and
                    whose part is swapped in place. A scrap one is past repair,
-                   so this is the only way out of it. -->
+                   so this is the only way out of it. Fitting happens the
+                   instant a part is picked, dropped, or clicked. -->
               <template v-if="!selectedRow.installedPartName || selectedRow.replaceInPlace">
                 <button
                   type="button"
@@ -1439,27 +1382,11 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                 >
                   {{ dropZones[selectedRow.partId].isActiveTarget.value ? 'Drop here' : 'Replace' }}
                 </button>
-                <template v-if="stagedInstallName(selectedGroup, selectedRow.partId)">
-                  <span class="planned-install" data-test="panel-planned-install"
-                    >planned: {{ stagedInstallName(selectedGroup, selectedRow.partId) }} ·
-                    {{ stagedInstallAttribution(selectedGroup, selectedRow.partId) }}</span
-                  >
-                  <button
-                    type="button"
-                    class="clear-plan"
-                    :data-test="'unstage-part-' + selectedRow.partId"
-                    aria-label="Clear planned install"
-                    title="Clear planned install"
-                    @click="game.unstageAction(detail.car.id, selectedGroup, selectedRow.partId)"
-                  >
-                    &times;
-                  </button>
-                </template>
                 <span
-                  v-if="installGateReasonFor(selectedRow.partId)"
+                  v-if="installMachineNoteFor(selectedRow.partId)"
                   class="blocked-reason"
                   :data-test="'assist-fee-' + selectedRow.partId"
-                  >{{ installGateReasonFor(selectedRow.partId) }}</span
+                  >{{ installMachineNoteFor(selectedRow.partId) }}</span
                 >
               </template>
 
@@ -1476,6 +1403,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                 >
                   Take it off{{ labourSuffix(game.actionPoints.removePart) }}
                 </button>
+                <span
+                  v-if="removeMachineNoteFor(selectedRow.partId)"
+                  class="blocked-reason"
+                  :data-test="'remove-machine-note-' + selectedRow.partId"
+                  >{{ removeMachineNoteFor(selectedRow.partId) }}</span
+                >
                 <span
                   v-if="removeBlockedReasonFor(selectedRow.partId)"
                   class="blocked-reason"
@@ -1605,6 +1538,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               :data-test="'assembly-blocked-' + panelAssemblyRow.assemblyId"
               >{{ panelAssemblyRow.blockedReason }}</span
             >
+            <span
+              v-if="panelAssemblyRow.machineNote"
+              class="blocked-reason"
+              :data-test="'assembly-machine-note-' + panelAssemblyRow.assemblyId"
+              >{{ panelAssemblyRow.machineNote }}</span
+            >
           </div>
         </template>
 
@@ -1649,7 +1588,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               class="step-up loud"
               :disabled="!stageView.plan"
               :data-test="'pipeline-' + stageView.stage + '-' + selectedZone.zoneId"
-              @click="onStageGeneric(selectedZone.zoneId, stageView.stage)"
+              @click="onGenericStageClick(selectedZone.zoneId, stageView.stage)"
             >
               {{ stageView.label + pipelineCostText(stageView.plan) }}
             </button>
@@ -1663,7 +1602,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                 class="step-up loud"
                 :disabled="!zoneRemovePanelPlan"
                 :data-test="'pipeline-remove-panel-' + selectedZone.zoneId"
-                @click="onStageRemovePanel(selectedZone.zoneId)"
+                @click="onRemovePanelClick(selectedZone.zoneId)"
               >
                 Take it off{{ pipelineCostText(zoneRemovePanelPlan) }}
               </button>
@@ -1676,7 +1615,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                 type="button"
                 :disabled="!option.plan"
                 :data-test="'pipeline-install-panel-' + selectedZone.zoneId + '-' + option.id"
-                @click="onStageInstallPanel(selectedZone.zoneId, option.id)"
+                @click="onInstallPanelClick(selectedZone.zoneId, option.id)"
               >
                 {{ option.label + pipelineCostText(option.plan) }}
               </button>
@@ -1740,7 +1679,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               class="step-up loud"
               :disabled="!zonePaintPlan"
               :data-test="'pipeline-paint-' + selectedZone.zoneId"
-              @click="onStagePaint(selectedZone.zoneId)"
+              @click="onPaintClick(selectedZone.zoneId)"
             >
               {{ 'Paint' + pipelineCostText(zonePaintPlan) }}
             </button>
@@ -1844,88 +1783,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         </ul>
       </section>
 
-      <section class="staged-panel">
-        <h4>
-          Planned work ({{ detail.stagedActions.length }})
-          <HelpHint label="Planned work">
-            Everything you line up in the workshop lands here, free to add and remove, until you
-            Confirm. Each line shows its own price and labour; the bar totals them.
-          </HelpHint>
-        </h4>
-        <p v-if="detail.stagedActions.length === 0" class="empty">
-          Nothing planned yet - free to add and remove until you Confirm.
-        </p>
-        <ul v-else class="staged-list">
-          <li
-            v-for="action in detail.stagedActions"
-            :key="stagedKeyFor(action)"
-            class="staged-row"
-            :data-test="'staged-row-' + stagedKeyFor(action)"
-          >
-            <span class="staged-label">{{ stagedActionLabel(action) }}</span>
-            <span class="staged-attr" :data-test="'staged-attr-' + stagedKeyFor(action)">{{
-              attributionText(action)
-            }}</span>
-            <span
-              v-if="stagedActionGateReasonFor(action)"
-              class="blocked-reason"
-              :data-test="'staged-gate-' + stagedKeyFor(action)"
-              >{{ stagedActionGateReasonFor(action) }}</span
-            >
-            <button
-              type="button"
-              :data-test="'unstage-summary-' + stagedKeyFor(action)"
-              @click="onUnstageSummary(action)"
-            >
-              remove
-            </button>
-          </li>
-        </ul>
-        <div class="confirm-block">
-          <button
-            class="primary confirm-lever"
-            data-test="confirm-work"
-            :disabled="detail.stagedActions.length === 0 || stagedWorkGated"
-            :title="stagedWorkGated ? 'Some planned work needs a machine hired first' : undefined"
-            @click="onConfirm"
-          >
-            Confirm
-            <span v-if="detail.plannedEstimate" class="confirm-cost" data-test="confirm-cost"
-              >{{ formatYen(detail.plannedEstimate.plannedRepairCostYen) }} ·
-              {{ detail.plannedEstimate.plannedLaborSlots }} labour</span
-            >
-          </button>
-          <p
-            v-if="detail.plannedEstimate && plannedLaborOverToday"
-            class="confirm-caption warn"
-            data-test="confirm-labour-caption"
-          >
-            Today's labour runs out first - the rest carries to tomorrow.
-          </p>
-          <p
-            v-if="
-              detail.plannedEstimate &&
-              (detail.plannedEstimate.crewLaborSaved > 0 ||
-                detail.plannedEstimate.perfectionistCostSavedYen > 0)
-            "
-            class="crew-saving"
-            data-test="confirm-crew-saving"
-          >
-            <!-- crewLaborSaved is an integer labour point value. -->
-            <span v-if="detail.plannedEstimate.crewLaborSaved > 0" data-test="crew-labour-saved"
-              >The crew save {{ detail.plannedEstimate.crewLaborSaved }} labour.</span
-            >
-            <span
-              v-if="detail.plannedEstimate.perfectionistCostSavedYen > 0"
-              data-test="crew-cost-saved"
-            >
-              A perfectionist saves
-              {{ formatYen(detail.plannedEstimate.perfectionistCostSavedYen) }}.</span
-            >
-          </p>
-        </div>
-      </section>
-
       <details v-if="!detail.serviceJob" class="finances" data-test="finance-panel">
         <summary class="finances-summary" data-test="finance-summary">Finances</summary>
         <p class="finances-intro">
@@ -2003,24 +1860,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
           {{ formatYen(Math.round(detail.passionSpendNotice.returnRate * 100)) }} of every
           {{ formatYen(100) }} you put in. Take it further because you want to, not for the money.
         </p>
-
-        <template v-if="detail.plannedEstimate">
-          <p class="estimate-label">Estimate - not yet confirmed</p>
-          <dl class="finance-grid estimate-grid" data-test="finance-estimate">
-            <div class="finance-row">
-              <dt>Planned repair cost</dt>
-              <dd data-test="finance-estimate-repair-cost">
-                {{ formatYen(detail.plannedEstimate.plannedRepairCostYen) }}
-              </dd>
-            </div>
-            <div class="finance-row">
-              <dt>Total spent after</dt>
-              <dd data-test="finance-estimate-total-spent">
-                {{ formatYen(detail.plannedEstimate.totalSpentYenAfter) }}
-              </dd>
-            </div>
-          </dl>
-        </template>
       </details>
 
       <section v-if="!detail.serviceJob" class="sell">
@@ -2507,36 +2346,12 @@ h4 {
   color: var(--mg-neon-cyan);
 }
 
-.planned-install {
-  color: var(--mg-neon-violet);
-  font-size: var(--mg-fs-sm);
-}
-
-.plan-preview {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--mg-space-1);
-}
-
-.plan-arrow {
-  color: var(--mg-text-dim);
-}
-
 /* The repair-step button carries its full price inline,
    never on hover. */
 .step-up.loud {
   padding: 2px 10px;
   font-size: var(--mg-fs-sm);
   line-height: 1.2;
-}
-
-.clear-plan {
-  min-width: 28px;
-  padding: 2px 8px;
-  font-size: var(--mg-fs-md);
-  line-height: 1;
-  color: var(--mg-neon-pink);
-  border-color: var(--mg-panel-edge);
 }
 
 /* The docked zone's three layer severities, read out beside its name. */
@@ -2722,21 +2537,6 @@ h4 {
   border-radius: var(--mg-radius);
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
-}
-
-.estimate-grid {
-  margin-top: var(--mg-space-1);
-  opacity: 0.75;
-  font-style: italic;
-}
-
-.estimate-label {
-  margin: var(--mg-space-2) 0 0;
-  color: var(--mg-text-dim);
-  font-size: var(--mg-fs-sm);
-  font-style: italic;
-  border-top: var(--mg-border);
-  padding-top: var(--mg-space-2);
 }
 
 .sell {
@@ -2954,67 +2754,41 @@ h4 {
   color: var(--mg-yen);
 }
 
-.staged-panel {
+.zone-condition-panel {
   margin-top: var(--mg-space-3);
   padding-top: var(--mg-space-3);
   border-top: var(--mg-border);
 }
 
-.staged-list {
+.zone-condition-list {
   list-style: none;
   padding: 0;
-  margin: 0 0 var(--mg-space-3);
+  margin: 0;
   display: grid;
   gap: var(--mg-space-1);
 }
 
-.staged-row {
-  display: flex;
-  align-items: center;
-  gap: var(--mg-space-2);
-  font-size: var(--mg-fs-sm);
-}
-
-.staged-label {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-/* Each staged item lists its own yen and slots. */
-.staged-attr {
-  color: var(--mg-yen);
-  white-space: nowrap;
-}
-
-.confirm-lever {
-  width: 100%;
+.zone-condition-row {
   display: flex;
   align-items: baseline;
-  justify-content: center;
+  flex-wrap: wrap;
   gap: var(--mg-space-2);
-}
-
-.confirm-cost {
   font-size: var(--mg-fs-sm);
-  opacity: 0.85;
 }
 
-.confirm-caption {
-  margin: var(--mg-space-1) 0 0;
-  text-align: center;
+.zone-condition-name {
+  flex: 0 0 auto;
+  min-width: 6em;
   color: var(--mg-text-dim);
-  font-size: var(--mg-fs-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: var(--mg-fs-xs);
 }
 
-.confirm-caption.warn {
-  color: var(--mg-neon-violet);
-}
-
-.crew-saving {
-  margin: var(--mg-space-1) 0 0;
-  text-align: center;
-  color: var(--mg-success);
-  font-size: var(--mg-fs-sm);
+.zone-condition-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mg-space-1) var(--mg-space-3);
 }
 
 .empty {

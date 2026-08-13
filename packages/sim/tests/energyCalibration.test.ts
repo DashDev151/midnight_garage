@@ -66,7 +66,6 @@ function stateWithStaff(staff: StaffMember[]): GameState {
     toolTiers: testToolTiers(),
     pendingPartOrders: [],
     cartPartIds: [],
-    stagedCarWork: {},
     carLedgers: {},
     toolShopsOwned: [],
     machineListing: null,

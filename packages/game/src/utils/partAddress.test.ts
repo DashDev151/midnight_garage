@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addressesOverlap, sameAddress } from './partAddress'
+import { addressesOverlap } from './partAddress'
 
 describe('partAddress', () => {
   describe('addressesOverlap', () => {
@@ -29,33 +29,6 @@ describe('partAddress', () => {
       ).toBe(true)
       expect(
         addressesOverlap(
-          { componentId: 'engine', carPartId: 'intake' },
-          { componentId: 'engine', carPartId: 'exhaust' },
-        ),
-      ).toBe(false)
-    })
-  })
-
-  describe('sameAddress', () => {
-    it('matches two group-level addresses on the same group', () => {
-      expect(sameAddress({ componentId: 'engine' }, { componentId: 'engine' })).toBe(true)
-    })
-
-    it('does not match a group-level address against a part-level one, even overlapping', () => {
-      expect(
-        sameAddress({ componentId: 'engine' }, { componentId: 'engine', carPartId: 'intake' }),
-      ).toBe(false)
-    })
-
-    it('matches only the exact same part', () => {
-      expect(
-        sameAddress(
-          { componentId: 'engine', carPartId: 'intake' },
-          { componentId: 'engine', carPartId: 'intake' },
-        ),
-      ).toBe(true)
-      expect(
-        sameAddress(
           { componentId: 'engine', carPartId: 'intake' },
           { componentId: 'engine', carPartId: 'exhaust' },
         ),

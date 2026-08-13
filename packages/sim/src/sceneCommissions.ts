@@ -22,7 +22,6 @@ import type { MissionGradeReport } from './missions'
 import { evaluateRequirement } from './requirements'
 import type { Rng } from './rng'
 import { creditSceneDelivery } from './sceneStanding'
-import { clearStagedWork } from './stagedWork'
 import { championStatFor, currentPowerExpectationBarPs, valuateCarForBuyer } from './valuation'
 
 export interface SceneCommissionResolution {
@@ -282,7 +281,7 @@ export function resolveDeliverSceneCommission(
   )
 
   const clearedState = dissolveAssembliesForCar(
-    clearStagedWork(releaseCarFromShop(state, carInstanceId), carInstanceId),
+    releaseCarFromShop(state, carInstanceId),
     carInstanceId,
   )
   const withScene = creditSceneDelivery(

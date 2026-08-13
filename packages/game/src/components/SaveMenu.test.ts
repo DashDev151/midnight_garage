@@ -7,10 +7,17 @@ import SaveMenu from './SaveMenu.vue'
 
 vi.mock('../save/saveDb', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../save/saveDb')>()
-  return { ...actual, loadSessionEvents: vi.fn() }
+  return {
+    ...actual,
+    loadSessionEvents: vi.fn(),
+    loadLedgerEvents: vi.fn(),
+    ensureCareerId: vi.fn(),
+  }
 })
 
 const loadSessionEvents = vi.mocked(saveDb.loadSessionEvents)
+const loadLedgerEvents = vi.mocked(saveDb.loadLedgerEvents)
+const ensureCareerId = vi.mocked(saveDb.ensureCareerId)
 
 /**
  * Every wrapper is tracked
@@ -27,25 +34,39 @@ afterEach(() => {
   for (const wrapper of mountedWrappers.splice(0)) wrapper.unmount()
 })
 
-describe('SaveMenu - export session log (Sprint 24 session log v0)', () => {
+describe('SaveMenu - export session bundle', () => {
+  const createObjectURL = vi.fn(() => 'blob:mock-url')
+
   beforeEach(() => {
     setActivePinia(createPinia())
+    createObjectURL.mockClear()
     // happy-dom doesn't implement the Blob URL API - stub it so the download
     // helper's `URL.createObjectURL`/`revokeObjectURL` calls don't throw.
     vi.stubGlobal('URL', {
       ...URL,
-      createObjectURL: vi.fn(() => 'blob:mock-url'),
+      createObjectURL,
       revokeObjectURL: vi.fn(),
     })
   })
 
   afterEach(() => vi.unstubAllGlobals())
 
-  it('downloads the loaded session events as a JSON file and reports the count', async () => {
+  it('downloads a bundle of career id, export day, actions and ledger', async () => {
     const game = useGameStore()
     game.newGame(1)
+    ensureCareerId.mockResolvedValue('career-test-1')
     loadSessionEvents.mockResolvedValue([
       { id: 1, day: 1, type: 'endDay', payload: { endedDay: 1 }, timestamp: 123 },
+    ])
+    loadLedgerEvents.mockResolvedValue([
+      {
+        id: 1,
+        day: 1,
+        bucket: 'running',
+        amountYen: 500,
+        entryType: 'coffee-bought',
+        timestamp: 124,
+      },
     ])
 
     const wrapper = track(mount(SaveMenu))
@@ -55,7 +76,18 @@ describe('SaveMenu - export session log (Sprint 24 session log v0)', () => {
     await new Promise((resolve) => setTimeout(resolve, 0)) // flush the async handler
 
     expect(clickSpy).toHaveBeenCalledOnce()
-    expect(wrapper.text()).toContain('Exported 1 session event(s).')
+    const blob = createObjectURL.mock.calls[0]![0]
+    const bundle = JSON.parse(await blob.text()) as {
+      career: string
+      exportedOnDay: number
+      actions: unknown[]
+      ledger: unknown[]
+    }
+    expect(bundle.career).toBe('career-test-1')
+    expect(bundle.exportedOnDay).toBe(game.day)
+    expect(bundle.actions).toHaveLength(1)
+    expect(bundle.ledger).toHaveLength(1)
+    expect(wrapper.text()).toContain('Exported 1 action(s) and 1 ledger event(s).')
     clickSpy.mockRestore()
   })
 })

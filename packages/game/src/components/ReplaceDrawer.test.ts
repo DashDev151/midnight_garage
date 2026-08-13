@@ -57,7 +57,7 @@ describe('ReplaceDrawer', () => {
     expect(wrapper.text()).not.toContain(wrongAddress.name)
   })
 
-  it('clicking a fitting part stages it (addressed to this exact carPartId) and emits close', async () => {
+  it('clicking a fitting part fits it immediately (addressed to this exact carPartId) and emits close', async () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
     const carId = game.gameState.ownedCars[0]!.id
@@ -74,6 +74,10 @@ describe('ReplaceDrawer', () => {
       ...game.gameState,
       ownedCars: [{ ...car, parts: { ...car.parts, dampers: { installed: null } } }],
     }
+    // Labour only actually applies (and the job completes) once the car is
+    // in a service bay - a direct install runs through the real job/labour
+    // system immediately, unlike the old free-and-instant staging step.
+    game.moveCar(carId, 'service')
 
     const wrapper = mountDrawer({
       props: { carId, carPartId: 'dampers' },
@@ -81,13 +85,12 @@ describe('ReplaceDrawer', () => {
     })
     await wrapper.find('.part-card').trigger('click')
 
-    expect(game.stagedActionsFor(carId)).toEqual([
-      { kind: 'install', componentId: 'suspension', carPartId: 'dampers', partInstanceId },
-    ])
+    expect(game.gameState.ownedCars[0]!.parts.dampers.installed?.id).toBe(partInstanceId)
+    expect(game.gameState.partInventory.some((p) => p.id === partInstanceId)).toBe(false)
     expect(wrapper.emitted('close')).toHaveLength(1)
   })
 
-  it('clicking a non-fitting part (its slot is already occupied) stages nothing and emits no close', async () => {
+  it('clicking a non-fitting part (its slot is already occupied) fits nothing and emits no close', async () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
     const carId = game.gameState.ownedCars[0]!.id
@@ -97,6 +100,7 @@ describe('ReplaceDrawer', () => {
       (p) => p.carPartId === 'dampers' && p.grade !== 'stock' && p.fitmentClass === 'entry',
     )!
     game.devGrantPart(nonFitting.id)
+    const partInstanceId = game.gameState.partInventory[0]!.id
 
     const wrapper = mountDrawer({
       props: { carId, carPartId: 'dampers' },
@@ -104,7 +108,7 @@ describe('ReplaceDrawer', () => {
     })
     await wrapper.find('.part-card').trigger('click')
 
-    expect(game.stagedActionsFor(carId)).toEqual([])
+    expect(game.gameState.partInventory.some((p) => p.id === partInstanceId)).toBe(true)
     expect(wrapper.emitted('close')).toBeUndefined()
   })
 

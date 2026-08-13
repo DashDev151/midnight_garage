@@ -397,23 +397,6 @@ describe('saveCodec', () => {
     const decoded = decodeSave(code)
     expect(decoded.day).toBe(80)
     expect(decoded.reputationPoints).toBe(130)
-    // v9 -> v10 migration is pure default-fill: a v9 save never had the
-    // staged-work field either.
-    expect(decoded.stagedCarWork).toEqual({})
-  })
-
-  it('round-trips a v10 state with real staged work', () => {
-    const withStagedWork: GameState = GameStateSchema.parse({
-      ...fullState,
-      stagedCarWork: {
-        'car-0001': [
-          { kind: 'repair', componentId: 'engine', targetBand: 'mint' },
-          { kind: 'install', componentId: 'suspension', partInstanceId: 'pi-0001' },
-        ],
-      },
-    })
-    const decoded = decodeSave(encodeSave(withStagedWork))
-    expect(decoded).toEqual(withStagedWork)
   })
 
   it('decodes a pre-v11 save with an active lot that never had a bid (Sprint 19: purely additive)', () => {
@@ -939,15 +922,13 @@ describe('saveCodec', () => {
     // with `carPartId` simply absent (which IS a group-level address now).
     expect(decoded.jobs[0]?.componentId).toBe('body')
     expect(decoded.jobs[0]).not.toHaveProperty('carPartId')
-    expect(decoded.stagedCarWork['car-0001']?.[0]).toEqual({
-      kind: 'repair',
-      componentId: 'engine',
-      targetBand: 'fine',
-    })
-    expect(decoded.stagedCarWork['car-0001']?.[0]).not.toHaveProperty('carPartId')
+    // stagedCarWork itself was retired at v69 - the schema
+    // strips it like any other unknown key, so nothing from the old stage
+    // survives into the decoded state.
+    expect(decoded).not.toHaveProperty('stagedCarWork')
   })
 
-  it('a v17 state with only group-level staged work/jobs (no carPartId anywhere) round-trips exactly', () => {
+  it('a v17 state with only group-level jobs (no carPartId anywhere) round-trips exactly', () => {
     const groupOnly: GameState = GameStateSchema.parse({
       ...fullState,
       jobs: [
@@ -961,18 +942,14 @@ describe('saveCodec', () => {
           laborSlotsSpent: 1,
         },
       ],
-      stagedCarWork: {
-        'car-0001': [{ kind: 'repair', componentId: 'engine', targetBand: 'fine' }],
-      },
     })
     const decoded = decodeSave(encodeSave(groupOnly))
     expect(decoded).toEqual(groupOnly)
     expect(decoded.jobs[0]).not.toHaveProperty('carPartId')
-    expect(decoded.stagedCarWork['car-0001']?.[0]).not.toHaveProperty('carPartId')
   })
 
-  it('a per-part staged action and job (carPartId set) round-trip exactly under version 17', () => {
-    expect(SAVE_VERSION).toBe(68)
+  it('a per-part job (carPartId set) round-trips exactly under version 17', () => {
+    expect(SAVE_VERSION).toBe(69)
     const perPart: GameState = GameStateSchema.parse({
       ...fullState,
       jobs: [
@@ -987,16 +964,10 @@ describe('saveCodec', () => {
           laborSlotsSpent: 0,
         },
       ],
-      stagedCarWork: {
-        'car-0001': [
-          { kind: 'repair', componentId: 'engine', carPartId: 'exhaust', targetBand: 'mint' },
-        ],
-      },
     })
     const decoded = decodeSave(encodeSave(perPart))
     expect(decoded).toEqual(perPart)
     expect(decoded.jobs[0]?.carPartId).toBe('intake')
-    expect(decoded.stagedCarWork['car-0001']?.[0]).toMatchObject({ carPartId: 'exhaust' })
   })
 
   /**
@@ -1019,7 +990,7 @@ describe('saveCodec', () => {
   })
 
   it('a v31 state with an origin-carrying inventory part round-trips the origin exactly', () => {
-    expect(SAVE_VERSION).toBe(68)
+    expect(SAVE_VERSION).toBe(69)
     const withOrigin: GameState = GameStateSchema.parse({
       ...fullState,
       partInventory: [
@@ -1662,7 +1633,7 @@ describe('saveCodec', () => {
    * a real double-parked car round-trips it exactly.
    */
   it('SAVE_VERSION is current', () => {
-    expect(SAVE_VERSION).toBe(68)
+    expect(SAVE_VERSION).toBe(69)
   })
 
   it('a real pre-v26 save (a v25 envelope with no graceParkingCarId field) decodes with nothing double-parked under v26', () => {
@@ -1695,7 +1666,7 @@ describe('saveCodec', () => {
    * exactly.
    */
   it('SAVE_VERSION is current', () => {
-    expect(SAVE_VERSION).toBe(68)
+    expect(SAVE_VERSION).toBe(69)
   })
 
   it('a real pre-v27 save (a v26 envelope with neither field) decodes with nothing listed or scheduled under v27', () => {
@@ -1766,7 +1737,7 @@ describe('saveCodec', () => {
    * same slot, same band, same everything else.
    */
   it('SAVE_VERSION is current', () => {
-    expect(SAVE_VERSION).toBe(68)
+    expect(SAVE_VERSION).toBe(69)
   })
 
   it("a real pre-v28 save remaps an entry-tier car's everyday-class stock part to its own class sibling SKU", () => {
@@ -2278,5 +2249,25 @@ describe('saveCodec', () => {
     const code = 'MGSAVE1.' + btoa(JSON.stringify(preV65))
     const decoded = decodeSave(code)
     expect(decoded).not.toHaveProperty('specialty')
+  })
+
+  /**
+   * v68 -> v69 (the work is direct): `GameStateSchema` loses `stagedCarWork`
+   * outright. Per directive 19, a plain SAVE_VERSION bump with
+   * no migration and no legacy-compat branch: a pre-v69 save carrying the
+   * old field simply has it stripped, the same as any other field
+   * `GameStateSchema` no longer declares.
+   */
+  it('a real pre-v69 save (a v68 envelope carrying the old stagedCarWork field) decodes with it dropped', () => {
+    const preV69State: Record<string, unknown> = {
+      ...fullState,
+      stagedCarWork: {
+        'car-0001': [{ kind: 'repair', componentId: 'engine', targetBand: 'mint' }],
+      },
+    }
+    const preV69 = { version: 68, gameState: preV69State }
+    const code = 'MGSAVE1.' + btoa(JSON.stringify(preV69))
+    const decoded = decodeSave(code)
+    expect(decoded).not.toHaveProperty('stagedCarWork')
   })
 })

@@ -6,6 +6,7 @@ import {
   type CarModel,
   type CarPartId,
   type ComponentId,
+  type ConditionBand,
   type RequirementSpec,
 } from '@midnight-garage/content'
 import { bandIndex, isPartMissing } from './bands'
@@ -217,68 +218,96 @@ function evaluateTasteMatch(
   return { pass: ratio >= spec.minMultiplier, label, actual: `${ratio.toFixed(2)}x`, required }
 }
 
+/** How many failing parts get named before a list becomes a count - shared
+ * by the band-floor refusals below and `noLapTimeReason`. */
+const NAMED_BLOCKER_LIMIT = 3
+
+/** One shortfall group as display names: "Paint, Exhaust below worn", or past
+ * the named limit "Paint, Exhaust, Tyres and 2 more below worn". */
+function namedShortfall(
+  partIds: readonly CarPartId[],
+  suffix: string,
+  context: SimContext,
+): string {
+  const names = partIds.map(
+    (partId) => context.partsTaxonomyById[partId]?.displayName ?? String(partId),
+  )
+  if (names.length <= NAMED_BLOCKER_LIMIT) return `${names.join(', ')} ${suffix}`
+  const named = names.slice(0, NAMED_BLOCKER_LIMIT).join(', ')
+  return `${named} and ${names.length - NAMED_BLOCKER_LIMIT} more ${suffix}`
+}
+
 /**
- * Every slot a real defect could touch holds an installed part at `worn`
- * condition or better. A filled slot fails when it is below `worn`; an
+ * Why a car fails a band floor, slot by slot - or null when it passes.
+ * Every slot a real defect could touch must hold an installed part at
+ * `minBand` or better. A filled slot fails when it is below the floor; an
  * empty slot fails only when it is genuinely missing (`isPartMissing`) - a
  * legitimately-absent `forcedInduction` slot on an NA car is not a defect
  * and never counts, exactly as every other consumer (auction grading, the
  * cost/condition/stat helpers) already treats it. An unresolvable model
  * fails closed (an empty slot counts), matching how the sibling
- * stat/taste/lap evaluators degrade.
+ * stat/taste/lap evaluators degrade. The refusal names the parts: missing
+ * parts first (a missing part outranks a worn one), then below-band parts
+ * worst band first, each group capped at `NAMED_BLOCKER_LIMIT` names with
+ * the rest counted.
  */
+function bandFloorRefusal(
+  car: CarInstance,
+  minBand: ConditionBand,
+  context: SimContext,
+): string | null {
+  const model = context.modelsById[car.modelId]
+  const minIndex = bandIndex(minBand)
+  const belowBand: { partId: CarPartId; severity: number }[] = []
+  const missing: CarPartId[] = []
+  for (const partId of ALL_CAR_PART_IDS) {
+    const installed = car.parts[partId].installed
+    if (installed) {
+      const severity = bandIndex(installed.band)
+      if (severity < minIndex) belowBand.push({ partId, severity })
+    } else if (!model || isPartMissing(car, model, partId)) {
+      missing.push(partId)
+    }
+  }
+  if (missing.length === 0 && belowBand.length === 0) return null
+  belowBand.sort((a, b) => a.severity - b.severity)
+  const groups: string[] = []
+  if (missing.length > 0) groups.push(namedShortfall(missing, 'missing', context))
+  if (belowBand.length > 0) {
+    groups.push(
+      namedShortfall(
+        belowBand.map((entry) => entry.partId),
+        `below ${minBand}`,
+        context,
+      ),
+    )
+  }
+  return groups.join('; ')
+}
+
+/** Every slot a real defect could touch holds an installed part at `worn`
+ * condition or better; a refusal names the failing slots
+ * (`bandFloorRefusal`). */
 function evaluateRoadworthy(
   spec: Extract<RequirementSpec, { kind: 'roadworthy' }>,
   car: CarInstance,
   context: SimContext,
 ): RequirementResult {
   const { label, required } = requirementLabel(spec, context)
-  const model = context.modelsById[car.modelId]
-  const minIndex = bandIndex('worn')
-  let failingCount = 0
-  for (const partId of ALL_CAR_PART_IDS) {
-    const installed = car.parts[partId].installed
-    if (installed) {
-      if (bandIndex(installed.band) < minIndex) failingCount += 1
-    } else if (!model || isPartMissing(car, model, partId)) {
-      failingCount += 1
-    }
-  }
-  const actual =
-    failingCount === 0
-      ? required
-      : `${failingCount} slot${failingCount === 1 ? '' : 's'} below worn`
-  return { pass: failingCount === 0, label, actual, required }
+  const refusal = bandFloorRefusal(car, 'worn', context)
+  return { pass: refusal === null, label, actual: refusal ?? required, required }
 }
 
-/**
- * `roadworthy`'s general form: every slot a real defect could touch holds
- * an installed part at `spec.minBand` or better. Same "a legitimately
- * absent slot never counts" rule as `evaluateRoadworthy` (`isPartMissing`),
- * just against a caller-named floor instead of the fixed `worn` one.
- */
+/** `roadworthy`'s general form: the same band floor (`bandFloorRefusal`),
+ * just against a caller-named floor instead of the fixed `worn` one. */
 function evaluateAllPartsBandAtLeast(
   spec: Extract<RequirementSpec, { kind: 'allPartsBandAtLeast' }>,
   car: CarInstance,
   context: SimContext,
 ): RequirementResult {
   const { label, required } = requirementLabel(spec, context)
-  const model = context.modelsById[car.modelId]
-  const minIndex = bandIndex(spec.minBand)
-  let failingCount = 0
-  for (const partId of ALL_CAR_PART_IDS) {
-    const installed = car.parts[partId].installed
-    if (installed) {
-      if (bandIndex(installed.band) < minIndex) failingCount += 1
-    } else if (!model || isPartMissing(car, model, partId)) {
-      failingCount += 1
-    }
-  }
-  const actual =
-    failingCount === 0
-      ? required
-      : `${failingCount} slot${failingCount === 1 ? '' : 's'} below ${spec.minBand}`
-  return { pass: failingCount === 0, label, actual, required }
+  const refusal = bandFloorRefusal(car, spec.minBand, context)
+  return { pass: refusal === null, label, actual: refusal ?? required, required }
 }
 
 /**
@@ -292,9 +321,6 @@ const NO_LAP_VERDICTS: readonly { groups: readonly ComponentId[]; verdict: strin
   { groups: ['drivetrain'], verdict: "Won't turn a wheel" },
   { groups: ['suspension', 'wheels'], verdict: "Won't steer or stop" },
 ]
-
-/** How many blocking parts get named before the list becomes a count. */
-const NAMED_BLOCKER_LIMIT = 3
 
 /**
  * Why this car sets no time, in the shop's own words: the verdict from the

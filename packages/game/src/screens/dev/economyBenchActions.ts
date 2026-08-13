@@ -7,21 +7,26 @@ import type {
   DayLogEntry,
   GameState,
   SellingChannelId,
-  StagedAction,
   StatBlock,
 } from '@midnight-garage/content'
 import {
-  confirmStagedWork,
   createRng,
   drawDailyOffers,
   energyMax,
+  findWorkableCar,
+  installLaborSlotsFor,
+  planGroupRepair,
+  refitLaborSlotsFor,
   resolveBuyPart,
   resolveFittedMachiningLabor,
   resolveHireMachineLine,
+  resolveJobLabor,
   resolveRemovePart,
   resolveSellViaWalkIn,
   resolveSetForSale,
+  toolLevelsFor,
   updateMarketHeat,
+  type NewJobSpec,
   type SimContext,
 } from '@midnight-garage/sim'
 import { BENCH_CAR_ID } from './economyBench'
@@ -32,11 +37,12 @@ import { describeLogEntry } from '../../utils/dayLogFormat'
 /**
  * THE ECONOMY BENCH'S ACTIONS.
  *
- * Every action here is the REAL resolver, not a shortcut. Fitting a part
- * stages an install and runs `confirmStagedWork`, exactly as the workshop
- * floor's Confirm does. Repairing stages a repair and runs the same function.
- * Machining runs the machining resolver. Nothing bypasses a gate, so a refusal
- * on the bench is the refusal the player would get.
+ * Every action here is the REAL resolver, not a shortcut. Fitting a part and
+ * repairing both run `resolveJobLabor`, the exact instant resolver the
+ * workshop floor's own repair/install clicks use (every action in this game
+ * resolves the moment it's clicked, there is no staging step
+ * anywhere). Machining runs the machining resolver. Nothing bypasses a gate,
+ * so a refusal on the bench is the refusal the player would get.
  *
  * The value delta on each line is `marketValueYen` after minus before. That is
  * exact by construction, because it IS the difference: no attribution, no
@@ -68,15 +74,68 @@ export function labourRemaining(state: GameState, context: SimContext): number {
   return Math.max(0, energyMax(state, context.economy) - state.energySpentToday)
 }
 
-/** Stages one action on the bench car and resolves it through Confirm - the
- * install and repair path the workshop floor uses, with the bench's own
- * single-action list in place of a player's queue. */
-function stageAndConfirm(state: GameState, action: StagedAction, context: SimContext): Resolution {
-  const staged: GameState = {
-    ...state,
-    stagedCarWork: { ...state.stagedCarWork, [BENCH_CAR_ID]: [action] },
+/** Fits `partInstanceId` into `carPartId` on the bench car - the direct
+ * install path the workshop floor's Replace button uses (`gameStore.ts`'s
+ * `install`), sized off the target slot's own depth class and free when it
+ * matches the slot's vacated baseline. */
+function fitPart(
+  state: GameState,
+  carPartId: CarPartId,
+  partInstanceId: string,
+  componentId: ComponentId,
+  context: SimContext,
+): Resolution {
+  const car = findWorkableCar(state, BENCH_CAR_ID)
+  const partInstance = state.partInventory.find((p) => p.id === partInstanceId)
+  const laborSlotsRequired =
+    car && partInstance
+      ? refitLaborSlotsFor(car, carPartId, partInstance, context)
+      : installLaborSlotsFor(carPartId, context)
+  const spec: NewJobSpec = {
+    carInstanceId: BENCH_CAR_ID,
+    kind: 'install-part',
+    componentId,
+    partInstanceId,
+    carPartId,
+    laborSlotsRequired,
   }
-  return confirmStagedWork(staged, BENCH_CAR_ID, labourRemaining(staged, context), context)
+  return resolveJobLabor(state, spec, labourRemaining(state, context), context)
+}
+
+/** Repairs one group (or one part in it) on the bench car - the direct
+ * repair path the workshop floor's Repair button uses (`gameStore.ts`'s
+ * `repair`), sized for real by `planGroupRepair`. */
+function repairGroup(
+  state: GameState,
+  componentId: ComponentId,
+  targetBand: ConditionBand,
+  carPartId: CarPartId | undefined,
+  context: SimContext,
+): Resolution {
+  const car = findWorkableCar(state, BENCH_CAR_ID)
+  if (!car) return { state, log: [] }
+  const plan = planGroupRepair(
+    car,
+    componentId,
+    targetBand,
+    toolLevelsFor(state, context),
+    context.partIdsByGroup,
+    context.partsById,
+    context.partsTaxonomyById,
+    context.economy.restoration.repairStepFraction,
+    context.economy.energy.energyPerBandStepByToolTier,
+    carPartId,
+    { staff: state.staff, economy: context.economy },
+  )
+  const spec: NewJobSpec = {
+    carInstanceId: BENCH_CAR_ID,
+    kind: 'repair-zone',
+    componentId,
+    targetBand,
+    carPartId,
+    laborSlotsRequired: plan.laborSlotsRequired,
+  }
+  return resolveJobLabor(state, spec, labourRemaining(state, context), context)
 }
 
 function resolveBenchAction(
@@ -90,16 +149,7 @@ function resolveBenchAction(
     case 'fit-part': {
       const group = context.partsTaxonomyById[action.carPartId]?.group
       if (!group) return { state, log: [] }
-      return stageAndConfirm(
-        state,
-        {
-          kind: 'install',
-          componentId: group,
-          partInstanceId: action.partInstanceId,
-          carPartId: action.carPartId,
-        },
-        context,
-      )
+      return fitPart(state, action.carPartId, action.partInstanceId, group, context)
     }
     case 'remove-part':
       return resolveRemovePart(
@@ -110,16 +160,7 @@ function resolveBenchAction(
         labourRemaining(state, context),
       )
     case 'repair':
-      return stageAndConfirm(
-        state,
-        {
-          kind: 'repair',
-          componentId: action.componentId,
-          targetBand: action.targetBand,
-          ...(action.carPartId ? { carPartId: action.carPartId } : {}),
-        },
-        context,
-      )
+      return repairGroup(state, action.componentId, action.targetBand, action.carPartId, context)
     case 'machine-fitted':
       return resolveFittedMachiningLabor(
         state,
@@ -309,9 +350,8 @@ export function runBenchAction(
   const carAfter: CarInstance | undefined = next.ownedCars.find((c) => c.id === BENCH_CAR_ID)
   const valueAfterYen = carAfter ? benchValueYen(carAfter, model, next, context) : null
   const after = carAfter ? evaluateCarInstance(model, carAfter, context) : null
-  // Staging an action and clearing it again always returns a fresh state
-  // object, so identity is not the question. What was actually spent, moved or
-  // said is.
+  // A refused resolver still returns a fresh state object in places, so
+  // identity is not the question. What was actually spent, moved or said is.
   const changed =
     log.length > 0 ||
     carAfter !== carBefore ||

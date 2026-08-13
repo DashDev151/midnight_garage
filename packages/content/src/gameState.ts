@@ -20,7 +20,6 @@ import { ForSaleEntrySchema, PendingSaleOfferSchema, SaleChannelSchema } from '.
 import { SceneCommissionSchema } from './sceneCommission'
 import { ServiceJobSchema } from './serviceJob'
 import { BayKindSchema } from './facilities'
-import { StagedActionSchema } from './stagedWork'
 import { VenueNameByTierSchema } from './venueNames'
 
 /**
@@ -559,15 +558,6 @@ export const GameStateSchema = z.object({
    */
   cartPartIds: z.array(z.string().min(1)).default([]),
   /**
-   * Staged (not-yet-confirmed) repair/install work per car, keyed by
-   * `carInstanceId`. Freely add/remove at zero cost - nothing here touches
-   * cash, labour, or a real `Job` until `confirmStagedWork` resolves it,
-   * mirroring the parts-market cart's own stage-then-confirm shape. Every
-   * car-exit path (a sold car, service-job resolution) drops its entry so
-   * staged work never outlives the car.
-   */
-  stagedCarWork: z.record(z.string(), z.array(StagedActionSchema)).default({}),
-  /**
    * The flip ledger: per-owned-car spend record, keyed by carInstanceId -
    * created at acquisition (auction win/buyout), updated by repair charges,
    * part installs and listing fees, deleted at sale. Entries exist only for owned cars,
@@ -1056,8 +1046,8 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     feeYen: z.number().int().positive(),
   }),
   /** Materials drawn off the shelf for one body-pipeline stage on one zone
-   * (`confirmStagedWork`, sim/stagedWork.ts) - filler, primer, paint and the
-   * rest, drawn down from stock the moment the stage is confirmed. Carries
+   * (sim/pipelineActions.ts) - filler, primer, paint and the
+   * rest, drawn down from stock the moment the stage resolves. Carries
    * no cash movement of its own (`cashMovementFor` reads it as moneyless):
    * the tin was already paid for when it was bought (`consumable-bought`
    * below), so this only records the VALUE of what the car used, already

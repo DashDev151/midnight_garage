@@ -77,7 +77,7 @@ describe('Service Grinder (the Act 1 floor)', () => {
   const PAID_WORK_SAMPLE_TIMEOUT_MS = 60_000
 
   it(
-    'never owning a car, but paid service work never lands either - a known bot-harness limitation',
+    'never owning a car, while hand work at the machine-less rate lets service payouts land',
     () => {
       let paid = 0
       for (let seed = 1; seed <= SEED_SAMPLE_SIZE; seed++) {
@@ -88,12 +88,12 @@ describe('Service Grinder (the Act 1 floor)', () => {
         // other income: no sales, no scrap - only service-job payouts).
         if (grinder.some((s, i) => i > 0 && s.cashYen > grinder[i - 1]!.cashYen)) paid++
       }
-      // Zero is a known bot-harness limitation (TODO.md): the machine-line
-      // gate (a signature or buried task needs its group's line owned or
-      // hired for the day) has no bot logic to satisfy it yet, so a service
-      // job with any such task wedges permanently and this archetype has no
-      // route to a payout at all until the bot harness is reworked.
-      expect(paid).toBe(0)
+      // The machine gate is a labour rate rather than a wall
+      // (machineLaborMultiplier), so gated tasks no longer wedge a job: work
+      // proceeds by hand at multiplied labour and payouts land. Asserted at
+      // the honestly-measured value under these seeds, the same convention as
+      // before; the bots remain condemned as instruments regardless.
+      expect(paid).toBe(26)
     },
     PAID_WORK_SAMPLE_TIMEOUT_MS,
   )
@@ -172,7 +172,7 @@ describe('Competent Policy (Sprint 23 invariant 3 probe: days-to-local)', () => 
   // failure floors it back to 0), so this asserts across a seed sample
   // rather than pinning one seed's exact trajectory.
   it(
-    'the faucet never fires and no career affords a tool upgrade within 100 days - the same known bot-harness limitation',
+    'the faucet fires on the seeds where hand work pays out, and no career affords a tool upgrade within 100 days',
     () => {
       let sawFaucetCount = 0
       let upgradedCount = 0
@@ -182,13 +182,14 @@ describe('Competent Policy (Sprint 23 invariant 3 probe: days-to-local)', () => 
         const finalSnapshot = snapshots[snapshots.length - 1]
         if (finalSnapshot && finalSnapshot.equipmentOwnedCount > 0) upgradedCount++
       }
-      // Zero is the same known bot-harness limitation as the reachedLocal
-      // probe above: the machine-line gate wedges this policy's one service
-      // bay before a single job ever pays out, so the faucet has nothing to
-      // fire on. Asserted at the honestly-measured value, not a majority bar.
-      expect(sawFaucetCount).toBe(0)
-      // Tool-tier affordability falls outside the 100-day window for this
-      // policy; reputation itself is unaffected (TODO.md tracks this).
+      // Machine-gated tasks run by hand at multiplied labour rather than
+      // wedging (machineLaborMultiplier), so some careers now complete paid
+      // work and the reputation faucet fires on those seeds. Asserted at the
+      // honestly-measured value under these seeds, not a majority bar; the
+      // bots remain condemned as instruments regardless.
+      expect(sawFaucetCount).toBe(3)
+      // Tool-tier affordability still falls outside the 100-day window for
+      // this policy; reputation itself is unaffected (TODO.md tracks this).
       expect(upgradedCount).toBe(0)
     },
     REPUTATION_SAMPLE_TIMEOUT_MS,

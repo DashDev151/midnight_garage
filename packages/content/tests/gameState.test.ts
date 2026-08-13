@@ -296,7 +296,6 @@ describe('GameState / DayLog round-trip', () => {
       },
       pendingPartOrders: [],
       cartPartIds: [],
-      stagedCarWork: {},
       marketLedger: { lotSupply: {}, playerSales: {} },
       carLedgers: {
         'car-0001': {
@@ -493,7 +492,6 @@ describe('GameState / DayLog round-trip', () => {
       },
       pendingPartOrders: [],
       cartPartIds: [],
-      stagedCarWork: {},
       marketLedger: { lotSupply: {}, playerSales: {} },
     }
     const parsed = GameStateSchema.parse(withoutLedgers)

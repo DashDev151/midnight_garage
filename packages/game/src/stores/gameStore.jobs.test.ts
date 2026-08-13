@@ -286,12 +286,13 @@ describe('service jobs in the store', () => {
   })
 
   /**
-   * Work staged
-   * against an in-transit car is rejected. `moveCar`/`swapCars` get the
-   * same guard - covered separately in gameStore's own move tests - this
-   * is specifically the staging path.
+   * A car not yet arrived can't be moved into the service bay, and without a
+   * bay a repair job's labour never applies (`applyAvailableLaborToJob`'s
+   * `not-in-service-bay` gate) - so a direct click on an in-transit car's
+   * repair never actually progresses it, even though there is
+   * no staging step left to refuse the click outright.
    */
-  it('staging work against an in-transit car is rejected', () => {
+  it('a repair click against an in-transit car applies no labour - the car is not in a service bay yet', () => {
     const game = useGameStore()
     game.newGame(1)
     warpToRepairOffer(game)
@@ -304,16 +305,16 @@ describe('service jobs in the store', () => {
     const carId = offer.car.id
     expect(game.carDetail(carId)?.serviceJob?.arrivesOnDay).not.toBeNull()
 
-    const staged = game.stageAction(carId, { kind: 'repair', componentId, targetBand: 'mint' })
-    expect(staged).toBe(false)
-    expect(game.carDetail(carId)?.stagedActions).toEqual([])
-
     const moved = game.moveCar(carId, 'service')
     expect(moved).toBe(false)
 
-    // Once it actually arrives, staging works normally.
+    game.repair(carId, componentId, 'mint')
+    const job = game.gameState.jobs.find((j) => j.carInstanceId === carId)
+    expect(job?.laborSlotsSpent ?? 0).toBe(0)
+
+    // Once it actually arrives, moving it into the bay works normally.
     game.endDay()
     expect(game.carDetail(carId)?.serviceJob?.arrivesOnDay).toBeNull()
-    expect(game.stageAction(carId, { kind: 'repair', componentId, targetBand: 'mint' })).toBe(true)
+    expect(game.moveCar(carId, 'service')).toBe(true)
   })
 })

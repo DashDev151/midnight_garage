@@ -78,7 +78,6 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     toolTiers: testToolTiers(),
     pendingPartOrders: [],
     cartPartIds: [],
-    stagedCarWork: {},
     carLedgers: {},
     toolShopsOwned: [],
     machineListing: null,

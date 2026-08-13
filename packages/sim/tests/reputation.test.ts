@@ -94,7 +94,6 @@ describe('applyReputationDelta (Sprint 15)', () => {
       toolTiers: testToolTiers(),
       pendingPartOrders: [],
       cartPartIds: [],
-      stagedCarWork: {},
       marketLedger: { lotSupply: {}, playerSales: {} },
       carLedgers: {},
       toolShopsOwned: [],
