@@ -1,0 +1,59 @@
+import { defineConfig } from 'vitest/config'
+
+export default defineConfig({
+  test: {
+    projects: ['packages/*/vitest.config.ts'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html', 'lcov'],
+      include: ['packages/*/src/**/*.{ts,vue}'],
+      exclude: [
+        '**/*.test.ts',
+        '**/cli/**',
+        'packages/game/src/main.ts',
+        'packages/game/src/router/**',
+        // Pixi canvas rendering - visual, not practically unit-testable in
+        // happy-dom; the boundary law already keeps it isolated from the sim.
+        'packages/game/src/pixi/**',
+        // Sprint 00 art-spike / dev sandbox screens, never real game UI.
+        'packages/game/src/screens/SpikeScreen.vue',
+        'packages/game/src/components/PixiCarSandbox.vue',
+        // Dev-route drive debug screen: a rAF canvas loop around the drive
+        // physics, visual and input-driven, not practically unit-testable in
+        // happy-dom. Its car-roster module (driveDebugCars.ts) stays covered,
+        // and the physics it renders is covered in packages/sim.
+        'packages/game/src/screens/DriveDebugScreen.vue',
+        // The drive feature screen is the same rAF canvas shape; its logic
+        // lives in driveSession.ts and carArt.ts, which stay covered, and
+        // the physics it renders is covered in packages/sim.
+        'packages/game/src/screens/DriveScreen.vue',
+        // Raw WebGL: needs a GPU. Its mesh builders are pure and are
+        // exercised via roadGen tests and the tools/drive-preview
+        // rasteriser, which renders the same meshes to PNG for QA.
+        'packages/game/src/screens/drive/webglRenderer.ts',
+        // Dev-route auction-room demo screen (dev console only), not real
+        // game UI; its turn-loop module stays covered.
+        'packages/game/src/screens/AuctionRoomDemoScreen.vue',
+        // Dev-only console, tree-shaken out of the production bundle.
+        'packages/game/src/components/DevConsole.vue',
+        // Dev-route economy bench (dev console only), not real game UI; its
+        // state builder, readout and action modules all stay covered.
+        'packages/game/src/screens/EconomyBenchScreen.vue',
+        // Deliberately a thin, minimal Dexie wrapper (Sprint 07) so tests
+        // don't need fake-indexeddb - logic worth testing lives in saveCodec.ts.
+        'packages/game/src/save/saveDb.ts',
+      ],
+      thresholds: {
+        // Ratcheted to the real measured baseline (2026-07-09), not an
+        // aspirational number - a regression gate, not a rewrite mandate.
+        // sim/content (the pure business logic) run far higher in practice;
+        // this single project-wide floor is deliberately set by the
+        // weakest legitimately-in-scope area (game UI) so it's honest.
+        statements: 80,
+        branches: 65,
+        functions: 78,
+        lines: 82,
+      },
+    },
+  },
+})

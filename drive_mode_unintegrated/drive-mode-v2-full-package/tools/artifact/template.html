@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Midnight Roads v8</title>
+<style>
+  :root{--ink:#e8ecf2;--muted:#8891a0;--line:#2a2f3a;--grip:#35d0e0;--drift:#ff8a3d;--pane:rgba(16,18,24,.9)}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;overflow:hidden;background:#0e1016;color:var(--ink);font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  canvas{display:block;width:100%;height:100%;touch-action:none;image-rendering:pixelated;image-rendering:crisp-edges}
+  .mono{font-family:ui-monospace,"SF Mono",Menlo,monospace}
+  #hud{z-index:30;position:absolute;top:0;left:0;right:0;padding:8px 10px;display:flex;gap:12px;align-items:center;pointer-events:none;background:linear-gradient(180deg,rgba(6,7,10,.65),transparent)}
+  .stat{display:flex;flex-direction:column;line-height:1}
+  .stat b{font-size:19px;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+  .stat span{font-size:9px;text-transform:uppercase;letter-spacing:1.4px;color:var(--muted);margin-top:3px}
+  #rpm{width:64px;height:5px;border-radius:3px;background:#22262f;overflow:hidden;margin-top:4px}
+  #rpm i{display:block;height:100%;width:0;background:var(--grip)}
+  #state{font-size:11px;font-weight:700;letter-spacing:2px;padding:5px 11px;border-radius:999px;border:1px solid var(--line);color:var(--grip);background:rgba(6,7,10,.45);pointer-events:none}
+  #state.drift{color:var(--drift);border-color:var(--drift);box-shadow:0 0 18px -4px var(--drift)}
+  #tuneChip,#rstChip,#sndChip,#endChip,#skyChip,#rainChip,#ctlChip{pointer-events:auto;touch-action:manipulation;font-size:10px;letter-spacing:1.6px;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:6px 11px;background:rgba(6,7,10,.45)}
+  #tuneChip{margin-left:auto}
+  #sheet{z-index:40;position:absolute;left:0;right:0;bottom:0;max-height:46dvh;overflow-y:auto;background:var(--pane);border-top:1px solid var(--line);border-radius:16px 16px 0 0;padding:10px 14px calc(12px + env(safe-area-inset-bottom));backdrop-filter:blur(10px);transform:translateY(105%);transition:transform .22s ease}
+  #sheet.open{transform:none}
+  .shead{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .shead b{font-size:11px;text-transform:uppercase;letter-spacing:2px}
+  .shead .sp{flex:1}
+  .chip{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:8px;padding:4px 9px;background:transparent}
+  .selrow{display:flex;gap:8px;margin-bottom:6px}
+  select{flex:1;background:#171a22;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:12px}
+  .trow{display:grid;grid-template-columns:86px 1fr 46px;align-items:center;gap:8px;margin:2px 0}
+  .trow label{font-size:9.5px;text-transform:uppercase;letter-spacing:1.1px;color:var(--muted)}
+  .trow output{font-size:11px;text-align:right}
+  input[type=range]{width:100%;-webkit-appearance:none;height:26px;background:transparent;margin:0}
+  input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:#39404e}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;margin-top:-8px;width:20px;height:20px;border-radius:50%;background:#fff;border:3px solid #0c0d10}
+  input[type=range]::-moz-range-track{height:4px;border-radius:2px;background:#39404e}
+  input[type=range]::-moz-range-thumb{width:20px;height:20px;border:3px solid #0c0d10;border-radius:50%;background:#fff}
+  .out{margin-top:6px;color:var(--grip);word-break:break-all;font-size:10px;user-select:all}
+  #pad{z-index:10;position:absolute;left:0;right:0;bottom:0;padding:12px 14px calc(12px + env(safe-area-inset-bottom));display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:end;pointer-events:none}
+  #thr{pointer-events:auto;display:flex;gap:8px;align-items:flex-end;touch-action:none}
+  .vtrack{position:relative;width:58px;height:min(42vh,250px);border-radius:16px;background:rgba(20,22,32,.72);border:1px solid rgba(255,255,255,.13)}
+  .vnotch{position:absolute;left:6px;right:6px;height:2px;background:rgba(255,255,255,.3)}
+  .vfill{position:absolute;left:5px;right:5px;height:0;background:rgba(120,220,255,.28);border-radius:10px}
+  .vthumb{position:absolute;left:4px;right:4px;height:34px;border-radius:12px;background:rgba(235,240,255,.9)}
+  .axlbl{align-self:center;font-size:10px;letter-spacing:.12em;color:rgba(235,240,255,.5)}
+  .axlbl span{color:rgba(255,170,150,.55)}
+  #str{pointer-events:auto;touch-action:none}
+  .htrack{position:relative;height:58px;width:min(46vw,290px);border-radius:16px;background:rgba(20,22,32,.72);border:1px solid rgba(255,255,255,.13)}
+  .hnotch{position:absolute;top:6px;bottom:6px;left:50%;width:2px;margin-left:-1px;background:rgba(255,255,255,.3)}
+  .hthumb{position:absolute;top:4px;bottom:4px;left:50%;width:44px;margin-left:-22px;border-radius:12px;background:rgba(235,240,255,.9)}
+  .col.rgt{display:flex;flex-direction:column;gap:10px;align-items:flex-end}
+  #pad .btn{pointer-events:auto;transition:background .12s,border-color .12s,box-shadow .12s}
+  #pad .btn.on{background:rgba(120,220,255,.22);border-color:rgba(120,220,255,.6);box-shadow:0 0 14px rgba(120,220,255,.25)}
+  .vthumb{box-shadow:0 2px 8px rgba(0,0,0,.5)}
+  .hthumb{box-shadow:0 2px 8px rgba(0,0,0,.5)}
+  #tuneChip:active,#rstChip:active,#sndChip:active,#endChip:active,#skyChip:active,#rainChip:active,#ctlChip:active,#rstChip.flash{background:rgba(120,220,255,.22);color:#dfe8ff;border-color:rgba(120,220,255,.5)}
+  #pauseOv{position:absolute;inset:0;z-index:70;display:none;align-items:center;justify-content:center;background:rgba(5,6,10,.78);pointer-events:auto}
+  #pauseOv.on{display:flex}
+  #pauseOv .inner{min-width:250px;border:1px solid var(--line);border-radius:16px;padding:20px 24px;background:rgba(10,11,16,.94);display:flex;flex-direction:column;gap:9px}
+  #pauseOv h2{margin:0 0 6px;font-size:12px;letter-spacing:3px;color:var(--muted)}
+  #pauseOv button{padding:9px 0;border-radius:10px;border:1px solid var(--line);background:rgba(6,7,10,.5);color:#dfe8ff;letter-spacing:1.4px;font-size:11px}
+  #pauseOv .hintline{margin:4px 0;font-size:10px;color:var(--muted);letter-spacing:.4px;line-height:1.6}
+  #hintOv{position:absolute;left:50%;top:16%;transform:translateX(-50%);z-index:40;text-align:center;color:#cfd8ee;font-size:12px;letter-spacing:1px;line-height:1.7;text-shadow:0 1px 8px rgba(0,0,0,.8);pointer-events:none;opacity:.9}
+  #hintOv.off{display:none}
+  #card{position:absolute;inset:0;z-index:60;display:none;align-items:center;justify-content:center;background:rgba(5,6,10,.72);pointer-events:auto}
+  #card.on{display:flex}
+  #card .inner{min-width:250px;border:1px solid var(--line);border-radius:16px;padding:22px 26px;background:rgba(10,11,16,.92)}
+  #card h2{margin:0 0 14px;font-size:13px;letter-spacing:3px;color:var(--muted)}
+  #card .row{display:flex;justify-content:space-between;gap:24px;margin:7px 0;font-size:13px}
+  #card .row b{font-size:15px}
+  #card .btns{display:flex;gap:10px;margin-top:18px}
+  #card button{flex:1;padding:9px 0;border-radius:10px;border:1px solid var(--line);background:rgba(6,7,10,.5);color:#dfe8ff;letter-spacing:1.5px;font-size:11px}
+  #thr .brk{width:66px;height:66px;border-radius:50%;align-self:flex-end;margin:0 0 4px 2px;display:flex;align-items:center;justify-content:center;font-size:12px}
+  .btn{user-select:none;-webkit-user-select:none;border:1px solid var(--line);background:rgba(16,18,24,.78);color:var(--ink);border-radius:16px;padding:15px 0;text-align:center;font-weight:700;font-size:12px;letter-spacing:1px;text-transform:uppercase;backdrop-filter:blur(6px)}
+  .btn.on{background:#2b3140;border-color:#3b4354}
+  .btn.gas.on{background:#16443a;border-color:var(--grip);color:var(--grip)}
+  .btn.hbrake.on{background:#472515;border-color:var(--drift);color:var(--drift)}
+  .steerpair{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .col{display:grid;gap:10px}
+  .kbd{display:none}
+  @media (hover:hover) and (pointer:fine){.kbd{display:block;position:absolute;bottom:12px;left:50%;transform:translateX(-50%);font-size:10.5px;color:var(--muted)}}
+  @media (min-width:820px){#sheet{left:auto;right:12px;bottom:12px;width:360px;border-radius:14px;border:1px solid var(--line)}}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="pauseOv"><div class="inner">
+  <h2>PAUSED</h2>
+  <button id="pResume">RESUME</button>
+  <button id="pCtl">Controls: PC</button>
+  <button id="pSky">Sky: Night</button>
+  <button id="pRain">Rain: off</button>
+  <button id="pCam">Camera: Chase</button>
+  <p class="hintline">W accelerate &middot; S brake &middot; A/D steer &middot; Space handbrake &middot; C camera &middot; Esc pause</p>
+  <button id="pEnd">END DRIVE</button>
+</div></div>
+<div id="hintOv">
+  <p>W accelerate &middot; S brake &middot; A/D steer</p>
+  <p>Space handbrake &middot; C camera &middot; Esc pause</p>
+</div>
+<div id="card"><div class="inner">
+  <h2>THE DRIVE</h2>
+  <div class="row"><span>Distance</span><b id="cdKm">0.0 km</b></div>
+  <div class="row"><span>Time</span><b id="cdT">0:00</b></div>
+  <div class="row"><span>Top speed</span><b id="cdV">0 km/h</b></div>
+  <div class="row"><span>Longest drift</span><b id="cdD">0.0 s</b></div>
+  <div class="row"><span>Route</span><b id="cdCode">MG-0</b></div>
+  <div class="btns"><button id="cdGo">KEEP DRIVING</button><button id="cdNew">NEW ROAD</button></div>
+</div></div>
+<div id="hud">
+  <div class="stat"><b id="speed" class="mono">0</b><span>km/h</span><div id="rpm"><i></i></div></div>
+  <div class="stat"><b id="gearB" class="mono">G1</b><span>gear</span></div>
+  <div class="stat"><b id="odo" class="mono">0.0</b><span>km driven</span></div>
+  <div class="stat"><b id="gradeB" class="mono">0%</b><span>grade</span></div>
+  <div id="state" class="mono">GRIP</div>
+  <button id="tuneChip">Tune</button>
+  <button id="ctlChip">PC</button>
+  <button id="skyChip">Night</button>
+  <button id="rainChip">Rain off</button>
+  <button id="endChip">End drive</button>
+  <button id="rstChip">Reset</button>
+  <button id="sndChip">Sound</button>
+</div>
+
+<div id="sheet">
+  <div class="shead"><b>Setup</b><span class="sp"></span>
+    <button class="chip" id="roadBtn">New road</button>
+    <button class="chip" id="closeBtn">Close</button>
+  </div>
+  <div class="selrow"><input id="routeIn" placeholder="Route code MG-XXXX (optional)" spellcheck="false" />
+<select id="carSel"></select></div>
+  <div class="trow"><label>Grip &times;</label><input id="sGrip" type="range" min="1.2" max="2.4" step="0.05" value="1.7"><output id="oGrip" class="mono"></output></div>
+  <div class="trow"><label>Slip window &times;</label><input id="sSlip" type="range" min="1.4" max="3.2" step="0.1" value="2.3"><output id="oSlip" class="mono"></output></div>
+  <div class="trow"><label>Slide hold</label><input id="sHold" type="range" min="0.86" max="1.0" step="0.005" value="0.985"><output id="oHold" class="mono"></output></div>
+  <div class="trow"><label>Assists</label><input id="sAsst" type="range" min="0" max="1" step="0.05" value="0.1"><output id="oAsst" class="mono"></output></div>
+  <div class="trow"><label>Power &times;</label><input id="sPow" type="range" min="0.6" max="2.0" step="0.05" value="1.0"><output id="oPow" class="mono"></output></div>
+  <div class="out mono" id="tuneOut"></div>
+</div>
+
+<div id="pad">
+  <div id="thr"><div class="vtrack"><div class="vnotch"></div><div class="vfill" id="thrFill"></div><div class="vthumb" id="thrThumb"></div></div><div class="btn brk mono">BRAKE</div><div class="axlbl mono">SPEED<br><span>R</span></div></div>
+  <div></div>
+  <div class="col rgt">
+    <div class="btn hbrake" data-key="hbrake">H-brake</div>
+    <div id="str"><div class="htrack"><div class="hnotch"></div><div class="hthumb" id="strThumb"></div></div></div>
+  </div>
+</div>
+<div class="kbd mono">sliders or WASD &middot; hold gas slider stays set &middot; R new road</div>
+
+<script>
+/*__BUNDLE__*/
+</script>
+</body>
+</html>

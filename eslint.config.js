@@ -6,7 +6,17 @@ import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
   {
-    ignores: ['**/dist/**', '**/coverage/**', '**/node_modules/**', 'tools/**'],
+    ignores: [
+      '**/dist/**',
+      '**/coverage/**',
+      '**/node_modules/**',
+      'tools/**',
+      // Parked, unintegrated drive-mode v2 payload. It is a self-contained
+      // package that has never been wired into the workspace, and linting it
+      // in place fails the gate on code no build consumes. DELETE THIS ENTRY
+      // as part of integrating it, so the code is linted the moment it is real.
+      'drive_mode_unintegrated/**',
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
