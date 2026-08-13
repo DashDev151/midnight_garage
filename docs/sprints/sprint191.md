@@ -1,6 +1,20 @@
 # Sprint 191: one gate, a chassis you can actually fix, and a widebody that does something
 
-**Status: IMPLEMENTED except the two signature-blocked tasks, ready for review.**
+**Status: LIVE. One task genuinely unbuilt and unsigned. This is the only open sprint in the repo.**
+
+**Task 6 is the whole of what remains: gate sport and race zone panels on body level 3.** It never
+started, its lever was never signed, and the code confirms it: `economy.json`
+`toolCeilings.installGradeToolLevel` is `{stock: 1, street: 1, sport: 1, race: 2}`, which is the
+signed *grade* rule only. There is no body-level gate on sport and race panels. It is load-bearing
+beyond this sprint, because the contact-patch design depends on over-fenders being a real
+prerequisite before wide tyres can gate on them.
+
+**Task 7 is CLOSED.** Underglow was signed and built in sprint 197 at `style` 6 and
+`authenticityCost` 0.3. The roll cage's blocker closed there too, at a daily-drivers handling
+`upper` of 0.60, so only the cage SKU is outstanding and 197 records that.
+
+Header corrected during the 2026-08-13 archive pass, which found this the single sprint with real
+work left in it.
 
 Design of record: `docs/design/systems/shop-content.md`.
 

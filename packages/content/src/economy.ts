@@ -1025,7 +1025,7 @@ export const EconomyConfigSchema = z.object({
        * car is worth anything (that's `marketValueYen` alone). */
       tasteSpread: z.number().min(0).max(1),
       /**
-       * Per-scene standing bands (docs/sprints/scene-standing-arc.md): what
+       * Per-scene standing bands (docs/sprints/sprint_archive/scene-standing-arc.md): what
        * each stage moves for that scene's own buyers only, read by
        * `channelTasteMultiplier` (sim/valuation.ts) and nothing else in the
        * pricing path. All three stages raise both the floor and the ceiling,
@@ -1172,7 +1172,7 @@ export const EconomyConfigSchema = z.object({
       message: 'valuation.retentionFloor must be <= valuation.retentionCeiling',
     }),
   /**
-   * Earning scene standing (docs/sprints/scene-standing-arc.md step 4):
+   * Earning scene standing (docs/sprints/sprint_archive/scene-standing-arc.md step 4):
    * `creditSceneDelivery` (sim/sceneStanding.ts) is the one place a delivery
    * (a matched market sale, or a delivered story mission crediting its
    * persona's own scene) turns into a stage change - nowhere else moves
@@ -1214,7 +1214,7 @@ export const EconomyConfigSchema = z.object({
        */
       rollingWindowDays: z.number().int().positive(),
       /**
-       * Word of mouth (the Known payload, docs/sprints/scene-standing-arc.md
+       * Word of mouth (the Known payload, docs/sprints/sprint_archive/scene-standing-arc.md
        * step 5): the flat multiplier a scene's own `buyerPoolWeights` draw
        * across every channel out - MULTIPLICATIVE on the channel's own
        * authored weight, never additive, so a channel that barely carries a
@@ -1606,14 +1606,14 @@ export const EconomyConfigSchema = z.object({
      * clearing-house ceiling of 300 (satisfied at 225 PS by the most
      * power-hungry archetype, `racer` at 0.75) no longer leaves the whole
      * upper half of the roster - and every built engine - worth nothing to
-     * anybody (docs/sprints/scene-standing-arc.md). Raising it here, rather
+     * anybody (docs/sprints/sprint_archive/scene-standing-arc.md). Raising it here, rather
      * than adding a second normalisation path, keeps every archetype's
      * authored fraction the single source of what "wants a lot of power"
      * means.
      */
     powerNormalizationCeiling: z.number().positive(),
     /**
-     * The climbing chain (docs/sprints/scene-standing-arc.md step 0,
+     * The climbing chain (docs/sprints/sprint_archive/scene-standing-arc.md step 0,
      * `GameState.powerExpectationChain`): how far below the player's own
      * best-ever delivered power (in PS, at the moment of sale) the top of
      * the market currently sits, indexed by how many deliveries have
@@ -2405,7 +2405,7 @@ export const EconomyConfigSchema = z.object({
        * AWAITING RE-DERIVATION. These five numbers were set against an earn
        * rate that no longer exists: a sale now pays 15 or 30 where it paid 2,
        * and every service job pays half what it did.
-       * `docs/sprints/sprint184.md` tables the measured new rate and a
+       * `docs/sprints/sprint_archive/sprint184.md` tables the measured new rate and a
        * recommendation; the values move only once approved (directive 22).
        */
       tierThresholds: z

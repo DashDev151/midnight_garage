@@ -28,13 +28,21 @@ that decays if it sits.
 
 Nothing here can be built without a value, and directive 22 means guessing is not an option.
 
+**Five of the six rows that were here are now closed. Struck 2026-08-13; sprint 197 answered all
+five, three by signing a value and two by arguing the number should not move:**
+
+| closed lever | how it closed |
+| --- | --- |
+| `machining.valuePremiumPerOperation` | **signed at 0.08.** At 0.03 a full engine's machining returned less than a day's labour was worth |
+| underglow `style` / `authenticityCost` | **signed at 6 / 0.3** |
+| roll cage: `upper` on handling for daily-drivers | **signed at 0.60.** Measured: 0 of 48 shipped cars cross it stock, 24 of 48 do once built, and 20 of those lose `delighted` with a daily-drivers buyer. 0.55 would have tripped a bone-stock NSX-R, which is why it is not 0.55 |
+| race body panel mass | **held at 0.975, deliberately.** It reads 0.238s at Hakone, louder than predicted, but 25 to 35 kg on a 1,200 kg car genuinely is 2.5 per cent. The number is physically honest; the expectation was the imprecise part |
+| `partPricing.baseCostYen.bodyKit` | **held, deliberately.** The style-per-yen argument that raised it stopped holding at sprint 192, when body panels began carrying market value through `installedPartsValueYen` and race panels began saving mass. The shell buys three things now, the wing buys one |
+
+**Still genuinely open, and the only row left:**
+
 | lever | proposed | state |
 | --- | --- | --- |
-| `machining.valuePremiumPerOperation` | **0.03 to 0.08** | prelim approved until playtest. At 0.03 a full engine's machining returns less than a day's labour is worth |
-| underglow `style` / `authenticityCost` | **6 / 0.3** | prelim approved until playtest. 6 sits just above show fitment's 5; 0.3 between corner weighting and show fitment |
-| race body panel mass | shipped at **0.975** | shipped, but it reads **0.238s at Hakone**, louder than the sprint doc predicted. **0.994 would give about 0.06s** if that is too much |
-| `partPricing.baseCostYen.bodyKit` | unchanged | a race body costs about **¥121,000** against **¥12,500** for a race wing, for 12 style points against 18. Style-per-yen is an order out |
-| roll cage: `upper` on handling for daily-drivers | none proposed | **this one blocks the feature entirely.** A cage cannot add mass (schema refuses it) and costs about one authenticity point, so without an `upper` it ships as a strict upgrade, which is the opposite of the design |
 | reputation floor on a tool purchase | keep for now | deferred by the maintainer; `TODO.md` records the question |
 
 ---

@@ -277,7 +277,7 @@ export const DynoStateSchema = z.object({
 export type DynoState = z.infer<typeof DynoStateSchema>
 
 /**
- * The climbing chain (docs/sprints/scene-standing-arc.md step 0): the top of
+ * The climbing chain (docs/sprints/sprint_archive/scene-standing-arc.md step 0): the top of
  * the market's power appetite, tracked separately from any buyer's own
  * `statTargets.power` (`economy.statFormulas.powerNormalizationCeiling`
  * above governs ordinary appetite; this governs only the moving figure at
@@ -309,7 +309,7 @@ export type PowerExpectationChain = z.infer<typeof PowerExpectationChainSchema>
  * own `statTargets`. `none` is a scene that has never heard of the shop;
  * each later stage moves that scene's own taste band
  * (`channelTasteMultiplier`, sim/valuation.ts) and nothing else -
- * `docs/sprints/scene-standing-arc.md` is the design of record for how it
+ * `docs/sprints/sprint_archive/scene-standing-arc.md` is the design of record for how it
  * is earned and what else it eventually grants, neither of which is wired
  * up yet.
  */
@@ -352,7 +352,7 @@ export const FRESH_SCENE_STANDING: SceneStanding = {
 
 /**
  * One matched delivery to a scene, as `GameState.sceneLedger` records it
- * permanently (docs/sprints/scene-standing-arc.md step 4) - the car, the
+ * permanently (docs/sprints/sprint_archive/scene-standing-arc.md step 4) - the car, the
  * scene it counted for, the price, and the day, so the player's own read is
  * "I built those" rather than a number. `modelId` is a snapshot because the
  * delivered car itself leaves `ownedCars` in the same step this is recorded

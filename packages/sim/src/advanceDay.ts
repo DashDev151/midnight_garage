@@ -403,7 +403,7 @@ export function advanceDay(
   next = missions.state
   log.push(...missions.log)
 
-  // 7c2. Each scene's commission board (docs/sprints/scene-standing-arc.md
+  // 7c2. Each scene's commission board (docs/sprints/sprint_archive/scene-standing-arc.md
   // step 6) - a Respected-or-better scene with nothing live gets a fresh
   // brief, and an unaccepted one sitting past its refresh window is
   // replaced. Silent like the story-mission tick immediately above: the

@@ -7,19 +7,19 @@ in their sprint docs instead and aren't duplicated here.)
 
 **This file holds only what's still open.** Once an item is fully resolved, it's removed outright -
 the sprint doc (`docs/sprints/sprintNN.md`) or the commit that picked it up is the permanent
-historical record; this file doesn't re-narrate it. (Last full pass: 2026-07-11, after the
-foundational-economy arc - Sprints 20-24 - landed; see `git log` for every sprint's commit hash.)
+historical record; this file doesn't re-narrate it. (Last full pass: 2026-08-13, covering sprints
+182 to 197 and marking the entries the economy overhaul brief,
+`docs/reviews/economy-overhaul-brief.md`, now owns; the previous pass was 2026-07-11. See `git log`
+for every sprint's commit hash.)
 
 ## Playtest status
 
 The playtest happened 2026-07-11 (raw notes: `docs/playtest-notes/playtest-notes-2026-07-11.md`). Its triage
 produced the Loop Rework arc, Sprints 25-31 (`docs/sprints/sprint_archive/sprint25.md` onward), which now
-carries every finding; per this file's policy those items live there, not here. Still open from
-the old checklist:
-
-- [ ] **Export the session log** (`SaveMenu.vue` -> "Export session log") from a real session -
-  the first artifact for the recorded-play idea below. Not confirmed done during the 2026-07-11
-  session.
+carries every finding; per this file's policy those items live there, not here. The one item left
+from the old checklist, exporting a real session log (`SaveMenu.vue` -> "Export session log"), is
+folded into the recorded-play entry under Standing concerns: they are one request, and the brief
+now owns both.
 
 ## Roster data
 
@@ -35,7 +35,14 @@ the old checklist:
 Not single tasks - revisit when related work comes up, don't treat either as resolved by "checks
 pass."
 
-- [ ] **THE BOT HARNESS NEEDS A FULL REWORK - it does not simulate real gameplay, and its
+- [ ] **SUPERSEDED AS A TASK by the economy overhaul brief
+  (`docs/reviews/economy-overhaul-brief.md`), workstream A.** The harness is not rewritten: it is
+  replaced by scripted deterministic golden careers, which have no decision policy and so cannot
+  drift into unrealistic play. Everything below stays as history, because it is the evidence that
+  shaped workstream A and the reason policy bots are explicitly out of scope there. Read it as the
+  case against the instrument, not as work waiting to be done.
+
+  **THE BOT HARNESS NEEDS A FULL REWORK - it does not simulate real gameplay, and its
   career-derived numbers should not be trusted as design evidence** (maintainer verdict,
   2026-07-15: *"basically right now we know that the entire Sim part with the bots is kinda
   useless. This needs a full rework to ACTUALLY SIMULATE REAL GAMEPLAY"*). This supersedes and
@@ -181,16 +188,26 @@ pass."
   every economy/pacing decision should lean on closed-form probes plus maintainer playtest, and
   treat "N invariants pass" as evidence
   the mechanism doesn't crash - never evidence the game is paced right or is fun.
-- [ ] **Recorded-play idea** (user-proposed 2026-07-09): parse real play sessions into per-archetype
-  statistical rulesets - rates and biases ("bids X% below book," "does these repairs, buys that
-  part"), not literal replay, and **phase-aware** (a career can drift mid-run; today's bots don't).
-  Capture infrastructure (v0) shipped in Sprint 24 - a Dexie `sessionEvents` table, a `gameStore.ts`
-  hook on every player action, a JSON export button - but it's capture only. Still unscoped: how
-  many real sessions before a derived rate is trustworthy, how phase-drift gets detected/encoded,
-  and how a derived ruleset plugs into the existing `(state, context) => DayActions` bot shape.
-  Blocked on there being real play data to parse - the next playtest (above) is the first session
-  this can actually capture.
-- [ ] **Handyman and Cautious Restorer have no realistic route to reputation, so Sprint 43's
+- [ ] **SUPERSEDED by the economy overhaul brief (`docs/reviews/economy-overhaul-brief.md`),
+  workstream A2: the recorded-play idea and the old "export the session log" checklist item are one
+  request, and the brief owns it.** A recorded session is the source material for the first golden
+  career script, not the input to a derived bot ruleset. **Its only remaining dependency is the
+  maintainer playing a session and exporting the log** (`SaveMenu.vue` -> "Export session log");
+  nothing else in workstream A can start from real play until that file exists.
+
+  The original framing, kept because the capture half is what shipped (user-proposed 2026-07-09):
+  parse real play sessions into per-archetype statistical rulesets - rates and biases ("bids X%
+  below book," "does these repairs, buys that part"), not literal replay, and **phase-aware** (a
+  career can drift mid-run). Capture infrastructure (v0) shipped in Sprint 24 - a Dexie
+  `sessionEvents` table, a `gameStore.ts` hook on every player action, a JSON export button - but it
+  is capture only, and the derived-ruleset half is what workstream A replaces with a hand-authored
+  script.
+- [ ] **SUPERSEDED by the economy overhaul brief (`docs/reviews/economy-overhaul-brief.md`),
+  workstream A: this is a bot-derived finding and it dies with the harness it was measured on.**
+  Nothing here is a task once golden careers replace policy bots. Kept as history because it is one
+  of the four measurements that condemned the instrument.
+
+  **Handyman and Cautious Restorer have no realistic route to reputation, so Sprint 43's
   tool-tier reputation gate (tiers 2/3 need `local`/`known`, maintainer decision 2026-07-13) locks
   them out of upgrading ANY tool line, not just the higher ones.** Measured directly
   (`runCareer.test.ts`, this exact harness): Handyman 0/30 seeds ever clear tier 2 on any of the six
@@ -297,6 +314,11 @@ pass."
   `performedOn: 'fitted-part'`, done on a built car rather than at a machine, and they appear on the
   car's own screen rather than in the machine shop.
 
+- [ ] **The roll cage SKU does not exist.** Sprint 197 authored the lever that makes a cage a real
+  decision rather than a strict upgrade (a daily-drivers handling `upper` of 0.60, measured: 0 of 48
+  shipped cars cross it stock, 24 of 48 do once built, and 20 of those drop from `delighted` to
+  `satisfied`). The part itself is content and was never written. Nothing else blocks it.
+
   The array is really "operations a shop can perform", and machining is one kind. Renaming it
   touches the schema, the content block, the approval hash, and every reader; it is churn on its
   own and belongs in whatever change next has reason to be in that block.
@@ -322,7 +344,13 @@ pass."
   `pointerdown` across `packages/game/src/pixi`), and any live state in a room's art (the workshop
   floor's cars are hardcoded sample content).
 
-- [ ] **A ROUGH CAR SHOULD BE ROUGH IN A WAY THAT MAKES SENSE, NOT UNIFORMLY ROUGH (maintainer,
+- [ ] **SUPERSEDED by the economy overhaul brief (`docs/reviews/economy-overhaul-brief.md`),
+  workstream C: this folds into the donor-lot and scrapyard design work.** It is the same question
+  at a less extreme end - what a car's damage should look like when it is coherent rather than
+  uniform - and workstream C has to answer it anyway to author the four donor routes. Do not scope
+  it separately; the reasoning below is the input to that design doc.
+
+  **A ROUGH CAR SHOULD BE ROUGH IN A WAY THAT MAKES SENSE, NOT UNIFORMLY ROUGH (maintainer,
   2026-08-08).** Their words: *"To an extent but not perfectly. You won't have scrap internals and a
   mint block. You won't have perfect dampers and junk springs. What is broken should make logical
   sense together. Also should not have all or 95 per cent of slots at the same quality likely, need
@@ -361,38 +389,6 @@ pass."
   room's art becomes the interface (click the machine, click the car on the ramp, click the shelf)
   or stays a backdrop behind a text panel. Every room sprint until then should assume the answer is
   coming and avoid building UI that would be thrown away by it.
-
-- [ ] **THE MACHINE SHOP IS A ROOM, NOT A GATE, AND THE CODE HAS IT BACKWARDS (maintainer,
-  2026-08-06).** Their framing, which is the whole of the fix: *"the tool shop is not just a
-  magical concept, it's a room. That's it. What's IN the room is what is important. Each tool line
-  should correspond with a physical piece of equipment. It's this equipment that gets unlocked at
-  tier 3, not the room."*
-
-  Today `machineShopOpen` (`packages/game/src/screens/garageCapability.ts`) gates ENTRY to the whole
-  room on `toolTiers.engine >= machining.minEngineToolTier`, and `GarageInteriorScreen` renders the
-  room derelict below that. That is a game-side invention with no counterpart in sim: sim already
-  gates each OPERATION on that operation's own line
-  (`craftOperationCapabilityGateReason`, `machiningJobs.ts`). The room gate duplicates the real gate
-  and then narrows it wrongly.
-
-  **The symptom that exposed it**: after the workbench sprint the machine shop holds `race-prep`
-  (dampers, suspension) and `sorting` (differential, drivetrain), so a player at suspension tier 3
-  and engine tier 2 cannot enter a room to do work they are fully qualified for.
-
-  **The model to build instead.** The room is always enterable. What it contains is a set of
-  machines, one per tool line, each present or absent according to that line's tier. An empty
-  machine shop is a room with nothing in it, not a locked door. Sim needs no change: it is already
-  right.
-
-  **Two equipment concepts already exist and must not be conflated**: tier 2 is the group's
-  machine (`machineShopAssist`, the signature-op and buried-removal gate, hireable by the day), and
-  tier 3 is the machining capability. Both are per line. Whether they are one machine at two states
-  or two machines is part of this design.
-
-  **Read `docs/design/systems/tier-three-unlocks.md` first**: it already rules that tier 3 claims
-  capability rather than reach, and this is the same ruling arriving from the other direction.
-  `garageCapability.test.ts` currently pins `machineShopOpen` to sim's gate for the engine line
-  only, and says in the test that it is deliberately not answering this question.
 
 - [ ] **Four independent implementations of repair-or-replace cost, and consolidating them is a real
   refactor (maintainer, 2026-08-06: "okay. real refactoring needed").** The rule is: walk the parts,
@@ -441,8 +437,8 @@ pass."
   tier that unlocks **the cool non-standard work** rather than a better finish. Two of those already
   exist and are already tier-3 gated: **NA-to-turbo conversion** and **machining**. The rest is a
   content question and a good one: **engine swaps, drift suspension, lift kits, NOS, race body
-  panels, and underglow** (which was cut in the zone-model sprint precisely because it had no home,
-  and this is the home).
+  panels, and underglow** (underglow has since shipped in sprint 197 as a `machining.operations`
+  entry gating on the body and trim shop, so it is no longer waiting on this; the rest still is).
 
   **So the ladder is two-dimensional, not one.** Reach goes `tier 1 < tier 2 = tier 3`; capability
   goes `tier 1 = tier 2 < tier 3`. That is coherent and it is why the rung is not actually dead: it
@@ -458,36 +454,17 @@ pass."
   be built first is a general capability gate (there is none today: `requiredTags` gates on the CAR's
   tags and no SKU uses it, while machining, NA-to-turbo and the body line each gate bespokely).
 
+- [ ] **The whole-car "Replace" affordance on `CarDetailScreen` is dead for `bodywork`.** It still
+  renders (`replaceInPlace` is true for the three shell carriers, `gameStore.ts`), but no SKU
+  reachable in ordinary play can satisfy it: every aftermarket body SKU is zone-scoped and refused
+  for the whole-car slot by `partFitsCar`, and the four stock carriers are delisted from the parts
+  market (`isDelisted`, `PartsMarketScreen.vue`). The zone pipeline is the only live path to
+  changing a panel. Left in place rather than removed, because whether the carrier should keep a
+  whole-car affordance at all is the same decision as the one-way body kit entry below.
 
-
-- [ ] **REGRESSION INTRODUCED BY THE ZONE MODEL: a modified body no longer costs authenticity
-  (found by the implementing agent 2026-08-03, flagged rather than fixed).** Every aftermarket
-  panel SKU now carries a `zoneId` and is fitted through `pipeline-install-panel`, which updates
-  the ZONE's condition. `stocknessOf` reads `car.parts.bodywork.installed.grade`, which never leaves
-  `stock` because the four remaining carrier SKUs are all stock. **So a car with a full carbon body
-  reads as perfectly original on the `bodywork` slot, worth 11 of authenticity's 100 points.**
-
-  Before the zone model, `frp-sport-panel-kit` and its siblings were `bodywork` SKUs fitted to the
-  carrier, so a body kit cost those points. This is a behaviour change, not a pre-existing gap, and
-  it works directly against the project's own stated principle that a body kit is a body part and a
-  modified body loses its authenticity.
-
-  **The root cause is that the `bodywork` carrier has become vestigial.** It holds exactly four SKUs,
-  all stock, none with a `zoneId`. Every one of the 144 zone-scoped panel SKUs is correctly refused
-  for the whole-car slot by `partFitsCar`. So the carrier can neither be upgraded nor lose its
-  originality, and it has two visible symptoms:
-
-  1. **Authenticity never moves**, as above.
-  2. **The whole-car "Replace" affordance on `CarDetailScreen` is permanently non-functional.** It
-     still renders, but no SKU reachable in ordinary play can satisfy it. The zone pipeline is the
-     only live path to changing a panel. Left in place rather than removed, because whether the
-     carrier should keep a whole-car affordance at all is part of the same decision.
-
-  **The consistent fix is probably to derive the carrier's grade from the fitted zone panels
-  exactly as its BAND already derives from them**, so any non-stock zone panel makes the carrier
-  non-stock. That is a real decision about a core stat with more than one defensible answer (worst
-  governs, any-non-stock, or a `stocknessOf` special case reading zones directly), which is why it
-  was not invented unreviewed. `paint` is unaffected: its whole-car ladder is untouched.
+  The authenticity half of this entry is closed: `stocknessOf` (`derivedStats.ts:162-165`) now
+  carries an explicit bodywork branch reading `panelsAreAllStock(car.zoneState)`, so a car wearing
+  non-stock panels loses those 11 points.
 
 - [ ] **GENERATION FITS ZONE-SCOPED PANELS INTO THE WHOLE-CAR `bodywork` CARRIER: about 5 per cent of
   lots are born wearing a part that cannot exist there (measured Sprint 191, flagged rather than
@@ -572,27 +549,15 @@ pass."
   again is *"an incentive to plan work properly to get it done in a day, otherwise pay extra"*.
   Recorded here so it is not re-reported as a bug.
 
-  **What is genuinely open is the silent failure.** A job whose machinery is not hired stays in
-  `state.jobs` with `blockedReason: 'machine-line'` (`packages/sim/src/jobs.ts`) and nothing tells
-  the player in any usable form. The sim does emit a `job-blocked` day-log event carrying that
-  same reason, and `packages/game/src/utils/dayLogFormat.ts` renders it as
-  `Job <id> blocked (machine-line)`: a raw job id and a raw reason token, which is a developer
-  line rather than something a player can act on.
+  **What is genuinely open is whether the work resumes.** A job whose machinery is not hired stays
+  in `state.jobs` with `blockedReason: 'machine-line'` (`packages/sim/src/jobs.ts`). The day report
+  now says so in plain words (Sprint 191 mapped all twelve `job-blocked` reasons to sentences in
+  `dayLogFormat.ts`; this one reads "Work stopped: the machinery for that line is neither owned nor
+  hired today"), so the player is told.
 
   **UNVERIFIED, because nobody has checked it: whether the job resumes if the machinery is hired
   again the next day, or whether it is wedged.** That answer decides whether this is a copy
   problem or a mechanic problem, and it should be established before anything is designed.
-
-  **Terminology, maintainer instruction of 2026-07-31:** do not write "machine line" or "hire the
-  line" in prose anywhere. It is ambiguous. Name the machinery (engine crane, and so on) or say
-  "machine-shop hire". The codebase's `machineShopAssist` naming may stay as it is; this binds
-  writing, not identifiers. **DONE for prose (Sprint 150):** `packages/sim/src/workedExampleDoc.ts`
-  was corrected in the renderer and `worked-example-two-cars.md` regenerated from it, and every
-  source comment under `packages/*/src` was swept. **Still outstanding: the `blockedReason`
-  VALUE is still the string `machine-line`**, which is an identifier and may stay, but
-  `dayLogFormat.ts` renders it raw to the player (see the silent-failure paragraph above) - that
-  raw token is the one place the banned phrasing still reaches a human, and it is a copy fix
-  waiting on the design decision above rather than a separate task.
 
 - [ ] **`sale-value-system.md` §4 states `relistRecovery` as a fraction of "fresh", which does not
   survive contact with the counter it describes (found 2026-07-31, Sprint 147).** Fresh is
@@ -658,38 +623,6 @@ pass."
   (`aeroCeiling` is the same shape but has a home: `sprint140.md` Task 0. `styleBase` was the same
   shape and landed early, in `docs/sprints/sprint_archive/sprint145.md`, pulled forward of Sprint 140 because Sprint 146's
   buyer targets on style could not be authored while every stock car scored the same.)
-
-- [ ] **Apply the roster's tier assignments to `cars.json`: 13 of the 26 shipped cars are on the
-  wrong tier.** The roster CSV is the single source of truth and `midnight-garage-roster.md`
-  section 5 lists every disagreement with content.
-  **DONE as a side effect of Sprint 185**: `cars.json` is generated from the roster CSV, so every
-  shipped car now carries the roster's tier by construction and the pinned list of 13 came out with
-  the guard that held it. What the entry below still describes - the six tier-keyed tables that move
-  with it, and the two things that ride along - happened in that same generation and wants reading
-  as landed rather than pending.
-
-  **Sequencing worth deciding before Sprint 135 runs, because it is nearly free then and expensive
-  later:** Sprint 135 already re-derives every price and valuation pin in the repo. The tier change
-  moves six more tier-keyed tables and re-derives the same pins. **Landing them in one pass costs
-  one re-derivation; landing them apart costs two.** The catch is that the tier change wants the
-  `classFactors` recalibration below decided first, so it is not free either. Worth ten seconds of
-  maintainer thought before 135 opens; **not worth blocking the arc on indefinitely.** The
-  defect it fixes: `entry` and `everyday` did not form two price bands, they **alternated** down
-  one ladder (City E 130k entry, Sunny 150k everyday, Wagon R 230k entry, Carina 250k everyday,
-  and so on), and the Beat sat in `entry` at 580,000 above four `enthusiast` cars.
-
-  **This is not a cosmetic relabel.** `tier` keys `valuation.expectationByTier`,
-  `partPricing.classFactors`, the three
-  `partsGeneration.zoneStates` severity tables and `diagnosis.symptomChanceByTier`, so all five
-  move for every car listed. Expect wide movement in valuation and mission-payout pins, every one
-  re-derived from a real run (directive 17 case (a)).
-
-  Two things ride with it:
-  1. **Only two flagship cars would remain authored** (Supra RZ, GT-R BNR32) against an auction
-     draw that gives collector-network rooms a 70 per cent flagship appetite and premium rooms 25
-     per cent. **The fix is authoring more flagship cars, not re-tiering cheaper ones upward.**
-  2. **The Sunny is scope `Eventually` and is already built.** Either promote its scope or accept
-     that scope and shipped state have drifted for one car.
 
 - [ ] **Price research for the nine STAND-IN car prices** (roster v2.3 section 4). Nissan March
   (K10) 180,000; Toyota Corolla 1.5 SE (AE91) 200,000; Mazda Familia 1.5 (BG) 220,000; Honda
@@ -761,7 +694,12 @@ pass."
      `stockReplacementPricesByClass` must resolve for every part in the new class. Verify before
      committing to it.
 
-- [ ] **`partPricing.classFactors` is now mis-calibrated against the tiers it prices, and that is
+- [ ] **SUPERSEDED by the economy overhaul brief (`docs/reviews/economy-overhaul-brief.md`),
+  workstream F: this becomes a row in the lever census, and workstream H's basket inversion (9.9)
+  proposes moving this exact ladder for a different reason.** Do not retune it in isolation; the
+  measurement below is the census row's evidence.
+
+  **`partPricing.classFactors` is now mis-calibrated against the tiers it prices, and that is
   the single lever behind both open coherence failures (measured Sprint 133).** The ladder
   (0.25 / 1.0 / 1.6 / 2.5) was set when the cheapest class spanned Y130,000 to Y580,000 and meant
   "cheap car". After the re-tier the cheapest class means "kei-sized components" and holds five
@@ -860,7 +798,10 @@ pass."
 - [ ] **`pace.agilityReferenceMassKg` is now read by nothing.** The direction-change term lost its
   mass factor in the physics port, so the constant that normalised it has no consumer. It was NOT
   deleted with the other superseded pace levers because it was not on the approved lever list, and
-  no lever moves unlisted. It wants signing off in whichever pass next touches the pace block.
+  no lever moves unlisted.
+  **SUPERSEDED by the economy overhaul brief (`docs/reviews/economy-overhaul-brief.md`),
+  workstream F:** this is a textbook dead lever and becomes a row on that census's kill list rather
+  than something to bolt onto the next pace pass. A deletion is still a lever change (D7).
 - [ ] **`spec.estimatedFields` is stale on several cars.** It still lists `fr` or `cd` as estimated
   where the value that landed is a panel reading. The roster's column is now copied straight from
   the spec book's own `est` list wherever the roster cell was blank, so the two agree on the newly
@@ -875,15 +816,6 @@ pass."
   top of the downforce ladder is unreachable with shipped content. It matters because
   mechanical grip tops out around 1.25 and the rest of the range is reached through aero: the
   missing rung is the missing top end of the whole grip scale.
-- [ ] **The per-car aero ceiling does not exist, so any car can take any aero grade**
-  (`docs/design/systems/tuning-system.md` section 12). Aero stays ONE package slot rather than
-  splitting into wing, splitter and diffuser, because the physics carries a single
-  `downforceCoeff` and cannot model front-against-rear balance, so that half is settled. The
-  ceiling is the open half: an FD, a Supra or a Countach has real aerodynamic potential and a
-  genuine aftermarket behind it, a Wagon R does not, and bolting a GT wing to one should look
-  silly and do very little. One number per car expresses it, and it is what stops every car in
-  the game eventually becoming a GT3 car. It is step 8 of that doc's build order, so check
-  whether the tuning sprints already cover it before scoping it separately.
 - [ ] **Sprint 185 built the roster-to-content lineage; four things it surfaced are still open.**
   `scripts/importSpecBook.cjs` and `carSpecBookGuard.test.ts` are gone. `cars.json` is generated
   from the roster CSV by `scripts/generateCars.cjs` and guarded by
@@ -994,7 +926,13 @@ pass."
   Any fix moves `partsGeneration.damageGrades` or the mileage curve, so the values need signing
   under directive 22 by name.
 
-- [ ] **INVESTIGATE: after sprint 184 nothing in the game can ever lower reputation (maintainer,
+- [ ] **SUPERSEDED by the economy overhaul brief (`docs/reviews/economy-overhaul-brief.md`),
+  workstream E, which may remove reputation as a player-visible mechanic entirely.** There is no
+  point establishing whether a monotonic ladder has tension until the gate census says whether the
+  ladder survives at all. **`reputation.tierThresholds` stays tabled until that memo lands**: do not
+  tune a ladder that may be about to die. The reasoning below is an input to the memo.
+
+  **INVESTIGATE: after sprint 184 nothing in the game can ever lower reputation (maintainer,
   2026-08-05, accepted for now).** The fifth amendment to `progression-bible.md` makes reputation
   monotonic: a disappointed buyer pays nothing rather than taking anything away. The maintainer took
   the fully-monotonic reading deliberately, over the alternative that kept a penalty for breaking an
@@ -1009,7 +947,7 @@ pass."
   ladder still has any tension without it**: whether a player who accepts every job and finishes
   none is meaningfully worse off, and whether "reputation only ever rises" reads as generous or as
   weightless. The alternative already drafted, if it turns out to be wanted, is in
-  `docs/sprints/sprint184.md`: sales never fall because the buyer chose the car, but breaking a
+  `docs/sprints/sprint_archive/sprint184.md`: sales never fall because the buyer chose the car, but breaking a
   commitment the player accepted still does.
 
 - [ ] **Selling channels need a systematic unlock ladder; on day one only the shop floor should be
@@ -1116,33 +1054,17 @@ pass."
   same class of asset on the same terms, behind the same API shape
   (`WORKSHOP_VIEW_SPRITE_TEMPLATES`, `WORKSHOP_VIEW_SPRITE_GRID`, `workshopViewDataUrl`), and
   are replaced in the same pass.
-- [ ] **Specialty (Sprint 38, the progression bible's horizontal axis) earns from service-job work
-  only, never from sales.** A deliberate scope line, not an oversight: attributing a SALE'S
-  reputation-quality delta to "the disciplines the player actually improved on that car" would
-  need real per-car work provenance (which groups were genuinely repaired/installed by the player
-  vs. bought-in-good-condition or inherited from a prior owner) that the sim does not track today.
-  Wiring sales into specialty without that provenance would reward buying good cars over building
-  them, the opposite of what specialty is supposed to mean. Worth revisiting once (or if) the sim
-  tracks real per-car work provenance; until then, `resolveServiceJob` stays the only specialty
-  source (`serviceJobs.ts`).
 - [ ] Split `gameStore` into domain stores (`useGarageStore` / `useAuctionStore` behind the current
   surface) - it's a fine façade now, but trending toward a god-store. `useStaffStore` landed in
   Sprint 82 (decision 6, `stores/staffStore.ts`): it owns the Staff Office view and the
   hire/dismiss/reassign actions, reading/writing the persisted staff data through `gameStore`'s
   exposed `gameState`/`dayLog`/`context`/`logSessionEvent`. The remaining garage/auction slices
   follow the same delegating-store pattern when they land.
-- [x] **RESOLVED: the main-chunk build warning limit is calibrated, not deferred (orchestrator
-  ruling 2026-07-17, Sprint 82 sweep).** Sprint 82 landed the one clean dynamic-import split it
-  asked for: `save/saveDb.ts` imports Dexie dynamically (`import('dexie')` inside `getDb`), moving
-  Dexie (~95kB) into its own chunk with zero consumer/test changes (`getDb` is a no-op without
-  IndexedDB, so tests never load it). That cut the main chunk 611.65 -> 516.72kB. No clean
-  dynamic-import split can go further: measured empirically, additionally code-splitting the
-  ENTIRE save codec AND all four result modals only reached 500.98kB - the residual is the eager
-  vue+content+sim+framework floor (~500kB), unsplittable without making the content/sim graph lazy
-  (a large refactor). The orchestrator ruled: `build.chunkSizeWarningLimit` set to 600 in
-  `packages/game/vite.config.ts`, calibrated just above the measured ~500kB floor so a real
-  regression still warns. No vendor `manualChunks` split.
-- [ ] **No bot proactively fills a MISSING car-part slot, or weighs one as worse than merely worn
+- [ ] **SUPERSEDED by the economy overhaul brief (`docs/reviews/economy-overhaul-brief.md`),
+  workstream A: bot-derived, and it dies with the harness replacement.** A scripted golden career
+  fills whatever slot the script says it fills, so there is no policy left to teach.
+
+  **No bot proactively fills a MISSING car-part slot, or weighs one as worse than merely worn
   (Sprint 32, the stock-baseline/missing-slot model).** `isGroupAtLeast` (every bot's "is this
   group good enough" check, `bots/bandHelpers.ts`) silently excludes a missing part from
   consideration - a group with a missing part can read as "fully mint" to a bot even though
@@ -1177,15 +1099,42 @@ pass."
   harvest the replaced carrier into inventory. The second resells at `usedPartSaleValueYen`, so
   it is an economy question rather than a UI one.
 
-- [ ] **The `underbody` style ladder does not climb with its grades (surfaced Sprint 163).** Neon
-  underglow is the street rung and the loudest thing on the slot at 8 style points, the
-  skirt-and-splitter kit is the sport rung at the same 8, and the race flat floor is the quietest
-  at 6. Every other style-bearing slot sells showiness up the same ladder it sells capability, and
-  `style.test.ts` guards that; `underbody` is now an explicit exception in it. Either the three
-  values are re-authored to climb (a directive-22 sign-off, since `statModifiers.style` reaches
-  sale value through buyer taste), or the exception is accepted as a real statement that an
-  underside dress ladder measures function rather than volume - in which case the guard's carve-out
-  is the record of that ruling and this entry goes.
+- [ ] **`collector-network` never unlocks, so the top auction tier is unreachable in a real career.**
+  An auction tier opens only when a delivered story mission names it through `unlocksAuctionTier`
+  (`isAuctionTierUnlocked`, `catalogs.ts:29-40`), and `storyMissions.json` carries exactly two such
+  missions: `regional` at 45 reputation and `premium` at 240. Nothing names `collector-network`, so
+  it can never open, whatever the player does. A live content gap rather than a design question, and
+  it is the mechanical half of the progression-map entry further down (which records that the
+  collector persona Kurogane and the mission the-quiet-crate are written and were held out
+  deliberately, because unlocking an empty tier is worse than the silence).
+
+- [ ] **`statWeights.authenticity` sums to 99 across 28 slots in content, while three design docs
+  say 29 slots summing to 100.** Measured on `parts-taxonomy.json`: 28 entries, 21 of them carrying
+  an authenticity weight, totalling 99. `docs/carstats/authenticity.md`,
+  `machining-sku-scoping.md` and `desirability-system.md` all state the other figure. Nothing is
+  broken in play, because `stocknessOf` divides by the weight it actually finds, but the next person
+  to reason about authenticity will trip on it. Pick a side and make the docs match content.
+
+- [ ] **`StandingScreen.vue:62` still reads "Needs tier 3 of the tool line this operation uses".**
+  `OPERATION_GATE_COPY`'s `tool-tier` string was written before the tool ladder rework changed what
+  that gate means, so the copy now names the wrong thing to the player. A copy fix, but it needs
+  someone to state what the gate says today before the sentence can be rewritten.
+
+- [ ] **Two of sprint 185's four deliberately-failing tests were resolved and nobody recorded how.**
+  Both were left red on purpose as measurements. The Honda Today tied the core-loop law in
+  `plays.test.ts` and now sits in a `RATE_ORDER_EXEMPT` set (`plays.test.ts:129`); the Datsun 510
+  overshot the aftermarket grip ladder at x1.509 against a 1.48 cap in `aftermarketPhysics.test.ts`
+  and the cap is now year-dependent, 1.55 below 1975 and 1.48 above (`aftermarketPhysics.test.ts:254`).
+  The suite has been green since sprint 188, so both were fixed in passing by whoever hit them. Each
+  is a bound the game is measured against; **reconstruct why the exemption and the wider cap are
+  correct before anyone trusts either bound again**, and record the answer where the bound lives.
+
+- [ ] **`fearPremium` has three live references left in the condemned Python harness.** It was
+  retired from the game in sprint 98 (the cause-weighted odds already carried the fear), but
+  `tools/balance/src/balance/data.py:84`, `report.py:345` and `report.py:476` still name it, and
+  `report.py:476` subscripts a manifest key no current export carries, so it would raise on contact.
+  Dead code inside code that is itself condemned (directive 21), which is why it is a note rather
+  than a fix: it comes out with whatever finally settles the harness's fate.
 
 - [ ] **`diagnosis.symptomChanceByTier` is coupled to how rough generated cars are, through the Law
   2 veto in `applySymptoms`, so the two must be re-measured together whenever either moves.** See
@@ -1208,8 +1157,29 @@ pass."
 
 ## Open balance/economy questions
 
+- [ ] **The three `matchedOnly` listing channels may be a trap rather than a gradient, and it wants
+  measuring rather than tuning (found sprint 194, still open at sprint 197).** At the seed the
+  economy bench was driven on, **no freshly generated lot matched any buyer's taste on any roster
+  model**, so `tunerMagazine`, `weekendMeet` and `collectorNetwork` could not produce an offer on an
+  unbuilt car at all: each listing burned an `offersSeen` tick and paid nothing. That is consistent
+  with the champion gate's intent, that a car should need work before a scene wants it, but burning
+  staleness against a structurally impossible sale is a trap rather than a gradient.
+  **One seed is not a measurement**, and the bench is now the instrument that can settle it. Take
+  the match rate across many seeds and models first; nobody should touch a value on the strength of
+  the observation above.
+
+- [ ] **`valuation.expectationByTier.flagship.beyondDiscount` is a placeholder and must NOT be
+  pruned as dead code (maintainer, 2026-07-30).** It is 1.3, the return on work done BEYOND a car's
+  expected condition band. A flagship's expected band is `mint` and `billAboveYen` is
+  `billToMintYen - billToExpectedBandYen`, so on a flagship that subtraction is always zero and the
+  1.3 multiplies nothing. It reads like a live knob and currently does nothing at all. It is a
+  placeholder because `mint` is the top REPAIR band, so nothing can sit above it today, while
+  machining is precisely a route to a part that exceeds its own original specification. Whoever
+  makes `billAboveYen` reachable for a flagship owns turning this live; until then the value stays
+  where it is, recorded here so nobody prunes it.
+
 - [ ] **Does the reputation ladder still have tension now that nothing can lower it?** RULED and
-  built 2026-08-06 (`docs/sprints/sprint184.md`, progression bible fifth amendment): reputation is
+  built 2026-08-06 (`docs/sprints/sprint_archive/sprint184.md`, progression bible fifth amendment): reputation is
   fully monotonic. A disappointed buyer pays nothing rather than taking anything away, the lemon
   penalty is gone with the lemon predicate, and `SERVICE_JOB_FAILURE_REP_MULTIPLIER` went with it,
   so **handing a customer's car back unfinished now earns nothing rather than costing anything.**
@@ -1221,12 +1191,6 @@ pass."
   designed and deliberately not built - **(b) sales never fall because the buyer chose the car, but
   breaking a commitment you accepted still does** - and needs a fresh ruling before anyone
   implements it.
-
-- [ ] **`reputation.tierThresholds` (0 / 60 / 200 / 500 / 1400) awaits a signed re-derivation.**
-  The same sprint changed the earn rate substantially in both directions at once (a sale went from
-  2 points to 15 or 30; every service job halved), so the ladder was deliberately left alone rather
-  than guessed. `docs/sprints/sprint184.md`'s Exit tables the measured new rate per act and
-  recommends a set; nothing moves until those five numbers are approved by name (directive 22).
 
 - [ ] **REMAINING FROM sprint175.md: inputs 1 and 2 of the maintainer's four-input power-expectation
   model are still unimplemented.** `docs/sprints/sprint175.md` built inputs 3 (the player's own
@@ -1378,53 +1342,13 @@ pass."
   and let Stage C carry the whole penalty, in which case the floor is a formality and should be
   described as one.
 
-- [x] **ACCEPTED, not open: two slots still climb into better value per yen, worst 1.335x
-  (maintainer decision 2026-07-30).** Measured across all 288 cases in
-  `partPricing.test.ts` at the end of Sprint 135: 52 exceed parity, on `internals/street`,
-  `camsTiming/street`, `block/street` and a boundary `block/sport`. On those the race rung is a
-  better buy per horsepower than the street rung, so climbing the ladder improves value per yen,
-  which is what arc rule 5 forbids. It is the same defect the ECU carried at 2.89x before Sprint
-  135's lever 5, at less than half the magnitude.
-
-  **The maintainer has accepted it rather than pursue further price ladders.** The reasoning
-  on the record: the residue is a large improvement on what shipped before, and a street rung is
-  still cheaper in absolute yen, so a player short of cash still buys one. The fix, if it is ever
-  wanted, is the treatment `ignitionEcu` received: give the remaining slot its own
-  `partPricing.gradeFactors` entry rather than the default ladder.
-
-  `forcedInduction/street` was in the same measured set and was NOT part of this acceptance.
-  **Resolved by Sprint 137**: `forcedInduction` now carries its own `partPricing.gradeFactors`
-  ladder (1 / 1.30 / 2.93 / 6.50), derived to track its own increasing power curve exactly, so its
-  24 cases sit at or within rounding noise of parity.
-
-  **`camsTiming/street` resolved by Sprint 137's amendment (2026-07-30, the same pass that fixed
-  the cross-category defect below).** `camsTiming` now carries its own ladder too (stock 1, street
-  1.3, sport 2.75, race 4.5), signed alongside a `baseCostYen` rise (30000 -> 50000) to correct the
-  cross-category defect; the new ladder also clears its street rung of the within-ladder residue
-  (its 12 `street` cases dropped out entirely rather than merely shrinking). The catalogue-wide
-  residue count fell 51 -> 39 of 288 cases as a result. `internals` and `block` are unaffected and
-  are now the only two slots still carrying the residue this entry accepts.
-
-- [x] **RESOLVED (Sprint 137 amendment, maintainer 2026-07-30): the cross-category dominance defect
-  is fixed for `camsTiming`, and the test it was measured with is now a margin ceiling rather than a
-  no-repeat-winner rule.** First measured in Sprint 137: `camsTiming` won every rung (street/sport/
-  race) for both NA characters, and `exhaust` won every rung for `forced`, on all four fitment
-  classes.
-
-  **The maintainer ruled the original assertion (the winning slot must differ across rungs) wrong
-  outright**: "Something needs to be the best value. Something needs to be on top. Fact. The point
-  is that one part does not dominate the rest." A single winner per rung is inevitable arithmetic,
-  not a defect on its own; what matters is the MARGIN by which it wins. `packages/content/tests/
-  partPricing.test.ts`'s "Sprint 137 acceptance 2b" describe block now asserts the leading slot's
-  power-per-yen lead over the next-best slot stays at or under 25 per cent, per rung, per engine
-  character, per fitment class, and passes.
-
-  **`camsTiming`'s dominance is fixed by the same price correction that resolved the row above**
-  (`baseCostYen` 30000 -> 50000, plus its own new grade ladder): it no longer wins every rung for
-  either NA character. **`exhaust` still wins every rung for `forced`** (unaffected: this
-  amendment's levers never touch `exhaust` or `forced`), but its lead over the next-best slot
-  (`intake`) tops out at 18.0 per cent (`everyday`/sport) - inside the new 25 per cent ceiling, so
-  it is not the dominance defect the maintainer's ruling names, and is left as-is.
+- [ ] **ACCEPTED, not open: `internals` and `block` still climb into better value per yen at the
+  street rung, worst 1.335x (maintainer decision 2026-07-30).** Recorded so it is not re-reported as
+  a defect. Arc rule 5 forbids the race rung being a better buy per horsepower than the street rung;
+  on those two slots it still is, and the maintainer accepted the residue rather than author more
+  price ladders, because a street rung is still cheaper in absolute yen. The fix, if it is ever
+  wanted, is the treatment `ignitionEcu`, `forcedInduction` and `camsTiming` each received: give the
+  slot its own `partPricing.gradeFactors` entry rather than the default ladder.
 
 - [ ] **INVESTIGATE: should support parts scale the MAGNITUDE of a power part's gain, and not
   only its reliability? Deferred, not decided (maintainer, 2026-07-30).**
@@ -1467,7 +1391,13 @@ pass."
   back or engine let go, because the two produce opposite mechanics and the current design is a
   coherent expression of the second.
 
-- [ ] **Reputation is a ratchet, so losing it costs almost nothing (maintainer, 2026-07-29).**
+- [ ] **SUPERSEDED by the economy overhaul brief (`docs/reviews/economy-overhaul-brief.md`),
+  workstream E.** The census reassigns every gate reputation currently holds before any decision to
+  kill it, which subsumes route 1 below outright and makes route 2 a question about scene standing
+  instead. Kept because the back-alley playstyle argument is the strongest statement in the repo of
+  what the axis is FOR, and the memo has to answer it.
+
+  **Reputation is a ratchet, so losing it costs almost nothing (maintainer, 2026-07-29).**
   Gaining reputation unlocks content: auction houses, workshop tool tiers, mission access.
   **Those unlocks never close again**, so once a player has opened everything, tanking their
   standing is close to free. Reputation stops mattering the moment the last thing is unlocked.
@@ -1506,10 +1436,13 @@ pass."
   intake/exhaust/ignitionEcu/forcedInduction on a 180SX) clears it with real margin under the new
   formula too; whether 180 is still the right number for the mission's designed difficulty is worth
   a maintainer look whenever mission thresholds are next revisited.
-- [ ] **Invariant #6 (first-timer resale speed)** - "first-timer buyers keep sub-¥500k Commons
-  sellable within 7 days at book value or better" has no bot modeling first-timer-specific selling
-  behavior; `competentPolicyStrategy` (Sprint 23) sells via the generic clean/concours faucet, not
-  this. Needs a purpose-built bot or harness variant if this specific invariant is ever wanted.
+- [ ] **SUPERSEDED by the economy overhaul brief (`docs/reviews/economy-overhaul-brief.md`),
+  workstream A: the purpose-built bot this asks for will never be built.**
+  **Invariant #6 (first-timer resale speed)** - "first-timer buyers keep sub-¥500k Commons
+  sellable within 7 days at book value or better" has no bot modelling first-timer-specific selling
+  behaviour; `competentPolicyStrategy` (Sprint 23) sells via the generic clean/concours faucet, not
+  this. If the invariant is still wanted, it becomes a curve assertion on a golden career, or a
+  closed-form probe, not a strategy.
 - [ ] Forced-loan interest rate and repayment cadence (GDD 6.6 says "painful," doesn't specify how
   painful) - open question for the spreadsheet pass. (The parts-pricing-curve question that used to
   sit here moved into Sprint 28's catalog work.)
@@ -1528,7 +1461,21 @@ pass."
   split accordingly - common/uncommon/rare hard-gated, the shitbox tier measured and disclosed, not
   silently loosened (same treatment in `valueModelProbes.test.ts`). Maintainer call needed: raise
   `marketRepairDiscount`, or accept that not every shitbox repair job is worth a player's day.
-- [ ] **Donor-flow (strip everything, sell it all, scrap the shell) versus full-car repair-and-flip
+- [ ] **SUPERSEDED by the economy overhaul brief (`docs/reviews/economy-overhaul-brief.md`),
+  workstream C, which answers the maintainer call this entry asks for: donors become a real
+  generatable lot species sold through the scrapyard, and their value is realised by harvesting
+  parts into the player's own builds rather than selling them for cash (D2).**
+
+  **One correction the brief's own reasoning needs, because the measurement it leans on does not
+  exist yet.** The brief calls the crossover "already measured per model by
+  `teardown.donorBreakEvenBillRatio` and `computeDonorBalanceProbe`". It is not.
+  `donorBreakEvenBillRatio` is a **hand-typed global 0.45** (`economy.json`), read only by
+  `exportCareers.ts` in the condemned Python harness, and `computeDonorBalanceProbe`
+  (`balanceProbes.ts`) never reads it: it builds an all-mint clean car through `buildCleanProbeCar`
+  and asks whether a GOOD car is worth more parted, which is a different question. **The crossover
+  instrument workstream C wants as its generation target has to be BUILT, not read.**
+
+  **Donor-flow (strip everything, sell it all, scrap the shell) versus full-car repair-and-flip
   (found Sprint 75, decision 3's integration tests; re-measured Sprint 79 after free removal).**
   Sprint 75 measured `nissan-180sx-rps13` (a rough, uniformly-`worn` car carrying `non-starter`):
   repairing just the diagnosed defect is profitable for the `flat-battery` sleeper and a genuine
@@ -1568,22 +1515,6 @@ pass."
   becomes a choice, and a player gains the ability to dig a hole they cannot climb out of, which
   wants designing rather than discovering.
 
-- [ ] **The 37 parody colour names are unswept, and that is fine for now (maintainer 2026-08-04:
-  "proper copy sweep comes much later").** They ship as proposals. The paint palette dev screen
-  shows each parody name beside its real one, which is the right way to judge them when the time
-  comes. Least confident: Fairground Yellow, Biscuit Brown, Chamois Yellow, and Shoreline Blue for
-  Bayside Blue.
-
-- [ ] **Cosmetic lighting, if it ever earns a slot (underglow cut 2026-08-03).** The Underglow Kit
-  was the `underbody` slot's street SKU, and `underbody` was deleted and merged into `chassis` when
-  the body zone model was rebuilt: once skirts became their own zone and the splitter and flat
-  floor were recognised as duplicates of `aero`'s Lip Kit and Race Aero Kit, underseal and
-  underglow were all that remained, which is not a slot. Underglow is pure style with no home now.
-
-  **If it comes back it needs a reason beyond nostalgia**: a slot of its own, or a place inside
-  `aero` as style-without-downforce, plus a decision about whether it reads at all in a game with
-  no night. It was cut rather than rehoused precisely so that decision gets made deliberately.
-
 - [ ] **Machining as a fifth play in the plays ranking (carried out of Sprint 168).** The ranking
   reads what a car needs and what it is worth, and machining is invisible to it, so a player is
   never told that boring the block is the best thing they could do to this car today. It cannot be
@@ -1617,42 +1548,6 @@ pass."
   (a stripped interior is a modified car), to value (an interior-less car is worth less to most
   buyers and more to a track buyer), and to the sale verdict, which reads missing slots today.
 
-- [ ] **The tuning system is DESIGNED, REVIEWED and PARTIALLY IMPLEMENTED (sprints 135 and 136
-  landed), and it is the ACTIVE ARC: sprints are being written for it separately, so it is not a
-  parked idea. The design of record is `docs/design/systems/tuning-system.md`.** It is the whole
-  design for what an aftermarket part does, how a build holds together and what that is worth:
-  proportional power in place of the flat additive ladder (BUILT, sprint 135), an
-  engine-response character derived from induction and specific output (BUILT, sprint 135),
-  per-subsystem support ratios whose weakest link is the headline, feeding reliability as
-  condition plus coherence off a per-car `spec.reliabilityBase` (BUILT, sprint 136) - cohesion
-  reaches value through reliability rather than a separate buyer-selection path or a multiplier,
-  which is what makes a build's cohesion, not just its parts list, worth something. It matters
-  because the system it replaces was solved in the wrong way: there was one correct build order,
-  it never varied, and the same +16 PS ECU applied to a naturally aspirated Beat and a
-  twin-turbo Supra alike (fixed by sprint 135); a build could also make power it could not hold
-  together for free (fixed by sprint 136).
-
-  **Status: sprints 135 and 136 are SIGNED AND BUILT.** 135 landed proportional power replacing
-  the flat additive ladder, an engine-response character per car, and the per-slot price ladder;
-  136 landed the per-subsystem support ratios, the coherence curve, and reliability rebuilt as
-  condition plus coherence off a per-car `spec.reliabilityBase` (`reliabilityCap` retired
-  outright, not moved) - see `docs/sprints/sprint_archive/sprint135.md` and `docs/sprints/sprint_archive/sprint136.md`'s own
-  Exits for what landed and what each moved. **Sprint 137 (the forced-induction return curve) is
-  SIGNED, BUILT AND COMMITTED too**, along with its `camsTiming` price amendment: see
-  `docs/sprints/sprint_archive/sprint137.md`'s own Exit for what landed. Its one genuine open
-  finding (a pre-existing cross-category value-per-yen defect, unrelated to that sprint's own two
-  levers) was closed by the same amendment and is recorded above under "Open balance/economy
-  questions". 134 needed nothing. **138 and 139 were closed unbuilt, superseded by the sale value
-  system.** **Sprint 142 (grade sensitivity) is SIGNED AND BUILT**: an installed SKU's own
-  advantage now fades on a curve keyed to its GRADE, so a race damper at `poor` delivers less than
-  a street damper at `mint`, and its second half reviewed the four provisional condition-to-physics
-  curves and left them exactly where they are, with the reasoning and the measurements in
-  `docs/sprints/sprint142.md`'s Exit. **Sprint 141 (the dyno screen) is SIGNED AND BUILT**:
-  measurement only, on the maintainer's ruling, with the rolling road a hire-or-own workshop tool
-  and the screen reporting engine character, power as built, all five support ratios and the
-  reliability split, every figure the sim's own. What remains of the tuning arc is 140
-  (`aeroCeiling` and the handling deletion), still in `docs/sprints/`.
-
 - [ ] **The dyno's boost-against-reliability slider is DEFERRED, not dead** (GDD 5.4 as amended by
   `docs/sprints/sprint141.md`). Sprint 136 made reliability the output of build coherence, so both
   ends of the axis exist and it is a genuinely good trade: turn it up, make more power, watch
@@ -1684,79 +1579,16 @@ pass."
   reputation effect is knowingly inert and the sprint should say so rather than inflate
   numbers to compensate. Every unsigned number in the doc remains a proposal, directive 22.
 
-- [ ] **Machining, the third upgrade avenue, is DESIGNED and deliberately OUT OF SCOPE of
-  the system that designed it: `docs/design/systems/tuning-system.md` section 4.** Modifying
-  a part you already own so it exceeds its own original spec, which is what real tuning
-  largely is: boring and stroking for capacity, porting and polishing for flow, skimming for
-  compression, balancing and blueprinting, lightening a flywheel. None of those is a part you
-  buy. It matters because repair can never beat stock and fitting aftermarket destroys
-  authenticity, so machining is the only route that makes a car better while keeping it
-  original, which finally gives the numbers-matching build a performance path rather than a
-  sentimental one. It is also the purpose tool tier 3 lacks: `repairBandCeilingByTier` is
-  `{1: fine, 2: mint, 3: mint}`, so tier 3 today buys nothing at all over tier 2.
-
-  **A lever is already sitting in `economy.json` waiting for this, and it must NOT be deleted as
-  dead code (maintainer, 2026-07-30).** `valuation.expectationByTier.flagship.beyondDiscount` is
-  1.3, the return on work done BEYOND a car's expected condition band. A flagship's expected band
-  is `mint`, and `billAboveYen` is computed as `billToMintYen - billToExpectedBandYen`, so for a
-  flagship that subtraction is always zero and the 1.3 multiplies nothing. It reads like a live
-  knob and currently does nothing at all.
-
-  **It is a placeholder, not a mistake.** `mint` is the top REPAIR band, so nothing can sit above
-  it today, but machining is precisely a route to a part that exceeds its own original
-  specification, which is an above-mint state. When machining lands, that lever becomes live and
-  flagships gain the one thing their expectation currently forbids: somewhere to spend past
-  perfect. Whoever picks machining up owns making `billAboveYen` reachable for a flagship; until
-  then the value stays where it is, recorded here so nobody prunes it.
-
-  It is an acquisition path, not a new axis (section 4b): one SKU in one slot, no third
-  property on a part, no second condition model, no new job system, and deterministic by
-  design (you pay, you wait, you get the part; machining risk is the first thing a future
-  reader will try to invent and the game has no random catastrophic loss anywhere). It is the
-  player's own facility, unlocked in the late-middle game, and explicitly NOT
-  `machineShopAssist`, which is basic tool hire and priced as such. The constraint on the
-  tuning sprints is negative: they must not foreclose it, so capacity increases must not be
-  expressed as aftermarket SKUs pretending to be replacements, and no upgrade path may assume
-  authenticity is always destroyed. Blocking decision: **where machining physically happens**,
-  which is the workshop-topology entry below and wants at least an outline answer before the
-  systems arc finishes.
-
-  **Machining also owns the top of the power ladder, and that is now a signed constraint rather
-  than an aspiration (maintainer, 2026-07-29, at the Sprint 135 sign-off).** The approved power
-  fractions cap a parts-only build at **x1.43** high-strung NA, **x1.57** lazy NA and **x1.95**
-  forced. Measured against the real world that is correct for most of the roster (SR20DET 341,
-  13B-REW 497, EJ20 488, 1JZ 546, VG30DETT 546, all inside their real built bands) and **low for
-  exactly two engines**: the **RB26 at 546 PS** against a real 600 to 800, and the **2JZ at 632**
-  against 700 to 900. Both reasons are real and neither is a bug in Sprint 135. The 280 PS those
-  cars advertise is the manufacturers' agreement rather than a measurement, so the multiplier is
-  applied to a political number (the JDM-variants entry above owns that half); and the RB26 and
-  the 2JZ are the two deliberately over-engineered iron sixes, which is exactly why tuners chose
-  them, and one forced multiplier cannot say so.
-
-  **RULED 2026-08-02, and this half of the entry is closed.** The objection above argued that
-  raising `powerFraction.forced` corrects two engines and inflates five, and asked for per-engine
-  headroom instead. **The maintainer ruled for the flat rise and accepted the cars it inflates**,
-  with the figures recorded in `docs/design/systems/machining-performance-table.md`: the Supra
-  reads 745 at race and 842 fully machined and the GT-R 644 and 728, which is what the target was
-  set on, while the FD reads 586, the Impreza 575 and the SW20 561. Those three are accepted rather
-  than left open. **`powerFraction.forced` is no longer forbidden**, and `docs/sprints/sprint168.md`
-  moves it.
-
-  **The rise landed.** Sprint 168 moved all 96 catalogue fractions to the table. The first attempt
-  made street and sport a uniform rescale of race, which broke four pricing probes (a street ECU at
-  2.1 times the power per yen of anything else on a boosted car); the investigation in
-  `docs/design/systems/turbo-price-blast-radius.md` established that no price ladder can fix that,
-  because one `forcedInduction` sheet entry serves three engine characters. The shipped answer keeps
-  each slot's own grade shape and pins the turbo's column to its ladder's ratios, which fixes it with
-  **no price movement at all**: the four probes measure 1.137 (bound 1.35), 0.641 (0.50), 0.141
-  (0.25) and 0.003 (0.005).
-
-  **What survives is the feature, not the objection.** Per-engine headroom is still the mechanism
-  that would make the legendary blocks legendary the way they were in life, and it is still worth
-  building: a block that can be bored, decked and filled has more of it than one that cannot, and
-  that is a property of the engine rather than of the part bolted to it. It needs authoring for all
-  94 roster rows under directive 24, so it is a sprint of its own rather than a condition on
-  machining.
+- [ ] **Per-engine machining headroom: still wanted, still unbuilt, and now a sprint of its own.**
+  The objection it came from is closed (the maintainer ruled for a flat rise in
+  `powerFraction.forced` on 2026-08-02 and accepted the cars it inflates; sprint 168 landed all 96
+  catalogue fractions against
+  `docs/design/systems/machining-performance-table.md`). **What survives is the feature, not the
+  objection.** Per-engine headroom is the mechanism that would make the legendary blocks legendary
+  the way they were in life: a block that can be bored, decked and filled has more of it than one
+  that cannot, and that is a property of the engine rather than of the part bolted to it. It needs
+  authoring for all 94 roster rows under directive 24, which is why it is not a condition on
+  anything else.
 
 - [ ] **Course-character build variety is deferred out of the tuning system, and it is job
   and copy design rather than physics** (`docs/design/systems/tuning-system.md`, the deferral
@@ -1811,7 +1643,14 @@ pass."
   override map can then be keyed by it. **Do not build a per-car price multiplier as a
   workaround**: that is a parallel mechanism for something step 1 gives away for free.
 
-- [ ] **The scrapyard (解体屋) is DESIGNED IN FULL and NOT IMPLEMENTED. The design of
+- [ ] **SUPERSEDED by the economy overhaul brief (`docs/reviews/economy-overhaul-brief.md`),
+  workstream C, which is the scrapyard plus the donor-lot species and which answers three of the
+  five blocking decisions below.** The brief's first task is a design doc that extends or supersedes
+  `scrapyard.md`, so the reasoning here is the input to that pass rather than a separate scope. Note
+  the correction recorded on the donor-flow entry above: the per-model crossover the brief treats as
+  measured does not exist and has to be built.
+
+  **The scrapyard (解体屋) is DESIGNED IN FULL and NOT IMPLEMENTED. The design of
   record is `docs/design/systems/scrapyard.md`; read it before scoping and do not
   re-design from scratch.** A new venue selling used parts and half-stripped wrecks,
   buying scrap and poor parts for weight money, and taking the shell so `scrapShell`
@@ -1933,13 +1772,10 @@ pass."
   reactions stay reader-triggered; a persisted fuse-length preset (standard/relaxed/unhurried)
   scales the per-bid clock. Still open and unscoped: reduced motion, and colour-independent
   severity cues (band chips currently lean on colour alone).
-- [x] **RULING (Sprint 111, 2026-07-22 playtest): owned-car diagnosis stays workup-only, closed,
-  not to be re-opened casually.** The routed diagnostic tests (a yard visit's minute-budget
-  route) are the yard's time game; at home, on a car the player already owns, the full afternoon
-  is honest, so the workup screen's full manual diagnosis stays the only owned-car path - no
-  routed/time-limited diagnosis mode for owned cars. Recorded here so the question does not
-  resurface without cause; `sprint111.md` item 2 is the workup gate fix (hide/disable once every
-  symptom is resolved) that shipped alongside this ruling.
+- [ ] **RULING (Sprint 111): owned-car diagnosis stays workup-only and is not to be re-opened
+  casually.** The routed, minute-budgeted tests are the yard's time game; at home the full afternoon
+  is honest, so there is no routed diagnosis mode for owned cars. Recorded so the question does not
+  resurface without cause.
 - [ ] **Next-day delivery of auction wins (maintainer-proposed, 2026-07-22 playtest, floated as
   the alternative to express parts delivery; needs its own design pass before any sprint).** A
   car won at auction would arrive the morning after the hammer rather than settling straight into
@@ -2012,6 +1848,15 @@ pass."
 
 ## Design decisions awaiting maintainer direction
 
+- [ ] **The tutorial teaches on a car a 1995 campaign can no longer offer (surfaced by sprint 196).**
+  The auction age floor means a model is not catalogued until `yearFrom <= currentYear - 3`. The
+  Wagon R's window opens in 1993, so it becomes eligible at 1996, and the calendar only reaches 1997
+  with reputation: a player therefore learns on a car they cannot buy until reputation tier 2. The
+  tutorial itself is unaffected, since `buildTutorialLot` is RNG-free and never goes through the
+  catalogue. But "here is how to fix one of these" followed by never meeting one is a content
+  question, not a mechanical one, and it belongs to the maintainer: change the taught car, change
+  the floor, or accept it.
+
 - [ ] **Why can the player not just plug a scanner in? The game has no answer and needs one
   (maintainer 2026-08-04).** Every diagnostic test in the game is physical and pre-electronic:
   revs-and-listen, the stethoscope, a coolant check, a compression test, oil pressure, a rag over
@@ -2039,7 +1884,6 @@ pass."
 
   Option 3 also earns its keep against the roster's own spread rather than fighting it, and would
   pair with the decade the game is meant to move through.
-
 
 - [ ] **The 37 parody colour names have not been swept against the copy bar (Sprint 169, deferred
   to the playtest by maintainer instruction 2026-08-03).** Every one in `paintAliases.json` is a

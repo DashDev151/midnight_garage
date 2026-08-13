@@ -293,7 +293,7 @@ maintainer or CI run can catch a coherence drift before a playtest does.
 
 - 2026-08-06: **The `reputation` anchor row rebuilt: reputation stops reading the car's condition
   and starts reading the buyer.** Authority is the progression bible's fifth amendment
-  (2026-08-05), implemented in `docs/sprints/sprint184.md`, whose lever tables carry the approval
+  (2026-08-05), implemented in `docs/sprints/sprint_archive/sprint184.md`, whose lever tables carry the approval
   for every value; **no law in THIS bible changed** and no price, payout or valuation lever moved.
   What moved is the anchor inventory's own accuracy: seven `reputation.*` levers are gone
   (`cleanSaleMinBand`, `cleanSaleBonus`, `concoursSaleMinAuthenticityPercent`, `concoursSaleBonus`,

@@ -221,7 +221,7 @@ name `reputationTier` predates this and stays; do not rename code symbols to cha
   22 does not permit, and a permanently unreachable one would have been exactly the "quietly keeps
   working/quietly keeps failing" fragment the teardown exists to avoid.
 - 2026-08-05: **What EARNS reputation is redefined (fifth amendment, maintainer-approved,
-  implemented `docs/sprints/sprint184.md`).** The vertical axis keeps every gate it already has;
+  implemented `docs/sprints/sprint_archive/sprint184.md`).** The vertical axis keeps every gate it already has;
   only the earning changes. It previously read the car's condition bands at the moment of sale
   (a lemon predicate, a clean bonus, a concours bonus), plus a flat matched bonus, plus service
   jobs and missions. **No stat and no condition predicate feeds reputation any longer.** Five

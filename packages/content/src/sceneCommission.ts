@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { RequirementSpecSchema } from './requirement'
 
 /**
- * A scene's Respected-stage payload (docs/sprints/scene-standing-arc.md step
+ * A scene's Respected-stage payload (docs/sprints/sprint_archive/scene-standing-arc.md step
  * 6): a generated brief from a named customer in that scene, graded on the
  * scene's own buyer `statTargets` exactly like a story mission's
  * `requirements` (`evaluateRequirement`, sim/requirements.ts) - never a

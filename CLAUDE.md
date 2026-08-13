@@ -53,17 +53,31 @@ All development happens in sprints, driven by the roadmap. Sprint docs live in `
 (synthwave pixel art, JDM car culture, hunt-build-sell loop). Solo-dev passion project, ~13-month
 roadmap to a free itch.io launch.
 
-**Current state:** Sprints 00-182 and 185-186 implemented, committed and signed. Two were
-superseded unbuilt and their docs record it (Sprint 100 by Sprint 110's live-room promotion;
-Sprints 138-139 by the sale value system). The buyer-taste rework is landing: a buyer learns to say
-no (182), the scene-standing ladder was measured against it (183, half one only, half two awaiting
-sign-off), and reputation reads the buyer's verdict rather than the car's condition bands (184,
-implemented, with `reputation.tierThresholds` tabled for signature). **`docs/sprints/` holds only
-planned or live sprints**, which is the invariant: a finished sprint moves to
-`docs/sprints/sprint_archive/`, so whatever remains is what is still open.
+**Current state:** Sprints 00-197 implemented, committed and signed, with one exception noted
+below. Two were superseded unbuilt and their docs record it (Sprint 100 by Sprint 110's live-room
+promotion; Sprints 138-139 by the sale value system). **`docs/sprints/` holds only planned or live
+sprints**, which is the invariant: a finished sprint moves to `docs/sprints/sprint_archive/`, so
+whatever remains is what is still open. An archive pass on 2026-08-13 restored that invariant and
+corrected four status headers that had gone stale against their own Exits.
+
+**Exactly four things are open, and they are the whole of `docs/sprints/`:**
+
+- **`sprint191.md`, task 6:** gate sport and race zone panels on body level 3. Never started, lever
+  never signed. The only unbuilt sprint task in the repo, and it blocks the contact-patch design.
+- **`sprint193.md`:** a triage index, not a work order. Sole home for several defects and deferred
+  structural work. Its section B is largely closed by 197 and wants striking.
+- **`generation-arc-lever-ledger.md`:** R4, 30 levers, **awaiting review**.
+- **`economy-overhaul-arc.md`:** a SUPERSEDED plan, kept only for its verification section, which
+  traces five contradictions between the economy brief and the shipped code.
+
+**A new arc is beginning and its design of record is
+`docs/reviews/economy-overhaul-brief.md`**, alongside `docs/design/narrative/ran-when-parked-cast.md`
+and `ran-when-parked-narrative.md`, deliverables two and three of the same handoff. Read the brief
+before planning anything economic; it carries decisions D1 to D13, and D9 in particular deletes the
+universal deal guarantee at auction.
 
 The tuning overhaul is COMPLETE (`docs/design/systems/tuning-system.md`, arc index
-`docs/sprints/tuning-arc.md`): condition reaches the build, power is a per-car fraction rather than
+`docs/sprints/sprint_archive/tuning-arc.md`): condition reaches the build, power is a per-car fraction rather than
 a flat ladder, support ratios drive reliability off a per-car `spec.reliabilityBase`, forced
 induction returns increase, a part's band curve varies by grade so a race part at `poor` delivers
 less than a street part at `mint`, and `spec.aeroCeiling` scales what a fitted aero SKU delivers so
@@ -80,8 +94,8 @@ Analysis of record `docs/design/systems/body-system-analysis.md`.
 
 **The sale value arc (143 to 157) is COMPLETE.** Design of record
 `docs/design/systems/sale-value-system.md`, plan `sale-value-implementation-plan.md`, lever
-ledgers `docs/sprints/sale-value-arc-lever-ledger.md` (R3, 38 levers, ratified) and
-`generation-arc-lever-ledger.md` (R4, 30 levers, **awaiting review**). Coherence discounts value
+ledgers `docs/sprints/sprint_archive/sale-value-arc-lever-ledger.md` (R3, 38 levers, ratified) and
+`docs/sprints/generation-arc-lever-ledger.md` (R4, 30 levers, **awaiting review**). Coherence discounts value
 and scales parts retention; taste is a per-buyer match rather than a weighted mean; a listing goes
 stale by offers seen rather than days; listed cars occupy a purchasable forecourt and rent scales
 with owned bays; the week has named days and each auction room its own hours. Authenticity is

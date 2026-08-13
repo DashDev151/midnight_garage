@@ -9,7 +9,7 @@ content. Figures marked **read** were taken off the source or the content JSON w
 it.
 
 > **Partly superseded, 2026-08-06.** The progression bible's fifth amendment
-> (`docs/sprints/sprint184.md`) deleted the concours gate outright: reputation no longer reads
+> (`docs/sprints/sprint_archive/sprint184.md`) deleted the concours gate outright: reputation no longer reads
 > authenticity, a condition band, or any derived stat. Everything below about the FORMULA, the
 > weights, the machining charge and the taste readers is still accurate; every passage about "the
 > concours gate" describes a mechanism that no longer exists, and is left in place because the

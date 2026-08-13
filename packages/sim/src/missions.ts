@@ -218,7 +218,7 @@ export function resolveDeliverMission(
 
   const totalPayoutYen = mission.payoutYen + tipYen
 
-  // Scene standing's earn path (docs/sprints/scene-standing-arc.md step 4): a
+  // Scene standing's earn path (docs/sprints/sprint_archive/scene-standing-arc.md step 4): a
   // delivered mission credits its own customer's scene, read off the persona
   // `mission.personaId` links to - never a hand-written tag. `persona` is
   // always resolvable against real content; the guard is defensive, matching

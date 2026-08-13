@@ -4,7 +4,7 @@
 pulled are SIGNED; 150 to 155 are not.** Every number belonging to a sprint that has not run is
 still a proposal under directive 22, and no such value may be pulled without the maintainer
 signing that specific lever. **What was actually signed, sprint by sprint and value by value, is
-`docs/sprints/sale-value-arc-lever-ledger.md`**; the implementation order and its guards are
+`docs/sprints/sprint_archive/sale-value-arc-lever-ledger.md`**; the implementation order and its guards are
 `sale-value-implementation-plan.md`. Where a shipped sprint's Exit and this document disagree,
 the sprint doc is authoritative.
 
@@ -225,7 +225,7 @@ The Collector's power `upper` is **deleted**: every route to power already costs
 capping it double-charged, and it also penalised a numbers-matching car for the power it left the
 factory with.
 
-**Every one of those levers is listed by name and value in `docs/sprints/sprint182.md`.**
+**Every one of those levers is listed by name and value in `docs/sprints/sprint_archive/sprint182.md`.**
 
 ### Stage E's power term, and the climbing chain above it
 
@@ -311,7 +311,7 @@ looks-versus-truth theme rendered into the reputation rules:
 ### Concours means original
 
 > **RETIRED (maintainer, 2026-08-05), and the magazine feature with it. Superseded by the
-> reputation rework in `docs/sprints/sprint184.md`.** Concours was the only +4 in the game and it
+> reputation rework in `docs/sprints/sprint_archive/sprint184.md`.** Concours was the only +4 in the game and it
 > required 85 per cent authenticity, which **no built car can ever reach**: an aftermarket block
 > alone costs 18 of the 100 authenticity points. So a tuner shop, a show shop and a racing shop
 > were all permanently capped at the +2 clean rate no matter how good their work was, and only a

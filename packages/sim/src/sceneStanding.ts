@@ -65,7 +65,7 @@ function higherStage(a: SceneStandingStage, b: SceneStandingStage): SceneStandin
  * whole delivery count AFTER this delivery is appended - deeds tallied and
  * compared against `economy.sceneStandingProgress`'s thresholds for THIS
  * scene, because everything is a tally underneath
- * (docs/sprints/scene-standing-arc.md) and a scene the market rarely matches
+ * (docs/sprints/sprint_archive/scene-standing-arc.md) and a scene the market rarely matches
  * asks for fewer deliveries than one it matches easily, so the same rung
  * costs comparable WORK everywhere (sprint186.md). Monotonic
  * (`higherStage`): a stage never regresses, so a quiet scene keeps every
@@ -118,7 +118,7 @@ export interface SceneDeliveryDetails {
 }
 
 /**
- * The one hook every earn event calls (docs/sprints/scene-standing-arc.md
+ * The one hook every earn event calls (docs/sprints/sprint_archive/scene-standing-arc.md
  * step 4): a matched walk-in sale (`resolveSellViaWalkIn`, selling.ts) or a
  * delivered story mission (`resolveDeliverMission`, missions.ts) crediting
  * `scene`, always the buyer's or persona's own archetype - there is no tag
@@ -158,7 +158,7 @@ export function creditSceneDelivery(
 }
 
 /**
- * Word of mouth's rolling-window term (docs/sprints/scene-standing-arc.md
+ * Word of mouth's rolling-window term (docs/sprints/sprint_archive/scene-standing-arc.md
  * step 5): how much of the last `rollingWindowDays`' worth of matched
  * deliveries, across every scene, went to THIS one. A scene worked
  * exclusively over the window reaches `rollingWindowShareCap`; a scene
@@ -182,7 +182,7 @@ function recentDeliveryShareMultiplier(
 }
 
 /**
- * Word of mouth itself (the Known payload, docs/sprints/scene-standing-arc.md
+ * Word of mouth itself (the Known payload, docs/sprints/sprint_archive/scene-standing-arc.md
  * step 5): how much more of `scene` turns up across every one of the
  * player's channels right now. A flat 1 (no change at all) below Known;
  * from Known on, that stage's own multiplier

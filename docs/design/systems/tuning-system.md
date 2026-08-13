@@ -2,7 +2,7 @@
 
 **Status: PARTLY IMPLEMENTED. Sprints 134 to 137 are BUILT and their levers are SIGNED; 140 is
 BUILT; 141 and 142 are not.** This document is no longer a pure proposal, so read it with the arc
-index `docs/sprints/tuning-arc.md` beside it: that table says what shipped, and **each shipped
+index `docs/sprints/sprint_archive/tuning-arc.md` beside it: that table says what shipped, and **each shipped
 sprint's own doc is authoritative over this document wherever they disagree** (see "Amendments
 since this document was written", below).
 
@@ -36,7 +36,7 @@ is worth.
 ## Amendments since this document was written
 
 **Read this before section 7a, 9, 11 or 14.** The arc that implements this design is
-`docs/sprints/tuning-arc.md`, sprints 134 to 142, and building it surfaced decisions the design
+`docs/sprints/sprint_archive/tuning-arc.md`, sprints 134 to 142, and building it surfaced decisions the design
 did not anticipate. **Each sprint doc is authoritative over this document where they disagree**,
 and this list says where that is.
 

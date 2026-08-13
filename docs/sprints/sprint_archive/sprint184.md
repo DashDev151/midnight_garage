@@ -1,7 +1,12 @@
 # Sprint 184: the customer decides whether you did well
 
-**Status: IMPLEMENTED, ready for review. One value deliberately left unmoved and tabled for
-signature: `reputation.tierThresholds` (see the Exit).**
+**Status: COMPLETE, archived. The tabled value was signed two days after this doc was written.**
+
+`reputation.tierThresholds` was approved on 2026-08-06 and moved from 0 / 60 / 200 / 500 / 1400 to
+**0 / 140 / 450 / 1150 / 2900**. The approval is recorded in `economyApprovalGate.test.ts` and the
+values are live in `economy.json`. This sprint had recommended leaving them alone for pacing; the
+maintainer moved them for scale, which the approval ledger states. The header said "tabled for
+signature" until the 2026-08-13 archive pass corrected it.
 
 Design of record: `docs/design/progression-bible.md`, fifth amendment (2026-08-05).
 

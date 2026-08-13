@@ -5324,7 +5324,7 @@ export const useGameStore = defineStore('game', () => {
   /**
    * Jump one scene straight to a standing stage, bypassing however many
    * matched deliveries it would normally take to earn - dev/test only.
-   * Earning it (docs/sprints/scene-standing-arc.md) has nothing to hook yet,
+   * Earning it (docs/sprints/sprint_archive/scene-standing-arc.md) has nothing to hook yet,
    * so this is the one way a career can currently reach
    * `known`/`respected`/`shop` at all.
    */

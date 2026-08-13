@@ -205,7 +205,7 @@ already authored and already ratified.
 ## 6. Consequences
 
 **~~`concoursSaleMinAuthenticityPercent` (85) becomes reachable.~~ SUPERSEDED 2026-08-06** by the
-progression bible's fifth amendment (`docs/sprints/sprint184.md`). It never did become reachable:
+progression bible's fifth amendment (`docs/sprints/sprint_archive/sprint184.md`). It never did become reachable:
 measured after authenticity was derived, an aftermarket block alone costs 18 of the taxonomy's 100
 points and a kit with wheels costs 17, so a bar of 85 disqualified every built car by construction
 and a tuner, show or racing shop was capped below the top rate however good its work was. The whole

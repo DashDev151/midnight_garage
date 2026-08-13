@@ -60,7 +60,7 @@ export function normalizedPowerScore(powerPs: number, economy: EconomyConfig): n
 }
 
 /**
- * The climbing chain's own derived figure (docs/sprints/scene-standing-arc.md
+ * The climbing chain's own derived figure (docs/sprints/sprint_archive/scene-standing-arc.md
  * step 0): how many PS below the player's own best-ever delivered power the
  * top of the market currently sits, given `GameState.powerExpectationChain`.
  * `undefined` before anyone has ever delivered a car - there is no "top of
@@ -370,7 +370,7 @@ function sceneStandingBandFor(
  * that channel's own `sellingChannels[*].tasteCeiling`. The low end is
  * `1 - tasteSpread`, every channel's honest floor, UNLESS this buyer's own
  * scene standing (`sceneStanding`, absent = every scene at `none`) raises
- * it - `docs/sprints/scene-standing-arc.md`'s per-scene band, applied here
+ * it - `docs/sprints/sprint_archive/scene-standing-arc.md`'s per-scene band, applied here
  * because this is the one place a taste band is built. A scene's own
  * ceiling (from `known` on) competes against the channel's rather than
  * adding to it (`Math.max` - stacking would compound: a respected scene in

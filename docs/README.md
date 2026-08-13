@@ -55,8 +55,14 @@ other files there are its data, its harness, and the arc's historical working no
   `sprints/` however long ago it ran, because the archive is history and history is never a
   mandate. Move with `git mv`, and fix every reference to the old path in the same change.
   A sprint doc's own header status line says which of these it is; keep it true.
-- The two arc indexes, `sprints/tuning-arc.md` and `sprints/sale-value-arc-lever-ledger.md`, are
-  live documents and are not archived with the sprints they index.
+- **An arc index follows its arc, not its sprints.** It stays in `sprints/` while the arc is running,
+  even as the individual sprints it indexes archive underneath it, and it moves to the archive when
+  the arc completes. A lever ledger is the same, except that ratification is what completes it: a
+  ledger stays live until the maintainer has signed it, however long ago its sprints ran. So
+  `tuning-arc.md`, `scene-standing-arc.md` and `sale-value-arc-lever-ledger.md` (R3, ratified) are
+  archived, and `generation-arc-lever-ledger.md` (R4) is not, because it is still awaiting review.
+  This supersedes the earlier rule that named the two indexes as permanently live, which was written
+  while both arcs were still running and outlived them.
 - `TODO.md` at the repo root carries deferred items with no sprint number attached. Check it when
   planning, and remove from it when something lands.
 - Archived documents keep a banner saying what superseded them. They are never deleted, and they are

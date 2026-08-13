@@ -1,6 +1,16 @@
 # Sprint 183: the ladder was measured against a lie
 
-**Status: PLANNED. Nothing implemented. Blocked on sprint 182.**
+**Status: COMPLETE, archived. Half one is this doc; half two is sprint 186.**
+
+This sprint was deliberately designed as two halves with a hard stop between them: half one measured
+and moved nothing, because directive 22 forbids proposing a value before the measurement exists.
+**The pause was the design, not a failure.** Sprint 186 is half two and says so in its first line. It
+signed and moved the two levers proposed below, in the per-scene form this doc suspected was the
+honest fix, and recorded the eight not-to-move levers with a measured reason each.
+
+**The "UNSIGNED PROPOSALS" heading below is therefore a historical record, not a live queue.** The
+one item 186 could not close with a value, `rollingWindowShareCap` needing a mechanism, is in
+`TODO.md`. Header corrected during the 2026-08-13 archive pass.
 
 ## Goal
 

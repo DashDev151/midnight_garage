@@ -16,7 +16,7 @@ import { buildCarInstance, carWithGrades, mintCarParts, uniformCarParts } from '
 
 /**
  * What reputation reads at a sale (progression bible, fifth amendment, and
- * `docs/sprints/sprint184.md`): the buyer's own verdict on the car they were
+ * `docs/sprints/sprint_archive/sprint184.md`): the buyer's own verdict on the car they were
  * handed, and nothing else. Two rungs, Satisfied and Delighted, plus the
  * honest third answer of nothing at all.
  */

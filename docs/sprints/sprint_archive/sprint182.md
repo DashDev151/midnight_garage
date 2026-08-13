@@ -1,6 +1,11 @@
 # Sprint 182: a buyer learns to say no
 
-**Status: PLANNED. Nothing implemented.**
+**Status: COMPLETE, archived. See the Exit for the evidence.**
+
+The header below read "PLANNED. Nothing implemented." for the whole of this sprint's life; it was
+never updated after the work landed, and its own Exit contradicts it. Corrected during the
+2026-08-13 archive pass. All four deferrals landed: the standing ladder retune in 183 and 186, the
+reputation rework in 184, and the two grip and grade items in `TODO.md`.
 
 Design of record: `docs/design/systems/sale-value-system.md` Stage E, amendment v5.
 Authored data: `docs/design/buyer-culture-affinity.csv`.

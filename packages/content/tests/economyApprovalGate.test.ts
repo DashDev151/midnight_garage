@@ -891,7 +891,7 @@ import toolShops from '../data/toolShops.json'
  * holds.
  *
  * Re-pinned 2026-07-31 (MAINTAINER RULING, explicit and signed - NOT under R3, which expired
- * once the maintainer reviewed `docs/sprints/sale-value-arc-lever-ledger.md`): `calendar.
+ * once the maintainer reviewed `docs/sprints/sprint_archive/sale-value-arc-lever-ledger.md`): `calendar.
  * rentDayOfWeek` 1 -> 7. The maintainer's own words: "rent starts on day 7. like current." This
  * is the one lever moved; `paydayOfWeek` stays 5, `meetDayOfWeek` stays 7, `auctionDayOfWeek`
  * stays 3, `daysPerWeek` stays 7, `daysPerMonth` stays 28. At `rentDayOfWeek` 1 a brand-new
@@ -1962,7 +1962,7 @@ import toolShops from '../data/toolShops.json'
  * value by construction). No mission payout or budget cap moves, and `partPricing.json`/
  * `damagePatterns.json` are untouched.
  *
- * Re-pinned for `docs/sprints/sprint186.md` (the standing ladder, retuned and re-spaced),
+ * Re-pinned for `docs/sprints/sprint_archive/sprint186.md` (the standing ladder, retuned and re-spaced),
  * every value named and signed in that sprint doc's lever tables before implementation.
  * Two lever blocks move, both answering the same measurement:
  *
@@ -1987,7 +1987,7 @@ import toolShops from '../data/toolShops.json'
  * and the delivery thresholds feed only the stage machinery. `partPricing.json` and
  * `damagePatterns.json` are untouched, so their hashes and the payout pin hold unchanged.
  *
- * Re-pinned for `docs/sprints/sprint184.md` (reputation reads the buyer's verdict, not the
+ * Re-pinned for `docs/sprints/sprint_archive/sprint184.md` (reputation reads the buyer's verdict, not the
  * car's condition bands), every value named and signed in that sprint doc's lever tables
  * before implementation. The whole of the `reputation` block below `tierThresholds` is
  * REPLACED rather than retuned:
@@ -2100,7 +2100,7 @@ import toolShops from '../data/toolShops.json'
  * `damagePatterns.json` / `toolLines.json` / `toolShops.json` are untouched, so their hashes
  * and the payout pin hold unchanged.
  *
- * Re-pinned for the `panels` -> `bodywork` rename (`docs/sprints/sprint192.md`, ruling 1). NO
+ * Re-pinned for the `panels` -> `bodywork` rename (`docs/sprints/sprint_archive/sprint192.md`, ruling 1). NO
  * VALUE MOVES: the summary body slot is renamed everywhere it is addressed, so `economy.json`'s
  * `partsGeneration.missingSlotWeightByPart.panels` becomes `.bodywork` at the same 0 and
  * `machineShopAssist.signatureSlotsByGroup.body` reads `["bodywork", "chassis"]` for
@@ -2109,7 +2109,7 @@ import toolShops from '../data/toolShops.json'
  * `damagePatterns.json`, `toolLines.json` and `toolShops.json` are untouched, so their hashes
  * and the payout pin hold unchanged.
  *
- * Re-pinned again for the machine-gate collapse (`docs/sprints/sprint192.md`, ruling 4). NO
+ * Re-pinned again for the machine-gate collapse (`docs/sprints/sprint_archive/sprint192.md`, ruling 4). NO
  * VALUE MOVES and nothing is deleted: `machineShopAssist.signatureSlotsByGroup` leaves
  * `economy.json` for `parts-taxonomy.json`, where the identical facts are carried by the
  * `machineGate` field on the six rows that used to be named here (`dampers`, `springs`,
@@ -2120,7 +2120,7 @@ import toolShops from '../data/toolShops.json'
  *
  * Re-pinned for the ruling that mileage on a car can never ADD value and low mileage can only
  * subtract less, signed by the maintainer 2026-08-07 by name and value before implementation
- * (`docs/sprints/sprint195.md`). ONE value moves: `valuation.mileageFactorCurve`'s first
+ * (`docs/sprints/sprint_archive/sprint195.md`). ONE value moves: `valuation.mileageFactorCurve`'s first
  * breakpoint, `[30000, 1.05]` -> `[30000, 1.00]`. The 60,000 km breakpoint was already 1.00 and
  * the 120,000 and 180,000 km breakpoints are untouched, so the multiplier is now flat at 1.00
  * across the whole 0 to 60,000 km range (`interpolateCurve` clamps flat below the first

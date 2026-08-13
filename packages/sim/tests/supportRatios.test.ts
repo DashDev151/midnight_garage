@@ -91,7 +91,7 @@ describe('supportRatios: the structural disjointness test', () => {
  * grade" - and band-scaling demand let a rotting gain part demand LESS of
  * the bottom end its own hardware was rated for, which raised the coherence
  * factor (and so reliability) as the part aged. See
- * `docs/sprints/tuning-arc.md`'s rewritten second correction for the fuller
+ * `docs/sprints/sprint_archive/tuning-arc.md`'s rewritten second correction for the fuller
  * account.
  */
 describe('supportRatios: demand reads grade, not band', () => {

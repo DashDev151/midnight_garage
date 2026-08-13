@@ -699,7 +699,7 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * (Save law) so an old client rejects a v60 save rather than silently
  * reading an offer from a buyer that no longer exists.
  * v60 -> v61 (the climbing chain): `GameStateSchema` gained
- * `powerExpectationChain` (docs/sprints/scene-standing-arc.md step 0),
+ * `powerExpectationChain` (docs/sprints/sprint_archive/scene-standing-arc.md step 0),
  * defaulted absent - the normal additive case (like v2/v22/v24/v25/v26): a
  * pre-v61 save never delivered a car under this mechanic (the concept did
  * not exist), so absent is exactly the correct backfill, meaning "nobody has
@@ -708,14 +708,14 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * this version. No `MIGRATIONS[60]` entry needed, but it DOES bump
  * `SAVE_VERSION` (Save law).
  * v61 -> v62 (standing moves the band): `GameStateSchema` gained
- * `sceneStanding` (docs/sprints/scene-standing-arc.md step 3), one stage per
+ * `sceneStanding` (docs/sprints/sprint_archive/scene-standing-arc.md step 3), one stage per
  * buyer scene defaulted to `none` - the normal additive case (like
  * v2/v22/v24/v25/v26/v61): a pre-v62 save never earned any standing (the
  * concept did not exist), so "unknown in every scene" is exactly the correct
  * backfill. No `MIGRATIONS[61]` entry needed, but it DOES bump
  * `SAVE_VERSION` (Save law).
  * v62 -> v63 (the earn event and the shop ledger): `GameStateSchema` gained
- * an optional `sceneLedger` (docs/sprints/scene-standing-arc.md step 4) - the
+ * an optional `sceneLedger` (docs/sprints/sprint_archive/scene-standing-arc.md step 4) - the
  * permanent per-scene delivery history (car, scene, price, day) a matched
  * sale or a delivered story mission appends to. Additive and genuinely
  * optional (the `powerExpectationChain`/`dyno` pattern), so this needs NO
@@ -726,7 +726,7 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * still required (Save law) so an old client rejects a v63 save rather than
  * silently dropping a shop's own delivery history.
  * v63 -> v64 (word of mouth and scene commissions): `GameStateSchema` gained
- * an optional `sceneCommissions` (docs/sprints/scene-standing-arc.md step 6)
+ * an optional `sceneCommissions` (docs/sprints/sprint_archive/scene-standing-arc.md step 6)
  * - one live commission slot per scene, `null` when nothing is live. The
  * same genuinely-optional-key pattern as `sceneLedger`'s own v62 -> v63
  * entry, so this needs NO `MIGRATIONS[63]` entry: a pre-v64 save decodes

@@ -88,7 +88,7 @@ export interface ChannelDrawWeighting {
    * and everyone else out. */
   focusExponent: number
   /**
-   * Word of mouth (docs/sprints/scene-standing-arc.md step 5): each
+   * Word of mouth (docs/sprints/sprint_archive/scene-standing-arc.md step 5): each
    * archetype's own scene-standing multiplier, applied on TOP of
    * `buyerPoolWeights` after the focus exponent - never folded into
    * `buyerPoolWeights` itself, which stays the channel's own authored
@@ -1168,7 +1168,7 @@ export function channelArrivalOddsFor(
  * entries are pruned to still-owned cars in the same pass, so a sold (or
  * otherwise departed) car's toggle never lingers.
  *
- * Word of mouth (docs/sprints/scene-standing-arc.md step 5) is computed
+ * Word of mouth (docs/sprints/sprint_archive/scene-standing-arc.md step 5) is computed
  * once here, off `state` alone, rather than once per car - nothing it reads
  * (`sceneStanding`, `sceneLedger`, `day`) changes within this pass.
  */
@@ -1348,7 +1348,7 @@ export function resolveSellViaWalkIn(
   // reputation/heat effects apply.
   const saleRevealLine = saleRevealLineFor(car, model, state, context)
 
-  // The climbing chain's own update (docs/sprints/scene-standing-arc.md step
+  // The climbing chain's own update (docs/sprints/sprint_archive/scene-standing-arc.md step
   // 0): the delivered car's power, exactly as `normalizedPowerScore` reads
   // it for taste, is this delivery's measurement of "the top of the market".
   const deliveredPowerPs = computeDerivedStats(
@@ -1364,7 +1364,7 @@ export function resolveSellViaWalkIn(
     context.economy,
   )
 
-  // Scene standing's own earn event (docs/sprints/scene-standing-arc.md step
+  // Scene standing's own earn event (docs/sprints/sprint_archive/scene-standing-arc.md step
   // 4): a MATCHED sale credits the buyer's own archetype - never a tag, and
   // never reachable through `tradeNetwork` since `matched` is already false
   // whenever there is no real `Buyer`/`tasteCeiling` (the trade's own
