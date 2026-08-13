@@ -35,7 +35,7 @@ afterEach(() => {
 })
 
 describe('SaveMenu - export session bundle', () => {
-  const createObjectURL = vi.fn(() => 'blob:mock-url')
+  const createObjectURL = vi.fn<(blob: Blob) => string>(() => 'blob:mock-url')
 
   beforeEach(() => {
     setActivePinia(createPinia())
