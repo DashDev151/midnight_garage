@@ -40,5 +40,11 @@
     "name": "Ishida",
     "intro": "Thirty years selling cars, and still walks the lot every morning like it's day one.",
     "archetype": "show-crowd"
+  },
+  {
+    "id": "kurogane",
+    "name": "Kurogane",
+    "intro": "Buys back what Japan sold abroad before it knew what it had. Reads the papers twice.",
+    "archetype": "collector"
   }
 ]

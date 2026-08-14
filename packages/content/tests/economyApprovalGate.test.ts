@@ -2219,6 +2219,24 @@ import toolShops from '../data/toolShops.json'
  * Sprint 203 felt statement" probe. The body line's remaining advantage on this work is
  * unchanged: the finish/polish quality ceiling and hire economics, never speed -
  * `machineShopAssist.machinelessLaborMultiplier` and the weld machine-line gate are untouched.
+ *
+ * ONE new mission entry, `the-quiet-crate`, closes the `collector-network` auction-tier gap
+ * (TODO.md: the tier had no unlocking mission at all, so it could never open in a real career).
+ * Kurogane is the guarantor (`docs/design/narrative/ran-when-parked-cast.md`), gated at 1000
+ * reputation, above `the-showroom-standard`'s 240 so the guarantor ladder stays ordered and above
+ * `under-one-fifteen`'s 800 so it reads as the campaign's final rung, short of the untouched
+ * `legend` rep tier at 1400. `payoutYen`/`budgetCapYen` (2278000, one-price contract) is NOT a
+ * fresh `storyMissionProbes.test.ts` measurement like every prior entry in this pin - no probe
+ * build was authored for it - it is a linear-regression fit of payout against
+ * `gateReputationPoints` over the other ten missions (slope 1889.07 yen/point, intercept
+ * 388680, evaluated at 1000 and rounded up to the nearest 1000), i.e. an interpolation of the existing
+ * ladder's shape, not an invented figure. `reputationReward` 75 uses the same fit against the
+ * other ten missions' own reward values (slope 0.054, intercept 21.0, evaluated at 1000), which
+ * independently lands within half a point of the round number chosen - the two fits agree. Both
+ * figures are pending a real probe measurement and maintainer sign-off before they are treated as
+ * final. Requirements (`allPartsBandAtLeast: mint` plus `statThreshold(authenticity) >= 81`,
+ * `81 = floor90(90)` against the `collector` buyer archetype's own authenticity target) are
+ * likewise unmeasured against a built probe car and flagged for the same review.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -2296,6 +2314,7 @@ describe('the economy approval gate', () => {
       'under-one-fifteen': { payoutYen: 1690000, budgetCapYen: 1690000 },
       'the-fleet-spare': { payoutYen: 482000, budgetCapYen: 482000 },
       'the-showroom-standard': { payoutYen: 701000, budgetCapYen: 701000 },
+      'the-quiet-crate': { payoutYen: 2278000, budgetCapYen: 2278000 },
     })
   })
 })

@@ -31,7 +31,7 @@ describe('refreshCatalogs', () => {
     expect(a).toEqual(b)
   })
 
-  it('generates lots for every unlocked tier, but not collector-network (no guarantor mission unlocks it yet)', () => {
+  it('generates lots for every unlocked tier, but not collector-network (its guarantor mission is not yet delivered)', () => {
     const state = createInitialGameState(CONTEXT, 1)
     expect(state.reputationTier).toBe('unknown')
     const { freshLots, lotsByTier } = refreshCatalogs(state, CONTEXT, 1, createRng(1))
@@ -81,7 +81,7 @@ describe('refreshCatalogs', () => {
     expect(lotsByTier.some((t) => t.tier === 'premium')).toBe(true)
   })
 
-  it('collector-network stays locked even with every other mission delivered - no guarantor mission unlocks it yet', () => {
+  it('collector-network stays locked with only the earlier two guarantor missions delivered', () => {
     const state = {
       ...createInitialGameState(CONTEXT, 1),
       reputationTier: 'respected' as const,
@@ -92,6 +92,20 @@ describe('refreshCatalogs', () => {
     }
     const { lotsByTier } = refreshCatalogs(state, CONTEXT, 1, createRng(1))
     expect(lotsByTier.some((t) => t.tier === 'collector-network')).toBe(false)
+  })
+
+  it('collector-network opens the moment the-quiet-crate is delivered', () => {
+    const state = {
+      ...createInitialGameState(CONTEXT, 1),
+      reputationTier: 'respected' as const,
+      storyMissions: [
+        { missionId: 'the-fleet-spare', status: 'delivered' as const, acceptedOnDay: 1 },
+        { missionId: 'the-showroom-standard', status: 'delivered' as const, acceptedOnDay: 1 },
+        { missionId: 'the-quiet-crate', status: 'delivered' as const, acceptedOnDay: 1 },
+      ],
+    }
+    const { lotsByTier } = refreshCatalogs(state, CONTEXT, 1, createRng(1))
+    expect(lotsByTier.some((t) => t.tier === 'collector-network')).toBe(true)
   })
 
   // Service-job offers don't refresh here (see `refreshCatalogs`'s own doc

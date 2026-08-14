@@ -1,11 +1,15 @@
 # Auction Guarantors
 
-**Status:** Implemented (Sprint 115), regional and premium only. Replaces the passive
-rep-threshold auction gate with authored story-mission unlocks. The collector-network
-guarantor (Kurogane, the-quiet-crate) is written but held for the Hall of Legends arc (see
-`docs/sprints/sprint_archive/sprint115.md` section 5 and `TODO.md`'s progression-map item) - rule 1 below
-still governs it (`AUCTION_TIER_MIN_REPUTATION` is fully retired) but no mission unlocks it
-yet, so it stays dark.
+**Status:** Implemented (Sprint 115 for regional and premium; the-quiet-crate wired for
+collector-network in the content-gap fix that closed the TODO.md item recording it as
+unreachable). Replaces the passive rep-threshold auction gate with authored story-mission
+unlocks. The collector-network guarantor (Kurogane, the-quiet-crate) was written in Sprint 115
+but deliberately left unwired (see `docs/sprints/sprint_archive/sprint115.md` section 5); it now
+carries `unlocksAuctionTier: "collector-network"`, gated at 1000 reputation, above every other
+guarantor rung. Payout, budget cap and requirement thresholds are interpolated from the existing
+ladder rather than measured against a built probe car - see the dated entry in
+`packages/content/tests/economyApprovalGate.test.ts` for the arithmetic - and are pending
+maintainer review.
 
 ## Premise (lore)
 

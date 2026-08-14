@@ -28,17 +28,28 @@ describe('guarantor mission chain order', () => {
     expect(ids[index - 1]).toBe('the-column-clock')
     expect(ids[index + 1]).toBe('low-and-loud')
   })
+
+  it('the-quiet-crate (gate 1000) sits between under-one-fifteen (800) and legend rep, sorted last', () => {
+    const ids = CONTEXT.storyMissions.map((m) => m.id)
+    const index = ids.indexOf('the-quiet-crate')
+    expect(index).toBe(ids.length - 1)
+    expect(ids[index - 1]).toBe('under-one-fifteen')
+  })
 })
 
 /**
- * D1a: the collector-network tier is written into the design as dark until
- * the Hall of Legends arc lands its own guarantor mission - no mission in
- * the shipped campaign carries `unlocksAuctionTier: 'collector-network'`,
- * so it stays locked no matter how much of the rest of the campaign (or how
- * much reputation) a career has banked.
+ * D1a is superseded: the collector-network tier was written into the design
+ * as dark until a guarantor mission existed for it (`the-quiet-crate` was
+ * written but deliberately left unwired, TODO.md and
+ * `docs/design/systems/auction-guarantors.md`), because the top auction
+ * tier was unreachable in a real career - a live content gap, not a
+ * permanent design choice. `the-quiet-crate` now carries
+ * `unlocksAuctionTier: 'collector-network'`, so the tier opens on exactly
+ * the same footing as regional and premium: a delivered guarantor mission,
+ * nothing else.
  */
-describe('collector-network stays dark under D1a', () => {
-  it('stays locked with both guarantor missions delivered and reputation maxed', () => {
+describe('collector-network opens on the-quiet-crate delivering', () => {
+  it('stays locked with both earlier guarantor missions delivered and reputation maxed, short of the-quiet-crate', () => {
     const state = {
       ...createInitialGameState(CONTEXT, 1),
       reputationTier: 'legend' as const,
@@ -49,6 +60,25 @@ describe('collector-network stays dark under D1a', () => {
     }
     expect(isAuctionTierUnlocked(state, CONTEXT, 'collector-network')).toBe(false)
     expect(unlockedAuctionTiers(state, CONTEXT)).toEqual(['local-yard', 'regional', 'premium'])
+  })
+
+  it('opens the moment the-quiet-crate delivers, alongside every earlier tier', () => {
+    const state = {
+      ...createInitialGameState(CONTEXT, 1),
+      reputationTier: 'legend' as const,
+      storyMissions: [
+        { missionId: 'the-fleet-spare', status: 'delivered' as const, acceptedOnDay: 1 },
+        { missionId: 'the-showroom-standard', status: 'delivered' as const, acceptedOnDay: 1 },
+        { missionId: 'the-quiet-crate', status: 'delivered' as const, acceptedOnDay: 1 },
+      ],
+    }
+    expect(isAuctionTierUnlocked(state, CONTEXT, 'collector-network')).toBe(true)
+    expect(unlockedAuctionTiers(state, CONTEXT)).toEqual([
+      'local-yard',
+      'regional',
+      'premium',
+      'collector-network',
+    ])
   })
 })
 

@@ -35,6 +35,18 @@ now owns both.
 Not single tasks - revisit when related work comes up, don't treat either as resolved by "checks
 pass."
 
+- [ ] **All story missions are to be scrapped and redesigned (maintainer ruling, 2026-08-14).**
+  The maintainer owns that redesign. Until it happens, treat nothing in `storyMissions.json` as
+  settled design: no polishing, no rebalancing, no extending the ladder. `the-quiet-crate`
+  (Kurogane, unlocks `collector-network`) was authored only so the top auction tier stops being
+  unreachable, and is **interim scaffolding** that the redesign is free to discard entirely.
+- [ ] **`progression-map.md` HOLE 1 is factually stale.** It states the `collector-network` room
+  "draws only legend-rarity models" and is "structurally empty". `economy.json`'s
+  `auction.carTierWeightsByAuctionTier` gives that room 70 per cent flagship, 27 per cent
+  enthusiast and 3 per cent everyday, and rarity is a separate multiplier applied in every room,
+  not a filter unique to this one. Left unedited deliberately: the claim sits inside the design
+  record the mission redesign above will rewrite.
+
 - [ ] **Labour needs to become more valuable (maintainer note, 2026-08-13).** Surplus labour
   currently makes "one more End Day click" the answer to everything, so the cash-versus-labour
   choice created by the Sprint 202 machine-gate conversion (machine-less work at a labour
@@ -1106,15 +1118,6 @@ pass."
   harvest the replaced carrier into inventory. The second resells at `usedPartSaleValueYen`, so
   it is an economy question rather than a UI one.
 
-- [ ] **`collector-network` never unlocks, so the top auction tier is unreachable in a real career.**
-  An auction tier opens only when a delivered story mission names it through `unlocksAuctionTier`
-  (`isAuctionTierUnlocked`, `catalogs.ts:29-40`), and `storyMissions.json` carries exactly two such
-  missions: `regional` at 45 reputation and `premium` at 240. Nothing names `collector-network`, so
-  it can never open, whatever the player does. A live content gap rather than a design question, and
-  it is the mechanical half of the progression-map entry further down (which records that the
-  collector persona Kurogane and the mission the-quiet-crate are written and were held out
-  deliberately, because unlocking an empty tier is worse than the silence).
-
 - [ ] **`statWeights.authenticity` sums to 99 across 28 slots in content, while three design docs
   say 29 slots summing to 100.** Measured on `parts-taxonomy.json`: 28 entries, 21 of them carrying
   an authenticity weight, totalling 99. `docs/carstats/authenticity.md`,
@@ -1928,16 +1931,15 @@ pass."
   (Open engineering). Worth a dedicated look once the sale-value arc is settled, not before.
 
 - [ ] **The progression map is drafted (`docs/design/progression-map.md`, 2026-07-22): the
-  factual board for the mid-game design session, holes ranked.** Headliners: the
-  collector-network auction tier has no unlocking guarantor mission yet (Sprint 115 shipped
-  guarantor unlocks for regional/premium; the collector persona Kurogane and mission
-  the-quiet-crate are written, byte-verbatim, in `docs/sprints/sprint_archive/sprint115.md` section 5, but
-  held out deliberately - unlocking an empty tier is worse than the silence, and zero
-  legend-rarity cars exist in content yet for it to hold); the `legend` rep rung (1,400)
-  gates nothing but staff stat rolls; three of five staff traits are hireable but
+  factual board for the mid-game design session, holes ranked.** Headliners: the `legend` rep
+  rung (1,400) gates nothing but staff stat rolls; three of five staff traits are hireable but
   mechanically inert (ex-pro-driver, night-owl, gaisha-fluent); gaisha cars are unreachable
-  by any channel (no Import Broker exists). The session's questions are listed at the map's
-  end; no design was done in it.
+  by any channel (no Import Broker exists). (The collector-network auction tier item is
+  resolved: `the-quiet-crate` now carries `unlocksAuctionTier`, gated above the other
+  guarantor missions - see `docs/design/systems/auction-guarantors.md`. Its payout, budget cap
+  and requirement thresholds are interpolated, not probe-measured, and remain open for a fresh
+  `storyMissionProbes.test.ts` probe and maintainer sign-off.) The session's other questions are
+  listed at the map's end; no design was done in it.
 
 - [ ] **Naming Layer parody-flag default is undecided.** GDD explicitly defers whether the game
   ships with real brand names or parody names by default to closer to release. Revisit once a

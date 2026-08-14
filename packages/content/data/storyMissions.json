@@ -244,5 +244,32 @@
     "reputationReward": 60,
     "deliveredCopy": "That's the time. That's the story. Go read your own name.",
     "overdeliveredCopy": "You didn't beat the time, you erased it. Front page."
+  },
+  {
+    "id": "the-quiet-crate",
+    "personaId": "kurogane",
+    "title": "The quiet crate",
+    "requestCopy": "Most of what I am offered is a story with a car attached. Bring me the other thing. Mint in every panel, nothing swapped in, nothing dressed up as what it never was, and the papers saying exactly what the metal says. I read both.",
+    "gateReputationPoints": 1000,
+    "requirements": [
+      {
+        "kind": "allPartsBandAtLeast",
+        "minBand": "mint"
+      },
+      {
+        "kind": "statThreshold",
+        "stat": "authenticity",
+        "min": 81
+      }
+    ],
+    "budgetCapYen": 2278000,
+    "payoutYen": 2278000,
+    "tipFraction": 0.1,
+    "tipTriggerFraction": 0.15,
+    "lapTipTriggerFraction": 0.03,
+    "reputationReward": 75,
+    "deliveredCopy": "The papers and the metal agree. That is rarer than it ought to be. Give them my name at the collector rooms; they will know it.",
+    "overdeliveredCopy": "Not one part out of place. Not one number that disagrees with its own service book. I do not say that twice a year.",
+    "unlocksAuctionTier": "collector-network"
   }
 ]
