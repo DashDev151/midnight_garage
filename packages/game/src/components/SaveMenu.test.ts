@@ -80,11 +80,13 @@ describe('SaveMenu - export session bundle', () => {
     const bundle = JSON.parse(await blob.text()) as {
       career: string
       exportedOnDay: number
+      seed: number
       actions: unknown[]
       ledger: unknown[]
     }
     expect(bundle.career).toBe('career-test-1')
     expect(bundle.exportedOnDay).toBe(game.day)
+    expect(bundle.seed).toBe(game.gameState.seed)
     expect(bundle.actions).toHaveLength(1)
     expect(bundle.ledger).toHaveLength(1)
     expect(wrapper.text()).toContain('Exported 1 action(s) and 1 ledger event(s).')

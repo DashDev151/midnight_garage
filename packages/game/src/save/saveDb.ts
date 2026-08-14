@@ -1,4 +1,4 @@
-import type { CashBucket } from '@midnight-garage/content'
+import type { CashBucket, SessionEvent } from '@midnight-garage/content'
 import type { Table } from 'dexie'
 
 /**
@@ -21,20 +21,14 @@ interface SaveRow {
 }
 
 /**
- * The session log (v0) - one row per player action, append-only. `payload` is a plain
- * object specific to `type` (e.g. `{ lotId, maxBidYen }` for a bid) - no
- * schema per event type here, since this is raw capture for a future
- * offline parsing pass, not a validated, replay-driving format. `timestamp`
- * is wall-clock (game layer, not sim - never read by anything
- * deterministic).
+ * The session log (v0) - one row per player action, append-only.
+ * `SessionEvent` (content/sessionEvent.ts) is the typed discriminated union
+ * every event's `type`/`payload` pair validates against, so this table can
+ * only ever hold an event the replay interpreter (`packages/sim/src/
+ * careerReplay.ts`) also knows how to read back. `timestamp` is wall-clock
+ * (game layer, not sim - never read by anything deterministic).
  */
-export interface SessionEvent {
-  id?: number
-  day: number
-  type: string
-  payload: Record<string, unknown>
-  timestamp: number
-}
+export type { SessionEvent }
 
 /**
  * The daily ledger stream - one row per cash movement, append-only,

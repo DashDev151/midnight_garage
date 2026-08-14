@@ -9,7 +9,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "build:cli": "tsc -p tsconfig.cli.json && node scripts/mark-commonjs.cjs dist && node scripts/fixContentRequires.cjs dist",
-    "balance:run": "pnpm build:cli && node dist/packages/sim/src/cli/exportCareers.js"
+    "balance:run": "pnpm build:cli && node dist/packages/sim/src/cli/exportCareers.js",
+    "career:report": "pnpm build:cli && node dist/packages/sim/src/cli/careerReport.js"
   },
   "dependencies": {
     "@midnight-garage/content": "workspace:*",

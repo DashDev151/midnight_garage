@@ -43,6 +43,7 @@ async function exportSessionLog(): Promise<void> {
   const bundle = {
     career: career ?? 'unknown-career',
     exportedOnDay: game.day,
+    seed: game.gameState.seed,
     actions,
     ledger,
   }

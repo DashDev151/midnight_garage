@@ -45,6 +45,7 @@ import type {
   SellingChannelId,
   ServiceJob,
   ServiceJobTask,
+  SessionEventInput,
   SimpleConsumableId,
   StagedAction,
   StatBlock,
@@ -1251,14 +1252,17 @@ export const useGameStore = defineStore('game', () => {
   const hasExistingSave = ref(false)
 
   /**
-   * Session log v0: appends one raw event per player action, for a future
-   * offline pass to parse into per-archetype rates/biases (see `TODO.md`).
-   * Fire-and-forget by design - never awaited in an action path, since a
-   * lost telemetry write must never break play (matches `writeSave`'s own
-   * best-effort shape, `saveDb.ts`).
+   * Session log v0: appends one typed event per player action - `event`'s
+   * `type`/`payload` pair is `SessionEventInput` (content/sessionEvent.ts),
+   * the same union the career-script replay interpreter
+   * (`packages/sim/src/careerReplay.ts`) switches over exhaustively, so a
+   * call site logging an event that union doesn't know is a compile error
+   * here rather than a silent replay gap. Fire-and-forget by design - never
+   * awaited in an action path, since a lost telemetry write must never break
+   * play (matches `writeSave`'s own best-effort shape, `saveDb.ts`).
    */
-  function logSessionEvent(type: string, payload: Record<string, unknown>): void {
-    void appendSessionEvent({ day: gameState.value.day, type, payload, timestamp: Date.now() })
+  function logSessionEvent(event: SessionEventInput): void {
+    void appendSessionEvent({ day: gameState.value.day, timestamp: Date.now(), ...event })
   }
 
   /**
@@ -2547,7 +2551,10 @@ export const useGameStore = defineStore('game', () => {
     if (!result.applied) return false
     gameState.value = result.state
     pushDayLog(result.log)
-    logSessionEvent('buyDyno', { priceYen: loggedYen(result.log, 'dyno-bought') })
+    logSessionEvent({
+      type: 'buyDyno',
+      payload: { priceYen: loggedYen(result.log, 'dyno-bought') },
+    })
     return true
   }
 
@@ -2578,7 +2585,7 @@ export const useGameStore = defineStore('game', () => {
     if (result.laborSlotsUsed === 0) return false
     gameState.value = result.state
     pushDayLog(result.log)
-    logSessionEvent('runDynoSession', { carInstanceId })
+    logSessionEvent({ type: 'runDynoSession', payload: { carInstanceId } })
     return true
   }
 
@@ -2674,7 +2681,7 @@ export const useGameStore = defineStore('game', () => {
     if (result.laborSlotsUsed === 0) return false
     gameState.value = result.state
     pushDayLog(result.log)
-    logSessionEvent('machinePart', { partInstanceId, operationId })
+    logSessionEvent({ type: 'machinePart', payload: { partInstanceId, operationId } })
     return true
   }
 
@@ -2730,7 +2737,7 @@ export const useGameStore = defineStore('game', () => {
     if (result.laborSlotsUsed === 0) return false
     gameState.value = result.state
     pushDayLog(result.log)
-    logSessionEvent('machineFittedPart', { carId, operationId })
+    logSessionEvent({ type: 'machineFittedPart', payload: { carId, operationId } })
     return true
   }
 
@@ -2773,7 +2780,7 @@ export const useGameStore = defineStore('game', () => {
   function placeOnStation(station: WorkStation, partInstanceId: string): boolean {
     if (placeOnStationGateReason(gameState.value, station, partInstanceId) !== null) return false
     gameState.value = resolvePlaceOnStation(gameState.value, station, partInstanceId)
-    logSessionEvent('placeOnStation', { station, partInstanceId })
+    logSessionEvent({ type: 'placeOnStation', payload: { station, partInstanceId } })
     return true
   }
 
@@ -2783,7 +2790,7 @@ export const useGameStore = defineStore('game', () => {
   function takeFromStation(station: WorkStation): boolean {
     if (partIdOnStation(gameState.value, station) === null) return false
     gameState.value = resolveTakeFromStation(gameState.value, station)
-    logSessionEvent('takeFromStation', { station })
+    logSessionEvent({ type: 'takeFromStation', payload: { station } })
     return true
   }
 
@@ -2856,7 +2863,7 @@ export const useGameStore = defineStore('game', () => {
     if (result.log.length === 0) return false
     gameState.value = result.state
     pushDayLog(result.log)
-    logSessionEvent('beginInspectionVisit', { tier })
+    logSessionEvent({ type: 'beginInspectionVisit', payload: { tier } })
     return true
   }
 
@@ -2877,7 +2884,7 @@ export const useGameStore = defineStore('game', () => {
     )
     if (result.outcome !== 'ran') return null
     gameState.value = result.state
-    logSessionEvent('runDiagnosticTest', { lotId, symptomIndex, testId })
+    logSessionEvent({ type: 'runDiagnosticTest', payload: { lotId, symptomIndex, testId } })
     return result.resultCopy
   }
 
@@ -2893,7 +2900,7 @@ export const useGameStore = defineStore('game', () => {
     if (result.log.length === 0) return false
     gameState.value = result.state
     pushDayLog(result.log)
-    logSessionEvent('resolveOwnedWorkup', { carInstanceId })
+    logSessionEvent({ type: 'resolveOwnedWorkup', payload: { carInstanceId } })
     return true
   }
 
@@ -2925,7 +2932,7 @@ export const useGameStore = defineStore('game', () => {
     const result = resolveSendInspectorCore(gameState.value, lotId, context.value)
     if (result.outcome !== 'done') return false
     gameState.value = result.state
-    logSessionEvent('resolveSendInspector', { lotId })
+    logSessionEvent({ type: 'resolveSendInspector', payload: { lotId } })
     return true
   }
 
@@ -3287,7 +3294,7 @@ export const useGameStore = defineStore('game', () => {
     if (result.log.length === 0) return false
     gameState.value = result.state
     pushDayLog(result.log)
-    logSessionEvent('moveCar', { carId, to })
+    logSessionEvent({ type: 'moveCar', payload: { carId, to } })
     return true
   }
 
@@ -3310,7 +3317,7 @@ export const useGameStore = defineStore('game', () => {
     if (!result.changed) return false
     gameState.value = result.state
     pushDayLog([{ type: 'cars-swapped', serviceCarId, parkingCarId }])
-    logSessionEvent('swapCars', { serviceCarId, parkingCarId })
+    logSessionEvent({ type: 'swapCars', payload: { serviceCarId, parkingCarId } })
     return true
   }
 
@@ -3337,7 +3344,7 @@ export const useGameStore = defineStore('game', () => {
     if (!result.changed) return false
     gameState.value = result.state
     pushDayLog([{ type: 'car-moved', carInstanceId: carId, to }])
-    logSessionEvent('moveCarToSlot', { carId, to, slotIndex })
+    logSessionEvent({ type: 'moveCarToSlot', payload: { carId, to, slotIndex } })
     return true
   }
 
@@ -3355,7 +3362,10 @@ export const useGameStore = defineStore('game', () => {
     if (!result.applied) return false
     gameState.value = result.state
     pushDayLog(result.log)
-    logSessionEvent('buyBay', { kind, priceYen: loggedYen(result.log, 'bay-purchased') })
+    logSessionEvent({
+      type: 'buyBay',
+      payload: { kind, priceYen: loggedYen(result.log, 'bay-purchased') },
+    })
     return true
   }
 
@@ -3469,9 +3479,9 @@ export const useGameStore = defineStore('game', () => {
     if (!result.applied) return false
     gameState.value = result.state
     pushDayLog(result.log)
-    logSessionEvent('buyToolShop', {
-      shopId,
-      priceYen: loggedYen(result.log, 'tool-shop-purchased'),
+    logSessionEvent({
+      type: 'buyToolShop',
+      payload: { shopId, priceYen: loggedYen(result.log, 'tool-shop-purchased') },
     })
     return true
   }
@@ -3633,9 +3643,9 @@ export const useGameStore = defineStore('game', () => {
     if (!result.applied) return false
     gameState.value = result.state
     pushDayLog(result.log)
-    logSessionEvent('upgradeToolLine', {
-      componentId,
-      priceYen: loggedYen(result.log, 'tool-upgraded'),
+    logSessionEvent({
+      type: 'upgradeToolLine',
+      payload: { componentId, priceYen: loggedYen(result.log, 'tool-upgraded') },
     })
     return true
   }
@@ -3695,13 +3705,16 @@ export const useGameStore = defineStore('game', () => {
     )
     gameState.value = result.state
     pushDayLog(result.log)
-    logSessionEvent('repair', {
-      carId,
-      componentId,
-      targetBand,
-      carPartId,
-      costYen: loggedYen(result.log, 'job-created'),
-      laborSlotsUsed: result.laborSlotsUsed,
+    logSessionEvent({
+      type: 'repair',
+      payload: {
+        carId,
+        componentId,
+        targetBand,
+        carPartId,
+        costYen: loggedYen(result.log, 'job-created'),
+        laborSlotsUsed: result.laborSlotsUsed,
+      },
     })
   }
 
@@ -3747,12 +3760,15 @@ export const useGameStore = defineStore('game', () => {
     )
     gameState.value = result.state
     pushDayLog(result.log)
-    logSessionEvent('install', {
-      carId,
-      componentId,
-      partInstanceId,
-      carPartId,
-      laborSlotsUsed: result.laborSlotsUsed,
+    logSessionEvent({
+      type: 'install',
+      payload: {
+        carId,
+        componentId,
+        partInstanceId,
+        carPartId,
+        laborSlotsUsed: result.laborSlotsUsed,
+      },
     })
   }
 
@@ -3792,11 +3808,9 @@ export const useGameStore = defineStore('game', () => {
     )
     gameState.value = result.state
     pushDayLog(result.log)
-    logSessionEvent('pipelineStage', {
-      carId,
-      zoneId,
-      stage,
-      laborSlotsUsed: result.laborSlotsUsed,
+    logSessionEvent({
+      type: 'pipelineStage',
+      payload: { carId, zoneId, stage, laborSlotsUsed: result.laborSlotsUsed },
     })
   }
 
@@ -3815,12 +3829,9 @@ export const useGameStore = defineStore('game', () => {
     )
     gameState.value = result.state
     pushDayLog(result.log)
-    logSessionEvent('pipelinePaint', {
-      carId,
-      zoneId,
-      colour,
-      grade,
-      laborSlotsUsed: result.laborSlotsUsed,
+    logSessionEvent({
+      type: 'pipelinePaint',
+      payload: { carId, zoneId, colour, grade, laborSlotsUsed: result.laborSlotsUsed },
     })
   }
 
@@ -3838,7 +3849,10 @@ export const useGameStore = defineStore('game', () => {
     )
     gameState.value = result.state
     pushDayLog(result.log)
-    logSessionEvent('removePanel', { carId, zoneId, laborSlotsUsed: result.laborSlotsUsed })
+    logSessionEvent({
+      type: 'removePanel',
+      payload: { carId, zoneId, laborSlotsUsed: result.laborSlotsUsed },
+    })
   }
 
   /**
@@ -3857,11 +3871,9 @@ export const useGameStore = defineStore('game', () => {
     )
     gameState.value = result.state
     pushDayLog(result.log)
-    logSessionEvent('installPanel', {
-      carId,
-      zoneId,
-      partInstanceId,
-      laborSlotsUsed: result.laborSlotsUsed,
+    logSessionEvent({
+      type: 'installPanel',
+      payload: { carId, zoneId, partInstanceId, laborSlotsUsed: result.laborSlotsUsed },
     })
   }
 
@@ -3891,7 +3903,7 @@ export const useGameStore = defineStore('game', () => {
     if (result.log.length === 0) return false
     gameState.value = result.state
     pushDayLog(result.log)
-    logSessionEvent('removePart', { carId, carPartId })
+    logSessionEvent({ type: 'removePart', payload: { carId, carPartId } })
     return true
   }
 
@@ -3923,7 +3935,7 @@ export const useGameStore = defineStore('game', () => {
     if (!result.ok) return false
     gameState.value = result.state
     pushDayLog(result.log)
-    logSessionEvent('removeAssembly', { carId, assemblyId })
+    logSessionEvent({ type: 'removeAssembly', payload: { carId, assemblyId } })
     return true
   }
 
@@ -3948,7 +3960,7 @@ export const useGameStore = defineStore('game', () => {
     pushDayLog(result.log)
     if (!result.ok) return false
     gameState.value = result.state
-    logSessionEvent('refitAssembly', { carId, assemblyId })
+    logSessionEvent({ type: 'refitAssembly', payload: { carId, assemblyId } })
     return true
   }
 
@@ -3974,7 +3986,10 @@ export const useGameStore = defineStore('game', () => {
     pushDayLog(result.log)
     if (!result.ok) return false
     gameState.value = result.state
-    logSessionEvent('swapAssemblyMember', { containerId, memberSlot, partInstanceId })
+    logSessionEvent({
+      type: 'swapAssemblyMember',
+      payload: { containerId, memberSlot, partInstanceId },
+    })
     return true
   }
 
@@ -3992,7 +4007,7 @@ export const useGameStore = defineStore('game', () => {
     if (!result.ok) return false
     gameState.value = result.state
     pushDayLog(result.log)
-    logSessionEvent('removeAssemblyMember', { containerId, memberSlot })
+    logSessionEvent({ type: 'removeAssemblyMember', payload: { containerId, memberSlot } })
     return true
   }
 
@@ -4156,9 +4171,9 @@ export const useGameStore = defineStore('game', () => {
     if (result.log.length === 0) return false
     gameState.value = result.state
     pushDayLog(result.log)
-    logSessionEvent('scrapPart', {
-      partInstanceId,
-      priceYen: loggedYen(result.log, 'part-scrapped'),
+    logSessionEvent({
+      type: 'scrapPart',
+      payload: { partInstanceId, priceYen: loggedYen(result.log, 'part-scrapped') },
     })
     return true
   }
@@ -4196,7 +4211,10 @@ export const useGameStore = defineStore('game', () => {
     if (result.log.length === 0) return false
     gameState.value = result.state
     pushDayLog(result.log)
-    logSessionEvent('sellPart', { partInstanceId, priceYen: loggedYen(result.log, 'part-sold') })
+    logSessionEvent({
+      type: 'sellPart',
+      payload: { partInstanceId, priceYen: loggedYen(result.log, 'part-sold') },
+    })
     return true
   }
 
@@ -4230,7 +4248,7 @@ export const useGameStore = defineStore('game', () => {
     )
     gameState.value = result.state
     pushDayLog(result.log)
-    logSessionEvent('reconditionPart', { partInstanceId, targetBand })
+    logSessionEvent({ type: 'reconditionPart', payload: { partInstanceId, targetBand } })
   }
 
   /** Buy out a lot instantly - guaranteed purchase at a premium, no rival contest. */
@@ -4239,7 +4257,10 @@ export const useGameStore = defineStore('game', () => {
     if (result.log.length === 0) return false
     gameState.value = result.state
     pushDayLog(result.log)
-    logSessionEvent('buyout', { lotId, priceYen: loggedYen(result.log, 'lot-bought-out') })
+    logSessionEvent({
+      type: 'buyout',
+      payload: { lotId, priceYen: loggedYen(result.log, 'lot-bought-out') },
+    })
     return true
   }
 
@@ -4254,6 +4275,10 @@ export const useGameStore = defineStore('game', () => {
     if (result.outcome !== 'attended') return false
     gameState.value = result.state
     pushDayLog(result.log)
+    logSessionEvent({
+      type: 'attendAuction',
+      payload: { tier, feeYen: loggedYen(result.log, 'auction-attended') },
+    })
     return true
   }
 
@@ -4269,6 +4294,10 @@ export const useGameStore = defineStore('game', () => {
     if (result.outcome !== 'hired') return false
     gameState.value = result.state
     pushDayLog(result.log)
+    logSessionEvent({
+      type: 'hireMachineLine',
+      payload: { group, feeYen: loggedYen(result.log, 'machine-hired') },
+    })
     return true
   }
 
@@ -4292,7 +4321,7 @@ export const useGameStore = defineStore('game', () => {
     if (!result.applied) return false
     gameState.value = result.state
     pushDayLog(result.log)
-    logSessionEvent('buyCoffee', { priceYen: coffeePriceYen.value })
+    logSessionEvent({ type: 'buyCoffee', payload: { priceYen: coffeePriceYen.value } })
     return true
   }
 
@@ -4307,7 +4336,7 @@ export const useGameStore = defineStore('game', () => {
     if (result.log.length === 0) return false
     gameState.value = result.state
     pushDayLog(result.log)
-    logSessionEvent('settleAuctionHammer', { lotId, priceYen })
+    logSessionEvent({ type: 'settleAuctionHammer', payload: { lotId, priceYen } })
     return true
   }
 
@@ -4315,7 +4344,7 @@ export const useGameStore = defineStore('game', () => {
    * cash or car movement on the player's side. */
   function loseAuctionLot(lotId: string): void {
     gameState.value = settleAuctionLotLostCore(gameState.value, lotId)
-    logSessionEvent('loseAuctionLot', { lotId })
+    logSessionEvent({ type: 'loseAuctionLot', payload: { lotId } })
   }
 
   /**
@@ -4411,12 +4440,15 @@ export const useGameStore = defineStore('game', () => {
       }
     }
     gameState.value = { ...gameState.value, cartPartIds: remaining }
-    logSessionEvent('checkoutCart', {
-      deliverySpeed,
-      boughtCount,
-      remainingCount: remaining.length,
-      items,
-      totalYen: items.reduce((sum, item) => sum + item.priceYen, 0),
+    logSessionEvent({
+      type: 'checkoutCart',
+      payload: {
+        deliverySpeed,
+        boughtCount,
+        remainingCount: remaining.length,
+        items,
+        totalYen: items.reduce((sum, item) => sum + item.priceYen, 0),
+      },
     })
     return { boughtCount, remainingCount: remaining.length }
   }
@@ -4444,6 +4476,10 @@ export const useGameStore = defineStore('game', () => {
     if (result.log.length === 0) return false
     gameState.value = result.state
     pushDayLog(result.log)
+    logSessionEvent({
+      type: 'buyConsumableTin',
+      payload: { id, priceYen: loggedYen(result.log, 'consumable-bought') },
+    })
     return true
   }
 
@@ -4456,6 +4492,10 @@ export const useGameStore = defineStore('game', () => {
     if (result.log.length === 0) return false
     gameState.value = result.state
     pushDayLog(result.log)
+    logSessionEvent({
+      type: 'buyPaintTin',
+      payload: { finish, size, colour, priceYen: loggedYen(result.log, 'consumable-bought') },
+    })
     return true
   }
 
@@ -4469,7 +4509,7 @@ export const useGameStore = defineStore('game', () => {
     if (result.log.length === 0) return false
     gameState.value = result.state
     pushDayLog(result.log)
-    logSessionEvent('acceptServiceJob', { offerId })
+    logSessionEvent({ type: 'acceptServiceJob', payload: { offerId } })
     return true
   }
 
@@ -4483,7 +4523,7 @@ export const useGameStore = defineStore('game', () => {
     const result = resolveRejectServiceJobOffer(gameState.value, offerId)
     if (result.state === gameState.value) return false
     gameState.value = result.state
-    logSessionEvent('rejectServiceJobOffer', { offerId })
+    logSessionEvent({ type: 'rejectServiceJobOffer', payload: { offerId } })
     return true
   }
 
@@ -4493,7 +4533,7 @@ export const useGameStore = defineStore('game', () => {
     if (result.log.length === 0) return false
     gameState.value = result.state
     pushDayLog(result.log)
-    logSessionEvent('acceptMission', { missionId })
+    logSessionEvent({ type: 'acceptMission', payload: { missionId } })
     return true
   }
 
@@ -4554,12 +4594,15 @@ export const useGameStore = defineStore('game', () => {
         profitYen: entry.payoutYen - totalSpentYen,
       }
     }
-    logSessionEvent('deliverMission', {
-      missionId: record.missionId,
-      carInstanceId,
-      ...(entry?.type === 'mission-delivered'
-        ? { payoutYen: entry.payoutYen, tipYen: entry.tipYen }
-        : {}),
+    logSessionEvent({
+      type: 'deliverMission',
+      payload: {
+        missionId: record.missionId,
+        carInstanceId,
+        ...(entry?.type === 'mission-delivered'
+          ? { payoutYen: entry.payoutYen, tipYen: entry.tipYen }
+          : {}),
+      },
     })
     return true
   }
@@ -4575,7 +4618,7 @@ export const useGameStore = defineStore('game', () => {
     if (result.log.length === 0) return false
     gameState.value = result.state
     pushDayLog(result.log)
-    logSessionEvent('acceptSceneCommission', { scene })
+    logSessionEvent({ type: 'acceptSceneCommission', payload: { scene } })
     return true
   }
 
@@ -4598,10 +4641,13 @@ export const useGameStore = defineStore('game', () => {
     if (result.log.length === 0) return false
     gameState.value = result.state
     pushDayLog(result.log)
-    logSessionEvent('deliverSceneCommission', {
-      scene,
-      carInstanceId,
-      payoutYen: loggedYen(result.log, 'scene-commission-delivered'),
+    logSessionEvent({
+      type: 'deliverSceneCommission',
+      payload: {
+        scene,
+        carInstanceId,
+        payoutYen: loggedYen(result.log, 'scene-commission-delivered'),
+      },
     })
     return true
   }
@@ -4702,10 +4748,13 @@ export const useGameStore = defineStore('game', () => {
         returnedParts,
       }
     }
-    logSessionEvent('completeServiceJob', {
-      jobId,
-      outcome: resolution.outcome,
-      payoutYen: entry?.type === 'service-job-completed' ? entry.payoutYen : 0,
+    logSessionEvent({
+      type: 'completeServiceJob',
+      payload: {
+        jobId,
+        outcome: resolution.outcome,
+        payoutYen: entry?.type === 'service-job-completed' ? entry.payoutYen : 0,
+      },
     })
     return resolution.outcome
   }
@@ -4753,9 +4802,12 @@ export const useGameStore = defineStore('game', () => {
         matchedSale: sold.matchedSale ?? false,
       }
     }
-    logSessionEvent('acceptOffer', {
-      carId,
-      ...(sold?.type === 'car-sold' ? { priceYen: sold.priceYen, channel: sold.channel } : {}),
+    logSessionEvent({
+      type: 'acceptOffer',
+      payload: {
+        carId,
+        ...(sold?.type === 'car-sold' ? { priceYen: sold.priceYen, channel: sold.channel } : {}),
+      },
     })
     return true
   }
@@ -4767,7 +4819,7 @@ export const useGameStore = defineStore('game', () => {
     if (result.log.length === 0) return false
     gameState.value = result.state
     pushDayLog(result.log)
-    logSessionEvent('rejectOffer', { carId })
+    logSessionEvent({ type: 'rejectOffer', payload: { carId } })
     return true
   }
 
@@ -4801,7 +4853,7 @@ export const useGameStore = defineStore('game', () => {
     if (result.state === before && result.log.length === 0) return false
     gameState.value = result.state
     if (result.log.length > 0) pushDayLog(result.log)
-    logSessionEvent('setForSale', { carId, forSale, channelId })
+    logSessionEvent({ type: 'setForSale', payload: { carId, forSale, channelId } })
     return true
   }
 
@@ -4836,7 +4888,10 @@ export const useGameStore = defineStore('game', () => {
     if (result.log.length === 0) return false
     gameState.value = result.state
     pushDayLog(result.log)
-    logSessionEvent('scrapShell', { carId, priceYen: loggedYen(result.log, 'shell-scrapped') })
+    logSessionEvent({
+      type: 'scrapShell',
+      payload: { carId, priceYen: loggedYen(result.log, 'shell-scrapped') },
+    })
     return true
   }
 
@@ -4853,7 +4908,7 @@ export const useGameStore = defineStore('game', () => {
     const state = gameState.value
     const endedDay = state.day
     const cashBefore = state.cashYen
-    logSessionEvent('endDay', { endedDay })
+    logSessionEvent({ type: 'endDay', payload: { endedDay } })
     const result = advanceDay(state, emptyDayActions(), state.seed + state.day, context.value)
     gameState.value = result.state
     pushDayLog(result.log, endedDay)
@@ -5105,6 +5160,7 @@ export const useGameStore = defineStore('game', () => {
   function skipTutorial(): void {
     if (gameState.value.tutorialStatus !== 'active') return
     gameState.value = { ...gameState.value, tutorialStatus: 'skipped' }
+    logSessionEvent({ type: 'skipTutorial', payload: {} })
   }
 
   /** Retire the overlay for good once the sign-off has been read after delivery
@@ -5113,6 +5169,7 @@ export const useGameStore = defineStore('game', () => {
   function finishTutorial(): void {
     if (gameState.value.tutorialStatus !== 'active') return
     gameState.value = { ...gameState.value, tutorialStatus: 'done' }
+    logSessionEvent({ type: 'finishTutorial', payload: {} })
   }
 
   /** Record a "Got it" press on an `acknowledged`-completion walkthrough step:
@@ -5126,7 +5183,7 @@ export const useGameStore = defineStore('game', () => {
       ...gameState.value,
       tutorialAcknowledgedSteps: [...acknowledged, stepId],
     }
-    logSessionEvent('acknowledgeTutorialStep', { stepId })
+    logSessionEvent({ type: 'acknowledgeTutorialStep', payload: { stepId } })
   }
 
   /** The parts catalog, for the dev grant picker. */

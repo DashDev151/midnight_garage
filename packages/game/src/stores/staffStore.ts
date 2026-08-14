@@ -137,9 +137,12 @@ export const useStaffStore = defineStore('staff', () => {
     game.gameState = result.state
     game.pushDayLog(result.log)
     const hired = result.log.find((e) => e.type === 'staff-hired')
-    game.logSessionEvent('hireStaff', {
-      candidateId,
-      ...(hired?.type === 'staff-hired' ? { introFeeYen: hired.introFeeYen } : {}),
+    game.logSessionEvent({
+      type: 'hireStaff',
+      payload: {
+        candidateId,
+        ...(hired?.type === 'staff-hired' ? { introFeeYen: hired.introFeeYen } : {}),
+      },
     })
     return true
   }
@@ -151,7 +154,7 @@ export const useStaffStore = defineStore('staff', () => {
     if (result.log.length === 0) return false
     game.gameState = result.state
     game.pushDayLog(result.log)
-    game.logSessionEvent('dismissStaff', { staffId })
+    game.logSessionEvent({ type: 'dismissStaff', payload: { staffId } })
     return true
   }
 
@@ -163,7 +166,7 @@ export const useStaffStore = defineStore('staff', () => {
     const result = resolveReassignStaff(game.gameState, staffId, to)
     if (result.state === game.gameState) return false
     game.gameState = result.state
-    game.logSessionEvent('reassignStaff', { staffId, to })
+    game.logSessionEvent({ type: 'reassignStaff', payload: { staffId, to } })
     return true
   }
 
