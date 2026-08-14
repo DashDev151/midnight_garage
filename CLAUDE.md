@@ -53,7 +53,7 @@ All development happens in sprints, driven by the roadmap. Sprint docs live in `
 
 **Ran When Parked** - a browser-based, turn-based garage management sim set in 1995 Japan
 (synthwave pixel art, JDM car culture, hunt-build-sell loop). Solo-dev passion project, ~13-month
-roadmap to a free itch.io launch.
+roadmap to a Steam launch.
 
 **Current state:** Sprints 00-197 implemented, committed and signed, with one exception noted
 below. Two were superseded unbuilt and their docs record it (Sprint 100 by Sprint 110's live-room
@@ -168,7 +168,7 @@ roster for car scope). Bibles require explicit maintainer approval, recorded in 
 
 The stack is decided; do not re-litigate it when scaffolding begins:
 
-- TypeScript (strict) • Vue 3 Composition API • Pinia • Vue Router (memory-history mode; added Sprint 04) • Vite • PixiJS v8 (canvas islands only) • Dexie.js/IndexedDB saves • Zod-validated JSON content • Howler.js audio • Vitest + @vue/test-utils + happy-dom for component tests (the latter two added Sprint 04) • static deploy (Cloudflare Pages / itch.io). Python (polars) for the balance harness. pnpm monorepo.
+- TypeScript (strict) • Vue 3 Composition API • Pinia • Vue Router (memory-history mode; added Sprint 04) • Vite • PixiJS v8 (canvas islands only) • Dexie.js/IndexedDB saves • Zod-validated JSON content • Howler.js audio • Vitest + @vue/test-utils + happy-dom for component tests (the latter two added Sprint 04) • static deploy (Cloudflare Pages) for the web build, Steam for the packaged release. Python (polars) for the balance harness. pnpm monorepo.
 
 Planned layout: `packages/sim` (pure TS sim core), `packages/game` (Vue app), `packages/content` (JSON + Zod schemas), `tools/balance` (Python CLI).
 

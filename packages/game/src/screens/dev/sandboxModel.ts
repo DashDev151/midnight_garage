@@ -497,8 +497,8 @@ export function evaluateBuild(
  * THE BUILD CODE.
  *
  * The router runs on memory history with no URL coupling (the game ships in an
- * itch.io iframe where URL routing fights the embedding), so a build is shared
- * as a string that is copied rather than as a link. One character per slot: six
+ * embedded webview where URL routing fights the embedding), so a build is
+ * shared as a string that is copied rather than as a link. One character per slot: six
  * condition positions by four tiers is 21 states including missing, so all 28
  * components cost 28 characters.
  */

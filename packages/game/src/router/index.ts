@@ -41,10 +41,10 @@ const devRoutes: RouteRecordRaw[] = import.meta.env.DEV
 /**
  * Memory-history routing: the router uses named routes, per-screen
  * lazy-loading, and transitions without any URL coupling. The game ships in
- * an itch.io iframe where URL/hash routing fights the embedding, and players
- * shouldn't be able to deep-link into screens or break flow with the browser
- * back button. Screens are lazy-imported so the code-splitting pattern is set
- * from the first route.
+ * an embedded webview (a Tauri wrap for the Steam build) where URL/hash
+ * routing fights the embedding, and players shouldn't be able to deep-link
+ * into screens or break flow with the browser back button. Screens are
+ * lazy-imported so the code-splitting pattern is set from the first route.
  */
 export const router = createRouter({
   history: createMemoryHistory(),

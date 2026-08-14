@@ -24,7 +24,7 @@ invisible number.
 auction, diagnose what is actually wrong with them, repair or upgrade them, and sell them on. It is
 decision-paced with no reflex input anywhere, and a day passes only when you end it.
 
-It is a solo project heading for a free itch.io release.
+It is a solo project heading for a Steam release.
 
 ## What specialty is today
 

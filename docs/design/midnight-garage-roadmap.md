@@ -15,7 +15,11 @@ State these honestly now so the plan doesn't lie to you later:
 - **Engineering principles:** SOLID/DRY apply squarely - the sim core is the dependency-inversion boundary (pure TS, zero framework imports); content lives in data, not code (DRY at the design level); every system is testable headless.
 - **Python stays in the toolchain** even though the game is TypeScript: the balancing/analysis harness (§5.3) is pandas over headless-sim CSV output. Your strongest skill becomes the game's tuning instrument.
 
-**The one-sentence strategy:** build the boring, testable simulation first; prove it's fun with ugly art; only then spend the art/audio budget; ship on itch.io free; let reception decide the Steam/monetization question.
+**The one-sentence strategy:** build the boring, testable simulation first; prove it's fun with ugly art; only then spend the art/audio budget; ship on Steam, with pricing decided closer to launch.
+
+> **Release target (2026-08-14).** The ship target is Steam, not itch.io, by maintainer ruling.
+> Every itch.io reference in this plan (the LAUNCH phase deliverable, the Sprint 27 checklist, the
+> documentation index) is retired accordingly.
 
 ---
 
@@ -30,7 +34,7 @@ State these honestly now so the plan doesn't lie to you later:
 | **P4 - Systems Complete** | 13–18 | Staff, events, rep, commissions, rival, 280PS | Feature-complete on GDD systems |
 | **P5 - Content Production** | 19–23 | Full roster (40 cars, 140 parts), Legends, endgame | Content-complete, campaign finishable |
 | **P6 - Beta & Polish** | 24–26 | Closed beta, tutorial, accessibility, perf | Beta retention + crash-free saves |
-| **LAUNCH** | 27 | itch.io release | - |
+| **LAUNCH** | 27 | Steam release | - |
 | **P7 - Post-launch** | ongoing | Patches → leaderboards (Django) → Steam eval | Reception-driven |
 
 Rule that governs everything: **no art or audio money is spent before the Fun Gate passes.** Systems are cheap to change; sprites are not.
@@ -57,7 +61,7 @@ WebKit's Intelligent Tracking Prevention can evict script-writable storage - **i
 - Call `navigator.storage.persist()` on first save (honored on Chromium/Firefox; request it everywhere).
 - **Export-save-string culture:** prominent one-tap "Copy save code" + auto-reminder every N in-game weeks; treat it as diegetic ("garage insurance papers").
 - Optional post-launch: tiny Django endpoint for cloud-save-by-code (no accounts, just a claim code) - cheap insurance, your home turf.
-- Document the risk on the itch page for iOS players.
+- Document the risk on the store page for iOS players.
 
 ### R3 - Solo-dev scope creep & burnout (HIGH)
 The GDD is already ambitious. Every JDM rabbit hole ("we NEED kanjo Civics… and dori parks… and an Osaka expansion") is a month.
@@ -177,7 +181,7 @@ Every sprint lists **Deliverable** and **Definition of Done (DoD)**. If a sprint
 - **Sprint 10 - First six cars, final quality** (City, EG6, AE86, S14, FD3S, JZA80 - one per tier). Wheels library v1. Palette-swap LUT pipeline productionized.
 - **Sprint 11 - Pixi islands:** garage scene (cars visibly change with builds - ride height, wheels, aero) + semi-animated city map navigation.
 - **Sprint 12 - Sound & juice:** Howler layers (day/night loops, 1 commissioned event track), SFX pass (ratchet, shutter, END-DAY kachunk), screen transitions, dyno-pull animation with the 280PS needle-sweep easter egg moment.
-- **VIBE GATE:** post 2 GIFs + 4 screenshots publicly (Twitter/X, r/JDM, r/pixelart, itch devlog). Criteria: genuine unprompted "I want to play this" replies. This validates the marketing asset - for a vibe-led game, shareability *is* a feature. Failure = art direction iteration, not project death.
+- **VIBE GATE:** post 2 GIFs + 4 screenshots publicly (Twitter/X, r/JDM, r/pixelart, a public devlog). Criteria: genuine unprompted "I want to play this" replies. This validates the marketing asset - for a vibe-led game, shareability *is* a feature. Failure = art direction iteration, not project death.
 
 ### PHASE 4 - Systems Complete
 
@@ -216,12 +220,12 @@ Every sprint lists **Deliverable** and **Definition of Done (DoD)**. If a sprint
 - **Sprint 26 - Performance & release hardening:** texture atlases, code-splitting, <25MB budget audit, real-device iOS/Android pass (R6), save-persistence prompts (R2), balance final pass from telemetry.
 
 ### LAUNCH - Sprint 27
-Checklist: itch.io page (GIF-first), press kit, save-code FAQ, known-issues doc, launch devlog, posts to the communities that beta'd it, day-1 hotfix window held open, analytics dashboard watched for save failures above all.
+Checklist: Steam store page (GIF-first), press kit, save-code FAQ, known-issues doc, launch devlog, posts to the communities that beta'd it, day-1 hotfix window held open, analytics dashboard watched for save failures above all.
 
 ### PHASE 7 - Post-launch (reception-driven, in order)
 1. Patch cadence (weeks 1–4): bugs, balance, QoL from reviews.
 2. **Django + Postgres thin API:** cloud-save claim codes (R2 forever-fix), then weekly seeded challenge auctions + async leaderboards (the seeded PRNG finally cashes in).
-3. **Steam evaluation:** only if itch reception earns it - wrap with Tauri (lighter than Electron), *flip the Naming Layer for the paid build*, wishlist campaign, Steam Next Fest demo.
+3. **Post-launch Steam beats:** the wishlist campaign, a Next Fest demo and the Naming Layer decision all move INTO the launch itself now that Steam is the ship target; what remains post-launch is whatever the store page and reviews ask for next.
 4. Content packs from `IDEAS.md` (kanjo pack, kei expansion, USDM export arc).
 5. **"Drive My Car" test-drive mode** (`docs/design/parked/drive-mode-spec.md`, v2 spec'd 2026-07-12,
    NOT scheduled): drive a finished build before flipping it. Post-launch by the maintainer's own
@@ -254,10 +258,10 @@ Throughput target: 5 cars/sprint alongside feature work. Parts and buyers follow
 - **Weekly ritual (30 min):** update devlog, groom next sprint, back up Aseprite sources + commissioned assets off-site (asset loss is unrecoverable in a way code loss isn't).
 
 ## 6. Official Documentation Index (canonical references)
-Vue 3: vuejs.org/guide • Pinia: pinia.vuejs.org • Vite: vitejs.dev/guide • Vitest: vitest.dev • PixiJS v8: pixijs.com/8.x/guides • Dexie (versioning/migrations): dexie.org/docs/Tutorial/Design#database-versioning • Zod: zod.dev • Howler: github.com/goldfire/howler.js • Storage persistence & eviction: developer.mozilla.org/en-US/docs/Web/API/Storage_API • WebKit ITP storage policy: webkit.org/blog (Full Third-Party Cookie Blocking and More) • Aseprite: aseprite.org/docs • itch.io creator docs: itch.io/docs/creators • Tauri: tauri.app • Steamworks: partner.steamgames.com/doc • GitHub Actions: docs.github.com/actions • Cloudflare Pages: developers.cloudflare.com/pages
+Vue 3: vuejs.org/guide • Pinia: pinia.vuejs.org • Vite: vitejs.dev/guide • Vitest: vitest.dev • PixiJS v8: pixijs.com/8.x/guides • Dexie (versioning/migrations): dexie.org/docs/Tutorial/Design#database-versioning • Zod: zod.dev • Howler: github.com/goldfire/howler.js • Storage persistence & eviction: developer.mozilla.org/en-US/docs/Web/API/Storage_API • WebKit ITP storage policy: webkit.org/blog (Full Third-Party Cookie Blocking and More) • Aseprite: aseprite.org/docs • Tauri: tauri.app • Steamworks: partner.steamgames.com/doc • GitHub Actions: docs.github.com/actions • Cloudflare Pages: developers.cloudflare.com/pages
 
 ## 7. Marketing & Community (runs parallel, ~1 hr/week)
-- **Devlog from Sprint 9** (once there's vibe to show): itch devlog + one social channel; GIFs > words; the dyno needle-sweep and garage scene are your money shots.
+- **Devlog from Sprint 9** (once there's vibe to show): a public devlog + one social channel; GIFs > words; the dyno needle-sweep and garage scene are your money shots.
 - Beta waitlist form linked from every post (feeds Sprint 24).
 - Honest positioning: "Fiz meets Gran Turismo 2's used-car lot, in a synthwave 1995."
 - Do not open a Discord before beta; a dead server is anti-marketing.

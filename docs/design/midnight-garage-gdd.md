@@ -26,6 +26,9 @@ Title amended to "Ran When Parked" by maintainer approval, 2026-07-18 (previousl
 > Rework arc - see `docs/design/progression-bible.md` (now the canonical progression source)
 > and `docs/design/archive/gdd-amendment-progression.md` (the reviewed amendment this revision
 > applies).*
+>
+> *v0.6 (2026-08-14): release target changed to Steam, retiring the itch.io framing everywhere
+> it appeared - maintainer ruling, 2026-08-14.*
 
 **Genre:** Medium-weight management sim with light idle elements
 **Platform:** Browser (desktop-first, playable on mobile)
@@ -381,7 +384,7 @@ Async leaderboards (fastest Hall completion), weekly seeded challenge auctions, 
 | RNG | Seeded PRNG in sim core | Deterministic days → replayable bugs, future weekly seeded challenges |
 | Testing | **Vitest** | Sim core unit-tested like backend code |
 | Audio | **Howler.js** | Standard web audio wrapper; music layers + SFX |
-| Deploy | Static hosting (itch.io / Cloudflare Pages) | Entire game is static files; zero backend in v1.0 |
+| Deploy | Static hosting (Cloudflare Pages) for the web build, Steam for the packaged release | Entire game is static files; zero backend in v1.0 |
 | Post-launch backend | Django + Postgres (thin API) | Leaderboards, weekly challenge seeds - only when needed |
 
 **Sim contract:** `advanceDay(state, queuedActions, seed) → newState + eventLog`. The sim package imports nothing from Vue/Pixi/DOM.
