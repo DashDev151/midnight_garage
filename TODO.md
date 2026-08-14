@@ -30,6 +30,22 @@ now owns both.
   Correcting it is a roster decision, not an implementation one, which is why it sits here rather
   than in the sprint that found it.
 
+## Content shape
+
+- [ ] **`machining.operations` stores derived numbers whose derivation is lost.** Each of the 16
+  operations carries a three-way `powerFraction` at nine decimal places. Two findings: the
+  `forced` column is real and irreducible (porting gives a turbo 5.3x what it gives a
+  high-strung NA; head-skim gives it nothing; race-prep gives it exactly parity), but the
+  `lazy-na` column is not authored variation at all - its ratio to `high-strung-na` sits between
+  1.2903 and 1.3436 with three values identical to seven decimal places, so it could be one
+  global multiplier of about 1.30 and lose nothing a player could feel. Underneath both: multiply
+  the `high-strung-na` column by 370 and the results are round (4.32, 1.80, 1.08, 6.24, 4.16,
+  3.20, 8.80), the fingerprint of a derivation against a reference engine that is not recorded
+  anywhere in the repo. The block can therefore only be copied, never regenerated, checked, or
+  extended consistently. Proposal when it comes up: author each operation in PS gained on the
+  reference engine and derive the fraction, keep `forced` per-operation, collapse `lazy-na` to
+  one multiplier. Pinned by the approval gate, so it moves as a signed change.
+
 ## Standing concerns
 
 Not single tasks - revisit when related work comes up, don't treat either as resolved by "checks
