@@ -99,9 +99,7 @@ function offerCountdownLabel(expiresOnDay: number): string {
       <h2>
         The phone
         <HelpHint label="The phone">
-          Customers ring the shop through the day; each call is someone wanting work done. Book one
-          in and the car is dropped off next morning. Do the work it needs - buy parts, assign
-          labour - then hand it back from this page to get paid.
+          Calls come in through the day. Book one in and the car turns up next morning.
         </HelpHint>
       </h2>
       <p class="rep">

@@ -11,6 +11,7 @@ import { makeMarketOrigin } from '@midnight-garage/sim'
 import { mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { clearDragSession, useDraggable } from '../composables/useDragAndDrop'
 import { useGameStore } from '../stores/gameStore'
 import MachineShopPanel from './MachineShopPanel.vue'
 
@@ -33,6 +34,26 @@ function mountPanel() {
   })
   mountedWrappers.push(wrapper)
   return wrapper
+}
+
+/** A pointer event carrying just enough for `useDraggable` to track a drag -
+ * mirrors the same minimal stub `useDragAndDrop.test.ts` and
+ * `GarageScreen.test.ts` use for the identical composable. */
+function pointerEvent(overrides: Partial<PointerEvent> = {}): PointerEvent {
+  const event = new Event('pointer') as unknown as {
+    pointerId: number
+    clientX: number
+    clientY: number
+    pointerType: string
+    button: number
+  }
+  event.pointerId = 1
+  event.clientX = 0
+  event.clientY = 0
+  event.pointerType = 'mouse'
+  event.button = 0
+  Object.assign(event, overrides)
+  return event as unknown as PointerEvent
 }
 
 type Store = ReturnType<typeof useGameStore>
@@ -91,7 +112,10 @@ function partOnTheMachine(game: Store, carPartId: CarPartId, atLevelThree: Compo
 }
 
 describe('MachineShopPanel', () => {
-  beforeEach(() => setActivePinia(createPinia()))
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    clearDragSession()
+  })
   afterEach(() => {
     for (const wrapper of mountedWrappers.splice(0)) wrapper.unmount()
   })
@@ -105,18 +129,46 @@ describe('MachineShopPanel', () => {
     expect(wrapper.find('[data-test="machine-shop-part"]').exists()).toBe(false)
   })
 
-  it('offers every warehouse part to carry over, and puts the picked one on the machine', async () => {
+  it('dragging a warehouse part onto the tray places it on the machine', async () => {
     const game = useGameStore()
     game.newGame(1)
     game.devGrantPart(BLOCK_PART.id)
     const partInstanceId = game.gameState.partInventory.at(-1)!.id
-
     const wrapper = mountPanel()
-    await wrapper.find(`[data-test="station-place-machine-${partInstanceId}"]`).trigger('click')
+
+    const draggable = useDraggable(() => partInstanceId)
+    draggable.onPointerDown(pointerEvent())
+    draggable.onPointerMove(pointerEvent({ clientX: 40 }))
+    await wrapper.find('[data-test="station-tray-machine"]').trigger('pointerup', { pointerId: 1 })
     await wrapper.vm.$nextTick()
 
     expect(game.gameState.machinePartId).toBe(partInstanceId)
     expect(wrapper.find('[data-test="machine-shop-part"]').exists()).toBe(true)
+  })
+
+  it('picking a warehouse part and clicking "Place here" puts it on the machine (accessibility fallback)', async () => {
+    const game = useGameStore()
+    game.newGame(1)
+    game.devGrantPart(BLOCK_PART.id)
+    const partInstanceId = game.gameState.partInventory.at(-1)!.id
+    const wrapper = mountPanel()
+
+    useDraggable(() => partInstanceId).togglePick()
+    await wrapper.vm.$nextTick()
+    await wrapper.find('[data-test="station-place-machine"]').trigger('click')
+    await wrapper.vm.$nextTick()
+
+    expect(game.gameState.machinePartId).toBe(partInstanceId)
+    expect(wrapper.find('[data-test="machine-shop-part"]').exists()).toBe(true)
+  })
+
+  it('the tray shows no duplicate parts list - the inventory tab is the only list', () => {
+    const game = useGameStore()
+    game.newGame(1)
+    game.devGrantPart(BLOCK_PART.id)
+    const wrapper = mountPanel()
+    expect(wrapper.find('.candidates').exists()).toBe(false)
+    expect(wrapper.findAll('li.candidate')).toHaveLength(0)
   })
 
   it('carries the part back to the warehouse, leaving it owned and the machine clear', async () => {

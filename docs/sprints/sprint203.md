@@ -101,6 +101,29 @@ theirs. Metal, prep and paint state are the WHY beneath the band, not the front 
   finish and colour), not a palette grid that still needs a separate purchase. Owning no
   suitable tin shows the one short line that says so and where to buy.
 
+### F. The ledger reads forward, not backward (maintainer ruling, 2026-08-14)
+
+**The problem:** "Work outstanding -¥48,191" frames the player as clearing a debt. The
+core-loop law is the opposite: fixing always pays, and every repair yen returns more than
+it costs. The display has been rendering the game's most generous law as a deficit. No
+formula changes; only the direction the numbers are read in.
+
+- F1. **The current value is the base, not the bottom line.** What the car is worth right
+  now is the headline figure at the top (the sim's `totalYen`, unchanged).
+- F2. **The work is a gain, with its price beside it.** The wear line stops being a
+  subtraction and becomes the forward-looking opportunity: label **"Work adds"**, figure
+  **+¥48,191** (the same magnitude, positive), with dim sub-text **"for ¥37,070 in parts
+  and labour"** (`totalBillYen`, already computed). This shows the margin the core-loop
+  law guarantees, which no screen has ever stated.
+- F3. **Three honesty cases, all from existing sim state.** Nothing outstanding: the row
+  says "Nothing outstanding" and shows no figure. Floor-pinned (the `floor` line binds):
+  the gain is a lie, so the row reads **"Work adds nothing yet"** with **"worth scrap
+  until the bill comes down"**. Both are the legibility clause doing its job.
+- F4. **The rest of the breakdown becomes the explanation, demoted below the headline**
+  (book, mileage, heat, polish, build risk, upgrades, doubts), so the panel reads in the
+  player's own order: what is it worth, what can I gain, why is it not worth more. Same
+  lines, same figures, same label map; only their placement and the section framing move.
+
 ### User-only
 
 - U1. Walk the body flow on a rough car: verdict, binding zone, next actions, one full
@@ -121,4 +144,64 @@ theirs. Metal, prep and paint state are the WHY beneath the band, not the front 
 
 ## Exit
 
-(filled at completion)
+**Implemented 2026-08-14 in two waves plus a lead copy pass. Awaiting the maintainer's
+walk (U1) and the commit word; the pre-push gate is the final evidence at push time.**
+
+- **A (the body answers, on the diagram):** every zone wears its own condition band as
+  the same band chip parts use; the binding worst zone carries a marked ring; the
+  whole-body verdict reads off the bodywork and paint carriers beside the diagram;
+  selecting a zone shows icon whys and ONE fixed next-action control (Beat / Weld / Fill
+  / Prime / Paint / Polish / Replace) driven by new pure sim helpers
+  (`zoneConditionBand`, `zoneNextStep`, binding-zone finders in `bodyPipeline.ts`). The
+  202 text panel is deleted. Judgement calls recorded: Polish added as the eighth verb
+  (a painted-but-dull zone otherwise had no visible path to mint); strip/prep lives
+  beside the paint picker as a discretionary action, not in the necessary-next-step
+  ladder; one generic binding ring rather than two marker species.
+- **B (labour to content, lowered):** `energy.bodyStagePoints` (stripPrep 1, beat 3,
+  weld 6, fillAndSand 2, prime 1, paint 2, polish 1), flat per stage, no tool-tier
+  multiplication; the tier's remaining body advantage is finish/polish quality and hire
+  economics, never speed. Felt statement recorded in the guard re-pin and pinned by a
+  probe: full kei respray 36 points (was ~135), single panel chain 8, weld heaviest at
+  6. The button preview and the charge read the same content value.
+- **D (the bench stops fighting):** parts drag from the inventory card onto the bench,
+  the machine, or their closed station cards (drop places the part and opens the panel),
+  through the one existing `placeOnStation` path; the composed-string repair button
+  ("Repair to fine · ¥9,600 · 20 labour") that also vanished when idle is now a fixed
+  "Repair" control that always renders, band as a chip, costs as adjacent text,
+  disable-with-reason; the duplicate candidate list under the stations is deleted.
+- **C (strings and the Shop Manual):** every long explanatory sentence on the working
+  screens shortened to voice or deleted where the UI now shows the fact (full
+  before/after table in the task record); two tutorial-speak hints deleted outright; the
+  ledger hint is now "Book price, minus what's broken, plus real upgrades. Doubts price
+  at the odds, till proven." A new Shop Manual screen (route `/compendium`, off the
+  pause menu) holds seven reference entries, shapes not numbers. Lead copy pass
+  applied four corrections: the bay-overflow paragraph split out of the stations entry;
+  "better tools shorten the chain" corrected to the truthful ceiling-not-speed rule with
+  welding's hard requirement named; the labour entry acknowledges coffee; the phone
+  entry's "no upside" overclaim cut.
+- **Vocabulary correction (maintainer re-ruling, 2026-08-14):** "Replace" is not a verb
+  in this game; the flow is always car to inventory, then inventory to car. The zone
+  button now always reads "Take it off" (a ruined panel comes off exactly like a sound
+  one); the part-row control and its drawer read "Fit". The one honest exception is the
+  three body value carriers (shell, paint, chassis), which are never removable by
+  design: their control fits the new SKU over the occupant and says "Fit", never
+  "Replace". Code identifiers (`replace-panel`, `ReplaceDrawer`, `replace-part-*` test
+  ids) keep their names per the identifier exemption.
+- **F (the ledger reads forward):** the owned-car finances panel and the auction lot card
+  both open with "Worth now" over the ledger's own `totalYen`, then the work row, then
+  the demoted breakdown under "The ledger". The work row is one shared pure function
+  (`workRowFor`) over the ledger's `wear` and `floor` lines plus `carCostToMintYen`:
+  "Work adds +¥48,191" with "for ¥37,070 in parts and labour", or "Nothing outstanding",
+  or "Work adds nothing yet / worth scrap until the bill comes down" when the floor binds
+  (checked first, so the gain figure can never lie). The `wear` line is dropped from the
+  breakdown, since the row above now reads it forward and keeping both would double it.
+  No formula, value or lever moved; both figures are named sim outputs as before. The dev
+  economy bench keeps its raw signed table deliberately (a diagnostic, not a player
+  surface) and its identical-figures guard stays green.
+- **Hygiene:** eight process-narrative comments from the implementing waves swept; the
+  comment guard, spelling guard and em-dash guard are green.
+
+**Evidence at close of implementation:** wave agents' per-file runs all green (B: 49; D:
+60 plus clean typecheck; A/E: 137 plus clean typecheck; C: 4512/4513 full-tree with the
+one failure being the comment guard since swept and green). Final combined proof is the
+pre-push gate on commit.

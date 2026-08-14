@@ -172,7 +172,6 @@ import {
   presentPartIdsInGroup,
   reconditionQuote,
   repairCeilingForLevel,
-  repairLevelForGroup,
   expressPriceYen,
   requirementLabel,
   resolveAcceptMission,
@@ -426,6 +425,12 @@ export interface CarDetail extends DetailedCar {
    * `utils/ledgerLabels.ts` and never compute a yen figure of their own.
    */
   valueLedger: ValueLedger
+  /**
+   * The bill to bring this car to mint (`carCostToMintYen`) - the ledger's
+   * forward-looking work row prices its gain against this, never a second
+   * bill computation.
+   */
+  workBillYen: number
   /**
    * What a sale can actually land at: the true market value spread across
    * the buyer taste band (`economy.valuation.tasteSpread`) - the Sell
@@ -1061,6 +1066,12 @@ export interface LotDetail {
    * never computes a yen figure of its own.
    */
   ledger: ValueLedger
+  /**
+   * The bill to bring the APPARENT car to mint (`carCostToMintYen` on the
+   * same apparent view `ledger` prices) - the ledger's forward-looking work
+   * row prices its gain against this, never a second bill computation.
+   */
+  workBillYen: number
   /**
    * `reserveYen` is based on the per-instance guide value above, so reserve and buyout
    * both derive from this specific car's real worth - they move together
@@ -2106,6 +2117,13 @@ export const useGameStore = defineStore('game', () => {
         context.value.partsTaxonomyById,
         context.value.economy,
       ),
+      workBillYen: carCostToMintYen(
+        car,
+        model,
+        context.value.partsById,
+        context.value.partsTaxonomyById,
+        context.value.economy,
+      ),
       saleRangeYen: {
         lowYen: Math.round(trueValueYen * (1 - tasteSpread)),
         highYen: Math.round(trueValueYen * (1 + tasteSpread)),
@@ -2162,18 +2180,16 @@ export const useGameStore = defineStore('game', () => {
   ): { costYen: number; laborSlots: number } | null {
     if (!car.zoneState) return null
     const zone = car.zoneState[action.zoneId]
-    const repairLevel = repairLevelForGroup(toolLevels.value, 'body')
-    const rate = context.value.economy.energy.energyPerBandStepByToolTier[repairLevel]
     const capability = bodyLineCapability(gameState.value, context.value)
     if (action.kind === 'pipeline-stage') {
       const plan = planPipelineStage(action.stage, zone, capability)
       if (!plan.ok) return null
-      return { costYen: 0, laborSlots: plan.laborUnits * rate }
+      return { costYen: 0, laborSlots: context.value.economy.energy.bodyStagePoints[action.stage] }
     }
     if (action.kind === 'pipeline-paint') {
       const plan = planPaintStage(zone, action.colour, capability, action.grade, car.factoryColour)
       if (!plan.ok) return null
-      return { costYen: 0, laborSlots: plan.laborUnits * rate }
+      return { costYen: 0, laborSlots: context.value.economy.energy.bodyStagePoints.paint }
     }
     if (action.kind === 'pipeline-remove-panel') {
       if (zone.panelMissing) return null
@@ -2377,6 +2393,13 @@ export const useGameStore = defineStore('game', () => {
       fitmentClass: fitmentClassForTier(model.tier),
       guideValueYen: anchorValueYen(lot, gameState.value, context.value),
       ledger: roomLedgerFor(lot.car, model, gameState.value, context.value),
+      workBillYen: carCostToMintYen(
+        apparentCar,
+        model,
+        context.value.partsById,
+        context.value.partsTaxonomyById,
+        context.value.economy,
+      ),
       reserveYen: reserveYen(lot, gameState.value, context.value),
       buyoutPriceYen: computeBuyoutPriceYen(lot, gameState.value, context.value),
       turnout: lot.turnout,

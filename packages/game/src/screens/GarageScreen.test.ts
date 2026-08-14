@@ -1,14 +1,32 @@
-import { CARS, PARTS, type PartInstance } from '@midnight-garage/content'
+import { CARS, PARTS, type ConditionBand, type PartInstance } from '@midnight-garage/content'
 import { makeMarketOrigin } from '@midnight-garage/sim'
 import { mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { h } from 'vue'
 import { createMemoryHistory, createRouter } from 'vue-router'
-import { clearDragSession } from '../composables/useDragAndDrop'
+import { clearDragSession, useDraggable } from '../composables/useDragAndDrop'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
 import GarageScreen from './GarageScreen.vue'
+
+const DAMPER_PART = PARTS.find((part) => part.carPartId === 'dampers')!
+
+/** Puts one loose part in the warehouse at `band`, unattached to any
+ * station, and hands back its instance id. */
+function loosePart(game: ReturnType<typeof useGameStore>, band: ConditionBand): string {
+  const instance: PartInstance = {
+    id: `pi-loose-${DAMPER_PART.id}`,
+    partId: DAMPER_PART.id,
+    band,
+    origin: makeMarketOrigin(1),
+  }
+  game.gameState = {
+    ...game.gameState,
+    partInventory: [...game.gameState.partInventory, instance],
+  }
+  return instance.id
+}
 
 // Track every mounted
 // wrapper and unmount it after each test, so a component left mounted from a
@@ -75,6 +93,27 @@ async function dropOnAt(
 ): Promise<void> {
   const zone = wrapper.findAll(zoneSelector)[index]!
   await zone.trigger('pointerup', { pointerId: 1 })
+}
+
+/** A pointer event carrying just enough for `useDraggable` to track a drag -
+ * for a part, which (unlike a car) has no draggable card rendered on this
+ * screen, so the composable is driven directly rather than through a DOM
+ * `pointerdown`/`pointermove` pair on an origin element. */
+function pointerEvent(overrides: Partial<PointerEvent> = {}): PointerEvent {
+  const event = new Event('pointer') as unknown as {
+    pointerId: number
+    clientX: number
+    clientY: number
+    pointerType: string
+    button: number
+  }
+  event.pointerId = 1
+  event.clientX = 0
+  event.clientY = 0
+  event.pointerType = 'mouse'
+  event.button = 0
+  Object.assign(event, overrides)
+  return event as unknown as PointerEvent
 }
 
 describe('GarageScreen', () => {
@@ -368,7 +407,7 @@ describe('GarageScreen', () => {
 
       await wrapper.get('[data-test="station-open-body-paint"]').trigger('click')
       expect(wrapper.get('[data-test="body-paint-refusal"]').text()).toBe(
-        "A dead spray booth and someone else's panels. Needs the body line before any of it is yours to use.",
+        "A dead spray booth and someone else's panels. Buy the body line first.",
       )
     })
 
@@ -423,6 +462,44 @@ describe('GarageScreen', () => {
 
       await wrapper.get(`[data-test="move-service-pick-${carId}"]`).trigger('click')
       expect(wrapper.find('[data-test^="move-parking-place-"]').exists()).toBe(false)
+    })
+  })
+
+  /**
+   * A part can be dragged straight onto a station's own card without opening
+   * its panel first - the same drop primitive `WorkStationTray` uses once a
+   * panel is open, applied one level up.
+   */
+  describe('dragging a part onto a station card', () => {
+    it('dragging a warehouse part onto the workbench card places it there and opens the panel', async () => {
+      const game = useGameStore()
+      const partInstanceId = loosePart(game, 'worn')
+      const wrapper = mountScreen()
+
+      const draggable = useDraggable(() => partInstanceId)
+      draggable.onPointerDown(pointerEvent())
+      draggable.onPointerMove(pointerEvent({ clientX: 40 }))
+      await wrapper
+        .get('[data-test="station-slot-workbench"]')
+        .trigger('pointerup', { pointerId: 1 })
+      await wrapper.vm.$nextTick()
+
+      expect(game.gameState.workbenchPartId).toBe(partInstanceId)
+      expect(wrapper.find('[data-test="workbench-panel"]').exists()).toBe(true)
+    })
+
+    it('picking a warehouse part and clicking "Place here" on the machine card places it there', async () => {
+      const game = useGameStore()
+      const partInstanceId = loosePart(game, 'worn')
+      const wrapper = mountScreen()
+
+      useDraggable(() => partInstanceId).togglePick()
+      await wrapper.vm.$nextTick()
+      await wrapper.get('[data-test="station-place-card-machine"]').trigger('click')
+      await wrapper.vm.$nextTick()
+
+      expect(game.gameState.machinePartId).toBe(partInstanceId)
+      expect(wrapper.find('[data-test="machine-shop-panel"]').exists()).toBe(true)
     })
   })
 })

@@ -1,6 +1,11 @@
-import type { MetalZoneState, TrimZoneState } from '@midnight-garage/content'
+import { ECONOMY, type MetalZoneState, type TrimZoneState } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
-import { isMetalZoneState, planMetalPipelineStage, planPipelineStage } from '../src/bodyPipeline'
+import {
+  PANEL_ZONE_IDS,
+  isMetalZoneState,
+  planMetalPipelineStage,
+  planPipelineStage,
+} from '../src/bodyPipeline'
 
 /**
  * The two-shape model's own rules for the pipeline's metal-only stages
@@ -69,5 +74,32 @@ describe('a trim zone cannot be beaten, welded or filled', () => {
     expect(primed.ok).toBe(true)
     const polished = planPipelineStage('polish', trimZone({ finish: 2, primed: false }), UNLOCKED)
     expect(polished.ok).toBe(true)
+  })
+})
+
+/**
+ * The body-stage labour felt statement, pinned against the live content table
+ * (`economy.energy.bodyStagePoints`) rather than restated as a magic number:
+ * a full respray of a kei is 36 labour points under half the 80-point pool
+ * (was ~135 under the old tool-tier-multiplied formula), a single panel's
+ * beat-fill-prime-paint chain is 8 points, and weld stays the heaviest single
+ * hand op at 6 - before the machine-less multiplier, which this table never
+ * carries.
+ */
+describe('body-stage labour: the recorded felt statement', () => {
+  const points = ECONOMY.energy.bodyStagePoints
+
+  it('a full nine-zone respray (strip, prime, paint) costs 36 points', () => {
+    const perZone = points.stripPrep + points.prime + points.paint
+    expect(perZone * PANEL_ZONE_IDS.length).toBe(36)
+  })
+
+  it("one panel's beat-fill-prime-paint chain costs 8 points", () => {
+    expect(points.beat + points.fillAndSand + points.prime + points.paint).toBe(8)
+  })
+
+  it('weld is the heaviest single stage, at 6 points', () => {
+    expect(points.weld).toBe(6)
+    expect(Math.max(...Object.values(points))).toBe(points.weld)
   })
 })

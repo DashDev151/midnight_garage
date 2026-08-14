@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import type { CarPartId } from '@midnight-garage/content'
 import { computed } from 'vue'
-import HelpHint from './HelpHint.vue'
 import PartCard from './PartCard.vue'
 import { useGameStore } from '../stores/gameStore'
 
-/** Clicking a part row's "Replace" button opens this as an in-page side panel,
+/** Clicking a part row's "Fit" button opens this as an in-page side panel,
  * scoped to that one part slot. It never lives on a separate route - the panel
  * ensures the player can see both source and drop target at once.
  *
@@ -87,12 +86,7 @@ function onSelect(partInstanceId: string): void {
 <template>
   <aside class="drawer" data-test="replace-drawer">
     <header class="drawer-head">
-      <h3>
-        Replace {{ game.carPartLabel(carPartId) }}
-        <HelpHint label="Replace">
-          Click a fitting part to install it here, or drag it onto the part instead.
-        </HelpHint>
-      </h3>
+      <h3>Fit {{ game.carPartLabel(carPartId) }}</h3>
       <button
         type="button"
         class="close"

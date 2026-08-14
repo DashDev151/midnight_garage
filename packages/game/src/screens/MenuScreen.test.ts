@@ -14,6 +14,7 @@ function makeRouter(): Router {
       { path: '/', name: 'garage', component: { template: '<div>garage</div>' } },
       { path: '/menu', name: 'menu', component: MenuScreen },
       { path: '/settings', name: 'settings', component: { template: '<div>settings</div>' } },
+      { path: '/compendium', name: 'compendium', component: { template: '<div>compendium</div>' } },
     ],
   })
 }
@@ -115,5 +116,12 @@ describe('MenuScreen', () => {
     await button.trigger('click')
     await flushPromises()
     expect(router.currentRoute.value.name).toBe('settings')
+  })
+
+  it('The Shop Manual navigates to the compendium screen', async () => {
+    const { wrapper, router } = await mountMenu()
+    await wrapper.get('[data-test="menu-compendium"]').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.name).toBe('compendium')
   })
 })

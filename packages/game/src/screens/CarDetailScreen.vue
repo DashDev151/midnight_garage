@@ -3,9 +3,12 @@ import type {
   AssemblyId,
   CarPartId,
   ComponentId,
+  ConditionBand,
   Grade,
   Job,
+  PaintFinish,
   PartInstance,
+  PipelineStageId,
   SellingChannelId,
   ZoneId,
 } from '@midnight-garage/content'
@@ -13,13 +16,16 @@ import {
   ALL_CAR_PART_IDS,
   ASSEMBLIES,
   ComponentIdSchema,
+  PAINT_COLOURS,
   PARTS_TAXONOMY,
   fitmentClassForTier,
+  paintStockKey,
   titleCaseFromSlug,
 } from '@midnight-garage/content'
 import {
   factoryColourSet,
-  isMetalZoneState,
+  zoneConditionBand,
+  zoneNextStep,
   type DynoSessionGateReason,
   type FittedMachiningGateReason,
   type FittedMachiningOfferRow,
@@ -49,10 +55,15 @@ import {
 import { MACHINE_LINE_NAMES } from '../utils/dayLogFormat'
 import { DYNO_NAME } from '../utils/dynoLabels'
 import { formatYen, formatYenDelta } from '../utils/formatYen'
-import { LEDGER_LINE_LABELS, formatLedgerLineYen } from '../utils/ledgerLabels'
+import {
+  LEDGER_LINE_LABELS,
+  formatLedgerLineYen,
+  ledgerBreakdownLines,
+  workRowFor,
+} from '../utils/ledgerLabels'
 import { formatAuthenticityCost, formatReliabilityCost } from '../utils/machiningFigures'
 import { SETUP_REFUSALS } from '../utils/machiningRefusals'
-import { PAINT_COLOUR_FAMILIES, colourTokenDisplayName } from '../utils/paintFamilies'
+import { colourTokenDisplayName } from '../utils/paintFamilies'
 import { addressesOverlap } from '../utils/partAddress'
 import { repairStepText } from '../utils/repairStepLabels'
 import {
@@ -61,14 +72,7 @@ import {
   sellingChannelCadenceLabel,
   sellingChannelFeeLabel,
 } from '../utils/sellingChannelLabels'
-import {
-  finishConditionText,
-  metalConditionText,
-  paintStateText,
-  surfaceConditionText,
-  zoneNeedsPanelText,
-  zoneSeverityText,
-} from '../utils/zoneSeverity'
+import { zoneWhyChips } from '../utils/zoneSeverity'
 import { mapBackTarget } from './mapBack'
 
 const game = useGameStore()
@@ -77,6 +81,18 @@ const router = useRouter()
 
 const carId = computed(() => String(route.params.id))
 const detail = computed(() => game.carDetail(carId.value))
+
+/** The ledger's forward-looking work row: what fixing this car up adds,
+ * priced against the bill (`workRowFor`, both figures the sim's own). */
+const workRow = computed(() =>
+  detail.value ? workRowFor(detail.value.valueLedger, detail.value.workBillYen) : null,
+)
+
+/** The value ledger's lines, minus 'wear' - the work row above already
+ * reads that line forward. */
+const ledgerBreakdown = computed(() =>
+  detail.value ? ledgerBreakdownLines(detail.value.valueLedger) : [],
+)
 
 /** This screen has many entry points (a bay slot, a service-job link, the
  * dyno's own "back to the car" link...) and all of them fall back to the
@@ -675,128 +691,116 @@ function benchShopLabel(carPartId: CarPartId): string {
     .join(' ')
 }
 
-const PIPELINE_STAGE_LABELS: Record<string, string> = {
-  stripPrep: 'Strip & prep',
+// --- Body zones: the panel's zone mode (docs/design/systems/workshop-rework.md,
+// The design law here: the band is the headline, icons
+// are the why, one fixed control is the next action) ---
+
+/** The next-action ladder's own one-word labels (A4) - the direct, single-
+ * click stages `zoneNextStep` can name. `paint` and `replace-panel` are not
+ * here: both need a further pick (which tin, which panel) and read through
+ * their own dedicated controls below instead of this fixed button. `polish`
+ * earns its place alongside the sprint's named vocabulary (beat/weld/fill/
+ * prime) for the same reason those did - it is the real, sim-true next step
+ * once a zone is bare-metal-clean and merely faded, and leaving it out would
+ * strand a freshly painted zone with no visible way back to mint. */
+const NEXT_ACTION_LABELS: Partial<Record<PipelineStageId | 'replace-panel', string>> = {
   beat: 'Beat',
   weld: 'Weld',
-  fillAndSand: 'Fill & sand',
+  fillAndSand: 'Fill',
   prime: 'Prime',
   polish: 'Polish',
 }
 
-// --- Body zones: the panel's zone mode (docs/design/systems/workshop-rework.md) ---
-
-const GENERIC_STAGES = ['stripPrep', 'beat', 'weld', 'fillAndSand', 'prime', 'polish'] as const
-/** The three stages a trim zone never offers - there is no metal underneath a
- * bumper or a skirt to beat, weld or fill, so these never render there at all
- * rather than rendering disabled. */
-const METAL_ONLY_STAGES: readonly string[] = ['beat', 'weld', 'fillAndSand']
-
 const zoneState = computed(() => detail.value?.car.zoneState ?? null)
 
-/**
- * The readable per-zone condition panel, all nine zones at once, plain
- * words only - a zone's metal, finish and paint are visible without opening
- * it first, so the whole car reads in one glance instead of nine separate
- * clicks.
- */
-const ZONE_ORDER: readonly ZoneId[] = [
-  'bonnet',
-  'boot',
-  'left-front',
-  'left-rear',
-  'right-front',
-  'right-rear',
-  'front-bumper',
-  'rear-bumper',
-  'skirts',
-]
-
-interface ZoneConditionRow {
-  zoneId: ZoneId
-  name: string
-  /** `null` on a trim zone (front/rear bumper, skirts) - no metal to read. */
-  metal: string | null
-  /** `null` on a trim zone. */
-  surface: string | null
-  finish: string
-  paint: string
-}
-
-const zoneConditionRows = computed<ZoneConditionRow[]>(() => {
-  const zones = zoneState.value
-  if (!zones) return []
-  const uid = detail.value?.model.uid
-  return ZONE_ORDER.map((zoneId) => {
-    const zone = zones[zoneId]
-    return {
-      zoneId,
-      name: titleCaseFromSlug(zoneId),
-      metal: metalConditionText(zone),
-      surface: surfaceConditionText(zone),
-      finish: finishConditionText(zone),
-      paint: paintStateText(zone, uid),
-    }
-  })
-})
+/** The car's own two derived body bands (A1) - read straight off the
+ * always-present carrier slots `applyDerivedBodyBands` writes at generation
+ * and after every zone mutation, never re-derived here. */
+const bodyworkBand = computed<ConditionBand | null>(
+  () => detail.value?.car.parts.bodywork.installed?.band ?? null,
+)
+const paintBand = computed<ConditionBand | null>(
+  () => detail.value?.car.parts.paint.installed?.band ?? null,
+)
 
 /**
- * The zone the panel is docked on, with everything its mode needs: the live
- * zone state, its display name, and the panel-missing text stated up front.
- * Every zone carries a swappable panel now, so there is no longer a shape
- * that opts out of the panel controls the way the chassis zone once did.
+ * The zone the panel is docked on, with everything its mode needs (A1-A4):
+ * the live zone state, its display name, its own condition band (the
+ * headline), its why chips, and its single next pipeline stage.
  */
 const selectedZone = computed(() => {
   const target = panelTarget.value
   const zones = zoneState.value
   if (target?.kind !== 'zone' || !zones) return null
+  const zone = zones[target.zoneId]
   return {
     zoneId: target.zoneId,
-    zone: zones[target.zoneId],
+    zone,
     name: titleCaseFromSlug(target.zoneId),
-    // Stated once, up front: every stage below is refused while this holds, so
-    // the panel says why rather than leaving a row of dead buttons to explain
-    // itself.
-    needsPanelText: zoneNeedsPanelText(zones[target.zoneId]),
+    band: zoneConditionBand(zone),
+    whyChips: zoneWhyChips(zone, detail.value?.model.uid),
+    nextStep: zoneNextStep(zone),
   }
 })
 
-/** One generic stage's live preview for one zone - `null` when its
+/** One pipeline stage's live preview for one zone - `null` when its
  * prerequisite isn't met yet (the button shows disabled with no total),
  * straight from `pipelineActionPlan`, the exact function the click below
  * resolves with, never a re-derived client-side gate. */
-function genericStagePreview(
+function stagePreview(
   zoneId: ZoneId,
-  stage: (typeof GENERIC_STAGES)[number],
+  stage: Exclude<PipelineStageId, 'paint'>,
 ): { costYen: number; laborSlots: number } | null {
   const d = detail.value
   if (!d) return null
   return game.pipelineActionPlan(d.car, { kind: 'pipeline-stage', stage, zoneId })
 }
 
-function onGenericStageClick(zoneId: ZoneId, stage: (typeof GENERIC_STAGES)[number]): void {
+function onStageClick(zoneId: ZoneId, stage: Exclude<PipelineStageId, 'paint'>): void {
   const d = detail.value
   if (!d) return
   game.pipelineStage(d.car.id, zoneId, stage)
 }
 
-/** The swatch armed for each zone, by paint-colour id - the paint stage's own
- * player input, kept per zone so moving between zones never loses a pick. */
-const paintColourByZone = ref<Record<string, string>>({})
+/** The docked zone's own next-action label (A4) - set only when the next
+ * step is one of the direct, single-click ladder stages. `null` for `paint`,
+ * `replace-panel` and "already mint", each of which renders through its own
+ * control below instead of this fixed button. */
+const nextActionLabel = computed(() => {
+  const step = selectedZone.value?.nextStep
+  return step ? (NEXT_ACTION_LABELS[step] ?? null) : null
+})
 
-/** The finish grade armed for each zone - stock, street, sport or race. */
-const paintGradeByZone = ref<Record<string, Grade>>({})
+const nextActionPlan = computed(() => {
+  const zone = selectedZone.value
+  if (!zone || !nextActionLabel.value) return null
+  return stagePreview(zone.zoneId, zone.nextStep as Exclude<PipelineStageId, 'paint'>)
+})
 
-/** The colour the finish stage would lay on this zone: the armed swatch,
- * `null` while no tin is picked. */
-function paintColourFor(zoneId: ZoneId): string | null {
-  return paintColourByZone.value[zoneId] ?? null
+function onNextActionClick(): void {
+  const zone = selectedZone.value
+  if (!zone || !nextActionLabel.value) return
+  onStageClick(zone.zoneId, zone.nextStep as Exclude<PipelineStageId, 'paint'>)
 }
 
-/** The finish grade the stage would lay on this zone: the armed choice,
- * `null` while no finish is picked. */
-function paintGradeFor(zoneId: ZoneId): Grade | null {
-  return paintGradeByZone.value[zoneId] ?? null
+/** The discretionary "redo the finish" control beside the paint picker
+ * (stripPrep - never the objectively-necessary next step, so it stays out of
+ * `zoneNextStep`, but a player choosing a new colour on an already-painted
+ * zone needs a way to bare it first). Hidden once there is nothing to strip:
+ * a zone with no colour and no primer is already bare. */
+const canStripPrep = computed(() => {
+  const zone = selectedZone.value?.zone
+  return zone ? zone.colour != null || zone.primed : false
+})
+
+const stripPrepPlan = computed(() =>
+  selectedZone.value ? stagePreview(selectedZone.value.zoneId, 'stripPrep') : null,
+)
+
+function onStripPrepClick(): void {
+  const zone = selectedZone.value
+  if (!zone) return
+  onStageClick(zone.zoneId, 'stripPrep')
 }
 
 /** The display name for a colour token on THIS car - `colourTokenDisplayName`
@@ -804,12 +808,6 @@ function paintGradeFor(zoneId: ZoneId): Grade | null {
  * manufacturer name where one applies. */
 function carColourTokenDisplayName(token: string): string {
   return colourTokenDisplayName(token, detail.value?.model.uid)
-}
-
-/** A stored colour id as the name on the tin - always a solid id, since a
- * respray lays exactly one colour on one zone. */
-function paintColourName(colourId: string): string {
-  return carColourTokenDisplayName(colourId)
 }
 
 /** Every palette id this car legitimately wears - one entry, or two for a
@@ -831,48 +829,6 @@ function isFactoryColour(colourId: string): boolean {
 const factoryColourCaption = computed<string>(() =>
   detail.value ? carColourTokenDisplayName(detail.value.car.factoryColour) : '',
 )
-
-/** One grade's own style modifier for this car's fitment class, read from the
- * catalog rather than typed in - the stock SKU for `stock`, the matching
- * aftermarket SKU otherwise. */
-function paintStyleForGrade(grade: Grade): number {
-  const d = detail.value
-  if (!d) return 0
-  const fitmentClass = fitmentClassForTier(d.model.tier)
-  const part =
-    grade === 'stock'
-      ? game.context.stockPartByCarPartId[fitmentClass]?.paint
-      : game.context.aftermarketPartByCarPartId[fitmentClass]?.paint?.[grade]
-  return part?.statModifiers.style ?? 0
-}
-
-/** One grade's own plan for this zone at the currently armed colour - the
- * same `pipelineActionPlan` call Confirm resolves with, so a refused
- * combination (stock grade, wrong colour) shows no total rather than one a
- * commit would then refuse. `null` while no colour is armed yet. */
-function paintPlanFor(
-  zoneId: ZoneId,
-  grade: Grade,
-): { costYen: number; laborSlots: number } | null {
-  const d = detail.value
-  const colour = paintColourFor(zoneId)
-  if (!d || !colour) return null
-  return game.pipelineActionPlan(d.car, { kind: 'pipeline-paint', zoneId, colour, grade })
-}
-
-function paintPreview(zoneId: ZoneId): { costYen: number; laborSlots: number } | null {
-  const grade = paintGradeFor(zoneId)
-  if (!grade) return null
-  return paintPlanFor(zoneId, grade)
-}
-
-function onPaintClick(zoneId: ZoneId): void {
-  const d = detail.value
-  const colour = paintColourFor(zoneId)
-  const grade = paintGradeFor(zoneId)
-  if (!d || !colour || !grade) return
-  game.paintZone(d.car.id, zoneId, colour, grade)
-}
 
 /** Zone panels sitting in inventory that fit THIS car's own fitment class,
  * for one zone - the install control's own picker. */
@@ -903,6 +859,11 @@ function onRemovePanelClick(zoneId: ZoneId): void {
   game.removePanel(d.car.id, zoneId)
 }
 
+/** There is no atomic swap in this game: the flow is car to inventory, then
+ * inventory to car. A ruined panel comes off exactly like a sound one, and
+ * fitting its successor is its own separate act. */
+const REMOVE_PANEL_LABEL = 'Take it off'
+
 /** One candidate panel's own cost and labour, from the same plan Confirm
  * resolves with - `null` when the pick no longer fits. */
 function installPanelPreview(
@@ -920,23 +881,6 @@ function onInstallPanelClick(zoneId: ZoneId, partInstanceId: string): void {
   game.installPanel(d.car.id, zoneId, partInstanceId)
 }
 
-/** The zone's own generic stages, each with the live plan its control reads -
- * one evaluation per stage, not one per binding. All six on a metal zone;
- * `stripPrep`/`prime`/`polish` alone on a trim zone, which never renders a
- * beat, weld or fill-and-sand control to refuse in the first place. */
-const zoneStageViews = computed(() => {
-  const zone = selectedZone.value
-  if (!zone) return []
-  const stages = isMetalZoneState(zone.zone)
-    ? GENERIC_STAGES
-    : GENERIC_STAGES.filter((stage) => !METAL_ONLY_STAGES.includes(stage))
-  return stages.map((stage) => ({
-    stage,
-    label: PIPELINE_STAGE_LABELS[stage] ?? stage,
-    plan: genericStagePreview(zone.zoneId, stage),
-  }))
-})
-
 /** The panels on hand for the docked zone, as the install control's own
  * buttons - only meaningful while the zone has no panel of its own. */
 const zonePanelOptions = computed(() => {
@@ -949,23 +893,11 @@ const zonePanelOptions = computed(() => {
   }))
 })
 
-/** The docked zone's finish-stage plan, and the tin it would use. */
-const zonePaintPlan = computed(() =>
-  selectedZone.value ? paintPreview(selectedZone.value.zoneId) : null,
-)
-
 /** The docked zone's own panel coming off, live - only meaningful while the
  * zone still has one fitted. */
 const zoneRemovePanelPlan = computed(() =>
   selectedZone.value ? removePanelPreview(selectedZone.value.zoneId) : null,
 )
-
-const armedColourName = computed(() => {
-  const zone = selectedZone.value
-  if (!zone) return null
-  const colourId = paintColourByZone.value[zone.zoneId]
-  return colourId ? paintColourName(colourId) : null
-})
 
 /** A pipeline control's own price and labour, inline - the same
  * `¥x · n labour` shape the repair button and the planned rows already carry.
@@ -975,54 +907,106 @@ function pipelineCostText(plan: { costYen: number; laborSlots: number } | null):
   return plan ? ` · ${formatYen(plan.costYen)} · ${plan.laborSlots} labour` : ''
 }
 
-/** The finish ladder, cheapest and most original first. */
-const PAINT_GRADES: readonly Grade[] = ['stock', 'street', 'sport', 'race']
-
-const PAINT_GRADE_LABELS: Record<Grade, string> = {
-  stock: 'Factory-correct',
-  street: 'Solid respray',
-  sport: 'Metallic',
-  race: 'Pearl',
+/**
+ * One tin's own derived grade (E2): metallic and pearl finishes map straight
+ * to `sport`/`race`; a solid finish maps to `stock` when the colour is (one
+ * half of) this car's own factory scheme - the same tin, free originality
+ * back - and to `street` otherwise. The one rule `planPaintStage`'s own
+ * stock-grade gate already enforces, read forward instead of offered as a
+ * choice that could land on a refusal.
+ */
+function gradeForTin(finish: PaintFinish, colourId: string): Grade {
+  if (finish === 'metallic') return 'sport'
+  if (finish === 'pearl') return 'race'
+  return isFactoryColour(colourId) ? 'stock' : 'street'
 }
 
-/** What each grade does to originality - a fixed fact of the ladder, not a
- * per-car number: stock is the only grade the sim ever lets land in the
- * car's own colour, which is what lets it win the slot's authenticity back,
- * and every other grade is a respray, which always spends it. */
-const PAINT_GRADE_ORIGINALITY: Record<Grade, string> = {
-  stock: 'restores originality',
-  street: 'costs originality',
-  sport: 'costs originality',
-  race: 'costs originality',
+const PAINT_FINISHES: readonly PaintFinish[] = ['solid', 'metallic', 'pearl']
+
+interface OwnedPaintTin {
+  finish: PaintFinish
+  colourId: string
+  hex: string
+  name: string
+  plan: { costYen: number; laborSlots: number } | null
 }
 
-/** The four finish buttons for the docked zone, each with its own style
- * modifier and live plan - `plan` is null (button disabled) for stock grade
- * once a non-factory colour is armed, which is what keeps that combination
- * off the table rather than staged and then refused. */
-const zoneGradeOptions = computed(() => {
+/**
+ * Every paint tin actually on the shelf, as the docked zone's own picker
+ * (E2): a colour palette that still needed a separate purchase is gone -
+ * each owned tin already carries both halves of the old two-step pick
+ * (colour AND finish/grade), so choosing one tin is the whole decision.
+ */
+const ownedPaintTins = computed<OwnedPaintTin[]>(() => {
   const zone = selectedZone.value
-  if (!zone) return []
-  return PAINT_GRADES.map((grade) => ({
-    grade,
-    label: PAINT_GRADE_LABELS[grade],
-    originality: PAINT_GRADE_ORIGINALITY[grade],
-    style: paintStyleForGrade(grade),
-    plan: paintPlanFor(zone.zoneId, grade),
-  }))
+  const d = detail.value
+  if (!zone || !d) return []
+  const tins: OwnedPaintTin[] = []
+  for (const finish of PAINT_FINISHES) {
+    for (const colour of PAINT_COLOURS) {
+      if ((game.consumableStock[paintStockKey(finish, colour.id)] ?? 0) <= 0) continue
+      const grade = gradeForTin(finish, colour.id)
+      tins.push({
+        finish,
+        colourId: colour.id,
+        hex: colour.hex,
+        name: carColourTokenDisplayName(colour.id),
+        plan: game.pipelineActionPlan(d.car, {
+          kind: 'pipeline-paint',
+          zoneId: zone.zoneId,
+          colour: colour.id,
+          grade,
+        }),
+      })
+    }
+  }
+  return tins
 })
 
-/** One finish button's full inline text, in the same loud-price idiom every
- * other control on this panel uses. */
-function paintGradeButtonText(option: {
-  label: string
-  originality: string
-  style: number
-  plan: { costYen: number; laborSlots: number } | null
-}): string {
-  const styleText = option.style > 0 ? ` · +${option.style} style` : ''
-  return `${option.label} - ${option.originality}${styleText}${pipelineCostText(option.plan)}`
+function onPaintTinClick(colourId: string, finish: PaintFinish): void {
+  const zone = selectedZone.value
+  const d = detail.value
+  if (!zone || !d) return
+  game.paintZone(d.car.id, zone.zoneId, colourId, gradeForTin(finish, colourId))
 }
+
+const PAINT_FINISH_LABELS: Record<PaintFinish, string> = {
+  solid: 'Solid',
+  metallic: 'Metallic',
+  pearl: 'Pearl',
+}
+
+interface PaintTinGroup {
+  finish: PaintFinish
+  label: string
+  /** The finish's own loud price, read off any one tin in the group - a
+   * paint tin's materials cost and labour are fixed by finish alone (never
+   * by colour, and stock/street cost the same solid tin), so one plan speaks
+   * for the whole row instead of repeating a price per swatch. */
+  costText: string
+  tins: OwnedPaintTin[]
+}
+
+/** `ownedPaintTins` grouped by finish, in a fixed tier order - the shape the
+ * paint picker actually renders: one loud price per tier, the colours on the
+ * shelf beneath it as plain swatches. */
+const ownedPaintTinGroups = computed<PaintTinGroup[]>(() => {
+  const byFinish = new Map<PaintFinish, OwnedPaintTin[]>()
+  for (const tin of ownedPaintTins.value) {
+    const group = byFinish.get(tin.finish)
+    if (group) group.push(tin)
+    else byFinish.set(tin.finish, [tin])
+  }
+  return PAINT_FINISHES.filter((finish) => byFinish.has(finish)).map((finish) => {
+    const tins = byFinish.get(finish)!
+    return {
+      finish,
+      label: PAINT_FINISH_LABELS[finish],
+      costText: pipelineCostText(tins.find((tin) => tin.plan)?.plan ?? null),
+      tins,
+    }
+  })
+})
 
 const draggedPartName = computed(() => {
   const payload = dragSession.value?.payload
@@ -1182,57 +1166,28 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
           <span class="svc-status" :class="{ done: detail.serviceJob.workDone }">
             {{
               detail.serviceJob.workDone
-                ? 'Work done - hand it back from the Phone tab to get paid.'
-                : 'Work unfinished - handing it back now forfeits the payout. Complete or Give Up from the Phone tab.'
+                ? "Work's done - hand it back from the phone to get paid."
+                : 'Not finished - handing it back now forfeits the payout.'
             }}
           </span>
         </div>
       </section>
 
+      <!-- A1: the whole-body verdict, at a glance beside the diagram - the
+           two derived bands and nothing else. The zones behind them carry
+           the detail (A2-A4). -->
+      <section v-if="bodyworkBand || paintBand" class="body-verdict" data-test="body-verdict">
+        <span class="body-verdict-item" data-test="body-verdict-bodywork">
+          Bodywork <BandChip :band="bodyworkBand" />
+        </span>
+        <span class="body-verdict-item" data-test="body-verdict-paint">
+          Paint <BandChip :band="paintBand" />
+        </span>
+      </section>
+
       <!-- The workshop is the page. Full-width views, then the bench strip
            (if any), then the docked info/action panel every region feeds. -->
       <WorkshopViews :car-id="detail.car.id" @select="onWorkshopSelect" />
-
-      <!-- D3: every zone's condition, read at a glance rather than by
-           opening it. Plain words only - no jargon band, no raw severity
-           number - so a bare panel after a refit reads as "bare metal,
-           unpainted" right here instead of needing nine separate clicks to
-           notice. -->
-      <section
-        v-if="zoneConditionRows.length > 0"
-        class="zone-condition-panel"
-        data-test="zone-condition-panel"
-      >
-        <h4>
-          Body condition
-          <HelpHint label="Body condition">
-            Every panel's own state, plain and at a glance - metal, surface and finish where a zone
-            carries them, and what colour (if any) is actually on it right now.
-          </HelpHint>
-        </h4>
-        <ul class="zone-condition-list">
-          <li
-            v-for="row in zoneConditionRows"
-            :key="row.zoneId"
-            class="zone-condition-row"
-            :data-test="'zone-condition-' + row.zoneId"
-          >
-            <span class="zone-condition-name">{{ row.name }}</span>
-            <span class="zone-condition-facts">
-              <span v-if="row.metal" :data-test="'zone-condition-metal-' + row.zoneId"
-                >Metal: {{ row.metal }}</span
-              >
-              <span v-if="row.surface" :data-test="'zone-condition-surface-' + row.zoneId"
-                >Surface: {{ row.surface }}</span
-              >
-              <span :data-test="'zone-condition-finish-' + row.zoneId"
-                >Finish: {{ row.finish }}</span
-              >
-              <span :data-test="'zone-condition-paint-' + row.zoneId">Paint: {{ row.paint }}</span>
-            </span>
-          </li>
-        </ul>
-      </section>
 
       <section
         v-if="game.benchContainersFor(detail.car.id).length > 0"
@@ -1292,7 +1247,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               v-if="panelHead.uncertain"
               class="uncertain-tag"
               data-test="panel-uncertain"
-              title="An unresolved symptom may have damaged this part - the band shown is its pre-damage condition"
+              title="Could be worse than shown - an unresolved symptom may be hiding damage"
               >?</span
             >
             <span v-if="panelHead.missing" class="missing-tag" data-test="panel-missing"
@@ -1380,7 +1335,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                   @pointerleave="dropZones[selectedRow.partId].onPointerLeave"
                   @click="onReplaceClick(selectedRow.partId)"
                 >
-                  {{ dropZones[selectedRow.partId].isActiveTarget.value ? 'Drop here' : 'Replace' }}
+                  {{ dropZones[selectedRow.partId].isActiveTarget.value ? 'Drop here' : 'Fit' }}
                 </button>
                 <span
                   v-if="installMachineNoteFor(selectedRow.partId)"
@@ -1441,7 +1396,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               type="button"
               class="remove-btn"
               :data-test="'bench-remove-' + selectedBench.member.carPartId"
-              title="Pull this part off the assembly into your inventory - free"
+              title="Off the assembly and into inventory, free"
               @click="
                 game.removeAssemblyMember(selectedBench.containerId, selectedBench.member.carPartId)
               "
@@ -1552,45 +1507,49 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         <template v-else-if="selectedZone">
           <div class="panel-head">
             <span class="panel-name" data-test="panel-name">{{ selectedZone.name }}</span>
-            <span class="zone-severity" :data-test="'zone-severity-' + selectedZone.zoneId">{{
-              zoneSeverityText(selectedZone.zone)
-            }}</span>
+            <BandChip :band="selectedZone.band" :data-test="'zone-band-' + selectedZone.zoneId" />
             <span
               v-if="selectedZone.zone.panelMissing"
               class="missing-tag"
               data-test="zone-panel-off"
               >PANEL OFF</span
             >
-            <HelpHint label="Body zones">
-              Bodywork and paint both read from the nine zones - work a zone's own pipeline to move
-              it. Metal is beaten or welded free of charge (it costs labour, never yen) on the six
-              metal zones; surface and finish need real materials, and the three trim zones (the
-              bumpers and the skirts) never carry metal at all. Past a certain state the metal is
-              beyond pulling back, and only a fresh panel will do.
-            </HelpHint>
           </div>
 
-          <!-- The one thing the player must be told before reading a row of
-               refused stages: this panel is not a repair job any more. -->
-          <p
-            v-if="selectedZone.needsPanelText"
-            class="blocked-reason"
-            :data-test="'zone-needs-panel-' + selectedZone.zoneId"
+          <!-- A3: the why, as icons - at most two words each, never a sentence. -->
+          <ul
+            v-if="selectedZone.whyChips.length > 0"
+            class="zone-why"
+            :data-test="'zone-why-' + selectedZone.zoneId"
           >
-            {{ selectedZone.needsPanelText }}
-          </p>
+            <li
+              v-for="(chip, index) in selectedZone.whyChips"
+              :key="index"
+              class="zone-why-chip"
+              :data-test="'zone-why-chip-' + selectedZone.zoneId + '-' + index"
+            >
+              <span
+                class="zone-why-icon"
+                :style="chip.hex ? { backgroundColor: chip.hex } : undefined"
+                aria-hidden="true"
+                >{{ chip.hex ? '' : chip.icon }}</span
+              >
+              {{ chip.label }}
+            </li>
+          </ul>
 
-          <div class="panel-actions">
+          <!-- A4: the single next action - one fixed icon-plus-word control,
+               the exact stage `zoneNextStep` names, or nothing once the zone
+               is already mint. -->
+          <div v-if="nextActionLabel" class="panel-actions">
             <button
-              v-for="stageView in zoneStageViews"
-              :key="stageView.stage"
               type="button"
               class="step-up loud"
-              :disabled="!stageView.plan"
-              :data-test="'pipeline-' + stageView.stage + '-' + selectedZone.zoneId"
-              @click="onGenericStageClick(selectedZone.zoneId, stageView.stage)"
+              :disabled="!nextActionPlan"
+              :data-test="'zone-next-action-' + selectedZone.zoneId"
+              @click="onNextActionClick"
             >
-              {{ stageView.label + pipelineCostText(stageView.plan) }}
+              {{ nextActionLabel + pipelineCostText(nextActionPlan) }}
             </button>
           </div>
 
@@ -1604,7 +1563,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                 :data-test="'pipeline-remove-panel-' + selectedZone.zoneId"
                 @click="onRemovePanelClick(selectedZone.zoneId)"
               >
-                Take it off{{ pipelineCostText(zoneRemovePanelPlan) }}
+                {{ REMOVE_PANEL_LABEL + pipelineCostText(zoneRemovePanelPlan) }}
               </button>
             </template>
             <template v-else>
@@ -1628,61 +1587,51 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             </template>
           </div>
 
+          <!-- E2: paint is picking a physical tin off the shelf, not a
+               colour palette that still needed a separate purchase. -->
           <div class="panel-actions paint-actions">
-            <!-- Colour is a small fixed set of tins, picked as a swatch. -->
             <span
               class="zone-sub factory-colour"
               :data-test="'factory-colour-' + selectedZone.zoneId"
             >
               Factory colour: {{ factoryColourCaption }}
             </span>
-            <span class="zone-sub">Colour</span>
-            <div v-for="family in PAINT_COLOUR_FAMILIES" :key="family.label" class="paint-family">
-              <span class="family-label">{{ family.label }}</span>
-              <div class="paint-swatch-row">
+            <button
+              v-if="canStripPrep"
+              type="button"
+              class="step-up loud"
+              :disabled="!stripPrepPlan"
+              :data-test="'pipeline-stripPrep-' + selectedZone.zoneId"
+              @click="onStripPrepClick"
+            >
+              {{ 'Prep' + pipelineCostText(stripPrepPlan) }}
+            </button>
+
+            <div v-for="group in ownedPaintTinGroups" :key="group.finish" class="paint-tin-group">
+              <span class="zone-sub">{{ group.label + group.costText }}</span>
+              <div class="paint-tin-row">
                 <button
-                  v-for="colour in family.colours"
-                  :key="colour.id"
+                  v-for="tin in group.tins"
+                  :key="tin.colourId"
                   type="button"
-                  class="paint-swatch"
-                  :class="{
-                    armed: paintColourByZone[selectedZone.zoneId] === colour.id,
-                    factory: isFactoryColour(colour.id),
-                  }"
-                  :style="{ backgroundColor: colour.hex }"
-                  :aria-pressed="paintColourByZone[selectedZone.zoneId] === colour.id"
-                  :aria-label="colour.name"
-                  :data-test="'paint-swatch-' + selectedZone.zoneId + '-' + colour.id"
-                  @click="paintColourByZone[selectedZone.zoneId] = colour.id"
+                  class="paint-tin"
+                  :disabled="!tin.plan"
+                  :style="{ backgroundColor: tin.hex }"
+                  :aria-label="tin.name"
+                  :data-test="
+                    'pipeline-paint-' + selectedZone.zoneId + '-' + tin.finish + '-' + tin.colourId
+                  "
+                  @click="onPaintTinClick(tin.colourId, tin.finish)"
                 ></button>
               </div>
             </div>
-            <span class="zone-sub" data-test="paint-colour-name">{{
-              armedColourName ?? 'no tin picked yet'
-            }}</span>
-
-            <span class="zone-sub">Finish</span>
-            <button
-              v-for="option in zoneGradeOptions"
-              :key="option.grade"
-              type="button"
-              class="step-up loud"
-              :class="{ armed: paintGradeByZone[selectedZone.zoneId] === option.grade }"
-              :disabled="!option.plan"
-              :data-test="'paint-grade-' + selectedZone.zoneId + '-' + option.grade"
-              @click="paintGradeByZone[selectedZone.zoneId] = option.grade"
+            <span
+              v-if="ownedPaintTinGroups.length === 0"
+              class="slot-empty"
+              data-test="no-paint-tins"
             >
-              {{ paintGradeButtonText(option) }}
-            </button>
-            <button
-              type="button"
-              class="step-up loud"
-              :disabled="!zonePaintPlan"
-              :data-test="'pipeline-paint-' + selectedZone.zoneId"
-              @click="onPaintClick(selectedZone.zoneId)"
-            >
-              {{ 'Paint' + pipelineCostText(zonePaintPlan) }}
-            </button>
+              No paint in stock - <RouterLink :to="{ name: 'parts' }">buy some</RouterLink>.
+            </span>
           </div>
         </template>
       </section>
@@ -1699,8 +1648,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         <h4>
           Machine hire
           <HelpHint label="Machine hire">
-            Pay a machine's fee once and it's yours without limit until End Day - every car, every
-            operation. It never shows up on a car's own bill; it's a running cost, same as rent.
+            Pay once, use it free till End Day - it never lands on one car's bill.
           </HelpHint>
         </h4>
         <ul class="machine-hire-list">
@@ -1785,23 +1733,35 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
       <details v-if="!detail.serviceJob" class="finances" data-test="finance-panel">
         <summary class="finances-summary" data-test="finance-summary">Finances</summary>
-        <p class="finances-intro">
-          What you paid, what you've sunk into it since, and what it's worth right now. Repairing or
-          installing a part updates this immediately.
+        <p class="finances-intro">What you paid, what you've spent since, what it's worth now.</p>
+
+        <h4 class="ledger-head">Worth now</h4>
+        <p class="worth-now-figure" data-test="worth-now">
+          {{ formatYen(detail.valueLedger.totalYen) }}
         </p>
-        <h4 class="ledger-head">
+
+        <dl v-if="workRow" class="finance-grid work-grid">
+          <div class="finance-row work-row" :data-test="'work-row-' + workRow.state">
+            <dt>{{ workRow.label }}</dt>
+            <dd>
+              <span v-if="workRow.figure" data-test="work-row-figure">{{ workRow.figure }}</span>
+              <span v-if="workRow.subText" class="work-subtext" data-test="work-row-subtext">{{
+                workRow.subText
+              }}</span>
+            </dd>
+          </div>
+        </dl>
+
+        <h5 class="ledger-head">
           The ledger
           <HelpHint label="The ledger">
-            Every price is the same short receipt: the book price, minus the work still outstanding
-            (buyers knock off one and a half times that bill, which is exactly the margin you earn
-            by doing the work yourself), minus polish it is missing, plus any upgrades that count.
-            On a listed car, the last line prices its doubts at the odds; prove the cause and your
-            own number replaces the doubt.
+            Book price, minus what's broken, plus real upgrades. Doubts price at the odds, till
+            proven.
           </HelpHint>
-        </h4>
+        </h5>
         <dl class="finance-grid ledger-grid">
           <div
-            v-for="line in detail.valueLedger.lines"
+            v-for="line in ledgerBreakdown"
             :key="line.id"
             class="finance-row"
             :data-test="'ledger-line-' + line.id"
@@ -1895,7 +1855,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             </button>
             <button
               data-test="reject-offer"
-              title="Turn this offer down. The car stays up for sale."
+              title="Declines it. Stays listed."
               @click="game.rejectOffer(detail.car.id)"
             >
               Reject
@@ -1959,9 +1919,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
           </ul>
         </div>
 
-        <p v-else class="empty">
-          No work in progress. Stage a repair or install and Confirm to start.
-        </p>
+        <p v-else class="empty">Nothing in progress.</p>
       </section>
     </template>
 
@@ -2354,29 +2312,79 @@ h4 {
   line-height: 1.2;
 }
 
-/* The docked zone's three layer severities, read out beside its name. */
-.zone-severity {
-  color: var(--mg-text-dim);
+/* A1: the whole-body verdict, a single quiet row beside the diagram. */
+.body-verdict {
+  display: flex;
+  gap: var(--mg-space-4);
+  margin: 0 0 var(--mg-space-2);
   font-size: var(--mg-fs-sm);
 }
 
-/* The quiet label in front of a zone control row, and the armed tin's name. */
+.body-verdict-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mg-space-1);
+  color: var(--mg-text-dim);
+}
+
+/* The quiet label in front of a zone control row. */
 .zone-sub {
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
 }
 
-/* Its own line above the swatch grid rather than wrapped in among the
+/* Its own line above the paint controls rather than wrapped in among the
    buttons, since it is a statement of fact rather than a control. */
 .factory-colour {
   flex-basis: 100%;
 }
 
-/* A paint chip. The tin's own colour is the button's face, so this fill is the
-   one legitimate literal colour on the screen - it is content data, not
-   palette, and it arrives inline from `PAINT_COLOURS`. Square, and it stays
-   down once armed. */
-.paint-swatch {
+/* A3: the why row - icon chips, at most two words each. */
+.zone-why {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mg-space-2);
+  margin: 0 0 var(--mg-space-2);
+  padding: 0;
+  list-style: none;
+}
+
+.zone-why-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mg-space-1);
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+}
+
+.zone-why-icon {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  text-align: center;
+  line-height: 12px;
+  font-size: 10px;
+}
+
+/* E2: one price-tagged row per finish tier, plain colour swatches beneath
+   it - the physical tin picker. */
+.paint-tin-group {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.paint-tin-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+
+/* The tin's own colour is the button's face, so this fill is the one
+   legitimate literal colour on the screen - it is content data, not
+   palette, and it arrives inline from `PAINT_COLOURS`. */
+.paint-tin {
   width: 22px;
   height: 22px;
   padding: 0;
@@ -2385,46 +2393,9 @@ h4 {
   cursor: pointer;
 }
 
-.paint-swatch.armed {
-  border-color: var(--mg-neon-cyan);
-  box-shadow: inset 0 0 0 2px var(--mg-night-deep);
-  transform: translateY(1px);
-}
-
-/* The one marker that makes a wrong colour mean anything: the swatch(es)
-   this car actually left the factory wearing, two for a genuine two-tone. */
-.paint-swatch.factory {
-  outline: 2px solid var(--mg-neon-violet);
-  outline-offset: 1px;
-}
-
-.paint-swatch:focus-visible {
+.paint-tin:focus-visible {
   outline: none;
   box-shadow: inset 0 0 0 2px var(--mg-neon-cyan);
-}
-
-/* The 34-colour palette read a family at a time, so the grid does not read as
-   one undifferentiated wall of chips. */
-.paint-family {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.family-label {
-  color: var(--mg-text-dim);
-  font-size: var(--mg-fs-sm);
-}
-
-.paint-swatch-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px;
-}
-
-.paint-actions .step-up.loud.armed {
-  color: var(--mg-neon-cyan);
-  border-color: var(--mg-neon-cyan);
 }
 
 .finances {
@@ -2446,6 +2417,34 @@ h4 {
 
 .ledger-head {
   margin: 0 0 var(--mg-space-1);
+}
+
+/* The headline figure: what the car is worth right now, read first. */
+.worth-now-figure {
+  margin: 0 0 var(--mg-space-2);
+  color: var(--mg-yen);
+  font-size: var(--mg-fs-lg);
+  font-weight: bold;
+}
+
+/* The forward-looking work row, ruled off beneath the headline so it reads
+   as the one thing the player can still do about the number above. */
+.work-grid {
+  margin-bottom: var(--mg-space-2);
+  padding-bottom: var(--mg-space-2);
+  border-bottom: var(--mg-border);
+}
+
+.work-row dd {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.work-row .work-subtext {
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-xs, 0.7rem);
 }
 
 /* The value ledger sits above the money-in rows, ruled off so the receipt
@@ -2752,43 +2751,6 @@ h4 {
 
 .chip.hired {
   color: var(--mg-yen);
-}
-
-.zone-condition-panel {
-  margin-top: var(--mg-space-3);
-  padding-top: var(--mg-space-3);
-  border-top: var(--mg-border);
-}
-
-.zone-condition-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  gap: var(--mg-space-1);
-}
-
-.zone-condition-row {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: var(--mg-space-2);
-  font-size: var(--mg-fs-sm);
-}
-
-.zone-condition-name {
-  flex: 0 0 auto;
-  min-width: 6em;
-  color: var(--mg-text-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  font-size: var(--mg-fs-xs);
-}
-
-.zone-condition-facts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--mg-space-1) var(--mg-space-3);
 }
 
 .empty {

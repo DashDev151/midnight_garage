@@ -4,6 +4,7 @@ import { fitmentClassForTier, resolveCarDisplayName } from '@midnight-garage/con
 import {
   apparentViewOf,
   beginInspectionVisit,
+  carCostToMintYen,
   computeAuctionGrade,
   inspectionVisitGateReason,
   playerEstimateYen,
@@ -99,6 +100,13 @@ function cardViewFor(
     symptoms: game.symptomChecklistForCar(lot.car, apparentCar, model),
     guideValueYen,
     ledger: roomLedgerFor(lot.car, model, state, game.context),
+    workBillYen: carCostToMintYen(
+      apparentCar,
+      model,
+      game.context.partsById,
+      game.context.partsTaxonomyById,
+      game.context.economy,
+    ),
   }
 }
 

@@ -13,11 +13,16 @@ export type WorkshopSelection =
 </script>
 
 <script setup lang="ts">
-import type { ComponentId, ConditionBand, ZoneState } from '@midnight-garage/content'
+import type { ComponentId, ConditionBand } from '@midnight-garage/content'
 import { ComponentIdSchema, titleCaseFromSlug } from '@midnight-garage/content'
+import {
+  bodyworkBindingZoneIds,
+  paintBindingZoneIds,
+  zoneConditionBand,
+} from '@midnight-garage/sim'
 import { computed, ref } from 'vue'
 import { useGameStore, type CarPartRowView } from '../stores/gameStore'
-import { zoneLayerReadings, zoneNeedsPanelTag, zoneSeverityText } from '../utils/zoneSeverity'
+import { zoneNeedsPanelTag } from '../utils/zoneSeverity'
 import BandChip from './BandChip.vue'
 import {
   WORKSHOP_VIEW_H,
@@ -88,25 +93,17 @@ const rowsById = computed(() => {
  */
 const zoneStates = computed(() => detail.value?.car.zoneState ?? null)
 
-// --- Zone severity ------------------------------------------------------
-
-interface LayerView {
-  id: string
-  tag: string
-  severity: number
-  /** One entry per step the layer can take, true where the damage reaches -
-   * severity is read as a COUNT of filled pips, never as colour alone. */
-  pips: boolean[]
-}
-
-function layersFor(zone: ZoneState): LayerView[] {
-  return zoneLayerReadings(zone).map((layer) => ({
-    id: layer.id,
-    tag: layer.tag,
-    severity: layer.severity,
-    pips: Array.from({ length: layer.max }, (_, index) => index < layer.severity),
-  }))
-}
+/**
+ * Which zones are why `bodywork` and/or `paint` read as bad as they do
+ * The worst-governs rule those two carriers already
+ * apply, just surfaced onto the zone(s) that actually set it. A set, since
+ * ties are real: two corners dented equally hard both bind the band.
+ */
+const bindingZoneIds = computed<ReadonlySet<ZoneId>>(() => {
+  const zones = zoneStates.value
+  if (!zones) return new Set()
+  return new Set([...bodyworkBindingZoneIds(zones), ...paintBindingZoneIds(zones)])
+})
 
 // --- The regions of the active view -------------------------------------
 
@@ -120,15 +117,17 @@ interface RegionView {
   testBase: string
   rects: readonly ViewRect[]
   name: string
-  /** Parts only; a zone carries layer severities instead of a band. */
+  /** `null` only for a zone on a car with no zone state at all - every real
+   * part and every real zone reads a band, in the same shared vocabulary. */
   band: ConditionBand | null
   showBand: boolean
   missing: boolean
   absent: boolean
   uncertain: boolean
   clickable: boolean
-  /** Zones only; empty for a part or a car with no zone state. */
-  layers: LayerView[]
+  /** Zones only; whether this zone is (one of) the reason `bodywork` or
+   * `paint` reads as bad as it does. */
+  binding: boolean
   /** Zones only; the chip naming a panel that is gone or past saving, `null`
    * when the zone's own pipeline can still do the work. */
   needsPanelTag: string | null
@@ -162,7 +161,7 @@ function partRegion(region: Extract<WorkshopRegion, { kind: 'part' }>): RegionVi
     // nothing here may un-click it; the disjoint region map keeps its
     // rectangle reachable, since no other region can cover it.
     clickable: true,
-    layers: [],
+    binding: false,
     needsPanelTag: null,
     inert: false,
     ariaLabel: `${name}: ${band ?? 'empty'}${notes.length > 0 ? `, ${notes.join(', ')}` : ''}`,
@@ -172,8 +171,12 @@ function partRegion(region: Extract<WorkshopRegion, { kind: 'part' }>): RegionVi
 function zoneRegion(region: Extract<WorkshopRegion, { kind: 'zone' }>): RegionView {
   const zone = zoneStates.value?.[region.zoneId] ?? null
   const name = titleCaseFromSlug(region.zoneId)
+  const band = zone ? zoneConditionBand(zone) : null
   const needsPanelTag = zone ? zoneNeedsPanelTag(zone) : null
-  const notes = [needsPanelTag].filter((note): note is string => note !== null)
+  const binding = zone !== null && bindingZoneIds.value.has(region.zoneId)
+  const notes = [needsPanelTag, binding ? 'binding' : null].filter(
+    (note): note is string => note !== null,
+  )
   return {
     kind: 'zone',
     slug: region.zoneId,
@@ -181,17 +184,17 @@ function zoneRegion(region: Extract<WorkshopRegion, { kind: 'zone' }>): RegionVi
     testBase: `workshop-region-zone-${region.zoneId}`,
     rects: region.rects,
     name,
-    band: null,
-    showBand: false,
+    band,
+    showBand: zone !== null,
     missing: false,
     absent: false,
     uncertain: false,
     clickable: zone !== null,
-    layers: zone ? layersFor(zone) : [],
+    binding,
     needsPanelTag,
     inert: zone === null,
     ariaLabel: zone
-      ? `${name}: ${zoneSeverityText(zone)}${notes.length > 0 ? `, ${notes.join(', ')}` : ''}`
+      ? `${name}: ${band}${notes.length > 0 ? `, ${notes.join(', ')}` : ''}`
       : `${name}: ${NO_ZONE_DATA_LABEL}`,
   }
 }
@@ -252,6 +255,7 @@ function regionClasses(region: RegionView): Record<string, boolean> {
     'wv-zone': region.kind === 'zone',
     'wv-missing': region.missing,
     'wv-absent': region.absent,
+    'wv-binding': region.binding,
   }
 }
 
@@ -308,32 +312,13 @@ function onSelect(region: RegionView): void {
           <span v-if="region.uncertain" class="wv-uncertain">?</span>
           <span v-if="region.missing" class="wv-tag wv-tag-alert">{{ MISSING_LABEL }}</span>
           <span v-else-if="region.absent" class="wv-tag">{{ ABSENT_LABEL }}</span>
-        </template>
-
-        <template v-else>
-          <span v-if="region.inert" class="wv-tag">{{ NO_ZONE_DATA_LABEL }}</span>
-          <span v-else class="wv-layers" :data-test="'workshop-zone-layers-' + region.slug">
-            <!-- Severity reads as a COUNT of filled pips first (0 = none
-                 filled = nothing wrong) with colour as a second channel, so
-                 it survives being read without colour. -->
-            <span
-              v-for="layer in region.layers"
-              :key="layer.id"
-              class="wv-layer"
-              :class="'wv-sev-' + layer.severity"
-            >
-              <span class="wv-layer-tag">{{ layer.tag }}</span>
-              <span
-                v-for="(filled, pipIndex) in layer.pips"
-                :key="pipIndex"
-                class="wv-pip"
-                :class="{ 'wv-pip-on': filled }"
-              ></span>
-            </span>
-          </span>
           <span v-if="region.needsPanelTag" class="wv-tag wv-tag-alert">{{
             region.needsPanelTag
           }}</span>
+        </template>
+
+        <template v-else>
+          <span class="wv-tag">{{ NO_ZONE_DATA_LABEL }}</span>
         </template>
       </button>
     </div>
@@ -471,6 +456,13 @@ function onSelect(region: RegionView): void {
   border-color: var(--mg-danger);
 }
 
+/* The zone(s) actually dragging `bodywork` or `paint` down - a visible ring,
+   never a text label, so the diagram stays a picture rather than growing a
+   caption. */
+.wv-binding {
+  box-shadow: inset 0 0 0 2px var(--mg-danger);
+}
+
 /* Legitimately empty (the NA car's turbo slot): still a real click target,
    just nothing to shout about. */
 .wv-absent .wv-name {
@@ -498,54 +490,5 @@ function onSelect(region: RegionView): void {
   color: var(--mg-yen);
   font-weight: bold;
   pointer-events: none;
-}
-
-/* Zone severity: one track per layer, each a letter and a row of pips. */
-.wv-layers {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 4px;
-  pointer-events: none;
-}
-
-.wv-layer {
-  display: inline-flex;
-  align-items: center;
-  gap: 1px;
-  color: var(--mg-sev, var(--mg-text-dim));
-}
-
-.wv-layer-tag {
-  font-size: 0.5rem;
-}
-
-/* A pip is a square: outlined while clear, solid once the damage reaches it.
-   Fill count carries the reading; the colour below only reinforces it. */
-.wv-pip {
-  display: inline-block;
-  width: 4px;
-  height: 4px;
-  border: 1px solid currentcolor;
-}
-
-.wv-pip-on {
-  background: currentcolor;
-}
-
-.wv-sev-0 {
-  --mg-sev: var(--mg-success);
-}
-
-.wv-sev-1 {
-  --mg-sev: var(--mg-neon-cyan);
-}
-
-.wv-sev-2 {
-  --mg-sev: var(--mg-yen);
-}
-
-.wv-sev-3 {
-  --mg-sev: var(--mg-neon-pink);
 }
 </style>

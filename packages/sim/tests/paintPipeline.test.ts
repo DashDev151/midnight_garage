@@ -68,11 +68,12 @@ describe('planPaintStage: each grade charges its own tin', () => {
     expect(race.ok && race.materialsCostYen).toBe(4150)
   })
 
-  it('leaves labour at one unit regardless of grade', () => {
+  it('never varies the zone effect by grade beyond the tin (labour is a flat content figure per stage, not part of the plan)', () => {
     for (const grade of ['stock', 'street', 'sport', 'race'] as const) {
       const colour = grade === 'stock' ? 'white' : 'kaido-blue'
       const plan = planPaintStage(primedZone(), colour, UNLOCKED, grade, 'white')
-      expect(plan.ok && plan.laborUnits, grade).toBe(1)
+      expect(plan.ok, grade).toBe(true)
+      expect(plan.ok && 'laborUnits' in plan, grade).toBe(false)
     }
   })
 })

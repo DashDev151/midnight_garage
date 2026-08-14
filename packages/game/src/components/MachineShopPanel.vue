@@ -112,9 +112,7 @@ function onMachineClick(operationId: string): void {
       <h4>
         Machine shop
         <HelpHint label="Machine shop">
-          Repairing a part puts it back the way it was. Buying one replaces it with something else.
-          This takes metal off the part you already have, and the part stays the car's own. It costs
-          no money once the tooling is bought, it costs labour, and every cut is permanent.
+          Cuts metal off a part you own. No cash once it's tooled - just labour, and it's permanent.
         </HelpHint>
       </h4>
     </header>

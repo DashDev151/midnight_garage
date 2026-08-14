@@ -10,7 +10,6 @@ import {
   type StagedAction,
   type ZoneId,
 } from '@midnight-garage/content'
-import { repairLevelForGroup } from './bands'
 import {
   applyDerivedBodyBands,
   bandForSeverity,
@@ -225,9 +224,7 @@ export function resolvePipelineStageAction(
       laborSlotsUsed: 0,
     }
   }
-  const repairLevel = repairLevelForGroup(toolLevelsFor(state, context), 'body')
-  const laborSlotsRequired =
-    plan.laborUnits * context.economy.energy.energyPerBandStepByToolTier[repairLevel]
+  const laborSlotsRequired = context.economy.energy.bodyStagePoints[action.stage]
   return chargeAndApplyPipelineEffect(
     state,
     carInstanceId,
@@ -302,9 +299,7 @@ export function resolvePipelinePaintAction(
       laborSlotsUsed: 0,
     }
   }
-  const repairLevel = repairLevelForGroup(toolLevelsFor(state, context), 'body')
-  const laborSlotsRequired =
-    plan.laborUnits * context.economy.energy.energyPerBandStepByToolTier[repairLevel]
+  const laborSlotsRequired = context.economy.energy.bodyStagePoints.paint
 
   const installed = car.parts.paint.installed
   const catalogPart = paintCatalogPartForGrade(

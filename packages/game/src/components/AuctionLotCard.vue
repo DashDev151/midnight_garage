@@ -12,6 +12,7 @@ export type AuctionLotCardView = Pick<
   | 'symptoms'
   | 'guideValueYen'
   | 'ledger'
+  | 'workBillYen'
 >
 </script>
 
@@ -20,7 +21,12 @@ import { partFitmentClassLabel } from '@midnight-garage/content'
 import type { ValueLedgerLineId } from '@midnight-garage/sim'
 import { computed } from 'vue'
 import { formatYen } from '../utils/formatYen'
-import { LEDGER_LINE_LABELS, formatLedgerLineYen } from '../utils/ledgerLabels'
+import {
+  LEDGER_LINE_LABELS,
+  formatLedgerLineYen,
+  ledgerBreakdownLines,
+  workRowFor,
+} from '../utils/ledgerLabels'
 import { colourTokenDisplayName } from '../utils/paintFamilies'
 import GradeStamp from './GradeStamp.vue'
 import HelpHint from './HelpHint.vue'
@@ -109,6 +115,15 @@ function ledgerLabelFor(lineId: ValueLedgerLineId): string {
   if (lineId === 'fear' && doubtsResolved.value) return 'Doubt, resolved'
   return LEDGER_LINE_LABELS[lineId]
 }
+
+/** The ledger's forward-looking work row: what fixing this car up adds,
+ * priced against the bill to mint (`workRowFor`, both figures the sim's
+ * own). */
+const workRow = computed(() => workRowFor(props.d.ledger, props.d.workBillYen))
+
+/** The room's receipt, minus 'wear' - the work row above already reads
+ * that line forward. */
+const ledgerBreakdown = computed(() => ledgerBreakdownLines(props.d.ledger))
 
 /** The car's factory colour, named plainly - no iconic-alias lookup here (the
  * meta line has no model uid to match against), just the palette name(s). */
@@ -209,16 +224,24 @@ const TURNOUT_LABEL: Record<string, string> = {
             }}</span>
           </template>
           <HelpHint label="The ledger">
-            Every price is the same short receipt: the book price, minus the work still outstanding
-            (buyers knock off one and a half times that bill, which is exactly the margin you earn
-            by doing the work yourself), minus polish it is missing, plus any upgrades that count.
-            On a listed car, the last line prices its doubts at the odds; prove the cause and your
-            own number replaces the doubt.
+            Book price, minus what's broken, plus real upgrades. Doubts price at the odds, till
+            proven.
           </HelpHint>
         </p>
+
+        <p class="work-row" :data-test="'work-row-' + workRow.state">
+          <span class="work-label">{{ workRow.label }}</span>
+          <span v-if="workRow.figure" class="work-figure" data-test="work-row-figure">{{
+            workRow.figure
+          }}</span>
+          <span v-if="workRow.subText" class="work-subtext" data-test="work-row-subtext">{{
+            workRow.subText
+          }}</span>
+        </p>
+
         <ul class="ledger">
           <li
-            v-for="line in d.ledger.lines"
+            v-for="line in ledgerBreakdown"
             :key="line.id"
             class="ledger-line"
             :data-test="'ledger-line-' + line.id"
@@ -359,6 +382,31 @@ const TURNOUT_LABEL: Record<string, string> = {
 .room-says .down {
   color: var(--mg-danger);
   margin-left: 0.35em;
+}
+
+/* The forward-looking work row, between the room's number and the
+   breakdown that explains it: what fixing this car up adds. */
+.work-row {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: var(--mg-fs-sm);
+}
+
+.work-label {
+  color: var(--mg-text);
+}
+
+.work-figure {
+  color: var(--mg-yen);
+  font-weight: bold;
+  margin-left: 0.35em;
+}
+
+.work-subtext {
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-xs, 0.7rem);
 }
 
 /* The compact receipt under the room's number: one small line per entry, label

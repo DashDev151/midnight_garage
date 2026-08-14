@@ -989,6 +989,15 @@
       "bolt-on": 3,
       "buried": 6
     },
+    "bodyStagePoints": {
+      "stripPrep": 1,
+      "beat": 3,
+      "weld": 6,
+      "fillAndSand": 2,
+      "prime": 1,
+      "paint": 2,
+      "polish": 1
+    },
     "actionPoints": {
       "removePart": 2,
       "removeAssembly": 0,

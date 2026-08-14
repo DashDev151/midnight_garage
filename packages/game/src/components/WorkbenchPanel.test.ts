@@ -3,7 +3,7 @@ import { makeMarketOrigin } from '@midnight-garage/sim'
 import { mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { clearDragSession } from '../composables/useDragAndDrop'
+import { clearDragSession, useDraggable } from '../composables/useDragAndDrop'
 import { useGameStore } from '../stores/gameStore'
 import { benchIdleReason } from '../screens/workshopFloor'
 import WorkbenchPanel from './WorkbenchPanel.vue'
@@ -26,6 +26,26 @@ function mountPanel() {
   })
   mountedWrappers.push(wrapper)
   return wrapper
+}
+
+/** A pointer event carrying just enough for `useDraggable` to track a drag -
+ * mirrors the same minimal stub `useDragAndDrop.test.ts` and
+ * `GarageScreen.test.ts` use for the identical composable. */
+function pointerEvent(overrides: Partial<PointerEvent> = {}): PointerEvent {
+  const event = new Event('pointer') as unknown as {
+    pointerId: number
+    clientX: number
+    clientY: number
+    pointerType: string
+    button: number
+  }
+  event.pointerId = 1
+  event.clientX = 0
+  event.clientY = 0
+  event.pointerType = 'mouse'
+  event.button = 0
+  Object.assign(event, overrides)
+  return event as unknown as PointerEvent
 }
 
 type Store = ReturnType<typeof useGameStore>
@@ -67,17 +87,46 @@ describe('WorkbenchPanel', () => {
     expect(wrapper.find('[data-test="workshop-floor-part"]').exists()).toBe(false)
   })
 
-  it('offers a warehouse part to carry over, and puts the picked one on the bench', async () => {
+  it('dragging a warehouse part onto the tray places it on the bench', async () => {
     const game = useGameStore()
     game.newGame(1)
     const partInstanceId = loosePart(game, DAMPER_PART.id, 'worn', false)
-
     const wrapper = mountPanel()
-    await wrapper.find(`[data-test="station-place-workbench-${partInstanceId}"]`).trigger('click')
+
+    const draggable = useDraggable(() => partInstanceId)
+    draggable.onPointerDown(pointerEvent())
+    draggable.onPointerMove(pointerEvent({ clientX: 40 }))
+    await wrapper
+      .find('[data-test="station-tray-workbench"]')
+      .trigger('pointerup', { pointerId: 1 })
     await wrapper.vm.$nextTick()
 
     expect(game.gameState.workbenchPartId).toBe(partInstanceId)
     expect(wrapper.find('[data-test="workshop-floor-part"]').exists()).toBe(true)
+  })
+
+  it('picking a warehouse part and clicking "Place here" puts it on the bench (accessibility fallback)', async () => {
+    const game = useGameStore()
+    game.newGame(1)
+    const partInstanceId = loosePart(game, DAMPER_PART.id, 'worn', false)
+    const wrapper = mountPanel()
+
+    useDraggable(() => partInstanceId).togglePick()
+    await wrapper.vm.$nextTick()
+    await wrapper.find('[data-test="station-place-workbench"]').trigger('click')
+    await wrapper.vm.$nextTick()
+
+    expect(game.gameState.workbenchPartId).toBe(partInstanceId)
+    expect(wrapper.find('[data-test="workshop-floor-part"]').exists()).toBe(true)
+  })
+
+  it('the tray shows no duplicate parts list - the inventory tab is the only list', () => {
+    const game = useGameStore()
+    game.newGame(1)
+    loosePart(game, DAMPER_PART.id, 'worn', false)
+    const wrapper = mountPanel()
+    expect(wrapper.find('.candidates').exists()).toBe(false)
+    expect(wrapper.findAll('li.candidate')).toHaveLength(0)
   })
 
   it('carries the part back to the warehouse, leaving it owned and the bench clear', async () => {
@@ -94,16 +143,22 @@ describe('WorkbenchPanel', () => {
     expect(wrapper.find('[data-test="workshop-floor-part"]').exists()).toBe(false)
   })
 
-  it('does not offer a part already on the machine - it has to come back first', () => {
+  it('does not accept a part already on the machine - it has to come back first', async () => {
     const game = useGameStore()
     game.newGame(1)
     const partInstanceId = loosePart(game, DAMPER_PART.id, 'worn', false)
     game.gameState = { ...game.gameState, machinePartId: partInstanceId }
 
     const wrapper = mountPanel()
-    expect(wrapper.find(`[data-test="station-place-workbench-${partInstanceId}"]`).exists()).toBe(
-      false,
-    )
+    const draggable = useDraggable(() => partInstanceId)
+    draggable.onPointerDown(pointerEvent())
+    draggable.onPointerMove(pointerEvent({ clientX: 40 }))
+    await wrapper
+      .find('[data-test="station-tray-workbench"]')
+      .trigger('pointerup', { pointerId: 1 })
+    await wrapper.vm.$nextTick()
+
+    expect(game.gameState.workbenchPartId).toBeNull()
   })
 
   /** The rung is click-per-band, priced and laboured off the real quote, and
@@ -123,6 +178,19 @@ describe('WorkbenchPanel', () => {
     expect(game.gameState.partInventory.find((p) => p.id === partInstanceId)!.band).toBe('fine')
   })
 
+  /** The control is a fixture: fixed short label, target band as a
+   * separate chip beside it - never a composed sentence, never gone. */
+  it('the repair control is a fixed short label with the target band as a separate chip', () => {
+    const game = useGameStore()
+    game.newGame(1)
+    loosePart(game, DAMPER_PART.id, 'poor', true)
+    game.devSetToolTier('suspension', 2)
+
+    const wrapper = mountPanel()
+    expect(wrapper.find('[data-test="workshop-floor-repair"]').text()).toBe('Repair')
+    expect(wrapper.find('[data-test="workshop-floor-target-band"]').text()).toBe('worn')
+  })
+
   it("disables the rung once today's labour is spent", () => {
     const game = useGameStore()
     game.newGame(1)
@@ -135,13 +203,21 @@ describe('WorkbenchPanel', () => {
     expect(button.attributes('title')).toContain('No labour left today')
   })
 
+  /**
+   * The design law: the repair control never disappears or gets swapped for
+   * different UI when there is nothing to do - it stays in place, keeps its
+   * "Repair" label, and disables with the reason instead.
+   */
   it("names the machine that reaches mint once the shop's own tools finish at fine", () => {
     const game = useGameStore()
     game.newGame(1) // nothing upgraded, so suspension repairs cap at fine
     loosePart(game, DAMPER_PART.id, 'fine', true)
 
     const wrapper = mountPanel()
-    expect(wrapper.find('[data-test="workshop-floor-repair"]').exists()).toBe(false)
+    const button = wrapper.find('[data-test="workshop-floor-repair"]')
+    expect(button.text()).toBe('Repair')
+    expect(button.attributes('disabled')).toBeDefined()
+    expect(button.attributes('title')).toContain('reaches mint')
     expect(wrapper.find('[data-test="workshop-floor-ceiling"]').text()).toContain('reaches mint')
   })
 
@@ -151,13 +227,18 @@ describe('WorkbenchPanel', () => {
     loosePart(game, DAMPER_PART.id, 'mint', true)
 
     const mint = mountPanel()
-    expect(mint.find('[data-test="workshop-floor-repair"]').exists()).toBe(false)
+    const mintButton = mint.find('[data-test="workshop-floor-repair"]')
+    expect(mintButton.text()).toBe('Repair')
+    expect(mintButton.attributes('disabled')).toBeDefined()
+    expect(mintButton.attributes('title')).toContain('Nothing left to put')
     expect(mint.find('[data-test="workshop-floor-idle"]').text()).toContain('Nothing left to put')
 
     const tyreId = loosePart(game, TYRE_PART.id, 'worn', false)
     game.gameState = { ...game.gameState, workbenchPartId: tyreId }
     const tyres = mountPanel()
-    expect(tyres.find('[data-test="workshop-floor-repair"]').exists()).toBe(false)
+    const tyresButton = tyres.find('[data-test="workshop-floor-repair"]')
+    expect(tyresButton.text()).toBe('Repair')
+    expect(tyresButton.attributes('disabled')).toBeDefined()
     expect(tyres.find('[data-test="workshop-floor-idle"]').text()).toContain(
       'replaced, not repaired',
     )

@@ -2771,6 +2771,24 @@ export const EconomyConfigSchema = z.object({
       'bolt-on': z.number().int().nonnegative(),
       buried: z.number().int().nonnegative(),
     }),
+    /**
+     * Flat labour points each of the seven body-pipeline stages costs
+     * (`bodyPipeline.ts`'s `PipelineStageId`), read by `pipelineActions.ts`
+     * directly off `stage` - unlike every other repair, a body stage's speed
+     * does not scale with `energyPerBandStepByToolTier`. The tool tier's
+     * remaining advantage on the body line is the finish/polish quality
+     * ceiling (`planSharedPipelineStage`'s `polish` floor) and hire economics
+     * (the machine-less multiplier and the hire fee) - never speed.
+     */
+    bodyStagePoints: z.object({
+      stripPrep: z.number().int().positive(),
+      beat: z.number().int().positive(),
+      weld: z.number().int().positive(),
+      fillAndSand: z.number().int().positive(),
+      prime: z.number().int().positive(),
+      paint: z.number().int().positive(),
+      polish: z.number().int().positive(),
+    }),
     /** Every physical player action's labour figure, in energy points, in one
      * map - the sim reads each action's cost from here and nowhere else. Zero
      * means the action is free today; any key raised above zero makes that

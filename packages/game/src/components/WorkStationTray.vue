@@ -2,16 +2,18 @@
 import type { WorkStation } from '@midnight-garage/sim'
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
+import { useDropZone } from '../composables/useDragAndDrop'
 import { useGameStore } from '../stores/gameStore'
 import { WORK_STATION_WHERE } from '../utils/workStationLabels'
-import BandChip from './BandChip.vue'
 
 /**
- * How a part gets to a work station and back off it: the warehouse picker
- * while the station is clear, the carry-it-back control while it holds
- * something. What the room then DOES to the part is the room's own business
- * and never appears here, so the workshop floor and the machine shop share one
- * fetch-and-return control instead of growing two.
+ * How a part gets to a work station and back off it: drag it here from the
+ * parts inventory tab (or pick it there and click "Place here"), and the
+ * carry-it-back control while the station holds something. What the room
+ * then DOES to the part is the room's own business and never appears here,
+ * so the workshop floor and the machine shop share one drop zone instead of
+ * growing two. The inventory tab is the one list of owned parts in the
+ * game - this tray never repeats it.
  *
  * Carrying is free and instant either way - the cost is the walk.
  */
@@ -23,13 +25,25 @@ const where = computed(() => WORK_STATION_WHERE[props.station])
 
 const held = computed(() => game.stationPart(props.station))
 
-/** Every warehouse part that can be carried over right now, read from the
- * store's own gate rather than a second eligibility rule here. */
-const candidates = computed(() => game.partsForStation(props.station))
+/** Accepts whatever the station's own gate already accepts (`partsForStation`
+ * reads the sim's `placeOnStationGateReason`), so the drop zone and the gate
+ * can never disagree. */
+const dropZone = useDropZone<string>(
+  (partInstanceId) =>
+    game.partsForStation(props.station).some((entry) => entry.instance.id === partInstanceId),
+  (partInstanceId) => game.placeOnStation(props.station, partInstanceId),
+)
 </script>
 
 <template>
-  <section class="tray" :data-test="'station-tray-' + station">
+  <section
+    class="tray"
+    :class="{ 'active-target': dropZone.isActiveTarget.value }"
+    :data-test="'station-tray-' + station"
+    @pointerup="dropZone.onPointerUp"
+    @pointerenter="dropZone.onPointerEnter"
+    @pointerleave="dropZone.onPointerLeave"
+  >
     <template v-if="held">
       <button
         type="button"
@@ -43,34 +57,18 @@ const candidates = computed(() => game.partsForStation(props.station))
 
     <template v-else>
       <p class="empty" :data-test="'station-empty-' + station">
-        Nothing {{ where }}. Anything in the warehouse can be carried over.
+        Nothing {{ where }}. Drag a part here, or pick one from the
+        <RouterLink :to="{ name: 'parts' }">parts inventory</RouterLink>.
       </p>
-      <ul v-if="candidates.length > 0" class="candidates">
-        <li
-          v-for="entry in candidates"
-          :key="entry.instance.id"
-          class="candidate"
-          :data-test="'station-candidate-' + station + '-' + entry.instance.id"
-        >
-          <span class="candidate-name">
-            {{ game.carPartLabel(entry.part.carPartId) }}: {{ entry.part.brand }}
-            {{ entry.part.name }}
-            <BandChip :band="entry.instance.band" />
-          </span>
-          <button
-            type="button"
-            class="tray-btn"
-            :data-test="'station-place-' + station + '-' + entry.instance.id"
-            @click="game.placeOnStation(station, entry.instance.id)"
-          >
-            Put it {{ where }}
-          </button>
-        </li>
-      </ul>
-      <p v-else class="empty" :data-test="'station-warehouse-empty-' + station">
-        Nothing in the warehouse to carry over - the
-        <RouterLink :to="{ name: 'parts' }">parts market</RouterLink> sells them.
-      </p>
+      <button
+        v-if="dropZone.isActiveTarget.value"
+        type="button"
+        class="tray-btn place-here"
+        :data-test="'station-place-' + station"
+        @click="dropZone.onClick"
+      >
+        Place here
+      </button>
     </template>
   </section>
 </template>
@@ -82,6 +80,18 @@ const candidates = computed(() => game.partsForStation(props.station))
   border-radius: var(--mg-radius);
   padding: var(--mg-space-3);
   margin-bottom: var(--mg-space-3);
+  transition:
+    border-color 0.12s ease,
+    background-color 0.12s ease;
+  touch-action: none;
+}
+
+/* Live-drag hover or a valid pick target - the same cyan-tint highlight
+   ShopSlot uses for a car drop, so "this accepts what I'm carrying" reads
+   the same vocabulary everywhere in the garage. */
+.tray.active-target {
+  border-color: var(--mg-neon-cyan);
+  background: rgba(47, 214, 191, 0.12);
 }
 
 .empty {
@@ -90,30 +100,8 @@ const candidates = computed(() => game.partsForStation(props.station))
   font-size: var(--mg-fs-sm);
 }
 
-.candidates {
-  list-style: none;
-  margin: var(--mg-space-2) 0 0;
-  padding: 0;
-  display: grid;
-  gap: var(--mg-space-1);
-}
-
-.candidate {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--mg-space-2);
-  border-top: var(--mg-border);
-  padding-top: var(--mg-space-1);
-}
-
-.candidate-name {
-  display: flex;
-  align-items: center;
-  gap: var(--mg-space-1);
-  color: var(--mg-text-dim);
-  font-size: var(--mg-fs-sm);
-  text-transform: capitalize;
+.empty a {
+  color: var(--mg-neon-violet);
 }
 
 .tray-btn {
@@ -126,5 +114,10 @@ const candidates = computed(() => game.partsForStation(props.station))
   font-size: var(--mg-fs-sm);
   padding: var(--mg-space-1) var(--mg-space-2);
   cursor: pointer;
+}
+
+.place-here {
+  margin-top: var(--mg-space-2);
+  border-color: var(--mg-neon-cyan);
 }
 </style>

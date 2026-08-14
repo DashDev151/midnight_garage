@@ -200,7 +200,7 @@ describe('WorkshopViews', () => {
     expect(wrapper.findAll('.wv-region')).toHaveLength(rectCount('underside'))
   })
 
-  it('reads a zone as three layer severities, as pip counts rather than colour alone', () => {
+  it('reads a zone off its own condition band, in the same vocabulary a part carries', () => {
     const { game, carId } = grantCar()
     const car = game.gameState.ownedCars.find((c) => c.id === carId)!
     car.zoneState = {
@@ -209,15 +209,12 @@ describe('WorkshopViews', () => {
     }
     const wrapper = mountFor(carId)
 
-    const layers = wrapper.get('[data-test="workshop-zone-layers-bonnet"]')
-    // metal 2 of 4, surface 1 of 2, finish 3 of 3 - nine pips, six filled.
-    expect(layers.findAll('.wv-pip')).toHaveLength(9)
-    expect(layers.findAll('.wv-pip-on')).toHaveLength(6)
-
     const region = wrapper.get('[data-test="workshop-region-zone-bonnet"]')
-    expect(region.attributes('aria-label')).toBe(
-      'Bonnet: metal 2 of 4, surface 1 of 2, finish 3 of 3, panel off',
-    )
+    // A missing panel reads `scrap` outright - there is no severity to grade
+    // on nothing, whatever the stale metal/surface fields still say.
+    expect(region.get('.band-chip').text()).toBe('scrap')
+    // A missing panel is also always why `bodywork` reads `scrap` - it binds.
+    expect(region.attributes('aria-label')).toBe('Bonnet: scrap, panel off, binding')
     expect(region.text()).toContain('panel off')
   })
 
@@ -233,11 +230,10 @@ describe('WorkshopViews', () => {
     const wrapper = mountFor(carId)
 
     const region = wrapper.get('[data-test="workshop-region-zone-bonnet"]')
+    expect(region.get('.band-chip').text()).toBe('scrap')
     expect(region.text()).toContain('past saving')
     expect(region.text()).not.toContain('panel off')
-    expect(region.attributes('aria-label')).toBe(
-      'Bonnet: metal 4 of 4, surface 1 of 2, finish 3 of 3, past saving',
-    )
+    expect(region.attributes('aria-label')).toBe('Bonnet: scrap, past saving, binding')
   })
 
   it('renders zone regions inert when the car has no zone state, and clicking one emits nothing', async () => {
@@ -249,7 +245,7 @@ describe('WorkshopViews', () => {
     const bonnet = wrapper.get('[data-test="workshop-region-zone-bonnet"]')
     expect(bonnet.attributes('disabled')).toBeDefined()
     expect(bonnet.text()).toContain('no readings')
-    expect(bonnet.findAll('.wv-pip')).toHaveLength(0)
+    expect(bonnet.findAll('.band-chip')).toHaveLength(0)
     await bonnet.trigger('click')
     expect(wrapper.emitted('select')).toBeUndefined()
 
@@ -258,6 +254,33 @@ describe('WorkshopViews', () => {
     expect(seats.attributes('disabled')).toBeUndefined()
     await seats.trigger('click')
     expect(wrapper.emitted('select')?.[0]).toEqual([{ kind: 'part', partId: 'seats' }])
+  })
+
+  it('marks the zone(s) binding the derived bodywork/paint bands, and no others', () => {
+    const { game, carId } = grantCar()
+    const car = game.gameState.ownedCars.find((c) => c.id === carId)!
+    car.zoneState = {
+      // `finish: 1` too, so bonnet is unambiguously the worst zone on BOTH
+      // carriers - otherwise every zone ties for the worst (mint) finish and
+      // the test could not tell "marked" from "everything ties".
+      bonnet: { metal: 2, surface: 0, finish: 1, panelMissing: false, primed: false },
+      boot: { metal: 0, surface: 0, finish: 0, panelMissing: false, primed: false },
+      'left-front': { metal: 0, surface: 0, finish: 0, panelMissing: false, primed: false },
+      'left-rear': { metal: 0, surface: 0, finish: 0, panelMissing: false, primed: false },
+      'right-front': { metal: 0, surface: 0, finish: 0, panelMissing: false, primed: false },
+      'right-rear': { metal: 0, surface: 0, finish: 0, panelMissing: false, primed: false },
+      'front-bumper': { finish: 0, panelMissing: false, primed: false },
+      'rear-bumper': { finish: 0, panelMissing: false, primed: false },
+      skirts: { finish: 0, panelMissing: false, primed: false },
+    }
+    const wrapper = mountFor(carId)
+
+    expect(wrapper.get('[data-test="workshop-region-zone-bonnet"]').classes()).toContain(
+      'wv-binding',
+    )
+    expect(wrapper.get('[data-test="workshop-region-zone-boot"]').classes()).not.toContain(
+      'wv-binding',
+    )
   })
 
   it('keeps a removed part clickable - an empty slot is a work target, not a dead region', async () => {

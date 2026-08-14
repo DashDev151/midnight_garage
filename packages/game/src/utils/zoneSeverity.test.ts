@@ -1,13 +1,7 @@
 import { type ZoneState, type ZoneStates } from '@midnight-garage/content'
 import { ALL_ZONE_IDS, PANEL_ZONE_IDS } from '@midnight-garage/sim'
 import { describe, expect, it } from 'vitest'
-import {
-  finishConditionText,
-  metalConditionText,
-  paintStateText,
-  surfaceConditionText,
-  unpaintedPanelsText,
-} from './zoneSeverity'
+import { unpaintedPanelsText, zoneWhyChips } from './zoneSeverity'
 
 /**
  * The line a car in bare panels carries. Fitting a body kit strips every panel
@@ -64,50 +58,48 @@ describe('unpaintedPanelsText', () => {
 })
 
 /**
- * The car screen's per-zone condition panel reads these four functions
- * directly - plain words only, never a raw severity number or a part
- * condition band (poor/worn/fine/mint mean something different on a zone).
+ * The car screen's per-zone "why" row reads this
+ * directly - icons and at most two words each, never a raw severity number
+ * or a sentence.
  */
-describe('the plain-word zone condition readouts', () => {
-  it('metalConditionText walks the ladder from straight to needing a fresh panel, and is null on a trim zone', () => {
-    expect(metalConditionText(zone({ metal: 0 }))).toBe('straight')
-    expect(metalConditionText(zone({ metal: 4 }))).toBe(
-      'beyond straightening - needs a fresh panel',
+describe('zoneWhyChips', () => {
+  it('reads a missing panel as the whole story, on its own', () => {
+    expect(zoneWhyChips(zone({ panelMissing: true, metal: 2, colour: 'red' }))).toEqual([
+      { icon: '×', label: 'panel off' },
+    ])
+  })
+
+  it('carries a dent chip and a rot chip together on a metal zone, and neither on a trim zone', () => {
+    const dented = zone({ metal: 2, surface: 1 })
+    expect(zoneWhyChips(dented)).toEqual(
+      expect.arrayContaining([
+        { icon: '◢', label: 'dent' },
+        { icon: '≈', label: 'rot' },
+      ]),
     )
-    const trim: ZoneState = { finish: 0, panelMissing: false, primed: false }
-    expect(metalConditionText(trim)).toBeNull()
+    const trim: ZoneState = { finish: 2, panelMissing: false, primed: false }
+    expect(zoneWhyChips(trim).map((c) => c.label)).not.toContain('dent')
+    expect(zoneWhyChips(trim).map((c) => c.label)).not.toContain('rot')
   })
 
-  it('surfaceConditionText walks clean to rusted through, and is null on a trim zone', () => {
-    expect(surfaceConditionText(zone({ surface: 0 }))).toBe('clean')
-    expect(surfaceConditionText(zone({ surface: 2 }))).toBe('rusted through')
-    const trim: ZoneState = { finish: 0, panelMissing: false, primed: false }
-    expect(surfaceConditionText(trim)).toBeNull()
+  it('reads the finish state as exactly one of bare metal, primed or a colour swatch', () => {
+    expect(zoneWhyChips(zone({ finish: 3 }))).toEqual([{ icon: '▭', label: 'bare metal' }])
+    expect(zoneWhyChips(zone({ primed: true }))).toEqual([{ icon: '▤', label: 'primed' }])
+    const painted = zoneWhyChips(zone({ colour: 'white' }))
+    expect(painted).toHaveLength(1)
+    expect(painted[0]!.label).toBe('Plain White')
+    expect(painted[0]!.hex).toMatch(/^#[0-9a-f]{6}$/)
   })
 
-  it('finishConditionText walks flawless to bare metal, on every zone shape', () => {
-    expect(finishConditionText(zone({ finish: 0 }))).toBe('flawless')
-    expect(finishConditionText(zone({ finish: 3 }))).toBe('bare metal, no finish left')
-    const trim: ZoneState = { finish: 1, panelMissing: false, primed: false }
-    expect(finishConditionText(trim)).toBe('faded')
-  })
-
-  it('paintStateText reads panel-off, colour, primed-no-colour and bare-unpainted as four distinct facts', () => {
-    expect(paintStateText(zone({ panelMissing: true }))).toBe('panel is off')
-    expect(paintStateText(zone({ colour: 'white' }))).toBe('Plain White')
-    expect(paintStateText(zone({ colour: 'red' }))).toBe('Bright Red')
-    expect(paintStateText(zone({ primed: true }))).toBe('primed, no colour yet')
-    expect(paintStateText(zone())).toBe('bare metal, unpainted')
-  })
-
-  it('paintStateText is exactly what would have caught the refit-paint bug: a bare panel reads bare, not silently blended in', () => {
+  it('is exactly what would have caught the refit-paint bug: a bare panel reads bare, not silently blended in', () => {
     // A panel taken off and refitted UNCHANGED keeps its finish/colour - this
     // is the "before" case the bug produced instead (a bought or repaired
     // panel legitimately comes back bare, and must read that way).
     const refittedUnchanged = zone({ finish: 1, colour: 'red' })
-    const boughtOrRepaired = zone() // no colour, not primed
-    expect(paintStateText(refittedUnchanged)).toBe('Bright Red')
-    expect(paintStateText(boughtOrRepaired)).toBe('bare metal, unpainted')
-    expect(paintStateText(refittedUnchanged)).not.toBe(paintStateText(boughtOrRepaired))
+    const boughtOrRepaired = zone() // no colour, not primed, not bare
+    expect(zoneWhyChips(refittedUnchanged).map((c) => c.label)).toEqual(['Bright Red'])
+    expect(zoneWhyChips(boughtOrRepaired)).toEqual([])
+    const freshBarePanel = zone({ finish: 3 })
+    expect(zoneWhyChips(freshBarePanel)).toEqual([{ icon: '▭', label: 'bare metal' }])
   })
 })

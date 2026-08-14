@@ -41,6 +41,10 @@ function cancelNewGame(): void {
 function onSettingsClick(): void {
   void router.push({ name: 'settings' })
 }
+
+function onCompendiumClick(): void {
+  void router.push({ name: 'compendium' })
+}
 </script>
 
 <template>
@@ -71,6 +75,7 @@ function onSettingsClick(): void {
       <SaveMenu />
 
       <button data-test="menu-settings" @click="onSettingsClick">Settings</button>
+      <button data-test="menu-compendium" @click="onCompendiumClick">The Shop Manual</button>
     </div>
   </section>
 </template>

@@ -205,6 +205,97 @@ export function deriveBodyBands(zoneStates: ZoneStates, factoryColour?: string):
   }
 }
 
+/**
+ * One zone's own condition band, in the same poor/worn/fine/mint vocabulary
+ * every part slot already carries - derived exactly the way the two whole-car
+ * carriers derive theirs, just narrowed to one zone: a
+ * metal zone reads the worse of its own metal and surface severities (the
+ * axis pair `deriveBodyworkBand` maxes across all six), a trim zone reads its
+ * finish alone (the axis `derivePaintBand` maxes across all nine). A panel
+ * that is off reads `scrap` outright, same as the whole-car derivation's own
+ * `panelMissing` forcing rule - there is no severity to grade on nothing.
+ *
+ * Deliberately not the zone's paint state on a METAL zone: a metal zone's own
+ * band is a read of its STRUCTURE, matching what `deriveBodyworkBand` actually
+ * sums it into. Whether that zone is also unpainted is a separate fact
+ * (`zoneNextStep` below still routes a bare or faded metal zone toward prime/
+ * paint/polish), surfaced through the zone's own next action and the
+ * whole-car `paint` band rather than tinting the diagram by an axis the zone's
+ * displayed band was never meant to carry.
+ */
+export function zoneConditionBand(zone: ZoneState): ConditionBand {
+  if (zone.panelMissing) return 'scrap'
+  if (isMetalZoneState(zone)) return bandForSeverity(Math.max(zone.metal, zone.surface))
+  return bandForSeverity(zone.finish)
+}
+
+/**
+ * The single pipeline stage that would advance this zone toward mint right
+ * now, or `'replace-panel'` when hand work cannot reach it at all (panel gone
+ * or beyond welding), or `null` once the zone is already mint. Walks the same
+ * prerequisite order the real stages enforce
+ * (`planMetalPipelineStage`/`planSharedPipelineStage`): metal before surface
+ * before finish, `weld` only at the weldable ceiling and `beat` below it,
+ * `prime` only once bare and unprimed, `paint` only once primed - so this can
+ * never name a stage that would refuse if actually run.
+ *
+ * Silent on `stripPrep`: stripping is never the objectively necessary next
+ * step toward mint (polish alone clears a faded-but-not-bare finish), only a
+ * discretionary way to redo a zone's colour - a fact about player intent, not
+ * about the zone's own physical state, so it has no place in a PURE
+ * derivation and stays a standing control next to the paint picker instead.
+ *
+ * Deliberately blind to `BodyLineCapability` too: a zone's next TYPE of stage
+ * is a fact about its own state, not about which tool tier the shop owns
+ * today. A caller wiring this to a live action still checks the stage's own
+ * plan (`pipelineActionPlan`) before enabling the control, exactly as every
+ * other pipeline button already does - a zone that needs `weld` but has no
+ * body line hired still names `weld`, with the button itself disabled.
+ */
+export function zoneNextStep(zone: ZoneState): PipelineStageId | 'replace-panel' | null {
+  if (zoneNeedsPanel(zone)) return 'replace-panel'
+  if (isMetalZoneState(zone)) {
+    if (zone.metal > 0) return zone.metal >= MAX_REPAIRABLE_METAL ? 'weld' : 'beat'
+    if (zone.surface > 0) return 'fillAndSand'
+  }
+  if (zone.finish >= BARE_FINISH) return zone.primed ? 'paint' : 'prime'
+  if (zone.finish > 0) return 'polish'
+  return null
+}
+
+/**
+ * Which metal zone(s) are the reason `deriveBodyworkBand` reads as bad as it
+ * does: the zone(s) tied for the worst of metal/surface among the six, or -
+ * when a panel missing anywhere is what forces the `scrap` floor - every zone
+ * missing its panel. Ties are real: two corners dented equally hard both bind
+ * the band equally, and the diagram marks both rather than picking one
+ * arbitrarily.
+ */
+export function bodyworkBindingZoneIds(zoneStates: ZoneStates): ZoneId[] {
+  const missing = PANEL_ZONE_IDS.filter((zoneId) => zoneStates[zoneId].panelMissing)
+  if (missing.length > 0) return missing
+  const worst = Math.max(
+    ...METAL_ZONE_IDS.map((zoneId) =>
+      Math.max(zoneStates[zoneId].metal, zoneStates[zoneId].surface),
+    ),
+  )
+  return METAL_ZONE_IDS.filter(
+    (zoneId) => Math.max(zoneStates[zoneId].metal, zoneStates[zoneId].surface) === worst,
+  )
+}
+
+/**
+ * Which zone(s) are the reason `derivePaintBand` reads as bad as it does: the
+ * zone(s) tied for the worst finish among all nine. Silent on the mismatch
+ * penalty (two zones disagreeing on colour, rather than either being badly
+ * finished) - that is a relationship between zones, not a fact about one, and
+ * stays a whole-car reading rather than a per-zone mark.
+ */
+export function paintBindingZoneIds(zoneStates: ZoneStates): ZoneId[] {
+  const worst = Math.max(...PANEL_ZONE_IDS.map((zoneId) => zoneStates[zoneId].finish))
+  return PANEL_ZONE_IDS.filter((zoneId) => zoneStates[zoneId].finish === worst)
+}
+
 const DERIVED_BODY_PART_IDS = ['bodywork', 'paint'] as const
 export type DerivedBodyPartId = (typeof DERIVED_BODY_PART_IDS)[number]
 
@@ -870,9 +961,10 @@ export function zonePanelMassFactor(
 export interface PipelineStageEffect {
   ok: true
   zone: ZoneState
-  /** Labour in `energyPerBandStepByToolTier` band-step units - the caller
-   * (`stagedWork.ts`) multiplies by the body group's own tier rate. */
-  laborUnits: number
+  /** Materials only - labour is not part of a stage's own effect. The
+   * caller (`pipelineActions.ts`) reads the labour figure straight off
+   * `economy.energy.bodyStagePoints[stage]`, a flat content value per stage
+   * with no tool-tier multiplication, so it is never expressed twice. */
   materialsCostYen: number
 }
 
@@ -942,20 +1034,18 @@ export function planMetalPipelineStage(
       return {
         ok: true,
         zone: { ...zone, metal: zone.metal - 1 },
-        laborUnits: 1,
         materialsCostYen: 0,
       }
     case 'weld':
       if (zone.metal > MAX_REPAIRABLE_METAL) return { ok: false, reason: 'needs-panel' }
       if (zone.metal < MAX_REPAIRABLE_METAL) return { ok: false, reason: 'prereq' }
       if (!capability.unlocked) return { ok: false, reason: 'machine-line' }
-      return { ok: true, zone: { ...zone, metal: 0 }, laborUnits: 2, materialsCostYen: 0 }
+      return { ok: true, zone: { ...zone, metal: 0 }, materialsCostYen: 0 }
     case 'fillAndSand':
       if (zone.metal !== 0 || zone.surface === 0) return { ok: false, reason: 'prereq' }
       return {
         ok: true,
         zone: { ...zone, surface: 0 },
-        laborUnits: 1,
         materialsCostYen: FILL_AND_SAND_COST_YEN,
       }
   }
@@ -981,7 +1071,6 @@ export function planSharedPipelineStage(
       return {
         ok: true,
         zone: { ...zone, finish: BARE_FINISH, primed: false },
-        laborUnits: 1,
         materialsCostYen: 0,
       }
     case 'prime': {
@@ -992,7 +1081,6 @@ export function planSharedPipelineStage(
       return {
         ok: true,
         zone: { ...zone, primed: true },
-        laborUnits: 1,
         materialsCostYen: PRIME_COST_YEN,
       }
     }
@@ -1004,7 +1092,6 @@ export function planSharedPipelineStage(
       return {
         ok: true,
         zone: { ...zone, finish: nextFinish },
-        laborUnits: 1,
         materialsCostYen: POLISH_COST_YEN,
       }
     }
@@ -1141,10 +1228,10 @@ export function refitCarrierZoneStates(
  * is the one gate that makes "respray it back and it is original again"
  * work: a `stock`-grade job is refused everywhere but the car's own factory
  * colour (`factoryColourSet`, so a two-tone car may lay either of its two
- * factory halves) - `stagedWork.ts` reads that refusal to keep a player from
- * laying a stock-grade job in a colour the car never wore. Street, sport and
- * race lay any colour, since choosing to respray already spends the car's
- * authenticity. */
+ * factory halves) - `pipelineActions.ts` reads that refusal to keep a player
+ * from laying a stock-grade job in a colour the car never wore. Street, sport
+ * and race lay any colour, since choosing to respray already spends the
+ * car's authenticity. */
 export function planPaintStage(
   zone: ZoneState,
   colour: string,
@@ -1161,7 +1248,6 @@ export function planPaintStage(
   return {
     ok: true,
     zone: { ...zone, finish, primed: false, colour },
-    laborUnits: 1,
     materialsCostYen: PAINT_TIN_COST_YEN_BY_GRADE[grade],
   }
 }

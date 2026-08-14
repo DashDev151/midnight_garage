@@ -76,6 +76,14 @@ export const router = createRouter({
       // treatment as the menu itself.
       meta: { chrome: false },
     },
+    {
+      path: '/compendium',
+      name: 'compendium',
+      component: () => import('../screens/CompendiumScreen.vue'),
+      // Reference reading reached from the pause menu, same as Settings -
+      // never a gameplay tab, so it carries the same chrome-free treatment.
+      meta: { chrome: false },
+    },
     { path: '/car/:id', name: 'car', component: () => import('../screens/CarDetailScreen.vue') },
     {
       path: '/auctions',

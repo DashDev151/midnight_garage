@@ -2204,6 +2204,21 @@ import toolShops from '../data/toolShops.json'
  * (94 points). Pinned by `packages/sim/tests/machineGateConversion.test.ts`; the maintainer's
  * ruling, verbatim in substance: "make this a currency conversion problem: we stop charging
  * yen and charge labour instead."
+ *
+ * Re-pinned 2026-08-13 for the body-stage labour retune (`docs/sprints/sprint203.md` task B),
+ * the second lever under behaviour-first governance. ONE key is added,
+ * `energy.bodyStagePoints` (stripPrep 1, beat 3, weld 6, fillAndSand 2, prime 1, paint 2,
+ * polish 1) - flat labour points per body-pipeline stage, read directly by stage id and no
+ * longer multiplied by `energy.energyPerBandStepByToolTier`, which is untouched and still
+ * prices every other repair. The old coupling (a stage's own `laborUnits` times the tool-tier
+ * rate) priced a full respray at roughly 135 points, the better part of a week's pool. The felt
+ * statement, recorded verbatim: "A full respray of a kei (nine zones, prep to paint) is 36
+ * labour points, under half a day of the 80-point pool, instead of 135; a single panel's
+ * beat-fill-prime-paint chain is 8 points; welding stays the heaviest hand op at 6 before the
+ * machine-less multiplier." Pinned by `packages/sim/tests/zonePipelineStages.test.ts`'s "the
+ * Sprint 203 felt statement" probe. The body line's remaining advantage on this work is
+ * unchanged: the finish/polish quality ceiling and hire economics, never speed -
+ * `machineShopAssist.machinelessLaborMultiplier` and the weld machine-line gate are untouched.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -2213,7 +2228,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('017f955c6c10ef3d120820dc66f74ff2e7ec72dce095254486449f0356456aca')
+    ).toBe('d7df778067016485a6950342ad3f725b9ac3a4aff524d9ea456b8b98de367cf8')
   })
 
   it('damagePatterns.json matches its approved content exactly', () => {

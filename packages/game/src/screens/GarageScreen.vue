@@ -1,11 +1,12 @@
 <script setup lang="ts">
+import type { WorkStation } from '@midnight-garage/sim'
 import { computed, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import HelpHint from '../components/HelpHint.vue'
 import MachineShopPanel from '../components/MachineShopPanel.vue'
 import ShopSlot from '../components/ShopSlot.vue'
 import WorkbenchPanel from '../components/WorkbenchPanel.vue'
-import { useDragSession } from '../composables/useDragAndDrop'
+import { useDragSession, useDropZone } from '../composables/useDragAndDrop'
 import { useGameStore, type ShopCarView } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
 import { bodyPaintShopOpen } from './garageCapability'
@@ -45,6 +46,25 @@ watch(
 function toggleStation(station: StationId): void {
   openStation.value = openStation.value === station ? null : station
 }
+
+/** Carries a dropped part to `station` and opens its panel, so a part placed
+ * from the closed card is placed exactly where the player can see it land -
+ * the same move `WorkStationTray`'s own drop zone makes once the panel is
+ * already open. */
+function dropOnStationCard(station: WorkStation, partInstanceId: string): void {
+  if (game.placeOnStation(station, partInstanceId)) openStation.value = station
+}
+
+const workbenchCardDrop = useDropZone<string>(
+  (partInstanceId) =>
+    game.partsForStation('workbench').some((entry) => entry.instance.id === partInstanceId),
+  (partInstanceId) => dropOnStationCard('workbench', partInstanceId),
+)
+const machineCardDrop = useDropZone<string>(
+  (partInstanceId) =>
+    game.partsForStation('machine').some((entry) => entry.instance.id === partInstanceId),
+  (partInstanceId) => dropOnStationCard('machine', partInstanceId),
+)
 
 /** Whether any machining bench actually stands in the machine shop - absent
  * machinery reads as derelict, never as a shut door. */
@@ -127,6 +147,16 @@ const draggedCarName = computed(() => {
   if (typeof payload !== 'string' || !payload) return null
   return allShopCars.value.find((c) => c.carId === payload)?.displayName ?? null
 })
+
+/** The same ghost preview, resolved for a part instead of a car - the
+ * session payload is a plain id either way, so whichever one is actually
+ * live decides what the ghost reads. */
+const draggedPartLabel = computed(() => {
+  const payload = dragSession.value?.payload
+  if (typeof payload !== 'string' || !payload) return null
+  const entry = game.pickableParts.find((p) => p.instance.id === payload)
+  return entry ? `${entry.part.brand} ${entry.part.name}` : null
+})
 </script>
 
 <template>
@@ -134,8 +164,7 @@ const draggedCarName = computed(() => {
     <h2>
       Garage
       <HelpHint label="Moving cars">
-        Drag a car onto another slot to move or swap it - or tap "move…" then "Place here" if
-        dragging isn't an option.
+        Drag it to another slot to move or swap. Or tap "move…", then "Place here".
       </HelpHint>
     </h2>
 
@@ -160,7 +189,7 @@ const draggedCarName = computed(() => {
           game.serviceBayCount
         }})
         <HelpHint label="Service bays">
-          Labour only reaches a car sitting in a service bay. Moves are free and instant.
+          Labour only reaches a car in a bay. Moving one there is free.
         </HelpHint>
       </h3>
       <ul class="bay-slots">
@@ -186,13 +215,18 @@ const draggedCarName = computed(() => {
       <h3>
         Work stations
         <HelpHint label="Work stations">
-          Where a part gets worked on. The bench puts a part right, the machine shop cuts metal off
-          a healthy one, and the body and paint shop works on the whole car. Click a station to open
-          it.
+          Where parts get worked on. Click a station to open it.
         </HelpHint>
       </h3>
       <ul class="station-list">
-        <li>
+        <li
+          class="station-slot"
+          :class="{ 'active-target': workbenchCardDrop.isActiveTarget.value }"
+          data-test="station-slot-workbench"
+          @pointerup="workbenchCardDrop.onPointerUp"
+          @pointerenter="workbenchCardDrop.onPointerEnter"
+          @pointerleave="workbenchCardDrop.onPointerLeave"
+        >
           <button
             type="button"
             class="station"
@@ -205,8 +239,24 @@ const draggedCarName = computed(() => {
               workbenchStatus
             }}</span>
           </button>
+          <button
+            v-if="workbenchCardDrop.isActiveTarget.value"
+            type="button"
+            class="station-place"
+            data-test="station-place-card-workbench"
+            @click="workbenchCardDrop.onClick"
+          >
+            Place here
+          </button>
         </li>
-        <li>
+        <li
+          class="station-slot"
+          :class="{ 'active-target': machineCardDrop.isActiveTarget.value }"
+          data-test="station-slot-machine"
+          @pointerup="machineCardDrop.onPointerUp"
+          @pointerenter="machineCardDrop.onPointerEnter"
+          @pointerleave="machineCardDrop.onPointerLeave"
+        >
           <button
             type="button"
             class="station"
@@ -218,6 +268,15 @@ const draggedCarName = computed(() => {
             <span class="station-status" data-test="station-status-machine">{{
               machineStatus
             }}</span>
+          </button>
+          <button
+            v-if="machineCardDrop.isActiveTarget.value"
+            type="button"
+            class="station-place"
+            data-test="station-place-card-machine"
+            @click="machineCardDrop.onClick"
+          >
+            Place here
           </button>
         </li>
         <li>
@@ -254,8 +313,7 @@ const draggedCarName = computed(() => {
             </p>
           </template>
           <p v-else class="refusal" data-test="body-paint-refusal">
-            A dead spray booth and someone else's panels. Needs the body line before any of it is
-            yours to use.
+            A dead spray booth and someone else's panels. Buy the body line first.
           </p>
         </div>
       </div>
@@ -283,9 +341,7 @@ const draggedCarName = computed(() => {
       <h3>
         Forecourt ({{ game.forecourtOccupancyCount }}/{{ game.forecourtCapacity }})
         <HelpHint label="Forecourt">
-          Where listed cars go on show. Listing a car on a channel where a buyer comes to look at it
-          moves the car here from parking or a service bay; delisting moves it back. You can't drag
-          a car onto the forecourt by hand - it only ever holds cars you've put up for sale.
+          Cars up for sale. Listing puts one here; delisting takes it back. Not draggable by hand.
         </HelpHint>
       </h3>
       <ul class="forecourt-list" data-test="forecourt-list">
@@ -312,10 +368,8 @@ const draggedCarName = computed(() => {
       <h3>
         Double parked
         <HelpHint label="Double parking">
-          No real bay was free when this car arrived, so it's sitting in the one unowned overflow
-          space above your bays. It migrates into a real bay automatically the moment one opens up -
-          buy a bay, sell a car, or free up any slot. Until then, a fine is charged every day it
-          stays here.
+          No bay was free, so it's parked over the limit. Moves into a real one the moment you free
+          any slot; a fine runs until then.
         </HelpHint>
       </h3>
       <div class="grace-slot">
@@ -347,11 +401,11 @@ const draggedCarName = computed(() => {
     </section>
 
     <div
-      v-if="dragSession?.mode === 'drag' && draggedCarName"
+      v-if="dragSession?.mode === 'drag' && (draggedCarName || draggedPartLabel)"
       class="drag-ghost"
       :style="{ left: dragSession.x + 'px', top: dragSession.y + 'px' }"
     >
-      {{ draggedCarName }}
+      {{ draggedCarName ?? draggedPartLabel }}
     </div>
   </section>
 </template>
@@ -495,6 +549,24 @@ button:disabled {
 
 .station.derelict .station-status {
   color: var(--mg-danger);
+}
+
+/* The station card as a drop target, closed or open - the same cyan-tint
+   highlight every other drop target in the garage uses. */
+.station-slot {
+  touch-action: none;
+}
+
+.station-slot.active-target .station {
+  border-color: var(--mg-neon-cyan);
+  background: rgba(47, 214, 191, 0.12);
+}
+
+.station-place {
+  width: 100%;
+  margin-top: var(--mg-space-1);
+  color: var(--mg-neon-cyan);
+  border-color: var(--mg-neon-cyan);
 }
 
 .station-panel {

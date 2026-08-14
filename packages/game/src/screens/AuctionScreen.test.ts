@@ -11,7 +11,7 @@ import {
 } from '@midnight-garage/content'
 import { useGameStore } from '../stores/gameStore'
 import { AUCTION_TIER_LABELS, venueLabelFor } from '../utils/auctionTierLabels'
-import { formatYen } from '../utils/formatYen'
+import { formatYen, formatYenDelta } from '../utils/formatYen'
 import AuctionScreen from './AuctionScreen.vue'
 
 // Track every mounted wrapper and unmount it after each test, so a component
@@ -522,6 +522,30 @@ describe('AuctionScreen', () => {
       const fearEls = wrapper.findAll('[data-test="ledger-line-fear"]')
       expect(fearEls.length).toBeGreaterThanOrEqual(1)
       expect(fearEls[0]!.text()).toContain('Doubts, at the odds')
+    })
+
+    it('the work row reads the ledger forward: "Work adds" at the wear line\'s own magnitude, dropped from the breakdown beneath', () => {
+      const game = useGameStore()
+      warpToCatalog(game)
+      const lot = game.gameState.activeAuctionLots[0]!
+      // Narrowed to one lot so the work-row assertions below read a single,
+      // known ledger rather than an arbitrary one off the whole board.
+      game.gameState = { ...game.gameState, activeAuctionLots: [lot] }
+      const detail = game.lotDetail(lot.id)!
+      const wearLine = detail.ledger.lines.find((line) => line.id === 'wear')!
+
+      const wrapper = mountScreen()
+      expect(wrapper.find('[data-test="ledger-line-wear"]').exists()).toBe(false)
+
+      if (wearLine.yen === 0) {
+        expect(wrapper.find('[data-test="work-row-none"]').text()).toContain('Nothing outstanding')
+      } else {
+        const row = wrapper.find('[data-test="work-row-gain"]')
+        expect(row.find('[data-test="work-row-figure"]').text()).toBe(formatYenDelta(-wearLine.yen))
+        expect(row.find('[data-test="work-row-subtext"]').text()).toBe(
+          `for ${formatYen(detail.workBillYen)} in parts and labour`,
+        )
+      }
     })
 
     it('the "room says" headline stays a single plain figure until a test actually moves the estimate off it', async () => {
