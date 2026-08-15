@@ -270,10 +270,10 @@ describe('seed content validates against schemas', () => {
     // single global auction day. Signed as tabled; `calendar.test.ts` (sim)
     // proves what these produce.
     expect(result.data.auction.cadenceByTier).toEqual({
-      'local-yard': { openDaysOfWeek: [1, 3, 5, 7], weeksBetween: 1 },
+      'local-yard': { openDaysOfWeek: [1, 3, 5], weeksBetween: 1 },
       regional: { openDaysOfWeek: [2, 4], weeksBetween: 1 },
-      premium: { openDaysOfWeek: [6], weeksBetween: 1 },
-      'collector-network': { openDaysOfWeek: [6, 7], weeksBetween: 2 },
+      premium: { openDaysOfWeek: [5], weeksBetween: 1 },
+      'collector-network': { openDaysOfWeek: [5], weeksBetween: 2 },
     })
     // The two blocks validate independently, so the bound that ties them
     // together lives here rather than in a cross-block Zod refine.
@@ -674,6 +674,7 @@ describe('seed content validates against schemas', () => {
     const expectedTopLevelKeys = [
       'STARTING_CASH_YEN',
       'calendar',
+      'campaignYearCurve',
       'rent',
       'DOUBLE_PARKING_FINE_YEN',
       'AUCTION_RESERVE_PRICE_FRACTION',

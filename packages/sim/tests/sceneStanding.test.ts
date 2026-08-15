@@ -178,7 +178,7 @@ describe('recentSceneLedgerEntries (the rolling window - recorded, unconsumed th
   })
 
   it('matches the shipped rollingWindowDays lever', () => {
-    expect(ECONOMY.sceneStandingProgress.rollingWindowDays).toBe(14)
+    expect(ECONOMY.sceneStandingProgress.rollingWindowDays).toBe(10)
   })
 })
 

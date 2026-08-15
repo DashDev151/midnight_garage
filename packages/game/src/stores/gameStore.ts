@@ -4812,10 +4812,13 @@ export const useGameStore = defineStore('game', () => {
     return true
   }
 
-  /** Turn today's offer down. The car stays
-   * listed, so tomorrow's draw can bring a better one. */
+  /** Turn today's offer down. The car stays listed, so tomorrow's draw can
+   * bring a better one - unless the model is in today's hot heat band, in
+   * which case `resolveRejectOffer` may also roll a second offer the same
+   * day (`economy.selling.hotSecondOfferChance`), folded into this same
+   * result and logged the same way. */
   function rejectOffer(carId: string): boolean {
-    const result = resolveRejectOffer(gameState.value, carId)
+    const result = resolveRejectOffer(gameState.value, carId, context.value)
     if (result.log.length === 0) return false
     gameState.value = result.state
     pushDayLog(result.log)

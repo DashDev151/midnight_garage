@@ -30,6 +30,12 @@ now owns both.
   Correcting it is a roster decision, not an implementation one, which is why it sits here rather
   than in the sprint that found it.
 
+- [ ] **`economy-bible.md`'s anchor inventory table has drifted from the content.** It names
+  retired keys (`WEEKLY_RENT_YEN`, `lapModel.*`) and misses several current top-level ones,
+  including `campaignYearCurve`. The machine-checked list in `schemas.test.ts` is correct and
+  current; only the bible's own prose table is stale. It is a locked bible, so reconciling it
+  needs explicit sign-off rather than a tidy-up.
+
 ## Content shape
 
 - [ ] **`machining.operations` stores derived numbers whose derivation is lost.** Each of the 16

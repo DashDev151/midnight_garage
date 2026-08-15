@@ -234,6 +234,27 @@ export const CarCultureSchema = z.enum([
 
 export const ReputationTierSchema = z.enum(['unknown', 'local', 'known', 'respected', 'legend'])
 
+/**
+ * The campaign's fixed season cycle (sprint204.md, R1's third bullet): four
+ * seasons per era, always in this order, run on their own period independent
+ * of `campaignYearCurve` - a season is always `calendar.weeksPerSeason *
+ * calendar.daysPerWeek` days long whatever the year curve does
+ * (`calendar.ts`'s `seasonOf`). Display labels live in `packages/game`, never
+ * here - this id is never shown to a player directly.
+ */
+export const SeasonIdSchema = z.enum(['spring', 'summer', 'autumn', 'winter'])
+
+/**
+ * The campaign's four eras (sprint204.md): the year-equivalent a player
+ * actually sees, since no specific year is ever rendered
+ * (docs/design/systems/campaign-clock-and-events.md section 2a). One era is
+ * exactly `calendar.seasonsPerEra` seasons of the fixed cycle above, so era
+ * boundaries land on season boundaries by construction (`calendar.ts`'s
+ * `eraOf`) - a separate question from `campaignYearCurve`, which only decides
+ * which internal year an era's days correspond to.
+ */
+export const EraIdSchema = z.enum(['mid-90s', 'late-90s', 'early-2000s', 'mid-2000s'])
+
 export type Tag = z.infer<typeof TagSchema>
 export type ComponentId = z.infer<typeof ComponentIdSchema>
 export type CarPartId = z.infer<typeof CarPartIdSchema>
@@ -248,6 +269,16 @@ export type CarRarity = z.infer<typeof CarRaritySchema>
 export type CarOrigin = z.infer<typeof CarOriginSchema>
 export type CarCulture = z.infer<typeof CarCultureSchema>
 export type ReputationTier = z.infer<typeof ReputationTierSchema>
+export type SeasonId = z.infer<typeof SeasonIdSchema>
+export type EraId = z.infer<typeof EraIdSchema>
 
 /** Every culture, in the schema's own declaration order. */
 export const CAR_CULTURES = CarCultureSchema.options
+
+/** The fixed season cycle, in its one true order - `calendar.ts`'s `seasonOf`
+ * indexes into this rather than keeping a second copy. */
+export const SEASON_IDS = SeasonIdSchema.options
+
+/** The four eras, oldest to newest - `calendar.ts`'s `eraOf` indexes into
+ * this rather than keeping a second copy. */
+export const ERA_IDS = EraIdSchema.options

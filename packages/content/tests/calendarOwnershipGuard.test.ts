@@ -28,7 +28,9 @@ const EXEMPT_FILES = new Set(['calendar.ts'])
  * 0`, `finances.ts`'s `state.day % 7 !== 0`, `marketHeat.ts`'s the same),
  * none of them naming the rule. A file that needs "is this the end of the
  * week" now calls `calendar.ts`'s `isEndOfWeek`/`isDayOfWeek`-family
- * exports instead of re-deriving it.
+ * exports instead of re-deriving it. `daysPerMonth` retired with the month
+ * concept (sprint204.md, superseded by the season), so its own pattern
+ * retired alongside it.
  */
 const BANNED_PATTERNS: readonly RegExp[] = [
   // The literal defect: a day value taken modulo 7, in any spacing.
@@ -38,7 +40,6 @@ const BANNED_PATTERNS: readonly RegExp[] = [
   // function - the ownership the guard exists to protect, not just the
   // magic number.
   /%\s*(?:context\.)?economy\.calendar\.daysPerWeek\b/,
-  /%\s*(?:context\.)?economy\.calendar\.daysPerMonth\b/,
 ]
 
 function collectFiles(dir: string, out: string[] = []): string[] {

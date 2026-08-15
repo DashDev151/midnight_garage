@@ -36,11 +36,15 @@ import { machiningPremiumYenOf } from './machining'
 /**
  * Piecewise-linear interpolation over ascending `[x, y]` breakpoints: clamps
  * to the first/last y outside the range, interpolates between the two
- * straddling `x` otherwise. Shared by every curve-shaped factor in this
- * module - `mileageFactor` below is the only current user, but the shape
- * ("designer draws a curve in JSON") is generic.
+ * straddling `x` otherwise. Shared by every curve-shaped factor keyed on this
+ * shape ("designer draws a curve in JSON") - `mileageFactor` below reads it,
+ * and `calendar.ts`'s `currentGameYear` reuses it for `campaignYearCurve`
+ * (sprint204.md) rather than keeping a second interpolator.
  */
-function interpolateCurve(breakpoints: readonly (readonly [number, number])[], x: number): number {
+export function interpolateCurve(
+  breakpoints: readonly (readonly [number, number])[],
+  x: number,
+): number {
   const first = breakpoints[0]!
   if (x <= first[0]) return first[1]
   const last = breakpoints[breakpoints.length - 1]!

@@ -58,7 +58,7 @@ function generateForEligibleTiers(
   rng: Rng,
   countForTier: (tier: AuctionTier) => number,
 ): CatalogRefresh {
-  const year = currentGameYear(state.reputationTier)
+  const year = currentGameYear(day, context.economy)
   // While the tutorial is active, the tutorial model is excluded from every
   // random roll. Computed here because both callers (the day-1 batch and the
   // daily arrivals) flow through this loop, so the scripted lot can never
@@ -128,7 +128,7 @@ export function stockNewlyUnlockedTier(
   tier: AuctionTier,
   rng: Rng,
 ): AuctionLot[] {
-  const year = currentGameYear(state.reputationTier)
+  const year = currentGameYear(day, context.economy)
   const excludedModelIds = excludedAuctionModelIds(state)
   return generateAuctionCatalog(
     context.models,

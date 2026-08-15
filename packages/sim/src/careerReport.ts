@@ -2,6 +2,8 @@ import { CASH_BUCKETS } from '@midnight-garage/content'
 import type { EconomyConfig } from '@midnight-garage/content'
 import { dayFlowFor, weeklyFlowFor } from './careerFlow'
 import type { CareerReplayResult } from './careerReplay'
+import { bayCountsByKind } from './facilities'
+import { computeWeeklyRentYen } from './finances'
 
 /** `¥1,234,567` - the report's one number formatter, so every yen figure on
  * the page reads the same way. Plain `toLocaleString`, not a game-layer
@@ -48,6 +50,18 @@ export function renderCareerReportPage(result: CareerReplayResult, economy: Econ
       `${script.days.length} day(s) - final cash ${yen(finalState.cashYen)} - ` +
       `${finalState.ownedCars.length} car(s) owned - reputation ${finalState.reputationTier} ` +
       `(${finalState.reputationPoints} pts)`,
+  )
+  lines.push('')
+
+  // The calendar's own week length sets the daily cost of rent even though
+  // the bill itself is weekly (sprint204.md): shortening the week raises
+  // this figure with no rent lever touched, so the report states it plainly
+  // rather than leaving it to be discovered by dividing the cost sheet by
+  // hand.
+  const finalWeeklyRentYen = computeWeeklyRentYen(bayCountsByKind(finalState), economy)
+  lines.push(
+    `Rent: ${yen(finalWeeklyRentYen)}/week across ${economy.calendar.daysPerWeek}-day weeks ` +
+      `(${yen(Math.round(finalWeeklyRentYen / economy.calendar.daysPerWeek))}/day, at the final bay count)`,
   )
   lines.push('')
 

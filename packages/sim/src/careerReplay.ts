@@ -466,7 +466,7 @@ function applySessionEvent(
       return { state: result.state, log: result.log }
     }
     case 'rejectOffer': {
-      const result = resolveRejectOffer(state, event.payload.carId)
+      const result = resolveRejectOffer(state, event.payload.carId, context)
       return { state: result.state, log: result.log }
     }
     case 'setForSale': {

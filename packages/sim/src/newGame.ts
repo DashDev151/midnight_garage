@@ -126,7 +126,7 @@ export function createInitialGameState(
         context,
         base.day,
         rng,
-        currentGameYear(base.reputationTier),
+        currentGameYear(base.day, context.economy),
         toolLevelsFor(base, context),
         base.reputationTier,
       )

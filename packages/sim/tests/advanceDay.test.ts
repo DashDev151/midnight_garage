@@ -306,7 +306,21 @@ describe('advanceDay golden master', () => {
     // already resolved the same day), so the field held `{}` for its whole
     // 30 days under the old code too - only the key disappearing from the
     // state this hash serialises. Re-derived from a real run.
-    expect(hashState(finalState)).toBe('c7b12217')
+    //
+    // It moves once more for the calendar itself (sprint204.md): the week
+    // shortens from 7 to 5 days, so rent/payday/auction cadence all land on
+    // different days across this script's 30 days, and the market-heat wave
+    // now reads a different week index too. A real behaviour change, not a
+    // shape change - the rent-charge count over these 30 days rises from 4
+    // to 6, asserted directly in the test just below. Re-derived from a real
+    // run.
+    //
+    // It moves once more for the fashion wave retune (`WAVE_PERIOD_WEEKS`
+    // 24 -> 14, `WAVE_AMPLITUDE` 12 -> 22): every model's market-heat target
+    // over these 30 days now reads a different point on a shorter, taller
+    // sine wave, so every model's heat figure this script's 30 days touches
+    // moves with it. Re-derived from a real run.
+    expect(hashState(finalState)).toBe('38a83bd0')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -336,13 +350,14 @@ describe('advanceDay golden master', () => {
     expect(tiers.has('local-yard')).toBe(true)
   })
 
-  it('rent is charged again, every calendar.daysPerWeek days (calendar.rentDayOfWeek is 7, matching the old day % 7 === 0)', () => {
+  it('rent is charged again, every calendar.daysPerWeek days (calendar.rentDayOfWeek is 5, sprint204.md five-day week)', () => {
     const finalState = runCareer(30)
-    // Rent lands on calendar.rentDayOfWeek (7, the end of the week, so a
+    // Rent lands on calendar.rentDayOfWeek (5, the end of the week, so a
     // brand-new player's first End Day is never a rent charge). Within a
-    // 30-day career that is days 7/14/21/28 - four charges, matching the
-    // pre-sprint149.md `day % 7 === 0` cadence exactly (finances.test.ts's
-    // own 28-day span test is the one that proves the WEEKLY TOTAL is
+    // 30-day career that is days 5/10/15/20/25/30 - six charges under the
+    // five-day week (sprint204.md, replacing sprint149.md's four charges at
+    // the old seven-day week's days 7/14/21/28; finances.test.ts's own
+    // 28-day span test is the one that proves the WEEKLY TOTAL is
     // unchanged regardless of which day the charge lands on). The opening
     // bay counts' own computed rate never moves (no bay is ever bought in
     // this script). `hireForDay`
@@ -364,7 +379,7 @@ describe('advanceDay golden master', () => {
     )
     const { body: bodyFeeYen, suspension: suspensionFeeYen } =
       CONTEXT.economy.machineShopAssist.feeYenByGroup
-    const rentChargeCount = 4
+    const rentChargeCount = 6
     expect(finalState.cashYen).toBe(
       1_200_000 -
         bodyPlan.costYen -
@@ -591,7 +606,18 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // change - this script never leaves work staged and unconfirmed either,
     // so only the key disappearing from the serialised state moves the hash.
     // Re-derived from a real run.
-    expect(hashState(acquisitionCareer().sold)).toBe('59fc8620')
+    //
+    // It moves once more, alongside the 30-day master, for the calendar
+    // itself (sprint204.md): the week shortens from 7 to 5 days, moving
+    // rent/payday/auction cadence and the market-heat wave phase. Re-derived
+    // from a real run.
+    //
+    // It moves once more, alongside the 30-day master, for the fashion wave
+    // retune (`WAVE_PERIOD_WEEKS` 24 -> 14, `WAVE_AMPLITUDE` 12 -> 22): the
+    // acquired model's market heat on the day it sells reads a different
+    // point on the new wave, moving the sale offer this script accepts.
+    // Re-derived from a real run.
+    expect(hashState(acquisitionCareer().sold)).toBe('85c94a25')
   })
 })
 
@@ -682,7 +708,10 @@ describe('advanceDay: the daily offer draw and acceptance (Sprint 31)', () => {
   it("accepting today's offer sells the car through the walk-in resolution path", () => {
     const state: GameState = {
       ...initialState(),
-      day: 10,
+      // Day 11, not a rent or payday landmark (calendar.rentDayOfWeek /
+      // calendar.paydayOfWeek), so the cash delta this test asserts is the
+      // offer's own price and nothing else.
+      day: 11,
       carsForSale: [
         {
           carInstanceId: 'car-0001',

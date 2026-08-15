@@ -32,19 +32,27 @@ const SMOKE_SCRIPT = CareerScriptSchema.parse(smokeScriptRaw)
 // Pinned by an actual run of the smoke script against seed 1's real day-1
 // board (a buyout, a cart checkout, a part sale, a declined service-job
 // offer and a tutorial-step acknowledgement on day 1, then idle days
-// through a rent boundary on day 7). Re-derive from a real run, never
-// hand-guessed, exactly like `advanceDay.test.ts`'s own golden hashes.
+// through two rent boundaries on days 5 and 10 - the five-day week,
+// sprint204.md). Re-derive from a real run, never hand-guessed, exactly
+// like `advanceDay.test.ts`'s own golden hashes.
+//
+// Days 5 onward move for the fashion wave retune (`WAVE_PERIOD_WEEKS`
+// 24 -> 14, `WAVE_AMPLITUDE` 12 -> 22): the market-heat update at the day-5
+// week boundary now reads a different point on a shorter, taller wave for
+// every model, moving every day-5-and-later state; the first four days,
+// before any week boundary fires, are untouched. Re-derived from a real
+// run.
 const EXPECTED_HASHES_BY_DAY = [
   '5b3e2cef',
   '81e79a0b',
   'c469febb',
   'ba7e2576',
-  '441281c9',
-  '26e944ee',
-  'e3f3ef4b',
-  '50e650db',
-  '3eda130d',
-  '093ce4f6',
+  'e3e9fbeb',
+  '640ee552',
+  '23862460',
+  'de24a6f2',
+  '0e0e72fa',
+  'a8049eed',
 ]
 
 describe('replayCareerScript (Sprint 198 C1)', () => {
@@ -80,10 +88,10 @@ describe('replayCareerScript (Sprint 198 C1)', () => {
     expect(day1Types).toContain('part-sold')
   })
 
-  it("reports the day-7 rent charge in that day's log, not folded into another day", () => {
+  it("reports the day-5 rent charge in that day's log, not folded into another day", () => {
     const result = replayCareerScript(SMOKE_SCRIPT, CONTEXT)
-    const day7Types = result.dayLogs[6]?.map((entry) => entry.type)
-    expect(day7Types).toContain('rent-paid')
+    const day5Types = result.dayLogs[4]?.map((entry) => entry.type)
+    expect(day5Types).toContain('rent-paid')
   })
 
   it('throws when a script skips a day rather than silently reprocessing the wrong one', () => {

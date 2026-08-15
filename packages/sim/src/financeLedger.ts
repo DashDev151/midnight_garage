@@ -15,8 +15,7 @@ import { weekIndex } from './calendar'
  * is a free no-op.
  *
  * Week, not day: a week holds exactly one rent charge and exactly one payday,
- * `daysPerMonth` is four clean weeks so a month is four rows, and `weekIndex`
- * is the only week arithmetic anywhere.
+ * and `weekIndex` is the only week arithmetic anywhere.
  */
 export function bookCashMovements(
   state: GameState,

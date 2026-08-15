@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { dayOfSeason, eraOf, seasonOf } from '@midnight-garage/sim'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
+import { eraLabel, seasonDayLabel, seasonLabel } from '../utils/calendarLabels'
 
 /**
- * The app-wide floating day/cash readout: the day number over the player's
- * cash, fixed to the top-right corner of the viewport. Mounted once at the
- * app root (`App.vue`), the same pattern `FloatingHud.vue` uses for its
- * bottom-right cluster - identical spot on every gameplay screen, a real
- * overlay above the game rather than a per-screen widget.
+ * The app-wide floating stamp/cash readout: the calendar stamp (day within
+ * season, season, era - never a year) over the player's cash, fixed to the
+ * top-right corner of the viewport. Mounted once at the app root
+ * (`App.vue`), the same pattern `FloatingHud.vue` uses for its bottom-right
+ * cluster - identical spot on every gameplay screen, a real overlay above
+ * the game rather than a per-screen widget.
  *
  * The day element carries the tutorial's final-step spotlight anchor
  * (`data-test="day-value"`) - it exists nowhere else, and this box's
@@ -16,14 +19,19 @@ import { formatYen } from '../utils/formatYen'
  */
 const game = useGameStore()
 
+const seasonDay = computed(() => seasonDayLabel(dayOfSeason(game.day, game.context.economy)))
+const season = computed(() => seasonLabel(seasonOf(game.day, game.context.economy)))
+const era = computed(() => eraLabel(eraOf(game.day, game.context.economy)))
+
 const ariaLabel = computed(
-  () => `Day ${game.day}, ${game.dayOfWeekLabel}; cash ${formatYen(game.cashYen)}`,
+  () => `Day ${seasonDay.value}, ${season.value}, ${era.value}; cash ${formatYen(game.cashYen)}`,
 )
 </script>
 
 <template>
   <div class="day-cash-box" :aria-label="ariaLabel">
-    <span class="day" data-test="day-value">Day {{ game.day }} - {{ game.dayOfWeekLabel }}</span>
+    <span class="day" data-test="day-value">Day {{ seasonDay }} - {{ season }}</span>
+    <span class="era" data-test="era-value">{{ era }}</span>
     <span class="cash">{{ formatYen(game.cashYen) }}</span>
   </div>
 </template>

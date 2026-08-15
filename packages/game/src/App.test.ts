@@ -1,4 +1,5 @@
 import { PARTS } from '@midnight-garage/content'
+import { dayOfSeason, seasonOf } from '@midnight-garage/sim'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -6,6 +7,7 @@ import App from './App.vue'
 import { clearDragSession, useDraggable } from './composables/useDragAndDrop'
 import { router } from './router'
 import { useGameStore } from './stores/gameStore'
+import { seasonDayLabel, seasonLabel } from './utils/calendarLabels'
 import { formatYen } from './utils/formatYen'
 
 /**
@@ -90,7 +92,9 @@ describe('App (Sprint 51: chrome)', () => {
     expect(boxes).toHaveLength(1)
     const dayValues = wrapper.findAll('[data-test="day-value"]')
     expect(dayValues).toHaveLength(1)
-    expect(dayValues[0]!.text()).toBe(`Day ${game.day} - ${game.dayOfWeekLabel}`)
+    expect(dayValues[0]!.text()).toBe(
+      `Day ${seasonDayLabel(dayOfSeason(game.day, game.context.economy))} - ${seasonLabel(seasonOf(game.day, game.context.economy))}`,
+    )
     expect(boxes[0]!.text()).toContain(formatYen(game.cashYen))
   })
 

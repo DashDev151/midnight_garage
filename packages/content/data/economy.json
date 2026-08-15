@@ -1,12 +1,20 @@
 {
   "STARTING_CASH_YEN": 300000,
   "calendar": {
-    "daysPerWeek": 7,
-    "daysPerMonth": 28,
-    "meetDayOfWeek": 7,
-    "paydayOfWeek": 5,
-    "rentDayOfWeek": 7
+    "daysPerWeek": 5,
+    "weeksPerSeason": 4,
+    "seasonsPerEra": 4,
+    "meetDayOfWeek": 5,
+    "paydayOfWeek": 4,
+    "rentDayOfWeek": 5
   },
+  "campaignYearCurve": [
+    [1, 1995],
+    [81, 1998],
+    [161, 2000],
+    [241, 2003],
+    [320, 2005]
+  ],
   "rent": {
     "baseWeeklyYen": 6000,
     "perBayWeeklyYen": {
@@ -73,7 +81,7 @@
     "turnoutBandWeights": [0.2, 0.45, 0.35],
     "cadenceByTier": {
       "local-yard": {
-        "openDaysOfWeek": [1, 3, 5, 7],
+        "openDaysOfWeek": [1, 3, 5],
         "weeksBetween": 1
       },
       "regional": {
@@ -81,11 +89,11 @@
         "weeksBetween": 1
       },
       "premium": {
-        "openDaysOfWeek": [6],
+        "openDaysOfWeek": [5],
         "weeksBetween": 1
       },
       "collector-network": {
-        "openDaysOfWeek": [6, 7],
+        "openDaysOfWeek": [5],
         "weeksBetween": 2
       }
     }
@@ -184,7 +192,7 @@
       "enthusiast": 3000000,
       "flagship": 8000000
     },
-    "rollingWindowDays": 14,
+    "rollingWindowDays": 10,
     "wordOfMouthMultiplierByStage": {
       "known": 1.4,
       "respected": 1.8,
@@ -197,8 +205,8 @@
     "payoutMultiplier": 1.25
   },
   "marketPressure": {
-    "WAVE_AMPLITUDE": 12,
-    "WAVE_PERIOD_WEEKS": 24,
+    "WAVE_AMPLITUDE": 22,
+    "WAVE_PERIOD_WEEKS": 14,
     "SUPPLY_WEIGHT": 4,
     "SALES_WEIGHT": 6,
     "SCARCITY_THRESHOLD": 0.5,
@@ -831,8 +839,9 @@
     "offerChanceByHeatBand": {
       "cold": 0.75,
       "normal": 1,
-      "hot": 1.3
+      "hot": 1
     },
+    "hotSecondOfferChance": 0.5,
     "channelStandingFocusByReputationTier": {
       "unknown": 1,
       "local": 1.2,

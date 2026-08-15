@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { CARS, type BuyerArchetype } from '@midnight-garage/content'
-import type { MissionGradeReport } from '@midnight-garage/sim'
+import { dayOfSeason, eraOf, seasonOf, type MissionGradeReport } from '@midnight-garage/sim'
 import { computed, reactive } from 'vue'
 import { RouterLink } from 'vue-router'
 import ProgressBar from '../components/ProgressBar.vue'
 import { useGameStore } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
+import { eraLabel, seasonLabel, WEEKS_PER_SEASON } from '../utils/calendarLabels'
 import { photoCountForReputationTier } from './officeDisplay'
 
 /**
@@ -59,14 +60,30 @@ function commissionLines(scene: BuyerArchetype) {
   return gradeResultByScene[scene]?.lines ?? []
 }
 
-/** The office wall's three diegetic readouts: the photo wall stands in for
+/** The office wall's diegetic readouts: the photo wall stands in for
  * reputation (`officeDisplay.ts` scales the snapshot count off the tier the
- * game already carries), the corkboard note counts the live listings, and
- * the certificates are the craft operations the shop actually possesses.
- * All three read state computed elsewhere - no second source for any of
- * these numbers. */
+ * game already carries), the corkboard note counts the live listings, the
+ * certificates are the craft operations the shop actually possesses, and
+ * the wall calendar reads the current season and day (below). All read
+ * state computed elsewhere - no second source for any of these numbers. */
 const listingCount = computed(() => game.gameState.carsForSale.length)
 const photoCount = computed(() => photoCountForReputationTier(game.reputationTier))
+
+/** The wall calendar's own three readouts - the current season and era
+ * words, and today's position within the season - plus the season laid out
+ * as four week-rows of five days for the grid. No year anywhere (design
+ * law: `campaign-clock-and-events.md` section 2a). */
+const currentSeasonDay = computed(() => dayOfSeason(game.day, game.context.economy))
+const currentSeasonLabel = computed(() => seasonLabel(seasonOf(game.day, game.context.economy)))
+const currentEraLabel = computed(() => eraLabel(eraOf(game.day, game.context.economy)))
+const seasonWeeks = computed(() => {
+  const weeks: number[][] = []
+  for (let week = 0; week < WEEKS_PER_SEASON; week++) {
+    weeks.push(Array.from({ length: 5 }, (_, i) => week * 5 + i + 1))
+  }
+  return weeks
+})
+
 const unlockedOperations = computed(() =>
   standing.value.scenes
     .map((scene) => scene.operation)
@@ -246,6 +263,34 @@ const OPERATION_GATE_COPY: Readonly<Record<'tool-tier' | 'scene-standing', strin
           <dd data-test="office-certificate-count">
             <span v-if="unlockedOperations.length === 0">none earned yet</span>
             <span v-else>{{ unlockedOperations.map((op) => op.displayName).join(', ') }}</span>
+          </dd>
+        </div>
+        <div>
+          <dt>Wall calendar</dt>
+          <dd data-test="office-wall-calendar">
+            <p class="wall-calendar-head">
+              <span data-test="wall-calendar-season">{{ currentSeasonLabel }}</span>
+              <span class="wall-calendar-era" data-test="wall-calendar-era">{{
+                currentEraLabel
+              }}</span>
+            </p>
+            <div class="wall-calendar-grid" data-test="wall-calendar-grid">
+              <div
+                v-for="(week, weekIndex) in seasonWeeks"
+                :key="weekIndex"
+                class="wall-calendar-week"
+                :data-test="'wall-calendar-week-' + weekIndex"
+              >
+                <span
+                  v-for="d in week"
+                  :key="d"
+                  class="wall-calendar-cell"
+                  :class="{ today: d === currentSeasonDay }"
+                  :data-test="d === currentSeasonDay ? 'wall-calendar-today' : null"
+                  >{{ String(d).padStart(2, '0') }}</span
+                >
+              </div>
+            </div>
           </dd>
         </div>
       </dl>
@@ -451,5 +496,50 @@ h3 {
 .office-readouts dd {
   margin: 0 0 var(--mg-space-1);
   color: var(--mg-text);
+}
+
+.wall-calendar-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--mg-space-1);
+  margin: 0 0 var(--mg-space-1);
+  color: var(--mg-text);
+}
+
+.wall-calendar-era {
+  color: var(--mg-text-dim);
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.wall-calendar-grid {
+  display: grid;
+  gap: 2px;
+  max-width: 170px;
+}
+
+.wall-calendar-week {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 2px;
+}
+
+.wall-calendar-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  border: var(--mg-border);
+  border-radius: 2px;
+  font-size: 0.6rem;
+  color: var(--mg-text-dim);
+}
+
+.wall-calendar-cell.today {
+  background: var(--mg-neon-cyan);
+  border-color: var(--mg-neon-cyan);
+  color: var(--mg-bg);
+  font-weight: bold;
 }
 </style>

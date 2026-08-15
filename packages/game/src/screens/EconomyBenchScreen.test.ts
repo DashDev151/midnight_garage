@@ -3,7 +3,6 @@ import {
   COURSES,
   ECONOMY,
   PAINT_COLOURS,
-  ReputationTierSchema,
   StatKeySchema,
   ZoneIdSchema,
   type CarInstance,
@@ -188,7 +187,7 @@ describe('EconomyBenchScreen', () => {
     const wrapper = mountScreen()
     // A model with a genuinely wide window, so the two ends of the clamp are
     // different years and the test can tell them apart.
-    const openingYear = currentGameYear('unknown')
+    const openingYear = currentGameYear(1, ECONOMY)
     const roomy = [...CARS].sort((a, b) => {
       const width = (car: (typeof CARS)[number]): number => {
         const [oldest, youngest] = generatedYearRangeFor(car, openingYear, ECONOMY)
@@ -211,20 +210,23 @@ describe('EconomyBenchScreen', () => {
     expect((await type(wrapper, 'bench-year', oldest - 25)).value).toBe(String(oldest))
   })
 
-  it('says which campaign year and tier a generated lot rolls at', async () => {
+  it('says which campaign year and day a generated lot rolls at', async () => {
     const wrapper = mountScreen()
-    const tiers = ReputationTierSchema.options
-    const opening = tiers[0]!
-    const top = tiers[tiers.length - 1]!
-    expect(currentGameYear(top)).not.toBe(currentGameYear(opening))
+    const openingDay = 1
+    const lateDay = 300
+    expect(currentGameYear(lateDay, ECONOMY)).not.toBe(currentGameYear(openingDay, ECONOMY))
 
-    expect(text(wrapper, 'bench-generated-note')).toContain(String(currentGameYear(opening)))
-    expect(text(wrapper, 'bench-generated-note')).toContain(opening)
+    expect(text(wrapper, 'bench-generated-note')).toContain(
+      String(currentGameYear(openingDay, ECONOMY)),
+    )
+    expect(text(wrapper, 'bench-generated-note')).toContain(String(openingDay))
 
-    await wrapper.find('[data-test="bench-shop-reputation"]').setValue(top)
+    await type(wrapper, 'bench-shop-day', lateDay)
 
-    expect(text(wrapper, 'bench-generated-note')).toContain(String(currentGameYear(top)))
-    expect(text(wrapper, 'bench-generated-note')).toContain(top)
+    expect(text(wrapper, 'bench-generated-note')).toContain(
+      String(currentGameYear(lateDay, ECONOMY)),
+    )
+    expect(text(wrapper, 'bench-generated-note')).toContain(String(lateDay))
   })
 
   it('says where mileage starts taking value away', () => {

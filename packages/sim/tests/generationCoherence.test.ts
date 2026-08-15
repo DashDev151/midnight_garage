@@ -6,7 +6,6 @@ import {
   ECONOMY,
   PARTS,
   PARTS_TAXONOMY,
-  ReputationTierSchema,
   type CarInstance,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
@@ -45,7 +44,12 @@ function worstBand(car: CarInstance): string {
   return worst
 }
 
-const REPUTATION_TIERS = ReputationTierSchema.options
+/** Five campaign days spanning the calendar, one per `campaignYearCurve`
+ * breakpoint (sprint204.md: the campaign runs on elapsed days, not
+ * reputation) - the direct replacement for the old five-reputation-tier
+ * sweep, since both give five evenly-spread samples of "every campaign year
+ * the calendar can sit at". */
+const SAMPLE_DAYS = ECONOMY.campaignYearCurve.map(([day]) => day)
 
 /**
  * The mileage of every lot four full room catalogues put on the board at one
@@ -120,8 +124,8 @@ describe('generated cars are coherent (Sprint 66, item 6a)', () => {
    * delivery-mileage car would surface.
    */
   it('never offers a lot younger than AUCTION_MIN_AGE_YEARS, at any campaign year', () => {
-    for (const reputationTier of REPUTATION_TIERS) {
-      const year = currentGameYear(reputationTier)
+    for (const day of SAMPLE_DAYS) {
+      const year = currentGameYear(day, ECONOMY)
       for (const tier of AuctionTierSchema.options) {
         let lots = 0
         for (let seed = 0; seed < 25; seed++) {
@@ -278,24 +282,25 @@ describe('generated cars are coherent (Sprint 66, item 6a)', () => {
    * Mileage subtracts value or leaves it alone; it never adds any. The curve
    * says so at every point, and this says so about the cars a player is
    * actually offered: 1,000 lots per campaign year, drawn by the four rooms
-   * themselves at the year each reputation tier puts the calendar at.
+   * themselves at the year each sampled campaign day puts the calendar at
+   * (sprint204.md: the calendar now moves on elapsed days, not reputation;
+   * `SAMPLE_DAYS` is `campaignYearCurve`'s own five breakpoints).
    *
    * The zero is the fact worth pinning. The flat-band shares beside it are
    * measured rather than chosen, and deliberately barred loosely: they move
    * with the roster and the rooms' appetites, while a single lot priced above
-   * book would be the defect coming back. As shipped: 0.734 of the day-one
-   * board carries no mileage discount at all, falling to 0.398 by 2003 as the
-   * year window admits younger cars against an older calendar. That the flat
-   * band is most of the opening board is the known cost of a flat band, not a
-   * surprise - an 8,000 km car and a 55,000 km car price identically.
+   * book would be the defect coming back. That the flat band is most of the
+   * opening board is the known cost of a flat band, not a surprise - an
+   * 8,000 km car and a 55,000 km car price identically.
    */
   it('mileage never adds value to a lot a room actually offers, at any campaign year', () => {
-    const shares = REPUTATION_TIERS.map((tier) => {
-      const mileages = catalogueMileages(currentGameYear(tier))
+    const shares = SAMPLE_DAYS.map((day) => {
+      const year = currentGameYear(day, ECONOMY)
+      const mileages = catalogueMileages(year)
       expect(mileages.length).toBeGreaterThan(500)
       expect(
         mileages.filter((km) => mileageFactor(km, ECONOMY) > 1).length,
-        `a lot at campaign year ${currentGameYear(tier)} priced above its own book value on mileage`,
+        `a lot at campaign year ${year} priced above its own book value on mileage`,
       ).toBe(0)
       return shareAtOrAbove(mileages, 1)
     })

@@ -2237,6 +2237,88 @@ import toolShops from '../data/toolShops.json'
  * final. Requirements (`allPartsBandAtLeast: mint` plus `statThreshold(authenticity) >= 81`,
  * `81 = floor90(90)` against the `collector` buyer archetype's own authenticity target) are
  * likewise unmeasured against a built probe car and flagged for the same review.
+ *
+ * Re-pinned for the campaign clock (`docs/sprints/sprint204.md` tasks A and C), the third lever
+ * under behaviour-first governance (directive 22 as amended 2026-08-13): the felt behaviour is
+ * stated in the sprint doc, the values are chosen here and recorded, never ratified as raw
+ * numbers. The felt-behaviour statement, verbatim: "a career runs 320 days: five-day weeks, four
+ * weeks to a season, four seasons to an era, four eras (mid 90s, late 90s, early 2000s, mid
+ * 2000s). About 21 hours of play. A day now costs something, in two ways that must both be true:
+ * the world moves on the calendar rather than on the player's reputation, so dawdling means the
+ * era changes around you; and rent and wages, charged per week, cost about 40 per cent more per
+ * day than on a seven-day week (roughly Y4,000 against Y2,857 of base rent) because the same
+ * weekly charge now falls across fewer days."
+ *
+ * `calendar.daysPerWeek` 7 -> 5; `calendar.daysPerMonth` retired outright (the month concept is
+ * superseded by the season, R1's third bullet); two new levers, `calendar.weeksPerSeason` (4) and
+ * `calendar.seasonsPerEra` (4), giving the 5/4/4/4 shape (era count is structural, fixed at four
+ * by `EraIdSchema`'s own four names, not a fifth lever). `calendar.rentDayOfWeek`/`meetDayOfWeek`
+ * move 7 -> 5 (the new week's last day, sharing a day exactly as before) and
+ * `calendar.paydayOfWeek` moves 5 -> 4 (still the day before the shared rent/meet day). A new
+ * top-level `campaignYearCurve` (R1, sale-value-implementation-plan.md): `[[1,1995], [81,1998],
+ * [161,2000], [241,2003], [320,2005]]`, breakpoints at each era's own opening day, spanning the
+ * GDD's 1995-to-2005 decade end to end - internal only, never rendered (`currentGameYear`'s own
+ * doc comment). `auction.cadenceByTier.*.openDaysOfWeek` remapped into the five-day week
+ * (`local-yard` [1,3,5], `premium`/`collector-network` from day 6/[6,7] to day 5, sharing the same
+ * end-of-week day rent and the meet already share) - not itself one of R1's named levers, but the
+ * same [1, daysPerWeek] bound the schema already enforces on it, so leaving it at literal 6/7
+ * would have silently taken every non-`local-yard`/`regional` room permanently shut.
+ *
+ * Two levers counted in weeks were re-read deliberately rather than left to drift
+ * (sprint204.md A5). `marketPressure.WAVE_PERIOD_WEEKS` is UNCHANGED at 24: it already lives beside
+ * rent, payday and auction cadence, every one of them week-denominated, so staying
+ * week-denominated keeps its relationship to them stable across any future week-length change: the
+ * period becomes 120 days instead of 168, which is accepted rather than compensated for, since the
+ * 320-day campaign is itself a fixed, short shape now and more felt market-heat rhythm inside it is
+ * a benefit, not a cost. `sceneStandingProgress.rollingWindowDays` moves 14 -> 10: unlike the wave
+ * period this field is denominated in DAYS, not weeks, so leaving it at 14 would have silently
+ * turned "the trailing two weeks of matched sales" into a fractional 2.8-week span with no clean
+ * weekly landmark; scaling by the same 5/7 ratio keeps its meaning - two full weeks of recent work -
+ * intact, now as two five-day weeks instead of two seven-day ones.
+ *
+ * Re-pinned 2026-08-15, the fourth lever under behaviour-first governance (directive 22 as
+ * amended 2026-08-13): `marketPressure.WAVE_PERIOD_WEEKS` 24 -> **14**, `marketPressure.
+ * WAVE_AMPLITUDE` 12 -> **22**. Heat closes only `SMOOTHING` (0.25, unchanged) of the way to its
+ * target each week, and that damping ate the fashion wave whole: at period 24 and amplitude 12 the
+ * smoothed heat actually swung 91 to 109, which never crossed either offer-frequency band threshold
+ * (`selling.heatBandColdBelowPercent` 90, `selling.heatBandHotAtOrAbovePercent` 110), so the wave had
+ * only ever nudged price and never once changed how often buyers arrived. Shortening the period alone
+ * makes it flatter still (93 to 107, period 14 at the old amplitude 12) - amplitude has to move too.
+ * At period 14 with amplitude 22 the smoothed swing is 88 to 112, so each model genuinely passes
+ * through cold and hot on its own cycle. Period 14 rather than 16: 16 weeks x the new 5-day week is
+ * exactly one 80-day era, which would give every era an identical fashion arc; 14 weeks is 70 days and
+ * drifts against the era, giving about 4.5 cycles over the 320-day campaign.
+ *
+ * The felt-behaviour statement, verbatim: "Each car model now drifts through a full fashion cycle of
+ * about 70 days: at its peak it is roughly 12 per cent dearer and buyers arrive around 30 per cent
+ * more often, at its trough it is roughly 12 per cent cheaper and buyers arrive around 25 per cent less
+ * often. Cycles drift against the era rather than repeating with it. Previously the wave was damped to
+ * a 91-to-109 swing and never changed buyer arrival at all."
+ *
+ * Pinned by `packages/sim/tests/fashionWaveHeatBands.test.ts`, which simulates the smoothing
+ * recurrence directly (not the constants) for a model with no supply or sales pressure and asserts the
+ * steady-state swing clears both band thresholds - the check that would have caught the old damping
+ * problem. No other lever moves: `SUPPLY_WEIGHT`, `SALES_WEIGHT`, `SCARCITY_THRESHOLD`,
+ * `SCARCITY_BONUS`, `HEAT_MIN`/`HEAT_MAX`, `SMOOTHING` and `LEDGER_DECAY` are all unchanged.
+ *
+ * Re-pinned for the hot-band second-offer rework (maintainer-specified, both levers named before
+ * implementation): `selling.offerChanceByHeatBand.hot` 1.3 -> **1** (the hot band no longer inflates
+ * the first offer's own chance), and a new lever `selling.hotSecondOfferChance` (**0.5**) added -
+ * on a rejection, only when the car's model is in today's hot band, the chance a different buyer
+ * turns up with a second offer the same day (`resolveRejectOffer`, sim/selling.ts). Cold
+ * (`offerChanceByHeatBand.cold` 0.75) and normal (1) are unchanged.
+ *
+ * The felt-behaviour statement, verbatim: "A hot model no longer simply draws offers more often. It
+ * draws them at the ordinary rate, but turning one down gives an even chance that a second buyer
+ * comes the same day, so rejecting a lowball on a car the scene wants is a gamble rather than a
+ * straight loss. Cold and normal models are unchanged, and a rejection there means waiting for
+ * tomorrow."
+ *
+ * Pinned by `packages/sim/tests/selling.test.ts`'s `resolveRejectOffer: hot-band second offer`
+ * block, which asserts the sequential contract directly: a hot-band rejection can draw a second
+ * offer from a different buyer than the one just turned down, the same day; a normal- or cold-band
+ * rejection never rolls at all; the roll is deterministic for the same day/car/offersSeen; and a
+ * landed second offer advances the listing's own `offersSeen` by one.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -2246,7 +2328,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('d7df778067016485a6950342ad3f725b9ac3a4aff524d9ea456b8b98de367cf8')
+    ).toBe('95799a084eaf8bff3af385faae956e4f2a7e74f74042f22f068fbf3a6b51fc8f')
   })
 
   it('damagePatterns.json matches its approved content exactly', () => {

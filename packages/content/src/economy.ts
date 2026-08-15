@@ -761,18 +761,23 @@ export const EconomyConfigSchema = z.object({
    */
   STARTING_CASH_YEN: z.number().int().positive(),
   /**
-   * The week's shape (sprint149.md): `calendar.ts` is the ONLY place
-   * `state.day` is ever turned into a day-of-week or a month - every other
-   * module calls its derivations rather than keeping a private day-of-week
-   * check of its own. `daysPerWeek`/`daysPerMonth` are the week/month
-   * LENGTH; the three `*DayOfWeek` fields are 1-indexed positions within
-   * that week (1 = the first day, `daysPerWeek` = the last), naming which
-   * day each landmark falls on: the weekend meet's one guaranteed draw,
-   * staff payday and the rent bill. `daysPerMonth` is
-   * chosen as four clean weeks, so a month boundary is always also a week
-   * boundary - no second cadence to reconcile. A game month is
-   * `floor((day - 1) / daysPerMonth) + 1`, never a Gregorian one (no leap
-   * years, no real 1995 calendar - the game counts days from day one).
+   * The campaign's shape (sprint204.md, R1's shape: 5/4/4/4): `calendar.ts`
+   * is the ONLY place `state.day` is ever turned into a day-of-week, a
+   * season or an era - every other module calls its derivations rather than
+   * keeping a private day-of-week check of its own. `daysPerWeek` is the
+   * week LENGTH; the three `*DayOfWeek` fields are 1-indexed positions
+   * within that week (1 = the first day, `daysPerWeek` = the last), naming
+   * which day each landmark falls on: the weekend meet's one guaranteed
+   * draw, staff payday and the rent bill. `weeksPerSeason` and
+   * `seasonsPerEra` are the season and era LENGTH, in weeks and seasons
+   * respectively - a season is always `daysPerWeek * weeksPerSeason` days,
+   * whatever `campaignYearCurve` below does, and an era is always
+   * `seasonsPerEra` seasons (`calendar.ts`'s `seasonOf`/`eraOf`). The number
+   * of eras is not a lever here: it is fixed at four by `EraIdSchema`'s own
+   * four names, since every era is authored copy, not a counted quantity.
+   * There is no month concept: the old `daysPerMonth` four-clean-weeks
+   * grouping is superseded by the season, which is that same grouping named
+   * and given a display identity.
    *
    * The auction house is NOT a landmark here. Each room keeps its own hours
    * (`auction.cadenceByTier`, sprint150.md), so there is no one auction day
@@ -781,7 +786,8 @@ export const EconomyConfigSchema = z.object({
   calendar: z
     .object({
       daysPerWeek: z.number().int().positive(),
-      daysPerMonth: z.number().int().positive(),
+      weeksPerSeason: z.number().int().positive(),
+      seasonsPerEra: z.number().int().positive(),
       meetDayOfWeek: z.number().int().positive(),
       paydayOfWeek: z.number().int().positive(),
       rentDayOfWeek: z.number().int().positive(),
@@ -794,6 +800,20 @@ export const EconomyConfigSchema = z.object({
         ),
       { message: 'calendar: every *DayOfWeek lever must fall within [1, daysPerWeek]' },
     ),
+  /**
+   * Elapsed days -> in-game year (sprint204.md, R1,
+   * sale-value-implementation-plan.md): the same piecewise-linear shape as
+   * `valuation.mileageFactorCurve`, read through `interpolateCurve`
+   * (marketValue.ts). INTERNAL ONLY - no UI ever renders a year
+   * (docs/design/systems/campaign-clock-and-events.md section 2a); every
+   * player-facing surface reads the era band (`calendar.ts`'s `eraOf`)
+   * instead, derived from the calendar's own fixed cycle and independent of
+   * this curve. Breakpoints sit at the four eras' opening days, spanning the
+   * GDD's 1995-to-2005 decade (GDD 2.2) across the campaign's 320 days.
+   * `currentGameYear` rounds the interpolated value to the nearest whole
+   * year - every reader wants a year, never a fraction of one.
+   */
+  campaignYearCurve: CurveSchema,
   /**
    * Weekly rent, deducted on its own named day (`calendar.rentDayOfWeek`,
    * separate from staff wages on `calendar.paydayOfWeek` since sprint149.md)
@@ -1211,6 +1231,15 @@ export const EconomyConfigSchema = z.object({
        * reads on top of a channel's own authored weights
        * (`recentSceneLedgerEntries`, sim/sceneStanding.ts) - the anti-lock-in
        * term `rollingWindowShareCap` below scales.
+       *
+       * Rescaled 14 -> 10 when `calendar.daysPerWeek` moved 7 -> 5
+       * (sprint204.md A5): unlike `marketPressure.WAVE_PERIOD_WEEKS`, this
+       * field is denominated in DAYS, not weeks, so leaving the raw number
+       * unchanged would have silently turned "the trailing two weeks of
+       * matched sales" into a fractional 2.8-week span with no clean weekly
+       * landmark under the new calendar. Scaling by the same 5/7 ratio keeps
+       * the field's own meaning - two full weeks of recent work - intact,
+       * now as two five-day weeks instead of two seven-day ones.
        */
       rollingWindowDays: z.number().int().positive(),
       /**
@@ -1312,7 +1341,16 @@ export const EconomyConfigSchema = z.object({
     .object({
       /** Amplitude (+/- percent) of each model's slow demand wave. */
       WAVE_AMPLITUDE: z.number().nonnegative(),
-      /** Wave period, in weeks - a full up-and-down cycle. */
+      /** Wave period, in weeks - a full up-and-down cycle. Deliberately kept
+       * in WEEKS rather than re-derived in days when `calendar.daysPerWeek`
+       * moved 7 -> 5 (sprint204.md A5): the wave lives beside rent, payday
+       * and auction cadence, every one of them a week-denominated landmark,
+       * and staying week-denominated keeps its relationship to them stable
+       * across any future week-length change. The consequence is real and
+       * accepted rather than compensated for: unchanged at 24, the period is
+       * now 120 days instead of 168, so a 320-day campaign carries about 2.7
+       * cycles instead of a fraction of one open-ended career - more felt
+       * rhythm inside a campaign that is now a fixed, short shape. */
       WAVE_PERIOD_WEEKS: z.number().int().positive(),
       /** Heat-percent penalty per unit of decayed `lotSupply` (fresh catalog
        * lots of this model, exponentially decayed). */
@@ -2505,12 +2543,25 @@ export const EconomyConfigSchema = z.object({
        * continuous curve, so each one can be eyeball-tuned directly. */
       heatBandColdBelowPercent: z.number().positive(),
       heatBandHotAtOrAbovePercent: z.number().positive(),
-      /** Multiplier on `offerChanceBase` per today's heat band. */
+      /** Multiplier on `offerChanceBase` per today's heat band. `hot` is the
+       * FIRST offer's own chance only - a hot model no longer draws more
+       * often than normal on the first roll; what a hot band buys is
+       * `hotSecondOfferChance` below, on a rejection. */
       offerChanceByHeatBand: z.object({
         cold: z.number().nonnegative(),
         normal: z.number().nonnegative(),
         hot: z.number().nonnegative(),
       }),
+      /**
+       * On a rejected offer for a car whose model is in today's hot heat
+       * band ONLY - never cold or normal - the chance a second buyer turns
+       * up for the same car the same day (`resolveRejectOffer`, selling.ts).
+       * The second offer is drawn from a different buyer than the one just
+       * rejected, through the same channel and the same offer-pricing path
+       * every other draw uses. A cold or normal rejection simply waits for
+       * tomorrow, as it always has.
+       */
+      hotSecondOfferChance: z.number().min(0).max(1),
       /**
        * How sharply a channel's own crowd turns up, by standing: the exponent
        * every `sellingChannels[*].buyerPoolWeights` entry is raised to before

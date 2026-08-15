@@ -67,7 +67,9 @@ function stateOnDay(day: number, staff: StaffMember[] = []): GameState {
  * can't silently desync these tests from the content it exercises. */
 const RENT_DAY = ECONOMY.calendar.rentDayOfWeek
 const PAYDAY = ECONOMY.calendar.paydayOfWeek
-const NEITHER_DAY = [1, 2, 3, 4, 5, 6, 7].find((d) => d !== RENT_DAY && d !== PAYDAY)!
+const NEITHER_DAY = Array.from({ length: ECONOMY.calendar.daysPerWeek }, (_, i) => i + 1).find(
+  (d) => d !== RENT_DAY && d !== PAYDAY,
+)!
 
 describe('applyWeeklyRentAndWages', () => {
   it('does nothing on a day that is neither rent day nor payday', () => {
@@ -104,28 +106,34 @@ describe('applyWeeklyRentAndWages', () => {
 
 /**
  * The sprint's own honesty check (sprint149.md "the one thing to get
- * right"): rent and wages moved off one shared 7-day boundary onto their
- * own named days, but the AMOUNT charged per week must not change - only
- * which day it lands on. This proves the 28-day total (four weeks, exactly
- * four rent charges and four wage charges regardless of phase) equals what
- * the pre-sprint flat `day % 7 === 0` cadence would have charged: both
- * rent and wages firing together, once a week, four times.
+ * right"): rent and wages fire on their own named days rather than one
+ * shared boundary, but the AMOUNT charged per week must not change - only
+ * which day it lands on. This proves a four-week total (exactly four rent
+ * charges and four wage charges regardless of phase) equals four weeks of
+ * both firing together: `calendar.daysPerWeek * 4` days is the span,
+ * genuinely four clean weeks whatever the week's own length is tuned to
+ * (28 days under sprint149.md's seven-day week, 20 under sprint204.md's
+ * five-day one) - reading the length from content is what stops this test
+ * silently desyncing the next time it moves.
  */
-describe('the 28-day rent+wages total is unchanged from the pre-sprint cadence (sprint149.md)', () => {
-  it('sums to exactly 4 x (rent + wages) over days 1-28, whichever days they now land on', () => {
+describe('the four-week rent+wages total is unchanged from the pre-sprint149 cadence', () => {
+  const FOUR_WEEKS_DAYS = ECONOMY.calendar.daysPerWeek * 4
+
+  it('sums to exactly 4 x (rent + wages) over four clean weeks from day 1, whichever days they now land on', () => {
     const rentYen = computeWeeklyRentYen(OPENING_BAY_COUNTS, ECONOMY)
     let totalChargedYen = 0
-    for (let day = 1; day <= 28; day++) {
+    for (let day = 1; day <= FOUR_WEEKS_DAYS; day++) {
       const result = applyWeeklyRentAndWages(stateOnDay(day, [staffMember]), ECONOMY)
       totalChargedYen -= result.log.reduce((sum, entry) => sum + entry.amountYen, 0)
     }
     expect(totalChargedYen).toBe(4 * (rentYen + staffMember.weeklyWageYen))
   })
 
-  it('holds over a 28-day span that does NOT start on day 1 either', () => {
+  it('holds over a four-week span that does NOT start on day 1, and is not week-aligned either', () => {
     const rentYen = computeWeeklyRentYen(OPENING_BAY_COUNTS, ECONOMY)
     let totalChargedYen = 0
-    for (let day = 53; day <= 80; day++) {
+    const start = 53
+    for (let day = start; day < start + FOUR_WEEKS_DAYS; day++) {
       const result = applyWeeklyRentAndWages(stateOnDay(day, [staffMember]), ECONOMY)
       totalChargedYen -= result.log.reduce((sum, entry) => sum + entry.amountYen, 0)
     }

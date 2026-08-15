@@ -347,54 +347,61 @@ describe('the economy bench state builder', () => {
 })
 
 describe("the economy bench's campaign year", () => {
-  const legendShop: BenchShopSpec = { ...shopSpec, reputationTier: 'legend' }
+  // The calendar moves on elapsed days now, not reputation (sprint204.md) -
+  // a late-campaign day, not a high reputation tier, is what widens the
+  // generator's year window.
+  const lateCampaignShop: BenchShopSpec = { ...shopSpec, day: 300 }
 
-  it('bounds the year control by the generator own window at this shop tier', () => {
-    for (const shop of [shopSpec, legendShop]) {
+  it('bounds the year control by the generator own window at this shop day', () => {
+    for (const shop of [shopSpec, lateCampaignShop]) {
       for (const candidate of context.models) {
         expect(benchYearRange(candidate, shop, context)).toEqual(
-          generatedYearRangeFor(candidate, currentGameYear(shop.reputationTier), context.economy),
+          generatedYearRangeFor(
+            candidate,
+            currentGameYear(shop.day, context.economy),
+            context.economy,
+          ),
         )
       }
     }
   })
 
-  it('rolls a generated lot at the shop own tier, not at the career opening year', () => {
-    // The model whose window the higher tier widens most, so the difference the
+  it('rolls a generated lot at the shop own day, not at the career opening day', () => {
+    // The model whose window the later day widens most, so the difference the
     // roll can express is as large as the roster offers.
     const widening = (candidate: CarModel): number =>
-      benchYearRange(candidate, legendShop, context)[1] -
+      benchYearRange(candidate, lateCampaignShop, context)[1] -
       benchYearRange(candidate, shopSpec, context)[1]
     const widest = [...context.models].sort((a, b) => widening(b) - widening(a))[0]!
     expect(widening(widest)).toBeGreaterThan(0)
 
     const youngestAtOpening = benchYearRange(widest, shopSpec, context)[1]
-    const youngestAtLegend = benchYearRange(widest, legendShop, context)[1]
+    const youngestAtLate = benchYearRange(widest, lateCampaignShop, context)[1]
     const years = Array.from(
       { length: 60 },
-      (_, seed) => generatedBenchCar(widest, seed + 1, legendShop, context).year,
+      (_, seed) => generatedBenchCar(widest, seed + 1, lateCampaignShop, context).year,
     )
 
-    // Every roll inside the tier's own window, and at least one of them above
-    // the year an opening-tier campaign could ever have produced.
+    // Every roll inside the day's own window, and at least one of them above
+    // the year an opening-day campaign could ever have produced.
     for (const year of years) {
       expect(year).toBeGreaterThanOrEqual(widest.spec.yearFrom)
-      expect(year).toBeLessThanOrEqual(youngestAtLegend)
+      expect(year).toBeLessThanOrEqual(youngestAtLate)
     }
     expect(Math.max(...years)).toBeGreaterThan(youngestAtOpening)
   })
 
   it('starts the mileage control from the campaign year, so a later one means an older car', () => {
-    // Age 2 at the opening tier, so both readings sit on the rising part of the
+    // Age 2 at the opening day, so both readings sit on the rising part of the
     // curve rather than against its cap.
-    const year = currentGameYear(shopSpec.reputationTier) - 2
-    expect(defaultMileageKm(year, legendShop, context)).toBeGreaterThan(
+    const year = currentGameYear(shopSpec.day, context.economy) - 2
+    expect(defaultMileageKm(year, lateCampaignShop, context)).toBeGreaterThan(
       defaultMileageKm(year, shopSpec, context),
     )
   })
 
   it('starts a hand-built car on a year the generator would allow', () => {
-    for (const shop of [shopSpec, legendShop]) {
+    for (const shop of [shopSpec, lateCampaignShop]) {
       for (const candidate of context.models) {
         const spec = defaultCarSpec(candidate, shop, context)
         const [oldest, youngest] = benchYearRange(candidate, shop, context)

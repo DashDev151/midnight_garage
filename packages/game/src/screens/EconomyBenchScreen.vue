@@ -521,7 +521,7 @@ const pendingFoundation = computed(() => {
 const mileage = computed(() => mileageNoteFor(carSpec.value.mileageKm, context.value.economy))
 /** The year the calendar stands at for this shop, which the generator's year
  * window and every age-driven curve read. */
-const campaignYear = computed(() => benchCampaignYear(shopSpec.value))
+const campaignYear = computed(() => benchCampaignYear(shopSpec.value, context.value.economy))
 
 const opening = computed(() =>
   car.value && model.value
@@ -898,10 +898,10 @@ const slotsInRepairGroup = computed(() => context.value.partIdsByGroup[repairGro
         <span class="dim">A generated lot is the common case; hand-building 28 slots is not.</span>
       </div>
       <p class="dim" data-test="bench-generated-note">
-        A lot rolls at campaign year {{ campaignYear }}, the year this shop's reputation tier ({{
-          shopSpec.reputationTier
+        A lot rolls at campaign year {{ campaignYear }}, the year this shop's day ({{
+          shopSpec.day
         }}) puts the calendar at. Both the generator's year window and its age-driven mileage curve
-        read it: a later campaign year admits younger cars.
+        read it: a later campaign day admits younger cars.
       </p>
 
       <div class="row">
@@ -1114,7 +1114,10 @@ const slotsInRepairGroup = computed(() => context.value.partIdsByGroup[repairGro
     <details class="panel">
       <summary>1c. The shop</summary>
       <div class="row">
-        <label>Day <input v-model.number="shopSpec.day" type="number" min="1" /></label>
+        <label
+          >Day
+          <input v-model.number="shopSpec.day" data-test="bench-shop-day" type="number" min="1"
+        /></label>
         <label>Cash <input v-model.number="shopSpec.cashYen" type="number" step="100000" /></label>
         <label>
           Market heat %

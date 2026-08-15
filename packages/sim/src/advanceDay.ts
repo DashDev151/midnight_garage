@@ -348,7 +348,7 @@ export function advanceDay(
       context,
       next.day + 1,
       rng,
-      currentGameYear(next.reputationTier),
+      currentGameYear(next.day + 1, context.economy),
       toolLevelsFor(next, context),
       next.reputationTier,
     )

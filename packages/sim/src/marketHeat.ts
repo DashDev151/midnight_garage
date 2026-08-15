@@ -1,5 +1,5 @@
 import type { DayLogEntry, GameState } from '@midnight-garage/content'
-import { isEndOfWeek } from './calendar'
+import { isEndOfWeek, weekIndex } from './calendar'
 import type { SimContext } from './context'
 import { hashStringToSeed } from './rng'
 
@@ -30,7 +30,7 @@ function decayedEntry(
  * model 3 times. Called from `advanceDay.ts`'s daily-arrivals step, right
  * beside the `freshLots` append (`catalogs.ts`'s generators stay pure - they
  * never touch state themselves). The weekly market-pressure update still only
- * reads the accumulated ledger on its own 7-day cadence.
+ * reads the accumulated ledger on its own `calendar.daysPerWeek` cadence.
  */
 export function bumpLotSupply(state: GameState, modelIds: readonly string[]): GameState {
   if (modelIds.length === 0) return state
@@ -79,7 +79,7 @@ export function updateMarketHeat(state: GameState, context: SimContext): MarketH
   }
 
   const { marketPressure } = context.economy
-  const weekIndex = Math.floor(state.day / 7)
+  const week = weekIndex(state.day, context.economy)
   const marketHeat = { ...state.marketHeat }
   const lotSupply: Record<string, number> = {}
   const playerSales: Record<string, number> = {}
@@ -105,7 +105,7 @@ export function updateMarketHeat(state: GameState, context: SimContext): MarketH
     const phase = hashStringToSeed(modelId) % marketPressure.WAVE_PERIOD_WEEKS
     const wave =
       marketPressure.WAVE_AMPLITUDE *
-      Math.sin((2 * Math.PI * (weekIndex + phase)) / marketPressure.WAVE_PERIOD_WEEKS)
+      Math.sin((2 * Math.PI * (week + phase)) / marketPressure.WAVE_PERIOD_WEEKS)
     const scarcityBonus =
       decayedLotSupply < marketPressure.SCARCITY_THRESHOLD ? marketPressure.SCARCITY_BONUS : 0
     const rawTarget =

@@ -141,7 +141,7 @@ export interface SandboxCar {
  * so the screen owns the figure in force and this is only where it begins.
  */
 export function defaultMileageKm(model: CarModel, context: SimContext): number {
-  const ageYears = Math.max(0, currentGameYear('unknown') - model.spec.yearFrom)
+  const ageYears = Math.max(0, currentGameYear(1, context.economy) - model.spec.yearFrom)
   const [min, max] = mileageRangeForAge(ageYears, context.economy)
   return Math.round((min + max) / 2)
 }

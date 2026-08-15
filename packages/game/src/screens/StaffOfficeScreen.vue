@@ -34,6 +34,21 @@ const localVenueName = computed(() => venueLabelFor('local-yard', game.gameState
 /** The staff id whose dismissal is mid-confirm (two-step), or null. */
 const confirmingDismissId = ref<string | null>(null)
 
+/** An ad's age, said relative to today rather than as a bare campaign day
+ * number - the player only needs how long it has been up. */
+function adPostedLabel(postedOnDay: number): string {
+  const daysAgo = game.day - postedOnDay
+  return daysAgo <= 0 ? 'today' : `${daysAgo}d ago`
+}
+
+/** An ad's expiry, said relative to today - the countdown a player needs to
+ * decide whether to hire before it drops, never the absolute day it falls
+ * on. */
+function adExpiryLabel(expiresOnDay: number): string {
+  const daysLeft = expiresOnDay - game.day
+  return daysLeft <= 0 ? 'today' : `in ${daysLeft}d`
+}
+
 function askDismiss(id: string): void {
   confirmingDismissId.value = id
 }
@@ -202,7 +217,8 @@ function toggleAssignment(member: StaffMemberCardView): void {
           </p>
           <div class="actions">
             <span class="posted"
-              >Posted day {{ ad.postedOnDay }}, down day {{ ad.expiresOnDay }}</span
+              >Posted {{ adPostedLabel(ad.postedOnDay) }}, down
+              {{ adExpiryLabel(ad.expiresOnDay) }}</span
             >
             <button
               type="button"

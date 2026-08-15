@@ -1,8 +1,10 @@
 import { mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
 import { ECONOMY } from '@midnight-garage/content'
+import { dayOfSeason, eraOf, seasonOf } from '@midnight-garage/sim'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { useGameStore } from '../stores/gameStore'
+import { eraLabel, seasonLabel } from '../utils/calendarLabels'
 import { photoCountForReputationTier } from './officeDisplay'
 import StandingScreen from './StandingScreen.vue'
 
@@ -171,6 +173,62 @@ describe('StandingScreen (Sprint 62 item 17)', () => {
 
       expect(wrapper.find('[data-test="office-card-count"]').text()).toBe('0 cars listed')
       expect(wrapper.find('[data-test="office-certificate-count"]').text()).toBe('none earned yet')
+    })
+  })
+
+  describe('wall calendar (Sprint 204 item B2)', () => {
+    it("names the current season and era, matching the sim's own calendar functions", () => {
+      const game = useGameStore()
+      game.newGame(1)
+      const wrapper = mountScreen()
+
+      const economy = game.context.economy
+      expect(wrapper.find('[data-test="wall-calendar-season"]').text()).toBe(
+        seasonLabel(seasonOf(game.day, economy)),
+      )
+      expect(wrapper.find('[data-test="wall-calendar-era"]').text()).toBe(
+        eraLabel(eraOf(game.day, economy)),
+      )
+    })
+
+    it('lays the season out as four weeks of five days', () => {
+      const game = useGameStore()
+      game.newGame(1)
+      const wrapper = mountScreen()
+
+      const weeks = [0, 1, 2, 3].map((i) => wrapper.find(`[data-test="wall-calendar-week-${i}"]`))
+      expect(weeks.every((week) => week.exists())).toBe(true)
+      expect(wrapper.find('[data-test="wall-calendar-week-4"]').exists()).toBe(false)
+
+      const allDays = wrapper
+        .find('[data-test="wall-calendar-grid"]')
+        .findAll('.wall-calendar-cell')
+      expect(allDays).toHaveLength(20)
+      expect(allDays.map((cell) => cell.text())).toEqual(
+        Array.from({ length: 20 }, (_, i) => String(i + 1).padStart(2, '0')),
+      )
+    })
+
+    it("marks exactly today's cell, at the current day-within-season", () => {
+      const game = useGameStore()
+      game.newGame(1)
+      const wrapper = mountScreen()
+
+      const economy = game.context.economy
+      const today = dayOfSeason(game.day, economy)
+      const marked = wrapper.findAll('.wall-calendar-cell.today')
+      expect(marked).toHaveLength(1)
+      expect(marked[0]!.text()).toBe(String(today).padStart(2, '0'))
+      expect(wrapper.find('[data-test="wall-calendar-today"]').text()).toBe(
+        String(today).padStart(2, '0'),
+      )
+    })
+
+    it('never shows a four-digit year anywhere on the standing screen', () => {
+      const game = useGameStore()
+      game.newGame(1)
+      const wrapper = mountScreen()
+      expect(wrapper.text()).not.toMatch(/\b(19|20)\d{2}\b/)
     })
   })
 })

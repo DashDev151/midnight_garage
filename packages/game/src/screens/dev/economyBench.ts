@@ -5,6 +5,7 @@ import {
   type CarModel,
   type CarPartId,
   type ConditionBand,
+  type EconomyConfig,
   type GameState,
   type MetalZoneId,
   type Part,
@@ -172,12 +173,14 @@ export function stockBuild(model: CarModel, context: SimContext): BenchBuild {
 }
 
 /**
- * The campaign year a shop at this reputation tier is living in. The calendar
- * moves with reputation, so the generator's year window and every age-driven
- * curve read this rather than the career's opening year.
+ * The campaign year a shop at this day is living in - reads
+ * `economy.campaignYearCurve` off the shop's own `day`
+ * (sprint204.md: the calendar moves with elapsed time, not reputation), so
+ * the generator's year window and every age-driven curve read this rather
+ * than the career's opening year.
  */
-export function benchCampaignYear(shop: BenchShopSpec): number {
-  return currentGameYear(shop.reputationTier)
+export function benchCampaignYear(shop: BenchShopSpec, economy: EconomyConfig): number {
+  return currentGameYear(shop.day, economy)
 }
 
 /**
@@ -190,7 +193,7 @@ export function benchYearRange(
   shop: BenchShopSpec,
   context: SimContext,
 ): [number, number] {
-  return generatedYearRangeFor(model, benchCampaignYear(shop), context.economy)
+  return generatedYearRangeFor(model, benchCampaignYear(shop, context.economy), context.economy)
 }
 
 /**
@@ -200,7 +203,7 @@ export function benchYearRange(
  * is only where the control begins.
  */
 export function defaultMileageKm(year: number, shop: BenchShopSpec, context: SimContext): number {
-  const ageYears = Math.max(0, benchCampaignYear(shop) - year)
+  const ageYears = Math.max(0, benchCampaignYear(shop, context.economy) - year)
   const [min, max] = mileageRangeForAge(ageYears, context.economy)
   return Math.round((min + max) / 2)
 }
@@ -382,7 +385,7 @@ export function generatedBenchCar(
     BENCH_CAR_ID,
     createRng(seed),
     context,
-    benchCampaignYear(shop),
+    benchCampaignYear(shop, context.economy),
     true,
     shop.day,
   )

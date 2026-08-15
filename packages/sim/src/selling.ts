@@ -34,7 +34,7 @@ import {
 } from './facilities'
 import { marketValueYen } from './marketValue'
 import { bumpPlayerSales } from './marketHeat'
-import { bellNormal, type Rng } from './rng'
+import { bellNormal, createRng, hashStringToSeed, type Rng } from './rng'
 import { dissolveAssembliesForCar } from './assemblies'
 import { creditSceneDelivery, wordOfMouthMultipliers } from './sceneStanding'
 import {
@@ -655,26 +655,104 @@ export function resolveSetForSale(
  * listing.
  *
  * Deliberately no reputation cost: turning down a lowball is a
- * negotiation, not a slight. A no-op (unknown car, no live offer) returns
- * the state untouched with an empty log, like every other resolver here.
+ * negotiation, not a slight.
+ *
+ * When the car's model is in today's hot heat band (`heatBandFor`), a
+ * rejection also rolls `economy.selling.hotSecondOfferChance`: on success, a
+ * fresh offer is drawn for the SAME car, THE SAME DAY, through the same
+ * `drawFlaggedChannelOffer` path `drawDailyOffers` already prices every
+ * listed car through - never a second offer generator - excluding the
+ * buyer who was just turned down, so the follow-up always reads as a
+ * different party turning up. Cold and normal cars are untouched: a
+ * rejection there simply waits for tomorrow, exactly as before.
+ *
+ * The roll is seeded off facts a replay can reconstruct exactly - the car
+ * instance, the day, and this listing's own `offersSeen` at the moment of
+ * rejection - never wall-clock time or an ambient PRNG, so a career script
+ * that rejects the same offer on the same day always draws the same
+ * follow-up (or none). A successful roll also advances `offersSeen` by
+ * one, whether or not it lands on a real offer - the same "a buyer showed
+ * up" convention `drawOfferForChannel`'s own `attempted` flag uses, so a
+ * hot car that draws a second visit also stales faster.
+ *
+ * A no-op (unknown car, no live offer) returns the state untouched with an
+ * empty log, like every other resolver here.
  */
-export function resolveRejectOffer(state: GameState, carInstanceId: string): SetForSaleResult {
+export function resolveRejectOffer(
+  state: GameState,
+  carInstanceId: string,
+  context: SimContext,
+): SetForSaleResult {
   const offer = state.pendingOffers.find((o) => o.carInstanceId === carInstanceId)
   if (!offer) return { state, log: [] }
   const car = state.ownedCars.find((c) => c.id === carInstanceId)
   if (!car) return { state, log: [] }
+
+  const rejectedState: GameState = {
+    ...state,
+    pendingOffers: state.pendingOffers.filter((o) => o.carInstanceId !== carInstanceId),
+  }
+  const rejectionLog: DayLogEntry = {
+    type: 'offer-rejected',
+    carInstanceId,
+    modelId: car.modelId,
+    buyerId: offer.buyerId,
+    priceYen: offer.priceYen,
+  }
+
+  const model = context.modelsById[car.modelId]
+  const entry = state.carsForSale.find((f) => f.carInstanceId === carInstanceId)
+  const heatPercent = state.marketHeat[car.modelId] ?? 100
+  if (!model || !entry || heatBandFor(heatPercent, context.economy) !== 'hot') {
+    return { state: rejectedState, log: [rejectionLog] }
+  }
+
+  const rng = createRng(
+    hashStringToSeed(`hot-second-offer:${carInstanceId}:${state.day}:${entry.offersSeen}`),
+  )
+  if (rng.next() >= context.economy.selling.hotSecondOfferChance) {
+    return { state: rejectedState, log: [rejectionLog] }
+  }
+
+  const channel = context.economy.sellingChannels[entry.channelId]
+  const secondOffer = drawFlaggedChannelOffer(
+    car,
+    model,
+    context,
+    heatPercent,
+    channel,
+    entry.offersSeen,
+    rng,
+    state.reputationTier,
+    state.sceneStanding,
+    wordOfMouthMultipliers(state, context.economy),
+    offer.buyerId,
+  )
+
+  const advancedState: GameState = {
+    ...rejectedState,
+    carsForSale: rejectedState.carsForSale.map((f) =>
+      f.carInstanceId === carInstanceId ? { ...f, offersSeen: f.offersSeen + 1 } : f,
+    ),
+  }
+  if (!secondOffer) return { state: advancedState, log: [rejectionLog] }
+
   return {
     state: {
-      ...state,
-      pendingOffers: state.pendingOffers.filter((o) => o.carInstanceId !== carInstanceId),
+      ...advancedState,
+      pendingOffers: [
+        ...advancedState.pendingOffers,
+        { carInstanceId, buyerId: secondOffer.buyerId, priceYen: secondOffer.priceYen },
+      ],
     },
     log: [
+      rejectionLog,
       {
-        type: 'offer-rejected',
+        type: 'offer-received',
         carInstanceId,
         modelId: car.modelId,
-        buyerId: offer.buyerId,
-        priceYen: offer.priceYen,
+        buyerId: secondOffer.buyerId,
+        priceYen: secondOffer.priceYen,
       },
     ],
   }
@@ -707,6 +785,11 @@ function clampedChance(chance: number): number {
  * function, driven entirely by the channel's own content flags. Priced
  * through the Stage F quality draw at this listing's own `offersSeen`,
  * replacing the old flat uniform spread band.
+ *
+ * `excludeBuyerId`, when passed, drops that one buyer from the candidate
+ * pool before the draw - the hot-band second-offer roll's own use
+ * (`resolveRejectOffer`), so a follow-up offer is always a different party
+ * turning up, never the same buyer circling back with another number.
  */
 function drawPersonaChannelOffer(
   car: CarInstance,
@@ -719,11 +802,15 @@ function drawPersonaChannelOffer(
   rng: Rng,
   weighting: ChannelDrawWeighting,
   sceneStanding: SceneStanding,
+  excludeBuyerId?: string,
 ): SaleOffer | undefined {
+  const buyers = excludeBuyerId
+    ? context.buyers.filter((buyer) => buyer.id !== excludeBuyerId)
+    : context.buyers
   const picked = pickWeightedCandidate(
     car,
     model,
-    context.buyers,
+    buyers,
     context.partsById,
     context.partsTaxonomy,
     context.partsTaxonomyById,
@@ -826,7 +913,9 @@ interface ChannelDraw {
  * this listing's own Stage F clock, threaded through to whichever pricing
  * path actually reads it (the persona path's quality draw; the trade
  * network's flat `priceBand` ignores it, by design - see `sale-value-
- * system.md` S4/S6).
+ * system.md` S4/S6). `excludeBuyerId` passes straight through to
+ * `drawPersonaChannelOffer`; a `priceBand` channel has no persona to
+ * exclude, so it is simply unused on that branch.
  */
 function drawFlaggedChannelOffer(
   car: CarInstance,
@@ -839,6 +928,7 @@ function drawFlaggedChannelOffer(
   reputationTier: ReputationTier,
   sceneStanding: SceneStanding,
   wordOfMouth: Readonly<Partial<Record<BuyerArchetype, number>>>,
+  excludeBuyerId?: string,
 ): SaleOffer | undefined {
   if (channel.priceBand) {
     return drawTradeNetworkOffer(car, model, context, heatPercent, channel.priceBand, rng)
@@ -854,6 +944,7 @@ function drawFlaggedChannelOffer(
     rng,
     channelDrawWeighting(channel, reputationTier, context.economy, wordOfMouth),
     sceneStanding,
+    excludeBuyerId,
   )
 }
 

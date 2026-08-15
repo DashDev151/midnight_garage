@@ -1,50 +1,47 @@
 import {
-  ReputationTierSchema,
+  ERA_IDS,
+  SEASON_IDS,
   type AuctionTier,
   type EconomyConfig,
-  type ReputationTier,
+  type EraId,
+  type SeasonId,
 } from '@midnight-garage/content'
+import { interpolateCurve } from './marketValue'
 
-/** GDD 2.2: "starting in 1995." */
-const CALENDAR_START_YEAR = 1995
-
-/** GDD 2.2: "the calendar advances ~2 in-game years per reputation tier." */
-const YEARS_PER_REPUTATION_TIER = 2
+// Re-exported so `@midnight-garage/game` can import the id types straight
+// from `@midnight-garage/sim` (display labels live there, per the split in
+// campaign-clock-and-events.md) rather than reaching into
+// `@midnight-garage/content` for a sim-shaped id.
+export type { EraId, SeasonId }
 
 /**
- * The in-game calendar year for a reputation tier (GDD 2.2: "1995 -> 2005
- * over a full campaign, ~2 years per tier"). Gates which car model years can
- * plausibly appear at auction or as a service-job customer's car - a
- * first-pass formula, explicitly tunable like every other constant here.
+ * The in-game calendar year at `day` elapsed days into the campaign
+ * (sprint204.md; R1, sale-value-implementation-plan.md). Reads
+ * `economy.campaignYearCurve` through the same `interpolateCurve`
+ * `marketValue.ts` uses for `mileageFactorCurve`, then rounds to the nearest
+ * whole year - every reader wants a year, never a fraction of one. Gates
+ * which car model years can plausibly appear at auction or as a service-job
+ * customer's car.
  *
- * Reads reputation, not elapsed time - R1 in sale-value-implementation-plan.md
- * has already settled that the campaign year moves onto a `campaignYearCurve`
- * driven by elapsed days instead, in a later sprint. This sprint (149) builds
- * the calendar's day/week/month primitives around this function without
- * touching what it reads.
+ * INTERNAL ONLY: no UI ever renders this figure
+ * (docs/design/systems/campaign-clock-and-events.md section 2a) - a
+ * player-facing surface reads `eraOf` instead. Takes elapsed days, not
+ * reputation: R1's guard G1 deletes the old reputation-tier argument rather
+ * than leaving it ignored, since a low-standing player must not be frozen at
+ * the campaign's opening year forever.
  */
-export function currentGameYear(reputationTier: ReputationTier): number {
-  return (
-    CALENDAR_START_YEAR +
-    YEARS_PER_REPUTATION_TIER * ReputationTierSchema.options.indexOf(reputationTier)
-  )
+export function currentGameYear(day: number, economy: EconomyConfig): number {
+  return Math.round(interpolateCurve(economy.campaignYearCurve, day))
 }
 
 /** Weekday names for `dayOfWeek`'s 1-indexed positions - a repeating
- * 7-day week labelled for display only (sprint149.md); not a real 1995
- * calendar and never grows leap years or actual dates. The last position
- * is `calendar.meetDayOfWeek`'s weekend, and also `calendar.rentDayOfWeek`:
+ * `calendar.daysPerWeek`-day week labelled for display only (sprint149.md,
+ * shortened to five names in sprint204.md); not a real 1995 calendar and
+ * never grows leap years or actual dates. The last position is
+ * `calendar.meetDayOfWeek`'s weekend, and also `calendar.rentDayOfWeek`:
  * rent and the meet deliberately share a day, one a charge and the other a
  * selling-channel draw. */
-const WEEKDAY_NAMES = [
-  'Monday',
-  'Tuesday',
-  'Wednesday',
-  'Thursday',
-  'Friday',
-  'Saturday',
-  'Sunday',
-] as const
+const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'] as const
 
 /**
  * `calendar.ts` is the ONLY place `state.day` is ever turned into a day of
@@ -148,28 +145,59 @@ export function isPayday(day: number, economy: EconomyConfig): boolean {
 }
 
 /** Whether `day` is `calendar.rentDayOfWeek` - the rent bill falls here
- * (`finances.ts`), at the end of the week (restoring the pre-sprint149.md
- * `day % 7 === 0` cadence exactly) rather than its start: a brand-new
- * player's very first End Day must not take rent off their starting cash
- * before they have bought, fixed or sold anything. */
+ * (`finances.ts`), at the end of the week (the pre-sprint149.md
+ * `day % daysPerWeek === 0` cadence, restored deliberately) rather than its
+ * start: a brand-new player's very first End Day must not take rent off
+ * their starting cash before they have bought, fixed or sold anything. */
 export function isRentDay(day: number, economy: EconomyConfig): boolean {
   return dayOfWeek(day, economy) === economy.calendar.rentDayOfWeek
 }
 
-/**
- * The 1-indexed game month `day` falls in - a game month, not a Gregorian
- * one: `floor((day - 1) / daysPerMonth) + 1`. Day 1 is month 1; day
- * `daysPerMonth` is the last day of month 1; day `daysPerMonth + 1` opens
- * month 2. `daysPerMonth` is chosen (28) as four clean weeks, so a month
- * boundary always lands on a week boundary too.
- */
-export function monthIndex(day: number, economy: EconomyConfig): number {
-  return Math.floor((day - 1) / economy.calendar.daysPerMonth) + 1
+/** A season's length in days: always `daysPerWeek * weeksPerSeason`,
+ * whatever `campaignYearCurve` does (sprint204.md, R1's third bullet - the
+ * season cycle is fixed, independent of the elastic year). */
+function seasonLengthDays(economy: EconomyConfig): number {
+  return economy.calendar.daysPerWeek * economy.calendar.weeksPerSeason
 }
 
-/** Whether `day` is the first day of a new month - the primitive later
- * sprints hang a monthly event on (the fixer's appetite, the container's
- * departure); nothing is hung on it yet (sprint149.md). */
-export function isMonthBoundary(day: number, economy: EconomyConfig): boolean {
-  return (day - 1) % economy.calendar.daysPerMonth === 0
+/** `day`'s 0-indexed overall season number since the campaign began: the
+ * first `seasonLengthDays` days are season 0, the next span is season 1, and
+ * so on - the shared index `seasonOf` and `eraOf` both derive from, so the
+ * two can never disagree about where one season ends and the next begins. */
+function overallSeasonIndex(day: number, economy: EconomyConfig): number {
+  return Math.floor((day - 1) / seasonLengthDays(economy))
+}
+
+/**
+ * `day`'s season, cycling `SEASON_IDS` in order every `seasonsPerEra`
+ * seasons - spring, summer, autumn, winter, then spring again at the next
+ * era's opening day. Runs on the fixed season cycle, never on
+ * `campaignYearCurve` (sprint204.md, R1's third bullet): tying the season to
+ * the compressed year would make winter an arbitrary length, and "thin in
+ * winter" would mean nothing.
+ */
+export function seasonOf(day: number, economy: EconomyConfig): SeasonId {
+  const index = overallSeasonIndex(day, economy) % SEASON_IDS.length
+  return SEASON_IDS[index]!
+}
+
+/** `day`'s 1-indexed position within its own season: day 1 of a season is
+ * position 1, the last day of a `seasonLengthDays`-long season is the last
+ * position, and the next day wraps to position 1 of the next season. */
+export function dayOfSeason(day: number, economy: EconomyConfig): number {
+  return ((day - 1) % seasonLengthDays(economy)) + 1
+}
+
+/**
+ * `day`'s era, cycling `ERA_IDS` in order every `seasonsPerEra` seasons - the
+ * year-equivalent a player actually sees, since no specific year is ever
+ * rendered (docs/design/systems/campaign-clock-and-events.md section 2a).
+ * Runs on the same fixed season cycle `seasonOf` does, never on
+ * `campaignYearCurve`: the two curves answer different questions
+ * (`campaign-clock-and-events.md` section 2, "two clocks, not one") and only
+ * `currentGameYear` reads the elastic one.
+ */
+export function eraOf(day: number, economy: EconomyConfig): EraId {
+  const eraIndex = Math.floor(overallSeasonIndex(day, economy) / economy.calendar.seasonsPerEra)
+  return ERA_IDS[Math.min(eraIndex, ERA_IDS.length - 1)]!
 }

@@ -94,7 +94,7 @@ describe('bumpLotSupply / bumpPlayerSales', () => {
 })
 
 describe('updateMarketHeat', () => {
-  it('does nothing off a 7-day boundary', () => {
+  it('does nothing off a week boundary', () => {
     const state = stateOnDay(3, { [MODEL_A]: 100 })
     const result = updateMarketHeat(state, CONTEXT)
     expect(result.log).toHaveLength(0)
@@ -103,7 +103,7 @@ describe('updateMarketHeat', () => {
   })
 
   it('is deterministic: a pure function of state and context, no hidden randomness', () => {
-    const state = stateOnDay(7, { [MODEL_A]: 100, [MODEL_B]: 100 })
+    const state = stateOnDay(5, { [MODEL_A]: 100, [MODEL_B]: 100 })
     const a = updateMarketHeat(state, CONTEXT)
     const b = updateMarketHeat(state, CONTEXT)
     expect(a.state.marketHeat).toEqual(b.state.marketHeat)
@@ -111,7 +111,7 @@ describe('updateMarketHeat', () => {
   })
 
   it('touches every model in context, defaulting a model with no prior entry to base 100', () => {
-    const state = stateOnDay(7, {})
+    const state = stateOnDay(5, {})
     const result = updateMarketHeat(state, CONTEXT)
     expect(Object.keys(result.state.marketHeat).length).toBe(CONTEXT.models.length)
   })
@@ -120,7 +120,7 @@ describe('updateMarketHeat', () => {
     // Heavily re-flood MODEL_A's playerSales every week for 50 weeks straight
     // - the target heat is clamped before smoothing, so heat itself can never
     // leave [HEAT_MIN, HEAT_MAX] even under this sustained worst case.
-    let state = stateOnDay(7, { [MODEL_A]: 100 })
+    let state = stateOnDay(5, { [MODEL_A]: 100 })
     for (let week = 0; week < 50; week++) {
       for (let i = 0; i < 30; i++) state = bumpPlayerSales(state, MODEL_A)
       const result = updateMarketHeat(state, CONTEXT)
@@ -128,7 +128,7 @@ describe('updateMarketHeat', () => {
       const heat = state.marketHeat[MODEL_A]!
       expect(heat).toBeGreaterThanOrEqual(HEAT_MIN)
       expect(heat).toBeLessThanOrEqual(HEAT_MAX)
-      state = { ...state, day: state.day + 7 }
+      state = { ...state, day: state.day + 5 }
     }
     // Sustained flooding this heavy should have driven heat down near the floor.
     expect(state.marketHeat[MODEL_A]).toBeLessThan(85)
@@ -143,11 +143,11 @@ describe('updateMarketHeat', () => {
    * regardless of MODEL_A/MODEL_B's own (unpredicted) wave phases.
    */
   it('flood probe: heavy playerSales on one model drops its heat below an untouched control', () => {
-    let flooded = stateOnDay(7, { [MODEL_A]: 100, [MODEL_B]: 100 })
+    let flooded = stateOnDay(5, { [MODEL_A]: 100, [MODEL_B]: 100 })
     for (let i = 0; i < 20; i++) flooded = bumpPlayerSales(flooded, MODEL_A)
 
     const week1 = updateMarketHeat(flooded, CONTEXT).state
-    const week2 = updateMarketHeat({ ...week1, day: 14 }, CONTEXT).state
+    const week2 = updateMarketHeat({ ...week1, day: 10 }, CONTEXT).state
 
     expect(week2.marketHeat[MODEL_A]!).toBeLessThan(100)
     expect(week2.marketHeat[MODEL_A]!).toBeLessThan(week2.marketHeat[MODEL_B]!)
@@ -161,14 +161,14 @@ describe('updateMarketHeat', () => {
    * scarce model should end up running hotter than the flooded one.
    */
   it('scarcity probe: a model absent from catalogs runs hotter than one the catalog keeps producing', () => {
-    let floodedSupply = stateOnDay(7, { [MODEL_A]: 100, [MODEL_B]: 100 })
+    let floodedSupply = stateOnDay(5, { [MODEL_A]: 100, [MODEL_B]: 100 })
     for (let i = 0; i < 20; i++) {
       floodedSupply = bumpLotSupply(floodedSupply, [MODEL_B])
     }
     // MODEL_A's ledger stays empty (scarce); MODEL_B is flooded with supply.
 
     const week1 = updateMarketHeat(floodedSupply, CONTEXT).state
-    const week2 = updateMarketHeat({ ...week1, day: 14 }, CONTEXT).state
+    const week2 = updateMarketHeat({ ...week1, day: 10 }, CONTEXT).state
 
     expect(week2.marketHeat[MODEL_A]!).toBeGreaterThan(week2.marketHeat[MODEL_B]!)
   })

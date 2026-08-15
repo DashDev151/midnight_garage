@@ -288,11 +288,12 @@ describe('resolveRejectOffer (Sprint 68 decision 3, playtest item 21)', () => {
 
   it('drops the offer but LEAVES the car listed, so tomorrow can bring a better one', () => {
     const state = stateWithOffer(car, 500_000, BUYER)
-    const result = resolveRejectOffer(state, car.id)
+    const result = resolveRejectOffer(state, car.id, CONTEXT)
 
     expect(result.state.pendingOffers).toEqual([])
     // The whole point: rejecting one lowball is not the same as pulling the
-    // car off the market.
+    // car off the market. Normal-band heat (the fixture default), so no
+    // second-offer roll happens at all.
     expect(result.state.carsForSale).toEqual([
       { carInstanceId: car.id, offersSeen: 0, channelId: 'shopFront', weekendMeetPending: false },
     ])
@@ -300,7 +301,7 @@ describe('resolveRejectOffer (Sprint 68 decision 3, playtest item 21)', () => {
 
   it('logs what was turned down, and costs no reputation', () => {
     const state = stateWithOffer(car, 500_000, BUYER)
-    const result = resolveRejectOffer(state, car.id)
+    const result = resolveRejectOffer(state, car.id, CONTEXT)
 
     expect(result.log).toEqual([
       {
@@ -317,7 +318,7 @@ describe('resolveRejectOffer (Sprint 68 decision 3, playtest item 21)', () => {
 
   it('takes no cash and keeps the car', () => {
     const state = stateWithOffer(car, 500_000, BUYER)
-    const result = resolveRejectOffer(state, car.id)
+    const result = resolveRejectOffer(state, car.id, CONTEXT)
     expect(result.state.cashYen).toBe(state.cashYen)
     expect(result.state.ownedCars.map((c) => c.id)).toContain(car.id)
   })
@@ -328,11 +329,11 @@ describe('resolveRejectOffer (Sprint 68 decision 3, playtest item 21)', () => {
         { carInstanceId: car.id, offersSeen: 0, channelId: 'shopFront', weekendMeetPending: false },
       ],
     })
-    expect(resolveRejectOffer(listedNoOffer, car.id).state).toBe(listedNoOffer)
-    expect(resolveRejectOffer(listedNoOffer, car.id).log).toEqual([])
+    expect(resolveRejectOffer(listedNoOffer, car.id, CONTEXT).state).toBe(listedNoOffer)
+    expect(resolveRejectOffer(listedNoOffer, car.id, CONTEXT).log).toEqual([])
 
     const withOffer = stateWithOffer(car, 500_000, BUYER)
-    expect(resolveRejectOffer(withOffer, 'ghost-car').state).toBe(withOffer)
+    expect(resolveRejectOffer(withOffer, 'ghost-car', CONTEXT).state).toBe(withOffer)
   })
 
   it("only drops the named car's offer, never another car's", () => {
@@ -344,10 +345,120 @@ describe('resolveRejectOffer (Sprint 68 decision 3, playtest item 21)', () => {
         { carInstanceId: other.id, buyerId: BUYER, priceYen: 400_000 },
       ],
     })
-    const result = resolveRejectOffer(state, car.id)
+    const result = resolveRejectOffer(state, car.id, CONTEXT)
     expect(result.state.pendingOffers).toEqual([
       { carInstanceId: other.id, buyerId: BUYER, priceYen: 400_000 },
     ])
+  })
+})
+
+/**
+ * The hot-band second-offer roll (`economy.selling.hotSecondOfferChance`):
+ * a rejection on a hot-band model gives the market one more seeded chance
+ * to bring a different buyer to the same car the same day. Cold and normal
+ * bands never roll at all - only the band changes, never the mechanism.
+ */
+describe('resolveRejectOffer: hot-band second offer', () => {
+  const BUYER = BUYERS[0]!.id
+  const HOT_HEAT = 130
+  const NORMAL_HEAT = 100
+  const COLD_HEAT = 70
+  const DAY_SWEEP = 200
+
+  function stateAtHeat(heatPercent: number, day: number, offersSeen = 0): GameState {
+    return stateWithOffer(car, 500_000, BUYER, {
+      day,
+      marketHeat: { [model!.id]: heatPercent },
+      carsForSale: [
+        { carInstanceId: car.id, offersSeen, channelId: 'shopFront', weekendMeetPending: false },
+      ],
+    })
+  }
+
+  /** The roll is keyed on `state.day` (among other things), so sweeping the
+   * day is how these tests find a seed that lands a second offer without
+   * threading an rng into the resolver itself - the resolver takes none,
+   * by design, since the whole point is that it derives its own seed from
+   * state a replay already has. */
+  function firstHotHit(): { day: number; result: ReturnType<typeof resolveRejectOffer> } {
+    for (let day = 1; day <= DAY_SWEEP; day++) {
+      const result = resolveRejectOffer(stateAtHeat(HOT_HEAT, day), car.id, CONTEXT)
+      if (result.state.pendingOffers.length > 0) return { day, result }
+    }
+    throw new Error('no hot-band day in the sweep produced a second offer')
+  }
+
+  it('can draw a second offer, same day, from a DIFFERENT buyer than the one just rejected', () => {
+    const { result } = firstHotHit()
+    const secondOffer = result.state.pendingOffers[0]
+    if (!secondOffer) throw new Error('expected a second offer')
+
+    expect(secondOffer.carInstanceId).toBe(car.id)
+    expect(secondOffer.buyerId).not.toBe(BUYER)
+    expect(result.log).toEqual([
+      expect.objectContaining({ type: 'offer-rejected', carInstanceId: car.id, buyerId: BUYER }),
+      expect.objectContaining({
+        type: 'offer-received',
+        carInstanceId: car.id,
+        buyerId: secondOffer.buyerId,
+        priceYen: secondOffer.priceYen,
+      }),
+    ])
+  })
+
+  it('advances offersSeen by one when the second offer lands', () => {
+    const { result } = firstHotHit()
+    expect(result.state.carsForSale).toEqual([
+      { carInstanceId: car.id, offersSeen: 1, channelId: 'shopFront', weekendMeetPending: false },
+    ])
+  })
+
+  it('never rolls a second offer in the normal band, for any day', () => {
+    for (let day = 1; day <= DAY_SWEEP; day++) {
+      const result = resolveRejectOffer(stateAtHeat(NORMAL_HEAT, day), car.id, CONTEXT)
+      expect(result.state.pendingOffers).toEqual([])
+      expect(result.log).toEqual([
+        expect.objectContaining({ type: 'offer-rejected', carInstanceId: car.id }),
+      ])
+      expect(result.state.carsForSale[0]?.offersSeen).toBe(0)
+    }
+  })
+
+  it('never rolls a second offer in the cold band, for any day', () => {
+    for (let day = 1; day <= DAY_SWEEP; day++) {
+      const result = resolveRejectOffer(stateAtHeat(COLD_HEAT, day), car.id, CONTEXT)
+      expect(result.state.pendingOffers).toEqual([])
+      expect(result.state.carsForSale[0]?.offersSeen).toBe(0)
+    }
+  })
+
+  it('is deterministic: the same day, car and offersSeen always draw the same follow-up', () => {
+    const { day } = firstHotHit()
+    const a = resolveRejectOffer(stateAtHeat(HOT_HEAT, day), car.id, CONTEXT)
+    const b = resolveRejectOffer(stateAtHeat(HOT_HEAT, day), car.id, CONTEXT)
+    expect(a.state.pendingOffers).toEqual(b.state.pendingOffers)
+    expect(a.state.carsForSale).toEqual(b.state.carsForSale)
+    expect(a.log).toEqual(b.log)
+  })
+
+  it("a miss (roll fails, or nobody's interested) leaves the car with no live offer and no cash/reputation change", () => {
+    // Sweep for a day that does NOT land a second offer - the flip side of
+    // firstHotHit above - and confirm it behaves exactly like a plain
+    // rejection.
+    let missDay: number | undefined
+    for (let day = 1; day <= DAY_SWEEP; day++) {
+      const result = resolveRejectOffer(stateAtHeat(HOT_HEAT, day), car.id, CONTEXT)
+      if (result.state.pendingOffers.length === 0) {
+        missDay = day
+        break
+      }
+    }
+    if (missDay === undefined) throw new Error('every hot-band day in the sweep hit')
+    const state = stateAtHeat(HOT_HEAT, missDay)
+    const result = resolveRejectOffer(state, car.id, CONTEXT)
+    expect(result.state.pendingOffers).toEqual([])
+    expect(result.state.cashYen).toBe(state.cashYen)
+    expect(result.state.ownedCars.map((c) => c.id)).toContain(car.id)
   })
 })
 
@@ -2071,10 +2182,10 @@ describe('flooding interaction (Sprint 31): dumping copies of one model degrades
   it('flooding one model with resolved sales lowers its offerChanceFor below an untouched control (existing heat mechanism, reused verbatim)', () => {
     let state = stateWithCar(car)
     for (let i = 0; i < 20; i++) state = bumpPlayerSales(state, model.id)
-    state = { ...state, day: 7 }
+    state = { ...state, day: 5 }
 
     const week1 = updateMarketHeat(state, CONTEXT).state
-    const week2 = updateMarketHeat({ ...week1, day: 14 }, CONTEXT).state
+    const week2 = updateMarketHeat({ ...week1, day: 10 }, CONTEXT).state
 
     const floodedHeat = week2.marketHeat[model.id] ?? 100
     const controlHeat = week2.marketHeat[controlModel.id] ?? 100

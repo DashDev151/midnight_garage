@@ -1,72 +1,68 @@
-import { ECONOMY, ReputationTierSchema, type AuctionTier } from '@midnight-garage/content'
+import { ECONOMY, ERA_IDS, SEASON_IDS, type AuctionTier } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import {
   currentGameYear,
+  dayOfSeason,
   dayOfWeek,
   dayOfWeekName,
+  eraOf,
   isAuctionTierOpen,
   isEndOfWeek,
   isMeetDay,
-  isMonthBoundary,
   isPayday,
   isRentDay,
   isStartOfWeek,
-  monthIndex,
   nextOpenDayForTier,
+  seasonOf,
   weekIndex,
 } from '../src/calendar'
 
-describe('currentGameYear', () => {
-  it('starts the campaign in 1995 at unknown reputation (GDD 2.2)', () => {
-    expect(currentGameYear('unknown')).toBe(1995)
+describe('currentGameYear (sprint204.md: elapsed days, not reputation)', () => {
+  it('reads economy.campaignYearCurve, exactly at its authored breakpoints', () => {
+    for (const [day, year] of ECONOMY.campaignYearCurve) {
+      expect(currentGameYear(day, ECONOMY)).toBe(year)
+    }
   })
 
-  it('advances 2 years per reputation tier, in tier order', () => {
-    const tiers = ReputationTierSchema.options
-    const years = tiers.map((tier) => currentGameYear(tier))
-    for (let i = 1; i < years.length; i++) {
-      expect(years[i]).toBe(years[i - 1]! + 2)
+  it('never regresses: a later day is never an earlier year', () => {
+    let previous = currentGameYear(1, ECONOMY)
+    for (let day = 2; day <= 320; day += 1) {
+      const year = currentGameYear(day, ECONOMY)
+      expect(year).toBeGreaterThanOrEqual(previous)
+      previous = year
     }
-    expect(currentGameYear('legend')).toBe(1995 + 2 * (tiers.length - 1))
+  })
+
+  it('clamps outside the curve rather than extrapolating', () => {
+    expect(currentGameYear(0, ECONOMY)).toBe(currentGameYear(1, ECONOMY))
+    expect(currentGameYear(10_000, ECONOMY)).toBe(currentGameYear(320, ECONOMY))
   })
 })
 
-describe('the calendar (sprint149.md): day 1 is week 1 day 1 and month 1', () => {
+describe('the calendar (sprint149.md, reshaped 7 -> 5 days by sprint204.md): day 1 is week 1 day 1', () => {
   it('day 1 is position 1 of week 1, and the start of the week', () => {
     expect(dayOfWeek(1, ECONOMY)).toBe(1)
     expect(isStartOfWeek(1, ECONOMY)).toBe(true)
     expect(isEndOfWeek(1, ECONOMY)).toBe(false)
   })
 
-  it('day 7 (daysPerWeek) is the last position of week 1, the end of the week', () => {
-    expect(dayOfWeek(7, ECONOMY)).toBe(ECONOMY.calendar.daysPerWeek)
-    expect(isEndOfWeek(7, ECONOMY)).toBe(true)
-    expect(isStartOfWeek(7, ECONOMY)).toBe(false)
+  it('day 5 (daysPerWeek) is the last position of week 1, the end of the week', () => {
+    expect(dayOfWeek(5, ECONOMY)).toBe(ECONOMY.calendar.daysPerWeek)
+    expect(isEndOfWeek(5, ECONOMY)).toBe(true)
+    expect(isStartOfWeek(5, ECONOMY)).toBe(false)
   })
 
-  it('day 8 wraps back around to position 1 of week 2', () => {
-    expect(dayOfWeek(8, ECONOMY)).toBe(1)
-    expect(isStartOfWeek(8, ECONOMY)).toBe(true)
-  })
-
-  it('day 1 is month 1; day 28 (daysPerMonth) is the last day of month 1; day 29 opens month 2', () => {
-    expect(monthIndex(1, ECONOMY)).toBe(1)
-    expect(monthIndex(ECONOMY.calendar.daysPerMonth, ECONOMY)).toBe(1)
-    expect(isMonthBoundary(ECONOMY.calendar.daysPerMonth, ECONOMY)).toBe(false)
-    expect(monthIndex(ECONOMY.calendar.daysPerMonth + 1, ECONOMY)).toBe(2)
-    expect(isMonthBoundary(ECONOMY.calendar.daysPerMonth + 1, ECONOMY)).toBe(true)
-  })
-
-  it('a month boundary always lands on a week boundary too (daysPerMonth is four clean weeks)', () => {
-    expect(ECONOMY.calendar.daysPerMonth % ECONOMY.calendar.daysPerWeek).toBe(0)
+  it('day 6 wraps back around to position 1 of week 2', () => {
+    expect(dayOfWeek(6, ECONOMY)).toBe(1)
+    expect(isStartOfWeek(6, ECONOMY)).toBe(true)
   })
 
   it('dayOfWeekName reads back the position for display, never for scheduling', () => {
-    // rentDayOfWeek is 7, the same position as meetDayOfWeek - both read
-    // 'Sunday' by design; see the "share a day" test below.
-    expect(dayOfWeekName(ECONOMY.calendar.rentDayOfWeek, ECONOMY)).toBe('Sunday')
-    expect(dayOfWeekName(ECONOMY.calendar.paydayOfWeek, ECONOMY)).toBe('Friday')
-    expect(dayOfWeekName(ECONOMY.calendar.meetDayOfWeek, ECONOMY)).toBe('Sunday')
+    // rentDayOfWeek is 5, the same position as meetDayOfWeek - both read
+    // 'Friday' by design; see the "share a day" test below.
+    expect(dayOfWeekName(ECONOMY.calendar.rentDayOfWeek, ECONOMY)).toBe('Friday')
+    expect(dayOfWeekName(ECONOMY.calendar.paydayOfWeek, ECONOMY)).toBe('Thursday')
+    expect(dayOfWeekName(ECONOMY.calendar.meetDayOfWeek, ECONOMY)).toBe('Friday')
   })
 
   it('weekIndex numbers the weeks from 1, changing exactly on a week boundary', () => {
@@ -78,7 +74,7 @@ describe('the calendar (sprint149.md): day 1 is week 1 day 1 and month 1', () =>
     expect(weekIndex(daysPerWeek * 3 + 1, ECONOMY)).toBe(4)
   })
 
-  it('every named landmark fires exactly once per seven-day span, over a 100-day run', () => {
+  it('every named landmark fires exactly once per daysPerWeek-day span, over a 100-day run', () => {
     const { daysPerWeek } = ECONOMY.calendar
     const landmarks: Record<string, (day: number) => boolean> = {
       meet: (day) => isMeetDay(day, ECONOMY),
@@ -91,10 +87,9 @@ describe('the calendar (sprint149.md): day 1 is week 1 day 1 and month 1', () =>
       for (let day = 1; day <= 100; day++) {
         if (fires(day)) hitDays.push(day)
       }
-      // 100 days is 14 full weeks plus 2 extra days, so any weekly
-      // landmark hits 14 or 15 times depending on phase alone.
-      expect(hitDays.length, name).toBeGreaterThanOrEqual(14)
-      expect(hitDays.length, name).toBeLessThanOrEqual(15)
+      // 100 days is 20 full 5-day weeks exactly, so any weekly landmark
+      // hits exactly 20 times.
+      expect(hitDays.length, name).toBe(100 / daysPerWeek)
       // Consecutive hits are always exactly one week apart - never skipped,
       // never doubled within a week.
       for (let i = 1; i < hitDays.length; i++) {
@@ -103,18 +98,90 @@ describe('the calendar (sprint149.md): day 1 is week 1 day 1 and month 1', () =>
     }
   })
 
-  // Was "the four named landmarks land on four different days" until
-  // rentDayOfWeek moved back to 7, the same position as meetDayOfWeek, on
-  // purpose: rent (a charge) and the meet (a selling-channel draw) are
-  // different mechanisms, so sharing a day is fine. Directive 17 case (a) -
-  // the old invariant was wrong, not the implementation: what must actually
-  // never collide is the two CHARGES finances.ts can levy in the same tick,
-  // since sprint149.md's whole point was that rent and wages stop landing as
-  // one undifferentiated subtraction. A non-charge landmark (the meet) is
-  // free to share a day with either.
+  // Rent (a charge) and the meet (a selling-channel draw) deliberately share
+  // a day - different mechanisms, so sharing is fine. What must never
+  // collide is the two CHARGES finances.ts can levy in the same tick.
   it('the two charges (rent, payday) never share a day', () => {
     const { paydayOfWeek, rentDayOfWeek } = ECONOMY.calendar
     expect(rentDayOfWeek).not.toBe(paydayOfWeek)
+  })
+})
+
+describe('the season cycle (sprint204.md: fixed, independent of campaignYearCurve)', () => {
+  it('a season is always daysPerWeek * weeksPerSeason days: 20', () => {
+    const { daysPerWeek, weeksPerSeason } = ECONOMY.calendar
+    expect(daysPerWeek * weeksPerSeason).toBe(20)
+  })
+
+  it('day 1 opens spring at position 1', () => {
+    expect(seasonOf(1, ECONOMY)).toBe('spring')
+    expect(dayOfSeason(1, ECONOMY)).toBe(1)
+  })
+
+  it('day 20 is the last day of spring; day 21 opens summer at position 1', () => {
+    expect(seasonOf(20, ECONOMY)).toBe('spring')
+    expect(dayOfSeason(20, ECONOMY)).toBe(20)
+    expect(seasonOf(21, ECONOMY)).toBe('summer')
+    expect(dayOfSeason(21, ECONOMY)).toBe(1)
+  })
+
+  it('cycles spring, summer, autumn, winter, then spring again at the next era', () => {
+    expect(seasonOf(1, ECONOMY)).toBe('spring')
+    expect(seasonOf(21, ECONOMY)).toBe('summer')
+    expect(seasonOf(41, ECONOMY)).toBe('autumn')
+    expect(seasonOf(61, ECONOMY)).toBe('winter')
+    expect(seasonOf(81, ECONOMY)).toBe('spring')
+  })
+
+  it('the whole 320-day campaign is exactly 16 seasons, each recurring exactly four times', () => {
+    const seasonIndices = new Set<number>()
+    let seasonCount = 0
+    let previousSeason = seasonOf(1, ECONOMY)
+    seasonIndices.add(0)
+    for (let day = 1; day <= 320; day++) {
+      const season = seasonOf(day, ECONOMY)
+      if (day === 1 || season !== previousSeason) {
+        seasonCount++
+        previousSeason = season
+      }
+    }
+    expect(seasonCount).toBe(16)
+    for (const seasonId of SEASON_IDS) {
+      const occurrences = Array.from({ length: 320 }, (_, i) => i + 1).filter(
+        (day) => dayOfSeason(day, ECONOMY) === 1 && seasonOf(day, ECONOMY) === seasonId,
+      )
+      expect(occurrences, seasonId).toHaveLength(4)
+    }
+  })
+})
+
+describe('the era band (sprint204.md: the year-equivalent, never a shown year)', () => {
+  it('day 1 opens mid-90s', () => {
+    expect(eraOf(1, ECONOMY)).toBe('mid-90s')
+  })
+
+  it('era boundaries land exactly where campaignYearCurve says', () => {
+    const breakpointDays = ECONOMY.campaignYearCurve.map(([day]) => day)
+    // The curve's own opening/closing days bookend the four eras; the two
+    // interior breakpoints (81, 161, 241) are each a fresh era's day 1.
+    expect(breakpointDays).toEqual([1, 81, 161, 241, 320])
+    expect(eraOf(1, ECONOMY)).toBe('mid-90s')
+    expect(eraOf(80, ECONOMY)).toBe('mid-90s')
+    expect(eraOf(81, ECONOMY)).toBe('late-90s')
+    expect(eraOf(160, ECONOMY)).toBe('late-90s')
+    expect(eraOf(161, ECONOMY)).toBe('early-2000s')
+    expect(eraOf(240, ECONOMY)).toBe('early-2000s')
+    expect(eraOf(241, ECONOMY)).toBe('mid-2000s')
+    expect(eraOf(320, ECONOMY)).toBe('mid-2000s')
+  })
+
+  it('four eras hold across the whole campaign, in ERA_IDS order', () => {
+    const seen: string[] = []
+    for (let day = 1; day <= 320; day++) {
+      const era = eraOf(day, ECONOMY)
+      if (!seen.includes(era)) seen.push(era)
+    }
+    expect(seen).toEqual(ERA_IDS)
   })
 })
 
@@ -122,10 +189,10 @@ describe('the calendar (sprint149.md): day 1 is week 1 day 1 and month 1', () =>
  * The rooms keep their own hours (sprint150.md), replacing the retired
  * single global auction day. The signed table is written out literally here
  * rather than recomputed from the same content the implementation reads:
- * this block is the pin.
+ * this block is the pin. Remapped to the five-day week by sprint204.md.
  */
-describe('auction cadence: each room keeps its own hours (sprint150.md)', () => {
-  const SPAN_DAYS = 28
+describe('auction cadence: each room keeps its own hours (sprint150.md, remapped by sprint204.md)', () => {
+  const SPAN_DAYS = 20
 
   function openDaysOver(tier: AuctionTier, spanDays = SPAN_DAYS): number[] {
     const days: number[] = []
@@ -135,22 +202,20 @@ describe('auction cadence: each room keeps its own hours (sprint150.md)', () => 
     return days
   }
 
-  it('local-yard sits on days 1, 3, 5 and 7 of every week', () => {
-    expect(openDaysOver('local-yard')).toEqual([
-      1, 3, 5, 7, 8, 10, 12, 14, 15, 17, 19, 21, 22, 24, 26, 28,
-    ])
+  it('local-yard sits on days 1, 3 and 5 of every week', () => {
+    expect(openDaysOver('local-yard')).toEqual([1, 3, 5, 6, 8, 10, 11, 13, 15, 16, 18, 20])
   })
 
   it('regional sits on days 2 and 4 of every week', () => {
-    expect(openDaysOver('regional')).toEqual([2, 4, 9, 11, 16, 18, 23, 25])
+    expect(openDaysOver('regional')).toEqual([2, 4, 7, 9, 12, 14, 17, 19])
   })
 
-  it('premium sits on day 6 of every week', () => {
-    expect(openDaysOver('premium')).toEqual([6, 13, 20, 27])
+  it('premium sits on day 5 of every week', () => {
+    expect(openDaysOver('premium')).toEqual([5, 10, 15, 20])
   })
 
-  it('collector-network sits on days 6 and 7 of every SECOND week, fresh each day', () => {
-    expect(openDaysOver('collector-network')).toEqual([6, 7, 20, 21])
+  it('collector-network sits on day 5 of every SECOND week, fresh each day', () => {
+    expect(openDaysOver('collector-network')).toEqual([5, 15])
   })
 
   it('collector-network opens in weeks 1 and 3 and stays shut through weeks 2 and 4', () => {
@@ -160,7 +225,7 @@ describe('auction cadence: each room keeps its own hours (sprint150.md)', () => 
     expect([...openWeeks].sort()).toEqual([1, 3])
     // Week 1 is an open week for every room - the fortnightly cadence is
     // never phased later than the first week of a career.
-    expect(isAuctionTierOpen(6, 'collector-network', ECONOMY)).toBe(true)
+    expect(isAuctionTierOpen(5, 'collector-network', ECONOMY)).toBe(true)
   })
 
   /**
@@ -181,12 +246,12 @@ describe('auction cadence: each room keeps its own hours (sprint150.md)', () => 
    * Asserted rather than avoided so a later cadence change cannot quietly
    * remove it.
    */
-  it('premium and collector-network are BOTH open on day 6 of an open week, deliberately', () => {
-    expect(isAuctionTierOpen(6, 'premium', ECONOMY)).toBe(true)
-    expect(isAuctionTierOpen(6, 'collector-network', ECONOMY)).toBe(true)
-    // ...and on day 6 of a closed collector week, premium sits alone.
-    expect(isAuctionTierOpen(13, 'premium', ECONOMY)).toBe(true)
-    expect(isAuctionTierOpen(13, 'collector-network', ECONOMY)).toBe(false)
+  it('premium and collector-network are BOTH open on day 5 of an open week, deliberately', () => {
+    expect(isAuctionTierOpen(5, 'premium', ECONOMY)).toBe(true)
+    expect(isAuctionTierOpen(5, 'collector-network', ECONOMY)).toBe(true)
+    // ...and on day 5 of a closed collector week, premium sits alone.
+    expect(isAuctionTierOpen(10, 'premium', ECONOMY)).toBe(true)
+    expect(isAuctionTierOpen(10, 'collector-network', ECONOMY)).toBe(false)
   })
 
   it('some room is open every single day of a four-week span - the house is never wholly dark', () => {
@@ -202,12 +267,12 @@ describe('auction cadence: each room keeps its own hours (sprint150.md)', () => 
   it('nextOpenDayForTier finds the next sitting, including across a skipped week', () => {
     // Local yard: day 2 is shut, day 3 is the next sitting.
     expect(nextOpenDayForTier(2, 'local-yard', ECONOMY)).toBe(3)
-    // Premium: from day 7 the next Saturday is day 13.
-    expect(nextOpenDayForTier(7, 'premium', ECONOMY)).toBe(13)
-    // Collector network: from day 8 (the Monday of a closed week) the next
-    // sitting skips the whole of week 2 and lands on day 20.
-    expect(nextOpenDayForTier(8, 'collector-network', ECONOMY)).toBe(20)
+    // Premium: from day 6 the next sitting is day 10.
+    expect(nextOpenDayForTier(6, 'premium', ECONOMY)).toBe(10)
+    // Collector network: from day 6 (the Monday of a closed week) the next
+    // sitting skips the whole of week 2 and lands on day 15.
+    expect(nextOpenDayForTier(6, 'collector-network', ECONOMY)).toBe(15)
     // Called on a day the room is already open, it returns that same day.
-    expect(nextOpenDayForTier(6, 'premium', ECONOMY)).toBe(6)
+    expect(nextOpenDayForTier(5, 'premium', ECONOMY)).toBe(5)
   })
 })

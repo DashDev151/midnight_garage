@@ -307,6 +307,14 @@ function onCheckout(): void {
   lastCheckoutResult.value = game.checkoutCart(deliverySpeed.value)
 }
 
+/** A pending order's arrival, said relative to today rather than as a bare
+ * campaign day number - the player only ever needs "how soon", never which
+ * absolute day it lands on. */
+function arrivalLabel(arrivesOnDay: number): string {
+  const daysAway = arrivesOnDay - game.day
+  return daysAway <= 1 ? 'tomorrow' : `in ${daysAway} days`
+}
+
 /** The shelf count for one simple (non-paint) consumable - `0` for a shop
  * that has never bought that tin. */
 function consumableStockCount(id: SimpleConsumableId): number {
@@ -627,7 +635,7 @@ function onBuyPaint(): void {
           <h3>On order</h3>
           <ul>
             <li v-for="order in game.pendingPartOrders" :key="order.id">
-              {{ game.partName(order.partId) }} - arrives day {{ order.arrivesOnDay }}
+              {{ game.partName(order.partId) }} - arrives {{ arrivalLabel(order.arrivesOnDay) }}
             </li>
           </ul>
         </section>

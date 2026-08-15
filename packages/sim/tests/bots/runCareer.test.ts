@@ -93,7 +93,11 @@ describe('Service Grinder (the Act 1 floor)', () => {
       // proceeds by hand at multiplied labour and payouts land. Asserted at
       // the honestly-measured value under these seeds, the same convention as
       // before; the bots remain condemned as instruments regardless.
-      expect(paid).toBe(26)
+      //
+      // Re-measured for the five-day week (sprint204.md): rent and payday
+      // move to different days, which shifts which days show a net cash rise
+      // for this no-sales, no-scrap archetype - 26 -> 27 of 50 seeds.
+      expect(paid).toBe(27)
     },
     PAID_WORK_SAMPLE_TIMEOUT_MS,
   )
