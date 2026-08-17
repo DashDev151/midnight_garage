@@ -123,6 +123,7 @@ export function cashMovementFor(entry: DayLogEntry): CashMovement | null {
     case 'part-reconditioned':
     case 'part-machined':
     case 'part-removed':
+    case 'symptom-cause-eliminated':
     case 'body-materials-used':
     case 'car-moved':
     case 'cars-swapped':

@@ -1,4 +1,4 @@
-import type { CashBucket, ComponentId, DayLogEntry } from '@midnight-garage/content'
+import type { CarPartId, CashBucket, ComponentId, DayLogEntry } from '@midnight-garage/content'
 import {
   COMPONENT_DISPLAY_NAMES,
   CONSUMABLE_TINS,
@@ -6,6 +6,7 @@ import {
   ECONOMY,
   PAINT_COLOURS,
   PARTS,
+  PARTS_TAXONOMY,
   TOOL_LINES,
   TOOL_SHOPS,
   cashMovementFor,
@@ -22,6 +23,15 @@ const PART_LABELS = new Map(PARTS.map((p) => [p.id, `${p.brand} ${p.name}`]))
 
 function partLabel(partId: string): string {
   return PART_LABELS.get(partId) ?? partId
+}
+
+/** `CarPartId` -> its taxonomy display name - the knowledge model's
+ * elimination line reads a real part name ("The intake is clean.") rather
+ * than the internal slot id. */
+const CAR_PART_LABELS = new Map(PARTS_TAXONOMY.map((entry) => [entry.id, entry.displayName]))
+
+function carPartLabel(carPartId: CarPartId): string {
+  return CAR_PART_LABELS.get(carPartId) ?? carPartId
 }
 
 /** Machining operation id -> the name the shop calls that job; internal ids
@@ -218,6 +228,8 @@ export function describeLogEntry(
         ? `${base}. Opened it up: ${titleCaseFromSlug(entry.revealedCauseId)}.`
         : base
     }
+    case 'symptom-cause-eliminated':
+      return `The ${carPartLabel(entry.carPartId)} is clean. It wasn't that.`
     case 'service-job-accepted':
       // Acceptance no longer places the car instantly, so this reads as the
       // customer's own promise, not a status update.

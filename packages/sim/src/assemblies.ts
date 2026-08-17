@@ -12,7 +12,7 @@ import type {
 } from '@midnight-garage/content'
 import { updateCarLedger } from './carLedger'
 import type { SimContext } from './context'
-import { revealOnRemoval } from './diagnosis'
+import { verifyAndResolve, verifyManyAndResolve } from './diagnosis'
 import {
   findWorkableCar,
   machineGateGroupFor,
@@ -257,13 +257,15 @@ export function resolveRemoveAssembly(
         },
       },
     }
-    // Uninstall reveals truth (free) - owned cars only, exactly as per-slot
+    // The spanner always tells (free) - owned cars only, exactly as per-slot
     // removal does. A customer's car never carries symptoms.
     let revealedCauseId: string | undefined
+    let eliminated = false
     if (isOwned) {
-      const revealed = revealOnRemoval(nextCar, member, context)
+      const revealed = verifyAndResolve(nextCar, member, context)
       nextCar = revealed.car
       revealedCauseId = revealed.revealedCauseId ?? undefined
+      eliminated = revealed.eliminated
     }
     updatedCar = nextCar
     log.push({
@@ -273,6 +275,9 @@ export function resolveRemoveAssembly(
       partInstanceId: installed.id,
       ...(revealedCauseId ? { revealedCauseId } : {}),
     })
+    if (eliminated) {
+      log.push({ type: 'symptom-cause-eliminated', carInstanceId, carPartId: member })
+    }
   }
 
   const container: AssemblyContainer = {
@@ -432,13 +437,18 @@ export function resolveRefitAssembly(
 
   let parts = { ...car.parts }
   let partsCostYen = 0
+  const refittedMembers: CarPartId[] = []
   for (const member of def.members) {
     const instance = container.members[member]
     if (!instance) continue
     parts = { ...parts, [member]: { installed: instance } }
     partsCostYen += instance.pricePaidYen ?? 0
+    refittedMembers.push(member)
   }
-  const updatedCar: CarInstance = { ...car, parts }
+  // A refitted member was already known before it went back on - a benched
+  // container is "in hand" the same way loose warehouse inventory is - so
+  // every slot it lands in is verified with nothing left to reveal there.
+  const { car: updatedCar } = verifyManyAndResolve({ ...car, parts }, refittedMembers, context)
   const withCar = writeCarBack(state, carInstanceId, updatedCar)
   let next: GameState = {
     ...withCar,

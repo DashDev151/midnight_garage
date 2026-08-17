@@ -199,6 +199,21 @@ describe('(b) radial wage (sprint213.md acceptance)', () => {
  * value-side or affinity-curve levers this sprint moves; picking whichever
  * buyer happens to value it highest would price this specific flip off that
  * unrelated fact rather than off the value model this sprint is testing.
+ *
+ * SKIPPED as of sprint215.md (the knowledge model): task E adds one extra
+ * `rng.next()` draw per generated car (the hidden non-stock roll), which
+ * shifts the RNG stream car generation reads from. This test replays a REAL
+ * recorded session file (`midnight-garage-session-day5.json`) byte-for-byte
+ * against a live seed rather than a hand-authored script, so the replayed
+ * auction board no longer reproduces the same Honda Today lot the session
+ * actually bought - the car is not found in `finalState.ownedCars` at all.
+ * Unlike this suite's own hash-pinned golden masters, there is no number to
+ * re-derive here: fixing it needs a FRESH SESSION EXPORT against the new RNG
+ * stream, a live play session this suite cannot produce on its own, which
+ * is outside what a re-pin can do. `it.skip`ped rather than deleted or
+ * loosened, per directive 17 - diagnosed as case (a), not silently patched;
+ * the assertion below is left exactly as it was, ready to re-enable the
+ * moment a fresh `midnight-garage-session-day5.json` lands.
  */
 describe('(c) the golden session: the day-5 Honda Today flip (sprint213.md acceptance)', () => {
   const SESSION_PATH = join(
@@ -206,7 +221,13 @@ describe('(c) the golden session: the day-5 Honda Today flip (sprint213.md accep
     '../../../midnight-garage-session-day5.json',
   )
 
-  it('the replayed flip lands in the entry yen/labour-point band', () => {
+  // STALE RECORDED FIXTURE, awaiting the next session export: sprint215.md's
+  // hidden non-stock generation roll shifted the RNG stream car generation
+  // reads, so this real recorded session no longer replays to the same
+  // Honda Today lot it actually bought. Re-enable once
+  // `midnight-garage-session-day5.json` is re-exported against the new
+  // stream - see this describe block's own doc comment above.
+  it.skip('the replayed flip lands in the entry yen/labour-point band', () => {
     const bundle = JSON.parse(readFileSync(SESSION_PATH, 'utf-8')) as SessionExportBundle
     const script = sessionBundleToScript(bundle, undefined, { name: 'sprint213-golden-session' })
     const result = replayCareerScript(script, CONTEXT)

@@ -220,6 +220,25 @@ export const CarInstanceSchema = z.object({
    * a hand-authored car has no rolled pattern and absent reads as exactly that.
    */
   damagePattern: DamagePatternIdSchema.optional(),
+  /**
+   * Which of this car's slots the player has actually confirmed the band of
+   * (docs/design/systems/knowledge-and-diagnosis.md section 1) - removed,
+   * repaired, or named by a diagnostic confirmation. Every slot not listed
+   * here is ESTIMATED: the player's own knowledge is `priorBand`, a
+   * mileage/provenance guess, never the truth (`knowledge.ts`'s
+   * `knowledgeViewOf`).
+   *
+   * Optional, the genuinely-optional-key pattern (SAVE_VERSION bump, no
+   * migration per directive 19): absent reads as "the knowledge model
+   * hasn't been applied to this car" everywhere this is read, which
+   * defensively shows the true band rather than hiding it - the safe
+   * default for a hand-authored fixture, a bot/probe car, or a customer's
+   * service-job car this sprint does not touch. A real acquisition path
+   * (auction purchase, dev grant, the tutorial lot) always seeds this
+   * explicitly, so a live game car is never actually in the undefined
+   * state once owned.
+   */
+  verifiedSlots: z.array(CarPartIdSchema).optional(),
 })
 
 export type CarInstance = z.infer<typeof CarInstanceSchema>

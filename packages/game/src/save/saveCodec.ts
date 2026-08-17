@@ -817,8 +817,22 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * `MIGRATIONS[71]` entry. The version bump alone is still required (Save
  * law) so an old client rejects a v72 save rather than reading a shape it no
  * longer understands.
+ * v72 -> v73 (the knowledge model): `CarInstance` gained `verifiedSlots`
+ * (sprint215.md), which slots the player has actually confirmed the band of
+ * - every other slot on an owned car displays `priorBand`, a deterministic
+ * guess, rather than the truth. It is `.optional()` (the same pattern as
+ * `partInstanceCounter`/`bodyBayCarId`), so no existing `CarInstance` literal
+ * needs touching: a pre-v73 save simply reads it absent, which every reader
+ * treats as "the knowledge model hasn't been applied to this car" and
+ * defensively shows the true band - never a truth leak, never a block. Per
+ * directive 19, a plain SAVE_VERSION bump with NO `MIGRATIONS[72]` entry: a
+ * pre-v73 save's owned cars keep reading fully transparent (the pre-Sprint-215
+ * behaviour) until re-verified through play, which is a strictly softer
+ * change than losing the car. The version bump alone is still required (Save
+ * law) so an old client rejects a v73 save rather than reading a shape it no
+ * longer understands.
  */
-export const SAVE_VERSION = 72
+export const SAVE_VERSION = 73
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

@@ -58,6 +58,7 @@ import {
   symptomDrawWeight,
   zoneDamageOrder,
 } from './damagePatterns'
+import { defaultVerifiedSlots } from './knowledge'
 import { cleanValueYen } from './marketValue'
 import { makeCarOrigin } from './provenance'
 import { pickWeighted, type Rng } from './rng'
@@ -724,6 +725,79 @@ function aftermarketInstanceAtGrade(
   return { id: `${idPrefix}-${partId}`, partId: catalogPart.id, band, origin }
 }
 
+/**
+ * The hidden non-stock roll (docs/design/systems/knowledge-and-diagnosis.md
+ * section 9, sprint215.md task E): separate from, and layered on top of, the
+ * always-revealed aftermarket roll above - one ESTIMATED slot (never one of
+ * `defaultVerifiedSlots`'s always-visible ones) whose true installed part
+ * becomes a non-stock SKU at its own already-rolled band. Only ever picks a
+ * slot still carrying its stock-grade default, so it can never collide with
+ * the ordinary aftermarket roll's own pick. The knowledge model
+ * (`knowledge.ts`'s `knowledgeViewOf`) is what actually hides this from the
+ * player pre-verification - generation only decides WHETHER and WHERE, at
+ * the same rolled band the slot already carries, on the same `aftermarketInstanceFor`
+ * grade-weighting every other aftermarket fit in this file uses.
+ *
+ * Chance scales by the culture's own multiplier (tuner/enthusiast scenes
+ * modify more) and by the same `aftermarketChanceMultiplierByGrade[history]`
+ * the ordinary aftermarket roll reads - one "how modified is this car" axis,
+ * not two. A `null` `fitmentClass` entry (an eligible slot with no aftermarket
+ * catalog entry at all) simply leaves the slot alone.
+ *
+ * `aftermarketSlotsFitted` is the ordinary aftermarket roll's own count for
+ * this car (the per-part loop above): a hidden fit is still an aftermarket
+ * fit, so it counts against the SAME `maxAftermarketSlots` cap rather than a
+ * second, independent one - "someone's old project" stays meaningfully
+ * modified, not entirely rebuilt, whether the player can see it yet or not.
+ */
+export function rollHiddenNonStock(
+  car: CarInstance,
+  model: CarModel,
+  fitmentClass: PartFitmentClass,
+  history: DamageGrade,
+  idPrefix: string,
+  origin: PartOrigin,
+  context: SimContext,
+  rng: Rng,
+  aftermarketSlotsFitted: number,
+): CarInstance {
+  const { hiddenNonStock, damageGrades, maxAftermarketSlots } = context.economy.partsGeneration
+  const chance = Math.min(
+    1,
+    hiddenNonStock.baseChance *
+      hiddenNonStock.cultureMultiplier[model.spec.culture] *
+      damageGrades.aftermarketChanceMultiplierByGrade[history],
+  )
+  // Rolled unconditionally, even when no slot ends up eligible, so the RNG
+  // draw sequence per car stays uniform regardless of outcome.
+  const hit = rng.next() < chance
+  if (!hit || aftermarketSlotsFitted >= maxAftermarketSlots) return car
+
+  const alwaysVisible = new Set(defaultVerifiedSlots(context))
+  const eligible = ALL_CAR_PART_IDS.filter((partId) => {
+    if (alwaysVisible.has(partId)) return false
+    const installed = car.parts[partId].installed
+    if (!installed) return false
+    return context.partsById[installed.partId]?.grade === 'stock'
+  })
+  if (eligible.length === 0) return car
+
+  const partId = rng.pick(eligible)
+  const installed = car.parts[partId].installed!
+  const hidden = aftermarketInstanceFor(
+    partId,
+    installed.band,
+    idPrefix,
+    fitmentClass,
+    context.aftermarketPartByCarPartId,
+    context.economy.partsGeneration.aftermarketGradeWeights,
+    origin,
+    rng,
+  )
+  if (!hidden) return car
+  return { ...car, parts: { ...car.parts, [partId]: { ...car.parts[partId], installed: hidden } } }
+}
+
 /** The denormalised label a `PartOrigin` carries - `"'95 Corolla"` style,
  * using the model's display name and the instance year, so it still reads
  * correctly after the donor car is sold or scrapped. */
@@ -1094,7 +1168,26 @@ export function generateAuctionCarInstance(
     history,
     damagePattern: pattern.id,
   }
-  const withDerivedBands = applyDerivedBodyBands(rolled, model, context)
+  // Runs BEFORE the Law 2 ceiling (`enforceMaxBillFraction`) below, exactly
+  // where the ordinary aftermarket roll above already sits in the per-part
+  // loop: a hidden non-stock SKU can genuinely cost more than the stock
+  // part it replaces (`partCostToBandYen` prices off the INSTALLED part's
+  // own catalogue price), so the ceiling has to see the real fitted part to
+  // stay a real ceiling. Also respects `maxAftermarketSlots` against the
+  // ordinary roll's own count - one shared cap on how modified a car is
+  // allowed to be, visible or hidden.
+  const withHidden = rollHiddenNonStock(
+    rolled,
+    model,
+    fitmentClass,
+    history,
+    `${id}-part`,
+    carOrigin,
+    context,
+    rng,
+    aftermarketSlotsFitted,
+  )
+  const withDerivedBands = applyDerivedBodyBands(withHidden, model, context)
   const softened = enforceMaxBillFraction(withDerivedBands, model, context, carOrigin)
   if (!allowSymptoms) return softened
 

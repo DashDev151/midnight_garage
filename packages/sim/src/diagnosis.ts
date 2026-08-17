@@ -17,6 +17,7 @@ import type { SimContext } from './context'
 import { benchHasTrait, benchedMemberWithTrait } from './crewSkills'
 import { bookCashMovements } from './financeLedger'
 import { findWorkableCar, writeCarBack } from './jobs'
+import { verifySlot } from './knowledge'
 import { marketValueYen } from './marketValue'
 
 type CarSymptom = CarInstance['symptoms'][number]
@@ -360,6 +361,85 @@ export function revealOnRemoval(
     return { ...carSymptom, remainingCauseIds: [carSymptom.trueCauseId] }
   })
   return { car: { ...car, symptoms }, revealedCauseId }
+}
+
+/** One verification event's outcome (knowledge-and-diagnosis.md section 1):
+ * `car` with `partId` verified and every open symptom's candidates resolved
+ * against the now-known truth on that slot; `revealedCauseId` and
+ * `eliminated` describe what that resolution did, for the caller's own
+ * day-log/UI copy. */
+export interface KnowledgeUpdate {
+  car: CarInstance
+  /** Set when this verification collapsed one of the car's symptoms to
+   * exactly one remaining cause - the existing verdict idiom (symptom
+   * checklist) already shows this, so callers need it only for the
+   * pre-existing "Opened it up: <cause>." day-log convention (`part-removed`
+   * on the removal route); no new copy is owed for the collapse case. */
+  revealedCauseId: string | null
+  /** True when this verification eliminated at least one open symptom's
+   * candidate on `partId` WITHOUT collapsing that symptom to one cause - the
+   * generic "The {part} is clean. It wasn't that." line
+   * (`symptom-cause-eliminated` day-log entry) is owed exactly when this is
+   * true. */
+  eliminated: boolean
+}
+
+/**
+ * Marks `partId` verified (`knowledge.ts`'s `verifySlot`) and resolves
+ * whatever that reveals - the one function every verification route (C1
+ * removal, C2 repair, C3 diagnostic confirmation) calls, so "the spanner
+ * always tells" has one implementation rather than three. Reuses
+ * `revealOnRemoval` above for the actual cause-resolution (the existing
+ * silent prune, surfaced rather than rewritten - sprint215.md task D): a
+ * symptom whose `trueCauseId` targets `partId` collapses to it; every other
+ * remaining candidate targeting `partId` is eliminated, since a part now
+ * known to sit at a given band could never have hidden a cause that claims a
+ * different one. The name is generic on purpose - nothing about the
+ * resolution logic is specific to removal, only its historical starting
+ * point was.
+ */
+export function verifyAndResolve(
+  car: CarInstance,
+  partId: CarPartId,
+  context: SimContext,
+): KnowledgeUpdate {
+  const verified = verifySlot(car, partId)
+  const { car: resolvedCar, revealedCauseId } = revealOnRemoval(verified, partId, context)
+  let eliminated = false
+  resolvedCar.symptoms.forEach((carSymptom, index) => {
+    const before = verified.symptoms[index]
+    if (
+      before &&
+      carSymptom.remainingCauseIds.length < before.remainingCauseIds.length &&
+      carSymptom.remainingCauseIds.length > 1
+    ) {
+      eliminated = true
+    }
+  })
+  return { car: resolvedCar, revealedCauseId, eliminated }
+}
+
+/** `verifyAndResolve` folded over several slots at once (a group repair can
+ * climb more than one unverified slot in a single click) - each slot's
+ * revelation runs against the car the previous one already updated, and the
+ * caller gets back every distinct revealed cause and every distinct part
+ * that came up clean without a collapse, for one combined day-log line per
+ * part rather than one per symptom. */
+export function verifyManyAndResolve(
+  car: CarInstance,
+  partIds: readonly CarPartId[],
+  context: SimContext,
+): { car: CarInstance; revealedCauseIds: string[]; eliminatedCarPartIds: CarPartId[] } {
+  let current = car
+  const revealedCauseIds: string[] = []
+  const eliminatedCarPartIds: CarPartId[] = []
+  for (const partId of partIds) {
+    const result = verifyAndResolve(current, partId, context)
+    current = result.car
+    if (result.revealedCauseId) revealedCauseIds.push(result.revealedCauseId)
+    if (result.eliminated) eliminatedCarPartIds.push(partId)
+  }
+  return { car: current, revealedCauseIds, eliminatedCarPartIds }
 }
 
 /**
@@ -910,10 +990,21 @@ export function resolveOwnedWorkup(
   if (gateReason) return { state, log: [], outcome: gateReason }
   const car = findWorkableCar(state, carInstanceId)!
 
-  const updatedCar: CarInstance = {
+  const collapsedCar: CarInstance = {
     ...car,
     symptoms: car.symptoms.map((s) => ({ ...s, remainingCauseIds: [s.trueCauseId] })),
   }
+  // A diagnostic confirmation names its part (knowledge-and-diagnosis.md
+  // section 1, route 3): the workup collapses every symptom straight to its
+  // true cause, so every one of those causes' own slots is now verified too
+  // - `verifyManyAndResolve` also resolves any OTHER open symptom that
+  // happens to share one of those slots.
+  const trueCausePartIds = car.symptoms.flatMap((s) => {
+    const symptom = context.symptomsById[s.symptomId]
+    const cause = symptom?.causes.find((c) => c.id === s.trueCauseId)
+    return cause ? [cause.carPartId] : []
+  })
+  const { car: updatedCar } = verifyManyAndResolve(collapsedCar, trueCausePartIds, context)
   const nextState: GameState = {
     ...writeCarBack(state, carInstanceId, updatedCar),
     energySpentToday: state.energySpentToday + context.economy.energy.actionPoints.workup,

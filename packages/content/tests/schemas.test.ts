@@ -726,6 +726,7 @@ describe('seed content validates against schemas', () => {
       'dyno',
       'machining',
       'diagnosis',
+      'knowledgePriors',
       'auctionRoom',
       'staff',
       'auctionGrading',

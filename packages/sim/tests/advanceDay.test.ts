@@ -379,7 +379,14 @@ describe('advanceDay golden master', () => {
     // reprices every valuation and every chain-priced service-job offer this
     // 30-day career touches. No behaviour changed in kind, only the yen and
     // point figures it now prices at. Re-derived from a real run.
-    expect(hashState(finalState)).toBe('f4e38f6e')
+    //
+    // It moves once more for sprint215.md (the knowledge model):
+    // `CarInstance` gains `verifiedSlots`, seeded at every acquisition, and
+    // generation gains the hidden non-stock roll (task E), one extra
+    // `rng.next()` draw per generated car regardless of outcome. No
+    // behaviour this script exercises changed in kind. Re-derived from a
+    // real run.
+    expect(hashState(finalState)).toBe('0d6fd91a')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -714,7 +721,11 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // It moves once more for sprint213.md (the flip economy): the same set
     // of levers as the golden-master test above reprices this script's own
     // acquisition and sale. Re-derived from a real run.
-    expect(hashState(acquisitionCareer().sold)).toBe('6adca89e')
+    //
+    // It moves once more for sprint215.md (the knowledge model): the same
+    // `verifiedSlots` shape addition and hidden non-stock generation roll as
+    // the golden-master test above. Re-derived from a real run.
+    expect(hashState(acquisitionCareer().sold)).toBe('bcfb568a')
   })
 })
 

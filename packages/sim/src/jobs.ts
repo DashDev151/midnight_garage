@@ -31,7 +31,7 @@ import { applyDerivedBodyBands, isBodyDerivedPart, refitCarrierZoneStates } from
 import { updateCarLedger } from './carLedger'
 import type { SimContext } from './context'
 import { crewEnergySaved, perfectionistCostMultiplier } from './crewSkills'
-import { pruneCuredCauses, revealOnRemoval } from './diagnosis'
+import { pruneCuredCauses, verifyAndResolve, verifyManyAndResolve } from './diagnosis'
 import { recordDynoSession } from './dyno'
 import { carInBodyBay } from './facilities'
 import { bookCashMovements } from './financeLedger'
@@ -272,14 +272,27 @@ function applyJobToCar(
     const candidateIds = job.carPartId
       ? [job.carPartId]
       : presentPartIdsInGroup(car, job.componentId, context.partIdsByGroup)
+    const touchedPartIds: CarPartId[] = []
     for (const partId of candidateIds) {
       const installed = parts[partId].installed
       if (!installed || installed.band === 'scrap') continue
       if (bandIndex(installed.band) >= bandIndex(targetBand)) continue
       parts[partId] = { installed: { ...installed, band: targetBand } }
+      touchedPartIds.push(partId)
     }
+    // A repair climbs a band, so it verifies exactly as removal does (the
+    // spanner always tells - knowledge-and-diagnosis.md section 1, route 2):
+    // every slot the repair actually touched is now known, whether it came
+    // off the car first (bench work) or climbed in place (a fixed carrier).
+    // Reveal-then-confirm at the click that queues this job is a UI-layer
+    // concern; this resolver only ever sees the confirmed, real band.
+    const { car: verifiedCar } = verifyManyAndResolve(
+      pruneCuredCauses({ ...car, parts }, context),
+      touchedPartIds,
+      context,
+    )
     return {
-      car: pruneCuredCauses({ ...car, parts }, context),
+      car: verifiedCar,
       partInventory: [...partInventory],
       blockedByOccupiedSlot: false,
     }
@@ -323,8 +336,16 @@ function applyJobToCar(
       context,
     )
   }
+  // A fitted part was already known before it went on (loose warehouse
+  // inventory is always verified - it's in hand), so the slot it lands in
+  // is verified too, with nothing left to reveal there.
+  const { car: verifiedFitted } = verifyAndResolve(
+    pruneCuredCauses(fitted, context),
+    targetPartId,
+    context,
+  )
   return {
-    car: pruneCuredCauses(fitted, context),
+    car: verifiedFitted,
     partInventory: partInventory.filter((_, i) => i !== partIndex),
     blockedByOccupiedSlot: false,
   }
@@ -799,9 +820,14 @@ export function resolveRemovePart(
 
   const ownedIndex = withLabor.ownedCars.findIndex((c) => c.id === carInstanceId)
   if (ownedIndex !== -1) {
-    // An owned car: the removed part is ours, kept as-is. Uninstall reveals
-    // truth diagnoses at no extra cost.
-    const { car: revealedCar, revealedCauseId } = revealOnRemoval(updatedCar, carPartId, context)
+    // An owned car: the removed part is ours, kept as-is. The spanner always
+    // tells - uninstall verifies the slot and reveals truth at no extra cost
+    // (knowledge-and-diagnosis.md section 1, route 1).
+    const {
+      car: revealedCar,
+      revealedCauseId,
+      eliminated,
+    } = verifyAndResolve(updatedCar, carPartId, context)
     const ownedCars = [...withLabor.ownedCars]
     ownedCars[ownedIndex] = revealedCar
     const partInventory = [...withLabor.partInventory, installed]
@@ -813,6 +839,9 @@ export function resolveRemovePart(
         partInstanceId: installed.id,
         ...(revealedCauseId ? { revealedCauseId } : {}),
       },
+      ...(eliminated
+        ? [{ type: 'symptom-cause-eliminated', carInstanceId, carPartId } as const]
+        : []),
     ]
     const base: GameState = { ...withLabor, ownedCars, partInventory }
     return { state: base, log, laborSlotsUsed }

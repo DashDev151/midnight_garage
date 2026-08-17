@@ -345,6 +345,7 @@ const panelHead = computed(() => {
       band: row.band,
       grade: row.grade,
       uncertain: row.uncertain,
+      estimated: row.estimated,
       installedPartName: row.installedPartName,
       missing: row.missing,
       absent: row.legitimatelyAbsent,
@@ -358,6 +359,9 @@ const panelHead = computed(() => {
       band: b.member.band,
       grade: null,
       uncertain: false,
+      // A benched member is off the car and in hand, so it is always
+      // verified truth - never the knowledge model's own guess.
+      estimated: false,
       installedPartName: b.member.partName,
       missing: false,
       absent: false,
@@ -416,12 +420,22 @@ function addressBusy(componentId: ComponentId, carPartId?: CarPartId): boolean {
   return detail.value?.jobs.some((j) => addressesOverlap(j, { componentId, carPartId })) ?? false
 }
 
+/**
+ * Continue an already-open job at this address. The repair-zone branch is
+ * gated by the SAME `armOrConfirmRepair` reveal-then-confirm check as a
+ * fresh `onRepairStepClick` (task C2) - a job that hasn't finished yet can
+ * still be sitting on an unverified slot the player has never actually
+ * seen the true band of, so "Continue repair" is exactly as capable of
+ * charging an unshown price as starting one fresh.
+ */
 function continueJob(componentId: ComponentId, carPartId?: CarPartId): void {
   const d = detail.value
   const job = jobFor(componentId, carPartId)
   if (!d || !job) return
-  if (job.kind === 'repair-zone') game.repair(d.car.id, componentId, 'mint', carPartId)
-  else if (job.kind === 'machine-part' && job.machiningOperationId) {
+  if (job.kind === 'repair-zone') {
+    if (!armOrConfirmRepair(d.car.id, componentId, carPartId)) return
+    game.repair(d.car.id, componentId, 'mint', carPartId)
+  } else if (job.kind === 'machine-part' && job.machiningOperationId) {
     game.machineFittedPart(d.car.id, job.machiningOperationId)
   } else if (job.partInstanceId) game.install(d.car.id, componentId, job.partInstanceId, carPartId)
 }
@@ -527,15 +541,94 @@ const totalSpentYen = computed(() => {
 
 // --- Replace, remove ---
 
+/**
+ * Reveal-then-confirm (knowledge-and-diagnosis.md section 1, sprint215.md
+ * task C2): the repair ADDRESS (a group, or one part within it) currently
+ * waiting on a SECOND click to confirm, `null` otherwise. Addresses both
+ * repair entry points on equal terms - the per-part "+repair" row
+ * (`carPartId` set) and a group-level repair-zone job, whether started
+ * fresh or continued (`carPartId` omitted, every present part in the group)
+ * - so neither can ever charge a price for a band the player was never
+ * shown. The reveal itself is free - clicking once never spends labour or
+ * cash, it only shows the true bands under the estimates; a second click on
+ * the SAME address then runs the repair for real.
+ */
+interface RepairAddress {
+  componentId: ComponentId
+  carPartId?: CarPartId
+}
+const pendingRepairConfirm = ref<RepairAddress | null>(null)
+watch(selectedPartId, () => {
+  pendingRepairConfirm.value = null
+})
+
+function sameRepairAddress(a: RepairAddress, b: RepairAddress): boolean {
+  return a.componentId === b.componentId && a.carPartId === b.carPartId
+}
+
+/** Whether this exact address is the one currently armed for confirm - the
+ * template's own check for where to render the reveal note, next to
+ * whichever button (fresh or continuing) armed it. */
+function isPendingRepairConfirm(componentId: ComponentId, carPartId?: CarPartId): boolean {
+  return (
+    pendingRepairConfirm.value !== null &&
+    sameRepairAddress(pendingRepairConfirm.value, { componentId, carPartId })
+  )
+}
+
+/** The reveal-then-confirm preview for the currently-armed address - every
+ * unverified slot it would touch, estimated band against true - empty when
+ * nothing is waiting on a confirm. The inline note under whichever button
+ * armed it reads this. */
+const repairReveal = computed(() => {
+  const d = detail.value
+  const addr = pendingRepairConfirm.value
+  if (!d || !addr) return []
+  return game.repairRevealFor(d.car.id, addr.componentId, addr.carPartId)
+})
+
+/**
+ * The shared reveal-then-confirm gate every repair click passes through
+ * before it is allowed to spend anything (sprint215.md task C2: "no entry
+ * point may charge a price the player was never shown") - `true` once the
+ * caller should go ahead and run the real repair (nothing to reveal, or
+ * this exact address is already armed from a prior click), `false` once it
+ * has just armed the reveal and the caller must stop here. Read-only:
+ * arming or clearing never spends labour or cash, or marks anything
+ * verified - only the real repair the caller runs after a `true` does that,
+ * via the sim's own verification routes.
+ */
+function armOrConfirmRepair(
+  carId: string,
+  componentId: ComponentId,
+  carPartId?: CarPartId,
+): boolean {
+  const addr: RepairAddress = { componentId, carPartId }
+  const alreadyArmed =
+    pendingRepairConfirm.value !== null && sameRepairAddress(pendingRepairConfirm.value, addr)
+  if (!alreadyArmed) {
+    const reveals = game.repairRevealFor(carId, componentId, carPartId)
+    if (reveals.length > 0) {
+      pendingRepairConfirm.value = addr
+      return false
+    }
+  }
+  pendingRepairConfirm.value = null
+  return true
+}
+
 /** The per-part click-per-rung repair - each click repairs one more band,
  * instantly, through the same `repair` resolver the plain group button
  * uses. A rung that outruns today's labour leaves an ordinary continuable
  * `Job`, picked up by the `addressBusy`/`continueJob` branch above the next
- * time this row renders. */
+ * time this row renders. Gated by `armOrConfirmRepair` (task C2) exactly as
+ * `continueJob`'s own repair-zone branch is.
+ */
 function onRepairStepClick(componentId: ComponentId, carPartId: CarPartId): void {
   const d = detail.value
   const step = nextPartStep(componentId, carPartId)
   if (!d || !step) return
+  if (!armOrConfirmRepair(d.car.id, componentId, carPartId)) return
   game.repair(d.car.id, componentId, step.targetBand, carPartId)
 }
 
@@ -1107,7 +1200,11 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               aria-hidden="true"
             />
             <span class="panel-name" data-test="panel-name">{{ panelHead.name }}</span>
-            <BandChip :band="panelHead.band" />
+            <BandChip
+              :band="panelHead.band"
+              :estimated="panelHead.estimated"
+              data-test="panel-band"
+            />
             <span v-if="panelHead.grade" class="panel-grade">{{ panelHead.grade }}</span>
             <span
               v-if="panelHead.uncertain"
@@ -1115,6 +1212,13 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               data-test="panel-uncertain"
               title="Could be worse than shown - an unresolved symptom may be hiding damage"
               >?</span
+            >
+            <span
+              v-if="panelHead.estimated"
+              class="estimated-tag"
+              data-test="panel-estimated"
+              title="Not yet verified - remove it, repair it, or narrow it down to know for sure"
+              >est.</span
             >
             <span v-if="panelHead.missing" class="missing-tag" data-test="panel-missing"
               >MISSING</span
@@ -1147,6 +1251,22 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                   {{ continueLabelAt(selectedGroup, selectedRow.partId) }}
                 </button>
                 <span class="slot-empty">working…</span>
+                <!-- Reveal-then-confirm applies to "Continue repair" too - an
+                     in-progress job can still be sitting on an unverified
+                     slot. -->
+                <span
+                  v-if="
+                    isPendingRepairConfirm(selectedGroup, selectedRow.partId) &&
+                    repairReveal.length > 0
+                  "
+                  class="reveal-confirm"
+                  :data-test="'repair-reveal-' + selectedRow.partId"
+                >
+                  <span v-for="reveal in repairReveal" :key="reveal.partId"
+                    >Actually {{ reveal.trueBand }}, not {{ reveal.estimatedBand }} as guessed.
+                  </span>
+                  Click again to repair it.
+                </span>
               </template>
               <span v-else class="slot-empty">working (group job)…</span>
             </template>
@@ -1172,6 +1292,22 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                   :data-test="'assist-fee-repair-' + selectedRow.partId"
                   >{{ repairMachineNoteFor(selectedRow.partId) }}</span
                 >
+                <!-- Reveal-then-confirm: the first click on an unverified
+                     slot only shows the true band under the guess, free -
+                     the SAME button, clicked again, actually repairs. -->
+                <span
+                  v-if="
+                    isPendingRepairConfirm(selectedGroup, selectedRow.partId) &&
+                    repairReveal.length > 0
+                  "
+                  class="reveal-confirm"
+                  :data-test="'repair-reveal-' + selectedRow.partId"
+                >
+                  <span v-for="reveal in repairReveal" :key="reveal.partId"
+                    >Actually {{ reveal.trueBand }}, not {{ reveal.estimatedBand }} as guessed.
+                  </span>
+                  Click again to repair it.
+                </span>
               </template>
 
               <!-- At tier 1 a repair finishes at fine; this names the tier-2
@@ -2557,6 +2693,13 @@ h4 {
   cursor: help;
 }
 
+.estimated-tag {
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+  font-style: italic;
+  cursor: help;
+}
+
 .remove-btn {
   color: var(--mg-neon-pink);
 }
@@ -2565,6 +2708,13 @@ h4 {
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
   font-style: italic;
+}
+
+.reveal-confirm {
+  display: block;
+  color: var(--mg-yen);
+  font-size: var(--mg-fs-sm);
+  margin-top: 2px;
 }
 
 /* The "your tools finish at fine" hint pointing at

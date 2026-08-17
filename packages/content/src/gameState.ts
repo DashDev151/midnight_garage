@@ -1219,6 +1219,21 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
      * doesn't target). */
     revealedCauseId: z.string().min(1).optional(),
   }),
+  /**
+   * A verification event (removal, a repair click, a diagnostic confirmation
+   * - docs/design/systems/knowledge-and-diagnosis.md section 1) resolved an
+   * open symptom's candidates against `carPartId` without collapsing it to a
+   * single cause: the generic "checked and it wasn't that" line
+   * (`describeLogEntry` renders "The {part} is clean. It wasn't that.").
+   * The collapse case needs no entry of its own - the symptom checklist's
+   * existing verdict line already speaks for it the moment `remainingCauseIds`
+   * narrows to one.
+   */
+  z.object({
+    type: z.literal('symptom-cause-eliminated'),
+    carInstanceId: z.string().min(1),
+    carPartId: CarPartIdSchema,
+  }),
   z.object({
     type: z.literal('car-moved'),
     carInstanceId: z.string().min(1),

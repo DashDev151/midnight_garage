@@ -2381,6 +2381,37 @@ export const EconomyConfigSchema = z.object({
         race: z.number().nonnegative(),
       }),
       /**
+       * The hidden non-stock roll (docs/design/systems/knowledge-and-diagnosis.md
+       * section 9, sprint215.md task E): separate from `aftermarketChance`
+       * above, which is always revealed at generation - this is the one slot
+       * per car whose true installed part is a non-stock SKU the player only
+       * learns on verification (`knowledge.ts`'s slot-picking roll). `baseChance`
+       * is scaled by the culture's own multiplier (tuner/enthusiast scenes
+       * modify more) and by the SAME `aftermarketChanceMultiplierByGrade[history]`
+       * the ordinary aftermarket roll reads (a hard-driven car is likelier to
+       * carry a hidden part too, reusing the one "how modified is this car"
+       * axis rather than a second one), clamped into [0, 1]. Explicit per-culture
+       * keys, matching `CareProfileByCultureSchema`'s own established shape.
+       */
+      hiddenNonStock: z.object({
+        baseChance: z.number().min(0).max(1),
+        cultureMultiplier: z.object({
+          kei: z.number().nonnegative(),
+          drift: z.number().nonnegative(),
+          wangan: z.number().nonnegative(),
+          kyusha: z.number().nonnegative(),
+          rotary: z.number().nonnegative(),
+          touge: z.number().nonnegative(),
+          exotic: z.number().nonnegative(),
+          kurokan: z.number().nonnegative(),
+          'honest-transport': z.number().nonnegative(),
+          'rally-bred': z.number().nonnegative(),
+          'touring-car': z.number().nonnegative(),
+          'front-drive-tuner': z.number().nonnegative(),
+          oddball: z.number().nonnegative(),
+        }),
+      }),
+      /**
        * The zone model's own generation tunables (docs/design/
        * workshop-rework.md's generation table): per-tier severity weights
        * for a zone's `metal` (the six metal zones only) and `finish` (all
@@ -3127,6 +3158,44 @@ export const EconomyConfigSchema = z.object({
     saleRevealCopy: z.object({
       buyerWon: z.string().min(1),
       playerWon: z.string().min(1),
+    }),
+  }),
+  /**
+   * The knowledge model's guess curve (docs/design/systems/
+   * knowledge-and-diagnosis.md section 1, sprint215.md task A2):
+   * `knowledge.ts`'s `priorBand` reads this to build the estimated chip an
+   * unverified slot shows before the player ever confirms it.
+   */
+  knowledgePriors: z.object({
+    /**
+     * The mileage segment ladder, parallel to `valuation.mileageFactorCurve`'s
+     * own breakpoints (same km values, same ascending order, one entry per
+     * breakpoint): segment `i` is every mileage up to breakpoint `i`'s km
+     * figure, and the two curves can never disagree about where a segment
+     * boundary falls because they share the one breakpoint list. Ordered
+     * best to worst, matching the mileage curve's own direction.
+     */
+    mileageBandBySegment: z.array(ConditionBandSchema).min(1),
+    /**
+     * The provenance nudge `priorBand` applies on top of the mileage guess,
+     * in band steps (positive toward mint), keyed by `CarInstance.
+     * damagePattern` - the car's own "what happened to it" layer
+     * (docs/design/systems/generation-damage.md layer 3), the closest
+     * existing fact to the design doc's "garage-kept" / "crash, flood,
+     * abandoned" framing (`garaged` names itself; the incident-shaped
+     * patterns read as the down side). A car with no rolled pattern
+     * (hand-authored, a probe fixture) applies no modifier. Explicit
+     * per-pattern keys, matching this codebase's established "a missing key
+     * fails validation" preference, so a pattern added to
+     * `DamagePatternIdSchema` without a modifier is caught rather than
+     * silently reading as neutral.
+     */
+    provenanceModifierByDamagePattern: z.object({
+      garaged: z.number().int(),
+      'neglected-commuter': z.number().int(),
+      'frontal-collision': z.number().int(),
+      drifted: z.number().int(),
+      grenade: z.number().int(),
     }),
   }),
   /**

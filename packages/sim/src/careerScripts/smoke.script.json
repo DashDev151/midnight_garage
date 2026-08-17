@@ -22,7 +22,7 @@
         { "type": "rejectServiceJobOffer", "payload": { "offerId": "svc-1-0" } },
         { "type": "acknowledgeTutorialStep", "payload": { "stepId": "smoke-check" } }
       ],
-      "checkpoints": [{ "kind": "hash", "expected": "e243616e" }]
+      "checkpoints": [{ "kind": "hash", "expected": "e9195e3f" }]
     },
     { "day": 2, "events": [], "checkpoints": [] },
     { "day": 3, "events": [], "checkpoints": [] },
@@ -40,7 +40,7 @@
       "day": 10,
       "events": [],
       "checkpoints": [
-        { "kind": "hash", "expected": "1e145343" },
+        { "kind": "hash", "expected": "5e8d2d9d" },
         { "kind": "carsOwned", "count": 1 },
         { "kind": "reputationTier", "tier": "unknown" }
       ]

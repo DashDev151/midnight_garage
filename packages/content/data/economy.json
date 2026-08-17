@@ -754,6 +754,24 @@
       "sport": 30,
       "race": 10
     },
+    "hiddenNonStock": {
+      "baseChance": 0.05,
+      "cultureMultiplier": {
+        "kei": 1,
+        "drift": 2.5,
+        "wangan": 1.5,
+        "kyusha": 1,
+        "rotary": 1.5,
+        "touge": 2,
+        "exotic": 1,
+        "kurokan": 1.2,
+        "honest-transport": 1,
+        "rally-bred": 1.2,
+        "touring-car": 1,
+        "front-drive-tuner": 3,
+        "oddball": 1
+      }
+    },
     "zoneStates": {
       "metalWeightsByTier": {
         "entry": [20, 35, 30, 15],
@@ -1330,6 +1348,16 @@
     "saleRevealCopy": {
       "buyerWon": "The buyer had it looked over: <cause>. They did well out of you.",
       "playerWon": "The buyer had it looked over: <cause>. You did well out of them."
+    }
+  },
+  "knowledgePriors": {
+    "mileageBandBySegment": ["mint", "fine", "worn", "poor"],
+    "provenanceModifierByDamagePattern": {
+      "garaged": 1,
+      "neglected-commuter": -1,
+      "frontal-collision": -1,
+      "drifted": 0,
+      "grenade": -1
     }
   },
   "auctionRoom": {

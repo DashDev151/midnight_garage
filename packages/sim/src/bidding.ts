@@ -15,6 +15,7 @@ import type { SimContext } from './context'
 import { bookCashMovements } from './financeLedger'
 import { sheetGuideValueYen } from './diagnosis'
 import { assignToShop, hasAcquisitionSpace } from './facilities'
+import { fullyVerifiedCar, seedVerifiedSlots } from './knowledge'
 import { marketValueYen } from './marketValue'
 import { bellNormal, createRng, hashStringToSeed } from './rng'
 
@@ -314,19 +315,25 @@ function settleLotPurchase(
   priceYen: number,
   blockedKind: 'buyout' | 'auction-win',
   buildLogEntry: (priceYen: number) => DayLogEntry,
-  economy: EconomyConfig,
+  context: SimContext,
 ): AcquisitionResult {
   if (state.cashYen < priceYen) return { state, log: [] }
   if (!hasAcquisitionSpace(state)) {
     return { state, log: [{ type: 'acquisition-blocked', kind: blockedKind, reason: 'no-space' }] }
   }
 
+  // Acquisition seeds the knowledge model (knowledge-and-diagnosis.md
+  // section 1): every slot but the always-visible ones starts estimated,
+  // except the scripted tutorial lot, whose fixed script is not knowledge
+  // gameplay and starts fully known (sprint215.md task A3).
+  const knownCar = lot.scripted ? fullyVerifiedCar(lot.car) : seedVerifiedSlots(lot.car, context)
+
   const withCar = assignToShop(
     setCarLedger(
       {
         ...state,
         cashYen: state.cashYen - priceYen,
-        ownedCars: [...state.ownedCars, lot.car],
+        ownedCars: [...state.ownedCars, knownCar],
         activeAuctionLots: state.activeAuctionLots.filter((l) => l.id !== lot.id),
       },
       lot.car.id,
@@ -335,7 +342,7 @@ function settleLotPurchase(
     lot.car.id,
   )
   const log = [buildLogEntry(priceYen)]
-  return { state: bookCashMovements(withCar, log, economy), log }
+  return { state: bookCashMovements(withCar, log, context.economy), log }
 }
 
 /**
@@ -365,7 +372,7 @@ export function resolveBuyoutInstant(
       modelId: lot.car.modelId,
       year: lot.car.year,
     }),
-    context.economy,
+    context,
   )
 }
 
@@ -404,7 +411,7 @@ export function settleAuctionHammer(
       modelId: lot.car.modelId,
       year: lot.car.year,
     }),
-    context.economy,
+    context,
   )
 }
 

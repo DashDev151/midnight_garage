@@ -2520,6 +2520,28 @@ import toolShops from '../data/toolShops.json'
  * and `the-quiet-crate` carries no formula probe in `storyMissionProbes.test.ts` at all, so neither
  * was expected to move and neither did. Every other figure re-derived from a fresh
  * `storyMissionProbes.test.ts` run against the test's own restated formula, never hand-guessed.
+ *
+ * Re-pinned for sprint215.md (the knowledge model), under the maintainer's 2026-08-13
+ * behaviour-first governance amendment: the design of record
+ * (docs/design/systems/knowledge-and-diagnosis.md section 1) is itself the maintainer
+ * approval for the SHAPE of this mechanic; the initial numbers are Claude's own choice,
+ * stated here by felt behaviour, validated by playtest rather than pre-ratified.
+ *
+ * Two new `economy.json` blocks. `knowledgePriors` (task A2): `mileageBandBySegment`
+ * mint/fine/worn/poor, one band per `valuation.mileageFactorCurve` breakpoint (30000/
+ * 60000/120000/180000 km) - the FELT BEHAVIOUR is that an estimated slot's guess tracks
+ * the same low-mileage-is-fine curve the market itself already prices by, so the guess
+ * never surprises a player who already reads that curve elsewhere. `provenanceModifierByDamagePattern`
+ * nudges that guess one band toward mint on a `garaged` history and one band toward poor
+ * on `neglected-commuter`/`frontal-collision`/`grenade` (0 on `drifted` - a hard-driven car
+ * is not automatically a neglected one) - the felt behaviour is that a car's own rolled
+ * story colours the guess the same way it already colours everything else about the car.
+ *
+ * `partsGeneration.hiddenNonStock` (task E): `baseChance` 0.05 (one car in twenty carries
+ * a genuinely hidden surprise - rare enough that finding one feels like a real find, not
+ * routine), scaled by `cultureMultiplier` (front-drive-tuner 3x, drift 2.5x, touge 2x,
+ * wangan/rotary 1.5x, kurokan/rally-bred 1.2x, every other culture 1x) - the felt behaviour
+ * is that a mod-scene car is a meaningfully likelier place to find one, never a certainty.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -2529,7 +2551,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('04aaa113f7aac526d7558ee775aacc7c6fe1cf5f40c231fd48a69cdec0802062')
+    ).toBe('e9f995227c2423896153c266b659c412eaf62b4d7c49072dff4334eb7ddcc365')
   })
 
   it('damagePatterns.json matches its approved content exactly', () => {

@@ -177,6 +177,10 @@ import {
   reconditionQuote,
   repairCeilingForLevel,
   expressPriceYen,
+  fullyVerifiedCar,
+  isSlotVerified,
+  knowledgeViewOf,
+  priorBand,
   requiredEmptySlotsBehind,
   requirementLabel,
   resolveAcceptMission,
@@ -373,6 +377,17 @@ export interface CarPartRowView {
    * way, just chosen honestly between the two real values.
    */
   uncertain: boolean
+  /**
+   * True when `band` (and `installedPartName`/`grade`) above is the
+   * knowledge model's own guess (`priorBand`, sim/knowledge.ts) rather than
+   * the truth - this slot is on an OWNED car and has not yet been verified
+   * (knowledge-and-diagnosis.md section 1). Always false for an auction
+   * lot's row (the pre-purchase `uncertain` system above is unaffected and
+   * unrelated) and for any already-verified slot. The row renders a hollow
+   * "est." chip when true; `band` is never fabricated beyond the one
+   * deterministic guess `priorBand` already computes.
+   */
+  estimated: boolean
 }
 
 /** A car paired with its resolved model, display name, and derived stats. */
@@ -400,6 +415,9 @@ export interface CarDetail extends DetailedCar {
    * Each of the 6
    * groups' own scaled restoration bill (`groupCostToMintYen`, the car's
    * real tier factor applied) - the condition panel's per-group bill line.
+   * Priced off the player's own knowledge (`knowledgeViewOf`), not the
+   * truth: an unverified slot's contribution prices from its estimated
+   * band - the reveal-then-confirm click is what corrects it.
    */
   groupBillYen: Record<ComponentId, number>
   /**
@@ -420,23 +438,30 @@ export interface CarDetail extends DetailedCar {
   guideValueYen: number
   /**
    * Your number - the Finances panel's "You say" row and its
-   * projected-profit input: the remaining-cause estimate
-   * (`playerEstimateYen`) while the car carries a symptom, the plain guide
-   * value otherwise (the two are identical for an honest car). Moves only
-   * when the player learns something.
+   * projected-profit input: `playerEstimateYen` read off the player's own
+   * knowledge (`sim/knowledge.ts`'s `knowledgeViewOf`) rather than the truth
+   * - a still-open symptom narrows over its remaining causes exactly as
+   * before, and every OTHER unverified slot reads the generic mileage/
+   * provenance guess underneath that (knowledge-and-diagnosis.md section 1).
+   * Equals the guide value once every slot is verified and the car is
+   * honest. Moves only when the player learns something.
    */
   yourNumberYen: number
   /**
-   * The owner's honest receipt: the value-ledger decomposition of this
-   * car's true market value (`valueLedgerFor` on the true bands - never a
-   * fear line). Line ids only; screens map display labels via
-   * `utils/ledgerLabels.ts` and never compute a yen figure of their own.
+   * The owner's own receipt: the value-ledger decomposition read off the
+   * SAME knowledge-masked car `yourNumberYen` uses (`valueLedgerFor` on
+   * `knowledgeViewOf`'s car, never the fear line auction pricing uses) -
+   * moves only when the player's own knowledge does. Line ids only; screens
+   * map display labels via `utils/ledgerLabels.ts` and never compute a yen
+   * figure of their own.
    */
   valueLedger: ValueLedger
   /**
    * The bill to bring this car to mint (`carCostToMintYen`) - the ledger's
    * forward-looking work row prices its gain against this, never a second
-   * bill computation.
+   * bill computation. Priced off the same knowledge-masked car as
+   * `yourNumberYen`/`valueLedger`: an unverified slot's share of the bill
+   * is an estimate, corrected the moment its slot is verified.
    */
   workBillYen: number
   /**
@@ -1524,14 +1549,18 @@ export const useGameStore = defineStore('game', () => {
    * here by construction - this function only ever looks at parts that ARE
    * present, so it says nothing about whether the group is complete.
    */
-  function groupBandsForCar(car: CarInstance): Record<ComponentId, ConditionBand> {
+  function groupBandsForCar(car: CarInstance, model: CarModel): Record<ComponentId, ConditionBand> {
+    // Knowledge-masked (a no-op on a lot's car - see `carPartRowsInGroup`'s
+    // own doc comment): the group headline chip must never read truer than
+    // the per-part rows underneath it.
+    const knowledgeCar = knowledgeViewOf(car, model, context.value)
     const result = {} as Record<ComponentId, ConditionBand>
     for (const groupId of REAL_COMPONENT_GROUPS) {
-      const partIds = presentPartIdsInGroup(car, groupId, context.value.partIdsByGroup)
+      const partIds = presentPartIdsInGroup(knowledgeCar, groupId, context.value.partIdsByGroup)
       let worst: ConditionBand = 'mint'
       for (const partId of partIds) {
         // presentPartIdsInGroup already filters to installed !== null.
-        const band = car.parts[partId].installed!.band
+        const band = knowledgeCar.parts[partId].installed!.band
         if (bandIndex(band) < bandIndex(worst)) worst = band
       }
       result[groupId] = worst
@@ -1686,12 +1715,20 @@ export const useGameStore = defineStore('game', () => {
    * per-group bill line. Reuses the exact same function `repair()`'s own
    * cost preview and `carCostToMintYen`'s per-part sum both build on -
    * never a second bill computation.
+   *
+   * Priced off the player's own knowledge (`knowledgeViewOf`), not the
+   * truth: an unverified slot's bill line prices from its estimated band,
+   * exactly as its chip shows an estimated one - the reveal-then-confirm
+   * click (`repairRevealFor`) is what corrects it, never this readout on its
+   * own. A no-op once every slot is verified, or on a car the knowledge
+   * model has not been seeded onto.
    */
   function groupBillsForCar(car: CarInstance, model: CarModel): Record<ComponentId, number> {
+    const knowledgeCar = knowledgeViewOf(car, model, context.value)
     const result = {} as Record<ComponentId, number>
     for (const groupId of REAL_COMPONENT_GROUPS) {
       result[groupId] = groupCostToMintYen(
-        car,
+        knowledgeCar,
         model,
         groupId,
         context.value.partIdsByGroup,
@@ -1935,11 +1972,17 @@ export const useGameStore = defineStore('game', () => {
     model: CarModel,
     componentId: ComponentId,
   ): CarPartRowView[] {
+    // The knowledge view (sim/knowledge.ts): every unverified slot's band
+    // and part identity masked to the player's own guess. A no-op on a lot's
+    // car (`verifiedSlots` is never seeded pre-purchase), so this is safe to
+    // compute unconditionally for both the lot-detail and car-detail screens
+    // that share this builder.
+    const knowledgeCar = knowledgeViewOf(car, model, context.value)
     return context.value.partIdsByGroup[componentId].map((partId) => {
-      const installed = car.parts[partId].installed
+      const installed = knowledgeCar.parts[partId].installed
       const part = installed ? context.value.partsById[installed.partId] : undefined
       const missing = isPartMissing(car, model, partId)
-      const displayed = displayedBandFor(car, partId, context.value)
+      const displayed = displayedBandFor(knowledgeCar, partId, context.value)
       return {
         partId,
         displayName: carPartLabel(partId),
@@ -1952,6 +1995,7 @@ export const useGameStore = defineStore('game', () => {
         removable: context.value.partsTaxonomyById[partId]?.removable ?? true,
         replaceInPlace: replacesOccupiedSlot(partId, context.value),
         uncertain: displayed.uncertain,
+        estimated: !isSlotVerified(car, partId),
       }
     })
   }
@@ -2177,32 +2221,43 @@ export const useGameStore = defineStore('game', () => {
     )
     const tasteSpread = context.value.economy.valuation.tasteSpread
     const guideValueYen = carGuideValueYen(car, model, gameState.value, context.value)
+    // The player's own knowledge (sim/knowledge.ts): every unverified slot
+    // masked to `priorBand`. A no-op once every slot is verified, or on a
+    // car the knowledge model hasn't been seeded onto.
+    const knowledgeCar = knowledgeViewOf(car, model, context.value)
     return {
       ...detailFor(car),
       jobs: gameState.value.jobs.filter((j) => j.carInstanceId === carId),
       serviceJob: serviceJob ? serviceJobViewFor(serviceJob) : undefined,
       inServiceBay: gameState.value.serviceBayCarIds.includes(carId),
-      groupBands: groupBandsForCar(car),
+      groupBands: groupBandsForCar(car, model),
       groupBillYen: groupBillsForCar(car, model),
       ledger: carLedgerFor(gameState.value, carId),
       guideValueYen,
-      // A symptomatic car's "you say" is the remaining-cause estimate (a
-      // fully-resolved symptom prices at its exact true value); an honest
-      // car's is the guide value itself - the same number by construction.
-      yourNumberYen:
-        car.symptoms.length > 0
-          ? Math.round(playerEstimateYen(car, model, gameState.value, context.value))
-          : guideValueYen,
+      // The player's own value estimate and ledger run off their current
+      // knowledge, not the truth (knowledge-and-diagnosis.md section 1) -
+      // `playerEstimateYen` already narrows over each open symptom's
+      // remaining causes; handing it the knowledge-masked car layers the
+      // generic per-slot guess underneath that narrower, more specific read
+      // wherever a symptom doesn't already cover a slot. Reduces to the old
+      // guide-value read for a fully-verified, honest car by construction.
+      yourNumberYen: Math.round(
+        playerEstimateYen(knowledgeCar, model, gameState.value, context.value),
+      ),
       valueLedger: valueLedgerFor(
-        car,
+        knowledgeCar,
         model,
         heatPercent,
         context.value.partsById,
         context.value.partsTaxonomyById,
         context.value.economy,
       ),
+      // Priced off the same knowledge-masked car as yourNumberYen/valueLedger
+      // above, for the same reason `groupBillsForCar` masks its own bill:
+      // an unverified slot's contribution to "the bill to bring this car to
+      // mint" prices from the estimate, never the truth underneath it.
       workBillYen: carCostToMintYen(
-        car,
+        knowledgeCar,
         model,
         context.value.partsById,
         context.value.partsTaxonomyById,
@@ -2511,7 +2566,7 @@ export const useGameStore = defineStore('game', () => {
       reserveYen: reserveYen(lot, gameState.value, context.value),
       buyoutPriceYen: computeBuyoutPriceYen(lot, gameState.value, context.value),
       turnout: lot.turnout,
-      groupBands: groupBandsForCar(apparentCar),
+      groupBands: groupBandsForCar(apparentCar, model),
       auctionGrade: computeAuctionGrade(apparentCar, model, context.value),
       expiresOnDay: lot.expiresOnDay,
       daysLeft: lot.expiresOnDay - gameState.value.day,
@@ -3816,6 +3871,45 @@ export const useGameStore = defineStore('game', () => {
   }
 
   // --- instant actions ---
+
+  /**
+   * The reveal-then-confirm preview (knowledge-and-diagnosis.md section 1,
+   * sprint215.md task C2): every unverified, present slot this repair click
+   * would actually touch, its estimated band against the true one
+   * underneath - `carPartId` set addresses one part (the per-part "+repair"
+   * row); omitted addresses the whole group, every present part in it
+   * (`presentPartIdsInGroup`), covering a group-level repair-zone job on the
+   * same terms as a per-part one. Empty once every touched slot is already
+   * verified (nothing to reveal, the repair click just runs). A read-only
+   * preview; nothing here spends labour or cash, or marks anything verified
+   * - only an actual repair (`repair`, below) does that, via the sim's own
+   * verification routes. The repair's own PRICE (`nextRepairStep`'s preview)
+   * is never masked (only the band chip and the whole-group/whole-car bill
+   * readouts are - `groupBillYen`/`workBillYen`), so this reveal names no
+   * yen figure of its own: the per-click price the player already sees was
+   * always the real one.
+   */
+  function repairRevealFor(
+    carId: string,
+    componentId: ComponentId,
+    carPartId?: CarPartId,
+  ): { partId: CarPartId; estimatedBand: ConditionBand; trueBand: ConditionBand }[] {
+    const car = findWorkableCar(carId)
+    if (!car) return []
+    const targetIds = carPartId
+      ? [carPartId]
+      : presentPartIdsInGroup(car, componentId, context.value.partIdsByGroup)
+    const reveals: { partId: CarPartId; estimatedBand: ConditionBand; trueBand: ConditionBand }[] =
+      []
+    for (const partId of targetIds) {
+      if (isSlotVerified(car, partId)) continue
+      const trueBand = car.parts[partId].installed?.band
+      if (!trueBand) continue
+      const estimatedBand = priorBand(car, partId, context.value)
+      if (estimatedBand !== trueBand) reveals.push({ partId, estimatedBand, trueBand })
+    }
+    return reveals
+  }
 
   /**
    * Repair a group (or one specific part within it when
@@ -5229,7 +5323,7 @@ export const useGameStore = defineStore('game', () => {
     if (!model) return
     grantCounter.value += 1
     const id = `dev-car-${grantCounter.value}`
-    const car = generateAuctionCarInstance(
+    const rolled = generateAuctionCarInstance(
       model,
       id,
       createRng(grantCounter.value),
@@ -5238,6 +5332,9 @@ export const useGameStore = defineStore('game', () => {
       true,
       gameState.value.day,
     )
+    // A dev grant is not knowledge gameplay (sprint215.md task A3): every
+    // slot starts fully verified rather than estimated.
+    const car = fullyVerifiedCar(rolled)
     // Parking is a real indexed array - a granted car needs an actual slot,
     // not just membership in `ownedCars` (`assignToParking` grows the array if
     // parking happens to be nominally full, since this bypasses the normal
@@ -5543,6 +5640,7 @@ export const useGameStore = defineStore('game', () => {
     machineListingView,
     standingView,
     costSheetView,
+    repairRevealFor,
     repair,
     install,
     pipelineStage,

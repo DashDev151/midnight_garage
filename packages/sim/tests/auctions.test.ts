@@ -30,14 +30,16 @@ import {
   generateAuctionCarInstance,
   generateAuctionCatalog,
   rollDamageGrade,
+  rollHiddenNonStock,
 } from '../src/auctions'
 import { bandIndex, carCostToMintYen } from '../src/bands'
 import { isBodyDerivedPart, isMetalZoneState, PANEL_ZONE_IDS } from '../src/bodyPipeline'
 import { buildSimContext, type SimContext } from '../src/context'
 import { computeDerivedStats } from '../src/derivedStats'
+import { defaultVerifiedSlots } from '../src/knowledge'
 import { makeCarOrigin } from '../src/provenance'
 import { createRng, hashStringToSeed } from '../src/rng'
-import { testSceneStanding, testToolTiers } from './testFixtures'
+import { buildCarInstance, mintCarParts, testSceneStanding, testToolTiers } from './testFixtures'
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 
@@ -530,6 +532,104 @@ describe('aftermarket-at-generation (Sprint 75 decision 1)', () => {
       for (const { partId } of aftermarketParts(instance)) {
         const band = instance.parts[partId].installed?.band
         expect(['scrap', 'poor', 'worn', 'fine', 'mint']).toContain(band)
+      }
+    }
+  })
+})
+
+describe('the hidden non-stock roll (docs/design/systems/knowledge-and-diagnosis.md section 9, sprint215.md task E)', () => {
+  const model = CARS.find((c) => c.id === 'honda-civic-sir2-eg6')
+  if (!model) throw new Error('fixture common-tier car missing from seed content')
+  const fitmentClass = fitmentClassForTier(model.tier)
+  const alwaysVisible = new Set(defaultVerifiedSlots(CONTEXT))
+
+  /** Every slot whose currently-fitted part is NOT the fitment class's own
+   * stock SKU - the ordinary aftermarket roll's own picks plus, when it
+   * fires, the hidden roll's one. */
+  function nonStockParts(car: CarInstance) {
+    return ALL_CAR_PART_IDS.filter((partId) => partId !== 'paint').flatMap((partId) => {
+      const installed = car.parts[partId].installed
+      if (!installed) return []
+      const catalogPart = CONTEXT.partsById[installed.partId]
+      return catalogPart && catalogPart.grade !== 'stock' ? [partId] : []
+    })
+  }
+
+  it('is reachable across a fixed seed batch on a tuner-leaning car (the roll fires at least once)', () => {
+    const tuner = CARS.find((c) => c.spec.culture === 'front-drive-tuner') ?? model
+    let sawNonStock = false
+    for (let seed = 0; seed < 400 && !sawNonStock; seed++) {
+      const instance = generateAuctionCarInstance(tuner, 'car-test', createRng(seed), CONTEXT)
+      if (nonStockParts(instance).length > 0) sawNonStock = true
+    }
+    expect(sawNonStock).toBe(true)
+  })
+
+  it('never lands on an always-visible slot (surface/tyres/rims) - only an ESTIMATED slot can hide anything', () => {
+    // Isolates the hidden roll itself (`rollHiddenNonStock`) from the
+    // ordinary, unrelated aftermarket roll above, which legitimately DOES
+    // reach surface slots (`aero`/`seats`/`dashGauges`) - a real car
+    // couldn't tell the two rolls' picks apart from the outside, so this
+    // starts from an all-stock car and asks the hidden roll directly.
+    const allStock = buildCarInstance({
+      modelId: model.id,
+      mileageKm: 60_000,
+      parts: mintCarParts(),
+    })
+    const origin = makeCarOrigin(allStock.id, carOriginLabel(model, allStock.year), 0)
+    for (let seed = 0; seed < 500; seed++) {
+      const result = rollHiddenNonStock(
+        allStock,
+        model,
+        fitmentClass,
+        'used',
+        'car-test-part',
+        origin,
+        CONTEXT,
+        createRng(seed),
+        0,
+      )
+      for (const partId of ALL_CAR_PART_IDS) {
+        if (result.parts[partId].installed?.partId === allStock.parts[partId].installed?.partId) {
+          continue // untouched by this seed's roll
+        }
+        expect(alwaysVisible.has(partId)).toBe(false)
+      }
+    }
+  })
+
+  it('never exceeds maxAftermarketSlots in total (visible + hidden share one cap)', () => {
+    for (let seed = 0; seed < 300; seed++) {
+      const instance = generateAuctionCarInstance(model, 'car-test', createRng(seed), CONTEXT)
+      expect(nonStockParts(instance).length).toBeLessThanOrEqual(
+        CONTEXT.economy.partsGeneration.maxAftermarketSlots,
+      )
+    }
+  })
+
+  it("a hidden fit's band matches what the slot would have rolled either way - only identity changes", () => {
+    for (let seed = 0; seed < 300; seed++) {
+      const instance = generateAuctionCarInstance(model, 'car-test', createRng(seed), CONTEXT)
+      for (const partId of nonStockParts(instance)) {
+        const band = instance.parts[partId].installed?.band
+        expect(['scrap', 'poor', 'worn', 'fine', 'mint']).toContain(band)
+      }
+    }
+  })
+
+  it('is deterministic for the same seed', () => {
+    const a = generateAuctionCarInstance(model, 'car-test', createRng(11), CONTEXT)
+    const b = generateAuctionCarInstance(model, 'car-test', createRng(11), CONTEXT)
+    expect(a).toEqual(b)
+  })
+
+  it("respects each fitted SKU's own carPartId and fitment class", () => {
+    for (let seed = 0; seed < 300; seed++) {
+      const instance = generateAuctionCarInstance(model, 'car-test', createRng(seed), CONTEXT)
+      for (const partId of nonStockParts(instance)) {
+        const catalogPart = CONTEXT.partsById[instance.parts[partId].installed!.partId]!
+        expect(catalogPart.carPartId).toBe(partId)
+        expect(catalogPart.fitmentClass).toBe(fitmentClass)
       }
     }
   })

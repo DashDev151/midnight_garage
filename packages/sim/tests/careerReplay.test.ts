@@ -75,17 +75,26 @@ const SMOKE_SCRIPT = CareerScriptSchema.parse(smokeScriptRaw)
 // in the yen and point figures it now prices at. Re-derived from a real run,
 // never hand-guessed. `smoke.script.json`'s own two `kind: 'hash'`
 // checkpoints (days 1 and 10) move with this array.
+//
+// Re-pinned for sprint215.md (the knowledge model): `CarInstance` gains
+// `verifiedSlots`, seeded at every acquisition, and generation gains the
+// hidden non-stock roll (task E), one extra `rng.next()` draw per generated
+// car regardless of outcome - the whole sequence moves even though the
+// script's own actions are unchanged. No behaviour this script exercises
+// changed in kind. Re-derived from a real run, never hand-guessed.
+// `smoke.script.json`'s own two `kind: 'hash'` checkpoints (days 1 and 10)
+// move with this array.
 const EXPECTED_HASHES_BY_DAY = [
-  'e243616e',
-  '79ab5a36',
-  '790f9141',
-  'f9fdcd85',
-  '763967f4',
-  '6dc68ede',
-  '21b50e2d',
-  'bdac14ba',
-  '459fffe1',
-  '1e145343',
+  'e9195e3f',
+  '8fedbd30',
+  '9fba7fb3',
+  '90395553',
+  '4103c616',
+  '764edb01',
+  'a8856d8b',
+  '1ebffab0',
+  'ec50b8cd',
+  '5e8d2d9d',
 ]
 
 describe('replayCareerScript (Sprint 198 C1)', () => {
