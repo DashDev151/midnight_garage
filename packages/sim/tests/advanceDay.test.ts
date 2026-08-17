@@ -738,7 +738,19 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // It moves once more for sprint216.md (latents and the fearful room):
     // the same latent roll and fear-biased sheet-price formula as the
     // golden-master test above. Re-derived from a real run.
-    expect(hashState(acquisitionCareer().sold)).toBe('b0d8a03b')
+    //
+    // It moves once more for sprint217.md (the sale side of knowledge): the
+    // daily offer draw now prices the sold car through
+    // `buyerKnowledgeViewOf` rather than the true car directly - every
+    // unverified slot on the acquired car (everything but the always-visible
+    // ones) reads its estimated band, marked down further by
+    // `unverifiedHaircutByTier`, rather than the truth - and rolls
+    // `rollBuyerNotice` against any open, unverified symptom before the
+    // price is struck. This is the one script that both acquires and sells a
+    // real car through the real offer pipeline, so its accepted price moves
+    // with the new pricing step; the 30-day master above never completes a
+    // sale and holds unchanged. Re-derived from a real run.
+    expect(hashState(acquisitionCareer().sold)).toBe('96621a26')
   })
 })
 

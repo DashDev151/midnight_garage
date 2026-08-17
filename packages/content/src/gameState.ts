@@ -1048,6 +1048,10 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     modelId: z.string().min(1),
     buyerId: z.string().min(1),
     priceYen: z.number().int().positive(),
+    /** Set exactly when this offer's own `PendingSaleOffer.noticeLine` is -
+     * the day-report's own copy of the same ready-to-render line, so the
+     * offers panel can name what was noticed without a second lookup. */
+    noticeLine: z.string().min(1).optional(),
   }),
   /**
    * The player turned an offer down. The car stays listed, so tomorrow's
@@ -1066,10 +1070,16 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     carInstanceId: z.string().min(1),
     channel: SaleChannelSchema,
     priceYen: z.number().int().nonnegative(),
-    /** Set when the sale earned reputation; absent when the buyer did not get
-     * what they came for and the sale paid nothing. Never negative - nothing
-     * in the game lowers reputation (progression bible, fifth amendment). */
-    reputationDelta: z.number().int().nonnegative().optional(),
+    /**
+     * Set whenever the sale moved reputation at all; absent when it did not
+     * (the buyer got nothing AND the offer was never noticed). Usually
+     * non-negative - nothing in the game lowers reputation EXCEPT accepting
+     * a noticed offer (knowledge-and-diagnosis.md section 6, ruling 6),
+     * which can drive this negative even when the buyer was otherwise
+     * pleased. `noticeLine` (below), when present, is what earned the
+     * negative half of this figure.
+     */
+    reputationDelta: z.number().int().optional(),
     /** The buyer's own verdict on the car they were handed (`saleOutcomeFor`,
      * sim/valuation.ts) - set exactly when `reputationDelta` is, so the day
      * report can name what pleased them instead of quoting a point value. */
@@ -1085,6 +1095,10 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
      * honest sale or one already fully resolved (nothing left to teach).
      */
     saleRevealLine: z.string().min(1).optional(),
+    /** Copied verbatim from the accepted offer's own `PendingSaleOffer.
+     * noticeLine` - set exactly when accepting this sale cost
+     * `diagnosis.noticeReputationPenalty` reputation. */
+    noticeLine: z.string().min(1).optional(),
     /**
      * True when this car genuinely met the buyer's want (`isTasteMatched`,
      * sim/valuation.ts) and the sale therefore credited that buyer's scene

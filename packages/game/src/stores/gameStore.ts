@@ -1048,6 +1048,9 @@ export interface SaleResultView {
    * (`car-sold`'s own `matchedSale` flag) - the word-of-mouth close line,
    * revealed only here (progression bible law 4, no ambient number). */
   matchedSale: boolean
+  /** Copied from `car-sold`'s own `noticeLine` - set exactly when accepting
+   * this sale cost reputation for a caught, unfixed symptom. */
+  noticeLine?: string
 }
 
 export interface ServiceJobResultView {
@@ -1249,6 +1252,10 @@ export interface PendingOfferView {
    * the want IS the taste ceiling, surfaced alongside the offer so holding
    * out is an informed, rent-priced bet. */
   wantLine: string
+  /** Set when this offer already priced in a caught, unfixed symptom
+   * (`PendingSaleOffer.noticeLine`, knowledge-and-diagnosis.md section 6) -
+   * "He heard the idle." Accepting a noticed offer costs reputation. */
+  noticeLine?: string
 }
 
 /** Summary of the day that just ended, for the end-of-day report modal. */
@@ -2482,6 +2489,7 @@ export const useGameStore = defineStore('game', () => {
       priceYen: offer.priceYen,
       wantLine: buyerWantLine(offer.buyerId),
       copy: offerCopy(buyer, carName, offer.priceYen),
+      ...(offer.noticeLine ? { noticeLine: offer.noticeLine } : {}),
     }
   }
 
@@ -5100,6 +5108,7 @@ export const useGameStore = defineStore('game', () => {
         // Pass the gap through rather than inventing a number.
         profitYen: sold.profitYen ?? null,
         matchedSale: sold.matchedSale ?? false,
+        ...(sold.noticeLine ? { noticeLine: sold.noticeLine } : {}),
       }
     }
     logSessionEvent({

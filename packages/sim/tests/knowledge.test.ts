@@ -10,9 +10,11 @@ import {
   type Symptom,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
+import { bandIndex } from '../src/bands'
 import { buildSimContext } from '../src/context'
 import { verifyAndResolve, verifyManyAndResolve } from '../src/diagnosis'
 import {
+  buyerKnowledgeViewOf,
   defaultVerifiedSlots,
   fullyVerifiedCar,
   isSlotVerified,
@@ -219,6 +221,66 @@ describe('knowledgeViewOf (task B)', () => {
     )
     const view = knowledgeViewOf(car, MODEL, CONTEXT)
     expect(view.parts.internals.installed).toBeNull()
+  })
+})
+
+describe('buyerKnowledgeViewOf (sprint217.md task A)', () => {
+  it('is a no-op when the knowledge model has not been seeded onto the car', () => {
+    const car = buildCarInstance({ parts: mintCarParts({ internals: 'poor' }) })
+    expect(car.verifiedSlots).toBeUndefined()
+    expect(buyerKnowledgeViewOf(car, MODEL, CONTEXT)).toBe(car)
+  })
+
+  it('masks an unverified slot to priorBand marked down by the tier haircut - never the truth', () => {
+    const car = seedVerifiedSlots(
+      buildCarInstance({ mileageKm: 90_000, parts: mintCarParts({ internals: 'poor' }) }),
+      CONTEXT,
+    )
+    const guess = priorBand(car, 'internals', CONTEXT)
+    const haircut = ECONOMY.knowledgePriors.unverifiedHaircutByTier[FITMENT_CLASS]
+    const expectedIndex = Math.max(bandIndex('poor'), bandIndex(guess) - haircut)
+    const view = buyerKnowledgeViewOf(car, MODEL, CONTEXT)
+    expect(bandIndex(view.parts.internals.installed!.band)).toBe(expectedIndex)
+    expect(view.parts.internals.installed!.band).not.toBe('poor') // never the truth
+  })
+
+  it('never marks a guess down past poor - the haircut floors exactly where priorBand already does', () => {
+    const car = seedVerifiedSlots(
+      buildCarInstance({ mileageKm: 10_000_000, parts: mintCarParts({ internals: 'poor' }) }),
+      CONTEXT,
+    )
+    expect(priorBand(car, 'internals', CONTEXT)).toBe('poor')
+    const view = buyerKnowledgeViewOf(car, MODEL, CONTEXT)
+    expect(view.parts.internals.installed!.band).toBe('poor')
+  })
+
+  it('leaves a VERIFIED slot at true band even when it is worse than the guess - honesty prices at true value, no extra discount on top', () => {
+    const car = fullyVerifiedCar(
+      buildCarInstance({ mileageKm: 90_000, parts: mintCarParts({ internals: 'poor' }) }),
+    )
+    const view = buyerKnowledgeViewOf(car, MODEL, CONTEXT)
+    expect(view.parts.internals.installed!.band).toBe('poor')
+  })
+
+  it('never leaks a band through part identity either - masks back to the stock SKU exactly like knowledgeViewOf', () => {
+    const nonStockPart = PARTS.find((p) => p.carPartId === 'internals' && p.grade !== 'stock')!
+    const stockPart = CONTEXT.stockPartByCarPartId[FITMENT_CLASS].internals!
+    const car = seedVerifiedSlots(
+      buildCarInstance({
+        parts: mintCarParts({
+          internals: {
+            id: 'hidden-buyer-1',
+            partId: nonStockPart.id,
+            band: 'mint',
+            origin: { kind: 'market', day: 0 },
+          },
+        }),
+      }),
+      CONTEXT,
+    )
+    const view = buyerKnowledgeViewOf(car, MODEL, CONTEXT)
+    expect(view.parts.internals.installed!.partId).toBe(stockPart.id)
+    expect(view.parts.internals.installed!.partId).not.toBe(nonStockPart.id)
   })
 })
 

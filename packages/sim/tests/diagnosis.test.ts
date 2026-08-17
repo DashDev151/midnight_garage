@@ -2,8 +2,10 @@ import {
   BUYERS,
   CARS,
   DIAGNOSTIC_TESTS,
+  ECONOMY,
   PARTS,
   PARTS_TAXONOMY,
+  PartFitmentClassSchema,
   SYMPTOMS,
   type AuctionLot,
   type CarInstance,
@@ -20,6 +22,7 @@ import {
   availableTestIdsFor,
   beginInspectionVisit,
   bestNextTestId,
+  candidateFixCostYen,
   displayedBandFor,
   expectedTrueValueYen,
   inspectionVisitGateReason,
@@ -29,14 +32,17 @@ import {
   resolveOwnedWorkup,
   resolveSendInspector,
   revealOnRemoval,
+  rollBuyerNotice,
   runDiagnosticTest,
   saleRevealLineFor,
   sendInspectorGateReason,
   sheetGuideValueYen,
   worstRemainingBandFor,
 } from '../src/diagnosis'
+import { seedVerifiedSlots, verifySlot } from '../src/knowledge'
 import { marketValueYen } from '../src/marketValue'
 import { createInitialGameState } from '../src/newGame'
+import { createRng, type Rng } from '../src/rng'
 import { valuateCarForBuyer } from '../src/valuation'
 import { buildCarInstance, mintCarParts } from './testFixtures'
 
@@ -1606,5 +1612,146 @@ describe('pruneCuredCauses (cure-on-repair)', () => {
   it('is a no-op (same reference) for an honest car (no symptoms)', () => {
     const honest = buildCarInstance({ modelId: MODEL.id })
     expect(pruneCuredCauses(honest, CONTEXT)).toBe(honest)
+  })
+})
+
+describe('rollBuyerNotice (sprint217.md task B)', () => {
+  /** A car carrying `TEST_SYMPTOM` (both causes on headValvetrain), open
+   * (not narrowed), the knowledge model seeded but the true cause's own
+   * slot left UNVERIFIED - the ordinary "something a buyer might catch"
+   * shape. */
+  function carWithOpenNotice(latent = false): CarInstance {
+    return seedVerifiedSlots(
+      {
+        ...buildCarInstance({ modelId: MODEL.id, parts: mintCarParts({ headValvetrain: 'worn' }) }),
+        symptoms: [
+          {
+            symptomId: TEST_SYMPTOM.id,
+            trueCauseId: 'cause-mild',
+            remainingCauseIds: TEST_SYMPTOM.causes.map((c) => c.id),
+            runTestIds: [],
+            latent,
+          },
+        ],
+      },
+      CONTEXT,
+    )
+  }
+
+  const CERTAIN: Rng = { next: () => 0, int: (min) => min, pick: (items) => items[0]! }
+  const NEVER: Rng = { next: () => 0.999999, int: (min) => min, pick: (items) => items[0]! }
+
+  it('is a silent no-op for an honest car (no symptoms), and never touches the rng', () => {
+    const car = buildCarInstance({ modelId: MODEL.id })
+    const rng = createRng(1)
+    const before = createRng(1).next()
+    const result = rollBuyerNotice(car, MODEL, 1, STATE, CONTEXT, rng)
+    expect(result).toEqual({ deductionYen: 0, noticeLine: null })
+    expect(rng.next()).toBe(before) // no draw consumed
+  })
+
+  it('never notices at chance 0, even on a certain roll', () => {
+    const car = carWithOpenNotice()
+    expect(rollBuyerNotice(car, MODEL, 0, STATE, CONTEXT, CERTAIN)).toEqual({
+      deductionYen: 0,
+      noticeLine: null,
+    })
+  })
+
+  it('never notices a symptom whose true cause is already VERIFIED - honesty already prices at true band', () => {
+    const car = verifySlot(carWithOpenNotice(), 'headValvetrain')
+    expect(rollBuyerNotice(car, MODEL, 1, STATE, CONTEXT, CERTAIN)).toEqual({
+      deductionYen: 0,
+      noticeLine: null,
+    })
+  })
+
+  it('on notice, deducts candidateFixCostYen(trueCause) x noticeMultiplier and names the symptom card', () => {
+    const car = carWithOpenNotice()
+    const trueCause = TEST_SYMPTOM.causes.find((c) => c.id === 'cause-mild')!
+    const fixCost = candidateFixCostYen(car, MODEL, trueCause, STATE, CONTEXT)
+    const result = rollBuyerNotice(car, MODEL, 1, STATE, CONTEXT, CERTAIN)
+    expect(result.deductionYen).toBe(Math.round(fixCost * ECONOMY.diagnosis.noticeMultiplier))
+    expect(result.noticeLine).toBe(
+      ECONOMY.diagnosis.noticeCopy.replace('<symptom>', TEST_SYMPTOM.cardLine),
+    )
+  })
+
+  it('a miss produces no deduction and no line', () => {
+    const car = carWithOpenNotice()
+    expect(rollBuyerNotice(car, MODEL, 0.5, STATE, CONTEXT, NEVER)).toEqual({
+      deductionYen: 0,
+      noticeLine: null,
+    })
+  })
+
+  it('unrevealed latents roll at half the given chance (noticeChanceLatentMultiplier)', () => {
+    // A fixed roll strictly between the halved and un-halved chance: misses
+    // the latent's own (halved) rate but clears the same chance un-halved -
+    // the one roll that can only pass this way if the halving is real.
+    const chance = 0.5
+    const half = ECONOMY.diagnosis.noticeChanceLatentMultiplier
+    const halvedChance = chance * half
+    expect(halvedChance).toBeLessThan(chance) // the fixture assumes a real halving
+    const roll = (halvedChance + chance) / 2
+    const fixedRoll: Rng = { next: () => roll, int: (min) => min, pick: (items) => items[0]! }
+    const nonLatent = carWithOpenNotice(false)
+    const latent = carWithOpenNotice(true)
+    expect(
+      rollBuyerNotice(nonLatent, MODEL, chance, STATE, CONTEXT, fixedRoll).noticeLine,
+    ).not.toBeNull()
+    expect(rollBuyerNotice(latent, MODEL, chance, STATE, CONTEXT, fixedRoll).noticeLine).toBeNull()
+  })
+
+  it('sums deductions across multiple noticed symptoms, naming only the FIRST in array order', () => {
+    const car = seedVerifiedSlots(
+      {
+        ...buildCarInstance({
+          modelId: MODEL.id,
+          parts: mintCarParts({ headValvetrain: 'worn', internals: 'poor' }),
+        }),
+        symptoms: [
+          {
+            symptomId: TEST_SYMPTOM.id,
+            trueCauseId: 'cause-mild',
+            remainingCauseIds: TEST_SYMPTOM.causes.map((c) => c.id),
+            runTestIds: [],
+            latent: false,
+          },
+          {
+            symptomId: MULTI_PART_SYMPTOM.id,
+            trueCauseId: 'cause-b',
+            remainingCauseIds: MULTI_PART_SYMPTOM.causes.map((c) => c.id),
+            runTestIds: [],
+            latent: false,
+          },
+        ],
+      },
+      CONTEXT,
+    )
+    const causeMild = TEST_SYMPTOM.causes.find((c) => c.id === 'cause-mild')!
+    const causeB = MULTI_PART_SYMPTOM.causes.find((c) => c.id === 'cause-b')!
+    const expected = Math.round(
+      (candidateFixCostYen(car, MODEL, causeMild, STATE, CONTEXT) +
+        candidateFixCostYen(car, MODEL, causeB, STATE, CONTEXT)) *
+        ECONOMY.diagnosis.noticeMultiplier,
+    )
+    const result = rollBuyerNotice(car, MODEL, 1, STATE, CONTEXT, CERTAIN)
+    expect(result.deductionYen).toBe(expected)
+    expect(result.noticeLine).toBe(
+      ECONOMY.diagnosis.noticeCopy.replace('<symptom>', TEST_SYMPTOM.cardLine),
+    )
+  })
+})
+
+describe('constructional rule: noticeMultiplier > marketRepairDiscount for every tier (sprint217.md task B3)', () => {
+  it('getting caught always costs strictly more than the worst honest tier rate', () => {
+    for (const fitmentClass of PartFitmentClassSchema.options) {
+      const discount = ECONOMY.valuation.marketRepairDiscount[fitmentClass]
+      expect(
+        ECONOMY.diagnosis.noticeMultiplier,
+        `noticeMultiplier must exceed marketRepairDiscount.${fitmentClass} (${discount})`,
+      ).toBeGreaterThan(discount)
+    }
   })
 })

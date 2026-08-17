@@ -42,8 +42,12 @@ import {
  * passing because it re-derives its own expectation the same way. A handful
  * of pins genuinely don't move with price at all (scheduling delays, drawn
  * from the seeded stream alone) and stay as literal numbers with a note
- * saying so; dealer names and win order are seed-driven, not price-driven,
- * and stay literal too.
+ * saying so. Dealer names and the OPENING bidder are genuinely seed-driven,
+ * not price-driven (the cursor always starts on the first dealer), and stay
+ * literal; the FINAL winner and the later drop order are not - both ride how
+ * many rungs the room climbs before the fuse burns out, which is a function
+ * of `roomReadYen`, so a repricing of either fixture lot can move them too
+ * (see sprint216.md's fear-pricing re-pin below for the one time it has).
  */
 
 // This file's own seeded room simulations are real work, not a slow test in
@@ -273,8 +277,18 @@ describe('auctionRoom machine', () => {
     // catch.
     expect(room.boardYen).toBeLessThanOrEqual(room.clearingYen)
     expect(room.boardYen + room.incrementYen).toBeGreaterThan(room.clearingYen)
-    expect(room.leaderName).toBe('Mrs. Sakaki')
-    expect(room.log.at(-1)).toBe(`Hammer. Mrs. Sakaki takes it at ${formatYen(room.boardYen)}.`)
+    // Re-derived for sprint216.md (the fearful room): `sheetGuideValueYen`'s
+    // rewritten formula reprices the steal lot's `roomReadYen`, which moves
+    // `reserveYen`/`clearingYen`/`incrementYen` and, with them, how many
+    // rungs the room climbs before the fuse burns out - the round-robin
+    // dealer cursor (`advanceToNextActiveDealer`, auctionRoom.ts) is
+    // completely unmoved, but a different rung COUNT lands the cursor on a
+    // different dealer. Endo now survives to the hammer where Mrs. Sakaki
+    // used to; this is downstream arithmetic, not a broken rule - the
+    // rotation itself is still pure flavour with no ordering invariant of
+    // its own. Re-derived from a real run.
+    expect(room.leaderName).toBe('Endo')
+    expect(room.log.at(-1)).toBe(`Hammer. Endo takes it at ${formatYen(room.boardYen)}.`)
     expect(dealersInRoom(room)).toBe(1)
     expect(room.epilogue).toBe('You let it go. Someone got a bargain there.')
   })
@@ -292,18 +306,29 @@ describe('auctionRoom machine', () => {
     // under the threshold as the room climbs. The feud machinery has its own
     // dedicated coverage further down this file.
     expect(room.feud).toBeNull()
-    expect(room.leaderName).toBe('Mrs. Sakaki')
-    expect(room.log.at(-1)).toBe(`Hammer. Mrs. Sakaki takes it at ${formatYen(room.boardYen)}.`)
+    // Re-derived for sprint216.md (the fearful room), same cause as the thin
+    // room above: the trap lot's `roomReadYen` repriced under
+    // `sheetGuideValueYen`'s rewritten formula, moving the rung count this
+    // war climbs before the fuse burns out. Endo now survives to the
+    // hammer, and the last two drops land on different dealers (see the
+    // `drops` list below) - the round-robin cursor and the thinning curve
+    // are both unchanged, only how many times either one fires. Re-derived
+    // from a real run.
+    expect(room.leaderName).toBe('Endo')
+    expect(room.log.at(-1)).toBe(`Hammer. Endo takes it at ${formatYen(room.boardYen)}.`)
     expect(dealersInRoom(room)).toBe(1)
     expect(room.epilogue).toBe('You let it go. The room can overpay for that one.')
 
     const joined = room.log.join('\n')
+    // The first three drops (positions 1-3) are unmoved by the repricing
+    // above; the last two (4-5) now land on Mrs. Sakaki and Ogata rather
+    // than Ogata and Endo - same cause, re-derived from a real run.
     const drops = [
       'a quiet man in a good coat closes the folder.',
       'Ubukata sets the paddle down.',
       'Toyoshima steps out for a smoke.',
-      'Ogata checks the time and is done.',
-      'Endo closes the folder.',
+      'Mrs. Sakaki checks the time and is done.',
+      'Ogata closes the folder.',
     ]
     let lastIndex = -1
     for (const drop of drops) {
@@ -1038,8 +1063,12 @@ describe('auctionRoom machine', () => {
     expect(room.status).toBe('lost')
     expect(room.boardYen).toBeLessThanOrEqual(room.clearingYen)
     expect(room.boardYen + room.incrementYen).toBeGreaterThan(room.clearingYen)
-    expect(room.leaderName).toBe('Mrs. Sakaki')
-    expect(room.log.at(-1)).toBe(`Hammer. Mrs. Sakaki takes it at ${formatYen(room.boardYen)}.`)
+    // Re-derived for sprint216.md (the fearful room) - the same cause and
+    // the same new value as the thin-room test above, since this is that
+    // exact scenario replayed to prove the arm machinery is a no-op
+    // unarmed. Re-derived from a real run.
+    expect(room.leaderName).toBe('Endo')
+    expect(room.log.at(-1)).toBe(`Hammer. Endo takes it at ${formatYen(room.boardYen)}.`)
     expect(dealersInRoom(room)).toBe(1)
     expect(room.epilogue).toBe('You let it go. Someone got a bargain there.')
     expect(room.armedReaction).toBeNull()

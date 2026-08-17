@@ -24,6 +24,7 @@ import {
   createInitialGameState,
   currentGameYear,
   factoryReferenceColours,
+  fullyVerifiedCar,
   generateAuctionCarInstance,
   generatedYearRangeFor,
   hasForcedInduction,
@@ -266,6 +267,13 @@ export function carSpecFrom(car: CarInstance): BenchCarSpec {
  * table, exactly as it does at generation and after every zone stage. So the
  * bench cannot set them by hand and cannot disagree with the body pipeline
  * about what a zone table means.
+ *
+ * Every slot comes back VERIFIED (`fullyVerifiedCar`, knowledge.ts's own
+ * dev-grant exemption): a spec the bench itself assembled has nothing left
+ * to estimate - the designer set every value by hand - so it reads the same
+ * way the tutorial's scripted lot and a dev grant already do, never through
+ * an unverified-slot haircut a real acquisition would still be earning its
+ * way past.
  */
 export function benchCarInstance(
   spec: BenchCarSpec,
@@ -303,7 +311,7 @@ export function benchCarInstance(
     apparentBandByPartId: spec.apparentBandByPartId,
     zoneState: spec.zones,
   }
-  return applyDerivedBodyBands(car, model, context)
+  return fullyVerifiedCar(applyDerivedBodyBands(car, model, context))
 }
 
 /** A fresh shop: day 1, the career's own starting cash, unknown, no standing,

@@ -11,20 +11,31 @@ import {
   SERVICE_JOB_CUSTOMER_NAMES,
   SERVICE_JOB_TYPES,
   TOOL_LINES,
+  fitmentClassForTier,
+  type CarInstance,
   type CarModel,
   type CarPartId,
   type ConditionBand,
+  type EconomyConfig,
   type PartFitmentClass,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
-import { computeRosterBalanceProbe, type ModelBalanceProbeRow } from '../src/balanceProbes'
+import {
+  buildRoughProbeCar,
+  computeModelBalanceProbe,
+  computeRosterBalanceProbe,
+  type ModelBalanceProbeRow,
+} from '../src/balanceProbes'
+import { bandIndex, planPartRepair } from '../src/bands'
 import { carLedgerFor } from '../src/carLedger'
 import { replayCareerScript } from '../src/careerReplay'
 import { sessionBundleToScript, type SessionExportBundle } from '../src/careerScript'
 import { buildSimContext } from '../src/context'
-import { marketValueYen } from '../src/marketValue'
+import { candidateFixCostYen } from '../src/diagnosis'
+import { buyerKnowledgeViewOf, defaultVerifiedSlots } from '../src/knowledge'
+import { marketValueYen, sensibleRepairTargetBand } from '../src/marketValue'
 import { createInitialGameState } from '../src/newGame'
-import { qualityMeanFor } from '../src/selling'
+import { offerChanceFor, qualityMeanFor } from '../src/selling'
 import { deriveServiceJobPayoutYen, serviceJobCostBreakdown } from '../src/serviceJobs'
 import { buildCarInstance, mintCarParts } from './testFixtures'
 
@@ -326,5 +337,216 @@ describe('(d) whole-week arithmetic reproduces the pace anchor (sprint213.md acc
       `flip margin ${entryFlipMarginYen.toFixed(0)} + radial ${radialWeeklyYen.toFixed(0)} (${RADIAL_JOBS_PER_WEEK} jobs) - rent ${ECONOMY.rent.baseWeeklyYen} = ${weeklyNetYen.toFixed(0)}`,
     ).toBeGreaterThanOrEqual(35_000)
     expect(weeklyNetYen).toBeLessThanOrEqual(85_000)
+  })
+})
+
+/**
+ * (e) Light flip vs deep flip, entry tier (sprint217.md task C,
+ * knowledge-and-diagnosis.md section 10): the commitment is that a light
+ * flip's yen-per-day and a deep flip's yen-per-day land within +-30% of each
+ * other, so the right choice is situational (bay pressure, cash, heat) rather
+ * than one dominating outright.
+ *
+ * DEEP FLIP reuses probe (a)'s own `computeModelBalanceProbe` row verbatim -
+ * buy the rough car at reserve, repair every slot to the tier's expectation
+ * band, sell openly at the resulting guide value. No symptom is modelled on
+ * this side: a full restoration cures whatever a symptom claims, so a
+ * symptom's own existence changes nothing about what full repair costs or
+ * returns.
+ *
+ * LIGHT FLIP is new construction from the SAME `buildRoughProbeCar` base: two
+ * real symptoms are added (`context.symptoms[0]`/`[1]`), only the FIRST is
+ * diagnosed and fixed (`planPartRepair`, the same per-part atom probe (a)'s
+ * own bench-part loop prices through, to the tier's own
+ * `sensibleRepairTargetBand`), and the car sells "unopened elsewhere" through
+ * `buyerKnowledgeViewOf` with an EXPECTED (not rolled) deduction for the
+ * second, undiagnosed symptom - `noticeChance x candidateFixCostYen x
+ * noticeMultiplier`, the same terms `rollBuyerNotice` computes, closed-form
+ * rather than sampled to match this whole file's no-bots convention.
+ *
+ * Both sides convert labour POINTS to DAYS the same way: one day for the
+ * acquisition itself, `laborPoints / energy.basePoolPoints` for the repair (a
+ * solo shop's own daily point budget, no staff), and `1 /
+ * offerChanceFor(model, 100, economy)` for the expected wait to sell - the
+ * SAME chance either car draws against (it reads model rarity and heat only,
+ * never condition), which is design section 10's own "a car occupies a bay
+ * for its whole build" cost landing equally on both plays.
+ */
+interface FlipDayRate {
+  marginYen: number
+  laborPoints: number
+  days: number
+  yenPerDay: number
+}
+
+function toDayRate(
+  marginYen: number,
+  laborPoints: number,
+  model: CarModel,
+  economy: EconomyConfig,
+): FlipDayRate {
+  const repairDays = laborPoints / economy.energy.basePoolPoints
+  const waitToSellDays = 1 / offerChanceFor(model, 100, economy)
+  const days = 1 + repairDays + waitToSellDays // +1 for the acquisition day itself
+  return { marginYen, laborPoints, days, yenPerDay: marginYen / days }
+}
+
+/** The worse of `installed`'s current band and `cause.setBand` - generation's
+ * own rule (a cause never makes an already-worse part better), reproduced
+ * here because this probe hand-builds a symptomatic car rather than rolling
+ * one through `auctions.ts`. */
+function applyCauseDamage(
+  car: CarInstance,
+  cause: { carPartId: CarPartId; setBand: ConditionBand },
+): CarInstance {
+  const installed = car.parts[cause.carPartId].installed
+  if (!installed) return car
+  const band =
+    bandIndex(installed.band) <= bandIndex(cause.setBand) ? installed.band : cause.setBand
+  return {
+    ...car,
+    parts: { ...car.parts, [cause.carPartId]: { installed: { ...installed, band } } },
+  }
+}
+
+describe('(e) light flip vs deep flip land within +-30% yen-per-day, entry tier (sprint217.md task C)', () => {
+  it('the commitment holds, or the shortfall is reported rather than silently patched (task C2)', () => {
+    const entryModel = CARS.find((c) => fitmentClassForTier(c.tier) === 'entry')
+    if (!entryModel) throw new Error('fixture: no entry-tier roster model found')
+
+    // DEEP FLIP: probe (a)'s own row, verbatim.
+    const deepRow = computeModelBalanceProbe(entryModel, CONTEXT)
+    const deep = toDayRate(
+      deepRow.sensibleFlipMarginYen,
+      deepRow.repairLaborSlots,
+      entryModel,
+      ECONOMY,
+    )
+
+    // LIGHT FLIP: the same rough base, two real symptoms, only the first fixed.
+    const roughCar = buildRoughProbeCar(entryModel, CONTEXT)
+    const symptomA = CONTEXT.symptoms[0]!
+    const symptomB = CONTEXT.symptoms[1]!
+    const trueCauseA = symptomA.causes[0]!
+    const trueCauseB = symptomB.causes[0]!
+
+    const damagedCar = applyCauseDamage(applyCauseDamage(roughCar, trueCauseA), trueCauseB)
+    const symptomaticCar: CarInstance = {
+      ...damagedCar,
+      symptoms: [
+        {
+          symptomId: symptomA.id,
+          trueCauseId: trueCauseA.id,
+          remainingCauseIds: [trueCauseA.id], // diagnosed
+          runTestIds: [],
+          latent: false,
+        },
+        {
+          symptomId: symptomB.id,
+          trueCauseId: trueCauseB.id,
+          remainingCauseIds: symptomB.causes.map((c) => c.id), // undiagnosed, still open
+          runTestIds: [],
+          latent: false,
+        },
+      ],
+    }
+
+    // Fair buy: the reserve fraction of this car's own true market value -
+    // the same convention probe (a)'s own roughCarBuyYen uses.
+    const buyGuideYen = marketValueYen(
+      entryModel,
+      symptomaticCar,
+      100,
+      CONTEXT.partsById,
+      CONTEXT.partsTaxonomyById,
+      CONTEXT.economy,
+    )
+    const buyYen = Math.round(buyGuideYen * CONTEXT.economy.AUCTION_RESERVE_PRICE_FRACTION)
+
+    // Fix ONLY the diagnosed fault (symptom A's true cause), to the tier's
+    // own sensible repair target - the light flip's whole labour spend.
+    const target = sensibleRepairTargetBand(entryModel, CONTEXT.economy)
+    const partEntry = CONTEXT.partsTaxonomyById[trueCauseA.carPartId]!
+    const installedA = symptomaticCar.parts[trueCauseA.carPartId].installed!
+    const catalogPartA = CONTEXT.partsById[installedA.partId]!
+    const plan = planPartRepair(
+      installedA.band,
+      target,
+      1,
+      partEntry,
+      catalogPartA.priceYen,
+      CONTEXT.economy.restoration.repairStepFraction,
+      CONTEXT.economy.energy.energyPerBandStepByToolTier,
+    )
+    const repairedBand = bandIndex(installedA.band) < bandIndex(target) ? target : installedA.band
+    const lightRepairedCar: CarInstance = {
+      ...symptomaticCar,
+      parts: {
+        ...symptomaticCar.parts,
+        [trueCauseA.carPartId]: { installed: { ...installedA, band: repairedBand } },
+      },
+      // The fix verifies the slot (a repair click always does); symptom A is
+      // cured by it and drops out, leaving only B open and unverified.
+      verifiedSlots: [...defaultVerifiedSlots(CONTEXT), trueCauseA.carPartId],
+      symptoms: [symptomaticCar.symptoms[1]!],
+    }
+
+    // Sell unopened elsewhere: the buyer prices the demonstrable
+    // (`buyerKnowledgeViewOf`), less the EXPECTED notice deduction for the
+    // second, undiagnosed symptom - the same terms `rollBuyerNotice` rolls,
+    // computed closed-form rather than sampled.
+    const neutralState = createInitialGameState(CONTEXT, 0)
+    const demonstrableValueYen = marketValueYen(
+      entryModel,
+      buyerKnowledgeViewOf(lightRepairedCar, entryModel, CONTEXT),
+      100,
+      CONTEXT.partsById,
+      CONTEXT.partsTaxonomyById,
+      CONTEXT.economy,
+    )
+    const noticeChance = CONTEXT.economy.diagnosis.noticeChanceByArchetype['daily-drivers']
+    const expectedNoticeDeductionYen =
+      noticeChance *
+      candidateFixCostYen(lightRepairedCar, entryModel, trueCauseB, neutralState, CONTEXT) *
+      CONTEXT.economy.diagnosis.noticeMultiplier
+    const lightSaleYen = Math.round(demonstrableValueYen - expectedNoticeDeductionYen)
+    const lightMarginYen = lightSaleYen - buyYen - plan.costYen
+    const light = toDayRate(lightMarginYen, plan.laborSlotsRequired, entryModel, ECONOMY)
+
+    const ratio = light.yenPerDay / deep.yenPerDay
+
+    // MEASURED, NOT GATED (sprint217.md task C2): the +-30% commitment does
+    // NOT hold on this construction, and the shortfall is reported here
+    // rather than forced to pass with an invented lever.
+    //
+    // Real measured run: light -5,743 yen/day (margin -14,446 over 2.52
+    // days, 4 labour points) vs deep +5,400 yen/day (margin +20,872 over
+    // 3.87 days, 112 labour points) - ratio -1.06, wants [0.7, 1.3].
+    //
+    // ROOT CAUSE, diagnosed rather than patched: `buildRoughProbeCar` (the
+    // worst-case-GENERATABLE car every other flip probe in this file already
+    // treats as the standard subject) is not uniformly poor. Its
+    // `enforceMaxBillFraction`/damage-budget guards SOFTEN the naive
+    // all-poor construction back under the Law 2 bill ceiling, which lifts
+    // whole groups (measured: the entire engine group to `fine`, most
+    // suspension to `worn`) while leaving others at `poor`. `priorBand`
+    // (knowledge.ts) is explicitly a FLAT per-car guess with no per-slot
+    // term ("every estimated slot on the same car currently reads the same
+    // guess" - its own doc comment, unchanged design from sprint215.md): at
+    // this car's worst-case mileage it reads `poor` for every unverified
+    // slot. A light flip that verifies only the one diagnosed part is
+    // therefore priced by a buyer who assumes the whole rest of the car is
+    // `poor`, when roughly two-thirds of it is actually `fine`/`worn` - a
+    // real, structural mismatch between a flat mileage-only guess and an
+    // unevenly-conditioned car, not a tunable number. The deep flip never
+    // hits this: it verifies (repairs) everything, so nothing it sells is
+    // ever priced off a guess.
+    //
+    // This is a genuine limit of the shipped `priorBand` model rather than a
+    // lever this sprint is authorised to move (directive 22): a per-slot
+    // prior term would need its own approved design, out of scope here.
+    // Reported in the sprint217.md Exit.
+    expect(Number.isFinite(ratio), 'the probe itself must still produce a real number').toBe(true)
+    expect(deep.marginYen, 'deep flip must stay profitable on this car (Law 1)').toBeGreaterThan(0)
   })
 })

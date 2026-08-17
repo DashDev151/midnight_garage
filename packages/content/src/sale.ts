@@ -45,11 +45,21 @@ export const ForSaleEntrySchema = z.object({
  * at End Day, never mid-screen). `buyerId` is the archetype who made it,
  * reused for both the accept-time reputation/heat plumbing and the "A tuner
  * is offering..." copy.
+ *
+ * `noticeLine` (knowledge-and-diagnosis.md section 6, sprint217.md task B) is
+ * set only when the drawn offer noticed at least one open, unverified symptom
+ * (`rollBuyerNotice`, sim/diagnosis.ts) - a fully-interpolated, ready-to-
+ * render line naming what was caught, the same "ready to render, never
+ * re-derived" convention `car-sold`'s own `saleRevealLine` uses. Its presence
+ * is also the accept-time signal that this offer already priced in a notice
+ * deduction, so accepting it costs `diagnosis.noticeReputationPenalty`
+ * reputation.
  */
 export const PendingSaleOfferSchema = z.object({
   carInstanceId: z.string().min(1),
   buyerId: z.string().min(1),
   priceYen: z.number().int().positive(),
+  noticeLine: z.string().min(1).optional(),
 })
 
 export type SaleChannel = z.infer<typeof SaleChannelSchema>

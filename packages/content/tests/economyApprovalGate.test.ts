@@ -2570,6 +2570,34 @@ import toolShops from '../data/toolShops.json'
  * a second, quieter problem (40%/12%). `scrapCauseWeightFraction` 0.15 - the felt behaviour is
  * ruling 3 read literally: a silent scrap-band latent is possible, but finding one should feel
  * like the unlucky exception, not the median hidden fault.
+ *
+ * Re-pinned for sprint217.md (the sale side of knowledge), under the same behaviour-first
+ * governance amendment: the design of record (docs/design/systems/knowledge-and-diagnosis.md
+ * sections 5 and 6, rulings 6 and 10) is itself the maintainer approval for the SHAPE of both
+ * mechanics; the initial numbers are Claude's own choice, stated here by felt behaviour,
+ * validated by playtest rather than pre-ratified.
+ *
+ * `knowledgePriors.unverifiedHaircutByTier` (task A1): entry 0 / everyday 0 / enthusiast 1 /
+ * flagship 1 band steps. The felt behaviour is that small money buys little scrutiny - a
+ * bargain-hunting entry or everyday buyer already prices the ordinary guess and asks no further
+ * discount for what they were not shown - while real money at enthusiast and flagship tiers
+ * makes a buyer discount a whole band harder for what they were not allowed to verify.
+ *
+ * `diagnosis.noticeChanceByArchetype` (task B1): collector 0.9 and tuner 0.8 (both go over a car
+ * closely - a tuner popping the bonnet is barely less thorough than a collector), racer 0.5 (they
+ * drive it hard enough to feel most of what's wrong), touge 0.4 (enthusiastic but less
+ * methodical), daily-drivers 0.25 (barely looks past the paperwork), show-crowd 0.1 (style tells
+ * them nothing about what's wrong underneath). `noticeChanceTradeNetwork` 0.05 - the fax barely
+ * looks at all. `noticeChanceLatentMultiplier` 0.5 - a hidden fault is harder to stumble on than
+ * a visible one, for every archetype alike.
+ *
+ * `diagnosis.noticeMultiplier` 1.75 (task B3, constructional): comfortably above every tier's own
+ * `marketRepairDiscount` (1.5 at entry, the tier ceiling), so the felt behaviour holds at every
+ * tier: getting caught always costs more than the worst honest tier's own rate, so hiding a fault
+ * is never the rational play. `diagnosis.noticeReputationPenalty` 2 - a real ding, on the same
+ * scale as a single satisfied-sale bonus, so a caught concealment is felt as a genuine setback
+ * rather than a rounding error. `diagnosis.noticeCopy` is the offer-line template, no felt-number
+ * to state.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -2579,7 +2607,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('7f0008f6cebbaf4691212ab13f1932776fb1a55c97da309c9e484ecf54d07495')
+    ).toBe('49910ad73de0533f896ab67917548f267121854f48a06365518223345ef92157')
   })
 
   it('damagePatterns.json matches its approved content exactly', () => {

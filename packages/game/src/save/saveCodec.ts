@@ -842,8 +842,19 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * with NO `MIGRATIONS[73]` entry. The version bump alone is still required
  * (Save law) so an old client rejects a v74 save rather than reading a shape
  * it no longer understands.
+ * v74 -> v75 (buyer notice, sprint217.md task B): `PendingSaleOffer` gained
+ * `noticeLine` - set exactly when the offer already priced in a caught,
+ * unfixed symptom, and the accept-time signal that the sale costs
+ * reputation. `.optional()` (the `verifiedSlots`/`bodyBayCarId` pattern), so
+ * no existing `PendingSaleOffer` literal needs touching: a pre-v75 save's
+ * live offer (if any) simply reads it absent, which every reader treats as
+ * "nothing was noticed" - correct, since notice never priced any pre-v75
+ * offer in the first place. Per directive 19, a plain SAVE_VERSION bump with
+ * NO `MIGRATIONS[74]` entry. The version bump alone is still required (Save
+ * law) so an old client rejects a v75 save rather than reading a shape it no
+ * longer understands.
  */
-export const SAVE_VERSION = 74
+export const SAVE_VERSION = 75
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

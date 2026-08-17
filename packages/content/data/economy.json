@@ -1368,7 +1368,20 @@
         "grenade": 0.07
       },
       "scrapCauseWeightFraction": 0.15
-    }
+    },
+    "noticeChanceByArchetype": {
+      "collector": 0.9,
+      "tuner": 0.8,
+      "show-crowd": 0.1,
+      "racer": 0.5,
+      "daily-drivers": 0.25,
+      "touge": 0.4
+    },
+    "noticeChanceTradeNetwork": 0.05,
+    "noticeChanceLatentMultiplier": 0.5,
+    "noticeMultiplier": 1.75,
+    "noticeReputationPenalty": 2,
+    "noticeCopy": "They noticed something on the way round: <symptom>"
   },
   "knowledgePriors": {
     "mileageBandBySegment": ["mint", "fine", "worn", "poor"],
@@ -1378,6 +1391,12 @@
       "frontal-collision": -1,
       "drifted": 0,
       "grenade": -1
+    },
+    "unverifiedHaircutByTier": {
+      "entry": 0,
+      "everyday": 0,
+      "enthusiast": 1,
+      "flagship": 1
     }
   },
   "auctionRoom": {

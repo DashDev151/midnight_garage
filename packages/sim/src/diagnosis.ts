@@ -17,8 +17,9 @@ import type { SimContext } from './context'
 import { benchHasTrait, benchedMemberWithTrait } from './crewSkills'
 import { bookCashMovements } from './financeLedger'
 import { findWorkableCar, writeCarBack } from './jobs'
-import { verifySlot } from './knowledge'
+import { isSlotVerified, verifySlot } from './knowledge'
 import { marketValueYen } from './marketValue'
+import type { Rng } from './rng'
 import { taskLaborChain } from './taskLaborChain'
 
 type CarSymptom = CarInstance['symptoms'][number]
@@ -242,7 +243,7 @@ export function expectedTrueValueYen(
  * the installed part can't be resolved (defensive; never happens for real
  * content).
  */
-function candidateFixCostYen(
+export function candidateFixCostYen(
   apparent: CarInstance,
   model: CarModel,
   cause: Cause,
@@ -1256,4 +1257,73 @@ export function saleRevealLineFor(
       ? context.economy.diagnosis.saleRevealCopy.buyerWon
       : context.economy.diagnosis.saleRevealCopy.playerWon
   return template.replace('<cause>', titleCaseFromSlug(trueCause.id))
+}
+
+/** `rollBuyerNotice`'s outcome: nothing to price when `deductionYen` is 0 and
+ * `noticeLine` is `null` (no open symptom noticed at all). */
+export interface BuyerNoticeOutcome {
+  /** Total yen to cut from the offer - the sum of `candidateFixCostYen x
+   * noticeMultiplier` over every symptom this roll noticed, zero when none
+   * did. */
+  deductionYen: number
+  /** The FIRST noticed symptom's own rendered line (array order,
+   * deterministic), or `null` when nothing was noticed. A caller stores this
+   * on the offer itself: its presence is what an accept-time reputation
+   * penalty reads (`PendingSaleOffer.noticeLine`). */
+  noticeLine: string | null
+}
+
+/**
+ * Buyer notice (knowledge-and-diagnosis.md section 6, sprint217.md task B):
+ * per offer, per open symptom whose TRUE CAUSE's slot the seller has not
+ * verified, a notice roll at `noticeChance` (a latent symptom, section 2,
+ * rolls at half that - `noticeChanceLatentMultiplier`). A verified-worse slot
+ * is skipped outright: `buyerKnowledgeViewOf` (knowledge.ts) already prices
+ * it at true band, so there is nothing left to catch - notice only ever
+ * prices what the buyer was NOT allowed to see honestly.
+ *
+ * On notice, the deduction is `candidateFixCostYen(trueCause) x
+ * noticeMultiplier` (diagnosis.ts's own chain-priced fix cost - the same
+ * figure `roomSymptomCostYen` prices candidates through, so notice and room
+ * fear can never disagree about what a fix costs) - summed across every
+ * symptom this roll catches, since each is an independent thing found during
+ * the same visit. `apparent` doubles as the car whose ALREADY-INSTALLED true
+ * cause band `candidateFixCostYen` reads: a true cause's part sits at
+ * exactly `cause.setBand` from generation until fixed, so passing the real
+ * (not room-apparent) car here prices the genuine, current cost to put it
+ * right, not a hypothetical.
+ *
+ * Deterministic given `rng`: callers thread the SAME seeded `Rng` the rest of
+ * the offer draw already consumes, so a replay reproduces the identical
+ * notice outcome. `noticeChance` is resolved by the CALLER (selling.ts,
+ * which already knows whether this is a persona archetype or the trade
+ * network's own flat rate) - this function stays buyer-identity-agnostic.
+ */
+export function rollBuyerNotice(
+  car: CarInstance,
+  model: CarModel,
+  noticeChance: number,
+  state: GameState,
+  context: SimContext,
+  rng: Rng,
+): BuyerNoticeOutcome {
+  if (car.symptoms.length === 0 || noticeChance <= 0) return { deductionYen: 0, noticeLine: null }
+  const { noticeChanceLatentMultiplier, noticeMultiplier, noticeCopy } = context.economy.diagnosis
+
+  let deductionYen = 0
+  let noticeLine: string | null = null
+  for (const carSymptom of car.symptoms) {
+    const symptom = context.symptomsById[carSymptom.symptomId]
+    if (!symptom) continue
+    const trueCause = symptom.causes.find((cause) => cause.id === carSymptom.trueCauseId)
+    if (!trueCause) continue
+    if (isSlotVerified(car, trueCause.carPartId)) continue // already priced honestly
+
+    const chance = carSymptom.latent ? noticeChance * noticeChanceLatentMultiplier : noticeChance
+    if (rng.next() >= chance) continue
+
+    deductionYen += candidateFixCostYen(car, model, trueCause, state, context) * noticeMultiplier
+    noticeLine ??= noticeCopy.replace('<symptom>', symptom.cardLine)
+  }
+  return { deductionYen: Math.round(deductionYen), noticeLine }
 }

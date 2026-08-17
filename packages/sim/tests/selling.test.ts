@@ -6,10 +6,12 @@ import {
   PARTS,
   PARTS_TAXONOMY,
   SCRIPTED_SERVICE_JOB,
+  type BuyerArchetype,
   type CarInstance,
   type CarModel,
   type CarPartId,
   type CarPartTaxonomyEntry,
+  type EconomyConfig,
   type GameState,
   type SellingChannelId,
 } from '@midnight-garage/content'
@@ -17,6 +19,7 @@ import { describe, expect, it } from 'vitest'
 import { interestedBuyers } from '../src/bidding'
 import { buildSimContext } from '../src/context'
 import { resolveHireMachineLine } from '../src/jobs'
+import { isSlotVerified, seedVerifiedSlots } from '../src/knowledge'
 import { bumpPlayerSales, updateMarketHeat } from '../src/marketHeat'
 import { marketValueYen } from '../src/marketValue'
 import {
@@ -2224,5 +2227,209 @@ describe('flooding interaction (Sprint 31): dumping copies of one model degrades
     const floodedChance = offerChanceFor(model, floodedHeat, ECONOMY)
     const controlChance = offerChanceFor(controlModel, controlHeat, ECONOMY)
     expect(floodedChance).toBeLessThan(controlChance)
+  })
+})
+
+/**
+ * Task A2's own guard: an offer never carries a band, whatever the seller's
+ * own unverified truth looks like - `buyerKnowledgeViewOf` (knowledge.ts)
+ * is the one place a band could leak through, and it never reaches the
+ * SaleOffer/PendingSaleOffer shape at all, only a total.
+ */
+describe('offers surface totals only - no band ever leaks (sprint217.md task A2)', () => {
+  it('a drawn offer carries no condition-band-shaped field, on an honest car with nothing to hide', () => {
+    const state = { ...stateWithCar(car), carsForSale: listedOn('shopFront') }
+    let found = false
+    for (let seed = 0; seed < 40 && !found; seed++) {
+      const result = drawDailyOffers(state, CONTEXT, createRng(seed), state.day)
+      const offer = result.state.pendingOffers[0]
+      if (!offer) continue
+      found = true
+      expect(Object.keys(offer).sort()).toEqual(['buyerId', 'carInstanceId', 'priceYen'])
+    }
+    expect(found).toBe(true)
+  })
+
+  it('the day-report offer-received line carries the same closed shape (plus its own modelId snapshot), never a band', () => {
+    const state = { ...stateWithCar(car), carsForSale: listedOn('shopFront') }
+    let found = false
+    for (let seed = 0; seed < 40 && !found; seed++) {
+      const result = drawDailyOffers(state, CONTEXT, createRng(seed), state.day)
+      const entry = result.log.find((e) => e.type === 'offer-received')
+      if (!entry) continue
+      found = true
+      expect(Object.keys(entry).sort()).toEqual(
+        ['buyerId', 'carInstanceId', 'modelId', 'priceYen', 'type'].sort(),
+      )
+    }
+    expect(found).toBe(true)
+  })
+})
+
+/**
+ * Task B: buyer notice (knowledge-and-diagnosis.md section 6). The economy
+ * pairs below share every lever except `diagnosis.noticeChanceByArchetype`/
+ * `noticeChanceTradeNetwork` - forced to 1 (certain) in one, 0 (impossible)
+ * in the other - so a shared seed draws the identical buyer at the identical
+ * quality fraction in both: `rollBuyerNotice` consumes exactly one `rng.next()`
+ * per open symptom regardless of the chance it compares against (the
+ * threshold moves, the draw count never does), so nothing downstream of the
+ * notice roll can drift out of step between the two runs. Any price gap is
+ * therefore attributable to the notice deduction alone, never a different
+ * buyer or a different quality draw.
+ */
+describe('buyer notice (sprint217.md task B)', () => {
+  const symptom = CONTEXT.symptomsById['smokes-on-startup']
+  if (!symptom) throw new Error('fixture: smokes-on-startup missing from seed content')
+  const trueCause = symptom.causes[0]!
+
+  function carWithOpenSymptom(): CarInstance {
+    return seedVerifiedSlots(
+      buildCarInstance({
+        modelId: model!.id,
+        mileageKm: 90_000,
+        parts: mintCarParts({ [trueCause.carPartId]: trueCause.setBand }),
+        symptoms: [
+          {
+            symptomId: symptom!.id,
+            trueCauseId: trueCause.id,
+            remainingCauseIds: symptom!.causes.map((c) => c.id),
+            runTestIds: [],
+            latent: false,
+          },
+        ],
+      }),
+      CONTEXT,
+    )
+  }
+
+  function withNoticeChance(chance: number): EconomyConfig {
+    const flatByArchetype = Object.fromEntries(
+      Object.keys(ECONOMY.diagnosis.noticeChanceByArchetype).map((archetype) => [
+        archetype,
+        chance,
+      ]),
+    ) as Record<BuyerArchetype, number>
+    return {
+      ...ECONOMY,
+      diagnosis: {
+        ...ECONOMY.diagnosis,
+        noticeChanceByArchetype: flatByArchetype,
+        noticeChanceTradeNetwork: chance,
+      },
+    }
+  }
+
+  const NOTICED_CONTEXT = buildSimContext(
+    CARS,
+    PARTS,
+    BUYERS,
+    PARTS_TAXONOMY,
+    [],
+    undefined,
+    [],
+    undefined,
+    withNoticeChance(1),
+  )
+  const UNNOTICED_CONTEXT = buildSimContext(
+    CARS,
+    PARTS,
+    BUYERS,
+    PARTS_TAXONOMY,
+    [],
+    undefined,
+    [],
+    undefined,
+    withNoticeChance(0),
+  )
+
+  it("a certain-notice draw is cut below the same draw with notice impossible, and names the symptom's own card", () => {
+    const symptomCar = carWithOpenSymptom()
+    const state = {
+      ...stateWithCar(symptomCar),
+      carsForSale: listedOn('shopFront', { carInstanceId: symptomCar.id }),
+    }
+    let found = false
+    for (let seed = 0; seed < 60 && !found; seed++) {
+      const noticedResult = drawDailyOffers(state, NOTICED_CONTEXT, createRng(seed), state.day)
+      const unnoticedResult = drawDailyOffers(state, UNNOTICED_CONTEXT, createRng(seed), state.day)
+      const noticedOffer = noticedResult.state.pendingOffers[0]
+      const unnoticedOffer = unnoticedResult.state.pendingOffers[0]
+      if (!noticedOffer || !unnoticedOffer) continue
+      found = true
+      expect(noticedOffer.buyerId).toBe(unnoticedOffer.buyerId) // same buyer, same quality draw
+      expect(unnoticedOffer.noticeLine).toBeUndefined()
+      expect(noticedOffer.noticeLine).toBe(
+        ECONOMY.diagnosis.noticeCopy.replace('<symptom>', symptom.cardLine),
+      )
+      expect(noticedOffer.priceYen).toBeLessThan(unnoticedOffer.priceYen)
+    }
+    expect(found).toBe(true)
+  })
+
+  it('never notices once the true cause is VERIFIED - the same certain-notice economy produces no line at all', () => {
+    const openCar = carWithOpenSymptom()
+    const verifiedCar: CarInstance = {
+      ...openCar,
+      verifiedSlots: [...(openCar.verifiedSlots ?? []), trueCause.carPartId],
+    }
+    expect(isSlotVerified(verifiedCar, trueCause.carPartId)).toBe(true)
+    const state = {
+      ...stateWithCar(verifiedCar),
+      carsForSale: listedOn('shopFront', { carInstanceId: verifiedCar.id }),
+    }
+    let found = false
+    for (let seed = 0; seed < 60 && !found; seed++) {
+      const result = drawDailyOffers(state, NOTICED_CONTEXT, createRng(seed), state.day)
+      const offer = result.state.pendingOffers[0]
+      if (!offer) continue
+      found = true
+      expect(offer.noticeLine).toBeUndefined()
+    }
+    expect(found).toBe(true)
+  })
+})
+
+describe('accepting a noticed offer costs reputation (sprint217.md task B2)', () => {
+  const noticeLine = 'They noticed something on the way round: Smokes on startup.'
+
+  it("subtracts noticeReputationPenalty from whatever the sale's own verdict otherwise paid", () => {
+    const authenticCar = buildCarInstance({ modelId: model.id, parts: uniformCarParts('mint') })
+    const state = stateWithOffer(authenticCar, 1_000_000, 'collector', {
+      pendingOffers: [
+        { carInstanceId: authenticCar.id, buyerId: 'collector', priceYen: 1_000_000, noticeLine },
+      ],
+      reputationPoints: 100,
+    })
+    const result = resolveSellViaWalkIn(state, authenticCar.id, CONTEXT)
+    const expectedDelta =
+      ECONOMY.reputation.satisfiedSaleBonus - ECONOMY.diagnosis.noticeReputationPenalty
+    expect(result.state.reputationPoints).toBe(100 + expectedDelta)
+    expect(result.log[0]).toMatchObject({ reputationDelta: expectedDelta, noticeLine })
+  })
+
+  it('costs the flat penalty even on a sale that pays no reputation of its own, floored at zero overall', () => {
+    const roughCar = buildCarInstance({ modelId: model.id, parts: uniformCarParts('poor') })
+    const state = stateWithOffer(roughCar, 300_000, 'daily-drivers', {
+      pendingOffers: [
+        { carInstanceId: roughCar.id, buyerId: 'daily-drivers', priceYen: 300_000, noticeLine },
+      ],
+      reputationPoints: 1,
+    })
+    const result = resolveSellViaWalkIn(state, roughCar.id, CONTEXT)
+    expect(result.state.reputationPoints).toBe(0) // floored, never negative
+    expect(result.log[0]).toMatchObject({
+      reputationDelta: -ECONOMY.diagnosis.noticeReputationPenalty,
+      noticeLine,
+    })
+    expect(result.log[0]).not.toHaveProperty('saleQuality')
+  })
+
+  it('an un-noticed offer costs nothing extra - the existing reputation-only-ever-rises case, unchanged', () => {
+    const authenticCar = buildCarInstance({ modelId: model.id, parts: uniformCarParts('mint') })
+    const state = stateWithOffer(authenticCar, 1_000_000, 'collector', { reputationPoints: 100 })
+    const result = resolveSellViaWalkIn(state, authenticCar.id, CONTEXT)
+    expect(result.state.reputationPoints).toBe(100 + ECONOMY.reputation.satisfiedSaleBonus)
+    expect(result.log[0]).not.toHaveProperty('noticeLine')
   })
 })

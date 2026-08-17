@@ -26,6 +26,7 @@ import {
   createInitialGameState,
   currentGameYear,
   foundationWithheldYen,
+  fullyVerifiedCar,
   generatedYearRangeFor,
   isEndOfWeek,
   lapBlockers,
@@ -223,7 +224,15 @@ describe('the economy bench state builder', () => {
     )
     const normalState = normallyAcquiredState(generated, shop.day)
     const benchCar = benchState.ownedCars.find((c) => c.id === BENCH_CAR_ID)!
-    const normalCar = normalState.ownedCars.find((c) => c.id === generated.id)!
+    // A real acquisition seeds `verifiedSlots` to the ordinary partial set
+    // (`seedVerifiedSlots`), while the hand-specified bench car reads fully
+    // verified (`benchCarInstance`'s own doc comment) - a real, correct
+    // divergence now that an unverified slot's estimated band affects the
+    // sale-side readouts below (knowledge-and-diagnosis.md section 5). This
+    // guard is about the READOUT MATH agreeing across two construction
+    // paths, not about the knowledge model itself (covered elsewhere), so
+    // both sides are put on the same fully-known footing before comparing.
+    const normalCar = fullyVerifiedCar(normalState.ownedCars.find((c) => c.id === generated.id)!)
 
     // Every column of the buyer table: the taste score, the champion gate, the
     // outcome reputation reads, and the price. A buyer id is the only thing

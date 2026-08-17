@@ -25,7 +25,7 @@ import { isMeetDay } from './calendar'
 import { carLedgerFor, deleteCarLedger, realisedProfitYen, updateCarLedger } from './carLedger'
 import type { SimContext } from './context'
 import { computeDerivedStats } from './derivedStats'
-import { saleRevealLineFor } from './diagnosis'
+import { rollBuyerNotice, saleRevealLineFor } from './diagnosis'
 import { bookCashMovements } from './financeLedger'
 import {
   assignToForecourt,
@@ -33,6 +33,7 @@ import {
   releaseCarFromShop,
   tryAssignToRealOrGrace,
 } from './facilities'
+import { buyerKnowledgeViewOf } from './knowledge'
 import { marketValueYen } from './marketValue'
 import { bumpPlayerSales } from './marketHeat'
 import { bellNormal, createRng, hashStringToSeed, type Rng } from './rng'
@@ -66,6 +67,10 @@ type SellingChannelConfig = EconomyConfig['sellingChannels'][SellingChannelId]
 export interface SaleOffer {
   buyerId: string
   priceYen: number
+  /** Set exactly when `rollBuyerNotice` caught at least one open, unverified
+   * symptom during this draw - carried straight onto `PendingSaleOffer` and
+   * the `offer-received` day-log line unchanged. */
+  noticeLine?: string
 }
 
 /**
@@ -439,6 +444,13 @@ export interface ChannelPriceBandRange {
  * The reason such a channel needs its own reader: it has no buyer pool, so it
  * never appears in a per-buyer valuation table, and without this it is the one
  * channel whose price is invisible.
+ *
+ * Reads `buyerKnowledgeViewOf(car)`, matching `drawTradeNetworkOffer`'s own
+ * value term - a preview that showed the true band would overstate what the
+ * fax actually pays for an unverified slot. Deliberately does NOT fold in
+ * `rollBuyerNotice`'s deduction: notice is a per-draw roll, not a fixed band
+ * end, so a NOTICED real offer can still land below `minYen` here - this is
+ * the two ends of the ordinary (unnoticed) draw, not an absolute floor.
  */
 export function channelPriceBandRangeFor(
   car: CarInstance,
@@ -451,7 +463,7 @@ export function channelPriceBandRangeFor(
   if (!priceBand) return null
   const value = marketValueYen(
     model,
-    car,
+    buyerKnowledgeViewOf(car, model, context),
     heatPercent,
     context.partsById,
     context.partsTaxonomyById,
@@ -733,6 +745,7 @@ export function resolveRejectOffer(
     car,
     model,
     context,
+    state,
     heatPercent,
     channel,
     entry.offersSeen,
@@ -756,7 +769,12 @@ export function resolveRejectOffer(
       ...advancedState,
       pendingOffers: [
         ...advancedState.pendingOffers,
-        { carInstanceId, buyerId: secondOffer.buyerId, priceYen: secondOffer.priceYen },
+        {
+          carInstanceId,
+          buyerId: secondOffer.buyerId,
+          priceYen: secondOffer.priceYen,
+          ...(secondOffer.noticeLine ? { noticeLine: secondOffer.noticeLine } : {}),
+        },
       ],
     },
     log: [
@@ -767,6 +785,7 @@ export function resolveRejectOffer(
         modelId: car.modelId,
         buyerId: secondOffer.buyerId,
         priceYen: secondOffer.priceYen,
+        ...(secondOffer.noticeLine ? { noticeLine: secondOffer.noticeLine } : {}),
       },
     ],
   }
@@ -804,11 +823,20 @@ function clampedChance(chance: number): number {
  * pool before the draw - the hot-band second-offer roll's own use
  * (`resolveRejectOffer`), so a follow-up offer is always a different party
  * turning up, never the same buyer circling back with another number.
+ *
+ * Prices through `buyerKnowledgeViewOf` (knowledge.ts), never the true `car`
+ * directly (knowledge-and-diagnosis.md section 5, sprint217.md task A): a
+ * buyer offers price for the demonstrable, verified slots at true band and
+ * unverified ones at a marked-down guess. `rollBuyerNotice` (diagnosis.ts)
+ * then runs as the LAST step, on the true `car` (never the masked view - a
+ * notice roll is the one place this draw is allowed to read past what the
+ * knowledge view shows), against the picked buyer's own archetype rate.
  */
 function drawPersonaChannelOffer(
   car: CarInstance,
   model: CarModel,
   context: SimContext,
+  state: GameState,
   heatPercent: number,
   tasteCeiling: number,
   matchedOnly: boolean,
@@ -846,10 +874,11 @@ function drawPersonaChannelOffer(
     if (!matched) return undefined
   }
 
+  const demonstrableCar = buyerKnowledgeViewOf(car, model, context)
   const value = valuateCarForBuyerViaChannel(
     picked.buyer,
     model,
-    car,
+    demonstrableCar,
     context.partsById,
     context.partsTaxonomy,
     context.partsTaxonomyById,
@@ -859,8 +888,14 @@ function drawPersonaChannelOffer(
     sceneStanding,
   )
   const quality = drawQualityFraction(offersSeen, context.economy, rng)
-  const priceYen = Math.round(value * quality)
-  return { buyerId: picked.buyer.id, priceYen }
+  const noticeChance = context.economy.diagnosis.noticeChanceByArchetype[picked.buyer.archetype]
+  const notice = rollBuyerNotice(car, model, noticeChance, state, context, rng)
+  const priceYen = Math.max(1, Math.round(value * quality) - notice.deductionYen)
+  return {
+    buyerId: picked.buyer.id,
+    priceYen,
+    ...(notice.noticeLine ? { noticeLine: notice.noticeLine } : {}),
+  }
 }
 
 /**
@@ -870,26 +905,47 @@ function drawPersonaChannelOffer(
  * `priceBand` rather than a `tasteCeiling` - the one genuinely id-specific
  * behaviour left in the pricing shape, expressed as a flag rather than a
  * special case.
+ *
+ * Prices `buyerKnowledgeViewOf(car)`, never `car` directly, and rolls
+ * `rollBuyerNotice` at the trade network's own flat `noticeChanceTradeNetwork`
+ * rate - the fax pays for the demonstrable exactly like a persona channel
+ * does, it just has no archetype of its own to key the rate on.
  */
 function drawTradeNetworkOffer(
   car: CarInstance,
   model: CarModel,
   context: SimContext,
+  state: GameState,
   heatPercent: number,
   priceBand: { min: number; max: number },
   rng: Rng,
 ): SaleOffer {
   const value = marketValueYen(
     model,
-    car,
+    buyerKnowledgeViewOf(car, model, context),
     heatPercent,
     context.partsById,
     context.partsTaxonomyById,
     context.economy,
   )
   const { min, max } = priceBand
-  const priceYen = Math.round(value * (min + rng.next() * (max - min)))
-  return { buyerId: TRADE_NETWORK_BUYER_ID, priceYen }
+  const notice = rollBuyerNotice(
+    car,
+    model,
+    context.economy.diagnosis.noticeChanceTradeNetwork,
+    state,
+    context,
+    rng,
+  )
+  const priceYen = Math.max(
+    1,
+    Math.round(value * (min + rng.next() * (max - min))) - notice.deductionYen,
+  )
+  return {
+    buyerId: TRADE_NETWORK_BUYER_ID,
+    priceYen,
+    ...(notice.noticeLine ? { noticeLine: notice.noticeLine } : {}),
+  }
 }
 
 interface ChannelDraw {
@@ -935,6 +991,7 @@ function drawFlaggedChannelOffer(
   car: CarInstance,
   model: CarModel,
   context: SimContext,
+  state: GameState,
   heatPercent: number,
   channel: SellingChannelConfig,
   offersSeen: number,
@@ -945,12 +1002,13 @@ function drawFlaggedChannelOffer(
   excludeBuyerId?: string,
 ): SaleOffer | undefined {
   if (channel.priceBand) {
-    return drawTradeNetworkOffer(car, model, context, heatPercent, channel.priceBand, rng)
+    return drawTradeNetworkOffer(car, model, context, state, heatPercent, channel.priceBand, rng)
   }
   return drawPersonaChannelOffer(
     car,
     model,
     context,
+    state,
     heatPercent,
     channel.tasteCeiling!,
     channel.matchedOnly === true,
@@ -1007,6 +1065,7 @@ function drawOfferForChannel(
   model: CarModel,
   entry: ForSaleEntry,
   context: SimContext,
+  state: GameState,
   heatPercent: number,
   rng: Rng,
   day: number,
@@ -1025,6 +1084,7 @@ function drawOfferForChannel(
         car,
         model,
         context,
+        state,
         heatPercent,
         channel,
         entry.offersSeen,
@@ -1046,6 +1106,7 @@ function drawOfferForChannel(
       car,
       model,
       context,
+      state,
       heatPercent,
       channel,
       entry.offersSeen,
@@ -1303,6 +1364,7 @@ export function drawDailyOffers(
       model,
       entry,
       context,
+      state,
       heatPercent,
       rng,
       day,
@@ -1322,6 +1384,7 @@ export function drawDailyOffers(
         carInstanceId: car.id,
         buyerId: draw.offer.buyerId,
         priceYen: draw.offer.priceYen,
+        ...(draw.offer.noticeLine ? { noticeLine: draw.offer.noticeLine } : {}),
       })
       log.push({
         type: 'offer-received',
@@ -1329,6 +1392,7 @@ export function drawDailyOffers(
         modelId: car.modelId,
         buyerId: draw.offer.buyerId,
         priceYen: draw.offer.priceYen,
+        ...(draw.offer.noticeLine ? { noticeLine: draw.offer.noticeLine } : {}),
       })
     }
   }
@@ -1433,13 +1497,19 @@ export function resolveSellViaWalkIn(
     buyer === undefined
       ? 'nothing'
       : saleOutcomeFor(buyer, model, car, context.partsById, context.partsTaxonomy, context.economy)
-  const reputationDelta = saleReputationBonusFor(saleOutcome, context.economy)
+  // Accepting a NOTICED offer costs reputation (knowledge-and-diagnosis.md
+  // section 6, ruling 6) - the one deliberate exception to "nothing in the
+  // game lowers reputation" (progression bible, fifth amendment). The
+  // penalty rides the same delta the buyer's own verdict pays into, so a
+  // delighted-but-caught sale can still net positive while a satisfied-and-
+  // caught one can net negative; `applyReputationDelta`'s own zero floor
+  // still guards the account from ever going negative overall.
+  const noticePenalty = offer.noticeLine ? context.economy.diagnosis.noticeReputationPenalty : 0
+  const reputationDelta = saleReputationBonusFor(saleOutcome, context.economy) - noticePenalty
   const clearedState = dissolveAssembliesForCar(
     releaseCarFromShop(state, carInstanceId),
     carInstanceId,
   )
-  // The applied delta always equals the nominal one now: reputation only ever
-  // rises, so `applyReputationDelta`'s zero floor can never bind on a sale.
   const released = applyReputationDelta(clearedState, reputationDelta, context.economy)
 
   // Realised profit against the ledger recorded since acquisition - only when
@@ -1496,8 +1566,10 @@ export function resolveSellViaWalkIn(
       channel: 'walk-in-offer',
       priceYen: offer.priceYen,
       ...(profitYen !== null ? { profitYen } : {}),
-      ...(saleOutcome === 'nothing' ? {} : { reputationDelta, saleQuality: saleOutcome }),
+      ...(reputationDelta !== 0 ? { reputationDelta } : {}),
+      ...(saleOutcome === 'nothing' ? {} : { saleQuality: saleOutcome }),
       ...(saleRevealLine !== undefined ? { saleRevealLine } : {}),
+      ...(offer.noticeLine ? { noticeLine: offer.noticeLine } : {}),
       ...(matched ? { matchedSale: true as const } : {}),
     },
   ]

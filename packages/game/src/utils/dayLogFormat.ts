@@ -172,12 +172,16 @@ export function describeLogEntry(
       return `Bought the ${entry.year} ${resolveModelName(entry.modelId)} for ${formatYen(entry.priceYen)}`
     case 'auction-attended':
       return `Paid in at the ${entry.tier} rooms: ${formatYen(entry.feeYen)}`
-    case 'offer-received':
-      return offerCopy(
+    case 'offer-received': {
+      const base = offerCopy(
         resolveBuyerName(entry.buyerId),
         resolveModelName(entry.modelId),
         entry.priceYen,
       )
+      // "He heard the idle." - set only when the drawn offer already priced
+      // in a caught, unfixed symptom.
+      return entry.noticeLine ? `${base} ${entry.noticeLine}` : base
+    }
     case 'offer-rejected':
       return `Turned down ${formatYen(entry.priceYen)} for the ${resolveModelName(entry.modelId)}`
     case 'car-sold': {
@@ -186,19 +190,28 @@ export function describeLogEntry(
       const base = `Sold ${entry.carInstanceId} (${entry.channel}) for ${formatYen(entry.priceYen)}`
       const withProfit =
         entry.profitYen !== undefined ? `${base}, profit ${formatYenDelta(entry.profitYen)}` : base
+      // Signed explicitly (never assumed positive) - accepting a NOTICED
+      // offer can drive this negative even on a sale that otherwise pleased
+      // the buyer (knowledge-and-diagnosis.md section 6).
+      const repClause = (delta: number) => `reputation ${delta >= 0 ? '+' : ''}${delta}`
       const withQuality = (() => {
         switch (entry.saleQuality) {
           case 'delighted':
-            return `${withProfit} - the buyer got everything they came for, reputation +${entry.reputationDelta}`
+            return `${withProfit} - the buyer got everything they came for, ${repClause(entry.reputationDelta ?? 0)}`
           case 'satisfied':
-            return `${withProfit} - the buyer got what they came for, reputation +${entry.reputationDelta}`
+            return `${withProfit} - the buyer got what they came for, ${repClause(entry.reputationDelta ?? 0)}`
           default:
-            return withProfit
+            return entry.reputationDelta
+              ? `${withProfit}, ${repClause(entry.reputationDelta)}`
+              : withProfit
         }
       })()
       // One line, appended, no popup - set only when the car still carried an
-      // unresolved symptom.
-      return entry.saleRevealLine ? `${withQuality} ${entry.saleRevealLine}` : withQuality
+      // unresolved symptom, or (separately) when the buyer noticed one.
+      const withReveal = entry.saleRevealLine
+        ? `${withQuality} ${entry.saleRevealLine}`
+        : withQuality
+      return entry.noticeLine ? `${withReveal} ${entry.noticeLine}` : withReveal
     }
     case 'car-listed':
       return `Advertising for ${entry.carInstanceId} (${SELLING_CHANNEL_LABELS[entry.channelId]}): ${formatYen(entry.feeYen)}`

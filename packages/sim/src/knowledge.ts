@@ -123,15 +123,13 @@ export function priorBand(
 }
 
 /**
- * The car as the player's own knowledge sees it: every UNVERIFIED slot's
- * installed part is masked back to the fitment class's stock SKU at
- * `priorBand`, exactly mirroring `diagnosis.ts`'s `apparentViewOf` (the
- * room's own "car as it presents" view). Used by every player-facing figure
- * that must run off knowledge rather than truth - the estimated chip, the
- * player's own value estimate and ledger (sprint215.md task B). Pure, never
- * mutates `car`. A genuinely empty slot is left alone: an absent part is
- * visible by eye, not a condition question the knowledge model has any say
- * over.
+ * The shared masking loop behind `knowledgeViewOf` and `buyerKnowledgeViewOf`
+ * below: every UNVERIFIED slot's installed part is masked back to the
+ * fitment class's stock SKU at whatever band `bandFor` names for it, exactly
+ * mirroring `diagnosis.ts`'s `apparentViewOf` (the room's own "car as it
+ * presents" view). Pure, never mutates `car`. A genuinely empty slot is left
+ * alone: an absent part is visible by eye, not a condition question the
+ * knowledge model has any say over.
  *
  * Masking part IDENTITY as well as band is what makes section 9's hidden
  * non-stock roll (task E) work with no separate flag: an ordinary unverified
@@ -144,10 +142,11 @@ export function priorBand(
  * A car the knowledge model has not been seeded onto (`verifiedSlots`
  * absent) returns `car` unchanged - see `isSlotVerified`'s own doc comment.
  */
-export function knowledgeViewOf(
+function maskedKnowledgeView(
   car: CarInstance,
   model: CarModel,
   context: SimContext,
+  bandFor: (partId: CarPartId) => ConditionBand,
 ): CarInstance {
   if (!car.verifiedSlots) return car
   const fitmentClass = fitmentClassForTier(model.tier)
@@ -162,9 +161,63 @@ export function knowledgeViewOf(
       installed: {
         ...installed,
         partId: stockPart ? stockPart.id : installed.partId,
-        band: priorBand(car, partId, context),
+        band: bandFor(partId),
       },
     }
   }
   return { ...car, parts }
+}
+
+/**
+ * The car as the player's own knowledge sees it: every unverified slot reads
+ * `priorBand` - the estimated chip, the player's own value estimate and
+ * ledger (sprint215.md task B). Used by every player-facing figure that must
+ * run off knowledge rather than truth.
+ */
+export function knowledgeViewOf(
+  car: CarInstance,
+  model: CarModel,
+  context: SimContext,
+): CarInstance {
+  return maskedKnowledgeView(car, model, context, (partId) => priorBand(car, partId, context))
+}
+
+/**
+ * `priorBand`, marked down by the tier's own `unverifiedHaircutByTier` band
+ * steps and floored at `poor` - never worse than `priorBand` itself already
+ * floors at (knowledge-and-diagnosis.md section 5): a buyer assumes the
+ * standard guess and discounts further for not being allowed to verify it.
+ */
+function unverifiedHaircutBand(
+  priorGuess: ConditionBand,
+  model: CarModel,
+  context: SimContext,
+): ConditionBand {
+  const fitmentClass = fitmentClassForTier(model.tier)
+  const haircut = context.economy.knowledgePriors.unverifiedHaircutByTier[fitmentClass]
+  const poorIndex = bandIndex('poor')
+  const mintIndex = bandIndex('mint')
+  const clampedIndex = Math.max(poorIndex, Math.min(mintIndex, bandIndex(priorGuess) - haircut))
+  return CONDITION_BAND_ORDER[clampedIndex]!
+}
+
+/**
+ * The car as a BUYER's knowledge sees it (knowledge-and-diagnosis.md section
+ * 5, sprint217.md task A): every unverified slot reads `priorBand` further
+ * discounted by `unverifiedHaircutByTier` - a buyer offers price for the
+ * demonstrable, never the truth. Every VERIFIED slot (including one the
+ * player themselves verified worse than the guess) still reads its true
+ * band, unchanged - honesty prices at true value, never at a discount on top
+ * of a discount. `marketValueYen` consumes this view exactly as it consumes
+ * `knowledgeViewOf`'s, so a car's SALE price and a car's OWN estimate share
+ * one masking mechanism and differ only in which band function they read.
+ */
+export function buyerKnowledgeViewOf(
+  car: CarInstance,
+  model: CarModel,
+  context: SimContext,
+): CarInstance {
+  return maskedKnowledgeView(car, model, context, (partId) =>
+    unverifiedHaircutBand(priorBand(car, partId, context), model, context),
+  )
 }

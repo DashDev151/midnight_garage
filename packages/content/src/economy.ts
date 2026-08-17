@@ -3204,6 +3204,55 @@ export const EconomyConfigSchema = z.object({
       }),
       scrapCauseWeightFraction: z.number().min(0).max(1),
     }),
+    /**
+     * Buyer notice (docs/design/systems/knowledge-and-diagnosis.md section 6,
+     * sprint217.md task B): rolled once per offer, per open symptom whose
+     * true cause's slot the SELLER has not verified - a verified-worse slot
+     * already prices at true band (`buyerKnowledgeViewOf`), so there is
+     * nothing left to catch. `noticeChanceByArchetype` is a real `Buyer`'s
+     * own chance of hearing/finding the fault during the visit that produces
+     * an offer; `noticeChanceTradeNetwork` is the same roll for the
+     * trade network's own non-persona fax, which has no archetype to key on.
+     * `noticeChanceLatentMultiplier` halves the roll for a still-latent
+     * symptom (section 2) - a hidden fault is harder to stumble on than a
+     * visible one even for a buyer who would have caught the visible kind.
+     * Felt behaviour: a collector and a tuner both go over a car closely (0.9
+     * / 0.8), a racer drives it hard enough to feel most of what's wrong
+     * (0.5), touge buyers notice less methodically (0.4), a daily-drivers
+     * buyer barely looks past the paperwork (0.25), and the show crowd (0.1)
+     * and the trade network's own fax (0.05) essentially never do - style and
+     * paperwork tell them nothing about what's wrong underneath.
+     */
+    noticeChanceByArchetype: z.record(BuyerArchetypeSchema, z.number().min(0).max(1)),
+    noticeChanceTradeNetwork: z.number().min(0).max(1),
+    noticeChanceLatentMultiplier: z.number().min(0).max(1),
+    /**
+     * On notice, the offer is cut by `candidateFixCostYen(trueCause) x
+     * noticeMultiplier` (`rollBuyerNotice`, sim/diagnosis.ts) - the same
+     * chain-priced fix cost `roomSymptomCostYen` already uses, so notice and
+     * room fear can never price the same fix differently.
+     *
+     * CONSTRUCTIONAL RULE, probe-enforced (sprint217.md task B3): this must
+     * exceed `valuation.marketRepairDiscount[fitmentClass]` for every tier -
+     * an honestly-shown fault already costs the seller
+     * `marketRepairDiscount x its own repair bill` in market value (Stage B
+     * of `marketValueYen`), so a caught concealment has to cost strictly
+     * more than that or honesty would be for suckers. `marketRepairDiscount`
+     * tops out at 1.5 (entry); felt behaviour: getting caught costs
+     * noticeably more than the worst honest tier's own rate, so hiding a
+     * fault is never the rational play at any tier.
+     */
+    noticeMultiplier: z.number().min(0),
+    /** Reputation points lost when the player accepts an offer notice
+     * reduced - a positive magnitude, applied as a negative delta
+     * (`resolveSellViaWalkIn`, sim/selling.ts). The one deliberate exception
+     * to "nothing in the game lowers reputation" (progression bible, fifth
+     * amendment) - ruling 6 of the design doc's rulings ledger. */
+    noticeReputationPenalty: z.number().int().positive(),
+    /** The offer-line template a noticed sale renders (`rollBuyerNotice`) -
+     * carries a literal `<symptom>` token the sim substitutes with the
+     * noticed symptom's own `cardLine`. */
+    noticeCopy: z.string().min(1),
   }),
   /**
    * The knowledge model's guess curve (docs/design/systems/
@@ -3242,6 +3291,21 @@ export const EconomyConfigSchema = z.object({
       drifted: z.number().int(),
       grenade: z.number().int(),
     }),
+    /**
+     * The unverified-slot haircut a buyer offer prices in on top of
+     * `priorBand` (docs/design/systems/knowledge-and-diagnosis.md section 5,
+     * sprint217.md task A): in band steps (`buyerKnowledgeViewOf`,
+     * sim/knowledge.ts, mirrors `provenanceModifierByDamagePattern`'s own
+     * sign convention but always subtracts). A buyer assumes the standard
+     * guess and discounts further for not being allowed to look; verifying a
+     * slot removes the haircut entirely by pricing at true band instead.
+     * Felt behaviour: small money at entry tier does not buy much scrutiny
+     * (0 - a bargain-hunting buyer already expects surprises and prices
+     * accordingly through `priorBand` alone), but real money at enthusiast
+     * and flagship tiers makes a buyer discount harder for what they were
+     * not allowed to verify (1 full band).
+     */
+    unverifiedHaircutByTier: z.record(PartFitmentClassSchema, z.number().int().min(0)),
   }),
   /**
    * The live auction room's tuning: the seeded clearing draw, the raise
