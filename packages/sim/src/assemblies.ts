@@ -18,8 +18,8 @@ import {
   machineGateGroupFor,
   machineLaborMultiplier,
   partCapabilityRequirement,
-  refitLaborSlotsFor,
   removeLaborSlotsFor,
+  requiredEmptySlotsBehind,
   writeCarBack,
 } from './jobs'
 import { partFitsCar, reconcileStations } from './parts'
@@ -28,12 +28,14 @@ import { updateServiceJobLedger } from './serviceJobLedger'
 /**
  * An assembly is a batch over the per-slot machinery, never a second labour
  * model: remove pulls every member slot at once (each stamping its own
- * `vacatedBaseline`), refit charges each member by the same
- * `refitLaborSlotsFor` equivalence rule a single part uses, and the external
- * blockers / machine gate are derived from the members here, not stored in
- * content. `blockedBy` edges internal to an assembly (e.g. tyres behind rims,
- * clutch behind gearbox) stop mattering once it is on the bench - that is the
- * whole point of a bench.
+ * `vacatedBaseline`), refit charges one flat set figure for the whole unit
+ * however many members changed (`refitAssemblyLaborSlotsFor`), and the
+ * external blockers / machine gate are derived from the members here, not
+ * stored in content. `blockedBy` edges internal to an assembly (e.g. tyres
+ * behind rims, clutch behind gearbox) stop mattering once it is on the bench
+ * - that is the whole point of a bench - except for what the assembly's
+ * refit would seal shut BEHIND it on the car (`requiredEmptySlotsBehind`),
+ * which is external to the assembly by definition and still checked.
  */
 
 /** The uniform result of every atomic assembly operation - `ok` distinguishes
@@ -289,15 +291,20 @@ export function resolveRemoveAssembly(
 }
 
 /**
- * Labour to refit `container` back onto `car`: the operation's own
- * `energy.actionPoints.refitAssembly` overhead plus every member the
- * container carries, each charged the same `refitLaborSlotsFor` equivalence
- * rule a single part uses - free for a member that matches the slot's
- * vacated baseline, the normal install charge for a changed one. Exported so
- * the UI can quote the real figure, and gate the refit button on it, before
- * the player commits - the refit counterpart of `removeAssemblyLaborSlotsFor`,
- * and the one place `resolveRefitAssembly` itself sizes the operation, so the
- * quote and the charge can never drift apart.
+ * Labour to refit `container` back onto `car`: a flat
+ * `energy.actionPoints.refitAssembly` figure, whatever changed and whatever
+ * didn't - fitting an engine takes the same sweat whether one cam or all
+ * four corners of it moved, because the machine line, not the parts list,
+ * decides the pace (sprint212.md, "the labour laws"). The per-member
+ * changed/unchanged equivalence fork (`refitLaborSlotsFor`) still prices the
+ * PARTS bill (`resolveRefitAssembly`'s own `addPartsYen` step charges every
+ * changed member's paid price); it no longer prices labour here. `car` and
+ * `container` stay on the signature for call-site stability even though
+ * this reads only the flat figure now. Exported so the UI can quote the real
+ * figure, and gate the refit button on it, before the player commits - the
+ * refit counterpart of `removeAssemblyLaborSlotsFor`, and the one place
+ * `resolveRefitAssembly` itself sizes the operation, so the quote and the
+ * charge can never drift apart.
  */
 export function refitAssemblyLaborSlotsFor(
   car: CarInstance,
@@ -305,10 +312,7 @@ export function refitAssemblyLaborSlotsFor(
   container: AssemblyContainer,
   context: SimContext,
 ): number {
-  return def.members.reduce((total, member) => {
-    const instance = container.members[member]
-    return instance ? total + refitLaborSlotsFor(car, member, instance, context) : total
-  }, context.economy.energy.actionPoints.refitAssembly)
+  return context.economy.energy.actionPoints.refitAssembly
 }
 
 /**
@@ -358,6 +362,8 @@ export function resolveRefitAssembly(
   if (!carInstanceId) return fail
   const car = findWorkableCar(state, carInstanceId)
   if (!car) return fail
+  const model = context.modelsById[car.modelId]
+  if (!model) return fail
   if (occupiedExternalBlockers(car, def, context).length > 0) return fail
   // A member already fits `container.sourceCarId` - either it never left that
   // car, or `resolveFitAssemblyMember` fitment-checked it against that same
@@ -386,6 +392,32 @@ export function resolveRefitAssembly(
           laborSlotsUsed: 0,
           ok: false,
         }
+      }
+    }
+  }
+
+  // Refit refuses over a required slot the assembly would seal shut behind
+  // it - the graph read backwards from `occupiedBlockers`'s own forward
+  // direction (`requiredEmptySlotsBehind`, jobs.ts), external to the
+  // assembly's own member set (an internal empty member - e.g. tyres still
+  // off the rims that are about to go back on - is not itself a defect this
+  // refit needs to fix). Wheels going back on over stripped brakes/
+  // suspension is the sharp case: nothing else stops it structurally.
+  for (const member of def.members) {
+    const instance = container.members[member]
+    if (!instance) continue
+    if (requiredEmptySlotsBehind(car, model, member, context, def.members).length > 0) {
+      return {
+        state,
+        log: [
+          {
+            type: 'job-blocked',
+            jobId: `assembly-refit-${containerId}-${member}`,
+            reason: 'blocks-access',
+          },
+        ],
+        laborSlotsUsed: 0,
+        ok: false,
       }
     }
   }

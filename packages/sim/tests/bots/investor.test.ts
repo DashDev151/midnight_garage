@@ -98,8 +98,20 @@ describe('investorStrategy replace-loop fixes (2026-07-12)', () => {
       origin: { kind: 'market' as const, day: 1 },
     }
     const state = baseState({ partInventory: [landed] })
-    const actions = investorStrategy(state, CONTEXT, createRng(1))
 
+    // `seats` is interior-group work (sprint212.md: interior belongs to the
+    // body bay) - this bot has no action that can move a car into the
+    // one-slot body bay, so an owned fitting part simply waits there rather
+    // than being installed via a service-bay claim it can never actually use.
+    const waiting = investorStrategy(state, CONTEXT, createRng(1))
+    expect(waiting.buyParts).toEqual([])
+    expect(waiting.createJobs).toEqual([])
+    expect(waiting.moveCars).toEqual([])
+
+    // Once the car is actually in the body bay (however it got there), the
+    // same owned part installs exactly as before.
+    const inBodyBay = { ...state, bodyBayCarId: car.id }
+    const actions = investorStrategy(inBodyBay, CONTEXT, createRng(1))
     expect(actions.buyParts).toEqual([])
     expect(actions.createJobs).toHaveLength(1)
     expect(actions.createJobs[0]).toMatchObject({

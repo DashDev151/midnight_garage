@@ -328,8 +328,8 @@ export const SessionEventInputSchema = z.discriminatedUnion('type', [
     'reassignStaff',
     z.object({ staffId: z.string().min(1), to: StaffAssignmentSchema }),
   ),
-  // Dev-only playtest-clock instrumentation (`PlaytestClock.vue`) - measures
-  // wall-clock pause/resume for note-taking sessions, never a player action.
+  // Dev-only session-clock instrumentation - measures wall-clock
+  // pause/resume for note-taking sessions, never a player action.
   // `activeMs` is the total active play time this browser session at the
   // moment of the toggle, so an exported session log can be read against
   // real gameplay cadence rather than raw wall-clock time.

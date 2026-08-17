@@ -1,23 +1,35 @@
-import type { CarPartId } from '@midnight-garage/content'
+import type { CarPartId, ZoneId } from '@midnight-garage/content'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
 /**
  * What the Warehouse drawer is currently picking FOR, when it was opened by a
  * "Fit" control rather than by its own tab: the exact car slot (or benched
- * assembly member) a selection should land in. `null` means the drawer is in
- * plain browse mode. Lives here rather than on the car screen because the
- * drawer is mounted once at the app root and the car screen's drop zones read
- * the same context - one source of truth for "what are we fitting".
+ * assembly member, or body zone) a selection should land in. `null` means the
+ * drawer is in plain browse mode. Lives here rather than on the car screen
+ * because the drawer is mounted once at the app root and the car/body-shop
+ * screens' own drop zones read the same context - one source of truth for
+ * "what are we fitting".
+ *
+ * Discriminated like `WorkshopSelection` (`WorkshopViews.vue`), for the same
+ * reason: `chassis` is a legal value of both id types, so a bare id would
+ * leave a consumer guessing which lookup to dispatch it into.
  */
-export interface WarehouseFitContext {
-  carId: string
-  carPartId: CarPartId
-  /** Set when picking for a benched assembly member instead of an on-car
-   * slot - selection swaps into this container rather than staging an
-   * install. */
-  benchContainerId?: string
-}
+export type WarehouseFitContext =
+  | {
+      kind: 'part'
+      carId: string
+      carPartId: CarPartId
+      /** Set when picking for a benched assembly member instead of an
+       * on-car slot - selection swaps into this container rather than
+       * staging an install. */
+      benchContainerId?: string
+    }
+  | {
+      kind: 'zone'
+      carId: string
+      zoneId: ZoneId
+    }
 
 /**
  * Ephemeral session/view state that is never persisted (contrast the

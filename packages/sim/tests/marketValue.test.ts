@@ -1,5 +1,6 @@
 import {
   ECONOMY,
+  fitmentClassForTier,
   PARTS,
   PARTS_TAXONOMY,
   type CarInstance,
@@ -11,6 +12,7 @@ import {
 import { describe, expect, it } from 'vitest'
 import { carCostToMintYen } from '../src/bands'
 import {
+  excellencePremiumYen,
   foundationFactor,
   installedPartsValueYen,
   marketValueYen,
@@ -134,12 +136,32 @@ function expectedBaseValueYen(
   heatPercent = 100,
   partsById: Readonly<Record<string, Part>> = PARTS_BY_ID,
 ): number {
-  const { marketRepairDiscount } = ECONOMY.valuation
+  const marketRepairDiscount =
+    ECONOMY.valuation.marketRepairDiscount[fitmentClassForTier(forModel.tier)]!
   const cleanValue =
     forModel.bookValueYen * mileageFactor(car.mileageKm, ECONOMY) * (heatPercent / 100)
   const billToMintYen = carCostToMintYen(car, forModel, partsById, PARTS_TAXONOMY_BY_ID, ECONOMY)
   const backstopFloor = ECONOMY.bands.scrapValueFraction * cleanValue
   return Math.round(Math.max(backstopFloor, cleanValue - marketRepairDiscount * billToMintYen))
+}
+
+/**
+ * Sprint213.md item 3: every fixture in this file has `tier: 'flagship'`,
+ * whose own `expectationByTier.band` is `'mint'` - the same target
+ * `carCostToMintYen` measures against - so the below/above-expectation split
+ * never bites here and `billToMintYen === 0` is exactly the excellence
+ * gate's own `billBelowYen === 0`. Reads the real exported
+ * `excellencePremiumYen` (never a second formula) at this file's own
+ * documented constant `coherenceFactor` of 1.0 (see the file-level doc
+ * comment above).
+ */
+function expectedExcellenceYen(
+  car: CarInstance,
+  forModel: CarModel,
+  cleanValue: number,
+  billToMintYen: number,
+): number {
+  return excellencePremiumYen(forModel, cleanValue, billToMintYen, 1, car.mileageKm, ECONOMY)
 }
 
 describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
@@ -150,18 +172,25 @@ describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
     expect(a).toBe(b)
   })
 
-  it('an all-stock-mint car (zero restoration bill, stock contributes no installed-parts value) is worth exactly book value at heat 100', () => {
+  it('an all-stock-mint car (zero restoration bill, stock contributes no installed-parts value) is worth book value plus the excellence premium at heat 100', () => {
     const stockCar = neutralCar({ parts: mintCarParts() })
     // Stock is the baseline, not an upgrade - it must contribute nothing to
-    // installed-parts value, or this car would price above book despite
-    // carrying no real aftermarket parts.
+    // installed-parts value, or this car would price above book for the
+    // wrong reason.
     expect(installedPartsValueYen(stockCar, {}, RETENTION, ECONOMY)).toBe(0)
+    // Sprint213.md item 3: a genuinely mint, fully-coherent, fresh example
+    // (every fixture in this file holds `coherenceFactor` at exactly 1.0,
+    // and `neutralCar`'s mileage is this economy's own neutral point) now
+    // earns the excellence premium on top of book - the fix for the old
+    // "a fully restored car can never be worth more than clean" ceiling.
+    const excellenceYen = expectedExcellenceYen(stockCar, model, model.bookValueYen, 0)
+    expect(excellenceYen).toBeGreaterThan(0)
     expect(marketValueYen(model, stockCar, 100, PARTS_BY_ID, PARTS_TAXONOMY_BY_ID, ECONOMY)).toBe(
-      model.bookValueYen,
+      model.bookValueYen + excellenceYen,
     )
   })
 
-  it('a missing (non-FI) part lowers value by exactly marketRepairDiscount x its stock replacement price', () => {
+  it('a missing (non-FI) part lowers value by exactly marketRepairDiscount x its stock replacement price, plus the excellence premium only the still-mint car earns', () => {
     const stockCar = neutralCar({ parts: mintCarParts() })
     const missingBrakesCar = neutralCar({ parts: mintCarParts({ brakePadsDiscs: null }) })
     const stockValue = marketValueYen(
@@ -182,20 +211,29 @@ describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
     )
     // A genuinely missing slot prices at the CAR's own fitment class
     // (`model.tier` is 'flagship' in this fixture) - see `carCostToMintYen`'s
-    // missing-slot branch.
+    // missing-slot branch. The missing part also drops the car out of the
+    // excellence gate (it is no longer "fine-throughout"), so only the still
+    // fully-mint `stockCar` earns that premium - the gap between the two
+    // values is the repair discount PLUS the premium `stockCar` alone earns.
     const expectedDiffYen = Math.round(
-      ECONOMY.valuation.marketRepairDiscount *
+      ECONOMY.valuation.marketRepairDiscount[fitmentClassForTier(model.tier)]! *
         PARTS_TAXONOMY_BY_ID.brakePadsDiscs.stockReplacementPriceYenByClass.flagship,
     )
-    expect(stockValue - missingValue).toBe(expectedDiffYen)
+    const stockExcellenceYen = expectedExcellenceYen(stockCar, model, model.bookValueYen, 0)
+    expect(stockValue - missingValue).toBe(expectedDiffYen + stockExcellenceYen)
     expect(missingValue).toBeLessThan(stockValue)
   })
 
   it('matches the closed-form clean-value-minus-hassle-weighted-bill formula across every band', () => {
     for (const band of ['scrap', 'poor', 'worn', 'fine', 'mint'] as const) {
       const car = carAtUniformBand(band)
+      // Only the 'mint' band clears the excellence gate for this flagship
+      // fixture (its own expectation band IS 'mint') - every other band
+      // still owes real restoration work, so it earns none.
+      const excellenceYen =
+        band === 'mint' ? expectedExcellenceYen(car, model, model.bookValueYen, 0) : 0
       expect(marketValueYen(model, car, 100, PARTS_BY_ID, PARTS_TAXONOMY_BY_ID, ECONOMY)).toBe(
-        expectedBaseValueYen(car, model),
+        expectedBaseValueYen(car, model) + excellenceYen,
       )
     }
   })
@@ -254,7 +292,8 @@ describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
       ECONOMY,
     )
     const expectedDiffYen = Math.round(
-      ECONOMY.valuation.marketRepairDiscount * (fiPriceYen - brakesPriceYen),
+      ECONOMY.valuation.marketRepairDiscount[fitmentClassForTier(model.tier)]! *
+        (fiPriceYen - brakesPriceYen),
     )
     expect(brakesValue - turboValue).toBe(expectedDiffYen)
     expect(turboValue).toBeLessThan(brakesValue)
@@ -280,7 +319,9 @@ describe('marketValueYen (Sprint 27: restoration-bill deduction)', () => {
       ECONOMY,
     )
     const cleanValue = cheapModel.bookValueYen
-    const rawValue = cleanValue - ECONOMY.valuation.marketRepairDiscount * billToMintYen
+    const rawValue =
+      cleanValue -
+      ECONOMY.valuation.marketRepairDiscount[fitmentClassForTier(cheapModel.tier)]! * billToMintYen
     // Sanity: this all-scrap fixture must actually drive the raw (unclamped)
     // value below the backstop floor, otherwise the floor never engages and
     // the test proves nothing. This fixture is hand-built via
@@ -501,13 +542,17 @@ describe('installedPartsValueYen', () => {
       PARTS_TAXONOMY_BY_ID,
       ECONOMY,
     )
-    // ...yet the car is still worth more restored, and the entire gain equals
-    // the shrinking restoration bill (the single condition channel).
+    // ...yet the car is still worth more restored: the shrinking restoration
+    // bill (the single de-duped condition channel), PLUS sprint213.md's
+    // excellence premium - `restoredCar` is now genuinely fine-throughout
+    // (the one aftermarket part is mint too), which `wornCar` is not, so
+    // only the restored car clears that gate.
     expect(restoredValue).toBeGreaterThan(wornValue)
     const billGainYen =
       expectedBaseValueYen(restoredCar, model, 100, partsById) -
       expectedBaseValueYen(wornCar, model, 100, partsById)
-    expect(restoredValue - wornValue).toBe(billGainYen)
+    const restoredExcellenceYen = expectedExcellenceYen(restoredCar, model, model.bookValueYen, 0)
+    expect(restoredValue - wornValue).toBe(billGainYen + restoredExcellenceYen)
   })
 
   it('is 0 with no installed parts', () => {

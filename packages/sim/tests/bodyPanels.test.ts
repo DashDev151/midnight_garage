@@ -119,18 +119,24 @@ describe('a set of body panels is worth what it cost, discounted like any other 
 
   /**
    * The three measured figures on a mint Civic SiR-II (book ¥650,000,
-   * `everyday` class): stock ¥650,000, a full street set ¥684,452, a full
-   * carbon set ¥729,596. The ¥120,600 of carbon returns ¥79,596 of itself,
+   * `everyday` class): stock ¥715,000, a full street set ¥749,452, a full
+   * carbon set ¥794,596. The ¥120,600 of carbon returns ¥79,596 of itself,
    * which is the existing model doing exactly what it does for a fitted
    * damper: retention credits the catalogue price in full on a coherent build
    * (`retentionCeiling` 1.1), and the tier's own `aftermarketReturn` then says
    * how much anyone really pays extra for a modified Civic (0.6). Both
    * discounts, no third rule.
+   *
+   * Sprint213.md item 3 adds a flat ¥65,000 (book x `everyday`'s own
+   * `excellenceByTier` 0.10) to all three: every fixture here is mint,
+   * coherent and at the mileage curve's own neutral point (0 km), so all
+   * three clear the excellence gate identically - it rides on top of the
+   * panel premium rather than competing with it.
    */
-  it('walks a Civic from ¥650,000 stock to ¥684,452 in street panels to ¥729,596 in carbon', () => {
-    expect(valueOf(panelled(eg6, 'stock'))).toBe(650_000)
-    expect(valueOf(panelled(eg6, 'street'))).toBe(684_452)
-    expect(valueOf(panelled(eg6, 'race'))).toBe(729_596)
+  it('walks a Civic from ¥715,000 stock to ¥749,452 in street panels to ¥794,596 in carbon', () => {
+    expect(valueOf(panelled(eg6, 'stock'))).toBe(715_000)
+    expect(valueOf(panelled(eg6, 'street'))).toBe(749_452)
+    expect(valueOf(panelled(eg6, 'race'))).toBe(794_596)
   })
 
   it('returns exactly retention x the tier’s own aftermarketReturn, so a different car returns a different share', () => {

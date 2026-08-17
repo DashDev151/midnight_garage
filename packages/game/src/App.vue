@@ -27,8 +27,8 @@ const dragSession = useDragSession()
 // static import would ship the component even behind a v-if.
 const DevConsole = isDev ? defineAsyncComponent(() => import('./components/DevConsole.vue')) : null
 
-// Same tree-shaking rationale as `DevConsole` above - the playtest clock is
-// maintainer instrumentation, never shipped to players.
+// Same tree-shaking rationale as `DevConsole` above - the session clock is
+// dev-only instrumentation, never shipped to players.
 const PlaytestClock = isDev
   ? defineAsyncComponent(() => import('./components/PlaytestClock.vue'))
   : null

@@ -894,6 +894,13 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
        * in its `blockedBy` list refuses install just as it refuses
        * uninstall, reassembly order matters (`installFitGate`). */
       'blocked-by',
+      /** The same graph read backwards: fitting this part would seal a
+       * required slot shut behind it - it is still empty and not
+       * legitimately absent (`isPartMissing`'s own forced-induction
+       * carve-out) - because some OTHER slot's own `blockedBy` names this
+       * one (`requiredEmptySlotsBehind`, sim/jobs.ts). Wheels going back on
+       * over stripped brakes/suspension is the sharp case. */
+      'blocks-access',
       /** A buried engine/drivetrain or suspension/body/interior signature
        * slot's operation needs its group's machinery owned or hired for
        * today (`hasMachineLineFor`, sim/jobs.ts) - book the machine-shop

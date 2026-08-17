@@ -1,8 +1,9 @@
-import type { ComponentId, GameState } from '@midnight-garage/content'
+import type { CarPartId, ComponentId, GameState } from '@midnight-garage/content'
 import { emptyDayActions, type DayActions } from '../actions'
 import { worstGroup } from './bandHelpers'
 import { acquireLot, auctionAcquisitionBudget, walkAwayTargetYen } from './buyoutHelpers'
 import { claimServiceBay, serviceBayBudget } from './bayHelpers'
+import { carInBodyBay } from '../facilities'
 import type { SimContext } from '../context'
 import { installLaborSlotsFor } from '../jobs'
 import { energyMax } from '../laborSlots'
@@ -36,6 +37,15 @@ const ALL_COMPONENTS: readonly ComponentId[] = [
   'interior',
 ]
 
+/** Interior parts and aero are body-shop work (sprint212.md: interior and
+ * aero belong to the body bay) - the same rule `jobs.ts`'s
+ * `applyAvailableLaborToJob` gates labour on. `aero` shares its taxonomy
+ * group (`body`) with the two zone-derived carriers, so it is named by
+ * `carPartId` rather than by group. */
+function needsBodyBay(componentId: ComponentId, carPartId?: CarPartId): boolean {
+  return componentId === 'interior' || carPartId === 'aero'
+}
+
 /**
  * Never upgrades a tool line and restores cars entirely through Replace
  * (buy a catalog part, install it) instead of Repair; every component is
@@ -65,11 +75,18 @@ export function investorStrategy(state: GameState, context: SimContext, rng: Rng
   // resolution time, using whichever cash is left by then).
   let cashCommitted = 0
 
-  // 1. Continue any in-progress install job from a prior day.
+  // 1. Continue any in-progress install job from a prior day. A job
+  // addressing interior/aero needs the body bay, which no bot action can
+  // move a car into (`MoveCarAction` only reaches service/parking/
+  // forecourt) - it waits, untouched, for a day the player parks it there
+  // themselves, rather than being wrongly relocated into a service bay.
   for (const job of state.jobs) {
     if (laborBudget <= 0) break
     const need = job.laborSlotsRequired - job.laborSlotsSpent
     if (need <= 0) continue
+    if (needsBodyBay(job.componentId, job.carPartId) && !carInBodyBay(state, job.carInstanceId)) {
+      continue
+    }
     if (!claimServiceBay(state, job.carInstanceId, actions, bayBudget)) continue
     const slots = Math.min(need, laborBudget)
     actions.laborAssignments.push({ jobId: job.id, laborSlots: slots })
@@ -109,7 +126,14 @@ export function investorStrategy(state: GameState, context: SimContext, rng: Rng
     )
     if (!emptyCarPartId) continue
 
-    if (!claimServiceBay(state, car.id, actions, bayBudget)) continue
+    // Interior/aero installs need the body bay, which no bot action can move
+    // a car into (`MoveCarAction` only reaches service/parking/forecourt) -
+    // buying never needs a bay at all (a purchase lands in inventory
+    // wherever the car sits), so only the install below is gated on it;
+    // every other group still claims a service bay before either step, as
+    // before.
+    const needsBody = needsBodyBay(worstEmpty, emptyCarPartId)
+    if (!needsBody && !claimServiceBay(state, car.id, actions, bayBudget)) continue
 
     // A part bought on a PRIOR tick is genuinely sitting in this snapshot's
     // inventory - install it now (real id, passes installFitGate cleanly).
@@ -122,6 +146,9 @@ export function investorStrategy(state: GameState, context: SimContext, rng: Rng
       )
     })
     if (ownedFitting) {
+      // A fitting part already owned for an interior/aero slot simply waits
+      // until the car is actually in the body bay.
+      if (needsBody && !carInBodyBay(state, car.id)) continue
       const jobIndex = actions.createJobs.length
       actions.createJobs.push({
         carInstanceId: car.id,

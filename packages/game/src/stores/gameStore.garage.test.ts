@@ -190,7 +190,9 @@ describe('garage: instant part install', () => {
     )!
     game.devGrantCar(CARS[0]!.id)
     const car = game.gameState.ownedCars[0]!
-    game.moveCar(car.id, 'service')
+    // Interior work is body-shop work (sprint212.md: interior and aero
+    // belong to the body bay), not the service bay.
+    game.moveCarToSlot(car.id, 'body', 0)
     // Generation fills every slot by default - the whole `interior` group
     // (seats, dashGauges) starts fully occupied.
     expect(game.installablePartsFor(car.id, 'interior')).toEqual([])

@@ -1,4 +1,4 @@
-import { CARS, PAINT_COLOURS, PARTS, type ZoneId, type ZoneState } from '@midnight-garage/content'
+import { CARS, PAINT_COLOURS, type ZoneId, type ZoneState } from '@midnight-garage/content'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -11,6 +11,7 @@ import {
 } from '../components/workshopViewLayout'
 import { clearDragSession } from '../composables/useDragAndDrop'
 import { useGameStore } from '../stores/gameStore'
+import { useUiStore } from '../stores/uiStore'
 import { formatYen } from '../utils/formatYen'
 import BodyShopScreen from './BodyShopScreen.vue'
 
@@ -250,40 +251,26 @@ describe('BodyShopScreen', () => {
     )
   })
 
-  it('lists the panels on hand as real buttons and stages the install from one', async () => {
-    const game = useGameStore()
-    const id = grantCarInBay(game)
-    setZone(game, id, 'bonnet', { ...DENTED, panelMissing: true })
-    const panelPart = PARTS.find((p) => p.zoneId === 'bonnet' && p.fitmentClass === 'entry')!
-    game.devGrantPart(panelPart.id)
-    const partInstanceId = game.gameState.partInventory.at(-1)!.id
-
-    const { wrapper } = await mountAt()
-    await selectZone(wrapper, 'bonnet')
+  it('a missing panel offers the standard Fit control, which opens the Warehouse scoped to this zone', async () => {
+    const { id, wrapper } = await grantAndDock('bonnet', { ...DENTED, panelMissing: true })
+    const ui = useUiStore()
 
     expect(wrapper.find('[data-test="pipeline-remove-panel-bonnet"]').exists()).toBe(false)
-    expect(wrapper.find('[data-test="no-panels-bonnet"]').exists()).toBe(false)
-    const option = wrapper.get(`[data-test="pipeline-install-panel-bonnet-${partInstanceId}"]`)
-    expect(option.element.tagName).toBe('BUTTON')
-    expect(option.text()).toContain(game.partName(panelPart.id))
+    const fitButton = wrapper.get('[data-test="zone-fit-bonnet"]')
+    expect(fitButton.text()).toBe('Fit')
 
-    await option.trigger('click')
-    expect(game.gameState.ownedCars.find((c) => c.id === id)!.zoneState!.bonnet.panelMissing).toBe(
-      false,
-    )
-    expect(game.gameState.partInventory.some((p) => p.id === partInstanceId)).toBe(false)
+    await fitButton.trigger('click')
+    expect(ui.warehouseFit).toEqual({ kind: 'zone', carId: id, zoneId: 'bonnet' })
+
+    // Clicking again while already scoped to this exact zone closes it - the
+    // same open/close toggle every other Fit control in the game carries.
+    await fitButton.trigger('click')
+    expect(ui.warehouseFit).toBeNull()
   })
 
-  it('says where the panels are when none is on hand, rather than showing an empty control', async () => {
-    const { wrapper } = await grantAndDock('bonnet', { ...DENTED, panelMissing: true })
-    const empty = wrapper.get('[data-test="no-panels-bonnet"]')
-    expect(empty.text()).toContain('No panel for this zone on hand')
-    expect(empty.text()).toContain('parts shop')
-  })
-
-  it('round-trips a panel through the shelf: remove puts it in inventory, install takes it back off', async () => {
+  it('round-trips a panel through the shelf: remove puts it in inventory, a fresh one installs through the standard Fit flow', async () => {
     const game = useGameStore()
-    grantCarInBay(game)
+    const id = grantCarInBay(game)
     const inventoryBefore = game.gameState.partInventory.length
 
     const { wrapper } = await mountAt()
@@ -294,9 +281,10 @@ describe('BodyShopScreen', () => {
     expect(game.gameState.partInventory.length).toBe(inventoryBefore + 1)
     const shelved = game.gameState.partInventory.at(-1)!
 
-    await selectZone(wrapper, 'bonnet')
-    await wrapper.get(`[data-test="pipeline-install-panel-bonnet-${shelved.id}"]`).trigger('click')
-
+    // The install itself is the Warehouse's own zone-fit branch
+    // (`WarehouseDrawer.test.ts` covers that end to end) - here it is enough
+    // to prove the resolver it calls through actually clears the zone.
+    game.installPanel(id, 'bonnet', shelved.id)
     expect(game.gameState.ownedCars[0]!.zoneState!.bonnet.panelMissing).toBe(false)
     expect(game.gameState.partInventory.some((p) => p.id === shelved.id)).toBe(false)
   })
@@ -383,5 +371,82 @@ describe('BodyShopScreen', () => {
     }
     expect(panel.findAll('select')).toHaveLength(0)
     expect(panel.findAll('input')).toHaveLength(0)
+  })
+
+  it('shows the structure band and the finish position together, and the whole remaining ladder, not just the next verb', async () => {
+    const { wrapper } = await grantAndDock('bonnet', DENTED)
+
+    expect(wrapper.get('[data-test="zone-band-bonnet"]').text()).toBe('fine')
+    // DENTED is unprimed with finish 2 (part-painted, not yet polished) -
+    // structure and finish disagree, so both facts have to show.
+    expect(wrapper.get('[data-test="zone-finish-bonnet"]').text()).toBe('painted')
+    const steps = wrapper.get('[data-test="zone-remaining-bonnet"]').findAll('li')
+    expect(steps.map((s) => s.text())).toEqual(['Beat', 'Fill and sand', 'Polish'])
+  })
+
+  it('collapses to a plain band chip with no finish tag once structure and finish are both actually done', async () => {
+    const { wrapper } = await grantAndDock('bonnet', MINT)
+    expect(wrapper.get('[data-test="zone-band-bonnet"]').text()).toBe('mint')
+    expect(wrapper.find('[data-test="zone-finish-bonnet"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="zone-remaining-bonnet"]').exists()).toBe(false)
+  })
+
+  it('the Take-off control always states its purpose, whether or not it is disabled', async () => {
+    const { wrapper } = await grantAndDock('bonnet', DENTED)
+    expect(wrapper.get('[data-test="pipeline-remove-panel-purpose"]').text()).toContain('Comes off')
+  })
+
+  it('captions a disabled paint swatch with the real structural reason - not primed yet - rather than nothing', async () => {
+    const { game, id, wrapper } = await grantAndDock('bonnet', {
+      ...MINT,
+      finish: 3,
+      primed: false,
+    })
+    setFactoryColour(game, id, 'lime')
+    const colour = PAINT_COLOURS.find((c) => c.id !== 'lime')!
+    game.devGiveCash(1_000_000)
+    game.buyPaintTin('solid', 'small', colour.id)
+    await selectZone(wrapper, 'bonnet')
+
+    const tin = wrapper.get(`[data-test="pipeline-paint-bonnet-solid-${colour.id}"]`)
+    expect(tin.attributes('disabled')).toBeDefined()
+    expect(tin.attributes('title')).toBe('Needs priming first.')
+    const groupCaption = wrapper.get('[data-test="pipeline-paint-caption-bonnet-solid"]')
+    expect(groupCaption.text()).toBe('Needs priming first.')
+  })
+
+  it('a part click docks a part panel - repair, take it off, fit - and replaces whatever the zone panel showed', async () => {
+    const { wrapper } = await grantAndDock('bonnet', DENTED)
+    expect(wrapper.find('[data-test="panel-name"]').text()).toBe('Bonnet')
+
+    await wrapper.get('[data-test="workshop-region-part-seats"]').trigger('click')
+
+    const name = wrapper.get('[data-test="panel-name"]')
+    expect(name.text()).not.toBe('Bonnet')
+    expect(wrapper.find('[data-test="zone-band-bonnet"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="part-remove"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="part-fit"]').exists()).toBe(true)
+
+    // Selecting anything replaces the dock outright - the seats region now
+    // carries the selected outline, and the stale bonnet zone region no
+    // longer does (sprint211.md task A: the root cause this whole sprint
+    // traces back to).
+    expect(wrapper.get('[data-test="workshop-region-part-seats"]').classes()).toContain(
+      'wv-selected',
+    )
+    expect(wrapper.get('[data-test="workshop-region-zone-bonnet"]').classes()).not.toContain(
+      'wv-selected',
+    )
+  })
+
+  it('take it off on a part removes exactly the part the panel is showing, never a stale target', async () => {
+    const game = useGameStore()
+    const id = grantCarInBay(game)
+    const { wrapper } = await mountAt()
+
+    await wrapper.get('[data-test="workshop-region-part-seats"]').trigger('click')
+    await wrapper.get('[data-test="part-remove"]').trigger('click')
+
+    expect(game.gameState.ownedCars.find((c) => c.id === id)!.parts.seats.installed).toBeNull()
   })
 })

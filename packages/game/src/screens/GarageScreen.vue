@@ -197,126 +197,156 @@ const draggedPartLabel = computed(() => {
       </div>
     </dl>
 
-    <section class="bays">
-      <h3>
-        Service bays ({{ game.serviceBayCount - game.serviceBayFreeCount }}/{{
-          game.serviceBayCount
-        }})
-        <HelpHint label="Service bays">
-          Labour only reaches a car in a bay. Moving one there is free.
-        </HelpHint>
-      </h3>
-      <ul class="bay-slots">
-        <!-- data-test falls through to ShopSlot's root <li> - the tutorial
-             walkthrough spotlights the first bay. -->
-        <ShopSlot
-          v-for="(slot, i) in game.serviceBaysView"
-          :key="slot?.carId ?? 'empty-' + i"
-          :car="slot"
-          :accepts="acceptsIntoService"
-          move-label="&rarr; parking"
-          :move-disabled="game.parkingFull"
-          test-id-prefix="move-parking-"
-          :empty-slot-id="'empty-' + i"
-          :data-test="'service-slot-' + i"
-          @move="game.moveCar($event, 'parking')"
-          @drop="onDropOnBaySlot(i, $event)"
-        />
-      </ul>
-    </section>
+    <!-- The garage reads as pairs (sprint211.md task F): everyday shop
+         functions in one visible cluster, body-and-paint work in the other -
+         layout/grouping only, no new mechanics. Each cluster wraps its own
+         existing sections unchanged. -->
+    <div class="garage-cluster" data-test="cluster-general">
+      <p class="cluster-label">General shop</p>
 
-    <section class="bays body-bay-section">
-      <h3>
-        Body bay
-        <HelpHint label="Body bay">
-          Body and paint work needs the car here - nowhere else in the shop can do it. Drag a car
-          in, or tap "move…", then "Place here".
-        </HelpHint>
-      </h3>
-      <ul class="bay-slots">
-        <ShopSlot
-          :car="game.bodyBayView"
-          :accepts="acceptsIntoBody"
-          :link-to="bodyBayLinkTo"
-          move-label="&rarr; parking"
-          :move-disabled="game.parkingFull"
-          test-id-prefix="move-parking-"
-          empty-slot-id="empty-body-bay"
-          data-test="body-bay-slot"
-          @move="game.moveCar($event, 'parking')"
-          @drop="onDropOnBodyBay"
-        />
-      </ul>
-    </section>
+      <section class="bays">
+        <h3>
+          Service bays ({{ game.serviceBayCount - game.serviceBayFreeCount }}/{{
+            game.serviceBayCount
+          }})
+          <HelpHint label="Service bays">
+            Labour only reaches a car in a bay. Moving one there is free.
+          </HelpHint>
+        </h3>
+        <ul class="bay-slots">
+          <!-- data-test falls through to ShopSlot's root <li> - the tutorial
+               walkthrough spotlights the first bay. -->
+          <ShopSlot
+            v-for="(slot, i) in game.serviceBaysView"
+            :key="slot?.carId ?? 'empty-' + i"
+            :car="slot"
+            :accepts="acceptsIntoService"
+            move-label="&rarr; parking"
+            :move-disabled="game.parkingFull"
+            test-id-prefix="move-parking-"
+            :empty-slot-id="'empty-' + i"
+            :data-test="'service-slot-' + i"
+            @move="game.moveCar($event, 'parking')"
+            @drop="onDropOnBaySlot(i, $event)"
+          />
+        </ul>
+      </section>
 
-    <section class="stations" data-test="stations">
-      <h3>
-        Work stations
-        <HelpHint label="Work stations">
-          Where parts get worked on. Click a station to open it.
-        </HelpHint>
-      </h3>
-      <ul class="station-list">
-        <li
-          class="station-slot"
-          :class="{ 'active-target': workbenchCardDrop.isActiveTarget.value }"
-          data-test="station-slot-workbench"
-          @pointerup="workbenchCardDrop.onPointerUp"
-          @pointerenter="workbenchCardDrop.onPointerEnter"
-          @pointerleave="workbenchCardDrop.onPointerLeave"
-        >
-          <button
-            type="button"
-            class="station"
-            :class="{ active: openStation === 'workbench' }"
-            data-test="station-open-workbench"
-            @click="toggleStation('workbench')"
+      <section class="stations" data-test="stations">
+        <h3>
+          Work stations
+          <HelpHint label="Work stations">
+            Where parts get worked on. Click a station to open it.
+          </HelpHint>
+        </h3>
+        <ul class="station-list">
+          <li
+            class="station-slot"
+            :class="{ 'active-target': workbenchCardDrop.isActiveTarget.value }"
+            data-test="station-slot-workbench"
+            @pointerup="workbenchCardDrop.onPointerUp"
+            @pointerenter="workbenchCardDrop.onPointerEnter"
+            @pointerleave="workbenchCardDrop.onPointerLeave"
           >
-            <span class="station-name">Workbench</span>
-            <span class="station-status" data-test="station-status-workbench">{{
-              workbenchStatus
-            }}</span>
-          </button>
-          <button
-            v-if="workbenchCardDrop.isActiveTarget.value"
-            type="button"
-            class="station-place"
-            data-test="station-place-card-workbench"
-            @click="workbenchCardDrop.onClick"
+            <button
+              type="button"
+              class="station"
+              :class="{ active: openStation === 'workbench' }"
+              data-test="station-open-workbench"
+              @click="toggleStation('workbench')"
+            >
+              <span class="station-name">Workbench</span>
+              <span class="station-status" data-test="station-status-workbench">{{
+                workbenchStatus
+              }}</span>
+            </button>
+            <button
+              v-if="workbenchCardDrop.isActiveTarget.value"
+              type="button"
+              class="station-place"
+              data-test="station-place-card-workbench"
+              @click="workbenchCardDrop.onClick"
+            >
+              Place here
+            </button>
+          </li>
+          <li
+            class="station-slot"
+            :class="{ 'active-target': machineCardDrop.isActiveTarget.value }"
+            data-test="station-slot-machine"
+            @pointerup="machineCardDrop.onPointerUp"
+            @pointerenter="machineCardDrop.onPointerEnter"
+            @pointerleave="machineCardDrop.onPointerLeave"
           >
-            Place here
-          </button>
-        </li>
-        <li
-          class="station-slot"
-          :class="{ 'active-target': machineCardDrop.isActiveTarget.value }"
-          data-test="station-slot-machine"
-          @pointerup="machineCardDrop.onPointerUp"
-          @pointerenter="machineCardDrop.onPointerEnter"
-          @pointerleave="machineCardDrop.onPointerLeave"
-        >
-          <button
-            type="button"
-            class="station"
-            :class="{ active: openStation === 'machine', derelict: !machineShopEquipped }"
-            data-test="station-open-machine"
-            @click="toggleStation('machine')"
-          >
-            <span class="station-name">Machine shop</span>
-            <span class="station-status" data-test="station-status-machine">{{
-              machineStatus
-            }}</span>
-          </button>
-          <button
-            v-if="machineCardDrop.isActiveTarget.value"
-            type="button"
-            class="station-place"
-            data-test="station-place-card-machine"
-            @click="machineCardDrop.onClick"
-          >
-            Place here
-          </button>
-        </li>
+            <button
+              type="button"
+              class="station"
+              :class="{ active: openStation === 'machine', derelict: !machineShopEquipped }"
+              data-test="station-open-machine"
+              @click="toggleStation('machine')"
+            >
+              <span class="station-name">Machine shop</span>
+              <span class="station-status" data-test="station-status-machine">{{
+                machineStatus
+              }}</span>
+            </button>
+            <button
+              v-if="machineCardDrop.isActiveTarget.value"
+              type="button"
+              class="station-place"
+              data-test="station-place-card-machine"
+              @click="machineCardDrop.onClick"
+            >
+              Place here
+            </button>
+          </li>
+          <li>
+            <!-- Another plain door (sprint209.md): the office is a real room
+                 off the garage floor, not a panel that opens in place. -->
+            <RouterLink :to="{ name: 'office' }" class="station" data-test="station-open-office">
+              <span class="station-name">Office</span>
+              <span class="station-status" data-test="station-status-office"
+                >{{ game.reputationTier }} reputation</span
+              >
+            </RouterLink>
+          </li>
+        </ul>
+
+        <div v-if="openStation" class="station-panel" data-test="station-panel">
+          <WorkbenchPanel v-if="openStation === 'workbench'" />
+          <MachineShopPanel v-else />
+        </div>
+      </section>
+    </div>
+
+    <div class="garage-cluster" data-test="cluster-body">
+      <p class="cluster-label">Body and paint</p>
+
+      <section class="bays body-bay-section">
+        <h3>
+          Body bay
+          <HelpHint label="Body bay">
+            Body and paint work needs the car here - nowhere else in the shop can do it. Drag a car
+            in, or tap "move…", then "Place here".
+          </HelpHint>
+        </h3>
+        <ul class="bay-slots">
+          <ShopSlot
+            :car="game.bodyBayView"
+            :accepts="acceptsIntoBody"
+            :link-to="bodyBayLinkTo"
+            move-label="&rarr; parking"
+            :move-disabled="game.parkingFull"
+            test-id-prefix="move-parking-"
+            empty-slot-id="empty-body-bay"
+            data-test="body-bay-slot"
+            @move="game.moveCar($event, 'parking')"
+            @drop="onDropOnBodyBay"
+          />
+        </ul>
+      </section>
+
+      <ul class="station-list body-door-list">
         <li>
           <!-- A plain door, not a togglable panel: the body shop is a real
                second room (sprint208.md), so this tile always routes there
@@ -332,23 +362,8 @@ const draggedPartLabel = computed(() => {
             }}</span>
           </RouterLink>
         </li>
-        <li>
-          <!-- Another plain door (sprint209.md): the office is a real room
-               off the garage floor, not a panel that opens in place. -->
-          <RouterLink :to="{ name: 'office' }" class="station" data-test="station-open-office">
-            <span class="station-name">Office</span>
-            <span class="station-status" data-test="station-status-office"
-              >{{ game.reputationTier }} reputation</span
-            >
-          </RouterLink>
-        </li>
       </ul>
-
-      <div v-if="openStation" class="station-panel" data-test="station-panel">
-        <WorkbenchPanel v-if="openStation === 'workbench'" />
-        <MachineShopPanel v-else />
-      </div>
-    </section>
+    </div>
 
     <section class="parking">
       <h3>Parking ({{ game.parkingOccupancyCount }}/{{ game.parkingCapacity }})</h3>
@@ -484,6 +499,39 @@ h3 {
 .stats dd {
   margin: var(--mg-space-1) 0 0;
   font-size: var(--mg-fs-lg);
+}
+
+/* The garage as pairs (sprint211.md task F): each cluster is a shared box
+   around sections that already exist unchanged inside it, so the pairing
+   reads at a glance without inventing any new mechanic. */
+.garage-cluster {
+  border: 1px dashed var(--mg-panel-edge);
+  border-radius: var(--mg-radius);
+  padding: var(--mg-space-3);
+  margin: 0 0 var(--mg-space-4);
+}
+
+.garage-cluster .bays,
+.garage-cluster .stations {
+  margin: 0 0 var(--mg-space-3);
+}
+
+.garage-cluster > :last-child {
+  margin-bottom: 0;
+}
+
+.cluster-label {
+  margin: 0 0 var(--mg-space-2);
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* The body cluster's own door list holds exactly one tile - capped rather
+   than stretched across the same grid a four-tile list uses. */
+.body-door-list {
+  max-width: 260px;
 }
 
 /* The reputation line is a door to the Standing screen. It must LOOK like one:

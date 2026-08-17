@@ -3,13 +3,13 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useGameStore } from '../stores/gameStore'
 
 /**
- * Dev-only playtest instrumentation: a fixed chip showing how much wall-clock
+ * Dev-only session instrumentation: a fixed chip showing how much wall-clock
  * time this browser session has spent RUNNING (as opposed to paused for
  * note-taking), so an exported session log can be read against real play
  * cadence rather than however long the tab happened to stay open. Session
  * instrumentation only - never persisted to `GameState` or the save, and it
  * carries no gameplay effect of its own; the pause/resume toggle exists
- * purely so the maintainer can stop the clock while writing notes.
+ * purely so the clock can be stopped while notes are written.
  *
  * `Date.now()` (rather than `performance.now()`) is deliberate: this is
  * game-package UI instrumentation, not sim - the no-`Date.now()` law

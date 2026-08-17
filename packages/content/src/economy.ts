@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { BuyerArchetypeSchema } from './buyer'
 import { DAMAGE_PATTERN_IDS } from './damagePattern'
-import { PartFitmentClassSchema } from './partFitment'
+import { PartFitmentClassSchema, type PartFitmentClass } from './partFitment'
 import { UpkeepTierSchema } from './provenance'
 import { PowerFractionSchema } from './stats'
 import {
@@ -979,22 +979,28 @@ export const EconomyConfigSchema = z.object({
       /**
        * economy-bible.md law 1: the deduction rate for the restoration bill
        * BELOW the car's tier expectation band - yen of guide value gained per
-       * repair yen paid off. `.min(1)` is Law 1 itself: repairing a car must
-       * never return less than the yen spent. Work ABOVE the expectation band
-       * uses `expectationByTier[tier].beyondDiscount` instead, which may be
-       * below 1 (see that field).
+       * repair yen paid off, PER FITMENT CLASS (sprint213.md: buyers fear a
+       * project hardest on a cheap car, where a bad repair estimate stings
+       * hardest, and least on a flagship, where real restoration work is
+       * already priced in). `.min(1)` on every tier is Law 1 itself: repairing
+       * a car must never return less than the yen spent, at any tier. Work
+       * ABOVE the expectation band uses `expectationByTier[tier].beyondDiscount`
+       * instead, which may be below 1 (see that field).
        *
        * A repair's cash cost and its bill reduction are identical by
-       * construction, so paying X yen always returns `marketRepairDiscount x
-       * X` - THIS NUMBER IS THE ENTIRE RETURN ON REPAIR WORK. CONSTRAINT:
-       * never move it alone. `instanceBaseValueYen` floors at
-       * `bands.scrapValueFraction x cleanValue`, so the floor never binds on a
-       * generatable car only while `marketRepairDiscount x
-       * partsGeneration.maxBillFraction < 1` (today 1.5 x 0.6 = 0.90) -
-       * raising this rate requires lowering `maxBillFraction` in the same
-       * edit, checked by `valueModelProbes`'s floor probe.
+       * construction, so paying X yen on a tier's below-band bill always
+       * returns `marketRepairDiscount[tier] x X` - THIS NUMBER IS THE ENTIRE
+       * RETURN ON REPAIR WORK for that tier. CONSTRAINT: never move a tier's
+       * rate alone. `instanceBaseValueYen` floors at `bands.scrapValueFraction
+       * x cleanValue`, so the floor never binds on a generatable car only
+       * while `marketRepairDiscount[tier] x partsGeneration.maxBillFraction <
+       * 1` for EVERY tier (`maxBillFraction` is one global ceiling, so the
+       * steepest tier's own rate is the binding one) - raising any tier's rate
+       * past that requires lowering `maxBillFraction` in the same edit,
+       * checked by the schema refine below and `valueModelProbes`'s floor
+       * probe.
        */
-      marketRepairDiscount: z.number().min(1),
+      marketRepairDiscount: z.record(PartFitmentClassSchema, z.number().min(1)),
       /**
        * Stage C (sale-value-system.md section 3, design v4): how hard the
        * market discounts a car for an unsupported build's own failure risk -
@@ -1172,21 +1178,67 @@ export const EconomyConfigSchema = z.object({
           aftermarketReturn: z.number().min(0).max(1),
         }),
       ),
+      /**
+       * sprint213.md item 3 (the excellence premium): the ceiling fraction of
+       * clean value a fine-throughout, coherent, fresh example prices ABOVE
+       * `marketValueYen`'s old no-inflation ceiling - the fix for "a fully
+       * restored car can never be worth more than the identical clean car"
+       * (`marketValue.ts`'s own former claim). Read by `excellencePremiumYen`
+       * (marketValue.ts): gated on the car's below-expectation bill being
+       * genuinely zero (every billable slot already at or above its tier's own
+       * `expectationByTier[tier].band` - a real qualitative category, not an
+       * approximation), then scaled continuously by the SAME build's
+       * `coherenceFactorForCar` and by `mileageFactor` ("fresh") so a
+       * qualifying car's premium still varies with how coherent and how
+       * lightly used it is, never a step function in those two dimensions.
+       * Per fitment class because a buyer's willingness to pay a premium for
+       * genuine excellence is itself a tier fact, steepest where "usually
+       * rough" makes a truly sorted example rarest relative to its peers.
+       */
+      excellenceByTier: z.record(PartFitmentClassSchema, z.number().min(0).max(1)),
+      /**
+       * sprint213.md item 1 (the sale-reconciliation defect fix): the fraction
+       * of a buyer's own `[discountFloor, ceiling]` affinity range already
+       * earned by the time their taste score clears
+       * `matchedTasteScoreThreshold` - read by the shared `affinityMultiplier`
+       * curve (`sim/valuation.ts`), which both `tasteMultiplier` (the
+       * standard, un-channelled path) and `channelTasteMultiplier` build on.
+       * Below the threshold the curve climbs from `discountFloor` to this
+       * fraction of the range (a genuine mismatch is discounted hard); at and
+       * above it, the remaining `(1 - this)` of the range covers the rest of
+       * the climb to `ceiling` (par, or a channel/scene premium above it) -
+       * so a buyer who merely CLEARS "matched" already prices close to par,
+       * and the old defect (a merely-matched buyer still paying a real
+       * discount, stacked again by the quality-freshness draw) cannot
+       * recur. `0.9` reads as "matched already buys 90% of the way to par";
+       * `1.0` would collapse the curve to a single step at the threshold,
+       * `0.5` back to the old plain-linear shape.
+       */
+      affinityNearParFraction: z.number().min(0).max(1),
     })
     .strict()
     .refine(
       (v) =>
-        Object.values(v.expectationByTier).every(
-          (e) => e!.beyondDiscount <= v.marketRepairDiscount,
-        ),
+        Object.entries(v.expectationByTier).every(([tier, e]) => {
+          const discount = v.marketRepairDiscount[tier as PartFitmentClass]
+          return discount === undefined || e!.beyondDiscount <= discount
+        }),
       {
         message:
-          'valuation.expectationByTier[*].beyondDiscount must never exceed valuation.marketRepairDiscount - the market can only ever care LESS about work above a tier expectation, never more, and this is what keeps the (D, F) interlock (economy-bible law 2) safe',
+          "valuation.expectationByTier[*].beyondDiscount must never exceed that same tier's valuation.marketRepairDiscount - the market can only ever care LESS about work above a tier expectation, never more, and this is what keeps the (D, F) interlock (economy-bible law 2) safe",
       },
     )
     .refine(
       (v) => PartFitmentClassSchema.options.every((c) => v.expectationByTier[c] !== undefined),
       { message: 'valuation.expectationByTier must name every fitment class' },
+    )
+    .refine(
+      (v) => PartFitmentClassSchema.options.every((c) => v.marketRepairDiscount[c] !== undefined),
+      { message: 'valuation.marketRepairDiscount must name every fitment class' },
+    )
+    .refine(
+      (v) => PartFitmentClassSchema.options.every((c) => v.excellenceByTier[c] !== undefined),
+      { message: 'valuation.excellenceByTier must name every fitment class' },
     )
     .refine((v) => v.retentionFloor <= v.retentionCeiling, {
       message: 'valuation.retentionFloor must be <= valuation.retentionCeiling',
@@ -2182,9 +2234,11 @@ export const EconomyConfigSchema = z.object({
        *
        * The OTHER half of the (D, F) interlock - see
        * `valuation.marketRepairDiscount`'s own doc comment for the full
-       * constraint. `marketRepairDiscount x maxBillFraction` must stay below
-       * 1 (today 1.5 x 0.6 = 0.90) or a worst-case car's value falls through
-       * the scrap floor. Never move one without the other.
+       * constraint. `marketRepairDiscount[tier] x maxBillFraction` must stay
+       * below 1 for EVERY tier (this ceiling is one global number, so the
+       * steepest tier's own rate is the binding one) or a worst-case car's
+       * value falls through the scrap floor. Never move a tier's rate past
+       * that without also moving this.
        */
       maxBillFraction: z.number().positive().max(1),
       /**

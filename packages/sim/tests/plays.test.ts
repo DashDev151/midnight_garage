@@ -114,19 +114,29 @@ describe('the four plays rank as the economy intends', () => {
     // a worse RATE than selling the parts as they came off even though it is
     // more money. The profit gate above already asserts the rung that matters,
     // that reconditioning never earns LESS than as-found.
-    // ONE CAR IS EXEMPT, and the exemption is 0.7 per cent wide. On the Honda
-    // Today, the cheapest car in the game at 100,000 yen, stripping as found
-    // returns 130.42/pt against repairing to the band at 129.50/pt, so stripping
-    // edges fixing by RATE. Fixing still makes more MONEY, and the profit gate
-    // above ("stripping never beats fixing, on any car in the game") passes
-    // unchanged and unexempted - that gate is the core-loop law, and it holds.
-    //
-    // The car is also the one where repairing PAST the band collapses to
-    // 23.87/pt, which is economy-bible Law 1's tier-expectation amendment doing
-    // exactly what it was written to do: over-restoring a cheap car is meant to
-    // lose money. Both effects are the same cause, a car so cheap that labour
-    // dominates its economics, and neither is a defect to tune away.
-    const RATE_ORDER_EXEMPT = new Set(['honda-today-jw1'])
+    // A HANDFUL OF THE CHEAPEST CARS ARE EXEMPT. Sprint213.md item 2
+    // steepened entry's `marketRepairDiscount` (1.3 -> 1.5, "buyers fear
+    // projects"), which raises repair-to-EXPECTATION's own rate directly - it
+    // prices every below-band yen higher - while repairing PAST the band
+    // still prices at the unchanged, deliberately-low entry `beyondDiscount`
+    // (0.4, economy-bible Law 1's tier-expectation amendment: over-restoring
+    // a cheap car is meant to lose money). Pushing the first rate up without
+    // touching the second widens the gap between them, and on the roster's
+    // very cheapest cars a strip play's own (unaffected) rate now falls
+    // between the two - the same "a car so cheap that labour dominates its
+    // economics" phenomenon this test already documented for the Honda
+    // Today, now reaching its closest kei peers. Fixing still makes more
+    // MONEY than stripping on every one of these cars (the profit gate
+    // above, "stripping never beats fixing on any car in the game", is
+    // unaffected and unexempted - that gate is the core-loop law); this is
+    // purely a RATE inversion on the passion-spend half of the play, not a
+    // return to loss.
+    const RATE_ORDER_EXEMPT = new Set([
+      'honda-today-jw1',
+      'honda-city-e-aa',
+      'nissan-sunny-b12',
+      'honda-acty-ha4',
+    ])
     const failures = ROWS.filter(
       (row) =>
         !(

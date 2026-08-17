@@ -332,6 +332,28 @@ describe('GarageScreen', () => {
     })
   })
 
+  describe('the garage reads as pairs (sprint211.md task F: layout/grouping only)', () => {
+    it('groups service bays with the workbench and machine shop in one cluster', () => {
+      const wrapper = mountScreen()
+      const general = wrapper.get('[data-test="cluster-general"]')
+
+      expect(general.find('[data-test="service-slot-0"]').exists()).toBe(true)
+      expect(general.find('[data-test="station-open-workbench"]').exists()).toBe(true)
+      expect(general.find('[data-test="station-open-machine"]').exists()).toBe(true)
+      expect(general.find('[data-test="station-open-body-paint"]').exists()).toBe(false)
+    })
+
+    it('groups the body bay with the body shop door in the other cluster', () => {
+      const wrapper = mountScreen()
+      const body = wrapper.get('[data-test="cluster-body"]')
+
+      expect(body.find('[data-test="body-bay-slot"]').exists()).toBe(true)
+      expect(body.find('[data-test="station-open-body-paint"]').exists()).toBe(true)
+      expect(body.find('[data-test="station-open-workbench"]').exists()).toBe(false)
+      expect(body.find('[data-test="service-slot-0"]').exists()).toBe(false)
+    })
+  })
+
   describe('work stations (the garage is one building)', () => {
     /** Puts one loose part in the warehouse and on the bench, at `band`. */
     function partOnBench(game: ReturnType<typeof useGameStore>, band: PartInstance['band']) {

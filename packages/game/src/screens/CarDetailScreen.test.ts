@@ -2271,6 +2271,28 @@ describe('CarDetailScreen', () => {
       await selectZone(wrapper, 'bonnet')
       expect(wrapper.get('[data-test="zone-band-bonnet"]').text()).toBe('mint')
       expect(wrapper.get('[data-test="zone-why-bonnet"]').text()).toContain('bare metal')
+      // The structure/finish split (sprint211.md task B): the band alone
+      // reading "mint" here is exactly the D3 bug this test is named for, so
+      // the finish tag has to say "bare metal" beside it, on this same
+      // read-only diagram panel, not just in the body shop's own.
+      expect(wrapper.get('[data-test="zone-finish-bonnet"]').text()).toBe('bare metal')
+      const steps = wrapper.get('[data-test="zone-remaining-bonnet"]').findAll('li')
+      expect(steps.map((s) => s.text())).toEqual(['Prime', 'Paint', 'Polish'])
+    })
+
+    it('collapses to a plain Mint chip with no finish tag once structure and finish are both actually done', async () => {
+      const { wrapper } = await grantAndDock('bonnet', {
+        metal: 0,
+        surface: 0,
+        finish: 0,
+        panelMissing: false,
+        primed: false,
+        colour: 'lime',
+      })
+
+      expect(wrapper.get('[data-test="zone-band-bonnet"]').text()).toBe('mint')
+      expect(wrapper.find('[data-test="zone-finish-bonnet"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="zone-remaining-bonnet"]').exists()).toBe(false)
     })
 
     it('opens the door to the body shop when this car is in its bay', async () => {

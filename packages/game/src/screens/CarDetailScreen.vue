@@ -65,7 +65,13 @@ import {
   sellingChannelCadenceLabel,
   sellingChannelFeeLabel,
 } from '../utils/sellingChannelLabels'
-import { zoneWhyChips } from '../utils/zoneSeverity'
+import {
+  ZONE_FINISH_LABELS,
+  zoneBothDone,
+  zoneFinishPosition,
+  zoneRemainingSteps,
+  zoneWhyChips,
+} from '../utils/zoneSeverity'
 import { mapBackTarget } from './mapBack'
 
 const game = useGameStore()
@@ -246,6 +252,15 @@ watch(carId, () => {
 function onWorkshopSelect(selection: WorkshopSelection): void {
   panelTarget.value = selection
 }
+
+/** `panelTarget` narrowed to what the diagram itself can render as selected
+ * - `bench` has no region on the diagram to outline, so it reads as nothing
+ * selected there rather than being forced into a shape the diagram was never
+ * meant to carry (sprint211.md task A). */
+const workshopSelected = computed<WorkshopSelection | null>(() => {
+  const target = panelTarget.value
+  return target?.kind === 'part' || target?.kind === 'zone' ? target : null
+})
 
 /**
  * A click on a bench member row: while a pick carrying a part that fits this
@@ -536,15 +551,21 @@ const fitContext = computed(() => {
   return fit && d && fit.carId === d.car.id ? fit : null
 })
 
-/** Which part slot the Warehouse is fitting for right now, if any. */
-const activeFitPart = computed<CarPartId | null>(() => fitContext.value?.carPartId ?? null)
+/** Which part slot the Warehouse is fitting for right now, if any - `null`
+ * both out of scope and while it is scoped to a zone instead (this screen has
+ * no zone fit surface of its own). */
+const activeFitPart = computed<CarPartId | null>(() => {
+  const fit = fitContext.value
+  return fit?.kind === 'part' ? fit.carPartId : null
+})
 
 /** Open the Warehouse scoped to a benched member's EMPTY slot - the same
  * pick-from-your-parts flow an on-car fit uses; selection fits straight
  * into the container. */
 function openBenchFit(containerId: string, carPartId: CarPartId): void {
   const d = detail.value
-  if (d) ui.openWarehouse({ carId: d.car.id, carPartId, benchContainerId: containerId })
+  if (d)
+    ui.openWarehouse({ kind: 'part', carId: d.car.id, carPartId, benchContainerId: containerId })
 }
 
 const dragSession = useDragSession()
@@ -565,10 +586,12 @@ function onFitClick(carPartId: CarPartId): void {
   }
   const d = detail.value
   if (!d) return
-  if (activeFitPart.value === carPartId && !fitContext.value?.benchContainerId) {
+  const fit = fitContext.value
+  const benchContainerId = fit?.kind === 'part' ? fit.benchContainerId : undefined
+  if (activeFitPart.value === carPartId && !benchContainerId) {
     ui.closeWarehouse()
   } else {
-    ui.openWarehouse({ carId: d.car.id, carPartId })
+    ui.openWarehouse({ kind: 'part', carId: d.car.id, carPartId })
   }
 }
 
@@ -604,6 +627,17 @@ function removeMachineNoteFor(carPartId: CarPartId): string {
  * the affordance always works, this just names what it
  * costs by hand and what hiring the line would buy back.
  */
+/**
+ * Why fitting into this slot is refused outright right now (a required slot
+ * beneath it is still empty - the downward graph rule), or `null`. The
+ * install-side sibling of `removeBlockedReasonFor`, read from the same store
+ * getter the sim gate enforces.
+ */
+function installBlockedReasonFor(carPartId: CarPartId): string | null {
+  const d = detail.value
+  return d ? game.installBlockedReason(d.car.id, carPartId) : null
+}
+
 function installMachineNoteFor(carPartId: CarPartId): string {
   const d = detail.value
   return d ? game.installMachineNoteFor(d.car.id, carPartId) : ''
@@ -760,21 +794,32 @@ const paintBand = computed<ConditionBand | null>(
 
 /**
  * The zone the panel is docked on: the live zone state, its display name,
- * its own condition band, and its why chips - the read-only half of what the
- * zone-mode panel used to show (A1-A3). The next action (A4) and every
- * working control now live in the body shop room instead.
+ * its own condition band, its why chips, its finish position and its
+ * remaining-steps checklist - the read-only half of what the zone-mode
+ * panel used to show (A1-A3), plus structure/finish (sprint211.md task B:
+ * a beaten-straight bare panel must never read Mint here either, since this
+ * is the diagram every screen that isn't the body shop reads it from). The
+ * next action (A4) and every working control still live in the body shop
+ * room.
  */
 const selectedZone = computed(() => {
   const target = panelTarget.value
   const zones = zoneState.value
   if (target?.kind !== 'zone' || !zones) return null
   const zone = zones[target.zoneId]
+  const band = zoneConditionBand(zone)
+  const finishPosition = zone.panelMissing ? null : zoneFinishPosition(zone)
   return {
     zoneId: target.zoneId,
     zone,
     name: titleCaseFromSlug(target.zoneId),
-    band: zoneConditionBand(zone),
+    band,
     whyChips: zoneWhyChips(zone, detail.value?.model.uid),
+    finishLabel:
+      finishPosition && !zoneBothDone(band, finishPosition)
+        ? ZONE_FINISH_LABELS[finishPosition]
+        : null,
+    remainingSteps: zone.panelMissing ? [] : zoneRemainingSteps(zone),
   }
 })
 
@@ -993,7 +1038,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
       <!-- The workshop is the page. Full-width views, then the bench strip
            (if any), then the docked info/action panel every region feeds. -->
-      <WorkshopViews :car-id="detail.car.id" :drop-zones="dropZones" @select="onWorkshopSelect" />
+      <WorkshopViews
+        :car-id="detail.car.id"
+        :drop-zones="dropZones"
+        :selected="workshopSelected"
+        @select="onWorkshopSelect"
+      />
 
       <section
         v-if="game.benchContainersFor(detail.car.id).length > 0"
@@ -1145,6 +1195,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                   type="button"
                   class="fit-btn"
                   :class="{ 'active-target': dropZones[selectedRow.partId].isActiveTarget.value }"
+                  :disabled="!!installBlockedReasonFor(selectedRow.partId)"
                   :data-test="'fit-part-' + selectedRow.partId"
                   @pointerup="dropZones[selectedRow.partId].onPointerUp"
                   @pointerenter="dropZones[selectedRow.partId].onPointerEnter"
@@ -1153,6 +1204,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                 >
                   {{ dropZones[selectedRow.partId].isActiveTarget.value ? 'Drop here' : 'Fit' }}
                 </button>
+                <span
+                  v-if="installBlockedReasonFor(selectedRow.partId)"
+                  class="blocked-reason"
+                  :data-test="'install-blocked-' + selectedRow.partId"
+                  >{{ installBlockedReasonFor(selectedRow.partId) }}</span
+                >
                 <span
                   v-if="installMachineNoteFor(selectedRow.partId)"
                   class="blocked-reason"
@@ -1336,6 +1393,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               :data-test="'zone-band-' + selectedZone.zoneId"
             />
             <span
+              v-if="selectedZone.finishLabel"
+              class="finish-tag"
+              :data-test="'zone-finish-' + selectedZone.zoneId"
+              >{{ selectedZone.finishLabel }}</span
+            >
+            <span
               v-if="selectedZone.zone.panelMissing"
               class="missing-tag"
               data-test="zone-panel-off"
@@ -1362,6 +1425,23 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                 >{{ chip.hex ? '' : chip.icon }}</span
               >
               {{ chip.label }}
+            </li>
+          </ul>
+
+          <!-- The remaining-steps checklist, read-only here - the same
+               ladder the body shop's own panel works through
+               (sprint211.md task B). -->
+          <ul
+            v-if="selectedZone.remainingSteps.length > 0"
+            class="remaining-steps"
+            :data-test="'zone-remaining-' + selectedZone.zoneId"
+          >
+            <li
+              v-for="(step, index) in selectedZone.remainingSteps"
+              :key="index"
+              :data-test="'zone-remaining-step-' + selectedZone.zoneId + '-' + index"
+            >
+              {{ step }}
             </li>
           </ul>
 
@@ -2137,6 +2217,36 @@ h4 {
   text-align: center;
   line-height: 12px;
   font-size: 10px;
+}
+
+/* The finish-position tag beside the structure band chip (sprint211.md task
+   B) - same register as a why-chip, never the plain "Mint" reading on its
+   own unless structure and finish are both actually done. */
+.finish-tag {
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+  text-transform: lowercase;
+}
+
+.remaining-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mg-space-2);
+  margin: 0 0 var(--mg-space-2);
+  padding: 0;
+  list-style: none;
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+}
+
+.remaining-steps li {
+  padding: 0 var(--mg-space-2) 0 0;
+  border-right: 1px solid var(--mg-panel-edge);
+}
+
+.remaining-steps li:last-child {
+  padding-right: 0;
+  border-right: none;
 }
 
 /* The zone panel's own door to the body shop - a RouterLink rather than a

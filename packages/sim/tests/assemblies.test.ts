@@ -235,7 +235,7 @@ describe('assembly definitions and derived gates', () => {
 })
 
 describe('the Sprint 79 contract cases, re-expressed at assembly level (Sprint 87 decision 3)', () => {
-  it('contract case 1: pull the wheel assembly and refit it as it was - removal only, the refit free', () => {
+  it('contract case 1: pull the wheel assembly and refit it as it was - the refit charges the flat assembly figure regardless', () => {
     const car = wheelsWornCar()
     const state = baseState({ ownedCars: [car], serviceBayCarIds: [car.id] })
     const off = resolveRemoveAssembly(state, car.id, 'wheelAssembly', CONTEXT)
@@ -249,13 +249,15 @@ describe('the Sprint 79 contract cases, re-expressed at assembly level (Sprint 8
 
     const on = resolveRefitAssembly(off.state, container.id, CONTEXT)
     expect(on.ok).toBe(true)
-    expect(on.laborSlotsUsed).toBe(0) // both members equal their vacated baseline
+    // Both members are unchanged, but refit is a flat set figure now - it
+    // does not discount for that (sprint212.md task A).
+    expect(on.laborSlotsUsed).toBe(CONTEXT.economy.energy.actionPoints.refitAssembly)
     expect(on.state.assemblyInventory).toEqual([])
     expect(on.state.ownedCars[0]!.parts.rims.installed!.id).toBe(originalRims.id)
     expect(on.state.ownedCars[0]!.parts.tyres.installed!.id).toBe(originalTyres.id)
   })
 
-  it('contract case 2: fit a NEW tyre on the bench, refit - two removals plus the new tyre install', () => {
+  it('contract case 2: fit a NEW tyre on the bench, refit - the flat assembly figure, same as an unchanged refit', () => {
     const car = wheelsWornCar()
     const tyre = newTyre('pi-new-tyres')
     const state = baseState({ ownedCars: [car], partInventory: [tyre], serviceBayCarIds: [car.id] })
@@ -269,16 +271,17 @@ describe('the Sprint 79 contract cases, re-expressed at assembly level (Sprint 8
     expect(swap.ok).toBe(true)
     const on = resolveRefitAssembly(swap.state, container.id, CONTEXT)
     expect(on.ok).toBe(true)
-    // rims free (equivalence), new tyre charged the bolt-on install energy.
-    expect(on.laborSlotsUsed).toBe(CONTEXT.economy.energy.energyByClass['bolt-on'])
+    // A new tyre changed, but refit still charges only the flat assembly
+    // figure - the same as contract case 1's fully-unchanged refit.
+    expect(on.laborSlotsUsed).toBe(CONTEXT.economy.energy.actionPoints.refitAssembly)
     expect(off.laborSlotsUsed + on.laborSlotsUsed).toBe(
       2 * CONTEXT.economy.energy.actionPoints.removePart +
-        CONTEXT.economy.energy.energyByClass['bolt-on'],
+        CONTEXT.economy.energy.actionPoints.refitAssembly,
     )
     expect(on.state.ownedCars[0]!.parts.tyres.installed!.id).toBe(tyre.id)
   })
 
-  it('contract case 3: bench-repair the rims, fit a NEW tyre, refit - rim repair labour + rim refit + new-tyre install', () => {
+  it('contract case 3: bench-repair the rims, fit a NEW tyre, refit - still just the flat assembly figure', () => {
     const car = wheelsWornCar()
     const tyre = newTyre('pi-new-tyres-3')
     const state = baseState({ ownedCars: [car], partInventory: [tyre], serviceBayCarIds: [car.id] })
@@ -296,16 +299,17 @@ describe('the Sprint 79 contract cases, re-expressed at assembly level (Sprint 8
     const swap = resolveFitAssemblyMember(pulled.state, container.id, 'tyres', tyre.id, CONTEXT)
     const on = resolveRefitAssembly(swap.state, container.id, CONTEXT)
     expect(on.ok).toBe(true)
-    // Repaired rims no longer match the worn baseline (bolt-on) + new tyre (bolt-on).
-    expect(on.laborSlotsUsed).toBe(2 * CONTEXT.economy.energy.energyByClass['bolt-on'])
+    // Two members changed (repaired rims, new tyre) - still the one flat
+    // figure, never a per-member sum (sprint212.md task A).
+    expect(on.laborSlotsUsed).toBe(CONTEXT.economy.energy.actionPoints.refitAssembly)
     expect(on.state.ownedCars[0]!.parts.rims.installed!.band).toBe('fine')
     expect(on.state.ownedCars[0]!.parts.tyres.installed!.id).toBe(tyre.id)
   })
 
-  it('the clutch chain at gearbox-assembly level: both members charged off the car, a repaired member charged the buried rate back on', () => {
-    // gearboxAssembly members are gearbox + clutch; clutch is non-repairable, so
-    // the "improved member costs the buried rate" claim is tested via gearbox,
-    // repaired on the bench, then refit charged 2 (buried), clutch free (equivalence).
+  it('the clutch chain at gearbox-assembly level: both members charged off the car, the refit charging its flat figure regardless of which member changed', () => {
+    // gearboxAssembly members are gearbox + clutch; gearbox is repaired on the
+    // bench so it changes and clutch does not, but the refit prices neither
+    // member individually any more (sprint212.md task A).
     const gearbox = {
       id: 'pi-gbx',
       partId: CONTEXT.stockPartByCarPartId.entry!.gearbox!.id,
@@ -338,8 +342,8 @@ describe('the Sprint 79 contract cases, re-expressed at assembly level (Sprint 8
     expect(repair.laborSlotsUsed).toBeGreaterThan(0)
     const on = resolveRefitAssembly(repair.state, container.id, CONTEXT)
     expect(on.ok).toBe(true)
-    // gearbox repaired (mint != worn) charged the buried install energy; clutch unchanged (0).
-    expect(on.laborSlotsUsed).toBe(CONTEXT.economy.energy.energyByClass.buried)
+    // The flat assembly figure, whether or not gearbox came back improved.
+    expect(on.laborSlotsUsed).toBe(CONTEXT.economy.energy.actionPoints.refitAssembly)
   })
 })
 
@@ -368,7 +372,7 @@ describe('worked example: the tyre change (binding total)', () => {
       const totalLabour = off.laborSlotsUsed + on.laborSlotsUsed
       expect(totalLabour).toBe(
         2 * CONTEXT.economy.energy.actionPoints.removePart +
-          CONTEXT.economy.energy.energyByClass['bolt-on'],
+          CONTEXT.economy.energy.actionPoints.refitAssembly,
       )
       // The fee is gone - fitting a tyre never spends cash directly, whether
       // the wheels machine is owned or the line was hired for the day.
@@ -409,7 +413,7 @@ describe('worked example: the tyre change (binding total)', () => {
 })
 
 describe('worked example: worn internals (binding total)', () => {
-  it('remove charges every member, refit charges only the improved one; no fee posts to the car ledger, whether renting or owning', () => {
+  it('remove charges every member, refit charges the flat assembly figure; no fee posts to the car ledger, whether renting or owning', () => {
     for (const engineTier of [1, 2] as const) {
       const internals: PartInstance = {
         id: 'pi-internals',
@@ -442,8 +446,8 @@ describe('worked example: worn internals (binding total)', () => {
       expect(repair.laborSlotsUsed).toBeGreaterThan(0)
       const on = resolveRefitAssembly(repair.state, container.id, CONTEXT)
       expect(on.ok).toBe(true)
-      // Only internals is charged (buried install energy); block/head/cams free by equivalence.
-      expect(on.laborSlotsUsed).toBe(CONTEXT.economy.energy.energyByClass.buried)
+      // The flat assembly figure, whether or not internals came back improved.
+      expect(on.laborSlotsUsed).toBe(CONTEXT.economy.energy.actionPoints.refitAssembly)
 
       // No machine fee posts anywhere - remove and refit both spend only the
       // internals repair cost, whether renting the engine line or owning it.
@@ -487,14 +491,17 @@ describe('worked example: worn internals (binding total)', () => {
     const container = off.state.assemblyInventory![0]!
 
     // Refit prices the same way against whatever state it is given: the
-    // stripped-hire state pays the multiplier, the still-hired one does not.
-    // Every member matches its vacatedBaseline here, so base refit labour is
-    // the assembly overhead alone (0 at shipped tuning) and both run free.
+    // stripped-hire state pays the multiplier on the flat assembly figure,
+    // the still-hired one does not.
     const strippedHire = { ...off.state, machineHirePaidDayByGroup: {} }
     const byHandOn = resolveRefitAssembly(strippedHire, container.id, CONTEXT)
     expect(byHandOn.ok).toBe(true)
+    expect(byHandOn.laborSlotsUsed).toBe(
+      CONTEXT.economy.energy.actionPoints.refitAssembly * multiplier,
+    )
     const on = resolveRefitAssembly(off.state, container.id, CONTEXT)
     expect(on.ok).toBe(true)
+    expect(on.laborSlotsUsed).toBe(CONTEXT.economy.energy.actionPoints.refitAssembly)
     expect(on.state.ownedCars[0]!.parts.internals.installed!.id).toBe(internals.id)
   })
 })

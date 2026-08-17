@@ -177,6 +177,7 @@ import {
   reconditionQuote,
   repairCeilingForLevel,
   expressPriceYen,
+  requiredEmptySlotsBehind,
   requirementLabel,
   resolveAcceptMission,
   resolveAcceptSceneCommission,
@@ -586,11 +587,12 @@ export interface NextRepairStepView {
  * One assembly's car-level row - remove it as a
  * unit, or refit it once it is on the bench. `blockedReason` is a plain string
  * naming why the relevant action (remove when off the bench, refit when on
- * it) can't run right now - an external blocker still in the way, the
- * assembly's machinery neither owned nor hired today, or today's labour
- * falling short of what the op actually costs - phrased the same way
- * `removeBlockedReason` phrases a single-part blocker. Null when nothing
- * blocks it.
+ * it) can't run right now - an external blocker still in the way, a refit
+ * that would seal a required slot shut behind a member (wheels over stripped
+ * brakes/suspension), the assembly's machinery neither owned nor hired
+ * today, or today's labour falling short of what the op actually costs -
+ * phrased the same way `removeBlockedReason` phrases a single-part blocker.
+ * Null when nothing blocks it.
  */
 export interface AssemblyRowView {
   assemblyId: AssemblyId
@@ -3095,6 +3097,11 @@ export const useGameStore = defineStore('game', () => {
       const part = context.value.partsById[pi.partId]
       if (!part) return false
       if (!partFitsCar(part, model, componentId, context.value.partsTaxonomyById)) return false
+      // Fitting this part must not seal a required slot shut behind it
+      // (wheels over stripped brakes, intake over a pulled engine).
+      if (requiredEmptySlotsBehind(car, model, part.carPartId, context.value).length > 0) {
+        return false
+      }
       return partCapabilityRequirement(part, car, gameState.value, context.value) === null
     })
   }
@@ -3125,6 +3132,9 @@ export const useGameStore = defineStore('game', () => {
     // replacement (`replacesOccupiedSlot`, sim/jobs.ts), so it keeps offering
     // candidates while it is occupied; every other slot must be empty first.
     if (car.parts[carPartId].installed && !replacesOccupiedSlot(carPartId, context.value)) return []
+    // Fitting into this slot must not seal a required slot shut behind it
+    // (wheels over stripped brakes, intake over a pulled engine).
+    if (requiredEmptySlotsBehind(car, model, carPartId, context.value).length > 0) return []
     return gameState.value.partInventory.filter((pi) => {
       if (pi.band === 'scrap') return false
       if (!isPartAvailableFor(pi, carId)) return false
@@ -3174,6 +3184,24 @@ export const useGameStore = defineStore('game', () => {
     if (!fits) return null
     const requirement = partCapabilityRequirement(part, car, gameState.value, context.value)
     return requirement ? `Needs ${toolRequirementName(requirement)}` : null
+  }
+
+  /**
+   * The human-readable reason fitting anything into `carPartId` would refuse
+   * right now, or `null` when nothing structural blocks it. The one
+   * structural refusal `installablePartsForPart`'s own filter doesn't
+   * already explain by simply omitting a candidate: a required slot still
+   * empty behind this one (`requiredEmptySlotsBehind`, sim/jobs.ts) - wheels
+   * going back on over stripped brakes/suspension is the sharp case. The
+   * install-side sibling of `removeBlockedReason` below.
+   */
+  function installBlockedReason(carId: string, carPartId: CarPartId): string | null {
+    const car = findWorkableCar(carId)
+    const model = car ? context.value.modelsById[car.modelId] : undefined
+    if (!car || !model) return null
+    const sealed = requiredEmptySlotsBehind(car, model, carPartId, context.value)
+    if (sealed.length === 0) return null
+    return `The ${sealed.map((id) => carPartLabel(id)).join(', ')} under it is still empty - fit that first.`
   }
 
   /**
@@ -4176,6 +4204,7 @@ export const useGameStore = defineStore('game', () => {
   function assemblyRowsFor(carId: string): AssemblyRowView[] {
     const car = findWorkableCar(carId)
     if (!car) return []
+    const model = context.value.modelsById[car.modelId]
     return context.value.assemblies.map((def) => {
       const container = assemblyContainerFor(gameState.value, carId, def.id)
       const onBench = !!container
@@ -4183,6 +4212,23 @@ export const useGameStore = defineStore('game', () => {
         (b) => car.parts[b].installed !== null,
       )
       const structurallyBlocked = occupiedBlockers.length > 0
+      // Refitting must not seal a REQUIRED slot shut behind a member -
+      // external to the assembly's own member set, since an internal empty
+      // member isn't a defect this refit needs to fix. The wheel assembly
+      // over stripped brakes/suspension is the sharp case: nothing else
+      // stops it structurally.
+      const sealedSlots = model
+        ? [
+            ...new Set(
+              def.members.flatMap((member) => {
+                const instance = container?.members[member]
+                if (!instance) return []
+                return requiredEmptySlotsBehind(car, model, member, context.value, def.members)
+              }),
+            ),
+          ]
+        : []
+      const sealedByRefit = sealedSlots.length > 0
       const gateGroup = assemblyMachineGateGroup(def, context.value)
       const machineMultiplier = machineLaborMultiplier(gateGroup, gameState.value, context.value)
       const hasSomethingToRemove = def.members.some((m) => car.parts[m].installed !== null)
@@ -4207,15 +4253,17 @@ export const useGameStore = defineStore('game', () => {
         displayName: def.displayName,
         group: def.group,
         onBench,
-        canRefit: onBench && !structurallyBlocked && !laborShort,
+        canRefit: onBench && !structurallyBlocked && !sealedByRefit && !laborShort,
         canRemove: !onBench && hasSomethingToRemove && !structurallyBlocked && !laborShort,
         removeLabourPoints,
         refitLabourPoints,
         blockedReason: structurallyBlocked
           ? `Take off ${occupiedBlockers.map((b) => carPartLabel(b)).join(', ')} first`
-          : laborShort && (onBench || hasSomethingToRemove)
-            ? assemblyLabourShortfallCopy(relevantLabourPoints, laborSlotsRemainingToday.value)
-            : null,
+          : onBench && sealedByRefit
+            ? `The ${sealedSlots.map((s) => carPartLabel(s)).join(', ')} under it is still empty - fit that first.`
+            : laborShort && (onBench || hasSomethingToRemove)
+              ? assemblyLabourShortfallCopy(relevantLabourPoints, laborSlotsRemainingToday.value)
+              : null,
         machineNote: machineLaborDisclosureText(
           machineLaborDisclosureFor(
             gateGroup,
@@ -5426,6 +5474,7 @@ export const useGameStore = defineStore('game', () => {
     installablePartsFor,
     installablePartsForPart,
     installToolGateReasonFor,
+    installBlockedReason,
     removeBlockedReason,
     removeMachineNoteFor,
     installMachineNoteFor,

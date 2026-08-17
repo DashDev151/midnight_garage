@@ -19,6 +19,7 @@ import {
   canRepair,
   clampRepairTarget,
   hasForcedInduction,
+  isPartMissing,
   planGroupRepair,
   planPartRepair,
   presentPartIdsInGroup,
@@ -32,6 +33,7 @@ import type { SimContext } from './context'
 import { crewEnergySaved, perfectionistCostMultiplier } from './crewSkills'
 import { pruneCuredCauses, revealOnRemoval } from './diagnosis'
 import { recordDynoSession } from './dyno'
+import { carInBodyBay } from './facilities'
 import { bookCashMovements } from './financeLedger'
 import { machiningOperationById } from './machining'
 import { completeMachiningJob, machiningLogEntryFor } from './machiningJobs'
@@ -454,6 +456,42 @@ export function occupiedBlockers(
   const entry = context.partsTaxonomyById[carPartId]
   if (!entry) return []
   return entry.blockedBy.filter((blockerId) => car.parts[blockerId].installed !== null)
+}
+
+/** Every slot whose own `blockedBy` list names `carPartId` - the taxonomy
+ * graph read backwards from `occupiedBlockers`'s forward direction:
+ * structural only, independent of car state, so it costs nothing to call
+ * before a car is even resolved. What installing/occupying `carPartId`
+ * would physically seal access to, whatever slot names it. */
+export function slotsBlockedByPart(carPartId: CarPartId, context: SimContext): CarPartId[] {
+  return context.partsTaxonomy
+    .filter((entry) => entry.blockedBy.includes(carPartId))
+    .map((entry) => entry.id)
+}
+
+/**
+ * The REQUIRED slots that installing/occupying `carPartId` on `car` right
+ * now would seal shut behind it - every slot `slotsBlockedByPart` names that
+ * is currently EMPTY and genuinely missing rather than legitimately absent
+ * (`isPartMissing`'s own forced-induction carve-out), minus anything in
+ * `exclude`. An assembly's own refit passes its member set as `exclude`: an
+ * internal empty member is not itself a defect the refit needs to fix, only
+ * a slot external to the assembly is. The install-respects-the-graph-
+ * downward law (sprint212.md): wheels going back on over stripped brakes/
+ * suspension, or intake going back on over a pulled engine, are both this
+ * same check read from the other direction of `occupiedBlockers`.
+ */
+export function requiredEmptySlotsBehind(
+  car: CarInstance,
+  model: CarModel,
+  carPartId: CarPartId,
+  context: SimContext,
+  exclude: readonly CarPartId[] = [],
+): CarPartId[] {
+  const excluded = new Set(exclude)
+  return slotsBlockedByPart(carPartId, context).filter(
+    (slot) => !excluded.has(slot) && isPartMissing(car, model, slot),
+  )
 }
 
 /**
@@ -1181,6 +1219,13 @@ export function installFitGate(
   if (occupiedBlockers(car!, part!.carPartId, context).length > 0) {
     return { ok: false, log: [{ type: 'job-blocked', jobId: id, reason: 'blocked-by' }] }
   }
+  // Install also refuses the graph read backwards: fitting this part must not
+  // seal a required slot shut behind it (wheels over stripped brakes, intake
+  // over a pulled engine) - `model!` is guaranteed defined here (part of the
+  // `fits` conjunction above).
+  if (requiredEmptySlotsBehind(car!, model!, part!.carPartId, context).length > 0) {
+    return { ok: false, log: [{ type: 'job-blocked', jobId: id, reason: 'blocks-access' }] }
+  }
   return { ok: true }
 }
 
@@ -1267,14 +1312,33 @@ export function applyAvailableLaborToJob(
   }
   // A `recondition-part` job works a loose part on the workshop floor's bench
   // and a loose-part `machine-part` job works one on the machine in the machine
-  // shop - neither addresses a car, so the in-service-bay requirement (a
-  // car-only constraint) is skipped for both. Every other step below - the
-  // daily labour budget, the completion path - is identical; one repair economy.
-  if (!isPartLevelJob(job, context) && !state.serviceBayCarIds.includes(job.carInstanceId)) {
-    return {
-      state,
-      log: [{ type: 'job-blocked', jobId: job.id, reason: 'not-in-service-bay' }],
-      laborSlotsUsed: 0,
+  // shop - neither addresses a car, so the in-a-bay requirement (a car-only
+  // constraint) is skipped for both. Every other step below - the daily
+  // labour budget, the completion path - is identical; one repair economy.
+  //
+  // Interior parts (`seats`, `dashGauges`) and `aero` are body-shop work
+  // (sprint212.md: interior and aero belong to the body bay) - their job
+  // asks the body bay rather than a service bay; every other slot is
+  // unaffected. `aero` shares its taxonomy group (`body`) with the two
+  // zone-derived carriers (`bodywork`, `paint`), so it is named by
+  // `carPartId` rather than by group.
+  if (!isPartLevelJob(job, context)) {
+    const needsBodyBay = job.componentId === 'interior' || job.carPartId === 'aero'
+    const inRightBay = needsBodyBay
+      ? carInBodyBay(state, job.carInstanceId)
+      : state.serviceBayCarIds.includes(job.carInstanceId)
+    if (!inRightBay) {
+      return {
+        state,
+        log: [
+          {
+            type: 'job-blocked',
+            jobId: job.id,
+            reason: needsBodyBay ? 'not-in-body-bay' : 'not-in-service-bay',
+          },
+        ],
+        laborSlotsUsed: 0,
+      }
     }
   }
 

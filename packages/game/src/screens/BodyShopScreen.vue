@@ -1,33 +1,49 @@
 <script setup lang="ts">
 import type {
+  CarPartId,
   Grade,
   PaintFinish,
-  PartInstance,
   PipelineStageId,
   ZoneId,
 } from '@midnight-garage/content'
 import {
+  CONSUMABLE_TINS,
   PAINT_COLOURS,
-  fitmentClassForTier,
   paintStockKey,
   titleCaseFromSlug,
 } from '@midnight-garage/content'
 import {
+  bodyLineCapability,
   factoryColourSet,
+  firstShortfall,
   hasMachineLineFor,
   machineLaborMultiplier,
+  planPaintStage,
+  planPipelineStage,
+  stageConsumables,
   zoneConditionBand,
   zoneNextStep,
+  type PipelineStageRefusal,
 } from '@midnight-garage/sim'
 import { computed, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import BandChip from '../components/BandChip.vue'
 import WorkshopViews, { type WorkshopSelection } from '../components/WorkshopViews.vue'
 import { useCarPartDropZones } from '../composables/useCarPartDropZones'
+import { useDragSession } from '../composables/useDragAndDrop'
+import { useZoneDropZones } from '../composables/useZoneDropZones'
 import { useGameStore, type MachineLaborDisclosure } from '../stores/gameStore'
+import { useUiStore } from '../stores/uiStore'
 import { formatYen } from '../utils/formatYen'
 import { colourTokenDisplayName } from '../utils/paintFamilies'
-import { zoneWhyChips } from '../utils/zoneSeverity'
+import { repairStepText } from '../utils/repairStepLabels'
+import {
+  ZONE_FINISH_LABELS,
+  zoneBothDone,
+  zoneFinishPosition,
+  zoneRemainingSteps,
+  zoneWhyChips,
+} from '../utils/zoneSeverity'
 
 /**
  * The body shop room (sprint208.md): the zone diagram and the one zone
@@ -40,50 +56,158 @@ import { zoneWhyChips } from '../utils/zoneSeverity'
 
 const game = useGameStore()
 
+const ui = useUiStore()
 const carId = computed(() => game.gameState.bodyBayCarId)
 const detail = computed(() => (carId.value ? game.carDetail(carId.value) : undefined))
 
-const { dropZones } = useCarPartDropZones(detail)
+const { dropZones, acceptsInstall } = useCarPartDropZones(detail, () => ui.closeWarehouse())
+const { dropZones: zoneDropZones } = useZoneDropZones(detail)
+const dragSession = useDragSession()
 
-const selectedZoneId = ref<ZoneId | null>(null)
+/**
+ * What the docked panel is showing - a zone or a part, told apart by `kind`
+ * exactly as `WorkshopViews` emits it (sprint211.md task A). Selecting
+ * anything replaces the dock outright and the dock's own action always
+ * targets what it displays, so a click can never act on a stale target: the
+ * root cause this screen used to carry was a part click being a silent
+ * no-op that left a zone selection standing.
+ */
+const panelTarget = ref<WorkshopSelection | null>(null)
 watch(carId, () => {
-  selectedZoneId.value = null
+  panelTarget.value = null
 })
 
 function onWorkshopSelect(selection: WorkshopSelection): void {
-  if (selection.kind === 'zone') selectedZoneId.value = selection.zoneId
+  panelTarget.value = selection
 }
+
+const selectedZoneId = computed<ZoneId | null>(() =>
+  panelTarget.value?.kind === 'zone' ? panelTarget.value.zoneId : null,
+)
+const selectedPartId = computed<CarPartId | null>(() =>
+  panelTarget.value?.kind === 'part' ? panelTarget.value.partId : null,
+)
 
 const zoneState = computed(() => detail.value?.car.zoneState ?? null)
 
 /** The docked zone, with everything its panel needs: the live zone state,
- * its display name, its own condition band, its why chips, and its single
- * next pipeline stage - the same shape `CarDetailScreen.vue` used to build
- * before this panel moved here (sprint208.md). */
+ * its display name, its own condition band, its why chips, its single next
+ * pipeline stage, its finish position, and its remaining-steps checklist
+ * (sprint211.md task B - structure and finish are different facts, so both
+ * show, and the checklist unrolls the whole ladder rather than just the
+ * next verb). */
 const selectedZone = computed(() => {
   const zones = zoneState.value
   const zoneId = selectedZoneId.value
   if (!zoneId || !zones) return null
   const zone = zones[zoneId]
+  const band = zoneConditionBand(zone)
+  const finishPosition = zone.panelMissing ? null : zoneFinishPosition(zone)
   return {
     zoneId,
     zone,
     name: titleCaseFromSlug(zoneId),
-    band: zoneConditionBand(zone),
+    band,
     whyChips: zoneWhyChips(zone, detail.value?.model.uid),
     nextStep: zoneNextStep(zone),
+    // `null` once structure and finish are both done - the band chip alone
+    // is then the whole story, and a second "polished" tag beside a "mint"
+    // chip would say nothing new.
+    finishLabel:
+      finishPosition && !zoneBothDone(band, finishPosition)
+        ? ZONE_FINISH_LABELS[finishPosition]
+        : null,
+    remainingSteps: zone.panelMissing ? [] : zoneRemainingSteps(zone),
   }
 })
 
 const noLabourLeft = computed(() => game.laborSlotsRemainingToday <= 0)
 
-/** Why a plan-gated control is disabled, when it is - the same idiom every
- * other refused control in the shop states its reason with. A `null` plan
- * can mean several structural things the sim doesn't hand back a code for
- * yet; the one reason this screen can always name for itself is the shared
- * labour pool running dry. */
-function planDisabledReason(plan: { costYen: number; laborSlots: number } | null): string | null {
+/** The material name a stage's own shortfall names, straight off the
+ * catalogue that prices it - `firstShortfall` (sim) already tells us which
+ * `consumableStock` key is short, this just makes the key readable. */
+const MATERIAL_NAME_BY_KEY: Readonly<Record<string, string>> = Object.fromEntries(
+  CONSUMABLE_TINS.map((tin) => [tin.id, tin.name]),
+)
+
+/** A structural pipeline refusal (sim's own `PipelineStageRefusal.reason`),
+ * in plain words - the vocabulary every caption below shares. */
+const PIPELINE_REFUSAL_CAPTIONS: Readonly<Partial<Record<PipelineStageRefusal['reason'], string>>> =
+  {
+    'needs-panel': 'Fit a panel here first.',
+    prereq: 'Needs priming first.',
+    'wrong-colour': "Not this car's factory colour.",
+    'metal-only': 'This zone has no metal to work.',
+  }
+
+/** The disabled-control caption every plan-gated action in this room shares
+ * once its own structural reason is ruled out (sprint211.md task C, caption
+ * idiom - visible on the surface, never title-only): off the body bay's own
+ * car, then no labour left today. */
+function basicCaption(
+  plan: { costYen: number; laborSlots: number } | null,
+  carIdForCaption: string,
+): string | null {
   if (plan) return null
+  const bay = game.pipelineBodyBayCaption(carIdForCaption)
+  if (bay) return bay
+  return noLabourLeft.value ? 'No labour left today' : null
+}
+
+/** A generic (non-paint) stage control's own caption: the shared bay/labour
+ * checks above, plus the pure sim planner's own structural refusal (read
+ * straight off `planPipelineStage`, the exact function the click resolves
+ * through, so the caption can never claim a reason the resolver disagrees
+ * with) and a shelf shortfall for whatever material the stage draws. */
+function stageCaption(
+  plan: { costYen: number; laborSlots: number } | null,
+  zoneId: ZoneId,
+  stage: Exclude<PipelineStageId, 'paint'>,
+): string | null {
+  if (plan) return null
+  const car = detail.value?.car
+  if (!car) return null
+  const bay = game.pipelineBodyBayCaption(car.id)
+  if (bay) return bay
+  const zone = zoneState.value?.[zoneId]
+  if (zone) {
+    const result = planPipelineStage(stage, zone, bodyLineCapability(game.gameState, game.context))
+    if (!result.ok) return PIPELINE_REFUSAL_CAPTIONS[result.reason] ?? 'Not ready yet.'
+  }
+  const shortfall = firstShortfall(game.consumableStock, stageConsumables(stage))
+  if (shortfall) {
+    return `Out of ${MATERIAL_NAME_BY_KEY[shortfall.key] ?? shortfall.key} - buy more from the parts shop.`
+  }
+  return noLabourLeft.value ? 'No labour left today' : null
+}
+
+/** A paint tin's own caption - the same bay/labour checks, plus
+ * `planPaintStage`'s own structural refusal (not primed, or a stock-grade
+ * tin in the wrong colour). Never a stock caption: every tin rendered here
+ * is already known to be on the shelf (`ownedPaintTins` below only lists
+ * what `consumableStock` actually holds). */
+function paintCaption(
+  plan: { costYen: number; laborSlots: number } | null,
+  zoneId: ZoneId,
+  colour: string,
+  grade: Grade,
+): string | null {
+  if (plan) return null
+  const car = detail.value?.car
+  if (!car) return null
+  const bay = game.pipelineBodyBayCaption(car.id)
+  if (bay) return bay
+  const zone = zoneState.value?.[zoneId]
+  if (zone) {
+    const result = planPaintStage(
+      zone,
+      colour,
+      bodyLineCapability(game.gameState, game.context),
+      grade,
+      car.factoryColour,
+    )
+    if (!result.ok) return PIPELINE_REFUSAL_CAPTIONS[result.reason] ?? 'Not ready yet.'
+  }
   return noLabourLeft.value ? 'No labour left today' : null
 }
 
@@ -122,6 +246,19 @@ const nextActionPlan = computed(() => {
   const zone = selectedZone.value
   if (!zone || !nextActionLabel.value) return null
   return stagePreview(zone.zoneId, zone.nextStep as Exclude<PipelineStageId, 'paint'>)
+})
+
+/** The next-action button's own caption when it has no plan - read here
+ * rather than inline in the template, since the cast to the stage's own
+ * narrower type belongs in script. */
+const nextActionCaption = computed(() => {
+  const zone = selectedZone.value
+  if (!zone || !nextActionLabel.value) return null
+  return stageCaption(
+    nextActionPlan.value,
+    zone.zoneId,
+    zone.nextStep as Exclude<PipelineStageId, 'paint'>,
+  )
 })
 
 function onStageClick(zoneId: ZoneId, stage: Exclude<PipelineStageId, 'paint'>): void {
@@ -193,17 +330,12 @@ function onStripPrepClick(): void {
 
 const REMOVE_PANEL_LABEL = 'Take it off'
 
-function matchingPanelsFor(zoneId: ZoneId): PartInstance[] {
-  const d = detail.value
-  if (!d) return []
-  const model = game.context.modelsById[d.car.modelId]
-  if (!model) return []
-  const fitClass = fitmentClassForTier(model.tier)
-  return game.gameState.partInventory.filter((p: PartInstance) => {
-    const part = game.context.partsById[p.partId]
-    return part?.zoneId === zoneId && part.fitmentClass === fitClass
-  })
-}
+/** Why the panel comes off at all - shown every time the control is on
+ * screen, not only when it is disabled (sprint211.md task E: no repair ever
+ * requires removal, so the reason has to be stated, not just implied by
+ * context). */
+const REMOVE_PANEL_PURPOSE =
+  'Comes off for a replacement panel, or to keep the old one safe on the shelf.'
 
 function removePanelPreview(zoneId: ZoneId): { costYen: number; laborSlots: number } | null {
   const car = detail.value?.car
@@ -217,34 +349,30 @@ function onRemovePanelClick(zoneId: ZoneId): void {
   game.removePanel(car.id, zoneId)
 }
 
-function installPanelPreview(
-  zoneId: ZoneId,
-  partInstanceId: string,
-): { costYen: number; laborSlots: number } | null {
-  const car = detail.value?.car
-  if (!car) return null
-  return game.pipelineActionPlan(car, { kind: 'pipeline-install-panel', zoneId, partInstanceId })
-}
-
-function onInstallPanelClick(zoneId: ZoneId, partInstanceId: string): void {
-  const car = detail.value?.car
-  if (!car || !partInstanceId) return
-  game.installPanel(car.id, zoneId, partInstanceId)
-}
-
-const zonePanelOptions = computed(() => {
-  const zone = selectedZone.value
-  if (!zone || !zone.zone.panelMissing) return []
-  return matchingPanelsFor(zone.zoneId).map((instance) => ({
-    id: instance.id,
-    label: game.partName(instance.partId) + ' (' + instance.band + ')',
-    plan: installPanelPreview(zone.zoneId, instance.id),
-  }))
-})
-
 const zoneRemovePanelPlan = computed(() =>
   selectedZone.value ? removePanelPreview(selectedZone.value.zoneId) : null,
 )
+
+/**
+ * Opens (or, if already scoped to this exact zone, closes) the Warehouse for
+ * a fresh panel - the standard "Fit" idiom every other slot in the game
+ * uses (sprint211.md task D: the old per-SKU button block picked straight
+ * off the inventory itself, a second fit flow living beside the real one).
+ * A zone only ever offers this while its own panel is missing - fitting over
+ * an occupied zone is not a thing (no Replace verb): the panel comes off
+ * first, through the control above, then a fresh one goes on through this
+ * one.
+ */
+function onZoneFitClick(zoneId: ZoneId): void {
+  const d = detail.value
+  if (!d) return
+  const active = ui.warehouseFit
+  if (active?.kind === 'zone' && active.carId === d.car.id && active.zoneId === zoneId) {
+    ui.closeWarehouse()
+  } else {
+    ui.openWarehouse({ kind: 'zone', carId: d.car.id, zoneId })
+  }
+}
 
 // --- The finish coat: strip/prime already run through the ladder above, ---
 // paint is its own picker over the tins actually on the shelf. ------------
@@ -286,6 +414,7 @@ interface OwnedPaintTin {
   hex: string
   name: string
   plan: { costYen: number; laborSlots: number } | null
+  caption: string | null
 }
 
 /** Every paint tin actually on the shelf, as the docked zone's own picker:
@@ -300,17 +429,19 @@ const ownedPaintTins = computed<OwnedPaintTin[]>(() => {
     for (const colour of PAINT_COLOURS) {
       if ((game.consumableStock[paintStockKey(finish, colour.id)] ?? 0) <= 0) continue
       const grade = gradeForTin(finish, colour.id)
+      const plan = game.pipelineActionPlan(car, {
+        kind: 'pipeline-paint',
+        zoneId: zone.zoneId,
+        colour: colour.id,
+        grade,
+      })
       tins.push({
         finish,
         colourId: colour.id,
         hex: colour.hex,
         name: colourTokenDisplayName(colour.id, detail.value?.model.uid),
-        plan: game.pipelineActionPlan(car, {
-          kind: 'pipeline-paint',
-          zoneId: zone.zoneId,
-          colour: colour.id,
-          grade,
-        }),
+        plan,
+        caption: paintCaption(plan, zone.zoneId, colour.id, grade),
       })
     }
   }
@@ -336,6 +467,12 @@ interface PaintTinGroup {
   /** The finish's own loud price, read off any one tin in the group - fixed
    * by finish alone, never by colour. */
   plan: { costYen: number; laborSlots: number } | null
+  /** The group's own refusal caption (sprint211.md task C) - read off the
+   * first disabled tin, since every tin in a finish group refuses for the
+   * same structural reason (not primed, or the panel missing) bar the rare
+   * per-colour stock-grade mismatch, which each swatch's own `title` still
+   * carries individually. `null` once every tin in the group has a plan. */
+  caption: string | null
   tins: OwnedPaintTin[]
 }
 
@@ -352,10 +489,89 @@ const ownedPaintTinGroups = computed<PaintTinGroup[]>(() => {
       finish,
       label: PAINT_FINISH_LABELS[finish],
       plan: tins.find((tin) => tin.plan)?.plan ?? null,
+      caption: tins.find((tin) => tin.caption)?.caption ?? null,
       tins,
     }
   })
 })
+
+// --- A part selection, hosted here rather than dropped silently ------------
+// (sprint211.md task A). Only repair, take-off and fit - the same store
+// getters `CarDetailScreen.vue` reads for a selected part, never a
+// parallel gate of this screen's own. Interior/aero parts have no real body-
+// bay pipeline of their own yet (sprint212.md), so any refusal these read
+// today comes straight off the sim's existing gate and updates on its own
+// once that lands. -------------------------------------------------------
+
+const selectedGroup = computed(() =>
+  selectedPartId.value ? (game.groupForCarPart(selectedPartId.value) ?? null) : null,
+)
+
+const selectedPartRow = computed(() => {
+  const id = selectedPartId.value
+  const componentId = selectedGroup.value
+  const d = detail.value
+  if (!id || !componentId || !d) return null
+  return game.partsInGroup(d.car.id, componentId).find((row) => row.partId === id) ?? null
+})
+
+const selectedPartRepairStep = computed(() => {
+  const id = selectedPartId.value
+  const componentId = selectedGroup.value
+  const d = detail.value
+  return id && componentId && d ? game.nextRepairStep(d.car.id, componentId, id) : null
+})
+
+const selectedPartRepairLabel = computed(() =>
+  selectedPartRepairStep.value ? repairStepText(selectedPartRepairStep.value) : '',
+)
+
+function onPartRepairClick(): void {
+  const id = selectedPartId.value
+  const componentId = selectedGroup.value
+  const d = detail.value
+  const step = selectedPartRepairStep.value
+  if (!id || !componentId || !d || !step) return
+  game.repair(d.car.id, componentId, step.targetBand, id)
+}
+
+/** The Take-off control's own refusal - straight off the same
+ * `removeBlockedReason` gate `CarDetailScreen.vue` reads, never a second
+ * one. */
+const selectedPartRemoveReason = computed(() => {
+  const id = selectedPartId.value
+  const d = detail.value
+  return id && d ? game.removeBlockedReason(d.car.id, id) : null
+})
+
+function onPartRemoveClick(): void {
+  const id = selectedPartId.value
+  const d = detail.value
+  if (id && d) game.removePart(d.car.id, id)
+}
+
+/** Opens (or closes, if already scoped to this exact part) the Warehouse for
+ * a replacement - the same pick-or-drag "Fit" idiom every other slot uses
+ * (`CarDetailScreen.vue`'s own `onFitClick`), including the picked-card
+ * fallback so a part picked from the Warehouse before this screen even had
+ * a panel to dock still lands correctly. */
+function onPartFitClick(): void {
+  const id = selectedPartId.value
+  const d = detail.value
+  if (!id || !d) return
+  const picked = dragSession.value
+  const payload = picked?.mode === 'pick' ? picked.payload : null
+  if (typeof payload === 'string' && acceptsInstall(id, payload)) {
+    dropZones[id].onClick()
+    return
+  }
+  const active = ui.warehouseFit
+  if (active?.kind === 'part' && active.carId === d.car.id && active.carPartId === id) {
+    ui.closeWarehouse()
+  } else {
+    ui.openWarehouse({ kind: 'part', carId: d.car.id, carPartId: id })
+  }
+}
 </script>
 
 <template>
@@ -372,14 +588,20 @@ const ownedPaintTinGroups = computed<PaintTinGroup[]>(() => {
     <template v-else>
       <p class="car-name">{{ detail.displayName }}</p>
 
-      <WorkshopViews :car-id="detail.car.id" :drop-zones="dropZones" @select="onWorkshopSelect" />
+      <WorkshopViews
+        :car-id="detail.car.id"
+        :drop-zones="dropZones"
+        :zone-drop-zones="zoneDropZones"
+        :selected="panelTarget"
+        @select="onWorkshopSelect"
+      />
 
       <section class="action-panel" data-test="zone-action-panel">
-        <p v-if="!selectedZone" class="panel-empty" data-test="panel-empty">
-          Pick a zone on the diagram above and what you can do to it turns up here.
+        <p v-if="!selectedZone && !selectedPartRow" class="panel-empty" data-test="panel-empty">
+          Pick anything on the diagram above and what you can do to it turns up here.
         </p>
 
-        <template v-else>
+        <template v-else-if="selectedZone">
           <div class="panel-head">
             <span class="panel-name" data-test="panel-name">{{ selectedZone.name }}</span>
             <BandChip
@@ -387,6 +609,12 @@ const ownedPaintTinGroups = computed<PaintTinGroup[]>(() => {
               :band="selectedZone.band"
               :data-test="'zone-band-' + selectedZone.zoneId"
             />
+            <span
+              v-if="selectedZone.finishLabel"
+              class="finish-tag"
+              :data-test="'zone-finish-' + selectedZone.zoneId"
+              >{{ selectedZone.finishLabel }}</span
+            >
             <span
               v-if="selectedZone.zone.panelMissing"
               class="missing-tag"
@@ -416,6 +644,24 @@ const ownedPaintTinGroups = computed<PaintTinGroup[]>(() => {
             </li>
           </ul>
 
+          <!-- The remaining-steps checklist: the whole ladder still ahead of
+               this zone, not just the single next verb (sprint211.md task
+               B). The first entry is always what the button below actually
+               does next. -->
+          <ul
+            v-if="selectedZone.remainingSteps.length > 0"
+            class="remaining-steps"
+            :data-test="'zone-remaining-' + selectedZone.zoneId"
+          >
+            <li
+              v-for="(step, index) in selectedZone.remainingSteps"
+              :key="index"
+              :data-test="'zone-remaining-step-' + selectedZone.zoneId + '-' + index"
+            >
+              {{ step }}
+            </li>
+          </ul>
+
           <!-- The single next action: one fixed verb button, its figures
                beside it - never a priced sentence inside the button. -->
           <div v-if="nextActionLabel" class="action-row">
@@ -423,7 +669,6 @@ const ownedPaintTinGroups = computed<PaintTinGroup[]>(() => {
               type="button"
               class="verb-btn"
               :disabled="!nextActionPlan"
-              :title="planDisabledReason(nextActionPlan) ?? undefined"
               :data-test="'zone-next-action-' + selectedZone.zoneId"
               @click="onNextActionClick"
             >
@@ -436,6 +681,13 @@ const ownedPaintTinGroups = computed<PaintTinGroup[]>(() => {
             >
               {{ formatYen(nextActionPlan.costYen) }} &middot; {{ nextActionPlan.laborSlots }}
               labour
+            </span>
+            <span
+              v-else
+              class="refusal-caption"
+              :data-test="'zone-next-action-caption-' + selectedZone.zoneId"
+            >
+              {{ nextActionCaption }}
             </span>
           </div>
           <p
@@ -454,7 +706,6 @@ const ownedPaintTinGroups = computed<PaintTinGroup[]>(() => {
                 type="button"
                 class="verb-btn"
                 :disabled="!zoneRemovePanelPlan"
-                :title="planDisabledReason(zoneRemovePanelPlan) ?? undefined"
                 :data-test="'pipeline-remove-panel-' + selectedZone.zoneId"
                 @click="onRemovePanelClick(selectedZone.zoneId)"
               >
@@ -468,33 +719,26 @@ const ownedPaintTinGroups = computed<PaintTinGroup[]>(() => {
                 {{ formatYen(zoneRemovePanelPlan.costYen) }} &middot;
                 {{ zoneRemovePanelPlan.laborSlots }} labour
               </span>
+              <span
+                v-else
+                class="refusal-caption"
+                :data-test="'pipeline-remove-panel-caption-' + selectedZone.zoneId"
+              >
+                {{ basicCaption(zoneRemovePanelPlan, detail.car.id) }}
+              </span>
+              <span class="purpose-caption" data-test="pipeline-remove-panel-purpose">{{
+                REMOVE_PANEL_PURPOSE
+              }}</span>
             </template>
-            <template v-else-if="zonePanelOptions.length > 0">
-              <div v-for="option in zonePanelOptions" :key="option.id" class="action-row">
-                <button
-                  type="button"
-                  class="verb-btn"
-                  :disabled="!option.plan"
-                  :title="planDisabledReason(option.plan) ?? undefined"
-                  :data-test="'pipeline-install-panel-' + selectedZone.zoneId + '-' + option.id"
-                  @click="onInstallPanelClick(selectedZone.zoneId, option.id)"
-                >
-                  Fit {{ option.label }}
-                </button>
-                <span
-                  v-if="option.plan"
-                  class="figures"
-                  :data-test="
-                    'pipeline-install-panel-figures-' + selectedZone.zoneId + '-' + option.id
-                  "
-                >
-                  {{ formatYen(option.plan.costYen) }} &middot; {{ option.plan.laborSlots }} labour
-                </span>
-              </div>
-            </template>
-            <span v-else class="hint" :data-test="'no-panels-' + selectedZone.zoneId"
-              >No panel for this zone on hand - the parts shop sells them.</span
+            <button
+              v-else
+              type="button"
+              class="verb-btn"
+              :data-test="'zone-fit-' + selectedZone.zoneId"
+              @click="onZoneFitClick(selectedZone.zoneId)"
             >
+              Fit
+            </button>
           </div>
 
           <!-- The finish coat: Prep strips what's there when there's a coat
@@ -508,7 +752,6 @@ const ownedPaintTinGroups = computed<PaintTinGroup[]>(() => {
                 type="button"
                 class="verb-btn"
                 :disabled="!stripPrepPlan"
-                :title="planDisabledReason(stripPrepPlan) ?? undefined"
                 :data-test="'pipeline-stripPrep-' + selectedZone.zoneId"
                 @click="onStripPrepClick"
               >
@@ -521,6 +764,13 @@ const ownedPaintTinGroups = computed<PaintTinGroup[]>(() => {
               >
                 {{ formatYen(stripPrepPlan.costYen) }} &middot; {{ stripPrepPlan.laborSlots }}
                 labour
+              </span>
+              <span
+                v-else
+                class="refusal-caption"
+                :data-test="'pipeline-stripPrep-caption-' + selectedZone.zoneId"
+              >
+                {{ stageCaption(stripPrepPlan, selectedZone.zoneId, 'stripPrep') }}
               </span>
             </template>
           </div>
@@ -535,6 +785,13 @@ const ownedPaintTinGroups = computed<PaintTinGroup[]>(() => {
             >
               {{ formatYen(group.plan.costYen) }} &middot; {{ group.plan.laborSlots }} labour
             </span>
+            <span
+              v-else-if="group.caption"
+              class="refusal-caption"
+              :data-test="'pipeline-paint-caption-' + selectedZone.zoneId + '-' + group.finish"
+            >
+              {{ group.caption }}
+            </span>
             <div class="paint-tin-row">
               <button
                 v-for="tin in group.tins"
@@ -542,9 +799,9 @@ const ownedPaintTinGroups = computed<PaintTinGroup[]>(() => {
                 type="button"
                 class="paint-tin"
                 :disabled="!tin.plan"
-                :title="planDisabledReason(tin.plan) ?? undefined"
+                :title="tin.caption ?? undefined"
                 :style="{ backgroundColor: tin.hex }"
-                :aria-label="tin.name"
+                :aria-label="tin.caption ? `${tin.name} - ${tin.caption}` : tin.name"
                 :data-test="
                   'pipeline-paint-' + selectedZone.zoneId + '-' + tin.finish + '-' + tin.colourId
                 "
@@ -555,6 +812,53 @@ const ownedPaintTinGroups = computed<PaintTinGroup[]>(() => {
           <span v-if="ownedPaintTinGroups.length === 0" class="hint" data-test="no-paint-tins">
             No paint in stock - <RouterLink :to="{ name: 'parts' }">buy some</RouterLink>.
           </span>
+        </template>
+
+        <!-- A part selection: repair, take off, fit - the same three per-part
+             controls `CarDetailScreen.vue` offers, hosted here so a click on
+             an interior/aero part never falls through to nothing
+             (sprint211.md task A). -->
+        <template v-else-if="selectedPartRow">
+          <div class="panel-head">
+            <span class="panel-name" data-test="panel-name">{{ selectedPartRow.displayName }}</span>
+            <BandChip :band="selectedPartRow.band" />
+          </div>
+
+          <div v-if="selectedPartRepairStep" class="action-row">
+            <button
+              type="button"
+              class="verb-btn"
+              data-test="part-repair"
+              @click="onPartRepairClick"
+            >
+              {{ selectedPartRepairLabel }}
+            </button>
+          </div>
+
+          <div class="action-row">
+            <button
+              type="button"
+              class="verb-btn"
+              :disabled="!!selectedPartRemoveReason"
+              data-test="part-remove"
+              @click="onPartRemoveClick"
+            >
+              Take it off
+            </button>
+            <span
+              v-if="selectedPartRemoveReason"
+              class="refusal-caption"
+              data-test="part-remove-caption"
+            >
+              {{ selectedPartRemoveReason }}
+            </span>
+          </div>
+
+          <div class="action-row">
+            <button type="button" class="verb-btn" data-test="part-fit" @click="onPartFitClick">
+              Fit
+            </button>
+          </div>
         </template>
       </section>
     </template>
@@ -616,6 +920,54 @@ h2 {
   color: var(--mg-danger);
   font-size: var(--mg-fs-sm);
   text-transform: uppercase;
+}
+
+/* The finish-position tag beside the structure band chip (sprint211.md task
+   B) - dim, same register as a why-chip, never the plain "Mint" reading on
+   its own unless structure and finish are both actually done. */
+.finish-tag {
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+  text-transform: lowercase;
+}
+
+.remaining-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mg-space-2);
+  margin: 0 0 var(--mg-space-2);
+  padding: 0;
+  list-style: none;
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+}
+
+.remaining-steps li {
+  padding: 0 var(--mg-space-2) 0 0;
+  border-right: 1px solid var(--mg-panel-edge);
+}
+
+.remaining-steps li:last-child {
+  padding-right: 0;
+  border-right: none;
+}
+
+/* A disabled control's own reason, on the surface rather than in a title
+   tooltip (sprint211.md task C, the caption idiom) - same register as
+   `.hint`. */
+.refusal-caption {
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+  font-style: italic;
+}
+
+/* The Take-off control's standing purpose line - shown every time the
+   control is on screen, not only while it happens to be disabled
+   (sprint211.md task E). */
+.purpose-caption {
+  flex-basis: 100%;
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
 }
 
 .zone-why {

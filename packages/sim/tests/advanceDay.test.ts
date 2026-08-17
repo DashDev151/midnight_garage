@@ -371,7 +371,15 @@ describe('advanceDay golden master', () => {
     // draws a customer name from it. The pool shrinking, not a behavioural
     // change; the scripted job's own day-5 arrival (task A1) is RNG-free and
     // moves nothing on its own. Re-derived from a real run.
-    expect(hashState(finalState)).toBe('3275fe42')
+    //
+    // It moves once more for sprint213.md (the flip economy): every lever
+    // the sprint moved - the per-tier `marketRepairDiscount`, the new
+    // excellence premium, the affinity/quality curve, tier-1
+    // `energyPerBandStepByToolTier`, and both `laborRateYen`/`calloutFeeYen` -
+    // reprices every valuation and every chain-priced service-job offer this
+    // 30-day career touches. No behaviour changed in kind, only the yen and
+    // point figures it now prices at. Re-derived from a real run.
+    expect(hashState(finalState)).toBe('f4e38f6e')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -702,7 +710,11 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // this script's opening board still draws a radial service-job customer
     // name from that same pool, so the RNG stream shifts from day one. The
     // pool shrinking, not a behavioural change. Re-derived from a real run.
-    expect(hashState(acquisitionCareer().sold)).toBe('0db4e65b')
+    //
+    // It moves once more for sprint213.md (the flip economy): the same set
+    // of levers as the golden-master test above reprices this script's own
+    // acquisition and sale. Re-derived from a real run.
+    expect(hashState(acquisitionCareer().sold)).toBe('6adca89e')
   })
 })
 

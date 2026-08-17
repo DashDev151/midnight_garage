@@ -19,7 +19,7 @@ import {
 import { buildSimContext, type SimContext } from '../src/context'
 import { beginInspectionVisit, resolveOwnedWorkup } from '../src/diagnosis'
 import { moveCar } from '../src/facilities'
-import { resolveRemovePart } from '../src/jobs'
+import { refitLaborSlotsFor, resolveRemovePart } from '../src/jobs'
 import { resolveScrapPart } from '../src/parts'
 import { makeMarketOrigin } from '../src/provenance'
 import { resolveScrapShell } from '../src/selling'
@@ -111,7 +111,7 @@ describe('shipped defaults', () => {
     expect(CONTEXT.economy.energy.actionPoints).toEqual({
       removePart: 2,
       removeAssembly: 0,
-      refitAssembly: 0,
+      refitAssembly: 6,
       refitUnchangedMember: 0,
       benchFitMember: 0,
       benchRemoveMember: 0,
@@ -192,22 +192,31 @@ describe('every action gates on the labour bar and spends its own figure when ra
     expect(refused.state).toBe(off.state)
   })
 
-  it('refitUnchangedMember: an as-it-came-off member charges the figure, refuses short of it', () => {
-    // Only rims are fitted, so the refit carries exactly one unchanged member.
-    const car = ownedCar('car-ru', mintCarParts({ tyres: null }))
+  // An assembly refit no longer reads this knob at all (sprint212.md, task
+  // A: `refitAssemblyLaborSlotsFor` is a flat `refitAssembly` figure, full
+  // stop - the per-member changed/unchanged equivalence fork died in the
+  // assembly path). `refitUnchangedMember` still prices a PLAIN part's
+  // refit-in-place (`refitLaborSlotsFor`, jobs.ts), which is what this case
+  // now exercises directly rather than through an assembly.
+  it('refitUnchangedMember: an as-it-came-off part prices its refit at the figure', () => {
+    const car = ownedCar('car-ru')
     const state = baseState({ ownedCars: [car] })
-    const off = resolveRemoveAssembly(state, car.id, 'wheelAssembly', CONTEXT)
-    const container = off.state.assemblyInventory![0]!
     const ctx = ctxWith('refitUnchangedMember')
 
-    const done = resolveRefitAssembly(off.state, container.id, ctx, COST)
-    expect(done.ok).toBe(true)
-    expect(done.laborSlotsUsed).toBe(COST)
-    expect(done.state.energySpentToday).toBe(off.state.energySpentToday + COST)
+    const originalInstance = car.parts.exhaust.installed!
+    const pulled = resolveRemovePart(state, car.id, 'exhaust', ctx)
+    const removedInstance = pulled.state.partInventory.find((p) => p.id === originalInstance.id)!
+    const strippedCar = pulled.state.ownedCars[0]!
 
-    const refused = resolveRefitAssembly(off.state, container.id, ctx, COST - 1)
-    expect(refused.ok).toBe(false)
-    expect(refused.state).toBe(off.state)
+    // Put back the exact instance that came off - `refitLaborSlotsFor` reads
+    // this as unchanged and prices it at the figure.
+    expect(refitLaborSlotsFor(strippedCar, 'exhaust', removedInstance, ctx)).toBe(COST)
+
+    // A genuinely different part in the same slot is priced by the slot's
+    // own install-class rate instead - this knob only ever prices a true
+    // match, never a changed one.
+    const changedInstance = binPart('pi-changed-exhaust', removedInstance.partId, 'worn')
+    expect(refitLaborSlotsFor(strippedCar, 'exhaust', changedInstance, ctx)).not.toBe(COST)
   })
 
   it('benchFitMember: fitting a part into a benched assembly charges the figure, refuses short of it', () => {

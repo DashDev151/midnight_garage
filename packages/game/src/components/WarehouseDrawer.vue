@@ -1,6 +1,12 @@
 <script setup lang="ts">
+import {
+  ConditionBandSchema,
+  fitmentClassForTier,
+  titleCaseFromSlug,
+  type ConditionBand,
+} from '@midnight-garage/content'
 import { bandIndex } from '@midnight-garage/sim'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useDragSession, useDropZone } from '../composables/useDragAndDrop'
 import { useGameStore, type StageablePartView } from '../stores/gameStore'
@@ -33,9 +39,19 @@ const dragSession = useDragSession()
 
 const fit = computed(() => ui.warehouseFit)
 
+/**
+ * Pinned open (sprint211.md task G): the player's own standing choice to
+ * keep the drawer visible through a drag rather than have it tuck away.
+ * Session state only, like the drag session itself - a reload settles back
+ * to the default (unpinned), which is fine.
+ */
+const pinned = ref(false)
+
 /** Tucked while any drag/pick gesture is live, wherever it started - the
- * drawer is never the thing being aimed at mid-gesture. */
-const tucked = computed(() => dragSession.value !== null)
+ * drawer is never the thing being aimed at mid-gesture - UNLESS pinned,
+ * which is the whole point of pinning: the drop targets under it stay
+ * reachable through its own drop rail instead. */
+const tucked = computed(() => dragSession.value !== null && !pinned.value)
 
 /**
  * The drop-back rail: a station-held part carried straight back to the
@@ -43,6 +59,8 @@ const tucked = computed(() => dragSession.value !== null)
  * button. Rendered in the tab's place while the drawer is tucked, since the
  * tab itself slides off-screen with it - `stationForPart` names which
  * station to pull from, so the rail never needs to know which one is live.
+ * While pinned the drawer never tucks, so the board's own header binds the
+ * same accept logic instead (below) - the rail's job without the rail.
  */
 const stationDropZone = useDropZone<string>(
   (partInstanceId) => game.stationForPart(partInstanceId) !== null,
@@ -52,9 +70,13 @@ const stationDropZone = useDropZone<string>(
   },
 )
 
-const title = computed(() =>
-  fit.value ? `Fit ${game.carPartLabel(fit.value.carPartId)}` : 'Warehouse',
-)
+const title = computed(() => {
+  const context = fit.value
+  if (!context) return 'Warehouse'
+  return context.kind === 'zone'
+    ? `Fit a panel - ${titleCaseFromSlug(context.zoneId)}`
+    : `Fit ${game.carPartLabel(context.carPartId)}`
+})
 
 // --- Browse mode: search, section filter, sort ---
 
@@ -72,6 +94,12 @@ const vehicleOptions = computed(() => game.partsFitVehicleOptions)
  * off a customer's car (locked from sale until their job closes). */
 const ownershipFilter = ref<'all' | 'mine' | 'customer'>('all')
 
+/** The condition slicer (sprint211.md task G) - scrap through mint, in the
+ * content-canonical order, so a stale-band read never has to guess the
+ * ladder. */
+const CONDITION_OPTIONS: readonly ConditionBand[] = ConditionBandSchema.options
+const conditionFilter = ref<ConditionBand | 'all'>('all')
+
 /** The sections actually represented on the shelves right now - the filter
  * never offers an empty aisle. */
 const sectionOptions = computed(() => {
@@ -83,6 +111,17 @@ const sectionOptions = computed(() => {
     }
   }
   return [...seen.entries()].sort((a, b) => a[1].localeCompare(b[1]))
+})
+
+/** The stale-filter guard (sprint211.md task G): the last part of a section
+ * can leave the shelf while that section is still armed, which used to
+ * filter everything out behind a select that kept showing the vanished
+ * option. Resets to "all sections" the moment the armed value is no longer
+ * offered. */
+watch(sectionOptions, (options) => {
+  if (sectionFilter.value !== 'all' && !options.some(([id]) => id === sectionFilter.value)) {
+    sectionFilter.value = 'all'
+  }
 })
 
 function matchesQuery(entry: StageablePartView, needle: string): boolean {
@@ -108,6 +147,9 @@ const browseEntries = computed(() => {
   if (ownershipFilter.value !== 'all') {
     const wantCustomer = ownershipFilter.value === 'customer'
     entries = entries.filter((entry) => game.isCustomerOwnedPart(entry.instance) === wantCustomer)
+  }
+  if (conditionFilter.value !== 'all') {
+    entries = entries.filter((entry) => entry.instance.band === conditionFilter.value)
   }
   if (needle) entries = entries.filter((entry) => matchesQuery(entry, needle))
   switch (sortKey.value) {
@@ -137,11 +179,12 @@ const browseEntries = computed(() => {
  * can go on right now and, when it cannot, why. Excludes scrap (never
  * installable anywhere). Sorted installable first, then tool-gated (the
  * reason names the missing tool), then never-fits - what you can do, what you
- * could do, and what you cannot.
+ * could do, and what you cannot. Part-slot mode only - `zoneFitEntries` below
+ * is the panel counterpart.
  */
 const fitEntries = computed(() => {
   const context = fit.value
-  if (!context) return []
+  if (!context || context.kind !== 'part') return []
   const fitting = new Set(
     game.installablePartsForPart(context.carId, context.carPartId).map((p) => p.id),
   )
@@ -158,20 +201,53 @@ const fitEntries = computed(() => {
     .sort((a, b) => a.rank - b.rank)
 })
 
+/**
+ * A zone's own pick list (sprint211.md task D): every owned panel addressed
+ * to this exact zone at the car's own fitment class, minus scrap. A panel is
+ * hand work bolted straight on - there is no tool gate to flag, unlike a
+ * part slot, so every entry here always fits.
+ */
+const zoneFitEntries = computed(() => {
+  const context = fit.value
+  if (!context || context.kind !== 'zone') return []
+  const detail = game.carDetail(context.carId)
+  if (!detail) return []
+  const fitClass = fitmentClassForTier(detail.model.tier)
+  return game.pickableParts
+    .filter(
+      (entry) =>
+        entry.part.zoneId === context.zoneId &&
+        entry.part.fitmentClass === fitClass &&
+        entry.instance.band !== 'scrap',
+    )
+    .map((entry) => ({ ...entry, fits: true, noFitReason: null as string | null }))
+})
+
 /** The bench-fit machine-labour disclosure - only in bench mode, never
  * blocking: a bench fit always works, just slower by hand. Stated once at
  * the header rather than per row, since it's the same figure for every part
  * in the slot. */
 const benchMachineNote = computed(() => {
   const context = fit.value
-  return context?.benchContainerId ? game.benchFitMachineNoteFor(context.carPartId) : ''
+  return context?.kind === 'part' && context.benchContainerId
+    ? game.benchFitMachineNoteFor(context.carPartId)
+    : ''
 })
 
-const entries = computed(() => (fit.value ? fitEntries.value : browseEntries.value))
+const entries = computed(() => {
+  const context = fit.value
+  if (!context) return browseEntries.value
+  return context.kind === 'zone' ? zoneFitEntries.value : fitEntries.value
+})
 
 function onSelect(partInstanceId: string): void {
   const context = fit.value
   if (!context) return
+  if (context.kind === 'zone') {
+    game.installPanel(context.carId, context.zoneId, partInstanceId)
+    ui.closeWarehouse()
+    return
+  }
   if (context.benchContainerId) {
     game.fitAssemblyMember(context.benchContainerId, context.carPartId, partInstanceId)
     ui.closeWarehouse()
@@ -182,6 +258,16 @@ function onSelect(partInstanceId: string): void {
   game.install(context.carId, componentId, partInstanceId, context.carPartId)
   ui.closeWarehouse()
 }
+
+/**
+ * The one count both the tab badge and the on-screen line read (sprint211.md
+ * task G: a badge and a count that could ever disagree is worse than either
+ * alone) - filtered over total, so "12/12" in browse mode with nothing armed
+ * reads as plainly as "3/12" does with a filter on. Fit mode has no
+ * independent filters of its own, so its list is already the total and the
+ * two numbers simply agree.
+ */
+const countLabel = computed(() => `${entries.value.length}/${game.pickableParts.length}`)
 </script>
 
 <template>
@@ -194,10 +280,19 @@ function onSelect(partInstanceId: string): void {
       @click="ui.toggleWarehouse()"
     >
       <span class="tab-label">Warehouse</span>
-      <span class="tab-count" data-test="warehouse-count">{{ game.pickableParts.length }}</span>
+      <span class="tab-count" data-test="warehouse-count">{{ countLabel }}</span>
     </button>
 
-    <aside v-if="ui.warehouseOpen" class="board" data-test="warehouse-drawer">
+    <aside
+      v-if="ui.warehouseOpen"
+      class="board"
+      :class="{ 'active-target': pinned && stationDropZone.isActiveTarget.value }"
+      data-test="warehouse-drawer"
+      @pointerup="pinned ? stationDropZone.onPointerUp() : undefined"
+      @pointerenter="pinned ? stationDropZone.onPointerEnter() : undefined"
+      @pointerleave="pinned ? stationDropZone.onPointerLeave() : undefined"
+      @click="pinned ? stationDropZone.onClick() : undefined"
+    >
       <header class="board-head">
         <h3>
           {{ title }}
@@ -206,6 +301,17 @@ function onSelect(partInstanceId: string): void {
             tap "move&hellip;" and then "Place here".
           </HelpHint>
         </h3>
+        <button
+          type="button"
+          class="pin"
+          :class="{ on: pinned }"
+          :aria-pressed="pinned"
+          aria-label="Pin the drawer open"
+          data-test="warehouse-pin"
+          @click="pinned = !pinned"
+        >
+          PIN
+        </button>
         <button
           type="button"
           class="close"
@@ -217,7 +323,7 @@ function onSelect(partInstanceId: string): void {
         </button>
       </header>
 
-      <p class="count">{{ entries.length }} part{{ entries.length === 1 ? '' : 's' }} on hand</p>
+      <p class="count" data-test="warehouse-visible-count">{{ countLabel }} on hand</p>
 
       <p v-if="benchMachineNote" class="bench-machine-note" data-test="bench-machine-note">
         {{ benchMachineNote }}
@@ -254,6 +360,14 @@ function onSelect(partInstanceId: string): void {
             <option value="all">All parts</option>
             <option value="mine">My parts</option>
             <option value="customer">Customer parts</option>
+          </select>
+        </div>
+        <div class="control-row">
+          <select v-model="conditionFilter" class="picker" data-test="warehouse-condition">
+            <option value="all">Any condition</option>
+            <option v-for="band in CONDITION_OPTIONS" :key="band" :value="band">
+              {{ band }}
+            </option>
           </select>
         </div>
       </div>
@@ -414,6 +528,12 @@ function onSelect(partInstanceId: string): void {
   box-shadow: -8px 0 24px rgba(0, 0, 0, 0.5);
 }
 
+/* Pinned open during a drag, the board itself stands in for the tucked-away
+   drop rail - same cyan-tint highlight every other drop target uses. */
+.board.active-target {
+  border-color: var(--mg-neon-cyan);
+}
+
 .board-head {
   display: flex;
   align-items: center;
@@ -433,6 +553,7 @@ function onSelect(partInstanceId: string): void {
   text-transform: capitalize;
 }
 
+.pin,
 .close {
   flex: none;
   display: inline-flex;
@@ -444,14 +565,35 @@ function onSelect(partInstanceId: string): void {
   border: var(--mg-border);
   border-radius: 999px;
   color: var(--mg-text-dim);
-  font-size: var(--mg-fs-lg);
   line-height: 1;
   cursor: pointer;
+}
+
+.close {
+  font-size: var(--mg-fs-lg);
+}
+
+.pin {
+  font-size: 0.55rem;
+  letter-spacing: 0.04em;
 }
 
 .close:hover {
   color: var(--mg-neon-pink);
   border-color: var(--mg-neon-pink);
+}
+
+.pin:hover {
+  color: var(--mg-neon-cyan);
+  border-color: var(--mg-neon-cyan);
+}
+
+/* Pinned: the drawer stays open through a drag rather than tucking away -
+   the same cyan "on" treatment every other toggle in the shop uses. */
+.pin.on {
+  color: var(--mg-neon-cyan);
+  border-color: var(--mg-neon-cyan);
+  background: rgba(47, 214, 191, 0.12);
 }
 
 .count {

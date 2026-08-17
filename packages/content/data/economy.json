@@ -108,7 +108,12 @@
       [120000, 0.85],
       [180000, 0.75]
     ],
-    "marketRepairDiscount": 1.3,
+    "marketRepairDiscount": {
+      "entry": 1.5,
+      "everyday": 1.4,
+      "enthusiast": 1.35,
+      "flagship": 1.3
+    },
     "coherenceDiscountWeight": 0.35,
     "retentionFloor": 0.3,
     "retentionCeiling": 1.1,
@@ -167,7 +172,14 @@
         "beyondDiscount": 1.3,
         "aftermarketReturn": 1
       }
-    }
+    },
+    "excellenceByTier": {
+      "entry": 0.12,
+      "everyday": 0.1,
+      "enthusiast": 0.08,
+      "flagship": 0.06
+    },
+    "affinityNearParFraction": 0.9
   },
   "sceneStandingProgress": {
     "knownDeliveries": {
@@ -815,8 +827,8 @@
   "serviceJobs": {
     "marginMin": 1.18,
     "marginMax": 1.35,
-    "laborRateYen": 6000,
-    "calloutFeeYen": 5000,
+    "laborRateYen": 3600,
+    "calloutFeeYen": 1750,
     "offerLifetimeDaysRange": [3, 8],
     "dailyOfferCountWeights": [0.05, 0.22, 0.42, 0.23, 0.08],
     "offerCountCapByDay": [
@@ -854,8 +866,8 @@
   "liquidity": {
     "stalenessFloor": 0.35,
     "stalenessHalfLifeOffers": 3.5,
-    "qualityFresh": 0.96,
-    "qualityFloor": 0.86,
+    "qualityFresh": 1.0,
+    "qualityFloor": 0.9,
     "qualityHalfLifeOffers": 3.0,
     "qualitySpread": 0.04,
     "relistRecovery": 0.7
@@ -990,9 +1002,9 @@
     "pointsPerLabour": 10,
     "basePoolPoints": 80,
     "energyPerBandStepByToolTier": {
-      "1": 5,
-      "2": 4,
-      "3": 3
+      "1": 4,
+      "2": 3,
+      "3": 2
     },
     "energyByClass": {
       "surface": 0,
@@ -1011,7 +1023,7 @@
     "actionPoints": {
       "removePart": 2,
       "removeAssembly": 0,
-      "refitAssembly": 0,
+      "refitAssembly": 6,
       "refitUnchangedMember": 0,
       "benchFitMember": 0,
       "benchRemoveMember": 0,
@@ -1378,11 +1390,11 @@
     }
   },
   "staff": {
-    "wageBaseYen": 4000,
-    "wagePerSkillPointYen": 500,
-    "wagePerLaborSlotYen": 1500,
-    "contractBaseYenPerDay": 1100,
-    "contractPerSkillPointYenPerDay": 80,
+    "wageBaseYen": 2400,
+    "wagePerSkillPointYen": 300,
+    "wagePerLaborSlotYen": 900,
+    "contractBaseYenPerDay": 660,
+    "contractPerSkillPointYenPerDay": 48,
     "laborSlotsPerDayWeights": [0.7, 0.3],
     "introductionFeeWeeks": 2,
     "statBudgetByTier": {

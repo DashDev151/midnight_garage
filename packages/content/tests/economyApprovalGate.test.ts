@@ -2355,6 +2355,171 @@ import toolShops from '../data/toolShops.json'
  * margin, never erode it, since the player's own minimum achievable cost never depends on labour).
  * No mission payout or budget cap moves: story missions price off build cost, never off a
  * service-job's own labour chain.
+ *
+ * Re-pinned 2026-08-17 (behaviour-first governance, maintainer directive 2026-08-13
+ * amendment - Claude states the felt behaviour and chooses the value, the maintainer validates by
+ * playtest) for `docs/sprints/sprint212.md` ("the labour laws") task A, the assembly-refit set
+ * figure. Felt behaviour, verbatim from the sprint doc: "an engine goes back in for the same sweat
+ * whether you touched one cam or all four corners of it; the machine line, not the parts list,
+ * decides the pace." One lever: `energy.actionPoints.refitAssembly` 0 -> 6.
+ * `refitAssemblyLaborSlotsFor` (assemblies.ts) now returns this flat figure alone - the old
+ * per-changed-member equivalence sum is gone from the assembly refit path entirely (it still prices
+ * the PARTS bill: a changed member's paid price still lands on the ledger via `addPartsYen`, only
+ * the LABOUR stopped scaling with how many members changed). `taskLaborChain` prices an assembly
+ * member's own refit stage with the same flat figure at the assembly's own machine gate, so a
+ * customer quote and the player's own refit can never drift. Chosen so the machine-less engine
+ * refit (the sprint doc's own worked example: `refitAssembly` 6 x
+ * `machineShopAssist.machinelessLaborMultiplier` 3) lands at 18 - near the OLD one-changed-member
+ * cost, never the old four-changed cost of 72. The per-slot (non-assembly) `refitLaborSlotsFor`
+ * equivalence fork is untouched: it still prices a plain part's own refit exactly as before.
+ *
+ * Directive-17 case (a) (stale-assertion, not a regression): `packages/sim/tests/
+ * actionPoints.test.ts`'s shipped-defaults pin and its refit isolation tests, `assemblies.test.ts`'s
+ * per-member-sum contract cases, and `taskLaborChain.test.ts`'s assembly-member refit case all
+ * re-derive to assert the flat rule. Golden hashes in `careerReplay.test.ts`'s smoke-script sequence
+ * that touch an assembly refit re-derive from a real run per that file's own convention.
+ *
+ * Re-pinned 2026-08-17 (behaviour-first governance, maintainer directive 2026-08-13 amendment -
+ * Claude states the felt behaviour and chooses the value, the maintainer validates by playtest) for
+ * `docs/sprints/sprint213.md`, "the flip economy, reconciled" (APPROVED 2026-08-17 including the
+ * reduced targets). Design of record: a right car sold to the right buyer fetches its value; buyers
+ * price a project's risk into a rough example, steepest at the cheap end; a genuinely sorted example
+ * prices modestly above book; and both income rates come down together so the pace anchor lands at
+ * roughly Y50-70k net a week. Seven levers move, every one against the sprint's own closed-form
+ * acceptance probes (`packages/sim/tests/flipEconomyProbes.test.ts`, new this sprint):
+ *
+ * 1. `valuation.marketRepairDiscount` reshapes from one scalar (1.3) to a per-fitment-class record -
+ *    **entry 1.5, everyday 1.4, enthusiast 1.35, flagship 1.3**. Felt behaviour, verbatim: "buyers
+ *    price real project risk into a rough example, most sharply on cheap cars where a bad repair
+ *    estimate stings hardest; the discount eases toward flagship, where buyers already expect and
+ *    budget for real restoration work." Entry's own rate is capped below ~1.58 by a hard structural
+ *    fact this sprint did not relitigate: `marketRepairDiscount[tier] x partsGeneration.maxBillFraction`
+ *    (0.6, unmoved and NOT a lever this sprint touches) must stay under 1 or a worst-case car's raw
+ *    price falls through the scrap floor, breaking Law 1's guarantee that every repair yen returns
+ *    more than itself (economy-bible law 1/2 interlock, `valuation.marketRepairDiscount`'s own schema
+ *    doc). 1.5 leaves real headroom (1 - 0.6 x 1.5 = 0.10, comfortably above the 0.05 scrap-value
+ *    floor fraction) rather than the sprint narrative's illustrative 2.0-2.2, which would have
+ *    breached it; the probes, not the narrative figure, are the acceptance gate, and they pass at 1.5.
+ *
+ * 2. `valuation.excellenceByTier` (**new field**, approved in intent by the sprint doc as one small
+ *    state-based factor): **entry 0.12, everyday 0.10, enthusiast 0.08, flagship 0.06**. Read by the
+ *    new `excellencePremiumYen` (marketValue.ts), gated on a car being genuinely fine-throughout
+ *    (every billable slot already at or above its own tier's expectation band -
+ *    `billBelowYen === 0`, a real qualitative category, not an approximation) and scaled continuously
+ *    by that build's own `coherenceFactorForCar` and `mileageFactor`. Felt behaviour, verbatim: "book
+ *    is average condition; a fine-throughout, coherent, fresh example prices above it, modestly - the
+ *    fix for the old 'a fully restored car can never be worth more than the identical clean car'
+ *    ceiling." This is the one place `marketValueYen` can price above its own former Stage B/C
+ *    ceiling, and only there: `stagedValue`'s own ceiling is untouched, the premium is a THIRD,
+ *    separately-gated additive term.
+ *
+ * 3. `valuation.affinityNearParFraction` (**new field**): **0.9**. Read by a new shared
+ *    `affinityMultiplier` curve (valuation.ts) both `tasteMultiplier` (the plain, un-channelled path)
+ *    and `channelTasteMultiplier` now build their own `[floor, ceiling]` band from, replacing the old
+ *    single straight line. Felt behaviour, verbatim: "the best-matched buyer for a car prices at par
+ *    with marketValueYen; discounts apply for mismatch and staleness, never as a flat stack" - the
+ *    defect fix. Below `matchedTasteScoreThreshold` the curve still climbs steeply from the floor (a
+ *    genuine mismatch is discounted hard); at and above it, a buyer who merely clears "matched"
+ *    already prices 90 per cent of the way to par, with only the last 10 per cent of the range left
+ *    for real excellence (or a channel/scene premium) to close - not, as before, exactly half the
+ *    range still owed at the matched threshold.
+ *
+ * 4. `liquidity.qualityFresh` **0.96 -> 1.0**, `liquidity.qualityFloor` **0.86 -> 0.90** (the same
+ *    absolute gap to fresh, re-centred). Felt behaviour, verbatim: "a completely fresh listing's
+ *    first offer is a fair, at-par offer, not an automatic four per cent haircut before any buyer or
+ *    staleness term even applies" - the second half of the sale-reconciliation fix: the old fresh
+ *    mean discounted EVERY listing regardless of match quality, stacking with the affinity discount
+ *    to eat the whole of a well-bought flip's margin, which is exactly the forensic baseline this
+ *    sprint diagnosed (a well-matched buyer priced 8-12 per cent under ceiling, then x0.96 quality).
+ *    `qualitySpread` (0.04) is unchanged: the natural scatter of a real offer around the mean still
+ *    means a first offer routinely lands a little under the new par ceiling, which is realistic
+ *    rather than a defect.
+ *
+ * 5. `energy.energyPerBandStepByToolTier` **{1: 5, 2: 4, 3: 3} -> {1: 4, 2: 3, 3: 2}** (the whole
+ *    curve shifted down by one, preserving its own non-increasing shape - `energyPerBandStepByToolTier`
+ *    must stay non-increasing up the tiers by schema refine, so cutting tier 1 alone below tier 2's
+ *    floor is structurally impossible without moving tier 2 as well; shifting the whole curve keeps
+ *    every tier strictly faster than the one below it, exactly as before). Felt behaviour, verbatim:
+ *    "labour-cost deflation: tier-1 repair/recondition point costs come down so a clean entry flip
+ *    runs a fraction of its old point cost, raising yen-per-point without touching value." Verified
+ *    against the golden session (below): the maintainer's own Honda Today rebuild ran 63 real
+ *    recorded labour points at this setting.
+ *
+ * 6. `serviceJobs.laborRateYen` **Y6,000 -> Y3,600**, `serviceJobs.calloutFeeYen` **Y5,000 -> Y1,750**.
+ *    Felt behaviour, verbatim: "one labour rate, used everywhere, sets what customer work pays - both
+ *    rates come down together so radial work lands at a real day-one wage, not a windfall." Both
+ *    landed below the sprint narrative's illustrative Y4,000-4,500 / Y2,000-2,500 ranges: those
+ *    ranges assumed an average over every tier-1 template, but several (tyres, brake pads/discs,
+ *    coilovers, bodywork filler) price a real REPLACEMENT part through the buy-new route, carrying
+ *    genuine parts-retail markup that is a different economic quantity from a labour wage and would
+ *    let a parts sale's margin masquerade as one; measuring only the templates that are genuinely
+ *    wage work (every task bench-repairable, no `minGrade`) needed both rates lower to land the
+ *    aggregate at the sprint's own stated Y500-650/point target - it lands at exactly Y646/point
+ *    (Y81,446 over 126 points, aggregated day's-takings-over-day's-points, never a mean of
+ *    per-template ratios, which a sub-one-point flat callout fee would let dominate).
+ *
+ * 7. `staff.wageBaseYen` **Y4,000 -> Y2,400**, `staff.wagePerSkillPointYen` **Y500 -> Y300**,
+ *    `staff.wagePerLaborSlotYen` **Y1,500 -> Y900**, `staff.contractBaseYenPerDay` **Y1,100 -> Y660**,
+ *    `staff.contractPerSkillPointYenPerDay` **Y80 -> Y48**. Mechanical consequence of lever 6, not an
+ *    independent choice: every staff wage/contract coefficient scales by the exact same ratio
+ *    (3,600 / 6,000 = 0.6) `laborRateYen` itself moved by, which leaves the hire-coherence probe's
+ *    every bound (A: contract/wage ratio, B: contract vs billable labour, C: first-hire affordability,
+ *    D: skill premium vs saveable labour) at EXACTLY the same margin as before the change - a pure
+ *    rescale is scale-invariant on every one of those ratios by construction, confirmed by a fresh
+ *    `staffProbes.test.ts` run rather than assumed. No second labour rate exists anywhere in the game;
+ *    this is that invariant re-anchored to the new rate, per the sprint doc's own definition of done.
+ *
+ * The whole-sprint acceptance (`flipEconomyProbes.test.ts`, closed-form, no bots): (a) the roster's
+ * average sensible-flip yen/point per tier - entry 270, everyday 622, enthusiast 1,328, flagship
+ * 8,297 (flagship's own expectation band is mint, not fine, so a tier-1 shop's repair ceiling clamps
+ * it to a much smaller rough-to-fine climb for a much larger car; disclosed, not gated, since the
+ * band only asks 1,200+ there); (b) the radial wage, Y646/point (above); (c) the maintainer's own
+ * day-5 Honda Today session, replayed byte-for-byte (`sessionBundleToScript` + `replayCareerScript`)
+ * against its real recorded ledger (as-bought Y40,339, spent Y38,400, 63 real labour points) and a
+ * deterministic realistic-first-offer read (plain `marketValueYen` x `qualityMeanFor(0)`, Y91,763)
+ * lands at Y207/point, inside the entry band; (d) one entry flip (Y62,359 average margin) plus a
+ * supply-bounded week of radial work (2 jobs, not an unlimited queue - `serviceJobs.
+ * dailyOfferCountWeights` caps real daily supply) nets Y79,629 after the base weekly rent, inside the
+ * sprint's own stated Y50-70k anchor's tolerance. Every standing coherence probe this sprint did not
+ * target stays green: Law 1 (buy-at-reserve, full-restore-to-mint, sell-at-guide clears a positive
+ * margin on every roster model at its worst roll) and Law 2 (the scrap-value floor never binds on a
+ * generated lot) both hold at the new marketRepairDiscount, confirmed by a fresh
+ * `valueModelProbes.test.ts`/`balanceProbes.test.ts` run.
+ *
+ * Directive-17 fallout, both cases present and each triaged on its own facts (never blanket-loosened):
+ * case (a), a stale assertion pinned the old formula/shape and now restates the new one -
+ * `marketValue.test.ts`, `valueModelProbes.test.ts`, `valuation.test.ts`, `bodyPanels.test.ts`,
+ * `plays.test.ts` (three cheap keis join the Honda Today's own documented rate-order exemption: the
+ * steeper entry `marketRepairDiscount` widens repair-to-expectation's own rate lead over repair-to-
+ * mint without touching the unchanged `beyondDiscount`, which on the very cheapest cars now lets a
+ * strip play's rate land between the two - fixing to mint still makes more MONEY on every one of
+ * them, the unexempted profit gate is untouched), `energyCalibration.test.ts`, `jobs.test.ts`,
+ * `taskLaborChain.test.ts`, and every golden hash in `careerReplay.test.ts`/`advanceDay.test.ts`
+ * (re-derived from real runs, never hand-guessed, per each file's own convention). Case (b), the test
+ * caught the sprint's own intended shape change and now asserts the new law rather than the old one -
+ * `stockCarValuationInvariant.test.ts` and `valueModelProbes.test.ts`'s two ceiling probes (the old
+ * "clean value, never above" law is now "clean value plus the gated excellence premium, never more"),
+ * and `diagnosisFlows.test.ts`'s cause-averaging estimator (a genuinely new, small, disclosed
+ * interaction: the excellence gate's own hard threshold means a symptom cause that happens to sit
+ * exactly on the tier's expectation band earns the premium while an adjacent, only-slightly-worse
+ * cause does not, so narrowing away from that one lucky cause can cost a fractional per cent even
+ * while narrowing toward the true cheap cause - well under 1 per cent, and the test now says so
+ * rather than asserting a strict inequality nothing in the design actually guarantees once any
+ * valuation term is threshold-gated rather than continuous).
+ *
+ * Mission payouts/budget caps move as a MECHANICAL consequence of lever 1 alone (never an independent
+ * mission-balance decision - `packages/content/data/storyMissions.json` prices every mission off a
+ * probe build's own cost basis, `ceil1000(1.3 x probeCostYen)`, and `probeCostYen` includes a
+ * `marketValueYen` purchase-price term that moved when `marketRepairDiscount` did): `wont-strand-her`
+ * 124,000 -> 116,000; `the-fleet-spare` 482,000 -> 478,000; `first-proper-car` 684,000 -> 680,000 (its
+ * own `tasteMatch` `minMultiplier` also re-derives, 0.94 -> 1.02, from lever 3's affinity-curve
+ * reshape); `make-it-pull` 787,000 -> 783,000; `the-column-clock` 997,000 -> 992,000;
+ * `the-showroom-standard` 701,000 -> 697,000; `low-and-loud` 1,159,000 -> 1,154,000;
+ * `street-power-street-manners` 1,494,000 -> 1,489,000; `under-one-fifteen` 1,690,000 -> 1,685,000.
+ * `four-wheels` is deliberately off the generic formula pin already (its own test's comment says so)
+ * and `the-quiet-crate` carries no formula probe in `storyMissionProbes.test.ts` at all, so neither
+ * was expected to move and neither did. Every other figure re-derived from a fresh
+ * `storyMissionProbes.test.ts` run against the test's own restated formula, never hand-guessed.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -2364,7 +2529,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('7500464b99fe93cdeb0b8caf6eb52909d5f66812db12c1ec492721bb4c296e90')
+    ).toBe('04aaa113f7aac526d7558ee775aacc7c6fe1cf5f40c231fd48a69cdec0802062')
   })
 
   it('damagePatterns.json matches its approved content exactly', () => {
@@ -2423,15 +2588,15 @@ describe('the economy approval gate', () => {
         '(CLAUDE.md directive 22): re-pin only alongside the recorded approval.',
     ).toEqual({
       'four-wheels': { payoutYen: 142000, budgetCapYen: 142000 },
-      'wont-strand-her': { payoutYen: 124000, budgetCapYen: 124000 },
-      'first-proper-car': { payoutYen: 684000, budgetCapYen: 684000 },
-      'make-it-pull': { payoutYen: 787000, budgetCapYen: 787000 },
-      'the-column-clock': { payoutYen: 997000, budgetCapYen: 997000 },
-      'low-and-loud': { payoutYen: 1159000, budgetCapYen: 1159000 },
-      'street-power-street-manners': { payoutYen: 1494000, budgetCapYen: 1494000 },
-      'under-one-fifteen': { payoutYen: 1690000, budgetCapYen: 1690000 },
-      'the-fleet-spare': { payoutYen: 482000, budgetCapYen: 482000 },
-      'the-showroom-standard': { payoutYen: 701000, budgetCapYen: 701000 },
+      'wont-strand-her': { payoutYen: 116000, budgetCapYen: 116000 },
+      'first-proper-car': { payoutYen: 680000, budgetCapYen: 680000 },
+      'make-it-pull': { payoutYen: 783000, budgetCapYen: 783000 },
+      'the-column-clock': { payoutYen: 992000, budgetCapYen: 992000 },
+      'low-and-loud': { payoutYen: 1154000, budgetCapYen: 1154000 },
+      'street-power-street-manners': { payoutYen: 1489000, budgetCapYen: 1489000 },
+      'under-one-fifteen': { payoutYen: 1685000, budgetCapYen: 1685000 },
+      'the-fleet-spare': { payoutYen: 478000, budgetCapYen: 478000 },
+      'the-showroom-standard': { payoutYen: 697000, budgetCapYen: 697000 },
       'the-quiet-crate': { payoutYen: 2278000, budgetCapYen: 2278000 },
     })
   })

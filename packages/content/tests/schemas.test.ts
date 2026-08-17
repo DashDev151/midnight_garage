@@ -289,17 +289,24 @@ describe('seed content validates against schemas', () => {
     // band: mileage takes value away or leaves it alone, never adds any.
     expect(result.data.valuation.mileageFactorCurve[0]).toEqual([30000, 1.0])
     expect(result.data.valuation.mileageFactorCurve[1]).toEqual([60000, 1.0])
-    // economy-bible.md law 1: ONE slope, always above 1, plus the same
-    // small scrap-value backstop floor (bands.scrapValueFraction,
-    // unchanged). economy-bible.md law 6 (the wage law): this number IS the
-    // entire return on a repair (cost and bill reduction are the same
-    // product), and it is jointly constrained with maxBillFraction below -
-    // their product must stay under 1 or the scrap floor binds. Asserted
-    // together, deliberately.
-    expect(result.data.valuation.marketRepairDiscount).toBe(1.3)
-    expect(
-      result.data.valuation.marketRepairDiscount * result.data.partsGeneration.maxBillFraction,
-    ).toBeLessThan(1)
+    // economy-bible.md law 1: a per-tier slope, always above 1, plus the
+    // same small scrap-value backstop floor (bands.scrapValueFraction,
+    // unchanged) - sprint213.md item 2 made the rate steepest at entry and
+    // gentler up-tier (buyers fear a project hardest on a cheap car).
+    // economy-bible.md law 6 (the wage law): each tier's number IS that
+    // tier's entire return on a repair (cost and bill reduction are the same
+    // product), and every tier is jointly constrained with maxBillFraction
+    // below - the product must stay under 1 for EVERY tier or the scrap
+    // floor binds. Asserted together, deliberately.
+    expect(result.data.valuation.marketRepairDiscount).toEqual({
+      entry: 1.5,
+      everyday: 1.4,
+      enthusiast: 1.35,
+      flagship: 1.3,
+    })
+    for (const rate of Object.values(result.data.valuation.marketRepairDiscount)) {
+      expect(rate! * result.data.partsGeneration.maxBillFraction).toBeLessThan(1)
+    }
     expect(result.data.valuation.walkAwaySpread).toBe(0.05)
     // economy-bible.md law 5 (the foundation law): the aftermarket premium
     // is scaled by the worst foundational part's factor. Foundational parts
@@ -458,11 +465,15 @@ describe('seed content validates against schemas', () => {
     )
     // Stage F, the normalised listing clock (sale-value-system.md S4,
     // sprint147.md): both curves read offersSeen only, never a day count.
+    // Sprint213.md item 1 re-centred the quality-freshness mean at par
+    // (qualityFresh 0.96 -> 1.0, the fix for a fresh listing carrying an
+    // unconditional discount even before any buyer/mismatch term applied);
+    // qualityFloor moves 0.86 -> 0.90 to keep the same absolute gap to fresh.
     expect(result.data.liquidity).toEqual({
       stalenessFloor: 0.35,
       stalenessHalfLifeOffers: 3.5,
-      qualityFresh: 0.96,
-      qualityFloor: 0.86,
+      qualityFresh: 1.0,
+      qualityFloor: 0.9,
       qualityHalfLifeOffers: 3.0,
       qualitySpread: 0.04,
       relistRecovery: 0.7,
@@ -630,9 +641,11 @@ describe('seed content validates against schemas', () => {
     // too soon to finish anything satisfying. Every labour COST is untouched.
     expect(result.data.energy.basePoolPoints).toBe(80)
     // Tier reduces a repair's per-band-step cost, non-increasing up the tiers.
-    // The labour retune (case (a), an intentional cost change, not a stale
-    // expectation) sets tier 1/2/3 to 5/4/3.
-    expect(result.data.energy.energyPerBandStepByToolTier).toEqual({ 1: 5, 2: 4, 3: 3 })
+    // Sprint213.md item 4 (labour-cost deflation) shifts the whole curve down
+    // by one, preserving its shape, to 4/3/2 - a clean entry-tier rebuild now
+    // runs a fraction of its old point cost with no change to any repair's
+    // yen cost.
+    expect(result.data.energy.energyPerBandStepByToolTier).toEqual({ 1: 4, 2: 3, 3: 2 })
     // Fitting energy by depth class, also retuned: the common bolt-on anchor
     // drops to 3 and buried scales with it to 6.
     expect(result.data.energy.energyByClass).toEqual({
@@ -648,7 +661,7 @@ describe('seed content validates against schemas', () => {
     expect(result.data.energy.actionPoints).toEqual({
       removePart: 2,
       removeAssembly: 0,
-      refitAssembly: 0,
+      refitAssembly: 6,
       refitUnchangedMember: 0,
       benchFitMember: 0,
       benchRemoveMember: 0,

@@ -60,7 +60,12 @@ describe('taskLaborChain (Sprint 207)', () => {
       const assemblyMultiplier = machineLaborMultiplier('engine', state, CONTEXT)
       const expectedRemovalPoints =
         removeAssemblyLaborSlotsFor(car, engineAssembly, CONTEXT) * assemblyMultiplier
-      const expectedRefitPoints = installLaborSlotsFor('camsTiming', CONTEXT) * assemblyMultiplier
+      // camsTiming is an engineAssembly member, so its refit prices the flat
+      // `refitAssembly` figure at the assembly's own gate (sprint212.md task
+      // A), not its own class-based install rate - it only coincidentally
+      // equals `energyByClass.buried` at the shipped tuning (both 6).
+      const expectedRefitPoints =
+        CONTEXT.economy.energy.actionPoints.refitAssembly * assemblyMultiplier
       const expectedTotalPoints =
         expectedBlockerPoints + expectedRemovalPoints + climbPoints + expectedRefitPoints
 
@@ -75,13 +80,17 @@ describe('taskLaborChain (Sprint 207)', () => {
       )
     }
 
-    // The finding's own pinned figures (sprint207.md): ~30 points with the
-    // engine machine line, ~58 without, of an 80-point day
-    // (economy.energy.basePoolPoints).
+    // The finding's own pinned figures (sprint207.md): 30 points with the
+    // engine machine line, 58 without, of an 80-point day
+    // (economy.energy.basePoolPoints). Sprint213.md item 4 trimmed tier-1's
+    // `energyPerBandStepByToolTier` 5 -> 4 - the repair CLIMB is always
+    // priced at level 1 regardless of the shop's own tools (`repairClimbPoints`'s
+    // own doc comment), so both figures drop by the same 2 points (one fewer
+    // point per grade step, over the 2-grade poor->fine climb here).
     expect(
       taskLaborChain(car, 'camsTiming', targetBand, CONTEXT, withEngineMachine).totalPoints,
-    ).toBe(30)
-    expect(taskLaborChain(car, 'camsTiming', targetBand, CONTEXT, machineLess).totalPoints).toBe(58)
+    ).toBe(28)
+    expect(taskLaborChain(car, 'camsTiming', targetBand, CONTEXT, machineLess).totalPoints).toBe(56)
     expect(CONTEXT.economy.energy.basePoolPoints).toBe(80)
   })
 

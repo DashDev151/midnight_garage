@@ -1,6 +1,11 @@
 import type { ZoneState, ZoneStates } from '@midnight-garage/content'
 import { PAINT_COLOURS } from '@midnight-garage/content'
-import { isMetalZoneState, unpaintedPanelZoneIds, zoneNeedsPanel } from '@midnight-garage/sim'
+import {
+  MAX_REPAIRABLE_METAL,
+  isMetalZoneState,
+  unpaintedPanelZoneIds,
+  zoneNeedsPanel,
+} from '@midnight-garage/sim'
 import { colourTokenDisplayName } from './paintFamilies'
 
 /** The short chip a zone carries when hand work is not the answer, or `null`
@@ -76,6 +81,72 @@ const PANEL_COUNT_WORDS: readonly string[] = [
   'Eight',
   'Nine',
 ]
+
+/**
+ * Where a zone's FINISH sits, as its own axis separate from the
+ * structure/metal band (`zoneConditionBand`, sim): bare metal (never coated,
+ * or a fresh panel), prepped (stripped back on purpose - the colour field is
+ * stale from before the strip, which is exactly what tells this state apart
+ * from bare metal), primed, painted (coated, not yet polished down), or
+ * polished (finish at its floor). Checked in this order because the fields
+ * are not mutually exclusive in the raw state: `primed` can coexist with a
+ * stale `colour` (stripped, then re-primed without a fresh coat yet), and a
+ * bare zone can carry a stale `colour` too (stripped, not yet re-primed) -
+ * `primed` wins over a lingering colour reading either way, since it is the
+ * more recent, more physically true fact.
+ */
+export type ZoneFinishPosition = 'bare-metal' | 'prepped' | 'primed' | 'painted' | 'polished'
+
+export const ZONE_FINISH_LABELS: Record<ZoneFinishPosition, string> = {
+  'bare-metal': 'bare metal',
+  prepped: 'prepped',
+  primed: 'primed',
+  painted: 'painted',
+  polished: 'polished',
+}
+
+export function zoneFinishPosition(zone: ZoneState): ZoneFinishPosition {
+  if (zone.primed) return 'primed'
+  if (zone.finish >= FINISH_BARE) return zone.colour ? 'prepped' : 'bare-metal'
+  if (zone.finish === 0) return 'polished'
+  return 'painted'
+}
+
+/**
+ * Whether a zone's structure and finish are BOTH fully done - the one
+ * condition allowed to read as a plain "Mint" chip with nothing beside it.
+ * Everywhere else the structure/metal band and the finish-position tag show
+ * together, so a beaten-straight bare panel never reads as though the whole
+ * zone were finished.
+ */
+export function zoneBothDone(band: string, finishPosition: ZoneFinishPosition): boolean {
+  return band === 'mint' && finishPosition === 'polished'
+}
+
+/**
+ * The zone's own remaining-steps checklist, in pipeline order - what
+ * `zoneNextStep` (sim) already picks the FIRST of, unrolled into the whole
+ * ladder instead of just the next verb. Read straight off the zone's own
+ * fields (metal, surface, finish, primed), the same facts `zoneNextStep`
+ * itself reads, so the checklist and the single active control can never
+ * disagree about what is left.
+ */
+export function zoneRemainingSteps(zone: ZoneState): string[] {
+  if (zone.panelMissing) return ['Fit a panel']
+  const steps: string[] = []
+  if (isMetalZoneState(zone)) {
+    if (zone.metal > 0) steps.push(zone.metal >= MAX_REPAIRABLE_METAL ? 'Weld' : 'Beat')
+    if (zone.surface > 0) steps.push('Fill and sand')
+  }
+  if (zone.finish >= FINISH_BARE) {
+    if (!zone.primed) steps.push('Prime')
+    steps.push('Paint')
+    steps.push('Polish')
+  } else if (zone.finish > 0) {
+    steps.push('Polish')
+  }
+  return steps
+}
 
 /**
  * The line a car with unpainted panels carries, or `null` when it has none.

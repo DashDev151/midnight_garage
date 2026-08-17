@@ -21,16 +21,19 @@ import { machiningPremiumYenOf } from './machining'
 
 /**
  * The taste-free "what is this car worth" answer, shared by every price in
- * the game: `marketValueYen` = `stagedValue + creditedPremiumYen`, where
- * `stagedValue` is clean value (book value scaled by mileage and market
- * heat; car age plays no part - a car's registration year is flavor text
- * only) minus a hassle-weighted restoration bill, floored (Stage B), then
- * discounted for an unsupported build's own failure risk (Stage C, the
- * coherence discount); `creditedPremiumYen` is the installed-parts premium,
- * scaled by a retention curve that rewards a coherent build and penalises an
- * incoherent one (Stage D), by the foundation factor, and by the tier's own
- * aftermarket return. See `docs/design/systems/sale-value-system.md` section
- * 3 for the design of record.
+ * the game: `marketValueYen` = `stagedValue + excellencePremiumYen +
+ * creditedPremiumYen`, where `stagedValue` is clean value (book value scaled
+ * by mileage and market heat; car age plays no part - a car's registration
+ * year is flavor text only) minus a hassle-weighted restoration bill, floored
+ * (Stage B), then discounted for an unsupported build's own failure risk
+ * (Stage C, the coherence discount); `excellencePremiumYen` is sprint213.md's
+ * excellence premium, a small state-gated bonus above book for an example
+ * that is genuinely fine-throughout, coherent and fresh; `creditedPremiumYen`
+ * is the installed-parts premium, scaled by a retention curve that rewards a
+ * coherent build and penalises an incoherent one (Stage D), by the foundation
+ * factor, and by the tier's own aftermarket return. See
+ * `docs/design/systems/sale-value-system.md` section 3 for the design of
+ * record.
  */
 
 /**
@@ -124,29 +127,12 @@ export function cleanValueYen(
  * `cleanValue = cleanValueYen(bookValueYen, mileageKm, heatPercent, economy)` -
  * heat applies exactly once, and car age plays no part in it at all.
  */
-function instanceBaseValueYen(
-  model: CarModel,
-  car: CarInstance,
-  heatPercent: number,
-  partsById: Readonly<Record<string, Part>>,
-  partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
-  economy: EconomyConfig,
-): number {
-  const { rawYen, backstopFloorYen } = instanceBaseTerms(
-    model,
-    car,
-    heatPercent,
-    partsById,
-    partsTaxonomyById,
-    economy,
-  )
-  return Math.max(backstopFloorYen, rawYen)
-}
-
-/** Stage B's two competing figures, before the `Math.max` between them: what
- * the restoration bill leaves of clean value, and the backstop floor under
- * it. Read as a pair by `isOnScrapFloor` below, which is the one question
- * their ORDER answers. */
+/** Stage B's competing figures, before the `Math.max` between them: what the
+ * restoration bill leaves of clean value, and the backstop floor under it.
+ * Read as a pair by `isOnScrapFloor` below, which is the one question their
+ * ORDER answers; `cleanValue` and `billBelowYen` are also read directly by
+ * `excellencePremiumYen`, which needs the same two figures its gate and its
+ * scale are built from, never a second computation of either. */
 function instanceBaseTerms(
   model: CarModel,
   car: CarInstance,
@@ -154,8 +140,9 @@ function instanceBaseTerms(
   partsById: Readonly<Record<string, Part>>,
   partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
   economy: EconomyConfig,
-): { rawYen: number; backstopFloorYen: number } {
-  const { marketRepairDiscount } = economy.valuation
+): { rawYen: number; backstopFloorYen: number; cleanValue: number; billBelowYen: number } {
+  const fitmentClass = fitmentClassForTier(model.tier)
+  const marketRepairDiscount = economy.valuation.marketRepairDiscount[fitmentClass]!
   const cleanValue = cleanValueYen(model.bookValueYen, car.mileageKm, heatPercent, economy)
 
   const expectation = expectationForCar(model, economy)
@@ -174,6 +161,8 @@ function instanceBaseTerms(
     backstopFloorYen: economy.bands.scrapValueFraction * cleanValue,
     rawYen:
       cleanValue - marketRepairDiscount * billBelowYen - expectation.beyondDiscount * billAboveYen,
+    cleanValue,
+    billBelowYen,
   }
 }
 
@@ -422,17 +411,68 @@ export function foundationWithheldYen(
 }
 
 /**
- * The single shared value answer: `stagedValue + foundationFactor x
- * aftermarketReturn x installedPartsValueYen`.
+ * Sprint213.md item 3: the excellence premium. `marketValueYen`'s Stage B
+ * floor used to be a genuine ceiling as well - "a fully restored car can
+ * never be worth more than the identical clean car" - which left no room for
+ * a truly sorted example to price above book the way a real one does. This
+ * is the fix: a small additive premium, gated and scaled entirely by facts
+ * the rest of the formula already computed, so it can never apply to a car
+ * that has not actually earned it.
  *
- * `stagedValue` is Stage C applied to `instanceBaseValueYen` (Stage B, clean
- * value mileage/heat scaled minus the hassle-weighted restoration bill,
- * floored - heat applies exactly once, inside clean value, no other price in
- * the game multiplies by market heat a second time): the market discounts an
- * unsupported build's own failure risk,
+ * GATED on `billBelowYen === 0`: every billable slot already at or above
+ * this tier's own `expectationByTier[tier].band` - genuinely "fine
+ * throughout" as a real qualitative category (the same figure Stage B's own
+ * restoration bill already computed), not an approximation, and not
+ * continuous - a car either qualifies or it doesn't, the same convention
+ * `isTasteMatched`'s own threshold uses elsewhere in this pricing stack. A
+ * car that has not yet earned the category gets exactly zero, no partial
+ * credit for "almost there".
+ *
+ * SCALED continuously by two facts a qualifying car still varies on:
+ * `coherenceFactor` ("coherent" - the same build-support figure Stage C's
+ * discount and Stage D's retention curve already read) and `mileageFactor`
+ * ("fresh" - low mileage prices near 1, high mileage tapers toward the
+ * mileage curve's own floor). Both are already [0, 1]-ish multipliers
+ * elsewhere in this file, reused verbatim rather than re-derived.
+ *
+ * The ceiling itself, `excellenceByTier[tier]`, is a fraction of `cleanValue`
+ * - the same "book, scaled by mileage and heat" baseline the whole formula
+ * is anchored to - so "modestly above book" reads directly off the tier's
+ * own authored fraction.
+ */
+export function excellencePremiumYen(
+  model: CarModel,
+  cleanValue: number,
+  billBelowYen: number,
+  coherenceFactor: number,
+  mileageKm: number,
+  economy: EconomyConfig,
+): number {
+  if (billBelowYen > 0) return 0
+  const fitmentClass = fitmentClassForTier(model.tier)
+  const ceilingFraction = economy.valuation.excellenceByTier[fitmentClass]!
+  if (ceilingFraction <= 0) return 0
+  const freshness = mileageFactor(mileageKm, economy)
+  return Math.round(cleanValue * ceilingFraction * coherenceFactor * freshness)
+}
+
+/**
+ * The single shared value answer: `stagedValue + excellencePremiumYen +
+ * foundationFactor x aftermarketReturn x installedPartsValueYen`.
+ *
+ * `stagedValue` is Stage C applied to Stage B's own `Math.max(backstopFloorYen,
+ * rawYen)` (clean value mileage/heat scaled minus the hassle-weighted
+ * restoration bill, floored - heat applies exactly once, inside clean value,
+ * no other price in the game multiplies by market heat a second time): the
+ * market discounts an unsupported build's own failure risk,
  * `coherenceDiscount = coherenceDiscountWeight * (1 - coherenceFactor) *
  * coherenceTolerance`, zero on a stock or fully-coherent build since
  * `coherenceFactor` is 1 there.
+ *
+ * `excellencePremiumYen` (above) is the one place a car can price ABOVE
+ * `stagedValue`'s own ceiling - gated on genuinely earning the category, so
+ * it can never turn "identical to clean" into "greater than clean" by
+ * accident.
  *
  * The aftermarket premium (Stage D) is `premiumCredit` above:
  * `installedPartsValueYen`, itself scaled by the coherence-driven retention
@@ -468,14 +508,26 @@ export function marketValueYen(
   economy: EconomyConfig,
   coherenceTolerance = 1.0,
 ): number {
-  const baseValue = Math.round(
-    instanceBaseValueYen(model, car, heatPercent, partsById, partsTaxonomyById, economy),
-  )
+  const terms = instanceBaseTerms(model, car, heatPercent, partsById, partsTaxonomyById, economy)
+  const baseValue = Math.round(Math.max(terms.backstopFloorYen, terms.rawYen))
 
   const coherenceFactor = coherenceFactorForCar(car, model, partsById, economy)
   const coherenceDiscount =
     economy.valuation.coherenceDiscountWeight * (1 - coherenceFactor) * coherenceTolerance
   const stagedValue = Math.round(baseValue * (1 - coherenceDiscount))
 
-  return stagedValue + premiumCredit(model, car, partsById, economy, coherenceFactor).creditedYen
+  const excellenceYen = excellencePremiumYen(
+    model,
+    terms.cleanValue,
+    terms.billBelowYen,
+    coherenceFactor,
+    car.mileageKm,
+    economy,
+  )
+
+  return (
+    stagedValue +
+    excellenceYen +
+    premiumCredit(model, car, partsById, economy, coherenceFactor).creditedYen
+  )
 }

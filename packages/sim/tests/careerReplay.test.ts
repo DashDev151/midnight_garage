@@ -57,17 +57,35 @@ const SMOKE_SCRIPT = CareerScriptSchema.parse(smokeScriptRaw)
 // in the run shifts and the whole hash sequence moves - the pool losing one
 // entry, not a behavioural change. `smoke.script.json`'s own two `kind:
 // 'hash'` checkpoints (days 1 and 10) move with this array.
+//
+// Re-pinned for sprint212.md task A (the assembly refit set figure):
+// `energy.actionPoints.refitAssembly` 0 -> 6 re-prices every chain-priced
+// service-job offer touching an assembly member (`taskLaborChain`), which
+// moves days 4-8's hashes (the script's later-day service-job offers); days
+// 1-3 and 9-10 are unaffected since no offer generated on those days prices
+// an assembly member's refit. Re-derived from a real run, never hand-guessed.
+//
+// Re-pinned for sprint213.md (the flip economy): every lever the sprint
+// moved - the per-tier `marketRepairDiscount`, the new excellence premium,
+// the affinity/quality curve, tier-1 `energyPerBandStepByToolTier`, and both
+// `laborRateYen`/`calloutFeeYen` - reprices every valuation and every
+// chain-priced service-job offer the script's day-1 board draws (the buyout,
+// the declined radial offer, every later day's own offers), so the whole
+// sequence moves. No behaviour this script exercises changed in kind, only
+// in the yen and point figures it now prices at. Re-derived from a real run,
+// never hand-guessed. `smoke.script.json`'s own two `kind: 'hash'`
+// checkpoints (days 1 and 10) move with this array.
 const EXPECTED_HASHES_BY_DAY = [
-  '8ca87b92',
-  'd645475a',
-  '6992a406',
-  '6d12f8f2',
-  '45b914f9',
-  '75f42112',
-  '8f0ca266',
-  '3942fff9',
-  'e0bd5908',
-  '518fa09a',
+  'e243616e',
+  '79ab5a36',
+  '790f9141',
+  'f9fdcd85',
+  '763967f4',
+  '6dc68ede',
+  '21b50e2d',
+  'bdac14ba',
+  '459fffe1',
+  '1e145343',
 ]
 
 describe('replayCareerScript (Sprint 198 C1)', () => {

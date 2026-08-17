@@ -97,6 +97,7 @@ const JOB_BLOCKED_REASON_COPY: Record<JobBlockedReason, string> = {
   'not-your-part': "that part came off a customer's car and goes back on it.",
   'bench-only': 'that part comes off and goes on the bench before it can be put right.',
   'blocked-by': 'something has to come off first to reach it.',
+  'blocks-access': 'the slot under it is still empty - fit that first.',
   'machine-line': 'the machinery for that line is neither owned nor hired today.',
   'derived-band': 'bodywork goes through the panel stages, not a straight repair.',
   'out-of-stock': 'the shelf is short of what that stage needs.',

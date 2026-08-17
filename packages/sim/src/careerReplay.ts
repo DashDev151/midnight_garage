@@ -115,9 +115,8 @@ interface EventEffect {
  * mutates `tutorialAcknowledgedSteps`/`tutorialStatus` directly), so each
  * case mirrors that same manual mutation instead of calling into a resolver
  * that does not exist. `playClockPaused` and `playClockResumed` are dev-only
- * playtest-clock instrumentation (`PlaytestClock.vue`) with no sim effect at
- * all - measurement of the session, never an action within it - so both are
- * pure no-ops.
+ * session-clock instrumentation with no sim effect at all - measurement of
+ * the session, never an action within it - so both are pure no-ops.
  */
 function applySessionEvent(
   state: GameState,

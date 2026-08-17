@@ -305,12 +305,45 @@ export function isTasteMatched(
 }
 
 /**
+ * Sprint213.md item 1 (the sale-reconciliation defect fix): the shared,
+ * two-segment affinity curve both `tasteMultiplier` and
+ * `channelTasteMultiplier` build their own `[floor, ceiling]` bands from. The
+ * old single straight line priced ANY score below 1.0 strictly under
+ * `ceiling`, so even a buyer who genuinely cleared `matchedTasteScoreThreshold`
+ * still paid a real discount - stacked again by the offer-quality draw
+ * (`selling.ts`'s `qualityMeanFor`), the defect this sprint fixes. This curve
+ * front-loads the climb instead: below `threshold` it rises steeply from
+ * `floor` to `nearPar` (`floor + (ceiling - floor) * nearParFraction`) - a
+ * genuine mismatch is discounted hard - and from `threshold` to a score of 1
+ * it climbs the REMAINING distance to `ceiling` - so a buyer who merely
+ * clears "matched" already prices close to par, and only real excellence (or
+ * a channel/scene premium above 1) earns the rest of the range. Continuous
+ * and monotonic in `score` by construction (both segments run the same
+ * direction, and they meet exactly at `nearPar` when `score === threshold`).
+ */
+function affinityMultiplier(
+  score: number,
+  floor: number,
+  ceiling: number,
+  threshold: number,
+  nearParFraction: number,
+): number {
+  const nearPar = floor + (ceiling - floor) * nearParFraction
+  if (score >= threshold) {
+    if (threshold >= 1) return ceiling
+    return nearPar + (ceiling - nearPar) * ((score - threshold) / (1 - threshold))
+  }
+  if (threshold <= 0) return nearPar
+  return floor + (nearPar - floor) * (score / threshold)
+}
+
+/**
  * Bounded taste multiplier: how well a buyer archetype's stat weights fit
- * this car's derived stats, `[1 - tasteSpread, 1 + tasteSpread]`
- * (economy.json's first-pass `tasteSpread` of 0.12 bounds it to [0.88, 1.12],
- * centered near 1.0 for an average car). Stats stop being the value pipeline
- * (`marketValueYen` is stat-blind), but they still decide who pays a bit more,
- * never whether the car is worth anything.
+ * this car's derived stats, over `[1 - tasteSpread, 1 + tasteSpread]`
+ * (economy.json's `tasteSpread` of 0.12 bounds it to [0.88, 1.12]) through the
+ * shared `affinityMultiplier` curve above. Stats stop being the value
+ * pipeline (`marketValueYen` is stat-blind), but they still decide who pays a
+ * bit more, never whether the car is worth anything.
  */
 function tasteMultiplier(
   buyer: Buyer,
@@ -321,8 +354,14 @@ function tasteMultiplier(
   economy: EconomyConfig,
 ): number {
   const score = normalizedTasteScore(buyer, model, instance, partsById, partsTaxonomy, economy)
-  const spread = economy.valuation.tasteSpread
-  return 1 - spread + 2 * spread * score
+  const { tasteSpread, matchedTasteScoreThreshold, affinityNearParFraction } = economy.valuation
+  return affinityMultiplier(
+    score,
+    1 - tasteSpread,
+    1 + tasteSpread,
+    matchedTasteScoreThreshold,
+    affinityNearParFraction,
+  )
 }
 
 /** A fresh shop's scene standing: every scene at `none`, before anything is
@@ -396,12 +435,22 @@ function channelTasteMultiplier(
   const score = normalizedTasteScore(buyer, model, instance, partsById, partsTaxonomy, economy)
   const scene = sceneStandingBandFor(buyer, sceneStanding, economy)
   const low = scene.floor
-  const normalTop = 1 + economy.valuation.tasteSpread
+  const { tasteSpread, matchedTasteScoreThreshold, affinityNearParFraction } = economy.valuation
+  const normalTop = 1 + tasteSpread
   const effectiveCeiling = scene.ceiling !== undefined ? Math.max(ceiling, scene.ceiling) : ceiling
   if (effectiveCeiling > normalTop) {
-    return low + (effectiveCeiling - low) * score
+    return affinityMultiplier(
+      score,
+      low,
+      effectiveCeiling,
+      matchedTasteScoreThreshold,
+      affinityNearParFraction,
+    )
   }
-  return Math.min(low + (normalTop - low) * score, effectiveCeiling)
+  return Math.min(
+    affinityMultiplier(score, low, normalTop, matchedTasteScoreThreshold, affinityNearParFraction),
+    effectiveCeiling,
+  )
 }
 
 /**

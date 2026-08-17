@@ -1,11 +1,12 @@
-import type {
-  CarInstance,
-  CarModel,
-  CarPartId,
-  CarPartTaxonomyEntry,
-  EconomyConfig,
-  GameState,
-  Part,
+import {
+  fitmentClassForTier,
+  type CarInstance,
+  type CarModel,
+  type CarPartId,
+  type CarPartTaxonomyEntry,
+  type EconomyConfig,
+  type GameState,
+  type Part,
 } from '@midnight-garage/content'
 import { carCostToBandBreakdown, carCostToBandYen, carCostToMintYen } from './bands'
 import type { ZoneBillLine } from './bodyPipeline'
@@ -14,6 +15,7 @@ import { coherenceFactorForCar } from './derivedStats'
 import { apparentViewOf, sheetGuideValueYen } from './diagnosis'
 import {
   cleanValueYen,
+  excellencePremiumYen,
   expectationForCar,
   foundationFactor,
   installedPartsValueYen,
@@ -27,7 +29,16 @@ import {
  * per id and never computes a yen figure of its own.
  */
 export type ValueLedgerLineId =
-  'book' | 'mileage' | 'heat' | 'wear' | 'polish' | 'floor' | 'coherence' | 'aftermarket' | 'fear'
+  | 'book'
+  | 'mileage'
+  | 'heat'
+  | 'wear'
+  | 'polish'
+  | 'floor'
+  | 'coherence'
+  | 'excellence'
+  | 'aftermarket'
+  | 'fear'
 
 export interface ValueLedgerLine {
   id: ValueLedgerLineId
@@ -54,14 +65,16 @@ export interface ValueLedger {
  *
  * Lines, in order: 'book' (book value), 'mileage' (the mileage-curve
  * adjustment), 'heat' (the market-heat adjustment, only when `heatPercent`
- * is not 100), 'wear' (the below-expectation restoration bill at
- * `marketRepairDiscount`, negative), 'polish' (the above-expectation bill at
- * the tier's `beyondDiscount`, negative), 'floor' (only when the scrap-value
- * backstop binds, the adjustment up to it), 'coherence' (Stage C's discount
- * for an unsupported build's own failure risk, only when it bites - zero on a
- * stock or fully-coherent build), 'aftermarket' (the
- * foundation-and-tier-gated premium, retention-scaled by the same build's
- * coherence, only when non-zero).
+ * is not 100), 'wear' (the below-expectation restoration bill at this tier's
+ * own `marketRepairDiscount`, negative), 'polish' (the above-expectation bill
+ * at the tier's `beyondDiscount`, negative), 'floor' (only when the
+ * scrap-value backstop binds, the adjustment up to it), 'coherence' (Stage
+ * C's discount for an unsupported build's own failure risk, only when it
+ * bites - zero on a stock or fully-coherent build), 'excellence'
+ * (sprint213.md's state-gated premium for a fine-throughout, coherent, fresh
+ * example, only when it applies), 'aftermarket' (the foundation-and-tier-gated
+ * premium, retention-scaled by the same build's coherence, only when
+ * non-zero).
  */
 export function valueLedgerFor(
   car: CarInstance,
@@ -71,7 +84,8 @@ export function valueLedgerFor(
   partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
   economy: EconomyConfig,
 ): ValueLedger {
-  const { marketRepairDiscount } = economy.valuation
+  const marketRepairDiscount =
+    economy.valuation.marketRepairDiscount[fitmentClassForTier(model.tier)]!
   const expectation = expectationForCar(model, economy)
 
   const bookYen = model.bookValueYen
@@ -117,6 +131,19 @@ export function valueLedgerFor(
   if (coherenceDiscount > 0) {
     pushCheckpoint('coherence', previousRounded * (1 - coherenceDiscount))
   }
+
+  // Sprint213.md item 3: the same gated, coherence-and-freshness-scaled
+  // premium `marketValueYen` adds - `billBelowYen` here is exactly its own
+  // gate figure, computed the same way from the same car.
+  const excellenceYen = excellencePremiumYen(
+    model,
+    cleanValue,
+    billBelowYen,
+    coherenceFactor,
+    car.mileageKm,
+    economy,
+  )
+  if (excellenceYen > 0) pushCheckpoint('excellence', previousRounded + excellenceYen)
 
   const retention = retentionFor(coherenceFactor, economy)
   const creditedPremiumYen = Math.round(
@@ -167,9 +194,9 @@ export interface RestorationValueBreakdown {
  * (`carCostToBandBreakdown`) and both discounts above it are band-independent,
  * so each half scales every line identically - the licence
  * `carCostToBandBreakdown`'s own contract grants. The split point is the tier's
- * expectation band (`expectationForCar`), the same one `instanceBaseValueYen`
- * splits at, so a slot's line and the whole-car figure can never disagree about
- * which side of the band a yen of work falls on.
+ * expectation band (`expectationForCar`), the same one Stage B splits at, so a
+ * slot's line and the whole-car figure can never disagree about which side of
+ * the band a yen of work falls on.
  *
  * Rounding is the only difference from the ledger: this rounds each line, while
  * the ledger rounds two telescoping cumulative checkpoints, so the sums agree
@@ -184,7 +211,8 @@ export function restorationValueLinesFor(
   partsTaxonomyById: Readonly<Record<CarPartId, CarPartTaxonomyEntry>>,
   economy: EconomyConfig,
 ): RestorationValueBreakdown {
-  const { marketRepairDiscount } = economy.valuation
+  const marketRepairDiscount =
+    economy.valuation.marketRepairDiscount[fitmentClassForTier(model.tier)]!
   const expectation = expectationForCar(model, economy)
   const toMint = carCostToBandBreakdown(car, model, partsById, partsTaxonomyById, economy, 'mint')
   const toBand = carCostToBandBreakdown(

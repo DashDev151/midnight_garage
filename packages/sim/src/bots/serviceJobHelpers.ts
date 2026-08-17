@@ -3,6 +3,7 @@ import type { DayActions } from '../actions'
 import { planGroupRepair } from '../bands'
 import type { SimContext } from '../context'
 import { toolLevelsFor } from '../toolLines'
+import { carInBodyBay } from '../facilities'
 import { installLaborSlotsFor, occupiedBlockers } from '../jobs'
 import { gradeAtLeast, partFitsCar } from '../parts'
 import { isServiceTaskDone, serviceJobCostBreakdown } from '../serviceJobs'
@@ -105,6 +106,17 @@ export function queueServiceJobTasks(
   for (const task of serviceJob.tasks) {
     if (remainingLabor <= 0) break
     if (isServiceTaskDone(car, task, context)) continue
+
+    // Interior parts and aero are body-shop work (sprint212.md: interior and
+    // aero belong to the body bay): a task addressed at one of them can only
+    // progress once this customer's car is actually in the body bay. Skipped
+    // here rather than queued/laboured - this bot never relocates a car
+    // mid-job between service-bay and body-bay work, so a task like this
+    // simply waits for a future tick (the deadline backstop still pays the
+    // job out regardless of which tasks finished).
+    const taskGroup = context.partsTaxonomyById[task.requirement.carPartId]?.group
+    const taskNeedsBodyBay = taskGroup === 'interior' || task.requirement.carPartId === 'aero'
+    if (taskNeedsBodyBay && !carInBodyBay(state, car.id)) continue
 
     const existing = findExistingTaskJob(state, car.id, task)
     if (existing) {

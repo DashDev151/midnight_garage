@@ -1,7 +1,8 @@
-import { CARS, PARTS } from '@midnight-garage/content'
+import { CARS, PARTS, fitmentClassForTier } from '@midnight-garage/content'
 import { mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { clearDragSession } from '../composables/useDragAndDrop'
 import { useGameStore } from '../stores/gameStore'
 import { useUiStore } from '../stores/uiStore'
 import WarehouseDrawer from './WarehouseDrawer.vue'
@@ -24,7 +25,10 @@ afterEach(() => {
 })
 
 describe('WarehouseDrawer', () => {
-  beforeEach(() => setActivePinia(createPinia()))
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    clearDragSession()
+  })
 
   describe('the tab', () => {
     it('shows the holding count and toggles the drawer open and closed', async () => {
@@ -33,7 +37,7 @@ describe('WarehouseDrawer', () => {
       game.devGrantPart(part.id)
 
       const wrapper = mountDrawer()
-      expect(wrapper.get('[data-test="warehouse-count"]').text()).toBe('1')
+      expect(wrapper.get('[data-test="warehouse-count"]').text()).toBe('1/1')
       expect(wrapper.find('[data-test="warehouse-drawer"]').exists()).toBe(false)
 
       await wrapper.get('[data-test="warehouse-tab"]').trigger('click')
@@ -119,7 +123,7 @@ describe('WarehouseDrawer', () => {
       game.devGrantPart(wrongAddress.id)
 
       const wrapper = mountDrawer()
-      ui.openWarehouse({ carId, carPartId: 'dampers' })
+      ui.openWarehouse({ kind: 'part', carId, carPartId: 'dampers' })
       await wrapper.vm.$nextTick()
 
       expect(wrapper.findAll('.part-card')).toHaveLength(1)
@@ -162,7 +166,7 @@ describe('WarehouseDrawer', () => {
       game.moveCar(carId, 'service')
 
       const wrapper = mountDrawer()
-      ui.openWarehouse({ carId, carPartId: 'dampers' })
+      ui.openWarehouse({ kind: 'part', carId, carPartId: 'dampers' })
       await wrapper.vm.$nextTick()
       await wrapper.get('.part-card').trigger('click')
 
@@ -184,7 +188,7 @@ describe('WarehouseDrawer', () => {
       const partInstanceId = game.gameState.partInventory[0]!.id
 
       const wrapper = mountDrawer()
-      ui.openWarehouse({ carId, carPartId: 'dampers' })
+      ui.openWarehouse({ kind: 'part', carId, carPartId: 'dampers' })
       await wrapper.vm.$nextTick()
       await wrapper.get('.part-card').trigger('click')
 
@@ -209,13 +213,127 @@ describe('WarehouseDrawer', () => {
       }
 
       const wrapper = mountDrawer()
-      ui.openWarehouse({ carId, carPartId: 'dampers' })
+      ui.openWarehouse({ kind: 'part', carId, carPartId: 'dampers' })
       await wrapper.vm.$nextTick()
 
       expect(wrapper.find('.part-card').exists()).toBe(false)
       expect(wrapper.text()).toContain('No parts on hand')
       const link = wrapper.findComponent(RouterLinkStub)
       expect(link.props('to')).toEqual({ name: 'parts' })
+    })
+  })
+
+  describe("zone fit mode (opened by the body shop's own Fit control, sprint211.md task D)", () => {
+    it("shows only panels addressed to that exact zone at the car's own fitment class, and fits one on a click", async () => {
+      const game = useGameStore()
+      const ui = useUiStore()
+      game.devGrantCar(CARS[0]!.id)
+      const carId = game.gameState.ownedCars[0]!.id
+      // `installPanel` (like every body-pipeline action) only resolves for
+      // the body bay's own car.
+      expect(game.moveCarToSlot(carId, 'body', 0)).toBe(true)
+      const model = game.context.modelsById[game.gameState.ownedCars[0]!.modelId]!
+      const fitClass = fitmentClassForTier(model.tier)
+      const car = game.gameState.ownedCars.find((c) => c.id === carId)!
+      car.zoneState = {
+        ...car.zoneState!,
+        bonnet: { ...car.zoneState!.bonnet, panelMissing: true },
+      }
+
+      const fitting = PARTS.find((p) => p.zoneId === 'bonnet' && p.fitmentClass === fitClass)!
+      const wrongZone = PARTS.find((p) => p.zoneId === 'boot' && p.fitmentClass === fitClass)!
+      game.devGrantPart(fitting.id)
+      game.devGrantPart(wrongZone.id)
+      const partInstanceId = game.gameState.partInventory.find((p) => p.partId === fitting.id)!.id
+
+      const wrapper = mountDrawer()
+      ui.openWarehouse({ kind: 'zone', carId, zoneId: 'bonnet' })
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.findAll('.part-card')).toHaveLength(1)
+      expect(wrapper.text()).not.toContain(game.partName(wrongZone.id))
+
+      await wrapper.get('.part-card').trigger('click')
+
+      expect(
+        game.gameState.ownedCars.find((c) => c.id === carId)!.zoneState!.bonnet.panelMissing,
+      ).toBe(false)
+      expect(game.gameState.partInventory.some((p) => p.id === partInstanceId)).toBe(false)
+      expect(ui.warehouseOpen).toBe(false)
+      expect(ui.warehouseFit).toBeNull()
+    })
+  })
+
+  describe('pin (sprint211.md task G)', () => {
+    it('keeps the drawer from tucking away during a drag once pinned, and tucks again once unpinned', async () => {
+      const game = useGameStore()
+      const ui = useUiStore()
+      const part = PARTS.find((p) => p.grade !== 'stock')!
+      game.devGrantPart(part.id)
+      const instanceId = game.gameState.partInventory[0]!.id
+
+      const wrapper = mountDrawer()
+      ui.openWarehouse()
+      await wrapper.vm.$nextTick()
+
+      await wrapper.get('[data-test="warehouse-pin"]').trigger('click')
+      expect(wrapper.get('[data-test="warehouse-pin"]').attributes('aria-pressed')).toBe('true')
+
+      await wrapper.get(`[data-test="pick-part-${instanceId}"]`).trigger('click')
+      expect(wrapper.get('.warehouse').classes()).not.toContain('tucked')
+
+      await wrapper.get('[data-test="warehouse-pin"]').trigger('click')
+      expect(wrapper.get('.warehouse').classes()).toContain('tucked')
+    })
+  })
+
+  describe('condition slicer and the stale-section-filter reset (sprint211.md task G)', () => {
+    it('slices the list down to one condition band', async () => {
+      const game = useGameStore()
+      const ui = useUiStore()
+      const parts = PARTS.filter((p) => p.grade !== 'stock').slice(0, 2)
+      game.devGrantPart(parts[0]!.id)
+      game.devGrantPart(parts[1]!.id)
+      game.gameState = {
+        ...game.gameState,
+        partInventory: game.gameState.partInventory.map((instance, i) => ({
+          ...instance,
+          band: i === 0 ? 'worn' : 'mint',
+        })),
+      }
+
+      const wrapper = mountDrawer()
+      ui.openWarehouse()
+      await wrapper.vm.$nextTick()
+      expect(wrapper.findAll('.part-card')).toHaveLength(2)
+
+      await wrapper.get('[data-test="warehouse-condition"]').setValue('mint')
+      expect(wrapper.findAll('.part-card')).toHaveLength(1)
+      expect(wrapper.get('[data-test="warehouse-count"]').text()).toBe('1/2')
+    })
+
+    it('resets an armed section filter to "all" once its section leaves the shelf, and the badge always matches the visible count', async () => {
+      const game = useGameStore()
+      const ui = useUiStore()
+      const damper = PARTS.find((p) => p.carPartId === 'dampers' && p.grade !== 'stock')!
+      game.devGrantPart(damper.id)
+      const section = game.groupForCarPart('dampers')!
+
+      const wrapper = mountDrawer()
+      ui.openWarehouse()
+      await wrapper.vm.$nextTick()
+      await wrapper.get('[data-test="warehouse-section"]').setValue(section)
+      expect(wrapper.findAll('.part-card')).toHaveLength(1)
+
+      // The only part in that section leaves the shelf.
+      game.gameState = { ...game.gameState, partInventory: [] }
+      await wrapper.vm.$nextTick()
+
+      expect(
+        (wrapper.get('[data-test="warehouse-section"]').element as HTMLSelectElement).value,
+      ).toBe('all')
+      expect(wrapper.get('[data-test="warehouse-count"]').text()).toBe('0/0')
+      expect(wrapper.get('[data-test="warehouse-visible-count"]').text()).toContain('0/0')
     })
   })
 })

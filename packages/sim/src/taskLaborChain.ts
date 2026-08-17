@@ -47,12 +47,13 @@ export interface TaskLaborChainBreakdown {
    * assembly (there is no bench step to charge - the part goes straight
    * into the slot on refit). */
   workPoints: number
-  /** Refitting the part so the customer's car actually improves: the
-   * slot's own install rate, gated exactly as the real refit/install job
-   * would be (an assembly member reads its assembly's own gate, matching
-   * `resolveRefitAssembly`'s multiplier; a loose part reads its own
-   * 'install' gate). Always charged - a delivered task always improves its
-   * slot, never a like-for-like refit. */
+  /** Refitting the part so the customer's car actually improves: an
+   * assembly member prices the flat `refitAssembly` figure at the
+   * assembly's own machine gate (matching `resolveRefitAssembly` exactly -
+   * a customer quote and the player's own refit can never drift); a loose
+   * part prices its own class-based install rate at its own 'install' gate.
+   * Always charged - a delivered task always improves its slot, never a
+   * like-for-like refit. */
   refitPoints: number
   /** blockerPoints + removalPoints + workPoints + refitPoints. */
   totalPoints: number
@@ -208,9 +209,15 @@ export function taskLaborChain(
   const refitGateGroup = assemblyDef
     ? assemblyMachineGateGroup(assemblyDef, context)
     : machineGateGroupFor(carPartId, 'install', context)
-  const refitPoints =
-    installLaborSlotsFor(carPartId, context) *
-    machineLaborMultiplier(refitGateGroup, state, context)
+  // An assembly member's refit prices the same flat `refitAssembly` figure
+  // `resolveRefitAssembly` actually charges for the whole unit (sprint212.md,
+  // "the labour laws") - a customer quote and the player's own refit must
+  // never drift. A non-member slot still prices its own class-based install
+  // rate.
+  const refitPoints = assemblyDef
+    ? actionPoints.refitAssembly * machineLaborMultiplier(refitGateGroup, state, context)
+    : installLaborSlotsFor(carPartId, context) *
+      machineLaborMultiplier(refitGateGroup, state, context)
 
   return totals({ blockerPoints, removalPoints, workPoints, refitPoints }, pointsPerLabour)
 }

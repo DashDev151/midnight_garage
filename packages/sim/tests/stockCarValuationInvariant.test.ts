@@ -2,7 +2,7 @@ import { BUYERS, CARS, ECONOMY, PARTS, PARTS_TAXONOMY } from '@midnight-garage/c
 import { describe, expect, it } from 'vitest'
 import { computeRosterDonorBalanceProbe } from '../src/balanceProbes'
 import { buildSimContext } from '../src/context'
-import { mileageFactor } from '../src/marketValue'
+import { excellencePremiumYen, mileageFactor } from '../src/marketValue'
 
 /**
  * The value stack's own acceptance gate for Stage C (the coherence discount)
@@ -26,6 +26,15 @@ import { mileageFactor } from '../src/marketValue'
  * this model... valued whole through the real marketValueYen"), built via the
  * real generation-grade `stockInstanceFor`, for every roster model - so this
  * reuses the existing probe rather than hand-building a car instance per model.
+ *
+ * Sprint213.md item 3 adds ONE further, disclosed term on top of that Stage
+ * A/B figure: every one of these cars is genuinely fine-throughout (all-mint,
+ * zero restoration bill), coherent (`coherenceFactor` 1.0, as this file's own
+ * analysis above establishes) and fresh (0 km, the mileage curve's own
+ * ceiling) - so every one of them clears `excellencePremiumYen`'s gate. Stage
+ * C and Stage D still touch nothing here; the new Stage E term does, by
+ * design, and this guard now pins Stage A/B PLUS it rather than Stage A/B
+ * alone.
  */
 describe('stock-car valuation invariant (Sprint 144 acceptance gate)', () => {
   const context = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
@@ -34,16 +43,21 @@ describe('stock-car valuation invariant (Sprint 144 acceptance gate)', () => {
     expect(CARS.length).toBe(48)
   })
 
-  it('every shipped car with no aftermarket parts values at exactly bookValueYen x mileageFactor(0) - Stage C and Stage D touch nothing here', () => {
+  it('every shipped car with no aftermarket parts values at exactly bookValueYen x mileageFactor(0) plus the excellence premium - Stage C and Stage D touch nothing here', () => {
     const rows = computeRosterDonorBalanceProbe(CARS, context)
     expect(rows).toHaveLength(48)
     const modelsById = Object.fromEntries(CARS.map((car) => [car.id, car]))
     for (const row of rows) {
       const model = modelsById[row.modelId]!
-      const expectedYen = Math.round(model.bookValueYen * mileageFactor(0, ECONOMY))
-      expect(row.wholeSaleYen, `${row.modelId} stock value moved off its Stage A/B figure`).toBe(
-        expectedYen,
-      )
+      const cleanValueYen = model.bookValueYen * mileageFactor(0, ECONOMY)
+      // coherenceFactor is 1.0 on any all-stock car (this file's own doc
+      // comment); mileageKm is 0, the mileage curve's own neutral ceiling.
+      const excellenceYen = excellencePremiumYen(model, cleanValueYen, 0, 1, 0, ECONOMY)
+      const expectedYen = Math.round(cleanValueYen) + excellenceYen
+      expect(
+        row.wholeSaleYen,
+        `${row.modelId} stock value moved off its Stage A/B + E figure`,
+      ).toBe(expectedYen)
     }
   })
 })

@@ -34,8 +34,10 @@ function grantCar(modelId?: string) {
   return { game, carId: game.gameState.ownedCars.at(-1)!.id }
 }
 
-function mountFor(carId: string) {
-  return track(mount(WorkshopViews, { props: { carId }, global: { plugins: [pinia] } }))
+function mountFor(carId: string, extraProps: Record<string, unknown> = {}) {
+  return track(
+    mount(WorkshopViews, { props: { carId, ...extraProps }, global: { plugins: [pinia] } }),
+  )
 }
 
 /** The `data-test` ids one region should render - the component's own naming
@@ -236,7 +238,11 @@ describe('WorkshopViews', () => {
     expect(region.get('.band-chip').text()).toBe('scrap')
     expect(region.text()).toContain('past saving')
     expect(region.text()).not.toContain('panel off')
-    expect(region.attributes('aria-label')).toBe('Bonnet: scrap, past saving, binding')
+    // Structure (scrap) and finish (bare metal, since this fixture never
+    // painted the zone) are different facts and both show - the aria-label
+    // carries the finish tag too, between the panel note and binding.
+    expect(region.text()).toContain('bare metal')
+    expect(region.attributes('aria-label')).toBe('Bonnet: scrap, past saving, bare metal, binding')
   })
 
   it('renders zone regions inert when the car has no zone state, and clicking one emits nothing', async () => {
@@ -284,6 +290,63 @@ describe('WorkshopViews', () => {
     expect(wrapper.get('[data-test="workshop-region-zone-boot"]').classes()).not.toContain(
       'wv-binding',
     )
+  })
+
+  it('marks the region the `selected` prop names, and no other, whether it is a part or a zone', async () => {
+    const { carId } = grantCar()
+    const wrapper = mountFor(carId, { selected: { kind: 'part', partId: 'seats' } })
+
+    expect(wrapper.get('[data-test="workshop-region-part-seats"]').classes()).toContain(
+      'wv-selected',
+    )
+    expect(wrapper.get('[data-test="workshop-region-zone-bonnet"]').classes()).not.toContain(
+      'wv-selected',
+    )
+
+    await wrapper.setProps({ selected: { kind: 'zone', zoneId: 'bonnet' } })
+    expect(wrapper.get('[data-test="workshop-region-part-seats"]').classes()).not.toContain(
+      'wv-selected',
+    )
+    expect(wrapper.get('[data-test="workshop-region-zone-bonnet"]').classes()).toContain(
+      'wv-selected',
+    )
+  })
+
+  it('reads a beaten-straight bare zone as its own structure band plus a finish tag, never a plain Mint', () => {
+    const { game, carId } = grantCar()
+    const car = game.gameState.ownedCars.find((c) => c.id === carId)!
+    car.zoneState = {
+      ...car.zoneState!,
+      // Mint structure, straight off a fresh panel - but never painted, so
+      // the finish is still bare metal underneath.
+      bonnet: { metal: 0, surface: 0, finish: 3, panelMissing: false, primed: false },
+    }
+    const wrapper = mountFor(carId)
+
+    const region = wrapper.get('[data-test="workshop-region-zone-bonnet"]')
+    expect(region.get('.band-chip').text()).toBe('mint')
+    expect(region.text()).toContain('bare metal')
+  })
+
+  it('collapses to a plain Mint reading with no finish tag once structure and finish are both done', () => {
+    const { game, carId } = grantCar()
+    const car = game.gameState.ownedCars.find((c) => c.id === carId)!
+    car.zoneState = {
+      ...car.zoneState!,
+      bonnet: {
+        metal: 0,
+        surface: 0,
+        finish: 0,
+        panelMissing: false,
+        primed: false,
+        colour: 'lime',
+      },
+    }
+    const wrapper = mountFor(carId)
+
+    const region = wrapper.get('[data-test="workshop-region-zone-bonnet"]')
+    expect(region.get('.band-chip').text()).toBe('mint')
+    expect(region.find('[data-test="zone-finish-bonnet"]').exists()).toBe(false)
   })
 
   it('keeps a removed part clickable - an empty slot is a work target, not a dead region', async () => {

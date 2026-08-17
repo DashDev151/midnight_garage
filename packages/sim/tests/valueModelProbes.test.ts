@@ -34,7 +34,9 @@ import {
 import { computeRosterBalanceProbe } from '../src/balanceProbes'
 import { ALL_ZONE_IDS, isMetalZoneState, severityThresholdForBand } from '../src/bodyPipeline'
 import { buildSimContext } from '../src/context'
+import { coherenceFactorForCar } from '../src/derivedStats'
 import {
+  excellencePremiumYen,
   installedPartsValueYen,
   marketValueYen,
   mileageFactor,
@@ -592,7 +594,8 @@ describe('the Honda City probe (Sprint 54 decision 5 - the exact playtest regres
       mileageKm: 116_226,
       parts: uniformClassedCarParts(CITY_MODEL, 'poor'),
     })
-    const { marketRepairDiscount } = ECONOMY.valuation
+    const marketRepairDiscount =
+      ECONOMY.valuation.marketRepairDiscount[fitmentClassForTier(CITY_MODEL.tier)]!
     const guideAsBought = marketValueYen(
       CITY_MODEL,
       car,
@@ -745,7 +748,7 @@ describe('ceiling probe (Sprint 54 decision 5 - law 1, no inflation)', () => {
   const COMMON_MODEL = CARS.find((c) => c.id === 'honda-civic-sir2-eg6')
   if (!COMMON_MODEL) throw new Error('fixture common-tier car missing from seed content')
 
-  it('an all-stock-mint car (zero restoration bill) is worth exactly its clean value, never above', () => {
+  it("an all-stock-mint car (zero restoration bill) is worth its clean value plus sprint213.md's excellence premium, never more", () => {
     const car = buildCarInstance({
       modelId: COMMON_MODEL.id,
       mileageKm: 60_000,
@@ -762,7 +765,24 @@ describe('ceiling probe (Sprint 54 decision 5 - law 1, no inflation)', () => {
       PARTS_TAXONOMY_BY_ID,
       ECONOMY,
     )
-    expect(guideValueYen).toBe(Math.round(cleanValueYen))
+    // Sprint213.md item 3: the old absolute ceiling ("clean value, never
+    // above") is now clean value PLUS a bounded, gated premium for a car
+    // that is genuinely fine-throughout (zero restoration bill, exactly the
+    // case here), coherent (stock, so `coherenceFactorForCar` is 1) and
+    // fresh (`mileageFactor` at its own neutral point, 1). The ceiling is
+    // still absolute - `excellencePremiumYen`'s own gate and per-tier cap are
+    // what "never more" now means.
+    const coherenceFactor = coherenceFactorForCar(car, COMMON_MODEL, PARTS_BY_ID, ECONOMY)
+    const excellenceYen = excellencePremiumYen(
+      COMMON_MODEL,
+      cleanValueYen,
+      0,
+      coherenceFactor,
+      car.mileageKm,
+      ECONOMY,
+    )
+    expect(excellenceYen).toBeGreaterThan(0)
+    expect(guideValueYen).toBe(Math.round(cleanValueYen) + excellenceYen)
   })
 
   it('a restored high-mileage car is worth strictly less than a restored low-mileage example of the same model', () => {
@@ -807,7 +827,7 @@ describe('ceiling probe (Sprint 54 decision 5 - law 1, no inflation)', () => {
    * qualifying cars after the filter (aftermarketChance applies per slot, so
    * most 29-slot cars now carry at least one modified part).
    */
-  it('fully restoring a STOCK-only generated car never prices it above its own clean value', () => {
+  it('fully restoring a STOCK-only generated car never prices it above its own clean value plus the excellence premium', () => {
     const stockOnlyLots = independentLots(300, 9000).filter((lot) =>
       ALL_CAR_PART_IDS.every((partId) => {
         const installed = lot.car.parts[partId].installed
@@ -826,7 +846,20 @@ describe('ceiling probe (Sprint 54 decision 5 - law 1, no inflation)', () => {
         PARTS_TAXONOMY_BY_ID,
         ECONOMY,
       )
-      expect(guideValueYen).toBeLessThanOrEqual(Math.round(cleanValueYen) + 1) // rounding slack
+      // Sprint213.md item 3: a full restoration to mint clears the excellence
+      // gate on every one of these stock-only cars (PROBE_MODEL's own
+      // expectation band IS mint), so the ceiling is now clean value plus
+      // that bounded premium, never a second yen more.
+      const coherenceFactor = coherenceFactorForCar(restored, PROBE_MODEL, PARTS_BY_ID, ECONOMY)
+      const excellenceYen = excellencePremiumYen(
+        PROBE_MODEL,
+        cleanValueYen,
+        0,
+        coherenceFactor,
+        restored.mileageKm,
+        ECONOMY,
+      )
+      expect(guideValueYen).toBeLessThanOrEqual(Math.round(cleanValueYen) + excellenceYen + 1) // rounding slack
     }
   })
 })
@@ -844,7 +877,9 @@ describe('the scrap-value floor never binds on a generated lot (Sprint 54 decisi
         const cleanValueYen = model.bookValueYen * mileageFactor(car.mileageKm, ECONOMY)
         const floorYen = ECONOMY.bands.scrapValueFraction * cleanValueYen
         const billYen = carCostToMintYen(car, model, PARTS_BY_ID, PARTS_TAXONOMY_BY_ID, ECONOMY)
-        const unclampedValueYen = cleanValueYen - ECONOMY.valuation.marketRepairDiscount * billYen
+        const marketRepairDiscount =
+          ECONOMY.valuation.marketRepairDiscount[fitmentClassForTier(model.tier)]!
+        const unclampedValueYen = cleanValueYen - marketRepairDiscount * billYen
         expect(unclampedValueYen).toBeGreaterThanOrEqual(floorYen)
       }
     }

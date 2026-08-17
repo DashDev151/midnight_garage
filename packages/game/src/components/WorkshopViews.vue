@@ -23,7 +23,12 @@ import {
 import { computed, ref } from 'vue'
 import type { DropZoneHandle } from '../composables/useDragAndDrop'
 import { useGameStore, type CarPartRowView } from '../stores/gameStore'
-import { zoneNeedsPanelTag } from '../utils/zoneSeverity'
+import {
+  ZONE_FINISH_LABELS,
+  zoneBothDone,
+  zoneFinishPosition,
+  zoneNeedsPanelTag,
+} from '../utils/zoneSeverity'
 import BandChip from './BandChip.vue'
 import {
   WORKSHOP_VIEW_H,
@@ -51,12 +56,28 @@ import { workshopViewDataUrl } from './workshopViewSprites'
  * Fit button - this component still owns none of the accept logic itself.
  * `dropZones` is a `Partial` and defaults empty: a caller with nothing to
  * drop (every current test) mounts exactly as before, and a missing entry
- * simply renders that region non-interactive as a drop target.
+ * simply renders that region non-interactive as a drop target. `zoneDropZones`
+ * is the same idea for the body zones (sprint211.md task D): a panel is a
+ * part like any other, so a zone region doubles as a drop target exactly the
+ * way a part region already did, once a host builds one via
+ * `useZoneDropZones` and hands it in.
+ *
+ * `selected` names whatever the host's own docked panel is currently
+ * showing, so the region it came from carries a real selected outline - the
+ * one thing this surface never had before (sprint211.md task A): a click
+ * used to dock a panel with no visible trace of which region it targeted,
+ * which is how a stale target went unnoticed. `null`/omitted renders every
+ * region unselected, exactly as before.
  */
 
 const props = withDefaults(
-  defineProps<{ carId: string; dropZones?: Partial<Record<CarPartId, DropZoneHandle>> }>(),
-  { dropZones: () => ({}) },
+  defineProps<{
+    carId: string
+    dropZones?: Partial<Record<CarPartId, DropZoneHandle>>
+    zoneDropZones?: Partial<Record<ZoneId, DropZoneHandle>>
+    selected?: WorkshopSelection | null
+  }>(),
+  { dropZones: () => ({}), zoneDropZones: () => ({}), selected: null },
 )
 const emit = defineEmits<{ (e: 'select', selection: WorkshopSelection): void }>()
 
@@ -154,6 +175,25 @@ interface RegionView {
   /** Parts only; the drop zone this region doubles as, or `null` for a zone
    * region (a body zone has no part slot to drop onto). */
   dropZone: DropZoneHandle | null
+  /** Whether the host's docked panel is currently showing this exact region -
+   * the one visible trace a selection ever leaves on the diagram. */
+  isSelected: boolean
+  /** Zones only; the finish-position word (bare metal / prepped / primed /
+   * painted / polished), or `null` when there is no band to pair it with
+   * (no zone data, or the panel is missing) or when structure and finish are
+   * both done and the band chip alone already says the whole story. */
+  finishTag: string | null
+}
+
+/** Whether `selection` is the one the host's docked panel is currently
+ * showing - compared on both `kind` and id, since `chassis` is a legal value
+ * of either id type and a bare string match would conflate them. */
+function isSelected(selection: WorkshopSelection): boolean {
+  const sel = props.selected
+  if (!sel || sel.kind !== selection.kind) return false
+  return sel.kind === 'part' && selection.kind === 'part'
+    ? sel.partId === selection.partId
+    : sel.kind === 'zone' && selection.kind === 'zone' && sel.zoneId === selection.zoneId
 }
 
 function partRegion(region: Extract<WorkshopRegion, { kind: 'part' }>): RegionView {
@@ -188,6 +228,8 @@ function partRegion(region: Extract<WorkshopRegion, { kind: 'part' }>): RegionVi
     inert: false,
     ariaLabel: `${name}: ${band ?? 'empty'}${notes.length > 0 ? `, ${notes.join(', ')}` : ''}`,
     dropZone: props.dropZones[region.partId] ?? null,
+    isSelected: isSelected({ kind: 'part', partId: region.partId }),
+    finishTag: null,
   }
 }
 
@@ -204,7 +246,18 @@ function zoneRegion(region: Extract<WorkshopRegion, { kind: 'zone' }>): RegionVi
   const band = zone && !missing ? zoneConditionBand(zone) : null
   const needsPanelTag = zone && !missing ? zoneNeedsPanelTag(zone) : null
   const binding = zone !== null && bindingZoneIds.value.has(region.zoneId)
-  const notes = [needsPanelTag, binding ? 'binding' : null].filter(
+  // Structure and finish are different facts (sprint211.md task B): the band
+  // above reads structure alone, so a beaten-straight bare panel still shows
+  // it honestly - the finish tag beside it is what stops that band reading
+  // as a plain "Mint" when the coat is not actually done. Collapses to
+  // nothing only once both are true, the one case a bare band chip is the
+  // whole story.
+  const finishPosition = zone && !missing ? zoneFinishPosition(zone) : null
+  const finishTag =
+    finishPosition && band && !zoneBothDone(band, finishPosition)
+      ? ZONE_FINISH_LABELS[finishPosition]
+      : null
+  const notes = [needsPanelTag, finishTag, binding ? 'binding' : null].filter(
     (note): note is string => note !== null,
   )
   return {
@@ -227,7 +280,9 @@ function zoneRegion(region: Extract<WorkshopRegion, { kind: 'zone' }>): RegionVi
     ariaLabel: zone
       ? `${name}: ${missing ? 'missing' : band}${notes.length > 0 ? `, ${notes.join(', ')}` : ''}`
       : `${name}: ${NO_ZONE_DATA_LABEL}`,
-    dropZone: null,
+    dropZone: props.zoneDropZones[region.zoneId] ?? null,
+    isSelected: isSelected({ kind: 'zone', zoneId: region.zoneId }),
+    finishTag,
   }
 }
 
@@ -289,6 +344,7 @@ function regionClasses(region: RegionView): Record<string, boolean> {
     'wv-absent': region.absent,
     'wv-binding': region.binding,
     'wv-active-target': region.dropZone?.isActiveTarget.value ?? false,
+    'wv-selected': region.isSelected,
   }
 }
 
@@ -364,6 +420,9 @@ function onSelect(region: RegionView): void {
         <span v-else-if="region.absent" class="wv-tag">{{ ABSENT_LABEL }}</span>
         <span v-if="region.needsPanelTag" class="wv-tag wv-tag-alert">{{
           region.needsPanelTag
+        }}</span>
+        <span v-if="region.finishTag" class="wv-tag" :data-test="'zone-finish-' + region.slug">{{
+          region.finishTag
         }}</span>
       </button>
     </div>
@@ -513,6 +572,17 @@ function onSelect(region: RegionView): void {
    caption. */
 .wv-binding {
   box-shadow: inset 0 0 0 2px var(--mg-danger);
+}
+
+/* Whatever the docked panel is currently showing - a solid violet border and
+   a lifted background, distinct from both the cyan drop-target tint and the
+   red binding ring, so a click's target is never ambiguous (sprint211.md
+   task A: this was the one thing missing that let "Take it off" fire at a
+   stale zone). Wins visually over `wv-binding` by declaration order below. */
+.wv-selected {
+  border-color: var(--mg-neon-violet);
+  background: color-mix(in srgb, var(--mg-neon-violet) 20%, transparent);
+  box-shadow: inset 0 0 0 2px var(--mg-neon-violet);
 }
 
 /* Legitimately empty (the NA car's turbo slot): still a real click target,

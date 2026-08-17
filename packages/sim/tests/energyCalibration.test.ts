@@ -115,10 +115,11 @@ describe('energy-bar calibration (a day holds more than it used to; tools + staf
   it('a fresh solo tier-1 shop starts on the base pool of 8 labour slots', () => {
     expect(energyMax(stateWithStaff([]), ECONOMY)).toBe(basePoolPoints)
     expect(basePoolPoints).toBe(8 * pointsPerLabour)
-    // The labour retune halves tier 1's per-band-step cost (case (a), an
-    // intentional pacing change): a band step now costs half a labour slot,
-    // not a whole one.
-    expect(EPG[1]).toBe(pointsPerLabour / 2)
+    // Sprint213.md item 4 (labour-cost deflation) trims tier 1's per-band-step
+    // cost again, from half a labour slot to two-fifths of one: a clean
+    // entry-tier rebuild now runs a fraction of its old point cost without
+    // touching any repair's yen cost at all.
+    expect(EPG[1]).toBe(4)
   })
 
   it('day-1 is not softlocked: the daily pool affords a representative worn-body repair with room to spare', () => {
@@ -155,13 +156,13 @@ describe('energy-bar calibration (a day holds more than it used to; tools + staf
 
     const ratio = lateThroughput / day1Throughput
     // The honest day-1 to late-game loosening curve, pinned as assertions (not
-    // a console disclosure - sim has no DOM/node lib). Raising the base pool to
-    // 8 slots lifts BOTH ends by the same 20 points, so day 1 climbs 16 grades
-    // and the late game 160/3, and the gap between them narrows slightly rather
-    // than widening: a bigger starting day is worth proportionally more to a
-    // shop that has nothing else.
-    expect(day1Throughput).toBe(16)
-    expect(lateThroughput).toBe(160 / 3)
+    // a console disclosure - sim has no DOM/node lib). Sprint213.md item 4
+    // trimmed EPG[1] 5 -> 4 and EPG[3] 3 -> 2 (the whole tool-tier curve
+    // shifted down by one, preserving its own shape - see economy.json's own
+    // comment on the interlock), so day 1 now climbs 20 grades (80 / 4) and
+    // late game 80 (160 / 2).
+    expect(day1Throughput).toBe(20)
+    expect(lateThroughput).toBe(80)
     // The gate: the loosening is real (late game genuinely out-works day 1) but
     // not absurd (an order of magnitude is the sane ceiling for this arc).
     expect(ratio).toBeGreaterThan(1)
