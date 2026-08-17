@@ -10,8 +10,8 @@ import type {
   GameState,
   Symptom,
 } from '@midnight-garage/content'
-import { DIAGNOSTIC_TESTS, titleCaseFromSlug } from '@midnight-garage/content'
-import { bandIndex } from './bands'
+import { DIAGNOSTIC_TESTS, fitmentClassForTier, titleCaseFromSlug } from '@midnight-garage/content'
+import { bandIndex, planPartRepair } from './bands'
 import { energyMax } from './laborSlots'
 import type { SimContext } from './context'
 import { benchHasTrait, benchedMemberWithTrait } from './crewSkills'
@@ -19,6 +19,7 @@ import { bookCashMovements } from './financeLedger'
 import { findWorkableCar, writeCarBack } from './jobs'
 import { verifySlot } from './knowledge'
 import { marketValueYen } from './marketValue'
+import { taskLaborChain } from './taskLaborChain'
 
 type CarSymptom = CarInstance['symptoms'][number]
 
@@ -114,6 +115,15 @@ function allCauses(_carSymptom: CarSymptom, symptom: Symptom): readonly Cause[] 
  * for any symptom `causesFor` returns no causes for - a fully-resolved
  * symptom (exactly one remaining cause) contributes its exact true value,
  * no averaging.
+ *
+ * A LATENT symptom (`carSymptom.latent`, knowledge-and-diagnosis.md section
+ * 2) is skipped outright, before `causesFor` ever runs: it applies no
+ * discount to anyone's estimate, room or player alike. Its true damage is
+ * already baked into the part's own band at generation, and that band is
+ * masked back to the estimated guess by `knowledgeViewOf`/`apparentViewOf`
+ * exactly like any other unverified slot - a SECOND, cause-weighted discount
+ * on top would double-count it and leak its existence through the number
+ * even while the checklist stays silent about it.
  */
 function symptomDiscountYen(
   car: CarInstance,
@@ -126,6 +136,7 @@ function symptomDiscountYen(
 ): number {
   let discount = 0
   for (const carSymptom of car.symptoms) {
+    if (carSymptom.latent) continue
     const symptom = context.symptomsById[carSymptom.symptomId]
     if (!symptom) continue
     const causes = causesFor(carSymptom, symptom)
@@ -158,13 +169,18 @@ function symptomDiscountYen(
 }
 
 /**
- * The one estimator behind every diagnosis-side price: the apparent view's
- * market value minus the expected symptom discount over `causesFor`'s cause
- * set (`symptomDiscountYen` above). The cause set is the ONLY lever - the
- * room averages over every authored cause, the player over the causes their
- * own knowledge still leaves standing - so knowledge is the only thing that
- * separates the player's number from the room's. An honest car (no
- * symptoms) prices at exactly `marketValueYen(car)`.
+ * The value-difference estimator behind `expectedTrueValueYen` and
+ * `playerEstimateYen`: the apparent view's market value minus the expected
+ * symptom discount over `causesFor`'s cause set (`symptomDiscountYen`
+ * above). The cause set is the lever between the two - the honest average
+ * reads every authored cause, the player only the causes their own
+ * knowledge still leaves standing. `sheetGuideValueYen` (the room's own
+ * number) no longer runs through this estimator at all - it fear-biases
+ * toward the near-worst chain-priced candidate instead
+ * (`roomSymptomCostYen`), a genuinely different quantity (repair cost, not
+ * value delta) computed by a genuinely different formula, per knowledge-and-
+ * diagnosis.md section 4. An honest car (no symptoms) prices at exactly
+ * `marketValueYen(car)`.
  */
 function estimateValueYen(
   car: CarInstance,
@@ -192,9 +208,13 @@ function estimateValueYen(
 /**
  * The all-cause expectation: what this car is worth on average given every
  * symptom's own full weighted cause table - `estimateValueYen` over the
- * unfiltered cause set. Identical to `sheetGuideValueYen` by construction;
- * both names are kept because they answer different questions at the call
- * site (the honest average vs the number printed on the auction sheet).
+ * unfiltered cause set, priced by plain VALUE difference (the weighted mean
+ * `symptomDiscountYen` already computes). This is the honest average, used
+ * by the balance probes and the CSV export to measure how far the room's own
+ * number (`sheetGuideValueYen` below) sits from it - since knowledge-and-
+ * diagnosis.md section 4, the room prices near its WORST candidate rather
+ * than this average, so the two are no longer identical by construction; the
+ * gap between them is the fearful room working as designed.
  */
 export function expectedTrueValueYen(
   car: CarInstance,
@@ -206,29 +226,183 @@ export function expectedTrueValueYen(
 }
 
 /**
+ * The chain-priced cost to fix `cause`'s own damage, reasoned on `apparent`'s
+ * own hypothetical view (the part forced to `cause.setBand` - the room's own
+ * "if this cause turns out true" reasoning, `symptomDiscountYen`'s
+ * `damagedView` construction). Repaired at the bench if the cause doesn't
+ * scrap the part and the slot is repairable at all (`planPartRepair` to
+ * `mint`, the standard "make it right" target every other repair-cost
+ * convention in this codebase already prices to); replaced fresh otherwise
+ * (the fitment class's own stock catalogue price). Either way, labour prices
+ * through `taskLaborChain` at the real shop `state` describes and
+ * `economy.serviceJobs.laborRateYen` - the SAME cost pipeline
+ * `serviceJobCostBreakdown` (serviceJobs.ts) prices a customer's own quote
+ * through, so a candidate's fix cost here and what fixing it would actually
+ * cost on the shop floor can never drift apart. Zero when the taxonomy or
+ * the installed part can't be resolved (defensive; never happens for real
+ * content).
+ */
+function candidateFixCostYen(
+  apparent: CarInstance,
+  model: CarModel,
+  cause: Cause,
+  state: GameState,
+  context: SimContext,
+): number {
+  const entry = context.partsTaxonomyById[cause.carPartId]
+  const installed = apparent.parts[cause.carPartId].installed
+  if (!entry || !installed) return 0
+  const damagedView: CarInstance = {
+    ...apparent,
+    parts: {
+      ...apparent.parts,
+      [cause.carPartId]: { installed: { ...installed, band: cause.setBand } },
+    },
+  }
+  const { repairStepFraction } = context.economy.restoration
+  const { energyPerBandStepByToolTier } = context.economy.energy
+  const { laborRateYen } = context.economy.serviceJobs
+
+  if (cause.setBand !== 'scrap' && entry.repairable) {
+    const catalogPart = context.partsById[installed.partId]
+    if (!catalogPart) return 0
+    const plan = planPartRepair(
+      cause.setBand,
+      'mint',
+      1,
+      entry,
+      catalogPart.priceYen,
+      repairStepFraction,
+      energyPerBandStepByToolTier,
+    )
+    const laborSlots = taskLaborChain(
+      damagedView,
+      cause.carPartId,
+      'mint',
+      context,
+      state,
+    ).totalSlots
+    return plan.costYen + laborSlots * laborRateYen
+  }
+
+  const fitmentClass = fitmentClassForTier(model.tier)
+  const partCostYen = context.stockPartByCarPartId[fitmentClass]?.[cause.carPartId]?.priceYen ?? 0
+  const laborSlots = taskLaborChain(
+    damagedView,
+    cause.carPartId,
+    'install',
+    context,
+    state,
+  ).totalSlots
+  return partCostYen + laborSlots * laborRateYen
+}
+
+/**
+ * One symptom's fear-priced cost to the room (knowledge-and-diagnosis.md
+ * section 4): `fearBias x maxCandidateFixCost + (1 - fearBias) x
+ * weightedMeanFixCost`, over every authored cause (never narrowed by the
+ * player's own tests - the room reacts to whether a visit tested it, never
+ * to what it learned, `symptomTested`). `fearBias` close to the ceiling
+ * (economy.diagnosis.fearBias) means the sheet is nearly always bracing for
+ * the single worst candidate rather than the honest average, which is what
+ * makes a diagnosed-cheap fault profitable to outbid and a diagnosed-grenade
+ * a walk. Zero when the causes carry no weight at all (defensive; never
+ * happens for real content, which requires at least 2 weighted causes per
+ * symptom).
+ */
+function roomSymptomCostYen(
+  apparent: CarInstance,
+  model: CarModel,
+  causes: readonly Cause[],
+  state: GameState,
+  context: SimContext,
+): number {
+  const totalWeight = causes.reduce((sum, cause) => sum + cause.weight, 0)
+  if (totalWeight <= 0) return 0
+  let maxCost = 0
+  let weightedMean = 0
+  for (const cause of causes) {
+    const cost = candidateFixCostYen(apparent, model, cause, state, context)
+    if (cost > maxCost) maxCost = cost
+    weightedMean += (cause.weight / totalWeight) * cost
+  }
+  const { fearBias } = context.economy.diagnosis
+  return fearBias * maxCost + (1 - fearBias) * weightedMean
+}
+
+/**
  * The room's number - what the auction sheet prints and every room price
- * derives from (`bidding.ts`'s `carGuideValueYen`): `estimateValueYen` over
- * the unfiltered cause set. The room prices the odds, nothing more, so this
- * equals `expectedTrueValueYen` and the two only ever diverge from the
- * PLAYER's read (`playerEstimateYen`) once narrowing has happened.
+ * derives from (`bidding.ts`'s `carGuideValueYen`): the apparent view's
+ * market value, less each open symptom's own `roomSymptomCostYen` (the
+ * near-worst-case chain-priced fear cost, never the plain value-weighted
+ * mean `expectedTrueValueYen` uses) - a SEPARATE consumer of candidate costs
+ * from the player's own `playerEstimateYen`/`estimateValueYen` below, per
+ * knowledge-and-diagnosis.md section 4: "the room prices an unresolved
+ * symptom near its WORST candidate, not the weighted average." Never
+ * narrowed by `remainingCauseIds` (every authored cause, always - the room
+ * reacts to whether the player tested, never to what they learned). Skips a
+ * LATENT symptom outright (`symptomDiscountYen`'s own doc comment explains
+ * why). An honest car (no symptoms) prices at exactly `marketValueYen(car)`.
+ *
+ * FEAR PRICES WHAT NOBODY HAS LOOKED AT; A FULLY-DISCLOSED LOT HAS NOTHING
+ * TO FEAR. `feared` (default `true`) is the one escape hatch: `false` skips
+ * `roomSymptomCostYen` entirely and falls back to the pre-fear estimator
+ * (`estimateValueYen` over every cause, unfiltered - exactly what this
+ * function computed before the fearful room existed). The fear formula
+ * exists to price UNCERTAINTY about which candidate is true; a car nobody
+ * has any real doubt about - the scripted tutorial lot, sprint215.md's own
+ * `fullyVerifiedCar` exemption, a teaching artefact with its condition
+ * disclosed rather than hidden - has none to price, so the room reads it
+ * the honest way instead. The one caller that ever passes `false` is
+ * `bidding.ts`'s `anchorValueYen`, keyed on `AuctionLot.scripted`, the exact
+ * flag sprint215.md's own settlement code already uses to decide full
+ * verification; every other caller (an honest lot, an owned car, a probe
+ * fixture) takes the default and prices exactly as before this paragraph
+ * existed.
  */
 export function sheetGuideValueYen(
   car: CarInstance,
   model: CarModel,
   state: GameState,
   context: SimContext,
+  feared: boolean = true,
 ): number {
-  return estimateValueYen(car, model, state, context)
+  if (!feared) return estimateValueYen(car, model, state, context)
+  const heatPercent = state.marketHeat[model.id] ?? 100
+  const apparent = apparentViewOf(car)
+  const apparentValue = marketValueYen(
+    model,
+    apparent,
+    heatPercent,
+    context.partsById,
+    context.partsTaxonomyById,
+    context.economy,
+  )
+  let discount = 0
+  for (const carSymptom of car.symptoms) {
+    if (carSymptom.latent) continue
+    const symptom = context.symptomsById[carSymptom.symptomId]
+    if (!symptom) continue
+    discount += roomSymptomCostYen(apparent, model, symptom.causes, state, context)
+  }
+  return apparentValue - discount
 }
 
 /**
  * The player's number: `estimateValueYen` over each symptom's REMAINING
  * causes (`remainingCauseIds`, narrowed by tests, workups, and
  * reveal-on-removal), reweighted - the original weights renormalised over
- * just the remaining set by `symptomDiscountYen`'s `totalWeight` division.
- * Equals the room's number while nothing has narrowed; a fully-resolved
- * symptom (exactly one remaining cause) contributes its exact true value
- * with no averaging at all.
+ * just the remaining set by `symptomDiscountYen`'s `totalWeight` division,
+ * priced by plain value difference. This is the SECOND, independent
+ * consumer of candidate costs the design calls for (knowledge-and-
+ * diagnosis.md section 4): "the player's own estimate uses their actual
+ * knowledge: weighted mean over the candidates they still have open, actual
+ * cost once collapsed" - never the room's own near-worst-case
+ * `roomSymptomCostYen`. No longer equal to the room's number even while
+ * nothing has narrowed, since `sheetGuideValueYen` now fear-biases toward
+ * the worst chain-priced candidate; a fully-resolved symptom (exactly one
+ * remaining cause) still contributes its exact true value with no averaging
+ * at all, which is the one point the two numbers can coincide.
  */
 export function playerEstimateYen(
   car: CarInstance,
@@ -252,6 +426,20 @@ export function playerEstimateYen(
  * flagged `uncertain` for the UI's "?" chip. `null` band means genuinely
  * missing (mirrors every other missing-slot convention in this codebase -
  * never a real `ConditionBand` value).
+ *
+ * A LATENT symptom targeting `partId` (knowledge-and-diagnosis.md section 2)
+ * counts as still uncertain here for as long as `partId` is unverified,
+ * regardless of `symptomResolved` - a latent carries exactly one candidate
+ * from birth, so the ordinary "narrowed to one, therefore known" read would
+ * show its true band the moment it is drawn. Reads `car.verifiedSlots`
+ * directly rather than `knowledge.ts`'s `isSlotVerified` (whose absent-array
+ * default reads VERIFIED, the right default for every pre-215 caller that
+ * still expects full transparency) - a latent needs the opposite default,
+ * unverified until proven otherwise, which is exactly "no verifiedSlots yet"
+ * on a lot still sitting at auction. Once `partId` verifies, this clause
+ * drops out and the ordinary `symptomResolved` read below takes over,
+ * showing the true band the caller's own (already knowledge-masked, for an
+ * owned car) `car` carries.
  */
 export function displayedBandFor(
   car: CarInstance,
@@ -268,6 +456,7 @@ export function displayedBandFor(
     if (!symptom) return false
     const targetsThisPart = symptom.causes.some((cause) => cause.carPartId === partId)
     if (!targetsThisPart) return false
+    if (carSymptom.latent) return !(car.verifiedSlots?.includes(partId) ?? false)
     if (symptomResolved(carSymptom)) return false
     return symptom.causes.some(
       (cause) => cause.carPartId === partId && carSymptom.remainingCauseIds.includes(cause.id),
@@ -337,6 +526,14 @@ export function worstRemainingBandFor(
  * part). At most one symptom's own `trueCauseId` can target a given part
  * in practice, so `revealedCauseId` reports the first (and only) one
  * found.
+ *
+ * The `symptomResolved` early-exit below is skipped for a LATENT symptom
+ * (knowledge-and-diagnosis.md section 2): a latent is ALWAYS "resolved" by
+ * that read (it carries exactly one candidate from birth), yet the player
+ * has never been told, so - unlike an ordinary already-narrowed symptom,
+ * where skipping is correct because there is genuinely nothing left to
+ * reveal - a latent still has everything left to reveal the first time its
+ * own part comes off.
  */
 export function revealOnRemoval(
   car: CarInstance,
@@ -346,7 +543,7 @@ export function revealOnRemoval(
   if (car.symptoms.length === 0) return { car, revealedCauseId: null }
   let revealedCauseId: string | null = null
   const symptoms = car.symptoms.map((carSymptom) => {
-    if (symptomResolved(carSymptom)) return carSymptom
+    if (!carSymptom.latent && symptomResolved(carSymptom)) return carSymptom
     const symptom = context.symptomsById[carSymptom.symptomId]
     if (!symptom) return carSymptom
     const trueCause = symptom.causes.find((cause) => cause.id === carSymptom.trueCauseId)
@@ -610,6 +807,7 @@ function freshRouteState(symptom: Symptom, trueCauseId: string): CarSymptom {
     trueCauseId,
     remainingCauseIds: symptom.causes.map((cause) => cause.id),
     runTestIds: [],
+    latent: false,
   }
 }
 

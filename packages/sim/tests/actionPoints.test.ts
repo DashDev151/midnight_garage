@@ -338,6 +338,7 @@ describe('every action gates on the labour bar and spends its own figure when ra
           trueCauseId: symptom.causes[0]!.id,
           remainingCauseIds: symptom.causes.map((c) => c.id),
           runTestIds: [],
+          latent: false,
         },
       ],
     })

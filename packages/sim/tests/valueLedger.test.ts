@@ -205,13 +205,18 @@ describe('roomLedgerFor on the tutorial lot', () => {
   })
 })
 
-describe('pre-knowledge equality: the room and the player read the same number', () => {
-  it('sheetGuideValueYen === expectedTrueValueYen === playerEstimateYen on the untested tutorial lot', () => {
+describe('pre-knowledge spread: the room fears the worst, the player and the honest average still agree', () => {
+  it('expectedTrueValueYen === playerEstimateYen (unaffected by the fearful room), and sheetGuideValueYen prices below both, on the untested tutorial lot', () => {
     const state = createInitialGameState(CONTEXT, 1)
     const lot = buildTutorialLot(CONTEXT, 1)
     const model = CONTEXT.modelsById[lot.modelId]!
+    // The player's own estimator and the honest all-cause average are still
+    // the SAME formula while nothing has narrowed (both value-weighted,
+    // knowledge-and-diagnosis.md section 4's second consumer) - only the
+    // room's own sheet moved to a separate, cost-based, fear-biased number.
+    const expected = expectedTrueValueYen(lot.car, model, state, CONTEXT)
     const sheet = sheetGuideValueYen(lot.car, model, state, CONTEXT)
-    expect(expectedTrueValueYen(lot.car, model, state, CONTEXT)).toBe(sheet)
-    expect(playerEstimateYen(lot.car, model, state, CONTEXT)).toBe(sheet)
+    expect(playerEstimateYen(lot.car, model, state, CONTEXT)).toBe(expected)
+    expect(sheet).toBeLessThan(expected)
   })
 })

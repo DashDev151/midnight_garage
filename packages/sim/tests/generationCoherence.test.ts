@@ -251,7 +251,17 @@ describe('generated cars are coherent (Sprint 66, item 6a)', () => {
     // `patternConditionSwingPercent` at 0, these cars carry 29.73 band steps
     // apiece and a p90 of 3; at the shipped 7 they carry 29.98 and a p90 of 4.
     // Same damage, fewer slots, which is what a pattern is for.
-    expect(noneRuined).toBeGreaterThan(0.37)
+    //
+    // The latent roll and the grenade-prevalence retune (knowledge-and-
+    // diagnosis.md sections 2 and 3) add a further, independent source of
+    // damage - a latent occasionally lands a genuinely ruined slot outside
+    // the visible symptom, and a heavier scrap-band cause weight inside a
+    // visible symptom's own cause list occasionally lands one too. Measured
+    // fresh against the shipped content: 0.365 with nothing ruined (was
+    // 0.388), median 1, p90 4, mean 1.595 (was 1.558) - still typically tidy,
+    // just fractionally less so, exactly the felt cost of hidden faults being
+    // findable at all.
+    expect(noneRuined).toBeGreaterThan(0.36)
     expect(median).toBeLessThanOrEqual(1)
     expect(p90).toBeLessThanOrEqual(4)
     expect(mean).toBeLessThan(1.65)

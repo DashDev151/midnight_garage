@@ -79,15 +79,21 @@ export function interestedBuyers(
  * code anywhere, ever reads `car.symptoms[].trueCauseId` or
  * `.remainingCauseIds` directly.
  */
+/**
+ * `feared` (default `true`) forwards straight to `sheetGuideValueYen`'s own
+ * escape hatch - see that function's doc comment for the principle. Only
+ * `anchorValueYen` below ever passes `false`, keyed on `AuctionLot.scripted`.
+ */
 export function carGuideValueYen(
   car: CarInstance,
   model: CarModel,
   state: GameState,
   context: SimContext,
+  feared: boolean = true,
 ): number {
   const interested = interestedBuyers(model, context.buyers)
   if (interested.length === 0) return 0
-  if (car.symptoms.length > 0) return sheetGuideValueYen(car, model, state, context)
+  if (car.symptoms.length > 0) return sheetGuideValueYen(car, model, state, context, feared)
   const heatPercent = state.marketHeat[model.id] ?? 100
   return marketValueYen(
     model,
@@ -99,10 +105,20 @@ export function carGuideValueYen(
   )
 }
 
+/**
+ * A scripted lot (`AuctionLot.scripted` - sprint215.md's own `fullyVerifiedCar`
+ * flag, bidding.ts's settlement code) is exempt from the room's fear: it is a
+ * teaching artefact with its condition disclosed, not a real lot with real
+ * hidden uncertainty, so its guide value prices honestly rather than braced
+ * for the worst (`sheetGuideValueYen`'s own doc comment carries the
+ * principle). Every downstream reader of this value - `reserveYen`,
+ * `computeBuyoutPriceYen`, `privateValuationYen` - inherits the exemption for
+ * free, since none of them re-derive the guide value independently.
+ */
 export function anchorValueYen(lot: AuctionLot, state: GameState, context: SimContext): number {
   const model = context.modelsById[lot.modelId]
   if (!model) return 0
-  return carGuideValueYen(lot.car, model, state, context)
+  return carGuideValueYen(lot.car, model, state, context, !lot.scripted)
 }
 
 /**

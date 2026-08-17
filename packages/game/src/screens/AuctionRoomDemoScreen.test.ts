@@ -182,8 +182,15 @@ describe('AuctionRoomDemoScreen', () => {
     expect(thinEl.find('[data-test^="symptom-"]').exists()).toBe(true)
     const estThin = wrapper.find('[data-test="est-value-thin"]')
     expect(estThin.text()).toContain('Estimated market value:')
-    expect(estThin.text()).toContain(formatYen(thin!.roomReadYen))
-    expect(estThin.find('.was').exists()).toBe(false)
+    // The room's own sheet fear-biases toward the worst chain-priced
+    // candidate (knowledge-and-diagnosis.md section 4); the player's own
+    // estimate stays value-weighted, so the two genuinely differ even before
+    // any test has narrowed anything - the card shows that spread from the
+    // start, not only once a click moves it.
+    const initialThinYen = estimateAfterTests(thin!, [])
+    expect(estThin.find('.was').text()).toBe(formatYen(thin!.roomReadYen))
+    const initialThinDirection = initialThinYen >= thin!.roomReadYen ? 'up' : 'down'
+    expect(estThin.find(`.${initialThinDirection}`).text()).toBe(formatYen(initialThinYen))
     expect(wrapper.find('[data-test="take-seat-thin"]').text()).toBe('Take a seat')
 
     const packedEl = packedCard(wrapper)
@@ -246,7 +253,14 @@ describe('AuctionRoomDemoScreen', () => {
     const chain = ['trace-the-wet', 'carpet-lift', 'coolant-check', 'hose-the-roof']
     const minutesLeftAfter = (steps: number) => visitMinutes - minutesFor(chain.slice(0, steps))
     await inspect(wrapper)
-    expect(wrapper.find('[data-test="est-value-thin"]').find('.was').exists()).toBe(false)
+    // The room's fear-biased sheet and the player's own value-weighted
+    // estimate already differ before any test runs (knowledge-and-
+    // diagnosis.md section 4), so the card shows the split from the start.
+    const initialThinYen = estimateAfterTests(thin!, [])
+    const initialThin = wrapper.find('[data-test="est-value-thin"]')
+    expect(initialThin.find('.was').text()).toBe(formatYen(thin!.roomReadYen))
+    const initialThinDirection = initialThinYen >= thin!.roomReadYen ? 'up' : 'down'
+    expect(initialThin.find(`.${initialThinDirection}`).text()).toBe(formatYen(initialThinYen))
 
     await testButton(thinCard(wrapper), chain[0]!).trigger('click')
 
@@ -409,12 +423,17 @@ describe('AuctionRoomDemoScreen', () => {
     const [, packed] = buildLobby()
     await inspect(wrapper)
     // Resolve the trap to its true, dear worth; by the time the room has
-    // climbed for 18s, every rung on offer already lands past the player's
+    // climbed for 30s, every rung on offer already lands past the player's
     // number, so all three read danger at once - each computed off its own
     // landing price, not one shared switch, which the identical `.classes()`
-    // calls below still prove independently even though they agree here. A
-    // shadow room, seated and ticked the same way the screen's own room is,
-    // supplies the exact mid-climb board value to check the labels against.
+    // calls below still prove independently even though they agree here. The
+    // climb window widened under the fearful room (knowledge-and-diagnosis.md
+    // section 4): the packed lot's own room read starts lower (nearer the
+    // dear true cause it already fears), so the board needs longer to climb
+    // past the resolved true value than it did against the old plain-average
+    // sheet. A shadow room, seated and ticked the same way the screen's own
+    // room is, supplies the exact mid-climb board value to check the labels
+    // against.
     await resolveTrap(wrapper)
     const trueValueYen = estimateAfterTests(packed!, [...TRAP_TEST_CHAIN])
     const learned: Learned = {
@@ -423,10 +442,10 @@ describe('AuctionRoomDemoScreen', () => {
       trueValueYen: packed!.trueValueYen,
       inspected: true,
     }
-    const shadow = roomAfter(packed!, learned, 18_000)
+    const shadow = roomAfter(packed!, learned, 30_000)
 
     await wrapper.find('[data-test="take-seat-packed"]').trigger('click')
-    await advance(18_000)
+    await advance(30_000)
     expect(wrapper.find('[data-test="seat-0"]').text()).toContain('Endo')
 
     const rung1 = nextRungYen(shadow)

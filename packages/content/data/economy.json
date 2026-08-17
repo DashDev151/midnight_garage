@@ -1348,6 +1348,26 @@
     "saleRevealCopy": {
       "buyerWon": "The buyer had it looked over: <cause>. They did well out of you.",
       "playerWon": "The buyer had it looked over: <cause>. You did well out of them."
+    },
+    "fearBias": 0.85,
+    "latentRoll": {
+      "oneChance": 0.25,
+      "twoChance": 0.05,
+      "oneChanceModifierByDamagePattern": {
+        "garaged": -0.15,
+        "neglected-commuter": 0.05,
+        "frontal-collision": 0.1,
+        "drifted": 0.05,
+        "grenade": 0.15
+      },
+      "twoChanceModifierByDamagePattern": {
+        "garaged": -0.05,
+        "neglected-commuter": 0.02,
+        "frontal-collision": 0.03,
+        "drifted": 0.02,
+        "grenade": 0.07
+      },
+      "scrapCauseWeightFraction": 0.15
     }
   },
   "knowledgePriors": {

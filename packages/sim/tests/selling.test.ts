@@ -1308,6 +1308,7 @@ describe('resolveSellViaWalkIn (Sprint 31: resolves today’s pre-rolled offer)'
           trueCauseId: 'valve-seals',
           remainingCauseIds: ['valve-seals', 'tired-rings', 'head-gasket'],
           runTestIds: [],
+          latent: false,
         },
       ],
       apparentBandByPartId: { headValvetrain: 'mint' },

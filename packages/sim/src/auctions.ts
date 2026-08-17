@@ -18,6 +18,7 @@ import {
   type ConditionBand,
   type DamageGrade,
   type DamagePattern,
+  type DamagePatternId,
   type EconomyConfig,
   type Grade,
   type PartFitmentClass,
@@ -117,14 +118,77 @@ function bandsMatch(a: CarInstance, b: CarInstance): boolean {
 }
 
 /**
+ * One cause's damage, applied to `working`'s installed part and Law-2-vetoed
+ * exactly as every other generation step is - shared by the visible symptom
+ * draw (`applySymptoms`) and the latent draw (`applyLatentSymptoms`,
+ * docs/design/systems/knowledge-and-diagnosis.md section 2, sprint216.md
+ * task A): a latent writes its band exactly as a visible symptom already
+ * does, one implementation rather than two. Sets the part to the WORSE of
+ * its current band and the cause's own `setBand` (the zone-aware branch for
+ * a derived body carrier, which moves the underlying zone state rather than
+ * the band directly - see `applySymptoms`'s own doc comment for why), then
+ * `enforceMaxBillFraction` re-checks the whole car; if it would move ANY
+ * band, the whole application is vetoed. Returns `null` when the target slot
+ * is empty (nothing to damage) or the Law 2 veto fires - either way, the
+ * caller drops this cause outright.
+ */
+function applyCauseWithLawTwo(
+  working: CarInstance,
+  model: CarModel,
+  context: SimContext,
+  carOrigin: PartOrigin,
+  pattern: DamagePattern,
+  rng: Rng,
+  cause: Cause,
+): { car: CarInstance; beforeBand: ConditionBand } | null {
+  const installed = working.parts[cause.carPartId].installed
+  if (!installed) return null // nothing to damage - drop
+
+  const beforeBand = installed.band
+  const tentative: CarInstance =
+    working.zoneState && isBodyDerivedPart(cause.carPartId)
+      ? applyDerivedBodyBands(
+          {
+            ...working,
+            zoneState: setZoneCarrierToAtLeastBand(
+              working.zoneState,
+              cause.carPartId,
+              cause.setBand,
+              // `bodywork` writes metal, which only a metal zone carries;
+              // `paint` is a finish any of the nine zones can take.
+              pickPatternZone(
+                cause.carPartId === 'bodywork' ? METAL_ZONE_IDS : PANEL_ZONE_IDS,
+                pattern,
+                rng,
+              ),
+            ),
+          },
+          model,
+          context,
+        )
+      : {
+          ...working,
+          parts: {
+            ...working.parts,
+            [cause.carPartId]: {
+              installed: {
+                ...installed,
+                band: bandIndex(cause.setBand) < bandIndex(beforeBand) ? cause.setBand : beforeBand,
+              },
+            },
+          },
+        }
+  const enforced = enforceMaxBillFraction(tentative, model, context, carOrigin)
+  if (!bandsMatch(enforced, tentative)) return null // Law 2 veto - drop entirely
+  return { car: enforced, beforeBand }
+}
+
+/**
  * Rolls this car's symptoms and applies each one's damage in turn, on the
- * ALREADY Law-2-compliant car. Each cause sets its part to the WORSE of the
- * current band and the cause's own `setBand`, then `enforceMaxBillFraction`
- * re-checks the whole car; if it would move ANY band, the symptom is
- * dropped outright (deterministic keep-or-drop, no partial damage). A cause
- * targeting an already-missing slot is dropped the same way.
- * `apparentBandByPartId` records a part's band from BEFORE THE FIRST
- * symptom that damages it, never overwritten by a later one.
+ * ALREADY Law-2-compliant car (`applyCauseWithLawTwo` above; a symptom whose
+ * cause is dropped there is dropped here too, deterministic keep-or-drop, no
+ * partial damage). `apparentBandByPartId` records a part's band from BEFORE
+ * THE FIRST symptom that damages it, never overwritten by a later one.
  *
  * WHICH symptom is drawn is weighted by the car's own damage `pattern`
  * (`symptomDrawWeight`, damagePatterns.ts) rather than picked uniformly, so a
@@ -176,63 +240,19 @@ function applySymptoms(
 
   for (const symptom of drawn) {
     const cause = pickWeightedCause(symptom.causes, rng)
-    const installed = working.parts[cause.carPartId].installed
-    if (!installed) continue // nothing to damage - drop
+    const result = applyCauseWithLawTwo(working, model, context, carOrigin, pattern, rng, cause)
+    if (!result) continue
 
-    const beforeBand = installed.band
-    // A body-derived carrier's damage moves the underlying zone state (never
-    // the band directly, per the single-writer rule) - a symptom cause is a
-    // real hidden defect, so unlike the money-only degrade/improve passes it
-    // legitimately touches metal too (`setZoneCarrierToAtLeastBand`). WHICH
-    // zone it lands on is drawn from the pattern: it used to be a fixed
-    // `bonnet` to save an RNG draw, which put every rust patch and every
-    // respray in the game on the same panel.
-    const tentative: CarInstance =
-      working.zoneState && isBodyDerivedPart(cause.carPartId)
-        ? applyDerivedBodyBands(
-            {
-              ...working,
-              zoneState: setZoneCarrierToAtLeastBand(
-                working.zoneState,
-                cause.carPartId,
-                cause.setBand,
-                // `bodywork` writes metal, which only a metal zone carries;
-                // `paint` is a finish any of the nine zones can take.
-                pickPatternZone(
-                  cause.carPartId === 'bodywork' ? METAL_ZONE_IDS : PANEL_ZONE_IDS,
-                  pattern,
-                  rng,
-                ),
-              ),
-            },
-            model,
-            context,
-          )
-        : {
-            ...working,
-            parts: {
-              ...working.parts,
-              [cause.carPartId]: {
-                installed: {
-                  ...installed,
-                  band:
-                    bandIndex(cause.setBand) < bandIndex(beforeBand) ? cause.setBand : beforeBand,
-                },
-              },
-            },
-          }
-    const enforced = enforceMaxBillFraction(tentative, model, context, carOrigin)
-    if (!bandsMatch(enforced, tentative)) continue // Law 2 veto - drop entirely
-
-    working = enforced
+    working = result.car
     if (!(cause.carPartId in apparentBandByPartId)) {
-      apparentBandByPartId[cause.carPartId] = beforeBand
+      apparentBandByPartId[cause.carPartId] = result.beforeBand
     }
     symptoms.push({
       symptomId: symptom.id,
       trueCauseId: cause.id,
       remainingCauseIds: symptom.causes.map((c) => c.id),
       runTestIds: [],
+      latent: false,
     })
   }
 
@@ -241,6 +261,111 @@ function applySymptoms(
     symptoms,
     apparentBandByPartId: symptoms.length > 0 ? apparentBandByPartId : null,
   }
+}
+
+/** Weighted pick over a symptom's own `causes` list for the LATENT draw -
+ * identical to `pickWeightedCause` above except a scrap-band candidate's own
+ * weight is scaled by `scrapCauseWeightFraction` first (ruling 3: silent
+ * scrap latents allowed, but rare within the roll). */
+function pickWeightedLatentCause(
+  causes: readonly Cause[],
+  scrapCauseWeightFraction: number,
+  rng: Rng,
+): Cause {
+  const weights = causes.map((cause) =>
+    cause.setBand === 'scrap' ? cause.weight * scrapCauseWeightFraction : cause.weight,
+  )
+  const total = weights.reduce((sum, weight) => sum + weight, 0)
+  const roll = rng.next() * total
+  let cumulative = 0
+  for (let i = 0; i < causes.length; i++) {
+    cumulative += weights[i]!
+    if (roll < cumulative) return causes[i]!
+  }
+  return causes[causes.length - 1]!
+}
+
+/** How many latents (0-2) a freshly-generated car attempts, from
+ * `economy.diagnosis.latentRoll`'s base rates plus the car's own
+ * `damagePattern` delta, clamped to `[0, 1]` before each roll - the same
+ * two-step "roll one, then roll a second" shape `rollSymptomCount` uses. */
+function rollLatentCount(patternId: DamagePatternId, economy: EconomyConfig, rng: Rng): number {
+  const { latentRoll } = economy.diagnosis
+  const clamp01 = (value: number) => Math.max(0, Math.min(1, value))
+  const oneChance = clamp01(
+    latentRoll.oneChance + latentRoll.oneChanceModifierByDamagePattern[patternId],
+  )
+  const twoChance = clamp01(
+    latentRoll.twoChance + latentRoll.twoChanceModifierByDamagePattern[patternId],
+  )
+  if (rng.next() >= oneChance) return 0
+  if (rng.next() >= twoChance) return 1
+  return 2
+}
+
+/**
+ * Rolls this car's LATENT symptoms (docs/design/systems/
+ * knowledge-and-diagnosis.md section 2, sprint216.md task A): 0-2 hidden
+ * faults, drawn independently of the visible symptom draw above and applied
+ * with the exact same per-cause mechanics (`applyCauseWithLawTwo`) - a
+ * latent writes its band, and records its pre-damage `apparentBandByPartId`
+ * entry, exactly as a visible symptom does. The only differences are what
+ * makes it LATENT: `remainingCauseIds` is always `[trueCauseId]` (there is
+ * no candidate list - the player never gets to test it), `latent: true`, and
+ * every symptom/discount/checklist consumer downstream (`diagnosis.ts`)
+ * skips it outright.
+ *
+ * Draws its symptom uniformly from the same pool `applySymptoms` reads (no
+ * exclusion of symptoms already drawn there - two unrelated faults on the
+ * same car is fine, and the pool is small enough that excluding would bias
+ * the remaining draws) and its cause via `pickWeightedLatentCause` (scrap
+ * rare, not impossible). `existingApparentBandByPartId` is the visible
+ * draw's own map, threaded through so a part touched by both keeps its
+ * FIRST recorded apparent band, never overwritten by a later one - the same
+ * rule `applySymptoms` already enforces internally, extended across the two
+ * draws.
+ */
+function applyLatentSymptoms(
+  car: CarInstance,
+  model: CarModel,
+  context: SimContext,
+  carOrigin: PartOrigin,
+  pattern: DamagePattern,
+  rng: Rng,
+  existingApparentBandByPartId: Partial<Record<CarPartId, ConditionBand>>,
+): {
+  car: CarInstance
+  symptoms: CarInstance['symptoms']
+  apparentBandByPartId: Partial<Record<CarPartId, ConditionBand>>
+} {
+  const count = rollLatentCount(pattern.id, context.economy, rng)
+  if (count === 0) return { car, symptoms: [], apparentBandByPartId: existingApparentBandByPartId }
+
+  const { scrapCauseWeightFraction } = context.economy.diagnosis.latentRoll
+  let working = car
+  const symptoms: CarInstance['symptoms'] = []
+  const apparentBandByPartId = { ...existingApparentBandByPartId }
+
+  for (let i = 0; i < count; i++) {
+    const symptom = rng.pick(context.symptoms)
+    const cause = pickWeightedLatentCause(symptom.causes, scrapCauseWeightFraction, rng)
+    const result = applyCauseWithLawTwo(working, model, context, carOrigin, pattern, rng, cause)
+    if (!result) continue
+
+    working = result.car
+    if (!(cause.carPartId in apparentBandByPartId)) {
+      apparentBandByPartId[cause.carPartId] = result.beforeBand
+    }
+    symptoms.push({
+      symptomId: symptom.id,
+      trueCauseId: cause.id,
+      remainingCauseIds: [cause.id],
+      runTestIds: [],
+      latent: true,
+    })
+  }
+
+  return { car: working, symptoms, apparentBandByPartId }
 }
 
 /**
@@ -1193,9 +1318,28 @@ export function generateAuctionCarInstance(
 
   const {
     car: withSymptoms,
-    symptoms,
-    apparentBandByPartId,
+    symptoms: visibleSymptoms,
+    apparentBandByPartId: visibleApparentBandByPartId,
   } = applySymptoms(softened, model, context, carOrigin, pattern, rng)
+  // The latent draw (docs/design/systems/knowledge-and-diagnosis.md section
+  // 2, sprint216.md task A): independent of the visible draw above, same
+  // per-cause mechanics, threaded the visible draw's own
+  // `apparentBandByPartId` so a part touched by both keeps its first
+  // recorded apparent band.
+  const {
+    car: withLatents,
+    symptoms: latentSymptoms,
+    apparentBandByPartId,
+  } = applyLatentSymptoms(
+    withSymptoms,
+    model,
+    context,
+    carOrigin,
+    pattern,
+    rng,
+    visibleApparentBandByPartId ?? {},
+  )
+  const symptoms = [...visibleSymptoms, ...latentSymptoms]
   // Spend what the history bought, less what the symptoms above already spent.
   // The order is load-bearing: the budget runs AFTER symptoms and never writes
   // `apparentBandByPartId`, so budget damage is honest wear the room prices in
@@ -1216,10 +1360,10 @@ export function generateAuctionCarInstance(
   )
   const remainingSteps = Math.max(
     0,
-    budgetSteps - damageStepsSpentBySymptoms(withSymptoms, apparentBandByPartId),
+    budgetSteps - damageStepsSpentBySymptoms(withLatents, apparentBandByPartId),
   )
   const damaged = spendDamageBudget(
-    withSymptoms,
+    withLatents,
     model,
     context,
     carOrigin,
@@ -1227,7 +1371,11 @@ export function generateAuctionCarInstance(
     rng,
     remainingSteps,
   )
-  return { ...damaged, symptoms, apparentBandByPartId }
+  return {
+    ...damaged,
+    symptoms,
+    apparentBandByPartId: symptoms.length > 0 ? apparentBandByPartId : null,
+  }
 }
 
 /**

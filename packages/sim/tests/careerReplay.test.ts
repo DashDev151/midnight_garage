@@ -84,17 +84,29 @@ const SMOKE_SCRIPT = CareerScriptSchema.parse(smokeScriptRaw)
 // changed in kind. Re-derived from a real run, never hand-guessed.
 // `smoke.script.json`'s own two `kind: 'hash'` checkpoints (days 1 and 10)
 // move with this array.
+//
+// Re-pinned for sprint216.md (latents and the fearful room): `CarSymptom`
+// gains `latent`, and generation gains the independent latent roll (task A),
+// one to three extra `rng.next()` draws per generated car depending on how
+// many latents land - the whole sequence moves even though the script's own
+// actions are unchanged. The room's own sheet price also moved to the
+// fear-biased chain-priced formula (task C), reshaping every guide-value-
+// derived figure the script's buyout and offers touch. No behaviour this
+// script exercises changed in kind. Re-derived from a real run, never
+// hand-guessed. `smoke.script.json`'s own three checkpoints (the two
+// `kind: 'hash'` on days 1 and 10, and `kind: 'cashAtMost'` on day 7, whose
+// pinned ceiling moved with the day-7 cash figure) move with this array.
 const EXPECTED_HASHES_BY_DAY = [
-  'e9195e3f',
-  '8fedbd30',
-  '9fba7fb3',
-  '90395553',
-  '4103c616',
-  '764edb01',
-  'a8856d8b',
-  '1ebffab0',
-  'ec50b8cd',
-  '5e8d2d9d',
+  'aba03cf7',
+  'aaa0a737',
+  '473cc2fa',
+  '1db665b3',
+  '6f671402',
+  '465093ae',
+  '5d600788',
+  'bd454544',
+  'e78d4534',
+  '30ce6323',
 ]
 
 describe('replayCareerScript (Sprint 198 C1)', () => {

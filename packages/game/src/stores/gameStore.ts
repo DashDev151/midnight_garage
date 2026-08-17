@@ -1607,6 +1607,10 @@ export const useGameStore = defineStore('game', () => {
       context.value.economy,
     )
     return car.symptoms.flatMap((carSymptom, symptomIndex) => {
+      // A latent (knowledge-and-diagnosis.md section 2): appears in no
+      // list, this one included - it has no candidate list to show and no
+      // test the player could ever run against it.
+      if (carSymptom.latent) return []
       const symptom = context.value.symptomsById[carSymptom.symptomId]
       if (!symptom) return []
       const resolved = symptomResolved(carSymptom)
@@ -2555,7 +2559,11 @@ export const useGameStore = defineStore('game', () => {
       displayName: resolveCarDisplayName(model),
       fitmentClass: fitmentClassForTier(model.tier),
       guideValueYen: anchorValueYen(lot, gameState.value, context.value),
-      ledger: roomLedgerFor(lot.car, model, gameState.value, context.value),
+      // A scripted lot is exempt from the room's fear (sim/diagnosis.ts's
+      // `sheetGuideValueYen`, `anchorValueYen`'s own doc comment) - the
+      // ledger's own fear line must read the same lot the same way, or the
+      // two figures on this same detail view would disagree.
+      ledger: roomLedgerFor(lot.car, model, gameState.value, context.value, !lot.scripted),
       workBillYen: carCostToMintYen(
         apparentCar,
         model,

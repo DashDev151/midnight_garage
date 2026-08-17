@@ -113,6 +113,7 @@ function buildDemoCar(symptom: Symptom, trueCauseId: string, context: SimContext
         trueCauseId,
         remainingCauseIds: symptom.causes.map((cause) => cause.id),
         runTestIds: [],
+        latent: false,
       },
     ],
     apparentBandByPartId: null,

@@ -201,6 +201,7 @@ function buildDemoCarInstance(
         trueCauseId,
         remainingCauseIds: symptom.causes.map((cause) => cause.id),
         runTestIds: [],
+        latent: false,
       },
     ],
     apparentBandByPartId,

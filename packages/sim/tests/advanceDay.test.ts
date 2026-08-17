@@ -386,7 +386,16 @@ describe('advanceDay golden master', () => {
     // `rng.next()` draw per generated car regardless of outcome. No
     // behaviour this script exercises changed in kind. Re-derived from a
     // real run.
-    expect(hashState(finalState)).toBe('0d6fd91a')
+    //
+    // It moves once more for sprint216.md (latents and the fearful room):
+    // `CarSymptom` gains `latent`, and generation gains the independent
+    // latent roll (task A), one to three extra `rng.next()` draws per
+    // generated car depending on how many latents land; the room's own sheet
+    // price also moved to the fear-biased chain-priced formula (task C),
+    // reshaping every guide-value-derived figure this 30-day career touches.
+    // No behaviour this script exercises changed in kind. Re-derived from a
+    // real run.
+    expect(hashState(finalState)).toBe('749bface')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -725,7 +734,11 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // It moves once more for sprint215.md (the knowledge model): the same
     // `verifiedSlots` shape addition and hidden non-stock generation roll as
     // the golden-master test above. Re-derived from a real run.
-    expect(hashState(acquisitionCareer().sold)).toBe('bcfb568a')
+    //
+    // It moves once more for sprint216.md (latents and the fearful room):
+    // the same latent roll and fear-biased sheet-price formula as the
+    // golden-master test above. Re-derived from a real run.
+    expect(hashState(acquisitionCareer().sold)).toBe('b0d8a03b')
   })
 })
 

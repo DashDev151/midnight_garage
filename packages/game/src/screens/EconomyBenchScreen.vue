@@ -324,6 +324,7 @@ function addSymptom(): void {
         trueCauseId: causeIds[0] ?? symptom.id,
         remainingCauseIds: causeIds,
         runTestIds: [],
+        latent: false,
       },
     ],
   }

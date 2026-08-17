@@ -949,7 +949,7 @@ describe('saveCodec', () => {
   })
 
   it('a per-part job (carPartId set) round-trips exactly under version 17', () => {
-    expect(SAVE_VERSION).toBe(73)
+    expect(SAVE_VERSION).toBe(74)
     const perPart: GameState = GameStateSchema.parse({
       ...fullState,
       jobs: [
@@ -990,7 +990,7 @@ describe('saveCodec', () => {
   })
 
   it('a v31 state with an origin-carrying inventory part round-trips the origin exactly', () => {
-    expect(SAVE_VERSION).toBe(73)
+    expect(SAVE_VERSION).toBe(74)
     const withOrigin: GameState = GameStateSchema.parse({
       ...fullState,
       partInventory: [
@@ -1633,7 +1633,7 @@ describe('saveCodec', () => {
    * a real double-parked car round-trips it exactly.
    */
   it('SAVE_VERSION is current', () => {
-    expect(SAVE_VERSION).toBe(73)
+    expect(SAVE_VERSION).toBe(74)
   })
 
   it('a real pre-v26 save (a v25 envelope with no graceParkingCarId field) decodes with nothing double-parked under v26', () => {
@@ -1666,7 +1666,7 @@ describe('saveCodec', () => {
    * exactly.
    */
   it('SAVE_VERSION is current', () => {
-    expect(SAVE_VERSION).toBe(73)
+    expect(SAVE_VERSION).toBe(74)
   })
 
   it('a real pre-v27 save (a v26 envelope with neither field) decodes with nothing listed or scheduled under v27', () => {
@@ -1737,7 +1737,7 @@ describe('saveCodec', () => {
    * same slot, same band, same everything else.
    */
   it('SAVE_VERSION is current', () => {
-    expect(SAVE_VERSION).toBe(73)
+    expect(SAVE_VERSION).toBe(74)
   })
 
   it("a real pre-v28 save remaps an entry-tier car's everyday-class stock part to its own class sibling SKU", () => {
@@ -1951,6 +1951,7 @@ describe('saveCodec', () => {
         trueCauseId: 'valve-seals',
         remainingCauseIds: ['valve-seals', 'tired-rings', 'head-gasket'],
         runTestIds: [], // Addition to schema, default-filled for legacy saves
+        latent: false, // Addition to schema, default-filled for legacy saves
       },
     ])
     expect(decoded.ownedCars[0]?.apparentBandByPartId).toEqual({ headValvetrain: 'mint' })
@@ -2269,5 +2270,76 @@ describe('saveCodec', () => {
     const code = 'MGSAVE1.' + btoa(JSON.stringify(preV69))
     const decoded = decodeSave(code)
     expect(decoded).not.toHaveProperty('stagedCarWork')
+  })
+
+  /**
+   * v73 -> v74 (latents): `CarSymptom` gained `latent` (default `false`,
+   * sprint216.md task A) - the normal additive case, so it needs NO
+   * `MIGRATIONS[73]` entry, but it DOES bump `SAVE_VERSION` (Save law).
+   * These two tests are its regression coverage: a real pre-v74 (v73
+   * envelope) symptom with no `latent` field at all still decodes as an
+   * ordinary visible symptom (exactly right, since no pre-v74 symptom could
+   * ever have been anything else), and a v74 state with a real latent
+   * symptom round-trips it exactly.
+   */
+  it('a real pre-v74 save (a v73 envelope with no latent field) decodes every symptom as visible', () => {
+    const preV74State = {
+      ...fullState,
+      ownedCars: [
+        {
+          id: 'car-symptomatic-0004',
+          modelId: 'honda-city-e-aa',
+          year: 1990,
+          mileageKm: 12_000,
+          factoryColour: 'white',
+          color: 'Red',
+          provenanceNote: '',
+          parts: mintParts({ headValvetrain: stockPartFixture('headValvetrain', 'worn') }),
+          symptoms: [
+            {
+              symptomId: 'smokes-on-startup',
+              trueCauseId: 'valve-seals',
+              remainingCauseIds: ['valve-seals', 'tired-rings', 'head-gasket'],
+              runTestIds: [],
+            },
+          ],
+          apparentBandByPartId: { headValvetrain: 'mint' },
+        },
+      ],
+    }
+    const preV74 = { version: 73, gameState: preV74State }
+    const code = 'MGSAVE1.' + btoa(JSON.stringify(preV74))
+    const decoded = decodeSave(code)
+    expect(decoded.ownedCars[0]?.symptoms[0]?.latent).toBe(false)
+  })
+
+  it('a v74 state round-trips a latent symptom exactly', () => {
+    const withLatent: GameState = GameStateSchema.parse({
+      ...fullState,
+      ownedCars: [
+        {
+          id: 'car-latent-0001',
+          modelId: 'honda-city-e-aa',
+          year: 1990,
+          mileageKm: 12_000,
+          factoryColour: 'white',
+          color: 'Red',
+          provenanceNote: '',
+          parts: mintParts({ internals: stockPartFixture('internals', 'scrap') }),
+          symptoms: [
+            {
+              symptomId: 'smokes-on-startup',
+              trueCauseId: 'tired-rings',
+              remainingCauseIds: ['tired-rings'],
+              runTestIds: [],
+              latent: true,
+            },
+          ],
+          apparentBandByPartId: { internals: 'mint' },
+        },
+      ],
+    })
+    const decoded = decodeSave(encodeSave(withLatent))
+    expect(decoded.ownedCars[0]?.symptoms[0]?.latent).toBe(true)
   })
 })

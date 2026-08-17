@@ -2542,6 +2542,34 @@ import toolShops from '../data/toolShops.json'
  * routine), scaled by `cultureMultiplier` (front-drive-tuner 3x, drift 2.5x, touge 2x,
  * wangan/rotary 1.5x, kurokan/rally-bred 1.2x, every other culture 1x) - the felt behaviour
  * is that a mod-scene car is a meaningfully likelier place to find one, never a certainty.
+ *
+ * Re-pinned for sprint216.md (latents and the fearful room), under the same
+ * behaviour-first governance amendment: the design of record
+ * (docs/design/systems/knowledge-and-diagnosis.md sections 2 and 4, rulings 3 and 5) is
+ * itself the maintainer approval for the SHAPE of both mechanics; the initial numbers are
+ * Claude's own choice, stated here by felt behaviour, validated by playtest rather than
+ * pre-ratified.
+ *
+ * `diagnosis.fearBias` 0.85 (task C1). The felt behaviour is that the room is nearly
+ * always bracing for the expensive answer: an unresolved symptom's sheet price sits close
+ * to what fixing the single worst candidate would actually cost, not a plain average across
+ * every candidate. A player who diagnoses a symptom down to a cheap cause therefore reads a
+ * price gap wide enough to bid past the whole room and still profit; a player who diagnoses
+ * it down to the worst cause reads a room that has already priced most of the damage in, so
+ * walking away costs only the minutes spent finding out.
+ *
+ * `diagnosis.latentRoll` (task A1). `oneChance` 0.25 / `twoChance` 0.05 - the felt behaviour
+ * is that most cars are exactly what their visible symptoms say, but roughly one car in four
+ * is hiding one more thing entirely, and a second hidden thing is a genuine rarity.
+ * `oneChanceModifierByDamagePattern`/`twoChanceModifierByDamagePattern` (`garaged` -0.15/
+ * -0.05, `neglected-commuter` +0.05/+0.02, `frontal-collision` +0.10/+0.03, `drifted`
+ * +0.05/+0.02, `grenade` +0.15/+0.07) - the felt behaviour is that a car's own rolled story
+ * moves how likely it is to be hiding something, the same way it already colours everything
+ * else about the car: a garaged one-owner car earns real trust (10%/0% - a latent is genuinely
+ * rare there), while a car that already grenaded once is the car most likely to be sitting on
+ * a second, quieter problem (40%/12%). `scrapCauseWeightFraction` 0.15 - the felt behaviour is
+ * ruling 3 read literally: a silent scrap-band latent is possible, but finding one should feel
+ * like the unlucky exception, not the median hidden fault.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -2551,7 +2579,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('e9f995227c2423896153c266b659c412eaf62b4d7c49072dff4334eb7ddcc365')
+    ).toBe('7f0008f6cebbaf4691212ab13f1932776fb1a55c97da309c9e484ecf54d07495')
   })
 
   it('damagePatterns.json matches its approved content exactly', () => {

@@ -81,10 +81,17 @@ describe('auctionRoomDemo lobby', () => {
     expect(packed!.incrementYen).toBe(incrementYenFor(packed!.roomReadYen, roomConfig))
     expect(packed!.dealerCount).toBe(roomConfig.turnout.packed.dealers)
 
-    // The trap's whole point: the truth undercuts the read comfortably,
-    // clearing both the trap-selection floor (`TRAP_VALUE_FRACTION`) and the
-    // real 'worse' verdict bar with margin to spare, not by a hair.
-    expect(packed!.trueValueYen).toBeLessThan(packed!.roomReadYen * 0.85)
+    // The trap's whole point: the truth undercuts the read, clearing both
+    // the trap-selection floor (`TRAP_VALUE_FRACTION`) and the real 'worse'
+    // verdict bar. The margin itself narrowed under the fearful room
+    // (knowledge-and-diagnosis.md section 4): the true cause here
+    // (`cracked-block`, the symptom's own scrap-band grenade) is close to
+    // the very candidate the room's own near-worst-case sheet already
+    // braces for, so the surprise is smaller than it was against the old
+    // plain-average sheet - measured at ~0.884 of the room's read, not a
+    // hair below 1 but no longer the wide margin a cheaper true cause still
+    // clears (see the steal case above).
+    expect(packed!.trueValueYen).toBeLessThan(packed!.roomReadYen * 0.89)
     expect(packed!.trueValueYen).toBeLessThan(packed!.roomReadYen * TRAP_VALUE_FRACTION)
     expect(packed!.verdict).toBe('worse')
     expect(verdictFor(packed!.roomReadYen, packed!.trueValueYen)).toBe('worse')

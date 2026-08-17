@@ -91,6 +91,7 @@ export function buildScriptedServiceJob(
         trueCauseId: recipeSymptom.trueCauseId,
         remainingCauseIds,
         runTestIds: [],
+        latent: false,
       },
     ]
     apparentBandByPartId = Object.fromEntries(

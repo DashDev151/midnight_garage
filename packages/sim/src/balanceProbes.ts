@@ -694,13 +694,20 @@ export function computeRosterDonorBalanceProbe(
   return models.map((model) => computeDonorBalanceProbe(model, context))
 }
 
-/** One cause's edge: `marketValueYen` if this cause turns out true, minus
- * what the room's sheet actually charges - positive means this cause is a
- * pleasant surprise (the car is worth more than paid), negative means it
- * costs more than it turned out to be worth. */
+/** One cause's edge, in two readings against two different anchors:
+ * `marketValueYen` if this cause turns out true, minus what the room's
+ * sheet actually charges (`edgeYen`) and minus the honest all-cause
+ * expectation (`edgeVsExpectedYen`). Positive means this cause is a
+ * pleasant surprise against that anchor (the car is worth more than the
+ * anchor said), negative means it costs more than it turned out to be
+ * worth. The fearful room (knowledge-and-diagnosis.md section 4) split
+ * what used to be one number into two, because the two anchors are no
+ * longer the same formula - see
+ * `SymptomBalanceProbeRow.blindBuyEvYen`'s own doc comment. */
 export interface SymptomCauseEdgeRow {
   causeId: string
   edgeYen: number
+  edgeVsExpectedYen: number
 }
 
 export interface SymptomBalanceProbeRow {
@@ -709,10 +716,27 @@ export interface SymptomBalanceProbeRow {
   apparentValueYen: number
   expectedTrueValueYen: number
   sheetGuideValueYen: number
-  /** `expectedTrueValueYen - sheetGuideValueYen` - the average edge of
-   * buying this symptomatic lot blind, with no test run at all. Zero by
-   * construction (the sheet IS the all-cause expectation); a nonzero value
-   * means the two estimators have drifted apart. */
+  /**
+   * `expectedTrueValueYen - sheetGuideValueYen` - the average edge of
+   * buying this symptomatic lot blind, with no test run at all, against the
+   * ROOM's own asking price.
+   *
+   * NOT zero by construction any more, and not gated to a tight band either
+   * (the fearful room, knowledge-and-diagnosis.md section 4): the room
+   * no longer prices the plain cause-weighted expectation - it fear-biases
+   * toward the single worst candidate's own CHAIN-PRICED FIX COST
+   * (`roomSymptomCostYen`), a genuinely different quantity from
+   * `expectedTrueValueYen`'s VALUE-weighted mean. Measured across the real
+   * roster this sits anywhere from strongly negative (higher tiers, where
+   * the fear-priced cost premium dwarfs the value-based spread) to
+   * genuinely positive (entry tier, where the labour floor built into
+   * `taskLaborChain` is proportionally larger against a small car's own
+   * value swings). DISCLOSED here, not gated: DEFINITION OF DONE for this
+   * field is now "measured honestly", not "held near zero" - that was the
+   * law for a room that no longer prices this way. The genuinely gated
+   * coherence check moved to `edgeVsExpectedYen` below, which still carries
+   * the original "both sides of zero" fact about the honest average.
+   */
   blindBuyEvYen: number
   edgePerCauseYen: SymptomCauseEdgeRow[]
 }
@@ -725,24 +749,25 @@ const SYMPTOM_PROBE_FITMENT_CLASSES: readonly PartFitmentClass[] = [
 ]
 
 /**
- * The diagnosis system's blind-buy guardrail - for every symptom, on a
- * representative clean car per tier (`buildCleanProbeCar`, shared with
+ * The diagnosis system's per-symptom measurement pass - for every symptom,
+ * on a representative clean car per tier (`buildCleanProbeCar`, shared with
  * `computeDonorBalanceProbe` above - a symptom is a surprise on an
- * otherwise-healthy car, not a worst-case wreck), how good a bet is buying
- * without running a single test?
+ * otherwise-healthy car, not a worst-case wreck), how does buying without
+ * running a single test compare to the honest average and to what the room
+ * actually charges?
  *
- * The sheet IS the all-cause expectation (the room prices the odds, with no
- * premium on top), so `blindBuyEvYen = expectedTrueValueYen -
- * sheetGuideValueYen` is 0 by construction: buying blind is a fair-odds bet,
- * never -EV and never a windfall. Both figures are still measured through
- * the real estimator calls so any drift between the two entry points fails
- * the probe instead of passing silently. `edgePerCauseYen` must show at
- * least one cause on each side of zero for every symptom - some causes worse
- * than the sheet price, some better - or the symptom's own weight spread
- * isn't creating real uncertainty. Not bot-derived: every number is a direct
- * call into the real sim functions (`diagnosis.ts`), the same "closed-form,
- * cheap enough for every balance run" standing as `computeRosterBalanceProbe`
- * above.
+ * `edgePerCauseYen[].edgeVsExpectedYen` must show at least one cause on
+ * each side of zero for every symptom - some causes worse than the honest
+ * average, some better - or the symptom's own weight spread isn't creating
+ * real uncertainty. This is the original blind-buy guardrail,
+ * unchanged in substance, just rebased onto `expectedTrueValueYen` (which
+ * IS still the plain cause-weighted mean by construction) now that the
+ * room's own sheet is a genuinely different, fear-biased number
+ * (`blindBuyEvYen`'s own doc comment explains why the sheet-anchored
+ * version of this same check was retired). Not bot-derived: every number is
+ * a direct call into the real sim functions (`diagnosis.ts`), the same
+ * "closed-form, cheap enough for every balance run" standing as
+ * `computeRosterBalanceProbe` above.
  */
 export function computeSymptomBalanceProbe(context: SimContext): SymptomBalanceProbeRow[] {
   const neutralState = createInitialGameState(context, 0)
@@ -766,6 +791,7 @@ export function computeSymptomBalanceProbe(context: SimContext): SymptomBalanceP
             trueCauseId: symptom.causes[0]!.id,
             remainingCauseIds: symptom.causes.map((cause) => cause.id),
             runTestIds: [],
+            latent: false,
           },
         ],
         apparentBandByPartId: { [carPartId]: apparentBand },
@@ -800,7 +826,11 @@ export function computeSymptomBalanceProbe(context: SimContext): SymptomBalanceP
               context.economy,
             )
           : apparentValue
-        return { causeId: cause.id, edgeYen: Math.round(causeValue - sheetValue) }
+        return {
+          causeId: cause.id,
+          edgeYen: Math.round(causeValue - sheetValue),
+          edgeVsExpectedYen: Math.round(causeValue - expectedValue),
+        }
       })
 
       rows.push({

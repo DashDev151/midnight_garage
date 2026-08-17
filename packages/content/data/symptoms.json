@@ -5,19 +5,19 @@
     "causes": [
       {
         "failureModeId": "valve-seals",
-        "weight": 45
+        "weight": 37
       },
       {
         "failureModeId": "gunked-breather",
-        "weight": 20
+        "weight": 17
       },
       {
         "failureModeId": "head-gasket",
-        "weight": 22
+        "weight": 18
       },
       {
         "failureModeId": "tired-rings",
-        "weight": 13
+        "weight": 28
       }
     ],
     "tests": [
@@ -84,19 +84,19 @@
     "causes": [
       {
         "failureModeId": "flat-battery",
-        "weight": 45
+        "weight": 39
       },
       {
         "failureModeId": "corroded-terminals",
-        "weight": 14
+        "weight": 12
       },
       {
         "failureModeId": "fuel-pump",
-        "weight": 29
+        "weight": 24
       },
       {
         "failureModeId": "seized-engine",
-        "weight": 12
+        "weight": 25
       }
     ],
     "tests": [
@@ -163,19 +163,19 @@
     "causes": [
       {
         "failureModeId": "lifter-tick",
-        "weight": 50
+        "weight": 42
       },
       {
         "failureModeId": "rocker-adjustment",
-        "weight": 14
+        "weight": 12
       },
       {
         "failureModeId": "blowing-manifold",
-        "weight": 23
+        "weight": 19
       },
       {
         "failureModeId": "rod-knock",
-        "weight": 13
+        "weight": 27
       }
     ],
     "tests": [
@@ -256,19 +256,19 @@
     "causes": [
       {
         "failureModeId": "vacuum-leak",
-        "weight": 48
+        "weight": 40
       },
       {
         "failureModeId": "tired-ecu",
-        "weight": 27
+        "weight": 23
       },
       {
         "failureModeId": "worn-cams",
-        "weight": 15
+        "weight": 13
       },
       {
         "failureModeId": "burnt-valve",
-        "weight": 10
+        "weight": 24
       }
     ],
     "tests": [
@@ -327,19 +327,19 @@
     "causes": [
       {
         "failureModeId": "worn-synchros",
-        "weight": 48
+        "weight": 43
       },
       {
         "failureModeId": "low-thin-oil",
-        "weight": 14
+        "weight": 13
       },
       {
         "failureModeId": "dragging-clutch",
-        "weight": 20
+        "weight": 18
       },
       {
         "failureModeId": "chewed-gearset",
-        "weight": 18
+        "weight": 26
       }
     ],
     "tests": [
@@ -412,19 +412,19 @@
     "causes": [
       {
         "failureModeId": "tired-bushes",
-        "weight": 42
+        "weight": 35
       },
       {
         "failureModeId": "blown-dampers",
-        "weight": 33
+        "weight": 28
       },
       {
         "failureModeId": "steering-play",
-        "weight": 15
+        "weight": 13
       },
       {
         "failureModeId": "rotted-subframe-mount",
-        "weight": 10
+        "weight": 24
       }
     ],
     "tests": [
@@ -527,19 +527,19 @@
     "causes": [
       {
         "failureModeId": "fan-switch",
-        "weight": 38
+        "weight": 32
       },
       {
         "failureModeId": "tired-radiator",
-        "weight": 35
+        "weight": 30
       },
       {
         "failureModeId": "early-head-gasket",
-        "weight": 17
+        "weight": 14
       },
       {
         "failureModeId": "cracked-block",
-        "weight": 10
+        "weight": 24
       }
     ],
     "tests": [
@@ -645,19 +645,19 @@
     "causes": [
       {
         "failureModeId": "worn-diff-bearings",
-        "weight": 50
+        "weight": 44
       },
       {
         "failureModeId": "worn-wheel-bearing",
-        "weight": 15
+        "weight": 13
       },
       {
         "failureModeId": "collapsed-centre-bearing",
-        "weight": 20
+        "weight": 17
       },
       {
         "failureModeId": "chewed-ring-pinion",
-        "weight": 15
+        "weight": 26
       }
     ],
     "tests": [
@@ -736,19 +736,19 @@
     "causes": [
       {
         "failureModeId": "sagging-springs",
-        "weight": 50
+        "weight": 43
       },
       {
         "failureModeId": "perished-spring-seats",
-        "weight": 15
+        "weight": 13
       },
       {
         "failureModeId": "broken-spring",
-        "weight": 22
+        "weight": 19
       },
       {
         "failureModeId": "rotted-strut-turret",
-        "weight": 13
+        "weight": 25
       }
     ],
     "tests": [
@@ -827,19 +827,19 @@
     "causes": [
       {
         "failureModeId": "panel-respray",
-        "weight": 45
+        "weight": 39
       },
       {
         "failureModeId": "tired-lacquer",
-        "weight": 15
+        "weight": 13
       },
       {
         "failureModeId": "rust-patch",
-        "weight": 25
+        "weight": 22
       },
       {
         "failureModeId": "structural-rail-repair",
-        "weight": 15
+        "weight": 26
       }
     ],
     "tests": [
@@ -909,23 +909,23 @@
     "causes": [
       {
         "failureModeId": "heater-matrix-weep",
-        "weight": 38
+        "weight": 34
       },
       {
         "failureModeId": "blocked-scuttle-drain",
-        "weight": 20
+        "weight": 18
       },
       {
         "failureModeId": "perished-grommet",
-        "weight": 14
+        "weight": 13
       },
       {
         "failureModeId": "split-sunroof-drain",
-        "weight": 10
+        "weight": 9
       },
       {
         "failureModeId": "rotten-bulkhead-seam",
-        "weight": 18
+        "weight": 26
       }
     ],
     "tests": [
@@ -1053,19 +1053,19 @@
     "causes": [
       {
         "failureModeId": "tired-sender",
-        "weight": 50
+        "weight": 44
       },
       {
         "failureModeId": "thin-cheap-oil",
-        "weight": 15
+        "weight": 13
       },
       {
         "failureModeId": "worn-oil-pump",
-        "weight": 20
+        "weight": 17
       },
       {
         "failureModeId": "worn-main-bearings",
-        "weight": 15
+        "weight": 26
       }
     ],
     "tests": [
@@ -1124,19 +1124,19 @@
     "causes": [
       {
         "failureModeId": "clogged-fuel-filter",
-        "weight": 50
+        "weight": 42
       },
       {
         "failureModeId": "stale-fuel",
-        "weight": 15
+        "weight": 13
       },
       {
         "failureModeId": "stretched-timing-chain",
-        "weight": 23
+        "weight": 19
       },
       {
         "failureModeId": "jumped-timing-chain",
-        "weight": 12
+        "weight": 26
       }
     ],
     "tests": [

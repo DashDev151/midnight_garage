@@ -135,7 +135,7 @@ describe('donor coherence invariants (Sprint 71 decision 8: the teardown game)',
   }, 60_000)
 })
 
-describe('symptom coherence invariants (Sprint 73 decision 6: the blind-buy guardrail)', () => {
+describe('symptom coherence invariants (Sprint 73 decision 6, room formula updated Sprint 216)', () => {
   const rows = computeSymptomBalanceProbe(CONTEXT)
 
   it('covers every symptom x every fitment tier exactly once', () => {
@@ -146,30 +146,35 @@ describe('symptom coherence invariants (Sprint 73 decision 6: the blind-buy guar
     }
   })
 
-  it('buying blind is never -EV (blindBuyEvYen >= 0), for every symptom on every tier', () => {
+  /**
+   * The original "blindBuyEvYen stays near zero" gate is RETIRED, on
+   * purpose: it measured whether the room's sheet equalled the honest
+   * expectation, which the fearful room (knowledge-and-diagnosis.md
+   * section 4) intentionally stops being true - the room now fear-biases
+   * toward the worst chain-priced candidate, a genuinely different quantity
+   * from the value-weighted mean. `blindBuyEvYen`'s own doc comment
+   * (`balanceProbes.ts`) carries the disclosure; what stays gated here is
+   * the two structural facts that must ALWAYS hold regardless of formula:
+   * the room never prices a symptomatic car at or above its own undamaged
+   * (apparent) value, and never at zero or below.
+   */
+  it('the room never prices a symptomatic lot at or above its own apparent value, and never non-positive', () => {
     const failures = rows
-      .filter((r) => r.blindBuyEvYen < 0)
-      .map((r) => `${r.symptomId} (${r.fitmentClass}): blindBuyEvYen ${r.blindBuyEvYen}`)
+      .filter((r) => r.sheetGuideValueYen >= r.apparentValueYen || r.sheetGuideValueYen <= 0)
+      .map(
+        (r) =>
+          `${r.symptomId} (${r.fitmentClass}): sheet ${r.sheetGuideValueYen} vs apparent ${r.apparentValueYen}`,
+      )
     expect(failures).toEqual([])
   })
 
-  it('buying blind is never a windfall (blindBuyEvYen <= 20% of the apparent-to-expected gap)', () => {
-    const failures = rows
-      .filter((r) => {
-        const gap = r.apparentValueYen - r.expectedTrueValueYen
-        return r.blindBuyEvYen > 0.2 * gap + 1 // +1 yen: rounding slack, not a real tolerance
-      })
-      .map((r) => `${r.symptomId} (${r.fitmentClass}): blindBuyEvYen ${r.blindBuyEvYen}`)
-    expect(failures).toEqual([])
-  })
-
-  it('every symptom shows both a sleeper and a trap cause (edges on both sides of zero), on every tier', () => {
+  it('every symptom shows both a sleeper and a trap cause against the honest average (edges on both sides of zero), on every tier', () => {
     const failures = rows
       .filter(
         (r) =>
           !(
-            r.edgePerCauseYen.some((e) => e.edgeYen > 0) &&
-            r.edgePerCauseYen.some((e) => e.edgeYen < 0)
+            r.edgePerCauseYen.some((e) => e.edgeVsExpectedYen > 0) &&
+            r.edgePerCauseYen.some((e) => e.edgeVsExpectedYen < 0)
           ),
       )
       .map((r) => `${r.symptomId} (${r.fitmentClass}): edges ${JSON.stringify(r.edgePerCauseYen)}`)

@@ -3159,6 +3159,51 @@ export const EconomyConfigSchema = z.object({
       buyerWon: z.string().min(1),
       playerWon: z.string().min(1),
     }),
+    /**
+     * The room's near-worst-case bias (docs/design/systems/
+     * knowledge-and-diagnosis.md section 4, sprint216.md task C): weights the
+     * single worst chain-priced candidate against the plain weighted mean of
+     * every candidate when the room prices an unresolved symptom
+     * (`diagnosis.ts`'s `roomSymptomCostYen`). `1` would price every symptom
+     * at its worst candidate outright; `0` degenerates to a plain weighted
+     * mean (no fear at all). Felt behaviour: close to the ceiling, so the
+     * room is nearly always bracing for the expensive answer, and a
+     * diagnosed-cheap fault lets the player comfortably outbid it.
+     */
+    fearBias: z.number().min(0).max(1),
+    /**
+     * The hidden-fault roll (docs/design/systems/knowledge-and-diagnosis.md
+     * section 2, sprint216.md task A): 0-2 latent `CarSymptom`s per car,
+     * drawn independently of the visible symptom draw
+     * (`auctions.ts`'s `applyLatentSymptoms`). `oneChance`/`twoChance` are the
+     * base rates for a hand-authored car with no rolled `damagePattern`;
+     * `oneChanceModifierByDamagePattern`/`twoChanceModifierByDamagePattern`
+     * are additive deltas keyed by the car's own pattern (mirroring
+     * `knowledgePriors.provenanceModifierByDamagePattern`'s own shape), the
+     * roll's result clamped to `[0, 1]` after the delta. `scrapCauseWeightFraction`
+     * scales a scrap-band candidate's own weight when a latent's cause is
+     * drawn from a symptom's cause list, so a silent scrap latent is rare
+     * without ever being impossible (ruling 3).
+     */
+    latentRoll: z.object({
+      oneChance: z.number().min(0).max(1),
+      twoChance: z.number().min(0).max(1),
+      oneChanceModifierByDamagePattern: z.object({
+        garaged: z.number(),
+        'neglected-commuter': z.number(),
+        'frontal-collision': z.number(),
+        drifted: z.number(),
+        grenade: z.number(),
+      }),
+      twoChanceModifierByDamagePattern: z.object({
+        garaged: z.number(),
+        'neglected-commuter': z.number(),
+        'frontal-collision': z.number(),
+        drifted: z.number(),
+        grenade: z.number(),
+      }),
+      scrapCauseWeightFraction: z.number().min(0).max(1),
+    }),
   }),
   /**
    * The knowledge model's guess curve (docs/design/systems/

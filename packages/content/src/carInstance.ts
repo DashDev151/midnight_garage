@@ -81,12 +81,26 @@ const CarPartsSchema = z.object({
  * have already been run on THIS symptom instance - `runDiagnosticTest` refuses
  * a repeat run, so re-testing the same thing twice is never a legal way to
  * burn a visit's minutes.
+ *
+ * `latent` (docs/design/systems/knowledge-and-diagnosis.md section 2,
+ * sprint216.md task A): a hidden fault rolled independently of the visible
+ * symptom draw. A latent carries exactly one cause from birth
+ * (`remainingCauseIds` is always `[trueCauseId]` - there is no candidate list
+ * to narrow, since the player never gets to test it), never appears in a
+ * symptom checklist, and applies no discount to anyone's estimate
+ * (`diagnosis.ts`'s `symptomDiscountYen`/`sheetGuideValueYen` both skip it) -
+ * its host slot simply reads as an ordinary estimated slot until the true
+ * cause's own part is verified, at which point it surfaces as an
+ * already-identified fault. Defaults `false` so every symptom authored before
+ * this field existed (and every non-latent draw) reads as an ordinary,
+ * visible symptom with no change in behaviour.
  */
 const CarSymptomSchema = z.object({
   symptomId: z.string().min(1),
   trueCauseId: z.string().min(1),
   remainingCauseIds: z.array(z.string().min(1)),
   runTestIds: z.array(z.string().min(1)).default([]),
+  latent: z.boolean().default(false),
 })
 
 /**

@@ -831,8 +831,19 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * change than losing the car. The version bump alone is still required (Save
  * law) so an old client rejects a v73 save rather than reading a shape it no
  * longer understands.
+ * v73 -> v74 (latents): `CarSymptom` gained `latent` (default `false`,
+ * sprint216.md task A) - a hidden fault rolled independently of the visible
+ * symptom draw, absent from every list and discount until its own slot
+ * verifies. `.default(false)` (the `runTestIds` pattern, not the
+ * `verifiedSlots`/`bodyBayCarId` `.optional()` one), since every real symptom
+ * this sim ever produced before this field existed was a visible one: a
+ * pre-v74 save's own symptoms default-fill to `latent: false` and read
+ * exactly as they always have. Per directive 19, a plain SAVE_VERSION bump
+ * with NO `MIGRATIONS[73]` entry. The version bump alone is still required
+ * (Save law) so an old client rejects a v74 save rather than reading a shape
+ * it no longer understands.
  */
-export const SAVE_VERSION = 73
+export const SAVE_VERSION = 74
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

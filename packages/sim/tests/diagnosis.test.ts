@@ -261,6 +261,7 @@ function carWithSymptom(): CarInstance {
         trueCauseId: 'cause-mild',
         remainingCauseIds: ['cause-mild', 'cause-severe'],
         runTestIds: [],
+        latent: false,
       },
     ],
     apparentBandByPartId: { headValvetrain: 'mint' },
@@ -276,7 +277,15 @@ function carWithMultiPartSymptom(trueCauseId: string, remainingCauseIds: string[
       modelId: MODEL.id,
       parts: mintCarParts({ headValvetrain: 'worn', internals: 'poor', intake: 'poor' }),
     }),
-    symptoms: [{ symptomId: 'multi-part-symptom', trueCauseId, remainingCauseIds, runTestIds: [] }],
+    symptoms: [
+      {
+        symptomId: 'multi-part-symptom',
+        trueCauseId,
+        remainingCauseIds,
+        runTestIds: [],
+        latent: false,
+      },
+    ],
     apparentBandByPartId: { headValvetrain: 'mint', internals: 'mint', intake: 'mint' },
   }
 }
@@ -296,6 +305,7 @@ function carWithRoutedSymptom(trueCauseId: string, runTestIds: string[] = []): C
         trueCauseId,
         remainingCauseIds: ['routed-cause-a', 'routed-cause-b'],
         runTestIds,
+        latent: false,
       },
     ],
     apparentBandByPartId: { headValvetrain: 'mint' },
@@ -320,6 +330,7 @@ function carWithGrouplessRoutedSymptom(
         trueCauseId,
         remainingCauseIds: ['groupless-cause-a', 'groupless-cause-b'],
         runTestIds,
+        latent: false,
       },
     ],
     apparentBandByPartId: { headValvetrain: 'mint' },
@@ -337,6 +348,7 @@ function carWithInspectorSymptom(trueCauseId: string, withSecondSymptom = false)
       trueCauseId,
       remainingCauseIds: INSPECTOR_SYMPTOM.causes.map((c) => c.id),
       runTestIds: [],
+      latent: false,
     },
   ]
   if (withSecondSymptom) {
@@ -345,6 +357,7 @@ function carWithInspectorSymptom(trueCauseId: string, withSecondSymptom = false)
       trueCauseId: 'cause-mild',
       remainingCauseIds: ['cause-mild', 'cause-severe'],
       runTestIds: [],
+      latent: false,
     })
   }
   return { ...buildCarInstance({ modelId: MODEL.id }), symptoms }
@@ -472,7 +485,7 @@ describe('expectedTrueValueYen / sheetGuideValueYen (Sprint 73 decision 3)', () 
     expect(expectedTrueValueYen(car, MODEL, STATE, CONTEXT)).toBe(manualWeightedMean)
   })
 
-  it('sheetGuideValueYen equals expectedTrueValueYen exactly - the room prices the odds, with no premium on top', () => {
+  it('sheetGuideValueYen is a SEPARATE, cost-based, near-worst-case number - it no longer equals expectedTrueValueYen (Sprint 216, knowledge-and-diagnosis.md section 4)', () => {
     const car = carWithSymptom()
     const apparent = apparentViewOf(car)
     const apparentValue = marketValueYen(
@@ -484,12 +497,18 @@ describe('expectedTrueValueYen / sheetGuideValueYen (Sprint 73 decision 3)', () 
       CONTEXT.economy,
     )
     const expectedTrueValue = expectedTrueValueYen(car, MODEL, STATE, CONTEXT)
+    const sheetValue = sheetGuideValueYen(car, MODEL, STATE, CONTEXT)
 
-    expect(sheetGuideValueYen(car, MODEL, STATE, CONTEXT)).toBe(expectedTrueValue)
-    // The cause-weighted expectation itself carries the fear: while any
-    // cause claims real damage, the sheet sits strictly below the
-    // apparent-condition value.
+    // The two estimators are no longer the same function: expectedTrueValueYen
+    // still weighs each cause's own VALUE impact; sheetGuideValueYen now
+    // fear-biases toward the single worst candidate's own CHAIN-PRICED FIX
+    // COST (roomSymptomCostYen). They are free to land on either side of one
+    // another depending on the fixture; what must always hold is that both
+    // sit strictly below the apparent-condition value while any cause claims
+    // real damage - the fear the room and the honest average both carry.
+    expect(sheetValue).not.toBe(expectedTrueValue)
     expect(expectedTrueValue).toBeLessThan(apparentValue)
+    expect(sheetValue).toBeLessThan(apparentValue)
   })
 })
 
@@ -1151,6 +1170,7 @@ describe('runDiagnosticTest partition narrowing against real content (Sprint 74 
           trueCauseId,
           remainingCauseIds: symptom.causes.map((c) => c.id),
           runTestIds: [],
+          latent: false,
         },
       ],
     }
@@ -1394,13 +1414,21 @@ describe('playerEstimateYen (Sprint 74 decision 6)', () => {
     expect(playerEstimateYen(narrowed, MODEL, STATE, CONTEXT)).toBe(severeValue)
   })
 
-  it('equals sheetGuideValueYen while nothing has narrowed, and moves off it the moment knowledge does', () => {
+  it('no longer equals sheetGuideValueYen while unnarrowed (Sprint 216: the room is a separate, cost-based consumer) - narrowing still moves the player further above it', () => {
     const car = carWithSymptom()
-    expect(playerEstimateYen(car, MODEL, STATE, CONTEXT)).toBe(
+    // Both estimators read every cause while nothing has narrowed, but they
+    // are no longer the SAME formula: playerEstimateYen (via
+    // expectedTrueValueYen's own value-weighted basis) and
+    // sheetGuideValueYen (fear-biased, chain-priced fix cost) are two
+    // genuinely separate consumers of the same cause list now
+    // (knowledge-and-diagnosis.md section 4). For this fixture the player's
+    // own number already reads above the room's even before anything
+    // narrows.
+    expect(playerEstimateYen(car, MODEL, STATE, CONTEXT)).toBeGreaterThan(
       sheetGuideValueYen(car, MODEL, STATE, CONTEXT),
     )
-    // Eliminating the severe cause lifts the player's number above the
-    // room's, which keeps averaging over both causes.
+    // Eliminating the severe cause lifts the player's number further still -
+    // the room keeps fear-pricing across both causes regardless.
     const narrowed: CarInstance = {
       ...car,
       symptoms: [{ ...car.symptoms[0]!, remainingCauseIds: ['cause-mild'] }],
@@ -1465,6 +1493,7 @@ describe('pruneCuredCauses (cure-on-repair)', () => {
           trueCauseId: 'clutch-cause-severe',
           remainingCauseIds: ['clutch-cause-severe'],
           runTestIds: [],
+          latent: false,
         },
       ],
       apparentBandByPartId: { clutch: 'mint' },
@@ -1512,6 +1541,7 @@ describe('pruneCuredCauses (cure-on-repair)', () => {
           trueCauseId: 'four-cause-1',
           remainingCauseIds: ['four-cause-1', 'four-cause-2', 'four-cause-3', 'four-cause-4'],
           runTestIds: [],
+          latent: false,
         },
       ],
     }
@@ -1540,6 +1570,7 @@ describe('pruneCuredCauses (cure-on-repair)', () => {
           trueCauseId: 'clutch-cause-severe',
           remainingCauseIds: ['clutch-cause-severe'],
           runTestIds: [],
+          latent: false,
         },
       ],
     }

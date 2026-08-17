@@ -127,6 +127,7 @@ export function buildTutorialLot(context: SimContext, day: number): AuctionLot {
         trueCauseId: recipe.symptom.trueCauseId,
         remainingCauseIds,
         runTestIds: [],
+        latent: false,
       },
     ],
     apparentBandByPartId,

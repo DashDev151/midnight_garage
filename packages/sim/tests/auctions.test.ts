@@ -1206,7 +1206,12 @@ describe('the damage budget: how rough a generated lot is', () => {
           GAME_YEAR,
         )
         tally[fitmentClass]!.cars += 1
-        if (car.symptoms.length > 0) tally[fitmentClass]!.symptomatic += 1
+        // Latents (sprint216.md task A) are a separate, independent roll
+        // from the visible symptom draw `symptomChanceByTier` is signed
+        // against - a car with zero visible symptoms but one latent must
+        // still count as "honest" here, exactly as it reads to the player
+        // (a latent appears in no list).
+        if (car.symptoms.some((s) => !s.latent)) tally[fitmentClass]!.symptomatic += 1
       }
     }
     // Every class is measured and reported in one message rather than the

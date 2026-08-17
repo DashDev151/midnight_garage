@@ -255,12 +255,18 @@ export function restorationValueLinesFor(
  * `valueLedgerFor`. The fear line carries the exact (possibly fractional)
  * discount the sheet itself applies, so the sum stays equal to the sheet
  * value rather than a rounded neighbour of it.
+ *
+ * `feared` (default `true`) forwards straight to `sheetGuideValueYen`'s own
+ * escape hatch, so a scripted lot's ledger names its fear line honestly too
+ * (zero, or near it) rather than disagreeing with `anchorValueYen`'s own
+ * exempted read of the same lot.
  */
 export function roomLedgerFor(
   car: CarInstance,
   model: CarModel,
   state: GameState,
   context: SimContext,
+  feared: boolean = true,
 ): ValueLedger {
   const heatPercent = state.marketHeat[model.id] ?? 100
   const apparentLedger = valueLedgerFor(
@@ -272,7 +278,7 @@ export function roomLedgerFor(
     context.economy,
   )
   if (car.symptoms.length === 0) return apparentLedger
-  const fearYen = sheetGuideValueYen(car, model, state, context) - apparentLedger.totalYen
+  const fearYen = sheetGuideValueYen(car, model, state, context, feared) - apparentLedger.totalYen
   return {
     lines: [...apparentLedger.lines, { id: 'fear', yen: fearYen }],
     totalYen: apparentLedger.totalYen + fearYen,

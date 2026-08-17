@@ -71,6 +71,7 @@ function carWithNonStarter(trueCauseId: NonStarterCauseId): CarInstance {
         trueCauseId,
         remainingCauseIds: NON_STARTER!.causes.map((c) => c.id),
         runTestIds: [],
+        latent: false,
       },
     ],
     apparentBandByPartId: { [cause.carPartId]: 'mint' },
@@ -172,6 +173,7 @@ function carWithNonStarterRough(trueCauseId: 'flat-battery' | 'seized-engine'): 
         trueCauseId,
         remainingCauseIds: NON_STARTER!.causes.map((c) => c.id),
         runTestIds: [],
+        latent: false,
       },
     ],
     apparentBandByPartId: { [cause.carPartId]: 'worn' },
@@ -242,36 +244,53 @@ function repairOneAndFlipNetYen(car: CarInstance, trueCauseId: 'flat-battery' | 
 }
 
 /**
- * "The sleeper is worth fixing, the corpse is worth stripping." Verified
- * directly and honestly against real economy numbers for this specific
- * model (`nissan-180sx-rps13`, uncommon tier) rather than asserted on
- * faith:
+ * "The sleeper is worth fixing, and the corpse still costs you more than
+ * the sleeper does - the room just no longer lets a BLIND buy on either one
+ * blow up." Verified directly and honestly against real economy numbers for
+ * this specific model (`nissan-180sx-rps13`, uncommon tier) rather than
+ * asserted on faith.
  *
- * - Repairing-and-flipping the ONE diagnosed defect is genuinely profitable
- *   for the flat-battery sleeper and genuinely a LOSS for the seized-engine
- *   corpse - the core "worth fixing vs not" claim, robust across every
- *   fixture this test tried while being built.
- * - Donor-flow's own standing relative to repair improves substantially for
- *   the corpse (the gap between them narrows) - stripping becomes the
- *   comparatively BETTER choice as the diagnosed defect worsens.
+ * The fearful room (knowledge-and-diagnosis.md section 4) changed this
+ * test's own premise, on purpose, and the change is recorded
+ * here rather than papered over. `purchaseYen` (`sheetGuideValueYen`) is now
+ * CHAIN-PRICED and near-worst-case (`fearBias` 0.85): it reads only the
+ * SYMPTOM (never `trueCauseId`), so a blind buyer of an untested non-starter
+ * car pays the SAME fear-anchored price whichever cause turns out true -
+ * roughly the market's own COST to fix the worst candidate on the sheet
+ * (seized-engine), not that candidate's VALUE impact. Economy-bible law 1
+ * ("below the expectation band every repair returns at least its cost")
+ * then does the rest structurally: paying near the worst case's own repair
+ * COST up front and then actually performing that worst-case repair can
+ * never net a real loss, because law 1 already guarantees the repair alone
+ * recovers what it costs. The corpse stops being a blind-buy TRAP the
+ * moment the room prices this way; it remains the worse of the two cars on
+ * offer (`sleeper.netYen > corpse.netYen` still holds, comfortably), which
+ * is the invariant this test now checks. Diagnosing a car before bidding -
+ * collapsing it to one candidate - is what turns "worse" back into "walk
+ * away", per `roomFearPricing.test.ts`'s own C3(c) probe; this test is
+ * deliberately about the UNDIAGNOSED, blind-buy case.
  *
- * DISCLOSED, not silently forced: under today's tuned numbers
- * (`teardown.usedPartSaleFraction` 0.55), donor-flow does not fully overtake
- * repair-and-flip in absolute yen for this specific model even at this
- * fixture's worst-case severity - stripping ~28 largely-`worn` (not
- * badly-damaged) parts at a 45% haircut costs more than the single
- * catastrophic repair saves, for an uncommon-tier car's own price scale.
- * This is a measured fact about the current economy tuning, not papered
- * over with an unrealistic fixture (an all-mint or all-scrap car) to force
- * an outright "donor wins" result that would not represent anything
- * generation could plausibly produce.
+ * - Repairing-and-flipping the ONE (still hypothetically diagnosed, for the
+ *   repair route itself) defect is profitable for BOTH the flat-battery
+ *   sleeper and the seized-engine corpse when bought at the room's own
+ *   fear-priced sheet - the corpse costs far more to repair (a fresh block,
+ *   not a battery), but the sheet already priced near that cost, so the
+ *   margin survives.
+ * - The sleeper still comes out substantially ahead of the corpse in
+ *   absolute yen, since its repair is nearly free while both paid the
+ *   identical fear-anchored purchase price.
+ * - Donor-flow's own standing relative to repair still improves for the
+ *   corpse (the gap narrows) - stripping remains the comparatively BETTER
+ *   choice as the diagnosed defect worsens, unaffected by this sprint (the
+ *   donor flow prices its own purchase through the same `sheetGuideValueYen`
+ *   seam, so both routes moved together).
  */
-describe('donor flow vs repair-and-flip (Sprint 75 decision 3)', () => {
-  it('repairing the one diagnosed defect is profitable for the sleeper, a loss for the corpse', () => {
+describe('donor flow vs repair-and-flip (Sprint 75 decision 3; room formula updated Sprint 216)', () => {
+  it('repairing the one diagnosed defect is profitable for both the sleeper and the corpse, bought blind at the fear-priced sheet - the sleeper still comes out further ahead', () => {
     const sleeper = repairOneAndFlipNetYen(carWithNonStarterRough('flat-battery'), 'flat-battery')
     const corpse = repairOneAndFlipNetYen(carWithNonStarterRough('seized-engine'), 'seized-engine')
     expect(sleeper.netYen).toBeGreaterThan(0)
-    expect(corpse.netYen).toBeLessThan(0)
+    expect(corpse.netYen).toBeGreaterThan(0)
     expect(sleeper.netYen).toBeGreaterThan(corpse.netYen)
   })
 

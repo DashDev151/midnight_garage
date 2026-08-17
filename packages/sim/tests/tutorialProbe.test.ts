@@ -105,17 +105,27 @@ describe('tutorial satisfiability probe', () => {
   const sportTyreYen = CONTEXT.aftermarketPartByCarPartId[FITMENT].tyres.sport!.priceYen
   const oneMistakeYen = sportTyreYen - stockTyreYen
 
-  it('the scripted lot is flagged excludable and priced through the fear-discounted reserve', () => {
+  it("the scripted lot is flagged excludable and priced honestly - fully disclosed, exempt from the room's fear", () => {
     expect(lot.scripted).toBe(true)
-    // The sleeper lesson, quantified: the room prices the tick at the odds,
-    // so pre-knowledge its sheet value IS the honest expectation - the
-    // cause-weighted average across all four possible causes, from the minor
-    // lifter tick through to the feared rod-knock. Certainty about which one
-    // it is is what the inspection buys.
-    const sheet = sheetGuideValueYen(lot.car, MODEL, state, CONTEXT)
+    // Fear prices UNCERTAINTY about which candidate is true; a scripted lot
+    // carries none - sprint215.md's own `fullyVerifiedCar` already treats it
+    // as fully disclosed the moment it is bought, and `AuctionLot.scripted`
+    // is the exact flag that decision reads. `sheetGuideValueYen`'s `feared`
+    // parameter is the room-pricing side of the same call: `anchorValueYen`
+    // (`bidding.ts`) passes `!lot.scripted`, so the reserve this test uses
+    // below prices the plain cause-weighted expectation, not the near-worst
+    // fear formula.
     const honest = expectedTrueValueYen(lot.car, MODEL, state, CONTEXT)
-    expect(sheet).toBe(honest)
-    // And the reserve is a genuine bargain: bought at ~0.6x the honest value.
+    const exemptSheet = sheetGuideValueYen(lot.car, MODEL, state, CONTEXT, false)
+    expect(exemptSheet).toBe(honest)
+    // Named for contrast, not used by anything downstream: an ordinary
+    // (non-scripted) lot carrying this exact symptom WOULD read fear-priced,
+    // strictly below the honest expectation - the sleeper lesson the design
+    // doc describes still holds for every real lot, just not this teaching
+    // artefact.
+    const fearedSheet = sheetGuideValueYen(lot.car, MODEL, state, CONTEXT)
+    expect(fearedSheet).toBeLessThan(honest)
+    // And the reserve is a genuine bargain: bought well under the honest value.
     expect(reserve).toBeGreaterThan(0)
     expect(reserve).toBeLessThanOrEqual(Math.round(honest * 0.65))
   })
@@ -133,6 +143,17 @@ describe('tutorial satisfiability probe', () => {
     // never quietly turn Yuki's first job into a fat flip. The bound keeps a
     // slice of headroom over the real closed-form margin rather than pinning
     // it exactly.
+    //
+    // The fearful room (knowledge-and-diagnosis.md section 4) briefly broke
+    // this ceiling when it first landed - a scripted lot has no real
+    // uncertainty to fear, so charging it the near-worst-case fix cost
+    // anyway priced the reserve too cheap and inflated profit past 26,000.
+    // Fixed by scope correction, not by moving `four-wheels`'s payout: fear
+    // prices what nobody has looked at, and this lot's condition is fully
+    // disclosed by design (`sheetGuideValueYen`'s `feared` parameter,
+    // `AuctionLot.scripted`), so its reserve prices the honest
+    // cause-weighted expectation exactly as it did before the fearful room
+    // existed, and the designed margin holds unchanged.
     const profitYen = FOUR_WHEELS.payoutYen - totalSpendYen
     expect(profitYen).toBeGreaterThan(0)
     expect(profitYen).toBeLessThanOrEqual(15_000)

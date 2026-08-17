@@ -2029,6 +2029,7 @@ describe('CarDetailScreen', () => {
             trueCauseId: 'valve-seals',
             remainingCauseIds: ['valve-seals', 'tired-rings', 'head-gasket'],
             runTestIds: [],
+            latent: false,
           },
         ],
         apparentBandByPartId: { headValvetrain: 'mint' as const },

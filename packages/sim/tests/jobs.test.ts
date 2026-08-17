@@ -2113,6 +2113,7 @@ describe('resolveRemovePart wiring to revealOnRemoval (Sprint 74 decision 4): th
           trueCauseId,
           remainingCauseIds: ['cause-aero', 'cause-seats'],
           runTestIds: [],
+          latent: false,
         },
       ],
     }

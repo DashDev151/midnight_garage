@@ -96,7 +96,12 @@ function buildRoom(): Room | null {
   if (!game.attendAuction(lot.tier)) return null
   admissionFeeYen.value = game.attendanceFeeYenFor(lot.tier)
   const isTutorialLot = lot.id === TUTORIAL_LOT.lotId
-  const roomReadYen = Math.round(sheetGuideValueYen(lot.car, model, game.gameState, game.context))
+  // A scripted lot is exempt from the room's fear (sim/diagnosis.ts's
+  // `sheetGuideValueYen` doc comment, `bidding.ts`'s `anchorValueYen`): a
+  // teaching artefact with its condition disclosed has nothing to fear.
+  const roomReadYen = Math.round(
+    sheetGuideValueYen(lot.car, model, game.gameState, game.context, !lot.scripted),
+  )
   const playerNumberYen = Math.round(
     playerEstimateYen(lot.car, model, game.gameState, game.context),
   )
