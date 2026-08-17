@@ -1,7 +1,23 @@
 import { z } from 'zod'
 import { CarInstanceSchema } from './carInstance'
+import { SellingChannelIdSchema } from './economy'
 import { SlotConditionRequirementSchema } from './requirement'
 import { ToolLevelSchema } from './toolLines'
+
+/**
+ * The selling channel a service job unlocks on delivery, on exactly the
+ * footing `StoryMissionSchema.unlocksSellingChannel` already works: absent
+ * for every ordinary job, and never `shopFront` or `tradeNetwork` - both are
+ * open from day one, so neither is something a job could unlock.
+ */
+const ServiceJobUnlocksSellingChannelSchema = SellingChannelIdSchema.optional().refine(
+  (channelId): boolean =>
+    channelId === undefined || (channelId !== 'shopFront' && channelId !== 'tradeNetwork'),
+  {
+    message:
+      "unlocksSellingChannel can never be 'shopFront' or 'tradeNetwork' - both are open from day one",
+  },
+)
 
 /**
  * One task within a service-job template. What the customer's car must end
@@ -69,6 +85,10 @@ export const ServiceJobTypeSchema = z.object({
    * offered or accepted. Absent for every ordinary template.
    */
   requiresOperationId: z.string().min(1).optional(),
+  /** The selling channel completing a job of this template unlocks - see
+   * `ServiceJobUnlocksSellingChannelSchema` above. Absent for every ordinary
+   * template. */
+  unlocksSellingChannel: ServiceJobUnlocksSellingChannelSchema,
 })
 
 export const ServiceJobTypesSchema = z.array(ServiceJobTypeSchema).min(1)
@@ -112,6 +132,19 @@ export const ServiceJobSchema = z.object({
    * not from acceptance, so the in-transit day never silently shortens it.
    */
   dueOnDay: z.number().int().positive().nullable().default(null),
+  /** Captured from the template (or the scripted recipe that built this job)
+   * at generation time, same as `baseReputation`/`deadlineDays` - see
+   * `ServiceJobUnlocksSellingChannelSchema` above. Absent for every ordinary job. */
+  unlocksSellingChannel: ServiceJobUnlocksSellingChannelSchema,
+  /** Captured from the scripted recipe that built this job, on the same
+   * footing as `unlocksSellingChannel` - the handback line shown once this
+   * job pays out, in place of the generic flavour line. Absent for every
+   * ordinary job. */
+  handbackCopy: z.string().min(1).optional(),
+  /** Captured from the scripted recipe that built this job - the plain
+   * what-changed facts the handback modal lists once this job pays out.
+   * Absent for every ordinary job. */
+  unlockFacts: z.array(z.string().min(1)).optional(),
 })
 
 export const ServiceJobsSchema = z.array(ServiceJobSchema)

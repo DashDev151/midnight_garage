@@ -9,10 +9,10 @@ import type { NewJobSpec } from './actions'
 import { advanceDay } from './advanceDay'
 import {
   assemblyContainerFor,
+  resolveFitAssemblyMember,
   resolveRefitAssembly,
   resolveRemoveAssembly,
   resolveRemoveAssemblyMember,
-  resolveSwapAssemblyMember,
 } from './assemblies'
 import { planGroupRepair } from './bands'
 import {
@@ -114,7 +114,10 @@ interface EventEffect {
  * `skipTutorial` and `finishTutorial` have no sim resolver at all (the store
  * mutates `tutorialAcknowledgedSteps`/`tutorialStatus` directly), so each
  * case mirrors that same manual mutation instead of calling into a resolver
- * that does not exist.
+ * that does not exist. `playClockPaused` and `playClockResumed` are dev-only
+ * playtest-clock instrumentation (`PlaytestClock.vue`) with no sim effect at
+ * all - measurement of the session, never an action within it - so both are
+ * pure no-ops.
  */
 function applySessionEvent(
   state: GameState,
@@ -339,7 +342,7 @@ function applySessionEvent(
     case 'removeAssembly': {
       const { carId, assemblyId } = event.payload
       const result = resolveRemoveAssembly(state, carId, assemblyId, context, remaining)
-      // Unlike `refitAssembly`/`swapAssemblyMember` below, the store checks
+      // Unlike `refitAssembly`/`fitAssemblyMember` below, the store checks
       // `!result.ok` BEFORE pushing the day log here, so a refusal logs
       // nothing at all.
       return result.ok ? { state: result.state, log: result.log } : { state, log: [] }
@@ -355,9 +358,9 @@ function applySessionEvent(
       // same value.
       return { state: result.state, log: result.log }
     }
-    case 'swapAssemblyMember': {
+    case 'fitAssemblyMember': {
       const { containerId, memberSlot, partInstanceId } = event.payload
-      const result = resolveSwapAssemblyMember(
+      const result = resolveFitAssemblyMember(
         state,
         containerId,
         memberSlot,
@@ -513,6 +516,12 @@ function applySessionEvent(
       const { staffId, to } = event.payload
       const result = resolveReassignStaff(state, staffId, to)
       return { state: result.state, log: result.log }
+    }
+    case 'playClockPaused':
+    case 'playClockResumed': {
+      // Measurement instrumentation, never an action - see this function's
+      // own doc comment above.
+      return { state, log: [] }
     }
   }
 }

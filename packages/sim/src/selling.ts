@@ -1,6 +1,7 @@
 import {
   ALL_CAR_PART_IDS,
   fitmentClassForTier,
+  SCRIPTED_SERVICE_JOB,
   type Buyer,
   type BuyerArchetype,
   type CarInstance,
@@ -473,23 +474,36 @@ export interface SetForSaleResult {
  * on exactly the footing `isAuctionTierUnlocked` (catalogs.ts) derives an
  * auction room. The rule runs the other way round from a room's, because the
  * two answer different questions: a room is shut until a guarantor opens it,
- * while a channel is open unless some mission CLAIMS it. So a channel nobody
- * has written an unlocking mission for is simply available, and Law 1's
- * floor lives in content (`StoryMissionSchema` forbids a mission claiming the
- * shop front or the trade network) rather than in a list of exceptions here.
- * Once claimed, the claiming mission's own `delivered` record IS the fact,
- * and a delivered mission is never undelivered, so a channel never closes.
+ * while a channel is open unless something CLAIMS it. So a channel nobody
+ * has written an unlocking mission or service job for is simply available,
+ * and Law 1's floor lives in content: `StoryMissionSchema` forbids claiming
+ * the shop front (a mission may now claim the trade network - the guarantor
+ * pattern the-showroom-standard uses, sprint209.md), while
+ * `ServiceJobTypeSchema` forbids claiming either, since a service job's
+ * payout is day-one-reachable work.
+ *
+ * Two independent claim mechanisms feed the same channel, since a service
+ * job has no persistent post-resolution record the way a delivered story
+ * mission does: a mission's claim reads its own `state.storyMissions`
+ * `delivered` record, while a service job's claim reads the persisted
+ * `state.serviceJobChannelUnlocks` set `resolveServiceJob` appends to at
+ * payout (`serviceJobs.ts`). Either kind, once claimed, never closes again.
  */
 export function isSellingChannelUnlocked(
   state: GameState,
   context: SimContext,
   channelId: SellingChannelId,
 ): boolean {
-  const openers = context.storyMissions.filter((m) => m.unlocksSellingChannel === channelId)
-  if (openers.length === 0) return true
-  return openers.some((mission) =>
+  const missionOpeners = context.storyMissions.filter((m) => m.unlocksSellingChannel === channelId)
+  const jobOpensChannel =
+    context.serviceJobTypes.some((t) => t.unlocksSellingChannel === channelId) ||
+    SCRIPTED_SERVICE_JOB.unlocksSellingChannel === channelId
+  if (missionOpeners.length === 0 && !jobOpensChannel) return true
+  const missionClaimed = missionOpeners.some((mission) =>
     state.storyMissions.some((r) => r.missionId === mission.id && r.status === 'delivered'),
   )
+  if (missionClaimed) return true
+  return (state.serviceJobChannelUnlocks ?? []).includes(channelId)
 }
 
 /**

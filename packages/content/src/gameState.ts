@@ -19,7 +19,7 @@ import { AuctionLotSchema, AuctionTierSchema } from './auction'
 import { ForSaleEntrySchema, PendingSaleOfferSchema, SaleChannelSchema } from './sale'
 import { SceneCommissionSchema } from './sceneCommission'
 import { ServiceJobSchema } from './serviceJob'
-import { BayKindSchema } from './facilities'
+import { BayKindSchema, SlotKindSchema } from './facilities'
 import { VenueNameByTierSchema } from './venueNames'
 
 /**
@@ -442,6 +442,20 @@ export const GameStateSchema = z.object({
   reputationPoints: z.number().int().nonnegative().default(0),
   ownedCars: z.array(CarInstanceSchema).default([]),
   partInventory: z.array(PartInstanceSchema).default([]),
+  /**
+   * Monotonic counter for minting `PartInstance.id`s - every mint site
+   * (`resolveBuyPart`'s express branch, `resolvePartDeliveries`,
+   * `resolvePipelineRemovePanelAction`'s harvested panel) reads the current
+   * value and increments it, never reset. Replaces the earlier
+   * `${day}-${partInventory.length}` scheme, which could reissue a live id
+   * within the same day once the array a mint counted against had already
+   * shrunk from an earlier removal in the same day. The genuinely-optional-
+   * key pattern (like `dyno` above), so no existing `GameState` literal
+   * needs touching; readers treat absent as zero minted so far
+   * (`state.partInstanceCounter ?? 0`). A fresh career seeds it to 0
+   * explicitly (`createInitialGameState`).
+   */
+  partInstanceCounter: z.number().int().nonnegative().optional(),
   staff: z.array(StaffMemberSchema).default([]),
   /**
    * The live job-ad board. Refreshed on the weekly tick (`advanceDay`):
@@ -521,6 +535,17 @@ export const GameStateSchema = z.object({
    * case.
    */
   graceParkingCarId: z.string().min(1).nullable().default(null),
+  /**
+   * The body bay - one slot, same idiom as `graceParkingCarId` above:
+   * `null` while empty, a `carInstanceId` while occupied (sim's
+   * `carInBodyBay`). Every zone/pipeline action refuses off this car
+   * (sprint208.md: "the bay is the gate; the room is the surface"). The
+   * genuinely-optional-key pattern (like `partInstanceCounter` above), so no
+   * existing `GameState` literal needs touching: a fixture that never
+   * mentions it reads absent as empty, and a fresh career seeds it to `null`
+   * explicitly (`createInitialGameState`).
+   */
+  bodyBayCarId: z.string().min(1).nullable().optional(),
   /**
    * Labour energy points already spent today, in fine-grained integer points
    * (`pointsPerLabour` per labour slot). Instant actions (repair, install,
@@ -641,6 +666,31 @@ export const GameStateSchema = z.object({
    * explicitly (`createInitialGameState`).
    */
   assemblyInventory: z.array(AssemblyContainerSchema).optional(),
+  /**
+   * Selling-channel unlocks claimed by a delivered service job - the
+   * service-job counterpart to `StoryMissionRecordSchema`'s own delivered
+   * records, which `isSellingChannelUnlocked` (sim/selling.ts) also reads. A
+   * service job carries no persistent post-resolution record the way a
+   * story mission does (it simply leaves `activeServiceJobs` once resolved),
+   * so the claim itself is what persists: appended once, at payout, and
+   * never removed. `.optional()` (the `assemblyInventory` pattern above)
+   * rather than `.default([])` - a genuinely optional key, so no existing
+   * `GameState` literal needs touching; readers treat absent as no claims
+   * yet (`state.serviceJobChannelUnlocks ?? []`). A fresh career seeds it to
+   * `[]` explicitly (`createInitialGameState`).
+   */
+  serviceJobChannelUnlocks: z.array(SellingChannelIdSchema).optional(),
+  /**
+   * Per-model heat deltas from the most recent weekly market-pressure update
+   * (`updateMarketHeat`, sim/marketHeat.ts) - what the market page reports
+   * as the week's movers, backward-looking only. `.optional()` (the
+   * `assemblyInventory` pattern above), so no existing `GameState` literal
+   * needs touching; readers treat absent as no shift recorded yet
+   * (`state.marketHeatLastShift ?? {}`). Replaced wholesale on every weekly
+   * update, never accumulated - last week's movement, not a running history,
+   * and a model with no entry simply did not move.
+   */
+  marketHeatLastShift: z.record(z.string(), z.number()).optional(),
   /**
    * The guided tutorial's one persisted bit. Absent (`.optional()`, the
    * genuinely-optional-key pattern) means "not a tutorial career" - every
@@ -859,6 +909,11 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
        * in enough quantity - buy more from the parts shop's consumables
        * section (`hasStockFor`, sim/consumables.ts). */
       'out-of-stock',
+      /** Every zone/pipeline action refuses off the body bay's own car
+       * (`carInBodyBay`, sim/facilities.ts) - move the car into the bay
+       * first (sprint208.md: "the bay is the gate; the room is the
+       * surface"). */
+      'not-in-body-bay',
       /** Everything the repair addressed is past saving - scrap, or a part
        * that is replaced rather than repaired - so no band can climb
        * (`planGroupRepair`'s `unrepairablePartIds`, sim/bands.ts). Fitting a
@@ -1160,7 +1215,7 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('car-moved'),
     carInstanceId: z.string().min(1),
-    to: BayKindSchema,
+    to: SlotKindSchema,
   }),
   z.object({
     type: z.literal('cars-swapped'),

@@ -152,8 +152,9 @@ export function resolveBuyPart(
   const priceYen = expressPriceYen(part)
   if (state.cashYen < priceYen) return { state, log: [] }
 
+  const partInstanceCounter = state.partInstanceCounter ?? 0
   const partInstance: PartInstance = {
-    id: `part-${state.day}-${state.partInventory.length}`,
+    id: `part-${partInstanceCounter}`,
     partId: part.id,
     band: 'mint',
     origin: makeMarketOrigin(state.day),
@@ -173,6 +174,7 @@ export function resolveBuyPart(
         ...state,
         cashYen: state.cashYen - priceYen,
         partInventory: [...state.partInventory, partInstance],
+        partInstanceCounter: partInstanceCounter + 1,
       },
       log,
       context.economy,
@@ -209,6 +211,7 @@ export function resolvePartDeliveries(state: GameState): PartDeliveryResult {
   const stillPending: PendingPartOrder[] = []
   const log: DayLogEntry[] = []
   let partInventory = state.partInventory
+  let partInstanceCounter = state.partInstanceCounter ?? 0
 
   for (const order of state.pendingPartOrders) {
     if (order.arrivesOnDay > state.day + 1) {
@@ -216,7 +219,7 @@ export function resolvePartDeliveries(state: GameState): PartDeliveryResult {
       continue
     }
     const partInstance: PartInstance = {
-      id: `part-${state.day}-${partInventory.length}`,
+      id: `part-${partInstanceCounter}`,
       partId: order.partId,
       band: 'mint',
       origin: makeMarketOrigin(state.day),
@@ -224,6 +227,7 @@ export function resolvePartDeliveries(state: GameState): PartDeliveryResult {
       // price) - a standard order's real cost.
       pricePaidYen: order.priceYen,
     }
+    partInstanceCounter += 1
     partInventory = [...partInventory, partInstance]
     log.push({
       type: 'part-delivered',
@@ -234,7 +238,10 @@ export function resolvePartDeliveries(state: GameState): PartDeliveryResult {
   }
 
   if (log.length === 0) return { state, log: [] }
-  return { state: { ...state, partInventory, pendingPartOrders: stillPending }, log }
+  return {
+    state: { ...state, partInventory, partInstanceCounter, pendingPartOrders: stillPending },
+    log,
+  }
 }
 
 export interface ScrapPartResult {

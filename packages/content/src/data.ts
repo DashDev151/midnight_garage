@@ -20,6 +20,7 @@ import partsJson from '../data/parts.json'
 import partsTaxonomyJson from '../data/parts-taxonomy.json'
 import personasJson from '../data/personas.json'
 import provenanceJson from '../data/provenance.json'
+import scriptedServiceJobJson from '../data/scriptedServiceJob.json'
 import serviceJobCustomerNamesJson from '../data/serviceJobCustomerNames.json'
 import serviceJobTemplatesJson from '../data/serviceJobTemplates.json'
 import staffCandidatesJson from '../data/staffCandidates.json'
@@ -57,6 +58,7 @@ import type { PartFitmentClass } from './partFitment'
 import type { CarPartId } from './tags'
 import { PersonasSchema } from './persona'
 import { ProvenancePoolSchema } from './provenance'
+import { ScriptedServiceJobRecipeSchema } from './scriptedServiceJob'
 import { ServiceJobCustomerNamesSchema, ServiceJobTypesSchema } from './serviceJob'
 import { StoryMissionsSchema, type StoryMission } from './storyMission'
 import { DamagePatternsSchema } from './damagePattern'
@@ -140,6 +142,13 @@ export const SERVICE_JOB_TYPES = ServiceJobTypesSchema.parse(serviceJobTemplates
 export const SERVICE_JOB_CUSTOMER_NAMES = ServiceJobCustomerNamesSchema.parse(
   serviceJobCustomerNamesJson,
 )
+/**
+ * The stand owner's one-off scripted service job recipe - see
+ * `scriptedServiceJob.ts`'s own doc comment. Never part of `SERVICE_JOB_TYPES`:
+ * it is injected directly (`packages/sim/src/scriptedServiceJob.ts`), never
+ * rolled from the board.
+ */
+export const SCRIPTED_SERVICE_JOB = ScriptedServiceJobRecipeSchema.parse(scriptedServiceJobJson)
 export const FACILITIES = FacilitiesSchema.parse(facilitiesJson)
 export const TOOL_LINES = ToolLinesSchema.parse(toolLinesJson)
 
@@ -197,8 +206,10 @@ export const PROVENANCE_POOL = ProvenancePoolSchema.parse(provenanceJson)
 export const VENUE_NAMES = VenueNamesSchema.parse(venueNamesJson)
 
 /**
- * The locked-tier guarantor line shown for each auction tier not yet
- * unlocked - `AuctionScreen`'s locked-tier copy.
+ * The guarantor line for each auction tier not yet unlocked - the map's own
+ * refusal when its building is clicked before the tier's story mission
+ * lands (`overworldNav.ts`; sprint209.md task A moved this off the auctions
+ * screen, which no longer renders a locked tier at all).
  */
 export const AUCTION_TIER_COPY = AuctionTierCopySchema.parse(auctionTierCopyJson)
 

@@ -1,0 +1,49 @@
+{
+  "jobId": "stand-owner-service-job",
+  "carId": "stand-owner-acty",
+  "modelId": "honda-acty-ha4",
+  "year": 1996,
+  "mileageKm": 95000,
+  "color": "white",
+  "provenanceNote": "one-owner, garage kept",
+  "customerName": "Mrs. Harada (the newsstand)",
+  "description": "The van won't start and the stand's been shut three days. Papers don't stop printing just because I can't sell them. Get her going and I'll see you right.",
+  "appearsOnDay": 5,
+  "baseBand": "fine",
+  "partOverrides": [
+    {
+      "carPartId": "ignitionEcu",
+      "band": "worn"
+    },
+    {
+      "carPartId": "fuelSystem",
+      "band": "worn"
+    }
+  ],
+  "tasks": [
+    {
+      "requirement": { "kind": "slotCondition", "carPartId": "ignitionEcu", "minBand": "fine" },
+      "minToolTier": 1
+    },
+    {
+      "requirement": { "kind": "slotCondition", "carPartId": "fuelSystem", "minBand": "fine" },
+      "minToolTier": 1
+    }
+  ],
+  "baseReputation": 4,
+  "deadlineDays": 5,
+  "offerLifetimeDays": 10,
+  "marginRoll": 1.265,
+  "unlocksSellingChannel": "freeAdsPaper",
+  "symptom": {
+    "symptomId": "non-starter",
+    "trueCauseId": "flat-battery",
+    "apparent": [{ "carPartId": "ignitionEcu", "band": "fine" }]
+  },
+  "handbackCopy": "She starts first turn now. Mrs. Harada listens to the idle all the way through before she says thank you. The shutters are up in time for the evening edition.",
+  "unlockFacts": [
+    "The stand is open again. Mrs. Harada keeps your card under the till.",
+    "The free ads paper takes your listings now. Costs nothing, reaches the whole town, hurries nobody - the shop front sells to whoever walks past; the paper sells to whoever has been circling the same ad all week.",
+    "She saves you the trade sheet too: what moved last week, model by model. Read it at the stand."
+  ]
+}

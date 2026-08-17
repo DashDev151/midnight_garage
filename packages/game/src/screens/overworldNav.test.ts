@@ -1,4 +1,4 @@
-import { COURSES } from '@midnight-garage/content'
+import { AUCTION_TIER_COPY, COURSES, type AuctionTier } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import {
   INERT_LOCATIONS,
@@ -6,18 +6,20 @@ import {
   type OverworldLocationId,
 } from '../pixi/overworld/buildings'
 import { OVERWORLD_PLACEMENTS } from '../pixi/overworld/overworldMap'
-import { destinationFor, locationAt } from './overworldNav'
+import { AUCTION_TIER_BY_LOCATION, destinationFor, locationAt } from './overworldNav'
 
 /**
- * Every one of the fifteen overworld locations resolves to somewhere real:
+ * Every one of the sixteen overworld locations resolves to somewhere real:
  * an existing route for most, a refusal for the inert buildings (the bank,
  * drawn but not open, and the dealer network, a fax circle with nothing
- * inside for a walk-in),
- * an action for the cafe (you buy a round and stay on the map), and the test
- * track on its own fixed course, no picker, for the four track venues. `locationAt` is the
- * click side of the same contract - a point inside a location's own
- * placement resolves to that location, and a point that lands on nothing
- * resolves to nothing.
+ * inside for a walk-in) plus the three story-gated auction rooms before
+ * their guarantor mission lands, and the test track on its own fixed
+ * course, no picker, for the four track venues. The stand is its own case:
+ * shut (refusing the click) until `standUnlocked` is passed, then routing to
+ * the market page - the one destination that depends on state rather than
+ * the id alone. `locationAt` is the click side of the same contract - a
+ * point inside a location's own placement resolves to that location, and a
+ * point that lands on nothing resolves to nothing.
  */
 
 /** Read from the source rather than restated here: a second hand-kept copy of
@@ -29,6 +31,11 @@ const TEST_TRACK_IDS = new Set([
   'international-raceway',
   'drag-strip',
 ])
+/** The three auction buildings gated behind a guarantor mission - unlike
+ * `local-yard`, which is always open, these refuse the click (case: no
+ * `unlockedAuctionTiers` handed in, or the tier missing from it) until named
+ * unlocked. */
+const GATED_AUCTION_IDS = new Set(['regional-auction', 'premium-auction', 'collector-network'])
 
 /** The tab-bar screens a map click also reaches - these mark their own
  * navigation `from: 'overworld'` so the screen's back control can tell a
@@ -38,16 +45,12 @@ const TEST_TRACK_IDS = new Set([
 const OVERWORLD_FLAGGED_ROUTES: Record<string, string> = {
   'tool-hire': 'upgrades',
   'parts-shop': 'parts',
-  'local-yard': 'auctions',
   'staff-centre': 'staff',
-  'regional-auction': 'auctions',
-  'premium-auction': 'auctions',
-  'collector-network': 'auctions',
 }
 
 describe('overworldNav', () => {
-  it('covers all fifteen locations, matching the art module id list exactly', () => {
-    expect(OVERWORLD_LOCATION_IDS).toHaveLength(15)
+  it('covers all sixteen locations, matching the art module id list exactly', () => {
+    expect(OVERWORLD_LOCATION_IDS).toHaveLength(16)
     for (const id of OVERWORLD_LOCATION_IDS) expect(() => destinationFor(id)).not.toThrow()
   })
 
@@ -60,15 +63,12 @@ describe('overworldNav', () => {
   })
 
   /**
-   * The cafe is the one location that is neither a route nor shut: you buy the
-   * crew a round and stay on the map, because a screen you would immediately
-   * walk back out of is not worth having.
+   * The cafe leads into its own small interior beat (sprint209.md task C) -
+   * no `from` flag, since it never sits on the tab bar and its own back
+   * control always means the map.
    */
-  it('the cafe is an action rather than a destination or a closed door', () => {
-    const destination = destinationFor('cafe')
-    expect(destination.kind).toBe('action')
-    if (destination.kind === 'action') expect(destination.action).toBe('buy-coffee')
-    expect(INERT_IDS.has('cafe')).toBe(false)
+  it('the cafe routes to its own interior screen, with no `from` flag to carry', () => {
+    expect(destinationFor('cafe')).toEqual({ kind: 'route', to: { name: 'cafe' } })
   })
 
   it('the touge, the wangan, the international raceway and the drag strip each lead to the test track on their own course, and no two venues share one', () => {
@@ -103,24 +103,90 @@ describe('overworldNav', () => {
   it('every remaining location routes to a real, named screen', () => {
     const expected: Record<string, string> = {
       garage: 'garage',
+      cafe: 'cafe',
+      'local-yard': 'auctions',
       ...OVERWORLD_FLAGGED_ROUTES,
     }
-    // The cafe drops out alongside the inert bank and the four track venues:
-    // it is an action, not a screen.
+    // The three gated auction buildings drop out - their own dedicated tests
+    // below cover them, since their destination depends on
+    // `unlockedAuctionTiers` rather than being a plain, always-on route. The
+    // stand drops out for the same reason (`standUnlocked`).
     const plainIds = OVERWORLD_LOCATION_IDS.filter(
-      (id) => !INERT_IDS.has(id) && !TEST_TRACK_IDS.has(id) && id !== 'cafe',
+      (id) =>
+        !INERT_IDS.has(id) &&
+        !TEST_TRACK_IDS.has(id) &&
+        !GATED_AUCTION_IDS.has(id) &&
+        id !== 'the-stand',
     )
     expect(plainIds.sort()).toEqual(Object.keys(expected).sort())
     for (const id of plainIds) {
       const destination = destinationFor(id)
       expect(destination.kind).toBe('route')
       if (destination.kind === 'route') {
-        // `toMatchObject` rather than `toEqual`: the seven tab-reachable
+        // `toMatchObject` rather than `toEqual`: the three tab-reachable
         // destinations also carry a `from: 'overworld'` query (checked in
         // its own test below), which this test isn't about.
         expect(destination.to).toMatchObject({ name: expected[id] })
       }
     }
+  })
+
+  it('the local yard always routes to its own auctions room, regardless of any unlock state', () => {
+    expect(destinationFor('local-yard')).toEqual({
+      kind: 'route',
+      to: { name: 'auctions', query: { from: 'overworld', tier: 'local-yard' } },
+    })
+    // Even an empty unlock list (the safe default for a caller with no
+    // state) never shuts the local yard - the lease's own guarantor keeps
+    // it open unconditionally, matching the sim's `isAuctionTierUnlocked`.
+    expect(destinationFor('local-yard', { unlockedAuctionTiers: [] })).toEqual({
+      kind: 'route',
+      to: { name: 'auctions', query: { from: 'overworld', tier: 'local-yard' } },
+    })
+  })
+
+  describe('the three story-gated auction rooms', () => {
+    const CASES: Array<{ id: OverworldLocationId; tier: Exclude<AuctionTier, 'local-yard'> }> = [
+      { id: 'regional-auction', tier: 'regional' },
+      { id: 'premium-auction', tier: 'premium' },
+      { id: 'collector-network', tier: 'collector-network' },
+    ]
+
+    it('refuse the click with the guarantor line when no unlock state is given, the safe default', () => {
+      for (const { id, tier } of CASES) {
+        expect(destinationFor(id)).toEqual({ kind: 'inert', message: AUCTION_TIER_COPY[tier] })
+      }
+    })
+
+    it('refuse the click while their own tier is absent from `unlockedAuctionTiers`', () => {
+      for (const { id, tier } of CASES) {
+        const destination = destinationFor(id, { unlockedAuctionTiers: [] })
+        expect(destination).toEqual({ kind: 'inert', message: AUCTION_TIER_COPY[tier] })
+      }
+    })
+
+    it('route to their own scoped auctions room once their tier is unlocked, and no other tier unlocks it', () => {
+      for (const { id, tier } of CASES) {
+        const otherTier = CASES.find((c) => c.tier !== tier)!.tier
+        expect(destinationFor(id, { unlockedAuctionTiers: [otherTier] })).toEqual({
+          kind: 'inert',
+          message: AUCTION_TIER_COPY[tier],
+        })
+        expect(destinationFor(id, { unlockedAuctionTiers: [tier] })).toEqual({
+          kind: 'route',
+          to: { name: 'auctions', query: { from: 'overworld', tier } },
+        })
+      }
+    })
+  })
+
+  it('maps every auction building id to the one tier its room scopes to', () => {
+    expect(AUCTION_TIER_BY_LOCATION).toEqual({
+      'local-yard': 'local-yard',
+      'regional-auction': 'regional',
+      'premium-auction': 'premium',
+      'collector-network': 'collector-network',
+    })
   })
 
   it('marks every tab-reachable destination `from: overworld`, so its own back control can return to the map', () => {
@@ -144,6 +210,32 @@ describe('overworldNav', () => {
     expect(destinationFor('dealer-network')).toEqual({
       kind: 'inert',
       message: 'Dealer to dealer only. Nothing on the block for a walk-in.',
+    })
+  })
+
+  /**
+   * The stand is shut until the scripted job that fixes the owner's van is
+   * delivered, and open afterwards - `overworldNav.ts`'s own `standUnlocked`
+   * flag, which `OverworldScreen.vue` derives from
+   * `game.availableSellingChannelIds` including `freeAdsPaper`. No state and
+   * no flag both mean the same thing: shut, never a route.
+   */
+  it('the stand refuses the click when no unlock state is given, the safe default', () => {
+    expect(destinationFor('the-stand')).toEqual({
+      kind: 'inert',
+      message: expect.stringContaining('Shutters down'),
+    })
+  })
+
+  it('the stand refuses the click while explicitly unlocked is false', () => {
+    const destination = destinationFor('the-stand', { standUnlocked: false })
+    expect(destination.kind).toBe('inert')
+  })
+
+  it('the stand routes to the market page once unlocked', () => {
+    expect(destinationFor('the-stand', { standUnlocked: true })).toEqual({
+      kind: 'route',
+      to: { name: 'market' },
     })
   })
 

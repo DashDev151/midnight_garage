@@ -86,6 +86,11 @@ export const router = createRouter({
     },
     { path: '/car/:id', name: 'car', component: () => import('../screens/CarDetailScreen.vue') },
     {
+      path: '/body-shop',
+      name: 'body-shop',
+      component: () => import('../screens/BodyShopScreen.vue'),
+    },
+    {
       path: '/auctions',
       name: 'auctions',
       component: () => import('../screens/AuctionScreen.vue'),
@@ -96,11 +101,6 @@ export const router = createRouter({
       component: () => import('../screens/AuctionRoomScreen.vue'),
     },
     { path: '/parts', name: 'parts', component: () => import('../screens/PartsMarketScreen.vue') },
-    {
-      path: '/inventory',
-      name: 'inventory',
-      component: () => import('../screens/PartsInventoryScreen.vue'),
-    },
     { path: '/jobs', name: 'jobs', component: () => import('../screens/ServiceJobsScreen.vue') },
     {
       path: '/upgrades',
@@ -113,19 +113,24 @@ export const router = createRouter({
       component: () => import('../screens/DynoScreen.vue'),
     },
     {
-      path: '/standing',
-      name: 'standing',
-      component: () => import('../screens/StandingScreen.vue'),
-    },
-    {
-      path: '/costs',
-      name: 'costs',
-      component: () => import('../screens/CostSheetScreen.vue'),
+      path: '/office',
+      name: 'office',
+      component: () => import('../screens/OfficeScreen.vue'),
     },
     {
       path: '/staff',
       name: 'staff',
       component: () => import('../screens/StaffOfficeScreen.vue'),
+    },
+    {
+      path: '/market',
+      name: 'market',
+      component: () => import('../screens/MarketScreen.vue'),
+    },
+    {
+      path: '/cafe',
+      name: 'cafe',
+      component: () => import('../screens/CafeScreen.vue'),
     },
     ...devRoutes,
   ],

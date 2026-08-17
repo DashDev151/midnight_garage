@@ -5,6 +5,7 @@ import {
   ECONOMY,
   PARTS,
   PARTS_TAXONOMY,
+  SCRIPTED_SERVICE_JOB,
   type CarInstance,
   type CarModel,
   type CarPartId,
@@ -219,6 +220,20 @@ const EVERY_CHANNEL_OPEN: GameState['storyMissions'] = CONTEXT.storyMissions
   .filter((mission) => mission.unlocksSellingChannel !== undefined)
   .map((mission) => ({ missionId: mission.id, status: 'delivered' as const, acceptedOnDay: 1 }))
 
+/**
+ * The service-job counterpart to `EVERY_CHANNEL_OPEN` above: every channel a
+ * service job (rather than a mission) claims, already unlocked - currently
+ * just `freeAdsPaper`, via the stand owner's scripted job. Derived from
+ * content rather than a hard-coded channel id, same reasoning as
+ * `EVERY_CHANNEL_OPEN`.
+ */
+const EVERY_SERVICE_JOB_CHANNEL_OPEN: GameState['serviceJobChannelUnlocks'] = [
+  ...CONTEXT.serviceJobTypes
+    .map((t) => t.unlocksSellingChannel)
+    .filter((channelId): channelId is SellingChannelId => channelId !== undefined),
+  SCRIPTED_SERVICE_JOB.unlocksSellingChannel,
+]
+
 function stateWithCar(car: CarInstance, overrides: Partial<GameState> = {}): GameState {
   return {
     day: 1,
@@ -259,6 +274,7 @@ function stateWithCar(car: CarInstance, overrides: Partial<GameState> = {}): Gam
     workbenchPartId: null,
     machinePartId: null,
     storyMissions: EVERY_CHANNEL_OPEN,
+    serviceJobChannelUnlocks: EVERY_SERVICE_JOB_CHANNEL_OPEN,
     ...overrides,
   }
 }
@@ -1677,7 +1693,7 @@ describe('a channel is a buyer base (sprint156)', () => {
   describe('a kei has a channel that is unambiguously good for it', () => {
     const keiCar = tidy(KEI_MODEL)
 
-    it('the free ads paper beats the shop front on all three axes, from day one', () => {
+    it('the free ads paper beats the shop front on all three axes, once its job is delivered', () => {
       // Who: the archetypes that actually state an interest in this league of
       // car arrive far more often through the paper than off the forecourt.
       const keiInterested = CONTEXT.buyers
@@ -1702,10 +1718,19 @@ describe('a channel is a buyer base (sprint156)', () => {
         ECONOMY.sellingChannels.freeAdsPaper.offerChanceFactorByRarity![KEI_MODEL.rarity],
       ).toBeGreaterThan(ECONOMY.sellingChannels.shopFront.offerChanceFactor!)
 
-      // And it costs nothing to reach: open on day one, no mission needed.
+      // Unlike the two premium channels, nothing here needs a MISSION - the
+      // stand owner's scripted service job claims it instead (sprint205.md),
+      // so it is shut until that job is delivered rather than open for free.
       expect(
         isSellingChannelUnlocked(
-          stateWithCar(keiCar, { storyMissions: [] }),
+          stateWithCar(keiCar, { storyMissions: [], serviceJobChannelUnlocks: [] }),
+          CONTEXT,
+          'freeAdsPaper',
+        ),
+      ).toBe(false)
+      expect(
+        isSellingChannelUnlocked(
+          stateWithCar(keiCar, { storyMissions: [], serviceJobChannelUnlocks: ['freeAdsPaper'] }),
           CONTEXT,
           'freeAdsPaper',
         ),
@@ -1807,7 +1832,7 @@ describe('a channel is a buyer base (sprint156)', () => {
   describe('channels open by named event, and never close', () => {
     const NEW_CAREER = stateWithCar(car, { cashYen: 500_000, storyMissions: [] })
 
-    it('the two premium channels are each claimed by exactly one shipped mission, and no mission claims a day-one channel', () => {
+    it('every channel-opening mission claims exactly one channel, and no mission claims a day-one or service-job channel', () => {
       const claimsByChannel = new Map<SellingChannelId, string[]>()
       for (const mission of CONTEXT.storyMissions) {
         if (!mission.unlocksSellingChannel) continue
@@ -1817,8 +1842,12 @@ describe('a channel is a buyer base (sprint156)', () => {
       }
       expect(claimsByChannel.get('weekendMeet')).toEqual(['low-and-loud'])
       expect(claimsByChannel.get('tunerMagazine')).toEqual(['street-power-street-manners'])
+      // Ebisu's one beat, two doors (sprint209.md): the mission that opens
+      // the premium auction room also opens the trade network.
+      expect(claimsByChannel.get('tradeNetwork')).toEqual(['the-showroom-standard'])
+      // Kurogane's own version of the same pattern, for the collector network.
+      expect(claimsByChannel.get('collectorNetwork')).toEqual(['the-quiet-crate'])
       expect(claimsByChannel.has('shopFront')).toBe(false)
-      expect(claimsByChannel.has('tradeNetwork')).toBe(false)
       expect(claimsByChannel.has('freeAdsPaper')).toBe(false)
     })
 

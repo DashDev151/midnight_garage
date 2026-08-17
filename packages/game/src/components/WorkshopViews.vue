@@ -21,6 +21,7 @@ import {
   zoneConditionBand,
 } from '@midnight-garage/sim'
 import { computed, ref } from 'vue'
+import type { DropZoneHandle } from '../composables/useDragAndDrop'
 import { useGameStore, type CarPartRowView } from '../stores/gameStore'
 import { zoneNeedsPanelTag } from '../utils/zoneSeverity'
 import BandChip from './BandChip.vue'
@@ -40,13 +41,23 @@ import { workshopViewDataUrl } from './workshopViewSprites'
  * views differ ONLY in their region set, which `workshopViewLayout.ts` already
  * parameterises, so three components would be three copies of this markup.
  *
- * The component is a selection surface and nothing else: a click reports which
- * zone or part the player pointed at, and the screen's docked action panel does
- * the acting. Every rule about what may be worked on stays in the sim; this
- * renders live store state and never re-derives it.
+ * The component is a selection surface first: a click reports which zone or
+ * part the player pointed at, and the screen's docked action panel does the
+ * acting. Every rule about what may be worked on stays in the sim; this
+ * renders live store state and never re-derives it. It is ALSO a drop
+ * surface for a part region: the parent builds one `DropZoneHandle` per
+ * `CarPartId` (the same set the sidebar's own Fit button binds to) and hands
+ * the map in, so a drag lands on the diagram tile exactly as it would on the
+ * Fit button - this component still owns none of the accept logic itself.
+ * `dropZones` is a `Partial` and defaults empty: a caller with nothing to
+ * drop (every current test) mounts exactly as before, and a missing entry
+ * simply renders that region non-interactive as a drop target.
  */
 
-const props = defineProps<{ carId: string }>()
+const props = withDefaults(
+  defineProps<{ carId: string; dropZones?: Partial<Record<CarPartId, DropZoneHandle>> }>(),
+  { dropZones: () => ({}) },
+)
 const emit = defineEmits<{ (e: 'select', selection: WorkshopSelection): void }>()
 
 const game = useGameStore()
@@ -122,6 +133,12 @@ interface RegionView {
   band: ConditionBand | null
   showBand: boolean
   missing: boolean
+  /** The short alert-tag text for `missing`, or `null` when it's false - a
+   * part reads the shared "missing" word, a zone its own "Missing" (never
+   * "scrap": there is no condition to grade on an absent panel). Kept apart
+   * from the boolean so the CSS-class use of `missing` (the red outline) and
+   * the tag's own wording can vary independently. */
+  missingLabel: string | null
   absent: boolean
   uncertain: boolean
   clickable: boolean
@@ -129,10 +146,14 @@ interface RegionView {
    * `paint` reads as bad as it does. */
   binding: boolean
   /** Zones only; the chip naming a panel that is gone or past saving, `null`
-   * when the zone's own pipeline can still do the work. */
+   * when the zone's own pipeline can still do the work (also `null` while
+   * `missingLabel` already covers it - the two tags never double up). */
   needsPanelTag: string | null
   inert: boolean
   ariaLabel: string
+  /** Parts only; the drop zone this region doubles as, or `null` for a zone
+   * region (a body zone has no part slot to drop onto). */
+  dropZone: DropZoneHandle | null
 }
 
 function partRegion(region: Extract<WorkshopRegion, { kind: 'part' }>): RegionView {
@@ -154,6 +175,7 @@ function partRegion(region: Extract<WorkshopRegion, { kind: 'part' }>): RegionVi
     band,
     showBand: true,
     missing,
+    missingLabel: missing ? MISSING_LABEL : null,
     absent,
     uncertain: row?.uncertain ?? false,
     // A part with nothing in its slot is still a work target - fitting one is
@@ -165,14 +187,22 @@ function partRegion(region: Extract<WorkshopRegion, { kind: 'part' }>): RegionVi
     needsPanelTag: null,
     inert: false,
     ariaLabel: `${name}: ${band ?? 'empty'}${notes.length > 0 ? `, ${notes.join(', ')}` : ''}`,
+    dropZone: props.dropZones[region.partId] ?? null,
   }
 }
 
 function zoneRegion(region: Extract<WorkshopRegion, { kind: 'zone' }>): RegionView {
   const zone = zoneStates.value?.[region.zoneId] ?? null
   const name = titleCaseFromSlug(region.zoneId)
-  const band = zone ? zoneConditionBand(zone) : null
-  const needsPanelTag = zone ? zoneNeedsPanelTag(zone) : null
+  // An absent panel is forced to the `scrap` band internally (there is no
+  // sixth band value to spell "missing"), which is exactly the word this
+  // region must never show the player - so a missing zone shows no band
+  // chip at all rather than the sim's own scrap floor, and the panel-off
+  // tag folds into the shared `missingLabel` field instead of stacking
+  // alongside it.
+  const missing = zone?.panelMissing ?? false
+  const band = zone && !missing ? zoneConditionBand(zone) : null
+  const needsPanelTag = zone && !missing ? zoneNeedsPanelTag(zone) : null
   const binding = zone !== null && bindingZoneIds.value.has(region.zoneId)
   const notes = [needsPanelTag, binding ? 'binding' : null].filter(
     (note): note is string => note !== null,
@@ -185,8 +215,9 @@ function zoneRegion(region: Extract<WorkshopRegion, { kind: 'zone' }>): RegionVi
     rects: region.rects,
     name,
     band,
-    showBand: zone !== null,
-    missing: false,
+    showBand: zone !== null && !missing,
+    missing,
+    missingLabel: missing ? 'Missing' : null,
     absent: false,
     uncertain: false,
     clickable: zone !== null,
@@ -194,8 +225,9 @@ function zoneRegion(region: Extract<WorkshopRegion, { kind: 'zone' }>): RegionVi
     needsPanelTag,
     inert: zone === null,
     ariaLabel: zone
-      ? `${name}: ${band}${notes.length > 0 ? `, ${notes.join(', ')}` : ''}`
+      ? `${name}: ${missing ? 'missing' : band}${notes.length > 0 ? `, ${notes.join(', ')}` : ''}`
       : `${name}: ${NO_ZONE_DATA_LABEL}`,
+    dropZone: null,
   }
 }
 
@@ -256,11 +288,21 @@ function regionClasses(region: RegionView): Record<string, boolean> {
     'wv-missing': region.missing,
     'wv-absent': region.absent,
     'wv-binding': region.binding,
+    'wv-active-target': region.dropZone?.isActiveTarget.value ?? false,
   }
 }
 
+/** A click on a region: while it's a live drop target (a drag hovering it, or
+ * any accepting zone during a pick), the click completes the drop instead of
+ * selecting - the same "tap a picked card's destination" idiom the sidebar's
+ * own Fit button uses. Otherwise it docks the panel on this part or zone, as
+ * before. */
 function onSelect(region: RegionView): void {
   if (!region.clickable) return
+  if (region.dropZone?.isActiveTarget.value) {
+    region.dropZone.onClick()
+    return
+  }
   emit('select', region.selection)
 }
 </script>
@@ -304,22 +346,25 @@ function onSelect(region: RegionView): void {
         :aria-label="region.ariaLabel"
         :data-test="id"
         @click="onSelect(region)"
+        @pointerup="region.dropZone?.onPointerUp()"
+        @pointerenter="region.dropZone?.onPointerEnter()"
+        @pointerleave="region.dropZone?.onPointerLeave()"
       >
         <span class="wv-name">{{ region.name }}</span>
 
         <template v-if="region.showBand">
           <BandChip :band="region.band" />
           <span v-if="region.uncertain" class="wv-uncertain">?</span>
-          <span v-if="region.missing" class="wv-tag wv-tag-alert">{{ MISSING_LABEL }}</span>
-          <span v-else-if="region.absent" class="wv-tag">{{ ABSENT_LABEL }}</span>
-          <span v-if="region.needsPanelTag" class="wv-tag wv-tag-alert">{{
-            region.needsPanelTag
-          }}</span>
         </template>
+        <span v-else-if="region.inert" class="wv-tag">{{ NO_ZONE_DATA_LABEL }}</span>
 
-        <template v-else>
-          <span class="wv-tag">{{ NO_ZONE_DATA_LABEL }}</span>
-        </template>
+        <span v-if="region.missingLabel" class="wv-tag wv-tag-alert">{{
+          region.missingLabel
+        }}</span>
+        <span v-else-if="region.absent" class="wv-tag">{{ ABSENT_LABEL }}</span>
+        <span v-if="region.needsPanelTag" class="wv-tag wv-tag-alert">{{
+          region.needsPanelTag
+        }}</span>
       </button>
     </div>
   </div>
@@ -454,6 +499,13 @@ function onSelect(region: RegionView): void {
 
 .wv-missing {
   border-color: var(--mg-danger);
+}
+
+/* A valid drop target for the part currently being dragged or picked - the
+   same cyan-tint highlight every other drop zone in the garage uses. */
+.wv-active-target {
+  border-color: var(--mg-neon-cyan);
+  background: rgba(47, 214, 191, 0.12);
 }
 
 /* The zone(s) actually dragging `bodywork` or `paint` down - a visible ring,

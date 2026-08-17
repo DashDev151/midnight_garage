@@ -57,7 +57,7 @@ function goToCostSheet(): void {
         and delivery surcharges are billed to the shop, not the car, so they still come out of the
         till somewhere.
         <RouterLink
-          :to="{ name: 'costs' }"
+          :to="{ name: 'office' }"
           data-test="mission-result-costs-link"
           @click="goToCostSheet"
           >See what the week cost.</RouterLink

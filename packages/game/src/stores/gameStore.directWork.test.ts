@@ -15,6 +15,14 @@ function untaggedPartFor(carPartId: string) {
   )!
 }
 
+/** Empties `dampers`' own blockers (`rims`, then `springs`) so a fixture can
+ * remove or install `dampers` itself - `rims` is a `wheelAssembly` member so
+ * it comes off through the assembly, `springs` then comes off directly. */
+function stripToDampers(game: ReturnType<typeof useGameStore>, carId: string): void {
+  game.removeAssembly(carId, 'wheelAssembly')
+  game.removePart(carId, 'springs')
+}
+
 /**
  * Every repair/install/pipeline action resolves the instant it's
  * clicked. There is no staged list, no Confirm step, and no plan preview to
@@ -62,6 +70,7 @@ describe('direct repair/install work (Sprint 202)', () => {
     game.devGrantCar(CARS[0]!.id)
     const carId = game.gameState.ownedCars[0]!.id
     game.moveCar(carId, 'service') // labour only applies to a job once the car is in a bay
+    stripToDampers(game, carId)
     game.removePart(carId, 'dampers')
     const part = untaggedPartFor('dampers')
     game.devGrantPart(part.id)
@@ -79,6 +88,7 @@ describe('direct repair/install work (Sprint 202)', () => {
     game.devGrantCar(CARS[0]!.id)
     const carId = game.gameState.ownedCars[0]!.id
     game.moveCar(carId, 'service') // labour only applies to a job once the car is in a bay
+    stripToDampers(game, carId)
     game.removePart(carId, 'dampers')
     const part = untaggedPartFor('dampers')
     game.devGrantPart(part.id)
@@ -114,11 +124,12 @@ describe('direct repair/install work (Sprint 202)', () => {
     game.devGrantCar(CARS[0]!.id)
     const carId = game.gameState.ownedCars[0]!.id
     game.moveCar(carId, 'service')
+    stripToDampers(game, carId)
 
     // Every current taxonomy slot gated for REMOVAL (block, internals,
     // headValvetrain, camsTiming, gearbox, clutch) is also an assembly
     // member, so it comes off only via its assembly - `removeMachineNoteFor`
-    // is `''` here, matching the ungated dampers case: `removeBlockedReason`
+    // is `''` here, matching the now-unblocked dampers case: `removeBlockedReason`
     // itself carries no 'machine-line' member of its union any more (deleted
     // with `RemoveBlockReason`, sim/jobs.ts), so there is nothing left for
     // either function to disagree about.

@@ -209,7 +209,7 @@ describe('ServiceJobsScreen', () => {
     expect(game.lastJobResult?.outcome).toBe('failed')
   })
 
-  it('the rep figure links to the Standing screen', () => {
+  it('the rep figure links to the office (sprint209.md)', () => {
     const game = useGameStore()
     game.newGame(1)
     const wrapper = mountScreen()
@@ -217,7 +217,7 @@ describe('ServiceJobsScreen', () => {
       .findAllComponents(RouterLinkStub)
       .find((c) => c.attributes('data-test') === 'standing-link')
     expect(link).toBeDefined()
-    expect(link!.props('to')).toEqual({ name: 'standing' })
+    expect(link!.props('to')).toEqual({ name: 'office' })
   })
 
   it('shows a fitment-class chip on each offer card', () => {

@@ -3,7 +3,7 @@ import { AssemblyIdSchema } from './assembly'
 import { AuctionTierSchema } from './auction'
 import { BuyerArchetypeSchema } from './buyer'
 import { PaintFinishSchema, PaintTinSizeSchema, SimpleConsumableIdSchema } from './consumable'
-import { BayKindSchema } from './facilities'
+import { BayKindSchema, SlotKindSchema } from './facilities'
 import { PipelineStageIdSchema } from './material'
 import { SaleChannelSchema } from './sale'
 import { SellingChannelIdSchema } from './economy'
@@ -92,7 +92,7 @@ export const SessionEventInputSchema = z.discriminatedUnion('type', [
     'moveCarToSlot',
     z.object({
       carId: z.string().min(1),
-      to: BayKindSchema,
+      to: SlotKindSchema,
       slotIndex: z.number().int().nonnegative(),
     }),
   ),
@@ -195,7 +195,7 @@ export const SessionEventInputSchema = z.discriminatedUnion('type', [
     z.object({ carId: z.string().min(1), assemblyId: AssemblyIdSchema }),
   ),
   sessionEventVariant(
-    'swapAssemblyMember',
+    'fitAssemblyMember',
     z.object({
       containerId: z.string().min(1),
       memberSlot: CarPartIdSchema,
@@ -328,6 +328,13 @@ export const SessionEventInputSchema = z.discriminatedUnion('type', [
     'reassignStaff',
     z.object({ staffId: z.string().min(1), to: StaffAssignmentSchema }),
   ),
+  // Dev-only playtest-clock instrumentation (`PlaytestClock.vue`) - measures
+  // wall-clock pause/resume for note-taking sessions, never a player action.
+  // `activeMs` is the total active play time this browser session at the
+  // moment of the toggle, so an exported session log can be read against
+  // real gameplay cadence rather than raw wall-clock time.
+  sessionEventVariant('playClockPaused', z.object({ activeMs: z.number().int().nonnegative() })),
+  sessionEventVariant('playClockResumed', z.object({ activeMs: z.number().int().nonnegative() })),
 ])
 
 /**

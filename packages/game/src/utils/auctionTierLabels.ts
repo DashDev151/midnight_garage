@@ -1,4 +1,5 @@
-import type { AuctionTier, VenueNameByTier } from '@midnight-garage/content'
+import type { AuctionTier, EconomyConfig, VenueNameByTier } from '@midnight-garage/content'
+import { dayOfWeekName } from '@midnight-garage/sim'
 
 /**
  * Player-facing names for the four auction tiers. The
@@ -25,4 +26,23 @@ export function venueLabelFor(
   venueNameByTier: VenueNameByTier | undefined,
 ): string {
   return venueNameByTier?.[tier] ?? AUCTION_TIER_LABELS[tier]
+}
+
+/**
+ * A tier's own hours, in plain words: "Open Monday, Wednesday, Friday." or,
+ * for a room that only sits every other week, "Open Friday, alternate
+ * weeks." (sprint209.md task A3 - the map gives the calendar away rather
+ * than the player discovering it by bouncing off a shut door).
+ *
+ * `cadence.openDaysOfWeek` already holds 1-indexed day-of-week positions
+ * (the same numbers `isAuctionTierOpen` compares `dayOfWeek(day, economy)`
+ * against), and `dayOfWeekName` derives that same position from whatever
+ * absolute day it is handed - so feeding a position straight in as if it
+ * were day 1 of the campaign resolves to the right name without a second,
+ * position-to-name table to keep in sync.
+ */
+export function auctionCadencePhraseFor(tier: AuctionTier, economy: EconomyConfig): string {
+  const cadence = economy.auction.cadenceByTier[tier]
+  const days = cadence.openDaysOfWeek.map((position) => dayOfWeekName(position, economy)).join(', ')
+  return cadence.weeksBetween > 1 ? `Open ${days}, alternate weeks.` : `Open ${days}.`
 }

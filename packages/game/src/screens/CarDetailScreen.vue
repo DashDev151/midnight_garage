@@ -4,28 +4,20 @@ import type {
   CarPartId,
   ComponentId,
   ConditionBand,
-  Grade,
   Job,
-  PaintFinish,
-  PartInstance,
-  PipelineStageId,
   SellingChannelId,
   ZoneId,
 } from '@midnight-garage/content'
 import {
-  ALL_CAR_PART_IDS,
   ASSEMBLIES,
   ComponentIdSchema,
-  PAINT_COLOURS,
   PARTS_TAXONOMY,
   fitmentClassForTier,
-  paintStockKey,
   titleCaseFromSlug,
 } from '@midnight-garage/content'
 import {
-  factoryColourSet,
+  carInBodyBay,
   zoneConditionBand,
-  zoneNextStep,
   type DynoSessionGateReason,
   type FittedMachiningGateReason,
   type FittedMachiningOfferRow,
@@ -35,10 +27,10 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 import BandChip from '../components/BandChip.vue'
 import HelpHint from '../components/HelpHint.vue'
 import { partSpriteDataUrl } from '../components/partSprites'
-import ReplaceDrawer from '../components/ReplaceDrawer.vue'
 import ServiceTaskList from '../components/ServiceTaskList.vue'
 import StatRadar from '../components/StatRadar.vue'
 import WorkshopViews, { type WorkshopSelection } from '../components/WorkshopViews.vue'
+import { useCarPartDropZones } from '../composables/useCarPartDropZones'
 import {
   clearDragSession,
   useDragSession,
@@ -52,6 +44,7 @@ import {
   type CarPartRowView,
   type NextRepairStepView,
 } from '../stores/gameStore'
+import { useUiStore } from '../stores/uiStore'
 import { MACHINE_LINE_NAMES } from '../utils/dayLogFormat'
 import { DYNO_NAME } from '../utils/dynoLabels'
 import { formatYen, formatYenDelta } from '../utils/formatYen'
@@ -76,6 +69,7 @@ import { zoneWhyChips } from '../utils/zoneSeverity'
 import { mapBackTarget } from './mapBack'
 
 const game = useGameStore()
+const ui = useUiStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -206,10 +200,20 @@ function labourSuffix(points: number): string {
   return points > 0 ? ` · ${points} labour` : ''
 }
 
+/**
+ * A workup collapses every symptom to its true cause in one click - once it
+ * has, dock the panel on the first resolved verdict's own part, so the
+ * diagram shows exactly what the checklist just named. Only when nothing is
+ * already docked: it never yanks the panel off a part the player is
+ * actively looking at.
+ */
 function onWorkupClick(): void {
   const d = detail.value
   if (!d) return
   game.resolveOwnedWorkup(d.car.id)
+  if (panelTarget.value) return
+  const verdictPartId = detail.value?.symptoms.find((s) => s.verdict)?.verdict?.partId
+  if (verdictPartId) panelTarget.value = { kind: 'part', partId: verdictPartId }
 }
 
 /** Every real part row within a group, for the panel's lookups. */
@@ -243,7 +247,19 @@ function onWorkshopSelect(selection: WorkshopSelection): void {
   panelTarget.value = selection
 }
 
+/**
+ * A click on a bench member row: while a pick carrying a part that fits this
+ * EMPTY slot is live, the click resolves the fit (the same "tap a picked
+ * card's destination" idiom every other drop zone uses); otherwise it just
+ * docks the panel on the member, as before.
+ */
 function selectBenchMember(containerId: string, carPartId: CarPartId): void {
+  const picked = dragSession.value
+  const payload = picked?.mode === 'pick' ? picked.payload : null
+  if (typeof payload === 'string' && acceptsBenchFit(carPartId, payload)) {
+    benchDropZones[carPartId].onClick()
+    return
+  }
   panelTarget.value = { kind: 'bench', containerId, carPartId }
 }
 
@@ -452,8 +468,10 @@ function audienceLabelFor(id: SellingChannelId): string | null {
 
 /** Why `id` can't be armed right now, `null` when it can - the existing
  * disabled-reason idiom (`AuctionScreen.vue`'s buyout button: disabled +
- * title share the same check). Covers both the cash gate and (sprint148.md)
- * the forecourt-space gate a `requiresForecourt` channel needs. */
+ * title share the same check). The cash gate comes first, then (sprint148.md)
+ * the forecourt-space gate a `requiresForecourt` channel needs. A channel the
+ * shop has not earned is absent from the picker entirely (sprint209.md task
+ * D) rather than shown here as a locked, disabled row. */
 function channelDisabledReason(id: SellingChannelId): string | null {
   const feeYen = game.context.economy.sellingChannels[id].feeYen
   if (game.cashYen < feeYen) return `Not enough cash - listing here costs ${formatYen(feeYen)}`
@@ -506,66 +524,52 @@ function onRepairStepClick(componentId: ComponentId, carPartId: CarPartId): void
   game.repair(d.car.id, componentId, step.targetBand, carPartId)
 }
 
-/** Which part's Replace drawer is open right now, if any. */
-const activeReplacePart = ref<CarPartId | null>(null)
+/**
+ * The Warehouse's fit scope, when it points at a slot on THIS car - the
+ * drawer itself is mounted once at the app root (`WarehouseDrawer.vue`);
+ * this screen only commands it open with a scope and reads the shared
+ * context back for its drop zones and highlight state.
+ */
+const fitContext = computed(() => {
+  const fit = ui.warehouseFit
+  const d = detail.value
+  return fit && d && fit.carId === d.car.id ? fit : null
+})
 
-/** When the open drawer picks for a benched assembly member, the container it
- * fits into; null while the drawer targets an on-car slot. */
-const activeBenchReplaceContainerId = ref<string | null>(null)
+/** Which part slot the Warehouse is fitting for right now, if any. */
+const activeFitPart = computed<CarPartId | null>(() => fitContext.value?.carPartId ?? null)
 
-/** Open the inventory drawer scoped to a benched member's slot - the same
- * pick-from-your-parts flow an on-car Replace uses; selection fits straight
+/** Open the Warehouse scoped to a benched member's EMPTY slot - the same
+ * pick-from-your-parts flow an on-car fit uses; selection fits straight
  * into the container. */
-function openBenchReplace(containerId: string, carPartId: CarPartId): void {
-  activeBenchReplaceContainerId.value = containerId
-  activeReplacePart.value = carPartId
-}
-
-function closeReplaceDrawer(): void {
-  activeReplacePart.value = null
-  activeBenchReplaceContainerId.value = null
+function openBenchFit(containerId: string, carPartId: CarPartId): void {
+  const d = detail.value
+  if (d) ui.openWarehouse({ carId: d.car.id, carPartId, benchContainerId: containerId })
 }
 
 const dragSession = useDragSession()
 
-function acceptsInstall(carPartId: CarPartId, partInstanceId: string): boolean {
-  const d = detail.value
-  if (!d) return false
-  if (activeReplacePart.value !== carPartId) return false
-  const componentId = game.groupForCarPart(carPartId)
-  if (!componentId || addressBusy(componentId, carPartId)) return false
-  return game.installablePartsForPart(d.car.id, carPartId).some((p) => p.id === partInstanceId)
-}
+/** One drop zone per real part, bound both to the sidebar's own Fit button
+ * and to the workshop diagram's part regions (`WorkshopViews`), so a drag
+ * lands the same way from either surface - the shared build every diagram
+ * host uses (`useCarPartDropZones`), closing the Warehouse drawer on a
+ * successful drop since this screen is the one that owns it. */
+const { dropZones, acceptsInstall } = useCarPartDropZones(detail, () => ui.closeWarehouse())
 
-/** One drop zone per real part, built once so each keeps its own persistent
- * pointer-tracking state. Drop resolves the install instantly, the same
- * `install` resolver the Replace drawer's click uses. */
-const dropZones = Object.fromEntries(
-  ALL_CAR_PART_IDS.map((carPartId) => [
-    carPartId,
-    useDropZone<string>(
-      (partInstanceId) => acceptsInstall(carPartId, partInstanceId),
-      (partInstanceId) => {
-        const d = detail.value
-        const componentId = game.groupForCarPart(carPartId)
-        if (d && componentId) {
-          game.install(d.car.id, componentId, partInstanceId, carPartId)
-        }
-        activeReplacePart.value = null
-      },
-    ),
-  ]),
-) as Record<CarPartId, DropZoneHandle>
-
-function onReplaceClick(carPartId: CarPartId): void {
+function onFitClick(carPartId: CarPartId): void {
   const picked = dragSession.value
   const payload = picked?.mode === 'pick' ? picked.payload : null
   if (typeof payload === 'string' && acceptsInstall(carPartId, payload)) {
     dropZones[carPartId].onClick()
     return
   }
-  activeBenchReplaceContainerId.value = null
-  activeReplacePart.value = activeReplacePart.value === carPartId ? null : carPartId
+  const d = detail.value
+  if (!d) return
+  if (activeFitPart.value === carPartId && !fitContext.value?.benchContainerId) {
+    ui.closeWarehouse()
+  } else {
+    ui.openWarehouse({ carId: d.car.id, carPartId })
+  }
 }
 
 /** Pull whatever's occupying this slot into inventory - free and instant. */
@@ -663,11 +667,58 @@ function onSetupClick(operationId: string): void {
 
 // --- Bench work ---
 
-function benchSwapCandidates(carPartId: CarPartId) {
+function benchFitCandidates(carPartId: CarPartId) {
   return game.pickableParts.filter(
     (sp) => sp.part.carPartId === carPartId && sp.instance.band !== 'scrap',
   )
 }
+
+/** Every `CarPartId` that is some assembly's member slot - straight off
+ * content (`ASSEMBLIES`), never re-enumerated, so a fourth assembly picks up
+ * a drop zone on its own members for free. */
+const ASSEMBLY_MEMBER_PART_IDS: readonly CarPartId[] = ASSEMBLIES.flatMap((a) => a.members)
+
+/** The benched container and member view holding `carPartId` on this car, or
+ * `null` when it isn't currently benched at all (on the car, or not an
+ * assembly member here) - the one lookup both the accept predicate and the
+ * drop resolver below key off. */
+function benchMemberFor(
+  carPartId: CarPartId,
+): { containerId: string; member: BenchMemberView } | null {
+  const d = detail.value
+  if (!d) return null
+  for (const container of game.benchContainersFor(d.car.id)) {
+    const member = container.members.find((m) => m.carPartId === carPartId)
+    if (member) return { containerId: container.id, member }
+  }
+  return null
+}
+
+/** Whether `partInstanceId` legally fits the benched EMPTY member slot for
+ * `carPartId` - the same "right slot, not scrap" set `benchFitCandidates`
+ * renders the picker from, gated first on the slot actually being both
+ * benched and empty (a mounted member has no slot to drop into). */
+function acceptsBenchFit(carPartId: CarPartId, partInstanceId: string): boolean {
+  const found = benchMemberFor(carPartId)
+  if (!found || found.member.instance) return false
+  return benchFitCandidates(carPartId).some((sp) => sp.instance.id === partInstanceId)
+}
+
+/** One drop zone per assembly member slot, built once like `dropZones`
+ * above. Drop resolves through `fitAssemblyMember`, the exact resolver the
+ * Warehouse's own bench-fit pick uses, so drag and click land the same way. */
+const benchDropZones = Object.fromEntries(
+  ASSEMBLY_MEMBER_PART_IDS.map((carPartId) => [
+    carPartId,
+    useDropZone<string>(
+      (partInstanceId) => acceptsBenchFit(carPartId, partInstanceId),
+      (partInstanceId) => {
+        const found = benchMemberFor(carPartId)
+        if (found) game.fitAssemblyMember(found.containerId, carPartId, partInstanceId)
+      },
+    ),
+  ]),
+) as Record<CarPartId, DropZoneHandle>
 
 /** Whether a benched member is below serviceable (worn or worse, or the slot
  * is empty) - the bench empty-state renders only then, never beside fresh
@@ -691,25 +742,9 @@ function benchShopLabel(carPartId: CarPartId): string {
     .join(' ')
 }
 
-// --- Body zones: the panel's zone mode (docs/design/systems/workshop-rework.md,
-// The design law here: the band is the headline, icons
-// are the why, one fixed control is the next action) ---
-
-/** The next-action ladder's own one-word labels (A4) - the direct, single-
- * click stages `zoneNextStep` can name. `paint` and `replace-panel` are not
- * here: both need a further pick (which tin, which panel) and read through
- * their own dedicated controls below instead of this fixed button. `polish`
- * earns its place alongside the sprint's named vocabulary (beat/weld/fill/
- * prime) for the same reason those did - it is the real, sim-true next step
- * once a zone is bare-metal-clean and merely faded, and leaving it out would
- * strand a freshly painted zone with no visible way back to mint. */
-const NEXT_ACTION_LABELS: Partial<Record<PipelineStageId | 'replace-panel', string>> = {
-  beat: 'Beat',
-  weld: 'Weld',
-  fillAndSand: 'Fill',
-  prime: 'Prime',
-  polish: 'Polish',
-}
+// --- Body zones: read-only condition (docs/design/systems/workshop-rework.md
+// for the underlying model; sprint208.md moved the working panel to the body
+// shop room - this screen keeps only the band, the why, and the door there) ---
 
 const zoneState = computed(() => detail.value?.car.zoneState ?? null)
 
@@ -724,9 +759,10 @@ const paintBand = computed<ConditionBand | null>(
 )
 
 /**
- * The zone the panel is docked on, with everything its mode needs (A1-A4):
- * the live zone state, its display name, its own condition band (the
- * headline), its why chips, and its single next pipeline stage.
+ * The zone the panel is docked on: the live zone state, its display name,
+ * its own condition band, and its why chips - the read-only half of what the
+ * zone-mode panel used to show (A1-A3). The next action (A4) and every
+ * working control now live in the body shop room instead.
  */
 const selectedZone = computed(() => {
   const target = panelTarget.value
@@ -739,69 +775,8 @@ const selectedZone = computed(() => {
     name: titleCaseFromSlug(target.zoneId),
     band: zoneConditionBand(zone),
     whyChips: zoneWhyChips(zone, detail.value?.model.uid),
-    nextStep: zoneNextStep(zone),
   }
 })
-
-/** One pipeline stage's live preview for one zone - `null` when its
- * prerequisite isn't met yet (the button shows disabled with no total),
- * straight from `pipelineActionPlan`, the exact function the click below
- * resolves with, never a re-derived client-side gate. */
-function stagePreview(
-  zoneId: ZoneId,
-  stage: Exclude<PipelineStageId, 'paint'>,
-): { costYen: number; laborSlots: number } | null {
-  const d = detail.value
-  if (!d) return null
-  return game.pipelineActionPlan(d.car, { kind: 'pipeline-stage', stage, zoneId })
-}
-
-function onStageClick(zoneId: ZoneId, stage: Exclude<PipelineStageId, 'paint'>): void {
-  const d = detail.value
-  if (!d) return
-  game.pipelineStage(d.car.id, zoneId, stage)
-}
-
-/** The docked zone's own next-action label (A4) - set only when the next
- * step is one of the direct, single-click ladder stages. `null` for `paint`,
- * `replace-panel` and "already mint", each of which renders through its own
- * control below instead of this fixed button. */
-const nextActionLabel = computed(() => {
-  const step = selectedZone.value?.nextStep
-  return step ? (NEXT_ACTION_LABELS[step] ?? null) : null
-})
-
-const nextActionPlan = computed(() => {
-  const zone = selectedZone.value
-  if (!zone || !nextActionLabel.value) return null
-  return stagePreview(zone.zoneId, zone.nextStep as Exclude<PipelineStageId, 'paint'>)
-})
-
-function onNextActionClick(): void {
-  const zone = selectedZone.value
-  if (!zone || !nextActionLabel.value) return
-  onStageClick(zone.zoneId, zone.nextStep as Exclude<PipelineStageId, 'paint'>)
-}
-
-/** The discretionary "redo the finish" control beside the paint picker
- * (stripPrep - never the objectively-necessary next step, so it stays out of
- * `zoneNextStep`, but a player choosing a new colour on an already-painted
- * zone needs a way to bare it first). Hidden once there is nothing to strip:
- * a zone with no colour and no primer is already bare. */
-const canStripPrep = computed(() => {
-  const zone = selectedZone.value?.zone
-  return zone ? zone.colour != null || zone.primed : false
-})
-
-const stripPrepPlan = computed(() =>
-  selectedZone.value ? stagePreview(selectedZone.value.zoneId, 'stripPrep') : null,
-)
-
-function onStripPrepClick(): void {
-  const zone = selectedZone.value
-  if (!zone) return
-  onStageClick(zone.zoneId, 'stripPrep')
-}
 
 /** The display name for a colour token on THIS car - `colourTokenDisplayName`
  * (shared with the auction lot card) prefers this car's own iconic
@@ -810,203 +785,19 @@ function carColourTokenDisplayName(token: string): string {
   return colourTokenDisplayName(token, detail.value?.model.uid)
 }
 
-/** Every palette id this car legitimately wears - one entry, or two for a
- * genuine factory two-tone. The paint stage's own set (`factoryColourSet`),
- * which is what decides whether a stock-grade job is refused. */
-const factoryColourIds = computed<ReadonlySet<string>>(() =>
-  detail.value ? factoryColourSet(detail.value.car.factoryColour) : new Set<string>(),
-)
-
-/** True when `colourId` is (one half of) this car's own factory colour - the
- * marker every colour listing carries, and the one thing that makes a wrong
- * colour mean anything. */
-function isFactoryColour(colourId: string): boolean {
-  return factoryColourIds.value.has(colourId)
-}
-
 /** What this car left the factory wearing, named in full - the iconic name
  * where one applies, the plain palette name(s) otherwise. */
 const factoryColourCaption = computed<string>(() =>
   detail.value ? carColourTokenDisplayName(detail.value.car.factoryColour) : '',
 )
 
-/** Zone panels sitting in inventory that fit THIS car's own fitment class,
- * for one zone - the install control's own picker. */
-function matchingPanelsFor(zoneId: ZoneId): PartInstance[] {
-  const d = detail.value
-  if (!d) return []
-  const model = game.context.modelsById[d.car.modelId]
-  if (!model) return []
-  const fitmentClass = fitmentClassForTier(model.tier)
-  return game.gameState.partInventory.filter((p: PartInstance) => {
-    const part = game.context.partsById[p.partId]
-    return part?.zoneId === zoneId && part.fitmentClass === fitmentClass
-  })
-}
-
-/** The zone's current panel coming off, as the live plan Confirm resolves
- * with - `null` while there is nothing to pull (the zone is already missing
- * one, or the car has no zone state). */
-function removePanelPreview(zoneId: ZoneId): { costYen: number; laborSlots: number } | null {
-  const d = detail.value
-  if (!d) return null
-  return game.pipelineActionPlan(d.car, { kind: 'pipeline-remove-panel', zoneId })
-}
-
-function onRemovePanelClick(zoneId: ZoneId): void {
-  const d = detail.value
-  if (!d) return
-  game.removePanel(d.car.id, zoneId)
-}
-
-/** There is no atomic swap in this game: the flow is car to inventory, then
- * inventory to car. A ruined panel comes off exactly like a sound one, and
- * fitting its successor is its own separate act. */
-const REMOVE_PANEL_LABEL = 'Take it off'
-
-/** One candidate panel's own cost and labour, from the same plan Confirm
- * resolves with - `null` when the pick no longer fits. */
-function installPanelPreview(
-  zoneId: ZoneId,
-  partInstanceId: string,
-): { costYen: number; laborSlots: number } | null {
-  const d = detail.value
-  if (!d) return null
-  return game.pipelineActionPlan(d.car, { kind: 'pipeline-install-panel', zoneId, partInstanceId })
-}
-
-function onInstallPanelClick(zoneId: ZoneId, partInstanceId: string): void {
-  const d = detail.value
-  if (!d || !partInstanceId) return
-  game.installPanel(d.car.id, zoneId, partInstanceId)
-}
-
-/** The panels on hand for the docked zone, as the install control's own
- * buttons - only meaningful while the zone has no panel of its own. */
-const zonePanelOptions = computed(() => {
-  const zone = selectedZone.value
-  if (!zone || !zone.zone.panelMissing) return []
-  return matchingPanelsFor(zone.zoneId).map((instance) => ({
-    id: instance.id,
-    label: `${game.partName(instance.partId)} (${instance.band})`,
-    plan: installPanelPreview(zone.zoneId, instance.id),
-  }))
-})
-
-/** The docked zone's own panel coming off, live - only meaningful while the
- * zone still has one fitted. */
-const zoneRemovePanelPlan = computed(() =>
-  selectedZone.value ? removePanelPreview(selectedZone.value.zoneId) : null,
+/** Whether the door to the body shop opens for real, or just states what to
+ * do first - the one gate every zone/pipeline action reads (sprint208.md),
+ * asked here of THIS car rather than of whichever car actually sits in the
+ * bay right now. */
+const carInBodyBayNow = computed(() =>
+  detail.value ? carInBodyBay(game.gameState, detail.value.car.id) : false,
 )
-
-/** A pipeline control's own price and labour, inline - the same
- * `¥x · n labour` shape the repair button and the planned rows already carry.
- * Empty while the stage has no plan: the control is disabled there, and there
- * is no honest total to state. */
-function pipelineCostText(plan: { costYen: number; laborSlots: number } | null): string {
-  return plan ? ` · ${formatYen(plan.costYen)} · ${plan.laborSlots} labour` : ''
-}
-
-/**
- * One tin's own derived grade (E2): metallic and pearl finishes map straight
- * to `sport`/`race`; a solid finish maps to `stock` when the colour is (one
- * half of) this car's own factory scheme - the same tin, free originality
- * back - and to `street` otherwise. The one rule `planPaintStage`'s own
- * stock-grade gate already enforces, read forward instead of offered as a
- * choice that could land on a refusal.
- */
-function gradeForTin(finish: PaintFinish, colourId: string): Grade {
-  if (finish === 'metallic') return 'sport'
-  if (finish === 'pearl') return 'race'
-  return isFactoryColour(colourId) ? 'stock' : 'street'
-}
-
-const PAINT_FINISHES: readonly PaintFinish[] = ['solid', 'metallic', 'pearl']
-
-interface OwnedPaintTin {
-  finish: PaintFinish
-  colourId: string
-  hex: string
-  name: string
-  plan: { costYen: number; laborSlots: number } | null
-}
-
-/**
- * Every paint tin actually on the shelf, as the docked zone's own picker
- * (E2): a colour palette that still needed a separate purchase is gone -
- * each owned tin already carries both halves of the old two-step pick
- * (colour AND finish/grade), so choosing one tin is the whole decision.
- */
-const ownedPaintTins = computed<OwnedPaintTin[]>(() => {
-  const zone = selectedZone.value
-  const d = detail.value
-  if (!zone || !d) return []
-  const tins: OwnedPaintTin[] = []
-  for (const finish of PAINT_FINISHES) {
-    for (const colour of PAINT_COLOURS) {
-      if ((game.consumableStock[paintStockKey(finish, colour.id)] ?? 0) <= 0) continue
-      const grade = gradeForTin(finish, colour.id)
-      tins.push({
-        finish,
-        colourId: colour.id,
-        hex: colour.hex,
-        name: carColourTokenDisplayName(colour.id),
-        plan: game.pipelineActionPlan(d.car, {
-          kind: 'pipeline-paint',
-          zoneId: zone.zoneId,
-          colour: colour.id,
-          grade,
-        }),
-      })
-    }
-  }
-  return tins
-})
-
-function onPaintTinClick(colourId: string, finish: PaintFinish): void {
-  const zone = selectedZone.value
-  const d = detail.value
-  if (!zone || !d) return
-  game.paintZone(d.car.id, zone.zoneId, colourId, gradeForTin(finish, colourId))
-}
-
-const PAINT_FINISH_LABELS: Record<PaintFinish, string> = {
-  solid: 'Solid',
-  metallic: 'Metallic',
-  pearl: 'Pearl',
-}
-
-interface PaintTinGroup {
-  finish: PaintFinish
-  label: string
-  /** The finish's own loud price, read off any one tin in the group - a
-   * paint tin's materials cost and labour are fixed by finish alone (never
-   * by colour, and stock/street cost the same solid tin), so one plan speaks
-   * for the whole row instead of repeating a price per swatch. */
-  costText: string
-  tins: OwnedPaintTin[]
-}
-
-/** `ownedPaintTins` grouped by finish, in a fixed tier order - the shape the
- * paint picker actually renders: one loud price per tier, the colours on the
- * shelf beneath it as plain swatches. */
-const ownedPaintTinGroups = computed<PaintTinGroup[]>(() => {
-  const byFinish = new Map<PaintFinish, OwnedPaintTin[]>()
-  for (const tin of ownedPaintTins.value) {
-    const group = byFinish.get(tin.finish)
-    if (group) group.push(tin)
-    else byFinish.set(tin.finish, [tin])
-  }
-  return PAINT_FINISHES.filter((finish) => byFinish.has(finish)).map((finish) => {
-    const tins = byFinish.get(finish)!
-    return {
-      finish,
-      label: PAINT_FINISH_LABELS[finish],
-      costText: pipelineCostText(tins.find((tin) => tin.plan)?.plan ?? null),
-      tins,
-    }
-  })
-})
 
 const draggedPartName = computed(() => {
   const payload = dragSession.value?.payload
@@ -1127,6 +918,21 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               <span class="delta">{{ formatYenDelta(cause.dealDeltaYen) }} if true</span>
             </li>
           </ul>
+
+          <!-- The verdict: elimination down to one candidate names the fault,
+               the part it lives in, and what fixing it costs - the store's
+               own `serviceJobCostBreakdown` read, never a second sum. -->
+          <p
+            v-if="symptom.verdict"
+            class="symptom-verdict"
+            :data-test="'verdict-' + symptom.symptomIndex"
+          >
+            Must be the {{ symptom.verdict.causeLabel }}, then.
+            <span class="verdict-fix"
+              >{{ symptom.verdict.partLabel }} - about {{ formatYen(symptom.verdict.costYen) }} and
+              {{ symptom.verdict.laborSlots }} labour to put right.</span
+            >
+          </p>
         </div>
         <button
           v-if="detail.workupGateReason !== 'already-resolved'"
@@ -1187,7 +993,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
       <!-- The workshop is the page. Full-width views, then the bench strip
            (if any), then the docked info/action panel every region feeds. -->
-      <WorkshopViews :car-id="detail.car.id" @select="onWorkshopSelect" />
+      <WorkshopViews :car-id="detail.car.id" :drop-zones="dropZones" @select="onWorkshopSelect" />
 
       <section
         v-if="game.benchContainersFor(detail.car.id).length > 0"
@@ -1211,9 +1017,13 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               selected:
                 selectedBench?.containerId === container.id &&
                 selectedBench?.member.carPartId === member.carPartId,
+              'active-target': benchDropZones[member.carPartId].isActiveTarget.value,
             }"
             :data-test="'bench-member-' + member.carPartId"
             @click="selectBenchMember(container.id, member.carPartId)"
+            @pointerup="benchDropZones[member.carPartId].onPointerUp"
+            @pointerenter="benchDropZones[member.carPartId].onPointerEnter"
+            @pointerleave="benchDropZones[member.carPartId].onPointerLeave"
           >
             <img
               class="bench-sprite"
@@ -1223,6 +1033,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             />
             <span class="bench-block-name">{{ member.displayName }}</span>
             <BandChip :band="member.band" />
+            <span
+              v-if="benchDropZones[member.carPartId].isActiveTarget.value"
+              class="bench-block-drop-hint"
+              :data-test="'bench-drop-here-' + member.carPartId"
+              >Place here</span
+            >
           </button>
         </div>
       </section>
@@ -1327,13 +1143,13 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               <template v-if="!selectedRow.installedPartName || selectedRow.replaceInPlace">
                 <button
                   type="button"
-                  class="replace-btn"
+                  class="fit-btn"
                   :class="{ 'active-target': dropZones[selectedRow.partId].isActiveTarget.value }"
-                  :data-test="'replace-part-' + selectedRow.partId"
+                  :data-test="'fit-part-' + selectedRow.partId"
                   @pointerup="dropZones[selectedRow.partId].onPointerUp"
                   @pointerenter="dropZones[selectedRow.partId].onPointerEnter"
                   @pointerleave="dropZones[selectedRow.partId].onPointerLeave"
-                  @click="onReplaceClick(selectedRow.partId)"
+                  @click="onFitClick(selectedRow.partId)"
                 >
                   {{ dropZones[selectedRow.partId].isActiveTarget.value ? 'Drop here' : 'Fit' }}
                 </button>
@@ -1374,21 +1190,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             </template>
           </div>
 
-          <!-- A benched member's own actions. A stand holds an assembly for
-               its members to be swapped; putting one right is bench work,
-               which means pulling it into the warehouse and carrying it to
-               the workshop floor. -->
+          <!-- A benched member's own actions: it comes off before its
+               successor goes on, the same remove-then-fit ruling the
+               car-level slots follow - never in one action. Putting a
+               member right is bench work, which means pulling it into the
+               warehouse and carrying it to the workshop floor. -->
           <div v-else-if="selectedBench" class="panel-actions">
-            <!-- Fitting goes through the same pick-from-your-parts drawer an
-                 on-car Replace uses; selection lands in this member slot. -->
-            <button
-              type="button"
-              class="replace-btn"
-              :data-test="'bench-replace-' + selectedBench.member.carPartId"
-              @click="openBenchReplace(selectedBench.containerId, selectedBench.member.carPartId)"
-            >
-              Replace{{ labourSuffix(game.actionPoints.benchFitMember) }}
-            </button>
             <!-- A mounted member comes OFF the assembly before its successor
                  goes on - dead rubber never stays waiting. Free, into the bin. -->
             <button
@@ -1403,25 +1210,36 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             >
               Take it off{{ labourSuffix(game.actionPoints.benchRemoveMember) }}
             </button>
-            <!-- Never a silent dead end - when a tired member has nothing on
-                 hand to replace it, state the situation; the player navigates
-                 the parts market themselves. -->
+            <!-- Fitting goes through the same pick-from-your-parts drawer an
+                 on-car Fit uses; selection lands in this EMPTY member slot. -->
+            <button
+              v-else
+              type="button"
+              class="fit-btn"
+              :data-test="'bench-fit-' + selectedBench.member.carPartId"
+              @click="openBenchFit(selectedBench.containerId, selectedBench.member.carPartId)"
+            >
+              Fit{{ labourSuffix(game.actionPoints.benchFitMember) }}
+            </button>
+            <!-- Never a silent dead end - when the slot is empty and there is
+                 nothing on hand to fit into it, state the situation; the
+                 player navigates the parts market themselves. -->
             <span
               v-if="
-                benchSwapCandidates(selectedBench.member.carPartId).length === 0 &&
+                benchFitCandidates(selectedBench.member.carPartId).length === 0 &&
                 benchMemberBelowFine(selectedBench.member)
               "
               class="slot-empty"
               :data-test="'bench-empty-' + selectedBench.member.carPartId"
-              >No replacement {{ benchShopLabel(selectedBench.member.carPartId) }} on hand - the
-              parts shop sells them.</span
+              >No spare {{ benchShopLabel(selectedBench.member.carPartId) }} on hand - the parts
+              shop sells them.</span
             >
-            <!-- Names the line the Replace flow needs before a fit can land. -->
+            <!-- Names the line the Fit flow needs before a fit can land. -->
             <span
-              v-if="selectedBench.member.swapGateReason"
+              v-if="selectedBench.member.fitGateReason"
               class="blocked-reason"
-              :data-test="'bench-swap-gate-' + selectedBench.member.carPartId"
-              >{{ selectedBench.member.swapGateReason }}</span
+              :data-test="'bench-fit-gate-' + selectedBench.member.carPartId"
+              >{{ selectedBench.member.fitGateReason }}</span
             >
           </div>
 
@@ -1502,17 +1320,26 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
           </div>
         </template>
 
-        <!-- The same docked panel, in its zone mode: a body zone's own
-             pipeline, its panel swap, and its finish coat. -->
+        <!-- The same docked panel, in its zone mode: read-only condition
+             (sprint208.md moved the working controls to the body shop room)
+             - the band, the why, and a door there. -->
         <template v-else-if="selectedZone">
           <div class="panel-head">
             <span class="panel-name" data-test="panel-name">{{ selectedZone.name }}</span>
-            <BandChip :band="selectedZone.band" :data-test="'zone-band-' + selectedZone.zoneId" />
+            <!-- An absent panel is forced to the `scrap` band internally (no
+                 sixth band value spells "missing") - there is no condition to
+                 grade on nothing, so the chip is skipped outright rather than
+                 showing the player a lie. -->
+            <BandChip
+              v-if="!selectedZone.zone.panelMissing"
+              :band="selectedZone.band"
+              :data-test="'zone-band-' + selectedZone.zoneId"
+            />
             <span
               v-if="selectedZone.zone.panelMissing"
               class="missing-tag"
               data-test="zone-panel-off"
-              >PANEL OFF</span
+              >Missing</span
             >
           </div>
 
@@ -1538,111 +1365,29 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             </li>
           </ul>
 
-          <!-- A4: the single next action - one fixed icon-plus-word control,
-               the exact stage `zoneNextStep` names, or nothing once the zone
-               is already mint. -->
-          <div v-if="nextActionLabel" class="panel-actions">
-            <button
-              type="button"
-              class="step-up loud"
-              :disabled="!nextActionPlan"
-              :data-test="'zone-next-action-' + selectedZone.zoneId"
-              @click="onNextActionClick"
-            >
-              {{ nextActionLabel + pipelineCostText(nextActionPlan) }}
-            </button>
-          </div>
+          <p class="factory-colour" :data-test="'factory-colour-' + selectedZone.zoneId">
+            Factory colour: {{ factoryColourCaption }}
+          </p>
 
+          <!-- The one door: body work happens in the body shop room now, not
+               here - a real link when this car is in its bay, a plain
+               caption naming what to do first otherwise. Never a dead
+               button. -->
           <div class="panel-actions">
-            <template v-if="!selectedZone.zone.panelMissing">
-              <span class="zone-sub">Panel</span>
-              <button
-                type="button"
-                class="step-up loud"
-                :disabled="!zoneRemovePanelPlan"
-                :data-test="'pipeline-remove-panel-' + selectedZone.zoneId"
-                @click="onRemovePanelClick(selectedZone.zoneId)"
-              >
-                {{ REMOVE_PANEL_LABEL + pipelineCostText(zoneRemovePanelPlan) }}
-              </button>
-            </template>
-            <template v-else>
-              <span class="zone-sub">Install panel</span>
-              <button
-                v-for="option in zonePanelOptions"
-                :key="option.id"
-                type="button"
-                :disabled="!option.plan"
-                :data-test="'pipeline-install-panel-' + selectedZone.zoneId + '-' + option.id"
-                @click="onInstallPanelClick(selectedZone.zoneId, option.id)"
-              >
-                {{ option.label + pipelineCostText(option.plan) }}
-              </button>
-              <span
-                v-if="zonePanelOptions.length === 0"
-                class="slot-empty"
-                :data-test="'no-panels-' + selectedZone.zoneId"
-                >No panel for this zone on hand - the parts shop sells them.</span
-              >
-            </template>
-          </div>
-
-          <!-- E2: paint is picking a physical tin off the shelf, not a
-               colour palette that still needed a separate purchase. -->
-          <div class="panel-actions paint-actions">
-            <span
-              class="zone-sub factory-colour"
-              :data-test="'factory-colour-' + selectedZone.zoneId"
+            <RouterLink
+              v-if="carInBodyBayNow"
+              :to="{ name: 'body-shop' }"
+              class="step-up loud body-shop-door"
+              data-test="to-body-shop"
             >
-              Factory colour: {{ factoryColourCaption }}
-            </span>
-            <button
-              v-if="canStripPrep"
-              type="button"
-              class="step-up loud"
-              :disabled="!stripPrepPlan"
-              :data-test="'pipeline-stripPrep-' + selectedZone.zoneId"
-              @click="onStripPrepClick"
-            >
-              {{ 'Prep' + pipelineCostText(stripPrepPlan) }}
-            </button>
-
-            <div v-for="group in ownedPaintTinGroups" :key="group.finish" class="paint-tin-group">
-              <span class="zone-sub">{{ group.label + group.costText }}</span>
-              <div class="paint-tin-row">
-                <button
-                  v-for="tin in group.tins"
-                  :key="tin.colourId"
-                  type="button"
-                  class="paint-tin"
-                  :disabled="!tin.plan"
-                  :style="{ backgroundColor: tin.hex }"
-                  :aria-label="tin.name"
-                  :data-test="
-                    'pipeline-paint-' + selectedZone.zoneId + '-' + tin.finish + '-' + tin.colourId
-                  "
-                  @click="onPaintTinClick(tin.colourId, tin.finish)"
-                ></button>
-              </div>
-            </div>
-            <span
-              v-if="ownedPaintTinGroups.length === 0"
-              class="slot-empty"
-              data-test="no-paint-tins"
-            >
-              No paint in stock - <RouterLink :to="{ name: 'parts' }">buy some</RouterLink>.
+              To the body shop
+            </RouterLink>
+            <span v-else class="slot-empty" data-test="body-shop-door-hint">
+              Move her into the body bay first.
             </span>
           </div>
         </template>
       </section>
-
-      <ReplaceDrawer
-        v-if="activeReplacePart"
-        :car-id="detail.car.id"
-        :car-part-id="activeReplacePart"
-        :bench-container-id="activeBenchReplaceContainerId ?? undefined"
-        @close="closeReplaceDrawer"
-      />
 
       <section class="machine-hire-panel" data-test="machine-hire-panel">
         <h4>
@@ -1932,7 +1677,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
     </div>
 
     <div v-if="pickedPartName" class="pick-chip" data-test="pick-chip">
-      placing: {{ pickedPartName }} - click a Replace slot, or Esc to cancel
+      placing: {{ pickedPartName }} - click the slot to fit it, or Esc to cancel
     </div>
   </section>
 </template>
@@ -2101,6 +1846,18 @@ h4 {
   color: var(--mg-text-dim);
 }
 
+.symptom-panel .symptom-verdict {
+  margin: var(--mg-space-2) 0 0;
+  font-size: var(--mg-fs-sm);
+  color: var(--mg-text);
+}
+
+.symptom-panel .verdict-fix {
+  display: block;
+  margin-top: 2px;
+  color: var(--mg-yen);
+}
+
 .workup-btn {
   margin-top: var(--mg-space-3);
   font-size: var(--mg-fs-sm);
@@ -2189,11 +1946,26 @@ h4 {
   border-color: var(--mg-neon-cyan);
 }
 
+/* A valid drop target for the part currently being dragged or picked - the
+   same cyan-tint highlight every other drop zone in the garage uses. */
+.bench-block.active-target {
+  border-color: var(--mg-neon-cyan);
+  background: rgba(47, 214, 191, 0.12);
+}
+
 .bench-sprite {
   width: 100%;
   height: 34px;
   object-fit: contain;
   image-rendering: pixelated;
+  pointer-events: none;
+}
+
+.bench-block-drop-hint {
+  font-size: 0.55rem;
+  line-height: 1;
+  color: var(--mg-neon-cyan);
+  text-align: center;
   pointer-events: none;
 }
 
@@ -2299,7 +2071,7 @@ h4 {
   font-size: var(--mg-fs-sm);
 }
 
-.replace-btn.active-target {
+.fit-btn.active-target {
   border-color: var(--mg-neon-cyan);
   color: var(--mg-neon-cyan);
 }
@@ -2333,10 +2105,11 @@ h4 {
   font-size: var(--mg-fs-sm);
 }
 
-/* Its own line above the paint controls rather than wrapped in among the
-   buttons, since it is a statement of fact rather than a control. */
+/* A statement of fact, not a control - its own line under the why chips. */
 .factory-colour {
-  flex-basis: 100%;
+  margin: 0 0 var(--mg-space-2);
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
 }
 
 /* A3: the why row - icon chips, at most two words each. */
@@ -2366,36 +2139,18 @@ h4 {
   font-size: 10px;
 }
 
-/* E2: one price-tagged row per finish tier, plain colour swatches beneath
-   it - the physical tin picker. */
-.paint-tin-group {
-  flex-basis: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.paint-tin-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px;
-}
-
-/* The tin's own colour is the button's face, so this fill is the one
-   legitimate literal colour on the screen - it is content data, not
-   palette, and it arrives inline from `PAINT_COLOURS`. */
-.paint-tin {
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  border: 1px solid var(--mg-panel-edge);
-  border-radius: 0;
+/* The zone panel's own door to the body shop - a RouterLink rather than a
+   `<button>`, so it carries its own full chrome instead of inheriting the
+   base `button{}` rule below (an `<a>` gets none of that for free). */
+.body-shop-door {
+  display: inline-block;
+  background: var(--mg-panel);
+  color: var(--mg-neon-cyan);
+  border: 1px solid var(--mg-neon-cyan);
+  border-radius: 4px;
+  padding: 2px 10px;
+  text-decoration: none;
   cursor: pointer;
-}
-
-.paint-tin:focus-visible {
-  outline: none;
-  box-shadow: inset 0 0 0 2px var(--mg-neon-cyan);
 }
 
 .finances {

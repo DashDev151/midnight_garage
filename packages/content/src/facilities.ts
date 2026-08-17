@@ -11,6 +11,21 @@ import { ReputationTierSchema } from './tags'
 export const BayKindSchema = z.enum(['service', 'parking', 'forecourt'])
 
 /**
+ * Every kind of slot a car can be dragged/dropped or moved into, `BayKind`'s
+ * three rented facilities plus the fixed, unpurchasable single body bay
+ * (sprint208.md: "the garage gains a dedicated body bay... same slot
+ * idiom"). Kept apart from `BayKind` on purpose: the body bay carries no
+ * rent, no price ladder and no reputation gate - it is bundled with the shop
+ * from day one - so it must never enter the rent/purchase economy
+ * (`computeWeeklyRentYen` sums over `BayKindSchema.options`,
+ * `FacilitiesSchema`/`nextBayPriceYen` price only the three rented kinds).
+ * `SlotKind` is what the move machinery (`moveCarToSlot`/`moveCar` and their
+ * session-event payloads) addresses; anything that reads a bay count for
+ * money stays on `BayKind`.
+ */
+export const SlotKindSchema = z.enum(['service', 'parking', 'forecourt', 'body'])
+
+/**
  * One bay kind's progression: how many you start with, the hard ceiling, and
  * the yen price of each purchasable bay in order (the Nth-purchased bay's
  * price is `bayPricesYen[N-1]`). Array length must equal `maxCount -
@@ -40,5 +55,6 @@ export const FacilitiesSchema = z.object({
 })
 
 export type BayKind = z.infer<typeof BayKindSchema>
+export type SlotKind = z.infer<typeof SlotKindSchema>
 export type BayFacility = z.infer<typeof BayFacilitySchema>
 export type Facilities = z.infer<typeof FacilitiesSchema>

@@ -124,4 +124,84 @@ describe('JobCompleteModal', () => {
     const wrapper = track(mount(JobCompleteModal))
     expect(wrapper.find('[data-test="job-result-returned-parts"]').exists()).toBe(false)
   })
+
+  /** A scripted job's own handback line and what-changed facts
+   * (sprint210.md task A4) - generic fields the modal renders whenever
+   * present, never a hardcoded branch for any one job. */
+  describe("a scripted job's handback copy and unlock facts", () => {
+    it('replaces the generic paid flavour line with handbackCopy when present', () => {
+      const game = useGameStore()
+      game.lastJobResult = {
+        outcome: 'paid',
+        customerName: 'Mrs. Harada (the newsstand)',
+        taskLabels: ['Ignition repair to fine', 'Fuel system repair to fine'],
+        payoutYen: 30_000,
+        reputationDelta: 4,
+        repairCostYen: 5_000,
+        partsCostYen: 0,
+        netProfitYen: 25_000,
+        returnedParts: [],
+        handbackCopy: 'She starts first turn now.',
+      }
+      const wrapper = track(mount(JobCompleteModal))
+      expect(wrapper.find('.flavor').text()).toBe('She starts first turn now.')
+      expect(wrapper.find('.flavor').text()).not.toContain('Thanks, looks great!')
+    })
+
+    it('falls back to the generic paid line when handbackCopy is absent - every ordinary job', () => {
+      const game = useGameStore()
+      game.lastJobResult = {
+        outcome: 'paid',
+        customerName: 'Test Customer',
+        taskLabels: ['Suspension repair to fine'],
+        payoutYen: 50_000,
+        reputationDelta: 6,
+        repairCostYen: 8_000,
+        partsCostYen: 0,
+        netProfitYen: 42_000,
+        returnedParts: [],
+      }
+      const wrapper = track(mount(JobCompleteModal))
+      expect(wrapper.find('.flavor').text()).toBe('Thanks, looks great!')
+    })
+
+    it('renders every unlockFacts entry verbatim when present', () => {
+      const game = useGameStore()
+      game.lastJobResult = {
+        outcome: 'paid',
+        customerName: 'Mrs. Harada (the newsstand)',
+        taskLabels: ['Ignition repair to fine'],
+        payoutYen: 30_000,
+        reputationDelta: 4,
+        repairCostYen: 5_000,
+        partsCostYen: 0,
+        netProfitYen: 25_000,
+        returnedParts: [],
+        unlockFacts: ['Fact one.', 'Fact two.', 'Fact three.'],
+      }
+      const wrapper = track(mount(JobCompleteModal))
+      const facts = wrapper.find('[data-test="unlock-facts"]')
+      expect(facts.exists()).toBe(true)
+      expect(facts.text()).toContain('Fact one.')
+      expect(facts.text()).toContain('Fact two.')
+      expect(facts.text()).toContain('Fact three.')
+    })
+
+    it('omits the unlock-facts section entirely when unlockFacts is absent', () => {
+      const game = useGameStore()
+      game.lastJobResult = {
+        outcome: 'paid',
+        customerName: 'Test Customer',
+        taskLabels: ['Suspension repair to fine'],
+        payoutYen: 50_000,
+        reputationDelta: 6,
+        repairCostYen: 8_000,
+        partsCostYen: 0,
+        netProfitYen: 42_000,
+        returnedParts: [],
+      }
+      const wrapper = track(mount(JobCompleteModal))
+      expect(wrapper.find('[data-test="unlock-facts"]').exists()).toBe(false)
+    })
+  })
 })

@@ -9,6 +9,7 @@ import JobCompleteModal from './components/JobCompleteModal.vue'
 import MissionCompleteModal from './components/MissionCompleteModal.vue'
 import SaleCompleteModal from './components/SaleCompleteModal.vue'
 import TutorialOverlay from './components/TutorialOverlay.vue'
+import WarehouseDrawer from './components/WarehouseDrawer.vue'
 import { useDragSession } from './composables/useDragAndDrop'
 import { useGameStore } from './stores/gameStore'
 import { useUiStore } from './stores/uiStore'
@@ -25,6 +26,12 @@ const dragSession = useDragSession()
 // `false` at build time, making the import() unreachable and droppable. A
 // static import would ship the component even behind a v-if.
 const DevConsole = isDev ? defineAsyncComponent(() => import('./components/DevConsole.vue')) : null
+
+// Same tree-shaking rationale as `DevConsole` above - the playtest clock is
+// maintainer instrumentation, never shipped to players.
+const PlaytestClock = isDev
+  ? defineAsyncComponent(() => import('./components/PlaytestClock.vue'))
+  : null
 
 /**
  * The menu is a real full-screen menu, not a tab. Any route flagged
@@ -45,6 +52,10 @@ watch(
     if (typeof name === 'string' && name !== 'menu' && name !== 'settings' && name !== 'spike') {
       ui.rememberGameplayRoute(name)
     }
+    // The Warehouse's fit scope points at a slot on the screen being left -
+    // a navigation drops it (the drawer itself stays as the player had it),
+    // mirroring the router's own drag-session clear.
+    ui.clearWarehouseFit()
   },
   { immediate: true },
 )
@@ -100,6 +111,10 @@ function onGlobalKeydown(event: KeyboardEvent): void {
     floatingHud.value.cancel()
     return
   }
+  if (ui.warehouseOpen) {
+    ui.closeWarehouse()
+    return
+  }
   // Escape is a pause-menu toggle - open the menu from gameplay, and from
   // the menu return to the gameplay route the player left.
   if (route.name === 'menu') {
@@ -119,13 +134,9 @@ onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown))
       <RouterLink :to="{ name: 'garage' }" data-test="nav-garage">Garage</RouterLink>
       <RouterLink :to="{ name: 'overworld' }" data-test="nav-world">World</RouterLink>
       <RouterLink :to="{ name: 'jobs' }" data-test="nav-jobs">Phone</RouterLink>
-      <RouterLink :to="{ name: 'auctions' }" data-test="nav-auctions">Auctions</RouterLink>
       <RouterLink :to="{ name: 'parts' }" data-test="nav-parts">Parts</RouterLink>
-      <RouterLink :to="{ name: 'inventory' }" data-test="nav-inventory">Inventory</RouterLink>
       <RouterLink :to="{ name: 'upgrades' }" data-test="nav-upgrades">Upgrades</RouterLink>
       <RouterLink :to="{ name: 'staff' }" data-test="nav-staff">Staff</RouterLink>
-      <RouterLink :to="{ name: 'standing' }" data-test="nav-standing">Standing</RouterLink>
-      <RouterLink :to="{ name: 'costs' }" data-test="nav-costs">Costs</RouterLink>
       <!-- The event log is reference material, not a permanent wall under the
            garage's bays. A control in the chrome, opened on demand. -->
       <EventLogDrawer ref="logDrawer" />
@@ -144,6 +155,8 @@ onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown))
 
   <FloatingHud v-if="showFloatingHud" ref="floatingHud" />
   <DayCashBox v-if="showFloatingHud" />
+  <WarehouseDrawer v-if="showFloatingHud" />
+  <component :is="PlaytestClock" v-if="PlaytestClock && showFloatingHud" />
 
   <DayReport />
   <JobCompleteModal />

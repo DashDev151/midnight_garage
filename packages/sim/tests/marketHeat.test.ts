@@ -3,6 +3,7 @@ import {
   CARS,
   PARTS,
   PARTS_TAXONOMY,
+  type DayLogEntry,
   type GameState,
   type MarketLedger,
 } from '@midnight-garage/content'
@@ -171,5 +172,53 @@ describe('updateMarketHeat', () => {
     const week2 = updateMarketHeat({ ...week1, day: 10 }, CONTEXT).state
 
     expect(week2.marketHeat[MODEL_A]!).toBeGreaterThan(week2.marketHeat[MODEL_B]!)
+  })
+
+  describe('marketHeatLastShift (sprint205.md - the market page reads this)', () => {
+    it('persists exactly the same per-model deltas the market-heat-shift log entries carry', () => {
+      // Heavy flood pressure so at least one model is guaranteed to move.
+      let state = stateOnDay(5, { [MODEL_A]: 100, [MODEL_B]: 100 })
+      for (let i = 0; i < 20; i++) state = bumpPlayerSales(state, MODEL_A)
+      const result = updateMarketHeat(state, CONTEXT)
+      const loggedDeltas = Object.fromEntries(
+        result.log
+          .filter(
+            (entry): entry is Extract<DayLogEntry, { type: 'market-heat-shift' }> =>
+              entry.type === 'market-heat-shift',
+          )
+          .map((entry) => [entry.modelId, entry.deltaPercent]),
+      )
+      expect(Object.keys(loggedDeltas).length).toBeGreaterThan(0)
+      expect(result.state.marketHeatLastShift).toEqual(loggedDeltas)
+    })
+
+    it('a model with no shift this update carries no entry at all', () => {
+      let state = stateOnDay(5, { [MODEL_A]: 100, [MODEL_B]: 100 })
+      for (let i = 0; i < 20; i++) state = bumpPlayerSales(state, MODEL_A)
+      const result = updateMarketHeat(state, CONTEXT)
+      const modelsThatMoved = new Set(Object.keys(result.state.marketHeatLastShift ?? {}))
+      for (const model of CONTEXT.models) {
+        if (modelsThatMoved.has(model.id)) continue
+        expect(result.state.marketHeatLastShift).not.toHaveProperty(model.id)
+      }
+    })
+
+    it('is replaced wholesale each update, never merged with the prior value', () => {
+      const stale: GameState = {
+        ...stateOnDay(5, { [MODEL_A]: 100, [MODEL_B]: 100 }),
+        marketHeatLastShift: { 'stale-model-not-in-content': 99 },
+      }
+      const result = updateMarketHeat(stale, CONTEXT)
+      expect(result.state.marketHeatLastShift).not.toHaveProperty('stale-model-not-in-content')
+    })
+
+    it('off a week boundary the whole update is a no-op, so the prior shift record is untouched', () => {
+      const state: GameState = {
+        ...stateOnDay(3, { [MODEL_A]: 100 }),
+        marketHeatLastShift: { [MODEL_A]: 4 },
+      }
+      const result = updateMarketHeat(state, CONTEXT)
+      expect(result.state.marketHeatLastShift).toEqual({ [MODEL_A]: 4 })
+    })
   })
 })

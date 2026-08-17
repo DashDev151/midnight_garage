@@ -47,6 +47,7 @@ import type {
   ServiceJobTask,
   SessionEventInput,
   SimpleConsumableId,
+  SlotKind,
   StagedAction,
   StatBlock,
   Subsystem,
@@ -86,6 +87,7 @@ import {
   carCostToBandYen,
   carCostToMintYen,
   carGuideValueYen,
+  carInBodyBay,
   carLedgerFor,
   computeAuctionGrade,
   computeBuyoutPriceYen,
@@ -171,6 +173,7 @@ import {
   planPipelineStage,
   playerEstimateYen,
   presentPartIdsInGroup,
+  reconditionGateReason,
   reconditionQuote,
   repairCeilingForLevel,
   expressPriceYen,
@@ -205,7 +208,7 @@ import {
   resolveRemovePart,
   resolveRemoveAssemblyMember,
   resolveSendInspector as resolveSendInspectorCore,
-  resolveSwapAssemblyMember,
+  resolveFitAssemblyMember,
   resolveScrapPart,
   resolveScrapShell,
   resolveSellPart,
@@ -219,6 +222,7 @@ import {
   scrapShellPriceYen,
   scrapValueYen,
   selectBoardRows,
+  serviceJobCostBreakdown,
   sendInspectorGateReason as sendInspectorGateReasonCore,
   settleAuctionHammer as settleAuctionHammerCore,
   settleAuctionLotLost as settleAuctionLotLostCore,
@@ -226,6 +230,7 @@ import {
   supportVerdict,
   symptomResolved,
   symptomTested,
+  symptomVerdictCauseId,
   swapCars as swapCarsCore,
   toolDeficitSummary,
   toolLevelsFor,
@@ -283,6 +288,7 @@ import {
   SUPPORT_BAND_LABELS,
 } from '../utils/dynoLabels'
 import { formatYen } from '../utils/formatYen'
+import { computeMarketMovers, type MarketMoversResult } from '../utils/marketMovers'
 import { offerCopy } from '../utils/offerCopy'
 import { SCENE_STANDING_STAGE_COPY } from '../utils/sceneStandingLabels'
 import { SELLING_CHANNEL_ORDER } from '../utils/sellingChannelLabels'
@@ -612,9 +618,9 @@ export interface AssemblyRowView {
 }
 
 /** One member slot of a benched assembly container - a stand holds an
- * assembly for its members to be swapped, never for repair: a member is
- * repaired by pulling it into the warehouse and carrying it to the workshop
- * floor's bench, like any other loose part. */
+ * assembly whose members come off and are fitted one at a time, never for
+ * repair: a member is repaired by pulling it into the warehouse and carrying
+ * it to the workshop floor's bench, like any other loose part. */
 export interface BenchMemberView {
   carPartId: CarPartId
   displayName: string
@@ -625,8 +631,8 @@ export interface BenchMemberView {
   /** The machine-labour disclosure fitting a part into this member slot
    * carries right now (only ever set for the `tyres` member, without the
    * wheels line owned or hired today), or `''` when nothing gates it. Never
-   * blocking: a bench swap always works, just slower by hand. */
-  swapGateReason: string
+   * blocking: a bench fit always works, just slower by hand. */
+  fitGateReason: string
 }
 
 /** One assembly container on the bench for a given car. */
@@ -752,7 +758,7 @@ export interface CartItemView {
   subtotalYen: number
 }
 
-/** One owned part paired with its catalog entry, for the staging inventory panel. */
+/** One owned part paired with its catalog entry - the Warehouse's row shape. */
 export interface StageablePartView {
   instance: PartInstance
   part: Part
@@ -880,6 +886,13 @@ export interface ServiceJobOfferView {
    * so the player knows which parts to buy for the job. */
   fitmentClass: PartFitmentClass | null
   payoutYen: number
+  /** The whole job's labour, rounded to the nearest slot - every task's
+   * real physical chain (`serviceJobCostBreakdown`, taskLaborChain.ts:
+   * clearing and refitting whatever blocks the slot, pulling the part or
+   * its assembly, the bench work, and the refit), priced at the shop's own
+   * current machine state, so the player can judge the trade before
+   * accepting. */
+  laborSlots: number
   baseReputation: number
   expiresOnDay: number
   /**
@@ -1036,6 +1049,14 @@ export interface ServiceJobResultView {
    * customer-origin part that left with the car at close-out - paid or
    * failed alike. Empty when nothing customer-owned was ever pulled. */
   returnedParts: string[]
+  /** A scripted job's own handback line, captured from the recipe
+   * (`ServiceJob.handbackCopy`) - shown in place of the generic paid-outcome
+   * flavour line when present. Undefined for every ordinary job. */
+  handbackCopy?: string
+  /** A scripted job's own what-changed facts (`ServiceJob.unlockFacts`),
+   * rendered by the modal only on a paid outcome. Undefined for every
+   * ordinary job. */
+  unlockFacts?: string[]
 }
 
 /**
@@ -1139,6 +1160,22 @@ export interface LotDetail {
       minutes: number
       alreadyRun: boolean
     }[]
+    /**
+     * The verdict, once elimination leaves exactly one candidate cause -
+     * `null` while more than one remains. `causeLabel` is lower-cased for
+     * mid-sentence use ("Must be the {causeLabel}, then."); `costYen`/
+     * `laborSlots` are `serviceJobCostBreakdown`'s own figures (which itself
+     * composes `planPartRepair` + `taskLaborChain`, taskLaborChain.ts) for a
+     * single synthetic repair-to-fine task on the cause's own part - never a
+     * second cost computation.
+     */
+    verdict: {
+      causeLabel: string
+      partId: CarPartId
+      partLabel: string
+      costYen: number
+      laborSlots: number
+    } | null
   }[]
   /**
    * The player's own honest estimate, once they have run a test on this lot
@@ -1334,6 +1371,14 @@ export const useGameStore = defineStore('game', () => {
       const model = context.value.modelsById[offer.car.modelId]
       const canAccept =
         toolDeficitSummary(offer.tasks, toolLevels.value, context.value).maxDeficit === 0
+      // The same cost pipeline the payout itself was priced off at
+      // generation - never a second computation - read live against the
+      // shop's CURRENT machine state, so the figure tracks an upgrade
+      // bought after the offer landed.
+      const laborSlots = model
+        ? serviceJobCostBreakdown(offer.tasks, offer.car, model, context.value, gameState.value)
+            .laborSlots
+        : 0
       return {
         id: offer.id,
         customerName: offer.customerName,
@@ -1342,6 +1387,7 @@ export const useGameStore = defineStore('game', () => {
         carName: model ? resolveCarDisplayName(model) : offer.car.modelId,
         fitmentClass: model ? fitmentClassForTier(model.tier) : null,
         payoutYen: offer.payoutYen,
+        laborSlots: Math.round(laborSlots),
         baseReputation: offer.baseReputation,
         expiresOnDay: offer.expiresOnDay,
         canAccept,
@@ -1550,11 +1596,43 @@ export const useGameStore = defineStore('game', () => {
           },
         ]
       })
+      // The verdict: present only once elimination leaves exactly one
+      // candidate. Priced against the TRUE car (`car`, never `apparentCar`)
+      // - the real installed band is what a repair actually has to climb
+      // from - via a single synthetic repair-to-fine task, reusing
+      // `serviceJobCostBreakdown` exactly as a real job quote would.
+      const verdict = ((): LotDetail['symptoms'][number]['verdict'] => {
+        const verdictCauseId = symptomVerdictCauseId(carSymptom)
+        if (!verdictCauseId) return null
+        const cause = symptom.causes.find((c) => c.id === verdictCauseId)
+        if (!cause) return null
+        const rawLabel = titleCaseFromSlug(cause.id)
+        const { taskCostYen, laborSlots } = serviceJobCostBreakdown(
+          [
+            {
+              requirement: { kind: 'slotCondition', carPartId: cause.carPartId, minBand: 'fine' },
+              minToolTier: 1,
+            },
+          ],
+          car,
+          model,
+          context.value,
+          gameState.value,
+        )
+        return {
+          causeLabel: rawLabel.charAt(0).toLowerCase() + rawLabel.slice(1),
+          partId: cause.carPartId,
+          partLabel: carPartLabel(cause.carPartId),
+          costYen: Math.round(taskCostYen),
+          laborSlots: Math.round(laborSlots),
+        }
+      })()
       return [
         {
           symptomIndex,
           line: symptom.cardLine,
           resolved,
+          verdict,
           causes: symptom.causes.map((cause) => {
             const installed = apparentCar.parts[cause.carPartId].installed
             const causeValueYen = installed
@@ -2166,11 +2244,20 @@ export const useGameStore = defineStore('game', () => {
    *
    * `costYen` is always the cash the click will actually charge, which for a
    * materials-consuming stage is 0: the tin was paid for when it was bought,
-   * not when it is drawn down. `laborSlots` for `pipeline-install-panel` is
-   * already the REAL rate the click will spend - the machine-less multiplier
-   * folded in when the body line is neither owned nor hired today
-   * (`machineLaborDisclosureFor` below shows the by-hand/with-hire split for
-   * the button's secondary line).
+   * not when it is drawn down. `laborSlots` for `weld` is already the REAL
+   * rate the click will spend - the machine-less multiplier folded in when
+   * the body line is neither owned nor hired today (`machineLaborDisclosureFor`
+   * below shows the by-hand/with-hire split for the button's secondary
+   * line); every other stage, and panel install/remove, are flat hand work
+   * with no multiplier to fold in (sprint208.md).
+   *
+   * `null` also whenever the car is not the body bay's own car
+   * (`pipelineBodyBayCaption` below is what names that reason for the
+   * disabled control) - the same gate `resolvePipelineStageAction`/
+   * `resolvePipelinePaintAction`/`resolvePipelineRemovePanelAction`/
+   * `resolvePipelineInstallPanelAction` (sim/pipelineActions.ts) enforce, so
+   * the preview and the real charge can never disagree about WHERE the work
+   * can happen either.
    */
   function pipelineActionPlan(
     car: CarInstance,
@@ -2183,12 +2270,20 @@ export const useGameStore = defineStore('game', () => {
     >,
   ): { costYen: number; laborSlots: number } | null {
     if (!car.zoneState) return null
+    if (!carInBodyBay(gameState.value, car.id)) return null
     const zone = car.zoneState[action.zoneId]
     const capability = bodyLineCapability(gameState.value, context.value)
     if (action.kind === 'pipeline-stage') {
       const plan = planPipelineStage(action.stage, zone, capability)
       if (!plan.ok) return null
-      return { costYen: 0, laborSlots: context.value.economy.energy.bodyStagePoints[action.stage] }
+      const baseLaborSlots = context.value.economy.energy.bodyStagePoints[action.stage]
+      const laborSlots =
+        action.stage === 'weld'
+          ? Math.round(
+              baseLaborSlots * machineLaborMultiplier('body', gameState.value, context.value),
+            )
+          : baseLaborSlots
+      return { costYen: 0, laborSlots }
     }
     if (action.kind === 'pipeline-paint') {
       const plan = planPaintStage(zone, action.colour, capability, action.grade, car.factoryColour)
@@ -2212,14 +2307,19 @@ export const useGameStore = defineStore('game', () => {
     ) {
       return null
     }
-    const baseLaborSlots = context.value.economy.energy.energyByClass['bolt-on']
-    const group = machineGateGroupFor('bodywork', 'install', context.value)
-    return {
-      costYen: 0,
-      laborSlots: Math.round(
-        baseLaborSlots * machineLaborMultiplier(group, gameState.value, context.value),
-      ),
-    }
+    // Panel bolts are hand work, flat at the bolt-on class figure - the
+    // booth prices the booth (weld, the paint finish tier), not spanners.
+    return { costYen: 0, laborSlots: context.value.economy.energy.energyByClass['bolt-on'] }
+  }
+
+  /**
+   * The disabled-control caption every body-pipeline action shares while
+   * `carId` is not the body bay's own car (sprint208.md: "ALL body work
+   * requires the car in the body bay"). `null` once the car is in the bay -
+   * the button then reads whatever `pipelineActionPlan` returns instead.
+   */
+  function pipelineBodyBayCaption(carId: string): string | null {
+    return carInBodyBay(gameState.value, carId) ? null : 'Move the car into the body bay first.'
   }
 
   /**
@@ -2358,8 +2458,10 @@ export const useGameStore = defineStore('game', () => {
   })
 
   /** Every auction tier this player may walk into - derived from delivered
-   * guarantor missions (`local-yard` always included). `AuctionScreen` reads
-   * this to decide which tiers render at all versus the locked-tier copy. */
+   * guarantor missions (`local-yard` always included). The map reads this to
+   * decide which auction buildings route in versus refuse the click
+   * (`overworldNav.ts`), and `AuctionScreen` reads it to fall back to the
+   * lowest unlocked tier when reached with no real tier context. */
   const unlockedAuctionTiers = computed<AuctionTier[]>(() =>
     unlockedAuctionTiersCore(gameState.value, context.value),
   )
@@ -3201,6 +3303,17 @@ export const useGameStore = defineStore('game', () => {
     gameState.value.forecourtCarIds.map((id) => (id ? (shopCarView(id) ?? null) : null)),
   )
 
+  /**
+   * The body bay's own occupant, or null - a single slot rather than the
+   * indexed array `serviceBaysView`/`parkingView`/`forecourtView` map (there
+   * is exactly one bay), same `shopCarView` resolution as every other bay
+   * (sprint208.md: the bay is the gate, the body shop room is the surface).
+   */
+  const bodyBayView = computed<ShopCarView | null>(() => {
+    const id = gameState.value.bodyBayCarId
+    return id ? (shopCarView(id) ?? null) : null
+  })
+
   const parkingCapacity = computed(() => gameState.value.parkingBayCount)
   const parkingOccupancyCount = computed(() => parkingOccupancy(gameState.value))
   const parkingFull = computed(() => !hasParkingSpace(gameState.value))
@@ -3268,6 +3381,27 @@ export const useGameStore = defineStore('game', () => {
     ),
   )
 
+  /**
+   * The stand's weekly sheet (sprint205.md): the biggest risers and fallers
+   * since the most recent weekly heat update, with the player's own models
+   * called out. `computeMarketMovers` does the selecting and shaping; this
+   * computed supplies it with real state - the per-model shift from
+   * `marketHeatLastShift` (`updateMarketHeat`, sim/marketHeat.ts), and who
+   * the player owns or has been selling from `ownedCars` and
+   * `marketLedger.playerSales`. Absent (a fresh career, or a save from
+   * before the field existed) reads as no shift recorded yet.
+   */
+  const marketMovers = computed<MarketMoversResult>(() => {
+    const ownedModelIds = new Set(gameState.value.ownedCars.map((car) => car.modelId))
+    const soldModelIds = new Set(
+      Object.entries(gameState.value.marketLedger.playerSales)
+        .filter(([, count]) => count > 0)
+        .map(([modelId]) => modelId),
+    )
+    const lastShift = gameState.value.marketHeatLastShift ?? {}
+    return computeMarketMovers(lastShift, resolveModelName, ownedModelIds, soldModelIds)
+  })
+
   function forecourtBlockedReason(carId: string, channelId: SellingChannelId): string | null {
     if (!context.value.economy.sellingChannels[channelId].requiresForecourt) return null
     if (gameState.value.forecourtCarIds.includes(carId)) return null
@@ -3329,9 +3463,12 @@ export const useGameStore = defineStore('game', () => {
    * service/parking alike); dropping onto its own slot is a no-op. Unlike
    * `moveCar`/`swapCars` above (still used by the plain, non-positional
    * "→ parking"/"→ service bay" buttons and the click-fallback), this is
-   * the only path that actually chooses which bay a car lands in.
+   * the only path that actually chooses which bay a car lands in - and the
+   * only one that reaches the body bay (`to: 'body'`, always `slotIndex: 0`,
+   * sprint208.md): `moveCar`/`swapCars` stay `BayKind`-scoped, since the
+   * body bay is never a "first empty slot" quick-move or a swap partner.
    */
-  function moveCarToSlot(carId: string, to: BayKind, slotIndex: number): boolean {
+  function moveCarToSlot(carId: string, to: SlotKind, slotIndex: number): boolean {
     if (isCarInTransit(carId)) return false
     const result = moveCarToSlotCore(
       gameState.value,
@@ -3772,11 +3909,9 @@ export const useGameStore = defineStore('game', () => {
     })
   }
 
-  /** Every owned part, paired with its catalog entry - the pick list for an
-   * install, shared by the standalone inventory screen and the panel
-   * embedded on a car's detail screen (both show the exact same set: every
-   * click resolves instantly, so there is nothing to reserve against a
-   * different pick elsewhere). */
+  /** Every owned part, paired with its catalog entry - the Warehouse's one
+   * list, in both its browse and fit modes (every click resolves instantly,
+   * so there is nothing to reserve against a different pick elsewhere). */
   const pickableParts = computed<StageablePartView[]>(() => {
     const entries: StageablePartView[] = []
     for (const instance of gameState.value.partInventory) {
@@ -3965,16 +4100,18 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Move a bin part into a member slot of an open bench container -
-   * the displaced member returns to the bin. A tyre swap is gated on the
-   * wheels line owned or hired for the day. A no-op on any refusal.
+   * Move a bin part into an EMPTY member slot of an open bench container -
+   * refuses outright if the slot is already occupied (no swap; take the
+   * mounted member off first, `removeAssemblyMember`). Fitting a tyre is
+   * gated on the wheels line owned or hired for the day. A no-op on any
+   * refusal.
    */
-  function swapAssemblyMember(
+  function fitAssemblyMember(
     containerId: string,
     memberSlot: CarPartId,
     partInstanceId: string,
   ): boolean {
-    const result = resolveSwapAssemblyMember(
+    const result = resolveFitAssemblyMember(
       gameState.value,
       containerId,
       memberSlot,
@@ -3987,7 +4124,7 @@ export const useGameStore = defineStore('game', () => {
     if (!result.ok) return false
     gameState.value = result.state
     logSessionEvent({
-      type: 'swapAssemblyMember',
+      type: 'fitAssemblyMember',
       payload: { containerId, memberSlot, partInstanceId },
     })
     return true
@@ -4098,11 +4235,11 @@ export const useGameStore = defineStore('game', () => {
    * slot carries right now (only ever the wheels line, for the `tyres`
    * member), or `''` when nothing gates it (or the machine is already
    * owned/hired). Shared by `benchContainersFor`'s own caption and
-   * `ReplaceDrawer`'s bench-mode picker, so both read the same figure.
-   * A bench swap is never refused for want of the machine, only
+   * the Warehouse's bench-fit mode, so both read the same figure.
+   * A bench fit is never refused for want of the machine, only
    * slower by hand.
    */
-  function benchSwapMachineNoteFor(carPartId: CarPartId): string {
+  function benchFitMachineNoteFor(carPartId: CarPartId): string {
     const group = machineGateGroupFor(carPartId, 'bench-fit', context.value)
     return machineLaborDisclosureText(
       machineLaborDisclosureFor(group, context.value.economy.energy.actionPoints.benchFitMember),
@@ -4110,7 +4247,7 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /** Every assembly container currently on the bench for one car, each with its
-   * member slots resolved for display and bench work (recondition/swap). */
+   * member slots resolved for display and bench work (recondition/fit). */
   function benchContainersFor(carId: string): BenchContainerView[] {
     return (gameState.value.assemblyInventory ?? [])
       .filter((c) => c.sourceCarId === carId)
@@ -4130,7 +4267,7 @@ export const useGameStore = defineStore('game', () => {
               instance,
               band: instance ? instance.band : null,
               partName: instance ? partName(instance.partId) : null,
-              swapGateReason: benchSwapMachineNoteFor(carPartId),
+              fitGateReason: benchFitMachineNoteFor(carPartId),
             }
           }),
         }
@@ -4228,6 +4365,17 @@ export const useGameStore = defineStore('game', () => {
    */
   function reconditionQuoteFor(partInstanceId: string, targetBand: ConditionBand = 'mint') {
     return reconditionQuote(gameState.value, partInstanceId, targetBand, context.value)
+  }
+
+  /**
+   * Why the part on the bench refuses ALL reconditioning, stated for the
+   * workbench's fixed control - today only body work (a zone panel is the
+   * body shop's business, `reconditionGateReason`'s 'body-shop-work'), or
+   * `null` when nothing refuses outright.
+   */
+  function benchWorkRefusal(partInstanceId: string): string | null {
+    const reason = reconditionGateReason(gameState.value, partInstanceId, context.value)
+    return reason === 'body-shop-work' ? 'Body work. Take it to the body shop.' : null
   }
 
   /**
@@ -4734,6 +4882,8 @@ export const useGameStore = defineStore('game', () => {
         netProfitYen: entry.netProfitYen,
         daysSpent: entry.daysSpent,
         returnedParts,
+        handbackCopy: job.handbackCopy,
+        unlockFacts: job.unlockFacts,
       }
     } else if (entry?.type === 'service-job-failed') {
       lastJobResult.value = {
@@ -5254,6 +5404,7 @@ export const useGameStore = defineStore('game', () => {
     isForSale,
     listingChannelId,
     availableSellingChannelIds,
+    marketMovers,
     offerFor,
     pendingOffersView,
     estimatedSaleValue,
@@ -5321,6 +5472,7 @@ export const useGameStore = defineStore('game', () => {
     forecourtView,
     forecourtCapacity,
     forecourtOccupancyCount,
+    bodyBayView,
     hasForecourtSpace,
     forecourtBlockedReason,
     shopAtCapacity,
@@ -5353,13 +5505,14 @@ export const useGameStore = defineStore('game', () => {
     isAssemblyMember,
     removeAssembly,
     refitAssembly,
-    swapAssemblyMember,
+    fitAssemblyMember,
     removeAssemblyMember,
     assemblyLabel,
     assemblyRowsFor,
     benchContainersFor,
-    benchSwapMachineNoteFor,
+    benchFitMachineNoteFor,
     pipelineActionPlan,
+    pipelineBodyBayCaption,
     machineLaborDisclosureText,
     buyout,
     attendAuction,
@@ -5371,6 +5524,7 @@ export const useGameStore = defineStore('game', () => {
     sellPart,
     sellValueForPart,
     reconditionQuoteFor,
+    benchWorkRefusal,
     nextReconditionStep,
     reconditionPart,
     cartItems,

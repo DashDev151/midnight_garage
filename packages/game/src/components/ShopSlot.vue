@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { RouteLocationRaw } from 'vue-router'
 import { RouterLink } from 'vue-router'
 import type { ShopCarView } from '../stores/gameStore'
 import { useDraggable, useDropZone } from '../composables/useDragAndDrop'
@@ -9,17 +10,27 @@ import { useDraggable, useDropZone } from '../composables/useDragAndDrop'
  * depends on which list this slot belongs to and the full game state this
  * component deliberately doesn't know about.
  */
-const props = defineProps<{
-  car: ShopCarView | null
-  accepts: (carInstanceId: string) => boolean
-  moveLabel: string
-  moveDisabled: boolean
-  testIdPrefix: string
-  /** A stable id for this slot when `car` is null, e.g. `empty-parking-2` -
-   * several empty slots can render at once, so a single hardcoded "empty" would
-   * collide across all of them in the "Place here" button's `data-test`. */
-  emptySlotId: string
-}>()
+const props = withDefaults(
+  defineProps<{
+    car: ShopCarView | null
+    accepts: (carInstanceId: string) => boolean
+    moveLabel: string
+    moveDisabled: boolean
+    testIdPrefix: string
+    /** A stable id for this slot when `car` is null, e.g. `empty-parking-2` -
+     * several empty slots can render at once, so a single hardcoded "empty" would
+     * collide across all of them in the "Place here" button's `data-test`. */
+    emptySlotId: string
+    /** Where an occupied slot's own car name links to - defaults to its
+     * car-detail page, same as every ordinary bay. The body bay overrides
+     * this to route straight to the body shop room instead, since that
+     * slot's whole point is the door it opens. */
+    linkTo?: (car: ShopCarView) => RouteLocationRaw
+  }>(),
+  {
+    linkTo: (car: ShopCarView) => ({ name: 'car', params: { id: car.carId } }),
+  },
+)
 
 const emit = defineEmits<{
   move: [carId: string]
@@ -72,11 +83,7 @@ function onCardPointerUp(event: PointerEvent): void {
         @pointermove="onCardPointerMove"
         @pointerup="onCardPointerUp"
       >
-        <RouterLink
-          :to="{ name: 'car', params: { id: car.carId } }"
-          class="slot-car"
-          draggable="false"
-        >
+        <RouterLink :to="linkTo(car)" class="slot-car" draggable="false">
           {{ car.displayName }}
           <span v-if="car.arrivingTomorrow" class="badge arriving">arriving tomorrow</span>
           <span v-else-if="car.isCustomerCar" class="badge">customer job</span>

@@ -19,6 +19,7 @@ import {
   assignToParking,
   assignToShop,
   bayCountsByKind,
+  carInBodyBay,
   forecourtOccupancy,
   hasAcquisitionSpace,
   hasForecourtSpace,
@@ -796,6 +797,58 @@ describe('releaseCarFromShop clears the forecourt slot too (sprint148)', () => {
     const state = baseState({ forecourtCarIds: ['car-1', 'car-2'] })
     const next = releaseCarFromShop(state, 'car-1')
     expect(next.forecourtCarIds).toEqual([null, 'car-2'])
+  })
+})
+
+describe('the body bay (sprint208): one slot, the same move machinery', () => {
+  it('carInBodyBay reads the scalar field, absent or null both meaning empty', () => {
+    expect(carInBodyBay(baseState(), 'car-1')).toBe(false)
+    expect(carInBodyBay(baseState({ bodyBayCarId: null }), 'car-1')).toBe(false)
+    expect(carInBodyBay(baseState({ bodyBayCarId: 'car-1' }), 'car-1')).toBe(true)
+    expect(carInBodyBay(baseState({ bodyBayCarId: 'car-2' }), 'car-1')).toBe(false)
+  })
+
+  it('moves a parked car into the body bay, freeing its old slot', () => {
+    const state = baseState({
+      ownedCars: [ownedCar('car-1')],
+      parkingCarIds: ['car-1'],
+      bodyBayCarId: null,
+    })
+    const result = moveCarToSlot(state, 'car-1', 'body', 0)
+    expect(result.changed).toBe(true)
+    expect(result.state.bodyBayCarId).toBe('car-1')
+    expect(result.state.parkingCarIds).toEqual([null])
+    expect(carInBodyBay(result.state, 'car-1')).toBe(true)
+  })
+
+  it('moves the bay car back out to parking or a service bay by the same rules as any other slot', () => {
+    const state = baseState({
+      ownedCars: [ownedCar('car-1')],
+      bodyBayCarId: 'car-1',
+      parkingCarIds: [null, null],
+    })
+    const result = moveCarToSlot(state, 'car-1', 'parking', 1)
+    expect(result.changed).toBe(true)
+    expect(result.state.bodyBayCarId).toBeNull()
+    expect(result.state.parkingCarIds).toEqual([null, 'car-1'])
+  })
+
+  it('moving a second car in swaps with whoever already occupies the bay - capacity is exactly one', () => {
+    const state = baseState({
+      ownedCars: [ownedCar('car-1'), ownedCar('car-2')],
+      bodyBayCarId: 'car-1',
+      parkingCarIds: ['car-2'],
+    })
+    const result = moveCarToSlot(state, 'car-2', 'body', 0)
+    expect(result.changed).toBe(true)
+    expect(result.state.bodyBayCarId).toBe('car-2')
+    expect(result.state.parkingCarIds).toEqual(['car-1'])
+  })
+
+  it('releaseCarFromShop clears the bay too, same as every other slot', () => {
+    const state = baseState({ bodyBayCarId: 'car-1' })
+    const next = releaseCarFromShop(state, 'car-1')
+    expect(next.bodyBayCarId).toBeNull()
   })
 })
 

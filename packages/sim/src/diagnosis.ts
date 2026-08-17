@@ -16,6 +16,7 @@ import { energyMax } from './laborSlots'
 import type { SimContext } from './context'
 import { benchHasTrait, benchedMemberWithTrait } from './crewSkills'
 import { bookCashMovements } from './financeLedger'
+import { findWorkableCar, writeCarBack } from './jobs'
 import { marketValueYen } from './marketValue'
 
 type CarSymptom = CarInstance['symptoms'][number]
@@ -59,6 +60,19 @@ export function apparentViewOf(car: CarInstance): CarInstance {
  */
 export function symptomResolved(carSymptom: CarSymptom): boolean {
   return carSymptom.remainingCauseIds.length <= 1
+}
+
+/**
+ * The verdict's own cause id, once elimination leaves exactly one candidate
+ * - `null` at two or more (still open) and, defensively, at zero (cured;
+ * `pruneCuredCauses` already removes a symptom that gets here from
+ * `car.symptoms` entirely, so this is never reached for a live symptom in
+ * practice). Stricter than `symptomResolved` above, which also reads the
+ * defensive zero case as resolved - the verdict layer (sprint210.md task
+ * B1) needs an actual cause to name, not just "nothing left to narrow".
+ */
+export function symptomVerdictCauseId(carSymptom: CarSymptom): string | null {
+  return carSymptom.remainingCauseIds.length === 1 ? carSymptom.remainingCauseIds[0]! : null
 }
 
 /**
@@ -856,14 +870,19 @@ export interface ResolveOwnedWorkupResult {
  * when nothing blocks it. `already-resolved`: every symptom is already
  * down to its single remaining cause - nothing left for a workup to
  * narrow, so the UI hides the button rather than offering a click that
- * would spend labour to learn nothing new.
+ * would spend labour to learn nothing new. Reads `findWorkableCar`
+ * (jobs.ts) - an owned car or a customer's car sitting in an active
+ * service job, the same population the car-detail screen itself reads
+ * (`gameStore.ts`'s own `findWorkableCar`), so a scripted job's authored
+ * symptom is workable the moment the car is in the shop, not only once
+ * it's been bought.
  */
 export function ownedWorkupGateReason(
   state: GameState,
   carInstanceId: string,
   context: SimContext,
 ): OwnedWorkupGateReason | null {
-  const car = state.ownedCars.find((c) => c.id === carInstanceId)
+  const car = findWorkableCar(state, carInstanceId)
   if (!car) return 'not-found'
   if (car.symptoms.length === 0) return 'no-symptoms'
   if (car.symptoms.every(symptomResolved)) return 'already-resolved'
@@ -873,12 +892,14 @@ export function ownedWorkupGateReason(
 }
 
 /**
- * The owned-car workup - costs `energy.actionPoints.workup`, no fee, no
+ * The workable-car workup - costs `energy.actionPoints.workup`, no fee, no
  * clock, collapses every one of `carInstanceId`'s symptoms straight to
- * their true cause (`remainingCauseIds = [trueCauseId]`). Owned cars only
- * (never a lot, never a customer's service-job car); this is also the only
- * way to resolve `wont-idle`'s deliberate bench-only ambiguity, alongside
- * uninstall-reveals-truth.
+ * their true cause (`remainingCauseIds = [trueCauseId]`). Works on an owned
+ * car OR a customer's car sitting in an active service job
+ * (`findWorkableCar`/`writeCarBack`, jobs.ts) - never a lot, which narrows
+ * only through a yard visit's own tests; this is also the only way to
+ * resolve `wont-idle`'s deliberate bench-only ambiguity on a workable car,
+ * alongside uninstall-reveals-truth.
  */
 export function resolveOwnedWorkup(
   state: GameState,
@@ -887,18 +908,14 @@ export function resolveOwnedWorkup(
 ): ResolveOwnedWorkupResult {
   const gateReason = ownedWorkupGateReason(state, carInstanceId, context)
   if (gateReason) return { state, log: [], outcome: gateReason }
-  const carIndex = state.ownedCars.findIndex((c) => c.id === carInstanceId)
-  const car = state.ownedCars[carIndex]!
+  const car = findWorkableCar(state, carInstanceId)!
 
   const updatedCar: CarInstance = {
     ...car,
     symptoms: car.symptoms.map((s) => ({ ...s, remainingCauseIds: [s.trueCauseId] })),
   }
-  const ownedCars = [...state.ownedCars]
-  ownedCars[carIndex] = updatedCar
   const nextState: GameState = {
-    ...state,
-    ownedCars,
+    ...writeCarBack(state, carInstanceId, updatedCar),
     energySpentToday: state.energySpentToday + context.economy.energy.actionPoints.workup,
   }
   return {

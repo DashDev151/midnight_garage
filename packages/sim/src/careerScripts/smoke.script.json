@@ -1,6 +1,6 @@
 {
   "name": "smoke",
-  "description": "SYNTHETIC fixture, not a recorded session and never a baseline: exercises the replay runner end to end (a buyout, a cart checkout, a part sale, a declined service-job offer, a tutorial-step acknowledgement, then idle days that carry the career past two rent boundaries, days 5 and 10 under the five-day week) so replayCareerScript, the flow meter and the report renderer all have something real to run against. The referenced ids (lot-1-local-yard-0, stock-block, part-1-0, svc-1-0) are seed 1's real day-1 board against the shipped content, discovered by running the resolvers, not invented.",
+  "description": "SYNTHETIC fixture, not a recorded session and never a baseline: exercises the replay runner end to end (a buyout, a cart checkout, a part sale, a declined service-job offer, a tutorial-step acknowledgement, then idle days that carry the career past two rent boundaries, days 5 and 10 under the five-day week) so replayCareerScript, the flow meter and the report renderer all have something real to run against. The referenced ids (lot-1-local-yard-0, stock-block, part-0, svc-1-0) are seed 1's real day-1 board against the shipped content, discovered by running the resolvers, not invented.",
   "synthetic": true,
   "seed": 1,
   "days": [
@@ -18,11 +18,11 @@
             "totalYen": 28160
           }
         },
-        { "type": "sellPart", "payload": { "partInstanceId": "part-1-0" } },
+        { "type": "sellPart", "payload": { "partInstanceId": "part-0" } },
         { "type": "rejectServiceJobOffer", "payload": { "offerId": "svc-1-0" } },
         { "type": "acknowledgeTutorialStep", "payload": { "stepId": "smoke-check" } }
       ],
-      "checkpoints": [{ "kind": "hash", "expected": "5b3e2cef" }]
+      "checkpoints": [{ "kind": "hash", "expected": "8ca87b92" }]
     },
     { "day": 2, "events": [], "checkpoints": [] },
     { "day": 3, "events": [], "checkpoints": [] },
@@ -40,7 +40,7 @@
       "day": 10,
       "events": [],
       "checkpoints": [
-        { "kind": "hash", "expected": "a8049eed" },
+        { "kind": "hash", "expected": "518fa09a" },
         { "kind": "carsOwned", "count": 1 },
         { "kind": "reputationTier", "tier": "unknown" }
       ]

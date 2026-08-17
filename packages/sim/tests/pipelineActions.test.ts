@@ -16,6 +16,7 @@ import {
   resolvePipelineInstallPanelAction,
   resolvePipelinePaintAction,
   resolvePipelineRemovePanelAction,
+  resolvePipelineStageAction,
 } from '../src/pipelineActions'
 import {
   buildCarInstance,
@@ -144,6 +145,7 @@ describe('resolvePipelineRemovePanelAction / resolvePipelineInstallPanelAction',
       ownedCars: [zoneCar],
       serviceBayCarIds: [zoneCar.id],
       partInventory: [newBonnetPanel],
+      bodyBayCarId: zoneCar.id,
     })
     const removed = resolvePipelineRemovePanelAction(
       state,
@@ -206,6 +208,7 @@ describe('resolvePipelineRemovePanelAction / resolvePipelineInstallPanelAction',
     const state = baseState({
       ownedCars: [zoneCar],
       serviceBayCarIds: [zoneCar.id],
+      bodyBayCarId: zoneCar.id,
     })
     const removed = resolvePipelineRemovePanelAction(
       state,
@@ -255,6 +258,7 @@ describe('resolvePipelineRemovePanelAction / resolvePipelineInstallPanelAction',
       ownedCars: [zoneCar],
       serviceBayCarIds: [zoneCar.id],
       partInventory: [newBootPanel],
+      bodyBayCarId: zoneCar.id,
     })
     const result = resolvePipelineInstallPanelAction(
       state,
@@ -294,6 +298,7 @@ describe('resolvePipelineRemovePanelAction / resolvePipelineInstallPanelAction',
       ownedCars: [zoneCar],
       serviceBayCarIds: [zoneCar.id],
       partInventory: [sparePanel],
+      bodyBayCarId: zoneCar.id,
     })
     const removedNoop = resolvePipelineRemovePanelAction(
       state,
@@ -348,6 +353,7 @@ describe('resolvePipelineRemovePanelAction / resolvePipelineInstallPanelAction',
         serviceBayCarIds: [zoneCar.id],
         partInventory: [panelInstance],
         toolTiers: testToolTiers({ body: 1 }),
+        bodyBayCarId: zoneCar.id,
       }),
       zoneCar.id,
       action,
@@ -370,6 +376,7 @@ describe('resolvePipelineRemovePanelAction / resolvePipelineInstallPanelAction',
         serviceBayCarIds: [zoneCar.id],
         partInventory: [panelInstance],
         toolTiers: testToolTiers({ body: 2 }),
+        bodyBayCarId: zoneCar.id,
       }),
       zoneCar.id,
       action,
@@ -379,6 +386,156 @@ describe('resolvePipelineRemovePanelAction / resolvePipelineInstallPanelAction',
     expect(allowed.log).toEqual([])
     expect(allowed.state.ownedCars[0]?.zoneState?.boot.panelMissing).toBe(false)
     expect(allowed.state.ownedCars[0]?.zoneState?.boot.panelGrade).toBe('race')
+  })
+
+  /** Panel bolts are hand work (sprint208.md task 5): no machine multiplier
+   * survives on the install path, machine-less or not - the flat bolt-on
+   * class figure either way, down from the old 9 (3 x the machine-less
+   * multiplier) to 3. */
+  it('charges the flat bolt-on figure regardless of the body line - panel bolts are hand work', () => {
+    const bootPanelPart = zonePanelPart(CONTEXT.partsById, 'boot', 'entry')!
+    const zoneCar: CarInstance = buildCarInstance({
+      id: 'car-0006',
+      modelId: 'honda-city-e-aa',
+      year: 1984,
+      mileageKm: 100_000,
+      parts: mintCarParts(),
+      zoneState: cleanZoneStates({
+        boot: { metal: 0, surface: 0, finish: 0, panelMissing: true, primed: false },
+      }),
+    })
+    const newBootPanel: PartInstance = {
+      id: 'pi-panel-flat-boot',
+      partId: bootPanelPart.id,
+      band: 'mint',
+      origin: { kind: 'market', day: 1 },
+    }
+    const action = {
+      kind: 'pipeline-install-panel' as const,
+      zoneId: 'boot' as const,
+      partInstanceId: newBootPanel.id,
+    }
+    const boltOnPoints = CONTEXT.economy.energy.energyByClass['bolt-on']
+    expect(boltOnPoints).toBe(3)
+
+    const machineless = resolvePipelineInstallPanelAction(
+      baseState({
+        ownedCars: [zoneCar],
+        serviceBayCarIds: [zoneCar.id],
+        partInventory: [newBootPanel],
+        bodyBayCarId: zoneCar.id,
+        toolTiers: testToolTiers({ body: 1 }),
+      }),
+      zoneCar.id,
+      action,
+      CONTEXT,
+      10,
+    )
+    expect(machineless.laborSlotsUsed).toBe(boltOnPoints)
+
+    const withLine = resolvePipelineInstallPanelAction(
+      baseState({
+        ownedCars: [zoneCar],
+        serviceBayCarIds: [zoneCar.id],
+        partInventory: [newBootPanel],
+        bodyBayCarId: zoneCar.id,
+        toolTiers: testToolTiers({ body: 2 }),
+      }),
+      zoneCar.id,
+      action,
+      CONTEXT,
+      10,
+    )
+    expect(withLine.laborSlotsUsed).toBe(boltOnPoints)
+  })
+})
+
+/**
+ * The body bay gate (sprint208.md): every pipeline action refuses off the
+ * bay's own car, and weld - the one stage still priced at a machine rate -
+ * charges the machine-less multiplier by hand and drops to base rate once
+ * the body line is owned or hired.
+ */
+describe('the body bay gate, and the weld rate', () => {
+  function weldCar(): CarInstance {
+    return buildCarInstance({
+      id: 'car-weld-0001',
+      modelId: 'honda-city-e-aa',
+      year: 1984,
+      mileageKm: 100_000,
+      parts: mintCarParts(),
+      zoneState: cleanZoneStates({
+        bonnet: { metal: 3, surface: 0, finish: 0, panelMissing: false, primed: false },
+      }),
+    })
+  }
+
+  it('refuses a zone stage off the body bay, naming the reason, and runs it once the car is moved in', () => {
+    const zoneCar = weldCar()
+    const offBay = resolvePipelineStageAction(
+      baseState({ ownedCars: [zoneCar], serviceBayCarIds: [zoneCar.id] }),
+      zoneCar.id,
+      { kind: 'pipeline-stage', zoneId: 'bonnet', stage: 'weld' },
+      CONTEXT,
+      100,
+    )
+    expect(offBay.log).toEqual([
+      {
+        type: 'job-blocked',
+        jobId: `pipeline-${zoneCar.id}-weld-bonnet`,
+        reason: 'not-in-body-bay',
+      },
+    ])
+    expect(offBay.state.ownedCars[0]?.zoneState?.bonnet.metal).toBe(3)
+
+    const inBay = resolvePipelineStageAction(
+      baseState({
+        ownedCars: [zoneCar],
+        serviceBayCarIds: [zoneCar.id],
+        bodyBayCarId: zoneCar.id,
+      }),
+      zoneCar.id,
+      { kind: 'pipeline-stage', zoneId: 'bonnet', stage: 'weld' },
+      CONTEXT,
+      100,
+    )
+    expect(inBay.state.ownedCars[0]?.zoneState?.bonnet.metal).toBe(0)
+  })
+
+  it('welds day one by hand at the machine-less multiplier (3x), and at base rate once the body line is owned', () => {
+    const zoneCar = weldCar()
+    const basePoints = CONTEXT.economy.energy.bodyStagePoints.weld
+    expect(CONTEXT.economy.machineShopAssist.machinelessLaborMultiplier).toBe(3)
+
+    const byHand = resolvePipelineStageAction(
+      baseState({
+        ownedCars: [zoneCar],
+        serviceBayCarIds: [zoneCar.id],
+        bodyBayCarId: zoneCar.id,
+        toolTiers: testToolTiers({ body: 1 }),
+      }),
+      zoneCar.id,
+      { kind: 'pipeline-stage', zoneId: 'bonnet', stage: 'weld' },
+      CONTEXT,
+      100,
+    )
+    expect(byHand.laborSlotsUsed).toBe(basePoints * 3)
+    expect(byHand.state.ownedCars[0]?.zoneState?.bonnet.metal).toBe(0)
+
+    const withLine = resolvePipelineStageAction(
+      baseState({
+        ownedCars: [zoneCar],
+        serviceBayCarIds: [zoneCar.id],
+        bodyBayCarId: zoneCar.id,
+        toolTiers: testToolTiers({ body: 2 }),
+      }),
+      zoneCar.id,
+      { kind: 'pipeline-stage', zoneId: 'bonnet', stage: 'weld' },
+      CONTEXT,
+      100,
+    )
+    expect(withLine.laborSlotsUsed).toBe(basePoints)
+    expect(withLine.state.ownedCars[0]?.zoneState?.bonnet.metal).toBe(0)
   })
 })
 
@@ -418,6 +575,7 @@ describe('resolvePipelinePaintAction', () => {
       // One use of metallic kaido-blue on the shelf - exactly enough for
       // this one zone.
       consumableStock: { 'paint:metallic:kaido-blue': 1 },
+      bodyBayCarId: zoneCar.id,
     })
     const result = resolvePipelinePaintAction(
       state,
@@ -442,6 +600,7 @@ describe('resolvePipelinePaintAction', () => {
       ownedCars: [zoneCar],
       serviceBayCarIds: [zoneCar.id],
       consumableStock: { 'paint:solid:white': 1 },
+      bodyBayCarId: zoneCar.id,
     })
     const result = resolvePipelinePaintAction(
       state,
@@ -464,6 +623,7 @@ describe('resolvePipelinePaintAction', () => {
       serviceBayCarIds: [zoneCar.id],
       // Refused on colour before stock is ever read, so the shelf is
       // deliberately left bare here.
+      bodyBayCarId: zoneCar.id,
     })
     const result = resolvePipelinePaintAction(
       state,
@@ -487,6 +647,7 @@ describe('resolvePipelinePaintAction', () => {
       // The shelf holds the wrong colour entirely - not a shortfall, an
       // absence.
       consumableStock: { 'paint:metallic:white': 5 },
+      bodyBayCarId: zoneCar.id,
     })
     const result = resolvePipelinePaintAction(
       state,

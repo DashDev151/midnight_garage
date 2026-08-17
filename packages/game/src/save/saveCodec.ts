@@ -782,8 +782,43 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * charged or applied, so there is nothing to replay. The version bump alone
  * is still required (Save law) so an old client rejects a v69 save rather
  * than reading a shape it no longer understands.
+ * v69 -> v70 (the stand owner's job, and a readable market): a service job
+ * can now carry `unlocksSellingChannel` (`ServiceJobTypeSchema` and
+ * `ServiceJobSchema`), `GameStateSchema` gains `serviceJobChannelUnlocks`
+ * (persisted unlock claims) and `marketHeatLastShift` (last week's per-model
+ * heat deltas, for the market page). Per directive 19, a plain SAVE_VERSION
+ * bump with NO `MIGRATIONS[69]` entry and no legacy-compat branch: all three
+ * fields are `.optional()` (the `assemblyInventory` pattern), so a pre-v70
+ * save simply decodes with them absent, which readers already treat as "no
+ * claims yet" / "no shift recorded yet". The version bump alone is still
+ * required (Save law) so an old client rejects a v70 save rather than
+ * reading a shape it no longer understands.
+ * v70 -> v71 (part-instance ids stop colliding): `GameStateSchema` gains
+ * `partInstanceCounter`, a monotonic counter every `PartInstance` mint site
+ * now reads and increments instead of deriving an id from
+ * `${day}-${partInventory.length}`, which could reissue a live id once an
+ * earlier removal the same day had already shrunk the array a later mint
+ * counted against. The field is `.optional()` (the `assemblyInventory`
+ * pattern), so no existing `GameState` literal needs touching: a pre-v71
+ * save simply reads it absent, which every mint site treats as zero minted
+ * so far. Per directive 19, a plain SAVE_VERSION bump with NO
+ * `MIGRATIONS[70]` entry and no legacy-compat branch: a pre-v71 save's
+ * existing ids (in the old, structurally different format) can never
+ * collide with a freshly minted one counting up from zero. The version
+ * bump alone is still required (Save law) so an old client rejects a v71
+ * save rather than reading a shape it no longer understands.
+ * v71 -> v72 (the body bay): `GameState` gained `bodyBayCarId`, the one-slot
+ * body bay every zone/pipeline action now gates on (sprint208.md). It is
+ * `.optional()` (the `partInstanceCounter`/`assemblyInventory` pattern), so
+ * no existing `GameState` literal needs touching: a pre-v72 save simply
+ * reads it absent, which every reader treats as an empty bay - exactly
+ * correct, since no pre-v72 save could ever have had a car in it (the bay
+ * did not exist). Per directive 19, a plain SAVE_VERSION bump with NO
+ * `MIGRATIONS[71]` entry. The version bump alone is still required (Save
+ * law) so an old client rejects a v72 save rather than reading a shape it no
+ * longer understands.
  */
-export const SAVE_VERSION = 69
+export const SAVE_VERSION = 72
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

@@ -3,7 +3,7 @@ import type { DayActions } from '../actions'
 import { planGroupRepair } from '../bands'
 import type { SimContext } from '../context'
 import { toolLevelsFor } from '../toolLines'
-import { installLaborSlotsFor } from '../jobs'
+import { installLaborSlotsFor, occupiedBlockers } from '../jobs'
 import { gradeAtLeast, partFitsCar } from '../parts'
 import { isServiceTaskDone, serviceJobCostBreakdown } from '../serviceJobs'
 
@@ -30,7 +30,11 @@ export const MIN_PROFIT_PER_LABOR_SLOT_YEN = 3000
  * takes. The bots' accept threshold: accept if this clears
  * `MIN_PROFIT_PER_LABOR_SLOT_YEN`.
  */
-export function expectedProfitPerLaborSlot(offer: ServiceJob, context: SimContext): number {
+export function expectedProfitPerLaborSlot(
+  offer: ServiceJob,
+  context: SimContext,
+  state: GameState,
+): number {
   const model = context.modelsById[offer.car.modelId]
   if (!model) return 0
   const { taskCostYen, laborSlots } = serviceJobCostBreakdown(
@@ -38,6 +42,7 @@ export function expectedProfitPerLaborSlot(offer: ServiceJob, context: SimContex
     offer.car,
     model,
     context,
+    state,
   )
   return (offer.payoutYen - taskCostYen) / Math.max(1, laborSlots)
 }
@@ -145,6 +150,24 @@ export function queueServiceJobTasks(
       continue
     }
 
+    // A slot can itself be blocked by another still-occupied slot (the
+    // reviewed dependency graph, e.g. dampers needs springs and rims
+    // vacated first) - clear the nearest still-occupied blocker first, one
+    // per tick, the same corner-strip order the player's own UI enforces.
+    // A blocker that is itself an assembly member (rims/tyres) comes off
+    // through its assembly (`removeAssemblies`); a plain blocker comes off
+    // directly (`removeParts`).
+    const blocker = occupiedBlockers(car, carPartId, context)[0]
+    if (blocker) {
+      const assembly = context.assemblies.find((a) => a.members.includes(blocker))
+      if (assembly) {
+        actions.removeAssemblies.push({ carInstanceId: car.id, assemblyId: assembly.id })
+      } else {
+        actions.removeParts.push({ carInstanceId: car.id, carPartId: blocker })
+      }
+      continue
+    }
+
     // The stock-baseline model fills every real slot by default, so a
     // grade-requirement task's target is usually occupied (by the stock
     // part, or anything else that didn't already satisfy `isServiceTaskDone`
@@ -152,9 +175,16 @@ export function queueServiceJobTasks(
     // design, never a silent overwrite), so this queues the same
     // remove-first step the player's own UI requires (Remove, then Replace)
     // and stops there for today; the buy/install steps below only ever run
-    // once the slot is genuinely empty.
+    // once the slot is genuinely empty. An occupied target that is itself an
+    // assembly member (rims/tyres) comes off through its assembly too - a
+    // plain removal always refuses an assembly member outright.
     if (car.parts[carPartId].installed !== null) {
-      actions.removeParts.push({ carInstanceId: car.id, carPartId })
+      const ownAssembly = context.assemblies.find((a) => a.members.includes(carPartId))
+      if (ownAssembly) {
+        actions.removeAssemblies.push({ carInstanceId: car.id, assemblyId: ownAssembly.id })
+      } else {
+        actions.removeParts.push({ carInstanceId: car.id, carPartId })
+      }
       continue
     }
 

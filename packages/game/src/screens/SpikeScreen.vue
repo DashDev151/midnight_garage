@@ -7,8 +7,9 @@ import PixiCarSandbox from '../components/PixiCarSandbox.vue'
     <h2>Art architecture spike</h2>
     <PixiCarSandbox />
     <p class="caption">
-      One indexed body template, one shared wheel layer. Four paints are runtime palette swaps; the
-      last car is slammed via a ride-height offset. No per-configuration sprites exist. (Sprint 00.)
+      One indexed body template, one shared wheel layer. Four paints are one palette, switched per
+      car at runtime; the last car is slammed via a ride-height offset. No per-configuration sprites
+      exist. (Sprint 00.)
     </p>
   </section>
 </template>

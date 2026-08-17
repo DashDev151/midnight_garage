@@ -197,6 +197,7 @@ describe('a stage refuses when its consumable is out, naming what is missing', (
     const state = baseState({
       ownedCars: [car],
       serviceBayCarIds: [car.id],
+      bodyBayCarId: car.id,
     })
     const result = resolvePipelineStageAction(
       state,
@@ -240,6 +241,7 @@ describe('a stage refuses when its consumable is out, naming what is missing', (
       ...paper.state,
       ownedCars: [car],
       serviceBayCarIds: [car.id],
+      bodyBayCarId: car.id,
     }
     const result = resolveStagesInTurn(
       state,
@@ -331,7 +333,7 @@ describe('the full-respray total holds against the old per-use charge', () => {
 
   it('buying three small tins (no bulk discount taken) costs exactly the old total, and Confirm spends no further cash', () => {
     const car = primedRespray()
-    let state = baseState({ ownedCars: [car], serviceBayCarIds: [car.id] })
+    let state = baseState({ ownedCars: [car], serviceBayCarIds: [car.id], bodyBayCarId: car.id })
     for (let i = 0; i < 3; i++) {
       const bought = resolveBuyPaintTin(state, 'solid', 'small', 'blue-rally', CONTEXT)
       expect(bought.log.length).toBe(1)
@@ -352,7 +354,7 @@ describe('the full-respray total holds against the old per-use charge', () => {
 
   it('buying one large tin instead costs 1,250 yen less - the bulk discount, and nothing else moves', () => {
     const car = primedRespray()
-    const state = baseState({ ownedCars: [car], serviceBayCarIds: [car.id] })
+    const state = baseState({ ownedCars: [car], serviceBayCarIds: [car.id], bodyBayCarId: car.id })
     const bought = resolveBuyPaintTin(state, 'solid', 'large', 'blue-rally', CONTEXT)
     const spentBuyingTin = state.cashYen - bought.state.cashYen
     expect(spentBuyingTin).toBe(11_350)

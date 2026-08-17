@@ -118,20 +118,19 @@ describe('App (Sprint 51: chrome)', () => {
     expect(wrapper.findAll('h1').filter((h) => h.text() === 'Ran When Parked')).toHaveLength(1)
   })
 
-  it('the Standing screen is reachable from the nav on a gameplay screen', async () => {
-    // The route must be reachable via an explicit nav link; invisible links
-    // styled `color: inherit; text-decoration: none` with a panel-edge dotted
-    // border don't work on a dark panel.
+  it('has no Standing, Costs or Auctions tab - their content moved into the office, and the overworld is the only way into an auction room (sprint209.md)', async () => {
     const wrapper = await mountAppAt('garage')
-    const link = wrapper.find('[data-test="nav-standing"]')
-    expect(link.exists()).toBe(true)
-    // Wired to the real route (memory history still resolves an href).
-    expect(link.attributes('href')).toBe('/standing')
-    // And the route genuinely renders the screen.
-    await router.push({ name: 'standing' })
+    expect(wrapper.find('[data-test="nav-standing"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="nav-costs"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="nav-auctions"]').exists()).toBe(false)
+  })
+
+  it('the office is reachable, and holds the reputation and cost-sheet content that used to live behind their own tabs', async () => {
+    const wrapper = await mountAppAt('garage')
+    await router.push({ name: 'office' })
     await flushPromises()
-    expect(router.currentRoute.value.name).toBe('standing')
-    expect(wrapper.text()).toContain('Your standing')
+    expect(router.currentRoute.value.name).toBe('office')
+    expect(wrapper.text()).toContain('The office')
   })
 
   it('the header menu control opens the full-screen menu', async () => {

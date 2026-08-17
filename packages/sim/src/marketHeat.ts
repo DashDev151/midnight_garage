@@ -72,6 +72,12 @@ export function bumpPlayerSales(state: GameState, modelId: string): GameState {
  * so old activity gradually fades. Fully deterministic - no `Date.now()`/`Math.random()` -
  * and a no-op off `calendar.ts`'s end-of-week boundary (`isEndOfWeek`), the
  * same cadence this update has always run on.
+ *
+ * Every model that actually moved this update also lands in
+ * `state.marketHeatLastShift`, replaced wholesale (not accumulated) - the
+ * persisted record the market page reads to report what moved, since the
+ * `market-heat-shift` log entries themselves are session-scoped and never
+ * survive a save/load.
  */
 export function updateMarketHeat(state: GameState, context: SimContext): MarketHeatUpdateResult {
   if (!isEndOfWeek(state.day, context.economy)) {
@@ -83,6 +89,7 @@ export function updateMarketHeat(state: GameState, context: SimContext): MarketH
   const marketHeat = { ...state.marketHeat }
   const lotSupply: Record<string, number> = {}
   const playerSales: Record<string, number> = {}
+  const marketHeatLastShift: Record<string, number> = {}
   const log: DayLogEntry[] = []
 
   for (const model of context.models) {
@@ -120,11 +127,12 @@ export function updateMarketHeat(state: GameState, context: SimContext): MarketH
     marketHeat[modelId] = next
     if (next !== current) {
       log.push({ type: 'market-heat-shift', modelId, deltaPercent: next - current })
+      marketHeatLastShift[modelId] = next - current
     }
   }
 
   return {
-    state: { ...state, marketHeat, marketLedger: { lotSupply, playerSales } },
+    state: { ...state, marketHeat, marketLedger: { lotSupply, playerSales }, marketHeatLastShift },
     log,
   }
 }

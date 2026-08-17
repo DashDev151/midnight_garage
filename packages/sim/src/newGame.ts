@@ -3,10 +3,11 @@ import { currentGameYear } from './calendar'
 import { refreshCatalogs } from './catalogs'
 import type { SimContext } from './context'
 import { createRng, hashStringToSeed } from './rng'
+import { ensureScriptedServiceJob } from './scriptedServiceJob'
 import { freshSceneCommissions } from './sceneCommissions'
 import { freshSceneLedger } from './sceneStanding'
 import { generateDailyServiceJobOffers } from './serviceJobs'
-import { freshToolTiers, toolLevelsFor } from './toolLines'
+import { freshToolTiers } from './toolLines'
 import { radialOffersGated } from './tutorial'
 import { freshSceneStanding } from './valuation'
 
@@ -67,6 +68,7 @@ export function createInitialGameState(
     reputationPoints: 0,
     ownedCars: [],
     partInventory: [],
+    partInstanceCounter: 0,
     staff: [],
     staffAds: [],
     jobs: [],
@@ -84,6 +86,7 @@ export function createInitialGameState(
     parkingCarIds: new Array<null>(context.facilities.parking.startCount).fill(null),
     forecourtCarIds: new Array<null>(context.facilities.forecourt.startCount).fill(null),
     graceParkingCarId: null,
+    bodyBayCarId: null,
     energySpentToday: 0,
     toolTiers: freshToolTiers(),
     toolShopsOwned: [],
@@ -99,6 +102,8 @@ export function createInitialGameState(
     machinePartId: null,
     storyMissions: [],
     assemblyInventory: [],
+    serviceJobChannelUnlocks: [],
+    marketHeatLastShift: {},
     dyno: { owned: false, hirePaidDay: null, sessionCarId: null },
     consumableStock: {},
     venueNameByTier: rollVenueNameByTier(context, seed),
@@ -126,13 +131,17 @@ export function createInitialGameState(
         context,
         base.day,
         rng,
+        base,
         currentGameYear(base.day, context.economy),
-        toolLevelsFor(base, context),
-        base.reputationTier,
       )
-  return {
+  const seeded: GameState = {
     ...base,
     activeAuctionLots: refresh.freshLots,
     serviceJobOffers,
   }
+  // The stand owner's scripted job is permanent early content, not tutorial
+  // scaffolding - seeded here unconditionally (unlike `serviceJobOffers`
+  // above, never gated by `radialOffersGated`), same as `advanceDay`'s own
+  // daily re-injection.
+  return ensureScriptedServiceJob(seeded, context, base.day)
 }

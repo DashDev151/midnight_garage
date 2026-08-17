@@ -149,6 +149,30 @@ breaking because it pins UI that is still moving. The sprint is now:
 
 ---
 
+## The fix arc (sprints 206-210, inserted 2026-08-16 ahead of G1)
+
+Two playtest sessions on 2026-08-16 (notes: `docs/playtest-notes-2026-08-16.md`) ended
+with the maintainer stopping play: the game is not yet playable enough to produce the
+golden career G1 needs. The fix arc holds Phase 3 shut and clears the way, in three
+waves; every playtest note maps to exactly one sprint:
+
+- **Wave 1 - `sprint206.md`** (id collisions, the remove-then-install ruling enforced
+  by guard, the lead's full dependency-graph review, drag completion, Missing vs
+  Scrap) **and `sprint207.md`** (jobs price the labour chain they demand, one rate).
+- **Wave 2 - `sprint208.md`**: the body shop becomes a room with its own bay, the
+  stick welder replaces the silent weld wall, the bench leaves the body business.
+- **Wave 3 - `sprint209.md`** (auction houses as gated map places, the office room,
+  the cafe interior, day-one channel honesty) **and `sprint210.md`** (the newsstand
+  owner as the first Tier 2 community character per
+  `docs/design/systems/community-jobs.md`, and the diagnosis verdict layer).
+
+The Warehouse (the one inventory surface, built 2026-08-16 as the session's blocker
+fix) preceded the arc and is in the tree uncommitted alongside Sprint 205.
+
+**The arc LANDED in full on 2026-08-16** (all five Exits filled; final tree 229 test
+files / 4,738 tests green, typecheck clean). **G1 is re-open:** the next maintainer
+session on this build is the golden-career candidate.
+
 ## Later phases (sketch only; each gets its own board when its predecessor's exit gate passes)
 
 - **Phase 2 (bench, shrunk):** shop-state presets plus progressive disclosure across the six

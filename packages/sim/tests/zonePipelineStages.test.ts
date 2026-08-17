@@ -28,30 +28,30 @@ function trimZone(overrides: Partial<TrimZoneState> = {}): TrimZoneState {
 describe('weld refuses below rot, and only rot', () => {
   it('refuses at severity 1 and 2 - those are dents, beat handles them', () => {
     for (const metal of [1, 2]) {
-      const plan = planMetalPipelineStage('weld', metalZone({ metal }), UNLOCKED)
+      const plan = planMetalPipelineStage('weld', metalZone({ metal }))
       expect(plan.ok, `severity ${metal}`).toBe(false)
       if (!plan.ok) expect(plan.reason, `severity ${metal}`).toBe('prereq')
     }
   })
 
   it('accepts at exactly severity 3, the weldable maximum', () => {
-    const plan = planMetalPipelineStage('weld', metalZone({ metal: 3 }), UNLOCKED)
+    const plan = planMetalPipelineStage('weld', metalZone({ metal: 3 }))
     expect(plan.ok).toBe(true)
     expect(plan.ok && isMetalZoneState(plan.zone) && plan.zone.metal).toBe(0)
   })
 
   it('still refuses at severity 0 - nothing to weld', () => {
-    const plan = planMetalPipelineStage('weld', metalZone({ metal: 0 }), UNLOCKED)
+    const plan = planMetalPipelineStage('weld', metalZone({ metal: 0 }))
     expect(plan.ok).toBe(false)
     if (!plan.ok) expect(plan.reason).toBe('prereq')
   })
 
   it('beat still handles severities 1 and 2, and refuses at 3', () => {
     for (const metal of [1, 2]) {
-      const plan = planMetalPipelineStage('beat', metalZone({ metal }), UNLOCKED)
+      const plan = planMetalPipelineStage('beat', metalZone({ metal }))
       expect(plan.ok, `severity ${metal}`).toBe(true)
     }
-    const atWeldable = planMetalPipelineStage('beat', metalZone({ metal: 3 }), UNLOCKED)
+    const atWeldable = planMetalPipelineStage('beat', metalZone({ metal: 3 }))
     expect(atWeldable.ok).toBe(false)
     if (!atWeldable.ok) expect(atWeldable.reason).toBe('prereq')
   })

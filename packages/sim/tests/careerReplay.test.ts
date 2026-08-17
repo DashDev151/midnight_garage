@@ -36,23 +36,38 @@ const SMOKE_SCRIPT = CareerScriptSchema.parse(smokeScriptRaw)
 // sprint204.md). Re-derive from a real run, never hand-guessed, exactly
 // like `advanceDay.test.ts`'s own golden hashes.
 //
-// Days 5 onward move for the fashion wave retune (`WAVE_PERIOD_WEEKS`
-// 24 -> 14, `WAVE_AMPLITUDE` 12 -> 22): the market-heat update at the day-5
-// week boundary now reads a different point on a shorter, taller wave for
-// every model, moving every day-5-and-later state; the first four days,
-// before any week boundary fires, are untouched. Re-derived from a real
-// run.
+// Every day's hash carries the counter-minted part-instance ids
+// (`GameState.partInstanceCounter`; the script's day-1 express purchase
+// mints `part-0`) and the chain-priced service-job offers
+// (`taskLaborChain`), so any change to either moves the whole sequence.
+// `smoke.script.json`'s own two `kind: 'hash'` checkpoints (days 1 and 10)
+// move with this array. Re-derived from a real run.
+//
+// Re-pinned for sprint208.md (the body bay): `GameState` gains
+// `bodyBayCarId`, seeded `null` by `createInitialGameState` from day one -
+// present on every day's snapshot, so every hash in the sequence moves even
+// though the script never touches the body pipeline itself. No behaviour
+// this script exercises changed; only the state shape did.
+//
+// Re-pinned for sprint210.md task A2: the newsstand owner leaves
+// `serviceJobCustomerNames.json`'s Tier 3 pool (promoted to a named Tier 2
+// character, community-jobs.md), which shortens the pool `rng.pick` draws
+// customer names from. This script's own day-1 radial offer (rejected at
+// `svc-1-0`) draws from that same pool, so every subsequent RNG-derived draw
+// in the run shifts and the whole hash sequence moves - the pool losing one
+// entry, not a behavioural change. `smoke.script.json`'s own two `kind:
+// 'hash'` checkpoints (days 1 and 10) move with this array.
 const EXPECTED_HASHES_BY_DAY = [
-  '5b3e2cef',
-  '81e79a0b',
-  'c469febb',
-  'ba7e2576',
-  'e3e9fbeb',
-  '640ee552',
-  '23862460',
-  'de24a6f2',
-  '0e0e72fa',
-  'a8049eed',
+  '8ca87b92',
+  'd645475a',
+  '6992a406',
+  '6d12f8f2',
+  '45b914f9',
+  '75f42112',
+  '8f0ca266',
+  '3942fff9',
+  'e0bd5908',
+  '518fa09a',
 ]
 
 describe('replayCareerScript (Sprint 198 C1)', () => {
@@ -92,6 +107,34 @@ describe('replayCareerScript (Sprint 198 C1)', () => {
     const result = replayCareerScript(SMOKE_SCRIPT, CONTEXT)
     const day5Types = result.dayLogs[4]?.map((entry) => entry.type)
     expect(day5Types).toContain('rent-paid')
+  })
+
+  it('replays playClockPaused/playClockResumed as pure no-ops (dev-only playtest-clock instrumentation)', () => {
+    const withClockEvents = CareerScriptSchema.parse({
+      ...SMOKE_SCRIPT,
+      name: 'playtest-clock-events',
+      days: [
+        {
+          day: 1,
+          events: [
+            { type: 'playClockPaused', payload: { activeMs: 1000 } },
+            { type: 'playClockResumed', payload: { activeMs: 1000 } },
+          ],
+          checkpoints: [],
+        },
+      ],
+    })
+    const idle = CareerScriptSchema.parse({
+      ...SMOKE_SCRIPT,
+      name: 'playtest-clock-idle',
+      days: [{ day: 1, events: [], checkpoints: [] }],
+    })
+
+    const withEvents = replayCareerScript(withClockEvents, CONTEXT)
+    const withoutEvents = replayCareerScript(idle, CONTEXT)
+
+    expect(withEvents.finalState).toEqual(withoutEvents.finalState)
+    expect(withEvents.dayLogs).toEqual(withoutEvents.dayLogs)
   })
 
   it('throws when a script skips a day rather than silently reprocessing the wrong one', () => {

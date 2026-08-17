@@ -3,13 +3,17 @@ import {
   CARS,
   PARTS,
   PARTS_TAXONOMY,
+  type CarInstance,
   type GameState,
   type PartInstance,
   type ServiceJob,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
+import { emptyDayActions } from '../src/actions'
+import { advanceDay } from '../src/advanceDay'
 import { buildSimContext } from '../src/context'
 import { PARTS_EXPRESS_SURCHARGE_FRACTION, PARTS_STANDARD_DELIVERY_DAYS } from '../src/constants'
+import { createInitialGameState } from '../src/newGame'
 import {
   partIdOnStation,
   placeOnStationGateReason,
@@ -22,8 +26,14 @@ import {
   resolveTakeFromStation,
   stationHoldingPart,
 } from '../src/parts'
+import { resolvePipelineRemovePanelAction } from '../src/pipelineActions'
 import { makeCarOrigin, makeMarketOrigin } from '../src/provenance'
-import { buildCarInstance, testSceneStanding, testToolTiers } from './testFixtures'
+import {
+  buildCarInstance,
+  testSceneStanding,
+  testToolTiers,
+  zonePanelsAtGrade,
+} from './testFixtures'
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
 const CHEAPEST = [...PARTS].sort((a, b) => a.priceYen - b.priceYen)[0]!
@@ -452,5 +462,72 @@ describe('the two work stations: the bench on the workshop floor and the machine
     // And clears a station whose part has gone, whatever took it away.
     const gone = reconcileStations({ ...state, partInventory: [] })
     expect(gone.workbenchPartId).toBeNull()
+  })
+})
+
+describe('part-instance id collisions (Sprint 206 task A)', () => {
+  it('mints unique ids across all three sites the same day, even after a removal shrinks the array in between', () => {
+    // honda-city-e-aa is 'entry' tier; zonePanelsAtGrade seeds every zone
+    // present and clean, so its bonnet panel is there to harvest.
+    const harvestCar: CarInstance = buildCarInstance({
+      id: 'car-harvest',
+      modelId: 'honda-city-e-aa',
+      year: 1984,
+      mileageKm: 100_000,
+      zoneState: zonePanelsAtGrade('stock'),
+    })
+
+    let state = baseState({
+      ownedCars: [harvestCar],
+      serviceBayCarIds: [harvestCar.id],
+      partInventory: [],
+      bodyBayCarId: harvestCar.id,
+    })
+
+    // Two standard orders, both due today - resolvePartDeliveries mints two
+    // real instances in one call.
+    state = resolveBuyPart(state, CHEAPEST.id, CONTEXT, 'standard').state
+    state = resolveBuyPart(state, CHEAPEST.id, CONTEXT, 'standard').state
+    state = resolvePartDeliveries(state).state
+    expect(state.partInventory).toHaveLength(2)
+
+    // Scrap the first delivered instance - the exact "the array shrinks the
+    // same day" step that reissued a live id under the old
+    // `${day}-${partInventory.length}` scheme, since the next mint's index
+    // would land back on an instance still sitting in the array.
+    const toScrap = state.partInventory[0]!
+    state = {
+      ...state,
+      partInventory: [{ ...toScrap, band: 'scrap' }, state.partInventory[1]!],
+    }
+    state = resolveScrapPart(state, toScrap.id, CONTEXT).state
+    expect(state.partInventory).toHaveLength(1)
+
+    // Harvest a panel off the car - pipelineActions.ts's own mint site,
+    // right after the array shrank.
+    state = resolvePipelineRemovePanelAction(
+      state,
+      harvestCar.id,
+      { kind: 'pipeline-remove-panel', zoneId: 'bonnet' },
+      CONTEXT,
+      10,
+    ).state
+    expect(state.partInventory).toHaveLength(2)
+
+    // Buy one more, express - parts.ts's third mint site.
+    state = resolveBuyPart(state, CHEAPEST.id, CONTEXT, 'express').state
+    expect(state.partInventory).toHaveLength(3)
+
+    const ids = state.partInventory.map((p) => p.id)
+    expect(new Set(ids).size).toBe(ids.length)
+    expect(state.partInstanceCounter).toBe(4)
+  })
+
+  it('the counter survives an advanceDay day-boundary tick - unlike energySpentToday, which resets', () => {
+    const fresh = createInitialGameState(CONTEXT, 999)
+    const state = { ...fresh, partInstanceCounter: 7, energySpentToday: 3 }
+    const result = advanceDay(state, emptyDayActions(), state.seed + state.day, CONTEXT)
+    expect(result.state.partInstanceCounter).toBe(7)
+    expect(result.state.energySpentToday).toBe(0)
   })
 })

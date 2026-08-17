@@ -160,7 +160,8 @@
     "reputationReward": 38,
     "deliveredCopy": "It'll photograph beautifully. Come to {venue}; the book at the door will have your name where mine used to be.",
     "overdeliveredCopy": "I didn't even need the photograph. She sold herself the moment she rolled onto the lot.",
-    "unlocksAuctionTier": "premium"
+    "unlocksAuctionTier": "premium",
+    "unlocksSellingChannel": "tradeNetwork"
   },
   {
     "id": "low-and-loud",
@@ -249,7 +250,7 @@
     "id": "the-quiet-crate",
     "personaId": "kurogane",
     "title": "The quiet crate",
-    "requestCopy": "Most of what I am offered is a story with a car attached. Bring me the other thing. Mint in every panel, nothing swapped in, nothing dressed up as what it never was, and the papers saying exactly what the metal says. I read both.",
+    "requestCopy": "Most of what I am offered is a story with a car attached. Bring me the other thing. Mint in every panel, nothing switched in, nothing dressed up as what it never was, and the papers saying exactly what the metal says. I read both.",
     "gateReputationPoints": 1000,
     "requirements": [
       {
@@ -270,6 +271,7 @@
     "reputationReward": 75,
     "deliveredCopy": "The papers and the metal agree. That is rarer than it ought to be. Give them my name at the collector rooms; they will know it.",
     "overdeliveredCopy": "Not one part out of place. Not one number that disagrees with its own service book. I do not say that twice a year.",
-    "unlocksAuctionTier": "collector-network"
+    "unlocksAuctionTier": "collector-network",
+    "unlocksSellingChannel": "collectorNetwork"
   }
 ]

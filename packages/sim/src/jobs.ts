@@ -353,15 +353,10 @@ function completeReconditionJob(state: GameState, job: Job, context: SimContext)
   ) {
     return state
   }
-  // Reconditioning a harvested body panel is metal work, and metal work ruins
-  // paint: the captured zone paint state is stripped, so the panel goes back
-  // on bare and honestly owes a respray. An untouched panel keeps its
-  // `panelState` and its paint (see `PartInstanceSchema.panelState`).
-  return updateLoosePart(state, job.partInstanceId, (inst) => {
-    const next = { ...inst, band: targetBand }
-    delete next.panelState
-    return next
-  })
+  // A zone panel can no longer reach this job at all - `reconditionGateReason`
+  // refuses one outright (sprint208.md: "the bench is out of the body
+  // business"), so nothing here ever carries a `panelState` to worry about.
+  return updateLoosePart(state, job.partInstanceId, (inst) => ({ ...inst, band: targetBand }))
 }
 
 /**
@@ -1051,7 +1046,7 @@ function gradeRequirement(part: Part, context: SimContext): ToolRequirement | nu
  * The one capability gate on INSTALLING a part: the requirement that refuses
  * `part` onto `car` right now, or `null` when the shop can fit it. Every
  * install path runs this - the ordinary slot path (`installFitGate` below,
- * which bots call directly), the bench (`resolveSwapAssemblyMember` and the
+ * which bots call directly), the bench (`resolveFitAssemblyMember` and the
  * foreign-car half of `resolveRefitAssembly`, assemblies.ts) and the nine body
  * zones (`resolvePipelineInstallPanelAction`, stagedWork.ts) - so there is one
  * answer rather than one per path.
@@ -1426,6 +1421,13 @@ export type ReconditionGateReason =
   /** In the warehouse, but not on the bench. Storage holds parts and does no
    * work: carry it to the workshop floor first. */
   | 'not-on-workbench'
+  /** A zone-panel instance - the bench is out of the body business
+   * (sprint208.md): a harvested panel is fitted or sold, never
+   * bench-reconditioned. Structure is fixed on the car (beat, weld, fill),
+   * paint on the car (prep, prime, paint, polish) - both through the body
+   * shop's own pipeline, never the generic part path, which used to bypass
+   * them and silently delete the panel's captured paint state. */
+  | 'body-shop-work'
 
 /**
  * Why `partInstanceId` cannot be reconditioned right now, or `null` when
@@ -1434,13 +1436,24 @@ export type ReconditionGateReason =
  * (`reconditionQuote` below, which is null for a scrap, non-repairable or
  * already-good-enough part). The one predicate: the UI shows the same reason
  * before the click that `resolveReconditionLabor` enforces after it.
+ *
+ * A zone-panel instance refuses outright, on the bench or off it: the
+ * predicate `resolvePipelineInstallPanelAction`/`zonePanelPart` already use
+ * to know a catalogue `Part` addresses a zone (a real `zoneId` on the
+ * part) - the same fact, read once more here rather than a second test of
+ * "is this a panel."
  */
 export function reconditionGateReason(
   state: GameState,
   partInstanceId: string,
+  context: SimContext,
 ): ReconditionGateReason | null {
   if (!state.partInventory.some((p) => p.id === partInstanceId)) return 'not-found'
-  return state.workbenchPartId === partInstanceId ? null : 'not-on-workbench'
+  if (state.workbenchPartId !== partInstanceId) return 'not-on-workbench'
+  const instance = findLoosePart(state, partInstanceId)
+  const catalogPart = instance ? context.partsById[instance.partId] : undefined
+  if (catalogPart?.zoneId != null) return 'body-shop-work'
+  return null
 }
 
 interface ReconditionPlan {
@@ -1469,7 +1482,7 @@ function planReconditionPart(
   targetBand: ConditionBand,
   context: SimContext,
 ): ReconditionPlan | null {
-  if (reconditionGateReason(state, partInstanceId) !== null) return null
+  if (reconditionGateReason(state, partInstanceId, context) !== null) return null
   const instance = findLoosePart(state, partInstanceId)
   if (!instance) return null
   const catalogPart = context.partsById[instance.partId]

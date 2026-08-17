@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { LotDetail } from '../stores/gameStore'
-import { formatYenDelta } from '../utils/formatYen'
+import { formatYen, formatYenDelta } from '../utils/formatYen'
 
 /**
  * The free, public symptom disclosure for a listed car: the symptom line, its
@@ -90,6 +90,21 @@ const emit = defineEmits<{
           <span class="trail-result">{{ entry.resultLine }}</span>
         </li>
       </ul>
+
+      <!-- The verdict: elimination down to one candidate names the fault, the
+           part it lives in, and what fixing it costs - the figures are the
+           store's own `serviceJobCostBreakdown` read, never a second sum. -->
+      <p
+        v-if="symptom.verdict"
+        class="symptom-verdict"
+        :data-test="'verdict-' + symptom.symptomIndex"
+      >
+        Must be the {{ symptom.verdict.causeLabel }}, then.
+        <span class="verdict-fix"
+          >{{ symptom.verdict.partLabel }} - about {{ formatYen(symptom.verdict.costYen) }} and
+          {{ symptom.verdict.laborSlots }} labour to put right.</span
+        >
+      </p>
 
       <!-- The fork: only tests the routed tree currently offers and that
            haven't run yet - a locked test is simply absent, never a disabled
@@ -242,6 +257,21 @@ const emit = defineEmits<{
   color: var(--mg-text-dim);
   border-color: var(--mg-panel-edge);
   background: transparent;
+}
+
+/* The verdict: the one line that pays off the checklist - full-weight text,
+   not dimmed like the trail, since this is the answer rather than a step
+   along the way. */
+.symptom-verdict {
+  margin: var(--mg-space-2) 0 0;
+  font-size: var(--mg-fs-sm);
+  color: var(--mg-text);
+}
+
+.verdict-fix {
+  display: block;
+  margin-top: 2px;
+  color: var(--mg-yen);
 }
 
 /* The closed state: the tree has nothing further to offer - a quiet,

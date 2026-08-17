@@ -1,5 +1,23 @@
+import type { CarPartId } from '@midnight-garage/content'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+
+/**
+ * What the Warehouse drawer is currently picking FOR, when it was opened by a
+ * "Fit" control rather than by its own tab: the exact car slot (or benched
+ * assembly member) a selection should land in. `null` means the drawer is in
+ * plain browse mode. Lives here rather than on the car screen because the
+ * drawer is mounted once at the app root and the car screen's drop zones read
+ * the same context - one source of truth for "what are we fitting".
+ */
+export interface WarehouseFitContext {
+  carId: string
+  carPartId: CarPartId
+  /** Set when picking for a benched assembly member instead of an on-car
+   * slot - selection swaps into this container rather than staging an
+   * install. */
+  benchContainerId?: string
+}
 
 /**
  * Ephemeral session/view state that is never persisted (contrast the
@@ -44,9 +62,50 @@ export const useUiStore = defineStore('ui', () => {
     tutorialOverlayPos.value = pos
   }
 
+  /**
+   * The Warehouse drawer - the game's ONE inventory surface, a floating
+   * element mounted at the app root (`WarehouseDrawer.vue`). Open/closed is
+   * app-level view state exactly like the dev console; `warehouseFit` scopes
+   * the drawer to one slot when a "Fit" control opened it.
+   */
+  const warehouseOpen = ref(false)
+  const warehouseFit = ref<WarehouseFitContext | null>(null)
+
+  function openWarehouse(fit?: WarehouseFitContext): void {
+    warehouseFit.value = fit ?? null
+    warehouseOpen.value = true
+  }
+
+  function closeWarehouse(): void {
+    warehouseOpen.value = false
+    warehouseFit.value = null
+  }
+
+  /** The tab's own toggle - opening this way is always plain browse mode. */
+  function toggleWarehouse(): void {
+    if (warehouseOpen.value) {
+      closeWarehouse()
+    } else {
+      openWarehouse()
+    }
+  }
+
+  /** A navigation drops the fit scope (it pointed at a slot on the screen
+   * being left) but leaves the drawer itself as the player had it - it is a
+   * floating element, not part of any one screen. */
+  function clearWarehouseFit(): void {
+    warehouseFit.value = null
+  }
+
   return {
     devConsoleOpen,
     toggleDevConsole,
+    warehouseOpen,
+    warehouseFit,
+    openWarehouse,
+    closeWarehouse,
+    toggleWarehouse,
+    clearWarehouseFit,
     lastGameplayRoute,
     rememberGameplayRoute,
     tutorialOverlayPos,

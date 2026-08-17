@@ -5,6 +5,7 @@ import {
   FACILITIES,
   PARTS,
   PARTS_TAXONOMY,
+  SCRIPTED_SERVICE_JOB,
   SERVICE_JOB_CUSTOMER_NAMES,
   SERVICE_JOB_TYPES,
   type CarInstance,
@@ -62,6 +63,13 @@ const CONTEXT = buildSimContext(
   FACILITIES,
   SERVICE_JOB_CUSTOMER_NAMES,
 )
+
+/** A fresh, machine-less, unrestricted-reputation state - the default
+ * "generating shop" every offer-generation test below prices against unless
+ * it's specifically exercising tool-tier gating or reputation. Mirrors the
+ * old `generateDailyServiceJobOffers` defaults (`freshToolLevels()` +
+ * `'legend'`) now that both fold into the one `state` argument. */
+const FRESH_STATE: GameState = { ...createInitialGameState(CONTEXT, 1), reputationTier: 'legend' }
 
 /** Real templates from the content set, referenced by id so a future content
  * edit that changes their SHAPE (not just flavor text) fails these tests
@@ -129,7 +137,7 @@ function stateWith(job: ServiceJob, overrides: Partial<GameState> = {}): GameSta
 
 describe('generateDailyServiceJobOffers', () => {
   it('offers unique ids, a real car, no deadline yet, and a positive derived payout', () => {
-    const result = generateDailyServiceJobOffers(CONTEXT, 7, createRng(1))
+    const result = generateDailyServiceJobOffers(CONTEXT, 7, createRng(1), FRESH_STATE)
     expect(result.length).toBeGreaterThan(0) // sanity: this seed rolls at least one offer
     expect(new Set(result.map((o) => o.id)).size).toBe(result.length)
     // Each offer's lifetime is rolled per offer from
@@ -148,7 +156,12 @@ describe('generateDailyServiceJobOffers', () => {
     const [minLife, maxLife] = CONTEXT.economy.serviceJobs.offerLifetimeDaysRange
     const lifetimes = new Set<number>()
     for (let day = 1; day < 200; day++) {
-      for (const offer of generateDailyServiceJobOffers(CONTEXT, day, createRng(day * 31 + 1))) {
+      for (const offer of generateDailyServiceJobOffers(
+        CONTEXT,
+        day,
+        createRng(day * 31 + 1),
+        FRESH_STATE,
+      )) {
         const lifetime = offer.expiresOnDay - day
         expect(lifetime).toBeGreaterThanOrEqual(minLife)
         expect(lifetime).toBeLessThanOrEqual(maxLife)
@@ -162,7 +175,7 @@ describe('generateDailyServiceJobOffers', () => {
   it('every offer composes a real template + flavor line + customer name + its own task list', () => {
     const seen: ServiceJob[] = []
     for (let day = 1; day < 40; day++) {
-      seen.push(...generateDailyServiceJobOffers(CONTEXT, day, createRng(day)))
+      seen.push(...generateDailyServiceJobOffers(CONTEXT, day, createRng(day), FRESH_STATE))
     }
     expect(seen.length).toBeGreaterThan(0)
     for (const offer of seen) {
@@ -186,7 +199,7 @@ describe('generateDailyServiceJobOffers', () => {
       FACILITIES,
       SERVICE_JOB_CUSTOMER_NAMES,
     )
-    expect(generateDailyServiceJobOffers(noTemplates, 7, createRng(1))).toEqual([])
+    expect(generateDailyServiceJobOffers(noTemplates, 7, createRng(1), FRESH_STATE)).toEqual([])
 
     const noNames = buildSimContext(
       CARS,
@@ -197,7 +210,7 @@ describe('generateDailyServiceJobOffers', () => {
       FACILITIES,
       [],
     )
-    expect(generateDailyServiceJobOffers(noNames, 7, createRng(1))).toEqual([])
+    expect(generateDailyServiceJobOffers(noNames, 7, createRng(1), FRESH_STATE)).toEqual([])
 
     const noModels = buildSimContext(
       [],
@@ -208,7 +221,7 @@ describe('generateDailyServiceJobOffers', () => {
       FACILITIES,
       SERVICE_JOB_CUSTOMER_NAMES,
     )
-    expect(generateDailyServiceJobOffers(noModels, 7, createRng(1))).toEqual([])
+    expect(generateDailyServiceJobOffers(noModels, 7, createRng(1), FRESH_STATE)).toEqual([])
   })
 
   // 4000 simulated days, which is what holds the observed shares inside 0.05
@@ -218,7 +231,7 @@ describe('generateDailyServiceJobOffers', () => {
     const counts = [0, 0, 0, 0, 0]
     const days = 4000
     for (let day = 1; day <= days; day++) {
-      const result = generateDailyServiceJobOffers(CONTEXT, day, createRng(day))
+      const result = generateDailyServiceJobOffers(CONTEXT, day, createRng(day), FRESH_STATE)
       counts[Math.min(result.length, 4)]! += 1
     }
     const weights = CONTEXT.economy.serviceJobs.dailyOfferCountWeights
@@ -235,7 +248,7 @@ describe('generateDailyServiceJobOffers', () => {
     function maxCountOverSeeds(day: number): number {
       let max = 0
       for (let seed = 1; seed <= SEEDS; seed++) {
-        const result = generateDailyServiceJobOffers(CONTEXT, day, createRng(seed))
+        const result = generateDailyServiceJobOffers(CONTEXT, day, createRng(seed), FRESH_STATE)
         max = Math.max(max, result.length)
       }
       return max
@@ -261,16 +274,14 @@ describe('generateDailyServiceJobOffers', () => {
 
 describe('service-job template tier gating (Sprint 29 decision 2)', () => {
   it('a brand-new (unknown-reputation) game only ever offers tier-1 templates', () => {
+    const state: GameState = {
+      ...FRESH_STATE,
+      toolTiers: testToolTiers(),
+      reputationTier: 'unknown',
+    }
     let total = 0
     for (let day = 1; day <= 400; day++) {
-      const result = generateDailyServiceJobOffers(
-        CONTEXT,
-        day,
-        createRng(day),
-        Infinity,
-        testToolTiers(),
-        'unknown',
-      )
+      const result = generateDailyServiceJobOffers(CONTEXT, day, createRng(day), state)
       total += result.length
       for (const offer of result) {
         const template = SERVICE_JOB_TYPES.find((t) => t.id === offer.typeId)!
@@ -281,16 +292,10 @@ describe('service-job template tier gating (Sprint 29 decision 2)', () => {
   })
 
   it('tier-2 templates reappear once reputation reaches local, tier 3 stays gated', () => {
+    const state: GameState = { ...FRESH_STATE, toolTiers: testToolTiers(), reputationTier: 'local' }
     let sawTier2 = false
     for (let day = 1; day <= 400; day++) {
-      const result = generateDailyServiceJobOffers(
-        CONTEXT,
-        day,
-        createRng(day),
-        Infinity,
-        testToolTiers(),
-        'local',
-      )
+      const result = generateDailyServiceJobOffers(CONTEXT, day, createRng(day), state)
       for (const offer of result) {
         const template = SERVICE_JOB_TYPES.find((t) => t.id === offer.typeId)!
         expect(template.tier).toBeLessThanOrEqual(2)
@@ -301,15 +306,9 @@ describe('service-job template tier gating (Sprint 29 decision 2)', () => {
   })
 
   it('a turbo/FI install (tier 4) can never be a first job: never appears before respected', () => {
+    const state: GameState = { ...FRESH_STATE, toolTiers: testToolTiers(), reputationTier: 'known' }
     for (let day = 1; day <= 400; day++) {
-      const result = generateDailyServiceJobOffers(
-        CONTEXT,
-        day,
-        createRng(day),
-        Infinity,
-        testToolTiers(),
-        'known',
-      )
+      const result = generateDailyServiceJobOffers(CONTEXT, day, createRng(day), state)
       for (const offer of result) {
         const template = SERVICE_JOB_TYPES.find((t) => t.id === offer.typeId)!
         expect(template.tier).toBeLessThanOrEqual(3)
@@ -318,26 +317,24 @@ describe('service-job template tier gating (Sprint 29 decision 2)', () => {
   })
 
   it('tier-4 templates reappear once reputation reaches respected', () => {
+    const state: GameState = {
+      ...FRESH_STATE,
+      toolTiers: testToolTiers(),
+      reputationTier: 'respected',
+    }
     let sawTier4 = false
     for (let day = 1; day <= 400 && !sawTier4; day++) {
-      const result = generateDailyServiceJobOffers(
-        CONTEXT,
-        day,
-        createRng(day),
-        Infinity,
-        testToolTiers(),
-        'respected',
-      )
+      const result = generateDailyServiceJobOffers(CONTEXT, day, createRng(day), state)
       if (result.some((o) => SERVICE_JOB_TYPES.find((t) => t.id === o.typeId)!.tier === 4))
         sawTier4 = true
     }
     expect(sawTier4).toBe(true)
   })
 
-  it('defaults to unrestricted (legend) when the reputation param is omitted', () => {
+  it('an unrestricted (legend) reputationTier state offers everything up to tier 4', () => {
     let sawTier4 = false
     for (let day = 1; day <= 300 && !sawTier4; day++) {
-      const result = generateDailyServiceJobOffers(CONTEXT, day, createRng(day))
+      const result = generateDailyServiceJobOffers(CONTEXT, day, createRng(day), FRESH_STATE)
       if (result.some((o) => SERVICE_JOB_TYPES.find((t) => t.id === o.typeId)!.tier === 4))
         sawTier4 = true
     }
@@ -387,6 +384,11 @@ describe('the Sprint 36 offer rule, re-asserted against Sprint 37 real content',
     for (let seed = 1; seed <= 300; seed++) {
       const state = createInitialGameState(CONTEXT, seed)
       for (const offer of state.serviceJobOffers) {
+        // The stand owner's scripted job is permanent content on every
+        // single seed (sprint205.md), not a template competing for board
+        // space at random - it is not even in SERVICE_JOB_TYPES, so it is
+        // excluded from this template-fairness measurement on purpose.
+        if (offer.id === SCRIPTED_SERVICE_JOB.jobId) continue
         total += 1
         counts.set(offer.typeId, (counts.get(offer.typeId) ?? 0) + 1)
       }
@@ -537,7 +539,13 @@ describe('serviceJobCostBreakdown / deriveServiceJobPayoutYen (Sprint 29 decisio
   it('a repair task on an already-mint part contributes nothing to cost or labor', () => {
     const car = buildCarInstance({ parts: mintCarParts() })
     const model = CARS[0]!
-    const breakdown = serviceJobCostBreakdown(singleRepairType.tasks, car, model, CONTEXT)
+    const breakdown = serviceJobCostBreakdown(
+      singleRepairType.tasks,
+      car,
+      model,
+      CONTEXT,
+      FRESH_STATE,
+    )
     expect(breakdown.taskCostYen).toBe(0)
     expect(breakdown.laborSlots).toBe(0)
   })
@@ -545,7 +553,13 @@ describe('serviceJobCostBreakdown / deriveServiceJobPayoutYen (Sprint 29 decisio
   it("a repair task charges banded-steps cost, derived from the installed instance's own catalog price (Sprint 44), proportional to how far the part is from target", () => {
     const car = buildCarInstance({ parts: mintCarParts({ bodywork: 'poor' }) })
     const model = CARS[0]! // honda-city-e-aa
-    const breakdown = serviceJobCostBreakdown(singleRepairType.tasks, car, model, CONTEXT)
+    const breakdown = serviceJobCostBreakdown(
+      singleRepairType.tasks,
+      car,
+      model,
+      CONTEXT,
+      FRESH_STATE,
+    )
     const installedPartId = car.parts.bodywork.installed!.partId
     const priceYen = CONTEXT.partsById[installedPartId]!.priceYen
     const { repairStepFraction } = CONTEXT.economy.restoration
@@ -557,27 +571,40 @@ describe('serviceJobCostBreakdown / deriveServiceJobPayoutYen (Sprint 29 decisio
   it('a band-only task on a scrap part now prices a replacement (unrepairable, but no longer "already done")', () => {
     const car = buildCarInstance({ parts: mintCarParts({ bodywork: 'scrap' }) })
     const model = CARS[0]!
-    const breakdown = serviceJobCostBreakdown(singleRepairType.tasks, car, model, CONTEXT)
+    const breakdown = serviceJobCostBreakdown(
+      singleRepairType.tasks,
+      car,
+      model,
+      CONTEXT,
+      FRESH_STATE,
+    )
     expect(breakdown.taskCostYen).toBeGreaterThan(0)
-    // 'bodywork' is a SURFACE slot: installLaborSlotsFor is 0 for that depth
-    // class, so only the cash side changes here.
+    // 'bodywork' is a fixed body carrier (`removable: false`) of the SURFACE
+    // depth class: it never leaves the car, so there is no blocker/removal/
+    // refit chain to price, and `installLaborSlotsFor` is 0 for that depth
+    // class anyway - only the cash side changes here.
     expect(breakdown.laborSlots).toBe(0)
   })
 
   it('a band-only task on a missing (empty) slot now prices a replacement too - same treatment as scrap', () => {
     const car = buildCarInstance({ parts: mintCarParts({ bodywork: null }) })
     const model = CARS[0]!
-    const breakdown = serviceJobCostBreakdown(singleRepairType.tasks, car, model, CONTEXT)
+    const breakdown = serviceJobCostBreakdown(
+      singleRepairType.tasks,
+      car,
+      model,
+      CONTEXT,
+      FRESH_STATE,
+    )
     expect(breakdown.taskCostYen).toBeGreaterThan(0)
-    // 'bodywork' is a SURFACE slot: installLaborSlotsFor is 0 for that depth
-    // class, so only the cash side changes here.
+    // Same fixed-carrier reasoning as the scrap case above.
     expect(breakdown.laborSlots).toBe(0)
   })
 
   it('an install task prices off the median fitting-part cost at (or above) minGrade', () => {
     const car = buildCarInstance({ parts: mintCarParts() })
     const model = CARS[0]!
-    const breakdown = serviceJobCostBreakdown(installType.tasks, car, model, CONTEXT)
+    const breakdown = serviceJobCostBreakdown(installType.tasks, car, model, CONTEXT, FRESH_STATE)
     expect(breakdown.taskCostYen).toBeGreaterThan(0)
     expect(breakdown.laborSlots).toBeGreaterThan(0)
   })
@@ -585,8 +612,22 @@ describe('serviceJobCostBreakdown / deriveServiceJobPayoutYen (Sprint 29 decisio
   it('a higher margin roll yields a strictly higher payout for the same tasks/car', () => {
     const car = buildCarInstance({ parts: mintCarParts({ bodywork: 'poor' }) })
     const model = CARS[0]!
-    const low = deriveServiceJobPayoutYen(singleRepairType.tasks, car, model, CONTEXT, 1.2)
-    const high = deriveServiceJobPayoutYen(singleRepairType.tasks, car, model, CONTEXT, 1.45)
+    const low = deriveServiceJobPayoutYen(
+      singleRepairType.tasks,
+      car,
+      model,
+      CONTEXT,
+      FRESH_STATE,
+      1.2,
+    )
+    const high = deriveServiceJobPayoutYen(
+      singleRepairType.tasks,
+      car,
+      model,
+      CONTEXT,
+      FRESH_STATE,
+      1.45,
+    )
     expect(high).toBeGreaterThan(low)
   })
 })
@@ -878,8 +919,10 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
     // the customer's car -> pull it back off -> hand the job back.
     it("a part the player bought and fitted to a customer's car survives close-out - it was never the customer's", () => {
       const PLAYER_BOUGHT = 'pi-player-bought-ecu'
+      // springs and rims are dampers' own blockers - vacated too, so the
+      // removal below is unblocked.
       const job = activeJob(twoRepairType, {
-        parts: mintCarParts({ dampers: 'mint', springs: 'mint' }),
+        parts: mintCarParts({ dampers: 'mint', springs: null, rims: null }),
       })
       // The player has since fitted a part of their own on top of whatever
       // the customer arrived with.
@@ -1180,18 +1223,10 @@ describe('the signature gate: requiresOperationId only, offer generation and acc
   }
 
   // race-prep-job: requiresOperationId race-prep (dampers -> suspension line),
-  // every task minToolTier 2 or 3 - every line at level 3 clears both the
-  // task-tool gate and the operation's own gate at once.
-  const READY_LEVELS = testToolLevels({
-    engine: 3,
-    drivetrain: 3,
-    suspension: 3,
-    wheels: 3,
-    body: 3,
-    interior: 3,
-  })
-  /** Every rung at 2 and every shop owned - the `GameState` twin of
-   * `READY_LEVELS` above. */
+  // every task minToolTier 2 or 3 - every rung at 2 with every shop owned
+  // clears both the task-tool gate and the operation's own gate at once
+  // (owning the shop lifts every line it covers to level 3 regardless of
+  // its own rung, `toolLevelsFor`).
   const READY_TIERS = testToolTiers({
     engine: 2,
     drivetrain: 2,
@@ -1205,27 +1240,26 @@ describe('the signature gate: requiresOperationId only, offer generation and acc
   it("is never offered until the operation's own tool gate is met, and is offered once it is - scene standing never enters it", () => {
     const context = singleSignatureContext('race-prep-job')
     // The operation answers to the suspension line; every other line is
-    // already at 3, so this isolates the one line that gates it.
-    const shortOfTheShop = { ...READY_LEVELS, suspension: 2 as const }
+    // already at the shop, so this isolates the one line that gates it.
+    const shortOfTheShopState: GameState = {
+      ...createInitialGameState(context, 1),
+      reputationTier: 'legend',
+      toolTiers: READY_TIERS,
+      toolShopsOwned: ALL_SHOPS.filter(
+        (id: string) => !testToolShopsOwned('suspension').includes(id),
+      ),
+    }
+    const readyState: GameState = {
+      ...createInitialGameState(context, 1),
+      reputationTier: 'legend',
+      toolTiers: READY_TIERS,
+      toolShopsOwned: ALL_SHOPS,
+    }
     let sawOfferAbove = false
     for (let day = 1; day <= 100; day++) {
-      const below = generateDailyServiceJobOffers(
-        context,
-        day,
-        createRng(day),
-        Infinity,
-        shortOfTheShop,
-        'legend',
-      )
+      const below = generateDailyServiceJobOffers(context, day, createRng(day), shortOfTheShopState)
       expect(below).toEqual([])
-      const above = generateDailyServiceJobOffers(
-        context,
-        day,
-        createRng(day),
-        Infinity,
-        READY_LEVELS,
-        'legend',
-      )
+      const above = generateDailyServiceJobOffers(context, day, createRng(day), readyState)
       if (above.length > 0) sawOfferAbove = true
     }
     expect(sawOfferAbove).toBe(true)
@@ -1246,15 +1280,14 @@ describe('the signature gate: requiresOperationId only, offer generation and acc
       FACILITIES,
       SERVICE_JOB_CUSTOMER_NAMES,
     )
+    const state: GameState = {
+      ...createInitialGameState(context, 1),
+      reputationTier: 'legend',
+      toolTiers: READY_TIERS,
+      toolShopsOwned: ALL_SHOPS,
+    }
     for (let day = 1; day <= 30; day++) {
-      const offers = generateDailyServiceJobOffers(
-        context,
-        day,
-        createRng(day),
-        Infinity,
-        READY_LEVELS,
-        'legend',
-      )
+      const offers = generateDailyServiceJobOffers(context, day, createRng(day), state)
       expect(offers).toEqual([])
     }
   })
@@ -1298,14 +1331,9 @@ describe('the signature gate: requiresOperationId only, offer generation and acc
   it('a template naming no requiresOperationId is never signature-gated at all', () => {
     // small-bodywork-touchup carries no requiresOperationId - it must be
     // offerable to a garage with nothing but its day-one hand tools.
-    const offers = generateDailyServiceJobOffers(
-      singleSignatureContext('small-bodywork-touchup'),
-      7,
-      createRng(1),
-      Infinity,
-      testToolLevels(),
-      'legend',
-    )
+    const context = singleSignatureContext('small-bodywork-touchup')
+    const state: GameState = { ...createInitialGameState(context, 1), reputationTier: 'legend' }
+    const offers = generateDailyServiceJobOffers(context, 7, createRng(1), state)
     expect(offers.length).toBeGreaterThan(0)
   })
 })

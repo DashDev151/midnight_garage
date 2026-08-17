@@ -184,7 +184,9 @@ describe('close-out parity (Sprint 68 post-fix baseline, reimplemented over orig
     const customerCar: CarInstance = buildCarInstance({
       id: 'car-customer-1',
       modelId: model.id,
-      parts: { ...mintCarParts(), dampers: { installed: null } },
+      // springs and rims are dampers' own blockers - vacated too, so the
+      // slot can actually be installed into and pulled back off below.
+      parts: mintCarParts({ dampers: null, springs: null, rims: null }),
     })
     const job: ServiceJob = {
       id: 'svc-1',
@@ -266,9 +268,10 @@ describe('close-out parity (Sprint 68 post-fix baseline, reimplemented over orig
       // The customer's own dampers, born on this exact car - unlike the
       // shared fixture's generic default origin, this one must genuinely
       // trace to `customerCar.id` for the close-out reconciliation below to
-      // have anything real to key off. `dampers` is bolt-on with no
-      // blockers - a plain removal, unrelated to what this test is actually
-      // about (origin-based close-out reconciliation).
+      // have anything real to key off. springs and rims (dampers' own
+      // blockers) are vacated too, so the plain removal below is unblocked -
+      // unrelated to what this test is actually about (origin-based
+      // close-out reconciliation).
       parts: mintCarParts({
         dampers: {
           id: 'pi-customers-dampers',
@@ -276,6 +279,8 @@ describe('close-out parity (Sprint 68 post-fix baseline, reimplemented over orig
           band: 'worn',
           origin: carOrigin,
         },
+        springs: null,
+        rims: null,
       }),
     })
     const job: ServiceJob = {

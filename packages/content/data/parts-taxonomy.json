@@ -112,7 +112,7 @@
     "id": "forcedInduction",
     "group": "engine",
     "displayName": "Forced Induction",
-    "blockedBy": ["intake"],
+    "blockedBy": ["intake", "exhaust"],
     "statWeights": {
       "power": 3,
       "reliability": 1,
@@ -200,6 +200,7 @@
     "id": "dampers",
     "group": "suspension",
     "displayName": "Dampers",
+    "blockedBy": ["springs", "rims"],
     "machineGate": ["install", "repair"],
     "statWeights": {
       "power": 0,
@@ -215,6 +216,7 @@
     "id": "springs",
     "group": "suspension",
     "displayName": "Springs",
+    "blockedBy": ["rims"],
     "machineGate": ["install", "repair"],
     "statWeights": {
       "power": 0,
@@ -244,6 +246,7 @@
     "id": "steering",
     "group": "suspension",
     "displayName": "Steering",
+    "blockedBy": ["rims"],
     "statWeights": {
       "power": 0,
       "handling": 2,
@@ -326,7 +329,7 @@
     "displayName": "Bodywork",
     "depthClass": "surface",
     "removable": false,
-    "machineGate": ["install", "repair"],
+    "machineGate": ["repair"],
     "statWeights": {
       "power": 0,
       "style": 2,

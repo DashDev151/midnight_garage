@@ -2516,6 +2516,21 @@ export const EconomyConfigSchema = z.object({
       offerCountCapByDay: z
         .array(z.tuple([z.number().int().positive(), z.number().int().nonnegative()]))
         .min(1),
+      /**
+       * Felt behaviour: a deep job is a prize the player occasionally gets
+       * offered, not the median phone call - a fresh shop's board reads
+       * mostly as easy, familiar work, with the rare teardown standing out,
+       * and it pays like the day it eats (`serviceJobCostBreakdown` prices
+       * its whole real chain, not just the repair climb). Geometric
+       * per-depth-level decay (`templateOfferWeight`, serviceJobs.ts)
+       * applied to a template's own chain depth (`templateChainDepth` - the
+       * deepest single task's external-blocker count, an assembly member
+       * reading its assembly's own external blockers): 1 leaves every
+       * template equally likely (a uniform draw); below 1, each extra
+       * blocker a job's hardest task demands clearing shrinks its odds of
+       * being the one rolled.
+       */
+      deepTaskWeightDecay: z.number().positive().lte(1),
     })
     .refine((s) => s.marginMin <= s.marginMax, {
       message: 'serviceJobs.marginMin must be <= marginMax',

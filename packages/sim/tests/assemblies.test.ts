@@ -20,10 +20,10 @@ import {
   dissolveAssembliesForCar,
   externalBlockersFor,
   resolveBuildAssembly,
+  resolveFitAssemblyMember,
   resolveRefitAssembly,
   resolveRemoveAssembly,
   resolveRemoveAssemblyMember,
-  resolveSwapAssemblyMember,
 } from '../src/assemblies'
 import { buildSimContext } from '../src/context'
 import {
@@ -32,6 +32,7 @@ import {
   machineGateGroupFor,
   resolveReconditionLabor,
 } from '../src/jobs'
+import { createInitialGameState } from '../src/newGame'
 import { resolvePlaceOnStation, resolveTakeFromStation } from '../src/parts'
 import { makeCarOrigin, makeMarketOrigin } from '../src/provenance'
 import { deriveServiceJobPayoutYen, serviceJobCostBreakdown } from '../src/serviceJobs'
@@ -177,7 +178,7 @@ function benchRepairMember(
   const pulled = resolveRemoveAssemblyMember(state, containerId, memberSlot, CONTEXT)
   const onBench = resolvePlaceOnStation(pulled.state, 'workbench', partInstanceId)
   const repair = resolveReconditionLabor(onBench, partInstanceId, targetBand, Infinity, CONTEXT)
-  const back = resolveSwapAssemblyMember(
+  const back = resolveFitAssemblyMember(
     resolveTakeFromStation(repair.state, 'workbench'),
     containerId,
     memberSlot,
@@ -260,7 +261,11 @@ describe('the Sprint 79 contract cases, re-expressed at assembly level (Sprint 8
     const state = baseState({ ownedCars: [car], partInventory: [tyre], serviceBayCarIds: [car.id] })
     const off = resolveRemoveAssembly(state, car.id, 'wheelAssembly', CONTEXT)
     const container = off.state.assemblyInventory![0]!
-    const swap = resolveSwapAssemblyMember(off.state, container.id, 'tyres', tyre.id, CONTEXT)
+    // The old tyres came onto the bench occupying the slot - no swap: they
+    // come off into the bin before the new one can be fitted.
+    const pulled = resolveRemoveAssemblyMember(off.state, container.id, 'tyres', CONTEXT)
+    expect(pulled.ok).toBe(true)
+    const swap = resolveFitAssemblyMember(pulled.state, container.id, 'tyres', tyre.id, CONTEXT)
     expect(swap.ok).toBe(true)
     const on = resolveRefitAssembly(swap.state, container.id, CONTEXT)
     expect(on.ok).toBe(true)
@@ -285,7 +290,10 @@ describe('the Sprint 79 contract cases, re-expressed at assembly level (Sprint 8
     expect(repair.laborSlotsUsed).toBeGreaterThan(0)
     expect(findLoosePart(repair.state, originalRims.id)!.band).toBe('fine')
 
-    const swap = resolveSwapAssemblyMember(repair.state, container.id, 'tyres', tyre.id, CONTEXT)
+    // The old tyres still occupy the slot - take them off before fitting new.
+    const pulled = resolveRemoveAssemblyMember(repair.state, container.id, 'tyres', CONTEXT)
+    expect(pulled.ok).toBe(true)
+    const swap = resolveFitAssemblyMember(pulled.state, container.id, 'tyres', tyre.id, CONTEXT)
     const on = resolveRefitAssembly(swap.state, container.id, CONTEXT)
     expect(on.ok).toBe(true)
     // Repaired rims no longer match the worn baseline (bolt-on) + new tyre (bolt-on).
@@ -348,7 +356,11 @@ describe('worked example: the tyre change (binding total)', () => {
       })
       const off = resolveRemoveAssembly(state, car.id, 'wheelAssembly', CONTEXT)
       const container = off.state.assemblyInventory![0]!
-      const swap = resolveSwapAssemblyMember(off.state, container.id, 'tyres', tyre.id, CONTEXT)
+      // The old (scrap-worthy) tyres came onto the bench occupying the slot -
+      // free, ungated removal before the new one can be fitted (no swap).
+      const pulled = resolveRemoveAssemblyMember(off.state, container.id, 'tyres', CONTEXT)
+      expect(pulled.ok).toBe(true)
+      const swap = resolveFitAssemblyMember(pulled.state, container.id, 'tyres', tyre.id, CONTEXT)
       const on = resolveRefitAssembly(swap.state, container.id, CONTEXT)
 
       expect(swap.ok).toBe(true)
@@ -378,13 +390,19 @@ describe('worked example: the tyre change (binding total)', () => {
     })
     const off = resolveRemoveAssembly(ungated, car.id, 'wheelAssembly', CONTEXT)
     const container = off.state.assemblyInventory![0]!
-    const byHand = resolveSwapAssemblyMember(off.state, container.id, 'tyres', tyre.id, CONTEXT)
+    // The old tyres occupy the slot after removal - clear it before fitting
+    // (no swap); dismounting is free and ungated either way.
+    const pulled = resolveRemoveAssemblyMember(off.state, container.id, 'tyres', CONTEXT)
+    expect(pulled.ok).toBe(true)
+    const byHand = resolveFitAssemblyMember(pulled.state, container.id, 'tyres', tyre.id, CONTEXT)
     expect(byHand.ok).toBe(true)
     expect(byHand.state.assemblyInventory![0]!.members.tyres!.id).toBe(tyre.id)
-    expect(byHand.state.energySpentToday - off.state.energySpentToday).toBe(benchFit * multiplier)
+    expect(byHand.state.energySpentToday - pulled.state.energySpentToday).toBe(
+      benchFit * multiplier,
+    )
 
-    const hired = { ...off.state, machineHirePaidDayByGroup: { wheels: off.state.day } }
-    const swap = resolveSwapAssemblyMember(hired, container.id, 'tyres', tyre.id, CONTEXT)
+    const hired = { ...pulled.state, machineHirePaidDayByGroup: { wheels: pulled.state.day } }
+    const swap = resolveFitAssemblyMember(hired, container.id, 'tyres', tyre.id, CONTEXT)
     expect(swap.ok).toBe(true)
     expect(swap.state.energySpentToday - hired.energySpentToday).toBe(benchFit)
   })
@@ -573,7 +591,7 @@ describe('bench work, build-from-loose, and car-exit dissolve (Sprint 87)', () =
 })
 
 describe('the fitment law applies at the bench, not only on the car', () => {
-  it('resolveSwapAssemblyMember refuses a wrong-class part into a container pulled off a car, state unchanged', () => {
+  it('resolveFitAssemblyMember refuses a wrong-class part into a container pulled off a car, state unchanged', () => {
     const car = wheelsWornCar()
     const wrongTyre = wrongClassTyre('pi-wrong-swap')
     const state = baseState({
@@ -583,23 +601,54 @@ describe('the fitment law applies at the bench, not only on the car', () => {
     })
     const off = resolveRemoveAssembly(state, car.id, 'wheelAssembly', CONTEXT)
     const container = off.state.assemblyInventory![0]!
-    const swap = resolveSwapAssemblyMember(off.state, container.id, 'tyres', wrongTyre.id, CONTEXT)
+    // Empty the slot first, so this genuinely exercises the fitment check
+    // rather than the occupied-slot refusal.
+    const pulled = resolveRemoveAssemblyMember(off.state, container.id, 'tyres', CONTEXT)
+    expect(pulled.ok).toBe(true)
+    const swap = resolveFitAssemblyMember(
+      pulled.state,
+      container.id,
+      'tyres',
+      wrongTyre.id,
+      CONTEXT,
+    )
     expect(swap.ok).toBe(false)
-    expect(swap.state).toBe(off.state)
-    // The original tyre stays put; the wrong-class one stays in the bin.
-    expect(off.state.assemblyInventory![0]!.members.tyres!.id).toBe(originalTyres.id)
-    expect(off.state.partInventory.some((p) => p.id === wrongTyre.id)).toBe(true)
+    expect(swap.state).toBe(pulled.state)
+    // The slot stays empty; the wrong-class one stays in the bin.
+    expect(pulled.state.assemblyInventory![0]!.members.tyres).toBeNull()
+    expect(pulled.state.partInventory.some((p) => p.id === wrongTyre.id)).toBe(true)
   })
 
-  it('resolveSwapAssemblyMember still fits a right-class part into the same slot', () => {
+  it('resolveFitAssemblyMember still fits a right-class part into the same slot', () => {
     const car = wheelsWornCar()
     const tyre = newTyre('pi-right-swap')
     const state = baseState({ ownedCars: [car], partInventory: [tyre], serviceBayCarIds: [car.id] })
     const off = resolveRemoveAssembly(state, car.id, 'wheelAssembly', CONTEXT)
     const container = off.state.assemblyInventory![0]!
-    const swap = resolveSwapAssemblyMember(off.state, container.id, 'tyres', tyre.id, CONTEXT)
+    const pulled = resolveRemoveAssemblyMember(off.state, container.id, 'tyres', CONTEXT)
+    expect(pulled.ok).toBe(true)
+    const swap = resolveFitAssemblyMember(pulled.state, container.id, 'tyres', tyre.id, CONTEXT)
     expect(swap.ok).toBe(true)
     expect(swap.state.assemblyInventory![0]!.members.tyres!.id).toBe(tyre.id)
+  })
+
+  it('resolveFitAssemblyMember refuses outright into an occupied slot - no swap, state unchanged (Sprint 206 B1)', () => {
+    const car = wheelsWornCar()
+    const tyre = newTyre('pi-would-be-swap')
+    const state = baseState({ ownedCars: [car], partInventory: [tyre], serviceBayCarIds: [car.id] })
+    const off = resolveRemoveAssembly(state, car.id, 'wheelAssembly', CONTEXT)
+    const container = off.state.assemblyInventory![0]!
+    // The tyres slot still carries its original member (removal, not a
+    // swap, put the whole assembly on the bench) - fitting straight over it
+    // must refuse, exactly as `resolveRefitAssembly` refuses an occupied
+    // car-level slot.
+    expect(container.members.tyres!.id).toBe(originalTyres.id)
+    const fit = resolveFitAssemblyMember(off.state, container.id, 'tyres', tyre.id, CONTEXT)
+    expect(fit.ok).toBe(false)
+    expect(fit.state).toBe(off.state)
+    // The occupying member is still there; the new part never left the bin.
+    expect(off.state.assemblyInventory![0]!.members.tyres!.id).toBe(originalTyres.id)
+    expect(off.state.partInventory.some((p) => p.id === tyre.id)).toBe(true)
   })
 
   it('resolveRefitAssembly refuses a wrong-class member reaching a car via overrideCarId, even though the bench build never checked it', () => {
@@ -662,9 +711,13 @@ describe('the capability gate applies at the bench', () => {
     })
     const off = resolveRemoveAssembly(state, car.id, 'wheelAssembly', CONTEXT)
     const container = off.state.assemblyInventory![0]!
-    const swap = resolveSwapAssemblyMember(off.state, container.id, 'rims', rim.id, CONTEXT)
+    // Empty the slot first, so this genuinely exercises the capability gate
+    // rather than the occupied-slot refusal.
+    const pulled = resolveRemoveAssemblyMember(off.state, container.id, 'rims', CONTEXT)
+    expect(pulled.ok).toBe(true)
+    const swap = resolveFitAssemblyMember(pulled.state, container.id, 'rims', rim.id, CONTEXT)
     expect(swap.ok).toBe(false)
-    expect(swap.state).toBe(off.state)
+    expect(swap.state).toBe(pulled.state)
     expect(swap.log).toEqual([
       { type: 'job-blocked', jobId: `bench-${container.id}-rims`, reason: 'tool-tier' },
     ])
@@ -681,7 +734,9 @@ describe('the capability gate applies at the bench', () => {
     })
     const off = resolveRemoveAssembly(state, car.id, 'wheelAssembly', CONTEXT)
     const container = off.state.assemblyInventory![0]!
-    const swap = resolveSwapAssemblyMember(off.state, container.id, 'rims', rim.id, CONTEXT)
+    const pulled = resolveRemoveAssemblyMember(off.state, container.id, 'rims', CONTEXT)
+    expect(pulled.ok).toBe(true)
+    const swap = resolveFitAssemblyMember(pulled.state, container.id, 'rims', rim.id, CONTEXT)
     expect(swap.ok).toBe(true)
     expect(swap.state.assemblyInventory![0]!.members.rims!.id).toBe(rim.id)
   })
@@ -735,6 +790,7 @@ describe('a standard tyre/brake service job payout always covers its task cost',
 
   it('worst-margin payout clears the task cost, for every entry and everyday roster model', () => {
     const marginMin = CONTEXT.economy.serviceJobs.marginMin
+    const state = createInitialGameState(CONTEXT, 1)
     const entryEverydayModels = CARS.filter((m) => {
       const fitmentClass = fitmentClassForTier(m.tier)
       return fitmentClass === 'entry' || fitmentClass === 'everyday'
@@ -750,8 +806,15 @@ describe('a standard tyre/brake service job payout always covers its task cost',
       }
       for (const model of entryEverydayModels) {
         const car = buildCarInstance({ modelId: model.id, parts: mintCarParts(overrides) })
-        const payout = deriveServiceJobPayoutYen(template.tasks, car, model, CONTEXT, marginMin)
-        const cost = serviceJobCostBreakdown(template.tasks, car, model, CONTEXT).taskCostYen
+        const payout = deriveServiceJobPayoutYen(
+          template.tasks,
+          car,
+          model,
+          CONTEXT,
+          state,
+          marginMin,
+        )
+        const cost = serviceJobCostBreakdown(template.tasks, car, model, CONTEXT, state).taskCostYen
         if (payout <= cost) {
           failures.push(`${id} x ${model.id}: payout ${payout} <= task cost ${cost}`)
         }

@@ -100,6 +100,7 @@ const JOB_BLOCKED_REASON_COPY: Record<JobBlockedReason, string> = {
   'machine-line': 'the machinery for that line is neither owned nor hired today.',
   'derived-band': 'bodywork goes through the panel stages, not a straight repair.',
   'out-of-stock': 'the shelf is short of what that stage needs.',
+  'not-in-body-bay': 'the car has to be in the body bay before any of that work can start.',
   'beyond-repair': 'it is past saving. Fit a replacement instead.',
   'nothing-to-repair': 'nothing there was below the band you asked for.',
 }

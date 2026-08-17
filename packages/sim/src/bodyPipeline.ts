@@ -98,6 +98,33 @@ export function severityThresholdForBand(targetBand: ConditionBand): number {
   return idx < 0 ? 0 : idx
 }
 
+/**
+ * A uniform-severity zone-state map, every zone reading exactly
+ * `severityThresholdForBand(baseBand)` (surface/finish clamped to their own
+ * smaller ranges) and one factory `colour` - the shared "every zone reads
+ * one plain band" shape a hand-authored car builds from (a scripted auction
+ * lot, a scripted service job), since neither rolls per-zone variation the
+ * way generation does.
+ */
+export function uniformZoneStates(baseBand: ConditionBand, colour: string): ZoneStates {
+  const severity = severityThresholdForBand(baseBand)
+  const states = {} as Record<ZoneId, ZoneState>
+  for (const zoneId of METAL_ZONE_IDS) {
+    states[zoneId] = {
+      metal: severity,
+      surface: Math.min(severity, 2),
+      finish: Math.min(severity, 3),
+      panelMissing: false,
+      primed: false,
+      colour,
+    }
+  }
+  for (const zoneId of TRIM_ZONE_IDS) {
+    states[zoneId] = { finish: Math.min(severity, 3), panelMissing: false, primed: false, colour }
+  }
+  return states as ZoneStates
+}
+
 /** Whether this zone needs a fresh panel before any hand work on it can mean
  * anything: the panel is gone, or (metal zones only) its metal is past what
  * beating and welding can pull back. A trim zone never fails the second half
@@ -972,7 +999,6 @@ export interface PipelineStageRefusal {
   ok: false
   reason:
     | 'prereq'
-    | 'machine-line'
     | 'needs-panel'
     | 'wrong-colour'
     | 'metal-only'
@@ -989,9 +1015,11 @@ export interface PipelineStageRefusal {
 
 /** Options a stage's own gate reads - both express "the body line's daily
  * capability," at two different thresholds: `unlocked` (owned tier 2, or
- * hired today) gates weld and the better paint finish; `fullCapability`
- * (owned tier 3, or hired today - hire always grants the WHOLE line, not
- * just tier 2) gates the best polish floor. */
+ * hired today) gates the better paint finish (weld is priced at a rate
+ * through `machineLaborMultiplier` instead - `pipelineActions.ts` - never a
+ * wall, sprint208.md); `fullCapability` (owned tier 3, or hired today - hire
+ * always grants the WHOLE line, not just tier 2) gates the best polish
+ * floor. */
 export interface BodyLineCapability {
   unlocked: boolean
   fullCapability: boolean
@@ -1018,13 +1046,19 @@ function isMetalOnlyStage(stage: string): stage is MetalOnlyStageId {
  * `weld` now refuses below severity 3: a dent (1-2) is `beat`'s job, and
  * welding is for rot or a bend at the weldable maximum. That is the one rung
  * hand work can still pull back before a fresh panel becomes the only route
- * out, and it is what gives the body line's tier-2 machine a repair only it
- * can do rather than a merely cheaper way to fix a dent.
+ * out.
+ *
+ * Weld is never a wall (sprint208.md - the starting shop owns a cheap stick
+ * welder, so weld works day one): `capability` no longer gates it here at
+ * all, only the metal-severity prerequisite does. What the body line buys is
+ * SPEED, priced as a labour-rate multiplier by the caller
+ * (`pipelineActions.ts`'s `resolvePipelineStageAction`, `machineLaborMultiplier`
+ * against the `'body'` group), the same rate-not-wall shape every other
+ * machine gate in this codebase already uses.
  */
 export function planMetalPipelineStage(
   stage: MetalOnlyStageId,
   zone: MetalZoneState,
-  capability: BodyLineCapability,
 ): PipelineStageEffect | PipelineStageRefusal {
   if (zone.panelMissing) return { ok: false, reason: 'needs-panel' }
   switch (stage) {
@@ -1039,7 +1073,6 @@ export function planMetalPipelineStage(
     case 'weld':
       if (zone.metal > MAX_REPAIRABLE_METAL) return { ok: false, reason: 'needs-panel' }
       if (zone.metal < MAX_REPAIRABLE_METAL) return { ok: false, reason: 'prereq' }
-      if (!capability.unlocked) return { ok: false, reason: 'machine-line' }
       return { ok: true, zone: { ...zone, metal: 0 }, materialsCostYen: 0 }
     case 'fillAndSand':
       if (zone.metal !== 0 || zone.surface === 0) return { ok: false, reason: 'prereq' }
@@ -1115,7 +1148,7 @@ export function planPipelineStage(
 ): PipelineStageEffect | PipelineStageRefusal {
   if (isMetalOnlyStage(stage)) {
     if (!isMetalZoneState(zone)) return { ok: false, reason: 'metal-only' }
-    return planMetalPipelineStage(stage, zone, capability)
+    return planMetalPipelineStage(stage, zone)
   }
   return planSharedPipelineStage(stage, zone, capability)
 }
@@ -1279,12 +1312,12 @@ interface ZoneRepairRoute {
 function straightenMetal(zone: MetalZoneState, targetSeverity: number): MetalZoneState {
   let current = zone
   while (current.metal > targetSeverity) {
-    const beat = planMetalPipelineStage('beat', current, BILL_CAPABILITY)
+    const beat = planMetalPipelineStage('beat', current)
     if (beat.ok) {
       current = beat.zone as MetalZoneState
       continue
     }
-    const weld = planMetalPipelineStage('weld', current, BILL_CAPABILITY)
+    const weld = planMetalPipelineStage('weld', current)
     if (!weld.ok) break
     current = weld.zone as MetalZoneState
   }
@@ -1359,7 +1392,7 @@ function planMetalZoneRepair(zone: MetalZoneState, targetSeverity: number): Zone
   const surfaceAboveTarget = current.surface > targetSeverity
   if (current.surface > 0 && (needsRepaint || surfaceAboveTarget)) {
     current = straightenMetal(current, 0)
-    const fill = planMetalPipelineStage('fillAndSand', current, BILL_CAPABILITY)
+    const fill = planMetalPipelineStage('fillAndSand', current)
     if (fill.ok) {
       current = fill.zone as MetalZoneState
       fillerYen += fill.materialsCostYen

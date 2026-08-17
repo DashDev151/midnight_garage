@@ -5,6 +5,7 @@ import type {
   Facilities,
   GameState,
   ReputationTier,
+  SlotKind,
 } from '@midnight-garage/content'
 import { reputationAtLeast } from './reputation'
 import { bookCashMovements } from './financeLedger'
@@ -39,13 +40,16 @@ function withSlot(
 /**
  * The kind-keyed accessor pair every placement/move/occupancy function below
  * reads and writes through, instead of branching on `kind` itself - the one
- * place a `BayKind` maps onto its concrete `GameState` fields. A fourth kind
- * needs a new pair of `GameState` fields (unavoidable - each kind's array and
- * count are real, independently-sized, persisted state, not a
- * `Record<BayKind, ...>`) and one more `case` in each of these four
- * functions; nothing else in this file changes.
+ * place a `SlotKind` maps onto its concrete `GameState` fields. Typed on the
+ * wider `SlotKind` (`BayKind` plus `'body'`) rather than `BayKind` because the
+ * move machinery below addresses the body bay too; `bodyBayCarId` is a bare
+ * scalar rather than an array (one bay, never purchasable), so its case reads
+ * as a synthetic one-element array/fixed count-of-1 rather than a real stored
+ * array - every other kind still adds a new pair of real `GameState` fields
+ * and one more `case` in each of these four functions; nothing else in this
+ * file changes.
  */
-function carIdsFor(state: GameState, kind: BayKind): readonly (string | null)[] {
+function carIdsFor(state: GameState, kind: SlotKind): readonly (string | null)[] {
   switch (kind) {
     case 'service':
       return state.serviceBayCarIds
@@ -53,12 +57,14 @@ function carIdsFor(state: GameState, kind: BayKind): readonly (string | null)[] 
       return state.parkingCarIds
     case 'forecourt':
       return state.forecourtCarIds
+    case 'body':
+      return [state.bodyBayCarId ?? null]
   }
 }
 
 /** The write half of `carIdsFor` - a copy of `state` with `kind`'s slot
  * array replaced. */
-function withCarIdsFor(state: GameState, kind: BayKind, arr: (string | null)[]): GameState {
+function withCarIdsFor(state: GameState, kind: SlotKind, arr: (string | null)[]): GameState {
   switch (kind) {
     case 'service':
       return { ...state, serviceBayCarIds: arr }
@@ -66,11 +72,14 @@ function withCarIdsFor(state: GameState, kind: BayKind, arr: (string | null)[]):
       return { ...state, parkingCarIds: arr }
     case 'forecourt':
       return { ...state, forecourtCarIds: arr }
+    case 'body':
+      return { ...state, bodyBayCarId: arr[0] ?? null }
   }
 }
 
-/** The owned bay count for a bay kind. */
-function bayCountFor(state: GameState, kind: BayKind): number {
+/** The owned bay count for a bay kind - the body bay's is a fixed 1, never
+ * purchasable (`bodyBayCarId` carries no count of its own to read). */
+function bayCountFor(state: GameState, kind: SlotKind): number {
   switch (kind) {
     case 'service':
       return state.serviceBayCount
@@ -78,12 +87,16 @@ function bayCountFor(state: GameState, kind: BayKind): number {
       return state.parkingBayCount
     case 'forecourt':
       return state.forecourtBayCount
+    case 'body':
+      return 1
   }
 }
 
 /** The write half of `bayCountFor` - a copy of `state` with `kind`'s owned
- * count replaced. */
-function withBayCountFor(state: GameState, kind: BayKind, count: number): GameState {
+ * count replaced. The body bay's count is fixed and never purchased, so its
+ * case is a no-op - kept only so this switch stays exhaustive over
+ * `SlotKind`. */
+function withBayCountFor(state: GameState, kind: SlotKind, count: number): GameState {
   switch (kind) {
     case 'service':
       return { ...state, serviceBayCount: count }
@@ -91,6 +104,8 @@ function withBayCountFor(state: GameState, kind: BayKind, count: number): GameSt
       return { ...state, parkingBayCount: count }
     case 'forecourt':
       return { ...state, forecourtBayCount: count }
+    case 'body':
+      return state
   }
 }
 
@@ -173,6 +188,13 @@ export function hasGraceSpace(state: GameState): boolean {
   return state.graceParkingCarId === null
 }
 
+/** Whether `carInstanceId` is the car currently occupying the body bay - the
+ * gate every zone/pipeline action reads (sprint208.md), and the one place
+ * `bodyBayCarId` is compared rather than read directly. */
+export function carInBodyBay(state: GameState, carInstanceId: string): boolean {
+  return (state.bodyBayCarId ?? null) === carInstanceId
+}
+
 /**
  * The real acquisition gate: true whenever there is ANYWHERE for a new car
  * to go - real capacity first, the grace slot as the last resort. Only
@@ -184,17 +206,19 @@ export function hasAcquisitionSpace(state: GameState): boolean {
   return hasOwnedShopSpace(state) || hasGraceSpace(state)
 }
 
-/** Every bay kind whose slot array can hold a car - the order
+/** Every slot kind whose array can hold a car - the order
  * `releaseCarFromShop` searches in. Order doesn't affect correctness (a car
  * only ever sits in one place, by the placement invariant sprint148.md
- * exists to protect), only which lookup runs first. */
-const ALL_BAY_KINDS: readonly BayKind[] = ['service', 'parking', 'forecourt']
+ * exists to protect), only which lookup runs first. Includes `'body'` so a
+ * car sold, scrapped or otherwise leaving the shop while mid-bodywork frees
+ * the bay rather than haunting it with a stale id. */
+const ALL_BAY_KINDS: readonly SlotKind[] = ['service', 'parking', 'forecourt', 'body']
 
 /**
  * Clears a car's slot - wherever it currently sits, service, parking,
- * forecourt, or the grace overflow slot - called whenever a car leaves the
- * shop entirely (sold, scrapped, or a service job resolved) so the freed
- * slot is immediately reusable, not haunted by a stale id.
+ * forecourt, the body bay, or the grace overflow slot - called whenever a
+ * car leaves the shop entirely (sold, scrapped, or a service job resolved)
+ * so the freed slot is immediately reusable, not haunted by a stale id.
  */
 export function releaseCarFromShop(state: GameState, carInstanceId: string): GameState {
   for (const kind of ALL_BAY_KINDS) {
@@ -349,16 +373,16 @@ export interface MoveResult {
   changed: boolean
 }
 
-/** The bay kinds a car can be found in by `locate`, and can be dragged/
- * dropped into by `moveCarToSlot`/`moveCar`/`swapCars` - real storage only.
- * The forecourt is deliberately excluded: a listed car is never a manual
- * move source (it can only leave via `resolveSetForSale`, sprint148.md) and
- * `moveCarToSlot` below refuses the forecourt as a destination for the same
- * reason. */
-const REAL_BAY_KINDS: readonly BayKind[] = ['service', 'parking']
+/** The slot kinds a car can be found in by `locate`, and can be dragged/
+ * dropped into by `moveCarToSlot`/`moveCar`/`swapCars` - real storage plus
+ * the body bay. The forecourt is deliberately excluded: a listed car is
+ * never a manual move source (it can only leave via `resolveSetForSale`,
+ * sprint148.md) and `moveCarToSlot` below refuses the forecourt as a
+ * destination for the same reason. */
+const REAL_BAY_KINDS: readonly SlotKind[] = ['service', 'parking', 'body']
 
 /** Which section (if any) currently holds this car, and at what index. */
-function locate(state: GameState, carInstanceId: string): { from: BayKind; index: number } | null {
+function locate(state: GameState, carInstanceId: string): { from: SlotKind; index: number } | null {
   for (const kind of REAL_BAY_KINDS) {
     const index = carIdsFor(state, kind).indexOf(carInstanceId)
     if (index !== -1) return { from: kind, index }
@@ -380,6 +404,11 @@ function locate(state: GameState, carInstanceId: string): { from: BayKind; index
  * never a hand move. `locate` above also never resolves a `source` sitting
  * on the forecourt, so a listed car cannot be dragged AWAY from it either.
  *
+ * `to === 'body'` is the one-slot body bay (sprint208.md): capacity 1, so
+ * `slotIndex` is always 0. Moving a car in frees whatever real slot it held;
+ * moving it back out to parking or service follows this same cross-section
+ * path, no special case either direction.
+ *
  * A move's labour is `energy.actionPoints.moveCar` (0 in shipped content,
  * so moves are free today): when `economy` is passed and the figure is
  * above zero, the move gates on `laborAvailable` and spends into
@@ -389,7 +418,7 @@ function locate(state: GameState, carInstanceId: string): { from: BayKind; index
 export function moveCarToSlot(
   state: GameState,
   carInstanceId: string,
-  to: BayKind,
+  to: SlotKind,
   slotIndex: number,
   economy?: EconomyConfig,
   laborAvailable: number = Infinity,
@@ -445,7 +474,7 @@ export function moveCarToSlot(
 export function moveCar(
   state: GameState,
   carInstanceId: string,
-  to: BayKind,
+  to: SlotKind,
   economy?: EconomyConfig,
   laborAvailable: number = Infinity,
 ): MoveResult {

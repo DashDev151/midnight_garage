@@ -1,10 +1,11 @@
 import type { DayLog, DayLogEntry, GameState, Job } from '@midnight-garage/content'
 import type { DayActions } from './actions'
+import { resolveRemoveAssembly } from './assemblies'
 import { resolveBuyoutInstant } from './bidding'
 import { currentGameYear, isEndOfWeek } from './calendar'
 import { generateDailyAuctionArrivals } from './catalogs'
 import type { SimContext } from './context'
-import { applyToolUpgrades, rollMachineListings, toolLevelsFor } from './toolLines'
+import { applyToolUpgrades, rollMachineListings } from './toolLines'
 import { applyWeeklyRentAndWages } from './finances'
 import { applyBayPurchases, applyMoves, resolveGraceParking } from './facilities'
 import { bookCashMovements } from './financeLedger'
@@ -23,6 +24,7 @@ import { advanceStoryMissions } from './missions'
 import { resolveBuyPart, resolvePartDeliveries, resolveScrapPart } from './parts'
 import { createRng } from './rng'
 import { advanceSceneCommissions } from './sceneCommissions'
+import { ensureScriptedServiceJob } from './scriptedServiceJob'
 import { computeContractIncomeYen } from './serviceBay'
 import { commitPendingStaffAssignments, refreshStaffAds } from './staff'
 import { ensureTutorialLot, radialOffersGated } from './tutorial'
@@ -96,7 +98,24 @@ export function advanceDay(
   next = moves.state
   log.push(...moves.log)
 
-  // 0b. Bots' queued part removals - the player removes instantly via
+  // 0b. Bots' queued assembly removals - the player pulls a whole assembly
+  // instantly via resolveRemoveAssembly directly from the store. Runs before
+  // the plain part removals just below so a blocker slot inside the
+  // assembly (rims, say) is already vacated the same tick a queued plain
+  // removal or job creation needs it clear.
+  for (const { carInstanceId, assemblyId } of queuedActions.removeAssemblies) {
+    const result = resolveRemoveAssembly(
+      next,
+      carInstanceId,
+      assemblyId,
+      context,
+      Math.max(0, energyMax(next, context.economy) - next.energySpentToday),
+    )
+    next = result.state
+    log.push(...result.log)
+  }
+
+  // 0c. Bots' queued part removals - the player removes instantly via
   // resolveRemovePart directly from the store (the Remove button that gates
   // Replace behind an empty slot). Runs before job creation so a slot
   // freed today can be targeted by a createJobs spec the very same tick,
@@ -333,6 +352,14 @@ export function advanceDay(
   // career (`tutorialStatus` absent).
   next = ensureTutorialLot(next, context, next.day + 1)
 
+  // 7-stand. Keeps the stand owner's scripted service job on the board while
+  // its unlock is still unclaimed - re-injected here (a no-op unless it
+  // resolved this tick and the unlock is still unclaimed) for the day about
+  // to begin, `next.day + 1`, matching the tutorial-lot convention just
+  // above. Unlike the tutorial lot, this runs for every career, not only a
+  // guided one.
+  next = ensureScriptedServiceJob(next, context, next.day + 1)
+
   // 7a. Daily service-job offer generation - a bell-curve draw (0-4,
   // economy.json's `serviceJobs.dailyOfferCountWeights`) every day. Uses the
   // same `rng` stream as everything else this day, drawn sequentially.
@@ -348,9 +375,8 @@ export function advanceDay(
       context,
       next.day + 1,
       rng,
+      next,
       currentGameYear(next.day + 1, context.economy),
-      toolLevelsFor(next, context),
-      next.reputationTier,
     )
     if (freshServiceJobOffers.length > 0) {
       next = {

@@ -34,6 +34,7 @@ import {
   resolveRemovePart,
 } from '../src/jobs'
 import { planGroupRepair } from '../src/bands'
+import { zonePanelPart } from '../src/bodyPipeline'
 import { buildSimContext } from '../src/context'
 import { resolvePlaceOnStation } from '../src/parts'
 import { makeCarOrigin, makeMarketOrigin } from '../src/provenance'
@@ -68,6 +69,19 @@ const car: CarInstance = buildCarInstance({
     dampers: { installed: null },
   },
 })
+
+/** `carInstance` with `springs` and `rims` (dampers' own blockers) vacated
+ * too, so a test can install onto or pull from the dampers slot directly -
+ * mirrors the intake+exhaust clearing forcedInduction's own tests below use
+ * for the same reason. `rims` stays occupied on the plain `car` fixture
+ * itself (a `resolveRemovePart` test elsewhere depends on that), so this is
+ * always an opt-in clone, never a mutation of the shared fixture. */
+function withDampersUnblocked(carInstance: CarInstance): CarInstance {
+  return {
+    ...carInstance,
+    parts: { ...carInstance.parts, springs: { installed: null }, rims: { installed: null } },
+  }
+}
 
 /** Mirrors the repair-cost knob `repairJobGate` resolves internally, so this
  * file's own `planGroupRepair` calls predict the exact same charge. */
@@ -589,7 +603,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
     })
 
     it('install-part job creation charges nothing here (the part itself is bought separately)', () => {
-      const state = baseState()
+      const state = baseState({ ownedCars: [withDampersUnblocked(car)] })
       const result = findOrCreateJob(
         state,
         {
@@ -646,9 +660,15 @@ describe('findOrCreateJob (Sprint 11)', () => {
     it("refuses converting a factory-NA car to forced induction below engine tier 3 (reason 'tool-tier'), allows it at tier 3", () => {
       const naCar: CarInstance = {
         ...car,
-        // intake is emptied too, so this isolates the tool-tier gate rather
-        // than tripping the blockedBy rule instead.
-        parts: { ...car.parts, forcedInduction: { installed: null }, intake: { installed: null } },
+        // intake and exhaust are emptied too (forcedInduction's own
+        // blockers), so this isolates the tool-tier gate rather than
+        // tripping the blockedBy rule instead.
+        parts: {
+          ...car.parts,
+          forcedInduction: { installed: null },
+          intake: { installed: null },
+          exhaust: { installed: null },
+        },
       }
       // The turbo kit must be the entry-class SKU or the fitment check
       // refuses it first.
@@ -770,22 +790,24 @@ describe('findOrCreateJob (Sprint 11)', () => {
     })
 
     it("refuses installing a customer-owned tagged part onto a DIFFERENT car, reason 'not-your-part' (the close-out escape TODO.md flagged), but allows it back onto the owning customer's own car", () => {
-      const customerCar: CarInstance = buildCarInstance({
-        id: 'car-customer-01',
-        modelId: 'honda-city-e-aa',
-        year: 1984,
-        mileageKm: 100_000,
-        parts: {
-          ...groupCarParts({
-            engine: 'worn',
-            drivetrain: 'worn',
-            suspension: 'worn',
-            body: 'poor',
-            interior: 'worn',
-          }),
-          dampers: { installed: null },
-        },
-      })
+      const customerCar: CarInstance = withDampersUnblocked(
+        buildCarInstance({
+          id: 'car-customer-01',
+          modelId: 'honda-city-e-aa',
+          year: 1984,
+          mileageKm: 100_000,
+          parts: {
+            ...groupCarParts({
+              engine: 'worn',
+              drivetrain: 'worn',
+              suspension: 'worn',
+              body: 'poor',
+              interior: 'worn',
+            }),
+            dampers: { installed: null },
+          },
+        }),
+      )
       const owningJob: ServiceJob = {
         id: 'svc-other',
         typeId: 'small-bodywork-touchup',
@@ -892,13 +914,16 @@ describe('findOrCreateJob (Sprint 11)', () => {
         },
       ])
 
-      const clearedIntakeCar: CarInstance = {
+      // forcedInduction.blockedBy is ["intake", "exhaust"] - a turbo hangs on
+      // the exhaust manifold too, so both must come off before the slot
+      // opens up, not intake alone.
+      const clearedBlockersCar: CarInstance = {
         ...naCar,
-        parts: { ...naCar.parts, intake: { installed: null } },
+        parts: { ...naCar.parts, intake: { installed: null }, exhaust: { installed: null } },
       }
       const allowed = findOrCreateJob(
         baseState({
-          ownedCars: [clearedIntakeCar],
+          ownedCars: [clearedBlockersCar],
           partInventory: [turboInstance],
           toolShopsOwned: testToolShopsOwned('engine'),
         }),
@@ -928,6 +953,7 @@ describe('the capability gate: the grade ladder', () => {
   function installGateFor(instance: PartInstance, suspensionTier: 1 | 2) {
     return installFitGate(
       baseState({
+        ownedCars: [withDampersUnblocked(car)],
         partInventory: [instance],
         toolTiers: testToolTiers({ suspension: suspensionTier }),
       }),
@@ -984,8 +1010,11 @@ describe('the capability gate: the grade ladder', () => {
 
   it('gates fitting a race part, never pulling one off', () => {
     const fitted: CarInstance = {
-      ...car,
-      parts: { ...car.parts, dampers: { installed: damperInstance(raceDamper.id) } },
+      ...withDampersUnblocked(car),
+      parts: {
+        ...withDampersUnblocked(car).parts,
+        dampers: { installed: damperInstance(raceDamper.id) },
+      },
     }
     const state = baseState({
       ownedCars: [fitted],
@@ -1289,8 +1318,8 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
       origin: makeMarketOrigin(1),
     }
     const carWithAftermarket: CarInstance = {
-      ...car,
-      parts: { ...car.parts, dampers: { installed: aftermarketInstance } },
+      ...withDampersUnblocked(car),
+      parts: { ...withDampersUnblocked(car).parts, dampers: { installed: aftermarketInstance } },
     }
     const state = baseState({ ownedCars: [carWithAftermarket], partInventory: [] })
     const result = resolveRemovePart(state, car.id, 'dampers', CONTEXT)
@@ -1316,8 +1345,8 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
       origin: makeMarketOrigin(2),
     }
     const carWithAftermarket: CarInstance = {
-      ...car,
-      parts: { ...car.parts, dampers: { installed: aftermarketInstance } },
+      ...withDampersUnblocked(car),
+      parts: { ...withDampersUnblocked(car).parts, dampers: { installed: aftermarketInstance } },
     }
     const state = baseState({ ownedCars: [carWithAftermarket], partInventory: [] })
     const result = resolveRemovePart(state, car.id, 'dampers', CONTEXT)
@@ -1346,8 +1375,8 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
       origin: makeMarketOrigin(4),
     }
     const carWithAftermarket: CarInstance = {
-      ...car,
-      parts: { ...car.parts, dampers: { installed: aftermarketInstance } },
+      ...withDampersUnblocked(car),
+      parts: { ...withDampersUnblocked(car).parts, dampers: { installed: aftermarketInstance } },
     }
     const state = baseState({
       ownedCars: [carWithAftermarket],
@@ -1500,8 +1529,8 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
       origin: makeMarketOrigin(3),
     }
     const customerCar: CarInstance = {
-      ...car,
-      parts: { ...car.parts, dampers: { installed: marketBought } },
+      ...withDampersUnblocked(car),
+      parts: { ...withDampersUnblocked(car).parts, dampers: { installed: marketBought } },
     }
     const job: ServiceJob = { ...customerServiceJob, id: 'svc-market-part', car: customerCar }
     const state = baseState({ ownedCars: [], activeServiceJobs: [job], partInventory: [] })
@@ -1525,8 +1554,8 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
       pricePaidYen: 55_000,
     }
     const carWithAftermarket: CarInstance = {
-      ...car,
-      parts: { ...car.parts, dampers: { installed: aftermarketInstance } },
+      ...withDampersUnblocked(car),
+      parts: { ...withDampersUnblocked(car).parts, dampers: { installed: aftermarketInstance } },
     }
     const state = baseState({
       ownedCars: [carWithAftermarket],
@@ -2216,14 +2245,14 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
 
   it('refuses a part still in the warehouse: storage holds parts, the bench does the work', () => {
     const inStorage = baseState({ ownedCars: [], partInventory: [loosePart] })
-    expect(reconditionGateReason(inStorage, loosePart.id)).toBe('not-on-workbench')
+    expect(reconditionGateReason(inStorage, loosePart.id, CONTEXT)).toBe('not-on-workbench')
     expect(reconditionQuote(inStorage, loosePart.id, 'fine', CONTEXT)).toBeNull()
     const refused = resolveReconditionLabor(inStorage, loosePart.id, 'fine', 60, CONTEXT)
     expect(refused.state).toBe(inStorage)
     expect(refused.laborSlotsUsed).toBe(0)
     // On the bench, the identical call goes through.
     const onBench = resolvePlaceOnStation(inStorage, 'workbench', loosePart.id)
-    expect(reconditionGateReason(onBench, loosePart.id)).toBeNull()
+    expect(reconditionGateReason(onBench, loosePart.id, CONTEXT)).toBeNull()
     expect(
       resolveReconditionLabor(onBench, loosePart.id, 'fine', 60, CONTEXT).laborSlotsUsed,
     ).toBeGreaterThan(0)
@@ -2414,5 +2443,33 @@ describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 d
     expect(result.state).toBe(state)
     expect(result.laborSlotsUsed).toBe(0)
     expect(result.state.partInventory[0]?.band).toBe('worn') // unchanged
+  })
+})
+
+describe('the bench is out of the body business (sprint208.md)', () => {
+  // A real harvested zone-panel SKU (a `zoneId` on the catalogue part), the
+  // fact `reconditionGateReason` reads to tell a panel apart from every other
+  // loose part - matching how `resolvePipelineInstallPanelAction`/
+  // `zonePanelPart` already identify one.
+  const bonnetPanelId = zonePanelPart(CONTEXT.partsById, 'bonnet', 'entry')!.id
+  const loosePanel: PartInstance = {
+    id: 'pi-bonnet-panel',
+    partId: bonnetPanelId,
+    band: 'worn',
+    origin: makeMarketOrigin(1),
+  }
+
+  it('refuses a zone panel on the bench with body-shop-work, on the bench or off it', () => {
+    const inStorage = baseState({ ownedCars: [], partInventory: [loosePanel] })
+    expect(reconditionGateReason(inStorage, loosePanel.id, CONTEXT)).toBe('not-on-workbench')
+
+    const onBench = resolvePlaceOnStation(inStorage, 'workbench', loosePanel.id)
+    expect(reconditionGateReason(onBench, loosePanel.id, CONTEXT)).toBe('body-shop-work')
+    expect(reconditionQuote(onBench, loosePanel.id, 'mint', CONTEXT)).toBeNull()
+
+    const result = resolveReconditionLabor(onBench, loosePanel.id, 'mint', 60, CONTEXT)
+    expect(result.state).toBe(onBench)
+    expect(result.laborSlotsUsed).toBe(0)
+    expect(result.state.partInventory.find((p) => p.id === loosePanel.id)?.band).toBe('worn')
   })
 })

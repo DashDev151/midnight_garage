@@ -43,6 +43,7 @@ function makeRouter() {
     routes: [
       { path: '/', name: 'garage', component: { render: () => h('div') } },
       { path: '/car/:id', name: 'car', component: { render: () => h('div') } },
+      { path: '/body-shop', name: 'body-shop', component: { render: () => h('div') } },
     ],
   })
 }
@@ -125,13 +126,13 @@ describe('GarageScreen', () => {
     for (const wrapper of mountedWrappers.splice(0)) wrapper.unmount()
   })
 
-  it('the reputation line links to the Standing screen (Sprint 62 item 17)', () => {
+  it('the reputation line links to the office (sprint209.md)', () => {
     const wrapper = mountScreen()
     const link = wrapper
       .findAllComponents(RouterLinkStub)
       .find((c) => c.attributes('data-test') === 'standing-link')
     expect(link).toBeDefined()
-    expect(link!.props('to')).toEqual({ name: 'standing' })
+    expect(link!.props('to')).toEqual({ name: 'office' })
   })
 
   // Event-log coverage lives in `EventLogDrawer.test.ts`, not here. The day
@@ -348,13 +349,16 @@ describe('GarageScreen', () => {
       }
     }
 
-    it('lists the three stations with live status: empty bench, derelict machine shop and body shop on a fresh game', () => {
+    it('lists the three stations with live status: empty bench, derelict machine shop, empty body bay on a fresh game', () => {
       const game = useGameStore()
       game.newGame(1)
       const wrapper = mountScreen()
       expect(wrapper.get('[data-test="station-status-workbench"]').text()).toBe('empty')
       expect(wrapper.get('[data-test="station-status-machine"]').text()).toBe('derelict')
-      expect(wrapper.get('[data-test="station-status-body-paint"]').text()).toBe('derelict')
+      // The body and paint tile has no derelict reading any more
+      // (sprint208.md): the stick welder stands in the room from day one, so
+      // its status names the bay's own occupant instead.
+      expect(wrapper.get('[data-test="station-status-body-paint"]').text()).toBe('empty')
     })
 
     it('names the part on the bench and its band in the workbench status', () => {
@@ -400,40 +404,101 @@ describe('GarageScreen', () => {
       expect(wrapper.find('[data-test="machine-shop-panel"]').exists()).toBe(true)
     })
 
-    it('a derelict body and paint shop refuses with the spray-booth line', async () => {
+    // The body and paint tile gates nothing (sprint208.md, the verified
+    // indictment's item 1): it is a plain door to the body shop room,
+    // reachable whether or not a car sits in the bay - the room itself
+    // states the empty-bay case.
+    it('the body and paint tile is a plain door to the body shop room, always', () => {
+      const wrapper = mountScreen()
+      const link = wrapper
+        .findAllComponents(RouterLinkStub)
+        .find((c) => c.attributes('data-test') === 'station-open-body-paint')
+      expect(link).toBeDefined()
+      expect(link!.props('to')).toEqual({ name: 'body-shop' })
+    })
+
+    // The office is a real second room off the garage floor (sprint209.md
+    // task B), same plain-door idiom as body and paint: the whole tile is a
+    // link, never a togglable panel.
+    it('the office tile is a plain door to the office room', () => {
       const game = useGameStore()
       game.newGame(1)
       const wrapper = mountScreen()
-
-      await wrapper.get('[data-test="station-open-body-paint"]').trigger('click')
-      expect(wrapper.get('[data-test="body-paint-refusal"]').text()).toBe(
-        "A dead spray booth and someone else's panels. Buy the body line first.",
+      const link = wrapper
+        .findAllComponents(RouterLinkStub)
+        .find((c) => c.attributes('data-test') === 'station-open-office')
+      expect(link).toBeDefined()
+      expect(link!.props('to')).toEqual({ name: 'office' })
+      expect(wrapper.get('[data-test="station-status-office"]').text()).toContain(
+        game.reputationTier,
       )
     })
+  })
 
-    it('an open body and paint shop with one car in a service bay opens that car; with none it asks for one', async () => {
+  describe('the body bay (sprint208.md: the bay is the gate, the room is the surface)', () => {
+    it('dragging a parked car onto the body bay moves it there, via the real pointer handlers', async () => {
       const game = useGameStore()
-      game.newGame(1)
-      game.devSetToolTier('body', 2)
-      const router = makeRouter()
-      const wrapper = mountScreen(router)
-
-      await wrapper.get('[data-test="station-open-body-paint"]').trigger('click')
-      expect(wrapper.find('[data-test="body-paint-refusal"]').exists()).toBe(false)
-      expect(wrapper.get('[data-test="body-paint-hint"]').text()).toContain('service bay')
-
       game.devGrantCar(CARS[0]!.id)
       const carId = game.gameState.ownedCars[0]!.id
-      game.moveCar(carId, 'service')
+      const wrapper = mountScreen()
+
+      await dragPast(wrapper, '.parking-list .car-card')
+      await dropOn(wrapper, '[data-test="body-bay-slot"]')
+
+      expect(game.gameState.bodyBayCarId).toBe(carId)
+      expect(game.parkingView.every((c) => c === null)).toBe(true)
+    })
+
+    it('pick a parked car, then place it into the body bay - no drag gesture at all', async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const carId = game.gameState.ownedCars[0]!.id
+      const wrapper = mountScreen()
+
+      await wrapper.get(`[data-test="move-service-pick-${carId}"]`).trigger('click')
+      await wrapper.get('[data-test="move-parking-place-empty-body-bay"]').trigger('click')
+
+      expect(game.gameState.bodyBayCarId).toBe(carId)
+    })
+
+    it("the bay's own occupant links straight to the body shop room, not the car page", async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const carId = game.gameState.ownedCars[0]!.id
+      expect(game.moveCarToSlot(carId, 'body', 0)).toBe(true)
+      const wrapper = mountScreen()
       await wrapper.vm.$nextTick()
 
-      await wrapper.get('[data-test="body-paint-enter"]').trigger('click')
-      // The push is async; wait for the router to settle before reading it.
-      await router.isReady()
-      await new Promise((resolve) => setTimeout(resolve, 0))
-      const route = router.currentRoute.value
-      expect(route.name).toBe('car')
-      expect(route.params.id).toBe(carId)
+      const slot = wrapper.get('[data-test="body-bay-slot"]')
+      const link = slot.findComponent(RouterLinkStub)
+      expect(link.exists()).toBe(true)
+      expect(link.props('to')).toEqual({ name: 'body-shop' })
+    })
+
+    it('the body-bay car can move back out to parking via its own move button', async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const carId = game.gameState.ownedCars[0]!.id
+      expect(game.moveCarToSlot(carId, 'body', 0)).toBe(true)
+      const wrapper = mountScreen()
+
+      await wrapper.get(`[data-test="move-parking-${carId}"]`).trigger('click')
+
+      expect(game.gameState.bodyBayCarId).toBeNull()
+      expect(game.parkingView.some((c) => c?.carId === carId)).toBe(true)
+    })
+
+    it('the station tile names the bay occupant once one is parked there', async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const carId = game.gameState.ownedCars[0]!.id
+      expect(game.moveCarToSlot(carId, 'body', 0)).toBe(true)
+      const wrapper = mountScreen()
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.get('[data-test="station-status-body-paint"]').text()).toBe(
+        game.carDetail(carId)!.displayName,
+      )
     })
   })
 

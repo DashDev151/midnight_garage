@@ -57,15 +57,15 @@ export const StoryMissionSchema = z.object({
    * footing `unlocksAuctionTier` opens an auction room: a named person in
    * the world puts your name forward, and the channel is open from then on
    * and never closes. Absent for every mission that opens no channel.
-   * Never `'shopFront'` or `'tradeNetwork'`: both are open from day one, so
-   * neither is something a mission could unlock.
+   * Never `'shopFront'`: it is open from day one, so it is not something a
+   * mission could unlock. Every other channel may be claimed - the trade
+   * network belongs to the premium guarantor's own mission, one beat opening
+   * both doors the dealer stands behind.
    */
   unlocksSellingChannel: SellingChannelIdSchema.optional().refine(
-    (channelId) =>
-      channelId === undefined || (channelId !== 'shopFront' && channelId !== 'tradeNetwork'),
+    (channelId) => channelId === undefined || channelId !== 'shopFront',
     {
-      message:
-        "unlocksSellingChannel can never be 'shopFront' or 'tradeNetwork' - both are open from day one",
+      message: "unlocksSellingChannel can never be 'shopFront' - it is open from day one",
     },
   ),
 })

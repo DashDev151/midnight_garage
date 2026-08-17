@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
-import { AUCTION_TIER_COPY, type AuctionTier } from '@midnight-garage/content'
+import type { AuctionTier } from '@midnight-garage/content'
 import { dayOfWeekName } from '@midnight-garage/sim'
 import AuctionLotCard from '../components/AuctionLotCard.vue'
 import { mapBackTarget } from './mapBack'
@@ -9,16 +9,11 @@ import { useGameStore, type LotDetail } from '../stores/gameStore'
 import { AUCTION_TIER_LABELS, venueLabelFor } from '../utils/auctionTierLabels'
 import { formatYen } from '../utils/formatYen'
 
-/** Every tier in display order - `AUCTION_TIER_LABELS`' own key order
- * (local-yard, regional, premium, collector-network), reused rather than a
+/** Every tier's own slug, for validating the route's `tier` query against a
+ * real value - `AUCTION_TIER_LABELS`' own key set, reused rather than a
  * second hand-written literal list. */
-const TIER_ORDER = Object.keys(AUCTION_TIER_LABELS) as AuctionTier[]
-
-/** The locked-tier guarantor line - `local-yard` is never locked, so this
- * is only ever called behind a `!group.unlocked` guard. */
-function lockedTierCopyFor(tier: AuctionTier): string {
-  if (tier === 'local-yard') return ''
-  return AUCTION_TIER_COPY[tier]
+function isAuctionTier(value: string): value is AuctionTier {
+  return value in AUCTION_TIER_LABELS
 }
 
 const game = useGameStore()
@@ -29,6 +24,27 @@ const router = useRouter()
  * control then falls back to the garage exactly as it always has
  * (`mapBack.ts`). */
 const backTarget = computed(() => mapBackTarget(route.query.from, { name: 'garage' }))
+
+/** The tier the map sent us here for, if it named one and this player may
+ * actually walk into it - each overworld auction building routes here with
+ * its own `tier` query (`overworldNav.ts`). */
+const requestedTier = computed<AuctionTier | null>(() => {
+  const raw = route.query.tier
+  const value = Array.isArray(raw) ? raw[0] : raw
+  return typeof value === 'string' && isAuctionTier(value) ? value : null
+})
+
+/** The one room this screen actually shows: the requested tier when it is
+ * both real and unlocked, else the lowest tier this player has unlocked at
+ * all - so a screen reached with no tier context (a stale link, the
+ * transitional tab-bar route mid-removal) still renders a real room instead
+ * of nothing. `local-yard` is always in `unlockedAuctionTiers`, so the
+ * fallback is never actually empty. */
+const activeTier = computed<AuctionTier>(() => {
+  const requested = requestedTier.value
+  if (requested && game.unlockedAuctionTiers.includes(requested)) return requested
+  return game.unlockedAuctionTiers[0] ?? 'local-yard'
+})
 
 const GATE_REASON_LABEL: Record<string, string> = {
   // Labour is a continuous bar now, not integer slots.
@@ -153,51 +169,26 @@ const willBeLostOnWin = computed(() => game.shopAtCapacity && game.graceSlotOccu
 
 interface TierGroup {
   tier: AuctionTier
-  unlocked: boolean
-  /** Whether this room is sitting today (`auction.cadenceByTier`). Always
-   * false for a locked tier, which has no hours worth naming yet. */
+  /** Whether this room is sitting today (`auction.cadenceByTier`). */
   open: boolean
   lots: LotDetail[]
 }
 
-/** Every tier, in display order. An unlocked room that is sitting today
- * carries its resolved lot details (avoids repeated lookups + template `!`);
- * an unlocked room that is shut renders its own closed line instead of a
- * board; an unlocked, open room with nothing currently on the board renders
- * nothing; a locked tier always renders, with its guarantor copy standing in
- * for a board it doesn't have yet. */
-const allGroups = computed<TierGroup[]>(() => {
-  const lotsByTier = new Map(game.auctionLotsByTier.map((g) => [g.tier, g.lots]))
-  return TIER_ORDER.flatMap((tier): TierGroup[] => {
-    if (!game.unlockedAuctionTiers.includes(tier)) {
-      return [{ tier, unlocked: false, open: false, lots: [] }]
-    }
-    if (!game.openAuctionTiers.includes(tier)) {
-      return [{ tier, unlocked: true, open: false, lots: [] }]
-    }
-    const lots = lotsByTier.get(tier)
-    if (!lots) return []
-    return [
-      {
-        tier,
-        unlocked: true,
-        open: true,
-        lots: lots.map((l) => game.lotDetail(l.id)).filter((d): d is LotDetail => d !== undefined),
-      },
-    ]
-  })
+/** The single room this screen renders: `activeTier`'s own sitting state and
+ * lots today, if any - the building that led here already refused the click
+ * on the map when its tier was locked (`overworldNav.ts`), so every room
+ * this screen ever shows is one the player may actually walk into. */
+const group = computed<TierGroup>(() => {
+  const tier = activeTier.value
+  const open = game.openAuctionTiers.includes(tier)
+  if (!open) return { tier, open: false, lots: [] }
+  const lots = game.auctionLotsByTier.find((g) => g.tier === tier)?.lots ?? []
+  return {
+    tier,
+    open: true,
+    lots: lots.map((l) => game.lotDetail(l.id)).filter((d): d is LotDetail => d !== undefined),
+  }
 })
-
-const totalLots = computed(() => allGroups.value.reduce((n, g) => n + g.lots.length, 0))
-
-const hasLots = computed(() => totalLots.value > 0)
-
-/** Every room whose doors are open today, named - the line at the top of the
- * screen. Each room keeps its own hours (sprint150.md), and two rooms open
- * on the same day is normal, so this is a list rather than a single day. */
-const openRoomNames = computed(() =>
-  game.openAuctionTiers.map((tier) => venueLabelFor(tier, game.gameState.venueNameByTier)),
-)
 
 /** When a shut room next opens, in the words someone would actually use:
  * "tomorrow" for the next day, the weekday for anything inside this coming
@@ -219,18 +210,27 @@ function nextOpenPhraseFor(tier: AuctionTier): string {
   <section class="auctions">
     <RouterLink :to="backTarget" class="back">&lt; Back</RouterLink>
     <header class="head">
-      <h2>Auctions</h2>
+      <h2>{{ venueLabelFor(group.tier, game.gameState.venueNameByTier) }}</h2>
+      <button
+        v-if="group.open && !isActiveVisitTier(group.tier)"
+        type="button"
+        class="inspect-visit"
+        :class="{ confirming: visitConfirmingTier === group.tier }"
+        :disabled="!!game.inspectionVisitGateReason(group.tier)"
+        :title="inspectButtonTitle(group.tier)"
+        :data-test="'inspect-visit-' + group.tier"
+        @click="onInspectClick(group.tier)"
+      >
+        {{ inspectButtonLabel(group.tier) }}
+      </button>
     </header>
 
-    <!-- Every room keeps its own hours (`auction.cadenceByTier`,
-         sprint150.md), so the screen names who is sitting today rather than
-         showing one shutter over the whole house. Two rooms open at once is
-         normal, and sitting at one costs no part of the day. -->
-    <p v-if="openRoomNames.length > 0" class="open-today" data-test="auction-open-today">
-      Open today: {{ openRoomNames.join(', ') }}.
-    </p>
+    <!-- This room's own hours (`auction.cadenceByTier`, sprint150.md) - one
+         room, one line, since the building that led here already scoped the
+         screen to it. -->
+    <p v-if="group.open" class="open-today" data-test="auction-open-today">Open today.</p>
     <p v-else class="closed" data-test="auction-closed">
-      Every room is shut today. Check the doors below for when the next one sits.
+      Shutters down. This room sits again {{ nextOpenPhraseFor(group.tier) }}.
     </p>
 
     <!-- The active yard visit's own fixed panel - dies at day end (`advanceDay`)
@@ -241,7 +241,7 @@ function nextOpenPhraseFor(tier: AuctionTier): string {
       {{ game.inspectionVisit.minutesLeft }}m left
     </p>
 
-    <p v-if="openRoomNames.length > 0 && !hasLots" class="empty">
+    <p v-if="group.open && group.lots.length === 0" class="empty">
       No lots listed right now. New cars roll in most days; press End Day and check back.
     </p>
 
@@ -254,96 +254,65 @@ function nextOpenPhraseFor(tier: AuctionTier): string {
       daily fine until real space opens up. Free up a bay or buy more capacity to avoid it.
     </p>
 
-    <div v-for="group in allGroups" :key="group.tier" class="tier">
-      <div class="tier-head">
-        <h3>
-          {{
-            group.unlocked
-              ? venueLabelFor(group.tier, game.gameState.venueNameByTier)
-              : AUCTION_TIER_LABELS[group.tier]
-          }}
-        </h3>
-        <button
-          v-if="group.open && !isActiveVisitTier(group.tier)"
-          type="button"
-          class="inspect-visit"
-          :class="{ confirming: visitConfirmingTier === group.tier }"
-          :disabled="!!game.inspectionVisitGateReason(group.tier)"
-          :title="inspectButtonTitle(group.tier)"
-          :data-test="'inspect-visit-' + group.tier"
-          @click="onInspectClick(group.tier)"
+    <ul v-if="group.open" class="lots">
+      <li v-for="d in group.lots" :key="d.lot.id" class="lot">
+        <!-- The shared production card draws the identity panel, grades, the
+             public symptom checklist, and the room's number and ledger. The
+             buy stack drops into its slots. -->
+        <AuctionLotCard
+          :d="d"
+          :disabled-reason-for="(t) => testDisabledReason(d.lot.tier, t)"
+          :player-estimate-yen="d.playerEstimateYen"
+          :show-send-inspector="game.sendInspectorGateReason(d.lot.id) === null"
+          :inspector-name="game.masterInspectorName ?? ''"
+          :show-inspector-done="!!inspectorDoneLotIds[d.lot.id]"
+          @run-test="({ lotId, symptomIndex, testId }) => onRunTest(lotId, symptomIndex, testId)"
+          @send-inspector="({ lotId }) => onSendInspector(lotId)"
         >
-          {{ inspectButtonLabel(group.tier) }}
-        </button>
-      </div>
-      <p v-if="!group.unlocked" class="locked-tier" :data-test="'locked-tier-' + group.tier">
-        {{ lockedTierCopyFor(group.tier) }}
-      </p>
-      <!-- A shut room says when it sits next, in plain words - waiting for a
-           room to open is the shape of the week, not a problem to fix. -->
-      <p v-else-if="!group.open" class="closed-tier" :data-test="'closed-tier-' + group.tier">
-        Shutters down. This one sits again {{ nextOpenPhraseFor(group.tier) }}.
-      </p>
-      <ul v-else class="lots">
-        <li v-for="d in group.lots" :key="d.lot.id" class="lot">
-          <!-- The shared production card draws the identity panel, grades, the
-               public symptom checklist, and the room's number and ledger. The
-               buy stack drops into its slots. -->
-          <AuctionLotCard
-            :d="d"
-            :disabled-reason-for="(t) => testDisabledReason(d.lot.tier, t)"
-            :player-estimate-yen="d.playerEstimateYen"
-            :show-send-inspector="game.sendInspectorGateReason(d.lot.id) === null"
-            :inspector-name="game.masterInspectorName ?? ''"
-            :show-inspector-done="!!inspectorDoneLotIds[d.lot.id]"
-            @run-test="({ lotId, symptomIndex, testId }) => onRunTest(lotId, symptomIndex, testId)"
-            @send-inspector="({ lotId }) => onSendInspector(lotId)"
-          >
-            <template #info>
-              <div class="lot-secondary">
-                <span>reserve {{ formatYen(d.reserveYen) }}</span>
-              </div>
-            </template>
+          <template #info>
+            <div class="lot-secondary">
+              <span>reserve {{ formatYen(d.reserveYen) }}</span>
+            </div>
+          </template>
 
-            <template #actions>
-              <div class="seat-row">
-                <button
-                  type="button"
-                  class="seat-link"
-                  :disabled="!!game.attendAuctionGateReason(d.lot.tier)"
-                  :title="seatButtonTitle(d.lot.tier)"
-                  :data-test="'take-seat-' + d.lot.id"
-                  @click="onTakeSeat(d.lot.id)"
-                >
-                  Take a seat
-                </button>
-              </div>
-              <!-- Buy Now takes two clicks - it can never fire on a stray press. -->
-              <div class="buyout-row">
-                <button
-                  class="buyout"
-                  :class="{ confirming: buyoutConfirming[d.lot.id] }"
-                  :disabled="game.cashYen < d.buyoutPriceYen"
-                  :title="
-                    game.cashYen < d.buyoutPriceYen
-                      ? 'Not enough cash - Buy Now costs ' + formatYen(d.buyoutPriceYen)
-                      : 'Skip the bidding and buy this lot outright'
-                  "
-                  :data-test="'buyout-' + d.lot.id"
-                  @click="onBuyoutClick(d.lot.id)"
-                >
-                  {{
-                    buyoutConfirming[d.lot.id]
-                      ? 'Confirm buyout (' + formatYen(d.buyoutPriceYen) + ')'
-                      : 'Buy now (' + formatYen(d.buyoutPriceYen) + ')'
-                  }}
-                </button>
-              </div>
-            </template>
-          </AuctionLotCard>
-        </li>
-      </ul>
-    </div>
+          <template #actions>
+            <div class="seat-row">
+              <button
+                type="button"
+                class="seat-link"
+                :disabled="!!game.attendAuctionGateReason(d.lot.tier)"
+                :title="seatButtonTitle(d.lot.tier)"
+                :data-test="'take-seat-' + d.lot.id"
+                @click="onTakeSeat(d.lot.id)"
+              >
+                Take a seat
+              </button>
+            </div>
+            <!-- Buy Now takes two clicks - it can never fire on a stray press. -->
+            <div class="buyout-row">
+              <button
+                class="buyout"
+                :class="{ confirming: buyoutConfirming[d.lot.id] }"
+                :disabled="game.cashYen < d.buyoutPriceYen"
+                :title="
+                  game.cashYen < d.buyoutPriceYen
+                    ? 'Not enough cash - Buy Now costs ' + formatYen(d.buyoutPriceYen)
+                    : 'Skip the bidding and buy this lot outright'
+                "
+                :data-test="'buyout-' + d.lot.id"
+                @click="onBuyoutClick(d.lot.id)"
+              >
+                {{
+                  buyoutConfirming[d.lot.id]
+                    ? 'Confirm buyout (' + formatYen(d.buyoutPriceYen) + ')'
+                    : 'Buy now (' + formatYen(d.buyoutPriceYen) + ')'
+                }}
+              </button>
+            </div>
+          </template>
+        </AuctionLotCard>
+      </li>
+    </ul>
   </section>
 </template>
 
@@ -368,26 +337,8 @@ h2 {
   margin: 0;
 }
 
-h3 {
-  color: var(--mg-neon-violet);
-  font-size: var(--mg-fs-md);
-  margin: 0 0 var(--mg-space-2);
-}
-
-.tier-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--mg-space-3);
-  flex-wrap: wrap;
-}
-
-.tier-head h3 {
-  margin: 0 0 var(--mg-space-2);
-}
-
 /* A visible secondary control, not a ghost chip - amber text and border on
-   the panel colour, kept small so it never competes with the tier heading. */
+   the panel colour, kept small so it never competes with the venue heading. */
 .inspect-visit {
   font-size: var(--mg-fs-sm);
   color: var(--mg-neon-violet);
@@ -398,14 +349,6 @@ h3 {
 .inspect-visit.confirming {
   border-color: var(--mg-neon-pink);
   color: var(--mg-neon-pink);
-}
-
-/* The guarantor line stands in for a board that doesn't exist yet - muted,
-   like `.empty`, never styled as an error or a warning. */
-.locked-tier {
-  color: var(--mg-text-dim);
-  font-size: var(--mg-fs-sm);
-  margin: 0 0 var(--mg-space-4);
 }
 
 .empty {
@@ -422,22 +365,12 @@ h3 {
   margin: var(--mg-space-2) 0 var(--mg-space-3);
 }
 
-/* The whole-house closed sign - unreachable under the shipped cadence, since
-   the local yard sits four days a week and every other day belongs to some
-   room, but a tuned cadence could leave a gap. Muted, like
-   `.empty`/`.locked-tier`, never styled as an error. */
+/* This room's own shutters, and when they go up again - muted, like
+   `.empty`: waiting for a room to open is the shape of the week, not a
+   problem to fix. */
 .closed {
   color: var(--mg-text-dim);
   margin: var(--mg-space-3) 0;
-}
-
-/* One room's own shutters, and when they go up again - same muted treatment
-   as the guarantor line it sits alongside: waiting for a room to open is the
-   shape of the week, not a problem to fix. */
-.closed-tier {
-  color: var(--mg-text-dim);
-  font-size: var(--mg-fs-sm);
-  margin: 0 0 var(--mg-space-4);
 }
 
 /* A real clock the player is spending, so it gets the same weight as the

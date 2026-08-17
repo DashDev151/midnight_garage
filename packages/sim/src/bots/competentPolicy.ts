@@ -249,7 +249,7 @@ export function competentPolicyStrategy(
       // the competent baseline's.
       const offer = state.serviceJobOffers.find(
         (o) =>
-          expectedProfitPerLaborSlot(o, context) >= MIN_PROFIT_PER_LABOR_SLOT_YEN &&
+          expectedProfitPerLaborSlot(o, context, state) >= MIN_PROFIT_PER_LABOR_SLOT_YEN &&
           toolDeficitSummary(o.tasks, toolLevelsFor(state, context), context).maxDeficit === 0,
       )
       if (offer) actions.acceptServiceJobs.push({ offerId: offer.id })

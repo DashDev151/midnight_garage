@@ -20,8 +20,8 @@ const props = withDefaults(
     instance: PartInstance
     part: Part
     /**
-     * Whether this part fits the current pick context (e.g. the component a
-     * `ReplaceDrawer` is scoped to). A non-fitting card still renders - the
+     * Whether this part fits the current pick context (e.g. the slot the
+     * Warehouse's fit mode is scoped to). A non-fitting card still renders - the
      * player sees their whole inventory, not a mysteriously shorter list -
      * but is dimmed and inert to the click-to-select fast path; dragging it
      * onto an incompatible drop zone still simply fails to land, same as

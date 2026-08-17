@@ -103,7 +103,7 @@ function offerCountdownLabel(expiresOnDay: number): string {
         </HelpHint>
       </h2>
       <p class="rep">
-        <RouterLink :to="{ name: 'standing' }" class="standing-link" data-test="standing-link"
+        <RouterLink :to="{ name: 'office' }" class="standing-link" data-test="standing-link"
           >{{ game.reputationPoints }} rep</RouterLink
         >
       </p>
@@ -246,7 +246,10 @@ function offerCountdownLabel(expiresOnDay: number): string {
           <div class="offer-foot">
             <div class="offer-rewards">
               <span class="terms"
-                >pays {{ formatYen(offer.payoutYen) }} · +{{ offer.baseReputation }} rep</span
+                >pays {{ formatYen(offer.payoutYen) }} - about {{ offer.laborSlots }} labour · +{{
+                  offer.baseReputation
+                }}
+                rep</span
               >
               <span class="days" :class="{ urgent: offerDaysLeft(offer.expiresOnDay) <= 2 }">
                 {{ offerCountdownLabel(offer.expiresOnDay) }}

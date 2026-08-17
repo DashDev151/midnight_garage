@@ -171,6 +171,10 @@ describe('the charges that used to leave no record', () => {
       ownedCars: [lot.car],
       parkingCarIds: [lot.car.id, null, null],
       forecourtCarIds: [null, null],
+      // The stand owner's scripted job claims freeAdsPaper (sprint205.md);
+      // this test is about the fee logging, not the unlock, so the claim is
+      // granted directly rather than played through.
+      serviceJobChannelUnlocks: ['freeAdsPaper'],
     }
     const feeYen = ECONOMY.sellingChannels.freeAdsPaper.feeYen
     expect(feeYen).toBeGreaterThan(0)

@@ -15,9 +15,10 @@ import {
 import { describe, expect, it } from 'vitest'
 import { canRepair, gradesBetween } from '../src/bands'
 import { buildSimContext } from '../src/context'
-import { installLaborSlotsFor } from '../src/jobs'
+import { createInitialGameState } from '../src/newGame'
 import { gradeAtLeast, partFitsCar } from '../src/parts'
 import { deriveServiceJobPayoutYen, serviceJobCostBreakdown } from '../src/serviceJobs'
+import { taskLaborChain } from '../src/taskLaborChain'
 import { buildCarInstance, mintCarParts } from './testFixtures'
 
 const CONTEXT = buildSimContext(
@@ -102,6 +103,12 @@ function worstCaseParts(
 
 describe('service-job payout profitability invariant (Sprint 29 decision 1)', () => {
   const REQUIRED_COVERAGE = 1.15
+  // A machine-less shop - the harder case for the invariant, since pricing
+  // the real teardown chain only ever RAISES the payout side of the
+  // coverage ratio; the player's own minimum achievable cost never depends
+  // on labour at all, so a machine-less quote can only widen the margin,
+  // never erode it (see `deriveServiceJobPayoutYen`'s doc comment).
+  const state = createInitialGameState(CONTEXT, 1)
 
   it('the worst payout roll covers the player minimum achievable cost by at least 1.15x, for every template x every roster model, at every realistic starting band', () => {
     const marginMin = CONTEXT.economy.serviceJobs.marginMin
@@ -120,6 +127,7 @@ describe('service-job payout profitability invariant (Sprint 29 decision 1)', ()
             car,
             model,
             CONTEXT,
+            state,
             marginMin,
           )
           const minCost = playerMinCostYen(template.tasks, car, model)
@@ -142,14 +150,16 @@ describe('service-job payout profitability invariant (Sprint 29 decision 1)', ()
   })
 
   /**
-   * A deep-slot job (buried parts behind real `blockedBy` chains -
-   * `internals` blocked by `headValvetrain`, `headValvetrain` blocked by
-   * `camsTiming`/`intake`) proves the worst-margin payout clears the Law 4
-   * floor on a real deep-slot template, not a synthetic one. Removal and
-   * blocker refits are free, so a deep task's labour is exactly its own
-   * target slot's `installLaborSlotsFor` - no chain surcharge on top.
+   * A deep-slot job (`internals` and `headValvetrain`, both engineAssembly
+   * members) proves the worst-margin payout still clears the Law 4 floor on
+   * a real deep-slot template, not a synthetic one. A "no teardown-chain
+   * premium" formula was the bug: both tasks now price their whole physical
+   * chain (the assembly's own external blockers, the engine pull, and the
+   * refit), each task summed independently by `serviceJobCostBreakdown`'s
+   * per-task loop - a real teardown surcharge on top of the bare install
+   * figure, not instead of it.
    */
-  it('a deep-slot job (engine-internals-rebuild) prices exactly its own target slots (no teardown-chain premium, Sprint 79), and the worst-margin payout still clears the floor', () => {
+  it("a deep-slot job (engine-internals-rebuild) prices each task's whole teardown chain (Sprint 207 fixes the Sprint 79 premium-free bug), and the worst-margin payout still clears the floor", () => {
     const template = SERVICE_JOB_TYPES.find((t) => t.id === 'engine-internals-rebuild')
     if (!template) {
       throw new Error(
@@ -160,19 +170,33 @@ describe('service-job payout profitability invariant (Sprint 29 decision 1)', ()
     const car = buildCarInstance({ modelId: model.id, parts: mintCarParts() })
     const marginMin = CONTEXT.economy.serviceJobs.marginMin
 
-    const breakdown = serviceJobCostBreakdown(template.tasks, car, model, CONTEXT)
-    // `installLaborSlotsFor` returns labour ENERGY, while the payout
-    // breakdown reports slot-equivalents (energy / pointsPerLabour) so the
-    // market labour rate stays per-slot. Compare in the same unit.
-    const bareInstallEnergy = template.tasks.reduce(
-      (sum, task) => sum + installLaborSlotsFor(task.requirement.carPartId, CONTEXT),
+    const breakdown = serviceJobCostBreakdown(template.tasks, car, model, CONTEXT, state)
+    const expectedSlots = template.tasks.reduce(
+      (sum, task) =>
+        sum + taskLaborChain(car, task.requirement.carPartId, 'install', CONTEXT, state).totalSlots,
       0,
     )
-    // No chain premium: both tasks' parts are buried, but labour is exactly
-    // the bare install-only baseline now that removal/blocker refits are free.
-    expect(breakdown.laborSlots).toBe(bareInstallEnergy / CONTEXT.economy.energy.pointsPerLabour)
+    expect(breakdown.laborSlots).toBe(expectedSlots)
+    // The real chain (blockers + the engine pull, on top of the refit)
+    // strictly exceeds the bare per-task install figure the old formula
+    // stopped at - the restored surcharge.
+    const bareInstallSlots = template.tasks.reduce(
+      (sum, task) =>
+        sum +
+        taskLaborChain(car, task.requirement.carPartId, 'install', CONTEXT, state).refitPoints /
+          CONTEXT.economy.energy.pointsPerLabour,
+      0,
+    )
+    expect(breakdown.laborSlots).toBeGreaterThan(bareInstallSlots)
 
-    const worstPayout = deriveServiceJobPayoutYen(template.tasks, car, model, CONTEXT, marginMin)
+    const worstPayout = deriveServiceJobPayoutYen(
+      template.tasks,
+      car,
+      model,
+      CONTEXT,
+      state,
+      marginMin,
+    )
     const minCost = playerMinCostYen(template.tasks, car, model)
     expect(minCost).toBeGreaterThan(0)
     expect(worstPayout / minCost).toBeGreaterThanOrEqual(REQUIRED_COVERAGE)

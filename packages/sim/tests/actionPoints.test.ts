@@ -11,10 +11,10 @@ import {
 import { describe, expect, it } from 'vitest'
 import {
   resolveBuildAssembly,
+  resolveFitAssemblyMember,
   resolveRefitAssembly,
   resolveRemoveAssembly,
   resolveRemoveAssemblyMember,
-  resolveSwapAssemblyMember,
 } from '../src/assemblies'
 import { buildSimContext, type SimContext } from '../src/context'
 import { beginInspectionVisit, resolveOwnedWorkup } from '../src/diagnosis'
@@ -223,13 +223,17 @@ describe('every action gates on the labour bar and spends its own figure when ra
     const off = resolveRemoveAssembly(state, car.id, 'wheelAssembly', CONTEXT)
     const container = off.state.assemblyInventory![0]!
     const ctx = ctxWith('benchFitMember')
+    // The car's own tyres came onto the bench occupying the slot - clear it
+    // first so the fit itself (not an occupied-slot refusal) is what's timed.
+    const pulled = resolveRemoveAssemblyMember(off.state, container.id, 'tyres', ctx)
+    expect(pulled.ok).toBe(true)
 
-    const done = resolveSwapAssemblyMember(off.state, container.id, 'tyres', spare.id, ctx, COST)
+    const done = resolveFitAssemblyMember(pulled.state, container.id, 'tyres', spare.id, ctx, COST)
     expect(done.ok).toBe(true)
-    expect(done.state.energySpentToday).toBe(off.state.energySpentToday + COST)
+    expect(done.state.energySpentToday).toBe(pulled.state.energySpentToday + COST)
 
-    const refused = resolveSwapAssemblyMember(
-      off.state,
+    const refused = resolveFitAssemblyMember(
+      pulled.state,
       container.id,
       'tyres',
       spare.id,
@@ -237,7 +241,7 @@ describe('every action gates on the labour bar and spends its own figure when ra
       COST - 1,
     )
     expect(refused.ok).toBe(false)
-    expect(refused.state).toBe(off.state)
+    expect(refused.state).toBe(pulled.state)
   })
 
   it('benchRemoveMember: pulling a member off a benched assembly charges the figure, refuses short of it', () => {

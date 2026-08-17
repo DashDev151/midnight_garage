@@ -6,17 +6,15 @@ import { OVERWORLD_LOCATION_LABELS, type OverworldLocationId } from '../pixi/ove
 import { buildOverworldScene, SCENE_HEIGHT, SCENE_WIDTH } from '../pixi/overworld/overworldMap'
 import { HOVER_OUTLINE } from '../pixi/overworld/overworldPalette'
 import { useGameStore } from '../stores/gameStore'
-import { boundsFor, destinationFor, locationAt } from './overworldNav'
+import { auctionCadencePhraseFor } from '../utils/auctionTierLabels'
+import { AUCTION_TIER_BY_LOCATION, boundsFor, destinationFor, locationAt } from './overworldNav'
 
 /**
  * The map you travel on: a Pixi host rendering the 960x540 overworld scene,
- * with its fifteen locations hit-tested on click. A real destination is
+ * with its sixteen locations hit-tested on click. A real destination is
  * plain navigation and nothing else changes - no labour, no time, no day
  * advance. The bank is drawn but not open, and refuses the click with a
- * reason rather than navigating to an empty page. The cafe is neither: it is
- * somewhere you DO a thing, so clicking it buys the crew a round on the spot
- * and leaves you on the map, since a screen you would immediately walk back
- * out of is not worth having.
+ * reason rather than navigating to an empty page.
  *
  * Follows `PaintPaletteScreen.vue`'s own Pixi lifecycle: an `Application`
  * created on mount, torn down on unmount. The scene itself never changes
@@ -36,6 +34,19 @@ const hoveredLocationName = computed(() =>
   hoveredLocationId.value ? OVERWORLD_LOCATION_LABELS[hoveredLocationId.value] : null,
 )
 
+/** The hovered building's own hours, for the four auction buildings only -
+ * every other location has no cadence to name. Shown regardless of whether
+ * this player has that tier unlocked yet (sprint209.md task A3): the map
+ * gives the calendar away on the card itself rather than the player
+ * discovering it by bouncing off a shut door. */
+const hoveredLocationCadence = computed(() => {
+  const id = hoveredLocationId.value
+  if (!id) return null
+  const tier = AUCTION_TIER_BY_LOCATION[id]
+  if (!tier) return null
+  return auctionCadencePhraseFor(tier, game.context.economy)
+})
+
 let app: Application | null = null
 let scene: Container | null = null
 let hoverOutline: Graphics | null = null
@@ -54,37 +65,15 @@ function drawHoverOutline(id: OverworldLocationId | null): void {
     .stroke({ width: 2, color: HOVER_OUTLINE })
 }
 
-/** What the cafe says back, whether or not it served you. Each refusal names
- * the real reason: the round is once a day, there is nothing to buy back on a
- * full pool, and cash is cash. */
-function coffeeNote(): string {
-  const priceYen = game.coffeePriceYen
-  switch (game.coffeeGateReason) {
-    case 'day-limit':
-      return 'You have had your round today. Any more and nobody does any work.'
-    case 'pool-full':
-      return 'Nothing to buy back yet. Come and see us when the day has worn you down a bit.'
-    case 'no-cash':
-      return `A round is ${priceYen.toLocaleString()} yen and the till says otherwise.`
-    default:
-      return `Coffee all round, ${priceYen.toLocaleString()} yen. Back to it.`
-  }
-}
-
 function onCanvasClick(event: MouseEvent): void {
   const id = locationAt(event.offsetX, event.offsetY)
   if (!id) return
-  const destination = destinationFor(id)
+  const destination = destinationFor(id, {
+    standUnlocked: game.availableSellingChannelIds.includes('freeAdsPaper'),
+    unlockedAuctionTiers: game.unlockedAuctionTiers,
+  })
   if (destination.kind === 'inert') {
     refusalNote.value = destination.message
-    return
-  }
-  if (destination.kind === 'action') {
-    // The note is read BEFORE the purchase, so a successful round reports the
-    // price that was actually charged rather than what the next one would cost.
-    const note = coffeeNote()
-    game.buyCoffee()
-    refusalNote.value = note
     return
   }
   refusalNote.value = null
@@ -136,9 +125,16 @@ onUnmounted(() => {
   <section class="overworld">
     <h2>
       The street
-      <span v-if="hoveredLocationName" class="hover-name" data-test="overworld-hover-name">{{
-        hoveredLocationName
-      }}</span>
+      <span v-if="hoveredLocationName" class="hover-name" data-test="overworld-hover-name">
+        {{ hoveredLocationName
+        }}<span
+          v-if="hoveredLocationCadence"
+          class="hover-cadence"
+          data-test="overworld-hover-cadence"
+        >
+          - {{ hoveredLocationCadence }}</span
+        >
+      </span>
     </h2>
     <div ref="host" class="stage" data-test="overworld-stage"></div>
     <p v-if="refusalNote" class="refusal" data-test="overworld-refusal">{{ refusalNote }}</p>
@@ -163,6 +159,10 @@ h2 {
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-md);
   margin-left: var(--mg-space-2);
+}
+
+.hover-cadence {
+  font-size: var(--mg-fs-sm);
 }
 
 .stage {

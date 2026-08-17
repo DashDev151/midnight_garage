@@ -8,14 +8,14 @@ import type {
   GameState,
   Grade,
   Part,
-  ReputationTier,
+  SellingChannelId,
   ServiceJob,
   ServiceJobTask,
   ServiceJobType,
   ToolLevels,
 } from '@midnight-garage/content'
 import { fitmentClassForTier } from '@midnight-garage/content'
-import { dissolveAssembliesForCar } from './assemblies'
+import { dissolveAssembliesForCar, externalBlockersFor } from './assemblies'
 import { carOriginLabel, generateAuctionCarInstance, stockInstanceFor } from './auctions'
 import { bandsBelowExcludingScrap, planPartRepair } from './bands'
 import { craftOperationCapabilityGateReason } from './machiningJobs'
@@ -28,13 +28,14 @@ import {
 import type { SimContext } from './context'
 import { assignToShop, hasAcquisitionSpace, releaseCarFromShop } from './facilities'
 import { bookCashMovements } from './financeLedger'
-import { installLaborSlotsFor } from './jobs'
 import { gradeAtLeast, partFitsCar, reconcileStations } from './parts'
 import { makeCarOrigin, partsOriginatingFromCar } from './provenance'
 import { evaluateRequirement } from './requirements'
 import type { Rng } from './rng'
+import { pickWeighted } from './rng'
 import { deleteServiceJobLedger, serviceJobLedgerFor } from './serviceJobLedger'
-import { freshToolLevels, toolLevelsFor } from './toolLines'
+import { taskLaborChain } from './taskLaborChain'
+import { toolLevelsFor } from './toolLines'
 
 /** A placeholder ledger for `isServiceTaskDone`'s call into
  * `evaluateRequirement` - `slotCondition` never reads `ledger`/`day`, but
@@ -197,18 +198,16 @@ export interface ServiceJobCostBreakdown {
   /** Sum of every task's material cost: a grade-requirement task's median
    * fitting-part price, a band-only task's banded-steps repair cost. */
   taskCostYen: number
-  /** Total labor slots the task list nominally takes, at base (level-1,
-   * "worst case tooling") repair speed - a market rate for the job's wrench
-   * time, independent of the shop's own current equipment tier (that only
-   * changes how many DAYS the work actually takes the player, never what
-   * the customer is nominally being charged for). Removal and blocker
-   * refits price through `energy.actionPoints` (zero at shipped tuning), so
-   * the teardown chain carries no overhead here - every task simply adds
-   * `installLaborSlotsFor` for its own target slot, on top of the
-   * bench-repair labour below, since a delivered task always IMPROVES its
-   * slot (a customer's task is never a like-for-like refit) and so is
-   * always charged.
-   */
+  /** Total labor slots the task list nominally takes: every task's whole
+   * physical chain (`taskLaborChain`, taskLaborChain.ts) - clearing and
+   * refitting whatever blocks the slot, pulling the part (or its whole
+   * assembly) off, the bench work, and the refit that actually delivers
+   * the improvement - each stage priced at the multiplier the shop
+   * generating this quote actually faces right now (`state`), never a
+   * hypothetical equipped one. A repair-route task's bench work is the
+   * banded climb at level 1 (a market baseline, independent of the shop's
+   * own tool tier); a buy-new task's is the (currently free) bench swap-in
+   * when the slot is an assembly member, or nothing at all otherwise. */
   laborSlots: number
 }
 
@@ -227,34 +226,30 @@ export interface ServiceJobCostBreakdown {
  * 0-cost/labor case is a task ALREADY satisfied (`planPartRepair` itself
  * returns 0 when there's nothing left to climb).
  *
- * Reuses `planPartRepair` (bands.ts) directly rather than re-deriving the
- * grades/cost/labor formula inline - the ONE cost pipeline, never a second
- * bill implementation. A repair-route task's cost derives from the
- * installed instance's own catalog `priceYen`
- * (`context.partsById[installed.partId]`) times `economy.restoration.
- * repairStepFraction`, never a car/model-derived factor. Repair labor sizes
- * at level 1 (base, "worst case tooling" - a market rate for the customer's
- * own wrench time, independent of the shop's actual current tool tier).
+ * Reuses `planPartRepair` (bands.ts) directly for the material cost, and
+ * `taskLaborChain` (taskLaborChain.ts) for the labour - the ONE cost
+ * pipeline and the ONE labour pipeline, never a second bill implementation.
+ * A repair-route task's cost derives from the installed instance's own
+ * catalog `priceYen` (`context.partsById[installed.partId]`) times
+ * `economy.restoration.repairStepFraction`, never a car/model-derived
+ * factor.
  *
- * Removal and blocker refits are free, so a task's own teardown-chain
- * overhead is gone - both routes simply add `installLaborSlotsFor` for the
- * task's own target slot, since a customer task always improves that slot
- * (never a like-for-like refit) and so is always charged.
+ * `state` is the real shop generating this quote, not a hypothetical one -
+ * `taskLaborChain` prices every gated stage of the chain (blocker removal,
+ * the pull, the refit) at whatever machine multiplier that shop actually
+ * faces right now.
  */
 export function serviceJobCostBreakdown(
   tasks: readonly ServiceJobTask[],
   car: CarInstance,
   model: CarModel,
   context: SimContext,
+  state: GameState,
 ): ServiceJobCostBreakdown {
   const { repairStepFraction } = context.economy.restoration
-  const { energyPerBandStepByToolTier, pointsPerLabour } = context.economy.energy
+  const { energyPerBandStepByToolTier } = context.economy.energy
   let taskCostYen = 0
-  // The planners size labour in energy points; the customer payout prices
-  // wrench time at a market rate per slot (`serviceJobs.laborRateYen` -
-  // energy is the player's own time, not the customer's bill). All labour here
-  // is priced at tier 1 (a market baseline), so the conversion is exact.
-  let laborEnergy = 0
+  let laborSlots = 0
   for (const task of tasks) {
     const { carPartId, minBand, minGrade } = task.requirement
     const entry = context.partsTaxonomyById[carPartId]
@@ -275,7 +270,7 @@ export function serviceJobCostBreakdown(
         energyPerBandStepByToolTier,
       )
       taskCostYen += plan.costYen
-      laborEnergy += plan.laborSlotsRequired + installLaborSlotsFor(carPartId, context)
+      laborSlots += taskLaborChain(car, carPartId, minBand, context, state).totalSlots
       continue
     }
 
@@ -286,15 +281,16 @@ export function serviceJobCostBreakdown(
     const candidates = fittingPartsForRequirement(carPartId, minGrade ?? 'stock', model, context)
     const partCostYen = medianYen(candidates.map((part) => part.priceYen))
     taskCostYen += partCostYen
-    laborEnergy += installLaborSlotsFor(carPartId, context)
+    laborSlots += taskLaborChain(car, carPartId, 'install', context, state).totalSlots
   }
-  return { taskCostYen, laborSlots: laborEnergy / pointsPerLabour }
+  return { taskCostYen, laborSlots }
 }
 
 /**
  * The payout formula: `round((taskCostYen + laborSlots * laborRateYen) *
  * margin + calloutFeeYen)`. Computed once, at generation time, against the
- * specific customer car just rolled - never re-derived once an offer exists.
+ * specific customer car just rolled and the real shop offering it (`state`)
+ * - never re-derived once an offer exists.
  *
  * **The profitability invariant** (tested as a property in
  * `tests/serviceJobPayout.test.ts`): for every template x every roster model,
@@ -302,16 +298,19 @@ export function serviceJobCostBreakdown(
  * achievable cost by at least 1.15x. Because `taskCostYen` is deterministic
  * for repair tasks (no player choice) and install tasks price off the
  * median-of-the-narrowest-fitting-tier basis, the ratio holds structurally as
- * long as `marginMin >= 1.15`.
+ * long as `marginMin >= 1.15` - pricing in the real teardown-chain labour
+ * only ever raises the payout side of that ratio, never the player's own
+ * minimum achievable cost, so it can only widen the margin, never erode it.
  */
 export function deriveServiceJobPayoutYen(
   tasks: readonly ServiceJobTask[],
   car: CarInstance,
   model: CarModel,
   context: SimContext,
+  state: GameState,
   marginRoll: number,
 ): number {
-  const { taskCostYen, laborSlots } = serviceJobCostBreakdown(tasks, car, model, context)
+  const { taskCostYen, laborSlots } = serviceJobCostBreakdown(tasks, car, model, context, state)
   const { laborRateYen, calloutFeeYen } = context.economy.serviceJobs
   return Math.round((taskCostYen + laborSlots * laborRateYen) * marginRoll + calloutFeeYen)
 }
@@ -439,19 +438,61 @@ export function forceTasksOutstanding(
 }
 
 /**
+ * How many external blockers a task's slot demands clearing before work can
+ * even start on it - the same single-hop chain `taskLaborChain` actually
+ * removes, read here purely structurally (taxonomy + assembly defs only, no
+ * car or state) so it can weigh a TEMPLATE before any car has been rolled
+ * for it. An assembly member (`assemblies.json`) counts its assembly's own
+ * external-blocker set (`externalBlockersFor`), since the whole thing comes
+ * off together; a non-member counts its own direct `blockedBy`; a slot that
+ * never leaves the car at all (`removable: false`) is never deep.
+ */
+function taskChainDepth(carPartId: CarPartId, context: SimContext): number {
+  const entry = context.partsTaxonomyById[carPartId]
+  if (!entry || entry.removable === false) return 0
+  const assemblyDef = context.assemblies.find((a) => a.members.includes(carPartId))
+  return assemblyDef ? externalBlockersFor(assemblyDef, context).length : entry.blockedBy.length
+}
+
+/** A template's own chain depth: the deepest single task it carries - a
+ * multi-task template is exactly as deep as its hardest task, since that
+ * task's teardown gates the whole job regardless of what else is on the
+ * list. */
+function templateChainDepth(template: ServiceJobType, context: SimContext): number {
+  return Math.max(
+    0,
+    ...template.tasks.map((task) => taskChainDepth(task.requirement.carPartId, context)),
+  )
+}
+
+/**
+ * A deep-chain template's offer weight relative to a shallow one:
+ * `deepTaskWeightDecay ** depth` - geometric decay, so each extra blocker a
+ * job's hardest task demands clearing shrinks its odds of being the one
+ * rolled. Felt behaviour: a deep job is a prize the player occasionally
+ * gets offered, not the median phone call - a fresh shop's board reads
+ * mostly as easy, familiar work, with the rare teardown standing out, and
+ * now that its payout prices the whole real chain
+ * (`serviceJobCostBreakdown`), it pays like the day it eats.
+ */
+function templateOfferWeight(template: ServiceJobType, context: SimContext): number {
+  return context.economy.serviceJobs.deepTaskWeightDecay ** templateChainDepth(template, context)
+}
+
+/**
  * Generates today's fresh batch of service-job offers, a daily bell-curve
  * draw. Each carries a real customer car (rolled like an auction car, then
  * run through `forceTasksOutstanding` so the template's tasks are
  * guaranteed genuinely outstanding on it) and a payout derived from the
- * template's own task list against that specific car
- * (`deriveServiceJobPayoutYen`) - never an authored flat range. Each offer's
- * board lifetime is rolled uniformly per offer from
- * `economy.serviceJobs.offerLifetimeDaysRange`. `reputationTier` (default
- * `'legend'` = unrestricted) gates which template TIERS are even in the
- * candidate pool; within that pool, `toolLevels` (default: a fresh garage's
- * all-1) drives the offer rule (`isTemplateOfferable`): a template at most
- * one tool-level upgrade away in at most one line is offerable - shown as an
- * upgrade-hint offer when a deficit exists - and anything further out is
+ * template's own task list against that specific car and the real shop
+ * offering it (`deriveServiceJobPayoutYen`) - never an authored flat range.
+ * Each offer's board lifetime is rolled uniformly per offer from
+ * `economy.serviceJobs.offerLifetimeDaysRange`. `state.reputationTier`
+ * gates which template TIERS are even in the candidate pool; within that
+ * pool, `state`'s own tool levels (`toolLevelsFor`) drive the offer rule
+ * (`isTemplateOfferable`): a template at most one tool-level upgrade away in
+ * at most one line is offerable - shown as an upgrade-hint offer when a
+ * deficit exists - and anything further out is
  * not generated at all. `currentYear` (default Infinity = unrestricted)
  * excludes still-unreleased models and clamps the rolled car's year, same
  * as auction generation.
@@ -461,19 +502,21 @@ export function forceTasksOutstanding(
  * tool line, which is the shop covering it,
  * `craftOperationCapabilityGateReason`) is met; a template carrying no
  * `requiresOperationId` is never signature-gated at all. Every eligible
- * template is drawn uniformly - no discipline is favoured over another.
+ * template is then drawn WEIGHTED by its own chain depth
+ * (`templateOfferWeight`), not uniformly: a shallow bolt-on job is the
+ * ordinary phone call, a deep teardown is the rarer, better-paying one.
  */
 export function generateDailyServiceJobOffers(
   context: SimContext,
   day: number,
   rng: Rng,
+  state: GameState,
   currentYear: number = Infinity,
-  toolLevels: ToolLevels = freshToolLevels(),
-  reputationTier: ReputationTier = 'legend',
 ): ServiceJob[] {
+  const toolLevels = toolLevelsFor(state, context)
   const eligibleModels = context.models.filter((model) => model.spec.yearFrom <= currentYear)
   const tierEligibleTemplates = context.serviceJobTypes.filter((template) =>
-    reputationAtLeast(reputationTier, SERVICE_JOB_TIER_MIN_REPUTATION[template.tier]),
+    reputationAtLeast(state.reputationTier, SERVICE_JOB_TIER_MIN_REPUTATION[template.tier]),
   )
   const toolReadyTemplates = tierEligibleTemplates.filter((template) =>
     isTemplateOfferable(template.tasks, toolLevels, context),
@@ -497,7 +540,7 @@ export function generateDailyServiceJobOffers(
   )
   const offers: ServiceJob[] = []
   for (let i = 0; i < count; i++) {
-    const template = rng.pick(eligibleTemplates)
+    const template = pickWeighted(eligibleTemplates, (t) => templateOfferWeight(t, context), rng)
     const model = rng.pick(eligibleModels)
     // A customer's car never rolls a random missing slot
     // (`allowMissingSlots: false`) - `forceTasksOutstanding` below is the
@@ -519,7 +562,7 @@ export function generateDailyServiceJobOffers(
     // the payout (and the job itself) never prices in vacuous "work".
     const car = forceTasksOutstanding(rolledCar, template.tasks, context, rng, day)
     const margin = rollMargin(context, rng)
-    const payoutYen = deriveServiceJobPayoutYen(template.tasks, car, model, context, margin)
+    const payoutYen = deriveServiceJobPayoutYen(template.tasks, car, model, context, state, margin)
     offers.push({
       id: `svc-${day}-${i}`,
       typeId: template.id,
@@ -533,6 +576,7 @@ export function generateDailyServiceJobOffers(
       expiresOnDay: day + rng.int(minLifetimeDays, maxLifetimeDays),
       arrivesOnDay: null,
       dueOnDay: null,
+      unlocksSellingChannel: template.unlocksSellingChannel,
     })
   }
   return offers
@@ -750,6 +794,23 @@ function highestInstalledGrade(parts: readonly Part[]): Grade | null {
 }
 
 /**
+ * Appends `channelId` to `state.serviceJobChannelUnlocks` if it names one and
+ * it isn't claimed already - the persisted half of a service job's unlock,
+ * read by `isSellingChannelUnlocked` (selling.ts). Returns the existing field
+ * unchanged (same reference) when there is nothing new to claim, so a job
+ * with no unlock, or one already claimed, never touches this field.
+ */
+function claimedServiceJobChannelUnlocks(
+  state: GameState,
+  channelId: SellingChannelId | undefined,
+): GameState['serviceJobChannelUnlocks'] {
+  if (!channelId) return state.serviceJobChannelUnlocks
+  const existing = state.serviceJobChannelUnlocks ?? []
+  if (existing.includes(channelId)) return state.serviceJobChannelUnlocks
+  return [...existing, channelId]
+}
+
+/**
  * Resolve one active service job by handing the car back to its customer. The
  * single source of truth for job resolution, shared by the player's immediate
  * "Complete Job" click and advanceDay's deadline backstop:
@@ -876,6 +937,10 @@ export function resolveServiceJob(
             activeServiceJobs,
             jobs,
             partInventory,
+            serviceJobChannelUnlocks: claimedServiceJobChannelUnlocks(
+              withReputation,
+              job.unlocksSellingChannel,
+            ),
           },
           log,
           context.economy,

@@ -30,9 +30,16 @@ const ceilingCaption = computed(() =>
   bench.value ? game.benchRepairCeilingCaption(bench.value.instance.id) : null,
 )
 
+/** The bench's outright refusal for the held part - today only body work (a
+ * zone panel belongs to the body shop) - stated on the fixed control rather
+ * than leaving it silently dead. */
+const workRefusal = computed(() =>
+  bench.value ? game.benchWorkRefusal(bench.value.instance.id) : null,
+)
+
 const idleReason = computed<BenchIdleReason | null>(() => {
   const held = bench.value
-  if (!held || step.value || ceilingCaption.value) return null
+  if (!held || step.value || ceilingCaption.value || workRefusal.value) return null
   return benchIdleReason({
     band: held.instance.band,
     repairable: game.isPartRepairable(held.part.carPartId),
@@ -41,7 +48,7 @@ const idleReason = computed<BenchIdleReason | null>(() => {
 
 const IDLE_COPY: Readonly<Record<BenchIdleReason, string>> = {
   scrap: 'Scrap. Past putting right; sell it for what the metal is worth.',
-  'replace-only': 'Nothing to rebuild on one of these. It gets replaced, not repaired.',
+  'replace-only': 'Nothing to rebuild on one of these. Take it off and fit a new one.',
   mint: 'Mint. Nothing left to put right.',
 }
 
@@ -63,6 +70,7 @@ const targetBand = computed<ConditionBand | null>(
  */
 const disabledReason = computed<string | null>(() => {
   if (!bench.value) return null
+  if (workRefusal.value) return workRefusal.value
   if (step.value) return noLabourLeft.value ? 'No labour left today' : null
   if (ceilingCaption.value) return ceilingCaption.value
   if (idleReason.value) return IDLE_COPY[idleReason.value]
@@ -114,6 +122,10 @@ function onRepairClick(): void {
           {{ formatYen(step.costYen) }} &middot; {{ step.laborSlotsRequired }} labour
         </span>
       </div>
+
+      <p v-if="workRefusal" class="note" data-test="workshop-floor-body-work">
+        {{ workRefusal }}
+      </p>
 
       <p v-if="ceilingCaption" class="note" data-test="workshop-floor-ceiling">
         {{ ceilingCaption }}

@@ -5,20 +5,20 @@ import { computed, reactive } from 'vue'
 import { RouterLink } from 'vue-router'
 import ProgressBar from '../components/ProgressBar.vue'
 import { useGameStore } from '../stores/gameStore'
-import { formatYen } from '../utils/formatYen'
+import { formatYen, formatYenDelta } from '../utils/formatYen'
 import { eraLabel, seasonLabel, WEEKS_PER_SEASON } from '../utils/calendarLabels'
+import { SELLING_CHANNEL_LABELS } from '../utils/sellingChannelLabels'
 import { photoCountForReputationTier } from './officeDisplay'
 
 /**
- * The one place the shop's granular
- * standing lives - exact reputation points with the named next tier, and
- * every scene's ledger. Progression bible law 4 permits exact numbers and a
- * progress bar for reputation on THIS view only; the scenes panel is a
- * different law again - a scene's stage is stated in words, never a bar, and
- * its car list is a receipt (the price a real delivery sold for), not a
- * progress readout. Everywhere else stays meter-free - nothing follows the
- * player around, nothing pops up mid-job. Pure renderer over
- * `game.standingView` - no local logic, no new state.
+ * The office: a room off the garage floor (station idiom, sprint209.md)
+ * holding six plain blocks - the phone (a door to the jobs board), standing
+ * and rep (the corkboard fiction, moved from the old Standing screen intact),
+ * the office wall's diegetic readouts (photo wall, corkboard, certificates,
+ * wall calendar - also moved from Standing), the listing channels the shop
+ * can currently sell through, and the cash register (the weekly cost sheet,
+ * moved from the old Costs screen intact). Every block is a pure renderer
+ * over `gameStore` - no new state anywhere in this screen.
  */
 const game = useGameStore()
 
@@ -96,12 +96,33 @@ const OPERATION_GATE_COPY: Readonly<Record<'tool-tier' | 'scene-standing', strin
   'tool-tier': 'Needs tier 3 of the tool line this operation uses.',
   'scene-standing': 'Needs this scene at the Shop stage.',
 }
+
+/** The listing channels currently open to this career, in the picker's own
+ * display order - a plain summary block, never interactive here (the real
+ * picker lives on each car's own page). */
+const openChannelIds = computed(() => game.availableSellingChannelIds)
+
+/** The shop's own weekly cost sheets, one carbon copy per week, newest
+ * clipped on top - the cash register block, moved from the old Costs
+ * screen. Pure renderer over `game.costSheetView`, itself a pure derivation
+ * over the sim's own accumulator; nothing here totals anything. */
+const weeks = computed(() => game.costSheetView.weeks)
 </script>
 
 <template>
-  <section class="standing">
-    <RouterLink :to="{ name: 'garage' }" class="back">&lt; Garage</RouterLink>
-    <h2>Your standing</h2>
+  <section class="office" data-test="office">
+    <RouterLink :to="{ name: 'garage' }" class="back" data-test="office-back"
+      >&lt; Garage</RouterLink
+    >
+    <h2>The office</h2>
+
+    <section class="panel" data-test="phone-panel">
+      <h3>Phone</h3>
+      <p class="hint">Calls come in through the day - the jobs board is where they land.</p>
+      <RouterLink :to="{ name: 'jobs' }" class="phone-link" data-test="phone-link"
+        >Check the phone</RouterLink
+      >
+    </section>
 
     <section class="panel" data-test="reputation-panel">
       <h3>Reputation</h3>
@@ -295,11 +316,83 @@ const OPERATION_GATE_COPY: Readonly<Record<'tool-tier' | 'scene-standing', strin
         </div>
       </dl>
     </section>
+
+    <section class="panel" data-test="channels-panel">
+      <h3>Listing channels</h3>
+      <p v-if="openChannelIds.length === 0" class="empty" data-test="channels-empty">
+        Nowhere to list a car yet.
+      </p>
+      <ul v-else class="channels-list" data-test="channels-list">
+        <li v-for="id in openChannelIds" :key="id" class="channels-item">
+          {{ SELLING_CHANNEL_LABELS[id] }}
+        </li>
+      </ul>
+    </section>
+
+    <section class="panel cash-register" data-test="cash-register">
+      <h3>Cash register</h3>
+      <p class="lead">
+        The shop's own sheets, a week to a page. Rent, wages and machine hire keep the doors open;
+        they belong to no car, so they are written here and nowhere else.
+      </p>
+
+      <p v-if="weeks.length === 0" class="empty" data-test="cost-sheet-empty">
+        Nothing has been through the till yet. There will be a sheet here the first week money
+        moves.
+      </p>
+
+      <ol v-else class="sheets">
+        <li
+          v-for="week in weeks"
+          :key="week.weekNumber"
+          class="sheet"
+          :data-test="'cost-sheet-week-' + week.weekNumber"
+        >
+          <div class="clip" aria-hidden="true"></div>
+          <header class="sheet-head">
+            <h4>Week {{ week.weekNumber }}</h4>
+            <p class="days">
+              Days {{ week.firstDay }} to {{ week.lastDay }}
+              <span v-if="week.open" class="open" data-test="week-open">- still running</span>
+            </p>
+          </header>
+
+          <dl class="rows">
+            <div class="row">
+              <dt>Money in</dt>
+              <dd data-test="row-income">{{ formatYen(week.incomeYen) }}</dd>
+            </div>
+            <div class="row">
+              <dt>On cars</dt>
+              <dd data-test="row-on-cars">{{ formatYen(week.onCarsYen) }}</dd>
+            </div>
+            <div class="row">
+              <dt>Parts on the shelf</dt>
+              <dd data-test="row-stock">{{ formatYen(week.stockYen) }}</dd>
+            </div>
+            <div class="row">
+              <dt>Running the shop</dt>
+              <dd data-test="row-running">{{ formatYen(week.runningYen) }}</dd>
+            </div>
+            <div class="row">
+              <dt>Into the shop</dt>
+              <dd data-test="row-investment">{{ formatYen(week.investmentYen) }}</dd>
+            </div>
+            <div class="row net">
+              <dt>{{ week.open ? 'So far' : 'Left over' }}</dt>
+              <dd :class="{ down: week.netYen < 0 }" data-test="row-net">
+                {{ formatYenDelta(week.netYen) }}
+              </dd>
+            </div>
+          </dl>
+        </li>
+      </ol>
+    </section>
   </section>
 </template>
 
 <style scoped>
-.standing {
+.office {
   max-width: 640px;
 }
 
@@ -329,8 +422,12 @@ h3 {
   margin-bottom: var(--mg-space-3);
 }
 
-.lead {
+.lead,
+.hint,
+.empty {
   margin: 0 0 var(--mg-space-1);
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
 }
 
 .lead strong,
@@ -344,9 +441,23 @@ h3 {
   font-size: var(--mg-fs-sm);
 }
 
-.hint {
-  margin: 0 0 var(--mg-space-3);
-  color: var(--mg-text-dim);
+.phone-link {
+  color: var(--mg-neon-cyan);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-size: var(--mg-fs-sm);
+}
+
+.channels-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.channels-item {
+  color: var(--mg-text);
   font-size: var(--mg-fs-sm);
 }
 
@@ -541,5 +652,114 @@ h3 {
   border-color: var(--mg-neon-cyan);
   color: var(--mg-bg);
   font-weight: bold;
+}
+
+/* The cash register's own sheets, a carbon copy on a clipboard: ruled lines
+   under the figures, older copies showing as edges behind the top sheet. */
+.cash-register .sheets {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: var(--mg-space-4);
+}
+
+.cash-register .sheet {
+  position: relative;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent calc(var(--mg-space-4) - 1px),
+      var(--mg-panel-edge) calc(var(--mg-space-4) - 1px),
+      var(--mg-panel-edge) var(--mg-space-4)
+    ),
+    var(--mg-panel);
+  border: var(--mg-border);
+  border-radius: 2px;
+  padding: var(--mg-space-4) var(--mg-space-3) var(--mg-space-3);
+  box-shadow:
+    3px 3px 0 -1px var(--mg-night),
+    4px 4px 0 -1px var(--mg-panel-edge),
+    7px 7px 0 -2px var(--mg-night);
+}
+
+.cash-register .clip {
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 72px;
+  height: 12px;
+  background: var(--mg-panel-edge);
+  border: var(--mg-border);
+  border-radius: 2px;
+}
+
+.cash-register .sheet-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--mg-space-3);
+  flex-wrap: wrap;
+  border-bottom: 2px solid var(--mg-panel-edge);
+  padding-bottom: var(--mg-space-2);
+  margin-bottom: var(--mg-space-2);
+}
+
+.cash-register .sheet-head h4 {
+  color: var(--mg-neon-violet);
+  font-size: var(--mg-fs-md);
+  margin: 0;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cash-register .days {
+  margin: 0;
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
+}
+
+.cash-register .open {
+  color: var(--mg-neon-cyan);
+}
+
+.cash-register .rows {
+  margin: 0;
+}
+
+.cash-register .row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--mg-space-3);
+  height: var(--mg-space-4);
+}
+
+.cash-register .row dt {
+  color: var(--mg-text);
+  font-size: var(--mg-fs-sm);
+}
+
+.cash-register .row dd {
+  margin: 0;
+  color: var(--mg-yen);
+  font-variant-numeric: tabular-nums;
+}
+
+.cash-register .row.net {
+  border-top: 2px solid var(--mg-panel-edge);
+  margin-top: var(--mg-space-2);
+  padding-top: var(--mg-space-2);
+  height: auto;
+}
+
+.cash-register .row.net dt {
+  color: var(--mg-neon-violet);
+}
+
+.cash-register .row.net dd.down {
+  color: var(--mg-danger);
 }
 </style>

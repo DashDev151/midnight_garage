@@ -7,8 +7,10 @@ import {
   ALL_CAR_PART_IDS,
   CARS,
   fitmentClassForTier,
+  type AuctionTier,
   type CarInstance,
 } from '@midnight-garage/content'
+import { serviceJobCostBreakdown } from '@midnight-garage/sim'
 import { useGameStore } from '../stores/gameStore'
 import { AUCTION_TIER_LABELS, venueLabelFor } from '../utils/auctionTierLabels'
 import { formatYen, formatYenDelta } from '../utils/formatYen'
@@ -27,6 +29,7 @@ function makeRouter(): Router {
     history: createMemoryHistory(),
     routes: [
       { path: '/', name: 'garage', component: { render: () => h('div') } },
+      { path: '/overworld', name: 'overworld', component: { render: () => h('div') } },
       { path: '/auctions', name: 'auctions', component: { render: () => h('div') } },
       {
         path: '/auctions/:lotId/room',
@@ -47,6 +50,20 @@ function mountScreen() {
  * that asserts a real navigation actually happened. */
 function mountScreenWithRouter(): { wrapper: VueWrapper; router: Router } {
   const router = makeRouter()
+  const wrapper = mount(AuctionScreen, { global: { plugins: [router] } })
+  mountedWrappers.push(wrapper)
+  return { wrapper, router }
+}
+
+/** Mounts the screen already arrived at a specific tier's own room - the
+ * `tier` query `overworldNav.ts` puts on the auctions route for each map
+ * building. The push resolves before mount, so `useRoute()` inside the
+ * screen's own setup already sees it. */
+async function mountScreenAtTier(
+  tier: AuctionTier,
+): Promise<{ wrapper: VueWrapper; router: Router }> {
+  const router = makeRouter()
+  await router.push({ name: 'auctions', query: { from: 'overworld', tier } })
   const wrapper = mount(AuctionScreen, { global: { plugins: [router] } })
   mountedWrappers.push(wrapper)
   return { wrapper, router }
@@ -175,7 +192,7 @@ describe('AuctionScreen', () => {
     game.gameState = { ...game.gameState, day: 2 }
     expect(game.openAuctionTiers).not.toContain('local-yard')
     const wrapper = mountScreen()
-    const closed = wrapper.find('[data-test="closed-tier-local-yard"]')
+    const closed = wrapper.find('[data-test="auction-closed"]')
     expect(closed.exists()).toBe(true)
     expect(closed.text()).toContain('tomorrow')
     expect(wrapper.findAll('.lot')).toHaveLength(0)
@@ -610,6 +627,89 @@ describe('AuctionScreen', () => {
     })
   })
 
+  describe('the diagnosis verdict layer (sprint210.md task B1/B2/B3)', () => {
+    it('shows neither a verdict nor either bid-guidance line while more than one cause remains', async () => {
+      const game = useGameStore()
+      warpToCatalog(game)
+      const lot = game.gameState.activeAuctionLots[0]!
+      const withSymptom = makeSymptomaticLot(game, lot.id)
+      game.gameState = { ...game.gameState, activeAuctionLots: [withSymptom] }
+      const wrapper = mountScreen()
+
+      await wrapper.find(`[data-test="inspect-visit-${withSymptom.tier}"]`).trigger('click')
+      await wrapper.find(`[data-test="run-test-${lot.id}-0-cold-start-watch"]`).trigger('click')
+
+      // cold-start-watch leaves two candidates (valve-seals, tired-rings) -
+      // tested, but not resolved.
+      const updatedCar = game.gameState.activeAuctionLots.find((l) => l.id === lot.id)!.car
+      expect(updatedCar.symptoms[0]!.remainingCauseIds).toHaveLength(2)
+      expect(wrapper.find('[data-test="verdict-0"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="bid-guidance"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="spread-line"]').exists()).toBe(false)
+    })
+
+    it('renders the verdict, priced off the real chain function, plus both bid-guidance lines verbatim once elimination leaves exactly one cause', async () => {
+      const game = useGameStore()
+      warpToCatalog(game)
+      const lot = game.gameState.activeAuctionLots[0]!
+      const withSymptom = makeSymptomaticLot(game, lot.id)
+      game.gameState = { ...game.gameState, activeAuctionLots: [withSymptom] }
+      const wrapper = mountScreen()
+
+      await wrapper.find(`[data-test="inspect-visit-${withSymptom.tier}"]`).trigger('click')
+      await wrapper.find(`[data-test="run-test-${lot.id}-0-cold-start-watch"]`).trigger('click')
+      await wrapper.find(`[data-test="run-test-${lot.id}-0-overrun-smoke-watch"]`).trigger('click')
+
+      const updatedCar = game.gameState.activeAuctionLots.find((l) => l.id === lot.id)!.car
+      expect(updatedCar.symptoms[0]!.remainingCauseIds).toEqual(['valve-seals'])
+
+      // The exact same figures the store's verdict reads - never a second sum.
+      const model = game.context.modelsById[updatedCar.modelId]!
+      const { taskCostYen, laborSlots } = serviceJobCostBreakdown(
+        [
+          {
+            requirement: { kind: 'slotCondition', carPartId: 'headValvetrain', minBand: 'fine' },
+            minToolTier: 1,
+          },
+        ],
+        updatedCar,
+        model,
+        game.context,
+        game.gameState,
+      )
+
+      const verdictEl = wrapper.find('[data-test="verdict-0"]')
+      expect(verdictEl.exists()).toBe(true)
+      expect(verdictEl.text()).toContain('Must be the valve seals, then.')
+      expect(verdictEl.text()).toContain(formatYen(Math.round(taskCostYen)))
+      expect(verdictEl.text()).toContain(`${Math.round(laborSlots)} labour`)
+
+      const bidGuidance = wrapper.find('[data-test="bid-guidance"]')
+      expect(bidGuidance.exists()).toBe(true)
+      expect(bidGuidance.text()).toBe(
+        'Your number already carries what you found. Bid to it; past it, the room is paying for a car you know better than they do.',
+      )
+      const spreadLine = wrapper.find('[data-test="spread-line"]')
+      expect(spreadLine.exists()).toBe(true)
+      expect(spreadLine.text()).toBe("Your number prices what you found. The room's doesn't.")
+    })
+
+    it('a clean lot (no symptoms at all) shows neither bid-guidance line', () => {
+      const game = useGameStore()
+      warpToCatalog(game)
+      game.gameState = {
+        ...game.gameState,
+        activeAuctionLots: game.gameState.activeAuctionLots.map((l) => ({
+          ...l,
+          car: { ...l.car, symptoms: [], apparentBandByPartId: null },
+        })),
+      }
+      const wrapper = mountScreen()
+      expect(wrapper.find('[data-test="bid-guidance"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="spread-line"]').exists()).toBe(false)
+    })
+  })
+
   describe('the yard visit and diagnostic tests', () => {
     it('offers a per-tier "Inspect here" button that starts a visit: spends cash and a labour slot, and shows the fixed "At the yard" panel', async () => {
       const game = useGameStore()
@@ -695,39 +795,35 @@ describe('AuctionScreen', () => {
     })
   })
 
-  describe('tier display labels and the inspect control', () => {
+  describe('the venue heading and the inspect control', () => {
     /**
-     * The tier heading/visit panel render through `venueLabelFor`, which
-     * prefers the save's own rolled `venueNameByTier` name and falls back to
-     * the plain tier label - every `useGameStore()` career rolls real venue
+     * The heading/visit panel render through `venueLabelFor`, which prefers
+     * the save's own rolled `venueNameByTier` name and falls back to the
+     * plain tier label - every `useGameStore()` career rolls real venue
      * names (`createInitialGameState`), so this asserts against
      * `venueLabelFor`'s own output rather than the bare `AUCTION_TIER_LABELS`
      * map, and the two dedicated tests below cover the rolled-name and
      * no-venue-names cases explicitly.
      */
-    it('tier headings and the visit panel show the venue label, never the raw enum slug', async () => {
+    it('the heading and the visit panel show the venue label, never the raw enum slug', async () => {
       const game = useGameStore()
       warpToCatalog(game)
-      const tiers = new Set(game.gameState.activeAuctionLots.map((l) => l.tier))
+      const tier = game.gameState.activeAuctionLots[0]!.tier
       const wrapper = mountScreen()
 
-      const headings = wrapper.findAll('.tier-head h3').map((h) => h.text())
-      for (const tier of tiers) {
-        expect(headings).toContain(venueLabelFor(tier, game.gameState.venueNameByTier))
-      }
+      expect(wrapper.find('h2').text()).toBe(venueLabelFor(tier, game.gameState.venueNameByTier))
       // Slugs live in data-test attributes only - never in rendered text.
       expect(wrapper.text()).not.toContain('local-yard')
       expect(wrapper.text()).not.toContain('collector-network')
 
       // The active-visit panel names the yard through the same seam.
-      const tier = game.gameState.activeAuctionLots[0]!.tier
       await wrapper.find(`[data-test="inspect-visit-${tier}"]`).trigger('click')
       expect(wrapper.text()).toContain(
         `At the yard (${venueLabelFor(tier, game.gameState.venueNameByTier)})`,
       )
     })
 
-    it("renders the save's own rolled venue name literally on the tier heading (Sprint 114)", () => {
+    it("renders the save's own rolled venue name literally on the heading (Sprint 114)", () => {
       const game = useGameStore()
       warpToCatalog(game)
       const tier = game.gameState.activeAuctionLots[0]!.tier
@@ -741,8 +837,7 @@ describe('AuctionScreen', () => {
         },
       }
       const wrapper = mountScreen()
-      const rolledName = game.gameState.venueNameByTier![tier]
-      expect(wrapper.findAll('.tier-head h3').map((h) => h.text())).toContain(rolledName)
+      expect(wrapper.find('h2').text()).toBe(game.gameState.venueNameByTier![tier])
     })
 
     it('falls back to the plain tier label when the save has no rolled venue names (Sprint 114)', () => {
@@ -751,9 +846,7 @@ describe('AuctionScreen', () => {
       game.gameState = { ...game.gameState, venueNameByTier: undefined }
       const tier = game.gameState.activeAuctionLots[0]!.tier
       const wrapper = mountScreen()
-      expect(wrapper.findAll('.tier-head h3').map((h) => h.text())).toContain(
-        AUCTION_TIER_LABELS[tier],
-      )
+      expect(wrapper.find('h2').text()).toBe(AUCTION_TIER_LABELS[tier])
     })
 
     it('the inspect control carries its per-tier data-test anchor for the tutorial spotlight', () => {
@@ -856,44 +949,35 @@ describe('AuctionScreen', () => {
     })
   })
 
-  describe('locked-tier guarantor copy (Sprint 115)', () => {
-    it('renders the byte-verbatim guarantor line for every locked tier, with no inspect control', () => {
+  /**
+   * sprint209.md task A scopes this screen to a single room: the map
+   * building that led here already refused the click for a tier not yet
+   * unlocked (`overworldNav.ts`), so the guarantor-copy locked state this
+   * describe block used to cover (sprint115.md) no longer renders here at
+   * all - it moved to the map. What replaces it: which single tier this
+   * screen actually shows, given what the route asked for and what is
+   * really unlocked.
+   */
+  describe('scoping to a single, always-unlocked room (sprint209.md task A)', () => {
+    it('defaults to the lowest unlocked tier when reached with no tier context at all', () => {
       const game = useGameStore()
-      warpToCatalog(game)
       const wrapper = mountScreen()
-      expect(wrapper.find('[data-test="locked-tier-regional"]').text()).toBe(
-        'Members only. Somebody has to vouch for you, and nobody does. Yet.',
+      expect(wrapper.find('h2').text()).toBe(
+        venueLabelFor('local-yard', game.gameState.venueNameByTier),
       )
-      expect(wrapper.find('[data-test="locked-tier-premium"]').text()).toBe(
-        "The book at the door is full of names. Yours needs a sponsor's beside it.",
-      )
-      expect(wrapper.find('[data-test="locked-tier-collector-network"]').text()).toBe(
-        'Invitation only, and invitations start with a name they trust. No one is offering yours.',
-      )
-      for (const tier of ['regional', 'premium', 'collector-network']) {
-        expect(wrapper.find(`[data-test="inspect-visit-${tier}"]`).exists()).toBe(false)
-      }
     })
 
-    it('shows the plain tier label (never the rolled venue name) on a locked tier heading', () => {
+    it('falls back to the lowest unlocked tier when the requested tier is not (yet) unlocked', async () => {
       const game = useGameStore()
-      warpToCatalog(game)
-      const wrapper = mountScreen()
-      const headings = wrapper.findAll('.tier-head h3').map((h) => h.text())
-      expect(headings).toContain(AUCTION_TIER_LABELS.regional)
-      expect(headings).not.toContain(game.gameState.venueNameByTier?.regional)
+      expect(game.unlockedAuctionTiers).not.toContain('regional')
+      const { wrapper } = await mountScreenAtTier('regional')
+      expect(wrapper.find('h2').text()).toBe(
+        venueLabelFor('local-yard', game.gameState.venueNameByTier),
+      )
     })
 
-    it('never shows the locked line for local-yard - it is open from day one', () => {
+    it('renders the requested tier once its guarantor mission is delivered, and no other tier alongside it', async () => {
       const game = useGameStore()
-      warpToCatalog(game)
-      const wrapper = mountScreen()
-      expect(wrapper.find('[data-test="locked-tier-local-yard"]').exists()).toBe(false)
-    })
-
-    it('delivering the-fleet-spare flips regional to its real board (rolled venue name, no locked line), leaving premium/collector-network locked', () => {
-      const game = useGameStore()
-      warpToCatalog(game)
       const carId = giveReliableOwnedCar(game)
       game.gameState = {
         ...game.gameState,
@@ -901,24 +985,18 @@ describe('AuctionScreen', () => {
           { missionId: 'the-fleet-spare', status: 'active', acceptedOnDay: game.gameState.day },
         ],
       }
-
-      const before = mountScreen()
-      expect(before.find('[data-test="locked-tier-regional"]').exists()).toBe(true)
-
       const grade = game.gradeMission(carId)
       expect(grade.pass, JSON.stringify(grade.lines)).toBe(true)
       expect(game.deliverMission(carId)).toBe(true)
+      expect(game.unlockedAuctionTiers).toContain('regional')
 
-      const after = mountScreen()
-      expect(after.find('[data-test="locked-tier-regional"]').exists()).toBe(false)
-      expect(after.find('[data-test="locked-tier-premium"]').exists()).toBe(true)
-      expect(after.find('[data-test="locked-tier-collector-network"]').exists()).toBe(true)
-
+      const { wrapper } = await mountScreenAtTier('regional')
       const regionalVenue = venueLabelFor('regional', game.gameState.venueNameByTier)
-      expect(after.findAll('.tier-head h3').map((h) => h.text())).toContain(regionalVenue)
-      // The local-yard heading stays exactly what it always was.
       const localVenue = venueLabelFor('local-yard', game.gameState.venueNameByTier)
-      expect(after.findAll('.tier-head h3').map((h) => h.text())).toContain(localVenue)
+      expect(wrapper.find('h2').text()).toBe(regionalVenue)
+      // Only one room ever renders - the local yard's own heading is absent,
+      // not just unheaded.
+      expect(wrapper.text()).not.toContain(localVenue)
     })
   })
 })

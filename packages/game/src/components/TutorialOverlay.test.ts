@@ -452,7 +452,7 @@ describe('TutorialOverlay', () => {
     await nextTick()
 
     expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 8 of 10')
-    expect(wrapper.text()).toContain('still on your shelf')
+    expect(wrapper.text()).toContain('still in the warehouse')
     expect(wrapper.text()).not.toContain('press Show them the car')
 
     game.gameState = whole

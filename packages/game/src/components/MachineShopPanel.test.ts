@@ -162,7 +162,7 @@ describe('MachineShopPanel', () => {
     expect(wrapper.find('[data-test="machine-shop-part"]').exists()).toBe(true)
   })
 
-  it('the tray shows no duplicate parts list - the inventory tab is the only list', () => {
+  it('the tray shows no duplicate parts list - the Warehouse is the only list', () => {
     const game = useGameStore()
     game.newGame(1)
     game.devGrantPart(BLOCK_PART.id)

@@ -106,7 +106,8 @@ export function serviceGrinderStrategy(state: GameState, context: SimContext): D
   // on one it can't take yet.
   if (laborBudget > 0 && bayBudget.free > 0) {
     for (const offer of state.serviceJobOffers) {
-      if (expectedProfitPerLaborSlot(offer, context) < MIN_PROFIT_PER_LABOR_SLOT_YEN) continue
+      if (expectedProfitPerLaborSlot(offer, context, state) < MIN_PROFIT_PER_LABOR_SLOT_YEN)
+        continue
       let canAcceptNow =
         toolDeficitSummary(offer.tasks, toolLevelsFor(state, context), context).maxDeficit === 0
       if (!canAcceptNow) {

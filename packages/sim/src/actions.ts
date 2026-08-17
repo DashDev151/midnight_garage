@@ -1,4 +1,5 @@
 import {
+  AssemblyIdSchema,
   BayKindSchema,
   CarPartIdSchema,
   ComponentIdSchema,
@@ -83,6 +84,20 @@ const RemovePartActionSchema = z.object({
   carPartId: CarPartIdSchema,
 })
 
+/**
+ * Bots' only path to pulling a whole assembly (rims+tyres, the engine's four
+ * members, gearbox+clutch) off a car before a member slot inside it can be
+ * worked - the player does this instantly via a direct store call
+ * (`resolveRemoveAssembly`, assemblies.ts). Needed alongside `removeParts`
+ * because a plain removal always refuses an assembly member outright; a
+ * bot's queued task against a member-blocked slot (e.g. dampers needs rims
+ * vacated first) has no other way to clear it.
+ */
+const RemoveAssemblyActionSchema = z.object({
+  carInstanceId: z.string().min(1),
+  assemblyId: AssemblyIdSchema,
+})
+
 const AcceptServiceJobActionSchema = z.object({ offerId: z.string().min(1) })
 
 const MoveCarActionSchema = z.object({
@@ -105,6 +120,7 @@ export const DayActionsSchema = z.object({
   buyParts: z.array(BuyPartActionSchema).default([]),
   scrapParts: z.array(ScrapPartActionSchema).default([]),
   removeParts: z.array(RemovePartActionSchema).default([]),
+  removeAssemblies: z.array(RemoveAssemblyActionSchema).default([]),
   acceptServiceJobs: z.array(AcceptServiceJobActionSchema).default([]),
   /** Bots' only path to moving cars between bays - the player moves instantly
    * via a direct store call (see sim/facilities.ts's applyMoves doc). */
@@ -126,6 +142,7 @@ export type SetForSaleAction = z.infer<typeof SetForSaleActionSchema>
 export type BuyPartAction = z.infer<typeof BuyPartActionSchema>
 export type ScrapPartAction = z.infer<typeof ScrapPartActionSchema>
 export type RemovePartAction = z.infer<typeof RemovePartActionSchema>
+export type RemoveAssemblyAction = z.infer<typeof RemoveAssemblyActionSchema>
 export type BuyoutLotAction = z.infer<typeof BuyoutLotActionSchema>
 export type AcceptServiceJobAction = z.infer<typeof AcceptServiceJobActionSchema>
 export type MoveCarAction = z.infer<typeof MoveCarActionSchema>

@@ -13,14 +13,15 @@ const result = computed(() => game.lastJobResult)
  * flavor line does not name one specific piece of work (that would read
  * oddly for a multi-task job) - the per-task breakdown renders separately,
  * below, from `taskLabels` (already clean, properly-spaced phrases like
- * "Engine repair to fine", never a raw camelCase id).
+ * "Engine repair to fine", never a raw camelCase id). A scripted job's own
+ * `handbackCopy`, when present, replaces the generic paid line entirely -
+ * the character's own voice at the moment they get their car back.
  */
 const flavorLine = computed(() => {
   const r = result.value
   if (!r) return ''
-  return r.outcome === 'paid'
-    ? 'Thanks, looks great!'
-    : `${r.customerName} isn't happy - that wasn't what they asked for.`
+  if (r.outcome === 'paid') return r.handbackCopy ?? 'Thanks, looks great!'
+  return `${r.customerName} isn't happy - that wasn't what they asked for.`
 })
 </script>
 
@@ -68,6 +69,16 @@ const flavorLine = computed(() => {
           <dd>{{ result.returnedParts.join(', ') }}</dd>
         </div>
       </dl>
+
+      <!-- A Tier 2 community job's world-change (community-jobs.md): three
+           plain facts, shown only on a paid outcome that actually carries
+           them. The modal is the moment; the Shop Manual is the memory. -->
+      <section v-if="result.unlockFacts?.length" class="unlock-facts" data-test="unlock-facts">
+        <h4>What changed</h4>
+        <ul>
+          <li v-for="(fact, i) in result.unlockFacts" :key="i">{{ fact }}</li>
+        </ul>
+      </section>
 
       <button class="primary" data-test="job-result-continue" @click="game.dismissJobResult()">
         Continue
@@ -143,6 +154,34 @@ h3 {
 
 .numbers dd {
   margin: 0;
+}
+
+/* The what-changed section: set off from the numbers by a thin rule, same
+   weight as the task list above it - a quiet record, not a banner. */
+.unlock-facts {
+  margin: 0 0 var(--mg-space-4);
+  padding-top: var(--mg-space-3);
+  border-top: var(--mg-border);
+}
+
+.unlock-facts h4 {
+  margin: 0 0 var(--mg-space-2);
+  color: var(--mg-neon-cyan);
+  font-size: var(--mg-fs-sm);
+}
+
+.unlock-facts ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--mg-space-2);
+}
+
+.unlock-facts li {
+  color: var(--mg-text);
+  font-size: var(--mg-fs-sm);
+  line-height: 1.4;
 }
 
 .up {

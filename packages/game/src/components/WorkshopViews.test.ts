@@ -200,7 +200,7 @@ describe('WorkshopViews', () => {
     expect(wrapper.findAll('.wv-region')).toHaveLength(rectCount('underside'))
   })
 
-  it('reads a zone off its own condition band, in the same vocabulary a part carries', () => {
+  it('reads a zone as Missing rather than Scrap when its panel is absent, with no band chip at all', () => {
     const { game, carId } = grantCar()
     const car = game.gameState.ownedCars.find((c) => c.id === carId)!
     car.zoneState = {
@@ -210,12 +210,15 @@ describe('WorkshopViews', () => {
     const wrapper = mountFor(carId)
 
     const region = wrapper.get('[data-test="workshop-region-zone-bonnet"]')
-    // A missing panel reads `scrap` outright - there is no severity to grade
-    // on nothing, whatever the stale metal/surface fields still say.
-    expect(region.get('.band-chip').text()).toBe('scrap')
-    // A missing panel is also always why `bodywork` reads `scrap` - it binds.
-    expect(region.attributes('aria-label')).toBe('Bonnet: scrap, panel off, binding')
-    expect(region.text()).toContain('panel off')
+    // An absent panel is forced to `scrap` internally for pricing (there is
+    // no sixth band value to spell "missing"), but the player never reads
+    // that word: no band chip at all, whatever the stale metal/surface
+    // fields still say - just the Missing tag.
+    expect(region.find('.band-chip').exists()).toBe(false)
+    expect(region.text()).toContain('Missing')
+    expect(region.text()).not.toContain('scrap')
+    // A missing panel is also always why `bodywork` reads as bad as it does - it binds.
+    expect(region.attributes('aria-label')).toBe('Bonnet: missing, binding')
   })
 
   it('tags a panel ruined past welding differently from one that is simply off the car', () => {
@@ -285,6 +288,11 @@ describe('WorkshopViews', () => {
 
   it('keeps a removed part clickable - an empty slot is a work target, not a dead region', async () => {
     const { game, carId } = grantCar()
+    // dampers is blockedBy rims and springs - rims comes off through its
+    // wheelAssembly (a plain removePart refuses any assembly member), then
+    // springs directly, before dampers itself can come off.
+    game.removeAssembly(carId, 'wheelAssembly')
+    game.removePart(carId, 'springs')
     expect(game.removePart(carId, 'dampers')).toBe(true)
     const wrapper = mountFor(carId)
 

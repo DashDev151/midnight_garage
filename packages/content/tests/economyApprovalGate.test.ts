@@ -2319,6 +2319,42 @@ import toolShops from '../data/toolShops.json'
  * offer from a different buyer than the one just turned down, the same day; a normal- or cold-band
  * rejection never rolls at all; the roll is deterministic for the same day/car/offersSeen; and a
  * landed second offer advances the listing's own `offersSeen` by one.
+ *
+ * Re-pinned for the service-job teardown-chain fix (`docs/sprints/sprint207.md`), the fifth lever
+ * under behaviour-first governance (directive 22 as amended 2026-08-13). No existing value moves:
+ * `laborRateYen` (Y6,000/slot) stays the one wrench-time rate, and every other `serviceJobs` field
+ * is untouched. ONE key is added, `serviceJobs.deepTaskWeightDecay` (**0.65**) - the geometric
+ * per-depth-level decay a fresh offer's TEMPLATE is drawn with (`templateOfferWeight`,
+ * serviceJobs.ts), where depth is a template's own structural chain length (its hardest task's
+ * external-blocker count: an assembly member counts its assembly's own external blockers, e.g. 3
+ * for any engine-assembly task; a non-member counts its direct `blockedBy`; 0.65^0 = 1 leaves a
+ * bolt-on undiscounted).
+ *
+ * The felt-behaviour statement, verbatim: "a job's pay tracks the time it eats: a deep job that
+ * consumes most of a day pays like a day's work, and a five-minute bolt-on pays like one - and a
+ * deep job is a prize you occasionally get offered, not the median phone call; when it comes, it
+ * pays like the day it eats." The pricing half needed no new lever: `serviceJobCostBreakdown` now
+ * reads the new `taskLaborChain` (taskLaborChain.ts) for every task's labour instead of a bare
+ * per-task install figure, so blocker removal, the assembly pull, and the refit all flow through
+ * the one `laborRateYen` that already existed - a rolled "repair cams and timing" job (camsTiming,
+ * an engine-assembly member behind three external blockers) now prices its true ~30-point
+ * (machine-owned) or ~58-point (machine-less) chain instead of the old flat repair-climb-plus-one-
+ * install-figure that undercounted it. The offer-weighting half is the one new number: 0.65 chosen
+ * so a template needing to clear two or more real blockers - a genuine teardown, not a single-hop
+ * annoyance - lands at roughly one in four to five drawn offers in a fully-eligible late-game pool
+ * (depth-0/1 templates keep the great majority of the board), while a fresh, mostly-shallow-
+ * eligible day-one pool skews the actual felt ratio further toward shallow work still, since deep
+ * templates are also the ones a low tool tier has fewest of on offer at all. Previously every
+ * eligible template was drawn uniformly; `pickWeighted` (rng.ts) is the existing weighted-draw
+ * primitive, reused rather than a second one built for this.
+ *
+ * Pinned by `packages/sim/tests/taskLaborChain.test.ts` (the camsTiming chain composed
+ * independently from content constants, both with and without the engine machine line, matching
+ * the sprint finding's own ~30/~58 figures exactly) and `packages/sim/tests/serviceJobPayout.test.ts`
+ * (the profitability invariant re-verified with the real chain priced in - it can only widen the
+ * margin, never erode it, since the player's own minimum achievable cost never depends on labour).
+ * No mission payout or budget cap moves: story missions price off build cost, never off a
+ * service-job's own labour chain.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -2328,7 +2364,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('95799a084eaf8bff3af385faae956e4f2a7e74f74042f22f068fbf3a6b51fc8f')
+    ).toBe('7500464b99fe93cdeb0b8caf6eb52909d5f66812db12c1ec492721bb4c296e90')
   })
 
   it('damagePatterns.json matches its approved content exactly', () => {

@@ -16,10 +16,10 @@ import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '../src/context'
 import { computeDerivedStats, machiningCost } from '../src/derivedStats'
 import {
+  resolveFitAssemblyMember,
   resolveRefitAssembly,
   resolveRemoveAssembly,
   resolveRemoveAssemblyMember,
-  resolveSwapAssemblyMember,
 } from '../src/assemblies'
 import {
   installLaborSlotsFor,
@@ -162,7 +162,7 @@ describe('the machine shop route: car, warehouse, machine, warehouse, car', () =
     // 4. Back to the warehouse, back onto the engine, and the engine back on
     //    the car - the real bench route a member takes, not a bare install.
     const offMachine = resolveTakeFromStation(machined.state, 'machine')
-    const remounted = resolveSwapAssemblyMember(offMachine, containerId, 'block', blockId, CONTEXT)
+    const remounted = resolveFitAssemblyMember(offMachine, containerId, 'block', blockId, CONTEXT)
     expect(remounted.ok, 'the block went back on the engine').toBe(true)
     const refitted = resolveRefitAssembly(remounted.state, containerId, CONTEXT)
     expect(refitted.ok, 'the engine went back on the car').toBe(true)
@@ -201,7 +201,9 @@ describe('the machine shop route: car, warehouse, machine, warehouse, car', () =
 
 describe('the workshop floor route: car, warehouse, bench, warehouse, car', () => {
   it('carries the steering out, rebuilds it, puts it back, and the band climbed on the car', () => {
-    const car = stockCar(MODEL, 'car-sequence-0002', [], { steering: 'poor' })
+    // Rims block steering (the rack unbolts from the hubs), so the corner
+    // starts stripped - this test is about the bench route, not the teardown.
+    const car = stockCar(MODEL, 'car-sequence-0002', ['rims'], { steering: 'poor' })
     const before = shopWith(car, [], testToolTiers({ suspension: 2 }))
     const steeringId = car.parts.steering.installed!.id
 
@@ -210,9 +212,9 @@ describe('the workshop floor route: car, warehouse, bench, warehouse, car', () =
     expect(carIn(pulled.state, car.id).parts.steering.installed).toBeNull()
 
     // The warehouse holds it and does no work: the bench is a place to go.
-    expect(reconditionGateReason(pulled.state, steeringId)).toBe('not-on-workbench')
+    expect(reconditionGateReason(pulled.state, steeringId, CONTEXT)).toBe('not-on-workbench')
     const onBench = resolvePlaceOnStation(pulled.state, 'workbench', steeringId)
-    expect(reconditionGateReason(onBench, steeringId)).toBeNull()
+    expect(reconditionGateReason(onBench, steeringId, CONTEXT)).toBeNull()
 
     const rebuilt = resolveReconditionLabor(onBench, steeringId, 'mint', 600, CONTEXT)
     expect(rebuilt.laborSlotsUsed).toBeGreaterThan(0)

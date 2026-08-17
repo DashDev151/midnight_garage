@@ -320,7 +320,7 @@ describe('garage: assembly remove/refit gate on labour, not just structure', () 
     game.gameState = { ...game.gameState, workbenchPartId: rimsId }
     game.reconditionPart(rimsId, game.nextReconditionStep(rimsId)!.targetBand)
     game.gameState = { ...game.gameState, workbenchPartId: null }
-    expect(game.swapAssemblyMember(container.id, 'rims', rimsId)).toBe(true)
+    expect(game.fitAssemblyMember(container.id, 'rims', rimsId)).toBe(true)
 
     // Drain the rest of the day's labour before attempting the refit.
     game.gameState = { ...game.gameState, energySpentToday: game.laborSlotsPerDay }

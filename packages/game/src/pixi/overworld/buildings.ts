@@ -43,8 +43,8 @@ import {
  * right, widening from the ridge cap to the eave) for the cosier shops and
  * the garage, and a flat parapet roof for the more institutional or
  * industrial buildings. Reusing one vocabulary of parts - roof, eave,
- * fascia, wall, window, door, kerb - is what keeps fifteen locations
- * reading as one place instead of fifteen unrelated drawings.
+ * fascia, wall, window, door, kerb - is what keeps sixteen locations
+ * reading as one place instead of sixteen unrelated drawings.
  *
  * Shared index characters (a building's own colour map decides what each
  * one actually renders as, so the same letter can be a ridge cap on one
@@ -75,11 +75,15 @@ export type OverworldLocationId =
   | 'collector-network'
   | 'international-raceway'
   | 'drag-strip'
+  | 'the-stand'
 
 /** Locations that are drawn but have no destination screen: shuttered,
  * dark-windowed, closed for now rather than a broken link. The dealer
  * network is a fax circle, not a walk-in trade - its building refuses the
- * click with its own line (`overworldNav.ts`). */
+ * click with its own line (`overworldNav.ts`). The stand is NOT here: its
+ * shut state is a story condition rather than a permanent one (`overworldNav.ts`'s
+ * own `standUnlocked` flag), so it is drawn as a working building and
+ * `destinationFor` decides shut-or-open per call instead of this static list. */
 export const INERT_LOCATIONS: readonly OverworldLocationId[] = ['bank', 'dealer-network']
 
 // --- The garage: home, the hero building, roller door facing the viewer ---
@@ -864,6 +868,17 @@ const DRAG_STRIP_COLORS: ColorMap = {
   r: ROAD,
 }
 
+/**
+ * The stand: a sixteenth location added for sprint205.md, wired with no new
+ * art. The art bible bans AI-generated art from ever shipping, and this
+ * building has no hand-drawn template of its own yet, so it borrows the
+ * staff centre's small gable template and colour map wholesale as an
+ * explicit placeholder - a real newsstand template is still to be drawn by
+ * hand. See `BUILDING_ART` below, which points `the-stand` at
+ * `STAFF_CENTRE_TEMPLATE`/`STAFF_CENTRE_COLORS` rather than declaring a
+ * template of its own.
+ */
+
 /** Canvas size derived from the template itself, so it can never drift from
  * the art. */
 function sizeOf(template: readonly string[]): { width: number; height: number } {
@@ -919,9 +934,12 @@ const BUILDING_ART: Record<OverworldLocationId, BuildingArt> = {
     colors: INTERNATIONAL_RACEWAY_COLORS,
   },
   'drag-strip': { template: DRAG_STRIP_TEMPLATE, colors: DRAG_STRIP_COLORS },
+  // Placeholder art, see the comment above `DRAG_STRIP_COLORS` - reuses the
+  // staff centre's template and colour map rather than a template of its own.
+  'the-stand': { template: STAFF_CENTRE_TEMPLATE, colors: STAFF_CENTRE_COLORS },
 }
 
-/** All fifteen location ids, in the order they appear in the design table. */
+/** All sixteen location ids, in the order they appear in the design table. */
 export const OVERWORLD_LOCATION_IDS: readonly OverworldLocationId[] = [
   'garage',
   'cafe',
@@ -938,6 +956,7 @@ export const OVERWORLD_LOCATION_IDS: readonly OverworldLocationId[] = [
   'collector-network',
   'international-raceway',
   'drag-strip',
+  'the-stand',
 ]
 
 /** The name shown when a location is hovered - what a player standing in
@@ -958,6 +977,7 @@ export const OVERWORLD_LOCATION_LABELS: Readonly<Record<OverworldLocationId, str
   'collector-network': 'Collector network',
   'international-raceway': 'International raceway',
   'drag-strip': 'Drag strip',
+  'the-stand': 'The stand',
 }
 
 /** A location's canvas size in scene pixels, before any integer zoom the

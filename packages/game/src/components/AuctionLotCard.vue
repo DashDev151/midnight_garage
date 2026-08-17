@@ -111,6 +111,13 @@ const doubtsResolved = computed(
   () => props.d.symptoms.length > 0 && props.d.symptoms.every((s) => s.resolved),
 )
 
+/** True once ANY symptom has a finding (not every one, unlike
+ * `doubtsResolved` above) - the bid-guidance lines' own gate: a single
+ * narrowed cause is already knowledge the room doesn't have, so the
+ * guidance earns its place the moment the first one lands. A clean lot
+ * (no symptoms at all) never shows either line. */
+const hasResolvedFinding = computed(() => props.d.symptoms.some((s) => s.resolved))
+
 function ledgerLabelFor(lineId: ValueLedgerLineId): string {
   if (lineId === 'fear' && doubtsResolved.value) return 'Doubt, resolved'
   return LEDGER_LINE_LABELS[lineId]
@@ -229,6 +236,12 @@ const TURNOUT_LABEL: Record<string, string> = {
           </HelpHint>
         </p>
 
+        <!-- The spread line: only once a finding exists, right under the
+             room-versus-yours figures it explains. -->
+        <p v-if="hasResolvedFinding" class="spread-line" data-test="spread-line">
+          Your number prices what you found. The room's doesn't.
+        </p>
+
         <p class="work-row" :data-test="'work-row-' + workRow.state">
           <span class="work-label">{{ workRow.label }}</span>
           <span v-if="workRow.figure" class="work-figure" data-test="work-row-figure">{{
@@ -268,6 +281,13 @@ const TURNOUT_LABEL: Record<string, string> = {
         />
 
         <slot name="info" />
+
+        <!-- The bid guidance: only once a finding exists, sitting right
+             above the bid stack (`actions` slot) it advises. -->
+        <p v-if="hasResolvedFinding" class="bid-guidance" data-test="bid-guidance">
+          Your number already carries what you found. Bid to it; past it, the room is paying for a
+          car you know better than they do.
+        </p>
       </div>
 
       <slot name="actions" />
@@ -382,6 +402,25 @@ const TURNOUT_LABEL: Record<string, string> = {
 .room-says .down {
   color: var(--mg-danger);
   margin-left: 0.35em;
+}
+
+/* The spread line: quiet, right under the figures it explains. */
+.spread-line {
+  margin: 0;
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-xs, 0.7rem);
+  font-style: italic;
+}
+
+/* The bid guidance: sits directly above the bid stack, full-weight text
+   since it is advice for the next click rather than passing colour. */
+.bid-guidance {
+  margin: 0;
+  padding-top: var(--mg-space-2);
+  border-top: var(--mg-border);
+  color: var(--mg-text);
+  font-size: var(--mg-fs-xs, 0.7rem);
+  text-align: center;
 }
 
 /* The forward-looking work row, between the room's number and the

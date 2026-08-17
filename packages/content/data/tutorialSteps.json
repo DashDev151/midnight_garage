@@ -222,7 +222,7 @@
       },
       {
         "speaker": "instruction",
-        "text": "There they are: four fresh tyres. Pressing them onto rims is machine work, and we do not own the machine yet: under Machine hire, take the Tyre machine & balancer for the day. One price, and it presses everything you bring it until closing; one day we will buy our own and stop renting. Then click the Tyres block on the bench, press Replace, and pick the fresh stock tyres from your parts.",
+        "text": "There they are: four fresh tyres. Pressing them onto rims is machine work, and we do not own the machine yet: under Machine hire, take the Tyre machine & balancer for the day. One price, and it presses everything you bring it until closing; one day we will buy our own and stop renting. Then click the Tyres block on the bench, press Take it off to clear the scrap ones, then press Fit and pick the fresh stock tyres from the warehouse.",
         "showWhen": {
           "kind": "partInInventory",
           "carPartId": "tyres"
@@ -301,7 +301,7 @@
     "lines": [
       {
         "speaker": "instruction",
-        "text": "Nearly home; the Intake, the Exhaust and the Cooling are still on your shelf. Click each empty slot in the Engine bay, press Replace and pick the part you took off, then press Confirm. Putting back exactly what came off costs nothing, and she is not roadworthy until she is whole."
+        "text": "Nearly home; the Intake, the Exhaust and the Cooling are still in the warehouse. Click each empty slot in the Engine bay, press Fit and pick the part you took off, then press Confirm. Putting back exactly what came off costs nothing, and she is not roadworthy until she is whole."
       }
     ],
     "completion": {

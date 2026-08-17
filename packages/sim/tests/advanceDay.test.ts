@@ -2,6 +2,7 @@ import { emptyDayActions, type DayActions } from '../src/actions'
 import { BUYERS, CARS, PARTS, PARTS_TAXONOMY, type GameState } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { advanceDay } from '../src/advanceDay'
+import { resolveRemoveAssembly } from '../src/assemblies'
 import { planGroupRepair } from '../src/bands'
 import { buildSimContext } from '../src/context'
 import { bayCountsByKind } from '../src/facilities'
@@ -144,7 +145,19 @@ function scriptedActionsForDay(day: number): DayActions {
     }
   }
   if (day === 2) {
-    return { ...noActions, laborAssignments: [{ jobId: 'job-1-0', laborSlots: 1 }] }
+    return {
+      ...noActions,
+      laborAssignments: [{ jobId: 'job-1-0', laborSlots: 1 }],
+      // dampers is blockedBy springs and rims - a corner strips wheel, then
+      // spring, before the damper itself is reachable. rims is a
+      // wheelAssembly member, so it comes off through the assembly (an
+      // immediate call, `prepForDay` below - the DayActions schema has no
+      // assembly-removal entry, matching the store's own instant Remove
+      // button); springs is a plain removable part, so it comes off here as
+      // a queued removeParts entry, one script-day ahead of the day-3
+      // install so the whole of day 3's labor is free for the install job.
+      removeParts: [{ carInstanceId: 'car-0001', carPartId: 'springs' }],
+    }
   }
   if (day === 3) {
     return {
@@ -178,10 +191,23 @@ function hireForDay(state: GameState, day: number): GameState {
   return state
 }
 
+/**
+ * Instant, store-mirroring actions the DayActions schema cannot carry - only
+ * the wheelAssembly pull ahead of day 2's queued springs removal (see the
+ * comment on day 2's own scripted actions above).
+ */
+function prepForDay(state: GameState, day: number): GameState {
+  if (day === 2) {
+    return resolveRemoveAssembly(state, 'car-0001', 'wheelAssembly', CONTEXT).state
+  }
+  return state
+}
+
 function runCareer(days: number): GameState {
   let state = initialState()
   for (let day = 1; day <= days; day++) {
     state = hireForDay(state, day)
+    state = prepForDay(state, day)
     const actions = scriptedActionsForDay(day)
     const result = advanceDay(state, actions, state.seed + state.day, CONTEXT)
     state = result.state
@@ -320,7 +346,32 @@ describe('advanceDay golden master', () => {
     // over these 30 days now reads a different point on a shorter, taller
     // sine wave, so every model's heat figure this script's 30 days touches
     // moves with it. Re-derived from a real run.
-    expect(hashState(finalState)).toBe('38a83bd0')
+    //
+    // It moves once more for the stand owner's scripted service job
+    // (sprint205.md): a fresh career now seeds one extra service-job offer
+    // on day one (and `GameState` gains two new optional fields), so the
+    // serialised state differs from day one on regardless of what this
+    // script's own actions touch. Re-derived from a real run.
+    //
+    // It moves once more for the reviewed dependency graph (sprint206.md):
+    // dampers is now blockedBy springs and rims, so the script's own day-3
+    // install first strips the corner on day 2 (rims off through
+    // wheelAssembly, springs off directly) exactly as a player now must.
+    // `GameState` also gains `assemblyInventory`'s one held container and
+    // the pulled springs sit uninstalled in `partInventory` for the rest of
+    // the career, never refitted. A real behaviour change, not a shape one -
+    // the install-part behavioural test just below pins the new inventory
+    // shape directly. Re-derived from a real run, twice, to confirm
+    // determinism.
+    //
+    // It moves once more for sprint210.md task A2: the newsstand owner
+    // leaves `serviceJobCustomerNames.json`'s pool (promoted to a named
+    // character), shortening it by one - every subsequent `rng.pick` draw
+    // against that pool shifts, and this script's own day-1 radial offer
+    // draws a customer name from it. The pool shrinking, not a behavioural
+    // change; the scripted job's own day-5 arrival (task A1) is RNG-free and
+    // moves nothing on its own. Re-derived from a real run.
+    expect(hashState(finalState)).toBe('3275fe42')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -340,7 +391,13 @@ describe('advanceDay golden master', () => {
     const finalState = runCareer(3)
     const car = finalState.ownedCars[0]
     expect(car?.parts.dampers.installed?.partId).toBe('shitbox-tanuki-street-coilovers')
-    expect(finalState.partInventory).toHaveLength(0)
+    // The spare coilovers are fully spent (they're on the car, not sitting
+    // idle) - the one thing left in inventory is the stock springs pulled
+    // off day 2 to reach the damper (dampers is blockedBy springs and
+    // rims), never refitted. rims itself came off through the wheelAssembly
+    // and sits on the bench (`assemblyInventory`), not here.
+    expect(finalState.partInventory).toHaveLength(1)
+    expect(finalState.partInventory[0]?.id).toBe('fixture-stock-springs')
   })
 
   it('weekly auction catalogs refresh even when no bids are placed', () => {
@@ -617,7 +674,35 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // acquired model's market heat on the day it sells reads a different
     // point on the new wave, moving the sale offer this script accepts.
     // Re-derived from a real run.
-    expect(hashState(acquisitionCareer().sold)).toBe('85c94a25')
+    //
+    // It moves once more, alongside the 30-day master, for the stand
+    // owner's scripted service job (sprint205.md): a fresh career now seeds
+    // one extra service-job offer on day one, and `GameState` gains two new
+    // optional fields. Re-derived from a real run.
+    //
+    // It moves once more for the monotonic part-instance id counter
+    // (sprint206.md): this script never touches dampers, springs or rims
+    // (it only buys a lot and sells it), so the reviewed dependency graph
+    // leaves it untouched - but every generated car's parts now mint their
+    // ids from `GameState.partInstanceCounter` instead of
+    // `${day}-${partInventory.length}`, so every id string this script's
+    // generated board carries differs from day one. A pure id-scheme
+    // change, not a behavioural one: the acquisition price, sale offer and
+    // cash figures the tests around this one assert are unmoved. Re-derived
+    // from a real run, twice, to confirm determinism.
+    //
+    // It moves once more for the body bay (sprint208.md): `GameState` gains
+    // `bodyBayCarId`, seeded `null` from day one, present on every state
+    // this script hashes even though the script never touches the body
+    // pipeline. A pure shape change, not a behavioural one. Re-derived from
+    // a real run.
+    //
+    // It moves once more for sprint210.md task A2: the newsstand owner
+    // leaves `serviceJobCustomerNames.json`'s pool, shortening it by one -
+    // this script's opening board still draws a radial service-job customer
+    // name from that same pool, so the RNG stream shifts from day one. The
+    // pool shrinking, not a behavioural change. Re-derived from a real run.
+    expect(hashState(acquisitionCareer().sold)).toBe('0db4e65b')
   })
 })
 

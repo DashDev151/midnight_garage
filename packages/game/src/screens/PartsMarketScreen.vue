@@ -177,11 +177,10 @@ function goBack(): void {
   else returnHome()
 }
 
-/** The /parts?slot={carPartId} deep link. The bench dead-end control and
- * ReplaceDrawer's empty state land here already pointed at the right department
- * with the slot filter applied - the same state a hero click plus a slot-card
- * click sets. The query is an entry hint, not persistent state, so it is
- * dropped from the route straight away.
+/** The /parts?slot={carPartId} deep link - lands here already pointed at the
+ * right department with the slot filter applied, the same state a hero click
+ * plus a slot-card click sets. The query is an entry hint, not persistent
+ * state, so it is dropped from the route straight away.
  */
 /** How many products a slot has - the count shown on its card. */
 function slotPartCount(slotId: CarPartId): number {

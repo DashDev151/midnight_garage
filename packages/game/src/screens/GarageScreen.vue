@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { WorkStation } from '@midnight-garage/sim'
 import { computed, ref, watch } from 'vue'
-import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
 import HelpHint from '../components/HelpHint.vue'
 import MachineShopPanel from '../components/MachineShopPanel.vue'
 import ShopSlot from '../components/ShopSlot.vue'
@@ -9,22 +9,21 @@ import WorkbenchPanel from '../components/WorkbenchPanel.vue'
 import { useDragSession, useDropZone } from '../composables/useDragAndDrop'
 import { useGameStore, type ShopCarView } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
-import { bodyPaintShopOpen } from './garageCapability'
 import { machineShopHasMachinery } from './machineShopEquipment'
 
 const game = useGameStore()
 const route = useRoute()
-const router = useRouter()
 
 /**
  * The work stations live on this screen: the garage is one building, and the
- * bench, the machine and the spray booth are things standing in it, not rooms
- * behind a second screen. Clicking a station opens its panel in place; the
+ * bench and the machine are things standing in it, not rooms behind a
+ * second screen. Clicking one of those two opens its panel in place; the
  * workbench and machine panels are the full station views
- * (`WorkbenchPanel.vue` / `MachineShopPanel.vue`), and body and paint is a
- * door to the car in the bay, since that work is done on the whole car.
+ * (`WorkbenchPanel.vue` / `MachineShopPanel.vue`). Body and paint is
+ * different (sprint208.md): it is a real second room, so its tile is a
+ * plain door to `body-shop` rather than a third togglable panel here.
  */
-type StationId = 'workbench' | 'machine' | 'body-paint'
+type StationId = 'workbench' | 'machine'
 
 /** The station another screen asked to land on (`open=workbench|machine`), so
  * a door elsewhere in the app can open the right panel here directly. */
@@ -69,7 +68,6 @@ const machineCardDrop = useDropZone<string>(
 /** Whether any machining bench actually stands in the machine shop - absent
  * machinery reads as derelict, never as a shut door. */
 const machineShopEquipped = computed(() => machineShopHasMachinery(game.gameState, game.context))
-const bodyPaintIsOpen = computed(() => bodyPaintShopOpen(game.gameState, game.context))
 
 const benchHeld = computed(() => game.stationPart('workbench'))
 const machineHeld = computed(() => game.stationPart('machine'))
@@ -86,19 +84,11 @@ const machineStatus = computed(() => {
   return held ? `${game.carPartLabel(held.part.carPartId)}, ${held.instance.band}` : 'empty'
 })
 
-const bodyPaintStatus = computed(() => (bodyPaintIsOpen.value ? 'open' : 'derelict'))
-
-/** The one car the body and paint entry can point at without an id of its own
- * to route with: exactly one car in a service bay. */
-const soloServiceBayCarId = computed<string | null>(() => {
-  const ids = game.gameState.serviceBayCarIds.filter((id): id is string => id !== null)
-  return ids.length === 1 ? ids[0]! : null
-})
-
-function goToBodyPaintCar(): void {
-  const id = soloServiceBayCarId.value
-  if (id) void router.push({ name: 'car', params: { id } })
-}
+/** The body-and-paint tile's own status word - the bay's occupant, or
+ * `empty`. There is no derelict reading any more (sprint208.md): the stick
+ * welder stands in the room from day one, so the door always opens onto
+ * real work, never someone else's junk. */
+const bodyBayStatus = computed(() => game.bodyBayView?.displayName ?? 'empty')
 
 const occupiedServiceCars = computed(() =>
   game.serviceBaysView.filter((s): s is ShopCarView => s !== null),
@@ -108,19 +98,31 @@ const occupiedParkingCars = computed(() =>
 )
 const parkingCarIds = computed(() => new Set(occupiedParkingCars.value.map((c) => c.carId)))
 const serviceCarIds = computed(() => new Set(occupiedServiceCars.value.map((c) => c.carId)))
+const bodyBayCarId = computed(() => game.bodyBayView?.carId ?? null)
 
 /** Every shop slot accepts any car currently in the shop - a car is always
- * exactly one of "in parking" or "in service", so this is really "any real car",
- * not a filter. Dropping a car back into its own section (occupied or empty) is a
- * real, accepted gesture, not a rejection - same-section drops resolve as a real
- * reposition/swap rather than a no-op, so the target highlighting and the
- * completed gesture both reflect something that actually happened.
+ * exactly one of "in parking", "in service" or "in the body bay", so this is
+ * really "any real car", not a filter. Dropping a car back into its own
+ * section (occupied or empty) is a real, accepted gesture, not a rejection -
+ * same-section drops resolve as a real reposition/swap rather than a no-op,
+ * so the target highlighting and the completed gesture both reflect
+ * something that actually happened.
  */
 function acceptsIntoService(carId: string): boolean {
-  return parkingCarIds.value.has(carId) || serviceCarIds.value.has(carId)
+  return (
+    parkingCarIds.value.has(carId) || serviceCarIds.value.has(carId) || bodyBayCarId.value === carId
+  )
 }
 function acceptsIntoParking(carId: string): boolean {
-  return serviceCarIds.value.has(carId) || parkingCarIds.value.has(carId)
+  return (
+    serviceCarIds.value.has(carId) || parkingCarIds.value.has(carId) || bodyBayCarId.value === carId
+  )
+}
+/** The body bay's own accept predicate - same universe as the two above. */
+function acceptsIntoBody(carId: string): boolean {
+  return (
+    parkingCarIds.value.has(carId) || serviceCarIds.value.has(carId) || bodyBayCarId.value === carId
+  )
 }
 
 /** Drop a car onto service-bay slot `index` - moves it there if empty, swaps
@@ -133,6 +135,16 @@ function onDropOnBaySlot(index: number, carId: string): void {
 function onDropOnParkingSlot(index: number, carId: string): void {
   game.moveCarToSlot(carId, 'parking', index)
 }
+/** Drop a car onto the body bay - always slot 0, the one slot it has. */
+function onDropOnBodyBay(carId: string): void {
+  game.moveCarToSlot(carId, 'body', 0)
+}
+
+/** The body bay's own occupied-slot route: clicking the car there opens the
+ * body shop room directly, not the car page every other bay links to. */
+function bodyBayLinkTo(): { name: 'body-shop' } {
+  return { name: 'body-shop' }
+}
 
 // The ghost preview that follows the pointer during a live drag - generic
 // session data (payload is just a car id) resolved back to a display name using
@@ -141,6 +153,7 @@ const dragSession = useDragSession()
 const allShopCars = computed<ShopCarView[]>(() => [
   ...occupiedServiceCars.value,
   ...occupiedParkingCars.value,
+  ...(game.bodyBayView ? [game.bodyBayView] : []),
 ])
 const draggedCarName = computed(() => {
   const payload = dragSession.value?.payload
@@ -164,7 +177,8 @@ const draggedPartLabel = computed(() => {
     <h2>
       Garage
       <HelpHint label="Moving cars">
-        Drag it to another slot to move or swap. Or tap "move…", then "Place here".
+        Drag it to another slot to move it, or onto another car to trade places. Or tap "move…",
+        then "Place here".
       </HelpHint>
     </h2>
 
@@ -172,7 +186,7 @@ const draggedPartLabel = computed(() => {
       <div>
         <dt>Reputation</dt>
         <dd data-test="reputation-value">
-          <RouterLink :to="{ name: 'standing' }" class="standing-link" data-test="standing-link">
+          <RouterLink :to="{ name: 'office' }" class="standing-link" data-test="standing-link">
             {{ game.reputationTier }}</RouterLink
           >
         </dd>
@@ -207,6 +221,30 @@ const draggedPartLabel = computed(() => {
           :data-test="'service-slot-' + i"
           @move="game.moveCar($event, 'parking')"
           @drop="onDropOnBaySlot(i, $event)"
+        />
+      </ul>
+    </section>
+
+    <section class="bays body-bay-section">
+      <h3>
+        Body bay
+        <HelpHint label="Body bay">
+          Body and paint work needs the car here - nowhere else in the shop can do it. Drag a car
+          in, or tap "move…", then "Place here".
+        </HelpHint>
+      </h3>
+      <ul class="bay-slots">
+        <ShopSlot
+          :car="game.bodyBayView"
+          :accepts="acceptsIntoBody"
+          :link-to="bodyBayLinkTo"
+          move-label="&rarr; parking"
+          :move-disabled="game.parkingFull"
+          test-id-prefix="move-parking-"
+          empty-slot-id="empty-body-bay"
+          data-test="body-bay-slot"
+          @move="game.moveCar($event, 'parking')"
+          @drop="onDropOnBodyBay"
         />
       </ul>
     </section>
@@ -280,42 +318,35 @@ const draggedPartLabel = computed(() => {
           </button>
         </li>
         <li>
-          <button
-            type="button"
+          <!-- A plain door, not a togglable panel: the body shop is a real
+               second room (sprint208.md), so this tile always routes there
+               rather than opening an inline panel on this screen. -->
+          <RouterLink
+            :to="{ name: 'body-shop' }"
             class="station"
-            :class="{ active: openStation === 'body-paint', derelict: !bodyPaintIsOpen }"
             data-test="station-open-body-paint"
-            @click="toggleStation('body-paint')"
           >
             <span class="station-name">Body and paint</span>
             <span class="station-status" data-test="station-status-body-paint">{{
-              bodyPaintStatus
+              bodyBayStatus
             }}</span>
-          </button>
+          </RouterLink>
+        </li>
+        <li>
+          <!-- Another plain door (sprint209.md): the office is a real room
+               off the garage floor, not a panel that opens in place. -->
+          <RouterLink :to="{ name: 'office' }" class="station" data-test="station-open-office">
+            <span class="station-name">Office</span>
+            <span class="station-status" data-test="station-status-office"
+              >{{ game.reputationTier }} reputation</span
+            >
+          </RouterLink>
         </li>
       </ul>
 
       <div v-if="openStation" class="station-panel" data-test="station-panel">
         <WorkbenchPanel v-if="openStation === 'workbench'" />
-        <MachineShopPanel v-else-if="openStation === 'machine'" />
-        <div v-else class="body-paint-entry" data-test="body-paint-entry">
-          <template v-if="bodyPaintIsOpen">
-            <button
-              v-if="soloServiceBayCarId"
-              type="button"
-              data-test="body-paint-enter"
-              @click="goToBodyPaintCar"
-            >
-              Work the body and paint
-            </button>
-            <p v-else class="hint" data-test="body-paint-hint">
-              Bring a car into a service bay first.
-            </p>
-          </template>
-          <p v-else class="refusal" data-test="body-paint-refusal">
-            A dead spray booth and someone else's panels. Buy the body line first.
-          </p>
-        </div>
+        <MachineShopPanel v-else />
       </div>
     </section>
 
@@ -527,6 +558,7 @@ button:disabled {
   padding: var(--mg-space-3);
   font-size: var(--mg-fs-sm);
   text-align: left;
+  text-decoration: none;
   cursor: pointer;
 }
 
@@ -571,13 +603,6 @@ button:disabled {
 
 .station-panel {
   margin: 0 0 var(--mg-space-4);
-}
-
-.body-paint-entry .hint,
-.body-paint-entry .refusal {
-  margin: 0;
-  color: var(--mg-text-dim);
-  font-size: var(--mg-fs-sm);
 }
 
 .forecourt-list {

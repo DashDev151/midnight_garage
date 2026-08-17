@@ -120,13 +120,23 @@ describe('WorkbenchPanel', () => {
     expect(wrapper.find('[data-test="workshop-floor-part"]').exists()).toBe(true)
   })
 
-  it('the tray shows no duplicate parts list - the inventory tab is the only list', () => {
+  it('the tray shows no duplicate parts list - the Warehouse is the only list', () => {
     const game = useGameStore()
     game.newGame(1)
     loosePart(game, DAMPER_PART.id, 'worn', false)
     const wrapper = mountPanel()
     expect(wrapper.find('.candidates').exists()).toBe(false)
     expect(wrapper.findAll('li.candidate')).toHaveLength(0)
+  })
+
+  it('a zone panel on the bench refuses in words: body work belongs to the body shop', () => {
+    const game = useGameStore()
+    game.newGame(1)
+    const panel = PARTS.find((p) => p.zoneId != null)!
+    loosePart(game, panel.id, 'worn', true)
+    const wrapper = mountPanel()
+    expect(wrapper.get('[data-test="workshop-floor-body-work"]').text()).toContain('body shop')
+    expect(wrapper.get('[data-test="workshop-floor-repair"]').attributes('disabled')).toBeDefined()
   })
 
   it('carries the part back to the warehouse, leaving it owned and the bench clear', async () => {
@@ -240,7 +250,7 @@ describe('WorkbenchPanel', () => {
     expect(tyresButton.text()).toBe('Repair')
     expect(tyresButton.attributes('disabled')).toBeDefined()
     expect(tyres.find('[data-test="workshop-floor-idle"]').text()).toContain(
-      'replaced, not repaired',
+      'Take it off and fit a new one',
     )
   })
 })

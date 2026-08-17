@@ -4,11 +4,13 @@ import {
   FACILITIES,
   PARTS,
   PARTS_TAXONOMY,
+  SCRIPTED_SERVICE_JOB,
   SERVICE_JOB_CUSTOMER_NAMES,
   SERVICE_JOB_TYPES,
   TUTORIAL_LOT,
   type AuctionLot,
   type GameState,
+  type ServiceJob,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { emptyDayActions } from '../src/actions'
@@ -53,12 +55,25 @@ function endDay(state: GameState): GameState {
   return advanceDay(state, emptyDayActions(), state.seed + state.day, CONTEXT).state
 }
 
-/** Advances up to `maxDays`, stopping the moment the job board is non-empty -
+/** Every service-job offer EXCEPT the stand owner's scripted job - that
+ * injection is permanent content for every career from the day it arrives
+ * (`SCRIPTED_SERVICE_JOB.appearsOnDay`, sprint210.md), deliberately not
+ * gated by the tutorial's own radial-offer gate (sprint205.md); a genuine
+ * RADIAL offer beside it is what this gate exists to prevent, same reasoning
+ * as `unscriptedTutorialModelLots` below for the auction side. */
+function radialServiceJobOffers(state: GameState): ServiceJob[] {
+  return state.serviceJobOffers.filter((o) => o.id !== SCRIPTED_SERVICE_JOB.jobId)
+}
+
+/** Advances up to `maxDays`, stopping the moment a RADIAL offer appears -
  * the daily offer count is a weighted draw that can legitimately roll zero, so
- * a single day proves nothing about the gate either way. */
+ * a single day proves nothing about the gate either way. The scripted stand
+ * job is excluded from this check: it is permanent content once it arrives,
+ * not gated by the tutorial at all, so it can never be what "the gate
+ * lifted" means. */
 function advanceUntilOffers(state: GameState, maxDays: number): GameState {
   let next = state
-  for (let i = 0; i < maxDays && next.serviceJobOffers.length === 0; i++) next = endDay(next)
+  for (let i = 0; i < maxDays && radialServiceJobOffers(next).length === 0; i++) next = endDay(next)
   return next
 }
 
@@ -72,33 +87,43 @@ function unscriptedTutorialModelLots(state: GameState): AuctionLot[] {
 }
 
 describe('the radial-offer gate (Sprint 95 decision 4)', () => {
-  it('a fresh tutorial career opens with an empty job board (Yuki-only)', () => {
+  it('a fresh tutorial career opens with no RADIAL offers (Yuki-only), and no scripted stand job yet either', () => {
     const career = newTutorialCareer(1)
+    expect(radialServiceJobOffers(career)).toEqual([])
+    // The scripted job is permanent content, not a radial offer, but it now
+    // arrives a few days in rather than on day one (sprint210.md task A1) -
+    // a fresh career's board is genuinely empty until then.
     expect(career.serviceJobOffers).toEqual([])
     // The gate holds from creation: mission offered, nothing radial beside it.
     expect(career.storyMissions[0]?.missionId).toBe(TUTORIAL_LOT.missionId)
   })
 
-  it('the board stays empty across advanced days while the mission is undelivered', () => {
+  it('the scripted stand job arrives on appearsOnDay regardless of the gate, radial or not', () => {
+    let state = newTutorialCareer(1)
+    for (let i = 0; i < SCRIPTED_SERVICE_JOB.appearsOnDay; i++) state = endDay(state)
+    expect(state.serviceJobOffers.some((o) => o.id === SCRIPTED_SERVICE_JOB.jobId)).toBe(true)
+  })
+
+  it('the board stays free of radial offers across advanced days while the mission is undelivered', () => {
     let state = newTutorialCareer(1)
     for (let i = 0; i < 6; i++) {
       state = endDay(state)
-      expect(state.serviceJobOffers).toEqual([])
+      expect(radialServiceJobOffers(state)).toEqual([])
     }
   })
 
   it('skipping the tutorial lifts the gate at the next generation point', () => {
     const gated = endDay(endDay(newTutorialCareer(1)))
-    expect(gated.serviceJobOffers).toEqual([])
+    expect(radialServiceJobOffers(gated)).toEqual([])
     const skipped: GameState = { ...gated, tutorialStatus: 'skipped' }
     const after = advanceUntilOffers(skipped, 10)
-    expect(after.serviceJobOffers.length).toBeGreaterThan(0)
+    expect(radialServiceJobOffers(after).length).toBeGreaterThan(0)
   })
 
   it("finishing the tutorial ('done') lifts the gate the same way", () => {
     const done: GameState = { ...newTutorialCareer(1), tutorialStatus: 'done' }
     const after = advanceUntilOffers(done, 10)
-    expect(after.serviceJobOffers.length).toBeGreaterThan(0)
+    expect(radialServiceJobOffers(after).length).toBeGreaterThan(0)
   })
 
   it("delivering the mission lifts the gate even while tutorialStatus is still 'active'", () => {
@@ -111,7 +136,7 @@ describe('the radial-offer gate (Sprint 95 decision 4)', () => {
     }
     expect(delivered.tutorialStatus).toBe('active')
     const after = advanceUntilOffers(delivered, 10)
-    expect(after.serviceJobOffers.length).toBeGreaterThan(0)
+    expect(radialServiceJobOffers(after).length).toBeGreaterThan(0)
   })
 
   it('a non-tutorial career (tutorialStatus absent) still seeds day-1 offers as before', () => {
@@ -122,7 +147,7 @@ describe('the radial-offer gate (Sprint 95 decision 4)', () => {
     // about the gate either way, so sweep a few and require only that the
     // gate never blocks every one of them.
     const seedsWithOffers = [1, 2, 3, 4, 5].filter(
-      (seed) => createInitialGameState(CONTEXT, seed).serviceJobOffers.length > 0,
+      (seed) => radialServiceJobOffers(createInitialGameState(CONTEXT, seed)).length > 0,
     )
     expect(seedsWithOffers.length).toBeGreaterThan(0)
     // The options parameter's default changes nothing for existing callers.

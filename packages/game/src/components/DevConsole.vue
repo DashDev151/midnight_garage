@@ -54,8 +54,8 @@ function warp(): void {
       {{ game.reputationTier }}
     </div>
 
-    <!-- Scene standing's own player-facing home is the Standing screen's
-         scenes panel; this quick readout stays for setting it by hand. -->
+    <!-- Scene standing's own player-facing home is the office's scenes
+         panel; this quick readout stays for setting it by hand. -->
     <div class="readout" data-test="scene-standing-readout">
       standing:
       <span v-for="line in game.sceneStandingView" :key="line.scene">

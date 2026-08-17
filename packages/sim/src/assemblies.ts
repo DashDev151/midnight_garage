@@ -332,7 +332,7 @@ export function refitAssemblyLaborSlotsFor(
  * fitment-checked here (`memberFitsCar`) whenever that is true; refitting
  * straight back onto `container.sourceCarId` re-checks nothing, since every
  * member either never left that car or was already fitment-checked against
- * it by `resolveSwapAssemblyMember`. That same foreign-car path is where a
+ * it by `resolveFitAssemblyMember`. That same foreign-car path is where a
  * member first reaches a car, so the one capability gate
  * (`partCapabilityRequirement`, jobs.ts) is checked there too, and says why
  * (a `job-blocked` `tool-tier` entry); refitting onto the source car re-proves
@@ -360,7 +360,7 @@ export function resolveRefitAssembly(
   if (!car) return fail
   if (occupiedExternalBlockers(car, def, context).length > 0) return fail
   // A member already fits `container.sourceCarId` - either it never left that
-  // car, or `resolveSwapAssemblyMember` fitment-checked it against that same
+  // car, or `resolveFitAssemblyMember` fitment-checked it against that same
   // car when it went into the container - so refitting it back onto that
   // SAME car re-proves nothing. `overrideCarId`, or a bench-built container
   // (`sourceCarId` null), puts members onto a car they were never checked
@@ -424,18 +424,21 @@ export interface AssemblyMemberMoveResult {
 }
 
 /**
- * Swap a member of an open assembly on the bench: move
- * `newPartInstanceId` from the parts bin into the member slot, and the displaced
- * member (if any) back to the bin. Labour is `energy.actionPoints.benchFitMember`
- * (0 in shipped content), gated on `laborAvailable` when raised. A
- * tyre-into-assembly op needs the wheels line owned or hired for the day (the
- * `bench-fit` half of the slot's `machineGate`); every other member swap is
- * ungated by that.
- * Refuses if the container/part is missing, the part does not address this
- * member slot, the part is scrap, the machine gate is unmet, or (for a
- * container pulled off a car) the part's fitment class does not match that
- * car's (`memberFitsCar`) - the fitment law applies at the bench, not only
- * on the car.
+ * Fit a part into an EMPTY member slot of an open assembly on the bench:
+ * move `newPartInstanceId` from the parts bin into the member slot. There is
+ * no swap - a slot already carrying a member refuses outright, mirroring
+ * `resolveRefitAssembly`'s own occupied-slot check (assemblies.ts:371); the
+ * mounted member must come off first (`resolveRemoveAssemblyMember`), the
+ * same remove-then-install ruling the car-level slots enforce. Labour is
+ * `energy.actionPoints.benchFitMember` (0 in shipped content), gated on
+ * `laborAvailable` when raised. A tyre-into-assembly op needs the wheels
+ * line owned or hired for the day (the `bench-fit` half of the slot's
+ * `machineGate`); every other member fit is ungated by that.
+ * Refuses if the container/part is missing, the target slot is already
+ * occupied, the part does not address this member slot, the part is scrap,
+ * the machine gate is unmet, or (for a container pulled off a car) the
+ * part's fitment class does not match that car's (`memberFitsCar`) - the
+ * fitment law applies at the bench, not only on the car.
  *
  * The bench is an install path, so the one capability gate
  * (`partCapabilityRequirement`, jobs.ts) applies here exactly as it does on
@@ -444,7 +447,7 @@ export interface AssemblyMemberMoveResult {
  * to check against; those members are gated when the assembly goes onto one
  * (`resolveRefitAssembly`).
  */
-export function resolveSwapAssemblyMember(
+export function resolveFitAssemblyMember(
   state: GameState,
   containerId: string,
   memberSlot: CarPartId,
@@ -459,6 +462,7 @@ export function resolveSwapAssemblyMember(
   const container = containers[containerIndex]!
   const def = assemblyDefById(container.assemblyId, context)
   if (!def || !def.members.includes(memberSlot)) return fail
+  if (container.members[memberSlot] != null) return fail // the slot is occupied - take it off first, no swap
   const newPart = state.partInventory.find((p) => p.id === newPartInstanceId)
   if (!newPart || newPart.band === 'scrap') return fail
   const catalogPart = context.partsById[newPart.partId]
@@ -488,14 +492,12 @@ export function resolveSwapAssemblyMember(
     machineLaborMultiplier(gateGroup, state, context)
   if (laborSlotsUsed > laborAvailable) return fail
 
-  const displaced = container.members[memberSlot] ?? null
   const nextContainers = [...containers]
   nextContainers[containerIndex] = {
     ...container,
     members: { ...container.members, [memberSlot]: newPart },
   }
-  let partInventory = state.partInventory.filter((p) => p.id !== newPartInstanceId)
-  if (displaced) partInventory = [...partInventory, displaced]
+  const partInventory = state.partInventory.filter((p) => p.id !== newPartInstanceId)
   // The fitted part has left the warehouse for the assembly, so whichever
   // station it was on is now clear.
   const next: GameState = reconcileStations({
@@ -511,8 +513,8 @@ export function resolveSwapAssemblyMember(
  * Pull a mounted member OUT of an open assembly on the bench: dead tyres come
  * off the rims and go in the bin BEFORE fresh ones go on. The instance moves
  * to the parts bin and the member slot reads empty; refit already skips empty
- * members, and `resolveSwapAssemblyMember` fits into an empty slot exactly as
- * it displaces a full one. Labour is `energy.actionPoints.benchRemoveMember`
+ * members, and `resolveFitAssemblyMember` then fits into that empty slot -
+ * take off, then fit, never a swap. Labour is `energy.actionPoints.benchRemoveMember`
  * (0 in shipped content), gated on `laborAvailable` when raised; the
  * wheels-line gate applies to FITTING a tyre, never to dismounting one.
  * Refuses if the container, member slot, or mounted instance is missing.

@@ -32,11 +32,11 @@ import {
   stageConsumables,
   type ConsumableRequirement,
 } from './consumables'
+import { carInBodyBay } from './facilities'
 import { bookCashMovements } from './financeLedger'
 import {
   findWorkableCar,
   hasMachineLineFor,
-  machineGateGroupFor,
   machineHiredToday,
   machineLaborMultiplier,
   partCapabilityRequirement,
@@ -173,16 +173,22 @@ export function chargeAndApplyPipelineEffect(
 }
 
 /** One of the six generic body-pipeline stages (strip/prep, beat, weld,
- * fill-and-sand, prime, polish) on one zone, resolved instantly. A
- * prerequisite the zone doesn't meet is a silent no-op (the same "nothing
- * to do" idiom `repairJobGate` uses), as is a zone needing a fresh panel
- * before hand work means anything - the car screen names that state on the
- * zone itself, so it is never a stage the player could reach and be
- * surprised by. The weld machine-shop gate and an empty shelf both log a
- * `job-blocked` entry, matching every other machine-shop refusal in this
- * codebase - weld genuinely needs the welder (unlike every rate-converted
- * gate elsewhere), so it stays a real refusal rather than a labour
- * multiplier. */
+ * fill-and-sand, prime, polish) on one zone, resolved instantly. Every stage
+ * refuses off the body bay's own car with a `job-blocked`/`not-in-body-bay`
+ * entry (sprint208.md: "ALL body work requires the car in the body bay"),
+ * checked before anything else. A prerequisite the zone doesn't meet is a
+ * silent no-op (the same "nothing to do" idiom `repairJobGate` uses), as is
+ * a zone needing a fresh panel before hand work means anything - the car
+ * screen names that state on the zone itself, so it is never a stage the
+ * player could reach and be surprised by. An empty shelf logs a
+ * `job-blocked` entry, matching every other stock-out refusal in this
+ * codebase.
+ *
+ * Weld is the one stage priced at a machine-gated rate rather than a flat
+ * one: its labour is stage points x `machineLaborMultiplier('body', ...)`,
+ * the stick-welder-by-hand/body-line-hired rate every other machine gate
+ * already uses (sprint208.md: "weld works from day one at the machine-less
+ * rate ... The body line buys speed"). */
 export function resolvePipelineStageAction(
   state: GameState,
   carInstanceId: string,
@@ -192,24 +198,22 @@ export function resolvePipelineStageAction(
 ): PipelineOpResult {
   const car = findWorkableCar(state, carInstanceId)
   if (!car || !car.zoneState) return NOOP_PIPELINE_RESULT(state)
+  if (!carInBodyBay(state, carInstanceId)) {
+    return {
+      state,
+      log: [
+        {
+          type: 'job-blocked',
+          jobId: `pipeline-${carInstanceId}-${action.stage}-${action.zoneId}`,
+          reason: 'not-in-body-bay',
+        },
+      ],
+      laborSlotsUsed: 0,
+    }
+  }
   const zone = car.zoneState[action.zoneId]
   const plan = planPipelineStage(action.stage, zone, bodyLineCapability(state, context))
-  if (!plan.ok) {
-    if (plan.reason === 'machine-line') {
-      return {
-        state,
-        log: [
-          {
-            type: 'job-blocked',
-            jobId: `pipeline-${carInstanceId}-${action.stage}-${action.zoneId}`,
-            reason: 'machine-line',
-          },
-        ],
-        laborSlotsUsed: 0,
-      }
-    }
-    return NOOP_PIPELINE_RESULT(state)
-  }
+  if (!plan.ok) return NOOP_PIPELINE_RESULT(state)
   const requirements = stageConsumables(action.stage)
   if (!hasStockFor(state.consumableStock ?? {}, requirements)) {
     return {
@@ -224,7 +228,11 @@ export function resolvePipelineStageAction(
       laborSlotsUsed: 0,
     }
   }
-  const laborSlotsRequired = context.economy.energy.bodyStagePoints[action.stage]
+  const baseLaborSlots = context.economy.energy.bodyStagePoints[action.stage]
+  const laborSlotsRequired =
+    action.stage === 'weld'
+      ? Math.round(baseLaborSlots * machineLaborMultiplier('body', state, context))
+      : baseLaborSlots
   return chargeAndApplyPipelineEffect(
     state,
     carInstanceId,
@@ -263,7 +271,8 @@ function paintCatalogPartForGrade(
  * BEFORE the zone mutation is charged and applied, so
  * `applyDerivedBodyBands`'s single-writer rule (which preserves whatever SKU
  * is already installed and only rewrites the band) carries the new one
- * through rather than the old.
+ * through rather than the old. Refuses off the body bay's own car first,
+ * same as every other pipeline action (sprint208.md).
  */
 export function resolvePipelinePaintAction(
   state: GameState,
@@ -274,6 +283,19 @@ export function resolvePipelinePaintAction(
 ): PipelineOpResult {
   const car = findWorkableCar(state, carInstanceId)
   if (!car || !car.zoneState) return NOOP_PIPELINE_RESULT(state)
+  if (!carInBodyBay(state, carInstanceId)) {
+    return {
+      state,
+      log: [
+        {
+          type: 'job-blocked',
+          jobId: `pipeline-${carInstanceId}-paint-${action.zoneId}`,
+          reason: 'not-in-body-bay',
+        },
+      ],
+      laborSlotsUsed: 0,
+    }
+  }
   const model = context.modelsById[car.modelId]
   if (!model) return NOOP_PIPELINE_RESULT(state)
   const zone = car.zoneState[action.zoneId]
@@ -361,9 +383,11 @@ function writeBackCar(
  * Pulls `zoneId`'s panel onto the shelf as a fresh `PartInstance` at its own
  * severity, and marks the zone missing - the same remove-to-inventory shape
  * `resolveRemovePart` (jobs.ts) uses for every other slot, resolved
- * instantly. Labour reads the flat remove-part action point, the same figure
- * every slot's removal charges. A no-op on an already-missing zone: there is
- * nothing there to pull.
+ * instantly. Refuses off the body bay's own car first, same as every other
+ * pipeline action (sprint208.md). Labour reads the flat remove-part action
+ * point, the same figure every slot's removal charges - panel bolts are
+ * hand work, never machine-gated. A no-op on an already-missing zone: there
+ * is nothing there to pull.
  */
 export function resolvePipelineRemovePanelAction(
   state: GameState,
@@ -374,6 +398,19 @@ export function resolvePipelineRemovePanelAction(
 ): PipelineOpResult {
   const car = findWorkableCar(state, carInstanceId)
   if (!car || !car.zoneState) return NOOP_PIPELINE_RESULT(state)
+  if (!carInBodyBay(state, carInstanceId)) {
+    return {
+      state,
+      log: [
+        {
+          type: 'job-blocked',
+          jobId: `pipeline-${carInstanceId}-remove-panel-${action.zoneId}`,
+          reason: 'not-in-body-bay',
+        },
+      ],
+      laborSlotsUsed: 0,
+    }
+  }
   const model = context.modelsById[car.modelId]
   if (!model) return NOOP_PIPELINE_RESULT(state)
   const zone = car.zoneState[action.zoneId]
@@ -391,6 +428,7 @@ export function resolvePipelineRemovePanelAction(
   )
 
   let partInventory = state.partInventory
+  let partInstanceCounter = state.partInstanceCounter ?? 0
   if (oldPanelCatalogPart) {
     const harvestedBand = isMetalZoneState(zone)
       ? bandForSeverity(zone.metal)
@@ -398,7 +436,7 @@ export function resolvePipelineRemovePanelAction(
     partInventory = [
       ...partInventory,
       {
-        id: `panel-${state.day}-${partInventory.length}`,
+        id: `panel-${partInstanceCounter}`,
         partId: oldPanelCatalogPart.id,
         band: harvestedBand,
         origin: makeCarOrigin(car.id, carOriginLabel(model, car.year), state.day),
@@ -414,10 +452,16 @@ export function resolvePipelineRemovePanelAction(
         },
       },
     ]
+    partInstanceCounter += 1
   }
 
   const next = writeBackCar(
-    { ...state, partInventory, energySpentToday: state.energySpentToday + laborSlotsRequired },
+    {
+      ...state,
+      partInventory,
+      partInstanceCounter,
+      energySpentToday: state.energySpentToday + laborSlotsRequired,
+    },
     carInstanceId,
     nextCar,
   )
@@ -429,19 +473,20 @@ export function resolvePipelineRemovePanelAction(
  * Consumes the picked zone-panel `PartInstance` from inventory and fits it -
  * metal at the panel's own band on a metal zone, surface/finish reset -
  * exactly what a fresh physical panel leaves regardless of what stood there
- * before, resolved instantly. Needs the zone missing first (`planRemovePanel`
- * ran, or the zone was never fitted): a zone still carrying its old panel
- * refuses, matching every other slot's replace-needs-empty-first rule.
- * Labour is the fitting (bolt-on) class, at the machine-less multiplier
- * without the body line owned or hired for today
- * (`machineLaborMultiplier`) - never refused, just slower by hand. No
- * separate materials charge, since the new panel's price was already paid at
- * purchase and lands on the car's ledger here, the same moment `completeJob`'s
- * install-part branch posts a part's cost. Also records the fitted SKU's own
- * grade onto the zone (`planInstallPanel`'s `grade` argument), which is what
- * lets the car read as modified the moment a non-stock panel goes on - the
- * zone, not the whole-car carrier, is now the truth about which panel is
- * actually fitted.
+ * before, resolved instantly. Refuses off the body bay's own car first, same
+ * as every other pipeline action (sprint208.md). Needs the zone missing
+ * first (`planRemovePanel` ran, or the zone was never fitted): a zone still
+ * carrying its old panel refuses, matching every other slot's
+ * replace-needs-empty-first rule. Labour is the flat fitting (bolt-on) class
+ * figure - panel bolts are hand work, never machine-gated (sprint208.md:
+ * "the booth gates booth work... not spanners"). No separate materials
+ * charge, since the new panel's price was already paid at purchase and lands
+ * on the car's ledger here, the same moment `completeJob`'s install-part
+ * branch posts a part's cost. Also records the fitted SKU's own grade onto
+ * the zone (`planInstallPanel`'s `grade` argument), which is what lets the
+ * car read as modified the moment a non-stock panel goes on - the zone, not
+ * the whole-car carrier, is now the truth about which panel is actually
+ * fitted.
  */
 export function resolvePipelineInstallPanelAction(
   state: GameState,
@@ -452,6 +497,19 @@ export function resolvePipelineInstallPanelAction(
 ): PipelineOpResult {
   const car = findWorkableCar(state, carInstanceId)
   if (!car || !car.zoneState) return NOOP_PIPELINE_RESULT(state)
+  if (!carInBodyBay(state, carInstanceId)) {
+    return {
+      state,
+      log: [
+        {
+          type: 'job-blocked',
+          jobId: `pipeline-${carInstanceId}-install-panel-${action.zoneId}`,
+          reason: 'not-in-body-bay',
+        },
+      ],
+      laborSlotsUsed: 0,
+    }
+  }
   const model = context.modelsById[car.modelId]
   if (!model) return NOOP_PIPELINE_RESULT(state)
   const fitmentClass = fitmentClassForTier(model.tier)
@@ -486,11 +544,9 @@ export function resolvePipelineInstallPanelAction(
     }
   }
 
-  // Panel hanging is body-gated work: base labour with the body line owned
-  // or hired, the machine-less multiplier without (`machineLaborMultiplier`).
-  const laborSlotsRequired =
-    context.economy.energy.energyByClass['bolt-on'] *
-    machineLaborMultiplier(machineGateGroupFor('bodywork', 'install', context), state, context)
+  // Panel hanging is hand work, flat at the bolt-on class figure - the
+  // booth prices the booth (weld, the paint finish tier), not spanners.
+  const laborSlotsRequired = context.economy.energy.energyByClass['bolt-on']
   if (laborSlotsRequired > laborAvailable) return NOOP_PIPELINE_RESULT(state)
 
   const nextZone = planInstallPanel(

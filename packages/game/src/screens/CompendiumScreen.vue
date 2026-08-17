@@ -33,8 +33,9 @@ const ENTRIES: readonly CompendiumEntry[] = [
     title: 'Body and paint',
     paragraphs: [
       "A car's body is nine zones, and each carries its own condition, same poor-to-mint reading as everything else in the shop. The worst zone sets the whole car's bodywork reading; the worst finish sets its paint reading.",
-      "Bringing a bad zone back is a chain: beat the dents out, weld what's torn, fill and sand what's left, then prime it. A panel too far gone gets swapped rather than beaten straight. Paint comes after, its own step - strip what's there, then lay down a colour from a tin off your shelf.",
+      "Bringing a bad zone back is a chain: beat the dents out, weld what's torn, fill and sand what's left, then prime it. A panel too far gone comes off and a fresh one goes on, rather than being beaten straight. Paint comes after, its own step - strip what's there, then lay down a colour from a tin off your shelf.",
       "Better tools don't skip steps; they raise the ceiling. Hand work gets a zone to a fair state, and the proper line carries the finish the rest of the way. Welding is the one job that will not happen without the welder - rot waits for the kit or for a fresh panel, whichever arrives first.",
+      'All of this happens in the body shop, its own room off the garage, worked on whichever car is sitting in its bay.',
     ],
   },
   {
@@ -78,6 +79,20 @@ const ENTRIES: readonly CompendiumEntry[] = [
     paragraphs: [
       "Customers ring in through the day asking for work. Book one in and the car turns up the next morning with its tasks already attached, so you know what it needs before it's on the ramp.",
       'Finish the work, then hand the car back from the phone to get paid and bank the reputation it earns. Hand it back unfinished and you forfeit the payout.',
+    ],
+  },
+  {
+    id: 'free-ads-paper',
+    title: 'The free ads paper',
+    paragraphs: [
+      'List a car in the free ads and it sits in ten thousand kitchens by morning. Costs nothing, reaches everyone, hurries nobody. The shop front sells to whoever walks past; the paper sells to whoever has been circling the same ad for a week.',
+    ],
+  },
+  {
+    id: 'trade-sheet',
+    title: 'The trade sheet',
+    paragraphs: [
+      "The stand saves the trade sheet from the back pages: last week's movement, model by model, risers and fallers. It reports what happened, never what will. A model you keep selling into goes soft; the sheet is where you watch it happen.",
     ],
   },
 ]

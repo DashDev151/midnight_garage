@@ -130,6 +130,10 @@ describe('market: selling', () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
     const carId = game.gameState.ownedCars[0]!.id
+    // freeAdsPaper is locked until the newsstand's van job pays out
+    // (sprint205.md) - this test is about channelId threading, not the
+    // unlock itself, so claim it outright.
+    game.gameState = { ...game.gameState, serviceJobChannelUnlocks: ['freeAdsPaper'] }
 
     expect(game.setForSale(carId, true)).toBe(true)
     expect(game.listingChannelId(carId)).toBe('shopFront')
@@ -147,6 +151,10 @@ describe('market: selling', () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
     const carId = game.gameState.ownedCars[0]!.id
+    // freeAdsPaper is locked until the newsstand's van job pays out
+    // (sprint205.md) - this test is about the re-listing fee, not the
+    // unlock itself, so claim it outright.
+    game.gameState = { ...game.gameState, serviceJobChannelUnlocks: ['freeAdsPaper'] }
     expect(game.setForSale(carId, true, 'shopFront')).toBe(true) // free
 
     const cashBefore = game.cashYen

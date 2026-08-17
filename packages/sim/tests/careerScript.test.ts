@@ -74,6 +74,29 @@ describe('sessionBundleToScript', () => {
     expect(() => sessionBundleToScript(seedless)).toThrow(/no seed/)
   })
 
+  it('converts a recorded playClockPaused/playClockResumed pair like any other known type', () => {
+    const clockBundle: SessionExportBundle = {
+      career: 'clock-test',
+      exportedOnDay: 1,
+      seed: 1,
+      actions: [
+        { id: 1, day: 1, type: 'playClockPaused', payload: { activeMs: 1000 }, timestamp: 100 },
+        { id: 2, day: 1, type: 'playClockResumed', payload: { activeMs: 1000 }, timestamp: 200 },
+      ],
+    }
+    const script = sessionBundleToScript(clockBundle)
+    expect(script.days).toEqual([
+      {
+        day: 1,
+        events: [
+          { type: 'playClockPaused', payload: { activeMs: 1000 } },
+          { type: 'playClockResumed', payload: { activeMs: 1000 } },
+        ],
+        checkpoints: [],
+      },
+    ])
+  })
+
   it('fails loudly on an event type the vocabulary cannot place, never silently', () => {
     // The archived pre-202 sessions log a bare `type` the current vocabulary
     // has since renamed or dropped - simulated here via an escape hatch
