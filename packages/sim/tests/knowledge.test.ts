@@ -23,7 +23,7 @@ import {
   seedVerifiedSlots,
   verifySlot,
 } from '../src/knowledge'
-import { buildCarInstance, mintCarParts } from './testFixtures'
+import { buildCarInstance, mintCarParts, uniformCarParts } from './testFixtures'
 
 /** Four causes on four different real parts, all still live - lets a
  * verification event be exercised against a part that IS the true cause
@@ -167,6 +167,66 @@ describe('priorBand (task A2)', () => {
   })
 })
 
+describe('priorBand evidence term (sprint219.md task A)', () => {
+  it('no verified slots at all leaves the pure mileage read untouched', () => {
+    const car = buildCarInstance({ mileageKm: 90_000 })
+    expect(car.verifiedSlots).toBeUndefined()
+    expect(priorBand(car, 'internals', CONTEXT)).toBe('worn')
+  })
+
+  it('an empty verifiedSlots array is the same as no evidence', () => {
+    const car = buildCarInstance({ mileageKm: 90_000, verifiedSlots: [] })
+    expect(priorBand(car, 'internals', CONTEXT)).toBe('worn')
+  })
+
+  it('a single clean verified slot lifts the guess one band toward mint', () => {
+    // tyres defaults to mint via mintCarParts; mileage alone reads 'worn' at
+    // 90,000 km.
+    const car = buildCarInstance({ mileageKm: 90_000, verifiedSlots: ['tyres'] })
+    expect(priorBand(car, 'internals', CONTEXT)).toBe('fine')
+  })
+
+  it('a single rough verified slot pulls the guess one band toward poor', () => {
+    const car = buildCarInstance({
+      mileageKm: 90_000,
+      parts: mintCarParts({ tyres: 'poor' }),
+      verifiedSlots: ['tyres'],
+    })
+    expect(priorBand(car, 'internals', CONTEXT)).toBe('poor')
+  })
+
+  it('never moves the guess more than one band step, however wide the verified spread', () => {
+    // Every verified slot mint against a mileage prior that already reads
+    // the worst band (poor): an unclamped average would want +3.
+    const car = buildCarInstance({ mileageKm: 10_000_000, verifiedSlots: ['tyres', 'rims'] })
+    expect(bandIndex(priorBand(car, 'internals', CONTEXT))).toBe(bandIndex('poor') + 1)
+  })
+
+  it('verifying more slots sharpens the remaining guess, re-read fresh from car.verifiedSlots each call', () => {
+    // One clean verified slot against a 'worn' mileage prior lifts the
+    // guess; verifying two more, genuinely rough, slots pulls the average
+    // (and so the guess) back down without touching internals itself.
+    const base = buildCarInstance({
+      mileageKm: 90_000,
+      parts: mintCarParts({ headValvetrain: 'poor', intake: 'poor' }),
+      verifiedSlots: ['tyres'],
+    })
+    expect(priorBand(base, 'internals', CONTEXT)).toBe('fine')
+
+    const sharpened = verifySlot(verifySlot(base, 'headValvetrain'), 'intake')
+    expect(priorBand(sharpened, 'internals', CONTEXT)).toBe('worn')
+  })
+
+  it('a verified slot with nothing installed contributes no evidence', () => {
+    const car = buildCarInstance({
+      mileageKm: 90_000,
+      parts: mintCarParts({ tyres: null }),
+      verifiedSlots: ['tyres'],
+    })
+    expect(priorBand(car, 'internals', CONTEXT)).toBe('worn')
+  })
+})
+
 describe('knowledgeViewOf (task B)', () => {
   it('is a no-op when the knowledge model has not been seeded onto the car', () => {
     const car = buildCarInstance({ parts: mintCarParts({ internals: 'poor' }) })
@@ -181,7 +241,10 @@ describe('knowledgeViewOf (task B)', () => {
     )
     expect(isSlotVerified(car, 'internals')).toBe(false)
     const view = knowledgeViewOf(car, MODEL, CONTEXT)
-    expect(view.parts.internals.installed!.band).toBe('worn') // priorBand at 90,000 km
+    // Mileage alone reads 'worn' at 90,000 km; every born-verified slot here
+    // (seedVerifiedSlots' default set) is mint, so the evidence term (sprint219)
+    // lifts the guess a band to 'fine'.
+    expect(view.parts.internals.installed!.band).toBe('fine')
     expect(view.parts.internals.installed!.band).not.toBe('poor') // never the truth
   })
 
@@ -245,8 +308,11 @@ describe('buyerKnowledgeViewOf (sprint217.md task A)', () => {
   })
 
   it('never marks a guess down past poor - the haircut floors exactly where priorBand already does', () => {
+    // Every slot (including the born-verified ones) at 'poor', so the
+    // evidence term reads no gap against the equally-poor mileage prior and
+    // adds nothing - the floor case, isolated from the evidence term.
     const car = seedVerifiedSlots(
-      buildCarInstance({ mileageKm: 10_000_000, parts: mintCarParts({ internals: 'poor' }) }),
+      buildCarInstance({ mileageKm: 10_000_000, parts: uniformCarParts('poor') }),
       CONTEXT,
     )
     expect(priorBand(car, 'internals', CONTEXT)).toBe('poor')

@@ -80,11 +80,34 @@ export function verifySlot(car: CarInstance, partId: CarPartId): CarInstance {
 }
 
 /**
+ * How far the average VERIFIED slot's real band sits from the pure mileage
+ * read, rounded to a whole band step and clamped to +-1 (sprint219.md,
+ * design section 1's evidence term): a car whose confirmed half is running
+ * cleaner than mileage alone would suggest nudges every remaining guess up;
+ * a confirmed half running rougher nudges it down. Read fresh from
+ * `car.verifiedSlots` every call rather than snapshotted anywhere, so
+ * verifying more slots sharpens the remaining guesses as the game
+ * progresses - there is no staleness to guard against. Zero (no adjustment)
+ * once there is no evidence yet: `verifiedSlots` absent or empty, or every
+ * verified slot happens to be an empty one with nothing installed to read.
+ */
+function evidenceDeltaFor(car: CarInstance, mileagePriorBand: ConditionBand): number {
+  const verifiedIndices = (car.verifiedSlots ?? [])
+    .map((partId) => car.parts[partId]?.installed?.band)
+    .filter((band): band is ConditionBand => band != null)
+    .map((band) => bandIndex(band))
+  if (verifiedIndices.length === 0) return 0
+  const avgIndex = verifiedIndices.reduce((sum, index) => sum + index, 0) / verifiedIndices.length
+  const rawDelta = Math.round(avgIndex - bandIndex(mileagePriorBand))
+  return Math.max(-1, Math.min(1, rawDelta))
+}
+
+/**
  * The deterministic guess an estimated slot's chip shows (design section 1):
- * `bandFromMileageSegment(mileageKm)` adjusted by a provenance modifier,
- * clamped to `[poor, mint]` - the guess is never as bad as `scrap`, since a
- * genuinely wrecked part is exactly the kind of fact the player is meant to
- * have to go find out.
+ * `bandFromMileageSegment(mileageKm)` adjusted by a provenance modifier and
+ * the evidence term (`evidenceDeltaFor`), clamped to `[poor, mint]` - the
+ * guess is never as bad as `scrap`, since a genuinely wrecked part is
+ * exactly the kind of fact the player is meant to have to go find out.
  *
  * The mileage segment reuses `valuation.mileageFactorCurve`'s own
  * breakpoints (`knowledgePriors.mileageBandBySegment` is parallel to it, one
@@ -98,6 +121,12 @@ export function verifySlot(car: CarInstance, partId: CarPartId): CarInstance {
  * layer 3, the closest existing fact to the design doc's "garage-kept" /
  * "crash, flood, abandoned" framing) - `knowledgePriors.
  * provenanceModifierByDamagePattern`, zero for a car with no rolled pattern.
+ *
+ * The evidence term (sprint219.md) reads only what is already OBSERVABLE -
+ * the car's own `verifiedSlots` - so it leaks no information a buyer
+ * couldn't also read off the same visible half; both the player display and
+ * `buyerKnowledgeViewOf` route through this one function, so both move
+ * together automatically.
  */
 export function priorBand(
   car: CarInstance,
@@ -116,9 +145,13 @@ export function priorBand(
   }
   const baseBand = mileageBandBySegment[segmentIndex]!
   const modifier = car.damagePattern ? provenanceModifierByDamagePattern[car.damagePattern] : 0
+  const evidenceDelta = evidenceDeltaFor(car, baseBand)
   const poorIndex = bandIndex('poor')
   const mintIndex = bandIndex('mint')
-  const clampedIndex = Math.max(poorIndex, Math.min(mintIndex, bandIndex(baseBand) + modifier))
+  const clampedIndex = Math.max(
+    poorIndex,
+    Math.min(mintIndex, bandIndex(baseBand) + modifier + evidenceDelta),
+  )
   return CONDITION_BAND_ORDER[clampedIndex]!
 }
 

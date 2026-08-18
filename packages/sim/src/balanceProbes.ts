@@ -347,6 +347,69 @@ export function buildRoughProbeCar(model: CarModel, context: SimContext): CarIns
   )
 }
 
+/** Mid-mileage - the same "reads `worn` on the mileage curve alone" figure
+ * this file's own knowledge tests already use (`worn` sits between the
+ * curve's 60,000 and 120,000 km breakpoints). */
+const TYPICAL_PROBE_MILEAGE_KM = 90_000
+
+/**
+ * Ambient, NON-symptomatic wear on `buildTypicalProbeCar` below: half the
+ * suspension bolt-ons plus two further engine/drivetrain wear items,
+ * deliberately spread across groups rather than concentrated in one - real
+ * used-car wear, not a worst case. Every entry is independently REPAIRABLE
+ * (never one of the three true consumables - `tyres`/`brakePadsDiscs`/
+ * `clutch` all stay `fine`), kept that way on purpose so a "fix everything"
+ * deep flip can clear all of it through the plain repair atom alone, with no
+ * replace-cost path to model.
+ */
+const TYPICAL_PROBE_WORN_PART_IDS: readonly CarPartId[] = [
+  'dampers',
+  'springs',
+  'antiRollBars',
+  'steering',
+  'brakeCalipersLines',
+  'exhaust',
+  'cooling',
+  'differential',
+]
+
+/**
+ * A GENERATION-PLAUSIBLE typical light-flip candidate for `model`
+ * (sprint219.md probe (e) scenario 2 - the counterpart to
+ * `buildRoughProbeCar` above, which is deliberately the WORST case rather
+ * than a representative one). Every born-verified slot
+ * (`defaultVerifiedSlots`, knowledge.ts - the six surface panels plus tyres
+ * and rims) sits at `fine` at `TYPICAL_PROBE_MILEAGE_KM`: a car that has
+ * plainly been looked after, genuinely better than its mileage alone would
+ * suggest - exactly the situation the evidence term (knowledge.ts's
+ * `priorBand`) exists to reward. Every other real slot carries typical,
+ * SOFTENED wear rather than a uniform worst case:
+ * `TYPICAL_PROBE_WORN_PART_IDS` sits at `worn`, everything else still-hidden
+ * stays `fine` - a fine/worn mix, never uniformly poor.
+ *
+ * No symptom is applied here; a caller adds its own true cause on top (this
+ * fixture is the healthy base a light-flip candidate is built from, the same
+ * role `buildRoughProbeCar` plays for the worst-case scenario - callers that
+ * need a fully clean base can simply not apply one).
+ */
+export function buildTypicalProbeCar(model: CarModel, context: SimContext): CarInstance {
+  const carId = `typical-${model.id}`
+  const car = buildUniformBandCar(model, context, {
+    carId,
+    band: 'fine',
+    year: model.spec.yearFrom,
+    mileageKm: TYPICAL_PROBE_MILEAGE_KM,
+    provenanceNote: 'typical light-flip probe',
+  })
+  let parts = car.parts
+  for (const partId of TYPICAL_PROBE_WORN_PART_IDS) {
+    const installed = parts[partId].installed
+    if (!installed) continue
+    parts = { ...parts, [partId]: { installed: { ...installed, band: 'worn' } } }
+  }
+  return { ...car, parts }
+}
+
 /**
  * The rough probe car AFTER its repair plan has run: every REPAIRABLE slot
  * sitting below `band` lifted to it, and nothing else touched.

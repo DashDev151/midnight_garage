@@ -2613,6 +2613,30 @@ import toolShops from '../data/toolShops.json'
  * easiest bolt-on job to be the one that lands, so the board still reads as mostly familiar work
  * with the order-matters diagnosis job standing out when it appears, never crowding out the
  * ordinary repair/install jobs the rest of the board already carries.
+ *
+ * Re-pinned for sprint219.md task E (the typical-car probe (e) shortfall, evidence-informed
+ * priors), under the same behaviour-first governance amendment: the design of record
+ * (docs/design/systems/knowledge-and-diagnosis.md rulings-ledger item 13) is itself the approval
+ * for reopening this already-approved lever's SHAPE; the value is the lead's own choice, stated
+ * here by felt behaviour, validated by playtest rather than pre-ratified.
+ *
+ * `knowledgePriors.unverifiedHaircutByTier` (task E): entry 0 -> 1, everyday 0 -> 1 (enthusiast
+ * and flagship unchanged at 1 - every tier now reads 1). Felt behaviour: no buyer pays the full
+ * guess for what you would not show them; even small money discounts a shut bonnet by a band.
+ * **This SUPERSEDES the "small money buys little scrutiny" claim recorded in the sprint217.md
+ * re-pin above: that claim is left in place as the historical record of what shipped then. What
+ * broke it, measured rather than assumed (flipEconomyProbes.test.ts probe (e) scenario 2,
+ * sprint219.md's Exit): at entry tier's own zero haircut, an unverified slot's evidence-lifted
+ * guess could land EXACTLY on the band a repair would deliver, so opening and fixing ambient wear
+ * bought no incremental sale price over leaving it shut - light and deep sold for the identical
+ * 91,388 yen on the typical-car probe. A one-band haircut on every tier restores a real gap
+ * between verified and unverified pricing that was previously zero at entry/everyday, but
+ * MEASURED rather than assumed (flipEconomyProbes.test.ts probe (e) scenario 2, re-run after this
+ * lever moved): it overshoots the [0.35, 0.75] commitment, not undershoots it - light fell to 0.27
+ * of deep (was 1.25). The haircut applies uniformly to every unverified slot rather than only the
+ * ones actually concealing ambient wear, so it marks down more of the light flip's sale than the
+ * true condition gap accounts for. Reported as this sprint's still-open finding rather than chased
+ * with a further lever move; see sprint219.md's Exit for both measured pairs.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -2622,7 +2646,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('49c53a3af1f65a067030b40929e071aa9167a42ce81f8acf1563063ab20279de')
+    ).toBe('f155da6e00cd4065a022735a761353cd655c0805ad857944988c87c47b6ca19f')
   })
 
   it('damagePatterns.json matches its approved content exactly', () => {

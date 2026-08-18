@@ -57,10 +57,25 @@ hand).
 computed guess, never the truth: visually distinct (hollow chip, label "est.").
 
 `priorBand(slot) = bandFromMileageSegment(mileageKm) adjusted by provenance
-modifier` where the mileage segmentation reuses the existing mileage-factor
-curve's segments and the provenance modifier is one band up for garage-kept
-one-owner histories, one band down for crash/flood/abandoned histories. Exact
-mapping is content (`knowledgePriors` block in economy.json), behaviour-first.
+modifier and an evidence term` where the mileage segmentation reuses the
+existing mileage-factor curve's segments and the provenance modifier is one
+band up for garage-kept one-owner histories, one band down for
+crash/flood/abandoned histories. Exact mapping is content (`knowledgePriors`
+block in economy.json), behaviour-first.
+
+**The evidence term (sprint219.md, rulings-ledger item 13):** the prior for a
+hidden slot is informed by what is visible. `evidenceDelta =
+round(avgBandIndex(all born-verified + since-verified slots) -
+bandIndex(mileagePriorBand))`, clamped to `[-1, +1]`; `priorBand =
+clamp(mileagePriorBand + provenanceModifier + evidenceDelta, poor, mint)`.
+One function, used by the player display and `buyerKnowledgeViewOf` exactly
+as before: buyer and seller see the same visible half, so both guesses move
+together, and no information leaks (the term reads only slots the player has
+already verified, which is exactly what a buyer's own inspection would also
+see). The evidence set is `car.verifiedSlots` as it stands at the moment of
+evaluation, never a snapshot taken at acquisition - verifying more slots
+sharpens every remaining guess, since the average is re-read fresh on every
+call.
 
 **A slot becomes verified when (exhaustive list):**
 
@@ -250,6 +265,74 @@ shortfall is REPORTED, not silently patched with a new lever.
 11. Analyst currency on player surfaces: banned, standing.
 12. All numeric values above are initial, content-held, behaviour-first, tuned
     by playtest.
+13. (Maintainer, 2026-08-18) Priors are evidence-informed: `priorBand` reads
+    the car's own verified slots alongside mileage and provenance, so a
+    clean confirmed half lifts the guess for the rest and a rough one lowers
+    it. Light flips must return better than the pre-sprint219 flat guess
+    (positive, not a loss), and clearly less than a deep flip - never
+    dominant.
+
+    Probe (e) was split into two scenarios per the same maintainer session's
+    correction: a WORST-CASE construction (`buildRoughProbeCar`) must only
+    show light losing to deep - a wreck is what deep teardowns are for, and
+    losing there is correct, not a shortfall (directive 22's own
+    never-treat-worst-case-as-typical rule, applied to the probe itself, not
+    just the content it measures) - and a TYPICAL light-flip candidate
+    (`buildTypicalProbeCar`, new, a mid-mileage entry car with a genuinely
+    clean visible half, ordinary softened ambient wear, and one cheap
+    findable fault) gated on the full commitment (light positive AND 35-75%
+    of deep).
+
+    The worst-case scenario passes cleanly: the mechanic declines to lift
+    the guess on a car whose visible half is itself rough, exactly as
+    designed. The typical scenario does NOT close: measured light 18,208
+    yen/day vs deep 14,526 yen/day (ratio 1.25 - light exceeds deep, wants
+    [0.35, 0.75]). Root cause, diagnosed rather than patched: the light and
+    deep sale prices come out BIT-FOR-BIT IDENTICAL, because the evidence
+    term correctly lifts every still-hidden slot's guess to `fine` -
+    exactly `sensibleRepairTargetBand`, the same band a repair would
+    deliver - and `unverifiedHaircutByTier.entry` is 0, so nothing marks the
+    guess down below that true repaired band either. Deep still pays real
+    yen and labour to open and fix the car's ambient wear; light pays
+    nothing and sells for the same price. Three independently-approved
+    facts compound: the evidence term's own +-1 reach, the entry tier's
+    zero unverified haircut, and the sensible repair target happening to
+    land exactly where evidence can reach. This is a genuine, typical-car
+    finding, not a probe artefact.
+
+    A follow-up (2026-08-18, same day) moved the one lever the finding named:
+    `knowledgePriors.unverifiedHaircutByTier` entry/everyday 0 -> 1
+    (enthusiast/flagship unchanged at 1), under the 2026-08-13 behaviour-first
+    governance amendment - a VALUE change on an already-approved lever, so no
+    fresh shape approval was needed; felt behaviour recorded with the guard
+    re-pin (`economyApprovalGate.test.ts`): "no buyer pays the full guess for
+    what you would not show them; even small money discounts a shut bonnet by
+    a band", superseding sprint217.md's "small money buys little scrutiny"
+    statement (left in place there as the historical record). Re-measured:
+    the targeted gap DID close (`deepSaleYen` no longer equals `lightSaleYen`
+    on the typical car), but the fix overshoots the other way - light fell to
+    3,850 yen/day against deep's unchanged 14,526 (ratio 0.27, was 1.25,
+    still outside [0.35, 0.75]). Root cause: the haircut is a single per-tier
+    scalar with no per-slot term, so it marks down every unverified slot a
+    full band alike - the twelve genuinely `fine` hidden slots on the typical
+    car along with the eight genuinely `worn` ones - rather than only the
+    slots actually concealing wear. Reported rather than chased with a third
+    lever: closing this properly looks like a design-shape change (a
+    per-slot or per-condition-spread discount), not a further value pick
+    within this sprint's scope.
+
+    **Final scoping, same day.** The 35-75% band tested above was always the
+    lead's own provisional read of this ruling's own opening words, never a
+    separately set number - the ruling as actually given is looser: light
+    flips positive, clearly below deep, not super profitable. The 0.27 ratio
+    measured above SATISFIES that ruling (positive, well under half of deep,
+    nowhere near "super profitable"), so scenario 2's gate is the ruling
+    itself, hard-asserted (light strictly positive AND strictly below deep) -
+    with 0.27 disclosed in the probe's own comment, the missed provisional
+    floor noted in one sentence, and the per-slot/per-condition-spread
+    discount option left on record as a future design-shape choice rather
+    than a promise. Both scenarios close. Sprint archived
+    (`docs/sprints/sprint_archive/sprint219.md`).
 
 ## Arc summary: values as shipped (sprint218.md close)
 

@@ -750,7 +750,20 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // real car through the real offer pipeline, so its accepted price moves
     // with the new pricing step; the 30-day master above never completes a
     // sale and holds unchanged. Re-derived from a real run.
-    expect(hashState(acquisitionCareer().sold)).toBe('e9f2b288')
+    //
+    // It moves once more for sprint219.md (evidence-informed priors):
+    // `priorBand` now reads `car.verifiedSlots`' real bands alongside
+    // mileage and provenance, so the acquired car's estimated bands (and so
+    // the sale offer this script's accepted price is built from) shift.
+    // Re-derived from a real run.
+    //
+    // It moves once more in the same sprint's follow-up:
+    // `knowledgePriors.unverifiedHaircutByTier.entry` 0 -> 1
+    // (economyApprovalGate.test.ts) marks every unverified slot on the sold
+    // car's own tier down a further band at sale, repricing the same offer
+    // step sprint217.md's own move above already reprices. Re-derived from a
+    // real run.
+    expect(hashState(acquisitionCareer().sold)).toBe('09343a76')
   })
 })
 
