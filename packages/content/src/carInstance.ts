@@ -253,6 +253,26 @@ export const CarInstanceSchema = z.object({
    * state once owned.
    */
   verifiedSlots: z.array(CarPartIdSchema).optional(),
+  /**
+   * How far this car's born-verified slots read from the pure mileage guess
+   * at the moment it entered the player's ownership, frozen once and never
+   * recomputed (docs/design/systems/knowledge-and-diagnosis.md section 1,
+   * rulings-ledger item 14): -1/0/+1 band steps, the same clamp
+   * `evidenceDeltaFor` always applied, now taken once rather than read live.
+   * `priorBand` (`knowledge.ts`) reads this stored value instead of
+   * recomputing off `verifiedSlots`' CURRENT bands - evidence testifies about
+   * the PREVIOUS owner's care, never the player's own later spanner work, so
+   * repairing a car's visible half after acquisition can never lift the
+   * guess for its still-hidden slots.
+   *
+   * Optional, the genuinely-optional-key pattern (SAVE_VERSION bump, no
+   * migration per directive 19): absent reads as 0 (no adjustment)
+   * everywhere this is read - the safe default for a hand-authored fixture,
+   * a bot/probe car, or a customer's service-job car this field does not
+   * apply to. Every real acquisition path (auction purchase, dev grant)
+   * computes and stores this exactly once, from the car as acquired.
+   */
+  acquisitionEvidenceDelta: z.number().int().min(-1).max(1).optional(),
 })
 
 export type CarInstance = z.infer<typeof CarInstanceSchema>

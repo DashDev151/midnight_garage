@@ -5494,7 +5494,7 @@ export const useGameStore = defineStore('game', () => {
     )
     // A dev grant is not knowledge gameplay (sprint215.md task A3): every
     // slot starts fully verified rather than estimated.
-    const car = fullyVerifiedCar(rolled)
+    const car = fullyVerifiedCar(rolled, context.value)
     // Parking is a real indexed array - a granted car needs an actual slot,
     // not just membership in `ownedCars` (`assignToParking` grows the array if
     // parking happens to be nominally full, since this bypasses the normal

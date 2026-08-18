@@ -35,7 +35,7 @@ import { replayCareerScript } from '../src/careerReplay'
 import { sessionBundleToScript, type SessionExportBundle } from '../src/careerScript'
 import { buildSimContext } from '../src/context'
 import { candidateFixCostYen } from '../src/diagnosis'
-import { buyerKnowledgeViewOf, defaultVerifiedSlots } from '../src/knowledge'
+import { buyerKnowledgeViewOf, seedVerifiedSlots } from '../src/knowledge'
 import { marketValueYen, sensibleRepairTargetBand } from '../src/marketValue'
 import { createInitialGameState } from '../src/newGame'
 import { offerChanceFor, qualityMeanFor } from '../src/selling'
@@ -469,6 +469,13 @@ describe('(e) light flip vs deep flip, entry tier (sprint219.md: evidence-inform
       ],
     }
 
+    // ACQUISITION: seeds verifiedSlots to the born-verified set and freezes
+    // acquisitionEvidenceDelta from the car exactly as bought (rulings-ledger
+    // item 14) - the real function every auction settlement runs, so this
+    // probe's light flip earns evidence the same way a player's own would,
+    // never a snapshot taken after the player's own repair below.
+    const knownCar = seedVerifiedSlots(symptomaticCar, CONTEXT)
+
     // Fair buy: the reserve fraction of this car's own true market value -
     // the same convention probe (a)'s own roughCarBuyYen uses.
     const buyGuideYen = marketValueYen(
@@ -485,7 +492,7 @@ describe('(e) light flip vs deep flip, entry tier (sprint219.md: evidence-inform
     // own sensible repair target - the light flip's whole labour spend.
     const target = sensibleRepairTargetBand(entryModel, CONTEXT.economy)
     const partEntry = CONTEXT.partsTaxonomyById[trueCauseA.carPartId]!
-    const installedA = symptomaticCar.parts[trueCauseA.carPartId].installed!
+    const installedA = knownCar.parts[trueCauseA.carPartId].installed!
     const catalogPartA = CONTEXT.partsById[installedA.partId]!
     const plan = planPartRepair(
       installedA.band,
@@ -498,14 +505,17 @@ describe('(e) light flip vs deep flip, entry tier (sprint219.md: evidence-inform
     )
     const repairedBand = bandIndex(installedA.band) < bandIndex(target) ? target : installedA.band
     const lightRepairedCar: CarInstance = {
-      ...symptomaticCar,
+      ...knownCar,
       parts: {
-        ...symptomaticCar.parts,
+        ...knownCar.parts,
         [trueCauseA.carPartId]: { installed: { ...installedA, band: repairedBand } },
       },
       // The fix verifies the slot (a repair click always does); symptom A is
-      // cured by it and drops out, leaving only B open and unverified.
-      verifiedSlots: [...defaultVerifiedSlots(CONTEXT), trueCauseA.carPartId],
+      // cured by it and drops out, leaving only B open and unverified. The
+      // frozen acquisitionEvidenceDelta on `knownCar` carries through
+      // unchanged - this later repair is the player's own spanner work, not
+      // fresh evidence about the car's history.
+      verifiedSlots: [...knownCar.verifiedSlots!, trueCauseA.carPartId],
       symptoms: [symptomaticCar.symptoms[1]!],
     }
 
@@ -539,6 +549,12 @@ describe('(e) light flip vs deep flip, entry tier (sprint219.md: evidence-inform
     // knowledge-and-diagnosis.md rulings-ledger item 13 for the full
     // diagnosis of why sprint217.md's original softened-buried-groups gap
     // sits entirely out of this scenario's own born-verified evidence.
+    //
+    // Re-measured, bit-for-bit unchanged, after rulings-ledger item 14 froze
+    // the evidence term at acquisition (`knownCar`, seeded from
+    // `symptomaticCar` before the light flip's own repair): trueCauseA was
+    // never part of the born-verified set the evidence average reads, so
+    // freezing before rather than after its repair changes nothing here.
     expect(
       light.yenPerDay,
       `light ${light.yenPerDay.toFixed(0)} yen/day vs deep ${deep.yenPerDay.toFixed(0)} yen/day`,
@@ -582,6 +598,14 @@ describe('(e) light flip vs deep flip, entry tier (sprint219.md: evidence-inform
       ],
     }
 
+    // ACQUISITION: seeds verifiedSlots to the born-verified set and freezes
+    // acquisitionEvidenceDelta from the car exactly as bought (rulings-ledger
+    // item 14) - the real function every auction settlement runs, so this
+    // typical car's clean visible half earns evidence the same way a
+    // player's own acquisition would, never a snapshot taken after the
+    // player's own repair below.
+    const knownCar = seedVerifiedSlots(symptomaticCar, CONTEXT)
+
     // Fair buy: the reserve fraction of this car's own true market value -
     // the same convention scenario 1 and probe (a) both use.
     const buyGuideYen = marketValueYen(
@@ -601,7 +625,7 @@ describe('(e) light flip vs deep flip, entry tier (sprint219.md: evidence-inform
     // applies - the whole gap to deep is what staying unverified elsewhere
     // costs at sale, nothing else.
     const partEntry = CONTEXT.partsTaxonomyById[trueCause.carPartId]!
-    const installed = symptomaticCar.parts[trueCause.carPartId].installed!
+    const installed = knownCar.parts[trueCause.carPartId].installed!
     const catalogPart = CONTEXT.partsById[installed.partId]!
     const lightPlan = planPartRepair(
       installed.band,
@@ -615,12 +639,15 @@ describe('(e) light flip vs deep flip, entry tier (sprint219.md: evidence-inform
     const lightRepairedBand =
       bandIndex(installed.band) < bandIndex(target) ? target : installed.band
     const lightRepairedCar: CarInstance = {
-      ...symptomaticCar,
+      ...knownCar,
       parts: {
-        ...symptomaticCar.parts,
+        ...knownCar.parts,
         [trueCause.carPartId]: { installed: { ...installed, band: lightRepairedBand } },
       },
-      verifiedSlots: [...defaultVerifiedSlots(CONTEXT), trueCause.carPartId],
+      // The frozen acquisitionEvidenceDelta on `knownCar` carries through
+      // unchanged - this later repair is the player's own spanner work, not
+      // fresh evidence about the car's history.
+      verifiedSlots: [...knownCar.verifiedSlots!, trueCause.carPartId],
       symptoms: [],
     }
     const lightSaleYen = Math.round(
@@ -711,6 +738,17 @@ describe('(e) light flip vs deep flip, entry tier (sprint219.md: evidence-inform
     // `TYPICAL_PROBE_WORN_PART_IDS` ones - a per-slot or per-condition-spread
     // discount is the design-shape option that would size this more
     // precisely, left for a future sprint rather than picked here.
+    //
+    // Re-measured, bit-for-bit unchanged, after rulings-ledger item 14 froze
+    // the evidence term at acquisition (`knownCar`, seeded from
+    // `symptomaticCar` before the light flip's own repair): the true cause's
+    // slot (`intake`) was never part of the born-verified set either, and its
+    // repaired band (`sensibleRepairTargetBand`) happens to already match
+    // every born-verified slot's own band - so including or excluding it from
+    // the evidence average changes nothing here. The exploit this item closes
+    // is real (see knowledge.test.ts's own dedicated probe) but does not
+    // touch either of this file's two fixtures, since neither light flip's
+    // one repaired slot ever moved the rounded evidence average by itself.
     expect(
       light.yenPerDay,
       `light margin ${light.marginYen} over ${light.days.toFixed(2)} days, ${light.laborPoints} labour points`,

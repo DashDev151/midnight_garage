@@ -853,8 +853,21 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * NO `MIGRATIONS[74]` entry. The version bump alone is still required (Save
  * law) so an old client rejects a v75 save rather than reading a shape it no
  * longer understands.
+ * v75 -> v76 (evidence frozen at acquisition, rulings-ledger item 14):
+ * `CarInstance` gained `acquisitionEvidenceDelta` - the evidence term
+ * `priorBand` (`sim/knowledge.ts`) now reads instead of recomputing live off
+ * `verifiedSlots`' current bands, closing the exploit where repairing only a
+ * wreck's visible half lifted every hidden slot's guess. `.optional()` (the
+ * `verifiedSlots`/`bodyBayCarId` pattern), so no existing `CarInstance`
+ * literal needs touching: a pre-v76 save's owned cars simply read it absent,
+ * which `priorBand` treats as 0 (no adjustment) - the same flat guess every
+ * car read before sprint219.md's evidence term existed, and a strictly safer
+ * default than fabricating a delta with nothing real to compute it from. Per
+ * directive 19, a plain SAVE_VERSION bump with NO `MIGRATIONS[75]` entry. The
+ * version bump alone is still required (Save law) so an old client rejects a
+ * v76 save rather than reading a shape it no longer understands.
  */
-export const SAVE_VERSION = 75
+export const SAVE_VERSION = 76
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

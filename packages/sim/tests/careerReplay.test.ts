@@ -105,17 +105,28 @@ const SMOKE_SCRIPT = CareerScriptSchema.parse(smokeScriptRaw)
 // unchanged. No behaviour this script exercises changed in kind. Re-derived
 // from a real run, never hand-guessed. `smoke.script.json`'s own `kind:
 // 'hash'` checkpoints (days 1 and 10) move with this array.
+//
+// Re-pinned for the evidence-frozen-at-acquisition fix (knowledge-and-
+// diagnosis.md rulings-ledger item 14): `CarInstance` gains
+// `acquisitionEvidenceDelta`, set on the script's day-1 buyout and present
+// on every subsequent day's snapshot - the whole sequence moves even though
+// the script never repairs or resells the car (so no actual estimate or
+// price this script exercises changed value, only the state shape gained
+// the new field). Re-derived from a real run, never hand-guessed.
+// `smoke.script.json`'s own two `kind: 'hash'` checkpoints (days 1 and 10)
+// move with this array; the day-7 `cashAtMost` ceiling is unchanged, since
+// no cash movement in this script is priced off the knowledge model.
 const EXPECTED_HASHES_BY_DAY = [
-  'a434d010',
-  '19a2f795',
-  'cb9a564c',
-  'd8d05b62',
-  '30795823',
-  '0d57fd20',
-  '44d4c9c6',
-  '3806c7b8',
-  'b5149d2a',
-  'cd004c23',
+  '8b63fe21',
+  '0a5f2af6',
+  'b37896bb',
+  'b377fa09',
+  '3af2ad8a',
+  'b294ac57',
+  '0c5c425d',
+  '864a1a21',
+  '287df13d',
+  '7abceee8',
 ]
 
 describe('replayCareerScript (Sprint 198 C1)', () => {

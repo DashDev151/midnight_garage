@@ -311,7 +311,7 @@ export function benchCarInstance(
     apparentBandByPartId: spec.apparentBandByPartId,
     zoneState: spec.zones,
   }
-  return fullyVerifiedCar(applyDerivedBodyBands(car, model, context))
+  return fullyVerifiedCar(applyDerivedBodyBands(car, model, context), context)
 }
 
 /** A fresh shop: day 1, the career's own starting cash, unknown, no standing,

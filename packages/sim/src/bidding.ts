@@ -342,7 +342,9 @@ function settleLotPurchase(
   // section 1): every slot but the always-visible ones starts estimated,
   // except the scripted tutorial lot, whose fixed script is not knowledge
   // gameplay and starts fully known (sprint215.md task A3).
-  const knownCar = lot.scripted ? fullyVerifiedCar(lot.car) : seedVerifiedSlots(lot.car, context)
+  const knownCar = lot.scripted
+    ? fullyVerifiedCar(lot.car, context)
+    : seedVerifiedSlots(lot.car, context)
 
   const withCar = assignToShop(
     setCarLedger(

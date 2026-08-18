@@ -1,10 +1,10 @@
 import { CARS, type ConditionBand } from '@midnight-garage/content'
 import {
   carCostToMintYen,
-  defaultVerifiedSlots,
   groupCostToMintYen,
   marketValueYen,
   priorBand,
+  seedVerifiedSlots,
 } from '@midnight-garage/sim'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
@@ -15,31 +15,33 @@ import { useGameStore } from './gameStore'
  * systems/knowledge-and-diagnosis.md section 1): no owned-car surface may
  * ever read an unverified slot's true band or true part identity. A
  * dev-granted car starts fully verified (task A3), so every test here
- * force-seeds `verifiedSlots` to the ACQUISITION set - `defaultVerifiedSlots`
- * - to reproduce what a real auction purchase leaves the player knowing.
+ * re-seeds through `seedVerifiedSlots` - the real function bidding.ts's own
+ * acquisition settlement calls - to reproduce both the verified-slot set AND
+ * the frozen `acquisitionEvidenceDelta` (rulings-ledger item 14) a real
+ * auction purchase leaves the player with.
  */
 describe('the knowledge model never leaks truth for an unverified slot', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
   /** A granted car, re-seeded to the ordinary acquisition knowledge state
-   * (only the always-visible slots verified) with `internals` forced to a
-   * true band that provably differs from its own `priorBand` guess -
-   * whichever way the mileage/provenance roll landed. */
+   * (only the always-visible slots verified, evidence frozen from that same
+   * state) with `internals` forced to a true band that provably differs from
+   * its own `priorBand` guess - whichever way the mileage/provenance/
+   * evidence roll landed. */
   function seedUnverifiedCar() {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
     const granted = game.gameState.ownedCars[0]!
-    const seededSlots = defaultVerifiedSlots(game.context)
+    const seeded = seedVerifiedSlots(granted, game.context)
     const trueBand: ConditionBand =
-      priorBand(granted, 'internals', game.context) === 'poor' ? 'mint' : 'poor'
+      priorBand(seeded, 'internals', game.context) === 'poor' ? 'mint' : 'poor'
     const car = {
-      ...granted,
-      verifiedSlots: seededSlots,
+      ...seeded,
       parts: {
-        ...granted.parts,
+        ...seeded.parts,
         internals: {
-          ...granted.parts.internals,
-          installed: { ...granted.parts.internals.installed!, band: trueBand },
+          ...seeded.parts.internals,
+          installed: { ...seeded.parts.internals.installed!, band: trueBand },
         },
       },
     }

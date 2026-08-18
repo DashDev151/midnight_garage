@@ -63,19 +63,29 @@ band up for garage-kept one-owner histories, one band down for
 crash/flood/abandoned histories. Exact mapping is content (`knowledgePriors`
 block in economy.json), behaviour-first.
 
-**The evidence term (sprint219.md, rulings-ledger item 13):** the prior for a
-hidden slot is informed by what is visible. `evidenceDelta =
-round(avgBandIndex(all born-verified + since-verified slots) -
-bandIndex(mileagePriorBand))`, clamped to `[-1, +1]`; `priorBand =
-clamp(mileagePriorBand + provenanceModifier + evidenceDelta, poor, mint)`.
-One function, used by the player display and `buyerKnowledgeViewOf` exactly
-as before: buyer and seller see the same visible half, so both guesses move
-together, and no information leaks (the term reads only slots the player has
-already verified, which is exactly what a buyer's own inspection would also
-see). The evidence set is `car.verifiedSlots` as it stands at the moment of
-evaluation, never a snapshot taken at acquisition - verifying more slots
-sharpens every remaining guess, since the average is re-read fresh on every
-call.
+**The evidence term (sprint219.md, rulings-ledger item 13; frozen at
+acquisition per rulings-ledger item 14):** the prior for a hidden slot is
+informed by what was visible AT ACQUISITION. `evidenceDelta =
+round(avgBandIndex(the car's verified slots' real bands, as acquired) -
+bandIndex(mileagePriorBand))`, clamped to `[-1, +1]`, computed exactly ONCE,
+at the moment the car enters the player's ownership, and stored on
+`CarInstance.acquisitionEvidenceDelta`; `priorBand =
+clamp(mileagePriorBand + provenanceModifier + storedEvidenceDelta, poor,
+mint)`. One function, used by the player display and `buyerKnowledgeViewOf`
+exactly as before: buyer and seller see the same visible half, so both
+guesses move together, and no information leaks (the term reads only slots
+that were verified at the moment of purchase, which is exactly what a
+buyer's own inspection at that same moment would also see).
+
+Evidence testifies about the PREVIOUS owner's care, never the player's own
+later spanner work: `priorBand` reads the frozen `acquisitionEvidenceDelta`,
+not `verifiedSlots`' current bands. Repairing the car's born-verified half
+after purchase verifies those slots for display purposes but does not move
+the evidence term - a light flip that polishes only what already showed can
+never lift the guess for the slots it never opened, and a buyer can never be
+made to overpay for a genuinely poor hidden slot the seller only made LOOK
+better by shining the visible half (rulings-ledger item 14, the fix for the
+exploit sprint219.md's original "read fresh every call" design allowed).
 
 **A slot becomes verified when (exhaustive list):**
 
@@ -333,6 +343,21 @@ shortfall is REPORTED, not silently patched with a new lever.
     discount option left on record as a future design-shape choice rather
     than a promise. Both scenarios close. Sprint archived
     (`docs/sprints/sprint_archive/sprint219.md`).
+
+14. (Maintainer, 2026-08-18) Evidence is frozen at acquisition, not read
+    live. Found: because item 13's `evidenceDelta` read `verifiedSlots`'
+    CURRENT bands on every `priorBand` call, repairing only the visible half
+    of a wreck after purchase lifted every hidden slot's guess too - the
+    player's own later spanner work was leaking into what was meant to be a
+    read of the PREVIOUS owner's care, and a buyer would overpay for a
+    genuinely poor hidden slot the seller never touched. Fixed: the evidence
+    term is computed exactly once, from the car as it stood at the moment it
+    entered the player's ownership (`CarInstance.acquisitionEvidenceDelta`,
+    set by every real acquisition path - auction settlement, dev grant),
+    and `priorBand` reads that stored value rather than recomputing live.
+    Evidence testifies about provenance, never about repairs made after the
+    sale; later repairs raise price through verified slots only, exactly as
+    a deep flip's honest teardown always has.
 
 ## Arc summary: values as shipped (sprint218.md close)
 

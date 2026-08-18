@@ -232,7 +232,10 @@ describe('the economy bench state builder', () => {
     // guard is about the READOUT MATH agreeing across two construction
     // paths, not about the knowledge model itself (covered elsewhere), so
     // both sides are put on the same fully-known footing before comparing.
-    const normalCar = fullyVerifiedCar(normalState.ownedCars.find((c) => c.id === generated.id)!)
+    const normalCar = fullyVerifiedCar(
+      normalState.ownedCars.find((c) => c.id === generated.id)!,
+      context,
+    )
 
     // Every column of the buyer table: the taste score, the champion gate, the
     // outcome reputation reads, and the price. A buyer id is the only thing

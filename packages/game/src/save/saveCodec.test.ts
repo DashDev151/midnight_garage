@@ -878,6 +878,36 @@ describe('saveCodec', () => {
     expect(decoded).toEqual(withNoticedOffer)
   })
 
+  /**
+   * v75 -> v76 (evidence frozen at acquisition, rulings-ledger item 14):
+   * `CarInstance` gained `acquisitionEvidenceDelta`, `.optional()` - a
+   * pre-v76 car simply reads it absent, which `priorBand` already treats as
+   * 0 (no adjustment), so no dedicated pre-version decode test is needed
+   * beyond the general `.optional()` coverage every field of that shape
+   * already gets. This is the round-trip half: a v76 state with a car that
+   * has the frozen delta carries it through exactly.
+   */
+  it('round-trips a real car with a frozen acquisitionEvidenceDelta', () => {
+    const withEvidence: GameState = GameStateSchema.parse({
+      ...fullState,
+      ownedCars: [
+        {
+          id: 'car-0001',
+          modelId: 'honda-city-e-aa',
+          year: 1984,
+          mileageKm: 100_000,
+          factoryColour: 'white',
+          provenanceNote: '',
+          parts: mintParts(),
+          verifiedSlots: ['tyres', 'rims'],
+          acquisitionEvidenceDelta: -1,
+        },
+      ],
+    })
+    const decoded = decodeSave(encodeSave(withEvidence))
+    expect(decoded).toEqual(withEvidence)
+  })
+
   it('round-trips a v7 state with real pending orders and cart contents', () => {
     const withOrdersAndCart: GameState = GameStateSchema.parse({
       ...fullState,
@@ -983,7 +1013,7 @@ describe('saveCodec', () => {
   })
 
   it('a per-part job (carPartId set) round-trips exactly under version 17', () => {
-    expect(SAVE_VERSION).toBe(75)
+    expect(SAVE_VERSION).toBe(76)
     const perPart: GameState = GameStateSchema.parse({
       ...fullState,
       jobs: [
@@ -1024,7 +1054,7 @@ describe('saveCodec', () => {
   })
 
   it('a v31 state with an origin-carrying inventory part round-trips the origin exactly', () => {
-    expect(SAVE_VERSION).toBe(75)
+    expect(SAVE_VERSION).toBe(76)
     const withOrigin: GameState = GameStateSchema.parse({
       ...fullState,
       partInventory: [
@@ -1669,7 +1699,7 @@ describe('saveCodec', () => {
    * a real double-parked car round-trips it exactly.
    */
   it('SAVE_VERSION is current', () => {
-    expect(SAVE_VERSION).toBe(75)
+    expect(SAVE_VERSION).toBe(76)
   })
 
   it('a real pre-v26 save (a v25 envelope with no graceParkingCarId field) decodes with nothing double-parked under v26', () => {
@@ -1702,7 +1732,7 @@ describe('saveCodec', () => {
    * exactly.
    */
   it('SAVE_VERSION is current', () => {
-    expect(SAVE_VERSION).toBe(75)
+    expect(SAVE_VERSION).toBe(76)
   })
 
   it('a real pre-v27 save (a v26 envelope with neither field) decodes with nothing listed or scheduled under v27', () => {
@@ -1773,7 +1803,7 @@ describe('saveCodec', () => {
    * same slot, same band, same everything else.
    */
   it('SAVE_VERSION is current', () => {
-    expect(SAVE_VERSION).toBe(75)
+    expect(SAVE_VERSION).toBe(76)
   })
 
   it("a real pre-v28 save remaps an entry-tier car's everyday-class stock part to its own class sibling SKU", () => {

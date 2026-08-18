@@ -15,6 +15,7 @@ import { buildSimContext } from '../src/context'
 import { verifyAndResolve, verifyManyAndResolve } from '../src/diagnosis'
 import {
   buyerKnowledgeViewOf,
+  computeAcquisitionEvidenceDelta,
   defaultVerifiedSlots,
   fullyVerifiedCar,
   isSlotVerified,
@@ -23,6 +24,7 @@ import {
   seedVerifiedSlots,
   verifySlot,
 } from '../src/knowledge'
+import { marketValueYen } from '../src/marketValue'
 import { buildCarInstance, mintCarParts, uniformCarParts } from './testFixtures'
 
 /** Four causes on four different real parts, all still live - lets a
@@ -74,8 +76,16 @@ describe('defaultVerifiedSlots / seedVerifiedSlots / fullyVerifiedCar (task A1)'
   })
 
   it('fullyVerifiedCar verifies every real part (dev grant / tutorial, task A3)', () => {
-    const car = fullyVerifiedCar(buildCarInstance())
+    const car = fullyVerifiedCar(buildCarInstance(), CONTEXT)
     expect(new Set(car.verifiedSlots)).toEqual(new Set(ALL_CAR_PART_IDS))
+  })
+
+  it('both seedVerifiedSlots and fullyVerifiedCar freeze acquisitionEvidenceDelta from the car as acquired (rulings-ledger item 14)', () => {
+    // Every born-verified slot mint against a mileage prior that reads
+    // 'worn' at 90,000 km - a clean-looking acquisition, delta +1.
+    const car = buildCarInstance({ mileageKm: 90_000 })
+    expect(seedVerifiedSlots(car, CONTEXT).acquisitionEvidenceDelta).toBe(1)
+    expect(fullyVerifiedCar(car, CONTEXT).acquisitionEvidenceDelta).toBe(1)
   })
 })
 
@@ -167,54 +177,84 @@ describe('priorBand (task A2)', () => {
   })
 })
 
-describe('priorBand evidence term (sprint219.md task A)', () => {
-  it('no verified slots at all leaves the pure mileage read untouched', () => {
+describe('priorBand reads the frozen acquisitionEvidenceDelta, never verifiedSlots live (rulings-ledger item 14)', () => {
+  it('no acquisitionEvidenceDelta at all leaves the pure mileage read untouched', () => {
+    const car = buildCarInstance({ mileageKm: 90_000 })
+    expect(car.acquisitionEvidenceDelta).toBeUndefined()
+    expect(priorBand(car, 'internals', CONTEXT)).toBe('worn')
+  })
+
+  it('an explicit acquisitionEvidenceDelta of 0 is the same as no evidence', () => {
+    const car = buildCarInstance({ mileageKm: 90_000, acquisitionEvidenceDelta: 0 })
+    expect(priorBand(car, 'internals', CONTEXT)).toBe('worn')
+  })
+
+  it('a stored +1 lifts the guess one band toward mint, whatever verifiedSlots says', () => {
+    const car = buildCarInstance({ mileageKm: 90_000, acquisitionEvidenceDelta: 1 })
+    expect(priorBand(car, 'internals', CONTEXT)).toBe('fine')
+  })
+
+  it('a stored -1 pulls the guess one band toward poor', () => {
+    const car = buildCarInstance({ mileageKm: 90_000, acquisitionEvidenceDelta: -1 })
+    expect(priorBand(car, 'internals', CONTEXT)).toBe('poor')
+  })
+
+  it('verifying more slots after acquisition does NOT sharpen the guess - the exploit this rule closes', () => {
+    // A car acquired with only tyres verified, itself mint against a 'worn'
+    // mileage prior: the frozen delta reads +1, exactly as
+    // computeAcquisitionEvidenceDelta would compute from that acquired
+    // state.
+    const base = buildCarInstance({
+      mileageKm: 90_000,
+      parts: mintCarParts({ headValvetrain: 'poor', intake: 'poor' }),
+      verifiedSlots: ['tyres'],
+      acquisitionEvidenceDelta: 1,
+    })
+    expect(priorBand(base, 'internals', CONTEXT)).toBe('fine')
+
+    // The player later repairs and verifies two genuinely rough slots. Under
+    // the pre-item-14 design this would pull the average (and so the guess)
+    // back down; under the frozen model it must not move at all - repairing
+    // the visible half is the player's OWN later work, not evidence about
+    // what the car was like when it was bought.
+    const sharpened = verifySlot(verifySlot(base, 'headValvetrain'), 'intake')
+    expect(priorBand(sharpened, 'internals', CONTEXT)).toBe('fine')
+  })
+})
+
+describe('computeAcquisitionEvidenceDelta (rulings-ledger item 14): the one-time snapshot seedVerifiedSlots/fullyVerifiedCar freeze', () => {
+  it('no verified slots at all reads as no evidence', () => {
     const car = buildCarInstance({ mileageKm: 90_000 })
     expect(car.verifiedSlots).toBeUndefined()
-    expect(priorBand(car, 'internals', CONTEXT)).toBe('worn')
+    expect(computeAcquisitionEvidenceDelta(car, CONTEXT)).toBe(0)
   })
 
   it('an empty verifiedSlots array is the same as no evidence', () => {
     const car = buildCarInstance({ mileageKm: 90_000, verifiedSlots: [] })
-    expect(priorBand(car, 'internals', CONTEXT)).toBe('worn')
+    expect(computeAcquisitionEvidenceDelta(car, CONTEXT)).toBe(0)
   })
 
-  it('a single clean verified slot lifts the guess one band toward mint', () => {
+  it('a single clean verified slot reads +1 against a worse mileage prior', () => {
     // tyres defaults to mint via mintCarParts; mileage alone reads 'worn' at
     // 90,000 km.
     const car = buildCarInstance({ mileageKm: 90_000, verifiedSlots: ['tyres'] })
-    expect(priorBand(car, 'internals', CONTEXT)).toBe('fine')
+    expect(computeAcquisitionEvidenceDelta(car, CONTEXT)).toBe(1)
   })
 
-  it('a single rough verified slot pulls the guess one band toward poor', () => {
+  it('a single rough verified slot reads -1 against a better mileage prior', () => {
     const car = buildCarInstance({
       mileageKm: 90_000,
       parts: mintCarParts({ tyres: 'poor' }),
       verifiedSlots: ['tyres'],
     })
-    expect(priorBand(car, 'internals', CONTEXT)).toBe('poor')
+    expect(computeAcquisitionEvidenceDelta(car, CONTEXT)).toBe(-1)
   })
 
-  it('never moves the guess more than one band step, however wide the verified spread', () => {
+  it('never reads more than one band step, however wide the verified spread', () => {
     // Every verified slot mint against a mileage prior that already reads
     // the worst band (poor): an unclamped average would want +3.
     const car = buildCarInstance({ mileageKm: 10_000_000, verifiedSlots: ['tyres', 'rims'] })
-    expect(bandIndex(priorBand(car, 'internals', CONTEXT))).toBe(bandIndex('poor') + 1)
-  })
-
-  it('verifying more slots sharpens the remaining guess, re-read fresh from car.verifiedSlots each call', () => {
-    // One clean verified slot against a 'worn' mileage prior lifts the
-    // guess; verifying two more, genuinely rough, slots pulls the average
-    // (and so the guess) back down without touching internals itself.
-    const base = buildCarInstance({
-      mileageKm: 90_000,
-      parts: mintCarParts({ headValvetrain: 'poor', intake: 'poor' }),
-      verifiedSlots: ['tyres'],
-    })
-    expect(priorBand(base, 'internals', CONTEXT)).toBe('fine')
-
-    const sharpened = verifySlot(verifySlot(base, 'headValvetrain'), 'intake')
-    expect(priorBand(sharpened, 'internals', CONTEXT)).toBe('worn')
+    expect(computeAcquisitionEvidenceDelta(car, CONTEXT)).toBe(1)
   })
 
   it('a verified slot with nothing installed contributes no evidence', () => {
@@ -223,7 +263,75 @@ describe('priorBand evidence term (sprint219.md task A)', () => {
       parts: mintCarParts({ tyres: null }),
       verifiedSlots: ['tyres'],
     })
-    expect(priorBand(car, 'internals', CONTEXT)).toBe('worn')
+    expect(computeAcquisitionEvidenceDelta(car, CONTEXT)).toBe(0)
+  })
+})
+
+describe('the exploit closed (rulings-ledger item 14): polishing a wreck after purchase never lifts the hidden half', () => {
+  it("repairing only the born-verified slots to mint leaves every still-poor hidden slot's priorBand, masked band, and sale-price contribution unchanged", () => {
+    // A wreck acquired uniformly poor - visible half and hidden half alike -
+    // at a mileage that reads 'poor' on its own, so the frozen evidence
+    // delta is genuinely 0 (nothing clean-looking to reward).
+    const acquired = seedVerifiedSlots(
+      buildCarInstance({ mileageKm: 10_000_000, parts: uniformCarParts('poor') }),
+      CONTEXT,
+    )
+    expect(acquired.acquisitionEvidenceDelta).toBe(0)
+
+    // The player repairs every BORN-VERIFIED slot - the visible half only -
+    // to mint. Every hidden (still-unverified) slot stays genuinely poor,
+    // untouched.
+    let parts = acquired.parts
+    for (const partId of acquired.verifiedSlots!) {
+      const installed = parts[partId].installed
+      if (!installed) continue
+      parts = { ...parts, [partId]: { installed: { ...installed, band: 'mint' } } }
+    }
+    const polished: CarInstance = { ...acquired, parts }
+
+    // EXPLOIT CHECK 1: a hidden slot's own priorBand must read identically
+    // before and after the polish - the visible-half repair is the
+    // player's own spanner work, not evidence about the car's history.
+    const hiddenPartId = ALL_CAR_PART_IDS.find((id) => !acquired.verifiedSlots!.includes(id))!
+    expect(priorBand(polished, hiddenPartId, CONTEXT)).toBe(
+      priorBand(acquired, hiddenPartId, CONTEXT),
+    )
+
+    // EXPLOIT CHECK 2: the buyer's masked view of every still-hidden slot -
+    // band AND part identity - is byte-for-byte unchanged by the polish.
+    const beforeView = buyerKnowledgeViewOf(acquired, MODEL, CONTEXT)
+    const afterView = buyerKnowledgeViewOf(polished, MODEL, CONTEXT)
+    for (const partId of ALL_CAR_PART_IDS) {
+      if (acquired.verifiedSlots!.includes(partId)) continue
+      expect(afterView.parts[partId].installed).toEqual(beforeView.parts[partId].installed)
+    }
+
+    // EXPLOIT CHECK 3: the sale-value gain is real (the polish is not a
+    // no-op) but comes entirely from the visible slots' own improvement -
+    // never from a lift the still-poor hidden slots never earned.
+    const saleBeforeYen = marketValueYen(
+      MODEL,
+      beforeView,
+      100,
+      CONTEXT.partsById,
+      CONTEXT.partsTaxonomyById,
+      CONTEXT.economy,
+    )
+    const saleAfterYen = marketValueYen(
+      MODEL,
+      afterView,
+      100,
+      CONTEXT.partsById,
+      CONTEXT.partsTaxonomyById,
+      CONTEXT.economy,
+    )
+    expect(saleAfterYen).toBeGreaterThan(saleBeforeYen)
+  })
+
+  it('honest signal: a car acquired with a genuinely clean visible half still reads its stored positive delta, unaffected by the exploit fix', () => {
+    const acquired = seedVerifiedSlots(buildCarInstance({ mileageKm: 90_000 }), CONTEXT)
+    expect(acquired.acquisitionEvidenceDelta).toBe(1)
+    expect(priorBand(acquired, 'internals', CONTEXT)).toBe('fine')
   })
 })
 
@@ -272,6 +380,7 @@ describe('knowledgeViewOf (task B)', () => {
   it('leaves a verified slot showing the truth', () => {
     const car = fullyVerifiedCar(
       buildCarInstance({ mileageKm: 90_000, parts: mintCarParts({ internals: 'poor' }) }),
+      CONTEXT,
     )
     const view = knowledgeViewOf(car, MODEL, CONTEXT)
     expect(view.parts.internals.installed!.band).toBe('poor')
@@ -323,6 +432,7 @@ describe('buyerKnowledgeViewOf (sprint217.md task A)', () => {
   it('leaves a VERIFIED slot at true band even when it is worse than the guess - honesty prices at true value, no extra discount on top', () => {
     const car = fullyVerifiedCar(
       buildCarInstance({ mileageKm: 90_000, parts: mintCarParts({ internals: 'poor' }) }),
+      CONTEXT,
     )
     const view = buyerKnowledgeViewOf(car, MODEL, CONTEXT)
     expect(view.parts.internals.installed!.band).toBe('poor')

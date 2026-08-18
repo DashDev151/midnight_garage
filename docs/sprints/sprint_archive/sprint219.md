@@ -349,3 +349,72 @@ closed.
   needed per directive 20: the change is narrowly scoped to one
   already-verified-passing test file with no production or content-layer
   edit.
+
+### Addendum: the evidence exploit, and freezing it at acquisition (rulings-ledger item 14)
+
+**The exploit.** `evidenceDeltaFor` read `car.verifiedSlots`' CURRENT bands on
+every `priorBand` call, not a snapshot. Repairing a car's born-verified
+(visible) slots after acquisition raised the average those slots read at, so
+the evidence term lifted the guess for every still-HIDDEN slot too - a
+player could polish only the visible half of a wreck, never touch the rest,
+and have a buyer's estimate of the untouched hidden slots rise anyway. This
+let evidence testify about the player's OWN later spanner work rather than
+the previous owner's care, and let a buyer overpay for a genuinely poor
+hidden slot the seller never touched.
+
+**The freeze.** `CarInstance` gains `acquisitionEvidenceDelta: number`
+(optional int, -1/0/+1), computed once by `computeAcquisitionEvidenceDelta`
+(`packages/sim/src/knowledge.ts`) and stored at every real acquisition path:
+`seedVerifiedSlots` (the ordinary auction settlement in `bidding.ts`'s
+`settleLotPurchase`) and `fullyVerifiedCar` (the scripted-lot/dev-grant
+exemption, which now also takes `context` to compute and store it, for
+uniformity, though the value is never consulted once every slot is already
+verified). `priorBand` reads the stored field instead of recomputing live;
+`evidenceDeltaFor` itself is unchanged in its arithmetic, only in when it
+runs. `knowledgeViewOf` and `buyerKnowledgeViewOf` both route through
+`priorBand` unchanged, so both inherit the freeze automatically, verified
+directly. `docs/design/systems/knowledge-and-diagnosis.md` section 1 and
+rulings-ledger item 14 record the amendment; `SAVE_VERSION` bumped 75 -> 76
+(the genuinely-optional-key pattern, no migration).
+
+**The exploit probe** (`packages/sim/tests/knowledge.test.ts`, "the exploit
+closed" describe block): a wreck acquired uniformly `poor` (frozen evidence
+delta 0, nothing clean-looking to reward), every born-verified slot then
+hand-repaired to `mint`, every hidden slot left genuinely `poor` and
+untouched. Both outcomes hold: (1) a hidden slot's `priorBand` and the
+buyer's masked view of it (band and part identity) are byte-for-byte
+unchanged by the polish - proving the exploit is closed - and (2) the sale
+value gain from the polish is real and strictly positive (the visible slots
+really are worth more repaired), attributable entirely to those visible
+slots since nothing else in the priced view moved. A companion honest-signal
+test confirms a car ACQUIRED with a genuinely clean visible half still reads
+its stored positive delta unaffected by the fix.
+
+**Re-measurement.** Neither of `flipEconomyProbes.test.ts`'s own two
+scenario pairs moved: scenario 1 (worst case) still measures light -5,743
+yen/day vs deep +5,400 yen/day; scenario 2 (typical car) still measures
+light 3,850 yen/day vs deep 14,526 yen/day, ratio 0.27 - bit-for-bit
+identical to the pre-freeze figures recorded above. Diagnosed rather than
+assumed: in both fixtures, the light flip's one repaired slot was never a
+member of the born-verified evidence set the average reads (scenario 1's
+`trueCauseA`, scenario 2's `intake`, are both buried/bolt-on slots outside
+`defaultVerifiedSlots`), so freezing the snapshot before rather than after
+that one repair changes nothing for either probe - the exploit these probes
+never happened to exercise, even though it was real and is now closed.
+
+**Verification.** `pnpm typecheck` clean across content/sim/game.
+`packages/sim/tests/knowledge.test.ts`: 46/46 pass (new
+`computeAcquisitionEvidenceDelta` describe block, the frozen-`priorBand`
+describe block replacing the old live-evidence one, and the two exploit-probe
+tests). `packages/sim/tests/flipEconomyProbes.test.ts`,
+`packages/sim/tests/balanceProbes.test.ts`,
+`packages/game/src/stores/gameStore.knowledge.test.ts`,
+`packages/game/src/save/saveCodec.test.ts`,
+`packages/game/src/screens/dev/economyBench.test.ts`: all green.
+`packages/sim/tests/careerReplay.test.ts`'s smoke-script golden hash sequence
+moved (state-shape-only: the new field appears in every day's snapshot, no
+cash or valuation figure this script exercises actually changed) -
+re-derived from a real run and re-pinned in both the test file and
+`smoke.script.json`'s own two `kind: 'hash'` checkpoints. Full `pnpm test`:
+**235 test files passed, 4,858 tests passed, 1 skipped** (the pre-existing
+golden-session skip) - zero red.

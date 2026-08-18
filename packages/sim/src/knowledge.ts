@@ -45,18 +45,32 @@ export function defaultVerifiedSlots(context: SimContext): CarPartId[] {
  * Seeds `verifiedSlots` at acquisition (bidding.ts's `settleLotPurchase`) -
  * the normal case: only the always-visible slots start known, everything
  * else on the car the player just bought is estimated until they earn it.
+ * Also freezes `acquisitionEvidenceDelta` (rulings-ledger item 14) from the
+ * car exactly as acquired, before any repair the player goes on to make.
  */
 export function seedVerifiedSlots(car: CarInstance, context: SimContext): CarInstance {
-  return { ...car, verifiedSlots: defaultVerifiedSlots(context) }
+  const verified = { ...car, verifiedSlots: defaultVerifiedSlots(context) }
+  return {
+    ...verified,
+    acquisitionEvidenceDelta: computeAcquisitionEvidenceDelta(verified, context),
+  }
 }
 
 /**
  * Every slot verified outright - the dev-grant and tutorial-lot exception
  * (sprint215.md task A3): a dev convenience and a scripted script are not
- * knowledge gameplay, so both start fully known rather than estimated.
+ * knowledge gameplay, so both start fully known rather than estimated. Also
+ * freezes `acquisitionEvidenceDelta` (rulings-ledger item 14) for uniformity
+ * with `seedVerifiedSlots` - irrelevant in play, since `priorBand` is never
+ * consulted for a slot that is already verified, but stored all the same so
+ * no acquisition path leaves the field meaningfully different from another.
  */
-export function fullyVerifiedCar(car: CarInstance): CarInstance {
-  return { ...car, verifiedSlots: [...ALL_CAR_PART_IDS] }
+export function fullyVerifiedCar(car: CarInstance, context: SimContext): CarInstance {
+  const verified = { ...car, verifiedSlots: [...ALL_CAR_PART_IDS] }
+  return {
+    ...verified,
+    acquisitionEvidenceDelta: computeAcquisitionEvidenceDelta(verified, context),
+  }
 }
 
 /**
@@ -84,12 +98,16 @@ export function verifySlot(car: CarInstance, partId: CarPartId): CarInstance {
  * read, rounded to a whole band step and clamped to +-1 (sprint219.md,
  * design section 1's evidence term): a car whose confirmed half is running
  * cleaner than mileage alone would suggest nudges every remaining guess up;
- * a confirmed half running rougher nudges it down. Read fresh from
- * `car.verifiedSlots` every call rather than snapshotted anywhere, so
- * verifying more slots sharpens the remaining guesses as the game
- * progresses - there is no staleness to guard against. Zero (no adjustment)
- * once there is no evidence yet: `verifiedSlots` absent or empty, or every
+ * a confirmed half running rougher nudges it down. Zero (no adjustment) once
+ * there is no evidence yet: `verifiedSlots` absent or empty, or every
  * verified slot happens to be an empty one with nothing installed to read.
+ *
+ * Called exactly ONCE per car, at acquisition (`computeAcquisitionEvidenceDelta`
+ * below) - NOT read live on every `priorBand` call any more
+ * (rulings-ledger item 14, superseding sprint219.md's original "read fresh
+ * every call" design): a live read let repairing only the visible half of a
+ * wreck after purchase lift every hidden slot's guess, which is the
+ * player's own later spanner work leaking into the evidence, not provenance.
  */
 function evidenceDeltaFor(car: CarInstance, mileagePriorBand: ConditionBand): number {
   const verifiedIndices = (car.verifiedSlots ?? [])
@@ -100,6 +118,44 @@ function evidenceDeltaFor(car: CarInstance, mileagePriorBand: ConditionBand): nu
   const avgIndex = verifiedIndices.reduce((sum, index) => sum + index, 0) / verifiedIndices.length
   const rawDelta = Math.round(avgIndex - bandIndex(mileagePriorBand))
   return Math.max(-1, Math.min(1, rawDelta))
+}
+
+/**
+ * The mileage-only segment read `priorBand`'s provenance modifier and
+ * evidence term both measure against: the flat band `mileageFactorCurve`'s
+ * breakpoints name, before any adjustment. Extracted so
+ * `computeAcquisitionEvidenceDelta` can measure against the exact same
+ * baseline `priorBand` itself uses, without duplicating the breakpoint walk.
+ */
+function mileagePriorBandFor(car: CarInstance, context: SimContext): ConditionBand {
+  const { mileageBandBySegment } = context.economy.knowledgePriors
+  const breakpoints = context.economy.valuation.mileageFactorCurve
+  let segmentIndex = mileageBandBySegment.length - 1
+  for (let i = 0; i < breakpoints.length; i++) {
+    if (car.mileageKm <= breakpoints[i]![0]) {
+      segmentIndex = Math.min(i, mileageBandBySegment.length - 1)
+      break
+    }
+  }
+  return mileageBandBySegment[segmentIndex]!
+}
+
+/**
+ * The evidence term, frozen once, at the moment a car enters the player's
+ * ownership (`seedVerifiedSlots`/`fullyVerifiedCar` above, called from
+ * bidding.ts's `settleLotPurchase` and every other real acquisition path) -
+ * run against the car exactly as acquired, before any repair the player goes
+ * on to make. Stored on `CarInstance.acquisitionEvidenceDelta` and read by
+ * every later `priorBand` call instead of recomputing live
+ * (rulings-ledger item 14): evidence testifies about the PREVIOUS owner's
+ * care, never the player's own later spanner work - a light flip that
+ * repairs only the born-verified half must never lift the guess for the
+ * still-hidden slots it never touched, and a buyer must never overpay for a
+ * genuinely poor hidden slot the seller only made LOOK better by polishing
+ * what already showed.
+ */
+export function computeAcquisitionEvidenceDelta(car: CarInstance, context: SimContext): number {
+  return evidenceDeltaFor(car, mileagePriorBandFor(car, context))
 }
 
 /**
@@ -122,30 +178,25 @@ function evidenceDeltaFor(car: CarInstance, mileagePriorBand: ConditionBand): nu
  * "crash, flood, abandoned" framing) - `knowledgePriors.
  * provenanceModifierByDamagePattern`, zero for a car with no rolled pattern.
  *
- * The evidence term (sprint219.md) reads only what is already OBSERVABLE -
- * the car's own `verifiedSlots` - so it leaks no information a buyer
- * couldn't also read off the same visible half; both the player display and
- * `buyerKnowledgeViewOf` route through this one function, so both move
- * together automatically.
+ * The evidence term (sprint219.md, frozen at acquisition per rulings-ledger
+ * item 14) reads `car.acquisitionEvidenceDelta`, not `verifiedSlots` live:
+ * it reflects only what was already OBSERVABLE at the moment of purchase, so
+ * it leaks no information a buyer couldn't also have read off that same
+ * visible half at the time, and never moves again as the player's own later
+ * repairs verify more slots. Absent reads as 0 (no adjustment) - a
+ * hand-authored fixture, a bot/probe car, or any car this field was never
+ * computed for. Both the player display and `buyerKnowledgeViewOf` route
+ * through this one function, so both move together automatically.
  */
 export function priorBand(
   car: CarInstance,
   _partId: CarPartId,
   context: SimContext,
 ): ConditionBand {
-  const { mileageBandBySegment, provenanceModifierByDamagePattern } =
-    context.economy.knowledgePriors
-  const breakpoints = context.economy.valuation.mileageFactorCurve
-  let segmentIndex = mileageBandBySegment.length - 1
-  for (let i = 0; i < breakpoints.length; i++) {
-    if (car.mileageKm <= breakpoints[i]![0]) {
-      segmentIndex = Math.min(i, mileageBandBySegment.length - 1)
-      break
-    }
-  }
-  const baseBand = mileageBandBySegment[segmentIndex]!
+  const { provenanceModifierByDamagePattern } = context.economy.knowledgePriors
+  const baseBand = mileagePriorBandFor(car, context)
   const modifier = car.damagePattern ? provenanceModifierByDamagePattern[car.damagePattern] : 0
-  const evidenceDelta = evidenceDeltaFor(car, baseBand)
+  const evidenceDelta = car.acquisitionEvidenceDelta ?? 0
   const poorIndex = bandIndex('poor')
   const mintIndex = bandIndex('mint')
   const clampedIndex = Math.max(
