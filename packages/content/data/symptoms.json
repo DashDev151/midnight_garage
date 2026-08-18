@@ -75,6 +75,18 @@
         "unlockedBy": {
           "testId": "cold-start-watch"
         }
+      },
+      {
+        "testId": "leak-down",
+        "partition": [["tired-rings"], ["head-gasket", "valve-seals", "gunked-breather"]],
+        "resultCopy": [
+          "Rig the gauge and hold the throttle: air roars straight past the rings into the crankcase, barely a whisper past the valves. The bores are shot, not the head.",
+          "Air roars past the valves into the exhaust, the crankcase staying near-silent. The rings are sound: it's the head gasket letting go, nothing lower."
+        ],
+        "unlockedBy": {
+          "testId": "compression-test",
+          "group": 1
+        }
       }
     ]
   },
@@ -154,6 +166,14 @@
         "unlockedBy": {
           "testId": "hand-crank"
         }
+      },
+      {
+        "testId": "battery-load-test",
+        "partition": [["flat-battery"], ["corroded-terminals", "fuel-pump", "seized-engine"]],
+        "resultCopy": [
+          "Under load the voltage collapses in seconds. The battery hasn't got the amps left in it, whatever the terminals or the pump are doing.",
+          "Under load the voltage holds steady. The battery's got the amps: whatever's stopping it starting lives somewhere else."
+        ]
       }
     ]
   },
@@ -247,6 +267,14 @@
         "unlockedBy": {
           "testId": "revs-and-listen"
         }
+      },
+      {
+        "testId": "bearing-pan-check",
+        "partition": [["rod-knock"], ["lifter-tick", "rocker-adjustment", "blowing-manifold"]],
+        "resultCopy": [
+          "Pan off, and the bearing shells tell the whole story: scored copper showing through, play you can feel with a thumb. That's the knock, confirmed with the cover open.",
+          "Pan off, bearings clean and tight, no play anywhere in the bottom end. Whatever's ticking, the bottom end isn't lying about it."
+        ]
       }
     ]
   },
@@ -318,6 +346,14 @@
         "unlockedBy": {
           "testId": "idle-watch"
         }
+      },
+      {
+        "testId": "ecu-diagnostic-scan",
+        "partition": [["tired-ecu"], ["vacuum-leak", "worn-cams", "burnt-valve"]],
+        "resultCopy": [
+          "The scanner pulls a fistful of stored trims and a sensor reading that drifts on its own. The brain's guessing, not the air or the mechanicals.",
+          "The scanner reads clean: no drifting trims, no wandering sensor. The brain's innocent - whatever's hunting the idle is air or metal."
+        ]
       }
     ]
   },
@@ -403,6 +439,14 @@
         "unlockedBy": {
           "testId": "gearbox-oil-check"
         }
+      },
+      {
+        "testId": "synchro-ring-inspect",
+        "partition": [["worn-synchros"], ["low-thin-oil", "dragging-clutch", "chewed-gearset"]],
+        "resultCopy": [
+          "Box open, and the synchro rings on second are worn down to bright brass, barely any bite left. That's your crunch, sitting in your hand.",
+          "Box open, synchro rings still sharp-edged and biting hard. The rings aren't it: the crunch is coming from somewhere else in the driveline."
+        ]
       }
     ]
   },
@@ -494,6 +538,17 @@
         "unlockedBy": {
           "testId": "rock-and-listen"
         }
+      },
+      {
+        "testId": "bush-press-check",
+        "partition": [
+          ["tired-bushes"],
+          ["blown-dampers", "steering-play", "rotted-subframe-mount"]
+        ],
+        "resultCopy": [
+          "On the bench the bush presses out of its housing with barely a push, the rubber split clean through the middle. Gone, and that's the clunk.",
+          "On the bench the bush needs real force to shift, rubber solid all the way round. The bushes are sound: the clunk's coming from somewhere else."
+        ]
       }
     ]
   },
@@ -517,6 +572,14 @@
         "resultCopy": [
           "The pads are shiny and glazed, but the calliper slides freely. Just the pads, not a seized calliper.",
           "The calliper won't slide back freely on its pins. A seized calliper, not just the pads."
+        ]
+      },
+      {
+        "testId": "caliper-pressure-test",
+        "partition": [["seized-calliper"], ["glazed-pads"]],
+        "resultCopy": [
+          "Pressure up and the calliper piston won't retract, holding the pad against the disc long after the pedal's released. Seized, not just worn.",
+          "Pressure up and the piston retracts clean and free the instant the pedal lifts. The calliper's fine: it's just tired pads."
         ]
       }
     ]
@@ -600,6 +663,14 @@
         "unlockedBy": {
           "testId": "coolant-check"
         }
+      },
+      {
+        "testId": "block-test-kit",
+        "partition": [["early-head-gasket"], ["fan-switch", "tired-radiator", "cracked-block"]],
+        "resultCopy": [
+          "The fluid in the test kit turns from blue to yellow in seconds, right over the head. Combustion gas is getting into the coolant early: the gasket's weeping, nothing further down.",
+          "The fluid over the head stays blue, no reaction at all. No gasket breach: the heat's coming from the fan, the radiator, or somewhere the kit can't reach."
+        ]
       }
     ]
   },
@@ -635,6 +706,14 @@
         "resultCopy": [
           "A split CV boot, grease flung round the inside of the arch. The driveshaft, not the tyres or the rim.",
           "The boots are intact, no grease sling anywhere. Not the driveshaft, narrows to the tyres or a buckled rim."
+        ]
+      },
+      {
+        "testId": "wheel-runout-check",
+        "partition": [["buckled-rim"], ["worn-tyres", "worn-driveshaft"]],
+        "resultCopy": [
+          "On the gauge the rim walks half a centimetre out true on every rotation. Bent, not the tyre and not the shaft.",
+          "On the gauge the rim runs dead true, not a flicker off centre. The rim's honest: the vibration is coming from the rubber or the shaft."
         ]
       }
     ]
@@ -727,6 +806,17 @@
         "unlockedBy": {
           "testId": "coast-and-load-listen"
         }
+      },
+      {
+        "testId": "diff-bearing-preload-check",
+        "partition": [
+          ["worn-diff-bearings"],
+          ["worn-wheel-bearing", "collapsed-centre-bearing", "chewed-ring-pinion"]
+        ],
+        "resultCopy": [
+          "Diff open, and the pinion bearing preload has gone slack, rocking under a light push it should never allow. That's the whine, and it lives right here.",
+          "Diff open, preload holds tight exactly where it should. The bearings in here are sound: the whine's coming from somewhere further along the driveline."
+        ]
       }
     ]
   },
@@ -818,6 +908,17 @@
         "unlockedBy": {
           "testId": "ride-height-check"
         }
+      },
+      {
+        "testId": "spring-rate-check",
+        "partition": [
+          ["sagging-springs"],
+          ["perished-spring-seats", "broken-spring", "rotted-strut-turret"]
+        ],
+        "resultCopy": [
+          "On the rig the spring compresses well short of its rated load before it tops out. Gone soft with age, plain and simple.",
+          "On the rig the spring holds its rated load right to the stop. The spring itself is honest: whatever's dropped this corner isn't the coil."
+        ]
       }
     ]
   },
@@ -900,6 +1001,14 @@
         "unlockedBy": {
           "testId": "sight-down-the-panel"
         }
+      },
+      {
+        "testId": "paint-thickness-gauge",
+        "partition": [["panel-respray"], ["tired-lacquer", "rust-patch", "structural-rail-repair"]],
+        "resultCopy": [
+          "The gauge reads thick and even right across the panel, exactly the signature of a full colour coat over factory metal. A respray, nothing worse hiding under it.",
+          "The gauge reads factory-thin, no extra coat anywhere on the panel. It was never resprayed: the filler line is telling a different story."
+        ]
       }
     ]
   },
@@ -1020,6 +1129,22 @@
           "testId": "coolant-check",
           "group": 1
         }
+      },
+      {
+        "testId": "dye-test-grommets",
+        "partition": [
+          ["perished-grommet"],
+          [
+            "heater-matrix-weep",
+            "blocked-scuttle-drain",
+            "split-sunroof-drain",
+            "rotten-bulkhead-seam"
+          ]
+        ],
+        "resultCopy": [
+          "UV dye round the bulkhead grommets, and under the lamp one glows right through the cabin side. Perished, and letting rain straight in.",
+          "UV dye round the bulkhead grommets, and nothing glows through. The grommets are sealed: the water's finding its way in some other route."
+        ]
       }
     ]
   },
@@ -1043,6 +1168,14 @@
         "resultCopy": [
           "Traced down the pipe, the rasp fades near the manifold and picks up again at a joint further back. A blown flex joint, not the manifold itself.",
           "Traced down the pipe, the rasp is loudest right at the manifold, a hard metallic edge to it. A cracked manifold, not a joint further back."
+        ]
+      },
+      {
+        "testId": "smoke-test-exhaust",
+        "partition": [["cracked-manifold"], ["blown-flex-joint"]],
+        "resultCopy": [
+          "Smoke into the system, and it curls straight out of a crack in the manifold casting itself, right at the head. That's the rasp, not the joint further back.",
+          "Smoke into the system, and it holds right up to the manifold, only escaping further back at the flexible joint. The manifold's sound: the joint's blown."
         ]
       }
     ]
@@ -1115,6 +1248,14 @@
         "unlockedBy": {
           "testId": "warm-gauge-watch"
         }
+      },
+      {
+        "testId": "oil-pump-flow-test",
+        "partition": [["worn-oil-pump"], ["tired-sender", "thin-cheap-oil", "worn-main-bearings"]],
+        "resultCopy": [
+          "On the test bench the pump moves well under its rated flow at speed, worn past doing its job properly. That's the flutter, not the sender, the oil, or the mains.",
+          "On the test bench the pump moves its full rated flow, healthy and strong. The pump's fine: the flutter is coming from somewhere else in the system."
+        ]
       }
     ]
   },
@@ -1206,6 +1347,17 @@
         "unlockedBy": {
           "testId": "rev-response-watch"
         }
+      },
+      {
+        "testId": "timing-chain-stretch-gauge",
+        "partition": [
+          ["stretched-timing-chain"],
+          ["clogged-fuel-filter", "stale-fuel", "jumped-timing-chain"]
+        ],
+        "resultCopy": [
+          "Cover off, and the gauge shows real slack in the chain, well past its wear limit. Stretched, not snapped, not starved of fuel.",
+          "Cover off, chain sits tight on the gauge, right within limits. The chain's not stretched: the hesitation is fuel, or something worse in the timing."
+        ]
       }
     ]
   },
@@ -1229,6 +1381,14 @@
         "resultCopy": [
           "Rocking the wheel at 3 and 9 with the front end up, the play's all out at the track-rod-end ball joints; the rack itself stays tight. Tired track-rod ends, not the rack.",
           "Rocking the wheel at 3 and 9, the play sits right at the rack itself, not the outer joints. A worn rack, not just tired track-rod ends."
+        ]
+      },
+      {
+        "testId": "rack-play-bench-check",
+        "partition": [["worn-rack"], ["tired-track-rod-ends"]],
+        "resultCopy": [
+          "On the bench the rack itself rocks under load, play right in the housing. Worn rack, not the outer joints.",
+          "On the bench the rack sits solid under load, no play in the housing at all. The rack's sound: the wander's in the outer joints."
         ]
       }
     ]

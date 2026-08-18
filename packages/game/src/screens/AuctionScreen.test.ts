@@ -670,6 +670,7 @@ describe('AuctionScreen', () => {
       const { taskCostYen, laborSlots } = serviceJobCostBreakdown(
         [
           {
+            kind: 'slotCondition',
             requirement: { kind: 'slotCondition', carPartId: 'headValvetrain', minBand: 'fine' },
             minToolTier: 1,
           },

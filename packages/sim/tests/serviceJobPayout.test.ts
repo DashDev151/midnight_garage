@@ -59,6 +59,7 @@ function playerMinCostYen(
   const { repairStepFraction } = CONTEXT.economy.restoration
   let total = 0
   for (const task of tasks) {
+    if (task.kind !== 'slotCondition') continue
     const { carPartId, minBand, minGrade } = task.requirement
     const entry = CONTEXT.partsTaxonomyById[carPartId]!
     const installed = car.parts[carPartId].installed
@@ -96,10 +97,26 @@ function worstCaseParts(
 ): Partial<Record<CarPartId, ConditionBand>> {
   const overrides: Partial<Record<CarPartId, ConditionBand>> = {}
   for (const task of tasks) {
-    if (!task.requirement.minGrade) overrides[task.requirement.carPartId] = band
+    if (task.kind === 'slotCondition' && !task.requirement.minGrade) {
+      overrides[task.requirement.carPartId] = band
+    }
   }
   return overrides
 }
+
+/** Every SLOT-CONDITION template - the profitability invariant below is
+ * specifically about `serviceJobCostBreakdown`'s own per-slot cost pipeline
+ * (the economy bible's payout-coverage law). A `resolveSymptom` template
+ * (sprint218.md task C) prices through a structurally different,
+ * already-profitable formula of its own (`deriveSymptomJobPayoutYen` - the
+ * same `marginMin` floor, over a weighted-mean chain-priced cost pool rather
+ * than a per-slot one) - `resolveSymptomJob.test.ts` is that formula's own
+ * coverage test, so it is out of scope here rather than silently crashing on
+ * a task shape `playerMinCostYen`/`worstCaseParts` were never designed to
+ * read. */
+const SLOT_TEMPLATES = SERVICE_JOB_TYPES.filter((template) =>
+  template.tasks.every((task) => task.kind === 'slotCondition'),
+)
 
 describe('service-job payout profitability invariant (Sprint 29 decision 1)', () => {
   const REQUIRED_COVERAGE = 1.15
@@ -115,7 +132,7 @@ describe('service-job payout profitability invariant (Sprint 29 decision 1)', ()
     const startingBands: ConditionBand[] = ['poor', 'worn', 'fine', 'scrap']
     const failures: string[] = []
 
-    for (const template of SERVICE_JOB_TYPES) {
+    for (const template of SLOT_TEMPLATES) {
       for (const model of CARS) {
         for (const band of startingBands) {
           const car = buildCarInstance({
@@ -173,7 +190,10 @@ describe('service-job payout profitability invariant (Sprint 29 decision 1)', ()
     const breakdown = serviceJobCostBreakdown(template.tasks, car, model, CONTEXT, state)
     const expectedSlots = template.tasks.reduce(
       (sum, task) =>
-        sum + taskLaborChain(car, task.requirement.carPartId, 'install', CONTEXT, state).totalSlots,
+        task.kind === 'slotCondition'
+          ? sum +
+            taskLaborChain(car, task.requirement.carPartId, 'install', CONTEXT, state).totalSlots
+          : sum,
       0,
     )
     expect(breakdown.laborSlots).toBe(expectedSlots)
@@ -182,9 +202,11 @@ describe('service-job payout profitability invariant (Sprint 29 decision 1)', ()
     // stopped at - the restored surcharge.
     const bareInstallSlots = template.tasks.reduce(
       (sum, task) =>
-        sum +
-        taskLaborChain(car, task.requirement.carPartId, 'install', CONTEXT, state).refitPoints /
-          CONTEXT.economy.energy.pointsPerLabour,
+        task.kind === 'slotCondition'
+          ? sum +
+            taskLaborChain(car, task.requirement.carPartId, 'install', CONTEXT, state).refitPoints /
+              CONTEXT.economy.energy.pointsPerLabour
+          : sum,
       0,
     )
     expect(breakdown.laborSlots).toBeGreaterThan(bareInstallSlots)
@@ -202,10 +224,17 @@ describe('service-job payout profitability invariant (Sprint 29 decision 1)', ()
     expect(worstPayout / minCost).toBeGreaterThanOrEqual(REQUIRED_COVERAGE)
   })
 
-  it('every template has at least one task, and every task addresses a real catalog-covered part', () => {
+  it('every template has at least one task, and every task addresses a real catalog-covered part or a real symptom', () => {
     for (const template of SERVICE_JOB_TYPES) {
       expect(template.tasks.length, `template "${template.id}" has no tasks`).toBeGreaterThan(0)
       for (const task of template.tasks) {
+        if (task.kind === 'resolveSymptom') {
+          expect(
+            CONTEXT.symptomsById[task.symptomId],
+            `template "${template.id}" task addresses unknown symptom "${task.symptomId}"`,
+          ).toBeDefined()
+          continue
+        }
         expect(
           CONTEXT.partsTaxonomyById[task.requirement.carPartId],
           `template "${template.id}" task addresses unknown part "${task.requirement.carPartId}"`,

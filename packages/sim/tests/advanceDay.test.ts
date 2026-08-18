@@ -395,7 +395,7 @@ describe('advanceDay golden master', () => {
     // reshaping every guide-value-derived figure this 30-day career touches.
     // No behaviour this script exercises changed in kind. Re-derived from a
     // real run.
-    expect(hashState(finalState)).toBe('749bface')
+    expect(hashState(finalState)).toBe('5528c4a0')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -750,7 +750,7 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // real car through the real offer pipeline, so its accepted price moves
     // with the new pricing step; the 30-day master above never completes a
     // sale and holds unchanged. Re-derived from a real run.
-    expect(hashState(acquisitionCareer().sold)).toBe('96621a26')
+    expect(hashState(acquisitionCareer().sold)).toBe('e9f2b288')
   })
 })
 

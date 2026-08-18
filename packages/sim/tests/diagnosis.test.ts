@@ -34,9 +34,11 @@ import {
   revealOnRemoval,
   rollBuyerNotice,
   runDiagnosticTest,
+  runWorkshopTest,
   saleRevealLineFor,
   sendInspectorGateReason,
   sheetGuideValueYen,
+  workshopTestGateReason,
   worstRemainingBandFor,
 } from '../src/diagnosis'
 import { seedVerifiedSlots, verifySlot } from '../src/knowledge'
@@ -238,14 +240,14 @@ const CONTEXT = buildSimContext(
     INSPECTOR_SYMPTOM,
   ],
   [
-    { id: 'test-diagnostic', minutes: 15 },
-    { id: 'routed-root-test', minutes: 10 },
-    { id: 'routed-locked-test', minutes: 10 },
-    { id: 'groupless-root-test', minutes: 10 },
-    { id: 'groupless-child-test', minutes: 10 },
-    { id: 'insp-root-test', minutes: 10 },
-    { id: 'insp-head-test', minutes: 10 },
-    { id: 'insp-block-test', minutes: 10 },
+    { id: 'test-diagnostic', minutes: 15, venue: 'yard' as const },
+    { id: 'routed-root-test', minutes: 10, venue: 'yard' as const },
+    { id: 'routed-locked-test', minutes: 10, venue: 'yard' as const },
+    { id: 'groupless-root-test', minutes: 10, venue: 'yard' as const },
+    { id: 'groupless-child-test', minutes: 10, venue: 'yard' as const },
+    { id: 'insp-root-test', minutes: 10, venue: 'yard' as const },
+    { id: 'insp-head-test', minutes: 10, venue: 'yard' as const },
+    { id: 'insp-block-test', minutes: 10, venue: 'yard' as const },
   ],
 )
 
@@ -1189,8 +1191,15 @@ describe('runDiagnosticTest partition narrowing against real content (Sprint 74 
     }
   }
 
+  // Yard-venue only: `runDiagnosticTest` is the yard-visit resolver
+  // (`inspectionVisit`-gated), and a workshop-venue test correctly refuses
+  // it outright (`wrong-venue`, diagnosis.ts) since it needs a workable car,
+  // labour, and its own tool-tier/vacated-slot gates instead - exercised by
+  // `runWorkshopTest against real content (sprint218.md task A)` below.
   for (const symptom of SYMPTOMS) {
-    for (const testApp of symptom.tests) {
+    for (const testApp of symptom.tests.filter(
+      (t) => REAL_CONTEXT.diagnosticTestsById[t.testId]?.venue === 'yard',
+    )) {
       for (const trueCause of symptom.causes) {
         const chain = unlockChainFor(symptom, testApp, trueCause.id)
 
@@ -1239,6 +1248,120 @@ describe('runDiagnosticTest partition narrowing against real content (Sprint 74 
       }
     }
   }
+})
+
+describe('runWorkshopTest / workshopTestGateReason against real content (sprint218.md task A)', () => {
+  const REAL_CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
+
+  function ownedCarWithSymptom(symptom: Symptom, trueCauseId: string): CarInstance {
+    return {
+      ...buildCarInstance({ modelId: MODEL.id }),
+      symptoms: [
+        {
+          symptomId: symptom.id,
+          trueCauseId,
+          remainingCauseIds: symptom.causes.map((c) => c.id),
+          runTestIds: [],
+          latent: false,
+        },
+      ],
+    }
+  }
+
+  it('a yard-venue test refuses wrong-venue through the workshop resolver', () => {
+    const symptom = SYMPTOMS.find((s) => s.id === 'non-starter')!
+    const car = ownedCarWithSymptom(symptom, 'flat-battery')
+    const state: GameState = { ...createInitialGameState(REAL_CONTEXT, 1), ownedCars: [car] }
+    expect(workshopTestGateReason(state, car.id, 0, 'hand-crank', REAL_CONTEXT)).toBe('wrong-venue')
+    expect(runWorkshopTest(state, car.id, 0, 'hand-crank', REAL_CONTEXT).outcome).toBe(
+      'wrong-venue',
+    )
+  })
+
+  describe('the leak-down worked example (design doc section 7): a workshop test unlocked by a yard test', () => {
+    const symptom = SYMPTOMS.find((s) => s.id === 'smokes-on-startup')!
+
+    it('locked until the yard chain (cold-start-watch then compression-test into group 1) has run', () => {
+      const car = ownedCarWithSymptom(symptom, 'tired-rings')
+      const state: GameState = { ...createInitialGameState(REAL_CONTEXT, 1), ownedCars: [car] }
+      expect(workshopTestGateReason(state, car.id, 0, 'leak-down', REAL_CONTEXT)).toBe('locked')
+    })
+
+    it('tool-tier: refused below engine tier 2, even once the yard chain has run and the car is owned', () => {
+      const car: CarInstance = {
+        ...ownedCarWithSymptom(symptom, 'tired-rings'),
+        symptoms: [
+          {
+            symptomId: symptom.id,
+            trueCauseId: 'tired-rings',
+            remainingCauseIds: ['tired-rings', 'head-gasket'],
+            runTestIds: ['cold-start-watch', 'compression-test'],
+            latent: false,
+          },
+        ],
+      }
+      const state: GameState = { ...createInitialGameState(REAL_CONTEXT, 1), ownedCars: [car] }
+      expect(workshopTestGateReason(state, car.id, 0, 'leak-down', REAL_CONTEXT)).toBe('tool-tier')
+      expect(runWorkshopTest(state, car.id, 0, 'leak-down', REAL_CONTEXT).outcome).toBe('tool-tier')
+    })
+
+    it('on success: charges exactly 4 labour, narrows to the true cause alone, and verifies its part (a confirmation names its part)', () => {
+      const car: CarInstance = {
+        ...ownedCarWithSymptom(symptom, 'tired-rings'),
+        verifiedSlots: [],
+        symptoms: [
+          {
+            symptomId: symptom.id,
+            trueCauseId: 'tired-rings',
+            remainingCauseIds: ['tired-rings', 'head-gasket'],
+            runTestIds: ['cold-start-watch', 'compression-test'],
+            latent: false,
+          },
+        ],
+      }
+      const state: GameState = {
+        ...createInitialGameState(REAL_CONTEXT, 1),
+        ownedCars: [car],
+        toolTiers: { ...createInitialGameState(REAL_CONTEXT, 1).toolTiers, engine: 2 },
+      }
+      expect(workshopTestGateReason(state, car.id, 0, 'leak-down', REAL_CONTEXT)).toBeNull()
+      const result = runWorkshopTest(state, car.id, 0, 'leak-down', REAL_CONTEXT)
+      expect(result.outcome).toBe('ran')
+      expect(result.state.energySpentToday).toBe(state.energySpentToday + 4)
+      const updatedCar = result.state.ownedCars[0]!
+      expect(updatedCar.symptoms[0]!.remainingCauseIds).toEqual(['tired-rings'])
+      // tired-rings' own carPartId is 'internals' (failureModes.json) - the
+      // confirmation verifies it.
+      expect(updatedCar.verifiedSlots).toContain('internals')
+    })
+  })
+
+  describe('the requiresVacatedSlot gate (tick-at-idle / bearing-pan-check)', () => {
+    const symptom = SYMPTOMS.find((s) => s.id === 'tick-at-idle')!
+
+    it('vacated-slot: refused while internals is still fitted', () => {
+      const car = ownedCarWithSymptom(symptom, 'rod-knock')
+      const state: GameState = { ...createInitialGameState(REAL_CONTEXT, 1), ownedCars: [car] }
+      expect(workshopTestGateReason(state, car.id, 0, 'bearing-pan-check', REAL_CONTEXT)).toBe(
+        'vacated-slot',
+      )
+    })
+
+    it('runs once internals is vacated, narrowing straight to rod-knock', () => {
+      const car: CarInstance = {
+        ...ownedCarWithSymptom(symptom, 'rod-knock'),
+        parts: {
+          ...ownedCarWithSymptom(symptom, 'rod-knock').parts,
+          internals: { installed: null },
+        },
+      }
+      const state: GameState = { ...createInitialGameState(REAL_CONTEXT, 1), ownedCars: [car] }
+      expect(workshopTestGateReason(state, car.id, 0, 'bearing-pan-check', REAL_CONTEXT)).toBeNull()
+      const result = runWorkshopTest(state, car.id, 0, 'bearing-pan-check', REAL_CONTEXT)
+      expect(result.outcome).toBe('ran')
+      expect(result.state.ownedCars[0]!.symptoms[0]!.remainingCauseIds).toEqual(['rod-knock'])
+    })
+  })
 })
 
 describe('resolveOwnedWorkup / ownedWorkupGateReason (Sprint 74 decision 3)', () => {

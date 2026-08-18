@@ -64,6 +64,10 @@ function findUnfinishedOffer(game: ReturnType<typeof useGameStore>): ServiceJob 
  * completion-and-payout test drives.
  */
 function loopCanFinishTask(job: ServiceJob, task: ServiceJob['tasks'][number]): boolean {
+  // The loop below only ever drives a slotCondition task - a resolveSymptom
+  // task needs the diagnosis/order-matters loop, which this completion-and-
+  // payout fixture doesn't drive.
+  if (task.kind !== 'slotCondition') return false
   if (task.requirement.minGrade) return true // the buy-and-install path
   const carPartId = task.requirement.carPartId
   const entry = context.partsTaxonomyById[carPartId]
@@ -81,7 +85,7 @@ function findUnfinishedRepairOffer(game: ReturnType<typeof useGameStore>): Servi
   return game.serviceJobOffers.find(
     (o) =>
       o.tasks.every((t) => loopCanFinishTask(o, t)) &&
-      o.tasks.some((t) => !t.requirement.minGrade) &&
+      o.tasks.some((t) => t.kind === 'slotCondition' && !t.requirement.minGrade) &&
       o.tasks.some((t) => !isServiceTaskDone(o.car, t, context)),
   )
 }
@@ -157,6 +161,7 @@ describe('service jobs in the store', () => {
       // Work every task instantly: repair via the group-level action,
       // install by buying+installing the cheapest fitting part at grade.
       for (const task of offer.tasks) {
+        if (task.kind !== 'slotCondition') continue
         const { carPartId, minGrade } = task.requirement
         const componentId = game.groupForCarPart(carPartId)
         if (!componentId) continue
@@ -298,7 +303,11 @@ describe('service jobs in the store', () => {
     warpToRepairOffer(game)
     const offer = findUnfinishedRepairOffer(game)
     if (!offer) throw new Error('expected a repair-touching offer on the board')
-    const repairTask = offer.tasks.find((t) => !t.requirement.minGrade)!
+    const repairTask = offer.tasks.find(
+      (t) => t.kind === 'slotCondition' && !t.requirement.minGrade,
+    )
+    if (!repairTask || repairTask.kind !== 'slotCondition')
+      throw new Error('expected a repair task')
     const componentId = game.groupForCarPart(repairTask.requirement.carPartId)!
     game.acceptServiceJob(offer.id)
 

@@ -809,7 +809,9 @@ describe('a standard tyre/brake service job payout always covers its task cost',
       // repair-side cost the payout has to cover.
       const overrides: Partial<Record<CarPartId, 'poor'>> = {}
       for (const task of template.tasks) {
-        if (!task.requirement.minGrade) overrides[task.requirement.carPartId] = 'poor'
+        if (task.kind === 'slotCondition' && !task.requirement.minGrade) {
+          overrides[task.requirement.carPartId] = 'poor'
+        }
       }
       for (const model of entryEverydayModels) {
         const car = buildCarInstance({ modelId: model.id, parts: mintCarParts(overrides) })

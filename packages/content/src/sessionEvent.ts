@@ -82,6 +82,14 @@ export const SessionEventInputSchema = z.discriminatedUnion('type', [
     }),
   ),
   sessionEventVariant('resolveOwnedWorkup', z.object({ carInstanceId: z.string().min(1) })),
+  sessionEventVariant(
+    'runWorkshopTest',
+    z.object({
+      carInstanceId: z.string().min(1),
+      symptomIndex: z.number().int().nonnegative(),
+      testId: z.string().min(1),
+    }),
+  ),
   sessionEventVariant('resolveSendInspector', z.object({ lotId: z.string().min(1) })),
   sessionEventVariant('moveCar', z.object({ carId: z.string().min(1), to: BayKindSchema })),
   sessionEventVariant(

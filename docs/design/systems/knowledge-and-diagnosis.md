@@ -250,3 +250,50 @@ shortfall is REPORTED, not silently patched with a new lever.
 11. Analyst currency on player surfaces: banned, standing.
 12. All numeric values above are initial, content-held, behaviour-first, tuned
     by playtest.
+
+## Arc summary: values as shipped (sprint218.md close)
+
+The knowledge arc (215-218) is complete. Every value below is content
+(`economy.json` unless noted) and behaviour-first per the 2026-08-13
+governance amendment - none of it was pre-ratified as a bare number; the
+maintainer signed the SHAPE (this document) and validates the values by
+playtest.
+
+- **Verified/estimated (section 1):** surface-depth slots plus `tyres`/`rims`
+  verified from the start; `knowledgePriors.mileageBandBySegment` (mint/
+  fine/worn/poor, parallel to the mileage-factor curve's own breakpoints);
+  `provenanceModifierByDamagePattern` +-1 band by history;
+  `unverifiedHaircutByTier` 0/0/1/1 bands (entry/everyday/enthusiast/
+  flagship).
+- **Latents (section 2):** `latentRoll.oneChance` 0.25, `twoChance` 0.05, per
+  -damage-pattern modifiers -0.15..+0.15, `scrapCauseWeightFraction` 0.15.
+- **Room fear (section 4):** `diagnosis.fearBias` 0.85.
+- **Buyer notice (section 6):** `noticeChanceByArchetype` 0.1-0.9 by
+  archetype, `noticeChanceLatentMultiplier` 0.5, `noticeMultiplier` 1.75
+  (constructional: exceeds every tier's `marketRepairDiscount`, probe-
+  enforced), `noticeReputationPenalty` 2.
+- **Test venues (section 7, sprint218.md task A):** every pre-sprint test
+  defaults `venue: 'yard'`, zero behaviour change. 17 new workshop tests
+  (one per symptom), `laborPoints` 2-6, four gated by `requiresVacatedSlot`,
+  eleven by `requiresToolTier` (tier 1 or 2, spanning all six tool lines).
+  The worked example (`leak-down`, engine tier 2, 4 labour, unlocked by
+  `compression-test` group 1) shipped verbatim as specified.
+- **Symptom service jobs (section 8, sprint218.md task C):** payout =
+  weighted-mean chain-priced candidate cost x margin roll (same
+  `[marginMin, marginMax]` = [1.18, 1.35] every service job rolls in) +
+  `calloutFeeYen`; eligible symptom pool capped at 4 candidates;
+  `serviceJobs.symptomJobOfferWeight` 0.5 (roughly half as likely as an
+  easiest, no-deficit slot template to be the one the daily draw picks - a
+  distinctive, occasional job rather than the median phone call). Measured
+  on the `clunk-over-bumps` fixture: a ¥14,936 payout, best-value-first
+  opening spends ¥5,060 (well under payout), worst-value-first spends
+  ¥42,790 (nearly 3x payout) - the order-matters mechanic verified against
+  real numbers, not just asserted (`packages/sim/tests/resolveSymptomJob.test.ts`).
+
+Outstanding, deliberately not this arc's problem: the four physical dial
+curves (`car-performance` README) remain PROVISIONAL, unrelated to
+diagnosis; and per directive 21, no bot-career measurement of how the AI
+strategies actually use workshop tests or symptom jobs exists or is
+authorised until the harness is rebuilt - the closed-form content probes in
+this arc (route shape, resolution accounting, the C5 order-matters test) are
+the whole of its automated evidence.

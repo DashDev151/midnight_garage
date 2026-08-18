@@ -2598,6 +2598,21 @@ import toolShops from '../data/toolShops.json'
  * scale as a single satisfied-sale bonus, so a caught concealment is felt as a genuine setback
  * rather than a rounding error. `diagnosis.noticeCopy` is the offer-line template, no felt-number
  * to state.
+ *
+ * Re-pinned for sprint218.md (the diagnosis arc's closing sprint, workshop tests and symptom
+ * service jobs), under the same behaviour-first governance amendment: the design of record
+ * (docs/design/systems/knowledge-and-diagnosis.md sections 7 and 8) is itself the maintainer
+ * approval for the SHAPE of both mechanics; the initial number is Claude's own choice, stated
+ * here by felt behaviour, validated by playtest rather than pre-ratified.
+ *
+ * `serviceJobs.symptomJobOfferWeight` 0.5 (task C4): a symptom job competes for the same daily
+ * offer slot every other template does, weighted against a shallow slot-condition template's own
+ * `1` (no tool deficit) rather than against the chain-depth formula, which has nothing to measure
+ * on a task naming no `carPartId`. The felt behaviour is that a "diagnose the fault" job is a
+ * distinctive, occasional phone call rather than the median one - roughly half as likely as the
+ * easiest bolt-on job to be the one that lands, so the board still reads as mostly familiar work
+ * with the order-matters diagnosis job standing out when it appears, never crowding out the
+ * ordinary repair/install jobs the rest of the board already carries.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -2607,7 +2622,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('49910ad73de0533f896ab67917548f267121854f48a06365518223345ef92157')
+    ).toBe('49c53a3af1f65a067030b40929e071aa9167a42ce81f8acf1563063ab20279de')
   })
 
   it('damagePatterns.json matches its approved content exactly', () => {

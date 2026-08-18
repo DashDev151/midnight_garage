@@ -148,6 +148,7 @@ export function radialYenPerPoint(everydayModel: CarModel): {
   let jobCount = 0
   for (const template of tierOneTemplates) {
     const isWageWork = template.tasks.every((task) => {
+      if (task.kind !== 'slotCondition') return false
       if (task.requirement.minGrade) return false
       return CONTEXT.partsTaxonomyById[task.requirement.carPartId]?.repairable === true
     })
@@ -155,6 +156,7 @@ export function radialYenPerPoint(everydayModel: CarModel): {
 
     const overrides: Partial<Record<CarPartId, ConditionBand>> = {}
     for (const task of template.tasks) {
+      if (task.kind !== 'slotCondition') continue
       overrides[task.requirement.carPartId] = 'poor'
     }
     const car = buildCarInstance({ modelId: everydayModel.id, parts: mintCarParts(overrides) })

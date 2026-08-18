@@ -31,6 +31,7 @@ function largestDeficitGroup(
   let best: ComponentId | null = null
   let bestDeficit = 0
   for (const task of offer.tasks) {
+    if (task.kind !== 'slotCondition') continue
     const deficit = taskToolDeficit(task, toolLevelsFor(state, context), context)
     if (deficit <= bestDeficit) continue
     const group = context.partsTaxonomyById[task.requirement.carPartId]?.group

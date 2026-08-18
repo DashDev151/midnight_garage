@@ -15,6 +15,8 @@ import {
   type Part,
   type PartInstance,
   type ServiceJob,
+  type ServiceJobSlotTask,
+  type ServiceJobTask,
   type ServiceJobType,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
@@ -87,6 +89,15 @@ function findType(id: string): ServiceJobType {
   const type = SERVICE_JOB_TYPES.find((t) => t.id === id)
   if (!type) throw new Error(`fixture template "${id}" missing from content - update the test`)
   return type
+}
+
+/** Narrows a fixture task to its `slotCondition` variant - every fixture
+ * template this file names by id (`findType`) is authored as slot tasks
+ * only, so this is a type-narrowing convenience for real content's own
+ * union shape, never a runtime possibility this file actually exercises. */
+function slotTask(task: ServiceJobTask): ServiceJobSlotTask {
+  if (task.kind !== 'slotCondition') throw new Error('fixture task is not a slotCondition task')
+  return task
 }
 
 /** An active (accepted) service job carrying a real car, ready to resolve. */
@@ -183,7 +194,20 @@ describe('generateDailyServiceJobOffers', () => {
       expect(template).toBeDefined()
       expect(template!.flavorPool).toContain(offer.description)
       expect(SERVICE_JOB_CUSTOMER_NAMES).toContain(offer.customerName)
-      expect(offer.tasks).toEqual(template!.tasks)
+      // A resolveSymptom offer's own task is generated, not copied verbatim
+      // from the template: the template only ever carries a placeholder
+      // symptomId (`ServiceJobSymptomTaskSchema`'s own doc comment), and
+      // generation picks and stamps a real one per offer. Every other
+      // template's tasks are still fixed content, copied through exactly.
+      if (template!.tasks.every((t) => t.kind === 'resolveSymptom')) {
+        expect(offer.tasks).toHaveLength(1)
+        expect(offer.tasks[0]!.kind).toBe('resolveSymptom')
+        if (offer.tasks[0]!.kind === 'resolveSymptom') {
+          expect(CONTEXT.symptomsById[offer.tasks[0]!.symptomId]).toBeDefined()
+        }
+      } else {
+        expect(offer.tasks).toEqual(template!.tasks)
+      }
       expect(offer.deadlineDays).toBe(template!.deadlineDays)
       expect(offer.baseReputation).toBe(template!.baseReputation)
     }
@@ -363,6 +387,7 @@ describe('the Sprint 36 offer rule, re-asserted against Sprint 37 real content',
       const state = createInitialGameState(CONTEXT, seed)
       for (const offer of state.serviceJobOffers) {
         for (const task of offer.tasks) {
+          if (task.kind !== 'slotCondition') continue
           const group = CONTEXT.partsTaxonomyById[task.requirement.carPartId]?.group
           if (group) touchedGroups.add(group)
         }
@@ -436,7 +461,7 @@ describe('the Sprint 36 offer rule, re-asserted against Sprint 37 real content',
 describe('forceTasksOutstanding (Sprint 40 generation-forcing step)', () => {
   it('a band-only task already at/above target is forced to a fresh instance strictly below the target band', () => {
     const task = singleRepairType.tasks[0]!
-    const { carPartId, minBand } = task.requirement
+    const { carPartId, minBand } = slotTask(task).requirement
     const car = buildCarInstance({ parts: mintCarParts({ [carPartId]: minBand }) })
     expect(isServiceTaskDone(car, task, CONTEXT)).toBe(true)
 
@@ -449,7 +474,7 @@ describe('forceTasksOutstanding (Sprint 40 generation-forcing step)', () => {
 
   it('a band-only task on a scrap part is forced onto a repairable band below target (scrap is never re-rolled)', () => {
     const task = singleRepairType.tasks[0]!
-    const { carPartId, minBand } = task.requirement
+    const { carPartId, minBand } = slotTask(task).requirement
     const car = buildCarInstance({ parts: mintCarParts({ [carPartId]: 'scrap' }) })
     // Scrap no longer counts as "done" on its own - this fixture is already
     // genuinely outstanding without any forcing.
@@ -468,7 +493,7 @@ describe('forceTasksOutstanding (Sprint 40 generation-forcing step)', () => {
 
   it('a band-only task on a missing (empty) slot is left genuinely outstanding, not force-filled', () => {
     const task = singleRepairType.tasks[0]!
-    const { carPartId } = task.requirement
+    const { carPartId } = slotTask(task).requirement
     const car = buildCarInstance({ parts: mintCarParts({ [carPartId]: null }) })
     // An empty slot no longer counts as "done" on its own - already
     // genuinely outstanding, so forceTasksOutstanding leaves it alone.
@@ -484,7 +509,7 @@ describe('forceTasksOutstanding (Sprint 40 generation-forcing step)', () => {
     // customer's original part stays present (same instance id), just
     // degraded to a neglected band so the complaint is honest.
     const task = installType.tasks[0]!
-    const { carPartId, minGrade } = task.requirement
+    const { carPartId, minGrade } = slotTask(task).requirement
     const streetPart = catalogPartFor(carPartId, (p) => p.grade === minGrade)
     const original = partInstance(streetPart.id)
     const car = buildCarInstance({ parts: mintCarParts({ [carPartId]: original }) })
@@ -501,7 +526,7 @@ describe('forceTasksOutstanding (Sprint 40 generation-forcing step)', () => {
 
   it('leaves an already-outstanding task untouched - same car reference, no rng spent on it', () => {
     const task = singleRepairType.tasks[0]!
-    const { carPartId } = task.requirement
+    const { carPartId } = slotTask(task).requirement
     const car = buildCarInstance({ parts: mintCarParts({ [carPartId]: 'poor' }) })
     expect(isServiceTaskDone(car, task, CONTEXT)).toBe(false)
 
@@ -635,7 +660,7 @@ describe('serviceJobCostBreakdown / deriveServiceJobPayoutYen (Sprint 29 decisio
 describe('isServiceTaskDone / isServiceWorkDone (Sprint 29 multi-task, per-part)', () => {
   it('a band-only task is done once its part reaches minBand - never while empty or scrap, even though scrap is unrepairable', () => {
     const task = singleRepairType.tasks[0]!
-    const { carPartId, minBand } = task.requirement
+    const { carPartId, minBand } = slotTask(task).requirement
     const notThere = buildCarInstance({
       parts: mintCarParts({ [carPartId]: 'poor' }),
     })
@@ -656,7 +681,7 @@ describe('isServiceTaskDone / isServiceWorkDone (Sprint 29 multi-task, per-part)
 
   it('a grade-requirement task is done once its slot holds a part graded at least minGrade AND banded at least minBand - overdelivering still passes', () => {
     const task = installType.tasks[0]!
-    const { carPartId, minGrade } = task.requirement
+    const { carPartId, minGrade } = slotTask(task).requirement
     const empty = buildCarInstance({ parts: mintCarParts({ [carPartId]: null }) })
     expect(isServiceTaskDone(empty, task, CONTEXT)).toBe(false)
 
@@ -683,7 +708,7 @@ describe('isServiceTaskDone / isServiceWorkDone (Sprint 29 multi-task, per-part)
   // still-degraded part fails on band regardless of which instance it is.
   describe('any route counts (Sprint 72 decision 4): a grade-requirement task no longer cares about instance identity', () => {
     const task = installType.tasks[0]!
-    const { carPartId, minGrade } = task.requirement
+    const { carPartId, minGrade } = slotTask(task).requirement
     const originalId = 'pi-customer-original'
     const streetPart = catalogPartFor(carPartId, (p) => p.grade === minGrade)
 
@@ -1007,7 +1032,7 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
    */
   describe('a job satisfied via each of the three routes (Sprint 72 task 7)', () => {
     const task = installType.tasks[0]!
-    const { carPartId, minGrade } = task.requirement
+    const { carPartId, minGrade } = slotTask(task).requirement
     const streetPart = catalogPartFor(carPartId, (p) => p.grade === minGrade)
     const stockPart = catalogPartFor(carPartId, (p) => p.grade === 'stock')
 
@@ -1115,7 +1140,7 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
 
   it('a paid install job reports the ACTUAL price paid (Sprint 57, the job ledger) - not a catalog-price reconstruction; a pricier grade earns more reputation', () => {
     const installTask = installType.tasks[0]!
-    const { carPartId, minGrade } = installTask.requirement
+    const { carPartId, minGrade } = slotTask(installTask).requirement
     // Both must actually satisfy the task's own minGrade floor - a
     // below-floor "budget" part would leave the job undone, not paid.
     const budget = catalogPartFor(carPartId, (p) => p.grade === minGrade)
@@ -1150,8 +1175,8 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
 
   it('a multi-install job scales reputation off its priciest installed grade, and reports the actual price paid (sum), not a catalog reconstruction', () => {
     const [internalsTask, headTask] = twoInstallType.tasks
-    const internalsPartId = internalsTask!.requirement.carPartId
-    const headPartId = headTask!.requirement.carPartId
+    const internalsPartId = slotTask(internalsTask!).requirement.carPartId
+    const headPartId = slotTask(headTask!).requirement.carPartId
     const internalsPart = catalogPartFor(internalsPartId, (p) => p.grade === 'sport')
     const headPart = catalogPartFor(headPartId, (p) => p.grade === 'race')
     const job = activeJob(twoInstallType, {

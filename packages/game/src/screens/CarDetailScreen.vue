@@ -222,6 +222,16 @@ function onWorkupClick(): void {
   if (verdictPartId) panelTarget.value = { kind: 'part', partId: verdictPartId }
 }
 
+/** Runs a workshop diagnostic test against the currently viewed car - the
+ * store derives the trail's own result line and the fresh `lockReason` for
+ * whatever the checklist offers next, so nothing here needs to remember
+ * what it returns (mirrors AuctionScreen.vue's own `onRunTest`). */
+function onRunWorkshopTest(symptomIndex: number, testId: string): void {
+  const d = detail.value
+  if (!d) return
+  game.runWorkshopTest(d.car.id, symptomIndex, testId)
+}
+
 /** Every real part row within a group, for the panel's lookups. */
 function rowsFor(componentId: ComponentId) {
   return detail.value ? game.partsInGroup(detail.value.car.id, componentId) : []
@@ -1071,6 +1081,39 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               {{ symptom.verdict.laborSlots }} labour to put right.</span
             >
           </p>
+
+          <!-- The workshop trail: every run test's own earned result line,
+               in run order - the in-shop case file, matching the yard
+               checklist's own trail idiom (SymptomChecklist.vue). -->
+          <ul v-if="symptom.trail.length > 0" class="symptom-trail">
+            <li
+              v-for="entry in symptom.trail"
+              :key="entry.testId"
+              :data-test="'workshop-trail-' + entry.testId"
+            >
+              <span class="trail-label">{{ entry.label }}:</span>
+              <span class="trail-result">{{ entry.resultLine }}</span>
+            </li>
+          </ul>
+
+          <!-- The workshop fork: only workshop-venue tests the routed tree
+               currently offers - each priced in labour, disabled with its
+               own caption (tool tier, a vacated slot, or today's labour)
+               when `lockReason` is set (task A3). -->
+          <div v-if="symptom.tests.length > 0" class="symptom-tests">
+            <button
+              v-for="test in symptom.tests"
+              :key="test.testId"
+              type="button"
+              class="run-workshop-test"
+              :disabled="!!test.lockReason"
+              :title="test.lockReason ?? `Run this test on the bench`"
+              :data-test="'run-workshop-test-' + symptom.symptomIndex + '-' + test.testId"
+              @click="onRunWorkshopTest(symptom.symptomIndex, test.testId)"
+            >
+              {{ test.label }} ({{ test.laborPoints }} labour)
+            </button>
+          </div>
         </div>
         <button
           v-if="detail.workupGateReason !== 'already-resolved'"
@@ -2072,6 +2115,41 @@ h4 {
   display: block;
   margin-top: 2px;
   color: var(--mg-yen);
+}
+
+/* The workshop trail: a quiet case file, matching SymptomChecklist.vue's
+   own yard-trail idiom. */
+.symptom-panel .symptom-trail {
+  list-style: none;
+  margin: var(--mg-space-1) 0 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+  font-size: var(--mg-fs-xs, 0.7rem);
+}
+
+.symptom-panel .trail-label {
+  color: var(--mg-text-dim);
+  margin-right: var(--mg-space-1);
+}
+
+.symptom-panel .trail-result {
+  color: var(--mg-text);
+}
+
+.symptom-panel .symptom-tests {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mg-space-1);
+  margin-top: var(--mg-space-1);
+}
+
+.symptom-panel .run-workshop-test {
+  font-size: var(--mg-fs-xs, 0.7rem);
+  padding: 1px var(--mg-space-2);
+  color: var(--mg-text-dim);
+  border-color: var(--mg-panel-edge);
+  background: transparent;
 }
 
 .workup-btn {

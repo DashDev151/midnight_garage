@@ -263,6 +263,46 @@ function applySymptoms(
   }
 }
 
+/**
+ * Forces exactly ONE named `symptom` onto `car`, reusing the same per-symptom
+ * mechanics `applySymptoms` above already applies (`pickWeightedCause` +
+ * `applyCauseWithLawTwo`) rather than a second implementation of "roll a
+ * cause and damage its part" - the one difference is WHICH symptom lands:
+ * a resolveSymptom service job (docs/design/systems/knowledge-and-
+ * diagnosis.md section 8, sprint218.md task C) needs a customer's car built
+ * around a specific, already-chosen symptom, never the weighted whole-pool
+ * draw a lot or a slot-task customer car makes.
+ *
+ * Returns `null` when the Law 2 veto fires or the target slot is empty
+ * (`applyCauseWithLawTwo`'s own defensive cases) - the caller is expected to
+ * retry against a different car/rng draw, mirroring how `applySymptoms`
+ * itself silently drops a vetoed cause rather than ever emitting a
+ * `CarSymptom` for damage that didn't actually land.
+ */
+export function applySpecificSymptom(
+  car: CarInstance,
+  model: CarModel,
+  context: SimContext,
+  carOrigin: PartOrigin,
+  pattern: DamagePattern,
+  rng: Rng,
+  symptom: Symptom,
+): { car: CarInstance; carSymptom: CarInstance['symptoms'][number] } | null {
+  const cause = pickWeightedCause(symptom.causes, rng)
+  const result = applyCauseWithLawTwo(car, model, context, carOrigin, pattern, rng, cause)
+  if (!result) return null
+  return {
+    car: result.car,
+    carSymptom: {
+      symptomId: symptom.id,
+      trueCauseId: cause.id,
+      remainingCauseIds: symptom.causes.map((c) => c.id),
+      runTestIds: [],
+      latent: false,
+    },
+  }
+}
+
 /** Weighted pick over a symptom's own `causes` list for the LATENT draw -
  * identical to `pickWeightedCause` above except a scrap-band candidate's own
  * weight is scaled by `scrapCauseWeightFraction` first (ruling 3: silent

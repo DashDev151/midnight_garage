@@ -195,6 +195,7 @@ describe('close-out parity (Sprint 68 post-fix baseline, reimplemented over orig
       description: 'Suspension work.',
       tasks: [
         {
+          kind: 'slotCondition',
           requirement: {
             kind: 'slotCondition',
             carPartId: 'dampers',
@@ -290,6 +291,7 @@ describe('close-out parity (Sprint 68 post-fix baseline, reimplemented over orig
       description: 'Suspension work.',
       tasks: [
         {
+          kind: 'slotCondition',
           requirement: { kind: 'slotCondition', carPartId: 'dampers', minBand: 'fine' },
           minToolTier: 1,
         },

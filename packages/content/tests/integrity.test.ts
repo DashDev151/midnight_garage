@@ -132,7 +132,9 @@ describe('referential integrity', () => {
     const COMPONENT_WORDS = ['engine', 'drivetrain', 'suspension', 'body', 'interior', 'wheels']
     for (const type of parsedTypes) {
       const touchedGroups = new Set(
-        type.tasks.map((task) => GROUP_BY_PART_ID.get(task.requirement.carPartId)),
+        type.tasks
+          .filter((task) => task.kind === 'slotCondition')
+          .map((task) => GROUP_BY_PART_ID.get(task.requirement.carPartId)),
       )
       const foreignWords = COMPONENT_WORDS.filter((word) => !touchedGroups.has(word as never))
       for (const line of type.flavorPool) {
@@ -159,6 +161,7 @@ describe('referential integrity', () => {
     const parsedTypes = ServiceJobTypesSchema.parse(serviceJobs)
     for (const type of parsedTypes) {
       for (const task of type.tasks) {
+        if (task.kind !== 'slotCondition') continue
         expect(
           task.requirement.minBand,
           `template "${type.id}" requirement on "${task.requirement.carPartId}" targets scrap`,

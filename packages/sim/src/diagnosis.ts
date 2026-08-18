@@ -21,6 +21,7 @@ import { isSlotVerified, verifySlot } from './knowledge'
 import { marketValueYen } from './marketValue'
 import type { Rng } from './rng'
 import { taskLaborChain } from './taskLaborChain'
+import { toolLevelsFor } from './toolLines'
 
 type CarSymptom = CarInstance['symptoms'][number]
 
@@ -934,6 +935,7 @@ export type RunDiagnosticTestOutcome =
   | 'locked'
   | 'already-run'
   | 'not-enough-minutes'
+  | 'wrong-venue'
 
 export interface RunDiagnosticTestResult {
   state: GameState
@@ -980,6 +982,10 @@ export function runDiagnosticTest(
   }
   const test = context.diagnosticTestsById[testId]
   if (!test) return { state, log: [], outcome: 'test-not-applicable', resultCopy: null }
+  // The yard visit only ever offers YARD tests - a workshop test needs the
+  // car in the player's shop and its own labour/tool-tier/vacated-slot gates
+  // (`runWorkshopTest` below), never the inspection clock.
+  if (test.venue !== 'yard') return { state, log: [], outcome: 'wrong-venue', resultCopy: null }
   if (!availableTestIdsFor(carSymptom, symptom).includes(testId)) {
     return { state, log: [], outcome: 'locked', resultCopy: null }
   }
@@ -1213,6 +1219,147 @@ export function resolveOwnedWorkup(
     log: [{ type: 'car-workup', carInstanceId }],
     outcome: 'done',
   }
+}
+
+export type WorkshopTestGateReason =
+  | 'not-found'
+  | 'wrong-venue'
+  | 'test-not-applicable'
+  | 'locked'
+  | 'already-run'
+  | 'tool-tier'
+  | 'vacated-slot'
+  | 'not-enough-labor'
+
+export type RunWorkshopTestOutcome = 'ran' | WorkshopTestGateReason
+
+export interface RunWorkshopTestResult {
+  state: GameState
+  log: DayLogEntry[]
+  outcome: RunWorkshopTestOutcome
+  /** The authored result-copy line for the partition group the true cause
+   * fell in, or `null` when the test didn't legally run. */
+  resultCopy: string | null
+}
+
+/**
+ * The pure "why can't I run this workshop test right now" predicate - the
+ * workshop checklist's own proactive lock reason, in the standard caption
+ * idiom (mirrors `inspectionVisitGateReason`/`ownedWorkupGateReason`'s reuse
+ * shape). `null` when nothing blocks it. Checked in order: the car is
+ * workable (`findWorkableCar` - an owned car or a customer's car in an
+ * active service job, exactly `resolveOwnedWorkup`'s own population); the
+ * symptom and test exist and this test actually applies to it; the test is
+ * a WORKSHOP test (a yard test never runs here - `runDiagnosticTest` owns
+ * those, at the auction visit); the routed tree currently offers it
+ * (`availableTestIdsFor`) and it hasn't already run; the shop's tool line
+ * meets `requiresToolTier`, if any; `requiresVacatedSlot`'s slot (if any) is
+ * genuinely empty right now - a workshop test that needs the part off the
+ * car simply isn't offered while it's still fitted; and enough of today's
+ * labour (`laborPoints`, the same energy pool every other shop action
+ * spends) remains.
+ */
+export function workshopTestGateReason(
+  state: GameState,
+  carInstanceId: string,
+  symptomIndex: number,
+  testId: string,
+  context: SimContext,
+): WorkshopTestGateReason | null {
+  const car = findWorkableCar(state, carInstanceId)
+  if (!car) return 'not-found'
+  const carSymptom = car.symptoms[symptomIndex]
+  if (!carSymptom) return 'not-found'
+  const symptom = context.symptomsById[carSymptom.symptomId]
+  if (!symptom) return 'not-found'
+  const testApplication = symptom.tests.find((t) => t.testId === testId)
+  if (!testApplication) return 'test-not-applicable'
+  const test = context.diagnosticTestsById[testId]
+  if (!test) return 'test-not-applicable'
+  if (test.venue !== 'workshop') return 'wrong-venue'
+  if (!availableTestIdsFor(carSymptom, symptom).includes(testId)) return 'locked'
+  if (carSymptom.runTestIds.includes(testId)) return 'already-run'
+  if (test.requiresToolTier) {
+    const toolLevels = toolLevelsFor(state, context)
+    if (toolLevels[test.requiresToolTier.component] < test.requiresToolTier.tier) return 'tool-tier'
+  }
+  if (test.requiresVacatedSlot && car.parts[test.requiresVacatedSlot].installed !== null) {
+    return 'vacated-slot'
+  }
+  const freeEnergy = energyMax(state, context.economy) - state.energySpentToday
+  if (freeEnergy < (test.laborPoints ?? 0)) return 'not-enough-labor'
+  return null
+}
+
+/**
+ * Run `testId` against `carInstanceId`'s `symptomIndex`-th symptom in the
+ * player's own shop - the workshop twin of `runDiagnosticTest`, on a
+ * workable car rather than a lot, charging labour points rather than
+ * inspection minutes (`workshopTestGateReason` above owns every refusal
+ * reason). Narrows `remainingCauseIds` by the same deterministic
+ * partition-group lookup `runDiagnosticTest` uses - the true cause's own
+ * group, no RNG.
+ *
+ * A CONFIRMATION names its part (knowledge-and-diagnosis.md section 1, route
+ * 3): when this test collapses the symptom to exactly one remaining cause,
+ * the true cause's own slot verifies immediately (`verifyAndResolve`), the
+ * same mechanism `resolveOwnedWorkup` already applies to every symptom it
+ * collapses - one implementation of "a confirmation verifies," not two.
+ * Elimination alone (still more than one remaining cause after this test)
+ * verifies nothing, matching the design doc's own worked example.
+ *
+ * No day-log entry (`log: []`), matching `runDiagnosticTest`'s own
+ * convention - the returned `resultCopy` is the player-facing record, read
+ * and shown inline by the caller.
+ */
+export function runWorkshopTest(
+  state: GameState,
+  carInstanceId: string,
+  symptomIndex: number,
+  testId: string,
+  context: SimContext,
+): RunWorkshopTestResult {
+  const gateReason = workshopTestGateReason(state, carInstanceId, symptomIndex, testId, context)
+  if (gateReason) return { state, log: [], outcome: gateReason, resultCopy: null }
+
+  const car = findWorkableCar(state, carInstanceId)!
+  const carSymptom = car.symptoms[symptomIndex]!
+  const symptom = context.symptomsById[carSymptom.symptomId]!
+  const testApplication = symptom.tests.find((t) => t.testId === testId)!
+  const test = context.diagnosticTestsById[testId]!
+
+  const groupIndex = testApplication.partition.findIndex((group) =>
+    group.includes(carSymptom.trueCauseId),
+  )
+  // Content integrity guarantees every partition covers its symptom's full
+  // cause list exactly once - this fallback never fires against real content.
+  if (groupIndex === -1) {
+    return { state, log: [], outcome: 'test-not-applicable', resultCopy: null }
+  }
+  const group = testApplication.partition[groupIndex]!
+  const resultCopy = testApplication.resultCopy[groupIndex]!
+  const newRemaining = carSymptom.remainingCauseIds.filter((id) => group.includes(id))
+
+  const updatedSymptom: CarSymptom = {
+    ...carSymptom,
+    remainingCauseIds: newRemaining,
+    runTestIds: [...carSymptom.runTestIds, testId],
+  }
+  let updatedCar: CarInstance = {
+    ...car,
+    symptoms: car.symptoms.map((s, i) => (i === symptomIndex ? updatedSymptom : s)),
+  }
+
+  if (symptomResolved(updatedSymptom)) {
+    const trueCause = symptom.causes.find((c) => c.id === updatedSymptom.trueCauseId)
+    if (trueCause) updatedCar = verifyAndResolve(updatedCar, trueCause.carPartId, context).car
+  }
+
+  const nextState: GameState = {
+    ...writeCarBack(state, carInstanceId, updatedCar),
+    energySpentToday: state.energySpentToday + (test.laborPoints ?? 0),
+  }
+  return { state: nextState, log: [], outcome: 'ran', resultCopy }
 }
 
 /**

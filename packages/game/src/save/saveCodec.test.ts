@@ -1152,6 +1152,7 @@ describe('saveCodec', () => {
       // decodes into).
       expect(job?.tasks).toEqual([
         {
+          kind: 'slotCondition',
           requirement: { kind: 'slotCondition', carPartId: 'block', minBand: 'mint' },
           minToolTier: 1,
         },
@@ -1201,6 +1202,7 @@ describe('saveCodec', () => {
       const job = decoded.activeServiceJobs[0]
       expect(job?.tasks).toEqual([
         {
+          kind: 'slotCondition',
           requirement: {
             kind: 'slotCondition',
             carPartId: 'dampers',

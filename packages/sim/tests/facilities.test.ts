@@ -62,6 +62,7 @@ function serviceCar(id: string): ServiceJob {
     description: 'test',
     tasks: [
       {
+        kind: 'slotCondition',
         requirement: { kind: 'slotCondition', carPartId: 'block', minBand: 'mint' },
         minToolTier: 1,
       },

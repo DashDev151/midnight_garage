@@ -74,10 +74,30 @@ const DEAD_END_TEST_BY_SYMPTOM: Record<SliceSymptomId, string> = {
   'hesitates-under-load': 'pull-a-plug',
 }
 
+const YARD_TEST_IDS = new Set(DIAGNOSTIC_TESTS.filter((t) => t.venue === 'yard').map((t) => t.id))
+
+/**
+ * The yard-only view of `symptom` - drops every workshop-venue test from
+ * `tests`, `causes` untouched. Every probe in this file is specifically
+ * about the YARD experience (the auction inspection clock, minute-costed,
+ * near-toolless): root shape, choice-everywhere, waste-and-signal, reading-
+ * pays, and the grenade/resolution budgets all reason about what a player
+ * routes through DURING an inspection visit, never the in-shop workshop
+ * tree (sprint218.md task A adds those into the same `symptom.tests` array,
+ * but they cost labour and need tool tiers/a vacated slot, a different
+ * resource model this file was never designed to reason about - their own
+ * coverage commitment is tested in `symptom.test.ts` instead). No yard
+ * test's own `unlockedBy` ever names a workshop test as its parent, so
+ * dropping workshop entries here never breaks a yard-to-yard unlock chain.
+ */
+function yardOnly(symptom: Symptom): Symptom {
+  return { ...symptom, tests: symptom.tests.filter((t) => YARD_TEST_IDS.has(t.testId)) }
+}
+
 function symptomById(id: string): Symptom {
   const symptom = SYMPTOMS.find((s) => s.id === id)
   if (!symptom) throw new Error(`slice symptom "${id}" missing from real content`)
-  return symptom
+  return yardOnly(symptom)
 }
 
 /** Symptoms whose tests actually route (carry at least one `unlockedBy`) -
@@ -85,7 +105,7 @@ function symptomById(id: string): Symptom {
  * content rather than the fixed list so a later sweep adding more routed
  * symptoms inherits every check in this file for free. */
 function routedSymptoms(): Symptom[] {
-  return SYMPTOMS.filter((symptom) => symptom.tests.some((test) => test.unlockedBy))
+  return SYMPTOMS.filter((symptom) => symptom.tests.some((test) => test.unlockedBy)).map(yardOnly)
 }
 
 const MINUTES_BY_TEST_ID: Record<string, number> = Object.fromEntries(

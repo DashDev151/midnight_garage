@@ -2616,6 +2616,17 @@ export const EconomyConfigSchema = z.object({
        * being the one rolled.
        */
       deepTaskWeightDecay: z.number().positive().lte(1),
+      /**
+       * A `resolveSymptom` template's own flat offer weight (docs/design/
+       * systems/knowledge-and-diagnosis.md section 8, sprint218.md task C4) -
+       * `templateOfferWeight`'s branch for a symptom job, standing in for the
+       * chain-depth formula a slot-task template uses instead (a symptom job
+       * has no `carPartId` chain to measure). Felt behaviour: a symptom job
+       * is a distinctive, occasional phone call rather than the median one -
+       * weighted below a shallow bolt-on template's own `1` (no deficit) so
+       * it reads as the rarer, order-matters job it is, not the default.
+       */
+      symptomJobOfferWeight: z.number().positive(),
     })
     .refine((s) => s.marginMin <= s.marginMax, {
       message: 'serviceJobs.marginMin must be <= marginMax',

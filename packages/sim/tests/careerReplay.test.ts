@@ -96,17 +96,26 @@ const SMOKE_SCRIPT = CareerScriptSchema.parse(smokeScriptRaw)
 // hand-guessed. `smoke.script.json`'s own three checkpoints (the two
 // `kind: 'hash'` on days 1 and 10, and `kind: 'cashAtMost'` on day 7, whose
 // pinned ceiling moved with the day-7 cash figure) move with this array.
+//
+// Re-pinned for sprint218.md (workshop tests and symptom service jobs): the
+// daily service-job offer draw now also considers a resolveSymptom template,
+// which changes which templates are eligible and how the weighted draw
+// consumes the shared RNG stream regardless of whether one is ever picked -
+// the whole sequence moves even though the script's own actions are
+// unchanged. No behaviour this script exercises changed in kind. Re-derived
+// from a real run, never hand-guessed. `smoke.script.json`'s own `kind:
+// 'hash'` checkpoints (days 1 and 10) move with this array.
 const EXPECTED_HASHES_BY_DAY = [
-  'aba03cf7',
-  'aaa0a737',
-  '473cc2fa',
-  '1db665b3',
-  '6f671402',
-  '465093ae',
-  '5d600788',
-  'bd454544',
-  'e78d4534',
-  '30ce6323',
+  'a434d010',
+  '19a2f795',
+  'cb9a564c',
+  'd8d05b62',
+  '30795823',
+  '0d57fd20',
+  '44d4c9c6',
+  '3806c7b8',
+  'b5149d2a',
+  'cd004c23',
 ]
 
 describe('replayCareerScript (Sprint 198 C1)', () => {

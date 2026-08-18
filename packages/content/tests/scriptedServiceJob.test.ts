@@ -105,6 +105,8 @@ describe('ScriptedServiceJobRecipeSchema (the stand owner’s job)', () => {
 
   it('every authored task is minToolTier 1 - completable by a day-one shop', () => {
     for (const task of SCRIPTED_SERVICE_JOB.tasks) {
+      expect(task.kind).toBe('slotCondition')
+      if (task.kind !== 'slotCondition') continue
       expect(task.minToolTier).toBe(1)
     }
   })

@@ -864,5 +864,21 @@
       "Just want it properly sorted. I drive this thing every day, it has to be dependable.",
       "Sort the diff and the box out properly. No more surprises on the morning commute."
     ]
+  },
+  {
+    "id": "mystery-fault",
+    "tier": 1,
+    "tasks": [
+      {
+        "kind": "resolveSymptom",
+        "symptomId": "smokes-on-startup"
+      }
+    ],
+    "deadlineDays": 5,
+    "baseReputation": 4,
+    "flavorPool": [
+      "There's something properly wrong with this car and not one mechanic can pin it down. Find out what it actually is and put it right.",
+      "Every mechanic gives me a different answer for what's wrong with it. I want the real one, fixed."
+    ]
   }
 ]

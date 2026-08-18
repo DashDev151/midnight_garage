@@ -20,8 +20,8 @@ const ServiceJobUnlocksSellingChannelSchema = SellingChannelIdSchema.optional().
 )
 
 /**
- * One task within a service-job template. What the customer's car must end
- * up in, not what the player must DO to it - a `RequirementSpec`
+ * One SLOT task within a service-job template. What the customer's car must
+ * end up in, not what the player must DO to it - a `RequirementSpec`
  * (`requirement.ts`), evaluated fresh every time via `evaluateRequirement`
  * (sim). Any route that leaves the car in the required state satisfies it:
  * repair-and-refit, buy-new, or a donor-pulled part all count equally.
@@ -39,11 +39,52 @@ const ServiceJobUnlocksSellingChannelSchema = SellingChannelIdSchema.optional().
  * it can never actually see. `evaluateRequirement` (sim) still accepts it
  * directly - a `SlotConditionRequirement` is one member of `RequirementSpec`,
  * so it is always assignable where the wider union is expected.
+ *
+ * `kind` defaults to `'slotCondition'` so every pre-sprint-218 template in
+ * `serviceJobTemplates.json` (none of which author the field) parses
+ * unchanged - the discriminant exists only to tell this task apart from its
+ * new `ServiceJobSymptomTaskSchema` sibling below.
  */
-export const ServiceJobTaskSchema = z.object({
+export const ServiceJobSlotTaskSchema = z.object({
+  kind: z.literal('slotCondition').default('slotCondition'),
   requirement: SlotConditionRequirementSchema,
   minToolTier: ToolLevelSchema.default(1),
 })
+
+export type ServiceJobSlotTask = z.infer<typeof ServiceJobSlotTaskSchema>
+
+/**
+ * A SYMPTOM task (docs/design/systems/knowledge-and-diagnosis.md section 8,
+ * sprint218.md task C): the customer's car arrives with one visible
+ * `symptomId` and 2-4 candidate causes still open, exactly the shape the
+ * yard/workshop diagnostic tree already narrows. `symptomId` is authored on
+ * the TEMPLATE as a placeholder only - generation (`generateDailyServiceJobOffers`)
+ * rolls a real symptom from `context.symptoms` and overwrites the generated
+ * job's own `tasks` with the picked id, so the template itself never pins a
+ * single symptom to every job of its type. No `minToolTier`: a symptom job's
+ * own tool gating lives on the diagnostic TESTS a candidate needs to open
+ * (`requiresToolTier`, `diagnosticTest.ts`), not on the job's offerability -
+ * the player can always accept and start narrowing with whatever tools they
+ * own today.
+ */
+export const ServiceJobSymptomTaskSchema = z.object({
+  kind: z.literal('resolveSymptom'),
+  symptomId: z.string().min(1),
+})
+
+export type ServiceJobSymptomTask = z.infer<typeof ServiceJobSymptomTaskSchema>
+
+/**
+ * A plain `z.union`, not `z.discriminatedUnion` - the discriminator lookup a
+ * discriminated union relies on inspects the RAW input's `kind` property
+ * before any default is ever applied, so it cannot route a pre-sprint-218
+ * task (no `kind` field at all) to `ServiceJobSlotTaskSchema` even though
+ * that schema's own `.default('slotCondition')` would otherwise fill it in.
+ * A plain union tries each member in turn instead, and the two schemas'
+ * required fields never overlap (`requirement` vs `symptomId`), so which one
+ * matches is never ambiguous regardless of try order.
+ */
+export const ServiceJobTaskSchema = z.union([ServiceJobSlotTaskSchema, ServiceJobSymptomTaskSchema])
 
 export const ServiceJobTasksSchema = z.array(ServiceJobTaskSchema).min(1)
 

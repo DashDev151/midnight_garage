@@ -27,6 +27,7 @@ import type {
   ComponentId,
   ConditionBand,
   DayLogEntry,
+  DiagnosticTest,
   EngineCharacter,
   FusePreset,
   GameState,
@@ -213,6 +214,8 @@ import {
   resolveRemovePart,
   resolveRemoveAssemblyMember,
   resolveSendInspector as resolveSendInspectorCore,
+  runWorkshopTest as runWorkshopTestCore,
+  workshopTestGateReason as workshopTestGateReasonCore,
   resolveFitAssemblyMember,
   resolveScrapPart,
   resolveScrapShell,
@@ -269,6 +272,7 @@ import {
   type SimContext,
   type ToolRequirement,
   type TurnoutBand,
+  type WorkshopTestGateReason,
   type ValueLedger,
   type WorkStation,
 } from '@midnight-garage/sim'
@@ -1184,11 +1188,24 @@ export interface LotDetail {
     resolved: boolean
     causes: { causeId: string; label: string; dealDeltaYen: number; eliminated: boolean }[]
     trail: { testId: string; label: string; minutes: number; resultLine: string }[]
+    /**
+     * The fork: only tests the routed tree currently offers, filtered to the
+     * checklist's own `venue` (`symptomChecklistForCar`'s own parameter) - a
+     * lot's checklist (`venue: 'yard'`) shows only yard tests, costed in
+     * minutes; an owned/service-job car's (`venue: 'workshop'`) shows only
+     * workshop tests, costed in `laborPoints`, each carrying its own
+     * `lockReason` (the caption idiom - `null` once tool tier, a vacated
+     * slot, and today's labour all clear) since a workshop test can be
+     * offered by the tree yet still unrunnable right now, unlike a yard
+     * test, which is only ever offered or not.
+     */
     tests: {
       testId: string
       label: string
       minutes: number
       alreadyRun: boolean
+      laborPoints?: number
+      lockReason?: string | null
     }[]
     /**
      * The verdict, once elimination leaves exactly one candidate cause -
@@ -1575,6 +1592,45 @@ export const useGameStore = defineStore('game', () => {
     return result
   }
 
+  /** The tool line's own display name at `tier` - the rung's own name below
+   * the top, the covering shop's name at the top, matching `upgradeHintFor`'s
+   * (sim) own "next thing that would close it" logic without needing a
+   * per-task deficit to derive it from. */
+  function toolTierDisplayName(component: ComponentId, tier: number): string {
+    if (tier >= 3) return context.value.toolShopByGroup[component].displayName
+    return context.value.toolLines[component].tiers[tier - 1]?.displayName ?? `tier ${tier}`
+  }
+
+  /**
+   * The caption idiom for a workshop test's own `lockReason` (task A3):
+   * `null` once nothing blocks it, otherwise the same "Needs X" phrasing
+   * `testDisabledReason` (AuctionScreen.vue) and the garage's own
+   * `blockedReason` captions already use. `tool-tier`/`vacated-slot`/
+   * `not-enough-labor` are the only reasons ever surfaced here - every other
+   * `WorkshopTestGateReason` means the test is already excluded from the
+   * fork entirely (`locked`, `already-run`, `wrong-venue`, `not-found`), so
+   * this checklist never needs a caption for them.
+   */
+  function workshopLockCaption(
+    reason: WorkshopTestGateReason | null,
+    test: DiagnosticTest | undefined,
+  ): string | null {
+    if (!reason || !test) return null
+    if (reason === 'tool-tier' && test.requiresToolTier) {
+      const { component, tier } = test.requiresToolTier
+      return `Needs ${toolTierDisplayName(component, tier)}`
+    }
+    if (reason === 'vacated-slot' && test.requiresVacatedSlot) {
+      return `Needs the ${carPartLabel(test.requiresVacatedSlot)} off the car first`
+    }
+    if (reason === 'not-enough-labor') {
+      const freeEnergy =
+        energyMax(gameState.value, context.value.economy) - gameState.value.energySpentToday
+      return `Needs ${test.laborPoints ?? 0} labour, only ${Math.max(0, freeEnergy)} left today`
+    }
+    return null
+  }
+
   /**
    * One entry per symptom `car` carries, its free public card line, its
    * cause checklist, its run-test trail, and its currently offered fork.
@@ -1597,11 +1653,22 @@ export const useGameStore = defineStore('game', () => {
    * `runTestIds` - a locked test is simply absent, never a disabled button.
    * Test `label`s derive from `titleCaseFromSlug` off the id, the same way
    * cause labels do.
+   *
+   * `venue` (task A of sprint218.md) filters the fork to exactly one
+   * currency: `'yard'` (every lot and the room demo, the pre-sprint-218
+   * default shape, unchanged) shows only yard-venue tests costed in
+   * minutes; `'workshop'` (an owned car or a service-job car's own page)
+   * shows only workshop-venue tests costed in labour points, each carrying
+   * its own `lockReason` via `workshopTestGateReasonCore` (sim). A test
+   * whose OWN venue doesn't match is simply absent from the fork, exactly
+   * like an unlocked test the routed tree hasn't offered yet - never a
+   * disabled button for the wrong currency.
    */
   function symptomChecklistForCar(
     car: CarInstance,
     apparentCar: CarInstance,
     model: CarModel,
+    venue: 'yard' | 'workshop' = 'yard',
   ): LotDetail['symptoms'] {
     if (car.symptoms.length === 0) return []
     const heatPercent = gameState.value.marketHeat[model.id] ?? 100
@@ -1652,6 +1719,7 @@ export const useGameStore = defineStore('game', () => {
         const { taskCostYen, laborSlots } = serviceJobCostBreakdown(
           [
             {
+              kind: 'slotCondition',
               requirement: { kind: 'slotCondition', carPartId: cause.carPartId, minBand: 'fine' },
               minToolTier: 1,
             },
@@ -1707,14 +1775,31 @@ export const useGameStore = defineStore('game', () => {
                 .filter(
                   (test) =>
                     availableTestIds.has(test.testId) &&
-                    !carSymptom.runTestIds.includes(test.testId),
+                    !carSymptom.runTestIds.includes(test.testId) &&
+                    context.value.diagnosticTestsById[test.testId]?.venue === venue,
                 )
-                .map((test) => ({
-                  testId: test.testId,
-                  label: titleCaseFromSlug(test.testId),
-                  minutes: context.value.diagnosticTestsById[test.testId]?.minutes ?? 0,
-                  alreadyRun: carSymptom.runTestIds.includes(test.testId),
-                })),
+                .map((test) => {
+                  const registryTest = context.value.diagnosticTestsById[test.testId]
+                  const base = {
+                    testId: test.testId,
+                    label: titleCaseFromSlug(test.testId),
+                    minutes: registryTest?.minutes ?? 0,
+                    alreadyRun: carSymptom.runTestIds.includes(test.testId),
+                  }
+                  if (venue !== 'workshop') return base
+                  const lockReason = workshopTestGateReasonCore(
+                    gameState.value,
+                    car.id,
+                    symptomIndex,
+                    test.testId,
+                    context.value,
+                  )
+                  return {
+                    ...base,
+                    laborPoints: registryTest?.laborPoints ?? 0,
+                    lockReason: workshopLockCaption(lockReason, registryTest),
+                  }
+                }),
         },
       ]
     })
@@ -2081,8 +2166,20 @@ export const useGameStore = defineStore('game', () => {
    * single `work` field. Band/grade words (`mint`, `street`, ...) are
    * already plain English, not ids, so they render as-is - same convention
    * `BandChip` uses.
+   *
+   * A `resolveSymptom` task labels itself with the symptom's own free public
+   * card line and its candidate count only (spec section 8: "the offer card
+   * showing the symptom line and candidate count, never the answer") -
+   * exactly what a lot card discloses about an unresolved symptom, never a
+   * cause name or which one is true.
    */
   function taskLabel(task: ServiceJobTask): string {
+    if (task.kind === 'resolveSymptom') {
+      const symptom = context.value.symptomsById[task.symptomId]
+      if (!symptom) return 'Diagnose the fault'
+      const count = symptom.causes.length
+      return `${symptom.cardLine} (${count} possible cause${count === 1 ? '' : 's'})`
+    }
     const partName = carPartLabel(task.requirement.carPartId)
     return task.requirement.minGrade
       ? `${partName}: ${task.requirement.minGrade} or better, fitted and ${task.requirement.minBand}`
@@ -2280,7 +2377,7 @@ export const useGameStore = defineStore('game', () => {
       },
       foundationWarning: foundationWarningFor(car, model),
       passionSpendNotice: passionSpendNoticeFor(car, model),
-      symptoms: symptomChecklistForCar(car, apparentViewOf(car), model),
+      symptoms: symptomChecklistForCar(car, apparentViewOf(car), model, 'workshop'),
       workupGateReason: ownedWorkupGateReasonCore(gameState.value, carId, context.value),
       supportReadout: supportReadoutFor(car, model),
       unpaintedPanelsNote: car.zoneState ? unpaintedPanelsText(car.zoneState) : null,
@@ -3079,6 +3176,50 @@ export const useGameStore = defineStore('game', () => {
     return true
   }
 
+  /**
+   * Run `testId` against `carInstanceId`'s `symptomIndex`-th symptom in the
+   * player's own shop - the workshop checklist's own click, the workshop
+   * twin of `runDiagnosticTest`. Returns the authored result-copy line on a
+   * legal run, `null` on any refusal (`workshopTestGateReason` below already
+   * told the button why). No day-log entry either way, matching
+   * `runDiagnosticTest`'s own convention.
+   */
+  function runWorkshopTest(
+    carInstanceId: string,
+    symptomIndex: number,
+    testId: string,
+  ): string | null {
+    const result = runWorkshopTestCore(
+      gameState.value,
+      carInstanceId,
+      symptomIndex,
+      testId,
+      context.value,
+    )
+    if (result.outcome !== 'ran') return null
+    gameState.value = result.state
+    logSessionEvent({ type: 'runWorkshopTest', payload: { carInstanceId, symptomIndex, testId } })
+    return result.resultCopy
+  }
+
+  /** The workshop checklist's own proactive "why can't I run this test"
+   * read - `null` when nothing blocks it. Exposed for anything that wants
+   * the raw gate reason rather than the already-rendered `lockReason`
+   * caption `symptomChecklistForCar` builds into `carDetail().symptoms`. */
+  function workshopTestGateReason(
+    carInstanceId: string,
+    symptomIndex: number,
+    testId: string,
+  ): WorkshopTestGateReason | null {
+    return workshopTestGateReasonCore(
+      gameState.value,
+      carInstanceId,
+      symptomIndex,
+      testId,
+      context.value,
+    )
+  }
+
   /** The benched master inspector's own display name, if one is hired and
    * on the bench right now - the send control's own label and done line
    * both key off this. `undefined` when none is benched, which also means
@@ -3691,6 +3832,7 @@ export const useGameStore = defineStore('game', () => {
     const covers = shop?.covers ?? []
     const unlocksJobTemplateNames = SERVICE_JOB_TYPES.filter((template) =>
       template.tasks.some((task) => {
+        if (task.kind !== 'slotCondition') return false
         const group = context.value.partsTaxonomyById[task.requirement.carPartId]?.group
         return group !== undefined && covers.includes(group) && task.minToolTier === 3
       }),
@@ -3732,6 +3874,7 @@ export const useGameStore = defineStore('game', () => {
     const unlocksJobTemplateNames = SERVICE_JOB_TYPES.filter((template) =>
       template.tasks.some(
         (task) =>
+          task.kind === 'slotCondition' &&
           context.value.partsTaxonomyById[task.requirement.carPartId]?.group === componentId &&
           task.minToolTier === tier,
       ),
@@ -5582,6 +5725,8 @@ export const useGameStore = defineStore('game', () => {
     beginInspectionVisit,
     runDiagnosticTest,
     resolveOwnedWorkup,
+    runWorkshopTest,
+    workshopTestGateReason,
     masterInspectorName,
     sendInspectorGateReason,
     resolveSendInspector,

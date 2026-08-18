@@ -35,6 +35,7 @@ import {
   // bindings, so there is no real collision; the alias is purely so the two
   // don't read as the same thing at a glance.
   runDiagnosticTest as runDiagnosticTestImpl,
+  runWorkshopTest as runWorkshopTestImpl,
 } from './diagnosis'
 import { resolveBuyDyno, resolveDynoSession } from './dyno'
 import { applyBayPurchase, applyMoves, moveCarToSlot, swapCars } from './facilities'
@@ -180,6 +181,13 @@ function applySessionEvent(
     case 'resolveOwnedWorkup': {
       const result = resolveOwnedWorkup(state, event.payload.carInstanceId, context)
       return { state: result.state, log: result.log }
+    }
+    case 'runWorkshopTest': {
+      // Never logged to the day log either way, matching `runDiagnosticTest`
+      // above - the trail entry it writes is the record.
+      const { carInstanceId, symptomIndex, testId } = event.payload
+      const result = runWorkshopTestImpl(state, carInstanceId, symptomIndex, testId, context)
+      return result.outcome === 'ran' ? { state: result.state, log: [] } : { state, log: [] }
     }
     case 'resolveSendInspector': {
       const result = resolveSendInspector(state, event.payload.lotId, context)

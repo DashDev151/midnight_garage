@@ -45,5 +45,125 @@
   { "id": "open-the-boot", "minutes": 5 },
   { "id": "warm-gauge-watch", "minutes": 5 },
   { "id": "dipstick-check", "minutes": 5 },
-  { "id": "rev-response-watch", "minutes": 5 }
+  { "id": "rev-response-watch", "minutes": 5 },
+  {
+    "id": "leak-down",
+    "minutes": 20,
+    "venue": "workshop",
+    "requiresToolTier": { "component": "engine", "tier": 2 },
+    "laborPoints": 4
+  },
+  {
+    "id": "battery-load-test",
+    "minutes": 10,
+    "venue": "workshop",
+    "laborPoints": 2
+  },
+  {
+    "id": "bearing-pan-check",
+    "minutes": 30,
+    "venue": "workshop",
+    "requiresVacatedSlot": "internals",
+    "laborPoints": 6
+  },
+  {
+    "id": "ecu-diagnostic-scan",
+    "minutes": 15,
+    "venue": "workshop",
+    "requiresToolTier": { "component": "engine", "tier": 2 },
+    "laborPoints": 3
+  },
+  {
+    "id": "synchro-ring-inspect",
+    "minutes": 40,
+    "venue": "workshop",
+    "requiresToolTier": { "component": "drivetrain", "tier": 2 },
+    "requiresVacatedSlot": "gearbox",
+    "laborPoints": 5
+  },
+  {
+    "id": "bush-press-check",
+    "minutes": 15,
+    "venue": "workshop",
+    "requiresToolTier": { "component": "suspension", "tier": 2 },
+    "laborPoints": 3
+  },
+  {
+    "id": "caliper-pressure-test",
+    "minutes": 10,
+    "venue": "workshop",
+    "requiresToolTier": { "component": "suspension", "tier": 1 },
+    "laborPoints": 2
+  },
+  {
+    "id": "block-test-kit",
+    "minutes": 15,
+    "venue": "workshop",
+    "requiresToolTier": { "component": "engine", "tier": 2 },
+    "laborPoints": 4
+  },
+  {
+    "id": "wheel-runout-check",
+    "minutes": 15,
+    "venue": "workshop",
+    "requiresToolTier": { "component": "wheels", "tier": 2 },
+    "laborPoints": 3
+  },
+  {
+    "id": "diff-bearing-preload-check",
+    "minutes": 45,
+    "venue": "workshop",
+    "requiresToolTier": { "component": "drivetrain", "tier": 2 },
+    "requiresVacatedSlot": "differential",
+    "laborPoints": 5
+  },
+  {
+    "id": "spring-rate-check",
+    "minutes": 15,
+    "venue": "workshop",
+    "requiresToolTier": { "component": "suspension", "tier": 2 },
+    "laborPoints": 3
+  },
+  {
+    "id": "paint-thickness-gauge",
+    "minutes": 10,
+    "venue": "workshop",
+    "requiresToolTier": { "component": "body", "tier": 2 },
+    "laborPoints": 2
+  },
+  {
+    "id": "dye-test-grommets",
+    "minutes": 15,
+    "venue": "workshop",
+    "laborPoints": 3
+  },
+  {
+    "id": "smoke-test-exhaust",
+    "minutes": 10,
+    "venue": "workshop",
+    "requiresToolTier": { "component": "engine", "tier": 1 },
+    "laborPoints": 2
+  },
+  {
+    "id": "oil-pump-flow-test",
+    "minutes": 20,
+    "venue": "workshop",
+    "requiresToolTier": { "component": "engine", "tier": 2 },
+    "laborPoints": 4
+  },
+  {
+    "id": "timing-chain-stretch-gauge",
+    "minutes": 25,
+    "venue": "workshop",
+    "requiresToolTier": { "component": "engine", "tier": 2 },
+    "requiresVacatedSlot": "camsTiming",
+    "laborPoints": 5
+  },
+  {
+    "id": "rack-play-bench-check",
+    "minutes": 10,
+    "venue": "workshop",
+    "requiresToolTier": { "component": "suspension", "tier": 1 },
+    "laborPoints": 2
+  }
 ]

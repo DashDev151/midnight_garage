@@ -151,6 +151,8 @@ describe('day-one completability (sprint205.md task B2)', () => {
 
   it('every task is authored at minToolTier 1 by construction - no rung above the day-one floor', () => {
     for (const task of SCRIPTED_SERVICE_JOB.tasks) {
+      expect(task.kind).toBe('slotCondition')
+      if (task.kind !== 'slotCondition') continue
       expect(task.minToolTier).toBe(1)
     }
   })

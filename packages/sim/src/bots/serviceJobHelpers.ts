@@ -38,6 +38,11 @@ export function expectedProfitPerLaborSlot(
 ): number {
   const model = context.modelsById[offer.car.modelId]
   if (!model) return 0
+  // No bot policy attempts a `resolveSymptom` task (`queueServiceJobTasks`
+  // skips it outright) - without this guard `serviceJobCostBreakdown`'s own
+  // 0/0 for an all-symptom task list would read as infinitely profitable,
+  // and a bot would accept a job it can only ever let fail on the deadline.
+  if (offer.tasks.every((task) => task.kind !== 'slotCondition')) return 0
   const { taskCostYen, laborSlots } = serviceJobCostBreakdown(
     offer.tasks,
     offer.car,
@@ -63,6 +68,7 @@ function findExistingTaskJob(
   carId: string,
   task: ServiceJobTask,
 ): Job | undefined {
+  if (task.kind !== 'slotCondition') return undefined
   const kind = task.requirement.minGrade ? 'install-part' : 'repair-zone'
   return state.jobs.find(
     (job) =>
@@ -106,6 +112,12 @@ export function queueServiceJobTasks(
   for (const task of serviceJob.tasks) {
     if (remainingLabor <= 0) break
     if (isServiceTaskDone(car, task, context)) continue
+    // The bot policies do not attempt a `resolveSymptom` task at all - the
+    // order-matters diagnosis loop (spec section 8) is exactly the kind of
+    // judgement call directive 21 already excludes bots from ("the bots
+    // cannot play the post-Sprint-79 game"); the deadline backstop still
+    // fails a job left this way, same as any other unfinished job.
+    if (task.kind !== 'slotCondition') continue
 
     // Interior parts and aero are body-shop work (sprint212.md: interior and
     // aero belong to the body bay): a task addressed at one of them can only

@@ -52,6 +52,7 @@ function finishJobAwaitingHandback(game: ReturnType<typeof useGameStore>): strin
             ...j,
             tasks: [
               {
+                kind: 'slotCondition' as const,
                 requirement: {
                   kind: 'slotCondition' as const,
                   carPartId: 'bodywork' as const,

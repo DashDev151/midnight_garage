@@ -285,6 +285,7 @@ describe('completeJob', () => {
       description: 'Suspension work.',
       tasks: [
         {
+          kind: 'slotCondition',
           requirement: {
             kind: 'slotCondition',
             carPartId: 'dampers',
@@ -815,6 +816,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
         description: 'Suspension work.',
         tasks: [
           {
+            kind: 'slotCondition',
             requirement: { kind: 'slotCondition', carPartId: 'dampers', minBand: 'fine' },
             minToolTier: 1,
           },
@@ -1150,6 +1152,7 @@ describe('repairJobGate (Sprint 26 real cost; Sprint 36: no ownership gate)', ()
       description: 'Bodywork needs sorting.',
       tasks: [
         {
+          kind: 'slotCondition',
           requirement: { kind: 'slotCondition', carPartId: 'bodywork', minBand: 'fine' },
           minToolTier: 1,
         },
@@ -1483,6 +1486,7 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     description: 'Bodywork needs sorting.',
     tasks: [
       {
+        kind: 'slotCondition',
         requirement: { kind: 'slotCondition', carPartId: 'aero', minBand: 'fine' },
         minToolTier: 1,
       },

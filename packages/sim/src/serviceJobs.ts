@@ -10,14 +10,22 @@ import type {
   Part,
   SellingChannelId,
   ServiceJob,
+  ServiceJobSymptomTask,
   ServiceJobTask,
   ServiceJobType,
+  Symptom,
   ToolLevels,
 } from '@midnight-garage/content'
 import { fitmentClassForTier } from '@midnight-garage/content'
 import { dissolveAssembliesForCar, externalBlockersFor } from './assemblies'
-import { carOriginLabel, generateAuctionCarInstance, stockInstanceFor } from './auctions'
-import { bandsBelowExcludingScrap, planPartRepair } from './bands'
+import {
+  applySpecificSymptom,
+  carOriginLabel,
+  generateAuctionCarInstance,
+  stockInstanceFor,
+} from './auctions'
+import { bandIndex, bandsBelowExcludingScrap, planPartRepair } from './bands'
+import { candidateFixCostYen, symptomResolved } from './diagnosis'
 import { craftOperationCapabilityGateReason } from './machiningJobs'
 import { applyReputationDelta, reputationAtLeast } from './reputation'
 import {
@@ -37,6 +45,11 @@ import { deleteServiceJobLedger, serviceJobLedgerFor } from './serviceJobLedger'
 import { taskLaborChain } from './taskLaborChain'
 import { toolLevelsFor } from './toolLines'
 
+/** A `resolveSymptom` template/job's own candidate-count commitment (spec
+ * section 8: "2-4 candidate causes") - the eligible symptom pool a job's
+ * `symptomId` is drawn from excludes any symptom authored with more. */
+const MAX_SYMPTOM_JOB_CANDIDATES = 4
+
 /** A placeholder ledger for `isServiceTaskDone`'s call into
  * `evaluateRequirement` - `slotCondition` never reads `ledger`/`day`, but
  * the shared evaluator signature carries them for potential future primitives. */
@@ -50,13 +63,17 @@ const EMPTY_LEDGER: CarLedger = {
 /**
  * How many levels short the garage's tool line is of `task.minToolTier` -
  * `max(0, minToolTier - toolLevels[group])`. 0 means the task's capability
- * ceiling is met.
+ * ceiling is met. Always 0 for a `resolveSymptom` task: a symptom job's own
+ * tool gating lives on the diagnostic TESTS a candidate needs
+ * (`requiresToolTier`, `diagnosticTest.ts`), never on the job's own
+ * offerability - see `ServiceJobSymptomTaskSchema`'s doc comment.
  */
 export function taskToolDeficit(
   task: ServiceJobTask,
   toolLevels: ToolLevels,
   context: SimContext,
 ): number {
+  if (task.kind !== 'slotCondition') return 0
   const group = context.partsTaxonomyById[task.requirement.carPartId]?.group
   if (!group) return 0
   return Math.max(0, task.minToolTier - toolLevels[group])
@@ -83,7 +100,10 @@ export function toolDeficitSummary(
     const deficit = taskToolDeficit(task, toolLevels, context)
     if (deficit === 0) continue
     if (deficit > maxDeficit) maxDeficit = deficit
-    const group = context.partsTaxonomyById[task.requirement.carPartId]?.group
+    const group =
+      task.kind === 'slotCondition'
+        ? context.partsTaxonomyById[task.requirement.carPartId]?.group
+        : undefined
     if (group && !deficientGroups.includes(group)) deficientGroups.push(group)
   }
   return { maxDeficit, deficientGroups }
@@ -238,6 +258,11 @@ export interface ServiceJobCostBreakdown {
  * `taskLaborChain` prices every gated stage of the chain (blocker removal,
  * the pull, the refit) at whatever machine multiplier that shop actually
  * faces right now.
+ *
+ * A `resolveSymptom` task is skipped outright here: its own payout prices
+ * through `deriveSymptomJobPayoutYen` (the weighted-mean chain-priced cost
+ * over the symptom's whole candidate list, not one fixed slot), never this
+ * per-slot material+labour pipeline.
  */
 export function serviceJobCostBreakdown(
   tasks: readonly ServiceJobTask[],
@@ -251,6 +276,7 @@ export function serviceJobCostBreakdown(
   let taskCostYen = 0
   let laborSlots = 0
   for (const task of tasks) {
+    if (task.kind !== 'slotCondition') continue
     const { carPartId, minBand, minGrade } = task.requirement
     const entry = context.partsTaxonomyById[carPartId]
     if (!entry) continue
@@ -319,6 +345,98 @@ export function deriveServiceJobPayoutYen(
 function rollMargin(context: SimContext, rng: Rng): number {
   const { marginMin, marginMax } = context.economy.serviceJobs
   return marginMin + rng.next() * (marginMax - marginMin)
+}
+
+/**
+ * The customer pays the going quote (docs/design/systems/
+ * knowledge-and-diagnosis.md section 8, decided): `symptom`'s payout is the
+ * plain weighted MEAN of every candidate's chain-priced fix cost
+ * (`candidateFixCostYen`, diagnosis.ts - the ONE fix-cost function; the
+ * room's own near-worst-case fear pricing is an auction phenomenon, never a
+ * service-counter one), margined and calloutFee-loaded exactly as
+ * `deriveServiceJobPayoutYen` margins a slot-task job's own cost pool - the
+ * same payout formula SHAPE, a different cost pipeline underneath it.
+ *
+ * Computed once, at generation time, against the specific customer car just
+ * rolled (with the true cause's own part already at `cause.setBand`,
+ * `applySpecificSymptom`) and the real shop offering it (`state`) - never
+ * re-derived once the offer exists, matching every other service-job
+ * payout in this codebase.
+ */
+export function deriveSymptomJobPayoutYen(
+  symptom: Symptom,
+  car: CarInstance,
+  model: CarModel,
+  context: SimContext,
+  state: GameState,
+  marginRoll: number,
+): number {
+  const totalWeight = symptom.causes.reduce((sum, cause) => sum + cause.weight, 0)
+  if (totalWeight <= 0) return 0
+  const weightedMeanCostYen = symptom.causes.reduce((sum, cause) => {
+    const cost = candidateFixCostYen(car, model, cause, state, context)
+    return sum + (cause.weight / totalWeight) * cost
+  }, 0)
+  const { calloutFeeYen } = context.economy.serviceJobs
+  return Math.round(weightedMeanCostYen * marginRoll + calloutFeeYen)
+}
+
+/**
+ * Every authored symptom eligible for a `resolveSymptom` job (spec section
+ * 8: "2-4 candidate causes") - every symptom whose own `causes` list is no
+ * longer than `MAX_SYMPTOM_JOB_CANDIDATES`. Computed fresh per call (the
+ * pool is small and static content, no caching worth the indirection).
+ */
+function eligibleSymptomJobSymptoms(context: SimContext): Symptom[] {
+  return context.symptoms.filter((symptom) => symptom.causes.length <= MAX_SYMPTOM_JOB_CANDIDATES)
+}
+
+/**
+ * Builds one `resolveSymptom` job's own customer car: a plain generated car
+ * with no symptom of its own (`allowSymptoms: false`, matching every other
+ * customer-car roll), then one symptom from `eligibleSymptomJobSymptoms`
+ * forced onto it (`applySpecificSymptom`, auctions.ts) - "candidates'
+ * parts consistent with the car's rolled state" (spec section 8) falls out
+ * for free, since the forced cause damages whatever part actually landed on
+ * this exact car. Retries the whole car (a fresh generation draw, still
+ * deterministic against the shared `rng` stream) a bounded number of times
+ * if `applySpecificSymptom` vetoes the first attempt (Law 2, or a rolled-empty
+ * target slot) - both rare; `null` after every attempt fails means this
+ * offer slot is simply skipped for today, same as an empty eligible pool
+ * anywhere else in this file.
+ */
+function buildSymptomJobCar(
+  model: CarModel,
+  id: string,
+  context: SimContext,
+  currentYear: number,
+  day: number,
+  rng: Rng,
+): { car: CarInstance; symptom: Symptom } | null {
+  const pool = eligibleSymptomJobSymptoms(context)
+  if (pool.length === 0) return null
+  const ATTEMPTS = 5
+  for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+    const symptom = rng.pick(pool)
+    const rolledCar = generateAuctionCarInstance(
+      model,
+      id,
+      rng,
+      context,
+      currentYear,
+      false,
+      day,
+      false,
+    )
+    const pattern = rolledCar.damagePattern
+      ? context.damagePatternsById[rolledCar.damagePattern]
+      : undefined
+    if (!pattern) continue
+    const carOrigin = makeCarOrigin(id, carOriginLabel(model, rolledCar.year), day)
+    const result = applySpecificSymptom(rolledCar, model, context, carOrigin, pattern, rng, symptom)
+    if (result) return { car: { ...result.car, symptoms: [result.carSymptom] }, symptom }
+  }
+  return null
 }
 
 /** How many fresh offers land on the board today: a discrete weighted draw
@@ -391,6 +509,11 @@ const INSTALL_OUTSTANDING_BANDS = ['poor', 'scrap'] as const
  * `day` (default 0) stamps any freshly-rolled band-only-task replacement
  * with this same customer car's origin (`makeCarOrigin`) - it is still
  * generation, before the offer ever reaches the board.
+ *
+ * A `resolveSymptom` task is skipped outright: `applySpecificSymptom`
+ * (auctions.ts) is what makes a symptom job's own work genuinely
+ * outstanding, called separately by `generateDailyServiceJobOffers` before
+ * this function ever runs on the rest of the task list.
  */
 export function forceTasksOutstanding(
   car: CarInstance,
@@ -408,6 +531,7 @@ export function forceTasksOutstanding(
   )
   let parts = car.parts
   for (const task of tasks) {
+    if (task.kind !== 'slotCondition') continue
     const { carPartId, minBand, minGrade } = task.requirement
     if (minGrade) {
       // Roll the original part down to a neglected band, keeping its
@@ -457,12 +581,23 @@ function taskChainDepth(carPartId: CarPartId, context: SimContext): number {
 /** A template's own chain depth: the deepest single task it carries - a
  * multi-task template is exactly as deep as its hardest task, since that
  * task's teardown gates the whole job regardless of what else is on the
- * list. */
+ * list. A `resolveSymptom` task contributes no depth of its own - it has no
+ * `carPartId` chain to measure - so a symptom template's depth is always 0. */
 function templateChainDepth(template: ServiceJobType, context: SimContext): number {
   return Math.max(
     0,
-    ...template.tasks.map((task) => taskChainDepth(task.requirement.carPartId, context)),
+    ...template.tasks.map((task) =>
+      task.kind === 'slotCondition' ? taskChainDepth(task.requirement.carPartId, context) : 0,
+    ),
   )
+}
+
+/** Whether every task in `template` is a `resolveSymptom` task - a symptom
+ * template is always exactly one such task (`generateDailyServiceJobOffers`
+ * only ever authors one), but this reads the real list rather than assuming
+ * the shape. */
+function isSymptomTemplate(template: ServiceJobType): boolean {
+  return template.tasks.every((task) => task.kind === 'resolveSymptom')
 }
 
 /**
@@ -474,8 +609,13 @@ function templateChainDepth(template: ServiceJobType, context: SimContext): numb
  * mostly as easy, familiar work, with the rare teardown standing out, and
  * now that its payout prices the whole real chain
  * (`serviceJobCostBreakdown`), it pays like the day it eats.
+ *
+ * A `resolveSymptom` template reads its own flat
+ * `economy.serviceJobs.symptomJobOfferWeight` instead - the chain-depth
+ * formula has nothing to measure on a task with no `carPartId`.
  */
 function templateOfferWeight(template: ServiceJobType, context: SimContext): number {
+  if (isSymptomTemplate(template)) return context.economy.serviceJobs.symptomJobOfferWeight
   return context.economy.serviceJobs.deepTaskWeightDecay ** templateChainDepth(template, context)
 }
 
@@ -542,6 +682,37 @@ export function generateDailyServiceJobOffers(
   for (let i = 0; i < count; i++) {
     const template = pickWeighted(eligibleTemplates, (t) => templateOfferWeight(t, context), rng)
     const model = rng.pick(eligibleModels)
+    const id = `svc-car-${day}-${i}`
+
+    if (isSymptomTemplate(template)) {
+      // A resolveSymptom job's customer car carries no ordinary force-
+      // outstanding slot task - `buildSymptomJobCar` rolls a plain car
+      // (still `allowSymptoms: false`, matching every other customer-car
+      // roll) and forces exactly one real symptom onto it instead.
+      const built = buildSymptomJobCar(model, id, context, currentYear, day, rng)
+      if (!built) continue
+      const { car, symptom } = built
+      const margin = rollMargin(context, rng)
+      const payoutYen = deriveSymptomJobPayoutYen(symptom, car, model, context, state, margin)
+      const symptomTask: ServiceJobSymptomTask = { kind: 'resolveSymptom', symptomId: symptom.id }
+      offers.push({
+        id: `svc-${day}-${i}`,
+        typeId: template.id,
+        customerName: rng.pick(context.serviceJobCustomerNames),
+        description: rng.pick(template.flavorPool),
+        tasks: [symptomTask],
+        car,
+        payoutYen,
+        baseReputation: template.baseReputation,
+        deadlineDays: template.deadlineDays,
+        expiresOnDay: day + rng.int(minLifetimeDays, maxLifetimeDays),
+        arrivesOnDay: null,
+        dueOnDay: null,
+        unlocksSellingChannel: template.unlocksSellingChannel,
+      })
+      continue
+    }
+
     // A customer's car never rolls a random missing slot
     // (`allowMissingSlots: false`) - `forceTasksOutstanding` below is the
     // only way one of its slots ends up empty, and only when the job's own
@@ -549,7 +720,7 @@ export function generateDailyServiceJobOffers(
     // a customer's own car (`allowSymptoms: false`).
     const rolledCar = generateAuctionCarInstance(
       model,
-      `svc-car-${day}-${i}`,
+      id,
       rng,
       context,
       currentYear,
@@ -719,17 +890,45 @@ export function resolveServiceJobArrivals(state: GameState): ServiceJobArrivalRe
 }
 
 /**
- * Whether one task has actually been satisfied on the customer's car - a
- * one-liner over `evaluateRequirement`. Any route counts: re-fitting the
- * customer's own repaired part, fitting a bought one, or fitting one pulled
- * from a donor all satisfy it equally - there is no instance-identity
- * tracking. An empty or scrap-band slot always fails.
+ * A `resolveSymptom` task's own completion (spec section 8): the symptom
+ * collapsed to its true cause (`symptomResolved`, diagnosis.ts) AND that
+ * cause's own part sitting at `fine` or better - narrowing alone (still more
+ * than one remaining candidate) is knowledge, not a fix, and a resolved
+ * symptom whose true part is still poor/scrap/missing hasn't actually been
+ * put right yet. A symptom already CURED off the car entirely
+ * (`pruneCuredCauses` removed it from `car.symptoms` once its every
+ * candidate's part outgrew its own `setBand`) reads as done outright - there
+ * is nothing left to collapse or fix.
+ */
+function isSymptomTaskDone(
+  car: CarInstance,
+  task: ServiceJobSymptomTask,
+  context: SimContext,
+): boolean {
+  const carSymptom = car.symptoms.find((s) => s.symptomId === task.symptomId)
+  if (!carSymptom) return true
+  if (!symptomResolved(carSymptom)) return false
+  const symptom = context.symptomsById[carSymptom.symptomId]
+  const trueCause = symptom?.causes.find((c) => c.id === carSymptom.trueCauseId)
+  if (!trueCause) return false
+  const installed = car.parts[trueCause.carPartId].installed
+  return !!installed && bandIndex(installed.band) >= bandIndex('fine')
+}
+
+/**
+ * Whether one task has actually been satisfied on the customer's car. A
+ * `slotCondition` task is a one-liner over `evaluateRequirement` - any route
+ * counts: re-fitting the customer's own repaired part, fitting a bought one,
+ * or fitting one pulled from a donor all satisfy it equally, there is no
+ * instance-identity tracking, and an empty or scrap-band slot always fails.
+ * A `resolveSymptom` task dispatches to `isSymptomTaskDone` above.
  */
 export function isServiceTaskDone(
   car: CarInstance,
   task: ServiceJobTask,
   context: SimContext,
 ): boolean {
+  if (task.kind === 'resolveSymptom') return isSymptomTaskDone(car, task, context)
   return evaluateRequirement(task.requirement, car, EMPTY_LEDGER, 0, context).pass
 }
 
@@ -774,7 +973,7 @@ export interface ServiceJobResolution {
 function installedTaskParts(job: ServiceJob, context: SimContext): Part[] {
   const result: Part[] = []
   for (const task of job.tasks) {
-    if (!task.requirement.minGrade) continue
+    if (task.kind !== 'slotCondition' || !task.requirement.minGrade) continue
     const installed = job.car.parts[task.requirement.carPartId].installed
     const part = installed ? context.partsById[installed.partId] : undefined
     if (part) result.push(part)
@@ -969,7 +1168,9 @@ export function resolveServiceJob(
 
 /** Shared lookup for callers (bots, the game store) that need to know which
  * of the 6 component groups a task's `carPartId` belongs to without reaching
- * into `context.partsTaxonomyById` directly. */
+ * into `context.partsTaxonomyById` directly. `undefined` for a
+ * `resolveSymptom` task - it names no single slot. */
 export function taskGroup(task: ServiceJobTask, context: SimContext): ComponentId | undefined {
+  if (task.kind !== 'slotCondition') return undefined
   return context.partsTaxonomyById[task.requirement.carPartId]?.group
 }
