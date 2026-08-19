@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { LotDetail } from '../stores/gameStore'
 import { formatYen, formatYenDelta } from '../utils/formatYen'
+import { seedRange } from '../utils/paperSeed'
 
 /**
  * The free, public symptom disclosure for a listed car: the symptom line, its
@@ -21,7 +22,7 @@ import { formatYen, formatYenDelta } from '../utils/formatYen'
  * idiom. `showInspectorDone` renders the byte-verbatim done line once a
  * send has actually run; it never clears itself back off.
  */
-withDefaults(
+const props = withDefaults(
   defineProps<{
     symptoms: LotDetail['symptoms']
     lotId: string
@@ -48,6 +49,15 @@ const emit = defineEmits<{
   (e: 'run-test', payload: { lotId: string; symptomIndex: number; testId: string }): void
   (e: 'send-inspector', payload: { lotId: string }): void
 }>()
+
+/** The verdict's own seeded tilt (paperSeed, sprint223.md) - keyed on the
+ * lot plus this symptom's index, so a two-symptom lot's two verdicts never
+ * share a rotation. */
+function verdictStyle(symptomIndex: number): { transform: string } {
+  return {
+    transform: `rotate(${seedRange(props.lotId, `verdict-${symptomIndex}`, -1.5, 1.5)}deg)`,
+  }
+}
 </script>
 
 <template>
@@ -98,6 +108,7 @@ const emit = defineEmits<{
         v-if="symptom.verdict"
         class="symptom-verdict"
         :data-test="'verdict-' + symptom.symptomIndex"
+        :style="verdictStyle(symptom.symptomIndex)"
       >
         Must be the {{ symptom.verdict.causeLabel }}, then.
         <span class="verdict-fix"
@@ -171,77 +182,104 @@ const emit = defineEmits<{
 }
 
 /* A real checklist idiom (ASCII `[ ]` marks; decorative icons are banned),
-   matching ServiceTaskList.vue's own look, extended with a per-cause value
-   delta this list also needs to show. */
+   printed straight on the sheet - each symptom block gets a rule above it
+   (paperSeed.md, sprint223.md paper look) so several symptoms on one lot
+   read as separate entries. */
 .symptom {
-  margin-top: var(--mg-space-1);
+  margin-top: var(--mg-space-2);
+  padding-top: 8px;
+  border-top: 1.5px solid rgba(43, 38, 32, 0.5);
   text-align: left;
 }
 
 .symptom-line {
   margin: 0;
-  color: var(--mg-danger);
-  font-size: var(--mg-fs-sm);
+  color: var(--mg-paper-ink);
+  font-weight: bold;
+  font-size: 13px;
 }
 
 .symptom-causes {
   list-style: none;
   margin: var(--mg-space-1) 0 0;
-  padding: 0;
+  padding: 0 0 0 6px;
   display: grid;
-  gap: 3px;
-  font-size: var(--mg-fs-xs, 0.7rem);
-  color: var(--mg-text-dim);
+  gap: 1.5px;
+  font-size: 12.5px;
+  color: var(--mg-paper-ink);
 }
 
 .symptom-causes li {
   display: flex;
   align-items: baseline;
-  gap: var(--mg-space-2);
+  gap: 6px;
 }
 
 .symptom-causes .mark {
-  color: var(--mg-neon-cyan);
+  color: rgba(43, 38, 32, 0.6);
   flex-shrink: 0;
 }
 
+/* The "if true" value delta rides right-aligned on its own row-end, tabular
+   so a column of them lines up. */
 .symptom-causes .delta {
-  color: var(--mg-text-dim);
+  margin-left: auto;
+  color: rgba(43, 38, 32, 0.78);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
-/* A ruled-out cause strikes through - ServiceTaskList's own done-styling idiom
-   (dim + line-through the label, mark goes success-coloured), reused rather
-   than a second convention for the same idea. */
+/* A ruled-out cause strikes through by hand - a rotated pseudo-element in
+   biro, not text-decoration, matching the room-says headline's own struck
+   figure. */
 .symptom-causes li.eliminated .mark {
-  color: var(--mg-success);
+  color: var(--mg-paper-biro);
+  font-weight: 700;
 }
 
 .symptom-causes li.eliminated .label {
-  text-decoration: line-through;
+  position: relative;
+  color: rgba(43, 38, 32, 0.45);
+}
+
+.symptom-causes li.eliminated .label::after {
+  content: '';
+  position: absolute;
+  left: -2px;
+  right: -4px;
+  top: 55%;
+  height: 2px;
+  background: var(--mg-paper-biro);
+  transform: rotate(-1.6deg);
+  opacity: 0.8;
 }
 
 .symptom-causes li.eliminated .delta {
   opacity: 0.6;
 }
 
-/* The trail: a quiet case file, not a banner - the label dim, the earned
-   result line in normal text, one per run test. */
+/* The trail: a quiet case file, not a banner - pencil grey, the label bold,
+   each entry hanging-indented so a wrapped result line still reads under
+   its own label rather than back under the mark. */
 .symptom-trail {
   list-style: none;
   margin: var(--mg-space-1) 0 0;
-  padding: 0;
+  padding: 5px 0 0 6px;
   display: grid;
   gap: 2px;
-  font-size: var(--mg-fs-xs, 0.7rem);
+  font-size: 11.5px;
+  color: var(--mg-paper-pencil);
+}
+
+.symptom-trail li {
+  padding-left: 14px;
+  text-indent: -14px;
 }
 
 .trail-label {
-  color: var(--mg-text-dim);
+  font-weight: 700;
   margin-right: var(--mg-space-1);
-}
-
-.trail-result {
-  color: var(--mg-text);
 }
 
 .symptom-tests {
@@ -254,24 +292,25 @@ const emit = defineEmits<{
 .run-test {
   font-size: var(--mg-fs-xs, 0.7rem);
   padding: 1px var(--mg-space-2);
-  color: var(--mg-text-dim);
-  border-color: var(--mg-panel-edge);
+  color: var(--mg-paper-ink);
+  border-color: rgba(43, 38, 32, 0.4);
   background: transparent;
 }
 
-/* The verdict: the one line that pays off the checklist - full-weight text,
-   not dimmed like the trail, since this is the answer rather than a step
-   along the way. */
+/* The verdict: the one line that pays off the checklist - full-strength
+   biro, handwritten, seeded tilt - the loud ink, same tier as room-says. */
 .symptom-verdict {
   margin: var(--mg-space-2) 0 0;
-  font-size: var(--mg-fs-sm);
-  color: var(--mg-text);
+  font-family: 'Nothing You Could Do', 'Ink Free', 'Segoe Print', cursive;
+  font-size: 16px;
+  color: var(--mg-paper-biro);
+  line-height: 1.4;
 }
 
+/* The cost figure stays in the verdict's own hand and ink - money never
+   splits into a second typeface inside a handwritten line. */
 .verdict-fix {
-  display: block;
-  margin-top: 2px;
-  color: var(--mg-yen);
+  color: inherit;
 }
 
 /* The closed state: the tree has nothing further to offer - a quiet,
@@ -279,7 +318,7 @@ const emit = defineEmits<{
 .checklist-closed {
   margin: var(--mg-space-1) 0 0;
   font-size: var(--mg-fs-xs, 0.7rem);
-  color: var(--mg-text-dim);
+  color: var(--mg-paper-pencil);
   font-style: italic;
 }
 

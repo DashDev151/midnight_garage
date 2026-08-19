@@ -338,6 +338,12 @@ pass."
   a filter that keeps `FAIL` and the assertion lines, rather than the tail, which is what lost it
   the first time.
 
+  **Recurred 2026-08-19** on the sprint 220-222 push: one test of 4,956 failed inside the hook run
+  and the tail lost the name again (the exact mistake this entry warns about). A standalone
+  `pnpm test:coverage` passed clean immediately after, and the re-push went through green. Still
+  undiagnosed, still never forced to pass; two recurrences now, both under full-gate load, both
+  unreproducible standalone, which strengthens the timeout-under-load suspicion.
+
 - [ ] **Should a tool purchase need reputation at all? (maintainer, 2026-08-07, deferred by them.)**
   Ruling the same day: tools are gated by money and never by scene standing, *"anyone can buy a
   tool. Doesn't mean you are good with it. The market decides."* Every tier 2 additionally requires

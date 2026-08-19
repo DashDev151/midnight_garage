@@ -36,6 +36,15 @@
   font-weight: 700;
   font-display: swap;
 }
+/* The paper look's own handwriting face (sprint223.md), Kimberly Geswein's
+ * Nothing You Could Do, OFL-1.1 licensed (licence ships beside the file). */
+@font-face {
+  font-family: 'Nothing You Could Do';
+  src: url('./assets/fonts/NothingYouCouldDo.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
 
 :root {
   /* Palette - dark concrete greys + amber lighting, magenta/teal accents only */
@@ -70,6 +79,30 @@
   /* Chrome */
   --mg-radius: 6px;
   --mg-border: 1px solid var(--mg-panel-edge);
+
+  /* Paper look (sprint223.md, CSS-only proof of concept): the auction sheet
+   * re-dress. A manila folder holding an aged form, a Polaroid, rubber
+   * stamps and biro handwriting - tokens shared by every sheet that adopts
+   * the look. */
+  --mg-paper-manila: #c9a76b; /* the folder itself */
+  --mg-paper-manila-dark: #a8895a; /* the tab, fold-backs, shadowed manila */
+  --mg-paper-sheet: #efe7d4; /* the aged-white form inset on the folder */
+  --mg-paper-sheet-dark: #ddd2b8; /* the sheet's own shaded fold-backs */
+  --mg-paper-ink: #2b2620; /* near-black warm ink - printed type */
+  --mg-paper-biro: #2f3f8f; /* biro blue - handwritten annotations */
+  --mg-paper-pencil: #8a8272; /* pencil-grey edge smudges */
+  --mg-paper-stamp-red: #a83a2c; /* rubber-stamp ink, red */
+  --mg-paper-stamp-green: #2e6b3a; /* the headline's own "moved up" ink, reference-matched */
+  --mg-paper-stamp-blue: #2f4f7a; /* rubber-stamp ink, blue */
+  --mg-paper-coffee: rgba(122, 74, 32, 0.4); /* the coffee ring's own band */
+  --mg-paper-carbon: #ded2ce; /* the stapled-on carbon-copy action slip */
+  --mg-paper-ruled: rgba(70, 90, 120, 0.15); /* faint ruled lines under the form */
+  --mg-paper-ink-quiet: rgba(
+    47,
+    63,
+    143,
+    0.62
+  ); /* the quiet ink tier: coaching lines, not the verdict */
 }
 
 * {

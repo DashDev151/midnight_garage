@@ -17,7 +17,7 @@ export type AuctionLotCardView = Pick<
 </script>
 
 <script setup lang="ts">
-import { partFitmentClassLabel } from '@midnight-garage/content'
+import { PAINT_COLOURS, partFitmentClassLabel, type PaintColour } from '@midnight-garage/content'
 import type { ValueLedgerLineId } from '@midnight-garage/sim'
 import { computed } from 'vue'
 import { formatYen } from '../utils/formatYen'
@@ -28,6 +28,7 @@ import {
   workRowFor,
 } from '../utils/ledgerLabels'
 import { colourTokenDisplayName } from '../utils/paintFamilies'
+import { seedChance, seedPick, seedRange } from '../utils/paperSeed'
 import GradeStamp from './GradeStamp.vue'
 import HelpHint from './HelpHint.vue'
 import SymptomChecklist from './SymptomChecklist.vue'
@@ -142,169 +143,445 @@ const TURNOUT_LABEL: Record<string, string> = {
   steady: 'Steady turnout',
   packed: 'Packed turnout',
 }
+
+/**
+ * Paper look (sprint223.md, CSS-only proof of concept): every tilt, jitter,
+ * ring, fold and attachment below is a pure function of the lot's own
+ * instance id via `paperSeed` - a car keeps its folder for life, and two
+ * identical models on the board read as two different folders. No
+ * `Math.random`, no `Date.now`.
+ */
+const seedId = computed(() => props.d.lot.id)
+
+const folderRotationDeg = computed(() => seedRange(seedId.value, 'folder', -1.2, 1.2))
+const sheetRotationDeg = computed(() => seedRange(seedId.value, 'sheet', -0.5, 0.5))
+const photoRotationDeg = computed(() => seedRange(seedId.value, 'photo', -2.5, 2.5))
+
+const ATTACHMENTS = ['staple', 'paperclip'] as const
+const attachment = computed(() => seedPick(seedId.value, 'attachment', ATTACHMENTS))
+
+const showCoffeeRing = computed(() => seedChance(seedId.value, 'coffee', 0.35))
+const showSecondCoffeeRing = computed(
+  () => showCoffeeRing.value && seedChance(seedId.value, 'coffee-second', 0.25),
+)
+const COFFEE_CORNERS = ['top-left', 'top-right', 'bottom-left', 'bottom-right'] as const
+const coffeeCorner = computed(() => seedPick(seedId.value, 'coffee-corner', COFFEE_CORNERS))
+
+const showFoldedCorner = computed(() => seedChance(seedId.value, 'fold', 0.3))
+const FOLD_CORNERS = ['top-right', 'bottom-left'] as const
+const foldedCorner = computed(() => seedPick(seedId.value, 'fold-corner', FOLD_CORNERS))
+
+/** A believable factory tone for the Polaroid silhouette when the lot's own
+ * paint token doesn't resolve to a real swatch - six muted period colours,
+ * picked (not rolled) so the same lot always shows the same fallback. */
+const MUTED_PERIOD_COLOURS = [
+  '#5b6b7a',
+  '#7a4f3a',
+  '#8f8f7a',
+  '#3a4f5b',
+  '#6b4f5b',
+  '#7a6b4f',
+] as const
+
+/** The photo's own paint swatch: the car's real first-tone hex when the
+ * palette resolves it, else a seeded muted stand-in. Two-tone factory
+ * colours ("white+black") read off their first tone only, since the
+ * silhouette is a single fill. */
+const photoCarColourHex = computed(() => {
+  const firstToken = props.d.lot.car.factoryColour.split('+')[0]
+  const resolved = PAINT_COLOURS.find((c: PaintColour) => c.id === firstToken)
+  return resolved?.hex ?? seedPick(seedId.value, 'photo-colour', MUTED_PERIOD_COLOURS)
+})
+
+/** A seeded per-line tilt plus a tiny left-margin jitter for one handwritten
+ * annotation - never the same two numbers for two different lines, and
+ * never zero, so the ink never sits dead-level on the printed rules. */
+function inkLineStyle(salt: string): { transform: string; marginLeft: string } {
+  return {
+    transform: `rotate(${seedRange(seedId.value, `ink-rot-${salt}`, -1.5, 1.5)}deg)`,
+    marginLeft: `${seedRange(seedId.value, `ink-margin-${salt}`, 0, 6)}px`,
+  }
+}
 </script>
 
 <template>
   <!-- A display:contents wrapper keeps this a single-root component while
-       letting the parent's `.lot` grid lay both panels into its columns. -->
+       letting the parent's `.lot` list item size to the folder below, the
+       card's own single grid item now. -->
   <div class="lot-card">
-    <!-- Left panel: identity, art, grade stamps, the public symptom checklist. -->
-    <div class="lot-left">
-      <div class="lot-head">
-        <span class="lot-name"
-          >{{ d.displayName
-          }}<span class="class-chip" :data-test="'lot-class-' + d.lot.id">{{
-            partFitmentClassLabel(d.fitmentClass)
-          }}</span></span
-        >
-        <span class="lot-meta">
-          {{ d.lot.car.year }} · {{ d.lot.car.mileageKm.toLocaleString() }} km ·
-          {{ factoryColourLabel }}
-        </span>
-      </div>
+    <!-- The paper look (sprint223.md, proof of concept): a manila folder
+         holding an aged form, seeded per lot instance so no two folders read
+         cloned. Everything below is a wrap around the unchanged content. -->
+    <div
+      class="paper-folder"
+      :data-lot-number="d.lot.id"
+      :style="{ transform: `rotate(${folderRotationDeg}deg)` }"
+    >
+      <div class="paper-sheet" :style="{ transform: `rotate(${sheetRotationDeg}deg)` }">
+        <span
+          v-if="showCoffeeRing"
+          class="coffee-ring"
+          :class="'corner-' + coffeeCorner"
+          aria-hidden="true"
+        ></span>
+        <span
+          v-if="showSecondCoffeeRing"
+          class="coffee-ring coffee-ring-second"
+          :class="'corner-' + coffeeCorner"
+          aria-hidden="true"
+        ></span>
+        <span
+          v-if="showFoldedCorner"
+          class="folded-corner"
+          :class="'fold-' + foldedCorner"
+          aria-hidden="true"
+        ></span>
+        <span class="pencil-smudge smudge-a" aria-hidden="true"></span>
+        <span class="pencil-smudge smudge-b" aria-hidden="true"></span>
 
-      <div class="lot-turnout">
-        <span class="turnout-badge" :class="'turnout-' + d.turnout">
-          {{ TURNOUT_LABEL[d.turnout] }}
-        </span>
-      </div>
+        <!-- Left panel: identity, art, grade stamps, the public symptom checklist. -->
+        <div class="lot-left">
+          <div class="lot-head">
+            <span class="lot-name"
+              >{{ d.displayName
+              }}<span class="class-chip" :data-test="'lot-class-' + d.lot.id">{{
+                partFitmentClassLabel(d.fitmentClass)
+              }}</span></span
+            >
+            <span class="lot-meta">
+              {{ d.lot.car.year }} · {{ d.lot.car.mileageKm.toLocaleString() }} km ·
+              {{ factoryColourLabel }}
+            </span>
+          </div>
 
-      <div class="lot-art" aria-hidden="true"></div>
+          <div class="lot-turnout">
+            <span class="turnout-badge" :class="'turnout-' + d.turnout">
+              {{ TURNOUT_LABEL[d.turnout] }}
+            </span>
+          </div>
 
-      <div class="grade-stamps">
-        <GradeStamp
-          label="Overall"
-          :grade="d.auctionGrade.overall"
-          :data-test="'grade-stamp-overall-' + d.lot.id"
-        />
-        <GradeStamp
-          label="Mech"
-          :grade="d.auctionGrade.mechanical"
-          :data-test="'grade-stamp-mech-' + d.lot.id"
-        />
-        <GradeStamp
-          label="Ext"
-          :grade="d.auctionGrade.exterior"
-          :data-test="'grade-stamp-ext-' + d.lot.id"
-        />
-        <GradeStamp
-          label="Int"
-          :grade="d.auctionGrade.interior"
-          :data-test="'grade-stamp-int-' + d.lot.id"
-        />
-      </div>
-
-      <!-- Free, public symptom disclosure: the room shows the symptom and every
-           open cause, never which one is true; test buttons narrow it during an
-           active visit. The parent keeps all the logic; the shared checklist only
-           draws. Left by default; the demo moves it into the right block. -->
-      <SymptomChecklist
-        v-if="!inspectionOnRight"
-        :symptoms="d.symptoms"
-        :lot-id="d.lot.id"
-        :disabled-reason-for="disabledReasonFor"
-        :show-deltas="showDeltas"
-        :show-send-inspector="showSendInspector"
-        :inspector-name="inspectorName"
-        :show-inspector-done="showInspectorDone"
-        @run-test="(payload) => emit('run-test', payload)"
-        @send-inspector="(payload) => emit('send-inspector', payload)"
-      />
-    </div>
-
-    <!-- Right panel: the parent's leading-bid headline, the room's number and
-         its ledger, then the parent's secondary lines and bid stack via slots. -->
-    <div class="lot-right">
-      <div class="lot-info">
-        <slot name="headline" />
-
-        <!-- The room's number is the card's value headline; the ledger beneath
-             it is the exact decomposition the sheet sums to, the fear line last
-             on a symptomatic lot. -->
-        <p class="room-says" data-test="room-says">
-          the room says
-          <template v-if="!estimateMoved">{{ formatYen(d.guideValueYen) }}</template>
-          <template v-else>
-            <span class="was">{{ formatYen(d.guideValueYen) }}</span>
-            <span :class="estimateAbove ? 'up' : 'down'">{{
-              formatYen(displayedEstimateYen)
-            }}</span>
-          </template>
-          <HelpHint label="The ledger">
-            Book price, minus what's broken, plus real upgrades. Doubts price at the odds, till
-            proven.
-          </HelpHint>
-        </p>
-
-        <!-- The spread line: only once a finding exists, right under the
-             room-versus-yours figures it explains. -->
-        <p v-if="hasResolvedFinding" class="spread-line" data-test="spread-line">
-          Your number prices what you found. The room's doesn't.
-        </p>
-
-        <p class="work-row" :data-test="'work-row-' + workRow.state">
-          <span class="work-label">{{ workRow.label }}</span>
-          <span v-if="workRow.figure" class="work-figure" data-test="work-row-figure">{{
-            workRow.figure
-          }}</span>
-          <span v-if="workRow.subText" class="work-subtext" data-test="work-row-subtext">{{
-            workRow.subText
-          }}</span>
-        </p>
-
-        <ul class="ledger">
-          <li
-            v-for="line in ledgerBreakdown"
-            :key="line.id"
-            class="ledger-line"
-            :data-test="'ledger-line-' + line.id"
+          <!-- The car photo, stapled or paperclipped to the sheet like a
+               real inspection Polaroid - the original placeholder element
+               keeps its own identity untouched inside it. -->
+          <div
+            class="polaroid"
+            :style="{
+              transform: `rotate(${photoRotationDeg}deg)`,
+              '--photo-car-colour': photoCarColourHex,
+            }"
           >
-            <span class="ledger-label">{{ ledgerLabelFor(line.id) }}</span>
-            <span class="ledger-yen">{{ formatLedgerLineYen(line) }}</span>
-          </li>
-        </ul>
+            <div class="lot-art" aria-hidden="true"></div>
+            <span
+              class="polaroid-attachment"
+              :class="'attachment-' + attachment"
+              aria-hidden="true"
+            ></span>
+            <div class="polaroid-lip" aria-hidden="true">{{ d.displayName }}</div>
+          </div>
 
-        <!-- The same public symptom checklist, moved under the ledger when the
-             demo asks for it, so the narrowing sits beside the estimate it
-             moves. Identical props and emit to the left placement above. -->
-        <SymptomChecklist
-          v-if="inspectionOnRight"
-          :symptoms="d.symptoms"
-          :lot-id="d.lot.id"
-          :disabled-reason-for="disabledReasonFor"
-          :show-deltas="showDeltas"
-          :show-send-inspector="showSendInspector"
-          :inspector-name="inspectorName"
-          :show-inspector-done="showInspectorDone"
-          @run-test="(payload) => emit('run-test', payload)"
-          @send-inspector="(payload) => emit('send-inspector', payload)"
-        />
+          <div class="grade-stamps">
+            <GradeStamp
+              label="Overall"
+              :grade="d.auctionGrade.overall"
+              :seed-id="seedId"
+              :data-test="'grade-stamp-overall-' + d.lot.id"
+            />
+            <GradeStamp
+              label="Mech"
+              :grade="d.auctionGrade.mechanical"
+              :seed-id="seedId"
+              :data-test="'grade-stamp-mech-' + d.lot.id"
+            />
+            <GradeStamp
+              label="Ext"
+              :grade="d.auctionGrade.exterior"
+              :seed-id="seedId"
+              :data-test="'grade-stamp-ext-' + d.lot.id"
+            />
+            <GradeStamp
+              label="Int"
+              :grade="d.auctionGrade.interior"
+              :seed-id="seedId"
+              :data-test="'grade-stamp-int-' + d.lot.id"
+            />
+          </div>
 
-        <slot name="info" />
+          <!-- Free, public symptom disclosure: the room shows the symptom and every
+               open cause, never which one is true; test buttons narrow it during an
+               active visit. The parent keeps all the logic; the shared checklist only
+               draws. Left by default; the demo moves it into the right block. -->
+          <SymptomChecklist
+            v-if="!inspectionOnRight"
+            :symptoms="d.symptoms"
+            :lot-id="d.lot.id"
+            :disabled-reason-for="disabledReasonFor"
+            :show-deltas="showDeltas"
+            :show-send-inspector="showSendInspector"
+            :inspector-name="inspectorName"
+            :show-inspector-done="showInspectorDone"
+            @run-test="(payload) => emit('run-test', payload)"
+            @send-inspector="(payload) => emit('send-inspector', payload)"
+          />
+        </div>
 
-        <!-- The bid guidance: only once a finding exists, sitting right
-             above the bid stack (`actions` slot) it advises. -->
-        <p v-if="hasResolvedFinding" class="bid-guidance" data-test="bid-guidance">
-          Your number already carries what you found. Bid to it; past it, the room is paying for a
-          car you know better than they do.
-        </p>
+        <!-- Right panel: the parent's leading-bid headline, the room's number and
+             its ledger, then the parent's secondary lines and bid stack via slots. -->
+        <div class="lot-right">
+          <div class="lot-info">
+            <slot name="headline" />
+
+            <!-- The room's number is the card's value headline; the ledger beneath
+                 it is the exact decomposition the sheet sums to, the fear line last
+                 on a symptomatic lot. -->
+            <p class="room-says" data-test="room-says" :style="inkLineStyle('room-says')">
+              the room says
+              <template v-if="!estimateMoved"
+                ><span class="ink-ring">{{ formatYen(d.guideValueYen) }}</span></template
+              >
+              <template v-else>
+                <span class="was">{{ formatYen(d.guideValueYen) }}</span>
+                <span :class="estimateAbove ? 'up' : 'down'">{{
+                  formatYen(displayedEstimateYen)
+                }}</span>
+              </template>
+              <HelpHint label="The ledger">
+                Book price, minus what's broken, plus real upgrades. Doubts price at the odds, till
+                proven.
+              </HelpHint>
+            </p>
+
+            <!-- The spread line: only once a finding exists, right under the
+                 room-versus-yours figures it explains. -->
+            <p
+              v-if="hasResolvedFinding"
+              class="spread-line"
+              data-test="spread-line"
+              :style="inkLineStyle('spread-line')"
+            >
+              Your number prices what you found. The room's doesn't.
+            </p>
+
+            <p class="work-row" :data-test="'work-row-' + workRow.state">
+              <span class="work-label">{{ workRow.label }}</span>
+              <span v-if="workRow.figure" class="work-figure" data-test="work-row-figure">{{
+                workRow.figure
+              }}</span>
+              <span
+                v-if="workRow.subText"
+                class="work-subtext"
+                data-test="work-row-subtext"
+                :style="inkLineStyle('work-subtext')"
+                >{{ workRow.subText }}</span
+              >
+            </p>
+
+            <ul class="ledger">
+              <li
+                v-for="line in ledgerBreakdown"
+                :key="line.id"
+                class="ledger-line"
+                :data-test="'ledger-line-' + line.id"
+              >
+                <span class="ledger-label">{{ ledgerLabelFor(line.id) }}</span>
+                <span class="ledger-yen">{{ formatLedgerLineYen(line) }}</span>
+              </li>
+            </ul>
+
+            <!-- The same public symptom checklist, moved under the ledger when the
+                 demo asks for it, so the narrowing sits beside the estimate it
+                 moves. Identical props and emit to the left placement above. -->
+            <SymptomChecklist
+              v-if="inspectionOnRight"
+              :symptoms="d.symptoms"
+              :lot-id="d.lot.id"
+              :disabled-reason-for="disabledReasonFor"
+              :show-deltas="showDeltas"
+              :show-send-inspector="showSendInspector"
+              :inspector-name="inspectorName"
+              :show-inspector-done="showInspectorDone"
+              @run-test="(payload) => emit('run-test', payload)"
+              @send-inspector="(payload) => emit('send-inspector', payload)"
+            />
+
+            <slot name="info" />
+
+            <!-- The bid guidance: only once a finding exists, sitting right
+                 above the bid stack (`actions` slot) it advises. -->
+            <p
+              v-if="hasResolvedFinding"
+              class="bid-guidance"
+              data-test="bid-guidance"
+              :style="inkLineStyle('bid-guidance')"
+            >
+              Your number already carries what you found. Bid to it; past it, the room is paying for
+              a car you know better than they do.
+            </p>
+          </div>
+
+          <!-- The buy stack, stapled on like a carbon-copy action slip. -->
+          <div class="carbon-slip">
+            <slot name="actions" />
+          </div>
+        </div>
       </div>
-
-      <slot name="actions" />
     </div>
   </div>
 </template>
 
 <style scoped>
-/* The wrapper generates no box of its own, so the two panels below become the
-   direct grid items of the parent's `.lot` container. */
+/* The wrapper generates no box of its own, so the folder below becomes the
+   direct grid item of the parent's `.lot` container. */
 .lot-card {
   display: contents;
 }
 
+/*
+ * The manila folder: the card's own root box now (sprint223.md paper look).
+ * Fibre grain is two crossed low-alpha diagonal gradients under the manila
+ * fill; the tab is a pseudo-element reading the lot's own id straight off
+ * `data-lot-number` so no extra text node is needed. The shadow is what
+ * seats a warm folder against the app's near-black surfaces around it.
+ */
+.paper-folder {
+  position: relative;
+  width: 100%;
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.035) 0 2px, transparent 2px 7px),
+    repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0.04) 0 2px, transparent 2px 7px),
+    var(--mg-paper-manila);
+  border-radius: 8px;
+  padding: 20px 10px 10px;
+  box-shadow:
+    0 16px 30px rgba(0, 0, 0, 0.55),
+    0 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+.paper-folder::before {
+  content: attr(data-lot-number);
+  position: absolute;
+  top: -13px;
+  left: 18px;
+  padding: 3px 12px 5px;
+  background: var(--mg-paper-manila-dark);
+  color: var(--mg-paper-ink);
+  font-family: 'Courier New', monospace;
+  font-variant: small-caps;
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  border-radius: 4px 4px 0 0;
+  box-shadow: inset 0 -2px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* The aged-white form, inset from the folder edges, carrying the card's
+   real content. Fibre grain again, lighter than the folder's. */
+.paper-sheet {
+  position: relative;
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: var(--mg-space-3);
+  margin: 10px;
+  padding: var(--mg-space-3);
+  border-radius: 4px;
+  background:
+    repeating-linear-gradient(80deg, rgba(0, 0, 0, 0.015) 0 2px, transparent 2px 8px),
+    var(--mg-paper-sheet);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  color: var(--mg-paper-ink);
+  font-family: 'Courier New', monospace;
+}
+
+/* Human wear (sprint223.md): coffee rings, a folded corner, pencil-grey
+   edge smudges - all seeded per lot instance, all decorative. */
+.coffee-ring {
+  position: absolute;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at center,
+    transparent 0 58%,
+    var(--mg-paper-coffee) 61% 71%,
+    transparent 74%
+  );
+  pointer-events: none;
+}
+
+.coffee-ring-second {
+  transform: translate(9px, 7px) scale(0.82);
+  opacity: 0.7;
+}
+
+.coffee-ring.corner-top-left {
+  top: 8px;
+  left: 8px;
+}
+
+.coffee-ring.corner-top-right {
+  top: 8px;
+  right: 8px;
+}
+
+.coffee-ring.corner-bottom-left {
+  bottom: 8px;
+  left: 8px;
+}
+
+.coffee-ring.corner-bottom-right {
+  bottom: 8px;
+  right: 8px;
+}
+
+.folded-corner {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  pointer-events: none;
+}
+
+.folded-corner.fold-top-right {
+  top: 0;
+  right: 0;
+  background: linear-gradient(135deg, var(--mg-paper-sheet-dark), var(--mg-paper-manila-dark));
+  clip-path: polygon(100% 0, 0 0, 100% 100%);
+  box-shadow: -2px 2px 5px rgba(0, 0, 0, 0.35);
+}
+
+.folded-corner.fold-bottom-left {
+  bottom: 0;
+  left: 0;
+  background: linear-gradient(315deg, var(--mg-paper-sheet-dark), var(--mg-paper-manila-dark));
+  clip-path: polygon(0 100%, 0 0, 100% 100%);
+  box-shadow: 2px -2px 5px rgba(0, 0, 0, 0.35);
+}
+
+.pencil-smudge {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, var(--mg-paper-pencil) 0%, transparent 72%);
+  pointer-events: none;
+}
+
+.smudge-a {
+  width: 60px;
+  height: 16px;
+  top: 42%;
+  left: -8px;
+  opacity: 0.16;
+  transform: rotate(-8deg);
+}
+
+.smudge-b {
+  width: 50px;
+  height: 14px;
+  bottom: 10%;
+  right: -6px;
+  opacity: 0.13;
+  transform: rotate(18deg);
+}
+
 /* The fixed-width left identity panel (art + grades) and the flexible right
-   panel (money + bid stack) are laid out by the parent's `.lot` grid; this card
-   supplies both panels' contents. */
+   panel (money + bid stack), now laid out by the sheet's own grid rather
+   than the parent screen's. */
 .lot-left {
   display: flex;
   flex-direction: column;
@@ -322,11 +599,21 @@ const TURNOUT_LABEL: Record<string, string> = {
   text-align: center;
 }
 
+/* Ruled lines sit behind the ledger/info section only, not the whole sheet -
+   this is the value block a real inspection form would rule for figures. */
 .lot-info {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--mg-space-2);
+  padding: var(--mg-space-2);
+  border-radius: 3px;
+  background: repeating-linear-gradient(
+    var(--mg-paper-ruled) 0,
+    var(--mg-paper-ruled) 1px,
+    transparent 1px,
+    transparent 22px
+  );
 }
 
 .lot-head {
@@ -335,15 +622,143 @@ const TURNOUT_LABEL: Record<string, string> = {
   gap: 2px;
 }
 
-/* The 2:1 art placeholder, empty and bordered until real sprites exist; a
-   future master renders inside at integer scale, preserving integer-only
-   scaling. */
+/* The Polaroid: a white-framed photo of the car, stapled or paperclipped to
+   the sheet, holding the untouched `.lot-art` placeholder as its photo
+   well. */
+.polaroid {
+  position: relative;
+  width: 92%;
+  margin: 6px auto 16px;
+  padding: 8px 8px 26px;
+  background: #f5f3ee;
+  box-shadow:
+    0 8px 16px rgba(0, 0, 0, 0.45),
+    0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* The 2:1 art placeholder is now the Polaroid's photo well: a muted
+   sky-to-tarmac backdrop behind a clip-path car silhouette (::before) and
+   layered wheels/grain/vignette (::after), all seeded/derived, no assets. */
 .lot-art {
+  position: relative;
   width: 100%;
   aspect-ratio: 2 / 1;
-  border: var(--mg-border);
-  border-radius: var(--mg-radius);
-  background: var(--mg-night-deep);
+  overflow: hidden;
+  background: linear-gradient(to bottom, #7f96ab 0%, #aab8bd 44%, #55585a 46%, #34363a 100%);
+}
+
+.lot-art::before {
+  content: '';
+  position: absolute;
+  left: 9%;
+  bottom: 18%;
+  width: 82%;
+  height: 40%;
+  background: var(--photo-car-colour, #5b6b7a);
+  filter: brightness(0.92);
+  clip-path: polygon(
+    2% 68%,
+    0% 62%,
+    0% 52%,
+    5% 44%,
+    11% 32%,
+    15% 19%,
+    27% 10%,
+    47% 5%,
+    59% 6%,
+    70% 14%,
+    76% 26%,
+    85% 29%,
+    97% 39%,
+    100% 51%,
+    100% 63%,
+    96% 67%,
+    90% 78%,
+    86% 84%,
+    78% 84%,
+    74% 78%,
+    70% 68%,
+    30% 68%,
+    26% 78%,
+    22% 84%,
+    14% 84%,
+    10% 78%,
+    6% 67%
+  );
+}
+
+.lot-art::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle 7px at 24% 76%, #141516 0 58%, #303234 62% 80%, transparent 82%),
+    radial-gradient(circle 7px at 77% 76%, #141516 0 58%, #303234 62% 80%, transparent 82%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 3px),
+    radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.4) 100%);
+}
+
+.polaroid-attachment {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  pointer-events: none;
+}
+
+.attachment-staple {
+  width: 1px;
+  height: 1px;
+}
+
+.attachment-staple::before,
+.attachment-staple::after {
+  content: '';
+  position: absolute;
+  top: 1px;
+  width: 12px;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #6b6e72, #d8dbdf 45%, #6b6e72 100%);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3);
+}
+
+.attachment-staple::before {
+  left: -18px;
+  transform: rotate(-9deg);
+}
+
+.attachment-staple::after {
+  left: 6px;
+  transform: rotate(9deg);
+}
+
+.attachment-paperclip {
+  width: 16px;
+  height: 24px;
+  transform: translateX(-50%) translateY(-14px);
+  border: 2px solid #cfd2d6;
+  border-radius: 6px 6px 9px 9px;
+  background: linear-gradient(180deg, #eef0f2, #9a9da2);
+}
+
+.attachment-paperclip::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border: 2px solid #b7bac0;
+  border-radius: 4px 4px 7px 7px;
+}
+
+.polaroid-lip {
+  margin-top: 4px;
+  font-family: 'Nothing You Could Do', 'Ink Free', 'Segoe Print', cursive;
+  color: var(--mg-paper-ink);
+  font-size: 15px;
+  text-align: center;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .grade-stamps {
@@ -353,7 +768,8 @@ const TURNOUT_LABEL: Record<string, string> = {
 }
 
 .lot-name {
-  color: var(--mg-neon-cyan);
+  color: var(--mg-paper-ink);
+  font-weight: bold;
 }
 
 /* A small muted class chip so a bidder knows which class of parts this car
@@ -362,69 +778,124 @@ const TURNOUT_LABEL: Record<string, string> = {
   display: inline-block;
   margin-left: var(--mg-space-2);
   padding: 0 var(--mg-space-1);
-  border: 1px solid var(--mg-panel-edge);
+  border: 1px solid var(--mg-paper-ink);
   border-radius: 4px;
-  color: var(--mg-text-dim);
+  color: var(--mg-paper-ink);
   font-size: var(--mg-fs-xs, 0.7rem);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   vertical-align: middle;
 }
 
 .lot-meta,
 .lot-turnout {
-  color: var(--mg-text-dim);
+  color: var(--mg-paper-ink);
+  opacity: 0.75;
   font-size: var(--mg-fs-sm);
 }
 
-/* The room's number: the card's value headline, above its ledger. */
+/*
+ * Two-inks rule (sprint223.md): printed type is what the paper claims, but
+ * the room's own read is what an inspector pencils in the margin as they
+ * hear it called - room-says, the spread line, bid guidance and the work
+ * row's subtext are all handwritten, biro blue, each with its own seeded
+ * tilt and left-margin jitter so no two lines sit dead level or aligned to
+ * the ruled lines behind them.
+ */
 .room-says {
   margin: 0;
-  color: var(--mg-yen);
+  padding-top: 4px;
+  color: var(--mg-paper-biro);
+  font-family: 'Nothing You Could Do', 'Ink Free', 'Segoe Print', cursive;
   font-size: var(--mg-fs-md);
-  font-weight: bold;
+}
+
+/* The hand-drawn ellipse a reader circles the headline figure with - only
+   the plain (unmoved) case gets it, wrapping its own figure in plain ink
+   colour (a red-pen ring around a black-inked number). The moved case's
+   `.up`/`.down` carry no ring at all, matching the reference exactly. */
+.ink-ring {
+  position: relative;
+  display: inline-block;
+  padding: 1px 9px 2px;
+  color: var(--mg-paper-ink);
+}
+
+.ink-ring::before {
+  content: '';
+  position: absolute;
+  inset: -3px -7px;
+  border: 2.5px solid rgba(168, 58, 44, 0.8);
+  border-radius: 47% 53% 50% 50% / 62% 58% 42% 58%;
+  transform: rotate(-1.8deg);
+  pointer-events: none;
+}
+
+.ink-ring,
+.room-says .was,
+.room-says .up,
+.room-says .down {
+  font-weight: 700;
 }
 
 /* Once the player's own number diverges from the room's read, the room
- * figure strikes through (dim, normal weight) and the player's figure sits
- * beside it, green above / red below - the same struck-original idiom the
- * auction room demo's est-value line uses. */
+ * figure gets a hand-drawn strike (not text-decoration - a rotated pseudo-
+ * element in biro, the same idiom the eliminated causes use) and fades to a
+ * warm grey; the player's figure sits beside it, green above / red below -
+ * the same struck-original idiom the auction room demo's est-value line
+ * uses. */
 .room-says .was {
-  color: var(--mg-text-dim);
-  font-weight: normal;
-  text-decoration: line-through;
-  margin-left: 0.35em;
+  position: relative;
+  color: rgba(43, 38, 32, 0.55);
+  margin-right: 6px;
+}
+
+.room-says .was::after {
+  content: '';
+  position: absolute;
+  left: -3px;
+  right: -3px;
+  top: 52%;
+  height: 2px;
+  background: var(--mg-paper-biro);
+  transform: rotate(-2.2deg);
+  opacity: 0.85;
 }
 
 .room-says .up {
-  color: var(--mg-success);
-  margin-left: 0.35em;
+  color: var(--mg-paper-stamp-green);
 }
 
 .room-says .down {
-  color: var(--mg-danger);
-  margin-left: 0.35em;
+  color: var(--mg-paper-stamp-red);
 }
 
-/* The spread line: quiet, right under the figures it explains. */
+/* The spread line: quiet ink tier - a step down from the verdict/room-says
+   in both size and colour, so those two stay the loud reading on the sheet. */
 .spread-line {
   margin: 0;
-  color: var(--mg-text-dim);
-  font-size: var(--mg-fs-xs, 0.7rem);
-  font-style: italic;
+  padding-top: 2px;
+  color: var(--mg-paper-ink-quiet);
+  font-family: 'Nothing You Could Do', 'Ink Free', 'Segoe Print', cursive;
+  font-size: 13.5px;
 }
 
-/* The bid guidance: sits directly above the bid stack, full-weight text
-   since it is advice for the next click rather than passing colour. */
+/* The bid guidance: sits directly above the bid stack, quiet ink like the
+   spread line - coaching, not the answer itself. */
 .bid-guidance {
   margin: 0;
   padding-top: var(--mg-space-2);
-  border-top: var(--mg-border);
-  color: var(--mg-text);
-  font-size: var(--mg-fs-xs, 0.7rem);
+  border-top: 1px dashed rgba(43, 38, 32, 0.3);
+  color: var(--mg-paper-ink-quiet);
+  font-family: 'Nothing You Could Do', 'Ink Free', 'Segoe Print', cursive;
+  font-size: 13.5px;
   text-align: center;
 }
 
 /* The forward-looking work row, between the room's number and the
-   breakdown that explains it: what fixing this car up adds. */
+   breakdown that explains it: what fixing this car up adds. Label and
+   figure are printed (typed); the subtext (the plain-language "for X in
+   parts and labour") is the handwritten gloss on it. */
 .work-row {
   margin: 0;
   display: flex;
@@ -434,38 +905,58 @@ const TURNOUT_LABEL: Record<string, string> = {
 }
 
 .work-label {
-  color: var(--mg-text);
+  color: var(--mg-paper-ink);
+  text-transform: uppercase;
+  font-size: var(--mg-fs-xs, 0.7rem);
+  letter-spacing: 0.08em;
+  border-bottom: 1px solid rgba(43, 38, 32, 0.3);
+  padding-bottom: 1px;
 }
 
 .work-figure {
-  color: var(--mg-yen);
+  color: var(--mg-paper-ink);
   font-weight: bold;
   margin-left: 0.35em;
 }
 
 .work-subtext {
-  color: var(--mg-text-dim);
-  font-size: var(--mg-fs-xs, 0.7rem);
+  display: block;
+  padding-top: 3px;
+  color: var(--mg-paper-ink-quiet);
+  font-family: 'Nothing You Could Do', 'Ink Free', 'Segoe Print', cursive;
+  font-size: 13px;
 }
 
-/* The compact receipt under the room's number: one small line per entry, label
-   left, signed yen right. */
+/* The compact receipt under the room's number: a printed table, label left
+   with a dotted leader to a right-aligned yen figure. */
 .ledger {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 2px;
+  gap: 3px;
   width: 100%;
   max-width: 240px;
   font-size: var(--mg-fs-xs, 0.7rem);
-  color: var(--mg-text-dim);
+  color: var(--mg-paper-ink);
 }
 
 .ledger-line {
   display: flex;
+  align-items: baseline;
   justify-content: space-between;
-  gap: var(--mg-space-3);
+  gap: var(--mg-space-2);
+}
+
+.ledger-label {
+  flex: 1;
+  border-bottom: 1px dotted rgba(43, 38, 32, 0.45);
+  padding-bottom: 1px;
+}
+
+.ledger-yen {
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .lot-turnout {
@@ -487,14 +978,28 @@ const TURNOUT_LABEL: Record<string, string> = {
 }
 
 .turnout-thin {
-  color: var(--mg-text-dim);
+  color: var(--mg-paper-ink);
+  opacity: 0.6;
 }
 
 .turnout-steady {
-  color: var(--mg-neon-cyan);
+  color: #2f6f6b;
 }
 
 .turnout-packed {
-  color: var(--mg-yen);
+  color: var(--mg-paper-stamp-red);
+}
+
+/* The buy stack, stapled on like a carbon-copy action slip - a pinkish,
+   low-saturation tone distinct from the sheet, its own small tilt. Buttons
+   keep their own affordance; only their colours re-tone (AuctionScreen.vue
+   owns the actual button rules, since it defines their markup). */
+.carbon-slip {
+  width: 100%;
+  padding: var(--mg-space-2) var(--mg-space-3);
+  border: 1px dashed rgba(43, 38, 32, 0.35);
+  border-radius: 4px;
+  background: linear-gradient(180deg, var(--mg-paper-carbon), #cec2be);
+  transform: rotate(-0.6deg);
 }
 </style>

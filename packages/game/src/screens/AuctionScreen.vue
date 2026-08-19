@@ -8,6 +8,14 @@ import { mapBackTarget } from './mapBack'
 import { useGameStore, type LotDetail } from '../stores/gameStore'
 import { AUCTION_TIER_LABELS, venueLabelFor } from '../utils/auctionTierLabels'
 import { formatYen } from '../utils/formatYen'
+import { seedRange } from '../utils/paperSeed'
+
+/** A small individual seeded tilt for one of the carbon-slip buttons
+ * (sprint223.md paper look) - each lot's own seat-link/buyout never share
+ * the same crooked angle, and neither shares the folder's own tilt. */
+function slipButtonTiltStyle(lotId: string, salt: string): { transform: string } {
+  return { transform: `rotate(${seedRange(lotId, salt, -1, 1)}deg)` }
+}
 
 /** Every tier's own slug, for validating the route's `tier` query against a
  * real value - `AUCTION_TIER_LABELS`' own key set, reused rather than a
@@ -280,6 +288,7 @@ function nextOpenPhraseFor(tier: AuctionTier): string {
               <button
                 type="button"
                 class="seat-link"
+                :style="slipButtonTiltStyle(d.lot.id, 'seat-link')"
                 :disabled="!!game.attendAuctionGateReason(d.lot.tier)"
                 :title="seatButtonTitle(d.lot.tier)"
                 :data-test="'take-seat-' + d.lot.id"
@@ -293,6 +302,7 @@ function nextOpenPhraseFor(tier: AuctionTier): string {
               <button
                 class="buyout"
                 :class="{ confirming: buyoutConfirming[d.lot.id] }"
+                :style="slipButtonTiltStyle(d.lot.id, 'buyout')"
                 :disabled="game.cashYen < d.buyoutPriceYen"
                 :title="
                   game.cashYen < d.buyoutPriceYen
@@ -398,24 +408,35 @@ h2 {
   margin: var(--mg-space-3) 0;
 }
 
+/*
+ * The desk (sprint223.md, paper look): a dark warm wood surface behind the
+ * folders - a broad tone plus subtle plank-grain gradient, both low alpha
+ * so the folders (which now carry their own heavy shadow) read as sitting
+ * on it rather than as ordinary panel cards. The room stays neon; only this
+ * catalogue area goes to paper.
+ */
 .lots {
   list-style: none;
-  padding: 0;
   margin: 0 0 var(--mg-space-4);
+  padding: var(--mg-space-4) var(--mg-space-3);
   display: grid;
-  gap: var(--mg-space-3);
+  gap: var(--mg-space-5);
+  border-radius: var(--mg-radius);
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.12) 0 3px,
+      transparent 3px 64px,
+      rgba(255, 255, 255, 0.02) 64px 65px,
+      transparent 65px 128px
+    ),
+    linear-gradient(160deg, #241a11 0%, #1a130c 55%, #120d08 100%);
 }
 
-/* The two-panel card - a fixed-width left identity panel (art + grades) and
-   a flexible right panel (money + buy stack). */
+/* Each folder gets air around it; the folder itself (AuctionLotCard.vue)
+   now carries every bit of card chrome - background, border, shadow. */
 .lot {
-  background: var(--mg-panel);
-  border: var(--mg-border);
-  border-radius: var(--mg-radius);
-  padding: var(--mg-space-3);
-  display: grid;
-  grid-template-columns: 320px 1fr;
-  gap: var(--mg-space-3);
+  width: 100%;
 }
 
 /* Rule-of-glow compliance (art-direction.md 2): stamps stay muted at rest
@@ -428,17 +449,23 @@ h2 {
   filter: saturate(1) brightness(1);
 }
 
+/* Rendered inside the card's `.lot-info` (the `#info` slot), so it inherits
+   the sheet's ink and ruled-line background - just a typed, dimmer line. */
 .lot-secondary {
   display: flex;
   gap: var(--mg-space-3);
   flex-wrap: wrap;
   justify-content: center;
-  color: var(--mg-text-dim);
+  color: var(--mg-paper-ink);
+  opacity: 0.65;
+  font-family: 'Courier New', monospace;
   font-size: var(--mg-fs-sm);
 }
 
 /* The room seat CTA: the primary next action on a lot, above the ghost
-   buyout control below it. */
+   buyout control below it. Both buttons sit in the card's carbon-slip
+   (AuctionLotCard.vue), so they re-tone to ink-on-paper rather than neon -
+   the affordance stays in the border and hover state, not the glow. */
 .seat-row {
   display: flex;
   justify-content: center;
@@ -446,41 +473,62 @@ h2 {
 
 .seat-link {
   display: inline-block;
-  background: var(--mg-neon-violet);
-  color: var(--mg-night-deep);
-  border: 1px solid var(--mg-neon-violet);
-  border-radius: 4px;
+  background: transparent;
+  color: var(--mg-paper-ink);
+  border: 2px solid rgba(60, 40, 34, 0.8);
+  border-radius: 0;
   padding: 2px 10px;
+  font-family: 'Courier New', monospace;
   font-size: var(--mg-fs-sm);
+  font-weight: bold;
   text-decoration: none;
+}
+
+.seat-link:hover,
+.seat-link:focus-visible {
+  background: #fffcf4;
+  outline: 2px solid var(--mg-paper-stamp-red);
 }
 
 /* Buy Now is a small ghost control below the reserve/estimate lines. */
 .buyout-row {
   margin-top: var(--mg-space-2);
   padding-top: var(--mg-space-2);
-  border-top: var(--mg-border);
+  border-top: 1px dashed rgba(43, 38, 32, 0.35);
   display: flex;
   justify-content: center;
 }
 
 .buyout {
   background: transparent;
-  border-color: var(--mg-panel-edge);
-  color: var(--mg-text-dim);
+  border: 2px solid rgba(60, 40, 34, 0.8);
+  border-radius: 0;
+  color: var(--mg-paper-ink);
+  opacity: 0.75;
+  font-family: 'Courier New', monospace;
   padding: 2px var(--mg-space-3);
   font-size: var(--mg-fs-sm);
 }
 
+.buyout:hover,
+.buyout:focus-visible {
+  background: #fffcf4;
+  outline: 2px solid var(--mg-paper-stamp-red);
+  opacity: 1;
+}
+
 .buyout:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: default;
 }
 
-/* The armed second-click state - now it reads as a real commitment. */
+/* The armed second-click state - now it reads as a real commitment, in the
+   same rubber-stamp red the rest of the sheet uses for urgency. */
 .buyout.confirming {
-  border-color: var(--mg-neon-pink);
-  color: var(--mg-neon-pink);
+  border-color: var(--mg-paper-stamp-red);
+  color: var(--mg-paper-stamp-red);
+  background: rgba(255, 244, 240, 0.7);
+  opacity: 1;
 }
 
 button {
