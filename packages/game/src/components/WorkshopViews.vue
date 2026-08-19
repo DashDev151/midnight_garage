@@ -15,19 +15,15 @@ export type WorkshopSelection =
 <script setup lang="ts">
 import type { ComponentId, ConditionBand } from '@midnight-garage/content'
 import { ComponentIdSchema, titleCaseFromSlug } from '@midnight-garage/content'
-import {
-  bodyworkBindingZoneIds,
-  paintBindingZoneIds,
-  zoneConditionBand,
-} from '@midnight-garage/sim'
+import { bodyworkBindingZoneIds, isMetalZoneState, paintBindingZoneIds } from '@midnight-garage/sim'
 import { computed, ref } from 'vue'
 import type { DropZoneHandle } from '../composables/useDragAndDrop'
 import { useGameStore, type CarPartRowView } from '../stores/gameStore'
 import {
-  ZONE_FINISH_LABELS,
-  zoneBothDone,
-  zoneFinishPosition,
   zoneNeedsPanelTag,
+  zoneSegments,
+  zoneStatusRows,
+  type ZoneSegmentState,
 } from '../utils/zoneSeverity'
 import BandChip from './BandChip.vue'
 import {
@@ -178,12 +174,25 @@ interface RegionView {
   /** Whether the host's docked panel is currently showing this exact region -
    * the one visible trace a selection ever leaves on the diagram. */
   isSelected: boolean
-  /** Zones only; the finish-position word (bare metal / prepped / primed /
-   * painted / polished), or `null` when there is no band to pair it with
-   * (no zone data, or the panel is missing) or when structure and finish are
-   * both done and the band chip alone already says the whole story. */
-  finishTag: string | null
+  /** Zones only; the three-segment metal/prep/paint indicator (sprint220.md
+   * task C), in fixed order - `null` for a part region or a zone with no
+   * data at all. Replaces the old condition band plus finish tag pair, which
+   * let a beaten-straight, unpainted panel read as plain Mint. */
+  segments: ZoneSegmentDisplay[] | null
+  /** Zones only; the segment indicator's own title/aria text - `null`
+   * whenever the row is blocked (missing or beyond repair), since the
+   * missing/needs-panel tag already names the reason and repeating it three
+   * times over would say nothing new. */
+  segmentsSummary: string | null
 }
+
+/** One rendered segment of a zone's metal/prep/paint indicator. */
+interface ZoneSegmentDisplay {
+  id: 'metal' | 'prep' | 'paint'
+  state: ZoneSegmentState
+}
+
+const SEGMENT_IDS: readonly ZoneSegmentDisplay['id'][] = ['metal', 'prep', 'paint']
 
 /** Whether `selection` is the one the host's docked panel is currently
  * showing - compared on both `kind` and id, since `chassis` is a legal value
@@ -229,7 +238,8 @@ function partRegion(region: Extract<WorkshopRegion, { kind: 'part' }>): RegionVi
     ariaLabel: `${name}: ${band ?? 'empty'}${notes.length > 0 ? `, ${notes.join(', ')}` : ''}`,
     dropZone: props.dropZones[region.partId] ?? null,
     isSelected: isSelected({ kind: 'part', partId: region.partId }),
-    finishTag: null,
+    segments: null,
+    segmentsSummary: null,
   }
 }
 
@@ -239,27 +249,32 @@ function zoneRegion(region: Extract<WorkshopRegion, { kind: 'zone' }>): RegionVi
   // An absent panel is forced to the `scrap` band internally (there is no
   // sixth band value to spell "missing"), which is exactly the word this
   // region must never show the player - so a missing zone shows no band
-  // chip at all rather than the sim's own scrap floor, and the panel-off
-  // tag folds into the shared `missingLabel` field instead of stacking
-  // alongside it.
+  // chip at all, and the panel-off tag folds into the shared `missingLabel`
+  // field instead of stacking alongside it.
   const missing = zone?.panelMissing ?? false
-  const band = zone && !missing ? zoneConditionBand(zone) : null
   const needsPanelTag = zone && !missing ? zoneNeedsPanelTag(zone) : null
   const binding = zone !== null && bindingZoneIds.value.has(region.zoneId)
-  // Structure and finish are different facts (sprint211.md task B): the band
-  // above reads structure alone, so a beaten-straight bare panel still shows
-  // it honestly - the finish tag beside it is what stops that band reading
-  // as a plain "Mint" when the coat is not actually done. Collapses to
-  // nothing only once both are true, the one case a bare band chip is the
-  // whole story.
-  const finishPosition = zone && !missing ? zoneFinishPosition(zone) : null
-  const finishTag =
-    finishPosition && band && !zoneBothDone(band, finishPosition)
-      ? ZONE_FINISH_LABELS[finishPosition]
-      : null
-  const notes = [needsPanelTag, finishTag, binding ? 'binding' : null].filter(
-    (note): note is string => note !== null,
-  )
+  const isMetal = zone !== null && isMetalZoneState(zone)
+
+  let segments: ZoneSegmentDisplay[] | null = null
+  let segmentsSummary: string | null = null
+  if (zone) {
+    const states = zoneSegments(zone, isMetal)
+    segments = SEGMENT_IDS.map((id) => ({ id, state: states[id] }))
+    const blocked = states.metal === 'blocked'
+    if (!blocked) {
+      const rows = zoneStatusRows(zone, isMetal, detail.value?.car.factoryColour ?? '')
+      const metalClause = isMetal ? `Metal ${rows.metal}` : rows.metal
+      segmentsSummary = `${metalClause}; prep ${rows.prep}; ${rows.paint}`
+    }
+  }
+
+  // `needsPanelTag` is non-null in exactly the one case `segmentsSummary`
+  // drops out (beyond repair, panel present) - promoted to the label's own
+  // primary word there rather than repeated as a trailing note.
+  const primaryDescriptor = missing ? 'missing' : (segmentsSummary ?? needsPanelTag ?? 'no data')
+  const notes = [binding ? 'binding' : null].filter((note): note is string => note !== null)
+
   return {
     kind: 'zone',
     slug: region.zoneId,
@@ -267,8 +282,8 @@ function zoneRegion(region: Extract<WorkshopRegion, { kind: 'zone' }>): RegionVi
     testBase: `workshop-region-zone-${region.zoneId}`,
     rects: region.rects,
     name,
-    band,
-    showBand: zone !== null && !missing,
+    band: null,
+    showBand: false,
     missing,
     missingLabel: missing ? 'Missing' : null,
     absent: false,
@@ -278,11 +293,12 @@ function zoneRegion(region: Extract<WorkshopRegion, { kind: 'zone' }>): RegionVi
     needsPanelTag,
     inert: zone === null,
     ariaLabel: zone
-      ? `${name}: ${missing ? 'missing' : band}${notes.length > 0 ? `, ${notes.join(', ')}` : ''}`
+      ? `${name}: ${primaryDescriptor}${notes.length > 0 ? `, ${notes.join(', ')}` : ''}`
       : `${name}: ${NO_ZONE_DATA_LABEL}`,
     dropZone: props.zoneDropZones[region.zoneId] ?? null,
     isSelected: isSelected({ kind: 'zone', zoneId: region.zoneId }),
-    finishTag,
+    segments,
+    segmentsSummary,
   }
 }
 
@@ -412,6 +428,22 @@ function onSelect(region: RegionView): void {
           <BandChip :band="region.band" />
           <span v-if="region.uncertain" class="wv-uncertain">?</span>
         </template>
+        <span
+          v-else-if="region.segments"
+          class="wv-segments"
+          :title="region.segmentsSummary ?? undefined"
+          :aria-label="region.segmentsSummary ?? undefined"
+          :data-test="'zone-segments-' + region.slug"
+        >
+          <span
+            v-for="segment in region.segments"
+            :key="segment.id"
+            class="wv-segment"
+            :class="'wv-segment-' + segment.state"
+            :data-test="'zone-segment-' + region.slug + '-' + segment.id"
+            aria-hidden="true"
+          ></span>
+        </span>
         <span v-else-if="region.inert" class="wv-tag">{{ NO_ZONE_DATA_LABEL }}</span>
 
         <span v-if="region.missingLabel" class="wv-tag wv-tag-alert">{{
@@ -420,9 +452,6 @@ function onSelect(region: RegionView): void {
         <span v-else-if="region.absent" class="wv-tag">{{ ABSENT_LABEL }}</span>
         <span v-if="region.needsPanelTag" class="wv-tag wv-tag-alert">{{
           region.needsPanelTag
-        }}</span>
-        <span v-if="region.finishTag" class="wv-tag" :data-test="'zone-finish-' + region.slug">{{
-          region.finishTag
         }}</span>
       </button>
     </div>
@@ -612,5 +641,44 @@ function onSelect(region: RegionView): void {
   color: var(--mg-yen);
   font-weight: bold;
   pointer-events: none;
+}
+
+/* The zone diagram's metal/prep/paint indicator (sprint220.md task C):
+   three small fixed-order segments, never reordered or hidden, so a panel's
+   paint state can never hide behind a structure-only band the way the old
+   condition chip did. */
+.wv-segments {
+  display: flex;
+  gap: 2px;
+  pointer-events: none;
+}
+
+.wv-segment {
+  width: 8px;
+  height: 8px;
+  border: 1px solid var(--mg-panel-edge);
+}
+
+.wv-segment-done {
+  background: var(--mg-success);
+  border-color: var(--mg-success);
+}
+
+.wv-segment-pending {
+  background: transparent;
+  border-color: var(--mg-yen);
+}
+
+/* Trim zones have no metalwork at all - inert grey, never the green of a
+   real done state, so "nothing to do here" never reads as "done". */
+.wv-segment-trim {
+  background: var(--mg-text-dim);
+  border-color: var(--mg-text-dim);
+  opacity: 0.5;
+}
+
+.wv-segment-blocked {
+  background: var(--mg-danger);
+  border-color: var(--mg-danger);
 }
 </style>

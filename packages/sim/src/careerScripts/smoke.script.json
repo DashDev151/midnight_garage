@@ -22,7 +22,7 @@
         { "type": "rejectServiceJobOffer", "payload": { "offerId": "svc-1-0" } },
         { "type": "acknowledgeTutorialStep", "payload": { "stepId": "smoke-check" } }
       ],
-      "checkpoints": [{ "kind": "hash", "expected": "8b63fe21" }]
+      "checkpoints": [{ "kind": "hash", "expected": "d1fd027b" }]
     },
     { "day": 2, "events": [], "checkpoints": [] },
     { "day": 3, "events": [], "checkpoints": [] },
@@ -32,7 +32,7 @@
     {
       "day": 7,
       "events": [],
-      "checkpoints": [{ "kind": "cashAtMost", "amountYen": 214954 }]
+      "checkpoints": [{ "kind": "cashAtMost", "amountYen": 215156 }]
     },
     { "day": 8, "events": [], "checkpoints": [] },
     { "day": 9, "events": [], "checkpoints": [] },
@@ -40,7 +40,7 @@
       "day": 10,
       "events": [],
       "checkpoints": [
-        { "kind": "hash", "expected": "7abceee8" },
+        { "kind": "hash", "expected": "e61c3d6f" },
         { "kind": "carsOwned", "count": 1 },
         { "kind": "reputationTier", "tier": "unknown" }
       ]

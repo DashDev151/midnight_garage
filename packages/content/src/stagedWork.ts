@@ -97,6 +97,20 @@ export const StagedActionSchema = z.discriminatedUnion('kind', [
     colour: z.string().min(1),
     grade: GradeSchema,
   }),
+  /**
+   * The whole-car respray: every currently primed zone finished in one pass
+   * at booth quality, rather than one zone at a time
+   * (docs/sprints/sprint222.md, "The respray"). Zoneless - unlike
+   * `pipeline-paint`, it addresses whichever zones the plan finds primed
+   * rather than one the player names. Needs the body line's full capability
+   * and at least two primed zones; the same stock-grade colour gate
+   * `pipeline-paint` enforces.
+   */
+  z.object({
+    kind: z.literal('pipeline-respray'),
+    colour: z.string().min(1),
+    grade: GradeSchema,
+  }),
 ])
 
 export type StagedAction = z.infer<typeof StagedActionSchema>

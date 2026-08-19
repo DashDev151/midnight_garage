@@ -202,7 +202,7 @@ describe('WorkshopViews', () => {
     expect(wrapper.findAll('.wv-region')).toHaveLength(rectCount('underside'))
   })
 
-  it('reads a zone as Missing rather than Scrap when its panel is absent, with no band chip at all', () => {
+  it('reads a zone as Missing rather than Scrap when its panel is absent, with the segments in the blocked style', () => {
     const { game, carId } = grantCar()
     const car = game.gameState.ownedCars.find((c) => c.id === carId)!
     car.zoneState = {
@@ -215,15 +215,21 @@ describe('WorkshopViews', () => {
     // An absent panel is forced to `scrap` internally for pricing (there is
     // no sixth band value to spell "missing"), but the player never reads
     // that word: no band chip at all, whatever the stale metal/surface
-    // fields still say - just the Missing tag.
+    // fields still say - just the Missing tag and all three segments in
+    // their broken/alert style.
     expect(region.find('.band-chip').exists()).toBe(false)
     expect(region.text()).toContain('Missing')
     expect(region.text()).not.toContain('scrap')
+    for (const id of ['metal', 'prep', 'paint']) {
+      expect(wrapper.get(`[data-test="zone-segment-bonnet-${id}"]`).classes(), id).toContain(
+        'wv-segment-blocked',
+      )
+    }
     // A missing panel is also always why `bodywork` reads as bad as it does - it binds.
     expect(region.attributes('aria-label')).toBe('Bonnet: missing, binding')
   })
 
-  it('tags a panel ruined past welding differently from one that is simply off the car', () => {
+  it('tags a panel ruined past welding differently from one that is simply off the car, with the same blocked segments', () => {
     // Two states, two words: both force a replacement and both price the same,
     // but one is a panel you can see and one is a hole.
     const { game, carId } = grantCar()
@@ -235,14 +241,17 @@ describe('WorkshopViews', () => {
     const wrapper = mountFor(carId)
 
     const region = wrapper.get('[data-test="workshop-region-zone-bonnet"]')
-    expect(region.get('.band-chip').text()).toBe('scrap')
+    expect(region.find('.band-chip').exists()).toBe(false)
     expect(region.text()).toContain('past saving')
     expect(region.text()).not.toContain('panel off')
-    // Structure (scrap) and finish (bare metal, since this fixture never
-    // painted the zone) are different facts and both show - the aria-label
-    // carries the finish tag too, between the panel note and binding.
-    expect(region.text()).toContain('bare metal')
-    expect(region.attributes('aria-label')).toBe('Bonnet: scrap, past saving, bare metal, binding')
+    for (const id of ['metal', 'prep', 'paint']) {
+      expect(wrapper.get(`[data-test="zone-segment-bonnet-${id}"]`).classes(), id).toContain(
+        'wv-segment-blocked',
+      )
+    }
+    // The panel note is promoted to the label's own primary word once the
+    // segment summary drops out for a blocked row, so it is never repeated.
+    expect(region.attributes('aria-label')).toBe('Bonnet: past saving, binding')
   })
 
   it('renders zone regions inert when the car has no zone state, and clicking one emits nothing', async () => {
@@ -312,7 +321,9 @@ describe('WorkshopViews', () => {
     )
   })
 
-  it('reads a beaten-straight bare zone as its own structure band plus a finish tag, never a plain Mint', () => {
+  it('reads a beaten-straight bare zone as metal done but paint pending, never a plain Mint band that hides the unpainted coat', () => {
+    // This is the exact playtest lie a lone condition band told: a
+    // beaten-straight panel that was never sprayed reported "mint".
     const { game, carId } = grantCar()
     const car = game.gameState.ownedCars.find((c) => c.id === carId)!
     car.zoneState = {
@@ -324,11 +335,17 @@ describe('WorkshopViews', () => {
     const wrapper = mountFor(carId)
 
     const region = wrapper.get('[data-test="workshop-region-zone-bonnet"]')
-    expect(region.get('.band-chip').text()).toBe('mint')
-    expect(region.text()).toContain('bare metal')
+    expect(region.find('.band-chip').exists()).toBe(false)
+    expect(wrapper.get('[data-test="zone-segment-bonnet-metal"]').classes()).toContain(
+      'wv-segment-done',
+    )
+    expect(wrapper.get('[data-test="zone-segment-bonnet-paint"]').classes()).toContain(
+      'wv-segment-pending',
+    )
+    expect(region.attributes('aria-label')).toContain('unpainted')
   })
 
-  it('collapses to a plain Mint reading with no finish tag once structure and finish are both done', () => {
+  it('shows all three segments done once metal, prep and paint are all finished', () => {
     const { game, carId } = grantCar()
     const car = game.gameState.ownedCars.find((c) => c.id === carId)!
     car.zoneState = {
@@ -344,9 +361,52 @@ describe('WorkshopViews', () => {
     }
     const wrapper = mountFor(carId)
 
-    const region = wrapper.get('[data-test="workshop-region-zone-bonnet"]')
-    expect(region.get('.band-chip').text()).toBe('mint')
-    expect(region.find('[data-test="zone-finish-bonnet"]').exists()).toBe(false)
+    for (const id of ['metal', 'prep', 'paint']) {
+      expect(wrapper.get(`[data-test="zone-segment-bonnet-${id}"]`).classes(), id).toContain(
+        'wv-segment-done',
+      )
+    }
+  })
+
+  it('renders the metal/prep/paint segments in fixed order for a mixed-state zone', () => {
+    const { game, carId } = grantCar()
+    const car = game.gameState.ownedCars.find((c) => c.id === carId)!
+    car.zoneState = {
+      ...car.zoneState!,
+      // Dented (metal pending), filled and primed already (prep done),
+      // painted but not polished (paint pending) - three different states
+      // at once, so the fixed order is actually being proven, not assumed.
+      bonnet: { metal: 1, surface: 0, finish: 1, panelMissing: false, primed: true },
+    }
+    const wrapper = mountFor(carId)
+
+    const container = wrapper.get('[data-test="zone-segments-bonnet"]')
+    const ids = container.findAll('.wv-segment').map((el) => el.attributes('data-test'))
+    expect(ids).toEqual([
+      'zone-segment-bonnet-metal',
+      'zone-segment-bonnet-prep',
+      'zone-segment-bonnet-paint',
+    ])
+    expect(wrapper.get('[data-test="zone-segment-bonnet-metal"]').classes()).toContain(
+      'wv-segment-pending',
+    )
+    expect(wrapper.get('[data-test="zone-segment-bonnet-prep"]').classes()).toContain(
+      'wv-segment-done',
+    )
+    expect(wrapper.get('[data-test="zone-segment-bonnet-paint"]').classes()).toContain(
+      'wv-segment-pending',
+    )
+  })
+
+  it('renders a trim zone metal segment in its own inert style, never green', () => {
+    const { carId } = grantCar()
+    const wrapper = mountFor(carId)
+
+    // front-bumper carries no metal/surface fields at all - there is no
+    // metalwork to beat or fill, so the segment reads muted, not done.
+    const metalSegment = wrapper.get('[data-test="zone-segment-front-bumper-metal"]')
+    expect(metalSegment.classes()).toContain('wv-segment-trim')
+    expect(metalSegment.classes()).not.toContain('wv-segment-done')
   })
 
   it('keeps a removed part clickable - an empty slot is a work target, not a dead region', async () => {

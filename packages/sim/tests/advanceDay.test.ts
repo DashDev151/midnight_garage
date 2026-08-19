@@ -395,7 +395,26 @@ describe('advanceDay golden master', () => {
     // reshaping every guide-value-derived figure this 30-day career touches.
     // No behaviour this script exercises changed in kind. Re-derived from a
     // real run.
-    expect(hashState(finalState)).toBe('5528c4a0')
+    //
+    // It moves once more for metalwork ruining the paint over it: beating,
+    // welding or filling a zone now bares its finish, and the repair-bill
+    // walker prices the resulting repaint chain into a zone-model body
+    // carrier's cost. This script's own car (car-0001) carries no zone
+    // state and is untouched directly, but every day's freshly generated
+    // auction board draws real zone-model cars, and any with metal damage
+    // sitting under otherwise intact paint now carries a lower, correctly
+    // priced guide value - moving the board from day one even though this
+    // career never bids on it. Re-derived from a real run.
+    //
+    // It moves once more for sprint222.md's re-anchored body hire fee
+    // (`machineShopAssist.feeYenByGroup.body` 14,000 -> 6,500, added
+    // mid-sprint after the tool-ladder cut tripped the Sprint 85
+    // hire-coherence probe): `hireForDay` fronts the body line's hire on day
+    // 1, so this script's cash figure lands 7,500 yen richer from that day
+    // on. No draw was added or removed, and the rent-charge cash assertion
+    // just below reads the fee straight off content rather than a literal,
+    // so it is unmoved. Re-derived from a real run.
+    expect(hashState(finalState)).toBe('dbf45eb9')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -763,7 +782,15 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // car's own tier down a further band at sale, repricing the same offer
     // step sprint217.md's own move above already reprices. Re-derived from a
     // real run.
-    expect(hashState(acquisitionCareer().sold)).toBe('09343a76')
+    //
+    // It moves once more for metalwork ruining the paint over it: beating,
+    // welding or filling a zone now bares its finish, and the repair-bill
+    // walker prices the resulting repaint chain into a zone-model body
+    // carrier's cost. The acquired car's body carries metal damage under
+    // otherwise intact paint on several panels, so its guide value - and
+    // so the buyout price struck for it - reads correctly lower. Re-derived
+    // from a real run.
+    expect(hashState(acquisitionCareer().sold)).toBe('deded012')
   })
 })
 

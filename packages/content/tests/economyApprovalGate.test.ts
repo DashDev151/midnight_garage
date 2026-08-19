@@ -2637,6 +2637,48 @@ import toolShops from '../data/toolShops.json'
  * ones actually concealing ambient wear, so it marks down more of the light flip's sale than the
  * true condition gap accounts for. Reported as this sprint's still-open finding rather than chased
  * with a further lever move; see sprint219.md's Exit for both measured pairs.
+ *
+ * Re-pinned for sprint222.md task A (the body shop's tool ladder, tier 2 and the
+ * shop above it), under the same behaviour-first governance amendment: the value is
+ * Claude's own choice, stated here by felt behaviour, validated by playtest rather
+ * than pre-ratified. `economy.json` is untouched, so its hash holds; only
+ * `toolLines.json` and `toolShops.json` move.
+ *
+ * `toolLines.json`'s body tier 2 (MIG welder & panel tools) `upgradePriceYen`
+ * 700,000 -> 280,000. Felt behaviour: a committed flipper owns the MIG by week
+ * three or four; welding stops being an 18-point labour tax early. Sits between
+ * the two-post lift (250k) and the trim bench (350k).
+ *
+ * `toolShops.json`'s `body-and-trim-shop` `upgradePriceYen` 1,500,000 -> 600,000.
+ * Felt behaviour: the booth is a mid-game purchase that pays for itself through
+ * respray margin and the mint ceiling, not an end-game trophy.
+ *
+ * No mission payout, budget cap or `partPricing.json`/`damagePatterns.json` value
+ * moves: neither lever feeds a mission probe's build cost, so both hashes and the
+ * payout pin hold unchanged.
+ *
+ * Re-pinned for sprint222.md's mid-sprint addition to the same task A lever table,
+ * under the same behaviour-first governance amendment: the tool-ladder cut above
+ * tripped the Sprint 85 hire-coherence probe (`storyMissionProbes.test.ts`, "each
+ * assist fee is positive and amortises within its tier-2 machine price"), so the
+ * hire fee is re-anchored to the cheaper ladder rather than left to fail that
+ * probe. `economy.json`'s `machineShopAssist.feeYenByGroup.body` 14,000 -> 6,500.
+ * Felt behaviour: the whole body ladder got cheaper and the hire rides the same
+ * ruling - a booth day costs a call-out, not a rent payment. Forty hire-days still
+ * undercut the MIG rung (260,000 vs 280,000), keeping the Sprint 85 hire-coherence
+ * bound: renting stays the sane default until body work is weekly.
+ *
+ * One golden master hires the body line: `advanceDay.test.ts`'s 30-day scripted
+ * career fronts the body line's hire on day 1 (`hireForDay`), so its cash figure
+ * lands 7,500 yen richer from that day on and its pinned hash moves
+ * `01f585dd` -> `dbf45eb9`, re-derived from a real run and recorded with its own
+ * trace note at the assertion (directive 17 case (a): the fee change is
+ * intentional, so the stale hash was updated, not the script). The
+ * `acquisitionCareer` golden below it never hires any machine line and is
+ * unmoved. The `bodyCarrierIdentity.test.ts` body-hire fixture asserts only that
+ * the line becomes available, never a fee figure, so it is unmoved too. No
+ * mission payout, budget cap or `partPricing.json`/`damagePatterns.json` value
+ * moves: no mission probe hires the body line, so none reads this fee.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -2646,7 +2688,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('f155da6e00cd4065a022735a761353cd655c0805ad857944988c87c47b6ca19f')
+    ).toBe('679caae7fcbf06b6483134544345b3b38532ab75f5b9cdf28a8a09317268e126')
   })
 
   it('damagePatterns.json matches its approved content exactly', () => {
@@ -2678,7 +2720,7 @@ describe('the economy approval gate', () => {
       'toolLines.json changed. Every rung price and every reputation floor on the tool ' +
         'ladder is approval-gated (CLAUDE.md directive 22): re-pin this hash ONLY in the ' +
         'same change as the recorded approval of the specific lever and value.',
-    ).toBe('45d1a197010690748358f43dd2370d364b1de5bc78334e73b2ff164be4e17188')
+    ).toBe('d1692a1dc65bb22575e591816bb40c31ef77cb1516fb4a4c2d3fb5890e593bc9')
   })
 
   it('toolShops.json matches its approved content exactly', () => {
@@ -2689,7 +2731,7 @@ describe('the economy approval gate', () => {
         'purchase in the game, so its price, its reputation floor and the lines it covers ' +
         'are all approval-gated (CLAUDE.md directive 22): re-pin this hash ONLY in the same ' +
         'change as the recorded approval of the specific lever and value.',
-    ).toBe('30d0c86da80b5f11df1eeb3eedff514630580d65c6f4e5ca4d60b40d4a122abd')
+    ).toBe('20177b76549ffd30aa785dc74ffc96e2567f3b795585c3db1ef40573dbad6b3e')
   })
 
   it('mission payouts and budget caps match their approved values exactly', () => {

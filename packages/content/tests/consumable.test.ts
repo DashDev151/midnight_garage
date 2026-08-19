@@ -11,14 +11,17 @@ describe('consumableTins.json', () => {
     expect(new Set(result.data.map((t) => t.id)).size).toBe(4)
   })
 
-  // Pinned exactly (directive 22): every price here is the per-use price
-  // already approved for the zone rescale, times the approved uses per tin,
-  // so no per-use cost moves when a consumable becomes a tin you buy ahead.
+  // Pinned exactly (directive 22): every price here is approval-gated.
+  // `paper` alone is a pack of 10 rather than the per-use price times 4 the
+  // other three still carry (docs/sprints/sprint222.md, "paper"): felt
+  // behaviour is that paper stops running out in lockstep with the 4-use
+  // filler tin, so one pack outlasts two filler tins rather than matching
+  // one exactly.
   it('pins the four tin prices and use counts exactly', () => {
     const byId = Object.fromEntries(consumableTins.map((t) => [t.id, t]))
     expect(byId).toEqual({
       filler: { id: 'filler', name: 'Body filler tin', usesPerTin: 4, priceYen: 5000 },
-      paper: { id: 'paper', name: 'Sanding paper pack', usesPerTin: 4, priceYen: 1400 },
+      paper: { id: 'paper', name: 'Sanding paper pack', usesPerTin: 10, priceYen: 3200 },
       primer: { id: 'primer', name: 'Primer tin', usesPerTin: 9, priceYen: 5850 },
       polish: { id: 'polish', name: 'Polish tin', usesPerTin: 9, priceYen: 4050 },
     })

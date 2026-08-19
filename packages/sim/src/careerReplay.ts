@@ -57,6 +57,7 @@ import {
   resolvePipelineInstallPanelAction,
   resolvePipelinePaintAction,
   resolvePipelineRemovePanelAction,
+  resolvePipelineResprayAction,
   resolvePipelineStageAction,
 } from './pipelineActions'
 import {
@@ -313,6 +314,17 @@ function applySessionEvent(
         state,
         carId,
         { kind: 'pipeline-paint', zoneId, colour, grade },
+        context,
+        remaining,
+      )
+      return { state: result.state, log: result.log }
+    }
+    case 'pipelineRespray': {
+      const { carId, colour, grade } = event.payload
+      const result = resolvePipelineResprayAction(
+        state,
+        carId,
+        { kind: 'pipeline-respray', colour, grade },
         context,
         remaining,
       )

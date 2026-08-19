@@ -7,6 +7,7 @@ import {
   PARTS_TAXONOMY,
   fitmentClassForTier,
   type CarModel,
+  type ConditionBand,
   type DamageGrade,
   type EconomyConfig,
   type MetalZoneState,
@@ -27,13 +28,18 @@ import {
   deriveBodyworkBand,
   hasZoneImproveHeadroom,
   improveZoneCarrierOneStep,
+  bodyPartRepairBillYen,
   bodyworkRepairBillYen,
+  paintRepairBillYen,
   planInstallPanel,
+  planMetalPipelineStage,
+  planPaintStage,
   planPipelineStage,
   rollZoneStates,
   setZoneCarrierToAtLeastBand,
   zoneNeedsPanel,
   zonePanelPart,
+  zoneStatesRepairedToBand,
 } from '../src/bodyPipeline'
 import { buildSimContext, type SimContext } from '../src/context'
 import { createRng, hashStringToSeed } from '../src/rng'
@@ -197,6 +203,185 @@ describe('the bill quotes the panel for both states, once', () => {
     expect(zoneNeedsPanel(improved.bonnet)).toBe(false)
     expect(billFor(improved)).toBe(0)
     expect(deriveBodyworkBand(improved)).not.toBe('scrap')
+  })
+})
+
+describe('metal damage under good paint bills the repaint it now forces, once', () => {
+  const fitmentClass: PartFitmentClass = 'everyday'
+
+  it('the paint bill matches walking beat then prime, paint and polish by hand, and bodywork is not double-charged', () => {
+    // Metal damage alone, no surface damage, sat under otherwise-mint paint -
+    // the case the trailing straighten used to miss: nothing forces a
+    // repaint until the beat stages themselves bare the finish.
+    const zoneStates = zonesWith({
+      bonnet: zone({ metal: 2, surface: 0, finish: 0, primed: false, colour: 'red' }),
+    })
+
+    let hand = zoneStates.bonnet as MetalZoneState
+    let handYen = 0
+    while (hand.metal > 0) {
+      const beat = planMetalPipelineStage('beat', hand)
+      expect(beat.ok).toBe(true)
+      if (beat.ok) {
+        hand = beat.zone as MetalZoneState
+        handYen += beat.materialsCostYen
+      }
+    }
+    // The beats alone have already bared the finish - the fact the walker
+    // has to catch before it prices the repaint.
+    expect(hand.finish).toBe(3)
+    expect(hand.primed).toBe(false)
+
+    const prime = planPipelineStage('prime', hand, FULL_CAPABILITY)
+    expect(prime.ok).toBe(true)
+    if (prime.ok) {
+      hand = prime.zone as MetalZoneState
+      handYen += prime.materialsCostYen
+    }
+    const paint = planPaintStage(hand, hand.colour ?? '', FULL_CAPABILITY, 'street', '')
+    expect(paint.ok).toBe(true)
+    if (paint.ok) {
+      hand = { ...(paint.zone as MetalZoneState), colour: hand.colour }
+      handYen += paint.materialsCostYen
+    }
+    while (hand.finish > 0) {
+      const polish = planPipelineStage('polish', hand, FULL_CAPABILITY)
+      expect(polish.ok).toBe(true)
+      if (polish.ok) {
+        hand = polish.zone as MetalZoneState
+        handYen += polish.materialsCostYen
+      }
+    }
+    expect(hand.metal).toBe(0)
+    expect(hand.finish).toBe(0)
+    expect(handYen).toBeGreaterThan(0)
+
+    const paintBill = bodyPartRepairBillYen(
+      'paint',
+      zoneStates,
+      'mint',
+      fitmentClass,
+      CONTEXT.partsById,
+    )
+    expect(paintBill).toBe(handYen)
+
+    // Filler and a panel are the only things bodywork's own bill charges
+    // for, and this zone needed neither - the repaint the metalwork forced
+    // is priced exactly once, on the paint side, never twice.
+    const bodyworkBill = bodyPartRepairBillYen(
+      'bodywork',
+      zoneStates,
+      'mint',
+      fitmentClass,
+      CONTEXT.partsById,
+    )
+    expect(bodyworkBill).toBe(0)
+  })
+})
+
+describe('metal work above target drags the fill and the repaint with it, even when neither alone would have forced them', () => {
+  const fitmentClass: PartFitmentClass = 'everyday'
+
+  it('bills filler, primer and paint (no polish) for a fine-band repair, landing the zone at surface 0, metal at or below target, finish 1', () => {
+    // Deciding the fill from the PRE-metalwork finish alone missed this
+    // case: the metal is above the fine target, so beating it bares an
+    // otherwise-fine paint, which then cannot be primed over the untouched
+    // surface damage - the fill is owed because the repaint is, not because
+    // the surface alone crossed the target.
+    const zoneStates = zonesWith({
+      bonnet: zone({ metal: 2, surface: 1, finish: 1, primed: false, colour: 'red' }),
+    })
+    const bodyworkBill = bodyworkRepairBillYen(zoneStates, 'fine', fitmentClass, CONTEXT.partsById)
+    const paintBill = paintRepairBillYen(zoneStates, 'fine')
+
+    let hand = zoneStates.bonnet as MetalZoneState
+    while (hand.metal > 0) {
+      const beat = planMetalPipelineStage('beat', hand)
+      expect(beat.ok).toBe(true)
+      if (beat.ok) hand = beat.zone as MetalZoneState
+    }
+    const fill = planMetalPipelineStage('fillAndSand', hand)
+    expect(fill.ok).toBe(true)
+    let handFillerYen = 0
+    if (fill.ok) {
+      hand = fill.zone as MetalZoneState
+      handFillerYen += fill.materialsCostYen
+    }
+    let handFinishYen = 0
+    const prime = planPipelineStage('prime', hand, FULL_CAPABILITY)
+    expect(prime.ok).toBe(true)
+    if (prime.ok) {
+      hand = prime.zone as MetalZoneState
+      handFinishYen += prime.materialsCostYen
+    }
+    const paint = planPaintStage(hand, hand.colour ?? '', FULL_CAPABILITY, 'street', '')
+    expect(paint.ok).toBe(true)
+    if (paint.ok) {
+      hand = { ...(paint.zone as MetalZoneState), colour: hand.colour }
+      handFinishYen += paint.materialsCostYen
+    }
+    // Paint alone reaches the fine threshold - no polish charge on top.
+    expect(hand.finish).toBe(1)
+
+    expect(bodyworkBill).toBe(handFillerYen)
+    expect(paintBill).toBe(handFinishYen)
+    expect(bodyworkBill).toBeGreaterThan(0)
+    expect(paintBill).toBeGreaterThan(0)
+
+    const repaired = zoneStatesRepairedToBand(zoneStates, 'fine').bonnet as MetalZoneState
+    expect(repaired.surface).toBe(0)
+    expect(repaired.metal).toBeLessThanOrEqual(1)
+    expect(repaired.finish).toBe(1)
+  })
+
+  it('a worn-target sibling at the weldable ceiling: the same chain, finish landing at 1, better than the worn floor', () => {
+    const zoneStates = zonesWith({
+      bonnet: zone({ metal: 3, surface: 1, finish: 1, primed: false, colour: 'red' }),
+    })
+    const bodyworkBill = bodyworkRepairBillYen(zoneStates, 'worn', fitmentClass, CONTEXT.partsById)
+    const paintBill = paintRepairBillYen(zoneStates, 'worn')
+    expect(bodyworkBill).toBeGreaterThan(0)
+    expect(paintBill).toBeGreaterThan(0)
+
+    const repaired = zoneStatesRepairedToBand(zoneStates, 'worn').bonnet as MetalZoneState
+    expect(repaired.surface).toBe(0)
+    expect(repaired.metal).toBeLessThanOrEqual(2)
+    expect(repaired.finish).toBe(1)
+  })
+})
+
+describe('invariant: repairing a metal zone never leaves any axis above its target severity', () => {
+  const bandBySeverity: Record<number, ConditionBand> = { 0: 'mint', 1: 'fine', 2: 'worn' }
+  // The finish axis's own bare rung (`BARE_FINISH` in bodyPipeline.ts) -
+  // repeated here as a literal since the module keeps it private.
+  const BARE = 3
+
+  it('holds across the full metal x surface x finish x target sweep, and always bills a repaint when metalwork bares a still-painted zone', () => {
+    for (let metal = 0; metal <= 3; metal++) {
+      for (let surface = 0; surface <= 2; surface++) {
+        for (let finish = 0; finish <= 3; finish++) {
+          for (let targetSeverity = 0; targetSeverity <= 2; targetSeverity++) {
+            const targetBand = bandBySeverity[targetSeverity]!
+            const zoneStates = zonesWith({
+              bonnet: zone({ metal, surface, finish, primed: false, colour: 'red' }),
+            })
+            const repaired = zoneStatesRepairedToBand(zoneStates, targetBand)
+              .bonnet as MetalZoneState
+            const label = `metal ${metal} surface ${surface} finish ${finish} -> ${targetBand}`
+            expect(repaired.metal, label).toBeLessThanOrEqual(targetSeverity)
+            expect(repaired.surface, label).toBeLessThanOrEqual(targetSeverity)
+            expect(repaired.finish, label).toBeLessThanOrEqual(targetSeverity)
+
+            // Metalwork owed above the target always bares whatever paint
+            // the zone still had, and so always owes a priced repaint - the
+            // exact gap the pre-metalwork `needsFill` check used to miss.
+            if (metal > targetSeverity && finish < BARE) {
+              expect(paintRepairBillYen(zoneStates, targetBand), label).toBeGreaterThan(0)
+            }
+          }
+        }
+      }
+    }
   })
 })
 

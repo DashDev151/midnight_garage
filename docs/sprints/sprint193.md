@@ -21,6 +21,7 @@ that decays if it sits.
 | **The Facilities cards' "Fully equipped" label is invisible in the running app.** A second `.maxed` rule in `UpgradesScreen.vue` sets `visibility: hidden` unless `.shown`. | always, whenever a bay type maxes out | trivial |
 | **`statWeights.authenticity` disagreement.** Content sums to **99 across 28 slots**; `carstats/authenticity.md`, `machining-sku-scoping.md` and `desirability-system.md` all state 29 slots summing to 100. | pre-existing, predates the zone work | docs only, but pick a side and make the docs match content |
 | **The pre-push gate flaked once and could not be diagnosed.** Two tests in one unnamed file; the hook truncated its output before the failure block. Two clean runs after. | once | **nothing was changed to make it pass.** Capture the failure block first if it recurs; `TODO.md` has the instructions |
+| **A repair click that resumes an open job silently ignores its own target band.** `findOrCreateJob` keys on car+kind+component (`jobs.ts:909`) and a resume returns the open job unchanged (`jobs.ts:1278`), so a "to mint" click that lands while the fine job is still open spends labour finishing FINE and never creates the mint job. Billing is honest; the delivered band is not what the button said. | day-6 playtest: chassis "to mint" click, 8 labour, car sold with chassis at fine | real fix needed in the repair control: show "resuming: to {band}" when an open job exists, or retarget the job on resume. Found alongside the sprint 220 body-shop rebuild but it is workbench repair, not body pipeline |
 
 ---
 

@@ -216,7 +216,9 @@ export function describeLogEntry(
     case 'car-listed':
       return `Advertising for ${entry.carInstanceId} (${SELLING_CHANNEL_LABELS[entry.channelId]}): ${formatYen(entry.feeYen)}`
     case 'body-materials-used':
-      return `Materials drawn, ${entry.stage} on the ${entry.zoneId}: ${formatYen(entry.costYen)}`
+      return entry.zoneId
+        ? `Materials drawn, ${entry.stage} on the ${entry.zoneId}: ${formatYen(entry.costYen)}`
+        : `Materials drawn, whole-car respray: ${formatYen(entry.costYen)}`
     case 'consumable-bought':
       return `Bought ${consumableLabel(entry.consumableKey)} for ${formatYen(entry.priceYen)}`
     case 'part-bought':
@@ -394,6 +396,13 @@ export function classifyDayReport(
   const rest: string[] = []
   let heatShifts = 0
   let labourTicked = 0
+  // A body-shop day draws filler, primer, paint or polish stage by stage,
+  // zone by zone - `describeLogEntry` reads each draw as its own honest
+  // sentence for the event log, but a dozen of those in one report would
+  // bury the day in prep-and-sand trivia. Summed per car here instead, one
+  // line whatever the panel count (the whole-car respray's own zoneless
+  // entry folds into the same total, per car).
+  const bodyMaterialsByCarId = new Map<string, { totalYen: number; jobs: number }>()
 
   for (const entry of entries) {
     // Every yen is classified once, by the shared law - so a movement the
@@ -432,11 +441,27 @@ export function classifyDayReport(
       case 'job-progress':
         labourTicked += entry.laborSlotsSpent
         break
+      case 'body-materials-used': {
+        const agg = bodyMaterialsByCarId.get(entry.carInstanceId) ?? { totalYen: 0, jobs: 0 }
+        agg.totalYen += entry.costYen
+        agg.jobs += 1
+        bodyMaterialsByCarId.set(entry.carInstanceId, agg)
+        break
+      }
       default:
         if (!MONEY_ONLY_TYPES.has(entry.type) && !NOISE_TYPES.has(entry.type)) {
           rest.push(describeLogEntry(entry, resolveModelName, resolveBuyerName))
         }
     }
+  }
+
+  // One line per car, whatever the panel count - the aggregate this whole
+  // function exists to produce for body work (see the map's own comment
+  // above).
+  for (const [carInstanceId, agg] of bodyMaterialsByCarId) {
+    rest.push(
+      `Body shop materials, ${carInstanceId}: ${formatYen(agg.totalYen)} (${pluralise(agg.jobs, 'job')})`,
+    )
   }
 
   const noise: string[] = []

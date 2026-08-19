@@ -1,0 +1,5947 @@
+{
+  "career": "career-mszqhujo-l2gx7l",
+  "exportedOnDay": 11,
+  "seed": 1992682329,
+  "actions": [
+    {
+      "day": 1,
+      "timestamp": 1787122338854,
+      "type": "attendAuction",
+      "payload": {
+        "tier": "local-yard"
+      },
+      "id": 766
+    },
+    {
+      "day": 1,
+      "timestamp": 1787122344254,
+      "type": "loseAuctionLot",
+      "payload": {
+        "lotId": "lot-1-local-yard-0"
+      },
+      "id": 767
+    },
+    {
+      "day": 1,
+      "timestamp": 1787122349646,
+      "type": "attendAuction",
+      "payload": {
+        "tier": "local-yard"
+      },
+      "id": 768
+    },
+    {
+      "day": 1,
+      "timestamp": 1787122362559,
+      "type": "settleAuctionHammer",
+      "payload": {
+        "lotId": "lot-1-local-yard-2",
+        "priceYen": 43681
+      },
+      "id": 769
+    },
+    {
+      "day": 1,
+      "timestamp": 1787122373039,
+      "type": "acceptServiceJob",
+      "payload": {
+        "offerId": "svc-1-0"
+      },
+      "id": 770
+    },
+    {
+      "day": 1,
+      "timestamp": 1787122377915,
+      "type": "moveCarToSlot",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "to": "service",
+        "slotIndex": 0
+      },
+      "id": 771
+    },
+    {
+      "day": 1,
+      "timestamp": 1787122388497,
+      "type": "removePart",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "carPartId": "cooling"
+      },
+      "id": 772
+    },
+    {
+      "day": 1,
+      "timestamp": 1787122390811,
+      "type": "removePart",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "carPartId": "exhaust"
+      },
+      "id": 773
+    },
+    {
+      "day": 1,
+      "timestamp": 1787122397756,
+      "type": "removePart",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "carPartId": "fuelSystem"
+      },
+      "id": 774
+    },
+    {
+      "day": 1,
+      "timestamp": 1787122401059,
+      "type": "removePart",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "carPartId": "intake"
+      },
+      "id": 775
+    },
+    {
+      "day": 1,
+      "timestamp": 1787122402783,
+      "type": "removeAssembly",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "assemblyId": "engineAssembly"
+      },
+      "id": 776
+    },
+    {
+      "day": 1,
+      "timestamp": 1787122405339,
+      "type": "removeAssemblyMember",
+      "payload": {
+        "containerId": "assembly-car-lot-1-local-yard-2-engineAssembly",
+        "memberSlot": "block"
+      },
+      "id": 777
+    },
+    {
+      "day": 1,
+      "timestamp": 1787122406675,
+      "type": "removeAssemblyMember",
+      "payload": {
+        "containerId": "assembly-car-lot-1-local-yard-2-engineAssembly",
+        "memberSlot": "internals"
+      },
+      "id": 778
+    },
+    {
+      "day": 1,
+      "timestamp": 1787122407771,
+      "type": "removeAssemblyMember",
+      "payload": {
+        "containerId": "assembly-car-lot-1-local-yard-2-engineAssembly",
+        "memberSlot": "headValvetrain"
+      },
+      "id": 779
+    },
+    {
+      "day": 1,
+      "timestamp": 1787122409239,
+      "type": "removeAssemblyMember",
+      "payload": {
+        "containerId": "assembly-car-lot-1-local-yard-2-engineAssembly",
+        "memberSlot": "camsTiming"
+      },
+      "id": 780
+    },
+    {
+      "day": 1,
+      "timestamp": 1787122431895,
+      "type": "removePart",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "carPartId": "ignitionEcu"
+      },
+      "id": 781
+    },
+    {
+      "day": 1,
+      "timestamp": 1787122440439,
+      "type": "removeAssembly",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "assemblyId": "wheelAssembly"
+      },
+      "id": 782
+    },
+    {
+      "day": 1,
+      "timestamp": 1787122442987,
+      "type": "removeAssemblyMember",
+      "payload": {
+        "containerId": "assembly-car-lot-1-local-yard-2-wheelAssembly",
+        "memberSlot": "tyres"
+      },
+      "id": 783
+    },
+    {
+      "day": 1,
+      "timestamp": 1787122444168,
+      "type": "removeAssemblyMember",
+      "payload": {
+        "containerId": "assembly-car-lot-1-local-yard-2-wheelAssembly",
+        "memberSlot": "rims"
+      },
+      "id": 784
+    },
+    {
+      "day": 1,
+      "timestamp": 1787122451229,
+      "type": "removePart",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "carPartId": "springs"
+      },
+      "id": 785
+    },
+    {
+      "day": 1,
+      "timestamp": 1787122453332,
+      "type": "removePart",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "carPartId": "dampers"
+      },
+      "id": 786
+    },
+    {
+      "day": 1,
+      "timestamp": 1787122455369,
+      "type": "removePart",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "carPartId": "steering"
+      },
+      "id": 787
+    },
+    {
+      "day": 1,
+      "timestamp": 1787122457667,
+      "type": "removePart",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "carPartId": "brakePadsDiscs"
+      },
+      "id": 788
+    },
+    {
+      "day": 1,
+      "timestamp": 1787122459492,
+      "type": "removePart",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "carPartId": "brakeCalipersLines"
+      },
+      "id": 789
+    },
+    {
+      "day": 1,
+      "timestamp": 1787122463826,
+      "type": "removePart",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "carPartId": "driveline"
+      },
+      "id": 790
+    },
+    {
+      "day": 1,
+      "timestamp": 1787122465580,
+      "type": "removePart",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "carPartId": "differential"
+      },
+      "id": 791
+    },
+    {
+      "day": 1,
+      "timestamp": 1787122468074,
+      "type": "removeAssembly",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "assemblyId": "gearboxAssembly"
+      },
+      "id": 792
+    },
+    {
+      "day": 1,
+      "timestamp": 1787122472492,
+      "type": "removeAssemblyMember",
+      "payload": {
+        "containerId": "assembly-car-lot-1-local-yard-2-gearboxAssembly",
+        "memberSlot": "gearbox"
+      },
+      "id": 793
+    },
+    {
+      "day": 1,
+      "timestamp": 1787122484766,
+      "type": "repair",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "componentId": "body",
+        "targetBand": "fine",
+        "carPartId": "chassis",
+        "costYen": 1820,
+        "laborSlotsUsed": 12
+      },
+      "id": 794
+    },
+    {
+      "day": 1,
+      "timestamp": 1787122556511,
+      "type": "checkoutCart",
+      "payload": {
+        "deliverySpeed": "standard",
+        "boughtCount": 3,
+        "remainingCount": 0,
+        "items": [
+          {
+            "partId": "shitbox-stock-clutch",
+            "priceYen": 3900
+          },
+          {
+            "partId": "shitbox-stock-tyres",
+            "priceYen": 3100
+          },
+          {
+            "partId": "shitbox-stock-brake-pads-discs",
+            "priceYen": 2100
+          }
+        ],
+        "totalYen": 9100
+      },
+      "id": 795
+    },
+    {
+      "day": 1,
+      "timestamp": 1787122568984,
+      "type": "placeOnStation",
+      "payload": {
+        "station": "workbench",
+        "partInstanceId": "car-lot-1-local-yard-2-part-gearbox"
+      },
+      "id": 796
+    },
+    {
+      "day": 1,
+      "timestamp": 1787122572200,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "car-lot-1-local-yard-2-part-gearbox",
+        "targetBand": "worn"
+      },
+      "id": 797
+    },
+    {
+      "day": 1,
+      "timestamp": 1787122575500,
+      "type": "takeFromStation",
+      "payload": {
+        "station": "workbench"
+      },
+      "id": 798
+    },
+    {
+      "day": 1,
+      "timestamp": 1787122578382,
+      "type": "placeOnStation",
+      "payload": {
+        "station": "workbench",
+        "partInstanceId": "car-lot-1-local-yard-2-part-gearbox"
+      },
+      "id": 799
+    },
+    {
+      "day": 1,
+      "timestamp": 1787122580246,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "car-lot-1-local-yard-2-part-gearbox",
+        "targetBand": "fine"
+      },
+      "id": 800
+    },
+    {
+      "day": 1,
+      "timestamp": 1787122582725,
+      "type": "takeFromStation",
+      "payload": {
+        "station": "workbench"
+      },
+      "id": 801
+    },
+    {
+      "day": 1,
+      "timestamp": 1787122585340,
+      "type": "placeOnStation",
+      "payload": {
+        "station": "workbench",
+        "partInstanceId": "car-lot-1-local-yard-2-part-differential"
+      },
+      "id": 802
+    },
+    {
+      "day": 1,
+      "timestamp": 1787122586466,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "car-lot-1-local-yard-2-part-differential",
+        "targetBand": "worn"
+      },
+      "id": 803
+    },
+    {
+      "day": 1,
+      "timestamp": 1787122592617,
+      "type": "endDay",
+      "payload": {
+        "endedDay": 1
+      },
+      "id": 804
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122600221,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "car-lot-1-local-yard-2-part-differential",
+        "targetBand": "worn"
+      },
+      "id": 805
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122601562,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "car-lot-1-local-yard-2-part-differential",
+        "targetBand": "fine"
+      },
+      "id": 806
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122602254,
+      "type": "takeFromStation",
+      "payload": {
+        "station": "workbench"
+      },
+      "id": 807
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122605802,
+      "type": "moveCarToSlot",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "to": "parking",
+        "slotIndex": 2
+      },
+      "id": 808
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122607782,
+      "type": "moveCarToSlot",
+      "payload": {
+        "carId": "svc-car-1-0",
+        "to": "service",
+        "slotIndex": 0
+      },
+      "id": 809
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122613918,
+      "type": "removePart",
+      "payload": {
+        "carId": "svc-car-1-0",
+        "carPartId": "cooling"
+      },
+      "id": 810
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122623944,
+      "type": "placeOnStation",
+      "payload": {
+        "station": "workbench",
+        "partInstanceId": "svc-car-1-0-part-cooling"
+      },
+      "id": 811
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122625146,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "svc-car-1-0-part-cooling",
+        "targetBand": "fine"
+      },
+      "id": 812
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122627314,
+      "type": "takeFromStation",
+      "payload": {
+        "station": "workbench"
+      },
+      "id": 813
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122637287,
+      "type": "install",
+      "payload": {
+        "carId": "svc-car-1-0",
+        "componentId": "engine",
+        "partInstanceId": "svc-car-1-0-part-cooling",
+        "carPartId": "cooling",
+        "laborSlotsUsed": 3
+      },
+      "id": 814
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122643538,
+      "type": "completeServiceJob",
+      "payload": {
+        "jobId": "svc-1-0",
+        "outcome": "paid",
+        "payoutYen": 6244
+      },
+      "id": 815
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122655574,
+      "type": "acceptServiceJob",
+      "payload": {
+        "offerId": "svc-2-0"
+      },
+      "id": 816
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122657850,
+      "type": "acceptMission",
+      "payload": {
+        "missionId": "four-wheels"
+      },
+      "id": 817
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122688666,
+      "type": "placeOnStation",
+      "payload": {
+        "station": "workbench",
+        "partInstanceId": "car-lot-1-local-yard-2-part-driveline"
+      },
+      "id": 818
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122690018,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "car-lot-1-local-yard-2-part-driveline",
+        "targetBand": "worn"
+      },
+      "id": 819
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122690468,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "car-lot-1-local-yard-2-part-driveline",
+        "targetBand": "fine"
+      },
+      "id": 820
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122693932,
+      "type": "takeFromStation",
+      "payload": {
+        "station": "workbench"
+      },
+      "id": 821
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122695756,
+      "type": "placeOnStation",
+      "payload": {
+        "station": "workbench",
+        "partInstanceId": "car-lot-1-local-yard-2-part-brakeCalipersLines"
+      },
+      "id": 822
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122696944,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "car-lot-1-local-yard-2-part-brakeCalipersLines",
+        "targetBand": "worn"
+      },
+      "id": 823
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122697388,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "car-lot-1-local-yard-2-part-brakeCalipersLines",
+        "targetBand": "fine"
+      },
+      "id": 824
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122699585,
+      "type": "takeFromStation",
+      "payload": {
+        "station": "workbench"
+      },
+      "id": 825
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122701495,
+      "type": "placeOnStation",
+      "payload": {
+        "station": "workbench",
+        "partInstanceId": "car-lot-1-local-yard-2-part-brakePadsDiscs"
+      },
+      "id": 826
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122706210,
+      "type": "takeFromStation",
+      "payload": {
+        "station": "workbench"
+      },
+      "id": 827
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122709370,
+      "type": "sellPart",
+      "payload": {
+        "partInstanceId": "car-lot-1-local-yard-2-part-brakePadsDiscs",
+        "priceYen": 63
+      },
+      "id": 828
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122713245,
+      "type": "placeOnStation",
+      "payload": {
+        "station": "workbench",
+        "partInstanceId": "car-lot-1-local-yard-2-part-steering"
+      },
+      "id": 829
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122714199,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "car-lot-1-local-yard-2-part-steering",
+        "targetBand": "worn"
+      },
+      "id": 830
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122714595,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "car-lot-1-local-yard-2-part-steering",
+        "targetBand": "fine"
+      },
+      "id": 831
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122717928,
+      "type": "takeFromStation",
+      "payload": {
+        "station": "workbench"
+      },
+      "id": 832
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122722393,
+      "type": "placeOnStation",
+      "payload": {
+        "station": "workbench",
+        "partInstanceId": "car-lot-1-local-yard-2-part-dampers"
+      },
+      "id": 833
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122723172,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "car-lot-1-local-yard-2-part-dampers",
+        "targetBand": "worn"
+      },
+      "id": 834
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122723565,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "car-lot-1-local-yard-2-part-dampers",
+        "targetBand": "fine"
+      },
+      "id": 835
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122724653,
+      "type": "takeFromStation",
+      "payload": {
+        "station": "workbench"
+      },
+      "id": 836
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122726292,
+      "type": "placeOnStation",
+      "payload": {
+        "station": "workbench",
+        "partInstanceId": "car-lot-1-local-yard-2-part-springs"
+      },
+      "id": 837
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122727043,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "car-lot-1-local-yard-2-part-springs",
+        "targetBand": "worn"
+      },
+      "id": 838
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122727377,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "car-lot-1-local-yard-2-part-springs",
+        "targetBand": "fine"
+      },
+      "id": 839
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122728293,
+      "type": "takeFromStation",
+      "payload": {
+        "station": "workbench"
+      },
+      "id": 840
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122729575,
+      "type": "placeOnStation",
+      "payload": {
+        "station": "workbench",
+        "partInstanceId": "car-lot-1-local-yard-2-part-rims"
+      },
+      "id": 841
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122730383,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "car-lot-1-local-yard-2-part-rims",
+        "targetBand": "worn"
+      },
+      "id": 842
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122730525,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "car-lot-1-local-yard-2-part-rims",
+        "targetBand": "fine"
+      },
+      "id": 843
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122731469,
+      "type": "takeFromStation",
+      "payload": {
+        "station": "workbench"
+      },
+      "id": 844
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122733932,
+      "type": "sellPart",
+      "payload": {
+        "partInstanceId": "car-lot-1-local-yard-2-part-tyres",
+        "priceYen": 93
+      },
+      "id": 845
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122735656,
+      "type": "placeOnStation",
+      "payload": {
+        "station": "workbench",
+        "partInstanceId": "car-lot-1-local-yard-2-part-ignitionEcu"
+      },
+      "id": 846
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122736393,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "car-lot-1-local-yard-2-part-ignitionEcu",
+        "targetBand": "worn"
+      },
+      "id": 847
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122736749,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "car-lot-1-local-yard-2-part-ignitionEcu",
+        "targetBand": "fine"
+      },
+      "id": 848
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122737589,
+      "type": "takeFromStation",
+      "payload": {
+        "station": "workbench"
+      },
+      "id": 849
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122742413,
+      "type": "placeOnStation",
+      "payload": {
+        "station": "workbench",
+        "partInstanceId": "car-lot-1-local-yard-2-part-headValvetrain"
+      },
+      "id": 850
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122743243,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "car-lot-1-local-yard-2-part-headValvetrain",
+        "targetBand": "worn"
+      },
+      "id": 851
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122743904,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "car-lot-1-local-yard-2-part-headValvetrain",
+        "targetBand": "fine"
+      },
+      "id": 852
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122745945,
+      "type": "takeFromStation",
+      "payload": {
+        "station": "workbench"
+      },
+      "id": 853
+    },
+    {
+      "day": 2,
+      "timestamp": 1787122756383,
+      "type": "endDay",
+      "payload": {
+        "endedDay": 2
+      },
+      "id": 854
+    },
+    {
+      "day": 3,
+      "timestamp": 1787122762999,
+      "type": "moveCarToSlot",
+      "payload": {
+        "carId": "svc-car-2-0",
+        "to": "service",
+        "slotIndex": 0
+      },
+      "id": 855
+    },
+    {
+      "day": 3,
+      "timestamp": 1787122768373,
+      "type": "moveCarToSlot",
+      "payload": {
+        "carId": "svc-car-2-0",
+        "to": "body",
+        "slotIndex": 0
+      },
+      "id": 856
+    },
+    {
+      "day": 3,
+      "timestamp": 1787122820309,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "svc-car-2-0",
+        "zoneId": "left-rear",
+        "stage": "beat",
+        "laborSlotsUsed": 3
+      },
+      "id": 857
+    },
+    {
+      "day": 3,
+      "timestamp": 1787122829350,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "svc-car-2-0",
+        "zoneId": "left-rear",
+        "stage": "beat",
+        "laborSlotsUsed": 3
+      },
+      "id": 858
+    },
+    {
+      "day": 3,
+      "timestamp": 1787122832603,
+      "type": "buyConsumableTin",
+      "payload": {
+        "id": "filler",
+        "priceYen": 5000
+      },
+      "id": 859
+    },
+    {
+      "day": 3,
+      "timestamp": 1787122848335,
+      "type": "buyConsumableTin",
+      "payload": {
+        "id": "paper",
+        "priceYen": 1400
+      },
+      "id": 860
+    },
+    {
+      "day": 3,
+      "timestamp": 1787122856505,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "svc-car-2-0",
+        "zoneId": "left-rear",
+        "stage": "fillAndSand",
+        "laborSlotsUsed": 2
+      },
+      "id": 861
+    },
+    {
+      "day": 3,
+      "timestamp": 1787122881490,
+      "type": "completeServiceJob",
+      "payload": {
+        "jobId": "svc-2-0",
+        "outcome": "paid",
+        "payoutYen": 6701
+      },
+      "id": 862
+    },
+    {
+      "day": 3,
+      "timestamp": 1787122886033,
+      "type": "acceptServiceJob",
+      "payload": {
+        "offerId": "svc-3-0"
+      },
+      "id": 863
+    },
+    {
+      "day": 3,
+      "timestamp": 1787122892765,
+      "type": "moveCarToSlot",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "to": "body",
+        "slotIndex": 0
+      },
+      "id": 864
+    },
+    {
+      "day": 3,
+      "timestamp": 1787122899303,
+      "type": "placeOnStation",
+      "payload": {
+        "station": "workbench",
+        "partInstanceId": "car-lot-1-local-yard-2-part-block"
+      },
+      "id": 865
+    },
+    {
+      "day": 3,
+      "timestamp": 1787122901081,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "car-lot-1-local-yard-2-part-block",
+        "targetBand": "worn"
+      },
+      "id": 866
+    },
+    {
+      "day": 3,
+      "timestamp": 1787122903771,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "car-lot-1-local-yard-2-part-block",
+        "targetBand": "fine"
+      },
+      "id": 867
+    },
+    {
+      "day": 3,
+      "timestamp": 1787122904779,
+      "type": "takeFromStation",
+      "payload": {
+        "station": "workbench"
+      },
+      "id": 868
+    },
+    {
+      "day": 3,
+      "timestamp": 1787122906953,
+      "type": "placeOnStation",
+      "payload": {
+        "station": "workbench",
+        "partInstanceId": "car-lot-1-local-yard-2-part-intake"
+      },
+      "id": 869
+    },
+    {
+      "day": 3,
+      "timestamp": 1787122908631,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "car-lot-1-local-yard-2-part-intake",
+        "targetBand": "worn"
+      },
+      "id": 870
+    },
+    {
+      "day": 3,
+      "timestamp": 1787122909011,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "car-lot-1-local-yard-2-part-intake",
+        "targetBand": "fine"
+      },
+      "id": 871
+    },
+    {
+      "day": 3,
+      "timestamp": 1787122910237,
+      "type": "takeFromStation",
+      "payload": {
+        "station": "workbench"
+      },
+      "id": 872
+    },
+    {
+      "day": 3,
+      "timestamp": 1787122913111,
+      "type": "placeOnStation",
+      "payload": {
+        "station": "workbench",
+        "partInstanceId": "car-lot-1-local-yard-2-part-fuelSystem"
+      },
+      "id": 873
+    },
+    {
+      "day": 3,
+      "timestamp": 1787122914043,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "car-lot-1-local-yard-2-part-fuelSystem",
+        "targetBand": "worn"
+      },
+      "id": 874
+    },
+    {
+      "day": 3,
+      "timestamp": 1787122914431,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "car-lot-1-local-yard-2-part-fuelSystem",
+        "targetBand": "fine"
+      },
+      "id": 875
+    },
+    {
+      "day": 3,
+      "timestamp": 1787122916195,
+      "type": "takeFromStation",
+      "payload": {
+        "station": "workbench"
+      },
+      "id": 876
+    },
+    {
+      "day": 3,
+      "timestamp": 1787122919799,
+      "type": "placeOnStation",
+      "payload": {
+        "station": "workbench",
+        "partInstanceId": "car-lot-1-local-yard-2-part-exhaust"
+      },
+      "id": 877
+    },
+    {
+      "day": 3,
+      "timestamp": 1787122920653,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "car-lot-1-local-yard-2-part-exhaust",
+        "targetBand": "worn"
+      },
+      "id": 878
+    },
+    {
+      "day": 3,
+      "timestamp": 1787122921017,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "car-lot-1-local-yard-2-part-exhaust",
+        "targetBand": "fine"
+      },
+      "id": 879
+    },
+    {
+      "day": 3,
+      "timestamp": 1787122922735,
+      "type": "takeFromStation",
+      "payload": {
+        "station": "workbench"
+      },
+      "id": 880
+    },
+    {
+      "day": 3,
+      "timestamp": 1787122923899,
+      "type": "placeOnStation",
+      "payload": {
+        "station": "workbench",
+        "partInstanceId": "car-lot-1-local-yard-2-part-cooling"
+      },
+      "id": 881
+    },
+    {
+      "day": 3,
+      "timestamp": 1787122924629,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "car-lot-1-local-yard-2-part-cooling",
+        "targetBand": "worn"
+      },
+      "id": 882
+    },
+    {
+      "day": 3,
+      "timestamp": 1787122924993,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "car-lot-1-local-yard-2-part-cooling",
+        "targetBand": "fine"
+      },
+      "id": 883
+    },
+    {
+      "day": 3,
+      "timestamp": 1787122926164,
+      "type": "takeFromStation",
+      "payload": {
+        "station": "workbench"
+      },
+      "id": 884
+    },
+    {
+      "day": 3,
+      "timestamp": 1787122931196,
+      "type": "placeOnStation",
+      "payload": {
+        "station": "workbench",
+        "partInstanceId": "car-lot-1-local-yard-2-part-camsTiming"
+      },
+      "id": 885
+    },
+    {
+      "day": 3,
+      "timestamp": 1787122932924,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "car-lot-1-local-yard-2-part-camsTiming",
+        "targetBand": "fine"
+      },
+      "id": 886
+    },
+    {
+      "day": 3,
+      "timestamp": 1787122934062,
+      "type": "takeFromStation",
+      "payload": {
+        "station": "workbench"
+      },
+      "id": 887
+    },
+    {
+      "day": 3,
+      "timestamp": 1787122937635,
+      "type": "placeOnStation",
+      "payload": {
+        "station": "workbench",
+        "partInstanceId": "car-lot-1-local-yard-2-part-internals"
+      },
+      "id": 888
+    },
+    {
+      "day": 3,
+      "timestamp": 1787122938623,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "car-lot-1-local-yard-2-part-internals",
+        "targetBand": "fine"
+      },
+      "id": 889
+    },
+    {
+      "day": 3,
+      "timestamp": 1787122939949,
+      "type": "takeFromStation",
+      "payload": {
+        "station": "workbench"
+      },
+      "id": 890
+    },
+    {
+      "day": 3,
+      "timestamp": 1787122967879,
+      "type": "buyConsumableTin",
+      "payload": {
+        "id": "polish",
+        "priceYen": 4050
+      },
+      "id": 891
+    },
+    {
+      "day": 3,
+      "timestamp": 1787122969689,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "zoneId": "front-bumper",
+        "stage": "polish",
+        "laborSlotsUsed": 1
+      },
+      "id": 892
+    },
+    {
+      "day": 3,
+      "timestamp": 1787122977835,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "zoneId": "bonnet",
+        "stage": "beat",
+        "laborSlotsUsed": 3
+      },
+      "id": 893
+    },
+    {
+      "day": 3,
+      "timestamp": 1787122981789,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "zoneId": "bonnet",
+        "stage": "beat",
+        "laborSlotsUsed": 3
+      },
+      "id": 894
+    },
+    {
+      "day": 3,
+      "timestamp": 1787122984025,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "zoneId": "bonnet",
+        "stage": "fillAndSand",
+        "laborSlotsUsed": 2
+      },
+      "id": 895
+    },
+    {
+      "day": 3,
+      "timestamp": 1787122997064,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "zoneId": "left-front",
+        "stage": "beat",
+        "laborSlotsUsed": 3
+      },
+      "id": 896
+    },
+    {
+      "day": 3,
+      "timestamp": 1787122998143,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "zoneId": "left-front",
+        "stage": "fillAndSand",
+        "laborSlotsUsed": 2
+      },
+      "id": 897
+    },
+    {
+      "day": 3,
+      "timestamp": 1787123001226,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "zoneId": "left-front",
+        "stage": "polish",
+        "laborSlotsUsed": 1
+      },
+      "id": 898
+    },
+    {
+      "day": 3,
+      "timestamp": 1787123004876,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "zoneId": "skirts",
+        "stage": "polish",
+        "laborSlotsUsed": 1
+      },
+      "id": 899
+    },
+    {
+      "day": 3,
+      "timestamp": 1787123007104,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "zoneId": "left-rear",
+        "stage": "beat",
+        "laborSlotsUsed": 3
+      },
+      "id": 900
+    },
+    {
+      "day": 3,
+      "timestamp": 1787123008347,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "zoneId": "left-rear",
+        "stage": "beat",
+        "laborSlotsUsed": 3
+      },
+      "id": 901
+    },
+    {
+      "day": 3,
+      "timestamp": 1787123010421,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "zoneId": "left-rear",
+        "stage": "fillAndSand",
+        "laborSlotsUsed": 2
+      },
+      "id": 902
+    },
+    {
+      "day": 3,
+      "timestamp": 1787123019490,
+      "type": "playClockPaused",
+      "payload": {
+        "activeMs": 685004
+      },
+      "id": 903
+    },
+    {
+      "day": 3,
+      "timestamp": 1787123078830,
+      "type": "endDay",
+      "payload": {
+        "endedDay": 3
+      },
+      "id": 904
+    },
+    {
+      "day": 4,
+      "timestamp": 1787123083256,
+      "type": "playClockResumed",
+      "payload": {
+        "activeMs": 685004
+      },
+      "id": 905
+    },
+    {
+      "day": 4,
+      "timestamp": 1787123090264,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "zoneId": "left-rear",
+        "stage": "polish",
+        "laborSlotsUsed": 1
+      },
+      "id": 906
+    },
+    {
+      "day": 4,
+      "timestamp": 1787123095628,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "zoneId": "right-front",
+        "stage": "polish",
+        "laborSlotsUsed": 1
+      },
+      "id": 907
+    },
+    {
+      "day": 4,
+      "timestamp": 1787123100560,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "zoneId": "right-rear",
+        "stage": "beat",
+        "laborSlotsUsed": 3
+      },
+      "id": 908
+    },
+    {
+      "day": 4,
+      "timestamp": 1787123102485,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "zoneId": "right-rear",
+        "stage": "beat",
+        "laborSlotsUsed": 3
+      },
+      "id": 909
+    },
+    {
+      "day": 4,
+      "timestamp": 1787123105275,
+      "type": "buyConsumableTin",
+      "payload": {
+        "id": "filler",
+        "priceYen": 5000
+      },
+      "id": 910
+    },
+    {
+      "day": 4,
+      "timestamp": 1787123112482,
+      "type": "buyConsumableTin",
+      "payload": {
+        "id": "paper",
+        "priceYen": 1400
+      },
+      "id": 911
+    },
+    {
+      "day": 4,
+      "timestamp": 1787123123624,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "zoneId": "right-rear",
+        "stage": "fillAndSand",
+        "laborSlotsUsed": 2
+      },
+      "id": 912
+    },
+    {
+      "day": 4,
+      "timestamp": 1787123125256,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "zoneId": "right-rear",
+        "stage": "polish",
+        "laborSlotsUsed": 1
+      },
+      "id": 913
+    },
+    {
+      "day": 4,
+      "timestamp": 1787123131678,
+      "type": "removePart",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "carPartId": "dashGauges"
+      },
+      "id": 914
+    },
+    {
+      "day": 4,
+      "timestamp": 1787123136710,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "zoneId": "boot",
+        "stage": "beat",
+        "laborSlotsUsed": 3
+      },
+      "id": 915
+    },
+    {
+      "day": 4,
+      "timestamp": 1787123137348,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "zoneId": "boot",
+        "stage": "beat",
+        "laborSlotsUsed": 3
+      },
+      "id": 916
+    },
+    {
+      "day": 4,
+      "timestamp": 1787123138294,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "zoneId": "boot",
+        "stage": "fillAndSand",
+        "laborSlotsUsed": 2
+      },
+      "id": 917
+    },
+    {
+      "day": 4,
+      "timestamp": 1787123184121,
+      "type": "playClockPaused",
+      "payload": {
+        "activeMs": 785007
+      },
+      "id": 918
+    },
+    {
+      "day": 4,
+      "timestamp": 1787156395495,
+      "type": "placeOnStation",
+      "payload": {
+        "station": "workbench",
+        "partInstanceId": "car-lot-1-local-yard-2-part-dashGauges"
+      },
+      "id": 919
+    },
+    {
+      "day": 4,
+      "timestamp": 1787156397490,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "car-lot-1-local-yard-2-part-dashGauges",
+        "targetBand": "worn"
+      },
+      "id": 920
+    },
+    {
+      "day": 4,
+      "timestamp": 1787156398810,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "car-lot-1-local-yard-2-part-dashGauges",
+        "targetBand": "fine"
+      },
+      "id": 921
+    },
+    {
+      "day": 4,
+      "timestamp": 1787156400098,
+      "type": "takeFromStation",
+      "payload": {
+        "station": "workbench"
+      },
+      "id": 922
+    },
+    {
+      "day": 4,
+      "timestamp": 1787156423563,
+      "type": "buyConsumableTin",
+      "payload": {
+        "id": "primer",
+        "priceYen": 5850
+      },
+      "id": 923
+    },
+    {
+      "day": 4,
+      "timestamp": 1787156430162,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "zoneId": "rear-bumper",
+        "stage": "prime",
+        "laborSlotsUsed": 1
+      },
+      "id": 924
+    },
+    {
+      "day": 4,
+      "timestamp": 1787156433647,
+      "type": "buyPaintTin",
+      "payload": {
+        "finish": "solid",
+        "size": "small",
+        "colour": "yellow",
+        "priceYen": 4200
+      },
+      "id": 925
+    },
+    {
+      "day": 4,
+      "timestamp": 1787156435827,
+      "type": "pipelinePaint",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "zoneId": "rear-bumper",
+        "colour": "yellow",
+        "grade": "stock",
+        "laborSlotsUsed": 2
+      },
+      "id": 926
+    },
+    {
+      "day": 4,
+      "timestamp": 1787156474874,
+      "type": "install",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "componentId": "interior",
+        "partInstanceId": "car-lot-1-local-yard-2-part-dashGauges",
+        "carPartId": "dashGauges",
+        "laborSlotsUsed": 0
+      },
+      "id": 927
+    },
+    {
+      "day": 4,
+      "timestamp": 1787156495838,
+      "type": "checkoutCart",
+      "payload": {
+        "deliverySpeed": "standard",
+        "boughtCount": 2,
+        "remainingCount": 0,
+        "items": [
+          {
+            "partId": "shitbox-stock-aero",
+            "priceYen": 3600
+          },
+          {
+            "partId": "shitbox-stock-seats",
+            "priceYen": 4900
+          }
+        ],
+        "totalYen": 8500
+      },
+      "id": 928
+    },
+    {
+      "day": 4,
+      "timestamp": 1787156543611,
+      "type": "moveCarToSlot",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "to": "service",
+        "slotIndex": 0
+      },
+      "id": 929
+    },
+    {
+      "day": 4,
+      "timestamp": 1787156552961,
+      "type": "fitAssemblyMember",
+      "payload": {
+        "containerId": "assembly-car-lot-1-local-yard-2-engineAssembly",
+        "memberSlot": "block",
+        "partInstanceId": "car-lot-1-local-yard-2-part-block"
+      },
+      "id": 930
+    },
+    {
+      "day": 4,
+      "timestamp": 1787156555628,
+      "type": "fitAssemblyMember",
+      "payload": {
+        "containerId": "assembly-car-lot-1-local-yard-2-engineAssembly",
+        "memberSlot": "internals",
+        "partInstanceId": "car-lot-1-local-yard-2-part-internals"
+      },
+      "id": 931
+    },
+    {
+      "day": 4,
+      "timestamp": 1787156559700,
+      "type": "fitAssemblyMember",
+      "payload": {
+        "containerId": "assembly-car-lot-1-local-yard-2-engineAssembly",
+        "memberSlot": "headValvetrain",
+        "partInstanceId": "car-lot-1-local-yard-2-part-headValvetrain"
+      },
+      "id": 932
+    },
+    {
+      "day": 4,
+      "timestamp": 1787156563931,
+      "type": "fitAssemblyMember",
+      "payload": {
+        "containerId": "assembly-car-lot-1-local-yard-2-engineAssembly",
+        "memberSlot": "camsTiming",
+        "partInstanceId": "car-lot-1-local-yard-2-part-camsTiming"
+      },
+      "id": 933
+    },
+    {
+      "day": 4,
+      "timestamp": 1787156566647,
+      "type": "refitAssembly",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "assemblyId": "engineAssembly"
+      },
+      "id": 934
+    },
+    {
+      "day": 4,
+      "timestamp": 1787156571584,
+      "type": "install",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "componentId": "engine",
+        "partInstanceId": "car-lot-1-local-yard-2-part-cooling",
+        "carPartId": "cooling",
+        "laborSlotsUsed": 3
+      },
+      "id": 935
+    },
+    {
+      "day": 4,
+      "timestamp": 1787156574723,
+      "type": "install",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "componentId": "engine",
+        "partInstanceId": "car-lot-1-local-yard-2-part-intake",
+        "carPartId": "intake",
+        "laborSlotsUsed": 3
+      },
+      "id": 936
+    },
+    {
+      "day": 4,
+      "timestamp": 1787156577340,
+      "type": "install",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "componentId": "engine",
+        "partInstanceId": "car-lot-1-local-yard-2-part-ignitionEcu",
+        "carPartId": "ignitionEcu",
+        "laborSlotsUsed": 3
+      },
+      "id": 937
+    },
+    {
+      "day": 4,
+      "timestamp": 1787156579627,
+      "type": "install",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "componentId": "engine",
+        "partInstanceId": "car-lot-1-local-yard-2-part-fuelSystem",
+        "carPartId": "fuelSystem",
+        "laborSlotsUsed": 3
+      },
+      "id": 938
+    },
+    {
+      "day": 4,
+      "timestamp": 1787156599609,
+      "type": "fitAssemblyMember",
+      "payload": {
+        "containerId": "assembly-car-lot-1-local-yard-2-gearboxAssembly",
+        "memberSlot": "gearbox",
+        "partInstanceId": "car-lot-1-local-yard-2-part-gearbox"
+      },
+      "id": 939
+    },
+    {
+      "day": 4,
+      "timestamp": 1787156604453,
+      "type": "fitAssemblyMember",
+      "payload": {
+        "containerId": "assembly-car-lot-1-local-yard-2-gearboxAssembly",
+        "memberSlot": "clutch",
+        "partInstanceId": "part-0"
+      },
+      "id": 940
+    },
+    {
+      "day": 4,
+      "timestamp": 1787156608420,
+      "type": "fitAssemblyMember",
+      "payload": {
+        "containerId": "assembly-car-lot-1-local-yard-2-wheelAssembly",
+        "memberSlot": "rims",
+        "partInstanceId": "car-lot-1-local-yard-2-part-rims"
+      },
+      "id": 941
+    },
+    {
+      "day": 4,
+      "timestamp": 1787156611095,
+      "type": "fitAssemblyMember",
+      "payload": {
+        "containerId": "assembly-car-lot-1-local-yard-2-wheelAssembly",
+        "memberSlot": "tyres",
+        "partInstanceId": "part-1"
+      },
+      "id": 942
+    },
+    {
+      "day": 4,
+      "timestamp": 1787156620933,
+      "type": "install",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "componentId": "suspension",
+        "partInstanceId": "car-lot-1-local-yard-2-part-dampers",
+        "carPartId": "dampers",
+        "laborSlotsUsed": 9
+      },
+      "id": 943
+    },
+    {
+      "day": 4,
+      "timestamp": 1787156623925,
+      "type": "install",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "componentId": "suspension",
+        "partInstanceId": "car-lot-1-local-yard-2-part-springs",
+        "carPartId": "springs",
+        "laborSlotsUsed": 9
+      },
+      "id": 944
+    },
+    {
+      "day": 4,
+      "timestamp": 1787156649933,
+      "type": "install",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "componentId": "suspension",
+        "partInstanceId": "part-2",
+        "carPartId": "brakePadsDiscs",
+        "laborSlotsUsed": 0
+      },
+      "id": 945
+    },
+    {
+      "day": 4,
+      "timestamp": 1787156653492,
+      "type": "endDay",
+      "payload": {
+        "endedDay": 4
+      },
+      "id": 946
+    },
+    {
+      "day": 5,
+      "timestamp": 1787156655109,
+      "type": "install",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "componentId": "suspension",
+        "partInstanceId": "part-2",
+        "carPartId": "brakePadsDiscs",
+        "laborSlotsUsed": 3
+      },
+      "id": 947
+    },
+    {
+      "day": 5,
+      "timestamp": 1787156659809,
+      "type": "install",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "componentId": "suspension",
+        "partInstanceId": "car-lot-1-local-yard-2-part-brakeCalipersLines",
+        "carPartId": "brakeCalipersLines",
+        "laborSlotsUsed": 3
+      },
+      "id": 948
+    },
+    {
+      "day": 5,
+      "timestamp": 1787156664510,
+      "type": "install",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "componentId": "drivetrain",
+        "partInstanceId": "car-lot-1-local-yard-2-part-differential",
+        "carPartId": "differential",
+        "laborSlotsUsed": 3
+      },
+      "id": 949
+    },
+    {
+      "day": 5,
+      "timestamp": 1787156670154,
+      "type": "refitAssembly",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "assemblyId": "gearboxAssembly"
+      },
+      "id": 950
+    },
+    {
+      "day": 5,
+      "timestamp": 1787156673031,
+      "type": "install",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "componentId": "drivetrain",
+        "partInstanceId": "car-lot-1-local-yard-2-part-driveline",
+        "carPartId": "driveline",
+        "laborSlotsUsed": 3
+      },
+      "id": 951
+    },
+    {
+      "day": 5,
+      "timestamp": 1787156689239,
+      "type": "install",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "componentId": "suspension",
+        "partInstanceId": "car-lot-1-local-yard-2-part-steering",
+        "carPartId": "steering",
+        "laborSlotsUsed": 3
+      },
+      "id": 952
+    },
+    {
+      "day": 5,
+      "timestamp": 1787156694910,
+      "type": "refitAssembly",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "assemblyId": "wheelAssembly"
+      },
+      "id": 953
+    },
+    {
+      "day": 5,
+      "timestamp": 1787156710440,
+      "type": "checkoutCart",
+      "payload": {
+        "deliverySpeed": "express",
+        "boughtCount": 1,
+        "remainingCount": 0,
+        "items": [
+          {
+            "partId": "shitbox-stock-anti-roll-bars",
+            "priceYen": 1870
+          }
+        ],
+        "totalYen": 1870
+      },
+      "id": 954
+    },
+    {
+      "day": 5,
+      "timestamp": 1787156723119,
+      "type": "install",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "componentId": "engine",
+        "partInstanceId": "car-lot-1-local-yard-2-part-exhaust",
+        "carPartId": "exhaust",
+        "laborSlotsUsed": 3
+      },
+      "id": 955
+    },
+    {
+      "day": 5,
+      "timestamp": 1787156726999,
+      "type": "install",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "componentId": "suspension",
+        "partInstanceId": "part-5",
+        "carPartId": "antiRollBars",
+        "laborSlotsUsed": 3
+      },
+      "id": 956
+    },
+    {
+      "day": 5,
+      "timestamp": 1787156750188,
+      "type": "install",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "componentId": "interior",
+        "partInstanceId": "part-4",
+        "carPartId": "seats",
+        "laborSlotsUsed": 0
+      },
+      "id": 957
+    },
+    {
+      "day": 5,
+      "timestamp": 1787156754982,
+      "type": "install",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "componentId": "interior",
+        "partInstanceId": "part-4",
+        "carPartId": "seats",
+        "laborSlotsUsed": 0
+      },
+      "id": 958
+    },
+    {
+      "day": 5,
+      "timestamp": 1787156756115,
+      "type": "install",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "componentId": "interior",
+        "partInstanceId": "part-4",
+        "carPartId": "seats",
+        "laborSlotsUsed": 0
+      },
+      "id": 959
+    },
+    {
+      "day": 5,
+      "timestamp": 1787156756806,
+      "type": "install",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "componentId": "interior",
+        "partInstanceId": "part-4",
+        "carPartId": "seats",
+        "laborSlotsUsed": 0
+      },
+      "id": 960
+    },
+    {
+      "day": 5,
+      "timestamp": 1787156756978,
+      "type": "install",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "componentId": "interior",
+        "partInstanceId": "part-4",
+        "carPartId": "seats",
+        "laborSlotsUsed": 0
+      },
+      "id": 961
+    },
+    {
+      "day": 5,
+      "timestamp": 1787156757121,
+      "type": "install",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "componentId": "interior",
+        "partInstanceId": "part-4",
+        "carPartId": "seats",
+        "laborSlotsUsed": 0
+      },
+      "id": 962
+    },
+    {
+      "day": 5,
+      "timestamp": 1787156757281,
+      "type": "install",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "componentId": "interior",
+        "partInstanceId": "part-4",
+        "carPartId": "seats",
+        "laborSlotsUsed": 0
+      },
+      "id": 963
+    },
+    {
+      "day": 5,
+      "timestamp": 1787156772312,
+      "type": "moveCarToSlot",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "to": "body",
+        "slotIndex": 0
+      },
+      "id": 964
+    },
+    {
+      "day": 5,
+      "timestamp": 1787156779608,
+      "type": "install",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "componentId": "interior",
+        "partInstanceId": "part-4",
+        "carPartId": "seats",
+        "laborSlotsUsed": 0
+      },
+      "id": 965
+    },
+    {
+      "day": 5,
+      "timestamp": 1787156814942,
+      "type": "moveCarToSlot",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "to": "service",
+        "slotIndex": 0
+      },
+      "id": 966
+    },
+    {
+      "day": 5,
+      "timestamp": 1787156863341,
+      "type": "setForSale",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "forSale": true,
+        "channelId": "shopFront"
+      },
+      "id": 967
+    },
+    {
+      "day": 5,
+      "timestamp": 1787156869994,
+      "type": "acceptServiceJob",
+      "payload": {
+        "offerId": "svc-4-0"
+      },
+      "id": 968
+    },
+    {
+      "day": 5,
+      "timestamp": 1787156872117,
+      "type": "acceptServiceJob",
+      "payload": {
+        "offerId": "svc-5-0"
+      },
+      "id": 969
+    },
+    {
+      "day": 5,
+      "timestamp": 1787156872888,
+      "type": "acceptServiceJob",
+      "payload": {
+        "offerId": "stand-owner-service-job"
+      },
+      "id": 970
+    },
+    {
+      "day": 5,
+      "timestamp": 1787156885332,
+      "type": "moveCarToSlot",
+      "payload": {
+        "carId": "svc-car-3-0",
+        "to": "service",
+        "slotIndex": 0
+      },
+      "id": 971
+    },
+    {
+      "day": 5,
+      "timestamp": 1787156900709,
+      "type": "removePart",
+      "payload": {
+        "carId": "svc-car-3-0",
+        "carPartId": "fuelSystem"
+      },
+      "id": 972
+    },
+    {
+      "day": 5,
+      "timestamp": 1787156915044,
+      "type": "placeOnStation",
+      "payload": {
+        "station": "workbench",
+        "partInstanceId": "svc-car-3-0-part-fuelSystem"
+      },
+      "id": 973
+    },
+    {
+      "day": 5,
+      "timestamp": 1787156917252,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "svc-car-3-0-part-fuelSystem",
+        "targetBand": "worn"
+      },
+      "id": 974
+    },
+    {
+      "day": 5,
+      "timestamp": 1787156917874,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "svc-car-3-0-part-fuelSystem",
+        "targetBand": "fine"
+      },
+      "id": 975
+    },
+    {
+      "day": 5,
+      "timestamp": 1787156918896,
+      "type": "takeFromStation",
+      "payload": {
+        "station": "workbench"
+      },
+      "id": 976
+    },
+    {
+      "day": 5,
+      "timestamp": 1787156927452,
+      "type": "install",
+      "payload": {
+        "carId": "svc-car-3-0",
+        "componentId": "engine",
+        "partInstanceId": "svc-car-3-0-part-fuelSystem",
+        "carPartId": "fuelSystem",
+        "laborSlotsUsed": 3
+      },
+      "id": 977
+    },
+    {
+      "day": 5,
+      "timestamp": 1787156935411,
+      "type": "completeServiceJob",
+      "payload": {
+        "jobId": "svc-3-0",
+        "outcome": "paid",
+        "payoutYen": 8406
+      },
+      "id": 978
+    },
+    {
+      "day": 5,
+      "timestamp": 1787157006364,
+      "type": "attendAuction",
+      "payload": {
+        "tier": "local-yard"
+      },
+      "id": 979
+    },
+    {
+      "day": 5,
+      "timestamp": 1787157027679,
+      "type": "settleAuctionHammer",
+      "payload": {
+        "lotId": "lot-5-local-yard-0",
+        "priceYen": 79083
+      },
+      "id": 980
+    },
+    {
+      "day": 5,
+      "timestamp": 1787157037442,
+      "type": "removePart",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "carPartId": "cooling"
+      },
+      "id": 981
+    },
+    {
+      "day": 5,
+      "timestamp": 1787157040557,
+      "type": "removePart",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "carPartId": "exhaust"
+      },
+      "id": 982
+    },
+    {
+      "day": 5,
+      "timestamp": 1787157042629,
+      "type": "removePart",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "carPartId": "intake"
+      },
+      "id": 983
+    },
+    {
+      "day": 5,
+      "timestamp": 1787157049063,
+      "type": "removePart",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "carPartId": "fuelSystem"
+      },
+      "id": 984
+    },
+    {
+      "day": 5,
+      "timestamp": 1787157059231,
+      "type": "removePart",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "carPartId": "ignitionEcu"
+      },
+      "id": 985
+    },
+    {
+      "day": 5,
+      "timestamp": 1787157070838,
+      "type": "removeAssembly",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "assemblyId": "wheelAssembly"
+      },
+      "id": 986
+    },
+    {
+      "day": 5,
+      "timestamp": 1787157074793,
+      "type": "removeAssemblyMember",
+      "payload": {
+        "containerId": "assembly-car-lot-5-local-yard-0-wheelAssembly",
+        "memberSlot": "rims"
+      },
+      "id": 987
+    },
+    {
+      "day": 5,
+      "timestamp": 1787157075844,
+      "type": "removeAssemblyMember",
+      "payload": {
+        "containerId": "assembly-car-lot-5-local-yard-0-wheelAssembly",
+        "memberSlot": "tyres"
+      },
+      "id": 988
+    },
+    {
+      "day": 5,
+      "timestamp": 1787157080315,
+      "type": "removePart",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "carPartId": "steering"
+      },
+      "id": 989
+    },
+    {
+      "day": 5,
+      "timestamp": 1787157083039,
+      "type": "removePart",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "carPartId": "springs"
+      },
+      "id": 990
+    },
+    {
+      "day": 5,
+      "timestamp": 1787157084524,
+      "type": "removePart",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "carPartId": "dampers"
+      },
+      "id": 991
+    },
+    {
+      "day": 5,
+      "timestamp": 1787157088971,
+      "type": "removePart",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "carPartId": "antiRollBars"
+      },
+      "id": 992
+    },
+    {
+      "day": 5,
+      "timestamp": 1787157090558,
+      "type": "endDay",
+      "payload": {
+        "endedDay": 5
+      },
+      "id": 993
+    },
+    {
+      "day": 6,
+      "timestamp": 1787157135460,
+      "type": "moveCarToSlot",
+      "payload": {
+        "carId": "stand-owner-acty",
+        "to": "service",
+        "slotIndex": 0
+      },
+      "id": 994
+    },
+    {
+      "day": 6,
+      "timestamp": 1787157151773,
+      "type": "removePart",
+      "payload": {
+        "carId": "stand-owner-acty",
+        "carPartId": "fuelSystem"
+      },
+      "id": 995
+    },
+    {
+      "day": 6,
+      "timestamp": 1787157156325,
+      "type": "removePart",
+      "payload": {
+        "carId": "stand-owner-acty",
+        "carPartId": "ignitionEcu"
+      },
+      "id": 996
+    },
+    {
+      "day": 6,
+      "timestamp": 1787157173379,
+      "type": "placeOnStation",
+      "payload": {
+        "station": "workbench",
+        "partInstanceId": "stand-owner-acty-part-ignitionEcu"
+      },
+      "id": 997
+    },
+    {
+      "day": 6,
+      "timestamp": 1787157177150,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "stand-owner-acty-part-ignitionEcu",
+        "targetBand": "fine"
+      },
+      "id": 998
+    },
+    {
+      "day": 6,
+      "timestamp": 1787157186868,
+      "type": "takeFromStation",
+      "payload": {
+        "station": "workbench"
+      },
+      "id": 999
+    },
+    {
+      "day": 6,
+      "timestamp": 1787157188642,
+      "type": "placeOnStation",
+      "payload": {
+        "station": "workbench",
+        "partInstanceId": "stand-owner-acty-part-fuelSystem"
+      },
+      "id": 1000
+    },
+    {
+      "day": 6,
+      "timestamp": 1787157189673,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "stand-owner-acty-part-fuelSystem",
+        "targetBand": "fine"
+      },
+      "id": 1001
+    },
+    {
+      "day": 6,
+      "timestamp": 1787157192799,
+      "type": "takeFromStation",
+      "payload": {
+        "station": "workbench"
+      },
+      "id": 1002
+    },
+    {
+      "day": 6,
+      "timestamp": 1787157205839,
+      "type": "resolveOwnedWorkup",
+      "payload": {
+        "carInstanceId": "stand-owner-acty"
+      },
+      "id": 1003
+    },
+    {
+      "day": 6,
+      "timestamp": 1787157224202,
+      "type": "install",
+      "payload": {
+        "carId": "stand-owner-acty",
+        "componentId": "engine",
+        "partInstanceId": "stand-owner-acty-part-ignitionEcu",
+        "carPartId": "ignitionEcu",
+        "laborSlotsUsed": 3
+      },
+      "id": 1004
+    },
+    {
+      "day": 6,
+      "timestamp": 1787157226802,
+      "type": "install",
+      "payload": {
+        "carId": "stand-owner-acty",
+        "componentId": "engine",
+        "partInstanceId": "stand-owner-acty-part-fuelSystem",
+        "carPartId": "fuelSystem",
+        "laborSlotsUsed": 3
+      },
+      "id": 1005
+    },
+    {
+      "day": 6,
+      "timestamp": 1787157232486,
+      "type": "completeServiceJob",
+      "payload": {
+        "jobId": "stand-owner-service-job",
+        "outcome": "paid",
+        "payoutYen": 10757
+      },
+      "id": 1006
+    },
+    {
+      "day": 6,
+      "timestamp": 1787157279201,
+      "type": "moveCarToSlot",
+      "payload": {
+        "carId": "svc-car-4-0",
+        "to": "service",
+        "slotIndex": 0
+      },
+      "id": 1007
+    },
+    {
+      "day": 6,
+      "timestamp": 1787157285784,
+      "type": "removePart",
+      "payload": {
+        "carId": "svc-car-4-0",
+        "carPartId": "cooling"
+      },
+      "id": 1008
+    },
+    {
+      "day": 6,
+      "timestamp": 1787157292196,
+      "type": "placeOnStation",
+      "payload": {
+        "station": "workbench",
+        "partInstanceId": "svc-car-4-0-part-cooling"
+      },
+      "id": 1009
+    },
+    {
+      "day": 6,
+      "timestamp": 1787157293319,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "svc-car-4-0-part-cooling",
+        "targetBand": "fine"
+      },
+      "id": 1010
+    },
+    {
+      "day": 6,
+      "timestamp": 1787157294781,
+      "type": "takeFromStation",
+      "payload": {
+        "station": "workbench"
+      },
+      "id": 1011
+    },
+    {
+      "day": 6,
+      "timestamp": 1787157299282,
+      "type": "install",
+      "payload": {
+        "carId": "svc-car-4-0",
+        "componentId": "engine",
+        "partInstanceId": "svc-car-4-0-part-cooling",
+        "carPartId": "cooling",
+        "laborSlotsUsed": 3
+      },
+      "id": 1012
+    },
+    {
+      "day": 6,
+      "timestamp": 1787157307366,
+      "type": "completeServiceJob",
+      "payload": {
+        "jobId": "svc-4-0",
+        "outcome": "paid",
+        "payoutYen": 6371
+      },
+      "id": 1013
+    },
+    {
+      "day": 6,
+      "timestamp": 1787157316409,
+      "type": "moveCarToSlot",
+      "payload": {
+        "carId": "svc-car-5-0",
+        "to": "service",
+        "slotIndex": 0
+      },
+      "id": 1014
+    },
+    {
+      "day": 6,
+      "timestamp": 1787157375149,
+      "type": "checkoutCart",
+      "payload": {
+        "deliverySpeed": "standard",
+        "boughtCount": 1,
+        "remainingCount": 0,
+        "items": [
+          {
+            "partId": "rare-stock-tyres",
+            "priceYen": 19800
+          }
+        ],
+        "totalYen": 19800
+      },
+      "id": 1015
+    },
+    {
+      "day": 6,
+      "timestamp": 1787157380766,
+      "type": "moveCarToSlot",
+      "payload": {
+        "carId": "svc-car-5-0",
+        "to": "parking",
+        "slotIndex": 1
+      },
+      "id": 1016
+    },
+    {
+      "day": 6,
+      "timestamp": 1787157389970,
+      "type": "acceptServiceJob",
+      "payload": {
+        "offerId": "svc-6-0"
+      },
+      "id": 1017
+    },
+    {
+      "day": 6,
+      "timestamp": 1787157398240,
+      "type": "acceptServiceJob",
+      "payload": {
+        "offerId": "svc-6-1"
+      },
+      "id": 1018
+    },
+    {
+      "day": 6,
+      "timestamp": 1787157412680,
+      "type": "moveCarToSlot",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "to": "service",
+        "slotIndex": 0
+      },
+      "id": 1019
+    },
+    {
+      "day": 6,
+      "timestamp": 1787157421126,
+      "type": "removeAssembly",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "assemblyId": "engineAssembly"
+      },
+      "id": 1020
+    },
+    {
+      "day": 6,
+      "timestamp": 1787157432033,
+      "type": "refitAssembly",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "assemblyId": "engineAssembly"
+      },
+      "id": 1021
+    },
+    {
+      "day": 6,
+      "timestamp": 1787157444506,
+      "type": "endDay",
+      "payload": {
+        "endedDay": 6
+      },
+      "id": 1022
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157451966,
+      "type": "moveCarToSlot",
+      "payload": {
+        "carId": "svc-car-5-0",
+        "to": "service",
+        "slotIndex": 0
+      },
+      "id": 1023
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157458573,
+      "type": "removeAssembly",
+      "payload": {
+        "carId": "svc-car-5-0",
+        "assemblyId": "wheelAssembly"
+      },
+      "id": 1024
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157460798,
+      "type": "removeAssemblyMember",
+      "payload": {
+        "containerId": "assembly-svc-car-5-0-wheelAssembly",
+        "memberSlot": "tyres"
+      },
+      "id": 1025
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157463229,
+      "type": "fitAssemblyMember",
+      "payload": {
+        "containerId": "assembly-svc-car-5-0-wheelAssembly",
+        "memberSlot": "tyres",
+        "partInstanceId": "part-6"
+      },
+      "id": 1026
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157465645,
+      "type": "refitAssembly",
+      "payload": {
+        "carId": "svc-car-5-0",
+        "assemblyId": "wheelAssembly"
+      },
+      "id": 1027
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157470214,
+      "type": "completeServiceJob",
+      "payload": {
+        "jobId": "svc-5-0",
+        "outcome": "paid",
+        "payoutYen": 32463
+      },
+      "id": 1028
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157490963,
+      "type": "moveCarToSlot",
+      "payload": {
+        "carId": "svc-car-6-1",
+        "to": "service",
+        "slotIndex": 0
+      },
+      "id": 1029
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157495643,
+      "type": "moveCarToSlot",
+      "payload": {
+        "carId": "svc-car-6-1",
+        "to": "body",
+        "slotIndex": 0
+      },
+      "id": 1030
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157499349,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "svc-car-6-1",
+        "zoneId": "left-front",
+        "stage": "beat",
+        "laborSlotsUsed": 3
+      },
+      "id": 1031
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157502805,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "svc-car-6-1",
+        "zoneId": "left-front",
+        "stage": "beat",
+        "laborSlotsUsed": 3
+      },
+      "id": 1032
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157506204,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "svc-car-6-1",
+        "zoneId": "left-front",
+        "stage": "fillAndSand",
+        "laborSlotsUsed": 2
+      },
+      "id": 1033
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157509658,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "svc-car-6-1",
+        "zoneId": "left-front",
+        "stage": "prime",
+        "laborSlotsUsed": 1
+      },
+      "id": 1034
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157512002,
+      "type": "buyPaintTin",
+      "payload": {
+        "finish": "solid",
+        "size": "small",
+        "colour": "silver-violet",
+        "priceYen": 4200
+      },
+      "id": 1035
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157513060,
+      "type": "pipelinePaint",
+      "payload": {
+        "carId": "svc-car-6-1",
+        "zoneId": "left-front",
+        "colour": "silver-violet",
+        "grade": "stock",
+        "laborSlotsUsed": 2
+      },
+      "id": 1036
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157520942,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "svc-car-6-1",
+        "zoneId": "left-rear",
+        "stage": "beat",
+        "laborSlotsUsed": 3
+      },
+      "id": 1037
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157523448,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "svc-car-6-1",
+        "zoneId": "left-rear",
+        "stage": "prime",
+        "laborSlotsUsed": 1
+      },
+      "id": 1038
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157524407,
+      "type": "pipelinePaint",
+      "payload": {
+        "carId": "svc-car-6-1",
+        "zoneId": "left-rear",
+        "colour": "silver-violet",
+        "grade": "stock",
+        "laborSlotsUsed": 2
+      },
+      "id": 1039
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157529641,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "svc-car-6-1",
+        "zoneId": "right-rear",
+        "stage": "fillAndSand",
+        "laborSlotsUsed": 2
+      },
+      "id": 1040
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157530300,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "svc-car-6-1",
+        "zoneId": "right-rear",
+        "stage": "prime",
+        "laborSlotsUsed": 1
+      },
+      "id": 1041
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157531257,
+      "type": "pipelinePaint",
+      "payload": {
+        "carId": "svc-car-6-1",
+        "zoneId": "right-rear",
+        "colour": "silver-violet",
+        "grade": "stock",
+        "laborSlotsUsed": 2
+      },
+      "id": 1042
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157541425,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "svc-car-6-1",
+        "zoneId": "right-front",
+        "stage": "stripPrep",
+        "laborSlotsUsed": 1
+      },
+      "id": 1043
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157542533,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "svc-car-6-1",
+        "zoneId": "right-front",
+        "stage": "prime",
+        "laborSlotsUsed": 1
+      },
+      "id": 1044
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157543846,
+      "type": "buyPaintTin",
+      "payload": {
+        "finish": "solid",
+        "size": "small",
+        "colour": "silver-violet",
+        "priceYen": 4200
+      },
+      "id": 1045
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157544480,
+      "type": "pipelinePaint",
+      "payload": {
+        "carId": "svc-car-6-1",
+        "zoneId": "right-front",
+        "colour": "silver-violet",
+        "grade": "stock",
+        "laborSlotsUsed": 2
+      },
+      "id": 1046
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157552811,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "svc-car-6-1",
+        "zoneId": "bonnet",
+        "stage": "beat",
+        "laborSlotsUsed": 3
+      },
+      "id": 1047
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157553850,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "svc-car-6-1",
+        "zoneId": "bonnet",
+        "stage": "prime",
+        "laborSlotsUsed": 1
+      },
+      "id": 1048
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157554581,
+      "type": "pipelinePaint",
+      "payload": {
+        "carId": "svc-car-6-1",
+        "zoneId": "bonnet",
+        "colour": "silver-violet",
+        "grade": "stock",
+        "laborSlotsUsed": 2
+      },
+      "id": 1049
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157558201,
+      "type": "buyConsumableTin",
+      "payload": {
+        "id": "filler",
+        "priceYen": 5000
+      },
+      "id": 1050
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157559188,
+      "type": "buyConsumableTin",
+      "payload": {
+        "id": "paper",
+        "priceYen": 3200
+      },
+      "id": 1051
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157560339,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "svc-car-6-1",
+        "zoneId": "boot",
+        "stage": "fillAndSand",
+        "laborSlotsUsed": 2
+      },
+      "id": 1052
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157561009,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "svc-car-6-1",
+        "zoneId": "boot",
+        "stage": "prime",
+        "laborSlotsUsed": 1
+      },
+      "id": 1053
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157561555,
+      "type": "pipelinePaint",
+      "payload": {
+        "carId": "svc-car-6-1",
+        "zoneId": "boot",
+        "colour": "silver-violet",
+        "grade": "stock",
+        "laborSlotsUsed": 2
+      },
+      "id": 1054
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157580588,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "svc-car-6-1",
+        "zoneId": "skirts",
+        "stage": "stripPrep",
+        "laborSlotsUsed": 1
+      },
+      "id": 1055
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157581158,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "svc-car-6-1",
+        "zoneId": "skirts",
+        "stage": "prime",
+        "laborSlotsUsed": 1
+      },
+      "id": 1056
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157582160,
+      "type": "buyPaintTin",
+      "payload": {
+        "finish": "solid",
+        "size": "small",
+        "colour": "silver-violet",
+        "priceYen": 4200
+      },
+      "id": 1057
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157582551,
+      "type": "pipelinePaint",
+      "payload": {
+        "carId": "svc-car-6-1",
+        "zoneId": "skirts",
+        "colour": "silver-violet",
+        "grade": "stock",
+        "laborSlotsUsed": 2
+      },
+      "id": 1058
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157601391,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "svc-car-6-1",
+        "zoneId": "front-bumper",
+        "stage": "stripPrep",
+        "laborSlotsUsed": 1
+      },
+      "id": 1059
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157601856,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "svc-car-6-1",
+        "zoneId": "front-bumper",
+        "stage": "prime",
+        "laborSlotsUsed": 1
+      },
+      "id": 1060
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157602212,
+      "type": "pipelinePaint",
+      "payload": {
+        "carId": "svc-car-6-1",
+        "zoneId": "front-bumper",
+        "colour": "silver-violet",
+        "grade": "stock",
+        "laborSlotsUsed": 2
+      },
+      "id": 1061
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157604083,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "svc-car-6-1",
+        "zoneId": "rear-bumper",
+        "stage": "stripPrep",
+        "laborSlotsUsed": 1
+      },
+      "id": 1062
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157605106,
+      "type": "buyConsumableTin",
+      "payload": {
+        "id": "primer",
+        "priceYen": 5850
+      },
+      "id": 1063
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157605553,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "svc-car-6-1",
+        "zoneId": "rear-bumper",
+        "stage": "prime",
+        "laborSlotsUsed": 1
+      },
+      "id": 1064
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157606033,
+      "type": "pipelinePaint",
+      "payload": {
+        "carId": "svc-car-6-1",
+        "zoneId": "rear-bumper",
+        "colour": "silver-violet",
+        "grade": "stock",
+        "laborSlotsUsed": 2
+      },
+      "id": 1065
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157614206,
+      "type": "completeServiceJob",
+      "payload": {
+        "jobId": "svc-6-1",
+        "outcome": "paid",
+        "payoutYen": 6132
+      },
+      "id": 1066
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157638133,
+      "type": "moveCarToSlot",
+      "payload": {
+        "carId": "svc-car-6-0",
+        "to": "service",
+        "slotIndex": 0
+      },
+      "id": 1067
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157644227,
+      "type": "moveCarToSlot",
+      "payload": {
+        "carId": "svc-car-6-0",
+        "to": "body",
+        "slotIndex": 0
+      },
+      "id": 1068
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157654682,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "svc-car-6-0",
+        "zoneId": "left-front",
+        "stage": "beat",
+        "laborSlotsUsed": 3
+      },
+      "id": 1069
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157662887,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "svc-car-6-0",
+        "zoneId": "bonnet",
+        "stage": "weld",
+        "laborSlotsUsed": 18
+      },
+      "id": 1070
+    },
+    {
+      "day": 7,
+      "timestamp": 1787157665825,
+      "type": "endDay",
+      "payload": {
+        "endedDay": 7
+      },
+      "id": 1071
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157687380,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "svc-car-6-0",
+        "zoneId": "right-rear",
+        "stage": "beat",
+        "laborSlotsUsed": 3
+      },
+      "id": 1072
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157688162,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "svc-car-6-0",
+        "zoneId": "right-rear",
+        "stage": "beat",
+        "laborSlotsUsed": 3
+      },
+      "id": 1073
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157690205,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "svc-car-6-0",
+        "zoneId": "right-rear",
+        "stage": "fillAndSand",
+        "laborSlotsUsed": 2
+      },
+      "id": 1074
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157693431,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "svc-car-6-0",
+        "zoneId": "left-front",
+        "stage": "fillAndSand",
+        "laborSlotsUsed": 2
+      },
+      "id": 1075
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157695497,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "svc-car-6-0",
+        "zoneId": "right-front",
+        "stage": "fillAndSand",
+        "laborSlotsUsed": 2
+      },
+      "id": 1076
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157722636,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "svc-car-6-0",
+        "zoneId": "right-front",
+        "stage": "prime",
+        "laborSlotsUsed": 1
+      },
+      "id": 1077
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157725369,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "svc-car-6-0",
+        "zoneId": "left-front",
+        "stage": "prime",
+        "laborSlotsUsed": 1
+      },
+      "id": 1078
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157727484,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "svc-car-6-0",
+        "zoneId": "left-rear",
+        "stage": "prime",
+        "laborSlotsUsed": 1
+      },
+      "id": 1079
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157729876,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "svc-car-6-0",
+        "zoneId": "right-rear",
+        "stage": "prime",
+        "laborSlotsUsed": 1
+      },
+      "id": 1080
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157732462,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "svc-car-6-0",
+        "zoneId": "skirts",
+        "stage": "prime",
+        "laborSlotsUsed": 1
+      },
+      "id": 1081
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157735616,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "svc-car-6-0",
+        "zoneId": "front-bumper",
+        "stage": "prime",
+        "laborSlotsUsed": 1
+      },
+      "id": 1082
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157742768,
+      "type": "buyConsumableTin",
+      "payload": {
+        "id": "filler",
+        "priceYen": 5000
+      },
+      "id": 1083
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157743460,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "svc-car-6-0",
+        "zoneId": "boot",
+        "stage": "fillAndSand",
+        "laborSlotsUsed": 2
+      },
+      "id": 1084
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157744452,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "svc-car-6-0",
+        "zoneId": "boot",
+        "stage": "prime",
+        "laborSlotsUsed": 1
+      },
+      "id": 1085
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157746354,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "svc-car-6-0",
+        "zoneId": "bonnet",
+        "stage": "fillAndSand",
+        "laborSlotsUsed": 2
+      },
+      "id": 1086
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157754233,
+      "type": "completeServiceJob",
+      "payload": {
+        "jobId": "svc-6-0",
+        "outcome": "paid",
+        "payoutYen": 10623
+      },
+      "id": 1087
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157763392,
+      "type": "acceptServiceJob",
+      "payload": {
+        "offerId": "svc-7-0"
+      },
+      "id": 1088
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157765238,
+      "type": "acceptServiceJob",
+      "payload": {
+        "offerId": "svc-7-1"
+      },
+      "id": 1089
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157772434,
+      "type": "moveCarToSlot",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "to": "service",
+        "slotIndex": 0
+      },
+      "id": 1090
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157779321,
+      "type": "removePart",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "carPartId": "brakePadsDiscs"
+      },
+      "id": 1091
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157781802,
+      "type": "removePart",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "carPartId": "brakeCalipersLines"
+      },
+      "id": 1092
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157787785,
+      "type": "removePart",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "carPartId": "driveline"
+      },
+      "id": 1093
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157789071,
+      "type": "removePart",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "carPartId": "differential"
+      },
+      "id": 1094
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157790438,
+      "type": "removeAssembly",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "assemblyId": "gearboxAssembly"
+      },
+      "id": 1095
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157809703,
+      "type": "repair",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "componentId": "body",
+        "targetBand": "fine",
+        "carPartId": "chassis",
+        "costYen": 1820,
+        "laborSlotsUsed": 12
+      },
+      "id": 1096
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157830282,
+      "type": "placeOnStation",
+      "payload": {
+        "station": "workbench",
+        "partInstanceId": "car-lot-5-local-yard-0-part-brakePadsDiscs"
+      },
+      "id": 1097
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157839805,
+      "type": "takeFromStation",
+      "payload": {
+        "station": "workbench"
+      },
+      "id": 1098
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157846677,
+      "type": "sellPart",
+      "payload": {
+        "partInstanceId": "car-lot-5-local-yard-0-part-brakePadsDiscs",
+        "priceYen": 347
+      },
+      "id": 1099
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157852603,
+      "type": "placeOnStation",
+      "payload": {
+        "station": "workbench",
+        "partInstanceId": "car-lot-5-local-yard-0-part-antiRollBars"
+      },
+      "id": 1100
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157853797,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "car-lot-5-local-yard-0-part-antiRollBars",
+        "targetBand": "fine"
+      },
+      "id": 1101
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157854861,
+      "type": "takeFromStation",
+      "payload": {
+        "station": "workbench"
+      },
+      "id": 1102
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157857681,
+      "type": "placeOnStation",
+      "payload": {
+        "station": "workbench",
+        "partInstanceId": "car-lot-5-local-yard-0-part-tyres"
+      },
+      "id": 1103
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157861395,
+      "type": "takeFromStation",
+      "payload": {
+        "station": "workbench"
+      },
+      "id": 1104
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157863590,
+      "type": "sellPart",
+      "payload": {
+        "partInstanceId": "car-lot-5-local-yard-0-part-tyres",
+        "priceYen": 512
+      },
+      "id": 1105
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157865605,
+      "type": "placeOnStation",
+      "payload": {
+        "station": "workbench",
+        "partInstanceId": "car-lot-5-local-yard-0-part-rims"
+      },
+      "id": 1106
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157866948,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "car-lot-5-local-yard-0-part-rims",
+        "targetBand": "fine"
+      },
+      "id": 1107
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157868712,
+      "type": "takeFromStation",
+      "payload": {
+        "station": "workbench"
+      },
+      "id": 1108
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157870378,
+      "type": "placeOnStation",
+      "payload": {
+        "station": "workbench",
+        "partInstanceId": "car-lot-5-local-yard-0-part-ignitionEcu"
+      },
+      "id": 1109
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157871178,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "car-lot-5-local-yard-0-part-ignitionEcu",
+        "targetBand": "fine"
+      },
+      "id": 1110
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157875397,
+      "type": "takeFromStation",
+      "payload": {
+        "station": "workbench"
+      },
+      "id": 1111
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157878111,
+      "type": "placeOnStation",
+      "payload": {
+        "station": "workbench",
+        "partInstanceId": "car-lot-5-local-yard-0-part-cooling"
+      },
+      "id": 1112
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157879352,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "car-lot-5-local-yard-0-part-cooling",
+        "targetBand": "fine"
+      },
+      "id": 1113
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157880330,
+      "type": "takeFromStation",
+      "payload": {
+        "station": "workbench"
+      },
+      "id": 1114
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157893959,
+      "type": "install",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "componentId": "engine",
+        "partInstanceId": "car-lot-5-local-yard-0-part-cooling",
+        "carPartId": "cooling",
+        "laborSlotsUsed": 3
+      },
+      "id": 1115
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157898511,
+      "type": "install",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "componentId": "engine",
+        "partInstanceId": "car-lot-5-local-yard-0-part-intake",
+        "carPartId": "intake",
+        "laborSlotsUsed": 0
+      },
+      "id": 1116
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157900601,
+      "type": "install",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "componentId": "engine",
+        "partInstanceId": "car-lot-5-local-yard-0-part-ignitionEcu",
+        "carPartId": "ignitionEcu",
+        "laborSlotsUsed": 3
+      },
+      "id": 1117
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157903586,
+      "type": "install",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "componentId": "engine",
+        "partInstanceId": "car-lot-5-local-yard-0-part-fuelSystem",
+        "carPartId": "fuelSystem",
+        "laborSlotsUsed": 0
+      },
+      "id": 1118
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157924105,
+      "type": "install",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "componentId": "suspension",
+        "partInstanceId": "car-lot-5-local-yard-0-part-brakeCalipersLines",
+        "carPartId": "brakeCalipersLines",
+        "laborSlotsUsed": 0
+      },
+      "id": 1119
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157980569,
+      "type": "checkoutCart",
+      "payload": {
+        "deliverySpeed": "standard",
+        "boughtCount": 2,
+        "remainingCount": 0,
+        "items": [
+          {
+            "partId": "shitbox-stock-brake-pads-discs",
+            "priceYen": 2100
+          },
+          {
+            "partId": "shitbox-stock-tyres",
+            "priceYen": 3100
+          }
+        ],
+        "totalYen": 5200
+      },
+      "id": 1120
+    },
+    {
+      "day": 8,
+      "timestamp": 1787157982571,
+      "type": "endDay",
+      "payload": {
+        "endedDay": 8
+      },
+      "id": 1121
+    },
+    {
+      "day": 9,
+      "timestamp": 1787157996652,
+      "type": "refitAssembly",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "assemblyId": "gearboxAssembly"
+      },
+      "id": 1122
+    },
+    {
+      "day": 9,
+      "timestamp": 1787158000748,
+      "type": "install",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "componentId": "engine",
+        "partInstanceId": "car-lot-5-local-yard-0-part-exhaust",
+        "carPartId": "exhaust",
+        "laborSlotsUsed": 0
+      },
+      "id": 1123
+    },
+    {
+      "day": 9,
+      "timestamp": 1787158007802,
+      "type": "install",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "componentId": "drivetrain",
+        "partInstanceId": "car-lot-5-local-yard-0-part-differential",
+        "carPartId": "differential",
+        "laborSlotsUsed": 0
+      },
+      "id": 1124
+    },
+    {
+      "day": 9,
+      "timestamp": 1787158010365,
+      "type": "install",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "componentId": "drivetrain",
+        "partInstanceId": "car-lot-5-local-yard-0-part-driveline",
+        "carPartId": "driveline",
+        "laborSlotsUsed": 0
+      },
+      "id": 1125
+    },
+    {
+      "day": 9,
+      "timestamp": 1787158013196,
+      "type": "install",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "componentId": "suspension",
+        "partInstanceId": "part-7",
+        "carPartId": "brakePadsDiscs",
+        "laborSlotsUsed": 3
+      },
+      "id": 1126
+    },
+    {
+      "day": 9,
+      "timestamp": 1787158015482,
+      "type": "install",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "componentId": "suspension",
+        "partInstanceId": "car-lot-5-local-yard-0-part-antiRollBars",
+        "carPartId": "antiRollBars",
+        "laborSlotsUsed": 3
+      },
+      "id": 1127
+    },
+    {
+      "day": 9,
+      "timestamp": 1787158022837,
+      "type": "install",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "componentId": "suspension",
+        "partInstanceId": "car-lot-5-local-yard-0-part-dampers",
+        "carPartId": "dampers",
+        "laborSlotsUsed": 0
+      },
+      "id": 1128
+    },
+    {
+      "day": 9,
+      "timestamp": 1787158025874,
+      "type": "install",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "componentId": "suspension",
+        "partInstanceId": "car-lot-5-local-yard-0-part-springs",
+        "carPartId": "springs",
+        "laborSlotsUsed": 0
+      },
+      "id": 1129
+    },
+    {
+      "day": 9,
+      "timestamp": 1787158051440,
+      "type": "hireMachineLine",
+      "payload": {
+        "group": "suspension",
+        "feeYen": 5000
+      },
+      "id": 1130
+    },
+    {
+      "day": 9,
+      "timestamp": 1787158109484,
+      "type": "refitAssembly",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "assemblyId": "wheelAssembly"
+      },
+      "id": 1131
+    },
+    {
+      "day": 9,
+      "timestamp": 1787158134131,
+      "type": "install",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "componentId": "wheels",
+        "partInstanceId": "part-8",
+        "carPartId": "tyres",
+        "laborSlotsUsed": 3
+      },
+      "id": 1132
+    },
+    {
+      "day": 9,
+      "timestamp": 1787158142907,
+      "type": "removeAssembly",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "assemblyId": "wheelAssembly"
+      },
+      "id": 1133
+    },
+    {
+      "day": 9,
+      "timestamp": 1787158147120,
+      "type": "fitAssemblyMember",
+      "payload": {
+        "containerId": "assembly-car-lot-5-local-yard-0-wheelAssembly",
+        "memberSlot": "rims",
+        "partInstanceId": "car-lot-5-local-yard-0-part-rims"
+      },
+      "id": 1134
+    },
+    {
+      "day": 9,
+      "timestamp": 1787158183368,
+      "type": "checkoutCart",
+      "payload": {
+        "deliverySpeed": "express",
+        "boughtCount": 1,
+        "remainingCount": 0,
+        "items": [
+          {
+            "partId": "shitbox-stock-steering",
+            "priceYen": 3410
+          }
+        ],
+        "totalYen": 3410
+      },
+      "id": 1135
+    },
+    {
+      "day": 9,
+      "timestamp": 1787158191186,
+      "type": "install",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "componentId": "suspension",
+        "partInstanceId": "part-9",
+        "carPartId": "steering",
+        "laborSlotsUsed": 3
+      },
+      "id": 1136
+    },
+    {
+      "day": 9,
+      "timestamp": 1787158196043,
+      "type": "refitAssembly",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "assemblyId": "wheelAssembly"
+      },
+      "id": 1137
+    },
+    {
+      "day": 9,
+      "timestamp": 1787158205975,
+      "type": "moveCarToSlot",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "to": "body",
+        "slotIndex": 0
+      },
+      "id": 1138
+    },
+    {
+      "day": 9,
+      "timestamp": 1787158213123,
+      "type": "moveCarToSlot",
+      "payload": {
+        "carId": "svc-car-7-0",
+        "to": "service",
+        "slotIndex": 0
+      },
+      "id": 1139
+    },
+    {
+      "day": 9,
+      "timestamp": 1787158227546,
+      "type": "removeAssembly",
+      "payload": {
+        "carId": "svc-car-7-0",
+        "assemblyId": "wheelAssembly"
+      },
+      "id": 1140
+    },
+    {
+      "day": 9,
+      "timestamp": 1787158230168,
+      "type": "removePart",
+      "payload": {
+        "carId": "svc-car-7-0",
+        "carPartId": "springs"
+      },
+      "id": 1141
+    },
+    {
+      "day": 9,
+      "timestamp": 1787158233527,
+      "type": "removePart",
+      "payload": {
+        "carId": "svc-car-7-0",
+        "carPartId": "dampers"
+      },
+      "id": 1142
+    },
+    {
+      "day": 9,
+      "timestamp": 1787158253066,
+      "type": "checkoutCart",
+      "payload": {
+        "deliverySpeed": "standard",
+        "boughtCount": 1,
+        "remainingCount": 0,
+        "items": [
+          {
+            "partId": "stock-dampers",
+            "priceYen": 6400
+          }
+        ],
+        "totalYen": 6400
+      },
+      "id": 1143
+    },
+    {
+      "day": 9,
+      "timestamp": 1787158256280,
+      "type": "moveCarToSlot",
+      "payload": {
+        "carId": "svc-car-7-0",
+        "to": "parking",
+        "slotIndex": 0
+      },
+      "id": 1144
+    },
+    {
+      "day": 9,
+      "timestamp": 1787158258053,
+      "type": "moveCarToSlot",
+      "payload": {
+        "carId": "svc-car-7-1",
+        "to": "service",
+        "slotIndex": 0
+      },
+      "id": 1145
+    },
+    {
+      "day": 9,
+      "timestamp": 1787158264855,
+      "type": "removePart",
+      "payload": {
+        "carId": "svc-car-7-1",
+        "carPartId": "driveline"
+      },
+      "id": 1146
+    },
+    {
+      "day": 9,
+      "timestamp": 1787158280361,
+      "type": "placeOnStation",
+      "payload": {
+        "station": "workbench",
+        "partInstanceId": "svc-car-7-1-part-driveline"
+      },
+      "id": 1147
+    },
+    {
+      "day": 9,
+      "timestamp": 1787158281723,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "svc-car-7-1-part-driveline",
+        "targetBand": "fine"
+      },
+      "id": 1148
+    },
+    {
+      "day": 9,
+      "timestamp": 1787158283379,
+      "type": "takeFromStation",
+      "payload": {
+        "station": "workbench"
+      },
+      "id": 1149
+    },
+    {
+      "day": 9,
+      "timestamp": 1787158291662,
+      "type": "install",
+      "payload": {
+        "carId": "svc-car-7-1",
+        "componentId": "drivetrain",
+        "partInstanceId": "svc-car-7-1-part-driveline",
+        "carPartId": "driveline",
+        "laborSlotsUsed": 3
+      },
+      "id": 1150
+    },
+    {
+      "day": 9,
+      "timestamp": 1787158296660,
+      "type": "completeServiceJob",
+      "payload": {
+        "jobId": "svc-7-1",
+        "outcome": "paid",
+        "payoutYen": 6329
+      },
+      "id": 1151
+    },
+    {
+      "day": 9,
+      "timestamp": 1787158313295,
+      "type": "acceptServiceJob",
+      "payload": {
+        "offerId": "svc-9-0"
+      },
+      "id": 1152
+    },
+    {
+      "day": 9,
+      "timestamp": 1787158340386,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "zoneId": "right-front",
+        "stage": "beat",
+        "laborSlotsUsed": 3
+      },
+      "id": 1153
+    },
+    {
+      "day": 9,
+      "timestamp": 1787158342134,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "zoneId": "right-front",
+        "stage": "prime",
+        "laborSlotsUsed": 1
+      },
+      "id": 1154
+    },
+    {
+      "day": 9,
+      "timestamp": 1787158353273,
+      "type": "buyPaintTin",
+      "payload": {
+        "finish": "solid",
+        "size": "small",
+        "colour": "silver",
+        "priceYen": 4200
+      },
+      "id": 1155
+    },
+    {
+      "day": 9,
+      "timestamp": 1787158357981,
+      "type": "pipelinePaint",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "zoneId": "right-front",
+        "colour": "silver",
+        "grade": "stock",
+        "laborSlotsUsed": 2
+      },
+      "id": 1156
+    },
+    {
+      "day": 9,
+      "timestamp": 1787158360813,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "zoneId": "left-front",
+        "stage": "weld",
+        "laborSlotsUsed": 0
+      },
+      "id": 1157
+    },
+    {
+      "day": 9,
+      "timestamp": 1787158367094,
+      "type": "buyConsumableTin",
+      "payload": {
+        "id": "primer",
+        "priceYen": 5850
+      },
+      "id": 1158
+    },
+    {
+      "day": 9,
+      "timestamp": 1787158367677,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "zoneId": "left-rear",
+        "stage": "prime",
+        "laborSlotsUsed": 1
+      },
+      "id": 1159
+    },
+    {
+      "day": 9,
+      "timestamp": 1787158368917,
+      "type": "pipelinePaint",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "zoneId": "left-rear",
+        "colour": "silver",
+        "grade": "stock",
+        "laborSlotsUsed": 2
+      },
+      "id": 1160
+    },
+    {
+      "day": 9,
+      "timestamp": 1787158371393,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "zoneId": "right-rear",
+        "stage": "weld",
+        "laborSlotsUsed": 0
+      },
+      "id": 1161
+    },
+    {
+      "day": 9,
+      "timestamp": 1787158417209,
+      "type": "acceptServiceJob",
+      "payload": {
+        "offerId": "svc-8-2"
+      },
+      "id": 1162
+    },
+    {
+      "day": 9,
+      "timestamp": 1787158428117,
+      "type": "checkoutCart",
+      "payload": {
+        "deliverySpeed": "standard",
+        "boughtCount": 1,
+        "remainingCount": 0,
+        "items": [
+          {
+            "partId": "uncommon-stock-tyres",
+            "priceYen": 8800
+          }
+        ],
+        "totalYen": 8800
+      },
+      "id": 1163
+    },
+    {
+      "day": 9,
+      "timestamp": 1787158429196,
+      "type": "endDay",
+      "payload": {
+        "endedDay": 9
+      },
+      "id": 1164
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158444472,
+      "type": "moveCarToSlot",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "to": "service",
+        "slotIndex": 0
+      },
+      "id": 1165
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158450621,
+      "type": "hireMachineLine",
+      "payload": {
+        "group": "body",
+        "feeYen": 6500
+      },
+      "id": 1166
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158454972,
+      "type": "moveCarToSlot",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "to": "body",
+        "slotIndex": 0
+      },
+      "id": 1167
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158458808,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "zoneId": "left-front",
+        "stage": "weld",
+        "laborSlotsUsed": 6
+      },
+      "id": 1168
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158461043,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "zoneId": "left-front",
+        "stage": "fillAndSand",
+        "laborSlotsUsed": 2
+      },
+      "id": 1169
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158461690,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "zoneId": "left-front",
+        "stage": "prime",
+        "laborSlotsUsed": 1
+      },
+      "id": 1170
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158462381,
+      "type": "pipelinePaint",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "zoneId": "left-front",
+        "colour": "silver",
+        "grade": "stock",
+        "laborSlotsUsed": 2
+      },
+      "id": 1171
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158464313,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "zoneId": "left-front",
+        "stage": "polish",
+        "laborSlotsUsed": 1
+      },
+      "id": 1172
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158466753,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "zoneId": "right-rear",
+        "stage": "weld",
+        "laborSlotsUsed": 6
+      },
+      "id": 1173
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158467254,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "zoneId": "right-rear",
+        "stage": "fillAndSand",
+        "laborSlotsUsed": 2
+      },
+      "id": 1174
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158467700,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "zoneId": "right-rear",
+        "stage": "prime",
+        "laborSlotsUsed": 1
+      },
+      "id": 1175
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158468839,
+      "type": "buyPaintTin",
+      "payload": {
+        "finish": "solid",
+        "size": "small",
+        "colour": "silver",
+        "priceYen": 4200
+      },
+      "id": 1176
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158469414,
+      "type": "pipelinePaint",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "zoneId": "right-rear",
+        "colour": "silver",
+        "grade": "stock",
+        "laborSlotsUsed": 2
+      },
+      "id": 1177
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158470133,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "zoneId": "right-rear",
+        "stage": "polish",
+        "laborSlotsUsed": 1
+      },
+      "id": 1178
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158473168,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "zoneId": "right-front",
+        "stage": "polish",
+        "laborSlotsUsed": 1
+      },
+      "id": 1179
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158478368,
+      "type": "buyConsumableTin",
+      "payload": {
+        "id": "polish",
+        "priceYen": 4050
+      },
+      "id": 1180
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158478935,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "zoneId": "skirts",
+        "stage": "polish",
+        "laborSlotsUsed": 1
+      },
+      "id": 1181
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158480744,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "zoneId": "left-rear",
+        "stage": "polish",
+        "laborSlotsUsed": 1
+      },
+      "id": 1182
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158481823,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "zoneId": "left-rear",
+        "stage": "polish",
+        "laborSlotsUsed": 1
+      },
+      "id": 1183
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158483531,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "zoneId": "rear-bumper",
+        "stage": "polish",
+        "laborSlotsUsed": 1
+      },
+      "id": 1184
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158485153,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "zoneId": "rear-bumper",
+        "stage": "polish",
+        "laborSlotsUsed": 1
+      },
+      "id": 1185
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158493963,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "zoneId": "right-front",
+        "stage": "polish",
+        "laborSlotsUsed": 1
+      },
+      "id": 1186
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158496929,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "zoneId": "front-bumper",
+        "stage": "polish",
+        "laborSlotsUsed": 1
+      },
+      "id": 1187
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158502973,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "zoneId": "bonnet",
+        "stage": "prime",
+        "laborSlotsUsed": 1
+      },
+      "id": 1188
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158503488,
+      "type": "pipelinePaint",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "zoneId": "bonnet",
+        "colour": "silver",
+        "grade": "stock",
+        "laborSlotsUsed": 2
+      },
+      "id": 1189
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158504103,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "zoneId": "bonnet",
+        "stage": "polish",
+        "laborSlotsUsed": 1
+      },
+      "id": 1190
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158511767,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "zoneId": "boot",
+        "stage": "beat",
+        "laborSlotsUsed": 3
+      },
+      "id": 1191
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158512655,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "zoneId": "boot",
+        "stage": "prime",
+        "laborSlotsUsed": 1
+      },
+      "id": 1192
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158513451,
+      "type": "pipelinePaint",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "zoneId": "boot",
+        "colour": "silver",
+        "grade": "stock",
+        "laborSlotsUsed": 2
+      },
+      "id": 1193
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158514199,
+      "type": "pipelineStage",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "zoneId": "boot",
+        "stage": "polish",
+        "laborSlotsUsed": 1
+      },
+      "id": 1194
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158530401,
+      "type": "moveCarToSlot",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "to": "service",
+        "slotIndex": 0
+      },
+      "id": 1195
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158533927,
+      "type": "setForSale",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "forSale": true,
+        "channelId": "freeAdsPaper"
+      },
+      "id": 1196
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158546982,
+      "type": "acceptOffer",
+      "payload": {
+        "carId": "car-lot-1-local-yard-2",
+        "priceYen": 110786,
+        "channel": "walk-in-offer"
+      },
+      "id": 1197
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158557033,
+      "type": "moveCarToSlot",
+      "payload": {
+        "carId": "svc-car-7-0",
+        "to": "service",
+        "slotIndex": 0
+      },
+      "id": 1198
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158595656,
+      "type": "checkoutCart",
+      "payload": {
+        "deliverySpeed": "express",
+        "boughtCount": 1,
+        "remainingCount": 0,
+        "items": [
+          {
+            "partId": "tanuki-street-coilovers",
+            "priceYen": 9130
+          }
+        ],
+        "totalYen": 9130
+      },
+      "id": 1199
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158607501,
+      "type": "install",
+      "payload": {
+        "carId": "svc-car-7-0",
+        "componentId": "suspension",
+        "partInstanceId": "part-12",
+        "carPartId": "dampers",
+        "laborSlotsUsed": 9
+      },
+      "id": 1200
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158612954,
+      "type": "install",
+      "payload": {
+        "carId": "svc-car-7-0",
+        "componentId": "suspension",
+        "partInstanceId": "svc-car-7-0-part-springs",
+        "carPartId": "springs",
+        "laborSlotsUsed": 0
+      },
+      "id": 1201
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158617264,
+      "type": "refitAssembly",
+      "payload": {
+        "carId": "svc-car-7-0",
+        "assemblyId": "wheelAssembly"
+      },
+      "id": 1202
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158624511,
+      "type": "completeServiceJob",
+      "payload": {
+        "jobId": "svc-7-0",
+        "outcome": "paid",
+        "payoutYen": 18670
+      },
+      "id": 1203
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158642122,
+      "type": "moveCarToSlot",
+      "payload": {
+        "carId": "svc-car-8-2",
+        "to": "service",
+        "slotIndex": 0
+      },
+      "id": 1204
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158649631,
+      "type": "removeAssembly",
+      "payload": {
+        "carId": "svc-car-8-2",
+        "assemblyId": "wheelAssembly"
+      },
+      "id": 1205
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158651802,
+      "type": "removeAssemblyMember",
+      "payload": {
+        "containerId": "assembly-svc-car-8-2-wheelAssembly",
+        "memberSlot": "tyres"
+      },
+      "id": 1206
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158652839,
+      "type": "refitAssembly",
+      "payload": {
+        "carId": "svc-car-8-2",
+        "assemblyId": "wheelAssembly"
+      },
+      "id": 1207
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158656199,
+      "type": "removeAssembly",
+      "payload": {
+        "carId": "svc-car-8-2",
+        "assemblyId": "wheelAssembly"
+      },
+      "id": 1208
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158659139,
+      "type": "fitAssemblyMember",
+      "payload": {
+        "containerId": "assembly-svc-car-8-2-wheelAssembly",
+        "memberSlot": "tyres",
+        "partInstanceId": "part-11"
+      },
+      "id": 1209
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158665923,
+      "type": "refitAssembly",
+      "payload": {
+        "carId": "svc-car-8-2",
+        "assemblyId": "wheelAssembly"
+      },
+      "id": 1210
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158669867,
+      "type": "completeServiceJob",
+      "payload": {
+        "jobId": "svc-8-2",
+        "outcome": "paid",
+        "payoutYen": 18258
+      },
+      "id": 1211
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158675692,
+      "type": "moveCarToSlot",
+      "payload": {
+        "carId": "svc-car-9-0",
+        "to": "service",
+        "slotIndex": 0
+      },
+      "id": 1212
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158688282,
+      "type": "buyCoffee",
+      "payload": {
+        "priceYen": 1000
+      },
+      "id": 1213
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158694661,
+      "type": "resolveOwnedWorkup",
+      "payload": {
+        "carInstanceId": "svc-car-9-0"
+      },
+      "id": 1214
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158706671,
+      "type": "removePart",
+      "payload": {
+        "carId": "svc-car-9-0",
+        "carPartId": "intake"
+      },
+      "id": 1215
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158717814,
+      "type": "placeOnStation",
+      "payload": {
+        "station": "workbench",
+        "partInstanceId": "svc-car-9-0-part-intake"
+      },
+      "id": 1216
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158719601,
+      "type": "reconditionPart",
+      "payload": {
+        "partInstanceId": "svc-car-9-0-part-intake",
+        "targetBand": "fine"
+      },
+      "id": 1217
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158721366,
+      "type": "takeFromStation",
+      "payload": {
+        "station": "workbench"
+      },
+      "id": 1218
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158727840,
+      "type": "install",
+      "payload": {
+        "carId": "svc-car-9-0",
+        "componentId": "engine",
+        "partInstanceId": "svc-car-9-0-part-intake",
+        "carPartId": "intake",
+        "laborSlotsUsed": 3
+      },
+      "id": 1219
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158736019,
+      "type": "completeServiceJob",
+      "payload": {
+        "jobId": "svc-9-0",
+        "outcome": "paid",
+        "payoutYen": 26019
+      },
+      "id": 1220
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158746245,
+      "type": "acceptServiceJob",
+      "payload": {
+        "offerId": "svc-10-1"
+      },
+      "id": 1221
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158804862,
+      "type": "checkoutCart",
+      "payload": {
+        "deliverySpeed": "standard",
+        "boughtCount": 1,
+        "remainingCount": 0,
+        "items": [
+          {
+            "partId": "shitbox-tanuki-street-coilovers",
+            "priceYen": 7300
+          }
+        ],
+        "totalYen": 7300
+      },
+      "id": 1222
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158821845,
+      "type": "acceptServiceJob",
+      "payload": {
+        "offerId": "svc-8-1"
+      },
+      "id": 1223
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158830266,
+      "type": "checkoutCart",
+      "payload": {
+        "deliverySpeed": "standard",
+        "boughtCount": 1,
+        "remainingCount": 0,
+        "items": [
+          {
+            "partId": "shitbox-stock-tyres",
+            "priceYen": 3100
+          }
+        ],
+        "totalYen": 3100
+      },
+      "id": 1224
+    },
+    {
+      "day": 10,
+      "timestamp": 1787158849496,
+      "type": "endDay",
+      "payload": {
+        "endedDay": 10
+      },
+      "id": 1225
+    },
+    {
+      "day": 11,
+      "timestamp": 1787158863339,
+      "type": "acceptOffer",
+      "payload": {
+        "carId": "car-lot-5-local-yard-0",
+        "priceYen": 150348,
+        "channel": "walk-in-offer"
+      },
+      "id": 1226
+    }
+  ],
+  "ledger": [
+    {
+      "day": 1,
+      "bucket": "onCars",
+      "amountYen": 43681,
+      "entryType": "auction-hammer-won",
+      "timestamp": 1787122362559,
+      "id": 109
+    },
+    {
+      "day": 1,
+      "bucket": "onCars",
+      "amountYen": 1820,
+      "entryType": "job-created",
+      "timestamp": 1787122484766,
+      "id": 110
+    },
+    {
+      "day": 1,
+      "bucket": "stock",
+      "amountYen": 3900,
+      "entryType": "part-ordered",
+      "timestamp": 1787122556511,
+      "id": 111
+    },
+    {
+      "day": 1,
+      "bucket": "stock",
+      "amountYen": 3100,
+      "entryType": "part-ordered",
+      "timestamp": 1787122556511,
+      "id": 112
+    },
+    {
+      "day": 1,
+      "bucket": "stock",
+      "amountYen": 2100,
+      "entryType": "part-ordered",
+      "timestamp": 1787122556511,
+      "id": 113
+    },
+    {
+      "day": 1,
+      "bucket": "stock",
+      "amountYen": 1540,
+      "entryType": "job-created",
+      "timestamp": 1787122572200,
+      "id": 114
+    },
+    {
+      "day": 1,
+      "bucket": "stock",
+      "amountYen": 1540,
+      "entryType": "job-created",
+      "timestamp": 1787122580246,
+      "id": 115
+    },
+    {
+      "day": 1,
+      "bucket": "stock",
+      "amountYen": 1000,
+      "entryType": "job-created",
+      "timestamp": 1787122586466,
+      "id": 116
+    },
+    {
+      "day": 2,
+      "bucket": "stock",
+      "amountYen": 1000,
+      "entryType": "job-created",
+      "timestamp": 1787122601562,
+      "id": 117
+    },
+    {
+      "day": 2,
+      "bucket": "stock",
+      "amountYen": 220,
+      "entryType": "job-created",
+      "timestamp": 1787122625146,
+      "id": 118
+    },
+    {
+      "day": 2,
+      "bucket": "income",
+      "amountYen": 6244,
+      "entryType": "service-job-completed",
+      "timestamp": 1787122643538,
+      "id": 119
+    },
+    {
+      "day": 2,
+      "bucket": "stock",
+      "amountYen": 420,
+      "entryType": "job-created",
+      "timestamp": 1787122690018,
+      "id": 120
+    },
+    {
+      "day": 2,
+      "bucket": "stock",
+      "amountYen": 420,
+      "entryType": "job-created",
+      "timestamp": 1787122690468,
+      "id": 121
+    },
+    {
+      "day": 2,
+      "bucket": "stock",
+      "amountYen": 630,
+      "entryType": "job-created",
+      "timestamp": 1787122696944,
+      "id": 122
+    },
+    {
+      "day": 2,
+      "bucket": "stock",
+      "amountYen": 630,
+      "entryType": "job-created",
+      "timestamp": 1787122697388,
+      "id": 123
+    },
+    {
+      "day": 2,
+      "bucket": "income",
+      "amountYen": 63,
+      "entryType": "part-sold",
+      "timestamp": 1787122709370,
+      "id": 124
+    },
+    {
+      "day": 2,
+      "bucket": "stock",
+      "amountYen": 310,
+      "entryType": "job-created",
+      "timestamp": 1787122714199,
+      "id": 125
+    },
+    {
+      "day": 2,
+      "bucket": "stock",
+      "amountYen": 310,
+      "entryType": "job-created",
+      "timestamp": 1787122714595,
+      "id": 126
+    },
+    {
+      "day": 2,
+      "bucket": "stock",
+      "amountYen": 560,
+      "entryType": "job-created",
+      "timestamp": 1787122723172,
+      "id": 127
+    },
+    {
+      "day": 2,
+      "bucket": "stock",
+      "amountYen": 560,
+      "entryType": "job-created",
+      "timestamp": 1787122723565,
+      "id": 128
+    },
+    {
+      "day": 2,
+      "bucket": "stock",
+      "amountYen": 250,
+      "entryType": "job-created",
+      "timestamp": 1787122727043,
+      "id": 129
+    },
+    {
+      "day": 2,
+      "bucket": "stock",
+      "amountYen": 250,
+      "entryType": "job-created",
+      "timestamp": 1787122727377,
+      "id": 130
+    },
+    {
+      "day": 2,
+      "bucket": "stock",
+      "amountYen": 480,
+      "entryType": "job-created",
+      "timestamp": 1787122730383,
+      "id": 131
+    },
+    {
+      "day": 2,
+      "bucket": "stock",
+      "amountYen": 480,
+      "entryType": "job-created",
+      "timestamp": 1787122730525,
+      "id": 132
+    },
+    {
+      "day": 2,
+      "bucket": "income",
+      "amountYen": 93,
+      "entryType": "part-sold",
+      "timestamp": 1787122733932,
+      "id": 133
+    },
+    {
+      "day": 2,
+      "bucket": "stock",
+      "amountYen": 390,
+      "entryType": "job-created",
+      "timestamp": 1787122736393,
+      "id": 134
+    },
+    {
+      "day": 2,
+      "bucket": "stock",
+      "amountYen": 390,
+      "entryType": "job-created",
+      "timestamp": 1787122736749,
+      "id": 135
+    },
+    {
+      "day": 2,
+      "bucket": "stock",
+      "amountYen": 980,
+      "entryType": "job-created",
+      "timestamp": 1787122743243,
+      "id": 136
+    },
+    {
+      "day": 2,
+      "bucket": "stock",
+      "amountYen": 980,
+      "entryType": "job-created",
+      "timestamp": 1787122743904,
+      "id": 137
+    },
+    {
+      "day": 3,
+      "bucket": "stock",
+      "amountYen": 5000,
+      "entryType": "consumable-bought",
+      "timestamp": 1787122832603,
+      "id": 138
+    },
+    {
+      "day": 3,
+      "bucket": "stock",
+      "amountYen": 1400,
+      "entryType": "consumable-bought",
+      "timestamp": 1787122848335,
+      "id": 139
+    },
+    {
+      "day": 3,
+      "bucket": "income",
+      "amountYen": 6701,
+      "entryType": "service-job-completed",
+      "timestamp": 1787122881490,
+      "id": 140
+    },
+    {
+      "day": 3,
+      "bucket": "stock",
+      "amountYen": 2240,
+      "entryType": "job-created",
+      "timestamp": 1787122901081,
+      "id": 141
+    },
+    {
+      "day": 3,
+      "bucket": "stock",
+      "amountYen": 2240,
+      "entryType": "job-created",
+      "timestamp": 1787122903771,
+      "id": 142
+    },
+    {
+      "day": 3,
+      "bucket": "stock",
+      "amountYen": 250,
+      "entryType": "job-created",
+      "timestamp": 1787122908631,
+      "id": 143
+    },
+    {
+      "day": 3,
+      "bucket": "stock",
+      "amountYen": 250,
+      "entryType": "job-created",
+      "timestamp": 1787122909011,
+      "id": 144
+    },
+    {
+      "day": 3,
+      "bucket": "stock",
+      "amountYen": 500,
+      "entryType": "job-created",
+      "timestamp": 1787122914043,
+      "id": 145
+    },
+    {
+      "day": 3,
+      "bucket": "stock",
+      "amountYen": 500,
+      "entryType": "job-created",
+      "timestamp": 1787122914431,
+      "id": 146
+    },
+    {
+      "day": 3,
+      "bucket": "stock",
+      "amountYen": 730,
+      "entryType": "job-created",
+      "timestamp": 1787122920653,
+      "id": 147
+    },
+    {
+      "day": 3,
+      "bucket": "stock",
+      "amountYen": 730,
+      "entryType": "job-created",
+      "timestamp": 1787122921017,
+      "id": 148
+    },
+    {
+      "day": 3,
+      "bucket": "stock",
+      "amountYen": 200,
+      "entryType": "job-created",
+      "timestamp": 1787122924629,
+      "id": 149
+    },
+    {
+      "day": 3,
+      "bucket": "stock",
+      "amountYen": 200,
+      "entryType": "job-created",
+      "timestamp": 1787122924993,
+      "id": 150
+    },
+    {
+      "day": 3,
+      "bucket": "stock",
+      "amountYen": 700,
+      "entryType": "job-created",
+      "timestamp": 1787122932924,
+      "id": 151
+    },
+    {
+      "day": 3,
+      "bucket": "stock",
+      "amountYen": 1260,
+      "entryType": "job-created",
+      "timestamp": 1787122938623,
+      "id": 152
+    },
+    {
+      "day": 3,
+      "bucket": "stock",
+      "amountYen": 4050,
+      "entryType": "consumable-bought",
+      "timestamp": 1787122967879,
+      "id": 153
+    },
+    {
+      "day": 4,
+      "bucket": "stock",
+      "amountYen": 5000,
+      "entryType": "consumable-bought",
+      "timestamp": 1787123105275,
+      "id": 154
+    },
+    {
+      "day": 4,
+      "bucket": "stock",
+      "amountYen": 1400,
+      "entryType": "consumable-bought",
+      "timestamp": 1787123112482,
+      "id": 155
+    },
+    {
+      "day": 4,
+      "bucket": "stock",
+      "amountYen": 170,
+      "entryType": "job-created",
+      "timestamp": 1787156397490,
+      "id": 156
+    },
+    {
+      "day": 4,
+      "bucket": "stock",
+      "amountYen": 170,
+      "entryType": "job-created",
+      "timestamp": 1787156398810,
+      "id": 157
+    },
+    {
+      "day": 4,
+      "bucket": "stock",
+      "amountYen": 5850,
+      "entryType": "consumable-bought",
+      "timestamp": 1787156423563,
+      "id": 158
+    },
+    {
+      "day": 4,
+      "bucket": "stock",
+      "amountYen": 4200,
+      "entryType": "consumable-bought",
+      "timestamp": 1787156433647,
+      "id": 159
+    },
+    {
+      "day": 4,
+      "bucket": "stock",
+      "amountYen": 3600,
+      "entryType": "part-ordered",
+      "timestamp": 1787156495838,
+      "id": 160
+    },
+    {
+      "day": 4,
+      "bucket": "stock",
+      "amountYen": 4900,
+      "entryType": "part-ordered",
+      "timestamp": 1787156495838,
+      "id": 161
+    },
+    {
+      "day": 5,
+      "bucket": "stock",
+      "amountYen": 1870,
+      "entryType": "part-bought",
+      "timestamp": 1787156710439,
+      "id": 162
+    },
+    {
+      "day": 5,
+      "bucket": "stock",
+      "amountYen": 290,
+      "entryType": "job-created",
+      "timestamp": 1787156917252,
+      "id": 163
+    },
+    {
+      "day": 5,
+      "bucket": "stock",
+      "amountYen": 290,
+      "entryType": "job-created",
+      "timestamp": 1787156917874,
+      "id": 164
+    },
+    {
+      "day": 5,
+      "bucket": "income",
+      "amountYen": 8406,
+      "entryType": "service-job-completed",
+      "timestamp": 1787156935411,
+      "id": 165
+    },
+    {
+      "day": 5,
+      "bucket": "onCars",
+      "amountYen": 79083,
+      "entryType": "auction-hammer-won",
+      "timestamp": 1787157027679,
+      "id": 166
+    },
+    {
+      "day": 5,
+      "bucket": "running",
+      "amountYen": 20000,
+      "entryType": "rent-paid",
+      "timestamp": 1787157090583,
+      "id": 167
+    },
+    {
+      "day": 6,
+      "bucket": "stock",
+      "amountYen": 390,
+      "entryType": "job-created",
+      "timestamp": 1787157177150,
+      "id": 168
+    },
+    {
+      "day": 6,
+      "bucket": "stock",
+      "amountYen": 250,
+      "entryType": "job-created",
+      "timestamp": 1787157189673,
+      "id": 169
+    },
+    {
+      "day": 6,
+      "bucket": "income",
+      "amountYen": 10757,
+      "entryType": "service-job-completed",
+      "timestamp": 1787157232486,
+      "id": 170
+    },
+    {
+      "day": 6,
+      "bucket": "stock",
+      "amountYen": 560,
+      "entryType": "job-created",
+      "timestamp": 1787157293319,
+      "id": 171
+    },
+    {
+      "day": 6,
+      "bucket": "income",
+      "amountYen": 6371,
+      "entryType": "service-job-completed",
+      "timestamp": 1787157307366,
+      "id": 172
+    },
+    {
+      "day": 6,
+      "bucket": "stock",
+      "amountYen": 19800,
+      "entryType": "part-ordered",
+      "timestamp": 1787157375149,
+      "id": 173
+    },
+    {
+      "day": 7,
+      "bucket": "income",
+      "amountYen": 32463,
+      "entryType": "service-job-completed",
+      "timestamp": 1787157470214,
+      "id": 174
+    },
+    {
+      "day": 7,
+      "bucket": "stock",
+      "amountYen": 4200,
+      "entryType": "consumable-bought",
+      "timestamp": 1787157512002,
+      "id": 175
+    },
+    {
+      "day": 7,
+      "bucket": "stock",
+      "amountYen": 4200,
+      "entryType": "consumable-bought",
+      "timestamp": 1787157543846,
+      "id": 176
+    },
+    {
+      "day": 7,
+      "bucket": "stock",
+      "amountYen": 5000,
+      "entryType": "consumable-bought",
+      "timestamp": 1787157558201,
+      "id": 177
+    },
+    {
+      "day": 7,
+      "bucket": "stock",
+      "amountYen": 3200,
+      "entryType": "consumable-bought",
+      "timestamp": 1787157559188,
+      "id": 178
+    },
+    {
+      "day": 7,
+      "bucket": "stock",
+      "amountYen": 4200,
+      "entryType": "consumable-bought",
+      "timestamp": 1787157582160,
+      "id": 179
+    },
+    {
+      "day": 7,
+      "bucket": "stock",
+      "amountYen": 5850,
+      "entryType": "consumable-bought",
+      "timestamp": 1787157605106,
+      "id": 180
+    },
+    {
+      "day": 7,
+      "bucket": "income",
+      "amountYen": 6132,
+      "entryType": "service-job-completed",
+      "timestamp": 1787157614206,
+      "id": 181
+    },
+    {
+      "day": 8,
+      "bucket": "stock",
+      "amountYen": 5000,
+      "entryType": "consumable-bought",
+      "timestamp": 1787157742768,
+      "id": 182
+    },
+    {
+      "day": 8,
+      "bucket": "income",
+      "amountYen": 10623,
+      "entryType": "service-job-completed",
+      "timestamp": 1787157754232,
+      "id": 183
+    },
+    {
+      "day": 8,
+      "bucket": "onCars",
+      "amountYen": 1820,
+      "entryType": "job-created",
+      "timestamp": 1787157809703,
+      "id": 184
+    },
+    {
+      "day": 8,
+      "bucket": "income",
+      "amountYen": 347,
+      "entryType": "part-sold",
+      "timestamp": 1787157846677,
+      "id": 185
+    },
+    {
+      "day": 8,
+      "bucket": "stock",
+      "amountYen": 170,
+      "entryType": "job-created",
+      "timestamp": 1787157853797,
+      "id": 186
+    },
+    {
+      "day": 8,
+      "bucket": "income",
+      "amountYen": 512,
+      "entryType": "part-sold",
+      "timestamp": 1787157863590,
+      "id": 187
+    },
+    {
+      "day": 8,
+      "bucket": "stock",
+      "amountYen": 480,
+      "entryType": "job-created",
+      "timestamp": 1787157866948,
+      "id": 188
+    },
+    {
+      "day": 8,
+      "bucket": "stock",
+      "amountYen": 390,
+      "entryType": "job-created",
+      "timestamp": 1787157871178,
+      "id": 189
+    },
+    {
+      "day": 8,
+      "bucket": "stock",
+      "amountYen": 200,
+      "entryType": "job-created",
+      "timestamp": 1787157879352,
+      "id": 190
+    },
+    {
+      "day": 8,
+      "bucket": "stock",
+      "amountYen": 2100,
+      "entryType": "part-ordered",
+      "timestamp": 1787157980569,
+      "id": 191
+    },
+    {
+      "day": 8,
+      "bucket": "stock",
+      "amountYen": 3100,
+      "entryType": "part-ordered",
+      "timestamp": 1787157980569,
+      "id": 192
+    },
+    {
+      "day": 9,
+      "bucket": "running",
+      "amountYen": 5000,
+      "entryType": "machine-hired",
+      "timestamp": 1787158051440,
+      "id": 193
+    },
+    {
+      "day": 9,
+      "bucket": "stock",
+      "amountYen": 3410,
+      "entryType": "part-bought",
+      "timestamp": 1787158183368,
+      "id": 194
+    },
+    {
+      "day": 9,
+      "bucket": "stock",
+      "amountYen": 6400,
+      "entryType": "part-ordered",
+      "timestamp": 1787158253066,
+      "id": 195
+    },
+    {
+      "day": 9,
+      "bucket": "stock",
+      "amountYen": 420,
+      "entryType": "job-created",
+      "timestamp": 1787158281723,
+      "id": 196
+    },
+    {
+      "day": 9,
+      "bucket": "income",
+      "amountYen": 6329,
+      "entryType": "service-job-completed",
+      "timestamp": 1787158296660,
+      "id": 197
+    },
+    {
+      "day": 9,
+      "bucket": "stock",
+      "amountYen": 4200,
+      "entryType": "consumable-bought",
+      "timestamp": 1787158353273,
+      "id": 198
+    },
+    {
+      "day": 9,
+      "bucket": "stock",
+      "amountYen": 5850,
+      "entryType": "consumable-bought",
+      "timestamp": 1787158367094,
+      "id": 199
+    },
+    {
+      "day": 9,
+      "bucket": "stock",
+      "amountYen": 8800,
+      "entryType": "part-ordered",
+      "timestamp": 1787158428117,
+      "id": 200
+    },
+    {
+      "day": 10,
+      "bucket": "running",
+      "amountYen": 6500,
+      "entryType": "machine-hired",
+      "timestamp": 1787158450621,
+      "id": 201
+    },
+    {
+      "day": 10,
+      "bucket": "stock",
+      "amountYen": 4200,
+      "entryType": "consumable-bought",
+      "timestamp": 1787158468839,
+      "id": 202
+    },
+    {
+      "day": 10,
+      "bucket": "stock",
+      "amountYen": 4050,
+      "entryType": "consumable-bought",
+      "timestamp": 1787158478368,
+      "id": 203
+    },
+    {
+      "day": 10,
+      "bucket": "onCars",
+      "amountYen": 1500,
+      "entryType": "car-listed",
+      "timestamp": 1787158533927,
+      "id": 204
+    },
+    {
+      "day": 10,
+      "bucket": "income",
+      "amountYen": 110786,
+      "entryType": "car-sold",
+      "timestamp": 1787158546982,
+      "id": 205
+    },
+    {
+      "day": 10,
+      "bucket": "stock",
+      "amountYen": 9130,
+      "entryType": "part-bought",
+      "timestamp": 1787158595656,
+      "id": 206
+    },
+    {
+      "day": 10,
+      "bucket": "income",
+      "amountYen": 18670,
+      "entryType": "service-job-completed",
+      "timestamp": 1787158624511,
+      "id": 207
+    },
+    {
+      "day": 10,
+      "bucket": "income",
+      "amountYen": 18258,
+      "entryType": "service-job-completed",
+      "timestamp": 1787158669867,
+      "id": 208
+    },
+    {
+      "day": 10,
+      "bucket": "running",
+      "amountYen": 1000,
+      "entryType": "coffee-bought",
+      "timestamp": 1787158688282,
+      "id": 209
+    },
+    {
+      "day": 10,
+      "bucket": "stock",
+      "amountYen": 720,
+      "entryType": "job-created",
+      "timestamp": 1787158719600,
+      "id": 210
+    },
+    {
+      "day": 10,
+      "bucket": "income",
+      "amountYen": 26019,
+      "entryType": "service-job-completed",
+      "timestamp": 1787158736019,
+      "id": 211
+    },
+    {
+      "day": 10,
+      "bucket": "stock",
+      "amountYen": 7300,
+      "entryType": "part-ordered",
+      "timestamp": 1787158804862,
+      "id": 212
+    },
+    {
+      "day": 10,
+      "bucket": "stock",
+      "amountYen": 3100,
+      "entryType": "part-ordered",
+      "timestamp": 1787158830266,
+      "id": 213
+    },
+    {
+      "day": 10,
+      "bucket": "running",
+      "amountYen": 20000,
+      "entryType": "rent-paid",
+      "timestamp": 1787158849511,
+      "id": 214
+    },
+    {
+      "day": 11,
+      "bucket": "income",
+      "amountYen": 150348,
+      "entryType": "car-sold",
+      "timestamp": 1787158863339,
+      "id": 215
+    }
+  ]
+}

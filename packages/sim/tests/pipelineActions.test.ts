@@ -1,7 +1,9 @@
 import {
   CARS,
+  MATERIALS,
   PARTS,
   PARTS_TAXONOMY,
+  paintStockKey,
   type CarInstance,
   type GameState,
   type PartInstance,
@@ -9,13 +11,20 @@ import {
   type ZoneStates,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
-import { METAL_ZONE_IDS, TRIM_ZONE_IDS, zonePanelPart } from '../src/bodyPipeline'
+import {
+  bodyPartRepairBillYen,
+  METAL_ZONE_IDS,
+  paintRepairBillYen,
+  TRIM_ZONE_IDS,
+  zonePanelPart,
+} from '../src/bodyPipeline'
 import { buildSimContext } from '../src/context'
 import { isFreeInstallRefit } from '../src/jobs'
 import {
   resolvePipelineInstallPanelAction,
   resolvePipelinePaintAction,
   resolvePipelineRemovePanelAction,
+  resolvePipelineResprayAction,
   resolvePipelineStageAction,
 } from '../src/pipelineActions'
 import {
@@ -666,6 +675,285 @@ describe('resolvePipelinePaintAction', () => {
         reason: 'out-of-stock',
       },
     ])
+  })
+})
+
+/**
+ * The whole-car respray (docs/sprints/sprint222.md, "The respray"): every
+ * primed zone painted in one pass, at half the per-panel labour rate and
+ * roughly two thirds the tin draw. Needs the body line's full capability
+ * (booth owned or hired today), never merely `unlocked`.
+ */
+describe('resolvePipelineResprayAction', () => {
+  const RESPRAY_ZONE_IDS = [...METAL_ZONE_IDS, ...TRIM_ZONE_IDS]
+  const PAINT_PER_USE_YEN = MATERIALS.find((m) => m.id === 'paint')!.priceYen
+  // A shop covering 'body' also covers 'interior' (body-and-trim-shop), so
+  // this alone grants the body line's full capability.
+  const FULL_LINE = testToolShopsOwned('body')
+  const COLOUR = 'blue-rally'
+  const STOCK_KEY = paintStockKey('solid', COLOUR)
+
+  /** A car with `primedCount` of its nine zones primed and bare (finish 3),
+   * the rest mint - `planRespray`'s own candidate pool. Primes metal zones
+   * first, then trim, so a smaller count is a strict prefix of a larger one
+   * across these fixtures. */
+  function resprayCar(id: string, primedCount: number): CarInstance {
+    const overrides: Partial<Record<string, ZoneState>> = {}
+    let remaining = primedCount
+    for (const zoneId of METAL_ZONE_IDS) {
+      if (remaining <= 0) break
+      overrides[zoneId] = { metal: 0, surface: 0, finish: 3, panelMissing: false, primed: true }
+      remaining -= 1
+    }
+    for (const zoneId of TRIM_ZONE_IDS) {
+      if (remaining <= 0) break
+      overrides[zoneId] = { finish: 3, panelMissing: false, primed: true }
+      remaining -= 1
+    }
+    const states = {} as Record<string, ZoneState>
+    for (const zoneId of METAL_ZONE_IDS) {
+      states[zoneId] = { metal: 0, surface: 0, finish: 0, panelMissing: false, primed: false }
+    }
+    for (const zoneId of TRIM_ZONE_IDS) {
+      states[zoneId] = { finish: 0, panelMissing: false, primed: false }
+    }
+    const zoneState = { ...states, ...overrides } as ZoneStates
+    return buildCarInstance({
+      id,
+      modelId: 'honda-city-e-aa',
+      year: 1984,
+      mileageKm: 100_000,
+      factoryColour: 'white',
+      // Deliberately wrong ('poor') so a post-resolve assertion proves the
+      // derived band was re-projected from zone state.
+      parts: mintCarParts({
+        paint: {
+          id: 'p-paint',
+          partId: CONTEXT.stockPartByCarPartId.entry.paint!.id,
+          band: 'poor',
+          origin: { kind: 'market', day: 1 },
+        },
+      }),
+      zoneState,
+    })
+  }
+
+  it('covers exactly the primed zones, leaving the rest untouched', () => {
+    const zoneCar = resprayCar('car-respray-cover', 4)
+    const state = baseState({
+      ownedCars: [zoneCar],
+      serviceBayCarIds: [zoneCar.id],
+      bodyBayCarId: zoneCar.id,
+      toolShopsOwned: FULL_LINE,
+      consumableStock: { [STOCK_KEY]: 10 },
+    })
+    const result = resolvePipelineResprayAction(
+      state,
+      zoneCar.id,
+      { kind: 'pipeline-respray', colour: COLOUR, grade: 'street' },
+      CONTEXT,
+      100,
+    )
+    const coveredIds = RESPRAY_ZONE_IDS.slice(0, 4)
+    const untouchedIds = RESPRAY_ZONE_IDS.slice(4)
+    for (const zoneId of coveredIds) {
+      expect(result.state.ownedCars[0]?.zoneState?.[zoneId].colour, zoneId).toBe(COLOUR)
+      expect(result.state.ownedCars[0]?.zoneState?.[zoneId].finish, zoneId).toBe(1)
+      expect(result.state.ownedCars[0]?.zoneState?.[zoneId].primed, zoneId).toBe(false)
+    }
+    for (const zoneId of untouchedIds) {
+      expect(result.state.ownedCars[0]?.zoneState?.[zoneId], zoneId).toEqual(
+        state.ownedCars[0]!.zoneState![zoneId],
+      )
+    }
+    expect(result.laborSlotsUsed).toBe(4)
+  })
+
+  it('labour is 1 per covered zone and the tin draw is ceil(covered x 2/3): 9, 3 and 2 primed panels', () => {
+    const cases: readonly [primedCount: number, expectedLabour: number, expectedTinUses: number][] =
+      [
+        [9, 9, 6],
+        [3, 3, 2],
+        [2, 2, 2],
+      ]
+    for (const [primedCount, expectedLabour, expectedTinUses] of cases) {
+      const zoneCar = resprayCar(`car-respray-${primedCount}`, primedCount)
+      const state = baseState({
+        ownedCars: [zoneCar],
+        serviceBayCarIds: [zoneCar.id],
+        bodyBayCarId: zoneCar.id,
+        toolShopsOwned: FULL_LINE,
+        consumableStock: { [STOCK_KEY]: expectedTinUses },
+      })
+      const result = resolvePipelineResprayAction(
+        state,
+        zoneCar.id,
+        { kind: 'pipeline-respray', colour: COLOUR, grade: 'street' },
+        CONTEXT,
+        100,
+      )
+      expect(result.laborSlotsUsed, `${primedCount} primed`).toBe(expectedLabour)
+      expect(result.state.consumableStock?.[STOCK_KEY], `${primedCount} primed`).toBe(0)
+    }
+  })
+
+  it('refuses with fewer than two primed zones, spending and changing nothing', () => {
+    const zoneCar = resprayCar('car-respray-one', 1)
+    const state = baseState({
+      ownedCars: [zoneCar],
+      serviceBayCarIds: [zoneCar.id],
+      bodyBayCarId: zoneCar.id,
+      toolShopsOwned: FULL_LINE,
+      consumableStock: { [STOCK_KEY]: 10 },
+    })
+    const result = resolvePipelineResprayAction(
+      state,
+      zoneCar.id,
+      { kind: 'pipeline-respray', colour: COLOUR, grade: 'street' },
+      CONTEXT,
+      100,
+    )
+    expect(result.log).toEqual([])
+    expect(result.state).toBe(state)
+  })
+
+  it('refuses without the body line at full capability, even though tier 2 unlocks paint', () => {
+    const zoneCar = resprayCar('car-respray-locked', 4)
+    // The module-level baseState() default (TOOL_TIERS body:2, engine-only
+    // shop) reads unlocked but never full capability.
+    const state = baseState({
+      ownedCars: [zoneCar],
+      serviceBayCarIds: [zoneCar.id],
+      bodyBayCarId: zoneCar.id,
+      consumableStock: { [STOCK_KEY]: 10 },
+    })
+    const result = resolvePipelineResprayAction(
+      state,
+      zoneCar.id,
+      { kind: 'pipeline-respray', colour: COLOUR, grade: 'street' },
+      CONTEXT,
+      100,
+    )
+    expect(result.log).toEqual([])
+    expect(result.state).toBe(state)
+  })
+
+  it('refuses a stock-grade job in any colour but the factory one', () => {
+    const zoneCar = resprayCar('car-respray-wrong-colour', 4)
+    const state = baseState({
+      ownedCars: [zoneCar],
+      serviceBayCarIds: [zoneCar.id],
+      bodyBayCarId: zoneCar.id,
+      toolShopsOwned: FULL_LINE,
+      consumableStock: { [STOCK_KEY]: 10 },
+    })
+    const result = resolvePipelineResprayAction(
+      state,
+      zoneCar.id,
+      { kind: 'pipeline-respray', colour: COLOUR, grade: 'stock' },
+      CONTEXT,
+      100,
+    )
+    expect(result.log).toEqual([])
+    expect(result.state).toBe(state)
+  })
+
+  it('refuses on a tin shortfall, logging job-blocked and spending nothing', () => {
+    const zoneCar = resprayCar('car-respray-shortfall', 9)
+    const state = baseState({
+      ownedCars: [zoneCar],
+      serviceBayCarIds: [zoneCar.id],
+      bodyBayCarId: zoneCar.id,
+      toolShopsOwned: FULL_LINE,
+      // Nine primed zones need 6 uses; only 5 are on the shelf.
+      consumableStock: { [STOCK_KEY]: 5 },
+    })
+    const result = resolvePipelineResprayAction(
+      state,
+      zoneCar.id,
+      { kind: 'pipeline-respray', colour: COLOUR, grade: 'street' },
+      CONTEXT,
+      100,
+    )
+    expect(result.log).toEqual([
+      { type: 'job-blocked', jobId: `pipeline-${zoneCar.id}-respray`, reason: 'out-of-stock' },
+    ])
+    expect(result.state).toBe(state)
+  })
+
+  it('posts materials at the same per-use rate paint charges to repairYen, and recomputes the paint band', () => {
+    const zoneCar = resprayCar('car-respray-ledger', 9)
+    const state = baseState({
+      ownedCars: [zoneCar],
+      serviceBayCarIds: [zoneCar.id],
+      bodyBayCarId: zoneCar.id,
+      toolShopsOwned: FULL_LINE,
+      consumableStock: { [STOCK_KEY]: 6 },
+    })
+    const result = resolvePipelineResprayAction(
+      state,
+      zoneCar.id,
+      { kind: 'pipeline-respray', colour: COLOUR, grade: 'street' },
+      CONTEXT,
+      100,
+    )
+    // The tin was already paid for when it was bought - Confirm spends
+    // stock, not cash.
+    expect(result.state.cashYen).toBe(state.cashYen)
+    const expectedCostYen = 6 * PAINT_PER_USE_YEN
+    expect(result.state.carLedgers[zoneCar.id]?.repairYen).toBe(expectedCostYen)
+    expect(result.log).toEqual([
+      {
+        type: 'body-materials-used',
+        carInstanceId: zoneCar.id,
+        stage: 'paint',
+        costYen: expectedCostYen,
+      },
+    ])
+    // Every zone now reads fine paint (finish 1), so the derived carrier
+    // band moves off the fixture's deliberately-wrong 'poor' starting band.
+    expect(result.state.ownedCars[0]?.parts.paint.installed?.band).not.toBe('poor')
+  })
+
+  it('does not change what a repair bill quotes: the bill walker never learns this economy', () => {
+    const zoneCar = resprayCar('car-respray-bill', 4)
+    const fitmentClass = 'entry' as const
+    const billBefore = bodyPartRepairBillYen(
+      'paint',
+      zoneCar.zoneState!,
+      'mint',
+      fitmentClass,
+      CONTEXT.partsById,
+    )
+    const paintBillBefore = paintRepairBillYen(zoneCar.zoneState!, 'mint')
+    expect(billBefore).toBe(paintBillBefore)
+    expect(billBefore).toBeGreaterThan(0)
+
+    const state = baseState({
+      ownedCars: [zoneCar],
+      serviceBayCarIds: [zoneCar.id],
+      bodyBayCarId: zoneCar.id,
+      toolShopsOwned: FULL_LINE,
+      consumableStock: { [STOCK_KEY]: 10 },
+    })
+    resolvePipelineResprayAction(
+      state,
+      zoneCar.id,
+      { kind: 'pipeline-respray', colour: COLOUR, grade: 'street' },
+      CONTEXT,
+      100,
+    )
+    // `bodyPartRepairBillYen`/`paintRepairBillYen` read only their own
+    // arguments (pure functions unaffected by module-level state) - quoted
+    // again on the same pre-respray zone state, the figure is identical.
+    const billAfter = bodyPartRepairBillYen(
+      'paint',
+      zoneCar.zoneState!,
+      'mint',
+      fitmentClass,
+      CONTEXT.partsById,
+    )
+    expect(billAfter).toBe(billBefore)
   })
 })
 

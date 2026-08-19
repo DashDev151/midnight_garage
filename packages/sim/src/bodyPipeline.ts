@@ -839,8 +839,11 @@ const POLISH_COST_YEN = materialCostYen('polish')
 
 /** The tin a panel paint job charges, by finish grade - stock and street both
  * lay a solid colour and share one tin; sport (metallic) and race (pearl)
- * each have their own. */
-const PAINT_TIN_COST_YEN_BY_GRADE: Readonly<Record<Grade, number>> = {
+ * each have their own. Exported so the respray resolver
+ * (`resolvePipelineResprayAction`, pipelineActions.ts) prices its own tin
+ * draw at the same per-use rate a panel-by-panel paint job charges, rather
+ * than restating it. */
+export const PAINT_TIN_COST_YEN_BY_GRADE: Readonly<Record<Grade, number>> = {
   stock: PAINT_COST_YEN,
   street: PAINT_COST_YEN,
   sport: PAINT_METALLIC_COST_YEN,
@@ -1002,6 +1005,10 @@ export interface PipelineStageRefusal {
     | 'needs-panel'
     | 'wrong-colour'
     | 'metal-only'
+    /** The body line lacks the capability this stage needs: polish below
+     * `unlocked` (tier 2 owned or hired today), or a respray below
+     * `fullCapability` (tier 3 owned or hired today). */
+    | 'tool-tier'
     /** The shelf does not hold enough of a consumable this stage needs
      * (`stagedWork.ts`'s live stock gate, ahead of `chargeAndApplyPipelineEffect`
      * - never returned by this module's own zone/capability planners, which
@@ -1015,11 +1022,12 @@ export interface PipelineStageRefusal {
 
 /** Options a stage's own gate reads - both express "the body line's daily
  * capability," at two different thresholds: `unlocked` (owned tier 2, or
- * hired today) gates the better paint finish (weld is priced at a rate
- * through `machineLaborMultiplier` instead - `pipelineActions.ts` - never a
- * wall, sprint208.md); `fullCapability` (owned tier 3, or hired today - hire
- * always grants the WHOLE line, not just tier 2) gates the best polish
- * floor. */
+ * hired today) gates the better paint finish and whether polish runs at all
+ * (weld is priced at a rate through `machineLaborMultiplier` instead -
+ * `pipelineActions.ts` - never a wall, sprint208.md); `fullCapability` (owned
+ * tier 3, or hired today - hire always grants the WHOLE line, not just tier
+ * 2) gates the best polish floor and the whole-car respray (`planRespray`
+ * below). */
 export interface BodyLineCapability {
   unlocked: boolean
   fullCapability: boolean
@@ -1055,6 +1063,12 @@ function isMetalOnlyStage(stage: string): stage is MetalOnlyStageId {
  * (`pipelineActions.ts`'s `resolvePipelineStageAction`, `machineLaborMultiplier`
  * against the `'body'` group), the same rate-not-wall shape every other
  * machine gate in this codebase already uses.
+ *
+ * All three stages also reset `finish` to `BARE_FINISH` and clear `primed`:
+ * working the metal or levelling the surface underneath destroys whatever
+ * paint sat on top, so a zone that needed hand work always owes the finish
+ * chain again afterwards. Idempotent - a zone already bare and unprimed just
+ * reads the same values back.
  */
 export function planMetalPipelineStage(
   stage: MetalOnlyStageId,
@@ -1067,18 +1081,22 @@ export function planMetalPipelineStage(
       if (zone.metal < 1 || zone.metal > 2) return { ok: false, reason: 'prereq' }
       return {
         ok: true,
-        zone: { ...zone, metal: zone.metal - 1 },
+        zone: { ...zone, metal: zone.metal - 1, finish: BARE_FINISH, primed: false },
         materialsCostYen: 0,
       }
     case 'weld':
       if (zone.metal > MAX_REPAIRABLE_METAL) return { ok: false, reason: 'needs-panel' }
       if (zone.metal < MAX_REPAIRABLE_METAL) return { ok: false, reason: 'prereq' }
-      return { ok: true, zone: { ...zone, metal: 0 }, materialsCostYen: 0 }
+      return {
+        ok: true,
+        zone: { ...zone, metal: 0, finish: BARE_FINISH, primed: false },
+        materialsCostYen: 0,
+      }
     case 'fillAndSand':
       if (zone.metal !== 0 || zone.surface === 0) return { ok: false, reason: 'prereq' }
       return {
         ok: true,
-        zone: { ...zone, surface: 0 },
+        zone: { ...zone, surface: 0, finish: BARE_FINISH, primed: false },
         materialsCostYen: FILL_AND_SAND_COST_YEN,
       }
   }
@@ -1119,6 +1137,7 @@ export function planSharedPipelineStage(
     }
     case 'polish': {
       if (zone.finish >= BARE_FINISH) return { ok: false, reason: 'prereq' } // bare - nothing to polish
+      if (!capability.unlocked) return { ok: false, reason: 'tool-tier' }
       const floor = capability.fullCapability ? 0 : 1
       const nextFinish = Math.max(floor, zone.finish - 1)
       if (nextFinish === zone.finish) return { ok: false, reason: 'prereq' } // already at this tier's floor
@@ -1285,6 +1304,55 @@ export function planPaintStage(
   }
 }
 
+/** `planRespray`'s success shape: every zone `planRespray` touched, and which
+ * ones - a whole-car operation, so unlike `PipelineStageEffect` there is no
+ * single zone to return. Materials and labour are the resolver's own
+ * arithmetic off `coveredZoneIds.length` (docs/sprints/sprint222.md, "The
+ * respray": labour is 1 per covered zone, tin draw is
+ * `ceil(covered x 2/3)`), not priced here - `planRespray` only decides WHICH
+ * zones move and WHERE they land, the same split `PipelineStageEffect`
+ * itself keeps `chargeAndApplyPipelineEffect` to do for one zone. */
+export interface RespraySprayEffect {
+  ok: true
+  zoneStates: ZoneStates
+  coveredZoneIds: PanelZoneId[]
+}
+
+/**
+ * The whole-car respray's plan: every currently primed zone painted in one
+ * pass at booth quality (finish 1 - a booth is never the tier-1 "tidy"
+ * ceiling `planPaintStage` allows, since `fullCapability` implies
+ * `unlocked`), refusing outright rather than partially covering the car.
+ * Three refusals, checked in order: the body line's full capability (booth
+ * owned or hired today - `fullCapability`, not merely `unlocked`, since a
+ * respray is the tier-3 ability); fewer than two zones primed (one primed
+ * zone is a touch-up, which per-panel Paint already covers); and the same
+ * stock-grade colour gate `planPaintStage` enforces (a `stock`-grade job
+ * refused everywhere but the car's own factory colour(s)). A zone missing
+ * its panel is never primed to begin with (`planSharedPipelineStage`'s
+ * `prime` case refuses a missing panel outright), so no separate check is
+ * needed here to exclude it.
+ */
+export function planRespray(
+  zoneStates: ZoneStates,
+  colour: string,
+  capability: BodyLineCapability,
+  grade: Grade,
+  factoryColour: string,
+): RespraySprayEffect | PipelineStageRefusal {
+  if (!capability.fullCapability) return { ok: false, reason: 'tool-tier' }
+  const coveredZoneIds = PANEL_ZONE_IDS.filter((zoneId) => zoneStates[zoneId].primed)
+  if (coveredZoneIds.length < 2) return { ok: false, reason: 'prereq' }
+  if (grade === 'stock' && !factoryColourSet(factoryColour).has(colour)) {
+    return { ok: false, reason: 'wrong-colour' }
+  }
+  let next = zoneStates
+  for (const zoneId of coveredZoneIds) {
+    next = { ...next, [zoneId]: { ...next[zoneId], finish: 1, primed: false, colour } }
+  }
+  return { ok: true, zoneStates: next, coveredZoneIds }
+}
+
 /** The capability a BILL prices at: the whole body line. A bill is the work a
  * car needs, never what today's shop can finish, which is the contract every
  * other whole-car bill function in the sim already keeps. */
@@ -1378,6 +1446,21 @@ function repaintChain(
  * refuses to go over raw filler and filler refuses to go over unstraightened
  * metal, so a repaint drags a fill along with it even where the target band
  * would have tolerated the surface it found.
+ *
+ * Metal is straightened in ONE pass, before the fill and before
+ * `repaintChain` is priced, following one causal chain rather than
+ * re-deriving it from the zone's state at three different points: metal
+ * left above target still owes straightening, and straightening that far
+ * bares the finish, so it owes the repaint too (`metalWorkOwed` feeds
+ * `repaintOwed`, not the other way round - deciding the fill from the
+ * PRE-metalwork finish alone missed exactly this case, a zone whose paint
+ * was fine before the beats ran); a repaint owed over any raw surface owes
+ * the fill (`repaintOwed` feeds `needsFill`, since `prime` refuses over
+ * unlevelled surface); and the fill owes fully straight metal
+ * (`planMetalPipelineStage`'s `fillAndSand` prerequisite), so the pass goes
+ * all the way to 0 whenever a fill is coming, otherwise it stops at
+ * `targetSeverity` - the same endpoint the old trailing straighten call
+ * used, now run early enough for its finish reset to reach the price.
  */
 function planMetalZoneRepair(zone: MetalZoneState, targetSeverity: number): ZoneRepairRoute {
   let current = zone
@@ -1388,10 +1471,14 @@ function planMetalZoneRepair(zone: MetalZoneState, targetSeverity: number): Zone
     panelFitted = true
   }
 
-  const needsRepaint = current.finish > targetSeverity && current.finish >= BARE_FINISH
-  const surfaceAboveTarget = current.surface > targetSeverity
-  if (current.surface > 0 && (needsRepaint || surfaceAboveTarget)) {
-    current = straightenMetal(current, 0)
+  const metalWorkOwed = current.metal > targetSeverity
+  const repaintOwed =
+    metalWorkOwed || (current.finish > targetSeverity && current.finish >= BARE_FINISH)
+  const needsFill = current.surface > 0 && (repaintOwed || current.surface > targetSeverity)
+
+  current = straightenMetal(current, needsFill ? 0 : targetSeverity)
+
+  if (needsFill) {
     const fill = planMetalPipelineStage('fillAndSand', current)
     if (fill.ok) {
       current = fill.zone as MetalZoneState
@@ -1401,7 +1488,7 @@ function planMetalZoneRepair(zone: MetalZoneState, targetSeverity: number): Zone
 
   const { zone: paintedZone, finishYen } = repaintChain(current, targetSeverity)
   return {
-    zone: straightenMetal(paintedZone as MetalZoneState, targetSeverity),
+    zone: paintedZone as MetalZoneState,
     panelFitted,
     fillerYen,
     finishYen,

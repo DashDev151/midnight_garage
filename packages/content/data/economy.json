@@ -1066,7 +1066,7 @@
       "drivetrain": 18000,
       "suspension": 5000,
       "wheels": 3000,
-      "body": 14000,
+      "body": 6500,
       "interior": 7000
     },
     "machinelessLaborMultiplier": 3,

@@ -1128,11 +1128,14 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
    * the tin was already paid for when it was bought (`consumable-bought`
    * below), so this only records the VALUE of what the car used, already
    * posted to that car's `repairYen`. Emitted only when the stage actually
-   * draws something. */
+   * draws something. `zoneId` is absent for a whole-car respray
+   * (`resolvePipelineResprayAction`, sim/pipelineActions.ts): that draw
+   * covers every primed zone at once rather than the one this entry
+   * otherwise names. */
   z.object({
     type: z.literal('body-materials-used'),
     carInstanceId: z.string().min(1),
-    zoneId: ZoneIdSchema,
+    zoneId: ZoneIdSchema.optional(),
     stage: PipelineStageIdSchema,
     costYen: z.number().int().positive(),
   }),

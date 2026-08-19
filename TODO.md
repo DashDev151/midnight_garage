@@ -1537,6 +1537,14 @@ pass."
 
 ## Planned systems (designed, not yet scheduled)
 
+- [ ] **Easter egg, late game: the mysterious commission (maintainer, 2026-08-19, deferred by
+  them).** A build request arrives from an unnamed source: a van or wagon, full race spec,
+  maximum power. Pays well, never explains. Design intent: this is the Karagawa Express van
+  (the courier brand on the body shop's instant-delivery buy buttons, sprint 222), which is how
+  the parcels arrive before the kettle boils; the game never says so. Needs the mission redesign
+  to land first (story missions are being scrapped and redesigned, see Standing concerns), so it
+  is a rider on that work, not a sprint of its own.
+
 - [ ] **Bank loans: wanted, unplanned, and outside v1.0 until that changes (maintainer 2026-08-04).**
   The bank stands on the overworld map already, drawn and inert. What it is for is settled in
   principle: **take out a loan, pay it back with interest.**

@@ -57,6 +57,51 @@ describe('weld refuses below rot, and only rot', () => {
   })
 })
 
+describe('metalwork bares the finish it sits under', () => {
+  const painted = { finish: 0, panelMissing: false, primed: false, colour: 'red' }
+
+  it('beat leaves a painted zone bare and unprimed, colour field untouched', () => {
+    const plan = planMetalPipelineStage('beat', metalZone({ ...painted, metal: 1, surface: 0 }))
+    expect(plan.ok).toBe(true)
+    if (plan.ok && isMetalZoneState(plan.zone)) {
+      expect(plan.zone.finish).toBe(3)
+      expect(plan.zone.primed).toBe(false)
+      expect(plan.zone.colour).toBe('red')
+    }
+  })
+
+  it('weld leaves a painted zone bare and unprimed', () => {
+    const plan = planMetalPipelineStage('weld', metalZone({ ...painted, metal: 3, surface: 0 }))
+    expect(plan.ok).toBe(true)
+    if (plan.ok && isMetalZoneState(plan.zone)) {
+      expect(plan.zone.finish).toBe(3)
+      expect(plan.zone.primed).toBe(false)
+    }
+  })
+
+  it('fillAndSand leaves a painted zone bare and unprimed', () => {
+    const plan = planMetalPipelineStage(
+      'fillAndSand',
+      metalZone({ ...painted, metal: 0, surface: 1 }),
+    )
+    expect(plan.ok).toBe(true)
+    if (plan.ok && isMetalZoneState(plan.zone)) {
+      expect(plan.zone.finish).toBe(3)
+      expect(plan.zone.primed).toBe(false)
+    }
+  })
+
+  it('is idempotent: reapplying beat to an already-bare zone leaves it bare', () => {
+    const bare = metalZone({ metal: 1, surface: 0, finish: 3, primed: false })
+    const plan = planMetalPipelineStage('beat', bare)
+    expect(plan.ok).toBe(true)
+    if (plan.ok && isMetalZoneState(plan.zone)) {
+      expect(plan.zone.finish).toBe(3)
+      expect(plan.zone.primed).toBe(false)
+    }
+  })
+})
+
 describe('a trim zone cannot be beaten, welded or filled', () => {
   it('refuses all three metal-only stages, naming the reason', () => {
     const zone = trimZone({ finish: 2 })
@@ -74,6 +119,44 @@ describe('a trim zone cannot be beaten, welded or filled', () => {
     expect(primed.ok).toBe(true)
     const polished = planPipelineStage('polish', trimZone({ finish: 2, primed: false }), UNLOCKED)
     expect(polished.ok).toBe(true)
+  })
+})
+
+/**
+ * The polish gate (docs/sprints/sprint222.md, "the polish stage gate"):
+ * rattle-can shops do honest but never pretty work, so polish now needs the
+ * body line `unlocked` (tier 2 owned, or hired today) before it runs at all.
+ * `BILL_CAPABILITY` (bodyPipeline.ts) always reads `unlocked: true`, so this
+ * never touches what a bill quotes.
+ */
+describe('polish requires the body line unlocked', () => {
+  const LOCKED = { unlocked: false, fullCapability: false }
+
+  it('refuses at tier 1 capability, naming the gate', () => {
+    const plan = planPipelineStage('polish', trimZone({ finish: 2, primed: false }), LOCKED)
+    expect(plan.ok).toBe(false)
+    if (!plan.ok) expect(plan.reason).toBe('tool-tier')
+  })
+
+  it('refuses on a metal zone too, at the same gate', () => {
+    const plan = planPipelineStage('polish', metalZone({ finish: 2, primed: false }), LOCKED)
+    expect(plan.ok).toBe(false)
+    if (!plan.ok) expect(plan.reason).toBe('tool-tier')
+  })
+
+  it('a bare zone still refuses with prereq, even locked - nothing to polish outranks the gate', () => {
+    const plan = planPipelineStage('polish', trimZone({ finish: 3, primed: false }), LOCKED)
+    expect(plan.ok).toBe(false)
+    if (!plan.ok) expect(plan.reason).toBe('prereq')
+  })
+
+  it('passes once unlocked, landing at the tier-2 floor', () => {
+    const plan = planPipelineStage('polish', trimZone({ finish: 2, primed: false }), {
+      unlocked: true,
+      fullCapability: false,
+    })
+    expect(plan.ok).toBe(true)
+    if (plan.ok) expect(plan.zone.finish).toBe(1)
   })
 })
 

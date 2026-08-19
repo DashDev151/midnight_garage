@@ -116,17 +116,30 @@ const SMOKE_SCRIPT = CareerScriptSchema.parse(smokeScriptRaw)
 // `smoke.script.json`'s own two `kind: 'hash'` checkpoints (days 1 and 10)
 // move with this array; the day-7 `cashAtMost` ceiling is unchanged, since
 // no cash movement in this script is priced off the knowledge model.
+//
+// Re-pinned for metalwork ruining the paint over it: beating, welding or
+// filling a zone now bares its finish, and the repair-bill walker prices
+// the resulting repaint chain into a zone-model body carrier's cost. The
+// day-1 buyout car's body carries metal damage under otherwise intact paint
+// on several panels, so its guide value - and so the buyout price struck
+// for it - reads correctly lower, moving the whole sequence from day one
+// even though the script never touches the body pipeline itself. Re-derived
+// from a real run, never hand-guessed. `smoke.script.json`'s own three
+// checkpoints (the two `kind: 'hash'` on days 1 and 10, and `kind:
+// 'cashAtMost'` on day 7, whose pinned ceiling moved with the day-7 cash
+// figure - less was spent on the buyout, so more cash remains) move with
+// this array.
 const EXPECTED_HASHES_BY_DAY = [
-  '8b63fe21',
-  '0a5f2af6',
-  'b37896bb',
-  'b377fa09',
-  '3af2ad8a',
-  'b294ac57',
-  '0c5c425d',
-  '864a1a21',
-  '287df13d',
-  '7abceee8',
+  'd1fd027b',
+  'fd5ba00f',
+  '55c7f5ec',
+  '62699101',
+  'f7a64a7e',
+  '27c47e9b',
+  '0a5ae8fa',
+  '4a1c2ed9',
+  '53fad84b',
+  'e61c3d6f',
 ]
 
 describe('replayCareerScript (Sprint 198 C1)', () => {

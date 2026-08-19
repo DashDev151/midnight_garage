@@ -14,10 +14,12 @@ import {
   applyDerivedBodyBands,
   bandForSeverity,
   isMetalZoneState,
+  PAINT_TIN_COST_YEN_BY_GRADE,
   planInstallPanel,
   planPaintStage,
   planPipelineStage,
   planRemovePanel,
+  planRespray,
   zonePanelPart,
   type BodyLineCapability,
   type PipelineStageEffect,
@@ -349,6 +351,142 @@ export function resolvePipelinePaintAction(
     context,
     requirements,
   )
+}
+
+/**
+ * The whole-car respray, resolved instantly: every currently primed zone is
+ * finished in one pass at booth quality, at half the per-panel labour rate
+ * and roughly two thirds the tin draw (docs/sprints/sprint222.md, "The
+ * respray": labour is 1 per covered zone, tin draw is
+ * `ceil(covered x 2/3)`). Requires the body line's full capability and at
+ * least two primed zones (`planRespray`, bodyPipeline.ts); refuses silently
+ * (nothing to do) on any of its three refusal reasons, the same "no log
+ * entry beyond stock" treatment every other pipeline refusal gets. Refuses
+ * off the body bay's own car first, same as every other pipeline action
+ * (sprint208.md). Per-panel Paint remains for touch-ups and two-tones; the
+ * bill walker (`planZoneRepair`) never learns this economy - a bill is the
+ * market's per-panel price for the work, the booth's efficiency is the
+ * owner's private margin.
+ */
+export function resolvePipelineResprayAction(
+  state: GameState,
+  carInstanceId: string,
+  action: Extract<StagedAction, { kind: 'pipeline-respray' }>,
+  context: SimContext,
+  laborAvailable: number,
+): PipelineOpResult {
+  const car = findWorkableCar(state, carInstanceId)
+  if (!car || !car.zoneState) return NOOP_PIPELINE_RESULT(state)
+  if (!carInBodyBay(state, carInstanceId)) {
+    return {
+      state,
+      log: [
+        {
+          type: 'job-blocked',
+          jobId: `pipeline-${carInstanceId}-respray`,
+          reason: 'not-in-body-bay',
+        },
+      ],
+      laborSlotsUsed: 0,
+    }
+  }
+  const model = context.modelsById[car.modelId]
+  if (!model) return NOOP_PIPELINE_RESULT(state)
+
+  const plan = planRespray(
+    car.zoneState,
+    action.colour,
+    bodyLineCapability(state, context),
+    action.grade,
+    car.factoryColour,
+  )
+  if (!plan.ok) return NOOP_PIPELINE_RESULT(state)
+
+  const laborSlotsRequired = plan.coveredZoneIds.length
+  if (laborSlotsRequired > laborAvailable) return NOOP_PIPELINE_RESULT(state)
+
+  // Six tins where panel-by-panel burns nine on a full nine-zone car - the
+  // booth's own margin (sprint222.md).
+  const tinUses = Math.ceil((plan.coveredZoneIds.length * 2) / 3)
+  const requirement = { ...paintConsumableRequirement(action.grade, action.colour), uses: tinUses }
+  if (!hasStockFor(state.consumableStock ?? {}, [requirement])) {
+    return {
+      state,
+      log: [
+        {
+          type: 'job-blocked',
+          jobId: `pipeline-${carInstanceId}-respray`,
+          reason: 'out-of-stock',
+        },
+      ],
+      laborSlotsUsed: 0,
+    }
+  }
+
+  const installed = car.parts.paint.installed
+  const catalogPart = paintCatalogPartForGrade(
+    context,
+    fitmentClassForTier(model.tier),
+    action.grade,
+  )
+  const carWithGrade =
+    installed && catalogPart
+      ? {
+          ...car,
+          parts: { ...car.parts, paint: { installed: { ...installed, partId: catalogPart.id } } },
+        }
+      : car
+
+  const nextCar = applyDerivedBodyBands(
+    { ...carWithGrade, zoneState: plan.zoneStates },
+    model,
+    context,
+  )
+
+  const isOwnedCar = state.ownedCars.some((c) => c.id === carInstanceId)
+  const serviceJob = state.activeServiceJobs.find((sj) => sj.car.id === carInstanceId)
+
+  const withStock: GameState = {
+    ...state,
+    consumableStock: consumeStock(state.consumableStock ?? {}, [requirement]),
+    energySpentToday: state.energySpentToday + laborSlotsRequired,
+  }
+  const withCar = writeBackCar(withStock, carInstanceId, nextCar)
+  if (!withCar) return NOOP_PIPELINE_RESULT(state)
+
+  const materialsCostYen = tinUses * PAINT_TIN_COST_YEN_BY_GRADE[action.grade]
+  const withLedger = isOwnedCar
+    ? updateCarLedger(withCar, carInstanceId, (ledger) => ({
+        ...ledger,
+        repairYen: ledger.repairYen + materialsCostYen,
+      }))
+    : updateServiceJobLedger(withCar, serviceJob?.id ?? '', (ledger) => ({
+        ...ledger,
+        repairYen: ledger.repairYen + materialsCostYen,
+      }))
+
+  // One whole-car entry rather than one per zone, mirroring the resolver's
+  // own one total draw: the tin was already paid for at purchase
+  // (`resolveBuyPaintTin`), so this only records the VALUE the respray drew.
+  // `zoneId` is deliberately absent - this draw covers every primed zone at
+  // once, not one the entry could name.
+  const log: DayLogEntry[] =
+    materialsCostYen > 0
+      ? [
+          {
+            type: 'body-materials-used',
+            carInstanceId,
+            stage: 'paint',
+            costYen: materialsCostYen,
+          },
+        ]
+      : []
+
+  return {
+    state: bookCashMovements(withLedger, log, context.economy),
+    log,
+    laborSlotsUsed: laborSlotsRequired,
+  }
 }
 
 /**

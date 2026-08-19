@@ -1,4 +1,5 @@
-import { CARS, PAINT_COLOURS, type ZoneId, type ZoneState } from '@midnight-garage/content'
+import { CARS, ECONOMY, PAINT_COLOURS, type ZoneId, type ZoneState } from '@midnight-garage/content'
+import { PANEL_ZONE_IDS } from '@midnight-garage/sim'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -16,12 +17,13 @@ import { formatYen } from '../utils/formatYen'
 import BodyShopScreen from './BodyShopScreen.vue'
 
 /**
- * The body shop room (sprint208.md): the zone diagram and the one zone
- * action panel, moved here from `CarDetailScreen.vue`. The room always
- * works whichever car is in the body bay - there is no route param - so
- * every fixture below grants a car and moves it into the bay before
- * mounting.
+ * The body shop room (sprint208.md, rebuilt sprint220.md): the zone diagram
+ * and the one zone action panel. The room always works whichever car is in
+ * the body bay - there is no route param - so every fixture below grants a
+ * car and moves it into the bay before mounting.
  */
+
+const PIPELINE_STEP_IDS = ['beatWeld', 'fillAndSand', 'prime', 'paint', 'polish'] as const
 
 function makeRouter(): Router {
   return createRouter({
@@ -80,6 +82,15 @@ function setZone(
   car.zoneState = { ...car.zoneState!, [zoneId]: zone }
 }
 
+/** Every zone at once, to the same state - the whole-body header tests need
+ * a fully known body rather than whatever the car generator rolled. */
+function setAllZones(game: ReturnType<typeof useGameStore>, carId: string, zone: ZoneState): void {
+  const car = game.gameState.ownedCars.find((c) => c.id === carId)!
+  const zoneState = { ...car.zoneState! }
+  for (const zoneId of PANEL_ZONE_IDS) (zoneState as Record<string, ZoneState>)[zoneId] = zone
+  car.zoneState = zoneState
+}
+
 function setFactoryColour(
   game: ReturnType<typeof useGameStore>,
   carId: string,
@@ -92,7 +103,7 @@ function setFactoryColour(
 /** Grants a car and moves it straight into the body bay - the fixture every
  * test in this file starts from, since the room only ever works the bay's
  * own occupant. `.at(-1)` (never `[0]`): a test that docks more than one car
- * in turn (the ladder walk) grants several, and the bay's next occupant is
+ * in turn (the state walk) grants several, and the bay's next occupant is
  * always the one just granted, not the first ever. */
 function grantCarInBay(game: ReturnType<typeof useGameStore>): string {
   game.devGrantCar(CARS[0]!.id)
@@ -108,6 +119,7 @@ const DENTED: ZoneState = {
   panelMissing: false,
   primed: false,
 }
+const BARE: ZoneState = { metal: 0, surface: 0, finish: 3, panelMissing: false, primed: false }
 const PRIMED: ZoneState = {
   metal: 0,
   surface: 0,
@@ -116,6 +128,18 @@ const PRIMED: ZoneState = {
   primed: true,
 }
 const MINT: ZoneState = { metal: 0, surface: 0, finish: 0, panelMissing: false, primed: false }
+// finish 2 (dull), never 1: at finish 1 a tier-1 shop is already at its
+// polish floor (`planSharedPipelineStage`'s capability gate) and the step
+// refuses structurally regardless of stock - finish 2 leaves genuine room to
+// polish, so a bare shelf is the ONLY thing blocking it.
+const NEEDS_POLISH: ZoneState = {
+  metal: 0,
+  surface: 0,
+  finish: 2,
+  panelMissing: false,
+  primed: false,
+  colour: 'white',
+}
 
 async function grantAndDock(zoneId: ZoneId, zone: ZoneState) {
   const game = useGameStore()
@@ -124,6 +148,14 @@ async function grantAndDock(zoneId: ZoneId, zone: ZoneState) {
   const { wrapper } = await mountAt()
   await selectZone(wrapper, zoneId)
   return { game, id, wrapper }
+}
+
+/** The five pipeline buttons' own data-test ids, in DOM order - every fixed-
+ * layout test reads this rather than indexing by hand. */
+function pipelineButtonIds(wrapper: VueWrapper): string[] {
+  return wrapper
+    .findAll('[data-test^="pipeline-btn-"]')
+    .map((b) => b.attributes('data-test')!.replace('pipeline-btn-', ''))
 }
 
 describe('BodyShopScreen', () => {
@@ -143,276 +175,493 @@ describe('BodyShopScreen', () => {
     expect(wrapper.find('[data-test="zone-action-panel"]').exists()).toBe(false)
   })
 
-  it('shows the bay car and the diagram once one is parked there', async () => {
+  it('shows the bay car, the whole-body header and the diagram once one is parked there', async () => {
     const game = useGameStore()
     const id = grantCarInBay(game)
     const { wrapper } = await mountAt()
     expect(wrapper.find('[data-test="body-shop-empty"]').exists()).toBe(false)
     expect(wrapper.get('.car-name').text()).toBe(game.carDetail(id)!.displayName)
     expect(wrapper.find('[data-test="workshop-stage"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="body-header"]').exists()).toBe(true)
   })
 
-  it('docks the action panel on a zone region, with its own band, its why chips and its single next action', async () => {
-    const { wrapper } = await grantAndDock('bonnet', DENTED)
+  describe('the five pipeline buttons: always present, in fixed order', () => {
+    const cases: Array<[string, ZoneId, ZoneState]> = [
+      ['a fresh dented zone', 'bonnet', DENTED],
+      ['a zone mid-pipeline (primed, ready to paint)', 'bonnet', PRIMED],
+      ['a fully finished zone', 'bonnet', MINT],
+      ['a trim zone', 'front-bumper', { finish: 2, panelMissing: false, primed: false }],
+      ['a zone with the panel off', 'bonnet', { ...DENTED, panelMissing: true }],
+    ]
 
-    expect(wrapper.find('[data-test="panel-empty"]').exists()).toBe(false)
-    expect(wrapper.get('[data-test="panel-name"]').text()).toBe('Bonnet')
-    expect(wrapper.get('[data-test="zone-band-bonnet"]').text()).toBe('fine')
-    expect(wrapper.get('[data-test="zone-why-bonnet"]').text()).toContain('dent')
-    expect(wrapper.get('[data-test="zone-why-bonnet"]').text()).toContain('rot')
-    const next = wrapper.get('[data-test="zone-next-action-bonnet"]')
-    expect(next.text()).toBe('Beat')
-    expect(next.attributes('disabled')).toBeUndefined()
+    it.each(cases)('renders all five, in order, for %s', async (_label, zoneId, zone) => {
+      const { wrapper } = await grantAndDock(zoneId, zone)
+      expect(pipelineButtonIds(wrapper)).toEqual([...PIPELINE_STEP_IDS])
+    })
+
+    it.each(cases)('has exactly the next step enabled for %s', async (_label, zoneId, zone) => {
+      const { wrapper } = await grantAndDock(zoneId, zone)
+      const buttons = PIPELINE_STEP_IDS.map((id) => wrapper.get(`[data-test="pipeline-btn-${id}"]`))
+      const enabledCount = buttons.filter((b) => b.attributes('disabled') === undefined).length
+      expect(enabledCount).toBeLessThanOrEqual(1)
+    })
   })
 
-  it('runs the next action from the panel immediately - the verb alone in the button, the price beside it', async () => {
-    const { game, id, wrapper } = await grantAndDock('bonnet', DENTED)
+  it('beat is next and enabled on a dented zone; the guidance line and figures agree', async () => {
+    const { game, wrapper } = await grantAndDock('bonnet', DENTED)
+    const button = wrapper.get('[data-test="pipeline-btn-beatWeld"]')
+    expect(button.text()).toBe('Beat')
+    expect(button.attributes('disabled')).toBeUndefined()
 
     const plan = game.pipelineActionPlan(game.gameState.ownedCars[0]!, {
       kind: 'pipeline-stage',
       stage: 'beat',
       zoneId: 'bonnet',
     })!
-    const button = wrapper.get('[data-test="zone-next-action-bonnet"]')
-    expect(button.text()).toBe('Beat')
-    const figures = wrapper.get('[data-test="zone-next-action-figures-bonnet"]')
-    expect(figures.text()).toBe(`${formatYen(plan.costYen)} · ${plan.laborSlots} labour`)
+    expect(wrapper.get('[data-test="pipeline-figures-beatWeld"]').text()).toBe(
+      `${formatYen(plan.costYen)} · ${plan.laborSlots} labour`,
+    )
+    expect(wrapper.get('[data-test="zone-guidance"]').text()).toBe(
+      `Next: Beat (${formatYen(plan.costYen)}, ${plan.laborSlots} labour)`,
+    )
+  })
 
-    await button.trigger('click')
+  it('clicking the next button runs the stage immediately', async () => {
+    const { game, id, wrapper } = await grantAndDock('bonnet', DENTED)
+    await wrapper.get('[data-test="pipeline-btn-beatWeld"]').trigger('click')
     const zone = game.gameState.ownedCars.find((c) => c.id === id)!.zoneState!.bonnet
     expect(zone.metal).toBe(0)
   })
 
-  it('walks the whole ladder: weld at the ceiling, fill and sand once metal is clear, prime once bare, and no button once mint', async () => {
-    const weld = await grantAndDock('bonnet', { ...MINT, metal: 3 })
-    expect(weld.wrapper.get('[data-test="zone-next-action-bonnet"]').text()).toBe('Weld')
-
-    const fill = await grantAndDock('bonnet', { ...MINT, surface: 1 })
-    expect(fill.wrapper.get('[data-test="zone-next-action-bonnet"]').text()).toBe('Fill and sand')
-
-    const prime = await grantAndDock('bonnet', { ...MINT, finish: 3 })
-    expect(prime.wrapper.get('[data-test="zone-next-action-bonnet"]').text()).toBe('Prime')
-
-    const polish = await grantAndDock('bonnet', { ...MINT, finish: 1 })
-    expect(polish.wrapper.get('[data-test="zone-next-action-bonnet"]').text()).toBe('Polish')
-
-    const mint = await grantAndDock('bonnet', MINT)
-    expect(mint.wrapper.find('[data-test="zone-next-action-bonnet"]').exists()).toBe(false)
+  it('weld at the metal ceiling, never locked', async () => {
+    const { wrapper } = await grantAndDock('bonnet', { ...MINT, metal: 3 })
+    const button = wrapper.get('[data-test="pipeline-btn-beatWeld"]')
+    expect(button.text()).toBe('Weld')
+    expect(button.attributes('disabled')).toBeUndefined()
   })
 
-  it('names weld even while the body line is unowned - the button itself carries the disabled state, never a silent wall', async () => {
+  it('names weld by hand while the body line is unowned, in a fixed slot under the row', async () => {
     const { wrapper } = await grantAndDock('bonnet', { ...MINT, metal: 3 })
-    // A fresh shop owns no tool tier - weld names itself regardless
-    // (zoneNextStep is structural), and the by-hand disclosure explains why
-    // it may be slower rather than presenting a wall with no reason.
-    const disclosure = wrapper.get('[data-test="weld-disclosure-bonnet"]')
+    const disclosure = wrapper.get('[data-test="weld-disclosure"]')
     expect(disclosure.text()).toContain('By hand with the stick welder')
   })
 
-  it('a trim zone reads and steps off its finish alone - no metal-only next action ever names itself there', async () => {
-    const { wrapper } = await grantAndDock('front-bumper', {
+  it('the weld disclosure slot is empty whenever weld is not the next step', async () => {
+    const { wrapper } = await grantAndDock('bonnet', DENTED)
+    expect(wrapper.get('[data-test="weld-disclosure"]').text()).toBe('')
+  })
+
+  it('a trim zone reads beat/weld and fill-and-sand as not needed, and steps off finish alone', async () => {
+    const { game, wrapper } = await grantAndDock('front-bumper', {
       finish: 2,
       panelMissing: false,
       primed: false,
     })
-
-    expect(wrapper.get('[data-test="panel-name"]').text()).toBe('Front bumper')
-    expect(wrapper.get('[data-test="zone-band-front-bumper"]').text()).toBe('worn')
-    const next = wrapper.get('[data-test="zone-next-action-front-bumper"]')
-    expect(next.text()).toBe('Polish')
+    // Tier 2 (`unlocked`) so polish reads as a genuine out-of-stock case
+    // rather than the tool-tier lock this fixture would otherwise hit first
+    // (sprint222.md: polish now needs the body line unlocked) - that gate is
+    // its own describe block below; this test is about the trim/metal split.
+    game.devSetToolTier('body', 2)
+    await wrapper.vm.$nextTick()
+    expect(wrapper.get('[data-test="pipeline-btn-beatWeld"]').text()).toBe('Beat')
+    expect(wrapper.get('[data-test="pipeline-caption-beatWeld"]').text()).toContain('Trim panel')
+    expect(wrapper.get('[data-test="pipeline-caption-fillAndSand"]').text()).toContain('Trim panel')
+    // Polish is genuinely the next step here (a fresh shop owns no polish
+    // tin, so it reads disabled - the "out of stock" tests below cover that
+    // gating on its own); what this test proves is that beat/weld and
+    // fill-and-sand read as not-needed rather than pretending to be next.
+    expect(wrapper.get('[data-test="zone-guidance"]').text()).toContain('Next: Polish')
+    expect(wrapper.get('[data-test="pipeline-caption-polish"]').text()).toContain('Out of')
   })
 
-  it('the discretionary Prep control shows only once there is a coat to strip, and stays a one-word button', async () => {
-    const bare = await grantAndDock('bonnet', MINT)
-    expect(bare.wrapper.find('[data-test="pipeline-stripPrep-bonnet"]').exists()).toBe(false)
-
-    const { game, id, wrapper } = await grantAndDock('bonnet', PRIMED)
-    const prep = wrapper.get('[data-test="pipeline-stripPrep-bonnet"]')
-    expect(prep.text()).toBe('Prep')
-    expect(prep.attributes('disabled')).toBeUndefined()
-
-    await prep.trigger('click')
-    const zone = game.gameState.ownedCars.find((c) => c.id === id)!.zoneState!.bonnet
-    expect(zone.primed).toBe(false)
+  it('a fully done zone shows every step as done or trim, and the guidance line says so', async () => {
+    const { wrapper } = await grantAndDock('bonnet', MINT)
+    for (const id of PIPELINE_STEP_IDS) {
+      expect(wrapper.get(`[data-test="pipeline-btn-${id}"]`).attributes('disabled')).toBeDefined()
+    }
+    expect(wrapper.get('[data-test="zone-guidance"]').text()).toBe('This panel is done.')
   })
 
-  it('offers a fitted panel to take off, priced beside it, never an install list at the same time', async () => {
-    const { game, id, wrapper } = await grantAndDock('bonnet', DENTED)
-
-    expect(wrapper.find('[data-test^="pipeline-install-panel-bonnet-"]').exists()).toBe(false)
-    expect(wrapper.find('[data-test="no-panels-bonnet"]').exists()).toBe(false)
-    const remove = wrapper.get('[data-test="pipeline-remove-panel-bonnet"]')
-    expect(remove.attributes('disabled')).toBeUndefined()
-    expect(remove.text()).toBe('Take it off')
-
-    await remove.trigger('click')
-    expect(game.gameState.ownedCars.find((c) => c.id === id)!.zoneState!.bonnet.panelMissing).toBe(
-      true,
-    )
-  })
-
-  it('a missing panel offers the standard Fit control, which opens the Warehouse scoped to this zone', async () => {
-    const { id, wrapper } = await grantAndDock('bonnet', { ...DENTED, panelMissing: true })
-    const ui = useUiStore()
-
-    expect(wrapper.find('[data-test="pipeline-remove-panel-bonnet"]').exists()).toBe(false)
-    const fitButton = wrapper.get('[data-test="zone-fit-bonnet"]')
-    expect(fitButton.text()).toBe('Fit')
-
-    await fitButton.trigger('click')
-    expect(ui.warehouseFit).toEqual({ kind: 'zone', carId: id, zoneId: 'bonnet' })
-
-    // Clicking again while already scoped to this exact zone closes it - the
-    // same open/close toggle every other Fit control in the game carries.
-    await fitButton.trigger('click')
-    expect(ui.warehouseFit).toBeNull()
-  })
-
-  it('round-trips a panel through the shelf: remove puts it in inventory, a fresh one installs through the standard Fit flow', async () => {
-    const game = useGameStore()
-    const id = grantCarInBay(game)
-    const inventoryBefore = game.gameState.partInventory.length
-
-    const { wrapper } = await mountAt()
-    await selectZone(wrapper, 'bonnet')
-    await wrapper.get('[data-test="pipeline-remove-panel-bonnet"]').trigger('click')
-
-    expect(game.gameState.ownedCars[0]!.zoneState!.bonnet.panelMissing).toBe(true)
-    expect(game.gameState.partInventory.length).toBe(inventoryBefore + 1)
-    const shelved = game.gameState.partInventory.at(-1)!
-
-    // The install itself is the Warehouse's own zone-fit branch
-    // (`WarehouseDrawer.test.ts` covers that end to end) - here it is enough
-    // to prove the resolver it calls through actually clears the zone.
-    game.installPanel(id, 'bonnet', shelved.id)
-    expect(game.gameState.ownedCars[0]!.zoneState!.bonnet.panelMissing).toBe(false)
-    expect(game.gameState.partInventory.some((p) => p.id === shelved.id)).toBe(false)
-  })
-
-  it('a panel past saving still just comes off - the take-off control, never a swap verb', async () => {
-    const { wrapper } = await grantAndDock('bonnet', { ...DENTED, metal: 4 })
-
-    expect(wrapper.find('[data-test="zone-next-action-bonnet"]').exists()).toBe(false)
-    const remove = wrapper.get('[data-test="pipeline-remove-panel-bonnet"]')
-    expect(remove.text()).toBe('Take it off')
-    expect(remove.attributes('disabled')).toBeUndefined()
-  })
-
-  it('says the panel is Missing with a short tag, never Scrap, and offers only the install picker', async () => {
+  it('a missing panel locks every pipeline step, names it in the guidance line, and offers only Fit', async () => {
     const { wrapper } = await grantAndDock('bonnet', { ...DENTED, panelMissing: true })
-
-    expect(wrapper.get('[data-test="zone-panel-off"]').text()).toBe('Missing')
-    expect(wrapper.find('[data-test="zone-band-bonnet"]').exists()).toBe(false)
-    expect(wrapper.find('[data-test="zone-next-action-bonnet"]').exists()).toBe(false)
-    expect(wrapper.find('[data-test="pipeline-remove-panel-bonnet"]').exists()).toBe(false)
+    for (const id of PIPELINE_STEP_IDS) {
+      const btn = wrapper.get(`[data-test="pipeline-btn-${id}"]`)
+      expect(btn.attributes('disabled')).toBeDefined()
+      expect(wrapper.get(`[data-test="pipeline-caption-${id}"]`).text()).toContain(
+        'No panel fitted',
+      )
+    }
+    expect(wrapper.get('[data-test="zone-guidance"]').text()).toBe('No panel fitted')
+    expect(wrapper.get('[data-test="panel-take-off"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('[data-test="panel-fit"]').attributes('disabled')).toBeUndefined()
   })
 
-  it('picks paint from an owned physical tin, never a colour palette that still needs a purchase', async () => {
-    const { game, id, wrapper } = await grantAndDock('bonnet', PRIMED)
-    setFactoryColour(game, id, 'lime')
-    const colour = PAINT_COLOURS.find((c) => c.id !== 'lime')!
+  describe('the status strip', () => {
+    it('reads metal, prep and paint off the real zone fields', async () => {
+      const { wrapper } = await grantAndDock('bonnet', DENTED)
+      expect(wrapper.get('[data-test="zone-status-metal"]').text()).toContain('dented')
+      expect(wrapper.get('[data-test="zone-status-prep"]').text()).toContain('rough')
+      expect(wrapper.get('[data-test="zone-status-paint"]').text()).toContain('painted')
+    })
 
-    const empty = wrapper.get('[data-test="no-paint-tins"]')
-    expect(empty.text()).toContain('No paint in stock')
-    expect(empty.find('a').exists()).toBe(true)
+    it('never hides the paint state behind a structure-only band - a bare panel still reads unpainted', async () => {
+      const { wrapper } = await grantAndDock('bonnet', BARE)
+      expect(wrapper.get('[data-test="zone-status-paint"]').text()).toContain('unpainted')
+    })
 
-    game.devGiveCash(1_000_000)
-    game.buyPaintTin('solid', 'small', colour.id)
-    await selectZone(wrapper, 'bonnet')
+    it('reads missing on all three rows once the panel is off', async () => {
+      const { wrapper } = await grantAndDock('bonnet', { ...DENTED, panelMissing: true })
+      expect(wrapper.get('[data-test="zone-status-metal"]').text()).toContain('missing')
+      expect(wrapper.get('[data-test="zone-status-prep"]').text()).toContain('missing')
+      expect(wrapper.get('[data-test="zone-status-paint"]').text()).toContain('missing')
+    })
 
-    const tin = wrapper.get(`[data-test="pipeline-paint-bonnet-solid-${colour.id}"]`)
-    expect(tin.element.tagName).toBe('BUTTON')
-    expect(tin.attributes('aria-label')).toBe(colour.name)
-    expect(tin.attributes('disabled')).toBeUndefined()
-
-    await tin.trigger('click')
-    const zone = game.gameState.ownedCars.find((c) => c.id === id)!.zoneState!.bonnet
-    expect(zone.colour).toBe(colour.id)
-    expect(zone.primed).toBe(false)
+    it('shows a colour swatch beside the paint row once a colour is on', async () => {
+      const { wrapper } = await grantAndDock('bonnet', NEEDS_POLISH)
+      expect(wrapper.find('[data-test="zone-status-paint"] .status-swatch').exists()).toBe(true)
+    })
   })
 
-  it('paints in a colour this car never wore just as readily as its own - the grade is resolved silently', async () => {
-    const game = useGameStore()
-    game.devGrantCar('nissan-skyline-gtr-bnr32')
-    const id = game.gameState.ownedCars[0]!.id
-    expect(game.moveCarToSlot(id, 'body', 0)).toBe(true)
-    setZone(game, id, 'bonnet', PRIMED)
-    setFactoryColour(game, id, 'gunmetal')
-    game.devGiveCash(1_000_000)
-    const other = PAINT_COLOURS.find((c) => c.id !== 'gunmetal')!
-    game.buyPaintTin('solid', 'small', 'gunmetal')
-    game.buyPaintTin('solid', 'small', other.id)
+  describe('out-of-stock: an inline buy control that re-enables the step once bought', () => {
+    it('shows the missing tin and a buy control, disabled while cash is short', async () => {
+      const { game, wrapper } = await grantAndDock('bonnet', NEEDS_POLISH)
+      // Tier 2 so polish is structurally ready and the only thing standing
+      // between the player and the step is the bare shelf.
+      game.devSetToolTier('body', 2)
+      game.gameState.cashYen = 0
+      await wrapper.vm.$nextTick()
+      const button = wrapper.get('[data-test="pipeline-btn-polish"]')
+      expect(button.attributes('disabled')).toBeDefined()
+      expect(wrapper.get('[data-test="pipeline-caption-polish"]').text()).toContain('Out of')
+      const buy = wrapper.get('[data-test="pipeline-buy-polish"]')
+      expect(buy.text()).toContain('Buy a tin')
+      expect(buy.attributes('disabled')).toBeDefined()
+    })
 
-    const { wrapper } = await mountAt()
-    await selectZone(wrapper, 'bonnet')
+    it('buying the tin re-enables the step', async () => {
+      const { game, wrapper } = await grantAndDock('bonnet', NEEDS_POLISH)
+      game.devSetToolTier('body', 2)
+      game.devGiveCash(1_000_000)
+      await wrapper.vm.$nextTick()
+      const buy = wrapper.get('[data-test="pipeline-buy-polish"]')
+      expect(buy.attributes('disabled')).toBeUndefined()
 
-    expect(wrapper.get('[data-test="factory-colour-bonnet"]').text()).toContain(
-      'Gun Grey Metallic (KH2)',
+      await buy.trigger('click')
+      const button = wrapper.get('[data-test="pipeline-btn-polish"]')
+      expect(button.attributes('disabled')).toBeUndefined()
+      expect(wrapper.get('[data-test="pipeline-caption-polish"]').text()).toBe('')
+    })
+
+    it('lists every missing tin for fill-and-sand, each with its own buy control', async () => {
+      const { wrapper } = await grantAndDock('bonnet', {
+        metal: 0,
+        surface: 1,
+        finish: 2,
+        panelMissing: false,
+        primed: false,
+      })
+      const caption = wrapper.get('[data-test="pipeline-caption-fillAndSand"]')
+      expect(caption.text()).toContain('Out of Body filler tin')
+      expect(caption.text()).toContain('Out of Sanding paper pack')
+      const fillerBuy = wrapper.get('[data-test="pipeline-buy-fillAndSand-filler"]')
+      const paperBuy = wrapper.get('[data-test="pipeline-buy-fillAndSand-paper"]')
+      expect(fillerBuy.text()).toContain('Buy a tin')
+      expect(paperBuy.text()).toContain('Buy a tin')
+      expect(wrapper.get('[data-test="pipeline-karagawa-fillAndSand"]').text()).toContain(
+        'Karagawa Express',
+      )
+    })
+  })
+
+  it('captions polish with the tool-tier lock and its hire fee while the body line is unowned', async () => {
+    const { wrapper } = await grantAndDock('bonnet', NEEDS_POLISH)
+    expect(wrapper.get('[data-test="pipeline-caption-polish"]').text()).toBe(
+      `Needs the body line: tier 2 tools or a day's hire (${formatYen(ECONOMY.machineShopAssist.feeYenByGroup.body)})`,
     )
-
-    const factoryTin = wrapper.get('[data-test="pipeline-paint-bonnet-solid-gunmetal"]')
-    expect(factoryTin.attributes('disabled')).toBeUndefined()
-    const otherTin = wrapper.get(`[data-test="pipeline-paint-bonnet-solid-${other.id}"]`)
-    expect(otherTin.attributes('disabled')).toBeUndefined()
-
-    await otherTin.trigger('click')
-    expect(game.gameState.ownedCars.find((c) => c.id === id)!.zoneState!.bonnet.colour).toBe(
-      other.id,
-    )
   })
 
-  it('carries no priced sentence inside a button - every figure sits in its own element beside it', async () => {
+  describe('Karagawa Express: the brand strapline beside every inline buy control', () => {
+    it('rotates through exactly the three lines by in-game day, next to the polish shortfall', async () => {
+      const { game, wrapper } = await grantAndDock('bonnet', NEEDS_POLISH)
+      game.devSetToolTier('body', 2)
+      await wrapper.vm.$nextTick()
+      const linesByDay = [
+        'Karagawa Express: on your shelf before the kettle boils.',
+        "Karagawa Express: don't ask how. K.",
+        'Karagawa Express: same-day is for amateurs.',
+      ]
+      for (let day = 0; day < 6; day++) {
+        game.gameState.day = day
+        await wrapper.vm.$nextTick()
+        expect(wrapper.get('[data-test="pipeline-karagawa-polish"]').text()).toBe(
+          linesByDay[day % 3],
+        )
+      }
+    })
+  })
+
+  describe('the respray row: fixed under the whole-body header, tier 3', () => {
+    it('always renders, locked by the booth tier by default', async () => {
+      const { wrapper } = await grantAndDock('bonnet', PRIMED)
+      const button = wrapper.get('[data-test="respray-button"]')
+      expect(button.attributes('disabled')).toBeDefined()
+      expect(wrapper.get('[data-test="respray-caption"]').text()).toContain(
+        `Needs the booth: the body-and-trim shop, or a day's hire (${formatYen(ECONOMY.machineShopAssist.feeYenByGroup.body)})`,
+      )
+    })
+
+    it('names how many panels are primed once the tier gate clears', async () => {
+      const { game, wrapper } = await grantAndDock('bonnet', PRIMED)
+      game.devSetToolShopOwned('body-and-trim-shop', true)
+      await wrapper.vm.$nextTick()
+      expect(wrapper.get('[data-test="respray-button"]').attributes('disabled')).toBeDefined()
+      expect(wrapper.get('[data-test="respray-caption"]').text()).toContain(
+        'Prime at least two panels first: covers 1 primed panel',
+      )
+    })
+
+    it('shows a stock shortfall with its own buy control and the Karagawa strapline once two panels are primed', async () => {
+      const { game, id, wrapper } = await grantAndDock('bonnet', PRIMED)
+      game.devSetToolShopOwned('body-and-trim-shop', true)
+      setZone(game, id, 'front-bumper', PRIMED)
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.get('[data-test="respray-button"]').attributes('disabled')).toBeDefined()
+      const caption = wrapper.get('[data-test="respray-caption"]')
+      expect(caption.text()).toContain('Needs 2 uses of')
+      expect(caption.text()).toContain('0 on the shelf')
+      expect(wrapper.get('[data-test="respray-buy"]').text()).toContain('Buy a tin')
+      expect(wrapper.get('[data-test="respray-karagawa"]').text()).toContain('Karagawa Express')
+    })
+
+    it('enables once stocked, and clicking it resprays every currently primed zone at once', async () => {
+      const { game, id, wrapper } = await grantAndDock('bonnet', PRIMED)
+      game.devSetToolShopOwned('body-and-trim-shop', true)
+      setZone(game, id, 'front-bumper', PRIMED)
+      setFactoryColour(game, id, 'lime')
+      game.devGiveCash(1_000_000)
+      game.buyPaintTin('solid', 'small', 'lime')
+      await wrapper.vm.$nextTick()
+
+      const colourName = PAINT_COLOURS.find((c) => c.id === 'lime')!.name
+      const button = wrapper.get('[data-test="respray-button"]')
+      expect(button.text()).toContain(colourName)
+      expect(button.attributes('disabled')).toBeUndefined()
+      expect(wrapper.get('[data-test="respray-figures"]').text()).toBe(`${formatYen(0)} · 2 labour`)
+
+      await button.trigger('click')
+      const car = game.gameState.ownedCars.find((c) => c.id === id)!
+      expect(car.zoneState!.bonnet.finish).toBe(1)
+      expect(car.zoneState!.bonnet.primed).toBe(false)
+      expect(car.zoneState!.bonnet.colour).toBe('lime')
+      expect(car.zoneState!['front-bumper'].finish).toBe(1)
+      expect(car.zoneState!['front-bumper'].colour).toBe('lime')
+    })
+  })
+
+  describe('the panel row: take it off, fit one, strip back', () => {
+    it('offers a fitted panel to take off, priced beside it, its purpose always stated', async () => {
+      const { game, id, wrapper } = await grantAndDock('bonnet', DENTED)
+      const takeOff = wrapper.get('[data-test="panel-take-off"]')
+      expect(takeOff.attributes('disabled')).toBeUndefined()
+      expect(takeOff.text()).toBe('Take it off')
+      expect(wrapper.get('[data-test="panel-take-off-caption"]').text()).toContain('Comes off')
+
+      await takeOff.trigger('click')
+      expect(
+        game.gameState.ownedCars.find((c) => c.id === id)!.zoneState!.bonnet.panelMissing,
+      ).toBe(true)
+    })
+
+    it('Fit a panel is disabled while a panel is on, and opens the Warehouse once it is off', async () => {
+      const { wrapper } = await grantAndDock('bonnet', DENTED)
+      expect(wrapper.get('[data-test="panel-fit"]').attributes('disabled')).toBeDefined()
+    })
+
+    it('a missing panel opens the Warehouse scoped to this zone via Fit a panel', async () => {
+      const { id, wrapper } = await grantAndDock('bonnet', { ...DENTED, panelMissing: true })
+      const ui = useUiStore()
+      const fitButton = wrapper.get('[data-test="panel-fit"]')
+      await fitButton.trigger('click')
+      expect(ui.warehouseFit).toEqual({ kind: 'zone', carId: id, zoneId: 'bonnet' })
+      await fitButton.trigger('click')
+      expect(ui.warehouseFit).toBeNull()
+    })
+
+    it('round-trips a panel through the shelf: remove puts it in inventory, install clears the zone', async () => {
+      const game = useGameStore()
+      const id = grantCarInBay(game)
+      const inventoryBefore = game.gameState.partInventory.length
+
+      const { wrapper } = await mountAt()
+      await selectZone(wrapper, 'bonnet')
+      await wrapper.get('[data-test="panel-take-off"]').trigger('click')
+
+      expect(game.gameState.ownedCars[0]!.zoneState!.bonnet.panelMissing).toBe(true)
+      expect(game.gameState.partInventory.length).toBe(inventoryBefore + 1)
+      const shelved = game.gameState.partInventory.at(-1)!
+
+      game.installPanel(id, 'bonnet', shelved.id)
+      expect(game.gameState.ownedCars[0]!.zoneState!.bonnet.panelMissing).toBe(false)
+      expect(game.gameState.partInventory.some((p) => p.id === shelved.id)).toBe(false)
+    })
+
+    it('strip back is disabled on a bare, unprimed panel', async () => {
+      const { wrapper } = await grantAndDock('bonnet', BARE)
+      const stripBack = wrapper.get('[data-test="panel-strip-back"]')
+      expect(stripBack.attributes('disabled')).toBeDefined()
+    })
+
+    it('strip back is enabled once primed, and runs stripPrep on click', async () => {
+      const { game, id, wrapper } = await grantAndDock('bonnet', PRIMED)
+      const stripBack = wrapper.get('[data-test="panel-strip-back"]')
+      expect(stripBack.attributes('disabled')).toBeUndefined()
+      expect(wrapper.get('[data-test="panel-strip-back-caption"]').text()).toContain(
+        'Strips to bare metal',
+      )
+
+      await stripBack.trigger('click')
+      const zone = game.gameState.ownedCars.find((c) => c.id === id)!.zoneState!.bonnet
+      expect(zone.primed).toBe(false)
+    })
+
+    it('strip back is enabled once any coat is on, even unprimed', async () => {
+      const { wrapper } = await grantAndDock('bonnet', NEEDS_POLISH)
+      expect(wrapper.get('[data-test="panel-strip-back"]').attributes('disabled')).toBeUndefined()
+    })
+
+    it('strip back is disabled while the panel is off', async () => {
+      const { wrapper } = await grantAndDock('bonnet', { ...PRIMED, panelMissing: true })
+      expect(wrapper.get('[data-test="panel-strip-back"]').attributes('disabled')).toBeDefined()
+    })
+  })
+
+  describe('the paint swatch row', () => {
+    it('reserves its row but shows nothing while paint is not yet the coming step', async () => {
+      const { wrapper } = await grantAndDock('bonnet', DENTED)
+      expect(wrapper.find('[data-test="paint-swatch-row"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="paint-swatch-factory"]').exists()).toBe(false)
+    })
+
+    it('shows the factory colour first, greyed with its price and a buy control when not owned', async () => {
+      const { game, id, wrapper } = await grantAndDock('bonnet', PRIMED)
+      setFactoryColour(game, id, 'lime')
+      await selectZone(wrapper, 'bonnet')
+
+      const swatches = wrapper.findAll(
+        '[data-test="paint-swatch-factory"], [data-test^="paint-tin-"]',
+      )
+      expect(swatches[0]!.attributes('data-test')).toBe('paint-swatch-factory')
+      expect(wrapper.get('[data-test="paint-swatch-factory-label"]').text()).toContain(
+        'at the parts shop',
+      )
+      expect(wrapper.find('[data-test="paint-buy-factory"]').exists()).toBe(true)
+      expect(wrapper.get('[data-test="paint-karagawa-factory"]').text()).toContain(
+        'Karagawa Express',
+      )
+    })
+
+    it('picks an owned tin as the selected swatch, and the Paint button paints it on click', async () => {
+      const { game, id, wrapper } = await grantAndDock('bonnet', PRIMED)
+      setFactoryColour(game, id, 'lime')
+      const colour = PAINT_COLOURS.find((c) => c.id !== 'lime')!
+      game.devGiveCash(1_000_000)
+      game.buyPaintTin('solid', 'small', colour.id)
+      await selectZone(wrapper, 'bonnet')
+
+      await wrapper.get(`[data-test="paint-tin-solid-${colour.id}"]`).trigger('click')
+      const paintButton = wrapper.get('[data-test="pipeline-btn-paint"]')
+      expect(paintButton.text()).toContain(colour.name)
+      expect(paintButton.attributes('disabled')).toBeUndefined()
+
+      await paintButton.trigger('click')
+      const zone = game.gameState.ownedCars.find((c) => c.id === id)!.zoneState!.bonnet
+      expect(zone.colour).toBe(colour.id)
+      expect(zone.primed).toBe(false)
+    })
+
+    it('buying the factory tin makes it selectable and paintable', async () => {
+      const { game, id, wrapper } = await grantAndDock('bonnet', PRIMED)
+      const factoryColourId = game.gameState.ownedCars.find((c) => c.id === id)!.factoryColour
+      game.devGiveCash(1_000_000)
+
+      await wrapper.get('[data-test="paint-buy-factory"]').trigger('click')
+      const paintButton = wrapper.get('[data-test="pipeline-btn-paint"]')
+      expect(paintButton.attributes('disabled')).toBeUndefined()
+
+      await paintButton.trigger('click')
+      const zone = game.gameState.ownedCars.find((c) => c.id === id)!.zoneState!.bonnet
+      expect(zone.colour).toBe(factoryColourId)
+    })
+
+    it('captions why paint is still locked visibly, not title-only, while prime is the coming step', async () => {
+      const { game, id, wrapper } = await grantAndDock('bonnet', BARE)
+      setFactoryColour(game, id, 'lime')
+      game.devGiveCash(1_000_000)
+      game.buyPaintTin('solid', 'small', 'lime')
+      await selectZone(wrapper, 'bonnet')
+
+      // Prime is next, not paint - the swatch row is still shown (paint is
+      // the coming step) but the Paint button itself must say why it cannot
+      // fire yet, on the surface rather than only in a title.
+      const paintButton = wrapper.get('[data-test="pipeline-btn-paint"]')
+      expect(paintButton.attributes('disabled')).toBeDefined()
+      expect(wrapper.get('[data-test="pipeline-caption-paint"]').text()).toBe('After primer')
+    })
+  })
+
+  it('carries no priced sentence inside a plain verb button - buy controls are the one deliberate exception', async () => {
     const { wrapper } = await grantAndDock('bonnet', PRIMED)
-
     const panel = wrapper.get('[data-test="zone-action-panel"]')
     for (const button of panel.findAll('button')) {
+      if (button.attributes('data-test')?.startsWith('pipeline-buy-')) continue
+      if (button.attributes('data-test') === 'paint-buy-factory') continue
       expect(button.text()).not.toMatch(/¥/)
       expect(button.text()).not.toMatch(/labour/)
     }
-    expect(panel.findAll('select')).toHaveLength(0)
-    expect(panel.findAll('input')).toHaveLength(0)
   })
 
-  it('shows the structure band and the finish position together, and the whole remaining ladder, not just the next verb', async () => {
-    const { wrapper } = await grantAndDock('bonnet', DENTED)
+  describe('the whole-body header', () => {
+    it('counts finished panels and names the next one to work', async () => {
+      const game = useGameStore()
+      const id = grantCarInBay(game)
+      setAllZones(game, id, MINT)
+      setZone(game, id, 'bonnet', DENTED)
+      const { wrapper } = await mountAt()
 
-    expect(wrapper.get('[data-test="zone-band-bonnet"]').text()).toBe('fine')
-    // DENTED is unprimed with finish 2 (part-painted, not yet polished) -
-    // structure and finish disagree, so both facts have to show.
-    expect(wrapper.get('[data-test="zone-finish-bonnet"]').text()).toBe('painted')
-    const steps = wrapper.get('[data-test="zone-remaining-bonnet"]').findAll('li')
-    expect(steps.map((s) => s.text())).toEqual(['Beat', 'Fill and sand', 'Polish'])
-  })
-
-  it('collapses to a plain band chip with no finish tag once structure and finish are both actually done', async () => {
-    const { wrapper } = await grantAndDock('bonnet', MINT)
-    expect(wrapper.get('[data-test="zone-band-bonnet"]').text()).toBe('mint')
-    expect(wrapper.find('[data-test="zone-finish-bonnet"]').exists()).toBe(false)
-    expect(wrapper.find('[data-test="zone-remaining-bonnet"]').exists()).toBe(false)
-  })
-
-  it('the Take-off control always states its purpose, whether or not it is disabled', async () => {
-    const { wrapper } = await grantAndDock('bonnet', DENTED)
-    expect(wrapper.get('[data-test="pipeline-remove-panel-purpose"]').text()).toContain('Comes off')
-  })
-
-  it('captions a disabled paint swatch with the real structural reason - not primed yet - rather than nothing', async () => {
-    const { game, id, wrapper } = await grantAndDock('bonnet', {
-      ...MINT,
-      finish: 3,
-      primed: false,
+      expect(wrapper.get('[data-test="body-header-count"]').text()).toBe(
+        `${PANEL_ZONE_IDS.length - 1} of ${PANEL_ZONE_IDS.length} panels finished`,
+      )
+      expect(wrapper.get('[data-test="body-header-next"]').text()).toBe('Next panel: Bonnet')
     })
-    setFactoryColour(game, id, 'lime')
-    const colour = PAINT_COLOURS.find((c) => c.id !== 'lime')!
-    game.devGiveCash(1_000_000)
-    game.buyPaintTin('solid', 'small', colour.id)
-    await selectZone(wrapper, 'bonnet')
 
-    const tin = wrapper.get(`[data-test="pipeline-paint-bonnet-solid-${colour.id}"]`)
-    expect(tin.attributes('disabled')).toBeDefined()
-    expect(tin.attributes('title')).toBe('Needs priming first.')
-    const groupCaption = wrapper.get('[data-test="pipeline-paint-caption-bonnet-solid"]')
-    expect(groupCaption.text()).toBe('Needs priming first.')
+    it('reads all panels done once every zone is finished', async () => {
+      const game = useGameStore()
+      const id = grantCarInBay(game)
+      setAllZones(game, id, MINT)
+      const { wrapper } = await mountAt()
+
+      expect(wrapper.get('[data-test="body-header-count"]').text()).toBe(
+        `${PANEL_ZONE_IDS.length} of ${PANEL_ZONE_IDS.length} panels finished`,
+      )
+      expect(wrapper.get('[data-test="body-header-next"]').text()).toBe(
+        'Next panel: All panels done',
+      )
+    })
+
+    it('shows the two real carrier bands', async () => {
+      const game = useGameStore()
+      const id = grantCarInBay(game)
+      setAllZones(game, id, MINT)
+      const { wrapper } = await mountAt()
+      const car = game.gameState.ownedCars.find((c) => c.id === id)!
+      expect(wrapper.get('[data-test="body-header-bodywork"]').text()).toBe(
+        car.parts.bodywork.installed!.band,
+      )
+      expect(wrapper.get('[data-test="body-header-paint"]').text()).toBe(
+        car.parts.paint.installed!.band,
+      )
+    })
   })
 
   it('a part click docks a part panel - repair, take it off, fit - and replaces whatever the zone panel showed', async () => {
@@ -423,14 +672,10 @@ describe('BodyShopScreen', () => {
 
     const name = wrapper.get('[data-test="panel-name"]')
     expect(name.text()).not.toBe('Bonnet')
-    expect(wrapper.find('[data-test="zone-band-bonnet"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="zone-status-strip"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="part-remove"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="part-fit"]').exists()).toBe(true)
 
-    // Selecting anything replaces the dock outright - the seats region now
-    // carries the selected outline, and the stale bonnet zone region no
-    // longer does (sprint211.md task A: the root cause this whole sprint
-    // traces back to).
     expect(wrapper.get('[data-test="workshop-region-part-seats"]').classes()).toContain(
       'wv-selected',
     )

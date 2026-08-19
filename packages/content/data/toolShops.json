@@ -17,7 +17,7 @@
     "id": "body-and-trim-shop",
     "displayName": "Body and trim shop",
     "covers": ["body", "interior"],
-    "upgradePriceYen": 1500000,
+    "upgradePriceYen": 600000,
     "minReputationTier": "known"
   }
 ]

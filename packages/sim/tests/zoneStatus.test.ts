@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest'
 import {
   ALL_ZONE_IDS,
   bodyworkBindingZoneIds,
+  isMetalZoneState,
   paintBindingZoneIds,
+  planMetalPipelineStage,
   zoneConditionBand,
   zoneNextStep,
 } from '../src/bodyPipeline'
@@ -87,6 +89,15 @@ describe('zoneNextStep', () => {
 
   it('names replace-panel for metal beyond the weldable ceiling - beyond repair, not weld', () => {
     expect(zoneNextStep(metalZone({ metal: 4 }))).toBe('replace-panel')
+  })
+
+  it('reads prime straight after a fillAndSand application, since the fill just bared the finish', () => {
+    const painted = metalZone({ metal: 0, surface: 1, finish: 0, primed: false, colour: 'red' })
+    const applied = planMetalPipelineStage('fillAndSand', painted)
+    expect(applied.ok).toBe(true)
+    if (applied.ok && isMetalZoneState(applied.zone)) {
+      expect(zoneNextStep(applied.zone)).toBe('prime')
+    }
   })
 })
 

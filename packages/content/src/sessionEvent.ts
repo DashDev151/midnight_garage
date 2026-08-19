@@ -174,6 +174,15 @@ export const SessionEventInputSchema = z.discriminatedUnion('type', [
     }),
   ),
   sessionEventVariant(
+    'pipelineRespray',
+    z.object({
+      carId: z.string().min(1),
+      colour: z.string().min(1),
+      grade: GradeSchema,
+      laborSlotsUsed: z.number().int().nonnegative(),
+    }),
+  ),
+  sessionEventVariant(
     'removePanel',
     z.object({
       carId: z.string().min(1),

@@ -172,6 +172,7 @@ import {
   planGroupRepair,
   planPaintStage,
   planPipelineStage,
+  planRespray,
   playerEstimateYen,
   presentPartIdsInGroup,
   reconditionGateReason,
@@ -203,6 +204,7 @@ import {
   resolvePipelineInstallPanelAction,
   resolvePipelinePaintAction,
   resolvePipelineRemovePanelAction,
+  resolvePipelineResprayAction,
   resolvePipelineStageAction,
   resolvePlaceOnStation,
   resolveTakeFromStation,
@@ -2394,18 +2396,22 @@ export const useGameStore = defineStore('game', () => {
   /**
    * One body-pipeline action's own cost/labour, read straight before the
    * click - the same `planPipelineStage`/`planPaintStage`/`planInstallPanel`/
-   * `planRemovePanel` calls the matching immediate resolver in
+   * `planRemovePanel`/`planRespray` calls the matching immediate resolver in
    * sim/pipelineActions.ts resolves with, so this preview and the real charge
    * can never drift apart. `null` when the car has no zone state, the zone's
    * own prerequisite isn't met yet, the zone already carries (or still lacks)
    * a panel the action assumes the opposite of, or the picked inventory part
    * no longer fits - the button then shows no total rather than a wrong one.
+   * A respray reads no single zone (`planRespray` walks every primed zone
+   * itself) and returns `null` on the same three refusals `planRespray`
+   * itself carries: below full capability, fewer than two zones primed, or
+   * the stock-grade colour gate.
    *
    * Deliberately NOT gated on shelf stock: the button always shows what the
    * work would cost if the shelf can cover it - only the click itself checks
-   * that (`resolvePipelineStageAction`/`resolvePipelinePaintAction`,
-   * sim/pipelineActions.ts), refusing and logging a `job-blocked` entry if
-   * not.
+   * that (`resolvePipelineStageAction`/`resolvePipelinePaintAction`/
+   * `resolvePipelineResprayAction`, sim/pipelineActions.ts), refusing and
+   * logging a `job-blocked` entry if not.
    *
    * `costYen` is always the cash the click will actually charge, which for a
    * materials-consuming stage is 0: the tin was paid for when it was bought,
@@ -2420,9 +2426,9 @@ export const useGameStore = defineStore('game', () => {
    * (`pipelineBodyBayCaption` below is what names that reason for the
    * disabled control) - the same gate `resolvePipelineStageAction`/
    * `resolvePipelinePaintAction`/`resolvePipelineRemovePanelAction`/
-   * `resolvePipelineInstallPanelAction` (sim/pipelineActions.ts) enforce, so
-   * the preview and the real charge can never disagree about WHERE the work
-   * can happen either.
+   * `resolvePipelineInstallPanelAction`/`resolvePipelineResprayAction`
+   * (sim/pipelineActions.ts) enforce, so the preview and the real charge can
+   * never disagree about WHERE the work can happen either.
    */
   function pipelineActionPlan(
     car: CarInstance,
@@ -2430,14 +2436,29 @@ export const useGameStore = defineStore('game', () => {
       StagedAction,
       {
         kind:
-          'pipeline-stage' | 'pipeline-remove-panel' | 'pipeline-install-panel' | 'pipeline-paint'
+          | 'pipeline-stage'
+          | 'pipeline-remove-panel'
+          | 'pipeline-install-panel'
+          | 'pipeline-paint'
+          | 'pipeline-respray'
       }
     >,
   ): { costYen: number; laborSlots: number } | null {
     if (!car.zoneState) return null
     if (!carInBodyBay(gameState.value, car.id)) return null
-    const zone = car.zoneState[action.zoneId]
     const capability = bodyLineCapability(gameState.value, context.value)
+    if (action.kind === 'pipeline-respray') {
+      const plan = planRespray(
+        car.zoneState,
+        action.colour,
+        capability,
+        action.grade,
+        car.factoryColour,
+      )
+      if (!plan.ok) return null
+      return { costYen: 0, laborSlots: plan.coveredZoneIds.length }
+    }
+    const zone = car.zoneState[action.zoneId]
     if (action.kind === 'pipeline-stage') {
       const plan = planPipelineStage(action.stage, zone, capability)
       if (!plan.ok) return null
@@ -4252,6 +4273,28 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
+   * The whole-car respray - instant, resolving through
+   * `resolvePipelineResprayAction`. Needs the body line's full capability
+   * and at least two primed zones; refuses silently (or logs `job-blocked`
+   * on a short shelf) otherwise.
+   */
+  function resprayCar(carId: string, colour: string, grade: Grade): void {
+    const result = resolvePipelineResprayAction(
+      gameState.value,
+      carId,
+      { kind: 'pipeline-respray', colour, grade },
+      context.value,
+      laborSlotsRemainingToday.value,
+    )
+    gameState.value = result.state
+    pushDayLog(result.log)
+    logSessionEvent({
+      type: 'pipelineRespray',
+      payload: { carId, colour, grade, laborSlotsUsed: result.laborSlotsUsed },
+    })
+  }
+
+  /**
    * Pulls one zone's panel onto the shelf - instant, resolving through
    * `resolvePipelineRemovePanelAction`. A no-op on an already-missing zone.
    */
@@ -5807,6 +5850,7 @@ export const useGameStore = defineStore('game', () => {
     install,
     pipelineStage,
     paintZone,
+    resprayCar,
     removePanel,
     installPanel,
     pickableParts,

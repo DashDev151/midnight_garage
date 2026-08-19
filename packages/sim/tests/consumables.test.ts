@@ -167,6 +167,16 @@ describe('buying a tin raises stock; using one lowers it', () => {
     expect(next).toEqual({ filler: 3, paper: 4, primer: 9 })
   })
 
+  it('a paper tin credits a pack of 10 uses at 3,200 yen, out of step with the 4-use filler tin', () => {
+    const state = baseState()
+    const result = resolveBuyConsumableTin(state, 'paper', CONTEXT)
+    expect(result.log).toEqual([
+      { type: 'consumable-bought', consumableKey: 'paper', usesAdded: 10, priceYen: 3_200 },
+    ])
+    expect(result.state.cashYen).toBe(state.cashYen - 3_200)
+    expect(result.state.consumableStock).toEqual({ paper: 10 })
+  })
+
   it('a second purchase of the same tin stacks onto the existing stock', () => {
     const first = resolveBuyConsumableTin(baseState(), 'filler', CONTEXT)
     const second = resolveBuyConsumableTin(first.state, 'filler', CONTEXT)
@@ -217,7 +227,7 @@ describe('a stage refuses when its consumable is out, naming what is missing', (
     ])
   })
 
-  it('the leftover case: a filler (and paper) tin does four panels, three zones needed it, one use of each remains', () => {
+  it('the leftover case: one filler tin does exactly four panels, one paper pack outlasts two filler tins', () => {
     const zoneState = cleanZoneStates({
       bonnet: { metal: 0, surface: 1, finish: 0, panelMissing: false, primed: false },
       boot: { metal: 0, surface: 1, finish: 0, panelMissing: false, primed: false },
@@ -231,11 +241,13 @@ describe('a stage refuses when its consumable is out, naming what is missing', (
       parts: mintCarParts(),
       zoneState,
     })
-    // Exactly one tin of each - four uses, enough for the whole car by
-    // design, but this car only needed three panels' worth.
+    // One filler tin (4 uses) is exactly enough for the whole car by design;
+    // one paper pack (10 uses) is deliberately not a multiple of it, so the
+    // two tins fall out of step rather than running out together. This car
+    // only needed three panels' worth of either.
     const filler = resolveBuyConsumableTin(baseState(), 'filler', CONTEXT)
     const paper = resolveBuyConsumableTin(filler.state, 'paper', CONTEXT)
-    expect(paper.state.consumableStock).toEqual({ filler: 4, paper: 4 })
+    expect(paper.state.consumableStock).toEqual({ filler: 4, paper: 10 })
 
     const state: GameState = {
       ...paper.state,
@@ -256,9 +268,9 @@ describe('a stage refuses when its consumable is out, naming what is missing', (
     expect(result.state.ownedCars[0]?.zoneState?.bonnet.surface).toBe(0)
     expect(result.state.ownedCars[0]?.zoneState?.boot.surface).toBe(0)
     expect(result.state.ownedCars[0]?.zoneState?.['left-front'].surface).toBe(0)
-    // One panel's worth of each material remains - the whole tin was never
-    // this car's to spend.
-    expect(result.state.consumableStock).toEqual({ filler: 1, paper: 1 })
+    // One panel's worth of filler remains, and seven uses of paper - neither
+    // tin was ever this one car's to spend in full.
+    expect(result.state.consumableStock).toEqual({ filler: 1, paper: 7 })
     // No cash moved at Confirm - both tins were already paid for.
     expect(result.state.cashYen).toBe(state.cashYen)
   })

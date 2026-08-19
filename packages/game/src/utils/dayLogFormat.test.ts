@@ -335,6 +335,31 @@ describe('classifyDayReport', () => {
     // Both the hire and the rent land in the same Bills figure.
     expect(view.money.billsYen).toBe(5_000 + 90_000)
   })
+
+  it('aggregates every body-materials-used entry for a car into one line, zoned and zoneless alike', () => {
+    const view = classifyDayReport([
+      {
+        type: 'body-materials-used',
+        carInstanceId: 'car-1',
+        zoneId: 'bonnet',
+        stage: 'prime',
+        costYen: 3_200,
+      },
+      {
+        type: 'body-materials-used',
+        carInstanceId: 'car-1',
+        zoneId: 'boot',
+        stage: 'paint',
+        costYen: 3_200,
+      },
+      // The whole-car respray's own entry carries no zoneId - it folds into
+      // the same per-car total rather than reading as a fourth kind of line.
+      { type: 'body-materials-used', carInstanceId: 'car-1', stage: 'paint', costYen: 12_000 },
+    ])
+    const bodyLines = view.notable.filter((line) => line.startsWith('Body shop materials'))
+    expect(bodyLines).toHaveLength(1)
+    expect(bodyLines[0]).toBe('Body shop materials, car-1: ¥18,400 (3 jobs)')
+  })
 })
 
 describe('the cash movements that used to leave no trace', () => {
@@ -359,6 +384,14 @@ describe('the cash movements that used to leave no trace', () => {
         costYen: 3_200,
       }),
     ).toBe('Materials drawn, prime on the bonnet: ¥3,200')
+    expect(
+      describeLogEntry({
+        type: 'body-materials-used',
+        carInstanceId: 'car-1',
+        stage: 'paint',
+        costYen: 12_000,
+      }),
+    ).toBe('Materials drawn, whole-car respray: ¥12,000')
     expect(
       describeLogEntry({
         type: 'job-created',
