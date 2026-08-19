@@ -11,6 +11,10 @@ export default tseslint.config(
       '**/coverage/**',
       '**/node_modules/**',
       'tools/**',
+      // Agent worktrees: whole checkouts of this repo nested inside it. Never
+      // lint them, and never let their tsconfigs be mistaken for this root's
+      // (tsconfigRootDir below pins that).
+      '.claude/**',
       // Parked, unintegrated drive-mode v2 payload. It is a self-contained
       // package that has never been wired into the workspace, and linting it
       // in place fails the gate on code no build consumes. DELETE THIS ENTRY
@@ -21,6 +25,11 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   ...pluginVue.configs['flat/recommended'],
+  {
+    languageOptions: {
+      parserOptions: { tsconfigRootDir: import.meta.dirname },
+    },
+  },
   {
     files: ['**/*.vue'],
     languageOptions: {
