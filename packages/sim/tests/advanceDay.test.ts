@@ -407,9 +407,9 @@ describe('advanceDay golden master', () => {
     // career never bids on it. Re-derived from a real run.
     //
     // It moves once more for sprint222.md's re-anchored body hire fee
-    // (`machineShopAssist.feeYenByGroup.body` 14,000 -> 6,500, added
-    // mid-sprint after the tool-ladder cut tripped the Sprint 85
-    // hire-coherence probe): `hireForDay` fronts the body line's hire on day
+    // (`machineShopAssist.feeYenByGroup.body` 14,000 -> 6,500, moved with
+    // the tool-ladder cut so forty hires stay under the machine they
+    // substitute for): `hireForDay` fronts the body line's hire on day
     // 1, so this script's cash figure lands 7,500 yen richer from that day
     // on. No draw was added or removed, and the rent-charge cash assertion
     // just below reads the fee straight off content rather than a literal,

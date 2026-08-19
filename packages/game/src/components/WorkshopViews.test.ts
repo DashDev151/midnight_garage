@@ -322,8 +322,8 @@ describe('WorkshopViews', () => {
   })
 
   it('reads a beaten-straight bare zone as metal done but paint pending, never a plain Mint band that hides the unpainted coat', () => {
-    // This is the exact playtest lie a lone condition band told: a
-    // beaten-straight panel that was never sprayed reported "mint".
+    // The exact lie a lone condition band tells here: a beaten-straight
+    // panel that was never sprayed reads "mint" from structure alone.
     const { game, carId } = grantCar()
     const car = game.gameState.ownedCars.find((c) => c.id === carId)!
     car.zoneState = {
