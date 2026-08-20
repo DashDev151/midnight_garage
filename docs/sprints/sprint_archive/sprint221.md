@@ -1,6 +1,6 @@
 # Sprint 221: metalwork ruins paint
 
-**Status:** Ready for review
+**Status:** Complete. Committed and pushed in `2c299e8` (2026-08-19).
 **Trigger:** Maintainer, on the sprint 220 walkthrough: after beating, welding or filler
 work the paint currently remains pristine and the panel never needs repainting. Incoherent,
 and it contradicts the ruling that every panel goes through the set pipeline.

@@ -1,6 +1,7 @@
 # Sprint 223: the auction sheet becomes paper (proof of concept)
 
-**Status:** In progress
+**Status:** Complete. Committed and pushed in `fe6d05b` (2026-08-19), including the
+maintainer correction pass below.
 **Trigger:** Maintainer direction, 2026-08-19: the auction house's car sheets should look
 like physical paperwork. Manila folder, printed form, handwritten annotations for what the
 player knows, the car photo as a Polaroid stapled to the page, and natural variation so no

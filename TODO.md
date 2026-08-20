@@ -12,6 +12,27 @@ historical record; this file doesn't re-narrate it. (Last full pass: 2026-08-13,
 `docs/reviews/economy-overhaul-brief.md`, now owns; the previous pass was 2026-07-11. See `git log`
 for every sprint's commit hash.)
 
+## Archived-but-open sprint docs (moved 2026-08-20)
+
+The maintainer's ruling: `docs/sprints/` holds ONLY the current arc (the repair refactor,
+sprints 224-232). Everything else moved to `docs/sprints/sprint_archive/`, including these
+five docs that are NOT finished; this list is what keeps them alive. Remove a line when its
+item closes.
+
+- [ ] **`sprint_archive/sprint191.md`, task 6** - gate sport and race zone panels on body
+  level 3. Never started, lever never signed, blocks the contact-patch design.
+- [ ] **`sprint_archive/sprint193.md`** - the triage index; its open defect rows are the
+  sole record of several measured findings. Note: its section A row 4 (the repair-resume
+  band defect) is closed BY CONSTRUCTION when repair-refactor sprint 225 lands (job
+  identity includes the job kind); strike it there when that ships.
+- [ ] **`sprint_archive/generation-arc-lever-ledger.md`** - R4, 30 levers, still awaiting
+  maintainer review.
+- [ ] **`sprint_archive/sprint214.md`** - the build sheet, EXPERIMENTAL on branch
+  `dev/build-sheet`, awaiting its playtest verdict; promoted to main only if it earns it.
+- [ ] **`sprint_archive/integration-arc.md`** - the orchestration board for integrating
+  the economy overhaul, cast, and narrative arc into the vertical slice. Marked LIVE when
+  archived; consult it when that integration work resumes.
+
 ## Playtest status
 
 The playtest happened 2026-07-11 (raw notes: `docs/playtest-notes/playtest-notes-2026-07-11.md`). Its triage

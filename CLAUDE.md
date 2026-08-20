@@ -55,28 +55,21 @@ All development happens in sprints, driven by the roadmap. Sprint docs live in `
 (synthwave pixel art, JDM car culture, hunt-build-sell loop). Solo-dev passion project, ~13-month
 roadmap to a Steam launch.
 
-**Current state:** Sprints 00-197 implemented, committed and signed, with one exception noted
-below. Two were superseded unbuilt and their docs record it (Sprint 100 by Sprint 110's live-room
-promotion; Sprints 138-139 by the sale value system). **`docs/sprints/` holds only planned or live
-sprints**, which is the invariant: a finished sprint moves to `docs/sprints/sprint_archive/`, so
-whatever remains is what is still open. An archive pass on 2026-08-13 restored that invariant and
-corrected four status headers that had gone stale against their own Exits.
+**Current state:** Sprints 00-223 implemented, committed and signed. A few were superseded
+unbuilt and their docs record it. **`docs/sprints/` holds ONLY the current arc** (maintainer
+ruling 2026-08-20, tightening the old planned-or-live invariant): a finished or non-arc
+sprint doc moves to `docs/sprints/sprint_archive/`, and any archived doc that is still open
+is kept alive by a pointer in `TODO.md`'s "Archived-but-open sprint docs" section (currently:
+sprint191 task 6, the sprint193 triage index, the generation-arc lever ledger awaiting
+review, the experimental sprint214 build sheet, and the integration-arc board).
 
-**Exactly four things are open, and they are the whole of `docs/sprints/`:**
-
-- **`sprint191.md`, task 6:** gate sport and race zone panels on body level 3. Never started, lever
-  never signed. The only unbuilt sprint task in the repo, and it blocks the contact-patch design.
-- **`sprint193.md`:** a triage index, not a work order. Sole home for several defects and deferred
-  structural work. Its section B is largely closed by 197 and wants striking.
-- **`generation-arc-lever-ledger.md`:** R4, 30 levers, **awaiting review**.
-- **`economy-overhaul-arc.md`:** a SUPERSEDED plan, kept only for its verification section, which
-  traces five contradictions between the economy brief and the shipped code.
-
-**A new arc is beginning and its design of record is
-`docs/reviews/economy-overhaul-brief.md`**, alongside `docs/design/narrative/ran-when-parked-cast.md`
-and `ran-when-parked-narrative.md`, deliverables two and three of the same handoff. Read the brief
-before planning anything economic; it carries decisions D1 to D13, and D9 in particular deletes the
-universal deal guarantee at auction.
+**The current arc is the repair refactor (sprints 224-232).** Design of record
+`docs/design/systems/repair-refactor-spec.md`; arc index `docs/sprints/repair-refactor-arc.md`
+(carries the maintainer decisions D-A1 to D-A4 taken on top of the spec); lever ledger
+`docs/sprints/repair-refactor-lever-ledger.md`. The wider economy-overhaul direction remains
+`docs/reviews/economy-overhaul-brief.md` (decisions D1 to D13; D9 deletes the universal deal
+guarantee at auction), alongside `docs/design/narrative/ran-when-parked-cast.md` and
+`ran-when-parked-narrative.md`. Read the brief before planning anything economic.
 
 The tuning overhaul is COMPLETE (`docs/design/systems/tuning-system.md`, arc index
 `docs/sprints/sprint_archive/tuning-arc.md`): condition reaches the build, power is a per-car fraction rather than

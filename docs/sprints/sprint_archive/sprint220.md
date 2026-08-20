@@ -1,6 +1,6 @@
 # Sprint 220: The body shop tells the truth and the buttons stop moving
 
-**Status:** Implemented, awaiting maintainer playtest and commit approval
+**Status:** Complete. Committed and pushed in `2c299e8` (2026-08-19).
 **Trigger:** Day-6 playtest. Maintainer verdict on the body shop: unusable. Cannot see a
 panel's real condition (reports mint while unpainted), cannot see the repair stage, buttons
 appear and move, no guidance on the next action, silent no-op clicks, and stripPrep presented

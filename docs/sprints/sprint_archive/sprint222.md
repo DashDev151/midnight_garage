@@ -1,6 +1,6 @@
 # Sprint 222: the body shop earns its ladder
 
-**Status:** Implemented, awaiting maintainer playtest and commit approval
+**Status:** Complete. Committed and pushed in `2c299e8` (2026-08-19).
 **Trigger:** Maintainer rulings on the sprint 220/221 body shop: brand the inline material
 buying, fix the shortfall caption, desync paper from filler by pack size, cheapen the body
 tool line, gate polish behind tier 2, fold the polish line into the summary's body
