@@ -7,6 +7,7 @@ import {
   STAFF_CANDIDATES,
   STORY_MISSIONS,
   SYMPTOMS,
+  WORKBENCH,
 } from '../src/data'
 
 /**
@@ -23,6 +24,8 @@ import {
  * - `storyMissions.json`'s title/request/delivered/overdelivered/lapsed
  *   copy and `personas.json`'s name/intro.
  * - `lapReferences.json`'s entry names.
+ * - `workbench.json`'s every recipe step's `copy` and every bench/tool
+ *   `displayName`.
  *
  * Deliberately field-targeted, not a blanket scan of every string in every
  * JSON file (unlike `noEmDash.test.ts`'s repo-wide sweep) - a content id
@@ -104,6 +107,35 @@ function findOffenses(): string[] {
   // The reference-lap board's fictional names.
   for (const entry of LAP_REFERENCES) {
     offenses.push(...offensesIn(`lapReferences.json:${entry.id}.name`, entry.name))
+  }
+
+  // The workbench's own player copy: every recipe step's line, and every
+  // bench/tool label on the shadow boards.
+  for (const [partId, recipes] of Object.entries(WORKBENCH.recipes)) {
+    for (const jobKind of ['service', 'rebuild', 'restore'] as const) {
+      recipes[jobKind].forEach((step, i) => {
+        offenses.push(
+          ...offensesIn(`workbench.json:recipes.${partId}.${jobKind}[${i}].copy`, step.copy),
+        )
+      })
+    }
+  }
+  for (const bench of WORKBENCH.benches) {
+    offenses.push(
+      ...offensesIn(`workbench.json:benches.${bench.id}.displayName`, bench.displayName),
+    )
+    for (const [zoneId, zoneTools] of Object.entries(bench.zones)) {
+      for (const tier of ['tier1', 'tier2', 'shop'] as const) {
+        zoneTools[tier].forEach((tool) => {
+          offenses.push(
+            ...offensesIn(
+              `workbench.json:benches.${bench.id}.zones.${zoneId}.${tier}.${tool.id}.displayName`,
+              tool.displayName,
+            ),
+          )
+        })
+      }
+    }
   }
 
   // The job-ad candidate name and bio pools.

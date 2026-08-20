@@ -6,6 +6,7 @@ import partPricing from '../data/partPricing.json'
 import storyMissions from '../data/storyMissions.json'
 import toolLines from '../data/toolLines.json'
 import toolShops from '../data/toolShops.json'
+import workbench from '../data/workbench.json'
 
 /**
  * Economy levers are approval-gated (CLAUDE.md directive 22): every value in
@@ -2679,6 +2680,86 @@ import toolShops from '../data/toolShops.json'
  * the line becomes available, never a fee figure, so it is unmoved too. No
  * mission payout, budget cap or `partPricing.json`/`damagePatterns.json` value
  * moves: no mission probe hires the body line, so none reads this fee.
+ *
+ * Re-pinned 2026-08-20 for sprint224.md (the repair refactor arc's content foundations),
+ * under the behaviour-first governance amendment: the arc's design of record
+ * (docs/design/systems/repair-refactor-spec.md) is the maintainer approval for the SHAPE of
+ * the tool ladder, the day hire, the lift and the three-job repair model, and every value
+ * below is Claude's own choice, stated here by felt behaviour and recorded lever by lever in
+ * docs/sprints/repair-refactor-lever-ledger.md (R1), validated by playtest rather than
+ * pre-ratified. `economy.json`, `toolLines.json` and `toolShops.json` all move;
+ * `workbench.json` joins this gate.
+ *
+ * `toolLines.json` tier 2 `upgradePriceYen`, all six lines. engine 600,000 (unchanged): the
+ * engine line stays the flagship purchase, a serious commitment around the `local` milestone.
+ * drivetrain 900,000 -> 550,000: no longer priced above the engine line, so a gearbox bench is
+ * a mid-game step rather than an end-game one. suspension 250,000 -> 300,000: the rung now
+ * buys real Rebuild capability (floor press, rebuild tooling), not just a better ceiling.
+ * wheels 150,000 -> 250,000: the rim straightener ram is a genuine earner, priced like one.
+ * body 280,000 -> 400,000: the rung now carries the MIG and the parts-repair Rebuild kit, not
+ * just the panel pipeline. interior 350,000 -> 280,000: the cheapest line, the natural first
+ * buy for a flip-polish player.
+ *
+ * `toolShops.json` `upgradePriceYen`, all three shops. machine-shop 3,500,000 -> 3,000,000:
+ * still the largest single purchase in the game, but no longer past the point of aspiration at
+ * `known`. chassis-shop 2,500,000 -> 2,200,000: the middle of the three, a committed chassis
+ * specialist's move. body-and-trim-shop 600,000 -> 1,500,000: the room now grants Restore
+ * across two groups on top of the paint pipeline's top end, and 600,000 undersold that badly.
+ *
+ * **The two body figures SUPERSEDE the sprint222.md task A re-pin above** (body tier 2 700,000
+ * -> 280,000, `body-and-trim-shop` 1,500,000 -> 600,000): those values are left in place as
+ * the historical record of what shipped then. What moved is scope, not judgement. Sprint 222
+ * priced both rungs as the panel-and-paint pipeline alone; under this arc the same two rungs
+ * also carry parts repair for the body and interior groups, so each is re-priced for what it
+ * now unlocks. The tier 2 rung is still well below its pre-222 700,000.
+ *
+ * `economy.toolHire` (NEW block, additive: `machineShopAssist` is untouched this sprint and
+ * still drives the live hire path). `feeYenByGroup` engine 15,000, drivetrain 13,750,
+ * suspension 7,500, wheels 6,250, body 10,000, interior 7,000, with `amortisationDays` 40.
+ * Derived, not chosen: each fee is exactly its own group's tier 2 `upgradePriceYen` divided by
+ * `amortisationDays`, so forty hire days buy the kit outright and no fee can drift away from
+ * the rung it stands in for. The felt behaviour is that hiring stays the sane default until
+ * the work is weekly: an engine-out day is a real spend, the wheels ram earns its fee on one
+ * straightened rim, and a body hire covering MIG work on a customer car still quotes
+ * profitably. The Sprint 85 hire-coherence probe now asserts that division itself rather than
+ * only the amortisation bound it used to check.
+ *
+ * `economy.toolHire.maxHiredLinesPerDay` 1 (NEW). Felt behaviour: a hire day is a planned day
+ * around one bench, not a shopping spree.
+ *
+ * `economy.toolHire.slogMultiplier` 3 (NEW; the same value `machineShopAssist.
+ * machinelessLaborMultiplier` carries today, which retires with its block). Felt behaviour:
+ * slogging a step without the rig triples it, so it stays possible, visibly painful, and never
+ * the plan.
+ *
+ * `economy.energy.energyPerStepPoints` 4 (NEW, one lever standing in for the per-tier
+ * `energyPerBandStepByToolTier` table once the sim moves onto it). Felt behaviour: a two-step
+ * Service is most of one labour slot (8 points of 10), and a Rebuild with a removal and a
+ * refit around it is a solid morning's work. One lever to tune, not three.
+ *
+ * `economy.lift` (NEW block). `hireFeeYen` 5,000: a lift day is cheap enough to book for any
+ * under-car job worth doing. `purchasePriceYen` 400,000: an early-mid garage fixture, the
+ * first "the garage is becoming real" equipment buy after a tool line. `minReputationTier`
+ * `local`: it arrives with the first tool-line rung of standing. `underCarStepDiscountPoints`
+ * 1: every under-car step and every remove or refit action is one point lighter (floor 1), so
+ * owning the lift is felt every day and never decisive on any single job.
+ *
+ * `economy.repairJobs` (NEW block, structural rather than a number): `service` targets `worn`
+ * at tool tier 1, `rebuild` targets `fine` at tier 2, `restore` targets `mint` at tier 3.
+ * Three named jobs in place of a free climb up the bands. Mint work moves behind shop
+ * ownership, where tier 2 reaches it today; the felt behaviour is that a mint part is the mark
+ * of a garage with a room for it, while mint stays reachable for anyone who buys a mint part.
+ *
+ * `workbench.json` is PINNED FOR THE FIRST TIME here. It is not a price sheet, but its recipe
+ * step counts are economic surface: a step costs `energyPerStepPoints` of the day and names
+ * the tool rung the job needs, so adding or removing one re-prices that job in both labour and
+ * tool ownership as surely as moving a fee would. Pinning it keeps a step count from drifting
+ * silently the way eleven `partPricing.json` levers once did.
+ *
+ * Nothing else moves. `partPricing.json` and `damagePatterns.json` are untouched, so their
+ * hashes hold, and no mission payout or budget cap moves: the live hire path still reads
+ * `machineShopAssist`, whose fees are unchanged, and no mission probe reads a tool-line or
+ * shop price into its build cost.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -2688,7 +2769,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('679caae7fcbf06b6483134544345b3b38532ab75f5b9cdf28a8a09317268e126')
+    ).toBe('84de5a0884ee4523613b714b6075ad48a8e897b9854ffd709c0aef04d1a85a5f')
   })
 
   it('damagePatterns.json matches its approved content exactly', () => {
@@ -2720,7 +2801,7 @@ describe('the economy approval gate', () => {
       'toolLines.json changed. Every rung price and every reputation floor on the tool ' +
         'ladder is approval-gated (CLAUDE.md directive 22): re-pin this hash ONLY in the ' +
         'same change as the recorded approval of the specific lever and value.',
-    ).toBe('d1692a1dc65bb22575e591816bb40c31ef77cb1516fb4a4c2d3fb5890e593bc9')
+    ).toBe('154114c1b57a1a2dca505119dfea249b236fab5daefaa9f160f155befd24dba2')
   })
 
   it('toolShops.json matches its approved content exactly', () => {
@@ -2731,7 +2812,18 @@ describe('the economy approval gate', () => {
         'purchase in the game, so its price, its reputation floor and the lines it covers ' +
         'are all approval-gated (CLAUDE.md directive 22): re-pin this hash ONLY in the same ' +
         'change as the recorded approval of the specific lever and value.',
-    ).toBe('20177b76549ffd30aa785dc74ffc96e2567f3b795585c3db1ef40573dbad6b3e')
+    ).toBe('614b847052a6c9c136ef3988505c5ce0c5519a3fa07dbd96f237355a7e2de4e4')
+  })
+
+  it('workbench.json matches its approved content exactly', () => {
+    const hash = createHash('sha256').update(JSON.stringify(workbench)).digest('hex')
+    expect(
+      hash,
+      'workbench.json changed. A recipe step costs a fixed slice of the working day and ' +
+        'names the tool rung its job needs, so a step count is economic surface as much as ' +
+        'a price is (CLAUDE.md directive 22): re-pin this hash ONLY in the same change as ' +
+        'the recorded approval of the specific lever and value.',
+    ).toBe('a96b72c33da9dfe6c108f21a8e7c3465f67dce1ab8f4e810979c02724f4027cd')
   })
 
   it('mission payouts and budget caps match their approved values exactly', () => {

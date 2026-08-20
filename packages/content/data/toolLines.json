@@ -20,7 +20,7 @@
       },
       {
         "displayName": "Transmission bench",
-        "upgradePriceYen": 900000,
+        "upgradePriceYen": 550000,
         "minReputationTier": "local"
       }
     ]
@@ -33,7 +33,7 @@
       },
       {
         "displayName": "Two-post lift",
-        "upgradePriceYen": 250000,
+        "upgradePriceYen": 300000,
         "minReputationTier": "local"
       }
     ]
@@ -46,7 +46,7 @@
       },
       {
         "displayName": "Tyre machine & balancer",
-        "upgradePriceYen": 150000,
+        "upgradePriceYen": 250000,
         "minReputationTier": "local"
       }
     ]
@@ -59,7 +59,7 @@
       },
       {
         "displayName": "MIG welder & panel tools",
-        "upgradePriceYen": 280000,
+        "upgradePriceYen": 400000,
         "minReputationTier": "local"
       }
     ]
@@ -72,7 +72,7 @@
       },
       {
         "displayName": "Upholstery & trim bench",
-        "upgradePriceYen": 350000,
+        "upgradePriceYen": 280000,
         "minReputationTier": "local"
       }
     ]

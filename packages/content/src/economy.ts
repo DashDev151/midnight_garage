@@ -2816,6 +2816,37 @@ export const EconomyConfigSchema = z.object({
       },
     ),
   /**
+   * The three repair jobs a player can commission on a slot: service,
+   * rebuild, restore. Each job names the condition band a completed job
+   * leaves the part at (`target`) and the line tier the job needs to be
+   * offered at all (`toolTier`). The two ladders climb together by
+   * construction: rebuild always reaches a better band than service and
+   * needs a better-equipped bench, and restore further still.
+   */
+  repairJobs: z
+    .object({
+      service: z.object({ target: ConditionBandSchema, toolTier: ToolLevelSchema }).strict(),
+      rebuild: z.object({ target: ConditionBandSchema, toolTier: ToolLevelSchema }).strict(),
+      restore: z.object({ target: ConditionBandSchema, toolTier: ToolLevelSchema }).strict(),
+    })
+    .strict()
+    .refine(
+      (r) => {
+        const bandIdx = (band: (typeof ConditionBandSchema.options)[number]) =>
+          ConditionBandSchema.options.indexOf(band)
+        return (
+          bandIdx(r.service.target) < bandIdx(r.rebuild.target) &&
+          bandIdx(r.rebuild.target) < bandIdx(r.restore.target) &&
+          r.service.toolTier < r.rebuild.toolTier &&
+          r.rebuild.toolTier < r.restore.toolTier
+        )
+      },
+      {
+        message:
+          'repairJobs must ascend strictly in both target band and toolTier across service, rebuild, restore',
+      },
+    ),
+  /**
    * The used-machinery classifieds cadence. Reputation still gates which
    * tool tiers are ELIGIBLE (per-tier thresholds, unchanged); a listing is
    * what makes an eligible tier actually PURCHASABLE, one machine at a time.
@@ -2910,6 +2941,10 @@ export const EconomyConfigSchema = z.object({
      * round (`economy.cafe`) can add a little back mid-day without waiting
      * for that refill. */
     basePoolPoints: z.number().int().positive(),
+    /** Energy points one repair step costs, flat regardless of tool tier or
+     * step depth - the job model's own single per-step cost, one lever to
+     * tune instead of the tier-scaled table below. */
+    energyPerStepPoints: z.number().int().positive(),
     /** Repair energy per band step climbed, by the group's tool tier (the
      * tool-tier speed axis, now on the bar). A repair costs `steps x
      * energyPerBandStepByToolTier[tier]` points - NO ceil, so a higher tier
@@ -3046,6 +3081,35 @@ export const EconomyConfigSchema = z.object({
     probeAmortisationOps: z.number().int().positive(),
   }),
   /**
+   * The day-hire desk: a group's own bench for the day, at a flat fee,
+   * whether or not the group's tier-2 machine is owned. `feeYenByGroup[group]`
+   * is the group's own hire fee; `amortisationDays` is how many hire days'
+   * worth of fees, paid every day, cost the same as buying that group's
+   * tier-2 machine outright, so a player hiring the same line often enough
+   * eventually finds ownership was cheaper. `maxHiredLinesPerDay` caps how
+   * many different lines can be hired in a single day - a hire day is a plan
+   * built around one bench, not a shopping spree. `slogMultiplier` is how
+   * much longer a step takes worked without the machine and without a hire
+   * booked for the day.
+   */
+  toolHire: z
+    .object({
+      feeYenByGroup: z
+        .object({
+          engine: z.number().int().positive(),
+          drivetrain: z.number().int().positive(),
+          suspension: z.number().int().positive(),
+          wheels: z.number().int().positive(),
+          body: z.number().int().positive(),
+          interior: z.number().int().positive(),
+        })
+        .strict(),
+      amortisationDays: z.number().int().positive(),
+      maxHiredLinesPerDay: z.number().int().positive(),
+      slogMultiplier: z.number().int().positive(),
+    })
+    .strict(),
+  /**
    * The rolling road. A dyno is a workshop tool the shop hires in for the day
    * or buys outright, priced and gated exactly the way a tool line's tier-2
    * machine is, and presented alongside the six lines. It is NOT one of them:
@@ -3066,6 +3130,23 @@ export const EconomyConfigSchema = z.object({
     purchasePriceYen: z.number().int().positive(),
     minReputationTier: ReputationTierSchema,
   }),
+  /**
+   * The two-post lift: a workshop fixture rather than a part group's own
+   * bench, priced and gated the same way a dyno is. `hireFeeYen` buys a
+   * day's use, `purchasePriceYen` buys it outright, and `minReputationTier`
+   * is the standing a purchase needs. `underCarStepDiscountPoints` is how
+   * many energy points lighter every under-car step and remove/refit action
+   * runs while the lift is owned or hired for the day - felt on every job
+   * that qualifies, never decisive on any single one.
+   */
+  lift: z
+    .object({
+      hireFeeYen: z.number().int().positive(),
+      purchasePriceYen: z.number().int().positive(),
+      minReputationTier: ReputationTierSchema,
+      underCarStepDiscountPoints: z.number().int().nonnegative(),
+    })
+    .strict(),
   /**
    * Machining: the third way a part gets better. A repair restores a part to
    * what it was and fitting aftermarket replaces it with something else;

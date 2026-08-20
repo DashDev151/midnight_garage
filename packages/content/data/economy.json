@@ -999,6 +999,11 @@
     "2": "mint",
     "3": "mint"
   },
+  "repairJobs": {
+    "service": { "target": "worn", "toolTier": 1 },
+    "rebuild": { "target": "fine", "toolTier": 2 },
+    "restore": { "target": "mint", "toolTier": 3 }
+  },
   "machineListings": {
     "minGapDays": 4,
     "maxGapDays": 8,
@@ -1020,6 +1025,7 @@
   "energy": {
     "pointsPerLabour": 10,
     "basePoolPoints": 80,
+    "energyPerStepPoints": 4,
     "energyPerBandStepByToolTier": {
       "1": 4,
       "2": 3,
@@ -1072,10 +1078,29 @@
     "machinelessLaborMultiplier": 3,
     "probeAmortisationOps": 40
   },
+  "toolHire": {
+    "feeYenByGroup": {
+      "engine": 15000,
+      "drivetrain": 13750,
+      "suspension": 7500,
+      "wheels": 6250,
+      "body": 10000,
+      "interior": 7000
+    },
+    "amortisationDays": 40,
+    "maxHiredLinesPerDay": 1,
+    "slogMultiplier": 3
+  },
   "dyno": {
     "hireFeeYen": 15000,
     "purchasePriceYen": 750000,
     "minReputationTier": "known"
+  },
+  "lift": {
+    "hireFeeYen": 5000,
+    "purchasePriceYen": 400000,
+    "minReputationTier": "local",
+    "underCarStepDiscountPoints": 1
   },
   "machining": {
     "minEngineToolTier": 3,

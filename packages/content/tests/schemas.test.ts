@@ -103,6 +103,29 @@ describe('seed content validates against schemas', () => {
     const result = CarPartTaxonomyContentSchema.safeParse(partsTaxonomy)
     if (!result.success) throw new Error(result.error.message)
     expect(result.data.length).toBe(28)
+    // The two-post lift's energy discount (economy.lift.underCarStepDiscountPoints)
+    // applies to exactly these 13 under-car slots.
+    const underCarIds = result.data
+      .filter((entry) => entry.underCar)
+      .map((entry) => entry.id)
+      .sort()
+    expect(underCarIds).toEqual(
+      [
+        'exhaust',
+        'gearbox',
+        'clutch',
+        'differential',
+        'driveline',
+        'dampers',
+        'springs',
+        'antiRollBars',
+        'steering',
+        'brakePadsDiscs',
+        'brakeCalipersLines',
+        'rims',
+        'tyres',
+      ].sort(),
+    )
   })
 
   it('traits.json', () => {
@@ -631,6 +654,31 @@ describe('seed content validates against schemas', () => {
     expect(EconomyConfigSchema.safeParse(economy).success).toBe(true)
   })
 
+  /**
+   * The day-hire desk: a group's own bench for the day, at a flat fee, sized
+   * so `amortisationDays` hires cost the same as buying that group's tier-2
+   * machine outright (`feeYenByGroup[group] * amortisationDays ===
+   * TOOL_LINES[group].tiers[1].upgradePriceYen`, asserted freshly against the
+   * live tool-line prices by `packages/sim/tests/storyMissionProbes.test.ts`'s
+   * retargeted amortisation probe rather than pinned again here).
+   */
+  it('parses the toolHire block (the day-hire desk)', () => {
+    const result = EconomyConfigSchema.safeParse(economy)
+    expect(result.success).toBe(true)
+    if (!result.success) return
+    expect(result.data.toolHire.feeYenByGroup).toEqual({
+      engine: 15000,
+      drivetrain: 13750,
+      suspension: 7500,
+      wheels: 6250,
+      body: 10000,
+      interior: 7000,
+    })
+    expect(result.data.toolHire.amortisationDays).toBe(40)
+    expect(result.data.toolHire.maxHiredLinesPerDay).toBe(1)
+    expect(result.data.toolHire.slogMultiplier).toBe(3)
+  })
+
   it('parses the Sprint 94 energy-bar knobs (the continuous daily labour bar)', () => {
     const result = EconomyConfigSchema.safeParse(economy)
     expect(result.success).toBe(true)
@@ -640,6 +688,9 @@ describe('seed content validates against schemas', () => {
     // The day's pool, raised from 6 labour slots to 8 because a day ran out
     // too soon to finish anything satisfying. Every labour COST is untouched.
     expect(result.data.energy.basePoolPoints).toBe(80)
+    // The job model's own flat per-step cost, independent of tool tier or
+    // step depth.
+    expect(result.data.energy.energyPerStepPoints).toBe(4)
     // Tier reduces a repair's per-band-step cost, non-increasing up the tiers.
     // Sprint213.md item 4 (labour-cost deflation) shifts the whole curve down
     // by one, preserving its shape, to 4/3/2 - a clean entry-tier rebuild now
@@ -718,12 +769,15 @@ describe('seed content validates against schemas', () => {
       'sellingChannels',
       'toolCeilings',
       'repairBandCeilingByTier',
+      'repairJobs',
       'machineListings',
       'coherence',
       'teardown',
       'energy',
       'machineShopAssist',
+      'toolHire',
       'dyno',
+      'lift',
       'machining',
       'diagnosis',
       'knowledgePriors',

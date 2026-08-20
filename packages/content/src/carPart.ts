@@ -136,6 +136,8 @@ export const CarPartTaxonomyEntryContentSchema = z.object({
    * false.
    */
   scrapDisablesCar: z.boolean().default(false),
+  /** Worked from under the car: the two-post lift's energy discount applies. */
+  underCar: z.boolean().default(false),
 })
 
 export const CarPartTaxonomyContentSchema = z.array(CarPartTaxonomyEntryContentSchema).min(1)

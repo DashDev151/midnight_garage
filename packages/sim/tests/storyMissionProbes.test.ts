@@ -848,16 +848,17 @@ describe('machine-shop assist coherence (Sprint 85 decision 6)', () => {
   const TIER1_STATE = createInitialGameState(CONTEXT, 1)
 
   /**
-   * Probe (a): each assist fee is positive (renting always beats being
-   * walled out) and, over `probeAmortisationOps` operations, never dearer
-   * than buying the tier-2 machine outright (owning beats renting once
-   * past that volume). The engine fee sits EXACTLY at the boundary
-   * (15,000 x 40 = 600,000, the engine crane's own price), so the bound is
-   * `<=`, not a strict `<`. The loop covers all six groups, so the
-   * amortisation invariant is pinned for every rent-or-own group at once.
+   * Probe (a): the toolHire fee rule. Each group's fee is derived, not
+   * authored freely: fee = tier-2 machine price / amortisationDays, so
+   * exactly `amortisationDays` hires (forty) buy the kit outright. That
+   * makes the amortisation bound an equality up to integer rounding rather
+   * than a headroom check, and a positive fee still holds (renting always
+   * beats being walled out). The loop covers all six groups, so the
+   * derivation and amortisation invariants are pinned for every
+   * rent-or-own group at once.
    */
-  it('each assist fee is positive and amortises within its tier-2 machine price', () => {
-    const { feeYenByGroup, probeAmortisationOps } = CONTEXT.economy.machineShopAssist
+  it('each toolHire fee is positive and derived from its tier-2 machine price over the amortisation window', () => {
+    const { feeYenByGroup, amortisationDays } = CONTEXT.economy.toolHire
     for (const group of [
       'engine',
       'drivetrain',
@@ -868,11 +869,15 @@ describe('machine-shop assist coherence (Sprint 85 decision 6)', () => {
     ] as const) {
       const fee = feeYenByGroup[group]
       const machinePriceYen = TOOL_LINES[group].tiers[1]!.upgradePriceYen // tier 2
-      expect(fee, `${group} assist fee must be > 0`).toBeGreaterThan(0)
+      expect(fee, `${group} tool hire fee must be > 0`).toBeGreaterThan(0)
       expect(
-        fee * probeAmortisationOps,
-        `${group}: renting ${probeAmortisationOps}x must not exceed buying the machine (${machinePriceYen})`,
+        fee * amortisationDays,
+        `${group}: hiring ${amortisationDays}x must not exceed buying the machine (${machinePriceYen})`,
       ).toBeLessThanOrEqual(machinePriceYen)
+      expect(
+        fee,
+        `${group}: fee must equal the tier-2 price divided by the amortisation window`,
+      ).toBe(machinePriceYen / amortisationDays)
     }
   })
 

@@ -1,6 +1,6 @@
 # Sprint 224: repair refactor content foundations
 
-**Status:** Planned
+**Status:** Complete, ready for review. Not committed.
 **Arc:** `repair-refactor-arc.md` sprint 1 of 9. Spec: `docs/design/systems/repair-refactor-spec.md`.
 **Scope:** content and schemas only. Everything here is ADDITIVE to the sim (new keys and
 files land beside the old; the sim does not read them yet) except the tool prices, which
@@ -686,4 +686,194 @@ untouched this sprint; they still assert the live sim path.
 
 ## Exit
 
-(Fill on completion: files landed, test counts, gate evidence, ledger paragraph quoted.)
+All nine tasks landed. Content and schemas only, exactly as scoped: no sim source file was
+touched, and the one sim test file changed is the probe retarget task 7 names. Everything
+except the tool and shop prices is additive, so the live sim still reads `machineShopAssist`,
+`energyPerBandStepByToolTier` and the free band climb; `toolHire`, `lift`, `repairJobs`,
+`energyPerStepPoints` and the whole workbench sit beside them unread until sprint 225 onward.
+
+### Files landed
+
+New:
+
+- `packages/content/data/workbench.json`: three benches with all five zones each, and 23
+  part recipe ladders (service/rebuild/restore), verbatim from the task 1 block.
+- `packages/content/src/workbench.ts`: `BenchIdSchema`, `BenchZoneSchema`, `BenchToolSchema`,
+  `BenchZoneToolsSchema`, `BenchSchema` (refined: all five zones present), `RecipeStepSchema`,
+  `PartRecipesSchema`, `WorkbenchContentSchema` (refined: `benchByGroup` covers all six
+  groups, bench ids unique, benches are exactly the three enum values), `RepairJobKindSchema`,
+  and the inferred types.
+- `packages/content/tests/workbench.test.ts`: 7 tests (schema parse; `benchByGroup` covers
+  all six `ComponentId`s; recipes cover exactly the 23 bench-repaired ids; every step's tool
+  exists on its resolved bench; no `requiresMachine` step names a tier1 tool; exactly four
+  `requiresMachine` steps at `chassis.rebuild[1]`, `chassis.restore[0]`, `exhaust.rebuild[0]`,
+  `rims.restore[0]`; no step copy carries a U+2014).
+
+Modified:
+
+- `packages/content/data/economy.json`: `energy.energyPerStepPoints` 4; new `toolHire`,
+  `lift` and `repairJobs` blocks at the positions task 4 names. No existing key touched.
+- `packages/content/data/toolLines.json`: tier 2 `upgradePriceYen` 600,000 / 550,000 /
+  300,000 / 250,000 / 400,000 / 280,000 across engine, drivetrain, suspension, wheels, body,
+  interior. No other field.
+- `packages/content/data/toolShops.json`: `upgradePriceYen` 3,000,000 / 2,200,000 /
+  1,500,000. No other field.
+- `packages/content/data/parts-taxonomy.json`: `"underCar": true` on exactly the 13 entries
+  task 3 lists, and no others.
+- `packages/content/src/carPart.ts`: `underCar: z.boolean().default(false)` on
+  `CarPartTaxonomyEntryContentSchema`. `machineGate` untouched (it retires in sprint 231).
+- `packages/content/src/economy.ts`: `repairJobs` (refined: target band and tool tier both
+  strictly ascending), `energy.energyPerStepPoints`, `toolHire` and `lift` schema sections.
+- `packages/content/src/data.ts` / `index.ts`: `WORKBENCH` parsed at load and re-exported,
+  following the `TOOL_LINES`/`TOOL_SHOPS` pattern.
+- `packages/content/tests/schemas.test.ts`: the four new keys added to the required-anchor
+  list, a `toolHire` value assertion, `energyPerStepPoints` asserted alongside the existing
+  energy knobs, and the 13-part `underCar` list asserted on the taxonomy.
+- `packages/content/tests/spellingGuard.test.ts`: `findOffenses()` now sweeps every recipe
+  step `copy` and every bench and tool `displayName`.
+- `packages/content/tests/economyApprovalGate.test.ts`: three hashes re-pinned, a sixth pin
+  added for `workbench.json`, ledger paragraph appended (quoted below).
+- `packages/sim/tests/storyMissionProbes.test.ts`: the Sprint 85 amortisation probe retargeted
+  at `toolHire`, now also asserting the derivation
+  `fee === TOOL_LINES[group].tiers[1].upgradePriceYen / amortisationDays`.
+
+### Gate re-pin
+
+Four hashes, each `sha256(JSON.stringify(import))`, computed the way the test computes them:
+
+| File | Hash |
+| --- | --- |
+| `economy.json` | `84de5a0884ee4523613b714b6075ad48a8e897b9854ffd709c0aef04d1a85a5f` |
+| `toolLines.json` | `154114c1b57a1a2dca505119dfea249b236fab5daefaa9f160f155befd24dba2` |
+| `toolShops.json` | `614b847052a6c9c136ef3988505c5ce0c5519a3fa07dbd96f237355a7e2de4e4` |
+| `workbench.json` (new pin) | `a96b72c33da9dfe6c108f21a8e7c3465f67dce1ab8f4e810979c02724f4027cd` |
+
+`partPricing.json` and `damagePatterns.json` are untouched and their pins hold; the mission
+payout and budget cap pin is unchanged. The gate now runs 7 tests (six hashes plus the payout
+table).
+
+The ledger paragraph appended to that file's header, verbatim:
+
+```text
+Re-pinned 2026-08-20 for sprint224.md (the repair refactor arc's content foundations),
+under the behaviour-first governance amendment: the arc's design of record
+(docs/design/systems/repair-refactor-spec.md) is the maintainer approval for the SHAPE of
+the tool ladder, the day hire, the lift and the three-job repair model, and every value
+below is Claude's own choice, stated here by felt behaviour and recorded lever by lever in
+docs/sprints/repair-refactor-lever-ledger.md (R1), validated by playtest rather than
+pre-ratified. `economy.json`, `toolLines.json` and `toolShops.json` all move;
+`workbench.json` joins this gate.
+
+`toolLines.json` tier 2 `upgradePriceYen`, all six lines. engine 600,000 (unchanged): the
+engine line stays the flagship purchase, a serious commitment around the `local` milestone.
+drivetrain 900,000 -> 550,000: no longer priced above the engine line, so a gearbox bench is
+a mid-game step rather than an end-game one. suspension 250,000 -> 300,000: the rung now
+buys real Rebuild capability (floor press, rebuild tooling), not just a better ceiling.
+wheels 150,000 -> 250,000: the rim straightener ram is a genuine earner, priced like one.
+body 280,000 -> 400,000: the rung now carries the MIG and the parts-repair Rebuild kit, not
+just the panel pipeline. interior 350,000 -> 280,000: the cheapest line, the natural first
+buy for a flip-polish player.
+
+`toolShops.json` `upgradePriceYen`, all three shops. machine-shop 3,500,000 -> 3,000,000:
+still the largest single purchase in the game, but no longer past the point of aspiration at
+`known`. chassis-shop 2,500,000 -> 2,200,000: the middle of the three, a committed chassis
+specialist's move. body-and-trim-shop 600,000 -> 1,500,000: the room now grants Restore
+across two groups on top of the paint pipeline's top end, and 600,000 undersold that badly.
+
+**The two body figures SUPERSEDE the sprint222.md task A re-pin above** (body tier 2 700,000
+-> 280,000, `body-and-trim-shop` 1,500,000 -> 600,000): those values are left in place as
+the historical record of what shipped then. What moved is scope, not judgement. Sprint 222
+priced both rungs as the panel-and-paint pipeline alone; under this arc the same two rungs
+also carry parts repair for the body and interior groups, so each is re-priced for what it
+now unlocks. The tier 2 rung is still well below its pre-222 700,000.
+
+`economy.toolHire` (NEW block, additive: `machineShopAssist` is untouched this sprint and
+still drives the live hire path). `feeYenByGroup` engine 15,000, drivetrain 13,750,
+suspension 7,500, wheels 6,250, body 10,000, interior 7,000, with `amortisationDays` 40.
+Derived, not chosen: each fee is exactly its own group's tier 2 `upgradePriceYen` divided by
+`amortisationDays`, so forty hire days buy the kit outright and no fee can drift away from
+the rung it stands in for. The felt behaviour is that hiring stays the sane default until
+the work is weekly: an engine-out day is a real spend, the wheels ram earns its fee on one
+straightened rim, and a body hire covering MIG work on a customer car still quotes
+profitably. The Sprint 85 hire-coherence probe now asserts that division itself rather than
+only the amortisation bound it used to check.
+
+`economy.toolHire.maxHiredLinesPerDay` 1 (NEW). Felt behaviour: a hire day is a planned day
+around one bench, not a shopping spree.
+
+`economy.toolHire.slogMultiplier` 3 (NEW; the same value `machineShopAssist.
+machinelessLaborMultiplier` carries today, which retires with its block). Felt behaviour:
+slogging a step without the rig triples it, so it stays possible, visibly painful, and never
+the plan.
+
+`economy.energy.energyPerStepPoints` 4 (NEW, one lever standing in for the per-tier
+`energyPerBandStepByToolTier` table once the sim moves onto it). Felt behaviour: a two-step
+Service is most of one labour slot (8 points of 10), and a Rebuild with a removal and a
+refit around it is a solid morning's work. One lever to tune, not three.
+
+`economy.lift` (NEW block). `hireFeeYen` 5,000: a lift day is cheap enough to book for any
+under-car job worth doing. `purchasePriceYen` 400,000: an early-mid garage fixture, the
+first "the garage is becoming real" equipment buy after a tool line. `minReputationTier`
+`local`: it arrives with the first tool-line rung of standing. `underCarStepDiscountPoints`
+1: every under-car step and every remove or refit action is one point lighter (floor 1), so
+owning the lift is felt every day and never decisive on any single job.
+
+`economy.repairJobs` (NEW block, structural rather than a number): `service` targets `worn`
+at tool tier 1, `rebuild` targets `fine` at tier 2, `restore` targets `mint` at tier 3.
+Three named jobs in place of a free climb up the bands. Mint work moves behind shop
+ownership, where tier 2 reaches it today; the felt behaviour is that a mint part is the mark
+of a garage with a room for it, while mint stays reachable for anyone who buys a mint part.
+
+`workbench.json` is PINNED FOR THE FIRST TIME here. It is not a price sheet, but its recipe
+step counts are economic surface: a step costs `energyPerStepPoints` of the day and names
+the tool rung the job needs, so adding or removing one re-prices that job in both labour and
+tool ownership as surely as moving a fee would. Pinning it keeps a step count from drifting
+silently the way eleven `partPricing.json` levers once did.
+
+Nothing else moves. `partPricing.json` and `damagePatterns.json` are untouched, so their
+hashes hold, and no mission payout or budget cap moves: the live hire path still reads
+`machineShopAssist`, whose fees are unchanged, and no mission probe reads a tool-line or
+shop price into its build cost.
+```
+
+### Evidence
+
+Each command run once, narrowest first.
+
+- `pnpm test --project content`: 32 files, 649 tests, all passing. Covers the schemas, the
+  new workbench tests, both guards and the re-pinned gate.
+- `pnpm test packages/sim/tests/storyMissionProbes.test.ts`: 1 file, 19 tests, all passing.
+  The retargeted amortisation probe holds with the derivation assertion: every fee is exactly
+  its tier 2 price over 40 (600,000/40 = 15,000; 550,000/40 = 13,750; 300,000/40 = 7,500;
+  250,000/40 = 6,250; 400,000/40 = 10,000; 280,000/40 = 7,000).
+- `pnpm test packages/sim/tests/advanceDay.test.ts packages/sim/tests/careerReplay.test.ts`:
+  2 files, 23 tests, all passing. Both golden masters are GREEN and no hash was re-pinned,
+  which is the expected result. The 30-day scripted career's only tool spending is
+  `hireForDay`'s two `resolveHireMachineLine` calls (body on day 1, suspension on day 3),
+  which read `machineShopAssist.feeYenByGroup`, untouched this sprint; it buys no tool line
+  and no shop (`toolShopsOwned` starts and stays empty). `careerReplay.test.ts` touches no
+  hire or tool purchase at all.
+
+The pre-push hook is the full gate (directive 20) and was not pre-empted. `pnpm typecheck`
+was not run by this closing task: the directive 20 carve-out covers retiring, renaming or
+reshaping a schema field or exported symbol, and this sprint only ADDS keys and exports,
+nothing retired or reshaped.
+
+### Deviations from the doc, with reasons
+
+1. Task 2 specifies `recipes: z.record(CarPartIdSchema, PartRecipesSchema)`; it landed as
+   `z.partialRecord(...)`, because only 23 of the 28 `CarPartId`s carry a recipe and a full
+   `z.record` would type the missing five as present. Same partial shape `carInstance.ts` and
+   `gameState.ts` already use for other CarPartId-keyed maps that do not cover every part.
+   The exact key set is asserted literally in `workbench.test.ts` instead.
+2. Task 2's third refine (every step's tool exists on its resolved bench) and the
+   `requiresMachine` tier check both live in `workbench.test.ts` rather than in the schema,
+   taking the option task 2 offers by name: resolving a step's bench needs the taxonomy's
+   `group` field, so a refine would either cycle against `data.ts` or parse the taxonomy a
+   second time. `WorkbenchContentSchema`'s doc comment records where the two checks went.
+3. Task 2 names the job-kind type `JobKind3`; it landed as `RepairJobKind`, the `z.infer` of
+   `RepairJobKindSchema`, matching the file's own naming for every other exported type.
+4. Task 9 says `pnpm test packages/content`; it was run as `pnpm test --project content`, the
+   project selector CLAUDE.md's command list uses. Same 32 files.
+
+Nothing is left open.

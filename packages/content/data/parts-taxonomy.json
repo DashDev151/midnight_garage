@@ -73,7 +73,8 @@
       "power": 1,
       "reliability": 1,
       "authenticity": 1
-    }
+    },
+    "underCar": true
   },
   {
     "id": "fuelSystem",
@@ -134,7 +135,8 @@
     "physicalWeights": {
       "driveline": 1
     },
-    "scrapDisablesCar": true
+    "scrapDisablesCar": true,
+    "underCar": true
   },
   {
     "id": "clutch",
@@ -152,7 +154,8 @@
     "physicalWeights": {
       "driveline": 2
     },
-    "scrapDisablesCar": true
+    "scrapDisablesCar": true,
+    "underCar": true
   },
   {
     "id": "differential",
@@ -167,7 +170,8 @@
     "physicalWeights": {
       "driveline": 1
     },
-    "scrapDisablesCar": true
+    "scrapDisablesCar": true,
+    "underCar": true
   },
   {
     "id": "driveline",
@@ -181,7 +185,8 @@
     "physicalWeights": {
       "driveline": 2
     },
-    "scrapDisablesCar": true
+    "scrapDisablesCar": true,
+    "underCar": true
   },
   {
     "id": "chassis",
@@ -210,7 +215,8 @@
     },
     "physicalWeights": {
       "grip": 2
-    }
+    },
+    "underCar": true
   },
   {
     "id": "springs",
@@ -226,7 +232,8 @@
     },
     "physicalWeights": {
       "grip": 2
-    }
+    },
+    "underCar": true
   },
   {
     "id": "antiRollBars",
@@ -240,7 +247,8 @@
     },
     "physicalWeights": {
       "grip": 2
-    }
+    },
+    "underCar": true
   },
   {
     "id": "steering",
@@ -256,7 +264,8 @@
     "physicalWeights": {
       "grip": 1
     },
-    "scrapDisablesCar": true
+    "scrapDisablesCar": true,
+    "underCar": true
   },
   {
     "id": "brakePadsDiscs",
@@ -273,7 +282,8 @@
     "physicalWeights": {
       "braking": 3
     },
-    "scrapDisablesCar": true
+    "scrapDisablesCar": true,
+    "underCar": true
   },
   {
     "id": "brakeCalipersLines",
@@ -289,7 +299,8 @@
     "physicalWeights": {
       "braking": 2
     },
-    "scrapDisablesCar": true
+    "scrapDisablesCar": true,
+    "underCar": true
   },
   {
     "id": "rims",
@@ -303,7 +314,8 @@
     },
     "physicalWeights": {
       "grip": 1
-    }
+    },
+    "underCar": true
   },
   {
     "id": "tyres",
@@ -321,7 +333,8 @@
     "physicalWeights": {
       "grip": 3
     },
-    "scrapDisablesCar": true
+    "scrapDisablesCar": true,
+    "underCar": true
   },
   {
     "id": "bodywork",

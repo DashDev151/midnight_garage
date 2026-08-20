@@ -32,6 +32,7 @@ import traitsJson from '../data/traits.json'
 import tutorialLotJson from '../data/tutorialLot.json'
 import tutorialStepsJson from '../data/tutorialSteps.json'
 import venueNamesJson from '../data/venueNames.json'
+import workbenchJson from '../data/workbench.json'
 import { AssemblyDefsSchema } from './assembly'
 import { AuctionTierCopySchema } from './auctionTierCopy'
 import { BuyersSchema } from './buyer'
@@ -67,6 +68,7 @@ import { StaffCandidatePoolSchema, TraitDefinitionsSchema } from './staff'
 import { ToolLinesSchema, ToolShopsSchema } from './toolLines'
 import { TutorialLotRecipeSchema, TutorialStepsSchema } from './tutorial'
 import { VenueNamesSchema } from './venueNames'
+import { WorkbenchContentSchema } from './workbench'
 
 /**
  * Parsed, schema-validated seed content - the single source of truth for
@@ -158,6 +160,13 @@ export const TOOL_LINES = ToolLinesSchema.parse(toolLinesJson)
  * and 2 of.
  */
 export const TOOL_SHOPS = ToolShopsSchema.parse(toolShopsJson)
+
+/**
+ * The three benches, their shadow-board tool sets, and every part's
+ * service/rebuild/restore recipe - see `workbench.ts` for the schema and
+ * what it deliberately leaves for the test file to check.
+ */
+export const WORKBENCH = WorkbenchContentSchema.parse(workbenchJson)
 export const ECONOMY = EconomyConfigSchema.parse(economyJson)
 
 /**
