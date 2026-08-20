@@ -9,6 +9,7 @@ import { SaleChannelSchema } from './sale'
 import { SellingChannelIdSchema } from './economy'
 import { StaffAssignmentSchema } from './staff'
 import { CarPartIdSchema, ComponentIdSchema, ConditionBandSchema, GradeSchema } from './tags'
+import { RepairJobKindSchema } from './workbench'
 import { ZoneIdSchema } from './zone'
 
 /**
@@ -152,6 +153,33 @@ export const SessionEventInputSchema = z.discriminatedUnion('type', [
       partInstanceId: z.string().min(1),
       carPartId: CarPartIdSchema.optional(),
       laborSlotsUsed: z.number().int().nonnegative(),
+    }),
+  ),
+  // The repair job engine's own two events (packages/sim/src/repairJobs.ts) -
+  // one step ticked, and a job's last step completing. `carInstanceId`/
+  // `partInstanceId` mirror `RepairTarget`'s own installed/loose split
+  // (workbench.ts), so exactly one of the two is present on either variant.
+  sessionEventVariant(
+    'repair-step',
+    z.object({
+      carInstanceId: z.string().min(1).optional(),
+      partInstanceId: z.string().min(1).optional(),
+      carPartId: CarPartIdSchema,
+      jobKind: RepairJobKindSchema,
+      stepIndex: z.number().int().nonnegative(),
+      copy: z.string().min(1),
+      slogged: z.boolean(),
+      energyPoints: z.number().int().nonnegative(),
+    }),
+  ),
+  sessionEventVariant(
+    'repair-job-completed',
+    z.object({
+      carInstanceId: z.string().min(1).optional(),
+      partInstanceId: z.string().min(1).optional(),
+      carPartId: CarPartIdSchema,
+      jobKind: RepairJobKindSchema,
+      targetBand: ConditionBandSchema,
     }),
   ),
   sessionEventVariant(

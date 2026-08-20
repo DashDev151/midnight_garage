@@ -95,6 +95,16 @@ function getDb(): Promise<SaveDb | undefined> {
             ledgerEvents: '++id, day, bucket',
             meta: 'key',
           })
+          // Table shape is unchanged - this version bump rides alongside the
+          // repair job engine's GameState-shape SAVE_VERSION bump
+          // (saveCodec.ts), per the repair-refactor arc's save-law rule: every
+          // state-shape change bumps both version numbers together.
+          this.version(4).stores({
+            saves: 'slot',
+            sessionEvents: '++id, day, type',
+            ledgerEvents: '++id, day, bucket',
+            meta: 'key',
+          })
         }
       }
       return new SaveDatabase()

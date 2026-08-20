@@ -69,6 +69,7 @@ import {
   resolveSellPart,
   resolveTakeFromStation,
 } from './parts'
+import { resolveRepairStep, type RepairTarget } from './repairJobs'
 import { resolveAcceptSceneCommission, resolveDeliverSceneCommission } from './sceneCommissions'
 import { resolveDismissStaff, resolveHireStaff, resolveReassignStaff } from './staff'
 import {
@@ -119,6 +120,9 @@ interface EventEffect {
  * that does not exist. `playClockPaused` and `playClockResumed` are dev-only
  * session-clock instrumentation with no sim effect at all - measurement of
  * the session, never an action within it - so both are pure no-ops.
+ * `repair-job-completed` is a no-op for a related reason: the repair engine
+ * emits it alongside the last `repair-step`, so the step case has already
+ * completed that job and replaying it again would work a job that is gone.
  */
 function applySessionEvent(
   state: GameState,
@@ -296,6 +300,23 @@ function applySessionEvent(
       }
       const result = resolveJobLabor(state, spec, remaining, context)
       return { state: result.state, log: result.log }
+    }
+    case 'repair-step': {
+      // The engine's own event names the address and the job kind; the step
+      // index, copy and energy it also carries are what that step produced,
+      // so replay re-derives them by working the same job's next step.
+      const { carInstanceId, partInstanceId, carPartId, jobKind } = event.payload
+      let target: RepairTarget | null = null
+      if (carInstanceId) target = { kind: 'installed', carInstanceId, carPartId }
+      else if (partInstanceId) target = { kind: 'loose', partInstanceId }
+      if (!target) return { state, log: [] }
+      const result = resolveRepairStep(state, target, jobKind, context, remaining)
+      return { state: result.state, log: [] }
+    }
+    case 'repair-job-completed': {
+      // Always emitted alongside the last `repair-step`, never on its own, so
+      // the case above has already finished the job by the time this is read.
+      return { state, log: [] }
     }
     case 'pipelineStage': {
       const { carId, zoneId, stage } = event.payload

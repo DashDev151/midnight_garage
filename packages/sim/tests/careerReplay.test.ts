@@ -129,17 +129,30 @@ const SMOKE_SCRIPT = CareerScriptSchema.parse(smokeScriptRaw)
 // 'cashAtMost'` on day 7, whose pinned ceiling moved with the day-7 cash
 // figure - less was spent on the buyout, so more cash remains) move with
 // this array.
+//
+// Re-pinned for the repair job engine's two new state fields: `GameState`
+// gains `benchParts` and `lift`, both seeded empty by
+// `createInitialGameState` and present on every day's snapshot, so the whole
+// sequence moves even though the script never places a part on a bench or
+// buys a lift. A pure SHAPE change, measured rather than assumed: strip the
+// two new keys back out of the day-1 and day-10 states and their hashes are
+// exactly the previous `d1fd027b` and `e61c3d6f`, so no roll, cash figure or
+// derived stat moved. `smoke.script.json`'s own two `kind: 'hash'`
+// checkpoints (days 1 and 10) move with this array; the day-7 `cashAtMost`
+// ceiling, the day-10 `carsOwned` count and the day-10 `reputationTier` are
+// all unchanged and still pass, which is the proof the old repair path is
+// untouched. Re-derived from a real run, never hand-guessed.
 const EXPECTED_HASHES_BY_DAY = [
-  'd1fd027b',
-  'fd5ba00f',
-  '55c7f5ec',
-  '62699101',
-  'f7a64a7e',
-  '27c47e9b',
-  '0a5ae8fa',
-  '4a1c2ed9',
-  '53fad84b',
-  'e61c3d6f',
+  '94fd8cfb',
+  '8ff7c4c3',
+  '16108814',
+  '05780a49',
+  '1778178a',
+  '880e798f',
+  '607dbd1a',
+  'e943f905',
+  '52808717',
+  '746a821f',
 ]
 
 describe('replayCareerScript (Sprint 198 C1)', () => {

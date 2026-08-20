@@ -1,6 +1,10 @@
 # Sprint 225: the repair job engine
 
-**Status:** Planned
+**Status:** Implemented; ready for review. All five tasks landed. `pnpm test --project sim`
+is green (118 files, 3031 passed, 1 skipped) and `pnpm typecheck` is clean across content,
+sim and game. Both golden masters were re-pinned for the two new state fields and the
+re-pin was measured, not assumed (see Exit). Not committed (a commit needs explicit
+maintainer approval).
 **Arc:** `repair-refactor-arc.md` sprint 2 of 9. Depends on sprint 224 (content).
 **Scope:** sim only. The new engine lands COMPLETE and TESTED beside the old repair path.
 No old sim path changes behaviour this sprint; no UI reads the engine yet. State gains two
@@ -229,4 +233,148 @@ jobKind, targetBand }`. (Day-log formatting lands with the UI sprints.)
 
 ## Exit
 
-(Fill on completion.)
+All five tasks landed. The engine is complete, exported and tested, and it sits entirely
+beside the old repair path: no existing sim function changed behaviour, no screen reads the
+new module yet, and the only reason either golden master moved is that `GameState` now
+carries two more keys. That claim was measured rather than asserted (proof below).
+
+### Files landed
+
+New:
+
+- `packages/sim/src/repairJobs.ts` (818 lines): the whole engine. Exported surface, in file
+  order:
+  - Types: `RepairTarget`, `ToolTierOnBench`, `StepAvailability`, `RepairJobCardRefusal`,
+    `RepairJobRoute`, `RepairJobStepCard`, `RepairJobCard`, `RepairStepRefusal`,
+    `RepairStepOutcome`, `ResolveRepairStepResult`.
+  - Constants: `REPAIR_JOB_KINDS` (service, rebuild, restore, in ladder order),
+    `BENCH_PRIMARY_GROUP`.
+  - Step rules: `toolTierOnBench(workbench, bench, tool)`, `stepBenchFor(step, partGroup)`,
+    `stepGroupFor(step, partGroup)`, `stepAvailability(state, context, step, partGroup)`.
+  - Job identity, target and energy: `repairJobIdFor(target, kind, context)`,
+    `targetBandFor(kind, context)`, `energyPlanFor(state, context, target, kind)`.
+  - Benches and lift: `benchForGroup(group)`, `benchPartIds(state, bench)`,
+    `benchHoldingPart(state, partInstanceId)`,
+    `resolvePlaceOnBench(state, partInstanceId, context)`,
+    `resolveTakeOffBench(state, partInstanceId)`, `liftAvailable(state)`.
+  - Cards and execution: `repairJobCards(state, context, target)`,
+    `resolveRepairStep(state, target, kind, context, energyRemaining)`.
+- `packages/sim/tests/repairJobs.test.ts` (6 tests): the offer matrix; service in situ on a
+  buried part (surcharge on step 0 only, completes to worn, parts bill charged once, refused
+  for short cash without ticking); service on a bolt-on part carrying no surcharge; rebuild
+  on an installed removable part refusing `needs-bench` then running once removed and
+  benched; a chassis rebuild running installed and never asking for a bench; the energy pool
+  refusing `no-energy` without ticking, charging or mutating.
+- `packages/sim/tests/repairJobRoutes.test.ts` (15 tests): the tier-1 slog and the day hire
+  on a three-step block rebuild; the welded exhaust step keying the MIG on the BODY group
+  (refused at tier 1, unmoved by hiring the engine line, running on the body hire and on
+  body tier 2); restore refused `needs-shop` at tool tier 2 and running with the shop; rims
+  restore resolving to the chassis shop and completing to mint; interruption across a day
+  with the hire lapsing and the band moving only on the last step; and the invariant sweep
+  over all 23 recipes (every service step at tier 1, shop tools in restore recipes only).
+- `packages/sim/tests/repairJobCards.test.ts` (11 tests): the parts bill for the band
+  distance charged once and posted to the car ledger, and to the service job's own ledger on
+  a customer car; the crew discount taken off the job total with no step below one point;
+  card totals against the live plan with `partsYen` dropping to zero once started and only
+  remaining steps shown; all five route states; and job identity (a service and a rebuild on
+  one part being two non-interfering jobs, each resuming to its own locked target band).
+
+Modified:
+
+- `packages/content/src/job.ts`: `JobKindSchema` gains `service`/`rebuild`/`restore`.
+  Additive; no job field added.
+- `packages/content/src/sessionEvent.ts`: `repair-step` and `repair-job-completed` variants,
+  payloads exactly as the locked model names them.
+- `packages/content/src/gameState.ts`: `benchParts` and `lift`, both defaulted.
+- `packages/game/src/save/saveCodec.ts`: `SAVE_VERSION` 76 -> 77, no `MIGRATIONS[76]` entry
+  (directive 19: both fields carry schema defaults, so an old save decodes with every bench
+  empty and no lift).
+- `packages/game/src/save/saveDb.ts`: `this.version(4)` with the stores object unchanged.
+- `packages/sim/src/index.ts`: `export * from './repairJobs'`.
+- `packages/sim/src/jobs.ts`: `chargeRepairWork` exported (it was module-private) and its
+  header now names the third caller. No behaviour touched.
+- `packages/sim/src/newGame.ts`: the two fields seeded on a fresh career.
+- `packages/sim/src/careerReplay.ts`: `repair-step` re-derives the step by working the same
+  job; `repair-job-completed` is a no-op, since it is only ever emitted alongside the last
+  `repair-step`.
+- `packages/sim/src/careerScripts/smoke.script.json`: its two `kind: 'hash'` checkpoints
+  re-pinned with the replay hashes they check.
+- 22 existing sim test files: the two new fields added to their full-`GameState` fixture
+  builders. Mechanical wiring, two lines each, no assertion touched.
+
+### Golden re-pin, and the proof it is shape only
+
+| Pin | Was | Now |
+| --- | --- | --- |
+| `advanceDay.test.ts`, 30-day master | `dbf45eb9` | `31707bd5` |
+| `advanceDay.test.ts`, acquisition and sale | `deded012` | `bd89d46a` |
+| `careerReplay.test.ts`, days 1 to 10 | `d1fd027b` ... `e61c3d6f` | `94fd8cfb` ... `746a821f` |
+
+Only hash literals moved. Every non-hash assertion around them is untouched and passing: the
+30-day master's rent-charge count and cash figures, the acquisition script's buy-and-sell
+assertions, and the smoke script's own day-7 `cashAtMost` ceiling, day-10 `carsOwned` count
+and day-10 `reputationTier`. Each re-pinned literal carries a trace comment in the file's
+existing style recording that the state shape gained `benchParts` and `lift` and that the
+hash was re-derived from a real run.
+
+The stronger claim was measured directly: with the two new keys deleted from the final state
+before hashing, both `advanceDay` hashes come back as exactly their pre-sprint values
+(`dbf45eb9` and `deded012`). The serialised state is therefore identical apart from the two
+new keys: no roll consumed, no cash figure, no derived stat moved. The measurement was run as
+temporary instrumentation and removed again, so the file's diff is the re-pin and its comment
+and nothing else.
+
+### Check output
+
+`pnpm test --project sim`:
+
+```text
+ Test Files  118 passed (118)
+      Tests  3031 passed | 1 skipped (3032)
+   Duration  161.74s
+```
+
+`pnpm typecheck` (directive 20's carve-out: two schema fields added):
+
+```text
+packages/content typecheck$ tsc --noEmit
+packages/content typecheck: Done
+packages/sim typecheck$ tsc --noEmit
+packages/sim typecheck: Done
+packages/game typecheck$ vue-tsc --noEmit
+packages/game typecheck: Done
+```
+
+No test outside the two golden masters needed a changed assertion, which is task 5's own
+condition for the sprint having caused no regression.
+
+### Deviations from the locked model
+
+1. `benchParts` is `z.partialRecord(BenchIdSchema, ...)`, not `z.record(...)`. Zod infers a
+   `z.record` over a finite enum key as an exhaustive record, which rejects the `{}` default
+   the model specifies. `partialRecord` is the same runtime shape with the key made optional,
+   which is what "a bench with nothing on it is absent from the map" already meant.
+2. The sim uses `RepairJobKind` imported from `@midnight-garage/content` (sprint 224's
+   `workbench.ts`) as its job-kind type rather than declaring a sim-local alias. One
+   definition, in the package that owns the content.
+3. `repairJobIdFor(target, kind, context)` takes a third argument the model's signature does
+   not list. The installed-target id embeds the component id, which is a taxonomy lookup, so
+   the context is unavoidable.
+4. The tests landed as three files rather than one. `repairJobs.test.ts` holds offer rules
+   and execution, `repairJobRoutes.test.ts` the tool ladder and interruption, and
+   `repairJobCards.test.ts` money, crew, cards and job identity. Every required case in task
+   4 is present, each as its own `it`; 32 tests in total.
+5. `careerReplay.ts` gained cases for the two new events, which no task lists. The replay
+   switches exhaustively over the session event union, so adding an event to the union
+   without a case does not compile. Wiring, not a design choice.
+6. `smoke.script.json`'s two hash checkpoints were re-pinned alongside `careerReplay.test.ts`
+   (task 5 names only the test files). The script's own hashes check the same replay, so
+   they move with it; its three non-hash checkpoints are untouched.
+7. `chargeRepairWork` had to be exported from `jobs.ts` to be reused. Reuse as directed; the
+   only alternative was a second money path, which is what the reuse analysis forbids.
+8. `RepairStepRefusal` declares `'needs-hire'`, per the model, but no path returns it: a
+   tier-2 step nobody owns or has hired slogs rather than refusing, and one that cannot be
+   slogged refuses `'needs-machine'`. The member is kept because the model names it and the
+   hire-facing UI sprints may yet want it; it is unreachable today.
+9. Only `verifyAndResolve` is used on a band write, not `verifyManyAndResolve`. A repair job
+   writes exactly one slot, so the single-slot helper is the right one.

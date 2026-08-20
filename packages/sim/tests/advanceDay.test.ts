@@ -92,6 +92,8 @@ function initialState(): GameState {
     forecourtCarIds: [null, null],
     graceParkingCarId: null,
     energySpentToday: 0,
+    benchParts: {},
+    lift: { owned: false, hirePaidDay: null },
     // Every tool line is owned at tier 1 from day one - the scripted
     // day-1 body repair just runs at the tier-1 repair level; the job's
     // caller-sized 3 labor slots below are the fixture's own script, not
@@ -414,7 +416,17 @@ describe('advanceDay golden master', () => {
     // on. No draw was added or removed, and the rent-charge cash assertion
     // just below reads the fee straight off content rather than a literal,
     // so it is unmoved. Re-derived from a real run.
-    expect(hashState(finalState)).toBe('dbf45eb9')
+    //
+    // It moves once more, on its own again, for the repair job engine's two
+    // new state fields: `GameState` gains `benchParts` and `lift`, both
+    // seeded empty and never touched by this script (nothing here places a
+    // part on a bench or buys a lift). A pure SHAPE change, measured rather
+    // than assumed: strip the two new keys back out of this state and the
+    // hash is exactly the previous `dbf45eb9`, so no roll, cash figure or
+    // derived stat moved - the old repair path is untouched, as the
+    // unchanged cash and day-count assertions around this hash confirm.
+    // Re-derived from a real run.
+    expect(hashState(finalState)).toBe('31707bd5')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -790,7 +802,16 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // otherwise intact paint on several panels, so its guide value - and
     // so the buyout price struck for it - reads correctly lower. Re-derived
     // from a real run.
-    expect(hashState(acquisitionCareer().sold)).toBe('deded012')
+    //
+    // It moves once more, alongside the 30-day master, for the repair job
+    // engine's two new state fields: `GameState` gains `benchParts` and
+    // `lift`, seeded empty by `createInitialGameState` and never touched by
+    // this script. A pure SHAPE change, measured rather than assumed: strip
+    // the two new keys back out of this state and the hash is exactly the
+    // previous `deded012`, so no roll, cash figure or derived stat moved -
+    // the buy-and-sell assertions in the test just above are unchanged and
+    // still hold. Re-derived from a real run.
+    expect(hashState(acquisitionCareer().sold)).toBe('bd89d46a')
   })
 })
 

@@ -866,8 +866,19 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * directive 19, a plain SAVE_VERSION bump with NO `MIGRATIONS[75]` entry. The
  * version bump alone is still required (Save law) so an old client rejects a
  * v76 save rather than reading a shape it no longer understands.
+ * v76 -> v77 (the repair job engine's state, `docs/design/systems/
+ * repair-refactor-spec.md`): `GameState` gains `benchParts` (which loose
+ * parts sit on each of the three workbenches, default every bench empty) and
+ * `lift` (owned/hired-today, default `{ owned: false, hirePaidDay: null }`),
+ * and `JobKindSchema` gains `service`/`rebuild`/`restore`. Both new fields
+ * are the normal additive case (schema defaults, like `marketLedger` at
+ * v13), so this needs NO `MIGRATIONS[76]` entry: a pre-v77 save decodes with
+ * every bench empty and no lift owned or hired - exactly right, since
+ * neither concept existed yet. The version bump alone is still required
+ * (Save law) so an old client rejects a v77 save rather than reading a shape
+ * it no longer understands.
  */
-export const SAVE_VERSION = 76
+export const SAVE_VERSION = 77
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

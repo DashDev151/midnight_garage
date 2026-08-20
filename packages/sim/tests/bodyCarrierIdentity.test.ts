@@ -131,6 +131,8 @@ function stateWith(car: CarInstance, inventory: PartInstance[]): GameState {
     forecourtCarIds: [null, null],
     graceParkingCarId: null,
     energySpentToday: 0,
+    benchParts: {},
+    lift: { owned: false, hirePaidDay: null },
     toolTiers: testToolTiers({ body: 2 }),
     pendingPartOrders: [],
     cartPartIds: [],

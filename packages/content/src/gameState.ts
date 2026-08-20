@@ -21,6 +21,7 @@ import { SceneCommissionSchema } from './sceneCommission'
 import { ServiceJobSchema } from './serviceJob'
 import { BayKindSchema, SlotKindSchema } from './facilities'
 import { VenueNameByTierSchema } from './venueNames'
+import { BenchIdSchema } from './workbench'
 
 /**
  * The two exponentially-decayed counters `marketHeat.ts`'s weekly
@@ -814,6 +815,30 @@ export const GameStateSchema = z.object({
    * it to `FRESH_SCENE_COMMISSIONS` explicitly (`createInitialGameState`).
    */
   sceneCommissions: SceneCommissionBoardSchema.optional(),
+  /**
+   * Which loose `PartInstance`s sit on each of the three benches
+   * (`BenchIdSchema`, workbench.ts), keyed by bench id - the repair job
+   * engine's location gate for Rebuild/Restore work on a removable part
+   * (`docs/design/systems/repair-refactor-spec.md`, `packages/sim/src/
+   * repairJobs.ts`). Bench membership is presentational and a location gate
+   * only: a part listed here stays in `partInventory` throughout, never a
+   * second inventory. A bench with nothing on it is simply absent from the
+   * map; the field itself defaults to `{}` - a fresh career has nothing on
+   * any bench yet.
+   */
+  benchParts: z.partialRecord(BenchIdSchema, z.array(z.string().min(1))).default({}),
+  /**
+   * The shop's engine lift - owned outright, or hired for the day
+   * (`hirePaidDay` mirrors `dyno.hirePaidDay`'s own day-stamp idiom). The
+   * repair job engine's `energyPlanFor` (`packages/sim/src/repairJobs.ts`)
+   * discounts every step and remove/refit action on an `underCar` part while
+   * this reads owned or hired today; a fresh career owns no lift and has
+   * never paid for one.
+   */
+  lift: z
+    .object({ owned: z.boolean(), hirePaidDay: z.number().int().positive().nullable() })
+    .strict()
+    .default({ owned: false, hirePaidDay: null }),
 })
 
 /**

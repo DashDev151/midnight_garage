@@ -75,6 +75,8 @@ function stateWithLots(lots: AuctionLot[], overrides: Partial<GameState> = {}): 
     forecourtCarIds: [null, null],
     graceParkingCarId: null,
     energySpentToday: 0,
+    benchParts: {},
+    lift: { owned: false, hirePaidDay: null },
     toolTiers: testToolTiers(),
     pendingPartOrders: [],
     cartPartIds: [],

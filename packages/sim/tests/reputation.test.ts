@@ -91,6 +91,8 @@ describe('applyReputationDelta (Sprint 15)', () => {
       forecourtCarIds: [null, null],
       graceParkingCarId: null,
       energySpentToday: 0,
+      benchParts: {},
+      lift: { owned: false, hirePaidDay: null },
       toolTiers: testToolTiers(),
       pendingPartOrders: [],
       cartPartIds: [],

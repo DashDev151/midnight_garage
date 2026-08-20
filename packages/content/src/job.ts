@@ -26,6 +26,13 @@ import { CarPartIdSchema, ComponentIdSchema, ConditionBandSchema } from './tags'
  * `carInstanceId` holds the loose part's own id, the same way a
  * `recondition-part` job's does, so neither resolves against a car or a
  * service bay.
+ *
+ * `'service' | 'rebuild' | 'restore'` are the three repair job kinds
+ * (`RepairJobKindSchema`, workbench.ts), one recipe ladder per part per
+ * kind. A repair job reuses this schema's own `laborSlotsRequired`/
+ * `laborSlotsSpent` fields (the recipe's step count and the steps done) and
+ * carries no field these other kinds don't already declare - the engine
+ * that builds and resolves them lives in `packages/sim/src/repairJobs.ts`.
  */
 export const JobKindSchema = z.enum([
   'repair-zone',
@@ -33,6 +40,9 @@ export const JobKindSchema = z.enum([
   'recondition-part',
   'dyno-session',
   'machine-part',
+  'service',
+  'rebuild',
+  'restore',
 ])
 
 export const JobSchema = z

@@ -914,14 +914,15 @@ function jobIdFor(spec: NewJobSpec): string {
 export type RepairJobGate = { ok: true; state: GameState } | { ok: false; log: DayLogEntry[] }
 
 /**
- * The single money step shared by on-car repair (`repairJobGate` below) and
- * in-inventory recondition (`resolveReconditionLabor`) - charges the
- * already-priced repair work against cash, or refuses silently when
- * unaffordable. One repair economy: both paths deduct the same banded-repair
- * `costYen`. No per-job flat consumables fee - bill truth is structural:
- * this IS the number `carCostToMintYen`/`planGroupRepair` already show.
+ * The single money step shared by on-car repair (`repairJobGate` below),
+ * in-inventory recondition (`resolveReconditionLabor`) and the repair job
+ * engine (`repairJobs.ts`) - charges the already-priced repair work against
+ * cash, or refuses silently when unaffordable. One repair economy: every path
+ * deducts the same banded-repair `costYen`. No per-job flat consumables fee -
+ * bill truth is structural: this IS the number
+ * `carCostToMintYen`/`planGroupRepair` already show.
  */
-function chargeRepairWork(
+export function chargeRepairWork(
   state: GameState,
   repairCostYen: number,
 ): { ok: true; state: GameState; totalCostYen: number } | { ok: false } {

@@ -93,6 +93,8 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     forecourtCarIds: [null, null],
     graceParkingCarId: null,
     energySpentToday: 0,
+    benchParts: {},
+    lift: { owned: false, hirePaidDay: null },
     toolTiers: TOOL_TIERS,
     pendingPartOrders: [],
     cartPartIds: [],

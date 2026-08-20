@@ -100,6 +100,8 @@ export function createInitialGameState(
     inspectionVisit: null,
     workbenchPartId: null,
     machinePartId: null,
+    benchParts: {},
+    lift: { owned: false, hirePaidDay: null },
     storyMissions: [],
     assemblyInventory: [],
     serviceJobChannelUnlocks: [],
