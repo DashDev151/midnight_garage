@@ -53,7 +53,7 @@ describe('useGameStore', () => {
     expect(game.lastDayReport?.entries).toContainEqual({
       type: 'machine-hired',
       componentId: 'body',
-      priceYen: ECONOMY.machineShopAssist.feeYenByGroup.body,
+      priceYen: ECONOMY.toolHire.feeYenByGroup.body,
     })
   })
 

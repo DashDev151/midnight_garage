@@ -11,6 +11,7 @@ import {
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import {
+  accessRoute,
   applyAvailableLaborToJob,
   applyLaborToJob,
   completeJob,
@@ -19,7 +20,6 @@ import {
   hasMachineLineFor,
   installFitGate,
   installLaborSlotsFor,
-  machineAssistFeeYen,
   naToTurboConversionBlocked,
   partCapabilityRequirement,
   reconditionGateReason,
@@ -29,6 +29,7 @@ import {
   removeLaborSlotsFor,
   repairJobGate,
   isJobComplete,
+  resolveHireToolLine,
   resolveJobLabor,
   resolveReconditionLabor,
   resolveRemovePart,
@@ -148,8 +149,6 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     marketLedger: { lotSupply: {}, playerSales: {} },
     carLedgers: {},
     toolShopsOwned: [],
-    machineListing: null,
-    nextMachineListingDay: null,
     serviceJobLedgers: {},
     inspectionVisit: null,
     workbenchPartId: null,
@@ -1622,28 +1621,69 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     expect(clutchRefused.log).toEqual([])
   })
 
-  // camsTiming is an engineAssembly member, asserted through the fee
-  // function directly since it no longer comes off the car per-part.
-  it('a buried ENGINE-group member owes the machine-shop assist fee below engine tier 2, free at tier 2', () => {
-    const engineFee = CONTEXT.economy.machineShopAssist.feeYenByGroup.engine
-    expect(engineFee).toBeGreaterThan(0)
-    const tierOne = baseState({ toolTiers: testToolTiers({ engine: 1 }) })
-    expect(machineAssistFeeYen('camsTiming', tierOne, CONTEXT)).toBe(engineFee)
+  // camsTiming is a buried ENGINE-group slot. Per-operation fees
+  // (`machineAssistFeeYen`) are retired: access is now a labour RATE read
+  // straight off the taxonomy entry (`accessRoute`), never a cash charge.
+  it('a buried ENGINE-group slot slogs at the toolHire multiplier below tier 2, and reads x1 once the line is owned or hired for the day', () => {
+    const camsTiming = CONTEXT.partsTaxonomyById.camsTiming!
+    const tierOne = baseState({
+      toolTiers: testToolTiers({ engine: 1 }),
+      machineHirePaidDayByGroup: {},
+    })
+    expect(accessRoute(tierOne, CONTEXT, camsTiming)).toEqual({
+      route: 'slog',
+      multiplier: CONTEXT.economy.toolHire.slogMultiplier,
+    })
+    const hiredToday = baseState({
+      toolTiers: testToolTiers({ engine: 1 }),
+      machineHirePaidDayByGroup: { engine: 1 },
+    })
+    expect(accessRoute(hiredToday, CONTEXT, camsTiming)).toEqual({ route: 'hired', multiplier: 1 })
     const tierTwo = baseState({ toolTiers: testToolTiers({ engine: 2 }) })
-    expect(machineAssistFeeYen('camsTiming', tierTwo, CONTEXT)).toBe(0)
+    expect(accessRoute(tierTwo, CONTEXT, camsTiming)).toEqual({ route: 'own', multiplier: 1 })
   })
 
-  // gearbox is a gearboxAssembly member, asserted the same way as camsTiming above.
-  it('a buried DRIVETRAIN-group member owes the machine-shop assist fee below drivetrain tier 2, free at tier 2', () => {
-    const drivetrainFee = CONTEXT.economy.machineShopAssist.feeYenByGroup.drivetrain
-    expect(drivetrainFee).toBeGreaterThan(0)
-    const tierOne = baseState({ toolTiers: testToolTiers({ drivetrain: 1 }) })
-    expect(machineAssistFeeYen('gearbox', tierOne, CONTEXT)).toBe(drivetrainFee)
+  // gearbox is a buried DRIVETRAIN-group slot, read the same three ways as camsTiming above.
+  it('a buried DRIVETRAIN-group slot reads the same three access routes', () => {
+    const gearbox = CONTEXT.partsTaxonomyById.gearbox!
+    const tierOne = baseState({
+      toolTiers: testToolTiers({ drivetrain: 1 }),
+      machineHirePaidDayByGroup: {},
+    })
+    expect(accessRoute(tierOne, CONTEXT, gearbox)).toEqual({
+      route: 'slog',
+      multiplier: CONTEXT.economy.toolHire.slogMultiplier,
+    })
+    const hiredToday = baseState({
+      toolTiers: testToolTiers({ drivetrain: 1 }),
+      machineHirePaidDayByGroup: { drivetrain: 1 },
+    })
+    expect(accessRoute(hiredToday, CONTEXT, gearbox)).toEqual({ route: 'hired', multiplier: 1 })
     const tierTwo = baseState({ toolTiers: testToolTiers({ drivetrain: 2 }) })
-    expect(machineAssistFeeYen('gearbox', tierTwo, CONTEXT)).toBe(0)
+    expect(accessRoute(tierTwo, CONTEXT, gearbox)).toEqual({ route: 'own', multiplier: 1 })
   })
 
-  it('installing a buried ENGINE-group part without the engine line completes at the machine-less labour rate; hired or owned it completes at base labour, no fee either way', () => {
+  it("hiring a line's day charges cash once; a removal in that same group afterwards spends no further cash - access is bought by the day (hire) or paid in energy (slog), never per operation", () => {
+    const hireFee = CONTEXT.economy.toolHire.feeYenByGroup.engine
+    expect(hireFee).toBeGreaterThan(0)
+    const state = baseState({ machineHirePaidDayByGroup: {} })
+    const hired = resolveHireToolLine(state, 'engine', CONTEXT)
+    expect(hired.outcome).toBe('hired')
+    expect(hired.state.cashYen).toBe(state.cashYen - hireFee)
+
+    // exhaust sits in the engine group - its removal spends labour only, no
+    // cash component on top of the day's hire.
+    const removed = resolveRemovePart(hired.state, car.id, 'exhaust', CONTEXT)
+    expect(removed.log).toHaveLength(1)
+    expect(removed.state.cashYen).toBe(hired.state.cashYen)
+
+    // Re-hiring the same line the same day is a silent no-op too: still no
+    // second charge.
+    const rehired = resolveHireToolLine(removed.state, 'engine', CONTEXT)
+    expect(rehired.state.cashYen).toBe(removed.state.cashYen)
+  })
+
+  it('installing a buried ENGINE-group part slogs at the toolHire multiplier without the engine line; hired or owned it completes at base labour, no fee moves cash either way', () => {
     const stockCams = CONTEXT.stockPartByCarPartId.entry!.camsTiming!
     const newCams: PartInstance = {
       id: 'pi-new-cams',
@@ -1666,9 +1706,8 @@ describe('resolveRemovePart (Sprint 32 decision 7)', () => {
     }
 
     // Tier 1, engine neither owned nor hired today: the install completes by
-    // hand at the machine-less labour rate - slower, never refused, and no
-    // cash moves.
-    const multiplier = CONTEXT.economy.machineShopAssist.machinelessLaborMultiplier
+    // hand at the slog rate - slower, never refused, and no cash moves.
+    const multiplier = CONTEXT.economy.toolHire.slogMultiplier
     const ungatedState = baseState({
       ownedCars: [carReady],
       partInventory: [newCams],

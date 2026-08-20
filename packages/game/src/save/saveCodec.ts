@@ -877,8 +877,17 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * neither concept existed yet. The version bump alone is still required
  * (Save law) so an old client rejects a v77 save rather than reading a shape
  * it no longer understands.
+ * v77 -> v78 (the classifieds kill, repair-refactor-arc.md D-A2): `GameState`
+ * drops `machineListing` and `nextMachineListingDay` outright - tool lines,
+ * shops and garage equipment are buyable whenever reputation and cash allow,
+ * with no classifieds listing gating the purchase. Per directive 19, a plain
+ * SAVE_VERSION bump with NO `MIGRATIONS[77]` entry: a pre-v78 save's two
+ * removed keys are simply stripped by `GameStateSchema.parse`, which is
+ * harmless - any live listing it named is gone with the mechanic itself. The
+ * version bump alone is still required (Save law) so an old client rejects a
+ * v78 save rather than reading a shape it no longer understands.
  */
-export const SAVE_VERSION = 77
+export const SAVE_VERSION = 78
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

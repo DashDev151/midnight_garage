@@ -127,6 +127,18 @@ export const SessionEventInputSchema = z.discriminatedUnion('type', [
       feeYen: z.number().int().nonnegative().optional(),
     }),
   ),
+  // The two-post lift's own pair (`resolveBuyLift`/`resolveHireLift`,
+  // packages/sim/src/repairJobs.ts) - bought outright or hired for the day,
+  // on the same bare optional-number shape `buyDyno` uses, since the lift is
+  // a single shop fixture rather than a per-group line.
+  sessionEventVariant(
+    'lift-hired',
+    z.object({ feeYen: z.number().int().nonnegative().optional() }),
+  ),
+  sessionEventVariant(
+    'lift-bought',
+    z.object({ priceYen: z.number().int().nonnegative().optional() }),
+  ),
   sessionEventVariant(
     'attendAuction',
     z.object({

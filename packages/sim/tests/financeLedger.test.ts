@@ -19,11 +19,12 @@ import { buildSimContext } from '../src/context'
 import { applyBayPurchase } from '../src/facilities'
 import { bookCashMovements } from '../src/financeLedger'
 import { applyWeeklyRentAndWages } from '../src/finances'
-import { resolveHireMachineLine } from '../src/jobs'
+import { resolveHireToolLine } from '../src/jobs'
 import { createInitialGameState } from '../src/newGame'
 import { resolveSetForSale } from '../src/selling'
 import { resolveAttendAuction } from '../src/bidding'
 import { carLedgerFor } from '../src/carLedger'
+import { resolveBuyLift, resolveHireLift } from '../src/repairJobs'
 
 /**
  * The cost sheet's honesty test.
@@ -104,15 +105,84 @@ describe('every week the cost sheet reports reconciles to the shop cash', () => 
   })
 })
 
+/** The day the lift is hired in, and the day it is bought outright - one in
+ * each of the first two weeks, so a week carrying a running charge and a week
+ * carrying a shop investment are each reconciled on their own. */
+const LIFT_HIRE_DAY = 2
+const LIFT_BUY_DAY = DAYS_PER_WEEK + 2
+
+/**
+ * The same career with the two-post lift in it, driven through the resolvers a
+ * player's own buttons drive. The shop is seeded with the purchase price and
+ * the reputation the gate asks for BEFORE the first cash reading, so no yen
+ * arrives from outside the ledger once the career is running.
+ */
+function runLiftCareer(days: number): {
+  ledger: Record<string, FinanceWeek>
+  cashByWeekBoundary: number[]
+  hired: boolean
+  bought: boolean
+} {
+  let state: GameState = {
+    ...createInitialGameState(CONTEXT, 4242),
+    cashYen: ECONOMY.lift.purchasePriceYen + ECONOMY.lift.hireFeeYen + 1_000_000,
+    reputationTier: ECONOMY.lift.minReputationTier,
+  }
+  const cashByWeekBoundary = [state.cashYen]
+  let hired = false
+  let bought = false
+  for (let day = 1; day <= days; day++) {
+    if (state.day === LIFT_HIRE_DAY) {
+      const result = resolveHireLift(state, CONTEXT)
+      hired = result.outcome === 'hired'
+      state = result.state
+    }
+    if (state.day === LIFT_BUY_DAY) {
+      const result = resolveBuyLift(state, CONTEXT)
+      bought = result.applied
+      state = result.state
+    }
+    state = advanceDay(state, NO_ACTIONS, state.seed + state.day, CONTEXT).state
+    if (day % DAYS_PER_WEEK === 0) cashByWeekBoundary.push(state.cashYen)
+  }
+  return { ledger: state.financeLedger ?? {}, cashByWeekBoundary, hired, bought }
+}
+
+describe('a week that hires the lift and a week that buys it both still reconcile', () => {
+  const CAREER = runLiftCareer(3 * DAYS_PER_WEEK)
+  const ledger = CAREER.ledger
+
+  it('actually hired it for a day and bought it outright, so there is something to account for', () => {
+    expect(CAREER.hired).toBe(true)
+    expect(CAREER.bought).toBe(true)
+    expect(weekIndex(LIFT_HIRE_DAY, ECONOMY)).not.toBe(weekIndex(LIFT_BUY_DAY, ECONOMY))
+  })
+
+  it('puts the purchase on the investment line of the week it was bought in', () => {
+    const buyWeek = ledger[String(weekIndex(LIFT_BUY_DAY, ECONOMY))]
+    expect(buyWeek?.investmentYen).toBe(ECONOMY.lift.purchasePriceYen)
+  })
+
+  it.each(Object.keys(ledger).map((key) => Number(key)))(
+    'week %i: money in less everything out equals the week it moved',
+    (weekNumber) => {
+      const week = ledger[String(weekNumber)]!
+      const movedYen =
+        CAREER.cashByWeekBoundary[weekNumber]! - CAREER.cashByWeekBoundary[weekNumber - 1]!
+      expect(netCashYen(week)).toBe(movedYen)
+    },
+  )
+})
+
 describe('the running costs stay off every car', () => {
   const context = CONTEXT
   const base = createInitialGameState(context, 4242)
 
   it('books machine-shop hire to running, never to a car', () => {
     // The hire fee has to be nonzero for there to be anything to book.
-    const feeYen = ECONOMY.machineShopAssist.feeYenByGroup.engine
+    const feeYen = ECONOMY.toolHire.feeYenByGroup.engine
     expect(feeYen).toBeGreaterThan(0)
-    const hired = resolveHireMachineLine(base, 'engine', context)
+    const hired = resolveHireToolLine(base, 'engine', context)
     expect(hired.state.financeLedger).toEqual({
       '1': { incomeYen: 0, onCarsYen: 0, stockYen: 0, runningYen: feeYen, investmentYen: 0 },
     })
@@ -127,6 +197,33 @@ describe('the running costs stay off every car', () => {
     expect(rentYen).toBeGreaterThan(0)
     expect(charged.state.financeLedger?.['1']?.runningYen).toBe(rentYen)
     expect(charged.state.financeLedger?.['1']?.investmentYen).toBe(0)
+  })
+
+  it('books the two-post lift day hire to running, never to a car', () => {
+    const feeYen = ECONOMY.lift.hireFeeYen
+    expect(feeYen).toBeGreaterThan(0)
+    const hired = resolveHireLift(base, context)
+    expect(hired.outcome).toBe('hired')
+    expect(base.cashYen - hired.state.cashYen).toBe(feeYen)
+    expect(hired.state.financeLedger).toEqual({
+      '1': { incomeYen: 0, onCarsYen: 0, stockYen: 0, runningYen: feeYen, investmentYen: 0 },
+    })
+    // A day's lift takes four cars off the floor; it names no car and touches
+    // none.
+    expect(hired.state.carLedgers).toEqual({})
+  })
+
+  it('books the two-post lift bought outright to investment, not to the running line its hire uses', () => {
+    const flush: GameState = {
+      ...base,
+      cashYen: ECONOMY.lift.purchasePriceYen,
+      reputationTier: ECONOMY.lift.minReputationTier,
+    }
+    const bought = resolveBuyLift(flush, context)
+    expect(bought.applied).toBe(true)
+    expect(flush.cashYen - bought.state.cashYen).toBe(ECONOMY.lift.purchasePriceYen)
+    expect(bought.state.financeLedger?.['1']?.investmentYen).toBe(ECONOMY.lift.purchasePriceYen)
+    expect(bought.state.financeLedger?.['1']?.runningYen).toBe(0)
   })
 
   it('books a bay to investment, so a shop purchase never reads as overheads', () => {

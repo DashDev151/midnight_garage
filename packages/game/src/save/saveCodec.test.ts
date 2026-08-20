@@ -1013,7 +1013,7 @@ describe('saveCodec', () => {
   })
 
   it('a per-part job (carPartId set) round-trips exactly under version 17', () => {
-    expect(SAVE_VERSION).toBe(76)
+    expect(SAVE_VERSION).toBe(78)
     const perPart: GameState = GameStateSchema.parse({
       ...fullState,
       jobs: [
@@ -1054,7 +1054,7 @@ describe('saveCodec', () => {
   })
 
   it('a v31 state with an origin-carrying inventory part round-trips the origin exactly', () => {
-    expect(SAVE_VERSION).toBe(76)
+    expect(SAVE_VERSION).toBe(78)
     const withOrigin: GameState = GameStateSchema.parse({
       ...fullState,
       partInventory: [
@@ -1699,7 +1699,7 @@ describe('saveCodec', () => {
    * a real double-parked car round-trips it exactly.
    */
   it('SAVE_VERSION is current', () => {
-    expect(SAVE_VERSION).toBe(76)
+    expect(SAVE_VERSION).toBe(78)
   })
 
   it('a real pre-v26 save (a v25 envelope with no graceParkingCarId field) decodes with nothing double-parked under v26', () => {
@@ -1721,78 +1721,6 @@ describe('saveCodec', () => {
   })
 
   /**
-   * v26 -> v27 (the used-machinery classifieds): `GameStateSchema`
-   * gained `machineListing` and `nextMachineListingDay` (both default `null`)
-   * - the normal additive case (like v2/v22/v24/v25/v26), so it needs NO
-   * `MIGRATIONS[26]` entry, but it DOES bump `SAVE_VERSION` (Save law). These
-   * three tests are its regression coverage: a real pre-v27 (v26 envelope)
-   * save with neither field at all still decodes cleanly under v27 (nothing
-   * listed, nothing scheduled - exactly right since the concept did not
-   * exist yet), and a v27 state with a real live listing round-trips it
-   * exactly.
-   */
-  it('SAVE_VERSION is current', () => {
-    expect(SAVE_VERSION).toBe(76)
-  })
-
-  it('a real pre-v27 save (a v26 envelope with neither field) decodes with nothing listed or scheduled under v27', () => {
-    const stateWithoutListing: Record<string, unknown> = { ...fullState }
-    delete stateWithoutListing.machineListing
-    delete stateWithoutListing.nextMachineListingDay
-    const preV27 = { version: 26, gameState: stateWithoutListing }
-    const code = 'MGSAVE1.' + btoa(JSON.stringify(preV27))
-    const decoded = decodeSave(code)
-    expect(decoded.machineListing).toBeNull()
-    expect(decoded.nextMachineListingDay).toBeNull()
-  })
-
-  it('a v27 state with a real live listing round-trips machineListing exactly', () => {
-    const withListing: GameState = GameStateSchema.parse({
-      ...fullState,
-      machineListing: {
-        kind: 'tool-tier',
-        componentId: 'wheels',
-        tier: 2,
-        priceYen: 250_000,
-        postedOnDay: 10,
-        expiresOnDay: 13,
-      },
-      nextMachineListingDay: null,
-    })
-    const decoded = decodeSave(encodeSave(withListing))
-    expect(decoded.machineListing).toEqual({
-      kind: 'tool-tier',
-      componentId: 'wheels',
-      tier: 2,
-      priceYen: 250_000,
-      postedOnDay: 10,
-      expiresOnDay: 13,
-    })
-  })
-
-  it('a shop listing round-trips through the same field', () => {
-    const withShopListing: GameState = GameStateSchema.parse({
-      ...fullState,
-      machineListing: {
-        kind: 'tool-shop',
-        shopId: 'machine-shop',
-        priceYen: 3_500_000,
-        postedOnDay: 10,
-        expiresOnDay: 13,
-      },
-      nextMachineListingDay: null,
-    })
-    const decoded = decodeSave(encodeSave(withShopListing))
-    expect(decoded.machineListing).toEqual({
-      kind: 'tool-shop',
-      shopId: 'machine-shop',
-      priceYen: 3_500_000,
-      postedOnDay: 10,
-      expiresOnDay: 13,
-    })
-  })
-
-  /**
    * v27 -> v28 (fitment-class parts): NOT the pure-additive case
    * (`GameStateSchema` gained no new field) - a pre-v28 save's installed
    * parts are all implicitly everyday-class regardless of their host car's
@@ -1803,7 +1731,7 @@ describe('saveCodec', () => {
    * same slot, same band, same everything else.
    */
   it('SAVE_VERSION is current', () => {
-    expect(SAVE_VERSION).toBe(76)
+    expect(SAVE_VERSION).toBe(78)
   })
 
   it("a real pre-v28 save remaps an entry-tier car's everyday-class stock part to its own class sibling SKU", () => {

@@ -5,7 +5,7 @@ import { resolveBuyoutInstant } from './bidding'
 import { currentGameYear, isEndOfWeek } from './calendar'
 import { generateDailyAuctionArrivals } from './catalogs'
 import type { SimContext } from './context'
-import { applyToolUpgrades, rollMachineListings } from './toolLines'
+import { applyToolUpgrades } from './toolLines'
 import { applyWeeklyRentAndWages } from './finances'
 import { applyBayPurchases, applyMoves, resolveGraceParking } from './facilities'
 import { bookCashMovements } from './financeLedger'
@@ -396,13 +396,6 @@ export function advanceDay(
   const offerDraw = drawDailyOffers(next, context, rng, next.day + 1)
   next = offerDraw.state
   log.push(...offerDraw.log)
-
-  // 7a3. The used-machinery classifieds' day-boundary step - same "posted for
-  // the day about to begin" `next.day + 1` position as 7a/7a2 immediately
-  // above.
-  const listingRoll = rollMachineListings(next, context, next.day + 1, rng)
-  next = listingRoll.state
-  log.push(...listingRoll.log)
 
   // 7b. Deadline backstop: any accepted job now at/past its due day is handed
   // back automatically via the same resolver the player's click uses - paid if

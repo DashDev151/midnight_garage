@@ -8,7 +8,7 @@ import { bookCashMovements } from './financeLedger'
  * refunds points already spent, so it never lifts the pool's own ceiling
  * (`energyMax`, laborSlots.ts) and never advances the day - the same
  * same-day cash-purchase shape `resolveHireDyno` (dyno.ts) and
- * `resolveHireMachineLine` (jobs.ts) already use.
+ * `resolveHireToolLine` (jobs.ts) already use.
  */
 
 /** How many coffee rounds have already been bought today, or 0 on a day with

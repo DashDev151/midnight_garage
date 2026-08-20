@@ -156,7 +156,7 @@ const PIPELINE_REFUSAL_CAPTIONS = computed<Partial<Record<PipelineStageRefusal['
     prereq: 'Needs priming first.',
     'wrong-colour': "Not this car's factory colour.",
     'metal-only': 'This zone has no metal to work.',
-    'tool-tier': `Needs the body line: tier 2 tools or a day's hire (${formatYen(game.context.economy.machineShopAssist.feeYenByGroup.body)})`,
+    'tool-tier': `Needs the body line: tier 2 tools or a day's hire (${formatYen(game.context.economy.toolHire.feeYenByGroup.body)})`,
   }),
 )
 
@@ -702,7 +702,7 @@ const weldDisclosure = computed<MachineLaborDisclosure | null>(() => {
       machineLaborSlots * machineLaborMultiplier(BODY_GROUP, game.gameState, game.context),
     ),
     machineLaborSlots,
-    hireFeeYen: game.context.economy.machineShopAssist.feeYenByGroup[BODY_GROUP],
+    hireFeeYen: game.context.economy.toolHire.feeYenByGroup[BODY_GROUP],
   }
 })
 
@@ -910,7 +910,7 @@ const resprayView = computed<ResprayView>(() => {
   const structural = resprayStructural()
   if (!structural.ok) {
     if (structural.reason === 'tool-tier') {
-      const fee = formatYen(game.context.economy.machineShopAssist.feeYenByGroup.body)
+      const fee = formatYen(game.context.economy.toolHire.feeYenByGroup.body)
       return disabledView(`Needs the booth: the body-and-trim shop, or a day's hire (${fee})`)
     }
     const n = structural.primedCount

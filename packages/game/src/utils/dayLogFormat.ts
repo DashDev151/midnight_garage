@@ -83,11 +83,13 @@ export const MACHINE_LINE_NAMES: Record<ComponentId, string> = Object.fromEntrie
   ]),
 ) as Record<ComponentId, string>
 
-/** The gate reason shown wherever a machine-gated operation needs `group`'s
- * machine owned or hired for the day and isn't - the exact copy the
- * workshop screen, the hire panel, and staged rows all share. */
+/** The note carried by any affordance whose part is buried in `group` while
+ * that group's machine is neither owned nor hired today - the work still
+ * happens, it just costs the slog rate. Access is a rate, never a wall, so this
+ * names the trade rather than refusing anything. The one place that copy lives,
+ * so every affordance says it the same way. */
 export function machineLineGateCopy(group: ComponentId): string {
-  return `Needs the ${MACHINE_LINE_NAMES[group]} for today. Hire it for the day, or buy your own.`
+  return `Without the ${MACHINE_LINE_NAMES[group]} this is triple the labour. Hire it for the day, or buy your own.`
 }
 
 type JobBlockedReason = Extract<DayLogEntry, { type: 'job-blocked' }>['reason']
@@ -273,25 +275,25 @@ export function describeLogEntry(
       return `${entry.kind} blocked - ${reasonText}`
     }
     case 'equipment-purchased':
-      return `Bought equipment ${entry.equipmentId} for ${formatYen(entry.priceYen)}`
+      // The two-post lift is the one fixture bought through this entry, so it
+      // is named rather than read out as its internal id.
+      return entry.equipmentId === 'lift'
+        ? `Bought the two-post lift (${formatYen(entry.priceYen)})`
+        : `Bought equipment ${entry.equipmentId} for ${formatYen(entry.priceYen)}`
     case 'tool-upgraded':
       return `Upgraded ${componentDisplayName(entry.componentId, COMPONENT_DISPLAY_NAMES)} to ${
         TOOL_LINES[entry.componentId].tiers[entry.toTier - 1]!.displayName
       } for ${formatYen(entry.priceYen)}`
     case 'tool-shop-purchased':
       return `Fitted out the ${toolShopName(entry.shopId)} for ${formatYen(entry.priceYen)}`
-    case 'machine-listed':
-      return `Classifieds: ${
-        TOOL_LINES[entry.componentId].tiers[entry.tier - 1]!.displayName
-      } listed, ${formatYen(entry.priceYen)}`
-    case 'tool-shop-listed':
-      return `Classifieds: a whole ${toolShopName(entry.shopId)} listed, ${formatYen(entry.priceYen)}`
     case 'machine-hired':
       return `Hired the ${MACHINE_LINE_NAMES[entry.componentId]} for the day (${formatYen(entry.priceYen)})`
     case 'dyno-hired':
       return `Hired the rolling road for the day (${formatYen(entry.priceYen)})`
     case 'dyno-bought':
       return `Bought a rolling road for ${formatYen(entry.priceYen)}`
+    case 'lift-hired':
+      return `Hired the two-post lift for the day (${formatYen(entry.priceYen)})`
     case 'coffee-bought':
       return `Coffee round for the crew: +${entry.labourPoints} labour (${formatYen(entry.priceYen)})`
     case 'shell-scrapped': {

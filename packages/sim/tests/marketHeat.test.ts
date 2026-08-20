@@ -43,8 +43,6 @@ function stateOnDay(
     marketLedger,
     carLedgers: {},
     toolShopsOwned: [],
-    machineListing: null,
-    nextMachineListingDay: null,
     activeAuctionLots: [],
     carsForSale: [],
     pendingOffers: [],

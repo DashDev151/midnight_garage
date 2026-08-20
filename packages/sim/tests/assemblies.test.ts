@@ -16,6 +16,7 @@ import {
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import {
+  assemblyAccessEntry,
   assemblyMachineGateGroup,
   dissolveAssembliesForCar,
   externalBlockersFor,
@@ -27,8 +28,8 @@ import {
 } from '../src/assemblies'
 import { buildSimContext } from '../src/context'
 import {
+  accessRoute,
   findLoosePart,
-  machineAssistFeeYen,
   machineGateGroupFor,
   resolveReconditionLabor,
 } from '../src/jobs'
@@ -101,8 +102,6 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     marketLedger: { lotSupply: {}, playerSales: {} },
     carLedgers: {},
     toolShopsOwned: [],
-    machineListing: null,
-    nextMachineListingDay: null,
     serviceJobLedgers: {},
     inspectionVisit: null,
     workbenchPartId: null,
@@ -214,11 +213,42 @@ describe('assembly definitions and derived gates', () => {
     expect(machineGateGroupFor('tyres', 'bench-fit', CONTEXT)).toBe('wheels')
     expect(machineGateGroupFor('rims', 'bench-fit', CONTEXT)).toBeNull()
     // Mounting rubber is the only thing the tyre machine gates: the car's own
-    // slot is untouched, dismounting is free, and the fee stays 0.
+    // slot is untouched, and dismounting is free.
     expect(machineGateGroupFor('tyres', 'install', CONTEXT)).toBeNull()
     expect(machineGateGroupFor('tyres', 'remove', CONTEXT)).toBeNull()
     expect(machineGateGroupFor('tyres', 'repair', CONTEXT)).toBeNull()
-    expect(machineAssistFeeYen('tyres', baseState(), CONTEXT)).toBe(0)
+  })
+
+  it("assemblyAccessEntry names each assembly's governing member: the engine's own first buried casting (block), the gearbox's own buried self, and the wheel set's rims - open, but under-car", () => {
+    expect(assemblyAccessEntry(def('engineAssembly'), CONTEXT)?.id).toBe('block')
+    expect(assemblyAccessEntry(def('gearboxAssembly'), CONTEXT)?.id).toBe('gearbox')
+    expect(assemblyAccessEntry(def('wheelAssembly'), CONTEXT)?.id).toBe('rims')
+  })
+
+  it('a whole-assembly action reads accessRoute through its governing member, exactly as a single buried slot does', () => {
+    const engineEntry = assemblyAccessEntry(def('engineAssembly'), CONTEXT)!
+    const slogged = baseState({
+      toolTiers: testToolTiers({ engine: 1 }),
+      machineHirePaidDayByGroup: {},
+    })
+    expect(accessRoute(slogged, CONTEXT, engineEntry)).toEqual({
+      route: 'slog',
+      multiplier: CONTEXT.economy.toolHire.slogMultiplier,
+    })
+    const hired = baseState({
+      toolTiers: testToolTiers({ engine: 1 }),
+      machineHirePaidDayByGroup: { engine: 1 },
+    })
+    expect(accessRoute(hired, CONTEXT, engineEntry)).toEqual({ route: 'hired', multiplier: 1 })
+
+    // wheelAssembly's governing member (rims) is never buried, so it always
+    // reads 'open' whatever the wheels line's own state - the wheel set is
+    // never slogged, only a tyre's own bench fit ever is (`tyreFitMultiplier`).
+    const wheelEntry = assemblyAccessEntry(def('wheelAssembly'), CONTEXT)!
+    expect(accessRoute(baseState({ machineHirePaidDayByGroup: {} }), CONTEXT, wheelEntry)).toEqual({
+      route: 'open',
+      multiplier: 1,
+    })
   })
 
   it('no buried slot gates a bench fit - the crane lifts the engine, it does not build it', () => {
@@ -382,9 +412,11 @@ describe('worked example: the tyre change (binding total)', () => {
     }
   })
 
-  it('fitting a tyre on the bench without the wheels line costs the machine-less labour rate; hired, it costs base labour', () => {
-    const multiplier = CONTEXT.economy.machineShopAssist.machinelessLaborMultiplier
+  it('fitting a tyre on the bench without the wheels line costs the toolHire slog multiplier (2 on the machine, 6 by hand); hired, it costs base labour', () => {
+    const multiplier = CONTEXT.economy.toolHire.slogMultiplier
     const benchFit = CONTEXT.economy.energy.actionPoints.benchFitMember
+    expect(benchFit).toBe(2)
+    expect(benchFit * multiplier).toBe(6)
     const car = wheelsWornCar()
     const tyre = newTyre('pi-tyre-gate')
     const ungated = baseState({
@@ -459,8 +491,8 @@ describe('worked example: worn internals (binding total)', () => {
     }
   })
 
-  it('remove and refit both proceed without the engine line at the machine-less labour rate; hired, both run at base labour', () => {
-    const multiplier = CONTEXT.economy.machineShopAssist.machinelessLaborMultiplier
+  it('remove and refit both proceed without the engine line at the toolHire slog multiplier; hired, both run at base labour', () => {
+    const multiplier = CONTEXT.economy.toolHire.slogMultiplier
     const internals: PartInstance = {
       id: 'pi-internals-gate',
       partId: CONTEXT.stockPartByCarPartId.entry!.internals!.id,

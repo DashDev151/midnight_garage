@@ -109,28 +109,6 @@ const selectedInfo = computed(() => {
       <p class="rep">{{ game.reputationTier }}</p>
     </header>
 
-    <section class="classifieds">
-      <h3>
-        Classifieds
-        <HelpHint label="Classifieds">
-          Used machinery doesn't show up on demand - the trade paper lists one thing at a time,
-          every few days, sometimes a single machine and sometimes a whole shop being sold off,
-          drawn from whatever your standing already qualifies you for. Miss one and it isn't gone
-          for good; a later issue can list it again.
-        </HelpHint>
-      </h3>
-      <div v-if="game.machineListingView" class="listing-card" data-test="machine-listing">
-        <span v-if="game.machineListingView.tier !== null" class="listing-line"
-          >Tier {{ game.machineListingView.tier }} - {{ game.machineListingView.displayName }}</span
-        >
-        <span v-else class="listing-line">{{ game.machineListingView.displayName }}</span>
-        <span class="listing-line">{{ game.machineListingView.componentLabel }}</span>
-        <span class="listing-price">{{ formatYen(game.machineListingView.priceYen) }}</span>
-        <span class="listing-days">{{ game.machineListingView.daysLeft }} day(s) left</span>
-      </div>
-      <p v-else class="empty" data-test="no-listing">Nothing in the classifieds this week.</p>
-    </section>
-
     <section class="facilities">
       <h3>Facilities</h3>
       <div class="purchase-grid">
@@ -201,9 +179,8 @@ const selectedInfo = computed(() => {
         Tools
         <HelpHint label="Tools">
           Tier 1 of every line is free from day one - nothing basic is ever locked. Tier 2 takes
-          cash, reputation, and a live classifieds listing for that exact machine. Above the rungs
-          sit the shops, which are bought whole rather than a line at a time. Click anything to see
-          what it does.
+          cash and reputation. Above the rungs sit the shops, which are bought whole rather than a
+          line at a time. Click anything to see what it does.
         </HelpHint>
       </h3>
       <div class="tool-wall">
@@ -222,7 +199,7 @@ const selectedInfo = computed(() => {
                 gated:
                   !rung.owned &&
                   rung.tier === line.currentTier + 1 &&
-                  (line.nextTierRepGate !== null || !rung.isListed),
+                  line.nextTierRepGate !== null,
                 selected: isRungSelected(line.componentId, rung.tier),
               }"
               :data-test="'tier-node-' + line.componentId + '-' + rung.tier"
@@ -233,9 +210,7 @@ const selectedInfo = computed(() => {
               <template v-if="!rung.owned && rung.tier === line.currentTier + 1">
                 <button
                   :disabled="
-                    game.cashYen < (rung.upgradePriceYen ?? 0) ||
-                    line.nextTierRepGate !== null ||
-                    !rung.isListed
+                    game.cashYen < (rung.upgradePriceYen ?? 0) || line.nextTierRepGate !== null
                   "
                   :data-test="'upgrade-tool-' + line.componentId"
                   @click.stop="game.upgradeToolLine(line.componentId)"
@@ -246,11 +221,6 @@ const selectedInfo = computed(() => {
                   v-if="line.nextTierRepGate"
                   :data-test="'gate-tip-rep-' + line.componentId"
                   :text="`Your standing isn't there yet - needs ${line.nextTierRepGate} reputation`"
-                />
-                <HintTooltip
-                  v-else-if="!rung.isListed"
-                  :data-test="'needs-listing-' + line.componentId"
-                  text="Watch the classifieds - this machine isn't on offer this week"
                 />
               </template>
               <HintTooltip
@@ -331,7 +301,7 @@ const selectedInfo = computed(() => {
         <HelpHint label="Shops">
           A shop is not another rung on a line. It is one purchase covering several lines at once,
           and every one of them reaches its top the day it lands. Each card says which lines it
-          takes. They come up in the classifieds whole, the same as any single machine.
+          takes.
         </HelpHint>
       </h3>
       <div class="purchase-grid shops-grid">
@@ -341,7 +311,7 @@ const selectedInfo = computed(() => {
           class="purchase-card shop-card"
           :class="{
             owned: shop.owned,
-            gated: !shop.owned && (shop.repGate !== null || !shop.isListed),
+            gated: !shop.owned && shop.repGate !== null,
             selected: isShopSelected(shop.id),
           }"
           :data-test="'tool-shop-' + shop.id"
@@ -356,7 +326,7 @@ const selectedInfo = computed(() => {
           >
           <template v-else>
             <button
-              :disabled="game.cashYen < shop.priceYen || shop.repGate !== null || !shop.isListed"
+              :disabled="game.cashYen < shop.priceYen || shop.repGate !== null"
               :data-test="'buy-tool-shop-' + shop.id"
               @click.stop="game.buyToolShop(shop.id)"
             >
@@ -367,14 +337,6 @@ const selectedInfo = computed(() => {
               :data-test="'gate-tip-shop-' + shop.id"
               :text="`Your standing isn't there yet - needs ${shop.repGate} reputation`"
             />
-            <HintTooltip
-              v-else-if="!shop.isListed"
-              :data-test="'needs-listing-shop-' + shop.id"
-              text="Watch the classifieds - nobody is selling up this week"
-            />
-            <span v-else class="shop-listed" :data-test="'shop-listed-' + shop.id"
-              >In this week's paper</span
-            >
           </template>
         </div>
       </div>
@@ -429,40 +391,6 @@ h3 {
 }
 
 .rep {
-  color: var(--mg-text-dim);
-  font-size: var(--mg-fs-sm);
-}
-
-.classifieds {
-  margin-bottom: var(--mg-space-4);
-}
-
-.listing-card {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--mg-space-3);
-  background: var(--mg-panel);
-  border: 1px solid var(--mg-neon-cyan);
-  border-radius: var(--mg-radius);
-  padding: var(--mg-space-2) var(--mg-space-3);
-  font-size: var(--mg-fs-sm);
-}
-
-.listing-line {
-  color: var(--mg-text);
-}
-
-.listing-price {
-  color: var(--mg-yen);
-  font-weight: bold;
-}
-
-.listing-days {
-  color: var(--mg-text-dim);
-}
-
-.empty {
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
 }
@@ -623,7 +551,7 @@ h3 {
   border-color: var(--mg-neon-cyan);
 }
 
-/* A gated next-rung (rep or classifieds) dims like a locked one; the WHY is
+/* A rung still short of its reputation gate dims like a locked one; the WHY is
    its HintTooltip. */
 .tier-node.locked,
 .tier-node.gated {
@@ -676,11 +604,6 @@ h3 {
 .shop-covers {
   margin: 0;
   color: var(--mg-text-dim);
-  font-size: var(--mg-fs-sm);
-}
-
-.shop-listed {
-  color: var(--mg-neon-cyan);
   font-size: var(--mg-fs-sm);
 }
 

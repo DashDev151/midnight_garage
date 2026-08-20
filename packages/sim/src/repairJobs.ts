@@ -6,6 +6,7 @@ import {
   type CarPartTaxonomyEntry,
   type ComponentId,
   type ConditionBand,
+  type DayLogEntry,
   type GameState,
   type Job,
   type Part,
@@ -23,6 +24,7 @@ import { updateCarLedger } from './carLedger'
 import type { SimContext } from './context'
 import { crewEnergySaved, perfectionistCostMultiplier } from './crewSkills'
 import { pruneCuredCauses, verifyAndResolve } from './diagnosis'
+import { bookCashMovements } from './financeLedger'
 import {
   chargeRepairWork,
   findWorkableCar,
@@ -33,6 +35,7 @@ import {
   removeLaborSlotsFor,
   writeCarBack,
 } from './jobs'
+import { reputationAtLeast } from './reputation'
 import { updateServiceJobLedger } from './serviceJobLedger'
 import { ownsToolShopForGroup, toolLevelsFor } from './toolLines'
 
@@ -356,6 +359,88 @@ export function resolveTakeOffBench(state: GameState, partInstanceId: string): G
  * day, on the same day-stamp shape the dyno and the tool lines use. */
 export function liftAvailable(state: GameState): boolean {
   return state.lift.owned || state.lift.hirePaidDay === state.day
+}
+
+// --- buying and hiring the lift --------------------------------------------
+
+/** Why buying the lift is refused right now, or `null` when nothing refuses
+ * it - the same three gates a dyno purchase has, checked in the same order:
+ * already owned, reputation, cash. */
+export type BuyLiftGateReason = 'already-owned' | 'reputation' | 'no-cash'
+
+export function buyLiftGateReason(state: GameState, context: SimContext): BuyLiftGateReason | null {
+  if (state.lift.owned) return 'already-owned'
+  const { purchasePriceYen, minReputationTier } = context.economy.lift
+  if (!reputationAtLeast(state.reputationTier, minReputationTier)) return 'reputation'
+  return state.cashYen < purchasePriceYen ? 'no-cash' : null
+}
+
+export interface BuyLiftResult {
+  state: GameState
+  log: DayLogEntry[]
+  applied: boolean
+}
+
+/**
+ * Buys the shop its own two-post lift outright - shop investment, exactly as
+ * `resolveBuyDyno`'s purchase is, and every gate refuses as the same silent
+ * no-op. The lift carries no `ComponentId` of its own, so the purchase books
+ * through the day log's general `equipment-purchased` entry (named `'lift'`)
+ * rather than a per-group entry. Owning it ends the hire fee for good: every
+ * later under-car job reads the discount without a day's rent behind it.
+ */
+export function resolveBuyLift(state: GameState, context: SimContext): BuyLiftResult {
+  if (buyLiftGateReason(state, context) !== null) return { state, log: [], applied: false }
+  const priceYen = context.economy.lift.purchasePriceYen
+  const log: DayLogEntry[] = [{ type: 'equipment-purchased', equipmentId: 'lift', priceYen }]
+  const bought: GameState = {
+    ...state,
+    cashYen: state.cashYen - priceYen,
+    lift: { ...state.lift, owned: true },
+  }
+  return { state: bookCashMovements(bought, log, context.economy), log, applied: true }
+}
+
+/** Why hiring the lift in for today is blocked right now. Owning it, or a day
+ * already paid for, is never blocked; the only real reason is short cash. */
+export type HireLiftGateReason = 'no-cash'
+
+export function hireLiftGateReason(
+  state: GameState,
+  context: SimContext,
+): HireLiftGateReason | null {
+  if (liftAvailable(state)) return null
+  return state.cashYen < context.economy.lift.hireFeeYen ? 'no-cash' : null
+}
+
+export interface HireLiftResult {
+  state: GameState
+  log: DayLogEntry[]
+  outcome: 'hired' | HireLiftGateReason
+}
+
+/**
+ * Charges the day's hire the first time the lift is needed: owning it, or a
+ * day already paid for, is a silent no-op success, mirroring
+ * `resolveHireDyno`. Unlike a tool line's hire this never touches
+ * `toolHire.maxHiredLinesPerDay` - the lift is bay equipment, not a line on
+ * the shadow board, so it never competes with a hired tool line for the
+ * day's one hire slot. The fee is a running cost, posted to the day report
+ * and booked to the week the way rent, a machine line's hire and a dyno's
+ * hire are, and never to the ledger of a car that happened to go up on it.
+ */
+export function resolveHireLift(state: GameState, context: SimContext): HireLiftResult {
+  if (liftAvailable(state)) return { state, log: [], outcome: 'hired' }
+  const gateReason = hireLiftGateReason(state, context)
+  if (gateReason) return { state, log: [], outcome: gateReason }
+  const priceYen = context.economy.lift.hireFeeYen
+  const log: DayLogEntry[] = [{ type: 'lift-hired', priceYen }]
+  const hired: GameState = {
+    ...state,
+    cashYen: state.cashYen - priceYen,
+    lift: { ...state.lift, hirePaidDay: state.day },
+  }
+  return { state: bookCashMovements(hired, log, context.economy), log, outcome: 'hired' }
 }
 
 // --- offer rules ----------------------------------------------------------

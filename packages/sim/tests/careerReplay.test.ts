@@ -142,17 +142,37 @@ const SMOKE_SCRIPT = CareerScriptSchema.parse(smokeScriptRaw)
 // ceiling, the day-10 `carsOwned` count and the day-10 `reputationTier` are
 // all unchanged and still pass, which is the proof the old repair path is
 // untouched. Re-derived from a real run, never hand-guessed.
+//
+// Re-pinned for the access-and-hire rework, and exactly two things move the
+// sequence. First, `GameState` loses `machineListing` and
+// `nextMachineListingDay` outright, so both keys leave every day's snapshot.
+// Second, `energy.actionPoints.benchFitMember` 0 -> 2 puts a real cost on
+// fitting an assembly member, and the room's chain-priced sheet walks that
+// same labour chain, so the day-1 buyout of `lot-1-local-yard-0` (a '88 Honda
+// Today) is struck at 44,364 -> 43,704 yen. The script's other two money
+// events are unmoved to the yen (the express `stock-block` at 28,160 and its
+// resale at 7,680), so cash runs 660 yen richer from day 1 onward and
+// `smoke.script.json`'s day-7 `cashAtMost` ceiling moves 215,156 -> 215,816
+// with it. Measured rather than assumed: re-add the two keys as `null` and
+// price a member fit at 0 points again, and all ten hashes are exactly the
+// previous sequence and day-7 cash is exactly 215,156. That equality also
+// proves the third candidate cause moves nothing here - `advanceDay` losing
+// its classifieds step consumed no rng in this career, since reputation
+// never leaves `unknown` (the day-10 checkpoint still asserts it) and the
+// roll never had an eligible rung to draw from. The day-10 `carsOwned` count
+// and `reputationTier` are unchanged and still pass. Re-derived from a real
+// run, never hand-guessed.
 const EXPECTED_HASHES_BY_DAY = [
-  '94fd8cfb',
-  '8ff7c4c3',
-  '16108814',
-  '05780a49',
-  '1778178a',
-  '880e798f',
-  '607dbd1a',
-  'e943f905',
-  '52808717',
-  '746a821f',
+  '35a5a263',
+  '263c821b',
+  'f42cc0cb',
+  'ccabc953',
+  '6f360ace',
+  '929854c9',
+  'e01f5555',
+  'c67b53bb',
+  '2e3da848',
+  'b2cff21a',
 ]
 
 describe('replayCareerScript (Sprint 198 C1)', () => {

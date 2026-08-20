@@ -1,4 +1,4 @@
-import { CARS, PARTS, type ConditionBand } from '@midnight-garage/content'
+import { CARS, PARTS, TOOL_LINES, type ConditionBand } from '@midnight-garage/content'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useGameStore } from './gameStore'
@@ -104,18 +104,32 @@ describe('direct repair/install work (Sprint 202)', () => {
     )
   })
 
-  it('installMachineNoteFor discloses the by-hand labour and the hire line, and clears once the line is hired', () => {
+  /**
+   * `block` (engine) is a buried taxonomy entry, so `accessRoute` returns
+   * `'slog'` for it at tier 1 unhired - the one case `installMachineNoteFor`
+   * still has anything to say. `dampers` is not buried, so it never shows a
+   * note at all any more (the next test below).
+   */
+  it('installMachineNoteFor shows the locked slog-access note for a buried, unhired part and clears once the line is hired', () => {
+    const game = useGameStore()
+    game.devGrantCar(CARS[0]!.id)
+    const carId = game.gameState.ownedCars[0]!.id
+
+    const note = game.installMachineNoteFor(carId, 'block')
+    expect(note).toBe(
+      `Without the ${TOOL_LINES.engine.tiers[1]!.displayName} this is triple the labour. Hire it for the day, or buy your own.`,
+    )
+
+    game.hireMachineLine('engine')
+    expect(game.installMachineNoteFor(carId, 'block')).toBe('')
+  })
+
+  it('installMachineNoteFor is empty for a non-buried signature slot - dampers was never on the machine gate', () => {
     const game = useGameStore()
     game.devGrantCar(CARS[0]!.id)
     const carId = game.gameState.ownedCars[0]!.id
     game.removePart(carId, 'dampers')
 
-    const note = game.installMachineNoteFor(carId, 'dampers')
-    expect(note).toMatch(/labour by hand/)
-    expect(note).toMatch(/with the .+ line/)
-    expect(note).toContain('today')
-
-    game.hireMachineLine('suspension')
     expect(game.installMachineNoteFor(carId, 'dampers')).toBe('')
   })
 

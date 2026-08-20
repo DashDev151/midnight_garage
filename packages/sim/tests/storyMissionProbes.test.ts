@@ -25,7 +25,7 @@ import { lapTimeSecondsFor } from '../src/lapModel'
 import { marketValueYen } from '../src/marketValue'
 import { gradeMissionCar, resolveDeliverMission } from '../src/missions'
 import { createInitialGameState } from '../src/newGame'
-import { machineAssistFeeYen, naToTurboConversionBlocked, signatureOpFeeYen } from '../src/jobs'
+import { accessRoute, naToTurboConversionBlocked, signatureOpFeeYen } from '../src/jobs'
 import { valuateCarForBuyer } from '../src/valuation'
 
 const CONTEXT = buildSimContext(CARS, PARTS, BUYERS, PARTS_TAXONOMY)
@@ -843,8 +843,8 @@ describe('the mint-band missions stay satisfiable at any tier (Sprint 93 band ce
  * bot careers (directive 21) - pure arithmetic against the shipped content.
  */
 describe('machine-shop assist coherence (Sprint 85 decision 6)', () => {
-  // A fresh shop: every tool line at tier 1, so every buried engine/drivetrain
-  // slot is machine-gated and the assist fee applies.
+  // A fresh shop: every tool line at tier 1 and nothing hired, so every buried
+  // engine/drivetrain slot reads `slog` and a day hire is the way out of it.
   const TIER1_STATE = createInitialGameState(CONTEXT, 1)
 
   /**
@@ -883,14 +883,16 @@ describe('machine-shop assist coherence (Sprint 85 decision 6)', () => {
 
   /**
    * Probe (b): make-it-pull is the only authored mission whose satisfiability
-   * recipe fits an aftermarket part into a machine-gated (buried engine/
-   * drivetrain) slot - the sport camsTiming. Building it means removing the
-   * stock cams (gated) then installing the sport cams (gated): two engine-fee
-   * operations. The mission must stay satisfiable within its authored budget
-   * with those fees included, which the one-price budget (== payout, the 1.3x
+   * recipe fits an aftermarket part into a buried slot - the sport camsTiming.
+   * Building it means removing the stock cams then installing the sport ones,
+   * both buried engine work, and a shop at tier 1 either slogs that at triple
+   * labour or hires the engine line for the day. Access is bought by the DAY,
+   * so both operations sit under one fee however many of them the build needs.
+   * The mission must stay satisfiable within its authored budget with that
+   * day's hire included, which the one-price budget (== payout, the 1.3x
    * probe-cost margin) absorbs.
    */
-  it('make-it-pull stays within budget once the buried camsTiming assist fees are included', () => {
+  it('make-it-pull stays within budget once the engine line is hired for the buried camsTiming work', () => {
     const fitmentClass = fitmentClassForTier(
       CARS.find((c) => c.id === 'honda-civic-sir2-eg6')!.tier,
     )
@@ -899,20 +901,24 @@ describe('machine-shop assist coherence (Sprint 85 decision 6)', () => {
     ).map((carPartId) => ({ carPartId, part: aftermarketPart(carPartId, 'sport', fitmentClass) }))
     const { probeCostYen } = buildProbe('honda-civic-sir2-eg6', 'mint', aftermarket)
 
-    const camsFee = machineAssistFeeYen('camsTiming', TIER1_STATE, CONTEXT)
-    expect(camsFee, 'camsTiming must be machine-gated at tier 1').toBeGreaterThan(0)
-    const totalAssistYen = 2 * camsFee // remove the stock cams + install the sport cams
-    expect(probeCostYen + totalAssistYen).toBeLessThanOrEqual(mission('make-it-pull').budgetCapYen)
+    const cams = CONTEXT.partsTaxonomyById.camsTiming!
+    expect(
+      accessRoute(TIER1_STATE, CONTEXT, cams).route,
+      'camsTiming must be buried, and unreachable without a rig at tier 1',
+    ).toBe('slog')
+    const hireYen = CONTEXT.economy.toolHire.feeYenByGroup[cams.group]
+    expect(probeCostYen + hireYen).toBeLessThanOrEqual(mission('make-it-pull').budgetCapYen)
   })
 
   /**
-   * The other authored aftermarket slots are all bolt-on, surface, or not an
-   * engine/drivetrain slot, so no machine-shop assist fee ever applies to their
-   * builds - the "where a gated operation appears" qualifier in probe (b) is
-   * genuinely make-it-pull alone among the shipped campaign.
+   * The other authored aftermarket slots are all bolt-on or surface work, so
+   * none of them is buried and none needs a rig at all - spanners reach every
+   * one, and no hire fee follows from any of them. The "where a gated
+   * operation appears" qualifier in probe (b) is genuinely make-it-pull alone
+   * among the shipped campaign.
    */
-  it('no other authored aftermarket slot is machine-gated (fee is 0)', () => {
-    const nonGated: CarPartId[] = [
+  it('no other authored aftermarket slot needs a rig to reach (the route is open)', () => {
+    const openSlots: CarPartId[] = [
       'intake',
       'exhaust',
       'ignitionEcu',
@@ -922,11 +928,10 @@ describe('machine-shop assist coherence (Sprint 85 decision 6)', () => {
       'rims',
       'seats',
     ]
-    for (const carPartId of nonGated) {
-      expect(
-        machineAssistFeeYen(carPartId, TIER1_STATE, CONTEXT),
-        `${carPartId} should not be machine-gated`,
-      ).toBe(0)
+    for (const carPartId of openSlots) {
+      const access = accessRoute(TIER1_STATE, CONTEXT, CONTEXT.partsTaxonomyById[carPartId]!)
+      expect(access.route, `${carPartId} should be reachable without a rig`).toBe('open')
+      expect(access.multiplier, `${carPartId} should cost base labour`).toBe(1)
     }
   })
 
@@ -941,7 +946,7 @@ describe('machine-shop assist coherence (Sprint 85 decision 6)', () => {
    * the other three gate sites.
    */
   it('the repair-gated slots charge at tier 1, are free at tier 2, and never over-gate light or otherwise-gated work', () => {
-    const { feeYenByGroup } = CONTEXT.economy.machineShopAssist
+    const { feeYenByGroup } = CONTEXT.economy.toolHire
     const groups = ['suspension', 'body', 'interior'] as const
     for (const group of groups) {
       const tier2State = {

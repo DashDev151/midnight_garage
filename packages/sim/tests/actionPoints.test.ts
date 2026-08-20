@@ -83,8 +83,6 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     marketLedger: { lotSupply: {}, playerSales: {} },
     carLedgers: {},
     toolShopsOwned: [],
-    machineListing: null,
-    nextMachineListingDay: null,
     serviceJobLedgers: {},
     inspectionVisit: null,
     workbenchPartId: null,
@@ -109,13 +107,13 @@ function ownedCar(id: string, parts = mintCarParts()) {
 }
 
 describe('shipped defaults', () => {
-  it('workup and inspectionVisit cost 10, removePart 2; every other action is free', () => {
+  it('workup and inspectionVisit cost 10, refitAssembly 6, removePart and benchFitMember 2; every other action is free', () => {
     expect(CONTEXT.economy.energy.actionPoints).toEqual({
       removePart: 2,
       removeAssembly: 0,
       refitAssembly: 6,
       refitUnchangedMember: 0,
-      benchFitMember: 0,
+      benchFitMember: 2,
       benchRemoveMember: 0,
       benchBuildAssembly: 0,
       moveCar: 0,

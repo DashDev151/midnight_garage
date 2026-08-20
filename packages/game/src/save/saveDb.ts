@@ -105,6 +105,14 @@ function getDb(): Promise<SaveDb | undefined> {
             ledgerEvents: '++id, day, bucket',
             meta: 'key',
           })
+          // Table shape is unchanged - rides alongside the classifieds-kill
+          // GameState-shape SAVE_VERSION bump (saveCodec.ts), same rule as v4.
+          this.version(5).stores({
+            saves: 'slot',
+            sessionEvents: '++id, day, type',
+            ledgerEvents: '++id, day, bucket',
+            meta: 'key',
+          })
         }
       }
       return new SaveDatabase()

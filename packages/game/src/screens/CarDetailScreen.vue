@@ -21,6 +21,7 @@ import {
   type DynoSessionGateReason,
   type FittedMachiningGateReason,
   type FittedMachiningOfferRow,
+  type HireMachineLineGateReason,
 } from '@midnight-garage/sim'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
@@ -112,11 +113,18 @@ const BLOCKED_BY: Record<string, readonly CarPartId[]> = Object.fromEntries(
 /** The Machine hire panel's six rows, in the catalog's own declared order. */
 const MACHINE_LINE_GROUPS = ComponentIdSchema.options
 
-/** The hire button's own disabled reason (short cash only - ownership and
- * an already-hired line never reach a button at all, see the template). */
+/** Each hire refusal in plain words - ownership and an already-hired line
+ * never reach a button at all (see the template), so what is left is short
+ * cash and the day's one-line hire allowance already spent elsewhere. */
+const HIRE_GATE_LABELS: Record<NonNullable<HireMachineLineGateReason>, string> = {
+  'no-cash': 'Not enough cash',
+  'hire-cap': 'Another line is already hired today',
+}
+
+/** The hire button's own disabled reason, null when nothing refuses it. */
 function hireGateReasonFor(group: ComponentId): string | null {
   const reason = game.hireMachineLineGateReason(group)
-  return reason === 'no-cash' ? 'Not enough cash' : null
+  return reason ? HIRE_GATE_LABELS[reason] : null
 }
 
 function onHireMachineLineClick(group: ComponentId): void {

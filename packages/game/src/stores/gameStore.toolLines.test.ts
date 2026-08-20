@@ -26,19 +26,11 @@ describe('tool lines in the store (Sprint 36)', () => {
     }
   })
 
-  it('upgradeToolLine deducts cash, takes effect immediately, and logs tool-upgraded, once reputation clears the gate and a listing exists', () => {
+  it('upgradeToolLine deducts cash, takes effect immediately, and logs tool-upgraded, on reputation and cash alone', () => {
     const game = useGameStore()
     game.gameState = {
       ...game.gameState,
       reputationTier: WHEELS_T2.minReputationTier!,
-      machineListing: {
-        kind: 'tool-tier',
-        componentId: 'wheels',
-        tier: 2,
-        priceYen: WHEELS_T2.upgradePriceYen,
-        postedOnDay: game.gameState.day,
-        expiresOnDay: game.gameState.day + 3,
-      },
     }
     const cashBefore = game.cashYen
     expect(game.upgradeToolLine('wheels')).toBe(true)
@@ -99,13 +91,6 @@ describe('tool lines in the store (Sprint 36)', () => {
       ...game.gameState,
       cashYen: shop.priceYen,
       reputationTier: shop.repGate!,
-      machineListing: {
-        kind: 'tool-shop',
-        shopId: shop.id,
-        priceYen: shop.priceYen,
-        postedOnDay: game.gameState.day,
-        expiresOnDay: game.gameState.day + 3,
-      },
     }
     expect(game.buyToolShop(shop.id)).toBe(true)
     expect(game.cashYen).toBe(0)
@@ -142,9 +127,7 @@ describe('tool lines in the store (Sprint 36)', () => {
     // A fresh game owns every line at tier 1, so tier 2 is unowned everywhere.
     for (const componentId of ['suspension', 'body', 'interior', 'engine'] as const) {
       const info = game.toolTierInfo(componentId, 2)
-      expect(info.rentalFeeText).toContain(
-        formatYen(ECONOMY.machineShopAssist.feeYenByGroup[componentId]),
-      )
+      expect(info.rentalFeeText).toContain(formatYen(ECONOMY.toolHire.feeYenByGroup[componentId]))
     }
     // Owning the machine drops the line; tier 1 never shows it.
     game.devSetToolTier('suspension', 2)
@@ -179,5 +162,28 @@ describe('tool lines in the store (Sprint 36)', () => {
     const chassisBand = game.gameState.ownedCars[0]!.parts.chassis.installed?.band
     const jobFinished = chassisBand === 'fine' || chassisBand === 'mint'
     expect(jobOpened || jobFinished).toBe(true)
+  })
+
+  /** `ECONOMY.toolHire.maxHiredLinesPerDay` is 1: a hire day is a plan built
+   * around one bench, not a shopping spree. */
+  describe('hireCapReachedToday', () => {
+    it("flips true once the day's one hire is spent, stays clear of a re-hire of the same line, and blocks a different one", () => {
+      const game = useGameStore()
+      expect(game.hireCapReachedToday).toBe(false)
+
+      expect(game.hireMachineLine('body')).toBe(true)
+      expect(game.hireCapReachedToday).toBe(true)
+
+      // Re-hiring the SAME group the same day is still a free no-op, not a
+      // second line spent against the cap.
+      expect(game.hireMachineLineGateReason('body')).toBeNull()
+      expect(game.hireMachineLine('body')).toBe(true)
+      expect(game.hireCapReachedToday).toBe(true)
+
+      // A DIFFERENT group is refused: the day's one-line allowance is spent.
+      expect(game.hireMachineLineGateReason('engine')).toBe('hire-cap')
+      expect(game.hireMachineLine('engine')).toBe(false)
+      expect(game.hireCapReachedToday).toBe(true)
+    })
   })
 })

@@ -19,7 +19,7 @@ import {
   refitLaborSlotsFor,
   resolveBuyPart,
   resolveFittedMachiningLabor,
-  resolveHireMachineLine,
+  resolveHireToolLine,
   resolveJobLabor,
   resolveRemovePart,
   resolveSellViaWalkIn,
@@ -170,7 +170,7 @@ function resolveBenchAction(
         context,
       )
     case 'hire-machine-line':
-      return resolveHireMachineLine(state, action.group, context)
+      return resolveHireToolLine(state, action.group, context)
     case 'list-for-sale':
       return resolveSetForSale(state, BENCH_CAR_ID, true, context, action.channelId)
     case 'delist':

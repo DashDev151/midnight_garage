@@ -1050,7 +1050,7 @@
       "removeAssembly": 0,
       "refitAssembly": 6,
       "refitUnchangedMember": 0,
-      "benchFitMember": 0,
+      "benchFitMember": 2,
       "benchRemoveMember": 0,
       "benchBuildAssembly": 0,
       "moveCar": 0,

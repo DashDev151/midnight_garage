@@ -70,8 +70,6 @@ function stateWithStaff(staff: StaffMember[]): GameState {
     cartPartIds: [],
     carLedgers: {},
     toolShopsOwned: [],
-    machineListing: null,
-    nextMachineListingDay: null,
     serviceJobLedgers: {},
     inspectionVisit: null,
     workbenchPartId: null,

@@ -8,7 +8,7 @@ import { buildSimContext } from '../src/context'
 import { bayCountsByKind } from '../src/facilities'
 import { computeWeeklyRentYen } from '../src/finances'
 import { hashState } from '../src/hashState'
-import { resolveHireMachineLine } from '../src/jobs'
+import { resolveHireToolLine } from '../src/jobs'
 import { createInitialGameState } from '../src/newGame'
 import { groupCarParts, testSceneStanding, testToolTiers } from './testFixtures'
 
@@ -104,8 +104,6 @@ function initialState(): GameState {
     marketLedger: { lotSupply: {}, playerSales: {} },
     carLedgers: {},
     toolShopsOwned: [],
-    machineListing: null,
-    nextMachineListingDay: null,
     serviceJobLedgers: {},
     inspectionVisit: null,
     workbenchPartId: null,
@@ -188,8 +186,8 @@ function scriptedActionsForDay(day: number): DayActions {
  * hiring for the day before the machine-gated work can proceed.
  */
 function hireForDay(state: GameState, day: number): GameState {
-  if (day === 1) return resolveHireMachineLine(state, 'body', CONTEXT).state
-  if (day === 3) return resolveHireMachineLine(state, 'suspension', CONTEXT).state
+  if (day === 1) return resolveHireToolLine(state, 'body', CONTEXT).state
+  if (day === 3) return resolveHireToolLine(state, 'suspension', CONTEXT).state
   return state
 }
 
@@ -426,7 +424,24 @@ describe('advanceDay golden master', () => {
     // derived stat moved - the old repair path is untouched, as the
     // unchanged cash and day-count assertions around this hash confirm.
     // Re-derived from a real run.
-    expect(hashState(finalState)).toBe('31707bd5')
+    //
+    // It moves once more for the access-and-hire rework, and exactly two
+    // things move it. First, `GameState` loses `machineListing` and
+    // `nextMachineListingDay` outright, so both keys leave the state this
+    // hash serialises. Second, a day hire is now priced off
+    // `toolHire.feeYenByGroup` rather than `machineShopAssist`: this script
+    // hires body on day 1 (6,500 -> 10,000) and suspension on day 3 (5,000
+    // -> 7,500), so it ends 6,000 yen poorer, 1,063,540 -> 1,057,540, which
+    // the closed-form cash assertion just below reconciles to the yen.
+    // Measured rather than assumed: re-add the two keys as `null` and price
+    // both hires off the old fee table and this state hashes to exactly the
+    // previous `31707bd5`. That equality also proves the two other candidate
+    // causes move nothing here - `advanceDay` losing its classifieds step
+    // consumed no rng in this career (reputation never leaves `unknown`, so
+    // the roll never had an eligible candidate to draw from and never drew),
+    // and re-basing removal and install labour onto `accessRoute` changes no
+    // figure this state carries at day 31. Re-derived from a real run.
+    expect(hashState(finalState)).toBe('f1441261')
   })
 
   it('the same 30-day script from the same seed is fully deterministic', () => {
@@ -476,7 +491,10 @@ describe('advanceDay golden master', () => {
     // fronts the body line's daily hire on day 1 (the body repair climbs a
     // signature slot) and the suspension line's on day 3 (the dampers
     // install targets one), each exactly once - a running cost, same
-    // treatment as rent, never charged per operation.
+    // treatment as rent, never charged per operation. Both fees are read
+    // straight off `toolHire.feeYenByGroup`, the one fee table a hire is
+    // priced from, so this stays a closed-form reconciliation rather than a
+    // literal.
     const weeklyRentYen = computeWeeklyRentYen(bayCountsByKind(initialState()), CONTEXT.economy)
     const bodyPlan = planGroupRepair(
       initialState().ownedCars[0]!,
@@ -490,7 +508,7 @@ describe('advanceDay golden master', () => {
       CONTEXT.economy.energy.energyPerBandStepByToolTier,
     )
     const { body: bodyFeeYen, suspension: suspensionFeeYen } =
-      CONTEXT.economy.machineShopAssist.feeYenByGroup
+      CONTEXT.economy.toolHire.feeYenByGroup
     const rentChargeCount = 6
     expect(finalState.cashYen).toBe(
       1_200_000 -
@@ -811,7 +829,18 @@ describe('advanceDay golden master - acquisition and sale path', () => {
     // previous `deded012`, so no roll, cash figure or derived stat moved -
     // the buy-and-sell assertions in the test just above are unchanged and
     // still hold. Re-derived from a real run.
-    expect(hashState(acquisitionCareer().sold)).toBe('bd89d46a')
+    //
+    // It moves once more, alongside the 30-day master, for `GameState`
+    // losing `machineListing` and `nextMachineListingDay`. A pure SHAPE
+    // change here, measured rather than assumed: re-add the two keys as
+    // `null` and this state hashes to exactly the previous `bd89d46a`, and
+    // its cash figure is identical to the yen (4,978,502) either way. This
+    // script hires no tool line and fits no assembly member, so neither the
+    // new hire fee table nor the fitting cost can reach it; and the
+    // classifieds roll that left `advanceDay` never drew here, since
+    // reputation never leaves `unknown` and no rung was ever eligible to
+    // list. Re-derived from a real run.
+    expect(hashState(acquisitionCareer().sold)).toBe('4f33444b')
   })
 })
 

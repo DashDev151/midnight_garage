@@ -4,6 +4,7 @@ import type {
   AssemblyId,
   CarInstance,
   CarPartId,
+  CarPartTaxonomyEntry,
   ComponentId,
   DayLogEntry,
   GameState,
@@ -14,9 +15,10 @@ import { updateCarLedger } from './carLedger'
 import type { SimContext } from './context'
 import { verifyAndResolve, verifyManyAndResolve } from './diagnosis'
 import {
+  accessActionPoints,
   findWorkableCar,
+  hasMachineLineFor,
   machineGateGroupFor,
-  machineLaborMultiplier,
   partCapabilityRequirement,
   removeLaborSlotsFor,
   requiredEmptySlotsBehind,
@@ -30,7 +32,7 @@ import { updateServiceJobLedger } from './serviceJobLedger'
  * model: remove pulls every member slot at once (each stamping its own
  * `vacatedBaseline`), refit charges one flat set figure for the whole unit
  * however many members changed (`refitAssemblyLaborSlotsFor`), and the
- * external blockers / machine gate are derived from the members here, not
+ * external blockers / access route are derived from the members here, not
  * stored in content. `blockedBy` edges internal to an assembly (e.g. tyres
  * behind rims, clutch behind gearbox) stop mattering once it is on the bench
  * - that is the whole point of a bench - except for what the assembly's
@@ -112,13 +114,13 @@ function memberFitsCar(
 }
 
 /**
- * The machine-gate group an assembly's remove/refit op needs owned or hired
- * for the day, or null when none of its members gates a removal - structural
- * only, independent of ownership or hire, and the same
- * `machineGateGroupFor` answer a single slot gets. Every shipped assembly
- * names at most one group: `engineAssembly` engine, `gearboxAssembly`
+ * The machine-gate group an assembly's members name for a removal, or null when
+ * none of them does - structural only, independent of ownership or hire, and
+ * the same `machineGateGroupFor` answer a single slot gets. Every shipped
+ * assembly names at most one group: `engineAssembly` engine, `gearboxAssembly`
  * drivetrain, `wheelAssembly` none (a rim gates nothing and a tyre gates only
- * its own bench fit). The gate applies identically to remove and refit.
+ * its own bench fit). Read by the service-job labour chain's quoting; the
+ * resolvers below price their own work through `assemblyAccessEntry`.
  */
 export function assemblyMachineGateGroup(
   def: AssemblyDef,
@@ -129,6 +131,39 @@ export function assemblyMachineGateGroup(
     if (group) return group
   }
   return null
+}
+
+/**
+ * The member whose access decides the whole unit's: the first buried member
+ * when the assembly has one, otherwise its first member. What has to be reached
+ * to move the unit at all is what the unit costs to move, so an engine and a
+ * gearbox answer to their buried castings (and want the group's rig) while a
+ * wheel assembly is open work - done from underneath, so the lift lightens it.
+ * Undefined only for an assembly whose members are all unresolvable, which no
+ * shipped content produces.
+ */
+export function assemblyAccessEntry(
+  def: AssemblyDef,
+  context: SimContext,
+): CarPartTaxonomyEntry | undefined {
+  const entries = def.members
+    .map((member) => context.partsTaxonomyById[member])
+    .filter((entry): entry is CarPartTaxonomyEntry => entry !== undefined)
+  return entries.find((entry) => entry.depthClass === 'buried') ?? entries[0]
+}
+
+/** What one whole-assembly action costs: `basePoints` at the governing
+ * member's access rate, with the lift's discount when that member is worked
+ * from underneath (`accessActionPoints`, jobs.ts). The plain figure when no
+ * member resolves. */
+function assemblyActionPoints(
+  basePoints: number,
+  def: AssemblyDef,
+  state: GameState,
+  context: SimContext,
+): number {
+  const entry = assemblyAccessEntry(def, context)
+  return entry ? accessActionPoints(basePoints, entry, state, context) : basePoints
 }
 
 /** The deterministic id of the one container a given (car, assembly) can have
@@ -195,17 +230,15 @@ export function removeAssemblyLaborSlotsFor(
 /**
  * Remove an assembly as a unit (car-level). Legal when every external
  * blocker is vacant and no member has an open job; labour is
- * `removeAssemblyLaborSlotsFor` above, gated on
- * `laborAvailable`; the machine gate (`assemblyMachineGateGroup`)
- * needs that group's line owned or hired for the day - a running cost, never
- * posted to the car's own ledger. Each installed member moves into
- * one container in `assemblyInventory`, and each vacated member slot stamps its
- * `vacatedBaseline` exactly as per-slot removal does - so refit later reads
- * those baselines back for the equivalence charge. An already-empty member slot
- * simply carries `null` into the container, its car slot untouched. Refuses
+ * `removeAssemblyLaborSlotsFor` above at the governing member's access rate
+ * (`assemblyActionPoints`), gated on `laborAvailable`. Each installed member
+ * moves into one container in `assemblyInventory`, and each vacated member slot
+ * stamps its `vacatedBaseline` exactly as per-slot removal does - so refit later
+ * reads those baselines back for the equivalence charge. An already-empty member
+ * slot simply carries `null` into the container, its car slot untouched. Refuses
  * (no-op, `ok:false`) with nothing to pull, an occupied external blocker, an
- * open member job, an existing container for this (car, assembly), or the
- * machine gate unmet.
+ * open member job, an existing container for this (car, assembly), or labour
+ * short of what the pull costs.
  */
 export function resolveRemoveAssembly(
   state: GameState,
@@ -225,12 +258,14 @@ export function resolveRemoveAssembly(
   if (anyMemberBusy(state, carInstanceId, def, context)) return fail
   if (occupiedExternalBlockers(car, def, context).length > 0) return fail
 
-  // Without the group's machine the pull still happens, at the machine-less
-  // labour rate - the gate is a rate, never a wall (`machineLaborMultiplier`).
-  const gateGroup = assemblyMachineGateGroup(def, context)
-  const laborSlotsUsed =
-    removeAssemblyLaborSlotsFor(car, def, context) *
-    machineLaborMultiplier(gateGroup, state, context)
+  // Without the group's rig the pull still happens, at the slog rate - access
+  // is a rate, never a wall (`accessRoute`).
+  const laborSlotsUsed = assemblyActionPoints(
+    removeAssemblyLaborSlotsFor(car, def, context),
+    def,
+    state,
+    context,
+  )
   if (laborSlotsUsed > laborAvailable) return fail
 
   const isOwned = state.ownedCars.some((c) => c.id === carInstanceId)
@@ -321,16 +356,11 @@ export function refitAssemblyLaborSlotsFor(
 }
 
 /**
- * Refit an assembly as a unit (car-level). The operation itself costs
- * `energy.actionPoints.refitAssembly` (0 in shipped content) PLUS
- * per-member charging: a member equal to the slot's
- * `vacatedBaseline` refits at `energy.actionPoints.refitUnchangedMember`
- * (also 0 today, via `refitLaborSlotsFor`), a changed member charges its
- * normal install labour (`installLaborSlotsFor`, reading
- * `economy.energy.energyByClass`) - both through `refitAssemblyLaborSlotsFor`
- * above. The machine gate applies as on removal -
- * that group's line owned or hired for the day, one hire covering every
- * operation on it for the whole day, remove and refit alike. Each changed
+ * Refit an assembly as a unit (car-level). The operation costs one flat
+ * `energy.actionPoints.refitAssembly` for the whole unit
+ * (`refitAssemblyLaborSlotsFor` above), at the governing member's access rate
+ * exactly as removal is (`assemblyActionPoints`) - one hire covers every
+ * operation on that line for the whole day, remove and refit alike. Each changed
  * member's `pricePaidYen` lands on the bill. The container dissolves back into
  * the car's slots. `overrideCarId` refits a bench-BUILT assembly (no
  * `sourceCarId`) onto a chosen car - every member is then new to that car, so
@@ -348,7 +378,7 @@ export function refitAssemblyLaborSlotsFor(
  * nothing, since every member either never left it or was gated on the way
  * into the container. Refuses if the car is gone, an external
  * blocker is occupied, a target slot is already full, a foreign-car member
- * does not fit or is beyond the shop's lines, the machine gate is unmet, or
+ * does not fit or is beyond the shop's lines, or
  * the total labour exceeds `laborAvailable` (the op is atomic).
  */
 export function resolveRefitAssembly(
@@ -427,12 +457,14 @@ export function resolveRefitAssembly(
     }
   }
 
-  // Machine-less refits proceed at the multiplied labour rate, never refused
-  // (`machineLaborMultiplier`).
-  const gateGroup = assemblyMachineGateGroup(def, context)
-  const laborSlotsRequired =
-    refitAssemblyLaborSlotsFor(car, def, container, context) *
-    machineLaborMultiplier(gateGroup, state, context)
+  // A refit with no rig proceeds at the slog rate, never refused
+  // (`accessRoute`).
+  const laborSlotsRequired = assemblyActionPoints(
+    refitAssemblyLaborSlotsFor(car, def, container, context),
+    def,
+    state,
+    context,
+  )
   if (laborSlotsRequired > laborAvailable) return fail
 
   let parts = { ...car.parts }
@@ -465,20 +497,27 @@ export interface AssemblyMemberMoveResult {
   ok: boolean
 }
 
+/** The labour rate a bench fit pays. Only a tyre asks anything of the shop: the
+ * wheels line owned or hired for the day fits it on the machine, and by hand it
+ * is `toolHire.slogMultiplier` times the work. Every other member goes on at
+ * base labour. */
+function tyreFitMultiplier(memberSlot: CarPartId, state: GameState, context: SimContext): number {
+  if (memberSlot !== 'tyres') return 1
+  return hasMachineLineFor('wheels', state, context) ? 1 : context.economy.toolHire.slogMultiplier
+}
+
 /**
  * Fit a part into an EMPTY member slot of an open assembly on the bench:
  * move `newPartInstanceId` from the parts bin into the member slot. There is
  * no swap - a slot already carrying a member refuses outright, mirroring
- * `resolveRefitAssembly`'s own occupied-slot check (assemblies.ts:371); the
+ * `resolveRefitAssembly`'s own occupied-slot check; the
  * mounted member must come off first (`resolveRemoveAssemblyMember`), the
  * same remove-then-install ruling the car-level slots enforce. Labour is
- * `energy.actionPoints.benchFitMember` (0 in shipped content), gated on
- * `laborAvailable` when raised. A tyre-into-assembly op needs the wheels
- * line owned or hired for the day (the `bench-fit` half of the slot's
- * `machineGate`); every other member fit is ungated by that.
+ * `energy.actionPoints.benchFitMember` at the rate `tyreFitMultiplier` sets,
+ * gated on `laborAvailable`.
  * Refuses if the container/part is missing, the target slot is already
  * occupied, the part does not address this member slot, the part is scrap,
- * the machine gate is unmet, or (for a container pulled off a car) the
+ * or (for a container pulled off a car) the
  * part's fitment class does not match that car's (`memberFitsCar`) - the
  * fitment law applies at the bench, not only on the car.
  *
@@ -526,12 +565,13 @@ export function resolveFitAssemblyMember(
       }
     }
   }
-  // A gated bench fit (tyres onto rims) without the wheels machine costs the
-  // machine-less labour rate instead of being refused (`machineLaborMultiplier`).
-  const gateGroup = machineGateGroupFor(memberSlot, 'bench-fit', context)
+  // Mounting rubber onto a rim is the tyre machine's whole job: with the wheels
+  // line owned or hired for the day it is base labour, and by hand it is the
+  // slog multiple - long work with tyre levers, never a refusal. Every other
+  // member goes into an assembly at base labour.
   const laborSlotsUsed =
     context.economy.energy.actionPoints.benchFitMember *
-    machineLaborMultiplier(gateGroup, state, context)
+    tyreFitMultiplier(memberSlot, state, context)
   if (laborSlotsUsed > laborAvailable) return fail
 
   const nextContainers = [...containers]

@@ -89,6 +89,7 @@ export function cashMovementFor(entry: DayLogEntry): CashMovement | null {
       return { bucket: 'running', amountYen: entry.amountYen }
     case 'machine-hired':
     case 'dyno-hired':
+    case 'lift-hired':
     case 'coffee-bought':
       return { bucket: 'running', amountYen: entry.priceYen }
     case 'auction-attended':
@@ -128,8 +129,6 @@ export function cashMovementFor(entry: DayLogEntry): CashMovement | null {
     case 'car-moved':
     case 'cars-swapped':
     case 'acquisition-blocked':
-    case 'machine-listed':
-    case 'tool-shop-listed':
     case 'car-workup':
     case 'mission-accepted':
     case 'scene-commission-accepted':

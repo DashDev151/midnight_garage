@@ -376,7 +376,7 @@ describe('BodyShopScreen', () => {
   it('captions polish with the tool-tier lock and its hire fee while the body line is unowned', async () => {
     const { wrapper } = await grantAndDock('bonnet', NEEDS_POLISH)
     expect(wrapper.get('[data-test="pipeline-caption-polish"]').text()).toBe(
-      `Needs the body line: tier 2 tools or a day's hire (${formatYen(ECONOMY.machineShopAssist.feeYenByGroup.body)})`,
+      `Needs the body line: tier 2 tools or a day's hire (${formatYen(ECONOMY.toolHire.feeYenByGroup.body)})`,
     )
   })
 
@@ -406,7 +406,7 @@ describe('BodyShopScreen', () => {
       const button = wrapper.get('[data-test="respray-button"]')
       expect(button.attributes('disabled')).toBeDefined()
       expect(wrapper.get('[data-test="respray-caption"]').text()).toContain(
-        `Needs the booth: the body-and-trim shop, or a day's hire (${formatYen(ECONOMY.machineShopAssist.feeYenByGroup.body)})`,
+        `Needs the booth: the body-and-trim shop, or a day's hire (${formatYen(ECONOMY.toolHire.feeYenByGroup.body)})`,
       )
     })
 

@@ -709,12 +709,15 @@ describe('seed content validates against schemas', () => {
     // actions carry the old one-labour cost (10) on their own keys. Pulling a
     // part costs 2 points, so stripping a whole car sits comfortably inside a
     // solo day's pool (80) and price is no longer the only brake on a teardown.
+    // Fitting a member to an assembly costs 2 as well: mounting a tyre is
+    // work, and it triples by hand when the wheels rig is neither owned nor
+    // hired for the day.
     expect(result.data.energy.actionPoints).toEqual({
       removePart: 2,
       removeAssembly: 0,
       refitAssembly: 6,
       refitUnchangedMember: 0,
-      benchFitMember: 0,
+      benchFitMember: 2,
       benchRemoveMember: 0,
       benchBuildAssembly: 0,
       moveCar: 0,

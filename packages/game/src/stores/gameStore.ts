@@ -33,7 +33,6 @@ import type {
   GameState,
   Grade,
   Job,
-  MachineListing,
   Part,
   PaintFinish,
   PaintTinSize,
@@ -149,8 +148,6 @@ import {
   makeMarketOrigin,
   isServiceJobInTransit,
   applyToolShopPurchase,
-  isToolShopListed,
-  isToolTierListed,
   isServiceTaskDone,
   isServiceWorkDone,
   marketValueYen,
@@ -160,7 +157,12 @@ import {
   removeBlockReason,
   replacesOccupiedSlot,
   resolveBuyCoffee,
-  resolveHireMachineLine,
+  resolveHireToolLine,
+  accessRoute,
+  buyLiftGateReason,
+  liftAvailable,
+  resolveBuyLift,
+  resolveHireLift,
   nextBayMinReputationTier,
   nextBayPriceYen,
   nextToolTierRepGate,
@@ -256,6 +258,7 @@ import {
   type AttendAuctionGateReason,
   type AuctionGrade,
   type BuyDynoGateReason,
+  type BuyLiftGateReason,
   type CrewSkillContext,
   type DeliverySpeed,
   type DynoSessionGateReason,
@@ -290,7 +293,7 @@ import {
   stampNewCareerId,
   writeSave,
 } from '../save/saveDb'
-import { MACHINE_LINE_NAMES } from '../utils/dayLogFormat'
+import { MACHINE_LINE_NAMES, machineLineGateCopy } from '../utils/dayLogFormat'
 import {
   ENGINE_CHARACTER_LABELS,
   ENGINE_CHARACTER_NOTES,
@@ -567,26 +570,6 @@ export interface ToolTierRungView {
   upgradePriceYen: number | null
   /** This rung's own reputation requirement, regardless of whether it's met yet - null on tier 1. */
   minReputationTier: ReputationTier | null
-  /**
-   * True only when a live classifieds listing exists
-   * for exactly this line+tier - reputation/cash alone no longer make a
-   * tier purchasable, so the Upgrade button reads this too.
-   */
-  isListed: boolean
-}
-
-/** The one live used-machinery classifieds listing,
- * surfaced for the Upgrades screen - null when nothing's on offer this
- * week ("nothing in the classifieds this week" empty state). The paper
- * advertises either one line's rung or a whole shop, so `tier` is null for a
- * shop and `componentLabel` then names every line it covers. */
-export interface MachineListingView {
-  kind: 'tool-tier' | 'tool-shop'
-  componentLabel: string
-  tier: ToolTier | null
-  displayName: string
-  priceYen: number
-  daysLeft: number
 }
 
 /** One shop at the top of the tool ladder, for the Upgrades screen - the
@@ -601,8 +584,6 @@ export interface ToolShopView {
   priceYen: number
   /** The reputation still needed, or null once met (or once owned). */
   repGate: ReputationTier | null
-  /** True only while a live classifieds listing advertises this exact shop. */
-  isListed: boolean
 }
 
 /** One click-per-rung repair step, priced/labored off the real
@@ -2531,7 +2512,7 @@ export const useGameStore = defineStore('game', () => {
         baseLaborSlots * machineLaborMultiplier(group, gameState.value, context.value),
       ),
       machineLaborSlots: baseLaborSlots,
-      hireFeeYen: context.value.economy.machineShopAssist.feeYenByGroup[group],
+      hireFeeYen: context.value.economy.toolHire.feeYenByGroup[group],
     }
   }
 
@@ -2798,11 +2779,11 @@ export const useGameStore = defineStore('game', () => {
     return hasMachineLineFor(group, gameState.value, context.value)
   }
 
-  /** The hire panel's own price tag for `group` - `economy.machineShopAssist
-   * .feeYenByGroup[group]`, unchanged from the old per-operation fee, just a
-   * daily charge now instead. */
+  /** The hire panel's own price tag for `group` - the day-hire desk's own fee
+   * table (`economy.toolHire.feeYenByGroup`), the same one `resolveHireToolLine`
+   * charges from. */
   function machineLineFeeYen(group: ComponentId): number {
-    return context.value.economy.machineShopAssist.feeYenByGroup[group]
+    return context.value.economy.toolHire.feeYenByGroup[group]
   }
 
   /**
@@ -2813,6 +2794,71 @@ export const useGameStore = defineStore('game', () => {
    */
   function hireMachineLineGateReason(group: ComponentId): HireMachineLineGateReason | null {
     return hireMachineLineGateReasonCore(gameState.value, group, context.value)
+  }
+
+  /** Whether the day's tool-line hire allowance
+   * (`economy.toolHire.maxHiredLinesPerDay`) is already spent - a hire day is
+   * a plan built around one bench, so a second line is refused once this is
+   * true. Reads the same day stamps the sim's own cap counts. */
+  const hireCapReachedToday = computed<boolean>(
+    () =>
+      ComponentIdSchema.options.filter((group) => machineHiredToday(group, gameState.value))
+        .length >= context.value.economy.toolHire.maxHiredLinesPerDay,
+  )
+
+  // --- the two-post lift ---------------------------------------------------
+
+  /** Whether the shop owns the lift outright - the end of the hire fee, and
+   * the under-car discount on every day from here on. */
+  const liftOwned = computed(() => gameState.value.lift.owned)
+
+  /** Whether the lift can be used today at all - owned, or hired in for the
+   * day (`liftAvailable`, the same predicate the sim's own discount reads). */
+  const liftAvailableToday = computed(() => liftAvailable(gameState.value))
+
+  /** The day's hire fee, and what buying it outright costs. */
+  const liftHireFeeYen = computed(() => context.value.economy.lift.hireFeeYen)
+  const liftPurchasePriceYen = computed(() => context.value.economy.lift.purchasePriceYen)
+
+  /** The reputation a purchase needs, shown whether or not it is met -
+   * progression bible law 5: every gate is a named real thing. */
+  const liftMinReputationTier = computed(() => context.value.economy.lift.minReputationTier)
+
+  /** Why buying the lift is refused right now, `null` when nothing refuses it. */
+  const liftPurchaseGateReason = computed<BuyLiftGateReason | null>(() =>
+    buyLiftGateReason(gameState.value, context.value),
+  )
+
+  /** Buys the shop its own two-post lift - shop investment, and the end of the
+   * hire fee. Returns false on any refusal (the gate already said why). */
+  function buyLift(): boolean {
+    const result = resolveBuyLift(gameState.value, context.value)
+    if (!result.applied) return false
+    gameState.value = result.state
+    pushDayLog(result.log)
+    logSessionEvent({
+      type: 'lift-bought',
+      payload: { priceYen: loggedYen(result.log, 'equipment-purchased') },
+    })
+    return true
+  }
+
+  /**
+   * Hires the lift in for today - the same day-stamped seam a tool line's hire
+   * uses, and free of the day's one-line hire cap. Owning it, or a day already
+   * paid for, is a silent no-op success. Returns false only on a genuine
+   * refusal (short cash).
+   */
+  function hireLift(): boolean {
+    const result = resolveHireLift(gameState.value, context.value)
+    if (result.outcome !== 'hired') return false
+    gameState.value = result.state
+    pushDayLog(result.log)
+    logSessionEvent({
+      type: 'lift-hired',
+      payload: { feeYen: loggedYen(result.log, 'lift-hired') },
+    })
+    return true
   }
 
   // --- the rolling road ----------------------------------------------------
@@ -3441,8 +3487,8 @@ export const useGameStore = defineStore('game', () => {
    * The human-readable reason `removePart`
    * would refuse this slot right now, or `null` when nothing structural
    * blocks it (it may still refuse for insufficient labor - the labor bar
-   * already shows that separately, and `removeMachineNoteFor` below shows a
-   * machine-gated slot's by-hand labour). Mirrors `installBlockedReason`'s
+   * already shows that separately, and `removeMachineNoteFor` below names a
+   * buried slot being worked the slow way). Mirrors `installBlockedReason`'s
    * own reuse shape, over the sim's `removeBlockReason` predicate. A machine
    * gate is no longer a structural block at all: every
    * removal stays possible at tier 1, just slower by hand.
@@ -3460,42 +3506,45 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
-  /** The Remove button's own machine-labour disclosure, or `''` when the
-   * slot isn't machine-gated (or the machine is already owned/hired) - the
-   * flat remove-part figure, by hand vs with the line, in the same words
-   * `installMachineNoteFor` uses. */
-  function removeMachineNoteFor(carId: string, carPartId: CarPartId): string {
-    const group = machineGateGroupFor(carPartId, 'remove', context.value)
-    return machineLaborDisclosureText(
-      machineLaborDisclosureFor(group, context.value.economy.energy.actionPoints.removePart),
-    )
-  }
-
   /**
-   * The INSTALL/REPLACE affordance's own machine-labour disclosure for
-   * `carPartId`, or `''` when it isn't machine-gated (or the machine is
-   * already owned/hired). Every install/replace gate is a rate rather than a
-   * refusal: this names the by-hand cost and what
-   * hiring the line would buy back instead of disabling anything.
+   * The note an affordance on `carPartId` carries right now, or `''` when
+   * there is nothing worth saying. It appears on exactly one condition: the
+   * slot is reached by `slog` (`accessRoute`, sim/jobs.ts) - the part is
+   * buried and its group's rig is neither owned nor hired today - so the
+   * labour figure the button already quotes is the slog rate. Access is a
+   * rate rather than a wall, so this names the trade and refuses nothing, and
+   * it quotes no fee: access is bought by the day at the hire panel, never per
+   * operation.
    */
+  function slogAccessNoteFor(carId: string, carPartId: CarPartId): string {
+    if (!findWorkableCar(carId)) return ''
+    const entry = context.value.partsTaxonomyById[carPartId]
+    if (!entry) return ''
+    return accessRoute(gameState.value, context.value, entry).route === 'slog'
+      ? machineLineGateCopy(entry.group)
+      : ''
+  }
+
+  /** The Remove button's own access note. A part comes off by the same route
+   * it goes on, so this and `installMachineNoteFor` read the same answer. */
+  function removeMachineNoteFor(carId: string, carPartId: CarPartId): string {
+    return slogAccessNoteFor(carId, carPartId)
+  }
+
+  /** The INSTALL/REPLACE affordance's own access note for `carPartId`. */
   function installMachineNoteFor(carId: string, carPartId: CarPartId): string {
-    const car = findWorkableCar(carId)
-    if (!car) return ''
-    const group = machineGateGroupFor(carPartId, 'install', context.value)
-    return machineLaborDisclosureText(
-      machineLaborDisclosureFor(group, installLaborSlotsFor(carPartId, context.value)),
-    )
+    return slogAccessNoteFor(carId, carPartId)
   }
 
   /**
-   * The on-car per-part REPAIR affordance's own machine-labour disclosure for
-   * `carPartId`, or `''` when nothing gates it. Per-part repair is bench-only
+   * The on-car per-part REPAIR affordance's own access note for `carPartId`,
+   * or `''` when nothing slows it. Per-part repair is bench-only
    * for every removable slot (the sim refuses it before this ever matters),
    * so this only ever fires for a fixed body carrier - and `bodywork`/`paint`
    * are derived value carriers with no on-car repair affordance at all
    * (`bodyPipeline.ts`), which leaves the chassis. A removable signature slot
    * (seats, dashGauges, dampers, springs) is repaired at the bench, and its
-   * own machine line shows its note when the repaired part goes back on
+   * own line shows its note when the repaired part goes back on
    * (`installMachineNoteFor`). Engine/drivetrain repair is never gated, so
    * this is `''` for them too.
    */
@@ -3504,7 +3553,7 @@ export const useGameStore = defineStore('game', () => {
     if (!car) return ''
     if (car.zoneState && isBodyDerivedPart(carPartId)) return ''
     if (context.value.partsTaxonomyById[carPartId]?.removable !== false) return ''
-    return installMachineNoteFor(carId, carPartId)
+    return slogAccessNoteFor(carId, carPartId)
   }
 
   // --- facilities (bays) -------------------------------------------------
@@ -3791,42 +3840,10 @@ export const useGameStore = defineStore('game', () => {
           owned: i + 1 <= currentTier,
           upgradePriceYen: i === 0 ? null : rung.upgradePriceYen,
           minReputationTier: rung.minReputationTier ?? null,
-          isListed: isToolTierListed(gameState.value, componentId, (i + 1) as ToolTier),
         })),
       }
     }),
   )
-
-  /**
-   * The current classifieds listing for the Upgrades
-   * screen, or null for the "nothing in the classifieds this week" empty
-   * state.
-   */
-  const machineListingView = computed<MachineListingView | null>(() => {
-    const listing: MachineListing | null = gameState.value.machineListing
-    if (!listing) return null
-    const daysLeft = Math.max(0, listing.expiresOnDay - gameState.value.day)
-    if (listing.kind === 'tool-shop') {
-      const shop = context.value.toolShopsById[listing.shopId]
-      return {
-        kind: 'tool-shop',
-        componentLabel: (shop?.covers ?? []).map(componentLabel).join(', '),
-        tier: null,
-        displayName: shop?.displayName ?? listing.shopId,
-        priceYen: listing.priceYen,
-        daysLeft,
-      }
-    }
-    return {
-      kind: 'tool-tier',
-      componentLabel: componentLabel(listing.componentId),
-      tier: listing.tier,
-      displayName:
-        context.value.toolLines[listing.componentId].tiers[listing.tier - 1]!.displayName,
-      priceYen: listing.priceYen,
-      daysLeft,
-    }
-  })
 
   /** The three shops at the top of the ladder, with what each covers and
    * whether it can be bought right now - the shop twin of `toolLineViews`. */
@@ -3839,7 +3856,6 @@ export const useGameStore = defineStore('game', () => {
       owned: gameState.value.toolShopsOwned.includes(shop.id),
       priceYen: shop.upgradePriceYen,
       repGate: toolShopRepGate(gameState.value, shop),
-      isListed: isToolShopListed(gameState.value, shop.id),
     })),
   )
 
@@ -3870,7 +3886,7 @@ export const useGameStore = defineStore('game', () => {
 
   /**
    * Buy one shop outright - instant, usable the same day, and refused (false,
-   * nothing spent) when reputation, cash or the classifieds do not allow it.
+   * nothing spent) when reputation or cash do not allow it.
    * The rung purchase's twin (`upgradeToolLine`).
    */
   function buyToolShop(shopId: string): boolean {
@@ -3907,7 +3923,7 @@ export const useGameStore = defineStore('game', () => {
         ? `Until you own this, its heavy jobs need the ${
             context.value.toolLines[componentId].tiers[1]!.displayName
           } hired for the day at ${formatYen(
-            context.value.economy.machineShopAssist.feeYenByGroup[componentId],
+            context.value.economy.toolHire.feeYenByGroup[componentId],
           )}.`
         : null
     return {
@@ -4778,11 +4794,12 @@ export const useGameStore = defineStore('game', () => {
    * The daily-unlock seam: charges `group`'s hire fee the first time that
    * line is needed today (a zero fee, ownership, or a line already hired
    * today is a silent no-op success), unlocking every operation on it until
-   * End Day. Returns false only on a genuine refusal (short cash) - the
-   * caller must not treat the line as available when this is false.
+   * End Day. Returns false on a genuine refusal (short cash, or the day's
+   * hire allowance already spent on another line) - the caller must not treat
+   * the line as available when this is false.
    */
   function hireMachineLine(group: ComponentId): boolean {
-    const result = resolveHireMachineLine(gameState.value, group, context.value)
+    const result = resolveHireToolLine(gameState.value, group, context.value)
     if (result.outcome !== 'hired') return false
     gameState.value = result.state
     pushDayLog(result.log)
@@ -5419,7 +5436,7 @@ export const useGameStore = defineStore('game', () => {
       .map((group) => ({
         type: 'machine-hired' as const,
         componentId: group,
-        priceYen: context.value.economy.machineShopAssist.feeYenByGroup[group],
+        priceYen: context.value.economy.toolHire.feeYenByGroup[group],
       }))
     lastDayReport.value = {
       day: endedDay,
@@ -5573,7 +5590,7 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
-  /** Own or disown one shop directly, bypassing price and the classifieds -
+  /** Own or disown one shop directly, bypassing price and reputation -
    * dev/test only, the shop twin of `devSetToolTier`. */
   function devSetToolShopOwned(shopId: string, owned: boolean): void {
     const already = gameState.value.toolShopsOwned.includes(shopId)
@@ -5786,10 +5803,19 @@ export const useGameStore = defineStore('game', () => {
     machineLineAvailable,
     machineLineFeeYen,
     hireMachineLineGateReason,
+    hireCapReachedToday,
     hireMachineLine,
     buyCoffee,
     coffeePriceYen,
     coffeeGateReason,
+    liftOwned,
+    liftAvailableToday,
+    liftHireFeeYen,
+    liftPurchasePriceYen,
+    liftMinReputationTier,
+    liftPurchaseGateReason,
+    buyLift,
+    hireLift,
     dynoOwned,
     dynoHiredToday,
     dynoHireFeeYen,
@@ -5842,7 +5868,6 @@ export const useGameStore = defineStore('game', () => {
     toolShopViews,
     toolShopInfo,
     buyToolShop,
-    machineListingView,
     standingView,
     costSheetView,
     repairRevealFor,

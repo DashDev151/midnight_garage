@@ -1,4 +1,3 @@
-import type { ComponentId, ToolTier } from '@midnight-garage/content'
 import { ECONOMY, FACILITIES, TOOL_LINES, TOOL_SHOPS } from '@midnight-garage/content'
 import { toolLevelsFor } from '@midnight-garage/sim'
 import { mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
@@ -28,42 +27,6 @@ function mountScreen() {
   })
   mountedWrappers.push(wrapper)
   return wrapper
-}
-
-/** A purchase also needs a live classifieds listing
- * for the exact line+tier - tests that exercise a real purchase must seed
- * one directly, same as they already seed reputation/cash. */
-function listingFor(
-  game: ReturnType<typeof useGameStore>,
-  componentId: ComponentId,
-  tier: ToolTier,
-) {
-  game.gameState = {
-    ...game.gameState,
-    machineListing: {
-      kind: 'tool-tier',
-      componentId,
-      tier,
-      priceYen: 1,
-      postedOnDay: game.gameState.day,
-      expiresOnDay: game.gameState.day + 3,
-    },
-  }
-}
-
-/** The shop half of `listingFor`: the paper advertises a whole shop under the
- * same one-listing-at-a-time rule a rung is advertised under. */
-function shopListingFor(game: ReturnType<typeof useGameStore>, shopId: string) {
-  game.gameState = {
-    ...game.gameState,
-    machineListing: {
-      kind: 'tool-shop',
-      shopId,
-      priceYen: 1,
-      postedOnDay: game.gameState.day,
-      expiresOnDay: game.gameState.day + 3,
-    },
-  }
 }
 
 describe('UpgradesScreen', () => {
@@ -130,12 +93,11 @@ describe('UpgradesScreen', () => {
     expect(wrapper.find('[data-test="dyno-node"]').classes()).toContain('owned')
   })
 
-  it('clicking a ladder upgrade buys the next tier and re-renders it as current, once reputation clears the gate', async () => {
+  it('clicking a ladder upgrade buys the next tier and re-renders it as current, on reputation and cash alone', async () => {
     const game = useGameStore()
     game.newGame(1)
     game.devGiveCash(WHEELS_T2.upgradePriceYen)
     game.gameState = { ...game.gameState, reputationTier: WHEELS_T2.minReputationTier! }
-    listingFor(game, 'wheels', 2)
     const wrapper = mountScreen()
     await wrapper.get('[data-test="upgrade-tool-wheels"]').trigger('click')
     expect(game.gameState.toolTiers.wheels).toBe(2)
@@ -156,7 +118,6 @@ describe('UpgradesScreen', () => {
     expect(wrapper.text()).toContain(`needs ${WHEELS_T2.minReputationTier} reputation`)
 
     game.gameState = { ...game.gameState, reputationTier: WHEELS_T2.minReputationTier! }
-    listingFor(game, 'wheels', 2)
     await wrapper.vm.$nextTick()
     expect(
       (wrapper.get('[data-test="upgrade-tool-wheels"]').element as HTMLButtonElement).disabled,
@@ -204,7 +165,7 @@ describe('UpgradesScreen', () => {
       )
     })
 
-    it('is gated on standing first, then on a live listing, with the reason in a tooltip each time', async () => {
+    it('is gated on standing, with the reason in a tooltip, then buys on reputation and cash alone', async () => {
       const game = useGameStore()
       game.newGame(1)
       game.devGiveCash(999_999_999)
@@ -217,18 +178,7 @@ describe('UpgradesScreen', () => {
 
       game.devSetReputationTier(CHASSIS_SHOP.minReputationTier)
       await wrapper.vm.$nextTick()
-      expect(
-        (wrapper.get(`[data-test="buy-tool-shop-${CHASSIS_SHOP.id}"]`).element as HTMLButtonElement)
-          .disabled,
-      ).toBe(true)
       expect(wrapper.find(`[data-test="gate-tip-shop-${CHASSIS_SHOP.id}"]`).exists()).toBe(false)
-      expect(wrapper.find(`[data-test="needs-listing-shop-${CHASSIS_SHOP.id}"]`).exists()).toBe(
-        true,
-      )
-
-      shopListingFor(game, CHASSIS_SHOP.id)
-      await wrapper.vm.$nextTick()
-      expect(wrapper.find(`[data-test="shop-listed-${CHASSIS_SHOP.id}"]`).exists()).toBe(true)
       expect(
         (wrapper.get(`[data-test="buy-tool-shop-${CHASSIS_SHOP.id}"]`).element as HTMLButtonElement)
           .disabled,
@@ -245,7 +195,6 @@ describe('UpgradesScreen', () => {
       game.newGame(1)
       game.devGiveCash(CHASSIS_SHOP.upgradePriceYen)
       game.devSetReputationTier(CHASSIS_SHOP.minReputationTier)
-      shopListingFor(game, CHASSIS_SHOP.id)
       const wrapper = mountScreen()
 
       await wrapper.get(`[data-test="buy-tool-shop-${CHASSIS_SHOP.id}"]`).trigger('click')
@@ -281,19 +230,6 @@ describe('UpgradesScreen', () => {
       // Same toggle the rungs have.
       await wrapper.get(`[data-test="tool-shop-${CHASSIS_SHOP.id}"]`).trigger('click')
       expect(wrapper.find('[data-test="tool-info-box"]').exists()).toBe(false)
-    })
-
-    it('advertises a listed shop by name rather than as a tier', () => {
-      const game = useGameStore()
-      game.newGame(1)
-      shopListingFor(game, CHASSIS_SHOP.id)
-      const wrapper = mountScreen()
-      const card = wrapper.get('[data-test="machine-listing"]')
-      expect(card.text()).toContain(CHASSIS_SHOP.displayName)
-      expect(card.text()).not.toContain('Tier')
-      for (const componentId of CHASSIS_SHOP.covers) {
-        expect(card.text(), componentId).toContain(game.componentLabel(componentId))
-      }
     })
   })
 
@@ -365,38 +301,16 @@ describe('UpgradesScreen', () => {
     expect(game.serviceBayCount).toBe(startingCount + 1)
   })
 
-  describe('the classifieds section (Sprint 52 decision 2)', () => {
-    it('shows the empty state on a fresh game with no listing', () => {
-      const game = useGameStore()
-      game.newGame(1)
-      const wrapper = mountScreen()
-      expect(wrapper.find('[data-test="no-listing"]').exists()).toBe(true)
-      expect(wrapper.text()).toContain('Nothing in the classifieds this week')
-      expect(wrapper.find('[data-test="machine-listing"]').exists()).toBe(false)
-    })
-
-    it('shows the live listing (tier, name, price, days left) once one is posted', () => {
-      const game = useGameStore()
-      game.newGame(1)
-      listingFor(game, 'wheels', 2)
-      const wrapper = mountScreen()
-      const card = wrapper.get('[data-test="machine-listing"]')
-      expect(card.text()).toContain(WHEELS_T2.displayName)
-      expect(card.text()).toContain('Tier 2')
-      expect(wrapper.find('[data-test="no-listing"]').exists()).toBe(false)
-    })
-
-    it('an otherwise-eligible rung stays disabled with a classifieds hint until its tier is actually listed', () => {
-      const game = useGameStore()
-      game.newGame(1)
-      game.devGiveCash(999_999_999)
-      game.gameState = { ...game.gameState, reputationTier: WHEELS_T2.minReputationTier! }
-      const wrapper = mountScreen()
-      const button = wrapper.get('[data-test="upgrade-tool-wheels"]')
-      expect((button.element as HTMLButtonElement).disabled).toBe(true)
-      expect(wrapper.find('[data-test="needs-listing-wheels"]').exists()).toBe(true)
-      expect(wrapper.text()).not.toContain(`needs ${WHEELS_T2.minReputationTier} reputation`)
-    })
+  it('a tool line buys on reputation and cash alone, with no listing state anywhere in play', () => {
+    const game = useGameStore()
+    game.newGame(1)
+    game.devGiveCash(999_999_999)
+    game.gameState = { ...game.gameState, reputationTier: WHEELS_T2.minReputationTier! }
+    const wrapper = mountScreen()
+    const button = wrapper.get('[data-test="upgrade-tool-wheels"]')
+    expect((button.element as HTMLButtonElement).disabled).toBe(false)
+    expect(wrapper.find('[data-test="machine-listing"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="no-listing"]').exists()).toBe(false)
   })
 
   describe('gate explanations are tooltips, not always-visible sentences (Sprint 65 decision 3)', () => {

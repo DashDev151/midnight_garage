@@ -1,29 +1,21 @@
-import {
-  TOOL_LINES,
-  TOOL_SHOPS,
-  type ComponentId,
-  type GameState,
-  type ToolTier,
-} from '@midnight-garage/content'
+import { TOOL_LINES, TOOL_SHOPS, type GameState } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { buildSimContext } from '../src/context'
+import { hireMachineLineGateReason, resolveHireToolLine } from '../src/jobs'
 import { createInitialGameState } from '../src/newGame'
+import { buyLiftGateReason, resolveBuyLift } from '../src/repairJobs'
 import {
   applyToolShopPurchase,
   applyToolUpgrade,
   applyToolUpgrades,
   freshToolTiers,
-  isToolShopListed,
-  isToolTierListed,
   nextToolTierRepGate,
   ownsToolShopForGroup,
-  rollMachineListings,
   toolLevelsFor,
   toolShopForGroup,
   toolShopRepGate,
   toolTierForGroup,
 } from '../src/toolLines'
-import { createRng } from '../src/rng'
 
 /**
  * Tool lines replace binary equipment ownership. Every line is owned at tier 1
@@ -47,31 +39,6 @@ const WHEELS_SHOP_REP = WHEELS_SHOP.minReputationTier
 
 function baseState(overrides: Partial<GameState> = {}): GameState {
   return { ...createInitialGameState(CONTEXT, 1), ...overrides }
-}
-
-/** A live classifieds listing fixture for one line's rung - every test
- * exercising a real purchase needs one, since reputation and cash alone do not
- * make a rung purchasable. */
-function listedFor(componentId: ComponentId, tier: ToolTier) {
-  return {
-    kind: 'tool-tier' as const,
-    componentId,
-    tier,
-    priceYen: TOOL_LINES[componentId].tiers[tier - 1]!.upgradePriceYen,
-    postedOnDay: 1,
-    expiresOnDay: 10,
-  }
-}
-
-/** The same fixture for a shop - the classifieds advertise both. */
-function listedShop(shopId: string) {
-  return {
-    kind: 'tool-shop' as const,
-    shopId,
-    priceYen: TOOL_SHOPS.find((shop) => shop.id === shopId)!.upgradePriceYen,
-    postedOnDay: 1,
-    expiresOnDay: 10,
-  }
 }
 
 describe('a new game starts every tool line at tier 1 and owns no shop', () => {
@@ -130,12 +97,8 @@ describe('the shop is the top of the ladder', () => {
 })
 
 describe('applyToolUpgrade', () => {
-  it('climbs one tier, deducts the next tier price, and logs tool-upgraded, once reputation clears the gate', () => {
-    const state = baseState({
-      cashYen: WHEELS_T2_PRICE,
-      reputationTier: WHEELS_T2_REP,
-      machineListing: listedFor('wheels', 2),
-    })
+  it('climbs one tier, deducts the next tier price, and logs tool-upgraded, on reputation and cash alone, once reputation clears the gate', () => {
+    const state = baseState({ cashYen: WHEELS_T2_PRICE, reputationTier: WHEELS_T2_REP })
     const result = applyToolUpgrade(state, 'wheels', CONTEXT)
     expect(result.applied).toBe(true)
     expect(result.state.cashYen).toBe(0)
@@ -145,12 +108,14 @@ describe('applyToolUpgrade', () => {
     ])
   })
 
+  it('D-A2: reputation and cash are the whole gate - this schema carries no listing state for a purchase to check', () => {
+    const state = baseState({ cashYen: WHEELS_T2_PRICE, reputationTier: WHEELS_T2_REP })
+    expect('machineListing' in state).toBe(false)
+    expect(applyToolUpgrade(state, 'wheels', CONTEXT).applied).toBe(true)
+  })
+
   it('leaves every other line untouched', () => {
-    const state = baseState({
-      cashYen: WHEELS_T2_PRICE,
-      reputationTier: WHEELS_T2_REP,
-      machineListing: listedFor('wheels', 2),
-    })
+    const state = baseState({ cashYen: WHEELS_T2_PRICE, reputationTier: WHEELS_T2_REP })
     const result = applyToolUpgrade(state, 'wheels', CONTEXT)
     expect(result.state.toolTiers).toEqual({ ...freshToolTiers(), wheels: 2 })
   })
@@ -181,46 +146,6 @@ describe('applyToolUpgrade', () => {
     expect(result.state).toBe(state)
     expect(result.log).toEqual([])
   })
-
-  describe('the classifieds listing gate', () => {
-    it('refuses an otherwise-eligible upgrade (reputation and cash both clear) when nothing is listed, with no state change', () => {
-      const state = baseState({ cashYen: WHEELS_T2_PRICE, reputationTier: WHEELS_T2_REP })
-      const result = applyToolUpgrade(state, 'wheels', CONTEXT)
-      expect(result.applied).toBe(false)
-      expect(result.state).toBe(state)
-      expect(result.log).toEqual([])
-    })
-
-    it('refuses when a listing is live for a different line, or for a shop rather than a rung', () => {
-      const forDifferentLine = baseState({
-        cashYen: WHEELS_T2_PRICE,
-        reputationTier: WHEELS_T2_REP,
-        machineListing: listedFor('engine', 2),
-      })
-      expect(applyToolUpgrade(forDifferentLine, 'wheels', CONTEXT).applied).toBe(false)
-
-      const forTheShop = baseState({
-        cashYen: WHEELS_T2_PRICE,
-        reputationTier: WHEELS_SHOP_REP,
-        machineListing: listedShop(WHEELS_SHOP.id),
-      })
-      expect(applyToolUpgrade(forTheShop, 'wheels', CONTEXT).applied).toBe(false)
-    })
-
-    it('consumes the listing on purchase - a second attempt against the same stale listing is refused', () => {
-      const state = baseState({
-        cashYen: WHEELS_T2_PRICE + WHEELS_SHOP_PRICE,
-        reputationTier: WHEELS_SHOP_REP,
-        machineListing: listedFor('wheels', 2),
-      })
-      const first = applyToolUpgrade(state, 'wheels', CONTEXT)
-      expect(first.applied).toBe(true)
-      expect(first.state.machineListing).toBeNull()
-
-      // The spent rung listing does not carry over to authorise the shop above it.
-      expect(applyToolShopPurchase(first.state, WHEELS_SHOP.id, CONTEXT).applied).toBe(false)
-    })
-  })
 })
 
 describe('applyToolShopPurchase', () => {
@@ -228,21 +153,25 @@ describe('applyToolShopPurchase', () => {
     return baseState({
       cashYen: WHEELS_SHOP_PRICE,
       reputationTier: WHEELS_SHOP_REP,
-      machineListing: listedShop(WHEELS_SHOP.id),
       ...overrides,
     })
   }
 
-  it('records the shop, deducts its price, consumes the listing, and logs tool-shop-purchased', () => {
+  it('records the shop, deducts its price, and logs tool-shop-purchased', () => {
     const state = readyForTheShop()
     const result = applyToolShopPurchase(state, WHEELS_SHOP.id, CONTEXT)
     expect(result.applied).toBe(true)
     expect(result.state.cashYen).toBe(0)
     expect(result.state.toolShopsOwned).toEqual([WHEELS_SHOP.id])
-    expect(result.state.machineListing).toBeNull()
     expect(result.log).toEqual([
       { type: 'tool-shop-purchased', shopId: WHEELS_SHOP.id, priceYen: WHEELS_SHOP_PRICE },
     ])
+  })
+
+  it('D-A2: reputation and cash are the whole gate on the shop too - no listing state to check', () => {
+    const state = readyForTheShop()
+    expect('machineListing' in state).toBe(false)
+    expect(applyToolShopPurchase(state, WHEELS_SHOP.id, CONTEXT).applied).toBe(true)
   })
 
   it('lifts every line it covers to level 3 the same day, and no other line', () => {
@@ -254,7 +183,7 @@ describe('applyToolShopPurchase', () => {
     expect(levels.engine).toBe(1)
   })
 
-  it('refuses an unknown shop, an already-owned one, an unaffordable one, an unlisted one, and one below its rep floor', () => {
+  it('refuses an unknown shop, an already-owned one, an unaffordable one, and one below its rep floor', () => {
     expect(applyToolShopPurchase(readyForTheShop(), 'no-such-shop', CONTEXT).applied).toBe(false)
     expect(
       applyToolShopPurchase(
@@ -271,10 +200,6 @@ describe('applyToolShopPurchase', () => {
       ).applied,
     ).toBe(false)
     expect(
-      applyToolShopPurchase(readyForTheShop({ machineListing: null }), WHEELS_SHOP.id, CONTEXT)
-        .applied,
-    ).toBe(false)
-    expect(
       applyToolShopPurchase(readyForTheShop({ reputationTier: 'unknown' }), WHEELS_SHOP.id, CONTEXT)
         .applied,
     ).toBe(false)
@@ -285,141 +210,6 @@ describe('applyToolShopPurchase', () => {
     expect(state.toolTiers.wheels).toBe(1)
     const result = applyToolShopPurchase(state, WHEELS_SHOP.id, CONTEXT)
     expect(toolLevelsFor(result.state, CONTEXT).wheels).toBe(3)
-  })
-})
-
-describe('isToolTierListed / isToolShopListed', () => {
-  it('matches only the exact componentId+tier of the live rung listing', () => {
-    const state = baseState({ machineListing: listedFor('wheels', 2) })
-    expect(isToolTierListed(state, 'wheels', 2)).toBe(true)
-    expect(isToolTierListed(state, 'wheels', 1)).toBe(false)
-    expect(isToolTierListed(state, 'engine', 2)).toBe(false)
-    expect(isToolShopListed(state, WHEELS_SHOP.id)).toBe(false)
-  })
-
-  it('matches only the exact shop of the live shop listing', () => {
-    const state = baseState({ machineListing: listedShop(WHEELS_SHOP.id) })
-    expect(isToolShopListed(state, WHEELS_SHOP.id)).toBe(true)
-    expect(isToolShopListed(state, 'no-such-shop')).toBe(false)
-    expect(isToolTierListed(state, 'wheels', 2)).toBe(false)
-  })
-
-  it('both are false when nothing is listed', () => {
-    const state = baseState()
-    expect(isToolTierListed(state, 'wheels', 2)).toBe(false)
-    expect(isToolShopListed(state, WHEELS_SHOP.id)).toBe(false)
-  })
-})
-
-describe('rollMachineListings', () => {
-  it('does nothing while nothing is reputation-eligible yet (a fresh, unranked game)', () => {
-    const state = baseState({ reputationTier: 'unknown' })
-    const result = rollMachineListings(state, CONTEXT, 2, createRng(1))
-    expect(result.state.machineListing).toBeNull()
-    expect(result.state.nextMachineListingDay).toBeNull()
-    expect(result.log).toEqual([])
-  })
-
-  it('starts the gap timer the first day something becomes eligible, without posting a listing that same day', () => {
-    const state = baseState({ reputationTier: WHEELS_T2_REP })
-    const result = rollMachineListings(state, CONTEXT, 5, createRng(1))
-    expect(result.state.machineListing).toBeNull()
-    expect(result.state.nextMachineListingDay).not.toBeNull()
-    expect(result.state.nextMachineListingDay!).toBeGreaterThan(5)
-    expect(result.log).toEqual([])
-  })
-
-  it('posts a listing once the gap day is reached, drawn from an eligible not-yet-owned rung, and logs machine-listed', () => {
-    // At the rung's own reputation floor no shop is eligible yet, so the draw
-    // can only produce a rung.
-    const state = baseState({ reputationTier: WHEELS_T2_REP, nextMachineListingDay: 10 })
-    const result = rollMachineListings(state, CONTEXT, 10, createRng(1))
-    const listing = result.state.machineListing!
-    expect(listing).not.toBeNull()
-    expect(listing.kind).toBe('tool-tier')
-    expect(listing.postedOnDay).toBe(10)
-    expect(result.state.nextMachineListingDay).toBeNull()
-    expect(result.log).toEqual([
-      {
-        type: 'machine-listed',
-        componentId: listing.kind === 'tool-tier' ? listing.componentId : undefined,
-        tier: listing.kind === 'tool-tier' ? listing.tier : undefined,
-        priceYen: listing.priceYen,
-      },
-    ])
-  })
-
-  it('draws shops into the same pool once their reputation floor is met, and logs tool-shop-listed for one', () => {
-    // Every rung already owned, so the pool is shops alone.
-    const state = baseState({
-      reputationTier: WHEELS_SHOP_REP,
-      toolTiers: {
-        engine: 2,
-        drivetrain: 2,
-        suspension: 2,
-        wheels: 2,
-        body: 2,
-        interior: 2,
-      },
-      nextMachineListingDay: 10,
-    })
-    const result = rollMachineListings(state, CONTEXT, 10, createRng(1))
-    const listing = result.state.machineListing!
-    expect(listing.kind).toBe('tool-shop')
-    expect(result.log).toEqual([
-      {
-        type: 'tool-shop-listed',
-        shopId: listing.kind === 'tool-shop' ? listing.shopId : undefined,
-        priceYen: listing.priceYen,
-      },
-    ])
-  })
-
-  it('never lists a shop already owned', () => {
-    const owned = TOOL_SHOPS.map((shop) => shop.id)
-    const state = baseState({
-      reputationTier: WHEELS_SHOP_REP,
-      toolTiers: {
-        engine: 2,
-        drivetrain: 2,
-        suspension: 2,
-        wheels: 2,
-        body: 2,
-        interior: 2,
-      },
-      toolShopsOwned: owned,
-      nextMachineListingDay: 10,
-    })
-    const result = rollMachineListings(state, CONTEXT, 10, createRng(1))
-    expect(result.state.machineListing).toBeNull()
-    expect(result.log).toEqual([])
-  })
-
-  it('does not post early - before the gap day, stays waiting', () => {
-    const state = baseState({ reputationTier: WHEELS_T2_REP, nextMachineListingDay: 10 })
-    const result = rollMachineListings(state, CONTEXT, 9, createRng(1))
-    expect(result.state.machineListing).toBeNull()
-    expect(result.state.nextMachineListingDay).toBe(10)
-  })
-
-  it('lapses an expired live listing and schedules the next gap, never carrying the old listing past its window', () => {
-    const state = baseState({
-      reputationTier: WHEELS_SHOP_REP,
-      machineListing: listedFor('wheels', 2),
-    })
-    const result = rollMachineListings(state, CONTEXT, 10, createRng(1))
-    expect(result.state.machineListing).toBeNull()
-    expect(result.state.nextMachineListingDay).not.toBeNull()
-    expect(result.state.nextMachineListingDay!).toBeGreaterThan(10)
-  })
-
-  it('leaves a still-live (unexpired) listing untouched', () => {
-    const state = baseState({
-      reputationTier: WHEELS_SHOP_REP,
-      machineListing: listedFor('wheels', 2),
-    })
-    const result = rollMachineListings(state, CONTEXT, 5, createRng(1))
-    expect(result.state.machineListing).toEqual(listedFor('wheels', 2))
   })
 })
 
@@ -452,12 +242,8 @@ describe('the reputation gates', () => {
 })
 
 describe('applyToolUpgrades (bots batch path) - sequential, re-checked per call', () => {
-  it('two same-line upgrades the same day apply once when there is cash for one (reputation and a matching listing both already cleared)', () => {
-    const state = baseState({
-      cashYen: WHEELS_T2_PRICE,
-      reputationTier: WHEELS_SHOP_REP,
-      machineListing: listedFor('wheels', 2),
-    })
+  it('two same-line upgrades the same day apply once when there is cash for one (reputation already cleared)', () => {
+    const state = baseState({ cashYen: WHEELS_T2_PRICE, reputationTier: WHEELS_SHOP_REP })
     const result = applyToolUpgrades(
       state,
       [{ componentId: 'wheels' }, { componentId: 'wheels' }],
@@ -481,5 +267,82 @@ describe('applyToolUpgrades (bots batch path) - sequential, re-checked per call'
     const result = applyToolUpgrades(state, [], CONTEXT)
     expect(result.state).toBe(state)
     expect(result.log).toEqual([])
+  })
+})
+
+describe("the day's hire cap (economy.toolHire.maxHiredLinesPerDay)", () => {
+  const ENGINE_FEE = CONTEXT.economy.toolHire.feeYenByGroup.engine
+  const DRIVETRAIN_FEE = CONTEXT.economy.toolHire.feeYenByGroup.drivetrain
+
+  it('hires the first line of the day on cash alone - nothing else hired yet, so the cap is not in play', () => {
+    const state = baseState({ cashYen: ENGINE_FEE })
+    expect(hireMachineLineGateReason(state, 'engine', CONTEXT)).toBeNull()
+    const result = resolveHireToolLine(state, 'engine', CONTEXT)
+    expect(result.outcome).toBe('hired')
+    expect(result.state.cashYen).toBe(0)
+    expect(result.state.machineHirePaidDayByGroup?.engine).toBe(state.day)
+  })
+
+  it("refuses a second, DIFFERENT line the same day once the day's one hire is spent, reason 'hire-cap' - cash cannot fix it", () => {
+    const state = baseState({ cashYen: ENGINE_FEE + DRIVETRAIN_FEE })
+    const afterEngine = resolveHireToolLine(state, 'engine', CONTEXT)
+    expect(afterEngine.outcome).toBe('hired')
+    expect(hireMachineLineGateReason(afterEngine.state, 'drivetrain', CONTEXT)).toBe('hire-cap')
+    const second = resolveHireToolLine(afterEngine.state, 'drivetrain', CONTEXT)
+    expect(second.outcome).toBe('hire-cap')
+    expect(second.state).toBe(afterEngine.state) // refused: no charge, no state change
+  })
+
+  it('re-hiring the SAME line the same day stays a silent success - it never counts against its own cap', () => {
+    const state = baseState({ cashYen: ENGINE_FEE })
+    const first = resolveHireToolLine(state, 'engine', CONTEXT)
+    expect(first.outcome).toBe('hired')
+    expect(hireMachineLineGateReason(first.state, 'engine', CONTEXT)).toBeNull()
+    const second = resolveHireToolLine(first.state, 'engine', CONTEXT)
+    expect(second.outcome).toBe('hired')
+    expect(second.state.cashYen).toBe(first.state.cashYen) // no second charge
+    expect(second.log).toEqual([])
+  })
+})
+
+describe('the lift purchase gates on reputation then cash, the same order and shape as a dyno', () => {
+  const LIFT_PRICE = CONTEXT.economy.lift.purchasePriceYen
+  const LIFT_REP = CONTEXT.economy.lift.minReputationTier
+
+  it('refuses below the reputation floor even with unlimited cash, with no state change', () => {
+    const state = baseState({ cashYen: 999_999_999, reputationTier: 'unknown' })
+    expect(buyLiftGateReason(state, CONTEXT)).toBe('reputation')
+    const result = resolveBuyLift(state, CONTEXT)
+    expect(result.applied).toBe(false)
+    expect(result.state).toBe(state)
+  })
+
+  it('refuses when unaffordable, reputation already cleared, with no state change', () => {
+    const state = baseState({ cashYen: LIFT_PRICE - 1, reputationTier: LIFT_REP })
+    expect(buyLiftGateReason(state, CONTEXT)).toBe('no-cash')
+    const result = resolveBuyLift(state, CONTEXT)
+    expect(result.applied).toBe(false)
+    expect(result.state).toBe(state)
+  })
+
+  it('buys the lift on reputation and cash alone, deducting the price and marking it owned', () => {
+    const state = baseState({ cashYen: LIFT_PRICE, reputationTier: LIFT_REP })
+    expect(buyLiftGateReason(state, CONTEXT)).toBeNull()
+    const result = resolveBuyLift(state, CONTEXT)
+    expect(result.applied).toBe(true)
+    expect(result.state.cashYen).toBe(0)
+    expect(result.state.lift.owned).toBe(true)
+  })
+
+  it('is a silent no-op once already owned, whatever cash or reputation says', () => {
+    const state = baseState({
+      cashYen: 999_999_999,
+      reputationTier: LIFT_REP,
+      lift: { owned: true, hirePaidDay: null },
+    })
+    expect(buyLiftGateReason(state, CONTEXT)).toBe('already-owned')
+    const result = resolveBuyLift(state, CONTEXT)
+    expect(result.applied).toBe(false)
+    expect(result.state).toBe(state)
   })
 })

@@ -94,8 +94,6 @@ export function createInitialGameState(
     cartPartIds: [],
     carLedgers: {},
     financeLedger: {},
-    machineListing: null,
-    nextMachineListingDay: null,
     serviceJobLedgers: {},
     inspectionVisit: null,
     workbenchPartId: null,

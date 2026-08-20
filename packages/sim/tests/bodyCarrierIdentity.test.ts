@@ -33,7 +33,7 @@ import {
   findOrCreateJob,
   hasMachineLineFor,
   installFitGate,
-  resolveHireMachineLine,
+  resolveHireToolLine,
   resolveRemovePart,
 } from '../src/jobs'
 import { makeMarketOrigin } from '../src/provenance'
@@ -139,8 +139,6 @@ function stateWith(car: CarInstance, inventory: PartInstance[]): GameState {
     marketLedger: { lotSupply: {}, playerSales: {} },
     carLedgers: {},
     toolShopsOwned: testToolShopsOwned('body'),
-    machineListing: null,
-    nextMachineListingDay: null,
     serviceJobLedgers: {},
     inspectionVisit: null,
     workbenchPartId: null,
@@ -309,20 +307,19 @@ describe('a resprayed car stays resprayed while the shell around it is dented', 
 
 /**
  * `chassis` is a normal per-part carrier, not zone-derived, but it shares
- * `bodywork`'s `removable: false` status and its group's signature-slot
- * machine gate: fitting a stiffening kit is an install like any other, priced
- * at the machine-less labour rate without the body line and at base labour
- * with it - the same `machineLaborMultiplier` mechanism every gated slot
- * uses, reused rather than a second gate built for this one slot.
+ * `bodywork`'s `removable: false` status: fitting a stiffening kit is an
+ * install like any other. It is a `surface` slot, so `accessRoute` reads
+ * `open` - no rig stands between the fitter and the work - and the install is
+ * sized at base labour whatever the body line's state. Owning or hiring the
+ * line changes nothing here, which is what the three cases below pin.
  */
-describe('the chassis stiffening kits price against the body line', () => {
-  it('installs by hand without the body line, sized at the machine-less labour rate on job creation', () => {
+describe('the chassis stiffening kits install as ordinary surface work', () => {
+  it('installs at base labour without the body line, because a surface slot needs no rig', () => {
     const car = carOnZoneModel()
     const state = stateWith(car, [])
     const gated: GameState = { ...state, toolTiers: testToolTiers(), toolShopsOwned: [] } // body tier 1, nothing hired
     const kit = kitInstance(CHASSIS_KIT)
     const withKit: GameState = { ...gated, partInventory: [kit] }
-    const multiplier = CONTEXT.economy.machineShopAssist.machinelessLaborMultiplier
     const spec = {
       carInstanceId: car.id,
       kind: 'install-part' as const,
@@ -333,11 +330,9 @@ describe('the chassis stiffening kits price against the body line', () => {
     }
     const gate = installFitGate(withKit, spec, CONTEXT)
     expect(gate.ok).toBe(true)
-    // The machine gate is a rate at creation, never a completion wall: the
-    // job is created at multiplied labour and completes normally.
     const created = findOrCreateJob(withKit, spec, CONTEXT)
     expect(created.job).not.toBeNull()
-    expect(created.job!.laborSlotsRequired).toBe(spec.laborSlotsRequired * multiplier)
+    expect(created.job!.laborSlotsRequired).toBe(spec.laborSlotsRequired)
     const result = completeJob(created.state, created.job!, CONTEXT)
     expect(result.blockedReason).toBeNull()
     expect(result.state.ownedCars[0]!.parts.chassis.installed?.partId).toBe(CHASSIS_KIT.id)
@@ -347,7 +342,7 @@ describe('the chassis stiffening kits price against the body line', () => {
     const car = carOnZoneModel()
     const state = stateWith(car, [])
     const untiered: GameState = { ...state, toolTiers: testToolTiers(), toolShopsOwned: [] }
-    const hired = resolveHireMachineLine(untiered, 'body', CONTEXT)
+    const hired = resolveHireToolLine(untiered, 'body', CONTEXT)
     expect(hasMachineLineFor('body', hired.state, CONTEXT)).toBe(true)
     const fitted = fitThroughJob(car, CHASSIS_KIT, hired.state)
     expect(fitted.parts.chassis.installed?.partId).toBe(CHASSIS_KIT.id)

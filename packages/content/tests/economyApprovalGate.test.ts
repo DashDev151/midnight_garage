@@ -2760,6 +2760,22 @@ import workbench from '../data/workbench.json'
  * hashes hold, and no mission payout or budget cap moves: the live hire path still reads
  * `machineShopAssist`, whose fees are unchanged, and no mission probe reads a tool-line or
  * shop price into its build cost.
+ *
+ * Re-pinned 2026-08-20 for sprint226.md task 5 (the tyre gate), under the same
+ * behaviour-first governance amendment: the value is Claude's own choice, stated here by
+ * felt behaviour and recorded in docs/sprints/repair-refactor-lever-ledger.md (R1, the
+ * Energy table), validated by playtest rather than pre-ratified. Exactly one value moves.
+ *
+ * `economy.energy.actionPoints.benchFitMember` 0 -> 2. Felt behaviour: fitting a tyre is
+ * finally work - two points on the machine, six by hand with levers, since the wheels gate
+ * slogs at x3 when the line is neither owned to tier 2 nor hired for the day. At 0 the gate
+ * was decorative: it named a machine and then charged nothing either way, so mounting a set
+ * of rubber by hand cost the same nothing as mounting it on the balancer.
+ *
+ * Nothing else moves. `toolLines.json`, `toolShops.json`, `workbench.json`,
+ * `partPricing.json` and `damagePatterns.json` are all untouched, so their five hashes hold
+ * unchanged, and no mission payout or budget cap moves: `benchFitMember` is labour, and a
+ * payout derives from build cost rather than from labour.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -2769,7 +2785,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('84de5a0884ee4523613b714b6075ad48a8e897b9854ffd709c0aef04d1a85a5f')
+    ).toBe('75050c706b5e74155426f177f19e98e4c30cce705fe43c51abbce1dd7239d62e')
   })
 
   it('damagePatterns.json matches its approved content exactly', () => {

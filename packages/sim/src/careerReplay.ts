@@ -44,7 +44,7 @@ import {
   findWorkableCar,
   installLaborSlotsFor,
   refitLaborSlotsFor,
-  resolveHireMachineLine,
+  resolveHireToolLine,
   resolveJobLabor,
   resolveReconditionLabor,
   resolveRemovePart,
@@ -69,7 +69,7 @@ import {
   resolveSellPart,
   resolveTakeFromStation,
 } from './parts'
-import { resolveRepairStep, type RepairTarget } from './repairJobs'
+import { resolveBuyLift, resolveHireLift, resolveRepairStep, type RepairTarget } from './repairJobs'
 import { resolveAcceptSceneCommission, resolveDeliverSceneCommission } from './sceneCommissions'
 import { resolveDismissStaff, resolveHireStaff, resolveReassignStaff } from './staff'
 import {
@@ -238,7 +238,15 @@ function applySessionEvent(
       return { state: result.state, log: result.log }
     }
     case 'hireMachineLine': {
-      const result = resolveHireMachineLine(state, event.payload.group, context)
+      const result = resolveHireToolLine(state, event.payload.group, context)
+      return { state: result.state, log: result.log }
+    }
+    case 'lift-bought': {
+      const result = resolveBuyLift(state, context)
+      return { state: result.state, log: result.log }
+    }
+    case 'lift-hired': {
+      const result = resolveHireLift(state, context)
       return { state: result.state, log: result.log }
     }
     case 'attendAuction': {

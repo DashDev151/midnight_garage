@@ -69,11 +69,13 @@ const SAMPLES: DayLogEntry[] = [
     partsCostYen: 0,
     netProfitYen: -5_000,
   },
-  // Kept for old-log decode compatibility.
+  // `tire-machine` is a stale equipmentId, kept only so this covers old-log
+  // decode; `equipment-purchased` is live again for the two-post lift (its
+  // own case is below, under `describeLogEntry`).
   { type: 'equipment-purchased', equipmentId: 'tire-machine', priceYen: 250_000 },
   { type: 'tool-upgraded', componentId: 'wheels', toTier: 2, priceYen: 150_000 },
-  { type: 'machine-listed', componentId: 'wheels', tier: 2, priceYen: 150_000 },
   { type: 'machine-hired', componentId: 'body', priceYen: 14_000 },
+  { type: 'lift-hired', priceYen: 5_000 },
   { type: 'mission-accepted', missionId: 'test-mission-a' },
   {
     type: 'mission-delivered',
@@ -268,14 +270,27 @@ describe('describeLogEntry', () => {
     expect(line).not.toContain('wheels')
   })
 
-  it('a fresh classifieds listing reads as the named tier and its price', () => {
+  it('buying the two-post lift reads as its own name, not a raw equipment id', () => {
     const line = describeLogEntry({
-      type: 'machine-listed',
-      componentId: 'wheels',
-      tier: 2,
-      priceYen: 150_000,
+      type: 'equipment-purchased',
+      equipmentId: 'lift',
+      priceYen: 400_000,
     })
-    expect(line).toBe('Classifieds: Tyre machine & balancer listed, ¥150,000')
+    expect(line).toBe('Bought the two-post lift (¥400,000)')
+  })
+
+  it('hiring the two-post lift for the day reads as the exact authored copy', () => {
+    const line = describeLogEntry({ type: 'lift-hired', priceYen: 5_000 })
+    expect(line).toBe('Hired the two-post lift for the day (¥5,000)')
+  })
+
+  it('any other equipment id still reads through the generic phrasing', () => {
+    const line = describeLogEntry({
+      type: 'equipment-purchased',
+      equipmentId: 'tire-machine',
+      priceYen: 250_000,
+    })
+    expect(line).toBe('Bought equipment tire-machine for ¥250,000')
   })
 
   it('a machine hire reads as the real machinery name and its daily price - the exact authored copy', () => {

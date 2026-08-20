@@ -121,46 +121,12 @@ export type ServiceJobLedger = z.infer<typeof ServiceJobLedgerSchema>
 export type CarLedger = z.infer<typeof CarLedgerSchema>
 
 /**
- * The one live used-machinery classified listing, if any - reputation gates
- * which rungs and shops are ELIGIBLE, but only a listing for this exact thing
- * makes it actually PURCHASABLE (`applyToolUpgrade`/`applyToolShopPurchase`,
- * toolLines.ts). `priceYen` is captured at listing time (the rung's or shop's
- * own `upgradePriceYen`, which never changes mid-career, but locking it here
- * keeps the listing self-contained). At most one live at a time by
- * construction (`GameState.machineListing` is a single nullable field, never
- * a list).
- *
- * Two things can be advertised, because the ladder has two kinds of purchase
- * on it: a line's own rung, and a whole shop covering several lines at level
- * 3. One listing mechanic serves both.
- */
-export const MachineListingSchema = z.discriminatedUnion('kind', [
-  z.object({
-    kind: z.literal('tool-tier'),
-    componentId: ComponentIdSchema,
-    tier: ToolTierSchema,
-    priceYen: z.number().int().nonnegative(),
-    postedOnDay: z.number().int().positive(),
-    expiresOnDay: z.number().int().positive(),
-  }),
-  z.object({
-    kind: z.literal('tool-shop'),
-    shopId: z.string().min(1),
-    priceYen: z.number().int().nonnegative(),
-    postedOnDay: z.number().int().positive(),
-    expiresOnDay: z.number().int().positive(),
-  }),
-])
-
-export type MachineListing = z.infer<typeof MachineListingSchema>
-
-/**
  * An active yard inspection visit, at one auction tier -
  * `beginInspectionVisit` (`diagnosis.ts`) stamps this once the 1-slot cost +
  * tiered `travelFeeYenByTier` fee are both paid; `runDiagnosticTest`
  * decrements `minutesLeft` per test run. At most one live at a time
- * (`GameState.inspectionVisit` is a single nullable field, mirroring
- * `MachineListingSchema`'s own "one live at a time" shape above).
+ * (`GameState.inspectionVisit` is a single nullable field, the same shape
+ * several other GameState fields share).
  */
 export const InspectionVisitSchema = z.object({
   tier: AuctionTierSchema,
@@ -262,7 +228,7 @@ export type AssemblyContainer = z.infer<typeof AssemblyContainerSchema>
  *
  * `sessionCarId` is the car currently strapped to the rollers, or `null` when
  * the dyno is empty - at most one at a time by construction, the same single
- * nullable field `machineListing` and `inspectionVisit` use. Its reading is
+ * nullable field `inspectionVisit` and `workbenchPartId` use. Its reading is
  * derived live from that car's current build rather than frozen, which is
  * exactly right for a car sitting on the rollers: change something and the
  * numbers change with it. `advanceDay` clears it at the day boundary, so a
@@ -606,18 +572,6 @@ export const GameStateSchema = z.object({
    * (`createInitialGameState`).
    */
   financeLedger: z.record(z.string(), FinanceWeekSchema).optional(),
-  /** The current classifieds listing, if any - `null` is the common case
-   * (nothing on offer right now). */
-  machineListing: MachineListingSchema.nullable().default(null),
-  /**
-   * The day the NEXT listing is due to roll (`rollMachineListings`,
-   * toolLines.ts) - `null` while a listing is live (nothing to schedule
-   * yet) or before anything has ever become tier-eligible (the gap timer
-   * only starts once there's a real candidate, so reaching a reputation
-   * milestone never instantly cashes in a silently-elapsed wait). Purely
-   * additive.
-   */
-  nextMachineListingDay: z.number().int().positive().nullable().default(null),
   /**
    * Per-active-service-job spend record, keyed by job id - created lazily by
    * the two charge sites (a customer-car repair charge, an install
@@ -644,8 +598,8 @@ export const GameStateSchema = z.object({
    * taking it back are free and instant, so this holds no fee and no day
    * stamp; a part that leaves inventory for any reason clears the station it
    * was on (`reconcileStations`, sim/parts.ts). At most one live at a time by
-   * construction, the same single nullable field `machineListing` and
-   * `inspectionVisit` above use.
+   * construction, the same single nullable field `inspectionVisit` above
+   * uses.
    */
   workbenchPartId: z.string().min(1).nullable().default(null),
   /**
@@ -1340,19 +1294,6 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     shopId: z.string().min(1),
     priceYen: z.number().int().nonnegative(),
   }),
-  /** A fresh used-machinery classified listing went live today. */
-  z.object({
-    type: z.literal('machine-listed'),
-    componentId: ComponentIdSchema,
-    tier: ToolTierSchema,
-    priceYen: z.number().int().nonnegative(),
-  }),
-  /** Today's classifieds advertised a whole shop rather than a single rung. */
-  z.object({
-    type: z.literal('tool-shop-listed'),
-    shopId: z.string().min(1),
-    priceYen: z.number().int().nonnegative(),
-  }),
   /** A machine group's daily hire fee was paid (`resolveHireMachineLine`,
    * sim/jobs.ts) - a running cost, same treatment as rent: it never touches
    * a car's own ledger. */
@@ -1372,6 +1313,16 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
    * investment, the same bucket a tool tier or a bay lands in. */
   z.object({
     type: z.literal('dyno-bought'),
+    priceYen: z.number().int().nonnegative(),
+  }),
+  /** The two-post lift was hired in for the day (`resolveHireLift`, sim/
+   * repairJobs.ts) - a running cost, treated exactly as a machine line's hire
+   * and a dyno's hire are, and never posted to a car: one day's lift takes
+   * four cars off the floor. The lift's PURCHASE has no entry of its own; it
+   * books through `equipment-purchased` under the id `lift`, since the lift is
+   * a bay fixture rather than a per-group line. */
+  z.object({
+    type: z.literal('lift-hired'),
     priceYen: z.number().int().nonnegative(),
   }),
   /** A coffee round was bought at the cafe (`resolveBuyCoffee`, sim/cafe.ts) -

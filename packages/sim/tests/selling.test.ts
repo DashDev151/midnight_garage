@@ -18,7 +18,7 @@ import {
 import { describe, expect, it } from 'vitest'
 import { interestedBuyers } from '../src/bidding'
 import { buildSimContext } from '../src/context'
-import { resolveHireMachineLine } from '../src/jobs'
+import { resolveHireToolLine } from '../src/jobs'
 import { isSlotVerified, seedVerifiedSlots } from '../src/knowledge'
 import { bumpPlayerSales, updateMarketHeat } from '../src/marketHeat'
 import { marketValueYen } from '../src/marketValue'
@@ -272,8 +272,6 @@ function stateWithCar(car: CarInstance, overrides: Partial<GameState> = {}): Gam
     marketLedger: { lotSupply: {}, playerSales: {} },
     carLedgers: {},
     toolShopsOwned: [],
-    machineListing: null,
-    nextMachineListingDay: null,
     serviceJobLedgers: {},
     inspectionVisit: null,
     workbenchPartId: null,
@@ -714,11 +712,11 @@ describe('listing fees land on the car ledger (sprint150.md)', () => {
   /**
    * The other half of the same ruling, asserted so it cannot drift: a day's
    * machine-shop hire can pull four engines, so it belongs to no single car.
-   * `resolveHireMachineLine` charges the day and must never touch a ledger.
+   * `resolveHireToolLine` charges the day and must never touch a ledger.
    */
   it('machine-shop hire never appears on any car ledger', () => {
     const state = stateWithCar(car, { cashYen: 1_000_000 })
-    const hired = resolveHireMachineLine(state, 'engine', CONTEXT)
+    const hired = resolveHireToolLine(state, 'engine', CONTEXT)
     expect(hired.state.cashYen).toBeLessThan(state.cashYen) // a real charge landed
     expect(hired.state.carLedgers).toEqual({})
     expect(hired.log.some((e) => e.type === 'machine-hired')).toBe(true)
