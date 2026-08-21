@@ -412,4 +412,80 @@ describe('WarehouseDrawer', () => {
       expect(wrapper.get('[data-test="warehouse-visible-count"]').text()).toContain('0/0')
     })
   })
+
+  describe('the bench-fit tyre caption (sprint230 task 4)', () => {
+    it('shows the locked triple-labour caption when picking for a benched member and the wheels line is neither owned nor hired', async () => {
+      const game = useGameStore()
+      const ui = useUiStore()
+      game.devGrantCar(CARS[0]!.id)
+      const carId = game.gameState.ownedCars[0]!.id
+
+      const wrapper = mountDrawer()
+      ui.openWarehouse({
+        kind: 'part',
+        carId,
+        carPartId: 'tyres',
+        benchContainerId: 'wheelAssembly-0',
+      })
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.get('[data-test="bench-machine-note"]').text()).toBe(
+        'By hand with levers: triple the labour.',
+      )
+    })
+
+    it('the caption disappears once the wheels line is hired for the day', async () => {
+      const game = useGameStore()
+      const ui = useUiStore()
+      game.devGrantCar(CARS[0]!.id)
+      const carId = game.gameState.ownedCars[0]!.id
+
+      const wrapper = mountDrawer()
+      ui.openWarehouse({
+        kind: 'part',
+        carId,
+        carPartId: 'tyres',
+        benchContainerId: 'wheelAssembly-0',
+      })
+      await wrapper.vm.$nextTick()
+      expect(wrapper.find('[data-test="bench-machine-note"]').exists()).toBe(true)
+
+      game.hireToolLine('wheels')
+      await wrapper.vm.$nextTick()
+      expect(wrapper.find('[data-test="bench-machine-note"]').exists()).toBe(false)
+    })
+
+    it('the caption disappears once the wheels line is owned outright', async () => {
+      const game = useGameStore()
+      const ui = useUiStore()
+      game.devGrantCar(CARS[0]!.id)
+      const carId = game.gameState.ownedCars[0]!.id
+
+      const wrapper = mountDrawer()
+      ui.openWarehouse({
+        kind: 'part',
+        carId,
+        carPartId: 'tyres',
+        benchContainerId: 'wheelAssembly-0',
+      })
+      await wrapper.vm.$nextTick()
+
+      game.devSetToolTier('wheels', 2)
+      await wrapper.vm.$nextTick()
+      expect(wrapper.find('[data-test="bench-machine-note"]').exists()).toBe(false)
+    })
+
+    it('never shows the caption for a plain on-car fit slot (no benchContainerId), even with the line neither owned nor hired', async () => {
+      const game = useGameStore()
+      const ui = useUiStore()
+      game.devGrantCar(CARS[0]!.id)
+      const carId = game.gameState.ownedCars[0]!.id
+
+      const wrapper = mountDrawer()
+      ui.openWarehouse({ kind: 'part', carId, carPartId: 'tyres' })
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.find('[data-test="bench-machine-note"]').exists()).toBe(false)
+    })
+  })
 })

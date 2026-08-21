@@ -1,4 +1,10 @@
-import type { CarPartId, CashBucket, ComponentId, DayLogEntry } from '@midnight-garage/content'
+import type {
+  CarPartId,
+  CashBucket,
+  ComponentId,
+  DayLogEntry,
+  RepairJobKind,
+} from '@midnight-garage/content'
 import {
   COMPONENT_DISPLAY_NAMES,
   CONSUMABLE_TINS,
@@ -32,6 +38,34 @@ const CAR_PART_LABELS = new Map(PARTS_TAXONOMY.map((entry) => [entry.id, entry.d
 
 function carPartLabel(carPartId: CarPartId): string {
   return CAR_PART_LABELS.get(carPartId) ?? carPartId
+}
+
+/** A repair job kind's past-tense verb for the `repair-job-completed`
+ * line ("Serviced"/"Rebuilt"/"Restored") - irregular, so it is a lookup
+ * rather than a suffix rule. */
+const REPAIR_JOB_COMPLETED_VERB: Record<RepairJobKind, string> = {
+  service: 'Serviced',
+  rebuild: 'Rebuilt',
+  restore: 'Restored',
+}
+
+/**
+ * One `repair-step` line, shared by `describeLogEntry` (a single step, for
+ * the raw event log) and `classifyDayReport`'s aggregation (`steps` worked
+ * that day on this car+part+kind, folded to one line the same way
+ * `body-materials-used` folds a day's material draws). Loose parts (no
+ * `carInstanceId`) render the part label alone, exactly as the design locks.
+ */
+function repairStepLine(
+  carPartId: CarPartId,
+  jobKind: RepairJobKind,
+  steps: number,
+  carInstanceId?: string,
+): string {
+  const subject = carInstanceId
+    ? `${carPartLabel(carPartId)}, ${carInstanceId}`
+    : carPartLabel(carPartId)
+  return `${subject}: ${pluralise(steps, 'step')} of the ${jobKind}`
 }
 
 /** Machining operation id -> the name the shop calls that job; internal ids
@@ -235,6 +269,12 @@ export function describeLogEntry(
       return `Sold a part for ${formatYen(entry.priceYen)}`
     case 'part-reconditioned':
       return `Reconditioned a part to ${entry.band}`
+    case 'repair-step':
+      return repairStepLine(entry.carPartId, entry.jobKind, 1, entry.carInstanceId)
+    case 'repair-job-completed': {
+      const base = `${REPAIR_JOB_COMPLETED_VERB[entry.jobKind]} the ${carPartLabel(entry.carPartId)} to ${entry.targetBand}`
+      return entry.carInstanceId ? `${base}, ${entry.carInstanceId}` : base
+    }
     case 'part-machined':
       return `${machiningOperationLabel(entry.machiningOperationId)} finished on the ${entry.carPartId}`
     case 'part-removed': {
@@ -405,6 +445,15 @@ export function classifyDayReport(
   // line whatever the panel count (the whole-car respray's own zoneless
   // entry folds into the same total, per car).
   const bodyMaterialsByCarId = new Map<string, { totalYen: number; jobs: number }>()
+  // A bench day works many small steps on the same part - `describeLogEntry`
+  // reads each step as its own honest sentence for the raw event log, but a
+  // dozen of those in one report would bury the day in step-by-step trivia.
+  // Summed per car+part+kind here instead, one line whatever the step count
+  // (the same idiom `bodyMaterialsByCarId` above uses for material draws).
+  const repairStepsByKey = new Map<
+    string,
+    { carInstanceId?: string; carPartId: CarPartId; jobKind: RepairJobKind; steps: number }
+  >()
 
   for (const entry of entries) {
     // Every yen is classified once, by the shared law - so a movement the
@@ -450,6 +499,21 @@ export function classifyDayReport(
         bodyMaterialsByCarId.set(entry.carInstanceId, agg)
         break
       }
+      case 'repair-step': {
+        // Exactly one of carInstanceId/partInstanceId is set (the job's own
+        // installed/loose split); the loose identity keys the group so two
+        // different loose parts of the same slot never merge into one line.
+        const key = `${entry.carInstanceId ?? entry.partInstanceId}:${entry.carPartId}:${entry.jobKind}`
+        const agg = repairStepsByKey.get(key) ?? {
+          carInstanceId: entry.carInstanceId,
+          carPartId: entry.carPartId,
+          jobKind: entry.jobKind,
+          steps: 0,
+        }
+        agg.steps += 1
+        repairStepsByKey.set(key, agg)
+        break
+      }
       default:
         if (!MONEY_ONLY_TYPES.has(entry.type) && !NOISE_TYPES.has(entry.type)) {
           rest.push(describeLogEntry(entry, resolveModelName, resolveBuyerName))
@@ -464,6 +528,12 @@ export function classifyDayReport(
     rest.push(
       `Body shop materials, ${carInstanceId}: ${formatYen(agg.totalYen)} (${pluralise(agg.jobs, 'job')})`,
     )
+  }
+
+  // One line per car+part+kind, whatever the step count - the aggregate this
+  // map exists to produce (see its own comment above).
+  for (const agg of repairStepsByKey.values()) {
+    rest.push(repairStepLine(agg.carPartId, agg.jobKind, agg.steps, agg.carInstanceId))
   }
 
   const noise: string[] = []

@@ -21,7 +21,7 @@ import { SceneCommissionSchema } from './sceneCommission'
 import { ServiceJobSchema } from './serviceJob'
 import { BayKindSchema, SlotKindSchema } from './facilities'
 import { VenueNameByTierSchema } from './venueNames'
-import { BenchIdSchema } from './workbench'
+import { BenchIdSchema, RepairJobKindSchema } from './workbench'
 
 /**
  * The two exponentially-decayed counters `marketHeat.ts`'s weekly
@@ -1184,6 +1184,33 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     type: z.literal('part-reconditioned'),
     partInstanceId: z.string().min(1),
     band: ConditionBandSchema,
+  }),
+  /** One step of a job-card repair worked (`resolveRepairStep`,
+   * sim/repairJobs.ts) - emitted once per step, so a day of bench work
+   * never spams the log one line per step. `classifyDayReport` aggregates
+   * these per car+part+kind into a single count line, the same idiom
+   * `body-materials-used` already established below. `carInstanceId`/
+   * `partInstanceId` mirror the job's own installed/loose target split, so
+   * exactly one of the two is present. */
+  z.object({
+    type: z.literal('repair-step'),
+    carInstanceId: z.string().min(1).optional(),
+    partInstanceId: z.string().min(1).optional(),
+    carPartId: CarPartIdSchema,
+    jobKind: RepairJobKindSchema,
+  }),
+  /** A job-card repair's last step landed - the band write already happened
+   * in the sim; this is its completion line ("Serviced the sump to worn").
+   * Same installed/loose split as `repair-step` above, and the eventual
+   * replacement for `part-reconditioned`'s completion line once the old
+   * bench recondition path is retired. */
+  z.object({
+    type: z.literal('repair-job-completed'),
+    carInstanceId: z.string().min(1).optional(),
+    partInstanceId: z.string().min(1).optional(),
+    carPartId: CarPartIdSchema,
+    jobKind: RepairJobKindSchema,
+    targetBand: ConditionBandSchema,
   }),
   /** One machining operation finished on the loose part that was on the
    * machine. The operation is now on that `PartInstance` for good and travels

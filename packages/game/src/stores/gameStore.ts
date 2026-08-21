@@ -191,6 +191,8 @@ import {
   reconditionQuote,
   repairCeilingForLevel,
   repairJobCards,
+  energyPlanFor,
+  REPAIR_JOB_KINDS,
   expressPriceYen,
   fullyVerifiedCar,
   isSlotVerified,
@@ -343,6 +345,10 @@ function randomSeed(): number {
   return Math.floor(Math.random() * 2_147_483_647)
 }
 
+/** The three repair-job kinds, for telling a repair job apart from the older
+ * job kinds that share `state.jobs` with it. */
+const REPAIR_JOB_KIND_SET: ReadonlySet<string> = new Set(REPAIR_JOB_KINDS)
+
 /** The 6 real component groups, in a stable display order - shared by every
  * group-level and per-part view builder below so the order
  * lives in exactly one place. */
@@ -427,7 +433,12 @@ export interface DetailedCar {
 
 /** Everything the car-detail screen needs for one car. */
 export interface CarDetail extends DetailedCar {
-  /** Jobs currently in progress on this car - created and labored on instantly. */
+  /**
+   * Jobs currently in progress on this car - created and labored on
+   * instantly. A repair job (service / rebuild / restore) is not one of
+   * them: it is worked a step at a time off its own job card, and neither
+   * the per-part Continue control nor the work list speaks for it.
+   */
   jobs: Job[]
   /** Set when this car belongs to a service job the player is working. */
   serviceJob?: ServiceJobView
@@ -2382,7 +2393,9 @@ export const useGameStore = defineStore('game', () => {
     const knowledgeCar = knowledgeViewOf(car, model, context.value)
     return {
       ...detailFor(car),
-      jobs: gameState.value.jobs.filter((j) => j.carInstanceId === carId),
+      jobs: gameState.value.jobs.filter(
+        (j) => j.carInstanceId === carId && !REPAIR_JOB_KIND_SET.has(j.kind),
+      ),
       serviceJob: serviceJob ? serviceJobViewFor(serviceJob) : undefined,
       inServiceBay: gameState.value.serviceBayCarIds.includes(carId),
       groupBands: groupBandsForCar(car, model),
@@ -3384,6 +3397,56 @@ export const useGameStore = defineStore('game', () => {
     gameState.value = result.state
     for (const event of result.log) logSessionEvent(event)
     return result.outcome
+  }
+
+  /**
+   * The three job cards for one slot on a car, exactly as the sim prices and
+   * routes them. Empty when there is no job worth offering at all: a part no
+   * repair can touch, and one already at or above every job's own target.
+   *
+   * A card is still carried when the job cannot be worked HERE - a Rebuild on
+   * a part that has to come off first says so and still names its price, which
+   * is the whole point of a price list.
+   */
+  function carPartJobCards(carId: string, carPartId: CarPartId): RepairJobCard[] {
+    const cards = repairJobCards(gameState.value, context.value, {
+      kind: 'installed',
+      carInstanceId: carId,
+      carPartId,
+    })
+    const worthOffering = cards.some(
+      (card) => card.offered || card.refusal === 'needs-bench' || card.refusal === 'needs-shop',
+    )
+    return worthOffering ? cards : []
+  }
+
+  /** What each step of one job on one target costs right now, in step order -
+   * the sim's own plan, which already carries the slog multiplier, the crew
+   * and the lift. The step a job is on is the plan's `stepsDone` entry. */
+  function repairEnergyPlan(target: RepairTarget, kind: RepairJobKind): number[] {
+    return energyPlanFor(gameState.value, context.value, target, kind)
+  }
+
+  /** The shop that covers a line, by name - the one thing a job card names
+   * rather than prices. */
+  function toolShopNameForGroup(group: ComponentId): string {
+    return context.value.toolShopByGroup[group].displayName
+  }
+
+  /**
+   * The caption the Take-it-off control carries when the slot is buried and
+   * its rig is on today's hire rather than owned: the part comes off at the
+   * hired rate now, and putting it back will want that day again. `''` on
+   * every other route - an owned rig is there tomorrow too, and a slog is
+   * already covered by the triple-labour note beside it.
+   */
+  function refitWarningFor(carId: string, carPartId: CarPartId): string {
+    if (!findWorkableCar(carId)) return ''
+    const entry = context.value.partsTaxonomyById[carPartId]
+    if (!entry) return ''
+    return accessRoute(gameState.value, context.value, entry).route === 'hired'
+      ? `Refitting will need the ${MACHINE_LINE_NAMES[entry.group]} again.`
+      : ''
   }
 
   /** The live auction room's fuse-length preset, persisted across careers -
@@ -4821,19 +4884,17 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * The machine-labour disclosure fitting a part into `carPartId`'s bench
-   * slot carries right now (only ever the wheels line, for the `tyres`
-   * member), or `''` when nothing gates it (or the machine is already
-   * owned/hired). Shared by `benchContainersFor`'s own caption and
-   * the Warehouse's bench-fit mode, so both read the same figure.
-   * A bench fit is never refused for want of the machine, only
-   * slower by hand.
+   * The note fitting a part into `carPartId`'s bench slot carries right now
+   * (only ever the wheels line, for the `tyres` member), or `''` when nothing
+   * gates it, or the line is owned or hired for the day. Shared by
+   * `benchContainersFor`'s own caption and the Warehouse's bench-fit mode, so
+   * both say the same thing. A bench fit is never refused for want of the
+   * machine, only slower by hand.
    */
   function benchFitMachineNoteFor(carPartId: CarPartId): string {
     const group = machineGateGroupFor(carPartId, 'bench-fit', context.value)
-    return machineLaborDisclosureText(
-      machineLaborDisclosureFor(group, context.value.economy.energy.actionPoints.benchFitMember),
-    )
+    if (!group || hasMachineLineFor(group, gameState.value, context.value)) return ''
+    return 'By hand with levers: triple the labour.'
   }
 
   /** Every assembly container currently on the bench for one car, each with its
@@ -6075,6 +6136,10 @@ export const useGameStore = defineStore('game', () => {
     placeOnBench,
     takeOffBench,
     runRepairStep,
+    carPartJobCards,
+    repairEnergyPlan,
+    toolShopNameForGroup,
+    refitWarningFor,
     serviceBaysView,
     parkingView,
     parkingCapacity,

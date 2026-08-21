@@ -211,6 +211,38 @@ describe('BenchScreen', () => {
     expect(wrapper.get('[data-test="bench-job-service"]').classes()).not.toContain('job-tab-on')
   })
 
+  it('the job card panel above the tabs carries the all-in cost and route figures, and the tabs still just select (sprint230 task 1)', async () => {
+    const game = useGameStore()
+    const id = loosePart(game, BLOCK_PART.id, 'poor')
+    game.placeOnBench(id)
+    const { wrapper } = await mountAt('engine-bench')
+    await wrapper.get(`[data-test="bench-part-${id}"]`).trigger('click')
+
+    // Every job kind gets its own price-list row, whichever tab is current -
+    // the panel is the price list for all three, not a display for the one
+    // selected.
+    expect(wrapper.findAll('.job-card')).toHaveLength(3)
+
+    const serviceCard = game
+      .benchView('engine-bench')!
+      .surface.find((p) => p.instanceId === id)!
+      .cards.find((c) => c.kind === 'service')!
+    const energy = serviceCard.energyPoints + serviceCard.removalEnergyPoints
+    const yen = serviceCard.partsYen + (serviceCard.hireFeeYen ?? 0)
+    expect(wrapper.get('[data-test="job-card-cost-service"]').text()).toBe(
+      `${energy} energy · ${formatYen(yen)}`,
+    )
+    // Service, all tier 1, everything owned at a fresh start.
+    expect(wrapper.get('[data-test="job-card-route-service"]').text()).toBe('own')
+
+    // The tabs remain the selector: clicking Rebuild still swaps the current
+    // step and the strip, and the panel above keeps listing all three jobs
+    // unfiltered.
+    await wrapper.get('[data-test="bench-job-rebuild"]').trigger('click')
+    expect(wrapper.get('[data-test="bench-job-rebuild"]').classes()).toContain('job-tab-on')
+    expect(wrapper.findAll('.job-card')).toHaveLength(3)
+  })
+
   it('clicking the glowing tool advances the step and the strip ticks', async () => {
     const game = useGameStore()
     const id = loosePart(game, BLOCK_PART.id, 'poor')

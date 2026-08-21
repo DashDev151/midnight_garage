@@ -1,5 +1,5 @@
 import type { DayLogEntry } from '@midnight-garage/content'
-import { PARTS, TOOL_LINES } from '@midnight-garage/content'
+import { PARTS, PARTS_TAXONOMY, TOOL_LINES } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { classifyDayReport, describeLogEntry } from './dayLogFormat'
 
@@ -336,6 +336,41 @@ describe('describeLogEntry', () => {
     expect(bought).toContain(part.brand)
     expect(bought).not.toContain(part.id)
   })
+
+  it('the three repair-job-completed lines read as the locked copy, car appended only for an installed target', () => {
+    const intakeLabel = PARTS_TAXONOMY.find((entry) => entry.id === 'intake')!.displayName
+    const dampersLabel = PARTS_TAXONOMY.find((entry) => entry.id === 'dampers')!.displayName
+    const gearboxLabel = PARTS_TAXONOMY.find((entry) => entry.id === 'gearbox')!.displayName
+
+    const serviced = describeLogEntry({
+      type: 'repair-job-completed',
+      carInstanceId: 'car-1',
+      carPartId: 'intake',
+      jobKind: 'service',
+      targetBand: 'worn',
+    })
+    expect(serviced).toBe(`Serviced the ${intakeLabel} to worn, car-1`)
+
+    const rebuilt = describeLogEntry({
+      type: 'repair-job-completed',
+      carInstanceId: 'car-1',
+      carPartId: 'dampers',
+      jobKind: 'rebuild',
+      targetBand: 'fine',
+    })
+    expect(rebuilt).toBe(`Rebuilt the ${dampersLabel} to fine, car-1`)
+
+    // A loose target has no car - the part label alone, no trailing comma.
+    const restored = describeLogEntry({
+      type: 'repair-job-completed',
+      partInstanceId: 'part-9-0',
+      carPartId: 'gearbox',
+      jobKind: 'restore',
+      targetBand: 'mint',
+    })
+    expect(restored).toBe(`Restored the ${gearboxLabel} to mint`)
+    expect(restored).not.toContain('part-9-0')
+  })
 })
 
 describe('classifyDayReport', () => {
@@ -374,6 +409,43 @@ describe('classifyDayReport', () => {
     const bodyLines = view.notable.filter((line) => line.startsWith('Body shop materials'))
     expect(bodyLines).toHaveLength(1)
     expect(bodyLines[0]).toBe('Body shop materials, car-1: ¥18,400 (3 jobs)')
+  })
+
+  it('aggregates every repair-step entry per car+part+kind into one line, loose parts by the label alone', () => {
+    const intakeLabel = PARTS_TAXONOMY.find((entry) => entry.id === 'intake')!.displayName
+    const gearboxLabel = PARTS_TAXONOMY.find((entry) => entry.id === 'gearbox')!.displayName
+
+    const view = classifyDayReport([
+      { type: 'repair-step', carInstanceId: 'car-1', carPartId: 'intake', jobKind: 'service' },
+      { type: 'repair-step', carInstanceId: 'car-1', carPartId: 'intake', jobKind: 'service' },
+      { type: 'repair-step', carInstanceId: 'car-1', carPartId: 'intake', jobKind: 'service' },
+      // A different job kind on the same car+part is its own line.
+      { type: 'repair-step', carInstanceId: 'car-1', carPartId: 'intake', jobKind: 'rebuild' },
+      // A loose part (no car) reads with the label alone - no car in the line.
+      { type: 'repair-step', partInstanceId: 'part-9-0', carPartId: 'gearbox', jobKind: 'restore' },
+      { type: 'repair-step', partInstanceId: 'part-9-0', carPartId: 'gearbox', jobKind: 'restore' },
+    ])
+    expect(view.notable).toContain(`${intakeLabel}, car-1: 3 steps of the service`)
+    expect(view.notable).toContain(`${intakeLabel}, car-1: 1 step of the rebuild`)
+    expect(view.notable).toContain(`${gearboxLabel}: 2 steps of the restore`)
+  })
+
+  it('a worked bench day: the aggregated step line and the job-completed line both appear', () => {
+    const intakeLabel = PARTS_TAXONOMY.find((entry) => entry.id === 'intake')!.displayName
+
+    const view = classifyDayReport([
+      { type: 'repair-step', carInstanceId: 'car-1', carPartId: 'intake', jobKind: 'service' },
+      { type: 'repair-step', carInstanceId: 'car-1', carPartId: 'intake', jobKind: 'service' },
+      {
+        type: 'repair-job-completed',
+        carInstanceId: 'car-1',
+        carPartId: 'intake',
+        jobKind: 'service',
+        targetBand: 'worn',
+      },
+    ])
+    expect(view.notable).toContain(`${intakeLabel}, car-1: 2 steps of the service`)
+    expect(view.notable).toContain(`Serviced the ${intakeLabel} to worn, car-1`)
   })
 })
 

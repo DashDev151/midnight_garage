@@ -42,6 +42,10 @@ export interface CashMovement {
  * likewise moves no money at the moment it fires: the tin it draws from was
  * paid for when it was bought (`consumable-bought`, which DOES move money),
  * so drawing it down a second time would double-charge the same yen.
+ * `repair-step`/`repair-job-completed` are the same shape again: the job's
+ * whole parts bill was already charged on its first step
+ * (`chargePartsBill`, sim/repairJobs.ts), so neither event moves money of
+ * its own.
  */
 export function cashMovementFor(entry: DayLogEntry): CashMovement | null {
   switch (entry.type) {
@@ -123,6 +127,8 @@ export function cashMovementFor(entry: DayLogEntry): CashMovement | null {
     case 'part-delivered':
     case 'part-reconditioned':
     case 'part-machined':
+    case 'repair-step':
+    case 'repair-job-completed':
     case 'part-removed':
     case 'symptom-cause-eliminated':
     case 'body-materials-used':

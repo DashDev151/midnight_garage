@@ -5,6 +5,7 @@ import type {
   ComponentId,
   ConditionBand,
   Job,
+  RepairJobKind,
   SellingChannelId,
   ZoneId,
 } from '@midnight-garage/content'
@@ -22,14 +23,20 @@ import {
   type FittedMachiningGateReason,
   type FittedMachiningOfferRow,
   type HireMachineLineGateReason,
+  type RepairJobCard,
+  type RepairStepRefusal,
+  type RepairTarget,
 } from '@midnight-garage/sim'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import BandChip from '../components/BandChip.vue'
 import HelpHint from '../components/HelpHint.vue'
+import JobCardPanel from '../components/JobCardPanel.vue'
 import { partSpriteDataUrl } from '../components/partSprites'
 import ServiceTaskList from '../components/ServiceTaskList.vue'
 import StatRadar from '../components/StatRadar.vue'
+import StepStrip from '../components/StepStrip.vue'
+import ToolTrolley from '../components/ToolTrolley.vue'
 import WorkshopViews, { type WorkshopSelection } from '../components/WorkshopViews.vue'
 import { useCarPartDropZones } from '../composables/useCarPartDropZones'
 import {
@@ -43,7 +50,6 @@ import {
   type AssemblyRowView,
   type BenchMemberView,
   type CarPartRowView,
-  type NextRepairStepView,
 } from '../stores/gameStore'
 import { useUiStore } from '../stores/uiStore'
 import { MACHINE_LINE_NAMES } from '../utils/dayLogFormat'
@@ -59,7 +65,12 @@ import { formatAuthenticityCost, formatReliabilityCost } from '../utils/machinin
 import { SETUP_REFUSALS } from '../utils/machiningRefusals'
 import { colourTokenDisplayName } from '../utils/paintFamilies'
 import { addressesOverlap } from '../utils/partAddress'
-import { repairStepText } from '../utils/repairStepLabels'
+import {
+  defaultRepairJobKind,
+  repairJobTabViews,
+  repairStepEnergyText,
+  repairStepRefusalText,
+} from '../utils/repairJobLabels'
 import {
   SELLING_CHANNEL_LABELS,
   sellingChannelAudienceLabel,
@@ -397,82 +408,135 @@ const panelHead = computed(() => {
   return null
 })
 
-// --- Repair steps (labour made prominent) -
-
-function nextPartStep(componentId: ComponentId, carPartId: CarPartId) {
-  return detail.value ? game.nextRepairStep(detail.value.car.id, componentId, carPartId) : null
-}
-
-function nextPartStepOrFallback(componentId: ComponentId, carPartId: CarPartId) {
-  return (
-    nextPartStep(componentId, carPartId) ?? {
-      targetBand: 'mint' as const,
-      costYen: 0,
-      laborSlotsRequired: 0,
-    }
-  )
-}
+// --- The jobs the docked part is offered, where it sits -------------------
 
 /**
- * An uncertain part's repair-step preview is a range, so
- * the tooltip never leaks the true band. Ordinary rows get the same loud text
- * the button already shows.
+ * The three job cards for the docked part - what each job would leave it at,
+ * what it costs all in, and how its tools would be come by. Empty when there
+ * is no job worth offering on this part at all; the store decides that, and
+ * the sim prices and routes every card.
  */
-function uncertainStepLabel(range: {
-  best: NextRepairStepView | null
-  worst: NextRepairStepView | null
-}): string {
-  const describe = (step: NextRepairStepView | null): string =>
-    step
-      ? `to ${step.targetBand} - ${formatYen(step.costYen)} · ${step.laborSlotsRequired} labour`
-      : 'nothing needed'
-  return `Uncertain - if it's as shown: ${describe(range.best)}; if the hidden cause is real: ${describe(range.worst)}`
+const partJobCards = computed<RepairJobCard[]>(() => {
+  const d = detail.value
+  const partId = selectedPartId.value
+  return d && partId ? game.carPartJobCards(d.car.id, partId) : []
+})
+
+/** The shop covering the docked part's own line, by name - what a locked
+ * route and a refused step name. */
+const partShopName = computed<string>(() =>
+  selectedGroup.value ? game.toolShopNameForGroup(selectedGroup.value) : '',
+)
+
+/** The player's own pick of job, which holds until that job stops being on
+ * offer here. */
+const manualKind = ref<RepairJobKind | null>(null)
+
+/** Why the last step clicked did not run, cleared the moment the player
+ * looks at another part or another job. */
+const repairRefusal = ref<RepairStepRefusal | null>(null)
+
+const selectedKind = computed<RepairJobKind | null>(() => {
+  const manual = partJobCards.value.find((card) => card.kind === manualKind.value)
+  return manual?.offered ? manual.kind : defaultRepairJobKind(partJobCards.value)
+})
+
+const selectedCard = computed<RepairJobCard | null>(
+  () => partJobCards.value.find((card) => card.kind === selectedKind.value) ?? null,
+)
+
+const jobTabs = computed(() =>
+  repairJobTabViews(partJobCards.value, selectedKind.value, partShopName.value),
+)
+
+function onSelectKind(kind: RepairJobKind): void {
+  manualKind.value = kind
 }
 
-function partStepTitle(componentId: ComponentId, row: CarPartRowView): string {
-  const id = detail.value?.car.id
-  if (id && row.uncertain) {
-    const range = game.nextPartStepRange(id, componentId, row.partId)
-    if (range) return uncertainStepLabel(range)
-  }
-  return repairStepText(nextPartStepOrFallback(componentId, row.partId))
+// A different part is a different job list: the pick and any note about it
+// start again.
+watch(selectedPartId, () => {
+  manualKind.value = null
+  repairRefusal.value = null
+})
+
+watch(selectedKind, () => {
+  repairRefusal.value = null
+})
+
+/** The step the job is on: the first of the card's remaining steps. */
+const currentStep = computed(() => selectedCard.value?.steps[0] ?? null)
+const currentToolId = computed<string | null>(() => currentStep.value?.tool ?? null)
+const currentSlogged = computed(() => currentStep.value?.slogged ?? false)
+
+/** The work is done on the slot where it sits - the car and the part, never a
+ * loose instance. */
+const repairTarget = computed<RepairTarget | null>(() => {
+  const d = detail.value
+  const partId = selectedPartId.value
+  return d && partId ? { kind: 'installed', carInstanceId: d.car.id, carPartId: partId } : null
+})
+
+/** What each step of the selected job costs right now - the sim's own plan,
+ * which already carries the slog multiplier, the crew and the lift. */
+const energyPlan = computed<number[]>(() => {
+  const target = repairTarget.value
+  const kind = selectedKind.value
+  return target && kind ? game.repairEnergyPlan(target, kind) : []
+})
+
+const energyText = computed<string>(() => {
+  const card = selectedCard.value
+  const step = currentStep.value
+  if (!card || !step) return ''
+  return repairStepEnergyText(energyPlan.value[card.stepsDone], step.slogged)
+})
+
+const repairRefusalNote = computed<string>(() =>
+  repairStepRefusalText(repairRefusal.value, selectedCard.value, partShopName.value),
+)
+
+/** Work one step of the selected job on the car. */
+function onRunRepairStep(): void {
+  const target = repairTarget.value
+  const kind = selectedKind.value
+  if (!target || !kind) return
+  const outcome = game.runRepairStep(target, kind)
+  repairRefusal.value = typeof outcome === 'object' ? outcome.refused : null
 }
 
-/** The open job at this exact address. */
+// --- The older jobs still worked a labour slot at a time ------------------
+
+/** The open job at this exact address that the Continue control answers for.
+ * A repair job is worked off its own card above, never continued here. */
 function jobFor(componentId: ComponentId, carPartId?: CarPartId) {
-  return detail.value?.jobs.find((j) => j.componentId === componentId && j.carPartId === carPartId)
+  return detail.value?.jobs.find(
+    (j) =>
+      j.componentId === componentId &&
+      j.carPartId === carPartId &&
+      (j.kind === 'install-part' || j.kind === 'machine-part'),
+  )
 }
 
 function addressBusy(componentId: ComponentId, carPartId?: CarPartId): boolean {
   return detail.value?.jobs.some((j) => addressesOverlap(j, { componentId, carPartId })) ?? false
 }
 
-/**
- * Continue an already-open job at this address. The repair-zone branch is
- * gated by the SAME `armOrConfirmRepair` reveal-then-confirm check as a
- * fresh `onRepairStepClick` (task C2) - a job that hasn't finished yet can
- * still be sitting on an unverified slot the player has never actually
- * seen the true band of, so "Continue repair" is exactly as capable of
- * charging an unshown price as starting one fresh.
- */
+/** Continue an already-open install or setup at this address. */
 function continueJob(componentId: ComponentId, carPartId?: CarPartId): void {
   const d = detail.value
   const job = jobFor(componentId, carPartId)
   if (!d || !job) return
-  if (job.kind === 'repair-zone') {
-    if (!armOrConfirmRepair(d.car.id, componentId, carPartId)) return
-    game.repair(d.car.id, componentId, 'mint', carPartId)
-  } else if (job.kind === 'machine-part' && job.machiningOperationId) {
+  if (job.kind === 'machine-part' && job.machiningOperationId) {
     game.machineFittedPart(d.car.id, job.machiningOperationId)
   } else if (job.partInstanceId) game.install(d.car.id, componentId, job.partInstanceId, carPartId)
 }
 
 /** What the Continue control names, so a half-finished setup is never offered
- * as an install. Empty when nothing is open at this address. */
+ * as an install. Empty when nothing it answers for is open at this address. */
 function continueLabelAt(componentId: ComponentId, carPartId?: CarPartId): string {
   const job = jobFor(componentId, carPartId)
   if (!job) return ''
-  if (job.kind === 'repair-zone') return 'Continue repair'
   return job.kind === 'machine-part' ? 'Continue setup' : 'Continue install'
 }
 
@@ -569,97 +633,6 @@ const totalSpentYen = computed(() => {
 // --- Replace, remove ---
 
 /**
- * Reveal-then-confirm (knowledge-and-diagnosis.md section 1, sprint215.md
- * task C2): the repair ADDRESS (a group, or one part within it) currently
- * waiting on a SECOND click to confirm, `null` otherwise. Addresses both
- * repair entry points on equal terms - the per-part "+repair" row
- * (`carPartId` set) and a group-level repair-zone job, whether started
- * fresh or continued (`carPartId` omitted, every present part in the group)
- * - so neither can ever charge a price for a band the player was never
- * shown. The reveal itself is free - clicking once never spends labour or
- * cash, it only shows the true bands under the estimates; a second click on
- * the SAME address then runs the repair for real.
- */
-interface RepairAddress {
-  componentId: ComponentId
-  carPartId?: CarPartId
-}
-const pendingRepairConfirm = ref<RepairAddress | null>(null)
-watch(selectedPartId, () => {
-  pendingRepairConfirm.value = null
-})
-
-function sameRepairAddress(a: RepairAddress, b: RepairAddress): boolean {
-  return a.componentId === b.componentId && a.carPartId === b.carPartId
-}
-
-/** Whether this exact address is the one currently armed for confirm - the
- * template's own check for where to render the reveal note, next to
- * whichever button (fresh or continuing) armed it. */
-function isPendingRepairConfirm(componentId: ComponentId, carPartId?: CarPartId): boolean {
-  return (
-    pendingRepairConfirm.value !== null &&
-    sameRepairAddress(pendingRepairConfirm.value, { componentId, carPartId })
-  )
-}
-
-/** The reveal-then-confirm preview for the currently-armed address - every
- * unverified slot it would touch, estimated band against true - empty when
- * nothing is waiting on a confirm. The inline note under whichever button
- * armed it reads this. */
-const repairReveal = computed(() => {
-  const d = detail.value
-  const addr = pendingRepairConfirm.value
-  if (!d || !addr) return []
-  return game.repairRevealFor(d.car.id, addr.componentId, addr.carPartId)
-})
-
-/**
- * The shared reveal-then-confirm gate every repair click passes through
- * before it is allowed to spend anything (sprint215.md task C2: "no entry
- * point may charge a price the player was never shown") - `true` once the
- * caller should go ahead and run the real repair (nothing to reveal, or
- * this exact address is already armed from a prior click), `false` once it
- * has just armed the reveal and the caller must stop here. Read-only:
- * arming or clearing never spends labour or cash, or marks anything
- * verified - only the real repair the caller runs after a `true` does that,
- * via the sim's own verification routes.
- */
-function armOrConfirmRepair(
-  carId: string,
-  componentId: ComponentId,
-  carPartId?: CarPartId,
-): boolean {
-  const addr: RepairAddress = { componentId, carPartId }
-  const alreadyArmed =
-    pendingRepairConfirm.value !== null && sameRepairAddress(pendingRepairConfirm.value, addr)
-  if (!alreadyArmed) {
-    const reveals = game.repairRevealFor(carId, componentId, carPartId)
-    if (reveals.length > 0) {
-      pendingRepairConfirm.value = addr
-      return false
-    }
-  }
-  pendingRepairConfirm.value = null
-  return true
-}
-
-/** The per-part click-per-rung repair - each click repairs one more band,
- * instantly, through the same `repair` resolver the plain group button
- * uses. A rung that outruns today's labour leaves an ordinary continuable
- * `Job`, picked up by the `addressBusy`/`continueJob` branch above the next
- * time this row renders. Gated by `armOrConfirmRepair` (task C2) exactly as
- * `continueJob`'s own repair-zone branch is.
- */
-function onRepairStepClick(componentId: ComponentId, carPartId: CarPartId): void {
-  const d = detail.value
-  const step = nextPartStep(componentId, carPartId)
-  if (!d || !step) return
-  if (!armOrConfirmRepair(d.car.id, componentId, carPartId)) return
-  game.repair(d.car.id, componentId, step.targetBand, carPartId)
-}
-
-/**
  * The Warehouse's fit scope, when it points at a slot on THIS car - the
  * drawer itself is mounted once at the app root (`WarehouseDrawer.vue`);
  * this screen only commands it open with a scope and reads the shared
@@ -740,6 +713,14 @@ function removeMachineNoteFor(carPartId: CarPartId): string {
   return d ? game.removeMachineNoteFor(d.car.id, carPartId) : ''
 }
 
+/** The Remove affordance's own warning when the rig this slot needs is on
+ * today's hire rather than owned - the part comes off at the hired rate now,
+ * and putting it back will want that day again. `''` on every other route. */
+function refitWarningFor(carPartId: CarPartId): string {
+  const d = detail.value
+  return d ? game.refitWarningFor(d.car.id, carPartId) : ''
+}
+
 /**
  * The install/replace affordance's own machine-labour disclosure - `''`
  * when owned, hired for today, or ungated. Covers a buried engine/drivetrain
@@ -761,22 +742,6 @@ function installBlockedReasonFor(carPartId: CarPartId): string | null {
 function installMachineNoteFor(carPartId: CarPartId): string {
   const d = detail.value
   return d ? game.installMachineNoteFor(d.car.id, carPartId) : ''
-}
-
-/**
- * The per-part on-car repair affordance's own machine-labour disclosure -
- * `''` when owned, hired for today, or ungated. Per-part repair is
- * bench-only for any non-`surface` slot, so this only ever fires for a
- * surface signature slot (bodywork, seats, dashGauges).
- */
-function repairMachineNoteFor(carPartId: CarPartId): string {
-  const d = detail.value
-  return d ? game.repairMachineNoteFor(d.car.id, carPartId) : ''
-}
-/** The tier-1 repair-ceiling caption for this part's group, or null. */
-function repairCeilingCaptionFor(componentId: ComponentId, carPartId: CarPartId): string | null {
-  const d = detail.value
-  return d ? game.repairCeilingCaption(d.car.id, componentId, carPartId) : null
 }
 
 // --- Setup work (docs/design/systems/the-workbench.md, "The exceptions") ---
@@ -1293,7 +1258,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             Sits under: {{ selectedBlockers.join(', ') }}
           </p>
 
-          <!-- A car part's own actions (repair / replace / remove). -->
+          <!-- A car part's own actions (replace / remove). What can be DONE to
+               the part it already has is the job card panel's, below. -->
           <div v-if="selectedRow && selectedGroup" class="panel-actions">
             <template v-if="game.isAssemblyMember(selectedRow.partId)">
               <span class="slot-empty" data-test="panel-assembly-note"
@@ -1305,82 +1271,17 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               <template v-if="jobFor(selectedGroup, selectedRow.partId)">
                 <button
                   :disabled="game.laborSlotsRemainingToday <= 0"
-                  :data-test="'repair-part-' + selectedRow.partId"
+                  :data-test="'continue-job-' + selectedRow.partId"
                   @click="continueJob(selectedGroup, selectedRow.partId)"
                 >
                   {{ continueLabelAt(selectedGroup, selectedRow.partId) }}
                 </button>
                 <span class="slot-empty">working…</span>
-                <!-- Reveal-then-confirm applies to "Continue repair" too - an
-                     in-progress job can still be sitting on an unverified
-                     slot. -->
-                <span
-                  v-if="
-                    isPendingRepairConfirm(selectedGroup, selectedRow.partId) &&
-                    repairReveal.length > 0
-                  "
-                  class="reveal-confirm"
-                  :data-test="'repair-reveal-' + selectedRow.partId"
-                >
-                  <span v-for="reveal in repairReveal" :key="reveal.partId"
-                    >Actually {{ reveal.trueBand }}, not {{ reveal.estimatedBand }} as guessed.
-                  </span>
-                  Click again to repair it.
-                </span>
               </template>
               <span v-else class="slot-empty">working (group job)…</span>
             </template>
 
             <template v-else>
-              <!-- Repairs one band the moment it's clicked; a rung that
-                   outruns today's labour leaves an ordinary continuable job,
-                   picked up by the "working…" branch above the next time this
-                   row renders. -->
-              <template v-if="nextPartStep(selectedGroup, selectedRow.partId)">
-                <button
-                  type="button"
-                  class="step-up loud"
-                  :data-test="'repair-part-' + selectedRow.partId"
-                  :title="partStepTitle(selectedGroup, selectedRow)"
-                  @click="onRepairStepClick(selectedGroup, selectedRow.partId)"
-                >
-                  {{ repairStepText(nextPartStepOrFallback(selectedGroup, selectedRow.partId)) }}
-                </button>
-                <span
-                  v-if="repairMachineNoteFor(selectedRow.partId)"
-                  class="blocked-reason"
-                  :data-test="'assist-fee-repair-' + selectedRow.partId"
-                  >{{ repairMachineNoteFor(selectedRow.partId) }}</span
-                >
-                <!-- Reveal-then-confirm: the first click on an unverified
-                     slot only shows the true band under the guess, free -
-                     the SAME button, clicked again, actually repairs. -->
-                <span
-                  v-if="
-                    isPendingRepairConfirm(selectedGroup, selectedRow.partId) &&
-                    repairReveal.length > 0
-                  "
-                  class="reveal-confirm"
-                  :data-test="'repair-reveal-' + selectedRow.partId"
-                >
-                  <span v-for="reveal in repairReveal" :key="reveal.partId"
-                    >Actually {{ reveal.trueBand }}, not {{ reveal.estimatedBand }} as guessed.
-                  </span>
-                  Click again to repair it.
-                </span>
-              </template>
-
-              <!-- At tier 1 a repair finishes at fine; this names the tier-2
-                   machine that reaches mint. Sits outside the "+" block above so
-                   it still shows once the part is at fine and no further "+"
-                   rung remains. -->
-              <span
-                v-if="repairCeilingCaptionFor(selectedGroup, selectedRow.partId)"
-                class="ceiling-caption"
-                :data-test="'repair-ceiling-' + selectedRow.partId"
-                >{{ repairCeilingCaptionFor(selectedGroup, selectedRow.partId) }}</span
-              >
-
               <!-- Replace needs an empty slot, except on a shell carrier
                    (chassis, bodywork, paint), whose slot is never empty and
                    whose part is swapped in place. A scrap one is past repair,
@@ -1432,6 +1333,14 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                   class="blocked-reason"
                   :data-test="'remove-machine-note-' + selectedRow.partId"
                   >{{ removeMachineNoteFor(selectedRow.partId) }}</span
+                >
+                <!-- A hired rig is gone tomorrow: taking a buried part off
+                     today means paying for the day again to put it back. -->
+                <span
+                  v-if="refitWarningFor(selectedRow.partId)"
+                  class="blocked-reason"
+                  :data-test="'refit-warning-' + selectedRow.partId"
+                  >{{ refitWarningFor(selectedRow.partId) }}</span
                 >
                 <span
                   v-if="removeBlockedReasonFor(selectedRow.partId)"
@@ -1495,6 +1404,52 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               >{{ selectedBench.member.fitGateReason }}</span
             >
           </div>
+
+          <!-- What the part in front of the player can have done to it: the
+               three jobs priced side by side, and - for the work that happens
+               where the part sits - the job in hand, step by step, with the
+               trolley of tools it wants beside it. -->
+          <section
+            v-if="partJobCards.length > 0"
+            class="repair-panel"
+            data-test="part-repair-panel"
+          >
+            <JobCardPanel :cards="partJobCards" :shop-name="partShopName" />
+
+            <div v-if="selectedCard" class="on-car-job">
+              <div class="job-tabs">
+                <button
+                  v-for="tab in jobTabs"
+                  :key="tab.kind"
+                  type="button"
+                  class="job-tab"
+                  :class="{ 'job-tab-on': tab.selected }"
+                  :disabled="tab.disabled"
+                  :title="tab.tooltip || undefined"
+                  :data-test="'car-job-' + tab.kind"
+                  @click="onSelectKind(tab.kind)"
+                >
+                  {{ tab.label }}
+                </button>
+              </div>
+
+              <div class="job-work">
+                <StepStrip
+                  :steps="selectedCard.steps"
+                  :steps-done="selectedCard.stepsDone"
+                  :energy-text="energyText"
+                />
+                <ToolTrolley
+                  :steps="selectedCard.steps"
+                  :current-tool-id="currentToolId"
+                  :current-slogged="currentSlogged"
+                  @run-step="onRunRepairStep"
+                />
+              </div>
+
+              <p class="repair-refusal" data-test="car-repair-refusal">{{ repairRefusalNote }}</p>
+            </div>
+          </section>
 
           <!-- Setup work: the operations that can only be judged with the car
                assembled, so they live on the car's own screen rather than in
@@ -2422,8 +2377,7 @@ h4 {
   color: var(--mg-neon-cyan);
 }
 
-/* The repair-step button carries its full price inline,
-   never on hover. */
+/* An action control that carries its own figures inline, never on hover. */
 .step-up.loud {
   padding: 2px 10px;
   font-size: var(--mg-fs-sm);
@@ -2840,18 +2794,64 @@ h4 {
   font-style: italic;
 }
 
-.reveal-confirm {
+/* The price list for the docked part, and under it the job in hand. */
+.repair-panel {
   display: block;
-  color: var(--mg-yen);
-  font-size: var(--mg-fs-sm);
-  margin-top: 2px;
+  border-top: var(--mg-border);
+  margin-top: var(--mg-space-2);
+  padding-top: var(--mg-space-2);
 }
 
-/* The "your tools finish at fine" hint pointing at
-   the tier-2 machine - a buy-the-machine prompt, so it reads as guidance, not a
-   fee. */
-.ceiling-caption {
+.job-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mg-space-1);
+  margin-top: var(--mg-space-2);
+}
+
+.job-tab {
+  padding: var(--mg-space-1) var(--mg-space-3);
+  border: 1px solid var(--mg-panel-edge);
+  border-radius: 0;
+  background: var(--mg-night);
+  color: var(--mg-text-dim);
+  font: inherit;
+  font-size: var(--mg-fs-sm);
+  cursor: pointer;
+}
+
+.job-tab-on {
+  border-color: var(--mg-neon-violet);
   color: var(--mg-neon-violet);
+}
+
+.job-tab:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.job-tab:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--mg-neon-cyan);
+}
+
+/* The steps and the trolley sit side by side where there is room, and stack
+   where there is not. */
+.job-work {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--mg-space-3);
+}
+
+.job-work > * {
+  flex: 1 1 260px;
+}
+
+.repair-refusal {
+  margin: var(--mg-space-1) 0 0;
+  min-height: 1.2em;
+  color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
   font-style: italic;
 }

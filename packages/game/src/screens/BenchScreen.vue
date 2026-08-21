@@ -4,18 +4,22 @@ import {
   TOOL_SHOPS,
   WORKBENCH,
   type BenchId,
-  type ConditionBand,
   type RepairJobKind,
 } from '@midnight-garage/content'
-import { energyPlanFor, type RepairJobCard, type RepairStepRefusal } from '@midnight-garage/sim'
+import type { RepairJobCard, RepairStepRefusal } from '@midnight-garage/sim'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import BandChip from '../components/BandChip.vue'
 import BenchSurface from '../components/BenchSurface.vue'
+import JobCardPanel from '../components/JobCardPanel.vue'
 import ShadowBoard from '../components/ShadowBoard.vue'
 import StepStrip from '../components/StepStrip.vue'
 import { useGameStore } from '../stores/gameStore'
-import { formatYen } from '../utils/formatYen'
+import {
+  defaultRepairJobKind,
+  repairJobTabViews,
+  repairStepEnergyText,
+  repairStepRefusalText,
+} from '../utils/repairJobLabels'
 
 /**
  * One bench: the shadow board of its tools across the top, the parts laid out
@@ -80,21 +84,11 @@ function onReturnPart(partInstanceId: string): void {
 
 // --- the job in front of the player ---------------------------------------
 
-const JOB_LABELS: Readonly<Record<RepairJobKind, string>> = {
-  service: 'Service',
-  rebuild: 'Rebuild',
-  restore: 'Restore',
-}
-
 const cards = computed<RepairJobCard[]>(() => selectedPart.value?.cards ?? [])
 
 /** The job the bench is already part-way through, else the first one on
  * offer, in ladder order. */
-const defaultKind = computed<RepairJobKind | null>(() => {
-  const started = cards.value.find((card) => card.stepsDone > 0)
-  if (started) return started.kind
-  return cards.value.find((card) => card.offered)?.kind ?? null
-})
+const defaultKind = computed<RepairJobKind | null>(() => defaultRepairJobKind(cards.value))
 
 /** The player's own pick, which holds until that job stops being on offer -
  * finishing a Service drops back to whatever is next. */
@@ -109,43 +103,7 @@ const selectedCard = computed<RepairJobCard | null>(
   () => cards.value.find((card) => card.kind === selectedKind.value) ?? null,
 )
 
-/** The machine a card is short of, named by the step that wants it. */
-function machineLabelFor(card: RepairJobCard): string {
-  return card.steps[0]?.toolLabel ?? ''
-}
-
-function tabTooltip(card: RepairJobCard): string {
-  if (!card.offered) {
-    if (card.refusal === 'needs-shop') return `needs the ${shopName.value}`
-    if (card.refusal === 'at-or-above-target') return 'already there'
-    return ''
-  }
-  if (card.route === 'locked') {
-    if (card.lockedReason === 'needs-shop') return `needs the ${shopName.value}`
-    if (card.lockedReason === 'needs-machine') return `needs the ${machineLabelFor(card)}`
-  }
-  return ''
-}
-
-interface JobTabView {
-  kind: RepairJobKind
-  label: string
-  targetBand: ConditionBand
-  disabled: boolean
-  tooltip: string
-  selected: boolean
-}
-
-const jobTabs = computed<JobTabView[]>(() =>
-  cards.value.map((card) => ({
-    kind: card.kind,
-    label: JOB_LABELS[card.kind],
-    targetBand: card.targetBand,
-    disabled: !card.offered || card.route === 'locked',
-    tooltip: tabTooltip(card),
-    selected: card.kind === selectedKind.value,
-  })),
-)
+const jobTabs = computed(() => repairJobTabViews(cards.value, selectedKind.value, shopName.value))
 
 function onSelectKind(kind: RepairJobKind): void {
   manualKind.value = kind
@@ -159,29 +117,20 @@ const currentStep = computed(() => selectedCard.value?.steps[0] ?? null)
 const currentToolId = computed<string | null>(() => currentStep.value?.tool ?? null)
 const currentSlogged = computed(() => currentStep.value?.slogged ?? false)
 
-const SLOG_SUFFIX = 'x3, no proper tool'
-
 /** What each step of the selected job costs right now - the sim's own plan,
  * which already carries the slog multiplier, the crew and the lift. */
 const energyPlan = computed<number[]>(() => {
   const part = selectedPart.value
   const kind = selectedKind.value
   if (!part || !kind) return []
-  return energyPlanFor(
-    game.gameState,
-    game.context,
-    { kind: 'loose', partInstanceId: part.instanceId },
-    kind,
-  )
+  return game.repairEnergyPlan({ kind: 'loose', partInstanceId: part.instanceId }, kind)
 })
 
 const energyText = computed<string>(() => {
   const card = selectedCard.value
   const step = currentStep.value
   if (!card || !step) return ''
-  const points = energyPlan.value[card.stepsDone]
-  if (points === undefined) return ''
-  return step.slogged ? `${points} energy ${SLOG_SUFFIX}` : `${points} energy`
+  return repairStepEnergyText(energyPlan.value[card.stepsDone], step.slogged)
 })
 
 // --- working it -----------------------------------------------------------
@@ -199,19 +148,9 @@ watch(selectedKind, () => {
   refusal.value = null
 })
 
-const refusalNote = computed<string>(() => {
-  const reason = refusal.value
-  const card = selectedCard.value
-  if (!reason || !card) return ''
-  if (reason === 'no-energy') return 'Not enough left in the day.'
-  if (reason === 'no-cash')
-    return `The parts bill wants ${formatYen(card.partsYen)} you don't have.`
-  if (reason === 'needs-machine') {
-    return `Needs the ${machineLabelFor(card)}. No way round a weld.`
-  }
-  if (reason === 'needs-shop') return `That grade of work needs the ${shopName.value}.`
-  return ''
-})
+const refusalNote = computed<string>(() =>
+  repairStepRefusalText(refusal.value, selectedCard.value, shopName.value),
+)
 
 function onRunStep(): void {
   const part = selectedPart.value
@@ -242,6 +181,8 @@ function onRunStep(): void {
     />
 
     <section v-if="selectedPart" class="job-panel">
+      <JobCardPanel :cards="cards" :shop-name="shopName" />
+
       <div class="job-tabs">
         <button
           v-for="tab in jobTabs"
@@ -255,7 +196,6 @@ function onRunStep(): void {
           @click="onSelectKind(tab.kind)"
         >
           <span class="job-tab-label">{{ tab.label }}</span>
-          <BandChip :band="tab.targetBand" />
         </button>
       </div>
 
@@ -289,6 +229,7 @@ h2 {
   display: flex;
   flex-wrap: wrap;
   gap: var(--mg-space-1);
+  margin-top: var(--mg-space-2);
 }
 
 .job-tab {
