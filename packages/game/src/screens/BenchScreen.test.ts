@@ -28,6 +28,8 @@ import BenchScreen from './BenchScreen.vue'
 
 const BLOCK_PART = PARTS.find((part) => part.carPartId === 'block')!
 const EXHAUST_PART = PARTS.find((part) => part.carPartId === 'exhaust')!
+/** Suspension, so its bench is the chassis bench rather than this screen's. */
+const DAMPER_PART = PARTS.find((part) => part.carPartId === 'dampers')!
 const ENGINE_BENCH = WORKBENCH.benches.find((bench) => bench.id === 'engine-bench')!
 const MACHINE_SHOP = TOOL_SHOPS.find((shop) => shop.id === 'machine-shop')!
 
@@ -88,6 +90,15 @@ function boardToolIds(): string[] {
 
 function shopToolIds(): string[] {
   return BenchZoneSchema.options.flatMap((zone) => ENGINE_BENCH.zones[zone]!.shop.map((t) => t.id))
+}
+
+/** The instance ids the candidate list is offering, in the order it renders
+ * them - read off the buttons themselves, so a row without a working button
+ * cannot be counted as an offer. */
+function candidateIds(wrapper: VueWrapper): string[] {
+  return wrapper
+    .findAll('[data-test="bench-candidates"] [data-test^="bench-take-"]')
+    .map((button) => button.attributes('data-test')!.slice('bench-take-'.length))
 }
 
 describe('BenchScreen', () => {
@@ -384,5 +395,81 @@ describe('BenchScreen', () => {
     expect(wrapper.get('[data-test="bench-empty"]').text()).toBe(
       'Nothing on the bench. Bring a part over from the warehouse.',
     )
+  })
+
+  it('carries the house back link, and it goes to the garage', async () => {
+    const { wrapper, router } = await mountAt('engine-bench')
+    const back = wrapper.get('a.back')
+    expect(back.text()).toBe('< Back to the garage')
+    // The real router resolves it, so this is the route the click takes.
+    expect(back.attributes('href')).toBe(router.resolve({ name: 'garage' }).href)
+  })
+
+  it('lists exactly the warehouse parts this bench works, and sends the rest to their own bench', async () => {
+    const game = useGameStore()
+    const blockId = loosePart(game, BLOCK_PART.id, 'poor', '-block')
+    const exhaustId = loosePart(game, EXHAUST_PART.id, 'poor', '-exhaust')
+    // Scrap is terminal: no bench can do anything with it, on any line.
+    const scrapId = loosePart(game, BLOCK_PART.id, 'scrap', '-scrap')
+    // Suspension, so the chassis bench's work rather than this one's.
+    const damperId = loosePart(game, DAMPER_PART.id, 'poor', '-damper')
+
+    const { wrapper } = await mountAt('engine-bench')
+
+    const section = wrapper.get('[data-test="bench-candidates"]')
+    expect(section.get('h3').text()).toBe('In the warehouse')
+    expect(candidateIds(wrapper)).toEqual([blockId, exhaustId])
+    expect(wrapper.find(`[data-test="bench-take-${scrapId}"]`).exists()).toBe(false)
+    expect(wrapper.find(`[data-test="bench-take-${damperId}"]`).exists()).toBe(false)
+
+    // A row reads like the bench's own: the part by name and the band it is at.
+    const firstRow = section.findAll('.candidate-row')[0]!
+    expect(firstRow.text()).toContain(game.partName(BLOCK_PART.id))
+    expect(firstRow.get('.band-chip').text()).toBe('poor')
+
+    // The damper is not dropped, it is addressed elsewhere - and its own
+    // bench offers it.
+    const { wrapper: chassis } = await mountAt('chassis-bench')
+    expect(candidateIds(chassis)).toEqual([damperId])
+  })
+
+  it('the candidate button carries the part over: onto the surface, off the list', async () => {
+    const game = useGameStore()
+    const id = loosePart(game, BLOCK_PART.id, 'poor')
+    const { wrapper } = await mountAt('engine-bench')
+
+    expect(wrapper.find('[data-test="bench-empty"]').exists()).toBe(true)
+    const button = wrapper.get(`[data-test="bench-take-${id}"]`)
+    expect(button.text()).toBe('Put it on the bench')
+
+    await button.trigger('click')
+
+    expect(game.benchView('engine-bench')!.surface.map((part) => part.instanceId)).toEqual([id])
+    expect(wrapper.find(`[data-test="bench-part-${id}"]`).exists()).toBe(true)
+    expect(wrapper.find(`[data-test="bench-take-${id}"]`).exists()).toBe(false)
+    // It was the only one waiting, so the whole section goes with it.
+    expect(wrapper.find('[data-test="bench-candidates"]').exists()).toBe(false)
+    // Still in the warehouse - a bench is a location, never a second inventory.
+    expect(game.gameState.partInventory.some((part) => part.id === id)).toBe(true)
+  })
+
+  it('renders no candidate section at all when this bench has nothing waiting', async () => {
+    const game = useGameStore()
+    const { wrapper } = await mountAt('engine-bench')
+
+    expect(wrapper.find('[data-test="bench-candidates"]').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('In the warehouse')
+
+    // Stock that belongs to another bench leaves this one just as empty.
+    loosePart(game, DAMPER_PART.id, 'poor', '-damper')
+    await flushPromises()
+    expect(wrapper.find('[data-test="bench-candidates"]').exists()).toBe(false)
+
+    // A part already laid out here is on the surface, never offered twice.
+    const id = loosePart(game, BLOCK_PART.id, 'poor')
+    expect(game.placeOnBench(id)).toBe(true)
+    await flushPromises()
+    expect(wrapper.find(`[data-test="bench-part-${id}"]`).exists()).toBe(true)
+    expect(wrapper.find('[data-test="bench-candidates"]').exists()).toBe(false)
   })
 })

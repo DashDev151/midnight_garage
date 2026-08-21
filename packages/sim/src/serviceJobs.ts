@@ -26,7 +26,7 @@ import {
 } from './auctions'
 import { bandIndex, bandsBelowExcludingScrap } from './bands'
 import { candidateFixCostYen, symptomResolved } from './diagnosis'
-import { partFixCostYen, sumFixCosts, type PartFixCost } from './repairJobs'
+import { partFixCostYen, releaseFromBench, sumFixCosts, type PartFixCost } from './repairJobs'
 import { craftOperationCapabilityGateReason } from './machiningJobs'
 import { applyReputationDelta, reputationAtLeast } from './reputation'
 import {
@@ -1111,6 +1111,11 @@ export function resolveServiceJob(
       ),
   )
   const partInventory = releasedState.partInventory.filter((p) => !reconciledPartIds.has(p.id))
+  // The customer's parts leave the warehouse with their car, so any bench still
+  // laying one of them out is cleared - on the paid path and the failed one
+  // alike, since a job ends the same way either way.
+  const releaseReturnedParts = (next: GameState): GameState =>
+    [...reconciledPartIds].reduce(releaseFromBench, next)
   const returnedPartsLog: DayLogEntry[] =
     returnedPartDescriptions.length > 0
       ? [
@@ -1148,22 +1153,24 @@ export function resolveServiceJob(
     ]
     return {
       // The customer's parts have left the warehouse with their car, so any
-      // station holding one of them is now clear.
-      state: reconcileStations(
-        bookCashMovements(
-          {
-            ...withReputation,
-            cashYen: withReputation.cashYen + job.payoutYen,
-            activeServiceJobs,
-            jobs,
-            partInventory,
-            serviceJobChannelUnlocks: claimedServiceJobChannelUnlocks(
-              withReputation,
-              job.unlocksSellingChannel,
-            ),
-          },
-          log,
-          context.economy,
+      // station or bench holding one of them is now clear.
+      state: releaseReturnedParts(
+        reconcileStations(
+          bookCashMovements(
+            {
+              ...withReputation,
+              cashYen: withReputation.cashYen + job.payoutYen,
+              activeServiceJobs,
+              jobs,
+              partInventory,
+              serviceJobChannelUnlocks: claimedServiceJobChannelUnlocks(
+                withReputation,
+                job.unlocksSellingChannel,
+              ),
+            },
+            log,
+            context.economy,
+          ),
         ),
       ),
       log,
@@ -1172,7 +1179,9 @@ export function resolveServiceJob(
   }
 
   return {
-    state: reconcileStations({ ...releasedState, activeServiceJobs, jobs, partInventory }),
+    state: releaseReturnedParts(
+      reconcileStations({ ...releasedState, activeServiceJobs, jobs, partInventory }),
+    ),
     log: [
       {
         type: 'service-job-failed',

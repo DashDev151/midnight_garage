@@ -34,7 +34,7 @@ import { machiningOperationById } from './machining'
 import { completeMachiningJob, machiningLogEntryFor } from './machiningJobs'
 import { partFitsCar, reconcileStations } from './parts'
 import { isCustomerOriginPart } from './provenance'
-import { liftAvailable } from './repairJobs'
+import { liftAvailable, releaseFromBench } from './repairJobs'
 import { updateServiceJobLedger } from './serviceJobLedger'
 import { toolLevelsFor } from './toolLines'
 
@@ -348,6 +348,21 @@ function applyJobToCar(
 }
 
 /**
+ * A completed install has taken its part out of the warehouse and into a car
+ * slot, so both places that could still be holding it are cleared: the station
+ * it was carried to (`reconcileStations`) and the bench it was laid out on
+ * (`releaseFromBench`). An install is the only job kind here that takes a part
+ * out of the warehouse at all - a repair-zone job climbs bands in place - so it
+ * is the only kind either clearance can have anything to do.
+ */
+function clearPartLocations(state: GameState, job: Job): GameState {
+  const cleared = reconcileStations(state)
+  return job.kind === 'install-part' && job.partInstanceId
+    ? releaseFromBench(cleared, job.partInstanceId)
+    : cleared
+}
+
+/**
  * Applies a completed job's effect (group repair, part install, a run on the
  * rollers, or one machining operation) to GameState. For a car job the target
  * may be an owned car or a customer car sitting in a service job (the player
@@ -386,9 +401,7 @@ export function completeJob(state: GameState, job: Job, context: SimContext): Jo
         partsYen: ledger.partsYen + pricePaidYen,
       }))
     }
-    // The part just left the warehouse for a car slot, so whichever station
-    // it was sitting on is now clear.
-    return { state: reconcileStations(next), blockedReason: null }
+    return { state: clearPartLocations(next, job), blockedReason: null }
   }
 
   const serviceIndex = state.activeServiceJobs.findIndex((sj) => sj.car.id === job.carInstanceId)
@@ -409,9 +422,7 @@ export function completeJob(state: GameState, job: Job, context: SimContext): Jo
         partsYen: ledger.partsYen + pricePaidYen,
       }))
     }
-    // The part just left the warehouse for a car slot, so whichever station
-    // it was sitting on is now clear.
-    return { state: reconcileStations(next), blockedReason: null }
+    return { state: clearPartLocations(next, job), blockedReason: null }
   }
 
   throw new Error(`job ${job.id} references unknown car ${job.carInstanceId}`)

@@ -6,6 +6,7 @@ import {
   PARTS,
   PARTS_TAXONOMY,
   TOOL_LINES,
+  WORKBENCH,
   fitmentClassForTier,
   type CarPartId,
   type ComponentId,
@@ -123,6 +124,13 @@ async function selectZone(
   await wrapper.get(`[data-test="workshop-view-tab-${viewId}"]`).trigger('click')
   await wrapper.get(regionSelector(`workshop-region-zone-${zoneId}`)).trigger('click')
   await flushPromises()
+}
+
+/** The bench a car part's line is worked at, by name, straight off the
+ * workbench content - what a job refused for where the part sits has to name. */
+function benchNameFor(game: ReturnType<typeof useGameStore>, carPartId: CarPartId): string {
+  const benchId = WORKBENCH.benchByGroup[game.groupForCarPart(carPartId)!]
+  return WORKBENCH.benches.find((bench) => bench.id === benchId)!.displayName
 }
 
 /** Drags an element past the composable's movement threshold. */
@@ -539,6 +547,37 @@ describe('CarDetailScreen', () => {
       const rebuildCard = game.carPartJobCards(id, 'block').find((c) => c.kind === 'rebuild')!
       expect(rebuildCard.offered).toBe(false)
       expect(rebuildCard.refusal).toBe('needs-bench')
+    })
+
+    /**
+     * A greyed tab owes the player the walk that opens it, and the walk is to
+     * the bench that part's own line is worked at - so an engine part and a
+     * suspension part name different rooms. Two parts in one test, because a
+     * tooltip that always names the same bench would pass either alone.
+     */
+    it("the refused Rebuild tab names the bench to carry the part to, per that part's own line", async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      const car = game.gameState.ownedCars[0]!
+      car.parts.block = { installed: { ...car.parts.block.installed!, band: 'poor' } }
+      car.parts.dampers = { installed: { ...car.parts.dampers.installed!, band: 'poor' } }
+
+      const { wrapper } = await mountAt(id)
+
+      await selectPart(wrapper, 'block')
+      expect(benchNameFor(game, 'block')).toBe('Engine bench')
+      const blockRebuild = wrapper.get('[data-test="car-job-rebuild"]')
+      expect(blockRebuild.attributes('disabled')).toBeDefined()
+      expect(blockRebuild.attributes('title')).toBe('take it off and work it at the Engine bench')
+      // The note belongs to the refusal: a tab on offer carries none at all.
+      expect(wrapper.get('[data-test="car-job-service"]').attributes('title')).toBeUndefined()
+
+      await selectPart(wrapper, 'dampers')
+      expect(benchNameFor(game, 'dampers')).toBe('Chassis bench')
+      const damperRebuild = wrapper.get('[data-test="car-job-rebuild"]')
+      expect(damperRebuild.attributes('disabled')).toBeDefined()
+      expect(damperRebuild.attributes('title')).toBe('take it off and work it at the Chassis bench')
     })
 
     it('the tool trolley glows the current step, advances it on click, and completes the job on the last step (mirrors the bench board, Sprint 229)', async () => {

@@ -45,6 +45,7 @@ import {
 } from './jobs'
 import { reconcileStations } from './parts'
 import { makeCarOrigin } from './provenance'
+import { releaseFromBench } from './repairJobs'
 import { updateServiceJobLedger } from './serviceJobLedger'
 import { toolLevelsFor } from './toolLines'
 
@@ -701,13 +702,16 @@ export function resolvePipelineInstallPanelAction(
   const partInventory = state.partInventory.filter((p) => p.id !== action.partInstanceId)
 
   const isOwnedCar = state.ownedCars.some((c) => c.id === carInstanceId)
-  // The panel has left the warehouse for the zone, so whichever station it was
-  // on is now clear.
-  const withInventory: GameState = reconcileStations({
-    ...state,
-    partInventory,
-    energySpentToday: state.energySpentToday + laborSlotsRequired,
-  })
+  // The panel has left the warehouse for the zone, so the station and the bench
+  // that were holding it are both cleared.
+  const withInventory: GameState = releaseFromBench(
+    reconcileStations({
+      ...state,
+      partInventory,
+      energySpentToday: state.energySpentToday + laborSlotsRequired,
+    }),
+    action.partInstanceId,
+  )
   const next = writeBackCar(withInventory, carInstanceId, nextCar)
   if (!next) return NOOP_PIPELINE_RESULT(state)
   const pricePaidYen = newPanelInstance.pricePaidYen ?? 0

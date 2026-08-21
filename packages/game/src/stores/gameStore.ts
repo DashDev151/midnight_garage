@@ -3139,6 +3139,40 @@ export const useGameStore = defineStore('game', () => {
     return hiredToday ? 'hired' : 'outline'
   }
 
+  /** The instances actually laid out on `benchId`, in the order they were
+   * carried over. An id whose instance has left the warehouse is dropped
+   * rather than carried as a ghost. */
+  function benchInstances(benchId: BenchId): PartInstance[] {
+    return benchPartIds(gameState.value, benchId).flatMap((instanceId) => {
+      const instance = gameState.value.partInventory.find((part) => part.id === instanceId)
+      return instance ? [instance] : []
+    })
+  }
+
+  /**
+   * One part in a bench's own row shape: its label, its live band, and the sim's
+   * job cards for working it loose. The bench surface and the list of parts
+   * waiting to go on it are the same row, so both are built here.
+   */
+  function benchPartView(instance: PartInstance): BenchSurfacePartView {
+    return {
+      instanceId: instance.id,
+      partId: instance.partId,
+      label: partName(instance.partId),
+      band: instance.band,
+      cards: repairJobCards(gameState.value, context.value, {
+        kind: 'loose',
+        partInstanceId: instance.id,
+      }),
+    }
+  }
+
+  /** How many parts are laid out on `benchId` - the garage tile's own count,
+   * off the same list the bench surface renders. */
+  function benchPartCount(benchId: BenchId): number {
+    return benchInstances(benchId).length
+  }
+
   /**
    * Everything one bench screen renders: the board's five zones in their fixed
    * order with every tool's state, whether the room behind the bench is open,
@@ -3180,22 +3214,7 @@ export const useGameStore = defineStore('game', () => {
           })),
         }
       }),
-      surface: benchPartIds(gameState.value, benchId).flatMap((instanceId) => {
-        const instance = gameState.value.partInventory.find((part) => part.id === instanceId)
-        if (!instance) return []
-        return [
-          {
-            instanceId,
-            partId: instance.partId,
-            label: partName(instance.partId),
-            band: instance.band,
-            cards: repairJobCards(gameState.value, context.value, {
-              kind: 'loose',
-              partInstanceId: instanceId,
-            }),
-          },
-        ]
-      }),
+      surface: benchInstances(benchId).map(benchPartView),
     }
   }
 
@@ -3219,6 +3238,18 @@ export const useGameStore = defineStore('game', () => {
     if (benchHoldingPart(gameState.value, partInstanceId) !== null) return null
     if (stationForPart(partInstanceId) !== null) return null
     return benchForGroup(entry.group)
+  }
+
+  /**
+   * The parts in stock this bench works: every warehouse instance whose bench,
+   * by `warehouseBenchTargets`, is this one, so the list offers exactly what
+   * `placeOnBench` would accept and nothing it would refuse. Same row shape as
+   * the bench's own surface, so the two lists read alike.
+   */
+  function benchCandidates(benchId: BenchId): BenchSurfacePartView[] {
+    return gameState.value.partInventory
+      .filter((instance) => warehouseBenchTargets(instance.id) === benchId)
+      .map(benchPartView)
   }
 
   /**
@@ -3297,6 +3328,13 @@ export const useGameStore = defineStore('game', () => {
    * rather than prices. */
   function toolShopNameForGroup(group: ComponentId): string {
     return context.value.toolShopByGroup[group].displayName
+  }
+
+  /** The bench a line's parts come off the car to, by name - what a job that
+   * cannot be worked where the part sits tells the player to carry it to. */
+  function benchNameForGroup(group: ComponentId): string {
+    const benchId = benchForGroup(group)
+    return WORKBENCH.benches.find((bench) => bench.id === benchId)?.displayName ?? ''
   }
 
   /**
@@ -5891,13 +5929,16 @@ export const useGameStore = defineStore('game', () => {
     takeFromStation,
     stationForPart,
     benchView,
+    benchPartCount,
     warehouseBenchTargets,
+    benchCandidates,
     placeOnBench,
     takeOffBench,
     runRepairStep,
     carPartJobCards,
     repairEnergyPlan,
     toolShopNameForGroup,
+    benchNameForGroup,
     refitWarningFor,
     serviceBaysView,
     parkingView,

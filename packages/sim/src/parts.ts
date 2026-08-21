@@ -18,6 +18,7 @@ import type { SimContext } from './context'
 import { bookCashMovements } from './financeLedger'
 import { machinedPartPriceYen } from './machining'
 import { isCustomerOriginPart, makeMarketOrigin } from './provenance'
+import { releaseFromBench } from './repairJobs'
 
 export type DeliverySpeed = 'standard' | 'express'
 
@@ -284,17 +285,22 @@ export function resolveScrapPart(
   const priceYen = scrapValueYen(taxonomyEntry, context.economy, part.fitmentClass)
   const log: DayLogEntry[] = [{ type: 'part-scrapped', partInstanceId, priceYen }]
   return {
-    state: reconcileStations(
-      bookCashMovements(
-        {
-          ...state,
-          cashYen: state.cashYen + priceYen,
-          partInventory: state.partInventory.filter((p) => p.id !== partInstanceId),
-          energySpentToday: state.energySpentToday + laborSlotsUsed,
-        },
-        log,
-        context.economy,
+    // Scrap leaves the warehouse for the merchant, so the station and the bench
+    // that were holding it are both cleared.
+    state: releaseFromBench(
+      reconcileStations(
+        bookCashMovements(
+          {
+            ...state,
+            cashYen: state.cashYen + priceYen,
+            partInventory: state.partInventory.filter((p) => p.id !== partInstanceId),
+            energySpentToday: state.energySpentToday + laborSlotsUsed,
+          },
+          log,
+          context.economy,
+        ),
       ),
+      partInstanceId,
     ),
     log,
   }
@@ -339,16 +345,21 @@ export function resolveSellPart(
   )
   const log: DayLogEntry[] = [{ type: 'part-sold', partInstanceId, priceYen }]
   return {
-    state: reconcileStations(
-      bookCashMovements(
-        {
-          ...state,
-          cashYen: state.cashYen + priceYen,
-          partInventory: state.partInventory.filter((p) => p.id !== partInstanceId),
-        },
-        log,
-        context.economy,
+    // Sold over the counter and gone from the warehouse, so the station and the
+    // bench that were holding it are both cleared.
+    state: releaseFromBench(
+      reconcileStations(
+        bookCashMovements(
+          {
+            ...state,
+            cashYen: state.cashYen + priceYen,
+            partInventory: state.partInventory.filter((p) => p.id !== partInstanceId),
+          },
+          log,
+          context.economy,
+        ),
       ),
+      partInstanceId,
     ),
     log,
   }

@@ -2,6 +2,7 @@
 import {
   BenchIdSchema,
   ConditionBandSchema,
+  WORKBENCH,
   fitmentClassForTier,
   titleCaseFromSlug,
   type ConditionBand,
@@ -285,6 +286,16 @@ function onSelect(partInstanceId: string): void {
  * two numbers simply agree.
  */
 const countLabel = computed(() => `${entries.value.length}/${game.pickableParts.length}`)
+
+/** The display name of the bench a warehouse part would land on, read
+ * straight off the workbench content the same way `GarageScreen` and
+ * `BenchScreen` label a bench - `null` for a part the "to the bench" row
+ * never renders for anyway. */
+function benchTargetName(partInstanceId: string): string | null {
+  const benchId = game.warehouseBenchTargets(partInstanceId)
+  if (!benchId) return null
+  return WORKBENCH.benches.find((bench) => bench.id === benchId)?.displayName ?? null
+}
 </script>
 
 <template>
@@ -401,17 +412,14 @@ const countLabel = computed(() => `${entries.value.length}/${game.pickableParts.
             :no-fit-reason="entry.noFitReason"
             @select="onSelect"
           />
-          <li
-            v-if="!fit && game.warehouseBenchTargets(entry.instance.id) !== null"
-            class="bench-send-row"
-          >
+          <li v-if="!fit && benchTargetName(entry.instance.id) !== null" class="bench-send-row">
             <button
               type="button"
               class="bench-send"
               :data-test="'bench-send-' + entry.instance.id"
               @click="game.placeOnBench(entry.instance.id)"
             >
-              To the bench
+              To the {{ benchTargetName(entry.instance.id) }}
             </button>
           </li>
         </template>

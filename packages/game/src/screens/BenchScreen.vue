@@ -8,7 +8,8 @@ import {
 } from '@midnight-garage/content'
 import type { RepairJobCard, RepairStepRefusal } from '@midnight-garage/sim'
 import { computed, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
+import BandChip from '../components/BandChip.vue'
 import BenchSurface from '../components/BenchSurface.vue'
 import JobCardPanel from '../components/JobCardPanel.vue'
 import ShadowBoard from '../components/ShadowBoard.vue'
@@ -63,6 +64,10 @@ function shopNameForBench(id: BenchId): string {
 
 const shopName = computed(() => (benchId.value ? shopNameForBench(benchId.value) : ''))
 
+/** What is in the warehouse that this bench works, in the same row shape the
+ * surface above uses. Empty when there is nothing to carry over. */
+const candidates = computed(() => (benchId.value ? game.benchCandidates(benchId.value) : []))
+
 // --- the part in hand -----------------------------------------------------
 
 const selectedInstanceId = ref<string | null>(null)
@@ -103,7 +108,9 @@ const selectedCard = computed<RepairJobCard | null>(
   () => cards.value.find((card) => card.kind === selectedKind.value) ?? null,
 )
 
-const jobTabs = computed(() => repairJobTabViews(cards.value, selectedKind.value, shopName.value))
+const jobTabs = computed(() =>
+  repairJobTabViews(cards.value, selectedKind.value, shopName.value, view.value?.displayName ?? ''),
+)
 
 function onSelectKind(kind: RepairJobKind): void {
   manualKind.value = kind
@@ -163,6 +170,8 @@ function onRunStep(): void {
 
 <template>
   <section v-if="view" class="bench-screen">
+    <RouterLink :to="{ name: 'garage' }" class="back">&lt; Back to the garage</RouterLink>
+
     <h2>{{ view.displayName }}</h2>
 
     <ShadowBoard
@@ -179,6 +188,26 @@ function onRunStep(): void {
       @select="onSelectPart"
       @return-part="onReturnPart"
     />
+
+    <section v-if="candidates.length > 0" class="candidates" data-test="bench-candidates">
+      <h3>In the warehouse</h3>
+      <ul class="candidate-list">
+        <li v-for="part in candidates" :key="part.instanceId" class="candidate-row">
+          <span class="candidate-part">
+            <span class="candidate-label">{{ part.label }}</span>
+            <BandChip :band="part.band" />
+          </span>
+          <button
+            type="button"
+            class="take-button"
+            :data-test="'bench-take-' + part.instanceId"
+            @click="game.placeOnBench(part.instanceId)"
+          >
+            Put it on the bench
+          </button>
+        </li>
+      </ul>
+    </section>
 
     <section v-if="selectedPart" class="job-panel">
       <JobCardPanel :cards="cards" :shop-name="shopName" />
@@ -212,10 +241,84 @@ function onRunStep(): void {
 </template>
 
 <style scoped>
+.back {
+  color: var(--mg-text-dim);
+  text-decoration: none;
+  font-size: var(--mg-fs-sm);
+}
+
 h2 {
   color: var(--mg-neon-violet);
   font-size: var(--mg-fs-lg);
-  margin: 0 0 var(--mg-space-3);
+  margin: var(--mg-space-2) 0 var(--mg-space-3);
+}
+
+h3 {
+  color: var(--mg-neon-violet);
+  font-size: var(--mg-fs-md);
+  margin: 0 0 var(--mg-space-2);
+}
+
+/* The parts waiting to come over, laid out like the bench's own surface: the
+   two lists are the same rows either side of one walk. */
+.candidates {
+  margin-top: var(--mg-space-3);
+  border: var(--mg-border);
+  background: var(--mg-panel);
+  padding: var(--mg-space-2) var(--mg-space-3);
+}
+
+.candidate-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.candidate-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--mg-space-2);
+  padding: var(--mg-space-1) 0;
+  border-bottom: var(--mg-border);
+}
+
+.candidate-row:last-child {
+  border-bottom: none;
+}
+
+.candidate-part {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--mg-space-2);
+  min-width: 0;
+  padding: var(--mg-space-1) var(--mg-space-2);
+  font-size: var(--mg-fs-sm);
+}
+
+.candidate-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.take-button {
+  flex: none;
+  background: transparent;
+  border: var(--mg-border);
+  border-radius: var(--mg-radius);
+  border-color: var(--mg-neon-cyan);
+  color: var(--mg-neon-cyan);
+  font: inherit;
+  font-size: var(--mg-fs-sm);
+  padding: var(--mg-space-1) var(--mg-space-2);
+  cursor: pointer;
+}
+
+.take-button:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--mg-neon-cyan);
 }
 
 .job-panel {

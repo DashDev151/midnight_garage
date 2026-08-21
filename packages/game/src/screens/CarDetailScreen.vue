@@ -428,6 +428,12 @@ const partShopName = computed<string>(() =>
   selectedGroup.value ? game.toolShopNameForGroup(selectedGroup.value) : '',
 )
 
+/** The bench the docked part's own line is worked on, by name - where a job
+ * that needs the part off the car sends it. */
+const partBenchName = computed<string>(() =>
+  selectedGroup.value ? game.benchNameForGroup(selectedGroup.value) : '',
+)
+
 /** The player's own pick of job, which holds until that job stops being on
  * offer here. */
 const manualKind = ref<RepairJobKind | null>(null)
@@ -446,7 +452,12 @@ const selectedCard = computed<RepairJobCard | null>(
 )
 
 const jobTabs = computed(() =>
-  repairJobTabViews(partJobCards.value, selectedKind.value, partShopName.value),
+  repairJobTabViews(
+    partJobCards.value,
+    selectedKind.value,
+    partShopName.value,
+    partBenchName.value,
+  ),
 )
 
 function onSelectKind(kind: RepairJobKind): void {

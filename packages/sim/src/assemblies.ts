@@ -25,6 +25,7 @@ import {
   writeCarBack,
 } from './jobs'
 import { partFitsCar, reconcileStations } from './parts'
+import { releaseFromBench } from './repairJobs'
 import { updateServiceJobLedger } from './serviceJobLedger'
 
 /**
@@ -580,14 +581,17 @@ export function resolveFitAssemblyMember(
     members: { ...container.members, [memberSlot]: newPart },
   }
   const partInventory = state.partInventory.filter((p) => p.id !== newPartInstanceId)
-  // The fitted part has left the warehouse for the assembly, so whichever
-  // station it was on is now clear.
-  const next: GameState = reconcileStations({
-    ...state,
-    assemblyInventory: nextContainers,
-    partInventory,
-    energySpentToday: state.energySpentToday + laborSlotsUsed,
-  })
+  // The fitted part has left the warehouse for the assembly, so the station and
+  // the bench that were holding it are both cleared.
+  const next: GameState = releaseFromBench(
+    reconcileStations({
+      ...state,
+      assemblyInventory: nextContainers,
+      partInventory,
+      energySpentToday: state.energySpentToday + laborSlotsUsed,
+    }),
+    newPartInstanceId,
+  )
   return { state: next, log: [], ok: true }
 }
 
@@ -679,13 +683,17 @@ export function resolveBuildAssembly(
   const container: AssemblyContainer = { id: containerId, assemblyId, members, sourceCarId: null }
   return {
     // Every member has left the warehouse for the new assembly, so any station
-    // holding one of them is now clear.
-    state: reconcileStations({
-      ...state,
-      partInventory,
-      assemblyInventory: [...containers(state), container],
-      energySpentToday: state.energySpentToday + laborSlotsUsed,
-    }),
+    // or bench holding one of them is cleared - each taken id, not just the
+    // first, since a build empties several bays of the warehouse at once.
+    state: takenIds.reduce(
+      releaseFromBench,
+      reconcileStations({
+        ...state,
+        partInventory,
+        assemblyInventory: [...containers(state), container],
+        energySpentToday: state.energySpentToday + laborSlotsUsed,
+      }),
+    ),
     log: [],
     ok: true,
   }

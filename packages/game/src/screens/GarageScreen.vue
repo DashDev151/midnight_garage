@@ -233,6 +233,12 @@ const draggedPartLabel = computed(() => {
               :data-test="'station-open-bench-' + bench.id"
             >
               <span class="station-name">{{ bench.displayName }}</span>
+              <span
+                v-if="game.benchPartCount(bench.id) > 0"
+                class="chip"
+                :data-test="'bench-waiting-' + bench.id"
+                >{{ game.benchPartCount(bench.id) }} waiting</span
+              >
             </RouterLink>
           </li>
           <li
@@ -589,6 +595,16 @@ button:disabled {
 .station-status {
   color: var(--mg-text-dim);
   text-transform: none;
+}
+
+/* What a bench is holding, so mid-job work is visible from the floor. */
+.chip {
+  border: var(--mg-border);
+  border-radius: var(--mg-radius);
+  padding: 0 var(--mg-space-1);
+  font-size: var(--mg-fs-sm);
+  color: var(--mg-text-dim);
+  white-space: nowrap;
 }
 
 .station.derelict .station-status {

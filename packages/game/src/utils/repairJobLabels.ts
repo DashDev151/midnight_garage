@@ -36,9 +36,12 @@ export interface RepairJobTabView {
   selected: boolean
 }
 
-/** Why this tab will not open, or `''` when it will. */
-function tabTooltip(card: RepairJobCard, shopName: string): string {
+/** Why this tab will not open, or `''` when it will. A job refused for where
+ * the part sits names the walk that fixes it rather than the rule that
+ * stopped it. */
+function tabTooltip(card: RepairJobCard, shopName: string, benchName: string): string {
   if (!card.offered) {
+    if (card.refusal === 'needs-bench') return `take it off and work it at the ${benchName}`
     if (card.refusal === 'needs-shop') return `needs the ${shopName}`
     if (card.refusal === 'at-or-above-target') return 'already there'
     return ''
@@ -52,17 +55,20 @@ function tabTooltip(card: RepairJobCard, shopName: string): string {
 
 /** The three tabs for one target's cards, in ladder order. A job that is not
  * on offer, or whose tools cannot be come by at all, is greyed rather than
- * hidden: the player is owed the reason. */
+ * hidden: the player is owed the reason. `shopName` covers the target's own
+ * line and `benchName` is the bench its parts are worked on - the two places a
+ * refused job sends the player to. */
 export function repairJobTabViews(
   cards: readonly RepairJobCard[],
   selectedKind: RepairJobKind | null,
   shopName: string,
+  benchName: string,
 ): RepairJobTabView[] {
   return cards.map((card) => ({
     kind: card.kind,
     label: REPAIR_JOB_LABELS[card.kind],
     disabled: !card.offered || card.route === 'locked',
-    tooltip: tabTooltip(card, shopName),
+    tooltip: tabTooltip(card, shopName, benchName),
     selected: card.kind === selectedKind,
   }))
 }

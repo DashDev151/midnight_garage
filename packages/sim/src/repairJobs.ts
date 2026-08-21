@@ -343,9 +343,29 @@ export function resolvePlaceOnBench(
 /**
  * Take a part off whichever bench holds it. An unfinished job on that part
  * stays open in `state.jobs` with its ticked steps intact, so the part can come
- * back to the bench later and carry on where it left off.
+ * back to the bench later and carry on where it left off. The player's own
+ * action; `releaseFromBench` below is the same move made on the part's behalf
+ * when it leaves the warehouse for good.
  */
 export function resolveTakeOffBench(state: GameState, partInstanceId: string): GameState {
+  return releaseFromBench(state, partInstanceId)
+}
+
+/**
+ * Clears `partInstanceId` off whatever bench is holding it, and nothing else.
+ * A no-op (same state reference) when no bench is, which is every call but the
+ * handful that matter.
+ *
+ * A part leaves the warehouse for many reasons other than a player carrying it
+ * back off a bench: fitted to a car, taken into an assembly, hung on a body
+ * zone, sold, scrapped, or returned to a customer at close-out. Called at every
+ * site that removes from `partInventory`, so a bench can never keep listing a
+ * part that is not there - a row for a part now bolted into a car, whose job
+ * cards would act on an instance nothing can be worked on. The exact
+ * counterpart of `reconcileStations` (parts.ts), which keeps the two work
+ * stations honest at those same sites and for the same reason.
+ */
+export function releaseFromBench(state: GameState, partInstanceId: string): GameState {
   const bench = benchHoldingPart(state, partInstanceId)
   if (!bench) return state
   return {

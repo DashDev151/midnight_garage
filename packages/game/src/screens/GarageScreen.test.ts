@@ -19,10 +19,15 @@ import GarageScreen from './GarageScreen.vue'
 const DAMPER_PART = PARTS.find((part) => part.carPartId === 'dampers')!
 
 /** Puts one loose part in the warehouse at `band`, unattached to any
- * station, and hands back its instance id. */
-function loosePart(game: ReturnType<typeof useGameStore>, band: ConditionBand): string {
+ * station, and hands back its instance id. `suffix` distinguishes a second
+ * instance of the same catalogue part. */
+function loosePart(
+  game: ReturnType<typeof useGameStore>,
+  band: ConditionBand,
+  suffix = '',
+): string {
   const instance: PartInstance = {
-    id: `pi-loose-${DAMPER_PART.id}`,
+    id: `pi-loose-${DAMPER_PART.id}${suffix}`,
     partId: DAMPER_PART.id,
     band,
     origin: makeMarketOrigin(1),
@@ -385,6 +390,39 @@ describe('GarageScreen', () => {
         expect(link!.props('to')).toEqual({ name: 'bench', params: { benchId: bench.id } })
         expect(link!.text()).toContain(bench.displayName)
       }
+    })
+
+    // A bench tile has to say when something is mid-job on it: the garage
+    // floor is where a player decides what to walk to next.
+    it('a bench tile counts what is waiting on it, and carries no chip when nothing is', async () => {
+      const game = useGameStore()
+      const first = loosePart(game, 'worn', '-a')
+      const second = loosePart(game, 'worn', '-b')
+      const wrapper = mountScreen()
+
+      for (const bench of WORKBENCH.benches) {
+        expect(wrapper.find(`[data-test="bench-waiting-${bench.id}"]`).exists(), bench.id).toBe(
+          false,
+        )
+      }
+
+      expect(game.placeOnBench(first)).toBe(true)
+      await wrapper.vm.$nextTick()
+      expect(wrapper.get('[data-test="bench-waiting-chassis-bench"]').text()).toBe('1 waiting')
+
+      // A count, not a flag.
+      expect(game.placeOnBench(second)).toBe(true)
+      await wrapper.vm.$nextTick()
+      expect(wrapper.get('[data-test="bench-waiting-chassis-bench"]').text()).toBe('2 waiting')
+
+      // Dampers are the chassis bench's work, so no other tile claims them.
+      expect(wrapper.find('[data-test="bench-waiting-engine-bench"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="bench-waiting-body-trim-bench"]').exists()).toBe(false)
+
+      expect(game.takeOffBench(first)).toBe(true)
+      expect(game.takeOffBench(second)).toBe(true)
+      await wrapper.vm.$nextTick()
+      expect(wrapper.find('[data-test="bench-waiting-chassis-bench"]').exists()).toBe(false)
     })
 
     it('the old single workbench tile no longer exists - three bench doors replaced it', () => {

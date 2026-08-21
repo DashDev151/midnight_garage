@@ -482,6 +482,17 @@ pass."
   undiagnosed, still never forced to pass; two recurrences now, both under full-gate load, both
   unreproducible standalone, which strengthens the timeout-under-load suspicion.
 
+  **DIAGNOSED 2026-08-21, on the third recurrence, and fixed.** This time the name was captured
+  rather than lost: `generationCoherence.test.ts`, "never offers a lot younger than
+  AUCTION_MIN_AGE_YEARS, at any campaign year". It is a timeout, not an assertion failure. That
+  file's two heaviest probes sweep hundreds of seeded lots across every campaign year and run
+  8.3 s and 8.8 s ALONE; `packages/sim/vitest.config.ts` budgeted 30 s, which is comfortable
+  solo and not comfortable in a whole-repo run, where every project's workers share the cores
+  under v8 coverage instrumentation. The budget is now 90 s, with the reasoning written into the
+  config's own comment. No assertion was touched: a timeout is a budget for how long a test may
+  take, never a claim about what it proves. If a red still appears under load after this, it is a
+  DIFFERENT fault and this entry should not be blamed for it.
+
 - [ ] **Should a tool purchase need reputation at all? (maintainer, 2026-08-07, deferred by them.)**
   Ruling the same day: tools are gated by money and never by scene standing, *"anyone can buy a
   tool. Doesn't mean you are good with it. The market decides."* Every tier 2 additionally requires

@@ -16,7 +16,14 @@ export default defineConfig({
      * take, never a claim about what it proves. Keeping the budget here rather
      * than appending a per-test timeout to each offender stops the same failure
      * resurfacing one test at a time every time a car is added.
+     *
+     * The budget is generous on purpose. The heaviest probes here sweep hundreds
+     * of seeded lots across every campaign year and run about nine seconds on
+     * their own, but a whole-repo run puts every project's workers on the same
+     * cores under coverage instrumentation, and the same test can take several
+     * times longer there than it does alone. A budget sized to the solo timing
+     * turns that contention into an intermittent red that reproduces nowhere.
      */
-    testTimeout: 30_000,
+    testTimeout: 90_000,
   },
 })
