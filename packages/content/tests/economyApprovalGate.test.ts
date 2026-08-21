@@ -2776,6 +2776,23 @@ import workbench from '../data/workbench.json'
  * `partPricing.json` and `damagePatterns.json` are all untouched, so their five hashes hold
  * unchanged, and no mission payout or budget cap moves: `benchFitMember` is labour, and a
  * payout derives from build cost rather than from labour.
+ *
+ * Re-pinned 2026-08-21 for sprint228.md, and this one is a NAME correction rather than a
+ * lever: `toolLines.json`'s suspension tier 2 `displayName` "Two-post lift" -> "Spring press
+ * & damper tooling". No price, no hire fee and no reputation floor moves, here or anywhere
+ * else in the file, and no other line is touched; the hash moves because a string did. The
+ * rename exists because the two-post lift is standalone garage equipment rather than a rung
+ * of any tool line (docs/design/systems/repair-refactor-spec.md section 4, "not part of any
+ * tool line and not a gate", and section 10, "Suspension line: no lift"), and sprint 228 put
+ * the garage's own lift on the Upgrades wall in The bay, beside the Benches ladder. Two
+ * different purchases, both gated at `local`, were rendering the identical string on one
+ * screen. The new name is what that rung actually puts on the chassis bench for suspension
+ * work - the floor press, the rebuild tooling and the seal drivers `workbench.json` already
+ * names - and it carries the ampersand shape of its five siblings. Nothing else moves:
+ * `economy.json`, `toolShops.json`, `workbench.json`, `partPricing.json` and
+ * `damagePatterns.json` are all untouched, so their five hashes hold, and no mission payout
+ * or budget cap moves, since a payout derives from build cost and a display name is not a
+ * cost.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -2817,7 +2834,7 @@ describe('the economy approval gate', () => {
       'toolLines.json changed. Every rung price and every reputation floor on the tool ' +
         'ladder is approval-gated (CLAUDE.md directive 22): re-pin this hash ONLY in the ' +
         'same change as the recorded approval of the specific lever and value.',
-    ).toBe('154114c1b57a1a2dca505119dfea249b236fab5daefaa9f160f155befd24dba2')
+    ).toBe('55b4e5310653268c690b4c4c3f99589d36c21a3b95fee3dd8314a70763362861')
   })
 
   it('toolShops.json matches its approved content exactly', () => {

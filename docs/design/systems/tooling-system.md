@@ -51,7 +51,7 @@ pay the group's rental fee). The three that exist stay; three are added:
 | engine | Engine crane & stand | pull the engine assembly (buried internals) | exists |
 | drivetrain | Transmission bench | pull the gearbox assembly (buried) | exists |
 | wheels | Tyre machine & balancer | mount & balance a tyre | exists |
-| suspension | Two-post lift | fit/replace dampers & springs (spring compression) | NEW |
+| suspension | Spring press & damper tooling | fit/replace dampers & springs (spring compression) | NEW |
 | body | MIG welder & panel tools | panel & structural repair (weld/beat) | NEW |
 | interior | Upholstery & trim bench | retrim seats & dash | NEW |
 

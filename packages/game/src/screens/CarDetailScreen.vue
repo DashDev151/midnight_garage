@@ -128,8 +128,17 @@ function hireGateReasonFor(group: ComponentId): string | null {
 }
 
 function onHireMachineLineClick(group: ComponentId): void {
-  game.hireMachineLine(group)
+  game.hireToolLine(group)
 }
+
+/** The caption under every line the day's hire allowance no longer stretches
+ * to, naming whichever line already carries the day's tag - `null` while a
+ * hire is still there to be had. */
+const hireCapNote = computed<string | null>(() => {
+  if (!game.hireCapReachedToday) return null
+  const hired = MACHINE_LINE_GROUPS.find((group) => game.machineLineHiredToday(group))
+  return hired ? `One line a day. The ${MACHINE_LINE_NAMES[hired]} has the tag on it.` : null
+})
 
 /** Each dyno refusal in the same plain words the hire rows use for theirs.
  * `not-found` carries none: a car that cannot be resolved never renders a
@@ -1683,16 +1692,51 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               :data-test="'machine-hire-chip-' + group"
               >Hired today</span
             >
+            <template v-else>
+              <button
+                type="button"
+                class="hire-btn"
+                :disabled="!!hireGateReasonFor(group)"
+                :title="hireGateReasonFor(group) ?? undefined"
+                :data-test="'hire-machine-' + group"
+                @click="onHireMachineLineClick(group)"
+              >
+                Hire for the day ({{ formatYen(game.machineLineFeeYen(group)) }})
+              </button>
+              <!-- The day's one hire is already spent on another line, so this
+                   one names the line holding the tag rather than refusing
+                   silently. Never on the hired line's own row: that row shows
+                   its chip instead of a button. -->
+              <span
+                v-if="hireCapNote"
+                class="blocked-reason hire-cap-note"
+                data-test="hire-cap-note"
+                >{{ hireCapNote }}</span
+              >
+            </template>
+          </li>
+          <!-- The two-post lift hires in on the same day-stamped seam a line
+               does, but stands outside the one-a-day cap: it is the bay's own
+               fixture rather than a bench's machinery. -->
+          <li class="machine-hire-row" data-test="machine-hire-row-lift">
+            <span class="machine-hire-name">Two-post lift</span>
+            <span v-if="game.liftOwned" class="chip owned" data-test="machine-hire-chip-lift"
+              >In-house</span
+            >
+            <span
+              v-else-if="game.liftHiredToday"
+              class="chip hired"
+              data-test="machine-hire-chip-lift"
+              >Hired today</span
+            >
             <button
               v-else
               type="button"
               class="hire-btn"
-              :disabled="!!hireGateReasonFor(group)"
-              :title="hireGateReasonFor(group) ?? undefined"
-              :data-test="'hire-machine-' + group"
-              @click="onHireMachineLineClick(group)"
+              data-test="hire-lift"
+              @click="game.hireLift()"
             >
-              Hire for the day ({{ formatYen(game.machineLineFeeYen(group)) }})
+              Hire for the day ({{ formatYen(game.liftHireFeeYen) }})
             </button>
           </li>
           <li class="machine-hire-row" data-test="machine-hire-row-dyno">
@@ -2829,8 +2873,15 @@ h4 {
 .machine-hire-row {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--mg-space-2);
   font-size: var(--mg-fs-sm);
+}
+
+/* The one-a-day cap's caption takes the whole width under its row, so five
+   refused lines never squeeze their own names. */
+.hire-cap-note {
+  flex-basis: 100%;
 }
 
 .machine-hire-name {

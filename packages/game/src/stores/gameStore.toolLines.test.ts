@@ -152,7 +152,7 @@ describe('tool lines in the store (Sprint 36)', () => {
     // chassis is a body signature slot, which needs the line hired for today
     // - a separate, intentional machine-line gate, not the ownership gate
     // this test is about.
-    game.hireMachineLine('body')
+    game.hireToolLine('body')
     game.repair(car.id, 'body', 'fine', 'chassis')
     // A single day's labor may be enough to finish the job outright (in
     // which case it's already gone from the in-progress list) - either an
@@ -171,18 +171,18 @@ describe('tool lines in the store (Sprint 36)', () => {
       const game = useGameStore()
       expect(game.hireCapReachedToday).toBe(false)
 
-      expect(game.hireMachineLine('body')).toBe(true)
+      expect(game.hireToolLine('body')).toBe(true)
       expect(game.hireCapReachedToday).toBe(true)
 
       // Re-hiring the SAME group the same day is still a free no-op, not a
       // second line spent against the cap.
       expect(game.hireMachineLineGateReason('body')).toBeNull()
-      expect(game.hireMachineLine('body')).toBe(true)
+      expect(game.hireToolLine('body')).toBe(true)
       expect(game.hireCapReachedToday).toBe(true)
 
       // A DIFFERENT group is refused: the day's one-line allowance is spent.
       expect(game.hireMachineLineGateReason('engine')).toBe('hire-cap')
-      expect(game.hireMachineLine('engine')).toBe(false)
+      expect(game.hireToolLine('engine')).toBe(false)
       expect(game.hireCapReachedToday).toBe(true)
     })
   })

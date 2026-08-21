@@ -2810,6 +2810,11 @@ export const useGameStore = defineStore('game', () => {
    * day (`liftAvailable`, the same predicate the sim's own discount reads). */
   const liftAvailableToday = computed(() => liftAvailable(gameState.value))
 
+  /** Whether the lift's day hire has already been paid today - the "Hired
+   * today" chip's own condition, exactly as `dynoHiredToday` is for the
+   * rollers. Usable today without owning it is what a paid hire means. */
+  const liftHiredToday = computed(() => liftAvailableToday.value && !liftOwned.value)
+
   /** The day's hire fee, and what buying it outright costs. */
   const liftHireFeeYen = computed(() => context.value.economy.lift.hireFeeYen)
   const liftPurchasePriceYen = computed(() => context.value.economy.lift.purchasePriceYen)
@@ -4793,7 +4798,7 @@ export const useGameStore = defineStore('game', () => {
    * hire allowance already spent on another line) - the caller must not treat
    * the line as available when this is false.
    */
-  function hireMachineLine(group: ComponentId): boolean {
+  function hireToolLine(group: ComponentId): boolean {
     const result = resolveHireToolLine(gameState.value, group, context.value)
     if (result.outcome !== 'hired') return false
     gameState.value = result.state
@@ -4818,7 +4823,7 @@ export const useGameStore = defineStore('game', () => {
   /**
    * Buys the crew a round: cash out, labour back, the same day. Returns false
    * on any refusal (already bought today, nothing spent to buy back, or not
-   * enough cash) and changes nothing, the same shape `hireMachineLine` uses.
+   * enough cash) and changes nothing, the same shape `hireToolLine` uses.
    */
   function buyCoffee(): boolean {
     const result = resolveBuyCoffee(gameState.value, context.value)
@@ -5799,12 +5804,13 @@ export const useGameStore = defineStore('game', () => {
     machineLineFeeYen,
     hireMachineLineGateReason,
     hireCapReachedToday,
-    hireMachineLine,
+    hireToolLine,
     buyCoffee,
     coffeePriceYen,
     coffeeGateReason,
     liftOwned,
     liftAvailableToday,
+    liftHiredToday,
     liftHireFeeYen,
     liftPurchasePriceYen,
     liftMinReputationTier,

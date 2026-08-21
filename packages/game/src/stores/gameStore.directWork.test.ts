@@ -120,7 +120,7 @@ describe('direct repair/install work (Sprint 202)', () => {
       `Without the ${TOOL_LINES.engine.tiers[1]!.displayName} this is triple the labour. Hire it for the day, or buy your own.`,
     )
 
-    game.hireMachineLine('engine')
+    game.hireToolLine('engine')
     expect(game.installMachineNoteFor(carId, 'block')).toBe('')
   })
 

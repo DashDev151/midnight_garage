@@ -35,45 +35,48 @@ describe('UpgradesScreen', () => {
     for (const wrapper of mountedWrappers.splice(0)) wrapper.unmount()
   })
 
-  it('renders the facilities section, all six tool-line ladders, and the rolling road beside them', () => {
+  it('renders the three sections in the doc order: Benches, then the bay, then Rooms', () => {
     const game = useGameStore()
     game.newGame(1)
     const wrapper = mountScreen()
     expect(wrapper.text()).toContain('Facilities')
-    expect(wrapper.text()).toContain('Tools')
-    // Six two-rung ladders plus the rolling road's single rung: it stands in
-    // the wall alongside them and is bought the same way, though it belongs to
-    // no part group and repairs nothing.
-    expect(wrapper.findAll('.tool-column')).toHaveLength(7)
-    expect(wrapper.findAll('.tier-node')).toHaveLength(13)
-    // Exactly two rungs on every one of the six lines - the third is not a
-    // rung any more, it is a shop.
-    for (const componentId of [
-      'engine',
-      'drivetrain',
-      'suspension',
-      'wheels',
-      'body',
-      'interior',
-    ]) {
-      expect(wrapper.find(`[data-test="tier-node-${componentId}-2"]`).exists(), componentId).toBe(
-        true,
-      )
-      expect(wrapper.find(`[data-test="tier-node-${componentId}-3"]`).exists(), componentId).toBe(
-        false,
-      )
-    }
-    expect(wrapper.find('[data-test="dyno-column"]').exists()).toBe(true)
-    expect(wrapper.find('[data-test="buy-dyno"]').text()).toBe(
-      formatYen(ECONOMY.dyno.purchasePriceYen),
+    expect(wrapper.text()).toContain('Benches')
+    expect(wrapper.text()).toContain('The bay')
+    expect(wrapper.text()).toContain('Rooms')
+    const order = wrapper
+      .findAll('[data-test="garage-benches"], [data-test="garage-bay"], [data-test="garage-rooms"]')
+      .map((section) => section.attributes('data-test'))
+    expect(order).toEqual(['garage-benches', 'garage-bay', 'garage-rooms'])
+  })
+
+  it('each bench lists exactly its own tool lines, with a line naming its rungs', () => {
+    const game = useGameStore()
+    game.newGame(1)
+    const wrapper = mountScreen()
+
+    const engineBench = wrapper.get('[data-test="bench-group-engine-bench"]')
+    expect(engineBench.findAll('.tool-line').map((line) => line.attributes('data-test'))).toEqual([
+      'tool-line-engine',
+    ])
+
+    const chassisBench = wrapper.get('[data-test="bench-group-chassis-bench"]')
+    expect(chassisBench.findAll('.tool-line').map((line) => line.attributes('data-test'))).toEqual([
+      'tool-line-drivetrain',
+      'tool-line-suspension',
+      'tool-line-wheels',
+    ])
+
+    const bodyTrimBench = wrapper.get('[data-test="bench-group-body-trim-bench"]')
+    expect(bodyTrimBench.findAll('.tool-line').map((line) => line.attributes('data-test'))).toEqual(
+      ['tool-line-body', 'tool-line-interior'],
     )
-    expect(wrapper.find('[data-test="dyno-hire-line"]').text()).toContain(
-      formatYen(ECONOMY.dyno.hireFeeYen),
-    )
+
     // A fresh game shows every line at its named tier-1 kit with the next
     // tier offered by name and price - never a raw component id.
-    expect(wrapper.text()).toContain(TOOL_LINES.wheels.tiers[0]!.displayName)
-    expect(wrapper.text()).toContain(WHEELS_T2.displayName)
+    const wheelsLine = chassisBench.get('[data-test="tool-line-wheels"]')
+    expect(wheelsLine.text()).toContain(TOOL_LINES.wheels.tiers[0]!.displayName)
+    expect(wheelsLine.text()).toContain(WHEELS_T2.displayName)
+    expect(wheelsLine.text()).toContain(formatYen(WHEELS_T2.upgradePriceYen))
   })
 
   it('gates the rolling road on reputation, then buys it and drops the hire line', async () => {
@@ -90,7 +93,46 @@ describe('UpgradesScreen', () => {
     expect(game.dynoOwned).toBe(true)
     expect(wrapper.find('[data-test="buy-dyno"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="dyno-hire-line"]').exists()).toBe(false)
-    expect(wrapper.find('[data-test="dyno-node"]').classes()).toContain('owned')
+    expect(wrapper.find('[data-test="dyno-row"]').classes()).toContain('owned')
+  })
+
+  it('the lift row buys through buyLift and enforces its reputation and cash gates', async () => {
+    const game = useGameStore()
+    game.newGame(1) // fresh: reputationTier is 'unknown', below the lift's 'local' gate
+    game.devGiveCash(ECONOMY.lift.purchasePriceYen)
+    const repGated = mountScreen()
+    expect(repGated.get('[data-test="buy-lift"]').attributes('disabled')).toBeDefined()
+    expect(repGated.get('[data-test="gate-tip-lift"]').text()).toContain(
+      `needs ${ECONOMY.lift.minReputationTier} reputation`,
+    )
+
+    game.devSetReputationTier(ECONOMY.lift.minReputationTier)
+    game.gameState = { ...game.gameState, cashYen: 0 }
+    const cashGated = mountScreen()
+    expect(cashGated.get('[data-test="buy-lift"]').attributes('disabled')).toBeDefined()
+    expect(cashGated.find('[data-test="gate-tip-lift"]').exists()).toBe(false)
+
+    game.devGiveCash(ECONOMY.lift.purchasePriceYen)
+    const wrapper = mountScreen()
+    await wrapper.get('[data-test="buy-lift"]').trigger('click')
+    expect(game.liftOwned).toBe(true)
+    expect(wrapper.find('[data-test="buy-lift"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="hire-lift-upgrades"]').exists()).toBe(false)
+    expect(wrapper.get('[data-test="lift-chip"]').text()).toBe('In-house')
+  })
+
+  it('the lift row hires through hireLift', async () => {
+    const game = useGameStore()
+    game.newGame(1)
+    game.devGiveCash(ECONOMY.lift.hireFeeYen)
+    const wrapper = mountScreen()
+    expect(wrapper.find('[data-test="hire-lift-upgrades"]').exists()).toBe(true)
+
+    await wrapper.get('[data-test="hire-lift-upgrades"]').trigger('click')
+    expect(game.liftAvailableToday).toBe(true)
+    expect(game.liftOwned).toBe(false)
+    expect(wrapper.get('[data-test="lift-chip"]').text()).toBe('Hired today')
+    expect(wrapper.find('[data-test="hire-lift-upgrades"]').exists()).toBe(false)
   })
 
   it('clicking a ladder upgrade buys the next tier and re-renders it as current, on reputation and cash alone', async () => {
@@ -101,8 +143,9 @@ describe('UpgradesScreen', () => {
     const wrapper = mountScreen()
     await wrapper.get('[data-test="upgrade-tool-wheels"]').trigger('click')
     expect(game.gameState.toolTiers.wheels).toBe(2)
-    const wheelsColumn = wrapper.findAll('.tool-column').find((c) => c.text().includes('Wheels'))!
-    expect(wheelsColumn.find('.tier-node.owned .tier-name').text()).toBe(WHEELS_T2.displayName)
+    const wheelsTierTwo = wrapper.get('[data-test="tier-node-wheels-2"]')
+    expect(wheelsTierTwo.classes()).toContain('owned')
+    expect(wheelsTierTwo.get('.tier-name').text()).toBe(WHEELS_T2.displayName)
   })
 
   /**
@@ -132,12 +175,7 @@ describe('UpgradesScreen', () => {
     game.devSetToolTier('wheels', 2)
     const wrapper = mountScreen()
     expect(wrapper.find('[data-test="upgrade-tool-wheels"]').exists()).toBe(false)
-    // "Both rungs owned", not "fully equipped": the shop above the ladder is
-    // still to buy, and the column's own footer names it.
     expect(wrapper.text()).toContain('Both rungs owned')
-    expect(wrapper.find('[data-test="line-shop-wheels"]').text()).toContain(
-      `Topped by the ${CHASSIS_SHOP.displayName}`,
-    )
   })
 
   describe('the shops at the top of the ladder', () => {
@@ -158,11 +196,6 @@ describe('UpgradesScreen', () => {
           expect(covers, componentId).toContain(game.componentLabel(componentId))
         }
       }
-      // And the wall reads back the other way: every line's column names the
-      // shop that tops it out.
-      expect(wrapper.get('[data-test="line-shop-suspension"]').text()).toContain(
-        CHASSIS_SHOP.displayName,
-      )
     })
 
     it('is gated on standing, with the reason in a tooltip, then buys on reputation and cash alone', async () => {
@@ -188,9 +221,11 @@ describe('UpgradesScreen', () => {
     /**
      * The whole point of a shop: one purchase, several lines. Levels are read
      * through sim's own `toolLevelsFor` rather than off the rungs, because a
-     * shop moves no rung - it is the ladder's top, not a third step on it.
+     * shop moves no rung - it is the ladder's top, not a third step on it. A
+     * line whose covering shop is owned shows the shared Shop chip instead of
+     * a rung-2 buy button, since the room already grants the kit.
      */
-    it('buying one takes every line it covers to top capability at once, and no line it does not', async () => {
+    it('a line whose covering shop is owned shows the Shop chip and no rung 2 buy button', async () => {
       const game = useGameStore()
       game.newGame(1)
       game.devGiveCash(CHASSIS_SHOP.upgradePriceYen)
@@ -205,9 +240,13 @@ describe('UpgradesScreen', () => {
         expect(levels[componentId], componentId).toBe(3)
         // Bought whole: not one of those lines climbed a rung to get there.
         expect(game.gameState.toolTiers[componentId], componentId).toBe(1)
-        expect(wrapper.get(`[data-test="line-shop-${componentId}"]`).text()).toContain(
-          `${CHASSIS_SHOP.displayName}, in-house`,
+        expect(wrapper.get(`[data-test="line-shop-chip-${componentId}"]`).text(), componentId).toBe(
+          'Shop',
         )
+        expect(
+          wrapper.find(`[data-test="upgrade-tool-${componentId}"]`).exists(),
+          componentId,
+        ).toBe(false)
       }
       for (const componentId of ['engine', 'body', 'interior'] as const) {
         expect(levels[componentId], componentId).toBe(1)
@@ -231,6 +270,19 @@ describe('UpgradesScreen', () => {
       await wrapper.get(`[data-test="tool-shop-${CHASSIS_SHOP.id}"]`).trigger('click')
       expect(wrapper.find('[data-test="tool-info-box"]').exists()).toBe(false)
     })
+  })
+
+  it('the rooms show their coverage sublines', () => {
+    const game = useGameStore()
+    game.newGame(1)
+    const wrapper = mountScreen()
+    expect(game.toolShopViews.length).toBeGreaterThan(0)
+    for (const shop of game.toolShopViews) {
+      const restore = wrapper.get(`[data-test="tool-shop-restore-${shop.id}"]`)
+      expect(restore.text()).toBe(
+        `Restore work for ${shop.coversLabels.join(', ')} happens in here.`,
+      )
+    }
   })
 
   describe('the tool-wall info box (Sprint 43)', () => {
@@ -314,7 +366,7 @@ describe('UpgradesScreen', () => {
   })
 
   describe('gate explanations are tooltips, not always-visible sentences (Sprint 65 decision 3)', () => {
-    it('a rep-gated rung carries its reason in a HintTooltip, and the old always-visible hint classes are gone', () => {
+    it('a reputation-gated row still shows its existing tooltip copy, and the old always-visible hint classes are gone', () => {
       const game = useGameStore()
       game.newGame(1) // fresh: unknown reputation, so tier 2 is rep-gated
       game.devGiveCash(999_999_999)

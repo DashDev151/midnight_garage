@@ -101,6 +101,6 @@ describe('the two-post lift in the store', () => {
     expect(game.hireCapReachedToday).toBe(false)
     // A tool line still hires today - the lift spent none of the day's
     // one-line allowance.
-    expect(game.hireMachineLine('body')).toBe(true)
+    expect(game.hireToolLine('body')).toBe(true)
   })
 })

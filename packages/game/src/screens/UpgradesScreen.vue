@@ -1,11 +1,17 @@
 <script setup lang="ts">
+/**
+ * The garage purchase page, laid out as the garage itself: three places, in
+ * the order the shop floor has them. Membership rule: work AT it, bench; car
+ * goes ON it, bay; walk INTO it, room.
+ */
 import type { ComponentId, ToolTier } from '@midnight-garage/content'
+import { WORKBENCH } from '@midnight-garage/content'
 import { computed, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import HelpHint from '../components/HelpHint.vue'
 import HintTooltip from '../components/HintTooltip.vue'
 import { mapBackTarget } from './mapBack'
-import { useGameStore, type ToolShopView } from '../stores/gameStore'
+import { useGameStore, type ToolLineView, type ToolShopView } from '../stores/gameStore'
 import { DYNO_NAME } from '../utils/dynoLabels'
 import { formatYen } from '../utils/formatYen'
 
@@ -22,6 +28,11 @@ const backTarget = computed(() => mapBackTarget(route.query.from, { name: 'garag
  * `nextTierRepGate` uses. */
 const dynoRepGate = computed(() =>
   game.dynoPurchaseGateReason === 'reputation' ? game.dynoMinReputationTier : null,
+)
+
+/** The two-post lift's own reputation gate, in the same shape. */
+const liftRepGate = computed(() =>
+  game.liftPurchaseGateReason === 'reputation' ? game.liftMinReputationTier : null,
 )
 
 const nextServiceBayPriceYen = computed(() => game.nextBayPrice('service'))
@@ -63,8 +74,20 @@ function selectShop(shopId: string): void {
   selected.value = isShopSelected(shopId) ? null : { kind: 'shop', shopId }
 }
 
-/** The shop covering each line, so a column can name what sits above its two
- * rungs and a player never has to work out the coverage from the cards alone. */
+/** The six tool lines under the bench each one is worked at, in the content's
+ * own bench order (`workbench.json`: `benches` and `benchByGroup`). */
+const benchGroups = computed(() =>
+  WORKBENCH.benches.map((bench) => ({
+    id: bench.id,
+    displayName: bench.displayName,
+    lines: game.toolLineViews.filter(
+      (line) => WORKBENCH.benchByGroup[line.componentId] === bench.id,
+    ),
+  })),
+)
+
+/** The shop covering each line, so a row can tell whether its rung 2 has
+ * already been overtaken by the room above it. */
 const shopByLine = computed(() => {
   const byLine = {} as Record<ComponentId, ToolShopView>
   for (const shop of game.toolShopViews) {
@@ -72,6 +95,18 @@ const shopByLine = computed(() => {
   }
   return byLine
 })
+
+/** Whether the room covering this line is already fitted out - owning it
+ * grants the whole tier 2 kit, so the rung's price gives way to a chip. */
+function coveringShopOwned(componentId: ComponentId): boolean {
+  return shopByLine.value[componentId]?.owned === true
+}
+
+/** Whether rung 2 is still on offer on this line: unbought, and not already
+ * overtaken by the covering room. */
+function rungTwoOffered(line: ToolLineView): boolean {
+  return !line.maxed && !coveringShopOwned(line.componentId)
+}
 
 /** The info box's heading: a rung is one line at one tier, a shop is its own
  * name and every line it covers. */
@@ -174,100 +209,154 @@ const selectedInfo = computed(() => {
       </div>
     </section>
 
-    <section class="tools">
+    <!-- Work AT it: the six tool lines, each under the bench it is worked at. -->
+    <section class="benches" data-test="garage-benches">
       <h3>
-        Tools
-        <HelpHint label="Tools">
+        Benches
+        <HelpHint label="Benches">
           Tier 1 of every line is free from day one - nothing basic is ever locked. Tier 2 takes
           cash and reputation. Above the rungs sit the shops, which are bought whole rather than a
           line at a time. Click anything to see what it does.
         </HelpHint>
       </h3>
-      <div class="tool-wall">
-        <div v-for="line in game.toolLineViews" :key="line.componentId" class="tool-column">
-          <h4>{{ line.componentLabel }}</h4>
-          <p class="maxed" :class="{ shown: line.maxed }">Both rungs owned</p>
-          <ul class="tier-ladder">
-            <li
-              v-for="rung in [...line.tiers].reverse()"
-              :key="rung.tier"
-              class="tier-node"
-              :class="{
-                owned: rung.owned,
-                next: !rung.owned && rung.tier === line.currentTier + 1,
-                locked: !rung.owned && rung.tier !== line.currentTier + 1,
-                gated:
-                  !rung.owned &&
-                  rung.tier === line.currentTier + 1 &&
-                  line.nextTierRepGate !== null,
-                selected: isRungSelected(line.componentId, rung.tier),
-              }"
-              :data-test="'tier-node-' + line.componentId + '-' + rung.tier"
-              @click="selectRung(line.componentId, rung.tier)"
-            >
-              <span class="tier-label">Tier {{ rung.tier }}</span>
-              <span class="tier-name">{{ rung.displayName }}</span>
-              <template v-if="!rung.owned && rung.tier === line.currentTier + 1">
-                <button
-                  :disabled="
-                    game.cashYen < (rung.upgradePriceYen ?? 0) || line.nextTierRepGate !== null
-                  "
-                  :data-test="'upgrade-tool-' + line.componentId"
-                  @click.stop="game.upgradeToolLine(line.componentId)"
-                >
-                  {{ formatYen(rung.upgradePriceYen ?? 0) }}
-                </button>
-                <HintTooltip
-                  v-if="line.nextTierRepGate"
-                  :data-test="'gate-tip-rep-' + line.componentId"
-                  :text="`Your standing isn't there yet - needs ${line.nextTierRepGate} reputation`"
-                />
-              </template>
-              <HintTooltip
-                v-else-if="rung.minReputationTier"
-                :data-test="'gate-tip-tier-' + line.componentId + '-' + rung.tier"
-                :text="`Needs ${rung.minReputationTier} reputation`"
-              />
-            </li>
-          </ul>
-          <!-- Which shop tops this line out, so the wall reads both ways: a
-               card names its lines, and a line names its card. -->
-          <p
-            class="line-shop"
-            :class="{ fitted: shopByLine[line.componentId]?.owned }"
-            :data-test="'line-shop-' + line.componentId"
+      <div
+        v-for="bench in benchGroups"
+        :key="bench.id"
+        class="bench-group"
+        :data-test="'bench-group-' + bench.id"
+      >
+        <h4>{{ bench.displayName }}</h4>
+        <ul class="tool-lines">
+          <li
+            v-for="line in bench.lines"
+            :key="line.componentId"
+            class="tool-line"
+            :data-test="'tool-line-' + line.componentId"
           >
-            {{
-              shopByLine[line.componentId]?.owned
-                ? `${shopByLine[line.componentId]?.displayName}, in-house`
-                : `Topped by the ${shopByLine[line.componentId]?.displayName}`
-            }}
-          </p>
-        </div>
-
-        <!--
-          The rolling road stands in the wall alongside the six lines and is
-          bought the same way. It is not one of them (a dyno belongs to no part
-          group and repairs nothing), so it carries a single rung rather than a
-          ladder, and no shop tops it out.
-        -->
-        <div class="tool-column" data-test="dyno-column">
-          <h4>{{ DYNO_NAME }}</h4>
-          <p class="maxed" :class="{ shown: game.dynoOwned }">Fully equipped</p>
-          <ul class="tier-ladder">
-            <li
-              class="tier-node dyno-node"
-              :class="{
-                owned: game.dynoOwned,
-                next: !game.dynoOwned && dynoRepGate === null,
-                gated: !game.dynoOwned && dynoRepGate !== null,
-              }"
-              data-test="dyno-node"
+            <div class="line-head">
+              <span class="line-name">{{ line.componentLabel }}</span>
+              <span v-if="line.maxed" class="maxed">Both rungs owned</span>
+            </div>
+            <ul class="tier-ladder">
+              <li
+                v-for="rung in line.tiers"
+                :key="rung.tier"
+                class="tier-node"
+                :class="{
+                  owned: rung.owned,
+                  next: !rung.owned && rung.tier === line.currentTier + 1,
+                  locked: !rung.owned && rung.tier !== line.currentTier + 1,
+                  gated:
+                    !rung.owned &&
+                    rung.tier === line.currentTier + 1 &&
+                    line.nextTierRepGate !== null &&
+                    !coveringShopOwned(line.componentId),
+                  selected: isRungSelected(line.componentId, rung.tier),
+                }"
+                :data-test="'tier-node-' + line.componentId + '-' + rung.tier"
+                @click="selectRung(line.componentId, rung.tier)"
+              >
+                <span class="tier-label">Tier {{ rung.tier }}</span>
+                <span class="tier-name">{{ rung.displayName }}</span>
+                <template v-if="!rung.owned && rung.tier === line.currentTier + 1">
+                  <!-- The room above the bench already grants this kit, so the
+                       rung states that rather than selling it twice. -->
+                  <span
+                    v-if="coveringShopOwned(line.componentId)"
+                    class="chip owned"
+                    :data-test="'line-shop-chip-' + line.componentId"
+                    >Shop</span
+                  >
+                  <template v-else>
+                    <button
+                      :disabled="
+                        game.cashYen < (rung.upgradePriceYen ?? 0) || line.nextTierRepGate !== null
+                      "
+                      :data-test="'upgrade-tool-' + line.componentId"
+                      @click.stop="game.upgradeToolLine(line.componentId)"
+                    >
+                      {{ formatYen(rung.upgradePriceYen ?? 0) }}
+                    </button>
+                    <HintTooltip
+                      v-if="line.nextTierRepGate"
+                      :data-test="'gate-tip-rep-' + line.componentId"
+                      :text="`Your standing isn't there yet - needs ${line.nextTierRepGate} reputation`"
+                    />
+                  </template>
+                </template>
+                <HintTooltip
+                  v-else-if="rung.minReputationTier"
+                  :data-test="'gate-tip-tier-' + line.componentId + '-' + rung.tier"
+                  :text="`Needs ${rung.minReputationTier} reputation`"
+                />
+              </li>
+            </ul>
+            <p
+              v-if="rungTwoOffered(line)"
+              class="line-note"
+              :data-test="'tool-line-note-' + line.componentId"
             >
-              <span class="tier-label">Rollers</span>
-              <span class="tier-name">Chassis dyno &amp; printer</span>
+              Fills the {{ bench.displayName }} board and brings its rig.
+            </p>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Car goes ON it: the kit the car itself is put on for the day's work. -->
+    <section class="bay" data-test="garage-bay">
+      <h3>The bay</h3>
+      <ul class="bay-list">
+        <li
+          class="bay-row"
+          :class="{ owned: game.liftOwned, gated: !game.liftOwned && liftRepGate !== null }"
+          data-test="lift-row"
+        >
+          <span class="bay-name">Two-post lift</span>
+          <p class="bay-note">Under-car work runs lighter on the lift.</p>
+          <div class="bay-controls">
+            <span v-if="game.liftOwned" class="chip owned" data-test="lift-chip">In-house</span>
+            <template v-else>
+              <span v-if="game.liftAvailableToday" class="chip hired" data-test="lift-chip"
+                >Hired today</span
+              >
               <button
-                v-if="!game.dynoOwned"
+                v-else
+                type="button"
+                :disabled="game.cashYen < game.liftHireFeeYen"
+                data-test="hire-lift-upgrades"
+                @click="game.hireLift()"
+              >
+                Hire for the day ({{ formatYen(game.liftHireFeeYen) }})
+              </button>
+              <button
+                type="button"
+                :disabled="game.liftPurchaseGateReason !== null"
+                data-test="buy-lift"
+                @click="game.buyLift()"
+              >
+                {{ formatYen(game.liftPurchasePriceYen) }}
+              </button>
+              <HintTooltip
+                v-if="liftRepGate"
+                data-test="gate-tip-lift"
+                :text="`Your standing isn't there yet - needs ${liftRepGate} reputation`"
+              />
+            </template>
+          </div>
+        </li>
+        <li
+          class="bay-row"
+          :class="{ owned: game.dynoOwned, gated: !game.dynoOwned && dynoRepGate !== null }"
+          data-test="dyno-row"
+        >
+          <span class="bay-name">{{ DYNO_NAME }}</span>
+          <p class="bay-note">Chassis dyno &amp; printer</p>
+          <div class="bay-controls">
+            <span v-if="game.dynoOwned" class="maxed">Fully equipped</span>
+            <template v-else>
+              <button
+                type="button"
                 :disabled="game.dynoPurchaseGateReason !== null"
                 data-test="buy-dyno"
                 @click="game.buyDyno()"
@@ -279,26 +368,22 @@ const selectedInfo = computed(() => {
                 data-test="gate-tip-dyno"
                 :text="`Your standing isn't there yet - needs ${dynoRepGate} reputation`"
               />
-            </li>
-          </ul>
-          <p class="line-shop"></p>
-        </div>
-      </div>
-
+            </template>
+          </div>
+        </li>
+      </ul>
       <p v-if="!game.dynoOwned" class="dyno-hire-line" data-test="dyno-hire-line">
         Until you own one, a session on the rollers needs a portable dyno hired in for the day at
         {{ formatYen(game.dynoHireFeeYen) }}.
       </p>
+    </section>
 
-      <!--
-        The shops, kept deliberately apart from the wall above. A shop is not a
-        third rung on a line: it is one purchase that fits out a room, and every
-        line it covers goes to the top together. Each card names those lines, and
-        each column up in the wall names its card back.
-      -->
-      <h3 class="shops-head">
-        Shops
-        <HelpHint label="Shops">
+    <!-- Walk INTO it: a room is one purchase that tops out every line it
+         covers, never a third rung on any of them. -->
+    <section class="rooms" data-test="garage-rooms">
+      <h3>
+        Rooms
+        <HelpHint label="Rooms">
           A shop is not another rung on a line. It is one purchase covering several lines at once,
           and every one of them reaches its top the day it lands. Each card says which lines it
           takes.
@@ -321,6 +406,9 @@ const selectedInfo = computed(() => {
           <p class="shop-covers" :data-test="'tool-shop-covers-' + shop.id">
             Covers {{ shop.coversLabels.join(', ') }}
           </p>
+          <p class="shop-covers" :data-test="'tool-shop-restore-' + shop.id">
+            Restore work for {{ shop.coversLabels.join(', ') }} happens in here.
+          </p>
           <span v-if="shop.owned" class="shop-fitted" :data-test="'tool-shop-owned-' + shop.id"
             >Fitted out</span
           >
@@ -340,21 +428,21 @@ const selectedInfo = computed(() => {
           </template>
         </div>
       </div>
-
-      <div v-if="selectedTitle && selectedInfo" class="tool-info-box" data-test="tool-info-box">
-        <h4>{{ selectedTitle }}</h4>
-        <p v-if="selectedInfo.unlocksJobTemplateNames.length">
-          Unlocks: {{ selectedInfo.unlocksJobTemplateNames.join(', ') }}
-        </p>
-        <p v-if="selectedInfo.unlocksNaToTurboConversion">
-          Unlocks the NA-to-turbo conversion on your own cars.
-        </p>
-        <p>{{ selectedInfo.laborSlotsPerGradeText }}</p>
-        <p v-if="selectedInfo.rentalFeeText" data-test="rental-fee-line">
-          {{ selectedInfo.rentalFeeText }}
-        </p>
-      </div>
     </section>
+
+    <div v-if="selectedTitle && selectedInfo" class="tool-info-box" data-test="tool-info-box">
+      <h4>{{ selectedTitle }}</h4>
+      <p v-if="selectedInfo.unlocksJobTemplateNames.length">
+        Unlocks: {{ selectedInfo.unlocksJobTemplateNames.join(', ') }}
+      </p>
+      <p v-if="selectedInfo.unlocksNaToTurboConversion">
+        Unlocks the NA-to-turbo conversion on your own cars.
+      </p>
+      <p>{{ selectedInfo.laborSlotsPerGradeText }}</p>
+      <p v-if="selectedInfo.rentalFeeText" data-test="rental-fee-line">
+        {{ selectedInfo.rentalFeeText }}
+      </p>
+    </div>
   </section>
 </template>
 
@@ -395,12 +483,15 @@ h3 {
   font-size: var(--mg-fs-sm);
 }
 
-.facilities {
+.facilities,
+.benches,
+.bay,
+.rooms {
   margin-bottom: var(--mg-space-4);
 }
 
 /* Facilities are cards in the same grid/card
-   language the tool wall already uses - symmetrical columns, consistent
+   language the rooms use - symmetrical columns, consistent
    padding, no separate visual dialect. */
 .purchase-grid {
   display: grid;
@@ -446,82 +537,69 @@ h3 {
   font-size: var(--mg-fs-sm);
 }
 
-.tool-wall {
-  display: grid;
-  /* `minmax(0, 1fr)` lets the columns actually shrink - a fixed floor across
-     seven columns would overflow any container narrower than seven times that
-     floor, so `overflow-x` alone cannot fix a grid that does not fit by
-     construction. */
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: var(--mg-space-3);
-  margin: 0 0 var(--mg-space-3);
+.bench-group {
+  margin-bottom: var(--mg-space-3);
 }
 
-.tool-column {
-  /* The ladder must fill the column so its rows can divide a height every
-     column shares (see `.tier-ladder`). */
-  display: flex;
-  flex-direction: column;
-}
-
-.tool-column h4 {
+.bench-group h4 {
   color: var(--mg-text-dim);
   font-size: var(--mg-fs-sm);
-  text-align: center;
   margin: 0 0 var(--mg-space-2);
-  /* Reserve two lines so a wrapping label ("Suspension
-     and Brakes", "Wheels and Tyres") doesn't push its column's ladder down
-     out of line with the single-line columns. */
-  min-height: 2.4em;
 }
 
-/* Inside the tool wall the label always occupies its line and only becomes
-   visible once the column is maxed - otherwise a maxed column's ladder starts
-   lower than its neighbours' and the whole wall re-staggers. Same
-   reserve-the-space instinct as the h4 above. Scoped to the wall, because a
-   facilities card renders its label only when the bay type is maxed and so
-   has nothing to reserve or hide. */
-.tool-column > .maxed {
-  min-height: 1.4em;
-  margin: 0 0 var(--mg-space-1);
-  visibility: hidden;
-}
-
-.tool-column > .maxed.shown {
-  visibility: visible;
-}
-
-/*
- * Rows align across the wall BY CONSTRUCTION, not by hoping every rung's name
- * happens to be the same length: two equal `1fr` rows, in a ladder
- * stretched to the column's full height. The wall's grid already stretches
- * every column to the tallest, so each column divides the SAME height into
- * the same two rows - tier 1 is level with tier 1 everywhere, whatever any
- * label does.
- */
-.tier-ladder {
+.tool-lines,
+.bay-list {
   list-style: none;
   padding: 0;
   margin: 0;
-  display: grid;
-  grid-template-rows: repeat(2, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: var(--mg-space-2);
-  flex: 1;
 }
 
-/* The shop that tops a line out, at the foot of its column. The rolling road
-   renders an empty one so its single node stays level with the ladders beside
-   it. */
-.line-shop {
-  margin: var(--mg-space-1) 0 0;
-  min-height: 2.6em;
+/*
+ * One line is one row: what it is on the left, its two rungs on the right, and
+ * the note about the rung still to buy under the name. The two areas share a
+ * column each, so every row's rungs stand in the same place down the bench
+ * whatever its label does.
+ */
+.tool-line,
+.bay-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) auto;
+  grid-template-areas:
+    'name kit'
+    'note kit';
+  align-items: center;
+  column-gap: var(--mg-space-3);
+}
+
+.line-head {
+  grid-area: name;
+  display: flex;
+  align-items: baseline;
+  gap: var(--mg-space-2);
+}
+
+.line-name {
+  font-size: var(--mg-fs-sm);
+}
+
+.line-note,
+.bay-note {
+  grid-area: note;
+  margin: 0;
   color: var(--mg-text-dim);
   font-size: 0.75em;
-  text-align: center;
 }
 
-.line-shop.fitted {
-  color: var(--mg-success);
+.tier-ladder {
+  grid-area: kit;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  gap: var(--mg-space-2);
 }
 
 .tier-node {
@@ -537,10 +615,11 @@ h3 {
   font-size: var(--mg-fs-sm);
   text-align: center;
   cursor: pointer;
-  /* A fixed floor so a node carrying a gate tooltip is
-     the same height as one that doesn't - the whole ladder stays aligned. */
+  /* A fixed floor and width so a node carrying a gate tooltip is the same size
+     as one that doesn't - the rungs stay square with each other down the
+     bench. */
   min-height: 76px;
-  justify-content: center;
+  min-width: 132px;
 }
 
 .tier-node.owned {
@@ -563,22 +642,56 @@ h3 {
   outline-offset: 2px;
 }
 
-/* One rung, filling the height the six ladders divide in two, so the
-   rolling road's column squares off against them instead of floating at the
-   top of the wall. */
-.dyno-node {
-  grid-row: 1 / -1;
-  cursor: default;
+/* A bay row is a panel in its own right: the kit stands in the room rather
+   than on a bench, so the row carries the border its rungs would. */
+.bay-row {
+  background: var(--mg-panel);
+  border: var(--mg-border);
+  border-radius: var(--mg-radius);
+  padding: var(--mg-space-2) var(--mg-space-3);
+  row-gap: 2px;
 }
 
-.dyno-hire-line {
-  margin: 0 0 var(--mg-space-3);
-  color: var(--mg-text-dim);
+.bay-row.owned {
+  border-color: var(--mg-success);
+}
+
+.bay-row.gated {
+  opacity: 0.7;
+}
+
+.bay-name {
+  grid-area: name;
   font-size: var(--mg-fs-sm);
 }
 
-.shops-head {
-  margin-top: var(--mg-space-3);
+.bay-controls {
+  grid-area: kit;
+  display: flex;
+  align-items: center;
+  gap: var(--mg-space-2);
+}
+
+.chip {
+  border: var(--mg-border);
+  border-radius: var(--mg-radius);
+  padding: 0 var(--mg-space-1);
+  font-size: var(--mg-fs-sm);
+  white-space: nowrap;
+}
+
+.chip.owned {
+  color: var(--mg-success);
+}
+
+.chip.hired {
+  color: var(--mg-yen);
+}
+
+.dyno-hire-line {
+  margin: var(--mg-space-2) 0 0;
+  color: var(--mg-text-dim);
+  font-size: var(--mg-fs-sm);
 }
 
 .shops-grid {
@@ -608,8 +721,8 @@ h3 {
 }
 
 /* A shop's owned state, in the same success colour a maxed line's label
-   carries. Its own class because a shop card sits outside the tool wall and so
-   takes none of the wall's line-reserving layout. */
+   carries. Its own class because a shop card sits outside the bench rows and
+   so takes none of their row layout. */
 .shop-fitted {
   color: var(--mg-success);
   font-size: var(--mg-fs-sm);
@@ -626,7 +739,8 @@ h3 {
   font-size: 0.9em;
 }
 
-.tier-node button {
+.tier-node button,
+.bay-controls button {
   padding: 2px 8px;
   font-size: 0.8em;
 }

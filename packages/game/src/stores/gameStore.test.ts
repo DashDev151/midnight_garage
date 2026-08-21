@@ -46,7 +46,7 @@ describe('useGameStore', () => {
   it("endDay's report includes today's machine hires - an instant action that never reaches advanceDay's own log", () => {
     const game = useGameStore()
     game.newGame(1)
-    game.hireMachineLine('body')
+    game.hireToolLine('body')
 
     game.endDay()
 

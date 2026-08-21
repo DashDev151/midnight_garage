@@ -49,7 +49,7 @@ describe('ledger stream reconciliation', () => {
 
     // Running out: hire the engine machine line for the day (a running cost
     // that must show up in the ledger stream like any other cash flow).
-    expect(game.hireMachineLine('engine')).toBe(true)
+    expect(game.hireToolLine('engine')).toBe(true)
 
     // Play the week out - End Day carries the boundary charges (rent) into
     // the stream stamped with the day they were booked on, not the morning

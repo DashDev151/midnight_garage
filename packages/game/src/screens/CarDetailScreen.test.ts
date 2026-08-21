@@ -303,7 +303,7 @@ describe('CarDetailScreen', () => {
     game.devGrantPart(part.id)
     stripToDampers(game, id)
     game.removePart(id, 'dampers')
-    game.hireMachineLine('suspension')
+    game.hireToolLine('suspension')
 
     const { wrapper } = await mountAt(id)
     await wrapper.find('[data-test="toggle-bay"]').trigger('click')
@@ -555,7 +555,7 @@ describe('CarDetailScreen', () => {
       const row = bodyRepairRow(game, id)
       // The rolled row may land on a body signature slot (bodywork/underbody) -
       // hire the line so only the labour-overrun concern under test is live.
-      game.hireMachineLine('body')
+      game.hireToolLine('body')
       game.gameState = { ...game.gameState, energySpentToday: game.laborSlotsPerDay }
       expect(game.laborSlotsRemainingToday).toBe(0)
 
@@ -1592,7 +1592,7 @@ describe('CarDetailScreen', () => {
 
       // Fitting a tyre needs the wheels line for the day - hire it, then the
       // candidate card stops being dimmed and the click lands.
-      game.hireMachineLine('wheels')
+      game.hireToolLine('wheels')
       await flushPromises()
       await wrapper.find('.part-card').trigger('click')
       await flushPromises()
@@ -1627,7 +1627,7 @@ describe('CarDetailScreen', () => {
       await flushPromises()
       await wrapper.find('[data-test="bench-fit-tyres"]').trigger('click')
       await flushPromises()
-      game.hireMachineLine('wheels')
+      game.hireToolLine('wheels')
       await flushPromises()
       await wrapper.find('.part-card').trigger('click')
       await flushPromises()
@@ -1694,7 +1694,7 @@ describe('CarDetailScreen', () => {
       const part = untaggedPartFor('dampers')
       game.devGrantPart(part.id)
       const partInstanceId = game.gameState.partInventory.at(-1)!.id
-      game.hireMachineLine('suspension')
+      game.hireToolLine('suspension')
       const cashBefore = game.cashYen
 
       const { wrapper } = await mountAt(id)
@@ -1718,7 +1718,7 @@ describe('CarDetailScreen', () => {
       const part = untaggedPartFor('dampers')
       game.devGrantPart(part.id)
       const partInstanceId = game.gameState.partInventory.at(-1)!.id
-      game.hireMachineLine('suspension')
+      game.hireToolLine('suspension')
 
       const { wrapper } = await mountAt(id)
       await wrapper.find('[data-test="toggle-bay"]').trigger('click')
@@ -1880,7 +1880,7 @@ describe('CarDetailScreen', () => {
       const part = untaggedPartFor('dampers')
       game.devGrantPart(part.id)
       const partInstanceId = game.gameState.partInventory.at(-1)!.id
-      game.hireMachineLine('suspension')
+      game.hireToolLine('suspension')
 
       const { wrapper } = await mountAt(id)
       await wrapper.find('[data-test="toggle-bay"]').trigger('click')
@@ -1972,7 +1972,7 @@ describe('CarDetailScreen', () => {
       const part = untaggedPartFor('dampers')
       game.devGrantPart(part.id)
       const partInstanceId = game.gameState.partInventory.at(-1)!.id
-      game.hireMachineLine('suspension')
+      game.hireToolLine('suspension')
 
       game.install(id, 'suspension', partInstanceId, 'dampers')
 
@@ -2302,7 +2302,7 @@ describe('CarDetailScreen', () => {
       game.devGrantCar(CARS[0]!.id)
       const id = game.gameState.ownedCars[0]!.id
       game.devSetToolTier('engine', 2)
-      game.hireMachineLine('body')
+      game.hireToolLine('body')
 
       const { wrapper } = await mountAt(id)
       expect(wrapper.find('[data-test="machine-hire-chip-engine"]').text()).toBe('In-house')
@@ -2365,6 +2365,65 @@ describe('CarDetailScreen', () => {
       expect(button.attributes('disabled')).toBeDefined()
       expect(button.attributes('title')).toBe('Needs to be in a service bay')
     })
+
+    it('the lift row runs through its own three states: a priced hire button, Hired today, then In-house', async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+
+      const before = await mountAt(id)
+      expect(before.wrapper.find('[data-test="machine-hire-chip-lift"]').exists()).toBe(false)
+      const button = before.wrapper.find('[data-test="hire-lift"]')
+      expect(button.exists()).toBe(true)
+      expect(button.text()).toBe(`Hire for the day (${formatYen(ECONOMY.lift.hireFeeYen)})`)
+
+      expect(game.hireLift()).toBe(true)
+      const hired = await mountAt(id)
+      expect(hired.wrapper.find('[data-test="machine-hire-chip-lift"]').text()).toBe('Hired today')
+      expect(hired.wrapper.find('[data-test="hire-lift"]').exists()).toBe(false)
+
+      game.devSetReputationTier(ECONOMY.lift.minReputationTier)
+      game.devGiveCash(ECONOMY.lift.purchasePriceYen)
+      expect(game.buyLift()).toBe(true)
+      const owned = await mountAt(id)
+      expect(owned.wrapper.find('[data-test="machine-hire-chip-lift"]').text()).toBe('In-house')
+      expect(owned.wrapper.find('[data-test="hire-lift"]').exists()).toBe(false)
+    })
+
+    it("the day's cap disables the other five lines' hire buttons with the tag-holder caption, and re-hiring the hired line stays enabled", async () => {
+      const game = useGameStore()
+      game.devGrantCar(CARS[0]!.id)
+      const id = game.gameState.ownedCars[0]!.id
+      expect(game.hireToolLine('suspension')).toBe(true)
+      expect(game.hireCapReachedToday).toBe(true)
+
+      const { wrapper } = await mountAt(id)
+      const expectedCaption = `One line a day. The ${TOOL_LINES.suspension.tiers[1]!.displayName} has the tag on it.`
+
+      // The hired line itself: a chip, no button, no caption - the day's tag
+      // sits on this row, so it never explains itself to itself.
+      expect(wrapper.find('[data-test="machine-hire-chip-suspension"]').text()).toBe('Hired today')
+      expect(wrapper.find('[data-test="hire-machine-suspension"]').exists()).toBe(false)
+
+      // The other five: each button disabled with the refusal title, each row
+      // carrying the same verbatim caption naming the line holding the tag.
+      for (const group of ['engine', 'drivetrain', 'wheels', 'body', 'interior'] as const) {
+        const row = wrapper.get(`[data-test="machine-hire-row-${group}"]`)
+        const groupButton = row.get(`[data-test="hire-machine-${group}"]`)
+        expect(groupButton.attributes('disabled')).toBeDefined()
+        expect(groupButton.attributes('title')).toBe('Another line is already hired today')
+        const caption = row.get('[data-test="hire-cap-note"]')
+        expect(caption.text()).toBe(expectedCaption)
+      }
+
+      // Re-hiring the SAME line the day already tagged is still a free no-op:
+      // the row stays exactly as it was, and the cap does not move.
+      expect(game.hireToolLine('suspension')).toBe(true)
+      await flushPromises()
+      expect(wrapper.find('[data-test="machine-hire-chip-suspension"]').text()).toBe('Hired today')
+      expect(wrapper.find('[data-test="hire-machine-suspension"]').exists()).toBe(false)
+      expect(game.hireCapReachedToday).toBe(true)
+    })
   })
 
   describe('the install machine-labour disclosure never blocks the fit (Sprint 202 E)', () => {
@@ -2404,7 +2463,7 @@ describe('CarDetailScreen', () => {
       const part = untaggedPartFor('dampers')
       game.devGrantPart(part.id)
       const partInstanceId = game.gameState.partInventory.at(-1)!.id
-      game.hireMachineLine('suspension')
+      game.hireToolLine('suspension')
 
       const { wrapper } = await mountAt(id)
       await wrapper.find('[data-test="toggle-bay"]').trigger('click')
@@ -2441,7 +2500,7 @@ describe('CarDetailScreen', () => {
       expect(note.exists()).toBe(true)
       expect(note.text()).toContain(TOOL_LINES.engine.tiers[1]!.displayName)
 
-      game.hireMachineLine('engine')
+      game.hireToolLine('engine')
       await flushPromises()
       expect(wrapper.find('[data-test="assembly-machine-note-engineAssembly"]').exists()).toBe(
         false,
