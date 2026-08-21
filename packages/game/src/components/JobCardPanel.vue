@@ -3,6 +3,7 @@ import type { ConditionBand, RepairJobKind } from '@midnight-garage/content'
 import type { RepairJobCard, RepairJobRoute } from '@midnight-garage/sim'
 import { computed } from 'vue'
 import { formatYen } from '../utils/formatYen'
+import { machineLabelFor, REPAIR_JOB_LABELS } from '../utils/repairJobLabels'
 import BandChip from './BandChip.vue'
 
 /**
@@ -23,12 +24,6 @@ const props = defineProps<{
    * that names it. */
   shopName: string
 }>()
-
-const JOB_LABELS: Readonly<Record<RepairJobKind, string>> = {
-  service: 'Service',
-  rebuild: 'Rebuild',
-  restore: 'Restore',
-}
 
 const OWN_LABEL = 'own'
 const HIRED_TODAY_LABEL = 'hired today'
@@ -51,11 +46,6 @@ function costTextFor(card: RepairJobCard): string {
   return `${energy} energy · ${formatYen(yen)}`
 }
 
-/** The machine a locked card is short of, named by the step that wants it. */
-function machineLabelFor(card: RepairJobCard): string {
-  return card.steps[0]?.toolLabel ?? ''
-}
-
 function routeTextFor(card: RepairJobCard): string {
   if (card.route === 'own') return OWN_LABEL
   if (card.route === 'hired-today') return HIRED_TODAY_LABEL
@@ -68,7 +58,7 @@ function routeTextFor(card: RepairJobCard): string {
 const rows = computed<JobCardRow[]>(() =>
   props.cards.map((card) => ({
     kind: card.kind,
-    label: JOB_LABELS[card.kind],
+    label: REPAIR_JOB_LABELS[card.kind],
     targetBand: card.targetBand,
     costText: costTextFor(card),
     route: card.route,

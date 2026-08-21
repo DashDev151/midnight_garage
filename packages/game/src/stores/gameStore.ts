@@ -187,8 +187,6 @@ import {
   planRespray,
   playerEstimateYen,
   presentPartIdsInGroup,
-  reconditionGateReason,
-  reconditionQuote,
   repairCeilingForLevel,
   repairJobCards,
   energyPlanFor,
@@ -197,7 +195,6 @@ import {
   fullyVerifiedCar,
   isSlotVerified,
   knowledgeViewOf,
-  priorBand,
   requiredEmptySlotsBehind,
   requirementLabel,
   resolveAcceptMission,
@@ -227,7 +224,6 @@ import {
   resolveTakeFromStation,
   resolveTakeOffBench,
   resolveOwnedWorkup as resolveOwnedWorkupCore,
-  resolveReconditionLabor,
   resolveRefitAssembly,
   resolveRejectOffer,
   resolveRemoveAssembly,
@@ -269,7 +265,6 @@ import {
   usedPartSaleValueYen,
   valuateCarForBuyer,
   valueLedgerFor,
-  worstRemainingBandFor,
   worstRepairableBandInGroup,
   type AttendAuctionGateReason,
   type AuctionGrade,
@@ -1872,9 +1867,8 @@ export const useGameStore = defineStore('game', () => {
    *
    * Priced off the player's own knowledge (`knowledgeViewOf`), not the
    * truth: an unverified slot's bill line prices from its estimated band,
-   * exactly as its chip shows an estimated one - the reveal-then-confirm
-   * click (`repairRevealFor`) is what corrects it, never this readout on its
-   * own. A no-op once every slot is verified, or on a car the knowledge
+   * exactly as its chip shows an estimated one, correcting once the slot is
+   * verified. A no-op once every slot is verified, or on a car the knowledge
    * model has not been seeded onto.
    */
   function groupBillsForCar(car: CarInstance, model: CarModel): Record<ComponentId, number> {
@@ -1927,10 +1921,7 @@ export const useGameStore = defineStore('game', () => {
    * already at mint).
    */
   /**
-   * The shared computation behind `nextRepairStep` below - factored out so
-   * `nextPartStepRange` can price the SAME next-rung
-   * step against a band-overridden copy of `car` rather than always reading
-   * `car`'s own true band.
+   * The shared computation behind `nextRepairStep` below.
    */
   function repairStepFor(
     car: CarInstance,
@@ -1953,8 +1944,7 @@ export const useGameStore = defineStore('game', () => {
     // that ceiling, there is no further "+" to offer - the sim's `repairJobGate`
     // would refuse the same target, so the affordance must not offer a rung the
     // click cannot honour. Mint stays reachable by BUYING and fitting a mint
-    // part (Replace), never gated here; `repairCeilingCaption` names the machine
-    // that lifts the ceiling.
+    // part (Replace), never gated here.
     const repairCeiling = repairCeilingForLevel(
       toolLevels.value[componentId],
       context.value.economy,
@@ -1991,118 +1981,11 @@ export const useGameStore = defineStore('game', () => {
     return repairStepFor(car, carId, componentId, carPartId)
   }
 
-  /**
-   * The range a repair-cost preview must show instead
-   * of a single number, for a part whose true band is still hidden behind an
-   * unresolved symptom (`displayedBandFor`'s `uncertain` flag) - the ordinary
-   * preview (`nextRepairStep`) reads the car's real, true band directly,
-   * which would silently leak it through the cost number itself. `best`
-   * prices the next step as if the part were at its displayed APPARENT band;
-   * `worst` as if it were at the worst still-live remaining cause's band
-   * (`worstRemainingBandFor` - never better than apparent, since a cause's
-   * `setBand` is always a floor). Either end can be `null` on its own
-   * (apparent already mint, nothing needed there, while the worst case still
-   * has real work) - `null` for the whole range only when the part isn't
-   * uncertain at all, or nothing is repairable from either end.
-   */
-  function nextPartStepRange(
-    carId: string,
-    componentId: ComponentId,
-    carPartId: CarPartId,
-  ): { best: NextRepairStepView | null; worst: NextRepairStepView | null } | null {
-    const car = findWorkableCar(carId)
-    if (!car) return null
-    const displayed = displayedBandFor(car, carPartId, context.value)
-    if (!displayed.uncertain || displayed.band === null) return null
-    const worstBand = worstRemainingBandFor(car, carPartId, context.value)
-    const installed = car.parts[carPartId].installed
-    if (!worstBand || !installed) return null
-
-    const carAt = (band: ConditionBand): CarInstance => ({
-      ...car,
-      parts: { ...car.parts, [carPartId]: { installed: { ...installed, band } } },
-    })
-    const best = repairStepFor(carAt(displayed.band), carId, componentId, carPartId)
-    const worst = repairStepFor(carAt(worstBand), carId, componentId, carPartId)
-    if (!best && !worst) return null
-    return { best, worst }
-  }
-
-  /** The bench recondition control's own next-rung step - reuses
-   * `reconditionQuoteFor` (already the exact charge `reconditionPart` will
-   * make) rather than re-deriving the plan, since bench work has no staging
-   * step to diff against (each click executes immediately). Null when
-   * there's nothing left to recondition (already mint, scrap, or
-   * non-repairable). */
-  function nextReconditionStep(partInstanceId: string): NextRepairStepView | null {
-    const instance = gameState.value.partInventory.find((p) => p.id === partInstanceId)
-    if (!instance || instance.band === 'mint') return null
-    const nextRung = climbBand(instance.band, 1)
-    const quote = reconditionQuoteFor(partInstanceId, nextRung)
-    if (!quote) return null
-    return {
-      targetBand: nextRung,
-      costYen: quote.costYen,
-      laborSlotsRequired: quote.laborSlotsRequired,
-    }
-  }
-
   /** Whether a real car part can be repaired at all -
    * false for tyres/brakePadsDiscs/clutch. The per-part repair row and the
    * bench recondition control (`PartCard.vue`) both key off this. */
   function isPartRepairable(carPartId: CarPartId): boolean {
     return context.value.partsTaxonomyById[carPartId]?.repairable ?? true
-  }
-
-  /**
-   * The legibility caption shown at a per-part
-   * repair affordance when the shop's own tools cannot finish this part past
-   * fine - naming the group's tier-2 machine, the purchase that lifts the repair
-   * ceiling to mint (same principle as the fee caption: show the
-   * constraint at the point of the action). Returned only where a REPAIR is the
-   * relevant, genuinely-capped action: the part is actually repairable now
-   * (`canRepair` - not scrap, not a non-repairable consumable), it is below mint,
-   * and the group's CURRENT tool tier caps a repair below mint (tier-1). Null at
-   * tier-2+ (no cap) and for buy-only parts - the mint result there stays
-   * reachable by buying and fitting a mint part, never by this repair route. Uses
-   * the DISPLAYED band so an unresolved symptom's true band is never leaked.
-   */
-  function repairCeilingCaption(
-    carId: string,
-    componentId: ComponentId,
-    carPartId: CarPartId,
-  ): string | null {
-    const car = findWorkableCar(carId)
-    if (!car) return null
-    // A body value carrier's band is derived from zone state on a car that's
-    // on the zone model (`bodyPipeline.ts`) - it never grows the on-car
-    // repair "+" affordance this caption rides, so the caption never shows
-    // for it either.
-    if (car.zoneState && isBodyDerivedPart(carPartId)) return null
-    const entry = context.value.partsTaxonomyById[carPartId]
-    // Fixed carriers only: this caption rides the on-car per-part repair "+"
-    // affordance, which exists solely for a part that never comes off (every
-    // removable part is bench-only and never grows an on-car repair button).
-    // The bench recondition caps at fine too but is a separate control, out of
-    // this caption's placement.
-    if (!entry || entry.removable) return null
-    const { band } = displayedBandFor(car, carPartId, context.value)
-    if (!band || !canRepair(band, entry) || bandIndex(band) >= bandIndex('mint')) return null
-    return repairCeilingSentence(componentId)
-  }
-
-  /**
-   * The one sentence naming the tier-2 machine that lifts a group's repair
-   * ceiling from fine to mint, or null once that group already reaches mint.
-   * Shared by the on-car caption above and the bench's own
-   * (`benchRepairCeilingCaption`), so the two rooms never word it differently.
-   */
-  function repairCeilingSentence(componentId: ComponentId): string | null {
-    const ceiling = repairCeilingForLevel(toolLevels.value[componentId], context.value.economy)
-    if (bandIndex(ceiling) >= bandIndex('mint')) return null // tier-2+ has no repair cap
-    const tier2 = TOOL_LINES[componentId].tiers[1]
-    if (!tier2) return null
-    return `Your tools finish at fine. The ${tier2.displayName} reaches mint.`
   }
 
   /**
@@ -3222,23 +3105,6 @@ export const useGameStore = defineStore('game', () => {
     return stationHoldingPart(gameState.value, partInstanceId)
   }
 
-  /**
-   * The legibility caption for the part on the bench when the group's own
-   * tools cannot finish it past fine, naming the tier-2 machine that reaches
-   * mint - the loose-part twin of `repairCeilingCaption`'s on-car caption, and
-   * sharing its one sentence. Null from tier 2 up, for a part already at mint,
-   * and for one no repair can touch (scrap, or a replace-only consumable).
-   */
-  function benchRepairCeilingCaption(partInstanceId: string): string | null {
-    const instance = gameState.value.partInventory.find((p) => p.id === partInstanceId)
-    const part = instance ? context.value.partsById[instance.partId] : undefined
-    const entry = part ? context.value.partsTaxonomyById[part.carPartId] : undefined
-    if (!instance || !entry) return null
-    if (!canRepair(instance.band, entry) || bandIndex(instance.band) >= bandIndex('mint'))
-      return null
-    return repairCeilingSentence(entry.group)
-  }
-
   // --- the three benches ---------------------------------------------------
 
   /**
@@ -3828,26 +3694,6 @@ export const useGameStore = defineStore('game', () => {
     return slogAccessNoteFor(carId, carPartId)
   }
 
-  /**
-   * The on-car per-part REPAIR affordance's own access note for `carPartId`,
-   * or `''` when nothing slows it. Per-part repair is bench-only
-   * for every removable slot (the sim refuses it before this ever matters),
-   * so this only ever fires for a fixed body carrier - and `bodywork`/`paint`
-   * are derived value carriers with no on-car repair affordance at all
-   * (`bodyPipeline.ts`), which leaves the chassis. A removable signature slot
-   * (seats, dashGauges, dampers, springs) is repaired at the bench, and its
-   * own line shows its note when the repaired part goes back on
-   * (`installMachineNoteFor`). Engine/drivetrain repair is never gated, so
-   * this is `''` for them too.
-   */
-  function repairMachineNoteFor(carId: string, carPartId: CarPartId): string {
-    const car = findWorkableCar(carId)
-    if (!car) return ''
-    if (car.zoneState && isBodyDerivedPart(carPartId)) return ''
-    if (context.value.partsTaxonomyById[carPartId]?.removable !== false) return ''
-    return slogAccessNoteFor(carId, carPartId)
-  }
-
   // --- facilities (bays) -------------------------------------------------
 
   /** Resolve one car currently in the shop (owned or a customer's), for the bay layout. */
@@ -4360,45 +4206,6 @@ export const useGameStore = defineStore('game', () => {
   }
 
   // --- instant actions ---
-
-  /**
-   * The reveal-then-confirm preview (knowledge-and-diagnosis.md section 1,
-   * sprint215.md task C2): every unverified, present slot this repair click
-   * would actually touch, its estimated band against the true one
-   * underneath - `carPartId` set addresses one part (the per-part "+repair"
-   * row); omitted addresses the whole group, every present part in it
-   * (`presentPartIdsInGroup`), covering a group-level repair-zone job on the
-   * same terms as a per-part one. Empty once every touched slot is already
-   * verified (nothing to reveal, the repair click just runs). A read-only
-   * preview; nothing here spends labour or cash, or marks anything verified
-   * - only an actual repair (`repair`, below) does that, via the sim's own
-   * verification routes. The repair's own PRICE (`nextRepairStep`'s preview)
-   * is never masked (only the band chip and the whole-group/whole-car bill
-   * readouts are - `groupBillYen`/`workBillYen`), so this reveal names no
-   * yen figure of its own: the per-click price the player already sees was
-   * always the real one.
-   */
-  function repairRevealFor(
-    carId: string,
-    componentId: ComponentId,
-    carPartId?: CarPartId,
-  ): { partId: CarPartId; estimatedBand: ConditionBand; trueBand: ConditionBand }[] {
-    const car = findWorkableCar(carId)
-    if (!car) return []
-    const targetIds = carPartId
-      ? [carPartId]
-      : presentPartIdsInGroup(car, componentId, context.value.partIdsByGroup)
-    const reveals: { partId: CarPartId; estimatedBand: ConditionBand; trueBand: ConditionBand }[] =
-      []
-    for (const partId of targetIds) {
-      if (isSlotVerified(car, partId)) continue
-      const trueBand = car.parts[partId].installed?.band
-      if (!trueBand) continue
-      const estimatedBand = priorBand(car, partId, context.value)
-      if (estimatedBand !== trueBand) reveals.push({ partId, estimatedBand, trueBand })
-    }
-    return reveals
-  }
 
   /**
    * Repair a group (or one specific part within it when
@@ -5004,50 +4811,6 @@ export const useGameStore = defineStore('game', () => {
       payload: { partInstanceId, priceYen: loggedYen(result.log, 'part-sold') },
     })
     return true
-  }
-
-  /**
-   * A read-only recondition quote for a loose inventory part to `targetBand`
-   * - the yen cost, labor slots, and whether the covering
-   * equipment is owned, for the inventory card's recondition control. Routes
-   * through the sim's `reconditionQuote`, which prices/sizes off the exact
-   * same repair economy as an on-car repair. Null when there is nothing to do
-   * (already at/above the target, or scrap - never reconditionable).
-   */
-  function reconditionQuoteFor(partInstanceId: string, targetBand: ConditionBand = 'mint') {
-    return reconditionQuote(gameState.value, partInstanceId, targetBand, context.value)
-  }
-
-  /**
-   * Why the part on the bench refuses ALL reconditioning, stated for the
-   * workbench's fixed control - today only body work (a zone panel is the
-   * body shop's business, `reconditionGateReason`'s 'body-shop-work'), or
-   * `null` when nothing refuses outright.
-   */
-  function benchWorkRefusal(partInstanceId: string): string | null {
-    const reason = reconditionGateReason(gameState.value, partInstanceId, context.value)
-    return reason === 'body-shop-work' ? 'Body work. Take it to the body shop.' : null
-  }
-
-  /**
-   * Recondition a loose inventory part to `targetBand` (mint by
-   * default - the same instant "climb to mint" an on-car Repair click does) -
-   * instant, spending up to today's remaining labor, through the SAME repair
-   * economy as an on-car repair (`resolveReconditionLabor`: same yen cost,
-   * same labor-slot consumption, same equipment/repair-level gate). Works on
-   * ANY inventory part, customer-owned or not.
-   */
-  function reconditionPart(partInstanceId: string, targetBand: ConditionBand = 'mint'): void {
-    const result = resolveReconditionLabor(
-      gameState.value,
-      partInstanceId,
-      targetBand,
-      laborSlotsRemainingToday.value,
-      context.value,
-    )
-    gameState.value = result.state
-    pushDayLog(result.log)
-    logSessionEvent({ type: 'reconditionPart', payload: { partInstanceId, targetBand } })
   }
 
   /** Buy out a lot instantly - guaranteed purchase at a premium, no rival contest. */
@@ -6047,8 +5810,6 @@ export const useGameStore = defineStore('game', () => {
     groupBandsForCar,
     groupRepairFloorBand,
     nextRepairStep,
-    nextPartStepRange,
-    repairCeilingCaption,
     isPartRepairable,
     isCustomerOwnedPart,
     describePartOrigin,
@@ -6088,7 +5849,6 @@ export const useGameStore = defineStore('game', () => {
     removeBlockedReason,
     removeMachineNoteFor,
     installMachineNoteFor,
-    repairMachineNoteFor,
     machineLineOwned,
     machineLineHiredToday,
     machineLineAvailable,
@@ -6130,7 +5890,6 @@ export const useGameStore = defineStore('game', () => {
     placeOnStation,
     takeFromStation,
     stationForPart,
-    benchRepairCeilingCaption,
     benchView,
     warehouseBenchTargets,
     placeOnBench,
@@ -6171,7 +5930,6 @@ export const useGameStore = defineStore('game', () => {
     buyToolShop,
     standingView,
     costSheetView,
-    repairRevealFor,
     repair,
     install,
     pipelineStage,
@@ -6202,10 +5960,6 @@ export const useGameStore = defineStore('game', () => {
     scrapValueForPart,
     sellPart,
     sellValueForPart,
-    reconditionQuoteFor,
-    benchWorkRefusal,
-    nextReconditionStep,
-    reconditionPart,
     cartItems,
     cartStandardTotalYen,
     cartExpressTotalYen,

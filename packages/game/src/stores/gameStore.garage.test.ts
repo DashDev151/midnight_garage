@@ -11,6 +11,7 @@ import {
 import { makeCarOrigin } from '@midnight-garage/sim'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { defaultRepairJobKind } from '../utils/repairJobLabels'
 import { useGameStore } from './gameStore'
 
 /**
@@ -315,13 +316,21 @@ describe('garage: assembly remove/refit gate on labour, not just structure', () 
     const rimsMember = container.members.find((m) => m.carPartId === 'rims')!
     const rimsId = rimsMember.instance!.id
     // A stand is not a bench: the member comes out into the warehouse, goes on
-    // the workshop floor's bench, is worked there, and goes back into the
-    // assembly. Reconditioning moves it off its vacated baseline, so the refit
-    // can no longer price this member free by equivalence.
+    // its group's bench, is worked there, and goes back into the assembly. A
+    // repair job moves it off its vacated baseline, so the refit can no
+    // longer price this member free by equivalence.
     expect(game.removeAssemblyMember(container.id, 'rims')).toBe(true)
-    game.gameState = { ...game.gameState, workbenchPartId: rimsId }
-    game.reconditionPart(rimsId, game.nextReconditionStep(rimsId)!.targetBand)
-    game.gameState = { ...game.gameState, workbenchPartId: null }
+    const benchId = game.warehouseBenchTargets(rimsId)!
+    game.placeOnBench(rimsId)
+    for (let step = 0; step < 20; step++) {
+      const cards =
+        game.benchView(benchId)?.surface.find((p) => p.instanceId === rimsId)?.cards ?? []
+      const kind = defaultRepairJobKind(cards)
+      if (!kind) break
+      const outcome = game.runRepairStep({ kind: 'loose', partInstanceId: rimsId }, kind)
+      if (outcome !== 'stepped') break
+    }
+    game.takeOffBench(rimsId)
     expect(game.fitAssemblyMember(container.id, 'rims', rimsId)).toBe(true)
 
     // Drain the rest of the day's labour before attempting the refit.

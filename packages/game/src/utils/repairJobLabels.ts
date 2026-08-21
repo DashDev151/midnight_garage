@@ -22,7 +22,7 @@ export const REPAIR_JOB_LABELS: Readonly<Record<RepairJobKind, string>> = {
 const SLOG_SUFFIX = 'x3, no proper tool'
 
 /** The machine a card is short of, named by the step that wants it. */
-function machineLabelFor(card: RepairJobCard): string {
+export function machineLabelFor(card: RepairJobCard): string {
   return card.steps[0]?.toolLabel ?? ''
 }
 

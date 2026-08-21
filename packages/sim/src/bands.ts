@@ -488,7 +488,7 @@ export interface PartRepairPlan {
 /**
  * The per-part repair atom - the single source of the repair cost/labor
  * formula, priced off the part's OWN catalog price, never the host car's
- * identity, so on-car repair and in-inventory reconditioning share one
+ * identity, so on-car repair and bench repair share one
  * repair economy and never a car-dependent discount. Scrap, a non-repairable
  * consumable, or a part already at/above the target yields a zero plan.
  *
@@ -541,8 +541,8 @@ export interface GroupRepairPlan {
  * still covers the whole group, so a per-part repair doesn't get its own tier.
  *
  * A REMOVABLE part is bench-only and excluded from on-car candidates here: it
- * comes off, goes to the warehouse, and is repaired on the workshop floor's
- * bench (`resolveReconditionLabor`). Only the three fixed body carriers
+ * comes off, goes to the warehouse, and is repaired on its group's bench
+ * (`resolveRepairStep`, repairJobs.ts). Only the three fixed body carriers
  * (`chassis`, `bodywork`, `paint`) are repaired in place, because they never
  * come off.
  *
@@ -551,9 +551,9 @@ export interface GroupRepairPlan {
  * benched perfectionist trims `costYen`. Omitted, this is the raw
  * restoration cost the bots and coherence probes measure.
  *
- * The optional `repairBandCeilingByTier` clamps the achievable REPAIR target
- * to the group's own tool tier; on-car job creation refuses an explicit
- * above-ceiling target outright rather than clamping here.
+ * The tool-tier ceiling is not applied here: on-car job creation refuses an
+ * explicit above-ceiling target outright (`repairJobGate`, jobs.ts) rather
+ * than quietly clamping the plan under the caller.
  */
 export function planGroupRepair(
   car: CarInstance,
@@ -567,12 +567,8 @@ export function planGroupRepair(
   energyPerBandStepByToolTier: EconomyConfig['energy']['energyPerBandStepByToolTier'],
   onlyPartId?: CarPartId,
   crew?: CrewSkillContext,
-  repairBandCeilingByTier?: EconomyConfig['repairBandCeilingByTier'],
 ): GroupRepairPlan {
   const repairLevel = repairLevelForGroup(toolLevels, groupId)
-  const effectiveTarget = repairBandCeilingByTier
-    ? clampRepairTarget(targetBand, repairBandCeilingByTier[repairLevel])
-    : targetBand
   let laborSlotsRequired = 0
   let costYen = 0
   const partIds: CarPartId[] = []
@@ -602,7 +598,7 @@ export function planGroupRepair(
     if (!catalogPart) continue
     const plan = planPartRepair(
       installed.band,
-      effectiveTarget,
+      targetBand,
       repairLevel,
       entry,
       catalogPart.priceYen,

@@ -220,8 +220,8 @@ export type AssemblyContainer = z.infer<typeof AssemblyContainerSchema>
 /**
  * The rolling road's whole persisted state. Structurally separate from the six
  * tool lines because a dyno is not a `ComponentId` - `ToolTiersSchema` and
- * `machineShopAssist.feeYenByGroup` are both exhaustive over the six part
- * groups, and nothing is repaired on a dyno - but deliberately the same shape:
+ * `toolHire.feeYenByGroup` are both exhaustive over the six part groups, and
+ * nothing is repaired on a dyno - but deliberately the same shape:
  * `owned` is the ownership half `toolTiers[group] >= 2` answers for a machine
  * line, and `hirePaidDay` is `machineHirePaidDayByGroup`'s day stamp with one
  * entry instead of six.
@@ -591,15 +591,15 @@ export const GameStateSchema = z.object({
    */
   inspectionVisit: InspectionVisitSchema.nullable().default(null),
   /**
-   * The part on the bench on the workshop floor - a `PartInstance.id` into
-   * `partInventory`, or `null` when the bench is clear. One part at a time,
-   * and repair is refused for any part that is not the one sitting here
-   * (`reconditionGateReason`, sim/jobs.ts). Carrying a part to the bench and
-   * taking it back are free and instant, so this holds no fee and no day
-   * stamp; a part that leaves inventory for any reason clears the station it
-   * was on (`reconcileStations`, sim/parts.ts). At most one live at a time by
-   * construction, the same single nullable field `inspectionVisit` above
-   * uses.
+   * The part on the workbench station - a `PartInstance.id` into
+   * `partInventory`, or `null` when the station is clear. One part at a
+   * time; laying a different part out on a bench refuses while it is
+   * sitting here (`resolvePlaceOnBench`, sim/repairJobs.ts). Carrying a part
+   * to this station and taking it back are free and instant, so this holds
+   * no fee and no day stamp; a part that leaves inventory for any reason
+   * clears the station it was on (`reconcileStations`, sim/parts.ts). At
+   * most one live at a time by construction, the same single nullable field
+   * `inspectionVisit` above uses.
    */
   workbenchPartId: z.string().min(1).nullable().default(null),
   /**
@@ -823,11 +823,9 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     carInstanceId: z.string().min(1),
     kind: JobKindSchema,
     /** The banded-repair cost charged to open the job - the whole of what a
-     * repair or a bench recondition takes out of the till, and the day it
-     * leaves. Emitted by `findOrCreateJob` and `resolveReconditionLabor`
-     * (jobs.ts) alike; absent when the job opened free. A recondition's cost
-     * is stock, a car job's is a car cost, and `kind` is what separates
-     * them. */
+     * repair takes out of the till, and the day it leaves. Emitted by
+     * `findOrCreateJob` (jobs.ts); absent when the job opened free. Always a
+     * car cost. */
     costYen: z.number().int().nonnegative().optional(),
   }),
   z.object({
@@ -1176,15 +1174,6 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
     partInstanceId: z.string().min(1),
     priceYen: z.number().int().nonnegative(),
   }),
-  /** A loose inventory `PartInstance` finished reconditioning - climbed to
-   * `band` through the same banded-repair economy as an on-car repair. The
-   * completion counterpart to a car job's `job-completed` (which carries a
-   * `carInstanceId` a loose part has no equivalent of). */
-  z.object({
-    type: z.literal('part-reconditioned'),
-    partInstanceId: z.string().min(1),
-    band: ConditionBandSchema,
-  }),
   /** One step of a job-card repair worked (`resolveRepairStep`,
    * sim/repairJobs.ts) - emitted once per step, so a day of bench work
    * never spams the log one line per step. `classifyDayReport` aggregates
@@ -1201,9 +1190,8 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
   }),
   /** A job-card repair's last step landed - the band write already happened
    * in the sim; this is its completion line ("Serviced the sump to worn").
-   * Same installed/loose split as `repair-step` above, and the eventual
-   * replacement for `part-reconditioned`'s completion line once the old
-   * bench recondition path is retired. */
+   * Same installed/loose split as `repair-step` above, and the completion
+   * line for loose bench work as well as for work on the car. */
   z.object({
     type: z.literal('repair-job-completed'),
     carInstanceId: z.string().min(1).optional(),

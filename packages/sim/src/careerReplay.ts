@@ -46,7 +46,6 @@ import {
   refitLaborSlotsFor,
   resolveHireToolLine,
   resolveJobLabor,
-  resolveReconditionLabor,
   resolveRemovePart,
 } from './jobs'
 import { energyMax } from './laborSlots'
@@ -445,11 +444,6 @@ function applySessionEvent(
     }
     case 'sellPart': {
       const result = resolveSellPart(state, event.payload.partInstanceId, context)
-      return { state: result.state, log: result.log }
-    }
-    case 'reconditionPart': {
-      const { partInstanceId, targetBand } = event.payload
-      const result = resolveReconditionLabor(state, partInstanceId, targetBand, remaining, context)
       return { state: result.state, log: result.log }
     }
     case 'buyout': {

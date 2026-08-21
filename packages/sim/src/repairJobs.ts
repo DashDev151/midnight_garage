@@ -36,6 +36,7 @@ import {
   removeLaborSlotsFor,
   writeCarBack,
 } from './jobs'
+import { isSlotVerified, knowledgeViewOf, priorBand } from './knowledge'
 import { reputationAtLeast } from './reputation'
 import { updateServiceJobLedger } from './serviceJobLedger'
 import { ownsToolShopForGroup, toolLevelsFor } from './toolLines'
@@ -809,7 +810,14 @@ export interface RepairJobCard {
    * and finds it still fitted. Display only; the actions themselves are
    * resolved by the existing removal and install paths. */
   removalEnergyPoints: number
-  /** The parts bill, or zero once the job has started and been charged. */
+  /**
+   * The parts bill as the card QUOTES it, or zero once the job has started
+   * and been charged. On a slot the player has not verified this prices the
+   * knowledge model's own guess rather than the truth (`quotedSubjectFor`),
+   * so a card can never tell them a condition they have not found out. What
+   * the work actually costs when it runs is the true bill either way, taken
+   * by `resolveRepairStep` off the real part.
+   */
   partsYen: number
 }
 
@@ -888,10 +896,58 @@ function removalEnergyPointsFor(
 }
 
 /**
+ * The subject a card is allowed to QUOTE against. A quote is a thing the
+ * player is told, so it may only ever be built out of what they know: on a
+ * slot they have not verified, both the band and the fitted part come from
+ * `knowledgeViewOf` (knowledge.ts) - the same masked view the band chip, the
+ * player's own value estimate and every other player-facing figure already
+ * read - so a card can never name a condition, a part or a price the player
+ * has not found out. `isSlotVerified` is the one predicate for that question
+ * and nothing here answers it a second way.
+ *
+ * Only the quote moves. What the work costs when it runs is settled off the
+ * real subject in `resolveRepairStep`, so an under-quoted slot is charged its
+ * true bill exactly as it always was.
+ *
+ * The rest of the card needs no masking. A job's step list comes from the
+ * recipe, and its energy from tools, crew, the lift and the slot's own depth
+ * class (`energyPlanFor`, `removalEnergyPointsFor`) - none of which reads a
+ * band - so the energy figures carry no condition to leak.
+ *
+ * A loose part is always verified (it is in hand), so a bench target quotes
+ * itself unchanged, as does a car the knowledge model was never seeded onto
+ * (`isSlotVerified`'s own defensive default).
+ */
+function quotedSubjectFor(
+  context: SimContext,
+  target: RepairTarget,
+  subject: RepairSubject,
+): RepairSubject {
+  const car = subject.car
+  if (target.kind !== 'installed' || !car || isSlotVerified(car, subject.carPartId)) return subject
+  const model = context.modelsById[car.modelId]
+  // Without a resolvable model there is no stock SKU to mask the part's
+  // identity back to, but the guess itself needs no model, so the band never
+  // leaks either way.
+  if (!model) return { ...subject, band: priorBand(car, subject.carPartId, context) }
+  const guessed = knowledgeViewOf(car, model, context).parts[subject.carPartId].installed
+  if (!guessed) return subject
+  return {
+    ...subject,
+    band: guessed.band,
+    catalogPart: context.partsById[guessed.partId] ?? subject.catalogPart,
+  }
+}
+
+/**
  * The three job cards for a target, in ladder order, priced and routed off
  * current state and nothing stored. A refused card still carries its steps,
  * energy and parts bill: the player is owed the price of the work they cannot
  * do yet, alongside the reason.
+ *
+ * Everything except `partsYen` reads the real subject; `partsYen` reads the
+ * quoted one (`quotedSubjectFor`), which is the same subject on every slot
+ * the player has verified.
  */
 export function repairJobCards(
   state: GameState,
@@ -899,8 +955,9 @@ export function repairJobCards(
   target: RepairTarget,
 ): RepairJobCard[] {
   const subject = resolveSubject(state, target, context)
+  const quoted = subject ? quotedSubjectFor(context, target, subject) : null
   return REPAIR_JOB_KINDS.map((kind) => {
-    if (!subject) return unresolvableCard(kind, context)
+    if (!subject || !quoted) return unresolvableCard(kind, context)
     const targetBand = targetBandFor(kind, context)
     const refusal = cardRefusalFor(state, context, target, kind, subject)
     const job = state.jobs.find((open) => open.id === repairJobIdFor(target, kind, context))
@@ -923,7 +980,7 @@ export function repairJobCards(
       })),
       energyPoints: plan.slice(stepsDone).reduce((sum, points) => sum + points, 0),
       removalEnergyPoints: removalEnergyPointsFor(state, context, target, kind, subject),
-      partsYen: stepsDone > 0 ? 0 : partsBillYen(state, context, subject, targetBand),
+      partsYen: stepsDone > 0 ? 0 : partsBillYen(state, context, quoted, targetBand),
     }
   })
 }
@@ -1049,6 +1106,11 @@ function applyFinishedBand(
  * for that one step, charges the whole parts bill on the first step only, then
  * ticks. Steps are atomic: a step either runs in full or nothing moves at all.
  *
+ * The charge is priced off the REAL subject, never off the card's quote: on a
+ * slot the player has not verified the card quotes the knowledge model's guess
+ * (`quotedSubjectFor`), and the money that moves is still the true bill. The
+ * work is honest even when the estimate was not.
+ *
  * The band moves once, on the last step. Everything before that is a job
  * sitting in `state.jobs` with its steps counted, which survives the end of the
  * day, a lapsed hire, and the part coming off the bench and going back on.
@@ -1097,7 +1159,7 @@ export function resolveRepairStep(
     : {
         id: jobId,
         // A loose part has no car, so its own id stands in for identity - the
-        // same convention a bench recondition job uses.
+        // same convention a loose-part machining job uses.
         carInstanceId: target.kind === 'installed' ? target.carInstanceId : target.partInstanceId,
         kind,
         componentId: subject.group,

@@ -1004,11 +1004,6 @@
     "rebuild": { "target": "fine", "toolTier": 2 },
     "restore": { "target": "mint", "toolTier": 3 }
   },
-  "machineListings": {
-    "minGapDays": 4,
-    "maxGapDays": 8,
-    "windowDays": 3
-  },
   "coherence": {
     "maxConsumablesShareOfBookValue": 0.15
   },
@@ -1065,18 +1060,6 @@
     "coffeeBasePriceYen": 1000,
     "coffeePerStaffYen": 1000,
     "maxPurchasesPerDay": 1
-  },
-  "machineShopAssist": {
-    "feeYenByGroup": {
-      "engine": 15000,
-      "drivetrain": 18000,
-      "suspension": 5000,
-      "wheels": 3000,
-      "body": 6500,
-      "interior": 7000
-    },
-    "machinelessLaborMultiplier": 3,
-    "probeAmortisationOps": 40
   },
   "toolHire": {
     "feeYenByGroup": {

@@ -21,18 +21,19 @@ import {
   resolveRemoveAssembly,
   resolveRemoveAssemblyMember,
 } from '../src/assemblies'
-import {
-  installLaborSlotsFor,
-  reconditionGateReason,
-  resolveJobLabor,
-  resolveReconditionLabor,
-  resolveRemovePart,
-} from '../src/jobs'
+import { installLaborSlotsFor, resolveJobLabor, resolveRemovePart } from '../src/jobs'
 import { machiningOf } from '../src/machining'
 import { machiningGateReason, resolveMachiningLabor } from '../src/machiningJobs'
 import { installedPartsValueYen, marketValueYen, retentionFor } from '../src/marketValue'
 import { createInitialGameState } from '../src/newGame'
 import { resolvePlaceOnStation, resolveTakeFromStation } from '../src/parts'
+import {
+  benchHoldingPart,
+  resolvePlaceOnBench,
+  resolveRepairStep,
+  resolveTakeOffBench,
+  type RepairTarget,
+} from '../src/repairJobs'
 import {
   buildCarInstance,
   mintCarParts,
@@ -212,15 +213,25 @@ describe('the workshop floor route: car, warehouse, bench, warehouse, car', () =
     expect(carIn(pulled.state, car.id).parts.steering.installed).toBeNull()
 
     // The warehouse holds it and does no work: the bench is a place to go.
-    expect(reconditionGateReason(pulled.state, steeringId, CONTEXT)).toBe('not-on-workbench')
-    const onBench = resolvePlaceOnStation(pulled.state, 'workbench', steeringId)
-    expect(reconditionGateReason(onBench, steeringId, CONTEXT)).toBeNull()
+    const target: RepairTarget = { kind: 'loose', partInstanceId: steeringId }
+    const inStorage = resolveRepairStep(pulled.state, target, 'rebuild', CONTEXT, 600)
+    expect(inStorage.outcome).toEqual({ refused: 'needs-bench' })
 
-    const rebuilt = resolveReconditionLabor(onBench, steeringId, 'mint', 600, CONTEXT)
-    expect(rebuilt.laborSlotsUsed).toBeGreaterThan(0)
-    expect(rebuilt.state.partInventory.find((p) => p.id === steeringId)!.band).toBe('mint')
+    let onBench = resolvePlaceOnBench(pulled.state, steeringId, CONTEXT)
+    const energyBefore = onBench.energySpentToday
+    for (;;) {
+      const step = resolveRepairStep(onBench, target, 'rebuild', CONTEXT, 600)
+      if (typeof step.outcome === 'object') {
+        throw new Error(`bench rebuild refused: ${step.outcome.refused}`)
+      }
+      onBench = step.state
+      if (step.outcome === 'completed') break
+    }
+    expect(onBench.energySpentToday).toBeGreaterThan(energyBefore)
+    expect(onBench.partInventory.find((p) => p.id === steeringId)!.band).toBe('fine')
 
-    const offBench = resolveTakeFromStation(rebuilt.state, 'workbench')
+    const offBench = resolveTakeOffBench(onBench, steeringId)
+    expect(benchHoldingPart(offBench, steeringId)).toBeNull()
     const refitted = resolveJobLabor(
       offBench,
       {
@@ -237,9 +248,9 @@ describe('the workshop floor route: car, warehouse, bench, warehouse, car', () =
     const after = carIn(refitted.state, car.id)
     const installed = after.parts.steering.installed!
     expect(installed.id, 'the same steering went back on').toBe(steeringId)
-    expect(installed.band, 'poor came off, mint went back on').toBe('mint')
+    expect(installed.band, 'poor came off, fine went back on').toBe('fine')
     expect(refitted.state.partInventory.some((p) => p.id === steeringId)).toBe(false)
     // The part left the warehouse for a car slot, so the bench is clear again.
-    expect(refitted.state.workbenchPartId).toBeNull()
+    expect(benchHoldingPart(refitted.state, steeringId)).toBeNull()
   })
 })

@@ -287,10 +287,6 @@ export const SessionEventInputSchema = z.discriminatedUnion('type', [
     }),
   ),
   sessionEventVariant(
-    'reconditionPart',
-    z.object({ partInstanceId: z.string().min(1), targetBand: ConditionBandSchema }),
-  ),
-  sessionEventVariant(
     'buyout',
     z.object({ lotId: z.string().min(1), priceYen: z.number().int().nonnegative().optional() }),
   ),

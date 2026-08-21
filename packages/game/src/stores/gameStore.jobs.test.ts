@@ -19,6 +19,7 @@ import {
 } from '@midnight-garage/sim'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { defaultRepairJobKind } from '../utils/repairJobLabels'
 import { useGameStore } from './gameStore'
 
 // Mirrors the store's own SimContext (gameStore.ts) - `isServiceTaskDone`
@@ -170,21 +171,28 @@ describe('service jobs in the store', () => {
             game.repair(carId, componentId)
           } else {
             // Every removable part is bench work: pull it into the warehouse,
-            // carry it to the workshop floor, climb it a rung at a time, and
-            // put it back on the car.
+            // carry it to its group's bench, work whichever job is on offer a
+            // step at a time, and put it back on the car.
             game.removePart(carId, carPartId)
             const loose = game.gameState.partInventory.at(-1)
             if (loose) {
-              game.gameState = { ...game.gameState, workbenchPartId: loose.id }
-              for (let rung = 0; rung < 4; rung++) {
-                const step = game.nextReconditionStep(loose.id)
-                if (!step) break
-                const before = game.gameState.partInventory.find((p) => p.id === loose.id)?.band
-                game.reconditionPart(loose.id, step.targetBand)
-                const after = game.gameState.partInventory.find((p) => p.id === loose.id)?.band
-                if (after === before) break // out of labour today
+              const benchId = game.warehouseBenchTargets(loose.id)
+              game.placeOnBench(loose.id)
+              if (benchId) {
+                for (let step = 0; step < 20; step++) {
+                  const cards =
+                    game.benchView(benchId)?.surface.find((p) => p.instanceId === loose.id)
+                      ?.cards ?? []
+                  const kind = defaultRepairJobKind(cards)
+                  if (!kind) break
+                  const outcome = game.runRepairStep(
+                    { kind: 'loose', partInstanceId: loose.id },
+                    kind,
+                  )
+                  if (outcome !== 'stepped') break // completed, or out of labour today
+                }
               }
-              game.gameState = { ...game.gameState, workbenchPartId: null }
+              game.takeOffBench(loose.id)
               game.install(carId, componentId, loose.id, carPartId)
             }
           }

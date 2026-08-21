@@ -1085,11 +1085,10 @@ export function resolveServiceJob(
   )
   const activeServiceJobs = releasedState.activeServiceJobs.filter((sj) => sj.id !== jobId)
   // The customer's pulled parts leave with them at close-out; any in-flight
-  // recondition job on one of those parts goes with it (nothing left to
-  // bench-repair), alongside the usual dropping of car jobs on the
-  // departing car. Which parts those are is read from origin
-  // (`provenance.ts`), not a mutable tag - every loose inventory part that
-  // traces back to this job's car reconciles out.
+  // part-level job on one of those parts goes with it (nothing left to work),
+  // alongside the usual dropping of car jobs on the departing car. Which parts
+  // those are is read from origin (`provenance.ts`), not a mutable tag - every
+  // loose inventory part that traces back to this job's car reconciles out.
   const returnedParts = partsOriginatingFromCar(releasedState.partInventory, job.car.id)
   const reconciledPartIds = new Set(returnedParts.map((p) => p.id))
   // A receipt line for what left with the customer - captured as display
@@ -1099,12 +1098,15 @@ export function resolveServiceJob(
     .map((p) => context.partsById[p.partId])
     .filter((part): part is Part => !!part)
     .map((part) => `${part.brand} ${part.name}`)
+  // A part-level job carries the part's own id in `carInstanceId` for stable
+  // identity (`resolveRepairStep`, `resolveMachiningLabor`), which is exactly
+  // what tells one apart from a car job here.
   const jobs = releasedState.jobs.filter(
     (j) =>
       j.carInstanceId !== job.car.id &&
       !(
-        j.kind === 'recondition-part' &&
         j.partInstanceId !== undefined &&
+        j.carInstanceId === j.partInstanceId &&
         reconciledPartIds.has(j.partInstanceId)
       ),
   )

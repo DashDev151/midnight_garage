@@ -10,9 +10,9 @@ import {
   type AssemblyId,
   type CarInstance,
   type CarPartId,
-  type ConditionBand,
   type GameState,
   type PartInstance,
+  type RepairJobKind,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import {
@@ -27,13 +27,14 @@ import {
   resolveRemoveAssemblyMember,
 } from '../src/assemblies'
 import { buildSimContext } from '../src/context'
+import { accessRoute, machineGateGroupFor } from '../src/jobs'
 import {
-  accessRoute,
-  findLoosePart,
-  machineGateGroupFor,
-  resolveReconditionLabor,
-} from '../src/jobs'
-import { resolvePlaceOnStation, resolveTakeFromStation } from '../src/parts'
+  resolvePlaceOnBench,
+  resolveRepairStep,
+  resolveTakeOffBench,
+  benchHoldingPart,
+  type RepairTarget,
+} from '../src/repairJobs'
 import { makeCarOrigin, makeMarketOrigin } from '../src/provenance'
 import { deriveServiceJobPayoutYen, serviceJobCostBreakdown } from '../src/serviceJobs'
 import { buildCarInstance, mintCarParts, testSceneStanding, testToolTiers } from './testFixtures'
@@ -161,10 +162,10 @@ function wrongClassTyre(id: string): PartInstance {
 
 /**
  * Repair one member of a benched assembly the way the shop does it: pull the
- * member out into the warehouse, carry it to the workshop floor's bench, work
- * it there, carry it back and fit it into the assembly again. Storage does no
- * work and neither does a stand, so the repair itself is the only step that
- * costs anything - the member swaps in and out at
+ * member out into the warehouse, carry it to its group's bench, work every step
+ * of the job there, carry it back and fit it into the assembly again. Storage
+ * does no work and neither does a stand, so the repair itself is the only step
+ * that costs anything - the member swaps in and out at
  * `benchRemoveMember`/`benchFitMember`, both zero in shipped content, which is
  * why the binding totals below are untouched by the extra journey.
  */
@@ -173,19 +174,29 @@ function benchRepairMember(
   containerId: string,
   memberSlot: CarPartId,
   partInstanceId: string,
-  targetBand: ConditionBand,
-): { state: GameState; laborSlotsUsed: number } {
+  kind: RepairJobKind,
+): { state: GameState; energySpent: number } {
   const pulled = resolveRemoveAssemblyMember(state, containerId, memberSlot, CONTEXT)
-  const onBench = resolvePlaceOnStation(pulled.state, 'workbench', partInstanceId)
-  const repair = resolveReconditionLabor(onBench, partInstanceId, targetBand, Infinity, CONTEXT)
+  let cur = resolvePlaceOnBench(pulled.state, partInstanceId, CONTEXT)
+  const energyBefore = cur.energySpentToday
+  const target: RepairTarget = { kind: 'loose', partInstanceId }
+  for (;;) {
+    const step = resolveRepairStep(cur, target, kind, CONTEXT, Infinity)
+    if (typeof step.outcome === 'object') {
+      throw new Error(`bench ${kind} refused: ${step.outcome.refused}`)
+    }
+    cur = step.state
+    if (step.outcome === 'completed') break
+  }
+  const energySpent = cur.energySpentToday - energyBefore
   const back = resolveFitAssemblyMember(
-    resolveTakeFromStation(repair.state, 'workbench'),
+    resolveTakeOffBench(cur, partInstanceId),
     containerId,
     memberSlot,
     partInstanceId,
     CONTEXT,
   )
-  return { state: back.state, laborSlotsUsed: repair.laborSlotsUsed }
+  return { state: back.state, energySpent }
 }
 
 describe('assembly definitions and derived gates', () => {
@@ -320,9 +331,9 @@ describe('the Sprint 79 contract cases, re-expressed at assembly level (Sprint 8
     const container = off.state.assemblyInventory![0]!
     // Bench-repair the rims MEMBER: out of the assembly, onto the bench, worked,
     // and back into the assembly.
-    const repair = benchRepairMember(off.state, container.id, 'rims', originalRims.id, 'fine')
-    expect(repair.laborSlotsUsed).toBeGreaterThan(0)
-    expect(findLoosePart(repair.state, originalRims.id)!.band).toBe('fine')
+    const repair = benchRepairMember(off.state, container.id, 'rims', originalRims.id, 'rebuild')
+    expect(repair.energySpent).toBeGreaterThan(0)
+    expect(repair.state.assemblyInventory![0]!.members.rims!.band).toBe('fine')
 
     // The old tyres still occupy the slot - take them off before fitting new.
     const pulled = resolveRemoveAssemblyMember(repair.state, container.id, 'tyres', CONTEXT)
@@ -369,8 +380,8 @@ describe('the Sprint 79 contract cases, re-expressed at assembly level (Sprint 8
     expect(off.ok).toBe(true)
     expect(off.laborSlotsUsed).toBe(2 * CONTEXT.economy.energy.actionPoints.removePart)
     const container = off.state.assemblyInventory![0]!
-    const repair = benchRepairMember(off.state, container.id, 'gearbox', gearbox.id, 'mint')
-    expect(repair.laborSlotsUsed).toBeGreaterThan(0)
+    const repair = benchRepairMember(off.state, container.id, 'gearbox', gearbox.id, 'rebuild')
+    expect(repair.energySpent).toBeGreaterThan(0)
     const on = resolveRefitAssembly(repair.state, container.id, CONTEXT)
     expect(on.ok).toBe(true)
     // The flat assembly figure, whether or not gearbox came back improved.
@@ -475,8 +486,14 @@ describe('worked example: worn internals (binding total)', () => {
       const container = off.state.assemblyInventory![0]!
       // Repair the internals member at the bench (normal cash + labour), then
       // put it back on the stand.
-      const repair = benchRepairMember(off.state, container.id, 'internals', internals.id, 'mint')
-      expect(repair.laborSlotsUsed).toBeGreaterThan(0)
+      const repair = benchRepairMember(
+        off.state,
+        container.id,
+        'internals',
+        internals.id,
+        'rebuild',
+      )
+      expect(repair.energySpent).toBeGreaterThan(0)
       const on = resolveRefitAssembly(repair.state, container.id, CONTEXT)
       expect(on.ok).toBe(true)
       // The flat assembly figure, whether or not internals came back improved.
@@ -545,17 +562,16 @@ describe('bench work, build-from-loose, and car-exit dissolve (Sprint 87)', () =
     const state = baseState({ ownedCars: [car], serviceBayCarIds: [car.id] })
     const off = resolveRemoveAssembly(state, car.id, 'wheelAssembly', CONTEXT)
     const container = off.state.assemblyInventory![0]!
-    // A stand is not a bench: the member comes out, is worked on the workshop
-    // floor, and goes back into the assembly, all through the ordinary
-    // recondition path.
-    const repair = benchRepairMember(off.state, container.id, 'rims', originalRims.id, 'fine')
-    expect(repair.laborSlotsUsed).toBeGreaterThan(0)
-    expect(findLoosePart(repair.state, originalRims.id)!.band).toBe('fine')
+    // A stand is not a bench: the member comes out, is worked on its group's
+    // bench, and goes back into the assembly, all through the ordinary repair
+    // job path.
+    const repair = benchRepairMember(off.state, container.id, 'rims', originalRims.id, 'rebuild')
+    expect(repair.energySpent).toBeGreaterThan(0)
     // Back in the container, not left loose in the warehouse.
     expect(repair.state.assemblyInventory![0]!.members.rims!.band).toBe('fine')
     expect(repair.state.partInventory.find((p) => p.id === originalRims.id)).toBeUndefined()
     // And the bench is clear again.
-    expect(repair.state.workbenchPartId).toBeNull()
+    expect(benchHoldingPart(repair.state, originalRims.id)).toBeNull()
   })
 
   it('build an assembly from loose parts and install it onto a bare car - every member charges install labour', () => {

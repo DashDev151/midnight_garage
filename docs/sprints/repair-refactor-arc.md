@@ -114,13 +114,49 @@ figures that produced them are in `sprint227.md`.
 
 ## Retirement checklist (owned by sprint 231, ticked as sprints land)
 
+Closed out by sprint 231. Five items retired in full, four survive under decision D-R1
+(delete only what is genuinely unreachable), each with its reason below. Every survival is
+carried in `TODO.md`; none is left dead-but-alive without an entry.
+
 - [ ] `machineGate` (taxonomy field + `MachineGateOperationSchema` + `machineGateGroupFor`)
+      **SURVIVES, live in the arc's own new engine.** `removalEnergyPointsFor`
+      (`repairJobs.ts`) sizes remove-and-refit energy through it, `assemblyMachineGateGroup`
+      reads it for every assembly row, and the tyre bench-fit note reads it too. It gates
+      operations, which the three-job model still has.
 - [ ] `repairBandCeilingByTier` + `repairCeilingForLevel` + `clampRepairTarget`
+      **ALL THREE SURVIVE.** The first two are on the live body-shop chassis path, which
+      D-R1 spares; `clampRepairTarget` is additionally read by `sensibleRepairTargetBand`
+      (`marketValue.ts`), outside the repair path entirely.
 - [ ] `energyPerBandStepByToolTier` + `energyToClimb`'s tier parameter
-- [ ] `machineShopAssist` (whole block) + `machineAssistFeeYen` (`signatureOpFeeYen` is
+      **BOTH SURVIVE**, on two independent paths: the chassis repair path, and
+      `toolShopInfo`/`toolTierInfo`, whose player-facing tool-line copy on the Upgrades
+      screen is not a repair surface at all. The tier parameter cannot go while the key does.
+- [x] `machineShopAssist` (whole block) + `machineAssistFeeYen` (`signatureOpFeeYen` is
       already gone: sprint 227 retired the one probe that read it and the function with it)
-- [ ] `machinelessLaborMultiplier` + `machineLaborMultiplier` (replaced by slog routing)
-- [ ] `machineListing` / `nextMachineListingDay` / `rollMachineListings` (D-A2)
+      Block deleted from `economy.json` and `economy.ts`; approval gate re-pinned with its
+      retirement paragraph. `machineAssistFeeYen` was already gone (sprint 226).
+- [x] `machinelessLaborMultiplier` + `machineLaborMultiplier` (replaced by slog routing)
+      `machinelessLaborMultiplier` retired with its block, replaced by
+      `toolHire.slogMultiplier`. **`machineLaborMultiplier` SURVIVES**: the new engine's
+      removal energy, the body pipeline's weld rate and the machine-labour disclosure all
+      call it. Slog routing replaced its repair use, not its other three.
+- [x] `machineListing` / `nextMachineListingDay` / `rollMachineListings` (D-A2)
+      Already gone from code (sprint 226); the inert `economy.machineListings` tuning block
+      they left behind is deleted here, and all three names are registered in the guard.
 - [ ] `workbenchPartId` (replaced by `benchParts`), `WorkStationTray.vue`, `WorkbenchPanel.vue`
-- [ ] `serviceJobTemplates` per-task `minToolTier`
-- [ ] Old store actions `repair` / `reconditionPart` and the `repair-zone` / `recondition-part` job kinds
+      **`WorkbenchPanel.vue` deleted** with its test and its `screens/workshopFloor.ts`
+      helper module. **`WorkStationTray.vue` SURVIVES**: the machine shop still mounts it,
+      and nothing in it was workbench-specific. **`workbenchPartId` NOT DELETED** and still
+      written by the station helpers; carried in `TODO.md` as the one unfinished item on
+      this list.
+- [x] `serviceJobTemplates` per-task `minToolTier`
+      Already gone from code (sprint 227). Not registered in the guard: the only remaining
+      mentions are `saveCodec.ts`'s per-version log, which the guard scans, and erasing a
+      version's own description would falsify the record rather than keep a dead name dead.
+- [x] Old store actions `repair` / `reconditionPart` and the `repair-zone` / `recondition-part` job kinds
+      `reconditionPart` and `recondition-part` deleted outright, with the whole recondition
+      resolver chain, the `part-reconditioned` day-log entry and the `reconditionPart`
+      session event. **`repair()` and `repair-zone` SURVIVE**: the body shop's chassis
+      repair is the one reachable caller and D-R1 spares it. `planGroupRepair` was narrowed
+      (its tool-tier ceiling parameter dropped, the clamp left solely with `repairJobGate`);
+      the rename D-R1 permits was not taken.

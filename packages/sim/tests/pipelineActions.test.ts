@@ -514,7 +514,7 @@ describe('the body bay gate, and the weld rate', () => {
   it('welds day one by hand at the machine-less multiplier (3x), and at base rate once the body line is owned', () => {
     const zoneCar = weldCar()
     const basePoints = CONTEXT.economy.energy.bodyStagePoints.weld
-    expect(CONTEXT.economy.machineShopAssist.machinelessLaborMultiplier).toBe(3)
+    expect(CONTEXT.economy.toolHire.slogMultiplier).toBe(3)
 
     const byHand = resolvePipelineStageAction(
       baseState({

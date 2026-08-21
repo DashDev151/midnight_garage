@@ -32,11 +32,8 @@ export interface CashMovement {
  * `describeLogEntry`: a new `DayLogEntry` type is a compile error here rather
  * than a yen that quietly falls out of the week's arithmetic.
  *
- * Four entries need a word. `job-created` carries the whole banded-repair
- * charge for both an on-car repair and a bench recondition, and its `kind` is
- * what separates a car cost from stock. `part-reconditioned` carries no
- * amount on purpose: the recondition was already charged and booked when its
- * job opened, which may have been days earlier. `part-machined` moves no
+ * Three entries need a word. `job-created` carries the whole banded-repair
+ * charge for an on-car repair, always a car cost. `part-machined` moves no
  * money at any point: the tooling was bought once as shop investment, and an
  * operation costs labour and nothing else after that. `body-materials-used`
  * likewise moves no money at the moment it fires: the tin it draws from was
@@ -73,10 +70,7 @@ export function cashMovementFor(entry: DayLogEntry): CashMovement | null {
       return { bucket: 'onCars', amountYen: entry.feeYen }
     case 'job-created':
       if (entry.costYen === undefined) return null
-      return {
-        bucket: entry.kind === 'recondition-part' ? 'stock' : 'onCars',
-        amountYen: entry.costYen,
-      }
+      return { bucket: 'onCars', amountYen: entry.costYen }
 
     // Money out, on stock that is nobody's car yet.
     case 'part-bought':
@@ -125,7 +119,6 @@ export function cashMovementFor(entry: DayLogEntry): CashMovement | null {
     case 'offer-received':
     case 'offer-rejected':
     case 'part-delivered':
-    case 'part-reconditioned':
     case 'part-machined':
     case 'repair-step':
     case 'repair-job-completed':

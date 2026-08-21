@@ -4,12 +4,8 @@ import { CarPartIdSchema, ComponentIdSchema, ConditionBandSchema } from './tags'
 /**
  * Every job is either a group-level repair (climb every non-mint, non-scrap
  * part in the group toward the target band), an install (one catalog part onto
- * one part slot within the group), a `recondition-part` (the same banded
- * repair, but climbing a loose `PartInstance` sitting in `partInventory`
- * rather than one installed on a car), or a `dyno-session` (a run on the
- * rolling road). A recondition job carries `partInstanceId`
- * + `targetBand` and its `carInstanceId` holds the loose part's own id (there
- * is no car), so it never resolves against a real car or a service bay.
+ * one part slot within the group), or a `dyno-session` (a run on the
+ * rolling road).
  *
  * A `dyno-session` is the one kind that changes nothing about what it
  * addresses: it costs labour and books the car onto the rollers, and every
@@ -23,9 +19,8 @@ import { CarPartIdSchema, ComponentIdSchema, ConditionBandSchema } from './tags'
  * to that instance's own record, and the work travels with the part back onto
  * whatever car it is fitted to. `carPartId` is the slot the part addresses,
  * which is what says a port-and-polish belongs to a head and not a gearbox;
- * `carInstanceId` holds the loose part's own id, the same way a
- * `recondition-part` job's does, so neither resolves against a car or a
- * service bay.
+ * `carInstanceId` holds the loose part's own id, so it never resolves
+ * against a car or a service bay.
  *
  * `'service' | 'rebuild' | 'restore'` are the three repair job kinds
  * (`RepairJobKindSchema`, workbench.ts), one recipe ladder per part per
@@ -37,7 +32,6 @@ import { CarPartIdSchema, ComponentIdSchema, ConditionBandSchema } from './tags'
 export const JobKindSchema = z.enum([
   'repair-zone',
   'install-part',
-  'recondition-part',
   'dyno-session',
   'machine-part',
   'service',
@@ -52,8 +46,8 @@ export const JobSchema = z
     kind: JobKindSchema,
     componentId: ComponentIdSchema,
     partInstanceId: z.string().min(1).optional(),
-    /** Set for `repair-zone` and `recondition-part` jobs - how far the
-     * addressed part(s) climb on completion. */
+    /** Set for `repair-zone` jobs - how far the addressed part(s) climb on
+     * completion. */
     targetBand: ConditionBandSchema.optional(),
     /**
      * The per-part address, mirroring `StagedActionSchema`'s own addition -
@@ -76,14 +70,6 @@ export const JobSchema = z
   .refine((job) => job.kind !== 'install-part' || job.partInstanceId !== undefined, {
     message: 'install-part jobs require partInstanceId',
     path: ['partInstanceId'],
-  })
-  .refine((job) => job.kind !== 'recondition-part' || job.partInstanceId !== undefined, {
-    message: 'recondition-part jobs require partInstanceId',
-    path: ['partInstanceId'],
-  })
-  .refine((job) => job.kind !== 'recondition-part' || job.targetBand !== undefined, {
-    message: 'recondition-part jobs require targetBand',
-    path: ['targetBand'],
   })
   .refine(
     (job) =>

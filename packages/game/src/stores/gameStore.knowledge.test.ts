@@ -147,26 +147,4 @@ describe('the knowledge model never leaks truth for an unverified slot', () => {
     )
     expect(detail.groupBillYen.engine).not.toBe(trueEngineBillYen)
   })
-
-  it('the reveal-then-confirm preview names the true band under the estimate for a group repair address (no carPartId), covering the group-repair entry point', () => {
-    const { game, carId, trueBand, estimatedBand } = seedUnverifiedCar()
-    const reveals = game.repairRevealFor(carId, 'engine')
-    const internalsReveal = reveals.find((r) => r.partId === 'internals')
-    expect(internalsReveal).toBeDefined()
-    expect(internalsReveal!.trueBand).toBe(trueBand)
-    expect(internalsReveal!.estimatedBand).toBe(estimatedBand)
-  })
-
-  it('repairRevealFor is empty once the slot is verified - nothing left to reveal, the click just runs', () => {
-    const { game, carId } = seedUnverifiedCar()
-    const car = game.gameState.ownedCars.find((c) => c.id === carId)!
-    game.gameState = {
-      ...game.gameState,
-      ownedCars: [
-        { ...car, verifiedSlots: [...car.verifiedSlots!, 'internals'] },
-        ...game.gameState.ownedCars.slice(1),
-      ],
-    }
-    expect(game.repairRevealFor(carId, 'engine', 'internals')).toEqual([])
-  })
 })

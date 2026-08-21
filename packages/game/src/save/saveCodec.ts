@@ -886,8 +886,20 @@ import { bandForMigratedCondition } from '@midnight-garage/sim'
  * harmless - any live listing it named is gone with the mechanic itself. The
  * version bump alone is still required (Save law) so an old client rejects a
  * v78 save rather than reading a shape it no longer understands.
+ * v78 -> v79 (the band pipeline's retirement, repair-refactor-arc.md): two
+ * persisted variants are removed outright. `JobKindSchema` loses the loose-part
+ * bench repair kind that climbed condition bands under its own resolver, and
+ * `DayLogEntrySchema` loses that path's completion entry; both are replaced by
+ * the three-job repair engine (`resolveRepairStep`, sim/repairJobs.ts), whose
+ * `service`/`rebuild`/`restore` kinds and `repair-step`/`repair-job-completed`
+ * entries arrived at v77. Per directive 19, a plain SAVE_VERSION bump with NO
+ * `MIGRATIONS[78]` entry. Unlike the v78 key drops, these two are members of
+ * discriminated unions rather than object keys, so a pre-v79 save carrying
+ * either would FAIL `GameStateSchema.parse` rather than be stripped - which is
+ * exactly what the version bump is for: an old save is rejected cleanly at the
+ * envelope instead of exploding inside the parse.
  */
-export const SAVE_VERSION = 78
+export const SAVE_VERSION = 79
 
 /** Stable format marker (NOT the schema version - that lives in the envelope). */
 const PREFIX = 'MGSAVE1.'

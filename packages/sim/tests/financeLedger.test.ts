@@ -330,7 +330,7 @@ describe('the classification itself', () => {
     })
   })
 
-  it('separates a bench recondition from a car repair on the same entry type', () => {
+  it('books a priced car job against the cars bucket', () => {
     expect(
       cashMovementFor({
         type: 'job-created',
@@ -340,15 +340,6 @@ describe('the classification itself', () => {
         costYen: 4000,
       }),
     ).toEqual({ bucket: 'onCars', amountYen: 4000 })
-    expect(
-      cashMovementFor({
-        type: 'job-created',
-        jobId: 'j',
-        carInstanceId: 'part-1',
-        kind: 'recondition-part',
-        costYen: 4000,
-      }),
-    ).toEqual({ bucket: 'stock', amountYen: 4000 })
   })
 
   it('posts to the week the day belongs to', () => {

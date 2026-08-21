@@ -32,8 +32,9 @@ import {
   resolveMachiningLabor,
 } from '../src/machiningJobs'
 import { installedPartsValueYen, retentionFor } from '../src/marketValue'
-import { resolveJobLabor, resolveReconditionLabor } from '../src/jobs'
-import { resolvePlaceOnStation, resolveTakeFromStation } from '../src/parts'
+import { resolveJobLabor } from '../src/jobs'
+import { resolveTakeFromStation } from '../src/parts'
+import { resolvePlaceOnBench, resolveRepairStep, type RepairTarget } from '../src/repairJobs'
 import { supportRatios, supportVerdict } from '../src/support'
 import { championStatFor, saleOutcomeFor } from '../src/valuation'
 import { createInitialGameState } from '../src/newGame'
@@ -615,11 +616,11 @@ describe('doing the work', () => {
  *
  * Driven through the REAL bench path rather than a constructed state, because a
  * constructed state is exactly what would not have caught it: the machined
- * block is worn down, carried from the machine to the bench, and reconditioned
- * there, which drives `updateLoosePart`'s own instance rewrite.
+ * block is worn down, carried from the machine to the bench, and restored
+ * there, which drives the repair engine's own instance rewrite.
  */
 describe('machining survives a repair', () => {
-  it('is still on the block after it is worn down and reconditioned at the bench', () => {
+  it('is still on the block after it is worn down and restored at the bench', () => {
     const { state, blockId } = shopWithLooseBlock('toyota-supra-rz-jza80', 3)
     const machined = resolveMachiningLabor(state, blockId, 'bore-and-hone', 60, CONTEXT).state
 
@@ -631,13 +632,18 @@ describe('machining survives a repair', () => {
         p.id === blockId ? { ...p, band: 'worn' as const } : p,
       ),
     }
-    const onBench = resolvePlaceOnStation(
-      resolveTakeFromStation(worn, 'machine'),
-      'workbench',
-      blockId,
-    )
-    const reconditioned = resolveReconditionLabor(onBench, blockId, 'mint', 600, CONTEXT)
-    const benched = reconditioned.state.partInventory.find((p) => p.id === blockId)!
+    const offMachine = resolveTakeFromStation(worn, 'machine')
+    let cur = resolvePlaceOnBench(offMachine, blockId, CONTEXT)
+    const target: RepairTarget = { kind: 'loose', partInstanceId: blockId }
+    for (;;) {
+      const step = resolveRepairStep(cur, target, 'restore', CONTEXT, 600)
+      if (typeof step.outcome === 'object') {
+        throw new Error(`bench restore refused: ${step.outcome.refused}`)
+      }
+      cur = step.state
+      if (step.outcome === 'completed') break
+    }
+    const benched = cur.partInventory.find((p) => p.id === blockId)!
     expect(benched.band, 'the bench repair actually climbed the band').toBe('mint')
     expect(machiningOf(benched)).toEqual(['bore-and-hone'])
   })

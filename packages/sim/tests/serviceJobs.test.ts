@@ -1010,26 +1010,26 @@ describe('resolveServiceJob (the single resolution path, Sprint 29 multi-task)',
       expect(next.partInventory).toEqual([playerOwned])
     })
 
-    it('drops an in-flight recondition job on a customer part that leaves at close-out (no orphan job)', () => {
+    it('drops an in-flight bench job on a customer part that leaves at close-out (no orphan job)', () => {
       const job = activeJob(twoRepairType, {
         parts: mintCarParts({ dampers: 'mint', springs: 'mint' }),
       })
       const ours = customerOwned('pi-this', job.car.id)
-      const reconJob: Job = {
-        id: 'recondition-pi-this',
-        carInstanceId: ours.id, // a recondition job holds the part id here, not a car
-        kind: 'recondition-part',
+      const benchJob: Job = {
+        id: `job-part-${'pi-this'}-rebuild`,
+        carInstanceId: ours.id, // a part-level job holds the part id here, not a car
+        kind: 'rebuild',
         componentId: 'suspension',
         partInstanceId: ours.id,
-        targetBand: 'mint',
+        targetBand: 'fine',
         laborSlotsRequired: 2,
         laborSlotsSpent: 1,
       }
-      const state = stateWith(job, { partInventory: [ours, playerOwned], jobs: [reconJob] })
+      const state = stateWith(job, { partInventory: [ours, playerOwned], jobs: [benchJob] })
 
       const { state: next } = resolveServiceJob(state, job.id, CONTEXT)
       expect(next.partInventory).toEqual([playerOwned])
-      expect(next.jobs).toHaveLength(0) // the orphaned recondition job is gone too
+      expect(next.jobs).toHaveLength(0) // the orphaned bench job is gone too
     })
   })
 

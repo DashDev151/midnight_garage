@@ -113,6 +113,15 @@ function getDb(): Promise<SaveDb | undefined> {
             ledgerEvents: '++id, day, bucket',
             meta: 'key',
           })
+          // Table shape is unchanged - rides alongside the band pipeline's
+          // retirement, which drops two persisted union variants from
+          // GameState (saveCodec.ts), same rule as v4.
+          this.version(6).stores({
+            saves: 'slot',
+            sessionEvents: '++id, day, type',
+            ledgerEvents: '++id, day, bucket',
+            meta: 'key',
+          })
         }
       }
       return new SaveDatabase()

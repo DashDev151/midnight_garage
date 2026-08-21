@@ -7,6 +7,7 @@ import {
   type GameState,
   type Job,
   type PartInstance,
+  type RepairJobKind,
   type ServiceJob,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
@@ -22,8 +23,6 @@ import {
   installLaborSlotsFor,
   naToTurboConversionBlocked,
   partCapabilityRequirement,
-  reconditionGateReason,
-  reconditionQuote,
   refitLaborSlotsFor,
   removeBlockReason,
   removeLaborSlotsFor,
@@ -31,20 +30,22 @@ import {
   isJobComplete,
   resolveHireToolLine,
   resolveJobLabor,
-  resolveReconditionLabor,
   resolveRemovePart,
 } from '../src/jobs'
 import { planGroupRepair } from '../src/bands'
-import { zonePanelPart } from '../src/bodyPipeline'
 import { buildSimContext } from '../src/context'
-import { resolvePlaceOnStation } from '../src/parts'
+import {
+  resolvePlaceOnBench,
+  resolveRepairStep,
+  resolveTakeOffBench,
+  type RepairTarget,
+} from '../src/repairJobs'
 import { makeCarOrigin, makeMarketOrigin } from '../src/provenance'
 import {
   buildCarInstance,
   groupCarParts,
   mintCarParts,
   testSceneStanding,
-  testToolLevels,
   testToolShopsOwned,
   testToolTiers,
 } from './testFixtures'
@@ -156,6 +157,34 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     storyMissions: [],
     machineHirePaidDayByGroup: { ...ALL_LINES_HIRED_DAY_1 },
     ...overrides,
+  }
+}
+
+/**
+ * Work a loose part's whole bench job through the repair engine, step by step,
+ * the way the workshop floor does it: onto its group's bench, every recipe step
+ * run, then back off the bench. The band climb itself belongs to that engine and
+ * is held by `repairJobs.test.ts`; what this file needs from it is a part whose
+ * band genuinely moved.
+ */
+function benchRepairLoose(
+  state: GameState,
+  partInstanceId: string,
+  kind: RepairJobKind,
+): { state: GameState; energySpent: number } {
+  let cur = resolvePlaceOnBench(state, partInstanceId, CONTEXT)
+  const target: RepairTarget = { kind: 'loose', partInstanceId }
+  for (;;) {
+    const result = resolveRepairStep(cur, target, kind, CONTEXT, Infinity)
+    if (typeof result.outcome === 'object') {
+      throw new Error(`bench ${kind} refused: ${result.outcome.refused}`)
+    }
+    cur = result.state
+    if (result.outcome === 'completed') break
+  }
+  return {
+    state: resolveTakeOffBench(cur, partInstanceId),
+    energySpent: cur.energySpentToday - state.energySpentToday,
   }
 }
 
@@ -454,7 +483,7 @@ describe('findOrCreateJob (Sprint 11)', () => {
     })
 
     it('creates the job at the machine-less labour rate when the body line is neither owned nor hired today: signature-slot work is slower by hand, never refused', () => {
-      const multiplier = CONTEXT.economy.machineShopAssist.machinelessLaborMultiplier
+      const multiplier = CONTEXT.economy.toolHire.slogMultiplier
       const result = findOrCreateJob(
         baseState({ toolTiers: testToolTiers(), machineHirePaidDayByGroup: {} }),
         spec,
@@ -2004,9 +2033,8 @@ describe('the equivalence-priced labour model (Sprint 79 decision 1, maintainer 
     expect(pulledRims.band).toBe('worn')
     // Storage does no work: the rims are carried to the bench before anything
     // is done to them. Free and instant, so nothing about the total moves.
-    const onBench = resolvePlaceOnStation(afterBoth, 'workbench', pulledRims.id)
-    const repair = resolveReconditionLabor(onBench, pulledRims.id, 'fine', Infinity, CONTEXT)
-    expect(repair.laborSlotsUsed).toBeGreaterThan(0)
+    const repair = benchRepairLoose(afterBoth, pulledRims.id, 'rebuild')
+    expect(repair.energySpent).toBeGreaterThan(0)
     const repairedRims = repair.state.partInventory.find((p) => p.id === originalRims.id)!
     expect(repairedRims.band).toBe('fine') // no longer matches the 'worn' vacated baseline
 
@@ -2247,271 +2275,5 @@ describe('resolveRemovePart wiring to revealOnRemoval (Sprint 74 decision 4): th
       expect(result.state.ownedCars[0]!.parts.seats.installed?.id).toBe(mintSeats.id)
       expect(result.state.ownedCars[0]!.symptoms).toEqual([])
     })
-  })
-})
-
-describe('in-inventory recondition reuses the on-car repair economy (Sprint 35 decision 4)', () => {
-  // A body part (WELDER covers 'body') at 'poor', once loose in inventory and
-  // once installed on a car - the SAME PartInstance content either way, so any
-  // cost/labor difference would be a forked bench economy, exactly what the
-  // sprint forbids.
-  const stockBodyworkId = PARTS.find((p) => p.carPartId === 'bodywork' && p.grade === 'stock')!.id
-  const loosePart: PartInstance = {
-    id: 'pi-recon',
-    partId: stockBodyworkId,
-    band: 'poor',
-    origin: makeMarketOrigin(1),
-  }
-
-  /** A car whose only non-mint part is `bodywork`, holding the same content as
-   * `loosePart`, sitting in the service bay so on-car labor can be applied. */
-  function carWithPoorBodywork(): CarInstance {
-    return buildCarInstance({
-      id: 'car-ref',
-      modelId: 'honda-city-e-aa',
-      parts: mintCarParts({ bodywork: { ...loosePart, id: 'pi-on-car' } }),
-    })
-  }
-
-  /** The loose part in the warehouse AND on the bench, which is where repair
-   * happens. Carrying it there is free and instant, so nothing about the
-   * economy these tests measure moves with it. */
-  function benchState(overrides: Partial<GameState> = {}): GameState {
-    return baseState({
-      ownedCars: [],
-      partInventory: [loosePart],
-      workbenchPartId: loosePart.id,
-      ...overrides,
-    })
-  }
-
-  it('refuses a part still in the warehouse: storage holds parts, the bench does the work', () => {
-    const inStorage = baseState({ ownedCars: [], partInventory: [loosePart] })
-    expect(reconditionGateReason(inStorage, loosePart.id, CONTEXT)).toBe('not-on-workbench')
-    expect(reconditionQuote(inStorage, loosePart.id, 'fine', CONTEXT)).toBeNull()
-    const refused = resolveReconditionLabor(inStorage, loosePart.id, 'fine', 60, CONTEXT)
-    expect(refused.state).toBe(inStorage)
-    expect(refused.laborSlotsUsed).toBe(0)
-    // On the bench, the identical call goes through.
-    const onBench = resolvePlaceOnStation(inStorage, 'workbench', loosePart.id)
-    expect(reconditionGateReason(onBench, loosePart.id, CONTEXT)).toBeNull()
-    expect(
-      resolveReconditionLabor(onBench, loosePart.id, 'fine', 60, CONTEXT).laborSlotsUsed,
-    ).toBeGreaterThan(0)
-  })
-
-  it('the recondition quote matches the on-car per-part repair plan for the identical part, exactly - Sprint 44: one shared formula, no car-dependent factor to isolate from', () => {
-    const invState = benchState()
-    const quote = reconditionQuote(invState, loosePart.id, 'fine', CONTEXT)!
-    expect(quote).not.toBeNull()
-
-    // The on-car per-part plan for the identical part - same call, same inputs.
-    const plan = planGroupRepair(
-      carWithPoorBodywork(),
-      'body',
-      'fine',
-      invState.toolTiers,
-      CONTEXT.partIdsByGroup,
-      CONTEXT.partsById,
-      CONTEXT.partsTaxonomyById,
-      REPAIR_STEP_FRACTION,
-      CONTEXT.economy.energy.energyPerBandStepByToolTier,
-      'bodywork',
-    )
-
-    expect(quote.laborSlotsRequired).toBe(plan.laborSlotsRequired)
-    expect(quote.costYen).toBe(plan.costYen)
-  })
-
-  it("Sprint 42: a bench recondition adds its full repair charge to the loose instance's pricePaidYen, not any car ledger", () => {
-    const invState = benchState()
-    const quote = reconditionQuote(invState, loosePart.id, 'fine', CONTEXT)!
-    // Offer a full day's energy so the energy-sized recondition completes.
-    const result = resolveReconditionLabor(invState, loosePart.id, 'fine', 60, CONTEXT)
-    const reconditioned = result.state.partInventory.find((p) => p.id === loosePart.id)
-    expect(reconditioned?.band).toBe('fine')
-    expect(reconditioned?.pricePaidYen).toBe(quote.costYen)
-    // No car in play at all - carLedgers is untouched.
-    expect(result.state.carLedgers).toEqual({})
-  })
-
-  it('Sprint 42: pricePaidYen accumulates on top of whatever the instance already cost (buy price + this work)', () => {
-    const alreadyPriced: PartInstance = {
-      ...loosePart,
-      id: 'pi-recon-priced',
-      pricePaidYen: 20_000,
-    }
-    const invState = baseState({
-      ownedCars: [],
-      partInventory: [alreadyPriced],
-      workbenchPartId: alreadyPriced.id,
-    })
-    const quote = reconditionQuote(invState, alreadyPriced.id, 'fine', CONTEXT)!
-    const result = resolveReconditionLabor(invState, alreadyPriced.id, 'fine', 10, CONTEXT)
-    const reconditioned = result.state.partInventory.find((p) => p.id === alreadyPriced.id)
-    expect(reconditioned?.pricePaidYen).toBe(20_000 + quote.costYen)
-  })
-
-  it('reconditioning and on-car repair of the identical part cost and take exactly the same cash and labor - Sprint 44: repair price is intrinsic to the part, never the host car, structurally closing the donor-car arbitrage a car-dependent factor would allow', () => {
-    // On-car reference: repair the bodywork slot to mint, car in the service bay.
-    // Size the spec off `planGroupRepair` exactly the way the store's `repair`
-    // action does (gameStore.ts) - the job's labor comes from the spec, so the
-    // spec must carry the real plan for the on-car labor to be the true cost.
-    const carState = baseState({
-      ownedCars: [carWithPoorBodywork()],
-      partInventory: [],
-      serviceBayCarIds: ['car-ref'],
-    })
-    const onCarPlan = planGroupRepair(
-      carState.ownedCars[0]!,
-      'body',
-      'fine',
-      carState.toolTiers,
-      CONTEXT.partIdsByGroup,
-      CONTEXT.partsById,
-      CONTEXT.partsTaxonomyById,
-      REPAIR_STEP_FRACTION,
-      CONTEXT.economy.energy.energyPerBandStepByToolTier,
-      'bodywork',
-    )
-    const carResult = resolveJobLabor(
-      carState,
-      {
-        carInstanceId: 'car-ref',
-        kind: 'repair-zone',
-        componentId: 'body',
-        targetBand: 'fine',
-        carPartId: 'bodywork',
-        laborSlotsRequired: onCarPlan.laborSlotsRequired,
-      },
-      // A full day's energy, so the energy-sized job completes.
-      60,
-      CONTEXT,
-    )
-    const carCashSpent = carState.cashYen - carResult.state.cashYen
-    const carLaborSpent = carResult.state.energySpentToday
-    // bodywork is a body signature slot: the on-car repair needs the body line
-    // (owned or hired for the day, granted by this file's fixture default)
-    // but owes no per-operation fee on top of the intrinsic price anymore.
-    expect(carResult.state.ownedCars[0]?.parts.bodywork.installed?.band).toBe('fine')
-    expect(carCashSpent).toBeGreaterThan(0)
-    expect(carLaborSpent).toBeGreaterThan(0)
-    expect(carCashSpent).toBe(onCarPlan.costYen)
-
-    // In-inventory: recondition the identical loose part (same catalog part,
-    // same starting band) to mint - the SAME repairStepFraction, priced off
-    // the SAME instance's own catalog price, since there is no car-dependent
-    // factor left to differ by.
-    const invState = benchState()
-    const benchPlan = planGroupRepair(
-      carWithPoorBodywork(),
-      'body',
-      'fine',
-      invState.toolTiers,
-      CONTEXT.partIdsByGroup,
-      CONTEXT.partsById,
-      CONTEXT.partsTaxonomyById,
-      REPAIR_STEP_FRACTION,
-      CONTEXT.economy.energy.energyPerBandStepByToolTier,
-      'bodywork',
-    )
-    const invResult = resolveReconditionLabor(invState, loosePart.id, 'fine', 60, CONTEXT)
-    const invCashSpent = invState.cashYen - invResult.state.cashYen
-    const invLaborSpent = invResult.state.energySpentToday
-    expect(invCashSpent).toBe(benchPlan.costYen)
-
-    // Same labor either way (tier-independent labor sizing, unchanged).
-    expect(invLaborSpent).toBe(carLaborSpent)
-    // The arbitrage-death assertion: the intrinsic repair price is identical
-    // either way, and now the two paths cost exactly the same cash too -
-    // the machine line is a gate, not a bench-vs-car price difference.
-    expect(onCarPlan.costYen).toBe(benchPlan.costYen)
-    expect(carCashSpent).toBe(invCashSpent)
-    // The loose part climbed to mint (and is no longer an open job).
-    expect(invResult.state.partInventory[0]?.band).toBe('fine')
-    expect(invResult.state.jobs).toHaveLength(0)
-  })
-
-  it('is sized by the same tool tier as on-car repair (no cheaper or slower bench path) - Sprint 36', () => {
-    // poor -> fine is 2 grades: 2 slots at tier 1, 1 slot at tier 3, both paths.
-    const t1Quote = reconditionQuote(benchState(), loosePart.id, 'fine', CONTEXT)!
-    const t3Quote = reconditionQuote(
-      benchState({ toolShopsOwned: testToolShopsOwned('body') }),
-      loosePart.id,
-      'fine',
-      CONTEXT,
-    )!
-    expect(t1Quote.laborSlotsRequired).toBe(
-      2 * CONTEXT.economy.energy.energyPerBandStepByToolTier[1],
-    )
-    expect(t3Quote.laborSlotsRequired).toBe(
-      2 * CONTEXT.economy.energy.energyPerBandStepByToolTier[3],
-    )
-
-    const t3Plan = planGroupRepair(
-      carWithPoorBodywork(),
-      'body',
-      'fine',
-      testToolLevels({ body: 3 }),
-      CONTEXT.partIdsByGroup,
-      CONTEXT.partsById,
-      CONTEXT.partsTaxonomyById,
-      1, // repairStepFraction is irrelevant to labor sizing - only laborSlotsRequired is checked below
-      CONTEXT.economy.energy.energyPerBandStepByToolTier,
-      'bodywork',
-    )
-    expect(t3Quote.laborSlotsRequired).toBe(t3Plan.laborSlotsRequired)
-    // The yen cost of the work itself is tier-independent.
-    expect(t3Quote.costYen).toBe(t1Quote.costYen)
-  })
-
-  it('a non-repairable consumable (tyres) cannot be reconditioned - no quote, resolver is a no-op', () => {
-    const wornTyresId = PARTS.find((p) => p.carPartId === 'tyres' && p.grade === 'stock')!.id
-    const wornTyres: PartInstance = {
-      id: 'pi-worn-tyres',
-      partId: wornTyresId,
-      band: 'worn',
-      origin: makeMarketOrigin(1),
-    }
-    const state = baseState({
-      ownedCars: [],
-      partInventory: [wornTyres],
-      workbenchPartId: wornTyres.id,
-    })
-
-    expect(reconditionQuote(state, wornTyres.id, 'mint', CONTEXT)).toBeNull()
-
-    const result = resolveReconditionLabor(state, wornTyres.id, 'mint', 6, CONTEXT)
-    expect(result.state).toBe(state)
-    expect(result.laborSlotsUsed).toBe(0)
-    expect(result.state.partInventory[0]?.band).toBe('worn') // unchanged
-  })
-})
-
-describe('the bench is out of the body business (sprint208.md)', () => {
-  // A real harvested zone-panel SKU (a `zoneId` on the catalogue part), the
-  // fact `reconditionGateReason` reads to tell a panel apart from every other
-  // loose part - matching how `resolvePipelineInstallPanelAction`/
-  // `zonePanelPart` already identify one.
-  const bonnetPanelId = zonePanelPart(CONTEXT.partsById, 'bonnet', 'entry')!.id
-  const loosePanel: PartInstance = {
-    id: 'pi-bonnet-panel',
-    partId: bonnetPanelId,
-    band: 'worn',
-    origin: makeMarketOrigin(1),
-  }
-
-  it('refuses a zone panel on the bench with body-shop-work, on the bench or off it', () => {
-    const inStorage = baseState({ ownedCars: [], partInventory: [loosePanel] })
-    expect(reconditionGateReason(inStorage, loosePanel.id, CONTEXT)).toBe('not-on-workbench')
-
-    const onBench = resolvePlaceOnStation(inStorage, 'workbench', loosePanel.id)
-    expect(reconditionGateReason(onBench, loosePanel.id, CONTEXT)).toBe('body-shop-work')
-    expect(reconditionQuote(onBench, loosePanel.id, 'mint', CONTEXT)).toBeNull()
-
-    const result = resolveReconditionLabor(onBench, loosePanel.id, 'mint', 60, CONTEXT)
-    expect(result.state).toBe(onBench)
-    expect(result.laborSlotsUsed).toBe(0)
-    expect(result.state.partInventory.find((p) => p.id === loosePanel.id)?.band).toBe('worn')
   })
 })

@@ -275,6 +275,114 @@ const RETIRED_IDENTIFIERS: readonly RetiredIdentifier[] = [
     reason:
       'Deleted outright, not renamed or demoted to an unaffiliated pool - the second archetype this codebase has retired for naming a market segment rather than a role (see the kei-specialist entry above, which named hobbyist as its own replacement). Its demand is inherited by daily-drivers and the broadened tuner; the buyerPoolWeights it held (1.4 in the free ads paper, 0.8 at the weekend meet) were re-authored across all four weighted channels rather than left as a gap.',
   },
+  {
+    identifier: 'machineShopAssist',
+    retiredInSprint: 231,
+    reason:
+      "The whole block, superseded by economy.toolHire: a group's bench is hired for the DAY at one fee (toolHire.feeYenByGroup) rather than assisted per operation, and its three members had no production reader left. Its fees disagreed with the live ones for five of six groups (wheels 3,000 against 6,250, body 6,500 against 10,000), so the two surviving readers were tests passing on a stale table - the exact silent-drift case this ledger exists for.",
+  },
+  {
+    identifier: 'machinelessLaborMultiplier',
+    retiredInSprint: 231,
+    reason:
+      'Replaced by economy.toolHire.slogMultiplier, which carries the same 3: what it costs to do a machine-gated step by hand is a property of the hire desk, not of a second block beside it. Both being 3 is why the duplicate survived unnoticed since 226.',
+  },
+  {
+    identifier: 'probeAmortisationOps',
+    retiredInSprint: 231,
+    reason:
+      'A member of the block above with no reader anywhere, ever - not in sim, not in the game, not in a probe. Its intent lives on as toolHire.amortisationDays, which storyMissionProbes.test.ts actually checks against the live tool-line prices.',
+  },
+  {
+    identifier: 'machineListings',
+    retiredInSprint: 231,
+    reason:
+      'The tuning block behind the used-machinery classifieds, left inert when that feature was removed from advanceDay and GameState: a schema key and four authored numbers nothing had read since. Nothing replaced it - a tool tier that clears reputation is purchasable outright again.',
+  },
+  {
+    identifier: 'resolveReconditionLabor',
+    retiredInSprint: 231,
+    reason:
+      'The in-inventory reconditioning path: a loose part climbed condition bands on a workbench under its own resolver, a second implementation of repair beside the on-car one. Replaced by resolveRepairStep (sim/repairJobs.ts), which works a loose part and an installed slot through the same three-job recipe ladder. The private helpers that only it called - planReconditionPart, reconditionJobIdFor, completeReconditionJob, updateLoosePart, ReconditionPlan - go with it; repairJobIdFor is the surviving id minter.',
+  },
+  {
+    identifier: 'reconditionQuote',
+    retiredInSprint: 231,
+    reason:
+      'Priced one bench climb before it was committed. Replaced by repairJobCards (sim/repairJobs.ts), which quotes all three jobs at once so the choice is between ladders rather than between band targets. The ReconditionQuote interface goes with it.',
+  },
+  {
+    identifier: 'reconditionGateReason',
+    retiredInSprint: 231,
+    reason:
+      'Answered why a bench climb was refused, in its own vocabulary. Replaced by RepairJobCardRefusal and RepairStepRefusal (sim/repairJobs.ts): the card says why a job cannot be offered and the step says why it cannot be taken, which are different questions the one gate used to blur.',
+  },
+  {
+    identifier: 'findLoosePart',
+    retiredInSprint: 231,
+    reason:
+      'Searched partInventory and every assembly container for one loose part id, so the reconditioning path could write a band back into whichever held it. Nothing needs the search now: benchHoldingPart (sim/repairJobs.ts) answers where a part is laid out, and the repair engine writes through the container it already holds.',
+  },
+  {
+    identifier: 'reconditionPart',
+    retiredInSprint: 231,
+    reason:
+      'The store action and the session-event variant of the same name, both reaching the retired resolver above through a workbench panel nothing mounted. The live vocabulary is placeOnBench / repairStep / takeOffBench, which is what the replay path records and what careerReplay.ts dispatches on.',
+  },
+  {
+    identifier: 'reconditionQuoteFor',
+    retiredInSprint: 231,
+    reason:
+      "The store's wrapper over reconditionQuote. Its replacement is the job-card list the bench screen already renders, so no separate quote lookup exists to call.",
+  },
+  {
+    identifier: 'nextReconditionStep',
+    retiredInSprint: 231,
+    reason:
+      'Told the workbench which band a loose part would climb to next. A job is now the unit the player commissions, not a band step: defaultRepairJobKind (game/utils/repairJobLabels.ts) picks which of the three the bench offers first.',
+  },
+  {
+    identifier: 'benchWorkRefusal',
+    retiredInSprint: 231,
+    reason:
+      "The workbench panel's copy for a refused bench climb. The bench screen reads the refusal off the job card itself, so the reason is written once beside the gate that produces it rather than restated in a panel.",
+  },
+  {
+    identifier: 'benchIdleReason',
+    retiredInSprint: 231,
+    reason:
+      'Explained an empty workbench (nothing on it, nothing loose to put on it). Its whole module, screens/workshopFloor.ts, went with the panel that was its only caller; the bench screen states its own empty case.',
+  },
+  {
+    identifier: 'repairCeilingCaption',
+    retiredInSprint: 231,
+    reason:
+      'Told the player their tool tier capped a repair short of mint, a sentence the three-job model states structurally instead: restore is the job that reaches mint and it is offered only where the covering shop is owned, so the ceiling is visible as a job you cannot commission rather than as a caption under one you can. The private repairCeilingSentence both this and benchRepairCeilingCaption were built from went with them.',
+  },
+  {
+    identifier: 'benchRepairCeilingCaption',
+    retiredInSprint: 231,
+    reason:
+      'The workbench half of the caption above, for a loose part rather than an installed slot. Retired for the same reason and replaced by the same thing: the job list itself.',
+  },
+  {
+    identifier: 'repairMachineNoteFor',
+    retiredInSprint: 231,
+    reason:
+      "A note on what a repair's machine gate would cost, left with no caller once the band pipeline stopped quoting repairs. Its two siblings on the same pattern, removeMachineNoteFor and installMachineNoteFor, are untouched and still render on the car detail screen: the gate itself is alive, only the repair-shaped note is gone.",
+  },
+  {
+    identifier: 'nextPartStepRange',
+    retiredInSprint: 231,
+    reason:
+      'Reported the band range one repair step would move a part through, for a car-detail row that no longer exists. Nothing replaced it: a job card names the band the finished job leaves the part at (targetBandFor, sim/repairJobs.ts), which is the figure the screen actually shows.',
+  },
+  {
+    identifier: 'repairRevealFor',
+    retiredInSprint: 231,
+    reason:
+      "The reveal-then-confirm gate that stopped an on-car repair charging for a band the player had never been shown. The job card replaces it properly rather than dropping the protection: repairJobCards prices an unverified slot off knowledgeViewOf's masked guess, so a card never quotes a figure that would give away a condition the player has not paid to find out (sprint231.md decision D-R2).",
+  },
 ]
 
 function escapeRegExp(text: string): string {

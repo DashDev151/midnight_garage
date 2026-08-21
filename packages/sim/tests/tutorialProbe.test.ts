@@ -69,14 +69,14 @@ describe('tutorial satisfiability probe', () => {
   // fit it (neither owned at the fresh tier-1 tutorial start).
   const stockTyre = CONTEXT.stockPartByCarPartId[FITMENT].tyres
   const stockTyreYen = stockTyre.priceYen
-  const wheelsHireYen = CONTEXT.economy.machineShopAssist.feeYenByGroup.wheels
+  const wheelsHireYen = CONTEXT.economy.toolHire.feeYenByGroup.wheels
 
   // Engine beat: pull + refit the engine assembly - one engine line hire for
   // the day covers both operations (not two separate fees) - plus the
   // banded repair of the buried head/valvetrain one rung, poor to worn -
   // exactly the roadworthy bar, the taught lesson being "repair to what the
   // job needs".
-  const engineHireYen = CONTEXT.economy.machineShopAssist.feeYenByGroup.engine
+  const engineHireYen = CONTEXT.economy.toolHire.feeYenByGroup.engine
   // The scripted car with its scrap tyres already discounted to the roadworthy
   // bar: the taught wheel beat BUYS a fresh stock tyre (priced above as
   // `stockTyreYen`), it never repairs the old one, so charging the rubber here

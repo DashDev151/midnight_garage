@@ -561,7 +561,6 @@ describe('planGroupRepair with benched crew (Sprint 82 decisions 2 + 5)', () => 
 })
 
 describe('the band ceiling (Sprint 93: tools cap the finish)', () => {
-  const CEILING = ECONOMY.repairBandCeilingByTier
   // A surface (body) group spread across bands, to show what the tier-1 ceiling
   // includes and excludes: bodywork worn, paint poor, aero already fine.
   const bodyCar = buildCarInstance({
@@ -587,22 +586,19 @@ describe('the band ceiling (Sprint 93: tools cap the finish)', () => {
     expect(clampRepairTarget('mint', 'mint')).toBe('mint')
   })
 
-  it('a tier-1 group repair toward mint stops at fine: an already-fine part drops out, and the plan sizes to the fine climb not the mint one', () => {
-    const capped = planGroupRepair(
+  it('a group plan is the whole climb the caller asked for - the tier ceiling is the job gate to enforce, never a silent clamp inside the plan', () => {
+    const toFine = planGroupRepair(
       bodyCar,
       'body',
-      'mint',
+      'fine',
       testToolLevels(),
       CONTEXT.partIdsByGroup,
       CONTEXT.partsById,
       CONTEXT.partsTaxonomyById,
       1,
       EPG,
-      undefined,
-      undefined,
-      CEILING,
     )
-    const uncapped = planGroupRepair(
+    const toMint = planGroupRepair(
       bodyCar,
       'body',
       'mint',
@@ -615,49 +611,19 @@ describe('the band ceiling (Sprint 93: tools cap the finish)', () => {
     )
     const bodyworkPrice = installedPriceYen(bodyCar, 'bodywork')
     const paintPrice = installedPriceYen(bodyCar, 'paint')
-    // Capped to fine: bodywork worn->fine (1 grade), paint poor->fine (2 grades).
+    // To fine: bodywork worn->fine (1 grade), paint poor->fine (2 grades).
     // aero is removable, so it is bench work and never in an on-car plan at
-    // either ceiling.
-    expect(capped.partIds).toEqual(['bodywork', 'paint'])
-    expect(capped.costYen).toBe(1 * bodyworkPrice + 2 * paintPrice)
-    expect(capped.laborSlotsRequired).toBe((1 + 2) * EPG[1])
-    // The unbounded band-math (no ceiling passed) still climbs both parts one
-    // further grade to mint - strictly more work.
-    expect(uncapped.partIds).toEqual(['bodywork', 'paint'])
-    expect(uncapped.costYen).toBeGreaterThan(capped.costYen)
-    expect(uncapped.laborSlotsRequired).toBeGreaterThan(capped.laborSlotsRequired)
-  })
-
-  it('a tier-2 group repair toward mint is unclamped - the tier-2 ceiling IS mint', () => {
-    const t2 = testToolLevels({ body: 2 })
-    const withCeiling = planGroupRepair(
-      bodyCar,
-      'body',
-      'mint',
-      t2,
-      CONTEXT.partIdsByGroup,
-      CONTEXT.partsById,
-      CONTEXT.partsTaxonomyById,
-      1,
-      EPG,
-      undefined,
-      undefined,
-      CEILING,
-    )
-    const withoutCeiling = planGroupRepair(
-      bodyCar,
-      'body',
-      'mint',
-      t2,
-      CONTEXT.partIdsByGroup,
-      CONTEXT.partsById,
-      CONTEXT.partsTaxonomyById,
-      1,
-      EPG,
-    )
-    expect(withCeiling.partIds).toEqual(withoutCeiling.partIds)
-    expect(withCeiling.costYen).toBe(withoutCeiling.costYen)
-    expect(withCeiling.laborSlotsRequired).toBe(withoutCeiling.laborSlotsRequired)
+    // either target.
+    expect(toFine.partIds).toEqual(['bodywork', 'paint'])
+    expect(toFine.costYen).toBe(1 * bodyworkPrice + 2 * paintPrice)
+    expect(toFine.laborSlotsRequired).toBe((1 + 2) * EPG[1])
+    // Asked for mint at tier 1, the plan is the mint climb and nothing less:
+    // both parts one further grade, strictly more work. `repairJobGate`
+    // (jobs.ts) is what refuses an above-ceiling target, and it refuses
+    // outright rather than quietly planning something smaller.
+    expect(toMint.partIds).toEqual(['bodywork', 'paint'])
+    expect(toMint.costYen).toBeGreaterThan(toFine.costYen)
+    expect(toMint.laborSlotsRequired).toBeGreaterThan(toFine.laborSlotsRequired)
   })
 
   it('planPartRepair caps the achievable target at repairCeiling (a worn part toward mint reaches only fine under the tier-1 ceiling)', () => {

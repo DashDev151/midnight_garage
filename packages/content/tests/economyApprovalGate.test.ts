@@ -2793,6 +2793,42 @@ import workbench from '../data/workbench.json'
  * `damagePatterns.json` are all untouched, so their five hashes hold, and no mission payout
  * or budget cap moves, since a payout derives from build cost and a display name is not a
  * cost.
+ *
+ * Re-pinned 2026-08-21 for sprint231.md, and this one is a RETIREMENT rather than a lever
+ * movement. Two whole keys leave `economy.json` and NO SURVIVING VALUE MOVES: every number
+ * still in the file is byte for byte what it was before this sprint, the diff is deletions
+ * only, and no mission payout or budget cap moves. `damagePatterns.json`, `partPricing.json`,
+ * `toolLines.json`, `toolShops.json` and `workbench.json` are untouched, so their five hashes
+ * hold unchanged.
+ *
+ * `economy.machineListings` (`minGapDays` 4, `maxGapDays` 8, `windowDays` 3) is DELETED with
+ * nowhere to go, and that is the point. It timed a classifieds window that decided WHEN a tool
+ * line could be bought at all, and decision D-A2 (docs/sprints/repair-refactor-arc.md) killed
+ * that gate outright: tool lines, shops and garage equipment are buyable whenever reputation
+ * and cash allow. There is no replacement key because there is no longer a gate to time.
+ *
+ * `economy.machineShopAssist` (the whole block) is DELETED because `economy.toolHire` took over
+ * every one of its jobs across sprints 224 and 226, and it has had no production reader since.
+ * Member by member: `feeYenByGroup` lives on as `toolHire.feeYenByGroup`, the per-operation
+ * assist fee having become a per-line DAY hire under D-I1, with those six figures re-derived
+ * and stated by behaviour in the 2026-08-20 sprint224 paragraph above; nothing about them moves
+ * here. `machinelessLaborMultiplier` 3 lives on as `toolHire.slogMultiplier` 3, the identical
+ * value under the name the slog route reads. `probeAmortisationOps` 40 lives on as
+ * `toolHire.amortisationDays` 40, the same forty, re-expressed from operations to days and
+ * promoted from a bound a probe checked to the divisor the six hire fees are DERIVED from
+ * (`storyMissionProbes.test.ts`, "hiring 40x must not exceed buying the machine").
+ *
+ * This supersedes one parenthetical in the 2026-08-20 sprint224 paragraph above: "`economy.
+ * toolHire` (NEW block, additive: `machineShopAssist` is untouched this sprint and still drives
+ * the live hire path)". That was true when it was written. Sprint 226 moved the live hire path
+ * onto `toolHire`, and this sprint removes the block it left stranded.
+ *
+ * Two repair keys the arc's retirement checklist listed for deletion SURVIVE this sprint,
+ * unmoved and still read, under decision D-R1 (delete only what is genuinely unreachable):
+ * `repairBandCeilingByTier` and `energy.energyPerBandStepByToolTier`. The body carrier's stage
+ * repair still runs the old banded path, which arc rule 9 puts out of scope, and
+ * `energyPerBandStepByToolTier` additionally feeds the Upgrades screen's tool-line copy, which
+ * is not a repair surface at all. Both are recorded as open debt in `TODO.md`.
  */
 describe('the economy approval gate', () => {
   it('economy.json matches its approved content exactly', () => {
@@ -2802,7 +2838,7 @@ describe('the economy approval gate', () => {
       'economy.json changed. Every lever is approval-gated (CLAUDE.md directive 22): ' +
         're-pin this hash ONLY in the same change as the recorded approval of the ' +
         'specific lever and value.',
-    ).toBe('75050c706b5e74155426f177f19e98e4c30cce705fe43c51abbce1dd7239d62e')
+    ).toBe('5ccaccabab5137b44d973ef0e1adeb6def101ef35c7c930cca5e5d4690077a98')
   })
 
   it('damagePatterns.json matches its approved content exactly', () => {

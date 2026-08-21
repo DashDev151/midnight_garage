@@ -40,8 +40,8 @@ import { toolLevelsFor } from './toolLines'
  * `performedOn` (economy content) rather than by which screen asked:
  *
  * - `loose-part`, which is nearly all of them: the operation addresses one
- *   `PartInstance` and is done in the machine shop, exactly as a bench
- *   recondition (`resolveReconditionLabor`) addresses one, so the part has to
+ *   `PartInstance` and is done in the machine shop, exactly as a bench repair
+ *   (`resolveRepairStep`, repairJobs.ts) addresses one, so the part has to
  *   be carried to the machine before any of it can start.
  * - `fitted-part`: setup work that can only be judged with the car assembled,
  *   so it addresses a car and a slot, needs the car in a service bay like any
@@ -251,8 +251,7 @@ export function fittedMachiningGateReason(
  * hands.
  *
  * A loose part that left the warehouse since the job opened, or a slot whose
- * part has been swapped since, is left alone - matching
- * `completeReconditionJob`'s own treatment: the job was already laboured, and
+ * part has been swapped since, is left alone: the job was already laboured, and
  * machining metal nobody quoted for would be worse than doing nothing. A repeat
  * of an operation the part already carries is likewise a no-op rather than a
  * second entry.
@@ -348,7 +347,7 @@ export function resolveMachiningLabor(
     id: jobId,
     // No car - a loose part on the machine. `carInstanceId` (required by the
     // job schema) holds the part's own id purely for stable non-empty
-    // identity, exactly as a `recondition-part` job's does; the
+    // identity, exactly as a bench repair job's does; the
     // `machine-part` kind is what every resolver branches on.
     carInstanceId: partInstanceId,
     kind: 'machine-part',

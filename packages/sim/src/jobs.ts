@@ -4,7 +4,6 @@ import {
   type CarPartId,
   type CarPartTaxonomyEntry,
   type ComponentId,
-  type ConditionBand,
   type DayLogEntry,
   type GameState,
   type Job,
@@ -17,21 +16,16 @@ import {
 import type { NewJobSpec } from './actions'
 import {
   bandIndex,
-  canRepair,
-  clampRepairTarget,
   hasForcedInduction,
   isPartMissing,
   planGroupRepair,
-  planPartRepair,
   presentPartIdsInGroup,
   repairCeilingForLevel,
   repairLevelForGroup,
-  type PartRepairPlan,
 } from './bands'
 import { applyDerivedBodyBands, isBodyDerivedPart, refitCarrierZoneStates } from './bodyPipeline'
 import { updateCarLedger } from './carLedger'
 import type { SimContext } from './context'
-import { crewEnergySaved, perfectionistCostMultiplier } from './crewSkills'
 import { pruneCuredCauses, verifyAndResolve, verifyManyAndResolve } from './diagnosis'
 import { recordDynoSession } from './dyno'
 import { carInBodyBay } from './facilities'
@@ -189,9 +183,9 @@ export function isJobComplete(job: Job): boolean {
 
 /**
  * Whether `job` addresses a loose part at a station rather than a car in a
- * service bay - a bench recondition, or a machining operation performed on a
- * loose part. Its `carInstanceId` holds the part's own id for stable identity,
- * so every car-shaped check (the service bay, the car lookup) has to skip it.
+ * service bay - a machining operation performed on a loose part. Its
+ * `carInstanceId` holds the part's own id for stable identity, so every
+ * car-shaped check (the service bay, the car lookup) has to skip it.
  *
  * A machining operation performed on a FITTED part (`performedOn`, economy
  * content) is a car job like any other and is deliberately not exempt: setup
@@ -199,7 +193,6 @@ export function isJobComplete(job: Job): boolean {
  * progress.
  */
 export function isPartLevelJob(job: Job, context: SimContext): boolean {
-  if (job.kind === 'recondition-part') return true
   if (job.kind !== 'machine-part') return false
   const operation = machiningOperationById(job.machiningOperationId, context.economy)
   return operation?.performedOn !== 'fitted-part'
@@ -355,49 +348,13 @@ function applyJobToCar(
 }
 
 /**
- * A completed `recondition-part` job's effect - climb the loose `PartInstance`
- * in `partInventory` to the job's `targetBand`, exactly the way
- * `applyJobToCar`'s repair-zone branch climbs an installed part (skip scrap,
- * skip anything already at/above the target). No car, no slot; the part's own
- * band is the only state that moves. A part that vanished from inventory since
- * the job was created (sold, installed, reconciled at close-out) is simply a
- * no-op - the job was already paid and labored.
- */
-function completeReconditionJob(state: GameState, job: Job, context: SimContext): GameState {
-  const targetBand = job.targetBand
-  if (!job.partInstanceId || !targetBand) return state
-  // The part may be a loose bin part or a member sitting in an open assembly
-  // container (`findLoosePart`) - it climbs its band wherever it lives.
-  const instance = findLoosePart(state, job.partInstanceId)
-  if (!instance) return state
-  const catalogPart = context.partsById[instance.partId]
-  const entry = catalogPart ? context.partsTaxonomyById[catalogPart.carPartId] : undefined
-  if (
-    !entry ||
-    !canRepair(instance.band, entry) ||
-    bandIndex(instance.band) >= bandIndex(targetBand)
-  ) {
-    return state
-  }
-  // A zone panel can no longer reach this job at all - `reconditionGateReason`
-  // refuses one outright (sprint208.md: "the bench is out of the body
-  // business"), so nothing here ever carries a `panelState` to worry about.
-  return updateLoosePart(state, job.partInstanceId, (inst) => ({ ...inst, band: targetBand }))
-}
-
-/**
- * Applies a completed job's effect (group repair, part install, an
- * in-inventory recondition, a run on the rollers, or one machining operation)
- * to GameState. For a car job the target may be an owned car or a customer car
- * sitting in a service job (the player works both with the same job system); a
- * `recondition-part` job targets a loose inventory part instead. Does not
- * remove the job from state.jobs - the caller owns list bookkeeping.
+ * Applies a completed job's effect (group repair, part install, a run on the
+ * rollers, or one machining operation) to GameState. For a car job the target
+ * may be an owned car or a customer car sitting in a service job (the player
+ * works both with the same job system). Does not remove the job from
+ * state.jobs - the caller owns list bookkeeping.
  */
 export function completeJob(state: GameState, job: Job, context: SimContext): JobCompletionResult {
-  if (job.kind === 'recondition-part') {
-    return { state: completeReconditionJob(state, job, context), blockedReason: null }
-  }
-
   // A dyno session books the car onto the rollers and changes nothing else -
   // no band, no slot, no stat. Handled here, before any of the car-mutating
   // paths below are reached, because there is nothing for them to do.
@@ -638,9 +595,10 @@ export function accessActionPoints(
  * The labour rate a machine-gated operation pays: 1 with the group's machine
  * (owned tier 2+, or hired today), `toolHire.slogMultiplier` without it. The
  * machine gate is a RATE, never a wall: every gated operation stays possible at
- * tier 1, just slower, the same philosophy the bench recondition path states
- * outright. Hiring the line buys the day's work back to base rate, which is the
- * cash-versus-labour trade. `group` may be null (the op is not gated at all)
+ * tier 1, just slower, the same philosophy the repair job engine's own slog
+ * route states outright. Hiring the line buys the day's work back to base rate,
+ * which is the cash-versus-labour trade. `group` may be null (the op is not
+ * gated at all)
  * for callers passing `machineGateGroupFor`'s answer straight through.
  *
  * Remove and fit actions no longer come through here: they are priced by
@@ -662,9 +620,10 @@ export function machineLaborMultiplier(
  * gate; a group-level repair counts as gated when ANY slot in the group gates
  * a repair (the signature slots: chassis and bodywork, dampers and springs,
  * seats and dash), since a group climb that touches them is the overwhelmingly
- * common case. Bench reconditioning and machining are deliberately not priced
- * here: the bench is ungated by design, and machining has its own physical
- * machine requirement. An install is priced by `accessRoute` instead.
+ * common case. Bench repair and machining are deliberately not priced here:
+ * a bench job prices its own steps (`energyPlanFor`, repairJobs.ts), and
+ * machining has its own physical machine requirement. An install is priced by
+ * `accessRoute` instead.
  */
 function jobMachineGroup(
   state: GameState,
@@ -984,10 +943,10 @@ function jobIdFor(spec: NewJobSpec): string {
 export type RepairJobGate = { ok: true; state: GameState } | { ok: false; log: DayLogEntry[] }
 
 /**
- * The single money step shared by on-car repair (`repairJobGate` below),
- * in-inventory recondition (`resolveReconditionLabor`) and the repair job
- * engine (`repairJobs.ts`) - charges the already-priced repair work against
- * cash, or refuses silently when unaffordable. One repair economy: every path
+ * The single money step shared by on-car repair (`repairJobGate` below) and
+ * the repair job engine (`repairJobs.ts`) - charges the already-priced repair
+ * work against cash, or refuses silently when unaffordable. One repair
+ * economy: every path
  * deducts the same banded-repair `costYen`. No per-job flat consumables fee -
  * bill truth is structural: this IS the number
  * `carCostToMintYen`/`planGroupRepair` already show.
@@ -1408,10 +1367,9 @@ export function applyAvailableLaborToJob(
   if (!job) {
     return { state, log: [], laborSlotsUsed: 0 }
   }
-  // A `recondition-part` job works a loose part on the workshop floor's bench
-  // and a loose-part `machine-part` job works one on the machine in the machine
-  // shop - neither addresses a car, so the in-a-bay requirement (a car-only
-  // constraint) is skipped for both. Every other step below - the daily
+  // A loose-part `machine-part` job works a part on the machine in the machine
+  // shop rather than a car, so the in-a-bay requirement (a car-only
+  // constraint) is skipped for it. Every other step below - the daily
   // labour budget, the completion path - is identical; one repair economy.
   //
   // Interior parts (`seats`, `dashGauges`) and `aero` are body-shop work
@@ -1468,15 +1426,7 @@ export function applyAvailableLaborToJob(
       log.push({ type: 'job-blocked', jobId, reason: result.blockedReason })
     } else {
       next = { ...next, jobs: next.jobs.filter((j) => j.id !== jobId) }
-      if (updatedJob.kind === 'recondition-part') {
-        // A loose-part recondition has no car to report against, so it logs
-        // `part-reconditioned` rather than the car-oriented `job-completed`.
-        log.push({
-          type: 'part-reconditioned',
-          partInstanceId: updatedJob.partInstanceId!,
-          band: updatedJob.targetBand!,
-        })
-      } else if (updatedJob.kind === 'machine-part') {
+      if (updatedJob.kind === 'machine-part') {
         // A finished operation names itself, since "engine work completed"
         // would not tell the player which of nine jobs came back.
         log.push(machiningLogEntryFor(updatedJob))
@@ -1512,288 +1462,4 @@ export function resolveJobLabor(
   if (!created.job) return { state: created.state, log: created.log, laborSlotsUsed: 0 }
   const result = applyAvailableLaborToJob(created.state, created.job.id, laborAvailable, context)
   return { ...result, log: [...created.log, ...result.log] }
-}
-
-// --- in-inventory reconditioning ---
-
-/** A recondition job's stable id - one open recondition per loose part at a
- * time (a repeat click continues the same job rather than duplicating it),
- * mirroring `jobIdFor`'s deterministic-id contract for car jobs. */
-function reconditionJobIdFor(partInstanceId: string): string {
-  return `recondition-${partInstanceId}`
-}
-
-/**
- * A loose `PartInstance` the player can bench-work right now - the parts bin
- * OR every member sitting in an open assembly container (`state.assemblyInventory`).
- * A benched member reconditions through the EXACT same path a bin part does
- * (`planReconditionPart` / `completeReconditionJob` both resolve via here);
- * no separate bench economy. Returns `undefined` when the id is nowhere loose
- * (installed on a car, sold, or never existed).
- */
-export function findLoosePart(state: GameState, partInstanceId: string): PartInstance | undefined {
-  const inBin = state.partInventory.find((p) => p.id === partInstanceId)
-  if (inBin) return inBin
-  for (const container of state.assemblyInventory ?? []) {
-    for (const member of Object.values(container.members)) {
-      if (member && member.id === partInstanceId) return member
-    }
-  }
-  return undefined
-}
-
-/**
- * Applies `fn` to whichever loose location holds `partInstanceId` - the parts
- * bin or an open assembly container's member slot - leaving every other part
- * untouched. A no-op (same state reference) when the id is nowhere loose.
- * The bin/container split of `findLoosePart` above, on the write side.
- */
-function updateLoosePart(
-  state: GameState,
-  partInstanceId: string,
-  fn: (instance: PartInstance) => PartInstance,
-): GameState {
-  const binIndex = state.partInventory.findIndex((p) => p.id === partInstanceId)
-  if (binIndex !== -1) {
-    const partInventory = [...state.partInventory]
-    partInventory[binIndex] = fn(partInventory[binIndex]!)
-    return { ...state, partInventory }
-  }
-  const containers = state.assemblyInventory ?? []
-  let changed = false
-  const assemblyInventory = containers.map((container) => {
-    const members = { ...container.members }
-    let memberChanged = false
-    for (const [slot, member] of Object.entries(members) as [CarPartId, PartInstance | null][]) {
-      if (member && member.id === partInstanceId) {
-        members[slot] = fn(member)
-        memberChanged = true
-      }
-    }
-    if (!memberChanged) return container
-    changed = true
-    return { ...container, members }
-  })
-  return changed ? { ...state, assemblyInventory } : state
-}
-
-export type ReconditionGateReason =
-  /** No such part in the warehouse - installed on a car, sold, or never there. */
-  | 'not-found'
-  /** In the warehouse, but not on the bench. Storage holds parts and does no
-   * work: carry it to the workshop floor first. */
-  | 'not-on-workbench'
-  /** A zone-panel instance - the bench is out of the body business
-   * (sprint208.md): a harvested panel is fitted or sold, never
-   * bench-reconditioned. Structure is fixed on the car (beat, weld, fill),
-   * paint on the car (prep, prime, paint, polish) - both through the body
-   * shop's own pipeline, never the generic part path, which used to bypass
-   * them and silently delete the panel's captured paint state. */
-  | 'body-shop-work'
-
-/**
- * Why `partInstanceId` cannot be reconditioned right now, or `null` when
- * nothing about WHERE it is refuses. The venue half of the recondition
- * question, kept separate from whether there is anything left to do to the part
- * (`reconditionQuote` below, which is null for a scrap, non-repairable or
- * already-good-enough part). The one predicate: the UI shows the same reason
- * before the click that `resolveReconditionLabor` enforces after it.
- *
- * A zone-panel instance refuses outright, on the bench or off it: the
- * predicate `resolvePipelineInstallPanelAction`/`zonePanelPart` already use
- * to know a catalogue `Part` addresses a zone (a real `zoneId` on the
- * part) - the same fact, read once more here rather than a second test of
- * "is this a panel."
- */
-export function reconditionGateReason(
-  state: GameState,
-  partInstanceId: string,
-  context: SimContext,
-): ReconditionGateReason | null {
-  if (!state.partInventory.some((p) => p.id === partInstanceId)) return 'not-found'
-  if (state.workbenchPartId !== partInstanceId) return 'not-on-workbench'
-  const instance = findLoosePart(state, partInstanceId)
-  const catalogPart = instance ? context.partsById[instance.partId] : undefined
-  if (catalogPart?.zoneId != null) return 'body-shop-work'
-  return null
-}
-
-interface ReconditionPlan {
-  group: ComponentId
-  plan: PartRepairPlan
-  /** The effective target after tier ceiling clamp - the band the bench
-   * recondition will actually reach and the band the created job must carry,
-   * so completion never climbs the part past what the plan priced and labored. */
-  targetBand: ConditionBand
-}
-
-/**
- * Everything the recondition gate/labour needs for the part on the bench, or
- * null when it can't be reconditioned (not on the bench, no catalog/taxonomy
- * entry, scrap, non-repairable, or already at/above the target). Reuses the
- * on-car repair atoms exactly - `repairLevelForGroup` for the tool-tier repair
- * level and `planPartRepair` (bands.ts) for the cost + labour, priced off the
- * same `catalogPart.priceYen` an on-car repair of the identical instance would
- * use - so a loose part and the same part installed on a car price and size
- * identically. A part's repair price is intrinsic to the part, never to
- * whether or which car it's bolted to. There is no separate bench formula.
- */
-function planReconditionPart(
-  state: GameState,
-  partInstanceId: string,
-  targetBand: ConditionBand,
-  context: SimContext,
-): ReconditionPlan | null {
-  if (reconditionGateReason(state, partInstanceId, context) !== null) return null
-  const instance = findLoosePart(state, partInstanceId)
-  if (!instance) return null
-  const catalogPart = context.partsById[instance.partId]
-  const taxonomyEntry = catalogPart ? context.partsTaxonomyById[catalogPart.carPartId] : undefined
-  const group = taxonomyEntry?.group
-  if (!catalogPart || !taxonomyEntry || !group) return null
-  const repairLevel = repairLevelForGroup(toolLevelsFor(state, context), group)
-  // A bench recondition climbs only to the group's tool-level ceiling. A
-  // "sweep to a band" clamps rather than refuses - a tier-1 recondition of a
-  // worn part toward mint repairs it as far as it can (to fine) and the
-  // created job carries that clamped band, so mint by REPAIR needs the tier-2
-  // machine while mint by BUYING a replacement part stays available at any tier.
-  const effectiveTarget = clampRepairTarget(
-    targetBand,
-    repairCeilingForLevel(repairLevel, context.economy),
-  )
-  const plan = planPartRepair(
-    instance.band,
-    effectiveTarget,
-    repairLevel,
-    taxonomyEntry,
-    catalogPart.priceYen,
-    context.economy.restoration.repairStepFraction,
-    context.economy.energy.energyPerBandStepByToolTier,
-  )
-  // Zero when scrap, non-repairable, nothing left to climb, or already at/above
-  // the tier ceiling (a tier-1 recondition of an already-fine part toward mint).
-  if (plan.laborSlotsRequired === 0) return null
-  // Bench recondition shares the one repair economy: crew speed discounts and
-  // perfectionist parts discounts apply here exactly as they do to on-car repairs.
-  const adjusted: PartRepairPlan = {
-    laborSlotsRequired:
-      plan.laborSlotsRequired -
-      crewEnergySaved(plan.laborSlotsRequired, group, state.staff, context.economy),
-    costYen: Math.round(plan.costYen * perfectionistCostMultiplier(state.staff, context.economy)),
-  }
-  return { group, plan: adjusted, targetBand: effectiveTarget }
-}
-
-export interface ReconditionQuote {
-  /** Yen the work costs (the banded-repair `costYen`) - the same figure
-   * `chargeRepairWork` deducts, so the UI previews the real charge. */
-  costYen: number
-  /** Labor slots the recondition takes at the shop's current repair level. */
-  laborSlotsRequired: number
-}
-
-/**
- * A read-only quote for reconditioning the part on the bench to `targetBand`,
- * or null when there is nothing to do (or the part is not on the bench).
- * Powers the workshop floor's recondition control (cost/labour preview)
- * without mutating; routes through the exact same `planReconditionPart` the
- * resolver does, so the previewed cost/labour is precisely what the player
- * will be charged. The current tool tier affects only labour speed, never
- * cost.
- */
-export function reconditionQuote(
-  state: GameState,
-  partInstanceId: string,
-  targetBand: ConditionBand,
-  context: SimContext,
-): ReconditionQuote | null {
-  const planned = planReconditionPart(state, partInstanceId, targetBand, context)
-  if (!planned) return null
-  return {
-    costYen: planned.plan.costYen,
-    laborSlotsRequired: planned.plan.laborSlotsRequired,
-  }
-}
-
-/**
- * The instant player-facing recondition resolver - the loose-part analogue of
- * `resolveJobLabor`. Finds the part's already-open recondition job (repeat
- * click continues it) or creates one through the SAME repair economy as an
- * on-car repair: same banded-repair charge (`chargeRepairWork`), same tool-tier
- * labour (`planPartRepair`). Spends today's remaining labour via the SAME
- * `applyAvailableLaborToJob` the on-car click uses (books the spend into
- * `energySpentToday` and completes by climbing the part's band). One repair
- * economy, targeting a loose part instead of a car slot.
- *
- * The part has to be on the bench (`reconditionGateReason`), which is the
- * whole of what the workshop floor adds: no tool is needed that an on-car
- * repair does not need, and bench work stays possible at every tier, just
- * slower at tier 1. The gate is read when the job OPENS; a job already under
- * way continues wherever the part ends up, the same way a machining job does.
- */
-export function resolveReconditionLabor(
-  state: GameState,
-  partInstanceId: string,
-  targetBand: ConditionBand,
-  laborAvailable: number,
-  context: SimContext,
-): LaborApplicationResult {
-  const jobId = reconditionJobIdFor(partInstanceId)
-  const existing = state.jobs.find((j) => j.id === jobId)
-
-  if (existing) {
-    return applyAvailableLaborToJob(state, jobId, laborAvailable, context)
-  }
-
-  const planned = planReconditionPart(state, partInstanceId, targetBand, context)
-  if (!planned) return { state, log: [], laborSlotsUsed: 0 }
-
-  const charged = chargeRepairWork(state, planned.plan.costYen)
-  if (!charged.ok) return { state, log: [], laborSlotsUsed: 0 }
-
-  // A bench recondition has no car ledger; the spend lands on the loose
-  // PartInstance's own `pricePaidYen` (a reconditioned part "costs" its buy
-  // price plus this work), charged at job creation like every other repair.
-  // The instance may be a benched assembly member, so this routes through the
-  // bin-or-container writer the band climb does.
-  const pricedState: GameState = updateLoosePart(charged.state, partInstanceId, (instance) => ({
-    ...instance,
-    pricePaidYen: (instance.pricePaidYen ?? 0) + charged.totalCostYen,
-  }))
-
-  const job: Job = {
-    id: jobId,
-    // No car - a loose part on the bench. `carInstanceId` (required by schema)
-    // holds the part's own id purely for stable non-empty identity; the
-    // `recondition-part` kind is what every resolver branches on.
-    carInstanceId: partInstanceId,
-    kind: 'recondition-part',
-    componentId: planned.group,
-    partInstanceId,
-    // The clamped target the plan actually priced/laboured, so
-    // `completeReconditionJob` climbs the loose part to exactly that band.
-    targetBand: planned.targetBand,
-    laborSlotsRequired: planned.plan.laborSlotsRequired,
-    laborSlotsSpent: 0,
-  }
-  // The bench work is charged the moment the job opens, exactly as an on-car
-  // repair is, so it reports through the same `job-created` entry on the same
-  // day the money actually leaves - a recondition that takes three days to
-  // finish was still paid for on the first.
-  const created: DayLogEntry[] = [
-    {
-      type: 'job-created',
-      jobId,
-      carInstanceId: job.carInstanceId,
-      kind: job.kind,
-      ...(charged.totalCostYen ? { costYen: charged.totalCostYen } : {}),
-    },
-  ]
-  const withJob: GameState = bookCashMovements(
-    { ...pricedState, jobs: [...pricedState.jobs, job] },
-    created,
-    context.economy,
-  )
-  const worked = applyAvailableLaborToJob(withJob, jobId, laborAvailable, context)
-  return { ...worked, log: [...created, ...worked.log] }
 }

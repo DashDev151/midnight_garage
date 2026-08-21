@@ -299,6 +299,121 @@ pass."
 
 ## Open engineering
 
+- [ ] **THE BODY CARRIER STILL REPAIRS ON THE OLD BAND PIPELINE, and that is the whole of what
+  survived the repair refactor's retirement sprint (decision D-R1, sprint231.md).** The arc
+  replaced band-climbing with three named jobs everywhere it could reach, then stopped at the
+  body panel pipeline, which arc rule 9 puts out of scope.
+
+  **What survives, exactly.** The body shop's part dock offers a repair step on `chassis` only
+  (`BodyShopScreen.vue`, the `part-repair` control), and that one button keeps the entire old
+  path alive underneath it: `gameStore.repair()`, the `repair-zone` job kind, `repairJobGate`,
+  `jobMachineGroup`, `planGroupRepair`, `planPartRepair`, `energyToClimb`,
+  `repairCeilingForLevel`, `clampRepairTarget`, and the two economy keys
+  `repairBandCeilingByTier` and `energy.energyPerBandStepByToolTier`. It is reachable on
+  `chassis` alone because `planGroupRepair` skips every `removable` slot and the other two
+  fixed carriers (`bodywork`, `paint`) derive their band from zone state and early-return.
+
+  **Why it could not simply be deleted.** Moving body-group per-part repair onto the job model
+  is a design question the arc never answered: what a body carrier's job ladder should be when
+  the thing is welded to the car, cannot come off, cannot go on a bench, and already has a
+  stage pipeline (strip, beat, weld, fill, prime, paint) that is arguably its ladder already.
+  Deleting the old path without answering that removes the only way to repair a chassis.
+
+  **The follow-up, and it is a fork, not a task:** either move body-group per-part repair onto
+  the three-job model (which means deciding what Service, Rebuild and Restore mean for a
+  welded-on carrier, and how they sit beside the stage pipeline), or rule deliberately that
+  the stages ARE the body's ladder and give `chassis` a stage-shaped repair instead of a band
+  step. Whichever wins, the eleven symbols and two keys above go with it. Until then they are
+  live code with one caller, not dead code.
+
+  **Two narrowings that D-R1 permits were not taken and want doing with the fork**, because
+  both names still promise a generality only one call site uses: `gameStore.repair()` still
+  takes a `componentId` and an optional `carPartId` though its one caller always passes
+  `('body', ..., 'chassis')`, and `repairJobGate`/`jobMachineGroup` still branch over a whole
+  group. Only `planGroupRepair` was narrowed (its tool-tier ceiling parameter dropped, so the
+  clamp lives solely in `repairJobGate`).
+
+  **One key survives for a reason outside the body path entirely and must not be swept up with
+  it:** `energy.energyPerBandStepByToolTier` is also read by `toolShopInfo` and `toolTierInfo`
+  to build the Upgrades screen's tool-line copy. That reader has nothing to do with repair and
+  needs its own answer before the key can go.
+
+- [ ] **`workbenchPartId` and the two-station `WorkStation` type were NOT retired, and they are
+  the one unfinished item on the repair arc's own retirement checklist.** The workbench station
+  is unreachable in the shipped game: `WorkbenchPanel.vue` was deleted, nothing passes
+  `'workbench'` to `stationPart`/`placeOnStation` any more, and the new bench model is
+  `benchParts`. But the field is still declared (`content/gameState.ts`), still written by
+  `withStation` (`sim/parts.ts`), still read defensively by `resolvePlaceOnBench`
+  (`sim/repairJobs.ts`) to refuse benching a part that is out on a station, and
+  `WorkStationSchema` still admits it, so a replay session event can still set it.
+
+  It was left because it is not a one-line schema deletion: it forces `WorkStation` down to
+  `'machine'` alone and narrows all five station helpers with it, drops a clause from
+  `resolvePlaceOnBench`, drops a key from `game/utils/workStationLabels.ts`, removes the bench
+  half of `PartCard.test.ts`'s station assertions, and needs a `SAVE_VERSION` and Dexie bump.
+  That is a change with its own diff and its own test pass, not close-out tidying. Nothing
+  depends on it happening; it is dead weight, not a defect.
+
+- [ ] **Three `StagedAction` kinds are declared and nothing consumes them.** `repair-job`,
+  `place-on-bench` and `take-off-bench` (`content/stagedWork.ts`) were added as the headless
+  vocabulary for bots and career-script replay, but `advanceDay` carries no queued-actions loop
+  over `StagedAction` at all and `GameState` has no `stagedActions` field, so no code path
+  reads them. The schema doc says so plainly rather than promising a wiring that does not
+  exist. The headless paths reach the repair engine through session events instead
+  (`careerReplay.ts` dispatches on `SessionEventInput['type']`), which is why nothing is
+  currently broken by the gap.
+
+  When it is picked up: the loop calls the same instant resolvers the live path uses
+  (`resolveRepairStep`, `resolvePlaceOnBench`, `resolveTakeOffBench`), never a second
+  implementation. Note that no shipped career script contains a repair beat today, so nothing
+  is waiting on it: `smoke.script.json` is buyout / checkoutCart / sellPart /
+  rejectServiceJobOffer / acknowledgeTutorialStep, and `advanceDay.test.ts`'s repair beat runs
+  through `createJobs` on the surviving `repair-zone` kind.
+
+- [ ] **The job card masks its PRICE on an unverified slot but not its OFFER, and the refusal
+  copy can now print a figure that is not the bill.** Sprint 231's D-R2 fix made
+  `repairJobCards` quote an unverified slot off `knowledgeViewOf`'s masked guess, so a card no
+  longer gives away a condition the player has not paid to find out. Two things it deliberately
+  did not close:
+
+  1. **`cardRefusalFor` still reads the true band** (`repairJobs.ts`, the
+     `at-or-above-target` test), so which of the three jobs are offered on an unverified slot
+     discloses its true band bracket exactly - a strictly larger leak than the price was.
+     Moving that test onto the guess would offer jobs `resolveRepairStep` then refuses, since
+     the two share a predicate, so it is a design decision about what an offer means on an
+     unknown part, not a code fix.
+  2. **`repairStepRefusalText` prints the QUOTE**, not the bill: "The parts bill wants ¥0 you
+     don't have." is reachable today, because the shipped guess for an ordinary car sits at
+     `fine` and `costToBandYen` returns 0 whenever the start band is already at or past the
+     target. Service and Rebuild therefore quote nothing on most hidden slots while the till
+     charges the real figure on the first step.
+
+  **The candidate that answers all of it at once, not implemented:** verify the slot in the
+  same call that takes the money (run the existing verify-and-resolve on the step that charges,
+  not only on the step that writes the band). That restores the retired reveal-then-confirm
+  gate's "you find out before you pay" property without a confirm click, makes the surprise
+  charge self-explaining, fixes the ¥0 line and closes the offer leak from the second click on.
+  It strengthens verification rather than weakening it, but it changes what the player learns
+  and when, so it is a design call.
+
+- [ ] **Four retired names cannot be added to the `retiredIdentifiers` guard while
+  `saveCodec.ts` keeps its per-version log.** `minToolTier`, `machineListing`,
+  `rollMachineListings` and `recondition-part` are all genuinely dead in code, but each is
+  named in a sentence describing what a specific `SAVE_VERSION` bump did (v22 gained
+  `'recondition-part'`; v23 added `minToolTier`; v27 added `machineListing`). The guard scans
+  comments in non-test source, so registering them means either rewording those sentences into
+  falsehoods or deleting the pre-current version log outright. The second is defensible under
+  directive 19 (no save compatibility before launch, so the log documents versions no save will
+  ever be in) but it discards the only prose record of the save schema's history, which is a
+  maintainer call rather than a guard-registration detail. Left unregistered and recorded here
+  rather than decided quietly.
+
+- [ ] **`tools/lever-census/` has gone stale against the retired economy keys.**
+  `runAccuracyChecks.cjs` hard-codes `economy.machineShopAssist.*` lever ids and
+  `output/leverTrace.json` names `machineShopAssist` and `machineListings`, both of which no
+  longer exist. Neither is wired to a `package.json` script, so nothing gates on it and nothing
+  went red; it will simply mislead whoever next runs the census by hand.
+
 - [ ] **MILEAGE IS INERT BELOW 60,000 KM, and that was accepted knowingly as a quick fix
   (maintainer, 2026-08-07).** Their words: *"We implement this fix. We note it in TODO to be fixed
   better later. This is a quick and dirty, but implement it."*
@@ -336,11 +451,13 @@ pass."
   sit on top of it and carry most of the weight. A part you cannot get is a decision. A part you can
   buy but not fit is only a message.
 
-  Mechanisms that already exist and would carry it: the classifieds listing window
-  (`machineListing`, a gap of 4 to 8 days and a 3-day window) is exactly the "one thing at a time,
-  sometimes" shape, and it now handles both tool rungs and shops through a `kind` discriminated
-  union. Unlocking the vendor is a story mission, which is the shape the channel unlocks already
-  use.
+  The mechanism this used to point at is GONE and would have to be rebuilt: the classifieds
+  listing window (`machineListing`, a gap of 4 to 8 days and a 3-day window over tool rungs and
+  shops) was killed by decision D-A2 of the repair refactor arc, and its last inert tuning block
+  left `economy.json` in sprint 231. Tool lines and shops are now buyable whenever reputation
+  and cash allow. The SHAPE it had is still the right one for scarce race parts - one thing at a
+  time, sometimes - so this entry is a rebuild against parts rather than a reuse. Unlocking the
+  vendor is a story mission, which is the shape the channel unlocks already use.
 
   Open when it is picked up: whether stock is per-SKU or per-shipment, whether a missed part returns
   at the same price, and whether the race shop is a room, a phone call or a place on the map.
@@ -373,8 +490,10 @@ pass."
   rep gate for now, add note to investigate later."*
 
   The question when it is picked up: a reputation floor on a purchase is pacing, not fiction. A
-  shop with the cash and no name can buy a lift in the real world. If the floor goes, tool pacing
-  rests entirely on price and on the classifieds listing window, and both would want re-checking.
+  shop with the cash and no name can buy a lift in the real world. **The stakes rose after the
+  repair refactor:** decision D-A2 killed the classifieds listing window, so tool pacing now
+  rests on price and the reputation floor alone. Drop the floor and price is the only pacing
+  left.
 
 - [ ] **`economy.machining.operations` has outgrown its name.** It now holds three entries that are
   not machining: **corner weighting** (scales under an assembled car), **show fitment** (rolling
@@ -1083,16 +1202,6 @@ pass."
 
   A directive 22 lever sweep across the suspension and aero catalogue; every value needs signing
   by name.
-- [ ] **`chassis` sits in the `drivetrain` component group (pre-existing taxonomy), surfaced
-  by Sprint 93's repair-ceiling caption.** A chassis repair now reads "The Transmission bench
-  reaches mint", which is nonsensical (you weld/straighten a chassis, you do not press it on a
-  gearbox bench). The caption is correct for the grouping; the GROUPING is the wart. Moving
-  chassis to `body` would name the MIG welder (sensible) but ripples through everything that
-  groups by component (marketValue, coherence repair planning, specialty rep, the service
-  diagram layout, the tool line it draws its tier-2 from). A deliberate content-taxonomy pass,
-  not a one-liner; do it when touching component grouping, and re-run the coherence probes.
-  Also revisit the bench-recondition control's analogous (captionless) fine-cap at tier-1
-  (Sprint 93 scoped the caption to the on-car "+" only).
 - [ ] **LAUNCH-BLOCKING: replace the placeholder part sprites with commissioned art (Sprint 88,
   decision 4).** The 29 part + 3 assembly service-diagram sprites in
   `packages/game/src/components/partSprites.ts` are development placeholders, explicitly

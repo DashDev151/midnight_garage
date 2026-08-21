@@ -2204,13 +2204,6 @@ describe('CarDetailScreen', () => {
       expect(wrapper.find('[data-test="panel-assembly-note"]').exists()).toBe(true)
     })
 
-    it('nextPartStepRange returns null for a part nothing targets (the ordinary, reachable case)', () => {
-      const game = useGameStore()
-      game.devGrantCar(CARS[0]!.id)
-      const id = game.gameState.ownedCars[0]!.id
-      expect(game.nextPartStepRange(id, 'body', 'bodywork')).toBeNull()
-    })
-
     it('Full workup is disabled with a reason once no labour slot remains today', async () => {
       const game = useGameStore()
       game.devGrantCar(CARS[0]!.id)

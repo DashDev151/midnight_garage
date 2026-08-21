@@ -2789,8 +2789,8 @@ export const EconomyConfigSchema = z.object({
    * - owning tier-2 only lets you REPAIR the existing part to mint instead
    * (cheaper, and it keeps a genuine-period part; that price gap IS the
    * incentive to own). Read per group's own tool tier by the repair planners
-   * (`planGroupRepair`/`planPartRepair`/`planReconditionPart`/
-   * `repairJobGate`, sim). Deliberately NOT read by value/cost accounting
+   * (`planGroupRepair`/`planPartRepair`/`repairJobGate`, sim).
+   * Deliberately NOT read by value/cost accounting
    * (`carCostToBandYen`, `serviceJobCostBreakdown`): those price the
    * mint-referenced restoration bill and the market-rate customer quote, both
    * tier-independent facts, never the player's own shop capability. Keyed per
@@ -2846,25 +2846,6 @@ export const EconomyConfigSchema = z.object({
           'repairJobs must ascend strictly in both target band and toolTier across service, rebuild, restore',
       },
     ),
-  /**
-   * The used-machinery classifieds cadence. Reputation still gates which
-   * tool tiers are ELIGIBLE (per-tier thresholds, unchanged); a listing is
-   * what makes an eligible tier actually PURCHASABLE, one machine at a time.
-   * `minGapDays`/`maxGapDays` bound the seeded roll for how long the
-   * classifieds stay quiet after a listing lapses (or before the first one
-   * ever appears, once something becomes eligible); `windowDays` is how long
-   * a fresh listing stays live before it lapses (unbought machines are never
-   * lost - a later issue can list the same one again).
-   */
-  machineListings: z
-    .object({
-      minGapDays: z.number().int().positive(),
-      maxGapDays: z.number().int().positive(),
-      windowDays: z.number().int().positive(),
-    })
-    .refine((m) => m.minGapDays <= m.maxGapDays, {
-      message: 'machineListings.minGapDays must be <= maxGapDays',
-    }),
   /**
    * economy-bible.md law 4 (one derived ledger, machine-checked): the one
    * number the roster-wide coherence check (`balanceProbes.ts`,
@@ -3035,52 +3016,6 @@ export const EconomyConfigSchema = z.object({
     maxPurchasesPerDay: z.number().int().positive(),
   }),
   /**
-   * The machine-shop assist. Until the player owns the relevant tier-2
-   * machine, a machine-gated operation is still workable at a cash fee instead
-   * of a hard wall - `feeYenByGroup[group]`, posted to the car's ledger
-   * through the existing repair-cost path so service-job billing and mission
-   * budget caps see it. Ownership removes the fee (buys margin), it never
-   * gates capability. `probeAmortisationOps` is the operation count the
-   * coherence probe amortises the machine's own `upgradePriceYen` over: each
-   * fee must be > 0 and strictly cheaper per operation than owning the
-   * machine at that volume. The tier-2/3 purchase gates (price, reputation,
-   * listing) are untouched.
-   *
-   * Uniform tool access: every one of the six groups carries a fee, so tool
-   * access is rent-or-own uniformly. WHICH operations each line gates is a
-   * fact about the slot and lives on the taxonomy row that owns it
-   * (`machineGate`, content/src/carPart.ts), not here.
-   */
-  machineShopAssist: z.object({
-    feeYenByGroup: z.object({
-      engine: z.number().int().positive(),
-      drivetrain: z.number().int().positive(),
-      /** The two-post lift's per-job fee for the suspension signature op
-       * (fit/repair dampers or springs) without owning it. */
-      suspension: z.number().int().positive(),
-      /** The per-tyre-operation fitting charge a shop without the tier-2
-       * tyre machine pays to mount a tyre onto the rims on the bench - a 1995
-       * tyre-shop fitting fee. Unlike the engine/drivetrain fees (which gate
-       * buried removal AND install of those groups' assemblies), this one
-       * applies ONLY to a tyre-into-assembly bench fit, never to dismounting
-       * one and never to removing or refitting the whole wheel assembly. */
-      wheels: z.number().int().positive(),
-      /** The MIG welder & panel tools' per-job fee for the body signature op
-       * (weld/panel repair or replace of bodywork or chassis). */
-      body: z.number().int().positive(),
-      /** The upholstery & trim bench's per-job fee for the interior
-       * signature op (retrim of seats or dash & gauges). */
-      interior: z.number().int().positive(),
-    }),
-    /** How many times the base labour a machine-gated operation costs when the
-     * group's machine is neither owned (tier 2+) nor hired today. The gate is a
-     * rate, never a wall: every gated op stays possible at tier 1, just slower,
-     * exactly the bench-recondition philosophy. Hire buys the multiplier back
-     * to 1 for the day, which is the game's cash-versus-labour trade. */
-    machinelessLaborMultiplier: z.number().int().positive(),
-    probeAmortisationOps: z.number().int().positive(),
-  }),
-  /**
    * The day-hire desk: a group's own bench for the day, at a flat fee,
    * whether or not the group's tier-2 machine is owned. `feeYenByGroup[group]`
    * is the group's own hire fee; `amortisationDays` is how many hire days'
@@ -3115,8 +3050,8 @@ export const EconomyConfigSchema = z.object({
    * machine is, and presented alongside the six lines. It is NOT one of them:
    * nothing is repaired on it and it belongs to no part group, so it carries
    * its own three values here rather than a seventh column in
-   * `toolLines.json` and `machineShopAssist.feeYenByGroup`, both of which are
-   * keyed by `ComponentId` and exhaustive over the six.
+   * `toolLines.json` and `toolHire.feeYenByGroup`, both of which are keyed by
+   * `ComponentId` and exhaustive over the six.
    *
    * `hireFeeYen` buys the day's access, the same day-stamped shape a machine
    * line's hire already uses; `purchasePriceYen` buys it outright and ends the

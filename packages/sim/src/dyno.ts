@@ -35,7 +35,7 @@ import { supportRatios, supportVerdict, type SupportVerdict } from './support'
  * Structurally it is a workshop tool that is not a tool line: it belongs to no
  * `ComponentId`, so it carries its own record (`DynoStateSchema`) and its own
  * three economy values rather than a seventh column in the six-keyed
- * `toolLines.json`/`machineShopAssist.feeYenByGroup`. Behaviourally it is one
+ * `toolLines.json`/`toolHire.feeYenByGroup`. Behaviourally it is one
  * of them - hired for the day or bought outright, on the same day-stamp shape
  * `machineHirePaidDayByGroup` uses and the same reputation gate a tool tier
  * has.
@@ -172,7 +172,7 @@ export function resolveHireDyno(state: GameState, context: SimContext): HireDyno
 /**
  * A session's own job id - one open session per car, so a repeat click
  * continues the same job rather than opening a second. Mirrors
- * `reconditionJobIdFor`'s deterministic-id contract (jobs.ts).
+ * `machiningJobIdFor`'s deterministic-id contract (machiningJobs.ts).
  */
 export function dynoJobIdFor(carInstanceId: string): string {
   return `dyno-${carInstanceId}`
@@ -218,7 +218,7 @@ export function dynoSessionGateReason(
  * same `Job` shape, the same `state.jobs` list, the same
  * `applyAvailableLaborToJob` an on-car repair spends its labour through, and
  * the same `energySpentToday` accounting. The loose-part analogue is
- * `resolveReconditionLabor` (jobs.ts), built the same way for the same
+ * `resolveMachiningLabor` (machiningJobs.ts), built the same way for the same
  * reason: there is one job system and this is it.
  *
  * Completing the job books the car onto the rollers (`recordDynoSession`) and

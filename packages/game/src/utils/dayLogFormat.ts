@@ -180,9 +180,6 @@ export function describeLogEntry(
       return `Wage paid to ${entry.staffId}: ${formatYen(entry.amountYen)}`
     case 'job-created': {
       const charge = entry.costYen === undefined ? '' : ` for ${formatYen(entry.costYen)}`
-      // A recondition works a loose part on the bench, so it has no car to
-      // name - `carInstanceId` holds the part instance for identity only.
-      if (entry.kind === 'recondition-part') return `Bench recondition started${charge}`
       if (entry.kind === 'dyno-session') return `Strapped ${entry.carInstanceId} to the rollers`
       return `Job started (${entry.kind}) on ${entry.carInstanceId}${charge}`
     }
@@ -267,8 +264,6 @@ export function describeLogEntry(
       return `Scrapped a part for ${formatYen(entry.priceYen)}`
     case 'part-sold':
       return `Sold a part for ${formatYen(entry.priceYen)}`
-    case 'part-reconditioned':
-      return `Reconditioned a part to ${entry.band}`
     case 'repair-step':
       return repairStepLine(entry.carPartId, entry.jobKind, 1, entry.carInstanceId)
     case 'repair-job-completed': {

@@ -1,42 +1,41 @@
 import { z } from 'zod'
 import { AssemblyIdSchema } from './assembly'
-import { CarPartIdSchema, ComponentIdSchema, ConditionBandSchema, GradeSchema } from './tags'
+import { CarPartIdSchema, ComponentIdSchema, GradeSchema } from './tags'
 import { PanelZoneIdSchema, ZoneIdSchema } from './zone'
 import { PipelineStageIdSchema } from './material'
+import { RepairJobKindSchema } from './workbench'
 
 /**
- * One unit of work the player asks for - repair, install, or one of the
- * four body-pipeline ops - resolved the moment it's clicked, against
- * today's remaining labour, through the immediate resolvers in
- * sim/jobs.ts and sim/pipelineActions.ts. There is no staging or Confirm
- * step anywhere in this game: this type exists purely as the shared
- * parameter shape those resolvers (and the store functions that call them)
- * take, so a work-address lookup, a cost preview, and the actual resolution
- * all describe "which action" the same way. Mirrors
- * `ServiceJobWorkSchema`'s repair/install split, but carries the specific
+ * One unit of work the player asks for - install or one of the four
+ * body-pipeline ops - resolved the moment it's clicked, against today's
+ * remaining labour, through the immediate resolvers in sim/jobs.ts and
+ * sim/pipelineActions.ts. There is no staging or Confirm step anywhere in
+ * this game: this type exists purely as the shared parameter shape those
+ * resolvers (and the store functions that call them) take, so a
+ * work-address lookup, a cost preview, and the actual resolution all
+ * describe "which action" the same way. Carries the specific
  * `partInstanceId` for an install (the drag gesture onto a component row
  * *is* the part choice).
  *
- * A repair action has `targetBand` - the player chooses how far to climb, not
- * always mint; resolution climbs every non-mint, non-scrap part in the group
- * toward it, labor allowing.
- *
- * Both kinds gain an optional `carPartId` - the per-part address added
+ * `install` gains an optional `carPartId` - the per-part address added
  * alongside the existing group-level addressing. When absent, behavior is
- * exactly group-level (a `repair` climbs every eligible part in the group;
- * an `install` targets whichever slot in the group the picked catalog part's
- * own address resolves to). When present, a `repair` climbs only that one
- * part, and an `install` is additionally checked against that exact slot
- * (not just "some empty slot somewhere in the group") - see `installFitGate`
- * (sim/jobs.ts).
+ * exactly group-level (an `install` targets whichever slot in the group the
+ * picked catalog part's own address resolves to). When present, an
+ * `install` is additionally checked against that exact slot (not just "some
+ * empty slot somewhere in the group") - see `installFitGate` (sim/jobs.ts).
+ *
+ * `repair-job`, `place-on-bench` and `take-off-bench` (below) are a
+ * separate vocabulary for the headless paths that never click a UI control -
+ * bots and career-script replay. They are DECLARED and not yet consumed:
+ * nothing reads them, because `advanceDay` carries no queued-actions loop
+ * over `StagedAction` at all, and the headless paths still reach the repair
+ * engine through session events instead. The loop is the open half of the
+ * work and is tracked in TODO.md; when it lands it calls the same instant
+ * resolvers the live repair job engine uses (`resolveRepairStep`,
+ * `resolvePlaceOnBench`, `resolveTakeOffBench`, sim/repairJobs.ts), never a
+ * second implementation of the same work.
  */
 export const StagedActionSchema = z.discriminatedUnion('kind', [
-  z.object({
-    kind: z.literal('repair'),
-    componentId: ComponentIdSchema,
-    targetBand: ConditionBandSchema,
-    carPartId: CarPartIdSchema.optional(),
-  }),
   z.object({
     kind: z.literal('install'),
     componentId: ComponentIdSchema,
@@ -111,6 +110,34 @@ export const StagedActionSchema = z.discriminatedUnion('kind', [
     colour: z.string().min(1),
     grade: GradeSchema,
   }),
+  /**
+   * Resolve one repair job's steps against the same instant resolver the
+   * live path uses (`resolveRepairStep`, sim/repairJobs.ts), up to `steps`
+   * times, stopping the moment any step is refused - never assumed to land.
+   * Addressed the same way the engine's own `repair-step` session event is
+   * (sessionEvent.ts): `carInstanceId` for a slot installed on a car,
+   * `partInstanceId` for a loose part off it, `carPartId` names the exact
+   * slot. `jobKind` selects which of the three recipe ladders
+   * (`RepairJobKindSchema`, workbench.ts) to climb.
+   */
+  z.object({
+    kind: z.literal('repair-job'),
+    carInstanceId: z.string().min(1).optional(),
+    carPartId: CarPartIdSchema.optional(),
+    partInstanceId: z.string().min(1).optional(),
+    jobKind: RepairJobKindSchema,
+    steps: z.number().int().positive(),
+  }),
+  /**
+   * Carry a loose part to whichever bench its group resolves to, or take it
+   * back off - the queued counterpart to the engine's own `placeOnBench`/
+   * `takeOffBench` session events, on the same declared-but-unconsumed
+   * footing as `repair-job` above. Free and instant; a `repair-job` addressed
+   * at a loose part refuses every step until the part is laid out on its
+   * bench.
+   */
+  z.object({ kind: z.literal('place-on-bench'), partInstanceId: z.string().min(1) }),
+  z.object({ kind: z.literal('take-off-bench'), partInstanceId: z.string().min(1) }),
 ])
 
 export type StagedAction = z.infer<typeof StagedActionSchema>

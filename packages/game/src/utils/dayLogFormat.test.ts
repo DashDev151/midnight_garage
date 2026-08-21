@@ -450,7 +450,7 @@ describe('classifyDayReport', () => {
 })
 
 describe('the cash movements that used to leave no trace', () => {
-  it('names the auction admission, the listing fee, the materials drawn and the bench recondition', () => {
+  it('names the auction admission, the listing fee, and the materials drawn', () => {
     expect(describeLogEntry({ type: 'auction-attended', tier: 'regional', feeYen: 3_000 })).toBe(
       'Paid in at the regional rooms: ¥3,000',
     )
@@ -479,15 +479,6 @@ describe('the cash movements that used to leave no trace', () => {
         costYen: 12_000,
       }),
     ).toBe('Materials drawn, whole-car respray: ¥12,000')
-    expect(
-      describeLogEntry({
-        type: 'job-created',
-        jobId: 'job-1',
-        carInstanceId: 'part-1-0',
-        kind: 'recondition-part',
-        costYen: 12_400,
-      }),
-    ).toBe('Bench recondition started for ¥12,400')
   })
 
   it('names a bought consumable tin, plain and paint alike', () => {
