@@ -28,6 +28,7 @@ import {
 } from '../src/parts'
 import { resolvePipelineRemovePanelAction } from '../src/pipelineActions'
 import { makeCarOrigin, makeMarketOrigin } from '../src/provenance'
+import { benchHoldingPart, resolvePlaceOnBench, resolveTakeOffBench } from '../src/repairJobs'
 import {
   buildCarInstance,
   testSceneStanding,
@@ -463,6 +464,64 @@ describe('the two work stations: the bench on the workshop floor and the machine
     const gone = reconcileStations({ ...state, partInventory: [] })
     expect(gone.workbenchPartId).toBeNull()
   })
+})
+
+/**
+ * A loose part is in exactly one place: the warehouse, one of the two work
+ * stations, or a repair bench. Both carries are gated, so neither surface can
+ * take a part the other is holding, and the only way out of one is the move
+ * that empties it.
+ */
+describe('a part is in one place at a time: the stations and the repair benches', () => {
+  const loose: PartInstance = {
+    id: 'pi-whereabouts',
+    partId: CHEAPEST.id,
+    band: 'worn',
+    origin: makeMarketOrigin(1),
+  }
+
+  /** Lays `loose` out on its own group's bench through the real resolver, and
+   * fails loudly if the bench refused it - a test that benched nothing would
+   * "prove" the station gate below for free. */
+  function onBench(): GameState {
+    const state = resolvePlaceOnBench(baseState({ partInventory: [loose] }), loose.id, CONTEXT)
+    expect(benchHoldingPart(state, loose.id)).not.toBeNull()
+    return state
+  }
+
+  for (const station of ['workbench', 'machine'] as const) {
+    it(`${station}: refuses a part that is laid out on a repair bench`, () => {
+      const state = onBench()
+
+      expect(placeOnStationGateReason(state, station, loose.id)).toBe('on-bench')
+      expect(resolvePlaceOnStation(state, station, loose.id)).toBe(state)
+      expect(stationHoldingPart(state, loose.id)).toBeNull()
+      expect(benchHoldingPart(state, loose.id)).not.toBeNull()
+    })
+
+    it(`${station}: the bench refuses a part that is out on it`, () => {
+      const state = resolvePlaceOnStation(baseState({ partInventory: [loose] }), station, loose.id)
+      expect(stationHoldingPart(state, loose.id)).toBe(station)
+
+      expect(resolvePlaceOnBench(state, loose.id, CONTEXT)).toBe(state)
+      expect(benchHoldingPart(state, loose.id)).toBeNull()
+    })
+
+    it(`${station}: takes the part once it has come off the bench, and back again`, () => {
+      const offBench = resolveTakeOffBench(onBench(), loose.id)
+      expect(benchHoldingPart(offBench, loose.id)).toBeNull()
+
+      expect(placeOnStationGateReason(offBench, station, loose.id)).toBeNull()
+      const placed = resolvePlaceOnStation(offBench, station, loose.id)
+      expect(stationHoldingPart(placed, loose.id)).toBe(station)
+      expect(benchHoldingPart(placed, loose.id)).toBeNull()
+
+      const taken = resolveTakeFromStation(placed, station)
+      const reBenched = resolvePlaceOnBench(taken, loose.id, CONTEXT)
+      expect(benchHoldingPart(reBenched, loose.id)).not.toBeNull()
+      expect(stationHoldingPart(reBenched, loose.id)).toBeNull()
+    })
+  }
 })
 
 describe('part-instance id collisions (Sprint 206 task A)', () => {

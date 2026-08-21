@@ -55,15 +55,18 @@ All development happens in sprints, driven by the roadmap. Sprint docs live in `
 (synthwave pixel art, JDM car culture, hunt-build-sell loop). Solo-dev passion project, ~13-month
 roadmap to a Steam launch.
 
-**Current state:** Sprints 00-223 implemented, committed and signed. A few were superseded
-unbuilt and their docs record it. **`docs/sprints/` holds ONLY the current arc** (maintainer
-ruling 2026-08-20, tightening the old planned-or-live invariant): a finished or non-arc
-sprint doc moves to `docs/sprints/sprint_archive/`, and any archived doc that is still open
-is kept alive by a pointer in `TODO.md`'s "Archived-but-open sprint docs" section (currently:
-sprint191 task 6, the sprint193 triage index, the generation-arc lever ledger awaiting
-review, the experimental sprint214 build sheet, and the integration-arc board).
+**Current state:** Sprints 00-232 implemented, committed and signed. A few were superseded
+unbuilt and their docs record it. **The repair refactor arc (224 to 232) is COMPLETE, and the
+next work is the maintainer's playtest of the new loop**: three priced jobs on a part, the
+three benches and their boards, the tool trolley on the car, hire by the day, and the lift.
+**`docs/sprints/` holds ONLY the current arc** (maintainer ruling 2026-08-20, tightening the
+old planned-or-live invariant): a finished or non-arc sprint doc moves to
+`docs/sprints/sprint_archive/`, and any archived doc that is still open is kept alive by a
+pointer in `TODO.md`'s "Archived-but-open sprint docs" section (currently: sprint191 task 6,
+the sprint193 triage index, the generation-arc lever ledger awaiting review, the experimental
+sprint214 build sheet, and the integration-arc board).
 
-**The current arc is the repair refactor (sprints 224-232).** Design of record
+**The arc just landed is the repair refactor (sprints 224-232).** Design of record
 `docs/design/systems/repair-refactor-spec.md`; arc index `docs/sprints/repair-refactor-arc.md`
 (carries the maintainer decisions D-A1 to D-A4 taken on top of the spec); lever ledger
 `docs/sprints/repair-refactor-lever-ledger.md`. The wider economy-overhaul direction remains

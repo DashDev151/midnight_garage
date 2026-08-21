@@ -49,6 +49,27 @@ figures that produced them are in `sprint227.md`.
   because the market imagined a rig it would not pay for, and a commission that genuinely
   cannot be done by hand still covers the day before any margin.
 
+- **D-R1 (delete only what is provably unreachable).** A mechanism goes when no control in
+  the shipped game can reach it, traced control by control rather than assumed from a
+  deletion list, and the body panel pipeline keeps whatever it still uses. Arc rule 9 puts
+  that pipeline out of scope, so its chassis repair keeps the old banded path and the
+  symbols and economy keys underneath it until somebody decides what a welded-on carrier's
+  job ladder should be. A name that is merely awkward, or generic where its one caller is
+  specific, is not a name that is dead: narrowing it is honest only once the fork above it
+  is settled. Nothing survives silently, either, because every survival carries its reason
+  on the retirement checklist and an entry in `TODO.md`. Felt behaviour: no control a player
+  used yesterday stops answering because a sprint was tidying up behind them.
+
+- **D-R2 (a job card prices what the player knows, never what is true).** The three prices
+  on a job card are quoted off the band the player has actually found out about: a verified
+  slot quotes its real band, and an unverified one quotes the same guess the band chip on
+  that slot is already showing. Only the price is masked. Which jobs are offered, what each
+  costs in energy, which route it takes and what the till charges on the first step all read
+  the real part, so a quoted guess never buys cheaper work than the job really is. Felt
+  behaviour: a card never tells you something you have not looked at properly, and the
+  figure on it is the figure the game was already showing you rather than a leak dressed up
+  as a quote.
+
 ## Locked implementation rules (used by every sprint doc)
 
 1. **Per-step tool-driven gating.** A job's step list is the requirement. Each step names
@@ -114,20 +135,25 @@ figures that produced them are in `sprint227.md`.
 
 ## Retirement checklist (owned by sprint 231, ticked as sprints land)
 
-Closed out by sprint 231. Five items retired in full, four survive under decision D-R1
-(delete only what is genuinely unreachable), each with its reason below. Every survival is
-carried in `TODO.md`; none is left dead-but-alive without an entry.
+Closed out by sprint 231 and ticked through by sprint 232. All nine lines are adjudicated.
 
-- [ ] `machineGate` (taxonomy field + `MachineGateOperationSchema` + `machineGateGroupFor`)
+**A tick means the line has been settled and its outcome recorded, not that every name on it
+was deleted.** Counted by line rather than by name, which is the honest count: three lines
+retired outright (`machineShopAssist`, the `machineListing` trio, `minToolTier`), and six
+carry at least one survivor under decision D-R1, each named on its own line with the
+reachability that saved it. Every survivor is carried in `TODO.md`; none is left
+dead-but-alive without an entry.
+
+- [x] `machineGate` (taxonomy field + `MachineGateOperationSchema` + `machineGateGroupFor`)
       **SURVIVES, live in the arc's own new engine.** `removalEnergyPointsFor`
       (`repairJobs.ts`) sizes remove-and-refit energy through it, `assemblyMachineGateGroup`
       reads it for every assembly row, and the tyre bench-fit note reads it too. It gates
       operations, which the three-job model still has.
-- [ ] `repairBandCeilingByTier` + `repairCeilingForLevel` + `clampRepairTarget`
+- [x] `repairBandCeilingByTier` + `repairCeilingForLevel` + `clampRepairTarget`
       **ALL THREE SURVIVE.** The first two are on the live body-shop chassis path, which
       D-R1 spares; `clampRepairTarget` is additionally read by `sensibleRepairTargetBand`
       (`marketValue.ts`), outside the repair path entirely.
-- [ ] `energyPerBandStepByToolTier` + `energyToClimb`'s tier parameter
+- [x] `energyPerBandStepByToolTier` + `energyToClimb`'s tier parameter
       **BOTH SURVIVE**, on two independent paths: the chassis repair path, and
       `toolShopInfo`/`toolTierInfo`, whose player-facing tool-line copy on the Upgrades
       screen is not a repair surface at all. The tier parameter cannot go while the key does.
@@ -143,7 +169,7 @@ carried in `TODO.md`; none is left dead-but-alive without an entry.
 - [x] `machineListing` / `nextMachineListingDay` / `rollMachineListings` (D-A2)
       Already gone from code (sprint 226); the inert `economy.machineListings` tuning block
       they left behind is deleted here, and all three names are registered in the guard.
-- [ ] `workbenchPartId` (replaced by `benchParts`), `WorkStationTray.vue`, `WorkbenchPanel.vue`
+- [x] `workbenchPartId` (replaced by `benchParts`), `WorkStationTray.vue`, `WorkbenchPanel.vue`
       **`WorkbenchPanel.vue` deleted** with its test and its `screens/workshopFloor.ts`
       helper module. **`WorkStationTray.vue` SURVIVES**: the machine shop still mounts it,
       and nothing in it was workbench-specific. **`workbenchPartId` NOT DELETED** and still

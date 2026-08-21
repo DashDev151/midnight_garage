@@ -1,12 +1,15 @@
 import {
   CARS,
+  EMPTY_FINANCE_WEEK,
   PARTS,
   PARTS_TAXONOMY,
+  netCashYen,
   type ConditionBand,
   type GameState,
 } from '@midnight-garage/content'
 import { describe, expect, it } from 'vitest'
 import { costToBandYen } from '../src/bands'
+import { weekIndex } from '../src/calendar'
 import { buildSimContext } from '../src/context'
 import { resolveRemovePart } from '../src/jobs'
 import {
@@ -336,6 +339,74 @@ describe('resolveRepairStep - chassis is a fixed surface', () => {
 
     const step = resolveRepairStep(state, target, 'rebuild', CONTEXT, 999)
     expect(step.outcome).toBe('stepped')
+  })
+})
+
+describe('resolveRepairStep - the parts bill lands on the week it left the till', () => {
+  const WEEK_KEY = String(weekIndex(1, CONTEXT.economy))
+
+  it("books an installed part's bill on the cars line, once, to the yen", () => {
+    // The block's service runs to two steps, so the "booked once" half below
+    // has a second step to prove it against.
+    const car = buildCarInstance({
+      id: 'car-booked',
+      modelId: 'honda-city-e-aa',
+      parts: mintCarParts({ block: 'poor' }),
+    })
+    const state = baseState({ ownedCars: [car] })
+    const target: RepairTarget = { kind: 'installed', carInstanceId: car.id, carPartId: 'block' }
+
+    const step0 = resolveRepairStep(state, target, 'service', CONTEXT, 999)
+    expect(step0.outcome).toBe('stepped')
+    const billYen = state.cashYen - step0.state.cashYen
+    expect(billYen).toBeGreaterThan(0)
+
+    const week = step0.state.financeLedger?.[WEEK_KEY] ?? EMPTY_FINANCE_WEEK
+    expect(week.onCarsYen).toBe(billYen)
+    expect(week.stockYen).toBe(0)
+    expect(netCashYen(week)).toBe(step0.state.cashYen - state.cashYen)
+
+    // The bill is charged once, so it is booked once: a later step moves no
+    // cash and leaves the week's record untouched, by reference.
+    const step1 = resolveRepairStep(step0.state, target, 'service', CONTEXT, 999)
+    expect(step1.state.cashYen).toBe(step0.state.cashYen)
+    expect(step1.state.financeLedger).toBe(step0.state.financeLedger)
+  })
+
+  it("books a loose part's bill on the stock line, where the yen actually lands", () => {
+    const car = buildCarInstance({
+      id: 'car-booked-loose',
+      modelId: 'honda-city-e-aa',
+      parts: mintCarParts({ dampers: 'poor', springs: null, rims: null }),
+    })
+    const state = baseState({ ownedCars: [car] })
+    const dampersId = car.parts.dampers.installed!.id
+
+    const removed = resolveRemovePart(state, car.id, 'dampers', CONTEXT)
+    expect(removed.state.cashYen).toBe(state.cashYen)
+    const benched = resolvePlaceOnBench(removed.state, dampersId, CONTEXT)
+    const pricePaidBefore = benched.partInventory.find((p) => p.id === dampersId)?.pricePaidYen ?? 0
+
+    const step0 = resolveRepairStep(
+      benched,
+      { kind: 'loose', partInstanceId: dampersId },
+      'rebuild',
+      CONTEXT,
+      999,
+    )
+    expect(step0.outcome).toBe('stepped')
+    const billYen = benched.cashYen - step0.state.cashYen
+    expect(billYen).toBeGreaterThan(0)
+
+    // The part's own price carries the bill, so the week's stock line is the
+    // same yen read from the other end.
+    expect(step0.state.partInventory.find((p) => p.id === dampersId)?.pricePaidYen).toBe(
+      pricePaidBefore + billYen,
+    )
+    const week = step0.state.financeLedger?.[WEEK_KEY] ?? EMPTY_FINANCE_WEEK
+    expect(week.stockYen).toBe(billYen)
+    expect(week.onCarsYen).toBe(0)
+    expect(netCashYen(week)).toBe(step0.state.cashYen - benched.cashYen)
   })
 })
 

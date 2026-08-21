@@ -18,7 +18,7 @@ import type { SimContext } from './context'
 import { bookCashMovements } from './financeLedger'
 import { machinedPartPriceYen } from './machining'
 import { isCustomerOriginPart, makeMarketOrigin } from './provenance'
-import { releaseFromBench } from './repairJobs'
+import { benchHoldingPart, releaseFromBench } from './repairJobs'
 
 export type DeliverySpeed = 'standard' | 'express'
 
@@ -405,6 +405,9 @@ export type PlaceOnStationGateReason =
   | 'station-occupied'
   /** The part is on the other station; take it back before carrying it here. */
   | 'on-other-station'
+  /** The part is laid out on a repair bench; take it off before carrying it
+   * here. */
+  | 'on-bench'
 
 /**
  * Why `partInstanceId` cannot be carried to `station` right now, or `null` when
@@ -412,6 +415,12 @@ export type PlaceOnStationGateReason =
  * click that `resolvePlaceOnStation` enforces after it. A part already on THIS
  * station is not refused - carrying it where it already is is a no-op, not an
  * error.
+ *
+ * A part is in exactly one place: the warehouse, one of the two stations, or a
+ * repair bench. Somewhere else already holding it refuses the carry rather than
+ * quietly taking it from there, so emptying the old place stays the player's own
+ * move - the same refusal `resolvePlaceOnBench` (repairJobs.ts) gives a part
+ * that is out on a station.
  */
 export function placeOnStationGateReason(
   state: GameState,
@@ -422,6 +431,7 @@ export function placeOnStationGateReason(
   const held = stationHoldingPart(state, partInstanceId)
   if (held === station) return null
   if (held) return 'on-other-station'
+  if (benchHoldingPart(state, partInstanceId)) return 'on-bench'
   return partIdOnStation(state, station) === null ? null : 'station-occupied'
 }
 

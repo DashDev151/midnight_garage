@@ -318,6 +318,9 @@ export function benchHoldingPart(state: GameState, partInstanceId: string): Benc
  * is already on a bench, or is currently occupying the workbench or the machine
  * station. The part stays in `partInventory` either way: a bench is where a
  * part is, never a place it is kept instead.
+ *
+ * `placeOnStationGateReason` (parts.ts) refuses the same move from the other
+ * side, so neither surface can take a part the other is holding.
  */
 export function resolvePlaceOnBench(
   state: GameState,
@@ -1054,6 +1057,9 @@ function eventAddressFor(
  * `pricePaidYen`, which is what a reconditioned part has always cost. Refuses
  * as a whole when the cash is not there; nothing is charged and nothing is
  * posted.
+ *
+ * This posts the per-car and per-part ledgers only. The week's cost sheet is
+ * booked by the caller, through `cashMovementFor` like every other charge.
  */
 function chargePartsBill(
   state: GameState,
@@ -1169,9 +1175,27 @@ export function resolveRepairStep(
   const targetBand = targetBandFor(kind, context)
   let next = state
   if (stepIndex === 0) {
-    const charged = chargePartsBill(next, target, partsBillYen(state, context, subject, targetBand))
+    const billYen = partsBillYen(state, context, subject, targetBand)
+    const charged = chargePartsBill(next, target, billYen)
     if (!charged) return refused(state, 'no-cash')
-    next = charged
+    // The yen has left the till, so the week's cost sheet has to see it, and
+    // `cashMovementFor` is the only thing allowed to say which line it lands
+    // on. The entry is built here, where the charge is, and handed straight
+    // to the ledger; the day log's own line for the step is a separate
+    // concern and is not written yet.
+    next = bookCashMovements(
+      charged,
+      [
+        {
+          type: 'repair-step',
+          ...eventAddressFor(target),
+          carPartId: subject.carPartId,
+          jobKind: kind,
+          costYen: billYen,
+        },
+      ],
+      context.economy,
+    )
   }
 
   const ticked: Job = existing

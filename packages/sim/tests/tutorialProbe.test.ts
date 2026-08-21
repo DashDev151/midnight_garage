@@ -53,10 +53,10 @@ function scriptedPartsWith(
  *
  * The build the tutorial teaches: buy the scripted lot AT RESERVE, pull the
  * wheel assembly and fit fresh stock tyres (part + hiring the wheels line for
- * the day), pull the engine assembly with machine-shop assist to repair the
- * buried head/valvetrain (one engine line hire covering the whole round trip
- * + the banded repair), refit. Everything else is already worn+, so the car
- * is roadworthy the moment those two faults are cleared.
+ * the day), then Service the buried head/valvetrain where it sits in the car,
+ * one rung, poor to worn (the banded repair alone, no hire day). Everything
+ * else is already worn+, so the car is roadworthy the moment those two faults
+ * are cleared.
  */
 describe('tutorial satisfiability probe', () => {
   const state = createInitialGameState(CONTEXT, 1)
@@ -71,12 +71,12 @@ describe('tutorial satisfiability probe', () => {
   const stockTyreYen = stockTyre.priceYen
   const wheelsHireYen = CONTEXT.economy.toolHire.feeYenByGroup.wheels
 
-  // Engine beat: pull + refit the engine assembly - one engine line hire for
-  // the day covers both operations (not two separate fees) - plus the
-  // banded repair of the buried head/valvetrain one rung, poor to worn -
-  // exactly the roadworthy bar, the taught lesson being "repair to what the
-  // job needs".
-  const engineHireYen = CONTEXT.economy.toolHire.feeYenByGroup.engine
+  // Engine beat: the buried head/valvetrain is Serviced in situ, one rung,
+  // poor to worn - exactly the roadworthy bar, the taught lesson being
+  // "repair to what the job needs". A Service on the head is two hand steps
+  // (`workbench.json`), neither of them machine work, so `forcedHireDayFor`
+  // names no line and the beat buys no hire day at all: reaching a buried slot
+  // costs energy, never yen.
   // The scripted car with its scrap tyres already discounted to the roadworthy
   // bar: the taught wheel beat BUYS a fresh stock tyre (priced above as
   // `stockTyreYen`), it never repairs the old one, so charging the rubber here
@@ -93,12 +93,13 @@ describe('tutorial satisfiability probe', () => {
 
   const partsYen = stockTyreYen
   // What actually posts to the car's own ledger - the banded repair only.
-  // The wheels/engine line hires are a running cost, the same treatment as
-  // rent, never charged to a car's ledger, so they never enter here.
+  // The wheels line hire is a running cost, the same treatment as rent, never
+  // charged to a car's ledger, so it never enters here.
   const repairYen = hvRepairYen
   // What actually leaves the player's cash: the ledger repair cost plus the
-  // two machine-line hires, spent once each for the day.
-  const totalSpendYen = reserve + partsYen + repairYen + wheelsHireYen + engineHireYen
+  // one machine-line hire the taught build cannot avoid, the wheels line for
+  // pressing her fresh tyres onto the rims.
+  const totalSpendYen = reserve + partsYen + repairYen + wheelsHireYen
 
   // The one player mistake the budget must still absorb: buying sport rubber
   // instead of the stock tyres the copy points at.
@@ -144,6 +145,14 @@ describe('tutorial satisfiability probe', () => {
     // slice of headroom over the real closed-form margin rather than pinning
     // it exactly.
     //
+    // The taught build clears about 24,700 of her 142,000: the reserve, one
+    // stock tyre, the head's banded Service, and the wheels line for the day
+    // to press her tyres on. That is the only hire it buys, because the head
+    // is Serviced where it sits and hand work costs energy rather than yen.
+    // The ceiling sits 5,275 above that closed-form margin, the same slice of
+    // headroom it has always carried, so a payout bump or a cheaper reserve
+    // still trips this before a player sees her first job pay like a flip.
+    //
     // The fearful room (knowledge-and-diagnosis.md section 4) briefly broke
     // this ceiling when it first landed - a scripted lot has no real
     // uncertainty to fear, so charging it the near-worst-case fix cost
@@ -156,7 +165,7 @@ describe('tutorial satisfiability probe', () => {
     // existed, and the designed margin holds unchanged.
     const profitYen = FOUR_WHEELS.payoutYen - totalSpendYen
     expect(profitYen).toBeGreaterThan(0)
-    expect(profitYen).toBeLessThanOrEqual(15_000)
+    expect(profitYen).toBeLessThanOrEqual(30_000)
   })
 
   it('the taught build grades roadworthy AND under the budget cap through the real mission grader', () => {

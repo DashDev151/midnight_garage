@@ -372,13 +372,25 @@ describe('TutorialOverlay', () => {
     expect(wrapper.text()).not.toContain('four fresh tyres')
     expect(wrapper.text()).not.toContain('Add to cart')
 
-    // Fresh tyres fitted -> engine beat, with {part} resolved.
+    // Fresh tyres fitted -> engine beat. The engine step teaches the in-car
+    // job: pick the head, read the three job cards, press Service, work the
+    // lit tool. It carries no sub-state gating, so all of it reads at once
+    // and {part} resolves in place.
     game.gameState = ownScriptedCarWithBands(game.gameState, { tyres: 'mint' })
     await nextTick()
+    expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 7 of 10')
     const engineText = wrapper.text()
-    expect(engineText).toContain('Now for that gasket')
-    expect(engineText).toContain('Head')
+    expect(engineText).toContain('That gasket is what will fail her inspection')
+    expect(engineText).toContain('Switch to the Engine bay view')
+    expect(engineText).toContain('Head & Valvetrain')
     expect(engineText).not.toContain('{part}')
+    expect(engineText).toContain('Press Service and the trolley rolls in')
+    expect(engineText).toContain('Tap the one that is lit')
+    // Nothing routes the player through a strip-and-bench detour any more:
+    // no blocker list, no machine hire, no bench Repair button.
+    expect(wrapper.find('[data-test="tutorial-checklist"]').exists()).toBe(false)
+    expect(engineText).not.toContain('Engine crane & stand')
+    expect(engineText).not.toContain('Remove assembly')
 
     // Head/valvetrain repaired on a whole car -> reassemble auto-completes,
     // so the machine lands on the deliver beat.
@@ -389,47 +401,6 @@ describe('TutorialOverlay', () => {
     await nextTick()
     expect(wrapper.find('[data-test="tutorial-progress"]').text()).toContain('Step 9 of 10')
     expect(wrapper.text()).toContain('press Show them the car')
-  })
-
-  it('ticks off the teardown checklist as each named component comes off, and retires it with the bench', async () => {
-    const game = useGameStore()
-    newTutorialGame(game, 15)
-    game.acknowledgeTutorialStep('welcome')
-    game.acceptMission(LOT.missionId)
-    game.gameState = scriptedCarIntoBay(ownScriptedCarWithBands(game.gameState, { tyres: 'mint' }))
-    const wrapper = render()
-    await nextTick()
-
-    expect(wrapper.text()).toContain('Now for that gasket')
-    const checklistItems = wrapper.findAll('[data-test^="tutorial-checklist-item-"]')
-    expect(checklistItems).toHaveLength(3)
-    expect(checklistItems.some((item) => item.classes().includes('is-done'))).toBe(false)
-
-    // Pulling the intake off the scripted car ticks its item alone.
-    game.gameState = {
-      ...game.gameState,
-      ownedCars: game.gameState.ownedCars.map((c) =>
-        c.id === LOT.carId ? { ...c, parts: { ...c.parts, intake: { installed: null } } } : c,
-      ),
-    }
-    await nextTick()
-    expect(wrapper.find('[data-test="tutorial-checklist-item-intake"]').classes()).toContain(
-      'is-done',
-    )
-    expect(wrapper.find('[data-test="tutorial-checklist-item-exhaust"]').classes()).not.toContain(
-      'is-done',
-    )
-
-    // Once the assembly reaches the bench the teardown line (and its
-    // checklist) retires for the crane-hire line.
-    game.gameState = {
-      ...game.gameState,
-      assemblyInventory: [
-        { id: 'bench-2', assemblyId: 'engineAssembly', members: {}, sourceCarId: LOT.carId },
-      ],
-    }
-    await nextTick()
-    expect(wrapper.find('[data-test="tutorial-checklist"]').exists()).toBe(false)
   })
 
   it('holds on the reassemble step while a part is missing, and releases once the car is whole', async () => {

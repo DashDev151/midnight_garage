@@ -39,10 +39,10 @@ export interface CashMovement {
  * likewise moves no money at the moment it fires: the tin it draws from was
  * paid for when it was bought (`consumable-bought`, which DOES move money),
  * so drawing it down a second time would double-charge the same yen.
- * `repair-step`/`repair-job-completed` are the same shape again: the job's
- * whole parts bill was already charged on its first step
- * (`chargePartsBill`, sim/repairJobs.ts), so neither event moves money of
- * its own.
+ * `repair-step` is the one that DOES move money: the job's whole parts bill
+ * is charged on the step that opens it (`chargePartsBill`,
+ * sim/repairJobs.ts), so that step carries `costYen` and every later step
+ * carries none. `repair-job-completed` closes the job and moves nothing.
  */
 export function cashMovementFor(entry: DayLogEntry): CashMovement | null {
   switch (entry.type) {
@@ -71,6 +71,18 @@ export function cashMovementFor(entry: DayLogEntry): CashMovement | null {
     case 'job-created':
       if (entry.costYen === undefined) return null
       return { bucket: 'onCars', amountYen: entry.costYen }
+    // A job-card repair's parts bill, on the step that charged it. An
+    // installed target is money spent on that car, the owner's or a
+    // customer's, exactly as `job-created` above. A loose one is money spent
+    // on a part sitting on the shelf, which is where the yen actually lands
+    // (`chargePartsBill` adds it to that instance's `pricePaidYen`), so it
+    // belongs on stock beside the price the part was bought for.
+    case 'repair-step':
+      if (entry.costYen === undefined) return null
+      return {
+        bucket: entry.carInstanceId === undefined ? 'stock' : 'onCars',
+        amountYen: entry.costYen,
+      }
 
     // Money out, on stock that is nobody's car yet.
     case 'part-bought':
@@ -120,7 +132,6 @@ export function cashMovementFor(entry: DayLogEntry): CashMovement | null {
     case 'offer-rejected':
     case 'part-delivered':
     case 'part-machined':
-    case 'repair-step':
     case 'repair-job-completed':
     case 'part-removed':
     case 'symptom-cause-eliminated':

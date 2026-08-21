@@ -250,24 +250,21 @@
   {
     "id": "engine",
     "anchorScreen": "car",
-    "anchorTestId": "part-action-panel",
+    "anchorTestId": "part-repair-panel",
     "lines": [
       {
         "speaker": "instruction",
-        "text": "Now for that gasket, and this one is proper surgery. It lives in the {part}, deep in the engine, and the engine will not come out with these three still bolted on. Click each in the Engine bay view and press Take it off; they wait safely in your inventory.",
-        "hideWhen": {
-          "kind": "assemblyOnBench",
-          "assemblyId": "engineAssembly"
-        },
-        "checklist": ["intake", "exhaust", "cooling"]
+        "text": "That gasket is what will fail her inspection. Switch to the Engine bay view and click the {part}. The panel underneath prices three jobs side by side: a Service takes her to worn, a Rebuild to fine, a Restore to mint. Read the figures before you touch anything. She only needs the first.",
+        "anchorTestId": [
+          "workshop-view-tab-engineBay",
+          "workshop-region-part-headValvetrain",
+          "part-repair-panel"
+        ]
       },
       {
         "speaker": "instruction",
-        "text": "With those three off, the engine is ready to come out, and an engine does not come out by hand. Under Machine hire, take the Engine crane & stand for the day: yours until closing, out and back in on the one hire. Then click the engine and press Remove assembly.",
-        "hideWhen": {
-          "kind": "assemblyOnBench",
-          "assemblyId": "engineAssembly"
-        }
+        "text": "Press Service and the trolley rolls in carrying exactly the tools this job wants. Tap the one that is lit, and only the one that is lit: each tap works a step, tells you what you just did, and takes its bite out of the day. Two steps and the gasket is behind us.",
+        "anchorTestId": ["car-job-service", "tool-trolley"]
       },
       {
         "speaker": "yuki",
@@ -275,16 +272,7 @@
       },
       {
         "speaker": "instruction",
-        "text": "Engine out. Click the Head on the bench and press the Repair button; one rung, poor to worn, is all her inspection asks, and the price and labour are written on it. Then press Refit assembly: the crane is already paid for today, so the way back in is free.",
-        "showWhen": {
-          "kind": "assemblyOnBench",
-          "assemblyId": "engineAssembly"
-        },
-        "anchorTestId": "bench-member-headValvetrain"
-      },
-      {
-        "speaker": "instruction",
-        "text": "The repair and the refit are where most of the labour goes, though every part you unbolt takes its own small bite; strip a car to the shell and you have spent the best part of a day on spanners alone. If the bar runs dry, press End Day for a fresh one tomorrow; just remember the crane hire only lasts the day, so finishing while it is paid for is the tidy way."
+        "text": "Look at what that first step cost against the second. The head sits buried under everything else, and reaching it is awkward work whoever is doing it, so the first step of a job done in the car pays for the reach. A part you have taken out and set on a bench never does, and that is what the benches are for: a Rebuild or a Restore wants the part off the car and over on the right one, with a better toolbox than ours."
       }
     ],
     "completion": {
@@ -297,11 +285,11 @@
   {
     "id": "reassemble",
     "anchorScreen": "car",
-    "anchorTestId": "confirm-work",
+    "anchorTestId": "part-action-panel",
     "lines": [
       {
         "speaker": "instruction",
-        "text": "Nearly home; the Intake, the Exhaust and the Cooling are still in the warehouse. Click each empty slot in the Engine bay, press Fit and pick the part you took off, then press Confirm. Putting back exactly what came off costs nothing, and she is not roadworthy until she is whole."
+        "text": "She goes back to her owner whole or not at all: every slot filled, nothing of hers left on a shelf. If anything is still in the warehouse, click its empty slot, press Fit and pick it. Putting back exactly what came off costs nothing."
       }
     ],
     "completion": {

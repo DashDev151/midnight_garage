@@ -1,8 +1,15 @@
 # Repair Refactor Lever Ledger (R1)
 
+**Status: R1 SHIPPED IN FULL, awaiting playtest validation.** Every lever below is live in
+the shipped game at the value written here, the arc closed at sprint 232, and not one figure
+moved after it landed. What is still owed is the maintainer's own play: under the
+behaviour-first amendment a value is validated by whether the felt behaviour in its row is
+what the game actually does, never by a signature on the number.
+
 Behaviour-first governance (directive 22 amendment, 2026-08-13): every lever below states
-the felt behaviour it buys; the maintainer validates by playtest. The economy guard re-pins
-ride in the same sprints that move the values (224 and 231). Values marked "unchanged"
+the felt behaviour it buys; the maintainer validates by playtest. The economy guard was
+re-pinned in the two sprints that moved a value (224 and 226); sprint 231's re-pin is a
+retirement, deletions only, with no surviving number moved. Values marked "unchanged"
 are listed so the arc's complete economic surface is in one place.
 
 ## Tool line tier 2 prices (`toolLines.json`, sprint 224)

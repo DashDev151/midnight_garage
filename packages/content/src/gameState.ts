@@ -1180,13 +1180,19 @@ export const DayLogEntrySchema = z.discriminatedUnion('type', [
    * these per car+part+kind into a single count line, the same idiom
    * `body-materials-used` already established below. `carInstanceId`/
    * `partInstanceId` mirror the job's own installed/loose target split, so
-   * exactly one of the two is present. */
+   * exactly one of the two is present.
+   *
+   * `costYen` is the job's WHOLE parts bill, carried on the one step that
+   * charges it (the step that opens the job) and absent on every step after,
+   * so a three-step job books its money once. Optional for the same reason
+   * `job-created`'s is: the step that carries no charge carries no field. */
   z.object({
     type: z.literal('repair-step'),
     carInstanceId: z.string().min(1).optional(),
     partInstanceId: z.string().min(1).optional(),
     carPartId: CarPartIdSchema,
     jobKind: RepairJobKindSchema,
+    costYen: z.number().int().nonnegative().optional(),
   }),
   /** A job-card repair's last step landed - the band write already happened
    * in the sim; this is its completion line ("Serviced the sump to worn").

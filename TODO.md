@@ -22,9 +22,7 @@ item closes.
 - [ ] **`sprint_archive/sprint191.md`, task 6** - gate sport and race zone panels on body
   level 3. Never started, lever never signed, blocks the contact-patch design.
 - [ ] **`sprint_archive/sprint193.md`** - the triage index; its open defect rows are the
-  sole record of several measured findings. Note: its section A row 4 (the repair-resume
-  band defect) is closed BY CONSTRUCTION when repair-refactor sprint 225 lands (job
-  identity includes the job kind); strike it there when that ships.
+  sole record of several measured findings.
 - [ ] **`sprint_archive/generation-arc-lever-ledger.md`** - R4, 30 levers, still awaiting
   maintainer review.
 - [ ] **`sprint_archive/sprint214.md`** - the build sheet, EXPERIMENTAL on branch
@@ -414,6 +412,78 @@ pass."
   longer exist. Neither is wired to a `package.json` script, so nothing gates on it and nothing
   went red; it will simply mislead whoever next runs the census by hand.
 
+- [ ] **THE TUTORIAL NEVER TAKES THE PLAYER TO A BENCH, so a career can run its whole length
+  without the arc's main screen being found.** Sprint 232's retrace re-authored the `engine`
+  step onto the in-car flow, and that half is right: pick the head, read the three job cards
+  priced side by side, press Service, tap the lit tool on the trolley
+  (`packages/content/data/tutorialSteps.json`, the `engine` step, anchoring
+  `part-repair-panel`, then `car-job-service` and `tool-trolley`). What went with the old
+  strip-and-bench detour is every scripted visit to a bench, and nothing replaced it.
+
+  **Measured against the shipped content, not recalled.** Across all ten steps, not one
+  `anchorTestId` names `station-open-bench-{benchId}`, `bench-candidates`,
+  `bench-send-{instanceId}`, `bench-part-{instanceId}` or `bench-job-{kind}`, and no
+  completion condition names a bench job. The `bench-member-tyres` anchor and the three
+  `benchMemberBandAtLeast` conditions that remain are the ASSEMBLY bench docked on
+  `CarDetailScreen.vue:1201` (`game.benchContainersFor`), a different surface from the three
+  repair benches on the `/bench/:benchId` route.
+
+  **So Rebuild and Restore are described and never done.** The step's closing line says what
+  the benches are for ("a Rebuild or a Restore wants the part off the car and over on the
+  right one, with a better toolbox than ours") and the walkthrough then ends. A player who
+  follows it and afterwards works from the car screen alone never opens `BenchScreen.vue`,
+  never lays a part out, and never sees a shadow board, which is the screen sprint 232's own
+  thirteen-step walkthrough treats as the heart of the loop. The two jobs that need it are
+  also the two that make money.
+
+  **Why it was not just extended, and what the decision is.** A bench beat costs the player a
+  removal, a carry, a bench visit and at least two more steps on a walkthrough that is
+  already ten steps long, it needs a part on the scripted Wagon R worth rebuilding rather
+  than servicing, and it re-derives `tutorialProbe.test.ts`'s economics pins. That is a
+  tutorial-design question (how long is too long, and does the walkthrough teach the bench at
+  all or does a later prompt) rather than a line of copy. Decide that first, then author it.
+
+- [ ] **`TutorialOverlay`'s checklist renderer has no shipped consumer.** The live teardown
+  checklist (one row per `carPartId` under a tutorial line, each ticking as that slot empties)
+  was built for the old strip-the-engine beat. Sprint 232's retrace removed the last
+  `checklist` array from `packages/content/data/tutorialSteps.json` and no other step carries
+  one, so the machinery now renders nothing: the optional field on `TutorialLineSchema`
+  (`packages/content/src/tutorial.ts:121-126`), the `isChecklistItemDone` predicate
+  (`TutorialOverlay.vue:275`), the `v-if="line.checklist"` block and its two data-tests
+  (`:468-478`), and the `.tutorial-checklist` rules (`:625-659`). The test that exercised it
+  was deleted with the beat, and `TutorialOverlay.test.ts:391` now asserts the checklist is
+  ABSENT on the engine step, so nothing anywhere mounts it.
+
+  **Not a defect, and deliberately not swept in the same change as the copy.** A ticking
+  checklist is exactly the affordance a bench beat would want if the entry above is answered
+  by teaching the bench ("carry these three over"), so this is a keep-or-cut decision rather
+  than tidying. Cut it and a later tutorial sprint rebuilds it from scratch; keep it and it is
+  untested code on a player-facing screen.
+
+- [ ] **THE SHADOW BOARD AND THE TOOL TROLLEY ARE CSS STAND-INS: the spec's art pass is
+  owed and was never scoped into the arc.** `repair-refactor-spec.md` section 7.1 describes a
+  board of "painted tool outlines" with owned tools hanging on them, 7.2 has each step "play a
+  short animation on the part", and 7.3 has the trolley "roll in beside the car" with its
+  tools' board outlines sitting empty while it is out. Sprints 229 and 230 shipped the
+  mechanic in full and the presentation in text: `ShadowBoard.vue` draws a five-column grid of
+  116px by 40px bordered chips carrying each tool's NAME, with every state read off border and
+  colour (solid owned, dashed for an empty hook, yen-edged for a hire, a separate strip for
+  the room), and `ToolTrolley.vue` is the same chip row plus a glow, a 200 ms shake and a
+  "make do" stand-in. There is no tool art in the repo and no animation beyond those CSS
+  transitions.
+
+  **That order was correct and this is not a defect.** The board is a fixed layout whose
+  states only restyle a chip in place, so a chip becomes a painted outline without anything
+  moving; and every state currently reads by border and colour as well as by name, which is
+  what `prefers-reduced-motion` (`ShadowBoard.vue:339`, `ToolTrolley.vue:267`) and the
+  accessibility suite need it to keep doing when art arrives.
+
+  **What is owed:** a silhouette per tool for **87 distinct tools** across the three boards
+  (`workbench.json`; the spec's 7.5 tables are the authored list), the hanging-versus-empty
+  treatment, the rental tag, and the per-step animation. Blocked on commissioned art like
+  every other sprite, so it belongs with the art pass rather than with a UI sprint, and the
+  art-direction bible's no-AI-assets rule applies to all 87.
+
 - [ ] **MILEAGE IS INERT BELOW 60,000 KM, and that was accepted knowingly as a quick fix
   (maintainer, 2026-08-07).** Their words: *"We implement this fix. We note it in TODO to be fixed
   better later. This is a quick and dirty, but implement it."*
@@ -631,6 +701,17 @@ pass."
   **Craft operations remain additive on top of whatever band the tools reached** (sprint 180), so
   they never substitute for a tier.
 
+  **The reach half is now fixed for parts repair, by the repair refactor arc, and the entry's
+  headline is stale to that extent.** `economy.repairJobs` gives Service `worn` at tool tier 1,
+  Rebuild `fine` at tier 2 and Restore `mint` at tier 3, so on the 23 bench-repaired parts the
+  reach ladder is `1 < 2 < 3` and mint work sits behind owning the covering shop. The two
+  stale figures above: `repairBandCeilingByTier` is still literally `{1: "fine", 2: "mint",
+  3: "mint"}` in `economy.json`, but it now governs only the surviving body-carrier band path
+  (see the D-R1 entry under Open engineering), and `energyPerBandStepByToolTier` is `{1: 4,
+  2: 3, 3: 2}` rather than the 5 / 4 / 3 written here. **What is still open is the whole
+  capability half**: stocking tier 3 with the non-standard work the maintainer's answer names,
+  and the general capability gate below.
+
   **Designed in full: `docs/design/systems/tier-three-unlocks.md`.** Tier 3 stops claiming reach
   and claims capability, the tool lines already name their own unlocks, and the one thing that must
   be built first is a general capability gate (there is none today: `requiredTags` gates on the CAR's
@@ -697,6 +778,26 @@ pass."
   showing about a tenth of it. The fix is a session-scoped per-day log the store appends to and
   `endDay` reads, NOT a change to `advanceDay`'s contract, and it is unverified in play.
 
+- [ ] **A worked repair step writes no day-log line, so the event log drawer never mentions the
+  arc's main mechanic.** `runRepairStep` (`packages/game/src/stores/gameStore.ts:3286`) loops
+  `resolveRepairStep`'s events through `logSessionEvent` and never calls `pushDayLog`, so the
+  `repair-step` and `repair-job-completed` `DayLogEntry` variants have no producer at all. The
+  formatter for both is written and tested (`dayLogFormat.ts:267`, `:269`, with the per
+  car+part+kind fold at `:497`), and `resolveRepairStep`'s own doc comment records the deferral:
+  the day log lines were left until the screens landed, and the screens landed.
+
+  **The money half is NOT part of this.** The week's cost sheet books the parts bill in the sim
+  (`resolveRepairStep` hands a `repair-step` entry with `costYen` straight to
+  `bookCashMovements`), so the till and the sheet already agree to the yen. What is missing is the
+  reader's line, on the event log drawer and, once the entry above is fixed, on the morning
+  report.
+
+  **One copy ruling is owed before it can be wired**, which is why it was not just done: an
+  installed target renders its raw instance id, so the real line reads `Intake,
+  car-lot-12-local-yard-3: 2 steps of the service`. That is the shipped idiom for `car-sold`,
+  `car-moved` and `Body shop materials`, so it is at least consistent, but it reads worse here
+  because the rest of the line is good prose.
+
 - [ ] **OPEN QUESTION the maintainer already flagged: the shipped auction cadence may have too
   few overlaps, and the early game feels it hardest (raised 2026-07-31, ruled "ships as tabled
   for now").** With the signed table, a day-1 player has only `local-yard` unlocked, and it sits
@@ -731,15 +832,21 @@ pass."
   again is *"an incentive to plan work properly to get it done in a day, otherwise pay extra"*.
   Recorded here so it is not re-reported as a bug.
 
-  **What is genuinely open is whether the work resumes.** A job whose machinery is not hired stays
-  in `state.jobs` with `blockedReason: 'machine-line'` (`packages/sim/src/jobs.ts`). The day report
-  now says so in plain words (Sprint 191 mapped all twelve `job-blocked` reasons to sentences in
-  `dayLogFormat.ts`; this one reads "Work stopped: the machinery for that line is neither owned nor
-  hired today"), so the player is told.
+  **The open half is CLOSED by the repair refactor arc, and the mechanism this entry described
+  no longer exists.** The question was whether a job blocked on unhired machinery resumes the
+  next day or is wedged. It resumes, and it is not blocked in the first place: a repair job now
+  holds a `stepsDone` counter and its ticked steps persist across days and hire lapses, and a
+  tier 2 step whose line is neither owned nor hired routes to `slog` at
+  `toolHire.slogMultiplier` energy rather than stopping (`resolveRepairStep` /
+  `availabilityFor`, `packages/sim/src/repairJobs.ts`; proved by `repairJobRoutes.test.ts`,
+  the interruption case that spans a day with the hire lapsing and moves the band only on the
+  last step). The `blockedReason` union is now `'slot-occupied' | null` (`jobs.ts:211`) and
+  nothing in `packages/sim/src` emits `'machine-line'` at all: it survives only as an unused
+  member of the `job-blocked` reason enum in `content/gameState.ts:885` with its sentence still
+  mapped in `dayLogFormat.ts:147`, both of which a later sweep can take.
 
-  **UNVERIFIED, because nobody has checked it: whether the job resumes if the machinery is hired
-  again the next day, or whether it is wedged.** That answer decides whether this is a copy
-  problem or a mechanic problem, and it should be established before anything is designed.
+  **The maintainer's ruling above still stands and is why this entry is kept**: the overnight
+  expiry is intended pacing, not a bug, and should not be re-reported as one.
 
 - [ ] **`sale-value-system.md` §4 states `relistRecovery` as a fraction of "fresh", which does not
   survive contact with the counter it describes (found 2026-07-31, Sprint 147).** Fresh is
