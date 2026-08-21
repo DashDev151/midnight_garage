@@ -76,6 +76,17 @@ now owns both.
 Not single tasks - revisit when related work comes up, don't treat either as resolved by "checks
 pass."
 
+- [ ] **THE TUTORIAL GETS A COMPLETE REWRITE, AND NO TUTORIAL WORK HAPPENS UNTIL THE UNDERLYING
+  SYSTEMS ARE DECIDED (maintainer ruling, restated 2026-08-21).** This governs every tutorial
+  entry below: the bench-discovery gap, the orphaned checklist renderer, the scruffy-car copy
+  pass, all of it. Do not author tutorial steps, do not restructure the walkthrough, and do not
+  treat any of those entries as a work order. They are a list for whoever writes the rewrite,
+  once the systems underneath it are settled. The one exception is REPAIR: when a change breaks
+  the tutorial (a step anchoring at a deleted control, or teaching a button that no longer
+  exists), fix that step so it is not broken, keep the fix minimal, and record it. That is what
+  the repair refactor's sprint 232 did to the `engine` step, and it is the whole of what is
+  permitted without the rewrite.
+
 - [ ] **All story missions are to be scrapped and redesigned (maintainer ruling, 2026-08-14).**
   The maintainer owns that redesign. Until it happens, treat nothing in `storyMissions.json` as
   settled design: no polishing, no rebalancing, no extending the ladder. `the-quiet-crate`
