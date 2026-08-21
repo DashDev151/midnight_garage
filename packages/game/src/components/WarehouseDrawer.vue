@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+  BenchIdSchema,
   ConditionBandSchema,
   fitmentClassForTier,
   titleCaseFromSlug,
@@ -130,11 +131,27 @@ function matchesQuery(entry: StageablePartView, needle: string): boolean {
   return haystack.includes(needle)
 }
 
+/** Every part instance currently laid out on a bench, gathered across all
+ * three - a part on a bench is shown on the bench surface instead, not here,
+ * the same "elsewhere, not in storage" reason an installed or sold part is
+ * absent from `pickableParts` to begin with. Read off each bench's own
+ * surface list via `benchView` rather than a second bench-membership rule. */
+const benchHeldPartIds = computed(() => {
+  const held = new Set<string>()
+  for (const benchId of BenchIdSchema.options) {
+    for (const surfacePart of game.benchView(benchId)?.surface ?? []) {
+      held.add(surfacePart.instanceId)
+    }
+  }
+  return held
+})
+
 const browseEntries = computed(() => {
   const needle = query.value.trim().toLowerCase()
   // Newest first is the resting order: partInventory appends, so the part
   // just bought or just pulled off a car surfaces at the top of the sheet.
   let entries = [...game.pickableParts].reverse()
+  entries = entries.filter((entry) => !benchHeldPartIds.value.has(entry.instance.id))
   if (sectionFilter.value !== 'all') {
     entries = entries.filter(
       (entry) => game.groupForCarPart(entry.part.carPartId) === sectionFilter.value,
@@ -376,15 +393,28 @@ const countLabel = computed(() => `${entries.value.length}/${game.pickableParts.
         No parts on hand - visit the <RouterLink :to="{ name: 'parts' }">parts market</RouterLink>.
       </p>
       <ul v-else class="parts-list">
-        <PartCard
-          v-for="entry in entries"
-          :key="entry.instance.id"
-          :instance="entry.instance"
-          :part="entry.part"
-          :fits="entry.fits"
-          :no-fit-reason="entry.noFitReason"
-          @select="onSelect"
-        />
+        <template v-for="entry in entries" :key="entry.instance.id">
+          <PartCard
+            :instance="entry.instance"
+            :part="entry.part"
+            :fits="entry.fits"
+            :no-fit-reason="entry.noFitReason"
+            @select="onSelect"
+          />
+          <li
+            v-if="!fit && game.warehouseBenchTargets(entry.instance.id) !== null"
+            class="bench-send-row"
+          >
+            <button
+              type="button"
+              class="bench-send"
+              :data-test="'bench-send-' + entry.instance.id"
+              @click="game.placeOnBench(entry.instance.id)"
+            >
+              To the bench
+            </button>
+          </li>
+        </template>
       </ul>
     </aside>
   </div>
@@ -650,5 +680,23 @@ const countLabel = computed(() => `${entries.value.length}/${game.pickableParts.
   display: grid;
   gap: var(--mg-space-2);
   align-content: start;
+}
+
+.bench-send-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.bench-send {
+  flex: none;
+  background: transparent;
+  border: var(--mg-border);
+  border-radius: var(--mg-radius);
+  border-color: var(--mg-neon-cyan);
+  color: var(--mg-neon-cyan);
+  font: inherit;
+  font-size: var(--mg-fs-sm);
+  padding: var(--mg-space-1) var(--mg-space-2);
+  cursor: pointer;
 }
 </style>

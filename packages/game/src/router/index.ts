@@ -91,6 +91,14 @@ export const router = createRouter({
       component: () => import('../screens/BodyShopScreen.vue'),
     },
     {
+      // One route for all three benches. The param is checked against the
+      // bench ids the content carries, and anything else lands back in the
+      // garage rather than on an empty screen.
+      path: '/bench/:benchId',
+      name: 'bench',
+      component: () => import('../screens/BenchScreen.vue'),
+    },
+    {
       path: '/auctions',
       name: 'auctions',
       component: () => import('../screens/AuctionScreen.vue'),

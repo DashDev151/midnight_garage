@@ -69,7 +69,14 @@ import {
   resolveSellPart,
   resolveTakeFromStation,
 } from './parts'
-import { resolveBuyLift, resolveHireLift, resolveRepairStep, type RepairTarget } from './repairJobs'
+import {
+  resolveBuyLift,
+  resolveHireLift,
+  resolvePlaceOnBench,
+  resolveRepairStep,
+  resolveTakeOffBench,
+  type RepairTarget,
+} from './repairJobs'
 import { resolveAcceptSceneCommission, resolveDeliverSceneCommission } from './sceneCommissions'
 import { resolveDismissStaff, resolveHireStaff, resolveReassignStaff } from './staff'
 import {
@@ -95,8 +102,8 @@ function remainingLabor(state: GameState, context: SimContext): number {
 /** One event's effect: the state it leaves behind, and whatever day-log
  * entries it produced (empty for an event that moves no logged fact - a
  * refused action, or one of the handful of actions that were never logged
- * to begin with, `runDiagnosticTest`/`resolveSendInspector`/the two station
- * moves). */
+ * to begin with, `runDiagnosticTest`/`resolveSendInspector`/the station and
+ * bench moves). */
 interface EventEffect {
   state: GameState
   log: readonly DayLogEntry[]
@@ -171,6 +178,15 @@ function applySessionEvent(
       const { station } = event.payload
       if (partIdOnStation(state, station) === null) return { state, log: [] }
       return { state: resolveTakeFromStation(state, station), log: [] }
+    }
+    case 'placeOnBench': {
+      // Both bench moves refuse as silent no-ops that hand back the state they
+      // were given, so replay needs no gate check of its own - unlike the two
+      // station cases above, whose resolvers assume an already-legal move.
+      return { state: resolvePlaceOnBench(state, event.payload.partInstanceId, context), log: [] }
+    }
+    case 'takeOffBench': {
+      return { state: resolveTakeOffBench(state, event.payload.partInstanceId), log: [] }
     }
     case 'beginInspectionVisit': {
       const result = beginInspectionVisit(state, event.payload.tier, context)

@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import type { WorkStation } from '@midnight-garage/sim'
+import { WORKBENCH } from '@midnight-garage/content'
 import { computed, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import HelpHint from '../components/HelpHint.vue'
 import MachineShopPanel from '../components/MachineShopPanel.vue'
 import ShopSlot from '../components/ShopSlot.vue'
-import WorkbenchPanel from '../components/WorkbenchPanel.vue'
 import { useDragSession, useDropZone } from '../composables/useDragAndDrop'
 import { useGameStore, type ShopCarView } from '../stores/gameStore'
 import { formatYen } from '../utils/formatYen'
@@ -16,20 +15,17 @@ const route = useRoute()
 
 /**
  * The work stations live on this screen: the garage is one building, and the
- * bench and the machine are things standing in it, not rooms behind a
- * second screen. Clicking one of those two opens its panel in place; the
- * workbench and machine panels are the full station views
- * (`WorkbenchPanel.vue` / `MachineShopPanel.vue`). Body and paint is
- * different (sprint208.md): it is a real second room, so its tile is a
- * plain door to `body-shop` rather than a third togglable panel here.
+ * machine is a thing standing in it rather than a room behind a second
+ * screen. Clicking it opens `MachineShopPanel.vue` in place. The three
+ * benches and the body shop are different: each is a real room, so its tile
+ * is a plain door to its own route rather than a panel that opens here.
  */
-type StationId = 'workbench' | 'machine'
+type StationId = 'machine'
 
-/** The station another screen asked to land on (`open=workbench|machine`), so
- * a door elsewhere in the app can open the right panel here directly. */
+/** The station another screen asked to land on (`open=machine`), so a door
+ * elsewhere in the app can open the panel here directly. */
 function stationFromQuery(): StationId | null {
-  const open = route.query.open
-  return open === 'workbench' || open === 'machine' ? open : null
+  return route.query.open === 'machine' ? 'machine' : null
 }
 
 const openStation = ref<StationId | null>(stationFromQuery())
@@ -46,37 +42,24 @@ function toggleStation(station: StationId): void {
   openStation.value = openStation.value === station ? null : station
 }
 
-/** Carries a dropped part to `station` and opens its panel, so a part placed
- * from the closed card is placed exactly where the player can see it land -
- * the same move `WorkStationTray`'s own drop zone makes once the panel is
- * already open. */
-function dropOnStationCard(station: WorkStation, partInstanceId: string): void {
-  if (game.placeOnStation(station, partInstanceId)) openStation.value = station
+/** Carries a dropped part to the machine shop and opens its panel, so a part
+ * placed from the closed card is placed exactly where the player can see it
+ * land. */
+function dropOnMachineCard(partInstanceId: string): void {
+  if (game.placeOnStation('machine', partInstanceId)) openStation.value = 'machine'
 }
 
-const workbenchCardDrop = useDropZone<string>(
-  (partInstanceId) =>
-    game.partsForStation('workbench').some((entry) => entry.instance.id === partInstanceId),
-  (partInstanceId) => dropOnStationCard('workbench', partInstanceId),
-)
 const machineCardDrop = useDropZone<string>(
   (partInstanceId) =>
     game.partsForStation('machine').some((entry) => entry.instance.id === partInstanceId),
-  (partInstanceId) => dropOnStationCard('machine', partInstanceId),
+  (partInstanceId) => dropOnMachineCard(partInstanceId),
 )
 
 /** Whether any machining bench actually stands in the machine shop - absent
  * machinery reads as derelict, never as a shut door. */
 const machineShopEquipped = computed(() => machineShopHasMachinery(game.gameState, game.context))
 
-const benchHeld = computed(() => game.stationPart('workbench'))
 const machineHeld = computed(() => game.stationPart('machine'))
-
-const workbenchStatus = computed(() =>
-  benchHeld.value
-    ? `${game.carPartLabel(benchHeld.value.part.carPartId)}, ${benchHeld.value.instance.band}`
-    : 'empty',
-)
 
 const machineStatus = computed(() => {
   if (!machineShopEquipped.value) return 'derelict'
@@ -240,35 +223,17 @@ const draggedPartLabel = computed(() => {
           </HelpHint>
         </h3>
         <ul class="station-list">
-          <li
-            class="station-slot"
-            :class="{ 'active-target': workbenchCardDrop.isActiveTarget.value }"
-            data-test="station-slot-workbench"
-            @pointerup="workbenchCardDrop.onPointerUp"
-            @pointerenter="workbenchCardDrop.onPointerEnter"
-            @pointerleave="workbenchCardDrop.onPointerLeave"
-          >
-            <button
-              type="button"
+          <!-- One door per bench: a bench is a real place with its own board
+               of tools, so its tile routes there rather than opening a panel
+               on this screen. -->
+          <li v-for="bench in WORKBENCH.benches" :key="bench.id">
+            <RouterLink
+              :to="{ name: 'bench', params: { benchId: bench.id } }"
               class="station"
-              :class="{ active: openStation === 'workbench' }"
-              data-test="station-open-workbench"
-              @click="toggleStation('workbench')"
+              :data-test="'station-open-bench-' + bench.id"
             >
-              <span class="station-name">Workbench</span>
-              <span class="station-status" data-test="station-status-workbench">{{
-                workbenchStatus
-              }}</span>
-            </button>
-            <button
-              v-if="workbenchCardDrop.isActiveTarget.value"
-              type="button"
-              class="station-place"
-              data-test="station-place-card-workbench"
-              @click="workbenchCardDrop.onClick"
-            >
-              Place here
-            </button>
+              <span class="station-name">{{ bench.displayName }}</span>
+            </RouterLink>
           </li>
           <li
             class="station-slot"
@@ -313,8 +278,7 @@ const draggedPartLabel = computed(() => {
         </ul>
 
         <div v-if="openStation" class="station-panel" data-test="station-panel">
-          <WorkbenchPanel v-if="openStation === 'workbench'" />
-          <MachineShopPanel v-else />
+          <MachineShopPanel />
         </div>
       </section>
     </div>

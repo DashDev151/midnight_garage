@@ -108,6 +108,82 @@ describe('WarehouseDrawer', () => {
     })
   })
 
+  describe('sending a part to the bench', () => {
+    it('shows "To the bench" for a repairable part, and clicking it carries the part to its bench and drops it from the browse list', async () => {
+      const game = useGameStore()
+      const ui = useUiStore()
+      const damper = PARTS.find((p) => p.carPartId === 'dampers' && p.grade !== 'stock')!
+      game.devGrantPart(damper.id)
+      const instanceId = game.gameState.partInventory[0]!.id
+
+      const wrapper = mountDrawer()
+      ui.openWarehouse()
+      await wrapper.vm.$nextTick()
+
+      const button = wrapper.get(`[data-test="bench-send-${instanceId}"]`)
+      expect(button.text()).toBe('To the bench')
+      expect(game.warehouseBenchTargets(instanceId)).toBe('chassis-bench')
+
+      await button.trigger('click')
+      await wrapper.vm.$nextTick()
+
+      expect(
+        game.benchView('chassis-bench')?.surface.some((p) => p.instanceId === instanceId),
+      ).toBe(true)
+      expect(wrapper.find(`[data-test="part-card-${instanceId}"]`).exists()).toBe(false)
+      expect(wrapper.find(`[data-test="bench-send-${instanceId}"]`).exists()).toBe(false)
+    })
+
+    it('never offers "To the bench" for a body-pipeline carrier part (bodywork/paint are the body shop\'s own work, not the bench\'s)', async () => {
+      const game = useGameStore()
+      const ui = useUiStore()
+      const bonnet = PARTS.find((p) => p.carPartId === 'bodywork' && p.grade !== 'stock')!
+      game.devGrantPart(bonnet.id)
+      const instanceId = game.gameState.partInventory[0]!.id
+
+      const wrapper = mountDrawer()
+      ui.openWarehouse()
+      await wrapper.vm.$nextTick()
+
+      expect(game.warehouseBenchTargets(instanceId)).toBeNull()
+      expect(wrapper.find(`[data-test="part-card-${instanceId}"]`).exists()).toBe(true)
+      expect(wrapper.find(`[data-test="bench-send-${instanceId}"]`).exists()).toBe(false)
+    })
+
+    it('never offers "To the bench" for a non-repairable, replace-only part (a clutch, at any band)', async () => {
+      const game = useGameStore()
+      const ui = useUiStore()
+      const clutch = PARTS.find((p) => p.carPartId === 'clutch' && p.grade !== 'stock')!
+      game.devGrantPart(clutch.id)
+      const instanceId = game.gameState.partInventory[0]!.id
+
+      const wrapper = mountDrawer()
+      ui.openWarehouse()
+      await wrapper.vm.$nextTick()
+
+      expect(game.warehouseBenchTargets(instanceId)).toBeNull()
+      expect(wrapper.find(`[data-test="part-card-${instanceId}"]`).exists()).toBe(true)
+      expect(wrapper.find(`[data-test="bench-send-${instanceId}"]`).exists()).toBe(false)
+    })
+
+    it('excludes a part already on a bench from the browse list entirely, not just its button', async () => {
+      const game = useGameStore()
+      const ui = useUiStore()
+      const damper = PARTS.find((p) => p.carPartId === 'dampers' && p.grade !== 'stock')!
+      game.devGrantPart(damper.id)
+      const instanceId = game.gameState.partInventory[0]!.id
+      expect(game.placeOnBench(instanceId)).toBe(true)
+
+      const wrapper = mountDrawer()
+      ui.openWarehouse()
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.find(`[data-test="part-card-${instanceId}"]`).exists()).toBe(false)
+      expect(wrapper.find(`[data-test="bench-send-${instanceId}"]`).exists()).toBe(false)
+      expect(wrapper.get('[data-test="warehouse-empty"]').text()).toContain('No parts on hand')
+    })
+  })
+
   describe('fit mode (opened by a Fit control)', () => {
     it('shows only parts addressed to the fit slot; an occupied slot flags every entry as not-fitting', async () => {
       const game = useGameStore()

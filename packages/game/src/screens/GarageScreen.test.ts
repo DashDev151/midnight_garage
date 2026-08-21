@@ -1,4 +1,10 @@
-import { CARS, PARTS, type ConditionBand, type PartInstance } from '@midnight-garage/content'
+import {
+  CARS,
+  PARTS,
+  WORKBENCH,
+  type ConditionBand,
+  type PartInstance,
+} from '@midnight-garage/content'
 import { makeMarketOrigin } from '@midnight-garage/sim'
 import { mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
@@ -333,12 +339,12 @@ describe('GarageScreen', () => {
   })
 
   describe('the garage reads as pairs (sprint211.md task F: layout/grouping only)', () => {
-    it('groups service bays with the workbench and machine shop in one cluster', () => {
+    it('groups service bays with the benches and machine shop in one cluster', () => {
       const wrapper = mountScreen()
       const general = wrapper.get('[data-test="cluster-general"]')
 
       expect(general.find('[data-test="service-slot-0"]').exists()).toBe(true)
-      expect(general.find('[data-test="station-open-workbench"]').exists()).toBe(true)
+      expect(general.find('[data-test="station-open-bench-engine-bench"]').exists()).toBe(true)
       expect(general.find('[data-test="station-open-machine"]').exists()).toBe(true)
       expect(general.find('[data-test="station-open-body-paint"]').exists()).toBe(false)
     })
@@ -349,33 +355,16 @@ describe('GarageScreen', () => {
 
       expect(body.find('[data-test="body-bay-slot"]').exists()).toBe(true)
       expect(body.find('[data-test="station-open-body-paint"]').exists()).toBe(true)
-      expect(body.find('[data-test="station-open-workbench"]').exists()).toBe(false)
+      expect(body.find('[data-test="station-open-bench-engine-bench"]').exists()).toBe(false)
       expect(body.find('[data-test="service-slot-0"]').exists()).toBe(false)
     })
   })
 
   describe('work stations (the garage is one building)', () => {
-    /** Puts one loose part in the warehouse and on the bench, at `band`. */
-    function partOnBench(game: ReturnType<typeof useGameStore>, band: PartInstance['band']) {
-      const part = PARTS.find((p) => p.carPartId === 'dampers')!
-      const instance: PartInstance = {
-        id: 'pi-bench-dampers',
-        partId: part.id,
-        band,
-        origin: makeMarketOrigin(1),
-      }
-      game.gameState = {
-        ...game.gameState,
-        partInventory: [...game.gameState.partInventory, instance],
-        workbenchPartId: instance.id,
-      }
-    }
-
-    it('lists the three stations with live status: empty bench, derelict machine shop, empty body bay on a fresh game', () => {
+    it('lists the machine shop and body bay status on a fresh game', () => {
       const game = useGameStore()
       game.newGame(1)
       const wrapper = mountScreen()
-      expect(wrapper.get('[data-test="station-status-workbench"]').text()).toBe('empty')
       expect(wrapper.get('[data-test="station-status-machine"]').text()).toBe('derelict')
       // The body and paint tile has no derelict reading any more
       // (sprint208.md): the stick welder stands in the room from day one, so
@@ -383,28 +372,27 @@ describe('GarageScreen', () => {
       expect(wrapper.get('[data-test="station-status-body-paint"]').text()).toBe('empty')
     })
 
-    it('names the part on the bench and its band in the workbench status', () => {
-      const game = useGameStore()
-      game.newGame(1)
-      partOnBench(game, 'worn')
+    // A bench is a room of its own, not a panel that opens here: each of the
+    // three tiles is a plain door to the bench route, the same idiom the body
+    // shop and office tiles use.
+    it('the three bench tiles are plain doors to their own bench route', () => {
       const wrapper = mountScreen()
-      const status = wrapper.get('[data-test="station-status-workbench"]').text()
-      expect(status).toContain(game.carPartLabel('dampers'))
-      expect(status).toContain('worn')
+      for (const bench of WORKBENCH.benches) {
+        const link = wrapper
+          .findAllComponents(RouterLinkStub)
+          .find((c) => c.attributes('data-test') === `station-open-bench-${bench.id}`)
+        expect(link, bench.id).toBeDefined()
+        expect(link!.props('to')).toEqual({ name: 'bench', params: { benchId: bench.id } })
+        expect(link!.text()).toContain(bench.displayName)
+      }
     })
 
-    it('clicking the workbench opens the bench panel in place, and clicking again closes it', async () => {
-      const game = useGameStore()
-      game.newGame(1)
+    it('the old single workbench tile no longer exists - three bench doors replaced it', () => {
       const wrapper = mountScreen()
+      expect(wrapper.find('[data-test="station-open-workbench"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="station-status-workbench"]').exists()).toBe(false)
       expect(wrapper.find('[data-test="workbench-panel"]').exists()).toBe(false)
-
-      await wrapper.get('[data-test="station-open-workbench"]').trigger('click')
-      expect(wrapper.find('[data-test="workbench-panel"]').exists()).toBe(true)
-      expect(wrapper.find('[data-test="station-tray-workbench"]').exists()).toBe(true)
-
-      await wrapper.get('[data-test="station-open-workbench"]').trigger('click')
-      expect(wrapper.find('[data-test="workbench-panel"]').exists()).toBe(false)
+      expect(wrapper.text()).not.toContain('Workbench')
     })
 
     it('clicking the machine shop opens the machine panel in place, machinery list and all', async () => {
@@ -558,7 +546,7 @@ describe('GarageScreen', () => {
    * panel is open, applied one level up.
    */
   describe('dragging a part onto a station card', () => {
-    it('dragging a warehouse part onto the workbench card places it there and opens the panel', async () => {
+    it('dragging a warehouse part onto the machine card places it there and opens the panel', async () => {
       const game = useGameStore()
       const partInstanceId = loosePart(game, 'worn')
       const wrapper = mountScreen()
@@ -566,13 +554,11 @@ describe('GarageScreen', () => {
       const draggable = useDraggable(() => partInstanceId)
       draggable.onPointerDown(pointerEvent())
       draggable.onPointerMove(pointerEvent({ clientX: 40 }))
-      await wrapper
-        .get('[data-test="station-slot-workbench"]')
-        .trigger('pointerup', { pointerId: 1 })
+      await wrapper.get('[data-test="station-slot-machine"]').trigger('pointerup', { pointerId: 1 })
       await wrapper.vm.$nextTick()
 
-      expect(game.gameState.workbenchPartId).toBe(partInstanceId)
-      expect(wrapper.find('[data-test="workbench-panel"]').exists()).toBe(true)
+      expect(game.gameState.machinePartId).toBe(partInstanceId)
+      expect(wrapper.find('[data-test="machine-shop-panel"]').exists()).toBe(true)
     })
 
     it('picking a warehouse part and clicking "Place here" on the machine card places it there', async () => {

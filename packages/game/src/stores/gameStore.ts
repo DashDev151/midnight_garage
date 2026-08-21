@@ -1,5 +1,6 @@
 import {
   BUYERS,
+  BenchZoneSchema,
   BuyerArchetypeSchema,
   CARS,
   COMPONENT_DISPLAY_NAMES,
@@ -12,12 +13,16 @@ import {
   SERVICE_JOB_TYPES,
   SubsystemSchema,
   TOOL_LINES,
+  WORKBENCH,
 } from '@midnight-garage/content'
 import type {
   AssemblyId,
   AuctionLot,
   AuctionTier,
   BayKind,
+  BenchId,
+  BenchTool,
+  BenchZone,
   Buyer,
   BuyerArchetype,
   CarInstance,
@@ -39,6 +44,7 @@ import type {
   PartFitmentClass,
   PartInstance,
   PipelineStageId,
+  RepairJobKind,
   ReputationTier,
   RequirementSpec,
   SceneStandingStage,
@@ -77,6 +83,9 @@ import {
   energyMax,
   advanceDay,
   bandIndex,
+  benchForGroup,
+  benchHoldingPart,
+  benchPartIds,
   benchedMemberWithTrait,
   beginInspectionVisit as beginInspectionVisitCore,
   canRepair,
@@ -153,6 +162,7 @@ import {
   marketValueYen,
   moveCarToSlot as moveCarToSlotCore,
   ownsMachineForGroup,
+  ownsToolShopForGroup,
   removeAssemblyLaborSlotsFor,
   removeBlockReason,
   replacesOccupiedSlot,
@@ -180,6 +190,7 @@ import {
   reconditionGateReason,
   reconditionQuote,
   repairCeilingForLevel,
+  repairJobCards,
   expressPriceYen,
   fullyVerifiedCar,
   isSlotVerified,
@@ -208,8 +219,11 @@ import {
   resolvePipelineRemovePanelAction,
   resolvePipelineResprayAction,
   resolvePipelineStageAction,
+  resolvePlaceOnBench,
   resolvePlaceOnStation,
+  resolveRepairStep,
   resolveTakeFromStation,
+  resolveTakeOffBench,
   resolveOwnedWorkup as resolveOwnedWorkupCore,
   resolveReconditionLabor,
   resolveRefitAssembly,
@@ -272,10 +286,14 @@ import {
   type MissionGradeReport,
   type NewJobSpec,
   type OwnedWorkupGateReason,
+  type RepairJobCard,
+  type RepairStepOutcome,
+  type RepairTarget,
   type SendInspectorGateReason,
   type ServiceJobOutcome,
   type SimContext,
   type ToolRequirement,
+  type ToolTierOnBench,
   type TurnoutBand,
   type WorkshopTestGateReason,
   type ValueLedger,
@@ -655,6 +673,58 @@ export interface BenchContainerView {
   assemblyId: AssemblyId
   displayName: string
   members: BenchMemberView[]
+}
+
+/**
+ * One tool hanging (or not hanging) on a bench's shadow board: its own id and
+ * name, the shelf it belongs to, and what the shop has done about it.
+ */
+export interface BenchToolView {
+  id: string
+  label: string
+  tier: ToolTierOnBench
+  /**
+   * `owned` once a line this bench serves reaches the tool's tier, `hired`
+   * while it rides one of those lines' day hire, `room` for a shop tool with
+   * the covering room bought, `outline` for a painted shadow with nothing on
+   * it.
+   */
+  state: 'owned' | 'outline' | 'hired' | 'room'
+}
+
+/** One of a bench's five work zones, with its tools in content order: tier 1,
+ * then tier 2, then the room's. */
+export interface BenchZoneView {
+  zone: BenchZone
+  tools: BenchToolView[]
+}
+
+/** One part laid out on a bench's surface, with the three job cards it offers
+ * (`repairJobCards`, sim) exactly as the sim priced them. */
+export interface BenchSurfacePartView {
+  instanceId: string
+  partId: string
+  label: string
+  band: ConditionBand
+  cards: RepairJobCard[]
+}
+
+/**
+ * Everything one bench screen renders: the bench's own name, its board, its
+ * surface, and whether the room behind it is open. The screen holds no rule of
+ * its own - a chip's state, a zone's order and a part's job cards are all
+ * decided here.
+ */
+export interface BenchView {
+  displayName: string
+  /** The five zones in the board's fixed order (`BenchZoneSchema.options`):
+   * clean, fit, cut, join, measure. A board is a fixed layout; buying a tool
+   * restyles a chip in place and never moves one. */
+  zones: BenchZoneView[]
+  /** True once the room covering this bench is owned - the one condition the
+   * room strip renders under. */
+  roomOpen: boolean
+  surface: BenchSurfacePartView[]
 }
 
 export interface ToolLineView {
@@ -3154,6 +3224,166 @@ export const useGameStore = defineStore('game', () => {
     if (!canRepair(instance.band, entry) || bandIndex(instance.band) >= bandIndex('mint'))
       return null
     return repairCeilingSentence(entry.group)
+  }
+
+  // --- the three benches ---------------------------------------------------
+
+  /**
+   * The tool lines a bench serves - `benchByGroup` read backwards. A bench is
+   * shared: the chassis bench answers to drivetrain, suspension and wheels, and
+   * the body & trim corner to body and interior. All of a bench's lines are
+   * covered by the same room, so the room is one answer for the whole bench.
+   */
+  function groupsForBench(benchId: BenchId): ComponentId[] {
+    return REAL_COMPONENT_GROUPS.filter((group) => WORKBENCH.benchByGroup[group] === benchId)
+  }
+
+  /**
+   * What one board chip shows, from the four rules the board has: a shop tool
+   * hangs in the room once the room is bought, a tier 1 or tier 2 tool hangs on
+   * the board once a covering line reaches its tier, a tier 2 tool rides the
+   * day's hire, and anything else is a painted shadow with nothing on it.
+   *
+   * `level` is the best a covering line manages, since one board serves them
+   * all: a rung bought on any of them puts the kit on that bench. What a
+   * SPECIFIC step can do with it is the step's own question, answered by the
+   * job card's `slogged` flag rather than by the board.
+   */
+  function benchToolState(
+    tier: ToolTierOnBench,
+    level: number,
+    hiredToday: boolean,
+    roomOpen: boolean,
+  ): BenchToolView['state'] {
+    if (tier === 'shop') return roomOpen ? 'room' : 'outline'
+    if (level >= tier) return 'owned'
+    return hiredToday ? 'hired' : 'outline'
+  }
+
+  /**
+   * Everything one bench screen renders: the board's five zones in their fixed
+   * order with every tool's state, whether the room behind the bench is open,
+   * and the parts on the surface with their job cards. `null` for a bench id
+   * the content does not carry.
+   *
+   * The cards are `repairJobCards`' own output, untouched - the routing, the
+   * refusals, the step list, the energy and the parts bill are all the sim's,
+   * and nothing here re-decides any of them.
+   */
+  function benchView(benchId: BenchId): BenchView | null {
+    const bench = WORKBENCH.benches.find((candidate) => candidate.id === benchId)
+    if (!bench) return null
+    const groups = groupsForBench(benchId)
+    const level = Math.max(...groups.map((group) => toolLevels.value[group]))
+    const hiredToday = groups.some((group) => machineHiredToday(group, gameState.value))
+    const roomOpen = groups.some((group) =>
+      ownsToolShopForGroup(gameState.value, group, context.value),
+    )
+    return {
+      displayName: bench.displayName,
+      roomOpen,
+      zones: BenchZoneSchema.options.map((zone) => {
+        const shelves = bench.zones[zone]
+        const shelved: { tool: BenchTool; tier: ToolTierOnBench }[] = shelves
+          ? [
+              ...shelves.tier1.map((tool) => ({ tool, tier: 1 as ToolTierOnBench })),
+              ...shelves.tier2.map((tool) => ({ tool, tier: 2 as ToolTierOnBench })),
+              ...shelves.shop.map((tool) => ({ tool, tier: 'shop' as ToolTierOnBench })),
+            ]
+          : []
+        return {
+          zone,
+          tools: shelved.map(({ tool, tier }) => ({
+            id: tool.id,
+            label: tool.displayName,
+            tier,
+            state: benchToolState(tier, level, hiredToday, roomOpen),
+          })),
+        }
+      }),
+      surface: benchPartIds(gameState.value, benchId).flatMap((instanceId) => {
+        const instance = gameState.value.partInventory.find((part) => part.id === instanceId)
+        if (!instance) return []
+        return [
+          {
+            instanceId,
+            partId: instance.partId,
+            label: partName(instance.partId),
+            band: instance.band,
+            cards: repairJobCards(gameState.value, context.value, {
+              kind: 'loose',
+              partInstanceId: instanceId,
+            }),
+          },
+        ]
+      }),
+    }
+  }
+
+  /**
+   * The bench a warehouse part would be carried to, or `null` when carrying it
+   * there would achieve nothing: a part no repair can touch (scrap, or a
+   * replace-only consumable), one of the two body value carriers whose work
+   * belongs to the body shop, a part already laid out on a bench, or one
+   * currently out on a work station.
+   *
+   * The same set `resolvePlaceOnBench` accepts, so the button this feeds is
+   * never one the click would refuse.
+   */
+  function warehouseBenchTargets(partInstanceId: string): BenchId | null {
+    const instance = gameState.value.partInventory.find((part) => part.id === partInstanceId)
+    const catalogPart = instance ? context.value.partsById[instance.partId] : undefined
+    const entry = catalogPart ? context.value.partsTaxonomyById[catalogPart.carPartId] : undefined
+    if (!instance || !catalogPart || !entry) return null
+    if (!canRepair(instance.band, entry)) return null
+    if (isBodyDerivedPart(catalogPart.carPartId)) return null
+    if (benchHoldingPart(gameState.value, partInstanceId) !== null) return null
+    if (stationForPart(partInstanceId) !== null) return null
+    return benchForGroup(entry.group)
+  }
+
+  /**
+   * Carry one warehouse part out to its group's bench - free and instant, the
+   * same walk `placeOnStation` is. False on a refusal, which changes nothing
+   * (`resolvePlaceOnBench` refuses as a silent no-op, returning the state it
+   * was given).
+   */
+  function placeOnBench(partInstanceId: string): boolean {
+    const next = resolvePlaceOnBench(gameState.value, partInstanceId, context.value)
+    if (next === gameState.value) return false
+    gameState.value = next
+    logSessionEvent({ type: 'placeOnBench', payload: { partInstanceId } })
+    return true
+  }
+
+  /** Carry a part back off whichever bench holds it. An unfinished job on it
+   * keeps its ticked steps, so the part can come back and carry on. False when
+   * it was not on a bench in the first place. */
+  function takeOffBench(partInstanceId: string): boolean {
+    const next = resolveTakeOffBench(gameState.value, partInstanceId)
+    if (next === gameState.value) return false
+    gameState.value = next
+    logSessionEvent({ type: 'takeOffBench', payload: { partInstanceId } })
+    return true
+  }
+
+  /**
+   * Work one step of one repair job - instant, against today's remaining
+   * energy. Returns the sim's own outcome so the caller can say what happened:
+   * `'stepped'`, `'completed'`, or the refusal that stopped it. A refusal
+   * changes nothing and logs nothing.
+   */
+  function runRepairStep(target: RepairTarget, kind: RepairJobKind): RepairStepOutcome {
+    const result = resolveRepairStep(
+      gameState.value,
+      target,
+      kind,
+      context.value,
+      laborSlotsRemainingToday.value,
+    )
+    gameState.value = result.state
+    for (const event of result.log) logSessionEvent(event)
+    return result.outcome
   }
 
   /** The live auction room's fuse-length preset, persisted across careers -
@@ -5840,6 +6070,11 @@ export const useGameStore = defineStore('game', () => {
     takeFromStation,
     stationForPart,
     benchRepairCeilingCaption,
+    benchView,
+    warehouseBenchTargets,
+    placeOnBench,
+    takeOffBench,
+    runRepairStep,
     serviceBaysView,
     parkingView,
     parkingCapacity,

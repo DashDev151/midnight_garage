@@ -73,6 +73,15 @@ export const SessionEventInputSchema = z.discriminatedUnion('type', [
     z.object({ station: WorkStationSchema, partInstanceId: z.string().min(1) }),
   ),
   sessionEventVariant('takeFromStation', z.object({ station: WorkStationSchema })),
+  // The bench's own pair of moves (`resolvePlaceOnBench`/`resolveTakeOffBench`,
+  // packages/sim/src/repairJobs.ts). Neither names a bench: a part is carried
+  // to whichever bench its group belongs to, and comes off whichever one holds
+  // it, so the instance is the whole payload. Both are replay-critical even
+  // though neither costs anything - a loose `repair-step` refuses with
+  // `needs-bench` unless the part is laid out, so a bench move dropped from a
+  // script takes every step after it with it.
+  sessionEventVariant('placeOnBench', z.object({ partInstanceId: z.string().min(1) })),
+  sessionEventVariant('takeOffBench', z.object({ partInstanceId: z.string().min(1) })),
   sessionEventVariant('beginInspectionVisit', z.object({ tier: AuctionTierSchema })),
   sessionEventVariant(
     'runDiagnosticTest',
