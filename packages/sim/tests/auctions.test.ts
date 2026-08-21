@@ -233,9 +233,10 @@ describe('no gaisha import reaches a regular auction catalogue', () => {
  */
 describe('the catalogue mix each room draws', () => {
   const CAR_TIERS: readonly CarTier[] = ['entry', 'everyday', 'enthusiast', 'flagship']
-  /** A lot is a whole generated car, so sample size is a real cost - hence the
-   * longer timeout on the sweep. The seeds are fixed, so these are
-   * deterministic checks rather than flaky ones.
+  /** A lot is a whole generated car, so sample size is a real cost, and the
+   * time budget these sweeps need comes from the project config rather than a
+   * figure pinned per test. The seeds are fixed, so these are deterministic
+   * checks rather than flaky ones.
    *
    * The sweep pools several independent seeds rather than drawing one long
    * run, and that matters: generation consumes a variable number of rng draws
@@ -274,7 +275,7 @@ describe('the catalogue mix each room draws', () => {
         expectShareNear(tierShareOf(lots, carTier), row[carTier] / rowTotal, `${tier} ${carTier}`)
       }
     }
-  }, 60_000)
+  })
 
   it('holds that share however many models the band contains', () => {
     // The reason the draw is two-stage rather than one weighted pool. The
@@ -828,7 +829,7 @@ describe('generation is mileage-driven: age -> mileage -> condition (Sprint 34)'
     const oldMean = meanBandIndex(generateAtAge(25, 600, 'old'))
     const youngMean = meanBandIndex(generateAtAge(0, 600, 'young'))
     expect(oldMean).toBeLessThanOrEqual(youngMean)
-  }, 30_000)
+  })
 
   it('with no calendar context (currentYear omitted), condition still rolls a real, bounded spread', () => {
     // Age falls back to a fixed default (constants.ts) rather than an
@@ -1066,7 +1067,7 @@ describe('the damage budget: how rough a generated lot is', () => {
         }
       }
     }
-  }, 30_000)
+  })
 
   it('holds the three-year minimum age without ever overriding a model still in production', () => {
     // A 1994 model in a 1995 campaign generates as a 1994 car, age 1: near-new
@@ -1229,7 +1230,7 @@ describe('the damage budget: how rough a generated lot is', () => {
       measured.filter((m) => Math.abs(m.drift) >= 0.05).map((m) => m.fitmentClass),
       `effective symptom rate has drifted from its signed value: ${report}`,
     ).toEqual([])
-  }, 30_000)
+  })
 
   /**
    * The venue gradient is EMERGENT, and this is the assertion the design leans
@@ -1284,7 +1285,7 @@ describe('the damage budget: how rough a generated lot is', () => {
     // after, so age alone should not be able to make one a wreck. Restore this
     // rung when generation stops letting age override care.
     expect(collector).toBeGreaterThan(0)
-  }, 30_000)
+  })
 })
 
 /**
@@ -1409,7 +1410,7 @@ describe("a car's history: culture and tier decide what kind of car this is", ()
       return fitted / runs
     }
     expect(aftermarketSlotsFor('project')).toBeGreaterThan(aftermarketSlotsFor('tidy'))
-  }, 30_000)
+  })
 
   it('stamps the rolled history onto the generated car', () => {
     const model = CARS.find((c) => c.id === 'nissan-cefiro-a31')

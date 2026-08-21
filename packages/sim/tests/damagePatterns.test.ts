@@ -180,7 +180,7 @@ describe('a damage pattern decides WHERE the damage is', () => {
     const sidewaysZones = meanSeverityByZone(sideways)
     expect(shuntedZones.bonnet / sidewaysZones.bonnet).toBeGreaterThan(1.4)
     expect(sidewaysZones['left-rear'] / shuntedZones['left-rear']).toBeGreaterThan(1.25)
-  }, 30_000)
+  })
 
   it('grips the mechanical groups at least as hard as it grips the shell', () => {
     // The bar this whole layer lives or dies on, and the one it previously
@@ -214,7 +214,7 @@ describe('a damage pattern decides WHERE the damage is', () => {
     // ...and the hardest-pulled group in the catalogue reaches the multiple the
     // body zones already reached. Measured 1.53 (`grenade`, engine).
     expect(widest, 'widest per-group multiple of the flat baseline').toBeGreaterThan(1.45)
-  }, 60_000)
+  })
 
   it('moves the damage without adding any: the pattern owns where, the grade owns how much', () => {
     // The clearest statement that a pattern sets no band and buys no damage. If
@@ -232,7 +232,7 @@ describe('a damage pattern decides WHERE the damage is', () => {
       highest / lowest,
       `total damage should barely move between patterns: ${totals.map((t) => t.toFixed(2)).join(', ')}`,
     ).toBeLessThan(1.1)
-  }, 30_000)
+  })
 
   it('never writes an apparent band: budget damage stays honest visible wear', () => {
     for (const patternId of DAMAGE_PATTERN_IDS) {
@@ -254,7 +254,7 @@ describe('a damage pattern decides WHERE the damage is', () => {
         }
       }
     }
-  }, 30_000)
+  })
 
   it('stamps the drawn pattern on the car, and rolls it from the history rather than from the parts', () => {
     for (const patternId of DAMAGE_PATTERN_IDS) {
@@ -324,7 +324,7 @@ describe('the symptom a car presents follows what happened to it', () => {
       sidewaysGear / shuntedGear,
       `running-gear symptom share: drifted ${sidewaysGear.toFixed(3)} vs shunted ${shuntedGear.toFixed(3)}`,
     ).toBeGreaterThan(1.25)
-  }, 60_000)
+  })
 
   it('leaves every symptom reachable on every car: the history biases the draw, it does not decide it', () => {
     // The whole reason `patternSymptomBias` is short of 1. At bias b the

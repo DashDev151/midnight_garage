@@ -272,7 +272,7 @@ describe('generateDailyServiceJobOffers', () => {
       const observed = counts[i]! / days
       expect(Math.abs(observed - weights[i]!)).toBeLessThan(0.05)
     }
-  }, 30_000)
+  })
 
   // A CLAMP: the max observed count at each rung is the assertion, not a distribution match.
   describe('the day-1 pacing ramp (Sprint 52 decision 1)', () => {

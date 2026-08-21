@@ -132,7 +132,7 @@ describe('donor coherence invariants (Sprint 71 decision 8: the teardown game)',
           `${row.modelId} seed ${row.seed}: strip ${row.plays[2]!.profitYen}/${row.plays[3]!.profitYen} against repair ${row.plays[0]!.profitYen}/${row.plays[1]!.profitYen}`,
       )
     expect(partingWins).toEqual([])
-  }, 60_000)
+  })
 })
 
 describe('symptom coherence invariants (Sprint 73 decision 6, room formula updated Sprint 216)', () => {
